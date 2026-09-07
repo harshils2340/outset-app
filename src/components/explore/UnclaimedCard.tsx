@@ -1,65 +1,68 @@
+import { metroById } from "../../data/metros";
+import { ART_LABEL } from "../../data/art";
 import { ICONS } from "../../data/icons";
 import type { Unclaimed } from "../../data/types";
-import { money } from "../../lib/format";
+import { fromPrice, publicRating } from "../../lib/catalog";
+import { fmtReviews, money } from "../../lib/format";
 import { useApp } from "../../state/AppProvider";
 import { Art } from "../art/Art";
 import { Markup } from "../Markup";
 
-export function UnclaimedCard({ item }: { item: Unclaimed }) {
+export function UnclaimedCard({ item, compact }: { item: Unclaimed; compact?: boolean }) {
   const { openRequest } = useApp();
+  const metro = metroById(item.metroId);
+  const from = fromPrice(item);
+  const kind = ART_LABEL[item.art] || item.cat;
+  const score = publicRating(item);
+
   return (
-    <button className="card unclaimed" onClick={() => openRequest(item.id)}>
-      <div className="art" style={{ filter: "saturate(.35) brightness(.94)" }}>
-        <Art kind={item.art} id={item.id} />
-        <span className="unbadge">Unclaimed</span>
+    <button className={(compact ? "mini" : "card") + " unclaimed"} onClick={() => openRequest(item.id)}>
+      <div className="art">
+        <Art kind={item.art} id={item.id + (compact ? "r" : "")} />
+        <span className="instant">
+          <Markup html={ICONS.bolt} />
+          Instant
+        </span>
+        {score ? (
+          <span className="rating">
+            <Markup html={ICONS.star} />
+            {score.rating.toFixed(1)}
+            {compact ? null : (
+              <>
+                {" "}
+                <span className="count">({fmtReviews(score.reviews)})</span>
+              </>
+            )}
+          </span>
+        ) : null}
+        {compact ? null : <span className="actpill">{kind}</span>}
       </div>
       <div className="body">
-        <h3>{item.title}</h3>
-        <div className="op">
-          {item.area} · pulled from <span className="mono">{item.src}</span>
-        </div>
-        <div className="specrow">
-          {item.specs.map((s) => (
-            <span className="spec" key={s}>
-              {s}
+        <div className="cardtop">
+          <h3>{item.title}</h3>
+          {compact || !score ? null : (
+            <span className="cardrate">
+              <Markup html={ICONS.star} />
+              {score.rating.toFixed(1)}
             </span>
-          ))}
+          )}
         </div>
-        {item.options.length ? (
-          <div className="ulines">
-            {item.options.map((o, i) => (
-              <div className="uline" key={o.name + i}>
-                <span>
-                  {o.name}
-                  {o.detail ? (
-                    <>
-                      {" "}
-                      <i>· {o.detail}</i>
-                    </>
-                  ) : null}
-                </span>
-                <b>{o.price == null ? "ask" : money(o.price) + (o.per || "")}</b>
-              </div>
-            ))}
-          </div>
-        ) : null}
-        {item.includes.length ? (
-          <div className="uincludes">
-            <Markup html={ICONS.dot} />
-            <span>Includes {item.includes.join(", ")}</span>
-          </div>
-        ) : null}
-        <div className="ugap">{item.gap}</div>
-        {item.extraNote ? (
-          <div className="ugap" style={{ color: "var(--ink-faint)" }}>
-            {item.extraNote}
-          </div>
-        ) : null}
+        <div className="op">
+          {item.area}
+          {compact || !metro ? null : " · " + metro.name}
+        </div>
         <div className="foot">
-          <span style={{ fontSize: 12.5, color: "var(--ink-faint)" }}>No live availability yet</span>
-          <span className="link">
-            Request info <Markup html={ICONS.arrow} />
-          </span>
+          <div className="price">
+            {from == null ? (
+              <span>Instant Book</span>
+            ) : (
+              <>
+                <span>From </span>
+                <b>{money(from)}</b>
+              </>
+            )}
+          </div>
+          {compact ? null : <span className="link">Book</span>}
         </div>
       </div>
     </button>

@@ -1,4 +1,5 @@
-import type { Listing } from "../data/types";
+import type { Listing, UnclaimedOption } from "../data/types";
+import { perPerson } from "./catalog";
 
 export type PriceBreakdown = {
   base: number;
@@ -17,4 +18,13 @@ export function priceFor(l: Listing, qty: number, addonIds: string[]): PriceBrea
   const sub = base + add;
   const fee = Math.round(sub * 0.08);
   return { base, add, sub, fee, total: sub + fee };
+}
+
+export function priceUnclaimed(o: UnclaimedOption | null, qty: number): PriceBreakdown {
+  if (!o || o.price == null) {
+    return { base: 0, add: 0, sub: 0, fee: 0, total: 0 };
+  }
+  const base = perPerson(o) ? o.price * qty : o.price;
+  const fee = Math.round(base * 0.08);
+  return { base, add: 0, sub: base, fee, total: base + fee };
 }

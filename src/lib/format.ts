@@ -34,3 +34,7 @@ export function unitLine(l: Listing, qty: number): string {
 export function plural(n: number, unit: string): string {
   return n + " " + unit + (n === 1 ? "" : "s");
 }
+
+export function fmtReviews(n: number): string {
+  return n.toLocaleString("en-US");
+}

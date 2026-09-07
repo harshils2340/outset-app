@@ -1,151 +1,260 @@
+import { useState, type KeyboardEvent } from "react";
+import { ART_LABEL } from "../../data/art";
 import { CATS, CATMETA } from "../../data/categories";
-import { LISTINGS } from "../../data/listings";
-import { UNCLAIMED } from "../../data/unclaimed";
+import { ALL_METRO_ID, metroById, metroShort } from "../../data/metros";
+import type { CategoryId, Unclaimed } from "../../data/types";
 import { ICONS } from "../../data/icons";
-import { SLOT_TIMES } from "../../data/slots";
-import { dateKey } from "../../lib/dates";
-import { DAYS, fmtDate } from "../../lib/format";
-import { daySlotsOpen, openSeats } from "../../lib/inventory";
+import { getCatalog } from "../../lib/catalog";
+import { searchListings, searchMetros } from "../../lib/search";
 import { useApp } from "../../state/AppProvider";
+import { Art } from "../art/Art";
+import { Mark } from "../layout/Mark";
 import { Markup } from "../Markup";
-import { ListingCard, MiniCard } from "./ListingCard";
 import { UnclaimedCard } from "./UnclaimedCard";
 
+function groupRails(list: Unclaimed[]): { id: CategoryId; title: string; items: Unclaimed[] }[] {
+  return CATS.filter((c) => c.id !== "all")
+    .map((c) => ({
+      id: c.id,
+      title: CATMETA[c.id].railTitle,
+      items: list.filter((u) => u.cat === c.id),
+    }))
+    .filter((r) => r.items.length > 0);
+}
+
+/** Cards rendered per rail before "Show more". Keeps the feed fast with thousands of operators. */
+const PAGE = 48;
+const RAIL_CAP = 24;
+
+function rowChunks<T>(items: T[], size: number): T[][] {
+  if (items.length <= size) return [items];
+  const rows: T[][] = [];
+  for (let i = 0; i < items.length; i += size) rows.push(items.slice(i, i + size));
+  return rows;
+}
+
 export function ExploreView() {
-  const { state, dates, setCat, setQ, setDate } = useApp();
-  const d = dates[state.dateIdx];
-  const dk = dateKey(d);
-  const q = state.q.trim().toLowerCase();
+  const { state, setCat, setQ, setMetro, setTab, openMetro, openRequest } = useApp();
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [hit, setHit] = useState(0);
+  const [limit, setLimit] = useState(PAGE);
+  const q = state.q.trim();
   const meta = CATMETA[state.cat] || CATMETA.all;
-  const inCat = LISTINGS.filter((l) => state.cat === "all" || l.cat === state.cat);
-  let list = inCat;
-  if (q) {
-    list = list.filter((l) => (l.title + " " + l.op + " " + l.specs.join(" ") + " " + l.cat).toLowerCase().includes(q));
+  const inMetro = getCatalog().filter((u) => state.metroId === ALL_METRO_ID || u.metroId === state.metroId);
+  const ranked = q ? searchListings(inMetro, q) : inMetro;
+  const list = ranked.filter((u) => state.cat === "all" || u.cat === state.cat);
+  const previewList = (q ? searchListings(inMetro, q) : []).slice(0, 8);
+  const previewMetros = q.length >= 2 ? searchMetros(q) : [];
+  const showPreview = searchOpen && q.length > 0;
+  const metroHits = previewMetros.length;
+  const totalHits = metroHits + previewList.length;
+
+  const emptyTitle = inMetro.length === 0 ? "Nothing in this city yet" : meta.emptyTitle;
+  const emptyBody =
+    inMetro.length === 0 ? "Try Anywhere, or pick a city with listings." : meta.emptyBody;
+  const rails = groupRails(list);
+  const manyRails = rails.length > 1;
+
+  function pickListing(id: string) {
+    setSearchOpen(false);
+    openRequest(id);
   }
-  const soon = list
-    .filter((l) => openSeats(l, dk, SLOT_TIMES[2], state.bookings) > 0 || openSeats(l, dk, SLOT_TIMES[3], state.bookings) > 0)
-    .slice(0, 4);
+
+  function pickMetro(id: string) {
+    setMetro(id);
+    setQ("");
+    setSearchOpen(false);
+  }
+
+  function onSearchKey(e: KeyboardEvent<HTMLInputElement>) {
+    if (!showPreview || !totalHits) {
+      if (e.key === "Escape") (e.target as HTMLInputElement).blur();
+      return;
+    }
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setHit((i) => Math.min(totalHits - 1, i + 1));
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setHit((i) => Math.max(0, i - 1));
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      if (hit < metroHits) pickMetro(previewMetros[hit].id);
+      else pickListing(previewList[hit - metroHits].id);
+    } else if (e.key === "Escape") {
+      setSearchOpen(false);
+      (e.target as HTMLInputElement).blur();
+    }
+  }
 
   return (
     <>
       <div className="apphead">
         <div className="locrow">
-          <button className="locbtn">
-            <Markup html={ICONS.pin} />
-            <span className="lbl">
-              <small>Booking near</small>
-              <b>Tampa Bay, FL</b>
-            </span>
+          <div className="brand">
+            <Mark size={22} />
+            <b>Outset</b>
+          </div>
+          <button className="avatar" type="button" onClick={() => setTab("account")} aria-label="Profile">
+            H
           </button>
-          <span className="avatar">H</span>
         </div>
-        <div className="search">
-          <Markup html={ICONS.search} />
-          <input
-            id="q"
-            placeholder={meta.search}
-            value={state.q}
-            onChange={(e) => setQ(e.target.value)}
-          />
+        <div className="searchwrap">
+          <div className={"search" + (showPreview ? " on" : "")}>
+            <Markup html={ICONS.search} />
+            <input
+              id="q"
+              placeholder={meta.search}
+              value={state.q}
+              autoComplete="off"
+              autoCorrect="off"
+              spellCheck={false}
+              onChange={(e) => {
+                setQ(e.target.value);
+                setHit(0);
+                setSearchOpen(true);
+              }}
+              onFocus={() => setSearchOpen(true)}
+              onBlur={() => window.setTimeout(() => setSearchOpen(false), 120)}
+              onKeyDown={onSearchKey}
+            />
+            <button
+              className="wherechip"
+              type="button"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={openMetro}
+            >
+              <b>{metroShort(state.metroId)}</b>
+              <Markup html={ICONS.chev} className="locchev" />
+            </button>
+            {state.q ? (
+              <button
+                type="button"
+                className="searchclear"
+                aria-label="Clear search"
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => {
+                  setQ("");
+                  setHit(0);
+                }}
+              >
+                <Markup html={ICONS.close} />
+              </button>
+            ) : null}
+          </div>
+          {showPreview ? (
+            <div className="searchpreview" onMouseDown={(e) => e.preventDefault()}>
+              {previewMetros.map((m, i) => (
+                <button
+                  type="button"
+                  key={m.id}
+                  className={"searchhit" + (hit === i ? " on" : "")}
+                  onClick={() => pickMetro(m.id)}
+                  onMouseEnter={() => setHit(i)}
+                >
+                  <span className="searchico">
+                    <Markup html={ICONS.pin} />
+                  </span>
+                  <span className="searchmeta">
+                    <b>{m.name}</b>
+                    <small>
+                      {m.region}, {m.country === "CA" ? "Canada" : "United States"}
+                    </small>
+                  </span>
+                </button>
+              ))}
+              {previewList.map((u, i) => {
+                const idx = metroHits + i;
+                const metro = metroById(u.metroId);
+                return (
+                  <button
+                    type="button"
+                    key={u.id}
+                    className={"searchhit" + (hit === idx ? " on" : "")}
+                    onClick={() => pickListing(u.id)}
+                    onMouseEnter={() => setHit(idx)}
+                  >
+                    <span className="searchthumb">
+                      <Art kind={u.art} id={u.id + "s"} />
+                    </span>
+                    <span className="searchmeta">
+                      <b>{u.title}</b>
+                      <small>
+                        {(ART_LABEL[u.art] ? ART_LABEL[u.art] + " · " : "") + u.area}
+                        {metro ? " · " + metro.name : ""}
+                      </small>
+                    </span>
+                  </button>
+                );
+              })}
+              {!totalHits ? (
+                <div className="searchempty">No matches for &quot;{q}&quot;</div>
+              ) : (
+                <div className="searchhint">
+                  {list.length} in the feed
+                  {state.cat !== "all" ? " · " + meta.railTitle : ""}
+                </div>
+              )}
+            </div>
+          ) : null}
         </div>
       </div>
       <div className="chipbar">
         {CATS.map((c) => (
-          <button
-            key={c.id}
-            className="chip"
-            aria-pressed={state.cat === c.id}
-            onClick={() => setCat(c.id)}
-          >
+          <button key={c.id} className="chip" aria-pressed={state.cat === c.id} onClick={() => setCat(c.id)}>
+            <Markup html={ICONS[c.icon]} />
             {c.name}
           </button>
         ))}
       </div>
-      <div style={{ height: 14 }} />
-      <div className="dates">
-        {dates.slice(0, 8).map((dd, i) => {
-          const k = dateKey(dd);
-          const free = inCat.reduce((n, l) => n + daySlotsOpen(l, k, state.bookings), 0);
-          return (
-            <button
-              key={k}
-              className="date"
-              aria-pressed={state.dateIdx === i}
-              onClick={() => setDate(i)}
-            >
-              <small>{i === 0 ? "Today" : i === 1 ? "Tmrw" : DAYS[dd.getDay()]}</small>
-              <b>{dd.getDate()}</b>
-              <span className="free">{free}</span>
-            </button>
-          );
-        })}
-      </div>
-      <p className="note" style={{ textAlign: "left", padding: "7px 18px 0" }}>
-        Green figure = open slots that day.
-      </p>
-      <div style={{ height: 16 }} />
-      {soon.length ? (
-        <>
-          <div className="pad rowbetween">
-            <div>
-              <p className="eyebrow">{meta.railEyebrow}</p>
-              <h2 className="sec">{meta.railTitle}</h2>
-            </div>
-          </div>
-          <div style={{ height: 11 }} />
-          <div className="rail">
-            {soon.map((l) => (
-              <MiniCard key={l.id} listing={l} date={d} />
-            ))}
-          </div>
-          <div style={{ height: 22 }} />
-        </>
-      ) : null}
-      <div className="pad rowbetween">
-        <div>
-          <p className="eyebrow">{fmtDate(d)}</p>
-          <h2 className="sec">
-            {list.length} {meta.head}
-          </h2>
-        </div>
-      </div>
-      <div style={{ height: 12 }} />
       {list.length ? (
-        <div className="cards">
-          {list.map((l) => (
-            <ListingCard key={l.id} listing={l} date={d} />
+        <>
+          <div className="feedhead">
+            <p className="eyebrow">{q ? "Matches" : meta.railTitle || "Near you"}</p>
+            <h2>
+              {list.length} {meta.head}
+            </h2>
+          </div>
+          {rails.map((rail) => (
+            <section key={rail.id} className="railblock">
+              {manyRails ? (
+                <div className="railhead">
+                  <button type="button" className="railtitle" onClick={() => setCat(rail.id)}>
+                    <h2>{rail.title}</h2>
+                  </button>
+                  <span className="railcount">{rail.items.length}</span>
+                </div>
+              ) : null}
+              {rowChunks(manyRails ? rail.items.slice(0, RAIL_CAP) : rail.items.slice(0, limit), manyRails ? RAIL_CAP : 6).map((row, i) => (
+                <div className="rail" key={rail.id + "-" + i}>
+                  {row.map((u) => (
+                    <UnclaimedCard key={u.id} item={u} compact />
+                  ))}
+                  {manyRails && i === 0 && rail.items.length > RAIL_CAP ? (
+                    <button type="button" className="railmore" onClick={() => setCat(rail.id)}>
+                      <b>See all {rail.items.length}</b>
+                      <small>{rail.title}</small>
+                    </button>
+                  ) : null}
+                </div>
+              ))}
+              {!manyRails && rail.items.length > limit ? (
+                <button type="button" className="cta ghost showmore" onClick={() => setLimit((n) => n + PAGE)}>
+                  Show more · {rail.items.length - limit} left
+                </button>
+              ) : null}
+            </section>
           ))}
-        </div>
+        </>
       ) : (
         <div className="empty">
           <div className="glyph">
             <Markup html={ICONS.search} />
           </div>
-          <b>{meta.emptyTitle}</b>
-          <p>{meta.emptyBody}</p>
+          <b>{emptyTitle}</b>
+          <p>{emptyBody}</p>
         </div>
       )}
-      <p className="note">{meta.note}</p>
-      {state.cat === "all" && !q ? (
-        <>
-          <div style={{ height: 28 }} />
-          <div className="pad rowbetween">
-            <div>
-              <p className="eyebrow">Real businesses, seeded from public listings</p>
-              <h2 className="sec">Not on Outset yet</h2>
-            </div>
-          </div>
-          <p className="note" style={{ textAlign: "left", padding: "6px 18px 14px" }}>
-            These are real Tampa Bay operators we don&apos;t have a relationship with. No invented pricing or hours. Tap
-            one and we&apos;ll text them your request directly.
-          </p>
-          <div className="cards">
-            {UNCLAIMED.map((u) => (
-              <UnclaimedCard key={u.id} item={u} />
-            ))}
-          </div>
-        </>
-      ) : null}
       <div className="spacer" />
     </>
   );

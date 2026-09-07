@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from "react";
 import { ICONS } from "../../data/icons";
-import { money } from "../../lib/format";
 import { useApp } from "../../state/AppProvider";
 import { Markup } from "../Markup";
 
@@ -16,12 +15,7 @@ export function ChatView() {
 
   if (!thread) return null;
   const msgs = state.chats[thread.id] || [];
-  const suggestions = [
-    "Do you have " + (thread.qtyMax > 2 ? "3" : "2") + " open Saturday around 11?",
-    "What's actually included in the price?",
-    "What happens if the weather turns?",
-    "Is this OK for a total first-timer?",
-  ];
+  const suggestions = thread.suggestions;
 
   function send(text: string) {
     const v = text.trim();
@@ -36,19 +30,17 @@ export function ChatView() {
         <button onClick={back} style={{ color: "var(--ink-soft)" }}>
           <Markup html={ICONS.back} />
         </button>
-        <span className="avatar">{thread.opInit}</span>
+        <span className="avatar">{thread.initials}</span>
         <span className="meta">
-          <b>{thread.op}</b>
+          <b>{thread.name}</b>
           <span className="agentpill">
             <Markup html={ICONS.spark} />
-            Agent online · replies in seconds
+            {thread.kind === "company" ? "24/7 assistant · published info only" : "Agent online · replies in seconds"}
           </span>
         </span>
       </div>
       <div className="msgs" id="msgs" ref={msgsRef}>
-        <div className="bub sys">
-          {thread.title} · {money(thread.price)}/{thread.unit} · {thread.launch}
-        </div>
+        <div className="bub sys">{thread.line}</div>
         {msgs.map((m, i) => {
           if (m.who === "sys") {
             return (
@@ -64,9 +56,9 @@ export function ChatView() {
           );
         })}
       </div>
-      <div className="chipbar" style={{ padding: "0 14px 8px" }}>
+      <div className="suggest">
         {suggestions.map((s) => (
-          <button className="chip" key={s} onClick={() => send(s)}>
+          <button className="pill" key={s} onClick={() => send(s)}>
             {s}
           </button>
         ))}
@@ -75,7 +67,7 @@ export function ChatView() {
         <textarea
           id="composer"
           rows={1}
-          placeholder="Ask about availability, gear, anything…"
+          placeholder={thread.kind === "company" ? "Ask about prices, hours, where to meet…" : "Ask about availability, gear, anything…"}
           value={draft}
           onChange={(e) => {
             setDraft(e.target.value);

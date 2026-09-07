@@ -4,12 +4,12 @@ Read this file at the start of every task in this repo. Nested `AGENTS.md` files
 
 ## What this product is
 
-Outset is an instant-booking marketplace for local experiences (skydives, jet skis, karting, escape rooms, charters, and similar). The first market is Tampa Bay, Florida.
+Outset is an instant-booking marketplace for local experiences (skydives, jet skis, karting, escape rooms, charters, and similar). The first market we verified by hand was Tampa Bay, Florida. The guest catalog and supply grid now cover the United States and Canada. The guest app presents those real operators as Instant Book.
 
 The product promise:
 
-1. Live inventory, not a phone number.
-2. Instant confirmation for listings that are on Outset.
+1. Live inventory, not a phone number. Guests Instant Book from the catalog.
+2. Instant confirmation.
 3. A per-operator booking agent that answers only from published facts, policy, and current slots.
 4. Supply seeding for real local businesses that are not on Outset yet. Show their public facts. Never invent availability, price, hours, age rules, or inclusions.
 
@@ -17,11 +17,17 @@ This is "DoorDash for experiences" in the sense that guests pick a slot and pay.
 
 ## Hard product rules
 
-- Instant-book listings (`src/data/listings.ts`) have real slot math. Guests can complete checkout in the app.
+- Instant-book listings (`src/data/listings.ts`) stay empty until a real operator claims. Do not refill with invented shops.
 - Unclaimed businesses (`src/data/unclaimed.ts`) were pulled from each company's own site. If a fact is missing, keep the honest gap. Do not guess.
 - The operator agent (`src/lib/agent.ts`) must not invent a price, policy, or open slot. If it does not know, it says it will have the owner confirm.
-- Bookings persist on-device (`src/lib/storage.ts`). There is no payment processor and no backend yet. Do not pretend otherwise in UI copy.
-- Demo inventory is Tampa Bay. Do not silently relocate the market.
+- The company assistant (`src/lib/companyAgent.ts`) answers only from that operator's published facts and synced contact record. It refuses weather, directions, comparisons, reviews, and anything about other businesses, and hands off to a person at the shop. Keep the refusal list when adding intents.
+- Supply must be at real-world scale. Hand-typed operator lists are seeds, not the catalog. Grow the catalog with discovery (`backend/src/discover/`), never by inventing entries.
+- Bookings persist on-device (`src/lib/storage.ts`). Operator truth also lives in `backend/` SQLite. Do not invent live slots in the backend.
+- Guest catalog is real operators across US and Canada metros, shown as Instant Book. Tampa is the densest verified batch. The backend metro grid is the same 47-city list.
+
+## Backend (supply)
+
+`backend/` discovers real operators from OpenStreetMap (`npm run backend:discover`, one Overpass query per state or province, cached in `backend/data/osm/`), stores unclaimed operator profiles, scrapes public websites, scores completeness, and drafts claim emails. `npm run backend:sync` writes each operator's public contact facts (website, phone, email, street address, hours) into `src/data/contacts.ts`, keyed by domain, so every listing page embeds them. Instant book stays off until an operator claims. See `backend/AGENTS.md`.
 
 ## App shape
 
@@ -29,7 +35,7 @@ Vite + React + TypeScript. No router. Screen state lives in `src/state/AppProvid
 
 Tabs: Explore, Trips, Inbox, Account.
 Stacked screens: listing detail, checkout confirm, operator chat.
-Sheets: review-and-pay, request-info for unclaimed operators.
+Sheets: review-and-pay, Instant Book for catalog operators, metro picker.
 
 Desktop: marketing pitch + phone frame (`.stage`, `.device`, `.screen`).
 Mobile: the frame goes away and the app is full viewport.
@@ -39,7 +45,11 @@ Mobile: the frame goes away and the app is full viewport.
 | Need | Place |
 | --- | --- |
 | Copy, prices, policies, add-ons for live listings | `src/data/listings.ts` |
-| Unclaimed Tampa operators | `src/data/unclaimed.ts` |
+| Unclaimed operators | `src/data/unclaimed.ts` plus `src/data/unclaimedNational.ts` |
+| Operator contact facts (phone, email, address, hours, site) | Generated `src/data/contacts.ts`. Run `npm run backend:sync` after a scrape. Never hand-edit. |
+| Full operator catalog (thousands, from OpenStreetMap plus scrapes) | Generated `public/catalog.json`, fetched at startup and merged in `src/lib/catalog.ts`. `npm run backend:discover` then `npm run backend:sync`. |
+| 24/7 company assistant (chat for catalog operators) | `src/lib/companyAgent.ts`. Published facts only. No outside knowledge. |
+| Metros | `src/data/metros.ts` (keep in sync with `backend/src/taxonomy/catalog.ts`) |
 | Categories and explore headers | `src/data/categories.ts` |
 | Slot times | `src/data/slots.ts` |
 | Scene illustrations | `src/data/art.ts` |
@@ -48,6 +58,7 @@ Mobile: the frame goes away and the app is full viewport.
 | Fees and totals | `src/lib/pricing.ts` |
 | Visual system | `src/styles/app.css` |
 | Screen flow | `src/state/AppProvider.tsx` |
+| Operator profiles, scrape, outreach | `backend/` |
 
 ## Writing rules
 
@@ -55,8 +66,8 @@ Never use an em dash. Use a comma, a period, a colon, or a hyphen.
 
 Keep guest copy specific and local. Avoid generic marketplace filler.
 
-Match the existing visual language: Archivo for display, Public Sans for body, IBM Plex Mono for stamps and prices, accent `#EE4E1B`.
+Match the visual language: Inter for the product UI, Newsreader for the desktop pitch headline, accent `#E54D2C`. Airbnb owns the feed card (photo, title, from-price, Instant). Uber Eats owns the category row. Booksy owns the service picker. Outset is the activity: scene art, jet ski / skydive labels on the photo, orange Instant, fun-local copy. Do not invent prices. Do not tell guests an operator is unclaimed.
 
 ## How to run
 
-`npm install` then `npm run dev`. `npm run build` must stay green after changes.
+`npm install` then `npm run dev` for the guest app. `cd backend && npm install && npm run ingest && npm run dev` for the supply API.

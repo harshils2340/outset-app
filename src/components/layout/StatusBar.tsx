@@ -10,7 +10,7 @@ export function StatusBar() {
 
   return (
     <div className="statusbar">
-      <span className="mono">{clock}</span>
+      <span>{clock}</span>
       <span className="sigs">
         <i style={{ height: 5 }} />
         <i style={{ height: 7 }} />

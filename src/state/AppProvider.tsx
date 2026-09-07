@@ -1,12 +1,12 @@
 import { createContext, useContext, useEffect, useMemo, useReducer, type ReactNode } from "react";
 import { LISTINGS } from "../data/listings";
-import { UNCLAIMED } from "../data/unclaimed";
-import { SEED_CHATS } from "../data/seedChats";
+import { ALL_METRO_ID } from "../data/metros";
 import { SLOT_TIMES } from "../data/slots";
 import type {
   Booking,
   CategoryId,
   ChatMessage,
+  ChatThread,
   Listing,
   ScreenId,
   SheetId,
@@ -15,19 +15,25 @@ import type {
 } from "../data/types";
 import { agentReply } from "../lib/agent";
 import { dateKey, makeDates } from "../lib/dates";
-import { fmtDate, nowStamp } from "../lib/format";
+import { fmtDate, money, nowStamp } from "../lib/format";
 import { daySlotsOpen, openSeats } from "../lib/inventory";
-import { priceFor } from "../lib/pricing";
+import { contactFor, experienceById, fromPrice, initials } from "../lib/catalog";
+import { loadRemoteCatalog } from "../lib/catalogLoad";
+import { companyGreeting, companyReply, companySuggestions } from "../lib/companyAgent";
+import { priceFor, priceUnclaimed } from "../lib/pricing";
 import { loadBookings, loadChats, saveBookings, saveChats } from "../lib/storage";
 
 export const DATES = makeDates(10);
 
 export type AppState = {
   hydrated: boolean;
+  /** Bumps when the generated catalog finishes loading so lists re-read getCatalog(). */
+  catalogVersion: number;
   tab: TabId;
   screen: ScreenId;
   cat: CategoryId;
   q: string;
+  metroId: string;
   dateIdx: number;
   listingId: string | null;
   slot: string | null;
@@ -44,10 +50,13 @@ export type AppState = {
 
 type Action =
   | { type: "hydrate"; bookings: Booking[]; chats: Record<string, ChatMessage[]> }
+  | { type: "catalogLoaded"; added: number }
   | { type: "tab"; tab: TabId }
   | { type: "goto"; tab: TabId }
   | { type: "cat"; cat: CategoryId }
   | { type: "q"; q: string }
+  | { type: "metro"; metroId: string }
+  | { type: "openMetro" }
   | { type: "date"; dateIdx: number }
   | { type: "openListing"; id: string }
   | { type: "slot"; slot: string }
@@ -57,7 +66,13 @@ type Action =
   | { type: "openRequest"; id: string }
   | { type: "closeSheet" }
   | { type: "confirm" }
-  | { type: "sendRequest"; note: string }
+  | {
+      type: "confirmUnclaimed";
+      dateIdx: number;
+      slot: string;
+      qty: number;
+      optionIdx: number | null;
+    }
   | { type: "back" }
   | { type: "openChat"; id: string }
   | { type: "sendChat"; text: string }
@@ -66,6 +81,36 @@ type Action =
 function listingById(id: string | null): Listing | null {
   if (!id) return null;
   return LISTINGS.find((l) => l.id === id) ?? null;
+}
+
+function threadFor(id: string | null): ChatThread | null {
+  const l = listingById(id);
+  if (l) {
+    return {
+      id: l.id,
+      kind: "listing",
+      name: l.op,
+      initials: l.opInit,
+      line: l.title + " · " + money(l.price) + "/" + l.unit + " · " + l.launch,
+      suggestions: [
+        "Do you have " + (l.qtyMax > 2 ? "3" : "2") + " open Saturday around 11?",
+        "What's actually included in the price?",
+        "What happens if the weather turns?",
+        "Is this OK for a total first-timer?",
+      ],
+    };
+  }
+  const u = experienceById(id);
+  if (!u) return null;
+  const from = fromPrice(u);
+  return {
+    id: u.id,
+    kind: "company",
+    name: u.title,
+    initials: initials(u.title),
+    line: u.area + (from != null ? " · from " + money(from) : "") + " · Answers only from published info",
+    suggestions: companySuggestions({ item: u, contact: contactFor(u) }),
+  };
 }
 
 function greeting(l: Listing): ChatMessage {
@@ -84,6 +129,8 @@ function reducer(state: AppState, action: Action): AppState {
   switch (action.type) {
     case "hydrate":
       return { ...state, hydrated: true, bookings: action.bookings, chats: action.chats };
+    case "catalogLoaded":
+      return action.added ? { ...state, catalogVersion: state.catalogVersion + 1 } : state;
     case "tab":
       return { ...state, tab: action.tab, screen: action.tab };
     case "goto":
@@ -92,6 +139,10 @@ function reducer(state: AppState, action: Action): AppState {
       return { ...state, cat: action.cat };
     case "q":
       return { ...state, q: action.q };
+    case "metro":
+      return { ...state, metroId: action.metroId, sheet: null };
+    case "openMetro":
+      return { ...state, sheet: "metro" };
     case "date":
       return { ...state, dateIdx: action.dateIdx, slot: null };
     case "openListing":
@@ -158,13 +209,29 @@ function reducer(state: AppState, action: Action): AppState {
         toast: "Confirmed - " + booking.code,
       };
     }
-    case "sendRequest": {
-      const u = UNCLAIMED.find((x) => x.id === state.reqTargetId);
-      const extra = action.note.trim() ? " (" + action.note.trim() + ")" : "";
+    case "confirmUnclaimed": {
+      const u = experienceById(state.reqTargetId);
+      if (!u || !action.slot) return state;
+      const picked = action.optionIdx != null ? u.options[action.optionIdx] : null;
+      if (u.options.length > 0 && !picked) return state;
+      const p = priceUnclaimed(picked, action.qty);
+      const booking: Booking = {
+        listing: u.id,
+        date: dateKey(DATES[action.dateIdx]),
+        slot: action.slot,
+        qty: action.qty,
+        addons: picked ? [String(action.optionIdx)] : [],
+        total: p.total,
+        code: makeCode(initials(u.title)),
+        created: Date.now(),
+      };
       return {
         ...state,
+        booking,
+        bookings: [booking, ...state.bookings],
         sheet: null,
-        toast: "Sent - we'll text " + (u ? u.title : "them") + extra + " and let you know.",
+        screen: "confirm",
+        toast: "Confirmed - " + booking.code,
       };
     }
     case "back": {
@@ -175,13 +242,27 @@ function reducer(state: AppState, action: Action): AppState {
     }
     case "openChat": {
       const listing = listingById(action.id);
-      if (!listing) return state;
-      const chats = state.chats[listing.id]
-        ? state.chats
-        : { ...state.chats, [listing.id]: [greeting(listing)] };
-      return { ...state, threadId: listing.id, chats, screen: "chat" };
+      if (listing) {
+        const chats = state.chats[listing.id]
+          ? state.chats
+          : { ...state.chats, [listing.id]: [greeting(listing)] };
+        return { ...state, threadId: listing.id, chats, screen: "chat" };
+      }
+      const company = experienceById(action.id);
+      if (!company) return state;
+      const hello: ChatMessage = { who: "them", t: companyGreeting({ item: company, contact: contactFor(company) }), at: "now" };
+      const chats = state.chats[company.id] ? state.chats : { ...state.chats, [company.id]: [hello] };
+      return { ...state, threadId: company.id, chats, sheet: null, reqTargetId: null, screen: "chat" };
     }
     case "sendChat": {
+      const company = experienceById(state.threadId);
+      if (company) {
+        const at = nowStamp();
+        const prev = (state.chats[company.id] || []).slice();
+        prev.push({ who: "me", t: action.text, at });
+        prev.push({ who: "them", t: companyReply({ item: company, contact: contactFor(company) }, action.text), at });
+        return { ...state, chats: { ...state.chats, [company.id]: prev } };
+      }
       const listing = listingById(state.threadId);
       if (!listing) return state;
       const dk = dateKey(DATES[state.dateIdx]);
@@ -213,10 +294,12 @@ function reducer(state: AppState, action: Action): AppState {
 
 const initial: AppState = {
   hydrated: false,
+  catalogVersion: 0,
   tab: "explore",
   screen: "explore",
   cat: "all",
   q: "",
+  metroId: ALL_METRO_ID,
   dateIdx: 0,
   listingId: null,
   slot: null,
@@ -225,7 +308,7 @@ const initial: AppState = {
   booking: null,
   threadId: null,
   bookings: [],
-  chats: structuredClone(SEED_CHATS),
+  chats: {},
   reqTargetId: null,
   sheet: null,
   toast: null,
@@ -235,12 +318,14 @@ type Api = {
   state: AppState;
   dates: Date[];
   listing: Listing | null;
-  thread: Listing | null;
+  thread: ChatThread | null;
   reqTarget: Unclaimed | null;
   dispatch: (a: Action) => void;
   setTab: (tab: TabId) => void;
   setCat: (cat: CategoryId) => void;
   setQ: (q: string) => void;
+  setMetro: (metroId: string) => void;
+  openMetro: () => void;
   setDate: (i: number) => void;
   openListing: (id: string) => void;
   setSlot: (slot: string) => void;
@@ -250,7 +335,7 @@ type Api = {
   openRequest: (id: string) => void;
   closeSheet: () => void;
   confirm: () => void;
-  sendRequest: (note: string) => void;
+  confirmUnclaimed: (input: { dateIdx: number; slot: string; qty: number; optionIdx: number | null }) => void;
   back: () => void;
   openChat: (id: string) => void;
   sendChat: (text: string) => void;
@@ -264,6 +349,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     dispatch({ type: "hydrate", bookings: loadBookings(), chats: loadChats() });
+    let alive = true;
+    loadRemoteCatalog().then((added) => {
+      if (alive) dispatch({ type: "catalogLoaded", added });
+    });
+    return () => {
+      alive = false;
+    };
   }, []);
 
   useEffect(() => {
@@ -283,8 +375,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [state.toast]);
 
   const listing = listingById(state.listingId);
-  const thread = listingById(state.threadId);
-  const reqTarget = UNCLAIMED.find((u) => u.id === state.reqTargetId) ?? null;
+  const thread = threadFor(state.threadId);
+  const reqTarget = experienceById(state.reqTargetId);
 
   const api = useMemo<Api>(
     () => ({
@@ -297,6 +389,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setTab: (tab) => dispatch({ type: "tab", tab }),
       setCat: (cat) => dispatch({ type: "cat", cat }),
       setQ: (q) => dispatch({ type: "q", q }),
+      setMetro: (metroId) => dispatch({ type: "metro", metroId }),
+      openMetro: () => dispatch({ type: "openMetro" }),
       setDate: (dateIdx) => dispatch({ type: "date", dateIdx }),
       openListing: (id) => dispatch({ type: "openListing", id }),
       setSlot: (slot) => dispatch({ type: "slot", slot }),
@@ -306,7 +400,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       openRequest: (id) => dispatch({ type: "openRequest", id }),
       closeSheet: () => dispatch({ type: "closeSheet" }),
       confirm: () => dispatch({ type: "confirm" }),
-      sendRequest: (note) => dispatch({ type: "sendRequest", note }),
+      confirmUnclaimed: (input) => dispatch({ type: "confirmUnclaimed", ...input }),
       back: () => dispatch({ type: "back" }),
       openChat: (id) => dispatch({ type: "openChat", id }),
       sendChat: (text) => dispatch({ type: "sendChat", text }),

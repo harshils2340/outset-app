@@ -57,13 +57,31 @@ export type UnclaimedOption = {
   per?: string;
 };
 
+/** Public contact facts for one operator, synced from the backend. null means the site did not publish it. */
+export type OperatorContact = {
+  domain: string;
+  website: string | null;
+  phone: string | null;
+  email: string | null;
+  street: string | null;
+  city: string | null;
+  region: string | null;
+  postal: string | null;
+  hours: string[];
+  bookingVendor: string | null;
+  fetchedAt: string | null;
+};
+
 export type Unclaimed = {
   id: string;
   title: string;
   cat: Exclude<CategoryId, "all">;
   art: ArtKind;
   area: string;
+  metroId: string;
   src: string;
+  rating?: number;
+  reviews?: number;
   specs: string[];
   options: UnclaimedOption[];
   includes: string[];
@@ -74,6 +92,7 @@ export type Unclaimed = {
 export type Category = {
   id: CategoryId;
   name: string;
+  icon: string;
 };
 
 export type CategoryMeta = {
@@ -87,6 +106,16 @@ export type CategoryMeta = {
 };
 
 export type ChatRole = "me" | "them" | "sys";
+
+/** What the chat screen needs, whether the thread is a live listing or a catalog operator. */
+export type ChatThread = {
+  id: string;
+  kind: "listing" | "company";
+  name: string;
+  initials: string;
+  line: string;
+  suggestions: string[];
+};
 
 export type ChatMessage = {
   who: ChatRole;
@@ -108,4 +137,4 @@ export type Booking = {
 
 export type TabId = "explore" | "trips" | "inbox" | "account";
 export type ScreenId = TabId | "detail" | "confirm" | "chat";
-export type SheetId = "review" | "request" | null;
+export type SheetId = "review" | "request" | "metro" | null;

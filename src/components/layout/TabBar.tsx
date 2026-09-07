@@ -5,8 +5,8 @@ import { useApp } from "../../state/AppProvider";
 const TABS = [
   { id: "explore" as const, name: "Explore", icon: "compass" },
   { id: "trips" as const, name: "Trips", icon: "ticket" },
-  { id: "inbox" as const, name: "Inbox", icon: "chat" },
-  { id: "account" as const, name: "Account", icon: "user" },
+  { id: "inbox" as const, name: "Messages", icon: "chat" },
+  { id: "account" as const, name: "Profile", icon: "user" },
 ];
 
 export function TabBar() {

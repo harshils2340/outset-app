@@ -2,6 +2,4 @@
 
 Read `/AGENTS.md` first.
 
-Home feed: location, search, category chips, date strip, instant-book cards, then unclaimed operators when the category is All and search is empty.
-
-Green numbers on dates are open slot counts for the current category. Keep that meaning.
+Home feed is real operators across US and Canada: Outset mark in the header, search pill with an Anywhere (or city) chip, live preview, icon category row (Uber Eats), then Uber Eats-style horizontal rails (two cards visible per row, swipe to compare, vertical scroll between Air / Water / Race / Indoor / Outdoor). Photo-first Instant Book cards, orange Instant, public rating on the cover. Search matches similar words (heli, kayaking, skydiv) as you type. Default browse is Anywhere. Filter by metro and category. Do not show unclaimed or request-only chrome. Do not invent ratings.

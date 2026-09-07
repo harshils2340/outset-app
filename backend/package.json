@@ -1,0 +1,30 @@
+{
+  "name": "outset-backend",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts serve",
+    "start": "tsx src/index.ts serve",
+    "ingest": "tsx src/index.ts ingest",
+    "scrape": "tsx src/index.ts scrape",
+    "outreach": "tsx src/index.ts outreach",
+    "sync": "tsx src/index.ts sync",
+    "discover": "tsx src/index.ts discover",
+    "enrich": "tsx src/index.ts enrich",
+    "status": "tsx src/index.ts status"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.124.0",
+    "@hono/node-server": "^1.14.1",
+    "cheerio": "^1.0.0",
+    "hono": "^4.7.8",
+    "openai": "^7.10.0",
+    "zod": "^4.5.4"
+  },
+  "devDependencies": {
+    "@types/node": "^22.14.1",
+    "tsx": "^4.19.3",
+    "typescript": "~5.8.3"
+  }
+}

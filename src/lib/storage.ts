@@ -1,8 +1,7 @@
 import type { Booking, ChatMessage } from "../data/types";
-import { SEED_CHATS } from "../data/seedChats";
 
-const BOOKINGS_KEY = "outset.bookings";
-const CHATS_KEY = "outset.chats";
+const BOOKINGS_KEY = "outset.bookings.v2";
+const CHATS_KEY = "outset.chats.v2";
 
 export function loadBookings(): Booking[] {
   try {
@@ -26,11 +25,11 @@ export function saveBookings(bookings: Booking[]): void {
 export function loadChats(): Record<string, ChatMessage[]> {
   try {
     const raw = localStorage.getItem(CHATS_KEY);
-    if (!raw) return structuredClone(SEED_CHATS);
+    if (!raw) return {};
     const parsed = JSON.parse(raw) as Record<string, ChatMessage[]>;
-    return parsed && typeof parsed === "object" ? parsed : structuredClone(SEED_CHATS);
+    return parsed && typeof parsed === "object" ? parsed : {};
   } catch {
-    return structuredClone(SEED_CHATS);
+    return {};
   }
 }
 

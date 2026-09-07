@@ -1,0 +1,116 @@
+import "./env.ts";
+import { serve } from "@hono/node-server";
+import { app } from "./api/routes.ts";
+import { migrate } from "./db/client.ts";
+import { ingestAll, seedTaxonomy, addTarget } from "./ingest/load.ts";
+import { generateOutreachDrafts } from "./outreach/drafts.ts";
+import { scrapePending } from "./scrape/run.ts";
+import { refreshAllScores } from "./lib/completeness.ts";
+import { syncCatalogToApp, syncContactsToApp } from "./sync/contacts.ts";
+import { discoverAll, metroCoverage } from "./discover/osm.ts";
+import { enrichPending, rate } from "./enrich/run.ts";
+
+import { db } from "./db/client.ts";
+import { CATEGORIES, METROS } from "./taxonomy/catalog.ts";
+
+migrate();
+seedTaxonomy();
+
+const cmd = process.argv[2] || "serve";
+
+if (cmd === "add") {
+  const website = process.argv[3];
+  const metroId = process.argv[4];
+  const categoryId = process.argv[5];
+  const name = process.argv[6];
+  if (!website || !metroId) {
+    console.error("Usage: tsx src/index.ts add <website> <metroId> [categoryId] [name]");
+    process.exit(1);
+  }
+  const id = addTarget({ website, metroId, categoryId, name });
+  console.log(id);
+  process.exit(0);
+}
+
+if (cmd === "ingest") {
+  const n = ingestAll();
+  console.log("Ingested " + n.tampa + " Tampa and " + n.national + " US/Canada operators.");
+  process.exit(0);
+}
+
+if (cmd === "scrape") {
+  ingestAll();
+  const limit = Number(process.argv[3] || 40);
+  const results = await scrapePending(limit);
+  refreshAllScores();
+  console.log(JSON.stringify(results, null, 2));
+  process.exit(0);
+}
+
+if (cmd === "discover") {
+  const only = process.argv.slice(3).filter((a) => !a.startsWith("--"));
+  const force = process.argv.includes("--force");
+  const stats = await discoverAll({ only, force });
+  refreshAllScores();
+  const total = stats.reduce((n, s) => n + s.inserted + s.updated, 0);
+  console.log("Discovered " + total + " operators across " + stats.length + " areas. " + JSON.stringify(metroCoverage()));
+  process.exit(0);
+}
+
+if (cmd === "enrich") {
+  const limit = Number(process.argv[3] || 10);
+  const concurrency = Number(process.argv[4] || 3);
+  const results = await enrichPending(limit, concurrency);
+  refreshAllScores();
+  const ok = results.filter((r) => r.status === "ok").length;
+  const usage = results.reduce((a, r) => ({ i: a.i + (r.usage?.input || 0), o: a.o + (r.usage?.output || 0) }), { i: 0, o: 0 });
+  const cost = (usage.i * rate().in + usage.o * rate().out) / 1e6;
+  console.log(`Enriched ${ok}/${results.length}. Tokens in=${usage.i} out=${usage.o}. Approx cost $${cost.toFixed(2)}. Run "npm run sync" to push to the app.`);
+  process.exit(0);
+}
+
+if (cmd === "sync") {
+  ingestAll();
+  const out = syncContactsToApp();
+  console.log("Wrote " + out.count + " operator contact records to " + out.path);
+  const cat = syncCatalogToApp();
+  console.log("Wrote " + cat.count + " operators to " + cat.path);
+  process.exit(0);
+}
+
+if (cmd === "outreach") {
+  ingestAll();
+  const n = generateOutreachDrafts();
+  const rows = db.prepare("SELECT subject, to_email, o.name FROM outreach_drafts d JOIN operators o ON o.id = d.operator_id").all();
+  console.log("Drafted " + n + " emails.");
+  console.log(JSON.stringify(rows, null, 2));
+  process.exit(0);
+}
+
+if (cmd === "status") {
+  ingestAll();
+  const ops = db.prepare("SELECT name, domain, completeness, claim_status, booking_mode, category_id, city FROM operators ORDER BY name").all();
+  console.log(
+    JSON.stringify(
+      {
+        metros: METROS.length,
+        categories: CATEGORIES.length,
+        coverageCells: METROS.length * CATEGORIES.length,
+        operators: ops,
+      },
+      null,
+      2,
+    ),
+  );
+  process.exit(0);
+}
+
+if (cmd === "serve") {
+  ingestAll();
+  const port = Number(process.env.PORT || 8787);
+  console.log("Outset backend on http://localhost:" + port);
+  serve({ fetch: app.fetch, port });
+} else {
+  console.error("Unknown command: " + cmd);
+  process.exit(1);
+}

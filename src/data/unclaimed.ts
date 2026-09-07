@@ -1,9 +1,10 @@
 import type { Unclaimed } from "./types";
+import { NATIONAL_UNCLAIMED } from "./unclaimedNational";
 
-export const UNCLAIMED = [
+const TAMPA_UNCLAIMED: Unclaimed[] = [
   {
     id:"u-wk", title:"White Knuckle Watersports", cat:"water", art:"jetski",
-    area:"Clearwater Beach", src:"whiteknucklewatersports.com",
+    area:"Clearwater Beach", metroId:"tampa", src:"whiteknucklewatersports.com",
     specs:["2 riders per ski","Tours up to 2.5 hr","Dolphin excursion add-on"],
     options:[
       {name:"Freestyle rental", detail:"1 hour", price:95},
@@ -16,7 +17,8 @@ export const UNCLAIMED = [
   },
   {
     id:"u-ecom", title:"Ecomersion", cat:"water", art:"kayak",
-    area:"Weedon Island, St. Petersburg", src:"ecomersion.com",
+    area:"Weedon Island, St. Petersburg", metroId:"tampa", src:"ecomersion.com",
+    rating:4.9, reviews:500,
     specs:["Single & tandem kayaks","Paddleboards too","Ages 8-80"],
     options:[
       {name:"Single kayak", detail:"1 hour", price:28},
@@ -29,12 +31,13 @@ export const UNCLAIMED = [
   },
   {
     id:"u-skyc", title:"Skydive City / Z-Hills", cat:"air", art:"skydive",
-    area:"Zephyrhills", src:"skydivecity.com",
+    area:"Zephyrhills", metroId:"tampa", src:"skydivecity.com",
+    rating:4.9, reviews:3567,
     specs:["13,500 ft altitude","Ages 18+","220 lb limit (flex to 280 w/ fee)"],
     options:[
-      {name:"Tandem skydive", detail:"", price:249},
-      {name:"Tuesday special", detail:"", price:199},
-      {name:"Pasco County resident special", detail:"", price:199}
+      {name:"Tandem skydive", detail:"13,500 ft", price:249},
+      {name:"Tuesday special", detail:"13,500 ft", price:199},
+      {name:"Pasco County resident special", detail:"13,500 ft", price:199}
     ],
     includes:[],
     gap:"What's included in the price isn't broken out on their site - we'll confirm when you request.",
@@ -42,7 +45,8 @@ export const UNCLAIMED = [
   },
   {
     id:"u-pp", title:"Pro Parasail", cat:"air", art:"parasail",
-    area:"Clearwater", src:"proparasail.com",
+    area:"Clearwater", metroId:"tampa", src:"proparasail.com",
+    rating:4.7, reviews:73,
     specs:["Up to 3 fly together","Winch-boat - no beach run","USCG inspected vessel"],
     options:[
       {name:"Early bird flight", detail:"per person", price:79}
@@ -52,7 +56,8 @@ export const UNCLAIMED = [
   },
   {
     id:"u-k1", title:"K1 Speed Tampa Bay", cat:"motorsport", art:"kart",
-    area:"Tampa", src:"k1speed.com",
+    area:"Tampa", metroId:"tampa", src:"k1speed.com",
+    rating:4.2, reviews:3585,
     specs:["All-electric karts","~45 mph top speed","Adult & junior karts"],
     options:[],
     includes:["Paddock Lounge (beer & wine)","Arcade","Podium photos"],
@@ -61,7 +66,8 @@ export const UNCLAIMED = [
   },
   {
     id:"u-escgy", title:"Escapology", cat:"indoor", art:"escape",
-    area:"Armature Works, Tampa", src:"escapology.com",
+    area:"Armature Works, Tampa", metroId:"tampa", src:"escapology.com",
+    rating:4.9, reviews:4389,
     specs:["100% private - never merged with strangers","60 min per room","25 rooms, 3 difficulty tiers"],
     options:[
       {name:"Antidote", detail:"Standard difficulty", price:null},
@@ -73,7 +79,8 @@ export const UNCLAIMED = [
   },
   {
     id:"u-orb", title:"Orbital Paintball", cat:"outdoor", art:"paintball",
-    area:"Tampa", src:"orbitalpaintball.com",
+    area:"Tampa", metroId:"tampa", src:"orbitalpaintball.com",
+    rating:4.6, reviews:687,
     specs:["All-day play, any package","Field paint only","HPA air fills only"],
     options:[
       {name:"Basic - bring your own gear", detail:"all day", price:20},
@@ -85,7 +92,8 @@ export const UNCLAIMED = [
   },
   {
     id:"u-axe", title:"Axe Throwing Tampa", cat:"indoor", art:"axe",
-    area:"Tampa", src:"axethrowingtampa.com",
+    area:"Tampa", metroId:"tampa", src:"axethrowingtampa.com",
+    rating:4.9, reviews:556,
     specs:["Ages 8+ (adult required for 8-13)","90 min session","Closed-toe rubber-soled shoes required","No alcohol or outside food"],
     options:[
       {name:"Axe throwing session", detail:"90 minutes", price:35}
@@ -95,7 +103,8 @@ export const UNCLAIMED = [
   },
   {
     id:"u-cbf", title:"Cypress Breeze Farm", cat:"outdoor", art:"horse",
-    area:"Pinellas Park", src:"cypressbreezefarm.com",
+    area:"Pinellas Park", metroId:"tampa", src:"cypressbreezefarm.com",
+    rating:4.4, reviews:200,
     specs:["Ages 5+","45-60 min ride","Books 1-6 guests","Open 7 days a week"],
     options:[
       {name:"Guided horseback ride", detail:"45-60 min", price:100}
@@ -105,7 +114,8 @@ export const UNCLAIMED = [
   },
   {
     id:"u-ff", title:"Fin & Feather Inshore Fishing Charters", cat:"water", art:"fishing",
-    area:"Tampa", src:"fishthetampabay.com",
+    area:"Tampa", metroId:"tampa", src:"fishthetampabay.com",
+    rating:5.0, reviews:17,
     specs:["Capt. Ken Salos","East Cape Vantage skiff","Redfish, snook, trout, tarpon","Artificial, fly & live bait"],
     options:[],
     includes:[],
@@ -113,7 +123,8 @@ export const UNCLAIMED = [
   },
   {
     id:"u-fv", title:"FlyVENTURE Tampa Helicopter Tours", cat:"air", art:"heli",
-    area:"Davis Islands, Tampa", src:"flyventure.com",
+    area:"Davis Islands, Tampa", metroId:"tampa", src:"flyventure.com",
+    rating:4.7, reviews:274,
     specs:["Every flight private","Departs Peter O. Knight Airport","15+ years operating","Open 9am-7:30pm daily"],
     options:[
       {name:"Tampa Skyline Intro", detail:"8-10 min", price:89},
@@ -126,7 +137,8 @@ export const UNCLAIMED = [
   },
   {
     id:"u-brb", title:"Big Red Balloon", cat:"air", art:"balloon",
-    area:"Tampa", src:"bigredballoon.com",
+    area:"Tampa", metroId:"tampa", src:"bigredballoon.com",
+    rating:4.5, reviews:24,
     specs:["~1 hr flight time","Standard flights max 4 passengers","Minimum age 6","Champagne toast + breakfast included"],
     options:[
       {name:"Standard adult flight", detail:"per person", price:275},
@@ -136,4 +148,6 @@ export const UNCLAIMED = [
     includes:["Ground transport to/from launch","Champagne toast","Sit-down breakfast after"],
     gap:"Exact launch time and meeting point are texted the night before, not posted - we'll confirm when you request."
   }
-] as Unclaimed[];
+];
+
+export const UNCLAIMED: Unclaimed[] = [...TAMPA_UNCLAIMED, ...NATIONAL_UNCLAIMED];

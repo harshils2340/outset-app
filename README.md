@@ -1,6 +1,6 @@
 # Outset
 
-Instant-booking marketplace for local experiences in Tampa Bay. Jet ski, skydiving, karting, escape rooms, parasailing, kayaking, charters, paintball, and more. Every live listing is instant-book with real availability. Each operator has a booking agent that answers from that business's facts instead of making guests call.
+Instant-booking marketplace for local experiences. The guest app shows real US and Canada operators as Instant Book, with public facts from their own sites.
 
 ## Run it
 
@@ -18,14 +18,28 @@ npm run preview
 
 ## What you get
 
-- Explore with category chips, a date strip, search, and live slot counts
-- Listing detail with slots, quantity, add-ons, and checkout
-- Trips with check-in codes, persisted in this browser
-- Inbox chat with a per-operator agent that answers from inventory and policy
-- Unclaimed Tampa Bay businesses seeded from their own public sites, with honest gaps where they did not publish a fact
+- Explore with category chips and real operators (Instant Book)
+- Facts from each company's own site
+- Instant confirmation on this device
+- Trips fills when you book
 
 Desktop shows a product pitch beside a phone frame. Narrow screens run as a full-height mobile app.
 
 ## Status
 
-Guest booking is a working client app. Payments, operator onboarding, and phone are not live yet. Bookings stay on-device via localStorage.
+Guest catalog is real operators shown as Instant Book. No invented shops. Payments, operator onboarding, and phone are not live yet.
+
+## Backend (supply)
+
+```bash
+cd backend
+npm install
+npm run ingest
+npm run scrape
+npm run outreach
+npm run dev
+```
+
+API: http://localhost:8787
+
+Unclaimed operator facts are stored with sources. Instant book stays off until a business claims. Outreach writes drafts only.

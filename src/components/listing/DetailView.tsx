@@ -46,7 +46,7 @@ export function DetailView() {
               Agent replies in seconds
             </span>
           </span>
-          <button className="chip" style={{ padding: "7px 12px" }} onClick={() => openChat(listing.id)}>
+          <button className="pill" onClick={() => openChat(listing.id)}>
             Ask
           </button>
         </div>
