@@ -145,6 +145,7 @@ function toCatalogItem(r: CatalogRow): Record<string, unknown> {
     })),
     includes: pick("includes"),
     gap: pick("published_gap")[0] || DEFAULT_GAP,
+    blurb: pick("description")[0] || pick("one_line")[0] || undefined,
     extraNote: pick("extra")[0] || [...pick("policy"), ...pick("meeting_point"), ...pick("season")].join(" ").slice(0, 400) || undefined,
   };
 }

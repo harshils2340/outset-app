@@ -87,6 +87,8 @@ export type Unclaimed = {
   includes: string[];
   gap: string;
   extraNote?: string;
+  /** The operator's own description of what they do, in their words. Present after AI enrichment. */
+  blurb?: string;
 };
 
 export type Category = {

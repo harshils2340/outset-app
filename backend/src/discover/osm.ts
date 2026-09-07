@@ -53,9 +53,10 @@ function buildQuery(areaCode: string, selectors: string[]): string {
   return `[out:json][timeout:60];area["ISO3166-2"="${areaCode}"]->.a;(${body});out tags center;`;
 }
 
-async function runOverpass(query: string): Promise<OsmElement[]> {
+async function runOverpass(query: string, startAt = 0): Promise<OsmElement[]> {
   let lastErr: unknown = null;
-  for (const endpoint of ENDPOINTS) {
+  const order = ENDPOINTS.map((_, i) => ENDPOINTS[(i + startAt) % ENDPOINTS.length]);
+  for (const endpoint of order) {
     try {
       const res = await fetch(endpoint, {
         method: "POST",
@@ -80,7 +81,7 @@ function sleep(ms: number): Promise<void> {
 }
 
 /** Fetch one area, splitting selectors in half when Overpass times out. Cached on disk per area. */
-export async function fetchArea(areaCode: string, force = false): Promise<OsmElement[]> {
+export async function fetchArea(areaCode: string, force = false, endpointIdx = 0): Promise<OsmElement[]> {
   mkdirSync(cacheDir, { recursive: true });
   const cachePath = join(cacheDir, areaCode + ".json");
   if (!force && existsSync(cachePath)) return JSON.parse(readFileSync(cachePath, "utf8")) as OsmElement[];
@@ -88,7 +89,7 @@ export async function fetchArea(areaCode: string, force = false): Promise<OsmEle
   const all = SELECTORS.map((s) => s.selector);
   const collect = async (sels: string[]): Promise<OsmElement[]> => {
     try {
-      return await runOverpass(buildQuery(areaCode, sels));
+      return await runOverpass(buildQuery(areaCode, sels), endpointIdx);
     } catch (e) {
       if (sels.length <= 2) throw e;
       const mid = Math.ceil(sels.length / 2);
@@ -217,22 +218,28 @@ export function loadArea(area: (typeof AREAS)[number], elements: OsmElement[]): 
   return stats;
 }
 
-export async function discoverAll(opts: { only?: string[]; force?: boolean } = {}): Promise<DiscoverStats[]> {
+export async function discoverAll(opts: { only?: string[]; force?: boolean; concurrency?: number } = {}): Promise<DiscoverStats[]> {
   const out: DiscoverStats[] = [];
   const areas = opts.only?.length ? AREAS.filter((a) => opts.only!.includes(a.code) || opts.only!.includes(a.region)) : AREAS;
-  for (const area of areas) {
-    const started = Date.now();
-    try {
-      const elements = await fetchArea(area.code, opts.force);
-      const stats = loadArea(area, elements);
-      out.push(stats);
-      console.log(`${area.code}: ${stats.found} found, ${stats.inserted} new, ${stats.updated} updated, ${stats.skipped} skipped (${Math.round((Date.now() - started) / 1000)}s)`);
-    } catch (e) {
-      console.error(`${area.code}: failed, ${(e as Error).message}`);
-      out.push({ area: area.code, found: 0, inserted: 0, updated: 0, skipped: 0 });
+  const workers = Math.max(1, Math.min(opts.concurrency ?? 3, 4));
+  let next = 0;
+  const worker = async (w: number) => {
+    while (next < areas.length) {
+      const area = areas[next++];
+      const started = Date.now();
+      try {
+        const elements = await fetchArea(area.code, opts.force, w % ENDPOINTS.length);
+        const stats = loadArea(area, elements);
+        out.push(stats);
+        console.log(`${area.code}: ${stats.found} found, ${stats.inserted} new, ${stats.updated} updated, ${stats.skipped} skipped (${Math.round((Date.now() - started) / 1000)}s)`);
+      } catch (e) {
+        console.error(`${area.code}: failed, ${(e as Error).message}`);
+        out.push({ area: area.code, found: 0, inserted: 0, updated: 0, skipped: 0 });
+      }
+      await sleep(1500);
     }
-    await sleep(2500);
-  }
+  };
+  await Promise.all(Array.from({ length: Math.min(workers, areas.length) }, (_, w) => worker(w)));
   return out;
 }
 

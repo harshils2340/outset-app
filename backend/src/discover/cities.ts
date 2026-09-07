@@ -1,0 +1,105 @@
+/**
+ * Query grid for search-based discovery. Each entry is a city a guest would search from.
+ * Coordinates are city centers, used only to bias search results and assign metros.
+ * Coverage: every US state and Canadian province, weighted toward coasts, lakes and tourist towns
+ * because that is where water and air operators cluster.
+ */
+export type City = { name: string; region: string; country: "US" | "CA"; lat: number; lon: number };
+
+const c = (name: string, region: string, country: "US" | "CA", lat: number, lon: number): City => ({ name, region, country, lat, lon });
+
+export const CITIES: City[] = [
+  // Florida
+  c("Tampa", "FL", "US", 27.95, -82.46), c("St. Petersburg", "FL", "US", 27.77, -82.64), c("Clearwater", "FL", "US", 27.97, -82.80),
+  c("Miami", "FL", "US", 25.76, -80.19), c("Fort Lauderdale", "FL", "US", 26.12, -80.14), c("West Palm Beach", "FL", "US", 26.71, -80.05),
+  c("Orlando", "FL", "US", 28.54, -81.38), c("Kissimmee", "FL", "US", 28.30, -81.41), c("Key West", "FL", "US", 24.56, -81.78),
+  c("Key Largo", "FL", "US", 25.09, -80.45), c("Naples", "FL", "US", 26.14, -81.79), c("Fort Myers", "FL", "US", 26.64, -81.87),
+  c("Sarasota", "FL", "US", 27.34, -82.53), c("Destin", "FL", "US", 30.39, -86.50), c("Panama City Beach", "FL", "US", 30.18, -85.81),
+  c("Pensacola", "FL", "US", 30.42, -87.22), c("Jacksonville", "FL", "US", 30.33, -81.66), c("Daytona Beach", "FL", "US", 29.21, -81.02),
+  c("Cocoa Beach", "FL", "US", 28.32, -80.61), c("Crystal River", "FL", "US", 28.90, -82.59), c("Tallahassee", "FL", "US", 30.44, -84.28),
+  // Southeast
+  c("Charleston", "SC", "US", 32.78, -79.93), c("Myrtle Beach", "SC", "US", 33.69, -78.89), c("Hilton Head", "SC", "US", 32.22, -80.75),
+  c("Greenville", "SC", "US", 34.85, -82.40), c("Columbia", "SC", "US", 34.00, -81.03),
+  c("Outer Banks", "NC", "US", 35.93, -75.64), c("Wilmington", "NC", "US", 34.23, -77.94), c("Charlotte", "NC", "US", 35.23, -80.84),
+  c("Raleigh", "NC", "US", 35.78, -78.64), c("Asheville", "NC", "US", 35.60, -82.55),
+  c("Virginia Beach", "VA", "US", 36.85, -75.98), c("Richmond", "VA", "US", 37.54, -77.44), c("Norfolk", "VA", "US", 36.85, -76.29),
+  c("Savannah", "GA", "US", 32.08, -81.09), c("Atlanta", "GA", "US", 33.75, -84.39), c("Tybee Island", "GA", "US", 32.00, -80.85),
+  c("Gulf Shores", "AL", "US", 30.25, -87.70), c("Birmingham", "AL", "US", 33.52, -86.81), c("Huntsville", "AL", "US", 34.73, -86.59),
+  c("Biloxi", "MS", "US", 30.40, -88.89), c("Jackson", "MS", "US", 32.30, -90.18),
+  c("New Orleans", "LA", "US", 29.95, -90.07), c("Baton Rouge", "LA", "US", 30.45, -91.19), c("Lafayette", "LA", "US", 30.22, -92.02),
+  c("Nashville", "TN", "US", 36.16, -86.78), c("Gatlinburg", "TN", "US", 35.71, -83.51), c("Pigeon Forge", "TN", "US", 35.79, -83.55),
+  c("Memphis", "TN", "US", 35.15, -90.05), c("Chattanooga", "TN", "US", 35.05, -85.31), c("Knoxville", "TN", "US", 35.96, -83.92),
+  c("Louisville", "KY", "US", 38.25, -85.76), c("Lexington", "KY", "US", 38.04, -84.50),
+  c("Little Rock", "AR", "US", 34.75, -92.29), c("Hot Springs", "AR", "US", 34.50, -93.05),
+  // Northeast
+  c("New York", "NY", "US", 40.71, -74.01), c("Long Island", "NY", "US", 40.79, -73.13), c("Lake George", "NY", "US", 43.43, -73.71),
+  c("Buffalo", "NY", "US", 42.89, -78.88), c("Rochester", "NY", "US", 43.16, -77.61), c("Albany", "NY", "US", 42.65, -73.75),
+  c("Boston", "MA", "US", 42.36, -71.06), c("Cape Cod", "MA", "US", 41.68, -70.28), c("Martha's Vineyard", "MA", "US", 41.39, -70.64),
+  c("Newport", "RI", "US", 41.49, -71.31), c("Providence", "RI", "US", 41.82, -71.41),
+  c("Mystic", "CT", "US", 41.35, -71.97), c("Hartford", "CT", "US", 41.76, -72.69), c("New Haven", "CT", "US", 41.31, -72.92),
+  c("Portland", "ME", "US", 43.66, -70.26), c("Bar Harbor", "ME", "US", 44.39, -68.20),
+  c("Portsmouth", "NH", "US", 43.07, -70.76), c("Lake Winnipesaukee", "NH", "US", 43.60, -71.35),
+  c("Burlington", "VT", "US", 44.48, -73.21), c("Stowe", "VT", "US", 44.47, -72.69),
+  c("Philadelphia", "PA", "US", 39.95, -75.17), c("Pittsburgh", "PA", "US", 40.44, -80.00), c("Poconos", "PA", "US", 41.10, -75.35),
+  c("Atlantic City", "NJ", "US", 39.36, -74.42), c("Jersey Shore", "NJ", "US", 40.09, -74.04), c("Newark", "NJ", "US", 40.74, -74.17),
+  c("Washington", "DC", "US", 38.91, -77.04), c("Baltimore", "MD", "US", 39.29, -76.61), c("Ocean City", "MD", "US", 38.34, -75.08),
+  c("Annapolis", "MD", "US", 38.98, -76.49), c("Rehoboth Beach", "DE", "US", 38.72, -75.08), c("Wilmington", "DE", "US", 39.75, -75.55),
+  c("Morgantown", "WV", "US", 39.63, -79.96), c("Charleston", "WV", "US", 38.35, -81.63),
+  // Midwest
+  c("Chicago", "IL", "US", 41.88, -87.63), c("Lake Geneva", "WI", "US", 42.59, -88.43), c("Milwaukee", "WI", "US", 43.04, -87.91),
+  c("Wisconsin Dells", "WI", "US", 43.63, -89.77), c("Madison", "WI", "US", 43.07, -89.40), c("Door County", "WI", "US", 45.05, -87.20),
+  c("Detroit", "MI", "US", 42.33, -83.05), c("Traverse City", "MI", "US", 44.76, -85.62), c("Grand Rapids", "MI", "US", 42.96, -85.67),
+  c("Mackinac Island", "MI", "US", 45.85, -84.62), c("Ann Arbor", "MI", "US", 42.28, -83.74),
+  c("Minneapolis", "MN", "US", 44.98, -93.27), c("Duluth", "MN", "US", 46.79, -92.10), c("Brainerd", "MN", "US", 46.36, -94.20),
+  c("Indianapolis", "IN", "US", 39.77, -86.16), c("Fort Wayne", "IN", "US", 41.08, -85.14),
+  c("Columbus", "OH", "US", 39.96, -83.00), c("Cleveland", "OH", "US", 41.50, -81.69), c("Cincinnati", "OH", "US", 39.10, -84.51),
+  c("Sandusky", "OH", "US", 41.45, -82.71), c("St. Louis", "MO", "US", 38.63, -90.20), c("Kansas City", "MO", "US", 39.10, -94.58),
+  c("Lake of the Ozarks", "MO", "US", 38.14, -92.66), c("Branson", "MO", "US", 36.64, -93.22),
+  c("Des Moines", "IA", "US", 41.59, -93.62), c("Omaha", "NE", "US", 41.26, -95.94), c("Wichita", "KS", "US", 37.69, -97.34),
+  c("Sioux Falls", "SD", "US", 43.55, -96.73), c("Rapid City", "SD", "US", 44.08, -103.23), c("Fargo", "ND", "US", 46.88, -96.79),
+  // South Central
+  c("Austin", "TX", "US", 30.27, -97.74), c("Dallas", "TX", "US", 32.78, -96.80), c("Houston", "TX", "US", 29.76, -95.37),
+  c("San Antonio", "TX", "US", 29.42, -98.49), c("Galveston", "TX", "US", 29.30, -94.80), c("Corpus Christi", "TX", "US", 27.80, -97.40),
+  c("South Padre Island", "TX", "US", 26.11, -97.17), c("Lake Travis", "TX", "US", 30.40, -97.92), c("Fort Worth", "TX", "US", 32.76, -97.33),
+  c("Oklahoma City", "OK", "US", 35.47, -97.52), c("Tulsa", "OK", "US", 36.15, -95.99),
+  // Mountain
+  c("Denver", "CO", "US", 39.74, -104.99), c("Colorado Springs", "CO", "US", 38.83, -104.82), c("Boulder", "CO", "US", 40.01, -105.27),
+  c("Breckenridge", "CO", "US", 39.48, -106.04), c("Estes Park", "CO", "US", 40.38, -105.52), c("Durango", "CO", "US", 37.28, -107.88),
+  c("Salt Lake City", "UT", "US", 40.76, -111.89), c("Moab", "UT", "US", 38.57, -109.55), c("Park City", "UT", "US", 40.65, -111.50),
+  c("Lake Powell", "UT", "US", 37.05, -111.49), c("St. George", "UT", "US", 37.10, -113.58),
+  c("Phoenix", "AZ", "US", 33.45, -112.07), c("Scottsdale", "AZ", "US", 33.49, -111.93), c("Tucson", "AZ", "US", 32.22, -110.97),
+  c("Sedona", "AZ", "US", 34.87, -111.76), c("Lake Havasu City", "AZ", "US", 34.48, -114.32), c("Flagstaff", "AZ", "US", 35.20, -111.65),
+  c("Las Vegas", "NV", "US", 36.17, -115.14), c("Reno", "NV", "US", 39.53, -119.81), c("Lake Tahoe", "CA", "US", 39.10, -120.03),
+  c("Albuquerque", "NM", "US", 35.08, -106.65), c("Santa Fe", "NM", "US", 35.69, -105.94),
+  c("Boise", "ID", "US", 43.62, -116.20), c("Coeur d'Alene", "ID", "US", 47.68, -116.78), c("Sun Valley", "ID", "US", 43.70, -114.35),
+  c("Bozeman", "MT", "US", 45.68, -111.04), c("Whitefish", "MT", "US", 48.41, -114.34), c("Missoula", "MT", "US", 46.87, -114.00),
+  c("Jackson Hole", "WY", "US", 43.48, -110.76), c("Cheyenne", "WY", "US", 41.14, -104.82), c("Cody", "WY", "US", 44.53, -109.06),
+  // West Coast
+  c("Los Angeles", "CA", "US", 34.05, -118.24), c("Santa Monica", "CA", "US", 34.02, -118.49), c("Long Beach", "CA", "US", 33.77, -118.19),
+  c("Newport Beach", "CA", "US", 33.62, -117.93), c("Huntington Beach", "CA", "US", 33.66, -117.99), c("Catalina Island", "CA", "US", 33.34, -118.33),
+  c("San Diego", "CA", "US", 32.72, -117.16), c("Oceanside", "CA", "US", 33.20, -117.38), c("San Francisco", "CA", "US", 37.77, -122.42),
+  c("Sausalito", "CA", "US", 37.86, -122.49), c("Oakland", "CA", "US", 37.80, -122.27), c("San Jose", "CA", "US", 37.34, -121.89),
+  c("Monterey", "CA", "US", 36.60, -121.89), c("Santa Cruz", "CA", "US", 36.97, -122.03), c("Santa Barbara", "CA", "US", 34.42, -119.70),
+  c("Morro Bay", "CA", "US", 35.37, -120.85), c("Sacramento", "CA", "US", 38.58, -121.49), c("Napa", "CA", "US", 38.30, -122.29),
+  c("Palm Springs", "CA", "US", 33.83, -116.55), c("Temecula", "CA", "US", 33.49, -117.15), c("Fresno", "CA", "US", 36.74, -119.79),
+  c("Redding", "CA", "US", 40.59, -122.39), c("Eureka", "CA", "US", 40.80, -124.16),
+  c("Portland", "OR", "US", 45.52, -122.68), c("Bend", "OR", "US", 44.06, -121.31), c("Newport", "OR", "US", 44.64, -124.05),
+  c("Eugene", "OR", "US", 44.05, -123.09), c("Seattle", "WA", "US", 47.61, -122.33), c("Tacoma", "WA", "US", 47.25, -122.44),
+  c("Spokane", "WA", "US", 47.66, -117.43), c("San Juan Islands", "WA", "US", 48.53, -123.03), c("Bellingham", "WA", "US", 48.75, -122.48),
+  c("Honolulu", "HI", "US", 21.31, -157.86), c("Maui", "HI", "US", 20.80, -156.33), c("Kona", "HI", "US", 19.64, -155.99),
+  c("Kauai", "HI", "US", 22.05, -159.50), c("Anchorage", "AK", "US", 61.22, -149.90), c("Juneau", "AK", "US", 58.30, -134.42),
+  c("Seward", "AK", "US", 60.10, -149.44), c("Fairbanks", "AK", "US", 64.84, -147.72),
+  // Canada
+  c("Toronto", "ON", "CA", 43.65, -79.38), c("Niagara Falls", "ON", "CA", 43.09, -79.08), c("Ottawa", "ON", "CA", 45.42, -75.70),
+  c("Muskoka", "ON", "CA", 45.05, -79.30), c("Kingston", "ON", "CA", 44.23, -76.48), c("London", "ON", "CA", 42.98, -81.25),
+  c("Hamilton", "ON", "CA", 43.26, -79.87), c("Barrie", "ON", "CA", 44.39, -79.69), c("Kelowna", "BC", "CA", 49.89, -119.50),
+  c("Montreal", "QC", "CA", 45.50, -73.57), c("Quebec City", "QC", "CA", 46.81, -71.21), c("Mont-Tremblant", "QC", "CA", 46.12, -74.60),
+  c("Gatineau", "QC", "CA", 45.48, -75.70), c("Halifax", "NS", "CA", 44.65, -63.58), c("Cape Breton", "NS", "CA", 46.14, -60.19),
+  c("Moncton", "NB", "CA", 46.09, -64.77), c("Saint John", "NB", "CA", 45.27, -66.06), c("Charlottetown", "PE", "CA", 46.24, -63.13),
+  c("St. John's", "NL", "CA", 47.56, -52.71), c("Calgary", "AB", "CA", 51.05, -114.07), c("Edmonton", "AB", "CA", 53.55, -113.49),
+  c("Banff", "AB", "CA", 51.18, -115.57), c("Canmore", "AB", "CA", 51.09, -115.36), c("Jasper", "AB", "CA", 52.87, -118.08),
+  c("Vancouver", "BC", "CA", 49.28, -123.12), c("Victoria", "BC", "CA", 48.43, -123.37), c("Whistler", "BC", "CA", 50.12, -122.95),
+  c("Tofino", "BC", "CA", 49.15, -125.91), c("Nanaimo", "BC", "CA", 49.17, -123.94), c("Penticton", "BC", "CA", 49.49, -119.59),
+  c("Winnipeg", "MB", "CA", 49.90, -97.14), c("Saskatoon", "SK", "CA", 52.13, -106.67), c("Regina", "SK", "CA", 50.45, -104.62),
+  c("Whitehorse", "YT", "CA", 60.72, -135.06), c("Yellowknife", "NT", "CA", 62.45, -114.37),
+];

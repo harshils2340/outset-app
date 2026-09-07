@@ -9,6 +9,8 @@ import { refreshAllScores } from "./lib/completeness.ts";
 import { syncCatalogToApp, syncContactsToApp } from "./sync/contacts.ts";
 import { discoverAll, metroCoverage } from "./discover/osm.ts";
 import { enrichPending, rate } from "./enrich/run.ts";
+import { discoverSearch } from "./discover/searchapi.ts";
+import { CITIES } from "./discover/cities.ts";
 
 import { db } from "./db/client.ts";
 import { CATEGORIES, METROS } from "./taxonomy/catalog.ts";
@@ -50,10 +52,32 @@ if (cmd === "scrape") {
 if (cmd === "discover") {
   const only = process.argv.slice(3).filter((a) => !a.startsWith("--"));
   const force = process.argv.includes("--force");
-  const stats = await discoverAll({ only, force });
+  const cArg = process.argv.find((a) => a.startsWith("--concurrency="));
+  const concurrency = cArg ? Number(cArg.split("=")[1]) : 3;
+  const stats = await discoverAll({ only, force, concurrency });
   refreshAllScores();
   const total = stats.reduce((n, s) => n + s.inserted + s.updated, 0);
   console.log("Discovered " + total + " operators across " + stats.length + " areas. " + JSON.stringify(metroCoverage()));
+  process.exit(0);
+}
+
+if (cmd === "search") {
+  const keys = (process.env.SEARCHAPI_KEYS || process.env.SEARCHAPI_KEY || "").split(",").map((k) => k.trim()).filter(Boolean);
+  if (!keys.length) {
+    console.error("SEARCHAPI_KEY or SEARCHAPI_KEYS is not set. Put it in backend/.env.");
+    process.exit(1);
+  }
+  const arg = (k: string) => process.argv.find((a) => a.startsWith("--" + k + "="))?.split("=")[1];
+  const categories = arg("categories")?.split(",").filter(Boolean);
+  const cities = arg("cities")?.split(",").filter(Boolean);
+  const concurrency = Number(arg("concurrency") || 4);
+  const maxPages = Number(arg("pages") || 1);
+  const budget = arg("budget") ? Number(arg("budget")) : undefined;
+  console.log(`SearchApi discovery: ${cities?.length || CITIES.length} cities x ${categories?.length || CATEGORIES.length} categories, ${maxPages} page(s) each, ${keys.length} key(s)${budget ? ", budget " + budget + " queries" : ""}.`);
+  const stats = await discoverSearch({ keys, categories, cities, concurrency, maxPages, budget });
+  refreshAllScores();
+  const total = (db.prepare("SELECT COUNT(*) AS n FROM operators WHERE origin != 'demo'").get() as { n: number }).n;
+  console.log(`Done${stats.stoppedEarly ? " (stopped early: credits or budget)" : ""}. ${stats.queries} queries, ${stats.results} results, ${stats.inserted} new, ${stats.merged} merged into known operators, ${stats.skipped} skipped. Catalog now ${total} operators.`);
   process.exit(0);
 }
 

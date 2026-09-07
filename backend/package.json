@@ -12,6 +12,7 @@
     "sync": "tsx src/index.ts sync",
     "discover": "tsx src/index.ts discover",
     "enrich": "tsx src/index.ts enrich",
+    "search": "tsx src/index.ts search",
     "status": "tsx src/index.ts status"
   },
   "dependencies": {

@@ -3,3 +3,4 @@ data/*.db-shm
 node_modules
 dist
 .env
+data/searchapi

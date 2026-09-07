@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { CATS } from "../../data/categories";
+import { GUIDES } from "../../data/guides";
 import { ICONS } from "../../data/icons";
 import { ALL_METRO_ID, METROS, metroById, metroCoords, metroLabel } from "../../data/metros";
 import { SLOT_TIMES } from "../../data/slots";
@@ -144,6 +145,16 @@ function ReviewBody({
   );
 }
 
+function kindLabel(art: keyof typeof GUIDES): string {
+  const names: Record<string, string> = {
+    skydive: "a tandem skydive", heli: "a helicopter tour", balloon: "a balloon flight", kart: "karting",
+    escape: "an escape room", axe: "axe throwing", paintball: "paintball", horse: "a trail ride",
+    jetski: "a jet ski session", pontoon: "a pontoon day", fishing: "a fishing charter", parasail: "parasailing",
+    cruise: "a sunset cruise", kayak: "a paddle",
+  };
+  return names[art] || "this";
+}
+
 function optionPrice(o: UnclaimedOption): string | null {
   if (o.price == null) return null;
   return money(o.price) + (o.per || "");
@@ -210,6 +221,8 @@ function RequestBody({
   const [optionIdx, setOptionIdx] = useState<number | null>(item.options.length === 1 ? 0 : null);
   const [pay, setPay] = useState(false);
   const [callOpen, setCallOpen] = useState(false);
+  const [guideOpen, setGuideOpen] = useState(false);
+  const guide = GUIDES[item.art];
   const picked = optionIdx != null ? item.options[optionIdx] : null;
   const needService = item.options.length > 0;
   const ready = time != null && (!needService || picked != null);
@@ -325,7 +338,45 @@ function RequestBody({
             <span className="count">({fmtReviews(score.reviews)} reviews)</span>
           </p>
         ) : null}
-        <p className="reqlede">{item.area}. Instant confirmation.</p>
+        <p className="reqhook">{guide.hook}</p>
+        {item.blurb ? (
+          <p className="reqblurb">
+            {item.blurb}
+            <span className="reqcredit"> · In {item.title}'s words</span>
+          </p>
+        ) : null}
+
+        <button type="button" className="guidebtn" onClick={() => setGuideOpen((v) => !v)} aria-expanded={guideOpen}>
+          <span>
+            <b>What {kindLabel(item.art)} is actually like</b>
+            <small>{guide.time}</small>
+          </span>
+          <Markup html={guideOpen ? ICONS.chevUp : ICONS.chevDown} />
+        </button>
+        {guideOpen ? (
+          <div className="guide">
+            <p className="guidehead">How the day goes</p>
+            <ol className="guidesteps">
+              {guide.steps.map((step, i) => (
+                <li key={i}>
+                  <span className="n">{i + 1}</span>
+                  <span>{step}</span>
+                </li>
+              ))}
+            </ol>
+            <p className="guidehead">Bring</p>
+            <div className="guidechips">
+              {guide.bring.map((b) => (
+                <span className="guidechip" key={b}>{b}</span>
+              ))}
+            </div>
+            <p className="guidehead">Good for</p>
+            <p className="guidetext">{guide.goodFor}</p>
+            <p className="guidehead">Nervous?</p>
+            <p className="guidetext">{guide.nerves}</p>
+            <p className="guidefoot">This is how {kindLabel(item.art)} usually works. {item.title}'s own prices, ages, limits and rules are listed below.</p>
+          </div>
+        ) : null}
 
         <p className="svchead">Where</p>
         <div className="contact">
