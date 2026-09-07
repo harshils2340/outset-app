@@ -1,0 +1,139 @@
+import type { Unclaimed } from "./types";
+
+export const UNCLAIMED = [
+  {
+    id:"u-wk", title:"White Knuckle Watersports", cat:"water", art:"jetski",
+    area:"Clearwater Beach", src:"whiteknucklewatersports.com",
+    specs:["2 riders per ski","Tours up to 2.5 hr","Dolphin excursion add-on"],
+    options:[
+      {name:"Freestyle rental", detail:"1 hour", price:95},
+      {name:"Guided tour", detail:"1.5 hours", price:150, per:"/ski"},
+      {name:"Dolphin Island excursion", detail:"2 hours", price:185, per:"/ski"},
+      {name:"Dolphin Island excursion", detail:"2.5 hours", price:220, per:"/ski"}
+    ],
+    includes:["Yamaha waverunner","Guide on tour options"],
+    gap:"Age, license and deposit rules aren't published - we'll ask when you request."
+  },
+  {
+    id:"u-ecom", title:"Ecomersion", cat:"water", art:"kayak",
+    area:"Weedon Island, St. Petersburg", src:"ecomersion.com",
+    specs:["Single & tandem kayaks","Paddleboards too","Ages 8-80"],
+    options:[
+      {name:"Single kayak", detail:"1 hour", price:28},
+      {name:"Tandem kayak", detail:"1 hour", price:40},
+      {name:"Paddleboard", detail:"1 hour", price:28}
+    ],
+    includes:[],
+    gap:"2 hr and 4 hr rates also listed on their site. Gear inclusion (life jacket, paddle) isn't stated - we'll confirm when you request.",
+    extraNote:"Park hours 9-5, tide-dependent - mangrove tunnels flood on the schedule, not the clock."
+  },
+  {
+    id:"u-skyc", title:"Skydive City / Z-Hills", cat:"air", art:"skydive",
+    area:"Zephyrhills", src:"skydivecity.com",
+    specs:["13,500 ft altitude","Ages 18+","220 lb limit (flex to 280 w/ fee)"],
+    options:[
+      {name:"Tandem skydive", detail:"", price:249},
+      {name:"Tuesday special", detail:"", price:199},
+      {name:"Pasco County resident special", detail:"", price:199}
+    ],
+    includes:[],
+    gap:"What's included in the price isn't broken out on their site - we'll confirm when you request.",
+    extraNote:"Their policy: deposit non-refundable after 24 hr, reschedule 48+ hr out to avoid forfeiting it."
+  },
+  {
+    id:"u-pp", title:"Pro Parasail", cat:"air", art:"parasail",
+    area:"Clearwater", src:"proparasail.com",
+    specs:["Up to 3 fly together","Winch-boat - no beach run","USCG inspected vessel"],
+    options:[
+      {name:"Early bird flight", detail:"per person", price:79}
+    ],
+    includes:["Harness & safety equipment","Optional Gulf dipping on the way down"],
+    gap:"Only one price tier is published - other flight lengths exist, we'll get the full list when you request."
+  },
+  {
+    id:"u-k1", title:"K1 Speed Tampa Bay", cat:"motorsport", art:"kart",
+    area:"Tampa", src:"k1speed.com",
+    specs:["All-electric karts","~45 mph top speed","Adult & junior karts"],
+    options:[],
+    includes:["Paddock Lounge (beer & wine)","Arcade","Podium photos"],
+    gap:"Per-race pricing isn't posted online - we'll get real numbers when you request.",
+    extraNote:"Open to midnight Fri, no junior races after 8pm Fri/Sat."
+  },
+  {
+    id:"u-escgy", title:"Escapology", cat:"indoor", art:"escape",
+    area:"Armature Works, Tampa", src:"escapology.com",
+    specs:["100% private - never merged with strangers","60 min per room","25 rooms, 3 difficulty tiers"],
+    options:[
+      {name:"Antidote", detail:"Standard difficulty", price:null},
+      {name:"A Pirate's Curse", detail:"Moderate difficulty", price:null},
+      {name:"Haunted House", detail:"Challenging difficulty", price:null}
+    ],
+    includes:[],
+    gap:"Price per person isn't listed publicly - we'll get it when you request. Minimum age 7 for Kids Mode."
+  },
+  {
+    id:"u-orb", title:"Orbital Paintball", cat:"outdoor", art:"paintball",
+    area:"Tampa", src:"orbitalpaintball.com",
+    specs:["All-day play, any package","Field paint only","HPA air fills only"],
+    options:[
+      {name:"Basic - bring your own gear", detail:"all day", price:20},
+      {name:"Rental - marker, mask + 500 paint", detail:"all day", price:40},
+      {name:"Group rate", detail:"10+, private, 48hr notice", price:30}
+    ],
+    includes:["Field fees","All-day air refills"],
+    gap:"Paint runs out fast - extra bags are $14/500, cases $45/2000."
+  },
+  {
+    id:"u-axe", title:"Axe Throwing Tampa", cat:"indoor", art:"axe",
+    area:"Tampa", src:"axethrowingtampa.com",
+    specs:["Ages 8+ (adult required for 8-13)","90 min session","Closed-toe rubber-soled shoes required","No alcohol or outside food"],
+    options:[
+      {name:"Axe throwing session", detail:"90 minutes", price:35}
+    ],
+    includes:["Instruction","Group tournament"],
+    gap:"Max group size for a standard session isn't posted (private parties start at 10+) - we'll confirm when you request."
+  },
+  {
+    id:"u-cbf", title:"Cypress Breeze Farm", cat:"outdoor", art:"horse",
+    area:"Pinellas Park", src:"cypressbreezefarm.com",
+    specs:["Ages 5+","45-60 min ride","Books 1-6 guests","Open 7 days a week"],
+    options:[
+      {name:"Guided horseback ride", detail:"45-60 min", price:100}
+    ],
+    includes:[],
+    gap:"Weight limits and whether helmets are provided aren't posted - we'll confirm when you request. A small booking fee applies at checkout."
+  },
+  {
+    id:"u-ff", title:"Fin & Feather Inshore Fishing Charters", cat:"water", art:"fishing",
+    area:"Tampa", src:"fishthetampabay.com",
+    specs:["Capt. Ken Salos","East Cape Vantage skiff","Redfish, snook, trout, tarpon","Artificial, fly & live bait"],
+    options:[],
+    includes:[],
+    gap:"Trip pricing, duration and max anglers aren't posted online - we'll get real numbers when you request."
+  },
+  {
+    id:"u-fv", title:"FlyVENTURE Tampa Helicopter Tours", cat:"air", art:"heli",
+    area:"Davis Islands, Tampa", src:"flyventure.com",
+    specs:["Every flight private","Departs Peter O. Knight Airport","15+ years operating","Open 9am-7:30pm daily"],
+    options:[
+      {name:"Tampa Skyline Intro", detail:"8-10 min", price:89},
+      {name:"Tampa Downtown Tour", detail:"15 min", price:119},
+      {name:"Tampa Sunset Tour", detail:"20 min", price:189},
+      {name:"Grand Tampa Bay Tour", detail:"50 min", price:349}
+    ],
+    includes:[],
+    gap:"Passenger capacity and weight limits aren't posted - we'll confirm when you request. Prices shown are the site's current promo rates."
+  },
+  {
+    id:"u-brb", title:"Big Red Balloon", cat:"air", art:"balloon",
+    area:"Tampa", src:"bigredballoon.com",
+    specs:["~1 hr flight time","Standard flights max 4 passengers","Minimum age 6","Champagne toast + breakfast included"],
+    options:[
+      {name:"Standard adult flight", detail:"per person", price:275},
+      {name:"Child flight", detail:"ages 6-10, per person", price:195},
+      {name:"Private Sweetheart flight", detail:"couple, 2 passengers", price:850}
+    ],
+    includes:["Ground transport to/from launch","Champagne toast","Sit-down breakfast after"],
+    gap:"Exact launch time and meeting point are texted the night before, not posted - we'll confirm when you request."
+  }
+] as Unclaimed[];

@@ -1,24 +1,31 @@
 # Outset
 
-Instant-booking marketplace for local experiences (jet ski, skydiving, karting, escape rooms, parasailing, kayaking, charters, paintball, etc.) — "DoorDash for experiences." Every listing is instant-book with live availability, and an AI agent per business answers questions by text (and eventually phone) instead of making people call.
+Instant-booking marketplace for local experiences in Tampa Bay. Jet ski, skydiving, karting, escape rooms, parasailing, kayaking, charters, paintball, and more. Every live listing is instant-book with real availability. Each operator has a booking agent that answers from that business's facts instead of making guests call.
 
-## What's here
+## Run it
 
-`index.html` — a self-contained, single-file working prototype (no build step, no dependencies). Open it directly in a browser, or serve it with any static host.
-
-The app includes:
-- A mobile-app-style booking flow (browse → pick a time slot → add-ons → confirm) across 13 demo listings spanning air, water, motorsport, indoor and outdoor categories.
-- A "Not on Outset yet" section seeded with **12 real Tampa Bay businesses**, with facts (pricing, capacity, specs) pulled directly from each business's own website — never invented. Anything a business doesn't publish is shown as an honest gap instead of a guess.
-- A per-listing AI agent chat (via Claude), so guests can ask questions and get answered from that business's real data instead of calling.
-
-## Running it locally
-
-Just open `index.html` in a browser. For a nicer local dev loop:
-
+```bash
+npm install
+npm run dev
 ```
-npx serve .
+
+Then open the URL Vite prints (usually http://localhost:5173).
+
+```bash
+npm run build
+npm run preview
 ```
+
+## What you get
+
+- Explore with category chips, a date strip, search, and live slot counts
+- Listing detail with slots, quantity, add-ons, and checkout
+- Trips with check-in codes, persisted in this browser
+- Inbox chat with a per-operator agent that answers from inventory and policy
+- Unclaimed Tampa Bay businesses seeded from their own public sites, with honest gaps where they did not publish a fact
+
+Desktop shows a product pitch beside a phone frame. Narrow screens run as a full-height mobile app.
 
 ## Status
 
-This is an early prototype, not production infrastructure. No real payments, no real operator onboarding flow, no phone integration yet — see the product notes in conversation history for the roadmap.
+Guest booking is a working client app. Payments, operator onboarding, and phone are not live yet. Bookings stay on-device via localStorage.
