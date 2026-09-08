@@ -1,33 +1,38 @@
 # Outset
 
-Instant-booking marketplace for local experiences. The guest app shows real US and Canada operators as Instant Book, with public facts from their own sites.
+Instant-booking marketplace for local experiences. Uber Eats for kayaks, skydives, karting, escape rooms, and the rest. Guests pick a slot and pay. It is not a lead-gen directory.
 
-## Run it
+**Live guest app:** [harshils2340.github.io/outset-app](https://harshils2340.github.io/outset-app/)
+
+Repo: [github.com/harshils2340/outset-app](https://github.com/harshils2340/outset-app)
+
+## Status
+
+The guest catalog is real operators across the **United States and Canada** (47 metros). Tampa Bay is the densest hand-verified batch. Supply is discovered from OpenStreetMap and public sites, then merged into `public/catalog.json` at startup. The app currently holds **12,000+** named operators. Facts come from each company's own site. Missing prices, hours, age, or waiver rules stay blank. We do not invent shops or live seats.
+
+Guest UI presents Instant Book. Real calendar Instant Book stays off until an operator claims. Payments, operator onboarding, and voice phone are not live yet. Bookings in the demo persist on this device.
+
+## What you get
+
+- Explore: Uber Eats-style category rails (Air, Water, Race, Indoor, Outdoor), metro picker, search
+- Listing: public photos when we have them, from-price, hours, phone, Get directions, who can go, waiver gaps
+- 24/7 company assistant: answers only from that operator's published facts. Hands off if it does not know
+- Instant confirmation on this device. Trips fills when you book
+- Desktop: product pitch beside a phone frame. Narrow screens run full viewport
+
+## Run the guest app
 
 ```bash
 npm install
 npm run dev
 ```
 
-Then open the URL Vite prints (usually http://localhost:5173).
+Open the URL Vite prints (usually http://localhost:5173).
 
 ```bash
 npm run build
 npm run preview
 ```
-
-## What you get
-
-- Explore with category chips and real operators (Instant Book)
-- Facts from each company's own site
-- Instant confirmation on this device
-- Trips fills when you book
-
-Desktop shows a product pitch beside a phone frame. Narrow screens run as a full-height mobile app.
-
-## Status
-
-Guest catalog is real operators shown as Instant Book. No invented shops. Payments, operator onboarding, and phone are not live yet.
 
 ## Backend (supply)
 
@@ -35,11 +40,11 @@ Guest catalog is real operators shown as Instant Book. No invented shops. Paymen
 cd backend
 npm install
 npm run ingest
+npm run discover          # OSM, all US states and CA provinces, cached
+npm run structure -- 800 8
 npm run scrape
-npm run outreach
-npm run dev
+npm run sync              # writes public/catalog.json and src/data/contacts.ts
+npm run dev               # API at http://localhost:8787
 ```
 
-API: http://localhost:8787
-
-Unclaimed operator facts are stored with sources. Instant book stays off until a business claims. Outreach writes drafts only.
+Also: `npm run backend:search`, `npm run backend:enrich`, `npm run backend:photos` from the repo root (need keys in `backend/.env`). Outreach writes drafts only. It does not send mail.
