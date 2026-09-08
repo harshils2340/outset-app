@@ -147,7 +147,7 @@ function toCatalogItem(r: CatalogRow): Record<string, unknown> {
     src: r.domain,
     rating: r.rating ?? undefined,
     reviews: r.review_count ?? undefined,
-    specs: [...pick("spec"), ...pick("requirement"), ...pick("group")].slice(0, 8),
+    specs: [...pick("spec"), ...pick("requirement"), ...pick("group")].slice(0, 10),
     options: offerings.map((o) => ({
       name: o.name,
       detail: o.duration || o.detail || "",
@@ -195,7 +195,8 @@ function toCatalogItem(r: CatalogRow): Record<string, unknown> {
       })
       .filter((a): a is { name: string; detail: string; price: number } => !!a)
       .slice(0, 6),
-    gap: pick("published_gap")[0] || DEFAULT_GAP,
+    // The honest gap line. Once the widget or crawl gave real rules and policies, say those instead of "not copied yet".
+    gap: pick("published_gap")[0] || pick("cancellation")[0] || (pick("policy").length || pick("requirement").length ? [...pick("policy")].slice(0, 3).join(" ") || "Ask the operator about cancellations." : DEFAULT_GAP),
     blurb: pick("description")[0] || pick("site_desc")[0] || pick("one_line")[0] || undefined,
     cover: pick("cover")[0] || undefined,
     photos: [...new Set(pick("photo"))].slice(0, 8),
@@ -204,7 +205,7 @@ function toCatalogItem(r: CatalogRow): Record<string, unknown> {
     lat: r.lat ?? undefined,
     lon: r.lon ?? undefined,
     tags: [...new Set([...pick("google_category"), ...pick("service"), ...offerings.map((o) => o.name)])].slice(0, 12),
-    extraNote: pick("extra")[0] || [...pick("policy"), ...pick("meeting_point"), ...pick("season")].join(" ").slice(0, 400) || undefined,
+    extraNote: pick("extra")[0] || [...pick("policy"), ...pick("checkin"), ...pick("meeting_point"), ...pick("season")].join(" ").slice(0, 600) || undefined,
   };
 }
 

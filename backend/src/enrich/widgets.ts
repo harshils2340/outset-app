@@ -27,8 +27,12 @@ async function getJson<T>(url: string): Promise<T | null> {
 }
 
 /** Markdown and HTML to plain sentences. */
-export function plain(s: string | null | undefined): string {
-  if (!s) return "";
+export function plain(s: unknown): string {
+  if (s == null) return "";
+  if (typeof s !== "string") {
+    if (typeof s === "number") return String(s);
+    return "";
+  }
   return s
     .replace(/<[^>]+>/g, " ")
     .replace(/^#{1,6}\s*/gm, "")
@@ -117,16 +121,18 @@ export async function readFareharbor(shortname: string): Promise<WidgetResult | 
   const offerings: Offering[] = [];
   const req = new Set<string>(); const pol = new Set<string>(); const inc = new Set<string>();
   for (const item of it.items) {
-    if (item.is_archived || item.is_unlisted || item.is_private) continue;
+    if (!item || !item.name || item.is_archived || item.is_unlisted || item.is_private) continue;
     const headline = plain(item.headline);
     const descLong = plain(item.description_text || item.description);
-    const desc = plain(item.short_description) || descLong.slice(0, 700).replace(/\s+\S*$/, "");
+    const desc = [plain(item.short_description) || descLong.slice(0, 600).replace(/\s+\S*$/, ""), headline ? headline.replace(/\s*\|\s*/g, " · ") : ""].filter(Boolean).join(" ").slice(0, 700);
     const photos = (item.images || []).map((i) => i.image_cdn_url).filter(Boolean);
     if (item.image_cdn_url && !photos.includes(item.image_cdn_url)) photos.unshift(item.image_cdn_url);
+    const duration = durationOf(headline, descLong);
     offerings.push({
-      name: item.name.trim(),
-      detail: headline ? headline.replace(/\s*\|\s*/g, " · ").slice(0, 120) : null,
-      duration: durationOf(headline, descLong),
+      name: String(item.name || "").trim(),
+      // The variant label guests pick. The headline is copy, not a label, so it goes into the description.
+      detail: duration,
+      duration,
       price: money(headline) ?? money(descLong),
       unit: unitOf(headline, item.name),
       url: "https://fareharbor.com/embeds/book/" + shortname + "/items/" + item.pk + "/",
@@ -184,13 +190,13 @@ export async function readXola(seller: string): Promise<WidgetResult | null> {
   const offerings: Offering[] = [];
   const req = new Set<string>(); const pol = new Set<string>(); const inc = new Set<string>();
   for (const e of d.data) {
-    if (e.status && e.status !== "published") continue;
+    if (!e || !e.name || (e.status && e.status !== "published")) continue;
     const prices = (e.priceSchemes || []).map((p) => p.price).filter((n) => typeof n === "number" && n > 0);
     const perOuting = (e.priceSchemes || []).some((p) => (p.constraints || []).some((c) => c.priceType === "outing"));
     const photos = [e.photo?.src, ...(e.medias || []).filter((m) => m.type === "photo").map((m) => m.src)].filter((s): s is string => !!s).map((s) => (s.startsWith("http") ? s : "https://xola.com" + s));
     const desc = plain(e.excerpt) || plain(e.desc).slice(0, 700).replace(/\s+\S*$/, "");
     offerings.push({
-      name: e.name.trim(),
+      name: String(e.name || "").trim(),
       detail: e.duration ? (e.duration >= 60 ? (e.duration / 60).toFixed(e.duration % 60 ? 1 : 0) + " hours" : e.duration + " min") : null,
       duration: e.duration ? e.duration + " min" : null,
       price: prices.length ? Math.min(...prices) : null,
