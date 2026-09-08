@@ -88,6 +88,22 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
   const [openSvc, setOpenSvc] = useState<string | null>(null);
   const [guideOpen, setGuideOpen] = useState(false);
   const [done, setDone] = useState(false);
+  const [gallery, setGallery] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (gallery == null) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setGallery(null);
+      if (e.key === "ArrowRight") setGallery((g) => (g == null ? g : (g + 1) % photos.length));
+      if (e.key === "ArrowLeft") setGallery((g) => (g == null ? g : (g - 1 + photos.length) % photos.length));
+    };
+    window.addEventListener("keydown", onKey);
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.body.style.overflow = "";
+    };
+  }, [gallery, photos.length]);
 
   const picked = optionIdx != null ? item.options[optionIdx] : null;
   const extras = addonIdx.map((i) => (item.addons || [])[i]).filter(Boolean);
@@ -136,18 +152,48 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
         </div>
 
         <div className={"wphotos" + (photos.length >= 3 ? " grid" : " single")}>
-          <div className="wphoto main">
+          <button type="button" className="wphoto main" onClick={() => setGallery(0)} aria-label="Open photos">
             <Photo src={photos[0]} kind={item.art} id={"wl" + item.id} alt={item.title} />
-          </div>
+          </button>
           {photos.length >= 3
             ? photos.slice(1, 5).map((src, i) => (
-                <div className={"wphoto p" + i} key={src}>
+                <button type="button" className={"wphoto p" + i} key={src} onClick={() => setGallery(i + 1)} aria-label={"Open photo " + (i + 2)}>
                   <img src={src} alt={item.title + " photo " + (i + 2)} loading="lazy" referrerPolicy="no-referrer" onError={(e) => ((e.currentTarget as HTMLImageElement).style.visibility = "hidden")} />
-                </div>
+                </button>
               ))
             : null}
-          {photos.length > 5 ? <span className="wmore">Show all {photos.length} photos</span> : null}
+          {photos.length > 1 ? (
+            <button type="button" className="wmore" onClick={() => setGallery(0)}>
+              Show all {photos.length} photos
+            </button>
+          ) : null}
         </div>
+
+        {gallery != null && photos.length ? (
+          <div className="wgallery" onClick={() => setGallery(null)} role="dialog" aria-label="Photos">
+            <div className="wgalleryhead" onClick={(e) => e.stopPropagation()}>
+              <span>{gallery + 1} / {photos.length}</span>
+              <b>{item.title}</b>
+              <button type="button" className="wgalleryclose" onClick={() => setGallery(null)} aria-label="Close">
+                <Markup html={ICONS.close} />
+              </button>
+            </div>
+            <button type="button" className="wgallerynav prev" onClick={(e) => { e.stopPropagation(); setGallery((gallery - 1 + photos.length) % photos.length); }} aria-label="Previous photo" disabled={photos.length < 2}>
+              <Markup html={ICONS.back} />
+            </button>
+            <img className="wgalleryimg" src={photos[gallery]} alt={item.title + " photo " + (gallery + 1)} referrerPolicy="no-referrer" onClick={(e) => e.stopPropagation()} />
+            <button type="button" className="wgallerynav next" onClick={(e) => { e.stopPropagation(); setGallery((gallery + 1) % photos.length); }} aria-label="Next photo" disabled={photos.length < 2}>
+              <Markup html={ICONS.back} />
+            </button>
+            <div className="wgallerystrip" onClick={(e) => e.stopPropagation()}>
+              {photos.map((src, i) => (
+                <button type="button" key={src} aria-pressed={i === gallery} onClick={() => setGallery(i)}>
+                  <img src={src} alt="" loading="lazy" referrerPolicy="no-referrer" />
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : null}
 
         <div className="wcols">
           <div className="wmain">
