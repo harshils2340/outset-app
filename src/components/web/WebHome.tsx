@@ -92,7 +92,7 @@ function Rail({ title, items, onOpen }: { title: string; items: Unclaimed[]; onO
   );
 }
 
-export function WebHome({ onOpenApp }: { onOpenApp: () => void }) {
+export function WebHome({ onOpenApp, onOperators }: { onOpenApp: () => void; onOperators: () => void }) {
   const { state, setCat, setMetro, setDate, openRequest, dates } = useApp();
   const [q, setQ] = useState("");
   const [who, setWho] = useState(2);
@@ -127,6 +127,7 @@ export function WebHome({ onOpenApp }: { onOpenApp: () => void }) {
             ))}
           </nav>
           <div className="wright">
+            <button type="button" className="wlink" onClick={onOperators}>For operators</button>
             <button type="button" className="wghost" onClick={onOpenApp}>Open the app</button>
             <span className="wavatar">HS</span>
           </div>

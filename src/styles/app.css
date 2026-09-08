@@ -738,3 +738,52 @@ a.crow:active{background:var(--surface-2);}
 .webscreen{width:420px;height:min(860px,92vh);border-radius:28px;box-shadow:0 30px 80px rgba(0,0,0,.4);background:transparent;overflow:visible;}
 .webscreen .sheet{max-height:100%;height:100%;border-radius:28px;}
 .webscreen .grabber{display:none;}
+
+
+/* ---------- operator side ---------- */
+.ophead{display:flex;align-items:center;gap:11px;padding:12px 16px;border-bottom:1px solid var(--line);}
+.ophead .meta{flex:1;min-width:0;display:flex;flex-direction:column;}
+.ophead .meta b{font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.ophead .meta small{font-size:12px;color:var(--ink-faint);}
+.optoggle{display:flex;align-items:center;gap:8px;border:none;background:transparent;padding:0;}
+.optoggle .knob{width:40px;height:24px;border-radius:999px;background:var(--line-strong);position:relative;transition:background .2s;}
+.optoggle .knob::after{content:"";position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:#fff;transition:transform .2s;box-shadow:0 1px 3px rgba(0,0,0,.3);}
+.optoggle.on .knob{background:var(--open);}
+.optoggle.on .knob::after{transform:translateX(16px);}
+.optoggle .lbl{font-size:12px;font-weight:600;color:var(--ink-soft);}
+.opstats{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);border-bottom:1px solid var(--line);}
+.opstats div{background:var(--surface);padding:14px 16px;}
+.opstats b{display:block;font-size:20px;font-weight:600;letter-spacing:-.03em;}
+.opstats small{font-size:12px;color:var(--ink-faint);}
+.optabs{display:flex;padding:0 16px;border-bottom:1px solid var(--line);}
+.optabs button{flex:1;padding:12px 0 10px;border:none;background:transparent;font-size:14px;font-weight:600;color:var(--ink-faint);border-bottom:2px solid transparent;display:flex;justify-content:center;gap:6px;align-items:center;}
+.optabs button[aria-pressed="true"]{color:var(--ink);border-bottom-color:var(--ink);}
+.optabs em{font-style:normal;background:var(--accent);color:#fff;font-size:11px;border-radius:999px;padding:1px 7px;}
+.oplist{padding:14px 16px;display:grid;gap:12px;}
+.opnote{margin:0;font-size:13px;color:var(--ink-faint);line-height:1.45;}
+.opreq{border:1px solid var(--line);border-radius:var(--r-m);padding:14px;}
+.oprow{display:flex;align-items:center;gap:10px;}
+.oprow .meta{flex:1;min-width:0;display:flex;flex-direction:column;}
+.oprow .meta b{font-size:15px;font-weight:600;}
+.oprow .meta small{font-size:12.5px;color:var(--ink-faint);}
+.opprice{font-size:14px;font-weight:600;}
+.opsvc{margin:10px 0 0;font-size:14px;color:var(--ink);}
+.opguestnote{margin:6px 0 0;font-size:13px;color:var(--ink-soft);font-style:italic;}
+.opactions{display:flex;gap:8px;margin-top:12px;}
+.opactions .cta{flex:1;}
+.opday{margin:6px 0 2px;font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--ink-faint);}
+.opslot{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--line);}
+.opslot > b{font-size:13px;width:64px;flex:none;}
+.opslot .meta{flex:1;min-width:0;display:flex;flex-direction:column;}
+.opslot .meta b{font-size:14px;font-weight:600;}
+.opslot .meta small{font-size:12.5px;color:var(--ink-faint);}
+.opmenu{border:1px solid var(--line);border-radius:var(--r-m);padding:12px 14px;display:grid;gap:8px;}
+.opmenu > .rowbetween b, .opmenu > b{font-size:15px;font-weight:600;}
+.opdesc{margin:0;font-size:13px;color:var(--ink-soft);line-height:1.45;}
+.opvar{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:14px;padding:6px 0;border-top:1px solid var(--line);}
+.opinput{display:flex;align-items:center;gap:4px;border:1px solid var(--line-strong);border-radius:10px;padding:4px 8px;font-size:14px;}
+.opinput input{width:64px;border:none;outline:none;font:inherit;font-size:14px;text-align:right;background:transparent;}
+.opavail{border:1px solid var(--line-strong);background:var(--open-bg);color:var(--open);border-radius:999px;padding:4px 10px;font-size:12px;font-weight:600;}
+.opavail.off{background:var(--surface-2);color:var(--ink-faint);}
+.wlink{border:none;background:transparent;font-size:14px;font-weight:600;color:var(--ink);cursor:pointer;padding:10px 12px;border-radius:999px;}
+.wlink:hover{background:var(--surface-2);}

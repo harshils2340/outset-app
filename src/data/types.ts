@@ -157,5 +157,5 @@ export type Booking = {
 };
 
 export type TabId = "explore" | "trips" | "inbox" | "account";
-export type ScreenId = TabId | "detail" | "confirm" | "chat";
+export type ScreenId = TabId | "detail" | "confirm" | "chat" | "operator";
 export type SheetId = "review" | "request" | "metro" | null;

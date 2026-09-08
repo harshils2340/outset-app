@@ -1,5 +1,5 @@
 import type { OperatorContact, Unclaimed } from "../data/types";
-import { addressLine, fmtHours, fmtPhone, optionLabel } from "./catalog";
+import { addressLine, fmtHours, fmtPhone, optionLabel, plainWords } from "./catalog";
 import { money } from "./format";
 
 /**
@@ -38,13 +38,38 @@ const INCLUDED = /(include|come with|provided|bring|wear|gear|equipment|life ?ja
 const POLICY = /(cancel|refund|reschedule|change|late|no.?show|policy|rain.?check|tip|gratuity)/i;
 const AVAIL = /(available|availability|book|reserve|slot|spot|space|open (at|on)|can i come|walk.?in)/i;
 const GROUP = /(group|party|birthday|corporate|team|bachelor|bachelorette|how many|max|capacity|people)/i;
+const WAIVER = /(waiver|sign|form|paperwork|release)/i;
 const GREET = /^(hi|hello|hey|yo|sup|good (morning|afternoon|evening))\b/i;
 const THANKS = /(thank|thanks|thx|cheers|great|perfect|awesome)/i;
 
 function priced(item: Unclaimed): string[] {
+  if (item.services?.length) {
+    return item.services
+      .filter((s) => s.variants.some((v) => v.price != null))
+      .map((s) => plainWords(s.name) + ": " + s.variants.filter((v) => v.price != null).map((v) => plainWords(v.label) + " " + money(v.price as number) + (v.per || "")).join(", "));
+  }
   return item.options
     .filter((o) => o.price != null)
-    .map((o) => optionLabel(o) + " " + money(o.price as number) + (o.per || ""));
+    .map((o) => plainWords(optionLabel(o)) + " " + money(o.price as number) + (o.per || ""));
+}
+
+function menu(item: Unclaimed): string {
+  if (item.services?.length) {
+    return item.services
+      .map((s) => {
+        const vs = s.variants.map((v) => plainWords(v.label) + (v.price != null ? " " + money(v.price) : "")).join(", ");
+        return plainWords(s.name) + (vs ? " (" + vs + ")" : "");
+      })
+      .join("; ");
+  }
+  return item.options.map((o) => plainWords(optionLabel(o))).join("; ");
+}
+
+function describe(item: Unclaimed, q: string): string | null {
+  if (!item.services?.length) return null;
+  const lq = q.toLowerCase();
+  const hit = item.services.find((s) => s.desc && lq.includes(s.name.toLowerCase().split(" ")[0]));
+  return hit && hit.desc ? plainWords(hit.name) + ": " + plainWords(hit.desc) : null;
 }
 
 function specsAbout(item: Unclaimed, re: RegExp): string[] {
@@ -85,16 +110,17 @@ export function companyReply(ctx: CompanyContext, question: string): string {
   if (PRICE.test(q)) parts.push((() => {
     const lines = priced(item);
     if (!lines.length) return notPublished(ctx, "prices");
-    const gap = item.gap ? " " + item.gap : "";
-    return "Published prices: " + lines.join("; ") + "." + gap + " Outset adds a service fee at checkout.";
+    const extras = item.addons?.length ? " Add-ons: " + item.addons.map((a) => a.name + (a.price ? " " + money(a.price) : "")).join(", ") + "." : "";
+    return "Published prices: " + lines.join("; ") + "." + extras + " Outset adds a service fee at checkout.";
   })());
 
   if (SERVICES.test(q)) parts.push((() => {
-    if (!item.options.length) {
+    if (!item.options.length && !item.services?.length) {
       const about = item.specs.length ? " What they list: " + item.specs.join(", ") + "." : "";
       return notPublished(ctx, "a service menu") + about;
     }
-    return item.title + " lists: " + item.options.map(optionLabel).join("; ") + ". Pick one on the listing to see the total.";
+    const d = describe(item, q);
+    return item.title + " offers: " + menu(item) + "." + (d ? " " + d : "") + " Pick one on the listing to see the total.";
   })());
 
   if (AVAIL.test(q)) parts.push((() => {
@@ -140,6 +166,13 @@ export function companyReply(ctx: CompanyContext, question: string): string {
     const hits = specsAbout(item, /group|party|people|riders?|guests?|passengers?|up to|max|capacity|fly together/i);
     if (hits.length) return "Published group info: " + hits.join(". ") + ".";
     return notPublished(ctx, "group sizes");
+  })());
+
+  if (WAIVER.test(q)) parts.push((() => {
+    const w = (item.tags || []).find(() => false);
+    void w;
+    const waiver = item.specs.find((x) => /waiver/i.test(x));
+    return waiver ? "About the waiver: " + waiver : item.title + " uses an online waiver on their site when they publish one; you can sign it before you arrive. Anything not stated there, a person at the shop can confirm." + callLine(ctx);
   })());
 
   if (parts.length) return parts.slice(0, 3).join("\n\n");

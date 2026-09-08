@@ -12,15 +12,16 @@ import { InboxView } from "./components/inbox/InboxView";
 import { ChatView } from "./components/inbox/ChatView";
 import { AccountView } from "./components/account/AccountView";
 import { ConfirmView } from "./components/booking/ConfirmView";
+import { OperatorView } from "./components/operator/OperatorView";
 import { Sheets } from "./components/booking/Sheets";
 
 export function App() {
-  const { state, closeSheet } = useApp();
+  const { state, closeSheet, openOperator } = useApp();
   const [web, setWeb] = useState(() => typeof window !== "undefined" && window.innerWidth > 1024);
   if (web) {
     return (
       <>
-        <WebHome onOpenApp={() => setWeb(false)} />
+        <WebHome onOpenApp={() => setWeb(false)} onOperators={() => { setWeb(false); openOperator(); }} />
         {state.sheet ? (
           <div className="webmodal" onClick={closeSheet}>
             <div className="screen webscreen" onClick={(e) => e.stopPropagation()}>
@@ -56,6 +57,7 @@ function AppView() {
       {state.screen === "detail" ? <DetailView /> : null}
       {state.screen === "confirm" ? <ConfirmView /> : null}
       {state.screen === "chat" ? <ChatView /> : null}
+      {state.screen === "operator" ? <OperatorView /> : null}
       {state.screen === "explore" ? <ExploreView /> : null}
       {state.screen === "trips" ? <TripsView /> : null}
       {state.screen === "inbox" ? <InboxView /> : null}

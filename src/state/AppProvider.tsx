@@ -76,6 +76,7 @@ type Action =
     }
   | { type: "back" }
   | { type: "openChat"; id: string }
+  | { type: "openOperator" }
   | { type: "sendChat"; text: string }
   | { type: "toastOff" };
 
@@ -237,11 +238,14 @@ function reducer(state: AppState, action: Action): AppState {
       };
     }
     case "back": {
+      if (state.screen === "operator") return { ...state, screen: "account" };
       if (state.screen === "chat") {
         return { ...state, screen: state.tab === "inbox" ? "inbox" : state.tab };
       }
       return { ...state, screen: state.tab };
     }
+    case "openOperator":
+      return { ...state, tab: "account", screen: "operator", sheet: null, reqTargetId: null };
     case "openChat": {
       const listing = listingById(action.id);
       if (listing) {
@@ -340,6 +344,7 @@ type Api = {
   confirmUnclaimed: (input: { dateIdx: number; slot: string; qty: number; optionIdx: number | null; addonIdx?: number[] }) => void;
   back: () => void;
   openChat: (id: string) => void;
+  openOperator: () => void;
   sendChat: (text: string) => void;
   goto: (tab: TabId) => void;
 };
@@ -409,6 +414,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       confirmUnclaimed: (input) => dispatch({ type: "confirmUnclaimed", ...input }),
       back: () => dispatch({ type: "back" }),
       openChat: (id) => dispatch({ type: "openChat", id }),
+      openOperator: () => dispatch({ type: "openOperator" }),
       sendChat: (text) => dispatch({ type: "sendChat", text }),
       goto: (tab) => dispatch({ type: "goto", tab }),
     }),

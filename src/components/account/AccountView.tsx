@@ -3,7 +3,7 @@ import { useApp } from "../../state/AppProvider";
 import { Markup } from "../Markup";
 
 export function AccountView() {
-  const { state } = useApp();
+  const { state, openOperator } = useApp();
   const n = state.bookings.length;
   return (
     <>
@@ -25,9 +25,9 @@ export function AccountView() {
             </b>
           </div>
         </div>
-        <div className="hostcard">
+        <div className="hostcard" role="button" tabIndex={0} onClick={openOperator} style={{ cursor: "pointer" }}>
           <h3>Run an experience?</h3>
-          <p>Post your calendar. Guests Instant Book.</p>
+          <p>See requests, your schedule and your menu the way operators do.</p>
           <span className="go">
             List your business <Markup html={ICONS.arrow} />
           </span>

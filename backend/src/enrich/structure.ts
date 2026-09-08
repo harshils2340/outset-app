@@ -40,6 +40,29 @@ function canon(name: string): string | null {
   return null;
 }
 
+function normLabel(l: string): string {
+  return l.toLowerCase().replace(/\b(and|&|the|a|an|per|each|only|rate|rates|price|prices)\b/g, " ").replace(/[^a-z0-9]+/g, " ").replace(/s\b/g, "").replace(/\s+/g, " ").trim();
+}
+
+/** "Adult", "Adults" and "Adult 13 & older" at the same price are one line. Keep the most specific label. */
+function dedupeVariants(vs: Variant[]): Variant[] {
+  const out: Variant[] = [];
+  for (const v of vs) {
+    const n = normLabel(v.label);
+    const twin = out.find((o) => {
+      const m = normLabel(o.label);
+      if (m === n) return true;
+      if (o.price !== v.price) return false;
+      const a = m.split(" ")[0];
+      const b = n.split(" ")[0];
+      return a === b && (m.startsWith(n) || n.startsWith(m));
+    });
+    if (!twin) out.push(v);
+    else if (v.label.length > twin.label.length && twin.price === v.price) twin.label = v.label;
+  }
+  return out;
+}
+
 /** Collapse near-duplicates to one line per activity, keeping the shortest original name and any price seen. */
 function consolidate(found: Map<string, Found>): Found[] {
   const groups = new Map<string, Found & { canon: string }>();
@@ -71,7 +94,7 @@ function consolidate(found: Map<string, Found>): Found[] {
   return [...groups.values()]
     .map((g) => {
       // A bare "Standard" line is only useful when it is the sole price.
-      if (g.variants && g.variants.length > 1) g.variants = g.variants.filter((v) => v.label !== "Standard");
+      if (g.variants && g.variants.length > 1) g.variants = dedupeVariants(g.variants.filter((v) => v.label !== "Standard"));
       return { ...g, name: g.name.length > 34 ? g.canon : g.name.replace(/\s*&\s*more!?$/i, "") };
     })
     .slice(0, 14);
@@ -139,6 +162,8 @@ function harvestPrices($: ReturnType<typeof load>, url: string, out: Map<string,
   const attach = (heading: string | null, rawLabel: string, price: number) => {
     // Above this it is almost always a boat, a board or a membership for sale, not a booking.
     if (price > 5000 || price < 5) return;
+    // "Save $15", "$10 off", deposits and coupons are not things a guest books.
+    if (/\b(save|off|discount|coupon|deposit|refund|fee|tax|gratuity|tip|late|cancel|gift ?card|membership|per (extra|additional))\b/i.test(rawLabel)) return;
     let label = rawLabel;
     if (isAddon(label)) {
       const k = label.toLowerCase();
