@@ -46,8 +46,8 @@ export function ExploreView() {
   const previewList = (q ? searchListings(inMetro, q) : []).slice(0, 8);
   const previewMetros = q.length >= 2 ? searchMetros(q) : [];
   const showPreview = searchOpen && q.length > 0;
-  const metroHits = previewMetros.length;
-  const totalHits = metroHits + previewList.length;
+  const listHits = previewList.length;
+  const totalHits = listHits + previewMetros.length;
 
   const emptyTitle = inMetro.length === 0 ? "Nothing in this city yet" : meta.emptyTitle;
   const emptyBody =
@@ -79,8 +79,8 @@ export function ExploreView() {
       setHit((i) => Math.max(0, i - 1));
     } else if (e.key === "Enter") {
       e.preventDefault();
-      if (hit < metroHits) pickMetro(previewMetros[hit].id);
-      else pickListing(previewList[hit - metroHits].id);
+      if (hit < listHits) pickListing(previewList[hit].id);
+      else pickMetro(previewMetros[hit - listHits].id);
     } else if (e.key === "Escape") {
       setSearchOpen(false);
       (e.target as HTMLInputElement).blur();
@@ -144,27 +144,8 @@ export function ExploreView() {
           </div>
           {showPreview ? (
             <div className="searchpreview" onMouseDown={(e) => e.preventDefault()}>
-              {previewMetros.map((m, i) => (
-                <button
-                  type="button"
-                  key={m.id}
-                  className={"searchhit" + (hit === i ? " on" : "")}
-                  onClick={() => pickMetro(m.id)}
-                  onMouseEnter={() => setHit(i)}
-                >
-                  <span className="searchico">
-                    <Markup html={ICONS.pin} />
-                  </span>
-                  <span className="searchmeta">
-                    <b>{m.name}</b>
-                    <small>
-                      {m.region}, {m.country === "CA" ? "Canada" : "United States"}
-                    </small>
-                  </span>
-                </button>
-              ))}
               {previewList.map((u, i) => {
-                const idx = metroHits + i;
+                const idx = i;
                 const metro = metroById(u.metroId);
                 return (
                   <button
@@ -187,6 +168,25 @@ export function ExploreView() {
                   </button>
                 );
               })}
+              {previewMetros.map((m, i) => (
+                <button
+                  type="button"
+                  key={m.id}
+                  className={"searchhit" + (hit === listHits + i ? " on" : "")}
+                  onClick={() => pickMetro(m.id)}
+                  onMouseEnter={() => setHit(listHits + i)}
+                >
+                  <span className="searchico">
+                    <Markup html={ICONS.pin} />
+                  </span>
+                  <span className="searchmeta">
+                    <b>{m.name}</b>
+                    <small>
+                      {m.region}, {m.country === "CA" ? "Canada" : "United States"}
+                    </small>
+                  </span>
+                </button>
+              ))}
               {!totalHits ? (
                 <div className="searchempty">No matches for &quot;{q}&quot;</div>
               ) : (

@@ -73,24 +73,50 @@ function haystack(u: Unclaimed): string {
     ...(ART_ALIASES[u.art] || []),
     ...u.specs,
     ...u.options.map((o) => o.name),
+    ...(u.tags || []),
+    u.blurb || "",
   ]
     .join(" ")
     .toLowerCase();
 }
 
+/** Words in the query that name an activity. "jet ski rentals" -> jetski. */
+export function queryArts(q: string): ArtKind[] {
+  const lq = " " + q.toLowerCase().replace(/[^a-z0-9]+/g, " ") + " ";
+  const out: ArtKind[] = [];
+  for (const [art, words] of Object.entries(ART_ALIASES) as [ArtKind, string[]][]) {
+    if (words.some((w) => lq.includes(" " + w + " ") || (w.length >= 5 && lq.includes(w)))) out.push(art);
+  }
+  return out;
+}
+
+const FILLER = new Set(["rental", "rentals", "rent", "near", "me", "in", "the", "a", "and", "for", "best", "cheap", "tour", "tours"]);
+
 export function listingScore(u: Unclaimed, q: string): number {
-  const t = tokens(q);
-  if (!t.length) return 0;
+  const all = tokens(q);
+  if (!all.length) return 0;
+  const arts = queryArts(q);
   const hay = haystack(u);
   const compact = hay.replace(/[^a-z0-9]+/g, "");
   let score = 0;
   const title = u.title.toLowerCase();
-  for (const tok of t) {
+  const tagText = [...(u.tags || []), ...u.options.map((o) => o.name)].join(" ").toLowerCase();
+  // The activity the guest named is the strongest signal. A jet ski search must surface jet ski operators first.
+  if (arts.length) {
+    if (arts.includes(u.art)) score += 40;
+    else if (arts.some((a) => (ART_ALIASES[a] || []).some((w) => tagText.includes(w)))) score += 24;
+    else if (arts.some((a) => (ART_ALIASES[a] || []).some((w) => title.includes(w)))) score += 24;
+  }
+  // Every meaningful word must land somewhere. Filler like "rental" or "near me" is free.
+  const must = all.filter((tok) => !FILLER.has(tok));
+  for (const tok of must.length ? must : all) {
     const hit = tokenScore(hay, compact, tok);
-    if (!hit) return 0;
+    if (!hit && !arts.length) return 0;
     score += hit;
     if (title.includes(tok) || title.split(" ").some((w) => w.startsWith(tok))) score += 8;
   }
+  if (arts.length && score < 24) return 0;
+  if (u.rating && u.reviews) score += Math.min(6, Math.log10(u.reviews + 1) * 2);
   return score;
 }
 

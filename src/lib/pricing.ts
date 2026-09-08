@@ -20,11 +20,13 @@ export function priceFor(l: Listing, qty: number, addonIds: string[]): PriceBrea
   return { base, add, sub, fee, total: sub + fee };
 }
 
-export function priceUnclaimed(o: UnclaimedOption | null, qty: number): PriceBreakdown {
+export function priceUnclaimed(o: UnclaimedOption | null, qty: number, addons: UnclaimedOption[] = []): PriceBreakdown {
+  const add = addons.reduce((n, a) => n + (a.price ?? 0), 0);
   if (!o || o.price == null) {
-    return { base: 0, add: 0, sub: 0, fee: 0, total: 0 };
+    return { base: 0, add, sub: add, fee: Math.round(add * 0.08), total: add + Math.round(add * 0.08) };
   }
   const base = perPerson(o) ? o.price * qty : o.price;
-  const fee = Math.round(base * 0.08);
-  return { base, add: 0, sub: base, fee, total: base + fee };
+  const sub = base + add;
+  const fee = Math.round(sub * 0.08);
+  return { base, add, sub, fee, total: sub + fee };
 }

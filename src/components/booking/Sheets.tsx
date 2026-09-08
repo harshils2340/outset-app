@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { CATS } from "../../data/categories";
 import { GUIDES } from "../../data/guides";
 import { ICONS } from "../../data/icons";
-import { ALL_METRO_ID, METROS, metroById, metroCoords, metroLabel } from "../../data/metros";
+import { ALL_METRO_ID, METROS, metroById, metroLabel } from "../../data/metros";
 import { SLOT_TIMES } from "../../data/slots";
 import type { Unclaimed, UnclaimedOption } from "../../data/types";
 import {
@@ -210,7 +210,7 @@ function RequestBody({
   item: Unclaimed;
   dates: Date[];
   onBack: () => void;
-  onConfirm: (input: { dateIdx: number; slot: string; qty: number; optionIdx: number | null }) => void;
+  onConfirm: (input: { dateIdx: number; slot: string; qty: number; optionIdx: number | null; addonIdx?: number[] }) => void;
   onAsk: () => void;
 }) {
   const metro = metroById(item.metroId);
@@ -221,13 +221,15 @@ function RequestBody({
   const [optionIdx, setOptionIdx] = useState<number | null>(item.options.length === 1 ? 0 : null);
   const [pay, setPay] = useState(false);
   const [callOpen, setCallOpen] = useState(false);
+  const [addonIdx, setAddonIdx] = useState<number[]>([]);
+  const extras = addonIdx.map((i) => (item.addons || [])[i]).filter(Boolean);
   const [guideOpen, setGuideOpen] = useState(false);
   const guide = GUIDES[item.art];
   const picked = optionIdx != null ? item.options[optionIdx] : null;
   const needService = item.options.length > 0;
   const ready = time != null && (!needService || picked != null);
   const day = dates[dateIdx];
-  const p = priceUnclaimed(picked, qty);
+  const p = priceUnclaimed(picked, qty, extras);
   const whenLine = time
     ? [fmtDate(day), fmtTime(time), qty + (qty === 1 ? " person" : " people")].join(" · ")
     : "";
@@ -238,11 +240,9 @@ function RequestBody({
   const here = useGuestPoint();
   const dest = mapsQuery(item, contact);
   const place = placeLabel(item, contact);
-  const pin = metroCoords(item.metroId);
-  const dist =
-    here && pin && metro
-      ? formatDistance(milesBetween(here, pin), metro.country) + " to " + metro.name
-      : null;
+  const pin = item.lat != null && item.lon != null ? { lat: item.lat, lng: item.lon } : null;
+  const miles = here && pin ? milesBetween(here, pin) : null;
+  const dist = miles != null && miles <= 150 && metro ? formatDistance(miles, metro.country) + " away" : null;
 
   if (pay && ready && time) {
     return (
@@ -265,6 +265,12 @@ function RequestBody({
                   <b>Pay with operator</b>
                 </div>
               )}
+              {extras.map((a) => (
+                <div className="line" key={a.name}>
+                  <span>{a.name}</span>
+                  <b>{money(a.price ?? 0)}</b>
+                </div>
+              ))}
               {p.fee ? (
                 <div className="line">
                   <span>Service fee</span>
@@ -301,7 +307,7 @@ function RequestBody({
           </button>
           <button
             className="cta"
-            onClick={() => onConfirm({ dateIdx, slot: time, qty, optionIdx })}
+            onClick={() => onConfirm({ dateIdx, slot: time, qty, optionIdx, addonIdx })}
           >
             {p.total ? "Confirm " + money(p.total) : "Confirm booking"}
           </button>
@@ -499,6 +505,34 @@ function RequestBody({
                       {optionPrice(o)}
                     </span>
                   ) : null}
+                </button>
+              ))}
+            </div>
+          </>
+        ) : null}
+
+        {item.addons && item.addons.length ? (
+          <>
+            <p className="svchead">Add-ons</p>
+            <div>
+              {item.addons.map((a, i) => (
+                <button
+                  key={a.name + i}
+                  type="button"
+                  className="addon"
+                  aria-pressed={addonIdx.includes(i)}
+                  onClick={() => setAddonIdx((cur) => (cur.includes(i) ? cur.filter((x) => x !== i) : [...cur, i]))}
+                >
+                  <span className="tick">
+                    <Markup html={ICONS.check} />
+                  </span>
+                  <span className="txt">
+                    <b>{a.name}</b>
+                    {a.detail ? <small>{a.detail}</small> : null}
+                  </span>
+                  <span className="mono" style={{ fontSize: 13, fontWeight: 500 }}>
+                    {a.price ? "+" + money(a.price) : "Free"}
+                  </span>
                 </button>
               ))}
             </div>

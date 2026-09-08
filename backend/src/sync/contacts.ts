@@ -116,6 +116,8 @@ type CatalogRow = {
   rating: number | null;
   review_count: number | null;
   origin: string;
+  lat: number | null;
+  lon: number | null;
 };
 
 const DEFAULT_GAP = "Prices, hours and eligibility are not copied here yet. We will ask when you request.";
@@ -150,8 +152,18 @@ function toCatalogItem(r: CatalogRow): Record<string, unknown> {
       per: o.price_unit && o.price_unit.startsWith("/") ? o.price_unit : undefined,
     })),
     includes: pick("includes"),
+    addons: pick("addon")
+      .map((a) => {
+        const m = a.match(/^(.*?)\s*\$(\d+(?:\.\d+)?)$/);
+        return m ? { name: m[1].trim(), detail: "", price: Number(m[2]) } : null;
+      })
+      .filter((a): a is { name: string; detail: string; price: number } => !!a)
+      .slice(0, 6),
     gap: pick("published_gap")[0] || DEFAULT_GAP,
     blurb: pick("description")[0] || pick("one_line")[0] || undefined,
+    lat: r.lat ?? undefined,
+    lon: r.lon ?? undefined,
+    tags: [...new Set([...pick("google_category"), ...pick("service"), ...offerings.map((o) => o.name)])].slice(0, 12),
     extraNote: pick("extra")[0] || [...pick("policy"), ...pick("meeting_point"), ...pick("season")].join(" ").slice(0, 400) || undefined,
   };
 }
@@ -160,7 +172,7 @@ function toCatalogItem(r: CatalogRow): Record<string, unknown> {
 export function syncCatalogToApp(): { path: string; count: number } {
   const rows = db
     .prepare(
-      `SELECT id, domain, name, website, city, region, metro_id, family, icon_key, rating, review_count, origin
+      `SELECT id, domain, name, website, city, region, metro_id, family, icon_key, rating, review_count, origin, lat, lon
        FROM operators WHERE origin != 'demo' AND name IS NOT NULL AND length(name) >= 3
        ORDER BY completeness DESC, name ASC`,
     )

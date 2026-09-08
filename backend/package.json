@@ -13,6 +13,7 @@
     "discover": "tsx src/index.ts discover",
     "enrich": "tsx src/index.ts enrich",
     "search": "tsx src/index.ts search",
+    "structure": "tsx src/index.ts structure",
     "status": "tsx src/index.ts status"
   },
   "dependencies": {

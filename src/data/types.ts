@@ -89,6 +89,13 @@ export type Unclaimed = {
   extraNote?: string;
   /** The operator's own description of what they do, in their words. Present after AI enrichment. */
   blurb?: string;
+  /** Operator pin, from their listing. Used for distance from the guest. */
+  lat?: number;
+  lon?: number;
+  /** Search-only words: Google's business type and service names. Not shown as facts. */
+  tags?: string[];
+  /** Optional extras the operator lists with a price, like an additional rider or a photo pack. */
+  addons?: UnclaimedOption[];
 };
 
 export type Category = {

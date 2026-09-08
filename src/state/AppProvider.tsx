@@ -72,6 +72,7 @@ type Action =
       slot: string;
       qty: number;
       optionIdx: number | null;
+      addonIdx?: number[];
     }
   | { type: "back" }
   | { type: "openChat"; id: string }
@@ -214,13 +215,14 @@ function reducer(state: AppState, action: Action): AppState {
       if (!u || !action.slot) return state;
       const picked = action.optionIdx != null ? u.options[action.optionIdx] : null;
       if (u.options.length > 0 && !picked) return state;
-      const p = priceUnclaimed(picked, action.qty);
+      const extras = (action.addonIdx || []).map((i) => (u.addons || [])[i]).filter(Boolean);
+      const p = priceUnclaimed(picked, action.qty, extras);
       const booking: Booking = {
         listing: u.id,
         date: dateKey(DATES[action.dateIdx]),
         slot: action.slot,
         qty: action.qty,
-        addons: picked ? [String(action.optionIdx)] : [],
+        addons: [...(picked ? [String(action.optionIdx)] : []), ...extras.map((a) => a.name)],
         total: p.total,
         code: makeCode(initials(u.title)),
         created: Date.now(),
@@ -335,7 +337,7 @@ type Api = {
   openRequest: (id: string) => void;
   closeSheet: () => void;
   confirm: () => void;
-  confirmUnclaimed: (input: { dateIdx: number; slot: string; qty: number; optionIdx: number | null }) => void;
+  confirmUnclaimed: (input: { dateIdx: number; slot: string; qty: number; optionIdx: number | null; addonIdx?: number[] }) => void;
   back: () => void;
   openChat: (id: string) => void;
   sendChat: (text: string) => void;
@@ -351,7 +353,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     dispatch({ type: "hydrate", bookings: loadBookings(), chats: loadChats() });
     let alive = true;
     loadRemoteCatalog().then((added) => {
-      if (alive) dispatch({ type: "catalogLoaded", added });
+      if (!alive) return;
+      dispatch({ type: "catalogLoaded", added });
+      // Deep link: #o=<operator id> opens that listing directly.
+      const m = window.location.hash.match(/^#o=([a-z0-9-]+)/i);
+      if (m && experienceById(m[1])) dispatch({ type: "openRequest", id: m[1] });
     });
     return () => {
       alive = false;

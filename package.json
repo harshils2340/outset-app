@@ -14,7 +14,8 @@
     "backend:sync": "npm run sync --prefix backend",
     "backend:discover": "npm run discover --prefix backend",
     "backend:enrich": "npm run enrich --prefix backend",
-    "backend:search": "npm run search --prefix backend"
+    "backend:search": "npm run search --prefix backend",
+    "backend:structure": "npm run structure --prefix backend"
   },
   "dependencies": {
     "react": "^19.1.0",

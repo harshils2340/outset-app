@@ -10,6 +10,7 @@ import { syncCatalogToApp, syncContactsToApp } from "./sync/contacts.ts";
 import { discoverAll, metroCoverage } from "./discover/osm.ts";
 import { enrichPending, rate } from "./enrich/run.ts";
 import { discoverSearch } from "./discover/searchapi.ts";
+import { readPendingStructures, readSiteStructure } from "./enrich/structure.ts";
 import { CITIES } from "./discover/cities.ts";
 
 import { db } from "./db/client.ts";
@@ -78,6 +79,26 @@ if (cmd === "search") {
   refreshAllScores();
   const total = (db.prepare("SELECT COUNT(*) AS n FROM operators WHERE origin != 'demo'").get() as { n: number }).n;
   console.log(`Done${stats.stoppedEarly ? " (stopped early: credits or budget)" : ""}. ${stats.queries} queries, ${stats.results} results, ${stats.inserted} new, ${stats.merged} merged into known operators, ${stats.skipped} skipped. Catalog now ${total} operators.`);
+  process.exit(0);
+}
+
+if (cmd === "structure") {
+  const limit = Number(process.argv[3] || 200);
+  const concurrency = Number(process.argv[4] || 6);
+  const only = process.argv[5];
+  if (only) {
+    const op = db.prepare("SELECT id, domain, website FROM operators WHERE domain = ?").get(only) as { id: string; domain: string; website: string } | undefined;
+    if (!op) { console.error("unknown domain"); process.exit(1); }
+    console.log(JSON.stringify(await readSiteStructure(op)));
+    console.log(JSON.stringify(db.prepare("SELECT name, detail, price_cents, price_unit FROM offerings WHERE operator_id = ? AND confidence = 'site'").all(op.id), null, 1));
+    console.log(JSON.stringify(db.prepare("SELECT fact_key, fact_value FROM facts WHERE operator_id = ? AND confidence = 'site' AND fact_key != 'service'").all(op.id), null, 1));
+    process.exit(0);
+  }
+  const results = await readPendingStructures(limit, concurrency);
+  refreshAllScores();
+  const ok = results.filter((r) => r.status === "ok").length;
+  const svc = results.reduce((n, r) => n + r.services, 0);
+  console.log(`Read ${ok}/${results.length} sites, ${svc} services. Run "npm run sync" to push to the app.`);
   process.exit(0);
 }
 
