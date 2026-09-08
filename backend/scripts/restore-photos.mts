@@ -5,13 +5,15 @@ import { randomUUID } from "node:crypto";
 import { db } from "../src/db/client.ts";
 
 type Op = { id: string; src: string; cover?: string; photos?: string[]; video?: string; videoEmbed?: string };
-const cat = JSON.parse(readFileSync(new URL("../../public/catalog.json", import.meta.url), "utf8")) as { operators: Op[] };
+const file = process.argv[2] || new URL("../../public/catalog.json", import.meta.url);
+const cat = JSON.parse(readFileSync(file, "utf8")) as { operators: Op[] };
 const byDomain = db.prepare("SELECT id, website FROM operators WHERE domain = ?");
 const hasCover = db.prepare("SELECT 1 FROM facts WHERE operator_id = ? AND fact_key = 'cover' LIMIT 1");
 const ins = db.prepare("INSERT INTO facts (id, operator_id, fact_key, fact_value, source_url, confidence) VALUES (?, ?, ?, ?, ?, 'site')");
 let restored = 0;
 let photos = 0;
-const tx = db.transaction(() => {
+db.exec("BEGIN");
+{
   for (const o of cat.operators) {
     if (!o.cover) continue;
     const domain = o.src.replace(/^https?:\/\//, "").replace(/^www\./, "").split("/")[0].toLowerCase();
@@ -25,6 +27,6 @@ const tx = db.transaction(() => {
     }
     restored += 1;
   }
-});
-tx();
+}
+db.exec("COMMIT");
 console.log(`restored covers for ${restored} operators, ${photos} photo rows`);
