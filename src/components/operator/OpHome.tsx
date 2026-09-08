@@ -1,6 +1,6 @@
 import { dateKey, startOfToday } from "../../lib/dates";
 import { fmtTime, money } from "../../lib/format";
-import { bookingTotal, relDay, setupChecks, fmtTotal } from "../../lib/operator";
+import { DAY_SHORT, bookingTotal, relDay, setupChecks, fmtTotal } from "../../lib/operator";
 import { Markup } from "../Markup";
 import { OD_ICONS, useOp, type OpPage } from "./opContext";
 import { BookingRow } from "./OpBookings";
@@ -24,6 +24,13 @@ export function OpHome() {
     const k = dateKey(d);
     return bookings.filter((b) => b.date >= k && b.date <= todayKey && b.status === "completed");
   })();
+  const weekDays = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(startOfToday());
+    d.setDate(d.getDate() + i);
+    const k = dateKey(d);
+    const items = bookings.filter((b) => b.date === k && (b.status === "accepted" || b.status === "completed" || b.status === "new"));
+    return { d, k, count: items.length, pending: items.filter((b) => b.status === "new").length, total: items.reduce((n, b) => n + bookingTotal(b), 0), off: p.hours[d.getDay()].closed || p.blockedDates.includes(k) };
+  });
   const checks = setupChecks(p);
   const done = checks.filter((c) => c.done).length;
   const hasSamples = p.bookings.some((b) => b.source === "sample");
@@ -39,6 +46,26 @@ export function OpHome() {
           {today.length ? <>{today.length} {today.length === 1 ? "booking" : "bookings"} today.</> : "No bookings today."}
         </p>
       </div>
+
+      {done < checks.length ? (
+        <section className="odcard odsetup">
+          <div className="odcardhead">
+            <h3>Finish your listing</h3>
+            <span className="odprogress"><i style={{ width: Math.round((done / checks.length) * 100) + "%" }} /></span>
+            <small className="odmuted">{done} of {checks.length}</small>
+            <button type="button" className="odlink" onClick={preview}>See what guests see</button>
+          </div>
+          <div className="odchecks">
+            {checks.filter((c) => !c.done).map((c) => (
+              <button type="button" key={c.id} className="odcheck" onClick={() => go(c.page as OpPage)}>
+                <span className="tick"><Markup html={OD_ICONS.check} /></span>
+                <span>{c.label}</span>
+                <Markup html={OD_ICONS.chev} />
+              </button>
+            ))}
+          </div>
+        </section>
+      ) : null}
 
       <div className="odstats">
         <button type="button" onClick={() => go("bookings")}><b>{fresh.length}</b><small>New requests</small></button>
@@ -103,20 +130,20 @@ export function OpHome() {
 
       <section className="odcard">
         <div className="odcardhead">
-          <h3>Finish your listing</h3>
-          <span className="odprogress"><i style={{ width: Math.round((done / checks.length) * 100) + "%" }} /></span>
-          <small className="odmuted">{done} of {checks.length}</small>
+          <h3>This week</h3>
+          <button type="button" className="odlink" onClick={() => go("calendar")}>Open calendar <Markup html={OD_ICONS.chev} /></button>
         </div>
-        <div className="odchecks">
-          {checks.map((c) => (
-            <button type="button" key={c.id} className={"odcheck" + (c.done ? " done" : "")} onClick={() => go(c.page as OpPage)}>
-              <span className="tick"><Markup html={OD_ICONS.check} /></span>
-              <span>{c.label}</span>
-              <Markup html={OD_ICONS.chev} />
+        <div className="odweek">
+          {weekDays.map((w, i) => (
+            <button type="button" key={w.k} className={"odweekday" + (i === 0 ? " today" : "") + (w.off ? " off" : "")} onClick={() => go("calendar")}>
+              <small>{i === 0 ? "Today" : DAY_SHORT[w.d.getDay()]}</small>
+              <b>{w.d.getDate()}</b>
+              <span>{w.off ? "Off" : w.count ? w.count + (w.count === 1 ? " booking" : " bookings") : "Open"}</span>
+              {w.total ? <em>{money(w.total)}</em> : null}
+              {w.pending ? <i>{w.pending} waiting</i> : null}
             </button>
           ))}
         </div>
-        <p className="odmuted">Listings with photos, prices on every option and a clear policy get booked far more often. <button type="button" className="odlink" onClick={preview}>See what guests see</button></p>
       </section>
     </div>
   );
