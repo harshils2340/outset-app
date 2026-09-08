@@ -195,15 +195,32 @@ export function WebHome({ onOpenApp, onOperators }: { onOpenApp: () => void; onO
       </div>
 
       <main className="wwrap">
-        {q.trim() ? (
+        {!state.catalogReady ? (
+          <>
+            {[0, 1].map((r) => (
+              <section className="wrail" key={r}>
+                <div className="wrailhead"><span className="skel skeltitle" /></div>
+                <div className="wrailrow">
+                  {Array.from({ length: 7 }, (_, i) => (
+                    <div className="wcard" key={i}>
+                      <div className="wart skel" />
+                      <div className="wbody"><span className="skel skelline" /><span className="skel skelline short" /></div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            ))}
+          </>
+        ) : null}
+        {state.catalogReady && q.trim() ? (
           <Rail title={`${pool.length} results for “${q.trim()}”${metro ? " in " + metro.name : ""}`} items={rankForRail(pool)} onOpen={openRequest} />
         ) : null}
-        {rails.map((r) => {
+        {state.catalogReady ? rails.map((r) => {
           const items = rankForRail(pool.filter((u) => u.art === r.art));
           const title = metro ? `${r.title} in ${metro.name}` : `Popular ${r.title.toLowerCase()}`;
           return <Rail key={r.art} title={title} items={items} onOpen={openRequest} />;
-        })}
-        {!rails.length ? (
+        }) : null}
+        {state.catalogReady && !rails.length ? (
           <div className="wempty">
             <b>Nothing in {catName(state.cat)} here yet.</b>
             <p>Try Anywhere, or another category. {CATMETA[state.cat]?.emptyBody || ""}</p>

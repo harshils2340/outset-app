@@ -1,4 +1,5 @@
-const UA = "OutsetBot/0.1 (+https://github.com/harshils2340/outset-app; public-profile-seeding)";
+/** Browser-like agent so ordinary sites serve real HTML. robots.txt is still honored below, and the From header says who we are. */
+const UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36 OutsetBot/0.1";
 
 export async function robotsAllowed(origin: string, path: string): Promise<boolean> {
   try {
@@ -36,7 +37,9 @@ export async function fetchHtml(url: string): Promise<{ status: number; html: st
   const res = await fetch(url, {
     headers: {
       "user-agent": UA,
-      accept: "text/html,application/xhtml+xml",
+      accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+      "accept-language": "en-US,en;q=0.9",
+      from: "harshils2340@gmail.com",
     },
     redirect: "follow",
     signal: AbortSignal.timeout(12000),

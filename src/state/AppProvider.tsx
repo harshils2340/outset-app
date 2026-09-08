@@ -29,6 +29,8 @@ export type AppState = {
   hydrated: boolean;
   /** Bumps when the generated catalog finishes loading so lists re-read getCatalog(). */
   catalogVersion: number;
+  /** False until the fetched catalog has been merged (or the fetch failed), so the UI can show skeletons instead of seeds. */
+  catalogReady: boolean;
   tab: TabId;
   screen: ScreenId;
   cat: CategoryId;
@@ -132,7 +134,7 @@ function reducer(state: AppState, action: Action): AppState {
     case "hydrate":
       return { ...state, hydrated: true, bookings: action.bookings, chats: action.chats };
     case "catalogLoaded":
-      return action.added ? { ...state, catalogVersion: state.catalogVersion + 1 } : state;
+      return { ...state, catalogReady: true, catalogVersion: action.added ? state.catalogVersion + 1 : state.catalogVersion };
     case "tab":
       return { ...state, tab: action.tab, screen: action.tab };
     case "goto":
@@ -301,6 +303,7 @@ function reducer(state: AppState, action: Action): AppState {
 const initial: AppState = {
   hydrated: false,
   catalogVersion: 0,
+  catalogReady: false,
   tab: "explore",
   screen: "explore",
   cat: "all",

@@ -381,12 +381,17 @@ export async function readPendingStructures(limit: number, concurrency = 6): Pro
   const out: StructureResult[] = [];
   let i = 0;
   let done = 0;
+  let errors = 0;
   const worker = async () => {
     while (i < queue.length) {
       const op = queue[i++];
       const r = await withDeadline(readSiteStructure(op), 150000, op.domain).catch((e) => ({ operatorId: op.id, domain: op.domain, pages: 0, services: 0, status: "error" as const, error: (e as Error).message }));
       out.push(r);
       done += 1;
+      if (r.status === "error" && errors < 12) {
+        errors += 1;
+        console.error(op.domain + ": " + r.error);
+      }
       if (done % 50 === 0) {
         const ok = out.filter((x) => x.status === "ok").length;
         const svc = out.reduce((n, x) => n + x.services, 0);

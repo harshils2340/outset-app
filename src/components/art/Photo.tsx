@@ -3,11 +3,24 @@ import type { ArtKind } from "../../data/types";
 import { Art } from "./Art";
 
 /**
- * Operator photo with the scene illustration as fallback. Photos are linked from the operator's own site,
- * so a broken or blocked image quietly falls back instead of leaving a hole.
+ * Operator photo. Shows a quiet shimmer until the image has actually loaded, then fades it in.
+ * The scene illustration only appears when there is no photo or it fails to load.
  */
 export function Photo({ src, kind, id, alt }: { src?: string; kind: ArtKind; id: string; alt: string }) {
-  const [broken, setBroken] = useState(false);
-  if (!src || broken) return <Art kind={kind} id={id} />;
-  return <img className="photo" src={src} alt={alt} loading="lazy" referrerPolicy="no-referrer" onError={() => setBroken(true)} />;
+  const [state, setState] = useState<"loading" | "ok" | "broken">("loading");
+  if (!src || state === "broken") return <Art kind={kind} id={id} />;
+  return (
+    <span className={"photowrap" + (state === "ok" ? " ready" : "")}>
+      <img
+        className="photo"
+        src={src}
+        alt={alt}
+        loading="lazy"
+        decoding="async"
+        referrerPolicy="no-referrer"
+        onLoad={(e) => setState((e.currentTarget as HTMLImageElement).naturalWidth >= 120 ? "ok" : "broken")}
+        onError={() => setState("broken")}
+      />
+    </span>
+  );
 }
