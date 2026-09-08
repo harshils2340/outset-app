@@ -43,7 +43,7 @@ function visibleText(html: string): { title: string; text: string } {
   return { title, text: lines.join("\n").slice(0, 14000) };
 }
 
-export async function crawlSite(website: string, maxPages = 40): Promise<CrawlResult> {
+export async function crawlSite(website: string, maxPages = 25): Promise<CrawlResult> {
   const start = website.startsWith("http") ? website : "https://" + website;
   const origin = new URL(start).origin;
   const home = await fetchHtml(start);
@@ -86,7 +86,7 @@ export async function crawlSite(website: string, maxPages = 40): Promise<CrawlRe
     const url = queue.shift()!;
     if (seen.has(url)) continue;
     seen.add(url);
-    await sleep(250);
+    await sleep(120);
     const res = await fetchHtml(url).catch(() => null);
     if (!res || res.status !== 200 || !res.html) continue;
     const t = visibleText(res.html);
@@ -95,4 +95,66 @@ export async function crawlSite(website: string, maxPages = 40): Promise<CrawlRe
     harvest(res.html, res.finalUrl || url);
   }
   return { pages, social, bookingVendor };
+}
+
+/* ---------- what the model actually reads ---------- */
+
+const PAGE_SCORE: [RegExp, number][] = [
+  [/price|pricing|rate|cost|fee/i, 6],
+  [/book|reserv|schedule|availability/i, 4],
+  [/faq|question|policy|policies|waiver|rule|require|safety|terms|cancel|refund|weather/i, 5],
+  [/tour|trip|rental|rent|charter|lesson|class|package|experience|adventure|session|ride|flight|jump|cruise|room|lane/i, 3],
+  [/service|activit|what-we-offer|offer/i, 3],
+  [/about|hour|contact|location|direction|find-us/i, 2],
+  [/blog|news|gallery|photo|video|review|testimonial|career|job|team|staff|press|gift|shop|cart|privacy|sitemap|login/i, -6],
+];
+
+export function estimateTokens(text: string): number {
+  return Math.ceil(text.length / 3.8);
+}
+
+/**
+ * Pick the handful of pages that carry prices, rules and policies, drop lines that repeat across pages
+ * (menus, footers, cookie banners), and cap the total so one site costs a few thousand tokens, not fifty.
+ */
+export function selectPages(pages: CrawledPage[], opts: { maxPages?: number; maxChars?: number; perPageChars?: number } = {}): CrawledPage[] {
+  const maxPages = opts.maxPages ?? 7;
+  const maxChars = opts.maxChars ?? 30000;
+  const perPageChars = opts.perPageChars ?? 8000;
+  if (!pages.length) return [];
+  // Lines seen on 2+ pages are chrome, not content.
+  const counts = new Map<string, number>();
+  for (const pg of pages) for (const line of new Set(pg.text.split("\n"))) counts.set(line, (counts.get(line) || 0) + 1);
+  const dedupe = (t: string) =>
+    t
+      .split("\n")
+      .filter((line) => line.length >= 3 && (pages.length < 2 || (counts.get(line) || 0) < 2 || /\$\s?\d/.test(line)))
+      .filter((line) => !/^(home|menu|close|search|login|sign in|cart|©|copyright|all rights reserved|skip to|cookie|accept|privacy policy|terms)/i.test(line))
+      .join("\n");
+  const scored = pages.map((pg, i) => {
+    let score = i === 0 ? 3 : 0;
+    const key = pg.url + " " + pg.title;
+    for (const [re, n] of PAGE_SCORE) if (re.test(key)) score += n;
+    const money = (pg.text.match(/\$\s?\d/g) || []).length;
+    score += Math.min(6, money);
+    if (/\b(must be|minimum age|years old|weight|licen[cs]e|cancel|refund|deposit|waiver)\b/i.test(pg.text)) score += 3;
+    return { pg, score };
+  });
+  scored.sort((a, b) => b.score - a.score);
+  const out: CrawledPage[] = [];
+  let used = 0;
+  for (const { pg, score } of scored) {
+    if (out.length >= maxPages || score < 0) break;
+    const text = dedupe(pg.text).slice(0, perPageChars);
+    if (text.length < 120) continue;
+    if (used + text.length > maxChars) {
+      const room = maxChars - used;
+      if (room < 1500) break;
+      out.push({ ...pg, text: text.slice(0, room) });
+      break;
+    }
+    out.push({ ...pg, text });
+    used += text.length;
+  }
+  return out.length ? out : [{ ...pages[0], text: dedupe(pages[0].text).slice(0, perPageChars) }];
 }

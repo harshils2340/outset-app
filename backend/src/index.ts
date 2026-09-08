@@ -8,7 +8,7 @@ import { scrapePending } from "./scrape/run.ts";
 import { refreshAllScores } from "./lib/completeness.ts";
 import { syncCatalogToApp, syncContactsToApp } from "./sync/contacts.ts";
 import { discoverAll, metroCoverage } from "./discover/osm.ts";
-import { enrichPending, rate } from "./enrich/run.ts";
+import { budgetUsd, collectBatch, dryRun, enrichPending, rate, spentUsd, submitBatch } from "./enrich/run.ts";
 import { discoverSearch } from "./discover/searchapi.ts";
 import { readPendingStructures, readSiteStructure } from "./enrich/structure.ts";
 import { collectPhotos, photosPending } from "./enrich/images.ts";
@@ -147,14 +147,35 @@ if (cmd === "structure") {
 }
 
 if (cmd === "enrich") {
+  // enrich [limit] [concurrency]            live calls, stops at the budget
+  // enrich [limit] --dry                    crawl and trim only, print tokens and cost, no key needed
+  // enrich [limit] --batch                  submit an OpenAI batch (half price), prints the batch id
+  // enrich --collect=<batch id>             store a finished batch
   const limit = Number(process.argv[3] || 10);
-  const concurrency = Number(process.argv[4] || 3);
+  const concurrency = Number(process.argv.find((a) => /^\d+$/.test(a) && a !== process.argv[3]) || 3);
+  const collect = process.argv.find((a) => a.startsWith("--collect="))?.split("=")[1];
+  if (collect) {
+    const r = await collectBatch(collect);
+    refreshAllScores();
+    console.log(`Batch ${collect}: ${r.status}. Stored ${r.stored}, failed ${r.failed}, spent $${r.usd.toFixed(2)}. Total spent $${spentUsd().toFixed(2)} of $${budgetUsd().toFixed(2)}.`);
+    process.exit(0);
+  }
+  if (process.argv.includes("--dry")) {
+    const r = await dryRun(limit, concurrency);
+    console.log(`Dry run: ${r.sites} sites, ${r.tokens} tokens, avg ${Math.round(r.tokens / Math.max(1, r.sites))} per site. Live ~$${r.liveUsd.toFixed(2)}, batch ~$${r.batchUsd.toFixed(2)}.`);
+    process.exit(0);
+  }
+  if (process.argv.includes("--batch")) {
+    const r = await submitBatch(limit, concurrency);
+    console.log(r.batchId ? `Submitted batch ${r.batchId}: ${r.ops} sites, ~$${r.estUsd.toFixed(2)}. Collect later with: npm run enrich -- --collect=${r.batchId}` : "Nothing to submit within budget.");
+    process.exit(0);
+  }
   const results = await enrichPending(limit, concurrency);
   refreshAllScores();
   const ok = results.filter((r) => r.status === "ok").length;
   const usage = results.reduce((a, r) => ({ i: a.i + (r.usage?.input || 0), o: a.o + (r.usage?.output || 0) }), { i: 0, o: 0 });
   const cost = (usage.i * rate().in + usage.o * rate().out) / 1e6;
-  console.log(`Enriched ${ok}/${results.length}. Tokens in=${usage.i} out=${usage.o}. Approx cost $${cost.toFixed(2)}. Run "npm run sync" to push to the app.`);
+  console.log(`Enriched ${ok}/${results.length}. Tokens in=${usage.i} out=${usage.o}. This run $${cost.toFixed(2)}, total $${spentUsd().toFixed(2)} of $${budgetUsd().toFixed(2)}. Run "npm run sync" to push to the app.`);
   process.exit(0);
 }
 

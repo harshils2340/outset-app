@@ -116,3 +116,15 @@ CREATE INDEX IF NOT EXISTS idx_operators_metro ON operators(metro_id);
 CREATE INDEX IF NOT EXISTS idx_operators_category ON operators(category_id);
 CREATE INDEX IF NOT EXISTS idx_offerings_op ON offerings(operator_id);
 CREATE INDEX IF NOT EXISTS idx_facts_op ON facts(operator_id);
+
+-- Every paid extraction call, so the budget cap is enforced across runs and batches.
+CREATE TABLE IF NOT EXISTS extract_spend (
+  id TEXT PRIMARY KEY,
+  operator_id TEXT NOT NULL,
+  model TEXT NOT NULL,
+  input INTEGER NOT NULL DEFAULT 0,
+  output INTEGER NOT NULL DEFAULT 0,
+  usd REAL NOT NULL DEFAULT 0,
+  batch_id TEXT,
+  at TEXT NOT NULL
+);
