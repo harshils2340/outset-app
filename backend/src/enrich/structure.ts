@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { lookup } from "node:dns/promises";
 import { load } from "cheerio";
 import { db, nowIso } from "../db/client.ts";
 import { fetchHtml, sleep, withDeadline } from "../scrape/fetch.ts";
@@ -87,6 +88,10 @@ function consolidate(found: Map<string, Found>): Found[] {
     }
     if (!cur.detail && f.detail) cur.detail = f.detail;
     if (f.desc && (!cur.desc || (!/\(\d{3}\)|contact us|sales/i.test(f.desc) && f.desc.length > cur.desc.length))) cur.desc = f.desc;
+    if (f.photo && (!cur.photo || (cur.photoWeak && !f.photoWeak) || (!f.photoWeak && f.name.length < cur.name.length))) {
+      cur.photo = f.photo;
+      cur.photoWeak = f.photoWeak;
+    }
     if (f.variants?.length) {
       cur.variants = cur.variants || [];
       for (const v of f.variants) if (!cur.variants.some((x) => x.label.toLowerCase() === v.label.toLowerCase())) cur.variants.push(v);
@@ -100,6 +105,9 @@ function consolidate(found: Map<string, Found>): Found[] {
     })
     .slice(0, 14);
 }
+
+/** GoDaddy Website Builder edge (AWS Global Accelerator). Connect timeouts for our IP since the big crawl. */
+const BLOCKED_HOSTS = new Set(["76.223.105.230", "13.248.243.5"]);
 
 export type StructureResult = {
   operatorId: string;
@@ -132,7 +140,61 @@ function titleCase(s: string): string {
 }
 
 type Variant = { label: string; price: number };
-type Found = { name: string; detail: string | null; price: number | null; unit: string | null; url: string; variants?: Variant[]; desc?: string | null };
+type Found = { name: string; detail: string | null; price: number | null; unit: string | null; url: string; variants?: Variant[]; desc?: string | null; photo?: string | null; photoWeak?: boolean };
+
+const IMG_BAD = /logo|icon|sprite|badge|award|payment|visa|paypal|trip-?advisor|google-?review|reviews?\b|rating|yelp|facebook|instagram|arrow|button|btn|placeholder|spinner|pixel|avatar|map|flag|star|coupon|gift|calendar|phone|mail|social|header|branding|pattern|texture|blank|spacer|1x1|favicon|apple-touch|widget|weather|visible|hidden|overlay|\bbg\b|background|shape|divider|line\.|dot\.|loader|loading|\.(svg|gif|ico)(\?|$)/i;
+
+/** Best photo near an element: inside its card, or the first real image after the heading. */
+export function photoNear($: ReturnType<typeof load>, el: any, pageUrl: string, allowPageFallback = true): string | null {
+  const pick = (imgs: any): string | null => {
+    let best: string | null = null;
+    imgs.each((_: number, img: any) => {
+      if (best) return;
+      const src = $(img).attr("data-src") || $(img).attr("data-lazy-src") || $(img).attr("src") || "";
+      const srcset = $(img).attr("data-srcset") || $(img).attr("srcset") || "";
+      const cand = srcset
+        ? srcset.split(",").map((p) => p.trim().split(/\s+/)).sort((a, b) => (parseInt(b[1] || "0") || 0) - (parseInt(a[1] || "0") || 0))[0][0]
+        : src;
+      if (!cand) return;
+      const w = Number(String($(img).attr("width") || "").replace(/[^0-9]/g, "")) || 0;
+      if (w && w < 200) return;
+      try {
+        const abs = new URL(cand, pageUrl).toString();
+        if (IMG_BAD.test(abs) || IMG_BAD.test($(img).attr("alt") || "")) return;
+        best = abs;
+      } catch {
+        /* ignore */
+      }
+    });
+    return best;
+  };
+  // 0. A picture inside the element itself, as with image links.
+  const inside = pick($(el).find("img"));
+  if (inside) return inside;
+  // 1. The heading's own card or column.
+  const card = $(el).closest("li, article, .card, [class*=card], [class*=item], [class*=service], [class*=product]");
+  // WordPress wraps whole pages in <article>, so only trust a "card" that holds a handful of images.
+  if (card.length && card.find("img").length <= 6) {
+    const inCard = pick(card.find("img"));
+    if (inCard) return inCard;
+  }
+  // 2. Walk up a few levels: a row that holds the heading in one column and the picture in another.
+  let node = $(el).parent();
+  for (let depth = 0; depth < 4 && node.length && !node.is("body"); depth++) {
+    const imgs = node.find("img");
+    if (imgs.length >= 1 && imgs.length <= 6) {
+      const found = pick(imgs);
+      if (found) return found;
+    }
+    if (imgs.length > 6) break;
+    node = node.parent();
+  }
+  if (!allowPageFallback) return null;
+  // 3. The page's first real content image, when the page itself is about this service.
+  const main = $("main, article, [role=main], #content, .content, body").first();
+  const rest = main.find("img").filter((_, img) => !$(img).closest("header, nav, footer, aside").length);
+  return pick(rest.slice(0, 8));
+}
 type Addon = { name: string; price: number; url: string };
 
 const ADDON_WORDS = /additional|extra|add[- ]?on|upgrade|rider|passenger|photo|video|gopro|camera|fuel|gas|cooler|insurance|damage|deposit|guide|lesson|delivery|late|tax|gratuity|tip|snorkel gear|wetsuit|dry bag|tube|towel/i;
@@ -160,7 +222,7 @@ function headingAbove($: ReturnType<typeof load>, el: any): string | null {
 
 /** Read price tables and "label - $price" lists into variants and add-ons attached to the nearest service heading. */
 function harvestPrices($: ReturnType<typeof load>, url: string, out: Map<string, Found>, addons: Map<string, Addon>) {
-  const attach = (heading: string | null, rawLabel: string, price: number) => {
+  const attach = (heading: string | null, rawLabel: string, price: number, el?: any) => {
     // Above this it is almost always a boat, a board or a membership for sale, not a booking.
     if (price > 5000 || price < 5) return;
     // "Save $15", "$10 off", deposits and coupons are not things a guest books.
@@ -176,6 +238,13 @@ function harvestPrices($: ReturnType<typeof load>, url: string, out: Map<string,
     const key = svc.toLowerCase();
     const cur = out.get(key) || { name: titleCase(svc), detail: null, price: null, unit: null, url };
     cur.variants = cur.variants || [];
+    if (el && (!cur.photo || cur.photoWeak)) {
+      const near = photoNear($, el, url, false);
+      if (near) {
+        cur.photo = near;
+        cur.photoWeak = false;
+      }
+    }
     if (!cur.variants.some((v) => v.label.toLowerCase() === label.toLowerCase())) cur.variants.push({ label, price });
     if (cur.price == null || price < cur.price) cur.price = price;
     cur.url = url;
@@ -204,7 +273,7 @@ function harvestPrices($: ReturnType<typeof load>, url: string, out: Map<string,
           if (!PRICE_CELL.test(cell)) return;
           const col = header[i + shift] || header[i] || "";
           const label = clean(col.replace(/price\s*\/?\s*/i, "").replace(/\*/g, "")) || "Standard";
-          attach(r[0], label, toNum(cell.match(PRICE_CELL)![1]));
+          attach(r[0], label, toNum(cell.match(PRICE_CELL)![1]), table);
         });
       }
       return;
@@ -215,7 +284,7 @@ function harvestPrices($: ReturnType<typeof load>, url: string, out: Map<string,
       const labels = rows[i];
       const prices = rows[i + 1];
       if (labels.length === prices.length && prices.every((c) => PRICE_CELL.test(c)) && !labels.some((c) => PRICE_CELL.test(c))) {
-        labels.forEach((l, j) => attach(heading, l, toNum(prices[j].match(PRICE_CELL)![1])));
+        labels.forEach((l, j) => attach(heading, l, toNum(prices[j].match(PRICE_CELL)![1]), table));
         usedA = true;
         i++;
       }
@@ -225,12 +294,14 @@ function harvestPrices($: ReturnType<typeof load>, url: string, out: Map<string,
     for (const r of rows) {
       if (r.length < 2) continue;
       const priceIdx = r.findIndex((c) => PRICE_CELL.test(c));
-      if (priceIdx > 0 && !PRICE_CELL.test(r[0]) && r[0].length <= 48) attach(heading, r[0], toNum(r[priceIdx].match(PRICE_CELL)![1]));
+      if (priceIdx > 0 && !PRICE_CELL.test(r[0]) && r[0].length <= 48) attach(heading, r[0], toNum(r[priceIdx].match(PRICE_CELL)![1]), table);
     }
   });
 
   $("li, p, dt, dd, span, div, h3, h4, a").each((_, el) => {
     if ($(el).children().length > 6) return;
+    // Only the innermost element that holds the price. Wrappers around several cards would blur services together.
+    if ($(el).children().toArray().some((c) => $(c).text().includes("$") && $(c).children().length > 0)) return;
     const raw = spaced($, $(el).clone().children("ul, ol, table").remove().end());
     const lines = raw.split(/\n+/).map((l) => clean(l)).filter((l) => l.length >= 4 && l.length <= 140 && (l.match(/\$/g) || []).length === 1);
     if (lines.length > 6) return;
@@ -242,7 +313,7 @@ function harvestPrices($: ReturnType<typeof load>, url: string, out: Map<string,
     if (!after || before.length < 3 || before.length > 48) continue;
     const label = before;
     if (!SERVICE_WORDS.test(label) && !/hour|hr|min|day|person|adult|child|kid|rider|ride|trip|flight|jump|game|lane|session|tour|package|standard|premium|private|group/i.test(label) && !isAddon(label)) continue;
-    attach(headingAbove($, el), label, toNum(after[1]));
+    attach(headingAbove($, el), label, toNum(after[1]), el);
     }
   });
 }
@@ -250,14 +321,16 @@ function harvestPrices($: ReturnType<typeof load>, url: string, out: Map<string,
 const EMAIL_RE = /[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/gi;
 const EMAIL_SKIP = /example|sentry|wixpress|godaddy|squarespace|wordpress|w3\.org|schema\.org|domain\.com|email\.com|yourdomain|noreply|no-reply|donotreply|\.(png|jpg|jpeg|gif|svg|webp)$/i;
 
-function harvest(html: string, url: string, out: Map<string, Found>, links: Set<string>, meta: { waiver?: string; book?: string; phone?: string; hours?: string; email?: string }, addons: Map<string, Addon>) {
+function harvest(html: string, url: string, out: Map<string, Found>, links: Set<string>, meta: { waiver?: string; book?: string; phone?: string; hours?: string; email?: string; desc?: string }, addons: Map<string, Addon>) {
   const $ = load(html);
   const origin = new URL(url).origin;
   $("script, style, noscript, svg").remove();
   harvestPrices($, url, out, addons);
 
   $("a[href]").each((_, el) => {
-    const text = clean($(el).text());
+    // Image links ("select a picture for prices") carry their name in the image's alt text.
+    const imgIn = $(el).find("img").first();
+    const text = clean($(el).text()) || (imgIn.length ? clean(imgIn.attr("alt") || imgIn.attr("title") || "") : "");
     const href = $(el).attr("href") || "";
     let abs: URL | null = null;
     try {
@@ -277,7 +350,7 @@ function harvest(html: string, url: string, out: Map<string, Found>, links: Set<
     links.add(abs.origin + abs.pathname.replace(/\/$/, ""));
     if (text.length >= 4 && text.length <= 60 && SERVICE_WORDS.test(text) && !NOT_SERVICE.test(text)) {
       const key = text.toLowerCase();
-      if (!out.has(key)) out.set(key, { name: titleCase(text), detail: null, price: null, unit: null, url });
+      if (!out.has(key)) out.set(key, { name: titleCase(text), detail: null, price: null, unit: null, url, photo: photoNear($, el, url, false) });
     }
   });
 
@@ -289,6 +362,17 @@ function harvest(html: string, url: string, out: Map<string, Found>, links: Set<
     const near = clean($(el).nextAll().slice(0, 3).text()).slice(0, 240);
     const m = near.match(PRICE_NEAR) || text.match(PRICE_NEAR);
     const cur = out.get(key) || { name: titleCase(text), detail: null, price: null, unit: null, url };
+    if (!cur.photo) {
+      const strong = photoNear($, el, url, false);
+      if (strong) cur.photo = strong;
+      else {
+        const weak = photoNear($, el, url, true);
+        if (weak) {
+          cur.photo = weak;
+          cur.photoWeak = true;
+        }
+      }
+    }
     {
       // Best paragraph under this heading: describes the activity, not a sales pitch, no phone numbers.
       const candidates = $(el).nextAll("p, div").slice(0, 4).map((_, n) => clean($(n).text())).get().filter((d) => d.length >= 60);
@@ -306,6 +390,13 @@ function harvest(html: string, url: string, out: Map<string, Found>, links: Set<
     out.set(key, cur);
   });
 
+  if (!meta.desc) {
+    const metaDesc = clean($('meta[property="og:description"]').attr("content") || $('meta[name="description"]').attr("content") || "");
+    const para = $("main p, article p, section p, p").filter((_, n) => clean($(n).text()).length >= 90).first();
+    const first = para.length ? clean(para.text()) : "";
+    const pick = [metaDesc, first].filter((d) => d && !/cookie|javascript|browser|copyright|all rights|\(\d{3}\)|call us|contact us/i.test(d)).sort((a, b) => b.length - a.length)[0];
+    if (pick) meta.desc = pick.slice(0, 420).replace(/\s+\S*$/, "");
+  }
   if (!meta.email) {
     const found = (html.match(EMAIL_RE) || []).map((e) => e.toLowerCase()).filter((e) => !EMAIL_SKIP.test(e));
     const host = new URL(url).hostname.replace(/^www\./, "");
@@ -323,12 +414,26 @@ export async function readSiteStructure(op: { id: string; domain: string; websit
   const base: StructureResult = { operatorId: op.id, domain: op.domain, pages: 0, services: 0, status: "ok" };
   try {
     const start = op.website.startsWith("http") ? op.website : "https://" + op.website;
-    const home = await fetchHtml(start);
+    // Hosts that drop our connections after heavy crawling. Skip in milliseconds instead of waiting out a timeout.
+    try {
+      const { address } = await lookup(new URL(start).hostname);
+      if (BLOCKED_HOSTS.has(address)) return { ...base, status: "error", error: "host blocks crawler: " + address };
+    } catch {
+      return { ...base, status: "error", error: "dns lookup failed" };
+    }
+    let home;
+    try {
+      home = await fetchHtml(start);
+    } catch (e) {
+      // One retry after a pause covers the DNS hiccups that come with many parallel lookups.
+      await sleep(1500);
+      home = await fetchHtml(start);
+    }
     if (home.status !== 200 || !home.html) return { ...base, status: "no_pages" };
     const found = new Map<string, Found>();
     const links = new Set<string>();
     const addons = new Map<string, Addon>();
-    const meta: { waiver?: string; book?: string; phone?: string; hours?: string; email?: string } = {};
+    const meta: { waiver?: string; book?: string; phone?: string; hours?: string; email?: string; desc?: string } = {};
     harvest(home.html, home.finalUrl || start, found, links, meta, addons);
     base.pages = 1;
     // Breadth-first over the site's own pages, likely service and pricing pages first, capped per site.
@@ -354,6 +459,9 @@ export async function readSiteStructure(op: { id: string; domain: string; websit
       enqueue(more);
     }
 
+    if (process.env.STRUCTURE_DEBUG) {
+      for (const f of found.values()) console.error("FOUND", JSON.stringify({ name: f.name, photo: f.photo, weak: f.photoWeak, url: f.url, variants: f.variants?.length || 0 }));
+    }
     const now = nowIso();
     db.prepare("DELETE FROM offerings WHERE operator_id = ? AND confidence = 'site'").run(op.id);
     db.prepare("DELETE FROM facts WHERE operator_id = ? AND confidence = 'site'").run(op.id);
@@ -377,9 +485,11 @@ export async function readSiteStructure(op: { id: string; domain: string; websit
       }
       insFact.run(randomUUID(), op.id, "service", f.name.slice(0, 80), f.url);
       if (f.desc) insFact.run(randomUUID(), op.id, "service_desc", JSON.stringify({ name: f.name.slice(0, 80), desc: f.desc }), f.url);
+      if (f.photo) insFact.run(randomUUID(), op.id, "service_photo", JSON.stringify({ name: f.name.slice(0, 80), url: f.photo }), f.url);
       base.services += 1;
     }
     for (const a of [...addons.values()].slice(0, 8)) insFact.run(randomUUID(), op.id, "addon", a.name.slice(0, 60) + " $" + a.price, a.url);
+    if (meta.desc) insFact.run(randomUUID(), op.id, "site_desc", meta.desc, start);
     if (meta.waiver) insFact.run(randomUUID(), op.id, "waiver_url", meta.waiver, start);
     if (meta.book) insFact.run(randomUUID(), op.id, "booking_url", meta.book, start);
     if (meta.hours) insFact.run(randomUUID(), op.id, "hours_text", meta.hours, start);
@@ -391,7 +501,9 @@ export async function readSiteStructure(op: { id: string; domain: string; websit
     ).run(randomUUID(), op.id, start, now, "Service names, waiver and booking links read from the site's own navigation and headings.");
     return base;
   } catch (e) {
-    return { ...base, status: "error", error: (e as Error).message.slice(0, 200) };
+    const cause = (e as { cause?: { code?: string; message?: string } }).cause;
+    const detail = cause ? " [" + (cause.code || cause.message || "") + "]" : "";
+    return { ...base, status: "error", error: ((e as Error).message + detail).slice(0, 200) };
   }
 }
 
@@ -401,7 +513,7 @@ export function pendingStructure(limit: number): { id: string; domain: string; w
       `SELECT id, domain, website FROM operators o
        WHERE origin != 'demo' AND website IS NOT NULL
          AND NOT EXISTS (SELECT 1 FROM sources s WHERE s.operator_id = o.id AND s.extractor = 'site-structure')
-       ORDER BY (metro_id IS NULL), review_count DESC NULLS LAST, name ASC
+       ORDER BY random()
        LIMIT ?`,
     )
     .all(limit) as { id: string; domain: string; website: string }[];
@@ -413,12 +525,19 @@ export async function readPendingStructures(limit: number, concurrency = 6): Pro
   let i = 0;
   let done = 0;
   let errors = 0;
-  const worker = async () => {
+  const worker = async (w: number) => {
+    await sleep(w * 400);
     while (i < queue.length) {
       const op = queue[i++];
       const r = await withDeadline(readSiteStructure(op), 40000, op.domain).catch((e) => ({ operatorId: op.id, domain: op.domain, pages: 0, services: 0, status: "error" as const, error: (e as Error).message }));
       out.push(r);
       done += 1;
+      if (r.status !== "ok") {
+        // Mark the attempt so the next run moves on instead of retrying the same dead or blocked sites first.
+        db.prepare(
+          "INSERT INTO sources (id, operator_id, url, fetched_at, http_status, extractor, robots_allowed, note) VALUES (?, ?, ?, ?, 0, 'site-structure', 1, ?)",
+        ).run(randomUUID(), op.id, op.website, nowIso(), (r.status + ": " + (r.error || "no readable pages")).slice(0, 200));
+      }
       if (r.status === "error" && errors < 12) {
         errors += 1;
         console.error(op.domain + ": " + r.error);
@@ -430,6 +549,6 @@ export async function readPendingStructures(limit: number, concurrency = 6): Pro
       }
     }
   };
-  await Promise.all(Array.from({ length: Math.min(concurrency, queue.length) }, worker));
+  await Promise.all(Array.from({ length: Math.min(concurrency, queue.length) }, (_, w) => worker(w)));
   return out;
 }

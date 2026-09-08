@@ -164,10 +164,19 @@ function toCatalogItem(r: CatalogRow): Record<string, unknown> {
           /* ignore */
         }
       }
-      const groups = new Map<string, { name: string; desc: string | null; variants: { label: string; price: number | null; per?: string; optionIdx: number }[] }>();
+      const photos = new Map<string, string>();
+      for (const raw of pick("service_photo")) {
+        try {
+          const d = JSON.parse(raw) as { name: string; url: string };
+          photos.set(d.name.toLowerCase(), d.url);
+        } catch {
+          /* ignore */
+        }
+      }
+      const groups = new Map<string, { name: string; desc: string | null; photo?: string; variants: { label: string; price: number | null; per?: string; optionIdx: number }[] }>();
       offerings.forEach((o, idx) => {
         const key = o.name.toLowerCase();
-        const g = groups.get(key) || { name: o.name, desc: descs.get(key) || null, variants: [] };
+        const g = groups.get(key) || { name: o.name, desc: descs.get(key) || null, photo: photos.get(key) || undefined, variants: [] };
         g.variants.push({
           label: o.duration || o.detail || "Standard",
           price: o.price_cents == null ? null : o.price_cents / 100,
@@ -187,7 +196,7 @@ function toCatalogItem(r: CatalogRow): Record<string, unknown> {
       .filter((a): a is { name: string; detail: string; price: number } => !!a)
       .slice(0, 6),
     gap: pick("published_gap")[0] || DEFAULT_GAP,
-    blurb: pick("description")[0] || pick("one_line")[0] || undefined,
+    blurb: pick("description")[0] || pick("site_desc")[0] || pick("one_line")[0] || undefined,
     cover: pick("cover")[0] || undefined,
     photos: [...new Set(pick("photo"))].slice(0, 8),
     lat: r.lat ?? undefined,
