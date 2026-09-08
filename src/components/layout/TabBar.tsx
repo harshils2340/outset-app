@@ -11,7 +11,8 @@ const TABS = [
 
 export function TabBar() {
   const { state, setTab } = useApp();
-  if (state.screen === "chat") return null;
+  // The operator dashboard has its own bottom nav.
+  if (state.screen === "chat" || state.screen === "operator") return null;
   const inboxCount = Object.keys(state.chats).length;
 
   return (

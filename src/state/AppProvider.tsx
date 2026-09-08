@@ -21,6 +21,7 @@ import { contactFor, experienceById, fromPrice, initials } from "../lib/catalog"
 import { loadRemoteCatalog } from "../lib/catalogLoad";
 import { companyGreeting, companyReply, companySuggestions } from "../lib/companyAgent";
 import { priceFor, priceUnclaimed } from "../lib/pricing";
+import { applyStoredProfiles } from "../lib/operator";
 import { loadBookings, loadChats, saveBookings, saveChats } from "../lib/storage";
 
 export const DATES = makeDates(10);
@@ -55,6 +56,7 @@ export type AppState = {
 type Action =
   | { type: "hydrate"; bookings: Booking[]; chats: Record<string, ChatMessage[]> }
   | { type: "catalogLoaded"; added: number }
+  | { type: "catalogTouched" }
   | { type: "tab"; tab: TabId }
   | { type: "goto"; tab: TabId }
   | { type: "cat"; cat: CategoryId }
@@ -138,6 +140,8 @@ function reducer(state: AppState, action: Action): AppState {
       return { ...state, hydrated: true, bookings: action.bookings, chats: action.chats };
     case "catalogLoaded":
       return { ...state, catalogReady: true, catalogVersion: action.added ? state.catalogVersion + 1 : state.catalogVersion };
+    case "catalogTouched":
+      return { ...state, catalogVersion: state.catalogVersion + 1 };
     case "tab":
       return { ...state, tab: action.tab, screen: action.tab };
     case "goto":
@@ -362,6 +366,8 @@ type Api = {
   ensureThread: (id: string) => void;
   sendChat: (text: string) => void;
   goto: (tab: TabId) => void;
+  /** Re-render catalog lists after an operator saves edits. */
+  touchCatalog: () => void;
 };
 
 const Ctx = createContext<Api | null>(null);
@@ -374,7 +380,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     let alive = true;
     loadRemoteCatalog().then((added) => {
       if (!alive) return;
-      dispatch({ type: "catalogLoaded", added });
+      // Claimed operators' edits (prices, photos, published switch) layer over the scraped records.
+      const edited = applyStoredProfiles();
+      dispatch({ type: "catalogLoaded", added: added + edited });
       // Deep link: #o=<operator id> opens that listing directly.
       const m = window.location.hash.match(/^#o=([a-z0-9-]+)/i);
       if (m && experienceById(m[1])) dispatch({ type: "openRequest", id: m[1] });
@@ -435,6 +443,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       ensureThread: (id) => dispatch({ type: "ensureThread", id }),
       sendChat: (text) => dispatch({ type: "sendChat", text }),
       goto: (tab) => dispatch({ type: "goto", tab }),
+      touchCatalog: () => dispatch({ type: "catalogTouched" }),
     }),
     [state, listing, thread, reqTarget],
   );

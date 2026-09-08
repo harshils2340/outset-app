@@ -37,8 +37,14 @@ Tabs: Explore, Trips, Inbox, Account.
 Stacked screens: listing detail, checkout confirm, operator chat.
 Sheets: review-and-pay, Instant Book for catalog operators, metro picker.
 
-Desktop: marketing pitch + phone frame (`.stage`, `.device`, `.screen`).
+Desktop: the guest site copies airbnb.com (`src/components/web/`). The phone frame (`.stage`, `.device`, `.screen`) is reachable through "Open the app".
 Mobile: the frame goes away and the app is full viewport.
+
+## Operator side
+
+`src/components/operator/` is the operator dashboard: the Uber Eats merchant app plus Booksy. Sign in or claim at `#claim=<operator id>` (the code is shown on screen, nothing is sent yet). Pages: Home, Bookings (Accept / Decline, Instant Book switch, detail drawer), Calendar (week view, block slots and days off), Services (menu editor), Availability (hours, notice, window, days off), Listing (publish switch, photos, contact, policies), Assistant (what Otto knows, test chat), Payouts, Settings. On desktop it is a full page with a sidebar. In the phone frame the same screens render with a bottom tab bar (`compact`).
+
+Everything the operator edits is one `OperatorProfile` in `src/lib/operator.ts`, saved on-device and layered over the catalog record through `setOperatorOverride` in `src/lib/catalog.ts`, so price and photo edits show on the guest listing and the publish switch pulls the listing from rails and search. Guest bookings made in the same browser appear in the operator feed. Sample bookings are tagged Sample and removable. Payments, SMS, email and calendar sync are deferred on purpose: the dashboard says so where it matters.
 
 ## Where to change things
 
@@ -56,7 +62,9 @@ Mobile: the frame goes away and the app is full viewport.
 | Agent answers | `src/lib/agent.ts` |
 | Availability math | `src/lib/inventory.ts` |
 | Fees and totals | `src/lib/pricing.ts` |
-| Visual system | `src/styles/app.css` |
+| Visual system | `src/styles/app.css` (guest), `src/styles/operator.css` (operator dashboard) |
+| Operator dashboard data, defaults, persistence | `src/lib/operator.ts` |
+| Operator dashboard screens | `src/components/operator/` |
 | Screen flow | `src/state/AppProvider.tsx` |
 | Operator profiles, scrape, outreach | `backend/` |
 

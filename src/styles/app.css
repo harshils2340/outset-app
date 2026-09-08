@@ -891,11 +891,6 @@ a.crow:active{background:var(--surface-2);}
 
 .wop{min-height:100vh;}
 .wopertag{font-size:13px;font-weight:500;color:var(--ink-faint);margin-left:4px;}
-.wopwrap{max-width:1100px;margin:0 auto;padding:40px;display:grid;grid-template-columns:1fr 440px;gap:56px;align-items:start;}
-.wopintro h1{font-family:var(--f-serif);font-size:40px;line-height:1.05;letter-spacing:-.02em;margin:20px 0 14px;}
-.wopintro p{font-size:17px;line-height:1.5;color:var(--ink-soft);max-width:44ch;}
-.woppanel{border:1px solid var(--line);border-radius:24px;overflow:hidden;box-shadow:0 12px 40px rgba(0,0,0,.12);background:#fff;min-height:720px;}
-.woppanel .spacer{display:none;}
 .stage{grid-template-columns:1fr;justify-items:center;position:relative;}
 .stageback{position:absolute;top:24px;left:24px;}
 @media (max-width:1024px){.stageback{display:none;}}

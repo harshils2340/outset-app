@@ -4,6 +4,7 @@ import { refreshGaps } from "../lib/completeness.ts";
 
 type Op = {
   id: string;
+  domain: string;
   name: string;
   email: string | null;
   city: string | null;
@@ -11,6 +12,11 @@ type Op = {
   completeness: number;
   origin: string;
 };
+
+/** The guest app keys catalog operators by domain: "o-" + slug(domain). Deep links use that id, not the DB uuid. */
+function catalogId(domain: string): string {
+  return "o-" + domain.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 48);
+}
 
 function draftCopy(op: Op, gaps: string[], offerings: string[]): { subject: string; body: string } {
   const missing = gaps.filter((g) => !g.includes("Live calendar")).slice(0, 4);
@@ -32,8 +38,8 @@ function draftCopy(op: Op, gaps: string[], offerings: string[]): { subject: stri
     "What still needs you (this is the Airbnb / Booksy completeness list):",
     missing.map((m) => "- " + m).join("\n") || "- Confirm the facts and turn on Instant Book when you are ready.",
     "",
-    "Complete the profile: https://outset.local/claim/" + op.id,
-    "If this is not your business, remove it in one click: https://outset.local/remove/" + op.id,
+    "Complete the profile: https://outset.local/#claim=" + catalogId(op.domain),
+    "If this is not your business, remove it in one click: https://outset.local/#remove=" + catalogId(op.domain),
     "",
     "Profile completeness: " + op.completeness + "/100. Uber Eats-style: we will not show you as Instant Book until the gaps that can burn a guest are gone.",
     "",

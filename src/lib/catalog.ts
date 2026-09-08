@@ -10,9 +10,33 @@ export function siteUrl(src: string): string {
 
 /* ---------- catalog registry ---------- */
 
+let base: Unclaimed[] = UNCLAIMED;
 let catalog: Unclaimed[] = UNCLAIMED;
 let byId = new Map<string, Unclaimed>(UNCLAIMED.map((u) => [u.id, u]));
 let contacts: Record<string, OperatorContact> = { ...CONTACTS };
+
+/** Edits made by claimed operators in their dashboard, layered over the scraped record. */
+const overrides = new Map<string, Partial<Unclaimed>>();
+/** Operators who switched their listing off. Still resolvable by id, hidden from every list. */
+const unpublished = new Set<string>();
+
+function rebuild(): void {
+  const patched = overrides.size ? base.map((u) => (overrides.has(u.id) ? { ...u, ...overrides.get(u.id) } : u)) : base;
+  byId = new Map(patched.map((u) => [u.id, u]));
+  catalog = unpublished.size ? patched.filter((u) => !unpublished.has(u.id)) : patched;
+}
+
+/**
+ * Layer an operator's dashboard edits over their catalog record. Pass null to drop the override.
+ * published=false pulls the listing from rails and search while keeping it reachable by id.
+ */
+export function setOperatorOverride(id: string, patch: Partial<Unclaimed> | null, published: boolean): void {
+  if (patch) overrides.set(id, patch);
+  else overrides.delete(id);
+  if (published) unpublished.delete(id);
+  else unpublished.add(id);
+  rebuild();
+}
 
 /** Every bookable operator known to the app: hand-verified seeds plus the generated catalog once it loads. */
 export function getCatalog(): Unclaimed[] {
@@ -35,9 +59,9 @@ export function mergeCatalog(items: Unclaimed[], extraContacts: Record<string, O
     if (d) seenDomain.add(d);
     added.push(it);
   }
-  catalog = [...UNCLAIMED, ...added];
-  byId = new Map(catalog.map((u) => [u.id, u]));
+  base = [...UNCLAIMED, ...added];
   contacts = { ...extraContacts, ...CONTACTS };
+  rebuild();
   return added.length;
 }
 
