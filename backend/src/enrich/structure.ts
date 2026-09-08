@@ -229,7 +229,10 @@ function harvestPrices($: ReturnType<typeof load>, url: string, out: Map<string,
   });
 }
 
-function harvest(html: string, url: string, out: Map<string, Found>, links: Set<string>, meta: { waiver?: string; book?: string; phone?: string; hours?: string }, addons: Map<string, Addon>) {
+const EMAIL_RE = /[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/gi;
+const EMAIL_SKIP = /example|sentry|wixpress|godaddy|squarespace|wordpress|w3\.org|schema\.org|domain\.com|email\.com|yourdomain|noreply|no-reply|donotreply|\.(png|jpg|jpeg|gif|svg|webp)$/i;
+
+function harvest(html: string, url: string, out: Map<string, Found>, links: Set<string>, meta: { waiver?: string; book?: string; phone?: string; hours?: string; email?: string }, addons: Map<string, Addon>) {
   const $ = load(html);
   const origin = new URL(url).origin;
   $("script, style, noscript, svg").remove();
@@ -245,6 +248,10 @@ function harvest(html: string, url: string, out: Map<string, Found>, links: Set<
       abs = null;
     }
     if (!meta.phone && /^tel:/i.test(href)) meta.phone = href.replace(/^tel:/i, "");
+    if (!meta.email && /^mailto:/i.test(href)) {
+      const m = href.replace(/^mailto:/i, "").split("?")[0].trim().toLowerCase();
+      if (m.includes("@") && !EMAIL_SKIP.test(m)) meta.email = m;
+    }
     if (!meta.waiver && (WAIVER.test(text) || WAIVER.test(href))) meta.waiver = abs?.toString() || href;
     if (!meta.book && (BOOK.test(text) || BOOK.test(href)) && abs) meta.book = abs.toString();
     if (!abs || abs.origin !== origin) return;
@@ -281,6 +288,12 @@ function harvest(html: string, url: string, out: Map<string, Found>, links: Set<
     out.set(key, cur);
   });
 
+  if (!meta.email) {
+    const found = (html.match(EMAIL_RE) || []).map((e) => e.toLowerCase()).filter((e) => !EMAIL_SKIP.test(e));
+    const host = new URL(url).hostname.replace(/^www\./, "");
+    const own = found.find((e) => e.endsWith("@" + host)) || found.find((e) => /info@|hello@|book|reserv|contact|sales|tours|charters/i.test(e)) || found[0];
+    if (own) meta.email = own;
+  }
   if (!meta.hours) {
     const body = clean($("body").text());
     const h = body.match(HOURS);
@@ -297,11 +310,11 @@ export async function readSiteStructure(op: { id: string; domain: string; websit
     const found = new Map<string, Found>();
     const links = new Set<string>();
     const addons = new Map<string, Addon>();
-    const meta: { waiver?: string; book?: string; phone?: string; hours?: string } = {};
+    const meta: { waiver?: string; book?: string; phone?: string; hours?: string; email?: string } = {};
     harvest(home.html, home.finalUrl || start, found, links, meta, addons);
     base.pages = 1;
     // Breadth-first over the site's own pages, likely service and pricing pages first, capped per site.
-    const MAX_PAGES = 18;
+    const MAX_PAGES = 10;
     const seen = new Set<string>([start.replace(/\/$/, ""), (home.finalUrl || start).replace(/\/$/, "")]);
     const queue: string[] = [];
     const enqueue = (set: Set<string>) => {
@@ -314,7 +327,7 @@ export async function readSiteStructure(op: { id: string; domain: string; websit
       const url = queue.shift()!;
       if (seen.has(url)) continue;
       seen.add(url);
-      await sleep(200);
+      await sleep(20);
       const res = await fetchHtml(url).catch(() => null);
       if (!res || res.status !== 200 || !res.html) continue;
       const more = new Set<string>();
@@ -353,8 +366,8 @@ export async function readSiteStructure(op: { id: string; domain: string; websit
     if (meta.book) insFact.run(randomUUID(), op.id, "booking_url", meta.book, start);
     if (meta.hours) insFact.run(randomUUID(), op.id, "hours_text", meta.hours, start);
     db.prepare(
-      `UPDATE operators SET phone = COALESCE(phone, ?), hours = COALESCE(hours, ?), updated_at = ? WHERE id = ?`,
-    ).run(normalizePhone(meta.phone), meta.hours || null, now, op.id);
+      `UPDATE operators SET phone = COALESCE(phone, ?), hours = COALESCE(hours, ?), email = COALESCE(email, ?), updated_at = ? WHERE id = ?`,
+    ).run(normalizePhone(meta.phone), meta.hours || null, meta.email || null, now, op.id);
     db.prepare(
       "INSERT INTO sources (id, operator_id, url, fetched_at, http_status, extractor, robots_allowed, note) VALUES (?, ?, ?, ?, 200, 'site-structure', 1, ?)",
     ).run(randomUUID(), op.id, start, now, "Service names, waiver and booking links read from the site's own navigation and headings.");
@@ -385,7 +398,7 @@ export async function readPendingStructures(limit: number, concurrency = 6): Pro
   const worker = async () => {
     while (i < queue.length) {
       const op = queue[i++];
-      const r = await withDeadline(readSiteStructure(op), 150000, op.domain).catch((e) => ({ operatorId: op.id, domain: op.domain, pages: 0, services: 0, status: "error" as const, error: (e as Error).message }));
+      const r = await withDeadline(readSiteStructure(op), 40000, op.domain).catch((e) => ({ operatorId: op.id, domain: op.domain, pages: 0, services: 0, status: "error" as const, error: (e as Error).message }));
       out.push(r);
       done += 1;
       if (r.status === "error" && errors < 12) {

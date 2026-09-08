@@ -46,6 +46,8 @@ export type AppState = {
   bookings: Booking[];
   chats: Record<string, ChatMessage[]>;
   reqTargetId: string | null;
+  /** Operator whose dashboard is open. null picks a demo operator. */
+  operatorId: string | null;
   sheet: SheetId;
   toast: string | null;
 };
@@ -78,7 +80,7 @@ type Action =
     }
   | { type: "back" }
   | { type: "openChat"; id: string }
-  | { type: "openOperator" }
+  | { type: "openOperator"; id?: string }
   | { type: "ensureThread"; id: string }
   | { type: "sendChat"; text: string }
   | { type: "toastOff" };
@@ -255,7 +257,7 @@ function reducer(state: AppState, action: Action): AppState {
       return { ...state, threadId: company.id, chats: { ...state.chats, [company.id]: [hello] } };
     }
     case "openOperator":
-      return { ...state, tab: "account", screen: "operator", sheet: null, reqTargetId: null };
+      return { ...state, tab: "account", screen: "operator", sheet: null, reqTargetId: null, operatorId: action.id ?? state.operatorId };
     case "openChat": {
       const listing = listingById(action.id);
       if (listing) {
@@ -327,6 +329,7 @@ const initial: AppState = {
   bookings: [],
   chats: {},
   reqTargetId: null,
+  operatorId: null,
   sheet: null,
   toast: null,
 };
@@ -355,7 +358,7 @@ type Api = {
   confirmUnclaimed: (input: { dateIdx: number; slot: string; qty: number; optionIdx: number | null; addonIdx?: number[] }) => void;
   back: () => void;
   openChat: (id: string) => void;
-  openOperator: () => void;
+  openOperator: (id?: string) => void;
   ensureThread: (id: string) => void;
   sendChat: (text: string) => void;
   goto: (tab: TabId) => void;
@@ -375,6 +378,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       // Deep link: #o=<operator id> opens that listing directly.
       const m = window.location.hash.match(/^#o=([a-z0-9-]+)/i);
       if (m && experienceById(m[1])) dispatch({ type: "openRequest", id: m[1] });
+      const c = window.location.hash.match(/^#claim=([a-z0-9-]+)/i);
+      if (c && experienceById(c[1])) dispatch({ type: "openOperator", id: c[1] });
     });
     return () => {
       alive = false;
@@ -426,7 +431,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       confirmUnclaimed: (input) => dispatch({ type: "confirmUnclaimed", ...input }),
       back: () => dispatch({ type: "back" }),
       openChat: (id) => dispatch({ type: "openChat", id }),
-      openOperator: () => dispatch({ type: "openOperator" }),
+      openOperator: (id) => dispatch({ type: "openOperator", id }),
       ensureThread: (id) => dispatch({ type: "ensureThread", id }),
       sendChat: (text) => dispatch({ type: "sendChat", text }),
       goto: (tab) => dispatch({ type: "goto", tab }),

@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { ICONS } from "../../data/icons";
 import type { Unclaimed, UnclaimedService } from "../../data/types";
-import { getCatalog, plainWords } from "../../lib/catalog";
+import { experienceById, getCatalog, plainWords } from "../../lib/catalog";
 import { fmtDate, fmtTime, money } from "../../lib/format";
 import { useApp } from "../../state/AppProvider";
 import { Markup } from "../Markup";
@@ -64,7 +64,7 @@ function sampleRequests(op: Unclaimed, dates: Date[]): Req[] {
 
 export function OperatorView() {
   const { state, back, dates, openRequest } = useApp();
-  const op = useMemo(() => pickOperator(), [state.catalogVersion]);
+  const op = useMemo(() => (state.operatorId ? experienceById(state.operatorId) : null) || pickOperator(), [state.catalogVersion, state.operatorId]);
   const [online, setOnline] = useState(true);
   const [tab, setTab] = useState<"requests" | "today" | "menu">("requests");
   const [reqs, setReqs] = useState<Req[]>(() => (op ? sampleRequests(op, dates) : []));

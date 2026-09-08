@@ -25,7 +25,7 @@ export function AccountView() {
             </b>
           </div>
         </div>
-        <div className="hostcard" role="button" tabIndex={0} onClick={openOperator} style={{ cursor: "pointer" }}>
+        <div className="hostcard" role="button" tabIndex={0} onClick={() => openOperator()} style={{ cursor: "pointer" }}>
           <h3>Run an experience?</h3>
           <p>See requests, your schedule and your menu the way operators do.</p>
           <span className="go">

@@ -27,7 +27,7 @@ export function App() {
             <WebListing item={reqTarget} onClose={closeSheet} onOpen={(id) => { window.scrollTo(0, 0); openRequest(id); }} />
           </div>
         ) : state.screen !== "operator" ? (
-          <WebHome onOpenApp={() => setWeb(false)} onOperators={openOperator} />
+          <WebHome onOpenApp={() => setWeb(false)} onOperators={() => openOperator()} />
         ) : null}
         {state.screen === "operator" ? (
           <div className="web wop">
