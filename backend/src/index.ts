@@ -12,6 +12,7 @@ import { enrichPending, rate } from "./enrich/run.ts";
 import { discoverSearch } from "./discover/searchapi.ts";
 import { readPendingStructures, readSiteStructure } from "./enrich/structure.ts";
 import { collectPhotos, photosPending } from "./enrich/images.ts";
+import { widgetsPending, widgetForOperator } from "./enrich/widgets.ts";
 import { CITIES } from "./discover/cities.ts";
 
 import { db } from "./db/client.ts";
@@ -96,6 +97,24 @@ if (cmd === "photos") {
   }
   const out = await photosPending(limit, concurrency);
   console.log(`Photos: ${out.withPhotos}/${out.sites} sites, ${out.photos} images linked. Run "npm run sync" to push to the app.`);
+}
+
+// Booking widgets (FareHarbor, Xola) publish the operator's live menu as JSON. Exact prices, no key, no model.
+if (cmd === "widgets") {
+  const limit = Number(process.argv[3] || 2000);
+  const concurrency = Number(process.argv[4] || 6);
+  const only = process.argv.slice(5).find((a) => !a.startsWith("--"));
+  if (only) {
+    const op = db.prepare("SELECT o.id, o.domain, o.website, f.fact_value AS booking_url FROM operators o JOIN facts f ON f.operator_id = o.id AND f.fact_key = 'booking_url' WHERE o.domain = ? LIMIT 1").get(only) as { id: string; domain: string; website: string | null; booking_url: string } | undefined;
+    if (!op) { console.error("no booking url for that domain"); process.exit(1); }
+    console.log(JSON.stringify(await widgetForOperator(op)));
+    console.log(JSON.stringify(db.prepare("SELECT name, detail, duration, price_cents, price_unit FROM offerings WHERE operator_id = ? AND confidence = 'widget'").all(op.id), null, 1));
+    console.log(JSON.stringify(db.prepare("SELECT fact_key, substr(fact_value, 1, 160) AS v FROM facts WHERE operator_id = ? AND confidence = 'widget' AND fact_key NOT IN ('photo','service')").all(op.id), null, 1));
+    process.exit(0);
+  }
+  const out = await widgetsPending(limit, concurrency, process.argv.includes("--redo"));
+  refreshAllScores();
+  console.log(`Widgets: ${out.ok}/${out.sites} operators, ${out.offerings} items, ${out.facts} facts. Run "npm run sync" to push to the app.`);
 }
 
 // Re-crawl operators that already have photos, this time keeping any clip, GIF or YouTube / Vimeo embed as a moving cover.

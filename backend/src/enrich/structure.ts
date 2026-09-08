@@ -556,7 +556,8 @@ export async function readSiteStructure(op: { id: string; domain: string; websit
     }
     const now = nowIso();
     db.prepare("DELETE FROM offerings WHERE operator_id = ? AND confidence = 'site'").run(op.id);
-    db.prepare("DELETE FROM facts WHERE operator_id = ? AND confidence = 'site'").run(op.id);
+    // Photo and video facts come from the media crawl and outlive a structure re-read.
+    db.prepare("DELETE FROM facts WHERE operator_id = ? AND confidence = 'site' AND fact_key NOT IN ('photo', 'cover', 'video', 'video_embed')").run(op.id);
     const insOff = db.prepare(
       `INSERT INTO offerings (id, operator_id, name, detail, duration, price_cents, price_unit, currency, source_url, confidence)
        VALUES (?, ?, ?, ?, NULL, ?, ?, 'USD', ?, 'site')`,
@@ -564,7 +565,7 @@ export async function readSiteStructure(op: { id: string; domain: string; websit
     const insFact = db.prepare(
       "INSERT INTO facts (id, operator_id, fact_key, fact_value, source_url, confidence) VALUES (?, ?, ?, ?, ?, 'site')",
     );
-    const hasAi = db.prepare("SELECT 1 FROM offerings WHERE operator_id = ? AND confidence IN ('ai','seed') LIMIT 1").get(op.id);
+    const hasAi = db.prepare("SELECT 1 FROM offerings WHERE operator_id = ? AND confidence IN ('ai','seed','widget') LIMIT 1").get(op.id);
     const services = consolidate(found);
     // Services still without copy: the page whose slug carries every word of the name, shortest slug wins.
     for (const f of services) {
