@@ -45,30 +45,20 @@ function rankForRail(list: Unclaimed[]): Unclaimed[] {
     });
 }
 
-function Rail({ title, items, onOpen, near }: { title: string; items: Unclaimed[]; onOpen: (id: string) => void; near?: Place | null }) {
-  const ref = useRef<HTMLDivElement>(null);
-  const scroll = (dir: number) => ref.current?.scrollBy({ left: dir * (ref.current.clientWidth - 120), behavior: "smooth" });
-  if (!items.length) return null;
+type SortId = "relevance" | "distance" | "price" | "rating";
+const SORTS: { id: SortId; label: string }[] = [
+  { id: "relevance", label: "Relevance" },
+  { id: "distance", label: "Nearest" },
+  { id: "price", label: "Price: low to high" },
+  { id: "rating", label: "Top rated" },
+];
+
+function Card({ u, onOpen, near }: { u: Unclaimed; onOpen: (id: string) => void; near?: Place | null }) {
+  const from = fromPrice(u);
+  const score = publicRating(u);
+  const metro = metroById(u.metroId);
   return (
-    <section className="wrail">
-      <div className="wrailhead">
-        <h2>{title}</h2>
-        <span className="wrailnav">
-          <button type="button" aria-label="Back" onClick={() => scroll(-1)}>
-            <Markup html={ICONS.back} />
-          </button>
-          <button type="button" aria-label="More" onClick={() => scroll(1)} className="flip">
-            <Markup html={ICONS.back} />
-          </button>
-        </span>
-      </div>
-      <div className="wrailrow" ref={ref}>
-        {items.slice(0, 20).map((u) => {
-          const from = fromPrice(u);
-          const score = publicRating(u);
-          const metro = metroById(u.metroId);
-          return (
-            <button type="button" className="wcard" key={u.id} onClick={() => onOpen(u.id)}>
+            <button type="button" className="wcard" onClick={() => onOpen(u.id)}>
               <div className="wart">
                 <Photo src={u.cover} kind={u.art} id={"w" + u.id} alt={u.title} />
                 {score && score.rating >= 4.8 && score.reviews >= 100 ? (
@@ -97,21 +87,42 @@ function Rail({ title, items, onOpen, near }: { title: string; items: Unclaimed[
                 </span>
               </div>
             </button>
-          );
-        })}
+  );
+}
+
+function Rail({ title, items, onOpen, near }: { title: string; items: Unclaimed[]; onOpen: (id: string) => void; near?: Place | null }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const scroll = (dir: number) => ref.current?.scrollBy({ left: dir * (ref.current.clientWidth - 120), behavior: "smooth" });
+  if (!items.length) return null;
+  return (
+    <section className="wrail">
+      <div className="wrailhead">
+        <h2>{title}</h2>
+        <span className="wrailnav">
+          <button type="button" aria-label="Back" onClick={() => scroll(-1)}>
+            <Markup html={ICONS.back} />
+          </button>
+          <button type="button" aria-label="More" onClick={() => scroll(1)} className="flip">
+            <Markup html={ICONS.back} />
+          </button>
+        </span>
+      </div>
+      <div className="wrailrow" ref={ref}>
+        {items.slice(0, 20).map((u) => <Card key={u.id} u={u} onOpen={onOpen} near={near} />)}
       </div>
     </section>
   );
 }
 
 export function WebHome({ onOpenApp, onOperators }: { onOpenApp: () => void; onOperators: () => void }) {
-  const { state, setCat, setMetro, setDate, openRequest, dates } = useApp();
+  const { state, setCat, setMetro, setNear, setDate, openRequest, dates } = useApp();
   const [q, setQ] = useState("");
   const [who, setWho] = useState(2);
   const [whereOpen, setWhereOpen] = useState(false);
   const [whenOpen, setWhenOpen] = useState(false);
   const [whoOpen, setWhoOpen] = useState(false);
-  const [near, setNear] = useState<Place | null>(null);
+  const near = state.near;
+  const [sort, setSort] = useState<SortId>("relevance");
   const [placeQ, setPlaceQ] = useState("");
   const [placeHits, setPlaceHits] = useState<Place[]>([]);
   const [locating, setLocating] = useState(false);
@@ -128,9 +139,9 @@ export function WebHome({ onOpenApp, onOperators }: { onOpenApp: () => void; onO
 
   const pickPlace = (p: Place) => {
     setNear(p);
-    setMetro(ALL_METRO_ID);
     setWhereOpen(false);
     setPlaceQ("");
+    if (sort === "relevance") setSort("distance");
   };
   const useMyLocation = async () => {
     setLocating(true);
@@ -151,6 +162,21 @@ export function WebHome({ onOpenApp, onOperators }: { onOpenApp: () => void; onO
     }
     return q.trim() ? searchListings(base, q) : base;
   }, [state.metroId, q, state.catalogVersion, near]);
+
+  // A flat, sorted grid replaces the rails whenever the guest picks an order. Nearest needs a place to measure from.
+  const sorted = useMemo(() => {
+    if (sort === "relevance") return null;
+    const list = pool.slice();
+    if (sort === "distance") {
+      if (!near) return null;
+      list.sort((a, b) => kmBetween(near, { lat: a.lat!, lon: a.lon! }) - kmBetween(near, { lat: b.lat!, lon: b.lon! }));
+    } else if (sort === "price") {
+      list.sort((a, b) => (fromPrice(a) ?? Infinity) - (fromPrice(b) ?? Infinity));
+    } else if (sort === "rating") {
+      list.sort((a, b) => (publicRating(b)?.rating ?? 0) - (publicRating(a)?.rating ?? 0) || (b.reviews || 0) - (a.reviews || 0));
+    }
+    return list;
+  }, [pool, sort, near]);
 
   const rails = RAIL_KINDS.filter((r) => state.cat === "all" || CATS.find((c) => c.id === state.cat) && pool.some((u) => u.art === r.art && u.cat === state.cat));
   const where = near ? near.label + (near.sub ? ", " + near.sub.split(",")[0] : "") : metro ? metro.name + ", " + metro.region : "Anywhere";
@@ -268,6 +294,28 @@ export function WebHome({ onOpenApp, onOperators }: { onOpenApp: () => void; onO
       </div>
 
       <main className="wwrap">
+        {state.catalogReady ? (
+          <div className="wsortbar">
+            <span className="wsortlabel">Sort by</span>
+            {SORTS.map((o) => (
+              <button
+                type="button"
+                key={o.id}
+                aria-pressed={sort === o.id}
+                onClick={() => {
+                  if (o.id === "distance" && !near) {
+                    setWhereOpen(true);
+                    return;
+                  }
+                  setSort(o.id);
+                }}
+              >
+                {o.label}
+              </button>
+            ))}
+            {near ? <span className="wsortnear"><Markup html={ICONS.pin} /> Distances from {near.label}</span> : <span className="wsortnear muted">Pick a place under Where to see how far each one is</span>}
+          </div>
+        ) : null}
         {!state.catalogReady ? (
           <>
             {[0, 1].map((r) => (
@@ -285,15 +333,30 @@ export function WebHome({ onOpenApp, onOperators }: { onOpenApp: () => void; onO
             ))}
           </>
         ) : null}
-        {state.catalogReady && q.trim() ? (
+        {state.catalogReady && sorted ? (
+          <section className="wrail">
+            <div className="wrailhead">
+              <h2>
+                {sorted.length.toLocaleString()} {state.cat === "all" ? "experiences" : catName(state.cat).toLowerCase() + " experiences"}
+                {q.trim() ? ` for “${q.trim()}”` : ""}
+                {sort === "distance" && near ? `, nearest to ${near.label} first` : sort === "price" ? ", cheapest first" : sort === "rating" ? ", top rated first" : ""}
+              </h2>
+            </div>
+            <div className="wgrid">
+              {sorted.slice(0, 60).map((u) => <Card key={u.id} u={u} onOpen={openRequest} near={near} />)}
+            </div>
+            {sorted.length === 0 ? <div className="wempty"><b>Nothing here yet.</b><p>Try a wider area or another category.</p></div> : null}
+          </section>
+        ) : null}
+        {state.catalogReady && !sorted && q.trim() ? (
           <Rail title={`${pool.length} results for “${q.trim()}”${near ? " near " + near.label : metro ? " in " + metro.name : ""}`} items={near ? pool : rankForRail(pool)} onOpen={openRequest} near={near} />
         ) : null}
-        {state.catalogReady ? rails.map((r) => {
+        {state.catalogReady && !sorted ? rails.map((r) => {
           const items = rankForRail(pool.filter((u) => u.art === r.art));
           const title = near ? `${r.title} near ${near.label}` : metro ? `${r.title} in ${metro.name}` : `Popular ${r.title.toLowerCase()}`;
           return <Rail key={r.art} title={title} items={items} onOpen={openRequest} near={near} />;
         }) : null}
-        {state.catalogReady && !rails.length ? (
+        {state.catalogReady && !sorted && !rails.length ? (
           <div className="wempty">
             <b>Nothing in {catName(state.cat)} here yet.</b>
             <p>Try Anywhere, or another category. {CATMETA[state.cat]?.emptyBody || ""}</p>

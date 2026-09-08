@@ -53,10 +53,11 @@ export function kmBetween(a: { lat: number; lon: number }, b: { lat: number; lon
   return 2 * r * Math.asin(Math.sqrt(x));
 }
 
-export function fmtDistance(km: number, country: "US" | "CA" = "US"): string {
-  if (country === "CA") return km < 10 ? km.toFixed(1) + " km" : Math.round(km) + " km";
-  const mi = km * 0.621371;
-  return mi < 10 ? mi.toFixed(1) + " mi" : Math.round(mi) + " mi";
+/** "450 m", "2.1 km", "12 km". Metric everywhere, metres under a kilometre. */
+export function fmtDistance(km: number): string {
+  if (km < 1) return Math.max(10, Math.round(km * 1000 / 10) * 10) + " m";
+  if (km < 10) return km.toFixed(1) + " km";
+  return Math.round(km) + " km";
 }
 
 export function currentLocation(): Promise<{ lat: number; lon: number } | null> {

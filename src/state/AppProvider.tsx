@@ -20,6 +20,7 @@ import { daySlotsOpen, openSeats } from "../lib/inventory";
 import { contactFor, experienceById, fromPrice, initials } from "../lib/catalog";
 import { loadRemoteCatalog } from "../lib/catalogLoad";
 import { companyGreeting, companyReply, companySuggestions } from "../lib/companyAgent";
+import type { Place } from "../lib/places";
 import { priceFor, priceUnclaimed } from "../lib/pricing";
 import { applyStoredProfiles } from "../lib/operator";
 import { loadBookings, loadChats, saveBookings, saveChats } from "../lib/storage";
@@ -37,6 +38,8 @@ export type AppState = {
   cat: CategoryId;
   q: string;
   metroId: string;
+  /** Place picked in the Where box. Distances on cards and listing pages are measured from here. */
+  near: Place | null;
   dateIdx: number;
   listingId: string | null;
   slot: string | null;
@@ -62,6 +65,7 @@ type Action =
   | { type: "cat"; cat: CategoryId }
   | { type: "q"; q: string }
   | { type: "metro"; metroId: string }
+  | { type: "near"; near: Place | null }
   | { type: "openMetro" }
   | { type: "date"; dateIdx: number }
   | { type: "openListing"; id: string }
@@ -151,7 +155,9 @@ function reducer(state: AppState, action: Action): AppState {
     case "q":
       return { ...state, q: action.q };
     case "metro":
-      return { ...state, metroId: action.metroId, sheet: null };
+      return { ...state, metroId: action.metroId, near: null, sheet: null };
+    case "near":
+      return { ...state, near: action.near, metroId: action.near ? ALL_METRO_ID : state.metroId };
     case "openMetro":
       return { ...state, sheet: "metro" };
     case "date":
@@ -323,6 +329,7 @@ const initial: AppState = {
   cat: "all",
   q: "",
   metroId: ALL_METRO_ID,
+  near: null,
   dateIdx: 0,
   listingId: null,
   slot: null,
@@ -349,6 +356,7 @@ type Api = {
   setCat: (cat: CategoryId) => void;
   setQ: (q: string) => void;
   setMetro: (metroId: string) => void;
+  setNear: (near: Place | null) => void;
   openMetro: () => void;
   setDate: (i: number) => void;
   openListing: (id: string) => void;
@@ -426,6 +434,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setCat: (cat) => dispatch({ type: "cat", cat }),
       setQ: (q) => dispatch({ type: "q", q }),
       setMetro: (metroId) => dispatch({ type: "metro", metroId }),
+      setNear: (near) => dispatch({ type: "near", near }),
       openMetro: () => dispatch({ type: "openMetro" }),
       setDate: (dateIdx) => dispatch({ type: "date", dateIdx }),
       openListing: (id) => dispatch({ type: "openListing", id }),
