@@ -142,6 +142,14 @@ export async function searchPlaces(q: string, city: City, page: number, ring: Ke
         if (!ring.retire()) throw new CreditsExhausted("Search credits exhausted on every key");
         continue;
       }
+      if (res.status === 400) {
+        const body = await res.text();
+        if (/credits/i.test(body)) {
+          if (!ring.retire()) throw new CreditsExhausted("Search credits exhausted on every key");
+          continue;
+        }
+        throw new Error("Serper HTTP 400 for " + q + " " + city.name + ": " + body.slice(0, 120));
+      }
       if (!res.ok) throw new Error("Serper HTTP " + res.status + " for " + q + " " + city.name);
       const json = (await res.json()) as { places?: SerperPlace[] };
       const places = (json.places || []).map(fromSerper);

@@ -73,9 +73,15 @@ function toContact(r: Row): OperatorContact {
   };
 }
 
-/** Write src/data/contacts.ts so every listing in the guest app carries its operator's public contact facts. */
+/**
+ * Write src/data/contacts.ts for the hand-verified seed operators only. Everything else ships in public/catalog.json,
+ * which the app fetches at startup, so the bundled file stays small.
+ */
 export function syncContactsToApp(): { path: string; count: number } {
-  const contacts = allContacts();
+  const seedDomains = new Set(
+    (db.prepare("SELECT domain FROM operators WHERE origin IN ('seed', 'public_site')").all() as { domain: string }[]).map((r) => r.domain),
+  );
+  const contacts = allContacts().filter((c) => seedDomains.has(c.domain));
   const body = contacts
     .map((c) => "  " + JSON.stringify(c.domain) + ": " + JSON.stringify(c) + ",")
     .join("\n");
