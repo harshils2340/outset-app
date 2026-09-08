@@ -11,6 +11,8 @@ const dbPath = join(dataDir, "outset.db");
 mkdirSync(dataDir, { recursive: true });
 
 export const db = new DatabaseSync(dbPath);
+// Several commands run at once against this file. Wait for a writer instead of failing with "database is locked".
+db.exec("PRAGMA busy_timeout = 15000");
 
 export function migrate(): void {
   const sql = readFileSync(join(here, "schema.sql"), "utf8");
