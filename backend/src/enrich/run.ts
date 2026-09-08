@@ -36,8 +36,9 @@ export function budgetUsd(): number {
   return Number(process.env.OUTSET_EXTRACT_BUDGET_USD || 20);
 }
 
+/** Real spend so far. Reservations for batches still running are added on top when submitting. */
 export function spentUsd(): number {
-  const r = db.prepare("SELECT COALESCE(SUM(usd), 0) AS s FROM extract_spend").get() as { s: number };
+  const r = db.prepare("SELECT COALESCE(SUM(usd), 0) AS s FROM extract_spend WHERE model != 'reserved'").get() as { s: number };
   return r.s;
 }
 
@@ -252,8 +253,9 @@ export async function submitBatch(limit: number, concurrency = 6): Promise<{ bat
   const batch = await client.batches.create({ input_file_id: upload.id, endpoint: "/v1/chat/completions", completion_window: "24h" });
   meta.batchId = batch.id;
   writeFileSync(new URL(batch.id + ".json", BATCH_DIR), JSON.stringify(meta));
-  // Reserve the estimate so a second submit cannot overshoot the budget before results are in.
-  db.prepare("INSERT INTO extract_spend (id, operator_id, model, input, output, usd, batch_id, at) VALUES (?, 'reserved', ?, 0, 0, ?, ?, ?)").run(randomUUID(), model(), est, batch.id, nowIso());
+  // Reserve each site's estimate under its own id: it leaves the queue and the budget cannot be overshot before results land.
+  const ins = db.prepare("INSERT INTO extract_spend (id, operator_id, model, input, output, usd, batch_id, at) VALUES (?, ?, 'reserved', 0, 0, ?, ?, ?)");
+  for (const [id, entry] of Object.entries(meta.ops)) ins.run(randomUUID(), id, entry.estUsd, batch.id, nowIso());
   return { batchId: batch.id, ops: lines.length, estUsd: est, file: file.pathname };
 }
 
@@ -263,7 +265,7 @@ function markUnreadable(operatorId: string): void {
 }
 
 function reservedUsd(): number {
-  const r = db.prepare("SELECT COALESCE(SUM(usd), 0) AS s FROM extract_spend WHERE operator_id = 'reserved'").get() as { s: number };
+  const r = db.prepare("SELECT COALESCE(SUM(usd), 0) AS s FROM extract_spend WHERE model = 'reserved'").get() as { s: number };
   return r.s;
 }
 
@@ -297,8 +299,24 @@ export async function collectBatch(batchId: string): Promise<{ status: string; s
     storeExtraction(entry.op, data, entry.social, entry.vendor);
     stored += 1;
   }
-  db.prepare("DELETE FROM extract_spend WHERE operator_id = 'reserved' AND batch_id = ?").run(batchId);
+  db.prepare("DELETE FROM extract_spend WHERE model = 'reserved' AND batch_id = ?").run(batchId);
+  writeFileSync(new URL(batchId + ".done", BATCH_DIR), JSON.stringify({ stored, failed, usd, at: nowIso() }));
   return { status: batch.status, stored, failed, usd };
+}
+
+/** Every submitted batch that has not been stored yet. */
+export async function collectAll(): Promise<{ batchId: string; status: string; stored: number; failed: number; usd: number }[]> {
+  const { readdirSync } = await import("node:fs");
+  const out: { batchId: string; status: string; stored: number; failed: number; usd: number }[] = [];
+  if (!existsSync(BATCH_DIR)) return out;
+  for (const f of readdirSync(BATCH_DIR)) {
+    if (!f.startsWith("batch_") || !f.endsWith(".json")) continue;
+    const id = f.replace(/\.json$/, "");
+    if (existsSync(new URL(id + ".done", BATCH_DIR))) continue;
+    const r = await collectBatch(id);
+    out.push({ batchId: id, ...r });
+  }
+  return out;
 }
 
 /** Free dry run: crawl and trim, report tokens and cost per site without calling any model. */

@@ -8,7 +8,7 @@ import { scrapePending } from "./scrape/run.ts";
 import { refreshAllScores } from "./lib/completeness.ts";
 import { syncCatalogToApp, syncContactsToApp } from "./sync/contacts.ts";
 import { discoverAll, metroCoverage } from "./discover/osm.ts";
-import { budgetUsd, collectBatch, dryRun, enrichPending, rate, spentUsd, submitBatch } from "./enrich/run.ts";
+import { budgetUsd, collectAll, collectBatch, dryRun, enrichPending, rate, spentUsd, submitBatch } from "./enrich/run.ts";
 import { discoverSearch } from "./discover/searchapi.ts";
 import { readPendingStructures, readSiteStructure } from "./enrich/structure.ts";
 import { collectPhotos, photosPending } from "./enrich/images.ts";
@@ -154,6 +154,14 @@ if (cmd === "enrich") {
   const limit = Number(process.argv[3] || 10);
   const concurrency = Number(process.argv.find((a) => /^\d+$/.test(a) && a !== process.argv[3]) || 3);
   const collect = process.argv.find((a) => a.startsWith("--collect="))?.split("=")[1];
+  if (process.argv.includes("--collect-all")) {
+    const rs = await collectAll();
+    refreshAllScores();
+    for (const r of rs) console.log(`${r.batchId}: ${r.status}, stored ${r.stored}, failed ${r.failed}, $${r.usd.toFixed(2)}`);
+    const pending = rs.filter((r) => r.status !== "completed").length;
+    console.log(`${rs.length} batches checked, ${pending} still running. Total spent $${spentUsd().toFixed(2)} of $${budgetUsd().toFixed(2)}.`);
+    process.exit(pending ? 2 : 0);
+  }
   if (collect) {
     const r = await collectBatch(collect);
     refreshAllScores();

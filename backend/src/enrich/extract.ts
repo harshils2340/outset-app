@@ -131,7 +131,7 @@ export function openaiRequestBody(name: string, pages: CrawledPage[]): Record<st
       { role: "user", content: buildDoc(name, pages) },
     ],
     response_format: zodResponseFormat(Extraction, "operator_extraction"),
-    max_tokens: 1800,
+    max_tokens: 3000,
     temperature: 0,
   };
 }
@@ -167,7 +167,7 @@ export async function extractFromPages(
         { role: "user", content: doc },
       ],
       response_format: zodResponseFormat(Extraction, "operator_extraction"),
-      max_tokens: 1800,
+      max_tokens: 3000,
       temperature: 0,
     });
     const choice = completion.choices[0];
