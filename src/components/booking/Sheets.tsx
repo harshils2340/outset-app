@@ -358,11 +358,10 @@ function RequestBody({
             Source: {item.src.replace(/^https?:\/\//, "").replace(/^www\./, "")} ↗
           </a>
         ) : null}
-        <p className="reqhook">{guide.hook}</p>
         {item.blurb ? (
           <p className="reqblurb">
-            {item.blurb}
-            <span className="reqcredit"> · In {item.title}'s words</span>
+            {plainWords(item.blurb)}
+            <span className="reqcredit"> · From their website</span>
           </p>
         ) : null}
 
@@ -502,6 +501,7 @@ function RequestBody({
               <div className="svclist">
                 {item.services.map((svc) => (
                   <div className="svc" key={svc.name}>
+                    {svc.photo ? <img className="svcpic" src={svc.photo} alt={plainWords(svc.name)} loading="lazy" referrerPolicy="no-referrer" onError={(e) => ((e.currentTarget as HTMLImageElement).style.display = "none")} /> : null}
                     <div className="svchead2">
                       <b>{plainWords(svc.name)}</b>
                       {svc.desc ? (

@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import type { Unclaimed } from "../../data/types";
 import { contactFor, experienceById, fromPrice, getCatalog } from "../../lib/catalog";
 import { money } from "../../lib/format";
-import { claimedIds, defaultProfile, loadProfile, pickDemoOperator, sampleBookings, saveProfile, type OperatorProfile } from "../../lib/operator";
+import { claimedIds, defaultProfile, demoProfile, loadProfile, sampleBookings, saveProfile, type OperatorProfile } from "../../lib/operator";
 import { searchListings } from "../../lib/search";
 import { Photo } from "../art/Photo";
 import { Mark } from "../layout/Mark";
@@ -57,17 +57,8 @@ export function OpLogin({ claimId, compact, onEnter, onBack }: { claimId: string
   };
 
   const demo = () => {
-    const u = pickDemoOperator();
-    if (!u) return;
-    const existing = loadProfile(u.id);
-    if (existing) {
-      onEnter(existing);
-      return;
-    }
-    const p = defaultProfile(u, { name: "Demo owner", email: "owner@example.com", phone: "" });
-    p.bookings = sampleBookings(p);
-    saveProfile(p);
-    onEnter(p);
+    const p = demoProfile();
+    if (p) onEnter(p);
   };
 
   return (
@@ -136,7 +127,7 @@ export function OpLogin({ claimId, compact, onEnter, onBack }: { claimId: string
             ) : null}
 
             <div className="odor"><span>or</span></div>
-            <button type="button" className="cta ghost odwide" onClick={demo}>Try a demo dashboard</button>
+            <button type="button" className="cta ghost odwide" onClick={demo}>Back to the demo dashboard</button>
           </>
         ) : null}
 

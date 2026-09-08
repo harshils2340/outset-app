@@ -76,6 +76,8 @@ export type OperatorContact = {
 export type UnclaimedService = {
   name: string;
   desc: string | null;
+  /** A picture of this specific service from the operator's site, when one sits next to it. */
+  photo?: string;
   variants: { label: string; price: number | null; per?: string; optionIdx: number }[];
 };
 

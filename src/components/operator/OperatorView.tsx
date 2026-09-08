@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { experienceById } from "../../lib/catalog";
-import { allBookings, loadProfile, loadSession, saveProfile, saveSession, setBookingStatus, type OpBooking, type OpStatus, type OperatorProfile } from "../../lib/operator";
+import { allBookings, demoProfile, loadProfile, loadSession, saveProfile, saveSession, setBookingStatus, type OpBooking, type OpStatus, type OperatorProfile } from "../../lib/operator";
 import { useApp } from "../../state/AppProvider";
 import { Mark } from "../layout/Mark";
 import { Markup } from "../Markup";
@@ -24,12 +24,14 @@ export function OperatorView({ compact = false }: { compact?: boolean }) {
   const { state, back, openRequest, touchCatalog, dispatch } = useApp();
   const [session, setSession] = useState<string | null>(() => {
     // A claim link names a business. If it is already claimed here, open it. If not, show the claim flow
-    // even when another business is signed in. With no link, resume the last session.
+    // even when another business is signed in. With no link, resume the last session, or open the demo
+    // dashboard straight away so a visitor sees the product without a sign-in wall.
     const claimed = state.operatorId;
     if (claimed) return loadProfile(claimed) ? claimed : null;
-    return loadSession();
+    return loadSession() || demoProfile()?.id || null;
   });
   const [p, setP] = useState<OperatorProfile | null>(() => (session ? loadProfile(session) : null));
+  const [wantLogin, setWantLogin] = useState(false);
   const [page, setPage] = useState<OpPage>("home");
   const [openedId, setOpenedId] = useState<string | null>(null);
   const [toastText, setToastText] = useState<string | null>(null);
@@ -72,18 +74,20 @@ export function OperatorView({ compact = false }: { compact?: boolean }) {
     setSession(null);
     setP(null);
     setOpenedId(null);
+    setWantLogin(true);
   };
 
-  if (!p || !u) {
+  if (!p || !u || wantLogin) {
     return (
       <OpLogin
         claimId={state.operatorId}
         compact={compact}
-        onEnter={enter}
+        onEnter={(profile) => { setWantLogin(false); enter(profile); }}
         onBack={back}
       />
     );
   }
+  const isDemo = p.ownerEmail === "owner@example.com" && p.ownerName === "Demo owner";
 
   const api: OpApi = {
     p,
@@ -137,13 +141,16 @@ export function OperatorView({ compact = false }: { compact?: boolean }) {
               <span className="odbizmark">{p.title.slice(0, 1)}</span>
               <span className="meta">
                 <b>{p.title}</b>
-                <small>{p.published ? (p.accepting ? "Live · accepting" : "Live · paused") : "Not on the site"}</small>
+                <small>{isDemo ? "Demo dashboard" : p.published ? (p.accepting ? "Live · accepting" : "Live · paused") : "Not on the site"}</small>
               </span>
             </div>
+            {isDemo ? (
+              <button type="button" className="cta small odclaimcta" onClick={() => setWantLogin(true)}>Claim your business</button>
+            ) : null}
             {nav}
             <div className="odsidefoot">
               <button type="button" onClick={api.preview}><Markup html={OD_ICONS.external} /> View my listing</button>
-              <button type="button" onClick={logout}><Markup html={OD_ICONS.logout} /> Log out</button>
+              <button type="button" onClick={logout}><Markup html={OD_ICONS.logout} /> {isDemo ? "Sign in" : "Log out"}</button>
             </div>
           </aside>
         ) : null}

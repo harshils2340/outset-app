@@ -151,10 +151,9 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
 
         <div className="wcols">
           <div className="wmain">
-            <p className="whook">{guide.hook}</p>
             {item.blurb ? (
-              <p className="wblurb">
-                {plainWords(item.blurb)} <span className="reqcredit">· In {item.title}'s words</span>
+              <p className="wblurb lead">
+                {plainWords(item.blurb)} <span className="reqcredit">· From their website</span>
               </p>
             ) : null}
 
@@ -197,7 +196,8 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
                 <h2>What you can book</h2>
                 <div className="wmenu">
                   {item.services.map((svc) => (
-                    <div className="wsvc" key={svc.name}>
+                    <div className={"wsvc" + (svc.photo ? " haspic" : "")} key={svc.name}>
+                      {svc.photo ? <img className="wsvcpic" src={svc.photo} alt={plainWords(svc.name)} loading="lazy" referrerPolicy="no-referrer" onError={(e) => ((e.currentTarget as HTMLImageElement).style.display = "none")} /> : null}
                       <div className="wsvchead">
                         <b>{plainWords(svc.name)}</b>
                         {svc.desc ? (

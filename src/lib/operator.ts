@@ -458,6 +458,18 @@ export function pickDemoOperator(): Unclaimed | null {
   return scored[0]?.u || all[0] || null;
 }
 
+/** The dashboard a visitor sees before claiming: a real, well-filled operator with sample bookings. Reused if it already exists. */
+export function demoProfile(): OperatorProfile | null {
+  const u = pickDemoOperator();
+  if (!u) return null;
+  const existing = loadProfile(u.id);
+  if (existing) return existing;
+  const p = defaultProfile(u, { name: "Demo owner", email: "owner@example.com", phone: "" });
+  p.bookings = sampleBookings(p);
+  saveProfile(p);
+  return p;
+}
+
 export function contactOf(p: OperatorProfile): OperatorContact | null {
   const u = experienceById(p.id);
   return u ? contactFor(u) : null;
