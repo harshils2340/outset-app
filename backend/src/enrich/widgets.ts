@@ -70,6 +70,25 @@ export function mineSentences(text: string): { requirements: string[]; policies:
   return out;
 }
 
+/** "One Hour Rental $125 Two Hour Rental: $199 Half Day Rental: $349" -> labelled rows. Only distinct labels, only the rates block. */
+export function rateRows(text: string): { label: string; price: number }[] {
+  const block = (text.match(/\bRates?\b[:\s]*(.{0,600}?)(?=\b(?:Duration|About|Includes?|What to bring|Requirements?|Cancellation|Policy|Please note|Note:)\b|$)/i) || [])[1] || "";
+  const out: { label: string; price: number }[] = [];
+  const seen = new Set<string>();
+  const re = /([A-Z][A-Za-z0-9&\/' -]{2,40}?)\s*[:\-–]?\s*\$\s?(\d{2,4}(?:\.\d{2})?)(?!\d)/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(block))) {
+    const label = m[1].replace(/\b(Rates?|Price|Prices|Pricing|Starting at|From)\b/gi, "").replace(/\s+/g, " ").trim().replace(/[:\-–]$/, "").trim();
+    if (label.length < 3 || /^(per|each|and|or|the)$/i.test(label)) continue;
+    const key = label.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push({ label: label.slice(0, 60), price: Number(m[2]) });
+    if (out.length >= 8) break;
+  }
+  return out;
+}
+
 function money(s: string | null | undefined): number | null {
   const m = (s || "").match(/\$\s?(\d{1,4}(?:[.,]\d{2})?)/);
   return m ? Number(m[1].replace(",", "")) : null;
@@ -128,18 +147,27 @@ export async function readFareharbor(shortname: string): Promise<WidgetResult | 
     const photos = (item.images || []).map((i) => i.image_cdn_url).filter(Boolean);
     if (item.image_cdn_url && !photos.includes(item.image_cdn_url)) photos.unshift(item.image_cdn_url);
     const duration = durationOf(headline, descLong);
-    offerings.push({
-      name: String(item.name || "").trim(),
-      // The variant label guests pick. The headline is copy, not a label, so it goes into the description.
-      detail: duration,
-      duration,
-      price: money(headline) ?? money(descLong),
-      unit: unitOf(headline, item.name),
-      url: "https://fareharbor.com/embeds/book/" + shortname + "/items/" + item.pk + "/",
-      desc: desc || null,
-      photo: photos[0] || null,
-      photos,
-    });
+    const url = "https://fareharbor.com/embeds/book/" + shortname + "/items/" + item.pk + "/";
+    const unit = unitOf(headline, item.name);
+    const name = String(item.name || "").trim();
+    // A rates table in the copy ("One Hour Rental $125 Two Hour Rental: $199 Half Day: $349") becomes one option per row.
+    const rates = rateRows(descLong);
+    if (rates.length >= 2) {
+      for (const r of rates) offerings.push({ name, detail: r.label, duration: durationOf(r.label) || duration, price: r.price, unit, url, desc: desc || null, photo: photos[0] || null, photos });
+    } else {
+      offerings.push({
+        name,
+        // The variant label guests pick. The headline is copy, not a label, so it goes into the description.
+        detail: duration,
+        duration,
+        price: money(headline) ?? money(descLong),
+        unit,
+        url,
+        desc: desc || null,
+        photo: photos[0] || null,
+        photos,
+      });
+    }
     const mined = mineSentences([descLong, item.booking_notes, item.cancellation_notes].filter(Boolean).join(" "));
     mined.requirements.forEach((s) => req.add(s));
     mined.policies.forEach((s) => pol.add(s));
