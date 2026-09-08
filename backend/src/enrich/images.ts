@@ -87,7 +87,7 @@ export function harvestImages(html: string, pageUrl: string, seen: Map<string, P
   });
 }
 
-export async function collectPhotos(website: string, maxPages = 8): Promise<Photo[]> {
+export async function collectPhotos(website: string, maxPages = 5): Promise<Photo[]> {
   const start = website.startsWith("http") ? website : "https://" + website;
   const origin = new URL(start).origin;
   const home = await fetchHtml(start);
@@ -112,7 +112,7 @@ export async function collectPhotos(website: string, maxPages = 8): Promise<Phot
     const url = queue.shift()!;
     if (visited.has(url)) continue;
     visited.add(url);
-    await sleep(150);
+    await sleep(80);
     const res = await fetchHtml(url).catch(() => null);
     if (!res || res.status !== 200 || !res.html) continue;
     harvestImages(res.html, res.finalUrl || url, seen);
@@ -156,7 +156,7 @@ export async function photosPending(limit: number, concurrency = 8): Promise<{ s
     while (i < queue.length) {
       const op = queue[i++];
       try {
-        const n = await withDeadline(photosForOperator(op), 90000, op.domain);
+        const n = await withDeadline(photosForOperator(op), 60000, op.domain);
         out.sites += 1;
         if (n) out.withPhotos += 1;
         out.photos += n;

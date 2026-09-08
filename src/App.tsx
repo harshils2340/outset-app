@@ -1,4 +1,6 @@
+import { useState } from "react";
 import { useApp } from "./state/AppProvider";
+import { WebHome } from "./components/web/WebHome";
 import { Pitch } from "./components/layout/Pitch";
 import { StatusBar } from "./components/layout/StatusBar";
 import { TabBar } from "./components/layout/TabBar";
@@ -13,6 +15,23 @@ import { ConfirmView } from "./components/booking/ConfirmView";
 import { Sheets } from "./components/booking/Sheets";
 
 export function App() {
+  const { state, closeSheet } = useApp();
+  const [web, setWeb] = useState(() => typeof window !== "undefined" && window.innerWidth > 1024);
+  if (web) {
+    return (
+      <>
+        <WebHome onOpenApp={() => setWeb(false)} />
+        {state.sheet ? (
+          <div className="webmodal" onClick={closeSheet}>
+            <div className="screen webscreen" onClick={(e) => e.stopPropagation()}>
+              <Sheets />
+              <Toast />
+            </div>
+          </div>
+        ) : null}
+      </>
+    );
+  }
   return (
     <div className="stage">
       <Pitch />

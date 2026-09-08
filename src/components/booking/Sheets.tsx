@@ -24,7 +24,7 @@ import { DAYS, fmtDate, fmtReviews, fmtTime, money, unitLine } from "../../lib/f
 import { formatDistance, milesBetween, type GeoPoint } from "../../lib/geo";
 import { priceFor, priceUnclaimed } from "../../lib/pricing";
 import { useApp } from "../../state/AppProvider";
-import { Art } from "../art/Art";
+import { Photo } from "../art/Photo";
 import { Markup } from "../Markup";
 
 const QTY_MAX = 8;
@@ -322,7 +322,7 @@ function RequestBody({
     <>
       <div className="reqpad">
         <div className="reqhero">
-          <Art kind={item.art} id={item.id + "req"} />
+          <Photo src={item.cover} kind={item.art} id={item.id + "req"} alt={item.title} />
           <button className="backbtn" type="button" onClick={onBack} aria-label="Close">
             <Markup html={ICONS.close} />
           </button>
@@ -334,6 +334,13 @@ function RequestBody({
             </span>
           ) : null}
         </div>
+        {item.photos && item.photos.length > 1 ? (
+          <div className="gallery">
+            {item.photos.slice(0, 6).map((u, i) => (
+              <img key={u} src={u} alt={item.title + " photo " + (i + 1)} loading="lazy" referrerPolicy="no-referrer" onError={(e) => ((e.currentTarget as HTMLImageElement).style.display = "none")} />
+            ))}
+          </div>
+        ) : null}
         <div className="reqinner">
         <p className="eyebrow">
           {metro ? metro.name : item.area} · {catName}

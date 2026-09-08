@@ -137,6 +137,8 @@ function headingAbove($: ReturnType<typeof load>, el: any): string | null {
 /** Read price tables and "label - $price" lists into variants and add-ons attached to the nearest service heading. */
 function harvestPrices($: ReturnType<typeof load>, url: string, out: Map<string, Found>, addons: Map<string, Addon>) {
   const attach = (heading: string | null, rawLabel: string, price: number) => {
+    // Above this it is almost always a boat, a board or a membership for sale, not a booking.
+    if (price > 5000 || price < 5) return;
     let label = rawLabel;
     if (isAddon(label)) {
       const k = label.toLowerCase();

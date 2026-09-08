@@ -5,7 +5,7 @@ import type { Unclaimed } from "../../data/types";
 import { fromPrice, publicRating } from "../../lib/catalog";
 import { fmtReviews, money } from "../../lib/format";
 import { useApp } from "../../state/AppProvider";
-import { Art } from "../art/Art";
+import { Photo } from "../art/Photo";
 import { Markup } from "../Markup";
 
 export function UnclaimedCard({ item, compact }: { item: Unclaimed; compact?: boolean }) {
@@ -18,7 +18,7 @@ export function UnclaimedCard({ item, compact }: { item: Unclaimed; compact?: bo
   return (
     <button className={(compact ? "mini" : "card") + " unclaimed"} onClick={() => openRequest(item.id)}>
       <div className="art">
-        <Art kind={item.art} id={item.id + (compact ? "r" : "")} />
+        <Photo src={item.cover} kind={item.art} id={item.id + (compact ? "r" : "")} alt={item.title} />
         <span className="instant">
           <Markup html={ICONS.bolt} />
           Instant
