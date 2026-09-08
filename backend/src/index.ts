@@ -11,6 +11,7 @@ import { discoverAll, metroCoverage } from "./discover/osm.ts";
 import { enrichPending, rate } from "./enrich/run.ts";
 import { discoverSearch } from "./discover/searchapi.ts";
 import { readPendingStructures, readSiteStructure } from "./enrich/structure.ts";
+import { collectPhotos, photosPending } from "./enrich/images.ts";
 import { CITIES } from "./discover/cities.ts";
 
 import { db } from "./db/client.ts";
@@ -79,6 +80,22 @@ if (cmd === "search") {
   refreshAllScores();
   const total = (db.prepare("SELECT COUNT(*) AS n FROM operators WHERE origin != 'demo'").get() as { n: number }).n;
   console.log(`Done${stats.stoppedEarly ? " (stopped early: credits or budget)" : ""}. ${stats.queries} queries, ${stats.results} results, ${stats.inserted} new, ${stats.merged} merged into known operators, ${stats.skipped} skipped. Catalog now ${total} operators.`);
+  process.exit(0);
+}
+
+if (cmd === "photos") {
+  const limit = Number(process.argv[3] || 200);
+  const concurrency = Number(process.argv[4] || 8);
+  const only = process.argv[5];
+  if (only) {
+    const op = db.prepare("SELECT id, domain, website FROM operators WHERE domain = ?").get(only) as { id: string; domain: string; website: string } | undefined;
+    if (!op) { console.error("unknown domain"); process.exit(1); }
+    const photos = await collectPhotos(op.website);
+    console.log(JSON.stringify(photos, null, 1));
+    process.exit(0);
+  }
+  const out = await photosPending(limit, concurrency);
+  console.log(`Photos: ${out.withPhotos}/${out.sites} sites, ${out.photos} images linked. Run "npm run sync" to push to the app.`);
   process.exit(0);
 }
 

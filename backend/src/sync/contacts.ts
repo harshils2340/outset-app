@@ -120,6 +120,9 @@ type CatalogRow = {
   lon: number | null;
 };
 
+/** Marketplaces and directories are not operators. They never belong in the catalog. */
+export const MARKETPLACES = /(^|\.)(sailo|getmyboat|boatsetter|viator|tripadvisor|airbnb|expedia|groupon|yelp|peek|fareharbor|getyourguide|klook|eventbrite|meetup|facebook|instagram|booking|hotels|vrbo|kayak|tours4fun|musement|headout|goldstar|boatbound|clickandboat|samboat|fishingbooker|fishanywhere|guidesly)\.(com|net|co|io|ca)$/i;
+
 const DEFAULT_GAP = "Prices, hours and eligibility are not copied here yet. We will ask when you request.";
 
 function slug(s: string): string {
@@ -185,6 +188,8 @@ function toCatalogItem(r: CatalogRow): Record<string, unknown> {
       .slice(0, 6),
     gap: pick("published_gap")[0] || DEFAULT_GAP,
     blurb: pick("description")[0] || pick("one_line")[0] || undefined,
+    cover: pick("cover")[0] || undefined,
+    photos: [...new Set(pick("photo"))].slice(0, 8),
     lat: r.lat ?? undefined,
     lon: r.lon ?? undefined,
     tags: [...new Set([...pick("google_category"), ...pick("service"), ...offerings.map((o) => o.name)])].slice(0, 12),
@@ -201,7 +206,7 @@ export function syncCatalogToApp(): { path: string; count: number } {
        ORDER BY completeness DESC, name ASC`,
     )
     .all() as CatalogRow[];
-  const operators = rows.map(toCatalogItem);
+  const operators = rows.filter((r) => !MARKETPLACES.test(r.domain)).map(toCatalogItem);
   const contacts: Record<string, OperatorContact> = {};
   for (const c of allContacts()) contacts[c.domain] = c;
   const path = join(appDataDir, "../../public/catalog.json");

@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { load } from "cheerio";
 import { db, nowIso } from "../db/client.ts";
-import { fetchHtml, sleep } from "../scrape/fetch.ts";
+import { fetchHtml, sleep, withDeadline } from "../scrape/fetch.ts";
 import { normalizePhone } from "../scrape/run.ts";
 
 /**
@@ -12,7 +12,7 @@ import { normalizePhone } from "../scrape/run.ts";
  */
 
 const SERVICE_WORDS =
-  /beach (chair|furniture|umbrella)|cabana|umbrella|jet ?ski|waverunner|pwc|kayak|canoe|paddle ?board|sup\b|pontoon|boat rental|boat tour|charter|fishing|cruise|sail|sunset|dolphin|snorkel|parasail|skydiv|tandem|helicopter|heli ?tour|balloon|kart|escape room|axe|paintball|airsoft|horse|trail ride|zipline|tube|banana boat|flyboard|eco ?tour|mangrove|manatee|whale|scuba|dive|surf|wakeboard|water ?ski|yacht|catamaran|glass ?bottom|airboat|atv|utv|jeep|segway|bike/i;
+  /beach (chair|furniture|umbrella)|cabana|umbrella|jet ?ski|waverunner|\bpwc\b|kayak|canoe|paddle ?board|\bsup\b|pontoon|boat rental|boat tour|charter|fishing|cruise|\bsail(ing|boat|s)?\b|sunset|dolphin|snorkel|parasail|skydiv|tandem|helicopter|heli ?tour|balloon|\bkart|escape room|\baxe\b|paintball|airsoft|horse|trail ride|zipline|\btub(e|ing)\b|banana boat|flyboard|eco ?tour|mangrove|manatee|whale|scuba|\bdiv(e|ing)\b|\bsurf|wakeboard|water ?ski|yacht|catamaran|glass ?bottom|airboat|\batv|\butv|\bjeep|segway|\bbikes?\b|e-?bike|rental/i;
 const NOT_SERVICE = /blog|news|about|contact|faq|gallery|photo|review|career|job|privacy|terms|policy|sitemap|login|cart|account|gift|membership|sale|shop|store|merch|home$|location|weather|map|directions|press|partner|affiliate|franchise|donate|sponsor|newsletter|email|subscribe|coupon|special|deal/i;
 /** Pages worth crawling first when a site has many. */
 const CRAWL_FIRST = /rental|rent|tour|trip|price|pricing|rate|package|service|book|reserv|experience|adventure|charter|lesson|group|party|event|faq|policy|waiver|hour|about|activit|menu|option|what-we-offer|things-to-do/i;
@@ -20,7 +20,7 @@ const CRAWL_SKIP = /\.(pdf|jpg|jpeg|png|gif|svg|webp|mp4|zip|css|js)$|\/(wp-json
 const WAIVER = /waiver|release form|sign (the|your) (form|waiver)|smartwaiver|wherewolf|waiverforever/i;
 const BOOK = /book now|reserve|reservation|book online|buy tickets|schedule|check availability|fareharbor|peek\.com|xola|rezdy|checkfront|bookeo|resova/i;
 const HOURS = /\b(mon|tue|wed|thu|fri|sat|sun)[a-z]*\.?\s*(-|to|–|through)\s*(mon|tue|wed|thu|fri|sat|sun)[a-z]*\.?\s*[:,]?\s*\d{1,2}(:\d{2})?\s*(am|pm)?\s*(-|to|–)\s*\d{1,2}(:\d{2})?\s*(am|pm)|\b(open|hours)\b[^.]{0,40}\d{1,2}(:\d{2})?\s*(am|pm)\s*(-|to|–)\s*\d{1,2}(:\d{2})?\s*(am|pm)/i;
-const PRICE_NEAR = /\$\s?(\d{2,4})(?:\.\d{2})?(?:\s*(?:\/|per|an?|each)\s*(hour|hr|half.?hour|30 ?min|person|adult|child|kid|ski|boat|day|half.?day|trip|group|ride|flight|jump|room|lane|game)s?)?/i;
+const PRICE_NEAR = /\$\s?(\d{1,3}(?:,\d{3})+|\d{2,5})(?:\.\d{2})?(?:\s*(?:\/|per|an?|each)\s*(hour|hr|half.?hour|30 ?min|person|adult|child|kid|ski|boat|day|half.?day|trip|group|ride|flight|jump|room|lane|game)s?)?/i;
 
 /** Groups of service names that mean the same activity. The first regex match wins. */
 const CANON: [RegExp, string][] = [
@@ -44,8 +44,12 @@ function canon(name: string): string | null {
 function consolidate(found: Map<string, Found>): Found[] {
   const groups = new Map<string, Found & { canon: string }>();
   for (const f of found.values()) {
+    if (/@|https?:|\.(com|net|org|ca)\b/i.test(f.name)) continue;
     const c = canon(f.name);
     if (!c) continue;
+    const weak = f.price == null && !f.variants?.length && f.name.split(/\s+/).length < 2;
+    if (weak) continue;
+    if (/\b(rates?|prices?|pricing|packages?|options?|menu|services?)\b/i.test(f.name) && f.name.split(/\s+/).length <= 3) f.name = c;
     const cur = groups.get(c);
     if (!cur) {
       groups.set(c, { ...f, canon: c });
@@ -64,7 +68,13 @@ function consolidate(found: Map<string, Found>): Found[] {
       for (const v of f.variants) if (!cur.variants.some((x) => x.label.toLowerCase() === v.label.toLowerCase())) cur.variants.push(v);
     }
   }
-  return [...groups.values()].map((g) => ({ ...g, name: g.name.length > 34 ? g.canon : g.name.replace(/\s*&\s*more!?$/i, "") })).slice(0, 14);
+  return [...groups.values()]
+    .map((g) => {
+      // A bare "Standard" line is only useful when it is the sole price.
+      if (g.variants && g.variants.length > 1) g.variants = g.variants.filter((v) => v.label !== "Standard");
+      return { ...g, name: g.name.length > 34 ? g.canon : g.name.replace(/\s*&\s*more!?$/i, "") };
+    })
+    .slice(0, 14);
 }
 
 export type StructureResult = {
@@ -77,7 +87,20 @@ export type StructureResult = {
 };
 
 function clean(s: string): string {
-  return s.replace(/\s+/g, " ").replace(/[|•·–—]+/g, "-").trim();
+  return s.replace(/\s+/g, " ").replace(/[|•·–—]+/g, "-").replace(/\s*-\s*(from|starting at)\s*$/i, "").replace(/^\*+\s*/, "").trim();
+}
+
+/** Element text with a space between child elements, so "Boat Rental</b><span>2-Hour" does not fuse into one word. */
+function spaced($: ReturnType<typeof load>, el: any): string {
+  const parts: string[] = [];
+  $(el)
+    .contents()
+    .each((_, n: any) => {
+      if (n.type === "text") parts.push(n.data || "");
+      else if (n.type === "tag" && n.name === "br") parts.push("\n");
+      else if (n.type === "tag") parts.push(" " + spaced($, n) + " ");
+    });
+  return parts.join("");
 }
 
 function titleCase(s: string): string {
@@ -89,8 +112,9 @@ type Found = { name: string; detail: string | null; price: number | null; unit: 
 type Addon = { name: string; price: number; url: string };
 
 const ADDON_WORDS = /additional|extra|add[- ]?on|upgrade|rider|passenger|photo|video|gopro|camera|fuel|gas|cooler|insurance|damage|deposit|guide|lesson|delivery|late|tax|gratuity|tip|snorkel gear|wetsuit|dry bag|tube|towel/i;
-const PRICE_CELL = /^\$\s?(\d{1,4})(?:\.\d{2})?(?:\s*(?:\+|and up|\/|per)?.*)?$/i;
-const LABEL_PRICE = /^(.{3,48}?)\s*(?:[-–:]|\.{2,}|\s{2,})\s*\$\s?(\d{1,4})(?:\.\d{2})?\b/;
+const NUM = "(\\d{1,3}(?:,\\d{3})+|\\d{1,5})";
+const PRICE_CELL = new RegExp("^\\$\\s?" + NUM + "(?:\\.\\d{2})?(?:\\s*(?:\\+|and up|\\/|per)?.*)?$", "i");
+const toNum = (t: string) => Number(t.replace(/,/g, ""));
 
 function isAddon(label: string): boolean {
   return ADDON_WORDS.test(label);
@@ -100,7 +124,7 @@ function isAddon(label: string): boolean {
 function headingAbove($: ReturnType<typeof load>, el: any): string | null {
   let node = $(el);
   for (let depth = 0; depth < 8 && node.length; depth++) {
-    const prev = node.prevAll("h1, h2, h3, h4").filter((_, h) => SERVICE_WORDS.test($(h).text())).first();
+    const prev = node.prevAll("h1, h2, h3, h4, h5, h6").filter((_, h) => SERVICE_WORDS.test($(h).text())).first();
     if (prev.length) return clean(prev.text());
     node = node.parent();
   }
@@ -112,13 +136,15 @@ function headingAbove($: ReturnType<typeof load>, el: any): string | null {
 
 /** Read price tables and "label - $price" lists into variants and add-ons attached to the nearest service heading. */
 function harvestPrices($: ReturnType<typeof load>, url: string, out: Map<string, Found>, addons: Map<string, Addon>) {
-  const attach = (heading: string | null, label: string, price: number) => {
+  const attach = (heading: string | null, rawLabel: string, price: number) => {
+    let label = rawLabel;
     if (isAddon(label)) {
       const k = label.toLowerCase();
       if (!addons.has(k)) addons.set(k, { name: titleCase(label), price, url });
       return;
     }
     const svc = heading && SERVICE_WORDS.test(heading) ? heading : label;
+    if (label.toLowerCase() === svc.toLowerCase()) label = "Standard";
     const key = svc.toLowerCase();
     const cur = out.get(key) || { name: titleCase(svc), detail: null, price: null, unit: null, url };
     cur.variants = cur.variants || [];
@@ -133,37 +159,46 @@ function harvestPrices($: ReturnType<typeof load>, url: string, out: Map<string,
     $(table)
       .find("tr")
       .each((_, tr) => {
-        const cells = $(tr).find("th, td").map((_, c) => clean($(c).text())).get().filter((t) => t.length);
+        const cells = $(tr).find("th, td").map((_, c) => clean(spaced($, c))).get().filter((t) => t.length);
         if (cells.length) rows.push(cells);
       });
     if (!rows.length) return;
     const heading = headingAbove($, table);
     // Layout A: a label row followed by a price row (columns are variants).
+    let usedA = false;
     for (let i = 0; i + 1 < rows.length; i++) {
       const labels = rows[i];
       const prices = rows[i + 1];
       if (labels.length === prices.length && prices.every((c) => PRICE_CELL.test(c)) && !labels.some((c) => PRICE_CELL.test(c))) {
-        labels.forEach((l, j) => attach(heading, l, Number(prices[j].match(PRICE_CELL)![1])));
+        labels.forEach((l, j) => attach(heading, l, toNum(prices[j].match(PRICE_CELL)![1])));
+        usedA = true;
         i++;
       }
     }
-    // Layout B: rows of [label, ..., price].
+    // Layout B: rows of [label, ..., price]. Skipped when the table was already read as columns.
+    if (usedA) return;
     for (const r of rows) {
       if (r.length < 2) continue;
       const priceIdx = r.findIndex((c) => PRICE_CELL.test(c));
-      if (priceIdx > 0 && !PRICE_CELL.test(r[0]) && r[0].length <= 48) attach(heading, r[0], Number(r[priceIdx].match(PRICE_CELL)![1]));
+      if (priceIdx > 0 && !PRICE_CELL.test(r[0]) && r[0].length <= 48) attach(heading, r[0], toNum(r[priceIdx].match(PRICE_CELL)![1]));
     }
   });
 
-  $("li, p, dt, dd, span, div").each((_, el) => {
-    if ($(el).children().length > 3) return;
-    const text = clean($(el).clone().children("ul, ol, table").remove().end().text());
-    if (text.length > 90 || !/\$/.test(text)) return;
-    const m = text.match(LABEL_PRICE);
-    if (!m) return;
-    const label = m[1].trim();
-    if (!SERVICE_WORDS.test(label) && !/hour|hr|min|day|person|adult|child|kid|rider|ride|trip|flight|jump|game|lane|session|tour|package/i.test(label) && !isAddon(label)) return;
-    attach(headingAbove($, el), label, Number(m[2]));
+  $("li, p, dt, dd, span, div, h3, h4, a").each((_, el) => {
+    if ($(el).children().length > 6) return;
+    const raw = spaced($, $(el).clone().children("ul, ol, table").remove().end());
+    const lines = raw.split(/\n+/).map((l) => clean(l)).filter((l) => l.length >= 4 && l.length <= 140 && (l.match(/\$/g) || []).length === 1);
+    if (lines.length > 6) return;
+    for (const text of lines) {
+    const dollar = text.indexOf("$");
+    let before = clean(text.slice(0, dollar));
+    for (let k = 0; k < 3; k++) before = before.replace(/[-–:.,\s]+$/, "").replace(/\s*\b(from|starting at|only|just|as low as|price|prices|rate|rates)$/i, "").trim();
+    const after = text.slice(dollar).match(new RegExp("^\\$\\s?" + NUM));
+    if (!after || before.length < 3 || before.length > 48) continue;
+    const label = before;
+    if (!SERVICE_WORDS.test(label) && !/hour|hr|min|day|person|adult|child|kid|rider|ride|trip|flight|jump|game|lane|session|tour|package|standard|premium|private|group/i.test(label) && !isAddon(label)) continue;
+    attach(headingAbove($, el), label, toNum(after[1]));
+    }
   });
 }
 
@@ -195,8 +230,9 @@ function harvest(html: string, url: string, out: Map<string, Found>, links: Set<
   });
 
   $("h1, h2, h3").each((_, el) => {
-    const text = clean($(el).text());
+    const text = clean(spaced($, el));
     if (text.length < 4 || text.length > 70 || !SERVICE_WORDS.test(text) || NOT_SERVICE.test(text)) return;
+    if (/@|https?:|\.(com|net|org|ca)\b/i.test(text)) return;
     const key = text.toLowerCase();
     const near = clean($(el).nextAll().slice(0, 3).text()).slice(0, 240);
     const m = near.match(PRICE_NEAR) || text.match(PRICE_NEAR);
@@ -210,7 +246,7 @@ function harvest(html: string, url: string, out: Map<string, Found>, links: Set<
       if (best && score(best) > 0 && (!cur.desc || score(best) > score(cur.desc))) cur.desc = best.slice(0, 320).replace(/\s+\S*$/, "");
     }
     if (m && cur.price == null) {
-      cur.price = Number(m[1]);
+      cur.price = toNum(m[1]);
       cur.unit = m[2] ? "/" + m[2].toLowerCase().replace(/s$/, "") : null;
       cur.url = url;
     }
@@ -278,7 +314,7 @@ export async function readSiteStructure(op: { id: string; domain: string; websit
             insOff.run(randomUUID(), op.id, f.name.slice(0, 80), v.label.slice(0, 80), v.price * 100, "each", f.url);
           }
         } else {
-          insOff.run(randomUUID(), op.id, f.name.slice(0, 80), f.detail, f.price == null ? null : f.price * 100, f.unit || "each", f.url);
+          insOff.run(randomUUID(), op.id, f.name.slice(0, 80), f.price != null && f.unit ? f.unit.replace("/", "per ") : null, f.price == null ? null : f.price * 100, f.unit || "each", f.url);
         }
       }
       insFact.run(randomUUID(), op.id, "service", f.name.slice(0, 80), f.url);
@@ -321,7 +357,7 @@ export async function readPendingStructures(limit: number, concurrency = 6): Pro
   const worker = async () => {
     while (i < queue.length) {
       const op = queue[i++];
-      const r = await readSiteStructure(op);
+      const r = await withDeadline(readSiteStructure(op), 150000, op.domain).catch((e) => ({ operatorId: op.id, domain: op.domain, pages: 0, services: 0, status: "error" as const, error: (e as Error).message }));
       out.push(r);
       done += 1;
       if (done % 50 === 0) {

@@ -45,6 +45,14 @@ export async function fetchHtml(url: string): Promise<{ status: number; html: st
   return { status: res.status, html, finalUrl: res.url };
 }
 
+/** Hard deadline for any per-site job. Slow hosts must not stall a worker for the whole run. */
+export function withDeadline<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const t = setTimeout(() => reject(new Error("deadline " + ms + "ms: " + label)), ms);
+    p.then((v) => { clearTimeout(t); resolve(v); }, (e) => { clearTimeout(t); reject(e); });
+  });
+}
+
 export function sleep(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms));
 }

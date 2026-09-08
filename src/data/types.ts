@@ -105,6 +105,9 @@ export type Unclaimed = {
   addons?: UnclaimedOption[];
   /** Services grouped with descriptions, from the operator's own pages. */
   services?: UnclaimedService[];
+  /** Photos linked from the operator's own site. cover is the best one. */
+  cover?: string;
+  photos?: string[];
 };
 
 export type Category = {
