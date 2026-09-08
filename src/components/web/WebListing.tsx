@@ -128,6 +128,11 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
             <span className="wdot wdist"><Markup html={ICONS.pin} /> {fmtDistance(kmBetween(state.near, { lat: item.lat, lon: item.lon }))} from {state.near.label}</span>
           ) : null}
           <span className="wdot">{plainWords(KIND[item.art] || "experience").replace(/^(a|an) /, "")}</span>
+          {item.src && !/^(osm-|gplace-)/.test(item.src) ? (
+            <a className="wsrc" href={"https://" + item.src.replace(/^https?:\/\//, "")} target="_blank" rel="noreferrer">
+              Source: {item.src.replace(/^https?:\/\//, "").replace(/^www\./, "")} ↗
+            </a>
+          ) : null}
         </div>
 
         <div className={"wphotos" + (photos.length >= 3 ? " grid" : " single")}>

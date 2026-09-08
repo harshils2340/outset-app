@@ -25,7 +25,8 @@ const PRICE_NEAR = /\$\s?(\d{1,3}(?:,\d{3})+|\d{2,5})(?:\.\d{2})?(?:\s*(?:\/|per
 /** Groups of service names that mean the same activity. The first regex match wins. */
 const CANON: [RegExp, string][] = [
   [/jet ?ski|waverunner|pwc/i, "Jet ski rental"], [/paddle ?board|sup\b/i, "Paddleboard rental"], [/kayak|canoe/i, "Kayak rental"],
-  [/pontoon/i, "Pontoon rental"], [/boat rental|boat rent/i, "Boat rental"], [/parasail/i, "Parasailing"],
+  [/pontoon/i, "Pontoon rental"], [/pedal ?boat|paddle ?boat/i, "Pedal boat rental"], [/\bdock\b|swim platform/i, "Floating dock rental"],
+  [/\bmega\b|giant (sup|paddle)/i, "Giant paddleboard rental"], [/boat rental|boat rent/i, "Boat rental"], [/parasail/i, "Parasailing"],
   [/banana boat|tube|tubing/i, "Banana boat and tubing"], [/flyboard/i, "Flyboarding"], [/snorkel/i, "Snorkel trip"],
   [/scuba|dive/i, "Dive trip"], [/dolphin|manatee|whale|eco ?tour|mangrove|wildlife/i, "Wildlife tour"],
   [/sunset|cruise|sail|catamaran|yacht|glass ?bottom|airboat|boat tour|harbor|harbour/i, "Boat tour"],
@@ -191,6 +192,23 @@ function harvestPrices($: ReturnType<typeof load>, url: string, out: Map<string,
       });
     if (!rows.length) return;
     const heading = headingAbove($, table);
+    // Layout C: a header row naming price columns ("Price/Hour", "Half Day") and rows of [service, ..., $a, $b].
+    const header = rows[0];
+    const priceCols = header.map((h, i) => (/price|rate|hour|hr|half|day|week|min|adult|child|person|session|trip/i.test(h) ? i : -1)).filter((i) => i >= 0);
+    if (rows.length >= 2 && priceCols.length >= 2 && rows.slice(1).some((r) => r.filter((c) => PRICE_CELL.test(c)).length >= 2)) {
+      for (const r of rows.slice(1)) {
+        if (!r[0] || PRICE_CELL.test(r[0]) || r[0].length > 48) continue;
+        // Map price cells to header columns by position from the right when the row is shorter than the header.
+        const shift = header.length - r.length;
+        r.forEach((cell, i) => {
+          if (!PRICE_CELL.test(cell)) return;
+          const col = header[i + shift] || header[i] || "";
+          const label = clean(col.replace(/price\s*\/?\s*/i, "").replace(/\*/g, "")) || "Standard";
+          attach(r[0], label, toNum(cell.match(PRICE_CELL)![1]));
+        });
+      }
+      return;
+    }
     // Layout A: a label row followed by a price row (columns are variants).
     let usedA = false;
     for (let i = 0; i + 1 < rows.length; i++) {

@@ -353,6 +353,11 @@ function RequestBody({
             <span className="count">({fmtReviews(score.reviews)} reviews)</span>
           </p>
         ) : null}
+        {item.src && !/^(osm-|gplace-)/.test(item.src) ? (
+          <a className="wsrc" href={"https://" + item.src.replace(/^https?:\/\//, "")} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}>
+            Source: {item.src.replace(/^https?:\/\//, "").replace(/^www\./, "")} ↗
+          </a>
+        ) : null}
         <p className="reqhook">{guide.hook}</p>
         {item.blurb ? (
           <p className="reqblurb">
