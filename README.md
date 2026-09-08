@@ -1,6 +1,6 @@
 # Outset
 
-Instant-booking marketplace for local experiences. Uber Eats for kayaks, skydives, karting, escape rooms, and the rest. Guests pick a slot and pay. It is not a lead-gen directory.
+Instant-booking marketplace for local experiences across the US and Canada. Air, water, racing, indoor, and outdoor: jet skis, skydives, charters, escape rooms, karting, paintball, and the rest of the catalog. Guests pick a slot and pay. It is not a lead-gen directory.
 
 **Live guest app:** [harshils2340.github.io/outset-app](https://harshils2340.github.io/outset-app/)
 
