@@ -41,7 +41,7 @@ function canon(name: string): string | null {
 }
 
 function normLabel(l: string): string {
-  return l.toLowerCase().replace(/\b(and|&|the|a|an|per|each|only|rate|rates|price|prices)\b/g, " ").replace(/[^a-z0-9]+/g, " ").replace(/s\b/g, "").replace(/\s+/g, " ").trim();
+  return l.toLowerCase().replace(/\bkids?\b/g, "child").replace(/\bchildren\b/g, "child").replace(/\bunder\b/g, "").replace(/\b(older|up|plus)\b/g, "").replace(/\b(and|&|the|a|an|per|each|only|rate|rates|price|prices)\b/g, " ").replace(/[^a-z0-9]+/g, " ").replace(/s\b/g, "").replace(/\s+/g, " ").trim();
 }
 
 /** "Adult", "Adults" and "Adult 13 & older" at the same price are one line. Keep the most specific label. */
