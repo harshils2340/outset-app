@@ -199,6 +199,8 @@ function toCatalogItem(r: CatalogRow): Record<string, unknown> {
     blurb: pick("description")[0] || pick("site_desc")[0] || pick("one_line")[0] || undefined,
     cover: pick("cover")[0] || undefined,
     photos: [...new Set(pick("photo"))].slice(0, 8),
+    video: pick("video")[0] || undefined,
+    videoEmbed: pick("video_embed")[0] || undefined,
     lat: r.lat ?? undefined,
     lon: r.lon ?? undefined,
     tags: [...new Set([...pick("google_category"), ...pick("service"), ...offerings.map((o) => o.name)])].slice(0, 12),

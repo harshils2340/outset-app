@@ -5,7 +5,8 @@
 .od{display:grid;grid-template-columns:248px minmax(0,1fr);min-height:100vh;background:var(--surface-2);color:var(--ink);font-family:var(--f-display);position:relative;}
 .od.compact{display:flex;flex-direction:column;min-height:0;height:100%;background:var(--surface);}
 
-.odside{background:var(--surface);border-right:1px solid var(--line);position:sticky;top:0;height:100vh;display:flex;flex-direction:column;padding:18px 14px;gap:8px;}
+.odside{background:var(--surface);border-right:1px solid var(--line);position:fixed;left:0;top:0;bottom:0;width:248px;overflow-y:auto;overscroll-behavior:contain;display:flex;flex-direction:column;padding:18px 14px;gap:8px;z-index:6;}
+.od:not(.compact) .odmain{grid-column:2;}
 .odbrand{display:flex;align-items:center;gap:8px;padding:6px 8px 14px;color:var(--accent);text-align:left;}
 .odbrand b{font-size:20px;font-weight:700;letter-spacing:-.03em;}
 .odbrand span{font-size:12px;font-weight:500;color:var(--ink-faint);margin-left:2px;}
@@ -218,6 +219,8 @@
 .odcheck > svg{width:16px;height:16px;color:var(--ink-faint);}
 .odcheck .tick{width:22px;height:22px;border-radius:50%;border:1.5px solid var(--line-strong);display:grid;place-items:center;color:transparent;flex:none;}
 .odcheck .tick svg{width:14px;height:14px;}
+.odcheck .tick i{font-style:normal;font-size:11px;font-weight:700;color:var(--ink);}
+.odsetup .odcheck{border-bottom:none;padding:6px 0;}
 .odcheck.done .tick{background:var(--open);border-color:var(--open);color:#fff;}
 .odcheck.done{color:var(--ink-faint);text-decoration:line-through;text-decoration-color:var(--line-strong);}
 
@@ -383,6 +386,7 @@
 
 @media (max-width:1180px){
   .od:not(.compact){grid-template-columns:200px minmax(0,1fr);}
+  .odside{width:200px;}
   .od:not(.compact) .odbody{padding:20px;}
   .od:not(.compact) .odtop{padding:14px 20px;}
   .odlogin{grid-template-columns:minmax(0,1fr) 440px;}

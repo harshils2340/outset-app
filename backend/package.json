@@ -15,6 +15,7 @@
     "search": "tsx src/index.ts search",
     "structure": "tsx src/index.ts structure",
     "photos": "tsx src/index.ts photos",
+    "videos": "tsx src/index.ts videos",
     "status": "tsx src/index.ts status"
   },
   "dependencies": {

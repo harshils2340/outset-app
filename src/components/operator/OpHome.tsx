@@ -39,6 +39,26 @@ export function OpHome() {
 
   return (
     <div className="odpage">
+      {done < checks.length ? (
+        <section className="odcard odsetup">
+          <div className="odcardhead">
+            <h3>Set up your listing</h3>
+            <span className="odprogress"><i style={{ width: Math.round((done / checks.length) * 100) + "%" }} /></span>
+            <small className="odmuted">{done} of {checks.length}</small>
+            <button type="button" className="odlink" onClick={preview}>See what guests see</button>
+          </div>
+          <div className="odchecks">
+            {checks.map((c, i) => (
+              <button type="button" key={c.id} className={"odcheck" + (c.done ? " done" : "")} onClick={() => go(c.page as OpPage)}>
+                <span className="tick">{c.done ? <Markup html={OD_ICONS.check} /> : <i>{i + 1}</i>}</span>
+                <span>{c.label}</span>
+                <Markup html={OD_ICONS.chev} />
+              </button>
+            ))}
+          </div>
+        </section>
+      ) : null}
+
       <div className="odhello">
         <h2>{hello}{p.ownerName ? ", " + p.ownerName.split(" ")[0] : ""}.</h2>
         <p>
@@ -47,25 +67,6 @@ export function OpHome() {
         </p>
       </div>
 
-      {done < checks.length ? (
-        <section className="odcard odsetup">
-          <div className="odcardhead">
-            <h3>Finish your listing</h3>
-            <span className="odprogress"><i style={{ width: Math.round((done / checks.length) * 100) + "%" }} /></span>
-            <small className="odmuted">{done} of {checks.length}</small>
-            <button type="button" className="odlink" onClick={preview}>See what guests see</button>
-          </div>
-          <div className="odchecks">
-            {checks.filter((c) => !c.done).map((c) => (
-              <button type="button" key={c.id} className="odcheck" onClick={() => go(c.page as OpPage)}>
-                <span className="tick"><Markup html={OD_ICONS.check} /></span>
-                <span>{c.label}</span>
-                <Markup html={OD_ICONS.chev} />
-              </button>
-            ))}
-          </div>
-        </section>
-      ) : null}
 
       <div className="odstats">
         <button type="button" onClick={() => go("bookings")}><b>{fresh.length}</b><small>New requests</small></button>

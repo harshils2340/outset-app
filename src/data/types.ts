@@ -110,6 +110,10 @@ export type Unclaimed = {
   /** Photos linked from the operator's own site. cover is the best one. */
   cover?: string;
   photos?: string[];
+  /** A short clip or GIF from the operator's own site. Cards and the listing hero play it muted on loop. */
+  video?: string;
+  /** YouTube or Vimeo embed URL, shown on the listing page. */
+  videoEmbed?: string;
 };
 
 export type Category = {

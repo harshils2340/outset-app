@@ -43,7 +43,7 @@ function visibleText(html: string): { title: string; text: string } {
   return { title, text: lines.join("\n").slice(0, 14000) };
 }
 
-export async function crawlSite(website: string, maxPages = 20): Promise<CrawlResult> {
+export async function crawlSite(website: string, maxPages = 40): Promise<CrawlResult> {
   const start = website.startsWith("http") ? website : "https://" + website;
   const origin = new URL(start).origin;
   const home = await fetchHtml(start);

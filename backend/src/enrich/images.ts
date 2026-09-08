@@ -15,6 +15,66 @@ const PAGE_FIRST = /rental|rent|tour|trip|gallery|photo|experience|adventure|cha
 const SKIP = /\.(pdf|zip|css|js|mp4|webm)$|\/(wp-json|feed|tag|category|author|cart|checkout|login|account|wp-admin|xmlrpc)\b|blog\/|\/news\/|\/page\/\d|\?|#/i;
 
 export type Photo = { url: string; score: number; page: string; alt: string };
+/** A moving cover: a direct mp4/webm/gif on the operator's site, or a YouTube / Vimeo embed. */
+export type Video = { url: string; kind: "file" | "gif" | "embed"; score: number; page: string; poster: string | null };
+
+const VIDEO_BAD = /logo|intro|loader|loading|spinner|background-?loop|testimonial|review|ad[-_]|advert|promo-?code|cookie/i;
+
+function embedUrl(raw: string): string | null {
+  const m1 = raw.match(/(?:youtube\.com\/(?:embed\/|watch\?v=|v\/)|youtu\.be\/)([A-Za-z0-9_-]{6,})/);
+  if (m1) return "https://www.youtube.com/embed/" + m1[1];
+  const m2 = raw.match(/vimeo\.com\/(?:video\/)?(\d{5,})/);
+  if (m2) return "https://player.vimeo.com/video/" + m2[1];
+  return null;
+}
+
+export function harvestVideos(html: string, pageUrl: string, seen: Map<string, Video>): void {
+  const $ = load(html);
+  const home = /^https?:\/\/[^/]+\/?$/.test(pageUrl);
+  const put = (v: Video) => {
+    const cur = seen.get(v.url);
+    if (!cur || cur.score < v.score) seen.set(v.url, v);
+  };
+  const addFile = (raw: string | null, base: number, poster: string | null, near: string) => {
+    if (!raw) return;
+    const url = absUrl(raw, pageUrl);
+    if (!url) return;
+    const path = url.split("?")[0];
+    const gif = /\.gif$/i.test(path);
+    if (!gif && !/\.(mp4|webm|m4v|mov)$/i.test(path)) return;
+    if (VIDEO_BAD.test(path.split("/").slice(-1)[0]) || VIDEO_BAD.test(near)) return;
+    let score = base + (home ? 2 : 0);
+    if (GOOD_NAME.test(path.split("/").slice(-1)[0])) score += 2;
+    if (/hero|slider|banner|intro|featured|home/i.test(near)) score += 2;
+    put({ url, kind: gif ? "gif" : "file", score: gif ? score - 1 : score, page: pageUrl, poster: poster ? absUrl(poster, pageUrl) : null });
+  };
+  $("video").each((_, el) => {
+    const near = String($(el).attr("class") || "") + " " + String($(el).parent().attr("class") || "") + " " + String($(el).closest("section, div").attr("id") || "");
+    const poster = $(el).attr("poster") || null;
+    const bg = $(el).closest("header, [class*=hero], [class*=banner], [class*=slider]").length ? 3 : 0;
+    addFile($(el).attr("src") || $(el).attr("data-src") || null, 4 + bg, poster, near);
+    $(el).find("source").each((__, s) => addFile($(s).attr("src") || $(s).attr("data-src") || null, 4 + bg, poster, near));
+  });
+  addFile($('meta[property="og:video"]').attr("content") || $('meta[property="og:video:url"]').attr("content") || null, 3, $('meta[property="og:image"]').attr("content") || null, "og");
+  $("img").each((_, el) => {
+    const src = $(el).attr("data-src") || $(el).attr("src") || "";
+    if (!/\.gif(\?|$)/i.test(src)) return;
+    const w = dims($(el).attr("width"));
+    const h = dims($(el).attr("height"));
+    if ((w && w < 400) || (h && h < 250)) return;
+    if ($(el).closest("header, nav, footer, aside").length) return;
+    addFile(src, 2, null, String($(el).attr("alt") || "") + " " + String($(el).attr("class") || ""));
+  });
+  $("iframe[src], iframe[data-src], a[href*='youtu'], a[href*='vimeo']").each((_, el) => {
+    const raw = $(el).attr("src") || $(el).attr("data-src") || $(el).attr("href") || "";
+    const url = embedUrl(raw);
+    if (!url) return;
+    if ($(el).closest("footer, nav").length) return;
+    let score = 2 + (home ? 1 : 0);
+    if ($(el).closest("[class*=hero], [class*=banner], [class*=video], [id*=video]").length) score += 2;
+    put({ url, kind: "embed", score, page: pageUrl, poster: null });
+  });
+}
 
 function absUrl(src: string, base: string): string | null {
   try {
@@ -89,12 +149,18 @@ export function harvestImages(html: string, pageUrl: string, seen: Map<string, P
 }
 
 export async function collectPhotos(website: string, maxPages = 5): Promise<Photo[]> {
+  return (await collectMedia(website, maxPages)).photos;
+}
+
+export async function collectMedia(website: string, maxPages = 12): Promise<{ photos: Photo[]; videos: Video[] }> {
   const start = website.startsWith("http") ? website : "https://" + website;
   const origin = new URL(start).origin;
   const home = await fetchHtml(start);
-  if (home.status !== 200 || !home.html) return [];
+  if (home.status !== 200 || !home.html) return { photos: [], videos: [] };
   const seen = new Map<string, Photo>();
+  const vids = new Map<string, Video>();
   harvestImages(home.html, home.finalUrl || start, seen);
+  harvestVideos(home.html, home.finalUrl || start, vids);
   const $ = load(home.html);
   const queue: string[] = [];
   const visited = new Set<string>([start.replace(/\/$/, "")]);
@@ -117,24 +183,47 @@ export async function collectPhotos(website: string, maxPages = 5): Promise<Phot
     const res = await fetchHtml(url).catch(() => null);
     if (!res || res.status !== 200 || !res.html) continue;
     harvestImages(res.html, res.finalUrl || url, seen);
+    harvestVideos(res.html, res.finalUrl || url, vids);
     pages += 1;
   }
-  return [...seen.values()].sort((a, b) => b.score - a.score).slice(0, 8);
+  return {
+    photos: [...seen.values()].sort((a, b) => b.score - a.score).slice(0, 8),
+    videos: [...vids.values()].sort((a, b) => b.score - a.score).slice(0, 4),
+  };
 }
 
 export async function photosForOperator(op: { id: string; domain: string; website: string }): Promise<number> {
-  const photos = await collectPhotos(op.website);
-  db.prepare("DELETE FROM facts WHERE operator_id = ? AND fact_key IN ('photo', 'cover')").run(op.id);
+  const { photos, videos } = await collectMedia(op.website);
+  db.prepare("DELETE FROM facts WHERE operator_id = ? AND fact_key IN ('photo', 'cover', 'video', 'video_embed')").run(op.id);
   db.prepare("DELETE FROM sources WHERE operator_id = ? AND extractor = 'photos'").run(op.id);
   const ins = db.prepare("INSERT INTO facts (id, operator_id, fact_key, fact_value, source_url, confidence) VALUES (?, ?, ?, ?, ?, 'site')");
   photos.forEach((p, i) => {
     ins.run(randomUUID(), op.id, i === 0 ? "cover" : "photo", p.url, p.page);
     if (i === 0) ins.run(randomUUID(), op.id, "photo", p.url, p.page);
   });
+  // One moving cover: a file the card can autoplay, and separately the best embed for the listing page.
+  const file = videos.find((v) => v.kind !== "embed");
+  const embed = videos.find((v) => v.kind === "embed");
+  if (file) ins.run(randomUUID(), op.id, "video", file.url, file.page);
+  if (embed) ins.run(randomUUID(), op.id, "video_embed", embed.url, embed.page);
   db.prepare(
     "INSERT INTO sources (id, operator_id, url, fetched_at, http_status, extractor, robots_allowed, note) VALUES (?, ?, ?, ?, 200, 'photos', 1, ?)",
-  ).run(randomUUID(), op.id, op.website, nowIso(), photos.length + " photos linked from the operator's own pages");
+  ).run(randomUUID(), op.id, op.website, nowIso(), photos.length + " photos" + (videos.length ? ", " + videos.length + " videos" : ", video checked") + " linked from the operator's own pages");
   return photos.length;
+}
+
+/** Operators already crawled for photos but never checked for video. Best-covered metros first. */
+export function pendingVideos(limit: number): { id: string; domain: string; website: string }[] {
+  return db
+    .prepare(
+      `SELECT id, domain, website FROM operators o
+       WHERE origin != 'demo' AND website IS NOT NULL
+         AND EXISTS (SELECT 1 FROM sources s WHERE s.operator_id = o.id AND s.extractor = 'photos' AND s.note NOT LIKE '%video%' AND s.note NOT LIKE '%checked%')
+         AND EXISTS (SELECT 1 FROM facts f WHERE f.operator_id = o.id AND f.fact_key = 'cover')
+       ORDER BY (metro_id IS NULL), review_count DESC NULLS LAST, name ASC
+       LIMIT ?`,
+    )
+    .all(limit) as { id: string; domain: string; website: string }[];
 }
 
 export function pendingPhotos(limit: number): { id: string; domain: string; website: string }[] {
@@ -149,8 +238,8 @@ export function pendingPhotos(limit: number): { id: string; domain: string; webs
     .all(limit) as { id: string; domain: string; website: string }[];
 }
 
-export async function photosPending(limit: number, concurrency = 8): Promise<{ sites: number; withPhotos: number; photos: number }> {
-  const queue = pendingPhotos(limit);
+export async function photosPending(limit: number, concurrency = 8, mode: "photos" | "videos" = "photos"): Promise<{ sites: number; withPhotos: number; photos: number }> {
+  const queue = mode === "videos" ? pendingVideos(limit) : pendingPhotos(limit);
   const out = { sites: 0, withPhotos: 0, photos: 0 };
   let i = 0;
   const worker = async () => {

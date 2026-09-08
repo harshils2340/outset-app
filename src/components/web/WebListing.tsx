@@ -30,7 +30,7 @@ function Card({ u, onOpen }: { u: Unclaimed; onOpen: (id: string) => void }) {
   return (
     <button type="button" className="wcard" onClick={() => onOpen(u.id)}>
       <div className="wart">
-        <Photo src={u.cover} kind={u.art} id={"s" + u.id} alt={u.title} />
+        <Photo src={u.cover} video={u.video} kind={u.art} id={"s" + u.id} alt={u.title} />
       </div>
       <div className="wbody">
         <b>{u.title}</b>
@@ -46,6 +46,15 @@ function Card({ u, onOpen }: { u: Unclaimed; onOpen: (id: string) => void }) {
       </div>
     </button>
   );
+}
+
+/** Service copy straight from the operator's page, minus the button labels that get scraped along with it. */
+function cleanDesc(raw: string): string {
+  return plainWords(raw)
+    .replace(/\b(SELECT|BOOK NOW|BOOK ONLINE|RESERVE NOW|LEARN MORE|READ MORE|CLICK HERE|ADD TO CART|BUY NOW)\b\.?/gi, "")
+    .replace(/\s+/g, " ")
+    .replace(/\s+([.,;:])/g, "$1")
+    .trim();
 }
 
 export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose: () => void; onOpen: (id: string) => void }) {
@@ -153,7 +162,11 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
 
         <div className={"wphotos" + (photos.length >= 3 ? " grid" : " single")}>
           <button type="button" className="wphoto main" onClick={() => setGallery(0)} aria-label="Open photos">
-            <Photo src={photos[0]} kind={item.art} id={"wl" + item.id} alt={item.title} />
+            {!item.video && item.videoEmbed ? (
+              <iframe className="wembed" src={item.videoEmbed + (item.videoEmbed.includes("?") ? "&" : "?") + "autoplay=1&mute=1&muted=1&loop=1&controls=0&playsinline=1&background=1"} title={item.title + " video"} allow="autoplay; encrypted-media; picture-in-picture" allowFullScreen loading="lazy" />
+            ) : (
+              <Photo src={photos[0]} video={item.video} kind={item.art} id={"wl" + item.id} alt={item.title} />
+            )}
           </button>
           {photos.length >= 3
             ? photos.slice(1, 5).map((src, i) => (
@@ -246,13 +259,13 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
                       {svc.photo ? <img className="wsvcpic" src={svc.photo} alt={plainWords(svc.name)} loading="lazy" referrerPolicy="no-referrer" onError={(e) => ((e.currentTarget as HTMLImageElement).style.display = "none")} /> : null}
                       <div className="wsvchead">
                         <b>{plainWords(svc.name)}</b>
-                        {svc.desc ? (
+                        {svc.desc && cleanDesc(svc.desc).length > 180 ? (
                           <button type="button" className="svcabout" onClick={() => setOpenSvc(openSvc === svc.name ? null : svc.name)}>
-                            {openSvc === svc.name ? "Less" : "What is this?"}
+                            {openSvc === svc.name ? "Less" : "More"}
                           </button>
                         ) : null}
                       </div>
-                      {svc.desc && openSvc === svc.name ? <p className="svcdesc">{plainWords(svc.desc)}</p> : null}
+                      {svc.desc ? <p className="svcdesc">{openSvc === svc.name || cleanDesc(svc.desc).length <= 180 ? cleanDesc(svc.desc) : cleanDesc(svc.desc).slice(0, 180).replace(/\s+\S*$/, "") + "…"}</p> : null}
                       {svc.variants.map((v) => (
                         <button key={v.optionIdx} type="button" className="wvariant" aria-pressed={optionIdx === v.optionIdx} onClick={() => setOptionIdx(v.optionIdx)}>
                           <span className="tick"><Markup html={ICONS.check} /></span>

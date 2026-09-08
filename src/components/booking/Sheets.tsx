@@ -322,7 +322,7 @@ function RequestBody({
     <>
       <div className="reqpad">
         <div className="reqhero">
-          <Photo src={item.cover} kind={item.art} id={item.id + "req"} alt={item.title} />
+          <Photo src={item.cover} video={item.video} kind={item.art} id={item.id + "req"} alt={item.title} />
           <button className="backbtn" type="button" onClick={onBack} aria-label="Close">
             <Markup html={ICONS.close} />
           </button>

@@ -396,6 +396,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (m && experienceById(m[1])) dispatch({ type: "openRequest", id: m[1] });
       const c = window.location.hash.match(/^#claim=([a-z0-9-]+)/i);
       if (c && experienceById(c[1])) dispatch({ type: "openOperator", id: c[1] });
+      // /operators is the operator side. The guest site lives at /.
+      else if (/^\/operators\/?$/.test(window.location.pathname)) dispatch({ type: "openOperator" });
     });
     return () => {
       alive = false;
@@ -411,6 +413,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!state.hydrated) return;
     saveChats(state.chats);
   }, [state.chats, state.hydrated]);
+
+  useEffect(() => {
+    const onOps = state.screen === "operator";
+    const atOps = /^\/operators\/?$/.test(window.location.pathname);
+    if (onOps && !atOps) window.history.pushState(null, "", "/operators" + window.location.hash);
+    else if (!onOps && atOps && state.catalogReady) window.history.pushState(null, "", "/" + window.location.hash.replace(/^#claim=[^&]*/, ""));
+  }, [state.screen, state.catalogReady]);
+
+  useEffect(() => {
+    const onPop = () => {
+      const atOps = /^\/operators\/?$/.test(window.location.pathname);
+      if (atOps && state.screen !== "operator") dispatch({ type: "openOperator" });
+      if (!atOps && state.screen === "operator") dispatch({ type: "back" });
+    };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, [state.screen]);
 
   useEffect(() => {
     if (!state.toast) return;

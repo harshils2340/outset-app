@@ -67,7 +67,7 @@ function dedupeVariants(vs: Variant[]): Variant[] {
 
 /** Collapse near-duplicates to one line per activity, keeping the shortest original name and any price seen. */
 function consolidate(found: Map<string, Found>): Found[] {
-  const groups = new Map<string, Found & { canon: string }>();
+  const groups = new Map<string, Found & { canon: string; descWords?: number }>();
   for (const f of found.values()) {
     if (/@|https?:|\.(com|net|org|ca)\b/i.test(f.name)) continue;
     const c = canon(f.name);
@@ -77,7 +77,7 @@ function consolidate(found: Map<string, Found>): Found[] {
     if (/\b(rates?|prices?|pricing|packages?|options?|menu|services?)\b/i.test(f.name) && f.name.split(/\s+/).length <= 3) f.name = c;
     const cur = groups.get(c);
     if (!cur) {
-      groups.set(c, { ...f, canon: c });
+      groups.set(c, { ...f, canon: c, descWords: f.desc ? f.name.split(/\s+/).length : undefined });
       continue;
     }
     if (f.name.length < cur.name.length && !/^(an?|the|your|our)\b|!$/i.test(f.name)) cur.name = f.name;
@@ -87,7 +87,15 @@ function consolidate(found: Map<string, Found>): Found[] {
       cur.url = f.url;
     }
     if (!cur.detail && f.detail) cur.detail = f.detail;
-    if (f.desc && (!cur.desc || (!/\(\d{3}\)|contact us|sales/i.test(f.desc) && f.desc.length > cur.desc.length))) cur.desc = f.desc;
+    // Description: prefer the copy that came with the plainest alias ("Jet ski rental" over "jet ski dolphin tour"), then the longer one.
+    if (f.desc && !/\(\d{3}\)|contact us|sales/i.test(f.desc)) {
+      const fw = f.name.split(/\s+/).length;
+      const cw = cur.descWords ?? 99;
+      if (!cur.desc || fw < cw || (fw === cw && f.desc.length > cur.desc.length)) {
+        cur.desc = f.desc;
+        cur.descWords = fw;
+      }
+    }
     if (f.photo && (!cur.photo || (cur.photoWeak && !f.photoWeak) || (!f.photoWeak && f.name.length < cur.name.length))) {
       cur.photo = f.photo;
       cur.photoWeak = f.photoWeak;
@@ -355,7 +363,15 @@ function photoByName(name: string, images: SiteImage[]): string | null {
   return best?.url || null;
 }
 
-function harvest(html: string, url: string, out: Map<string, Found>, links: Set<string>, meta: { waiver?: string; book?: string; phone?: string; hours?: string; email?: string; desc?: string }, addons: Map<string, Addon>, images?: SiteImage[]) {
+function originOf(u: string): string {
+  try {
+    return new URL(u).origin + "/";
+  } catch {
+    return u;
+  }
+}
+
+function harvest(html: string, url: string, out: Map<string, Found>, links: Set<string>, meta: { waiver?: string; book?: string; phone?: string; hours?: string; email?: string; desc?: string; bodies?: Map<string, string> }, addons: Map<string, Addon>, images?: SiteImage[]) {
   const $ = load(html);
   const origin = new URL(url).origin;
   $("script, style, noscript, svg").remove();
@@ -425,6 +441,45 @@ function harvest(html: string, url: string, out: Map<string, Found>, links: Set<
     out.set(key, cur);
   });
 
+  // A service's own page (jet-ski-rentals, dolphin-tours) is the richest description of it. Keep its body copy.
+  {
+    const pathname = new URL(url).pathname.toLowerCase();
+    const slugWords = new Set(pathname.split(/[^a-z0-9]+/).filter((w) => w.length > 2));
+    const h1 = clean($("h1").first().text()).toLowerCase();
+    const generic = /about|contact|faq|gallery|photo|blog|news|review|testimonial|things-to-do|polic|terms|privacy|waiver|licen|test|career|team|staff|location|direction|weather|gift|shop|cart|checkout|sitemap/.test(pathname);
+    if (slugWords.size && !generic) {
+      const body = $("main p, article p, .entry-content p, .content p, section p, p")
+        .map((_, n) => clean($(n).text()))
+        .get()
+        .filter((d) => d.length >= 80 && !/cookie|javascript|browser|copyright|all rights|\(\d{3}\)|\d{3}[-.]\d{3}[-.]\d{4}|call us|contact us|privacy|terms/i.test(d))
+        .slice(0, 4)
+        .join(" ");
+      if (body.length >= 160 && meta.bodies) meta.bodies.set(url, body.slice(0, 700).replace(/\s+\S*$/, ""));
+      if (body.length >= 160) {
+        const STOP = /^(the|and|our|for|with|tour|tours|rental|rentals|trip|trips|ride|rides)$/;
+        const wordsOf = (name: string) => name.toLowerCase().split(/[^a-z0-9]+/).filter((w) => w.length > 2 && !STOP.test(w));
+        const inSlug = (w: string) => slugWords.has(w) || slugWords.has(w + "s") || slugWords.has(w.replace(/s$/, ""));
+        for (const cur of out.values()) {
+          const words = wordsOf(cur.name);
+          const hit = words.length > 0 && (words.every(inSlug) || (h1.length > 0 && words.every((w) => h1.includes(w))));
+          if (!hit) continue;
+          // /jet-ski-dolphin-tours/ belongs to neither "Jet Ski" nor "Dolphin Tours": a different service also fits the slug.
+          // Aliases of the same service ("Jet ski rental" vs "Jet Ski Rentals Panama City Beach") overlap and do not count.
+          const rival = [...out.values()].some((o) => {
+            if (o === cur) return false;
+            const ow = wordsOf(o.name);
+            if (!ow.length || !ow.every(inSlug)) return false;
+            const overlap = ow.some((w) => words.includes(w)) || words.some((w) => ow.includes(w));
+            return !overlap;
+          });
+          if (rival) continue;
+          if (!cur.desc || cur.desc.length < 200 || cur.desc.length < body.length / 2) cur.desc = body.slice(0, 700).replace(/\s+\S*$/, "");
+          if (!cur.url || cur.url === originOf(url)) cur.url = url;
+        }
+      }
+    }
+  }
+
   if (!meta.desc) {
     const metaDesc = clean($('meta[property="og:description"]').attr("content") || $('meta[name="description"]').attr("content") || "");
     const para = $("main p, article p, section p, p").filter((_, n) => clean($(n).text()).length >= 90).first();
@@ -469,11 +524,12 @@ export async function readSiteStructure(op: { id: string; domain: string; websit
     const links = new Set<string>();
     const addons = new Map<string, Addon>();
     const images: SiteImage[] = [];
-    const meta: { waiver?: string; book?: string; phone?: string; hours?: string; email?: string; desc?: string } = {};
+    const meta: { waiver?: string; book?: string; phone?: string; hours?: string; email?: string; desc?: string; bodies?: Map<string, string> } = { bodies: new Map() };
     harvest(home.html, home.finalUrl || start, found, links, meta, addons, images);
     base.pages = 1;
-    // Breadth-first over the site's own pages, likely service and pricing pages first, capped per site.
-    const MAX_PAGES = 10;
+    // Breadth-first over the site's own pages, likely service and pricing pages first. Deep on purpose:
+    // every location, activity and pricing page on the site is context for the listing.
+    const MAX_PAGES = Number(process.env.STRUCTURE_MAX_PAGES || 40);
     const seen = new Set<string>([start.replace(/\/$/, ""), (home.finalUrl || start).replace(/\/$/, "")]);
     const queue: string[] = [];
     const enqueue = (set: Set<string>) => {
@@ -509,7 +565,24 @@ export async function readSiteStructure(op: { id: string; domain: string; websit
       "INSERT INTO facts (id, operator_id, fact_key, fact_value, source_url, confidence) VALUES (?, ?, ?, ?, ?, 'site')",
     );
     const hasAi = db.prepare("SELECT 1 FROM offerings WHERE operator_id = ? AND confidence IN ('ai','seed') LIMIT 1").get(op.id);
-    for (const f of consolidate(found)) {
+    const services = consolidate(found);
+    // Services still without copy: the page whose slug carries every word of the name, shortest slug wins.
+    for (const f of services) {
+      if (f.desc && f.desc.length >= 200) continue;
+      const words = f.name.toLowerCase().split(/[^a-z0-9]+/).filter((w) => w.length > 2 && !/^(the|and|our|for|with|tour|tours|rental|rentals|trip|trips|ride|rides)$/.test(w));
+      if (!words.length) continue;
+      const hits = [...(meta.bodies || new Map<string, string>()).entries()]
+        .filter(([u]) => {
+          const sw = new Set(new URL(u).pathname.toLowerCase().split(/[^a-z0-9]+/));
+          return words.every((w) => sw.has(w) || sw.has(w + "s") || sw.has(w.replace(/s$/, "")));
+        })
+        .sort((a, b) => a[0].length - b[0].length);
+      if (hits[0] && (!f.desc || hits[0][1].length > f.desc.length)) {
+        f.desc = hits[0][1];
+        if (!f.url || f.url === originOf(hits[0][0])) f.url = hits[0][0];
+      }
+    }
+    for (const f of services) {
       if (!f.photo || f.photoWeak) {
         const byName = photoByName(f.name, images);
         if (byName) f.photo = byName;
@@ -536,9 +609,10 @@ export async function readSiteStructure(op: { id: string; domain: string; websit
     db.prepare(
       `UPDATE operators SET phone = COALESCE(phone, ?), hours = COALESCE(hours, ?), email = COALESCE(email, ?), updated_at = ? WHERE id = ?`,
     ).run(normalizePhone(meta.phone), meta.hours || null, meta.email || null, now, op.id);
+    db.prepare("DELETE FROM sources WHERE operator_id = ? AND extractor = 'site-structure'").run(op.id);
     db.prepare(
       "INSERT INTO sources (id, operator_id, url, fetched_at, http_status, extractor, robots_allowed, note) VALUES (?, ?, ?, ?, 200, 'site-structure', 1, ?)",
-    ).run(randomUUID(), op.id, start, now, "Service names, waiver and booking links read from the site's own navigation and headings.");
+    ).run(randomUUID(), op.id, start, now, "deep " + base.pages + " pages: service names, descriptions, prices, waiver and booking links read from the site's own pages.");
     return base;
   } catch (e) {
     const cause = (e as { cause?: { code?: string; message?: string } }).cause;
@@ -547,20 +621,23 @@ export async function readSiteStructure(op: { id: string; domain: string; websit
   }
 }
 
-export function pendingStructure(limit: number): { id: string; domain: string; website: string }[] {
+export function pendingStructure(limit: number, redo = false): { id: string; domain: string; website: string }[] {
+  // redo: sites read before the deep crawl existed (their source note lacks "deep"). Metro operators with the most reviews first.
+  const cond = redo
+    ? `AND NOT EXISTS (SELECT 1 FROM sources s WHERE s.operator_id = o.id AND s.extractor = 'site-structure' AND s.note LIKE 'deep %')`
+    : `AND NOT EXISTS (SELECT 1 FROM sources s WHERE s.operator_id = o.id AND s.extractor = 'site-structure')`;
   return db
     .prepare(
       `SELECT id, domain, website FROM operators o
-       WHERE origin != 'demo' AND website IS NOT NULL
-         AND NOT EXISTS (SELECT 1 FROM sources s WHERE s.operator_id = o.id AND s.extractor = 'site-structure')
-       ORDER BY random()
+       WHERE origin != 'demo' AND website IS NOT NULL ${cond}
+       ORDER BY (metro_id IS NULL), review_count DESC NULLS LAST, name ASC
        LIMIT ?`,
     )
     .all(limit) as { id: string; domain: string; website: string }[];
 }
 
-export async function readPendingStructures(limit: number, concurrency = 6): Promise<StructureResult[]> {
-  const queue = pendingStructure(limit);
+export async function readPendingStructures(limit: number, concurrency = 6, redo = false): Promise<StructureResult[]> {
+  const queue = pendingStructure(limit, redo);
   const out: StructureResult[] = [];
   let i = 0;
   let done = 0;

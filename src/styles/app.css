@@ -862,6 +862,8 @@ a.crow:active{background:var(--surface-2);}
 .wphotos.single{grid-template-columns:1fr;height:420px;}
 .wphoto{background:var(--surface-2);overflow:hidden;border:none;padding:0;cursor:pointer;display:block;width:100%;height:100%;}
 .wphoto:hover img,.wphoto:hover .photo{filter:brightness(.93);}
+.wembed{width:100%;height:100%;border:none;display:block;pointer-events:none;}
+video.photo{background:#000;}
 .wphoto img,.wphoto .photo,.wphoto svg{width:100%;height:100%;object-fit:cover;display:block;}
 .wphotos.grid .main{grid-row:1 / span 2;}
 .wmore{position:absolute;right:18px;bottom:18px;background:#fff;border:1px solid var(--ink);border-radius:8px;padding:7px 14px;font-size:13px;font-weight:600;cursor:pointer;color:var(--ink);}

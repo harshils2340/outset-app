@@ -60,7 +60,7 @@ function Card({ u, onOpen, near }: { u: Unclaimed; onOpen: (id: string) => void;
   return (
             <button type="button" className="wcard" onClick={() => onOpen(u.id)}>
               <div className="wart">
-                <Photo src={u.cover} kind={u.art} id={"w" + u.id} alt={u.title} />
+                <Photo src={u.cover} video={u.video} kind={u.art} id={"w" + u.id} alt={u.title} />
                 {score && score.rating >= 4.8 && score.reviews >= 100 ? (
                   <span className="wbadge">Guest favourite</span>
                 ) : u.cover ? null : (

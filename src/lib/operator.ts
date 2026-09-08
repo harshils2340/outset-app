@@ -452,7 +452,7 @@ function pushToCatalog(p: OperatorProfile): void {
 export function pickDemoOperator(): Unclaimed | null {
   const all = getCatalog();
   const scored = all
-    .filter((u) => u.services && u.services.length >= 2 && u.cover)
+    .filter((u) => u.services && u.services.length >= 2 && u.cover && u.options.length > 0 && u.options.every((o) => o.price != null))
     .map((u) => ({ u, s: ((u.photos?.length || 0) > 3 ? 2 : 0) + (u.metroId === "tampa" ? 3 : 0) + Math.min(4, u.services?.length || 0) + Math.min(3, Math.log10((u.reviews || 0) + 1)) }))
     .sort((a, b) => b.s - a.s);
   return scored[0]?.u || all[0] || null;

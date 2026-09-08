@@ -18,7 +18,7 @@ export function UnclaimedCard({ item, compact }: { item: Unclaimed; compact?: bo
   return (
     <button className={(compact ? "mini" : "card") + " unclaimed"} onClick={() => openRequest(item.id)}>
       <div className="art">
-        <Photo src={item.cover} kind={item.art} id={item.id + (compact ? "r" : "")} alt={item.title} />
+        <Photo src={item.cover} video={item.video} kind={item.art} id={item.id + (compact ? "r" : "")} alt={item.title} />
         <span className="instant">
           <Markup html={ICONS.bolt} />
           Instant

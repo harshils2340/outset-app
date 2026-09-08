@@ -86,7 +86,7 @@ if (cmd === "search") {
 if (cmd === "photos") {
   const limit = Number(process.argv[3] || 200);
   const concurrency = Number(process.argv[4] || 8);
-  const only = process.argv[5];
+  const only = process.argv.slice(5).find((a) => !a.startsWith("--"));
   if (only) {
     const op = db.prepare("SELECT id, domain, website FROM operators WHERE domain = ?").get(only) as { id: string; domain: string; website: string } | undefined;
     if (!op) { console.error("unknown domain"); process.exit(1); }
@@ -96,13 +96,21 @@ if (cmd === "photos") {
   }
   const out = await photosPending(limit, concurrency);
   console.log(`Photos: ${out.withPhotos}/${out.sites} sites, ${out.photos} images linked. Run "npm run sync" to push to the app.`);
+}
+
+// Re-crawl operators that already have photos, this time keeping any clip, GIF or YouTube / Vimeo embed as a moving cover.
+if (cmd === "videos") {
+  const limit = Number(process.argv[3] || 500);
+  const concurrency = Number(process.argv[4] || 8);
+  const out = await photosPending(limit, concurrency, "videos");
+  console.log(`Videos: ${out.sites} sites re-crawled. Run "npm run sync" to push to the app.`);
   process.exit(0);
 }
 
 if (cmd === "structure") {
   const limit = Number(process.argv[3] || 200);
   const concurrency = Number(process.argv[4] || 6);
-  const only = process.argv[5];
+  const only = process.argv.slice(5).find((a) => !a.startsWith("--"));
   if (only) {
     const op = db.prepare("SELECT id, domain, website FROM operators WHERE domain = ?").get(only) as { id: string; domain: string; website: string } | undefined;
     if (!op) { console.error("unknown domain"); process.exit(1); }
@@ -111,7 +119,7 @@ if (cmd === "structure") {
     console.log(JSON.stringify(db.prepare("SELECT fact_key, fact_value FROM facts WHERE operator_id = ? AND confidence = 'site' AND fact_key != 'service'").all(op.id), null, 1));
     process.exit(0);
   }
-  const results = await readPendingStructures(limit, concurrency);
+  const results = await readPendingStructures(limit, concurrency, process.argv.includes("--redo"));
   refreshAllScores();
   const ok = results.filter((r) => r.status === "ok").length;
   const svc = results.reduce((n, r) => n + r.services, 0);
