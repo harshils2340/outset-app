@@ -971,3 +971,6 @@ video.photo{background:#000;}
 .svcpic{width:calc(100% + 28px);margin:0 -14px;height:150px;object-fit:cover;display:block;border-radius:var(--r-m) var(--r-m) 0 0;}
 
 .wblurb.lead{font-size:17px;line-height:1.6;color:var(--ink);}
+
+.stage{grid-template-columns:1fr;justify-items:center;align-items:center;position:relative;height:100vh;min-height:0;padding:0;overflow:hidden;background:#F3F1EE !important;color-scheme:light;}
+.stageback{position:absolute;top:24px;left:24px;}

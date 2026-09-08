@@ -396,6 +396,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (m && experienceById(m[1])) dispatch({ type: "openRequest", id: m[1] });
       const c = window.location.hash.match(/^#claim=([a-z0-9-]+)/i);
       if (c && experienceById(c[1])) dispatch({ type: "openOperator", id: c[1] });
+      // Consume the deep link so a reload lands on the home page, not the same listing again.
+      if (m || c) window.history.replaceState(null, "", window.location.pathname + window.location.search);
       // /operators is the operator side. The guest site lives at /.
       else if (/^\/operators\/?$/.test(window.location.pathname)) dispatch({ type: "openOperator" });
     });

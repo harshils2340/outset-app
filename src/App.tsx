@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useApp } from "./state/AppProvider";
 import { WebHome } from "./components/web/WebHome";
 import { WebListing } from "./components/web/WebListing";
@@ -16,8 +16,20 @@ import { OperatorView } from "./components/operator/OperatorView";
 import { Sheets } from "./components/booking/Sheets";
 
 export function App() {
-  const { state, closeSheet, openOperator, reqTarget, openRequest } = useApp();
+  const { state, closeSheet, openOperator, reqTarget, openRequest, goto } = useApp();
   const [web, setWeb] = useState(() => typeof window !== "undefined" && window.innerWidth > 1024);
+  const [fit, setFit] = useState(1);
+  useEffect(() => {
+    const calc = () => setFit(Math.min(1, (window.innerHeight - 110) / 832, (window.innerWidth - 48) / 400));
+    calc();
+    window.addEventListener("resize", calc);
+    return () => window.removeEventListener("resize", calc);
+  }, []);
+  const openApp = () => {
+    closeSheet();
+    goto("explore");
+    setWeb(false);
+  };
   if (web) {
     return (
       <>
@@ -26,7 +38,7 @@ export function App() {
             <WebListing item={reqTarget} onClose={closeSheet} onOpen={(id) => { window.scrollTo(0, 0); openRequest(id); }} />
           </div>
         ) : state.screen !== "operator" ? (
-          <WebHome onOpenApp={() => setWeb(false)} onOperators={() => openOperator()} />
+          <WebHome onOpenApp={openApp} onOperators={() => openOperator()} />
         ) : null}
         {state.screen === "operator" ? (
           <div className="web wop">
@@ -47,7 +59,7 @@ export function App() {
   return (
     <div className="stage">
       <button type="button" className="wghost stageback" onClick={() => setWeb(true)}>Back to the site</button>
-      <div className="device">
+      <div className="device" style={{ transform: `scale(${fit})`, transformOrigin: "center center" }}>
         <div className="screen" id="screen">
           <StatusBar />
           <AppView />
