@@ -72,6 +72,13 @@ export type OperatorContact = {
   fetchedAt: string | null;
 };
 
+/** One bookable service with its price variants, grouped for display. optionIdx points into Unclaimed.options. */
+export type UnclaimedService = {
+  name: string;
+  desc: string | null;
+  variants: { label: string; price: number | null; per?: string; optionIdx: number }[];
+};
+
 export type Unclaimed = {
   id: string;
   title: string;
@@ -96,6 +103,8 @@ export type Unclaimed = {
   tags?: string[];
   /** Optional extras the operator lists with a price, like an additional rider or a photo pack. */
   addons?: UnclaimedOption[];
+  /** Services grouped with descriptions, from the operator's own pages. */
+  services?: UnclaimedService[];
 };
 
 export type Category = {

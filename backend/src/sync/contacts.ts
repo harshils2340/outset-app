@@ -151,6 +151,30 @@ function toCatalogItem(r: CatalogRow): Record<string, unknown> {
       price: o.price_cents == null ? null : o.price_cents / 100,
       per: o.price_unit && o.price_unit.startsWith("/") ? o.price_unit : undefined,
     })),
+    services: (() => {
+      const descs = new Map<string, string>();
+      for (const raw of pick("service_desc")) {
+        try {
+          const d = JSON.parse(raw) as { name: string; desc: string };
+          descs.set(d.name.toLowerCase(), d.desc);
+        } catch {
+          /* ignore */
+        }
+      }
+      const groups = new Map<string, { name: string; desc: string | null; variants: { label: string; price: number | null; per?: string; optionIdx: number }[] }>();
+      offerings.forEach((o, idx) => {
+        const key = o.name.toLowerCase();
+        const g = groups.get(key) || { name: o.name, desc: descs.get(key) || null, variants: [] };
+        g.variants.push({
+          label: o.duration || o.detail || "Standard",
+          price: o.price_cents == null ? null : o.price_cents / 100,
+          per: o.price_unit && o.price_unit.startsWith("/") ? o.price_unit : undefined,
+          optionIdx: idx,
+        });
+        groups.set(key, g);
+      });
+      return [...groups.values()].slice(0, 14);
+    })(),
     includes: pick("includes"),
     addons: pick("addon")
       .map((a) => {

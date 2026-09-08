@@ -15,6 +15,7 @@ import {
   mapsQuery,
   optionLabel,
   placeLabel,
+  plainWords,
   publicRating,
   telHref,
   type FactLine,
@@ -222,6 +223,7 @@ function RequestBody({
   const [pay, setPay] = useState(false);
   const [callOpen, setCallOpen] = useState(false);
   const [addonIdx, setAddonIdx] = useState<number[]>([]);
+  const [openSvc, setOpenSvc] = useState<string | null>(null);
   const extras = addonIdx.map((i) => (item.addons || [])[i]).filter(Boolean);
   const [guideOpen, setGuideOpen] = useState(false);
   const guide = GUIDES[item.art];
@@ -484,30 +486,67 @@ function RequestBody({
         {item.options.length ? (
           <>
             <p className="svchead">Choose a service</p>
-            <div>
-              {item.options.map((o, i) => (
-                <button
-                  key={o.name + i}
-                  type="button"
-                  className="addon"
-                  aria-pressed={optionIdx === i}
-                  onClick={() => setOptionIdx(i)}
-                >
-                  <span className="tick">
-                    <Markup html={ICONS.check} />
-                  </span>
-                  <span className="txt">
-                    <b>{o.name}</b>
-                    {o.detail ? <small>{o.detail}</small> : null}
-                  </span>
-                  {optionPrice(o) ? (
-                    <span className="mono" style={{ fontSize: 13, fontWeight: 500 }}>
-                      {optionPrice(o)}
+            {item.services && item.services.length ? (
+              <div className="svclist">
+                {item.services.map((svc) => (
+                  <div className="svc" key={svc.name}>
+                    <div className="svchead2">
+                      <b>{plainWords(svc.name)}</b>
+                      {svc.desc ? (
+                        <button type="button" className="svcabout" onClick={() => setOpenSvc(openSvc === svc.name ? null : svc.name)}>
+                          {openSvc === svc.name ? "Less" : "What is this?"}
+                        </button>
+                      ) : null}
+                    </div>
+                    {svc.desc && openSvc === svc.name ? <p className="svcdesc">{plainWords(svc.desc)}</p> : null}
+                    {svc.variants.map((v) => (
+                      <button
+                        key={svc.name + v.optionIdx}
+                        type="button"
+                        className="addon"
+                        aria-pressed={optionIdx === v.optionIdx}
+                        onClick={() => setOptionIdx(v.optionIdx)}
+                      >
+                        <span className="tick">
+                          <Markup html={ICONS.check} />
+                        </span>
+                        <span className="txt">
+                          <b>{plainWords(v.label)}</b>
+                        </span>
+                        <span className="mono" style={{ fontSize: 13, fontWeight: 500 }}>
+                          {v.price != null ? money(v.price) + (v.per || "") : "Price on request"}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div>
+                {item.options.map((o, i) => (
+                  <button
+                    key={o.name + i}
+                    type="button"
+                    className="addon"
+                    aria-pressed={optionIdx === i}
+                    onClick={() => setOptionIdx(i)}
+                  >
+                    <span className="tick">
+                      <Markup html={ICONS.check} />
                     </span>
-                  ) : null}
-                </button>
-              ))}
-            </div>
+                    <span className="txt">
+                      <b>{plainWords(o.name)}</b>
+                      {o.detail ? <small>{plainWords(o.detail)}</small> : null}
+                    </span>
+                    {optionPrice(o) ? (
+                      <span className="mono" style={{ fontSize: 13, fontWeight: 500 }}>
+                        {optionPrice(o)}
+                      </span>
+                    ) : null}
+                  </button>
+                ))}
+              </div>
+            )}
           </>
         ) : null}
 

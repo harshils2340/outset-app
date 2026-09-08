@@ -43,7 +43,7 @@ function visibleText(html: string): { title: string; text: string } {
   return { title, text: lines.join("\n").slice(0, 14000) };
 }
 
-export async function crawlSite(website: string, maxPages = 8): Promise<CrawlResult> {
+export async function crawlSite(website: string, maxPages = 20): Promise<CrawlResult> {
   const start = website.startsWith("http") ? website : "https://" + website;
   const origin = new URL(start).origin;
   const home = await fetchHtml(start);
@@ -67,9 +67,10 @@ export async function crawlSite(website: string, maxPages = 8): Promise<CrawlRes
         const abs = new URL(href, baseUrl);
         if (abs.origin !== origin || SKIP.test(abs.pathname + abs.search + abs.hash)) return;
         const clean = abs.origin + abs.pathname.replace(/\/$/, "");
-        if (!seen.has(clean) && WANT.test(abs.pathname + " " + $(el).text())) {
-          seen.add(clean);
-          queue.push(clean);
+        if (!seen.has(clean) && !queue.includes(clean)) {
+          // Breadth-first over the whole site, but likely service and pricing pages go to the front of the line.
+          if (WANT.test(abs.pathname + " " + $(el).text())) queue.unshift(clean);
+          else queue.push(clean);
         }
       } catch {
         /* ignore */
@@ -83,7 +84,9 @@ export async function crawlSite(website: string, maxPages = 8): Promise<CrawlRes
 
   while (queue.length && pages.length < maxPages) {
     const url = queue.shift()!;
-    await sleep(350);
+    if (seen.has(url)) continue;
+    seen.add(url);
+    await sleep(250);
     const res = await fetchHtml(url).catch(() => null);
     if (!res || res.status !== 200 || !res.html) continue;
     const t = visibleText(res.html);

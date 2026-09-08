@@ -234,3 +234,17 @@ export function fmtHours(line: string): string {
   const days = m[1].replace(/Mo|Tu|We|Th|Fr|Sa|Su/g, (d) => DAY_NAMES[d] || d);
   return days + " " + to12h(m[2]) + "-" + to12h(m[3]);
 }
+
+/** Guests should never have to know the jargon. Expand it where it shows. */
+const GLOSSARY: [RegExp, string][] = [
+  [/\bSUPs?\b/g, "Stand-up paddleboard"], [/\bPWCs?\b/g, "Personal watercraft"], [/\bATVs?\b/g, "Four-wheeler (ATV)"],
+  [/\bUTVs?\b/g, "Side-by-side (UTV)"], [/\bAFF\b/g, "Accelerated Freefall (learn to skydive)"], [/\bHP\b/g, "horsepower"],
+  [/\bJet ?Ski\b/gi, "Jet ski"], [/\bWave ?Runner\b/gi, "Jet ski (WaveRunner)"], [/\bSea-?Doo\b/gi, "Jet ski (Sea-Doo)"],
+  [/\bIFR\b/g, "instrument-rated"], [/\bUSCG\b/g, "Coast Guard"], [/\bPFDs?\b/g, "life jacket"], [/\bBYOB\b/g, "bring your own drinks"],
+];
+
+export function plainWords(text: string): string {
+  let out = text;
+  for (const [re, word] of GLOSSARY) out = out.replace(re, word);
+  return out.replace(/\s+/g, " ").trim();
+}

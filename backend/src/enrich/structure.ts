@@ -12,8 +12,11 @@ import { normalizePhone } from "../scrape/run.ts";
  */
 
 const SERVICE_WORDS =
-  /jet ?ski|waverunner|pwc|kayak|canoe|paddle ?board|sup\b|pontoon|boat rental|boat tour|charter|fishing|cruise|sail|sunset|dolphin|snorkel|parasail|skydiv|tandem|helicopter|heli ?tour|balloon|kart|escape room|axe|paintball|airsoft|horse|trail ride|zipline|tube|banana boat|flyboard|eco ?tour|mangrove|manatee|whale|scuba|dive|surf|wakeboard|water ?ski|yacht|catamaran|glass ?bottom|airboat|atv|utv|jeep|segway|bike/i;
+  /beach (chair|furniture|umbrella)|cabana|umbrella|jet ?ski|waverunner|pwc|kayak|canoe|paddle ?board|sup\b|pontoon|boat rental|boat tour|charter|fishing|cruise|sail|sunset|dolphin|snorkel|parasail|skydiv|tandem|helicopter|heli ?tour|balloon|kart|escape room|axe|paintball|airsoft|horse|trail ride|zipline|tube|banana boat|flyboard|eco ?tour|mangrove|manatee|whale|scuba|dive|surf|wakeboard|water ?ski|yacht|catamaran|glass ?bottom|airboat|atv|utv|jeep|segway|bike/i;
 const NOT_SERVICE = /blog|news|about|contact|faq|gallery|photo|review|career|job|privacy|terms|policy|sitemap|login|cart|account|gift|membership|sale|shop|store|merch|home$|location|weather|map|directions|press|partner|affiliate|franchise|donate|sponsor|newsletter|email|subscribe|coupon|special|deal/i;
+/** Pages worth crawling first when a site has many. */
+const CRAWL_FIRST = /rental|rent|tour|trip|price|pricing|rate|package|service|book|reserv|experience|adventure|charter|lesson|group|party|event|faq|policy|waiver|hour|about|activit|menu|option|what-we-offer|things-to-do/i;
+const CRAWL_SKIP = /\.(pdf|jpg|jpeg|png|gif|svg|webp|mp4|zip|css|js)$|\/(wp-json|feed|tag|category|author|cart|checkout|login|account|wp-admin|wp-content|xmlrpc)\b|blog\/|\/news\/|\/page\/\d|\?|#/i;
 const WAIVER = /waiver|release form|sign (the|your) (form|waiver)|smartwaiver|wherewolf|waiverforever/i;
 const BOOK = /book now|reserve|reservation|book online|buy tickets|schedule|check availability|fareharbor|peek\.com|xola|rezdy|checkfront|bookeo|resova/i;
 const HOURS = /\b(mon|tue|wed|thu|fri|sat|sun)[a-z]*\.?\s*(-|to|–|through)\s*(mon|tue|wed|thu|fri|sat|sun)[a-z]*\.?\s*[:,]?\s*\d{1,2}(:\d{2})?\s*(am|pm)?\s*(-|to|–)\s*\d{1,2}(:\d{2})?\s*(am|pm)|\b(open|hours)\b[^.]{0,40}\d{1,2}(:\d{2})?\s*(am|pm)\s*(-|to|–)\s*\d{1,2}(:\d{2})?\s*(am|pm)/i;
@@ -55,12 +58,13 @@ function consolidate(found: Map<string, Found>): Found[] {
       cur.url = f.url;
     }
     if (!cur.detail && f.detail) cur.detail = f.detail;
+    if (f.desc && (!cur.desc || (!/\(\d{3}\)|contact us|sales/i.test(f.desc) && f.desc.length > cur.desc.length))) cur.desc = f.desc;
     if (f.variants?.length) {
       cur.variants = cur.variants || [];
       for (const v of f.variants) if (!cur.variants.some((x) => x.label.toLowerCase() === v.label.toLowerCase())) cur.variants.push(v);
     }
   }
-  return [...groups.values()].map((g) => ({ ...g, name: g.name.length > 34 ? g.canon : g.name.replace(/\s*&\s*more!?$/i, "") })).slice(0, 10);
+  return [...groups.values()].map((g) => ({ ...g, name: g.name.length > 34 ? g.canon : g.name.replace(/\s*&\s*more!?$/i, "") })).slice(0, 14);
 }
 
 export type StructureResult = {
@@ -81,7 +85,7 @@ function titleCase(s: string): string {
 }
 
 type Variant = { label: string; price: number };
-type Found = { name: string; detail: string | null; price: number | null; unit: string | null; url: string; variants?: Variant[] };
+type Found = { name: string; detail: string | null; price: number | null; unit: string | null; url: string; variants?: Variant[]; desc?: string | null };
 type Addon = { name: string; price: number; url: string };
 
 const ADDON_WORDS = /additional|extra|add[- ]?on|upgrade|rider|passenger|photo|video|gopro|camera|fuel|gas|cooler|insurance|damage|deposit|guide|lesson|delivery|late|tax|gratuity|tip|snorkel gear|wetsuit|dry bag|tube|towel/i;
@@ -182,9 +186,9 @@ function harvest(html: string, url: string, out: Map<string, Found>, links: Set<
     if (!meta.waiver && (WAIVER.test(text) || WAIVER.test(href))) meta.waiver = abs?.toString() || href;
     if (!meta.book && (BOOK.test(text) || BOOK.test(href)) && abs) meta.book = abs.toString();
     if (!abs || abs.origin !== origin) return;
-    if (/\.(pdf|jpg|jpeg|png|gif|webp|mp4)$/i.test(abs.pathname) || abs.hash) return;
+    if (CRAWL_SKIP.test(abs.pathname + abs.search + abs.hash)) return;
+    links.add(abs.origin + abs.pathname.replace(/\/$/, ""));
     if (text.length >= 4 && text.length <= 60 && SERVICE_WORDS.test(text) && !NOT_SERVICE.test(text)) {
-      links.add(abs.origin + abs.pathname.replace(/\/$/, ""));
       const key = text.toLowerCase();
       if (!out.has(key)) out.set(key, { name: titleCase(text), detail: null, price: null, unit: null, url });
     }
@@ -197,6 +201,14 @@ function harvest(html: string, url: string, out: Map<string, Found>, links: Set<
     const near = clean($(el).nextAll().slice(0, 3).text()).slice(0, 240);
     const m = near.match(PRICE_NEAR) || text.match(PRICE_NEAR);
     const cur = out.get(key) || { name: titleCase(text), detail: null, price: null, unit: null, url };
+    {
+      // Best paragraph under this heading: describes the activity, not a sales pitch, no phone numbers.
+      const candidates = $(el).nextAll("p, div").slice(0, 4).map((_, n) => clean($(n).text())).get().filter((d) => d.length >= 60);
+      const score = (d: string) =>
+        (SERVICE_WORDS.test(d) ? 2 : 0) + (/\(\d{3}\)|\d{3}[-.]\d{3}[-.]\d{4}|contact us|call us|sales|membership|coupon|discount/i.test(d) ? -3 : 0) + (d.length > 140 ? 1 : 0);
+      const best = candidates.sort((a, b) => score(b) - score(a))[0];
+      if (best && score(best) > 0 && (!cur.desc || score(best) > score(cur.desc))) cur.desc = best.slice(0, 320).replace(/\s+\S*$/, "");
+    }
     if (m && cur.price == null) {
       cur.price = Number(m[1]);
       cur.unit = m[2] ? "/" + m[2].toLowerCase().replace(/s$/, "") : null;
@@ -225,15 +237,27 @@ export async function readSiteStructure(op: { id: string; domain: string; websit
     const meta: { waiver?: string; book?: string; phone?: string; hours?: string } = {};
     harvest(home.html, home.finalUrl || start, found, links, meta, addons);
     base.pages = 1;
-    const seen = new Set<string>([start.replace(/\/$/, "")]);
-    for (const url of [...links].slice(0, 6)) {
+    // Breadth-first over the site's own pages, likely service and pricing pages first, capped per site.
+    const MAX_PAGES = 18;
+    const seen = new Set<string>([start.replace(/\/$/, ""), (home.finalUrl || start).replace(/\/$/, "")]);
+    const queue: string[] = [];
+    const enqueue = (set: Set<string>) => {
+      const fresh = [...set].filter((u) => !seen.has(u) && !queue.includes(u));
+      fresh.sort((a, b) => Number(CRAWL_FIRST.test(b)) - Number(CRAWL_FIRST.test(a)) || a.length - b.length);
+      queue.push(...fresh);
+    };
+    enqueue(links);
+    while (queue.length && base.pages < MAX_PAGES) {
+      const url = queue.shift()!;
       if (seen.has(url)) continue;
       seen.add(url);
-      await sleep(250);
+      await sleep(200);
       const res = await fetchHtml(url).catch(() => null);
       if (!res || res.status !== 200 || !res.html) continue;
-      harvest(res.html, res.finalUrl || url, found, new Set<string>(), meta, addons);
+      const more = new Set<string>();
+      harvest(res.html, res.finalUrl || url, found, more, meta, addons);
       base.pages += 1;
+      enqueue(more);
     }
 
     const now = nowIso();
@@ -258,6 +282,7 @@ export async function readSiteStructure(op: { id: string; domain: string; websit
         }
       }
       insFact.run(randomUUID(), op.id, "service", f.name.slice(0, 80), f.url);
+      if (f.desc) insFact.run(randomUUID(), op.id, "service_desc", JSON.stringify({ name: f.name.slice(0, 80), desc: f.desc }), f.url);
       base.services += 1;
     }
     for (const a of [...addons.values()].slice(0, 8)) insFact.run(randomUUID(), op.id, "addon", a.name.slice(0, 60) + " $" + a.price, a.url);

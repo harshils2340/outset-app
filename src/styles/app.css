@@ -553,6 +553,13 @@ h2.sec{
 }
 .reqbox b{display:block;font-size:12px;font-weight:600;color:var(--ink);margin-bottom:4px;}
 .reqpad .fact b{overflow-wrap:anywhere;}
+.svclist{display:grid;gap:14px;margin-top:8px;}
+.svc{border:1px solid var(--line);border-radius:var(--r-m);padding:2px 14px 4px;}
+.svchead2{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:12px 0 4px;}
+.svchead2 b{font-size:15px;font-weight:600;letter-spacing:-.01em;}
+.svcabout{font-size:12.5px;font-weight:600;color:var(--accent);background:transparent;border:none;padding:4px 0;}
+.svcdesc{margin:0 0 6px;font-size:13.5px;line-height:1.5;color:var(--ink-soft);}
+.svc .addon{padding:11px 0;min-height:46px;}
 .railmore{flex:none;width:120px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;border:1px dashed var(--line-strong);border-radius:var(--r-m);color:var(--ink);background:transparent;}
 .railmore b{font-size:14px;font-weight:600;}
 .railmore small{font-size:12px;color:var(--ink-faint);}
