@@ -321,10 +321,45 @@ function harvestPrices($: ReturnType<typeof load>, url: string, out: Map<string,
 const EMAIL_RE = /[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/gi;
 const EMAIL_SKIP = /example|sentry|wixpress|godaddy|squarespace|wordpress|w3\.org|schema\.org|domain\.com|email\.com|yourdomain|noreply|no-reply|donotreply|\.(png|jpg|jpeg|gif|svg|webp)$/i;
 
-function harvest(html: string, url: string, out: Map<string, Found>, links: Set<string>, meta: { waiver?: string; book?: string; phone?: string; hours?: string; email?: string; desc?: string }, addons: Map<string, Addon>) {
+type SiteImage = { url: string; words: string };
+
+/** Every real content image on the site, with its filename and alt text as searchable words. */
+function collectImages($: ReturnType<typeof load>, pageUrl: string, into: SiteImage[]): void {
+  $("img").each((_, img) => {
+    if ($(img).closest("header, nav, footer").length) return;
+    const src = $(img).attr("data-src") || $(img).attr("data-lazy-src") || $(img).attr("src") || "";
+    if (!src) return;
+    const w = Number(String($(img).attr("width") || "").replace(/[^0-9]/g, "")) || 0;
+    if (w && w < 200) return;
+    try {
+      const abs = new URL(src, pageUrl).toString();
+      const alt = $(img).attr("alt") || "";
+      if (IMG_BAD.test(abs) || IMG_BAD.test(alt)) return;
+      const file = abs.split("/").pop()!.split("?")[0].replace(/\.[a-z0-9]+$/i, "");
+      if (!into.some((i) => i.url === abs)) into.push({ url: abs, words: (file + " " + alt).toLowerCase().replace(/[-_]+/g, " ") });
+    } catch {
+      /* ignore */
+    }
+  });
+}
+
+/** For a service with no picture next to it, find a site image whose filename or alt names the same thing. */
+function photoByName(name: string, images: SiteImage[]): string | null {
+  const words = name.toLowerCase().replace(/[^a-z0-9 ]+/g, " ").split(/\s+/).filter((w) => w.length >= 4 && !/rental|rentals|tour|tours|hour|hours|day|adult|child|person/.test(w));
+  if (!words.length) return null;
+  let best: { url: string; score: number } | null = null;
+  for (const img of images) {
+    const score = words.filter((w) => img.words.includes(w)).length;
+    if (score && (!best || score > best.score)) best = { url: img.url, score };
+  }
+  return best?.url || null;
+}
+
+function harvest(html: string, url: string, out: Map<string, Found>, links: Set<string>, meta: { waiver?: string; book?: string; phone?: string; hours?: string; email?: string; desc?: string }, addons: Map<string, Addon>, images?: SiteImage[]) {
   const $ = load(html);
   const origin = new URL(url).origin;
   $("script, style, noscript, svg").remove();
+  if (images) collectImages($, url, images);
   harvestPrices($, url, out, addons);
 
   $("a[href]").each((_, el) => {
@@ -433,8 +468,9 @@ export async function readSiteStructure(op: { id: string; domain: string; websit
     const found = new Map<string, Found>();
     const links = new Set<string>();
     const addons = new Map<string, Addon>();
+    const images: SiteImage[] = [];
     const meta: { waiver?: string; book?: string; phone?: string; hours?: string; email?: string; desc?: string } = {};
-    harvest(home.html, home.finalUrl || start, found, links, meta, addons);
+    harvest(home.html, home.finalUrl || start, found, links, meta, addons, images);
     base.pages = 1;
     // Breadth-first over the site's own pages, likely service and pricing pages first, capped per site.
     const MAX_PAGES = 10;
@@ -454,7 +490,7 @@ export async function readSiteStructure(op: { id: string; domain: string; websit
       const res = await fetchHtml(url).catch(() => null);
       if (!res || res.status !== 200 || !res.html) continue;
       const more = new Set<string>();
-      harvest(res.html, res.finalUrl || url, found, more, meta, addons);
+      harvest(res.html, res.finalUrl || url, found, more, meta, addons, images);
       base.pages += 1;
       enqueue(more);
     }
@@ -474,6 +510,10 @@ export async function readSiteStructure(op: { id: string; domain: string; websit
     );
     const hasAi = db.prepare("SELECT 1 FROM offerings WHERE operator_id = ? AND confidence IN ('ai','seed') LIMIT 1").get(op.id);
     for (const f of consolidate(found)) {
+      if (!f.photo || f.photoWeak) {
+        const byName = photoByName(f.name, images);
+        if (byName) f.photo = byName;
+      }
       if (!hasAi) {
         if (f.variants?.length) {
           for (const v of f.variants.slice(0, 8)) {
