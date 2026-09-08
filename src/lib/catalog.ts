@@ -239,7 +239,7 @@ export function fmtHours(line: string): string {
 const GLOSSARY: [RegExp, string][] = [
   [/\bSUPs?\b/g, "Stand-up paddleboard"], [/\bPWCs?\b/g, "Personal watercraft"], [/\bATVs?\b/g, "Four-wheeler (ATV)"],
   [/\bUTVs?\b/g, "Side-by-side (UTV)"], [/\bAFF\b/g, "Accelerated Freefall (learn to skydive)"], [/\bHP\b/g, "horsepower"],
-  [/\bJet ?Ski\b/gi, "Jet ski"], [/\bWave ?Runner\b/gi, "Jet ski (WaveRunner)"], [/\bSea-?Doo\b/gi, "Jet ski (Sea-Doo)"],
+  [/\bJet ?Ski\b/gi, "Jet ski"],
   [/\bIFR\b/g, "instrument-rated"], [/\bUSCG\b/g, "Coast Guard"], [/\bPFDs?\b/g, "life jacket"], [/\bBYOB\b/g, "bring your own drinks"],
 ];
 

@@ -70,7 +70,14 @@ function Rail({ title, items, onOpen }: { title: string; items: Unclaimed[]; onO
             <button type="button" className="wcard" key={u.id} onClick={() => onOpen(u.id)}>
               <div className="wart">
                 <Photo src={u.cover} kind={u.art} id={"w" + u.id} alt={u.title} />
-                {u.cover ? null : <span className="wkind">{ART_LABEL[u.art]}</span>}
+                {score && score.rating >= 4.8 && score.reviews >= 100 ? (
+                  <span className="wbadge">Guest favourite</span>
+                ) : u.cover ? null : (
+                  <span className="wkind">{ART_LABEL[u.art]}</span>
+                )}
+                <span className="wheart" aria-hidden="true">
+                  <Markup html={ICONS.heart} />
+                </span>
               </div>
               <div className="wbody">
                 <b>{u.title}</b>

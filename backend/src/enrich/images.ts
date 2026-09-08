@@ -62,8 +62,9 @@ export function harvestImages(html: string, pageUrl: string, seen: Map<string, P
     if (!cur || cur.score < score) seen.set(url, { url, score, page: pageUrl, alt: alt.slice(0, 120) });
   };
 
-  add($('meta[property="og:image"]').attr("content") || null, 6, "og:image");
-  add($('meta[name="twitter:image"]').attr("content") || null, 5, "twitter:image");
+  // Social preview images are often the logo, so they only win when nothing better is on the page.
+  add($('meta[property="og:image"]').attr("content") || null, 3, "og:image");
+  add($('meta[name="twitter:image"]').attr("content") || null, 3, "twitter:image");
   $("img").each((_, el) => {
     const w = dims($(el).attr("width")) || dims($(el).css("width"));
     const h = dims($(el).attr("height")) || dims($(el).css("height"));

@@ -1,0 +1,360 @@
+import { useEffect, useMemo, useState } from "react";
+import { GUIDES } from "../../data/guides";
+import { ICONS } from "../../data/icons";
+import { metroById } from "../../data/metros";
+import { SLOT_TIMES } from "../../data/slots";
+import type { Unclaimed } from "../../data/types";
+import { addressLine, contactFor, fmtHours, fmtPhone, fromPrice, getCatalog, listingFacts, mapsHref, plainWords, publicRating, telHref } from "../../lib/catalog";
+import { DAYS, fmtDate, fmtReviews, fmtTime, money } from "../../lib/format";
+import { priceUnclaimed } from "../../lib/pricing";
+import { useApp } from "../../state/AppProvider";
+import { Photo } from "../art/Photo";
+import { Markup } from "../Markup";
+
+/**
+ * Desktop listing page in the Airbnb hotel shape: photo grid, details on the left, sticky booking card on the right,
+ * similar listings below. Same facts and booking rules as the phone sheet.
+ */
+
+const KIND: Record<string, string> = {
+  skydive: "a tandem skydive", heli: "a helicopter tour", balloon: "a balloon flight", kart: "karting", escape: "an escape room",
+  axe: "axe throwing", paintball: "paintball", horse: "a trail ride", jetski: "a jet ski session", pontoon: "a pontoon day",
+  fishing: "a fishing charter", parasail: "parasailing", cruise: "a sunset cruise", kayak: "a paddle",
+};
+
+function Card({ u, onOpen }: { u: Unclaimed; onOpen: (id: string) => void }) {
+  const from = fromPrice(u);
+  const score = publicRating(u);
+  return (
+    <button type="button" className="wcard" onClick={() => onOpen(u.id)}>
+      <div className="wart">
+        <Photo src={u.cover} kind={u.art} id={"s" + u.id} alt={u.title} />
+      </div>
+      <div className="wbody">
+        <b>{u.title}</b>
+        <small>{u.area}</small>
+        <span className="wmeta">
+          {from != null ? <span>From <b>{money(from)}</b></span> : <span>Request to book</span>}
+          {score ? (
+            <span className="wrate">
+              <Markup html={ICONS.star} /> {score.rating.toFixed(1)}
+            </span>
+          ) : null}
+        </span>
+      </div>
+    </button>
+  );
+}
+
+export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose: () => void; onOpen: (id: string) => void }) {
+  const { state, dates, confirmUnclaimed, openChat, setDate } = useApp();
+  const metro = metroById(item.metroId);
+  const score = publicRating(item);
+  const contact = contactFor(item);
+  const address = contact ? addressLine(contact) : null;
+  const facts = listingFacts(item);
+  const guide = GUIDES[item.art];
+  const candidates = [item.cover, ...(item.photos || []).filter((p) => p !== item.cover)].filter(Boolean) as string[];
+  // Only photos that actually load make it into the grid, so a blocked image never leaves a grey hole.
+  const [photos, setPhotos] = useState<string[]>(candidates.slice(0, 1));
+  useEffect(() => {
+    let alive = true;
+    const ok: string[] = [];
+    let pending = candidates.length;
+    if (!pending) return;
+    candidates.forEach((src) => {
+      const img = new Image();
+      img.referrerPolicy = "no-referrer";
+      const settle = (good: boolean) => {
+        if (good) ok.push(src);
+        pending -= 1;
+        if (alive && (pending === 0 || ok.length >= 5)) setPhotos(candidates.filter((c) => ok.includes(c)));
+      };
+      img.onload = () => settle(img.naturalWidth >= 300);
+      img.onerror = () => settle(false);
+      img.src = src;
+    });
+    return () => {
+      alive = false;
+    };
+  }, [item.id]);
+
+  const [time, setTime] = useState<string | null>(null);
+  const [qty, setQty] = useState(2);
+  const [optionIdx, setOptionIdx] = useState<number | null>(item.options.length === 1 ? 0 : null);
+  const [addonIdx, setAddonIdx] = useState<number[]>([]);
+  const [openSvc, setOpenSvc] = useState<string | null>(null);
+  const [guideOpen, setGuideOpen] = useState(false);
+  const [done, setDone] = useState(false);
+
+  const picked = optionIdx != null ? item.options[optionIdx] : null;
+  const extras = addonIdx.map((i) => (item.addons || [])[i]).filter(Boolean);
+  const p = priceUnclaimed(picked, qty, extras);
+  const needService = item.options.length > 0;
+  const ready = time != null && (!needService || picked != null);
+  const day = dates[state.dateIdx];
+
+  const similar = useMemo(() => {
+    const all = getCatalog().filter((u) => u.id !== item.id && u.art === item.art);
+    const near = all.filter((u) => u.metroId && u.metroId === item.metroId);
+    const pool = near.length >= 4 ? near : all;
+    return pool.sort((a, b) => (b.cover ? 1 : 0) - (a.cover ? 1 : 0) || (b.reviews || 0) - (a.reviews || 0)).slice(0, 7);
+  }, [item.id]);
+
+  const book = () => {
+    if (!ready || !time) return;
+    confirmUnclaimed({ dateIdx: state.dateIdx, slot: time, qty, optionIdx, addonIdx });
+    setDone(true);
+  };
+
+  return (
+    <div className="wlisting">
+      <div className="wwrap">
+        <button type="button" className="wback" onClick={onClose}>
+          <Markup html={ICONS.back} /> Back to results
+        </button>
+
+        <h1 className="wtitle">{item.title}</h1>
+        <div className="wsub">
+          {score ? (
+            <span className="wrate">
+              <Markup html={ICONS.star} /> <b>{score.rating.toFixed(1)}</b> · {fmtReviews(score.reviews)} reviews
+            </span>
+          ) : null}
+          <span>{item.area}{metro && !item.area.includes(metro.name) ? ", " + metro.name : ""}</span>
+          <span className="wdot">{plainWords(KIND[item.art] || "experience").replace(/^(a|an) /, "")}</span>
+        </div>
+
+        <div className={"wphotos" + (photos.length >= 3 ? " grid" : " single")}>
+          <div className="wphoto main">
+            <Photo src={photos[0]} kind={item.art} id={"wl" + item.id} alt={item.title} />
+          </div>
+          {photos.length >= 3
+            ? photos.slice(1, 5).map((src, i) => (
+                <div className={"wphoto p" + i} key={src}>
+                  <img src={src} alt={item.title + " photo " + (i + 2)} loading="lazy" referrerPolicy="no-referrer" onError={(e) => ((e.currentTarget as HTMLImageElement).style.visibility = "hidden")} />
+                </div>
+              ))
+            : null}
+          {photos.length > 5 ? <span className="wmore">Show all {photos.length} photos</span> : null}
+        </div>
+
+        <div className="wcols">
+          <div className="wmain">
+            <p className="whook">{guide.hook}</p>
+            {item.blurb ? (
+              <p className="wblurb">
+                {plainWords(item.blurb)} <span className="reqcredit">· In {item.title}'s words</span>
+              </p>
+            ) : null}
+
+            <section className="wsec">
+              <button type="button" className="wguidebtn" onClick={() => setGuideOpen((v) => !v)} aria-expanded={guideOpen}>
+                <span>
+                  <b>What {KIND[item.art] || "this"} is actually like</b>
+                  <small>{guide.time}</small>
+                </span>
+                <Markup html={guideOpen ? ICONS.chevUp : ICONS.chevDown} />
+              </button>
+              {guideOpen ? (
+                <div className="wguide">
+                  <ol className="guidesteps">
+                    {guide.steps.map((s, i) => (
+                      <li key={i}>
+                        <span className="n">{i + 1}</span>
+                        <span>{s}</span>
+                      </li>
+                    ))}
+                  </ol>
+                  <div className="wguidecols">
+                    <div>
+                      <p className="guidehead">Bring</p>
+                      <div className="guidechips">{guide.bring.map((b) => <span className="guidechip" key={b}>{b}</span>)}</div>
+                    </div>
+                    <div>
+                      <p className="guidehead">Good for</p>
+                      <p className="guidetext">{guide.goodFor}</p>
+                      <p className="guidehead">Nervous?</p>
+                      <p className="guidetext">{guide.nerves}</p>
+                    </div>
+                  </div>
+                </div>
+              ) : null}
+            </section>
+
+            {item.services && item.services.length ? (
+              <section className="wsec">
+                <h2>What you can book</h2>
+                <div className="wmenu">
+                  {item.services.map((svc) => (
+                    <div className="wsvc" key={svc.name}>
+                      <div className="wsvchead">
+                        <b>{plainWords(svc.name)}</b>
+                        {svc.desc ? (
+                          <button type="button" className="svcabout" onClick={() => setOpenSvc(openSvc === svc.name ? null : svc.name)}>
+                            {openSvc === svc.name ? "Less" : "What is this?"}
+                          </button>
+                        ) : null}
+                      </div>
+                      {svc.desc && openSvc === svc.name ? <p className="svcdesc">{plainWords(svc.desc)}</p> : null}
+                      {svc.variants.map((v) => (
+                        <button key={v.optionIdx} type="button" className="wvariant" aria-pressed={optionIdx === v.optionIdx} onClick={() => setOptionIdx(v.optionIdx)}>
+                          <span className="tick"><Markup html={ICONS.check} /></span>
+                          <span>{plainWords(v.label)}</span>
+                          <b>{v.price != null ? money(v.price) + (v.per || "") : "Price on request"}</b>
+                        </button>
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              </section>
+            ) : item.options.length ? (
+              <section className="wsec">
+                <h2>What you can book</h2>
+                <div className="wmenu">
+                  {item.options.map((o, i) => (
+                    <button key={o.name + i} type="button" className="wvariant" aria-pressed={optionIdx === i} onClick={() => setOptionIdx(i)}>
+                      <span className="tick"><Markup html={ICONS.check} /></span>
+                      <span>{plainWords(o.name)}{o.detail ? " · " + plainWords(o.detail) : ""}</span>
+                      <b>{o.price != null ? money(o.price) + (o.per || "") : "Price on request"}</b>
+                    </button>
+                  ))}
+                </div>
+              </section>
+            ) : null}
+
+            {item.addons && item.addons.length ? (
+              <section className="wsec">
+                <h2>Add-ons</h2>
+                <div className="wmenu">
+                  {item.addons.map((a, i) => (
+                    <button key={a.name} type="button" className="wvariant" aria-pressed={addonIdx.includes(i)} onClick={() => setAddonIdx((c) => (c.includes(i) ? c.filter((x) => x !== i) : [...c, i]))}>
+                      <span className="tick"><Markup html={ICONS.check} /></span>
+                      <span>{a.name}</span>
+                      <b>{a.price ? "+" + money(a.price) : "Free"}</b>
+                    </button>
+                  ))}
+                </div>
+              </section>
+            ) : null}
+
+            <section className="wsec wfacts">
+              <div>
+                <h2>Who can go</h2>
+                <ul className="policy">{facts.who.map((l) => <li key={l.text} className={l.posted ? undefined : "gap"}><Markup html={ICONS.dot} /><span>{l.text}</span></li>)}</ul>
+              </div>
+              <div>
+                <h2>Waiver and check-in</h2>
+                <ul className="policy">{facts.waiver.map((l) => <li key={l.text} className={l.posted ? undefined : "gap"}><Markup html={ICONS.dot} /><span>{l.text}</span></li>)}</ul>
+              </div>
+            </section>
+
+            {facts.about.length || item.includes.length ? (
+              <section className="wsec wfacts">
+                {facts.about.length ? (
+                  <div>
+                    <h2>The experience</h2>
+                    <ul className="policy">{facts.about.map((s) => <li key={s}><Markup html={ICONS.dot} /><span>{plainWords(s)}</span></li>)}</ul>
+                  </div>
+                ) : null}
+                {item.includes.length ? (
+                  <div>
+                    <h2>Included</h2>
+                    <ul className="policy">{item.includes.map((s) => <li key={s}><Markup html={ICONS.dot} /><span>{plainWords(s)}</span></li>)}</ul>
+                  </div>
+                ) : null}
+              </section>
+            ) : null}
+
+            <section className="wsec">
+              <h2>Where you'll be</h2>
+              <div className="contact">
+                <a className="crow" href={contact ? mapsHref(contact, item.title + " " + item.area) : "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(item.title + " " + item.area)} target="_blank" rel="noreferrer">
+                  <Markup html={ICONS.pin} />
+                  <span><b>{address || item.area}</b><small>{address ? "Open in Maps" : "Find on the map"}</small></span>
+                </a>
+                {contact?.phone ? (
+                  <a className="crow" href={telHref(contact.phone)}>
+                    <Markup html={ICONS.phone} />
+                    <span><b>{fmtPhone(contact.phone)}</b><small>Call a person at the shop</small></span>
+                  </a>
+                ) : null}
+                {contact && contact.hours.length ? (
+                  <div className="crow">
+                    <Markup html={ICONS.clock} />
+                    <span>{contact.hours.map((h) => <b key={h}>{fmtHours(h)}</b>)}<small>Hours</small></span>
+                  </div>
+                ) : null}
+              </div>
+            </section>
+          </div>
+
+          <aside className="wbook">
+            {done ? (
+              <div className="wbookcard">
+                <div className="confmark"><Markup html={ICONS.check} /></div>
+                <h3>You're booked</h3>
+                <p className="wbooksub">{fmtDate(day)} · {time ? fmtTime(time) : ""} · {qty} {qty === 1 ? "guest" : "guests"}</p>
+                <p className="wbooksub">{picked ? plainWords(picked.name + (picked.detail ? " · " + picked.detail : "")) : item.title}</p>
+                <button type="button" className="cta" style={{ width: "100%", marginTop: 14 }} onClick={onClose}>Find another experience</button>
+              </div>
+            ) : (
+              <div className="wbookcard">
+                <div className="wbookhead">
+                  {fromPrice(item) != null ? <span><b>{money(fromPrice(item) as number)}</b> from</span> : <span><b>Request to book</b></span>}
+                  {score ? <span className="wrate"><Markup html={ICONS.star} /> {score.rating.toFixed(1)}</span> : null}
+                </div>
+                <p className="guidehead">Date</p>
+                <div className="wdates">
+                  {dates.slice(0, 8).map((dd, i) => (
+                    <button key={i} type="button" className="date" aria-pressed={state.dateIdx === i} onClick={() => setDate(i)}>
+                      <small>{i === 0 ? "Today" : i === 1 ? "Tmrw" : DAYS[dd.getDay()]}</small>
+                      <b>{dd.getDate()}</b>
+                    </button>
+                  ))}
+                </div>
+                <p className="guidehead">Time</p>
+                <div className="wslots">
+                  {SLOT_TIMES.map((t) => (
+                    <button key={t} type="button" className="slot" aria-pressed={time === t} onClick={() => setTime(t)}><b>{fmtTime(t)}</b></button>
+                  ))}
+                </div>
+                <div className="rowbetween" style={{ marginTop: 14 }}>
+                  <p className="guidehead" style={{ margin: 0 }}>Guests</p>
+                  <span className="stepper">
+                    <button type="button" onClick={() => setQty(Math.max(1, qty - 1))} disabled={qty <= 1}>−</button>
+                    <span className="n">{qty}</span>
+                    <button type="button" onClick={() => setQty(Math.min(12, qty + 1))}>+</button>
+                  </span>
+                </div>
+                {needService ? (
+                  <p className="wpicked">{picked ? plainWords(picked.name + (picked.detail ? " · " + picked.detail : "")) : "Choose what to book on the left"}</p>
+                ) : null}
+                <div className="lines">
+                  {p.base ? <div className="line"><span>{picked ? plainWords(picked.name) : "Experience"}</span><b>{money(p.base)}</b></div> : null}
+                  {extras.map((a) => <div className="line" key={a.name}><span>{a.name}</span><b>{money(a.price ?? 0)}</b></div>)}
+                  {p.fee ? <div className="line"><span>Service fee</span><b>{money(p.fee)}</b></div> : null}
+                  <div className="line total"><span>Total</span><b>{p.total ? money(p.total) : "Pay on site"}</b></div>
+                </div>
+                <button type="button" className="cta" style={{ width: "100%" }} disabled={!ready} onClick={book}>
+                  {ready ? (p.total ? "Book · " + money(p.total) : "Book") : needService && !picked ? "Choose a service" : "Pick a time"}
+                </button>
+                <p className="wbookfoot">Instant confirmation. Free cancellation up to 24 hours before unless the operator says otherwise.</p>
+                <button type="button" className="wask" onClick={() => openChat(item.id)}>
+                  <Markup html={ICONS.spark} /> Ask the 24/7 assistant
+                </button>
+              </div>
+            )}
+          </aside>
+        </div>
+
+        {similar.length ? (
+          <section className="wrail">
+            <div className="wrailhead"><h2>More {KIND[item.art]?.replace(/^(a|an) /, "") || "experiences"}{metro ? " near " + metro.name : ""}</h2></div>
+            <div className="wrailrow">{similar.map((u) => <Card key={u.id} u={u} onOpen={onOpen} />)}</div>
+          </section>
+        ) : null}
+      </div>
+    </div>
+  );
+}
