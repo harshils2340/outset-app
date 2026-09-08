@@ -76,13 +76,11 @@ function specsAbout(item: Unclaimed, re: RegExp): string[] {
   return [...item.specs, ...item.includes, item.extraNote || ""].filter((s) => s && re.test(s));
 }
 
+/** The assistant's name, shown on every listing. */
+export const ASSISTANT_NAME = "Otto";
+
 export function companyGreeting(ctx: CompanyContext): string {
-  return (
-    ctx.item.title +
-    " assistant, here 24/7. I answer from what " +
-    ctx.item.title +
-    " has published: services, prices, hours, where to meet, and what to bring. For anything else, a person at the shop can help."
-  );
+  return "Hi, I'm " + ASSISTANT_NAME + ". Ask me anything about " + ctx.item.title + ". I only use what they've published, so if it isn't on their site I'll say so.";
 }
 
 export function companySuggestions(ctx: CompanyContext): string[] {

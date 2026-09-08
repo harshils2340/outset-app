@@ -54,13 +54,6 @@ export function App() {
             </div>
           </div>
         ) : null}
-        {state.screen === "chat" ? (
-          <div className="webmodal" onClick={() => window.history.back()}>
-            <div className="screen webscreen webchat" onClick={(e) => e.stopPropagation()}>
-              <ChatView />
-            </div>
-          </div>
-        ) : null}
         {state.sheet && state.sheet !== "request" ? (
           <div className="webmodal" onClick={closeSheet}>
             <div className="screen webscreen" onClick={(e) => e.stopPropagation()}>

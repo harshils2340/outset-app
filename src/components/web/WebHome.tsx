@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { CATS, CATMETA } from "../../data/categories";
 import { ART_LABEL } from "../../data/art";
 import { ICONS } from "../../data/icons";
@@ -7,6 +7,7 @@ import type { ArtKind, CategoryId, Unclaimed } from "../../data/types";
 import { fromPrice, getCatalog, publicRating } from "../../lib/catalog";
 import { fmtDate, fmtReviews, money } from "../../lib/format";
 import { searchListings } from "../../lib/search";
+import { currentLocation, fmtDistance, kmBetween, searchPlaces, type Place } from "../../lib/places";
 import { useApp } from "../../state/AppProvider";
 import { Photo } from "../art/Photo";
 import { Mark } from "../layout/Mark";
@@ -44,7 +45,7 @@ function rankForRail(list: Unclaimed[]): Unclaimed[] {
     });
 }
 
-function Rail({ title, items, onOpen }: { title: string; items: Unclaimed[]; onOpen: (id: string) => void }) {
+function Rail({ title, items, onOpen, near }: { title: string; items: Unclaimed[]; onOpen: (id: string) => void; near?: Place | null }) {
   const ref = useRef<HTMLDivElement>(null);
   const scroll = (dir: number) => ref.current?.scrollBy({ left: dir * (ref.current.clientWidth - 120), behavior: "smooth" });
   if (!items.length) return null;
@@ -81,7 +82,11 @@ function Rail({ title, items, onOpen }: { title: string; items: Unclaimed[]; onO
               </div>
               <div className="wbody">
                 <b>{u.title}</b>
-                <small>{u.area}{metro && !u.area.includes(metro.name) ? " · " + metro.name : ""}</small>
+                <small>
+                  {near && u.lat != null && u.lon != null
+                    ? fmtDistance(kmBetween(near, { lat: u.lat, lon: u.lon })) + " away · " + u.area
+                    : u.area + (metro && !u.area.includes(metro.name) ? " · " + metro.name : "")}
+                </small>
                 <span className="wmeta">
                   {from != null ? <span>From <b>{money(from)}</b></span> : <span>Request to book</span>}
                   {score ? (
@@ -106,19 +111,53 @@ export function WebHome({ onOpenApp, onOperators }: { onOpenApp: () => void; onO
   const [whereOpen, setWhereOpen] = useState(false);
   const [whenOpen, setWhenOpen] = useState(false);
   const [whoOpen, setWhoOpen] = useState(false);
+  const [near, setNear] = useState<Place | null>(null);
+  const [placeQ, setPlaceQ] = useState("");
+  const [placeHits, setPlaceHits] = useState<Place[]>([]);
+  const [locating, setLocating] = useState(false);
   const metro = metroById(state.metroId);
+  const RADIUS_KM = 80;
+
+  useEffect(() => {
+    if (!whereOpen) return;
+    const t = window.setTimeout(() => {
+      searchPlaces(placeQ, near).then(setPlaceHits);
+    }, 220);
+    return () => window.clearTimeout(t);
+  }, [placeQ, whereOpen]);
+
+  const pickPlace = (p: Place) => {
+    setNear(p);
+    setMetro(ALL_METRO_ID);
+    setWhereOpen(false);
+    setPlaceQ("");
+  };
+  const useMyLocation = async () => {
+    setLocating(true);
+    const pt = await currentLocation();
+    setLocating(false);
+    if (!pt) return;
+    pickPlace({ label: "Near me", sub: "Current location", lat: pt.lat, lon: pt.lon });
+  };
 
   const pool = useMemo(() => {
-    const inMetro = getCatalog().filter((u) => state.metroId === ALL_METRO_ID || u.metroId === state.metroId);
-    return q.trim() ? searchListings(inMetro, q) : inMetro;
-  }, [state.metroId, q, state.catalogVersion]);
+    let base = getCatalog();
+    if (near) {
+      base = base
+        .filter((u) => u.lat != null && u.lon != null && kmBetween(near, { lat: u.lat, lon: u.lon }) <= RADIUS_KM)
+        .sort((a, b) => kmBetween(near, { lat: a.lat!, lon: a.lon! }) - kmBetween(near, { lat: b.lat!, lon: b.lon! }));
+    } else if (state.metroId !== ALL_METRO_ID) {
+      base = base.filter((u) => u.metroId === state.metroId);
+    }
+    return q.trim() ? searchListings(base, q) : base;
+  }, [state.metroId, q, state.catalogVersion, near]);
 
   const rails = RAIL_KINDS.filter((r) => state.cat === "all" || CATS.find((c) => c.id === state.cat) && pool.some((u) => u.art === r.art && u.cat === state.cat));
-  const where = metro ? metro.name + ", " + metro.region : "Anywhere";
+  const where = near ? near.label + (near.sub ? ", " + near.sub.split(",")[0] : "") : metro ? metro.name + ", " + metro.region : "Anywhere";
   const catName = (id: CategoryId) => CATS.find((c) => c.id === id)?.name || "All";
 
   return (
-    <div className="web">
+    <div className="web" onClick={() => { if (whereOpen) setWhereOpen(false); }}>
       <header className="whead">
         <div className="wwrap whead-in">
           <a className="wlogo" href="#" onClick={(e) => { e.preventDefault(); setCat("all"); setQ(""); }}>
@@ -143,17 +182,51 @@ export function WebHome({ onOpenApp, onOperators }: { onOpenApp: () => void; onO
 
       <div className="wsearchbar">
         <div className="wsearch">
-          <div className="wfield" onClick={() => { setWhereOpen((v) => !v); setWhenOpen(false); setWhoOpen(false); }}>
+          <div className="wfield" onClick={() => { setWhereOpen(true); setWhenOpen(false); setWhoOpen(false); }}>
             <small>Where</small>
-            <b>{where}</b>
             {whereOpen ? (
-              <div className="wpop" onClick={(e) => e.stopPropagation()}>
-                <button type="button" className={state.metroId === ALL_METRO_ID ? "on" : ""} onClick={() => { setMetro(ALL_METRO_ID); setWhereOpen(false); }}>Anywhere</button>
-                {METROS.map((m) => (
-                  <button type="button" key={m.id} className={state.metroId === m.id ? "on" : ""} onClick={() => { setMetro(m.id); setWhereOpen(false); }}>
-                    {m.name}, {m.region}
+              <input
+                autoFocus
+                className="wplaceq"
+                value={placeQ}
+                placeholder="City, beach, lake, neighbourhood…"
+                onChange={(e) => setPlaceQ(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && placeHits[0]) pickPlace(placeHits[0]);
+                  if (e.key === "Escape") setWhereOpen(false);
+                }}
+                onClick={(e) => e.stopPropagation()}
+              />
+            ) : (
+              <b>{where}</b>
+            )}
+            {whereOpen ? (
+              <div className="wpop wplaces" onClick={(e) => e.stopPropagation()}>
+                <button type="button" className="wloc" onClick={useMyLocation} disabled={locating}>
+                  <Markup html={ICONS.nav} />
+                  {locating ? "Finding you…" : "Use my current location"}
+                </button>
+                {placeHits.map((p) => (
+                  <button type="button" key={p.label + p.sub} onClick={() => pickPlace(p)}>
+                    <Markup html={ICONS.pin} />
+                    <span><b>{p.label}</b>{p.sub ? <small>{p.sub}</small> : null}</span>
                   </button>
                 ))}
+                {!placeQ.trim() ? (
+                  <>
+                    <p className="wpophead">Popular areas</p>
+                    <button type="button" className={!near && state.metroId === ALL_METRO_ID ? "on" : ""} onClick={() => { setNear(null); setMetro(ALL_METRO_ID); setWhereOpen(false); }}>
+                      <span><b>Anywhere</b><small>US and Canada</small></span>
+                    </button>
+                    {METROS.slice(0, 12).map((m) => (
+                      <button type="button" key={m.id} className={!near && state.metroId === m.id ? "on" : ""} onClick={() => { setNear(null); setMetro(m.id); setWhereOpen(false); }}>
+                        <span><b>{m.name}</b><small>{m.region}</small></span>
+                      </button>
+                    ))}
+                  </>
+                ) : placeHits.length === 0 ? (
+                  <p className="wpophead">Keep typing, or try a bigger town nearby.</p>
+                ) : null}
               </div>
             ) : null}
           </div>
@@ -213,12 +286,12 @@ export function WebHome({ onOpenApp, onOperators }: { onOpenApp: () => void; onO
           </>
         ) : null}
         {state.catalogReady && q.trim() ? (
-          <Rail title={`${pool.length} results for “${q.trim()}”${metro ? " in " + metro.name : ""}`} items={rankForRail(pool)} onOpen={openRequest} />
+          <Rail title={`${pool.length} results for “${q.trim()}”${near ? " near " + near.label : metro ? " in " + metro.name : ""}`} items={near ? pool : rankForRail(pool)} onOpen={openRequest} near={near} />
         ) : null}
         {state.catalogReady ? rails.map((r) => {
           const items = rankForRail(pool.filter((u) => u.art === r.art));
-          const title = metro ? `${r.title} in ${metro.name}` : `Popular ${r.title.toLowerCase()}`;
-          return <Rail key={r.art} title={title} items={items} onOpen={openRequest} />;
+          const title = near ? `${r.title} near ${near.label}` : metro ? `${r.title} in ${metro.name}` : `Popular ${r.title.toLowerCase()}`;
+          return <Rail key={r.art} title={title} items={items} onOpen={openRequest} near={near} />;
         }) : null}
         {state.catalogReady && !rails.length ? (
           <div className="wempty">

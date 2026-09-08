@@ -341,7 +341,7 @@ export async function readSiteStructure(op: { id: string; domain: string; websit
             insOff.run(randomUUID(), op.id, f.name.slice(0, 80), v.label.slice(0, 80), v.price * 100, "each", f.url);
           }
         } else {
-          insOff.run(randomUUID(), op.id, f.name.slice(0, 80), f.price != null && f.unit ? f.unit.replace("/", "per ") : null, f.price == null ? null : f.price * 100, f.unit || "each", f.url);
+          insOff.run(randomUUID(), op.id, f.name.slice(0, 80), null, f.price == null ? null : f.price * 100, f.unit || "each", f.url);
         }
       }
       insFact.run(randomUUID(), op.id, "service", f.name.slice(0, 80), f.url);

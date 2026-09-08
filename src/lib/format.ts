@@ -38,3 +38,11 @@ export function plural(n: number, unit: string): string {
 export function fmtReviews(n: number): string {
   return n.toLocaleString("en-US");
 }
+
+/** "$80" plus its unit as "$80 / person". Units come in as "/person", "/hr", "each". */
+export function priceWith(amount: number, per?: string | null): string {
+  const unit = (per || "").replace(/^\//, "").trim();
+  if (!unit || unit === "each") return money(amount);
+  const nice: Record<string, string> = { hr: "hour", hour: "hour", person: "person", boat: "boat", ski: "ski", day: "day", trip: "trip", group: "group", vehicle: "vehicle", room: "room" };
+  return money(amount) + " / " + (nice[unit] || unit);
+}

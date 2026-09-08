@@ -20,7 +20,7 @@ import {
   telHref,
   type FactLine,
 } from "../../lib/catalog";
-import { DAYS, fmtDate, fmtReviews, fmtTime, money, unitLine } from "../../lib/format";
+import { DAYS, fmtDate, fmtReviews, fmtTime, money, priceWith, unitLine } from "../../lib/format";
 import { formatDistance, milesBetween, type GeoPoint } from "../../lib/geo";
 import { priceFor, priceUnclaimed } from "../../lib/pricing";
 import { useApp } from "../../state/AppProvider";
@@ -158,7 +158,7 @@ function kindLabel(art: keyof typeof GUIDES): string {
 
 function optionPrice(o: UnclaimedOption): string | null {
   if (o.price == null) return null;
-  return money(o.price) + (o.per || "");
+  return priceWith(o.price, o.per);
 }
 
 let guestPointCache: GeoPoint | null | undefined;
@@ -521,7 +521,7 @@ function RequestBody({
                           <b>{plainWords(v.label)}</b>
                         </span>
                         <span className="mono" style={{ fontSize: 13, fontWeight: 500 }}>
-                          {v.price != null ? money(v.price) + (v.per || "") : "Price on request"}
+                          {v.price != null ? priceWith(v.price, v.per) : "Price on request"}
                         </span>
                       </button>
                     ))}

@@ -5,10 +5,11 @@ import { metroById } from "../../data/metros";
 import { SLOT_TIMES } from "../../data/slots";
 import type { Unclaimed } from "../../data/types";
 import { addressLine, contactFor, fmtHours, fmtPhone, fromPrice, getCatalog, listingFacts, mapsHref, plainWords, publicRating, telHref } from "../../lib/catalog";
-import { DAYS, fmtDate, fmtReviews, fmtTime, money } from "../../lib/format";
+import { DAYS, fmtDate, fmtReviews, fmtTime, money, priceWith } from "../../lib/format";
 import { priceUnclaimed } from "../../lib/pricing";
 import { useApp } from "../../state/AppProvider";
 import { Photo } from "../art/Photo";
+import { WebAssistant } from "./WebAssistant";
 import { Markup } from "../Markup";
 
 /**
@@ -47,7 +48,7 @@ function Card({ u, onOpen }: { u: Unclaimed; onOpen: (id: string) => void }) {
 }
 
 export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose: () => void; onOpen: (id: string) => void }) {
-  const { state, dates, confirmUnclaimed, openChat, setDate } = useApp();
+  const { state, dates, confirmUnclaimed, setDate } = useApp();
   const metro = metroById(item.metroId);
   const score = publicRating(item);
   const contact = contactFor(item);
@@ -201,7 +202,7 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
                         <button key={v.optionIdx} type="button" className="wvariant" aria-pressed={optionIdx === v.optionIdx} onClick={() => setOptionIdx(v.optionIdx)}>
                           <span className="tick"><Markup html={ICONS.check} /></span>
                           <span>{plainWords(v.label)}</span>
-                          <b>{v.price != null ? money(v.price) + (v.per || "") : "Price on request"}</b>
+                          <b>{v.price != null ? priceWith(v.price, v.per) : "Price on request"}</b>
                         </button>
                       ))}
                     </div>
@@ -216,7 +217,7 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
                     <button key={o.name + i} type="button" className="wvariant" aria-pressed={optionIdx === i} onClick={() => setOptionIdx(i)}>
                       <span className="tick"><Markup html={ICONS.check} /></span>
                       <span>{plainWords(o.name)}{o.detail ? " · " + plainWords(o.detail) : ""}</span>
-                      <b>{o.price != null ? money(o.price) + (o.per || "") : "Price on request"}</b>
+                      <b>{o.price != null ? priceWith(o.price, o.per) : "Price on request"}</b>
                     </button>
                   ))}
                 </div>
@@ -340,11 +341,9 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
                   {ready ? (p.total ? "Book · " + money(p.total) : "Book") : needService && !picked ? "Choose a service" : "Pick a time"}
                 </button>
                 <p className="wbookfoot">Instant confirmation. Free cancellation up to 24 hours before unless the operator says otherwise.</p>
-                <button type="button" className="wask" onClick={() => openChat(item.id)}>
-                  <Markup html={ICONS.spark} /> Ask the 24/7 assistant
-                </button>
               </div>
             )}
+            <WebAssistant item={item} />
           </aside>
         </div>
 

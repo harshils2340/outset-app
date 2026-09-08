@@ -79,6 +79,7 @@ type Action =
   | { type: "back" }
   | { type: "openChat"; id: string }
   | { type: "openOperator" }
+  | { type: "ensureThread"; id: string }
   | { type: "sendChat"; text: string }
   | { type: "toastOff" };
 
@@ -246,6 +247,13 @@ function reducer(state: AppState, action: Action): AppState {
       }
       return { ...state, screen: state.tab };
     }
+    case "ensureThread": {
+      const company = experienceById(action.id);
+      if (!company) return state;
+      if (state.chats[company.id]) return state.threadId === company.id ? state : { ...state, threadId: company.id };
+      const hello: ChatMessage = { who: "them", t: companyGreeting({ item: company, contact: contactFor(company) }), at: "now" };
+      return { ...state, threadId: company.id, chats: { ...state.chats, [company.id]: [hello] } };
+    }
     case "openOperator":
       return { ...state, tab: "account", screen: "operator", sheet: null, reqTargetId: null };
     case "openChat": {
@@ -348,6 +356,7 @@ type Api = {
   back: () => void;
   openChat: (id: string) => void;
   openOperator: () => void;
+  ensureThread: (id: string) => void;
   sendChat: (text: string) => void;
   goto: (tab: TabId) => void;
 };
@@ -418,6 +427,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       back: () => dispatch({ type: "back" }),
       openChat: (id) => dispatch({ type: "openChat", id }),
       openOperator: () => dispatch({ type: "openOperator" }),
+      ensureThread: (id) => dispatch({ type: "ensureThread", id }),
       sendChat: (text) => dispatch({ type: "sendChat", text }),
       goto: (tab) => dispatch({ type: "goto", tab }),
     }),
