@@ -7,7 +7,7 @@ import type { ArtKind, CategoryId, Unclaimed } from "../../data/types";
 import { fromPrice, getCatalog, publicRating } from "../../lib/catalog";
 import { listingFacts } from "../../lib/catalog";
 import { fmtDate, fmtReviews, money } from "../../lib/format";
-import { parseIntent, searchListings } from "../../lib/search";
+import { metroInQuery, parseIntent, searchListings } from "../../lib/search";
 import { loadListing } from "../../lib/catalogLoad";
 import { currentLocation, fmtDistance, kmBetween, searchPlaces, type Place } from "../../lib/places";
 import { useApp } from "../../state/AppProvider";
@@ -205,7 +205,7 @@ export function WebHome({ onOpenApp, onOperators }: { onOpenApp: () => void; onO
   const [compareIds, setCompareIds] = useState<string[]>([]);
   const [compareOpen, setCompareOpen] = useState(false);
   const toggleCompare = (id: string) => setCompareIds((cur) => (cur.includes(id) ? cur.filter((x) => x !== id) : cur.length >= 3 ? [...cur.slice(1), id] : [...cur, id]));
-  const intent = useMemo(() => parseIntent(q), [q]);
+  const intent = useMemo(() => parseIntent(q), [q]); // intent words survive place stripping
   const [placeQ, setPlaceQ] = useState("");
   const [placeHits, setPlaceHits] = useState<Place[]>([]);
   const [locating, setLocating] = useState(false);
@@ -234,17 +234,26 @@ export function WebHome({ onOpenApp, onOperators }: { onOpenApp: () => void; onO
     pickPlace({ label: "Near me", sub: "Current location", lat: pt.lat, lon: pt.lon });
   };
 
+  // A city typed into What ("axe throwing denver") beats the Where setting.
+  const typedMetro = useMemo(() => (q.trim() ? metroInQuery(q) : null), [q]);
+  const qWithoutPlace = useMemo(() => {
+    if (!typedMetro) return q;
+    const drop = new Set(typedMetro.words);
+    return q.split(/\s+/).filter((w) => !drop.has(w.toLowerCase().replace(/[^a-z0-9]+/g, ""))).join(" ");
+  }, [q, typedMetro]);
   const pool = useMemo(() => {
     let base = getCatalog();
-    if (near) {
+    if (typedMetro) {
+      base = base.filter((u) => u.metroId === typedMetro.metro.id);
+    } else if (near) {
       base = base
         .filter((u) => u.lat != null && u.lon != null && kmBetween(near, { lat: u.lat, lon: u.lon }) <= RADIUS_KM)
         .sort((a, b) => kmBetween(near, { lat: a.lat!, lon: a.lon! }) - kmBetween(near, { lat: b.lat!, lon: b.lon! }));
     } else if (state.metroId !== ALL_METRO_ID) {
       base = base.filter((u) => u.metroId === state.metroId);
     }
-    return q.trim() ? searchListings(base, q) : base;
-  }, [state.metroId, q, state.catalogVersion, near]);
+    return qWithoutPlace.trim() ? searchListings(base, qWithoutPlace) : base;
+  }, [state.metroId, q, qWithoutPlace, typedMetro, state.catalogVersion, near]);
 
   // A flat, sorted grid replaces the rails whenever the guest picks an order. Nearest needs a place to measure from.
   const sorted = useMemo(() => {
@@ -452,8 +461,8 @@ export function WebHome({ onOpenApp, onOperators }: { onOpenApp: () => void; onO
           <section className="wrail">
             <div className="wrailhead">
               <h2>
-                {intent.label ? intent.label : `Results for “${q.trim()}”`}
-                {near ? " near " + near.label : metro ? " in " + metro.name : ""}
+                {intent.label ? intent.label : `Results for “${qWithoutPlace.trim() || q.trim()}”`}
+                {typedMetro ? " in " + typedMetro.metro.name : near ? " near " + near.label : metro ? " in " + metro.name : ""}
                 <em className="wcount">{pool.length.toLocaleString()}</em>
               </h2>
             </div>
@@ -461,7 +470,12 @@ export function WebHome({ onOpenApp, onOperators }: { onOpenApp: () => void; onO
             <div className="wgrid">
               {(near ? pool : pool).slice(0, 60).map((u) => <Card key={u.id} u={u} onOpen={openRequest} near={near} />)}
             </div>
-            {pool.length === 0 ? <div className="wempty"><b>Nothing matches yet.</b><p>Try a wider area, fewer words, or one of the ideas above.</p></div> : null}
+            {pool.length === 0 ? (
+              <div className="wempty">
+                <b>Nothing for this{typedMetro ? " in " + typedMetro.metro.name : near ? " near " + near.label : metro ? " in " + metro.name : ""} yet.</b>
+                <p>Try a wider area, fewer words, or one of the ideas above.{typedMetro || near || metro ? " " : ""}{typedMetro || near || metro ? <button type="button" className="wlink" onClick={() => { setNear(null); setMetro(ALL_METRO_ID); if (typedMetro) setQ(qWithoutPlace.trim()); }}>Search everywhere</button> : null}</p>
+              </div>
+            ) : null}
           </section>
         ) : null}
         {state.catalogReady && !sorted && !q.trim() ? rails.map((r) => {

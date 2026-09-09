@@ -3,7 +3,7 @@ import type { ArtKind, Unclaimed } from "../data/types";
 
 /** Words guests type that should still hit the listing. */
 export const ART_ALIASES: Record<ArtKind, string[]> = {
-  skydive: ["skydive", "skydiving", "tandem", "parachute", "jump"],
+  skydive: ["skydive", "skydiving", "parachute", "dropzone"],
   heli: ["helicopter", "heli", "chopper", "seaplane"],
   balloon: ["balloon", "hot air", "sunrise flight"],
   kart: ["kart", "karting", "go kart", "gokart", "racing"],
@@ -85,7 +85,8 @@ export function queryArts(q: string): ArtKind[] {
   const lq = " " + q.toLowerCase().replace(/[^a-z0-9]+/g, " ") + " ";
   const out: ArtKind[] = [];
   for (const [art, words] of Object.entries(ART_ALIASES) as [ArtKind, string[]][]) {
-    if (words.some((w) => lq.includes(" " + w + " ") || (w.length >= 5 && lq.includes(w)))) out.push(art);
+    // Whole words only, plural tolerated. "throwing" must not light up "rowing", "tandem kayak" must not mean skydive.
+    if (words.some((w) => lq.includes(" " + w + " ") || lq.includes(" " + w + "s ") || lq.includes(" " + w + "es "))) out.push(art);
   }
   return out;
 }
@@ -149,6 +150,8 @@ export function kidFriendly(u: Unclaimed): boolean {
 
 const FILLER = new Set(["rental", "rentals", "rent", "near", "me", "in", "the", "a", "an", "and", "for", "with", "best", "cheap", "tour", "tours", "ideas", "idea", "stuff", "things", "to", "do", "of", "on", "at", "good", "great", "top", "nearby", "around", "here", "my", "our", "we", "i", "some", "any", "night", "day"]);
 
+const wordIn = (hay: string, w: string) => new RegExp("(^|[^a-z0-9])" + w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "(s|es)?($|[^a-z0-9])", "i").test(hay);
+
 export function listingScore(u: Unclaimed, q: string): number {
   const intent = parseIntent(q);
   const intentWords = new Set(intent.words.map((w) => w.replace(/[^a-z0-9]/g, "")));
@@ -178,8 +181,10 @@ export function listingScore(u: Unclaimed, q: string): number {
   // The activity the guest named is the strongest signal. A jet ski search must surface jet ski operators first.
   if (arts.length) {
     if (arts.includes(u.art)) score += explicitArts.length ? 40 : 30;
-    else if (arts.some((a) => (ART_ALIASES[a] || []).some((w) => tagText.includes(w)))) score += 24;
-    else if (arts.some((a) => (ART_ALIASES[a] || []).some((w) => title.includes(w)))) score += 24;
+    else if (arts.some((a) => (ART_ALIASES[a] || []).some((w) => w.length >= 4 && wordIn(tagText, w)))) score += 24;
+    else if (arts.some((a) => (ART_ALIASES[a] || []).some((w) => w.length >= 4 && wordIn(title, w)))) score += 24;
+    // The guest named the activity. A listing that is not that activity and never mentions it is not a result.
+    else if (explicitArts.length) return 0;
   }
   // Every meaningful word must land somewhere. Filler like "rental" or "near me" is free.
   const must = all.filter((tok) => !FILLER.has(tok));
@@ -201,6 +206,26 @@ export function searchListings(pool: Unclaimed[], q: string): Unclaimed[] {
     .filter((x) => x.s > 0)
     .sort((a, b) => b.s - a.s || a.u.title.localeCompare(b.u.title))
     .map((x) => x.u);
+}
+
+/**
+ * A place typed into the What box. "axe throwing denver" names Denver, so the search should run there,
+ * not in whatever Where is set to. Longest metro name wins; the matched words come back so callers can strip them.
+ */
+export function metroInQuery(q: string): { metro: Metro; words: string[] } | null {
+  const lq = " " + q.toLowerCase().replace(/[^a-z0-9]+/g, " ") + " ";
+  let best: { metro: Metro; words: string[] } | null = null;
+  for (const m of METROS) {
+    const full = m.name.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+    const first = full.split(" ")[0];
+    const cands = [full, ...(first.length >= 5 && first !== full ? [first] : []), m.id.replace(/-/g, " ")];
+    for (const c of cands) {
+      if (!c || !lq.includes(" " + c + " ")) continue;
+      const words = c.split(" ");
+      if (!best || words.length > best.words.length) best = { metro: m, words };
+    }
+  }
+  return best;
 }
 
 export function searchMetros(q: string): Metro[] {
