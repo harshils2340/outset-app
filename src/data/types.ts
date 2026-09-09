@@ -114,6 +114,11 @@ export type Unclaimed = {
   video?: string;
   /** YouTube or Vimeo embed URL, shown on the listing page. */
   videoEmbed?: string;
+  /** The operator's own YouTube videos, most viewed first. */
+  ytVideos?: { id: string; title: string; views: number }[];
+  /** TikTok and Instagram handles from their site. */
+  tiktok?: string;
+  instagram?: string;
 };
 
 export type Category = {

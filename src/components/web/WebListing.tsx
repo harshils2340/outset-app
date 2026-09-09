@@ -57,6 +57,23 @@ function cleanDesc(raw: string): string {
     .trim();
 }
 
+/** TikTok's creator embed needs its script once per page; it upgrades every tiktok-embed blockquote it finds. */
+function TikTokScript() {
+  useEffect(() => {
+    const id = "tiktok-embed-js";
+    const existing = document.getElementById(id) as HTMLScriptElement | null;
+    if (existing) {
+      existing.remove();
+    }
+    const s = document.createElement("script");
+    s.id = id;
+    s.async = true;
+    s.src = "https://www.tiktok.com/embed.js";
+    document.body.appendChild(s);
+  }, []);
+  return null;
+}
+
 export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose: () => void; onOpen: (id: string) => void }) {
   const { state, dates, confirmUnclaimed, setDate } = useApp();
   const metro = metroById(item.metroId);
@@ -330,6 +347,39 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
                   <div>
                     <h2>Included</h2>
                     <ul className="policy">{item.includes.map((s) => <li key={s}><Markup html={ICONS.dot} /><span>{plainWords(s)}</span></li>)}</ul>
+                  </div>
+                ) : null}
+              </section>
+            ) : null}
+
+            {(item.ytVideos && item.ytVideos.length) || item.tiktok ? (
+              <section className="wsec">
+                <h2>See it in action</h2>
+                <p className="wsecsub">Videos from {item.title}'s own channels.</p>
+                {item.ytVideos && item.ytVideos.length ? (
+                  <div className={"wvideos" + (item.ytVideos.length === 1 ? " one" : "")}>
+                    {item.ytVideos.slice(0, 2).map((v) => (
+                      <div className="wvideo" key={v.id}>
+                        <iframe
+                          src={"https://www.youtube-nocookie.com/embed/" + v.id + "?rel=0&modestbranding=1"}
+                          title={v.title}
+                          loading="lazy"
+                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                          allowFullScreen
+                        />
+                        <small>{v.title}</small>
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
+                {item.tiktok ? (
+                  <div className="wtiktok">
+                    <blockquote className="tiktok-embed" cite={"https://www.tiktok.com/@" + item.tiktok} data-unique-id={item.tiktok} data-embed-type="creator" style={{ maxWidth: 780, minWidth: 288 }}>
+                      <section>
+                        <a target="_blank" rel="noreferrer" href={"https://www.tiktok.com/@" + item.tiktok}>@{item.tiktok} on TikTok</a>
+                      </section>
+                    </blockquote>
+                    <TikTokScript />
                   </div>
                 ) : null}
               </section>

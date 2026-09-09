@@ -59,7 +59,27 @@ export function mergeCatalog(items: Unclaimed[], extraContacts: Record<string, O
     if (d) seenDomain.add(d);
     added.push(it);
   }
-  base = [...UNCLAIMED, ...added];
+  // Hand-verified seeds keep their facts but borrow everything the crawl found that they lack: photos, videos,
+  // grouped services, descriptions, social handles, pins.
+  const remoteByDomain = new Map<string, Unclaimed>();
+  for (const it of items) {
+    const d = domainOf(it.src);
+    if (d) remoteByDomain.set(d, it);
+  }
+  const seeds = UNCLAIMED.map((seed) => {
+    const r = remoteByDomain.get(domainOf(seed.src) || "");
+    if (!r) return seed;
+    const out: Unclaimed = { ...seed };
+    const borrow = ["cover", "photos", "video", "videoEmbed", "services", "addons", "blurb", "tags", "lat", "lon", "ytVideos", "tiktok", "instagram", "rating", "reviews"] as const;
+    for (const k of borrow) {
+      const cur = out[k] as unknown;
+      const empty = cur == null || (Array.isArray(cur) && cur.length === 0);
+      if (empty && r[k] != null) (out as Record<string, unknown>)[k] = r[k];
+    }
+    if (!out.options.length && r.options.length) out.options = r.options;
+    return out;
+  });
+  base = [...seeds, ...added];
   contacts = { ...extraContacts, ...CONTACTS };
   rebuild();
   return added.length;

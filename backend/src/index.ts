@@ -11,6 +11,7 @@ import { discoverAll, metroCoverage } from "./discover/osm.ts";
 import { budgetUsd, collectAll, collectBatch, dryRun, enrichPending, rate, spentUsd, submitBatch } from "./enrich/run.ts";
 import { discoverSearch } from "./discover/searchapi.ts";
 import { readPendingStructures, readSiteStructure } from "./enrich/structure.ts";
+import { socialPending } from "./enrich/social.ts";
 import { collectPhotos, photosPending } from "./enrich/images.ts";
 import { widgetsPending, widgetForOperator } from "./enrich/widgets.ts";
 import { CITIES } from "./discover/cities.ts";
@@ -123,6 +124,14 @@ if (cmd === "videos") {
   const concurrency = Number(process.argv[4] || 8);
   const out = await photosPending(limit, concurrency, "videos");
   console.log(`Videos: ${out.sites} sites re-crawled. Run "npm run sync" to push to the app.`);
+  process.exit(0);
+}
+
+if (cmd === "social") {
+  const limit = Number(process.argv[3] || 5000);
+  const concurrency = Number(process.argv[4] || 4);
+  const r = await socialPending(limit, concurrency);
+  console.log(`Social: ${r.operators} operators, ${r.videos} YouTube videos, ${r.tiktok} TikTok profiles. Run "npm run sync" to push to the app.`);
   process.exit(0);
 }
 

@@ -1,12 +1,13 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { CATS, CATMETA } from "../../data/categories";
 import { ART_LABEL } from "../../data/art";
 import { ICONS } from "../../data/icons";
 import { ALL_METRO_ID, METROS, metroById } from "../../data/metros";
 import type { ArtKind, CategoryId, Unclaimed } from "../../data/types";
 import { fromPrice, getCatalog, publicRating } from "../../lib/catalog";
+import { listingFacts } from "../../lib/catalog";
 import { fmtDate, fmtReviews, money } from "../../lib/format";
-import { searchListings } from "../../lib/search";
+import { parseIntent, searchListings } from "../../lib/search";
 import { currentLocation, fmtDistance, kmBetween, searchPlaces, type Place } from "../../lib/places";
 import { useApp } from "../../state/AppProvider";
 import { Photo } from "../art/Photo";
@@ -45,6 +46,11 @@ function rankForRail(list: Unclaimed[]): Unclaimed[] {
     });
 }
 
+/** Up to three listings a guest wants side by side. */
+const CompareCtx = createContext<{ ids: string[]; toggle: (id: string) => void }>({ ids: [], toggle: () => {} });
+
+const INTENT_CHIPS = ["Birthday ideas", "With kids", "Date night", "Adrenaline", "Rainy day", "Sunset", "Under $50", "Team outing"];
+
 type SortId = "relevance" | "distance" | "price" | "rating";
 const SORTS: { id: SortId; label: string }[] = [
   { id: "relevance", label: "Relevance" },
@@ -52,6 +58,67 @@ const SORTS: { id: SortId; label: string }[] = [
   { id: "price", label: "Price: low to high" },
   { id: "rating", label: "Top rated" },
 ];
+
+function CompareToggle({ id }: { id: string }) {
+  const { ids, toggle } = useContext(CompareCtx);
+  const on = ids.includes(id);
+  return (
+    <span
+      role="button"
+      tabIndex={0}
+      className={"wcompare" + (on ? " on" : "")}
+      onClick={(e) => { e.stopPropagation(); toggle(id); }}
+      onKeyDown={(e) => { if (e.key === "Enter") { e.stopPropagation(); toggle(id); } }}
+    >
+      {on ? "✓ Comparing" : "+ Compare"}
+    </span>
+  );
+}
+
+function CompareTable({ items, near, onOpen, onClose, onRemove }: { items: Unclaimed[]; near?: Place | null; onOpen: (id: string) => void; onClose: () => void; onRemove: (id: string) => void }) {
+  const row = (label: string, cell: (u: Unclaimed) => React.ReactNode) => (
+    <tr key={label}>
+      <th>{label}</th>
+      {items.map((u) => <td key={u.id}>{cell(u)}</td>)}
+    </tr>
+  );
+  const firstPriced = (u: Unclaimed) => u.options.find((o) => o.price != null);
+  return (
+    <div className="wcmpmodal" onClick={onClose}>
+      <div className="wcmpbox" onClick={(e) => e.stopPropagation()}>
+        <div className="wcmphead">
+          <h2>Compare</h2>
+          <button type="button" className="wghost" onClick={onClose}>Close</button>
+        </div>
+        <table className="wcmp">
+          <thead>
+            <tr>
+              <th />
+              {items.map((u) => (
+                <th key={u.id}>
+                  <div className="wcmpart"><Photo src={u.cover} kind={u.art} id={"c" + u.id} alt={u.title} /></div>
+                  <b>{u.title}</b>
+                  <button type="button" className="wcmpremove" onClick={() => onRemove(u.id)}>Remove</button>
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {row("From", (u) => { const f = fromPrice(u); return f != null ? <b>{money(f)}</b> : <span className="muted">Request to book</span>; })}
+            {row("Rating", (u) => { const sc = publicRating(u); return sc ? <span><Markup html={ICONS.star} /> {sc.rating.toFixed(1)} <em className="muted">({fmtReviews(sc.reviews)})</em></span> : <span className="muted">No public rating</span>; })}
+            {row("Where", (u) => u.area + (near && u.lat != null && u.lon != null ? " · " + fmtDistance(kmBetween(near, { lat: u.lat, lon: u.lon })) + " away" : ""))}
+            {row("What you'd book", (u) => { const o = firstPriced(u) || u.options[0]; return o ? o.name + (o.detail ? " · " + o.detail : "") : <span className="muted">Menu not published</span>; })}
+            {row("Options", (u) => u.options.length ? u.options.length + (u.options.length === 1 ? " option" : " options") : <span className="muted">None listed</span>)}
+            {row("Who can go", (u) => { const f = listingFacts(u).who.find((l) => l.posted); return f ? f.text : <span className="muted">Not posted</span>; })}
+            {row("Included", (u) => u.includes.length ? u.includes.slice(0, 3).join(", ") : <span className="muted">Not posted</span>)}
+            {row("Photos", (u) => (u.photos?.length || (u.cover ? 1 : 0)) + "")}
+            {row("", (u) => <button type="button" className="cta small" onClick={() => onOpen(u.id)}>View and book</button>)}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
 
 function Card({ u, onOpen, near }: { u: Unclaimed; onOpen: (id: string) => void; near?: Place | null }) {
   const from = fromPrice(u);
@@ -69,6 +136,7 @@ function Card({ u, onOpen, near }: { u: Unclaimed; onOpen: (id: string) => void;
                 <span className="wheart" aria-hidden="true">
                   <Markup html={ICONS.heart} />
                 </span>
+                <CompareToggle id={u.id} />
               </div>
               <div className="wbody">
                 <b>{u.title}</b>
@@ -123,6 +191,10 @@ export function WebHome({ onOpenApp, onOperators }: { onOpenApp: () => void; onO
   const [whoOpen, setWhoOpen] = useState(false);
   const near = state.near;
   const [sort, setSort] = useState<SortId>("relevance");
+  const [compareIds, setCompareIds] = useState<string[]>([]);
+  const [compareOpen, setCompareOpen] = useState(false);
+  const toggleCompare = (id: string) => setCompareIds((cur) => (cur.includes(id) ? cur.filter((x) => x !== id) : cur.length >= 3 ? [...cur.slice(1), id] : [...cur, id]));
+  const intent = useMemo(() => parseIntent(q), [q]);
   const [placeQ, setPlaceQ] = useState("");
   const [placeHits, setPlaceHits] = useState<Place[]>([]);
   const [locating, setLocating] = useState(false);
@@ -183,6 +255,7 @@ export function WebHome({ onOpenApp, onOperators }: { onOpenApp: () => void; onO
   const catName = (id: CategoryId) => CATS.find((c) => c.id === id)?.name || "All";
 
   return (
+    <CompareCtx.Provider value={{ ids: compareIds, toggle: toggleCompare }}>
     <div className="web" onClick={() => { if (whereOpen) setWhereOpen(false); }}>
       <header className="whead">
         <div className="wwrap whead-in">
@@ -295,6 +368,15 @@ export function WebHome({ onOpenApp, onOperators }: { onOpenApp: () => void; onO
 
       <main className="wwrap">
         {state.catalogReady ? (
+          <div className="wintents">
+            {INTENT_CHIPS.map((c) => (
+              <button type="button" key={c} aria-pressed={q.trim().toLowerCase() === c.toLowerCase()} onClick={() => setQ(q.trim().toLowerCase() === c.toLowerCase() ? "" : c)}>
+                {c}
+              </button>
+            ))}
+          </div>
+        ) : null}
+        {state.catalogReady ? (
           <div className="wsortbar">
             <span className="wsortlabel">Sort by</span>
             {SORTS.map((o) => (
@@ -349,14 +431,27 @@ export function WebHome({ onOpenApp, onOperators }: { onOpenApp: () => void; onO
           </section>
         ) : null}
         {state.catalogReady && !sorted && q.trim() ? (
-          <Rail title={`${pool.length} results for “${q.trim()}”${near ? " near " + near.label : metro ? " in " + metro.name : ""}`} items={near ? pool : rankForRail(pool)} onOpen={openRequest} near={near} />
+          <section className="wrail">
+            <div className="wrailhead">
+              <h2>
+                {intent.label ? intent.label : `Results for “${q.trim()}”`}
+                {near ? " near " + near.label : metro ? " in " + metro.name : ""}
+                <em className="wcount">{pool.length.toLocaleString()}</em>
+              </h2>
+            </div>
+            {intent.label ? <p className="wsecsub">{intent.kids ? "Only places whose published rules allow younger kids. " : ""}{intent.maxPrice != null ? "Starting price at or under $" + intent.maxPrice + ". " : ""}Best fit first, then rating and reviews. Add up to three to compare.</p> : null}
+            <div className="wgrid">
+              {(near ? pool : pool).slice(0, 60).map((u) => <Card key={u.id} u={u} onOpen={openRequest} near={near} />)}
+            </div>
+            {pool.length === 0 ? <div className="wempty"><b>Nothing matches yet.</b><p>Try a wider area, fewer words, or one of the ideas above.</p></div> : null}
+          </section>
         ) : null}
-        {state.catalogReady && !sorted ? rails.map((r) => {
+        {state.catalogReady && !sorted && !q.trim() ? rails.map((r) => {
           const items = rankForRail(pool.filter((u) => u.art === r.art));
           const title = near ? `${r.title} near ${near.label}` : metro ? `${r.title} in ${metro.name}` : `Popular ${r.title.toLowerCase()}`;
           return <Rail key={r.art} title={title} items={items} onOpen={openRequest} near={near} />;
         }) : null}
-        {state.catalogReady && !sorted && !rails.length ? (
+        {state.catalogReady && !sorted && !q.trim() && !rails.length ? (
           <div className="wempty">
             <b>Nothing in {catName(state.cat)} here yet.</b>
             <p>Try Anywhere, or another category. {CATMETA[state.cat]?.emptyBody || ""}</p>
@@ -370,6 +465,27 @@ export function WebHome({ onOpenApp, onOperators }: { onOpenApp: () => void; onO
           <span>{getCatalog().length.toLocaleString()} operators across the US and Canada</span>
         </div>
       </footer>
+      {compareIds.length ? (
+        <div className="wcmptray">
+          <span className="wcmptrayitems">
+            {compareIds.map((id) => { const u = getCatalog().find((x) => x.id === id); return u ? <span key={id} className="wcmpchip"><b>{u.title}</b><button type="button" aria-label="Remove" onClick={() => toggleCompare(id)}>×</button></span> : null; })}
+          </span>
+          <span className="wcmptrayactions">
+            <button type="button" className="wghost" onClick={() => setCompareIds([])}>Clear</button>
+            <button type="button" className="cta small" disabled={compareIds.length < 2} onClick={() => setCompareOpen(true)}>Compare {compareIds.length}</button>
+          </span>
+        </div>
+      ) : null}
+      {compareOpen ? (
+        <CompareTable
+          items={compareIds.map((id) => getCatalog().find((x) => x.id === id)).filter((x): x is Unclaimed => !!x)}
+          near={near}
+          onOpen={(id) => { setCompareOpen(false); openRequest(id); }}
+          onClose={() => setCompareOpen(false)}
+          onRemove={(id) => { toggleCompare(id); if (compareIds.length <= 2) setCompareOpen(false); }}
+        />
+      ) : null}
     </div>
+    </CompareCtx.Provider>
   );
 }

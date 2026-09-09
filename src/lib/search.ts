@@ -90,12 +90,86 @@ export function queryArts(q: string): ArtKind[] {
   return out;
 }
 
-const FILLER = new Set(["rental", "rentals", "rent", "near", "me", "in", "the", "a", "and", "for", "best", "cheap", "tour", "tours"]);
+/**
+ * What a guest means, not what they typed. "birthday ideas tampa" is a set of activities plus a place,
+ * "with kids" is an age filter, "under $50" is a price cap. Words used here are stripped from exact matching.
+ */
+export type Intent = {
+  label: string | null;
+  arts: ArtKind[];
+  maxPrice: number | null;
+  kids: boolean;
+  group: boolean;
+  words: string[];
+};
+
+const INTENTS: { re: RegExp; label: string; arts: ArtKind[]; kids?: boolean; group?: boolean }[] = [
+  { re: /\b(birthday|bday|party|celebrat)/i, label: "Birthday ideas", arts: ["kart", "escape", "axe", "paintball", "pontoon", "cruise", "jetski", "parasail"], group: true },
+  { re: /\b(bachelor|bachelorette|stag|hen|guys? trip|girls? trip|boys? trip)\b/i, label: "Bachelor and bachelorette", arts: ["pontoon", "jetski", "kart", "axe", "paintball", "cruise", "skydive", "parasail"], group: true },
+  { re: /\b(team|corporate|coworkers?|office|company outing|work event|team building)\b/i, label: "Team outings", arts: ["escape", "axe", "kart", "paintball", "pontoon", "cruise"], group: true },
+  { re: /\b(kids?|children|child|family|families|toddler|teen(ager)?s?)\b/i, label: "Family friendly", arts: ["horse", "kayak", "pontoon", "cruise", "escape", "kart", "parasail", "balloon"], kids: true },
+  { re: /\b(date night|night out|date|romantic|couples?|anniversary|proposal|honeymoon|valentine)/i, label: "Date ideas", arts: ["cruise", "balloon", "heli", "kayak", "horse"] },
+  { re: /\b(adrenaline|thrill|extreme|adventure|adventurous|crazy|wild|scary|dare)/i, label: "Adrenaline", arts: ["skydive", "jetski", "parasail", "kart", "paintball", "heli"] },
+  { re: /\b(calm|relax|relaxing|chill|peaceful|quiet|scenic|nature|wildlife|dolphin|manatee|sunset|sunrise)/i, label: "Calm and scenic", arts: ["kayak", "balloon", "cruise", "horse"] },
+  { re: /\b(rain|rainy|indoor|indoors|inside|bad weather|too hot|air ?con)/i, label: "Rainy day", arts: ["escape", "axe", "kart"] },
+  { re: /\b(water|beach|lake|ocean|bay|river|on the water)\b/i, label: "On the water", arts: ["jetski", "kayak", "pontoon", "fishing", "cruise", "parasail"] },
+  { re: /\b(sky|air|fly|flying|view from above|aerial)\b/i, label: "Up in the air", arts: ["skydive", "heli", "balloon", "parasail"] },
+  { re: /\b(things to do|what to do|activities|fun|stuff to do|weekend|tonight|today|ideas?)\b/i, label: "Things to do", arts: [] },
+];
+
+export function parseIntent(q: string): Intent {
+  const lq = " " + q.toLowerCase().replace(/[^a-z0-9$]+/g, " ") + " ";
+  const out: Intent = { label: null, arts: [], maxPrice: null, kids: false, group: false, words: [] };
+  const price = lq.match(/(?:under|below|less than|max|up to|<)\s*\$?\s*(\d{2,4})\b/) || lq.match(/\$\s*(\d{2,4})\b/);
+  if (price) {
+    out.maxPrice = Number(price[1]);
+    out.words.push(...price[0].trim().split(/\s+/));
+  }
+  for (const it of INTENTS) {
+    const m = lq.match(it.re);
+    if (!m) continue;
+    if (!out.label) out.label = it.label;
+    for (const a of it.arts) if (!out.arts.includes(a)) out.arts.push(a);
+    if (it.kids) out.kids = true;
+    if (it.group) out.group = true;
+    out.words.push(...m[0].trim().split(/\s+/));
+  }
+  if (!out.label && out.maxPrice != null) out.label = "Under $" + out.maxPrice;
+  else if (out.label && out.maxPrice != null) out.label += " under $" + out.maxPrice;
+  return out;
+}
+
+/** Listings that a young child could join, judged only from what the operator published. */
+export function kidFriendly(u: Unclaimed): boolean {
+  const text = [...u.specs, u.gap, u.extraNote || "", ...(u.tags || [])].join(" ").toLowerCase();
+  if (/\b(18\+|18 and (up|over|older)|adults? only|21\+|must be 18|minimum age(:| is)? ?(1[2-9]|2\d))/.test(text)) return false;
+  if (/\bages? ?(\d|[1-9]) ?(\+|and up|to|-)/.test(text) || /kid|child|family|all ages/.test(text)) return true;
+  return !["skydive", "paintball", "axe"].includes(u.art);
+}
+
+const FILLER = new Set(["rental", "rentals", "rent", "near", "me", "in", "the", "a", "an", "and", "for", "with", "best", "cheap", "tour", "tours", "ideas", "idea", "stuff", "things", "to", "do", "of", "on", "at", "good", "great", "top", "nearby", "around", "here", "my", "our", "we", "i", "some", "any", "night", "day"]);
 
 export function listingScore(u: Unclaimed, q: string): number {
-  const all = tokens(q);
-  if (!all.length) return 0;
-  const arts = queryArts(q);
+  const intent = parseIntent(q);
+  const intentWords = new Set(intent.words.map((w) => w.replace(/[^a-z0-9]/g, "")));
+  const all = tokens(q).filter((t) => !intentWords.has(t) && !FILLER.has(t));
+  const explicitArts = queryArts(q);
+  const arts = explicitArts.length ? explicitArts : intent.arts;
+  if (intent.maxPrice != null) {
+    const from = u.options.map((o) => o.price).filter((n): n is number => n != null);
+    if (!from.length || Math.min(...from) > intent.maxPrice) return 0;
+  }
+  if (intent.kids && !kidFriendly(u)) return 0;
+  if (!all.length) {
+    // Pure intent, no other words: rank by fit and by how strong the listing is.
+    let base = arts.length ? (arts.includes(u.art) ? 30 + (arts.length - arts.indexOf(u.art)) : 0) : 20;
+    if (!base) return 0;
+    if (u.cover) base += 4;
+    if (u.rating && u.reviews) base += Math.min(8, Math.log10(u.reviews + 1) * 3) + (u.rating - 4) * 4;
+    if (u.options.some((o) => o.price != null)) base += 3;
+    if (intent.group && /group|party|private|up to \d+|people/i.test([...u.specs, ...(u.tags || [])].join(" "))) base += 4;
+    return base;
+  }
   const hay = haystack(u);
   const compact = hay.replace(/[^a-z0-9]+/g, "");
   let score = 0;
@@ -103,7 +177,7 @@ export function listingScore(u: Unclaimed, q: string): number {
   const tagText = [...(u.tags || []), ...u.options.map((o) => o.name)].join(" ").toLowerCase();
   // The activity the guest named is the strongest signal. A jet ski search must surface jet ski operators first.
   if (arts.length) {
-    if (arts.includes(u.art)) score += 40;
+    if (arts.includes(u.art)) score += explicitArts.length ? 40 : 30;
     else if (arts.some((a) => (ART_ALIASES[a] || []).some((w) => tagText.includes(w)))) score += 24;
     else if (arts.some((a) => (ART_ALIASES[a] || []).some((w) => title.includes(w)))) score += 24;
   }

@@ -191,7 +191,7 @@ function toCatalogItem(r: CatalogRow): Record<string, unknown> {
     addons: pick("addon")
       .map((a) => {
         const m = a.match(/^(.*?)\s*\$(\d+(?:\.\d+)?)$/);
-        return m ? { name: m[1].trim(), detail: "", price: Number(m[2]) } : null;
+        return m ? { name: m[1].trim().replace(/\s+(for|at|only|just|from|is)$/i, ""), detail: "", price: Number(m[2]) } : null;
       })
       .filter((a): a is { name: string; detail: string; price: number } => !!a)
       .slice(0, 6),
@@ -200,6 +200,19 @@ function toCatalogItem(r: CatalogRow): Record<string, unknown> {
     blurb: pick("description")[0] || pick("site_desc")[0] || pick("one_line")[0] || undefined,
     cover: pick("cover")[0] || undefined,
     photos: [...new Set(pick("photo"))].slice(0, 8),
+    ytVideos: pick("yt_video")
+      .map((raw) => {
+        try {
+          const v = JSON.parse(raw) as { id: string; title: string; views: number };
+          return { id: v.id, title: v.title, views: v.views };
+        } catch {
+          return null;
+        }
+      })
+      .filter((v): v is { id: string; title: string; views: number } => !!v)
+      .slice(0, 3),
+    tiktok: pick("tiktok_profile")[0] || undefined,
+    instagram: pick("social:instagram")[0] || undefined,
     video: pick("video")[0] || undefined,
     videoEmbed: pick("video_embed")[0] || undefined,
     lat: r.lat ?? undefined,
