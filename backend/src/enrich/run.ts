@@ -108,6 +108,12 @@ function storeExtraction(op: OpRow, x: ExtractionT, social: Record<string, strin
     offerings += 1;
   }
 
+  // The model read the whole site; once it returns priced options, the rule-based guesses only add duplicates and promo codes.
+  if (x.offerings.some((o) => o.price.amount != null)) {
+    db.prepare("DELETE FROM offerings WHERE operator_id = ? AND confidence = 'site'").run(op.id);
+    db.prepare("DELETE FROM facts WHERE operator_id = ? AND confidence = 'site' AND fact_key = 'service'").run(op.id);
+  }
+
   db.prepare("DELETE FROM facts WHERE operator_id = ? AND confidence = 'ai'").run(op.id);
   const insFact = db.prepare(
     "INSERT INTO facts (id, operator_id, fact_key, fact_value, source_url, confidence) VALUES (?, ?, ?, ?, ?, 'ai')",
