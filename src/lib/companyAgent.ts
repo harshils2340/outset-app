@@ -169,13 +169,27 @@ export function companyReply(ctx: CompanyContext, question: string): string {
   })());
 
   if (LIMITS.test(q)) parts.push((() => {
-    if (item.requirements?.length) return "Published rules: " + item.requirements.join(" ") + " Anything not listed there, I cannot confirm." + callLine(ctx);
+    if (item.requirements?.length) {
+      // Answer the rule the guest asked about. A question about kids should not get the boat-licence line.
+      const topic = /age|old|kid|child|minor|junior|infant|toddler|year/i.test(q) ? /age|old|kid|child|minor|junior|infant|toddler|year|adult|family/i
+        : /weight|lbs?|pound|height|tall/i.test(q) ? /weight|lbs?|pound|height|tall/i
+        : /pregnan|disab|wheelchair|mobility/i.test(q) ? /pregnan|disab|wheelchair|mobility|access/i
+        : /swim/i.test(q) ? /swim|life ?jacket|vest/i
+        : /license|licence|permit|experience|beginner|first/i.test(q) ? /license|licence|permit|experience|beginner|first|lesson|certif/i
+        : null;
+      const sentence = (l: string) => l.trim().replace(/[.;,]+$/, "") + ".";
+      const hits = topic ? item.requirements.filter((l) => topic.test(l)) : [];
+      if (hits.length) return "Published rules: " + hits.map(sentence).join(" ") + " Anything not listed there, I cannot confirm." + callLine(ctx);
+      if (topic) return "Their published rules do not mention that. What they do say: " + item.requirements.slice(0, 3).map(sentence).join(" ") + callLine(ctx);
+      return "Published rules: " + item.requirements.map(sentence).join(" ") + " Anything not listed there, I cannot confirm." + callLine(ctx);
+    }
     const hits = specsAbout(item, /age|lb|pound|weight|height|license|licence|experience|beginner|kids?|child|swim/i);
     if (hits.length) return "Published limits: " + hits.join(". ") + ". Anything not listed there, I cannot confirm." + callLine(ctx);
     return notPublished(ctx, "age, weight, or license rules");
   })());
 
-  if (INCLUDED.test(q)) parts.push((() => {
+  // "Can I bring my 6 year old" is a rules question, not a packing question.
+  if (INCLUDED.test(q) && !(LIMITS.test(q) && /bring (my|our|a|the) /i.test(q))) parts.push((() => {
     const bring = item.bring?.length ? " Bring: " + item.bring.join(", ") + "." : "";
     if (item.includes.length) return "Included: " + item.includes.join(", ") + "." + bring;
     if (bring) return "What to bring, from " + item.title + ":" + bring;

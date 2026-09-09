@@ -421,6 +421,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (m || c || r) window.history.replaceState(null, "", window.location.pathname + window.location.search);
       // /operators is the operator side. The guest site lives at /.
       else if (/^\/operators\/?$/.test(window.location.pathname)) dispatch({ type: "openOperator" });
+      // A listing link pasted while the app is already open should still open that listing.
+      window.addEventListener("hashchange", () => {
+        const h = window.location.hash.match(/^#o=([a-z0-9-]+)/i);
+        if (!h || !experienceById(h[1])) return;
+        dispatch({ type: "openRequest", id: h[1] });
+        loadListing(h[1]).then((changed) => changed && dispatch({ type: "catalogLoaded", added: 1 }));
+        window.history.replaceState(null, "", window.location.pathname + window.location.search);
+      });
     });
     return () => {
       alive = false;
