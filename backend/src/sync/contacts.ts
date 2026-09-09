@@ -189,7 +189,7 @@ function toCatalogItem(r: CatalogRow): Record<string, unknown> {
       });
       return [...groups.values()].filter((g) => !/gift ?cards?|gift certificate|deposit|membership|season pass/i.test(g.name)).slice(0, 14);
     })(),
-    includes: uniq(pick("includes").map(cleanLine)).filter(isTidyLine).slice(0, 10),
+    includes: uniq(pick("includes").map(cleanLine)).filter(isTidyLine).filter((l) => !/gift ?card|gift certificate|will be provided upon|directions will|upon purchas/i.test(l)).slice(0, 10),
     addons: pick("addon")
       .map((a) => {
         const m = a.match(/^(.*?)\s*\$(\d+(?:\.\d+)?)$/);

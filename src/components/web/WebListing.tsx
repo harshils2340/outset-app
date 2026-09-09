@@ -191,7 +191,7 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
   const notIncluded = item.includes.filter((l) => /\bnot included|excluded|not provided\b/i.test(l)).map((l) => l.replace(/\s*\(?not included\)?/i, "").trim());
   const reqKeys = new Set(requirements.map((r) => r.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim()));
   const highlights = (item.highlights?.length ? item.highlights : facts.about.slice(0, 6)).filter((h) => !reqKeys.has(h.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim()));
-  const waiverLines = item.policies?.filter((l) => /waiver|liabilit|sign/i.test(l)) || facts.waiver.filter((l) => l.posted).map((l) => l.text);
+  const waiverLines = (item.policies?.filter((l) => /waiver|liabilit|sign/i.test(l)) || facts.waiver.filter((l) => l.posted).map((l) => l.text)).filter((l) => l.length <= 160);
   const otherPolicies = (item.policies || []).filter((l) => !/cancel|refund|waiver|liabilit/i.test(l));
   const cancel = freeCancel(item.cancellation);
   const age = minAge(requirements);
@@ -450,7 +450,7 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
                 ) : (
                   <>
                     <h2>Waiver and check-in</h2>
-                    {waiverLines.length ? <Bullets items={waiverLines} icon={ICONS.dot} /> : <ul className="policy">{facts.waiver.map((l) => <li key={l.text} className={l.posted ? undefined : "gap"}><Markup html={ICONS.dot} /><span>{l.text}</span></li>)}</ul>}
+                    {waiverLines.length ? <Bullets items={waiverLines} icon={ICONS.dot} /> : <ul className="policy">{facts.waiver.filter((l) => !l.posted || l.text.length <= 160).map((l) => <li key={l.text} className={l.posted ? undefined : "gap"}><Markup html={ICONS.dot} /><span>{l.text}</span></li>)}</ul>}
                   </>
                 )}
               </div>

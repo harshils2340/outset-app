@@ -25,7 +25,7 @@ export function pruneNoise(dryRun = false): { types: number; names: number; doma
       `SELECT o.id, o.name, o.domain,
               (SELECT fact_value FROM facts f WHERE f.operator_id = o.id AND f.fact_key = 'google_category' LIMIT 1) AS gtype,
               (SELECT COUNT(*) FROM offerings x WHERE x.operator_id = o.id AND x.price_cents IS NOT NULL) AS priced,
-              (SELECT COUNT(*) FROM facts f WHERE f.operator_id = o.id AND f.fact_key = 'service' AND f.fact_value LIKE '%rental%' OR f.fact_value LIKE '%tour%' OR f.fact_value LIKE '%charter%') AS svc
+              (SELECT COUNT(*) FROM facts f WHERE f.operator_id = o.id AND f.fact_key = 'service' AND (f.fact_value LIKE '%rental%' OR f.fact_value LIKE '%tour%' OR f.fact_value LIKE '%charter%')) AS svc
        FROM operators o WHERE o.origin IN ('search', 'osm')`,
     )
     .all() as { id: string; name: string; domain: string; gtype: string | null; priced: number; svc: number }[];
