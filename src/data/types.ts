@@ -119,6 +119,19 @@ export type Unclaimed = {
   /** TikTok and Instagram handles from their site. */
   tiktok?: string;
   instagram?: string;
+  /** Viator-shaped detail sections. Every one is optional and only present when the operator's own site states it. */
+  highlights?: string[];
+  requirements?: string[];
+  groupInfo?: string[];
+  bring?: string[];
+  season?: string;
+  meetingPoint?: string;
+  checkin?: string;
+  cancellation?: string;
+  policies?: string[];
+  waiverUrl?: string;
+  hoursText?: string[];
+  faq?: { q: string; a: string }[];
   /** True for browse-catalog records that have not fetched their detail file yet. */
   lite?: boolean;
   /** Id of the detail file to fetch when it differs from this record's id (hand-verified seeds). */

@@ -221,7 +221,62 @@ function toCatalogItem(r: CatalogRow): Record<string, unknown> {
     lon: r.lon ?? undefined,
     tags: [...new Set([...pick("google_category"), ...pick("service"), ...offerings.map((o) => o.name)])].slice(0, 12),
     extraNote: pick("extra")[0] || [...pick("policy"), ...pick("checkin"), ...pick("meeting_point"), ...pick("season")].join(" · ").slice(0, 700) || undefined,
+    // Viator-shaped sections. Each only appears when the site said it.
+    highlights: uniq(pick("spec").map(cleanLine)).slice(0, 8),
+    requirements: uniq(pick("requirement").map(cleanLine)).slice(0, 10),
+    groupInfo: uniq(pick("group").map(cleanLine)).slice(0, 5),
+    bring: uniq(pick("bring").map(cleanLine)).slice(0, 8),
+    season: cleanLine(pick("season")[0] || "") || undefined,
+    meetingPoint: cleanLine(pick("meeting_point")[0] || "") || undefined,
+    checkin: cleanPara(pick("checkin")[0] || "") || undefined,
+    cancellation: cleanPara(pick("cancellation")[0] || "") || cleanPara(pick("policy").filter((l) => /cancel|refund/i.test(l)).join(" ")) || undefined,
+    policies: uniq(pick("policy").map(cleanLine)).slice(0, 8),
+    waiverUrl: pick("waiver_url").find((u) => /^https?:\/\/\S+$/.test(u) && !/\/w\/?$/.test(u)) || undefined,
+    hoursText: uniq(pick("hours_text").map((h) => cleanLine(h.replace(/^hours(?: & admission)?\s*/i, "")))).slice(0, 3),
+    faq: pick("faq").map(parseFaq).filter((f): f is { q: string; a: string } => !!f).slice(0, 8),
   };
+}
+
+function uniq(list: string[]): string[] {
+  const seen = new Set<string>();
+  return list.filter((x) => x && !seen.has(x.toLowerCase()) && (seen.add(x.toLowerCase()), true));
+}
+
+/** Markdown, image tags and widget leftovers out; one clean sentence in. */
+function cleanLine(raw: string): string {
+  return raw
+    .replace(/!\[[^\]]*\]\([^)]*\)/g, " ")
+    .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
+    .replace(/[#*_>`]+/g, " ")
+    .replace(/https?:\/\/\S+/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 240);
+}
+
+function cleanPara(raw: string): string {
+  return raw
+    .replace(/!\[[^\]]*\]\([^)]*\)/g, " ")
+    .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
+    .replace(/[#*_>`]+/g, " ")
+    .replace(/https?:\/\/\S+/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 700);
+}
+
+/** FAQ facts come as "Question? >Answer" or "Question? Answer". Anything without a question mark is not a FAQ. */
+function parseFaq(raw: string): { q: string; a: string } | null {
+  const t = cleanPara(raw);
+  const i = t.indexOf("?");
+  if (i < 8 || i > 160) return null;
+  // The question is the last sentence before the question mark.
+  const before = t.slice(0, i + 1);
+  const qStart = Math.max(before.lastIndexOf(". "), before.lastIndexOf("! "), -2) + 2;
+  const q = before.slice(qStart).trim();
+  const a = t.slice(i + 1).replace(/^\s*>\s*/, "").trim();
+  if (q.length < 8 || a.length < 12) return null;
+  return { q, a: a.slice(0, 500) };
 }
 
 /** Write public/catalog.json: every real operator plus its contact facts. The app fetches it at startup. */

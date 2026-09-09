@@ -14,8 +14,10 @@ import { WebAssistant } from "./WebAssistant";
 import { Markup } from "../Markup";
 
 /**
- * Desktop listing page in the Airbnb hotel shape: photo grid, details on the left, sticky booking card on the right,
- * similar listings below. Same facts and booking rules as the phone sheet.
+ * Desktop listing page. Airbnb hotel layout (photo grid, details left, sticky booking card right, similar below)
+ * with the sections a Viator tour page or a GetMyBoat trip page carries: highlights, what's included, who can go,
+ * what to bring, meeting point and check-in, cancellation policy, FAQ, videos. Every section shows only what the
+ * operator's own site states. Nothing is invented to fill a gap, and empty sections stay hidden.
  */
 
 const KIND: Record<string, string> = {
@@ -57,14 +59,45 @@ function cleanDesc(raw: string): string {
     .trim();
 }
 
+/** "Free cancellation up to 48 hours before" when the operator's own policy says so. Null otherwise. */
+function freeCancel(text: string | undefined): string | null {
+  if (!text) return null;
+  if (!/full refund|free cancellation|100% refund|fully refundable/i.test(text)) return null;
+  const m = text.match(/(\d+)\s*(hours?|hrs?|days?)/i);
+  if (!m) return "Free cancellation";
+  const n = Number(m[1]);
+  const unit = /day/i.test(m[2]) ? (n === 1 ? "day" : "days") : n === 1 ? "hour" : "hours";
+  return `Free cancellation up to ${n} ${unit} before`;
+}
+
+/** Minimum age from lines like "Must be 18+", "Minimum age 8", "ages 6 and up". */
+function minAge(lines: string[]): number | null {
+  for (const l of lines) {
+    const m = l.match(/\b(?:min(?:imum)? age(?: is|:)?|must be(?: at least)?|ages?|riders? must be)\s*(\d{1,2})\s*(?:\+|and (?:up|over|older)|years|yrs|or older)/i) || l.match(/\b(\d{1,2})\s*\+/);
+    if (m) {
+      const n = Number(m[1]);
+      if (n >= 2 && n <= 21) return n;
+    }
+  }
+  return null;
+}
+
+/** Longest duration mentioned across the menu, as the operator wrote it. */
+function durationLabel(item: Unclaimed): string | null {
+  const texts = [...(item.services || []).flatMap((s) => s.variants.map((v) => v.label)), ...item.options.map((o) => o.detail)];
+  const found = texts.map((t) => t.match(/\b(\d+(?:\.\d+)?)\s*(?:-|to)?\s*(\d+)?\s*(hours?|hrs?|minutes?|mins?|days?)\b/i)).filter(Boolean) as RegExpMatchArray[];
+  if (!found.length) return null;
+  const m = found[0];
+  const unit = /min/i.test(m[3]) ? "min" : /day/i.test(m[3]) ? (Number(m[2] || m[1]) === 1 ? "day" : "days") : Number(m[2] || m[1]) === 1 ? "hour" : "hours";
+  return (m[2] ? m[1] + " to " + m[2] : m[1]) + " " + unit;
+}
+
 /** TikTok's creator embed needs its script once per page; it upgrades every tiktok-embed blockquote it finds. */
 function TikTokScript() {
   useEffect(() => {
     const id = "tiktok-embed-js";
     const existing = document.getElementById(id) as HTMLScriptElement | null;
-    if (existing) {
-      existing.remove();
-    }
+    if (existing) existing.remove();
     const s = document.createElement("script");
     s.id = id;
     s.async = true;
@@ -72,6 +105,19 @@ function TikTokScript() {
     document.body.appendChild(s);
   }, []);
   return null;
+}
+
+function Bullets({ items, icon = ICONS.check, className = "" }: { items: string[]; icon?: string; className?: string }) {
+  return (
+    <ul className={"wbullets " + className}>
+      {items.map((t) => (
+        <li key={t}>
+          <Markup html={icon} />
+          <span>{plainWords(t)}</span>
+        </li>
+      ))}
+    </ul>
+  );
 }
 
 export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose: () => void; onOpen: (id: string) => void }) {
@@ -83,7 +129,6 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
   const facts = listingFacts(item);
   const guide = GUIDES[item.art];
   const candidates = [item.cover, ...(item.photos || []).filter((p) => p !== item.cover)].filter(Boolean) as string[];
-  // Show every candidate right away, and drop the ones that fail to load or come back tiny.
   const [broken, setBroken] = useState<Set<string>>(new Set());
   const photos = candidates.filter((c) => !broken.has(c));
   useEffect(() => {
@@ -107,6 +152,7 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
   const [addonIdx, setAddonIdx] = useState<number[]>([]);
   const [openSvc, setOpenSvc] = useState<string | null>(null);
   const [guideOpen, setGuideOpen] = useState(false);
+  const [openFaq, setOpenFaq] = useState<number | null>(null);
   const [done, setDone] = useState(false);
   const [gallery, setGallery] = useState<number | null>(null);
 
@@ -139,6 +185,33 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
     return pool.sort((a, b) => (b.cover ? 1 : 0) - (a.cover ? 1 : 0) || (b.reviews || 0) - (a.reviews || 0)).slice(0, 7);
   }, [item.id]);
 
+  /* ---------- derived, never invented ---------- */
+  const requirements = item.requirements?.length ? item.requirements : facts.who.filter((l) => l.posted).map((l) => l.text);
+  const includes = item.includes.filter((l) => !/\bnot included|excluded|not provided|bring your own\b/i.test(l));
+  const notIncluded = item.includes.filter((l) => /\bnot included|excluded|not provided\b/i.test(l)).map((l) => l.replace(/\s*\(?not included\)?/i, "").trim());
+  const highlights = item.highlights?.length ? item.highlights : facts.about.slice(0, 6);
+  const waiverLines = item.policies?.filter((l) => /waiver|liabilit|sign/i.test(l)) || facts.waiver.filter((l) => l.posted).map((l) => l.text);
+  const otherPolicies = (item.policies || []).filter((l) => !/cancel|refund|waiver|liabilit/i.test(l));
+  const cancel = freeCancel(item.cancellation);
+  const age = minAge(requirements);
+  const duration = durationLabel(item);
+  const priced = fromPrice(item) != null;
+  const badges: { icon: string; text: string }[] = [];
+  if (score && score.rating >= 4.8 && score.reviews >= 100) badges.push({ icon: ICONS.star, text: "Top rated" });
+  else if (score && score.reviews >= 1000) badges.push({ icon: ICONS.star, text: "Popular" });
+  if (cancel) badges.push({ icon: ICONS.check, text: cancel });
+  if (priced) badges.push({ icon: ICONS.bolt, text: "Instant confirmation" });
+  const quick: { icon: string; label: string; value: string }[] = [];
+  if (duration) quick.push({ icon: ICONS.clock, label: "Duration", value: duration });
+  if (age) quick.push({ icon: ICONS.user, label: "Minimum age", value: age + "+" });
+  if (item.groupInfo?.length) {
+    const cap = item.groupInfo.map((g) => g.match(/(\d{1,3})\s*(?:guests?|people|passengers|riders|max)/i)).find(Boolean);
+    if (cap) quick.push({ icon: ICONS.user, label: "Group size", value: "Up to " + cap[1] });
+  }
+  if (item.season) quick.push({ icon: ICONS.compass, label: "Season", value: item.season });
+  if (item.waiverUrl) quick.push({ icon: ICONS.ticket, label: "Waiver", value: "Sign online before you arrive" });
+  const hours = item.hoursText?.length ? item.hoursText : contact?.hours.map(fmtHours) || [];
+
   const book = () => {
     if (!ready || !time) return;
     confirmUnclaimed({ dateIdx: state.dateIdx, slot: time, qty, optionIdx, addonIdx });
@@ -164,12 +237,14 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
             <span className="wdot wdist"><Markup html={ICONS.pin} /> {fmtDistance(kmBetween(state.near, { lat: item.lat, lon: item.lon }))} from {state.near.label}</span>
           ) : null}
           <span className="wdot">{plainWords(KIND[item.art] || "experience").replace(/^(a|an) /, "")}</span>
-          {item.src && !/^(osm-|gplace-)/.test(item.src) ? (
-            <a className="wsrc" href={"https://" + item.src.replace(/^https?:\/\//, "")} target="_blank" rel="noreferrer">
-              Source: {item.src.replace(/^https?:\/\//, "").replace(/^www\./, "")} ↗
-            </a>
-          ) : null}
         </div>
+        {badges.length ? (
+          <div className="wbadges">
+            {badges.map((b) => (
+              <span key={b.text} className="wbadgechip"><Markup html={b.icon} /> {b.text}</span>
+            ))}
+          </div>
+        ) : null}
 
         <div className={"wphotos" + (photos.length >= 3 ? " grid" : " single")}>
           <button type="button" className="wphoto main" onClick={() => setGallery(0)} aria-label="Open photos">
@@ -221,10 +296,26 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
 
         <div className="wcols">
           <div className="wmain">
+            {quick.length ? (
+              <div className="wquick">
+                {quick.map((q) => (
+                  <div key={q.label}>
+                    <Markup html={q.icon} />
+                    <span><small>{q.label}</small><b>{q.value}</b></span>
+                  </div>
+                ))}
+              </div>
+            ) : null}
+
             {item.blurb ? (
-              <p className="wblurb lead">
-                {plainWords(item.blurb)} <span className="reqcredit">· From their website</span>
-              </p>
+              <p className="wblurb lead">{plainWords(item.blurb)}</p>
+            ) : null}
+
+            {highlights.length ? (
+              <section className="wsec first">
+                <h2>Highlights</h2>
+                <Bullets items={highlights} className="two" />
+              </section>
             ) : null}
 
             <section className="wsec">
@@ -318,31 +409,117 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
               </section>
             ) : null}
 
+            {includes.length || notIncluded.length ? (
+              <section className="wsec wfacts">
+                {includes.length ? (
+                  <div>
+                    <h2>What's included</h2>
+                    <Bullets items={includes} />
+                  </div>
+                ) : null}
+                {notIncluded.length ? (
+                  <div>
+                    <h2>Not included</h2>
+                    <Bullets items={notIncluded} icon={ICONS.close} className="no" />
+                  </div>
+                ) : null}
+              </section>
+            ) : null}
+
             <section className="wsec wfacts">
               <div>
                 <h2>Who can go</h2>
-                <ul className="policy">{facts.who.map((l) => <li key={l.text} className={l.posted ? undefined : "gap"}><Markup html={ICONS.dot} /><span>{l.text}</span></li>)}</ul>
+                {requirements.length ? (
+                  <Bullets items={requirements} icon={ICONS.dot} />
+                ) : (
+                  <ul className="policy">{facts.who.map((l) => <li key={l.text} className={l.posted ? undefined : "gap"}><Markup html={ICONS.dot} /><span>{l.text}</span></li>)}</ul>
+                )}
               </div>
               <div>
-                <h2>Waiver and check-in</h2>
-                <ul className="policy">{facts.waiver.map((l) => <li key={l.text} className={l.posted ? undefined : "gap"}><Markup html={ICONS.dot} /><span>{l.text}</span></li>)}</ul>
+                {item.bring?.length ? (
+                  <>
+                    <h2>What to bring</h2>
+                    <Bullets items={item.bring} icon={ICONS.dot} />
+                  </>
+                ) : item.groupInfo?.length ? (
+                  <>
+                    <h2>Groups</h2>
+                    <Bullets items={item.groupInfo} icon={ICONS.dot} />
+                  </>
+                ) : (
+                  <>
+                    <h2>Waiver and check-in</h2>
+                    {waiverLines.length ? <Bullets items={waiverLines} icon={ICONS.dot} /> : <ul className="policy">{facts.waiver.map((l) => <li key={l.text} className={l.posted ? undefined : "gap"}><Markup html={ICONS.dot} /><span>{l.text}</span></li>)}</ul>}
+                  </>
+                )}
               </div>
             </section>
 
-            {facts.about.length || item.includes.length ? (
-              <section className="wsec wfacts">
-                {facts.about.length ? (
-                  <div>
-                    <h2>The experience</h2>
-                    <ul className="policy">{facts.about.map((s) => <li key={s}><Markup html={ICONS.dot} /><span>{plainWords(s)}</span></li>)}</ul>
+            {item.bring?.length && item.groupInfo?.length ? (
+              <section className="wsec">
+                <h2>Groups</h2>
+                <Bullets items={item.groupInfo} icon={ICONS.dot} />
+              </section>
+            ) : null}
+
+            <section className="wsec">
+              <h2>Meeting point and check-in</h2>
+              <div className="wmeet">
+                <div className="contact">
+                  <a className="crow" href={contact ? mapsHref(contact, item.title + " " + item.area) : "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(item.title + " " + item.area)} target="_blank" rel="noreferrer">
+                    <Markup html={ICONS.pin} />
+                    <span><b>{item.meetingPoint || address || item.area}</b><small>{item.meetingPoint && address && item.meetingPoint !== address ? address + " · Open in Maps" : address ? "Open in Maps" : "Find on the map"}</small></span>
+                  </a>
+                  {contact?.phone ? (
+                    <a className="crow" href={telHref(contact.phone)}>
+                      <Markup html={ICONS.phone} />
+                      <span><b>{fmtPhone(contact.phone)}</b><small>Call a person at the shop</small></span>
+                    </a>
+                  ) : null}
+                  {hours.length ? (
+                    <div className="crow">
+                      <Markup html={ICONS.clock} />
+                      <span>{hours.map((h) => <b key={h}>{h}</b>)}<small>Hours</small></span>
+                    </div>
+                  ) : null}
+                </div>
+                {item.checkin ? (
+                  <div className="wcheckin">
+                    <p className="guidehead">When you arrive</p>
+                    <p>{plainWords(item.checkin)}</p>
                   </div>
                 ) : null}
-                {item.includes.length ? (
-                  <div>
-                    <h2>Included</h2>
-                    <ul className="policy">{item.includes.map((s) => <li key={s}><Markup html={ICONS.dot} /><span>{plainWords(s)}</span></li>)}</ul>
-                  </div>
+              </div>
+            </section>
+
+            {item.cancellation || item.waiverUrl || waiverLines.length && (item.bring?.length || item.groupInfo?.length) || otherPolicies.length ? (
+              <section className="wsec">
+                <h2>Cancellation policy</h2>
+                {item.cancellation ? <p className="wpolicytext">{plainWords(item.cancellation)}</p> : <p className="wpolicytext gap">{item.title} has not published cancellation terms. Otto will have them confirm before you pay.</p>}
+                {otherPolicies.length ? <Bullets items={otherPolicies} icon={ICONS.dot} /> : null}
+                {item.waiverUrl ? (
+                  <a className="wwaiver" href={item.waiverUrl} target="_blank" rel="noreferrer">
+                    <Markup html={ICONS.ticket} />
+                    <span><b>Sign the waiver online before you arrive</b><small>Saves time at check-in. Opens the operator's waiver form.</small></span>
+                  </a>
                 ) : null}
+              </section>
+            ) : null}
+
+            {item.faq?.length ? (
+              <section className="wsec">
+                <h2>Frequently asked questions</h2>
+                <div className="wfaq">
+                  {item.faq.map((f, i) => (
+                    <div key={i} className={"wfaqitem" + (openFaq === i ? " open" : "")}>
+                      <button type="button" onClick={() => setOpenFaq(openFaq === i ? null : i)} aria-expanded={openFaq === i}>
+                        <span>{plainWords(f.q)}</span>
+                        <Markup html={openFaq === i ? ICONS.chevUp : ICONS.chevDown} />
+                      </button>
+                      {openFaq === i ? <p>{plainWords(f.a)}</p> : null}
+                    </div>
+                  ))}
+                </div>
               </section>
             ) : null}
 
@@ -379,27 +556,18 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
               </section>
             ) : null}
 
-            <section className="wsec">
-              <h2>Where you'll be</h2>
-              <div className="contact">
-                <a className="crow" href={contact ? mapsHref(contact, item.title + " " + item.area) : "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(item.title + " " + item.area)} target="_blank" rel="noreferrer">
-                  <Markup html={ICONS.pin} />
-                  <span><b>{address || item.area}</b><small>{address ? "Open in Maps" : "Find on the map"}</small></span>
-                </a>
-                {contact?.phone ? (
-                  <a className="crow" href={telHref(contact.phone)}>
-                    <Markup html={ICONS.phone} />
-                    <span><b>{fmtPhone(contact.phone)}</b><small>Call a person at the shop</small></span>
-                  </a>
-                ) : null}
-                {contact && contact.hours.length ? (
-                  <div className="crow">
-                    <Markup html={ICONS.clock} />
-                    <span>{contact.hours.map((h) => <b key={h}>{fmtHours(h)}</b>)}<small>Hours</small></span>
-                  </div>
-                ) : null}
-              </div>
-            </section>
+            {score ? (
+              <section className="wsec">
+                <h2>Reviews</h2>
+                <div className="wreviews">
+                  <b>{score.rating.toFixed(1)}</b>
+                  <span>
+                    <span className="wstars" aria-hidden="true">{[0, 1, 2, 3, 4].map((i) => <Markup key={i} html={ICONS.star} />)}</span>
+                    <small>{fmtReviews(score.reviews)} public reviews. Written reviews arrive once guests book through Outset.</small>
+                  </span>
+                </div>
+              </section>
+            ) : null}
           </div>
 
           <aside className="wbook">
@@ -417,6 +585,12 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
                   {fromPrice(item) != null ? <span><b>{money(fromPrice(item) as number)}</b> from</span> : <span><b>Request to book</b></span>}
                   {score ? <span className="wrate"><Markup html={ICONS.star} /> {score.rating.toFixed(1)}</span> : null}
                 </div>
+                {duration || cancel ? (
+                  <p className="wbookmeta">
+                    {duration ? <span><Markup html={ICONS.clock} /> {duration}</span> : null}
+                    {cancel ? <span><Markup html={ICONS.check} /> {cancel}</span> : null}
+                  </p>
+                ) : null}
                 <p className="guidehead">Date</p>
                 <div className="wdates">
                   {dates.slice(0, 8).map((dd, i) => (
@@ -457,7 +631,10 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
                 <button type="button" className="cta" style={{ width: "100%" }} disabled={!ready} onClick={book}>
                   {ready ? (p.total ? "Book · " + money(p.total) : "Book") : needService && !picked ? "Choose a service" : "Pick a time"}
                 </button>
-                <p className="wbookfoot">Instant confirmation. Free cancellation up to 24 hours before unless the operator says otherwise.</p>
+                <p className="wbookfoot">
+                  {priced ? "Instant confirmation. " : "Confirmed by the operator. "}
+                  {cancel ? cancel + "." : item.cancellation ? "Cancellation terms are set by " + item.title + ", see the policy below." : "Cancellation terms are set by the operator."}
+                </p>
               </div>
             )}
             <WebAssistant item={item} />
