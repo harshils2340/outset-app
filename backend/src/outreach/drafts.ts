@@ -40,7 +40,7 @@ function draftCopy(op: Op, gaps: string[], offerings: string[]): { subject: stri
     "  Online booking with a bookings feed you accept or decline from your phone.",
     "  An assistant that answers guest questions only from what your site says. Never from guesses.",
     "  No booking fee line on your guest's receipt, no ad auction against your name, no money held for a week. One flat rate only when a booking happens.",
-    missing.length ? "\nThree things we could not read from your site: " + missing.join("; ") + ". Two minutes to fill in after you claim." : "",
+    missing.length ? "\nWe could not find " + missing.join(", ") + " on your site. Two minutes to add after you claim." : "",
     "",
     "If this is not your business, or you want it removed: " + SITE + "#remove=" + id,
     "",
@@ -59,9 +59,8 @@ export function generateOutreachDrafts(): number {
   for (const op of ops) {
     const gaps = db.prepare("SELECT note FROM gaps WHERE operator_id = ?").all(op.id) as { note: string }[];
     if (!gaps.length) refreshGaps(op.id);
-    const gapNotes = (db.prepare("SELECT note FROM gaps WHERE operator_id = ?").all(op.id) as { note: string }[]).map(
-      (g) => g.note,
-    );
+    const LABEL: Record<string, string> = { phone: "a phone number for guests", hours: "your opening hours", price: "prices for your services", services: "your service menu", eligibility: "age, weight or license rules", city: "your meeting point" };
+    const gapNotes = (db.prepare("SELECT field FROM gaps WHERE operator_id = ? AND field IN ('phone','hours','price','services','eligibility','city')").all(op.id) as { field: string }[]).map((g) => LABEL[g.field]).filter(Boolean);
     const offerings = db
       .prepare("SELECT name, price_cents FROM offerings WHERE operator_id = ?")
       .all(op.id) as { name: string; price_cents: number | null }[];
