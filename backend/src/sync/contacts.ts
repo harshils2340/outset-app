@@ -32,6 +32,7 @@ type Row = {
   region: string | null;
   postal: string | null;
   hours: string | null;
+  hours_text: string | null;
   calendar_vendor: string | null;
   fetched_at: string | null;
 };
@@ -51,6 +52,7 @@ export function allContacts(): OperatorContact[] {
   const rows = db
     .prepare(
       `SELECT o.domain, o.website, o.phone, o.email, o.street, o.city, o.region, o.postal, o.hours, o.calendar_vendor,
+              (SELECT fact_value FROM facts f WHERE f.operator_id = o.id AND f.fact_key = 'hours_text' LIMIT 1) AS hours_text,
               (SELECT MAX(fetched_at) FROM sources s WHERE s.operator_id = o.id AND s.http_status = 200) AS fetched_at
        FROM operators o WHERE o.origin != 'demo' ORDER BY o.domain`,
     )
@@ -68,7 +70,7 @@ function toContact(r: Row): OperatorContact {
     city: r.city,
     region: r.region,
     postal: r.postal,
-    hours: r.hours ? r.hours.split(" | ").map((h) => h.trim()).filter(Boolean) : [],
+    hours: r.hours ? r.hours.split(" | ").map((h) => h.trim()).filter(Boolean) : r.hours_text ? [r.hours_text.replace(/^hours:?\s*/i, "").trim()] : [],
     bookingVendor: r.calendar_vendor,
     fetchedAt: r.fetched_at,
   };
@@ -400,7 +402,16 @@ export function syncCatalogToApp(): { path: string; count: number } {
        ORDER BY completeness DESC, name ASC`,
     )
     .all() as CatalogRow[];
-  const full = rows.filter((r) => !MARKETPLACES.test(r.domain)).map(toCatalogItem);
+  const dead = new Set(
+    (db.prepare(
+      `SELECT o.id FROM operators o WHERE o.website IS NULL AND o.phone IS NULL
+         AND NOT EXISTS (SELECT 1 FROM facts f WHERE f.operator_id = o.id AND f.fact_key = 'cover')
+         AND NOT EXISTS (SELECT 1 FROM offerings x WHERE x.operator_id = o.id)`,
+    ).all() as { id: string }[]).map((r) => r.id),
+  );
+  // A listing with no site, no phone, no photo and no menu gives a guest nothing to act on. Keep it for outreach only.
+  const full = rows.filter((r) => !MARKETPLACES.test(r.domain) && !dead.has(r.id)).map(toCatalogItem);
+  console.log("Left out " + dead.size + " map-only rows with nothing a guest can use.");
   const contactByDomain: Record<string, OperatorContact> = {};
   for (const c of allContacts()) contactByDomain[c.domain] = c;
 
