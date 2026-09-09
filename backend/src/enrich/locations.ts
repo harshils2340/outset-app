@@ -177,10 +177,19 @@ export async function locationsFromSite(op: OpRow): Promise<{ page: string | nul
   // Seven or more addresses all in one city is a pickup or hotel list, not a chain of venues.
   const cities = new Set(addrs.map((a) => a.city.toLowerCase()));
   if (addrs.length >= 7 && cities.size === 1) return { page, found: addrs.length, added: 0 };
-  let added = 0;
+  const points: { a: (typeof addrs)[number]; pt: { lat: number; lon: number } }[] = [];
   for (const a of addrs) {
     const pt = await geocode(`${a.street}, ${a.city}, ${a.region} ${a.postal}`);
-    if (!pt) continue;
+    if (pt) points.push({ a, pt });
+  }
+  // Six or more places all within 40 km of each other is a park district or a pickup list, not venues in different towns.
+  if (points.length >= 6) {
+    let spread = 0;
+    for (const x of points) for (const y of points) spread = Math.max(spread, kmBetween(x.pt, y.pt));
+    if (spread < 40) return { page, found: addrs.length, added: 0 };
+  }
+  let added = 0;
+  for (const { a, pt } of points) {
     if (addLocation(op, { street: a.street, city: a.city, region: a.region, postal: a.postal, lat: pt.lat, lon: pt.lon }, "site")) added += 1;
   }
   db.prepare("INSERT INTO sources (id, operator_id, url, fetched_at, http_status, extractor, robots_allowed, note) VALUES (?, ?, ?, ?, 200, 'locations', 1, ?)").run(randomUUID(), op.id, page || start, nowIso(), `${addrs.length} addresses on the site, ${added} new locations`);
