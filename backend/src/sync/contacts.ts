@@ -374,8 +374,8 @@ function parseFaqs(raw: string): { q: string; a: string }[] {
     const i = c.indexOf("?");
     if (i < 8 || i > 160) continue;
     const before = c.slice(0, i + 1);
-    const qStart = Math.max(before.lastIndexOf(". "), before.lastIndexOf("! "), -2) + 2;
-    const q = before.slice(qStart).replace(/^[\s\-–—•·:]+/, "").trim();
+    const cut = Math.max(before.lastIndexOf(". "), before.lastIndexOf("! "));
+    const q = before.slice(cut === -1 ? 0 : cut + 2).replace(/^[\s\-–—•·:]+/, "").trim();
     // The answer ends where the next question begins.
     let a = c.slice(i + 1).replace(/^\s*>\s*/, "").trim();
     const next = a.search(/[.!]\s+[A-Z][^.!?]{8,120}\?/);
