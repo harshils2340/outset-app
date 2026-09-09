@@ -94,6 +94,8 @@ export function loadOsmLocations(): { operators: number; locations: number } {
 /* ---------- the operator's own locations page ---------- */
 
 const LOC_LINK = /\b(locations?|find[- ]a[- ]location|our[- ]locations|find[- ]us|venues?|branches|cities|areas? we serve)\b/i;
+/** Pickup points, hotel lists and parking pages list addresses that are not the operator's own venues. */
+const NOT_VENUES = /\b(pick[- ]?up|shuttle|hotel|parking|directions?|drop[- ]?off|meeting point|transportation|partners?|dealers?|retailers?|stockists?)\b/i;
 const STREET_RE = /\b(\d{1,6}[A-Za-z]?\s+(?:[A-Z][A-Za-z0-9'.-]*\s+){0,5}(?:St|Street|Ave|Avenue|Rd|Road|Blvd|Boulevard|Dr|Drive|Hwy|Highway|Way|Ln|Lane|Pkwy|Parkway|Ct|Court|Pl|Place|Trail|Trl|Cir|Circle|Terrace|Ter|Pike|Route|Rte|Loop|Square|Sq|Beach|Pier|Marina|Wharf|Landing)\b\.?(?:\s*(?:Suite|Ste|Unit|#)\s*[A-Za-z0-9-]+)?)[,\s]+([A-Z][A-Za-z.' -]{2,40}?)[,\s]+([A-Z]{2})[,\s]+(\d{5}(?:-\d{4})?|[A-Z]\d[A-Z]\s?\d[A-Z]\d)\b/g;
 
 let lastGeocode = 0;
@@ -120,31 +122,61 @@ export async function locationsFromSite(op: OpRow): Promise<{ page: string | nul
   if (home.status !== 200 || !home.html) return { page: null, found: 0, added: 0 };
   const $ = load(home.html);
   const origin = new URL(home.finalUrl || start).origin;
-  let page: string | null = null;
+  const candidates: string[] = [];
   $("a[href]").each((_, el) => {
-    if (page) return;
     const href = $(el).attr("href") || "";
     const text = $(el).text().trim();
     if (!LOC_LINK.test(href) && !LOC_LINK.test(text)) return;
+    if (NOT_VENUES.test(href) || NOT_VENUES.test(text)) return;
     try {
       const u = new URL(href, home.finalUrl || start);
-      if (u.origin === origin && !/#|mailto:|tel:/.test(href)) page = u.origin + u.pathname;
+      if (u.origin === origin && !/#|mailto:|tel:/.test(href)) candidates.push(u.origin + u.pathname.replace(/\/$/, "") + "/");
     } catch {
       /* ignore */
     }
   });
-  const html = page ? (await fetchHtml(page).catch(() => null))?.html || "" : home.html;
-  const text = load(html).text().replace(/\s+/g, " ");
+  // "/locations/" beats "/locations-old/" and "/locations/waterloo/": the shortest clean path is the index.
+  const page: string | null = [...new Set(candidates)].sort((a, b) => a.length - b.length)[0] || null;
   const seen = new Set<string>();
   const addrs: { street: string; city: string; region: string; postal: string }[] = [];
-  let m: RegExpExecArray | null;
-  while ((m = STREET_RE.exec(text)) && addrs.length < 40) {
-    const key = (m[1] + m[4]).toLowerCase();
-    if (seen.has(key)) continue;
-    seen.add(key);
-    addrs.push({ street: m[1].trim(), city: m[2].trim(), region: m[3], postal: m[4] });
+  const pull = (html: string, cap: number) => {
+    const text = load(html).text().replace(/\s+/g, " ");
+    let m: RegExpExecArray | null;
+    STREET_RE.lastIndex = 0;
+    let n = 0;
+    while ((m = STREET_RE.exec(text)) && addrs.length < 40 && n < cap) {
+      const key = (m[1] + m[4]).toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      addrs.push({ street: m[1].trim(), city: m[2].trim(), region: m[3], postal: m[4] });
+      n += 1;
+    }
+  };
+  const pageHtml = page ? (await fetchHtml(page).catch(() => null))?.html || "" : home.html;
+  pull(pageHtml, 40);
+  // A locations index that only links to one page per city: read each city page for its address.
+  if (page && addrs.length < 2) {
+    const $$ = load(pageHtml);
+    const subs = new Set<string>();
+    $$("a[href]").each((_, el) => {
+      try {
+        const u = new URL($$(el).attr("href") || "", page);
+        const path = u.origin + u.pathname.replace(/\/$/, "") + "/";
+        if (u.origin === origin && path !== page && /location|venue|store|branch/i.test(u.pathname) && !NOT_VENUES.test(u.pathname)) subs.add(path);
+      } catch {
+        /* ignore */
+      }
+    });
+    for (const sub of [...subs].slice(0, 40)) {
+      await sleep(150);
+      const res = await fetchHtml(sub).catch(() => null);
+      if (res?.status === 200 && res.html) pull(res.html, 1);
+    }
   }
   if (addrs.length < 2) return { page, found: addrs.length, added: 0 };
+  // Seven or more addresses all in one city is a pickup or hotel list, not a chain of venues.
+  const cities = new Set(addrs.map((a) => a.city.toLowerCase()));
+  if (addrs.length >= 7 && cities.size === 1) return { page, found: addrs.length, added: 0 };
   let added = 0;
   for (const a of addrs) {
     const pt = await geocode(`${a.street}, ${a.city}, ${a.region} ${a.postal}`);
