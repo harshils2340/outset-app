@@ -135,8 +135,10 @@ function toCatalogItem(r: CatalogRow): Record<string, unknown> {
   const offerings = db
     .prepare("SELECT name, detail, duration, price_cents, price_unit FROM offerings WHERE operator_id = ? ORDER BY price_cents IS NULL, price_cents")
     .all(r.id) as { name: string; detail: string | null; duration: string | null; price_cents: number | null; price_unit: string | null }[];
-  const facts = db.prepare("SELECT fact_key, fact_value FROM facts WHERE operator_id = ?").all(r.id) as { fact_key: string; fact_value: string }[];
+  const facts = db.prepare("SELECT fact_key, fact_value, source_url FROM facts WHERE operator_id = ?").all(r.id) as { fact_key: string; fact_value: string; source_url: string | null }[];
   const pick = (k: string) => facts.filter((f) => f.fact_key === k).map((f) => f.fact_value);
+  // Booking-widget item photos are the operator's own curated product shots. They beat whatever the crawl scored highest.
+  const widgetPhotos = uniq(facts.filter((f) => f.fact_key === "photo" && /fareharbor|xola|filestack/i.test((f.source_url || "") + " " + f.fact_value)).map((f) => f.fact_value));
   const area = r.city ? (r.region && !r.city.includes(r.region) ? r.city + ", " + r.region : r.city) : r.region || "";
   return {
     id: "o-" + slug(r.domain),
@@ -202,8 +204,8 @@ function toCatalogItem(r: CatalogRow): Record<string, unknown> {
     // The honest gap line. Once the widget or crawl gave real rules and policies, say those instead of "not copied yet".
     gap: pick("published_gap")[0] || pick("cancellation")[0] || (pick("policy").length || pick("requirement").length ? [...pick("policy")].slice(0, 3).join(" ") || "Ask the operator about cancellations." : DEFAULT_GAP),
     blurb: pick("description")[0] || pick("site_desc")[0] || pick("one_line")[0] || undefined,
-    cover: pick("cover")[0] || undefined,
-    photos: [...new Set(pick("photo"))].slice(0, 8),
+    cover: widgetPhotos[0] || pick("cover")[0] || undefined,
+    photos: uniq([...widgetPhotos, ...pick("cover"), ...pick("photo")]).slice(0, 10),
     ytVideos: pick("yt_video")
       .map((raw) => {
         try {
@@ -235,7 +237,7 @@ function toCatalogItem(r: CatalogRow): Record<string, unknown> {
     policies: uniq(pick("policy").map(cleanLine)).filter(isTidyLine).filter((l) => !/gift ?card|gift certificate/i.test(l)).slice(0, 8),
     waiverUrl: pick("waiver_url").find((u) => /^https?:\/\/\S+$/.test(u) && !/\/w\/?$/.test(u)) || undefined,
     hoursText: uniq(pick("hours_text").map((h) => cleanLine(h.replace(/^hours(?: & admission)?\s*/i, "")))).slice(0, 3),
-    faq: pick("faq").map(parseFaq).filter((f): f is { q: string; a: string } => !!f).slice(0, 8),
+    faq: uniqBy(pick("faq").flatMap(parseFaqs), (f) => f.q.toLowerCase()).slice(0, 8),
     dur: durationOf(offerings.map((o) => o.duration || o.detail || "")) || undefined,
     fc: freeCancel(cleanPara(pick("cancellation")[0] || "") || pick("policy").filter((l) => /cancel|refund/i.test(l)).join(" ")) || undefined,
   };
@@ -333,7 +335,7 @@ function cleanLine(raw: string): string {
     .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
     .replace(/[#*_>`]+/g, " ")
     .replace(/https?:\/\/\S+/g, "")
-    .replace(/^\s*(?:\(?\d{1,2}[.)]|[-–•·]|[a-z][.)])\s+/i, "")
+    .replace(/^\s*(?:\(?\d{1,2}[.)]|[-–•·]|[a-z][.)]|[AQ]\s*[-–:])\s+/i, "")
     .replace(/\s+/g, " ")
     .trim()
     .slice(0, 240);
@@ -363,18 +365,30 @@ function cleanPara(raw: string): string {
   return out.join(" ");
 }
 
-/** FAQ facts come as "Question? >Answer" or "Question? Answer". Anything without a question mark is not a FAQ. */
-function parseFaq(raw: string): { q: string; a: string } | null {
-  const t = cleanPara(raw);
-  const i = t.indexOf("?");
-  if (i < 8 || i > 160) return null;
-  // The question is the last sentence before the question mark.
-  const before = t.slice(0, i + 1);
-  const qStart = Math.max(before.lastIndexOf(". "), before.lastIndexOf("! "), -2) + 2;
-  const q = before.slice(qStart).replace(/^[\s\-–—•·:]+/, "").trim();
-  const a = t.slice(i + 1).replace(/^\s*>\s*/, "").trim();
-  if (q.length < 8 || a.length < 12) return null;
-  return { q, a: a.slice(0, 500) };
+/** FAQ facts come as "Question? >Answer", "Q – Question? A – Answer", or several of those packed together. */
+function parseFaqs(raw: string): { q: string; a: string }[] {
+  const t = cleanPara(raw).replace(/\bA\s*[-–:]\s*/g, " ").trim();
+  const chunks = t.split(/\bQ\s*[-–:.]\s*/).map((c) => c.trim()).filter(Boolean);
+  const out: { q: string; a: string }[] = [];
+  for (const c of chunks) {
+    const i = c.indexOf("?");
+    if (i < 8 || i > 160) continue;
+    const before = c.slice(0, i + 1);
+    const qStart = Math.max(before.lastIndexOf(". "), before.lastIndexOf("! "), -2) + 2;
+    const q = before.slice(qStart).replace(/^[\s\-–—•·:]+/, "").trim();
+    // The answer ends where the next question begins.
+    let a = c.slice(i + 1).replace(/^\s*>\s*/, "").trim();
+    const next = a.search(/[.!]\s+[A-Z][^.!?]{8,120}\?/);
+    if (next > 20) a = a.slice(0, next + 1);
+    if (q.length < 8 || a.length < 12) continue;
+    out.push({ q, a: a.slice(0, 500) });
+  }
+  return out;
+}
+
+function uniqBy<T>(list: T[], key: (t: T) => string): T[] {
+  const seen = new Set<string>();
+  return list.filter((x) => !seen.has(key(x)) && (seen.add(key(x)), true));
 }
 
 /** Write public/catalog.json: every real operator plus its contact facts. The app fetches it at startup. */
