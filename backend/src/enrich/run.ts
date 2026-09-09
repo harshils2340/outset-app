@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { db, nowIso } from "../db/client.ts";
 import { normalizePhone } from "../scrape/run.ts";
 import { mkdirSync, readFileSync, writeFileSync, existsSync } from "node:fs";
+import { withDeadline } from "../scrape/fetch.ts";
 import { crawlSite, estimateTokens, selectPages, type CrawlResult, type CrawledPage } from "./crawl.ts";
 import { buildDoc, extractFromPages, hasApiKey, model, openaiRequestBody, parseOpenAI, priceFor, provider, type ExtractionT, type ExtractUsage } from "./extract.ts";
 
@@ -153,7 +154,7 @@ export async function enrichOperator(op: OpRow): Promise<EnrichResult> {
   const base: EnrichResult = { operatorId: op.id, domain: op.domain, pages: 0, offerings: 0, facts: 0, status: "ok" };
   if (!op.website) return { ...base, status: "skipped", error: "no website" };
   try {
-    const crawl = await crawlSite(op.website);
+    const crawl = await withDeadline(crawlSite(op.website), 180000, op.domain);
     const pages = selectPages(crawl.pages);
     base.pages = pages.length;
     if (!pages.length || estimateTokens(buildDoc(op.name, pages)) < 350) return { ...base, status: "no_pages", error: "nothing readable" };
@@ -231,7 +232,7 @@ export async function submitBatch(limit: number, concurrency = 6): Promise<{ bat
     while (i < queue.length) {
       const op = queue[i++];
       try {
-        const crawl = await crawlSite(op.website!);
+        const crawl = await withDeadline(crawlSite(op.website!), 180000, op.domain);
         const pages = selectPages(crawl.pages);
         if (!pages.length || estimateTokens(buildDoc(op.name, pages)) < 350) {
           markUnreadable(op.id);
@@ -345,7 +346,7 @@ export async function dryRun(limit: number, concurrency = 6): Promise<{ sites: n
     while (i < queue.length) {
       const op = queue[i++];
       try {
-        const crawl = await crawlSite(op.website!);
+        const crawl = await withDeadline(crawlSite(op.website!), 180000, op.domain);
         const pages = selectPages(crawl.pages);
         const t = pages.length ? estimateTokens(buildDoc(op.name, pages)) : 0;
         if (t < 350) {
