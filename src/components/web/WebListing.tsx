@@ -606,6 +606,14 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
                     {cancel ? <span><Markup html={ICONS.check} /> {cancel}</span> : null}
                   </p>
                 ) : null}
+                <div className="rowbetween" style={{ marginTop: 6, marginBottom: 6 }}>
+                  <p className="guidehead" style={{ margin: 0 }}>Guests</p>
+                  <span className="stepper">
+                    <button type="button" onClick={() => setQty(Math.max(1, qty - 1))} disabled={qty <= 1}>−</button>
+                    <span className="n">{qty}</span>
+                    <button type="button" onClick={() => setQty(Math.min(12, qty + 1))}>+</button>
+                  </span>
+                </div>
                 <p className="guidehead">Date</p>
                 <div className="wdates">
                   {dates.slice(0, 8).map((dd, i) => (
@@ -620,14 +628,6 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
                   {SLOT_TIMES.map((t) => (
                     <button key={t} type="button" className="slot" aria-pressed={time === t} onClick={() => setTime(t)}><b>{fmtTime(t)}</b></button>
                   ))}
-                </div>
-                <div className="rowbetween" style={{ marginTop: 14 }}>
-                  <p className="guidehead" style={{ margin: 0 }}>Guests</p>
-                  <span className="stepper">
-                    <button type="button" onClick={() => setQty(Math.max(1, qty - 1))} disabled={qty <= 1}>−</button>
-                    <span className="n">{qty}</span>
-                    <button type="button" onClick={() => setQty(Math.min(12, qty + 1))}>+</button>
-                  </span>
                 </div>
                 {needService ? (
                   <p className="wpicked">{picked ? plainWords(picked.name + (picked.detail ? " · " + picked.detail : "")) : "Choose what to book on the left"}</p>
