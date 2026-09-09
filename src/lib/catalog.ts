@@ -85,8 +85,17 @@ export function optionLabel(o: UnclaimedOption): string {
   return o.detail ? o.name + " · " + o.detail : o.name;
 }
 
+/**
+ * Experiences are priced per person unless the operator's unit says the price covers a thing:
+ * a boat, a ski, a kart, a room, a lane, a group, or a block of time on a rental.
+ */
 export function perPerson(o: UnclaimedOption): boolean {
-  return /person/i.test((o.detail || "") + " " + (o.per || ""));
+  const unit = (o.per || "").toLowerCase();
+  const text = ((o.name || "") + " " + (o.detail || "")).toLowerCase();
+  if (/person|adult|child|kid|senior|youth|guest|rider|passenger|jumper|seat/.test(unit + " " + text)) return true;
+  if (/\/(hr|hour|boat|ski|kart|vehicle|room|lane|group|trip|day|half day|half-day|week|session|game)\b/.test(unit)) return false;
+  if (/\b(rental|per hour|hourly|half day|full day|all day|\d+\s*(hr|hour|hours|min|minutes))\b/.test(text) && /rental|boat|ski|pontoon|kayak|paddle|bike|kart/.test(text + " " + unit)) return false;
+  return true;
 }
 
 export function publicRating(item: Unclaimed): { rating: number; reviews: number } | null {

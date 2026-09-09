@@ -4,7 +4,7 @@ import { ICONS } from "../../data/icons";
 import { metroById } from "../../data/metros";
 import { SLOT_TIMES } from "../../data/slots";
 import type { Unclaimed } from "../../data/types";
-import { addressLine, contactFor, fmtHours, fmtPhone, fromPrice, getCatalog, listingFacts, mapsHref, plainWords, publicRating, telHref } from "../../lib/catalog";
+import { addressLine, contactFor, fmtHours, fmtPhone, fromPrice, getCatalog, listingFacts, mapsHref, perPerson, plainWords, publicRating, telHref } from "../../lib/catalog";
 import { DAYS, fmtDate, fmtReviews, fmtTime, money, priceWith } from "../../lib/format";
 import { fmtDistance, kmBetween } from "../../lib/places";
 import { priceUnclaimed } from "../../lib/pricing";
@@ -400,7 +400,12 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
                   <p className="wpicked">{picked ? plainWords(picked.name + (picked.detail ? " · " + picked.detail : "")) : "Choose what to book on the left"}</p>
                 ) : null}
                 <div className="lines">
-                  {p.base ? <div className="line"><span>{picked ? plainWords(picked.name) : "Experience"}</span><b>{money(p.base)}</b></div> : null}
+                  {p.base && picked ? (
+                    <div className="line">
+                      <span>{plainWords(picked.name)}{perPerson(picked) ? " × " + qty + (qty === 1 ? " guest" : " guests") : ""}</span>
+                      <b>{money(p.base)}</b>
+                    </div>
+                  ) : null}
                   {extras.map((a) => <div className="line" key={a.name}><span>{a.name}</span><b>{money(a.price ?? 0)}</b></div>)}
                   {p.fee ? <div className="line"><span>Service fee</span><b>{money(p.fee)}</b></div> : null}
                   <div className="line total"><span>Total</span><b>{p.total ? money(p.total) : "Pay on site"}</b></div>
