@@ -64,13 +64,13 @@ function toContact(r: Row): OperatorContact {
   return {
     domain: r.domain,
     website: r.website,
-    phone: r.phone,
+    phone: silent(r.phone),
     email: r.email,
     street: r.street,
     city: r.city,
     region: r.region,
     postal: r.postal,
-    hours: r.hours ? r.hours.split(" | ").map((h) => h.trim()).filter(Boolean) : r.hours_text ? [r.hours_text.replace(/^hours:?\s*/i, "").trim()] : [],
+    hours: (r.hours ? r.hours.split(" | ").map((h) => h.trim()).filter(Boolean) : r.hours_text ? [r.hours_text.replace(/^hours:?\s*/i, "").trim()] : []).filter((h) => !SILENT.test(h)),
     bookingVendor: r.calendar_vendor,
     fetchedAt: r.fetched_at,
   };
@@ -155,7 +155,7 @@ function toCatalogItem(r: CatalogRow): Record<string, unknown> {
     specs: [...pick("spec"), ...pick("requirement"), ...pick("group")].slice(0, 10),
     options: offerings.map((o) => ({
       name: o.name,
-      detail: o.duration || o.detail || "",
+      detail: silent(o.duration) || silent(o.detail) || "",
       price: o.price_cents == null ? null : o.price_cents / 100,
       per: o.price_unit && o.price_unit.startsWith("/") ? o.price_unit : undefined,
     })),
@@ -182,9 +182,9 @@ function toCatalogItem(r: CatalogRow): Record<string, unknown> {
       offerings.forEach((o, idx) => {
         const key = o.name.toLowerCase();
         if (NOT_A_SERVICE.test(o.name)) return;
-        const g = groups.get(key) || { name: o.name, desc: descs.get(key) || null, photo: photos.get(key) || undefined, variants: [] };
+        const g = groups.get(key) || { name: o.name, desc: descs.get(key) || null, photo: fullSize(photos.get(key) || "") || undefined, variants: [] };
         g.variants.push({
-          label: o.duration || o.detail || "Standard",
+          label: silent(o.duration) || silent(o.detail) || "Standard",
           price: o.price_cents == null ? null : o.price_cents / 100,
           per: o.price_unit && o.price_unit.startsWith("/") ? o.price_unit : undefined,
           optionIdx: idx,
@@ -206,8 +206,8 @@ function toCatalogItem(r: CatalogRow): Record<string, unknown> {
     // The honest gap line. Once the widget or crawl gave real rules and policies, say those instead of "not copied yet".
     gap: pick("published_gap")[0] || pick("cancellation")[0] || (pick("policy").length || pick("requirement").length ? [...pick("policy")].slice(0, 3).join(" ") || "Ask the operator about cancellations." : DEFAULT_GAP),
     blurb: pick("description")[0] || pick("site_desc")[0] || pick("one_line")[0] || undefined,
-    cover: widgetPhotos[0] || pick("cover")[0] || undefined,
-    photos: uniq([...widgetPhotos, ...pick("cover"), ...pick("photo")]).slice(0, 10),
+    cover: fullSize(widgetPhotos[0] || pick("cover")[0] || ""),
+    photos: uniq([...widgetPhotos, ...pick("cover"), ...pick("photo")].map((u) => fullSize(u) || "")).slice(0, 10),
     ytVideos: pick("yt_video")
       .map((raw) => {
         try {
@@ -226,16 +226,16 @@ function toCatalogItem(r: CatalogRow): Record<string, unknown> {
     lat: r.lat ?? undefined,
     lon: r.lon ?? undefined,
     tags: [...new Set([...pick("google_category"), ...pick("service"), ...offerings.map((o) => o.name)])].slice(0, 12),
-    extraNote: pick("extra")[0] || [...pick("policy"), ...pick("checkin"), ...pick("meeting_point"), ...pick("season")].join(" · ").slice(0, 700) || undefined,
+    extraNote: [...pick("extra").slice(0, 1), ...pick("policy"), ...pick("checkin"), ...pick("meeting_point"), ...pick("season")].filter((l) => !SILENT.test(l)).join(" · ").slice(0, 700) || undefined,
     // Viator-shaped sections. Each only appears when the site said it.
     highlights: uniq(pick("spec").map(cleanLine)).filter(isTidyLine).slice(0, 8),
     requirements: collapseRules(uniq(pick("requirement").map(cleanLine)).filter(isTidyLine)).slice(0, 10),
-    groupInfo: uniq(pick("group").map(cleanLine)).slice(0, 5),
-    bring: uniq(pick("bring").map(cleanLine)).slice(0, 8),
-    season: cleanLine(pick("season")[0] || "") || undefined,
+    groupInfo: uniq(pick("group").map(cleanLine)).filter(isTidyLine).slice(0, 5),
+    bring: uniq(pick("bring").map(cleanLine)).filter(isTidyLine).slice(0, 8),
+    season: silent(cleanLine(pick("season")[0] || "")) || undefined,
     meetingPoint: cleanLine(pick("meeting_point")[0] || "") || undefined,
     checkin: cleanPara(pick("checkin")[0] || "") || undefined,
-    cancellation: cleanPara(pick("cancellation")[0] || "") || cleanPara(pick("policy").filter((l) => /cancel|refund/i.test(l)).join(" ")) || undefined,
+    cancellation: dropSilent(cleanPara(pick("cancellation")[0] || "")) || dropSilent(cleanPara(pick("policy").filter((l) => /cancel|refund/i.test(l)).join(" "))) || undefined,
     policies: uniq(pick("policy").map(cleanLine)).filter(isTidyLine).filter((l) => !/gift ?card|gift certificate/i.test(l)).slice(0, 8),
     waiverUrl: pick("waiver_url").find((u) => /^https?:\/\/\S+$/.test(u) && !/\/w\/?$/.test(u)) || undefined,
     hoursText: uniq(pick("hours_text").map((h) => cleanLine(h.replace(/^hours(?: & admission)?\s*/i, "")))).slice(0, 3),
@@ -313,8 +313,29 @@ function collapseRules(lines: string[]): string[] {
   return order.map((k) => byKey.get(k)!);
 }
 
+/** Wix lazy-load placeholders are 34px blurred stubs. Ask for the full image instead; tiny variants from other hosts are dropped. */
+function fullSize(u: string): string | undefined {
+  if (!u) return undefined;
+  const wix = u.match(/^(https?:\/\/static\.wixstatic\.com\/media\/[^/]+?)(?:\/v1\/|$)/);
+  if (wix) return wix[1] + "/v1/fill/w_1600,h_1000,al_c,q_85/" + wix[1].split("/media/")[1].replace(/%7E/gi, "~");
+  if (/[?&/](w|width)[=_]\d{1,2}\b|[?&/](h|height)[=_]\d{1,2}\b|blur_\d|\/w_1?\d{2},h_\d{2}\b/.test(u)) return undefined;
+  return u;
+}
+
+const SILENT = /\b(not|no|none|nothing)\b[^.]{0,50}\b(stated|specified|listed|mentioned|provided|published|given|indicated)\b|\bnot (state|specify|mention|list)\b|\bunspecified\b|\bn\/a\b|\bno information\b/i;
+/** A value that only says "not stated" is no value. */
+function silent(v: string | null | undefined): string | null {
+  return v && !SILENT.test(v) ? v : null;
+}
+/** Remove sentences that only say a policy is absent. */
+function dropSilent(t: string): string {
+  return t.split(/(?<=[.!?])\s+/).filter((x) => !SILENT.test(x)).join(" ").trim();
+}
+
 function isTidyLine(l: string): boolean {
   if (l.length < 6 || l.length > 150) return false;
+  // "Deposit policy not stated" tells a guest nothing; the extractor writes these when a site is silent.
+  if (SILENT.test(l)) return false;
   if (/\?\s*$/.test(l) || /\?\s+[A-Z]/.test(l)) return false;
   if (/^(and|but|or|so|also|please note|note:|p\.s\.)\b/i.test(l)) return false;
   if (/\b(duration|meeting location|rates?)\b.*\$\d/i.test(l)) return false;

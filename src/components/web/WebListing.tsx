@@ -670,7 +670,7 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
 
         {similar.length ? (
           <section className="wrail">
-            <div className="wrailhead"><h2>More {KIND[item.art]?.replace(/^(a|an) /, "") || "experiences"}{metro ? " near " + metro.name : ""}</h2></div>
+            <div className="wrailhead"><h2>More like this{metro ? " near " + metro.name : ""}</h2></div>
             <div className="wrailrow">{similar.map((u) => <Card key={u.id} u={u} onOpen={onOpen} />)}</div>
           </section>
         ) : null}
