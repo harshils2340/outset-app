@@ -406,10 +406,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
         loadListing(m[1]).then((changed) => changed && dispatch({ type: "catalogLoaded", added: 1 }));
       }
       const r = window.location.hash.match(/^#remove=([a-z0-9-]+)/i);
-      if (r && experienceById(r[1])) {
-        dispatch({ type: "removeRequest", id: r[1] });
-        dispatch({ type: "openRequest", id: r[1] });
-        loadListing(r[1]).then((changed) => changed && dispatch({ type: "catalogLoaded", added: 1 }));
+      const target = r ? experienceById(r[1]) : null;
+      if (r && target) {
+        dispatch({ type: "removeRequest", id: target.id });
+        dispatch({ type: "openRequest", id: target.id });
+        loadListing(target.id).then((changed) => changed && dispatch({ type: "catalogLoaded", added: 1 }));
       }
       const c = window.location.hash.match(/^#claim=([a-z0-9-]+)/i);
       if (c && experienceById(c[1])) {
