@@ -8,6 +8,7 @@ import { fromPrice, getCatalog, publicRating } from "../../lib/catalog";
 import { listingFacts } from "../../lib/catalog";
 import { fmtDate, fmtReviews, money } from "../../lib/format";
 import { parseIntent, searchListings } from "../../lib/search";
+import { loadListing } from "../../lib/catalogLoad";
 import { currentLocation, fmtDistance, kmBetween, searchPlaces, type Place } from "../../lib/places";
 import { useApp } from "../../state/AppProvider";
 import { Photo } from "../art/Photo";
@@ -76,6 +77,10 @@ function CompareToggle({ id }: { id: string }) {
 }
 
 function CompareTable({ items, near, onOpen, onClose, onRemove }: { items: Unclaimed[]; near?: Place | null; onOpen: (id: string) => void; onClose: () => void; onRemove: (id: string) => void }) {
+  const { touchCatalog } = useApp();
+  useEffect(() => {
+    Promise.all(items.map((u) => loadListing(u.id))).then((r) => r.some(Boolean) && touchCatalog());
+  }, [items.map((u) => u.id).join(",")]);
   const row = (label: string, cell: (u: Unclaimed) => React.ReactNode) => (
     <tr key={label}>
       <th>{label}</th>

@@ -77,6 +77,9 @@ export function mergeCatalog(items: Unclaimed[], extraContacts: Record<string, O
       if (empty && r[k] != null) (out as Record<string, unknown>)[k] = r[k];
     }
     if (!out.options.length && r.options.length) out.options = r.options;
+    // The crawl's detail file has the services, photos and facts. Fetch it under the generated id when opened.
+    out.detail = r.id;
+    out.lite = true;
     return out;
   });
   base = [...seeds, ...added];
@@ -92,8 +95,30 @@ export function experienceById(id: string | null): Unclaimed | null {
 
 export function fromPrice(item: Unclaimed): number | null {
   const priced = item.options.map((o) => o.price).filter((n): n is number => n != null);
-  if (!priced.length) return null;
+  if (!priced.length) return item.from ?? null;
   return Math.min(...priced);
+}
+
+/** Swap a lite record for its full detail record. Overrides and publish state stay as they were. */
+export function hydrateItem(full: Unclaimed, targetId?: string): void {
+  const id = targetId || full.id;
+  const idx = base.findIndex((u) => u.id === id);
+  if (idx === -1) return;
+  const cur = base[idx];
+  const handVerified = cur.id !== full.id;
+  base = base.slice();
+  if (!handVerified) {
+    base[idx] = { ...full, lite: false };
+  } else {
+    // Seeds keep every fact a person checked; the crawl fills only what the seed left empty.
+    const merged: Unclaimed = { ...full, ...cur, id: cur.id, lite: false, detail: undefined };
+    for (const k of Object.keys(full) as (keyof Unclaimed)[]) {
+      const v = cur[k] as unknown;
+      if (v == null || v === "" || (Array.isArray(v) && v.length === 0)) (merged as Record<string, unknown>)[k] = full[k];
+    }
+    base[idx] = merged;
+  }
+  rebuild();
 }
 
 export function initials(title: string): string {
@@ -125,6 +150,7 @@ export function publicRating(item: Unclaimed): { rating: number; reviews: number
 
 /** Synced public contact facts for an experience, matched by the operator's domain. */
 export function contactFor(item: Unclaimed): OperatorContact | null {
+  if (item.contact) return item.contact;
   return contacts[domainOf(item.src)] ?? null;
 }
 
@@ -233,12 +259,18 @@ export function listingFacts(item: Unclaimed): ListingFacts {
   }
 
   if (item.extraNote) {
-    const kind = classify(item.extraNote);
-    if (kind === "about") note = item.extraNote;
-    else {
-      if (kind === "who" || kind === "both") pushUnique(who, guestLine(item.extraNote), true);
-      if (kind === "waiver" || kind === "both") pushUnique(waiver, guestLine(item.extraNote), true);
+    // Policy notes arrive as several sentences joined with " · ". Each one gets its own bullet.
+    const bits = item.extraNote.split(/\s+·\s+/).map((b) => b.trim()).filter(Boolean);
+    const leftovers: string[] = [];
+    for (const bit of bits) {
+      const kind = classify(bit);
+      if (kind === "about") leftovers.push(bit);
+      else {
+        if (kind === "who" || kind === "both") pushUnique(who, guestLine(bit), true);
+        if (kind === "waiver" || kind === "both") pushUnique(waiver, guestLine(bit), true);
+      }
     }
+    if (leftovers.length) note = leftovers.join(" ");
   }
 
   for (const bit of item.gap.split(/[.!?]+\s+/)) {

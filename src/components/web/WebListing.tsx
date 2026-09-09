@@ -83,33 +83,27 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
   const facts = listingFacts(item);
   const guide = GUIDES[item.art];
   const candidates = [item.cover, ...(item.photos || []).filter((p) => p !== item.cover)].filter(Boolean) as string[];
-  // Only photos that actually load make it into the grid, so a blocked image never leaves a grey hole.
-  const [photos, setPhotos] = useState<string[]>(candidates.slice(0, 1));
+  // Show every candidate right away, and drop the ones that fail to load or come back tiny.
+  const [broken, setBroken] = useState<Set<string>>(new Set());
+  const photos = candidates.filter((c) => !broken.has(c));
   useEffect(() => {
-    let alive = true;
-    const ok: string[] = [];
-    let pending = candidates.length;
-    if (!pending) return;
-    candidates.forEach((src) => {
+    const imgs = candidates.map((src) => {
       const img = new Image();
       img.referrerPolicy = "no-referrer";
-      const settle = (good: boolean) => {
-        if (good) ok.push(src);
-        pending -= 1;
-        if (alive && (pending === 0 || ok.length >= 5)) setPhotos(candidates.filter((c) => ok.includes(c)));
-      };
-      img.onload = () => settle(img.naturalWidth >= 300);
-      img.onerror = () => settle(false);
+      img.onload = () => { if (img.naturalWidth < 300) setBroken((b) => new Set(b).add(src)); };
+      img.onerror = () => setBroken((b) => new Set(b).add(src));
       img.src = src;
+      return img;
     });
-    return () => {
-      alive = false;
-    };
-  }, [item.id]);
+    return () => imgs.forEach((i) => { i.onload = null; i.onerror = null; });
+  }, [candidates.join("|")]);
 
   const [time, setTime] = useState<string | null>(null);
   const [qty, setQty] = useState(2);
   const [optionIdx, setOptionIdx] = useState<number | null>(item.options.length === 1 ? 0 : null);
+  useEffect(() => {
+    if (optionIdx == null && item.options.length === 1) setOptionIdx(0);
+  }, [item.options.length]);
   const [addonIdx, setAddonIdx] = useState<number[]>([]);
   const [openSvc, setOpenSvc] = useState<string | null>(null);
   const [guideOpen, setGuideOpen] = useState(false);

@@ -1,4 +1,4 @@
-import { writeFileSync } from "node:fs";
+import { mkdirSync, readdirSync, unlinkSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { db } from "../db/client.ts";
@@ -194,6 +194,8 @@ function toCatalogItem(r: CatalogRow): Record<string, unknown> {
         return m ? { name: m[1].trim().replace(/\s+(for|at|only|just|from|is)$/i, ""), detail: "", price: Number(m[2]) } : null;
       })
       .filter((a): a is { name: string; detail: string; price: number } => !!a)
+      // "An additional $35" is a fee sentence, not something a guest adds to a cart.
+      .filter((a) => a.name.length >= 3 && !/^(an?|the|plus|extra|additional|only|just|from|starting|starts|add|adds|is|are|and|or|for)\b/i.test(a.name) && !/\b(fee|surcharge|deposit|tax|gratuity|tip|per person|per hour)\b/i.test(a.name))
       .slice(0, 6),
     // The honest gap line. Once the widget or crawl gave real rules and policies, say those instead of "not copied yet".
     gap: pick("published_gap")[0] || pick("cancellation")[0] || (pick("policy").length || pick("requirement").length ? [...pick("policy")].slice(0, 3).join(" ") || "Ask the operator about cancellations." : DEFAULT_GAP),
@@ -218,7 +220,7 @@ function toCatalogItem(r: CatalogRow): Record<string, unknown> {
     lat: r.lat ?? undefined,
     lon: r.lon ?? undefined,
     tags: [...new Set([...pick("google_category"), ...pick("service"), ...offerings.map((o) => o.name)])].slice(0, 12),
-    extraNote: pick("extra")[0] || [...pick("policy"), ...pick("checkin"), ...pick("meeting_point"), ...pick("season")].join(" ").slice(0, 600) || undefined,
+    extraNote: pick("extra")[0] || [...pick("policy"), ...pick("checkin"), ...pick("meeting_point"), ...pick("season")].join(" · ").slice(0, 700) || undefined,
   };
 }
 
@@ -231,10 +233,38 @@ export function syncCatalogToApp(): { path: string; count: number } {
        ORDER BY completeness DESC, name ASC`,
     )
     .all() as CatalogRow[];
-  const operators = rows.filter((r) => !MARKETPLACES.test(r.domain)).map(toCatalogItem);
-  const contacts: Record<string, OperatorContact> = {};
-  for (const c of allContacts()) contacts[c.domain] = c;
+  const full = rows.filter((r) => !MARKETPLACES.test(r.domain)).map(toCatalogItem);
+  const contactByDomain: Record<string, OperatorContact> = {};
+  for (const c of allContacts()) contactByDomain[c.domain] = c;
+
+  // One small file per operator with everything: services, photos, videos, facts, contact.
+  const dir = join(appDataDir, "../../public/o");
+  mkdirSync(dir, { recursive: true });
+  const keep = new Set<string>();
+  for (const item of full) {
+    const c = contactByDomain[String(item.src)];
+    const contact = c
+      ? { domain: c.domain, phone: c.phone, street: c.street, city: c.city, region: c.region, postal: c.postal, hours: c.hours }
+      : undefined;
+    const file = item.id + ".json";
+    keep.add(file);
+    writeFileSync(join(dir, file), JSON.stringify({ ...item, contact }));
+  }
+  for (const f of readdirSync(dir)) if (!keep.has(f)) unlinkSync(join(dir, f));
+
+  // The browse catalog carries only what cards, rails and search need. Details load per listing.
+  const operators = full.map((item) => {
+    const options = (item.options as { price: number | null }[]) || [];
+    const priced = options.map((o) => o.price).filter((n): n is number => n != null);
+    return {
+      id: item.id, title: item.title, cat: item.cat, art: item.art, area: item.area, metroId: item.metroId, src: item.src,
+      rating: item.rating, reviews: item.reviews, lat: item.lat, lon: item.lon, cover: item.cover, video: item.video,
+      tags: ((item.tags as string[]) || []).slice(0, 6),
+      from: priced.length ? Math.min(...priced) : undefined,
+      options: [], specs: [], includes: [], gap: "", lite: true,
+    };
+  });
   const path = join(appDataDir, "../../public/catalog.json");
-  writeFileSync(path, JSON.stringify({ generatedAt: new Date().toISOString(), operators, contacts }));
+  writeFileSync(path, JSON.stringify({ generatedAt: new Date().toISOString(), operators, contacts: {} }));
   return { path, count: operators.length };
 }

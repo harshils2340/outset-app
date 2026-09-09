@@ -119,6 +119,14 @@ export type Unclaimed = {
   /** TikTok and Instagram handles from their site. */
   tiktok?: string;
   instagram?: string;
+  /** True for browse-catalog records that have not fetched their detail file yet. */
+  lite?: boolean;
+  /** Id of the detail file to fetch when it differs from this record's id (hand-verified seeds). */
+  detail?: string;
+  /** Lowest published price, carried on lite records so cards can show "From $X". */
+  from?: number;
+  /** Contact facts shipped inside the detail file. */
+  contact?: OperatorContact;
 };
 
 export type Category = {

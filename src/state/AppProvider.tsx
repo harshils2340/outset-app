@@ -18,7 +18,7 @@ import { dateKey, makeDates } from "../lib/dates";
 import { fmtDate, money, nowStamp } from "../lib/format";
 import { daySlotsOpen, openSeats } from "../lib/inventory";
 import { contactFor, experienceById, fromPrice, initials } from "../lib/catalog";
-import { loadRemoteCatalog } from "../lib/catalogLoad";
+import { loadListing, loadRemoteCatalog } from "../lib/catalogLoad";
 import { companyGreeting, companyReply, companySuggestions } from "../lib/companyAgent";
 import type { Place } from "../lib/places";
 import { priceFor, priceUnclaimed } from "../lib/pricing";
@@ -393,9 +393,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
       dispatch({ type: "catalogLoaded", added: added + edited });
       // Deep link: #o=<operator id> opens that listing directly.
       const m = window.location.hash.match(/^#o=([a-z0-9-]+)/i);
-      if (m && experienceById(m[1])) dispatch({ type: "openRequest", id: m[1] });
+      if (m && experienceById(m[1])) {
+        dispatch({ type: "openRequest", id: m[1] });
+        loadListing(m[1]).then((changed) => changed && dispatch({ type: "catalogLoaded", added: 1 }));
+      }
       const c = window.location.hash.match(/^#claim=([a-z0-9-]+)/i);
-      if (c && experienceById(c[1])) dispatch({ type: "openOperator", id: c[1] });
+      if (c && experienceById(c[1])) {
+        dispatch({ type: "openOperator", id: c[1] });
+        loadListing(c[1]).then((changed) => changed && dispatch({ type: "catalogLoaded", added: 1 }));
+      }
       // Consume the deep link so a reload lands on the home page, not the same listing again.
       if (m || c) window.history.replaceState(null, "", window.location.pathname + window.location.search);
       // /operators is the operator side. The guest site lives at /.
@@ -463,13 +469,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
       bumpQty: (delta) => dispatch({ type: "qty", delta }),
       toggleAddon: (id) => dispatch({ type: "addon", id }),
       openReview: () => dispatch({ type: "openReview" }),
-      openRequest: (id) => dispatch({ type: "openRequest", id }),
+      openRequest: (id) => {
+        dispatch({ type: "openRequest", id });
+        loadListing(id).then((changed) => changed && dispatch({ type: "catalogLoaded", added: 1 }));
+      },
       closeSheet: () => dispatch({ type: "closeSheet" }),
       confirm: () => dispatch({ type: "confirm" }),
       confirmUnclaimed: (input) => dispatch({ type: "confirmUnclaimed", ...input }),
       back: () => dispatch({ type: "back" }),
       openChat: (id) => dispatch({ type: "openChat", id }),
-      openOperator: (id) => dispatch({ type: "openOperator", id }),
+      openOperator: (id) => {
+        dispatch({ type: "openOperator", id });
+        loadListing(id ?? null).then((changed) => changed && dispatch({ type: "catalogLoaded", added: 1 }));
+      },
       ensureThread: (id) => dispatch({ type: "ensureThread", id }),
       sendChat: (text) => dispatch({ type: "sendChat", text }),
       goto: (tab) => dispatch({ type: "goto", tab }),
