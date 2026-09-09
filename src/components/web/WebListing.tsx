@@ -6,7 +6,7 @@ import { SLOT_TIMES } from "../../data/slots";
 import type { Unclaimed } from "../../data/types";
 import { addressLine, contactFor, fmtHours, fmtPhone, fromPrice, getCatalog, listingFacts, mapsHref, perPerson, plainWords, publicRating, telHref } from "../../lib/catalog";
 import { DAYS, fmtDate, fmtReviews, fmtTime, money, priceWith } from "../../lib/format";
-import { fmtDistance, nearestLocation } from "../../lib/places";
+import { fmtDistance, kmBetween, nearestLocation } from "../../lib/places";
 import { priceUnclaimed } from "../../lib/pricing";
 import { useApp } from "../../state/AppProvider";
 import { Photo } from "../art/Photo";
@@ -523,6 +523,23 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
                   </div>
                 ) : null}
               </div>
+              {item.locations?.length ? (
+                <div className="wvenues">
+                  <p className="guidehead">{item.locations.length + 1} locations{state.near ? ", nearest to " + state.near.label + " first" : ""}</p>
+                  <div className="wvenuegrid">
+                    {[{ city: item.area, lat: item.lat, lon: item.lon, street: address || undefined, primary: true }, ...item.locations.map((l) => ({ ...l, city: l.city + (l.region ? ", " + l.region : ""), primary: false }))]
+                      .map((v) => ({ ...v, km: state.near && v.lat != null && v.lon != null ? kmBetween(state.near, { lat: v.lat, lon: v.lon }) : null }))
+                      .sort((a, b) => (a.km ?? Infinity) - (b.km ?? Infinity))
+                      .slice(0, 24)
+                      .map((v, i) => (
+                        <a key={i} className="wvenue" href={"https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent((v.street ? v.street + ", " : "") + v.city)} target="_blank" rel="noreferrer">
+                          <b>{v.city}</b>
+                          <small>{v.street || (v.primary ? "Main location" : "")}{v.km != null ? (v.street || v.primary ? " · " : "") + fmtDistance(v.km) + " away" : ""}</small>
+                        </a>
+                      ))}
+                  </div>
+                </div>
+              ) : null}
             </section>
 
             {item.cancellation || item.waiverUrl || waiverLines.length && (item.bring?.length || item.groupInfo?.length) || otherPolicies.length ? (
