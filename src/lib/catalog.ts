@@ -90,7 +90,11 @@ export function mergeCatalog(items: Unclaimed[], extraContacts: Record<string, O
 
 export function experienceById(id: string | null): Unclaimed | null {
   if (!id) return null;
-  return byId.get(id) ?? null;
+  const direct = byId.get(id);
+  if (direct) return direct;
+  // Generated ids from emails and landing pages can point at a hand-verified seed that kept its own id.
+  for (const u of byId.values()) if (u.detail === id) return u;
+  return null;
 }
 
 export function fromPrice(item: Unclaimed): number | null {
