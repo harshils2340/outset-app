@@ -244,7 +244,18 @@ export function parseHours(lines: string[]): DayHours[] {
 
 function servicesFrom(u: Unclaimed): OpService[] {
   if (u.services && u.services.length) {
-    return u.services.map((s) => ({
+    // The same service can arrive twice with different options ("Dolphin Island excursion" at $185 and $220): one row, two options.
+    const merged = new Map<string, UnclaimedService>();
+    for (const s of u.services) {
+      const key = s.name.trim().toLowerCase();
+      const cur = merged.get(key);
+      if (!cur) merged.set(key, { ...s, variants: s.variants.slice() });
+      else {
+        for (const v of s.variants) if (!cur.variants.some((x) => x.label.toLowerCase() === v.label.toLowerCase() && x.price === v.price)) cur.variants.push(v);
+        if (!cur.desc && s.desc) cur.desc = s.desc;
+      }
+    }
+    return [...merged.values()].map((s) => ({
       id: uid("s"),
       name: s.name,
       desc: s.desc || "",
