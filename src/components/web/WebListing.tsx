@@ -240,6 +240,13 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
           <Markup html={ICONS.back} /> Back to results
         </button>
 
+        {state.removeId === item.id ? (
+          <div className="wremove">
+            <b>Is this your business and you'd rather not be listed?</b>
+            <span>We take listings down within one business day. Send one line from a company email and it's gone.</span>
+            <a className="cta small" href={"mailto:harshils2340@gmail.com?subject=" + encodeURIComponent("Remove listing: " + item.title + " (" + item.id + ")") + "&body=" + encodeURIComponent("Please remove " + item.title + " from Outset.\n\nListing: https://harshils2340.github.io/outset-app/#o=" + item.id + "\n")}>Request removal</a>
+          </div>
+        ) : null}
         <h1 className="wtitle">{item.title}</h1>
         <div className="wsub">
           {score ? (

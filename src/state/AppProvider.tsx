@@ -52,6 +52,8 @@ export type AppState = {
   reqTargetId: string | null;
   /** Operator whose dashboard is open. null picks a demo operator. */
   operatorId: string | null;
+  /** Listing an owner arrived at from a "remove my listing" link. */
+  removeId: string | null;
   sheet: SheetId;
   toast: string | null;
 };
@@ -89,6 +91,7 @@ type Action =
   | { type: "openChat"; id: string }
   | { type: "openOperator"; id?: string }
   | { type: "ensureThread"; id: string }
+  | { type: "removeRequest"; id: string | null }
   | { type: "sendChat"; text: string }
   | { type: "toastOff" };
 
@@ -261,6 +264,8 @@ function reducer(state: AppState, action: Action): AppState {
       }
       return { ...state, screen: state.tab };
     }
+    case "removeRequest":
+      return { ...state, removeId: action.id };
     case "ensureThread": {
       const company = experienceById(action.id);
       if (!company) return state;
@@ -343,6 +348,7 @@ const initial: AppState = {
   chats: {},
   reqTargetId: null,
   operatorId: null,
+  removeId: null,
   sheet: null,
   toast: null,
 };
@@ -399,13 +405,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
         dispatch({ type: "openRequest", id: m[1] });
         loadListing(m[1]).then((changed) => changed && dispatch({ type: "catalogLoaded", added: 1 }));
       }
+      const r = window.location.hash.match(/^#remove=([a-z0-9-]+)/i);
+      if (r && experienceById(r[1])) {
+        dispatch({ type: "removeRequest", id: r[1] });
+        dispatch({ type: "openRequest", id: r[1] });
+        loadListing(r[1]).then((changed) => changed && dispatch({ type: "catalogLoaded", added: 1 }));
+      }
       const c = window.location.hash.match(/^#claim=([a-z0-9-]+)/i);
       if (c && experienceById(c[1])) {
         dispatch({ type: "openOperator", id: c[1] });
         loadListing(c[1]).then((changed) => changed && dispatch({ type: "catalogLoaded", added: 1 }));
       }
       // Consume the deep link so a reload lands on the home page, not the same listing again.
-      if (m || c) window.history.replaceState(null, "", window.location.pathname + window.location.search);
+      if (m || c || r) window.history.replaceState(null, "", window.location.pathname + window.location.search);
       // /operators is the operator side. The guest site lives at /.
       else if (/^\/operators\/?$/.test(window.location.pathname)) dispatch({ type: "openOperator" });
     });
