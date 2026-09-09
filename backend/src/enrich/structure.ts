@@ -234,7 +234,7 @@ function harvestPrices($: ReturnType<typeof load>, url: string, out: Map<string,
     // Above this it is almost always a boat, a board or a membership for sale, not a booking.
     if (price > 5000 || price < 5) return;
     // "Save $15", "$10 off", deposits and coupons are not things a guest books.
-    if (/\b(save|off|discount|coupon|deposit|refund|fee|tax|gratuity|tip|late|cancel|gift ?card|membership|per (extra|additional))\b/i.test(rawLabel)) return;
+    if (/\b(save|off|discount|coupon|deposit|refund|fee|tax|gratuity|tip|late|cancel|gift ?cards?|gift certificates?|membership|season pass|per (extra|additional))\b/i.test(rawLabel)) return;
     let label = rawLabel;
     if (isAddon(label)) {
       const k = label.toLowerCase();

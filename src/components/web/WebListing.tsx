@@ -189,7 +189,8 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
   const requirements = item.requirements?.length ? item.requirements : facts.who.filter((l) => l.posted).map((l) => l.text);
   const includes = item.includes.filter((l) => !/\bnot included|excluded|not provided|bring your own\b/i.test(l));
   const notIncluded = item.includes.filter((l) => /\bnot included|excluded|not provided\b/i.test(l)).map((l) => l.replace(/\s*\(?not included\)?/i, "").trim());
-  const highlights = item.highlights?.length ? item.highlights : facts.about.slice(0, 6);
+  const reqKeys = new Set(requirements.map((r) => r.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim()));
+  const highlights = (item.highlights?.length ? item.highlights : facts.about.slice(0, 6)).filter((h) => !reqKeys.has(h.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim()));
   const waiverLines = item.policies?.filter((l) => /waiver|liabilit|sign/i.test(l)) || facts.waiver.filter((l) => l.posted).map((l) => l.text);
   const otherPolicies = (item.policies || []).filter((l) => !/cancel|refund|waiver|liabilit/i.test(l));
   const cancel = freeCancel(item.cancellation);
@@ -308,7 +309,7 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
             ) : null}
 
             {item.blurb ? (
-              <p className="wblurb lead">{plainWords(item.blurb)}</p>
+              <p className="wblurb lead">{cleanDesc(item.blurb).replace(/\s+(Book|Learn more|Read more|Reserve)\.?$/i, "")}</p>
             ) : null}
 
             {highlights.length ? (

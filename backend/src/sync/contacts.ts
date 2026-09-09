@@ -2,6 +2,7 @@ import { mkdirSync, readdirSync, unlinkSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { db } from "../db/client.ts";
+import { writeLandingPages } from "./pages.ts";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const appDataDir = join(here, "../../../src/data");
@@ -186,7 +187,7 @@ function toCatalogItem(r: CatalogRow): Record<string, unknown> {
         });
         groups.set(key, g);
       });
-      return [...groups.values()].slice(0, 14);
+      return [...groups.values()].filter((g) => !/gift ?cards?|gift certificate|deposit|membership|season pass/i.test(g.name)).slice(0, 14);
     })(),
     includes: uniq(pick("includes").map(cleanLine)).filter(isTidyLine).slice(0, 10),
     addons: pick("addon")
@@ -348,5 +349,7 @@ export function syncCatalogToApp(): { path: string; count: number } {
   });
   const path = join(appDataDir, "../../public/catalog.json");
   writeFileSync(path, JSON.stringify({ generatedAt: new Date().toISOString(), operators, contacts: {} }));
+  const pages = writeLandingPages(full as never);
+  console.log("Wrote " + pages.pages + " landing pages to public/p");
   return { path, count: operators.length };
 }
