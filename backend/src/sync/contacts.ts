@@ -514,6 +514,13 @@ export function syncCatalogToApp(): { path: string; count: number } {
   });
   const path = join(appDataDir, "../../public/catalog.json");
   writeFileSync(path, JSON.stringify({ generatedAt: new Date().toISOString(), operators, contacts: {} }));
+  // The lite shard: what the home rails and the first search need, about a fifth of the size. Photo, price and reviews first.
+  const lite = (operators as { cover?: unknown; from?: unknown; reviews?: unknown; metroId?: unknown }[])
+    .map((o) => ({ o, s: (o.cover ? 4 : 0) + (o.from != null ? 3 : 0) + Math.min(3, Math.log10((Number(o.reviews) || 0) + 1)) + (o.metroId ? 1 : 0) }))
+    .sort((a, b) => b.s - a.s)
+    .slice(0, 2200)
+    .map((x) => x.o);
+  writeFileSync(join(appDataDir, "../../public/catalog-lite.json"), JSON.stringify({ generatedAt: new Date().toISOString(), operators: lite, contacts: {} }));
   const pages = writeLandingPages(full as never);
   console.log("Wrote " + pages.pages + " landing pages to public/p");
   return { path, count: operators.length };

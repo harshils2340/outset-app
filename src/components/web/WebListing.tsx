@@ -6,6 +6,7 @@ import { SLOT_TIMES } from "../../data/slots";
 import type { Unclaimed } from "../../data/types";
 import { addressLine, contactFor, fmtHours, fmtPhone, fromPrice, getCatalog, listingFacts, mapsHref, perPerson, plainWords, publicRating, telHref } from "../../lib/catalog";
 import { DAYS, fmtDate, fmtReviews, fmtTime, money, priceWith } from "../../lib/format";
+import { thumb } from "../../lib/images";
 import { fmtDistance, kmBetween, nearestLocation } from "../../lib/places";
 import { priceUnclaimed } from "../../lib/pricing";
 import { useApp } from "../../state/AppProvider";
@@ -284,13 +285,13 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
             {!item.video && item.videoEmbed ? (
               <iframe className="wembed" src={item.videoEmbed + (item.videoEmbed.includes("?") ? "&" : "?") + "autoplay=1&mute=1&muted=1&loop=1&controls=0&playsinline=1&background=1"} title={item.title + " video"} allow="autoplay; encrypted-media; picture-in-picture" allowFullScreen loading="lazy" />
             ) : (
-              <Photo src={photos[0]} video={item.video} kind={item.art} id={"wl" + item.id} alt={item.title} />
+              <Photo src={photos[0]} video={item.video} kind={item.art} id={"wl" + item.id} alt={item.title}  size="hero" />
             )}
           </button>
           {photos.length >= 3
             ? photos.slice(1, 5).map((src, i) => (
                 <button type="button" className={"wphoto p" + i} key={src} onClick={() => setGallery(i + 1)} aria-label={"Open photo " + (i + 2)}>
-                  <img src={src} alt={item.title + " photo " + (i + 2)} loading="lazy" referrerPolicy="no-referrer" onError={(e) => ((e.currentTarget as HTMLImageElement).style.visibility = "hidden")} />
+                  <img src={thumb(src, "wide")} alt={item.title + " photo " + (i + 2)} loading="lazy" decoding="async" referrerPolicy="no-referrer" onError={(e) => ((e.currentTarget as HTMLImageElement).style.visibility = "hidden")} />
                 </button>
               ))
             : null}
@@ -313,14 +314,14 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
             <button type="button" className="wgallerynav prev" onClick={(e) => { e.stopPropagation(); setGallery((gallery - 1 + photos.length) % photos.length); }} aria-label="Previous photo" disabled={photos.length < 2}>
               <Markup html={ICONS.back} />
             </button>
-            <img className="wgalleryimg" src={photos[gallery]} alt={item.title + " photo " + (gallery + 1)} referrerPolicy="no-referrer" onClick={(e) => e.stopPropagation()} />
+            <img className="wgalleryimg" src={thumb(photos[gallery], "full")} alt={item.title + " photo " + (gallery + 1)} referrerPolicy="no-referrer" onClick={(e) => e.stopPropagation()} />
             <button type="button" className="wgallerynav next" onClick={(e) => { e.stopPropagation(); setGallery((gallery + 1) % photos.length); }} aria-label="Next photo" disabled={photos.length < 2}>
               <Markup html={ICONS.back} />
             </button>
             <div className="wgallerystrip" onClick={(e) => e.stopPropagation()}>
               {photos.map((src, i) => (
                 <button type="button" key={src} aria-pressed={i === gallery} onClick={() => setGallery(i)}>
-                  <img src={src} alt="" loading="lazy" referrerPolicy="no-referrer" />
+                  <img src={thumb(src, "thumb")} alt="" loading="lazy" decoding="async" referrerPolicy="no-referrer" />
                 </button>
               ))}
             </div>
@@ -391,7 +392,7 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
                 <div className="wmenu">
                   {item.services.map((svc) => (
                     <div className={"wsvc" + (svc.photo ? " haspic" : "")} key={svc.name}>
-                      {svc.photo ? <img className="wsvcpic" src={svc.photo} alt={plainWords(svc.name)} loading="lazy" referrerPolicy="no-referrer" onError={(e) => ((e.currentTarget as HTMLImageElement).style.display = "none")} /> : null}
+                      {svc.photo ? <img className="wsvcpic" src={thumb(svc.photo, "thumb")} alt={plainWords(svc.name)} loading="lazy" referrerPolicy="no-referrer" onError={(e) => ((e.currentTarget as HTMLImageElement).style.display = "none")} /> : null}
                       <div className="wsvchead">
                         <b>{plainWords(svc.name)}</b>
                         {svc.desc && cleanDesc(svc.desc).length > 180 ? (

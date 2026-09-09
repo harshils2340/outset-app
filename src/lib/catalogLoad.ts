@@ -8,17 +8,33 @@ function looksLikeItem(x: unknown): x is Unclaimed {
   return !!u && typeof u.id === "string" && typeof u.title === "string" && typeof u.cat === "string" && Array.isArray(u.options);
 }
 
-/** Fetch the generated catalog. Hand-verified entries always win over generated ones with the same domain. */
-export async function loadRemoteCatalog(): Promise<number> {
+async function fetchCatalog(name: string): Promise<CatalogFile | null> {
   try {
-    const res = await fetch(import.meta.env.BASE_URL + "catalog.json", { cache: "no-cache" });
-    if (!res.ok) return 0;
-    const file = (await res.json()) as CatalogFile;
-    const items = (file.operators || []).filter(looksLikeItem);
-    return mergeCatalog(items, file.contacts || {});
+    const res = await fetch(import.meta.env.BASE_URL + name, { cache: "no-cache" });
+    if (!res.ok) return null;
+    return (await res.json()) as CatalogFile;
   } catch {
-    return 0;
+    return null;
   }
+}
+
+/**
+ * Fetch the generated catalog in two steps: a small shard with the operators the home page shows first,
+ * so the rails paint in well under a second, then the whole catalog for search and distance.
+ * Hand-verified entries always win over generated ones with the same domain.
+ */
+export async function loadRemoteCatalog(onPhase?: (added: number, complete: boolean) => void): Promise<number> {
+  const lite = await fetchCatalog("catalog-lite.json");
+  let added = 0;
+  if (lite) {
+    added = mergeCatalog((lite.operators || []).filter(looksLikeItem), lite.contacts || {});
+    onPhase?.(added, false);
+  }
+  const full = await fetchCatalog("catalog.json");
+  if (!full) return added;
+  added = mergeCatalog((full.operators || []).filter(looksLikeItem), full.contacts || {});
+  onPhase?.(added, true);
+  return added;
 }
 
 const inflight = new Map<string, Promise<boolean>>();

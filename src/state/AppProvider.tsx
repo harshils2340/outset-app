@@ -401,7 +401,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     dispatch({ type: "hydrate", bookings: loadBookings(), chats: loadChats() });
     let alive = true;
-    loadRemoteCatalog().then((added) => {
+    loadRemoteCatalog((n, complete) => {
+      // The lite shard paints the rails early; the full catalog replaces it a moment later.
+      if (alive && !complete) dispatch({ type: "catalogLoaded", added: n });
+    }).then((added) => {
       if (!alive) return;
       // Claimed operators' edits (prices, photos, published switch) layer over the scraped records.
       const edited = applyStoredProfiles();
