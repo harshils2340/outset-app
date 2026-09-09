@@ -138,13 +138,13 @@ function toCatalogItem(r: CatalogRow): Record<string, unknown> {
     .prepare("SELECT name, detail, duration, price_cents, price_unit FROM offerings WHERE operator_id = ? ORDER BY price_cents IS NULL, price_cents")
     .all(r.id) as { name: string; detail: string | null; duration: string | null; price_cents: number | null; price_unit: string | null }[];
   const facts = db.prepare("SELECT fact_key, fact_value, source_url FROM facts WHERE operator_id = ?").all(r.id) as { fact_key: string; fact_value: string; source_url: string | null }[];
-  const pick = (k: string) => facts.filter((f) => f.fact_key === k).map((f) => f.fact_value);
+  const pick = (k: string) => facts.filter((f) => f.fact_key === k).map((f) => (/^(photo|video|yt_video|social:)/.test(k) ? f.fact_value : decodeEntities(f.fact_value)));
   // Booking-widget item photos are the operator's own curated product shots. They beat whatever the crawl scored highest.
   const widgetPhotos = uniq(facts.filter((f) => f.fact_key === "photo" && /fareharbor|xola|filestack/i.test((f.source_url || "") + " " + f.fact_value)).map((f) => f.fact_value));
   const area = r.city ? (r.region && !r.city.includes(r.region) ? r.city + ", " + r.region : r.city) : r.region || "";
   return {
     id: "o-" + slug(r.domain),
-    title: r.name,
+    title: decodeEntities(r.name),
     cat: r.family || "water",
     art: artFromName(r.name, r.icon_key),
     area,
@@ -328,6 +328,20 @@ const NOT_A_SERVICE = /\b(gift ?cards?|gift certificates?|e-?gift|merch(andise)?
 function uniq(list: string[]): string[] {
   const seen = new Set<string>();
   return list.filter((x) => x && !seen.has(x.toLowerCase()) && (seen.add(x.toLowerCase()), true));
+}
+
+const NAMED: Record<string, string> = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", nbsp: " ", rsquo: "\u2019", lsquo: "\u2018", ldquo: "\u201c", rdquo: "\u201d", ndash: "\u2013", mdash: "\u2014", hellip: "\u2026", copy: "\u00a9", reg: "\u00ae", trade: "\u2122", deg: "\u00b0", eacute: "\u00e9" };
+/** Sites leave HTML entities in meta descriptions and menus. Guests should never see "&amp;". Runs twice for double-encoded text. */
+export function decodeEntities(raw: string): string {
+  const once = (t: string) =>
+    t.replace(/&(#x[0-9a-f]+|#\d+|[a-z]+);/gi, (m, code: string) => {
+      if (code[0] === "#") {
+        const n = code[1].toLowerCase() === "x" ? parseInt(code.slice(2), 16) : parseInt(code.slice(1), 10);
+        return Number.isFinite(n) && n > 0 ? String.fromCodePoint(n) : m;
+      }
+      return NAMED[code.toLowerCase()] ?? m;
+    });
+  return once(once(raw));
 }
 
 /** Markdown, image tags and widget leftovers out; one clean sentence in. */

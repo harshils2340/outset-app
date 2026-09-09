@@ -21,7 +21,7 @@ export function App() {
   const [web, setWeb] = useState(() => typeof window !== "undefined" && window.innerWidth > 1024);
   const [fit, setFit] = useState(1);
   useEffect(() => {
-    const calc = () => setFit(Math.min(1, (window.innerHeight - 110) / 832, (window.innerWidth - 48) / 400));
+    const calc = () => setFit(window.innerWidth <= 1024 ? 1 : Math.min(1, (window.innerHeight - 110) / 832, (window.innerWidth - 48) / 400));
     calc();
     window.addEventListener("resize", calc);
     return () => window.removeEventListener("resize", calc);

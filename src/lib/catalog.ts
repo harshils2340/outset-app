@@ -332,8 +332,22 @@ const GLOSSARY: [RegExp, string][] = [
   [/\bIFR\b/g, "instrument-rated"], [/\bUSCG\b/g, "Coast Guard"], [/\bPFDs?\b/g, "life jacket"], [/\bBYOB\b/g, "bring your own drinks"],
 ];
 
+const ENT: Record<string, string> = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", nbsp: " ", rsquo: "\u2019", lsquo: "\u2018", ldquo: "\u201c", rdquo: "\u201d", ndash: "\u2013", mdash: "\u2014", hellip: "\u2026" };
+/** Older detail files still carry "&amp;" and "&#039;" from site markup. */
+export function decodeEntities(text: string): string {
+  const once = (t: string) =>
+    t.replace(/&(#x[0-9a-f]+|#\d+|[a-z]+);/gi, (m, code: string) => {
+      if (code[0] === "#") {
+        const n = code[1].toLowerCase() === "x" ? parseInt(code.slice(2), 16) : parseInt(code.slice(1), 10);
+        return Number.isFinite(n) && n > 0 ? String.fromCodePoint(n) : m;
+      }
+      return ENT[code.toLowerCase()] ?? m;
+    });
+  return once(once(text));
+}
+
 export function plainWords(text: string): string {
-  let out = text;
+  let out = decodeEntities(text);
   for (const [re, word] of GLOSSARY) out = out.replace(re, word);
   return out.replace(/\s+/g, " ").trim();
 }
