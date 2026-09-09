@@ -83,6 +83,7 @@ type Action =
       qty: number;
       optionIdx: number | null;
       addonIdx?: number[];
+      guest?: { name: string; phone: string; email?: string };
     }
   | { type: "back" }
   | { type: "openChat"; id: string }
@@ -242,6 +243,7 @@ function reducer(state: AppState, action: Action): AppState {
         total: p.total,
         code: makeCode(initials(u.title)),
         created: Date.now(),
+        guest: action.guest,
       };
       return {
         ...state,
@@ -367,7 +369,7 @@ type Api = {
   openRequest: (id: string) => void;
   closeSheet: () => void;
   confirm: () => void;
-  confirmUnclaimed: (input: { dateIdx: number; slot: string; qty: number; optionIdx: number | null; addonIdx?: number[] }) => void;
+  confirmUnclaimed: (input: { dateIdx: number; slot: string; qty: number; optionIdx: number | null; addonIdx?: number[]; guest?: { name: string; phone: string; email?: string } }) => void;
   back: () => void;
   openChat: (id: string) => void;
   openOperator: (id?: string) => void;

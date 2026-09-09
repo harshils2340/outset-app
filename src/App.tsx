@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useApp } from "./state/AppProvider";
 import { WebHome } from "./components/web/WebHome";
 import { WebListing } from "./components/web/WebListing";
+import { WebConfirm } from "./components/web/WebConfirm";
 import { StatusBar } from "./components/layout/StatusBar";
 import { TabBar } from "./components/layout/TabBar";
 import { Toast } from "./components/layout/Toast";
@@ -33,7 +34,11 @@ export function App() {
   if (web) {
     return (
       <>
-        {state.screen !== "operator" && state.sheet === "request" && reqTarget ? (
+        {state.screen === "confirm" && state.booking ? (
+          <div className="web">
+            <WebConfirm booking={state.booking} onDone={() => { goto("explore"); window.scrollTo(0, 0); }} onOpen={(id) => { goto("explore"); openRequest(id); window.scrollTo(0, 0); }} />
+          </div>
+        ) : state.screen !== "operator" && state.sheet === "request" && reqTarget ? (
           <div className="web">
             <WebListing item={reqTarget} onClose={closeSheet} onOpen={(id) => { window.scrollTo(0, 0); openRequest(id); }} />
           </div>

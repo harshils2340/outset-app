@@ -155,6 +155,14 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
   const [guideOpen, setGuideOpen] = useState(false);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
   const [done, setDone] = useState(false);
+  const [guest, setGuest] = useState<{ name: string; phone: string }>(() => {
+    try {
+      return JSON.parse(localStorage.getItem("outset.guest") || "") || { name: "", phone: "" };
+    } catch {
+      return { name: "", phone: "" };
+    }
+  });
+  const guestOk = guest.name.trim().length >= 2 && guest.phone.replace(/\D/g, "").length >= 10;
   const [gallery, setGallery] = useState<number | null>(null);
 
   useEffect(() => {
@@ -176,7 +184,7 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
   const extras = addonIdx.map((i) => (item.addons || [])[i]).filter(Boolean);
   const p = priceUnclaimed(picked, qty, extras);
   const needService = item.options.length > 0;
-  const ready = time != null && (!needService || picked != null);
+  const ready = time != null && (!needService || picked != null) && guestOk;
   const day = dates[state.dateIdx];
 
   const similar = useMemo(() => {
@@ -216,7 +224,12 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
 
   const book = () => {
     if (!ready || !time) return;
-    confirmUnclaimed({ dateIdx: state.dateIdx, slot: time, qty, optionIdx, addonIdx });
+    try {
+      localStorage.setItem("outset.guest", JSON.stringify(guest));
+    } catch {
+      /* ignore */
+    }
+    confirmUnclaimed({ dateIdx: state.dateIdx, slot: time, qty, optionIdx, addonIdx, guest: { name: guest.name.trim(), phone: guest.phone.trim() } });
     setDone(true);
   };
 
@@ -619,6 +632,11 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
                 {needService ? (
                   <p className="wpicked">{picked ? plainWords(picked.name + (picked.detail ? " · " + picked.detail : "")) : "Choose what to book on the left"}</p>
                 ) : null}
+                <p className="guidehead">Who's booking</p>
+                <div className="wguest">
+                  <input value={guest.name} placeholder="Your name" autoComplete="name" onChange={(e) => setGuest({ ...guest, name: e.target.value })} />
+                  <input value={guest.phone} placeholder="Mobile number" inputMode="tel" autoComplete="tel" onChange={(e) => setGuest({ ...guest, phone: e.target.value })} />
+                </div>
                 <div className="lines">
                   {p.base && picked ? (
                     <div className="line">
@@ -631,7 +649,7 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
                   <div className="line total"><span>Total</span><b>{p.total ? money(p.total) : "Pay on site"}</b></div>
                 </div>
                 <button type="button" className="cta" style={{ width: "100%" }} disabled={!ready} onClick={book}>
-                  {ready ? (p.total ? "Book · " + money(p.total) : "Book") : needService && !picked ? "Choose a service" : "Pick a time"}
+                  {ready ? (p.total ? "Book · " + money(p.total) : "Book") : needService && !picked ? "Choose a service" : time == null ? "Pick a time" : "Add your name and number"}
                 </button>
                 <p className="wbookfoot">
                   {priced ? "Instant confirmation. " : "Confirmed by the operator. "}

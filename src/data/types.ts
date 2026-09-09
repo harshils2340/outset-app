@@ -189,6 +189,8 @@ export type Booking = {
   total: number;
   code: string;
   created: number;
+  /** Who booked, so the operator can confirm and the guest can be reached. */
+  guest?: { name: string; phone: string; email?: string };
 };
 
 export type TabId = "explore" | "trips" | "inbox" | "account";

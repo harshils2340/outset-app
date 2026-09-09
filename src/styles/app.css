@@ -1062,3 +1062,20 @@ video.photo{background:#000;}
 .whow div{border:1px solid var(--line);border-radius:14px;padding:14px 16px;display:flex;flex-direction:column;gap:4px;background:#fff;}
 .whow b{font-size:14px;font-weight:700;}
 .whow span{font-size:13px;color:var(--ink-soft);line-height:1.45;}
+
+.wguest{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:6px 0 4px;}
+.wguest input{border:1px solid var(--line-strong);border-radius:10px;padding:10px 12px;font:inherit;font-size:14px;outline:none;min-width:0;}
+.wguest input:focus{border-color:var(--ink);}
+
+.wconfirm{max-width:860px;padding-top:40px;padding-bottom:60px;}
+.wconfirmcard{border:1px solid var(--line);border-radius:24px;padding:36px 40px;box-shadow:0 20px 60px rgba(0,0,0,.08);background:#fff;}
+.wconfirmcard h1{font-family:var(--f-serif);font-size:38px;letter-spacing:-.02em;margin:14px 0 6px;}
+.wconfirmsub{margin:0 0 24px;color:var(--ink-soft);font-size:16px;}
+.wconfirmbody{display:grid;grid-template-columns:220px 1fr;gap:24px;align-items:start;}
+.wconfirmart{aspect-ratio:1/1;border-radius:16px;overflow:hidden;background:var(--surface-2);}
+.wconfirmbody h2{margin:0 0 6px;font-size:22px;}
+.wconfirmline{margin:0 0 4px;font-size:15px;color:var(--ink-soft);}
+.wconfirmnext{margin-top:26px;padding:18px 20px;background:var(--surface-2);border-radius:16px;}
+.wconfirmnext b{display:block;margin-bottom:6px;}
+.wconfirmnext ol{margin:0 0 0 18px;padding:0;color:var(--ink-soft);line-height:1.6;font-size:14.5px;}
+.wconfirmactions{display:flex;gap:10px;justify-content:flex-end;margin-top:24px;flex-wrap:wrap;}
