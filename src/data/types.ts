@@ -136,6 +136,9 @@ export type Unclaimed = {
   lite?: boolean;
   /** Id of the detail file to fetch when it differs from this record's id (hand-verified seeds). */
   detail?: string;
+  /** Card facts carried on lite records: duration as the operator wrote it, and a free-cancellation line when their policy says so. */
+  dur?: string;
+  fc?: string;
   /** Lowest published price, carried on lite records so cards can show "From $X". */
   from?: number;
   /** Contact facts shipped inside the detail file. */

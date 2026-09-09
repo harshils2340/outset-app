@@ -150,6 +150,12 @@ function Card({ u, onOpen, near }: { u: Unclaimed; onOpen: (id: string) => void;
                     ? fmtDistance(kmBetween(near, { lat: u.lat, lon: u.lon })) + " away · " + u.area
                     : u.area + (metro && !u.area.includes(metro.name) ? " · " + metro.name : "")}
                 </small>
+                {u.dur || u.fc ? (
+                  <small className="wcardfacts">
+                    {u.dur ? <span>{u.dur}</span> : null}
+                    {u.fc ? <span className="fc">{u.fc.replace(/ up to /, " · ").replace(/ before$/, "")}</span> : null}
+                  </small>
+                ) : null}
                 <span className="wmeta">
                   {from != null ? <span>From <b>{money(from)}</b></span> : <span>Request to book</span>}
                   {score ? (
@@ -372,6 +378,13 @@ export function WebHome({ onOpenApp, onOperators }: { onOpenApp: () => void; onO
       </div>
 
       <main className="wwrap">
+        {state.catalogReady && !q.trim() && sort === "relevance" ? (
+          <div className="whow">
+            <div><b>1. Pick</b><span>Real operators, real menus, real prices. Photos from their own sites.</span></div>
+            <div><b>2. Book</b><span>Choose a time and how many of you. Instant confirmation, no phone tag.</span></div>
+            <div><b>3. Show up</b><span>Directions, hours and the waiver are on the listing. Ask Otto anything.</span></div>
+          </div>
+        ) : null}
         {state.catalogReady ? (
           <div className="wintents">
             {INTENT_CHIPS.map((c) => (

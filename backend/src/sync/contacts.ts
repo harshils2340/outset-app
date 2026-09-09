@@ -236,7 +236,32 @@ function toCatalogItem(r: CatalogRow): Record<string, unknown> {
     waiverUrl: pick("waiver_url").find((u) => /^https?:\/\/\S+$/.test(u) && !/\/w\/?$/.test(u)) || undefined,
     hoursText: uniq(pick("hours_text").map((h) => cleanLine(h.replace(/^hours(?: & admission)?\s*/i, "")))).slice(0, 3),
     faq: pick("faq").map(parseFaq).filter((f): f is { q: string; a: string } => !!f).slice(0, 8),
+    dur: durationOf(offerings.map((o) => o.duration || o.detail || "")) || undefined,
+    fc: freeCancel(cleanPara(pick("cancellation")[0] || "") || pick("policy").filter((l) => /cancel|refund/i.test(l)).join(" ")) || undefined,
   };
+}
+
+/** "2 hours", "90 min", "1 to 4 hours": the first duration the menu states. */
+function durationOf(texts: string[]): string | null {
+  for (const t of texts) {
+    const m = t.match(/\b(\d+(?:\.\d+)?)\s*(?:-|to)?\s*(\d+)?\s*(hours?|hrs?|minutes?|mins?|days?)\b/i);
+    if (!m) continue;
+    const n = Number(m[2] || m[1]);
+    const unit = /min/i.test(m[3]) ? "min" : /day/i.test(m[3]) ? (n === 1 ? "day" : "days") : n === 1 ? "hour" : "hours";
+    return (m[2] ? m[1] + " to " + m[2] : m[1]) + " " + unit;
+  }
+  return null;
+}
+
+/** "Free cancellation up to 48 hours before", only when the operator's own words promise a full refund. */
+function freeCancel(text: string): string | null {
+  if (!text || !/full refund|free cancellation|100% refund|fully refundable/i.test(text)) return null;
+  if (/non-?refundable|no refunds?\b/i.test(text) && !/full refund/i.test(text)) return null;
+  const m = text.match(/(\d+)\s*(hours?|hrs?|days?)/i);
+  if (!m) return "Free cancellation";
+  const n = Number(m[1]);
+  const unit = /day/i.test(m[2]) ? (n === 1 ? "day" : "days") : n === 1 ? "hour" : "hours";
+  return "Free cancellation up to " + n + " " + unit + " before";
 }
 
 /** "Hawaiian Parasail" is parasailing whatever OpenStreetMap tagged it. The name wins when it names the activity outright. */
@@ -384,6 +409,7 @@ export function syncCatalogToApp(): { path: string; count: number } {
       rating: item.rating, reviews: item.reviews, lat: item.lat, lon: item.lon, cover: item.cover, video: item.video,
       tags: ((item.tags as string[]) || []).slice(0, 6),
       from: priced.length ? Math.min(...priced) : undefined,
+      dur: item.dur, fc: item.fc,
       options: [], specs: [], includes: [], gap: "", lite: true,
     };
   });

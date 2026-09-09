@@ -37,6 +37,7 @@ function Card({ u, onOpen }: { u: Unclaimed; onOpen: (id: string) => void }) {
       <div className="wbody">
         <b>{u.title}</b>
         <small>{u.area}</small>
+        {u.dur || u.fc ? <small className="wcardfacts">{u.dur ? <span>{u.dur}</span> : null}{u.fc ? <span className="fc">Free cancellation</span> : null}</small> : null}
         <span className="wmeta">
           {from != null ? <span>From <b>{money(from)}</b></span> : <span>Request to book</span>}
           {score ? (
@@ -193,9 +194,9 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
   const highlights = (item.highlights?.length ? item.highlights : facts.about.slice(0, 6)).filter((h) => !reqKeys.has(h.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim()));
   const waiverLines = (item.policies?.filter((l) => /waiver|liabilit|sign/i.test(l)) || facts.waiver.filter((l) => l.posted).map((l) => l.text)).filter((l) => l.length <= 160);
   const otherPolicies = (item.policies || []).filter((l) => !/cancel|refund|waiver|liabilit/i.test(l));
-  const cancel = freeCancel(item.cancellation);
+  const cancel = item.fc || freeCancel(item.cancellation);
   const age = minAge(requirements);
-  const duration = durationLabel(item);
+  const duration = item.dur || durationLabel(item);
   const priced = fromPrice(item) != null;
   const badges: { icon: string; text: string }[] = [];
   if (score && score.rating >= 4.8 && score.reviews >= 100) badges.push({ icon: ICONS.star, text: "Top rated" });

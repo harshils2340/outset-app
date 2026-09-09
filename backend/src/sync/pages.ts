@@ -75,7 +75,7 @@ function page(kind: (typeof KINDS)[number], metro: (typeof METROS)[number] | nul
         })
         .join("");
       return `<a class="card" href="${SITE}#o=${esc(i.id)}">
-  <div class="art">${i.cover ? `<img src="${esc(i.cover)}" alt="${esc(i.title)}" loading="lazy" referrerpolicy="no-referrer">` : ""}</div>
+  <div class="art">${i.cover ? `<img src="${esc(i.cover)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">` : ""}</div>
   <b>${esc(i.title)}</b><small>${esc(i.area)}</small>
   <div class="meta"><span>${from.length ? "From <b>" + esc(money(Math.min(...from))) + "</b>" : "Request to book"}</span>${i.rating ? `<span>★ ${Number(i.rating).toFixed(1)}${i.reviews ? " (" + Number(i.reviews).toLocaleString() + ")" : ""}</span>` : ""}</div>
   ${menu ? `<ul class="menu">${menu}</ul>` : ""}
