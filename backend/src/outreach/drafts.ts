@@ -19,33 +19,36 @@ function catalogId(domain: string): string {
 }
 
 function draftCopy(op: Op, gaps: string[], offerings: string[]): { subject: string; body: string } {
-  const missing = gaps.filter((g) => !g.includes("Live calendar")).slice(0, 4);
-  const city = op.city || "your city";
-  const site = op.website || "your site";
-  const menu = offerings.length
-    ? offerings.map((o) => "- " + o).join("\n")
-    : "- (no public menu yet. We left that blank on purpose.)";
-  const subject = op.name + ": your Outset profile is set up. Finish the last " + Math.max(1, missing.length) + " fields.";
+  const SITE = "https://harshils2340.github.io/outset-app/";
+  const id = catalogId(op.domain);
+  const city = op.city || "your area";
+  const missing = gaps.filter((g) => !g.includes("Live calendar")).slice(0, 3);
+  const menu = offerings.length ? offerings.slice(0, 5).map((o) => "  " + o).join("\n") : "  (we could not read a menu from your site, so guests see Request to book)";
+  const subject = "Your " + op.name + " listing is already built. One click to make it yours.";
   const body = [
     "Hi " + op.name + ",",
     "",
-    "We created an unclaimed Outset profile for you in " + city + " using only what is already public on " + site + ".",
-    "Guests can request a time. They cannot instant-book you. We did not invent availability.",
+    "We built your Outset listing from your own website: prices, photos, hours and your weather policy, so guests in " + city + " can book you without calling around.",
     "",
-    "What is already on the profile:",
+    "What guests already see:",
     menu,
     "",
-    "What still needs you (this is the Airbnb / Booksy completeness list):",
-    missing.map((m) => "- " + m).join("\n") || "- Confirm the facts and turn on Instant Book when you are ready.",
+    "See it: " + SITE + "#o=" + id,
+    "Claim it and fix anything: " + SITE + "#claim=" + id,
     "",
-    "Complete the profile: https://outset.local/#claim=" + catalogId(op.domain),
-    "If this is not your business, remove it in one click: https://outset.local/#remove=" + catalogId(op.domain),
+    "What you get, free:",
+    "  Online booking with a bookings feed you accept or decline from your phone.",
+    "  An assistant that answers guest questions only from what your site says. Never from guesses.",
+    "  No booking fee line on your guest's receipt, no ad auction against your name, no money held for a week. One flat rate only when a booking happens.",
+    missing.length ? "\nThree things we could not read from your site: " + missing.join("; ") + ". Two minutes to fill in after you claim." : "",
     "",
-    "Profile completeness: " + op.completeness + "/100. Uber Eats-style: we will not show you as Instant Book until the gaps that can burn a guest are gone.",
+    "If this is not your business, or you want it removed: " + SITE + "#remove=" + id,
     "",
-    "Outset",
-    "Tampa first. US and Canada next.",
-  ].join("\n");
+    "Harshil",
+    "Outset · Book the jump. Skip the call.",
+  ]
+    .filter((l) => l !== "")
+    .join("\n");
   return { subject, body };
 }
 

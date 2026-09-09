@@ -380,9 +380,9 @@ export function WebHome({ onOpenApp, onOperators }: { onOpenApp: () => void; onO
       <main className="wwrap">
         {state.catalogReady && !q.trim() && sort === "relevance" ? (
           <div className="whow">
-            <div><b>1. Pick</b><span>Real operators, real menus, real prices. Photos from their own sites.</span></div>
-            <div><b>2. Book</b><span>Choose a time and how many of you. Instant confirmation, no phone tag.</span></div>
-            <div><b>3. Show up</b><span>Directions, hours and the waiver are on the listing. Ask Otto anything.</span></div>
+            <div><b>The whole price</b><span>The price you see is the price you pay. Fuel, deposit, bait and tip rules are on the listing, not at the dock.</span></div>
+            <div><b>The rules before the drive</b><span>Weight limits, minimum ages, private or shared, and what happens if it rains, all on the page before you book.</span></div>
+            <div><b>Someone answers</b><span>Book a real slot in three taps, or ask Otto anything and get an answer from the operator's own information.</span></div>
           </div>
         ) : null}
         {state.catalogReady ? (
