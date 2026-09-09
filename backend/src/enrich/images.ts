@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { load } from "cheerio";
 import { db, nowIso } from "../db/client.ts";
 import { fetchHtml, sleep, withDeadline } from "../scrape/fetch.ts";
+import { renderPage } from "../scrape/render.ts";
 
 /**
  * Photo harvest from each operator's own site. Breadth-first over their pages, collect real photos,
@@ -155,12 +156,25 @@ export async function collectPhotos(website: string, maxPages = 5): Promise<Phot
 export async function collectMedia(website: string, maxPages = 12): Promise<{ photos: Photo[]; videos: Video[] }> {
   const start = website.startsWith("http") ? website : "https://" + website;
   const origin = new URL(start).origin;
-  const home = await fetchHtml(start);
-  if (home.status !== 200 || !home.html) return { photos: [], videos: [] };
+  let home = await fetchHtml(start).catch(() => ({ status: 0, html: "", finalUrl: start }));
   const seen = new Map<string, Photo>();
   const vids = new Map<string, Video>();
-  harvestImages(home.html, home.finalUrl || start, seen);
-  harvestVideos(home.html, home.finalUrl || start, vids);
+  if (home.status === 200 && home.html) {
+    harvestImages(home.html, home.finalUrl || start, seen);
+    harvestVideos(home.html, home.finalUrl || start, vids);
+  }
+  // JavaScript-only sites carry their photos in the rendered DOM, not the HTML. Render before giving up.
+  let rendered = false;
+  if (seen.size < 2) {
+    const r = await renderPage(start);
+    if (r && !/performing security verification|verify you are not a bot|just a moment/i.test(r.html)) {
+      home = { status: 200, html: r.html, finalUrl: r.finalUrl };
+      harvestImages(r.html, r.finalUrl || start, seen);
+      harvestVideos(r.html, r.finalUrl || start, vids);
+      rendered = true;
+    }
+  }
+  if (home.status !== 200 || !home.html) return { photos: [], videos: [] };
   const $ = load(home.html);
   const queue: string[] = [];
   const visited = new Set<string>([start.replace(/\/$/, "")]);
@@ -180,7 +194,11 @@ export async function collectMedia(website: string, maxPages = 12): Promise<{ ph
     if (visited.has(url)) continue;
     visited.add(url);
     await sleep(80);
-    const res = await fetchHtml(url).catch(() => null);
+    let res = await fetchHtml(url).catch(() => null);
+    if (rendered && pages < 4) {
+      const r = await renderPage(url, 12000);
+      if (r) res = { status: 200, html: r.html, finalUrl: r.finalUrl };
+    }
     if (!res || res.status !== 200 || !res.html) continue;
     harvestImages(res.html, res.finalUrl || url, seen);
     harvestVideos(res.html, res.finalUrl || url, vids);
@@ -238,15 +256,29 @@ export function pendingPhotos(limit: number): { id: string; domain: string; webs
     .all(limit) as { id: string; domain: string; website: string }[];
 }
 
-export async function photosPending(limit: number, concurrency = 8, mode: "photos" | "videos" = "photos"): Promise<{ sites: number; withPhotos: number; photos: number }> {
-  const queue = mode === "videos" ? pendingVideos(limit) : pendingPhotos(limit);
+/** Operators the photo crawl already visited and came back empty-handed. Worth a second pass through the browser. */
+export function pendingPhotosEmpty(limit: number): { id: string; domain: string; website: string }[] {
+  return db
+    .prepare(
+      `SELECT id, domain, website FROM operators o
+       WHERE origin != 'demo' AND website IS NOT NULL
+         AND EXISTS (SELECT 1 FROM sources s WHERE s.operator_id = o.id AND s.extractor = 'photos')
+         AND NOT EXISTS (SELECT 1 FROM facts f WHERE f.operator_id = o.id AND f.fact_key = 'cover')
+       ORDER BY (metro_id IS NULL), review_count DESC NULLS LAST, name ASC
+       LIMIT ?`,
+    )
+    .all(limit) as { id: string; domain: string; website: string }[];
+}
+
+export async function photosPending(limit: number, concurrency = 8, mode: "photos" | "videos" | "empty" = "photos"): Promise<{ sites: number; withPhotos: number; photos: number }> {
+  const queue = mode === "videos" ? pendingVideos(limit) : mode === "empty" ? pendingPhotosEmpty(limit) : pendingPhotos(limit);
   const out = { sites: 0, withPhotos: 0, photos: 0 };
   let i = 0;
   const worker = async () => {
     while (i < queue.length) {
       const op = queue[i++];
       try {
-        const n = await withDeadline(photosForOperator(op), 60000, op.domain);
+        const n = await withDeadline(photosForOperator(op), mode === "photos" ? 60000 : 120000, op.domain);
         out.sites += 1;
         if (n) out.withPhotos += 1;
         out.photos += n;

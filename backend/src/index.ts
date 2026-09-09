@@ -98,7 +98,7 @@ if (cmd === "photos") {
     console.log(JSON.stringify(photos, null, 1));
     process.exit(0);
   }
-  const out = await photosPending(limit, concurrency);
+  const out = await photosPending(limit, concurrency, process.argv.includes("--empty") ? "empty" : "photos");
   console.log(`Photos: ${out.withPhotos}/${out.sites} sites, ${out.photos} images linked. Run "npm run sync" to push to the app.`);
 }
 
