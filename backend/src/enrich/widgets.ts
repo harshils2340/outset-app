@@ -281,6 +281,21 @@ function peekMinutes(min: unknown, max: unknown): string | null {
   return null;
 }
 
+/** Lowest listed price for a date-priced activity over the next three weeks, from the widget's own availability feed. */
+async function peekDatePrice(key: string, activityId: string, ticketId: string): Promise<number | null> {
+  const day = (n: number) => new Date(Date.now() + n * 86400000).toISOString().slice(0, 10);
+  const url = `https://book.peek.com/services/api/availability-dates?activity-id=${activityId}&start-date=${day(1)}&end-date=${day(21)}&tickets%5B0%5D%5Bticket-id%5D=${ticketId}&tickets%5B0%5D%5Bquantity%5D=1&use-legacy-api=false`;
+  try {
+    const res = await fetch(url, { headers: { "User-Agent": UA, Accept: "application/vnd.api+json", Authorization: "Key " + key }, signal: AbortSignal.timeout(15000) });
+    if (!res.ok) return null;
+    const j = (await res.json()) as { data?: { attributes?: { "price-range"?: { amount: string }[] } }[] };
+    const amounts = (j.data || []).flatMap((d) => (d.attributes?.["price-range"] || []).map((p) => Number(p.amount))).filter((n) => Number.isFinite(n) && n > 0);
+    return amounts.length ? Math.min(...amounts) : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function readPeek(key: string, code: string): Promise<WidgetResult | null> {
   const root = await getPeek(key, code);
   if (!root?.included) return null;
@@ -289,7 +304,7 @@ export async function readPeek(key: string, code: string): Promise<WidgetResult 
   const seenActivity = new Set<string>();
   const ids = (rel: { data: unknown } | undefined) => (Array.isArray(rel?.data) ? (rel!.data as { id: string }[]).map((x) => x.id) : []);
 
-  const harvest = (doc: JsonApiDoc, onlyActivity: string | null) => {
+  const harvest = async (doc: JsonApiDoc, onlyActivity: string | null) => {
     const inc0 = doc.included || [];
     const tickets = new Map(inc0.filter((x) => x.type === "ticket").map((x) => [x.id, x.attributes]));
     const questions = inc0.filter((x) => x.type === "question").map((x) => String(x.attributes["question-text"] || ""));
@@ -314,6 +329,9 @@ export async function readPeek(key: string, code: string): Promise<WidgetResult 
       const desc = plain(a["description-short"]) || plain(a.description).slice(0, 700).replace(/\s+\S*$/, "");
       const image = typeof a.image === "string" ? a.image : null;
       const priced = mine.filter((t) => Number.isFinite(Number(t["source-price-gross"])) && Number(t["source-price-gross"]) > 0);
+      // Rentals priced by date carry no ticket price; the next three weeks of availability show the real range.
+      let datePrice: number | null = null;
+      if (!priced.length && price == null && ticketIds.length) datePrice = await peekDatePrice(key, act.id, ticketIds[0]);
       const unitFor = (label: string) => {
         const text = label + " " + name;
         const count = label.match(/\b(\d+)\s*-?\s*(people|persons?|guests?|adults?|riders?|pax|players?|passengers?)\b/i);
@@ -340,7 +358,7 @@ export async function readPeek(key: string, code: string): Promise<WidgetResult 
         }
       } else {
         const label = ticketNames[0] || "";
-        offerings.push({ ...base, detail: durationText || (label && label !== name ? label : null), price, unit: unitFor(label) });
+        offerings.push({ ...base, detail: durationText || (label && label !== name ? label : null), price: price ?? datePrice, unit: unitFor(label) });
       }
       for (const t of mine) {
         const d = plain(t.description);
@@ -362,7 +380,7 @@ export async function readPeek(key: string, code: string): Promise<WidgetResult 
     }
   };
 
-  harvest(root, null);
+  await harvest(root, null);
   // Multi-activity programs list each activity's own program code as "p_xxxx--<activity id>".
   const subs = (root.included || [])
     .filter((x) => x.type === "program-configuration-activity")
@@ -376,7 +394,7 @@ export async function readPeek(key: string, code: string): Promise<WidgetResult 
   for (const sub of subs) {
     if (seenActivity.has(sub.activity)) continue;
     const doc = await getPeek(key, sub.code);
-    if (doc) harvest(doc, sub.activity);
+    if (doc) await harvest(doc, sub.activity);
   }
   if (!offerings.length) return null;
   return { vendor: "peek", offerings, company: {}, requirements: [...req].slice(0, 10), policies: [...pol].slice(0, 10), includes: [...inc].slice(0, 10), pages: 1 + subs.length };
