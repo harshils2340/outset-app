@@ -70,7 +70,7 @@ function toContact(r: Row): OperatorContact {
     city: r.city,
     region: r.region,
     postal: r.postal,
-    hours: (r.hours ? r.hours.split(" | ").map((h) => h.trim()).filter(Boolean) : r.hours_text ? [r.hours_text.replace(/^hours:?\s*/i, "").trim()] : []).filter((h) => !SILENT.test(h)),
+    hours: tidyHours(r.hours ? r.hours.split(" | ") : r.hours_text ? [r.hours_text] : []),
     bookingVendor: r.calendar_vendor,
     fetchedAt: r.fetched_at,
   };
@@ -127,6 +127,27 @@ type CatalogRow = {
 /** Names the discovery net caught that are not something a guest books: car rentals, retail, festivals, museums, clubs, public piers. */
 export const NOT_EXPERIENCE = /\bcar rentals?\b|\brent-?a-?car\b|\b(thrifty|hertz|avis|enterprise|budget) \b|u-haul|\bauto rentals?\b|\bsports? shop\b|\bski sports\b|\bsporting goods\b|\bfestival\b|\bfair\b(?! ?winds)|\bmuseum\b|\browing club\b|\byacht club\b|\bmunicipal pier\b|\bcommunity boathouse\b|\bboat ramp\b|\bpublic launch\b|\bstate park\b|\bcounty park\b/i;
 export const MARKETPLACES = /(^|\.)(sailo|getmyboat|boatsetter|viator|tripadvisor|airbnb|expedia|groupon|yelp|peek|fareharbor|getyourguide|klook|eventbrite|meetup|facebook|instagram|booking|hotels|vrbo|kayak|tours4fun|musement|headout|goldstar|boatbound|clickandboat|samboat|fishingbooker|fishanywhere|guidesly)\.(com|net|co|io|ca)$/i;
+
+/**
+ * Opening hours worth showing: a weekly pattern with times, or "closed". Snapshots like "Open today 9am-5pm" and
+ * "Hours This Week Thursday 2:00 PM-4:00 PM" describe one day the crawler happened to visit, so they are dropped.
+ */
+function tidyHours(lines: string[]): string[] {
+  const out: string[] = [];
+  for (const raw of lines) {
+    let h = raw.replace(/^\s*hours(?: of operation| & admission)?\s*:?\s*/i, "").replace(/\s+/g, " ").trim();
+    if (!h || SILENT.test(h)) continue;
+    if (/\b(today|tonight|tomorrow|this week|open now|closed now|closes? (at|in)|opens? (at|in)|until \d)\b/i.test(h)) continue;
+    if (/\b(january|february|march|april|may|june|july|august|september|october|november|december)\s+\d/i.test(h)) continue;
+    const hasDay = /\b(mon|tue|wed|thu|fri|sat|sun)[a-z]*\b|\b(daily|every ?day|7 days|weekdays?|weekends?|seasonal|year[- ]round)\b/i.test(h);
+    const hasTime = /\d{1,2}(:\d{2})?\s*(am|pm|a\.m\.|p\.m\.)|\d{1,2}:\d{2}|\bclosed\b|\b24 hours\b|dawn|dusk|sunrise|sunset/i.test(h);
+    if (!(hasDay && hasTime) && !/\b(by appointment|reservation only|on request)\b/i.test(h)) continue;
+    if (h.length > 140) h = h.slice(0, 140).replace(/\s+\S*$/, "");
+    if (!out.includes(h)) out.push(h);
+    if (out.length >= 7) break;
+  }
+  return out;
+}
 
 const DEFAULT_GAP = "Prices, hours and eligibility are not copied here yet. We will ask when you request.";
 
