@@ -153,7 +153,7 @@ function Card({ u, onOpen, near }: { u: Unclaimed; onOpen: (id: string) => void;
                 {u.dur || u.fc ? (
                   <small className="wcardfacts">
                     {u.dur ? <span>{u.dur}</span> : null}
-                    {u.fc ? <span className="fc">{u.fc.replace(/ up to /, " · ").replace(/ before$/, "")}</span> : null}
+                    {u.fc ? <span className="fc">Free cancellation</span> : null}
                   </small>
                 ) : null}
                 <span className="wmeta">

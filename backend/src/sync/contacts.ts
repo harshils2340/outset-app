@@ -247,7 +247,12 @@ function durationOf(texts: string[]): string | null {
     const m = t.match(/\b(\d+(?:\.\d+)?)\s*(?:-|to)?\s*(\d+)?\s*(hours?|hrs?|minutes?|mins?|days?)\b/i);
     if (!m) continue;
     const n = Number(m[2] || m[1]);
-    const unit = /min/i.test(m[3]) ? "min" : /day/i.test(m[3]) ? (n === 1 ? "day" : "days") : n === 1 ? "hour" : "hours";
+    if (/notice|advance|prior|before|cancel|refund/i.test(t)) continue;
+    const isMin = /min/i.test(m[3]);
+    const isDay = /day/i.test(m[3]);
+    // A booking is minutes to a day or two. Anything longer is a policy window that leaked into the menu text.
+    if ((isMin && n > 600) || (!isMin && !isDay && n > 14) || (isDay && n > 7)) continue;
+    const unit = isMin ? "min" : isDay ? (n === 1 ? "day" : "days") : n === 1 ? "hour" : "hours";
     return (m[2] ? m[1] + " to " + m[2] : m[1]) + " " + unit;
   }
   return null;
