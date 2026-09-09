@@ -81,6 +81,8 @@ export type UnclaimedService = {
   variants: { label: string; price: number | null; per?: string; optionIdx: number }[];
 };
 
+export type OperatorLocation = { city: string; region?: string; lat: number; lon: number; street?: string };
+
 export type Unclaimed = {
   id: string;
   title: string;
@@ -101,6 +103,8 @@ export type Unclaimed = {
   /** Operator pin, from their listing. Used for distance from the guest. */
   lat?: number;
   lon?: number;
+  /** Other places a chain runs from. Distance and the "where" line use whichever is closest to the guest. */
+  locations?: OperatorLocation[];
   /** Search-only words: Google's business type and service names. Not shown as facts. */
   tags?: string[];
   /** Optional extras the operator lists with a price, like an additional rider or a photo pack. */

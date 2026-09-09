@@ -130,6 +130,15 @@ export const MARKETPLACES = /(^|\.)(sailo|getmyboat|boatsetter|viator|tripadviso
 
 const DEFAULT_GAP = "Prices, hours and eligibility are not copied here yet. We will ask when you request.";
 
+/** A chain's other venues, for nearest-location distance. Empty for the usual single-site operator. */
+function extraLocations(operatorId: string): { city: string; region?: string; lat: number; lon: number; street?: string }[] | undefined {
+  const rows = db
+    .prepare("SELECT city, region, street, lat, lon FROM locations WHERE operator_id = ? ORDER BY city LIMIT 60")
+    .all(operatorId) as { city: string | null; region: string | null; street: string | null; lat: number; lon: number }[];
+  if (!rows.length) return undefined;
+  return rows.map((l) => ({ city: l.city || "Nearby", region: l.region || undefined, lat: Math.round(l.lat * 1e4) / 1e4, lon: Math.round(l.lon * 1e4) / 1e4, street: l.street || undefined }));
+}
+
 function slug(s: string): string {
   return s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 48);
 }
@@ -227,6 +236,7 @@ function toCatalogItem(r: CatalogRow): Record<string, unknown> {
     videoEmbed: pick("video_embed")[0] || undefined,
     lat: r.lat ?? undefined,
     lon: r.lon ?? undefined,
+    locations: extraLocations(r.id),
     tags: [...new Set([...pick("google_category"), ...pick("service"), ...offerings.map((o) => o.name)])].slice(0, 12),
     extraNote: [...pick("extra").slice(0, 1), ...pick("policy"), ...pick("checkin"), ...pick("meeting_point"), ...pick("season")].filter((l) => !SILENT.test(l)).join(" · ").slice(0, 700) || undefined,
     // Viator-shaped sections. Each only appears when the site said it.
@@ -474,6 +484,7 @@ export function syncCatalogToApp(): { path: string; count: number } {
     return {
       id: item.id, title: item.title, cat: item.cat, art: item.art, area: item.area, metroId: item.metroId, src: item.src,
       rating: item.rating, reviews: item.reviews, lat: item.lat, lon: item.lon, cover: item.cover, video: item.video,
+      locations: item.locations,
       tags: ((item.tags as string[]) || []).slice(0, 6),
       from: priced.length ? Math.min(...priced) : undefined,
       dur: item.dur, fc: item.fc,

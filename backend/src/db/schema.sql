@@ -128,3 +128,19 @@ CREATE TABLE IF NOT EXISTS extract_spend (
   batch_id TEXT,
   at TEXT NOT NULL
 );
+
+-- Extra places an operator runs from. The operators row keeps the primary pin; chains get one row per site here.
+CREATE TABLE IF NOT EXISTS locations (
+  id TEXT PRIMARY KEY,
+  operator_id TEXT NOT NULL,
+  name TEXT,
+  street TEXT,
+  city TEXT,
+  region TEXT,
+  postal TEXT,
+  lat REAL NOT NULL,
+  lon REAL NOT NULL,
+  source TEXT NOT NULL,
+  created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_locations_operator ON locations(operator_id);

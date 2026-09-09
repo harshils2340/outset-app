@@ -70,3 +70,20 @@ export function currentLocation(): Promise<{ lat: number; lon: number } | null> 
     );
   });
 }
+
+/**
+ * The operator's closest location to the guest: the primary pin or one of a chain's other venues.
+ * Returns null when the operator has no pin at all.
+ */
+export function nearestLocation(
+  u: { lat?: number; lon?: number; area: string; locations?: { city: string; region?: string; lat: number; lon: number }[] },
+  near: { lat: number; lon: number },
+): { lat: number; lon: number; km: number; label: string; alt: boolean } | null {
+  let best: { lat: number; lon: number; km: number; label: string; alt: boolean } | null = null;
+  if (u.lat != null && u.lon != null) best = { lat: u.lat, lon: u.lon, km: kmBetween(near, { lat: u.lat, lon: u.lon }), label: u.area, alt: false };
+  for (const l of u.locations || []) {
+    const km = kmBetween(near, l);
+    if (!best || km < best.km) best = { lat: l.lat, lon: l.lon, km, label: l.city + (l.region ? ", " + l.region : ""), alt: true };
+  }
+  return best;
+}

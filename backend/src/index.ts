@@ -16,6 +16,7 @@ import { importThumbnails } from "./enrich/thumbs.ts";
 import { pruneNoise } from "./enrich/prune.ts";
 import { collectPhotos, photosPending } from "./enrich/images.ts";
 import { widgetsPending, widgetForOperator } from "./enrich/widgets.ts";
+import { loadOsmLocations, locationsPending } from "./enrich/locations.ts";
 import { CITIES } from "./discover/cities.ts";
 
 import { db } from "./db/client.ts";
@@ -208,6 +209,17 @@ if (cmd === "enrich") {
   const usage = results.reduce((a, r) => ({ i: a.i + (r.usage?.input || 0), o: a.o + (r.usage?.output || 0) }), { i: 0, o: 0 });
   const cost = (usage.i * rate().in + usage.o * rate().out) / 1e6;
   console.log(`Enriched ${ok}/${results.length}. Tokens in=${usage.i} out=${usage.o}. This run $${cost.toFixed(2)}, total $${spentUsd().toFixed(2)} of $${budgetUsd().toFixed(2)}. Run "npm run sync" to push to the app.`);
+  process.exit(0);
+}
+
+// locations [limit] [concurrency]: chains get one pin per venue, from the OpenStreetMap cache and their own locations page.
+if (cmd === "locations") {
+  const osm = loadOsmLocations();
+  console.log(`OpenStreetMap: ${osm.locations} extra locations across ${osm.operators} chains.`);
+  const limit = Number(process.argv[3] || 3000);
+  const concurrency = Number(process.argv[4] || 8);
+  const r = await locationsPending(limit, concurrency);
+  console.log(`Sites: ${r.sites} checked, ${r.withPage} with a locations page, ${r.added} locations geocoded. Run "npm run sync" to push to the app.`);
   process.exit(0);
 }
 

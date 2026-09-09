@@ -6,7 +6,7 @@ import { SLOT_TIMES } from "../../data/slots";
 import type { Unclaimed } from "../../data/types";
 import { addressLine, contactFor, fmtHours, fmtPhone, fromPrice, getCatalog, listingFacts, mapsHref, perPerson, plainWords, publicRating, telHref } from "../../lib/catalog";
 import { DAYS, fmtDate, fmtReviews, fmtTime, money, priceWith } from "../../lib/format";
-import { fmtDistance, kmBetween } from "../../lib/places";
+import { fmtDistance, nearestLocation } from "../../lib/places";
 import { priceUnclaimed } from "../../lib/pricing";
 import { useApp } from "../../state/AppProvider";
 import { Photo } from "../art/Photo";
@@ -263,9 +263,12 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
             </span>
           ) : null}
           <span>{item.area}{metro && !item.area.includes(metro.name) ? ", " + metro.name : ""}</span>
-          {state.near && item.lat != null && item.lon != null ? (
-            <span className="wdot wdist"><Markup html={ICONS.pin} /> {fmtDistance(kmBetween(state.near, { lat: item.lat, lon: item.lon }))} from {state.near.label}</span>
-          ) : null}
+          {(() => {
+            const n = state.near ? nearestLocation(item, state.near) : null;
+            if (!n) return null;
+            return <span className="wdot wdist"><Markup html={ICONS.pin} /> {fmtDistance(n.km)} from {state.near!.label}{n.alt ? " to their " + n.label + " location" : ""}</span>;
+          })()}
+          {item.locations?.length ? <span className="wdot">{item.locations.length + 1} locations</span> : null}
           <span className="wdot">{plainWords(KIND[item.art] || "experience").replace(/^(a|an) /, "")}</span>
         </div>
         {badges.length ? (

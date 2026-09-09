@@ -9,7 +9,7 @@ import { listingFacts } from "../../lib/catalog";
 import { fmtDate, fmtReviews, money } from "../../lib/format";
 import { metroInQuery, parseIntent, searchListings } from "../../lib/search";
 import { loadListing } from "../../lib/catalogLoad";
-import { currentLocation, fmtDistance, kmBetween, searchPlaces, type Place } from "../../lib/places";
+import { currentLocation, fmtDistance, nearestLocation, searchPlaces, type Place } from "../../lib/places";
 import { useApp } from "../../state/AppProvider";
 import { Photo } from "../art/Photo";
 import { Mark } from "../layout/Mark";
@@ -111,7 +111,7 @@ function CompareTable({ items, near, onOpen, onClose, onRemove }: { items: Uncla
           <tbody>
             {row("From", (u) => { const f = fromPrice(u); return f != null ? <b>{money(f)}</b> : <span className="muted">Request to book</span>; })}
             {row("Rating", (u) => { const sc = publicRating(u); return sc ? <span><Markup html={ICONS.star} /> {sc.rating.toFixed(1)} <em className="muted">({fmtReviews(sc.reviews)})</em></span> : <span className="muted">No public rating</span>; })}
-            {row("Where", (u) => u.area + (near && u.lat != null && u.lon != null ? " · " + fmtDistance(kmBetween(near, { lat: u.lat, lon: u.lon })) + " away" : ""))}
+            {row("Where", (u) => { const n = near ? nearestLocation(u, near) : null; return n ? n.label + " · " + fmtDistance(n.km) + " away" : u.area; })}
             {row("What you'd book", (u) => { const o = firstPriced(u) || u.options[0]; return o ? o.name + (o.detail ? " · " + o.detail : "") : <span className="muted">Menu not published</span>; })}
             {row("Options", (u) => u.options.length ? u.options.length + (u.options.length === 1 ? " option" : " options") : <span className="muted">None listed</span>)}
             {row("Who can go", (u) => { const f = listingFacts(u).who.find((l) => l.posted); return f ? f.text : <span className="muted">Not posted</span>; })}
@@ -146,9 +146,11 @@ function Card({ u, onOpen, near }: { u: Unclaimed; onOpen: (id: string) => void;
               <div className="wbody">
                 <b>{u.title}</b>
                 <small>
-                  {near && u.lat != null && u.lon != null
-                    ? fmtDistance(kmBetween(near, { lat: u.lat, lon: u.lon })) + " away · " + u.area
-                    : u.area + (metro && !u.area.includes(metro.name) ? " · " + metro.name : "")}
+                  {(() => {
+                    const n = near ? nearestLocation(u, near) : null;
+                    if (n) return fmtDistance(n.km) + " away · " + n.label + (u.locations?.length ? " · " + (u.locations.length + 1) + " locations" : "");
+                    return u.area + (metro && !u.area.includes(metro.name) ? " · " + metro.name : "") + (u.locations?.length ? " · " + (u.locations.length + 1) + " locations" : "");
+                  })()}
                 </small>
                 {u.dur || u.fc ? (
                   <small className="wcardfacts">
@@ -246,9 +248,8 @@ export function WebHome({ onOpenApp, onOperators }: { onOpenApp: () => void; onO
     if (typedMetro) {
       base = base.filter((u) => u.metroId === typedMetro.metro.id);
     } else if (near) {
-      base = base
-        .filter((u) => u.lat != null && u.lon != null && kmBetween(near, { lat: u.lat, lon: u.lon }) <= RADIUS_KM)
-        .sort((a, b) => kmBetween(near, { lat: a.lat!, lon: a.lon! }) - kmBetween(near, { lat: b.lat!, lon: b.lon! }));
+      const km = (u: Unclaimed) => nearestLocation(u, near)?.km ?? Infinity;
+      base = base.filter((u) => km(u) <= RADIUS_KM).sort((a, b) => km(a) - km(b));
     } else if (state.metroId !== ALL_METRO_ID) {
       base = base.filter((u) => u.metroId === state.metroId);
     }
@@ -261,7 +262,7 @@ export function WebHome({ onOpenApp, onOperators }: { onOpenApp: () => void; onO
     const list = pool.slice();
     if (sort === "distance") {
       if (!near) return null;
-      list.sort((a, b) => kmBetween(near, { lat: a.lat!, lon: a.lon! }) - kmBetween(near, { lat: b.lat!, lon: b.lon! }));
+      list.sort((a, b) => (nearestLocation(a, near)?.km ?? Infinity) - (nearestLocation(b, near)?.km ?? Infinity));
     } else if (sort === "price") {
       list.sort((a, b) => (fromPrice(a) ?? Infinity) - (fromPrice(b) ?? Infinity));
     } else if (sort === "rating") {
