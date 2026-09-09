@@ -124,6 +124,8 @@ type CatalogRow = {
 };
 
 /** Marketplaces and directories are not operators. They never belong in the catalog. */
+/** Names the discovery net caught that are not something a guest books: car rentals, retail, festivals, museums, clubs, public piers. */
+export const NOT_EXPERIENCE = /\bcar rentals?\b|\brent-?a-?car\b|\b(thrifty|hertz|avis|enterprise|budget) \b|u-haul|\bauto rentals?\b|\bsports? shop\b|\bski sports\b|\bsporting goods\b|\bfestival\b|\bfair\b(?! ?winds)|\bmuseum\b|\browing club\b|\byacht club\b|\bmunicipal pier\b|\bcommunity boathouse\b|\bboat ramp\b|\bpublic launch\b|\bstate park\b|\bcounty park\b/i;
 export const MARKETPLACES = /(^|\.)(sailo|getmyboat|boatsetter|viator|tripadvisor|airbnb|expedia|groupon|yelp|peek|fareharbor|getyourguide|klook|eventbrite|meetup|facebook|instagram|booking|hotels|vrbo|kayak|tours4fun|musement|headout|goldstar|boatbound|clickandboat|samboat|fishingbooker|fishanywhere|guidesly)\.(com|net|co|io|ca)$/i;
 
 const DEFAULT_GAP = "Prices, hours and eligibility are not copied here yet. We will ask when you request.";
@@ -206,7 +208,7 @@ function toCatalogItem(r: CatalogRow): Record<string, unknown> {
     // The honest gap line. Once the widget or crawl gave real rules and policies, say those instead of "not copied yet".
     gap: pick("published_gap")[0] || pick("cancellation")[0] || (pick("policy").length || pick("requirement").length ? [...pick("policy")].slice(0, 3).join(" ") || "Ask the operator about cancellations." : DEFAULT_GAP),
     blurb: pick("description")[0] || pick("site_desc")[0] || pick("one_line")[0] || undefined,
-    cover: fullSize(widgetPhotos[0] || pick("cover")[0] || ""),
+    cover: fullSize(widgetPhotos[0] || pick("cover")[0] || pick("photo")[0] || ""),
     photos: uniq([...widgetPhotos, ...pick("cover"), ...pick("photo")].map((u) => fullSize(u) || "")).slice(0, 10),
     ytVideos: pick("yt_video")
       .map((raw) => {
@@ -445,7 +447,7 @@ export function syncCatalogToApp(): { path: string; count: number } {
     ).all() as { id: string }[]).map((r) => r.id),
   );
   // A listing with no site, no phone, no photo and no menu gives a guest nothing to act on. Keep it for outreach only.
-  const full = rows.filter((r) => !MARKETPLACES.test(r.domain) && !dead.has(r.id)).map(toCatalogItem);
+  const full = rows.filter((r) => !MARKETPLACES.test(r.domain) && !dead.has(r.id) && !NOT_EXPERIENCE.test(r.name)).map(toCatalogItem);
   console.log("Left out " + dead.size + " map-only rows with nothing a guest can use.");
   const contactByDomain: Record<string, OperatorContact> = {};
   for (const c of allContacts()) contactByDomain[c.domain] = c;
@@ -468,7 +470,7 @@ export function syncCatalogToApp(): { path: string; count: number } {
   // The browse catalog carries only what cards, rails and search need. Details load per listing.
   const operators = full.map((item) => {
     const options = (item.options as { price: number | null }[]) || [];
-    const priced = options.map((o) => o.price).filter((n): n is number => n != null);
+    const priced = options.map((o) => o.price).filter((n): n is number => n != null && n > 0);
     return {
       id: item.id, title: item.title, cat: item.cat, art: item.art, area: item.area, metroId: item.metroId, src: item.src,
       rating: item.rating, reviews: item.reviews, lat: item.lat, lon: item.lon, cover: item.cover, video: item.video,
