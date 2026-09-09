@@ -186,6 +186,14 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
   const needService = item.options.length > 0;
   const ready = time != null && (!needService || picked != null) && guestOk;
   const day = dates[state.dateIdx];
+  // Today only shows start times at least an hour out. Nobody can book a 7 AM slot at 8:30.
+  const openSlots = useMemo(() => {
+    if (state.dateIdx !== 0) return SLOT_TIMES;
+    const now = new Date();
+    const cutoff = now.getHours() * 60 + now.getMinutes() + 60;
+    return SLOT_TIMES.filter((t) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3)) >= cutoff);
+  }, [state.dateIdx]);
+  useEffect(() => { if (time && !openSlots.includes(time)) setTime(null); }, [openSlots, time]);
 
   const similar = useMemo(() => {
     const all = getCatalog().filter((u) => u.id !== item.id && u.art === item.art);
@@ -632,9 +640,10 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
                 </div>
                 <p className="guidehead">Time</p>
                 <div className="wslots">
-                  {SLOT_TIMES.map((t) => (
+                  {openSlots.map((t) => (
                     <button key={t} type="button" className="slot" aria-pressed={time === t} onClick={() => setTime(t)}><b>{fmtTime(t)}</b></button>
                   ))}
+                  {openSlots.length === 0 ? <p className="wpicked">No more start times today. Pick tomorrow.</p> : null}
                 </div>
                 {needService ? (
                   <p className="wpicked">{picked ? plainWords(picked.name + (picked.detail ? " · " + picked.detail : "")) : "Choose what to book on the left"}</p>
