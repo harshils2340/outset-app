@@ -142,7 +142,7 @@ function toCatalogItem(r: CatalogRow): Record<string, unknown> {
     id: "o-" + slug(r.domain),
     title: r.name,
     cat: r.family || "water",
-    art: r.icon_key,
+    art: artFromName(r.name, r.icon_key),
     area,
     metroId: r.metro_id || "",
     src: r.domain,
@@ -225,7 +225,7 @@ function toCatalogItem(r: CatalogRow): Record<string, unknown> {
     extraNote: pick("extra")[0] || [...pick("policy"), ...pick("checkin"), ...pick("meeting_point"), ...pick("season")].join(" · ").slice(0, 700) || undefined,
     // Viator-shaped sections. Each only appears when the site said it.
     highlights: uniq(pick("spec").map(cleanLine)).filter(isTidyLine).slice(0, 8),
-    requirements: uniq(pick("requirement").map(cleanLine)).filter(isTidyLine).slice(0, 10),
+    requirements: collapseRules(uniq(pick("requirement").map(cleanLine)).filter(isTidyLine)).slice(0, 10),
     groupInfo: uniq(pick("group").map(cleanLine)).slice(0, 5),
     bring: uniq(pick("bring").map(cleanLine)).slice(0, 8),
     season: cleanLine(pick("season")[0] || "") || undefined,
@@ -239,7 +239,46 @@ function toCatalogItem(r: CatalogRow): Record<string, unknown> {
   };
 }
 
+/** "Hawaiian Parasail" is parasailing whatever OpenStreetMap tagged it. The name wins when it names the activity outright. */
+const ART_BY_NAME: [RegExp, string][] = [
+  [/\bparasail/i, "parasail"],
+  [/\bjet ?ski|waverunner|sea-?doo/i, "jetski"],
+  [/\bskydiv|\btandem jump|\bparachut/i, "skydive"],
+  [/\baxe|\bhatchet/i, "axe"],
+  [/\bescape (room|game)|\bescape\b/i, "escape"],
+  [/\bkart|\bkarting/i, "kart"],
+  [/\bpaintball|\bairsoft|\blaser tag/i, "paintball"],
+  [/\bhelicopter|\bheli\b|\bhelitour/i, "heli"],
+  [/\bballoon/i, "balloon"],
+  [/\bkayak|\bpaddle ?board|\bcanoe|\bsup\b|\bpaddl/i, "kayak"],
+  [/\bpontoon/i, "pontoon"],
+  [/\bhorse|\bequestrian|\btrail ride|\bstable/i, "horse"],
+  [/\bfishing|\bcharter fish|\bsportfish|\bangl/i, "fishing"],
+  [/\bsunset (cruise|sail)|\bcruise|\bsailing|\bcatamaran|\byacht/i, "cruise"],
+];
+function artFromName(name: string, fallback: string): string {
+  for (const [re, art] of ART_BY_NAME) if (re.test(name)) return art;
+  return fallback;
+}
+
 /** One clean statement: not a question, not a mashed paragraph, not a scraped aside. */
+/** "Must be 21 with ID" and "All participants must be age 21 or older with a valid ID" say one thing. Keep the shortest per topic. */
+function collapseRules(lines: string[]): string[] {
+  const byKey = new Map<string, string>();
+  const order: string[] = [];
+  for (const l of lines) {
+    const nums = (l.match(/\d+/g) || []).join(",");
+    const topic = /\b(age|years?|old|older|minor|child|kid|adult|\d+\s*\+)\b/i.test(l) ? "age" : /\b(weight|lbs?|pounds?|kg)\b/i.test(l) ? "weight" : /\b(height|tall|inches|cm)\b/i.test(l) ? "height" : /\b(licen[cs]e|permit|boater)\b/i.test(l) ? "license" : "";
+    const key = topic && nums ? topic + ":" + nums : l.toLowerCase();
+    const cur = byKey.get(key);
+    if (!cur) {
+      byKey.set(key, l);
+      order.push(key);
+    } else if (l.length < cur.length) byKey.set(key, l);
+  }
+  return order.map((k) => byKey.get(k)!);
+}
+
 function isTidyLine(l: string): boolean {
   if (l.length < 6 || l.length > 150) return false;
   if (/\?\s*$/.test(l) || /\?\s+[A-Z]/.test(l)) return false;
@@ -264,6 +303,7 @@ function cleanLine(raw: string): string {
     .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
     .replace(/[#*_>`]+/g, " ")
     .replace(/https?:\/\/\S+/g, "")
+    .replace(/^\s*(?:\(?\d{1,2}[.)]|[-–•·]|[a-z][.)])\s+/i, "")
     .replace(/\s+/g, " ")
     .trim()
     .slice(0, 240);

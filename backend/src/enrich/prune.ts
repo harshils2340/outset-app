@@ -32,7 +32,9 @@ export function pruneNoise(dryRun = false): { types: number; names: number; doma
   const out = { types: 0, names: 0, domains: 0, total: 0 };
   db.exec("PRAGMA foreign_keys = ON");
   const del = db.prepare("DELETE FROM operators WHERE id = ?");
-  db.exec("BEGIN");
+  // Short transactions so other jobs writing to the database keep flowing between batches.
+  let inTx = 0;
+  const flush = () => { if (inTx) { db.exec(dryRun ? "ROLLBACK" : "COMMIT"); inTx = 0; } };
   for (const r of rows) {
     const keepAnyway = (r.priced > 0 && ACTIVITY.test(r.name)) || r.svc > 0;
     let why: keyof typeof out | null = null;
@@ -42,8 +44,13 @@ export function pruneNoise(dryRun = false): { types: number; names: number; doma
     if (!why) continue;
     out[why] += 1;
     out.total += 1;
-    if (!dryRun) del.run(r.id);
+    if (!dryRun) {
+      if (!inTx) db.exec("BEGIN");
+      del.run(r.id);
+      inTx += 1;
+      if (inTx >= 25) flush();
+    }
   }
-  db.exec(dryRun ? "ROLLBACK" : "COMMIT");
+  flush();
   return out;
 }
