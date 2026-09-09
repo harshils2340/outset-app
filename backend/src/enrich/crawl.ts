@@ -1,5 +1,6 @@
 import { load } from "cheerio";
 import { fetchHtml, sleep } from "../scrape/fetch.ts";
+import { renderPage } from "../scrape/render.ts";
 
 /**
  * Site crawl for enrichment. Fetches the operator's own pages only, honoring robots.txt via fetchHtml.
@@ -11,6 +12,8 @@ export type CrawledPage = { url: string; title: string; text: string };
 export type SocialLinks = Partial<Record<"instagram" | "facebook" | "tiktok" | "youtube" | "yelp" | "tripadvisor" | "google", string>>;
 export type CrawlResult = { pages: CrawledPage[]; social: SocialLinks; bookingVendor: string | null };
 
+/** A bot wall rendered as a page. Nothing behind it is readable, so it must never be sent to the model. */
+const CHALLENGE = /performing security verification|verify you are not a bot|checking your browser|just a moment|enable javascript and cookies|access denied|attention required/i;
 const WANT = /about|price|pricing|rate|cost|tour|trip|rental|rent|book|reserv|faq|contact|hour|service|package|experience|adventure|charter|lesson|group|party|event|policy|waiver|safety|require/i;
 const SKIP = /\.(pdf|jpg|jpeg|png|gif|svg|webp|mp4|zip)$|\/(wp-json|feed|tag|category|author|cart|checkout|login|account|blog\/page)\b|#|\?/i;
 const SOCIAL: [keyof SocialLinks, RegExp][] = [
@@ -46,10 +49,19 @@ function visibleText(html: string): { title: string; text: string } {
 export async function crawlSite(website: string, maxPages = 25): Promise<CrawlResult> {
   const start = website.startsWith("http") ? website : "https://" + website;
   const origin = new URL(start).origin;
-  const home = await fetchHtml(start);
+  let home = await fetchHtml(start).catch(() => ({ status: 0, html: "", finalUrl: start }));
   const pages: CrawledPage[] = [];
   const social: SocialLinks = {};
   let bookingVendor: string | null = null;
+  // A JavaScript shell, a bot stub or a challenge page reads as nothing. Render it in a real browser before giving up.
+  let rendered = false;
+  if (home.status !== 200 || !home.html || visibleText(home.html).text.length < 400) {
+    const r = await renderPage(start);
+    if (r && visibleText(r.html).text.length >= 200 && !CHALLENGE.test(r.html)) {
+      home = { status: 200, html: r.html, finalUrl: r.finalUrl };
+      rendered = true;
+    }
+  }
   if (home.status !== 200 || !home.html) return { pages, social, bookingVendor };
 
   const queue: string[] = [];
@@ -87,9 +99,16 @@ export async function crawlSite(website: string, maxPages = 25): Promise<CrawlRe
     if (seen.has(url)) continue;
     seen.add(url);
     await sleep(120);
-    const res = await fetchHtml(url).catch(() => null);
+    let res = await fetchHtml(url).catch(() => null);
+    let t = res && res.status === 200 && res.html ? visibleText(res.html) : { title: "", text: "" };
+    if (rendered && t.text.length < 200 && pages.length < 8) {
+      const r = await renderPage(url, 12000);
+      if (r) {
+        res = { status: 200, html: r.html, finalUrl: r.finalUrl };
+        t = visibleText(r.html);
+      }
+    }
     if (!res || res.status !== 200 || !res.html) continue;
-    const t = visibleText(res.html);
     if (t.text.length < 200) continue;
     pages.push({ url: res.finalUrl || url, ...t });
     harvest(res.html, res.finalUrl || url);
