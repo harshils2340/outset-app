@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://harshils2340.github.io/outset-app/sitemap.xml

@@ -302,8 +302,19 @@ export async function collectBatch(batchId: string): Promise<{ status: string; s
       failed += 1;
       continue;
     }
-    storeExtraction(entry.op, data, entry.social, entry.vendor);
-    stored += 1;
+    // The operator may have been merged away since the batch was submitted. One bad row must not sink the batch.
+    const exists = db.prepare("SELECT 1 FROM operators WHERE id = ?").get(row.custom_id);
+    if (!exists) {
+      failed += 1;
+      continue;
+    }
+    try {
+      storeExtraction(entry.op, data, entry.social, entry.vendor);
+      stored += 1;
+    } catch (e) {
+      console.error(entry.op.domain + ": " + (e as Error).message.slice(0, 120));
+      failed += 1;
+    }
   }
   db.prepare("DELETE FROM extract_spend WHERE model = 'reserved' AND batch_id = ?").run(batchId);
   writeFileSync(new URL(batchId + ".done", BATCH_DIR), JSON.stringify({ stored, failed, usd, at: nowIso() }));
