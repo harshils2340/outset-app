@@ -388,6 +388,13 @@ type Api = {
 
 const Ctx = createContext<Api | null>(null);
 
+
+/** True when the URL is the operator side, wherever the site is mounted (/operators or /outset-app/operators). */
+function atOperatorsPath(): boolean {
+  const base = import.meta.env.BASE_URL.replace(/\/?$/, "/");
+  return window.location.pathname === base + "operators" || window.location.pathname === base + "operators/";
+}
+
 export function AppProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(reducer, initial);
 
@@ -420,7 +427,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       // Consume the deep link so a reload lands on the home page, not the same listing again.
       if (m || c || r) window.history.replaceState(null, "", window.location.pathname + window.location.search);
       // /operators is the operator side. The guest site lives at /.
-      else if (/^\/operators\/?$/.test(window.location.pathname)) dispatch({ type: "openOperator" });
+      else if (atOperatorsPath()) dispatch({ type: "openOperator" });
       // A listing link pasted while the app is already open should still open that listing.
       window.addEventListener("hashchange", () => {
         const h = window.location.hash.match(/^#o=([a-z0-9-]+)/i);
@@ -447,14 +454,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const onOps = state.screen === "operator";
-    const atOps = /^\/operators\/?$/.test(window.location.pathname);
-    if (onOps && !atOps) window.history.pushState(null, "", "/operators" + window.location.hash);
-    else if (!onOps && atOps && state.catalogReady) window.history.pushState(null, "", "/" + window.location.hash.replace(/^#claim=[^&]*/, ""));
+    const atOps = atOperatorsPath();
+    // The site may live under a base path (GitHub Pages serves it at /outset-app/), so build on BASE_URL, never on "/".
+    const base = import.meta.env.BASE_URL.replace(/\/?$/, "/");
+    if (onOps && !atOps) window.history.pushState(null, "", base + "operators" + window.location.hash);
+    else if (!onOps && atOps && state.catalogReady) window.history.pushState(null, "", base + window.location.hash.replace(/^#claim=[^&]*/, ""));
   }, [state.screen, state.catalogReady]);
 
   useEffect(() => {
     const onPop = () => {
-      const atOps = /^\/operators\/?$/.test(window.location.pathname);
+      const atOps = atOperatorsPath();
       if (atOps && state.screen !== "operator") dispatch({ type: "openOperator" });
       if (!atOps && state.screen === "operator") dispatch({ type: "back" });
     };

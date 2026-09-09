@@ -50,7 +50,9 @@ export function OpLogin({ claimId, compact, onEnter, onBack }: { claimId: string
       onEnter(existing);
       return;
     }
-    const p = defaultProfile(picked, { name: name.trim(), email: email.trim(), phone: phone.trim() });
+    // The listing picked at mount may be the slim browse record; the full detail file has usually landed by now.
+    const full = experienceById(picked.id) || picked;
+    const p = defaultProfile(full, { name: name.trim(), email: email.trim(), phone: phone.trim() });
     p.bookings = sampleBookings(p);
     saveProfile(p);
     onEnter(p);
