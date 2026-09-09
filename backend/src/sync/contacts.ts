@@ -176,6 +176,7 @@ function toCatalogItem(r: CatalogRow): Record<string, unknown> {
       const groups = new Map<string, { name: string; desc: string | null; photo?: string; variants: { label: string; price: number | null; per?: string; optionIdx: number }[] }>();
       offerings.forEach((o, idx) => {
         const key = o.name.toLowerCase();
+        if (NOT_A_SERVICE.test(o.name)) return;
         const g = groups.get(key) || { name: o.name, desc: descs.get(key) || null, photo: photos.get(key) || undefined, variants: [] };
         g.variants.push({
           label: o.duration || o.detail || "Standard",
@@ -187,7 +188,7 @@ function toCatalogItem(r: CatalogRow): Record<string, unknown> {
       });
       return [...groups.values()].slice(0, 14);
     })(),
-    includes: pick("includes"),
+    includes: uniq(pick("includes").map(cleanLine)).filter(isTidyLine).slice(0, 10),
     addons: pick("addon")
       .map((a) => {
         const m = a.match(/^(.*?)\s*\$(\d+(?:\.\d+)?)$/);
@@ -222,20 +223,33 @@ function toCatalogItem(r: CatalogRow): Record<string, unknown> {
     tags: [...new Set([...pick("google_category"), ...pick("service"), ...offerings.map((o) => o.name)])].slice(0, 12),
     extraNote: pick("extra")[0] || [...pick("policy"), ...pick("checkin"), ...pick("meeting_point"), ...pick("season")].join(" · ").slice(0, 700) || undefined,
     // Viator-shaped sections. Each only appears when the site said it.
-    highlights: uniq(pick("spec").map(cleanLine)).slice(0, 8),
-    requirements: uniq(pick("requirement").map(cleanLine)).slice(0, 10),
+    highlights: uniq(pick("spec").map(cleanLine)).filter(isTidyLine).slice(0, 8),
+    requirements: uniq(pick("requirement").map(cleanLine)).filter(isTidyLine).slice(0, 10),
     groupInfo: uniq(pick("group").map(cleanLine)).slice(0, 5),
     bring: uniq(pick("bring").map(cleanLine)).slice(0, 8),
     season: cleanLine(pick("season")[0] || "") || undefined,
     meetingPoint: cleanLine(pick("meeting_point")[0] || "") || undefined,
     checkin: cleanPara(pick("checkin")[0] || "") || undefined,
     cancellation: cleanPara(pick("cancellation")[0] || "") || cleanPara(pick("policy").filter((l) => /cancel|refund/i.test(l)).join(" ")) || undefined,
-    policies: uniq(pick("policy").map(cleanLine)).slice(0, 8),
+    policies: uniq(pick("policy").map(cleanLine)).filter(isTidyLine).filter((l) => !/gift ?card|gift certificate/i.test(l)).slice(0, 8),
     waiverUrl: pick("waiver_url").find((u) => /^https?:\/\/\S+$/.test(u) && !/\/w\/?$/.test(u)) || undefined,
     hoursText: uniq(pick("hours_text").map((h) => cleanLine(h.replace(/^hours(?: & admission)?\s*/i, "")))).slice(0, 3),
     faq: pick("faq").map(parseFaq).filter((f): f is { q: string; a: string } => !!f).slice(0, 8),
   };
 }
+
+/** One clean statement: not a question, not a mashed paragraph, not a scraped aside. */
+function isTidyLine(l: string): boolean {
+  if (l.length < 6 || l.length > 150) return false;
+  if (/\?\s*$/.test(l) || /\?\s+[A-Z]/.test(l)) return false;
+  if (/^(and|but|or|so|also|please note|note:|p\.s\.)\b/i.test(l)) return false;
+  if (/\b(duration|meeting location|rates?)\b.*\$\d/i.test(l)) return false;
+  if (/not limited to|click|subscribe|newsletter|follow us/i.test(l)) return false;
+  return true;
+}
+
+/** Things a site sells that a guest does not book a time for. */
+const NOT_A_SERVICE = /\b(gift ?cards?|gift certificates?|e-?gift|merch(andise)?|t-?shirts?|hats?|apparel|donation|membership|season pass|parking)\b/i;
 
 function uniq(list: string[]): string[] {
   const seen = new Set<string>();
@@ -255,14 +269,27 @@ function cleanLine(raw: string): string {
 }
 
 function cleanPara(raw: string): string {
-  return raw
+  const flat = raw
     .replace(/!\[[^\]]*\]\([^)]*\)/g, " ")
     .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
     .replace(/[#*_>`]+/g, " ")
     .replace(/https?:\/\/\S+/g, "")
     .replace(/\s+/g, " ")
-    .trim()
-    .slice(0, 700);
+    .trim();
+  // Sites repeat the same sentence in two places. Keep each once, and never cut mid-sentence.
+  const seen = new Set<string>();
+  const out: string[] = [];
+  let len = 0;
+  for (const sentence of flat.split(/(?<=[.!?])\s+(?=[A-Z0-9"(])/)) {
+    const key = sentence.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+    if (!key || seen.has(key)) continue;
+    if (len + sentence.length > 700) break;
+    seen.add(key);
+    out.push(sentence);
+    len += sentence.length + 1;
+  }
+  if (out.length > 1 && !/[.!?)"]$/.test(out[out.length - 1])) out.pop();
+  return out.join(" ");
 }
 
 /** FAQ facts come as "Question? >Answer" or "Question? Answer". Anything without a question mark is not a FAQ. */
@@ -273,7 +300,7 @@ function parseFaq(raw: string): { q: string; a: string } | null {
   // The question is the last sentence before the question mark.
   const before = t.slice(0, i + 1);
   const qStart = Math.max(before.lastIndexOf(". "), before.lastIndexOf("! "), -2) + 2;
-  const q = before.slice(qStart).trim();
+  const q = before.slice(qStart).replace(/^[\s\-–—•·:]+/, "").trim();
   const a = t.slice(i + 1).replace(/^\s*>\s*/, "").trim();
   if (q.length < 8 || a.length < 12) return null;
   return { q, a: a.slice(0, 500) };

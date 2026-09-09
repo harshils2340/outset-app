@@ -16,6 +16,7 @@
     "structure": "tsx src/index.ts structure",
     "social": "tsx src/index.ts social",
     "thumbs": "tsx src/index.ts thumbs",
+    "prune": "tsx src/index.ts prune",
     "photos": "tsx src/index.ts photos",
     "videos": "tsx src/index.ts videos",
     "widgets": "tsx src/index.ts widgets",
