@@ -1,5 +1,5 @@
 /** Browser-like agent so ordinary sites serve real HTML. robots.txt is still honored below, and the From header says who we are. */
-const UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36 OutsetBot/0.1";
+const UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36";
 
 export async function robotsAllowed(origin: string, path: string): Promise<boolean> {
   try {

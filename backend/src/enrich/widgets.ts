@@ -10,7 +10,7 @@ import { withDeadline } from "../scrape/fetch.ts";
  * Rows carry confidence 'widget'. Nothing is invented: a field the widget leaves blank stays blank.
  */
 
-const UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36 OutsetBot/0.1 (+https://outset.local)";
+const UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36";
 
 type Offering = { name: string; detail: string | null; duration: string | null; price: number | null; unit: string; url: string; desc: string | null; photo: string | null; photos: string[] };
 type Company = { phone?: string | null; email?: string | null; street?: string | null; city?: string | null; region?: string | null; postal?: string | null; cover?: string | null; videoEmbed?: string | null; waiverUrl?: string | null; cancellation?: string | null; checkin?: string | null; faq?: string | null };
