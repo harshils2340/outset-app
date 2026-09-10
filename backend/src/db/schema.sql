@@ -144,3 +144,6 @@ CREATE TABLE IF NOT EXISTS locations (
   created_at TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_locations_operator ON locations(operator_id);
+
+CREATE INDEX IF NOT EXISTS idx_sources_op ON sources(operator_id, extractor);
+CREATE INDEX IF NOT EXISTS idx_facts_op_key ON facts(operator_id, fact_key);
