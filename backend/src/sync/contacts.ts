@@ -367,6 +367,8 @@ function freeCancel(text: string): string | null {
 
 /** "Hawaiian Parasail" is parasailing whatever OpenStreetMap tagged it. The name wins when it names the activity outright. */
 const ART_BY_NAME: [RegExp, string][] = [
+  // Airboat, swamp and whale-watching outfits are tours, not sunset sails.
+  [/airboat|swamp|alligator|gator|everglades|whale watch|dolphin watch|glass ?bottom/i, "tour"],
   [/\bparasail/i, "parasail"],
   [/\bjet ?ski|waverunner|sea-?doo/i, "jetski"],
   [/\bskydiv|\btandem jump|\bparachut/i, "skydive"],

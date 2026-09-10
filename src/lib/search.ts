@@ -219,8 +219,10 @@ export function listingScore(u: Unclaimed, q: string): number {
   // The activity the guest named is the strongest signal. A jet ski search must surface jet ski operators first.
   if (arts.length) {
     if (arts.includes(u.art)) score += explicitArts.length ? 40 : 30;
-    else if (arts.some((a) => (ART_ALIASES[a] || []).some((w) => w.length >= 4 && wordIn(tagText, w)))) score += 24;
+    // A named activity in the title counts ("Bad Axe Throwing" at a resort). A stray word in a menu tag does
+    // not, when the guest typed the activity explicitly: an escape room with a "Kayak" themed room is not a kayak.
     else if (arts.some((a) => (ART_ALIASES[a] || []).some((w) => w.length >= 4 && wordIn(title, w)))) score += 24;
+    else if (!explicitArts.length && arts.some((a) => (ART_ALIASES[a] || []).some((w) => w.length >= 4 && wordIn(tagText, w)))) score += 24;
     // The guest named the activity. A listing that is not that activity and never mentions it is not a result.
     else if (explicitArts.length) return 0;
   }

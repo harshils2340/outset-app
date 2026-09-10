@@ -7,6 +7,7 @@ import { searchListings } from "../../lib/search";
 import { Photo } from "../art/Photo";
 import { Mark } from "../layout/Mark";
 import { Markup } from "../Markup";
+import { useApp } from "../../state/AppProvider";
 import { OD_ICONS } from "./opContext";
 import { claimRemote, fetchRemoteProfile, hasApi, rememberClaimToken, requestSignInCode, verifySignInCode } from "../../lib/api";
 
@@ -23,9 +24,17 @@ async function sha256Hex(text: string): Promise<string> {
 }
 
 export function OpLogin({ claimId, claimToken, compact, onEnter, onBack }: { claimId: string | null; claimToken?: string | null; compact: boolean; onEnter: (p: OperatorProfile) => void; onBack: () => void }) {
-  const preset = useMemo(() => (claimId ? experienceById(claimId) : null), [claimId]);
+  const { state: app } = useApp();
+  // The claim link opens this screen before the catalog has loaded. Resolve the business again when it lands.
+  const preset = useMemo(() => (claimId ? experienceById(claimId) : null), [claimId, app.catalogVersion]);
   const [picked, setPicked] = useState<Unclaimed | null>(preset);
   const [step, setStep] = useState<Step>(preset ? "details" : "pick");
+  useEffect(() => {
+    if (preset && !picked) {
+      setPicked(preset);
+      setStep("details");
+    }
+  }, [preset]);
   const [q, setQ] = useState("");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -67,7 +76,7 @@ export function OpLogin({ claimId, claimToken, compact, onEnter, onBack }: { cla
     tick();
     return () => { alive = false; };
   }, [claimToken, claimId]);
-  const mine = useMemo(() => claimedIds().map((id) => ({ id, p: loadProfile(id), u: experienceById(id) })).filter((x) => x.p && x.u), []);
+  const mine = useMemo(() => Array.from(new Set(claimedIds())).map((id) => ({ id, p: loadProfile(id), u: experienceById(id) })).filter((x) => x.p && x.u && !(x.p.ownerEmail === "owner@example.com" && x.p.ownerName === "Demo owner")), []);
   const demoCode = useMemo(() => String(100000 + Math.floor(Math.random() * 900000)), []);
   const [sending, setSending] = useState(false);
   const [signinEmail, setSigninEmail] = useState("");
