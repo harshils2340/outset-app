@@ -287,6 +287,9 @@
 .odcalday span{font-size:11.5px;color:var(--ink-faint);}
 .odcalday.today b{background:var(--accent);color:var(--on-accent);border-radius:50%;width:32px;height:32px;display:grid;place-items:center;}
 .odcalday.closed{background:var(--surface-2);}
+.odcalday.past{opacity:.55;cursor:default;}
+.odcalday.past:hover{background:var(--surface);}
+.odlink.danger{color:var(--few);text-decoration-color:var(--few);}
 .odcalday.closed span{color:var(--few);font-weight:600;}
 .odcalday:hover{background:var(--surface-2);}
 .odcaltime{font-size:11.5px;font-weight:600;color:var(--ink-faint);padding:6px 8px;border-top:1px solid var(--line);text-align:right;min-height:58px;}

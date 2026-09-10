@@ -55,6 +55,8 @@ export function OpCalendar() {
     toast(on ? "Slot reopened" : "Blocked as time off");
   };
   const toggleDay = (k: string) => {
+    // Yesterday cannot be taken off. Past days stay as they were.
+    if (k < todayKey) return;
     const on = p.blockedDates.includes(k);
     set({ blockedDates: on ? p.blockedDates.filter((x) => x !== k) : [...p.blockedDates, k] });
     toast(on ? "Day reopened" : "Day off added");
@@ -90,8 +92,9 @@ export function OpCalendar() {
             const k = dateKey(d);
             const closed = p.hours[d.getDay()].closed || p.blockedDates.includes(k);
             const count = bookings.filter((b) => b.date === k && (b.status === "accepted" || b.status === "completed" || b.status === "new")).length;
+            const past = k < todayKey;
             return (
-              <button type="button" key={k} className={"odcalday" + (k === todayKey ? " today" : "") + (closed ? " closed" : "")} onClick={() => toggleDay(k)} title={closed ? "Reopen this day" : "Take this day off"}>
+              <button type="button" key={k} className={"odcalday" + (k === todayKey ? " today" : "") + (closed ? " closed" : "") + (past ? " past" : "")} onClick={() => toggleDay(k)} disabled={past} title={past ? "Past day" : closed ? "Reopen this day" : "Take this day off"}>
                 <small>{DAY_SHORT[d.getDay()]}</small>
                 <b>{d.getDate()}</b>
                 <span>{closed ? "Off" : count ? count + (count === 1 ? " booking" : " bookings") : "Open"}</span>

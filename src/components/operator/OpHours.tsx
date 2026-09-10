@@ -12,10 +12,19 @@ export function OpHours() {
   const [newOff, setNewOff] = useState("");
 
   const patchDay = (i: number, patch: Partial<DayHours>) => set((cur) => ({ ...cur, hours: cur.hours.map((h, j) => (j === i ? { ...h, ...patch } : h)) }));
+  // Copying a closed row would close the whole week, so that one asks for a second click.
+  const [armed, setArmed] = useState<number | null>(null);
   const copyToAll = (i: number) => {
     const src = p.hours[i];
+    if (src.closed && armed !== i) {
+      setArmed(i);
+      toast("Tap again to close every day");
+      window.setTimeout(() => setArmed((a) => (a === i ? null : a)), 4000);
+      return;
+    }
+    setArmed(null);
     set({ hours: p.hours.map(() => ({ ...src })) });
-    toast("Applied to every day");
+    toast(src.closed ? "Closed every day" : "Applied to every day");
   };
 
   return (
@@ -38,7 +47,7 @@ export function OpHours() {
                     <select value={h.close} onChange={(e) => patchDay(i, { close: e.target.value })}>{TIMES.filter((t) => t > h.open).map((t) => <option key={t} value={t}>{fmtTime(t)}</option>)}</select>
                   </span>
                 )}
-                <button type="button" className="odlink tiny" onClick={() => copyToAll(i)}>Apply to all</button>
+                <button type="button" className={"odlink tiny" + (armed === i ? " danger" : "")} onClick={() => copyToAll(i)}>{armed === i ? "Close every day?" : "Apply to all"}</button>
               </div>
             ))}
           </div>
