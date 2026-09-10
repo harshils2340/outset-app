@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { experienceById } from "../../lib/catalog";
-import { allBookings, demoProfile, loadProfile, loadSession, saveProfile, saveSession, setBookingStatus, type OpBooking, type OpStatus, type OperatorProfile } from "../../lib/operator";
+import { loadListing } from "../../lib/catalogLoad";
+import { allBookings, demoProfile, hydrateProfile, loadProfile, loadSession, saveProfile, saveSession, setBookingStatus, type OpBooking, type OpStatus, type OperatorProfile } from "../../lib/operator";
 import { useApp } from "../../state/AppProvider";
 import { decideBooking, fetchBookings, hasApi, signOutApi, type RemoteBooking } from "../../lib/api";
 import { Mark } from "../layout/Mark";
@@ -62,6 +63,20 @@ export function OperatorView({ compact = false }: { compact?: boolean }) {
   }, [touchCatalog]);
 
   const u = useMemo(() => (p ? experienceById(p.id) : null), [p?.id, state.catalogVersion]);
+  // The demo and a fresh claim start from the slim browse record. Pull the detail file and fill the gaps.
+  useEffect(() => {
+    if (!p || !u?.lite) return;
+    let alive = true;
+    loadListing(p.id).then((changed) => {
+      if (!alive || !changed) return;
+      const full = experienceById(p.id);
+      if (full) set((cur) => hydrateProfile(cur, full));
+      touchCatalog();
+    });
+    return () => {
+      alive = false;
+    };
+  }, [p?.id, u?.lite]);
   const [remote, setRemote] = useState<RemoteBooking[] | null>(null);
   // Real bookings live in the API. Poll while the dashboard is open so a new request shows within a minute.
   useEffect(() => {
@@ -160,7 +175,7 @@ export function OperatorView({ compact = false }: { compact?: boolean }) {
               <span className="odbizmark">{p.title.slice(0, 1)}</span>
               <span className="meta">
                 <b>{p.title}</b>
-                <small>{isDemo ? "Demo dashboard" : p.published ? (p.accepting ? "Live · accepting" : "Live · paused") : "Not on the site"}</small>
+                <small>{isDemo ? "Demo dashboard" : !p.published ? "Not on the site" : !p.services.some((x) => x.live) ? "Live · no menu yet" : p.accepting ? "Live · accepting" : "Live · paused"}</small>
               </span>
             </div>
             {isDemo ? (

@@ -401,7 +401,14 @@ function atOperatorsPath(): boolean {
 
 export function AppProvider({ children }: { children: ReactNode }) {
   // A direct load of /operators is the operator side from the first paint, not the guest home for a second.
-  const [state, dispatch] = useReducer(reducer, initial, (init) => (typeof window !== "undefined" && atOperatorsPath() ? { ...init, screen: "operator" as const, tab: "account" as const } : init));
+  const [state, dispatch] = useReducer(reducer, initial, (init) => {
+    if (typeof window === "undefined") return init;
+    // A claim link names the business in the hash. Seed it now so the operator screen mounts with it on the first
+    // render, instead of falling back to the demo dashboard and switching a second later.
+    const c = window.location.hash.match(/^#claim=([a-z0-9-]+)(?:&k=([A-Za-z0-9_-]+))?/i);
+    if (c) return { ...init, screen: "operator" as const, tab: "account" as const, operatorId: c[1], claimToken: c[2] || null };
+    return atOperatorsPath() ? { ...init, screen: "operator" as const, tab: "account" as const } : init;
+  });
   const stateRef = useRef(state);
   stateRef.current = state;
 

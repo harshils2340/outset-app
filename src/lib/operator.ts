@@ -2,6 +2,7 @@ import type { Booking, CategoryId, OperatorContact, Unclaimed, UnclaimedOption, 
 import { saveRemoteProfile, type RemoteBooking } from "./api";
 import { addressLine, contactFor, experienceById, fmtPhone, getCatalog, setOperatorOverride, siteUrl } from "./catalog";
 import { dateKey, startOfToday } from "./dates";
+import { freeCancel } from "./listingDerive";
 
 /**
  * Operator side data. One profile per claimed business, saved on-device.
@@ -261,7 +262,7 @@ function servicesFrom(u: Unclaimed): OpService[] {
       name: s.name,
       desc: s.desc || "",
       live: true,
-      durationMin: 60,
+      durationMin: minutesIn(s.variants.map((v) => v.label).join(" ")) || 60,
       capacity: 8,
       variants: s.variants.map((v) => ({ id: uid("v"), label: v.label, price: v.price, per: unitOf(v.per || u.options[v.optionIdx]?.per) })),
     }));
@@ -272,12 +273,21 @@ function servicesFrom(u: Unclaimed): OpService[] {
       name: o.name,
       desc: "",
       live: true,
-      durationMin: 60,
+      durationMin: minutesIn(o.detail) || 60,
       capacity: 8,
       variants: [{ id: uid("v"), label: o.detail || "Standard", price: o.price, per: unitOf(o.per) }],
     }));
   }
   return [];
+}
+
+/** "1.5 hours", "90 min", "2 hr" as minutes; 0 when the text names none. */
+export function minutesIn(text: string | null | undefined): number {
+  const m = (text || "").match(/(\d+(?:\.\d+)?)\s*(?:-|to)?\s*(\d+(?:\.\d+)?)?\s*(hours?|hrs?|h\b|minutes?|mins?|m\b)/i);
+  if (!m) return 0;
+  const n = Number(m[2] || m[1]);
+  const mins = /^(m|min|mins|minute|minutes)$/i.test(m[3]) ? n : n * 60;
+  return mins > 0 && mins <= 24 * 60 ? Math.round(mins) : 0;
 }
 
 function unitOf(per?: string | null): string {
@@ -309,7 +319,7 @@ export function defaultProfile(u: Unclaimed, owner: { name: string; email: strin
     address: (c && addressLine(c)) || u.area,
     cover: u.cover || "",
     photos: (u.photos || []).slice(),
-    policy: u.gap && !/not stated|not published|unknown/i.test(u.gap) ? [u.gap] : [],
+    policy: [...(u.policies || []), ...(u.gap && !/not stated|not published|unknown|not copied|we'?ll ask|we will ask|ask when you request/i.test(u.gap) ? [u.gap] : [])].filter((l, i, a) => a.indexOf(l) === i).slice(0, 8),
     services: servicesFrom(u),
     addons: (u.addons || []).map((a) => ({ id: uid("a"), name: a.name, detail: a.detail || "", price: a.price })),
     hours: parseHours(c?.hours || []),
@@ -484,7 +494,44 @@ export function toCatalog(p: OperatorProfile, base: Unclaimed): Partial<Unclaime
     services,
     addons,
     gap: p.policy.length ? p.policy.join(" ") : base.gap,
+    // The structured sections the listing page and Otto read. The operator's own lines replace the scraped ones.
+    policies: p.policy.length ? p.policy : base.policies,
+    cancellation: p.policy.find((l) => /cancel|refund/i.test(l)) || (p.policy.length ? undefined : base.cancellation),
+    fc: freeCancel(p.policy.find((l) => /cancel|refund/i.test(l)) || (p.policy.length ? "" : base.cancellation)) || undefined,
+    hoursText: p.hours.some((h) => !h.closed) ? p.hours.map((h, i) => DAY_SHORT[i] + ": " + (h.closed ? "Closed" : h.open + " to " + h.close)) : base.hoursText,
   };
+}
+
+/**
+ * A profile built from the slim browse record has no services, photos or blurb. Once the operator's detail file
+ * arrives, fill only what is still empty; anything the operator typed stays as it is.
+ */
+export function hydrateProfile(p: OperatorProfile, full: Unclaimed): OperatorProfile {
+  const next = { ...p };
+  let changed = false;
+  if (!p.services.length && (full.services?.length || full.options.length)) {
+    next.services = servicesFrom(full);
+    changed = true;
+  }
+  if (!p.photos.length && full.photos?.length) {
+    next.photos = full.photos.slice();
+    next.cover = p.cover || full.cover || full.photos[0];
+    changed = true;
+  }
+  if (!p.blurb && full.blurb) {
+    next.blurb = full.blurb;
+    changed = true;
+  }
+  if (!p.addons.length && full.addons?.length) {
+    next.addons = full.addons.map((a) => ({ id: uid("a"), name: a.name, detail: a.detail || "", price: a.price }));
+    changed = true;
+  }
+  if (!p.policy.length && full.policies?.length) {
+    next.policy = full.policies.slice(0, 8);
+    changed = true;
+  }
+  if (changed && !p.bookings.length) next.bookings = sampleBookings(next);
+  return changed ? next : p;
 }
 
 function pushToCatalog(p: OperatorProfile): void {

@@ -41,7 +41,7 @@ export function OpServices() {
   return (
     <div className="odpage">
       <div className="odbar">
-        <p className="odmuted">This is your menu as guests see it. We copied it from your website. {unpriced ? <b>{unpriced} {unpriced === 1 ? "option has" : "options have"} no price yet.</b> : "Every option has a price."}</p>
+        <p className="odmuted">This is your menu as guests see it. We copied it from your website. {!p.services.length ? <b>Nothing to book yet. Add your first service.</b> : unpriced ? <b>{unpriced} {unpriced === 1 ? "option has" : "options have"} no price yet.</b> : "Every option has a price."}</p>
         <div className="odbtns">
           <button type="button" className="odghost" onClick={preview}><Markup html={OD_ICONS.external} /> Preview listing</button>
           <button type="button" className="cta small" onClick={addService}><Markup html={OD_ICONS.plus} /> Add service</button>

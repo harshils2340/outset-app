@@ -128,7 +128,7 @@ export function BookingDrawer({ b, onClose }: { b: OpBooking; onClose: () => voi
         <p className="odmuted">Booking {b.code}{b.source === "sample" ? " · sample" : ""}</p>
 
         <div className="oddl">
-          <div><small>When</small><b>{d.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}</b><span>{fmtTime(b.slot)}{svc ? " · " + svc.durationMin + " min" : ""}</span></div>
+          <div><small>When</small><b>{d.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}</b><span>{fmtTime(b.slot)}{/\d+\s*(hours?|hrs?|min)/i.test(b.variant || "") ? " · " + b.variant : svc ? " · " + (svc.durationMin >= 60 ? (svc.durationMin / 60).toString().replace(/\.0$/, "") + (svc.durationMin === 60 ? " hour" : " hours") : svc.durationMin + " min") : ""}</span></div>
           <div><small>What</small><b>{b.service}</b><span>{b.variant || "Standard"}</span></div>
           <div><small>Who</small><b>{b.qty} {b.qty === 1 ? "guest" : "guests"}</b></div>
           <div><small>Total</small><b>{fmtTotal(b)}</b>{b.addons?.length ? <span>Add-ons: {b.addons.join(", ")}</span> : null}</div>
