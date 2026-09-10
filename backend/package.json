@@ -20,6 +20,7 @@
     "photos": "tsx src/index.ts photos",
     "videos": "tsx src/index.ts videos",
     "locations": "tsx src/index.ts locations",
+    "reviews": "tsx src/index.ts reviews",
     "widgets": "tsx src/index.ts widgets",
     "status": "tsx src/index.ts status"
   },

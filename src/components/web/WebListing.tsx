@@ -25,6 +25,7 @@ const KIND: Record<string, string> = {
   skydive: "a tandem skydive", heli: "a helicopter tour", balloon: "a balloon flight", kart: "karting", escape: "an escape room",
   axe: "axe throwing", paintball: "paintball", horse: "a trail ride", jetski: "a jet ski session", pontoon: "a pontoon day",
   fishing: "a fishing charter", parasail: "parasailing", cruise: "a sunset cruise", kayak: "a paddle",
+  bowling: "bowling", minigolf: "mini golf", arcade: "an arcade session", trampoline: "a trampoline park", lasertag: "laser tag", icerink: "ice skating", waterpark: "a water park day", themepark: "a theme park day", zoo: "a zoo visit", aquarium: "an aquarium visit", karaoke: "a karaoke room", climbing: "a climbing session", range: "a range session", archery: "archery", golf: "a round of golf", zipline: "a zipline", ski: "a day on the mountain", bike: "a bike rental", snowmobile: "a snowmobile ride", rafting: "a rafting trip", scuba: "a dive", surf: "a surf lesson", paragliding: "a tandem paraglide", gliding: "a glider flight", brewery: "a brewery visit", winery: "a wine tasting", distillery: "a distillery tour", cooking: "a cooking class", spa: "a spa visit", yoga: "a yoga class", dance: "a dance class", pottery: "a pottery class",
 };
 
 function Card({ u, onOpen }: { u: Unclaimed; onOpen: (id: string) => void }) {
@@ -279,6 +280,19 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
             ))}
           </div>
         ) : null}
+        {item.quotes?.length ? (
+          <div className="wquotes" aria-label="What guests say">
+            {item.quotes.slice(0, 2).map((r, i) => (
+              <blockquote key={i} className="wquote">
+                <p>“{r.text.length > 170 ? r.text.slice(0, 170).replace(/\s+\S*$/, "") + "…" : r.text}”</p>
+                <footer>
+                  {r.rating ? <span className="wquotestars">{"★".repeat(Math.round(r.rating))}</span> : null}
+                  <span>{r.author || "A guest"}</span>
+                </footer>
+              </blockquote>
+            ))}
+          </div>
+        ) : null}
 
         <div className={"wphotos" + (photos.length >= 3 ? " grid" : " single")}>
           <button type="button" className="wphoto main" onClick={() => setGallery(0)} aria-label="Open photos">
@@ -352,7 +366,7 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
               </section>
             ) : null}
 
-            <section className="wsec">
+            {guide ? <section className="wsec">
               <button type="button" className="wguidebtn" onClick={() => setGuideOpen((v) => !v)} aria-expanded={guideOpen}>
                 <span>
                   <b>What {KIND[item.art] || "this"} is actually like</b>
@@ -384,7 +398,7 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
                   </div>
                 </div>
               ) : null}
-            </section>
+            </section> : null}
 
             {item.services && item.services.length ? (
               <section className="wsec">
@@ -607,16 +621,32 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
               </section>
             ) : null}
 
-            {score ? (
+            {score || item.quotes?.length ? (
               <section className="wsec">
                 <h2>Reviews</h2>
-                <div className="wreviews">
-                  <b>{score.rating.toFixed(1)}</b>
-                  <span>
-                    <span className="wstars" aria-hidden="true">{[0, 1, 2, 3, 4].map((i) => <Markup key={i} html={ICONS.star} />)}</span>
-                    <small>{fmtReviews(score.reviews)} public reviews. Written reviews arrive once guests book through Outset.</small>
-                  </span>
-                </div>
+                {score ? (
+                  <div className="wreviews">
+                    <b>{score.rating.toFixed(1)}</b>
+                    <span>
+                      <span className="wstars" aria-hidden="true">{[0, 1, 2, 3, 4].map((i) => <Markup key={i} html={ICONS.star} />)}</span>
+                      <small>{fmtReviews(score.reviews)} public reviews{item.quotes?.length ? "" : ". Written reviews arrive once guests book through Outset."}</small>
+                    </span>
+                  </div>
+                ) : null}
+                {item.quotes?.length ? (
+                  <div className="wreviewgrid">
+                    {item.quotes.map((r, i) => (
+                      <article key={i} className="wreview">
+                        <header>
+                          <span className="wavatar sm">{(r.author || "G").slice(0, 1).toUpperCase()}</span>
+                          <span className="meta"><b>{r.author || "A guest"}</b>{r.rating ? <small className="wquotestars">{"★".repeat(Math.round(r.rating))}</small> : r.date ? <small>{r.date}</small> : null}</span>
+                        </header>
+                        <p>{r.text}</p>
+                      </article>
+                    ))}
+                    <p className="wreviewnote">Reviews the operator publishes on their own site. Verified reviews from Outset bookings will show here too.</p>
+                  </div>
+                ) : null}
               </section>
             ) : null}
           </div>

@@ -273,6 +273,20 @@ function toCatalogItem(r: CatalogRow): Record<string, unknown> {
     waiverUrl: pick("waiver_url").find((u) => /^https?:\/\/\S+$/.test(u) && !/\/w\/?$/.test(u)) || undefined,
     hoursText: uniq(pick("hours_text").map((h) => cleanLine(h.replace(/^hours(?: & admission)?\s*/i, "")))).slice(0, 3),
     faq: uniqBy(pick("faq").flatMap(parseFaqs), (f) => f.q.toLowerCase()).slice(0, 8),
+    quotes: pick("review")
+      .map((raw) => {
+        try {
+          const r = JSON.parse(raw) as { a: string | null; r: number | null; t: string; d: string | null };
+          // "Liz S. | Yelp" keeps the name; the platform becomes the date slot when there is no date.
+          const parts = (r.a || "").split(/\s*[|·]\s*/);
+          return { author: parts[0]?.trim() || undefined, rating: r.r || undefined, text: r.t, date: r.d || (parts[1] ? "via " + parts[1].trim() : undefined) };
+        } catch {
+          return null;
+        }
+      })
+      .filter((r) => !!r && r.text.length >= 30)
+      .map((r) => r as { author?: string; rating?: number; text: string; date?: string })
+      .slice(0, 6),
     dur: durationOf(offerings.map((o) => o.duration || o.detail || "")) || undefined,
     fc: freeCancel(cleanPara(pick("cancellation")[0] || "") || pick("policy").filter((l) => /cancel|refund/i.test(l)).join(" ")) || undefined,
   };

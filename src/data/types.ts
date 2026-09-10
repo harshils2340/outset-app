@@ -1,4 +1,4 @@
-export type CategoryId = "all" | "air" | "water" | "motorsport" | "indoor" | "outdoor";
+export type CategoryId = "all" | "air" | "water" | "motorsport" | "indoor" | "outdoor" | "play" | "food" | "wellness";
 
 export type ArtKind =
   | "skydive"
@@ -14,7 +14,39 @@ export type ArtKind =
   | "fishing"
   | "parasail"
   | "cruise"
-  | "kayak";
+  | "kayak"
+  | "bowling"
+  | "minigolf"
+  | "arcade"
+  | "trampoline"
+  | "lasertag"
+  | "icerink"
+  | "waterpark"
+  | "themepark"
+  | "zoo"
+  | "aquarium"
+  | "karaoke"
+  | "climbing"
+  | "range"
+  | "archery"
+  | "golf"
+  | "zipline"
+  | "ski"
+  | "bike"
+  | "snowmobile"
+  | "rafting"
+  | "scuba"
+  | "surf"
+  | "paragliding"
+  | "gliding"
+  | "brewery"
+  | "winery"
+  | "distillery"
+  | "cooking"
+  | "spa"
+  | "yoga"
+  | "dance"
+  | "pottery";
 
 export type PriceUnit = "person" | "hr" | "trip";
 
@@ -81,6 +113,8 @@ export type UnclaimedService = {
   variants: { label: string; price: number | null; per?: string; optionIdx: number }[];
 };
 
+export type GuestReview = { author?: string; rating?: number; text: string; date?: string };
+
 export type OperatorLocation = { city: string; region?: string; lat: number; lon: number; street?: string };
 
 export type Unclaimed = {
@@ -136,6 +170,8 @@ export type Unclaimed = {
   waiverUrl?: string;
   hoursText?: string[];
   faq?: { q: string; a: string }[];
+  /** Reviews the operator publishes on their own site or marks up for search engines. Author and stars when stated. */
+  quotes?: GuestReview[];
   /** True for browse-catalog records that have not fetched their detail file yet. */
   lite?: boolean;
   /** Id of the detail file to fetch when it differs from this record's id (hand-verified seeds). */

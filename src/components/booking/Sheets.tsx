@@ -153,6 +153,7 @@ function kindLabel(art: keyof typeof GUIDES): string {
     escape: "an escape room", axe: "axe throwing", paintball: "paintball", horse: "a trail ride",
     jetski: "a jet ski session", pontoon: "a pontoon day", fishing: "a fishing charter", parasail: "parasailing",
     cruise: "a sunset cruise", kayak: "a paddle",
+    bowling: "bowling", minigolf: "mini golf", arcade: "an arcade session", trampoline: "a trampoline park", lasertag: "laser tag", icerink: "ice skating", waterpark: "a water park day", themepark: "a theme park day", zoo: "a zoo visit", aquarium: "an aquarium visit", karaoke: "a karaoke room", climbing: "a climbing session", range: "a range session", archery: "archery", golf: "a round of golf", zipline: "a zipline", ski: "a day on the mountain", bike: "a bike rental", snowmobile: "a snowmobile ride", rafting: "a rafting trip", scuba: "a dive", surf: "a surf lesson", paragliding: "a tandem paraglide", gliding: "a glider flight", brewery: "a brewery visit", winery: "a wine tasting", distillery: "a distillery tour", cooking: "a cooking class", spa: "a spa visit", yoga: "a yoga class", dance: "a dance class", pottery: "a pottery class",
   };
   return names[art] || "this";
 }
@@ -354,6 +355,16 @@ function RequestBody({
             <span className="count">({fmtReviews(score.reviews)} reviews)</span>
           </p>
         ) : null}
+        {item.quotes?.length ? (
+          <div className="reqquotes">
+            {item.quotes.slice(0, 2).map((r, i) => (
+              <blockquote key={i}>
+                <p>“{r.text.length > 140 ? r.text.slice(0, 140).replace(/\s+\S*$/, "") + "…" : r.text}”</p>
+                <footer>{r.rating ? "★".repeat(Math.round(r.rating)) + " " : ""}{r.author || "A guest"}</footer>
+              </blockquote>
+            ))}
+          </div>
+        ) : null}
         {item.blurb ? (
           <p className="reqblurb">
             {plainWords(item.blurb)}
@@ -361,7 +372,7 @@ function RequestBody({
           </p>
         ) : null}
 
-        <button type="button" className="guidebtn" onClick={() => setGuideOpen((v) => !v)} aria-expanded={guideOpen}>
+        {guide ? <><button type="button" className="guidebtn" onClick={() => setGuideOpen((v) => !v)} aria-expanded={guideOpen}>
           <span>
             <b>What {kindLabel(item.art)} is actually like</b>
             <small>{guide.time}</small>
@@ -391,7 +402,7 @@ function RequestBody({
             <p className="guidetext">{guide.nerves}</p>
             <p className="guidefoot">This is how {kindLabel(item.art)} usually works. {item.title}'s own prices, ages, limits and rules are listed below.</p>
           </div>
-        ) : null}
+        ) : null}</> : null}
 
         <p className="svchead">Where</p>
         <div className="contact">

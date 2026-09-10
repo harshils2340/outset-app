@@ -17,6 +17,7 @@ import { pruneNoise } from "./enrich/prune.ts";
 import { collectPhotos, photosPending } from "./enrich/images.ts";
 import { widgetsPending, widgetForOperator } from "./enrich/widgets.ts";
 import { loadOsmLocations, locationsPending } from "./enrich/locations.ts";
+import { reviewsForOperator, reviewsPending } from "./enrich/reviews.ts";
 import { CITIES } from "./discover/cities.ts";
 
 import { db } from "./db/client.ts";
@@ -61,7 +62,9 @@ if (cmd === "discover") {
   const force = process.argv.includes("--force");
   const cArg = process.argv.find((a) => a.startsWith("--concurrency="));
   const concurrency = cArg ? Number(cArg.split("=")[1]) : 3;
-  const stats = await discoverAll({ only, force, concurrency });
+  const wArg = process.argv.find((a) => a.startsWith("--wave="));
+  const wave = wArg ? Number(wArg.split("=")[1]) : 1;
+  const stats = await discoverAll({ only, force, concurrency, wave });
   refreshAllScores();
   const total = stats.reduce((n, s) => n + s.inserted + s.updated, 0);
   console.log("Discovered " + total + " operators across " + stats.length + " areas. " + JSON.stringify(metroCoverage()));
@@ -220,6 +223,23 @@ if (cmd === "locations") {
   const concurrency = Number(process.argv[4] || 8);
   const r = await locationsPending(limit, concurrency);
   console.log(`Sites: ${r.sites} checked, ${r.withPage} with a locations page, ${r.added} locations geocoded. Run "npm run sync" to push to the app.`);
+  process.exit(0);
+}
+
+// reviews [limit] [concurrency] [domain]: schema.org Review markup and testimonial pages from each operator's own site.
+if (cmd === "reviews") {
+  const limit = Number(process.argv[3] || 4000);
+  const concurrency = Number(process.argv[4] || 8);
+  const only = process.argv[5];
+  if (only) {
+    const op = db.prepare("SELECT id, domain, website FROM operators WHERE domain = ?").get(only) as { id: string; domain: string; website: string | null } | undefined;
+    if (!op) { console.error("unknown domain"); process.exit(1); }
+    console.log(JSON.stringify(await reviewsForOperator(op)));
+    console.log(JSON.stringify(db.prepare("SELECT fact_value FROM facts WHERE operator_id = ? AND fact_key = 'review'").all(op.id).map((r) => JSON.parse((r as { fact_value: string }).fact_value)), null, 1));
+    process.exit(0);
+  }
+  const r = await reviewsPending(limit, concurrency);
+  console.log(`Reviews: ${r.sites} sites, ${r.withReviews} with reviews, ${r.reviews} reviews kept. Run "npm run sync" to push to the app.`);
   process.exit(0);
 }
 
