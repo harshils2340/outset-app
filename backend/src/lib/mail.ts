@@ -15,7 +15,17 @@ export async function sendMail(msg: { to: string; subject: string; text: string;
     const res = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: { authorization: "Bearer " + process.env.RESEND_API_KEY, "content-type": "application/json" },
-      body: JSON.stringify({ from: FROM, to: [to], subject: msg.subject, text: msg.text, reply_to: msg.replyTo }),
+      body: JSON.stringify({
+        from: FROM,
+        to: [to],
+        subject: msg.subject,
+        text: msg.text,
+        reply_to: msg.replyTo,
+        headers: {
+          "List-Unsubscribe": "<mailto:hello@onoutset.com?subject=remove>",
+          "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+        },
+      }),
       signal: AbortSignal.timeout(15000),
     });
     if (!res.ok) return { sent: false, error: "resend " + res.status + " " + (await res.text()).slice(0, 200) };

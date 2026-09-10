@@ -33,41 +33,43 @@ export function scale(): { listings: number; metros: number; local: Map<string, 
 }
 
 /**
- * The claim email. Short, specific, one listing link and one owner-only claim link.
- * The claim token lives only in this mail. Anyone with it can open the dashboard, so the copy says not to forward it.
+ * The claim email. Plain English. One listing link and one owner-only claim link.
+ * Anyone with the claim token can open the dashboard, so the copy says not to forward it.
  */
-function round(n: number): string {
-  if (n >= 10000) return Math.floor(n / 1000) + ",000+";
-  if (n >= 1000) return Math.floor(n / 100) * 100 + "+";
-  return String(n);
-}
-
 export function draftCopy(op: Op, sc: ReturnType<typeof scale>, offerings: string[], hasPhotos: boolean, hasRules: boolean): { subject: string; body: string } {
+  void sc;
   void offerings;
   void hasPhotos;
   void hasRules;
   const SITE = "https://onoutset.com/";
   const id = catalogId(op.domain);
-  const city = op.city || "your area";
   const vendor = op.calendar_vendor ? VENDOR_NAME[op.calendar_vendor] || null : null;
-  const subject = "Your " + op.name + " booking page is live";
-  const body = [
+  const subject = "A page for " + op.name;
+  const lines = [
     "Hi,",
     "",
-    "We built a booking page for " + op.name + " from your website. Guests in " + city + " can book you on it now:",
+    "I am Harshil. I run Outset. We help people book local things without sitting on hold or leaving a voicemail.",
+    "",
+    "I made a page for " + op.name + " from your website. I did not change your prices or make anything up. Here it is:",
     SITE + "#o=" + id,
     "",
-    "Claim it in one click, nothing to set up:",
+    "This is free for you. No monthly fee, no setup bill. If that sounds too good to be true: we charge the guest a small booking fee when they pay. That is how we make money. Nothing comes out of your side.",
+    "",
+  ];
+  if (vendor) {
+    lines.push("If you already use " + vendor + ", keep it. This is just another place someone can find you.", "");
+  }
+  lines.push(
+    "If this is your shop, this link opens the page so you can look it over. It is only for the owner. Please do not forward it:",
     SITE + "#claim=" + id + "&k=" + claimToken(id),
     "",
-    "Free to list. You pay a small flat fee only when a booking comes in." + (vendor ? " Keep " + vendor + ", bookings can land there too." : ""),
+    "If this is not your business, you can take the page down here:",
+    SITE + "#remove=" + id,
     "",
     "Harshil",
-    "Outset, " + round(sc.listings) + " operators in " + sc.metros + " cities",
-    "",
-    "Not your business? Remove it: " + SITE + "#remove=" + id,
-  ].join("\n");
-  return { subject, body };
+    "Outset",
+  );
+  return { subject, body: lines.join("\n") };
 }
 
 /**

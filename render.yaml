@@ -3,13 +3,15 @@ services:
     name: outset-api
     runtime: node
     rootDir: backend
-    buildCommand: npm ci
+    buildCommand: npm ci --include=dev
     startCommand: npm start
     plan: free
     healthCheckPath: /health
     envVars:
       - key: NODE_VERSION
         value: 22
+      - key: NPM_CONFIG_PRODUCTION
+        value: "false"
       - key: CLAIM_SECRET
         sync: false
       - key: GITHUB_TOKEN
@@ -25,8 +27,8 @@ services:
       - key: MAIL_FROM
         value: Outset <onboarding@resend.dev>
       - key: MAIL_REPLY_TO
-        value: harshils2340@gmail.com
+        value: hello@onoutset.com
       - key: ALLOWED_ORIGINS
-        value: https://onoutset.com,https://www.onoutset.com,https://harshils2340.github.io
+        value: https://onoutset.com,https://www.onoutset.com
       - key: SITE_URL
         value: https://onoutset.com/

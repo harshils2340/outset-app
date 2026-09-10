@@ -1,6 +1,11 @@
 #!/bin/zsh
 # Crawl and submit the extraction queue in chunks of 500 sites, each its own OpenAI batch, until the queue or the budget runs out.
 cd /Users/harsh/Documents/outset-app/backend
+cleanup() {
+  pkill -f 'src/index.ts enrich' 2>/dev/null || true
+  pkill -f 'outset-render-' 2>/dev/null || true
+}
+trap cleanup EXIT INT TERM
 for i in {1..24}; do
   out=$(npx tsx src/index.ts enrich 500 12 --batch 2>&1 | grep -v Warning | tail -1)
   echo "$(date +%H:%M) chunk $i: $out"

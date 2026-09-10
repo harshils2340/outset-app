@@ -22,7 +22,8 @@
     "locations": "tsx src/index.ts locations",
     "reviews": "tsx src/index.ts reviews",
     "widgets": "tsx src/index.ts widgets",
-    "status": "tsx src/index.ts status"
+    "status": "tsx src/index.ts status",
+    "chrome:reap": "tsx src/index.ts chrome-reap"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.124.0",

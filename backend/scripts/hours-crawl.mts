@@ -4,6 +4,8 @@ import { load } from "cheerio";
 import { db, nowIso } from "../src/db/client.ts";
 import { fetchHtml, withDeadline } from "../src/scrape/fetch.ts";
 import { harvestHours } from "../src/enrich/hoursMarkup.ts";
+import { installChromeGuard } from "../src/scrape/render.ts";
+installChromeGuard();
 
 /**
  * Hours-only pass over operators that have a website but no hours. Home page first, then up to four pages
