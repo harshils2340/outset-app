@@ -173,7 +173,14 @@ function Card({ u, onOpen, near }: { u: Unclaimed; onOpen: (id: string) => void;
 
 function Rail({ title, items, onOpen, near }: { title: string; items: Unclaimed[]; onOpen: (id: string) => void; near?: Place | null }) {
   const ref = useRef<HTMLDivElement>(null);
-  const scroll = (dir: number) => ref.current?.scrollBy({ left: dir * (ref.current.clientWidth - 120), behavior: "smooth" });
+  // Eight cards render up front; the rest mount once the rail is scrolled or paged, so a page of 14 rails
+  // does not fetch 280 photos before anyone touches it.
+  const [shown, setShown] = useState(8);
+  const reveal = () => setShown(20);
+  const scroll = (dir: number) => {
+    reveal();
+    ref.current?.scrollBy({ left: dir * (ref.current.clientWidth - 120), behavior: "smooth" });
+  };
   if (!items.length) return null;
   return (
     <section className="wrail">
@@ -188,8 +195,8 @@ function Rail({ title, items, onOpen, near }: { title: string; items: Unclaimed[
           </button>
         </span>
       </div>
-      <div className="wrailrow" ref={ref}>
-        {items.slice(0, 20).map((u) => <Card key={u.id} u={u} onOpen={onOpen} near={near} />)}
+      <div className="wrailrow" ref={ref} onScroll={shown < 20 ? reveal : undefined}>
+        {items.slice(0, shown).map((u) => <Card key={u.id} u={u} onOpen={onOpen} near={near} />)}
       </div>
     </section>
   );

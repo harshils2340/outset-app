@@ -6,7 +6,7 @@
 
 export type PhotoSize = "thumb" | "card" | "wide" | "hero" | "full";
 
-const WIDTH: Record<PhotoSize, number> = { thumb: 320, card: 640, wide: 960, hero: 1600, full: 2000 };
+const WIDTH: Record<PhotoSize, number> = { thumb: 320, card: 480, wide: 960, hero: 1600, full: 2000 };
 
 /** Already small or already a resizing CDN: leave it alone. */
 const SKIP = /^data:|wsrv\.nl|images\.weserv\.nl|\.svg(\?|$)|\.gif(\?|$)/i;
@@ -18,6 +18,6 @@ export function thumb(url: string | undefined, size: PhotoSize = "card"): string
   const square = size === "thumb" || size === "card";
   const bare = url.replace(/^https?:\/\//i, "");
   return (
-    "https://wsrv.nl/?url=" + encodeURIComponent(bare) + "&w=" + w + (square ? "&h=" + w + "&fit=cover" : "") + "&output=webp&q=" + (size === "thumb" ? 70 : 78) + "&il&n=-1"
+    "https://wsrv.nl/?url=" + encodeURIComponent(bare) + "&w=" + w + (square ? "&h=" + w + "&fit=cover" : "") + "&output=webp&q=" + (size === "thumb" || size === "card" ? 68 : 78) + "&il&n=-1"
   );
 }
