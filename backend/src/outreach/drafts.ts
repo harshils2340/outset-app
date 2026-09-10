@@ -33,56 +33,34 @@ export function scale(): { listings: number; metros: number; local: Map<string, 
   return { listings, metros, local };
 }
 
-function round(n: number): string {
-  if (n >= 10000) return Math.floor(n / 1000) + ",000+";
-  if (n >= 1000) return Math.floor(n / 100) * 100 + "+";
-  return String(n);
-}
-
 /**
- * The claim email. The pitch, in the operator's order of concern: it is already done, it costs nothing until it earns,
- * it works with the calendar they already use, and thousands of others are on it. Every claim in here is true today
- * except the calendar hookup, which is offered as something we do for them on request.
+ * The claim email. Short, specific, one listing link and one owner-only claim link.
+ * The claim token lives only in this mail. Anyone with it can open the dashboard, so the copy says not to forward it.
  */
 export function draftCopy(op: Op, sc: ReturnType<typeof scale>, offerings: string[], hasPhotos: boolean, hasRules: boolean): { subject: string; body: string } {
+  void offerings;
+  void hasPhotos;
+  void hasRules;
   const SITE = "https://harshils2340.github.io/outset-app/";
   const id = catalogId(op.domain);
   const city = op.city || "your area";
   const vendor = op.calendar_vendor ? VENDOR_NAME[op.calendar_vendor] || null : null;
-  const localN = op.metro_id ? sc.local.get(op.metro_id) || 0 : 0;
-  const menu = offerings.length ? offerings.slice(0, 4).map((o) => "  " + o).join("\n") : "  (we could not read a menu from your site, so guests see Request to book until you add one)";
-  const subject = op.name + " is already listed on Outset. Claim it in one click, nothing to set up.";
+  const subject = "Your " + op.name + " booking page is live";
   const body = [
-    "Hi " + op.name + " team,",
+    "Hi,",
     "",
-    "Your listing on Outset is already built and live. We copied it from your own website: " +
-      [offerings.length ? "your menu and prices" : null, hasPhotos ? "your photos" : null, "your hours", hasRules ? "your age and cancellation rules" : null].filter(Boolean).join(", ") +
-      ". Guests in " + city + " can find you, compare, and book a time without calling around.",
+    "We built a booking page for " + op.name + " from your website. Guests in " + city + " can book you on it now:",
+    SITE + "#o=" + id,
     "",
-    "What they see today:",
-    menu,
+    "Claim it in one click, nothing to set up:",
+    SITE + "#claim=" + id + "&k=" + claimToken(id),
     "",
-    "Your listing:      " + SITE + "#o=" + id,
-    "Your dashboard:    " + SITE + "#claim=" + id + "&k=" + claimToken(id),
-    "",
-    "The second link is yours alone. No password, no form. It opens your dashboard with everything filled in; change a price or a photo if you like, or leave it.",
-    "",
-    "Why operators keep it on:",
-    "  Nothing to do. Bookings arrive by email and in a feed you accept or decline from your phone.",
-    vendor
-      ? "  Keep " + vendor + ". You do not switch anything. Tell us and we will wire Outset bookings into your " + vendor + " calendar so they land where your bookings already land."
-      : "  Keep the calendar you use now. Tell us which one and we will wire Outset bookings into it, so they land where your bookings already land.",
-    "  Extra bookings, not extra work. Free to list. A flat fee only when a booking happens, and nothing is added to your guest's price.",
-    "  Waivers handled. Your waiver link sits on the listing and guests sign before they arrive. If you do not have one, we set one up.",
-    "  An assistant on your page that answers guest questions only from what your site says, day and night, so fewer calls for you.",
-    "",
-    "Who else is on it: " + round(sc.listings) + " operators across " + sc.metros + " cities in the US and Canada" + (localN >= 20 ? ", " + round(localN) + " of them around " + city : "") + ". Guests come to one place to pick an activity instead of ten websites, which is where the extra bookings come from.",
-    "",
-    "Not your business, or want it gone? One click: " + SITE + "#remove=" + id,
+    "Free to list. You pay a small flat fee only when a booking comes in." + (vendor ? " Keep " + vendor + ", bookings can land there too." : ""),
     "",
     "Harshil",
-    "Founder, Outset",
-    "Reply to this email and a person answers.",
+    "Outset, " + round(sc.listings) + " operators in " + sc.metros + " cities",
+    "",
+    "Not your business? Remove it: " + SITE + "#remove=" + id,
   ].join("\n");
   return { subject, body };
 }
