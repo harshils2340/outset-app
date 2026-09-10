@@ -188,7 +188,8 @@ export function companyReply(ctx: CompanyContext, question: string): string {
     return item.title + " offers: " + menu(item) + "." + (d ? " " + d : "") + " Pick one on the listing to see the total.";
   })());
 
-  if (AVAIL.test(q)) parts.push((() => {
+  // "Are you open on Sunday" is an hours question, not a slot request.
+  if (AVAIL.test(q) && !OPEN_NOW.test(q)) parts.push((() => {
     return "I cannot see or hold slots. Pick a date and time on the listing and you get an instant confirmation.";
   })());
 
