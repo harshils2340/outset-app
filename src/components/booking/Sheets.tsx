@@ -6,9 +6,11 @@ import { ALL_METRO_ID, METROS, metroById, metroLabel } from "../../data/metros";
 import { SLOT_TIMES } from "../../data/slots";
 import type { Unclaimed, UnclaimedOption } from "../../data/types";
 import {
+  addressLine,
   contactFor,
   fmtHours,
   fmtPhone,
+  fromPrice,
   getCatalog,
   listingFacts,
   mapsDirHref,
@@ -25,6 +27,7 @@ import { formatDistance, milesBetween, type GeoPoint } from "../../lib/geo";
 import { priceFor, priceUnclaimed } from "../../lib/pricing";
 import { useApp } from "../../state/AppProvider";
 import { thumb } from "../../lib/images";
+import { cleanDesc, durationLabel, freeCancel, minAge } from "../../lib/listingDerive";
 import { Photo } from "../art/Photo";
 import { Markup } from "../Markup";
 
@@ -203,6 +206,20 @@ function FactList({ lines }: { lines: FactLine[] }) {
   );
 }
 
+/** Bullet list in the phone sheet's visual language. Text is the operator's own, run through plainWords. */
+function Bullets({ items, icon = ICONS.dot, className = "" }: { items: string[]; icon?: string; className?: string }) {
+  return (
+    <ul className={"policy " + className}>
+      {items.map((t) => (
+        <li key={t}>
+          <Markup html={icon} />
+          <span>{plainWords(t)}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 function RequestBody({
   item,
   dates,
@@ -228,6 +245,7 @@ function RequestBody({
   const [openSvc, setOpenSvc] = useState<string | null>(null);
   const extras = addonIdx.map((i) => (item.addons || [])[i]).filter(Boolean);
   const [guideOpen, setGuideOpen] = useState(false);
+  const [openFaq, setOpenFaq] = useState<number | null>(null);
   const guide = GUIDES[item.art];
   const picked = optionIdx != null ? item.options[optionIdx] : null;
   const needService = item.options.length > 0;
@@ -247,6 +265,37 @@ function RequestBody({
   const pin = item.lat != null && item.lon != null ? { lat: item.lat, lng: item.lon } : null;
   const miles = here && pin ? milesBetween(here, pin) : null;
   const dist = miles != null && miles <= 150 && metro ? formatDistance(miles, metro.country) + " away" : null;
+  const address = contact ? addressLine(contact) : null;
+
+  /* ---------- derived from the operator's own site, never invented. Same rules as the desktop page. ---------- */
+  const requirements = item.requirements?.length ? item.requirements : facts.who.filter((l) => l.posted).map((l) => l.text);
+  const includes = item.includes.filter((l) => !/\bnot included|excluded|not provided|bring your own\b/i.test(l));
+  const notIncluded = item.includes.filter((l) => /\bnot included|excluded|not provided\b/i.test(l)).map((l) => l.replace(/\s*\(?not included\)?/i, "").trim());
+  const reqKeys = new Set(requirements.map((r) => r.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim()));
+  const highlights = (item.highlights?.length ? item.highlights : facts.about.slice(0, 6)).filter((h) => !reqKeys.has(h.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim()));
+  const waiverLines = (item.policies?.filter((l) => /waiver|liabilit|sign/i.test(l)) || facts.waiver.filter((l) => l.posted).map((l) => l.text)).filter((l) => l.length <= 160);
+  const otherPolicies = (item.policies || []).filter((l) => !/cancel|refund|waiver|liabilit/i.test(l));
+  const cancel = item.fc || freeCancel(item.cancellation);
+  const age = minAge(requirements);
+  const duration = item.dur || durationLabel(item);
+  const priced = fromPrice(item) != null;
+  const badges: { icon: string; text: string }[] = [];
+  if (score && score.rating >= 4.8 && score.reviews >= 100) badges.push({ icon: ICONS.star, text: "Top rated" });
+  else if (score && score.reviews >= 1000) badges.push({ icon: ICONS.star, text: "Popular" });
+  if (cancel) badges.push({ icon: ICONS.check, text: cancel });
+  if (priced) badges.push({ icon: ICONS.bolt, text: "Instant confirmation" });
+  const quick: { icon: string; label: string; value: string }[] = [];
+  if (duration) quick.push({ icon: ICONS.clock, label: "Duration", value: duration });
+  if (age) quick.push({ icon: ICONS.user, label: "Minimum age", value: age + "+" });
+  if (item.groupInfo?.length) {
+    const cap = item.groupInfo.map((g) => g.match(/(\d{1,3})\s*(?:guests?|people|passengers|riders|max)/i)).find(Boolean);
+    if (cap) quick.push({ icon: ICONS.user, label: "Group size", value: "Up to " + cap[1] });
+  }
+  if (item.season) quick.push({ icon: ICONS.compass, label: "Season", value: item.season });
+  if (item.waiverUrl) quick.push({ icon: ICONS.ticket, label: "Waiver", value: "Sign online first" });
+  const hours = item.hoursText?.length ? item.hoursText : contact?.hours.map(fmtHours) || [];
+  const videos = (item.ytVideos || []).slice(0, 2);
+  const embed = !videos.length && !item.video && item.videoEmbed ? item.videoEmbed : null;
 
   if (pay && ready && time) {
     return (
@@ -355,6 +404,23 @@ function RequestBody({
             <span className="count">({fmtReviews(score.reviews)} reviews)</span>
           </p>
         ) : null}
+        {badges.length ? (
+          <div className="reqbadges">
+            {badges.map((b) => (
+              <span key={b.text} className="reqbadge"><Markup html={b.icon} /> {b.text}</span>
+            ))}
+          </div>
+        ) : null}
+        {quick.length ? (
+          <div className="reqquick">
+            {quick.map((q) => (
+              <div key={q.label}>
+                <Markup html={q.icon} />
+                <span><small>{q.label}</small><b>{q.value}</b></span>
+              </div>
+            ))}
+          </div>
+        ) : null}
         {item.quotes?.length ? (
           <div className="reqquotes">
             {item.quotes.slice(0, 2).map((r, i) => (
@@ -367,9 +433,15 @@ function RequestBody({
         ) : null}
         {item.blurb ? (
           <p className="reqblurb">
-            {plainWords(item.blurb)}
+            {cleanDesc(item.blurb).replace(/\s+(Book|Learn more|Read more|Reserve)\.?$/i, "")}
             <span className="reqcredit"> · From their website</span>
           </p>
+        ) : null}
+        {highlights.length ? (
+          <>
+            <p className="svchead">Highlights</p>
+            <Bullets items={highlights} icon={ICONS.check} />
+          </>
         ) : null}
 
         {guide ? <><button type="button" className="guidebtn" onClick={() => setGuideOpen((v) => !v)} aria-expanded={guideOpen}>
@@ -404,7 +476,7 @@ function RequestBody({
           </div>
         ) : null}</> : null}
 
-        <p className="svchead">Where</p>
+        <p className="svchead">Meeting point and check-in</p>
         <div className="contact">
           <a
             className="crow maps"
@@ -415,7 +487,8 @@ function RequestBody({
           >
             <Markup html={ICONS.nav} />
             <span>
-              <b>{place}</b>
+              <b>{item.meetingPoint ? plainWords(item.meetingPoint) : place}</b>
+              {item.meetingPoint && address && item.meetingPoint !== address ? <small>{address}</small> : null}
               <small className="go">{dist ? dist + " · Get directions" : "Get directions"}</small>
             </span>
           </a>
@@ -439,18 +512,24 @@ function RequestBody({
               <p className="reqhint">The assistant answers by chat for now. Voice is coming.</p>
             </div>
           ) : null}
-          {contact && contact.hours.length ? (
+          {hours.length ? (
             <div className="crow">
               <Markup html={ICONS.clock} />
               <span>
-                {contact.hours.map((h) => (
-                  <b key={h}>{fmtHours(h)}</b>
+                {hours.map((h) => (
+                  <b key={h}>{h}</b>
                 ))}
                 <small>Hours</small>
               </span>
             </div>
           ) : null}
         </div>
+        {item.checkin ? (
+          <div className="reqbox">
+            <b>When you arrive</b>
+            {plainWords(item.checkin)}
+          </div>
+        ) : null}
 
         <p className="svchead">Questions?</p>
         <button type="button" className="cta askcta" onClick={onAsk}>
@@ -461,40 +540,39 @@ function RequestBody({
           </span>
         </button>
 
-        {facts.about.length ? (
-          <>
-            <p className="svchead">The experience</p>
-            <ul className="policy">
-              {facts.about.map((s) => (
-                <li key={s}>
-                  <Markup html={ICONS.dot} />
-                  <span>{s}</span>
-                </li>
-              ))}
-            </ul>
-          </>
-        ) : null}
-
         <p className="svchead">Who can go</p>
-        <FactList lines={facts.who} />
+        {requirements.length ? <Bullets items={requirements} /> : <FactList lines={facts.who} />}
 
-        <p className="svchead">Waiver & check-in</p>
-        <FactList lines={facts.waiver} />
-
-        {item.includes.length ? (
+        {item.bring?.length ? (
           <>
-            <p className="svchead">Includes</p>
-            <ul className="policy">
-              {item.includes.map((s) => (
-                <li key={s}>
-                  <Markup html={ICONS.dot} />
-                  <span>{s}</span>
-                </li>
-              ))}
-            </ul>
+            <p className="svchead">What to bring</p>
+            <Bullets items={item.bring} />
           </>
         ) : null}
-        {facts.note ? (
+
+        {item.groupInfo?.length ? (
+          <>
+            <p className="svchead">Groups</p>
+            <Bullets items={item.groupInfo} />
+          </>
+        ) : null}
+
+        <p className="svchead">Waiver and check-in</p>
+        {waiverLines.length ? <Bullets items={waiverLines} /> : <FactList lines={facts.waiver.filter((l) => !l.posted || l.text.length <= 160)} />}
+
+        {includes.length ? (
+          <>
+            <p className="svchead">What's included</p>
+            <Bullets items={includes} icon={ICONS.check} />
+          </>
+        ) : null}
+        {notIncluded.length ? (
+          <>
+            <p className="svchead">Not included</p>
+            <Bullets items={notIncluded} icon={ICONS.close} className="no" />
+          </>
+        ) : null}
+        {facts.note && !item.cancellation && !item.policies?.length ? (
           <div className="reqbox">
             <b>Good to know</b>
             {facts.note}
@@ -511,13 +589,13 @@ function RequestBody({
                     {svc.photo ? <img className="svcpic" src={thumb(svc.photo, "thumb")} alt={plainWords(svc.name)} loading="lazy" referrerPolicy="no-referrer" onError={(e) => ((e.currentTarget as HTMLImageElement).style.display = "none")} /> : null}
                     <div className="svchead2">
                       <b>{plainWords(svc.name)}</b>
-                      {svc.desc ? (
+                      {svc.desc && cleanDesc(svc.desc).length > 140 ? (
                         <button type="button" className="svcabout" onClick={() => setOpenSvc(openSvc === svc.name ? null : svc.name)}>
-                          {openSvc === svc.name ? "Less" : "What is this?"}
+                          {openSvc === svc.name ? "Less" : "More"}
                         </button>
                       ) : null}
                     </div>
-                    {svc.desc && openSvc === svc.name ? <p className="svcdesc">{plainWords(svc.desc)}</p> : null}
+                    {svc.desc ? <p className="svcdesc">{openSvc === svc.name || cleanDesc(svc.desc).length <= 140 ? cleanDesc(svc.desc) : cleanDesc(svc.desc).slice(0, 140).replace(/\s+\S*$/, "") + "…"}</p> : null}
                     {svc.variants.map((v) => (
                       <button
                         key={svc.name + v.optionIdx}
@@ -593,6 +671,83 @@ function RequestBody({
                   </span>
                 </button>
               ))}
+            </div>
+          </>
+        ) : null}
+
+        {item.cancellation || item.waiverUrl || otherPolicies.length ? (
+          <>
+            <p className="svchead">Cancellation policy</p>
+            {item.cancellation ? (
+              <p className="reqpolicy">{plainWords(item.cancellation)}</p>
+            ) : (
+              <p className="reqpolicy gap">{item.title} has not published cancellation terms. Otto will have them confirm before you pay.</p>
+            )}
+            {otherPolicies.length ? <Bullets items={otherPolicies} /> : null}
+            {item.waiverUrl ? (
+              <a className="reqwaiver" href={item.waiverUrl} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}>
+                <Markup html={ICONS.ticket} />
+                <span>
+                  <b>Sign the waiver online before you arrive</b>
+                  <small>Saves time at check-in. Opens the operator's waiver form.</small>
+                </span>
+              </a>
+            ) : null}
+          </>
+        ) : null}
+
+        {item.faq?.length ? (
+          <>
+            <p className="svchead">Frequently asked questions</p>
+            <div className="reqfaq">
+              {item.faq.map((f, i) => (
+                <div key={i} className={"reqfaqitem" + (openFaq === i ? " open" : "")}>
+                  <button type="button" onClick={() => setOpenFaq(openFaq === i ? null : i)} aria-expanded={openFaq === i}>
+                    <span>{plainWords(f.q)}</span>
+                    <Markup html={openFaq === i ? ICONS.chevUp : ICONS.chevDown} />
+                  </button>
+                  {openFaq === i ? <p>{plainWords(f.a)}</p> : null}
+                </div>
+              ))}
+            </div>
+          </>
+        ) : null}
+
+        {videos.length || embed ? (
+          <>
+            <p className="svchead">See it in action</p>
+            <p className="reqhint" style={{ marginTop: 2 }}>Videos from {item.title}'s own channels.</p>
+            <div className="reqvideos">
+              {videos.map((v) => (
+                <div className="reqvideo" key={v.id}>
+                  <iframe
+                    src={"https://www.youtube-nocookie.com/embed/" + v.id + "?rel=0&modestbranding=1"}
+                    title={v.title}
+                    loading="lazy"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                  />
+                  <small>{v.title}</small>
+                </div>
+              ))}
+              {embed ? (
+                <div className="reqvideo">
+                  <iframe src={embed} title={item.title + " video"} loading="lazy" allow="autoplay; encrypted-media; picture-in-picture" allowFullScreen />
+                </div>
+              ) : null}
+            </div>
+          </>
+        ) : null}
+
+        {score ? (
+          <>
+            <p className="svchead">Reviews</p>
+            <div className="reqreviews">
+              <b>{score.rating.toFixed(1)}</b>
+              <span>
+                <span className="stars" aria-hidden="true">{[0, 1, 2, 3, 4].map((i) => <Markup key={i} html={ICONS.star} />)}</span>
+                <small>{fmtReviews(score.reviews)} public reviews{item.quotes?.length ? "" : ". Written reviews arrive once guests book through Outset."}</small>
+              </span>
             </div>
           </>
         ) : null}
