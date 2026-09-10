@@ -194,6 +194,7 @@ export function toCatalogItem(r: CatalogRow): Record<string, unknown> {
   // A menu that is mostly products is a shop, not an experience menu. Keep nothing rather than three stray accessories.
   const offerings = (merchCount > 0 && merchCount * 2 >= onSite.length ? [] : onSite.filter((o) => !isMerch(o)))
     .filter((o) => !RESELLER.test(o.name + " " + (o.detail || "")))
+    .filter((o) => !FILTER_LABEL.test(o.name))
     .map((o) => ({ ...o, name: trimWords(o.name, 70), price_cents: o.price_cents != null && o.price_cents < 100 ? null : o.price_cents }))
     .filter((o, i, a) => a.findIndex((x) => x.name.toLowerCase() === o.name.toLowerCase() && x.price_cents === o.price_cents && (x.duration || x.detail || "") === (o.duration || o.detail || "")) === i)
     .map((o) => ({ ...o, price_unit: fixUnit(o) }));
@@ -397,6 +398,9 @@ const GAP_LINE = /\b(not (stated|specified|mentioned|listed|published|provided|a
 const JUNK_LINE = /\b(call|contact|phone|email)( us)? (for|to)\b|\bsee (the |our )?faq|\bclick here|\bprint and color|\bsubscribe|\bnewsletter|\bfollow us|\bcookie/i;
 const RETAIL_LINE = /\b(restocking|rma\b|return shipping|return merchandise|free shipping|ships? within|shipping (cost|rate|polic)|in-?store pickup|wholesale)\b/i;
 const STALE_LINE = /\b20(1\d|2[0-5])\b|\bcovid|\bcoronavirus|\bpandemic/i;
+/** Site filter chips scraped as products: "Most Immersive", "Hardest", "Biggest Game", "Best Sellers", "All". */
+const FILTER_LABEL = /^(?:(?:the )?(?:most|least|second|third) \w+|hardest|easiest|scariest|biggest|smallest|newest|oldest|thrilling|abstract|immersive|popular|featured|trending|best ?sellers?|top ?rated|all|other|more|filter|sort|view all|see all|\d+ floor \w+)$/i;
+
 /** Things sold through the operator's site that are someone else's product: theme-park tickets, tool rentals, package deals. */
 const RESELLER = /\b(park (child|adult|hopper)|day hopper|\bhopper\b|park tickets?|disney|universal studios|seaworld|legoland|busch gardens|pole pruner|chainsaw|generator|excavator|lawn ?mower|tiller|pressure washer|storage unit|u-?haul)\b/i;
 
