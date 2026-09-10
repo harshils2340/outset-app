@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import type { Unclaimed } from "../../data/types";
 import { experienceById } from "../../lib/catalog";
 import { loadListing } from "../../lib/catalogLoad";
 import { allBookings, demoProfile, hydrateProfile, loadProfile, loadSession, saveProfile, saveSession, setBookingStatus, type OpBooking, type OpStatus, type OperatorProfile } from "../../lib/operator";
@@ -69,17 +70,24 @@ export function OperatorView({ compact = false }: { compact?: boolean }) {
     if (!p || !u) return;
     const domain = u.src.replace(/^https?:\/\//i, "").replace(/^www\./i, "").split("/")[0].toLowerCase();
     const twinId = "o-" + domain.replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 48);
-    const target = u.lite ? u.id : !p.photos.length || !p.blurb ? twinId : null;
-    if (!target || (target !== u.id && !experienceById(target))) return;
     let alive = true;
-    const rec = experienceById(target);
-    const ready = rec && !rec.lite ? Promise.resolve(true) : loadListing(target);
-    ready.then((ok) => {
-      if (!alive || !ok) return;
-      const full = experienceById(target);
-      if (full) set((cur) => hydrateProfile(cur, full));
-      touchCatalog();
-    });
+    if (u.lite) {
+      loadListing(u.id).then((ok) => {
+        if (!alive || !ok) return;
+        const full = experienceById(u.id);
+        if (full) set((cur) => hydrateProfile(cur, full));
+        touchCatalog();
+      });
+    } else if (!p.photos.length || !p.blurb) {
+      // The twin is deliberately kept out of the catalog (the seed wins on the guest side), so read its file directly.
+      fetch(import.meta.env.BASE_URL + "o/" + twinId + ".json", { cache: "no-cache" })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((full: Unclaimed | null) => {
+          if (!alive || !full || !Array.isArray(full.options)) return;
+          set((cur) => hydrateProfile(cur, full));
+        })
+        .catch(() => undefined);
+    }
     return () => {
       alive = false;
     };
