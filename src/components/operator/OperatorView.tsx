@@ -64,12 +64,19 @@ export function OperatorView({ compact = false }: { compact?: boolean }) {
 
   const u = useMemo(() => (p ? experienceById(p.id) : null), [p?.id, state.catalogVersion]);
   // The demo and a fresh claim start from the slim browse record. Pull the detail file and fill the gaps.
+  // A hand-verified seed has no detail file of its own; its crawled twin (same domain, "o-" id) has the photos and menu.
   useEffect(() => {
-    if (!p || !u?.lite) return;
+    if (!p || !u) return;
+    const domain = u.src.replace(/^https?:\/\//i, "").replace(/^www\./i, "").split("/")[0].toLowerCase();
+    const twinId = "o-" + domain.replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 48);
+    const target = u.lite ? u.id : !p.photos.length || !p.blurb ? twinId : null;
+    if (!target || (target !== u.id && !experienceById(target))) return;
     let alive = true;
-    loadListing(p.id).then((changed) => {
-      if (!alive || !changed) return;
-      const full = experienceById(p.id);
+    const rec = experienceById(target);
+    const ready = rec && !rec.lite ? Promise.resolve(true) : loadListing(target);
+    ready.then((ok) => {
+      if (!alive || !ok) return;
+      const full = experienceById(target);
       if (full) set((cur) => hydrateProfile(cur, full));
       touchCatalog();
     });
