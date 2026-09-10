@@ -584,8 +584,8 @@ function RequestBody({
             <p className="svchead">Choose a service</p>
             {item.services && item.services.length ? (
               <div className="svclist">
-                {item.services.map((svc) => (
-                  <div className="svc" key={svc.name}>
+                {item.services.map((svc, svcIdx) => (
+                  <div className="svc" key={svc.name + "|" + svcIdx}>
                     {svc.photo ? <img className="svcpic" src={thumb(svc.photo, "thumb")} alt={plainWords(svc.name)} loading="lazy" referrerPolicy="no-referrer" onError={(e) => ((e.currentTarget as HTMLImageElement).style.display = "none")} /> : null}
                     <div className="svchead2">
                       <b>{plainWords(svc.name)}</b>

@@ -396,3 +396,10 @@
   .odlogin-side{padding:40px;}
   .odlogin-card{padding:40px 32px;}
 }
+
+/* ---------- fit and finish from the dashboard QA ---------- */
+.odbiz .meta b{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;line-height:1.25;}
+.od.compact .odsetup .odcardhead{flex-wrap:wrap;}
+.od.compact .odsetup .odcardhead h3{flex-basis:100%;}
+.od.compact .odsetup .odprogress{flex:1;max-width:none;}
+@media (max-width:1180px){.odbrand span{display:none;}}

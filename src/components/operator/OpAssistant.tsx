@@ -62,9 +62,9 @@ export function OpAssistant() {
               </div>
               <div>
                 <small>Rules and policies</small>
-                {p.policy.map((l, i) => <span key={i}>{l}</span>)}
-                {facts.who.map((f, i) => <span key={"w" + i}>{f.text}</span>)}
-                {facts.waiver.map((f, i) => <span key={"v" + i}>{f.text}</span>)}
+                {[...p.policy, ...facts.who.filter((f) => f.posted).map((f) => f.text), ...facts.waiver.filter((f) => f.posted).map((f) => f.text)]
+                  .filter((l, i, a) => a.findIndex((x) => x.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim() === l.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim()) === i)
+                  .map((l, i) => <span key={i}>{l}</span>)}
                 {!p.policy.length && !facts.who.length && !facts.waiver.length ? <span className="odmuted">Nothing yet. Add a cancellation line under Listing.</span> : null}
               </div>
             </div>

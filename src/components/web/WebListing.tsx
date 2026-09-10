@@ -366,8 +366,8 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
               <section className="wsec">
                 <h2>What you can book</h2>
                 <div className="wmenu">
-                  {item.services.map((svc) => (
-                    <div className={"wsvc" + (svc.photo ? " haspic" : "")} key={svc.name}>
+                  {item.services.map((svc, svcIdx) => (
+                    <div className={"wsvc" + (svc.photo ? " haspic" : "")} key={svc.name + "|" + svcIdx}>
                       {svc.photo ? <img className="wsvcpic" src={thumb(svc.photo, "thumb")} alt={plainWords(svc.name)} loading="lazy" referrerPolicy="no-referrer" onError={(e) => ((e.currentTarget as HTMLImageElement).style.display = "none")} /> : null}
                       <div className="wsvchead">
                         <b>{plainWords(svc.name)}</b>
