@@ -1,6 +1,5 @@
 import { randomUUID } from "node:crypto";
 import { db, nowIso } from "../db/client.ts";
-import { refreshGaps } from "../lib/completeness.ts";
 import { claimToken } from "../lib/claim.ts";
 
 type Op = {
@@ -87,7 +86,8 @@ function plausibleEmail(op: Op): string | null {
 }
 
 export function generateOutreachDrafts(): number {
-  const ops = db.prepare("SELECT * FROM operators WHERE origin != 'demo' AND claim_status = 'unclaimed'").all() as Op[];
+  // Only operators we could actually email. Keeps the write transaction to seconds while crawls share the database.
+  const ops = (db.prepare("SELECT * FROM operators WHERE origin != 'demo' AND claim_status = 'unclaimed' AND email LIKE '%@%'").all() as Op[]).filter((op) => plausibleEmail(op));
   const sc = scale();
   let n = 0;
   db.exec("PRAGMA busy_timeout = 120000");
@@ -98,7 +98,6 @@ export function generateOutreachDrafts(): number {
   // One transaction: the write lock is held for seconds, not minutes, while crawls share the database.
   db.exec("BEGIN IMMEDIATE");
   for (const op of ops) {
-    if (!db.prepare("SELECT 1 FROM gaps WHERE operator_id = ? LIMIT 1").get(op.id)) refreshGaps(op.id);
     const offerings = (offQ.all(op.id) as { name: string; price_cents: number | null }[]).map((o) => o.name + (o.price_cents != null ? " · $" + (o.price_cents / 100).toFixed(0) : ""));
     const keys = new Set((factQ.all(op.id) as { fact_key: string }[]).map((f) => f.fact_key));
     const { subject, body } = draftCopy(op, sc, offerings, keys.has("cover"), keys.has("requirement") || keys.has("policy") || keys.has("cancellation"));
