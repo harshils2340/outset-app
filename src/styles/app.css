@@ -1166,3 +1166,33 @@ video.photo{background:#000;}
 .reqbadge.open svg{color:var(--open);}
 .reqbadge.closed{background:var(--surface-2);color:var(--ink-faint);}
 .reqbadge.closed svg{color:var(--ink-faint);}
+
+/* Day-specific deals from the operator's own site: "Today's deal" banner, Deals section with day chips, card badge. */
+.wdeal{display:flex;gap:12px;align-items:flex-start;margin:0 0 18px;padding:14px 16px;border:1px solid rgba(229,77,44,.35);border-left:4px solid var(--accent);border-radius:14px;background:rgba(229,77,44,.06);}
+.wdeal svg{width:18px;height:18px;color:var(--accent);flex:none;margin-top:2px;}
+.wdeal span{display:flex;flex-direction:column;gap:3px;min-width:0;}
+.wdeal b{font-size:14px;font-weight:700;color:var(--accent);letter-spacing:-.01em;}
+.wdeal small{font-size:14px;color:var(--ink);line-height:1.4;}
+.wdealnote{margin:-6px 0 14px;font-size:13.5px;color:var(--ink-soft);}
+.wdeals{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px;}
+.wdeals li{display:flex;flex-direction:column;gap:8px;padding:14px 16px;border:1px solid var(--line);border-radius:14px;background:var(--surface);}
+.wdeals li.on{border-color:rgba(229,77,44,.5);background:rgba(229,77,44,.05);}
+.wdealchips{display:flex;gap:4px;flex-wrap:wrap;}
+.wdealchips i{font-style:normal;font-size:11.5px;font-weight:600;line-height:1;padding:6px 8px;border-radius:999px;background:var(--surface-2);color:var(--ink-faint);letter-spacing:.01em;}
+.wdealchips i.hit{background:var(--ink);color:#fff;}
+.wdealchips i.hit.today{background:var(--accent);color:#fff;}
+.wdealtext{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 10px;font-size:15px;line-height:1.45;color:var(--ink);}
+.wdealtext small{font-size:13px;color:var(--ink-soft);}
+.wdealtext em{font-style:normal;font-size:12px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.04em;}
+.reqdeal{display:flex;gap:10px;align-items:flex-start;margin:12px 0 0;padding:12px 14px;border:1px solid rgba(229,77,44,.35);border-left:4px solid var(--accent);border-radius:12px;background:rgba(229,77,44,.06);}
+.reqdeal svg{width:16px;height:16px;color:var(--accent);flex:none;margin-top:1px;}
+.reqdeal span{display:flex;flex-direction:column;gap:2px;min-width:0;}
+.reqdeal b{font-size:13px;font-weight:700;color:var(--accent);}
+.reqdeal small{font-size:13.5px;color:var(--ink);line-height:1.4;}
+.reqdeals{list-style:none;margin:10px 0 0;padding:0;display:flex;flex-direction:column;gap:8px;}
+.reqdeals li{display:flex;flex-direction:column;gap:7px;padding:12px;border:1px solid var(--line);border-radius:12px;}
+.reqdeals li.on{border-color:rgba(229,77,44,.5);background:rgba(229,77,44,.05);}
+.reqdeals .wdealchips i{padding:5px 6px;font-size:10.5px;}
+.reqdeals .wdealtext{font-size:14px;}
+.wbadge.deal{background:var(--accent);color:#fff;}
+.wbadge.deal + .wbadge{top:44px;}

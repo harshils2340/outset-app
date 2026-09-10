@@ -28,6 +28,8 @@ import { priceFor, priceUnclaimed } from "../../lib/pricing";
 import { useApp } from "../../state/AppProvider";
 import { SIZES, srcSet, thumb } from "../../lib/images";
 import { cleanDesc, durationLabel, freeCancel, minAge } from "../../lib/listingDerive";
+import { DAY_SHORT, clock12, dayLabel, todaysDeals } from "../../lib/companyAgent";
+import { clockIn, zoneFor } from "../../lib/openNow";
 import { itemOpenState } from "../../lib/openNow";
 import { Photo } from "../art/Photo";
 import { Markup } from "../Markup";
@@ -281,6 +283,8 @@ function RequestBody({
   const duration = item.dur || durationLabel(item);
   const priced = fromPrice(item) != null;
   const openNow = itemOpenState(item);
+  const dealsNow = todaysDeals(item);
+  const today = item.promos?.length ? clockIn(zoneFor(item)).day : -1;
   const badges: { icon: string; text: string; tone?: "open" | "closed" }[] = [];
   if (openNow) badges.push({ icon: ICONS.clock, text: openNow.label, tone: openNow.open ? "open" : "closed" });
   if (score && score.rating >= 4.8 && score.reviews >= 100) badges.push({ icon: ICONS.star, text: "Top rated" });
@@ -412,6 +416,17 @@ function RequestBody({
             {badges.map((b) => (
               <span key={b.text} className={"reqbadge" + (b.tone ? " " + b.tone : "")}><Markup html={b.icon} /> {b.text}</span>
             ))}
+          </div>
+        ) : null}
+        {dealsNow.length ? (
+          <div className="reqdeal" aria-label="Today's deal">
+            <Markup html={ICONS.bolt} />
+            <span>
+              <b>Today's deal{dealsNow.length > 1 ? "s" : ""}</b>
+              {dealsNow.map((p) => (
+                <small key={p.text}>{plainWords(p.text)}{p.end ? " · until " + clock12(p.end) : p.start ? " · from " + clock12(p.start) : ""}</small>
+              ))}
+            </span>
           </div>
         ) : null}
         {quick.length ? (
@@ -675,6 +690,30 @@ function RequestBody({
                 </button>
               ))}
             </div>
+          </>
+        ) : null}
+
+        {item.promos?.length ? (
+          <>
+            <p className="svchead">Deals</p>
+            <ul className="reqdeals">
+              {item.promos.map((p) => {
+                const on = dealsNow.includes(p);
+                return (
+                  <li key={p.text} className={on ? "on" : ""}>
+                    <span className="wdealchips" aria-label={dayLabel(p.days)}>
+                      {p.days.length ? DAY_SHORT.map((d, i) => (
+                        <i key={d} className={p.days.includes(i) ? (i === today ? "hit today" : "hit") : ""}>{d}</i>
+                      )) : <i className={"hit" + (on ? " today" : "")}>Every day</i>}
+                    </span>
+                    <span className="wdealtext">
+                      {plainWords(p.text)}
+                      {p.start || p.end ? <small>{p.start ? clock12(p.start) : "Open"} to {p.end ? clock12(p.end) : "close"}</small> : null}
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
           </>
         ) : null}
 

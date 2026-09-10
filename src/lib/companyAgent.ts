@@ -29,6 +29,7 @@ function notPublished(ctx: CompanyContext, what: string): string {
 const OUT_OF_SCOPE =
   /(weather|forecast|rain|wind|storm|hurricane|traffic|directions|how (do|to) (i )?get there|uber|lyft|parking|hotel|restaurant|food|competitor|compare|cheaper|better than|other (company|place|shop|operator)|near(by|est)|review|yelp|google|reddit|news|history|who owns|owner|lawsuit|accident|safety record|injur|death|died)/i;
 
+const DEALS = /(deals?|promos?|promotions?|specials?|discounts?|offers?|happy hour|cheaper|2 for 1|two for one|bogo|coupon|half price|half off)/i;
 const PRICE = /(how much|price|pricing|cost|rate|fee|expensive|cheap|\$|deposit)/i;
 const SERVICES = /(what do you (offer|have)|options|services|packages|tours?|rentals?|menu|length|how long|duration|hours? long|minutes)/i;
 const OPEN_NOW = /(open (right )?now|open today|open (on |this )?(sunday|monday|tuesday|wednesday|thursday|friday|saturday|weekend)s?|(are|r) (you|u|they) open|still open|open yet|what time (do|does|will) (you|u|they|it) (close|open)|when (do|does|will) (you|u|they|it) (close|open)|closing time|opening time|closed (today|now|on|sunday|monday|tuesday|wednesday|thursday|friday|saturday))/i;
@@ -82,6 +83,68 @@ function specsAbout(item: Unclaimed, re: RegExp): string[] {
 /** The assistant's name, shown on every listing. */
 export const ASSISTANT_NAME = "Otto";
 
+/* ---------- day-specific deals, from the operator's own site ---------- */
+
+export type Promo = NonNullable<Unclaimed["promos"]>[number];
+export const DAY_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+/** "16:00" -> "4 PM", "10:30" -> "10:30 AM". */
+export function clock12(hhmm: string): string {
+  const [h, m] = hhmm.split(":").map(Number);
+  if (!Number.isFinite(h)) return hhmm;
+  return (h % 12 === 0 ? 12 : h % 12) + (m ? ":" + String(m).padStart(2, "0") : "") + " " + (h >= 12 ? "PM" : "AM");
+}
+
+const toMin = (hhmm: string) => {
+  const [h, m] = hhmm.split(":").map(Number);
+  return h * 60 + (m || 0);
+};
+
+/** Whether a promo applies at the operator's local clock: right day (empty days = every day) and inside its time window when it has one. */
+export function promoOn(p: Promo, clock: { day: number; minutes: number }): boolean {
+  if (p.days.length && !p.days.includes(clock.day)) return false;
+  if (p.start && clock.minutes < toMin(p.start)) return false;
+  if (p.end && clock.minutes >= toMin(p.end)) return false;
+  return true;
+}
+
+/** The deals running right now in the operator's own time zone. Nothing when the site published none. */
+export function todaysDeals(item: Unclaimed, now = new Date()): Promo[] {
+  if (!item.promos?.length) return [];
+  const clock = clockIn(zoneFor(item), now);
+  return item.promos.filter((p) => promoOn(p, clock));
+}
+
+/** Lite records carry the first deal as "3,5|Glow nights $25". True when that deal names today in the operator's zone. */
+export function dealToday(item: Unclaimed, now = new Date()): boolean {
+  if (!item.deal) return false;
+  const days = item.deal.split("|")[0].split(",").map(Number).filter((n) => n >= 0 && n <= 6);
+  return days.length > 0 && days.includes(clockIn(zoneFor(item), now).day);
+}
+
+/** "Mon, Wed" or "Every day" or "Weekends", the way a guest reads a day list. */
+export function dayLabel(days: number[]): string {
+  if (!days.length) return "Every day";
+  const s = [...days].sort((a, b) => a - b).join(",");
+  if (s === "1,2,3,4,5") return "Weekdays";
+  if (s === "0,6") return "Weekends";
+  if (s === "0,1,2,3,4,5,6") return "Every day";
+  return days.map((d) => DAY_SHORT[d]).join(", ");
+}
+
+function dealsAnswer(ctx: CompanyContext): string {
+  const { item } = ctx;
+  if (!item.promos?.length) return notPublished(ctx, "any deals or specials");
+  const now = todaysDeals(item);
+  const line = (p: Promo) => p.text.replace(/[.;,]+$/, "") + (p.end ? " (until " + clock12(p.end) + ")" : "");
+  const rest = item.promos.filter((p) => !now.includes(p));
+  const parts: string[] = [];
+  if (now.length) parts.push("Today's deal" + (now.length > 1 ? "s" : "") + " at " + item.title + ": " + now.map(line).join("; ") + ".");
+  else parts.push("Nothing on today, but " + item.title + " publishes these deals:");
+  if (rest.length) parts.push((now.length ? "Other days: " : "") + rest.map((p) => dayLabel(p.days) + ": " + p.text.replace(/[.;,]+$/, "")).join("; ") + ".");
+  return parts.join(" ") + " From their own site; the price you pay is what the listing shows at checkout.";
+}
+
 export function companyGreeting(ctx: CompanyContext): string {
   return "Hi, I'm " + ASSISTANT_NAME + ". Ask me anything about " + ctx.item.title + ". I only use what they've published, so if it isn't on their site I'll say so.";
 }
@@ -134,6 +197,7 @@ export function companySuggestions(ctx: CompanyContext): string[] {
   else if (ctx.contact?.hours.length || item.hoursText?.length) out.push("What are your hours?");
   else out.push("What should we bring?");
   out.push(item.requirements?.length ? "Any age or weight limits?" : item.bring?.length ? "What should we bring?" : "Any age or weight limits?");
+  if (item.promos?.length) out.splice(2, 0, "Any deals today?");
   if (weekFor(ctx)) out.push("Are you open right now?");
   return out.slice(0, 5);
 }
@@ -162,8 +226,10 @@ export function companyReply(ctx: CompanyContext, question: string): string {
   if (GREET.test(q) && q.length < 24) return "Hi. Ask me about " + item.title + "'s services, prices, hours, or where to meet.";
   if (THANKS.test(q) && q.length < 40) return "Any time. When you are ready, pick a service and a time on the listing to book.";
 
+  // "Anything cheaper on weekdays?" is a deals question. "Cheaper than X" is a comparison and stays refused.
+  const deals = DEALS.test(q) && !/\bthan\b|compet|compar|other (company|place|shop|operator)/i.test(q);
   // Hard stop before any topic matching. Outside knowledge is never used.
-  if (OUT_OF_SCOPE.test(q)) {
+  if (OUT_OF_SCOPE.test(q) && !(deals && /cheaper/i.test(q) && !OUT_OF_SCOPE.test(q.replace(/cheaper/gi, "")))) {
     return "I only work from " + item.title + "'s own published information, so I cannot help with that." + HANDOFF + callLine(ctx);
   }
 
@@ -171,6 +237,8 @@ export function companyReply(ctx: CompanyContext, question: string): string {
 
   const faq = faqMatch(item, q);
   if (faq) parts.push(faq);
+
+  if (deals) parts.push(dealsAnswer(ctx));
 
   if (PRICE.test(q)) parts.push((() => {
     const lines = priced(item);
@@ -194,7 +262,7 @@ export function companyReply(ctx: CompanyContext, question: string): string {
   })());
 
   if (OPEN_NOW.test(q)) parts.push(openNowAnswer(ctx, q));
-  else if (HOURS.test(q)) parts.push((() => {
+  else if (HOURS.test(q) && !(deals && !/\bhours\b|\bopen\b|\bclos|what time/i.test(q))) parts.push((() => {
     if (item.hoursText?.length) return "Hours from " + item.title + ": " + item.hoursText.join(", ") + "." + (item.season ? " Season: " + item.season + "." : "");
     if (contact?.hours.length) return "Hours from " + item.title + ": " + contact.hours.map(fmtHours).join(", ") + ".";
     const hint = specsAbout(item, /hour|open|close|am|pm|daily|sunrise|sunset/i);

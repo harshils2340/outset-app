@@ -202,6 +202,10 @@ export type Unclaimed = {
   fc?: string;
   /** Lowest published price, carried on lite records so cards can show "From $X". */
   from?: number;
+  /** Day-specific deals from the operator's own site, as written. days: 0=Sun..6=Sat, empty = every day. start/end "HH:MM". */
+  promos?: { text: string; days: number[]; start?: string; end?: string }[];
+  /** Compact first deal on lite records: "3,5|Glow nights $25" (day list, then the text), for the card badge. */
+  deal?: string;
   /** Contact facts shipped inside the detail file. */
   contact?: OperatorContact;
 };

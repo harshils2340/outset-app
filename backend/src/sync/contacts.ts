@@ -346,7 +346,7 @@ export function toCatalogItem(r: CatalogRow): Record<string, unknown> {
     // Day-specific deals the site states, as written (scripts/promo-crawl.mts). Never invented.
     promos: facts
       .filter((f) => f.fact_key === "promo")
-      .map((f) => {
+      .map((f): { text: string; days: number[]; start?: string; end?: string } | null => {
         try {
           const p = JSON.parse(f.fact_value) as { text: string; days: number[]; start?: string; end?: string };
           return typeof p.text === "string" && Array.isArray(p.days) ? { text: decodeEntities(p.text), days: p.days, start: p.start, end: p.end } : null;

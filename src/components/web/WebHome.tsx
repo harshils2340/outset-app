@@ -9,6 +9,7 @@ import { listingFacts } from "../../lib/catalog";
 import { fmtDate, fmtReviews, money } from "../../lib/format";
 import { metroInQuery, parseIntent, searchListings } from "../../lib/search";
 import { loadListing } from "../../lib/catalogLoad";
+import { dealToday } from "../../lib/companyAgent";
 import { currentLocation, fmtDistance, nearestLocation, searchPlaces, type Place } from "../../lib/places";
 import { useApp } from "../../state/AppProvider";
 import { Photo } from "../art/Photo";
@@ -185,6 +186,7 @@ function Card({ u, onOpen, near }: { u: Unclaimed; onOpen: (id: string) => void;
             <button type="button" className="wcard" onClick={() => onOpen(u.id)}>
               <div className="wart">
                 <Photo src={u.cover} video={u.video} kind={u.art} id={"w" + u.id} alt={u.title} />
+                {dealToday(u) ? <span className="wbadge deal">Deal today</span> : null}
                 {score && score.rating >= 4.8 && score.reviews >= 100 ? (
                   <span className="wbadge">Guest favourite</span>
                 ) : u.cover ? null : (

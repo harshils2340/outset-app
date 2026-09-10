@@ -9,7 +9,8 @@ import { addressLine, contactFor, fmtHours, fmtPhone, fromPrice, getCatalog, lis
 import { DAYS, fmtDate, fmtReviews, fmtTime, money, priceWith } from "../../lib/format";
 import { SIZES, srcSet, thumb } from "../../lib/images";
 import { cleanDesc, durationLabel, freeCancel, minAge } from "../../lib/listingDerive";
-import { itemOpenState } from "../../lib/openNow";
+import { clockIn, itemOpenState, zoneFor } from "../../lib/openNow";
+import { DAY_SHORT, clock12, dayLabel, todaysDeals } from "../../lib/companyAgent";
 import { fmtDistance, kmBetween, nearestLocation } from "../../lib/places";
 import { priceUnclaimed } from "../../lib/pricing";
 import { listingUrl } from "../../lib/site";
@@ -185,6 +186,8 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
   const duration = item.dur || durationLabel(item);
   const priced = fromPrice(item) != null;
   const openNow = itemOpenState(item);
+  const dealsNow = todaysDeals(item);
+  const today = item.promos?.length ? clockIn(zoneFor(item)).day : -1;
   const badges: { icon: string; text: string }[] = [];
   if (openNow) badges.push({ icon: ICONS.clock, text: openNow.label });
   if (score && score.rating >= 4.8 && score.reviews >= 100) badges.push({ icon: ICONS.star, text: "Top rated" });
@@ -248,6 +251,17 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
             {badges.map((b) => (
               <span key={b.text} className="wbadgechip"><Markup html={b.icon} /> {b.text}</span>
             ))}
+          </div>
+        ) : null}
+        {dealsNow.length ? (
+          <div className="wdeal" aria-label="Today's deal">
+            <Markup html={ICONS.bolt} />
+            <span>
+              <b>Today's deal{dealsNow.length > 1 ? "s" : ""}</b>
+              {dealsNow.map((p) => (
+                <small key={p.text}>{plainWords(p.text)}{p.end ? " · until " + clock12(p.end) : p.start ? " · from " + clock12(p.start) : ""}</small>
+              ))}
+            </span>
           </div>
         ) : null}
         {item.quotes?.length ? (
@@ -526,6 +540,32 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
                 </div>
               ) : null}
             </section>
+
+            {item.promos?.length ? (
+              <section className="wsec" id="deals">
+                <h2>Deals</h2>
+                <p className="wdealnote">From {item.title}'s own site. Days are in their local time.</p>
+                <ul className="wdeals">
+                  {item.promos.map((p) => {
+                    const on = dealsNow.includes(p);
+                    return (
+                      <li key={p.text} className={on ? "on" : ""}>
+                        <span className="wdealchips" aria-label={dayLabel(p.days)}>
+                          {p.days.length ? DAY_SHORT.map((d, i) => (
+                            <i key={d} className={p.days.includes(i) ? (i === today ? "hit today" : "hit") : ""}>{d}</i>
+                          )) : <i className={"hit" + (on ? " today" : "")}>Every day</i>}
+                        </span>
+                        <span className="wdealtext">
+                          {plainWords(p.text)}
+                          {p.start || p.end ? <small>{p.start ? clock12(p.start) : "Open"} to {p.end ? clock12(p.end) : "close"}</small> : null}
+                          {on ? <em>Today</em> : null}
+                        </span>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </section>
+            ) : null}
 
             {item.cancellation || item.waiverUrl || waiverLines.length && (item.bring?.length || item.groupInfo?.length) || otherPolicies.length ? (
               <section className="wsec">
