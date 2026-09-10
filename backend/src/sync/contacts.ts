@@ -599,7 +599,7 @@ export function syncCatalogToApp(): { path: string; count: number } {
     .filter((r) => !MARKETPLACES.test(r.domain) && !dead.has(r.id) && !NOT_EXPERIENCE.test(r.name) && !/^\s*\$?\d+(\.\d+)?\s*$/.test(r.name))
     .map(toCatalogItem)
     .map((item) => {
-      const ov = profileOverlay(item.id);
+      const ov = profileOverlay(String(item.id));
       if (!ov) return item;
       const base = item as unknown as Record<string, unknown>;
       const merged: Record<string, unknown> = { ...base, ...ov.patch, id: base.id, claimKey: base.claimKey, claimed: true, published: ov.published };
