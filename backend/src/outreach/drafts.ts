@@ -25,7 +25,7 @@ function catalogId(domain: string): string {
 const VENDOR_NAME: Record<string, string> = { fareharbor: "FareHarbor", peek: "Peek", xola: "Xola", bookeo: "Bookeo", rezdy: "Rezdy", checkfront: "Checkfront", resova: "Resova", booksy: "Booksy", square: "Square", simplybook: "SimplyBook", rezgo: "Rezgo" };
 
 /** Real numbers for the credibility line, read once per draft run. */
-function scale(): { listings: number; metros: number; local: Map<string, number> } {
+export function scale(): { listings: number; metros: number; local: Map<string, number> } {
   const listings = (db.prepare("SELECT COUNT(*) AS n FROM operators WHERE origin != 'demo' AND website IS NOT NULL").get() as { n: number }).n;
   const metros = (db.prepare("SELECT COUNT(DISTINCT metro_id) AS n FROM operators WHERE metro_id IS NOT NULL").get() as { n: number }).n;
   const local = new Map<string, number>();
@@ -44,7 +44,7 @@ function round(n: number): string {
  * it works with the calendar they already use, and thousands of others are on it. Every claim in here is true today
  * except the calendar hookup, which is offered as something we do for them on request.
  */
-function draftCopy(op: Op, sc: ReturnType<typeof scale>, offerings: string[], hasPhotos: boolean, hasRules: boolean): { subject: string; body: string } {
+export function draftCopy(op: Op, sc: ReturnType<typeof scale>, offerings: string[], hasPhotos: boolean, hasRules: boolean): { subject: string; body: string } {
   const SITE = "https://harshils2340.github.io/outset-app/";
   const id = catalogId(op.domain);
   const city = op.city || "your area";
@@ -53,7 +53,7 @@ function draftCopy(op: Op, sc: ReturnType<typeof scale>, offerings: string[], ha
   const menu = offerings.length ? offerings.slice(0, 4).map((o) => "  " + o).join("\n") : "  (we could not read a menu from your site, so guests see Request to book until you add one)";
   const subject = op.name + " is already listed on Outset. Claim it in one click, nothing to set up.";
   const body = [
-    "Hi " + op.name + ",",
+    "Hi " + op.name + " team,",
     "",
     "Your listing on Outset is already built and live. We copied it from your own website: " +
       [offerings.length ? "your menu and prices" : null, hasPhotos ? "your photos" : null, "your hours", hasRules ? "your age and cancellation rules" : null].filter(Boolean).join(", ") +
@@ -83,9 +83,7 @@ function draftCopy(op: Op, sc: ReturnType<typeof scale>, offerings: string[], ha
     "Harshil",
     "Founder, Outset",
     "Reply to this email and a person answers.",
-  ]
-    .filter((l) => l !== "")
-    .join("\n");
+  ].join("\n");
   return { subject, body };
 }
 
