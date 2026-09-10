@@ -21,7 +21,7 @@ export type Guide = {
   nerves: string;
 };
 
-export const GUIDES: Record<ArtKind, Guide> = {
+export const GUIDES: Partial<Record<ArtKind, Guide>> = {
   skydive: {
     hook: "Sixty seconds of freefall, then five quiet minutes under canopy with the whole coastline laid out below you.",
     steps: [

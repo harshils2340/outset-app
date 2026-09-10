@@ -491,6 +491,7 @@ export function setupChecks(p: OperatorProfile): { id: string; label: string; do
   const priced = p.services.flatMap((s) => s.variants).filter((v) => v.price != null).length;
   const total = p.services.flatMap((s) => s.variants).length;
   return [
+    { id: "owner", label: "Add your name and mobile for booking alerts", done: !!p.ownerName.trim() && !!(p.ownerPhone.trim() || p.ownerEmail.trim()), page: "settings" },
     { id: "photos", label: "Add at least 3 photos", done: p.photos.length >= 3 && !!p.cover, page: "listing" },
     { id: "prices", label: total ? "Set a price on every option" : "Add your first service", done: total > 0 && priced === total, page: "services" },
     { id: "hours", label: "Confirm your opening hours", done: p.hours.some((h) => !h.closed), page: "hours" },

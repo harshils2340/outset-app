@@ -17,7 +17,7 @@ const NOISE_TYPES = new Set([
 ]);
 const NOISE_NAME = /\b(caf[eé]|restaurant|bar & grill|grill|pizza|church|school district|university|college|police|fire department|air national guard|air force|navy|coast guard|city of|county of|chamber of commerce|realty|real estate|insurance|dental|clinic|hospital)\b/i;
 const NOISE_DOMAIN = /\.(mil|gov|edu)$|\.gov\.|\.gc\.ca$|\.mil\./i;
-const ACTIVITY = /jet|ski|kayak|canoe|paddle|boat|charter|fish|cruise|sail|sunset|dolphin|snorkel|parasail|skydiv|tandem|helicopter|heli|balloon|kart|escape|axe|paintball|horse|trail|tour|adventure|watersport|rental/i;
+const ACTIVITY = /bowl|golf|arcade|trampoline|laser|rink|skat|water ?park|theme park|zoo|aquarium|karaoke|climb|range|archery|zip|bike|snowmobile|raft|scuba|dive|surf|paraglid|glider|brew|winery|wine|distill|cook|culinary|spa|massage|yoga|dance|pottery|ceramic|jet|ski|kayak|canoe|paddle|boat|charter|fish|cruise|sail|sunset|dolphin|snorkel|parasail|skydiv|tandem|helicopter|heli|balloon|kart|escape|axe|paintball|horse|trail|tour|adventure|watersport|rental/i;
 
 export function pruneNoise(dryRun = false): { types: number; names: number; domains: number; total: number } {
   const rows = db

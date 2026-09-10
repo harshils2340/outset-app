@@ -145,7 +145,8 @@ export function sceneInner(kind: string, id: string): string {
       <path d="M30 152q30-8 58 0t58 0 58 0 58 0" stroke="#FFD9B0" stroke-width="3" opacity=".45" fill="none"/>
       <path d="M20 174q32-8 62 0t62 0 62 0 62 0" stroke="#FFD9B0" stroke-width="3" opacity=".3" fill="none"/>`
   };
-  return scenes[kind] || scenes.jetski;
+  const near: Record<string, string> = { bowling: "kart", minigolf: "horse", arcade: "escape", trampoline: "skydive", lasertag: "paintball", icerink: "kayak", waterpark: "parasail", themepark: "kart", zoo: "horse", aquarium: "kayak", karaoke: "escape", climbing: "skydive", range: "paintball", archery: "paintball", golf: "horse", zipline: "parasail", ski: "skydive", bike: "horse", snowmobile: "jetski", rafting: "kayak", scuba: "kayak", surf: "jetski", paragliding: "parasail", gliding: "heli", brewery: "cruise", winery: "balloon", distillery: "cruise", cooking: "escape", spa: "balloon", yoga: "balloon", dance: "escape", pottery: "escape" };
+  return scenes[kind] || scenes[near[kind] || ""] || scenes.jetski;
 }
 
 export const ART_LABEL: Record<string, string> = {
@@ -163,5 +164,37 @@ export const ART_LABEL: Record<string, string> = {
   parasail: "Parasail",
   cruise: "Cruise",
   kayak: "Kayak",
+  bowling: "Bowling",
+  minigolf: "Mini golf",
+  arcade: "Arcades",
+  trampoline: "Trampoline parks",
+  lasertag: "Laser tag",
+  icerink: "Ice skating",
+  waterpark: "Water parks",
+  themepark: "Theme parks",
+  zoo: "Zoos and wildlife parks",
+  aquarium: "Aquariums",
+  karaoke: "Karaoke rooms",
+  climbing: "Climbing gyms",
+  range: "Shooting ranges",
+  archery: "Archery",
+  golf: "Golf tee times",
+  zipline: "Ziplines",
+  ski: "Ski and snowboard",
+  bike: "Bike and e-bike rentals",
+  snowmobile: "Snowmobile tours",
+  rafting: "Whitewater rafting",
+  scuba: "Scuba and snorkel",
+  surf: "Surf lessons",
+  paragliding: "Paragliding",
+  gliding: "Glider flights",
+  brewery: "Breweries",
+  winery: "Wineries",
+  distillery: "Distilleries",
+  cooking: "Cooking classes",
+  spa: "Spas and massage",
+  yoga: "Yoga",
+  dance: "Dance classes",
+  pottery: "Pottery and art classes",
 };
 

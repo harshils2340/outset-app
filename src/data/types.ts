@@ -176,6 +176,8 @@ export type Unclaimed = {
   lite?: boolean;
   /** Id of the detail file to fetch when it differs from this record's id (hand-verified seeds). */
   detail?: string;
+  /** SHA-256 of the claim token in the operator's email link. Lets the static site verify a claim link. */
+  claimKey?: string;
   /** Card facts carried on lite records: duration as the operator wrote it, and a free-cancellation line when their policy says so. */
   dur?: string;
   fc?: string;

@@ -11,3 +11,4 @@ backend/data/outset.db
 backend/data/outset.db-wal
 backend/data/outset.db-shm
 backend/data/batches/
+backend/data/claim-secret.txt

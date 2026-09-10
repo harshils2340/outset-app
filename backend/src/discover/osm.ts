@@ -13,7 +13,8 @@ import { CATEGORIES, METROS, categoryById, nearestMetro } from "../taxonomy/cata
 
 const here = dirname(fileURLToPath(import.meta.url));
 const cacheDir = join(here, "../../data/osm");
-const ENDPOINTS = ["https://overpass-api.de/api/interpreter", "https://overpass.kumi.systems/api/interpreter"];
+// mail.ru runs a full-planet mirror that stays up when overpass-api.de rate-limits a burst of queries.
+const ENDPOINTS = ["https://maps.mail.ru/osm/tools/overpass/api/interpreter", "https://overpass-api.de/api/interpreter", "https://overpass.kumi.systems/api/interpreter"];
 
 export const AREAS: { code: string; country: "US" | "CA"; region: string }[] = [
   ...["AL","AK","AZ","AR","CA","CO","CT","DE","DC","FL","GA","HI","ID","IL","IN","IA","KS","KY","LA","ME","MD","MA","MI","MN","MS","MO","MT","NE","NV","NH","NJ","NM","NY","NC","ND","OH","OK","OR","PA","RI","SC","SD","TN","TX","UT","VT","VA","WA","WV","WI","WY"].map((r) => ({ code: "US-" + r, country: "US" as const, region: r })),
@@ -39,6 +40,93 @@ const SELECTORS: { category: string; selector: string }[] = [
   { category: "cruise", selector: '["tourism"="attraction"]["attraction"="boat_tour"]' },
 ];
 
+/** Wave two, cached separately so the first wave never refetches. Tag first, then a name check in pickCategory. */
+const SELECTORS_W2: { category: string; selector: string }[] = [
+  { category: "bowling", selector: '["leisure"="bowling_alley"]' },
+  { category: "minigolf", selector: '["leisure"="miniature_golf"]' },
+  { category: "arcade", selector: '["leisure"="amusement_arcade"]' },
+  { category: "trampoline", selector: '["leisure"="trampoline_park"]' },
+  { category: "lasertag", selector: '["leisure"="laser_tag"]' },
+  { category: "lasertag", selector: '["sport"="laser_tag"]' },
+  { category: "icerink", selector: '["leisure"="ice_rink"]' },
+  { category: "waterpark", selector: '["leisure"="water_park"]' },
+  { category: "themepark", selector: '["tourism"="theme_park"]' },
+  { category: "zoo", selector: '["tourism"="zoo"]' },
+  { category: "aquarium", selector: '["tourism"="aquarium"]' },
+  { category: "karaoke", selector: '["amenity"="karaoke_box"]' },
+  { category: "climbing", selector: '["sport"="climbing"]["leisure"="sports_centre"]' },
+  { category: "climbing", selector: '["leisure"="sports_centre"]["climbing"]' },
+  { category: "range", selector: '["sport"="shooting"]["leisure"!="pitch"]' },
+  { category: "archery", selector: '["sport"="archery"]["leisure"!="pitch"]' },
+  { category: "golf", selector: '["leisure"="golf_course"]' },
+  { category: "zipline", selector: '["aerialway"="zip_line"]' },
+  { category: "ski", selector: '["landuse"="winter_sports"]' },
+  { category: "bike", selector: '["amenity"="bicycle_rental"]["network"!~"."]["operator"!~"bike ?share|citi ?bike|lime|bird|divvy|nice ride|indego|capital bikeshare"]' },
+  { category: "snowmobile", selector: '["sport"="snowmobile"]' },
+  { category: "rafting", selector: '["sport"~"rafting"]' },
+  { category: "scuba", selector: '["shop"="scuba_diving"]' },
+  { category: "scuba", selector: '["sport"="scuba_diving"]["shop"]' },
+  { category: "surf", selector: '["sport"="surfing"]["shop"]' },
+  { category: "surf", selector: '["shop"="surf"]' },
+  { category: "paragliding", selector: '["sport"="free_flying"]' },
+  { category: "gliding", selector: '["sport"="gliding"]' },
+  { category: "brewery", selector: '["craft"="brewery"]' },
+  { category: "brewery", selector: '["microbrewery"="yes"]["name"]' },
+  { category: "winery", selector: '["craft"="winery"]' },
+  { category: "distillery", selector: '["craft"="distillery"]' },
+  { category: "spa", selector: '["leisure"="spa"]' },
+  { category: "spa", selector: '["shop"="massage"]' },
+  { category: "yoga", selector: '["sport"="yoga"]' },
+  { category: "dance", selector: '["leisure"="dance"]' },
+  { category: "dance", selector: '["amenity"="dancing_school"]' },
+  { category: "pottery", selector: '["craft"="pottery"]["shop"]' },
+  { category: "cooking", selector: '["amenity"="cooking_school"]' },
+];
+
+/** Category from wave-two tags. Tags first; names disambiguate the broad ones. */
+function pickCategoryW2(tags: Record<string, string>): string | null {
+  const leisure = tags.leisure || "";
+  const sport = (tags.sport || "").toLowerCase();
+  const tourism = tags.tourism || "";
+  const craft = tags.craft || "";
+  const shop = tags.shop || "";
+  const amenity = tags.amenity || "";
+  const name = (tags.name || "").toLowerCase();
+  if (leisure === "bowling_alley") return "bowling";
+  if (leisure === "miniature_golf") return "minigolf";
+  if (leisure === "amusement_arcade") return "arcade";
+  if (leisure === "trampoline_park") return "trampoline";
+  if (leisure === "laser_tag" || /laser_tag/.test(sport)) return "lasertag";
+  if (leisure === "ice_rink") return "icerink";
+  if (leisure === "water_park") return "waterpark";
+  if (tourism === "theme_park") return "themepark";
+  if (tourism === "zoo") return "zoo";
+  if (tourism === "aquarium") return "aquarium";
+  if (amenity === "karaoke_box") return "karaoke";
+  if (/climbing/.test(sport) || tags.climbing) return "climbing";
+  if (/shooting/.test(sport)) return /archery/.test(sport) ? "archery" : "range";
+  if (/archery/.test(sport)) return "archery";
+  if (leisure === "golf_course") return /private|country club/.test(name) && !/public|golf course|golf club/.test(name) ? null : "golf";
+  if (tags.aerialway === "zip_line") return "zipline";
+  if (tags.landuse === "winter_sports") return "ski";
+  if (amenity === "bicycle_rental") return "bike";
+  if (/snowmobile/.test(sport)) return "snowmobile";
+  if (/rafting/.test(sport)) return "rafting";
+  if (shop === "scuba_diving" || /scuba/.test(sport)) return "scuba";
+  if (shop === "surf" || /surfing/.test(sport)) return "surf";
+  if (/free_flying|paragliding|hang_gliding/.test(sport)) return "paragliding";
+  if (/gliding/.test(sport)) return "gliding";
+  if (craft === "brewery" || tags.microbrewery === "yes") return "brewery";
+  if (craft === "winery") return "winery";
+  if (craft === "distillery") return "distillery";
+  if (leisure === "spa" || shop === "massage") return "spa";
+  if (/yoga/.test(sport)) return "yoga";
+  if (leisure === "dance" || amenity === "dancing_school") return "dance";
+  if (craft === "pottery") return "pottery";
+  if (amenity === "cooking_school") return "cooking";
+  return null;
+}
+
 type OsmElement = {
   type: string;
   id: number;
@@ -50,7 +138,7 @@ type OsmElement = {
 
 function buildQuery(areaCode: string, selectors: string[]): string {
   const body = selectors.map((s) => `nwr(area.a)${s};`).join("");
-  return `[out:json][timeout:60];area["ISO3166-2"="${areaCode}"]->.a;(${body});out tags center;`;
+  return `[out:json][timeout:90];area["ISO3166-2"="${areaCode}"]->.a;(${body});out tags center;`;
 }
 
 async function runOverpass(query: string, startAt = 0): Promise<OsmElement[]> {
@@ -62,7 +150,7 @@ async function runOverpass(query: string, startAt = 0): Promise<OsmElement[]> {
         method: "POST",
         headers: { "content-type": "application/x-www-form-urlencoded", "user-agent": "OutsetBot/0.1 (supply discovery)" },
         body: "data=" + encodeURIComponent(query),
-        signal: AbortSignal.timeout(75000),
+        signal: AbortSignal.timeout(100000),
       });
       if (!res.ok) throw new Error("HTTP " + res.status);
       const json = (await res.json()) as { elements?: OsmElement[]; remark?: string };
@@ -81,11 +169,31 @@ function sleep(ms: number): Promise<void> {
 }
 
 /** Fetch one area, splitting selectors in half when Overpass times out. Cached on disk per area. */
-export async function fetchArea(areaCode: string, force = false, endpointIdx = 0): Promise<OsmElement[]> {
+export async function fetchArea(areaCode: string, force = false, endpointIdx = 0, wave = 1): Promise<OsmElement[]> {
   mkdirSync(cacheDir, { recursive: true });
-  const cachePath = join(cacheDir, areaCode + ".json");
+  const cachePath = join(cacheDir, areaCode + (wave === 2 ? "-w2" : "") + ".json");
   if (!force && existsSync(cachePath)) return JSON.parse(readFileSync(cachePath, "utf8")) as OsmElement[];
 
+  if (wave === 2) {
+    // Wave two is forty selectors. Ask in chunks of eight and cache each chunk, so a slow state resumes where it stopped.
+    const sels = SELECTORS_W2.map((s) => s.selector);
+    const out: OsmElement[] = [];
+    for (let i = 0; i < sels.length; i += 8) {
+      const chunkPath = join(cacheDir, `${areaCode}-w2-c${i / 8}.json`);
+      if (!force && existsSync(chunkPath)) {
+        out.push(...(JSON.parse(readFileSync(chunkPath, "utf8")) as OsmElement[]));
+        continue;
+      }
+      const got = await runOverpass(buildQuery(areaCode, sels.slice(i, i + 8)), endpointIdx);
+      writeFileSync(chunkPath, JSON.stringify(got));
+      out.push(...got);
+      await sleep(1000);
+    }
+    const seen2 = new Set<string>();
+    const unique2 = out.filter((e) => { const k = e.type + "/" + e.id; if (seen2.has(k)) return false; seen2.add(k); return true; });
+    writeFileSync(cachePath, JSON.stringify(unique2));
+    return unique2;
+  }
   const all = SELECTORS.map((s) => s.selector);
   const collect = async (sels: string[]): Promise<OsmElement[]> => {
     try {
@@ -154,7 +262,7 @@ function pickCategory(tags: Record<string, string>): string | null {
 export type DiscoverStats = { area: string; found: number; inserted: number; updated: number; skipped: number };
 
 /** Insert or refresh operators from one area's OSM elements. Keyed by website domain, else by OSM ref. */
-export function loadArea(area: (typeof AREAS)[number], elements: OsmElement[]): DiscoverStats {
+export function loadArea(area: (typeof AREAS)[number], elements: OsmElement[], wave = 1): DiscoverStats {
   const stats: DiscoverStats = { area: area.code, found: elements.length, inserted: 0, updated: 0, skipped: 0 };
   const now = nowIso();
   const insert = db.prepare(
@@ -184,7 +292,7 @@ export function loadArea(area: (typeof AREAS)[number], elements: OsmElement[]): 
       stats.skipped += 1;
       continue;
     }
-    const category = pickCategory(t);
+    const category = wave === 2 ? pickCategoryW2(t) : pickCategory(t);
     if (!category) {
       stats.skipped += 1;
       continue;
@@ -218,7 +326,7 @@ export function loadArea(area: (typeof AREAS)[number], elements: OsmElement[]): 
   return stats;
 }
 
-export async function discoverAll(opts: { only?: string[]; force?: boolean; concurrency?: number } = {}): Promise<DiscoverStats[]> {
+export async function discoverAll(opts: { only?: string[]; force?: boolean; concurrency?: number; wave?: number } = {}): Promise<DiscoverStats[]> {
   const out: DiscoverStats[] = [];
   const areas = opts.only?.length ? AREAS.filter((a) => opts.only!.includes(a.code) || opts.only!.includes(a.region)) : AREAS;
   const workers = Math.max(1, Math.min(opts.concurrency ?? 3, 4));
@@ -228,8 +336,8 @@ export async function discoverAll(opts: { only?: string[]; force?: boolean; conc
       const area = areas[next++];
       const started = Date.now();
       try {
-        const elements = await fetchArea(area.code, opts.force, w % ENDPOINTS.length);
-        const stats = loadArea(area, elements);
+        const elements = await fetchArea(area.code, opts.force, w % ENDPOINTS.length, opts.wave ?? 1);
+        const stats = loadArea(area, elements, opts.wave ?? 1);
         out.push(stats);
         console.log(`${area.code}: ${stats.found} found, ${stats.inserted} new, ${stats.updated} updated, ${stats.skipped} skipped (${Math.round((Date.now() - started) / 1000)}s)`);
       } catch (e) {

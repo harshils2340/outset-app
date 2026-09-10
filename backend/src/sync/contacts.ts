@@ -3,6 +3,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { db } from "../db/client.ts";
 import { writeLandingPages } from "./pages.ts";
+import { claimKeyHash } from "../lib/claim.ts";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const appDataDir = join(here, "../../../src/data");
@@ -176,6 +177,7 @@ function toCatalogItem(r: CatalogRow): Record<string, unknown> {
   const area = r.city ? (r.region && !r.city.includes(r.region) ? r.city + ", " + r.region : r.city) : r.region || "";
   return {
     id: "o-" + slug(r.domain),
+    claimKey: claimKeyHash("o-" + slug(r.domain)),
     title: decodeEntities(r.name),
     cat: r.family || "water",
     art: artFromName(r.name, r.icon_key),

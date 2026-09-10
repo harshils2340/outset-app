@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { db, nowIso } from "../db/client.ts";
 import { refreshGaps } from "../lib/completeness.ts";
+import { claimToken } from "../lib/claim.ts";
 
 type Op = {
   id: string;
@@ -34,7 +35,9 @@ function draftCopy(op: Op, gaps: string[], offerings: string[]): { subject: stri
     menu,
     "",
     "See it: " + SITE + "#o=" + id,
-    "Claim it and fix anything: " + SITE + "#claim=" + id,
+    "Open your dashboard, no password needed: " + SITE + "#claim=" + id + "&k=" + claimToken(id),
+    "",
+    "That link is yours alone. It opens your listing editor: fix prices, swap photos, set hours, preview what guests see, and switch bookings on.",
     "",
     "What you get, free:",
     "  Online booking with a bookings feed you accept or decline from your phone.",

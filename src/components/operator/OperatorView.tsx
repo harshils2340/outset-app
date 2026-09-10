@@ -81,6 +81,7 @@ export function OperatorView({ compact = false }: { compact?: boolean }) {
     return (
       <OpLogin
         claimId={state.operatorId}
+        claimToken={state.claimToken}
         compact={compact}
         onEnter={(profile) => { setWantLogin(false); enter(profile); }}
         onBack={back}

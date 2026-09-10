@@ -7,6 +7,9 @@ export const CATS = [
   { id: "motorsport", name: "Race", icon: "catMotorsport" },
   { id: "indoor", name: "Indoor", icon: "catIndoor" },
   { id: "outdoor", name: "Outdoor", icon: "catOutdoor" },
+  { id: "play", name: "Play", icon: "catPlay" },
+  { id: "food", name: "Food & drink", icon: "catFood" },
+  { id: "wellness", name: "Wellness", icon: "catWellness" },
 ] as Category[];
 
 export const CATMETA = {
@@ -63,5 +66,32 @@ export const CATMETA = {
     note: "",
     emptyTitle: "Nothing outdoors",
     emptyBody: "No outdoor experiences match that search.",
+  },
+  play: {
+    railEyebrow: "",
+    railTitle: "Play",
+    head: "to play",
+    search: "Bowling, arcade, mini golf",
+    note: "",
+    emptyTitle: "Nothing to play",
+    emptyBody: "No play experiences match that search.",
+  },
+  food: {
+    railEyebrow: "",
+    railTitle: "Food & drink",
+    head: "to taste",
+    search: "Brewery, winery, cooking class",
+    note: "",
+    emptyTitle: "Nothing to taste",
+    emptyBody: "No food or drink experiences match that search.",
+  },
+  wellness: {
+    railEyebrow: "",
+    railTitle: "Wellness",
+    head: "to unwind",
+    search: "Spa, yoga, dance class",
+    note: "",
+    emptyTitle: "Nothing to unwind with",
+    emptyBody: "No wellness experiences match that search.",
   },
 } as Record<string, CategoryMeta>;

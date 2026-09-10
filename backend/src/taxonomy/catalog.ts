@@ -1,4 +1,4 @@
-export type Family = "air" | "water" | "motorsport" | "indoor" | "outdoor";
+export type Family = "air" | "water" | "motorsport" | "indoor" | "outdoor" | "play" | "food" | "wellness";
 export type ServiceStyle = "rental" | "tour" | "ticket" | "appointment";
 export type Country = "US" | "CA";
 
@@ -28,6 +28,39 @@ export const CATEGORIES: CategoryDef[] = [
   { id: "axe", family: "indoor", label: "Axe throwing", iconKey: "axe", serviceStyle: "appointment", searchQuery: "axe throwing" },
   { id: "paintball", family: "outdoor", label: "Paintball", iconKey: "paintball", serviceStyle: "ticket", searchQuery: "paintball field" },
   { id: "horse", family: "outdoor", label: "Horseback", iconKey: "horse", serviceStyle: "tour", searchQuery: "horseback riding" },
+  // Wave two: everything else a person books, calls about, or checks online for before going.
+  { id: "bowling", family: "play", label: "Bowling", iconKey: "bowling", serviceStyle: "appointment", searchQuery: "bowling alley" },
+  { id: "minigolf", family: "play", label: "Mini golf", iconKey: "minigolf", serviceStyle: "ticket", searchQuery: "mini golf" },
+  { id: "arcade", family: "play", label: "Arcade", iconKey: "arcade", serviceStyle: "ticket", searchQuery: "arcade" },
+  { id: "trampoline", family: "play", label: "Trampoline park", iconKey: "trampoline", serviceStyle: "ticket", searchQuery: "trampoline park" },
+  { id: "lasertag", family: "play", label: "Laser tag", iconKey: "lasertag", serviceStyle: "appointment", searchQuery: "laser tag" },
+  { id: "icerink", family: "play", label: "Ice skating", iconKey: "icerink", serviceStyle: "ticket", searchQuery: "ice skating rink" },
+  { id: "waterpark", family: "play", label: "Water park", iconKey: "waterpark", serviceStyle: "ticket", searchQuery: "water park" },
+  { id: "themepark", family: "play", label: "Theme park", iconKey: "themepark", serviceStyle: "ticket", searchQuery: "amusement park" },
+  { id: "zoo", family: "play", label: "Zoo", iconKey: "zoo", serviceStyle: "ticket", searchQuery: "zoo" },
+  { id: "aquarium", family: "play", label: "Aquarium", iconKey: "aquarium", serviceStyle: "ticket", searchQuery: "aquarium" },
+  { id: "karaoke", family: "play", label: "Karaoke", iconKey: "karaoke", serviceStyle: "appointment", searchQuery: "karaoke rooms" },
+  { id: "climbing", family: "indoor", label: "Climbing gym", iconKey: "climbing", serviceStyle: "ticket", searchQuery: "climbing gym" },
+  { id: "range", family: "outdoor", label: "Shooting range", iconKey: "range", serviceStyle: "appointment", searchQuery: "shooting range" },
+  { id: "archery", family: "outdoor", label: "Archery", iconKey: "archery", serviceStyle: "appointment", searchQuery: "archery range" },
+  { id: "golf", family: "outdoor", label: "Golf", iconKey: "golf", serviceStyle: "appointment", searchQuery: "golf course tee times" },
+  { id: "zipline", family: "outdoor", label: "Zipline", iconKey: "zipline", serviceStyle: "ticket", searchQuery: "zipline" },
+  { id: "ski", family: "outdoor", label: "Ski and snowboard", iconKey: "ski", serviceStyle: "ticket", searchQuery: "ski resort lessons" },
+  { id: "bike", family: "outdoor", label: "Bike rental", iconKey: "bike", serviceStyle: "rental", searchQuery: "bike rental" },
+  { id: "snowmobile", family: "outdoor", label: "Snowmobile", iconKey: "snowmobile", serviceStyle: "rental", searchQuery: "snowmobile tour" },
+  { id: "rafting", family: "water", label: "Rafting", iconKey: "rafting", serviceStyle: "tour", searchQuery: "whitewater rafting" },
+  { id: "scuba", family: "water", label: "Scuba and snorkel", iconKey: "scuba", serviceStyle: "tour", searchQuery: "scuba diving" },
+  { id: "surf", family: "water", label: "Surf lesson", iconKey: "surf", serviceStyle: "appointment", searchQuery: "surf lessons" },
+  { id: "paragliding", family: "air", label: "Paragliding", iconKey: "paragliding", serviceStyle: "ticket", searchQuery: "tandem paragliding" },
+  { id: "gliding", family: "air", label: "Glider flight", iconKey: "gliding", serviceStyle: "ticket", searchQuery: "glider ride" },
+  { id: "brewery", family: "food", label: "Brewery", iconKey: "brewery", serviceStyle: "ticket", searchQuery: "brewery tour" },
+  { id: "winery", family: "food", label: "Winery", iconKey: "winery", serviceStyle: "ticket", searchQuery: "winery tasting" },
+  { id: "distillery", family: "food", label: "Distillery", iconKey: "distillery", serviceStyle: "ticket", searchQuery: "distillery tour" },
+  { id: "cooking", family: "food", label: "Cooking class", iconKey: "cooking", serviceStyle: "appointment", searchQuery: "cooking class" },
+  { id: "spa", family: "wellness", label: "Spa", iconKey: "spa", serviceStyle: "appointment", searchQuery: "day spa" },
+  { id: "yoga", family: "wellness", label: "Yoga", iconKey: "yoga", serviceStyle: "appointment", searchQuery: "yoga studio" },
+  { id: "dance", family: "wellness", label: "Dance class", iconKey: "dance", serviceStyle: "appointment", searchQuery: "dance classes" },
+  { id: "pottery", family: "wellness", label: "Pottery and art class", iconKey: "pottery", serviceStyle: "appointment", searchQuery: "pottery class" },
 ];
 
 export type MetroDef = {

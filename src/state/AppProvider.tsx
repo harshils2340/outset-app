@@ -52,6 +52,8 @@ export type AppState = {
   reqTargetId: string | null;
   /** Operator whose dashboard is open. null picks a demo operator. */
   operatorId: string | null;
+  /** Token from a signed claim link, checked against the listing's claimKey. */
+  claimToken: string | null;
   /** Listing an owner arrived at from a "remove my listing" link. */
   removeId: string | null;
   sheet: SheetId;
@@ -89,7 +91,7 @@ type Action =
     }
   | { type: "back" }
   | { type: "openChat"; id: string }
-  | { type: "openOperator"; id?: string }
+  | { type: "openOperator"; id?: string; token?: string }
   | { type: "ensureThread"; id: string }
   | { type: "removeRequest"; id: string | null }
   | { type: "sendChat"; text: string }
@@ -274,7 +276,7 @@ function reducer(state: AppState, action: Action): AppState {
       return { ...state, threadId: company.id, chats: { ...state.chats, [company.id]: [hello] } };
     }
     case "openOperator":
-      return { ...state, tab: "account", screen: "operator", sheet: null, reqTargetId: null, operatorId: action.id ?? state.operatorId };
+      return { ...state, tab: "account", screen: "operator", sheet: null, reqTargetId: null, operatorId: action.id ?? state.operatorId, claimToken: action.token ?? (action.id ? null : state.claimToken) };
     case "openChat": {
       const listing = listingById(action.id);
       if (listing) {
@@ -348,6 +350,7 @@ const initial: AppState = {
   chats: {},
   reqTargetId: null,
   operatorId: null,
+  claimToken: null,
   removeId: null,
   sheet: null,
   toast: null,
@@ -422,9 +425,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
         dispatch({ type: "openRequest", id: target.id });
         loadListing(target.id).then((changed) => changed && dispatch({ type: "catalogLoaded", added: 1 }));
       }
-      const c = window.location.hash.match(/^#claim=([a-z0-9-]+)/i);
+      const c = window.location.hash.match(/^#claim=([a-z0-9-]+)(?:&k=([A-Za-z0-9_-]+))?/i);
       if (c && experienceById(c[1])) {
-        dispatch({ type: "openOperator", id: c[1] });
+        dispatch({ type: "openOperator", id: c[1], token: c[2] || undefined });
         loadListing(c[1]).then((changed) => changed && dispatch({ type: "catalogLoaded", added: 1 }));
       }
       // Consume the deep link so a reload lands on the home page, not the same listing again.

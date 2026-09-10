@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { Unclaimed } from "../../data/types";
 import { contactFor, experienceById, fromPrice, getCatalog } from "../../lib/catalog";
 import { money } from "../../lib/format";
@@ -16,7 +16,12 @@ import { OD_ICONS } from "./opContext";
 
 type Step = "pick" | "details" | "code";
 
-export function OpLogin({ claimId, compact, onEnter, onBack }: { claimId: string | null; compact: boolean; onEnter: (p: OperatorProfile) => void; onBack: () => void }) {
+async function sha256Hex(text: string): Promise<string> {
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
+  return Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+export function OpLogin({ claimId, claimToken, compact, onEnter, onBack }: { claimId: string | null; claimToken?: string | null; compact: boolean; onEnter: (p: OperatorProfile) => void; onBack: () => void }) {
   const preset = useMemo(() => (claimId ? experienceById(claimId) : null), [claimId]);
   const [picked, setPicked] = useState<Unclaimed | null>(preset);
   const [step, setStep] = useState<Step>(preset ? "details" : "pick");
@@ -26,6 +31,34 @@ export function OpLogin({ claimId, compact, onEnter, onBack }: { claimId: string
   const [phone, setPhone] = useState("");
   const [code, setCode] = useState("");
   const [err, setErr] = useState<string | null>(null);
+  const [linkState, setLinkState] = useState<"idle" | "checking" | "bad">(claimToken && claimId ? "checking" : "idle");
+
+  // A signed claim link opens the dashboard directly. The listing file carries a hash of the emailed token;
+  // the detail file can arrive a moment after the page, so keep checking for a few seconds.
+  useEffect(() => {
+    if (!claimToken || !claimId) return;
+    let alive = true;
+    let tries = 0;
+    const tick = async () => {
+      const u = experienceById(claimId);
+      if (u?.claimKey) {
+        const ok = (await sha256Hex(claimToken)) === u.claimKey;
+        if (!alive) return;
+        if (!ok) { setLinkState("bad"); return; }
+        const existing = loadProfile(u.id);
+        if (existing) { onEnter(existing); return; }
+        const p = defaultProfile(u, { name: "", email: contactFor(u)?.email || "", phone: "" });
+        p.bookings = sampleBookings(p);
+        saveProfile(p);
+        onEnter(p);
+        return;
+      }
+      if (++tries < 24 && alive) setTimeout(tick, 500);
+      else if (alive) setLinkState("bad");
+    };
+    tick();
+    return () => { alive = false; };
+  }, [claimToken, claimId]);
   const mine = useMemo(() => claimedIds().map((id) => ({ id, p: loadProfile(id), u: experienceById(id) })).filter((x) => x.p && x.u), []);
   const demoCode = useMemo(() => String(100000 + Math.floor(Math.random() * 900000)), []);
 
@@ -144,6 +177,8 @@ export function OpLogin({ claimId, compact, onEnter, onBack }: { claimId: string
                 <small>{picked.area}</small>
               </span>
             </div>
+            {linkState === "checking" ? <p className="odmuted">Opening your dashboard…</p> : null}
+            {linkState === "bad" ? <p className="oderr">That claim link didn't check out. Use the link from your email, or sign in below.</p> : null}
             <h2>Who's the owner?</h2>
             <p className="odmuted">We'll send booking alerts here. Nothing goes out until you confirm.</p>
             <label className="odfield"><span>Your name</span><input value={name} onChange={(e) => setName(e.target.value)} placeholder="Full name" /></label>
