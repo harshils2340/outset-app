@@ -83,6 +83,67 @@ const SELECTORS_W2: { category: string; selector: string }[] = [
   { category: "cooking", selector: '["amenity"="cooking_school"]' },
 ];
 
+/** Wave three. */
+const SELECTORS_W3: { category: string; selector: string }[] = [
+  { category: "theatre", selector: '["amenity"="theatre"]' },
+  { category: "theatre", selector: '["amenity"="music_venue"]' },
+  { category: "theatre", selector: '["amenity"="arts_centre"]' },
+  { category: "theatre", selector: '["amenity"="comedy_club"]' },
+  { category: "museum", selector: '["tourism"="museum"]' },
+  { category: "museum", selector: '["tourism"="gallery"]' },
+  { category: "museum", selector: '["amenity"="planetarium"]' },
+  { category: "garden", selector: '["leisure"="garden"]["garden:type"="botanical"]' },
+  { category: "garden", selector: '["tourism"="attraction"]["attraction"~"botanical|garden|arboretum"]' },
+  { category: "camping", selector: '["tourism"="camp_site"]["name"]' },
+  { category: "camping", selector: '["tourism"="caravan_site"]["name"]' },
+  { category: "camping", selector: '["tourism"="wilderness_hut"]["name"]' },
+  { category: "tennis", selector: '["leisure"="sports_centre"]["sport"~"tennis|pickleball|squash|badminton|racquet"]' },
+  { category: "tennis", selector: '["club"="sport"]["sport"~"tennis|pickleball"]' },
+  { category: "swim", selector: '["leisure"="sports_centre"]["sport"="swimming"]' },
+  { category: "swim", selector: '["leisure"="swimming_pool"]["access"!="private"]["name"]["fee"]' },
+  { category: "martialarts", selector: '["amenity"="dojo"]' },
+  { category: "martialarts", selector: '["leisure"="sports_centre"]["sport"~"boxing|martial|karate|judo|taekwondo|jiu|muay|kickbox|fencing"]' },
+  { category: "gymnastics", selector: '["leisure"="sports_centre"]["sport"~"gymnastics|cheer|parkour"]' },
+  { category: "gymnastics", selector: '["sport"~"gymnastics|parkour"]["name"]' },
+  { category: "fitness", selector: '["leisure"="fitness_centre"]["sport"~"crossfit|pilates|barre|spinning|cycling|yoga|boxing"]' },
+  { category: "fitness", selector: '["leisure"="fitness_centre"]["name"~"CrossFit|Pilates|Barre|Cycle|Spin|F45|Orangetheory|Bootcamp|Club Pilates|Pure Barre|SoulCycle|Barry"]' },
+  { category: "venue", selector: '["amenity"="events_venue"]' },
+  { category: "venue", selector: '["amenity"="conference_centre"]' },
+  { category: "sailing", selector: '["sport"="sailing"]["name"]' },
+  { category: "sailing", selector: '["club"="sailing"]' },
+  { category: "discgolf", selector: '["leisure"="disc_golf_course"]' },
+  { category: "discgolf", selector: '["sport"="disc_golf"]["name"]' },
+  { category: "discgolf", selector: '["golf"="driving_range"]' },
+  { category: "discgolf", selector: '["leisure"="golf_course"]["golf"="driving_range"]' },
+  { category: "billiards", selector: '["sport"~"billiards|darts|table_tennis|shuffleboard"]["name"]' },
+  { category: "motorsport", selector: '["sport"~"motocross|motor|bmx|drag_racing|atv|off_road"]["name"]' },
+  { category: "motorsport", selector: '["leisure"="track"]["sport"~"motor|motocross|karting|bmx"]["name"]' },
+  { category: "sauna", selector: '["leisure"="sauna"]' },
+  { category: "sauna", selector: '["amenity"="public_bath"]' },
+  { category: "sauna", selector: '["natural"="hot_spring"]["name"]["fee"]' },
+];
+
+function pickCategoryW3(tags: Record<string, string>): string | null {
+  const a = tags.amenity || "", l = tags.leisure || "", t = tags.tourism || "", sp = (tags.sport || "").toLowerCase(), name = (tags.name || "").toLowerCase();
+  if (a === "theatre" || a === "music_venue" || a === "arts_centre" || a === "comedy_club") return "theatre";
+  if (t === "museum" || t === "gallery" || a === "planetarium") return "museum";
+  if (l === "garden" || /botanical|arboretum|garden/.test(tags.attraction || "")) return "garden";
+  if (t === "camp_site" || t === "caravan_site" || t === "wilderness_hut") return "camping";
+  if (/tennis|pickleball|squash|badminton|racquet/.test(sp)) return "tennis";
+  if (sp === "swimming" || l === "swimming_pool") return "swim";
+  if (a === "dojo" || /boxing|martial|karate|judo|taekwondo|jiu|muay|kickbox|fencing/.test(sp)) return "martialarts";
+  if (/gymnastics|cheer|parkour/.test(sp)) return "gymnastics";
+  if (l === "fitness_centre") return "fitness";
+  if (a === "events_venue" || a === "conference_centre") return "venue";
+  if (sp === "sailing" || tags.club === "sailing") return "sailing";
+  if (l === "disc_golf_course" || sp === "disc_golf" || tags.golf === "driving_range") return "discgolf";
+  if (/billiards|darts|table_tennis|shuffleboard/.test(sp)) return "billiards";
+  if (/motocross|motor|bmx|drag|atv|off_road/.test(sp)) return "motorsport";
+  if (l === "sauna" || a === "public_bath" || tags.natural === "hot_spring") return "sauna";
+  if (/museum/.test(name)) return "museum";
+  return null;
+}
+
 /** Category from wave-two tags. Tags first; names disambiguate the broad ones. */
 function pickCategoryW2(tags: Record<string, string>): string | null {
   const leisure = tags.leisure || "";
@@ -171,15 +232,15 @@ function sleep(ms: number): Promise<void> {
 /** Fetch one area, splitting selectors in half when Overpass times out. Cached on disk per area. */
 export async function fetchArea(areaCode: string, force = false, endpointIdx = 0, wave = 1): Promise<OsmElement[]> {
   mkdirSync(cacheDir, { recursive: true });
-  const cachePath = join(cacheDir, areaCode + (wave === 2 ? "-w2" : "") + ".json");
+  const cachePath = join(cacheDir, areaCode + (wave >= 2 ? "-w" + wave : "") + ".json");
   if (!force && existsSync(cachePath)) return JSON.parse(readFileSync(cachePath, "utf8")) as OsmElement[];
 
-  if (wave === 2) {
-    // Wave two is forty selectors. Ask in chunks of eight and cache each chunk, so a slow state resumes where it stopped.
-    const sels = SELECTORS_W2.map((s) => s.selector);
+  if (wave >= 2) {
+    // Waves two and three are forty selectors each. Ask in chunks of eight and cache each chunk, so a slow state resumes where it stopped.
+    const sels = (wave === 3 ? SELECTORS_W3 : SELECTORS_W2).map((s) => s.selector);
     const out: OsmElement[] = [];
     for (let i = 0; i < sels.length; i += 8) {
-      const chunkPath = join(cacheDir, `${areaCode}-w2-c${i / 8}.json`);
+      const chunkPath = join(cacheDir, `${areaCode}-w${wave}-c${i / 8}.json`);
       if (!force && existsSync(chunkPath)) {
         out.push(...(JSON.parse(readFileSync(chunkPath, "utf8")) as OsmElement[]));
         continue;
@@ -303,7 +364,7 @@ export function loadArea(area: (typeof AREAS)[number], elements: OsmElement[], w
       stats.skipped += 1;
       continue;
     }
-    const category = wave === 2 ? pickCategoryW2(t) : pickCategory(t);
+    const category = wave === 3 ? pickCategoryW3(t) : wave === 2 ? pickCategoryW2(t) : pickCategory(t);
     if (!category) {
       stats.skipped += 1;
       continue;

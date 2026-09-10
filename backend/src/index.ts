@@ -23,14 +23,21 @@ import { widgetsPending, widgetForOperator } from "./enrich/widgets.ts";
 import { loadOsmLocations, locationsPending } from "./enrich/locations.ts";
 import { reviewsForOperator, reviewsPending } from "./enrich/reviews.ts";
 import { CITIES } from "./discover/cities.ts";
+import { installChromeGuard, reapOrphanChrome } from "./scrape/render.ts";
 
 import { db } from "./db/client.ts";
 import { CATEGORIES, METROS } from "./taxonomy/catalog.ts";
 
 migrate();
 seedTaxonomy();
+installChromeGuard();
 
 const cmd = process.argv[2] || "serve";
+
+if (cmd === "chrome-reap") {
+  console.log("reaped " + reapOrphanChrome() + " leftover chrome process(es)");
+  process.exit(0);
+}
 
 if (cmd === "add") {
   const website = process.argv[3];

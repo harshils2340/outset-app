@@ -63,6 +63,22 @@ export const CATEGORIES: CategoryDef[] = [
   { id: "pottery", family: "wellness", label: "Art class", iconKey: "pottery", serviceStyle: "appointment", searchQuery: "pottery class" },
   { id: "tour", family: "outdoor", label: "Tours", iconKey: "tour", serviceStyle: "tour", searchQuery: "food tour" },
   { id: "rage", family: "indoor", label: "Rage room", iconKey: "rage", serviceStyle: "appointment", searchQuery: "rage room" },
+  // Wave three: shows, museums, camping, courts, pools, classes, venues.
+  { id: "theatre", family: "play", label: "Theatre and shows", iconKey: "theatre", serviceStyle: "ticket", searchQuery: "comedy club" },
+  { id: "museum", family: "play", label: "Museums and galleries", iconKey: "museum", serviceStyle: "ticket", searchQuery: "museum" },
+  { id: "garden", family: "outdoor", label: "Gardens and parks", iconKey: "garden", serviceStyle: "ticket", searchQuery: "botanical garden" },
+  { id: "camping", family: "outdoor", label: "Camping and glamping", iconKey: "camping", serviceStyle: "rental", searchQuery: "glamping" },
+  { id: "tennis", family: "outdoor", label: "Tennis and pickleball", iconKey: "tennis", serviceStyle: "appointment", searchQuery: "pickleball courts" },
+  { id: "swim", family: "water", label: "Pools and swim lessons", iconKey: "swim", serviceStyle: "appointment", searchQuery: "swim lessons" },
+  { id: "martialarts", family: "wellness", label: "Martial arts and boxing", iconKey: "martialarts", serviceStyle: "appointment", searchQuery: "boxing gym classes" },
+  { id: "gymnastics", family: "play", label: "Gymnastics and cheer", iconKey: "gymnastics", serviceStyle: "appointment", searchQuery: "gymnastics open gym" },
+  { id: "fitness", family: "wellness", label: "Fitness classes", iconKey: "fitness", serviceStyle: "appointment", searchQuery: "pilates studio" },
+  { id: "venue", family: "play", label: "Party and event venues", iconKey: "venue", serviceStyle: "appointment", searchQuery: "party venue" },
+  { id: "sailing", family: "water", label: "Sailing lessons and charters", iconKey: "sailing", serviceStyle: "appointment", searchQuery: "sailing lessons" },
+  { id: "discgolf", family: "outdoor", label: "Disc golf and driving ranges", iconKey: "discgolf", serviceStyle: "ticket", searchQuery: "driving range" },
+  { id: "billiards", family: "play", label: "Billiards and darts", iconKey: "billiards", serviceStyle: "appointment", searchQuery: "pool hall" },
+  { id: "motorsport", family: "motorsport", label: "Motorsport and off-road", iconKey: "motorsport", serviceStyle: "ticket", searchQuery: "atv tours" },
+  { id: "sauna", family: "wellness", label: "Sauna and bathhouse", iconKey: "sauna", serviceStyle: "appointment", searchQuery: "sauna bathhouse" },
 ];
 
 export type MetroDef = {

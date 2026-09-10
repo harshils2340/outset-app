@@ -21,6 +21,12 @@ export const AI_TERMS: { term: string; phrasings: string; category: string }[] =
   { term: "food tours", phrasings: "food tour company, culinary walking tour, tasting tour", category: "tour" },
   { term: "walking tours", phrasings: "walking tour company, ghost tour, history tour, bike tour company, segway tour", category: "tour" },
   { term: "rage rooms and smash rooms", phrasings: "rage room, smash room, break room, anger room", category: "rage" },
+  { term: "boat tours and cruises", phrasings: "harbor cruise, sightseeing cruise, sunset cruise, dinner cruise, whale watching, dolphin tour, airboat tour", category: "cruise" },
+  { term: "adventure tours", phrasings: "ATV tour, jeep tour, hiking tour, kayak tour, snorkel tour, zipline tour, e-bike tour, scooter tour", category: "tour" },
+  { term: "brewery and wine tours", phrasings: "brewery tour, wine tour, distillery tour, tasting tour, bar crawl company", category: "tour" },
+  { term: "kids classes and camps", phrasings: "kids art class, kids cooking class, kids science class, day camp, gymnastics class for kids, kids coding class", category: "gymnastics" },
+  { term: "comedy clubs and live shows", phrasings: "comedy club, dinner theater, magic show, live music venue with tickets, murder mystery dinner", category: "theatre" },
+  { term: "wellness experiences", phrasings: "float tank, sauna and cold plunge studio, sound bath, meditation studio, hot springs, bathhouse", category: "sauna" },
 ];
 
 function env(name: string): string | undefined {

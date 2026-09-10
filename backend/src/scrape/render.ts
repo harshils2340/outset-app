@@ -1,12 +1,18 @@
-import { spawn, type ChildProcess } from "node:child_process";
-import { existsSync } from "node:fs";
-import { homedir } from "node:os";
+import { execFileSync, spawn, type ChildProcess } from "node:child_process";
+import { existsSync, readdirSync, rmSync } from "node:fs";
+import { homedir, tmpdir } from "node:os";
+import { join } from "node:path";
 
 /**
  * Last-resort page fetch: render in headless Chromium and return the DOM after scripts ran.
  * Used only when a plain fetch comes back empty (Wix and Squarespace shells, JavaScript-only menus, bot stubs).
  * One browser per process, one tab per page, hard timeouts everywhere. Never used for sites that read fine.
+ *
+ * The browser is a child of this Node process. Never unref it. Exit, Ctrl+C, and the next crawl all
+ * kill every Chrome tagged with /tmp/outset-render- so leftovers cannot sit on the CPU.
  */
+
+const PROFILE = "outset-render-";
 
 const CANDIDATES = [
   process.env.OUTSET_CHROME,
@@ -23,8 +29,76 @@ export function chromePath(): string | null {
 
 let browser: { proc: ChildProcess; port: number } | null = null;
 let starting: Promise<{ proc: ChildProcess; port: number } | null> | null = null;
+let hooked = false;
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+function killPid(pid: number): void {
+  if (!pid || pid === process.pid) return;
+  try {
+    process.kill(pid, "SIGKILL");
+  } catch {
+    /* already gone */
+  }
+}
+
+/** Kill leftover Outset headless Chrome only. Never Google Chrome, Cursor, or other apps. */
+export function reapOrphanChrome(): number {
+  let n = 0;
+  try {
+    const out = execFileSync("pgrep", ["-fl", PROFILE], { encoding: "utf8" });
+    for (const line of out.split("\n")) {
+      const pid = Number(line.trim().split(/\s+/)[0]);
+      if (pid > 0 && pid !== process.pid) {
+        killPid(pid);
+        n += 1;
+      }
+    }
+  } catch {
+    /* pgrep exits 1 when nothing matches */
+  }
+  for (const root of [tmpdir(), "/tmp"]) {
+    try {
+      for (const name of readdirSync(root)) {
+        if (!name.startsWith(PROFILE)) continue;
+        rmSync(join(root, name), { recursive: true, force: true });
+      }
+    } catch {
+      /* tmp busy */
+    }
+  }
+  return n;
+}
+
+export function closeBrowser(): void {
+  const proc = browser?.proc;
+  browser = null;
+  if (proc?.pid) killPid(proc.pid);
+  reapOrphanChrome();
+}
+
+/** Call once per process. Reaps leftovers now, and again on exit or Ctrl+C. */
+export function installChromeGuard(): void {
+  if (hooked) return;
+  hooked = true;
+  reapOrphanChrome();
+  const stop = () => closeBrowser();
+  process.on("exit", stop);
+  process.on("SIGINT", () => {
+    stop();
+    process.exit(130);
+  });
+  process.on("SIGTERM", () => {
+    stop();
+    process.exit(143);
+  });
+  process.on("SIGHUP", () => {
+    stop();
+    process.exit(129);
+  });
+}
+
+installChromeGuard();
 
 async function getBrowser(): Promise<{ proc: ChildProcess; port: number } | null> {
   if (browser && browser.proc.exitCode == null) return browser;
@@ -33,8 +107,15 @@ async function getBrowser(): Promise<{ proc: ChildProcess; port: number } | null
     const bin = chromePath();
     if (!bin) return null;
     const port = 9400 + Math.floor(Math.random() * 400);
-    const proc = spawn(bin, ["--headless=new", "--remote-debugging-port=" + port, "--no-first-run", "--no-default-browser-check", "--disable-gpu", "--mute-audio", "--user-data-dir=/tmp/outset-render-" + port, "--window-size=1280,900", "about:blank"], { stdio: "ignore" });
-    proc.unref();
+    const dir = "/tmp/" + PROFILE + port;
+    const proc = spawn(
+      bin,
+      ["--headless=new", "--remote-debugging-port=" + port, "--no-first-run", "--no-default-browser-check", "--disable-gpu", "--mute-audio", "--user-data-dir=" + dir, "--window-size=1280,900", "about:blank"],
+      { stdio: "ignore" },
+    );
+    proc.on("exit", () => {
+      if (browser?.proc === proc) browser = null;
+    });
     for (let i = 0; i < 40; i += 1) {
       try {
         const r = await fetch(`http://127.0.0.1:${port}/json/version`);
@@ -47,17 +128,12 @@ async function getBrowser(): Promise<{ proc: ChildProcess; port: number } | null
       }
       await sleep(250);
     }
-    proc.kill();
+    if (proc.pid) killPid(proc.pid);
     return null;
   })();
   const b = await starting;
   starting = null;
   return b;
-}
-
-export function closeBrowser(): void {
-  if (browser) browser.proc.kill();
-  browser = null;
 }
 
 type Msg = { id?: number; method?: string; params?: Record<string, unknown>; result?: Record<string, unknown> };

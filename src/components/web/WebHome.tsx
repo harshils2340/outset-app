@@ -70,6 +70,21 @@ const RAIL_KINDS: { art: ArtKind; title: string }[] = [
   { art: "pottery", title: "Pottery and art classes" },
   { art: "tour", title: "Food, walking and city tours" },
   { art: "rage", title: "Rage rooms" },
+  { art: "theatre", title: "Theatre, comedy and live shows" },
+  { art: "museum", title: "Museums and galleries" },
+  { art: "garden", title: "Botanical gardens and parks" },
+  { art: "camping", title: "Camping and glamping" },
+  { art: "tennis", title: "Tennis and pickleball courts" },
+  { art: "swim", title: "Pools and swim lessons" },
+  { art: "martialarts", title: "Martial arts and boxing" },
+  { art: "gymnastics", title: "Gymnastics, cheer and parkour" },
+  { art: "fitness", title: "Fitness classes" },
+  { art: "venue", title: "Party and event venues" },
+  { art: "sailing", title: "Sailing lessons and charters" },
+  { art: "discgolf", title: "Disc golf, driving ranges and topgolf" },
+  { art: "billiards", title: "Billiards, darts and shuffleboard" },
+  { art: "motorsport", title: "Motocross, ATV and off-road" },
+  { art: "sauna", title: "Sauna, bathhouse and cold plunge" },
 ];
 
 function rankForRail(list: Unclaimed[]): Unclaimed[] {
@@ -208,19 +223,32 @@ function Card({ u, onOpen, near }: { u: Unclaimed; onOpen: (id: string) => void;
   );
 }
 
-function Rail({ title, items, onOpen, near }: { title: string; items: Unclaimed[]; onOpen: (id: string) => void; near?: Place | null }) {
+function Rail({ title, items, onOpen, near, eager }: { title: string; items: Unclaimed[]; onOpen: (id: string) => void; near?: Place | null; eager?: boolean }) {
+  const wrapRef = useRef<HTMLElement>(null);
   const ref = useRef<HTMLDivElement>(null);
-  // Eight cards render up front; the rest mount once the rail is scrolled or paged, so a page of 14 rails
-  // does not fetch 280 photos before anyone touches it.
-  const [shown, setShown] = useState(8);
+  // Off-screen rails stay as skeletons so a page of 40 rails does not fetch hundreds of photos at once.
+  const [live, setLive] = useState(!!eager);
+  const [shown, setShown] = useState(7);
+  useEffect(() => {
+    if (live || !wrapRef.current || typeof IntersectionObserver === "undefined") return;
+    const io = new IntersectionObserver((entries) => {
+      if (entries.some((e) => e.isIntersecting)) {
+        setLive(true);
+        io.disconnect();
+      }
+    }, { rootMargin: "480px" });
+    io.observe(wrapRef.current);
+    return () => io.disconnect();
+  }, [live]);
   const reveal = () => setShown(20);
   const scroll = (dir: number) => {
+    setLive(true);
     reveal();
     ref.current?.scrollBy({ left: dir * (ref.current.clientWidth - 120), behavior: "smooth" });
   };
   if (!items.length) return null;
   return (
-    <section className="wrail">
+    <section className="wrail" ref={wrapRef}>
       <div className="wrailhead">
         <h2>{title}</h2>
         <span className="wrailnav">
@@ -232,8 +260,15 @@ function Rail({ title, items, onOpen, near }: { title: string; items: Unclaimed[
           </button>
         </span>
       </div>
-      <div className="wrailrow" ref={ref} onScroll={shown < 20 ? reveal : undefined}>
-        {items.slice(0, shown).map((u) => <Card key={u.id} u={u} onOpen={onOpen} near={near} />)}
+      <div className="wrailrow" ref={ref} onScroll={live && shown < 20 ? reveal : undefined}>
+        {live
+          ? items.slice(0, shown).map((u) => <Card key={u.id} u={u} onOpen={onOpen} near={near} />)
+          : Array.from({ length: Math.min(7, items.length) }, (_, i) => (
+              <div className="wcard" key={i}>
+                <div className="wart skel" />
+                <div className="wbody"><span className="skel skelline" /><span className="skel skelline short" /></div>
+              </div>
+            ))}
       </div>
     </section>
   );
@@ -498,7 +533,7 @@ export function WebHome({ onOpenApp, onOperators }: { onOpenApp: () => void; onO
               </h2>
             </div>
             <div className="wgrid">
-              {sorted.slice(0, 60).map((u) => <Card key={u.id} u={u} onOpen={openRequest} near={near} />)}
+              {sorted.slice(0, 21).map((u) => <Card key={u.id} u={u} onOpen={openRequest} near={near} />)}
             </div>
             {sorted.length === 0 ? <div className="wempty"><b>Nothing here yet.</b><p>Try a wider area or another category.</p></div> : null}
           </section>
@@ -525,7 +560,7 @@ export function WebHome({ onOpenApp, onOperators }: { onOpenApp: () => void; onO
               </div>
             ) : (
               <div className="wgrid">
-                {(near ? pool : pool).slice(0, 60).map((u) => <Card key={u.id} u={u} onOpen={openRequest} near={near} />)}
+                {(near ? pool : pool).slice(0, 21).map((u) => <Card key={u.id} u={u} onOpen={openRequest} near={near} />)}
               </div>
             )}
             {pool.length === 0 ? (
@@ -536,10 +571,10 @@ export function WebHome({ onOpenApp, onOperators }: { onOpenApp: () => void; onO
             ) : null}
           </section>
         ) : null}
-        {state.catalogReady && !sorted && !q.trim() ? rails.map((r) => {
+        {state.catalogReady && !sorted && !q.trim() ? rails.map((r, i) => {
           const items = rankForRail(pool.filter((u) => u.art === r.art));
           const title = near ? `${r.title} near ${near.label}` : metro ? `${r.title} in ${metro.name}` : `Popular ${r.title.toLowerCase()}`;
-          return <Rail key={r.art} title={title} items={items} onOpen={openRequest} near={near} />;
+          return <Rail key={r.art} title={title} items={items} onOpen={openRequest} near={near} eager={i < 2} />;
         }) : null}
         {state.catalogReady && !sorted && !q.trim() && !rails.length ? (
           <div className="wempty">

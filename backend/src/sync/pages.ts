@@ -63,6 +63,21 @@ const KINDS: { art: string; label: string; plural: string; family: string }[] = 
   { art: "pottery", label: "Pottery and art classes", plural: "art studios", family: "wellness" },
   { art: "tour", label: "Food, walking and city tours", plural: "tours", family: "outdoor" },
   { art: "rage", label: "Rage rooms", plural: "rage rooms", family: "indoor" },
+  { art: "theatre", label: "Theatre and shows", plural: "theatres", family: "play" },
+  { art: "museum", label: "Museums and galleries", plural: "museums", family: "play" },
+  { art: "garden", label: "Gardens and parks", plural: "gardens", family: "outdoor" },
+  { art: "camping", label: "Camping and glamping", plural: "campgrounds", family: "outdoor" },
+  { art: "tennis", label: "Tennis and pickleball", plural: "courts", family: "outdoor" },
+  { art: "swim", label: "Pools and swim lessons", plural: "pools", family: "water" },
+  { art: "martialarts", label: "Martial arts and boxing", plural: "martial arts gyms", family: "wellness" },
+  { art: "gymnastics", label: "Gymnastics and cheer", plural: "gymnastics gyms", family: "play" },
+  { art: "fitness", label: "Fitness classes", plural: "fitness studios", family: "wellness" },
+  { art: "venue", label: "Party and event venues", plural: "venues", family: "play" },
+  { art: "sailing", label: "Sailing lessons and charters", plural: "sailing schools", family: "water" },
+  { art: "discgolf", label: "Disc golf and driving ranges", plural: "courses", family: "outdoor" },
+  { art: "billiards", label: "Billiards and darts", plural: "pool halls", family: "play" },
+  { art: "motorsport", label: "Motorsport and off-road", plural: "tracks", family: "motorsport" },
+  { art: "sauna", label: "Sauna and bathhouse", plural: "saunas", family: "wellness" },
 ];
 
 type Item = Record<string, unknown> & {

@@ -48,7 +48,22 @@ export type ArtKind =
   | "dance"
   | "pottery"
   | "tour"
-  | "rage";
+  | "rage"
+  | "theatre"
+  | "museum"
+  | "garden"
+  | "camping"
+  | "tennis"
+  | "swim"
+  | "martialarts"
+  | "gymnastics"
+  | "fitness"
+  | "venue"
+  | "sailing"
+  | "discgolf"
+  | "billiards"
+  | "motorsport"
+  | "sauna";
 
 export type PriceUnit = "person" | "hr" | "trip";
 
