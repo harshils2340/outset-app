@@ -9,6 +9,7 @@ import { addressLine, contactFor, fmtHours, fmtPhone, fromPrice, getCatalog, lis
 import { DAYS, fmtDate, fmtReviews, fmtTime, money, priceWith } from "../../lib/format";
 import { thumb } from "../../lib/images";
 import { cleanDesc, durationLabel, freeCancel, minAge } from "../../lib/listingDerive";
+import { itemOpenState } from "../../lib/openNow";
 import { fmtDistance, kmBetween, nearestLocation } from "../../lib/places";
 import { priceUnclaimed } from "../../lib/pricing";
 import { useApp } from "../../state/AppProvider";
@@ -181,7 +182,9 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
   const age = minAge(requirements);
   const duration = item.dur || durationLabel(item);
   const priced = fromPrice(item) != null;
+  const openNow = itemOpenState(item);
   const badges: { icon: string; text: string }[] = [];
+  if (openNow) badges.push({ icon: ICONS.clock, text: openNow.label });
   if (score && score.rating >= 4.8 && score.reviews >= 100) badges.push({ icon: ICONS.star, text: "Top rated" });
   else if (score && score.reviews >= 1000) badges.push({ icon: ICONS.star, text: "Popular" });
   if (cancel) badges.push({ icon: ICONS.check, text: cancel });
