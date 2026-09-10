@@ -405,9 +405,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const stateRef = useRef(state);
   stateRef.current = state;
 
+  // True once the boot deep-link check has run. Until then the path-sync effect must not rewrite the URL,
+  // or the lite catalog shard flipping catalogReady early would erase a #claim= link before it is read.
+  const booted = useRef(false);
+
   useEffect(() => {
     dispatch({ type: "hydrate", bookings: loadBookings(), chats: loadChats() });
     let alive = true;
+    // The operator side is decided from the path and hash alone, before any catalog arrives, so an emailed
+    // claim link opens the dashboard on the first paint and never gets rewritten to the guest home.
+    const early = window.location.hash.match(/^#claim=([a-z0-9-]+)(?:&k=([A-Za-z0-9_-]+))?/i);
+    if (early) dispatch({ type: "openOperator", id: early[1], token: early[2] || undefined });
+    else if (atOperatorsPath()) dispatch({ type: "openOperator" });
     loadRemoteCatalog((n, complete) => {
       // The lite shard paints the rails early; the full catalog replaces it a moment later.
       if (alive && !complete) dispatch({ type: "catalogLoaded", added: n });
@@ -431,20 +440,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }
       const c = window.location.hash.match(/^#claim=([a-z0-9-]+)(?:&k=([A-Za-z0-9_-]+))?/i);
       if (c && experienceById(c[1])) {
-        dispatch({ type: "openOperator", id: c[1], token: c[2] || undefined });
+        // Already on the operator screen from the early check; now the record exists, fetch its details.
         loadListing(c[1]).then((changed) => changed && dispatch({ type: "catalogLoaded", added: 1 }));
       }
-      // Consume the deep link so a reload lands on the home page, not the same listing again.
-      if (m || c || r) window.history.replaceState(null, "", window.location.pathname + window.location.search);
-      // /operators is the operator side. The guest site lives at /.
-      else if (atOperatorsPath()) dispatch({ type: "openOperator" });
+      // Consume a listing or remove link so a reload lands on the home page. A claim link keeps its hash:
+      // the operator screen reads it and the URL should survive a refresh until the claim is done.
+      if (r) window.history.replaceState(null, "", window.location.pathname + window.location.search);
+      booted.current = true;
       // A listing link pasted while the app is already open should still open that listing.
       window.addEventListener("hashchange", () => {
         const h = window.location.hash.match(/^#o=([a-z0-9-]+)/i);
         if (!h || !experienceById(h[1])) return;
+        if (stateRef.current.sheet === "request" && stateRef.current.reqTargetId === h[1]) return;
         dispatch({ type: "openRequest", id: h[1] });
         loadListing(h[1]).then((changed) => changed && dispatch({ type: "catalogLoaded", added: 1 }));
-        window.history.replaceState(null, "", window.location.pathname + window.location.search);
       });
     });
     return () => {
@@ -462,13 +471,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
     saveChats(state.chats);
   }, [state.chats, state.hydrated]);
 
+  // The open listing lives in the address bar as #o=<id>, so refresh, back and share land on the same listing.
+  useEffect(() => {
+    if (!booted.current || state.screen === "operator") return;
+    const cur = window.location.hash;
+    if (state.sheet === "request" && state.reqTargetId) {
+      const want = "#o=" + state.reqTargetId;
+      if (cur !== want) window.history.replaceState(null, "", window.location.pathname + window.location.search + want);
+    } else if (/^#o=/.test(cur)) {
+      window.history.replaceState(null, "", window.location.pathname + window.location.search);
+    }
+  }, [state.sheet, state.reqTargetId, state.screen]);
+
   useEffect(() => {
     const onOps = state.screen === "operator";
     const atOps = atOperatorsPath();
     // The site may live under a base path (GitHub Pages serves it at /outset-app/), so build on BASE_URL, never on "/".
     const base = import.meta.env.BASE_URL.replace(/\/?$/, "/");
     if (onOps && !atOps) window.history.pushState(null, "", base + "operators" + window.location.hash);
-    else if (!onOps && atOps && state.catalogReady) window.history.pushState(null, "", base + window.location.hash.replace(/^#claim=[^&]*/, ""));
+    else if (!onOps && atOps && booted.current) window.history.pushState(null, "", base + window.location.hash.replace(/^#claim=[^&]*/, ""));
   }, [state.screen, state.catalogReady]);
 
   useEffect(() => {
