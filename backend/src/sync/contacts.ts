@@ -9,7 +9,7 @@ import { existsSync, readFileSync as readFileSyncFs } from "node:fs";
 
 /** A claimed operator's saved edits (public/profiles/<id>.json) win over what the crawl found. */
 function profileOverlay(id: string): { published: boolean; patch: Record<string, unknown> } | null {
-  const f = join(publicDir, "profiles", id + ".json");
+  const f = join(dirname(fileURLToPath(import.meta.url)), "../../../public/profiles", id + ".json");
   if (!existsSync(f)) return null;
   try {
     const rec = JSON.parse(readFileSyncFs(f, "utf8")) as { published?: boolean; patch?: Record<string, unknown> };
@@ -601,10 +601,11 @@ export function syncCatalogToApp(): { path: string; count: number } {
     .map((item) => {
       const ov = profileOverlay(item.id);
       if (!ov) return item;
-      const merged = { ...item, ...ov.patch, id: item.id, claimKey: item.claimKey, claimed: true } as typeof item & { claimed: boolean; published: boolean };
-      return Object.assign(merged, { published: ov.published });
+      const base = item as unknown as Record<string, unknown>;
+      const merged: Record<string, unknown> = { ...base, ...ov.patch, id: base.id, claimKey: base.claimKey, claimed: true, published: ov.published };
+      return merged as unknown as typeof item;
     })
-    .filter((item) => (item as { published?: boolean }).published !== false);
+    .filter((item) => (item as unknown as { published?: boolean }).published !== false);
   console.log("Left out " + dead.size + " map-only rows with nothing a guest can use.");
   const contactByDomain: Record<string, OperatorContact> = {};
   for (const c of allContacts()) contactByDomain[c.domain] = c;
