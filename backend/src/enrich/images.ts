@@ -3,6 +3,7 @@ import { load } from "cheerio";
 import { db, nowIso } from "../db/client.ts";
 import { fetchHtml, sleep, withDeadline } from "../scrape/fetch.ts";
 import { renderPage } from "../scrape/render.ts";
+import { probeImage, shapeBonus } from "./imagesize.ts";
 
 /**
  * Photo harvest from each operator's own site. Breadth-first over their pages, collect real photos,
@@ -149,6 +150,16 @@ export function harvestImages(html: string, pageUrl: string, seen: Map<string, P
   });
 }
 
+/** Read the real pixel size of the top candidates and let shape decide between them: a wide 1600px photo beats a 300px badge or a skinny banner. */
+export async function rankByShape(list: Photo[]): Promise<Photo[]> {
+  const sized = await Promise.all(list.map(async (p) => ({ p, bonus: shapeBonus(await probeImage(p.url)) })));
+  return sized
+    .filter((x) => x.bonus > -6)
+    .map((x) => ({ ...x.p, score: x.p.score + x.bonus }))
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 8);
+}
+
 export async function collectPhotos(website: string, maxPages = 5): Promise<Photo[]> {
   return (await collectMedia(website, maxPages)).photos;
 }
@@ -205,7 +216,7 @@ export async function collectMedia(website: string, maxPages = 12): Promise<{ ph
     pages += 1;
   }
   return {
-    photos: [...seen.values()].sort((a, b) => b.score - a.score).slice(0, 8),
+    photos: await rankByShape([...seen.values()].sort((a, b) => b.score - a.score).slice(0, 12)),
     videos: [...vids.values()].sort((a, b) => b.score - a.score).slice(0, 4),
   };
 }
