@@ -10,6 +10,15 @@ Everything below is built, tested end to end locally, and switches on the moment
    - `RESEND_API_KEY`: from resend.com (free tier covers 3,000 emails a month). Until the sending domain is verified, keep `MAIL_FROM` as `Outset <onboarding@resend.dev>`; after verifying outset.app (or any domain you own) set `MAIL_FROM` to `Outset <bookings@yourdomain>`.
 3. Copy the service URL (for example `https://outset-api.onrender.com`).
 
+## 1b. Card payments (Stripe)
+1. dashboard.stripe.com → Developers → API keys → copy the Secret key (`sk_test_...` to demo, `sk_live_...` for real money). Set it on the Render service as `STRIPE_SECRET_KEY`.
+2. Developers → Webhooks → Add endpoint → URL `https://<your render url>/stripe/webhook`, events `checkout.session.completed` and `checkout.session.expired`. Copy the signing secret (`whsec_...`) into `STRIPE_WEBHOOK_SECRET`.
+3. That is all. From then on "Book" becomes "Book and pay": the guest lands on Stripe's hosted page, the card is held, the operator gets the request, the money is captured when they accept and released when they decline. Instant-book listings capture at once. With no key, bookings fall back to pay on site.
+4. Payouts to operators: the platform account receives the money today; pay operators from the Stripe dashboard until Stripe Connect is switched on (next step once the first operators are live).
+
+## 1c. Admin key
+Set `ADMIN_KEY` on Render to any long random string. The internal routes (raw operator rows, outreach drafts) then only answer to requests carrying `x-admin-key`; without it they are closed on the public host.
+
 ## 2. Point the site at the API
 GitHub repo → Settings → Secrets and variables → Actions → Variables → new variable `VITE_API_URL` = the Render URL. Push anything (or rerun the "Deploy site" workflow). The site then signs in, saves and books through the API.
 

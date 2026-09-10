@@ -235,6 +235,8 @@ export type Booking = {
   created: number;
   /** Who booked, so the operator can confirm and the guest can be reached. */
   guest?: { name: string; phone: string; email?: string };
+  /** Card held or charged through Stripe, as opposed to paid on site. */
+  paid?: boolean;
 };
 
 export type TabId = "explore" | "trips" | "inbox" | "account";

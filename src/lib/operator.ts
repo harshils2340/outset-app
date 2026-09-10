@@ -421,7 +421,8 @@ export function guestBookingsFor(p: OperatorProfile, guest: Booking[]): OpBookin
 
 /** Bookings the API holds for this listing: the real ones, from any guest on any device. */
 export function remoteBookingsFor(list: RemoteBooking[]): OpBooking[] {
-  return list.map((b) => ({
+  // A pending row is a guest still on the Stripe page; it becomes a request once the card is authorized.
+  return list.filter((b) => b.status !== "pending").map((b) => ({
     id: "r" + b.code,
     code: b.code,
     guest: b.guest.name,
@@ -435,7 +436,7 @@ export function remoteBookingsFor(list: RemoteBooking[]): OpBooking[] {
     addons: b.addons,
     date: b.date,
     slot: b.slot,
-    status: b.status,
+    status: b.status as OpStatus,
     note: b.note,
     created: Date.parse(b.created) || Date.now(),
     source: "remote" as const,

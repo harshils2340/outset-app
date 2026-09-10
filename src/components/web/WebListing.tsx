@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { apiConfig } from "../../lib/api";
 import { GUIDES } from "../../data/guides";
 import { ICONS } from "../../data/icons";
 import { metroById } from "../../data/metros";
@@ -124,6 +125,8 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
     }
   });
   const guestOk = guest.name.trim().length >= 2 && guest.phone.replace(/\D/g, "").length >= 10;
+  const [payments, setPayments] = useState(false);
+  useEffect(() => { let alive = true; void apiConfig().then((c) => { if (alive) setPayments(c.payments); }); return () => { alive = false; }; }, []);
   const [gallery, setGallery] = useState<number | null>(null);
 
   useEffect(() => {
@@ -677,9 +680,10 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
                   {extras.map((a) => <div className="line" key={a.name}><span>{a.name}</span><b>{money(a.price ?? 0)}</b></div>)}
                   {p.fee ? <div className="line"><span>Service fee</span><b>{money(p.fee)}</b></div> : null}
                   <div className="line total"><span>Total</span><b>{p.total ? money(p.total) : "Pay on site"}</b></div>
+                  {payments && p.total ? <p className="wpaynote">Secure card payment. Your card is held and only charged once the booking is confirmed.</p> : null}
                 </div>
                 <button type="button" className="cta" style={{ width: "100%" }} disabled={!ready} onClick={book}>
-                  {ready ? (p.total ? "Book · " + money(p.total) : "Book") : needService && !picked ? "Choose a service" : time == null ? "Pick a time" : "Add your name and number"}
+                  {ready ? (p.total ? (payments ? "Book and pay · " : "Book · ") + money(p.total) : "Book") : needService && !picked ? "Choose a service" : time == null ? "Pick a time" : "Add your name and number"}
                 </button>
                 <p className="wbookfoot">
                   {priced ? "Instant confirmation. " : "Confirmed by the operator. "}

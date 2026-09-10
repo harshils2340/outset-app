@@ -36,7 +36,7 @@ export function WebConfirm({ booking, onDone, onOpen }: { booking: Booking; onDo
               <h2>{item.title}</h2>
               {picked ? <p className="wconfirmline">{plainWords(picked.name)}{picked.detail ? " · " + plainWords(picked.detail) : ""}</p> : null}
               {extras.length ? <p className="wconfirmline">Add-ons: {extras.join(", ")}</p> : null}
-              <p className="wconfirmline"><b>Total {booking.total ? money(booking.total) : "paid on site"}</b> · Code {booking.code}</p>
+              <p className="wconfirmline"><b>{booking.total ? (booking.paid ? "Paid " + money(booking.total) + " by card" : "Total " + money(booking.total)) : "Pay on site"}</b> · Code {booking.code}</p>
               <div className="contact" style={{ marginTop: 12 }}>
                 <a className="crow" href={contact ? mapsHref(contact, item.title + " " + item.area) : "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(item.title + " " + item.area)} target="_blank" rel="noreferrer">
                   <Markup html={ICONS.pin} />

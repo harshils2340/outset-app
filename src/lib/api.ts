@@ -135,6 +135,17 @@ export function signOutApi(): void {
   saveApiSession(null);
 }
 
+/* ---------- config ---------- */
+
+let configCache: { payments: boolean; mail: boolean } | null = null;
+/** What the API has switched on. Cached for the session; false for everything when there is no API. */
+export async function apiConfig(): Promise<{ payments: boolean; mail: boolean }> {
+  if (configCache) return configCache;
+  const r = await call<{ payments: boolean; mail: boolean }>(`/config`, { timeout: 5000 });
+  configCache = r.ok && r.data ? r.data : { payments: false, mail: false };
+  return configCache;
+}
+
 /* ---------- bookings ---------- */
 
 export type RemoteBooking = {
@@ -148,16 +159,23 @@ export type RemoteBooking = {
   addons: string[];
   total: number | null;
   guest: { name: string; phone: string; email: string };
-  status: "new" | "accepted" | "declined" | "completed" | "noshow" | "cancelled";
+  status: "pending" | "new" | "accepted" | "declined" | "completed" | "noshow" | "cancelled";
   created: string;
   decidedAt?: string;
   note?: string;
+  payment?: { session: string; intent: string | null; state: "authorized" | "captured" | "released" | "unpaid" };
 };
 
 /** The guest's request goes to the operator. Resolves the server's status ("new" or "accepted" for instant book). */
-export async function submitBooking(b: Omit<RemoteBooking, "status" | "created">): Promise<{ ok: boolean; status?: RemoteBooking["status"]; error?: string }> {
-  const r = await call<{ ok: boolean; status: RemoteBooking["status"] }>(`/bookings`, { method: "POST", body: JSON.stringify(b), timeout: 20000 });
-  return { ok: r.ok, status: r.data?.status, error: r.error };
+export async function submitBooking(b: Omit<RemoteBooking, "status" | "created">): Promise<{ ok: boolean; status?: RemoteBooking["status"]; checkoutUrl?: string; error?: string }> {
+  const r = await call<{ ok: boolean; status: RemoteBooking["status"]; checkoutUrl?: string }>(`/bookings`, { method: "POST", body: JSON.stringify(b), timeout: 25000 });
+  return { ok: r.ok, status: r.data?.status, checkoutUrl: r.data?.checkoutUrl, error: r.error };
+}
+
+/** After Stripe sends the guest back: confirm the payment landed. */
+export async function confirmPaid(listing: string, code: string): Promise<{ status?: string; paid: boolean }> {
+  const r = await call<{ status: string; paid: boolean }>(`/bookings/paid/${encodeURIComponent(listing)}/${encodeURIComponent(code)}`, { timeout: 15000 });
+  return r.ok && r.data ? r.data : { paid: false };
 }
 
 export async function fetchBookings(listing: string): Promise<RemoteBooking[] | null> {

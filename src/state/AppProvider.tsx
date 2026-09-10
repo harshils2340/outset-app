@@ -19,7 +19,7 @@ import { fmtDate, money, nowStamp } from "../lib/format";
 import { daySlotsOpen, openSeats } from "../lib/inventory";
 import { contactFor, experienceById, fromPrice, initials } from "../lib/catalog";
 import { loadListing, loadRemoteCatalog } from "../lib/catalogLoad";
-import { submitBooking } from "../lib/api";
+import { confirmPaid, submitBooking } from "../lib/api";
 import { companyGreeting, companyReply, companySuggestions } from "../lib/companyAgent";
 import type { Place } from "../lib/places";
 import { priceFor, priceUnclaimed } from "../lib/pricing";
@@ -95,6 +95,7 @@ type Action =
   | { type: "openOperator"; id?: string; token?: string }
   | { type: "ensureThread"; id: string }
   | { type: "removeRequest"; id: string | null }
+  | { type: "paidReturn"; code: string }
   | { type: "sendChat"; text: string }
   | { type: "toastOff" };
 
@@ -269,6 +270,12 @@ function reducer(state: AppState, action: Action): AppState {
     }
     case "removeRequest":
       return { ...state, removeId: action.id };
+    case "paidReturn": {
+      const booking = state.bookings.find((b) => b.code === action.code);
+      if (!booking) return state;
+      const paid = { ...booking, paid: true };
+      return { ...state, booking: paid, bookings: state.bookings.map((b) => (b.code === action.code ? paid : b)), sheet: null, screen: "confirm", toast: "Payment received - " + action.code };
+    }
     case "ensureThread": {
       const company = experienceById(action.id);
       if (!company) return state;
@@ -445,6 +452,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
         dispatch({ type: "openRequest", id: target.id });
         loadListing(target.id).then((changed) => changed && dispatch({ type: "catalogLoaded", added: 1 }));
       }
+      // Back from Stripe: #paid=<code>&o=<listing>. Confirm with the API, then show the confirmation page.
+      const pd = window.location.hash.match(/^#paid=([A-Z0-9-]+)&o=([a-z0-9-]+)/i);
+      if (pd) {
+        const code = pd[1].toUpperCase();
+        loadListing(pd[2]).then((changed) => changed && dispatch({ type: "catalogLoaded", added: 1 }));
+        dispatch({ type: "paidReturn", code });
+        void confirmPaid(pd[2], code).then((r) => { if (r.paid) dispatch({ type: "paidReturn", code }); });
+        window.history.replaceState(null, "", window.location.pathname + window.location.search);
+      }
       const c = window.location.hash.match(/^#claim=([a-z0-9-]+)(?:&k=([A-Za-z0-9_-]+))?/i);
       if (c && experienceById(c[1])) {
         // Already on the operator screen from the early check; now the record exists, fetch its details.
@@ -560,6 +576,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
             code: b.code, listing: u.id, date: b.date, slot: b.slot, qty: b.qty,
             service: picked?.name || u.title, variant: picked?.detail || "", addons: extras.map((a) => a.name), total: b.total || null,
             guest: { name: input.guest?.name || "", phone: input.guest?.phone || "", email: input.guest?.email || "" },
+          }).then((r) => {
+            // Card on file: Stripe's hosted page takes over, then sends the guest back to #paid=<code>.
+            if (r.checkoutUrl) window.location.assign(r.checkoutUrl);
           });
         }, 0);
       },

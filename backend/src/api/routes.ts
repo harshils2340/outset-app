@@ -13,6 +13,7 @@ import { cors } from "hono/cors";
 import { profiles } from "./profiles.ts";
 import { auth } from "./auth.ts";
 import { bookings } from "./bookings.ts";
+import { stripeEnabled } from "../lib/stripe.ts";
 
 export const app = new Hono();
 
@@ -25,11 +26,22 @@ app.use("*", async (c, next) => {
   c.header("referrer-policy", "no-referrer");
   c.header("cache-control", "no-store");
 });
+app.get("/config", (c) => c.json({ payments: stripeEnabled(), mail: !!process.env.RESEND_API_KEY }));
 app.route("/", auth);
 app.route("/", profiles);
 app.route("/", bookings);
 
 app.get("/health", (c) => c.json({ ok: true, service: "outset-backend" }));
+
+// Everything below is internal tooling (raw operator rows, emails, outreach drafts with claim tokens).
+// It answers only with the admin key; on a public host with no key set it is closed.
+app.use("*", async (c, next) => {
+  const key = process.env.ADMIN_KEY;
+  const local = !process.env.RENDER && !process.env.PORT_PUBLIC && (c.req.header("host") || "").startsWith("localhost");
+  if (local && !key) return next();
+  if (key && c.req.header("x-admin-key") === key) return next();
+  return c.json({ error: "not found" }, 404);
+});
 
 app.get("/taxonomy/categories", (c) => c.json({ categories: CATEGORIES }));
 app.get("/taxonomy/metros", (c) => c.json({ metros: METROS, cells: METROS.length * CATEGORIES.length }));

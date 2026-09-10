@@ -13,6 +13,7 @@ import { discoverSearch } from "./discover/searchapi.ts";
 import { discoverWeb } from "./discover/websearch.ts";
 import { discoverAi } from "./discover/aisearch.ts";
 import { sendOutreach } from "./outreach/send.ts";
+import { ownersCsv, ownersPending } from "./enrich/owners.ts";
 import { readPendingStructures, readSiteStructure } from "./enrich/structure.ts";
 import { socialPending } from "./enrich/social.ts";
 import { importThumbnails } from "./enrich/thumbs.ts";
@@ -272,6 +273,21 @@ if (cmd === "sync") {
   lap("Wrote " + out.count + " operator contact records to " + out.path);
   const cat = syncCatalogToApp();
   lap("Wrote " + cat.count + " operators to " + cat.path);
+  process.exit(0);
+}
+
+if (cmd === "owners") {
+  if (process.argv.includes("--csv")) {
+    const { writeFileSync } = await import("node:fs");
+    const out = process.argv.find((a) => a.startsWith("--out="))?.split("=")[1] || "data/owners.csv";
+    writeFileSync(out, ownersCsv());
+    console.log("Wrote " + out);
+    process.exit(0);
+  }
+  const limit = Number(process.argv[3] || 5000);
+  const concurrency = Number(process.argv[4] || 12);
+  const r = await ownersPending(limit, concurrency);
+  console.log("Owners: " + JSON.stringify(r));
   process.exit(0);
 }
 
