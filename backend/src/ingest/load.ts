@@ -7,6 +7,9 @@ import { refreshAllScores } from "../lib/completeness.ts";
 
 export function seedTaxonomy(): void {
   migrate();
+  // Already seeded: skip the writes so a read-only command never waits on another process's lock.
+  const have = db.prepare("SELECT (SELECT COUNT(*) FROM metros) AS m, (SELECT COUNT(*) FROM categories) AS c").get() as { m: number; c: number };
+  if (have.m >= METROS.length && have.c >= CATEGORIES.length) return;
   const insM = db.prepare(
     "INSERT OR REPLACE INTO metros (id, name, region, country, kind) VALUES (?, ?, ?, ?, ?)",
   );
