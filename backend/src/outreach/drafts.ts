@@ -37,6 +37,12 @@ export function scale(): { listings: number; metros: number; local: Map<string, 
  * The claim email. Short, specific, one listing link and one owner-only claim link.
  * The claim token lives only in this mail. Anyone with it can open the dashboard, so the copy says not to forward it.
  */
+function round(n: number): string {
+  if (n >= 10000) return Math.floor(n / 1000) + ",000+";
+  if (n >= 1000) return Math.floor(n / 100) * 100 + "+";
+  return String(n);
+}
+
 export function draftCopy(op: Op, sc: ReturnType<typeof scale>, offerings: string[], hasPhotos: boolean, hasRules: boolean): { subject: string; body: string } {
   void offerings;
   void hasPhotos;
