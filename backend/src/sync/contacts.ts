@@ -280,8 +280,12 @@ function toCatalogItem(r: CatalogRow): Record<string, unknown> {
         try {
           const r = JSON.parse(raw) as { a: string | null; r: number | null; t: string; d: string | null };
           // "Liz S. | Yelp" keeps the name; the platform becomes the date slot when there is no date.
-          const parts = (r.a || "").split(/\s*[|·]\s*/);
-          return { author: parts[0]?.trim() || undefined, rating: r.r || undefined, text: r.t, date: r.d || (parts[1] ? "via " + parts[1].trim() : undefined) };
+          const parts = (r.a || "").split(/\s*[|·,]\s*/);
+          let author = parts[0]?.trim() || "";
+          // A sentence caught as a name ("Highly recommend booking today!") is not a name.
+          if (/[!?.]$/.test(author) || author.split(/\s+/).length > 5 || /\b(recommend|amazing|great|best|love|thank)\b/i.test(author)) author = "";
+          const via = parts.slice(1).find((x) => /yelp|tripadvisor|google|facebook|airbnb|viator|expedia/i.test(x));
+          return { author: author || undefined, rating: r.r || undefined, text: r.t, date: r.d || (via ? "via " + via.trim() : undefined) };
         } catch {
           return null;
         }
