@@ -195,7 +195,7 @@ export function toCatalogItem(r: CatalogRow): Record<string, unknown> {
   // Same-branch rows win; other-branch rows fill in only when this branch has none, since chain menus are shared.
   const own = rawOfferings.filter((o) => trusted(o.source_url));
   const onSite = own.some((o) => !offCity(o.source_url)) ? own.filter((o) => !offCity(o.source_url)) : own;
-  const isMerch = (o: { name: string; detail: string | null; source_url?: string | null }) => MERCH.test(o.name + " " + (o.detail || "")) || /\/(merch|shop|store|products?|apparel|gear)(\/|$)/i.test((o.source_url || "").replace(/^https?:\/\/[^/]+/, "")) || (SPIRITS.test(o.name) && !/tasting|tour|flight|class|experience|pairing|session/i.test(o.name + " " + (o.detail || "")));
+  const isMerch = (o: { name: string; detail: string | null; source_url?: string | null }) => MERCH.test(o.name + " " + (o.detail || "")) || /\/(merch|shop|apparel)(\/|$)/i.test((o.source_url || "").replace(/^https?:\/\/[^/]+/, "")) || (SPIRITS.test(o.name) && !/tasting|tour|flight|class|experience|pairing|session/i.test(o.name + " " + (o.detail || "")));
   const merchCount = onSite.filter(isMerch).length;
   // A menu that is nothing but products is a shop, not an experience menu. Otherwise keep the bookable rows and drop the merch.
   const offerings = (merchCount > 0 && merchCount === onSite.length ? [] : onSite.filter((o) => !isMerch(o)))
@@ -343,6 +343,20 @@ export function toCatalogItem(r: CatalogRow): Record<string, unknown> {
       .slice(0, 6),
     dur: durationOf(offerings.map((o) => o.duration || o.detail || "")) || undefined,
     fc: freeCancel(cleanPara(pick("cancellation")[0] || "") || pick("policy").filter((l) => /cancel|refund/i.test(l)).join(" ")) || undefined,
+    // Day-specific deals the site states, as written (scripts/promo-crawl.mts). Never invented.
+    promos: facts
+      .filter((f) => f.fact_key === "promo")
+      .map((f) => {
+        try {
+          const p = JSON.parse(f.fact_value) as { text: string; days: number[]; start?: string; end?: string };
+          return typeof p.text === "string" && Array.isArray(p.days) ? { text: decodeEntities(p.text), days: p.days, start: p.start, end: p.end } : null;
+        } catch {
+          return null;
+        }
+      })
+      .filter((p): p is { text: string; days: number[]; start?: string; end?: string } => !!p && p.text.length <= 160)
+      .filter((p, i, a) => a.findIndex((x) => x.text.toLowerCase() === p.text.toLowerCase()) === i)
+      .slice(0, 8),
   };
 }
 
@@ -711,6 +725,11 @@ export function syncCatalogToApp(): { path: string; count: number } {
       tags: ((item.tags as string[]) || []).slice(0, 6),
       from: priced.length ? Math.min(...priced) : undefined,
       dur: item.dur, fc: item.fc,
+      // First day-specific deal, compact ("3,5|Glow nights $25"), so cards can badge "Deal today" without the detail file.
+      deal: (() => {
+        const p = ((item.promos as { text: string; days: number[] }[] | undefined) || []).find((x) => x.days.length);
+        return p ? p.days.join(",") + "|" + p.text.slice(0, 40) : undefined;
+      })(),
       // Compact week from the published hours, so the home page can say "open now" without a detail file.
       hrs: (() => {
         const own = (item.hoursText as string[] | undefined) || [];
