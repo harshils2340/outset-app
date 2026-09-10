@@ -16,3 +16,13 @@ services:
         sync: false
       - key: GITHUB_REPO
         value: harshils2340/outset-app
+      - key: RESEND_API_KEY
+        sync: false
+      - key: MAIL_FROM
+        value: Outset <onboarding@resend.dev>
+      - key: MAIL_REPLY_TO
+        value: harshils2340@gmail.com
+      - key: ALLOWED_ORIGINS
+        value: https://harshils2340.github.io
+      - key: SITE_URL
+        value: https://harshils2340.github.io/outset-app/

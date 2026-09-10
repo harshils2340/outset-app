@@ -9,10 +9,25 @@ import { allContacts, contactFor, syncCatalogToApp, syncContactsToApp } from "..
 
 migrate();
 
+import { cors } from "hono/cors";
 import { profiles } from "./profiles.ts";
+import { auth } from "./auth.ts";
+import { bookings } from "./bookings.ts";
 
 export const app = new Hono();
+
+// Browser calls come only from the site (and a dev server). Everything else is same-origin tooling.
+const ORIGINS = (process.env.ALLOWED_ORIGINS || "https://harshils2340.github.io,http://localhost:5173,http://localhost:5199").split(",").map((s) => s.trim());
+app.use("*", cors({ origin: (o) => (ORIGINS.includes(o) ? o : ""), allowHeaders: ["content-type", "x-claim-token", "x-session"], allowMethods: ["GET", "POST", "PUT", "PATCH", "OPTIONS"], maxAge: 600 }));
+app.use("*", async (c, next) => {
+  await next();
+  c.header("x-content-type-options", "nosniff");
+  c.header("referrer-policy", "no-referrer");
+  c.header("cache-control", "no-store");
+});
+app.route("/", auth);
 app.route("/", profiles);
+app.route("/", bookings);
 
 app.get("/health", (c) => c.json({ ok: true, service: "outset-backend" }));
 

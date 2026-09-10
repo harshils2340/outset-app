@@ -12,6 +12,7 @@ import { budgetUsd, collectAll, collectBatch, dryRun, enrichPending, rate, spent
 import { discoverSearch } from "./discover/searchapi.ts";
 import { discoverWeb } from "./discover/websearch.ts";
 import { discoverAi } from "./discover/aisearch.ts";
+import { sendOutreach } from "./outreach/send.ts";
 import { readPendingStructures, readSiteStructure } from "./enrich/structure.ts";
 import { socialPending } from "./enrich/social.ts";
 import { importThumbnails } from "./enrich/thumbs.ts";
@@ -271,6 +272,15 @@ if (cmd === "sync") {
   lap("Wrote " + out.count + " operator contact records to " + out.path);
   const cat = syncCatalogToApp();
   lap("Wrote " + cat.count + " operators to " + cat.path);
+  process.exit(0);
+}
+
+if (cmd === "outreach-send") {
+  const lArg = process.argv.find((a) => a.startsWith("--limit="));
+  const tArg = process.argv.find((a) => a.startsWith("--to="));
+  const mArg = process.argv.find((a) => a.startsWith("--metro="));
+  const r = await sendOutreach({ limit: lArg ? Number(lArg.split("=")[1]) : 50, dry: process.argv.includes("--dry"), to: tArg?.split("=")[1], metro: mArg?.split("=")[1] });
+  console.log("Outreach: " + JSON.stringify(r));
   process.exit(0);
 }
 
