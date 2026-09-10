@@ -193,6 +193,8 @@ export function toCatalogItem(r: CatalogRow): Record<string, unknown> {
   const merchCount = onSite.filter(isMerch).length;
   // A menu that is mostly products is a shop, not an experience menu. Keep nothing rather than three stray accessories.
   const offerings = (merchCount > 0 && merchCount * 2 >= onSite.length ? [] : onSite.filter((o) => !isMerch(o)))
+    .filter((o) => !RESELLER.test(o.name + " " + (o.detail || "")))
+    .map((o) => ({ ...o, name: trimWords(o.name, 70), price_cents: o.price_cents != null && o.price_cents < 100 ? null : o.price_cents }))
     .filter((o, i, a) => a.findIndex((x) => x.name.toLowerCase() === o.name.toLowerCase() && x.price_cents === o.price_cents && (x.duration || x.detail || "") === (o.duration || o.detail || "")) === i)
     .map((o) => ({ ...o, price_unit: fixUnit(o) }));
   const facts = rawFacts.filter((f) => {
@@ -231,7 +233,7 @@ export function toCatalogItem(r: CatalogRow): Record<string, unknown> {
       for (const raw of pick("service_desc")) {
         try {
           const d = JSON.parse(raw) as { name: string; desc: string };
-          descs.set(d.name.toLowerCase(), d.desc);
+          descs.set(d.name.toLowerCase(), scrubDesc(d.name, d.desc));
         } catch {
           /* ignore */
         }
@@ -272,7 +274,11 @@ export function toCatalogItem(r: CatalogRow): Record<string, unknown> {
       .slice(0, 6),
     // The honest gap line. Once the widget or crawl gave real rules and policies, say those instead of "not copied yet".
     gap: pick("published_gap")[0] || pick("cancellation")[0] || (pick("policy").length || pick("requirement").length ? [...pick("policy")].slice(0, 3).join(" ") || "Ask the operator about cancellations." : DEFAULT_GAP),
-    blurb: pick("description")[0] || pick("site_desc")[0] || pick("one_line")[0] || undefined,
+    blurb: (() => {
+      const raw = pick("description")[0] || pick("site_desc")[0] || pick("one_line")[0] || "";
+      const b = endAtSentence(cleanPara(raw), 420);
+      return b && !/\b(purchase|shop|buy) (boards|paddles|gear|apparel|merch)/i.test(b) ? b : undefined;
+    })(),
     cover: fullSize(widgetPhotos[0] || pick("cover")[0] || pick("photo")[0] || ""),
     photos: uniq([...widgetPhotos, ...pick("cover"), ...pick("photo")].map((u) => fullSize(u) || "")).slice(0, 10),
     ytVideos: pick("yt_video")
@@ -296,10 +302,10 @@ export function toCatalogItem(r: CatalogRow): Record<string, unknown> {
     tags: [...new Set([...pick("google_category"), ...pick("service"), ...offerings.map((o) => o.name)])].slice(0, 12),
     extraNote: [...pick("extra").slice(0, 1), ...pick("policy"), ...pick("checkin"), ...pick("meeting_point"), ...pick("season")].filter((l) => !SILENT.test(l)).join(" · ").slice(0, 700) || undefined,
     // Viator-shaped sections. Each only appears when the site said it.
-    highlights: uniq(pick("spec").map(cleanLine)).filter(isTidyLine).slice(0, 8),
+    highlights: collapseRules(uniq(pick("spec").map(cleanLine)).filter(isTidyLine).filter((l) => !/^what to bring\b|you are required to bring/i.test(l))).slice(0, 8),
     requirements: collapseRules(uniq(pick("requirement").map(cleanLine)).filter(isTidyLine)).slice(0, 10),
     groupInfo: uniq(pick("group").map(cleanLine)).filter(isTidyLine).slice(0, 5),
-    bring: uniq(pick("bring").map(cleanLine)).filter(isTidyLine).slice(0, 8),
+    bring: uniq([...pick("bring"), ...pick("spec").filter((l) => /^what to bring\b/i.test(l)).map((l) => l.replace(/^what to bring[:\s-]*/i, ""))].map(cleanLine)).filter(isTidyLine).slice(0, 8),
     season: silent(cleanLine(pick("season")[0] || "")) || undefined,
     meetingPoint: cleanLine(pick("meeting_point")[0] || "") || undefined,
     checkin: cleanPara(pick("checkin")[0] || "") || undefined,
@@ -389,6 +395,33 @@ const GAP_LINE = /\b(not (stated|specified|mentioned|listed|published|provided|a
 const JUNK_LINE = /\b(call|contact|phone|email)( us)? (for|to)\b|\bsee (the |our )?faq|\bclick here|\bprint and color|\bsubscribe|\bnewsletter|\bfollow us|\bcookie/i;
 const RETAIL_LINE = /\b(restocking|rma\b|return shipping|return merchandise|free shipping|ships? within|shipping (cost|rate|polic)|in-?store pickup|wholesale)\b/i;
 const STALE_LINE = /\b20(1\d|2[0-5])\b|\bcovid|\bcoronavirus|\bpandemic/i;
+/** Things sold through the operator's site that are someone else's product: theme-park tickets, tool rentals, package deals. */
+const RESELLER = /\b(park (child|adult|hopper)|day hopper|\bhopper\b|park tickets?|disney|universal studios|seaworld|legoland|busch gardens|pole pruner|chainsaw|generator|excavator|lawn ?mower|tiller|pressure washer|storage unit|u-?haul)\b/i;
+
+/** Cut at a word boundary, no ellipsis, so a name never ends mid-word. */
+function trimWords(t: string, max: number): string {
+  if (t.length <= max) return t;
+  return t.slice(0, max).replace(/\s+\S*$/, "").trim();
+}
+
+/** Cut at the last sentence end inside the limit, so a blurb never stops mid-thought. */
+function endAtSentence(t: string, max: number): string {
+  if (t.length <= max) return t;
+  const cut = t.slice(0, max);
+  const i = Math.max(cut.lastIndexOf(". "), cut.lastIndexOf("! "), cut.lastIndexOf("? "));
+  return (i > max * 0.4 ? cut.slice(0, i + 1) : trimWords(cut, max)).trim();
+}
+
+/** "Ultimate Tour (ULT) Rates For 3 or more passengers ..." starts with the title and widget labels. Keep the copy. */
+function scrubDesc(name: string, desc: string): string {
+  let d = desc.replace(/\s+/g, " ").trim();
+  const n = name.replace(/\s+/g, " ").trim();
+  if (n && d.toLowerCase().startsWith(n.toLowerCase())) d = d.slice(n.length).replace(/^[\s:\-–|]+/, "");
+  d = d.replace(/^(?:(?:rates?|pricing|prices?|duration|about(?: this)?|flight distance|details?|overview|description)\s*:?\s*)+/i, "");
+  d = d.replace(/\b(?:Duration|Meeting Location|Rates?|About This|Flight Distance)\s*:?\s*(?=[A-Z0-9$])/g, "");
+  return d.trim();
+}
+
 const SPIRITS = /\b(brandy|whiskey|whisky|bourbon|rye|gin|vodka|rum|tequila|mezcal|liqueur|mead|cider|ipa|lager|stout|ale|pinot|cabernet|chardonnay|merlot|rosé|rose wine|reserve|barrel|cask|vintage)\b/i;
 const MERCH = /\b(t-?shirts?|hoodies?|sweatshirts?|hats?|caps?|stickers?|mugs?|koozies?|\d{3}\s?ml|bottles?|6-?pack|case of|gift ?cards?|gift certificates?|crossbows?|bows?\b|arrows?|broadheads?|quiver|scopes?|ammo\b|ammunition|merch(andise)?|apparel|decals?|posters?|dvd|book\b|membership dues|donation|sponsor(ship)?|field trip|school group)\b/i;
 
@@ -447,6 +480,15 @@ function collapseRules(lines: string[]): string[] {
   const order: string[] = [];
   for (const l of lines) {
     const nums = (l.match(/\d+/g) || []).join(",");
+    const tail = l.match(/:\s*(minimum \d+ (guests?|people|riders?|passengers?) per booking\.?)$/i);
+    if (tail) {
+      const key = "min:" + tail[1].toLowerCase();
+      if (!byKey.has(key)) {
+        byKey.set(key, tail[1].charAt(0).toUpperCase() + tail[1].slice(1));
+        order.push(key);
+      }
+      continue;
+    }
     const topic = /\b(age|years?|old|older|minor|child|kid|adult|\d+\s*\+)\b/i.test(l) ? "age" : /\b(weight|lbs?|pounds?|kg)\b/i.test(l) ? "weight" : /\b(height|tall|inches|cm)\b/i.test(l) ? "height" : /\b(licen[cs]e|permit|boater)\b/i.test(l) ? "license" : "";
     const key = topic && nums ? topic + ":" + nums : l.toLowerCase();
     const cur = byKey.get(key);
