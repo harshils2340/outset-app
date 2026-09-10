@@ -184,7 +184,18 @@ export async function fetchArea(areaCode: string, force = false, endpointIdx = 0
         out.push(...(JSON.parse(readFileSync(chunkPath, "utf8")) as OsmElement[]));
         continue;
       }
-      const got = await runOverpass(buildQuery(areaCode, sels.slice(i, i + 8)), endpointIdx);
+      // Big states make the mirror time out on eight selectors. Halve until it answers.
+      const fetchSels = async (part: string[]): Promise<OsmElement[]> => {
+        try {
+          return await runOverpass(buildQuery(areaCode, part), endpointIdx);
+        } catch (e) {
+          if (part.length <= 1) throw e;
+          await sleep(2000);
+          const mid = Math.ceil(part.length / 2);
+          return [...(await fetchSels(part.slice(0, mid))), ...(await fetchSels(part.slice(mid)))];
+        }
+      };
+      const got = await fetchSels(sels.slice(i, i + 8));
       writeFileSync(chunkPath, JSON.stringify(got));
       out.push(...got);
       await sleep(1000);

@@ -6,7 +6,8 @@ import { fileURLToPath } from "node:url";
 const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, "../..");
 const dataDir = join(root, "data");
-const dbPath = join(dataDir, "outset.db");
+// OUTSET_DB points a read-mostly job (sync) at a snapshot so crawlers writing to the live file never stall it.
+const dbPath = process.env.OUTSET_DB || join(dataDir, "outset.db");
 
 mkdirSync(dataDir, { recursive: true });
 

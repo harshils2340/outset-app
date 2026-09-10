@@ -12,3 +12,4 @@ backend/data/outset.db-wal
 backend/data/outset.db-shm
 backend/data/batches/
 backend/data/claim-secret.txt
+backend/data/snapshot.db

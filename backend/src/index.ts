@@ -10,6 +10,7 @@ import { syncCatalogToApp, syncContactsToApp } from "./sync/contacts.ts";
 import { discoverAll, metroCoverage } from "./discover/osm.ts";
 import { budgetUsd, collectAll, collectBatch, dryRun, enrichPending, rate, spentUsd, submitBatch } from "./enrich/run.ts";
 import { discoverSearch } from "./discover/searchapi.ts";
+import { discoverWeb } from "./discover/websearch.ts";
 import { readPendingStructures, readSiteStructure } from "./enrich/structure.ts";
 import { socialPending } from "./enrich/social.ts";
 import { importThumbnails } from "./enrich/thumbs.ts";
@@ -68,6 +69,14 @@ if (cmd === "discover") {
   refreshAllScores();
   const total = stats.reduce((n, s) => n + s.inserted + s.updated, 0);
   console.log("Discovered " + total + " operators across " + stats.length + " areas. " + JSON.stringify(metroCoverage()));
+  process.exit(0);
+}
+
+if (cmd === "websearch") {
+  const only = process.argv.slice(3).filter((a) => !a.startsWith("--"));
+  const r = await discoverWeb({ cities: only });
+  refreshAllScores();
+  console.log("Web discovery: " + JSON.stringify(r));
   process.exit(0);
 }
 

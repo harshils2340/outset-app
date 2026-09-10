@@ -61,6 +61,8 @@ const KINDS: { art: string; label: string; plural: string; family: string }[] = 
   { art: "yoga", label: "Yoga studios", plural: "yoga studios", family: "wellness" },
   { art: "dance", label: "Dance classes", plural: "dance studios", family: "wellness" },
   { art: "pottery", label: "Pottery and art classes", plural: "art studios", family: "wellness" },
+  { art: "tour", label: "Food, walking and city tours", plural: "tours", family: "outdoor" },
+  { art: "rage", label: "Rage rooms", plural: "rage rooms", family: "indoor" },
 ];
 
 type Item = Record<string, unknown> & {

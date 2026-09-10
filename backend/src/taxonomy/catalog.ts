@@ -60,7 +60,9 @@ export const CATEGORIES: CategoryDef[] = [
   { id: "spa", family: "wellness", label: "Spa", iconKey: "spa", serviceStyle: "appointment", searchQuery: "day spa" },
   { id: "yoga", family: "wellness", label: "Yoga", iconKey: "yoga", serviceStyle: "appointment", searchQuery: "yoga studio" },
   { id: "dance", family: "wellness", label: "Dance class", iconKey: "dance", serviceStyle: "appointment", searchQuery: "dance classes" },
-  { id: "pottery", family: "wellness", label: "Pottery and art class", iconKey: "pottery", serviceStyle: "appointment", searchQuery: "pottery class" },
+  { id: "pottery", family: "wellness", label: "Art class", iconKey: "pottery", serviceStyle: "appointment", searchQuery: "pottery class" },
+  { id: "tour", family: "outdoor", label: "Tours", iconKey: "tour", serviceStyle: "tour", searchQuery: "food tour" },
+  { id: "rage", family: "indoor", label: "Rage room", iconKey: "rage", serviceStyle: "appointment", searchQuery: "rage room" },
 ];
 
 export type MetroDef = {
