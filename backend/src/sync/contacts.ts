@@ -186,22 +186,29 @@ export function toCatalogItem(r: CatalogRow): Record<string, unknown> {
     .prepare("SELECT name, detail, duration, price_cents, price_unit, source_url FROM offerings WHERE operator_id = ? ORDER BY price_cents IS NULL, price_cents")
     .all(r.id) as { name: string; detail: string | null; duration: string | null; price_cents: number | null; price_unit: string | null; source_url: string | null }[];
   const rawFacts = db.prepare("SELECT fact_key, fact_value, source_url FROM facts WHERE operator_id = ?").all(r.id) as { fact_key: string; fact_value: string; source_url: string | null }[];
-  const trusted = (url: string | null) => sourceIsOwn(url, r.domain);
+  // The operator's own pages: the catalog domain, the website field's host (sister brand or a second domain),
+  // and site-builder hosts they publish on (mammothpack.wixsite.com is still mammothpack).
+  const trusted = (url: string | null) => sourceIsOwn(url, r.domain) || (r.website ? sourceIsOwn(url, hostOf(r.website)) : false) || sameBrand(url, r.domain);
   const offCity = (url: string | null) => sourceIsAnotherTown(url, r.city, r.metro_id);
   // Rows the audit showed to be noise: another business's page, another town's branch, merch, "not stated" filler, stale or junk lines.
-  const onSite = rawOfferings.filter((o) => trusted(o.source_url) && !offCity(o.source_url));
-  const isMerch = (o: { name: string; detail: string | null }) => MERCH.test(o.name + " " + (o.detail || "")) || (SPIRITS.test(o.name) && !/tasting|tour|flight|class|experience|pairing|session/i.test(o.name + " " + (o.detail || "")));
+  // A chain's pricing page often sits under another branch's path (/vaughan/hours-pricing on the Mississauga record).
+  // Same-branch rows win; other-branch rows fill in only when this branch has none, since chain menus are shared.
+  const own = rawOfferings.filter((o) => trusted(o.source_url));
+  const onSite = own.some((o) => !offCity(o.source_url)) ? own.filter((o) => !offCity(o.source_url)) : own;
+  const isMerch = (o: { name: string; detail: string | null; source_url?: string | null }) => MERCH.test(o.name + " " + (o.detail || "")) || /\/(merch|shop|store|products?|apparel|gear)(\/|$)/i.test((o.source_url || "").replace(/^https?:\/\/[^/]+/, "")) || (SPIRITS.test(o.name) && !/tasting|tour|flight|class|experience|pairing|session/i.test(o.name + " " + (o.detail || "")));
   const merchCount = onSite.filter(isMerch).length;
-  // A menu that is mostly products is a shop, not an experience menu. Keep nothing rather than three stray accessories.
-  const offerings = (merchCount > 0 && merchCount * 2 >= onSite.length ? [] : onSite.filter((o) => !isMerch(o)))
+  // A menu that is nothing but products is a shop, not an experience menu. Otherwise keep the bookable rows and drop the merch.
+  const offerings = (merchCount > 0 && merchCount === onSite.length ? [] : onSite.filter((o) => !isMerch(o)))
     .filter((o) => !RESELLER.test(o.name + " " + (o.detail || "")))
     .filter((o) => !FILTER_LABEL.test(o.name))
     .map((o) => ({ ...o, name: trimWords(o.name, 70), price_cents: o.price_cents != null && o.price_cents < 100 ? null : o.price_cents }))
     .filter((o, i, a) => a.findIndex((x) => x.name.toLowerCase() === o.name.toLowerCase() && x.price_cents === o.price_cents && (x.duration || x.detail || "") === (o.duration || o.detail || "")) === i)
     .map((o) => ({ ...o, price_unit: fixUnit(o) }));
+  const keysWithOwnBranch = new Set(rawFacts.filter((f) => trusted(f.source_url) && !offCity(f.source_url)).map((f) => f.fact_key));
   const facts = rawFacts.filter((f) => {
     if (/^(photo|cover|video|video_embed|yt_video|tiktok_profile|social:)/.test(f.fact_key)) return true;
-    if (!trusted(f.source_url) || offCity(f.source_url)) return false;
+    if (!trusted(f.source_url)) return false;
+    if (offCity(f.source_url) && keysWithOwnBranch.has(f.fact_key)) return false;
     if (TEXT_KEYS.test(f.fact_key)) {
       const v = f.fact_value;
       if (GAP_LINE.test(v) || JUNK_LINE.test(v) || RETAIL_LINE.test(v) || STALE_LINE.test(v)) return false;
@@ -314,7 +321,7 @@ export function toCatalogItem(r: CatalogRow): Record<string, unknown> {
     cancellation: dropSilent(cleanPara(pick("cancellation")[0] || "")) || dropSilent(cleanPara(pick("policy").filter((l) => /cancel|refund/i.test(l)).join(" "))) || undefined,
     policies: uniq(pick("policy").map(cleanLine)).filter(isTidyLine).filter((l) => !/gift ?card|gift certificate/i.test(l)).slice(0, 8),
     waiverUrl: pick("waiver_url").find((u) => /^https?:\/\/\S+$/.test(u) && !/\/w\/?$/.test(u)) || undefined,
-    hoursText: uniq(pick("hours_text").map((h) => cleanLine(h.replace(/^hours(?: & admission)?\s*/i, "")))).slice(0, 3),
+    hoursText: uniq([...pick("hours_text"), ...pick("hours")].flatMap((h) => h.split(/\s*\|\s*/)).map((h) => cleanLine(h.replace(/^hours(?: & admission)?\s*/i, ""))).filter((h) => h.length > 3 && !/not stated/i.test(h))).slice(0, 7),
     faq: uniqBy(pick("faq").flatMap(parseFaqs), (f) => f.q.toLowerCase()).slice(0, 8),
     quotes: pick("review")
       .map((raw) => {
@@ -430,7 +437,26 @@ function scrubDesc(name: string, desc: string): string {
 }
 
 const SPIRITS = /\b(brandy|whiskey|whisky|bourbon|rye|gin|vodka|rum|tequila|mezcal|liqueur|mead|cider|ipa|lager|stout|ale|pinot|cabernet|chardonnay|merlot|rosé|rose wine|reserve|barrel|cask|vintage)\b/i;
-const MERCH = /\b(t-?shirts?|hoodies?|sweatshirts?|hats?|caps?|stickers?|mugs?|koozies?|\d{3}\s?ml|bottles?|6-?pack|case of|gift ?cards?|gift certificates?|crossbows?|bows?\b|arrows?|broadheads?|quiver|scopes?|ammo\b|ammunition|merch(andise)?|apparel|decals?|posters?|dvd|book\b|membership dues|donation|sponsor(ship)?|field trip|school group)\b/i;
+const MERCH = /\b(t-?shirts?|hoodies?|sweatshirts?|hats?|caps?|stickers?|mugs?|koozies?|\d{3}\s?ml|bottles?|6-?pack|case of|gift ?cards?|gift certificates?|crossbows?|bows?\b|arrows?|broadheads?|quiver|scopes?|ammo\b|ammunition|merch(andise)?|apparel|decals?|posters?|dvd|membership dues|donation|sponsor(ship)?|field trip|school group)\b/i;
+
+function hostOf(url: string): string {
+  try {
+    return new URL(url.startsWith("http") ? url : "https://" + url).hostname.toLowerCase().replace(/^www\./, "");
+  } catch {
+    return url.toLowerCase();
+  }
+}
+
+/** graylinetoronto.tours and graylinetoronto.com are one brand; so is mammothpack.wixsite.com for mammothpack.com. */
+function sameBrand(url: string | null, domain: string): boolean {
+  if (!url) return false;
+  const host = hostOf(url);
+  const label = (d: string) => d.replace(/^www\./, "").split(".")[0];
+  const own = label(domain);
+  if (own.length < 5) return false;
+  if (/\.(wixsite|squarespace|weebly|godaddysites|wordpress|webflow\.io|myshopify|square\.site|business\.site)\b/.test(host)) return host.startsWith(own) || host.includes(own);
+  return label(host) === own;
+}
 
 /** True when the page belongs to the operator (or a booking widget acting for them). Another business's site never counts. */
 function sourceIsOwn(url: string | null, domain: string): boolean {
