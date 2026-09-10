@@ -5,6 +5,19 @@ import { CITIES } from "../discover/cities.ts";
 import { db } from "../db/client.ts";
 import { writeLandingPages } from "./pages.ts";
 import { claimKeyHash } from "../lib/claim.ts";
+import { existsSync, readFileSync as readFileSyncFs } from "node:fs";
+
+/** A claimed operator's saved edits (public/profiles/<id>.json) win over what the crawl found. */
+function profileOverlay(id: string): { published: boolean; patch: Record<string, unknown> } | null {
+  const f = join(publicDir, "profiles", id + ".json");
+  if (!existsSync(f)) return null;
+  try {
+    const rec = JSON.parse(readFileSyncFs(f, "utf8")) as { published?: boolean; patch?: Record<string, unknown> };
+    return { published: rec.published !== false, patch: rec.patch || {} };
+  } catch {
+    return null;
+  }
+}
 
 const here = dirname(fileURLToPath(import.meta.url));
 const appDataDir = join(here, "../../../src/data");
@@ -582,7 +595,16 @@ export function syncCatalogToApp(): { path: string; count: number } {
     ).all() as { id: string }[]).map((r) => r.id),
   );
   // A listing with no site, no phone, no photo and no menu gives a guest nothing to act on. Keep it for outreach only.
-  const full = rows.filter((r) => !MARKETPLACES.test(r.domain) && !dead.has(r.id) && !NOT_EXPERIENCE.test(r.name)).map(toCatalogItem);
+  const full = rows
+    .filter((r) => !MARKETPLACES.test(r.domain) && !dead.has(r.id) && !NOT_EXPERIENCE.test(r.name) && !/^\s*\$?\d+(\.\d+)?\s*$/.test(r.name))
+    .map(toCatalogItem)
+    .map((item) => {
+      const ov = profileOverlay(item.id);
+      if (!ov) return item;
+      const merged = { ...item, ...ov.patch, id: item.id, claimKey: item.claimKey, claimed: true } as typeof item & { claimed: boolean; published: boolean };
+      return Object.assign(merged, { published: ov.published });
+    })
+    .filter((item) => (item as { published?: boolean }).published !== false);
   console.log("Left out " + dead.size + " map-only rows with nothing a guest can use.");
   const contactByDomain: Record<string, OperatorContact> = {};
   for (const c of allContacts()) contactByDomain[c.domain] = c;

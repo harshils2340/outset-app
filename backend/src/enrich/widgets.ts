@@ -75,7 +75,7 @@ export function rateRows(text: string): { label: string; price: number }[] {
   const block = (text.match(/\bRates?\b[:\s]*(.{0,600}?)(?=\b(?:Duration|About|Includes?|What to bring|Requirements?|Cancellation|Policy|Please note|Note:)\b|$)/i) || [])[1] || "";
   const out: { label: string; price: number }[] = [];
   const seen = new Set<string>();
-  const re = /([A-Z][A-Za-z0-9&\/' -]{2,40}?)\s*[:\-–]?\s*\$\s?(\d{2,4}(?:\.\d{2})?)(?!\d)/g;
+  const re = /([A-Z][A-Za-z0-9&\/' -]{2,40}?)\s*[:\-–]?\s*\$\s?(\d{1,3}(?:,\d{3})+(?:\.\d{2})?|\d{2,5}(?:\.\d{2})?)(?![\d,])/g;
   let m: RegExpExecArray | null;
   while ((m = re.exec(block))) {
     const label = m[1].replace(/\b(Rates?|Price|Prices|Pricing|Starting at|From)\b/gi, "").replace(/\s+/g, " ").trim().replace(/[:\-–]$/, "").trim();
@@ -83,15 +83,16 @@ export function rateRows(text: string): { label: string; price: number }[] {
     const key = label.toLowerCase();
     if (seen.has(key)) continue;
     seen.add(key);
-    out.push({ label: label.slice(0, 60), price: Number(m[2]) });
+    out.push({ label: label.slice(0, 60), price: Number(m[2].replace(/,/g, "")) });
     if (out.length >= 8) break;
   }
   return out;
 }
 
 function money(s: string | null | undefined): number | null {
-  const m = (s || "").match(/\$\s?(\d{1,4}(?:[.,]\d{2})?)/);
-  return m ? Number(m[1].replace(",", "")) : null;
+  // "$1,150" is eleven hundred and fifty, not one dollar fifteen. Thousands groups first, then a plain number, then cents.
+  const m = (s || "").match(/\$\s?(\d{1,3}(?:,\d{3})+|\d{1,6})(?:\.(\d{2}))?(?![\d,])/);
+  return m ? Number(m[1].replace(/,/g, "") + (m[2] ? "." + m[2] : "")) : null;
 }
 
 function durationOf(...parts: (string | null | undefined)[]): string | null {

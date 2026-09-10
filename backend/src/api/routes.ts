@@ -9,7 +9,10 @@ import { allContacts, contactFor, syncCatalogToApp, syncContactsToApp } from "..
 
 migrate();
 
+import { profiles } from "./profiles.ts";
+
 export const app = new Hono();
+app.route("/", profiles);
 
 app.get("/health", (c) => c.json({ ok: true, service: "outset-backend" }));
 

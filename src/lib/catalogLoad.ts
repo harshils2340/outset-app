@@ -1,5 +1,6 @@
 import type { OperatorContact, Unclaimed } from "../data/types";
-import { experienceById, hydrateItem, mergeCatalog } from "./catalog";
+import { experienceById, hydrateItem, mergeCatalog, setOperatorOverride } from "./catalog";
+import { fetchRemoteProfile } from "./api";
 
 type CatalogFile = { generatedAt: string; operators: Unclaimed[]; contacts: Record<string, OperatorContact> };
 
@@ -51,6 +52,8 @@ export function loadListing(id: string | null): Promise<boolean> {
       const full = (await res.json()) as Unclaimed;
       if (!looksLikeItem(full)) return false;
       hydrateItem(full, id);
+      // A claimed operator's own edits, saved through the API, sit on top of the crawled record.
+      if (full.claimKey) void fetchRemoteProfile(id).then((r) => { if (r && r.patch) setOperatorOverride(id, r.patch, r.published !== false); });
       return true;
     })
     .catch(() => false)

@@ -84,6 +84,8 @@ function rankForRail(list: Unclaimed[]): Unclaimed[] {
 /** Up to three listings a guest wants side by side. */
 const CompareCtx = createContext<{ ids: string[]; toggle: (id: string) => void }>({ ids: [], toggle: () => {} });
 
+/** The Where menu's shortlist: the biggest cities a guest would type, not the first twelve metros in the file. */
+const POPULAR_METROS = ["toronto", "nyc", "los-angeles", "chicago", "miami", "tampa", "vancouver", "austin", "denver", "seattle", "las-vegas", "boston", "atlanta", "san-diego", "montreal", "orlando"];
 const INTENT_CHIPS = ["Birthday ideas", "With kids", "Date night", "Adrenaline", "Rainy day", "Sunset", "Under $50", "Team outing"];
 
 type SortId = "relevance" | "distance" | "price" | "rating";
@@ -379,7 +381,7 @@ export function WebHome({ onOpenApp, onOperators }: { onOpenApp: () => void; onO
                     <button type="button" className={!near && state.metroId === ALL_METRO_ID ? "on" : ""} onClick={() => { setNear(null); setMetro(ALL_METRO_ID); setWhereOpen(false); }}>
                       <span><b>Anywhere</b><small>US and Canada</small></span>
                     </button>
-                    {METROS.slice(0, 12).map((m) => (
+                    {POPULAR_METROS.map((id) => METROS.find((m) => m.id === id)).filter((m): m is (typeof METROS)[number] => !!m).map((m) => (
                       <button type="button" key={m.id} className={!near && state.metroId === m.id ? "on" : ""} onClick={() => { setNear(null); setMetro(m.id); setWhereOpen(false); }}>
                         <span><b>{m.name}</b><small>{m.region}</small></span>
                       </button>
@@ -508,10 +510,22 @@ export function WebHome({ onOpenApp, onOperators }: { onOpenApp: () => void; onO
                 <em className="wcount">{pool.length.toLocaleString()}</em>
               </h2>
             </div>
-            {intent.label ? <p className="wsecsub">{intent.kids ? "Only places whose published rules allow younger kids. " : ""}{intent.maxPrice != null ? "Starting price at or under $" + intent.maxPrice + ". " : ""}Best fit first, then rating and reviews. Add up to three to compare.</p> : null}
-            <div className="wgrid">
-              {(near ? pool : pool).slice(0, 60).map((u) => <Card key={u.id} u={u} onOpen={openRequest} near={near} />)}
-            </div>
+            {intent.label ? <p className="wsecsub">{intent.kids ? "Only places whose published rules allow younger kids. " : ""}{intent.maxPrice != null ? "Starting price at or under $" + intent.maxPrice + ". " : ""}{intent.arts.length ? "One row per kind of plan, best first. Open any row to compare." : "Best fit first, then rating and reviews. Add up to three to compare."}</p> : null}
+            {intent.arts.length && pool.length > 12 ? (
+              // A browse, not a search: "date night" is wineries, cooking classes, sunset sails, side by side.
+              <div className="wbrowse">
+                {intent.arts
+                  .map((art) => ({ art, items: rankForRail(pool.filter((u) => u.art === art)) }))
+                  .filter((g) => g.items.length >= 2)
+                  .map((g) => (
+                    <Rail key={g.art} title={RAIL_KINDS.find((r) => r.art === g.art)?.title || g.art} items={g.items} onOpen={openRequest} near={near} />
+                  ))}
+              </div>
+            ) : (
+              <div className="wgrid">
+                {(near ? pool : pool).slice(0, 60).map((u) => <Card key={u.id} u={u} onOpen={openRequest} near={near} />)}
+              </div>
+            )}
             {pool.length === 0 ? (
               <div className="wempty">
                 <b>Nothing for this{typedMetro ? " in " + typedMetro.metro.name : near ? " near " + near.label : metro ? " in " + metro.name : ""} yet.</b>

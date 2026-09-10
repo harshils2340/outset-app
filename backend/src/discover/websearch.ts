@@ -127,7 +127,10 @@ export async function discoverWeb(opts: { terms?: string[]; cities?: string[]; d
           const title = cleanTitle(h.title, city);
           if (title.length < 3) continue;
           stats.results++;
-          upsertPlace({ title, website: "https://" + host + "/", type: t.term }, t.category, city, stats);
+          for (let i = 0; i < 8; i++) {
+            try { upsertPlace({ title, website: "https://" + host + "/", type: t.term }, t.category, city, stats); break; }
+            catch (e) { if (!/locked|busy/i.test((e as Error).message) || i === 7) { console.error(`${title}: ${(e as Error).message.slice(0, 60)}`); break; } await sleep(1000 + i * 500); }
+          }
         }
         if (!cached) await sleep(opts.delayMs ?? 2500);
       } catch (e) {

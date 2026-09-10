@@ -1,4 +1,5 @@
 import type { Booking, CategoryId, OperatorContact, Unclaimed, UnclaimedOption, UnclaimedService } from "../data/types";
+import { saveRemoteProfile } from "./api";
 import { addressLine, contactFor, experienceById, fmtPhone, getCatalog, setOperatorOverride, siteUrl } from "./catalog";
 import { dateKey, startOfToday } from "./dates";
 
@@ -455,7 +456,10 @@ export function toCatalog(p: OperatorProfile, base: Unclaimed): Partial<Unclaime
 function pushToCatalog(p: OperatorProfile): void {
   const base = experienceById(p.id);
   if (!base) return;
-  setOperatorOverride(p.id, toCatalog(p, base), p.published);
+  const patch = toCatalog(p, base);
+  setOperatorOverride(p.id, patch, p.published);
+  // Persist beyond this browser when the operator arrived through a signed claim link.
+  saveRemoteProfile(p.id, { profile: p, patch, published: p.published, owner: { name: p.ownerName, email: p.ownerEmail, phone: p.ownerPhone } });
 }
 
 /* ---------- misc helpers for the screens ---------- */

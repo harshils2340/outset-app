@@ -8,6 +8,7 @@ import { Photo } from "../art/Photo";
 import { Mark } from "../layout/Mark";
 import { Markup } from "../Markup";
 import { OD_ICONS } from "./opContext";
+import { claimRemote, fetchRemoteProfile, rememberClaimToken } from "../../lib/api";
 
 /**
  * Claim and sign in. A claim link (#claim=<id>) lands here with the business already picked.
@@ -45,11 +46,18 @@ export function OpLogin({ claimId, claimToken, compact, onEnter, onBack }: { cla
         const ok = (await sha256Hex(claimToken)) === u.claimKey;
         if (!alive) return;
         if (!ok) { setLinkState("bad"); return; }
+        rememberClaimToken(u.id, claimToken);
         const existing = loadProfile(u.id);
         if (existing) { onEnter(existing); return; }
-        const p = defaultProfile(u, { name: "", email: contactFor(u)?.email || "", phone: "" });
+        // Another device may already hold this operator's edits.
+        const remote = await fetchRemoteProfile(u.id);
+        if (!alive) return;
+        const saved = remote?.profile as OperatorProfile | undefined;
+        if (saved && saved.v === 1 && saved.id === u.id) { saveProfile(saved); onEnter(saved); return; }
+        const p = defaultProfile(u, { name: remote?.owner?.name || "", email: remote?.owner?.email || contactFor(u)?.email || "", phone: remote?.owner?.phone || "" });
         p.bookings = sampleBookings(p);
         saveProfile(p);
+        void claimRemote(u.id, claimToken, { name: p.ownerName, email: p.ownerEmail, phone: p.ownerPhone });
         onEnter(p);
         return;
       }

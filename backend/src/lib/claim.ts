@@ -13,6 +13,7 @@ const here = dirname(fileURLToPath(import.meta.url));
 const secretPath = join(here, "../../data/claim-secret.txt");
 
 export function claimSecret(): string {
+  if (process.env.CLAIM_SECRET) return process.env.CLAIM_SECRET.trim();
   if (existsSync(secretPath)) return readFileSync(secretPath, "utf8").trim();
   mkdirSync(dirname(secretPath), { recursive: true });
   const s = randomBytes(32).toString("hex");
