@@ -116,9 +116,9 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
   const [guideOpen, setGuideOpen] = useState(false);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
   const [done, setDone] = useState(false);
-  const [guest, setGuest] = useState<{ name: string; phone: string }>(() => {
+  const [guest, setGuest] = useState<{ name: string; phone: string; email?: string }>(() => {
     try {
-      return JSON.parse(localStorage.getItem("outset.guest") || "") || { name: "", phone: "" };
+      return JSON.parse(localStorage.getItem("outset.guest") || "") || { name: "", phone: "", email: "" };
     } catch {
       return { name: "", phone: "" };
     }
@@ -201,7 +201,7 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
     } catch {
       /* ignore */
     }
-    confirmUnclaimed({ dateIdx: state.dateIdx, slot: time, qty, optionIdx, addonIdx, guest: { name: guest.name.trim(), phone: guest.phone.trim() } });
+    confirmUnclaimed({ dateIdx: state.dateIdx, slot: time, qty, optionIdx, addonIdx, guest: { name: guest.name.trim(), phone: guest.phone.trim(), email: (guest.email || "").trim() || undefined } });
     setDone(true);
   };
 
@@ -665,6 +665,7 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
                 <div className="wguest">
                   <input value={guest.name} placeholder="Your name" autoComplete="name" onChange={(e) => setGuest({ ...guest, name: e.target.value })} />
                   <input value={guest.phone} placeholder="Mobile number" inputMode="tel" autoComplete="tel" onChange={(e) => setGuest({ ...guest, phone: e.target.value })} />
+                  <input value={guest.email || ""} placeholder="Email for your confirmation" inputMode="email" autoComplete="email" onChange={(e) => setGuest({ ...guest, email: e.target.value })} />
                 </div>
                 <div className="lines">
                   {p.base && picked ? (

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { experienceById } from "../../lib/catalog";
 import { allBookings, demoProfile, loadProfile, loadSession, saveProfile, saveSession, setBookingStatus, type OpBooking, type OpStatus, type OperatorProfile } from "../../lib/operator";
 import { useApp } from "../../state/AppProvider";
+import { decideBooking, fetchBookings, hasApi, signOutApi, type RemoteBooking } from "../../lib/api";
 import { Mark } from "../layout/Mark";
 import { Markup } from "../Markup";
 import { OpAssistant } from "./OpAssistant";
@@ -61,15 +62,32 @@ export function OperatorView({ compact = false }: { compact?: boolean }) {
   }, [touchCatalog]);
 
   const u = useMemo(() => (p ? experienceById(p.id) : null), [p?.id, state.catalogVersion]);
-  const bookings = useMemo(() => (p ? allBookings(p, state.bookings) : []), [p, state.bookings]);
+  const [remote, setRemote] = useState<RemoteBooking[] | null>(null);
+  // Real bookings live in the API. Poll while the dashboard is open so a new request shows within a minute.
+  useEffect(() => {
+    if (!p || !hasApi()) return;
+    let alive = true;
+    const load = async () => {
+      const list = await fetchBookings(p.id);
+      if (alive && list) setRemote(list);
+    };
+    void load();
+    const t = window.setInterval(load, 45000);
+    return () => { alive = false; window.clearInterval(t); };
+  }, [p?.id]);
+  const bookings = useMemo(() => (p ? allBookings(p, state.bookings, remote) : []), [p, state.bookings, remote]);
 
   const decide = useCallback((b: OpBooking, status: OpStatus) => {
-    set((cur) => setBookingStatus(cur, b, status));
+    if (b.source === "remote" && p) {
+      setRemote((cur) => (cur ? cur.map((x) => (x.code === b.code ? { ...x, status } : x)) : cur));
+      void decideBooking(p.id, b.code, status).then((ok) => { if (!ok) setToastText("Could not save that. Check your connection."); });
+    } else set((cur) => setBookingStatus(cur, b, status));
     const word: Record<OpStatus, string> = { accepted: "Accepted", declined: "Declined", completed: "Marked complete", noshow: "Marked no-show", cancelled: "Cancelled", new: "Reopened" };
     setToastText(word[status] + " · " + b.guest);
-  }, [set]);
+  }, [set, p?.id]);
 
   const logout = () => {
+    signOutApi();
     saveSession(null);
     setSession(null);
     setP(null);

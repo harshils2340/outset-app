@@ -1,5 +1,5 @@
 import type { Booking, CategoryId, OperatorContact, Unclaimed, UnclaimedOption, UnclaimedService } from "../data/types";
-import { saveRemoteProfile } from "./api";
+import { saveRemoteProfile, type RemoteBooking } from "./api";
 import { addressLine, contactFor, experienceById, fmtPhone, getCatalog, setOperatorOverride, siteUrl } from "./catalog";
 import { dateKey, startOfToday } from "./dates";
 
@@ -32,7 +32,7 @@ export type OpBooking = {
   note?: string;
   created: number;
   /** guest: a real booking made in this browser's guest app. sample: seeded so the dashboard is not empty. */
-  source: "guest" | "sample";
+  source: "guest" | "sample" | "remote";
 };
 
 export type OpVariant = { id: string; label: string; price: number | null; per: string };
@@ -391,7 +391,9 @@ export function guestBookingsFor(p: OperatorProfile, guest: Booking[]): OpBookin
       return {
         id: "g" + b.code,
         code: b.code,
-        guest: "Guest " + b.code.slice(-2),
+        guest: b.guest?.name || "Guest " + b.code.slice(-2),
+        email: b.guest?.email,
+        phone: b.guest?.phone,
         service: opt?.name || (u?.title ?? "Booking"),
         variant: opt?.detail || "",
         price: opt?.price ?? null,
@@ -407,8 +409,40 @@ export function guestBookingsFor(p: OperatorProfile, guest: Booking[]): OpBookin
     });
 }
 
-export function allBookings(p: OperatorProfile, guest: Booking[]): OpBooking[] {
-  return [...guestBookingsFor(p, guest), ...p.bookings].sort((a, b) => a.date.localeCompare(b.date) || a.slot.localeCompare(b.slot));
+/** Bookings the API holds for this listing: the real ones, from any guest on any device. */
+export function remoteBookingsFor(list: RemoteBooking[]): OpBooking[] {
+  return list.map((b) => ({
+    id: "r" + b.code,
+    code: b.code,
+    guest: b.guest.name,
+    email: b.guest.email || undefined,
+    phone: b.guest.phone || undefined,
+    service: b.service,
+    variant: b.variant,
+    price: null,
+    qty: b.qty,
+    total: b.total,
+    addons: b.addons,
+    date: b.date,
+    slot: b.slot,
+    status: b.status,
+    note: b.note,
+    created: Date.parse(b.created) || Date.now(),
+    source: "remote" as const,
+  }));
+}
+
+/**
+ * What the dashboard shows. Real bookings from the API first; the browser-local ones fill in when the API is
+ * unreachable; sample bookings only on a profile that has none of either, so the demo is never empty.
+ */
+export function allBookings(p: OperatorProfile, guest: Booking[], remote: RemoteBooking[] | null = null): OpBooking[] {
+  const real = remote ? remoteBookingsFor(remote) : [];
+  const codes = new Set(real.map((b) => b.code));
+  const local = guestBookingsFor(p, guest).filter((b) => !codes.has(b.code));
+  const samples = real.length || local.length ? [] : p.bookings.filter((b) => b.source === "sample");
+  const mine = p.bookings.filter((b) => b.source !== "sample");
+  return [...real, ...local, ...mine, ...samples].sort((a, b) => a.date.localeCompare(b.date) || a.slot.localeCompare(b.slot));
 }
 
 export function setBookingStatus(p: OperatorProfile, b: OpBooking, status: OpStatus): OperatorProfile {

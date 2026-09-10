@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useMemo, useReducer, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useMemo, useReducer, useRef, type ReactNode } from "react";
 import { LISTINGS } from "../data/listings";
 import { ALL_METRO_ID } from "../data/metros";
 import { SLOT_TIMES } from "../data/slots";
@@ -19,6 +19,7 @@ import { fmtDate, money, nowStamp } from "../lib/format";
 import { daySlotsOpen, openSeats } from "../lib/inventory";
 import { contactFor, experienceById, fromPrice, initials } from "../lib/catalog";
 import { loadListing, loadRemoteCatalog } from "../lib/catalogLoad";
+import { submitBooking } from "../lib/api";
 import { companyGreeting, companyReply, companySuggestions } from "../lib/companyAgent";
 import type { Place } from "../lib/places";
 import { priceFor, priceUnclaimed } from "../lib/pricing";
@@ -399,7 +400,10 @@ function atOperatorsPath(): boolean {
 }
 
 export function AppProvider({ children }: { children: ReactNode }) {
-  const [state, dispatch] = useReducer(reducer, initial);
+  // A direct load of /operators is the operator side from the first paint, not the guest home for a second.
+  const [state, dispatch] = useReducer(reducer, initial, (init) => (typeof window !== "undefined" && atOperatorsPath() ? { ...init, screen: "operator" as const, tab: "account" as const } : init));
+  const stateRef = useRef(state);
+  stateRef.current = state;
 
   useEffect(() => {
     dispatch({ type: "hydrate", bookings: loadBookings(), chats: loadChats() });
@@ -513,7 +517,24 @@ export function AppProvider({ children }: { children: ReactNode }) {
       },
       closeSheet: () => dispatch({ type: "closeSheet" }),
       confirm: () => dispatch({ type: "confirm" }),
-      confirmUnclaimed: (input) => dispatch({ type: "confirmUnclaimed", ...input }),
+      confirmUnclaimed: (input) => {
+        dispatch({ type: "confirmUnclaimed", ...input });
+        // The request also goes to the operator through the API: email to them, a row in their dashboard.
+        const u = experienceById(stateRef.current.reqTargetId);
+        const booking = stateRef.current.bookings[0];
+        if (!u || !input.slot) return;
+        const picked = input.optionIdx != null ? u.options[input.optionIdx] : null;
+        const extras = (input.addonIdx || []).map((i) => (u.addons || [])[i]).filter(Boolean);
+        window.setTimeout(() => {
+          const b = stateRef.current.bookings[0];
+          if (!b || b === booking) return;
+          void submitBooking({
+            code: b.code, listing: u.id, date: b.date, slot: b.slot, qty: b.qty,
+            service: picked?.name || u.title, variant: picked?.detail || "", addons: extras.map((a) => a.name), total: b.total || null,
+            guest: { name: input.guest?.name || "", phone: input.guest?.phone || "", email: input.guest?.email || "" },
+          });
+        }, 0);
+      },
       back: () => dispatch({ type: "back" }),
       openChat: (id) => dispatch({ type: "openChat", id }),
       openOperator: (id) => {

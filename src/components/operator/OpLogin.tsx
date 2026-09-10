@@ -8,7 +8,7 @@ import { Photo } from "../art/Photo";
 import { Mark } from "../layout/Mark";
 import { Markup } from "../Markup";
 import { OD_ICONS } from "./opContext";
-import { claimRemote, fetchRemoteProfile, rememberClaimToken } from "../../lib/api";
+import { claimRemote, fetchRemoteProfile, hasApi, rememberClaimToken, requestSignInCode, verifySignInCode } from "../../lib/api";
 
 /**
  * Claim and sign in. A claim link (#claim=<id>) lands here with the business already picked.
@@ -55,7 +55,7 @@ export function OpLogin({ claimId, claimToken, compact, onEnter, onBack }: { cla
         const saved = remote?.profile as OperatorProfile | undefined;
         if (saved && saved.v === 1 && saved.id === u.id) { saveProfile(saved); onEnter(saved); return; }
         const p = defaultProfile(u, { name: remote?.owner?.name || "", email: remote?.owner?.email || contactFor(u)?.email || "", phone: remote?.owner?.phone || "" });
-        p.bookings = sampleBookings(p);
+        if (!hasApi()) p.bookings = sampleBookings(p);
         saveProfile(p);
         void claimRemote(u.id, claimToken, { name: p.ownerName, email: p.ownerEmail, phone: p.ownerPhone });
         onEnter(p);
@@ -69,6 +69,9 @@ export function OpLogin({ claimId, claimToken, compact, onEnter, onBack }: { cla
   }, [claimToken, claimId]);
   const mine = useMemo(() => claimedIds().map((id) => ({ id, p: loadProfile(id), u: experienceById(id) })).filter((x) => x.p && x.u), []);
   const demoCode = useMemo(() => String(100000 + Math.floor(Math.random() * 900000)), []);
+  const [sending, setSending] = useState(false);
+  const [signinEmail, setSigninEmail] = useState("");
+  const [mode, setMode] = useState<"claim" | "signin">("claim");
 
   const results = useMemo(() => {
     if (q.trim().length < 2) return [];
@@ -80,8 +83,43 @@ export function OpLogin({ claimId, claimToken, compact, onEnter, onBack }: { cla
     if (p) onEnter(p);
   };
 
+  /** Returning operator: a code goes to the email that claimed the listing. */
+  const startSignIn = async () => {
+    setSending(true);
+    setErr(null);
+    const r = await requestSignInCode(signinEmail);
+    setSending(false);
+    if (!r.ok) { setErr(r.error || "Could not send a code. Try again."); return; }
+    setStep("code");
+  };
+
+  const finishSignIn = async () => {
+    setErr(null);
+    const r = await verifySignInCode(signinEmail, code);
+    if (!r.ok) { setErr(r.error || "That code does not match."); return; }
+    if (!r.ids.length) { setErr("No listing is linked to that email yet. Use the claim link from your email."); return; }
+    // Open the first listing this email owns; the profile comes from the API if this device has none.
+    const id = r.ids[0];
+    const existing = loadProfile(id);
+    if (existing) { onEnter(existing); return; }
+    const remote = await fetchRemoteProfile(id);
+    const saved = remote?.profile as OperatorProfile | undefined;
+    const u = experienceById(id);
+    if (saved && saved.v === 1) { saveProfile(saved); onEnter(saved); return; }
+    if (!u) { setErr("That listing is not loaded yet. Try again in a moment."); return; }
+    const p = defaultProfile(u, { name: remote?.owner?.name || "", email: signinEmail, phone: remote?.owner?.phone || "" });
+    saveProfile(p);
+    onEnter(p);
+  };
+
   const finish = () => {
+    if (mode === "signin") { void finishSignIn(); return; }
     if (!picked) return;
+    if (hasApi()) {
+      // Claims without the email link need the emailed code, which only exists for already-claimed listings.
+      setErr("Use the claim link we emailed you. It opens your dashboard with no code.");
+      return;
+    }
     if (code.replace(/\D/g, "") !== demoCode) {
       setErr("That code doesn't match. Use the one shown above.");
       return;
@@ -94,7 +132,7 @@ export function OpLogin({ claimId, claimToken, compact, onEnter, onBack }: { cla
     // The listing picked at mount may be the slim browse record; the full detail file has usually landed by now.
     const full = experienceById(picked.id) || picked;
     const p = defaultProfile(full, { name: name.trim(), email: email.trim(), phone: phone.trim() });
-    p.bookings = sampleBookings(p);
+    if (!hasApi()) p.bookings = sampleBookings(p);
     saveProfile(p);
     onEnter(p);
   };
@@ -169,8 +207,13 @@ export function OpLogin({ claimId, claimToken, compact, onEnter, onBack }: { cla
               </div>
             ) : null}
 
+            <div className="odor"><span>already claimed?</span></div>
+            <label className="odfield"><span>Sign in with the email on your listing</span><input type="email" value={signinEmail} onChange={(e) => setSigninEmail(e.target.value)} placeholder="you@business.com" onKeyDown={(e) => e.key === "Enter" && signinEmail.includes("@") && (setMode("signin"), void startSignIn())} /></label>
+            {err && mode === "signin" ? <p className="oderr">{err}</p> : null}
+            <button type="button" className="cta odwide" disabled={!signinEmail.includes("@") || sending || !hasApi()} onClick={() => { setMode("signin"); void startSignIn(); }}>{sending ? "Sending…" : "Email me a sign-in code"}</button>
+            {!hasApi() ? <p className="odfine">Sign-in codes switch on once the API is connected.</p> : null}
             <div className="odor"><span>or</span></div>
-            <button type="button" className="cta ghost odwide" onClick={demo}>Back to the demo dashboard</button>
+            <button type="button" className="cta ghost odwide" onClick={demo}>See the demo dashboard</button>
           </>
         ) : null}
 
@@ -192,17 +235,27 @@ export function OpLogin({ claimId, claimToken, compact, onEnter, onBack }: { cla
             <label className="odfield"><span>Your name</span><input value={name} onChange={(e) => setName(e.target.value)} placeholder="Full name" /></label>
             <label className="odfield"><span>Work email</span><input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@business.com" /></label>
             <label className="odfield"><span>Mobile for text alerts</span><input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="(555) 555-5555" /></label>
-            <button type="button" className="cta odwide" disabled={!name.trim() || !email.trim()} onClick={() => { setStep("code"); setErr(null); }}>Send verification code</button>
+            {hasApi() ? (
+              <p className="odmuted">To claim this listing, use the link in the email we sent to the address on its website. It opens your dashboard with no code. Did not get one? Write to harshils2340@gmail.com and we will resend it.</p>
+            ) : (
+              <button type="button" className="cta odwide" disabled={!name.trim() || !email.trim()} onClick={() => { setMode("claim"); setStep("code"); setErr(null); }}>Send verification code</button>
+            )}
             <p className="odfine">By continuing you confirm you're authorised to manage this business on Outset.</p>
           </>
         ) : null}
 
-        {step === "code" && picked ? (
+        {step === "code" && (picked || mode === "signin") ? (
           <>
-            <button type="button" className="odlink" onClick={() => { setStep("details"); setErr(null); }}><Markup html={OD_ICONS.back} /> Back</button>
+            <button type="button" className="odlink" onClick={() => { setStep(mode === "signin" ? "pick" : "details"); setErr(null); }}><Markup html={OD_ICONS.back} /> Back</button>
             <h2>Enter the code</h2>
-            <p className="odmuted">We'd text {phone.trim() || email.trim()} a 6 digit code. Texting isn't switched on yet, so here it is:</p>
-            <div className="oddemocode">{demoCode.slice(0, 3)} {demoCode.slice(3)}</div>
+            {mode === "signin" ? (
+              <p className="odmuted">We emailed a 6 digit code to {signinEmail}. It works for 10 minutes.</p>
+            ) : (
+              <>
+                <p className="odmuted">Demo mode: the code would go to {phone.trim() || email.trim()}. Here it is:</p>
+                <div className="oddemocode">{demoCode.slice(0, 3)} {demoCode.slice(3)}</div>
+              </>
+            )}
             <label className="odfield"><span>Verification code</span><input inputMode="numeric" autoFocus value={code} onChange={(e) => { setCode(e.target.value); setErr(null); }} placeholder="000 000" onKeyDown={(e) => e.key === "Enter" && finish()} /></label>
             {err ? <p className="oderr">{err}</p> : null}
             <button type="button" className="cta odwide" onClick={finish}>Open my dashboard</button>
