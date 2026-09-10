@@ -1158,3 +1158,5 @@ video.photo{background:#000;}
 
 .wpaynote{margin:6px 0 0;font-size:12.5px;color:var(--ink-faint);}
 .wbadgechip.open svg{color:var(--open);}
+.wbadge.open{background:var(--open);color:#fff;}
+.wnearnow .wrailhead .wsortnear{margin-left:0;}

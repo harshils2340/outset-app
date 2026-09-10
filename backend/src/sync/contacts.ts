@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import { CITIES } from "../discover/cities.ts";
 import { db } from "../db/client.ts";
 import { writeLandingPages } from "./pages.ts";
+import { encodeWeek } from "./hours.ts";
 import { claimKeyHash } from "../lib/claim.ts";
 import { existsSync, readFileSync as readFileSyncFs } from "node:fs";
 
@@ -684,6 +685,13 @@ export function syncCatalogToApp(): { path: string; count: number } {
       tags: ((item.tags as string[]) || []).slice(0, 6),
       from: priced.length ? Math.min(...priced) : undefined,
       dur: item.dur, fc: item.fc,
+      // Compact week from the published hours, so the home page can say "open now" without a detail file.
+      hrs: (() => {
+        const own = (item.hoursText as string[] | undefined) || [];
+        const c = contactByDomain[String(item.src)];
+        const lines = own.length ? own : c?.hours || [];
+        return lines.length ? encodeWeek(lines) || undefined : undefined;
+      })(),
       options: [], specs: [], includes: [], gap: "", lite: true,
     };
   });

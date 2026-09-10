@@ -12,6 +12,7 @@ import { loadListing } from "../../lib/catalogLoad";
 import { currentLocation, fmtDistance, nearestLocation, searchPlaces, type Place } from "../../lib/places";
 import { useApp } from "../../state/AppProvider";
 import { Photo } from "../art/Photo";
+import { NearNow } from "./NearNow";
 import { Mark } from "../layout/Mark";
 import { Markup } from "../Markup";
 
@@ -486,6 +487,7 @@ export function WebHome({ onOpenApp, onOperators }: { onOpenApp: () => void; onO
             ))}
           </>
         ) : null}
+        {state.catalogReady && !q.trim() && sort === "relevance" ? <NearNow near={near} onOpen={openRequest} /> : null}
         {state.catalogReady && sorted ? (
           <section className="wrail">
             <div className="wrailhead">

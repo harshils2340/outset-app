@@ -87,9 +87,13 @@ function fmt(m: number): string {
 
 /** Whether the operator is open at `now` (local time of the browser). Null when hours are not published. */
 export function openState(week: Week | null, now = new Date()): OpenState | null {
+  return openStateAt(week, { day: now.getDay(), minutes: now.getHours() * 60 + now.getMinutes() });
+}
+
+export function openStateAt(week: Week | null, clock: { day: number; minutes: number }): OpenState | null {
   if (!week) return null;
-  const day = now.getDay();
-  const cur = now.getHours() * 60 + now.getMinutes();
+  const day = clock.day;
+  const cur = clock.minutes;
   const today = week[day];
   const yesterday = week[(day + 6) % 7];
   // Late closers: yesterday's 6 PM to 2 AM still counts at 1 AM.
@@ -106,8 +110,60 @@ export function openState(week: Week | null, now = new Date()): OpenState | null
   return { open: false, label: "Closed" };
 }
 
-/** Convenience for a catalog item: its published hours lines, from the detail file or the contact record. */
+/* ---------- the operator's clock, not the guest's ---------- */
+
+const REGION_TZ: Record<string, string> = {
+  // United States
+  CT: "America/New_York", DE: "America/New_York", FL: "America/New_York", GA: "America/New_York", ME: "America/New_York", MD: "America/New_York", MA: "America/New_York", NH: "America/New_York", NJ: "America/New_York", NY: "America/New_York", NC: "America/New_York", OH: "America/New_York", PA: "America/New_York", RI: "America/New_York", SC: "America/New_York", VT: "America/New_York", VA: "America/New_York", WV: "America/New_York", DC: "America/New_York", MI: "America/Detroit", IN: "America/Indiana/Indianapolis", KY: "America/New_York", TN: "America/Chicago",
+  AL: "America/Chicago", AR: "America/Chicago", IL: "America/Chicago", IA: "America/Chicago", KS: "America/Chicago", LA: "America/Chicago", MN: "America/Chicago", MS: "America/Chicago", MO: "America/Chicago", NE: "America/Chicago", ND: "America/Chicago", OK: "America/Chicago", SD: "America/Chicago", TX: "America/Chicago", WI: "America/Chicago",
+  AZ: "America/Phoenix", CO: "America/Denver", ID: "America/Boise", MT: "America/Denver", NM: "America/Denver", UT: "America/Denver", WY: "America/Denver",
+  CA: "America/Los_Angeles", NV: "America/Los_Angeles", OR: "America/Los_Angeles", WA: "America/Los_Angeles", AK: "America/Anchorage", HI: "Pacific/Honolulu",
+  // Canada
+  ON: "America/Toronto", QC: "America/Toronto", NS: "America/Halifax", NB: "America/Moncton", PE: "America/Halifax", NL: "America/St_Johns", MB: "America/Winnipeg", SK: "America/Regina", AB: "America/Edmonton", BC: "America/Vancouver", YT: "America/Whitehorse", NT: "America/Yellowknife", NU: "America/Iqaluit",
+};
+
+/** IANA zone for the operator from its state or province, with a longitude nudge for split states. Null when unknown. */
+export function zoneFor(item: Unclaimed): string | null {
+  const region = (item.area.match(/,\s*([A-Z]{2})\b/) || [])[1];
+  const lon = item.lon;
+  if (region === "FL" && lon != null && lon < -85.1) return "America/Chicago";
+  if (region === "TX" && lon != null && lon < -105) return "America/Denver";
+  if (region === "KY" && lon != null && lon < -86.4) return "America/Chicago";
+  if (region === "TN" && lon != null && lon > -85.3) return "America/New_York";
+  if ((region === "ND" || region === "SD" || region === "NE" || region === "KS") && lon != null && lon < -101) return "America/Denver";
+  if (region === "OR" && lon != null && lon < -117.1) return "America/Boise";
+  if (region === "ID" && item.lat != null && item.lat > 45.6) return "America/Los_Angeles";
+  if (region === "MI" && lon != null && lon < -88.5) return "America/Chicago";
+  if (region === "BC" && lon != null && lon > -116) return "America/Edmonton";
+  if (region && REGION_TZ[region]) return REGION_TZ[region];
+  if (lon == null) return null;
+  // No region: fall back to longitude bands across North America.
+  if (lon < -140) return "America/Anchorage";
+  if (lon < -114) return "America/Los_Angeles";
+  if (lon < -102) return "America/Denver";
+  if (lon < -87) return "America/Chicago";
+  if (lon < -67) return "America/New_York";
+  return "America/Halifax";
+}
+
+/** Day of week and minutes since midnight in the given zone. */
+export function clockIn(zone: string | null, now = new Date()): { day: number; minutes: number } {
+  if (!zone) return { day: now.getDay(), minutes: now.getHours() * 60 + now.getMinutes() };
+  try {
+    const parts = new Intl.DateTimeFormat("en-US", { timeZone: zone, weekday: "short", hour: "numeric", minute: "numeric", hour12: false }).formatToParts(now);
+    const get = (t: string) => parts.find((p) => p.type === t)?.value || "";
+    const day = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].indexOf(get("weekday"));
+    const hour = Number(get("hour")) % 24;
+    return { day: day < 0 ? now.getDay() : day, minutes: hour * 60 + Number(get("minute")) };
+  } catch {
+    return { day: now.getDay(), minutes: now.getHours() * 60 + now.getMinutes() };
+  }
+}
+
+/** Convenience for a catalog item: its week (compact on lite records, or parsed from hour lines) at the operator's local time. */
 export function itemOpenState(item: Unclaimed, now = new Date()): OpenState | null {
-  const lines = item.hoursText?.length ? item.hoursText : contactFor(item)?.hours || [];
-  return openState(parseWeek(lines), now);
+  const week: Week | null = item.hrs?.length
+    ? item.hrs.map((d) => (d ? { open: d[0], close: d[1] } : null))
+    : parseWeek(item.hoursText?.length ? item.hoursText : contactFor(item)?.hours || []);
+  return openStateAt(week, clockIn(zoneFor(item), now));
 }

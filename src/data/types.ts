@@ -180,6 +180,8 @@ export type Unclaimed = {
   detail?: string;
   /** SHA-256 of the claim token in the operator's email link. Lets the static site verify a claim link. */
   claimKey?: string;
+  /** Compact week from published hours on lite records: Sunday first, [open, close] in minutes, [0,0] closed, null unknown. */
+  hrs?: ([number, number] | null)[];
   /** Card facts carried on lite records: duration as the operator wrote it, and a free-cancellation line when their policy says so. */
   dur?: string;
   fc?: string;
