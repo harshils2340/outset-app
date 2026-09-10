@@ -267,8 +267,12 @@ if (cmd === "reviews") {
 if (cmd === "sync") {
   const t0 = Date.now();
   const lap = (label: string) => console.log(`${label} (${((Date.now() - t0) / 1000).toFixed(1)}s)`);
-  ingestAll();
-  lap("ingest");
+  // The sync only reads. Seed ingest (a writer) runs on request, and other writers may hold the lock for minutes.
+  db.exec("PRAGMA busy_timeout = 300000");
+  if (process.argv.includes("--ingest")) {
+    ingestAll();
+    lap("ingest");
+  }
   const out = syncContactsToApp();
   lap("Wrote " + out.count + " operator contact records to " + out.path);
   const cat = syncCatalogToApp();
