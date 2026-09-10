@@ -18,7 +18,7 @@ import { stripeEnabled } from "../lib/stripe.ts";
 export const app = new Hono();
 
 // Browser calls come only from the site (and a dev server). Everything else is same-origin tooling.
-const ORIGINS = (process.env.ALLOWED_ORIGINS || "https://harshils2340.github.io,http://localhost:5173,http://localhost:5199").split(",").map((s) => s.trim());
+const ORIGINS = (process.env.ALLOWED_ORIGINS || "https://onoutset.com,https://www.onoutset.com,https://harshils2340.github.io,http://localhost:5173,http://localhost:5199").split(",").map((s) => s.trim());
 app.use("*", cors({ origin: (o) => (ORIGINS.includes(o) ? o : ""), allowHeaders: ["content-type", "x-claim-token", "x-session"], allowMethods: ["GET", "POST", "PUT", "PATCH", "OPTIONS"], maxAge: 600 }));
 app.use("*", async (c, next) => {
   await next();

@@ -27,6 +27,6 @@ services:
       - key: MAIL_REPLY_TO
         value: harshils2340@gmail.com
       - key: ALLOWED_ORIGINS
-        value: https://harshils2340.github.io
+        value: https://onoutset.com,https://www.onoutset.com,https://harshils2340.github.io
       - key: SITE_URL
-        value: https://harshils2340.github.io/outset-app/
+        value: https://onoutset.com/

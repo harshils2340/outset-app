@@ -1,6 +1,7 @@
 import type { OperatorContact, Unclaimed } from "../data/types";
 import { addressLine, fmtHours, fmtPhone, optionLabel, plainWords } from "./catalog";
 import { money } from "./format";
+import { clockIn, itemOpenState, parseWeek, zoneFor, type Week } from "./openNow";
 
 /**
  * 24/7 company assistant for a catalog operator.
@@ -30,6 +31,8 @@ const OUT_OF_SCOPE =
 
 const PRICE = /(how much|price|pricing|cost|rate|fee|expensive|cheap|\$|deposit)/i;
 const SERVICES = /(what do you (offer|have)|options|services|packages|tours?|rentals?|menu|length|how long|duration|hours? long|minutes)/i;
+const OPEN_NOW = /(open (right )?now|open today|open (on |this )?(sunday|monday|tuesday|wednesday|thursday|friday|saturday|weekend)s?|(are|r) (you|u|they) open|still open|open yet|what time (do|does|will) (you|u|they|it) (close|open)|when (do|does|will) (you|u|they|it) (close|open)|closing time|opening time|closed (today|now|on|sunday|monday|tuesday|wednesday|thursday|friday|saturday))/i;
+const DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 const HOURS = /(hours|open|close|closing|opening|what time|when are you|sunday|monday|tuesday|wednesday|thursday|friday|saturday|weekend|today|tomorrow)/i;
 const WHERE = /(where|address|location|located|meet|meeting point|launch|dock|find you)/i;
 const PHONE = /(phone|call|number|reach|contact|email|text you)/i;
@@ -83,6 +86,47 @@ export function companyGreeting(ctx: CompanyContext): string {
   return "Hi, I'm " + ASSISTANT_NAME + ". Ask me anything about " + ctx.item.title + ". I only use what they've published, so if it isn't on their site I'll say so.";
 }
 
+/** The operator's week, built the same way itemOpenState does: compact hrs, else parsed hour lines. */
+function weekFor(ctx: CompanyContext): Week | null {
+  const { item, contact } = ctx;
+  if (item.hrs?.length) return item.hrs.map((d) => (d ? { open: d[0], close: d[1] } : null));
+  return parseWeek(item.hoursText?.length ? item.hoursText : contact?.hours || []);
+}
+
+function clockLabel(m: number): string {
+  const h = Math.floor((m % (24 * 60)) / 60);
+  const mm = m % 60;
+  return (h % 12 === 0 ? 12 : h % 12) + (mm ? ":" + String(mm).padStart(2, "0") : "") + " " + (h >= 12 ? "PM" : "AM");
+}
+
+/** "Are you open now", "what time do you close", "open on Sunday": read from published hours, in the shop's own time zone. */
+function openNowAnswer(ctx: CompanyContext, q: string): string {
+  const { item } = ctx;
+  const week = weekFor(ctx);
+  if (!week) return notPublished(ctx, "hours");
+  const named = DAY_NAMES.findIndex((d) => new RegExp("\\b" + d.slice(0, 3) + "(" + d.slice(3) + ")?s?\\b", "i").test(q));
+  const weekend = /\bweekends?\b/i.test(q);
+  const tomorrow = /\btomorrow\b/i.test(q);
+  const today = clockIn(zoneFor(item)).day;
+  const days = named >= 0 ? [named] : weekend ? [6, 0] : tomorrow ? [(today + 1) % 7] : [];
+  if (days.length) {
+    const lines = days.map((d) => {
+      const span = week[d];
+      if (!span) return DAY_NAMES[d] + ": hours not published";
+      if (span.close === 0) return "Closed on " + DAY_NAMES[d];
+      return DAY_NAMES[d] + ": " + clockLabel(span.open) + " to " + clockLabel(span.close);
+    });
+    return lines.join(". ") + ". From " + item.title + "'s published hours.";
+  }
+  const st = itemOpenState(item);
+  if (!st) return notPublished(ctx, "hours");
+  if (st.open) return "Yes, open now" + (st.closesAt ? " until " + st.closesAt : "") + ".";
+  if (/^Opens today at /.test(st.label)) return "Closed right now. Opens today at " + st.opensAt + ".";
+  if (/^Closed now, opens /.test(st.label)) return "Closed right now. Opens " + st.label.replace(/^Closed now, opens /, "") + ".";
+  if (st.label === "Closed today") return "Closed today. Ask me about another day and I will read their published hours.";
+  return "Closed right now.";
+}
+
 export function companySuggestions(ctx: CompanyContext): string[] {
   const { item } = ctx;
   const out = ["What do you offer and what does it cost?", "Where do we meet?"];
@@ -90,7 +134,8 @@ export function companySuggestions(ctx: CompanyContext): string[] {
   else if (ctx.contact?.hours.length || item.hoursText?.length) out.push("What are your hours?");
   else out.push("What should we bring?");
   out.push(item.requirements?.length ? "Any age or weight limits?" : item.bring?.length ? "What should we bring?" : "Any age or weight limits?");
-  return out.slice(0, 4);
+  if (weekFor(ctx)) out.push("Are you open right now?");
+  return out.slice(0, 5);
 }
 
 /** A guest question that matches one of the operator's own FAQ entries gets that entry's answer, word for word. */
@@ -147,7 +192,8 @@ export function companyReply(ctx: CompanyContext, question: string): string {
     return "I cannot see or hold slots. Pick a date and time on the listing and you get an instant confirmation.";
   })());
 
-  if (HOURS.test(q)) parts.push((() => {
+  if (OPEN_NOW.test(q)) parts.push(openNowAnswer(ctx, q));
+  else if (HOURS.test(q)) parts.push((() => {
     if (item.hoursText?.length) return "Hours from " + item.title + ": " + item.hoursText.join(", ") + "." + (item.season ? " Season: " + item.season + "." : "");
     if (contact?.hours.length) return "Hours from " + item.title + ": " + contact.hours.map(fmtHours).join(", ") + ".";
     const hint = specsAbout(item, /hour|open|close|am|pm|daily|sunrise|sunset/i);

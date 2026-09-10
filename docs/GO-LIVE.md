@@ -7,7 +7,7 @@ Everything below is built, tested end to end locally, and switches on the moment
 2. Set these environment variables on the service:
    - `CLAIM_SECRET`: the contents of `backend/data/claim-secret.txt` on the Mac (same secret the emailed claim links were signed with; if you rotate it, regenerate drafts).
    - `GITHUB_TOKEN`: a fine-grained GitHub token, repository `outset-app`, permission Contents: read and write. Profiles and bookings are stored as JSON in the repo and the site rebuilds on each write.
-   - `RESEND_API_KEY`: from resend.com (free tier covers 3,000 emails a month). Until the sending domain is verified, keep `MAIL_FROM` as `Outset <onboarding@resend.dev>`; after verifying outset.app (or any domain you own) set `MAIL_FROM` to `Outset <bookings@yourdomain>`.
+   - `RESEND_API_KEY`: from resend.com (free tier covers 3,000 emails a month). Until `onoutset.com` is verified in Resend, keep `MAIL_FROM` as `Outset <onboarding@resend.dev>`; after verifying, set `MAIL_FROM` to `Outset <hello@onoutset.com>`.
 3. Copy the service URL (for example `https://outset-api.onrender.com`).
 
 ## 1b. Card payments (Stripe)

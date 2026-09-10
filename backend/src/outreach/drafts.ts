@@ -47,7 +47,7 @@ export function draftCopy(op: Op, sc: ReturnType<typeof scale>, offerings: strin
   void offerings;
   void hasPhotos;
   void hasRules;
-  const SITE = "https://harshils2340.github.io/outset-app/";
+  const SITE = "https://onoutset.com/";
   const id = catalogId(op.domain);
   const city = op.city || "your area";
   const vendor = op.calendar_vendor ? VENDOR_NAME[op.calendar_vendor] || null : null;

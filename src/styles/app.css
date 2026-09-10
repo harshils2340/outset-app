@@ -1160,3 +1160,9 @@ video.photo{background:#000;}
 .wbadgechip.open svg{color:var(--open);}
 .wbadge.open{background:var(--open);color:#fff;}
 .wnearnow .wrailhead .wsortnear{margin-left:0;}
+
+/* Open-now chip on the phone listing sheet: green when open, grey when closed. */
+.reqbadge.open{background:var(--open-bg);color:var(--open);}
+.reqbadge.open svg{color:var(--open);}
+.reqbadge.closed{background:var(--surface-2);color:var(--ink-faint);}
+.reqbadge.closed svg{color:var(--ink-faint);}

@@ -28,6 +28,7 @@ import { priceFor, priceUnclaimed } from "../../lib/pricing";
 import { useApp } from "../../state/AppProvider";
 import { thumb } from "../../lib/images";
 import { cleanDesc, durationLabel, freeCancel, minAge } from "../../lib/listingDerive";
+import { itemOpenState } from "../../lib/openNow";
 import { Photo } from "../art/Photo";
 import { Markup } from "../Markup";
 
@@ -279,7 +280,9 @@ function RequestBody({
   const age = minAge(requirements);
   const duration = item.dur || durationLabel(item);
   const priced = fromPrice(item) != null;
-  const badges: { icon: string; text: string }[] = [];
+  const openNow = itemOpenState(item);
+  const badges: { icon: string; text: string; tone?: "open" | "closed" }[] = [];
+  if (openNow) badges.push({ icon: ICONS.clock, text: openNow.label, tone: openNow.open ? "open" : "closed" });
   if (score && score.rating >= 4.8 && score.reviews >= 100) badges.push({ icon: ICONS.star, text: "Top rated" });
   else if (score && score.reviews >= 1000) badges.push({ icon: ICONS.star, text: "Popular" });
   if (cancel) badges.push({ icon: ICONS.check, text: cancel });
@@ -407,7 +410,7 @@ function RequestBody({
         {badges.length ? (
           <div className="reqbadges">
             {badges.map((b) => (
-              <span key={b.text} className="reqbadge"><Markup html={b.icon} /> {b.text}</span>
+              <span key={b.text} className={"reqbadge" + (b.tone ? " " + b.tone : "")}><Markup html={b.icon} /> {b.text}</span>
             ))}
           </div>
         ) : null}

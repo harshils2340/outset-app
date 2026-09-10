@@ -12,7 +12,7 @@ import { GUIDES } from "../../../src/data/guides.ts";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const publicDir = join(here, "../../../public");
-const SITE = "https://harshils2340.github.io/outset-app/";
+const SITE = process.env.SITE_URL || "https://onoutset.com/";
 
 const KINDS: { art: string; label: string; plural: string; family: string }[] = [
   { art: "jetski", label: "Jet ski rentals", plural: "jet ski rentals", family: "water" },

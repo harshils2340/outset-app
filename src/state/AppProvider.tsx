@@ -400,7 +400,7 @@ type Api = {
 const Ctx = createContext<Api | null>(null);
 
 
-/** True when the URL is the operator side, wherever the site is mounted (/operators or /outset-app/operators). */
+/** True when the URL is the operator side, wherever the site is mounted (/operators or a subpath /operators). */
 function atOperatorsPath(): boolean {
   const base = import.meta.env.BASE_URL.replace(/\/?$/, "/");
   return window.location.pathname === base + "operators" || window.location.pathname === base + "operators/";
@@ -509,7 +509,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const onOps = state.screen === "operator";
     const atOps = atOperatorsPath();
-    // The site may live under a base path (GitHub Pages serves it at /outset-app/), so build on BASE_URL, never on "/".
+    // Build operator paths on BASE_URL so a subpath deploy still works. Production is the site root.
     const base = import.meta.env.BASE_URL.replace(/\/?$/, "/");
     if (onOps && !atOps) window.history.pushState(null, "", base + "operators" + window.location.hash);
     else if (!onOps && atOps && booted.current) window.history.pushState(null, "", base + window.location.hash.replace(/^#claim=[^&]*/, ""));

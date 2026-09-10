@@ -2,7 +2,7 @@
 
 Instant-booking marketplace for local experiences across the US and Canada. Air, water, racing, indoor, and outdoor: jet skis, skydives, charters, escape rooms, karting, paintball, and the rest of the catalog. Guests pick a slot and pay. It is not a lead-gen directory.
 
-**Live guest app:** [harshils2340.github.io/outset-app](https://harshils2340.github.io/outset-app/)
+**Live guest app:** [onoutset.com](https://onoutset.com/)
 
 Repo: [github.com/harshils2340/outset-app](https://github.com/harshils2340/outset-app)
 

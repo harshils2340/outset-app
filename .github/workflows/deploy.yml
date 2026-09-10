@@ -18,7 +18,7 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npx vite build --base=/outset-app/
+      - run: npx vite build --base=/
         env:
           VITE_API_URL: ${{ vars.VITE_API_URL }}
       - run: cp dist/index.html dist/404.html
@@ -28,3 +28,4 @@ jobs:
           publish_dir: ./dist
           publish_branch: gh-pages
           force_orphan: true
+          cname: onoutset.com

@@ -30,7 +30,7 @@ export type StoredBooking = {
   payment?: { session: string; intent: string | null; state: "authorized" | "captured" | "released" | "unpaid" };
 };
 
-const SITE = process.env.SITE_URL || "https://harshils2340.github.io/outset-app/";
+const SITE = process.env.SITE_URL || "https://onoutset.com/";
 const STATUSES = ["new", "accepted", "declined", "completed", "noshow", "cancelled"];
 const SUCCESS = (code: string, listing: string) => `${SITE}#paid=${code}&o=${listing}`;
 const CANCEL = (listing: string) => `${SITE}#o=${listing}`;

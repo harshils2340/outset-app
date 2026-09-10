@@ -5,6 +5,7 @@ import { loadListing } from "../../lib/catalogLoad";
 import { allBookings, demoProfile, hydrateProfile, loadProfile, loadSession, saveProfile, saveSession, setBookingStatus, type OpBooking, type OpStatus, type OperatorProfile } from "../../lib/operator";
 import { useApp } from "../../state/AppProvider";
 import { decideBooking, fetchBookings, hasApi, signOutApi, type RemoteBooking } from "../../lib/api";
+import { listingUrl } from "../../lib/site";
 import { Mark } from "../layout/Mark";
 import { Markup } from "../Markup";
 import { OpAssistant } from "./OpAssistant";
@@ -154,7 +155,7 @@ export function OperatorView({ compact = false }: { compact?: boolean }) {
         openRequest(p.id);
         return;
       }
-      window.open(window.location.pathname + "#o=" + p.id, "_blank", "noopener");
+      window.open(listingUrl(p.id), "_blank", "noopener");
     },
     toast: setToastText,
     logout,
