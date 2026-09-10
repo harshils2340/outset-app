@@ -15,9 +15,9 @@ const DAY_TOKEN = String.raw`(?:sun|mon|tue|wed|thu|fri|sat)[a-z]*\.?`;
 const DAY_EXPR = String.raw`(?:daily|every ?day|7 days(?: a week)?|weekends?|weekdays?|${DAY_TOKEN}(?:\s*(?:-|–|—|to|through|thru|&|and|\/|,)\s*${DAY_TOKEN})*)`;
 const TIME_SRC = TIME_RE.source;
 // Day expression, optional separator, then a time range or "closed".
-const ENTRY_RE = new RegExp(String.raw`\b(${DAY_EXPR})\s*[:\-–—]?\s*(?:(${TIME_SRC})|(closed))`, "gi");
+const ENTRY_RE = new RegExp(String.raw`\b(?<days>${DAY_EXPR})\s*[:\-–—]?\s*(?:(?<time>${TIME_SRC})|(?<closed>closed))`, "gi");
 // "9am-5pm Mon-Fri" and "9am - 5pm daily".
-const ENTRY_TIME_FIRST_RE = new RegExp(String.raw`(${TIME_SRC})\s*[,;]?\s*(?:on\s+)?\b(${DAY_EXPR})\b`, "gi");
+const ENTRY_TIME_FIRST_RE = new RegExp(String.raw`(?<time>${TIME_SRC})\s*[,;]?\s*(?:on\s+)?\b(?<days>${DAY_EXPR})\b`, "gi");
 const ANCHOR_RE = /\b(opening hours|business hours|hours of operation|store hours|our hours|hours|open|we'?re open|we are open)\b/gi;
 // Ranges encodeWeek's DAY_RE understands. Anything else is written one day per line.
 const KNOWN_RANGES = new Set(["Mon-Fri", "Mon-Sat", "Mon-Sun", "Tue-Sun", "Wed-Sun", "Thu-Sun", "Fri-Sun", "Sat-Sun"]);
@@ -40,7 +40,7 @@ function parseDays(expr: string): number[] | null {
       continue;
     }
     if (range && prev !== null) {
-      let i = prev;
+      let i: number = prev;
       for (let n = 0; n < 7; n++) {
         i = (i + 1) % 7;
         out.add(i);
@@ -184,15 +184,16 @@ function applyText(week: Week, text: string, overwrite: boolean) {
   let m: RegExpExecArray | null;
   let found = false;
   while ((m = ENTRY_RE.exec(text))) {
-    const days = parseDays(m[1]);
+    const g = m.groups || {};
+    const days = parseDays(g.days || "");
     if (!days) continue;
-    if (m[2]) {
-      const r = parseRange(m[2]);
+    if (g.time) {
+      const r = parseRange(g.time);
       if (r) {
         setDays(week, days, r, overwrite);
         found = true;
       }
-    } else if (m[3]) {
+    } else if (g.closed) {
       setDays(week, days, "closed", overwrite);
       found = true;
     }
@@ -200,8 +201,8 @@ function applyText(week: Week, text: string, overwrite: boolean) {
   if (found) return;
   ENTRY_TIME_FIRST_RE.lastIndex = 0;
   while ((m = ENTRY_TIME_FIRST_RE.exec(text))) {
-    const days = parseDays(m[2]);
-    const r = parseRange(m[1]);
+    const days = parseDays(m.groups?.days || "");
+    const r = parseRange(m.groups?.time || "");
     if (days && r) setDays(week, days, r, overwrite);
   }
 }
