@@ -3,6 +3,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { CITIES, type City } from "./cities.ts";
 import { upsertPlace, type SearchStats } from "./searchapi.ts";
+import { db } from "../db/client.ts";
 
 /**
  * Model-backed web discovery for the categories no free source covers well: classes, studios, tours.
@@ -90,8 +91,30 @@ async function withRetry<T>(fn: () => T, tries = 8): Promise<T> {
   }
 }
 
+/** Money spent on paid model calls so far, across discovery (this ledger) and extraction (extract_spend). */
+export function paidSpendUsd(): { discovery: number; extraction: number; total: number } {
+  let discovery = 0;
+  try {
+    const lines = readFileSync(ledger, "utf8").split("\n").filter(Boolean);
+    // Web search tool call plus tokens: about 2.5 cents per call at medium context, plus $2 per million tokens.
+    discovery = lines.length * 0.025 + lines.reduce((n, l) => n + Number(l.split("\t")[3] || 0), 0) * 2e-6;
+  } catch { /* no ledger yet */ }
+  let extraction = 0;
+  try {
+    extraction = Number((db.prepare("SELECT COALESCE(SUM(usd), 0) AS usd FROM extract_spend").get() as { usd: number }).usd);
+  } catch { /* table absent */ }
+  return { discovery, extraction, total: discovery + extraction };
+}
+
+const PAID_CAP_USD = Number(process.env.PAID_CAP_USD || 20);
+
 export async function discoverAi(opts: { cities?: string[]; terms?: string[]; maxCalls?: number; concurrency?: number } = {}): Promise<SearchStats & { calls: number }> {
   mkdirSync(cacheDir, { recursive: true });
+  const spend = paidSpendUsd();
+  if (spend.total >= PAID_CAP_USD) {
+    console.error(`Paid cap reached: $${spend.total.toFixed(2)} of $${PAID_CAP_USD} (discovery $${spend.discovery.toFixed(2)}, extraction $${spend.extraction.toFixed(2)}). Cached results still load; no new calls.`);
+    opts = { ...opts, maxCalls: 0 };
+  }
   const stats: SearchStats & { calls: number } = { queries: 0, results: 0, inserted: 0, merged: 0, skipped: 0, stoppedEarly: false, calls: 0 };
   const terms = opts.terms?.length ? AI_TERMS.filter((t) => opts.terms!.includes(t.category) || opts.terms!.includes(t.term)) : AI_TERMS;
   const cities = opts.cities?.length ? CITIES.filter((c) => opts.cities!.includes(c.name) || opts.cities!.includes(c.region)) : CITIES;
@@ -107,7 +130,7 @@ export async function discoverAi(opts: { cities?: string[]; terms?: string[]; ma
       try {
         if (existsSync(cachePath)) rows = JSON.parse(readFileSync(cachePath, "utf8")) as Row[];
         else {
-          if (stats.calls >= maxCalls) { stats.stoppedEarly = true; return; }
+          if (stats.calls >= maxCalls || paidSpendUsd().total >= PAID_CAP_USD) { stats.stoppedEarly = true; return; }
           stats.calls++;
           rows = await askModel(job.city, job.t);
           writeFileSync(cachePath, JSON.stringify(rows));
