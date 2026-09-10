@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { ArtKind } from "../../data/types";
-import { thumb, type PhotoSize } from "../../lib/images";
+import { SIZES, srcSet, thumb, type PhotoSize } from "../../lib/images";
 import { Art } from "./Art";
 
 /**
@@ -8,12 +8,18 @@ import { Art } from "./Art";
  * Images go through a resizing proxy sized for where they sit, falling back to the original if the proxy fails.
  * The scene illustration only appears when there is no photo or it fails to load.
  * Video covers load nothing until the card is on screen, then play muted on loop.
+ * The hero and the first handful of cards mounted on a page load eagerly with a high fetch priority, so the first
+ * rail paints before the browser gets round to the dozens of lazy cards further down; everything else stays lazy.
  */
+const EAGER_CARDS = 8;
+let eagerLeft = EAGER_CARDS;
+
 export function Photo({ src, video, kind, id, alt, size = "card" }: { src?: string; video?: string; kind: ArtKind; id: string; alt: string; size?: PhotoSize }) {
   const [state, setState] = useState<"loading" | "ok" | "broken">("loading");
   const [clipOk, setClipOk] = useState(true);
   const [proxied, setProxied] = useState(true);
   const [seen, setSeen] = useState(false);
+  const [priority] = useState(() => size === "hero" || size === "full" || (size === "card" && eagerLeft-- > 0));
   const ref = useRef<HTMLSpanElement>(null);
 
   const isClip = !!video && clipOk && /\.(mp4|webm|m4v|mov)(\?|$)/i.test(video);
@@ -36,7 +42,7 @@ export function Photo({ src, video, kind, id, alt, size = "card" }: { src?: stri
         {seen ? (
           <video className="photo" src={video} poster={thumb(src, size)} muted loop autoPlay playsInline preload="metadata" aria-label={alt} onError={() => setClipOk(false)} />
         ) : src ? (
-          <img className="photo" src={thumb(src, size)} alt={alt} loading="lazy" decoding="async" referrerPolicy="no-referrer" />
+          <img className="photo" src={thumb(src, size)} srcSet={srcSet(src, size)} sizes={SIZES[size]} alt={alt} loading="lazy" decoding="async" referrerPolicy="no-referrer" />
         ) : (
           <Art kind={kind} id={id} />
         )}
@@ -51,8 +57,11 @@ export function Photo({ src, video, kind, id, alt, size = "card" }: { src?: stri
       <img
         className="photo"
         src={url}
+        srcSet={proxied ? srcSet(still, size) : undefined}
+        sizes={proxied ? SIZES[size] : undefined}
         alt={alt}
-        loading={size === "hero" ? "eager" : "lazy"}
+        loading={priority ? "eager" : "lazy"}
+        fetchPriority={priority ? "high" : "auto"}
         decoding="async"
         referrerPolicy="no-referrer"
         onLoad={(e) => setState((e.currentTarget as HTMLImageElement).naturalWidth >= 120 ? "ok" : "broken")}

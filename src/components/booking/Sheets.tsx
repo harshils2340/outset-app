@@ -26,7 +26,7 @@ import { DAYS, fmtDate, fmtReviews, fmtTime, money, priceWith, unitLine } from "
 import { formatDistance, milesBetween, type GeoPoint } from "../../lib/geo";
 import { priceFor, priceUnclaimed } from "../../lib/pricing";
 import { useApp } from "../../state/AppProvider";
-import { thumb } from "../../lib/images";
+import { SIZES, srcSet, thumb } from "../../lib/images";
 import { cleanDesc, durationLabel, freeCancel, minAge } from "../../lib/listingDerive";
 import { itemOpenState } from "../../lib/openNow";
 import { Photo } from "../art/Photo";
@@ -391,7 +391,7 @@ function RequestBody({
         {item.photos && item.photos.length > 1 ? (
           <div className="gallery">
             {item.photos.slice(0, 6).map((u, i) => (
-              <img key={u} src={thumb(u, "thumb")} alt={item.title + " photo " + (i + 1)} loading="lazy" referrerPolicy="no-referrer" onError={(e) => ((e.currentTarget as HTMLImageElement).style.display = "none")} />
+              <img key={u} src={thumb(u, "thumb")} srcSet={srcSet(u, "thumb")} sizes={SIZES.thumb} alt={item.title + " photo " + (i + 1)} loading="lazy" decoding="async" referrerPolicy="no-referrer" onError={(e) => ((e.currentTarget as HTMLImageElement).style.display = "none")} />
             ))}
           </div>
         ) : null}
@@ -589,7 +589,7 @@ function RequestBody({
               <div className="svclist">
                 {item.services.map((svc, svcIdx) => (
                   <div className="svc" key={svc.name + "|" + svcIdx}>
-                    {svc.photo ? <img className="svcpic" src={thumb(svc.photo, "thumb")} alt={plainWords(svc.name)} loading="lazy" referrerPolicy="no-referrer" onError={(e) => ((e.currentTarget as HTMLImageElement).style.display = "none")} /> : null}
+                    {svc.photo ? <img className="svcpic" src={thumb(svc.photo, "thumb")} srcSet={srcSet(svc.photo, "thumb")} sizes={SIZES.thumb} alt={plainWords(svc.name)} loading="lazy" decoding="async" referrerPolicy="no-referrer" onError={(e) => ((e.currentTarget as HTMLImageElement).style.display = "none")} /> : null}
                     <div className="svchead2">
                       <b>{plainWords(svc.name)}</b>
                       {svc.desc && cleanDesc(svc.desc).length > 140 ? (
