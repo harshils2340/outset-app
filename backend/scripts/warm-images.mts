@@ -8,8 +8,10 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
+// RATE NOTE: wsrv.nl banned this machine (HTTP 403, error code 1106) after a 3,000-cover warm at concurrency 12.
+// Keep concurrency at 2, add a pause between requests, and never warm more than a few hundred per run.
 type PhotoSize = "thumb" | "card" | "wide" | "hero" | "full";
-const WIDTH: Record<PhotoSize, number> = { thumb: 320, card: 480, wide: 960, hero: 1600, full: 2000 };
+const WIDTH: Record<PhotoSize, number> = { thumb: 240, card: 360, wide: 800, hero: 1280, full: 1600 };
 const SKIP = /^data:|wsrv\.nl|images\.weserv\.nl|\.svg(\?|$)|\.gif(\?|$)/i;
 
 function proxyUrl(url: string, size: PhotoSize, w: number): string {

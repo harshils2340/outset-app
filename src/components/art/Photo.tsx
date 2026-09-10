@@ -66,6 +66,8 @@ export function Photo({ src, video, kind, id, alt, size = "card" }: { src?: stri
         referrerPolicy="no-referrer"
         onLoad={(e) => setState((e.currentTarget as HTMLImageElement).naturalWidth >= 120 ? "ok" : "broken")}
         onError={() => {
+          // The proxy can refuse a URL or rate-limit us. Fall back to the operator's original rather than a blank card;
+          // a slow photo beats no photo, and the browser only pulls it for cards on screen.
           if (proxied && url !== still) setProxied(false);
           else if (still !== src) setClipOk(false);
           else setState("broken");

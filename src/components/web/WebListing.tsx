@@ -97,12 +97,13 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
   const [broken, setBroken] = useState<Set<string>>(new Set());
   const photos = candidates.filter((c) => !broken.has(c));
   useEffect(() => {
-    const imgs = candidates.map((src) => {
+    const imgs = candidates.slice(0, 6).map((src) => {
       const img = new Image();
       img.referrerPolicy = "no-referrer";
-      img.onload = () => { if (img.naturalWidth < 300) setBroken((b) => new Set(b).add(src)); };
+      const probe = thumb(src, "thumb") || src;
+      img.onload = () => { if (img.naturalWidth < 80) setBroken((b) => new Set(b).add(src)); };
       img.onerror = () => setBroken((b) => new Set(b).add(src));
-      img.src = src;
+      img.src = probe;
       return img;
     });
     return () => imgs.forEach((i) => { i.onload = null; i.onerror = null; });

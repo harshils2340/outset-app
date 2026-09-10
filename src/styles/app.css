@@ -716,7 +716,7 @@ a.crow:active{background:var(--surface-2);}
 .wpop button{display:block;width:100%;text-align:left;padding:10px 14px;border:none;background:transparent;border-radius:12px;font:inherit;font-size:14px;color:var(--ink);cursor:pointer;}
 .wpop button:hover,.wpop button.on{background:var(--surface-2);}
 .wpop.wwho{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:16px 18px;min-width:240px;}
-.wrail{padding:34px 0 6px;}
+.wrail{padding:34px 0 6px;content-visibility:auto;contain-intrinsic-size:0 420px;}
 .wrailhead{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;}
 .wrailhead h2{margin:0;font-size:22px;font-weight:600;letter-spacing:-.02em;}
 .wrailnav{display:flex;gap:8px;}

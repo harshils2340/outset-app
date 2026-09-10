@@ -11,7 +11,7 @@
 export type PhotoSize = "thumb" | "card" | "wide" | "hero" | "full";
 
 /** Retina (2x) proxy width per slot; the 1x candidate is half of it. */
-const WIDTH: Record<PhotoSize, number> = { thumb: 320, card: 480, wide: 960, hero: 1600, full: 2000 };
+const WIDTH: Record<PhotoSize, number> = { thumb: 240, card: 360, wide: 800, hero: 1280, full: 1600 };
 
 /** CSS width the slot renders at, so the browser can choose between the 1x and 2x candidates. */
 export const SIZES: Record<PhotoSize, string> = {
