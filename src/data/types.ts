@@ -46,7 +46,9 @@ export type ArtKind =
   | "spa"
   | "yoga"
   | "dance"
-  | "pottery";
+  | "pottery"
+  | "tour"
+  | "rage";
 
 export type PriceUnit = "person" | "hr" | "trip";
 

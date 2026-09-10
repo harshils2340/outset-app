@@ -201,5 +201,7 @@ export const ART_LABEL: Record<string, string> = {
   yoga: "Yoga",
   dance: "Dance",
   pottery: "Art class",
+  tour: "Tour",
+  rage: "Rage room",
 };
 

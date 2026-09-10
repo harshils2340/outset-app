@@ -67,6 +67,8 @@ const RAIL_KINDS: { art: ArtKind; title: string }[] = [
   { art: "yoga", title: "Yoga" },
   { art: "dance", title: "Dance classes" },
   { art: "pottery", title: "Pottery and art classes" },
+  { art: "tour", title: "Food, walking and city tours" },
+  { art: "rage", title: "Rage rooms" },
 ];
 
 function rankForRail(list: Unclaimed[]): Unclaimed[] {

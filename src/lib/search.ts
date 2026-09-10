@@ -48,6 +48,8 @@ export const ART_ALIASES: Record<ArtKind, string[]> = {
   spa: ["spa", "massage", "sauna", "facial", "hot springs", "float"],
   yoga: ["yoga", "pilates", "meditation", "breathwork"],
   dance: ["dance", "dancing", "salsa", "ballroom", "dance class", "hip hop"],
+  tour: ["tour", "tours", "food tour", "walking tour", "ghost tour", "bike tour", "segway", "city tour", "brewery tour"],
+  rage: ["rage room", "rage", "smash room", "break room"],
   pottery: ["pottery", "ceramics", "paint and sip", "art class", "painting", "glassblowing", "candle making"],
 };
 
@@ -137,11 +139,11 @@ export type Intent = {
 };
 
 const INTENTS: { re: RegExp; label: string; arts: ArtKind[]; kids?: boolean; group?: boolean }[] = [
-  { re: /\b(birthday|bday|party|celebrat)/i, label: "Birthday ideas", arts: ["kart", "escape", "axe", "trampoline", "lasertag", "bowling", "arcade", "minigolf", "karaoke", "paintball", "waterpark", "pontoon", "cruise", "jetski", "parasail"], group: true },
+  { re: /\b(birthday|bday|party|celebrat)/i, label: "Birthday ideas", arts: ["rage", "kart", "escape", "axe", "trampoline", "lasertag", "bowling", "arcade", "minigolf", "karaoke", "paintball", "waterpark", "pontoon", "cruise", "jetski", "parasail"], group: true },
   { re: /\b(bachelor|bachelorette|stag|hen|guys? trip|girls? trip|boys? trip)\b/i, label: "Bachelor and bachelorette", arts: ["pontoon", "jetski", "kart", "axe", "brewery", "distillery", "winery", "range", "karaoke", "paintball", "cruise", "skydive", "parasail", "spa"], group: true },
-  { re: /\b(team|corporate|coworkers?|office|company outing|work event|team building)\b/i, label: "Team outings", arts: ["escape", "axe", "kart", "bowling", "cooking", "brewery", "archery", "range", "climbing", "lasertag", "paintball", "pontoon", "cruise"], group: true },
+  { re: /\b(team|corporate|coworkers?|office|company outing|work event|team building)\b/i, label: "Team outings", arts: ["escape", "rage", "tour", "axe", "kart", "bowling", "cooking", "brewery", "archery", "range", "climbing", "lasertag", "paintball", "pontoon", "cruise"], group: true },
   { re: /\b(kids?|children|child|family|families|toddler|teen(ager)?s?)\b/i, label: "Family friendly", arts: ["zoo", "aquarium", "trampoline", "minigolf", "bowling", "waterpark", "themepark", "icerink", "arcade", "lasertag", "horse", "kayak", "pontoon", "cruise", "escape", "kart", "parasail", "balloon"], kids: true },
-  { re: /\b(date night|night out|date|romantic|couples?|anniversary|proposal|honeymoon|valentine)/i, label: "Date ideas", arts: ["winery", "cooking", "cruise", "balloon", "pottery", "dance", "minigolf", "icerink", "spa", "brewery", "distillery", "karaoke", "bowling", "heli", "kayak", "horse"] },
+  { re: /\b(date night|night out|date|romantic|couples?|anniversary|proposal|honeymoon|valentine)/i, label: "Date ideas", arts: ["winery", "tour", "cooking", "cruise", "balloon", "pottery", "dance", "minigolf", "icerink", "spa", "brewery", "distillery", "karaoke", "bowling", "heli", "kayak", "horse"] },
   { re: /\b(adrenaline|thrill|extreme|adventure|adventurous|crazy|wild|scary|dare)/i, label: "Adrenaline", arts: ["skydive", "zipline", "rafting", "paragliding", "jetski", "parasail", "kart", "range", "climbing", "paintball", "heli"] },
   { re: /\b(calm|relax|relaxing|chill|peaceful|quiet|scenic|nature|wildlife|dolphin|manatee|sunset|sunrise)/i, label: "Calm and scenic", arts: ["kayak", "balloon", "winery", "spa", "yoga", "gliding", "cruise", "horse"] },
   { re: /\b(rain|rainy|indoor|indoors|inside|bad weather|too hot|air ?con)/i, label: "Rainy day", arts: ["bowling", "arcade", "escape", "axe", "kart", "climbing", "trampoline", "lasertag", "karaoke", "aquarium", "spa", "cooking", "pottery", "icerink"] },
