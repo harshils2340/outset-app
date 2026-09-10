@@ -221,6 +221,8 @@ type BatchMeta = { batchId: string; model: string; submittedAt: string; ops: Rec
 /** Crawl, trim and write one JSONL line per operator, then hand the file to OpenAI. Nothing is billed until the batch runs. */
 export async function submitBatch(limit: number, concurrency = 6): Promise<{ batchId: string | null; ops: number; estUsd: number; file: string }> {
   if (provider() !== "openai" || !hasApiKey()) throw new Error("Batch mode needs OPENAI_API_KEY.");
+  // Crawls from other sessions share this database. Wait for the write lock rather than losing a crawled chunk.
+  db.exec("PRAGMA busy_timeout = 180000");
   mkdirSync(BATCH_DIR, { recursive: true });
   const queue = pendingForEnrichment(limit);
   const lines: string[] = [];
@@ -278,6 +280,7 @@ function reservedUsd(): number {
 
 /** Pull a finished batch, store every extraction, replace the reservation with the real spend. */
 export async function collectBatch(batchId: string): Promise<{ status: string; stored: number; failed: number; usd: number }> {
+  db.exec("PRAGMA busy_timeout = 180000");
   const metaFile = new URL(batchId + ".json", BATCH_DIR);
   if (!existsSync(metaFile)) throw new Error("No local record of batch " + batchId);
   const meta = JSON.parse(readFileSync(metaFile, "utf8")) as BatchMeta;

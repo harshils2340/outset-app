@@ -93,10 +93,13 @@ export function generateOutreachDrafts(): number {
   const ops = db.prepare("SELECT * FROM operators WHERE origin != 'demo' AND claim_status = 'unclaimed'").all() as Op[];
   const sc = scale();
   let n = 0;
+  db.exec("PRAGMA busy_timeout = 120000");
   db.prepare("DELETE FROM outreach_drafts WHERE status = 'draft'").run();
   const offQ = db.prepare("SELECT name, price_cents FROM offerings WHERE operator_id = ? ORDER BY price_cents IS NULL, price_cents LIMIT 6");
   const factQ = db.prepare("SELECT fact_key FROM facts WHERE operator_id = ? AND fact_key IN ('cover','requirement','policy','cancellation') GROUP BY fact_key");
   const ins = db.prepare("INSERT INTO outreach_drafts (id, operator_id, to_email, subject, body, status, created_at) VALUES (?, ?, ?, ?, ?, 'draft', ?)");
+  // One transaction: the write lock is held for seconds, not minutes, while crawls share the database.
+  db.exec("BEGIN");
   for (const op of ops) {
     if (!db.prepare("SELECT 1 FROM gaps WHERE operator_id = ? LIMIT 1").get(op.id)) refreshGaps(op.id);
     const offerings = (offQ.all(op.id) as { name: string; price_cents: number | null }[]).map((o) => o.name + (o.price_cents != null ? " · $" + (o.price_cents / 100).toFixed(0) : ""));
@@ -105,5 +108,6 @@ export function generateOutreachDrafts(): number {
     ins.run(randomUUID(), op.id, op.email, subject, body, nowIso());
     n += 1;
   }
+  db.exec("COMMIT");
   return n;
 }
