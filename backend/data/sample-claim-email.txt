@@ -1,18 +1,23 @@
 To: info@sunsetwatersports.com
-From: Outset <onboarding@resend.dev>
-Subject: Your Sunset Watersports Key West booking page is live
+From: Outset <hello@onoutset.com>
+Subject: A page for Sunset Watersports Key West
 
 Hi,
 
-We built a booking page for Sunset Watersports Key West from your website. Guests in Key West can book you on it now:
+I am Harshil. I run Outset. We help people book local things without sitting on hold or leaving a voicemail.
+
+I made a page for Sunset Watersports Key West from your website. I did not change your prices or make anything up. Here it is:
 https://onoutset.com/#o=o-sunsetwatersportskeywest-com
 
-Claim it in one click, nothing to set up:
-https://onoutset.com/#claim=o-sunsetwatersportskeywest-com&k=IjLi-OPYanEgUQ867KLBOL
+This is free for you. No monthly fee, no setup bill. If that sounds too good to be true: we charge the guest a small booking fee when they pay. That is how we make money. Nothing comes out of your side.
 
-Free to list. You pay a small flat fee only when a booking comes in. Keep FareHarbor, bookings can land there too.
+If you already use FareHarbor, keep it. This is just another place someone can find you.
+
+If this is your shop, this link opens the page so you can look it over. It is only for the owner. Please do not forward it:
+https://onoutset.com/#claim=o-sunsetwatersportskeywest-com&k=<token>
+
+If this is not your business, you can take the page down here:
+https://onoutset.com/#remove=o-sunsetwatersportskeywest-com
 
 Harshil
-Outset, 27,000+ operators in 47 cities
-
-Not your business? Remove it: https://onoutset.com/#remove=o-sunsetwatersportskeywest-com
+Outset
