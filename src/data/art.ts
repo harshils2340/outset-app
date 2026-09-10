@@ -145,8 +145,13 @@ export function sceneInner(kind: string, id: string): string {
       <path d="M30 152q30-8 58 0t58 0 58 0 58 0" stroke="#FFD9B0" stroke-width="3" opacity=".45" fill="none"/>
       <path d="M20 174q32-8 62 0t62 0 62 0 62 0" stroke="#FFD9B0" stroke-width="3" opacity=".3" fill="none"/>`
   };
-  const near: Record<string, string> = { bowling: "kart", minigolf: "horse", arcade: "escape", trampoline: "skydive", lasertag: "paintball", icerink: "kayak", waterpark: "parasail", themepark: "kart", zoo: "horse", aquarium: "kayak", karaoke: "escape", climbing: "skydive", range: "paintball", archery: "paintball", golf: "horse", zipline: "parasail", ski: "skydive", bike: "horse", snowmobile: "jetski", rafting: "kayak", scuba: "kayak", surf: "jetski", paragliding: "parasail", gliding: "heli", brewery: "cruise", winery: "balloon", distillery: "cruise", cooking: "escape", spa: "balloon", yoga: "balloon", dance: "escape", pottery: "escape" };
-  return scenes[kind] || scenes[near[kind] || ""] || scenes.jetski;
+  scenes.generic = `<defs><linearGradient id="${u}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#F6E7D8"/><stop offset="1" stop-color="#E9C9B4"/></linearGradient></defs>
+      <rect width="300" height="200" fill="url(#${u})"/>
+      <circle cx="236" cy="58" r="30" fill="#F2B981" opacity=".85"/>
+      <path d="M0 150q40-22 80-8t70 4 70-10 80 6v58H0z" fill="#D89B78" opacity=".55"/>
+      <path d="M0 168q50-18 100-4t90 2 110-8v42H0z" fill="#C4785A" opacity=".5"/>`;
+  const near: Record<string, string> = {};
+  return scenes[kind] || scenes[near[kind] || ""] || scenes.generic;
 }
 
 export const ART_LABEL: Record<string, string> = {
@@ -166,35 +171,35 @@ export const ART_LABEL: Record<string, string> = {
   kayak: "Kayak",
   bowling: "Bowling",
   minigolf: "Mini golf",
-  arcade: "Arcades",
-  trampoline: "Trampoline parks",
+  arcade: "Arcade",
+  trampoline: "Trampoline park",
   lasertag: "Laser tag",
-  icerink: "Ice skating",
-  waterpark: "Water parks",
-  themepark: "Theme parks",
-  zoo: "Zoos and wildlife parks",
-  aquarium: "Aquariums",
-  karaoke: "Karaoke rooms",
-  climbing: "Climbing gyms",
-  range: "Shooting ranges",
+  icerink: "Ice rink",
+  waterpark: "Water park",
+  themepark: "Theme park",
+  zoo: "Zoo",
+  aquarium: "Aquarium",
+  karaoke: "Karaoke",
+  climbing: "Climbing",
+  range: "Range",
   archery: "Archery",
-  golf: "Golf tee times",
-  zipline: "Ziplines",
-  ski: "Ski and snowboard",
-  bike: "Bike and e-bike rentals",
-  snowmobile: "Snowmobile tours",
-  rafting: "Whitewater rafting",
-  scuba: "Scuba and snorkel",
-  surf: "Surf lessons",
+  golf: "Golf",
+  zipline: "Zipline",
+  ski: "Ski",
+  bike: "Bike rental",
+  snowmobile: "Snowmobile",
+  rafting: "Rafting",
+  scuba: "Scuba",
+  surf: "Surf",
   paragliding: "Paragliding",
-  gliding: "Glider flights",
-  brewery: "Breweries",
-  winery: "Wineries",
-  distillery: "Distilleries",
-  cooking: "Cooking classes",
-  spa: "Spas and massage",
+  gliding: "Glider",
+  brewery: "Brewery",
+  winery: "Winery",
+  distillery: "Distillery",
+  cooking: "Cooking class",
+  spa: "Spa",
   yoga: "Yoga",
-  dance: "Dance classes",
-  pottery: "Pottery and art classes",
+  dance: "Dance",
+  pottery: "Art class",
 };
 
