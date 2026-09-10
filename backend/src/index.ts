@@ -244,11 +244,14 @@ if (cmd === "reviews") {
 }
 
 if (cmd === "sync") {
+  const t0 = Date.now();
+  const lap = (label: string) => console.log(`${label} (${((Date.now() - t0) / 1000).toFixed(1)}s)`);
   ingestAll();
+  lap("ingest");
   const out = syncContactsToApp();
-  console.log("Wrote " + out.count + " operator contact records to " + out.path);
+  lap("Wrote " + out.count + " operator contact records to " + out.path);
   const cat = syncCatalogToApp();
-  console.log("Wrote " + cat.count + " operators to " + cat.path);
+  lap("Wrote " + cat.count + " operators to " + cat.path);
   process.exit(0);
 }
 
