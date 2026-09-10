@@ -273,7 +273,7 @@ function RequestBody({
   const notIncluded = item.includes.filter((l) => /\bnot included|excluded|not provided\b/i.test(l)).map((l) => l.replace(/\s*\(?not included\)?/i, "").trim());
   const reqKeys = new Set(requirements.map((r) => r.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim()));
   const highlights = (item.highlights?.length ? item.highlights : facts.about.slice(0, 6)).filter((h) => !reqKeys.has(h.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim()));
-  const waiverLines = (item.policies?.filter((l) => /waiver|liabilit|sign/i.test(l)) || facts.waiver.filter((l) => l.posted).map((l) => l.text)).filter((l) => l.length <= 160);
+  const waiverLines = (item.policies?.filter((l) => /\bwaivers?\b|\bliabilit|\brelease form|\bsign(ed|ing)? (a |the |our |your )?(waiver|release|form)|\bcheck-?in\b/i.test(l)) || facts.waiver.filter((l) => l.posted).map((l) => l.text)).filter((l) => l.length <= 160);
   const otherPolicies = (item.policies || []).filter((l) => !/cancel|refund|waiver|liabilit/i.test(l));
   const cancel = item.fc || freeCancel(item.cancellation);
   const age = minAge(requirements);

@@ -1,6 +1,7 @@
 import { mkdirSync, readdirSync, unlinkSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { CITIES } from "../discover/cities.ts";
 import { db } from "../db/client.ts";
 import { writeLandingPages } from "./pages.ts";
 import { claimKeyHash } from "../lib/claim.ts";
@@ -166,11 +167,30 @@ function slug(s: string): string {
 }
 
 /** One operator in the shape the guest app's Unclaimed type expects. Facts only, nothing invented. */
-function toCatalogItem(r: CatalogRow): Record<string, unknown> {
-  const offerings = db
-    .prepare("SELECT name, detail, duration, price_cents, price_unit FROM offerings WHERE operator_id = ? ORDER BY price_cents IS NULL, price_cents")
-    .all(r.id) as { name: string; detail: string | null; duration: string | null; price_cents: number | null; price_unit: string | null }[];
-  const facts = db.prepare("SELECT fact_key, fact_value, source_url FROM facts WHERE operator_id = ?").all(r.id) as { fact_key: string; fact_value: string; source_url: string | null }[];
+export function toCatalogItem(r: CatalogRow): Record<string, unknown> {
+  const rawOfferings = db
+    .prepare("SELECT name, detail, duration, price_cents, price_unit, source_url FROM offerings WHERE operator_id = ? ORDER BY price_cents IS NULL, price_cents")
+    .all(r.id) as { name: string; detail: string | null; duration: string | null; price_cents: number | null; price_unit: string | null; source_url: string | null }[];
+  const rawFacts = db.prepare("SELECT fact_key, fact_value, source_url FROM facts WHERE operator_id = ?").all(r.id) as { fact_key: string; fact_value: string; source_url: string | null }[];
+  const trusted = (url: string | null) => sourceIsOwn(url, r.domain);
+  const offCity = (url: string | null) => sourceIsAnotherTown(url, r.city, r.metro_id);
+  // Rows the audit showed to be noise: another business's page, another town's branch, merch, "not stated" filler, stale or junk lines.
+  const onSite = rawOfferings.filter((o) => trusted(o.source_url) && !offCity(o.source_url));
+  const isMerch = (o: { name: string; detail: string | null }) => MERCH.test(o.name + " " + (o.detail || "")) || (SPIRITS.test(o.name) && !/tasting|tour|flight|class|experience|pairing|session/i.test(o.name + " " + (o.detail || "")));
+  const merchCount = onSite.filter(isMerch).length;
+  // A menu that is mostly products is a shop, not an experience menu. Keep nothing rather than three stray accessories.
+  const offerings = (merchCount > 0 && merchCount * 2 >= onSite.length ? [] : onSite.filter((o) => !isMerch(o)))
+    .filter((o, i, a) => a.findIndex((x) => x.name.toLowerCase() === o.name.toLowerCase() && x.price_cents === o.price_cents && (x.duration || x.detail || "") === (o.duration || o.detail || "")) === i)
+    .map((o) => ({ ...o, price_unit: fixUnit(o) }));
+  const facts = rawFacts.filter((f) => {
+    if (/^(photo|cover|video|video_embed|yt_video|tiktok_profile|social:)/.test(f.fact_key)) return true;
+    if (!trusted(f.source_url) || offCity(f.source_url)) return false;
+    if (TEXT_KEYS.test(f.fact_key)) {
+      const v = f.fact_value;
+      if (GAP_LINE.test(v) || JUNK_LINE.test(v) || RETAIL_LINE.test(v) || STALE_LINE.test(v)) return false;
+    }
+    return true;
+  });
   const pick = (k: string) => facts.filter((f) => f.fact_key === k).map((f) => (/^(photo|video|yt_video|social:)/.test(k) ? f.fact_value : decodeEntities(f.fact_value)));
   // Booking-widget item photos are the operator's own curated product shots. They beat whatever the crawl scored highest.
   const widgetPhotos = uniq(facts.filter((f) => f.fact_key === "photo" && /fareharbor|xola|filestack/i.test((f.source_url || "") + " " + f.fact_value)).map((f) => f.fact_value));
@@ -348,6 +368,65 @@ function artFromName(name: string, fallback: string): string {
   return fallback;
 }
 
+/* ---------- audit-driven filters (9 Sept 2026 data QA) ---------- */
+
+const WIDGET_HOSTS = /fareharbor|xola|peek\.com|bookeo|rezdy|checkfront|filestack|resova|fareharbor/i;
+const TEXT_KEYS = /^(requirement|policy|bring|meeting_point|group|includes|spec|cancellation|checkin|faq|hours_text|season|description|one_line|site_desc)$/;
+const GAP_LINE = /\b(not (stated|specified|mentioned|listed|published|provided|available on)|no specific .* (stated|listed|mentioned)|^not stated$|no information (available|provided))\b/i;
+const JUNK_LINE = /\b(call|contact|phone|email)( us)? (for|to)\b|\bsee (the |our )?faq|\bclick here|\bprint and color|\bsubscribe|\bnewsletter|\bfollow us|\bcookie/i;
+const RETAIL_LINE = /\b(restocking|rma\b|return shipping|return merchandise|free shipping|ships? within|shipping (cost|rate|polic)|in-?store pickup|wholesale)\b/i;
+const STALE_LINE = /\b20(1\d|2[0-5])\b|\bcovid|\bcoronavirus|\bpandemic/i;
+const SPIRITS = /\b(brandy|whiskey|whisky|bourbon|rye|gin|vodka|rum|tequila|mezcal|liqueur|mead|cider|ipa|lager|stout|ale|pinot|cabernet|chardonnay|merlot|rosé|rose wine|reserve|barrel|cask|vintage)\b/i;
+const MERCH = /\b(t-?shirts?|hoodies?|sweatshirts?|hats?|caps?|stickers?|mugs?|koozies?|\d{3}\s?ml|bottles?|6-?pack|case of|gift ?cards?|gift certificates?|crossbows?|bows?\b|arrows?|broadheads?|quiver|scopes?|ammo\b|ammunition|merch(andise)?|apparel|decals?|posters?|dvd|book\b|membership dues|donation|sponsor(ship)?|field trip|school group)\b/i;
+
+/** True when the page belongs to the operator (or a booking widget acting for them). Another business's site never counts. */
+function sourceIsOwn(url: string | null, domain: string): boolean {
+  if (!url) return true;
+  let host = "";
+  try {
+    host = new URL(url).hostname.toLowerCase().replace(/^www\./, "");
+  } catch {
+    return true;
+  }
+  const own = domain.toLowerCase().replace(/^www\./, "");
+  if (host === own || host.endsWith("." + own)) return true;
+  return WIDGET_HOSTS.test(host);
+}
+
+const CITY_SLUGS: Map<string, string> = (() => {
+  const m = new Map<string, string>();
+  for (const c of CITIES) m.set(slug(c.name), c.name.toLowerCase());
+  return m;
+})();
+
+/** A page under /locations/greensboro or /birthdays/anderson belongs to a branch in another town, not to this listing. */
+function sourceIsAnotherTown(url: string | null, city: string | null, metroId: string | null): boolean {
+  if (!url || !city) return false;
+  let path = "";
+  try {
+    path = new URL(url).pathname.toLowerCase();
+  } catch {
+    return false;
+  }
+  const own = new Set([slug(city), metroId ? slug(metroId) : ""]);
+  for (const seg of path.split("/")) {
+    if (seg.length < 5) continue;
+    const hit = CITY_SLUGS.get(seg) || (seg.replace(/-(location|branch|park|store)$/, "") !== seg ? CITY_SLUGS.get(seg.replace(/-(location|branch|park|store)$/, "")) : undefined);
+    if (hit && !own.has(seg) && !own.has(slug(hit)) && !slug(city).includes(seg) && !seg.includes(slug(city))) return true;
+  }
+  return false;
+}
+
+/** "$35 per lane" is a lane, not a boat; "$1,200 each" on a charter is the whole trip, not a seat. */
+function fixUnit(o: { name: string; detail: string | null; price_cents: number | null; price_unit: string | null }): string | null {
+  const text = (o.name + " " + (o.detail || "")).toLowerCase();
+  if (/per (lane|room|cart|bay|court|table|booth|cabana|pod|suite)\b/.test(text)) return "/group";
+  if (/per (boat|charter|vessel|yacht)\b/.test(text)) return "/boat";
+  if (/per (person|adult|child|guest|rider|passenger|player|jumper|diver|student)\b|\bpp\b/.test(text)) return "each";
+  if ((o.price_unit == null || o.price_unit === "each") && (o.price_cents || 0) >= 60000) return "/group";
+  return o.price_unit;
+}
+
 /** One clean statement: not a question, not a mashed paragraph, not a scraped aside. */
 /** "Must be 21 with ID" and "All participants must be age 21 or older with a valid ID" say one thing. Keep the shortest per topic. */
 function collapseRules(lines: string[]): string[] {
@@ -465,7 +544,12 @@ function parseFaqs(raw: string): { q: string; a: string }[] {
     if (i < 8 || i > 160) continue;
     const before = c.slice(0, i + 1);
     const cut = Math.max(before.lastIndexOf(". "), before.lastIndexOf("! "));
-    const q = before.slice(cut === -1 ? 0 : cut + 2).replace(/^[\s\-–—•·:]+/, "").trim();
+    let q = before.slice(cut === -1 ? 0 : cut + 2).replace(/^[\s\-–—•·:]+/, "").trim();
+    // "Ride the Boomerang Yacht Trips Can I buy a ticket at check-in?" carries a scraped heading before the question.
+    if (q.split(" ").length > 9) {
+      const m = q.match(/^(.*?\S)\s+((?:Can|Could|Do|Does|Did|Is|Are|Was|Were|What|How|Where|When|Why|Which|Will|Would|Should|May|Am|Who)\b.*\?)$/);
+      if (m && m[1].split(" ").length >= 2) q = m[2];
+    }
     // The answer ends where the next question begins.
     let a = c.slice(i + 1).replace(/^\s*>\s*/, "").trim();
     const next = a.search(/[.!]\s+[A-Z][^.!?]{8,120}\?/);
