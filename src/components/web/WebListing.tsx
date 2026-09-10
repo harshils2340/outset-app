@@ -159,7 +159,10 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
   const similar = useMemo(() => {
     const all = getCatalog().filter((u) => u.id !== item.id && u.art === item.art);
     const near = all.filter((u) => u.metroId && u.metroId === item.metroId);
-    const pool = near.length >= 4 ? near : all;
+    // Same metro first, then the same state or province, then anywhere. Nobody in Washington DC wants San Jose.
+    const region = (item.area.match(/,\s*([A-Z]{2})\b/) || [])[1];
+    const sameRegion = region ? all.filter((u) => u.area.endsWith(", " + region)) : [];
+    const pool = near.length >= 4 ? near : sameRegion.length >= 4 ? sameRegion : near.length ? [...near, ...sameRegion] : all;
     return pool.sort((a, b) => (b.cover ? 1 : 0) - (a.cover ? 1 : 0) || (b.reviews || 0) - (a.reviews || 0)).slice(0, 7);
   }, [item.id]);
 
@@ -433,15 +436,14 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
               </section>
             ) : null}
 
+            {requirements.length || item.bring?.length || item.groupInfo?.length || waiverLines.length ? (
             <section className="wsec wfacts">
+              {requirements.length ? (
               <div>
                 <h2>Who can go</h2>
-                {requirements.length ? (
-                  <Bullets items={requirements} icon={ICONS.dot} />
-                ) : (
-                  <ul className="policy">{facts.who.map((l) => <li key={l.text} className={l.posted ? undefined : "gap"}><Markup html={ICONS.dot} /><span>{l.text}</span></li>)}</ul>
-                )}
+                <Bullets items={requirements} icon={ICONS.dot} />
               </div>
+              ) : null}
               <div>
                 {item.bring?.length ? (
                   <>
@@ -453,14 +455,15 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
                     <h2>Groups</h2>
                     <Bullets items={item.groupInfo} icon={ICONS.dot} />
                   </>
-                ) : (
+                ) : waiverLines.length ? (
                   <>
                     <h2>Waiver and check-in</h2>
-                    {waiverLines.length ? <Bullets items={waiverLines} icon={ICONS.dot} /> : <ul className="policy">{facts.waiver.filter((l) => !l.posted || l.text.length <= 160).map((l) => <li key={l.text} className={l.posted ? undefined : "gap"}><Markup html={ICONS.dot} /><span>{l.text}</span></li>)}</ul>}
+                    <Bullets items={waiverLines} icon={ICONS.dot} />
                   </>
-                )}
+                ) : null}
               </div>
             </section>
+            ) : null}
 
             {item.bring?.length && item.groupInfo?.length ? (
               <section className="wsec">

@@ -541,7 +541,7 @@ function RequestBody({
         </button>
 
         <p className="svchead">Who can go</p>
-        {requirements.length ? <Bullets items={requirements} /> : <FactList lines={facts.who} />}
+        {requirements.length ? <Bullets items={requirements} /> : <FactList lines={facts.who.filter((l) => l.posted)} />}
 
         {item.bring?.length ? (
           <>
@@ -558,7 +558,7 @@ function RequestBody({
         ) : null}
 
         <p className="svchead">Waiver and check-in</p>
-        {waiverLines.length ? <Bullets items={waiverLines} /> : <FactList lines={facts.waiver.filter((l) => !l.posted || l.text.length <= 160)} />}
+        {waiverLines.length ? <Bullets items={waiverLines} /> : <FactList lines={facts.waiver.filter((l) => l.posted && l.text.length <= 160)} />}
 
         {includes.length ? (
           <>
