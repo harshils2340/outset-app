@@ -4,6 +4,7 @@ import { load } from "cheerio";
 import { db, nowIso } from "../db/client.ts";
 import { fetchHtml, sleep, withDeadline } from "../scrape/fetch.ts";
 import { normalizePhone } from "../scrape/run.ts";
+import { harvestHours } from "./hoursMarkup.ts";
 
 /**
  * Rule-based site reading, no language model. It reads what the operator's own site is organized around:
@@ -492,6 +493,10 @@ function harvest(html: string, url: string, out: Map<string, Found>, links: Set<
     const host = new URL(url).hostname.replace(/^www\./, "");
     const own = found.find((e) => e.endsWith("@" + host)) || found.find((e) => /info@|hello@|book|reserv|contact|sales|tours|charters/i.test(e)) || found[0];
     if (own) meta.email = own;
+  }
+  if (!meta.hours) {
+    const lines = harvestHours(html);
+    if (lines.length) meta.hours = lines.join(" | ");
   }
   if (!meta.hours) {
     const body = clean($("body").text());

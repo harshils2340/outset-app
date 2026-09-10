@@ -2,7 +2,7 @@
  * Published hour lines to a compact week: seven entries, Sunday first, each [openMinutes, closeMinutes],
  * [0, 0] for a stated closed day, null when the site says nothing for that day. Mirrors src/lib/openNow.ts.
  */
-const DAY_RE: [RegExp, number[]][] = [
+export const DAY_RE: [RegExp, number[]][] = [
   [/\b(daily|every ?day|7 days|open daily)\b/i, [0, 1, 2, 3, 4, 5, 6]],
   [/\bmon(?:day)?\s*(?:-|–|to|through|thru)\s*fri(?:day)?\b/i, [1, 2, 3, 4, 5]],
   [/\bmon(?:day)?\s*(?:-|–|to|through|thru)\s*sat(?:urday)?\b/i, [1, 2, 3, 4, 5, 6]],
@@ -22,7 +22,7 @@ const DAY_RE: [RegExp, number[]][] = [
   [/\bfri(?:day)?s?\b/i, [5]],
   [/\bsat(?:urday)?s?\b/i, [6]],
 ];
-const TIME_RE = /(\d{1,2})(?::(\d{2}))?\s*(am|pm|a\.m\.|p\.m\.)?\s*(?:-|–|—|to|until|till)\s*(\d{1,2})(?::(\d{2}))?\s*(am|pm|a\.m\.|p\.m\.)?/i;
+export const TIME_RE = /(\d{1,2})(?::(\d{2}))?\s*(am|pm|a\.m\.|p\.m\.)?\s*(?:-|–|—|to|until|till)\s*(\d{1,2})(?::(\d{2}))?\s*(am|pm|a\.m\.|p\.m\.)?/i;
 
 function mins(h: number, m: number, ap: string | undefined, afternoonHint: boolean): number {
   let hh = h;
