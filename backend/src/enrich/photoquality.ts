@@ -5,6 +5,7 @@
  * palette size, white and black coverage, saturation, edge density and Hasler-Süsstrunk colourfulness.
  */
 import { inflateSync } from "node:zlib";
+import { withCpuBudget } from "../scrape/cpu.ts";
 
 export type PhotoKind = "photo" | "graphic" | "map" | "document" | "unknown";
 
@@ -199,18 +200,20 @@ export function isUsable(kind: PhotoKind): boolean {
 }
 
 async function fetchOnce(url: string): Promise<Uint8Array | null | "retry"> {
-  const ctl = new AbortController();
-  const timer = setTimeout(() => ctl.abort(), TIMEOUT_MS);
-  try {
-    const res = await fetch(tinyUrl(url), { signal: ctl.signal, headers: { "user-agent": "Mozilla/5.0 (compatible; OutsetBot/1.0)" } });
-    if (res.status === 429 || res.status >= 500) return "retry";
-    if (!res.ok) return null;
-    return new Uint8Array(await res.arrayBuffer());
-  } catch {
-    return "retry";
-  } finally {
-    clearTimeout(timer);
-  }
+  return withCpuBudget(async () => {
+    const ctl = new AbortController();
+    const timer = setTimeout(() => ctl.abort(), TIMEOUT_MS);
+    try {
+      const res = await fetch(tinyUrl(url), { signal: ctl.signal, headers: { "user-agent": "Mozilla/5.0 (compatible; OutsetBot/1.0)" } });
+      if (res.status === 429 || res.status >= 500) return "retry";
+      if (!res.ok) return null;
+      return new Uint8Array(await res.arrayBuffer());
+    } catch {
+      return "retry";
+    } finally {
+      clearTimeout(timer);
+    }
+  });
 }
 
 /** The proxy drops a few requests under load; one retry after a short pause recovers most of them. */

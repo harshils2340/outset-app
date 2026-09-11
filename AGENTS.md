@@ -24,6 +24,7 @@ This is "DoorDash for experiences" in the sense that guests pick a slot and pay.
 - Supply must be at real-world scale. Hand-typed operator lists are seeds, not the catalog. Grow the catalog with discovery (`backend/src/discover/`), never by inventing entries.
 - Bookings persist on-device (`src/lib/storage.ts`). Operator truth also lives in `backend/` SQLite. Do not invent live slots in the backend.
 - Guest catalog is real operators across US and Canada metros, shown as Instant Book. Tampa is the densest verified batch. The backend metro grid is the same 47-city list.
+- Never start catalog crawls, Playwright, or the overnight pipeline on the founder's Mac. `photos`, `structure`, `enrich`, `owners`, `hours-crawl`, `promo-crawl`, `screen-covers`, all-state `discover`, and `pipeline` run on Render. Do not set `OUTSET_ALLOW_CRAWL`. Keep at least 10% CPU idle so Cursor stays usable (`cd backend && npm run cpu`). If headless Chrome is already on the CPU, `cd backend && npm run chrome:reap`.
 
 ## Backend (supply)
 

@@ -3,6 +3,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { load } from "cheerio";
 import { db, nowIso } from "../db/client.ts";
 import { fetchHtml, sleep, withDeadline } from "../scrape/fetch.ts";
+import { spawnWorkers } from "../scrape/cpu.ts";
 
 /**
  * Extra locations for chains. One operator row per domain keeps the catalog deduplicated, but Bad Axe Throwing
@@ -229,6 +230,6 @@ export async function locationsPending(limit: number, concurrency = 8): Promise<
       if (out.sites % 200 === 0) console.log(`${out.sites}/${queue.length} sites, ${out.withPage} with a locations page, ${out.added} locations added`);
     }
   };
-  await Promise.all(Array.from({ length: Math.min(concurrency, queue.length) }, worker));
+  await Promise.all(Array.from({ length: Math.min(spawnWorkers(concurrency), queue.length) }, worker));
   return out;
 }

@@ -3,6 +3,7 @@ import { lookup } from "node:dns/promises";
 import { load } from "cheerio";
 import { db, nowIso } from "../db/client.ts";
 import { fetchHtml, sleep, withDeadline } from "../scrape/fetch.ts";
+import { spawnWorkers } from "../scrape/cpu.ts";
 import { normalizePhone } from "../scrape/run.ts";
 import { harvestHours } from "./hoursMarkup.ts";
 
@@ -672,6 +673,6 @@ export async function readPendingStructures(limit: number, concurrency = 6, redo
       }
     }
   };
-  await Promise.all(Array.from({ length: Math.min(concurrency, queue.length) }, (_, w) => worker(w)));
+  await Promise.all(Array.from({ length: Math.min(spawnWorkers(concurrency), queue.length) }, (_, w) => worker(w)));
   return out;
 }

@@ -1,0 +1,20 @@
+---
+description: Keep at least 10% CPU idle on this Mac so Cursor stays usable
+alwaysApply: true
+---
+
+# Laptop CPU floor
+
+Idle CPU must stay at **10% or higher** on this Mac. 0% idle freezes Cursor. Before any heavy command, run `cd backend && npm run cpu`. If `"ok": false`, do not start more work.
+
+Parallelize tool calls and crawl workers, but never stack catalog jobs. One crawl at a time. Crawls already pause when idle dips and kill Playwright Chrome below 5% idle. Do not fight that by launching more processes.
+
+Never start:
+
+- `npm run pipeline` / `scripts/pipeline.mts`
+- `discover` with no state/province filter
+- a second photos/structure/enrich/hours/promo/screen job while one is running
+
+Never set `OUTSET_ALLOW_CRAWL`. If headless Chrome is already running: `cd backend && npm run chrome:reap`. Leave Cursor Helper and Google Chrome.app alone.
+
+Catalog-scale crawls belong on Render (`outset-pipeline`).

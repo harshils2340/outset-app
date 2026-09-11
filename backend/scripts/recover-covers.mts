@@ -1,6 +1,8 @@
 import "../src/env.ts";
 import { db } from "../src/db/client.ts";
 import { probeImage, shapeBonus } from "../src/enrich/imagesize.ts";
+import { guardLaptopJob } from "../src/scrape/guard.ts";
+import { spawnWorkers } from "../src/scrape/cpu.ts";
 
 /**
  * Second look at every cover: read the real size of the cover and its alternates, and promote the best-shaped one.
@@ -8,6 +10,7 @@ import { probeImage, shapeBonus } from "../src/enrich/imagesize.ts";
  */
 const limit = Number(process.argv[2] || 3000);
 const concurrency = Number(process.argv[3] || 12);
+guardLaptopJob({ name: "recover-covers", limit, concurrency });
 const rows = db
   .prepare(
     `SELECT o.id, o.domain FROM operators o
@@ -48,6 +51,6 @@ const worker = async () => {
     if (n % 200 === 0) console.log(`${n}/${rows.length} checked, ${changed} covers swapped, ${dropped} with no usable photo`);
   }
 };
-await Promise.all(Array.from({ length: Math.min(concurrency, rows.length) }, worker));
+await Promise.all(Array.from({ length: Math.min(spawnWorkers(concurrency), rows.length) }, worker));
 console.log(`Covers: ${rows.length} checked, ${changed} swapped, ${dropped} with no usable photo. Run sync to publish.`);
 process.exit(0);

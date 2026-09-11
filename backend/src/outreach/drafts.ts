@@ -34,64 +34,100 @@ export function scale(): { listings: number; metros: number; claimed: number; lo
   return { listings, metros, claimed, local };
 }
 
-function roughly(n: number): string {
-  if (n >= 1000) return Math.floor(n / 1000).toLocaleString() + ",000+";
-  return String(n);
-}
-
 /**
  * The claim email. Plain English. One listing link and one owner-only claim link.
  * Anyone with the claim token can open the dashboard, so the copy says not to forward it.
  */
-export function draftCopy(op: Op, sc: ReturnType<typeof scale>, offerings: string[], hasPhotos: boolean, hasRules: boolean, email?: string): { subject: string; body: string } {
+function esc(s: string): string {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
+function link(href: string, label: string): string {
+  return "<a href=\"" + esc(href) + "\">" + esc(label) + "</a>";
+}
+
+export function draftCopy(op: Op, sc: ReturnType<typeof scale>, offerings: string[], hasPhotos: boolean, hasRules: boolean, email?: string): { subject: string; body: string; html: string } {
+  void sc;
   void offerings;
   void hasPhotos;
   void hasRules;
   const to = (email || "").trim().toLowerCase();
   const SITE = "https://onoutset.com/";
   const id = catalogId(op.domain);
+  const listing = SITE + "#o=" + id;
+  const claim = SITE + "#claim=" + id + "&k=" + claimToken(id);
+  const remove = SITE + "#remove=" + id;
   const vendor = op.calendar_vendor ? VENDOR_NAME[op.calendar_vendor] || null : null;
-  const subject = "Free extra revenue for " + op.name;
+  const subject = "A page for " + op.name;
   const city = (op.city || "").trim();
   const where = city ? " so people in " + city + " can book you there" : "";
-  const cred =
-    "We've listed " +
-    roughly(sc.listings) +
-    " shops across " +
-    sc.metros +
-    " cities. Shops that have claimed their page have been seeing about a 15% increase in sales on average. That's extra revenue on top of what they already make from their own site.";
+  const who =
+    "I'm Harshil. I built Outset, think of it like OpenTable, but for tours and activities instead of dinner. People pick a time and book instead of calling and hoping someone picks up.";
+  const intro =
+    "I already made a page for " +
+    op.name +
+    " from your website" +
+    where +
+    ". It's only what you already have online, I didn't invent prices or hours.";
+  const money = "It's free for you. We take a small fee from the guest when they pay.";
   const lines = [
     "Hi,",
     "",
-    "I'm Harshil. I run Outset.",
+    who,
     "",
-    "Most shops I talk to already have a website, but people still bounce when they have to call or wait on an email. I put up a page for " + op.name + " from your site" + where + ". I used what was already on your website. I didn't invent prices or hours.",
-    SITE + "#o=" + id,
+    intro,
+    "See the page: " + listing,
     "",
-    "This is just extra bookings. Completely free for you. I know that sounds too good to be true. We make money by charging the guest a small booking fee when they pay. You don't get a bill.",
-    "",
-    cred,
+    money,
     "",
   ];
+  const paras = [
+    "<p>Hi,</p>",
+    "<p>" + esc(who) + "</p>",
+    "<p>" + esc(intro) + " " + link(listing, "See the page") + ".</p>",
+    "<p>" + esc(money) + "</p>",
+  ];
   if (vendor) {
-    lines.push("If you already use " + vendor + ", keep it. Nothing here replaces that.", "");
+    const keep = "If you already use " + vendor + ", keep it, this doesn't replace that.";
+    lines.push(keep, "");
+    paras.push("<p>" + esc(keep) + "</p>");
   }
   lines.push(
-    "If this is your shop, this link is for you. Please don't forward it:",
-    SITE + "#claim=" + id + "&k=" + claimToken(id),
+    "If this is actually your shop, you can open the page from this link. Please don't forward it, it's meant for the owner:",
+    claim,
     "",
-    "If this isn't your business, you can take the page down here:",
-    SITE + "#remove=" + id,
+    "If I have the wrong business, you can take the page down here:",
+    remove,
     "",
     "Harshil",
-    "Outset",
+  );
+  paras.push(
+    "<p>If this is actually your shop, you can " +
+      link(claim, "open the page") +
+      " from this link. Please don't forward it, it's meant for the owner.</p>",
+    "<p>If I have the wrong business, you can " + link(remove, "take the page down") + ".</p>",
+    "<p>Harshil</p>",
   );
   if (to) {
-    lines.push("", "Don't want emails from Outset? Unsubscribe here and we will stop:", unsubPageUrl(to));
+    const stop = unsubPageUrl(to);
+    lines.push("", "If you'd rather not get emails like this: " + stop);
+    paras.push("<p>If you'd rather not get emails like this, " + link(stop, "you can unsubscribe") + ".</p>");
     const postal = mailPostal();
-    if (postal) lines.push("", postal);
+    if (postal) {
+      lines.push("", postal);
+      paras.push("<p>" + esc(postal) + "</p>");
+    }
   }
-  return { subject, body: lines.join("\n") };
+  return {
+    subject,
+    body: lines.join("\n"),
+    html: '<div style="font-family:system-ui,sans-serif;font-size:15px;line-height:1.55;color:#222">' + paras.join("") + "</div>",
+  };
+}
+
+/** Fresh copy at send time so a stale SQLite draft never goes out. */
+export function composeOutreach(op: Op, email: string): { subject: string; body: string; html: string } {
+  return draftCopy(op, scale(), [], false, false, email);
 }
 
 /**

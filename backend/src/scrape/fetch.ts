@@ -1,4 +1,6 @@
 /** Browser-like agent so ordinary sites serve real HTML. robots.txt is still honored below, and the From header says who we are. */
+import { withCpuBudget } from "./cpu.ts";
+
 const UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36";
 
 export async function robotsAllowed(origin: string, path: string): Promise<boolean> {
@@ -29,23 +31,25 @@ export async function robotsAllowed(origin: string, path: string): Promise<boole
 }
 
 export async function fetchHtml(url: string): Promise<{ status: number; html: string; finalUrl: string }> {
-  const u = new URL(url);
-  const allowed = await robotsAllowed(u.origin, u.pathname);
-  if (!allowed) {
-    return { status: 0, html: "", finalUrl: url };
-  }
-  const res = await fetch(url, {
-    headers: {
-      "user-agent": UA,
-      accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-      "accept-language": "en-US,en;q=0.9",
-      from: "harshils2340@gmail.com",
-    },
-    redirect: "follow",
-    signal: AbortSignal.timeout(12000),
+  return withCpuBudget(async () => {
+    const u = new URL(url);
+    const allowed = await robotsAllowed(u.origin, u.pathname);
+    if (!allowed) {
+      return { status: 0, html: "", finalUrl: url };
+    }
+    const res = await fetch(url, {
+      headers: {
+        "user-agent": UA,
+        accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "accept-language": "en-US,en;q=0.9",
+        from: "harshils2340@gmail.com",
+      },
+      redirect: "follow",
+      signal: AbortSignal.timeout(12000),
+    });
+    const html = await res.text();
+    return { status: res.status, html, finalUrl: res.url };
   });
-  const html = await res.text();
-  return { status: res.status, html, finalUrl: res.url };
 }
 
 /** Hard deadline for any per-site job. Slow hosts must not stall a worker for the whole run. */

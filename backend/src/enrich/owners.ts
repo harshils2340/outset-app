@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { load } from "cheerio";
 import { db, nowIso } from "../db/client.ts";
 import { fetchHtml, sleep, withDeadline } from "../scrape/fetch.ts";
+import { spawnWorkers } from "../scrape/cpu.ts";
 
 /**
  * Owner-level contacts. Small operators put the owner on the About page: "Captain Mike, owner",
@@ -158,7 +159,7 @@ export async function ownersPending(limit: number, concurrency = 12): Promise<{ 
       if (out.sites % 100 === 0) console.log(`${out.sites}/${queue.length} sites, ${out.withOwner} with a contact, ${out.names} names, ${out.emails} emails, ${out.phones} phones`);
     }
   };
-  await Promise.all(Array.from({ length: Math.min(concurrency, queue.length) }, (_, w) => worker(w)));
+  await Promise.all(Array.from({ length: Math.min(spawnWorkers(concurrency), queue.length) }, (_, w) => worker(w)));
   return out;
 }
 

@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { load } from "cheerio";
 import { db, nowIso } from "../db/client.ts";
 import { fetchHtml, sleep, withDeadline } from "../scrape/fetch.ts";
+import { spawnWorkers } from "../scrape/cpu.ts";
 import { renderPage } from "../scrape/render.ts";
 import { probeImage, shapeBonus } from "./imagesize.ts";
 
@@ -300,6 +301,6 @@ export async function photosPending(limit: number, concurrency = 8, mode: "photo
       if (out.sites % 100 === 0) console.log(`${out.sites}/${queue.length} sites, ${out.withPhotos} with photos, ${out.photos} photos`);
     }
   };
-  await Promise.all(Array.from({ length: Math.min(concurrency, queue.length) }, worker));
+  await Promise.all(Array.from({ length: Math.min(spawnWorkers(concurrency), queue.length) }, worker));
   return out;
 }

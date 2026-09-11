@@ -3,6 +3,7 @@ import { db, nowIso } from "../db/client.ts";
 import { normalizePhone } from "../scrape/run.ts";
 import { mkdirSync, readFileSync, writeFileSync, existsSync } from "node:fs";
 import { withDeadline } from "../scrape/fetch.ts";
+import { spawnWorkers } from "../scrape/cpu.ts";
 import { crawlSite, estimateTokens, selectPages, type CrawlResult, type CrawledPage } from "./crawl.ts";
 import { buildDoc, extractFromPages, hasApiKey, model, openaiRequestBody, parseOpenAI, priceFor, provider, type ExtractionT, type ExtractUsage } from "./extract.ts";
 
@@ -207,7 +208,7 @@ export async function enrichPending(limit: number, concurrency = 3): Promise<Enr
       console.log(`${op.domain}: ${r.status} pages=${r.pages} offerings=${r.offerings} facts=${r.facts} ~$${cost}${r.error ? " " + r.error : ""}`);
     }
   };
-  await Promise.all(Array.from({ length: Math.min(concurrency, queue.length) }, worker));
+  await Promise.all(Array.from({ length: Math.min(spawnWorkers(concurrency), queue.length) }, worker));
   return out;
 }
 
@@ -251,7 +252,7 @@ export async function submitBatch(limit: number, concurrency = 6): Promise<{ bat
       }
     }
   };
-  await Promise.all(Array.from({ length: Math.min(concurrency, queue.length) }, worker));
+  await Promise.all(Array.from({ length: Math.min(spawnWorkers(concurrency), queue.length) }, worker));
   const stamp = meta.submittedAt.replace(/[:.]/g, "-");
   const file = new URL(stamp + ".jsonl", BATCH_DIR);
   writeFileSync(file, lines.join("\n") + "\n");
@@ -366,6 +367,6 @@ export async function dryRun(limit: number, concurrency = 6): Promise<{ sites: n
       }
     }
   };
-  await Promise.all(Array.from({ length: Math.min(concurrency, queue.length) }, worker));
+  await Promise.all(Array.from({ length: Math.min(spawnWorkers(concurrency), queue.length) }, worker));
   return out;
 }

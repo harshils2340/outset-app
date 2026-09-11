@@ -40,7 +40,7 @@ npm run sync
 npm run dev
 ```
 
-Headless Chrome from enrich/photos is killed when the command exits or you hit Ctrl+C. If Activity Monitor still shows `chromium_headless_shell`, run `npm run chrome:reap`. Do not leave `submit-batches.sh` running overnight on a laptop.
+On macOS, one crawl at a time. `src/scrape/cpu.ts` keeps at least 10% CPU idle: workers pause when the laptop is busy, scale up to 6 fetches when there is headroom, and kill headless Chrome if idle drops under 5%. `npm run cpu` prints the current idle %. All-state discover and the overnight `pipeline` still refuse to start here. Override is `OUTSET_ALLOW_CRAWL=1` and only a human may set it. `npm run chrome:reap` kills Playwright `chrome-headless-shell` plus `/tmp/outset-render-` profiles. Never Google Chrome.app or Cursor.
 
 `npm run discover` pulls named businesses tagged as escape rooms, axe throwing, karting, paintball, skydiving, horse riding, ballooning, parasailing, boat and kayak rental, fishing charters, and boat tours. Rows get `origin = osm`, an `osm_ref`, lat/lon, and the nearest metro within 160 km (else no metro). Domain is the website host, or `osm-<type>-<id>` when the site is missing or is a social page. OSM data is ODbL.
 

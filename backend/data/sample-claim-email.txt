@@ -1,26 +1,20 @@
 To: (operator inbox)
-From: Outset <hello@onoutset.com>
-Subject: Free extra revenue for Cajun Encounters Tour Company
+From: Harshil <harshils2340@gmail.com>
+Subject: A page for Cajun Encounters Tour Company
 
 Hi,
 
-I'm Harshil. I run Outset.
+I'm Harshil. I built Outset, think of it like OpenTable, but for tours and activities instead of dinner. People pick a time and book instead of calling and hoping someone picks up.
 
-Most shops I talk to already have a website, but people still bounce when they have to call or wait on an email. I put up a page for Cajun Encounters Tour Company from your site so people in Slidell can book you there. I used what was already on your website. I didn't invent prices or hours.
-https://onoutset.com/#o=o-cajunencounters-com
+I already made a page for Cajun Encounters Tour Company from your website so people in Slidell can book you there. It's only what you already have online, I didn't invent prices or hours.
+See the page: https://onoutset.com/#o=o-cajunencounters-com
 
-This is just extra bookings. Completely free for you. I know that sounds too good to be true. We make money by charging the guest a small booking fee when they pay. You don't get a bill.
+It's free for you. We take a small fee from the guest when they pay.
 
-We've listed 40,000+ shops across 47 cities. Shops that have claimed their page have been seeing about a 15% increase in sales on average. That's extra revenue on top of what they already make from their own site.
-
-If this is your shop, this link is for you. Please don't forward it:
+If this is actually your shop, you can open the page from this link. Please don't forward it, it's meant for the owner:
 https://onoutset.com/#claim=o-cajunencounters-com&k=<token>
 
-If this isn't your business, you can take the page down here:
+If I have the wrong business, you can take the page down here:
 https://onoutset.com/#remove=o-cajunencounters-com
 
 Harshil
-Outset
-
-Don't want emails from Outset? Unsubscribe here and we will stop:
-https://onoutset.com/unsubscribe.html?t=<token>

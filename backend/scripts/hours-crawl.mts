@@ -5,6 +5,8 @@ import { db, nowIso } from "../src/db/client.ts";
 import { fetchHtml, withDeadline } from "../src/scrape/fetch.ts";
 import { harvestHours } from "../src/enrich/hoursMarkup.ts";
 import { installChromeGuard } from "../src/scrape/render.ts";
+import { guardLaptopJob } from "../src/scrape/guard.ts";
+import { spawnWorkers } from "../src/scrape/cpu.ts";
 installChromeGuard();
 
 /**
@@ -14,6 +16,7 @@ installChromeGuard();
  */
 const limit = Number(process.argv[2] || 20000);
 const concurrency = Number(process.argv[3] || 10);
+guardLaptopJob({ name: "hours-crawl", limit, concurrency });
 db.exec("PRAGMA busy_timeout = 180000");
 const rows = db
   .prepare(
@@ -74,6 +77,6 @@ const worker = async () => {
     if (done % 200 === 0) console.log(`${done}/${rows.length} sites, ${found} with hours`);
   }
 };
-await Promise.all(Array.from({ length: Math.min(concurrency, rows.length) }, worker));
+await Promise.all(Array.from({ length: Math.min(spawnWorkers(concurrency), rows.length) }, worker));
 console.log(`Hours: ${found}/${done} sites gained hours.`);
 process.exit(0);

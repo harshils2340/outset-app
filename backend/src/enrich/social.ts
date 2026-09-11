@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { db, nowIso } from "../db/client.ts";
 import { sleep, withDeadline } from "../scrape/fetch.ts";
+import { spawnWorkers } from "../scrape/cpu.ts";
 
 /**
  * Social video for listings, no API keys.
@@ -125,6 +126,6 @@ export async function socialPending(limit: number, concurrency = 4): Promise<{ o
       await sleep(400);
     }
   };
-  await Promise.all(Array.from({ length: Math.min(concurrency, queue.length) }, (_, w) => worker(w)));
+  await Promise.all(Array.from({ length: Math.min(spawnWorkers(concurrency), queue.length) }, (_, w) => worker(w)));
   return out;
 }

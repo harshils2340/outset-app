@@ -26,6 +26,8 @@ import { loadOsmLocations, locationsPending } from "./enrich/locations.ts";
 import { reviewsForOperator, reviewsPending } from "./enrich/reviews.ts";
 import { CITIES } from "./discover/cities.ts";
 import { installChromeGuard, reapOrphanChrome } from "./scrape/render.ts";
+import { guardLaptopJob } from "./scrape/guard.ts";
+import { measureIdle, MIN_IDLE } from "./scrape/cpu.ts";
 
 import { db } from "./db/client.ts";
 import { CATEGORIES, METROS } from "./taxonomy/catalog.ts";
@@ -39,6 +41,12 @@ const cmd = process.argv[2] || "serve";
 if (cmd === "chrome-reap") {
   console.log("reaped " + reapOrphanChrome() + " leftover chrome process(es)");
   process.exit(0);
+}
+
+if (cmd === "cpu") {
+  const idle = await measureIdle();
+  console.log(JSON.stringify({ idle: Math.round(idle * 10) / 10, floor: MIN_IDLE, ok: idle >= MIN_IDLE }));
+  process.exit(idle >= MIN_IDLE ? 0 : 2);
 }
 
 if (cmd === "add") {
@@ -64,6 +72,7 @@ if (cmd === "ingest") {
 if (cmd === "scrape") {
   ingestAll();
   const limit = Number(process.argv[3] || 40);
+  guardLaptopJob({ name: "scrape", limit, concurrency: 1 });
   const results = await scrapePending(limit);
   refreshAllScores();
   console.log(JSON.stringify(results, null, 2));
@@ -77,6 +86,7 @@ if (cmd === "discover") {
   const concurrency = cArg ? Number(cArg.split("=")[1]) : 3;
   const wArg = process.argv.find((a) => a.startsWith("--wave="));
   const wave = wArg ? Number(wArg.split("=")[1]) : 1;
+  guardLaptopJob({ name: "discover", concurrency, bulk: only.length === 0 });
   const stats = await discoverAll({ only, force, concurrency, wave });
   refreshAllScores();
   const total = stats.reduce((n, s) => n + s.inserted + s.updated, 0);
@@ -125,6 +135,7 @@ if (cmd === "photos") {
   const limit = Number(process.argv[3] || 200);
   const concurrency = Number(process.argv[4] || 8);
   const only = process.argv.slice(5).find((a) => !a.startsWith("--"));
+  if (!only) guardLaptopJob({ name: "photos", limit, concurrency });
   if (only) {
     const op = db.prepare("SELECT id, domain, website FROM operators WHERE domain = ?").get(only) as { id: string; domain: string; website: string } | undefined;
     if (!op) { console.error("unknown domain"); process.exit(1); }
@@ -134,6 +145,7 @@ if (cmd === "photos") {
   }
   const out = await photosPending(limit, concurrency, process.argv.includes("--empty") ? "empty" : "photos");
   console.log(`Photos: ${out.withPhotos}/${out.sites} sites, ${out.photos} images linked. Run "npm run sync" to push to the app.`);
+  process.exit(0);
 }
 
 // Booking widgets (FareHarbor, Xola) publish the operator's live menu as JSON. Exact prices, no key, no model.
@@ -141,6 +153,7 @@ if (cmd === "widgets") {
   const limit = Number(process.argv[3] || 2000);
   const concurrency = Number(process.argv[4] || 6);
   const only = process.argv.slice(5).find((a) => !a.startsWith("--"));
+  if (!only) guardLaptopJob({ name: "widgets", limit, concurrency });
   if (only) {
     const op = db.prepare("SELECT o.id, o.domain, o.website, f.fact_value AS booking_url FROM operators o JOIN facts f ON f.operator_id = o.id AND f.fact_key = 'booking_url' WHERE o.domain = ? LIMIT 1").get(only) as { id: string; domain: string; website: string | null; booking_url: string } | undefined;
     if (!op) { console.error("no booking url for that domain"); process.exit(1); }
@@ -152,12 +165,14 @@ if (cmd === "widgets") {
   const out = await widgetsPending(limit, concurrency, process.argv.includes("--redo"));
   refreshAllScores();
   console.log(`Widgets: ${out.ok}/${out.sites} operators, ${out.offerings} items, ${out.facts} facts. Run "npm run sync" to push to the app.`);
+  process.exit(0);
 }
 
 // Re-crawl operators that already have photos, this time keeping any clip, GIF or YouTube / Vimeo embed as a moving cover.
 if (cmd === "videos") {
   const limit = Number(process.argv[3] || 500);
   const concurrency = Number(process.argv[4] || 8);
+  guardLaptopJob({ name: "videos", limit, concurrency });
   const out = await photosPending(limit, concurrency, "videos");
   console.log(`Videos: ${out.sites} sites re-crawled. Run "npm run sync" to push to the app.`);
   process.exit(0);
@@ -179,6 +194,7 @@ if (cmd === "thumbs") {
 if (cmd === "social") {
   const limit = Number(process.argv[3] || 5000);
   const concurrency = Number(process.argv[4] || 4);
+  guardLaptopJob({ name: "social", limit, concurrency });
   const r = await socialPending(limit, concurrency);
   console.log(`Social: ${r.operators} operators, ${r.videos} YouTube videos, ${r.tiktok} TikTok profiles. Run "npm run sync" to push to the app.`);
   process.exit(0);
@@ -188,6 +204,7 @@ if (cmd === "structure") {
   const limit = Number(process.argv[3] || 200);
   const concurrency = Number(process.argv[4] || 6);
   const only = process.argv.slice(5).find((a) => !a.startsWith("--"));
+  if (!only) guardLaptopJob({ name: "structure", limit, concurrency });
   if (only) {
     const op = db.prepare("SELECT id, domain, website FROM operators WHERE domain = ?").get(only) as { id: string; domain: string; website: string } | undefined;
     if (!op) { console.error("unknown domain"); process.exit(1); }
@@ -212,6 +229,9 @@ if (cmd === "enrich") {
   const limit = Number(process.argv[3] || 10);
   const concurrency = Number(process.argv.find((a) => /^\d+$/.test(a) && a !== process.argv[3]) || 3);
   const collect = process.argv.find((a) => a.startsWith("--collect="))?.split("=")[1];
+  if (!process.argv.includes("--collect-all") && !collect) {
+    guardLaptopJob({ name: "enrich", limit, concurrency });
+  }
   if (process.argv.includes("--collect-all")) {
     const rs = await collectAll();
     refreshAllScores();
@@ -251,6 +271,7 @@ if (cmd === "locations") {
   console.log(`OpenStreetMap: ${osm.locations} extra locations across ${osm.operators} chains.`);
   const limit = Number(process.argv[3] || 3000);
   const concurrency = Number(process.argv[4] || 8);
+  guardLaptopJob({ name: "locations", limit, concurrency });
   const r = await locationsPending(limit, concurrency);
   console.log(`Sites: ${r.sites} checked, ${r.withPage} with a locations page, ${r.added} locations geocoded. Run "npm run sync" to push to the app.`);
   process.exit(0);
@@ -261,6 +282,7 @@ if (cmd === "reviews") {
   const limit = Number(process.argv[3] || 4000);
   const concurrency = Number(process.argv[4] || 8);
   const only = process.argv[5];
+  if (!only) guardLaptopJob({ name: "reviews", limit, concurrency });
   if (only) {
     const op = db.prepare("SELECT id, domain, website FROM operators WHERE domain = ?").get(only) as { id: string; domain: string; website: string | null } | undefined;
     if (!op) { console.error("unknown domain"); process.exit(1); }
@@ -308,6 +330,7 @@ if (cmd === "owners") {
   }
   const limit = Number(process.argv[3] || 5000);
   const concurrency = Number(process.argv[4] || 12);
+  guardLaptopJob({ name: "owners", limit, concurrency });
   const r = await ownersPending(limit, concurrency);
   console.log("Owners: " + JSON.stringify(r));
   process.exit(0);

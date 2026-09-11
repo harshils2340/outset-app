@@ -1,6 +1,8 @@
 import "../src/env.ts";
 import { db } from "../src/db/client.ts";
 import { probeQuality, isUsable } from "../src/enrich/photoquality.ts";
+import { guardLaptopJob } from "../src/scrape/guard.ts";
+import { spawnWorkers } from "../src/scrape/cpu.ts";
 
 /**
  * Screen every cover, and every gallery photo, by its pixels. A map, logo, flyer or blank tile as cover is replaced by the operator's first
@@ -12,6 +14,7 @@ import { probeQuality, isUsable } from "../src/enrich/photoquality.ts";
  */
 const limit = Number(process.argv[2] || 100000);
 const concurrency = Number(process.argv[3] || 8);
+guardLaptopJob({ name: "screen-covers", limit, concurrency });
 db.exec("PRAGMA busy_timeout = 180000");
 const rows = db
   .prepare(
@@ -93,5 +96,5 @@ const worker = async () => {
 };
 
 console.log(`${rows.length} covers to screen, ${concurrency} at a time`);
-await Promise.all(Array.from({ length: concurrency }, worker));
+await Promise.all(Array.from({ length: Math.min(spawnWorkers(concurrency), rows.length) }, worker));
 console.log(`done: ${rows.length} screened, ${kept} kept, ${swapped} swapped, ${dropped} dropped, ${photosDropped} gallery photos removed`, kinds);

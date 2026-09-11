@@ -2,6 +2,7 @@ import { execFileSync, spawn, type ChildProcess } from "node:child_process";
 import { existsSync, readdirSync, rmSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
+import { onCpuStarve, withCpuBudget } from "./cpu.ts";
 
 /**
  * Last-resort page fetch: render in headless Chromium and return the DOM after scripts ran.
@@ -9,7 +10,8 @@ import { join } from "node:path";
  * One browser per process, one tab per page, hard timeouts everywhere. Never used for sites that read fine.
  *
  * The browser is a child of this Node process. Never unref it. Exit, Ctrl+C, and the next crawl all
- * kill every Chrome tagged with /tmp/outset-render- so leftovers cannot sit on the CPU.
+ * kill every Playwright chrome-headless-shell and every Chrome tagged with /tmp/outset-render-
+ * so leftovers cannot sit on the CPU. Never launches Google Chrome.app.
  */
 
 const PROFILE = "outset-render-";
@@ -51,11 +53,8 @@ function playwrightBrowsers(): string[] {
 const CANDIDATES = [
   process.env.OUTSET_CHROME,
   ...playwrightBrowsers(),
-  "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
   "/usr/bin/chromium",
   "/usr/bin/chromium-browser",
-  "/usr/bin/google-chrome",
-  "/usr/bin/google-chrome-stable",
 ].filter((p): p is string => !!p);
 
 export function chromePath(): string | null {
@@ -77,18 +76,25 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 function killPid(pid: number): void {
   if (!pid || pid === process.pid) return;
   try {
+    process.kill(-pid, "SIGKILL");
+  } catch {
+    /* not a process group */
+  }
+  try {
     process.kill(pid, "SIGKILL");
   } catch {
     /* already gone */
   }
 }
 
-/** Kill leftover Outset headless Chrome only. Never Google Chrome, Cursor, or other apps. */
-export function reapOrphanChrome(): number {
+function reapMatching(pattern: string): number {
   let n = 0;
   try {
-    const out = execFileSync("pgrep", ["-fl", PROFILE], { encoding: "utf8" });
+    const out = execFileSync("pgrep", ["-fl", pattern], { encoding: "utf8" });
     for (const line of out.split("\n")) {
+      if (!line.trim()) continue;
+      // Playwright's binary only. Never Google Chrome.app, Cursor, or Chrome Helper from the real browser.
+      if (/Google Chrome\.app|Cursor Helper|Chromium Helper/.test(line) && !/chrome-headless-shell|outset-render-/.test(line)) continue;
       const pid = Number(line.trim().split(/\s+/)[0]);
       if (pid > 0 && pid !== process.pid) {
         killPid(pid);
@@ -98,6 +104,12 @@ export function reapOrphanChrome(): number {
   } catch {
     /* pgrep exits 1 when nothing matches */
   }
+  return n;
+}
+
+/** Kill leftover Outset / Playwright headless Chrome only. Never Google Chrome, Cursor, or other apps. */
+export function reapOrphanChrome(): number {
+  const n = reapMatching(PROFILE) + reapMatching("chrome-headless-shell");
   for (const root of [tmpdir(), "/tmp"]) {
     try {
       for (const name of readdirSync(root)) {
@@ -137,6 +149,7 @@ export function installChromeGuard(): void {
     stop();
     process.exit(129);
   });
+  onCpuStarve(closeBrowser);
 }
 
 installChromeGuard();
@@ -181,6 +194,10 @@ type Msg = { id?: number; method?: string; params?: Record<string, unknown>; res
 
 /** Rendered HTML and final URL, or null when the browser is missing or the page never settles. */
 export async function renderPage(url: string, timeoutMs = 20000): Promise<{ html: string; finalUrl: string; status: number } | null> {
+  return withCpuBudget(() => renderPageUngated(url, timeoutMs), "chrome");
+}
+
+async function renderPageUngated(url: string, timeoutMs: number): Promise<{ html: string; finalUrl: string; status: number } | null> {
   const b = await getBrowser();
   if (!b) return null;
   let targetId = "";

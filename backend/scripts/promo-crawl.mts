@@ -3,6 +3,8 @@ import { randomUUID } from "node:crypto";
 import { db } from "../src/db/client.ts";
 import { fetchHtml, withDeadline } from "../src/scrape/fetch.ts";
 import { minePromos, pageText, promoPages, type Promo } from "../src/enrich/promos.ts";
+import { guardLaptopJob } from "../src/scrape/guard.ts";
+import { spawnWorkers } from "../src/scrape/cpu.ts";
 
 /**
  * Promo pass: day-specific deals from each operator's own site, rules only, no model calls.
@@ -17,6 +19,7 @@ const limit = Number(arg("limit", "20000"));
 const concurrency = Number(arg("concurrency", "6"));
 const domain = arg("domain", "");
 const redo = process.argv.includes("--redo") || !!domain;
+if (!domain) guardLaptopJob({ name: "promo-crawl", limit, concurrency });
 db.exec("PRAGMA busy_timeout = 180000");
 const rows = db
   .prepare(
@@ -87,6 +90,6 @@ const worker = async () => {
     if (done % 100 === 0) console.log(`${done}/${rows.length} sites, ${withPromos} with promos`);
   }
 };
-await Promise.all(Array.from({ length: Math.min(concurrency, rows.length) }, worker));
+await Promise.all(Array.from({ length: Math.min(spawnWorkers(concurrency), rows.length) }, worker));
 console.log(`Promos: ${withPromos}/${done} sites had day-specific deals, ${total} promos written.`);
 process.exit(0);

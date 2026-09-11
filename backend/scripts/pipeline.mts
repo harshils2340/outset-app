@@ -8,6 +8,7 @@ import { DatabaseSync } from "node:sqlite";
 import { Readable } from "node:stream";
 import { pipeline as streamPipeline } from "node:stream/promises";
 import { chromePath } from "../src/scrape/render.ts";
+import { isLaptop } from "../src/scrape/guard.ts";
 
 /**
  * Always-on scheduler for the Outset pipeline. Runs on Render as a background worker with a persistent disk.
@@ -69,7 +70,8 @@ const JOBS: Job[] = [
   { name: "photos", at: "00:00", timeoutMs: 4 * HOUR, args: ["src/index.ts", "photos", "5000", "8"], needsRepo: true, note: "photo crawl of each site" },
   { name: "hours", at: "01:00", timeoutMs: 4 * HOUR, args: ["scripts/hours-crawl.mts", "5000", "10"], needsRepo: true, note: "opening hours from each site" },
   { name: "promo", at: "02:00", timeoutMs: 3 * HOUR, args: ["scripts/promo-crawl.mts", "--limit=5000"], needsRepo: true, note: "day-specific deals from each site" },
-  { name: "screen", at: "03:30", timeoutMs: 3 * HOUR, args: ["scripts/screen-covers.mts"], needsRepo: true, note: "drop map, logo and flyer covers" },
+  { name: "purge-names", at: "03:20", timeoutMs: 10 * MIN, args: ["scripts/purge-bad-names.mts"], needsRepo: true, note: "delete stored images the crawler's filename rule now refuses (guides, scanned pages, flyers); no network" },
+  { name: "screen", at: "03:30", timeoutMs: 3 * HOUR, args: ["scripts/screen-covers.mts"], needsRepo: true, note: "drop map, logo, flyer and scanned-page covers and gallery photos" },
   { name: "owners", at: "04:00", timeoutMs: HOUR, args: ["src/index.ts", "owners", "2000", "8"], needsRepo: true, note: "owner names and contact pages" },
   { name: "sync", at: "05:00", timeoutMs: HOUR, args: ["src/index.ts", "sync"], needsRepo: true, note: "read-only catalog sync, commit and push public/ and src/data" },
 ];
@@ -229,6 +231,7 @@ function ensureRepo(): void {
 
 function reapChrome(): void {
   spawnSync("pkill", ["-f", "outset-render-"], { stdio: "ignore" });
+  spawnSync("pkill", ["-9", "-f", "chrome-headless-shell"], { stdio: "ignore" });
 }
 
 /** Spawn tsx in the clone's backend as its own process group; kill the whole group on timeout. */
@@ -413,6 +416,10 @@ async function main(): Promise<void> {
   if (argv.includes("--dry")) {
     printSchedule();
     return;
+  }
+  if (isLaptop() && process.env.OUTSET_ALLOW_CRAWL !== "1") {
+    console.error("The overnight pipeline runs on Render, not this Mac. It would start Playwright Chrome and sit on the CPU. Do not set OUTSET_ALLOW_CRAWL from an agent.");
+    process.exit(1);
   }
   const once = argv.find((a) => a.startsWith("--once="))?.split("=")[1];
   if (once) {

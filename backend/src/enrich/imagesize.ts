@@ -3,6 +3,8 @@
  * JPEG, PNG, WebP and GIF headers are enough to tell a 4000px hero from a 300px badge or a 1600x200 banner.
  */
 
+import { withCpuBudget } from "../scrape/cpu.ts";
+
 export type ImageSize = { width: number; height: number; bytes: number };
 
 function jpeg(b: Uint8Array): ImageSize | null {
@@ -64,41 +66,43 @@ const cache = new Map<string, ImageSize | null>();
 /** First 64 KB of the file is enough for every format here. Null when the server refuses, times out, or it is not an image. */
 export async function probeImage(url: string, timeoutMs = 8000): Promise<ImageSize | null> {
   if (cache.has(url)) return cache.get(url)!;
-  let out: ImageSize | null = null;
-  try {
-    const res = await fetch(url, {
-      headers: { range: "bytes=0-65535", "user-agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0 Safari/537.36", accept: "image/*,*/*;q=0.8" },
-      signal: AbortSignal.timeout(timeoutMs),
-      redirect: "follow",
-    });
-    if (res.ok) {
-      const reader = res.body?.getReader();
-      const chunks: Uint8Array[] = [];
-      let got = 0;
-      if (reader) {
-        while (got < 65536) {
-          const { value, done } = await reader.read();
-          if (done || !value) break;
-          chunks.push(value);
-          got += value.length;
+  return withCpuBudget(async () => {
+    let out: ImageSize | null = null;
+    try {
+      const res = await fetch(url, {
+        headers: { range: "bytes=0-65535", "user-agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0 Safari/537.36", accept: "image/*,*/*;q=0.8" },
+        signal: AbortSignal.timeout(timeoutMs),
+        redirect: "follow",
+      });
+      if (res.ok) {
+        const reader = res.body?.getReader();
+        const chunks: Uint8Array[] = [];
+        let got = 0;
+        if (reader) {
+          while (got < 65536) {
+            const { value, done } = await reader.read();
+            if (done || !value) break;
+            chunks.push(value);
+            got += value.length;
+          }
+          reader.cancel().catch(() => undefined);
         }
-        reader.cancel().catch(() => undefined);
+        const buf = new Uint8Array(got);
+        let o = 0;
+        for (const c of chunks) {
+          buf.set(c.subarray(0, Math.min(c.length, buf.length - o)), o);
+          o += c.length;
+          if (o >= buf.length) break;
+        }
+        out = parseImageSize(buf);
+        if (out) out.bytes = Number(res.headers.get("content-range")?.split("/")[1] || res.headers.get("content-length") || got);
       }
-      const buf = new Uint8Array(got);
-      let o = 0;
-      for (const c of chunks) {
-        buf.set(c.subarray(0, Math.min(c.length, buf.length - o)), o);
-        o += c.length;
-        if (o >= buf.length) break;
-      }
-      out = parseImageSize(buf);
-      if (out) out.bytes = Number(res.headers.get("content-range")?.split("/")[1] || res.headers.get("content-length") || got);
+    } catch {
+      out = null;
     }
-  } catch {
-    out = null;
-  }
-  cache.set(url, out);
-  return out;
+    cache.set(url, out);
+    return out;
+  });
 }
 
 /**
