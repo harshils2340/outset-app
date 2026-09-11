@@ -127,6 +127,7 @@ type CatalogRow = {
   id: string;
   domain: string;
   name: string;
+  legal_name?: string | null;
   website: string | null;
   city: string | null;
   region: string | null;
@@ -211,7 +212,7 @@ export function toCatalogItem(r: CatalogRow): Record<string, unknown> {
     .filter((o) => !(MENU_CATEGORY.test(o.name) && (o.price_cents == null || o.price_cents < 3000)))
     // A $1 line is a deposit, a token or a placeholder; a $19,995 line is a boat for sale. Neither is a price a guest pays here.
     .filter((o) => !isForSale(o))
-    .map((o) => ({ ...o, name: trimWords(o.name, 70), price_cents: o.price_cents != null && o.price_cents < 200 ? null : o.price_cents }))
+    .map((o) => ({ ...o, name: collapseRepeats(fixShouting(trimWords(o.name, 70))), price_cents: o.price_cents != null && o.price_cents < 200 ? null : o.price_cents }))
     .filter((o, i, a) => a.findIndex((x) => x.name.toLowerCase() === o.name.toLowerCase() && x.price_cents === o.price_cents && (x.duration || x.detail || "") === (o.duration || o.detail || "")) === i)
     .map((o) => ({ ...o, price_unit: fixUnit(o) }));
   const keysWithOwnBranch = new Set(rawFacts.filter((f) => trusted(f.source_url) && !offCity(f.source_url)).map((f) => f.fact_key));
@@ -232,7 +233,7 @@ export function toCatalogItem(r: CatalogRow): Record<string, unknown> {
   return {
     id: "o-" + slug(r.domain),
     claimKey: claimKeyHash("o-" + slug(r.domain)),
-    title: cleanTitle(decodeEntities(r.name)),
+    title: cleanTitle(decodeEntities(r.name), { city: r.city, region: r.region, legalName: r.legal_name }),
     cat: r.family || "water",
     art: artFromName(r.name, r.icon_key),
     area,
@@ -295,8 +296,9 @@ export function toCatalogItem(r: CatalogRow): Record<string, unknown> {
     // The honest gap line. Once the widget or crawl gave real rules and policies, say those instead of "not copied yet".
     gap: pick("published_gap")[0] || pick("cancellation")[0] || (pick("policy").length || pick("requirement").length ? [...pick("policy")].slice(0, 3).join(" ") || "Ask the operator about cancellations." : DEFAULT_GAP),
     blurb: (() => {
-      const raw = pick("description")[0] || pick("site_desc")[0] || pick("one_line")[0] || "";
-      const b = endAtSentence(cleanPara(raw), 420);
+      const title = cleanTitle(decodeEntities(r.name), { city: r.city, region: r.region, legalName: r.legal_name });
+      // The first source whose text survives cleaning wins: a description that is all headings falls through to the meta line.
+      const b = [pick("description")[0], pick("site_desc")[0], pick("one_line")[0]].map((raw) => cleanBlurb(raw || "", { title, city: r.city, region: r.region })).find(Boolean) || "";
       return b && !/\b(purchase|shop|buy) (boards|paddles|gear|apparel|merch)/i.test(b) ? b : undefined;
     })(),
     cover: fullSize(widgetPhotos[0] || pick("cover").filter(isPhotoName)[0] || pick("photo").filter(isPhotoName)[0] || ""),
@@ -319,7 +321,7 @@ export function toCatalogItem(r: CatalogRow): Record<string, unknown> {
     lat: r.lat ?? undefined,
     lon: r.lon ?? undefined,
     locations: extraLocations(r.id),
-    tags: [...new Set([...pick("google_category"), ...pick("service"), ...offerings.map((o) => o.name)])].filter((t) => !NOT_A_SERVICE.test(t) && !NAV_LABEL.test(t)).slice(0, 12),
+    tags: uniq([...pick("google_category"), ...pick("service"), ...offerings.map((o) => o.name)].map((t) => collapseRepeats(fixShouting(t)))).filter((t) => !NOT_A_SERVICE.test(t) && !NAV_LABEL.test(t)).slice(0, 12),
     extraNote: [...pick("extra").slice(0, 1), ...pick("policy"), ...pick("checkin"), ...pick("meeting_point"), ...pick("season")].filter((l) => !SILENT.test(l)).join(" · ").slice(0, 700) || undefined,
     // Viator-shaped sections. Each only appears when the site said it.
     highlights: collapseRules(uniq(pick("spec").map(cleanLine)).filter(isTidyLine).filter((l) => !/^what to bring\b|you are required to bring/i.test(l))).slice(0, 8),
@@ -528,19 +530,207 @@ function isForSale(o: { name: string; detail: string | null; price_cents: number
   return /\b(for sale|msrp|sold|financing|dealer|pre-?owned|used boat|new boat|stock #|hull id|\d{4} (sea ?ray|yamaha|bayliner|tracker|bennington|malibu|mastercraft|lund|ranger|boston whaler))\b/i.test(text);
 }
 
+const SITE_WORDS = /^(?:home|homepage|welcome|official (?:site|website|home ?page)|website|site|online|book(?:ing)? online|book now|reservations?|home ?page|index|main)$/i;
+/** Who a title belongs to, so a location tail ("at Clearwater Beach", "- Tampa Bay") can be told from a name ("The Legacy at Green Hills"). */
+export type TitleContext = { city?: string | null; region?: string | null; legalName?: string | null };
+
+const STATE_NAMES: Record<string, string> = {
+  AL: "Alabama", AK: "Alaska", AZ: "Arizona", AR: "Arkansas", CA: "California", CO: "Colorado", CT: "Connecticut", DE: "Delaware", FL: "Florida", GA: "Georgia",
+  HI: "Hawaii", ID: "Idaho", IL: "Illinois", IN: "Indiana", IA: "Iowa", KS: "Kansas", KY: "Kentucky", LA: "Louisiana", ME: "Maine", MD: "Maryland",
+  MA: "Massachusetts", MI: "Michigan", MN: "Minnesota", MS: "Mississippi", MO: "Missouri", MT: "Montana", NE: "Nebraska", NV: "Nevada", NH: "New Hampshire", NJ: "New Jersey",
+  NM: "New Mexico", NY: "New York", NC: "North Carolina", ND: "North Dakota", OH: "Ohio", OK: "Oklahoma", OR: "Oregon", PA: "Pennsylvania", RI: "Rhode Island", SC: "South Carolina",
+  SD: "South Dakota", TN: "Tennessee", TX: "Texas", UT: "Utah", VT: "Vermont", VA: "Virginia", WA: "Washington", WV: "West Virginia", WI: "Wisconsin", WY: "Wyoming", DC: "District of Columbia",
+  PR: "Puerto Rico", AB: "Alberta", BC: "British Columbia", MB: "Manitoba", NB: "New Brunswick", NL: "Newfoundland", NS: "Nova Scotia", NT: "Northwest Territories", NU: "Nunavut", ON: "Ontario",
+  PE: "Prince Edward Island", QC: "Quebec", SK: "Saskatchewan", YT: "Yukon",
+};
+const STATE_BY_NAME: Map<string, string> = new Map(Object.entries(STATE_NAMES).map(([code, name]) => [name.toLowerCase(), code]));
+const CITY_NAMES: Set<string> = new Set(CITIES.map((c) => c.name.toLowerCase()));
+/** Words that turn a city into a place phrase rather than a brand: "Clearwater Beach", "Downtown Tampa", "Greater Toronto Area". */
+const GEO_WORDS = /^(?:beach|beaches|bay|island|islands|key|keys|county|springs|harbor|harbour|lake|valley|coast|shores?|park|city|falls|heights|hills|point|cove|cape|river|pass|metro|area|downtown|greater|north|south|east|west|central|upper|lower|gulf|the|of|and|&|region|peninsula|sound|inlet|marina|pier|waterfront|resort)$/i;
+/** Words a title keeps lower case unless they open it. */
+const SMALL_WORDS = /^(?:a|an|and|at|by|for|from|in|of|on|or|the|to|with|de|du|le|del|von|van|y|n|o)$/i;
+/** Upper-case tokens of four or more letters that are acronyms or brands, not shouting. Two- and three-letter tokens always stay as written. */
+/** Short English words a shouted menu writes in capitals ("WING IT!", "11 PEOPLE PER BOAT", "TIKI BUS"). Anything else of two or three capitals is an acronym. */
+const COMMON_SHORT = new Set("try st mt ft dr mr mrs jr sr ave blvd rd hwy hr hrs min mins it per for you our all new fun day sea sun bar big hot top old one two six ten and the of at in on to by or up go do we us me my an as is are was get has had can may not no off out own see set way who why how its his her him she he so if but yet any few lot low mid min max age bay hub ice ski spa gym art car cat dog fly jet rod run fit fee kid pet bus van ram raw red dry wet air fog ice hay bag box tub hat pit map mix pro pop pub inn bay cay key zip kit tip cup tap tee par pin ace ale ipa rum gin egg pie ham jam tea hop dip dye axe gun bow bat net web log".split(" "));
+const CAPS_TOKENS = new Set(["YMCA", "EMTB", "BIPOC", "BWCA", "YWCA", "PADI", "NAUI", "USPA", "NASCAR", "IMAX", "NASA", "UNESCO", "HVAC", "LPGA", "USGA", "IFLY", "GOLFTEC", "SEAL", "UTVS", "ATVS", "SUPS", "PWCS", "JCC", "MMA", "BJJ", "FPV", "IFR", "VFR", "SCCA", "NHRA", "AMA", "USBC", "NCAA", "USTA", "NAUI", "SDI", "TDI", "AAU", "USAG", "FIFA", "NHL", "MLB", "NFL", "NBA", "PBR", "DIY", "ROTC", "NRA", "USCG", "TSA", "FAA", "BLM", "NPS", "NYPD", "LGBTQ", "AOPA"]);
+
+/** "O'BRIEN" to "O'Brien", "PUTT-PUTT" to "Putt-Putt", "BILL'S" to "Bill's". */
+function capWord(w: string): string {
+  return w
+    .split(/([-'’./])/)
+    .map((part, i, all) => {
+      if (i % 2) return part;
+      if (!part) return part;
+      const afterApos = i > 0 && /['’]/.test(all[i - 1]);
+      if (afterApos && part.length <= 2) return part.toLowerCase(); // Bill's, catch'em, we'll
+      return part.replace(/^([^\p{L}]*)(\p{L})(.*)$/u, (_m, pre: string, ch: string, rest: string) => pre + ch.toUpperCase() + rest.toLowerCase());
+    })
+    .join("");
+}
+
+/** "USPA-A", "SUP-YOGA", "PUTT-PUTT", "ST. PETE": each hyphen or slash part keeps its capitals only when it is an acronym. */
+function capShouted(w: string, loneCaps: boolean): string {
+  const keepLone = loneCaps && w.replace(/[^\p{L}]/gu, "").length <= 5;
+  return w
+    .split(/([-/])/)
+    .map((part, i) => {
+      if (i % 2 || !part) return part;
+      const letters = part.replace(/[^\p{L}]/gu, "");
+      if (!letters) return part;
+      if (COMMON_SHORT.has(letters.toLowerCase())) return capWord(part);
+      if (letters.length <= 3 || CAPS_TOKENS.has(letters) || !/[AEIOUY]/.test(letters) || keepLone) return part;
+      return capWord(part);
+    })
+    .join("");
+}
+
+/** A word of four or more capitals, or an all-capitals string: the site is shouting. */
+const SHOUT = /(?:^|[^A-Za-z])[A-Z][A-Z'’]{3,}(?=$|[^A-Za-z])/;
+function isShouting(t: string): boolean {
+  return SHOUT.test(t) || (t === t.toUpperCase() && (t.match(/[A-Z]/g) || []).length >= 4);
+}
+
+/**
+ * Title-case a shouted name and nothing else. "CLEARWATER Jet ski RENTAL" reads "Clearwater Jet Ski Rental";
+ * "iFLY Indoor Skydiving", "K1 Speed" and "SUP Tampa" are left exactly as written because nothing in them shouts.
+ * Inside a shouted name, tokens of two or three capitals (BAE, ATX, LLC, ATV), tokens with digits (K1, 4x4)
+ * and known acronyms keep their capitals; mixed-case tokens (McDonald) are never touched.
+ */
+export function fixShouting(raw: string): string {
+  const t = raw.replace(/\s+/g, " ").trim();
+  if (!t || !isShouting(t)) return t;
+  const words = t.split(" ");
+  const shoutedCount = words.filter((w) => /\p{Lu}/u.test(w) && w === w.toUpperCase() && /\p{L}{2}/u.test(w)).length;
+  // "ROTAK Helicopter Services", "Complete BWCA Outfitting Package": one short capitalised token among cased words is a brand or an acronym.
+  const loneCaps = shoutedCount === 1 && words.length >= 2;
+  if (loneCaps && !words.some((w) => /\p{Lu}/u.test(w) && w === w.toUpperCase() && w.replace(/[^\p{L}]/gu, "").length > 5)) return t;
+  const out = words.map((w, i) => {
+    const core = w.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, "");
+    if (/^\d+(?:ST|ND|RD|TH)$/.test(core)) return w.toLowerCase(); // "JULY 4TH"
+    if (!core || /\d/.test(core)) return w;
+    const first = i === 0;
+    const last = i === words.length - 1;
+    if (SMALL_WORDS.test(core)) {
+      const lower = w.toLowerCase();
+      return first || last ? capWord(lower) : lower;
+    }
+    // "SUNSET IN LA" is Los Angeles; "LA JOLLA KAYAK" is not.
+    if (core === "LA") return last || /^(?:in|of|to|from|near)$/i.test(words[i - 1] || "") ? w : capWord(w);
+    if (core === core.toUpperCase()) return capShouted(w, loneCaps);
+    if (core === core.toLowerCase()) return capWord(w);
+    return w; // McDonald, iFLY, LaBarre: already cased on purpose
+  });
+  return out.join(" ");
+}
+
+/** Names that really do say a word twice. */
+const REDUPLICATED = /^(?:chi|bora|walla|pago|baden|sing|duran|yo|tik|bang|cha|kai|tuk|mahi|hula|coco|boo|bling|aye|yum|hush|wiki|choo|pom|go|mau|ta|bye|la|dum|chow|lala|ping|bon|tam|kum|wagga|kaka|foo|mo|no|so|do|ha|ho|tok|cou|puka|lomi|poke|nam|bam|ra|ba|da)$/;
+/** "Jet ski Jet Ski Rental" and "Bounce Bounce Trampoline Park": a word or a pair repeated back to back. "Chi Chi Rodriguez" and "Walla Walla" stay. */
+export function collapseRepeats(t: string): string {
+  const words = t.split(" ");
+  const out: string[] = [];
+  const norm = (w: string) => w.toLowerCase().replace(/[^a-z0-9]/g, "");
+  const caps = (w: string) => (w.match(/\p{Lu}/gu) || []).length;
+  for (const w of words) {
+    const n = out.length;
+    // Of two spellings ("Jet ski Jet Ski"), the better-cased one survives.
+    if (n >= 1 && norm(out[n - 1]) === norm(w) && norm(w).length >= 4 && !REDUPLICATED.test(norm(w))) {
+      if (caps(w) > caps(out[n - 1])) out[n - 1] = w;
+      continue;
+    }
+    if (n >= 3 && norm(out[n - 3]) === norm(out[n - 1]) && norm(out[n - 2]) === norm(w)) {
+      if (caps(out[n - 1]) > caps(out[n - 3])) out[n - 3] = out[n - 1];
+      if (caps(w) > caps(out[n - 2])) out[n - 2] = w;
+      out.pop();
+      continue;
+    }
+    out.push(w);
+  }
+  return out.join(" ");
+}
+
+function normPlace(s: string): string {
+  return s.toLowerCase().replace(/\bft\.?\s/g, "fort ").replace(/\bsaint\s/g, "st. ").replace(/\bst\s/g, "st. ").replace(/\bmt\.?\s/g, "mount ").replace(/[.,]+$/g, "").replace(/\s+/g, " ").trim();
+}
+
+/**
+ * True when a tail is a place and not part of a brand. The row's own city (alone or with a geo word, "Clearwater
+ * Beach", "Downtown Tampa"), a state or province by code or name, or "<place>, FL". With `anyCity`, any city in the
+ * discovery grid counts too, which is right for "- St. Louis" taglines but wrong for "The Spa at Bally's"-style names.
+ */
+function isPlaceTail(tail: string, ctx: TitleContext, anyCity: boolean): boolean {
+  const parts = tail.split(/\s*,\s*/).map(normPlace).filter(Boolean);
+  if (!parts.length || parts.length > 2) return false;
+  const region = ctx.region ? ctx.region.toUpperCase() : "";
+  const isState = (x: string) => (x.length === 2 && x.toUpperCase() === region) || STATE_BY_NAME.has(x) || (region && STATE_NAMES[region]?.toLowerCase() === x);
+  if (parts.length === 2 && !isState(parts[1])) return false;
+  const head = parts[0];
+  if (isState(head)) return parts.length === 1;
+  const city = ctx.city ? normPlace(ctx.city) : "";
+  const words = head.split(" ");
+  const cityWords = new Set(city.split(" ").filter(Boolean));
+  const gridCity = anyCity && CITY_NAMES.has(head);
+  const rest = words.filter((w) => !cityWords.has(w) && !GEO_WORDS.test(w));
+  const hasCity = city ? words.some((w) => cityWords.has(w) && w.length > 2) : false;
+  if (hasCity && rest.length === 0) return true;
+  if (gridCity) return true;
+  // "Clearwater Beach, FL" with no city on the row: a state after the comma settles it when every word is a geo word.
+  if (parts.length === 2 && rest.length <= 1) return true;
+  return false;
+}
+
+/** Activity words. A remainder made only of these ("Jet Ski Adventures", "Boat Rentals") needs its place to be a name at all. */
+const ACTIVITY_WORD = /^(?:jet|ski|skis|boat|boats|pontoon|kayak|kayaks|canoe|paddle|board|boards|sup|bike|bikes|e-bike|ebike|scooter|scooters|fishing|fish|parasail|parasailing|dolphin|dolphins|sunset|airboat|atv|utv|helicopter|zipline|zip|line|axe|throwing|escape|room|rooms|golf|cart|carts|surf|surfing|dive|diving|scuba|snorkel|snorkeling|sailing|sail|yacht|yachts|charter|charters|rental|rentals|tour|tours|adventure|adventures|excursion|excursions|experience|experiences|lesson|lessons|class|classes|cruise|cruises|trip|trips|ride|rides|flight|flights|session|sessions|the|and|&|of|water|sports|watersports|watersport|fun|beach|island|bay|family|private|luxury|premier|best|deep|sea|inshore|offshore|eco|manatee|shelling|sightseeing|balloon|skydiving|skydive|jetski|jetskis|wave|runner|runners|waverunner|waverunners|pedal|tiki|party|day|half|full|hour|hourly|guided|self|spa|massage|yoga|pottery|cooking|painting|wine|beer|brewery|winery|distillery|tasting|tastings|bowling|arcade|trampoline|laser|tag|karting|karts|paintball|archery|shooting|range|climbing|rock|horseback|riding|trail|trails|hiking|camping|glamping|rafting|tubing|boating|swim|swimming|snowmobile|snowmobiles|ski|snowboard|sled|dog|wildlife|nature|bird|birding|photography|ghost|food|walking|segway|trolley|bus|hop|carriage|horse|cable|gondola|train|scenic|aerial|air|glider|hang|paraglide|paragliding|skydive|tandem|indoor|outdoor|mini|putt|disc|driving|tennis|pickleball|ice|skating|rink|roller|pool|waterpark|park|zoo|aquarium|museum)$/i;
+const isGenericName = (x: string) => x.split(/\s+/).every((w) => ACTIVITY_WORD.test(w.replace(/[^A-Za-z&-]/g, "")));
+
+/** Drop " at Clearwater Beach", " in Tampa, FL", " - Tampa Bay", ", Florida" from the end when the rest is still a name. */
+function stripPlaceTail(t: string, ctx: TitleContext): string {
+  const twoWords = (x: string) => x.trim().split(/\s+/).length >= 2 && !isGenericName(x);
+  for (let i = 0; i < 2; i++) {
+    let m = t.match(/^(.*\S)\s+(?:at|in|near)\s+(?:the\s+)?([A-Za-z.'’&\s]{2,40}(?:,\s*[A-Za-z. ]{2,25})?)\s*$/i);
+    if (m && twoWords(m[1]) && isPlaceTail(m[2], ctx, false)) {
+      t = m[1];
+      continue;
+    }
+    m = t.match(/^(.*\S)\s*(?:\s-\s|-\s+|\s[–—]\s?|,\s*|\|\s*)([A-Za-z.'’&\s]{2,40}(?:,\s*[A-Za-z. ]{2,25})?)\s*$/);
+    if (m && twoWords(m[1]) && isPlaceTail(m[2], ctx, true)) {
+      t = m[1];
+      continue;
+    }
+    break;
+  }
+  return t.replace(/[\s,\-–—|:]+$/, "");
+}
+
+/** A crawled page title, not a business name: "Foo | Tampa", "JET SKI RENTAL AT CLEARWATER BEACH", all caps, or a city named twice in a long string. */
+function looksSeo(raw: string, ctx: TitleContext): boolean {
+  if (/\s\|\s/.test(raw)) return true;
+  if (/\bAT [A-Z]{3,}/.test(raw)) return true;
+  if (raw === raw.toUpperCase() && (raw.match(/[A-Z]/g) || []).length >= 4) return true;
+  const words = raw.split(/\s+/);
+  if (words.length >= 6 && ctx.city) {
+    const c = ctx.city.toLowerCase();
+    const hits = words.filter((w) => w.toLowerCase().replace(/[^a-z]/g, "") === c.replace(/[^a-z]/g, "")).length;
+    if (hits >= 2) return true;
+  }
+  return false;
+}
+
 /**
  * The name a guest sees. Sites publish "Sky Combat Ace | San Diego", "Welcome to the Official Axe & Ale Website",
- * "FISH AND SONS KENAI CHARTERS" and "[Alchemy]". Keep the business, drop the tagline, the site words and the shouting.
+ * "FISH AND SONS KENAI CHARTERS", "CLEARWATER Jet ski RENTAL AT CLEARWATER BEACH" and "[Alchemy]". Keep the business,
+ * drop the tagline, the site words, the location tail and the shouting. With a context, the operator's legal name
+ * wins over a title that is plainly an SEO string.
  */
-const SITE_WORDS = /^(?:home|homepage|welcome|official (?:site|website|home ?page)|website|site|online|book(?:ing)? online|book now|reservations?|home ?page|index|main)$/i;
-const KEEP_CAPS = /^(?:llc|inc|ltd|co|usa|nyc|sf|la|dc|bbq|atv|utv|rv|sup|vip|ii|iii|iv|3d|4x4|uk|bc|ab|on|qc|ns|nb|pe|nl|sk|mb|yt|nt|nu|[a-z]{2}|&)$/i;
-export function cleanTitle(raw: string): string {
+export function cleanTitle(raw: string, ctx: TitleContext = {}): string {
+  const legal = (ctx.legalName || "").replace(/\s+/g, " ").trim();
+  if (legal.split(" ").length >= 2 && looksSeo(raw, ctx)) return cleanTitle(legal);
   let t = raw.replace(/\s+/g, " ").trim();
   t = t.replace(/^\[(.+)\]$/, "$1").replace(/\s*\[(.*?)\]\s*$/, (_m, x: string) => (x.length <= 12 ? " " + x : "")).trim();
   t = t.replace(/^(?:welcome to|welcome)\s+(?:the\s+)?(?:official\s+)?/i, "").replace(/\s*[-–—|:]?\s*(?:official )?(?:web ?site|home ?page)\s*$/i, "").trim();
   // "A | B" and "A – B" are name plus tagline: keep the part that is a name (the first, unless it is a site word).
   // "A - B" with a plain hyphen is often one name ("Fifty - Fifty Water Sports"), so it stays whole when short.
-  const isName = (x: string) => !SITE_WORDS.test(x) && !/^(?:book|reserve|call|save|best|top|#1|\d+%|free)\b/i.test(x);
+  const isName = (x: string) => !SITE_WORDS.test(x) && !/^(?:book|reserve|call|save|best|top|#1|\d+%|free|official|voted|your|premier|the best|the #1|the premier)\b/i.test(x);
   if (/\s*(?:\||–|—)\s*/.test(t)) {
     const parts = t.split(/\s*(?:\||–|—)\s*/).map((x) => x.trim()).filter(Boolean);
     t = parts.find(isName) || parts[0];
@@ -550,16 +740,19 @@ export function cleanTitle(raw: string): string {
     const named = parts.filter(isName);
     t = named.length < parts.length ? named[0] || parts[0] : t.length <= 40 ? t : parts[0];
   }
-  const words = t.split(" ");
-  if (words.length > 3 && t === t.toUpperCase() && /[A-Z]{3}/.test(t)) {
-    t = words.map((w) => (KEEP_CAPS.test(w) ? w : w.charAt(0) + w.slice(1).toLowerCase())).join(" ").replace(/\b(and|of|the|at|by|in|for)\b(?!$)/gi, (m) => m.toLowerCase()).replace(/^./, (c) => c.toUpperCase());
-  }
+  // "Foo Charters: Best Jet Ski Rental in Tampa": an SEO clause after a colon.
+  t = t.replace(/^(.{3,}?\S)\s*:\s*(?:the\s+)?(?:best|top|#\s?1|premier|your|official|voted|book|reserve)\b.*$/i, "$1");
+  t = stripPlaceTail(t, ctx);
+  t = collapseRepeats(fixShouting(t));
   // "labarre", "bfunk": a name typed in lower case reads as a slug. Capitalise each word; brands with inner caps are left alone.
   if (t === t.toLowerCase() && /^[a-z]/.test(t)) t = t.replace(/(^|\s)([a-z])/g, (_m, sp: string, ch: string) => sp + ch.toUpperCase());
   t = t.replace(/^[\s\-–—|:]+|[\s\-–—|:,]+$/g, "").trim();
   // "Midwest Powered Paragliding In", "Paint, Sip Wine, have fun at our": a page title cut mid-sentence.
-  t = t.replace(/(?:\s+(?:of|for|with|and|or|to|our|your|at our|by)\b)+\s*$/i, "").trim();
-  return t.length > 70 ? trimWords(t, 70) : t || raw.trim();
+  t = t.replace(/(?:\s+(?:of|for|with|and|or|to|our|your|at our|by|at|in)\b)+\s*$/i, "").trim();
+  t = (t.length > 70 ? trimWords(t, 70) : t).replace(/[\s\-–—|:,]+$/g, "");
+  // Never a stub or a bare domain: fall back to the legal name, then to the raw title.
+  if (t.length < 3 || /^(?:https?:\/\/|www\.)|^[a-z0-9-]+\.[a-z]{2,}$/i.test(t)) return legal.length >= 3 ? legal : raw.trim();
+  return t;
 }
 
 /** Cut at a word boundary, no ellipsis, so a name never ends mid-word. */
@@ -574,6 +767,143 @@ function endAtSentence(t: string, max: number): string {
   const cut = t.slice(0, max);
   const i = Math.max(cut.lastIndexOf(". "), cut.lastIndexOf("! "), cut.lastIndexOf("? "));
   return (i > max * 0.4 ? cut.slice(0, i + 1) : trimWords(cut, max)).trim();
+}
+
+/** A line the crawl took from a heading, a nav bar or a banner: no sentence end, short, and mostly capitals. */
+function isHeadingLine(l: string): boolean {
+  if (/[.!?]["”’)]?$/.test(l)) return false;
+  const words = l.split(" ");
+  if (words.length > 10) return false;
+  if (/:$/.test(l) && words.length <= 6) return true;
+  const letters = l.replace(/[^A-Za-z]/g, "");
+  if (letters.length >= 3 && letters === letters.toUpperCase()) return true;
+  const caps = words.filter((w) => /^[A-Z0-9$#&]/.test(w) || SMALL_WORDS.test(w)).length;
+  return caps / words.length >= 0.7;
+}
+
+const STATE_CODE = /^(?:AL|AK|AZ|AR|CA|CO|CT|DE|FL|GA|HI|ID|IL|IN|IA|KS|KY|LA|ME|MD|MA|MI|MN|MS|MO|MT|NE|NV|NH|NJ|NM|NY|NC|ND|OH|OK|OR|PA|RI|SC|SD|TN|TX|UT|VT|VA|WA|WV|WI|WY|DC|AB|BC|MB|NB|NL|NS|NT|NU|ON|PE|QC|SK|YT)$/;
+const PHONE = /\(?\b\d{3}\)?[-.\s]\d{3}[-.\s]\d{4}\b/g;
+const NAV_WORD = /\b(?:home|about(?: us)?|contact(?: us)?|book now|gift cards?|faqs?|menu|login|sign in|cart)\b/gi;
+
+/**
+ * Cut the keyword-stuffed run that opens "Clearwater Jet Ski Dolphin Tours CLEARWATER JET SKI RENTAL AT CLEARWATER
+ * BEACH, FL The premier jet ski rental company in Clearwater, Florida." A run of capitalised words is only cut at a
+ * clear seam (two or more shouted words, or a state after a comma) and only when a real sentence follows; "Indian
+ * Rocks Beach Boat Rental offers a variety of boats" has no seam and is kept whole.
+ */
+function cutLeadingFragment(t: string): string {
+  const first = t.match(/^[^.!?]*(?:[.!?]|$)/)?.[0] ?? t;
+  const words = first.split(" ");
+  let runEnd = 0;
+  while (runEnd < words.length) {
+    const w = words[runEnd];
+    const core = w.replace(/^[^A-Za-z0-9]+|[^A-Za-z0-9]+$/g, "");
+    if (!core || /^[A-Z0-9$#&]/.test(core) || SMALL_WORDS.test(core)) runEnd++;
+    else break;
+  }
+  if (runEnd < 3) return t;
+  let cut = 0;
+  let capsRun = 0;
+  for (let i = 0; i < runEnd; i++) {
+    const w = words[i];
+    const core = w.replace(/^[^A-Za-z0-9]+|[^A-Za-z0-9]+$/g, "");
+    const shouted = core.length >= 2 && /[A-Z]/.test(core) && core === core.toUpperCase() && !/\d/.test(core);
+    if (shouted && SMALL_WORDS.test(core)) {
+      // "THE BEER THE SNACKS EVENTS AND MORE": a shouted "and" is part of the banner, not a break in it.
+      if (capsRun) capsRun++;
+      if (capsRun >= 2) cut = i + 1;
+    } else if (shouted && !STATE_CODE.test(core)) {
+      capsRun++;
+      if (capsRun >= 2) cut = i + 1;
+    } else if (shouted && STATE_CODE.test(core) && i > 0 && /,$/.test(words[i - 1])) {
+      cut = i + 1;
+      capsRun = 0;
+    } else if (i > 0 && /,$/.test(words[i - 1]) && STATE_BY_NAME.has(core.toLowerCase())) {
+      cut = i + 1;
+      capsRun = 0;
+    } else capsRun = 0;
+  }
+  if (!cut || cut >= words.length) return t;
+  const rest = words.slice(cut).join(" ").replace(/^[\s,.:;|–-]+/, "");
+  const restAll = rest + t.slice(first.length);
+  if (!/^[A-Z"“]/.test(restAll) || rest.length < 30 || !/\s[a-z]{2,}\s/.test(rest)) return t;
+  return restAll;
+}
+
+/**
+ * The paragraph a guest reads under the title. It must open on a real sentence: heading lines, a leading repeat of
+ * the name or the city, keyword runs, "Welcome to X!" (when more follows) and phone numbers go; the first letter is
+ * upper case, sentences sit one space apart, and the text ends on a sentence inside 600 characters. Navigation text
+ * and anything under 40 characters come back empty, since an empty blurb beats junk.
+ */
+export function cleanBlurb(raw: string, ctx: { title?: string; city?: string | null; region?: string | null } = {}): string {
+  if (!raw) return "";
+  const lines = raw.split(/\r?\n+/).map((l) => l.replace(/\s+/g, " ").trim()).filter(Boolean);
+  const body = lines.length > 1 ? lines.filter((l) => !isHeadingLine(l)) : lines;
+  // cleanPara strips markdown "#"; "#1 dolphin tour" is copy, so the hash before a digit is parked and restored.
+  let t = cleanPara(body.join(" ").replace(/#(?=\d)/g, "\u0001")).replace(/\u0001/g, "#").replace(PHONE, " ").replace(/\s+/g, " ").trim();
+  // A case-insensitive literal without the i flag, so the "next word is capitalised" lookahead stays case-sensitive.
+  const esc = (s: string) =>
+    s
+      .trim()
+      .split(/\s+/)
+      .map((word) => [...word].map((ch) => (/\p{L}/u.test(ch) && ch.toLowerCase() !== ch.toUpperCase() ? "[" + ch.toLowerCase() + ch.toUpperCase() + "]" : ch.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))).join(""))
+      .join("\\s+");
+  const region = ctx.region ? ctx.region.toUpperCase() : "";
+  const stateAlt = (region ? "(?:" + esc(STATE_NAMES[region] || region) + "|" + region + ")" : "[A-Z]{2}") + "\\b";
+  for (let i = 0; i < 4; i++) {
+    const before = t;
+    // "Welcome to Makin' Waves! We are ..." keeps the second sentence.
+    t = t.replace(/^welcome (?:to|aboard)\b[^.!?]{0,80}[.!?]["”]?\s+(?=\S)/i, "");
+    // A leading repeat of the name as a label ("Siesta Dolphin Tours - Siesta Key's #1 ...", "Makin Waves: We are ..."), never the name as a subject ("Allure Boat Rentals offers ...").
+    if (ctx.title) t = t.replace(new RegExp("^" + esc(ctx.title) + "(?:\\s*[-–—|:]+\\s*|[.!]\\s+)(?=[A-Z\"“(])"), "");
+    // "Tampa, FL The premier ..." and "Clearwater Beach FL - We rent ...": a city with its state or a separator, never "Whistler Paintball offers ...".
+    if (ctx.city) t = t.replace(new RegExp("^" + esc(ctx.city) + "(?:\\s+(?:[Bb]each|[Bb]ay|[Ii]sland|[Aa]rea))?(?:,?\\s+" + stateAlt + "\\s*[,.:|–—-]*\\s*|\\s*[,.:|–—-]+\\s*(?!" + stateAlt + "))(?=[A-Z\"“(])"), "");
+    t = cutLeadingFragment(t);
+    // "... in Clearwater, Florida. RENT BY THE HOUR As Low as $85" keeps a shouted banner between sentences.
+    t = t.replace(/(^|[.!?]["”]?\s+)(?:[A-Z][A-Z'’&-]+\s+){3,}(?=[A-Z][a-z])/g, "$1");
+    t = t.replace(/^[\s,.:;|–—-]+/, "");
+    if (t === before) break;
+  }
+  // "iFLY", "i Tour Puerto Rico" and "barre3" are brands; any other opener gets its capital.
+  if (!/^(?:\p{Ll}\p{Lu}|\p{Ll}\s+\p{Lu}|\p{Ll}+\d)/u.test(t)) t = t.charAt(0).toUpperCase() + t.slice(1);
+  t = endAtSentence(t, 600);
+  if (t.length < 40) return "";
+  if ((t.match(NAV_WORD) || []).length >= 3) return "";
+  // A blurb that is mostly capitals is a banner or a policy line, not copy.
+  const letters = t.replace(/[^A-Za-z]/g, "");
+  if (letters.length && (t.replace(/[^A-Z]/g, "").length / letters.length) >= 0.5) return "";
+  // No sentence end: a meta description the crawler cut short ("... beauty of Earth's amazing"), a keyword list
+  // ("surf surfboard stand up paddle SUP kayak") or a comma-chain of tags. Real prose is closed at its last clause
+  // when that keeps most of it; the rest is dropped, since an empty blurb beats a line that stops mid-thought.
+  if (!/[.!?]["”’)]?$/.test(t)) {
+    // "... in the state of", "... selecting the perfect": a line that stops on a function word was cut mid-phrase.
+    const DANGLING = /(?:\s+(?:and|or|the|a|an|of|with|for|to|in|at|by|from|&|your|our|their|its|his|her|my|as|that|which|is|are|was|be|been|has|have|will|can|near|over|into|on|s|perfect|best|great|new|ultimate|unique|most|very|more|all|every|each|this|these|those|some|any|such|own|next|first|last|only|no))+[\s,;:–—-]*$/i;
+    const commas = (t.match(/,/g) || []).length;
+    // "... redfish, trout, grouper, snapper, snook and": a list missing only its last item closes as it stands.
+    const openList = commas >= 2 && /,\s+\S+\s+(?:and|or|&)$/i.test(t);
+    // "... to meet all your boating": a determiner one word from the end was mid-phrase too.
+    const cutShort = !openList && (DANGLING.test(t) || /\s(?:the|your|our|all|its|their|his|her|my|a|an)\s+\S+$/i.test(t) || t.length >= 140);
+    t = t.replace(DANGLING, "");
+    const words = t.split(" ").length;
+    // Prose carries function words; "surf surfboard stand up paddle SUP kayak windsurf" and "Basic / Rental / Group Packages" carry none.
+    const functionWords = (t.match(/\b(?:the|a|an|and|of|to|in|is|are|we|our|you|your|with|for|on|at|by|from|it|its|this|that|or|as|be)\b/gi) || []).length;
+    if (words < 8 || functionWords < words / 8 || commas >= 6) return "";
+    if ((t.match(/\b[A-Z][a-z]+:\s/g) || []).length >= 3) return ""; // "Elevation: 1,516 feet Area Code: 530 Zip Code:"
+    if (cutShort) {
+      // Crawlers cut meta descriptions near 160 characters. The text can only be closed before a trailing modifier
+      // clause (", offering ...", ", which ...", " – ...") that leaves most of the words and no half-finished list.
+      let best = -1;
+      for (const m of t.matchAll(/,\s(?=(?:[a-z]+ing\s+[a-z]|(?:and|which|where|while|but|so|plus|including)\b))|\s(?:while|whether)\s|\s[–—]\s/g)) {
+        const head = t.slice(0, m.index);
+        const keep = head.split(" ").length;
+        if (keep >= 8 && keep >= words * 0.55 && !/,\s+\S+(?:\s+\S+){0,2}$/.test(head)) best = m.index!;
+      }
+      if (best < 0) return "";
+      t = t.slice(0, best).replace(/[\s,;:–—-]+$/, "") + ".";
+    } else t = t.replace(/[\s,;:–—-]+$/, "") + ".";
+  }
+  return t;
 }
 
 /** "Ultimate Tour (ULT) Rates For 3 or more passengers ..." starts with the title and widget labels. Keep the copy. */
@@ -811,7 +1141,7 @@ function uniqBy<T>(list: T[], key: (t: T) => string): T[] {
 export function syncCatalogToApp(): { path: string; count: number } {
   const rows = db
     .prepare(
-      `SELECT id, domain, name, website, city, region, metro_id, family, icon_key, rating, review_count, origin, lat, lon
+      `SELECT id, domain, name, legal_name, website, city, region, metro_id, family, icon_key, rating, review_count, origin, lat, lon
        FROM operators WHERE origin != 'demo' AND name IS NOT NULL AND length(name) >= 3
        ORDER BY completeness DESC, name ASC`,
     )
@@ -827,7 +1157,7 @@ export function syncCatalogToApp(): { path: string; count: number } {
   const full = rows
     .filter((r) => !MARKETPLACES.test(r.domain) && !dead.has(r.id) && !NOT_EXPERIENCE.test(r.name) && !/^\s*\$?\d+(\.\d+)?\s*$/.test(r.name))
     // "Home", "Welcome" and a bare domain are page titles, not business names. A guest cannot tell what they are.
-    .filter((r) => { const t = cleanTitle(decodeEntities(r.name)); return t.length >= 3 && !SITE_WORDS.test(t) && !NAV_LABEL.test(t) && !GENERIC_TITLE.test(t) && !/^(?:https?:\/\/|www\.)/i.test(t); })
+    .filter((r) => { const t = cleanTitle(decodeEntities(r.name), { city: r.city, region: r.region, legalName: r.legal_name }); return t.length >= 3 && !SITE_WORDS.test(t) && !NAV_LABEL.test(t) && !GENERIC_TITLE.test(t) && !/^(?:https?:\/\/|www\.)/i.test(t); })
     // Outside the US and Canada, by pin or by address, is outside the market (a Cairns balloon flight tagged HI).
     .filter((r) => (r.lat == null || r.lon == null || inNorthAmerica(r.lat, r.lon)) && (!r.region || r.region.length !== 2 || NA_REGION.test(r.region.toUpperCase())))
     .map(toCatalogItem)
