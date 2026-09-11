@@ -9,7 +9,7 @@ import { addressLine, contactFor, fmtHours, fmtPhone, fromPrice, getCatalog, lis
 import { DAYS, fmtDate, fmtReviews, fmtTime, money, priceWith } from "../../lib/format";
 import { SIZES, srcSet, thumb } from "../../lib/images";
 import { cleanDesc, durationLabel, freeCancel, minAge } from "../../lib/listingDerive";
-import { clockIn, itemOpenState, zoneFor } from "../../lib/openNow";
+import { clockIn, itemOpenState, itemWeek, zoneFor } from "../../lib/openNow";
 import { DAY_SHORT, clock12, dayLabel, todaysDeals } from "../../lib/companyAgent";
 import { fmtDistance, kmBetween, nearestLocation } from "../../lib/places";
 import { priceUnclaimed } from "../../lib/pricing";
@@ -152,6 +152,12 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
   const extras = addonIdx.map((i) => (item.addons || [])[i]).filter(Boolean);
   const p = priceUnclaimed(picked, qty, extras);
   const needService = item.options.length > 0;
+  // Attractions sell entry, not a slot. With no menu to book, the card becomes hours plus a tickets link.
+  const VISIT_ARTS = new Set(["zoo", "aquarium", "themepark", "waterpark", "museum", "garden", "theatre", "arcade", "icerink", "trampoline", "bowling", "minigolf", "billiards", "camping", "sauna", "swim", "tennis", "discgolf", "venue", "brewery", "winery", "distillery"]);
+  const visit = !needService && VISIT_ARTS.has(item.art);
+  const visitOpen = useMemo(() => (visit ? itemOpenState(item) : null), [visit, item]);
+  const visitWeek = useMemo(() => (visit ? itemWeek(item) : null), [visit, item]);
+  const clock = (m: number) => fmtTime(String(Math.floor(m / 60)).padStart(2, "0") + ":" + String(m % 60).padStart(2, "0"));
   const ready = time != null && (!needService || picked != null) && guestOk;
   const day = dates[state.dateIdx];
   // Today only shows start times at least an hour out. Nobody can book a 7 AM slot at 8:30.
@@ -662,7 +668,29 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
           </div>
 
           <aside className="wbook">
-            {done ? (
+            {visit ? (
+              // A place you walk into: a zoo, a museum, a show. Hours and the door, not a time slot.
+              <div className="wbookcard">
+                <div className="wbookhead">
+                  <span><b>Plan your visit</b></span>
+                  {score ? <span className="wrate"><Markup html={ICONS.star} /> {score.rating.toFixed(1)}</span> : null}
+                </div>
+                {visitOpen ? <p className={"wopen" + (visitOpen.open ? " on" : "")}>{visitOpen.label}</p> : null}
+                {visitWeek?.some((d) => d && d.close > d.open) ? (
+                  <ul className="whours">{visitWeek.map((d, i) => <li key={i}><span>{DAYS[i]}</span>{d && d.close > d.open ? clock(d.open) + " to " + clock(d.close) : "Closed"}</li>)}</ul>
+                ) : contact?.hours?.length ? (
+                  <ul className="whours">{contact.hours.slice(0, 7).map((h) => <li key={h}>{h}</li>)}</ul>
+                ) : (
+                  <p className="wbooksub">Hours are not published. Call before you go.</p>
+                )}
+                {contact?.website || item.src ? (
+                  <a className="cta" style={{ width: "100%", marginTop: 12, display: "block", textAlign: "center" }} href={contact?.website || item.src} target="_blank" rel="noreferrer">Get tickets</a>
+                ) : contact?.phone ? (
+                  <a className="cta" style={{ width: "100%", marginTop: 12, display: "block", textAlign: "center" }} href={telHref(contact.phone)}>Call to plan</a>
+                ) : null}
+                <p className="wbookfine">Tickets are sold by {item.title}. Prices and times on their side.</p>
+              </div>
+            ) : done ? (
               <div className="wbookcard">
                 <div className="confmark"><Markup html={ICONS.check} /></div>
                 <h3>You're booked</h3>

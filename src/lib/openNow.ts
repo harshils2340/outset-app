@@ -204,9 +204,13 @@ export function clockIn(zone: string | null, now = new Date()): { day: number; m
 }
 
 /** Convenience for a catalog item: its week (compact on lite records, or parsed from hour lines) at the operator's local time. */
-export function itemOpenState(item: Unclaimed, now = new Date()): OpenState | null {
-  const week: Week | null = item.hrs?.length
+/** The week an item publishes: compact on lite records, else parsed from its hour lines. Sunday first. */
+export function itemWeek(item: Unclaimed): Week | null {
+  return item.hrs?.length
     ? item.hrs.map((d) => (d ? { open: d[0], close: d[1] } : null))
     : parseWeek(item.hoursText?.length ? item.hoursText : contactFor(item)?.hours || []);
-  return openStateAt(week, clockIn(zoneFor(item), now));
+}
+
+export function itemOpenState(item: Unclaimed, now = new Date()): OpenState | null {
+  return openStateAt(itemWeek(item), clockIn(zoneFor(item), now));
 }

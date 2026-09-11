@@ -1,24 +1,32 @@
 import { useState, type KeyboardEvent } from "react";
 import { ART_LABEL } from "../../data/art";
-import { CATS, CATMETA } from "../../data/categories";
+import { CATS, CATMETA, VIRTUAL_CATS, inCat } from "../../data/categories";
 import { ALL_METRO_ID, metroById, metroShort } from "../../data/metros";
 import type { CategoryId, Unclaimed } from "../../data/types";
 import { ICONS } from "../../data/icons";
 import { getCatalog } from "../../lib/catalog";
-import { searchListings, searchMetros } from "../../lib/search";
+import { ART_ALIASES, searchListings, searchMetros } from "../../lib/search";
 import { useApp } from "../../state/AppProvider";
 import { Art } from "../art/Art";
 import { Mark } from "../layout/Mark";
 import { Markup } from "../Markup";
 import { UnclaimedCard } from "./UnclaimedCard";
 
-function groupRails(list: Unclaimed[]): { id: CategoryId; title: string; items: Unclaimed[] }[] {
-  return CATS.filter((c) => c.id !== "all")
-    .map((c) => ({
-      id: c.id,
-      title: CATMETA[c.id].railTitle,
-      items: list.filter((u) => u.cat === c.id),
-    }))
+type FeedRail = { id: string; title: string; items: Unclaimed[]; open: () => void };
+
+/**
+ * All: one rail per catalog category (Classes and Culture are cuts of those, so they are not repeated here).
+ * A Classes or Culture tab: one rail per kind, since its listings span several catalog categories.
+ */
+function groupRails(list: Unclaimed[], cat: CategoryId, setCat: (c: CategoryId) => void, setQ: (q: string) => void): FeedRail[] {
+  const kinds = VIRTUAL_CATS[cat];
+  if (kinds) {
+    return kinds
+      .map((art) => ({ id: art, title: ART_LABEL[art], items: list.filter((u) => u.art === art), open: () => setQ(ART_ALIASES[art]?.[0] || art) }))
+      .filter((r) => r.items.length > 0);
+  }
+  return CATS.filter((c) => c.id !== "all" && !VIRTUAL_CATS[c.id])
+    .map((c) => ({ id: c.id, title: CATMETA[c.id].railTitle, items: list.filter((u) => inCat(u, c.id)), open: () => setCat(c.id) }))
     .filter((r) => r.items.length > 0);
 }
 
@@ -42,7 +50,7 @@ export function ExploreView() {
   const meta = CATMETA[state.cat] || CATMETA.all;
   const inMetro = getCatalog().filter((u) => state.metroId === ALL_METRO_ID || u.metroId === state.metroId);
   const ranked = q ? searchListings(inMetro, q) : inMetro;
-  const list = ranked.filter((u) => state.cat === "all" || u.cat === state.cat);
+  const list = ranked.filter((u) => inCat(u, state.cat));
   const previewList = (q ? searchListings(inMetro, q) : []).slice(0, 8);
   const previewMetros = q.length >= 2 ? searchMetros(q) : [];
   const showPreview = searchOpen && q.length > 0;
@@ -52,7 +60,7 @@ export function ExploreView() {
   const emptyTitle = inMetro.length === 0 ? "Nothing in this city yet" : meta.emptyTitle;
   const emptyBody =
     inMetro.length === 0 ? "Try Anywhere, or pick a city with listings." : meta.emptyBody;
-  const rails = groupRails(list);
+  const rails = groupRails(list, state.cat, setCat, setQ);
   const manyRails = rails.length > 1;
 
   function pickListing(id: string) {
@@ -219,7 +227,7 @@ export function ExploreView() {
             <section key={rail.id} className="railblock">
               {manyRails ? (
                 <div className="railhead">
-                  <button type="button" className="railtitle" onClick={() => setCat(rail.id)}>
+                  <button type="button" className="railtitle" onClick={rail.open}>
                     <h2>{rail.title}</h2>
                   </button>
                   <span className="railcount">{rail.items.length}</span>
@@ -231,7 +239,7 @@ export function ExploreView() {
                     <UnclaimedCard key={u.id} item={u} compact />
                   ))}
                   {manyRails && i === 0 && rail.items.length > RAIL_CAP ? (
-                    <button type="button" className="railmore" onClick={() => setCat(rail.id)}>
+                    <button type="button" className="railmore" onClick={rail.open}>
                       <b>See all {rail.items.length}</b>
                       <small>{rail.title}</small>
                     </button>

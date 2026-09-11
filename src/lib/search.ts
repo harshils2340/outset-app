@@ -1,4 +1,4 @@
-import { METROS, metroById, type Metro } from "../data/metros";
+import { METROS, METRO_ALIASES, metroById, type Metro } from "../data/metros";
 import type { ArtKind, Unclaimed } from "../data/types";
 
 /** Words guests type that should still hit the listing. */
@@ -48,7 +48,7 @@ export const ART_ALIASES: Record<ArtKind, string[]> = {
   spa: ["spa", "massage", "sauna", "facial", "hot springs", "float"],
   yoga: ["yoga", "pilates", "meditation", "breathwork"],
   dance: ["dance", "dancing", "salsa", "ballroom", "dance class", "hip hop"],
-  tour: ["tour", "tours", "food tour", "walking tour", "ghost tour", "bike tour", "segway", "city tour", "brewery tour"],
+  tour: ["tour", "tours", "food tour", "walking tour", "ghost tour", "segway", "city tour", "sightseeing", "guided tour"],
   rage: ["rage room", "rage", "smash room", "break room"],
   theatre: ["theatre", "theater", "show", "shows", "comedy", "comedy club", "play", "musical", "live music", "concert", "improv"],
   museum: ["museum", "gallery", "exhibit", "science center", "planetarium"],
@@ -143,15 +143,46 @@ function haystack(u: Unclaimed): string {
     .toLowerCase();
 }
 
-/** Words in the query that name an activity. "jet ski rentals" -> jetski. */
-export function queryArts(q: string): ArtKind[] {
-  const lq = " " + q.toLowerCase().replace(/[^a-z0-9]+/g, " ") + " ";
-  const out: ArtKind[] = [];
+type AliasHit = { art: ArtKind; start: number; end: number; words: number; rank: number };
+
+/**
+ * Every alias that appears in the query as whole words, longest first, with shorter aliases of a *different* art
+ * dropped when they sit inside a longer one. "jet ski" is not a ski resort, "mini golf" is not a golf course,
+ * "pool hall" is not a swimming pool. Same-art overlaps ("cooking class" and "cooking") both stay.
+ */
+function aliasHits(lq: string): { kept: AliasHit[]; dropped: AliasHit[] } {
+  const found: AliasHit[] = [];
   for (const [art, words] of Object.entries(ART_ALIASES) as [ArtKind, string[]][]) {
-    // Whole words only, plural tolerated. "throwing" must not light up "rowing", "tandem kayak" must not mean skydive.
-    if (words.some((w) => lq.includes(" " + w + " ") || lq.includes(" " + w + "s ") || lq.includes(" " + w + "es "))) out.push(art);
+    for (let rank = 0; rank < words.length; rank++) {
+      const w = words[rank];
+      for (const form of [w, w + "s", w + "es"]) {
+        const needle = " " + form + " ";
+        let at = lq.indexOf(needle);
+        while (at >= 0) {
+          found.push({ art, start: at + 1, end: at + 1 + form.length, words: w.split(" ").length, rank });
+          at = lq.indexOf(needle, at + 1);
+        }
+      }
+    }
   }
-  return out;
+  found.sort((a, b) => b.end - b.start - (a.end - a.start) || a.start - b.start);
+  const kept: AliasHit[] = [];
+  const dropped: AliasHit[] = [];
+  for (const h of found) {
+    const inside = kept.some((k) => k.art !== h.art && k.words > h.words && k.start <= h.start && h.end <= k.end);
+    (inside ? dropped : kept).push(h);
+  }
+  return { kept, dropped };
+}
+
+/** Words in the query that name an activity. "jet ski rentals" -> jetski, and only jetski. */
+export function queryArts(q: string): ArtKind[] {
+  return queryArtHits(q).map((h) => h.art).filter((a, i, arr) => arr.indexOf(a) === i);
+}
+
+function queryArtHits(q: string): AliasHit[] {
+  const lq = " " + q.toLowerCase().replace(/[^a-z0-9]+/g, " ") + " ";
+  return aliasHits(lq).kept.sort((a, b) => a.start - b.start);
 }
 
 /**
@@ -179,11 +210,20 @@ const INTENTS: { re: RegExp; label: string; arts: ArtKind[]; kids?: boolean; gro
   { re: /\b(water|beach|lake|ocean|bay|river|on the water)\b/i, label: "On the water", arts: ["jetski", "kayak", "pontoon", "fishing", "cruise", "parasail"] },
   { re: /\b(sky|air|fly|flying|view from above|aerial)\b/i, label: "Up in the air", arts: ["skydive", "heli", "balloon", "parasail"] },
   { re: /\b(drinks?|beer|wine|tasting|brew|cocktail|whiskey|bourbon|foodie|eat|taste)\b/i, label: "Food and drink", arts: ["brewery", "winery", "distillery", "cooking"] },
-  { re: /\b(class|classes|lesson|lessons|learn|workshop|course)\b/i, label: "Classes and lessons", arts: ["cooking", "pottery", "dance", "yoga", "surf", "archery", "climbing"] },
+  { re: /\b(class|classes|lesson|lessons|learn|workshop|course)\b/i, label: "Classes and lessons", arts: ["cooking", "pottery", "dance", "yoga", "fitness", "martialarts", "gymnastics", "swim", "surf", "sailing", "scuba", "archery", "climbing", "tennis"] },
+  { re: /\b(culture|cultural|arts? and culture|sightseeing|history|historic|exhibits?)\b/i, label: "Culture", arts: ["museum", "theatre", "garden", "zoo", "aquarium", "tour"] },
   { re: /\b(snow|winter|ski|skiing|cold|sled|slopes)\b/i, label: "Winter", arts: ["ski", "snowmobile", "icerink", "spa"] },
   { re: /\b(girls? day|spa day|self.?care|pamper|treat yourself|unwind|de-?stress|wellness)\b/i, label: "Unwind", arts: ["spa", "yoga", "winery", "pottery", "balloon"] },
   { re: /\b(things to do|what to do|activities|fun|stuff to do|weekend|tonight|today|ideas?)\b/i, label: "Things to do", arts: [] },
 ];
+
+/** The whole query tokens that a regex match touches. "rainy" is stripped when the intent matched "rain". */
+function wholeWords(lq: string, index: number, length: number): { words: string[]; start: number; end: number } {
+  const start = lq.lastIndexOf(" ", index) + 1;
+  const stop = lq.indexOf(" ", index + Math.max(1, length) - 1);
+  const end = stop < 0 ? lq.length : stop;
+  return { words: lq.slice(start, end).split(" ").filter(Boolean), start, end };
+}
 
 export function parseIntent(q: string): Intent {
   const lq = " " + q.toLowerCase().replace(/[^a-z0-9$]+/g, " ") + " ";
@@ -193,14 +233,29 @@ export function parseIntent(q: string): Intent {
     out.maxPrice = Number(price[1]);
     out.words.push(...price[0].trim().split(/\s+/));
   }
+  // "ski" inside "jet ski" is not the winter intent: the longer alias owns that word. Nor is a place name one:
+  // "Salt Lake City" is not on the water.
+  const claimed: { start: number; end: number }[] = aliasHits(lq.replace(/\$/g, " ")).dropped;
+  const place = metroInQuery(q);
+  if (place) {
+    const needle = " " + place.words.join(" ") + " ";
+    const at = lq.replace(/\$/g, " ").indexOf(needle);
+    if (at >= 0) claimed.push({ start: at + 1, end: at + needle.length - 1 });
+  }
   for (const it of INTENTS) {
-    const m = lq.match(it.re);
-    if (!m) continue;
+    const re = new RegExp(it.re.source, "gi");
+    let fired = false;
+    for (const m of lq.matchAll(re)) {
+      const w = wholeWords(lq, m.index ?? 0, m[0].length);
+      if (claimed.some((c) => c.start <= w.start && w.end <= c.end)) continue;
+      fired = true;
+      out.words.push(...w.words);
+    }
+    if (!fired) continue;
     if (!out.label) out.label = it.label;
     for (const a of it.arts) if (!out.arts.includes(a)) out.arts.push(a);
     if (it.kids) out.kids = true;
     if (it.group) out.group = true;
-    out.words.push(...m[0].trim().split(/\s+/));
   }
   if (!out.label && out.maxPrice != null) out.label = "Under $" + out.maxPrice;
   else if (out.label && out.maxPrice != null) out.label += " under $" + out.maxPrice;
@@ -215,20 +270,27 @@ export function kidFriendly(u: Unclaimed): boolean {
   return !["skydive", "paintball", "axe"].includes(u.art);
 }
 
-const FILLER = new Set(["rental", "rentals", "rent", "near", "me", "in", "the", "a", "an", "and", "for", "with", "best", "cheap", "tour", "tours", "ideas", "idea", "stuff", "things", "to", "do", "of", "on", "at", "good", "great", "top", "nearby", "around", "here", "my", "our", "we", "i", "some", "any", "night", "day"]);
+const FILLER = new Set(["rental", "rentals", "rent", "near", "me", "in", "the", "a", "an", "and", "for", "with", "best", "cheap", "tour", "tours", "ideas", "idea", "stuff", "things", "to", "do", "of", "on", "at", "good", "great", "top", "nearby", "around", "here", "my", "our", "we", "i", "some", "any", "night", "day", "tonight", "today", "now", "this", "weekend", "open", "place", "places", "spot", "spots", "options", "local", "close", "closest", "nearest", "budget", "affordable", "inexpensive"]);
 
 const wordIn = (hay: string, w: string) => new RegExp("(^|[^a-z0-9])" + w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "(s|es)?($|[^a-z0-9])", "i").test(hay);
+
+/** Lowest priced option, or the lite record's precomputed starting price. */
+function startingPrice(u: Unclaimed): number | null {
+  const priced = u.options.map((o) => o.price).filter((n): n is number => n != null);
+  return priced.length ? Math.min(...priced) : u.from ?? null;
+}
 
 export function listingScore(u: Unclaimed, q: string): number {
   const intent = parseIntent(q);
   const intentWords = new Set(intent.words.map((w) => w.replace(/[^a-z0-9]/g, "")));
   const all = tokens(q).filter((t) => !intentWords.has(t) && !FILLER.has(t));
-  const explicitArts = queryArts(q);
+  const artHits = queryArtHits(q);
+  const explicitArts = artHits.map((h) => h.art).filter((a, i, arr) => arr.indexOf(a) === i);
   const arts = explicitArts.length ? explicitArts : intent.arts;
-  if (intent.maxPrice != null) {
-    const from = u.options.map((o) => o.price).filter((n): n is number => n != null);
-    if (!from.length || Math.min(...from) > intent.maxPrice) return 0;
-  }
+  const from = startingPrice(u);
+  if (intent.maxPrice != null && (from == null || from > intent.maxPrice)) return 0;
+  // "cheap" is a lean, not a cap: it lifts low starting prices without hiding unpriced listings.
+  const cheap = /\b(cheap|budget|affordable|inexpensive)\b/i.test(q) ? (from != null && from <= 40 ? 6 : from != null && from <= 75 ? 3 : 0) : 0;
   if (intent.kids && !kidFriendly(u)) return 0;
   if (!all.length) {
     // Pure intent, no other words: rank by fit and by how strong the listing is.
@@ -236,7 +298,8 @@ export function listingScore(u: Unclaimed, q: string): number {
     if (!base) return 0;
     if (u.cover) base += 4;
     if (u.rating && u.reviews) base += Math.min(8, Math.log10(u.reviews + 1) * 3) + (u.rating - 4) * 4;
-    if (u.options.some((o) => o.price != null)) base += 3;
+    if (from != null) base += 3;
+    base += cheap;
     if (intent.group && /group|party|private|up to \d+|people/i.test([...u.specs, ...(u.tags || [])].join(" "))) base += 4;
     return base;
   }
@@ -247,7 +310,11 @@ export function listingScore(u: Unclaimed, q: string): number {
   const tagText = [...(u.tags || []), ...u.options.map((o) => o.name)].join(" ").toLowerCase();
   // The activity the guest named is the strongest signal. A jet ski search must surface jet ski operators first.
   if (arts.length) {
-    if (arts.includes(u.art)) score += explicitArts.length ? 40 : 30;
+    if (arts.includes(u.art)) {
+      score += explicitArts.length ? 40 : 30;
+      // "sauna" names the sauna kind first even though spas also list it; "golf" is a course before a simulator.
+      if (artHits.some((h) => h.art === u.art && h.rank <= 1)) score += 8;
+    }
     // A named activity in the title counts ("Bad Axe Throwing" at a resort). A stray word in a menu tag does
     // not, when the guest typed the activity explicitly: an escape room with a "Kayak" themed room is not a kayak.
     else if (arts.some((a) => (ART_ALIASES[a] || []).some((w) => w.length >= 4 && wordIn(title, w)))) score += 24;
@@ -265,7 +332,10 @@ export function listingScore(u: Unclaimed, q: string): number {
   }
   if (arts.length && score < 24) return 0;
   if (u.rating && u.reviews) score += Math.min(6, Math.log10(u.reviews + 1) * 2);
-  return score;
+  // Among equally relevant listings, one with a photo and a price is the better card to open.
+  if (u.cover) score += 2;
+  if (from != null) score += 1;
+  return score + cheap;
 }
 
 export function searchListings(pool: Unclaimed[], q: string): Unclaimed[] {
@@ -282,12 +352,12 @@ export function searchListings(pool: Unclaimed[], q: string): Unclaimed[] {
  * not in whatever Where is set to. Longest metro name wins; the matched words come back so callers can strip them.
  */
 export function metroInQuery(q: string): { metro: Metro; words: string[] } | null {
-  const lq = " " + q.toLowerCase().replace(/[^a-z0-9]+/g, " ") + " ";
+  const lq = " " + q.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, " ") + " ";
   let best: { metro: Metro; words: string[] } | null = null;
   for (const m of METROS) {
     const full = m.name.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
     const first = full.split(" ")[0];
-    const cands = [full, ...(first.length >= 5 && first !== full ? [first] : []), m.id.replace(/-/g, " ")];
+    const cands = [full, ...(first.length >= 5 && first !== full ? [first] : []), m.id.replace(/-/g, " "), ...(METRO_ALIASES[m.id] || [])];
     for (const c of cands) {
       if (!c || !lq.includes(" " + c + " ")) continue;
       const words = c.split(" ");

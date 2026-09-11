@@ -112,6 +112,50 @@ export const METROS: Metro[] = [
   { id: "kelowna", name: "Kelowna", region: "BC", country: "CA" },
 ];
 
+/**
+ * Nicknames a guest types instead of the metro name, lowercase, letters and digits only. Only names that mean
+ * the whole metro: towns inside a metro ("clearwater") stay as search words so they rank their own operators first.
+ */
+export const METRO_ALIASES: Record<string, string[]> = {
+  tampa: ["tampa bay", "tampa st pete"],
+  miami: ["south florida", "miami dade"],
+  orlando: ["central florida"],
+  "key-west": ["florida keys", "the keys"],
+  "myrtle-beach": ["myrtle", "grand strand"],
+  "outer-banks": ["obx"],
+  nyc: ["new york city", "manhattan", "brooklyn", "the city"],
+  "cape-cod": ["the cape"],
+  philadelphia: ["philly"],
+  dc: ["washington dc", "dc", "dmv"],
+  chicago: ["chi town", "chicagoland"],
+  minneapolis: ["twin cities", "minneapolis st paul"],
+  atlanta: ["atl"],
+  "new-orleans": ["nola"],
+  austin: ["atx"],
+  dallas: ["dfw", "dallas fort worth", "metroplex"],
+  houston: ["htx"],
+  denver: ["front range", "mile high"],
+  "salt-lake": ["salt lake", "slc"],
+  "las-vegas": ["vegas"],
+  "los-angeles": ["socal", "southern california", "hollywood"],
+  "san-diego": ["sd"],
+  "san-francisco": ["sf", "bay area", "san fran", "frisco"],
+  "lake-tahoe": ["tahoe"],
+  portland: ["pdx"],
+  seattle: ["puget sound"],
+  honolulu: ["oahu", "waikiki", "hawaii"],
+  anchorage: ["alaska"],
+  toronto: ["gta", "greater toronto"],
+  niagara: ["niagara falls", "niagara on the lake", "niagara region"],
+  montreal: ["mtl"],
+  "quebec-city": ["quebec"],
+  calgary: ["yyc", "cowtown"],
+  banff: ["lake louise", "canadian rockies", "the rockies"],
+  vancouver: ["yvr", "lower mainland", "metro vancouver"],
+  victoria: ["vancouver island"],
+  kelowna: ["okanagan"],
+};
+
 export function metroById(id: string): Metro | undefined {
   return METROS.find((m) => m.id === id);
 }

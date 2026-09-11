@@ -1,4 +1,4 @@
-export type CategoryId = "all" | "air" | "water" | "motorsport" | "indoor" | "outdoor" | "play" | "food" | "wellness";
+export type CategoryId = "all" | "air" | "water" | "motorsport" | "indoor" | "outdoor" | "play" | "food" | "wellness" | "classes" | "culture";
 
 export type ArtKind =
   | "skydive"

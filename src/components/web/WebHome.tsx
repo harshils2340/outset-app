@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
-import { CATS, CATMETA } from "../../data/categories";
+import { CATS, CATMETA, inCat } from "../../data/categories";
 import { ART_LABEL } from "../../data/art";
 import { ICONS } from "../../data/icons";
 import { ALL_METRO_ID, METROS, metroById } from "../../data/metros";
@@ -7,7 +7,7 @@ import type { ArtKind, CategoryId, Unclaimed } from "../../data/types";
 import { fromPrice, getCatalog, publicRating } from "../../lib/catalog";
 import { listingFacts } from "../../lib/catalog";
 import { fmtDate, fmtReviews, money } from "../../lib/format";
-import { metroInQuery, parseIntent, searchListings } from "../../lib/search";
+import { ART_ALIASES, metroInQuery, parseIntent, searchListings } from "../../lib/search";
 import { loadListing } from "../../lib/catalogLoad";
 import { dealToday } from "../../lib/companyAgent";
 import { currentLocation, fmtDistance, nearestLocation, searchPlaces, type Place } from "../../lib/places";
@@ -22,71 +22,91 @@ import { Markup } from "../Markup";
  * and horizontal rails of photo cards with a from-price and rating. Cards open the same listing sheet as the app.
  */
 
+/**
+ * Every kind in the catalog, in the order the home mixes them: experiences first (water, air, adrenaline),
+ * then food and drink, classes, play, wellness, outdoor, culture. The home shows the strongest HOME_RAILS
+ * for the chosen place and the rest as tiles under "More kinds".
+ */
 const RAIL_KINDS: { art: ArtKind; title: string }[] = [
+  // water
   { art: "jetski", title: "Jet ski rentals" },
-  { art: "kayak", title: "Kayak and paddle" },
+  { art: "pontoon", title: "Pontoon and boat rentals" },
   { art: "fishing", title: "Fishing charters" },
   { art: "cruise", title: "Sunset cruises and sails" },
-  { art: "pontoon", title: "Pontoon and boat rentals" },
+  { art: "kayak", title: "Kayak and paddle" },
+  { art: "parasail", title: "Parasailing" },
+  { art: "scuba", title: "Scuba and snorkel" },
+  { art: "surf", title: "Surf lessons" },
+  { art: "sailing", title: "Sailing lessons and charters" },
+  { art: "rafting", title: "Whitewater rafting" },
+  // air
   { art: "skydive", title: "Tandem skydives" },
   { art: "heli", title: "Helicopter tours" },
   { art: "balloon", title: "Hot air balloon rides" },
-  { art: "parasail", title: "Parasailing" },
+  { art: "paragliding", title: "Paragliding" },
+  { art: "gliding", title: "Glider flights" },
+  // adrenaline
   { art: "kart", title: "Go-kart racing" },
+  { art: "zipline", title: "Ziplines" },
   { art: "escape", title: "Escape rooms" },
   { art: "axe", title: "Axe throwing" },
+  { art: "rage", title: "Rage rooms" },
   { art: "paintball", title: "Paintball" },
-  { art: "horse", title: "Horseback rides" },
+  { art: "range", title: "Shooting ranges" },
+  { art: "archery", title: "Archery" },
+  { art: "motorsport", title: "Motocross, ATV and off-road" },
+  { art: "climbing", title: "Climbing gyms" },
+  // food and drink
+  { art: "brewery", title: "Breweries and taprooms" },
+  { art: "winery", title: "Wineries and tastings" },
+  { art: "distillery", title: "Distilleries" },
+  { art: "cooking", title: "Cooking classes" },
+  // classes
+  { art: "pottery", title: "Pottery and paint-and-sip" },
+  { art: "dance", title: "Dance and fitness classes" },
+  { art: "martialarts", title: "Martial arts" },
+  { art: "yoga", title: "Yoga and pilates" },
+  { art: "fitness", title: "Fitness classes" },
+  { art: "gymnastics", title: "Gymnastics, cheer and parkour" },
+  { art: "swim", title: "Pools and swim lessons" },
+  // play
   { art: "bowling", title: "Bowling" },
   { art: "minigolf", title: "Mini golf" },
   { art: "arcade", title: "Arcades" },
   { art: "trampoline", title: "Trampoline parks" },
   { art: "lasertag", title: "Laser tag" },
   { art: "icerink", title: "Ice skating" },
+  { art: "karaoke", title: "Karaoke rooms" },
+  { art: "billiards", title: "Billiards, darts and shuffleboard" },
   { art: "waterpark", title: "Water parks" },
   { art: "themepark", title: "Theme parks" },
+  { art: "venue", title: "Party and event venues" },
+  // wellness
+  { art: "spa", title: "Spas and massage" },
+  { art: "sauna", title: "Sauna, bathhouse and cold plunge" },
+  // outdoor
+  { art: "golf", title: "Golf courses and ranges" },
+  { art: "discgolf", title: "Disc golf, driving ranges and topgolf" },
+  { art: "horse", title: "Horseback rides" },
+  { art: "camping", title: "Campgrounds and glamping" },
+  { art: "tennis", title: "Tennis and pickleball courts" },
+  { art: "ski", title: "Ski and snowboard" },
+  { art: "snowmobile", title: "Snowmobile tours" },
+  { art: "bike", title: "Bike and e-bike rentals" },
+  // culture
+  { art: "museum", title: "Museums and exhibits" },
+  { art: "theatre", title: "Live theatre and shows" },
+  { art: "tour", title: "Guided tours" },
   { art: "zoo", title: "Zoos and wildlife parks" },
   { art: "aquarium", title: "Aquariums" },
-  { art: "karaoke", title: "Karaoke rooms" },
-  { art: "climbing", title: "Climbing gyms" },
-  { art: "range", title: "Shooting ranges" },
-  { art: "archery", title: "Archery" },
-  { art: "golf", title: "Golf tee times" },
-  { art: "zipline", title: "Ziplines" },
-  { art: "ski", title: "Ski and snowboard" },
-  { art: "bike", title: "Bike and e-bike rentals" },
-  { art: "snowmobile", title: "Snowmobile tours" },
-  { art: "rafting", title: "Whitewater rafting" },
-  { art: "scuba", title: "Scuba and snorkel" },
-  { art: "surf", title: "Surf lessons" },
-  { art: "paragliding", title: "Paragliding" },
-  { art: "gliding", title: "Glider flights" },
-  { art: "brewery", title: "Breweries" },
-  { art: "winery", title: "Wineries" },
-  { art: "distillery", title: "Distilleries" },
-  { art: "cooking", title: "Cooking classes" },
-  { art: "spa", title: "Spas and massage" },
-  { art: "yoga", title: "Yoga" },
-  { art: "dance", title: "Dance classes" },
-  { art: "pottery", title: "Pottery and art classes" },
-  { art: "tour", title: "Food, walking and city tours" },
-  { art: "rage", title: "Rage rooms" },
-  { art: "theatre", title: "Theatre, comedy and live shows" },
-  { art: "museum", title: "Museums and galleries" },
   { art: "garden", title: "Botanical gardens and parks" },
-  { art: "camping", title: "Camping and glamping" },
-  { art: "tennis", title: "Tennis and pickleball courts" },
-  { art: "swim", title: "Pools and swim lessons" },
-  { art: "martialarts", title: "Martial arts and boxing" },
-  { art: "gymnastics", title: "Gymnastics, cheer and parkour" },
-  { art: "fitness", title: "Fitness classes" },
-  { art: "venue", title: "Party and event venues" },
-  { art: "sailing", title: "Sailing lessons and charters" },
-  { art: "discgolf", title: "Disc golf, driving ranges and topgolf" },
-  { art: "billiards", title: "Billiards, darts and shuffleboard" },
-  { art: "motorsport", title: "Motocross, ATV and off-road" },
-  { art: "sauna", title: "Sauna, bathhouse and cold plunge" },
 ];
+
+/** Rails on the home before the rest collapse into "More kinds" tiles. */
+const HOME_RAILS = 14;
+
+/** What a "More kinds" tile types into What: the first alias, so the search names exactly that kind. */
+const kindQuery = (art: ArtKind) => ART_ALIASES[art]?.[0] || art;
 
 function rankForRail(list: Unclaimed[]): Unclaimed[] {
   return list
@@ -103,7 +123,7 @@ const CompareCtx = createContext<{ ids: string[]; toggle: (id: string) => void }
 
 /** The Where menu's shortlist: the biggest cities a guest would type, not the first twelve metros in the file. */
 const POPULAR_METROS = ["toronto", "nyc", "los-angeles", "chicago", "miami", "tampa", "vancouver", "austin", "denver", "seattle", "las-vegas", "boston", "atlanta", "san-diego", "montreal", "orlando"];
-const INTENT_CHIPS = ["Birthday ideas", "With kids", "Date night", "Adrenaline", "Rainy day", "Sunset", "Under $50", "Team outing"];
+const INTENT_CHIPS = ["Date night", "With kids", "Birthday ideas", "Classes", "Golf", "Spa day", "Adrenaline", "Rainy day", "Culture", "Sunset", "Under $50", "Team outing"];
 
 type SortId = "relevance" | "distance" | "price" | "rating";
 const SORTS: { id: SortId; label: string }[] = [
@@ -352,7 +372,25 @@ export function WebHome({ onOpenApp, onOperators }: { onOpenApp: () => void; onO
     return list;
   }, [pool, sort, near]);
 
-  const rails = RAIL_KINDS.filter((r) => state.cat === "all" || CATS.find((c) => c.id === state.cat) && pool.some((u) => u.art === r.art && u.cat === state.cat));
+  // Kinds in the tab with at least one listing here, scored by how many have a photo. The strongest
+  // HOME_RAILS become rails in the mixed order above; the rest are tiles so the page is not sixty rails long.
+  const { rails, moreKinds } = useMemo(() => {
+    const count = new Map<ArtKind, { n: number; covers: number }>();
+    for (const u of pool) {
+      if (!inCat(u, state.cat)) continue;
+      const c = count.get(u.art) || { n: 0, covers: 0 };
+      c.n++;
+      if (u.cover) c.covers++;
+      count.set(u.art, c);
+    }
+    const present = RAIL_KINDS.filter((r) => count.has(r.art));
+    const score = (art: ArtKind) => { const c = count.get(art)!; return c.covers * 4 + c.n; };
+    const top = new Set(present.slice().sort((a, b) => score(b.art) - score(a.art)).slice(0, HOME_RAILS).map((r) => r.art));
+    return {
+      rails: present.filter((r) => top.has(r.art)),
+      moreKinds: present.filter((r) => !top.has(r.art)).map((r) => ({ ...r, n: count.get(r.art)!.n })),
+    };
+  }, [pool, state.cat]);
   const where = near ? near.label + (near.sub ? ", " + near.sub.split(",")[0] : "") : metro ? metro.name + ", " + metro.region : "Anywhere";
   const catName = (id: CategoryId) => CATS.find((c) => c.id === id)?.name || "All";
 
@@ -578,6 +616,21 @@ export function WebHome({ onOpenApp, onOperators }: { onOpenApp: () => void; onO
           const title = near ? `${r.title} near ${near.label}` : metro ? `${r.title} in ${metro.name}` : `Popular ${r.title.toLowerCase()}`;
           return <Rail key={r.art} title={title} items={items} onOpen={openRequest} near={near} eager={i < 2} />;
         }) : null}
+        {state.catalogReady && !sorted && !q.trim() && moreKinds.length ? (
+          <section className="wrail wkinds">
+            <div className="wrailhead">
+              <h2>More kinds{near ? ` near ${near.label}` : metro ? ` in ${metro.name}` : ""}</h2>
+            </div>
+            <div className="wkindgrid">
+              {moreKinds.map((k) => (
+                <button type="button" key={k.art} className="wkind-tile" onClick={() => setQ(kindQuery(k.art))}>
+                  <b>{k.title}</b>
+                  <small>{k.n.toLocaleString()} {k.n === 1 ? "place" : "places"}</small>
+                </button>
+              ))}
+            </div>
+          </section>
+        ) : null}
         {state.catalogReady && !sorted && !q.trim() && !rails.length ? (
           <div className="wempty">
             <b>Nothing in {catName(state.cat)} here yet.</b>
