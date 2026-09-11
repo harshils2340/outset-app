@@ -92,9 +92,9 @@ Schedule (Toronto time, one job at a time, each with a hard timeout, a job never
 | --- | --- | --- |
 | every 30 min | collect | `enrich --collect-all`, stores finished OpenAI batches (already paid for). Needs `OPENAI_API_KEY`. |
 | 22:00 | discover | `discover --wave=3 --concurrency=2`, OpenStreetMap, free |
-| 23:00 | structure | `structure 5000 8` |
-| 00:00 | photos | `photos 5000 8` |
-| 01:00 | hours | `scripts/hours-crawl.mts 5000 10` |
+| 23:00 | structure | `structure 5000 4` |
+| 00:00 | photos | `photos 5000 4` |
+| 01:00 | hours | `scripts/hours-crawl.mts 5000 6` |
 | 02:00 | promo | `scripts/promo-crawl.mts --limit=5000` |
 | 03:20 | purge-names | `scripts/purge-bad-names.mts`, deletes stored images the crawler now refuses by name; no network |
 | 03:30 | screen | `scripts/screen-covers.mts`, pixel screen of covers and every gallery photo |
