@@ -447,6 +447,13 @@ const RESELLER = /\b(park (child|adult|hopper)|day hopper|\bhopper\b|park ticket
  */
 const METRO_KM = 80;
 const METRO_KM_KEEP = 100;
+/**
+ * Metros whose market is wider than 80 km from the pin. Detroit covers Windsor and Ann Arbor, Niagara covers Buffalo,
+ * St. Catharines and Hamilton on both sides of the border; the flat radius cut each by a third.
+ */
+const METRO_REACH: Record<string, number> = { detroit: 130, niagara: 130 };
+const reachOf = (id: string) => METRO_REACH[id] || METRO_KM;
+const keepOf = (id: string) => Math.max(METRO_KM_KEEP, METRO_REACH[id] || 0);
 function kmBetween(lat1: number, lon1: number, lat2: number, lon2: number): number {
   const d = Math.PI / 180;
   const a = Math.sin(((lat2 - lat1) * d) / 2) ** 2 + Math.cos(lat1 * d) * Math.cos(lat2 * d) * Math.sin(((lon2 - lon1) * d) / 2) ** 2;
@@ -461,10 +468,10 @@ function metroFor(r: { metro_id: string | null; region: string | null; city: str
     const known = r.city && region ? CITIES.find((c) => c.region === region && c.name.toLowerCase() === r.city!.toLowerCase()) : null;
     const pinFitsAddress = !known || kmBetween(r.lat, r.lon, known.lat, known.lon) <= METRO_KM;
     if (!pinFitsAddress) return known && stored && kmBetween(known.lat, known.lon, stored.lat, stored.lon) <= METRO_KM ? stored.id : "";
-    const near = nearestMetro(r.lat, r.lon, METRO_KM);
-    if (near) return near.id;
+    const near = nearestMetro(r.lat, r.lon, Math.max(...Object.values(METRO_REACH), METRO_KM));
+    if (near && kmBetween(r.lat, r.lon, near.lat, near.lon) <= reachOf(near.id)) return near.id;
     // Outer suburbs (Newport, RI under Boston at 87 km) stay; Montreal, VT at 119 km from Montreal, QC does not.
-    if (stored && kmBetween(r.lat, r.lon, stored.lat, stored.lon) <= METRO_KM_KEEP) return stored.id;
+    if (stored && kmBetween(r.lat, r.lon, stored.lat, stored.lon) <= keepOf(stored.id)) return stored.id;
     return "";
   }
   // No pin: trust discovery unless the address state is clearly somewhere else (a metro of that state exists, none near this one).
