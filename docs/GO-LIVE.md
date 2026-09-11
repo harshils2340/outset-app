@@ -89,7 +89,8 @@ Schedule (Toronto time, one job at a time, each with a hard timeout, a job never
 | 00:00 | photos | `photos 5000 8` |
 | 01:00 | hours | `scripts/hours-crawl.mts 5000 10` |
 | 02:00 | promo | `scripts/promo-crawl.mts --limit=5000` |
-| 03:30 | screen | `scripts/screen-covers.mts` |
+| 03:20 | purge-names | `scripts/purge-bad-names.mts`, deletes stored images the crawler now refuses by name; no network |
+| 03:30 | screen | `scripts/screen-covers.mts`, pixel screen of covers and every gallery photo |
 | 04:00 | owners | `owners 2000 8` |
 | 05:00 | sync | read-only `sync` (no seed ingest), then commit and push `public/catalog.json`, `public/catalog-lite.json`, `public/o/`, `public/p/`, `public/sitemap.xml`, `src/data/contacts.ts`. `backend/data` is never pushed. |
 
