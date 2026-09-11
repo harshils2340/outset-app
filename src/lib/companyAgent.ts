@@ -258,7 +258,7 @@ export function companyReply(ctx: CompanyContext, question: string): string {
 
   // "Are you open on Sunday" is an hours question, not a slot request.
   if (AVAIL.test(q) && !OPEN_NOW.test(q)) parts.push((() => {
-    return "I cannot see or hold slots. Pick a date and time on the listing and you get an instant confirmation.";
+    return "I cannot see or hold slots. Pick a date and time on the listing and the operator confirms by text or email.";
   })());
 
   if (OPEN_NOW.test(q)) parts.push(openNowAnswer(ctx, q));
