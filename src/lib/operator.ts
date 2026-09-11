@@ -584,7 +584,7 @@ export function setupChecks(p: OperatorProfile): { id: string; label: string; do
     { id: "about", label: "Write a short description", done: p.blurb.trim().length >= 60, page: "listing" },
     { id: "contact", label: "Add a phone number and address", done: !!p.phone && !!p.address, page: "listing" },
     { id: "policy", label: "State your cancellation policy", done: p.policy.length > 0, page: "listing" },
-    { id: "payout", label: "Add a payout method", done: !!p.payout, page: "payouts" },
+    { id: "payout", label: "Connect your bank for payouts", done: !!p.payout, page: "payouts" },
   ];
 }
 

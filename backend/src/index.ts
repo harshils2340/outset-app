@@ -14,6 +14,7 @@ import { discoverSearch } from "./discover/searchapi.ts";
 import { discoverWeb } from "./discover/websearch.ts";
 import { discoverAi } from "./discover/aisearch.ts";
 import { sendOutreach } from "./outreach/send.ts";
+import { recordUnsub } from "./lib/unsub.ts";
 import { ownersCsv, ownersPending } from "./enrich/owners.ts";
 import { readPendingStructures, readSiteStructure } from "./enrich/structure.ts";
 import { socialPending } from "./enrich/social.ts";
@@ -316,8 +317,26 @@ if (cmd === "outreach-send") {
   const lArg = process.argv.find((a) => a.startsWith("--limit="));
   const tArg = process.argv.find((a) => a.startsWith("--to="));
   const mArg = process.argv.find((a) => a.startsWith("--metro="));
-  const r = await sendOutreach({ limit: lArg ? Number(lArg.split("=")[1]) : 50, dry: process.argv.includes("--dry"), to: tArg?.split("=")[1], metro: mArg?.split("=")[1] });
+  const cArg = process.argv.find((a) => a.startsWith("--country="));
+  const r = await sendOutreach({
+    limit: lArg ? Number(lArg.split("=")[1]) : 50,
+    dry: process.argv.includes("--dry"),
+    to: tArg?.split("=")[1],
+    metro: mArg?.split("=")[1],
+    country: cArg?.split("=")[1],
+  });
   console.log("Outreach: " + JSON.stringify(r));
+  process.exit(0);
+}
+
+if (cmd === "unsub") {
+  const email = process.argv.find((a) => a.startsWith("--email="))?.split("=")[1];
+  if (!email) {
+    console.error("Usage: npx tsx src/index.ts unsub --email=owner@shop.com");
+    process.exit(1);
+  }
+  await recordUnsub(email);
+  console.log("Unsubscribed " + email.trim().toLowerCase());
   process.exit(0);
 }
 

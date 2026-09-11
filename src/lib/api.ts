@@ -222,3 +222,43 @@ export async function decideBooking(listing: string, code: string, status: Remot
   const r = await call(`/bookings/${encodeURIComponent(listing)}/${encodeURIComponent(code)}`, { method: "PATCH", headers: authHeaders(listing), body: JSON.stringify({ status, note }) });
   return r.ok;
 }
+
+/* ---------- photo uploads ---------- */
+
+/** Resize in the browser, send JPEG bytes, get back a URL on the site. */
+export async function uploadPhoto(listing: string, file: File): Promise<{ ok: boolean; url?: string; error?: string }> {
+  if (!API_URL) return { ok: false, error: "Uploads switch on once the API is connected." };
+  const data = await new Promise<string>((resolve, reject) => {
+    const img = new Image();
+    const src = URL.createObjectURL(file);
+    img.onload = () => {
+      const max = 1600;
+      const scale = Math.min(1, max / Math.max(img.width, img.height));
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.round(img.width * scale);
+      canvas.height = Math.round(img.height * scale);
+      canvas.getContext("2d")!.drawImage(img, 0, 0, canvas.width, canvas.height);
+      URL.revokeObjectURL(src);
+      resolve(canvas.toDataURL("image/jpeg", 0.86));
+    };
+    img.onerror = () => reject(new Error("That file is not an image."));
+    img.src = src;
+  }).catch((e: Error) => { throw e; });
+  const r = await call<{ ok: boolean; url: string }>(`/uploads/${encodeURIComponent(listing)}`, { method: "POST", headers: authHeaders(listing), body: JSON.stringify({ data, type: "image/jpeg" }), timeout: 45000 });
+  return { ok: r.ok, url: r.data?.url, error: r.error };
+}
+
+/* ---------- payouts ---------- */
+
+export type PayoutStatus = { available: boolean; connected?: boolean; enabled?: boolean; detailsSubmitted?: boolean };
+
+export async function payoutStatus(listing: string): Promise<PayoutStatus> {
+  const r = await call<PayoutStatus>(`/payouts/${encodeURIComponent(listing)}`, { headers: authHeaders(listing), timeout: 15000 });
+  return r.ok && r.data ? r.data : { available: false };
+}
+
+/** Sends the operator to Stripe's hosted onboarding; they come back to the Payouts page. */
+export async function connectPayouts(listing: string): Promise<{ url?: string; error?: string }> {
+  const r = await call<{ url: string }>(`/payouts/${encodeURIComponent(listing)}/connect`, { method: "POST", headers: authHeaders(listing), timeout: 25000 });
+  return { url: r.data?.url, error: r.error };
+}

@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
+import { hasApi, uploadPhoto } from "../../lib/api";
 import { CATS } from "../../data/categories";
 import type { CategoryId } from "../../data/types";
 import { Photo } from "../art/Photo";
@@ -14,6 +15,26 @@ export function OpListing() {
   const [newPhoto, setNewPhoto] = useState("");
   const [newPolicy, setNewPolicy] = useState("");
 
+  const fileRef = useRef<HTMLInputElement | null>(null);
+  const [uploading, setUploading] = useState(0);
+  const onFiles = async (files: FileList | null) => {
+    if (!files?.length) return;
+    const list = Array.from(files).slice(0, 12);
+    setUploading(list.length);
+    const added: string[] = [];
+    for (const f of list) {
+      try {
+        const r = await uploadPhoto(p.id, f);
+        if (r.ok && r.url) added.push(r.url);
+        else toast(r.error || "Upload failed");
+      } catch (e) {
+        toast((e as Error).message);
+      }
+      setUploading((n) => n - 1);
+    }
+    if (added.length) set((cur) => ({ ...cur, photos: [...cur.photos.filter((x) => !added.includes(x)), ...added], cover: cur.cover || added[0] }));
+    if (fileRef.current) fileRef.current.value = "";
+  };
   const addPhoto = () => {
     const url = newPhoto.trim();
     if (!/^https?:\/\//i.test(url)) return;
@@ -89,7 +110,14 @@ export function OpListing() {
 
         <section className="odcard">
           <div className="odcardhead"><h3>Photos</h3><small className="odmuted">{p.photos.length} {p.photos.length === 1 ? "photo" : "photos"}</small></div>
-          <p className="odmuted">Copied from your website. Pick the cover, remove any that don't sell the trip, or paste a link to add one. Uploads come with the app.</p>
+          <p className="odmuted">Copied from your website. Pick the cover, remove any that don't sell the trip, and add your own from your phone or computer.</p>
+          <div className="odupload">
+            <input ref={fileRef} type="file" accept="image/*" multiple hidden onChange={(e) => void onFiles(e.target.files)} />
+            <button type="button" className="cta" disabled={!hasApi() || uploading > 0} onClick={() => fileRef.current?.click()}>
+              <Markup html={OD_ICONS.plus} /> {uploading > 0 ? `Uploading ${uploading}…` : "Upload photos"}
+            </button>
+            {!hasApi() ? <small className="odfine">Uploads switch on once the API is connected. Paste a link below meanwhile.</small> : <small className="odfine">JPEG or PNG. We resize them for you.</small>}
+          </div>
           <div className="odphotos">
             {p.photos.map((src) => (
               <div className={"odphoto" + (src === p.cover ? " cover" : "")} key={src}>

@@ -13,7 +13,10 @@ import { cors } from "hono/cors";
 import { profiles } from "./profiles.ts";
 import { auth } from "./auth.ts";
 import { claims } from "./claims.ts";
+import { unsub } from "./unsub.ts";
 import { bookings } from "./bookings.ts";
+import { uploads } from "./uploads.ts";
+import { payouts } from "./payouts.ts";
 import { stripeEnabled } from "../lib/stripe.ts";
 
 export const app = new Hono();
@@ -31,7 +34,10 @@ app.get("/config", (c) => c.json({ payments: stripeEnabled(), mail: !!process.en
 app.route("/", auth);
 app.route("/", profiles);
 app.route("/", claims);
+app.route("/", unsub);
 app.route("/", bookings);
+app.route("/", uploads);
+app.route("/", payouts);
 
 app.get("/health", (c) => c.json({ ok: true, service: "outset-backend" }));
 

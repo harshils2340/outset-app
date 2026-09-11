@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { connectPayouts, hasApi, payoutStatus, type PayoutStatus } from "../../lib/api";
 import { dateKey, startOfToday } from "../../lib/dates";
 import { money } from "../../lib/format";
 import { bookingTotal, deleteProfile, relDay } from "../../lib/operator";
@@ -9,16 +10,29 @@ const FEE = 0.1;
 
 /** Payouts: earnings from completed bookings, the next payout, and a payout method. Numbers come from the bookings list. */
 export function OpPayouts() {
-  const { p, bookings, set, toast } = useOp();
-  const [bank, setBank] = useState(p.payout?.bank || "");
-  const [name, setName] = useState(p.payout?.name || p.ownerName);
-  const [acct, setAcct] = useState("");
-  const [schedule, setSchedule] = useState<"daily" | "weekly">(p.payout?.schedule || "weekly");
+  const { p, bookings, toast } = useOp();
   const todayKey = dateKey(startOfToday());
-  const done = bookings.filter((b) => b.status === "completed");
+  // Money only from real bookings; sample rows never count.
+  const real = bookings.filter((b) => b.source !== "sample");
+  const done = real.filter((b) => b.status === "completed");
   const gross = done.reduce((n, b) => n + bookingTotal(b), 0);
-  const upcoming = bookings.filter((b) => b.status === "accepted" && b.date >= todayKey).reduce((n, b) => n + bookingTotal(b), 0);
+  const upcoming = real.filter((b) => b.status === "accepted" && b.date >= todayKey).reduce((n, b) => n + bookingTotal(b), 0);
   const pending = done.filter((b) => b.date >= dateKey(new Date(Date.now() - 7 * 86400000))).reduce((n, b) => n + bookingTotal(b), 0);
+  const [status, setStatus] = useState<PayoutStatus | null>(null);
+  const [busy, setBusy] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    if (!hasApi()) { setStatus({ available: false }); return; }
+    void payoutStatus(p.id).then((s) => { if (alive) setStatus(s); });
+    return () => { alive = false; };
+  }, [p.id]);
+  const connect = async () => {
+    setBusy(true);
+    const r = await connectPayouts(p.id);
+    setBusy(false);
+    if (r.url) window.location.assign(r.url);
+    else toast(r.error || "Could not open Stripe. Try again.");
+  };
 
   return (
     <div className="odpage">
@@ -28,31 +42,27 @@ export function OpPayouts() {
         <div><b>{money(upcoming)}</b><small>Confirmed, not yet completed</small></div>
         <div><b>{Math.round(FEE * 100)}%</b><small>Outset fee per booking</small></div>
       </div>
-      <p className="odmuted">Guests pay when they book. You're paid {p.payout?.schedule === "daily" ? "every day" : "every Monday"} for bookings completed since the last payout. Card processing and payouts aren't switched on yet, so these totals are from your bookings list.</p>
+      <p className="odmuted">Guests pay by card when they book. The money is held until you accept, and paid out to your bank every Monday for bookings completed that week. Nothing is added to the guest's price.</p>
 
       <div className="odcols">
         <section className="odcard">
-          <div className="odcardhead"><h3>Payout method</h3>{p.payout ? <span className="odtag live">Added</span> : null}</div>
-          {p.payout ? (
-            <div className="odline">
-              <span className="meta"><b>{p.payout.bank} ····{p.payout.last4}</b><small>{p.payout.name} · {p.payout.schedule === "daily" ? "Daily" : "Weekly"} payouts</small></span>
-              <button type="button" className="odlink" onClick={() => set({ payout: null })}>Change</button>
-            </div>
-          ) : (
+          <div className="odcardhead"><h3>Bank account</h3>{status?.enabled ? <span className="odtag live">Payouts on</span> : status?.connected ? <span className="odtag">Finish setup</span> : null}</div>
+          {status === null ? <p className="odmuted">Checking…</p> : null}
+          {status && !status.available ? (
+            <p className="odmuted">Card payments and payouts switch on shortly. Until then guests pay you on site, and there is nothing to set up here.</p>
+          ) : null}
+          {status?.available && !status.enabled ? (
             <>
-              <label className="odfield"><span>Bank name</span><input value={bank} onChange={(e) => setBank(e.target.value)} placeholder="Chase, Wells Fargo, RBC" /></label>
-              <label className="odfield"><span>Account holder</span><input value={name} onChange={(e) => setName(e.target.value)} /></label>
-              <label className="odfield"><span>Account number</span><input inputMode="numeric" value={acct} onChange={(e) => setAcct(e.target.value.replace(/\D/g, ""))} placeholder="Only the last 4 digits are kept" /></label>
-              <label className="odfield"><span>Payout schedule</span>
-                <select value={schedule} onChange={(e) => setSchedule(e.target.value as "daily" | "weekly")}>
-                  <option value="weekly">Weekly, every Monday</option>
-                  <option value="daily">Daily</option>
-                </select>
-              </label>
-              <button type="button" className="cta" disabled={!bank.trim() || !name.trim() || acct.length < 4} onClick={() => { set({ payout: { bank: bank.trim(), name: name.trim(), last4: acct.slice(-4), schedule } }); setAcct(""); toast("Payout method saved"); }}>Save payout method</button>
-              <p className="odfine">Demo only. We store the bank name and last four digits on this device, nothing else.</p>
+              <p className="odmuted">{status.connected ? "Stripe still needs a detail or two before payouts can start." : "Payouts run through Stripe, the same processor Shopify and Lyft use. It takes about three minutes: your name, business details and the bank account to pay into. We never see your account number."}</p>
+              <button type="button" className="cta" disabled={busy} onClick={connect}>{busy ? "Opening Stripe…" : status.connected ? "Finish setup with Stripe" : "Set up payouts with Stripe"}</button>
             </>
-          )}
+          ) : null}
+          {status?.enabled ? (
+            <>
+              <p className="odmuted">Your bank account is connected. Payouts arrive every Monday.</p>
+              <button type="button" className="odlink" disabled={busy} onClick={connect}>Update bank details</button>
+            </>
+          ) : null}
         </section>
 
         <section className="odcard">
@@ -60,7 +70,7 @@ export function OpPayouts() {
           {done.length === 0 ? <p className="odmuted">Completed bookings show here with what you earned on each.</p> : null}
           {done.slice().reverse().slice(0, 8).map((b) => (
             <div className="odline" key={b.id}>
-              <span className="meta"><b>{b.guest}{b.source === "sample" ? <span className="odtag">Sample</span> : null}</b><small>{relDay(b.date)} · {b.service}</small></span>
+              <span className="meta"><b>{b.guest}</b><small>{relDay(b.date)} · {b.service}</small></span>
               <span className="odamt"><b>{money(Math.round(bookingTotal(b) * (1 - FEE)))}</b><small>of {money(bookingTotal(b))}</small></span>
             </div>
           ))}

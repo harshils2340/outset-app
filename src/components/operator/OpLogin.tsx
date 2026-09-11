@@ -81,7 +81,8 @@ export function OpLogin({ claimId, claimToken, compact, onEnter, onBack }: { cla
         onEnter(p);
         return;
       }
-      if (++tries < 24 && alive) setTimeout(tick, 500);
+      // The catalog and the detail file can take a while on a slow connection; keep checking for a full minute.
+      if (++tries < 120 && alive) setTimeout(tick, 500);
       else if (alive) setLinkState("bad");
     };
     tick();

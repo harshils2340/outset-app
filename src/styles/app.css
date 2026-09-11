@@ -1196,3 +1196,6 @@ video.photo{background:#000;}
 .reqdeals .wdealtext{font-size:14px;}
 .wbadge.deal{background:var(--accent);color:#fff;}
 .wbadge.deal + .wbadge{top:44px;}
+
+.odupload{display:flex;align-items:center;gap:12px;margin:8px 0 14px;flex-wrap:wrap;}
+.odupload .odfine{margin:0;}

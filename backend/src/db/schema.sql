@@ -112,6 +112,11 @@ CREATE TABLE IF NOT EXISTS outreach_drafts (
   created_at TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS mail_unsub (
+  email_hash TEXT PRIMARY KEY,
+  at TEXT NOT NULL
+);
+
 CREATE INDEX IF NOT EXISTS idx_operators_metro ON operators(metro_id);
 CREATE INDEX IF NOT EXISTS idx_operators_category ON operators(category_id);
 CREATE INDEX IF NOT EXISTS idx_offerings_op ON offerings(operator_id);
