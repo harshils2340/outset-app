@@ -283,7 +283,7 @@ function runChild(job: Job, args: string[], timeoutMs: number): Promise<{ code: 
   });
 }
 
-const PUSH_PATHS = ["public/catalog.json", "public/catalog-lite.json", "public/o", "public/p", "public/sitemap.xml", "src/data/contacts.ts"];
+const PUSH_PATHS = ["public/catalog.json", "public/claim-index.json", "public/catalog-lite.json", "public/o", "public/p", "public/sitemap.xml", "src/data/contacts.ts"];
 
 /** Read-only sync (never --ingest), then commit the generated catalog files and push. backend/data is never added. */
 async function runSyncAndPush(job: Job): Promise<{ code: number | null; lastLine: string }> {

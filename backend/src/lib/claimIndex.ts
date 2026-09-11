@@ -8,13 +8,14 @@ import { readJson } from "./store.ts";
 /**
  * Who may claim a listing: the email published on the operator's own website, or any address at the
  * website's own domain. The API host has no operator database, so `npm run sync` (or `npm run claim-index`)
- * writes backend/data/claim-index.json from SQLite: per catalog id, a hash of the on-file email (never the
+ * writes public/claim-index.json from SQLite: per catalog id, a hash of the on-file email (never the
  * address itself), the operator's own domains, and a masked hint the claim screen can show. Ids missing from
  * the index fall back to the public detail file, which still carries the domain.
  */
 
 const here = dirname(fileURLToPath(import.meta.url));
-const indexPath = join(here, "../../data/claim-index.json");
+// Lives under public/ so the nightly cloud sync commits it with the catalog and the API host reads a fresh copy after each deploy.
+const indexPath = join(here, "../../../public/claim-index.json");
 
 type Entry = { k?: string; d: string[]; h?: string };
 type Index = Record<string, Entry>;

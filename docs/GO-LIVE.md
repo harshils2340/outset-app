@@ -7,7 +7,8 @@ Everything below is built, tested end to end locally, and switches on the moment
 2. Set these environment variables on the service:
    - `CLAIM_SECRET`: the contents of `backend/data/claim-secret.txt` on the Mac (same secret the emailed claim links were signed with; if you rotate it, regenerate drafts).
    - `GITHUB_TOKEN`: a fine-grained GitHub token, repository `outset-app`, permission Contents: read and write. Profiles and bookings are stored as JSON in the repo and the site rebuilds on each write.
-   - `RESEND_API_KEY`: from resend.com (free tier covers 3,000 emails a month). Until `onoutset.com` is verified in Resend, keep `MAIL_FROM` as `Outset <onboarding@resend.dev>`; after verifying, set `MAIL_FROM` to `Outset <hello@onoutset.com>`.
+   - `RESEND_API_KEY`: from resend.com (free tier covers 3,000 emails a month). Until `onoutset.com` is verified in Resend, keep `MAIL_FROM` as `Outset <onboarding@resend.dev>` (samples to yourself only). After verifying, set `MAIL_FROM` to `Outset <hello@onoutset.com>`.
+   - `MAIL_POSTAL`: a real street address printed at the bottom of claim emails. Required before any send to businesses.
 3. Copy the service URL (for example `https://outset-api.onrender.com`).
 
 ## 1b. Card payments (Stripe)
@@ -22,18 +23,37 @@ Set `ADMIN_KEY` on Render to any long random string. The internal routes (raw op
 ## 2. Point the site at the API
 GitHub repo → Settings → Secrets and variables → Actions → Variables → new variable `VITE_API_URL` = the Render URL. Push anything (or rerun the "Deploy site" workflow). The site then signs in, saves and books through the API.
 
-## 3. Outreach
-On the Mac, with `RESEND_API_KEY` in `backend/.env`:
+## 3. Mail DNS (do this before any send to a business)
+
+Resend will 403 every address except your own until `onoutset.com` is verified.
+
+1. resend.com → Domains → Add `onoutset.com`. Copy the DKIM CNAME they show.
+2. Namecheap → Domain List → onoutset.com → Advanced DNS. Add:
+
+   | Type | Host | Value |
+   | --- | --- | --- |
+   | TXT | `@` | `v=spf1 include:resend.com include:spf.efwd.registrar-servers.com ~all` |
+   | CNAME | (the host Resend shows, often `resend._domainkey`) | (the value Resend shows) |
+   | TXT | `_dmarc` | `v=DMARC1; p=none; rua=mailto:hello@onoutset.com` |
+
+   Edit the existing SPF TXT. Do not add a second SPF. Keep the Namecheap forwarding include so `hello@` still reaches Gmail.
+3. In Resend, wait until the domain is Verified.
+4. Render → outset-api → Environment: set `MAIL_FROM` to `Outset <hello@onoutset.com>` and `MAIL_POSTAL` to your real street address. Same two keys in `backend/.env` on the Mac.
+5. Each claim email has a visible unsubscribe link and a one-click header. Clicks are stored as hashes in `public/mail/unsub.json`. If someone emails `hello@` instead, run `npx tsx src/index.ts unsub --email=their@address`.
+
+## 3b. Outreach
+On the Mac, with `RESEND_API_KEY`, a verified `MAIL_FROM`, and `MAIL_POSTAL` in `backend/.env`:
 ```
 cd backend
 npx tsx src/index.ts outreach-send --to=harshils2340@gmail.com   # one sample to yourself
 npx tsx src/index.ts outreach-send --dry --limit=50               # preview
 npx tsx src/index.ts outreach-send --limit=200                    # send, marks rows sent, never twice to one address
+npx tsx src/index.ts outreach-send --country=US --limit=50        # US only
 ```
-Each email carries a signed link that opens the operator's dashboard with no code. 6,263 drafts have an email address today.
+Sends to businesses are blocked until `MAIL_FROM` uses `@onoutset.com` and `MAIL_POSTAL` is set. Each email carries a signed claim link and an unsubscribe link. Unsubscribed addresses are skipped. 6,263 drafts have an email address today.
 
 ## 4. Claiming from the site
-On `/operators`, an owner searches their business, enters their name, work email and mobile, and asks for the claim link. The API (`POST /claims/:id/request`) emails it only when the address matches the email found on the operator's own website, or lives at the operator's own domain. Anyone else is told which address to use. The check reads `backend/data/claim-index.json`, written by `npm run sync` on the Mac from SQLite, so run a sync and push after the crawl grows or emails change. The link opens the dashboard with no code, carries the typed name and phone, and records the claim so "Email me a sign-in code" works afterwards.
+On `/operators`, an owner searches their business, enters their name, work email and mobile, and asks for the claim link. The API (`POST /claims/:id/request`) emails it only when the address matches the email found on the operator's own website, or lives at the operator's own domain. Anyone else is told which address to use. The check reads `public/claim-index.json`, written by `npm run sync` (on the Mac or by the cloud pipeline, which commits it with the catalog), so it stays current with each sync. The link opens the dashboard with no code, carries the typed name and phone, and records the claim so "Email me a sign-in code" works afterwards.
 
 ## What is verified
 - Claim link → dashboard, edits saved to the API, same link resumes on another device (tested).
@@ -47,7 +67,7 @@ The crawls, cover screen, batch collection and the nightly catalog sync run on R
 
 1. **Approve the worker.** Render → Blueprints → `outset-app` → Sync. Approve `outset-pipeline` and its disk `outset-data`.
 2. **Paste the env vars** on `outset-pipeline` (the ones with a value already are set by the blueprint):
-   - `GITHUB_TOKEN`: fine-grained token, repository `outset-app`, Contents: read and write (same kind as on `outset-api`). Used to clone, pull and push the catalog.
+   - `GITHUB_TOKEN`: fine-grained token on two repositories: `outset-app` with Contents: read and write (clone, pull, push the catalog) and the private `outset-data` with Contents: read (the seed download in step 3).
    - `GIT_AUTHOR_NAME` / `GIT_AUTHOR_EMAIL`: the name on the nightly "Catalog: nightly pipeline sync" commits (for example `Outset pipeline` / `hello@onoutset.com`).
    - `OPENAI_API_KEY`: only used to **collect** extraction batches that were submitted from the Mac. The cloud never submits a batch and never runs paid discovery. Leave empty and the collect job skips itself.
    - `DB_SEED_URL`: see step 3.
@@ -56,7 +76,7 @@ The crawls, cover screen, batch collection and the nightly catalog sync run on R
    ```
    cd backend && npx tsx scripts/seed-db.mts
    ```
-   It writes a compact copy to `/tmp/outset-seed.db` and prints the two `gh release` commands that publish it as a release asset and the `DB_SEED_URL` to paste. On first boot the worker streams it to `/var/data/outset.db` (refuses anything under 100 MB) and switches it to WAL. It never downloads again while the file exists.
+   It writes a compact copy to `/tmp/outset-seed.db` and prints the `gh release` commands that publish it as a release asset on the **private** repo `harshils2340/outset-data` (the database carries operator emails, so it never goes on the public app repo). The `DB_SEED_URL` is the asset's API URL, `https://api.github.com/repos/harshils2340/outset-data/releases/assets/<id>`, which the worker fetches with `GITHUB_TOKEN`. On first boot the worker streams it to `/var/data/outset.db` (refuses anything under 100 MB) and switches it to WAL. It never downloads again while the file exists. The current seed (10 September 2026, 356 MB) is already published; its URL is `https://api.github.com/repos/harshils2340/outset-data/releases/assets/556385446`.
 4. **From then on the cloud database is canonical.** The Mac copy is a read replica for experiments; do not push catalog files from the Mac any more, the worker commits them at 05:00 Toronto time and the site rebuilds from that push.
 
 Schedule (Toronto time, one job at a time, each with a hard timeout, a job never overlaps itself; a missed time is caught up within six hours of a restart):
