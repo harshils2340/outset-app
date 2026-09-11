@@ -480,7 +480,10 @@ export function toCatalog(p: OperatorProfile, base: Unclaimed): Partial<Unclaime
     if (!s.live || !s.variants.length) continue;
     const variants = s.variants.map((v) => {
       options.push({ name: s.name, detail: v.label, price: v.price, per: "/" + v.per });
-      return { label: v.label, price: v.price, per: "/" + v.per, optionIdx: options.length - 1 };
+      return {
+    // A claimed shop that switched Instant Book on is the only kind a guest sees as Instant.
+    instant: p.instantBook,
+label: v.label, price: v.price, per: "/" + v.per, optionIdx: options.length - 1 };
     });
     services.push({ name: s.name, desc: s.desc || null, variants });
   }

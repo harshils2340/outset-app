@@ -258,7 +258,7 @@ function reducer(state: AppState, action: Action): AppState {
         bookings: [booking, ...state.bookings],
         sheet: null,
         screen: "confirm",
-        toast: "Confirmed - " + booking.code,
+        toast: (u.claimed && u.instant ? "Confirmed - " : "Request sent - ") + booking.code,
       };
     }
     case "back": {

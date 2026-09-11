@@ -195,6 +195,10 @@ export type Unclaimed = {
   detail?: string;
   /** SHA-256 of the claim token in the operator's email link. Lets the static site verify a claim link. */
   claimKey?: string;
+  /** The operator claimed this listing and runs it through Outset; only then may a guest see "Instant". */
+  claimed?: boolean;
+  /** Claimed operators can switch instant confirmation on; unclaimed listings are always requests. */
+  instant?: boolean;
   /** Compact week from published hours on lite records: Sunday first, [open, close] in minutes, [0,0] closed, null unknown. */
   hrs?: ([number, number] | null)[];
   /** Card facts carried on lite records: duration as the operator wrote it, and a free-cancellation line when their policy says so. */

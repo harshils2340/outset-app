@@ -109,8 +109,9 @@ const HOME_RAILS = 14;
 const kindQuery = (art: ArtKind) => ART_ALIASES[art]?.[0] || art;
 
 function rankForRail(list: Unclaimed[]): Unclaimed[] {
+  // A rail is photos. Places without one wait in search results until the crawl or the operator adds a picture.
   return list
-    .slice()
+    .filter((u) => !!u.cover)
     .sort((a, b) => {
       const pa = (a.cover ? 3 : 0) + (fromPrice(a) != null ? 2 : 0) + Math.min(2, Math.log10((a.reviews || 0) + 1));
       const pb = (b.cover ? 3 : 0) + (fromPrice(b) != null ? 2 : 0) + Math.min(2, Math.log10((b.reviews || 0) + 1));

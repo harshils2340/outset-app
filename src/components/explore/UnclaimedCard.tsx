@@ -19,10 +19,12 @@ export function UnclaimedCard({ item, compact }: { item: Unclaimed; compact?: bo
     <button className={(compact ? "mini" : "card") + " unclaimed"} onClick={() => openRequest(item.id)}>
       <div className="art">
         <Photo src={item.cover} video={item.video} kind={item.art} id={item.id + (compact ? "r" : "")} alt={item.title} />
-        <span className="instant">
-          <Markup html={ICONS.bolt} />
-          Instant
-        </span>
+        {item.claimed && item.instant ? (
+          <span className="instant">
+            <Markup html={ICONS.bolt} />
+            Instant
+          </span>
+        ) : null}
         {score ? (
           <span className="rating">
             <Markup html={ICONS.star} />
@@ -54,7 +56,7 @@ export function UnclaimedCard({ item, compact }: { item: Unclaimed; compact?: bo
         <div className="foot">
           <div className="price">
             {from == null ? (
-              <span>Instant Book</span>
+              <span>{item.claimed && item.instant ? "Instant Book" : "Request to book"}</span>
             ) : (
               <>
                 <span>From </span>

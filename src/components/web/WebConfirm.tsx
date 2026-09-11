@@ -23,7 +23,8 @@ export function WebConfirm({ booking, onDone, onOpen }: { booking: Booking; onDo
           <div className="confmark">
             <Markup html={ICONS.check} />
           </div>
-          <h1>You're booked{booking.guest?.name ? ", " + booking.guest.name.split(" ")[0] : ""}.</h1>
+          <h1>{item.claimed && item.instant ? "You're booked" : "Request sent"}{booking.guest?.name ? ", " + booking.guest.name.split(" ")[0] : ""}.</h1>
+          {!(item.claimed && item.instant) ? <p className="wconfirmsub">{item.title} confirms by text or email, usually within the day. Nothing is charged until they do.</p> : null}
           <p className="wconfirmsub">
             {when} · {fmtTime(booking.slot)} · {booking.qty} {booking.qty === 1 ? "guest" : "guests"}
             {booking.guest?.phone ? " · Updates go to " + booking.guest.phone : ""}
@@ -54,7 +55,7 @@ export function WebConfirm({ booking, onDone, onOpen }: { booking: Booking; onDo
           <div className="wconfirmnext">
             <b>What happens next</b>
             <ol>
-              <li>The operator gets your request and confirms. You'll get a text.</li>
+              <li>{item.claimed && item.instant ? "Your spot is confirmed. You'll get a text with the details." : "The operator gets your request and confirms. You'll get a text or email."}</li>
               <li>Show up 15 minutes early. If there's a waiver, it's linked on the listing.</li>
               <li>Questions? Otto on the listing answers from the operator's own info.</li>
             </ol>
