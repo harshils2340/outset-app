@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { apiConfig } from "../../lib/api";
 import { GUIDES } from "../../data/guides";
 import { ICONS } from "../../data/icons";
@@ -44,7 +44,7 @@ function Card({ u, onOpen }: { u: Unclaimed; onOpen: (id: string) => void }) {
       <div className="wbody">
         <b>{u.title}</b>
         <small>{u.area}</small>
-        {u.dur || u.fc ? <small className="wcardfacts">{u.dur ? <span>{u.dur}</span> : null}{u.fc ? <span className="fc">Free cancellation</span> : null}</small> : null}
+        {u.dur || u.fc ? <small className="wcardfacts">{u.dur ? <span>{u.dur.replace(/\s+to\s+/, "–").replace(/\s*hours?\b/, " hr").replace(/\s*minutes?\b|\s*mins?\b/, " min")}</span> : null}{u.fc ? <span className="fc">Free cancellation</span> : null}</small> : null}
         <span className="wmeta">
           {from != null ? <span>From <b>{money(from)}</b></span> : <span>Request to book</span>}
           {score ? (
@@ -71,6 +71,18 @@ function TikTokScript() {
     document.body.appendChild(s);
   }, []);
   return null;
+}
+
+/**
+ * The side grid is two columns by two rows. With only two or three side photos a cell would sit empty (a grey hole
+ * next to the hero), so the first tiles stretch over the missing ones: 2 tiles = two tall columns, 3 = one tall + two.
+ */
+function tileSpan(sideCount: number, i: number): CSSProperties | undefined {
+  if (sideCount >= 4) return undefined;
+  if (sideCount === 2) return { gridRow: "1 / span 2", gridColumn: i === 0 ? "2" : "3" };
+  if (sideCount === 3 && i === 0) return { gridRow: "1 / span 2", gridColumn: "2" };
+  if (sideCount === 3) return { gridColumn: "3", gridRow: String(i) };
+  return undefined;
 }
 
 function Bullets({ items, icon = ICONS.check, className = "" }: { items: string[]; icon?: string; className?: string }) {
@@ -294,8 +306,8 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
           </button>
           {photos.length >= 3
             ? photos.slice(1, 5).map((src, i) => (
-                <button type="button" className={"wphoto p" + i} key={src} onClick={() => setGallery(i + 1)} aria-label={"Open photo " + (i + 2)}>
-                  <img src={thumb(src, "wide")} srcSet={srcSet(src, "wide")} sizes={SIZES.wide} alt={item.title + " photo " + (i + 2)} loading={i < 2 ? "eager" : "lazy"} fetchPriority={i < 2 ? "high" : "auto"} decoding="async" referrerPolicy="no-referrer" onError={(e) => ((e.currentTarget as HTMLImageElement).style.visibility = "hidden")} />
+                <button type="button" className={"wphoto p" + i} key={src} style={tileSpan(photos.length - 1, i)} onClick={() => setGallery(i + 1)} aria-label={"Open photo " + (i + 2)}>
+                  <img src={thumb(src, "wide")} srcSet={srcSet(src, "wide")} sizes={SIZES.wide} alt={item.title + " photo " + (i + 2)} loading={i < 2 ? "eager" : "lazy"} fetchPriority={i < 2 ? "high" : "auto"} decoding="async" referrerPolicy="no-referrer" onError={() => setBroken((b) => new Set(b).add(src))} onLoad={(e) => { if ((e.currentTarget as HTMLImageElement).naturalWidth < 80) setBroken((b) => new Set(b).add(src)); }} />
                 </button>
               ))
             : null}

@@ -6,6 +6,7 @@ import { db } from "../db/client.ts";
 import { writeLandingPages } from "./pages.ts";
 import { encodeWeek } from "./hours.ts";
 import { claimKeyHash } from "../lib/claim.ts";
+import { METROS, nearestMetro } from "../taxonomy/catalog.ts";
 import { existsSync, readFileSync as readFileSyncFs } from "node:fs";
 
 /** A claimed operator's saved edits (public/profiles/<id>.json) win over what the crawl found. */
@@ -141,7 +142,7 @@ type CatalogRow = {
 
 /** Marketplaces and directories are not operators. They never belong in the catalog. */
 /** Names the discovery net caught that are not something a guest books: car rentals, retail, festivals, museums, clubs, public piers. */
-export const NOT_EXPERIENCE = /\bcar rentals?\b|\brent-?a-?car\b|\b(thrifty|hertz|avis|enterprise|budget) \b|u-haul|\bauto rentals?\b|\bsports? shop\b|\bski sports\b|\bsporting goods\b|\bfestival\b|\bfair\b(?! ?winds)|\bmuseum\b|\browing club\b|\byacht club\b|\bmunicipal pier\b|\bcommunity boathouse\b|\bboat ramp\b|\bpublic launch\b|\bstate park\b|\bcounty park\b/i;
+export const NOT_EXPERIENCE = /\bmurals?\b|\bcar rentals?\b|\brent-?a-?car\b|\b(thrifty|hertz|avis|enterprise|budget) \b|u-haul|\bauto rentals?\b|\bsports? shop\b|\bski sports\b|\bsporting goods\b|\bfestival\b|\bfair\b(?! ?winds)|\browing club\b|\byacht club\b|\bmunicipal pier\b|\bcommunity boathouse\b|\bboat ramp\b|\bpublic launch\b|\bstate park\b|\bcounty park\b/i;
 export const MARKETPLACES = /(^|\.)(sailo|getmyboat|boatsetter|viator|tripadvisor|airbnb|expedia|groupon|yelp|peek|fareharbor|getyourguide|klook|eventbrite|meetup|facebook|instagram|booking|hotels|vrbo|kayak|tours4fun|musement|headout|goldstar|boatbound|clickandboat|samboat|fishingbooker|fishanywhere|guidesly)\.(com|net|co|io|ca)$/i;
 
 /**
@@ -176,6 +177,11 @@ function extraLocations(operatorId: string): { city: string; region?: string; la
   return rows.map((l) => ({ city: l.city || "Nearby", region: l.region || undefined, lat: Math.round(l.lat * 1e4) / 1e4, lon: Math.round(l.lon * 1e4) / 1e4, street: l.street || undefined }));
 }
 
+/** "Deer Harbor Charters" and "DEER HARBOR CHARTERS LLC" are one business. */
+function titleKey(t: string): string {
+  return t.toLowerCase().replace(/\b(llc|inc|ltd|co|corp|company)\b/g, "").replace(/[^a-z0-9]+/g, " ").trim();
+}
+
 function slug(s: string): string {
   return s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 48);
 }
@@ -201,7 +207,11 @@ export function toCatalogItem(r: CatalogRow): Record<string, unknown> {
   const offerings = (merchCount > 0 && merchCount === onSite.length ? [] : onSite.filter((o) => !isMerch(o)))
     .filter((o) => !RESELLER.test(o.name + " " + (o.detail || "")))
     .filter((o) => !FILTER_LABEL.test(o.name))
-    .map((o) => ({ ...o, name: trimWords(o.name, 70), price_cents: o.price_cents != null && o.price_cents < 100 ? null : o.price_cents }))
+    // A taproom's "Food $4" or "Beer $7.50" is a menu category, not something a guest books a time for.
+    .filter((o) => !(MENU_CATEGORY.test(o.name) && (o.price_cents == null || o.price_cents < 3000)))
+    // A $1 line is a deposit, a token or a placeholder; a $19,995 line is a boat for sale. Neither is a price a guest pays here.
+    .filter((o) => !isForSale(o))
+    .map((o) => ({ ...o, name: trimWords(o.name, 70), price_cents: o.price_cents != null && o.price_cents < 200 ? null : o.price_cents }))
     .filter((o, i, a) => a.findIndex((x) => x.name.toLowerCase() === o.name.toLowerCase() && x.price_cents === o.price_cents && (x.duration || x.detail || "") === (o.duration || o.detail || "")) === i)
     .map((o) => ({ ...o, price_unit: fixUnit(o) }));
   const keysWithOwnBranch = new Set(rawFacts.filter((f) => trusted(f.source_url) && !offCity(f.source_url)).map((f) => f.fact_key));
@@ -222,15 +232,15 @@ export function toCatalogItem(r: CatalogRow): Record<string, unknown> {
   return {
     id: "o-" + slug(r.domain),
     claimKey: claimKeyHash("o-" + slug(r.domain)),
-    title: decodeEntities(r.name),
+    title: cleanTitle(decodeEntities(r.name)),
     cat: r.family || "water",
     art: artFromName(r.name, r.icon_key),
     area,
-    metroId: r.metro_id || "",
+    metroId: metroFor(r),
     src: r.domain,
     rating: r.rating ?? undefined,
     reviews: r.review_count ?? undefined,
-    specs: [...pick("spec"), ...pick("requirement"), ...pick("group")].slice(0, 10),
+    specs: uniq([...pick("spec"), ...pick("requirement"), ...pick("group")].map(cleanLine)).filter(isTidyLine).slice(0, 10),
     options: offerings.map((o) => ({
       name: o.name,
       detail: silent(o.duration) || silent(o.detail) || "",
@@ -271,7 +281,8 @@ export function toCatalogItem(r: CatalogRow): Record<string, unknown> {
       });
       return [...groups.values()].filter((g) => !/gift ?cards?|gift certificate|deposit|membership|season pass/i.test(g.name)).slice(0, 14);
     })(),
-    includes: uniq(pick("includes").map(cleanLine)).filter(isTidyLine).filter((l) => !/gift ?card|gift certificate|will be provided upon|directions will|upon purchas/i.test(l)).slice(0, 10),
+    // "Private Ride for Two: up to 1 guests per booking" is a group cap, and "What to Bring: ..." belongs under bring.
+    includes: uniq(pick("includes").map(cleanLine)).filter(isTidyLine).filter((l) => !/gift ?card|gift certificate|will be provided upon|directions will|upon purchas|up to \d+ guests? per booking|minimum \d+ guests? per booking|^what to bring\b/i.test(l)).slice(0, 10),
     addons: pick("addon")
       .map((a) => {
         const m = a.match(/^(.*?)\s*\$(\d+(?:\.\d+)?)$/);
@@ -288,8 +299,8 @@ export function toCatalogItem(r: CatalogRow): Record<string, unknown> {
       const b = endAtSentence(cleanPara(raw), 420);
       return b && !/\b(purchase|shop|buy) (boards|paddles|gear|apparel|merch)/i.test(b) ? b : undefined;
     })(),
-    cover: fullSize(widgetPhotos[0] || pick("cover")[0] || pick("photo")[0] || ""),
-    photos: uniq([...widgetPhotos, ...pick("cover"), ...pick("photo")].map((u) => fullSize(u) || "")).slice(0, 10),
+    cover: fullSize(widgetPhotos[0] || pick("cover").filter(isPhotoName)[0] || pick("photo").filter(isPhotoName)[0] || ""),
+    photos: uniq([...widgetPhotos, ...pick("cover"), ...pick("photo")].filter(isPhotoName).map((u) => fullSize(u) || "")).slice(0, 10),
     ytVideos: pick("yt_video")
       .map((raw) => {
         try {
@@ -308,20 +319,20 @@ export function toCatalogItem(r: CatalogRow): Record<string, unknown> {
     lat: r.lat ?? undefined,
     lon: r.lon ?? undefined,
     locations: extraLocations(r.id),
-    tags: [...new Set([...pick("google_category"), ...pick("service"), ...offerings.map((o) => o.name)])].slice(0, 12),
+    tags: [...new Set([...pick("google_category"), ...pick("service"), ...offerings.map((o) => o.name)])].filter((t) => !NOT_A_SERVICE.test(t) && !NAV_LABEL.test(t)).slice(0, 12),
     extraNote: [...pick("extra").slice(0, 1), ...pick("policy"), ...pick("checkin"), ...pick("meeting_point"), ...pick("season")].filter((l) => !SILENT.test(l)).join(" · ").slice(0, 700) || undefined,
     // Viator-shaped sections. Each only appears when the site said it.
     highlights: collapseRules(uniq(pick("spec").map(cleanLine)).filter(isTidyLine).filter((l) => !/^what to bring\b|you are required to bring/i.test(l))).slice(0, 8),
     requirements: collapseRules(uniq(pick("requirement").map(cleanLine)).filter(isTidyLine)).slice(0, 10),
     groupInfo: uniq(pick("group").map(cleanLine)).filter(isTidyLine).slice(0, 5),
-    bring: uniq([...pick("bring"), ...pick("spec").filter((l) => /^what to bring\b/i.test(l)).map((l) => l.replace(/^what to bring[:\s-]*/i, ""))].map(cleanLine)).filter(isTidyLine).slice(0, 8),
+    bring: uniq([...pick("bring"), ...[...pick("spec"), ...pick("includes")].filter((l) => /^what to bring\b/i.test(l)).map((l) => l.replace(/^what to bring[:\s-]*/i, ""))].map(cleanLine)).filter(isTidyLine).slice(0, 8),
     season: silent(cleanLine(pick("season")[0] || "")) || undefined,
     meetingPoint: cleanLine(pick("meeting_point")[0] || "") || undefined,
     checkin: cleanPara(pick("checkin")[0] || "") || undefined,
     cancellation: dropSilent(cleanPara(pick("cancellation")[0] || "")) || dropSilent(cleanPara(pick("policy").filter((l) => /cancel|refund/i.test(l)).join(" "))) || undefined,
     policies: uniq(pick("policy").map(cleanLine)).filter(isTidyLine).filter((l) => !/gift ?card|gift certificate/i.test(l)).slice(0, 8),
     waiverUrl: pick("waiver_url").find((u) => /^https?:\/\/\S+$/.test(u) && !/\/w\/?$/.test(u)) || undefined,
-    hoursText: uniq([...pick("hours_text"), ...pick("hours")].flatMap((h) => h.split(/\s*\|\s*/)).map((h) => cleanLine(h.replace(/^hours(?: & admission)?\s*/i, ""))).filter((h) => h.length > 3 && !/not stated/i.test(h))).slice(0, 7),
+    hoursText: uniq([...pick("hours_text"), ...pick("hours")].flatMap((h) => h.split(/\s*\|\s*/)).map((h) => cleanLine(h.replace(/^hours(?: & admission)?\s*/i, ""))).filter((h) => h.length > 3 && !/not stated/i.test(h) && HAS_TIME.test(h) && !/[ap]m[A-Za-z]/.test(h))).slice(0, 7),
     faq: uniqBy(pick("faq").flatMap(parseFaqs), (f) => f.q.toLowerCase()).slice(0, 8),
     quotes: pick("review")
       .map((raw) => {
@@ -417,14 +428,132 @@ function artFromName(name: string, fallback: string): string {
 const WIDGET_HOSTS = /fareharbor|xola|peek\.com|bookeo|rezdy|checkfront|filestack|resova|fareharbor/i;
 const TEXT_KEYS = /^(requirement|policy|bring|meeting_point|group|includes|spec|cancellation|checkin|faq|hours_text|season|description|one_line|site_desc)$/;
 const GAP_LINE = /\b(not (stated|specified|mentioned|listed|published|provided|available on)|no specific .* (stated|listed|mentioned)|^not stated$|no information (available|provided))\b/i;
-const JUNK_LINE = /\b(call|contact|phone|email)( us)? (for|to)\b|\bsee (the |our )?faq|\bclick here|\bprint and color|\bsubscribe|\bnewsletter|\bfollow us|\bcookie/i;
+const JUNK_LINE = /\b(call|contact|phone|email)( us)? (for|to)\b|\bsee (the |our )?faq|\bclick here|\bprint and color|\bsubscribe|\bnewsletter|\bfollow us|\bcookie|\bprivacy policy|\bterms (of|and) (service|use|conditions)|all rights reserved|©|\bcopyright\b|\bconsent to (the use|cookies|tracking)|\benable javascript|\bjavascript\b|\baccept all\b|\bopt[- ]?out\b|\bpowered by\b|\bwebsite by\b|\bskip to (main )?content|\btoggle (menu|navigation)/i;
 const RETAIL_LINE = /\b(restocking|rma\b|return shipping|return merchandise|free shipping|ships? within|shipping (cost|rate|polic)|in-?store pickup|wholesale)\b/i;
 const STALE_LINE = /\b20(1\d|2[0-5])\b|\bcovid|\bcoronavirus|\bpandemic/i;
+/** Menu headings a taproom or restaurant page lists with a starting price. */
+const MENU_CATEGORY = /^(?:food|foods|beer|beers|drafts?|draught|on tap|wine|wines|cocktails?|drinks?|beverages?|snacks?|appetizers?|starters?|small plates|shareables?|entrees?|mains?|desserts?|sides?|salads?|sandwiches?|burgers?|pizzas?|tacos?|brunch|lunch|dinner|breakfast|coffee|tea|kids menu|happy hour|cans?|bottles?|growlers?|crowlers?|flights?|pints?|merch|retail)$/i;
 /** Site filter chips scraped as products: "Most Immersive", "Hardest", "Biggest Game", "Best Sellers", "All". */
 const FILTER_LABEL = /^(?:(?:the )?(?:most|least|second|third) \w+|hardest|easiest|scariest|biggest|smallest|newest|oldest|thrilling|abstract|immersive|popular|featured|trending|best ?sellers?|top ?rated|all|other|more|filter|sort|view all|see all|\d+ floor \w+)$/i;
 
 /** Things sold through the operator's site that are someone else's product: theme-park tickets, tool rentals, package deals. */
 const RESELLER = /\b(park (child|adult|hopper)|day hopper|\bhopper\b|park tickets?|disney|universal studios|seaworld|legoland|busch gardens|pole pruner|chainsaw|generator|excavator|lawn ?mower|tiller|pressure washer|storage unit|u-?haul)\b/i;
+
+/**
+ * The metro a listing shows under. Discovery assigned metros by name match or a 160 km radius, which put Montreal, VT
+ * in Montreal, Sheffield, PA in Niagara and a Charlotte pub crawl in Austin. Now: the nearest metro within 80 km of the
+ * pin (100 km when it is the one discovery chose); a pin far from the address city is ignored; with no pin, the stored
+ * metro stays unless the address state has metros of its own and this one is nowhere near them. Otherwise none.
+ */
+const METRO_KM = 80;
+const METRO_KM_KEEP = 100;
+function kmBetween(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const d = Math.PI / 180;
+  const a = Math.sin(((lat2 - lat1) * d) / 2) ** 2 + Math.cos(lat1 * d) * Math.cos(lat2 * d) * Math.sin(((lon2 - lon1) * d) / 2) ** 2;
+  return 2 * 6371 * Math.asin(Math.sqrt(a));
+}
+function metroFor(r: { metro_id: string | null; region: string | null; city: string | null; lat: number | null; lon: number | null }): string {
+  const stored = r.metro_id ? METROS.find((m) => m.id === r.metro_id) : null;
+  const region = r.region && r.region.length === 2 ? r.region.toUpperCase() : null;
+  if (r.lat != null && r.lon != null) {
+    // K1 Speed Tampa is pinned at head office in California: when we know where the address city is and the pin is
+    // nowhere near it, the pin is wrong and the address decides. Arlington, VA under DC keeps its pin.
+    const known = r.city && region ? CITIES.find((c) => c.region === region && c.name.toLowerCase() === r.city!.toLowerCase()) : null;
+    const pinFitsAddress = !known || kmBetween(r.lat, r.lon, known.lat, known.lon) <= METRO_KM;
+    if (!pinFitsAddress) return known && stored && kmBetween(known.lat, known.lon, stored.lat, stored.lon) <= METRO_KM ? stored.id : "";
+    const near = nearestMetro(r.lat, r.lon, METRO_KM);
+    if (near) return near.id;
+    // Outer suburbs (Newport, RI under Boston at 87 km) stay; Montreal, VT at 119 km from Montreal, QC does not.
+    if (stored && kmBetween(r.lat, r.lon, stored.lat, stored.lon) <= METRO_KM_KEEP) return stored.id;
+    return "";
+  }
+  // No pin: trust discovery unless the address state is clearly somewhere else (a metro of that state exists, none near this one).
+  if (!stored) return "";
+  if (!region || stored.region === region) return stored.id;
+  const stateMetros = METROS.filter((m) => m.region === region);
+  return !stateMetros.length || stateMetros.some((m) => kmBetween(stored.lat, stored.lon, m.lat, m.lon) <= 2.5 * METRO_KM) ? stored.id : "";
+}
+
+/** US states, DC and territories, and Canadian provinces. Anything else is outside the market. */
+const NA_REGION = /^(?:AL|AK|AZ|AR|CA|CO|CT|DE|FL|GA|HI|ID|IL|IN|IA|KS|KY|LA|ME|MD|MA|MI|MN|MS|MO|MT|NE|NV|NH|NJ|NM|NY|NC|ND|OH|OK|OR|PA|RI|SC|SD|TN|TX|UT|VT|VA|WA|WV|WI|WY|DC|PR|VI|GU|AB|BC|MB|NB|NL|NS|NT|NU|ON|PE|QC|SK|YT)$/;
+/** A pin inside the US or Canada: the mainland box, Alaska, or Hawaii. Cappadocia, Cairns and Vilnius fall outside. */
+function inNorthAmerica(lat: number, lon: number): boolean {
+  if (lat >= 24 && lat <= 50 && lon >= -125.5 && lon <= -66) return true; // contiguous US and southern Canada
+  if (lat >= 41 && lat <= 84 && lon >= -141 && lon <= -52) return true; // Canada
+  if (lat >= 51 && lat <= 72 && lon >= -180 && lon <= -129) return true; // Alaska
+  if (lat >= 18.5 && lat <= 22.5 && lon >= -160.5 && lon <= -154.5) return true; // Hawaii
+  if (lat >= 17.5 && lat <= 18.6 && lon >= -67.5 && lon <= -64.5) return true; // Puerto Rico and the Virgin Islands
+  return false;
+}
+/** Titles that name the activity and nothing else: "Axe Throwing", "The Studio", "Garage". A guest cannot tell who it is. */
+const GENERIC_TITLE = /^(?:the studio|(?:axe throwing|escape rooms?|bowling|bowl|golf(?: course| club)?|spa|yoga|pottery|cooking class(?:es)?|brewery|winery|paintball|go[- ]?karts?|mini ?golf|arcade|trampoline park|laser tag|garage|studio|gym|fitness|dance studio|museum|gallery|theat(?:re|er)|campground|marina|park|club|lounge|bar|pub|range|rink|pool|lake|beach|tours?|rentals?|charters?|adventures?|experiences?))$/i;
+
+/** Words that are a site's navigation, not something a guest books: they never belong in a menu, a tag or a title. */
+const NAV_LABEL = /^(?:home|homepage|welcome|contact(?: us)?|book(?: now| online)?|about(?: us)?|menu|reviews?|faqs?|gallery|photos|blog|news|events?|shop|store|login|sign ?in|cart|checkout|search|learn more|read more|more info|click here|call(?: us)?|email(?: us)?|directions|locations?|hours|pricing|prices|rates|specials|careers|jobs|employment|privacy policy|terms|terms of service|sitemap|donate|membership|subscribe|newsletter|reserve|reservations?|get tickets|buy tickets|tickets|gift ?cards?|gift certificates?)$/i;
+
+/** A published opening line must carry a time, a "closed", or an appointment note; "Monday –" alone is a fragment. */
+const HAS_TIME = /\d{1,2}(:\d{2})?\s*(a|p)\.?m\b|\d{1,2}:\d{2}|\bclosed\b|\b24 hours\b|\bnoon\b|\bmidnight\b|dawn|dusk|sunrise|sunset|by appointment|reservation only|on request/i;
+
+/**
+ * Photo file names that are documents, not photographs: scanned booklet pages (pg01.jpg, p2.png), screen shots,
+ * schedules, menus, price lists, can mockups, logos and wordmarks, theme placeholders (dummy.png, og-default.jpg,
+ * 700x400.png) and page chrome. Mirrors the harvest-time BAD_NAME in enrich/images.ts so a sync cleans photos the
+ * crawl already stored. Widget photos (filestack, fareharbor) have opaque names and pass through.
+ */
+const DOC_PHOTO = /(?:^|[\/_\-. ])(?:pg|page|scan|doc)[-_]?\d{1,4}(?=[_\-.]|$)|^p\d{1,2}\.|\bpage[-_]?\d|booklet|\bscan(?:ned|s)?\b|document|\bpdf\b|certificate|\bcert\b|brochure|flyer|\bposter|infographic|(?:^|[\/_\-. ])menus?\d*(?=[\/_\-. (]|$)|menu-board|price[-_]?list|\brates?[-_.]|schedule|screen[-_ ]?shot|dummy|placeholder|og-default|^default[-_.]|^\d{3,4}x\d{3,4}(?:[-_]\d+)?\.(?:jpe?g|png|webp)$|mock-?ups?|mask[-_]?group|wordmark|lettermark|lockup|(?:^|[\/_\-. ])logo|newsletter|cartoon|clip-?art|illustration|graphics?\b|floor[-_]?plan|course[-_]?layout|(?:^|[\/_\-. ])layout(?=[\/_\-.]|$)|removebg|divider|spacer|qr[-_]?code|(?:^|[\/_\-. ])qr(?=[\/_\-. ]|$)|thank[-_ ]?you|(?:^|[\/_\-. ])sorry(?=[\/_\-. ]|$)|\bcoupon|voucher|sitemap|(?:^|[\/_\-. ])maps?(?=[\/_\-. ]|$)|favicon|apple-touch/i;
+export function isPhotoName(url: string): boolean {
+  if (!url) return false;
+  let name = url.split("?")[0].split("/").slice(-1)[0];
+  try {
+    name = decodeURIComponent(name);
+  } catch {
+    /* keep the raw name */
+  }
+  return !DOC_PHOTO.test(name);
+}
+
+/** A boat, a cabin or a car with a sticker price was scraped from a dealer page on the operator's site. */
+function isForSale(o: { name: string; detail: string | null; price_cents: number | null }): boolean {
+  if (o.price_cents == null) return false;
+  const text = (o.name + " " + (o.detail || "")).toLowerCase();
+  if (o.price_cents > 2500000) return true;
+  if (o.price_cents > 500000) return !/charter|yacht|private|group|wedding|event|package|week|weekend|multi|day|night|hour|tour|retreat|expedition|camp\b/.test(text);
+  return /\b(for sale|msrp|sold|financing|dealer|pre-?owned|used boat|new boat|stock #|hull id|\d{4} (sea ?ray|yamaha|bayliner|tracker|bennington|malibu|mastercraft|lund|ranger|boston whaler))\b/i.test(text);
+}
+
+/**
+ * The name a guest sees. Sites publish "Sky Combat Ace | San Diego", "Welcome to the Official Axe & Ale Website",
+ * "FISH AND SONS KENAI CHARTERS" and "[Alchemy]". Keep the business, drop the tagline, the site words and the shouting.
+ */
+const SITE_WORDS = /^(?:home|homepage|welcome|official (?:site|website|home ?page)|website|site|online|book(?:ing)? online|book now|reservations?|home ?page|index|main)$/i;
+const KEEP_CAPS = /^(?:llc|inc|ltd|co|usa|nyc|sf|la|dc|bbq|atv|utv|rv|sup|vip|ii|iii|iv|3d|4x4|uk|bc|ab|on|qc|ns|nb|pe|nl|sk|mb|yt|nt|nu|[a-z]{2}|&)$/i;
+export function cleanTitle(raw: string): string {
+  let t = raw.replace(/\s+/g, " ").trim();
+  t = t.replace(/^\[(.+)\]$/, "$1").replace(/\s*\[(.*?)\]\s*$/, (_m, x: string) => (x.length <= 12 ? " " + x : "")).trim();
+  t = t.replace(/^(?:welcome to|welcome)\s+(?:the\s+)?(?:official\s+)?/i, "").replace(/\s*[-–—|:]?\s*(?:official )?(?:web ?site|home ?page)\s*$/i, "").trim();
+  // "A | B" and "A – B" are name plus tagline: keep the part that is a name (the first, unless it is a site word).
+  // "A - B" with a plain hyphen is often one name ("Fifty - Fifty Water Sports"), so it stays whole when short.
+  const isName = (x: string) => !SITE_WORDS.test(x) && !/^(?:book|reserve|call|save|best|top|#1|\d+%|free)\b/i.test(x);
+  if (/\s*(?:\||–|—)\s*/.test(t)) {
+    const parts = t.split(/\s*(?:\||–|—)\s*/).map((x) => x.trim()).filter(Boolean);
+    t = parts.find(isName) || parts[0];
+  }
+  if (/ - /.test(t)) {
+    const parts = t.split(/ - /).map((x) => x.trim()).filter(Boolean);
+    const named = parts.filter(isName);
+    t = named.length < parts.length ? named[0] || parts[0] : t.length <= 40 ? t : parts[0];
+  }
+  const words = t.split(" ");
+  if (words.length > 3 && t === t.toUpperCase() && /[A-Z]{3}/.test(t)) {
+    t = words.map((w) => (KEEP_CAPS.test(w) ? w : w.charAt(0) + w.slice(1).toLowerCase())).join(" ").replace(/\b(and|of|the|at|by|in|for)\b(?!$)/gi, (m) => m.toLowerCase()).replace(/^./, (c) => c.toUpperCase());
+  }
+  // "labarre", "bfunk": a name typed in lower case reads as a slug. Capitalise each word; brands with inner caps are left alone.
+  if (t === t.toLowerCase() && /^[a-z]/.test(t)) t = t.replace(/(^|\s)([a-z])/g, (_m, sp: string, ch: string) => sp + ch.toUpperCase());
+  t = t.replace(/^[\s\-–—|:]+|[\s\-–—|:,]+$/g, "").trim();
+  // "Midwest Powered Paragliding In", "Paint, Sip Wine, have fun at our": a page title cut mid-sentence.
+  t = t.replace(/(?:\s+(?:of|for|with|and|or|to|our|your|at our|by)\b)+\s*$/i, "").trim();
+  return t.length > 70 ? trimWords(t, 70) : t || raw.trim();
+}
 
 /** Cut at a word boundary, no ellipsis, so a name never ends mid-word. */
 function trimWords(t: string, max: number): string {
@@ -445,7 +574,7 @@ function scrubDesc(name: string, desc: string): string {
   let d = desc.replace(/\s+/g, " ").trim();
   const n = name.replace(/\s+/g, " ").trim();
   if (n && d.toLowerCase().startsWith(n.toLowerCase())) d = d.slice(n.length).replace(/^[\s:\-–|]+/, "");
-  d = d.replace(/^(?:(?:rates?|pricing|prices?|duration|about(?: this)?|flight distance|details?|overview|description)\s*:?\s*)+/i, "");
+  d = d.replace(/^(?:(?:rates?|pricing|prices?|duration|about(?: this)?|flight distance|(?:\w+ )?details?|overview|description|read more|learn more)\s*:?\s*)+/i, "");
   d = d.replace(/\b(?:Duration|Meeting Location|Rates?|About This|Flight Distance)\s*:?\s*(?=[A-Z0-9$])/g, "");
   return d.trim();
 }
@@ -607,6 +736,10 @@ function cleanLine(raw: string): string {
     .replace(/[#*_>`]+/g, " ")
     .replace(/https?:\/\/\S+/g, "")
     .replace(/^\s*(?:\(?\d{1,2}[.)]|[-–•·]|[a-z][.)]|[AQ]\s*[-–:])\s+/i, "")
+    // "Additional Information: ...", ": Daytime only 9-5", "SUNDAY----10am-9PM": scraped labels and separators, not words.
+    .replace(/^\s*(?:additional (?:information|info|details)|please note|note|important|(?:cruise|tour|trip|lesson|class|event|package) details)\s*[:\-–]\s*/i, "")
+    .replace(/^[\s:;,.\-–—|]+/, "")
+    .replace(/\s*-{2,}\s*/g, " – ")
     .replace(/\s+/g, " ")
     .trim()
     .slice(0, 240);
@@ -686,6 +819,10 @@ export function syncCatalogToApp(): { path: string; count: number } {
   // A listing with no site, no phone, no photo and no menu gives a guest nothing to act on. Keep it for outreach only.
   const full = rows
     .filter((r) => !MARKETPLACES.test(r.domain) && !dead.has(r.id) && !NOT_EXPERIENCE.test(r.name) && !/^\s*\$?\d+(\.\d+)?\s*$/.test(r.name))
+    // "Home", "Welcome" and a bare domain are page titles, not business names. A guest cannot tell what they are.
+    .filter((r) => { const t = cleanTitle(decodeEntities(r.name)); return t.length >= 3 && !SITE_WORDS.test(t) && !NAV_LABEL.test(t) && !GENERIC_TITLE.test(t) && !/^(?:https?:\/\/|www\.)/i.test(t); })
+    // Outside the US and Canada, by pin or by address, is outside the market (a Cairns balloon flight tagged HI).
+    .filter((r) => (r.lat == null || r.lon == null || inNorthAmerica(r.lat, r.lon)) && (!r.region || r.region.length !== 2 || NA_REGION.test(r.region.toUpperCase())))
     .map(toCatalogItem)
     .map((item) => {
       const ov = profileOverlay(String(item.id));
@@ -695,7 +832,11 @@ export function syncCatalogToApp(): { path: string; count: number } {
       return merged as unknown as typeof item;
     })
     .filter((item) => (item as unknown as { published?: boolean }).published !== false);
-  console.log("Left out " + dead.size + " map-only rows with nothing a guest can use.");
+  // A map pin and the operator's own site for the same business in the same metro: keep the site row, drop the pin.
+  const siteKeys = new Set(full.filter((i) => !String(i.id).startsWith("o-osm-")).map((i) => titleKey(String(i.title)) + "|" + (i.metroId || i.area)));
+  const pinDupes = full.filter((i) => String(i.id).startsWith("o-osm-") && siteKeys.has(titleKey(String(i.title)) + "|" + (i.metroId || i.area)));
+  for (const d of pinDupes) full.splice(full.indexOf(d), 1);
+  console.log("Left out " + dead.size + " map-only rows with nothing a guest can use and " + pinDupes.length + " map pins that duplicate a site row.");
   const contactByDomain: Record<string, OperatorContact> = {};
   for (const c of allContacts()) contactByDomain[c.domain] = c;
 

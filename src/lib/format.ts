@@ -3,7 +3,9 @@ import type { Listing } from "../data/types";
 export const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 export function money(n: number): string {
-  return "$" + n.toLocaleString("en-US");
+  // Whole dollars stay whole ("$95"); anything else shows cents ("$7.50"), never "$7.5".
+  const whole = Number.isInteger(n);
+  return "$" + n.toLocaleString("en-US", { minimumFractionDigits: whole ? 0 : 2, maximumFractionDigits: 2 });
 }
 
 export function fmtTime(t: string): string {
