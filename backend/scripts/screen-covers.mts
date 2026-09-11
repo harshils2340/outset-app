@@ -3,9 +3,11 @@ import { db } from "../src/db/client.ts";
 import { probeQuality, isUsable } from "../src/enrich/photoquality.ts";
 
 /**
- * Screen every cover by its pixels. A map, logo, flyer or blank tile as cover is replaced by the operator's first
+ * Screen every cover, and every gallery photo, by its pixels. A map, logo, flyer or blank tile as cover is replaced by the operator's first
  * photo that reads as a photograph; with none, the cover fact is deleted so the listing falls back to the scene
- * illustration. Each operator gets a `cover_screened` fact with the verdict so the run can resume.
+ * illustration. Gallery photos that read as a graphic, map or scanned page are deleted, and a numbered series
+ * (guide1..guide6, page-1..page-8) goes as a whole once any page of it fails, because the rest are the same
+ * booklet. Each operator gets a `cover_screened` fact with the verdict so the run can resume.
  *   npx tsx scripts/screen-covers.mts [limit] [concurrency]
  */
 const limit = Number(process.argv[2] || 100000);
@@ -22,6 +24,13 @@ const rows = db
 const photosOf = db.prepare("SELECT fact_key, fact_value, source_url FROM facts WHERE operator_id = ? AND fact_key IN ('cover','photo') ORDER BY rowid");
 const setCover = db.prepare("UPDATE facts SET fact_value = ?, source_url = ? WHERE operator_id = ? AND fact_key = 'cover'");
 const dropCover = db.prepare("DELETE FROM facts WHERE operator_id = ? AND fact_key = 'cover'");
+const dropPhoto = db.prepare("DELETE FROM facts WHERE operator_id = ? AND fact_key IN ('photo','cover') AND fact_value = ?");
+/** "boaters_safety_guide3.jpg" -> "boaters_safety_guide"; "" when the name does not end in a number. */
+const seriesStem = (url: string): string => {
+  const name = decodeURIComponent(url.split("?")[0].split("/").pop() || "").replace(/\.[a-z0-9]+$/i, "");
+  const m = name.match(/^(.*?)[-_ ]?(\d{1,3})$/);
+  return m && m[1].length >= 3 ? m[1].toLowerCase() : "";
+};
 const mark = db.prepare("INSERT INTO facts (id, operator_id, fact_key, fact_value, source_url, confidence) VALUES (?, ?, 'cover_screened', ?, NULL, 'site')");
 
 let i = 0;
@@ -35,6 +44,7 @@ const probe = (url: string) =>
   ]);
 let swapped = 0;
 let dropped = 0;
+let photosDropped = 0;
 const kinds: Record<string, number> = {};
 
 const worker = async () => {
@@ -46,21 +56,25 @@ const worker = async () => {
       if (!cover) continue;
       const verdict = await probe(cover.fact_value);
       kinds[verdict.kind] = (kinds[verdict.kind] || 0) + 1;
-      if (isUsable(verdict.kind)) {
+      // Gallery: every photo gets its own verdict; a bad one is deleted, and so is the rest of its numbered series.
+      const photos = facts.filter((f) => f.fact_key === "photo");
+      const verdicts = new Map<string, string>();
+      const badStems = new Set<string>();
+      if (!isUsable(verdict.kind)) { const st = seriesStem(cover.fact_value); if (st) badStems.add(st); }
+      await Promise.all(photos.map(async (f) => { const v = f.fact_value === cover.fact_value ? verdict : await probe(f.fact_value); verdicts.set(f.fact_value, v.kind); if (!isUsable(v.kind)) { const st = seriesStem(f.fact_value); if (st) badStems.add(st); } }));
+      const stemCount = new Map<string, number>();
+      for (const f of photos) { const st = seriesStem(f.fact_value); if (st) stemCount.set(st, (stemCount.get(st) || 0) + 1); }
+      const bad = (url: string) => !isUsable(verdicts.get(url) as never) || (badStems.has(seriesStem(url)) && (stemCount.get(seriesStem(url)) || 0) >= 2);
+      for (const f of photos) {
+        if (f.fact_value !== cover.fact_value && bad(f.fact_value)) { dropPhoto.run(op.id, f.fact_value); photosDropped += 1; }
+      }
+      if (isUsable(verdict.kind) && !bad(cover.fact_value)) {
         kept += 1;
         mark.run(crypto.randomUUID(), op.id, "kept:" + verdict.kind);
         continue;
       }
-      // The cover is a map or graphic: walk the other photos in crawl order and promote the first real one.
-      let replacement: { fact_value: string; source_url: string | null } | null = null;
-      for (const f of facts) {
-        if (f.fact_key !== "photo" || f.fact_value === cover.fact_value) continue;
-        const v = await probe(f.fact_value);
-        if (v.kind === "photo") {
-          replacement = f;
-          break;
-        }
-      }
+      // The cover is a map, graphic or scanned page: promote the first gallery photo that passed.
+      const replacement = photos.find((f) => f.fact_value !== cover.fact_value && verdicts.get(f.fact_value) === "photo" && !bad(f.fact_value)) || null;
       if (replacement) {
         setCover.run(replacement.fact_value, replacement.source_url ?? cover.source_url, op.id);
         swapped += 1;
@@ -74,10 +88,10 @@ const worker = async () => {
       console.error(op.domain + ": " + (e as Error).message.slice(0, 80));
     }
     const n = i;
-    if (n % 100 === 0) console.log(new Date().toISOString().slice(11, 19), `${n}/${rows.length} screened, ${kept} kept, ${swapped} swapped, ${dropped} dropped`, kinds);
+    if (n % 100 === 0) console.log(new Date().toISOString().slice(11, 19), `${n}/${rows.length} screened, ${kept} kept, ${swapped} swapped, ${dropped} dropped, ${photosDropped} gallery photos removed`, kinds);
   }
 };
 
 console.log(`${rows.length} covers to screen, ${concurrency} at a time`);
 await Promise.all(Array.from({ length: concurrency }, worker));
-console.log(`done: ${rows.length} screened, ${kept} kept, ${swapped} swapped, ${dropped} dropped`, kinds);
+console.log(`done: ${rows.length} screened, ${kept} kept, ${swapped} swapped, ${dropped} dropped, ${photosDropped} gallery photos removed`, kinds);

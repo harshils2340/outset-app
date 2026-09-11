@@ -6,7 +6,7 @@
  */
 import { inflateSync } from "node:zlib";
 
-export type PhotoKind = "photo" | "graphic" | "map" | "unknown";
+export type PhotoKind = "photo" | "graphic" | "map" | "document" | "unknown";
 
 export type PhotoStats = {
   colours: number;      // distinct colours after quantising to 4 bits per channel (max 4096)
@@ -188,6 +188,9 @@ export function classify(s: PhotoStats): { kind: PhotoKind; reason: string } {
   // Maps: at 32px the thin lines average away, leaving a pale, flat, low-saturation tile owned by a few colours.
   // Pale photos (snow, overcast sea) keep more texture and more distinct colours than that.
   if (s.saturation < 0.25 && s.edges < 0.05 && s.top4 > 0.6 && s.colourfulness < 30) return { kind: "map", reason: "flat pale top4 " + round(s.top4) + " edge " + round(s.edges) };
+  // Scanned pages (safety booklets, waivers, brochures): a lot of paper white, little colour, and the busy
+  // edge texture of text. A photo that pale (snow, fog) has no such texture; a poster has more colour.
+  if (s.white > 0.28 && s.colourfulness < 40 && s.saturation < 0.2 && s.edges > 0.06) return { kind: "document", reason: "paper white " + round(s.white) + " edge " + round(s.edges) };
   return { kind: "photo", reason: "" };
 }
 
