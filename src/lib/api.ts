@@ -117,6 +117,41 @@ export function saveRemoteProfile(id: string, body: { profile: unknown; patch: P
   }, 1200);
 }
 
+/* ---------- claiming from the operator site ---------- */
+
+export type ClaimRule = { known: boolean; hasEmail: boolean; hint: string | null; domains: string[] };
+
+/** Which address a listing's claim link may go to: the one on the operator's site, or any at their domain. */
+export async function fetchClaimRule(id: string): Promise<ClaimRule | null> {
+  const r = await call<ClaimRule>(`/claims/${encodeURIComponent(id)}/rule`, { timeout: 8000 });
+  return r.ok ? r.data : null;
+}
+
+export type ClaimRequest =
+  | { ok: true; sent: boolean; to: string }
+  | { ok: false; reason: "mismatch" | "none" | "unknown" | "error"; hint?: string | null; domains?: string[]; error?: string };
+
+/** Asks the API to email the signed claim link. The API sends it only to an address it can tie to the business. */
+export async function requestClaimLink(id: string, owner: { name: string; email: string; phone: string }): Promise<ClaimRequest> {
+  const r = await call<ClaimRequest>(`/claims/${encodeURIComponent(id)}/request`, { method: "POST", body: JSON.stringify(owner), timeout: 25000 });
+  if (!r.ok || !r.data) return { ok: false, reason: "error", error: r.error };
+  return r.data;
+}
+
+/** Owner details carried by a claim link (#claim=<id>&k=<token>&o=<payload>), as typed on the claim screen. */
+export function ownerFromHash(hash: string): { name: string; email: string; phone: string } | null {
+  const m = hash.match(/[&#]o=([A-Za-z0-9_-]+)/);
+  if (!m) return null;
+  try {
+    const b64 = m[1].replace(/-/g, "+").replace(/_/g, "/");
+    const bytes = Uint8Array.from(atob(b64), (ch) => ch.charCodeAt(0));
+    const o = JSON.parse(new TextDecoder().decode(bytes)) as { n?: unknown; e?: unknown; p?: unknown };
+    return { name: String(o.n || ""), email: String(o.e || ""), phone: String(o.p || "") };
+  } catch {
+    return null;
+  }
+}
+
 /* ---------- sign-in by email code ---------- */
 
 export async function requestSignInCode(email: string): Promise<{ ok: boolean; error?: string }> {

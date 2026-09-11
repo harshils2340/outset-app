@@ -7,6 +7,7 @@ import { generateOutreachDrafts } from "./outreach/drafts.ts";
 import { scrapePending } from "./scrape/run.ts";
 import { refreshAllScores } from "./lib/completeness.ts";
 import { syncCatalogToApp, syncContactsToApp } from "./sync/contacts.ts";
+import { writeClaimIndex } from "./lib/claimIndex.ts";
 import { discoverAll, metroCoverage } from "./discover/osm.ts";
 import { budgetUsd, collectAll, collectBatch, dryRun, enrichPending, rate, spentUsd, submitBatch } from "./enrich/run.ts";
 import { discoverSearch } from "./discover/searchapi.ts";
@@ -284,6 +285,15 @@ if (cmd === "sync") {
   lap("Wrote " + out.count + " operator contact records to " + out.path);
   const cat = syncCatalogToApp();
   lap("Wrote " + cat.count + " operators to " + cat.path);
+  const ci = writeClaimIndex();
+  lap("Wrote claim index for " + ci.count + " operators (" + ci.withEmail + " with an email on file) to " + ci.path);
+  process.exit(0);
+}
+
+// The API host has no operator database. This file tells it which email may claim each listing.
+if (cmd === "claim-index") {
+  const ci = writeClaimIndex();
+  console.log("Wrote claim index for " + ci.count + " operators (" + ci.withEmail + " with an email on file) to " + ci.path);
   process.exit(0);
 }
 

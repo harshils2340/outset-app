@@ -12,6 +12,7 @@ migrate();
 import { cors } from "hono/cors";
 import { profiles } from "./profiles.ts";
 import { auth } from "./auth.ts";
+import { claims } from "./claims.ts";
 import { bookings } from "./bookings.ts";
 import { stripeEnabled } from "../lib/stripe.ts";
 
@@ -29,6 +30,7 @@ app.use("*", async (c, next) => {
 app.get("/config", (c) => c.json({ payments: stripeEnabled(), mail: !!process.env.RESEND_API_KEY }));
 app.route("/", auth);
 app.route("/", profiles);
+app.route("/", claims);
 app.route("/", bookings);
 
 app.get("/health", (c) => c.json({ ok: true, service: "outset-backend" }));

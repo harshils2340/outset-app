@@ -77,21 +77,35 @@ function tokens(q: string): string[] {
     .filter(Boolean);
 }
 
+// Two reusable rows: the fuzzy name pass calls this tens of thousands of times per keystroke.
+let edPrev = new Int32Array(64);
+let edCur = new Int32Array(64);
+
 function editDistance(a: string, b: string): number {
   if (a === b) return 0;
   if (Math.abs(a.length - b.length) > 2) return 9;
   const rows = a.length + 1;
   const cols = b.length + 1;
-  const prev = new Array<number>(cols);
-  const cur = new Array<number>(cols);
+  if (cols > edPrev.length) {
+    edPrev = new Int32Array(cols * 2);
+    edCur = new Int32Array(cols * 2);
+  }
+  let prev = edPrev;
+  let cur = edCur;
   for (let j = 0; j < cols; j++) prev[j] = j;
   for (let i = 1; i < rows; i++) {
     cur[0] = i;
+    const ca = a.charCodeAt(i - 1);
     for (let j = 1; j < cols; j++) {
-      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
-      cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + cost);
+      const cost = ca === b.charCodeAt(j - 1) ? 0 : 1;
+      const del = prev[j] + 1;
+      const ins = cur[j - 1] + 1;
+      const sub = prev[j - 1] + cost;
+      cur[j] = del < ins ? (del < sub ? del : sub) : ins < sub ? ins : sub;
     }
-    for (let j = 0; j < cols; j++) prev[j] = cur[j];
+    const t = prev;
+    prev = cur;
+    cur = t;
   }
   return prev[b.length];
 }
@@ -291,4 +305,126 @@ export function searchMetros(q: string): Metro[] {
     const compact = hay.replace(/[^a-z0-9]+/g, "");
     return t.every((tok) => tokenScore(hay, compact, tok) > 0);
   }).slice(0, 4);
+}
+
+/* ---------- operator picker: business name search ---------- */
+
+type NameEntry = { u: Unclaimed; name: string; compact: string; words: string[]; domain: string; bonus: number };
+type NameIndex = {
+  entries: NameEntry[];
+  /** Every distinct word in every name, and the names that contain it. The fuzzy pass runs edit distance once per word. */
+  byWord: Map<string, NameEntry[]>;
+  wordsByLen: Map<number, string[]>;
+};
+let nameIndexFor: Unclaimed[] | null = null;
+let nameIndex: NameIndex | null = null;
+
+/** Built once per catalog array and reused until the catalog changes. */
+function buildNameIndex(pool: Unclaimed[]): NameIndex {
+  if (nameIndexFor === pool && nameIndex) return nameIndex;
+  const byWord = new Map<string, NameEntry[]>();
+  const wordsByLen = new Map<number, string[]>();
+  const entries = pool.map((u) => {
+    const name = u.title.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+    const e: NameEntry = {
+      u,
+      name,
+      compact: name.replace(/ /g, ""),
+      words: name.split(" ").filter(Boolean),
+      domain: u.src.replace(/^https?:\/\//i, "").replace(/^www\./i, "").split("/")[0].toLowerCase(),
+      // A photo and a rating break ties, precomputed so the hot loop never touches the big record.
+      bonus: (u.cover ? 2 : 0) + (u.rating && u.reviews ? 1 : 0),
+    };
+    for (const w of e.words) {
+      const list = byWord.get(w);
+      if (list) list.push(e);
+      else {
+        byWord.set(w, [e]);
+        const len = wordsByLen.get(w.length);
+        if (len) len.push(w);
+        else wordsByLen.set(w.length, [w]);
+      }
+    }
+    return e;
+  });
+  nameIndex = { entries, byWord, wordsByLen };
+  nameIndexFor = pool;
+  return nameIndex;
+}
+
+/** Names with a word within one edit of `t` (two for long words: "ecomersoin" still finds "ecomersion"). */
+function nearWord(index: NameIndex, t: string): Set<NameEntry> {
+  const max = t.length >= 8 ? 2 : 1;
+  const out = new Set<NameEntry>();
+  for (let len = Math.max(4, t.length - max); len <= t.length + max; len++) {
+    for (const w of index.wordsByLen.get(len) || []) {
+      if (editDistance(w, t) > max) continue;
+      for (const e of index.byWord.get(w)!) out.add(e);
+    }
+  }
+  return out;
+}
+
+/**
+ * The operator picker: an owner typing their own business name. Matches the name and the website domain only,
+ * with no activity aliases, blurbs or intent parsing, so 40,000 operators answer in a few milliseconds per
+ * keystroke. Hits are bucketed by score and only the top bucket or two get sorted, since a two-letter query
+ * matches thousands. A fuzzy pass runs only when the strict one comes up short, so one typo still finds the shop.
+ */
+export function searchByName(pool: Unclaimed[], q: string, limit = 8): Unclaimed[] {
+  const nq = q.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+  if (!nq) return [];
+  const toks = nq.split(" ");
+  const compactQ = nq.replace(/ /g, "");
+  const spaced = " " + nq;
+  const index = buildNameIndex(pool);
+  const buckets = new Map<number, NameEntry[]>();
+  let count = 0;
+  const add = (e: NameEntry, s: number) => {
+    const b = buckets.get(s);
+    if (b) b.push(e);
+    else buckets.set(s, [e]);
+    count++;
+  };
+  for (const e of index.entries) {
+    let s = 0;
+    if (e.name === nq) s = 100;
+    else if (e.name.startsWith(nq)) s = 90;
+    else if (e.name.includes(spaced)) s = 80;
+    else if (e.compact.startsWith(compactQ)) s = 78;
+    else if (toks.length > 1 && toks.every((t) => e.words.some((w) => w.startsWith(t)))) s = 70;
+    else if (e.compact.includes(compactQ)) s = 55;
+    else if (e.domain.includes(compactQ)) s = 50;
+    if (!s) continue;
+    add(e, s + e.bonus);
+  }
+  const long = toks.filter((t) => t.length >= 4).sort((a, b) => b.length - a.length);
+  if (count < limit && long.length) {
+    const seen = new Set<NameEntry>();
+    for (const b of buckets.values()) for (const e of b) seen.add(e);
+    // The longest word rules out the most names; the rest only have to hold on those candidates.
+    let cands = nearWord(index, long[0]);
+    for (const t of toks) {
+      if (t === long[0]) continue;
+      if (t.length >= 4) {
+        const ok = nearWord(index, t);
+        cands = new Set(Array.from(cands).filter((e) => ok.has(e)));
+      } else {
+        cands = new Set(Array.from(cands).filter((e) => e.words.some((w) => w.startsWith(t))));
+      }
+      if (!cands.size) break;
+    }
+    for (const e of cands) if (!seen.has(e)) add(e, 30 + e.bonus);
+  }
+  const scores = Array.from(buckets.keys()).sort((a, b) => b - a);
+  const out: Unclaimed[] = [];
+  for (const s of scores) {
+    const b = buckets.get(s)!;
+    if (b.length > 1) b.sort((a, c) => (a.name < c.name ? -1 : a.name > c.name ? 1 : a.u.area < c.u.area ? -1 : a.u.area > c.u.area ? 1 : 0));
+    for (const e of b) {
+      out.push(e.u);
+      if (out.length >= limit) return out;
+    }
+  }
+  return out;
 }

@@ -512,7 +512,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     // Build operator paths on BASE_URL so a subpath deploy still works. Production is the site root.
     const base = import.meta.env.BASE_URL.replace(/\/?$/, "/");
     if (onOps && !atOps) window.history.pushState(null, "", base + "operators" + window.location.hash);
-    else if (!onOps && atOps && booted.current) window.history.pushState(null, "", base + window.location.hash.replace(/^#claim=[^&]*/, ""));
+    else if (!onOps && atOps && booted.current) window.history.pushState(null, "", base + window.location.hash.replace(/^#claim=.*$/, ""));
   }, [state.screen, state.catalogReady]);
 
   useEffect(() => {

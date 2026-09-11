@@ -10,6 +10,7 @@
     "scrape": "tsx src/index.ts scrape",
     "outreach": "tsx src/index.ts outreach",
     "sync": "tsx src/index.ts sync",
+    "claim-index": "tsx src/index.ts claim-index",
     "discover": "tsx src/index.ts discover",
     "enrich": "tsx src/index.ts enrich",
     "search": "tsx src/index.ts search",

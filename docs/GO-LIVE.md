@@ -32,6 +32,9 @@ npx tsx src/index.ts outreach-send --limit=200                    # send, marks 
 ```
 Each email carries a signed link that opens the operator's dashboard with no code. 6,263 drafts have an email address today.
 
+## 4. Claiming from the site
+On `/operators`, an owner searches their business, enters their name, work email and mobile, and asks for the claim link. The API (`POST /claims/:id/request`) emails it only when the address matches the email found on the operator's own website, or lives at the operator's own domain. Anyone else is told which address to use. The check reads `backend/data/claim-index.json`, written by `npm run sync` on the Mac from SQLite, so run a sync and push after the crawl grows or emails change. The link opens the dashboard with no code, carries the typed name and phone, and records the claim so "Email me a sign-in code" works afterwards.
+
 ## What is verified
 - Claim link → dashboard, edits saved to the API, same link resumes on another device (tested).
 - Guest books → booking stored, operator email, guest email, row in dashboard under Upcoming or New, accept/decline emails the guest (tested with mail dry run).
