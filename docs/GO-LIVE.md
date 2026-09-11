@@ -2,6 +2,13 @@
 
 Everything below is built, tested end to end locally, and switches on the moment the key is set. No code changes needed.
 
+## Live state (checked 11 September 2026)
+
+Check before repeating any of this: `curl https://outset-api.onrender.com/config` (mail and payments flags), `curl -I https://onoutset.com`, `dig +short www.onoutset.com api.onoutset.com`.
+
+- On: site https://onoutset.com, API https://outset-api.onrender.com with `{"payments":true,"mail":true}`, Resend DNS for onoutset.com (DKIM, send, DMARC). Claim links, sign-in codes, booking mail and card checkout run. Do not ask for `RESEND_API_KEY` or `STRIPE_SECRET_KEY` again.
+- Not done: the `outset-pipeline` worker (section 5) does not exist on Render yet, so no crawl runs anywhere (blocked on the Mac by rule). Outreach is not sent: `MAIL_POSTAL` needs a PO box, then Harshil says go. `www.onoutset.com` and `api.onoutset.com` have no DNS records; guests use the apex and the API stays at outset-api.onrender.com until a CNAME is added.
+
 ## 1. API host (Render, free tier)
 1. render.com → New → Blueprint → pick `harshils2340/outset-app`. It creates `outset-api` from `render.yaml`.
 2. Set these environment variables on the service:
