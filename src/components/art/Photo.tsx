@@ -14,7 +14,18 @@ import { Art } from "./Art";
 const EAGER_CARDS = 8;
 let eagerLeft = EAGER_CARDS;
 
-export function Photo({ src, video, kind, id, alt, size = "card" }: { src?: string; video?: string; kind: ArtKind; id: string; alt: string; size?: PhotoSize }) {
+export function Photo({ src, video, kind, id, alt, size = "card", fallback = true, onBroken }: {
+  src?: string;
+  video?: string;
+  kind: ArtKind;
+  id: string;
+  alt: string;
+  size?: PhotoSize;
+  /** Show the scene illustration when there is nothing to show. Listing pages pass false and drop the tile instead. */
+  fallback?: boolean;
+  /** Called once when the photo (and any clip in front of it) turned out unusable, so the parent can re-lay out. */
+  onBroken?: () => void;
+}) {
   const [state, setState] = useState<"loading" | "ok" | "broken">("loading");
   const [clipOk, setClipOk] = useState(true);
   const [proxied, setProxied] = useState(true);
@@ -35,6 +46,12 @@ export function Photo({ src, video, kind, id, alt, size = "card" }: { src?: stri
     return () => io.disconnect();
   }, [isClip, seen]);
 
+  const still = video && clipOk && /\.gif(\?|$)/i.test(video) ? video : src;
+  const dead = !isClip && (!still || state === "broken");
+  useEffect(() => {
+    if (dead) onBroken?.();
+  }, [dead]);
+
   if (isClip) {
     // A moving cover. Muted, looping, no controls: it reads as a live thumbnail, not a player.
     return (
@@ -49,8 +66,7 @@ export function Photo({ src, video, kind, id, alt, size = "card" }: { src?: stri
       </span>
     );
   }
-  const still = video && clipOk && /\.gif(\?|$)/i.test(video) ? video : src;
-  if (!still || state === "broken") return <Art kind={kind} id={id} />;
+  if (dead || !still) return fallback ? <Art kind={kind} id={id} /> : null;
   const url = proxied ? thumb(still, size) : still;
   return (
     <span className={"photowrap" + (state === "ok" ? " ready" : "")}>

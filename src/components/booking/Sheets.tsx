@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { CATS } from "../../data/categories";
 import { GUIDES } from "../../data/guides";
 import { ICONS } from "../../data/icons";
@@ -27,6 +27,7 @@ import { formatDistance, milesBetween, type GeoPoint } from "../../lib/geo";
 import { priceFor, priceUnclaimed } from "../../lib/pricing";
 import { useApp } from "../../state/AppProvider";
 import { SIZES, srcSet, thumb } from "../../lib/images";
+import { embedAutoplay, listingMedia, photoCandidates, probePhotos, type Media } from "../../lib/media";
 import { cleanDesc, durationLabel, freeCancel, minAge } from "../../lib/listingDerive";
 import { DAY_SHORT, clock12, dayLabel, todaysDeals } from "../../lib/companyAgent";
 import { clockIn, zoneFor } from "../../lib/openNow";
@@ -223,6 +224,17 @@ function Bullets({ items, icon = ICONS.dot, className = "" }: { items: string[];
   );
 }
 
+/** One hero slide on the phone sheet: the clip, the embed, or a photo. Broken media tells the sheet to drop it. */
+function HeroSlide({ m, item, onBroken }: { m: Media; item: Unclaimed; onBroken: () => void }) {
+  if (m.kind === "embed") {
+    return <iframe className="wembed" src={embedAutoplay(m.src)} title={item.title + " video"} allow="autoplay; encrypted-media; picture-in-picture" allowFullScreen loading="lazy" />;
+  }
+  if (m.kind === "clip") {
+    return <Photo src={m.poster} video={m.src} kind={item.art} id={item.id + "req"} alt={item.title} size="wide" fallback={false} onBroken={onBroken} />;
+  }
+  return <Photo src={m.src} kind={item.art} id={item.id + "req"} alt={item.title} size="wide" fallback={false} onBroken={onBroken} />;
+}
+
 function RequestBody({
   item,
   dates,
@@ -249,6 +261,14 @@ function RequestBody({
   const extras = addonIdx.map((i) => (item.addons || [])[i]).filter(Boolean);
   const [guideOpen, setGuideOpen] = useState(false);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
+  // The hero shows only media that really loads: no placeholder art on a listing. Photos are probed at thumbnail
+  // size up front, and a slide that still fails drops out of the strip and the count.
+  const [broken, setBroken] = useState<Set<string>>(new Set());
+  const drop = (src: string) => setBroken((b) => (b.has(src) ? b : new Set(b).add(src)));
+  const media = listingMedia(item, broken);
+  const [slide, setSlide] = useState(0);
+  const stripRef = useRef<HTMLDivElement>(null);
+  useEffect(() => probePhotos(photoCandidates(item).slice(0, 12), drop), [item.id]);
   const guide = GUIDES[item.art];
   const picked = optionIdx != null ? item.options[optionIdx] : null;
   const needService = item.options.length > 0;
@@ -258,7 +278,7 @@ function RequestBody({
   const whenLine = time
     ? [fmtDate(day), fmtTime(time), qty + (qty === 1 ? " person" : " people")].join(" · ")
     : "";
-  const dockPrice = p.total ? money(p.total) : picked ? optionPrice(picked) || "Instant" : "Instant";
+  const dockPrice = p.total ? money(p.total) : picked ? optionPrice(picked) || "Request" : "Request";
   const score = publicRating(item);
   const contact = contactFor(item);
   const facts = listingFacts(item);
@@ -290,7 +310,7 @@ function RequestBody({
   if (score && score.rating >= 4.8 && score.reviews >= 100) badges.push({ icon: ICONS.star, text: "Top rated" });
   else if (score && score.reviews >= 1000) badges.push({ icon: ICONS.star, text: "Popular" });
   if (cancel) badges.push({ icon: ICONS.check, text: cancel });
-  if (priced) badges.push({ icon: ICONS.bolt, text: "Instant confirmation" });
+  if (item.claimed && item.instant) badges.push({ icon: ICONS.bolt, text: "Instant confirmation" });
   const quick: { icon: string; label: string; value: string }[] = [];
   if (duration) quick.push({ icon: ICONS.clock, label: "Duration", value: duration });
   if (age) quick.push({ icon: ICONS.user, label: "Minimum age", value: age + "+" });
@@ -379,26 +399,52 @@ function RequestBody({
   return (
     <>
       <div className="reqpad">
-        <div className="reqhero">
-          <Photo src={item.cover} video={item.video} kind={item.art} id={item.id + "req"} alt={item.title} />
-          <button className="backbtn" type="button" onClick={onBack} aria-label="Close">
-            <Markup html={ICONS.close} />
-          </button>
-          {score ? (
-            <span className="rating">
-              <Markup html={ICONS.star} />
-              {score.rating.toFixed(1)}{" "}
-              <span className="count">({fmtReviews(score.reviews)})</span>
-            </span>
-          ) : null}
-        </div>
-        {item.photos && item.photos.length > 1 ? (
-          <div className="gallery">
-            {item.photos.slice(0, 6).map((u, i) => (
-              <img key={u} src={thumb(u, "thumb")} srcSet={srcSet(u, "thumb")} sizes={SIZES.thumb} alt={item.title + " photo " + (i + 1)} loading="lazy" decoding="async" referrerPolicy="no-referrer" onError={(e) => ((e.currentTarget as HTMLImageElement).style.display = "none")} />
-            ))}
+        {media.length ? (
+          <div className={"reqhero" + (media.length > 1 ? " strip" : "")}>
+            {media.length === 1 ? (
+              <HeroSlide m={media[0]} item={item} onBroken={() => drop(media[0].src)} />
+            ) : (
+              <div
+                className="reqstrip"
+                ref={stripRef}
+                onScroll={(e) => {
+                  const el = e.currentTarget;
+                  setSlide(Math.min(media.length - 1, Math.round(el.scrollLeft / Math.max(1, el.clientWidth))));
+                }}
+              >
+                {media.map((m) => (
+                  <div className="reqslide" key={m.src}>
+                    <HeroSlide m={m} item={item} onBroken={() => drop(m.src)} />
+                  </div>
+                ))}
+              </div>
+            )}
+            <button className="backbtn" type="button" onClick={onBack} aria-label="Close">
+              <Markup html={ICONS.close} />
+            </button>
+            {score ? (
+              <span className="rating">
+                <Markup html={ICONS.star} />
+                {score.rating.toFixed(1)}{" "}
+                <span className="count">({fmtReviews(score.reviews)})</span>
+              </span>
+            ) : null}
+            {media.length > 1 ? <span className="reqcount">{Math.min(slide, media.length - 1) + 1} / {media.length}</span> : null}
           </div>
-        ) : null}
+        ) : (
+          <div className="reqtop">
+            <button className="backbtn" type="button" onClick={onBack} aria-label="Close">
+              <Markup html={ICONS.close} />
+            </button>
+            {score ? (
+              <span className="rating">
+                <Markup html={ICONS.star} />
+                {score.rating.toFixed(1)}{" "}
+                <span className="count">({fmtReviews(score.reviews)})</span>
+              </span>
+            ) : null}
+          </div>
+        )}
         <div className="reqinner">
         <p className="eyebrow">
           {metro ? metro.name : item.area} · {catName}

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type CSSProperties } from "react";
+import { useEffect, useMemo, useState, type SyntheticEvent } from "react";
 import { apiConfig } from "../../lib/api";
 import { GUIDES } from "../../data/guides";
 import { ICONS } from "../../data/icons";
@@ -8,6 +8,7 @@ import type { Unclaimed } from "../../data/types";
 import { addressLine, contactFor, fmtHours, fmtPhone, fromPrice, getCatalog, listingFacts, mapsHref, perPerson, plainWords, publicRating, telHref } from "../../lib/catalog";
 import { DAYS, fmtDate, fmtReviews, fmtTime, money, priceWith } from "../../lib/format";
 import { SIZES, srcSet, thumb } from "../../lib/images";
+import { embedAutoplay, isGif, listingMedia, photoCandidates, probePhotos, type Media } from "../../lib/media";
 import { cleanDesc, durationLabel, freeCancel, minAge } from "../../lib/listingDerive";
 import { clockIn, itemOpenState, itemWeek, zoneFor } from "../../lib/openNow";
 import { DAY_SHORT, clock12, dayLabel, todaysDeals } from "../../lib/companyAgent";
@@ -74,15 +75,33 @@ function TikTokScript() {
 }
 
 /**
- * The side grid is two columns by two rows. With only two or three side photos a cell would sit empty (a grey hole
- * next to the hero), so the first tiles stretch over the missing ones: 2 tiles = two tall columns, 3 = one tall + two.
+ * One tile of the hero. The first slot plays the operator's clip or embed when there is one, otherwise the cover.
+ * A tile that fails to load, or turns out to be a tiny logo, reports itself broken and the grid re-picks its layout
+ * around the media that is actually there; nothing on this page ever falls back to placeholder art.
  */
-function tileSpan(sideCount: number, i: number): CSSProperties | undefined {
-  if (sideCount >= 4) return undefined;
-  if (sideCount === 2) return { gridRow: "1 / span 2", gridColumn: i === 0 ? "2" : "3" };
-  if (sideCount === 3 && i === 0) return { gridRow: "1 / span 2", gridColumn: "2" };
-  if (sideCount === 3) return { gridColumn: "3", gridRow: String(i) };
-  return undefined;
+function HeroTile({ m, item, i, onBroken }: { m: Media; item: Unclaimed; i: number; onBroken: () => void }) {
+  if (m.kind === "embed") {
+    return <iframe className="wembed" src={embedAutoplay(m.src)} title={item.title + " video"} allow="autoplay; encrypted-media; picture-in-picture" allowFullScreen loading="lazy" />;
+  }
+  if (m.kind === "clip") {
+    return <Photo src={m.poster} video={m.src} kind={item.art} id={"wl" + item.id} alt={item.title} size="hero" fallback={false} onBroken={onBroken} />;
+  }
+  // Photo tries the proxy, then the operator's original, before giving up, and reports a logo-sized file as broken.
+  return <Photo src={m.src} kind={item.art} id={"wl" + item.id + i} alt={i === 0 ? item.title : item.title + " photo " + (i + 1)} size={i === 0 ? "hero" : "wide"} fallback={false} onBroken={onBroken} />;
+}
+
+const PLAY = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5.5v13l11-6.5z"/></svg>';
+
+/** The lightbox slide: a full-size photo, the clip with controls, or the embed as a player. */
+function GallerySlide({ m, item, index }: { m: Media; item: Unclaimed; index: number }) {
+  const stop = (e: SyntheticEvent) => e.stopPropagation();
+  if (m.kind === "embed") {
+    return <iframe className="wgalleryembed" src={m.src} title={item.title + " video"} allow="autoplay; encrypted-media; picture-in-picture" allowFullScreen onClick={stop} />;
+  }
+  if (m.kind === "clip" && !isGif(m.src)) {
+    return <video className="wgalleryimg" src={m.src} poster={thumb(m.poster, "full")} controls autoPlay muted loop playsInline onClick={stop} aria-label={item.title + " video"} />;
+  }
+  return <img className="wgalleryimg" src={m.kind === "clip" ? m.src : thumb(m.src, "full")} alt={item.title + " photo " + (index + 1)} decoding="async" fetchPriority="high" referrerPolicy="no-referrer" onClick={stop} />;
 }
 
 function Bullets({ items, icon = ICONS.check, className = "" }: { items: string[]; icon?: string; className?: string }) {
@@ -106,21 +125,14 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
   const address = contact ? addressLine(contact) : null;
   const facts = listingFacts(item);
   const guide = GUIDES[item.art];
-  const candidates = [item.cover, ...(item.photos || []).filter((p) => p !== item.cover)].filter(Boolean) as string[];
+  // The hero lays itself out from the media that really loads. Every photo is probed at thumbnail size up front so a
+  // dead URL or a 40 px logo never claims a tile; a tile that still fails later drops out and the grid re-picks.
+  const candidates = photoCandidates(item);
   const [broken, setBroken] = useState<Set<string>>(new Set());
-  const photos = candidates.filter((c) => !broken.has(c));
-  useEffect(() => {
-    const imgs = candidates.slice(0, 6).map((src) => {
-      const img = new Image();
-      img.referrerPolicy = "no-referrer";
-      const probe = thumb(src, "thumb") || src;
-      img.onload = () => { if (img.naturalWidth < 80) setBroken((b) => new Set(b).add(src)); };
-      img.onerror = () => setBroken((b) => new Set(b).add(src));
-      img.src = probe;
-      return img;
-    });
-    return () => imgs.forEach((i) => { i.onload = null; i.onerror = null; });
-  }, [candidates.join("|")]);
+  const drop = (src: string) => setBroken((b) => (b.has(src) ? b : new Set(b).add(src)));
+  const media = listingMedia(item, broken);
+  const hasVideo = media[0]?.kind !== "photo" && media.length > 0;
+  useEffect(() => probePhotos(candidates.slice(0, 12), drop), [candidates.join("|")]);
 
   const [time, setTime] = useState<string | null>(null);
   const [qty, setQty] = useState(2);
@@ -149,8 +161,8 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
     if (gallery == null) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") setGallery(null);
-      if (e.key === "ArrowRight") setGallery((g) => (g == null ? g : (g + 1) % photos.length));
-      if (e.key === "ArrowLeft") setGallery((g) => (g == null ? g : (g - 1 + photos.length) % photos.length));
+      if (e.key === "ArrowRight") setGallery((g) => (g == null ? g : (g + 1) % media.length));
+      if (e.key === "ArrowLeft") setGallery((g) => (g == null ? g : (g - 1 + media.length) % media.length));
     };
     window.addEventListener("keydown", onKey);
     document.body.style.overflow = "hidden";
@@ -158,7 +170,11 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
       window.removeEventListener("keydown", onKey);
       document.body.style.overflow = "";
     };
-  }, [gallery, photos.length]);
+  }, [gallery, media.length]);
+  useEffect(() => {
+    // A tile dropping out of the list must not leave the lightbox pointing past the end.
+    if (gallery != null && gallery >= media.length) setGallery(media.length ? media.length - 1 : null);
+  }, [gallery, media.length]);
 
   const picked = optionIdx != null ? item.options[optionIdx] : null;
   const extras = addonIdx.map((i) => (item.addons || [])[i]).filter(Boolean);
@@ -211,7 +227,7 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
   if (score && score.rating >= 4.8 && score.reviews >= 100) badges.push({ icon: ICONS.star, text: "Top rated" });
   else if (score && score.reviews >= 1000) badges.push({ icon: ICONS.star, text: "Popular" });
   if (cancel) badges.push({ icon: ICONS.check, text: cancel });
-  if (priced) badges.push({ icon: ICONS.bolt, text: "Instant confirmation" });
+  if (item.claimed && item.instant) badges.push({ icon: ICONS.bolt, text: "Instant confirmation" });
   const quick: { icon: string; label: string; value: string }[] = [];
   if (duration) quick.push({ icon: ICONS.clock, label: "Duration", value: duration });
   if (age) quick.push({ icon: ICONS.user, label: "Minimum age", value: age + "+" });
@@ -296,55 +312,55 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
           </div>
         ) : null}
 
-        <div className={"wphotos" + (photos.length >= 3 ? " grid" : " single")}>
-          <button type="button" className="wphoto main" onClick={() => setGallery(0)} aria-label="Open photos">
-            {!item.video && item.videoEmbed ? (
-              <iframe className="wembed" src={item.videoEmbed + (item.videoEmbed.includes("?") ? "&" : "?") + "autoplay=1&mute=1&muted=1&loop=1&controls=0&playsinline=1&background=1"} title={item.title + " video"} allow="autoplay; encrypted-media; picture-in-picture" allowFullScreen loading="lazy" />
-            ) : (
-              <Photo src={photos[0]} video={item.video} kind={item.art} id={"wl" + item.id} alt={item.title}  size="hero" />
-            )}
-          </button>
-          {photos.length >= 3
-            ? photos.slice(1, 5).map((src, i) => (
-                <button type="button" className={"wphoto p" + i} key={src} style={tileSpan(photos.length - 1, i)} onClick={() => setGallery(i + 1)} aria-label={"Open photo " + (i + 2)}>
-                  <img src={thumb(src, "wide")} srcSet={srcSet(src, "wide")} sizes={SIZES.wide} alt={item.title + " photo " + (i + 2)} loading={i < 2 ? "eager" : "lazy"} fetchPriority={i < 2 ? "high" : "auto"} decoding="async" referrerPolicy="no-referrer" onError={() => setBroken((b) => new Set(b).add(src))} onLoad={(e) => { if ((e.currentTarget as HTMLImageElement).naturalWidth < 80) setBroken((b) => new Set(b).add(src)); }} />
-                </button>
-              ))
-            : null}
-          {photos.length > 1 ? (
-            <button type="button" className="wmore" onClick={() => setGallery(0)}>
-              Show all {photos.length} photos
-            </button>
-          ) : null}
-        </div>
+        {media.length ? (
+          <div className={"wphotos n" + Math.min(media.length, 5)}>
+            {media.slice(0, 5).map((m, i) => (
+              <button type="button" className={"wphoto " + (i === 0 ? "main" : "p" + (i - 1))} key={m.src} onClick={() => setGallery(i)} aria-label={i === 0 ? "Open photos" : "Open photo " + (i + 1)}>
+                <HeroTile m={m} item={item} i={i} onBroken={() => drop(m.src)} />
+              </button>
+            ))}
+            {media.length > 1 ? (
+              <button type="button" className="wmore" onClick={() => setGallery(0)}>
+                {hasVideo ? "Show video and " + (media.length - 1) + (media.length === 2 ? " photo" : " photos") : "Show all " + media.length + " photos"}
+              </button>
+            ) : null}
+          </div>
+        ) : (
+          <hr className="wrule" />
+        )}
 
-        {gallery != null && photos.length ? (
+        {gallery != null && media[gallery] ? (
           <div className="wgallery" onClick={() => setGallery(null)} role="dialog" aria-label="Photos">
             <div className="wgalleryhead" onClick={(e) => e.stopPropagation()}>
-              <span>{gallery + 1} / {photos.length}</span>
+              <span>{gallery + 1} / {media.length}</span>
               <b>{item.title}</b>
               <button type="button" className="wgalleryclose" onClick={() => setGallery(null)} aria-label="Close">
                 <Markup html={ICONS.close} />
               </button>
             </div>
-            <button type="button" className="wgallerynav prev" onClick={(e) => { e.stopPropagation(); setGallery((gallery - 1 + photos.length) % photos.length); }} aria-label="Previous photo" disabled={photos.length < 2}>
+            <button type="button" className="wgallerynav prev" onClick={(e) => { e.stopPropagation(); setGallery((gallery - 1 + media.length) % media.length); }} aria-label="Previous photo" disabled={media.length < 2}>
               <Markup html={ICONS.back} />
             </button>
-            <img className="wgalleryimg" src={thumb(photos[gallery], "full")} alt={item.title + " photo " + (gallery + 1)} decoding="async" fetchPriority="high" referrerPolicy="no-referrer" onClick={(e) => e.stopPropagation()} />
-            <button type="button" className="wgallerynav next" onClick={(e) => { e.stopPropagation(); setGallery((gallery + 1) % photos.length); }} aria-label="Next photo" disabled={photos.length < 2}>
+            <GallerySlide m={media[gallery]} item={item} index={gallery} />
+            <button type="button" className="wgallerynav next" onClick={(e) => { e.stopPropagation(); setGallery((gallery + 1) % media.length); }} aria-label="Next photo" disabled={media.length < 2}>
               <Markup html={ICONS.back} />
             </button>
             <div className="wgallerystrip" onClick={(e) => e.stopPropagation()}>
-              {photos.map((src, i) => (
-                <button type="button" key={src} aria-pressed={i === gallery} onClick={() => setGallery(i)}>
-                  <img src={thumb(src, "thumb")} srcSet={srcSet(src, "thumb")} sizes={SIZES.thumb} alt="" loading="lazy" decoding="async" referrerPolicy="no-referrer" />
+              {media.map((m, i) => (
+                <button type="button" key={m.src} aria-pressed={i === gallery} onClick={() => setGallery(i)} aria-label={m.kind === "photo" ? "Photo " + (i + 1) : "Video"}>
+                  {m.kind === "photo" || (m.kind === "clip" && m.poster) ? (
+                    <img src={thumb(m.kind === "photo" ? m.src : m.poster, "thumb")} alt="" loading="lazy" decoding="async" referrerPolicy="no-referrer" />
+                  ) : (
+                    <span className="wgalleryplay"><Markup html={PLAY} /></span>
+                  )}
+                  {m.kind !== "photo" ? <span className="wgalleryplay over"><Markup html={PLAY} /></span> : null}
                 </button>
               ))}
             </div>
           </div>
         ) : null}
 
-        <div className="wcols">
+        <div className={"wcols" + (media.length ? "" : " nohero")}>
           <div className="wmain">
             {quick.length ? (
               <div className="wquick">
@@ -705,7 +721,7 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
             ) : done ? (
               <div className="wbookcard">
                 <div className="confmark"><Markup html={ICONS.check} /></div>
-                <h3>You're booked</h3>
+                <h3>{item.claimed && item.instant ? "You're booked" : "Request sent"}</h3>
                 <p className="wbooksub">{fmtDate(day)} · {time ? fmtTime(time) : ""} · {qty} {qty === 1 ? "guest" : "guests"}</p>
                 <p className="wbooksub">{picked ? plainWords(picked.name + (picked.detail ? " · " + picked.detail : "")) : item.title}</p>
                 <button type="button" className="cta" style={{ width: "100%", marginTop: 14 }} onClick={onClose}>Find another experience</button>
@@ -771,7 +787,7 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
                   {ready ? (p.total ? (payments ? "Book and pay · " : "Book · ") + money(p.total) : "Book") : needService && !picked ? "Choose a service" : time == null ? "Pick a time" : "Add your name and number"}
                 </button>
                 <p className="wbookfoot">
-                  {priced ? "Instant confirmation. " : "Confirmed by the operator. "}
+                  {item.claimed && item.instant ? "Instant confirmation. " : "The operator confirms by text or email. "}
                   {cancel ? cancel + "." : item.cancellation ? "Cancellation terms are set by " + item.title + ", see the policy below." : "Cancellation terms are set by the operator."}
                 </p>
               </div>
