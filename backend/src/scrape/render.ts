@@ -14,17 +14,58 @@ import { join } from "node:path";
 
 const PROFILE = "outset-render-";
 
+/** Every browser Playwright has installed, newest build first. Covers `npx playwright install chromium` on Linux and macOS. */
+function playwrightBrowsers(): string[] {
+  const roots = [process.env.PLAYWRIGHT_BROWSERS_PATH, homedir() + "/.cache/ms-playwright", homedir() + "/Library/Caches/ms-playwright"].filter((p): p is string => !!p && p !== "0");
+  const out: string[] = [];
+  for (const root of roots) {
+    let names: string[] = [];
+    try {
+      names = readdirSync(root);
+    } catch {
+      continue;
+    }
+    // Headless shell first (smaller, what the crawl needs), then the full browser; higher build numbers first.
+    const sorted = names
+      .filter((n) => /^chromium(_headless_shell)?-\d+$/.test(n))
+      .sort((a, b) => Number(b.split("-")[1]) - Number(a.split("-")[1]) || (a.includes("headless") ? -1 : 1));
+    for (const n of sorted) {
+      const dir = join(root, n);
+      let subs: string[] = [];
+      try {
+        subs = readdirSync(dir);
+      } catch {
+        continue;
+      }
+      for (const sub of subs) {
+        // chrome-linux, chrome-headless-shell-linux, chrome-headless-shell-mac-arm64, chrome-mac-arm64 ...
+        if (sub.startsWith("chrome-headless-shell")) out.push(join(dir, sub, "chrome-headless-shell"));
+        else if (sub.startsWith("chrome-linux")) out.push(join(dir, sub, "chrome"));
+        else if (sub.startsWith("chrome-mac")) out.push(join(dir, sub, "Chromium.app/Contents/MacOS/Chromium"));
+      }
+    }
+  }
+  return out;
+}
+
 const CANDIDATES = [
   process.env.OUTSET_CHROME,
-  homedir() + "/Library/Caches/ms-playwright/chromium_headless_shell-1223/chrome-headless-shell-mac-arm64/chrome-headless-shell",
-  homedir() + "/Library/Caches/ms-playwright/chromium_headless_shell-1208/chrome-headless-shell-mac-arm64/chrome-headless-shell",
+  ...playwrightBrowsers(),
   "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
   "/usr/bin/chromium",
+  "/usr/bin/chromium-browser",
   "/usr/bin/google-chrome",
+  "/usr/bin/google-chrome-stable",
 ].filter((p): p is string => !!p);
 
 export function chromePath(): string | null {
   return CANDIDATES.find((p) => existsSync(p)) || null;
+}
+
+/** Linux containers (Render) have no user namespaces for the sandbox and a tiny /dev/shm; root refuses the sandbox outright. */
+function platformFlags(): string[] {
+  const root = typeof process.getuid === "function" && process.getuid() === 0;
+  return process.platform === "linux" || root ? ["--no-sandbox", "--disable-dev-shm-usage", "--disable-setuid-sandbox"] : [];
 }
 
 let browser: { proc: ChildProcess; port: number } | null = null;
@@ -110,7 +151,7 @@ async function getBrowser(): Promise<{ proc: ChildProcess; port: number } | null
     const dir = "/tmp/" + PROFILE + port;
     const proc = spawn(
       bin,
-      ["--headless=new", "--remote-debugging-port=" + port, "--no-first-run", "--no-default-browser-check", "--disable-gpu", "--mute-audio", "--user-data-dir=" + dir, "--window-size=1280,900", "about:blank"],
+      ["--headless=new", ...platformFlags(), "--remote-debugging-port=" + port, "--no-first-run", "--no-default-browser-check", "--disable-gpu", "--mute-audio", "--user-data-dir=" + dir, "--window-size=1280,900", "about:blank"],
       { stdio: "ignore" },
     );
     proc.on("exit", () => {

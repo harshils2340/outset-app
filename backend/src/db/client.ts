@@ -7,9 +7,11 @@ const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, "../..");
 const dataDir = join(root, "data");
 // OUTSET_DB points a read-mostly job (sync) at a snapshot so crawlers writing to the live file never stall it.
-const dbPath = process.env.OUTSET_DB || join(dataDir, "outset.db");
+// OUTSET_DB_PATH is the durable location in the cloud (Render disk at /var/data/outset.db). Default: backend/data/outset.db.
+const dbPath = process.env.OUTSET_DB || process.env.OUTSET_DB_PATH || join(dataDir, "outset.db");
 
 mkdirSync(dataDir, { recursive: true });
+mkdirSync(dirname(dbPath), { recursive: true });
 
 export const db = new DatabaseSync(dbPath);
 // Several commands run at once against this file. Wait for a writer instead of failing with "database is locked".

@@ -32,3 +32,44 @@ services:
         value: https://onoutset.com,https://www.onoutset.com
       - key: SITE_URL
         value: https://onoutset.com/
+
+  # Long-running pipeline: crawls, cover screen, batch collection and the nightly catalog sync and push.
+  # The build only provides Node and Chromium; the worker clones the repo onto its disk and runs every job from that clone.
+  - type: worker
+    name: outset-pipeline
+    runtime: node
+    rootDir: backend
+    plan: starter
+    # Chromium comes from the `playwright` devDependency. --with-deps needs apt (may be refused on the native runtime); the plain install still lands the browser.
+    buildCommand: npm ci --include=dev && (npx playwright install --with-deps chromium || npx playwright install chromium)
+    startCommand: npx tsx scripts/pipeline.mts
+    disk:
+      name: outset-data
+      mountPath: /var/data
+      sizeGB: 5
+    envVars:
+      - key: NODE_VERSION
+        value: 22
+      - key: NPM_CONFIG_PRODUCTION
+        value: "false"
+      - key: OUTSET_DB_PATH
+        value: /var/data/outset.db
+      - key: PIPELINE_TZ
+        value: America/Toronto
+      - key: GITHUB_REPO
+        value: harshils2340/outset-app
+      - key: GITHUB_TOKEN
+        sync: false
+      - key: GIT_AUTHOR_NAME
+        sync: false
+      - key: GIT_AUTHOR_EMAIL
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: OUTSET_EXTRACT_BUDGET_USD
+        value: "8"
+      - key: PAID_CAP_USD
+        value: "20"
+      - key: DB_SEED_URL
+        sync: false
+      # OUTSET_CHROME: leave unset; the Playwright install under ~/.cache/ms-playwright is found automatically.
