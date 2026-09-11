@@ -280,17 +280,29 @@ function startingPrice(u: Unclaimed): number | null {
   return priced.length ? Math.min(...priced) : u.from ?? null;
 }
 
-export function listingScore(u: Unclaimed, q: string): number {
+/** Everything about the query that does not depend on the listing, parsed once and reused across the whole catalog. */
+type ParsedQuery = { q: string; intent: Intent; intentWords: Set<string>; all: string[]; artHits: AliasHit[]; explicitArts: ArtKind[]; arts: ArtKind[]; cheap: boolean };
+let parsedCache: ParsedQuery | null = null;
+
+function parseQuery(q: string): ParsedQuery {
+  if (parsedCache && parsedCache.q === q) return parsedCache;
   const intent = parseIntent(q);
   const intentWords = new Set(intent.words.map((w) => w.replace(/[^a-z0-9]/g, "")));
   const all = tokens(q).filter((t) => !intentWords.has(t) && !FILLER.has(t));
   const artHits = queryArtHits(q);
   const explicitArts = artHits.map((h) => h.art).filter((a, i, arr) => arr.indexOf(a) === i);
   const arts = explicitArts.length ? explicitArts : intent.arts;
+  const cheap = /\b(cheap|budget|affordable|inexpensive)\b/i.test(q);
+  parsedCache = { q, intent, intentWords, all, artHits, explicitArts, arts, cheap };
+  return parsedCache;
+}
+
+export function listingScore(u: Unclaimed, q: string): number {
+  const { intent, all, artHits, explicitArts, arts, cheap: wantsCheap } = parseQuery(q);
   const from = startingPrice(u);
   if (intent.maxPrice != null && (from == null || from > intent.maxPrice)) return 0;
   // "cheap" is a lean, not a cap: it lifts low starting prices without hiding unpriced listings.
-  const cheap = /\b(cheap|budget|affordable|inexpensive)\b/i.test(q) ? (from != null && from <= 40 ? 6 : from != null && from <= 75 ? 3 : 0) : 0;
+  const cheap = wantsCheap ? (from != null && from <= 40 ? 6 : from != null && from <= 75 ? 3 : 0) : 0;
   if (intent.kids && !kidFriendly(u)) return 0;
   if (!all.length) {
     // Pure intent, no other words: rank by fit and by how strong the listing is.
