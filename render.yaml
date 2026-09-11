@@ -28,6 +28,10 @@ services:
         value: Outset <onboarding@resend.dev>
       - key: MAIL_REPLY_TO
         value: hello@onoutset.com
+      - key: MAIL_POSTAL
+        sync: false
+      - key: API_URL
+        value: https://outset-api.onrender.com
       - key: ALLOWED_ORIGINS
         value: https://onoutset.com,https://www.onoutset.com
       - key: SITE_URL

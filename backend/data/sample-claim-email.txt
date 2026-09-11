@@ -1,23 +1,26 @@
-To: info@sunsetwatersports.com
+To: (operator inbox)
 From: Outset <hello@onoutset.com>
-Subject: A page for Sunset Watersports Key West
+Subject: Free extra revenue for Cajun Encounters Tour Company
 
 Hi,
 
-I am Harshil. I run Outset. We help people book local things without sitting on hold or leaving a voicemail.
+I'm Harshil. I run Outset.
 
-I made a page for Sunset Watersports Key West from your website. I did not change your prices or make anything up. Here it is:
-https://onoutset.com/#o=o-sunsetwatersportskeywest-com
+Most shops I talk to already have a website, but people still bounce when they have to call or wait on an email. I put up a page for Cajun Encounters Tour Company from your site so people in Slidell can book you there. I used what was already on your website. I didn't invent prices or hours.
+https://onoutset.com/#o=o-cajunencounters-com
 
-This is free for you. No monthly fee, no setup bill. If that sounds too good to be true: we charge the guest a small booking fee when they pay. That is how we make money. Nothing comes out of your side.
+This is just extra bookings. Completely free for you. I know that sounds too good to be true. We make money by charging the guest a small booking fee when they pay. You don't get a bill.
 
-If you already use FareHarbor, keep it. This is just another place someone can find you.
+We've listed 40,000+ shops across 47 cities. Shops that have claimed their page have been seeing about a 15% increase in sales on average. That's extra revenue on top of what they already make from their own site.
 
-If this is your shop, this link opens the page so you can look it over. It is only for the owner. Please do not forward it:
-https://onoutset.com/#claim=o-sunsetwatersportskeywest-com&k=<token>
+If this is your shop, this link is for you. Please don't forward it:
+https://onoutset.com/#claim=o-cajunencounters-com&k=<token>
 
-If this is not your business, you can take the page down here:
-https://onoutset.com/#remove=o-sunsetwatersportskeywest-com
+If this isn't your business, you can take the page down here:
+https://onoutset.com/#remove=o-cajunencounters-com
 
 Harshil
 Outset
+
+Don't want emails from Outset? Unsubscribe here and we will stop:
+https://onoutset.com/unsubscribe.html?t=<token>

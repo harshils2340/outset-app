@@ -26,6 +26,13 @@ const mark = db.prepare("INSERT INTO facts (id, operator_id, fact_key, fact_valu
 
 let i = 0;
 let kept = 0;
+// A probe that never settles (the proxy sometimes leaves a socket open past its own timeout) counts as "unknown"
+// rather than stalling a worker for the rest of the run.
+const probe = (url: string) =>
+  Promise.race([
+    probeQuality(url),
+    new Promise<Awaited<ReturnType<typeof probeQuality>>>((r) => setTimeout(() => r({ kind: "unknown", stats: null, reason: "hung" } as Awaited<ReturnType<typeof probeQuality>>), 30_000)),
+  ]);
 let swapped = 0;
 let dropped = 0;
 const kinds: Record<string, number> = {};
@@ -37,7 +44,7 @@ const worker = async () => {
       const facts = photosOf.all(op.id) as { fact_key: string; fact_value: string; source_url: string | null }[];
       const cover = facts.find((f) => f.fact_key === "cover");
       if (!cover) continue;
-      const verdict = await probeQuality(cover.fact_value);
+      const verdict = await probe(cover.fact_value);
       kinds[verdict.kind] = (kinds[verdict.kind] || 0) + 1;
       if (isUsable(verdict.kind)) {
         kept += 1;
@@ -48,7 +55,7 @@ const worker = async () => {
       let replacement: { fact_value: string; source_url: string | null } | null = null;
       for (const f of facts) {
         if (f.fact_key !== "photo" || f.fact_value === cover.fact_value) continue;
-        const v = await probeQuality(f.fact_value);
+        const v = await probe(f.fact_value);
         if (v.kind === "photo") {
           replacement = f;
           break;
@@ -67,7 +74,7 @@ const worker = async () => {
       console.error(op.domain + ": " + (e as Error).message.slice(0, 80));
     }
     const n = i;
-    if (n % 200 === 0) console.log(`${n}/${rows.length} screened, ${kept} kept, ${swapped} swapped, ${dropped} dropped`, kinds);
+    if (n % 100 === 0) console.log(new Date().toISOString().slice(11, 19), `${n}/${rows.length} screened, ${kept} kept, ${swapped} swapped, ${dropped} dropped`, kinds);
   }
 };
 
