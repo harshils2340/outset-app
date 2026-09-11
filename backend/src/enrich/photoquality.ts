@@ -189,8 +189,8 @@ export function classify(s: PhotoStats): { kind: PhotoKind; reason: string } {
   // Pale photos (snow, overcast sea) keep more texture and more distinct colours than that.
   if (s.saturation < 0.25 && s.edges < 0.05 && s.top4 > 0.6 && s.colourfulness < 30) return { kind: "map", reason: "flat pale top4 " + round(s.top4) + " edge " + round(s.edges) };
   // Scanned pages (safety booklets, waivers, brochures): a lot of paper white, little colour, and the busy
-  // edge texture of text. A photo that pale (snow, fog) has no such texture; a poster has more colour.
-  if (s.white > 0.28 && s.colourfulness < 40 && s.saturation < 0.2 && s.edges > 0.06) return { kind: "document", reason: "paper white " + round(s.white) + " edge " + round(s.edges) };
+  // edge texture of text, in a small grey-dominated palette. Overcast-sky photos are as pale but hold more distinct colours.
+  if (s.white > 0.28 && s.colourfulness < 40 && s.saturation < 0.2 && s.edges > 0.06 && s.colours < 130 && s.top4 > 0.5) return { kind: "document", reason: "paper white " + round(s.white) + " edge " + round(s.edges) };
   return { kind: "photo", reason: "" };
 }
 
