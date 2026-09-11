@@ -385,7 +385,9 @@ export function WebHome({ onOpenApp, onOperators }: { onOpenApp: () => void; onO
     }
     const present = RAIL_KINDS.filter((r) => count.has(r.art));
     const score = (art: ArtKind) => { const c = count.get(art)!; return c.covers * 4 + c.n; };
-    const top = new Set(present.slice().sort((a, b) => score(b.art) - score(a.art)).slice(0, HOME_RAILS).map((r) => r.art));
+    // A rail is a row of photos. Kinds that have fewer than six photographed places go to the tile grid until the crawl catches up.
+    const railable = present.filter((r) => count.get(r.art)!.covers >= 6);
+    const top = new Set(railable.slice().sort((a, b) => score(b.art) - score(a.art)).slice(0, HOME_RAILS).map((r) => r.art));
     return {
       rails: present.filter((r) => top.has(r.art)),
       moreKinds: present.filter((r) => !top.has(r.art)).map((r) => ({ ...r, n: count.get(r.art)!.n })),
