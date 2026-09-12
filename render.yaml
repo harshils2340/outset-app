@@ -36,6 +36,10 @@ services:
         value: https://onoutset.com,https://www.onoutset.com
       - key: SITE_URL
         value: https://onoutset.com/
+      # OUTSET_TEST_CLAIM_EMAILS is deliberately NOT listed here. It is a testing-only bypass that lets the
+      # addresses it names claim and release any listing without the website-email check, so it must never be
+      # part of the production service definition. Unset is the safe default and the only correct value here.
+      # See backend/AGENTS.md, "Test claim bypass", and backend/src/lib/testClaim.ts.
 
   # Long-running pipeline: crawls, cover screen, batch collection and the nightly catalog sync and push.
   # The build only provides Node and Chromium; the worker clones the repo onto its disk and runs every job from that clone.

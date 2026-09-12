@@ -33,6 +33,14 @@ export function rememberClaimToken(id: string, token: string): void {
 export function claimTokenFor(id: string): string | null {
   return lsGet(TOKEN_PREFIX + id);
 }
+/** Drop this device's proof that it may edit a listing: the claim token and the listing's slot in the session. */
+export function forgetClaim(id: string): void {
+  lsSet(TOKEN_PREFIX + id, null);
+  const s = loadApiSession();
+  if (!s) return;
+  const ids = s.ids.filter((x) => x !== id);
+  saveApiSession(ids.length ? { ...s, ids } : null);
+}
 
 export type ApiSession = { token: string; ids: string[]; email: string; exp: number };
 export function loadApiSession(): ApiSession | null {
@@ -128,7 +136,8 @@ export async function fetchClaimRule(id: string): Promise<ClaimRule | null> {
 }
 
 export type ClaimRequest =
-  | { ok: true; sent: boolean; to: string }
+  // `bypass` and `link` only ever come back for the test bypass (see backend/src/lib/testClaim.ts).
+  | { ok: true; sent: boolean; to: string; bypass?: boolean; link?: string }
   | { ok: false; reason: "mismatch" | "none" | "unknown" | "error"; hint?: string | null; domains?: string[]; error?: string };
 
 /** Asks the API to email the signed claim link. The API sends it only to an address it can tie to the business. */
@@ -150,6 +159,26 @@ export function ownerFromHash(hash: string): { name: string; email: string; phon
   } catch {
     return null;
   }
+}
+
+/* ---------- test bypass, testing only ----------
+ * The API only answers these when someone has set OUTSET_TEST_CLAIM_EMAILS on that host and the address
+ * asked about is on the list. Everywhere else `testClaimActive` is false and `testUnclaim` fails, so the
+ * test UI never renders for a normal visitor or a real operator. */
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/** True when the API will let this exact address claim and release any listing. False with no API. */
+export async function testClaimActive(email: string): Promise<boolean> {
+  if (!EMAIL_RE.test(email.trim())) return false;
+  const r = await call<{ active: boolean }>(`/claims/test-status?email=${encodeURIComponent(email.trim())}`, { timeout: 8000 });
+  return !!(r.ok && r.data?.active);
+}
+
+/** Releases the listing server-side so it is unclaimed again. The caller clears this device separately. */
+export async function testUnclaim(id: string, email: string): Promise<{ ok: boolean; removed?: boolean; error?: string }> {
+  const r = await call<{ ok: boolean; removed: boolean }>(`/claims/${encodeURIComponent(id)}/test-unclaim`, { method: "POST", body: JSON.stringify({ email: email.trim() }), timeout: 20000 });
+  return { ok: r.ok, removed: r.data?.removed, error: r.error };
 }
 
 /* ---------- sign-in by email code ---------- */

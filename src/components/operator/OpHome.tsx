@@ -24,6 +24,17 @@ export function OpHome() {
     const k = dateKey(d);
     return bookings.filter((b) => b.date >= k && b.date <= todayKey && b.status === "completed");
   })();
+  // The 30 days before that. Only used when it actually holds bookings, so the tile never shows a
+  // comparison against a period this operator was not on Outset for.
+  const priorMonth = (() => {
+    const from = new Date(startOfToday());
+    from.setDate(from.getDate() - 60);
+    const to = new Date(startOfToday());
+    to.setDate(to.getDate() - 30);
+    const a = dateKey(from);
+    const b2 = dateKey(to);
+    return bookings.filter((b) => b.date >= a && b.date < b2 && b.status === "completed");
+  })();
   const weekDays = Array.from({ length: 7 }, (_, i) => {
     const d = new Date(startOfToday());
     d.setDate(d.getDate() + i);
@@ -31,6 +42,11 @@ export function OpHome() {
     const items = bookings.filter((b) => b.date === k && (b.status === "accepted" || b.status === "completed" || b.status === "new"));
     return { d, k, count: items.length, pending: items.filter((b) => b.status === "new").length, total: items.reduce((n, b) => n + bookingTotal(b), 0), off: p.hours[d.getDay()].closed || p.blockedDates.includes(k) };
   });
+  const weekTotal = week.reduce((n, b) => n + bookingTotal(b), 0);
+  const monthTotal = month.reduce((n, b) => n + bookingTotal(b), 0);
+  const priorTotal = priorMonth.reduce((n, b) => n + bookingTotal(b), 0);
+  const monthDelta = priorTotal > 0 ? Math.round(((monthTotal - priorTotal) / priorTotal) * 100) : null;
+  const nextToday = today.find((b) => b.slot);
   const checks = setupChecks(p);
   const done = checks.filter((c) => c.done).length;
   const hasSamples = p.bookings.some((b) => b.source === "sample");
@@ -69,10 +85,42 @@ export function OpHome() {
 
 
       <div className="odstats">
-        <button type="button" onClick={() => go("bookings")}><b>{fresh.length}</b><small>New requests</small></button>
-        <button type="button" onClick={() => go("calendar")}><b>{today.length}</b><small>Today</small></button>
-        <button type="button" onClick={() => go("calendar")}><b>{money(week.reduce((n, b) => n + bookingTotal(b), 0))}</b><small>Next 7 days on the books</small></button>
-        <button type="button" onClick={() => go("payouts")}><b>{money(month.reduce((n, b) => n + bookingTotal(b), 0))}</b><small>Completed, last 30 days</small></button>
+        <button type="button" onClick={() => go("bookings")}>
+          <span className="odstaticon"><Markup html={OD_ICONS.ticket} /></span>
+          <small>New requests</small>
+          <b>{fresh.length}</b>
+          <span className="odstatfoot">
+            {fresh.length ? <em className="warn">Needs an answer</em> : <em className="ok">All answered</em>}
+          </span>
+        </button>
+        <button type="button" onClick={() => go("calendar")}>
+          <span className="odstaticon"><Markup html={OD_ICONS.calendar} /></span>
+          <small>Today</small>
+          <b>{today.length}</b>
+          <span className="odstatfoot">
+            {nextToday ? <><em>Next</em> {fmtTime(nextToday.slot)}</> : <em className="quiet">Nothing booked</em>}
+          </span>
+        </button>
+        <button type="button" onClick={() => go("calendar")}>
+          <span className="odstaticon"><Markup html={OD_ICONS.clock} /></span>
+          <small>Next 7 days on the books</small>
+          <b>{money(weekTotal)}</b>
+          <span className="odstatfoot">
+            <em>{week.length}</em> {week.length === 1 ? "booking" : "bookings"}
+          </span>
+        </button>
+        <button type="button" onClick={() => go("payouts")}>
+          <span className="odstaticon"><Markup html={OD_ICONS.card} /></span>
+          <small>Completed, last 30 days</small>
+          <b>{money(monthTotal)}</b>
+          <span className="odstatfoot">
+            {monthDelta === null ? (
+              <><em>{month.length}</em> {month.length === 1 ? "trip" : "trips"}</>
+            ) : (
+              <><em className={monthDelta >= 0 ? "ok" : "warn"}>{monthDelta >= 0 ? "+" : ""}{monthDelta}%</em> vs prior 30 days</>
+            )}
+          </span>
+        </button>
       </div>
 
       {!p.published ? (

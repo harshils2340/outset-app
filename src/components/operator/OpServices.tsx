@@ -3,6 +3,7 @@ import { money } from "../../lib/format";
 import { PER_UNITS, uid, type OpAddon, type OpService, type OpVariant } from "../../lib/operator";
 import { Markup } from "../Markup";
 import { OD_ICONS, useOp } from "./opContext";
+import { useReorder } from "./useReorder";
 
 /**
  * Menu editor. Uber Eats menu manager plus Booksy service list: every service has a description, a duration,
@@ -24,15 +25,12 @@ export function OpServices() {
     set((cur) => ({ ...cur, services: cur.services.filter((s) => s.id !== id) }));
     toast("Service removed");
   };
-  const move = (id: string, dir: number) =>
-    set((cur) => {
-      const i = cur.services.findIndex((s) => s.id === id);
-      const j = i + dir;
-      if (i < 0 || j < 0 || j >= cur.services.length) return cur;
-      const next = cur.services.slice();
-      [next[i], next[j]] = [next[j], next[i]];
-      return { ...cur, services: next };
-    });
+  const reorder = useReorder<OpService>({
+    items: p.services,
+    getId: (s) => s.id,
+    getLabel: (s) => s.name || "Untitled service",
+    onReorder: (next) => set((cur) => ({ ...cur, services: next })),
+  });
 
   const patchAddon = (id: string, patch: Partial<OpAddon>) => set((cur) => ({ ...cur, addons: cur.addons.map((a) => (a.id === id ? { ...a, ...patch } : a)) }));
 
@@ -48,13 +46,30 @@ export function OpServices() {
         </div>
       </div>
 
+      <p className="odreorderhint">Drag a service to reorder it, or focus the handle and press Space, then the arrow keys.</p>
+      <span role="status" aria-live="polite" className="odsr">{reorder.spoken}</span>
+
       <div className="odsvclist">
         {p.services.map((s, i) => {
           const open = openId === s.id;
           const from = s.variants.map((v) => v.price).filter((n): n is number => n != null);
           return (
-            <div className={"odsvc" + (open ? " open" : "") + (s.live ? "" : " off")} key={s.id}>
+            <div
+              className={"odsvc" + (open ? " open" : "") + (s.live ? "" : " off") + (reorder.grabbed === s.id ? " held" : "") + (reorder.dragging === s.id ? " lifting" : "") + (reorder.over === s.id ? " over" : "")}
+              key={s.id}
+              {...reorder.dragProps(s.id)}
+            >
               <div className="odsvchead">
+                <span
+                  className="odgrip"
+                  role="button"
+                  tabIndex={0}
+                  aria-pressed={reorder.grabbed === s.id}
+                  aria-label={"Reorder " + (s.name || "Untitled service") + ", position " + (i + 1) + " of " + p.services.length}
+                  onKeyDown={reorder.onKeyDown(s.id)}
+                >
+                  <Markup html={OD_ICONS.grip} />
+                </span>
                 <button type="button" className="odsvctitle" onClick={() => setOpenId(open ? null : s.id)}>
                   <b>{s.name || "Untitled service"}</b>
                   <small>
@@ -63,10 +78,8 @@ export function OpServices() {
                   </small>
                 </button>
                 <div className="odsvctools">
-                  <button type="button" className="odiconbtn" disabled={i === 0} onClick={() => move(s.id, -1)} aria-label="Move up"><Markup html={OD_ICONS.chevUp} /></button>
-                  <button type="button" className="odiconbtn" disabled={i === p.services.length - 1} onClick={() => move(s.id, 1)} aria-label="Move down"><Markup html={OD_ICONS.chevDown} /></button>
                   <button type="button" className={"opavail" + (s.live ? "" : " off")} onClick={() => patchService(s.id, { live: !s.live })}>{s.live ? "Live" : "Hidden"}</button>
-                  <button type="button" className="odiconbtn" onClick={() => setOpenId(open ? null : s.id)} aria-label="Edit"><Markup html={open ? OD_ICONS.chevUp : OD_ICONS.chevDown} /></button>
+                  <button type="button" className="odiconbtn" onClick={() => setOpenId(open ? null : s.id)} aria-label={open ? "Close" : "Edit"}><Markup html={open ? OD_ICONS.chevUp : OD_ICONS.chevDown} /></button>
                 </div>
               </div>
               {open ? (

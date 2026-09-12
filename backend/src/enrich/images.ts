@@ -5,6 +5,7 @@ import { fetchHtml, sleep, withDeadline } from "../scrape/fetch.ts";
 import { spawnWorkers } from "../scrape/cpu.ts";
 import { renderPage } from "../scrape/render.ts";
 import { probeImage, shapeBonus } from "./imagesize.ts";
+import { rankForCover, type CoverContext } from "./photorelevance.ts";
 
 /**
  * Photo harvest from each operator's own site. Breadth-first over their pages, collect real photos,
@@ -227,8 +228,19 @@ export async function collectMedia(website: string, maxPages = 12): Promise<{ ph
   };
 }
 
+/** What the business is called and which activity it sells, so the cover pass can tell a scene of it from a stray photo. */
+function coverContextFor(id: string): CoverContext | null {
+  const row = db.prepare("SELECT name, family, icon_key FROM operators WHERE id = ?").get(id) as { name: string; family: string | null; icon_key: string } | undefined;
+  return row ? { title: row.name, art: row.icon_key, family: row.family || "" } : null;
+}
+
 export async function photosForOperator(op: { id: string; domain: string; website: string }): Promise<number> {
-  const { photos, videos } = await collectMedia(op.website);
+  const media = await collectMedia(op.website);
+  const videos = media.videos;
+  // Shape and file quality said which images are photographs. This says which of them is a photograph of this
+  // business, using the alt text and the page the photo sits on, and puts that one in the cover slot.
+  const ctx = coverContextFor(op.id);
+  const photos = ctx ? rankForCover(media.photos, ctx) : media.photos;
   db.prepare("DELETE FROM facts WHERE operator_id = ? AND fact_key IN ('photo', 'cover', 'video', 'video_embed')").run(op.id);
   db.prepare("DELETE FROM sources WHERE operator_id = ? AND extractor = 'photos'").run(op.id);
   const ins = db.prepare("INSERT INTO facts (id, operator_id, fact_key, fact_value, source_url, confidence) VALUES (?, ?, ?, ?, ?, 'site')");

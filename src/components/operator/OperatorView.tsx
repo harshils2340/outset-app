@@ -6,7 +6,6 @@ import { allBookings, demoProfile, hydrateProfile, loadProfile, loadSession, sav
 import { useApp } from "../../state/AppProvider";
 import { decideBooking, fetchBookings, hasApi, signOutApi, type RemoteBooking } from "../../lib/api";
 import { listingUrl } from "../../lib/site";
-import { Mark } from "../layout/Mark";
 import { Markup } from "../Markup";
 import { OpAssistant } from "./OpAssistant";
 import { OpBookings, BookingDrawer } from "./OpBookings";
@@ -17,6 +16,7 @@ import { OpListing } from "./OpListing";
 import { OpLogin } from "./OpLogin";
 import { OpPayouts, OpSettings } from "./OpMore";
 import { OpServices } from "./OpServices";
+import { OpSidebar } from "./OpSidebar";
 import { OD_ICONS, OpCtx, PAGES, type OpApi, type OpPage } from "./opContext";
 
 /**
@@ -165,44 +165,22 @@ export function OperatorView({ compact = false }: { compact?: boolean }) {
   const opened = openedId ? bookings.find((b) => b.id === openedId) || null : null;
   const title = PAGES.find((x) => x.id === page)?.label || "";
 
-  const nav = (
-    <nav className="odnav">
-      {PAGES.map((pg) => (
-        <button type="button" key={pg.id} aria-current={page === pg.id ? "page" : undefined} onClick={() => api.go(pg.id)}>
-          <Markup html={OD_ICONS[pg.icon]} />
-          <span>{pg.label}</span>
-          {pg.id === "bookings" && fresh ? <em>{fresh}</em> : null}
-        </button>
-      ))}
-    </nav>
-  );
-
   return (
     <OpCtx.Provider value={api}>
       <div className={"od" + (compact ? " compact" : "")}>
         {!compact ? (
-          <aside className="odside">
-            <button type="button" className="odbrand" onClick={() => { dispatch({ type: "back" }); }}>
-              <Mark size={28} />
-              <b>Outset</b>
-              <span>for operators</span>
-            </button>
-            <div className="odbiz">
-              <span className="odbizmark">{p.title.slice(0, 1)}</span>
-              <span className="meta">
-                <b>{p.title}</b>
-                <small>{isDemo ? "Demo dashboard" : !p.published ? "Not on the site" : !p.services.some((x) => x.live) ? "Live · no menu yet" : p.accepting ? "Live · accepting" : "Live · paused"}</small>
-              </span>
-            </div>
-            {isDemo ? (
-              <button type="button" className="cta small odclaimcta" onClick={() => setWantLogin(true)}>Claim your business</button>
-            ) : null}
-            {nav}
-            <div className="odsidefoot">
-              <button type="button" onClick={api.preview}><Markup html={OD_ICONS.external} /> View my listing</button>
-              <button type="button" onClick={logout}><Markup html={OD_ICONS.logout} /> {isDemo ? "Sign in" : "Log out"}</button>
-            </div>
-          </aside>
+          <OpSidebar
+            p={p}
+            page={page}
+            fresh={fresh}
+            isDemo={isDemo}
+            go={api.go}
+            onBrand={() => { dispatch({ type: "back" }); }}
+            onClaim={() => setWantLogin(true)}
+            onSwitch={enter}
+            onPreview={api.preview}
+            onLogout={logout}
+          />
         ) : null}
 
         <div className="odmain">

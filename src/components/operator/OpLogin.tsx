@@ -2,14 +2,14 @@ import { useDeferredValue, useEffect, useMemo, useState } from "react";
 import type { Unclaimed } from "../../data/types";
 import { contactFor, experienceById, fromPrice, getCatalog } from "../../lib/catalog";
 import { money } from "../../lib/format";
-import { claimedIds, defaultProfile, demoProfile, loadProfile, sampleBookings, saveProfile, type OperatorProfile } from "../../lib/operator";
+import { claimedIds, defaultProfile, deleteProfile, demoProfile, loadProfile, sampleBookings, saveProfile, type OperatorProfile } from "../../lib/operator";
 import { searchByName } from "../../lib/search";
 import { Photo } from "../art/Photo";
 import { Mark } from "../layout/Mark";
 import { Markup } from "../Markup";
 import { useApp } from "../../state/AppProvider";
 import { OD_ICONS } from "./opContext";
-import { claimRemote, fetchClaimRule, fetchRemoteProfile, hasApi, ownerFromHash, rememberClaimToken, requestClaimLink, requestSignInCode, verifySignInCode, type ClaimRule } from "../../lib/api";
+import { claimRemote, fetchClaimRule, fetchRemoteProfile, hasApi, ownerFromHash, rememberClaimToken, requestClaimLink, requestSignInCode, testClaimActive, testUnclaim, verifySignInCode, type ClaimRule } from "../../lib/api";
 
 /**
  * Claim and sign in. The owner searches by name, says who they are, and the signed claim link goes to the
@@ -22,13 +22,28 @@ type Step = "pick" | "details" | "code" | "sent";
 const SUPPORT = "harshils2340@gmail.com";
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+/**
+ * TEST BYPASS helper. The claim link the API builds points at SITE_URL, which on a laptop is still the
+ * production host. Keep the hash, move it onto whatever origin this page is on, and reload: the claim hash
+ * is read once at boot, not on hashchange.
+ */
+function openBypassLink(link: string): void {
+  const i = link.indexOf("#");
+  if (i < 0) {
+    window.location.href = link;
+    return;
+  }
+  window.location.hash = link.slice(i);
+  window.location.reload();
+}
+
 async function sha256Hex(text: string): Promise<string> {
   const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
   return Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
 export function OpLogin({ claimId, claimToken, compact, onEnter, onBack }: { claimId: string | null; claimToken?: string | null; compact: boolean; onEnter: (p: OperatorProfile) => void; onBack: () => void }) {
-  const { state: app } = useApp();
+  const { state: app, touchCatalog } = useApp();
   // The claim link opens this screen before the catalog has loaded. Resolve the business again when it lands.
   const preset = useMemo(() => (claimId ? experienceById(claimId) : null), [claimId, app.catalogVersion]);
   const [picked, setPicked] = useState<Unclaimed | null>(preset);
@@ -88,7 +103,7 @@ export function OpLogin({ claimId, claimToken, compact, onEnter, onBack }: { cla
     tick();
     return () => { alive = false; };
   }, [claimToken, claimId]);
-  const mine = useMemo(() => Array.from(new Set(claimedIds())).map((id) => ({ id, p: loadProfile(id), u: experienceById(id) })).filter((x) => x.p && x.u && !(x.p.ownerEmail === "owner@example.com" && x.p.ownerName === "Demo owner")), []);
+  const mine = useMemo(() => Array.from(new Set(claimedIds())).map((id) => ({ id, p: loadProfile(id), u: experienceById(id) })).filter((x) => x.p && x.u && !(x.p.ownerEmail === "owner@example.com" && x.p.ownerName === "Demo owner")), [app.catalogVersion]);
   const demoCode = useMemo(() => String(100000 + Math.floor(Math.random() * 900000)), []);
   const [sending, setSending] = useState(false);
   const [signinEmail, setSigninEmail] = useState("");
@@ -110,6 +125,48 @@ export function OpLogin({ claimId, claimToken, compact, onEnter, onBack }: { cla
     void fetchClaimRule(claimTarget).then((r) => { if (alive) setRule(r); });
     return () => { alive = false; };
   }, [claimTarget]);
+
+  /* ---------- TEST BYPASS, testing only ----------
+   * The API answers /claims/test-status with active:true only when someone set OUTSET_TEST_CLAIM_EMAILS on
+   * that host and the typed address is on its list. Every other visitor, and every real operator, gets false,
+   * so nothing below this ever renders for them. See backend/src/lib/testClaim.ts. */
+  const [testOn, setTestOn] = useState(false);
+  const [testMsg, setTestMsg] = useState<string | null>(null);
+  const [releasing, setReleasing] = useState(false);
+  const [bypassLink, setBypassLink] = useState<string | null>(null);
+  useEffect(() => {
+    setTestOn(false);
+    setTestMsg(null);
+    if (!isApi) return;
+    const typed = email.trim();
+    if (!EMAIL.test(typed)) return;
+    let alive = true;
+    const t = window.setTimeout(() => {
+      void testClaimActive(typed).then((on) => { if (alive) setTestOn(on); });
+    }, 400);
+    return () => { alive = false; window.clearTimeout(t); };
+  }, [email, isApi]);
+
+  /** Put the business back to unclaimed on both sides so the claim flow can be run again. */
+  const releaseForTest = async () => {
+    if (!picked) return;
+    setReleasing(true);
+    setErr(null);
+    setTestMsg(null);
+    // A hand-verified seed keeps its own id and points at the crawled record through `detail`. A profile can
+    // be stored under either, so clear both.
+    const ids = Array.from(new Set([picked.id, claimTarget].filter((x): x is string => !!x)));
+    let served = false;
+    for (const id of ids) {
+      const r = await testUnclaim(id, email.trim());
+      if (r.ok) served = true;
+    }
+    for (const id of ids) deleteProfile(id);
+    touchCatalog();
+    setReleasing(false);
+    setTestMsg(served ? "Released. It is unclaimed on the server and on this device, ready to claim again." : "The server did not release it, but this device was cleared. Check the API log.");
+  };
+  /* ---------- end TEST BYPASS ---------- */
 
   const enterExisting = (id: string) => {
     const p = loadProfile(id);
@@ -155,6 +212,8 @@ export function OpLogin({ claimId, claimToken, compact, onEnter, onBack }: { cla
     setSending(false);
     if (r.ok) {
       setSentOk(r.sent);
+      // TEST BYPASS: only an allowlisted address on a host with no mail transport gets the link in the reply.
+      setBypassLink(r.bypass && r.link ? r.link : null);
       setStep("sent");
       return;
     }
@@ -311,6 +370,15 @@ export function OpLogin({ claimId, claimToken, compact, onEnter, onBack }: { cla
                 <p className="odmuted">{ruleLine}</p>
                 {err && mode === "claim" ? <p className="oderr">{err}</p> : null}
                 <button type="button" className="cta odwide" disabled={!canRequest} onClick={() => void requestLink()}>{sending ? "Sending…" : "Email me my claim link"}</button>
+                {/* TEST BYPASS. Rendered only when the API confirms this address is on OUTSET_TEST_CLAIM_EMAILS. */}
+                {testOn ? (
+                  <div className="odtest">
+                    <b>Test bypass is on for {email.trim()}</b>
+                    <p>This API was started with OUTSET_TEST_CLAIM_EMAILS naming your address, so the claim link above skips the website-email check for any business. Every use is logged on the server. Nobody else gets this.</p>
+                    <button type="button" className="odghost danger" disabled={releasing} onClick={() => void releaseForTest()}>{releasing ? "Releasing…" : "Release this business (test unclaim)"}</button>
+                    {testMsg ? <p className="odtestmsg">{testMsg}</p> : null}
+                  </div>
+                ) : null}
               </>
             ) : (
               <button type="button" className="cta odwide" disabled={!name.trim() || !email.trim()} onClick={() => { setMode("claim"); setStep("code"); setErr(null); }}>Send verification code</button>
@@ -330,6 +398,15 @@ export function OpLogin({ claimId, claimToken, compact, onEnter, onBack }: { cla
               <p className="odmuted">Mail is not switched on for this API yet, so the link for <b>{email.trim()}</b> went to the server log instead of your inbox.</p>
             )}
             {err ? <p className="oderr">{err}</p> : null}
+            {/* TEST BYPASS. This host cannot send mail, so the allowlisted tester gets the link here. */}
+            {bypassLink ? (
+              <div className="odtest">
+                <b>Test bypass link</b>
+                <p>Mail is off on this API, so here is the claim link the bypass just made. Opening it lands you in the dashboard.</p>
+                <button type="button" className="cta odwide" onClick={() => openBypassLink(bypassLink)}>Open the dashboard</button>
+                <code className="odtestlink">{bypassLink}</code>
+              </div>
+            ) : null}
             <button type="button" className="cta ghost odwide" disabled={sending} onClick={() => void requestLink()}>{sending ? "Sending…" : "Send it again"}</button>
             <p className="odfine">Still nothing? Write to <a href={"mailto:" + SUPPORT}>{SUPPORT}</a> from your business address and we will sort it out by hand.</p>
           </>

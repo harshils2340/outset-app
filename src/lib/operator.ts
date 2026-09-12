@@ -1,5 +1,5 @@
 import type { Booking, CategoryId, OperatorContact, Unclaimed, UnclaimedOption, UnclaimedService } from "../data/types";
-import { saveRemoteProfile, type RemoteBooking } from "./api";
+import { forgetClaim, saveRemoteProfile, type RemoteBooking } from "./api";
 import { addressLine, contactFor, experienceById, fmtPhone, getCatalog, setOperatorOverride, siteUrl } from "./catalog";
 import { dateKey, startOfToday } from "./dates";
 import { freeCancel } from "./listingDerive";
@@ -156,6 +156,11 @@ export function saveProfile(p: OperatorProfile): void {
   pushToCatalog(p);
 }
 
+/**
+ * Release a business on this device: the saved profile, its slot in the claimed index, the override the
+ * guest catalog was showing, and the claim token and session slot that let this browser keep editing it.
+ * The listing goes back to the scraped record a guest saw before anyone claimed it.
+ */
 export function deleteProfile(id: string): void {
   try {
     localStorage.removeItem(PROFILE_PREFIX + id);
@@ -165,6 +170,8 @@ export function deleteProfile(id: string): void {
   const idx = (read<string[]>(INDEX_KEY) || []).filter((x) => x !== id);
   write(INDEX_KEY, idx);
   setOperatorOverride(id, null, true);
+  forgetClaim(id);
+  if (loadSession() === id) saveSession(null);
 }
 
 /** Every business claimed in this browser. */

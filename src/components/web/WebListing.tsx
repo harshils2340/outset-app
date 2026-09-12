@@ -19,6 +19,7 @@ import { useApp } from "../../state/AppProvider";
 import { Photo } from "../art/Photo";
 import { WebAssistant } from "./WebAssistant";
 import { Markup } from "../Markup";
+import { SlotCalendar } from "../booking/SlotCalendar";
 
 /**
  * Desktop listing page. Airbnb hotel layout (photo grid, details left, sticky booking card right, similar below)
@@ -218,7 +219,6 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
   const cancel = item.fc || freeCancel(item.cancellation);
   const age = minAge(requirements);
   const duration = item.dur || durationLabel(item);
-  const priced = fromPrice(item) != null;
   const openNow = itemOpenState(item);
   const dealsNow = todaysDeals(item);
   const today = item.promos?.length ? clockIn(zoneFor(item)).day : -1;
@@ -746,22 +746,16 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
                     <button type="button" onClick={() => setQty(Math.min(12, qty + 1))}>+</button>
                   </span>
                 </div>
-                <p className="guidehead">Date</p>
-                <div className="wdates">
-                  {dates.slice(0, 8).map((dd, i) => (
-                    <button key={i} type="button" className="date" aria-pressed={state.dateIdx === i} onClick={() => setDate(i)}>
-                      <small>{i === 0 ? "Today" : i === 1 ? "Tmrw" : DAYS[dd.getDay()]}</small>
-                      <b>{dd.getDate()}</b>
-                    </button>
-                  ))}
-                </div>
-                <p className="guidehead">Time</p>
-                <div className="wslots">
-                  {openSlots.map((t) => (
-                    <button key={t} type="button" className="slot" aria-pressed={time === t} onClick={() => setTime(t)}><b>{fmtTime(t)}</b></button>
-                  ))}
-                  {openSlots.length === 0 ? <p className="wpicked">No more start times today. Pick tomorrow.</p> : null}
-                </div>
+                <p className="guidehead">Date and time</p>
+                <SlotCalendar
+                  dates={dates}
+                  dateIdx={state.dateIdx}
+                  onPickDate={setDate}
+                  slots={openSlots}
+                  time={time}
+                  onPickTime={setTime}
+                  emptyNote="No more start times today. Pick another day."
+                />
                 {needService ? (
                   <p className="wpicked">{picked ? plainWords(picked.name + (picked.detail ? " · " + picked.detail : "")) : "Choose what to book on the left"}</p>
                 ) : null}

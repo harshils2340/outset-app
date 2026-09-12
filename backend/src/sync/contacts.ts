@@ -7,6 +7,7 @@ import { writeLandingPages } from "./pages.ts";
 import { encodeWeek } from "./hours.ts";
 import { claimKeyHash } from "../lib/claim.ts";
 import { METROS, nearestMetro } from "../taxonomy/catalog.ts";
+import { rankForCover } from "../enrich/photorelevance.ts";
 import { existsSync, readFileSync as readFileSyncFs } from "node:fs";
 
 /** A claimed operator's saved edits (public/profiles/<id>.json) win over what the crawl found. */
@@ -187,6 +188,27 @@ function slug(s: string): string {
   return s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 48);
 }
 
+/**
+ * How many other operator domains publish the same image file. A theme's own placeholder, a parked-domain banner
+ * and a photo library's sailboat all turn up on sites that have nothing to do with each other, and a photo like
+ * that is the one thing we can prove is not this operator's. Counted once per process, over the whole catalog.
+ */
+let reuseByUrl: Map<string, number> | null = null;
+function photoReuse(): Map<string, number> {
+  if (!reuseByUrl) {
+    reuseByUrl = new Map();
+    const rows = db
+      .prepare(
+        `SELECT f.fact_value AS url, COUNT(DISTINCT o.domain) AS n FROM facts f
+         JOIN operators o ON o.id = f.operator_id
+         WHERE f.fact_key IN ('photo', 'cover') GROUP BY f.fact_value HAVING n > 1`,
+      )
+      .all() as { url: string; n: number }[];
+    for (const row of rows) reuseByUrl.set(row.url, row.n - 1);
+  }
+  return reuseByUrl;
+}
+
 /** One operator in the shape the guest app's Unclaimed type expects. Facts only, nothing invented. */
 export function toCatalogItem(r: CatalogRow): Record<string, unknown> {
   const rawOfferings = db
@@ -215,6 +237,7 @@ export function toCatalogItem(r: CatalogRow): Record<string, unknown> {
     .map((o) => ({ ...o, name: collapseRepeats(fixShouting(trimWords(o.name, 70))), price_cents: o.price_cents != null && o.price_cents < 200 ? null : o.price_cents }))
     .filter((o, i, a) => a.findIndex((x) => x.name.toLowerCase() === o.name.toLowerCase() && x.price_cents === o.price_cents && (x.duration || x.detail || "") === (o.duration || o.detail || "")) === i)
     .map((o) => ({ ...o, price_unit: fixUnit(o) }));
+  const title = cleanTitle(decodeEntities(r.name), { city: r.city, region: r.region, legalName: r.legal_name });
   const keysWithOwnBranch = new Set(rawFacts.filter((f) => trusted(f.source_url) && !offCity(f.source_url)).map((f) => f.fact_key));
   const facts = rawFacts.filter((f) => {
     if (/^(photo|cover|video|video_embed|yt_video|tiktok_profile|social:)/.test(f.fact_key)) return true;
@@ -229,13 +252,45 @@ export function toCatalogItem(r: CatalogRow): Record<string, unknown> {
   const pick = (k: string) => facts.filter((f) => f.fact_key === k).map((f) => (/^(photo|video|yt_video|social:)/.test(k) ? f.fact_value : decodeEntities(f.fact_value)));
   // Booking-widget item photos are the operator's own curated product shots. They beat whatever the crawl scored highest.
   const widgetPhotos = uniq(facts.filter((f) => f.fact_key === "photo" && /fareharbor|xola|filestack/i.test((f.source_url || "") + " " + f.fact_value)).map((f) => f.fact_value));
+  const art = artFromName(r.name, r.icon_key);
+  /**
+   * Cover choice, re-derived from facts we already hold. The order below is the order this function used to
+   * publish, so the widget shots still lead and a tie changes nothing; `rankForCover` only moves a photo up when
+   * its file name, the page it came from or the booking item it illustrates says more about this business than the
+   * one above it. The alt text is the one signal the facts table does not keep, so the crawl scores that itself.
+   * Nothing is dropped: the rest stay in the gallery. This is why a better cover does not need a re-crawl.
+   */
+  const photoPage = new Map<string, string>();
+  for (const f of facts) if ((f.fact_key === "photo" || f.fact_key === "cover") && f.source_url && !photoPage.has(f.fact_value)) photoPage.set(f.fact_value, f.source_url);
+  const photoItem = new Map<string, string>();
+  for (const raw of pick("service_photo")) {
+    try {
+      const d = JSON.parse(raw) as { name: string; url: string };
+      if (d.url && !photoItem.has(d.url)) photoItem.set(d.url, d.name);
+    } catch {
+      /* ignore */
+    }
+  }
+  // Every other photo from a booking widget came off one item's page, so that item names it too.
+  const itemByPage = new Map<string, string>();
+  for (const o of rawOfferings) if (o.source_url && !itemByPage.has(o.source_url)) itemByPage.set(o.source_url, o.name);
+  const ranked = rankForCover(
+    uniq([...widgetPhotos, ...pick("cover"), ...pick("photo")].filter(isPhotoName)).map((url) => ({
+      url,
+      page: photoPage.get(url) || null,
+      item: photoItem.get(url) || itemByPage.get(photoPage.get(url) || "") || null,
+      curated: WIDGET_HOSTS.test(url),
+      reuse: photoReuse().get(url) || 0,
+    })),
+    { title, art, family: r.family || "water" },
+  ).map((p) => fullSize(p.url) || "");
   const area = r.city ? (r.region && !r.city.includes(r.region) ? r.city + ", " + r.region : r.city) : r.region || "";
   return {
     id: "o-" + slug(r.domain),
     claimKey: claimKeyHash("o-" + slug(r.domain)),
-    title: cleanTitle(decodeEntities(r.name), { city: r.city, region: r.region, legalName: r.legal_name }),
+    title,
     cat: r.family || "water",
-    art: artFromName(r.name, r.icon_key),
+    art,
     area,
     metroId: metroFor(r),
     src: r.domain,
@@ -296,13 +351,12 @@ export function toCatalogItem(r: CatalogRow): Record<string, unknown> {
     // The honest gap line. Once the widget or crawl gave real rules and policies, say those instead of "not copied yet".
     gap: pick("published_gap")[0] || pick("cancellation")[0] || (pick("policy").length || pick("requirement").length ? [...pick("policy")].slice(0, 3).join(" ") || "Ask the operator about cancellations." : DEFAULT_GAP),
     blurb: (() => {
-      const title = cleanTitle(decodeEntities(r.name), { city: r.city, region: r.region, legalName: r.legal_name });
       // The first source whose text survives cleaning wins: a description that is all headings falls through to the meta line.
       const b = [pick("description")[0], pick("site_desc")[0], pick("one_line")[0]].map((raw) => cleanBlurb(raw || "", { title, city: r.city, region: r.region })).find(Boolean) || "";
       return b && !/\b(purchase|shop|buy) (boards|paddles|gear|apparel|merch)/i.test(b) ? b : undefined;
     })(),
-    cover: fullSize(widgetPhotos[0] || pick("cover").filter(isPhotoName)[0] || pick("photo").filter(isPhotoName)[0] || ""),
-    photos: uniq([...widgetPhotos, ...pick("cover"), ...pick("photo")].filter(isPhotoName).map((u) => fullSize(u) || "")).slice(0, 10),
+    cover: ranked.find(Boolean) || undefined,
+    photos: uniq(ranked).slice(0, 10),
     ytVideos: pick("yt_video")
       .map((raw) => {
         try {

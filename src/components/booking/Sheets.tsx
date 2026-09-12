@@ -10,7 +10,6 @@ import {
   contactFor,
   fmtHours,
   fmtPhone,
-  fromPrice,
   getCatalog,
   listingFacts,
   mapsDirHref,
@@ -301,7 +300,6 @@ function RequestBody({
   const cancel = item.fc || freeCancel(item.cancellation);
   const age = minAge(requirements);
   const duration = item.dur || durationLabel(item);
-  const priced = fromPrice(item) != null;
   const openNow = itemOpenState(item);
   const dealsNow = todaysDeals(item);
   const today = item.promos?.length ? clockIn(zoneFor(item)).day : -1;

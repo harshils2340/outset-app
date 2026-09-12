@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -60,6 +60,30 @@ export async function writeJson(relPath: string, value: unknown, message: string
     const local = join(publicDir, relPath);
     mkdirSync(dirname(local), { recursive: true });
     writeFileSync(local, body);
+  });
+}
+
+/** Remove a document. Returns true when a file was there to remove. Same lock as writeJson. */
+export async function deleteJson(relPath: string, message: string): Promise<boolean> {
+  if (!SAFE.test(relPath)) throw new Error("bad path");
+  return withLock(relPath, async () => {
+    let removed = false;
+    const local = join(publicDir, relPath);
+    if (existsSync(local)) {
+      rmSync(local);
+      removed = true;
+    }
+    if (process.env.GITHUB_TOKEN) {
+      const path = `public/${relPath}`;
+      const cur = await github(`${path}?ref=${BRANCH}`);
+      if (cur.ok) {
+        const sha = ((await cur.json()) as { sha: string }).sha;
+        const res = await github(path, { method: "DELETE", body: JSON.stringify({ message, branch: BRANCH, sha }) });
+        if (!res.ok) throw new Error("GitHub delete failed " + res.status + " " + (await res.text()).slice(0, 200));
+        removed = true;
+      }
+    }
+    return removed;
   });
 }
 

@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { createContext, useContext, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { CATS, CATMETA, inCat } from "../../data/categories";
 import { ART_LABEL } from "../../data/art";
 import { ICONS } from "../../data/icons";
@@ -7,7 +7,7 @@ import type { ArtKind, CategoryId, Unclaimed } from "../../data/types";
 import { fromPrice, getCatalog, publicRating } from "../../lib/catalog";
 import { listingFacts } from "../../lib/catalog";
 import { fmtDate, fmtReviews, money } from "../../lib/format";
-import { ART_ALIASES, metroInQuery, parseIntent, searchListings } from "../../lib/search";
+import { ART_ALIASES, metroInQuery, parseIntent, searchSuggest, warmSearch, type SearchScope } from "../../lib/search";
 import { loadListing } from "../../lib/catalogLoad";
 import { dealToday } from "../../lib/companyAgent";
 import { currentLocation, fmtDistance, nearestLocation, searchPlaces, type Place } from "../../lib/places";
@@ -104,6 +104,13 @@ const RAIL_KINDS: { art: ArtKind; title: string }[] = [
 
 /** Rails on the home before the rest collapse into "More kinds" tiles. */
 const HOME_RAILS = 14;
+
+/** Idle time if the browser offers it, the next tick if it does not. */
+function whenIdle(run: () => void): void {
+  const w = window as unknown as { requestIdleCallback?: (cb: () => void) => number };
+  if (w.requestIdleCallback) w.requestIdleCallback(run);
+  else window.setTimeout(run, 50);
+}
 
 /** What a "More kinds" tile types into What: the first alias, so the search names exactly that kind. */
 const kindQuery = (art: ArtKind) => ART_ALIASES[art]?.[0] || art;
@@ -309,7 +316,11 @@ export function WebHome({ onOpenApp, onOperators }: { onOpenApp: () => void; onO
   const [compareIds, setCompareIds] = useState<string[]>([]);
   const [compareOpen, setCompareOpen] = useState(false);
   const toggleCompare = (id: string) => setCompareIds((cur) => (cur.includes(id) ? cur.filter((x) => x !== id) : cur.length >= 3 ? [...cur.slice(1), id] : [...cur, id]));
-  const intent = useMemo(() => parseIntent(q), [q]); // intent words survive place stripping
+  // Typing stays smooth: the catalog is searched from a query that may lag a keystroke behind when the thread is busy.
+  const dq = useDeferredValue(q);
+  const [whatOpen, setWhatOpen] = useState(false);
+  const [hit, setHit] = useState(0);
+  const intent = useMemo(() => parseIntent(dq), [dq]); // intent words survive place stripping
   const [placeQ, setPlaceQ] = useState("");
   const [placeHits, setPlaceHits] = useState<Place[]>([]);
   const [locating, setLocating] = useState(false);
@@ -338,14 +349,44 @@ export function WebHome({ onOpenApp, onOperators }: { onOpenApp: () => void; onO
     pickPlace({ label: "Near me", sub: "Current location", lat: pt.lat, lon: pt.lon });
   };
 
+  // The word index over 55,000 operators is built in idle time once the catalog lands, so the first keystroke
+  // is not the one that pays for it.
+  useEffect(() => {
+    let live = true;
+    const step = () => {
+      if (live && !warmSearch(getCatalog())) whenIdle(step);
+    };
+    whenIdle(step);
+    return () => {
+      live = false;
+    };
+  }, [state.catalogVersion]);
+
   // A city typed into What ("axe throwing denver") beats the Where setting.
-  const typedMetro = useMemo(() => (q.trim() ? metroInQuery(q) : null), [q]);
+  const typedMetro = useMemo(() => (dq.trim() ? metroInQuery(dq) : null), [dq]);
   const qWithoutPlace = useMemo(() => {
-    if (!typedMetro) return q;
+    if (!typedMetro) return dq;
     const drop = new Set(typedMetro.words);
-    return q.split(/\s+/).filter((w) => !drop.has(w.toLowerCase().replace(/[^a-z0-9]+/g, ""))).join(" ");
-  }, [q, typedMetro]);
+    return dq.split(/\s+/).filter((w) => !drop.has(w.toLowerCase().replace(/[^a-z0-9]+/g, ""))).join(" ");
+  }, [dq, typedMetro]);
+
+  // Where the guest is looking. The search reads the whole catalog and narrows here, so its index is built once.
+  const scope = useMemo<SearchScope>(() => {
+    const cat = state.cat;
+    if (typedMetro) return { cat, metroId: typedMetro.metro.id };
+    if (near) return { cat, keep: (u: Unclaimed) => (nearestLocation(u, near)?.km ?? Infinity) <= RADIUS_KM };
+    if (state.metroId !== ALL_METRO_ID) return { cat, metroId: state.metroId };
+    return { cat };
+  }, [typedMetro, near, state.metroId, state.cat]);
+
+  // One pass feeds the What dropdown and the results behind it, so a keystroke ranks the catalog once.
+  const found = useMemo(
+    () => (qWithoutPlace.trim() ? searchSuggest(getCatalog(), qWithoutPlace, scope, 6) : null),
+    [qWithoutPlace, scope, state.catalogVersion],
+  );
+
   const pool = useMemo(() => {
+    if (found) return found.results;
     let base = getCatalog();
     if (typedMetro) {
       base = base.filter((u) => u.metroId === typedMetro.metro.id);
@@ -355,13 +396,14 @@ export function WebHome({ onOpenApp, onOperators }: { onOpenApp: () => void; onO
     } else if (state.metroId !== ALL_METRO_ID) {
       base = base.filter((u) => u.metroId === state.metroId);
     }
-    return qWithoutPlace.trim() ? searchListings(base, qWithoutPlace) : base;
-  }, [state.metroId, q, qWithoutPlace, typedMetro, state.catalogVersion, near]);
+    return base;
+  }, [found, state.metroId, typedMetro, state.catalogVersion, near]);
 
   // A flat, sorted grid replaces the rails whenever the guest picks an order. Nearest needs a place to measure from.
+  // The category tab still applies: sorting by price inside Water must not pull in bowling alleys.
   const sorted = useMemo(() => {
     if (sort === "relevance") return null;
-    const list = pool.slice();
+    const list = pool.filter((u) => inCat(u, state.cat));
     if (sort === "distance") {
       if (!near) return null;
       list.sort((a, b) => (nearestLocation(a, near)?.km ?? Infinity) - (nearestLocation(b, near)?.km ?? Infinity));
@@ -371,7 +413,7 @@ export function WebHome({ onOpenApp, onOperators }: { onOpenApp: () => void; onO
       list.sort((a, b) => (publicRating(b)?.rating ?? 0) - (publicRating(a)?.rating ?? 0) || (b.reviews || 0) - (a.reviews || 0));
     }
     return list;
-  }, [pool, sort, near]);
+  }, [pool, sort, near, state.cat]);
 
   // Kinds in the tab with at least one listing here, scored by how many have a photo. The strongest
   // HOME_RAILS become rails in the mixed order above; the rest are tiles so the page is not sixty rails long.
@@ -396,6 +438,55 @@ export function WebHome({ onOpenApp, onOperators }: { onOpenApp: () => void; onO
   }, [pool, state.cat]);
   const where = near ? near.label + (near.sub ? ", " + near.sub.split(",")[0] : "") : metro ? metro.name + ", " + metro.region : "Anywhere";
   const catName = (id: CategoryId) => CATS.find((c) => c.id === id)?.name || "All";
+
+  // The What dropdown: what the guest could have meant, split into the kind of thing, the businesses and the cities.
+  const acts = found?.activities ?? [];
+  const ops = found?.operators ?? [];
+  const spots = found?.places ?? [];
+  const rows = acts.length + ops.length + spots.length;
+  const showWhat = whatOpen && !!q.trim() && !!found;
+
+  const pickCity = (id: string) => {
+    // "axe throwing denver" with Denver picked becomes an axe search in Denver, not a search for the word "denver".
+    if (typedMetro && typedMetro.metro.id === id) setQ(qWithoutPlace.trim());
+    setNear(null);
+    setMetro(id);
+    setWhatOpen(false);
+    setHit(0);
+  };
+
+  const pickWhat = (i: number) => {
+    if (i < acts.length) {
+      setQ(acts[i].query);
+      setHit(0);
+      return;
+    }
+    const o = i - acts.length;
+    if (o < ops.length) {
+      setWhatOpen(false);
+      openRequest(ops[o].id);
+      return;
+    }
+    pickCity(spots[o - ops.length].metro.id);
+  };
+
+  const onWhatKey = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Escape") {
+      setWhatOpen(false);
+      return;
+    }
+    if (!showWhat || !rows) return;
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setHit((i) => Math.min(rows - 1, i + 1));
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setHit((i) => Math.max(0, i - 1));
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      pickWhat(Math.min(hit, rows - 1));
+    }
+  };
 
   return (
     <CompareCtx.Provider value={{ ids: compareIds, toggle: toggleCompare }}>
@@ -499,9 +590,59 @@ export function WebHome({ onOpenApp, onOperators }: { onOpenApp: () => void; onO
               </div>
             ) : null}
           </div>
-          <div className="wfield wq">
+          <div className="wfield wq" onClick={(e) => e.stopPropagation()}>
             <small>What</small>
-            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Jet ski, skydive, sunset sail…" />
+            <input
+              value={q}
+              autoComplete="off"
+              spellCheck={false}
+              onChange={(e) => { setQ(e.target.value); setHit(0); setWhatOpen(true); }}
+              onFocus={() => { setWhatOpen(true); setWhereOpen(false); setWhenOpen(false); setWhoOpen(false); }}
+              onBlur={() => window.setTimeout(() => setWhatOpen(false), 140)}
+              onKeyDown={onWhatKey}
+              placeholder="Jet ski, skydive, sunset sail…"
+            />
+            {showWhat ? (
+              <div className="wpop wwhat" onMouseDown={(e) => e.preventDefault()} onClick={(e) => e.stopPropagation()}>
+                {found.nearMiss ? (
+                  <p className="wpophead">
+                    Nothing for “{q.trim()}”{typedMetro ? " in " + typedMetro.metro.name : near ? " near " + near.label : metro ? " in " + metro.name : ""}
+                    {rows || found.elsewhere.length ? ". Closest in the catalog:" : ". Try fewer words, or another city."}
+                  </p>
+                ) : null}
+                {acts.length ? <p className="wpophead">Activities</p> : null}
+                {acts.map((a, i) => (
+                  <button type="button" key={a.art} className={hit === i ? "on" : ""} onClick={() => pickWhat(i)} onMouseEnter={() => setHit(i)}>
+                    <Markup html={ICONS.spark} />
+                    <span className="wpoptext"><b>{a.label}</b><small>{a.count.toLocaleString()} {a.count === 1 ? "place" : "places"}</small></span>
+                  </button>
+                ))}
+                {ops.length ? <p className="wpophead">Operators</p> : null}
+                {ops.map((u, i) => (
+                  <button type="button" key={u.id} className={hit === acts.length + i ? "on" : ""} onClick={() => pickWhat(acts.length + i)} onMouseEnter={() => setHit(acts.length + i)}>
+                    <span className="wpopart"><Photo src={u.cover} kind={u.art} id={"s" + u.id} alt={u.title} size="thumb" /></span>
+                    <span className="wpoptext"><b>{u.title}</b><small>{ART_LABEL[u.art]} · {u.area}</small></span>
+                  </button>
+                ))}
+                {spots.length ? <p className="wpophead">Places</p> : null}
+                {spots.map((pl, i) => (
+                  <button type="button" key={pl.metro.id} className={hit === acts.length + ops.length + i ? "on" : ""} onClick={() => pickWhat(acts.length + ops.length + i)} onMouseEnter={() => setHit(acts.length + ops.length + i)}>
+                    <Markup html={ICONS.pin} />
+                    <span className="wpoptext"><b>{pl.metro.name}</b><small>{pl.metro.region} · {pl.count.toLocaleString()} places</small></span>
+                  </button>
+                ))}
+                {found.elsewhere.map((a) => (
+                  <button type="button" key={a.art} className="wpopall" onClick={() => { setNear(null); setMetro(ALL_METRO_ID); setQ(a.query); }}>
+                    {a.label} across the US and Canada · {a.count.toLocaleString()}
+                  </button>
+                ))}
+                {found.otherCats ? (
+                  <button type="button" className="wpopall" onClick={() => setCat("all")}>
+                    {found.otherCats.toLocaleString()} more outside {catName(state.cat)}. Show all categories
+                  </button>
+                ) : null}
+              </div>
+            ) : null}
           </div>
           <button type="button" className="wgo" aria-label="Search">
             <Markup html={ICONS.search} />
@@ -603,13 +744,33 @@ export function WebHome({ onOpenApp, onOperators }: { onOpenApp: () => void; onO
               </div>
             ) : (
               <div className="wgrid">
-                {(near ? pool : pool).slice(0, 21).map((u) => <Card key={u.id} u={u} onOpen={openRequest} near={near} />)}
+                {pool.slice(0, 21).map((u) => <Card key={u.id} u={u} onOpen={openRequest} near={near} />)}
               </div>
             )}
             {pool.length === 0 ? (
+              // Never a bare no-match: every way out below is a real count from the catalog.
               <div className="wempty">
-                <b>Nothing for this{typedMetro ? " in " + typedMetro.metro.name : near ? " near " + near.label : metro ? " in " + metro.name : ""} yet.</b>
-                <p>Try a wider area, fewer words, or one of the ideas above.{typedMetro || near || metro ? " " : ""}{typedMetro || near || metro ? <button type="button" className="wlink" onClick={() => { setNear(null); setMetro(ALL_METRO_ID); if (typedMetro) setQ(qWithoutPlace.trim()); }}>Search everywhere</button> : null}</p>
+                <b>Nothing for “{qWithoutPlace.trim() || q.trim()}”{typedMetro ? " in " + typedMetro.metro.name : near ? " near " + near.label : metro ? " in " + metro.name : ""} yet.</b>
+                <p>Try one of these, or fewer words.</p>
+                <span className="wemptyfix">
+                  {found?.otherCats ? (
+                    <button type="button" className="wghost" onClick={() => setCat("all")}>{found.otherCats.toLocaleString()} in other categories</button>
+                  ) : null}
+                  {acts.map((a) => (
+                    <button type="button" key={a.art} className="wghost" onClick={() => setQ(a.query)}>{a.label} · {a.count.toLocaleString()}</button>
+                  ))}
+                  {(found?.elsewhere ?? []).map((a) => (
+                    <button type="button" key={a.art} className="wghost" onClick={() => { setNear(null); setMetro(ALL_METRO_ID); setQ(a.query); }}>
+                      {a.label} across the US and Canada · {a.count.toLocaleString()}
+                    </button>
+                  ))}
+                  {spots.map((pl) => (
+                    <button type="button" key={pl.metro.id} className="wghost" onClick={() => pickCity(pl.metro.id)}>{pl.metro.name} · {pl.count.toLocaleString()}</button>
+                  ))}
+                  {typedMetro || near || metro ? (
+                    <button type="button" className="wghost" onClick={() => { setNear(null); setMetro(ALL_METRO_ID); if (typedMetro) setQ(qWithoutPlace.trim()); }}>Search everywhere</button>
+                  ) : null}
+                </span>
               </div>
             ) : null}
           </section>

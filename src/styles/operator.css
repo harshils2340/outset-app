@@ -10,22 +10,59 @@
 .odbrand{display:flex;align-items:center;gap:8px;padding:6px 8px 14px;color:var(--accent);text-align:left;}
 .odbrand b{font-size:20px;font-weight:700;letter-spacing:-.03em;}
 .odbrand span{font-size:12px;font-weight:500;color:var(--ink-faint);margin-left:2px;}
-.odbiz{display:flex;align-items:center;gap:10px;padding:10px;border:1px solid var(--line);border-radius:12px;margin-bottom:8px;}
 .odbizmark{width:36px;height:36px;border-radius:10px;background:var(--ink);color:var(--surface);display:grid;place-items:center;font-weight:700;flex:none;}
-.odbiz .meta{display:flex;flex-direction:column;min-width:0;}
-.odbiz .meta b{font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.odbiz .meta small{font-size:12px;color:var(--ink-faint);}
+.odbizmark.small{width:28px;height:28px;border-radius:8px;font-size:13px;}
 .odclaimcta{width:100%;margin:0 0 10px;}
-.odnav{display:flex;flex-direction:column;gap:2px;}
-.odnav button{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:10px;font-size:14px;font-weight:500;color:var(--ink-soft);text-align:left;}
-.odnav button svg{width:20px;height:20px;flex:none;}
-.odnav button:hover{background:var(--surface-2);color:var(--ink);}
+
+/* Business switcher and account menu. A trigger button with a popup, the SidebarShowcase shape. */
+.odmenu{position:relative;}
+.odmenutrigger{display:flex;align-items:center;gap:10px;width:100%;padding:10px;border:1px solid var(--line);border-radius:12px;text-align:left;color:var(--ink);}
+.odmenutrigger:hover{background:var(--surface-2);}
+.odmenutrigger[aria-expanded="true"]{background:var(--surface-2);border-color:var(--line-strong);}
+.odmenutrigger .meta{display:flex;flex-direction:column;min-width:0;flex:1;}
+.odmenutrigger .meta b{font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.odmenutrigger .meta small{font-size:12px;color:var(--ink-faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.odmenuchev{flex:none;color:var(--ink-faint);}
+.odmenuchev svg{width:15px;height:15px;display:block;}
+.odowner{width:32px;height:32px;border-radius:999px;background:var(--surface-3);color:var(--ink);display:grid;place-items:center;font-size:13px;font-weight:700;flex:none;}
+.odmenupop{position:absolute;left:0;right:0;top:calc(100% + 6px);background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow-card);padding:6px;z-index:20;}
+.odmenupop.end{top:auto;bottom:calc(100% + 6px);}
+.odmenulabel{margin:0;padding:6px 8px 8px;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-faint);}
+.odmenuitem{display:flex;align-items:center;gap:10px;width:100%;padding:8px;border-radius:9px;text-align:left;color:var(--ink);}
+.odmenuitem:hover{background:var(--surface-2);}
+.odmenuitem.plain{font-size:13.5px;font-weight:500;color:var(--ink-soft);padding:9px 10px;}
+.odmenuitem.plain:hover{color:var(--ink);}
+.odmenuitem.plain svg{width:17px;height:17px;flex:none;}
+.odmenuitem.danger{color:var(--few);}
+.odmenuitem.danger:hover{color:var(--few);}
+.odmenumeta{display:flex;flex-direction:column;min-width:0;flex:1;}
+.odmenumeta b{font-size:13.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.odmenumeta small{font-size:11.5px;color:var(--ink-faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.odmenucheck{color:var(--accent);flex:none;}
+.odmenucheck svg{width:16px;height:16px;display:block;}
+.odmenusep{height:1px;background:var(--line);margin:6px 2px;}
+
+/* Grouped nav. Labelled sections that fold, one badge slot per item. */
+.odnav{display:flex;flex-direction:column;gap:10px;margin-top:4px;}
+.odgroup{display:flex;flex-direction:column;}
+.odgrouphead{display:flex;align-items:center;justify-content:space-between;gap:6px;padding:4px 10px 5px;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-faint);}
+.odgrouphead:hover{color:var(--ink-soft);}
+.odgroupchev{flex:none;transition:transform .2s ease;}
+.odgroupchev svg{width:14px;height:14px;display:block;}
+.odgroupchev.shut{transform:rotate(-90deg);}
+.odgroupitems{display:grid;grid-template-rows:1fr;gap:2px;overflow:hidden;transition:grid-template-rows .22s ease,opacity .22s ease;}
+.odgroupitems.shut{grid-template-rows:0fr;opacity:0;}
+.odgroupitems > *{min-height:0;}
+.odnav button:not(.odgrouphead){display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:10px;font-size:14px;font-weight:500;color:var(--ink-soft);text-align:left;}
+.odnav button:not(.odgrouphead) svg{width:20px;height:20px;flex:none;}
+.odnav button:not(.odgrouphead):hover{background:var(--surface-2);color:var(--ink);}
 .odnav button[aria-current="page"]{background:var(--surface-2);color:var(--ink);font-weight:600;}
 .odnav button em,.odtabs button em{font-style:normal;margin-left:auto;background:var(--accent);color:var(--on-accent);font-size:11px;font-weight:700;border-radius:999px;padding:1px 7px;}
-.odsidefoot{margin-top:auto;display:flex;flex-direction:column;gap:2px;padding-top:12px;border-top:1px solid var(--line);}
-.odsidefoot button{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:10px;font-size:13.5px;font-weight:500;color:var(--ink-soft);}
-.odsidefoot button svg{width:18px;height:18px;}
-.odsidefoot button:hover{background:var(--surface-2);color:var(--ink);}
+.odnav button em.todo{background:var(--few-bg);color:var(--few);}
+.odnav button em.off{background:var(--gone-bg);color:var(--gone);}
+.odsidefoot{margin-top:auto;padding-top:12px;border-top:1px solid var(--line);}
+.odsidefoot .odmenutrigger{border-color:transparent;}
+.odsidefoot .odmenutrigger:hover{border-color:var(--line);}
 
 .odmain{display:flex;flex-direction:column;min-width:0;min-height:0;}
 .od.compact .odmain{flex:1;min-height:0;}
@@ -169,6 +206,12 @@
 .odclaimhead .meta b{font-size:16px;font-weight:600;}
 .odclaimhead .meta small{font-size:12.5px;color:var(--ink-faint);}
 .oddemocode{font-size:34px;font-weight:700;letter-spacing:.12em;text-align:center;padding:16px;border:1px dashed var(--line-strong);border-radius:14px;font-variant-numeric:tabular-nums;}
+/* TEST BYPASS panel. Only renders when the API says OUTSET_TEST_CLAIM_EMAILS names the typed address. */
+.odtest{display:flex;flex-direction:column;gap:10px;padding:14px;border:1px dashed var(--few);border-radius:14px;background:var(--few-bg);margin:4px 0 0;}
+.odtest b{font-size:13.5px;font-weight:600;}
+.odtest p{margin:0;font-size:12.5px;line-height:1.5;color:var(--ink-soft);}
+.odtestmsg{font-size:12.5px;font-weight:500;color:var(--ink);}
+.odtestlink{display:block;font-size:11.5px;line-height:1.5;word-break:break-all;color:var(--ink-soft);font-family:ui-monospace,SFMono-Regular,Menlo,monospace;}
 .odlogin.compact{grid-template-columns:1fr;min-height:0;height:100%;overflow-y:auto;}
 .odlogin.compact .odlogin-side{padding:22px 18px;background:transparent;}
 .odlogin.compact .odlogin-side h1{font-size:28px;}
@@ -183,11 +226,21 @@
 .odhello p{margin:0;color:var(--ink-soft);font-size:15px;}
 .odstats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;}
 .od.compact .odstats{grid-template-columns:1fr 1fr;gap:8px;}
-.odstats > *{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:16px 18px;text-align:left;display:flex;flex-direction:column;gap:4px;min-width:0;}
+.odstats > *{position:relative;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:16px 18px;text-align:left;display:flex;flex-direction:column;gap:2px;min-width:0;}
 .odstats button:hover{border-color:var(--line-strong);}
 .odstats b{font-size:26px;font-weight:600;letter-spacing:-.03em;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .od.compact .odstats b{font-size:20px;}
-.odstats small{font-size:12.5px;color:var(--ink-faint);}
+.odstats small{font-size:12.5px;color:var(--ink-faint);padding-right:40px;}
+/* Icon plate and tinted footer badge, the Stat Card shape. */
+.odstaticon{position:absolute;top:14px;right:14px;width:34px;height:34px;border-radius:10px;background:var(--surface-2);color:var(--ink-faint);display:grid;place-items:center;}
+.odstaticon svg{width:17px;height:17px;display:block;}
+.od.compact .odstaticon{width:28px;height:28px;top:12px;right:12px;}
+.od.compact .odstaticon svg{width:15px;height:15px;}
+.odstatfoot{display:flex;align-items:center;gap:6px;margin-top:6px;font-size:12px;color:var(--ink-faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.odstatfoot em{font-style:normal;font-weight:600;font-size:11.5px;border-radius:999px;padding:2px 8px;background:var(--surface-2);color:var(--ink-soft);flex:none;}
+.odstatfoot em.ok{background:var(--open-bg);color:var(--open);}
+.odstatfoot em.warn{background:var(--few-bg);color:var(--few);}
+.odstatfoot em.quiet{background:var(--gone-bg);color:var(--gone);}
 .odbanner{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:12px 16px;border-radius:12px;background:var(--surface);border:1px solid var(--line);font-size:13.5px;color:var(--ink-soft);}
 .odbanner b{color:var(--ink);}
 .odbanner.warn{background:var(--few-bg);border-color:transparent;color:var(--few);}
@@ -311,7 +364,20 @@
 .odsvc{background:var(--surface);border:1px solid var(--line);border-radius:16px;}
 .odsvc.off{opacity:.7;}
 .odsvc.open{border-color:var(--line-strong);}
-.odsvchead{display:flex;align-items:center;gap:10px;padding:8px 12px 8px 18px;}
+.odsvchead{display:flex;align-items:center;gap:10px;padding:8px 12px 8px 10px;}
+/* Drag handle and reorder states, ported from the 21st.dev Reorder List. */
+.odgrip{width:26px;height:32px;display:grid;place-items:center;flex:none;color:var(--gone);border-radius:8px;cursor:grab;}
+.odgrip svg{width:18px;height:18px;display:block;}
+.odgrip:hover{color:var(--ink-soft);background:var(--surface-2);}
+.odgrip:focus-visible{outline:none;color:var(--ink);box-shadow:inset 0 0 0 2px var(--accent);}
+.odgrip[aria-pressed="true"]{color:var(--on-accent);background:var(--accent);cursor:grabbing;}
+.odsvc.held{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset;}
+.odsvc.lifting{opacity:.55;cursor:grabbing;}
+.odsvc.over{border-color:var(--line-strong);box-shadow:var(--shadow-card);}
+.odreorderhint{margin:0;font-size:12.5px;color:var(--ink-faint);}
+.od.compact .odreorderhint{display:none;}
+/* Visually hidden, still read out. */
+.odsr{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0;}
 .od.compact .odsvchead{padding:8px 8px 8px 14px;}
 .odsvctitle{flex:1;min-width:0;display:flex;flex-direction:column;text-align:left;padding:8px 0;color:var(--ink);}
 .odsvctitle b{font-size:15.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}

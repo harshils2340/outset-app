@@ -46,8 +46,31 @@ On macOS, one crawl at a time. `src/scrape/cpu.ts` keeps at least 10% CPU idle: 
 
 `npm run enrich` is the deep pass. `src/enrich/crawl.ts` fetches up to 8 of the operator's own pages (about, pricing, tours, FAQ, contact, policies), collects public social handles from their links (Instagram, Facebook, TikTok, YouTube, Yelp, TripAdvisor, Google) and detects the booking vendor. `src/enrich/extract.ts` sends the page text to Claude with a fixed nullable schema and a no-guessing prompt. Results land as offerings and facts with `confidence = 'ai'` and a source URL per fact, and are replaced on re-run. Seed rows are never touched. Social networks themselves are not scraped: they are login-walled and their terms forbid it.
 
+Covers are chosen by `src/enrich/photorelevance.ts`, not by whichever photo scored highest. `photoquality.ts` says an image is a photograph; this says whether it is a photograph of this business, reading the file name, the alt text, the page it sat on and the booking item it illustrates against the operator's activity words, and demoting a lone wild animal, a close-up, a staff portrait, merch and a file that turns up on other operators' domains. It runs at photo-crawl time and again in `npm run sync`, so a better cover comes out of a sync with no new crawl. It only reorders: every photo stays in the gallery.
+
 `npm run sync` also writes `data/claim-index.json`: per catalog id, a short hash of the email found on the operator's site (never the address), the domains the operator owns, and a masked hint. The API host has no SQLite, so this file is how `POST /claims/:id/request` decides whether the address an owner typed may receive the claim link (exact match with the on-file email, or any address at the operator's own domain; site builders and free mail never count). Ids missing from the file fall back to the domain in `public/o/<id>.json`. `npm run claim-index` writes only this file. Commit it after a sync.
 
 `npm run sync` also writes `../public/catalog.json` (every real operator in the app's Unclaimed shape plus contacts) and regenerates `../src/data/contacts.ts` from the operators table. Contact fields (phone, email, street, postal, hours) come only from the operator's own site. Phones are normalized to E.164. `GET /contacts` and `GET /contacts/:domain` serve the same payload live.
 
 API listens on `http://localhost:8787`.
+
+## Test claim bypass (testing only, off by default)
+
+The claim rule above is a product rule and stays. `OUTSET_TEST_CLAIM_EMAILS` is the one way around it, and it exists so the operator side can be walked end to end without owning a business's inbox.
+
+```
+OUTSET_TEST_CLAIM_EMAILS=malharshah200428@gmail.com,harshils2340@gmail.com
+```
+
+Unset or empty (the default, and what `render.yaml` ships) the bypass does not exist: `POST /claims/:id/request` takes exactly the branch it took before, and the two test routes answer 404. It cannot go live by accident, only by someone setting this variable on that host.
+
+What it changes, for the listed addresses only:
+
+- `POST /claims/:id/request` still runs the real check first. If the real check says no and the address is on the list, a second, separate branch approves it, prints `TEST CLAIM BYPASS: <email> claiming <id> from <ip>`, and emails the same signed link. Any other address is rejected exactly as before, with the same reason, hint and domains. Nothing is loosened.
+- `GET /claims/test-status?email=` answers `{ active: true }` for a listed address, `{ active: false }` for every other. The operator claim screen calls it before it shows any test UI, so a normal visitor never sees one. It never lists the allowlist.
+- `POST /claims/:id/test-unclaim` with `{ email }` releases a listing: deletes `public/profiles/<id>.json` and removes that id from every entry in `public/profiles/index.json`, which is what "claimed" means on this side. 404 for anyone not on the list, logged the same loud way. The app clears the matching on-device profile, claim token and session at the same time, so the business is genuinely unclaimed again.
+- On a host with no mail transport at all (no `RESEND_API_KEY`, no `MAIL_SMTP_USER`) a bypassed request also returns the link in the reply, so a laptop with no mail can finish the flow. On any host that can send, the link only goes to the inbox.
+
+Set `SITE_URL=http://localhost:5173/` while testing locally, or the link points at production.
+
+The code lives in `src/lib/testClaim.ts` and one marked branch plus two marked routes in `src/api/claims.ts`.
