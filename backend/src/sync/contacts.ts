@@ -235,6 +235,13 @@ export function toCatalogItem(r: CatalogRow): Record<string, unknown> {
     // A $1 line is a deposit, a token or a placeholder; a $19,995 line is a boat for sale. Neither is a price a guest pays here.
     .filter((o) => !isForSale(o))
     .map((o) => ({ ...o, name: collapseRepeats(fixShouting(trimWords(o.name, 70))), price_cents: o.price_cents != null && o.price_cents < 200 ? null : o.price_cents }))
+    // A half-day trip does not cost four dollars: keep the line, drop the number, let the page say "Price on request".
+    .map((o) => {
+      const why = implausiblePrice(o);
+      if (!why) return o;
+      if (cleanupLog) cleanupLog.priceNulled.push({ id: r.domain, name: o.name, oldPrice: o.price_cents! / 100, why });
+      return { ...o, price_cents: null };
+    })
     .filter((o, i, a) => a.findIndex((x) => x.name.toLowerCase() === o.name.toLowerCase() && x.price_cents === o.price_cents && (x.duration || x.detail || "") === (o.duration || o.detail || "")) === i)
     .map((o) => ({ ...o, price_unit: fixUnit(o) }));
   const title = cleanTitle(decodeEntities(r.name), { city: r.city, region: r.region, legalName: r.legal_name });
@@ -285,7 +292,7 @@ export function toCatalogItem(r: CatalogRow): Record<string, unknown> {
     { title, art, family: r.family || "water" },
   ).map((p) => fullSize(p.url) || "");
   const area = r.city ? (r.region && !r.city.includes(r.region) ? r.city + ", " + r.region : r.city) : r.region || "";
-  return {
+  const item: Record<string, unknown> = {
     id: "o-" + slug(r.domain),
     claimKey: claimKeyHash("o-" + slug(r.domain)),
     title,
@@ -425,6 +432,7 @@ export function toCatalogItem(r: CatalogRow): Record<string, unknown> {
       .filter((p, i, a) => a.findIndex((x) => x.text.toLowerCase() === p.text.toLowerCase()) === i)
       .slice(0, 8),
   };
+  return tidyItem(item, r.domain);
 }
 
 /** "2 hours", "90 min", "1 to 4 hours": the first duration the menu states. */
@@ -582,6 +590,248 @@ function isForSale(o: { name: string; detail: string | null; price_cents: number
   if (o.price_cents > 2500000) return true;
   if (o.price_cents > 500000) return !/charter|yacht|private|group|wedding|event|package|week|weekend|multi|day|night|hour|tour|retreat|expedition|camp\b/.test(text);
   return /\b(for sale|msrp|sold|financing|dealer|pre-?owned|used boat|new boat|stock #|hull id|\d{4} (sea ?ray|yamaha|bayliner|tracker|bennington|malibu|mastercraft|lund|ranger|boston whaler))\b/i.test(text);
+}
+
+/**
+ * What the listing cleanup changed, when a check script asks for it. Off in production: `startCleanupLog()` turns
+ * it on for one process so scripts/_tampa-rules-check.mts can print every price nulled, paragraph un-shouted,
+ * sentence deduped and duplicate operator dropped.
+ */
+export type CleanupLog = {
+  priceNulled: { id: string; name: string; oldPrice: number; why: string }[];
+  shouted: { id: string; field: string; before: string; after: string }[];
+  deduped: { id: string; field: string; text: string }[];
+  dupes: { kept: string; dropped: string; why: string; shared: string }[];
+};
+let cleanupLog: CleanupLog | null = null;
+export function startCleanupLog(): CleanupLog {
+  cleanupLog = { priceNulled: [], shouted: [], deduped: [], dupes: [] };
+  return cleanupLog;
+}
+
+/** "2.5 hours", "6-7 hours", "90 min", "hourly", "Full Day": the smallest number of minutes the text commits to. */
+function minutesOf(text: string): number | null {
+  if (!text) return null;
+  const m = text.match(/(\d+(?:\.\d+)?)\s*(?:-|\u2013|to)?\s*(?:\d+(?:\.\d+)?)?\s*(hours?|hrs?|minutes?|mins?)\b/i);
+  if (m) {
+    const n = Number(m[1]);
+    if (!Number.isFinite(n) || n <= 0) return null;
+    return /^h/i.test(m[2]) ? n * 60 : n;
+  }
+  if (/\b(hourly|per hour|an hour)\b/i.test(text)) return 60;
+  if (/\b(half[- ]day|full[- ]day|all[- ]day|overnight|multi-?day)\b/i.test(text)) return 240;
+  return null;
+}
+
+/** Lines where a small number really is the price: gate fees, a kid's ticket, a launch or a parking spot. */
+const CHEAP_BY_DESIGN = /\badmission\b|\bday pass\b|\bkids?\b|\bchild(?:ren)?\b|\bjunior\b|\bparking\b|\blaunch\b|\bper person\b|\bper hour\b|\bhourly\b|\bper head\b|\bpp\b/i;
+/** Lines that are a booked experience, where a couple of dollars is never the whole price. */
+const BOOKED_LINE = /\b(tours?|charters?|rentals?|trips?|cruises?|flights?|lessons?|sails?|excursions?|dives?|safaris?)\b/i;
+
+/**
+ * A price the site cannot have meant. "5 Hour Half Day Fishing Trip $10" and "44 Hour Full Moon Fishing Trip $4"
+ * are the deposit, or digits the parser lifted out of the name. Half a day on the water is not four dollars, so the
+ * number is dropped and the page says "Price on request" rather than telling a guest something false.
+ */
+function implausiblePrice(o: { name: string; detail: string | null; duration: string | null; price_cents: number | null }): string | null {
+  if (o.price_cents == null || o.price_cents <= 0) return null;
+  const text = o.name + " " + (o.detail || "");
+  if (CHEAP_BY_DESIGN.test(text)) return null;
+  const dollars = o.price_cents / 100;
+  const mins = minutesOf(o.duration || "") ?? minutesOf(o.name);
+  if (mins != null && mins >= 90 && dollars < 15) return "" + Math.round(mins) + " min for $" + dollars;
+  if (dollars < 8 && BOOKED_LINE.test(o.name)) return "booked line at $" + dollars;
+  return null;
+}
+
+/** Acronyms a guest reads as acronyms. Two and three letters, so sentence case must not smooth them into words. */
+const KEEP_CAPS = new Set(["USCG", "ID", "FWC", "GPS", "ATV", "UTV", "PWC", "SUP", "BYOB", "AM", "PM", "FL", "US", "USA", "PFD"]);
+/** Fields where a site shouts at guests, and where it repeats itself. */
+const PARA_FIELDS = ["blurb", "cancellation", "checkin", "meetingPoint", "gap", "extraNote"];
+const LIST_FIELDS = ["policies", "requirements", "bring", "includes", "hoursText", "highlights", "groupInfo", "specs"];
+
+/** True when a run of text is written in capitals: more than 70% of its letters, over at least four words. */
+function isShoutedText(t: string): boolean {
+  const letters = t.replace(/[^A-Za-z]/g, "");
+  if (letters.length < 8) return false;
+  if (t.trim().split(/\s+/).filter((w) => /[A-Za-z]/.test(w)).length < 4) return false;
+  return (t.match(/[A-Z]/g) || []).length / letters.length > 0.7;
+}
+
+/** Words that start a sentence, or a heading, without being anyone's name. Capitals on these mean nothing. */
+const COMMON_WORD = /^(?:the|a|an|and|or|but|if|of|to|in|on|at|for|with|from|by|as|is|are|was|were|be|been|being|have|has|had|will|would|can|could|shall|should|must|may|might|do|does|did|not|no|nor|all|any|both|each|every|some|most|more|less|few|you|your|yours|we|our|ours|us|they|them|their|it|its|this|that|these|those|there|here|when|where|what|which|who|whom|whose|how|why|please|note|thank|thanks|welcome|before|after|during|until|while|about|above|below|over|under|up|down|out|off|per|than|then|also|only|just|very|much|many|one|two|three|four|five|six|ten|first|second|third|next|last|new|full|free|open|closed|late|early|call|calls|book|booking|bring|arrive|arrival|check|checkin|rental|rentals|tour|tours|trip|trips|cruise|cruises|guest|guests|customer|customers|reservation|reservations|refund|refunds|refundable|cancel|cancelled|cancellation|cancellations|policy|policies|weather|time|times|day|days|hour|hours|minute|minutes|age|ages|year|years|child|children|adult|adults|safety|waiver|waivers|require|required|requires|information|info|important|available|additional|due|prior|notice|reminder|reminders|deposit|payment|price|prices|rate|rates|rules|location|directions|questions|answers|yes|now|today|read|see|use|way|make|made|take|given|give|need|needed|allowed|include|included|includes)$/i;
+
+/**
+ * The words this listing capitalises when it is not shouting: its own name, its city, "Three Sisters Springs".
+ * Sentence case gives those their capitals back. A word that also appears lowercase somewhere in the listing is a
+ * plain word that happened to start a sentence, and so is anything on the common-word list; the business's own
+ * name always counts, whatever else the page does with those words.
+ */
+function calmWords(texts: string[], title: string): Map<string, string> {
+  const caps = new Map<string, string>();
+  const lower = new Set<string>();
+  for (const t of texts) {
+    if (!t) continue;
+    for (const sentence of t.split(/(?<=[.!?:])\s+|\n+/)) {
+      const words = sentence.split(/[^A-Za-z'’]+/).filter(Boolean);
+      words.forEach((w, i) => {
+        if (w.length < 2) return;
+        if (/^[a-z]/.test(w)) lower.add(w.toLowerCase());
+        if (i === 0 || COMMON_WORD.test(w) || isShoutedText(sentence)) return;
+        if (/^[A-Z][a-z'’]+$/.test(w) && !caps.has(w.toLowerCase())) caps.set(w.toLowerCase(), w);
+      });
+    }
+  }
+  for (const k of lower) caps.delete(k);
+  // "Idle Speed Watersports" is the business; those words keep their capitals even where the page also writes them lowercase.
+  for (const w of title.split(/[^A-Za-z'’]+/)) if (/^[A-Z][a-z'’]+$/.test(w) && w.length >= 2) caps.set(w.toLowerCase(), w);
+  return caps;
+}
+
+/** www.parasaillowtide.com is an address, not a sentence: it is only ever lowercased. */
+const WEB_ADDRESS = /(?:https?:\/\/|www\.)[^\s]+|\b[a-z0-9-]+\.(?:com|net|org|biz|co|us|ca|info)\b/gi;
+
+/** Capitals down to sentence case: a capital after each sentence end, acronyms and this listing's own names kept. */
+function sentenceCase(raw: string, calm: Map<string, string>, capFirst: boolean): string {
+  let capNext = capFirst;
+  const one = (text: string) =>
+    text.replace(/[A-Za-z][A-Za-z'’]*|[^A-Za-z]+/g, (tok) => {
+      if (!/^[A-Za-z]/.test(tok)) {
+        // A period between letters is an abbreviation or an address, not the end of a sentence.
+        if (/[.!?:](\s|$)|[•\n]/.test(tok)) capNext = true;
+        return tok;
+      }
+      const upper = tok.toUpperCase();
+      let out = upper === "I" ? "I" : KEEP_CAPS.has(upper) ? upper : calm.get(tok.toLowerCase()) ?? tok.toLowerCase();
+      if (capNext) out = out.charAt(0).toUpperCase() + out.slice(1);
+      capNext = false;
+      return out;
+    });
+  const out: string[] = [];
+  let at = 0;
+  for (const m of raw.matchAll(WEB_ADDRESS)) {
+    out.push(one(raw.slice(at, m.index)), m[0].toLowerCase());
+    capNext = false;
+    at = m.index + m[0].length;
+  }
+  out.push(one(raw.slice(at)));
+  return out.join("");
+}
+
+/** A word written in capitals, with letters in it. "530PM" and "AND" count; "24" and "$10" are neither loud nor calm. */
+function isLoudWord(w: string): boolean {
+  const core = w.replace(/[^A-Za-z]/g, "");
+  return core.length >= 2 && w === w.toUpperCase();
+}
+
+/**
+ * Sentence-case the shouted runs, leaving the calm words around them exactly as the site wrote them. A block is
+ * judged by the stated rule (more than 70% of its letters capital, four words or more); inside a block that fails
+ * the eye test, only the unbroken run of shouted words is rewritten, so "Our Cancellation Policy ALL GUIDED TOURS
+ * REQUIRE..." keeps its heading and loses its shouting.
+ */
+function deshout(t: string, calm: Map<string, string>): string {
+  const blocks = t.split(/(\n+|(?<=[.!?])\s+)/);
+  return blocks
+    .map((block, bi) => {
+      if (bi % 2 === 1 || !isShoutedText(block)) return block;
+      const parts = block.split(/(\s+)/);
+      const words = parts.filter((_, i) => i % 2 === 0);
+      const hasLetters = (w: string) => /[A-Za-z]/.test(w);
+      // Runs of shouted words, with "24" or "$10" between two of them counting as part of the same run.
+      const runs: [number, number][] = [];
+      for (let i = 0; i < words.length; i++) {
+        if (!isLoudWord(words[i])) continue;
+        let j = i;
+        for (let k = i + 1; k < words.length; k++) {
+          if (isLoudWord(words[k])) j = k;
+          else if (hasLetters(words[k])) break;
+        }
+        runs.push([i, j]);
+        i = j;
+      }
+      const out = parts.slice();
+      for (const [a, b] of runs) {
+        if (words.slice(a, b + 1).filter(hasLetters).length < 4) continue;
+        const text = parts.slice(a * 2, b * 2 + 1).join("");
+        const before = words.slice(0, a).filter(Boolean);
+        const capFirst = !before.length || /[.!?:•]$/.test(before[before.length - 1]);
+        const cased = sentenceCase(text, calm, capFirst).split(/(\s+)/);
+        for (let i = 0; i < cased.length; i++) out[a * 2 + i] = cased[i];
+      }
+      return out.join("");
+    })
+    .join("");
+}
+
+function sentenceKey(t: string): string {
+  return t.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+}
+
+/** The same sentence twice in one paragraph: keep the first. */
+function dedupeSentences(t: string, onDrop: (s: string) => void): string {
+  const parts = t.split(/(\n+|(?<=[.!?])\s+)/);
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (let i = 0; i < parts.length; i += 2) {
+    const key = sentenceKey(parts[i]);
+    if (key.length >= 12 && seen.has(key)) {
+      onDrop(parts[i]);
+      continue;
+    }
+    if (key) seen.add(key);
+    out.push(parts[i] + (parts[i + 1] ?? ""));
+  }
+  return out.join("").trim();
+}
+
+/** Log entries are 80 characters, the length that fits a terminal line. CLEANUP_CLIP widens them while tuning. */
+const CLIP = Number(process.env.CLEANUP_CLIP || 80);
+function clip(t: string): string {
+  return t.replace(/\s+/g, " ").trim().slice(0, CLIP);
+}
+
+/**
+ * The last pass over one listing: shouted paragraphs down to sentence case, and a sentence or bullet the site
+ * printed twice down to once. Names are left to `fixShouting`, which title-cases them; a paragraph in title case
+ * would read like a headline, so paragraphs get sentence case instead.
+ */
+function tidyItem(item: Record<string, unknown>, id: string): Record<string, unknown> {
+  const texts: string[] = [];
+  const harvest = (v: unknown) => {
+    if (typeof v === "string") texts.push(v);
+    else if (Array.isArray(v)) for (const x of v) harvest(x);
+    else if (v && typeof v === "object") for (const x of Object.values(v as Record<string, unknown>)) harvest(x);
+  };
+  harvest(item.title);
+  for (const k of [...PARA_FIELDS, ...LIST_FIELDS, "faq", "options", "services", "tags", "area"]) harvest(item[k]);
+  const calm = calmWords(texts, String(item.title || ""));
+  const fix = (field: string, v: string, para: boolean): string => {
+    const shouted = deshout(v, calm);
+    if (shouted !== v && cleanupLog) cleanupLog.shouted.push({ id, field, before: clip(v), after: clip(shouted) });
+    if (!para) return shouted;
+    return dedupeSentences(shouted, (s) => cleanupLog?.deduped.push({ id, field, text: clip(s) }));
+  };
+  for (const k of PARA_FIELDS) if (typeof item[k] === "string") item[k] = fix(k, item[k] as string, true) || undefined;
+  for (const k of LIST_FIELDS) {
+    const list = item[k] as string[] | undefined;
+    if (!Array.isArray(list)) continue;
+    const seen = new Set<string>();
+    item[k] = list
+      .map((l) => fix(k, l, false))
+      .filter((l) => {
+        const key = sentenceKey(l);
+        if (key && seen.has(key)) {
+          cleanupLog?.deduped.push({ id, field: k, text: clip(l) });
+          return false;
+        }
+        if (key) seen.add(key);
+        return true;
+      });
+  }
+  const faq = item.faq as { q: string; a: string }[] | undefined;
+  if (Array.isArray(faq)) item.faq = faq.map((f) => ({ q: f.q, a: fix("faq", f.a, true) }));
+  return item;
 }
 
 const SITE_WORDS = /^(?:home|homepage|welcome|official (?:site|website|home ?page)|website|site|online|book(?:ing)? online|book now|reservations?|home ?page|index|main)$/i;
@@ -1191,8 +1441,91 @@ function uniqBy<T>(list: T[], key: (t: T) => string): T[] {
   return list.filter((x) => !seen.has(key(x)) && (seen.add(key(x)), true));
 }
 
-/** Write public/catalog.json: every real operator plus its contact facts. The app fetches it at startup. */
-export function syncCatalogToApp(): { path: string; count: number } {
+/**
+ * One business published on two domains. Hubbard's Marina and "Dolphin Quest Eco Tours" carry byte-identical photo
+ * lists and the same menu, because the second domain is the same boats under another brand. Four shared photos or
+ * five shared (name, price) lines is past coincidence. Keyed by photo URL and by menu line, so this walks the
+ * catalog once rather than comparing 55,000 rows with each other; a URL or a line that a dozen listings share is a
+ * stock photo or a generic label and proves nothing, so it is skipped.
+ */
+function dropDuplicateOperators(full: Record<string, unknown>[]): Record<string, unknown>[] {
+  const index = (key: string, i: number, map: Map<string, number[]>) => {
+    const at = map.get(key);
+    if (at) at.push(i);
+    else map.set(key, [i]);
+  };
+  const byPhoto = new Map<string, number[]>();
+  const byOption = new Map<string, number[]>();
+  full.forEach((item, i) => {
+    for (const url of new Set((item.photos as string[] | undefined) || [])) if (url) index(url, i, byPhoto);
+    const seen = new Set<string>();
+    for (const o of (item.options as { name: string; price: number | null }[] | undefined) || []) {
+      // A name with no price ("Private Boat Charters") is a label two rival shops both use. Only a name AND a price match.
+      if (o.price == null) continue;
+      const key = o.name.toLowerCase().trim() + "|" + o.price;
+      if (o.name.trim().length >= 6 && !seen.has(key)) {
+        seen.add(key);
+        index(key, i, byOption);
+      }
+    }
+  });
+  const pairs = new Map<string, { photos: number; options: number }>();
+  const tally = (map: Map<string, number[]>, field: "photos" | "options") => {
+    for (const idxs of map.values()) {
+      if (idxs.length < 2 || idxs.length > 12) continue;
+      for (let a = 0; a < idxs.length; a++)
+        for (let b = a + 1; b < idxs.length; b++) {
+          const key = idxs[a] + ":" + idxs[b];
+          const cur = pairs.get(key) || { photos: 0, options: 0 };
+          cur[field]++;
+          pairs.set(key, cur);
+        }
+    }
+  };
+  tally(byPhoto, "photos");
+  tally(byOption, "options");
+  const canonical = new Map<string, string>();
+  const dropped = new Set<number>();
+  for (const [key, n] of pairs) {
+    if (n.photos < 4 && n.options < 5) continue;
+    const [a, b] = key.split(":").map(Number);
+    if (dropped.has(a) || dropped.has(b)) continue;
+    for (const i of [a, b]) {
+      const domain = String(full[i].src);
+      if (canonical.has(domain)) continue;
+      const row = db.prepare("SELECT website FROM operators WHERE domain = ? LIMIT 1").get(domain) as { website: string | null } | undefined;
+      canonical.set(domain, row?.website ? hostOf(row.website) : "");
+    }
+    const score = (i: number) => {
+      const domain = String(full[i].src);
+      return [canonical.get(domain) === domain ? 1 : 0, Number(full[i].reviews) || 0, -domain.length];
+    };
+    const sa = score(a);
+    const sb = score(b);
+    const why = sa[0] !== sb[0] ? "canonical host" : sa[1] !== sb[1] ? "more reviews" : "shorter domain";
+    let keep = a;
+    let drop = b;
+    for (let k = 0; k < sa.length; k++) {
+      if (sa[k] === sb[k]) continue;
+      if (sb[k] > sa[k]) {
+        keep = b;
+        drop = a;
+      }
+      break;
+    }
+    dropped.add(drop);
+    const shared = n.photos + " photos, " + n.options + " menu lines";
+    cleanupLog?.dupes.push({ kept: String(full[keep].src), dropped: String(full[drop].src), why, shared });
+    console.log("Duplicate operator: kept " + full[keep].src + ", dropped " + full[drop].src + " (" + shared + ", " + why + ")");
+  }
+  return full.filter((_, i) => !dropped.has(i));
+}
+
+/**
+ * Every catalog listing, built and cleaned, writing nothing. `syncCatalogToApp` writes what this returns; a check
+ * script can call it with a filter (one metro, say) to read the same items the site would publish.
+ */
+export function buildCatalogItems(where?: (r: CatalogRow) => boolean): Record<string, unknown>[] {
   const rows = db
     .prepare(
       `SELECT id, domain, name, legal_name, website, city, region, metro_id, family, icon_key, rating, review_count, origin, lat, lon
@@ -1209,6 +1542,7 @@ export function syncCatalogToApp(): { path: string; count: number } {
   );
   // A listing with no site, no phone, no photo and no menu gives a guest nothing to act on. Keep it for outreach only.
   const full = rows
+    .filter((r) => (where ? where(r) : true))
     .filter((r) => !MARKETPLACES.test(r.domain) && !dead.has(r.id) && !NOT_EXPERIENCE.test(r.name) && !/^\s*\$?\d+(\.\d+)?\s*$/.test(r.name))
     // "Home", "Welcome" and a bare domain are page titles, not business names. A guest cannot tell what they are.
     .filter((r) => { const t = cleanTitle(decodeEntities(r.name), { city: r.city, region: r.region, legalName: r.legal_name }); return t.length >= 3 && !SITE_WORDS.test(t) && !NAV_LABEL.test(t) && !GENERIC_TITLE.test(t) && !/^(?:https?:\/\/|www\.)/i.test(t); })
@@ -1228,6 +1562,12 @@ export function syncCatalogToApp(): { path: string; count: number } {
   const pinDupes = full.filter((i) => String(i.id).startsWith("o-osm-") && siteKeys.has(titleKey(String(i.title)) + "|" + (i.metroId || i.area)));
   for (const d of pinDupes) full.splice(full.indexOf(d), 1);
   console.log("Left out " + dead.size + " map-only rows with nothing a guest can use and " + pinDupes.length + " map pins that duplicate a site row.");
+  return dropDuplicateOperators(full as Record<string, unknown>[]);
+}
+
+/** Write public/catalog.json: every real operator plus its contact facts. The app fetches it at startup. */
+export function syncCatalogToApp(): { path: string; count: number } {
+  const full = buildCatalogItems();
   const contactByDomain: Record<string, OperatorContact> = {};
   for (const c of allContacts()) contactByDomain[c.domain] = c;
 
