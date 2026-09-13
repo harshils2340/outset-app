@@ -75,7 +75,7 @@ Never use an em dash. Use a comma, a period, a colon, or a hyphen.
 
 Keep guest copy specific and local. Avoid generic marketplace filler.
 
-Match the visual language: Inter for the product UI, Newsreader for the desktop pitch headline, accent `#E54D2C`. Airbnb owns the feed card (photo, title, from-price, Instant). Uber Eats owns the category row. Booksy owns the service picker. Outset is the activity: scene art, jet ski / skydive labels on the photo, orange Instant, fun-local copy. Do not invent prices. Do not tell guests an operator is unclaimed.
+Match the visual language: Figtree for the product UI, Newsreader for the desktop pitch headline. The accent is forest `#495940` with sage `#7F956A` as its tint, from the 21st.dev "Yoga with Ethan" community theme. Forest carries buttons and the mark because sage on white is 3.3:1, under the 4.5:1 AA floor for button text, while forest is 7.5:1. Availability moved off green to blue `#0E6FA8` so "there is room" cannot be mistaken for the brand; "only a few left" stays warm red `#C13515`. Scene art in `src/data/art.ts` keeps a warm ochre `#D2924A` highlight, because its skies are blue and its ground is already sage, so a green highlight would disappear. Airbnb owns the feed card (photo, title, from-price, Instant). Uber Eats owns the category row. Booksy owns the service picker. Outset is the activity: scene art, jet ski / skydive labels on the photo, fun-local copy. Do not invent prices. Do not tell guests an operator is unclaimed.
 
 ## How to run
 

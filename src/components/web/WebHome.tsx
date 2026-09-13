@@ -133,6 +133,9 @@ const CompareCtx = createContext<{ ids: string[]; toggle: (id: string) => void }
 const POPULAR_METROS = ["toronto", "nyc", "los-angeles", "chicago", "miami", "tampa", "vancouver", "austin", "denver", "seattle", "las-vegas", "boston", "atlanta", "san-diego", "montreal", "orlando"];
 const INTENT_CHIPS = ["Date night", "With kids", "Birthday ideas", "Classes", "Golf", "Spa day", "Adrenaline", "Rainy day", "Culture", "Sunset", "Under $50", "Team outing"];
 
+/** The categories that earn a slot in the header. The rest sit under More, in the same order as CATS. */
+const TOP_CATS = ["all", "air", "water", "motorsport", "indoor", "outdoor"];
+
 type SortId = "relevance" | "distance" | "price" | "rating";
 const SORTS: { id: SortId; label: string }[] = [
   { id: "relevance", label: "Relevance" },
@@ -498,12 +501,30 @@ export function WebHome({ onOpenApp, onOperators }: { onOpenApp: () => void; onO
             <b>Outset</b>
           </a>
           <nav className="wtabs">
-            {CATS.map((c) => (
+            {/* Six across the top, the rest behind More. Eleven icons crowded the header and the last of
+                them clipped. Whatever is selected always shows inline, even when it lives under More. */}
+            {CATS.filter((c) => TOP_CATS.includes(c.id) || state.cat === c.id).map((c) => (
               <button type="button" key={c.id} aria-pressed={state.cat === c.id} onClick={() => setCat(c.id)}>
                 <Markup html={ICONS[c.icon]} />
                 <span>{c.name}</span>
               </button>
             ))}
+            {CATS.some((c) => !TOP_CATS.includes(c.id) && state.cat !== c.id) ? (
+              <details className="wcatmore">
+                <summary>
+                  <Markup html={ICONS.chev} />
+                  <span>More</span>
+                </summary>
+                <div className="wcatmorepop">
+                  {CATS.filter((c) => !TOP_CATS.includes(c.id) && state.cat !== c.id).map((c) => (
+                    <button type="button" key={c.id} onClick={(e) => { setCat(c.id); (e.currentTarget.closest("details") as HTMLDetailsElement | null)?.removeAttribute("open"); }}>
+                      <Markup html={ICONS[c.icon]} />
+                      <span>{c.name}</span>
+                    </button>
+                  ))}
+                </div>
+              </details>
+            ) : null}
           </nav>
           <div className="wright">
             <button type="button" className="wlink" onClick={onOperators}>For operators</button>
@@ -652,11 +673,14 @@ export function WebHome({ onOpenApp, onOperators }: { onOpenApp: () => void; onO
 
       <main className="wwrap">
         {state.catalogReady && !q.trim() && sort === "relevance" ? (
-          <div className="whow">
-            <div><b>The whole price</b><span>The price you see is the price you pay. Fuel, deposit, bait and tip rules are on the listing, not at the dock.</span></div>
-            <div><b>The rules before the drive</b><span>Weight limits, minimum ages, private or shared, and what happens if it rains, all on the page before you book.</span></div>
-            <div><b>Someone answers</b><span>Book a real slot in three taps, or ask Otto anything and get an answer from the operator's own information.</span></div>
-          </div>
+          <details className="whow">
+            <summary>How booking on Outset works</summary>
+            <div className="whowbody">
+              <div><b>The whole price</b><span>The price you see is the price you pay. Fuel, deposit, bait and tip rules are on the listing, not at the dock.</span></div>
+              <div><b>The rules before the drive</b><span>Weight limits, minimum ages, private or shared, and what happens if it rains, all on the page before you book.</span></div>
+              <div><b>Someone answers</b><span>Book a real slot in three taps, or ask Otto anything and get an answer from the operator's own information.</span></div>
+            </div>
+          </details>
         ) : null}
         {state.catalogReady ? (
           <div className="wintents">
@@ -686,7 +710,7 @@ export function WebHome({ onOpenApp, onOperators }: { onOpenApp: () => void; onO
                 {o.label}
               </button>
             ))}
-            {near ? <span className="wsortnear"><Markup html={ICONS.pin} /> Distances from {near.label}</span> : <span className="wsortnear muted">Pick a place under Where to see how far each one is</span>}
+            {near ? <span className="wsortnear"><Markup html={ICONS.pin} /> Distances from {near.label}</span> : null}
           </div>
         ) : null}
         {!state.catalogReady ? (

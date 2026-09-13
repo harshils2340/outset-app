@@ -12,7 +12,14 @@ const FILE = "mail/unsub.json";
 const API = (process.env.API_URL || "https://outset-api.onrender.com").replace(/\/$/, "");
 const SITE = (process.env.SITE_URL || "https://onoutset.com").replace(/\/$/, "");
 
-export type UnsubFile = { hashes: Record<string, string> };
+/**
+ * `hashes` is the suppression list every send checks: hash -> when. `reasons` says why, so a hard bounce
+ * can be told from someone who opted out. Readers only ever take the keys of `hashes`, so adding this
+ * map does not disturb an older file or an older reader.
+ */
+export type UnsubFile = { hashes: Record<string, string>; reasons?: Record<string, SuppressReason> };
+
+export type SuppressReason = "unsubscribe" | "bounce" | "complaint";
 
 export function emailHash(email: string): string {
   return createHash("sha256").update(email.trim().toLowerCase()).digest("hex").slice(0, 32);
@@ -65,7 +72,12 @@ function rememberLocal(hash: string, at: string): void {
   }
 }
 
-export async function recordUnsub(email: string): Promise<void> {
+/**
+ * Stop mailing an address, for any of the three reasons that must stop it: they asked, it hard bounced,
+ * or they marked us as spam. All three land in one list because the send path only needs one question
+ * answered, "may I mail this address", and the reason is kept for reporting.
+ */
+export async function recordUnsub(email: string, reason: SuppressReason = "unsubscribe"): Promise<void> {
   const e = email.trim().toLowerCase();
   const h = emailHash(e);
   const at = nowIso();
@@ -74,8 +86,11 @@ export async function recordUnsub(email: string): Promise<void> {
     await updateJson<UnsubFile>(
       FILE,
       { hashes: {} },
-      (cur) => ({ hashes: { ...(cur.hashes || {}), [h]: at } }),
-      "Mail unsubscribe",
+      (cur) => ({
+        hashes: { ...(cur.hashes || {}), [h]: at },
+        reasons: { ...(cur.reasons || {}), [h]: reason },
+      }),
+      reason === "unsubscribe" ? "Mail unsubscribe" : "Mail suppression: " + reason,
     );
   } catch (err) {
     console.error("unsub persist: " + (err as Error).message);
