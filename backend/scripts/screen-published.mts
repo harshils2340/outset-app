@@ -17,12 +17,14 @@ import { scanPage } from "../src/enrich/pagescan.ts";
  * deleted, so no listing loses its last picture.
  *
  * It reads and rewrites public/ only, so it needs no database and runs in GitHub Actions after a deploy,
- * never on a laptop. Verdicts are cached in public/photo-verdicts.json, so a rerun judges only new photos.
+ * never on a laptop. Verdicts are cached in backend/data/photo-verdicts.json, so a rerun judges only new
+ * photos; that file stays out of public/ because Vite ships everything there to the site.
  */
 
 const here = dirname(fileURLToPath(import.meta.url));
 const publicDir = join(here, "../../public");
-const verdictPath = join(publicDir, "photo-verdicts.json");
+// Not under public/: Vite copies that directory into the build, and this cache is for the screen, not guests.
+const verdictPath = join(here, "../data/photo-verdicts.json");
 
 type Verdict = { kind: PhotoKind; page?: boolean };
 type Verdicts = Record<string, Verdict>;
@@ -74,8 +76,11 @@ async function judge(url: string): Promise<Verdict> {
 }
 
 async function main(): Promise<void> {
-  const limit = arg("limit", 20000);
-  const concurrency = arg("concurrency", 12);
+  const limit = arg("limit", 100000);
+  const concurrency = arg("concurrency", 24);
+  // A runner kills the job at its timeout and nothing after it runs, so an hour of judging would be thrown
+  // away. Stop on our own clock instead, write what we have, and let the next run carry on from the cache.
+  const deadline = Date.now() + arg("minutes", 38) * 60000;
   const verdicts = loadVerdicts();
   const oDir = join(publicDir, "o");
   const files = existsSync(oDir) ? readdirSync(oDir).filter((f) => f.endsWith(".json")) : [];
@@ -93,8 +98,13 @@ async function main(): Promise<void> {
   let i = 0;
   let judged = 0;
   const counts: Record<string, number> = {};
+  let stoppedEarly = false;
   const worker = async () => {
     while (i < todo.length) {
+      if (Date.now() > deadline) {
+        stoppedEarly = true;
+        return;
+      }
       const url = todo[i++];
       const v = await judge(url);
       verdicts[url] = v;
@@ -109,7 +119,7 @@ async function main(): Promise<void> {
   };
   await Promise.all(Array.from({ length: Math.min(concurrency, todo.length) || 1 }, worker));
   writeFileSync(verdictPath, JSON.stringify(verdicts));
-  console.log("judged", judged, JSON.stringify(counts));
+  console.log("judged", judged, JSON.stringify(counts), stoppedEarly ? `(time budget reached, ${todo.length - judged} left for the next run)` : "(all caught up)");
 
   let changedFiles = 0;
   let droppedJunk = 0;
