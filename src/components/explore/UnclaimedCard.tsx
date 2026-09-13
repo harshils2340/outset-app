@@ -3,6 +3,7 @@ import { ART_LABEL } from "../../data/art";
 import { ICONS } from "../../data/icons";
 import type { Unclaimed } from "../../data/types";
 import { fromPrice, publicRating } from "../../lib/catalog";
+import { dealToday } from "../../lib/companyAgent";
 import { fmtReviews, money } from "../../lib/format";
 import { useApp } from "../../state/AppProvider";
 import { Photo } from "../art/Photo";
@@ -14,6 +15,8 @@ export function UnclaimedCard({ item, compact }: { item: Unclaimed; compact?: bo
   const from = fromPrice(item);
   const kind = ART_LABEL[item.art] || item.cat;
   const score = publicRating(item);
+  // Same bar the desktop card uses, so a business is a guest favourite on both surfaces or neither.
+  const guestFav = !!score && score.rating >= 4.8 && score.reviews >= 100;
 
   return (
     <button className={(compact ? "mini" : "card") + " unclaimed"} onClick={() => openRequest(item.id)}>
@@ -37,7 +40,13 @@ export function UnclaimedCard({ item, compact }: { item: Unclaimed; compact?: bo
             )}
           </span>
         ) : null}
-        {compact ? null : <span className="actpill">{kind}</span>}
+        {/* Same two real signals the desktop card carries, in the same order: a promo running today,
+            then the rating badge, and the activity label only when neither applies. Nothing here is
+            decorative, both come from the operator's own published facts. */}
+        <span className="actpills">
+          {dealToday(item) ? <span className="actpill deal">Deal today</span> : null}
+          {guestFav ? <span className="actpill fav">Guest favourite</span> : compact ? null : <span className="actpill">{kind}</span>}
+        </span>
       </div>
       <div className="body">
         <div className="cardtop">

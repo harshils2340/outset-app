@@ -6,8 +6,12 @@
  * promise and this file does not touch it.
  *
  * When (and only when) OUTSET_TEST_CLAIM_EMAILS is set, the addresses it names may:
- *   1. receive a claim link for ANY listing, skipping the website-email check, and
- *   2. release a listing again through POST /claims/:id/test-unclaim, so the flow can be re-run.
+ *   1. receive a claim link for ANY listing, skipping the website-email check,
+ *   2. release a listing again through POST /claims/:id/test-unclaim, so the flow can be re-run, and
+ *   3. enter a dashboard directly through POST /claims/:id/test-enter, which hands back an ordinary
+ *      signed session instead of a claim token. That exists because the token in a claim link is checked
+ *      against the claimKey baked into the catalog by the production sync, so a machine without the
+ *      production CLAIM_SECRET can never mint a link that validates. A session needs no such secret.
  *
  * With the variable unset or empty every function here returns false or an empty list, so the
  * request route takes exactly the same branch it took before this file existed.
@@ -38,7 +42,8 @@ export function testClaimAllows(email: string): boolean {
   return testClaimEmails().includes(em);
 }
 
-/** Loud on purpose. Every bypassed claim and unclaim leaves a line in the server log. */
-export function logTestClaim(action: "claim" | "unclaim", email: string, id: string, ip: string): void {
-  console.warn(`TEST CLAIM BYPASS: ${email} ${action === "claim" ? "claiming" : "unclaiming"} ${id} from ${ip} (OUTSET_TEST_CLAIM_EMAILS is set)`);
+/** Loud on purpose. Every bypassed claim, unclaim and direct entry leaves a line in the server log. */
+export function logTestClaim(action: "claim" | "unclaim" | "enter", email: string, id: string, ip: string): void {
+  const word = action === "claim" ? "claiming" : action === "unclaim" ? "unclaiming" : "entering";
+  console.warn(`TEST CLAIM BYPASS: ${email} ${word} ${id} from ${ip} (OUTSET_TEST_CLAIM_EMAILS is set)`);
 }

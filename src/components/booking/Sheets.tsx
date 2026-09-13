@@ -21,7 +21,7 @@ import {
   telHref,
   type FactLine,
 } from "../../lib/catalog";
-import { DAYS, fmtDate, fmtReviews, fmtTime, money, priceWith, unitLine } from "../../lib/format";
+import { fmtDate, fmtReviews, fmtTime, money, priceWith, unitLine } from "../../lib/format";
 import { formatDistance, milesBetween, type GeoPoint } from "../../lib/geo";
 import { priceFor, priceUnclaimed } from "../../lib/pricing";
 import { useApp } from "../../state/AppProvider";
@@ -33,6 +33,7 @@ import { clockIn, zoneFor } from "../../lib/openNow";
 import { itemOpenState } from "../../lib/openNow";
 import { Photo } from "../art/Photo";
 import { Markup } from "../Markup";
+import { SlotCalendar } from "./SlotCalendar";
 
 const QTY_MAX = 8;
 
@@ -838,35 +839,15 @@ function RequestBody({
           </>
         ) : null}
 
-        <p className="svchead">Date</p>
-        <div className="dates reqdates">
-          {dates.slice(0, 8).map((dd, i) => (
-            <button
-              key={dd.toISOString()}
-              type="button"
-              className="date"
-              aria-pressed={dateIdx === i}
-              onClick={() => setDateIdx(i)}
-            >
-              <small>{i === 0 ? "Today" : i === 1 ? "Tmrw" : DAYS[dd.getDay()]}</small>
-              <b>{dd.getDate()}</b>
-            </button>
-          ))}
-        </div>
-        <p className="svchead">Time</p>
-        <div className="slots">
-          {SLOT_TIMES.map((t) => (
-            <button
-              key={t}
-              type="button"
-              className="slot"
-              aria-pressed={time === t}
-              onClick={() => setTime(t)}
-            >
-              <b>{fmtTime(t)}</b>
-            </button>
-          ))}
-        </div>
+        <p className="svchead">Date and time</p>
+        <SlotCalendar
+          dates={dates}
+          dateIdx={dateIdx}
+          onPickDate={setDateIdx}
+          slots={SLOT_TIMES}
+          time={time}
+          onPickTime={setTime}
+        />
 
         <div className="rowbetween" style={{ marginTop: 18, alignItems: "center" }}>
           <p className="svchead" style={{ margin: 0 }}>

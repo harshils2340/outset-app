@@ -175,6 +175,24 @@ export async function testClaimActive(email: string): Promise<boolean> {
   return !!(r.ok && r.data?.active);
 }
 
+/**
+ * Enters a dashboard without a claim link and stores the session the API hands back.
+ *
+ * A claim link is only good if its token matches the claimKey the production sync wrote into the catalog,
+ * so on a host without the production CLAIM_SECRET every link is rejected. This asks the API for an
+ * ordinary session scoped to the one listing instead, which is signed and verified by that same API.
+ * It answers 404 unless the bypass is switched on there for this exact address.
+ */
+export async function testEnter(id: string, email: string): Promise<{ ok: boolean; error?: string }> {
+  const em = email.trim();
+  if (!EMAIL_RE.test(em)) return { ok: false, error: "bad email" };
+  const r = await call<{ ok: boolean; session: string; exp: number }>(`/claims/${encodeURIComponent(id)}/test-enter`, { method: "POST", body: JSON.stringify({ email: em }), timeout: 20000 });
+  if (!r.ok || !r.data?.session) return { ok: false, error: r.error || "the API would not allow that" };
+  const prior = loadApiSession();
+  saveApiSession({ token: r.data.session, ids: Array.from(new Set([...(prior?.ids || []), id])), email: em, exp: r.data.exp });
+  return { ok: true };
+}
+
 /** Releases the listing server-side so it is unclaimed again. The caller clears this device separately. */
 export async function testUnclaim(id: string, email: string): Promise<{ ok: boolean; removed?: boolean; error?: string }> {
   const r = await call<{ ok: boolean; removed: boolean }>(`/claims/${encodeURIComponent(id)}/test-unclaim`, { method: "POST", body: JSON.stringify({ email: email.trim() }), timeout: 20000 });

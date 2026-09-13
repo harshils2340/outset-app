@@ -9,7 +9,7 @@ import { Mark } from "../layout/Mark";
 import { Markup } from "../Markup";
 import { useApp } from "../../state/AppProvider";
 import { OD_ICONS } from "./opContext";
-import { claimRemote, fetchClaimRule, fetchRemoteProfile, hasApi, ownerFromHash, rememberClaimToken, requestClaimLink, requestSignInCode, testClaimActive, testUnclaim, verifySignInCode, type ClaimRule } from "../../lib/api";
+import { claimRemote, fetchClaimRule, fetchRemoteProfile, hasApi, ownerFromHash, rememberClaimToken, requestClaimLink, requestSignInCode, testClaimActive, testEnter, testUnclaim, verifySignInCode, type ClaimRule } from "../../lib/api";
 
 /**
  * Claim and sign in. The owner searches by name, says who they are, and the signed claim link goes to the
@@ -133,6 +133,7 @@ export function OpLogin({ claimId, claimToken, compact, onEnter, onBack }: { cla
   const [testOn, setTestOn] = useState(false);
   const [testMsg, setTestMsg] = useState<string | null>(null);
   const [releasing, setReleasing] = useState(false);
+  const [entering, setEntering] = useState(false);
   const [bypassLink, setBypassLink] = useState<string | null>(null);
   useEffect(() => {
     setTestOn(false);
@@ -146,6 +147,32 @@ export function OpLogin({ claimId, claimToken, compact, onEnter, onBack }: { cla
     }, 400);
     return () => { alive = false; window.clearTimeout(t); };
   }, [email, isApi]);
+
+  /**
+   * Open the dashboard for the picked business without a claim link. The link's token is checked against
+   * the claimKey the production sync wrote into the catalog, so on a host without the production
+   * CLAIM_SECRET no link can ever validate. The API hands back an ordinary session instead, which it
+   * signed itself, and the dashboard opens on that.
+   */
+  const enterForTest = async () => {
+    if (!picked) return;
+    setEntering(true);
+    setErr(null);
+    setTestMsg(null);
+    const id = claimTarget || picked.id;
+    const r = await testEnter(id, email.trim());
+    setEntering(false);
+    if (!r.ok) {
+      setTestMsg(r.error === "the API would not allow that" ? "The API refused. Check OUTSET_TEST_CLAIM_EMAILS names this address." : r.error || "Could not enter.");
+      return;
+    }
+    const existing = loadProfile(id);
+    if (existing) { onEnter(existing); return; }
+    const full = experienceById(id) || picked;
+    const p = defaultProfile(full, { name: name.trim() || "Test owner", email: email.trim(), phone: phone.trim() });
+    saveProfile(p);
+    onEnter(p);
+  };
 
   /** Put the business back to unclaimed on both sides so the claim flow can be run again. */
   const releaseForTest = async () => {
@@ -375,6 +402,7 @@ export function OpLogin({ claimId, claimToken, compact, onEnter, onBack }: { cla
                   <div className="odtest">
                     <b>Test bypass is on for {email.trim()}</b>
                     <p>This API was started with OUTSET_TEST_CLAIM_EMAILS naming your address, so the claim link above skips the website-email check for any business. Every use is logged on the server. Nobody else gets this.</p>
+                    <button type="button" className="cta odwide" disabled={entering} onClick={() => void enterForTest()}>{entering ? "Opening…" : "Open the dashboard now (skip the link)"}</button>
                     <button type="button" className="odghost danger" disabled={releasing} onClick={() => void releaseForTest()}>{releasing ? "Releasing…" : "Release this business (test unclaim)"}</button>
                     {testMsg ? <p className="odtestmsg">{testMsg}</p> : null}
                   </div>

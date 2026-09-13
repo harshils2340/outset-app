@@ -15,6 +15,9 @@ const MONTHS = ["January", "February", "March", "April", "May", "June", "July", 
  * pretending a date further out can be picked. Times are the operator's published start times. This does
  * not claim a day is full or has seats left, because the catalog does not carry live inventory.
  */
+export type DayMeta = { open?: number; full?: boolean };
+export type SlotMeta = { note?: string; disabled?: boolean; tone?: "few" | "gone" };
+
 export function SlotCalendar({
   dates,
   dateIdx,
@@ -23,6 +26,8 @@ export function SlotCalendar({
   time,
   onPickTime,
   emptyNote = "No more start times today. Pick another day.",
+  dayMeta,
+  slotMeta,
 }: {
   dates: Date[];
   dateIdx: number;
@@ -31,6 +36,10 @@ export function SlotCalendar({
   time: string | null;
   onPickTime: (t: string) => void;
   emptyNote?: string;
+  /** Live inventory for a bookable day. Only passed where the listing really has it. */
+  dayMeta?: (d: Date) => DayMeta;
+  /** Seats left on a start time, and whether it can still be picked. */
+  slotMeta?: (t: string) => SlotMeta;
 }) {
   const selected = dates[dateIdx];
   const [month, setMonth] = useState(() => new Date(selected.getFullYear(), selected.getMonth(), 1));
@@ -88,16 +97,20 @@ export function SlotCalendar({
             const k = dateKey(d);
             const idx = bookable.get(k);
             const open = idx !== undefined;
+            const meta = open && dayMeta ? dayMeta(d) : null;
+            const full = !!meta?.full;
             return (
               <button
                 type="button"
                 key={k}
-                className={"slotcalday" + (k === selectedKey ? " on" : "") + (k === todayKey ? " today" : "")}
-                disabled={!open}
+                className={"slotcalday" + (k === selectedKey ? " on" : "") + (k === todayKey ? " today" : "") + (full ? " full" : "")}
+                disabled={!open || full}
                 aria-pressed={k === selectedKey}
-                onClick={() => open && onPickDate(idx)}
+                aria-label={open && meta?.open !== undefined ? d.getDate() + ", " + (full ? "booked out" : meta.open + " open") : undefined}
+                onClick={() => open && !full && onPickDate(idx)}
               >
                 {d.getDate()}
+                {meta?.open ? <i /> : null}
               </button>
             );
           })}
@@ -108,11 +121,22 @@ export function SlotCalendar({
       <div className="slotcaltimes">
         <p className="slotcaltitle">Start times</p>
         <div className="slotcallist">
-          {slots.map((t) => (
-            <button type="button" key={t} className="slotcaltime" aria-pressed={time === t} onClick={() => onPickTime(t)}>
-              {fmtTime(t)}
-            </button>
-          ))}
+          {slots.map((t) => {
+            const m = slotMeta ? slotMeta(t) : null;
+            return (
+              <button
+                type="button"
+                key={t}
+                className={"slotcaltime" + (m?.tone ? " " + m.tone : "")}
+                aria-pressed={time === t}
+                disabled={!!m?.disabled}
+                onClick={() => onPickTime(t)}
+              >
+                <b>{fmtTime(t)}</b>
+                {m?.note ? <small>{m.note}</small> : null}
+              </button>
+            );
+          })}
           {slots.length === 0 ? <p className="slotcalempty">{emptyNote}</p> : null}
         </div>
       </div>

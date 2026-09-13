@@ -1,12 +1,13 @@
 import { ICONS } from "../../data/icons";
 import { SLOT_TIMES } from "../../data/slots";
 import { dateKey } from "../../lib/dates";
-import { DAYS, fmtDate, fmtTime, money } from "../../lib/format";
+import { fmtDate, fmtTime, money } from "../../lib/format";
 import { daySlotsOpen, openSeats } from "../../lib/inventory";
 import { priceFor } from "../../lib/pricing";
 import { useApp } from "../../state/AppProvider";
 import { Art } from "../art/Art";
 import { Markup } from "../Markup";
+import { SlotCalendar } from "../booking/SlotCalendar";
 
 export function DetailView() {
   const { state, dates, listing, back, setDate, setSlot, bumpQty, toggleAddon, openReview, openChat } = useApp();
@@ -79,38 +80,29 @@ export function DetailView() {
             </span>
           </div>
           <div style={{ height: 10 }} />
-          <div className="dates" style={{ padding: 0 }}>
-            {dates.slice(0, 8).map((dd, i) => (
-              <button
-                key={dateKey(dd)}
-                className="date"
-                aria-pressed={state.dateIdx === i}
-                onClick={() => setDate(i)}
-              >
-                <small>{i === 0 ? "Today" : i === 1 ? "Tmrw" : DAYS[dd.getDay()]}</small>
-                <b>{dd.getDate()}</b>
-                <span className="free">{daySlotsOpen(listing, dateKey(dd), state.bookings)}</span>
-              </button>
-            ))}
-          </div>
-          <div className="slots">
-            {SLOT_TIMES.map((t) => {
+          {/* Month calendar plus the day's start times. Both carry this listing's real inventory: a day
+              that is booked out cannot be picked, and every slot keeps its seats-left line. */}
+          <SlotCalendar
+            dates={dates}
+            dateIdx={state.dateIdx}
+            onPickDate={setDate}
+            slots={SLOT_TIMES}
+            time={state.slot}
+            onPickTime={setSlot}
+            dayMeta={(dd) => {
+              const open = daySlotsOpen(listing, dateKey(dd), state.bookings);
+              return { open, full: open === 0 };
+            }}
+            slotMeta={(t) => {
               const n = openSeats(listing, dk, t, state.bookings);
-              const cls = n === 0 ? "gone" : n <= Math.max(1, Math.round(listing.qtyMax * 0.3)) ? "few" : "";
-              return (
-                <button
-                  key={t}
-                  className={"slot " + cls}
-                  aria-pressed={state.slot === t}
-                  disabled={n === 0}
-                  onClick={() => setSlot(t)}
-                >
-                  <b>{fmtTime(t)}</b>
-                  <small>{n === 0 ? "Sold out" : n + " " + listing.qtyUnit + (n > 1 ? "s" : "")}</small>
-                </button>
-              );
-            })}
-          </div>
+              const few = n <= Math.max(1, Math.round(listing.qtyMax * 0.3));
+              return {
+                note: n === 0 ? "Sold out" : n + " " + listing.qtyUnit + (n > 1 ? "s" : ""),
+                disabled: n === 0,
+                tone: n === 0 ? "gone" : few ? "few" : undefined,
+              };
+            }}
+          />
           <p className="note" style={{ textAlign: "left", padding: "10px 0 0" }}>
             Slots update as other guests book. Inventory is saved on this device.
           </p>

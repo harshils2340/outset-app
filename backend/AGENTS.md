@@ -69,8 +69,15 @@ What it changes, for the listed addresses only:
 - `POST /claims/:id/request` still runs the real check first. If the real check says no and the address is on the list, a second, separate branch approves it, prints `TEST CLAIM BYPASS: <email> claiming <id> from <ip>`, and emails the same signed link. Any other address is rejected exactly as before, with the same reason, hint and domains. Nothing is loosened.
 - `GET /claims/test-status?email=` answers `{ active: true }` for a listed address, `{ active: false }` for every other. The operator claim screen calls it before it shows any test UI, so a normal visitor never sees one. It never lists the allowlist.
 - `POST /claims/:id/test-unclaim` with `{ email }` releases a listing: deletes `public/profiles/<id>.json` and removes that id from every entry in `public/profiles/index.json`, which is what "claimed" means on this side. 404 for anyone not on the list, logged the same loud way. The app clears the matching on-device profile, claim token and session at the same time, so the business is genuinely unclaimed again.
+- `POST /claims/:id/test-enter` with `{ email }` opens the dashboard with no claim link at all. It answers with an ordinary signed session scoped to that one listing, the same shape `/auth/verify` returns. 404 for anyone not on the list, logged the same loud way.
 - On a host with no mail transport at all (no `RESEND_API_KEY`, no `MAIL_SMTP_USER`) a bypassed request also returns the link in the reply, so a laptop with no mail can finish the flow. On any host that can send, the link only goes to the inbox.
 
 Set `SITE_URL=http://localhost:5173/` while testing locally, or the link points at production.
 
-The code lives in `src/lib/testClaim.ts` and one marked branch plus two marked routes in `src/api/claims.ts`.
+### Why test-enter exists
+
+A claim link carries `k=<token>`, and the app checks it against the `claimKey` baked into `public/o/<id>.json`. That key is `sha256(HMAC(CLAIM_SECRET, id))`, written when the production sync ran on Render. `CLAIM_SECRET` is `sync: false`, so a laptop that does not have it generates its own into `data/claim-secret.txt`, and every link it mints hashes to something the catalog has never seen. The claim screen then says "that claim link didn't check out" for every business, no matter how the link was requested. Getting a link and using a link are two different gates, and the bypass only ever covered the first.
+
+`test-enter` skips the token instead of trying to forge one. Sessions are signed with `claimSecret()` by the same process that verifies them, so they work on any host without matching production. Copying the production `CLAIM_SECRET` to a laptop also works and makes links validate, but it puts a production secret on a dev machine, which is why this route is the better default.
+
+The code lives in `src/lib/testClaim.ts` and one marked branch plus three marked routes in `src/api/claims.ts`.

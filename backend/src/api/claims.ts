@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { ID, clientIp, rateLimit } from "./auth.ts";
+import { ID, clientIp, rateLimit, signSession, type Session } from "./auth.ts";
 import { claimToken } from "../lib/claim.ts";
 import { claimRule, emailMayClaim, maskEmail } from "../lib/claimIndex.ts";
 import { sendMail } from "../lib/mail.ts";
@@ -90,6 +90,29 @@ claims.get("/claims/test-status", rateLimit(120, 60 * 60 * 1000), (c) => {
   const email = String(c.req.query("email") ?? "").trim().toLowerCase();
   // Never lists the allowlist, only confirms an address the caller already typed.
   return c.json({ active: testClaimAllows(email) });
+});
+
+/**
+ * Enter a dashboard without a claim link, for testing only.
+ *
+ * A claim link carries a token checked against the claimKey the production sync baked into the catalog,
+ * so a host without the production CLAIM_SECRET cannot mint a link that validates: the tester gets
+ * "that claim link didn't check out" no matter how the link was requested. This route sidesteps the
+ * token entirely and hands back the same signed session a verified sign-in would, scoped to this one
+ * listing. The session is signed by THIS server, so it verifies here and nowhere else.
+ *
+ * Gated on exactly the same allowlist as the other two routes. With OUTSET_TEST_CLAIM_EMAILS unset,
+ * testClaimAllows() is false for every input and this answers 404, the same as an unknown route.
+ */
+claims.post("/claims/:id/test-enter", rateLimit(60, 60 * 60 * 1000), async (c) => {
+  const id = String(c.req.param("id") ?? "");
+  if (!ID.test(id)) return c.json({ error: "bad id" }, 400);
+  const body = (await c.req.json().catch(() => ({}))) as { email?: string };
+  const email = String(body.email || "").trim().toLowerCase().slice(0, 200);
+  if (!testClaimAllows(email)) return c.json({ error: "not found" }, 404);
+  logTestClaim("enter", email, id, clientIp(c));
+  const session: Session = { ids: [id], email, exp: Date.now() + 30 * 86400000 };
+  return c.json({ ok: true, session: signSession(session), exp: session.exp });
 });
 
 /**
