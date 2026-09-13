@@ -727,6 +727,8 @@ a.crow:active{background:var(--surface-2);}
 .wwrap{max-width:1480px;margin:0 auto;padding:0 40px;}
 .whead{position:sticky;top:0;z-index:5;background:#fff;border-bottom:1px solid var(--line);}
 .whead-in{display:flex;align-items:center;justify-content:space-between;height:80px;gap:24px;}
+.whead-in > .wlogo{flex:1;min-width:0;}
+.whead-in > .wright{flex:1;justify-content:flex-end;}
 .wlogo{display:flex;align-items:center;gap:8px;text-decoration:none;color:var(--accent);}
 .wlogo b{font-size:22px;font-weight:700;letter-spacing:-.03em;}
 .wtabs{display:flex;gap:6px;align-items:stretch;}
@@ -762,7 +764,7 @@ a.crow:active{background:var(--surface-2);}
 .wpop.wwho{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:16px 18px;min-width:240px;}
 .wrail{padding:34px 0 6px;content-visibility:auto;contain-intrinsic-size:0 420px;}
 .wrailhead{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;}
-.wrailhead h2{margin:0;font-size:22px;font-weight:600;letter-spacing:-.02em;}
+.wrailhead h2{margin:0;font-size:26px;font-weight:700;letter-spacing:-.035em;line-height:1.15;}
 .wrailnav{display:flex;gap:8px;}
 .wrailnav button{width:32px;height:32px;border-radius:50%;border:1px solid var(--line-strong);background:#fff;display:grid;place-items:center;cursor:pointer;color:var(--ink);}
 .wrailnav button.flip svg{transform:rotate(180deg);}
@@ -965,11 +967,11 @@ video.wgalleryimg{width:100%;background:#000;}
 .wgallerystrip button img{width:100%;height:100%;object-fit:cover;display:block;}
 .wgallerystrip button[aria-pressed="true"]{opacity:1;border-color:#fff;}
 .wgallerystrip button:hover{opacity:.85;}
-.wcols{display:grid;grid-template-columns:minmax(0,1fr) 400px;gap:64px;margin-top:32px;align-items:start;}
+.wcols{display:grid;grid-template-columns:minmax(0,1fr) 372px;gap:48px;margin-top:32px;align-items:start;}
 .whook{font-family:var(--f-serif);font-size:26px;line-height:1.3;letter-spacing:-.01em;margin:0 0 12px;}
 .wblurb{font-size:16px;line-height:1.6;color:var(--ink-soft);margin:0;}
 .wsec{padding:26px 0;border-top:1px solid var(--line);margin-top:26px;}
-.wsec h2{font-size:20px;font-weight:600;letter-spacing:-.02em;margin:0 0 14px;}
+.wsec h2{font-size:21px;font-weight:700;letter-spacing:-.03em;margin:0 0 14px;}
 .wguidebtn{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;padding:16px 18px;border:1px solid var(--line);border-radius:var(--r-m);background:var(--surface-2);text-align:left;color:var(--ink);cursor:pointer;}
 .wguidebtn span{display:flex;flex-direction:column;gap:2px;}
 .wguidebtn b{font-size:16px;font-weight:600;}
@@ -987,7 +989,7 @@ video.wgalleryimg{width:100%;background:#000;}
 .wvariant > span:nth-child(2){flex:1;}
 .wvariant b{font-weight:600;font-variant-numeric:tabular-nums;}
 .wmenu > .wvariant{border:1px solid var(--line);border-radius:var(--r-m);padding:12px 16px;}
-.wfacts{display:grid;grid-template-columns:1fr 1fr;gap:32px;}
+.wfacts{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:28px 48px;align-items:start;}
 .wfacts .policy{margin-top:0;}
 .wbook{position:sticky;top:104px;}
 .wbookcard{border:1px solid var(--line);border-radius:18px;padding:22px;box-shadow:0 6px 24px rgba(0,0,0,.12);background:#fff;}
@@ -1113,12 +1115,13 @@ video.wgalleryimg{width:100%;background:#000;}
 .wquick small{font-size:11.5px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--ink-faint);}
 .wquick b{font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .wsec.first{border-top:none;margin-top:8px;padding-top:0;}
-.wbullets{margin:0;padding:0;list-style:none;display:grid;gap:10px;}
+.wbullets{margin:0;padding:0;list-style:none;display:grid;gap:11px;}
+.wsec > .wbullets{grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:11px 40px;}
 .wbullets.two{grid-template-columns:1fr 1fr;gap:10px 24px;}
 .wbullets li{display:flex;gap:10px;font-size:15px;line-height:1.5;color:var(--ink);}
 .wbullets svg{flex:none;width:18px;height:18px;margin-top:3px;color:var(--open);}
 .wbullets.no svg{color:var(--ink-faint);}
-.wmeet{display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:start;}
+.wmeet{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:24px;align-items:start;}
 .wmeet .contact{margin-top:0;}
 .wcheckin p{margin:0;font-size:14.5px;line-height:1.55;color:var(--ink-soft);}
 .wcheckin .guidehead{margin-top:0;}
@@ -1346,3 +1349,8 @@ video.wgalleryimg{width:100%;background:#000;}
   .slotcallist{flex-direction:row;flex-wrap:wrap;max-height:none;padding:0 10px 12px;}
   .slotcaltime{flex:1 1 88px;}
 }
+
+/* The sections below the booking column. Full width, and the long lists inside split into tracks so a
+   wide screen is used rather than running one thin ribbon down the left. */
+.wtail{margin-top:8px;}
+.wtail .wsec:first-child{border-top:1px solid var(--line);}

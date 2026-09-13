@@ -11,7 +11,7 @@ function page(title: string, msg: string): string {
 <title>${title}</title>
 <style>
   body { font-family: Inter, system-ui, sans-serif; max-width: 32rem; margin: 4rem auto; padding: 0 1.25rem; color: #111; line-height: 1.5; }
-  a { color: #E54D2C; }
+  a { color: #495940; }
 </style>
 </head>
 <body>

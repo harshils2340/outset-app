@@ -175,6 +175,24 @@ export async function testClaimActive(email: string): Promise<boolean> {
   return !!(r.ok && r.data?.active);
 }
 
+/** A link minted since expiring links landed. It carries its own expiry, so only the API can check it. */
+export const isExpiringClaimToken = (token: string) => token.startsWith("v2.");
+
+/**
+ * Trades a claim link for a session. An expiring token is signed over the listing id and its expiry, so
+ * the static claimKey in the catalog cannot check it and the API has to. Returns "expired" separately so
+ * the screen can offer a fresh link rather than calling a perfectly genuine link a bad one.
+ */
+export async function exchangeClaimToken(id: string, token: string): Promise<{ ok: boolean; expired?: boolean; error?: string }> {
+  const r = await call<{ ok: boolean; session: string; exp: number }>(`/claims/${encodeURIComponent(id)}/exchange`, { method: "POST", body: JSON.stringify({ token }), timeout: 15000 });
+  if (r.ok && r.data?.session) {
+    const prior = loadApiSession();
+    saveApiSession({ token: r.data.session, ids: Array.from(new Set([...(prior?.ids || []), id])), email: prior?.email || "", exp: r.data.exp });
+    return { ok: true };
+  }
+  return { ok: false, expired: r.status === 410, error: r.error };
+}
+
 /**
  * Enters a dashboard without a claim link and stores the session the API hands back.
  *

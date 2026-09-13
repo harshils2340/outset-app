@@ -48,6 +48,16 @@ On macOS, one crawl at a time. `src/scrape/cpu.ts` keeps at least 10% CPU idle: 
 
 Covers are chosen by `src/enrich/photorelevance.ts`, not by whichever photo scored highest. `photoquality.ts` says an image is a photograph; this says whether it is a photograph of this business, reading the file name, the alt text, the page it sat on and the booking item it illustrates against the operator's activity words, and demoting a lone wild animal, a close-up, a staff portrait, merch and a file that turns up on other operators' domains. It runs at photo-crawl time and again in `npm run sync`, so a better cover comes out of a sync with no new crawl. It only reorders: every photo stays in the gallery.
 
+## Claim links expire
+
+A link carries `k=<token>`. New links are `v2.<expiry base36>.<signature>`, signed over the listing id AND the expiry, so the expiry cannot be pushed out by editing the link: changing it invalidates the signature. `CLAIM_LINK_DAYS` sets the life, default 30.
+
+The old token was `HMAC(CLAIM_SECRET, id)` and nothing else: it never changed, never expired, and was identical for everyone who asked for that listing. One forwarded email or screenshot could claim that business forever. That was tolerable for links sent by hand and is not tolerable for a mailing.
+
+Because a v2 token varies with its expiry, the static `claimKey` in `public/o/<id>.json` cannot check it. The app posts the token to `POST /claims/:id/exchange`, which verifies it with the secret and returns an ordinary signed session scoped to that one listing, so every existing auth path keeps working unchanged. Expired answers `410` so the claim screen can say "this link has expired, here is a fresh one" instead of calling a genuine link a bad one; a bad signature answers `401`.
+
+Old static tokens are still accepted by `verifyClaimToken`, so links already sent keep working. They still never expire, which is the reason new ones do. Drop the legacy branch once nothing old is in circulation.
+
 `npm run sync` also writes `data/claim-index.json`: per catalog id, a short hash of the email found on the operator's site (never the address), the domains the operator owns, and a masked hint. The API host has no SQLite, so this file is how `POST /claims/:id/request` decides whether the address an owner typed may receive the claim link (exact match with the on-file email, or any address at the operator's own domain; site builders and free mail never count). Ids missing from the file fall back to the domain in `public/o/<id>.json`. `npm run claim-index` writes only this file. Commit it after a sync.
 
 `npm run sync` also writes `../public/catalog.json` (every real operator in the app's Unclaimed shape plus contacts) and regenerates `../src/data/contacts.ts` from the operators table. Contact fields (phone, email, street, postal, hours) come only from the operator's own site. Phones are normalized to E.164. `GET /contacts` and `GET /contacts/:domain` serve the same payload live.

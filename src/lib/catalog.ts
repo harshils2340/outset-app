@@ -346,8 +346,49 @@ export function decodeEntities(text: string): string {
   return once(once(text));
 }
 
+/**
+ * Acronyms an operator means in capitals. Everything else shouting in caps is their SEO voice, not ours.
+ */
+const KEEP_CAPS = new Set([
+  "ATV", "UTV", "PWC", "SUP", "RV", "VIP", "BYOB", "GPS", "USA", "USCG", "PADI", "SSI", "TV", "DJ", "HD", "LED",
+  "FAQ", "ID", "AM", "PM", "4X4", "UFC", "MMA", "NFL", "NBA", "MLB", "NHL", "BBQ", "AC", "ADA", "CPR",
+]);
+
+/**
+ * Operators write their own pages, and a lot of them shout: "CLEARWATER JET SKI RENTAL AT CLEARWATER
+ * BEACH". Rendered as-is that reads like a billboard, not a listing. Any capitalised word of five letters
+ * or more becomes title case, so real acronyms (ATV, PADI, FL and the other two-letter states) survive
+ * untouched while the shouting stops.
+ */
+const SHOUT_SMALL = new Set(["a", "an", "and", "at", "by", "for", "in", "of", "on", "or", "the", "to", "with"]);
+
+function unshout(word: string): string {
+  if (KEEP_CAPS.has(word)) return word;
+  return word.charAt(0) + word.slice(1).toLowerCase();
+}
+
+function deShout(text: string): string {
+  // A run of capitalised words is a headline shout: "RENT BY THE HOUR". Title case it and drop the
+  // joining words, unless every word in the run is a real acronym.
+  let out = text.replace(/[A-Z][A-Z0-9'&.\-]*(?:\s+[A-Z][A-Z0-9'&.\-]*)+/g, (run) => {
+    const words = run.split(/\s+/);
+    if (words.every((w) => KEEP_CAPS.has(w))) return run;
+    return words
+      .map((w, i) => {
+        if (KEEP_CAPS.has(w)) return w;
+        const lower = w.toLowerCase();
+        return i > 0 && SHOUT_SMALL.has(lower) ? lower : unshout(w);
+      })
+      .join(" ");
+  });
+  // A single long shout on its own, like "CLEARWATER Jet ski". Two and three letter words are left be,
+  // so state codes and short acronyms survive.
+  out = out.replace(/[A-Z][A-Z0-9'&.\-]{4,}/g, unshout);
+  return out;
+}
+
 export function plainWords(text: string): string {
   let out = decodeEntities(text);
   for (const [re, word] of GLOSSARY) out = out.replace(re, word);
-  return out.replace(/\s+/g, " ").trim();
+  return deShout(out).replace(/\s+/g, " ").trim();
 }

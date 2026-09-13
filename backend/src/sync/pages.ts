@@ -94,7 +94,7 @@ const CSS = `
 :root{color-scheme:light}body{margin:0;font-family:Inter,"Helvetica Neue",Arial,sans-serif;color:#222;background:#fff}
 a{color:inherit}.wrap{max-width:1180px;margin:0 auto;padding:0 24px}
 header{border-bottom:1px solid #ebebeb}.top{display:flex;justify-content:space-between;align-items:center;height:64px}
-.logo{font-weight:700;font-size:20px;color:#E54D2C;text-decoration:none}.cta{background:#E54D2C;color:#fff;text-decoration:none;border-radius:999px;padding:10px 16px;font-weight:600;font-size:14px}
+.logo{font-weight:700;font-size:20px;color:#495940;text-decoration:none}.cta{background:#495940;color:#fff;text-decoration:none;border-radius:999px;padding:10px 16px;font-weight:600;font-size:14px}
 h1{font-size:34px;letter-spacing:-.02em;margin:34px 0 8px}.lede{font-size:17px;color:#555;margin:0 0 24px;max-width:70ch}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:22px 16px}
 .card{text-decoration:none;display:block}.art{aspect-ratio:1/1;border-radius:16px;overflow:hidden;background:#f3f3f3}.art img{width:100%;height:100%;object-fit:cover;display:block}

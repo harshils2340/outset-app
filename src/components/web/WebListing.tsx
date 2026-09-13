@@ -475,224 +475,6 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
               </section>
             ) : null}
 
-            {includes.length || notIncluded.length ? (
-              <section className="wsec wfacts">
-                {includes.length ? (
-                  <div>
-                    <h2>What's included</h2>
-                    <Bullets items={includes} />
-                  </div>
-                ) : null}
-                {notIncluded.length ? (
-                  <div>
-                    <h2>Not included</h2>
-                    <Bullets items={notIncluded} icon={ICONS.close} className="no" />
-                  </div>
-                ) : null}
-              </section>
-            ) : null}
-
-            {requirements.length || item.bring?.length || item.groupInfo?.length || waiverLines.length ? (
-            <section className="wsec wfacts">
-              {requirements.length ? (
-              <div>
-                <h2>Who can go</h2>
-                <Bullets items={requirements} icon={ICONS.dot} />
-              </div>
-              ) : null}
-              <div>
-                {item.bring?.length ? (
-                  <>
-                    <h2>What to bring</h2>
-                    <Bullets items={item.bring} icon={ICONS.dot} />
-                  </>
-                ) : item.groupInfo?.length ? (
-                  <>
-                    <h2>Groups</h2>
-                    <Bullets items={item.groupInfo} icon={ICONS.dot} />
-                  </>
-                ) : waiverLines.length ? (
-                  <>
-                    <h2>Waiver and check-in</h2>
-                    <Bullets items={waiverLines} icon={ICONS.dot} />
-                  </>
-                ) : null}
-              </div>
-            </section>
-            ) : null}
-
-            {item.bring?.length && item.groupInfo?.length ? (
-              <section className="wsec">
-                <h2>Groups</h2>
-                <Bullets items={item.groupInfo} icon={ICONS.dot} />
-              </section>
-            ) : null}
-
-            <section className="wsec">
-              <h2>Meeting point and check-in</h2>
-              <div className="wmeet">
-                <div className="contact">
-                  <a className="crow" href={contact ? mapsHref(contact, item.title + " " + item.area) : "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(item.title + " " + item.area)} target="_blank" rel="noreferrer">
-                    <Markup html={ICONS.pin} />
-                    <span><b>{item.meetingPoint || address || item.area}</b><small>{item.meetingPoint && address && item.meetingPoint !== address ? address + " · Open in Maps" : address ? "Open in Maps" : "Find on the map"}</small></span>
-                  </a>
-                  {contact?.phone ? (
-                    <a className="crow" href={telHref(contact.phone)}>
-                      <Markup html={ICONS.phone} />
-                      <span><b>{fmtPhone(contact.phone)}</b><small>Call a person at the shop</small></span>
-                    </a>
-                  ) : null}
-                  {hours.length ? (
-                    <div className="crow">
-                      <Markup html={ICONS.clock} />
-                      <span>{hours.map((h) => <b key={h}>{h}</b>)}<small>Hours</small></span>
-                    </div>
-                  ) : null}
-                </div>
-                {item.checkin ? (
-                  <div className="wcheckin">
-                    <p className="guidehead">When you arrive</p>
-                    <p>{plainWords(item.checkin)}</p>
-                  </div>
-                ) : null}
-              </div>
-              {item.locations?.length ? (
-                <div className="wvenues">
-                  <p className="guidehead">{item.locations.length + 1} locations{state.near ? ", nearest to " + state.near.label + " first" : ""}</p>
-                  <div className="wvenuegrid">
-                    {[{ city: item.area, lat: item.lat, lon: item.lon, street: address || undefined, primary: true }, ...item.locations.map((l) => ({ ...l, city: l.city + (l.region ? ", " + l.region : ""), primary: false }))]
-                      .map((v) => ({ ...v, km: state.near && v.lat != null && v.lon != null ? kmBetween(state.near, { lat: v.lat, lon: v.lon }) : null }))
-                      .sort((a, b) => (a.km ?? Infinity) - (b.km ?? Infinity))
-                      .slice(0, 24)
-                      .map((v, i) => (
-                        <a key={i} className="wvenue" href={"https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent((v.street ? v.street + ", " : "") + v.city)} target="_blank" rel="noreferrer">
-                          <b>{v.city}</b>
-                          <small>{v.street || (v.primary ? "Main location" : "")}{v.km != null ? (v.street || v.primary ? " · " : "") + fmtDistance(v.km) + " away" : ""}</small>
-                        </a>
-                      ))}
-                  </div>
-                </div>
-              ) : null}
-            </section>
-
-            {item.promos?.length ? (
-              <section className="wsec" id="deals">
-                <h2>Deals</h2>
-                <p className="wdealnote">From {item.title}'s own site. Days are in their local time.</p>
-                <ul className="wdeals">
-                  {item.promos.map((p) => {
-                    const on = dealsNow.includes(p);
-                    return (
-                      <li key={p.text} className={on ? "on" : ""}>
-                        <span className="wdealchips" aria-label={dayLabel(p.days)}>
-                          {p.days.length ? DAY_SHORT.map((d, i) => (
-                            <i key={d} className={p.days.includes(i) ? (i === today ? "hit today" : "hit") : ""}>{d}</i>
-                          )) : <i className={"hit" + (on ? " today" : "")}>Every day</i>}
-                        </span>
-                        <span className="wdealtext">
-                          {plainWords(p.text)}
-                          {p.start || p.end ? <small>{p.start ? clock12(p.start) : "Open"} to {p.end ? clock12(p.end) : "close"}</small> : null}
-                          {on ? <em>Today</em> : null}
-                        </span>
-                      </li>
-                    );
-                  })}
-                </ul>
-              </section>
-            ) : null}
-
-            {item.cancellation || item.waiverUrl || waiverLines.length && (item.bring?.length || item.groupInfo?.length) || otherPolicies.length ? (
-              <section className="wsec">
-                <h2>Cancellation policy</h2>
-                {item.cancellation ? <p className="wpolicytext">{plainWords(item.cancellation)}</p> : <p className="wpolicytext gap">{item.title} has not published cancellation terms. Otto will have them confirm before you pay.</p>}
-                {otherPolicies.length ? <Bullets items={otherPolicies} icon={ICONS.dot} /> : null}
-                {item.waiverUrl ? (
-                  <a className="wwaiver" href={item.waiverUrl} target="_blank" rel="noreferrer">
-                    <Markup html={ICONS.ticket} />
-                    <span><b>Sign the waiver online before you arrive</b><small>Saves time at check-in. Opens the operator's waiver form.</small></span>
-                  </a>
-                ) : null}
-              </section>
-            ) : null}
-
-            {item.faq?.length ? (
-              <section className="wsec">
-                <h2>Frequently asked questions</h2>
-                <div className="wfaq">
-                  {item.faq.map((f, i) => (
-                    <div key={i} className={"wfaqitem" + (openFaq === i ? " open" : "")}>
-                      <button type="button" onClick={() => setOpenFaq(openFaq === i ? null : i)} aria-expanded={openFaq === i}>
-                        <span>{plainWords(f.q)}</span>
-                        <Markup html={openFaq === i ? ICONS.chevUp : ICONS.chevDown} />
-                      </button>
-                      {openFaq === i ? <p>{plainWords(f.a)}</p> : null}
-                    </div>
-                  ))}
-                </div>
-              </section>
-            ) : null}
-
-            {(item.ytVideos && item.ytVideos.length) || item.tiktok ? (
-              <section className="wsec">
-                <h2>See it in action</h2>
-                <p className="wsecsub">Videos from {item.title}'s own channels.</p>
-                {item.ytVideos && item.ytVideos.length ? (
-                  <div className={"wvideos" + (item.ytVideos.length === 1 ? " one" : "")}>
-                    {item.ytVideos.slice(0, 2).map((v) => (
-                      <div className="wvideo" key={v.id}>
-                        <iframe
-                          src={"https://www.youtube-nocookie.com/embed/" + v.id + "?rel=0&modestbranding=1"}
-                          title={v.title}
-                          loading="lazy"
-                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                          allowFullScreen
-                        />
-                        <small>{v.title}</small>
-                      </div>
-                    ))}
-                  </div>
-                ) : null}
-                {item.tiktok ? (
-                  <div className="wtiktok">
-                    <blockquote className="tiktok-embed" cite={"https://www.tiktok.com/@" + item.tiktok} data-unique-id={item.tiktok} data-embed-type="creator" style={{ maxWidth: 780, minWidth: 288 }}>
-                      <section>
-                        <a target="_blank" rel="noreferrer" href={"https://www.tiktok.com/@" + item.tiktok}>@{item.tiktok} on TikTok</a>
-                      </section>
-                    </blockquote>
-                    <TikTokScript />
-                  </div>
-                ) : null}
-              </section>
-            ) : null}
-
-            {score || item.quotes?.length ? (
-              <section className="wsec">
-                <h2>Reviews</h2>
-                {score ? (
-                  <div className="wreviews">
-                    <b>{score.rating.toFixed(1)}</b>
-                    <span>
-                      <span className="wstars" aria-hidden="true">{[0, 1, 2, 3, 4].map((i) => <Markup key={i} html={ICONS.star} />)}</span>
-                      <small>{fmtReviews(score.reviews)} public reviews{item.quotes?.length ? "" : ". Written reviews arrive once guests book through Outset."}</small>
-                    </span>
-                  </div>
-                ) : null}
-                {item.quotes?.length ? (
-                  <div className="wreviewgrid">
-                    {item.quotes.map((r, i) => (
-                      <article key={i} className="wreview">
-                        <header>
-                          <span className="wavatar sm">{(r.author || "G").slice(0, 1).toUpperCase()}</span>
-                          <span className="meta"><b>{r.author || "A guest"}</b>{r.rating ? <small className="wquotestars">{"★".repeat(Math.round(r.rating))}</small> : r.date ? <small>{r.date}</small> : null}</span>
-                        </header>
-                        <p>{r.text}</p>
-                      </article>
-                    ))}
-                    <p className="wreviewnote">Reviews the operator publishes on their own site. Verified reviews from Outset bookings will show here too.</p>
-                  </div>
-                ) : null}
-              </section>
-            ) : null}
           </div>
 
           <aside className="wbook">
@@ -788,6 +570,230 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
             )}
             <WebAssistant item={item} />
           </aside>
+        </div>
+
+        {/* Everything past the booking column runs the full width. The sticky card and Otto are
+            short, so leaving these sections in the narrow left column left the right half of the
+            page blank for the rest of the scroll. */}
+        <div className="wtail">
+              {includes.length || notIncluded.length ? (
+                <section className="wsec wfacts">
+                  {includes.length ? (
+                    <div>
+                      <h2>What's included</h2>
+                      <Bullets items={includes} />
+                    </div>
+                  ) : null}
+                  {notIncluded.length ? (
+                    <div>
+                      <h2>Not included</h2>
+                      <Bullets items={notIncluded} icon={ICONS.close} className="no" />
+                    </div>
+                  ) : null}
+                </section>
+              ) : null}
+
+              {requirements.length || item.bring?.length || item.groupInfo?.length || waiverLines.length ? (
+              <section className="wsec wfacts">
+                {requirements.length ? (
+                <div>
+                  <h2>Who can go</h2>
+                  <Bullets items={requirements} icon={ICONS.dot} />
+                </div>
+                ) : null}
+                <div>
+                  {item.bring?.length ? (
+                    <>
+                      <h2>What to bring</h2>
+                      <Bullets items={item.bring} icon={ICONS.dot} />
+                    </>
+                  ) : item.groupInfo?.length ? (
+                    <>
+                      <h2>Groups</h2>
+                      <Bullets items={item.groupInfo} icon={ICONS.dot} />
+                    </>
+                  ) : waiverLines.length ? (
+                    <>
+                      <h2>Waiver and check-in</h2>
+                      <Bullets items={waiverLines} icon={ICONS.dot} />
+                    </>
+                  ) : null}
+                </div>
+              </section>
+              ) : null}
+
+              {item.bring?.length && item.groupInfo?.length ? (
+                <section className="wsec">
+                  <h2>Groups</h2>
+                  <Bullets items={item.groupInfo} icon={ICONS.dot} />
+                </section>
+              ) : null}
+
+              <section className="wsec">
+                <h2>Meeting point and check-in</h2>
+                <div className="wmeet">
+                  <div className="contact">
+                    <a className="crow" href={contact ? mapsHref(contact, item.title + " " + item.area) : "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(item.title + " " + item.area)} target="_blank" rel="noreferrer">
+                      <Markup html={ICONS.pin} />
+                      <span><b>{item.meetingPoint || address || item.area}</b><small>{item.meetingPoint && address && item.meetingPoint !== address ? address + " · Open in Maps" : address ? "Open in Maps" : "Find on the map"}</small></span>
+                    </a>
+                    {contact?.phone ? (
+                      <a className="crow" href={telHref(contact.phone)}>
+                        <Markup html={ICONS.phone} />
+                        <span><b>{fmtPhone(contact.phone)}</b><small>Call a person at the shop</small></span>
+                      </a>
+                    ) : null}
+                    {hours.length ? (
+                      <div className="crow">
+                        <Markup html={ICONS.clock} />
+                        <span>{hours.map((h) => <b key={h}>{h}</b>)}<small>Hours</small></span>
+                      </div>
+                    ) : null}
+                  </div>
+                  {item.checkin ? (
+                    <div className="wcheckin">
+                      <p className="guidehead">When you arrive</p>
+                      <p>{plainWords(item.checkin)}</p>
+                    </div>
+                  ) : null}
+                </div>
+                {item.locations?.length ? (
+                  <div className="wvenues">
+                    <p className="guidehead">{item.locations.length + 1} locations{state.near ? ", nearest to " + state.near.label + " first" : ""}</p>
+                    <div className="wvenuegrid">
+                      {[{ city: item.area, lat: item.lat, lon: item.lon, street: address || undefined, primary: true }, ...item.locations.map((l) => ({ ...l, city: l.city + (l.region ? ", " + l.region : ""), primary: false }))]
+                        .map((v) => ({ ...v, km: state.near && v.lat != null && v.lon != null ? kmBetween(state.near, { lat: v.lat, lon: v.lon }) : null }))
+                        .sort((a, b) => (a.km ?? Infinity) - (b.km ?? Infinity))
+                        .slice(0, 24)
+                        .map((v, i) => (
+                          <a key={i} className="wvenue" href={"https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent((v.street ? v.street + ", " : "") + v.city)} target="_blank" rel="noreferrer">
+                            <b>{v.city}</b>
+                            <small>{v.street || (v.primary ? "Main location" : "")}{v.km != null ? (v.street || v.primary ? " · " : "") + fmtDistance(v.km) + " away" : ""}</small>
+                          </a>
+                        ))}
+                    </div>
+                  </div>
+                ) : null}
+              </section>
+
+              {item.promos?.length ? (
+                <section className="wsec" id="deals">
+                  <h2>Deals</h2>
+                  <p className="wdealnote">From {item.title}'s own site. Days are in their local time.</p>
+                  <ul className="wdeals">
+                    {item.promos.map((p) => {
+                      const on = dealsNow.includes(p);
+                      return (
+                        <li key={p.text} className={on ? "on" : ""}>
+                          <span className="wdealchips" aria-label={dayLabel(p.days)}>
+                            {p.days.length ? DAY_SHORT.map((d, i) => (
+                              <i key={d} className={p.days.includes(i) ? (i === today ? "hit today" : "hit") : ""}>{d}</i>
+                            )) : <i className={"hit" + (on ? " today" : "")}>Every day</i>}
+                          </span>
+                          <span className="wdealtext">
+                            {plainWords(p.text)}
+                            {p.start || p.end ? <small>{p.start ? clock12(p.start) : "Open"} to {p.end ? clock12(p.end) : "close"}</small> : null}
+                            {on ? <em>Today</em> : null}
+                          </span>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </section>
+              ) : null}
+
+              {item.cancellation || item.waiverUrl || waiverLines.length && (item.bring?.length || item.groupInfo?.length) || otherPolicies.length ? (
+                <section className="wsec">
+                  <h2>Cancellation policy</h2>
+                  {item.cancellation ? <p className="wpolicytext">{plainWords(item.cancellation)}</p> : <p className="wpolicytext gap">{item.title} has not published cancellation terms. Otto will have them confirm before you pay.</p>}
+                  {otherPolicies.length ? <Bullets items={otherPolicies} icon={ICONS.dot} /> : null}
+                  {item.waiverUrl ? (
+                    <a className="wwaiver" href={item.waiverUrl} target="_blank" rel="noreferrer">
+                      <Markup html={ICONS.ticket} />
+                      <span><b>Sign the waiver online before you arrive</b><small>Saves time at check-in. Opens the operator's waiver form.</small></span>
+                    </a>
+                  ) : null}
+                </section>
+              ) : null}
+
+              {item.faq?.length ? (
+                <section className="wsec">
+                  <h2>Frequently asked questions</h2>
+                  <div className="wfaq">
+                    {item.faq.map((f, i) => (
+                      <div key={i} className={"wfaqitem" + (openFaq === i ? " open" : "")}>
+                        <button type="button" onClick={() => setOpenFaq(openFaq === i ? null : i)} aria-expanded={openFaq === i}>
+                          <span>{plainWords(f.q)}</span>
+                          <Markup html={openFaq === i ? ICONS.chevUp : ICONS.chevDown} />
+                        </button>
+                        {openFaq === i ? <p>{plainWords(f.a)}</p> : null}
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              ) : null}
+
+              {(item.ytVideos && item.ytVideos.length) || item.tiktok ? (
+                <section className="wsec">
+                  <h2>See it in action</h2>
+                  <p className="wsecsub">Videos from {item.title}'s own channels.</p>
+                  {item.ytVideos && item.ytVideos.length ? (
+                    <div className={"wvideos" + (item.ytVideos.length === 1 ? " one" : "")}>
+                      {item.ytVideos.slice(0, 2).map((v) => (
+                        <div className="wvideo" key={v.id}>
+                          <iframe
+                            src={"https://www.youtube-nocookie.com/embed/" + v.id + "?rel=0&modestbranding=1"}
+                            title={v.title}
+                            loading="lazy"
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                            allowFullScreen
+                          />
+                          <small>{v.title}</small>
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
+                  {item.tiktok ? (
+                    <div className="wtiktok">
+                      <blockquote className="tiktok-embed" cite={"https://www.tiktok.com/@" + item.tiktok} data-unique-id={item.tiktok} data-embed-type="creator" style={{ maxWidth: 780, minWidth: 288 }}>
+                        <section>
+                          <a target="_blank" rel="noreferrer" href={"https://www.tiktok.com/@" + item.tiktok}>@{item.tiktok} on TikTok</a>
+                        </section>
+                      </blockquote>
+                      <TikTokScript />
+                    </div>
+                  ) : null}
+                </section>
+              ) : null}
+
+              {score || item.quotes?.length ? (
+                <section className="wsec">
+                  <h2>Reviews</h2>
+                  {score ? (
+                    <div className="wreviews">
+                      <b>{score.rating.toFixed(1)}</b>
+                      <span>
+                        <span className="wstars" aria-hidden="true">{[0, 1, 2, 3, 4].map((i) => <Markup key={i} html={ICONS.star} />)}</span>
+                        <small>{fmtReviews(score.reviews)} public reviews{item.quotes?.length ? "" : ". Written reviews arrive once guests book through Outset."}</small>
+                      </span>
+                    </div>
+                  ) : null}
+                  {item.quotes?.length ? (
+                    <div className="wreviewgrid">
+                      {item.quotes.map((r, i) => (
+                        <article key={i} className="wreview">
+                          <header>
+                            <span className="wavatar sm">{(r.author || "G").slice(0, 1).toUpperCase()}</span>
+                            <span className="meta"><b>{r.author || "A guest"}</b>{r.rating ? <small className="wquotestars">{"★".repeat(Math.round(r.rating))}</small> : r.date ? <small>{r.date}</small> : null}</span>
+                          </header>
+                          <p>{r.text}</p>
+                        </article>
+                      ))}
+                      <p className="wreviewnote">Reviews the operator publishes on their own site. Verified reviews from Outset bookings will show here too.</p>
+                    </div>
+                  ) : null}
+                </section>
+              ) : null}
         </div>
 
         {similar.length ? (

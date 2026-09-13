@@ -112,6 +112,26 @@ function whenIdle(run: () => void): void {
   else window.setTimeout(run, 50);
 }
 
+/**
+ * Section headings read as titles: "Popular Jet Ski Rentals", not "Popular jet ski rentals". Words already
+ * carrying a capital are left alone so ATV, NYC and TopGolf survive, joining words stay lowercase unless
+ * they open or close the heading, and a hyphenated pair capitalises both halves so "e-bike" becomes "E-Bike".
+ */
+const SMALL_WORDS = new Set(["and", "or", "the", "a", "an", "of", "in", "on", "at", "to", "for", "near", "with", "by"]);
+
+export function titleCase(text: string): string {
+  const words = text.split(" ");
+  return words
+    .map((word, i) => {
+      if (!word) return word;
+      if (/[A-Z]/.test(word)) return word;
+      const last = i === words.length - 1;
+      if (i > 0 && !last && SMALL_WORDS.has(word.toLowerCase())) return word.toLowerCase();
+      return word.replace(/(^|-)([a-z])/g, (_m, sep, ch) => sep + ch.toUpperCase());
+    })
+    .join(" ");
+}
+
 /** What a "More kinds" tile types into What: the first alias, so the search names exactly that kind. */
 const kindQuery = (art: ArtKind) => ART_ALIASES[art]?.[0] || art;
 
@@ -131,7 +151,6 @@ const CompareCtx = createContext<{ ids: string[]; toggle: (id: string) => void }
 
 /** The Where menu's shortlist: the biggest cities a guest would type, not the first twelve metros in the file. */
 const POPULAR_METROS = ["toronto", "nyc", "los-angeles", "chicago", "miami", "tampa", "vancouver", "austin", "denver", "seattle", "las-vegas", "boston", "atlanta", "san-diego", "montreal", "orlando"];
-const INTENT_CHIPS = ["Date night", "With kids", "Birthday ideas", "Classes", "Golf", "Spa day", "Adrenaline", "Rainy day", "Culture", "Sunset", "Under $50", "Team outing"];
 
 /** The categories that earn a slot in the header. The rest sit under More, in the same order as CATS. */
 const TOP_CATS = ["all", "air", "water", "motorsport", "indoor", "outdoor"];
@@ -672,25 +691,6 @@ export function WebHome({ onOpenApp, onOperators }: { onOpenApp: () => void; onO
       </div>
 
       <main className="wwrap">
-        {state.catalogReady && !q.trim() && sort === "relevance" ? (
-          <details className="whow">
-            <summary>How booking on Outset works</summary>
-            <div className="whowbody">
-              <div><b>The whole price</b><span>The price you see is the price you pay. Fuel, deposit, bait and tip rules are on the listing, not at the dock.</span></div>
-              <div><b>The rules before the drive</b><span>Weight limits, minimum ages, private or shared, and what happens if it rains, all on the page before you book.</span></div>
-              <div><b>Someone answers</b><span>Book a real slot in three taps, or ask Otto anything and get an answer from the operator's own information.</span></div>
-            </div>
-          </details>
-        ) : null}
-        {state.catalogReady ? (
-          <div className="wintents">
-            {INTENT_CHIPS.map((c) => (
-              <button type="button" key={c} aria-pressed={q.trim().toLowerCase() === c.toLowerCase()} onClick={() => setQ(q.trim().toLowerCase() === c.toLowerCase() ? "" : c)}>
-                {c}
-              </button>
-            ))}
-          </div>
-        ) : null}
         {state.catalogReady ? (
           <div className="wsortbar">
             <span className="wsortlabel">Sort by</span>
@@ -801,7 +801,7 @@ export function WebHome({ onOpenApp, onOperators }: { onOpenApp: () => void; onO
         ) : null}
         {state.catalogReady && !sorted && !q.trim() ? rails.map((r, i) => {
           const items = rankForRail(pool.filter((u) => u.art === r.art));
-          const title = near ? `${r.title} near ${near.label}` : metro ? `${r.title} in ${metro.name}` : `Popular ${r.title.toLowerCase()}`;
+          const title = titleCase(near ? `${r.title} near ${near.label}` : metro ? `${r.title} in ${metro.name}` : `Popular ${r.title}`);
           return <Rail key={r.art} title={title} items={items} onOpen={openRequest} near={near} eager={i < 2} />;
         }) : null}
         {state.catalogReady && !sorted && !q.trim() && moreKinds.length ? (

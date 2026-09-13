@@ -9,7 +9,7 @@ import { Mark } from "../layout/Mark";
 import { Markup } from "../Markup";
 import { useApp } from "../../state/AppProvider";
 import { OD_ICONS } from "./opContext";
-import { claimRemote, fetchClaimRule, fetchRemoteProfile, hasApi, ownerFromHash, rememberClaimToken, requestClaimLink, requestSignInCode, testClaimActive, testEnter, testUnclaim, verifySignInCode, type ClaimRule } from "../../lib/api";
+import { claimRemote, exchangeClaimToken, fetchClaimRule, fetchRemoteProfile, hasApi, isExpiringClaimToken, ownerFromHash, rememberClaimToken, requestClaimLink, requestSignInCode, testClaimActive, testEnter, testUnclaim, verifySignInCode, type ClaimRule } from "../../lib/api";
 
 /**
  * Claim and sign in. The owner searches by name, says who they are, and the signed claim link goes to the
@@ -60,7 +60,7 @@ export function OpLogin({ claimId, claimToken, compact, onEnter, onBack }: { cla
   const [phone, setPhone] = useState("");
   const [code, setCode] = useState("");
   const [err, setErr] = useState<string | null>(null);
-  const [linkState, setLinkState] = useState<"idle" | "checking" | "bad">(claimToken && claimId ? "checking" : "idle");
+  const [linkState, setLinkState] = useState<"idle" | "checking" | "bad" | "expired">(claimToken && claimId ? "checking" : "idle");
   const isApi = hasApi();
 
   // A signed claim link opens the dashboard directly. The listing file carries a hash of the emailed token;
@@ -72,9 +72,20 @@ export function OpLogin({ claimId, claimToken, compact, onEnter, onBack }: { cla
     const tick = async () => {
       const u = experienceById(claimId);
       if (u?.claimKey) {
-        const ok = (await sha256Hex(claimToken)) === u.claimKey;
-        if (!alive) return;
-        if (!ok) { setLinkState("bad"); return; }
+        // A link minted since expiring links landed is signed over the listing id AND an expiry, so the
+        // static claimKey cannot check it. Ask the API, which has the secret, and take a session back.
+        // Older links still verify here against claimKey, with no connection needed.
+        let ok: boolean;
+        if (isExpiringClaimToken(claimToken)) {
+          const r = await exchangeClaimToken(u.id, claimToken);
+          if (!alive) return;
+          ok = r.ok;
+          if (!ok) { setLinkState(r.expired ? "expired" : "bad"); return; }
+        } else {
+          ok = (await sha256Hex(claimToken)) === u.claimKey;
+          if (!alive) return;
+          if (!ok) { setLinkState("bad"); return; }
+        }
         rememberClaimToken(u.id, claimToken);
         const existing = loadProfile(u.id);
         if (existing) { onEnter(existing); return; }
@@ -387,6 +398,7 @@ export function OpLogin({ claimId, claimToken, compact, onEnter, onBack }: { cla
             {head}
             {linkState === "checking" ? <p className="odmuted">Opening your dashboard…</p> : null}
             {linkState === "bad" ? <p className="oderr">That claim link didn't check out. Ask for a fresh one below, or sign in with your email.</p> : null}
+            {linkState === "expired" ? <p className="oderr">That claim link has expired. Links stay good for a while so an old forwarded email cannot open your dashboard. Ask for a fresh one below, it arrives in a moment.</p> : null}
             <h2>Who's the owner?</h2>
             <p className="odmuted">We'll send booking alerts here. Nothing goes out until you confirm.</p>
             <label className="odfield"><span>Your name</span><input value={name} onChange={(e) => setName(e.target.value)} placeholder="Full name" /></label>

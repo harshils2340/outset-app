@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { ID, clientIp, rateLimit, signSession, type Session } from "./auth.ts";
-import { claimToken } from "../lib/claim.ts";
+import { claimTokenV2, verifyClaimToken } from "../lib/claim.ts";
 import { claimRule, emailMayClaim, maskEmail } from "../lib/claimIndex.ts";
 import { sendMail } from "../lib/mail.ts";
 import { deleteJson, readJson, updateJson } from "../lib/store.ts";
@@ -56,7 +56,7 @@ claims.post("/claims/:id/request", rateLimit(10, 60 * 60 * 1000), async (c) => {
   const item = await readJson<{ title?: string }>(`o/${id}.json`).catch(() => null);
   const title = item?.title || "your business";
   const owner = Buffer.from(JSON.stringify({ n: name, e: email, p: phone })).toString("base64url");
-  const link = `${SITE}#claim=${id}&k=${claimToken(id)}&o=${owner}`;
+  const link = `${SITE}#claim=${id}&k=${claimTokenV2(id)}&o=${owner}`;
   const text = [
     `Hi ${name || "there"},`,
     "",
@@ -78,6 +78,31 @@ claims.post("/claims/:id/request", rateLimit(10, 60 * 60 * 1000), async (c) => {
   const noMailTransport = !process.env.RESEND_API_KEY && !process.env.MAIL_SMTP_USER;
   if (bypass && noMailTransport) return c.json({ ok: true, sent: r.sent, to: maskEmail(email), bypass: true, link });
   return c.json({ ok: true, sent: r.sent, to: maskEmail(email), ...(bypass ? { bypass: true } : {}) });
+});
+
+/**
+ * Trade a claim link for a session.
+ *
+ * Links minted now carry an expiry (see claimTokenV2). The static claimKey in the catalog cannot check
+ * one, because that hash was baked at sync time and a v2 token changes with its expiry, so the app sends
+ * the token here and this verifies it with the secret. What comes back is an ordinary session scoped to
+ * the one listing, which every existing auth path already understands.
+ *
+ * A legacy static token is still accepted so links already sent keep working. Those never expire, which
+ * is exactly why new ones do.
+ */
+claims.post("/claims/:id/exchange", rateLimit(30, 60 * 60 * 1000), async (c) => {
+  const id = String(c.req.param("id") ?? "");
+  if (!ID.test(id)) return c.json({ error: "bad id" }, 400);
+  const body = (await c.req.json().catch(() => ({}))) as { token?: string };
+  const check = verifyClaimToken(id, String(body.token || ""));
+  if (!check.ok) {
+    console.log(`[claim] ${id}: link rejected (${check.reason}) from ${clientIp(c)}`);
+    // "expired" is worth telling the owner, so the screen can offer a fresh link instead of a dead end.
+    return c.json({ ok: false, reason: check.reason }, check.reason === "expired" ? 410 : 401);
+  }
+  const session: Session = { ids: [id], email: "", exp: Date.now() + 30 * 86400000 };
+  return c.json({ ok: true, kind: check.kind, session: signSession(session), exp: session.exp });
 });
 
 /* ============================================================================================

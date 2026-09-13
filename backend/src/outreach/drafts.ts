@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { db, nowIso } from "../db/client.ts";
-import { claimToken } from "../lib/claim.ts";
+import { claimTokenV2 } from "../lib/claim.ts";
 import { mailPostal, unsubPageUrl } from "../lib/unsub.ts";
 
 type Op = {
@@ -55,7 +55,7 @@ export function draftCopy(op: Op, sc: ReturnType<typeof scale>, offerings: strin
   const SITE = "https://onoutset.com/";
   const id = catalogId(op.domain);
   const listing = SITE + "#o=" + id;
-  const claim = SITE + "#claim=" + id + "&k=" + claimToken(id);
+  const claim = SITE + "#claim=" + id + "&k=" + claimTokenV2(id);
   const remove = SITE + "#remove=" + id;
   const vendor = op.calendar_vendor ? VENDOR_NAME[op.calendar_vendor] || null : null;
   const subject = "A page for " + op.name;
