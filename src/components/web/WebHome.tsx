@@ -6,7 +6,7 @@ import { ALL_METRO_ID, METROS, metroById } from "../../data/metros";
 import type { ArtKind, CategoryId, Unclaimed } from "../../data/types";
 import { fromPrice, getCatalog, publicRating } from "../../lib/catalog";
 import { listingFacts } from "../../lib/catalog";
-import { fmtDate, fmtReviews, money } from "../../lib/format";
+import { fmtDate, fmtReviews, money, titleCase } from "../../lib/format";
 import { ART_ALIASES, metroInQuery, parseIntent, searchSuggest, warmSearch, type SearchScope } from "../../lib/search";
 import { loadListing } from "../../lib/catalogLoad";
 import { dealToday } from "../../lib/companyAgent";
@@ -110,26 +110,6 @@ function whenIdle(run: () => void): void {
   const w = window as unknown as { requestIdleCallback?: (cb: () => void) => number };
   if (w.requestIdleCallback) w.requestIdleCallback(run);
   else window.setTimeout(run, 50);
-}
-
-/**
- * Section headings read as titles: "Popular Jet Ski Rentals", not "Popular jet ski rentals". Words already
- * carrying a capital are left alone so ATV, NYC and TopGolf survive, joining words stay lowercase unless
- * they open or close the heading, and a hyphenated pair capitalises both halves so "e-bike" becomes "E-Bike".
- */
-const SMALL_WORDS = new Set(["and", "or", "the", "a", "an", "of", "in", "on", "at", "to", "for", "near", "with", "by"]);
-
-export function titleCase(text: string): string {
-  const words = text.split(" ");
-  return words
-    .map((word, i) => {
-      if (!word) return word;
-      if (/[A-Z]/.test(word)) return word;
-      const last = i === words.length - 1;
-      if (i > 0 && !last && SMALL_WORDS.has(word.toLowerCase())) return word.toLowerCase();
-      return word.replace(/(^|-)([a-z])/g, (_m, sep, ch) => sep + ch.toUpperCase());
-    })
-    .join(" ");
 }
 
 /** What a "More kinds" tile types into What: the first alias, so the search names exactly that kind. */

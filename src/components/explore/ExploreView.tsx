@@ -6,6 +6,7 @@ import type { CategoryId, Unclaimed } from "../../data/types";
 import { ICONS } from "../../data/icons";
 import { getCatalog } from "../../lib/catalog";
 import { ART_ALIASES, metroInQuery, searchSuggest, warmSearch, type SearchScope } from "../../lib/search";
+import { titleCase } from "../../lib/format";
 import { useApp } from "../../state/AppProvider";
 import { Art } from "../art/Art";
 import { Mark } from "../layout/Mark";
@@ -327,7 +328,7 @@ export function ExploreView() {
               {manyRails ? (
                 <div className="railhead">
                   <button type="button" className="railtitle" onClick={rail.open}>
-                    <h2>{rail.title}</h2>
+                    <h2>{titleCase(rail.title)}</h2>
                   </button>
                   <span className="railcount">{rail.items.length}</span>
                 </div>
@@ -340,7 +341,7 @@ export function ExploreView() {
                   {manyRails && i === 0 && rail.items.length > RAIL_CAP ? (
                     <button type="button" className="railmore" onClick={rail.open}>
                       <b>See all {rail.items.length}</b>
-                      <small>{rail.title}</small>
+                      <small>{titleCase(rail.title)}</small>
                     </button>
                   ) : null}
                 </div>
