@@ -94,7 +94,7 @@
 .odmuted{color:var(--ink-faint);font-size:13.5px;line-height:1.5;margin:0;}
 .odfine{color:var(--ink-faint);font-size:12.5px;line-height:1.45;margin:8px 0 0;}
 .oderr{color:var(--few);font-size:13px;margin:6px 0 0;}
-.odlink{display:inline-flex;align-items:center;gap:4px;font-size:13.5px;font-weight:600;color:var(--ink);text-decoration:underline;text-underline-offset:3px;text-decoration-color:var(--line-strong);}
+.odlink{display:inline-flex;align-items:center;gap:4px;font-size:13.5px;font-weight:600;color:var(--ink);text-decoration:underline;text-underline-offset:3px;text-decoration-color:currentColor;}
 .odlink:hover{text-decoration-color:var(--ink);}
 .odlink svg{width:16px;height:16px;}
 .odlink.tiny{font-size:12px;}
@@ -275,7 +275,7 @@
 .odcheck .tick i{font-style:normal;font-size:11px;font-weight:700;color:var(--ink);}
 .odsetup .odcheck{border-bottom:none;padding:6px 0;}
 .odcheck.done .tick{background:var(--open);border-color:var(--open);color:#fff;}
-.odcheck.done{color:var(--ink-faint);text-decoration:line-through;text-decoration-color:var(--line-strong);}
+.odcheck.done{color:var(--ink-soft);text-decoration:line-through;text-decoration-color:currentColor;text-decoration-thickness:1px;}
 
 /* ---------- bookings ---------- */
 .odbklist{display:grid;gap:8px;}
