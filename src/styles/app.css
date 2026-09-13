@@ -45,8 +45,8 @@
     --surface:#1A1A1A; --surface-2:#222222; --surface-3:#2A2A2A;
     --ink:#F7F7F7; --ink-soft:#B0B0B0; --ink-faint:#8A8A8A;
     --line:#2E2E2E; --line-strong:#3D3D3D;
-    --accent:#FF6A45; --accent-press:#FF815C; --on-accent:#1A0A06;
-    --open:#4AD34F; --open-bg:#163016;
+    --accent:#AFBEA5; --accent-press:#C3CFBA; --accent-soft:#7F956A; --accent-tint:#26301F; --on-accent:#1A1F16;
+    --open:#7FB8E8; --open-bg:#12293A;
     --few:#FF8A70; --few-bg:#3A1C16;
     --gone:#6E6E6E; --gone-bg:#242424;
     --bezel:#000000;
@@ -1197,7 +1197,7 @@ video.wgalleryimg{width:100%;background:#000;}
 .wquote{margin:0;padding:14px 16px;border:1px solid var(--line);border-radius:14px;background:var(--surface-2);}
 .wquote p{margin:0 0 8px;font-family:var(--f-serif);font-size:17px;line-height:1.4;color:var(--ink);}
 .wquote footer{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink-soft);}
-.wquotestars{color:#E8A317;letter-spacing:1px;font-size:13px;}
+.wquotestars{color:var(--accent-soft);letter-spacing:1px;font-size:13px;}
 .wreviewgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px 24px;margin-top:16px;}
 .wreview{display:flex;flex-direction:column;gap:8px;}
 .wreview header{display:flex;align-items:center;gap:10px;}
