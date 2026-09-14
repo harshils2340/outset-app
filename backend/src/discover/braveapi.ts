@@ -1,0 +1,194 @@
+import { hostOf, type Candidate, dedupeCandidates } from "./chains.ts";
+import { FL_DESTINATIONS, FL_TERMS, type Destination, type ExperienceTerm } from "./florida.ts";
+import { sleep } from "./polite.ts";
+
+/**
+ * Web search through the official Brave Search API (free tier), Florida destinations crossed with experience
+ * terms. This replaces nothing and scrapes nothing: websearch.ts reads Brave's HTML page, which this module
+ * deliberately does not extend. Without BRAVE_SEARCH_API_KEY the step is skipped.
+ *
+ * Only the operator's own site is kept. Aggregators, marketplaces, directories, social networks, news sites,
+ * tourism boards and booking-widget hosts are dropped; so is a listicle title, a result that never mentions the
+ * activity, a result that never places itself in Florida, and a host that turns up in five or more destinations
+ * (a directory, not a local operator).
+ *
+ * No database. Raw results are kept per query in a state file the workflow commits, so a free monthly quota
+ * is spread across weekly runs (oldest queries first) and candidates are always rebuilt from every query ever
+ * answered, which lets a better filter re-judge old results without spending a query.
+ */
+
+const ENDPOINT = "https://api.search.brave.com/res/v1/web/search";
+
+export type BraveHit = { url: string; title: string; description: string };
+export type BraveState = { queries: Record<string, { at: string; hits: BraveHit[] }> };
+
+export const DROP_HOSTS = new RegExp(
+  "(^|\\.)(" +
+    [
+      // travel marketplaces and aggregators
+      "tripadvisor", "viator", "getyourguide", "klook", "tiqets", "headout", "musement", "expedia", "booking", "hotels", "kayak", "priceline", "orbitz", "travelocity", "trip", "agoda", "vrbo", "airbnb", "groupon", "livingsocial", "cozymeal", "classpop", "classbento", "coursehorse", "classpass", "eventbrite", "allevents", "feverup", "fever", "meetup", "sofarsounds", "tourradar", "toursbylocals", "withlocals", "civitatis", "isango", "tripshock", "undercovertourist", "floridatix", "reserveamerica", "recreation", "hipcamp", "boatsetter", "getmyboat", "sailo", "fishingbooker", "captainexperiences", "wavve", "click-and-boat", "clickandboat", "nautal", "yachtlife", "peek", "fareharbor", "xola", "rezdy", "bookeo", "checkfront", "resova", "trekksoft", "rootrez", "zaui", "ticketmaster", "stubhub", "vividseats", "seatgeek", "goldstar", "tock", "exploretock", "opentable", "resy", "sevenrooms", "mindbodyonline", "mindbody", "vagaro", "fresha", "booksy", "styleseat", "schedulicity", "acuityscheduling", "squareup", "square", "wixsite", "godaddysites", "weebly", "business", "linktr", "spafinder", "spaandwellness", "dayspasfinder", "zenoti", "massagebook", "urbansitter", "activekids", "sawyer", "activityhero", "kidpass", "macaroni", "mommypoppins", "redtri",
+      // reviews, directories, maps
+      "yelp", "yellowpages", "superpages", "mapquest", "bbb", "foursquare", "manta", "chamberofcommerce", "angi", "angieslist", "homeadvisor", "thumbtack", "bark", "nextdoor", "birdeye", "trustpilot", "sitejabber", "hotfrog", "brownbook", "cylex", "merchantcircle", "local", "citysearch", "yahoo", "bing", "google", "apple", "waze", "zomato", "restaurantji", "menupix", "allmenus", "roadtrippers", "wanderlog", "atlasobscura", "alltrails", "tripbuzz", "familyvacationcritic", "escaperoomers", "roomescapeartist", "morty", "escapetalk", "escaperoomdirectory", "axethrowingnear", "worldaxethrowingleague", "watl", "natf", "mountainproject", "climbfind", "gymsnearme", "trampolineparks", "breweries", "brewerydb", "untappd", "beeradvocate", "ratebeer", "winery", "wineries", "floridawine", "vinoflorida", "ghosttoursinfo", "tourscanner", "tourhound", "dolphinwatchtours", "divessi", "padi", "scubaboard", "shoreexcursionsgroup", "cruisecritic", "shoreexcursioneer", "portsamerica",
+      // social and media
+      "facebook", "fb", "instagram", "tiktok", "youtube", "youtu", "reddit", "twitter", "x", "threads", "pinterest", "linkedin", "quora", "medium", "substack", "tumblr", "wikipedia", "wikivoyage", "wikitravel", "fandom", "imdb",
+      // travel editorial and news
+      "timeout", "thrillist", "cntraveler", "lonelyplanet", "travelandleisure", "fodors", "frommers", "afar", "tripsavvy", "theculturetrip", "cultureTrip", "roughguides", "travelawaits", "matadornetwork", "thepointsguy", "10best", "usatoday", "nytimes", "washingtonpost", "forbes", "businessinsider", "buzzfeed", "eater", "infatuation", "theinfatuation", "secretmiami", "secrettampa", "secretorlando", "miaminewtimes", "cltampa", "orlandoweekly", "timeoutmiami", "tampabay", "miamiherald", "orlandosentinel", "sun-sentinel", "palmbeachpost", "news-press", "heraldtribune", "naplesnews", "jacksonville", "news4jax", "firstcoastnews", "tallahassee", "pnj", "nwfdailynews", "keysnews", "flkeysnews", "tcpalm", "floridatoday", "clickorlando", "wesh", "wftv", "fox13news", "wfla", "wtsp", "baynews9", "mynews13", "nbcmiami", "local10", "wsvn", "cbsnews", "abcnews", "nbcnews", "patch", "axios", "bizjournals", "floridatrend", "floridarambler", "onlyinyourstate", "tripstodiscover", "familydestinationsguide", "floridabeachesinsider", "florida-backroads-travel", "floridaforboomers", "floridaescapes", "orlandoinformer", "attractionsmagazine", "wdwinfo", "disneyfoodblog", "touringplans", "mousesavers", "undercovertourist", "tampamagazines", "miamiandbeaches", "gomiami",
+      // tourism boards and chambers
+      "visitflorida", "visitorlando", "visittampabay", "visitstpeteclearwater", "visitjacksonville", "visitjax", "fla-keys", "floridakeys", "visitsarasota", "visitpensacola", "visitpanamacitybeach", "destinfwb", "visitsouthwalton", "visitlauderdale", "sunny", "thepalmbeaches", "paradisecoast", "visitnaples", "visitftmyers", "fortmyers-sanibel", "floridashistoriccoast", "visitstaugustine", "daytonabeach", "visitspacecoast", "visitgainesville", "visittallahassee", "experiencekissimmee", "keywestchamber", "keywesttravelguide", "miamibeachfl", "visitlakeland", "visitcentralflorida", "visitvero", "visitstlucie", "discovermartin", "palmbeachfl", "bocaratonchamber", "delraybeach", "visitdelraybeach", "bradentongulfislands", "visitcitrus", "discovercrystalriverfl", "visitnaturecoast", "floridasadventurecoast", "visitseminole", "visitlakecounty", "floridasportscoast", "visitflagler", "ameliaisland", "visitsebring", "visitmelbourne", "sanibel-captiva", "marcoislandchamber", "islamoradachamber", "keylargochamber", "floridakeysmarathon", "visitkeywest",
+    ].join("|") +
+    ")\\.(com|net|org|co|io|us|travel|info|site|app|me|ly|be|ee|fl\\.us)$",
+  "i",
+);
+
+const GOV_EDU = /\.(gov|edu|mil|k12\.fl\.us|fl\.us)$|^(www\.)?(cityof|townof|countyof|myfwc|floridastateparks|fws|nps)[a-z.-]*$/i;
+/** Chamber, CVB and generic tourism-board naming, whatever the destination. */
+const BOARD_HOST = /^(visit|go|discover|explore|experience|love)[a-z-]*(florida|fl|beach|keys|coast|county|city|island|orlando|tampa|miami|naples|destin|pensacola|sarasota|clearwater|jax|kissimmee)|chamber|cvb|tourism|touristdevelopment/i;
+const LISTICLE = /\b(best|top[- ]?\d+|top[- ]?rated|\d+\s+(best|things|places|fun|amazing|unique|great|cool)|things to do|guide to|ultimate guide|near me|list of|review(s|ed)?\b|vs\.?|coupons?|deals?|tickets? (from|for) \$|updated 20\d\d|20\d\d (guide|edition))\b/i;
+const NOT_OPERATOR_PATH = /\/(blog|news|articles?|stories|listings?|directory|things-to-do|attractions?\/.+|events?\/.+|best-|top-)/i;
+
+function flMentioned(text: string, dest: Destination): boolean {
+  if (text.toLowerCase().includes(dest.name.toLowerCase().replace(/^st\. /, "st"))) return true;
+  if (text.toLowerCase().includes(dest.name.toLowerCase())) return true;
+  if (/\bflorida\b|,\s*FL\b|\bFL\s+3[234]\d{3}\b/i.test(text)) return true;
+  return FL_DESTINATIONS.some((d) => new RegExp("\\b" + d.name.replace(/\./g, "\\.") + "\\b", "i").test(text));
+}
+
+/** Pick the operator's own name out of a page title: the segment that looks most like the host. */
+export function nameFromTitle(title: string, host: string, dest: Destination, term: ExperienceTerm): string | null {
+  const t = title.replace(/&amp;/g, "&").replace(/&#39;|&#x27;|&rsquo;/g, "'").replace(/&quot;/g, '"').replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim();
+  const segs = t.split(/\s+[|•·–—-]\s+|\s*\|\s*|:\s+/).map((s) => s.trim()).filter((s) => s.length >= 3);
+  const label = host.split(".").slice(0, -1).join("").replace(/[^a-z0-9]/g, "");
+  const squash = (s: string) => s.toLowerCase().replace(/&/g, "and").replace(/[^a-z0-9]/g, "");
+  const generic = new RegExp(`^(home|homepage|welcome|official site|book now|${term.term}s?|${dest.name}|${dest.name},? fl(orida)?|florida)$`, "i");
+  let best: string | null = null;
+  let bestScore = -1;
+  for (const s of segs) {
+    if (generic.test(s) || LISTICLE.test(s)) continue;
+    const sq = squash(s);
+    // Longest common run of letters between the segment and the host label.
+    let score = 0;
+    for (let len = Math.min(sq.length, label.length); len >= 4 && !score; len--) {
+      for (let i = 0; i + len <= sq.length; i++) {
+        if (label.includes(sq.slice(i, i + len))) {
+          score = len;
+          break;
+        }
+      }
+    }
+    if (score > bestScore) {
+      best = s;
+      bestScore = score;
+    }
+  }
+  if (!best) return null;
+  const cleaned = best.replace(new RegExp("\\s*(in|near|of)?\\s*" + dest.name.replace(/\./g, "\\.") + ",?\\s*(fl|florida)?\\s*$", "i"), "").replace(/^welcome to\s+/i, "").replace(/[,:;\-–—|]+\s*$/, "").trim();
+  return cleaned.length >= 3 ? cleaned.slice(0, 80) : null;
+}
+
+export type BraveRunStats = { skipped?: string; spent: number; failed: number; quota?: string };
+
+/**
+ * Spend up to `budget` queries on the oldest (never-asked first) destination x term pairs, recording raw hits
+ * into `state`. Stops at the first 401/402/403 (bad key or quota) or on repeated 429.
+ */
+export async function refreshBrave(state: BraveState, opts: { key: string | undefined; budget: number; refreshDays?: number; log?: (m: string) => void }): Promise<BraveRunStats> {
+  const log = opts.log || console.log;
+  if (!opts.key) {
+    log("web: BRAVE_SEARCH_API_KEY is not set, so the Brave Search API step was skipped. Nothing was searched.");
+    return { skipped: "no BRAVE_SEARCH_API_KEY", spent: 0, failed: 0 };
+  }
+  const refreshMs = (opts.refreshDays ?? 90) * 86_400_000;
+  const all = FL_DESTINATIONS.flatMap((d) => FL_TERMS.map((t) => `${t.term} ${d.name} FL`));
+  const due = all
+    .filter((q) => !state.queries[q] || Date.now() - Date.parse(state.queries[q].at) > refreshMs)
+    .sort((a, b) => (state.queries[a] ? Date.parse(state.queries[a].at) : 0) - (state.queries[b] ? Date.parse(state.queries[b].at) : 0));
+  log(`web: ${all.length} queries in the grid, ${due.length} due, budget ${opts.budget} this run`);
+  const stats: BraveRunStats = { spent: 0, failed: 0 };
+  let limited = 0;
+  for (const q of due.slice(0, opts.budget)) {
+    const params = new URLSearchParams({ q, count: "20", country: "us", search_lang: "en", safesearch: "moderate", text_decorations: "false" });
+    let res: Response;
+    try {
+      res = await fetch(`${ENDPOINT}?${params}`, {
+        headers: { accept: "application/json", "accept-encoding": "gzip", "X-Subscription-Token": opts.key },
+        signal: AbortSignal.timeout(20_000),
+      });
+    } catch (e) {
+      stats.failed += 1;
+      log(`  ${q}: ${(e as Error).message.slice(0, 80)}`);
+      await sleep(3000);
+      continue;
+    }
+    stats.spent += 1;
+    if (res.status === 429) {
+      limited += 1;
+      if (limited >= 5) {
+        stats.quota = "rate limited five times in a row; stopping for this run";
+        break;
+      }
+      await sleep(5000 * limited);
+      continue;
+    }
+    if (res.status === 401 || res.status === 402 || res.status === 403) {
+      stats.quota = `Brave answered ${res.status}: the key is wrong or the plan's quota is used up; stopping`;
+      break;
+    }
+    if (!res.ok) {
+      stats.failed += 1;
+      await sleep(1500);
+      continue;
+    }
+    limited = 0;
+    const json = (await res.json()) as { web?: { results?: { url?: string; title?: string; description?: string }[] } };
+    const hits = (json.web?.results || [])
+      .filter((r) => r.url)
+      .map((r) => ({ url: r.url!, title: (r.title || "").slice(0, 160), description: (r.description || "").replace(/<[^>]+>/g, "").slice(0, 300) }));
+    state.queries[q] = { at: new Date().toISOString(), hits };
+    // The free plan allows one request a second.
+    await sleep(1100);
+  }
+  if (stats.quota) log("web: " + stats.quota);
+  return stats;
+}
+
+/** Candidates from every answered query in the state. Pure: no network. */
+export function candidatesFromBrave(state: BraveState): { candidates: Candidate[]; considered: number; dropped: Record<string, number> } {
+  const dropped: Record<string, number> = {};
+  const drop = (why: string) => void (dropped[why] = (dropped[why] || 0) + 1);
+  const hostDestinations = new Map<string, Set<string>>();
+  const picks: Candidate[] = [];
+  let considered = 0;
+  for (const dest of FL_DESTINATIONS) {
+    for (const term of FL_TERMS) {
+      const entry = state.queries[`${term.term} ${dest.name} FL`];
+      if (!entry) continue;
+      for (const h of entry.hits) {
+        considered += 1;
+        const host = hostOf(h.url);
+        if (!host) { drop("bad url"); continue; }
+        if (!hostDestinations.has(host)) hostDestinations.set(host, new Set());
+        hostDestinations.get(host)!.add(dest.name);
+        if (DROP_HOSTS.test(host) || GOV_EDU.test(host) || BOARD_HOST.test(host)) { drop("aggregator, social, news, board or government"); continue; }
+        let path = "/";
+        try { path = new URL(h.url).pathname; } catch { /* keep root */ }
+        if (LISTICLE.test(h.title) || NOT_OPERATOR_PATH.test(path)) { drop("listicle or article"); continue; }
+        const text = `${h.title} ${h.description} ${h.url}`;
+        if (!term.must.test(text)) { drop("does not mention the activity"); continue; }
+        if (!flMentioned(text, dest)) { drop("not placed in Florida"); continue; }
+        const name = nameFromTitle(h.title, host, dest, term);
+        if (!name) { drop("no usable name"); continue; }
+        picks.push({
+          name, website: `https://${host}/`, domain: host, street: null, city: dest.name, region: "FL", postal: null,
+          lat: null, lon: null, phone: null, kind: term.kind, source: "web", sourceUrl: h.url, activity: term.activity,
+        });
+      }
+    }
+  }
+  // A host that answers for five or more destinations is a directory or a statewide reseller, not a local operator.
+  const local = picks.filter((c) => {
+    const n = hostDestinations.get(c.domain)?.size || 0;
+    if (n >= 5) { drop("host appears in 5+ destinations"); return false; }
+    return true;
+  });
+  return { candidates: dedupeCandidates(local), considered, dropped };
+}

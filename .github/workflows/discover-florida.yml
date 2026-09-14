@@ -1,0 +1,65 @@
+name: Discover Florida
+# Finds every bookable activity in Florida that the catalog is missing, from three free sources, most precise
+# first: chain and franchise location pages, OpenStreetMap businesses named for what they do, and the official
+# Brave Search API (only when the BRAVE_SEARCH_API_KEY secret is set). Runs on GitHub's runners, never on a
+# laptop, and needs no database: scripts/discover-florida-ci.mts writes backend/data/discovered/*.json and this
+# job commits them. scripts/import-discovered.mts inserts the new operators on a machine that has the database.
+#
+# Politeness over speed: one request at a time per host with a pause between, robots.txt honoured through
+# fetchHtml, one Overpass request, and at most the Brave free plan's one query a second.
+on:
+  schedule:
+    # Mondays 05:23 UTC, away from the photo crawl's :41 slots.
+    - cron: "23 5 * * 1"
+  workflow_dispatch:
+    inputs:
+      sources:
+        description: Sources to run (comma separated from chains, osm, web)
+        default: "chains,osm,web"
+      chains:
+        description: Only these chain ids (comma separated); empty runs the whole registry
+        default: ""
+      brave_budget:
+        description: Most Brave Search API queries to spend this run (free plan is about 2,000 a month)
+        default: "400"
+concurrency:
+  group: discover-florida
+  cancel-in-progress: false
+
+jobs:
+  discover:
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci
+        working-directory: backend
+      - name: Discover
+        env:
+          # Empty when the secret is not set; the web step then logs that it was skipped and does nothing.
+          BRAVE_SEARCH_API_KEY: ${{ secrets.BRAVE_SEARCH_API_KEY }}
+        run: >
+          npx tsx scripts/discover-florida-ci.mts
+          --sources=${{ github.event.inputs.sources || 'chains,osm,web' }}
+          --chains=${{ github.event.inputs.chains || '' }}
+          --brave-budget=${{ github.event.inputs.brave_budget || 400 }}
+        working-directory: backend
+      - name: Commit what discovery found
+        if: always()
+        run: |
+          git config user.name "Outset Florida discovery"
+          git config user.email "noreply@onoutset.com"
+          git add backend/data/discovered
+          git diff --cached --quiet && echo "nothing new" && exit 0
+          git commit -m "Florida discovery: chain locations, named OpenStreetMap businesses and search results"
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin main && git push origin main && exit 0
+            echo "push race, retrying ($attempt)"
+            sleep $((attempt * 10))
+          done
+          exit 1
