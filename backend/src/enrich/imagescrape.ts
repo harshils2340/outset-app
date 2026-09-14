@@ -2,6 +2,7 @@ import { load } from "cheerio";
 import { fetchHtml, sleep } from "../scrape/fetch.ts";
 import { renderPage } from "../scrape/render.ts";
 import { probeImage, shapeBonus } from "./imagesize.ts";
+import { largestFromSrcset } from "./srcset.ts";
 
 /**
  * The photo harvest itself: fetch an operator's own pages, collect real photos and videos, drop logos,
@@ -97,15 +98,6 @@ function absUrl(src: string, base: string): string | null {
   }
 }
 
-function largestFromSrcset(srcset: string): string | null {
-  let best: { url: string; w: number } | null = null;
-  for (const part of srcset.split(",")) {
-    const [url, size] = part.trim().split(/\s+/);
-    const w = size ? Number(size.replace(/w$|x$/, "")) * (size.endsWith("x") ? 1000 : 1) : 0;
-    if (url && (!best || w > best.w)) best = { url, w };
-  }
-  return best?.url || null;
-}
 
 function dims(v: string | undefined): number {
   const n = Number(String(v || "").replace(/[^0-9.]/g, ""));

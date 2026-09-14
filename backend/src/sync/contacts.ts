@@ -8,6 +8,7 @@ import { encodeWeek } from "./hours.ts";
 import { claimKeyHash } from "../lib/claim.ts";
 import { crawledPhotoStats, crawledPhotosFor } from "./photoSidecar.ts";
 import { crawledStructureFor, crawledStructureStats } from "./structureSidecar.ts";
+import { cleanImageUrl } from "../enrich/srcset.ts";
 import { METROS, nearestMetro } from "../taxonomy/catalog.ts";
 import { rankForCover } from "../enrich/photorelevance.ts";
 import { existsSync, readFileSync as readFileSyncFs } from "node:fs";
@@ -299,7 +300,9 @@ export function toCatalogItem(r: CatalogRow): Record<string, unknown> {
   const ranked = rankForCover(
     // Photos the cloud crawl found go in behind the operator's own crawled set: when this machine has never
     // fetched the site, they are all there is, and when it has, the older harvest already earned its order.
-    keepScreened(uniq([...widgetPhotos, ...pick("cover"), ...pick("photo"), ...crawledPhotosFor(r.id).photos].filter(isPhotoName))).map((url) => ({
+    // cleanImageUrl first: crawls before 14 September 2026 split srcset on every comma and stored pieces of
+    // Wix and Cloudinary transform URLs, which resolve to pages that do not exist.
+    keepScreened(uniq([...widgetPhotos, ...pick("cover"), ...pick("photo"), ...crawledPhotosFor(r.id).photos].map(cleanImageUrl).filter((u): u is string => !!u).filter(isPhotoName))).map((url) => ({
       url,
       page: photoPage.get(url) || null,
       item: photoItem.get(url) || itemByPage.get(photoPage.get(url) || "") || null,
@@ -341,7 +344,9 @@ export function toCatalogItem(r: CatalogRow): Record<string, unknown> {
       for (const raw of pick("service_photo")) {
         try {
           const d = JSON.parse(raw) as { name: string; url: string };
-          photos.set(d.name.toLowerCase(), d.url);
+          // A service thumbnail from the old comma-splitting parser points at a page that does not exist.
+          const url = cleanImageUrl(d.url);
+          if (url) photos.set(d.name.toLowerCase(), url);
         } catch {
           /* ignore */
         }

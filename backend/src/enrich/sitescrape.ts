@@ -1,5 +1,6 @@
 import { lookup } from "node:dns/promises";
 import { load } from "cheerio";
+import { largestFromSrcset } from "./srcset.ts";
 import { fetchHtml, sleep } from "../scrape/fetch.ts";
 import { harvestHours } from "./hoursMarkup.ts";
 
@@ -446,7 +447,7 @@ export function photoNear($: ReturnType<typeof load>, el: any, pageUrl: string, 
       const src = $(img).attr("data-src") || $(img).attr("data-lazy-src") || $(img).attr("src") || "";
       const srcset = $(img).attr("data-srcset") || $(img).attr("srcset") || "";
       const cand = srcset
-        ? srcset.split(",").map((p) => p.trim().split(/\s+/)).sort((a, b) => (parseInt(b[1] || "0") || 0) - (parseInt(a[1] || "0") || 0))[0][0]
+        ? largestFromSrcset(srcset) || src
         : src;
       if (!cand) return;
       const w = Number(String($(img).attr("width") || "").replace(/[^0-9]/g, "")) || 0;

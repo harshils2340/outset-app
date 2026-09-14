@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import { collectMedia, rankByShape, type Video } from "../src/enrich/imagescrape.ts";
 import { probeKind } from "../src/enrich/pagescan.ts";
 import { withDeadline } from "../src/scrape/fetch.ts";
+import { looksLikeSrcsetFragment } from "../src/enrich/srcset.ts";
 
 /**
  * The photo crawl, without the database.
@@ -72,6 +73,17 @@ const mine = queue.operators.filter((_, i) => i % of === shard);
 
 mkdirSync(outDir, { recursive: true });
 const done: Record<string, Result> = existsSync(outPath) ? (JSON.parse(readFileSync(outPath, "utf8")) as Record<string, Result>) : {};
+// Runs before 14 September 2026 split srcset on every comma and stored pieces of Wix transform URLs. Those
+// operators are forgotten here so this run reads them again with the fixed parser, instead of being skipped
+// for ever as done.
+let redo = 0;
+for (const [id, r] of Object.entries(done)) {
+  if ([r.cover || "", ...(r.photos || [])].some((u) => u && looksLikeSrcsetFragment(u))) {
+    delete done[id];
+    redo += 1;
+  }
+}
+if (redo) console.log(`${redo} operators had photos from the old comma-splitting parser and will be read again`);
 const todo = mine.filter((r) => !done[r.id]).slice(0, limit > 0 ? limit : undefined);
 
 console.log(`shard ${shard} of ${of}: ${mine.length} operators, ${Object.keys(done).length} already done, ${todo.length} to crawl, ${concurrency} at a time, ${minutes} minute budget`);
