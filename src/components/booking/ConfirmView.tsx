@@ -16,6 +16,8 @@ export function ConfirmView() {
   const title = l ? l.title : u!.title;
   const where = l ? l.launch : u!.area;
   const op = l ? l.op : u!.title;
+  // Only a shop that claimed its listing and switched Instant Book on can promise a confirmed slot.
+  const instant = !!(u?.claimed && u?.instant);
   const addonNames = l
     ? (b.addons || [])
         .map((id) => (l.addons || []).find((x) => x.id === id)?.name)
@@ -32,8 +34,8 @@ export function ConfirmView() {
       <div className="confmark">
         <Markup html={ICONS.checkbig} />
       </div>
-      <h1>Booked.</h1>
-      <p>{op} has it on their board. No call needed.</p>
+      <h1>{instant ? "Booked." : "Request sent."}</h1>
+      <p>{instant ? op + " has it on their board. No call needed." : op + " confirms by text or email, usually within the day. Nothing is charged until they do."}</p>
       <div className="ticket">
         <div className="top">
           <small className="eyebrow">Check-in code</small>

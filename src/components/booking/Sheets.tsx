@@ -246,7 +246,7 @@ function RequestBody({
   item: Unclaimed;
   dates: Date[];
   onBack: () => void;
-  onConfirm: (input: { dateIdx: number; slot: string; qty: number; optionIdx: number | null; addonIdx?: number[] }) => void;
+  onConfirm: (input: { dateIdx: number; slot: string; qty: number; optionIdx: number | null; addonIdx?: number[]; guest?: { name: string; phone: string; email?: string } }) => void;
   onAsk: () => void;
 }) {
   const metro = metroById(item.metroId);
@@ -256,6 +256,15 @@ function RequestBody({
   const [qty, setQty] = useState(2);
   const [optionIdx, setOptionIdx] = useState<number | null>(item.options.length === 1 ? 0 : null);
   const [pay, setPay] = useState(false);
+  // The operator needs a way to reach whoever booked, and the API refuses a booking without it.
+  const [guest, setGuest] = useState<{ name: string; phone: string; email: string }>(() => {
+    try {
+      return { name: "", phone: "", email: "", ...(JSON.parse(localStorage.getItem("outset.guest") || "{}") as object) };
+    } catch {
+      return { name: "", phone: "", email: "" };
+    }
+  });
+  const guestOk = guest.name.trim().length >= 2 && guest.phone.replace(/\D/g, "").length >= 10;
   const [callOpen, setCallOpen] = useState(false);
   const [addonIdx, setAddonIdx] = useState<number[]>([]);
   const [openSvc, setOpenSvc] = useState<string | null>(null);
@@ -362,22 +371,14 @@ function RequestBody({
                 <b>{p.total ? money(p.total) : "Pay on site"}</b>
               </div>
             </div>
-            <div className="acctcard" style={{ marginTop: 6 }}>
-              <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-                <span
-                  className="avatar"
-                  style={{ borderRadius: 7, width: 40, height: 26, fontSize: 10, letterSpacing: ".04em" }}
-                >
-                  VISA
-                </span>
-                <span style={{ flex: 1 }}>
-                  <b style={{ fontSize: 13.5, display: "block" }}>Visa ···· 4291</b>
-                  <small style={{ fontSize: 11.5, color: "var(--ink-faint)" }}>Charged instantly</small>
-                </span>
-              </div>
+            <p className="guidehead" style={{ marginTop: 14 }}>Who's booking</p>
+            <div className="wguest">
+              <input value={guest.name} placeholder="Your name" autoComplete="name" onChange={(e) => setGuest({ ...guest, name: e.target.value })} />
+              <input value={guest.phone} placeholder="Mobile number" inputMode="tel" autoComplete="tel" onChange={(e) => setGuest({ ...guest, phone: e.target.value })} />
+              <input value={guest.email} placeholder="Email for your confirmation" inputMode="email" autoComplete="email" onChange={(e) => setGuest({ ...guest, email: e.target.value })} />
             </div>
             <p className="note" style={{ textAlign: "left", padding: "12px 0 0" }}>
-              Confirmation is instant. Meet at {item.area}.
+              {item.claimed && item.instant ? "Confirmed straight away." : "The operator confirms by text or email."} Meet at {item.area}.
             </p>
           </div>
         </div>
@@ -387,9 +388,24 @@ function RequestBody({
           </button>
           <button
             className="cta"
-            onClick={() => onConfirm({ dateIdx, slot: time, qty, optionIdx, addonIdx })}
+            disabled={!guestOk}
+            onClick={() => {
+              try {
+                localStorage.setItem("outset.guest", JSON.stringify(guest));
+              } catch {
+                /* private mode */
+              }
+              onConfirm({
+                dateIdx,
+                slot: time,
+                qty,
+                optionIdx,
+                addonIdx,
+                guest: { name: guest.name.trim(), phone: guest.phone.trim(), email: guest.email.trim() || undefined },
+              });
+            }}
           >
-            {p.total ? "Confirm " + money(p.total) : "Confirm booking"}
+            {!guestOk ? "Add your name and number" : p.total ? "Confirm " + money(p.total) : "Confirm booking"}
           </button>
         </div>
       </>
