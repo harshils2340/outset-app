@@ -9,7 +9,7 @@ Open each listing before sending. Send order is by Google review count.
 | 3 | Siesta Key Watersports | 9,258 | 6 | 19 | skwatersports@gmail.com | https://onoutset.com/#o=o-siestakeywatersports-com |
 | 4 | Paddles Outdoor Rentals | 3,704 | 5 | 18 | clearkayakingtours@gmail.com | https://onoutset.com/#o=o-paddlesoutdoorrentals-com |
 | 5 | Fly Heli St. Petersburg | 2,810 | 5 | 9 | info@flyhelitours.com | https://onoutset.com/#o=o-flyhelitours-com |
-| 6 | Dolphin Quest Eco Tours | 2,759 | 7 | 19 | info@hubbardsmarina.com | https://onoutset.com/#o=o-boattoursjohnspass-com |
+| 6 | ~~Dolphin Quest Eco Tours~~ | | | | | Do not send. Same business and inbox as Hubbard's Marina (row 1); the duplicate listing was merged into Hubbard's, so this link opens the home page. |
 | 7 | Suncoast Watersports | 2,078 | 21 | 19 | gclick0003@yahoo.com | https://onoutset.com/#o=o-funstpete-com |
 | 8 | Starlite Horizon Dining Yacht | 1,735 | 20 | 17 | info@starlitecruises.com | https://onoutset.com/#o=o-starlitecruises-com |
 | 9 | Fun Boat Tours | 1,619 | 6 | 17 | Info@funboattours.com | https://onoutset.com/#o=o-funboattours-com |
