@@ -127,6 +127,9 @@ function rankForRail(list: Unclaimed[]): Unclaimed[] {
   return list
     .filter((u) => !!u.cover)
     .sort((a, b) => {
+      // "Popular Jet Ski Rentals" must open on jet ski rentals: a listing whose own words never confirm its kind
+      // goes after every one that does, however many reviews it has.
+      if (!!a.kindUnconfirmed !== !!b.kindUnconfirmed) return a.kindUnconfirmed ? 1 : -1;
       const pa = (a.cover ? 3 : 0) + (fromPrice(a) != null ? 2 : 0) + Math.min(2, Math.log10((a.reviews || 0) + 1));
       const pb = (b.cover ? 3 : 0) + (fromPrice(b) != null ? 2 : 0) + Math.min(2, Math.log10((b.reviews || 0) + 1));
       return pb - pa;

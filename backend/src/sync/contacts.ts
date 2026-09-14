@@ -9,7 +9,8 @@ import { claimKeyHash } from "../lib/claim.ts";
 import { crawledPhotoStats, crawledPhotosFor } from "./photoSidecar.ts";
 import { crawledStructureFor, crawledStructureStats } from "./structureSidecar.ts";
 import { cleanImageUrl } from "../enrich/srcset.ts";
-import { METROS, nearestMetro } from "../taxonomy/catalog.ts";
+import { reconcileArt } from "./artEvidence.ts";
+import { METROS, categoryById, nearestMetro } from "../taxonomy/catalog.ts";
 import { rankForCover } from "../enrich/photorelevance.ts";
 import { existsSync, readFileSync as readFileSyncFs } from "node:fs";
 
@@ -275,7 +276,12 @@ export function toCatalogItem(r: CatalogRow): Record<string, unknown> {
   const pick = (k: string) => facts.filter((f) => f.fact_key === k).map((f) => (/^(photo|video|yt_video|social:)/.test(k) ? f.fact_value : decodeEntities(f.fact_value)));
   // Booking-widget item photos are the operator's own curated product shots. They beat whatever the crawl scored highest.
   const widgetPhotos = uniq(facts.filter((f) => f.fact_key === "photo" && /fareharbor|xola|filestack/i.test((f.source_url || "") + " " + f.fact_value)).map((f) => f.fact_value));
-  const art = artFromName(r.name, r.icon_key);
+  // Discovery filed map-search results under the query's kind, so a surf shop found by "jet ski rental" became a
+  // jet ski rental. Settle the kind from the listing's own words; see artEvidence.ts.
+  const kindText = [r.domain, ...rawOfferings.map((o) => o.name), ...rawFacts.filter((f) => /^(service|tag|description|site_desc|one_line|service_desc)$/.test(f.fact_key)).map((f) => f.fact_value)].join(" \n ");
+  const kind = reconcileArt(artFromName(r.name, r.icon_key), r.name, kindText);
+  const art = kind.art;
+  const family = kind.movedFrom ? categoryById(art)?.family || r.family : r.family;
   /**
    * Cover choice, re-derived from facts we already hold. The order below is the order this function used to
    * publish, so the widget shots still lead and a tie changes nothing; `rankForCover` only moves a photo up when
@@ -319,7 +325,9 @@ export function toCatalogItem(r: CatalogRow): Record<string, unknown> {
     id: "o-" + slug(r.domain),
     claimKey: claimKeyHash("o-" + slug(r.domain)),
     title,
-    cat: r.family || "water",
+    cat: family || "water",
+    // True when nothing in the listing's own text confirms its kind yet; rails put these after confirmed ones.
+    ...(kind.confirmed ? {} : { kindUnconfirmed: true }),
     art,
     area,
     metroId: metroFor(r),
@@ -1662,7 +1670,7 @@ export function syncCatalogToApp(): { path: string; count: number } {
       locations: item.locations,
       tags: ((item.tags as string[]) || []).slice(0, 6),
       from: priced.length ? Math.min(...priced) : undefined,
-      dur: item.dur, fc: item.fc,
+      dur: item.dur, fc: item.fc, kindUnconfirmed: item.kindUnconfirmed,
       // First day-specific deal, compact ("3,5|Glow nights $25"), so cards can badge "Deal today" without the detail file.
       deal: (() => {
         const p = ((item.promos as { text: string; days: number[] }[] | undefined) || []).find((x) => x.days.length);
