@@ -52,6 +52,9 @@ jobs:
       - run: npm ci
         working-directory: backend
       - name: Read this shard
+        # Four shards ran out of the default Node heap after an hour: every site's facts are held in memory.
+        env:
+          NODE_OPTIONS: --max-old-space-size=6144
         run: >
           npx tsx scripts/crawl-structure-ci.mts
           --shard=${{ matrix.shard }}
@@ -64,7 +67,10 @@ jobs:
         if: always()
         with:
           name: structure-shard-${{ matrix.shard }}
-          path: backend/data/structure/*.json
+          # Only this runner's own shard. Every checkout holds all the shards from the last run, and uploading them
+          # all made ten artifacts carry the same file names; merged into one folder they overwrote each other
+          # mid-write and committed interleaved, unreadable JSON.
+          path: backend/data/structure/shard-${{ matrix.shard }}-of-*.json
           if-no-files-found: ignore
           retention-days: 1
 
