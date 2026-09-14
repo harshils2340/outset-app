@@ -3,10 +3,11 @@ import { connectPayouts, hasApi, payoutStatus, type PayoutStatus } from "../../l
 import { dateKey, startOfToday } from "../../lib/dates";
 import { money } from "../../lib/format";
 import { bookingTotal, deleteProfile, relDay } from "../../lib/operator";
+import { OPERATOR_FEE_RATE } from "../../lib/pricing";
 import { Markup } from "../Markup";
 import { OD_ICONS, PAGES, useOp } from "./opContext";
 
-const FEE = 0.1;
+const FEE = OPERATOR_FEE_RATE;
 
 /** Payouts: earnings from completed bookings, the next payout, and a payout method. Numbers come from the bookings list. */
 export function OpPayouts() {
@@ -42,7 +43,7 @@ export function OpPayouts() {
         <div><b>{money(upcoming)}</b><small>Confirmed, not yet completed</small></div>
         <div><b>{Math.round(FEE * 100)}%</b><small>Outset fee per booking</small></div>
       </div>
-      <p className="odmuted">Guests pay by card when they book. The money is held until you accept, and paid out to your bank every Monday for bookings completed that week. Nothing is added to the guest's price.</p>
+      <p className="odmuted">Guests pay by card when they book. Outset takes 5% from your payout. The money is held until you accept, and paid out to your bank every Monday for bookings completed that week.</p>
 
       <div className="odcols">
         <section className="odcard">

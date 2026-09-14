@@ -13,6 +13,9 @@ export type PriceBreakdown = {
 
 export const SERVICE_FEE_CAP = 25;
 
+/** Flat take from the operator payout. Guest checkout is a separate stepped fee. */
+export const OPERATOR_FEE_RATE = 0.05;
+
 /** Guest service fee on the operator subtotal. 5% through $100, 4% through $500, 3% above that. Never more than $25. */
 export function serviceFeeRate(sub: number): number {
   if (sub <= 0) return 0;
