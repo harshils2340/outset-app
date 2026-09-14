@@ -49,6 +49,13 @@ jobs:
           --chains=${{ github.event.inputs.chains || '' }}
           --brave-budget=${{ github.event.inputs.brave_budget || 230 }}
         working-directory: backend
+      - name: Keep the results even if the commit fails
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: florida-discovered-${{ github.run_id }}
+          path: backend/data/discovered/
+          retention-days: 14
       - name: Commit what discovery found
         if: always()
         run: |
@@ -57,8 +64,13 @@ jobs:
           git add backend/data/discovered
           git diff --cached --quiet && echo "nothing new" && exit 0
           git commit -m "Florida discovery: chain locations, named OpenStreetMap businesses and search results"
+          # Two runs started close together both rewrite florida-summary.json, and a plain rebase stops on that
+          # conflict and never recovers: the first web run spent 230 paid queries and lost all 866 candidates here.
+          # Each source writes its own file, so on a conflict inside backend/data/discovered this run's version wins
+          # (-X theirs is this run's commit during a rebase), and a failed rebase is aborted before the next try.
           for attempt in 1 2 3 4 5; do
-            git pull --rebase origin main && git push origin main && exit 0
+            if git pull --rebase -X theirs origin main && git push origin main; then exit 0; fi
+            git rebase --abort 2>/dev/null || true
             echo "push race, retrying ($attempt)"
             sleep $((attempt * 10))
           done
