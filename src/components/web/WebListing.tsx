@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type SyntheticEvent } from "react";
+import "../../styles/air-listing.css";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode, type SyntheticEvent } from "react";
 import { apiConfig, fetchAvailability, type LiveAvailability } from "../../lib/api";
 import { GUIDES } from "../../data/guides";
 import { ICONS } from "../../data/icons";
@@ -7,7 +8,7 @@ import { SLOT_TIMES } from "../../data/slots";
 import type { Unclaimed } from "../../data/types";
 import { addressLine, contactFor, fmtHours, fmtPhone, fromPrice, getCatalog, listingFacts, mapsHref, perPerson, plainWords, publicRating, telHref } from "../../lib/catalog";
 import { DAYS, fmtDate, fmtReviews, fmtTime, money, priceWith } from "../../lib/format";
-import { SIZES, srcSet, thumb } from "../../lib/images";
+import { srcSet, thumb } from "../../lib/images";
 import { embedAutoplay, isGif, listingMedia, photoCandidates, probePhotos, type Media } from "../../lib/media";
 import { cleanDesc, durationLabel, freeCancel, minAge } from "../../lib/listingDerive";
 import { clockIn, itemOpenState, itemWeek, zoneFor } from "../../lib/openNow";
@@ -18,14 +19,17 @@ import { listingUrl } from "../../lib/site";
 import { dateKey, startOfToday } from "../../lib/dates";
 import { useApp } from "../../state/AppProvider";
 import { Photo } from "../art/Photo";
+import { Mark } from "../layout/Mark";
 import { WebAssistant } from "./WebAssistant";
 import { Markup } from "../Markup";
 
 /**
- * Desktop listing page. Airbnb hotel layout (photo grid, details left, sticky booking card right, similar below)
- * with the sections a Viator tour page or a GetMyBoat trip page carries: highlights, what's included, who can go,
- * what to bring, meeting point and check-in, cancellation policy, FAQ, videos. Every section shows only what the
- * operator's own site states. Nothing is invented to fill a gap, and empty sections stay hidden.
+ * Desktop listing page, laid out as an Airbnb listing: title row with Share and Save, the 1 + 4 photo grid, a 58/33
+ * split with the details on the left and a sticky reserve card on the right, then reviews, location, the business,
+ * things to know and a rail of similar listings across the full width. Outset carries sections Airbnb does not
+ * (services and options, deals, FAQ, hours, the operator's videos) and each sits in the same visual language.
+ * Every section shows only what the operator's own site states. Nothing is invented to fill a gap, and empty
+ * sections stay hidden.
  */
 
 const KIND: Record<string, string> = {
@@ -35,26 +39,114 @@ const KIND: Record<string, string> = {
   bowling: "bowling", minigolf: "mini golf", arcade: "an arcade session", trampoline: "a trampoline park", lasertag: "laser tag", icerink: "ice skating", waterpark: "a water park day", themepark: "a theme park day", zoo: "a zoo visit", aquarium: "an aquarium visit", karaoke: "a karaoke room", climbing: "a climbing session", range: "a range session", archery: "archery", golf: "a round of golf", zipline: "a zipline", ski: "a day on the mountain", bike: "a bike rental", snowmobile: "a snowmobile ride", rafting: "a rafting trip", scuba: "a dive", surf: "a surf lesson", paragliding: "a tandem paraglide", gliding: "a glider flight", brewery: "a brewery visit", winery: "a wine tasting", distillery: "a distillery tour", cooking: "a cooking class", spa: "a spa visit", yoga: "a yoga class", dance: "a dance class", pottery: "a pottery class", tour: "a tour", rage: "a rage room session", theatre: "a show", museum: "a museum visit", garden: "a garden visit", camping: "a night under the stars", tennis: "a court booking", swim: "a swim", martialarts: "a class", gymnastics: "a gymnastics session", fitness: "a class", venue: "a venue booking", sailing: "a sail", discgolf: "a round", billiards: "a table", motorsport: "a ride", sauna: "a sauna session",
 };
 
+/** What the business is, in the words Airbnb uses for "Entire rental unit": the subtitle's first half. */
+const TYPE: Record<string, string> = {
+  skydive: "Skydiving", heli: "Helicopter tour", balloon: "Hot air balloon ride", kart: "Go-kart track", escape: "Escape room", axe: "Axe throwing",
+  paintball: "Paintball park", horse: "Trail riding", jetski: "Jet ski rental", pontoon: "Pontoon boat rental", fishing: "Fishing charter",
+  parasail: "Parasailing", cruise: "Boat cruise", kayak: "Kayak and paddleboard rental", bowling: "Bowling alley", minigolf: "Mini golf",
+  arcade: "Arcade", trampoline: "Trampoline park", lasertag: "Laser tag", icerink: "Ice rink", waterpark: "Water park", themepark: "Theme park",
+  zoo: "Zoo", aquarium: "Aquarium", karaoke: "Karaoke", climbing: "Climbing gym", range: "Shooting range", archery: "Archery range",
+  golf: "Golf course", zipline: "Zipline", ski: "Ski area", bike: "Bike rental", snowmobile: "Snowmobile tour", rafting: "Rafting trip",
+  scuba: "Scuba diving", surf: "Surf lessons", paragliding: "Paragliding", gliding: "Glider flights", brewery: "Brewery", winery: "Winery",
+  distillery: "Distillery", cooking: "Cooking class", spa: "Spa", yoga: "Yoga studio", dance: "Dance studio", pottery: "Pottery studio",
+  tour: "Tour", rage: "Rage room", theatre: "Theatre", museum: "Museum", garden: "Garden", camping: "Campground", tennis: "Tennis courts",
+  swim: "Swimming", martialarts: "Martial arts", gymnastics: "Gymnastics", fitness: "Fitness classes", venue: "Event venue", sailing: "Sailing",
+  discgolf: "Disc golf", billiards: "Billiards hall", motorsport: "Motorsport experience", sauna: "Sauna",
+};
+
+const REGION: Record<string, string> = {
+  AL: "Alabama", AK: "Alaska", AZ: "Arizona", AR: "Arkansas", CA: "California", CO: "Colorado", CT: "Connecticut", DE: "Delaware", DC: "Washington, DC",
+  FL: "Florida", GA: "Georgia", HI: "Hawaii", ID: "Idaho", IL: "Illinois", IN: "Indiana", IA: "Iowa", KS: "Kansas", KY: "Kentucky", LA: "Louisiana",
+  ME: "Maine", MD: "Maryland", MA: "Massachusetts", MI: "Michigan", MN: "Minnesota", MS: "Mississippi", MO: "Missouri", MT: "Montana", NE: "Nebraska",
+  NV: "Nevada", NH: "New Hampshire", NJ: "New Jersey", NM: "New Mexico", NY: "New York", NC: "North Carolina", ND: "North Dakota", OH: "Ohio",
+  OK: "Oklahoma", OR: "Oregon", PA: "Pennsylvania", RI: "Rhode Island", SC: "South Carolina", SD: "South Dakota", TN: "Tennessee", TX: "Texas",
+  UT: "Utah", VT: "Vermont", VA: "Virginia", WA: "Washington", WV: "West Virginia", WI: "Wisconsin", WY: "Wyoming", PR: "Puerto Rico",
+  AB: "Alberta", BC: "British Columbia", MB: "Manitoba", NB: "New Brunswick", NL: "Newfoundland and Labrador", NS: "Nova Scotia", NT: "Northwest Territories",
+  NU: "Nunavut", ON: "Ontario", PE: "Prince Edward Island", QC: "Quebec", SK: "Saskatchewan", YT: "Yukon",
+};
+
+/** "Clearwater Beach, FL" becomes "Clearwater Beach, Florida". */
+function placeName(area: string): string {
+  const m = area.match(/^(.*),\s*([A-Z]{2})$/);
+  if (!m || !REGION[m[2]]) return area;
+  return m[1] + ", " + REGION[m[2]];
+}
+
+/* Line icons in Airbnb's weight: 24px, 1.6 stroke, round joins. */
+const svg = (d: string, extra = "") => `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"${extra}>${d}</svg>`;
+const I = {
+  share: svg('<path d="M12 3v12"/><path d="m7.5 7.5 4.5-4.5 4.5 4.5"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/>'),
+  heart: svg('<path d="M12 20.5s-8-4.9-8-10.6A4.4 4.4 0 0 1 8.4 5.5c1.6 0 2.8.8 3.6 2 .8-1.2 2-2 3.6-2A4.4 4.4 0 0 1 20 9.9c0 5.7-8 10.6-8 10.6z"/>'),
+  heartOn: svg('<path d="M12 20.5s-8-4.9-8-10.6A4.4 4.4 0 0 1 8.4 5.5c1.6 0 2.8.8 3.6 2 .8-1.2 2-2 3.6-2A4.4 4.4 0 0 1 20 9.9c0 5.7-8 10.6-8 10.6z" fill="currentColor"/>'),
+  grid: '<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><circle cx="3" cy="3" r="1.5"/><circle cx="8" cy="3" r="1.5"/><circle cx="13" cy="3" r="1.5"/><circle cx="3" cy="8" r="1.5"/><circle cx="8" cy="8" r="1.5"/><circle cx="13" cy="8" r="1.5"/><circle cx="3" cy="13" r="1.5"/><circle cx="8" cy="13" r="1.5"/><circle cx="13" cy="13" r="1.5"/></svg>',
+  chevLeft: svg('<path d="m14.5 5.5-6.5 6.5 6.5 6.5"/>', ' style="stroke-width:2.2"'),
+  chevRight: svg('<path d="m9.5 5.5 6.5 6.5-6.5 6.5"/>', ' style="stroke-width:2.2"'),
+  chevDown: svg('<path d="m6 9.5 6 6 6-6"/>', ' style="stroke-width:2"'),
+  close: svg('<path d="M6 6l12 12M18 6 6 18"/>', ' style="stroke-width:2.2"'),
+  star: '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2.6l2.9 6 6.6.8-4.9 4.6 1.3 6.5L12 17.3l-5.9 3.2 1.3-6.5-4.9-4.6 6.6-.8z"/></svg>',
+  clock: svg('<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.2 2"/>'),
+  calendar: svg('<rect x="3.5" y="5" width="17" height="15.5" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/>'),
+  bolt: svg('<path d="M13 2.5 4.5 13.5H11l-1 8 8.5-11H12z"/>'),
+  door: svg('<path d="M5 21V4.5A1.5 1.5 0 0 1 6.5 3h11A1.5 1.5 0 0 1 19 4.5V21"/><path d="M3 21h18"/><circle cx="15" cy="12.5" r=".9" fill="currentColor"/>'),
+  pin: svg('<path d="M12 21s7-6.2 7-11.2a7 7 0 1 0-14 0C5 14.8 12 21 12 21z"/><circle cx="12" cy="9.8" r="2.6"/>'),
+  tag: svg('<path d="M3.5 12.2V4.5a1 1 0 0 1 1-1h7.7l8.3 8.3a1.5 1.5 0 0 1 0 2.1l-6.2 6.2a1.5 1.5 0 0 1-2.1 0z"/><circle cx="8" cy="8" r="1.4"/>'),
+  message: svg('<path d="M20.5 15a2 2 0 0 1-2 2H8l-4.5 4V5.5a2 2 0 0 1 2-2h13a2 2 0 0 1 2 2z"/>'),
+  medal: svg('<circle cx="12" cy="14.5" r="5.5"/><path d="M8.5 10 6 3h4l2 4 2-4h4l-2.5 7"/>'),
+  shield: svg('<path d="M12 3 4.5 6v5.5c0 4.6 3.2 8.4 7.5 9.5 4.3-1.1 7.5-4.9 7.5-9.5V6z"/><path d="m8.8 12 2.2 2.2 4.2-4.4"/>'),
+  fuel: svg('<path d="M4.5 21V5a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v16M3 21h13"/><path d="M7 8h5"/><path d="M14.5 10h2a1.5 1.5 0 0 1 1.5 1.5V16a1.5 1.5 0 0 0 3 0V8.5L18 6"/>'),
+  camera: svg('<path d="M3.5 8.5a2 2 0 0 1 2-2h2.3L9.3 4h5.4l1.5 2.5h2.3a2 2 0 0 1 2 2V18a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2z"/><circle cx="12" cy="13" r="3.6"/>'),
+  glass: svg('<path d="M7 3h10l-.8 6.2a4.2 4.2 0 0 1-8.4 0z"/><path d="M12 13.5V21M8.5 21h7"/>'),
+  food: svg('<path d="M7 3v7a2 2 0 0 0 4 0V3M9 12v9"/><path d="M16.5 21V3c-2 1.2-3 3.6-3 6.5V14h3"/>'),
+  person: svg('<circle cx="12" cy="7.5" r="3.8"/><path d="M4.5 21a7.5 7.5 0 0 1 15 0"/>'),
+  group: svg('<circle cx="9" cy="8" r="3.4"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M15.5 4.8a3.4 3.4 0 0 1 0 6.4M18 14.2a6.5 6.5 0 0 1 3.5 5.8"/>'),
+  car: svg('<path d="M4 16.5V12l2-5.2A2 2 0 0 1 7.9 5.5h8.2a2 2 0 0 1 1.9 1.3L20 12v4.5"/><path d="M3 16.5h18V19h-3v-2.5M6 19H3"/><path d="M4 12h16"/><circle cx="7.5" cy="14.3" r=".6" fill="currentColor"/><circle cx="16.5" cy="14.3" r=".6" fill="currentColor"/>'),
+  gear: svg('<path d="M14.5 6.5a4 4 0 0 0-5.2 5.2L3.5 17.5a1.8 1.8 0 0 0 2.5 2.5l5.8-5.8a4 4 0 0 0 5.2-5.2l-2.5 2.5-2.3-.5-.5-2.3z"/>'),
+  ticket: svg('<path d="M3 8a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v2a2 2 0 0 0 0 4v2a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-2a2 2 0 0 0 0-4z"/><path d="M14 6v12" stroke-dasharray="2 2"/>'),
+  wifi: svg('<path d="M2.5 9a14 14 0 0 1 19 0M5.5 12.5a9.5 9.5 0 0 1 13 0M8.8 16a4.8 4.8 0 0 1 6.4 0"/><circle cx="12" cy="19.2" r=".9" fill="currentColor"/>'),
+  sun: svg('<circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4"/>'),
+  towel: svg('<path d="M6 3h12v18H6z"/><path d="M6 15h12M9 18h6"/>'),
+  sparkle: svg('<path d="M12 3.5c.5 4.3 2.3 6.4 6.5 7-4.2.6-6 2.7-6.5 7-.5-4.3-2.3-6.4-6.5-7 4.2-.6 6-2.7 6.5-7z"/><path d="M19 3v3M17.5 4.5h3"/>'),
+  phone: svg('<path d="M21 16.4v2.9a2 2 0 0 1-2.2 2 19.5 19.5 0 0 1-8.5-3 19.2 19.2 0 0 1-5.9-5.9 19.5 19.5 0 0 1-3-8.5A2 2 0 0 1 3.4 1.8h2.9a2 2 0 0 1 2 1.7l.5 3.1a2 2 0 0 1-.6 1.8L7 9.6a15.5 15.5 0 0 0 6 6l1.2-1.2a2 2 0 0 1 1.8-.6l3.1.5a2 2 0 0 1 1.9 2.1z"/>'),
+  laurelL: '<svg viewBox="0 0 20 32" fill="currentColor" aria-hidden="true"><path d="M15.7 30.8c-4.6-1.8-8.5-5.3-10.6-9.9a17 17 0 0 1-1.3-11C4.4 6.6 6 3.6 8.3 1.3l1.2 1a15.6 15.6 0 0 0-4.1 8.1 15.6 15.6 0 0 0 1.1 9.7c1.9 4.2 5.5 7.4 9.7 9.1z"/><path d="M4.5 9.3C2.6 8.4 1.5 6.3 1.6 4.2c2 .8 3.3 2.6 3.4 4.8zM3.9 14.6c-2.1-.4-3.6-2.2-3.9-4.3 2.1.3 3.7 1.9 4.2 3.9zM4.8 19.8C2.7 19.8 1 18.3.3 16.3c2.1-.1 4 1.3 4.7 3.3zM7.2 24.5c-2.1.3-4.1-.8-5.1-2.6 2.1-.4 4.2.5 5.3 2.3zM10.6 28.4c-2 .8-4.2.2-5.6-1.3 2-.8 4.2-.3 5.6 1.2z"/></svg>',
+};
+
+/** The amenity icon for an included line, picked by what the line talks about. */
+function amenityIcon(text: string): string {
+  const t = text.toLowerCase();
+  if (/life ?jacket|vest|helmet|safety|harness|insur|first aid|brief/.test(t)) return I.shield;
+  if (/fuel|gas\b|gasoline/.test(t)) return I.fuel;
+  if (/photo|camera|video|gopro|picture/.test(t)) return I.camera;
+  if (/guide|instructor|captain|staff|coach|lesson|teacher|host|educator|crew/.test(t)) return I.person;
+  if (/food|snack|lunch|dinner|breakfast|meal|cheese|pizza|bbq|appetizer/.test(t)) return I.food;
+  if (/wine|beer|drink|beverage|water|soda|tasting|glass|cocktail|coffee|champagne/.test(t)) return I.glass;
+  if (/parking|shuttle|transport|pickup|pick-up|drop-off/.test(t)) return I.car;
+  if (/ticket|admission|entry|pass\b|access/.test(t)) return I.ticket;
+  if (/wi-?fi|internet/.test(t)) return I.wifi;
+  if (/towel|shower|locker|restroom|changing/.test(t)) return I.towel;
+  if (/sunscreen|shade|umbrella|sun\b/.test(t)) return I.sun;
+  if (/equipment|gear|rental|rod|tackle|board|paddle|kayak|bike|ski|boot|club|ball|bait/.test(t)) return I.gear;
+  if (/hour|minute|time/.test(t)) return I.clock;
+  return I.sparkle;
+}
+
+/* ---------- small pieces ---------- */
+
 function Card({ u, onOpen }: { u: Unclaimed; onOpen: (id: string) => void }) {
   const from = fromPrice(u);
   const score = publicRating(u);
   return (
-    <button type="button" className="wcard" onClick={() => onOpen(u.id)}>
-      <div className="wart">
+    <button type="button" className="alcard" onClick={() => onOpen(u.id)}>
+      <div className="alcardart">
         <Photo src={u.cover} video={u.video} kind={u.art} id={"s" + u.id} alt={u.title} />
       </div>
-      <div className="wbody">
-        <b>{u.title}</b>
-        <small>{u.area}</small>
-        {u.dur || u.fc ? <small className="wcardfacts">{u.dur ? <span>{u.dur.replace(/\s+to\s+/, "–").replace(/\s*hours?\b/, " hr").replace(/\s*minutes?\b|\s*mins?\b/, " min")}</span> : null}{u.fc ? <span className="fc">Free cancellation</span> : null}</small> : null}
-        <span className="wmeta">
-          {from != null ? <span>From <b>{money(from)}</b></span> : <span>Request to book</span>}
-          {score ? (
-            <span className="wrate">
-              <Markup html={ICONS.star} /> {score.rating.toFixed(1)}
-            </span>
-          ) : null}
+      <div className="alcardbody">
+        <span className="alcardtop">
+          <b>{u.title}</b>
+          {score ? <span className="alcardrate"><Markup html={I.star} /> {score.rating.toFixed(1)}</span> : null}
         </span>
+        <small>{u.area}</small>
+        {u.dur ? <small>{u.dur}</small> : u.fc ? <small>Free cancellation</small> : null}
+        <span className="alcardprice">{from != null ? <><b>{money(from)}</b> from</> : "Request to book"}</span>
       </div>
     </button>
   );
@@ -82,7 +174,7 @@ function TikTokScript() {
  */
 function HeroTile({ m, item, i, onBroken }: { m: Media; item: Unclaimed; i: number; onBroken: () => void }) {
   if (m.kind === "embed") {
-    return <iframe className="wembed" src={embedAutoplay(m.src)} title={item.title + " video"} allow="autoplay; encrypted-media; picture-in-picture" allowFullScreen loading="lazy" />;
+    return <iframe className="alembed" src={embedAutoplay(m.src)} title={item.title + " video"} allow="autoplay; encrypted-media; picture-in-picture" allowFullScreen loading="lazy" />;
   }
   if (m.kind === "clip") {
     return <Photo src={m.poster} video={m.src} kind={item.art} id={"wl" + item.id} alt={item.title} size="hero" fallback={false} onBroken={onBroken} />;
@@ -97,24 +189,50 @@ const PLAY = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><p
 function GallerySlide({ m, item, index }: { m: Media; item: Unclaimed; index: number }) {
   const stop = (e: SyntheticEvent) => e.stopPropagation();
   if (m.kind === "embed") {
-    return <iframe className="wgalleryembed" src={m.src} title={item.title + " video"} allow="autoplay; encrypted-media; picture-in-picture" allowFullScreen onClick={stop} />;
+    return <iframe className="algalleryembed" src={m.src} title={item.title + " video"} allow="autoplay; encrypted-media; picture-in-picture" allowFullScreen onClick={stop} />;
   }
   if (m.kind === "clip" && !isGif(m.src)) {
-    return <video className="wgalleryimg" src={m.src} poster={thumb(m.poster, "full")} controls autoPlay muted loop playsInline onClick={stop} aria-label={item.title + " video"} />;
+    return <video className="algalleryimg" src={m.src} poster={thumb(m.poster, "full")} controls autoPlay muted loop playsInline onClick={stop} aria-label={item.title + " video"} />;
   }
-  return <img className="wgalleryimg" src={m.kind === "clip" ? m.src : thumb(m.src, "full")} alt={item.title + " photo " + (index + 1)} decoding="async" fetchPriority="high" referrerPolicy="no-referrer" onClick={stop} />;
+  return <img className="algalleryimg" src={m.kind === "clip" ? m.src : thumb(m.src, "full")} alt={item.title + " photo " + (index + 1)} decoding="async" fetchPriority="high" referrerPolicy="no-referrer" onClick={stop} />;
 }
 
-function Bullets({ items, icon = ICONS.check, className = "" }: { items: string[]; icon?: string; className?: string }) {
+/** Airbnb's modal: a white panel over a dimmed page, the close button top left, the body scrolling on its own. */
+function Modal({ label, onClose, children, wide = false }: { label: string; onClose: () => void; children: ReactNode; wide?: boolean }) {
+  const closeRef = useRef<HTMLButtonElement | null>(null);
+  useEffect(() => {
+    // Captured and stopped so the app's own Escape (which closes the whole listing) does not fire too.
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") { e.stopPropagation(); onClose(); } };
+    window.addEventListener("keydown", onKey, true);
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    closeRef.current?.focus();
+    return () => {
+      window.removeEventListener("keydown", onKey, true);
+      document.body.style.overflow = prev;
+    };
+  }, []);
   return (
-    <ul className={"wbullets " + className}>
-      {items.map((t) => (
-        <li key={t}>
-          <Markup html={icon} />
-          <span>{plainWords(t)}</span>
-        </li>
-      ))}
-    </ul>
+    <div className="almodal" role="dialog" aria-modal="true" aria-label={label} onClick={onClose}>
+      <div className={"almodalbox" + (wide ? " wide" : "")} onClick={(e) => e.stopPropagation()}>
+        <div className="almodalhead">
+          <button type="button" ref={closeRef} className="alround" onClick={onClose} aria-label="Close">
+            <Markup html={I.close} />
+          </button>
+        </div>
+        <div className="almodalbody">{children}</div>
+      </div>
+    </div>
+  );
+}
+
+/** Airbnb's underlined text button with the trailing chevron: "Show more >". */
+function MoreLink({ children, onClick }: { children: ReactNode; onClick: () => void }) {
+  return (
+    <button type="button" className="almore" onClick={onClick}>
+      <span>{children}</span>
+      <Markup html={I.chevRight} />
+    </button>
   );
 }
 
@@ -128,6 +246,87 @@ function defaultOption(options: { price: number | null }[]): number | null {
     if (a != null && (b == null || a < b)) best = i;
   }
   return best;
+}
+
+/**
+ * Airbnb's inline two-month calendar, the "Select dates" section of the left column. Bound to the same selected
+ * day as the reserve card: a day reads as available only when it has start times left, the rest are struck through.
+ */
+function MonthPair({ dates, dateIdx, onPickDate, chipsFor }: { dates: Date[]; dateIdx: number; onPickDate: (i: number) => void; chipsFor: (d: Date) => TimeChip[] }) {
+  const selected = dates[dateIdx];
+  const first = dates[0];
+  const last = dates[dates.length - 1];
+  const firstMonth = new Date(first.getFullYear(), first.getMonth(), 1);
+  const lastMonth = new Date(last.getFullYear(), last.getMonth(), 1);
+  const [month, setMonth] = useState(() => new Date(selected.getFullYear(), selected.getMonth(), 1));
+  const selectedKey = dateKey(selected);
+  useEffect(() => {
+    // Keep the selection on screen when the card moves it into a month this pair is not showing.
+    setMonth((m) => {
+      const next = new Date(m.getFullYear(), m.getMonth() + 1, 1);
+      const inView = (d: Date) => (d.getFullYear() === m.getFullYear() && d.getMonth() === m.getMonth()) || (d.getFullYear() === next.getFullYear() && d.getMonth() === next.getMonth());
+      return inView(selected) ? m : new Date(selected.getFullYear(), selected.getMonth(), 1);
+    });
+  }, [selectedKey]);
+  const index = useMemo(() => {
+    const m = new Map<string, number>();
+    dates.forEach((d, i) => m.set(dateKey(d), i));
+    return m;
+  }, [dates]);
+  const open = useMemo(() => {
+    const s = new Set<string>();
+    dates.forEach((d) => { if (chipsFor(d).length) s.add(dateKey(d)); });
+    return s;
+  }, [dates, chipsFor]);
+  const todayKey = dateKey(startOfToday());
+  const canPrev = month > firstMonth;
+  // The second month shown is month + 1, so the pair can only advance while that is before the last month.
+  const canNext = new Date(month.getFullYear(), month.getMonth() + 1, 1) < lastMonth;
+  const months = [month, new Date(month.getFullYear(), month.getMonth() + 1, 1)];
+  return (
+    <div className="alcal">
+      <button type="button" className="alround alcalprev" onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() - 1, 1))} disabled={!canPrev} aria-label="Previous month">
+        <Markup html={I.chevLeft} />
+      </button>
+      <button type="button" className="alround alcalnext" onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() + 1, 1))} disabled={!canNext} aria-label="Next month">
+        <Markup html={I.chevRight} />
+      </button>
+      {months.map((m) => {
+        const lead = m.getDay();
+        const days = new Date(m.getFullYear(), m.getMonth() + 1, 0).getDate();
+        const cells: (Date | null)[] = Array.from({ length: lead }, () => null);
+        for (let d = 1; d <= days; d++) cells.push(new Date(m.getFullYear(), m.getMonth(), d));
+        return (
+          <div className="alcalmonth" key={m.getTime()}>
+            <b className="alcaltitle">{MONTHS[m.getMonth()]} {m.getFullYear()}</b>
+            <div className="alcalweek" aria-hidden="true">{["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"].map((w) => <span key={w}>{w}</span>)}</div>
+            <div className="alcalgrid" role="group" aria-label={MONTHS[m.getMonth()] + " " + m.getFullYear()}>
+              {cells.map((d, i) => {
+                if (!d) return <span key={"e" + i} />;
+                const k = dateKey(d);
+                const idx = index.get(k);
+                const ok = idx !== undefined && open.has(k);
+                const on = k === selectedKey;
+                return (
+                  <button
+                    type="button"
+                    key={k}
+                    className={"alday" + (on ? " on" : "") + (ok ? " ok" : "") + (k === todayKey ? " today" : "")}
+                    aria-pressed={on}
+                    aria-disabled={!ok}
+                    aria-label={d.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" }) + (ok ? "" : ", not available")}
+                    onClick={() => { if (ok && idx !== undefined) onPickDate(idx); }}
+                  >
+                    {d.getDate()}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
 }
 
 /* ---------- date and time picker ---------- */
@@ -334,8 +533,14 @@ function DayTimePicker({ dates, dateIdx, onPickDate, chipsFor, time, onPickTime,
   );
 }
 
+/** Only listings with at least this many reviews at this rating get Airbnb's "Guest favourite" style strip. */
+const TOP_RATING = 4.8;
+const TOP_REVIEWS = 100;
+
+type KnowCol = { key: string; title: string; icon: string; lines: string[]; extra?: ReactNode };
+
 export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose: () => void; onOpen: (id: string) => void }) {
-  const { state, dates, confirmUnclaimed, setDate } = useApp();
+  const { state, dates, confirmUnclaimed, setDate, openOperator } = useApp();
   const metro = metroById(item.metroId);
   const score = publicRating(item);
   const contact = contactFor(item);
@@ -363,7 +568,6 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
   }, [item.id, item.options.length]);
   const [addonIdx, setAddonIdx] = useState<number[]>([]);
   const [openSvc, setOpenSvc] = useState<string | null>(null);
-  const [guideOpen, setGuideOpen] = useState(false);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
   const [done, setDone] = useState(false);
   const [guest, setGuest] = useState<{ name: string; phone: string; email?: string }>(() => {
@@ -377,18 +581,30 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
   const [payments, setPayments] = useState(false);
   useEffect(() => { let alive = true; void apiConfig().then((c) => { if (alive) setPayments(c.payments); }); return () => { alive = false; }; }, []);
   const [gallery, setGallery] = useState<number | null>(null);
+  /** Which modal is open: the description, the full included list, a Things to know column, or the guide. */
+  const [modal, setModal] = useState<string | null>(null);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [flash, setFlash] = useState<string | null>(null);
+  const [saved, setSaved] = useState(() => {
+    try {
+      return (JSON.parse(localStorage.getItem("outset.saved") || "[]") as string[]).includes(item.id);
+    } catch {
+      return false;
+    }
+  });
 
   useEffect(() => {
     if (gallery == null) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setGallery(null);
+      // Escape closes the lightbox only, not the listing behind it.
+      if (e.key === "Escape") { e.stopPropagation(); setGallery(null); }
       if (e.key === "ArrowRight") setGallery((g) => (g == null ? g : (g + 1) % media.length));
       if (e.key === "ArrowLeft") setGallery((g) => (g == null ? g : (g - 1 + media.length) % media.length));
     };
-    window.addEventListener("keydown", onKey);
+    window.addEventListener("keydown", onKey, true);
     document.body.style.overflow = "hidden";
     return () => {
-      window.removeEventListener("keydown", onKey);
+      window.removeEventListener("keydown", onKey, true);
       document.body.style.overflow = "";
     };
   }, [gallery, media.length]);
@@ -396,6 +612,11 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
     // A tile dropping out of the list must not leave the lightbox pointing past the end.
     if (gallery != null && gallery >= media.length) setGallery(media.length ? media.length - 1 : null);
   }, [gallery, media.length]);
+  useEffect(() => {
+    if (!flash) return;
+    const t = window.setTimeout(() => setFlash(null), 2200);
+    return () => window.clearTimeout(t);
+  }, [flash]);
 
   const picked = optionIdx != null ? item.options[optionIdx] : null;
   const extras = addonIdx.map((i) => (item.addons || [])[i]).filter(Boolean);
@@ -408,8 +629,9 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
   const visitWeek = useMemo(() => (visit ? itemWeek(item) : null), [visit, item]);
   const clock = (m: number) => fmtTime(String(Math.floor(m / 60)).padStart(2, "0") + ":" + String(m % 60).padStart(2, "0"));
   const ready = time != null && (!needService || picked != null) && guestOk;
+  const instant = !!(item.claimed && item.instant);
   // Say what pressing it does: a card payment, an instant booking, or a request the operator confirms.
-  const ctaLabel = payments && p.total ? "Book and pay" : item.claimed && item.instant ? "Book" : "Request to book";
+  const ctaLabel = payments && p.total ? "Book and pay" : instant ? "Book" : "Request to book";
   const day = dates[state.dateIdx];
 
   /* Live departures from the operator's own booking system, when they run one we can read. The card paints
@@ -467,7 +689,7 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
     const region = (item.area.match(/,\s*([A-Z]{2})\b/) || [])[1];
     const sameRegion = region ? all.filter((u) => u.area.endsWith(", " + region)) : [];
     const pool = near.length >= 4 ? near : sameRegion.length >= 4 ? sameRegion : near.length ? [...near, ...sameRegion] : all;
-    return pool.sort((a, b) => (b.cover ? 1 : 0) - (a.cover ? 1 : 0) || (b.reviews || 0) - (a.reviews || 0)).slice(0, 7);
+    return pool.sort((a, b) => (b.cover ? 1 : 0) - (a.cover ? 1 : 0) || (b.reviews || 0) - (a.reviews || 0)).slice(0, 10);
   }, [item.id]);
 
   /* ---------- derived, never invented ---------- */
@@ -484,22 +706,58 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
   const openNow = itemOpenState(item);
   const dealsNow = todaysDeals(item);
   const today = item.promos?.length ? clockIn(zoneFor(item)).day : -1;
-  const badges: { icon: string; text: string }[] = [];
-  if (openNow) badges.push({ icon: ICONS.clock, text: openNow.label });
-  if (score && score.rating >= 4.8 && score.reviews >= 100) badges.push({ icon: ICONS.star, text: "Top rated" });
-  else if (score && score.reviews >= 1000) badges.push({ icon: ICONS.star, text: "Popular" });
-  if (cancel) badges.push({ icon: ICONS.check, text: cancel });
-  if (item.claimed && item.instant) badges.push({ icon: ICONS.bolt, text: "Instant confirmation" });
-  const quick: { icon: string; label: string; value: string }[] = [];
-  if (duration) quick.push({ icon: ICONS.clock, label: "Duration", value: duration });
-  if (age) quick.push({ icon: ICONS.user, label: "Minimum age", value: age + "+" });
-  if (item.groupInfo?.length) {
-    const cap = item.groupInfo.map((g) => g.match(/(\d{1,3})\s*(?:guests?|people|passengers|riders|max)/i)).find(Boolean);
-    if (cap) quick.push({ icon: ICONS.user, label: "Group size", value: "Up to " + cap[1] });
-  }
-  if (item.season) quick.push({ icon: ICONS.compass, label: "Season", value: item.season });
-  if (item.waiverUrl) quick.push({ icon: ICONS.ticket, label: "Waiver", value: "Sign online before you arrive" });
+  const groupCap = (() => {
+    const cap = (item.groupInfo || []).map((g) => g.match(/(\d{1,3})\s*(?:guests?|people|passengers|riders|max)/i)).find(Boolean);
+    return cap ? Number(cap[1]) : null;
+  })();
   const hours = item.hoursText?.length ? item.hoursText : contact?.hours.map(fmtHours) || [];
+  const topRated = !!score && score.rating >= TOP_RATING && score.reviews >= TOP_REVIEWS;
+  const near = state.near ? nearestLocation(item, state.near) : null;
+  const typeName = TYPE[item.art] || "Experience";
+  const initial = (item.title.replace(/^the\s+/i, "").match(/[A-Za-z]/) || [item.title.slice(0, 1)])[0].toUpperCase();
+  const blurb = item.blurb ? cleanDesc(item.blurb).replace(/\s+(Book|Learn more|Read more|Reserve)\.?$/i, "") : "";
+
+  // The grey line under the subtitle, Airbnb's "4 guests · 2 bedrooms · 2 beds": only what the operator states.
+  const keyFacts: string[] = [];
+  if (duration) keyFacts.push(duration);
+  if (groupCap) keyFacts.push("Up to " + groupCap + " guests");
+  if (age) keyFacts.push("Ages " + age + "+");
+  if (item.season && item.season.length <= 32) keyFacts.push(item.season);
+  if (item.locations?.length) keyFacts.push(item.locations.length + 1 + " locations");
+  if (near) keyFacts.push(fmtDistance(near.km) + " from " + state.near!.label);
+
+  // Three highlight rows, Airbnb's "Self check-in / Great location / Free cancellation", from what the listing has.
+  const rows: { icon: string; title: string; text: string }[] = [];
+  if (dealsNow.length) {
+    const d = dealsNow[0];
+    rows.push({ icon: I.tag, title: "Deal today", text: plainWords(d.text) + (d.end ? ", until " + clock12(d.end) : d.start ? ", from " + clock12(d.start) : "") });
+  }
+  if (live) rows.push({ icon: I.calendar, title: "Live times from their calendar", text: "Start times come straight from " + item.title + "'s own booking system." });
+  if (openNow?.open) rows.push({ icon: I.clock, title: "Open now", text: openNow.label + "." });
+  if (cancel) rows.push({ icon: I.calendar, title: cancel, text: "Plans change. Their published policy lets you cancel for a full refund." });
+  if (instant) rows.push({ icon: I.bolt, title: "Instant confirmation", text: "Your spot is confirmed the moment you book." });
+  else if (!visit) rows.push({ icon: I.message, title: "Request to book", text: "The business confirms by text or email. Nothing is charged until they do." });
+  else if (contact?.website || item.src) rows.push({ icon: I.ticket, title: "Tickets from the business", text: "Entry is sold on " + item.title + "'s own site, at their prices." });
+  if (item.meetingPoint) rows.push({ icon: I.door, title: "Meeting point", text: plainWords(item.meetingPoint) });
+  if (topRated && rows.length < 3) rows.push({ icon: I.medal, title: "Top rated", text: "Rated " + score!.rating.toFixed(1) + " from " + fmtReviews(score!.reviews) + " public reviews." });
+  const highlightRows = rows.slice(0, 3);
+
+  // Things to know, Airbnb's three columns. A column with nothing stated stays out.
+  const rules = [...requirements, ...(item.bring || []).map((b) => "Bring " + b.charAt(0).toLowerCase() + b.slice(1)), ...(item.groupInfo || [])];
+  const safety = [...(age ? ["Minimum age " + age] : []), ...waiverLines];
+  if (item.waiverUrl && !safety.some((l) => /waiver/i.test(l))) safety.push("Waiver to sign before you arrive");
+  const cancelLines = [...(cancel ? [cancel] : []), ...(item.cancellation ? [plainWords(item.cancellation)] : []), ...otherPolicies];
+  const knowCols: KnowCol[] = [];
+  if (rules.length) knowCols.push({ key: "rules", title: "Who can go", icon: I.group, lines: rules });
+  if (safety.length) knowCols.push({ key: "safety", title: "Safety and waiver", icon: I.shield, lines: safety });
+  if (cancelLines.length || knowCols.length) {
+    knowCols.push({ key: "cancel", title: "Cancellation policy", icon: I.calendar, lines: cancelLines.length ? cancelLines : [item.title + " has not published cancellation terms. Otto will have them confirm before you pay."] });
+  }
+
+  const cheapIdx = defaultOption(item.options);
+  const cheap = cheapIdx != null ? item.options[cheapIdx] : null;
+  const from = fromPrice(item);
+  const fromUnit = cheap && cheap.price != null ? priceWith(cheap.price, cheap.per).replace(/^\$[\d,.]+\s*/, "") || (perPerson(cheap) ? "/ person" : "") : "";
 
   const book = () => {
     if (!ready || !time) return;
@@ -512,208 +770,337 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
     setDone(true);
   };
 
-  return (
-    <div className="wlisting">
-      <div className="wwrap">
-        <button type="button" className="wback" onClick={onClose}>
-          <Markup html={ICONS.back} /> Back to results
-        </button>
+  const nameRef = useRef<HTMLInputElement | null>(null);
+  const phoneRef = useRef<HTMLInputElement | null>(null);
+  const reserveRef = useRef<HTMLButtonElement | null>(null);
+  const colsRef = useRef<HTMLDivElement | null>(null);
+  const heroRef = useRef<HTMLDivElement | null>(null);
+  const pressReserve = () => {
+    if (ready) return book();
+    if (time == null) return setPickerOpen(true);
+    (guest.name.trim().length < 2 ? nameRef : phoneRef).current?.focus();
+  };
 
-        {state.removeId === item.id ? (
-          <div className="wremove">
-            <b>Is this your business and you'd rather not be listed?</b>
-            <span>We take listings down within one business day. Send one line from a company email and it's gone.</span>
-            <a className="cta small" href={"mailto:harshils2340@gmail.com?subject=" + encodeURIComponent("Remove listing: " + item.title + " (" + item.id + ")") + "&body=" + encodeURIComponent("Please remove " + item.title + " from Outset.\n\nListing: " + listingUrl(item.id) + "\n")}>Request removal</a>
-          </div>
-        ) : null}
-        <h1 className="wtitle">{item.title}</h1>
-        <div className="wsub">
-          {score ? (
-            <span className="wrate">
-              <Markup html={ICONS.star} /> <b>{score.rating.toFixed(1)}</b> · {fmtReviews(score.reviews)} reviews
-            </span>
-          ) : null}
-          <span>{item.area}{metro && !item.area.includes(metro.name) ? ", " + metro.name : ""}</span>
-          {(() => {
-            const n = state.near ? nearestLocation(item, state.near) : null;
-            if (!n) return null;
-            return <span className="wdot wdist"><Markup html={ICONS.pin} /> {fmtDistance(n.km)} from {state.near!.label}{n.alt ? " to their " + n.label + " location" : ""}</span>;
-          })()}
-          {item.locations?.length ? <span className="wdot">{item.locations.length + 1} locations</span> : null}
-          <span className="wdot">{plainWords(KIND[item.art] || "experience").replace(/^(a|an) /, "")}</span>
+  const share = async () => {
+    const url = listingUrl(item.id);
+    const nav = navigator as Navigator & { share?: (d: { title: string; url: string }) => Promise<void> };
+    if (nav.share) {
+      try { await nav.share({ title: item.title, url }); } catch { /* dismissed */ }
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(url);
+      setFlash("Link copied");
+    } catch {
+      setFlash(url);
+    }
+  };
+  const toggleSave = () => {
+    const next = !saved;
+    setSaved(next);
+    try {
+      const list = (JSON.parse(localStorage.getItem("outset.saved") || "[]") as string[]).filter((x) => x !== item.id);
+      localStorage.setItem("outset.saved", JSON.stringify(next ? [...list, item.id] : list));
+    } catch {
+      /* private window: the heart still fills for this visit */
+    }
+    setFlash(next ? "Saved" : "Removed from saved");
+  };
+
+  /* Airbnb's section bar: it slides in once the photos scroll away, and carries the price and the button once
+     the reserve card has scrolled off too. */
+  const [navOn, setNavOn] = useState(false);
+  const [navCta, setNavCta] = useState(false);
+  useEffect(() => {
+    let raf = 0;
+    const onScroll = () => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => {
+        const hero = heroRef.current?.getBoundingClientRect();
+        setNavOn(!!hero && hero.bottom < 0);
+        const btn = reserveRef.current?.getBoundingClientRect();
+        setNavCta(!!btn && btn.bottom < 72);
+      });
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    onScroll();
+    return () => { window.removeEventListener("scroll", onScroll); cancelAnimationFrame(raf); };
+  }, []);
+  const jump = (id: string) => {
+    const el = document.getElementById(id);
+    if (el) window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - 88, behavior: "smooth" });
+  };
+
+  // Description truncation at six lines, with "Show more" only when the text really runs over.
+  const descRef = useRef<HTMLDivElement | null>(null);
+  const [descOver, setDescOver] = useState(false);
+  const measure = useCallback(() => {
+    const el = descRef.current;
+    setDescOver(!!el && el.scrollHeight > el.clientHeight + 4);
+  }, []);
+  useLayoutEffect(measure, [item.id, blurb, highlights.length, measure]);
+  useEffect(() => {
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, [measure]);
+
+  // Close the date popover on an outside click.
+  const popRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (!pickerOpen) return;
+    const onDown = (e: MouseEvent) => {
+      if (popRef.current && !popRef.current.contains(e.target as Node)) setPickerOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") { e.stopPropagation(); setPickerOpen(false); } };
+    document.addEventListener("mousedown", onDown);
+    window.addEventListener("keydown", onKey, true);
+    // Bring the whole picker on screen when the card sits low on the page.
+    popRef.current?.querySelector(".alpop")?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    return () => { document.removeEventListener("mousedown", onDown); window.removeEventListener("keydown", onKey, true); };
+  }, [pickerOpen]);
+
+  const railRef = useRef<HTMLDivElement | null>(null);
+  const railBy = (dir: number) => {
+    const el = railRef.current;
+    if (el) el.scrollBy({ left: dir * el.clientWidth, behavior: "smooth" });
+  };
+
+  const priceTag = from != null ? (
+    <span className="alprice"><span className="alpricefrom">From</span> <b>{money(from)}</b>{fromUnit ? <span> {fromUnit}</span> : null}</span>
+  ) : (
+    <span className="alprice"><b>Request to book</b></span>
+  );
+  const chipsToday = chipsFor(day);
+  const allIncluded = [...includes.map((t) => ({ t, no: false })), ...notIncluded.map((t) => ({ t, no: true }))];
+  const knowModal = knowCols.find((c) => "know-" + c.key === modal);
+
+  return (
+    <div className="wlisting al">
+      <header className="alhead">
+        <div className="alwrap alheadin">
+          <button type="button" className="alback" onClick={onClose} aria-label="Back to results">
+            <span className="alround"><Markup html={I.chevLeft} /></span>
+            <span>Back to results</span>
+          </button>
+          <a className="allogo" href="#" onClick={(e) => { e.preventDefault(); onClose(); }} aria-label="Outset home">
+            <Mark size={30} />
+            <b>Outset</b>
+          </a>
         </div>
-        {badges.length ? (
-          <div className="wbadges">
-            {badges.map((b) => (
-              <span key={b.text} className="wbadgechip"><Markup html={b.icon} /> {b.text}</span>
-            ))}
+      </header>
+
+      <nav className={"alsubnav" + (navOn ? " on" : "")} aria-label="Sections" aria-hidden={!navOn}>
+        <div className="alwrap alsubnavin">
+          <div className="alsublinks">
+            {media.length ? <button type="button" tabIndex={navOn ? 0 : -1} onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}>Photos</button> : null}
+            {allIncluded.length ? <button type="button" tabIndex={navOn ? 0 : -1} onClick={() => jump("al-included")}>What's included</button> : null}
+            {score || item.quotes?.length ? <button type="button" tabIndex={navOn ? 0 : -1} onClick={() => jump("al-reviews")}>Reviews</button> : null}
+            <button type="button" tabIndex={navOn ? 0 : -1} onClick={() => jump("al-location")}>Location</button>
           </div>
-        ) : null}
-        {dealsNow.length ? (
-          <div className="wdeal" aria-label="Today's deal">
-            <Markup html={ICONS.bolt} />
+          {navCta && !visit && !done ? (
+            <div className="alsubcta">
+              <span>{priceTag}{score ? <small><Markup html={I.star} /> {score.rating.toFixed(1)} · {fmtReviews(score.reviews)} reviews</small> : null}</span>
+              <button type="button" className="alprimary" tabIndex={navOn ? 0 : -1} onClick={() => { jump("al-cols"); if (time == null) window.setTimeout(() => setPickerOpen(true), 450); }}>{ctaLabel}</button>
+            </div>
+          ) : null}
+        </div>
+      </nav>
+
+      <div className="alwrap">
+        {state.removeId === item.id ? (
+          <div className="alnotice">
             <span>
-              <b>Today's deal{dealsNow.length > 1 ? "s" : ""}</b>
-              {dealsNow.map((p) => (
-                <small key={p.text}>{plainWords(p.text)}{p.end ? " · until " + clock12(p.end) : p.start ? " · from " + clock12(p.start) : ""}</small>
-              ))}
+              <b>Is this your business and you'd rather not be listed?</b>
+              <small>We take listings down within one business day. Send one line from a company email and it's gone.</small>
             </span>
+            <a className="aloutline" href={"mailto:harshils2340@gmail.com?subject=" + encodeURIComponent("Remove listing: " + item.title + " (" + item.id + ")") + "&body=" + encodeURIComponent("Please remove " + item.title + " from Outset.\n\nListing: " + listingUrl(item.id) + "\n")}>Request removal</a>
           </div>
         ) : null}
-        {item.quotes?.length ? (
-          <div className="wquotes" aria-label="What guests say">
-            {item.quotes.slice(0, 2).map((r, i) => (
-              <blockquote key={i} className="wquote">
-                <p>“{r.text.length > 170 ? r.text.slice(0, 170).replace(/\s+\S*$/, "") + "…" : r.text}”</p>
-                <footer>
-                  {r.rating ? <span className="wquotestars">{"★".repeat(Math.round(r.rating))}</span> : null}
-                  <span>{r.author || "A guest"}</span>
-                </footer>
-              </blockquote>
-            ))}
+
+        <div className="altitlerow" ref={media.length ? undefined : heroRef}>
+          <h1 className="altitle">{item.title}</h1>
+          <div className="alactions">
+            <button type="button" className="altextbtn" onClick={() => void share()}>
+              <Markup html={I.share} /> <span>Share</span>
+            </button>
+            <button type="button" className={"altextbtn" + (saved ? " saved" : "")} onClick={toggleSave} aria-pressed={saved}>
+              <Markup html={saved ? I.heartOn : I.heart} /> <span>{saved ? "Saved" : "Save"}</span>
+            </button>
           </div>
-        ) : null}
+        </div>
 
         {media.length ? (
-          <div className={"wphotos n" + Math.min(media.length, 5)}>
+          <div className={"alphotos n" + Math.min(media.length, 5)} ref={heroRef}>
             {media.slice(0, 5).map((m, i) => (
-              <button type="button" className={"wphoto " + (i === 0 ? "main" : "p" + (i - 1))} key={m.src} onClick={() => setGallery(i)} aria-label={i === 0 ? "Open photos" : "Open photo " + (i + 1)}>
+              <button type="button" className={"alphoto " + (i === 0 ? "main" : "p" + (i - 1))} key={m.src} onClick={() => setGallery(i)} aria-label={i === 0 ? "Open photos" : "Open photo " + (i + 1)}>
                 <HeroTile m={m} item={item} i={i} onBroken={() => drop(m.src)} />
+                {i === 0 && m.kind !== "photo" ? <span className="alplaytag"><Markup html={PLAY} /> Video</span> : null}
               </button>
             ))}
             {media.length > 1 ? (
-              <button type="button" className="wmore" onClick={() => setGallery(0)}>
-                {hasVideo ? "Show video and " + (media.length - 1) + (media.length === 2 ? " photo" : " photos") : "Show all " + media.length + " photos"}
+              <button type="button" className="alshowall" onClick={() => setGallery(0)}>
+                <Markup html={I.grid} />
+                <span>{hasVideo ? "Show video and " + (media.length - 1) + (media.length === 2 ? " photo" : " photos") : "Show all photos"}</span>
               </button>
             ) : null}
           </div>
-        ) : (
-          <hr className="wrule" />
-        )}
+        ) : null}
 
         {gallery != null && media[gallery] ? (
-          <div className="wgallery" onClick={() => setGallery(null)} role="dialog" aria-label="Photos">
-            <div className="wgalleryhead" onClick={(e) => e.stopPropagation()}>
-              <span>{gallery + 1} / {media.length}</span>
-              <b>{item.title}</b>
-              <button type="button" className="wgalleryclose" onClick={() => setGallery(null)} aria-label="Close">
-                <Markup html={ICONS.close} />
+          <div className="algallery" onClick={() => setGallery(null)} role="dialog" aria-label="Photos">
+            <div className="algalleryhead" onClick={(e) => e.stopPropagation()}>
+              <button type="button" className="algalleryclose" onClick={() => setGallery(null)} aria-label="Close">
+                <Markup html={I.close} /> <span>Close</span>
               </button>
+              <span className="algallerycount">{gallery + 1} / {media.length}</span>
+              <span className="algalleryactions">
+                <button type="button" onClick={() => void share()}><Markup html={I.share} /> <span>Share</span></button>
+                <button type="button" onClick={toggleSave} aria-pressed={saved}><Markup html={saved ? I.heartOn : I.heart} /> <span>{saved ? "Saved" : "Save"}</span></button>
+              </span>
             </div>
-            <button type="button" className="wgallerynav prev" onClick={(e) => { e.stopPropagation(); setGallery((gallery - 1 + media.length) % media.length); }} aria-label="Previous photo" disabled={media.length < 2}>
-              <Markup html={ICONS.back} />
+            <button type="button" className="algallerynav prev" onClick={(e) => { e.stopPropagation(); setGallery((gallery - 1 + media.length) % media.length); }} aria-label="Previous photo" disabled={media.length < 2}>
+              <Markup html={I.chevLeft} />
             </button>
             <GallerySlide m={media[gallery]} item={item} index={gallery} />
-            <button type="button" className="wgallerynav next" onClick={(e) => { e.stopPropagation(); setGallery((gallery + 1) % media.length); }} aria-label="Next photo" disabled={media.length < 2}>
-              <Markup html={ICONS.back} />
+            <button type="button" className="algallerynav next" onClick={(e) => { e.stopPropagation(); setGallery((gallery + 1) % media.length); }} aria-label="Next photo" disabled={media.length < 2}>
+              <Markup html={I.chevRight} />
             </button>
-            <div className="wgallerystrip" onClick={(e) => e.stopPropagation()}>
+            <div className="algallerystrip" onClick={(e) => e.stopPropagation()}>
               {media.map((m, i) => (
                 <button type="button" key={m.src} aria-pressed={i === gallery} onClick={() => setGallery(i)} aria-label={m.kind === "photo" ? "Photo " + (i + 1) : "Video"}>
                   {m.kind === "photo" || (m.kind === "clip" && m.poster) ? (
                     <img src={thumb(m.kind === "photo" ? m.src : m.poster, "thumb")} alt="" loading="lazy" decoding="async" referrerPolicy="no-referrer" />
                   ) : (
-                    <span className="wgalleryplay"><Markup html={PLAY} /></span>
+                    <span className="algalleryplay"><Markup html={PLAY} /></span>
                   )}
-                  {m.kind !== "photo" ? <span className="wgalleryplay over"><Markup html={PLAY} /></span> : null}
+                  {m.kind !== "photo" ? <span className="algalleryplay over"><Markup html={PLAY} /></span> : null}
                 </button>
               ))}
             </div>
           </div>
         ) : null}
 
-        <div className={"wcols" + (media.length ? "" : " nohero")}>
-          <div className="wmain">
-            {quick.length ? (
-              <div className="wquick">
-                {quick.map((q) => (
-                  <div key={q.label}>
-                    <Markup html={q.icon} />
-                    <span><small>{q.label}</small><b>{q.value}</b></span>
+        <div className={"alcols" + (media.length ? "" : " nohero")} id="al-cols" ref={colsRef}>
+          <div className="almain">
+            <section className="alsec alintro">
+              <h2>{typeName} in {placeName(item.area)}</h2>
+              {keyFacts.length ? <p className="alfacts">{keyFacts.join(" · ")}</p> : null}
+              {!topRated && score ? (
+                <p className="alrateline">
+                  <Markup html={I.star} /> <b>{score.rating.toFixed(1)}</b> · <button type="button" className="alunder" onClick={() => jump("al-reviews")}>{fmtReviews(score.reviews)} reviews</button>
+                </p>
+              ) : null}
+            </section>
+
+            {topRated ? (
+              <button type="button" className="alfav" onClick={() => jump("al-reviews")}>
+                <span className="alfavbadge">
+                  <span className="allaurel"><Markup html={I.laurelL} /></span>
+                  <b>Top<br />rated</b>
+                  <span className="allaurel flip"><Markup html={I.laurelL} /></span>
+                </span>
+                <span className="alfavtext">One of the highest-rated {typeName.toLowerCase()} listings on Outset, from public reviews</span>
+                <span className="alfavnum">
+                  <b>{score!.rating.toFixed(1)}</b>
+                  <span className="alfavstars" aria-hidden="true">{[0, 1, 2, 3, 4].map((i) => <Markup key={i} html={I.star} />)}</span>
+                </span>
+                <span className="alfavsep" aria-hidden="true" />
+                <span className="alfavnum">
+                  <b>{fmtReviews(score!.reviews)}</b>
+                  <u>Reviews</u>
+                </span>
+              </button>
+            ) : null}
+
+            <section className={"alsec alhost" + (topRated ? " tight" : "")}>
+              <span className="alavatar" aria-hidden="true">{initial}</span>
+              <span>
+                <b>Run by {item.title}</b>
+                <small>{item.claimed ? "Claimed business" + (instant ? " · Instant confirmation" : "") : "Requests go straight to the business"}</small>
+              </span>
+            </section>
+
+            {highlightRows.length ? (
+              <section className="alsec alhigh">
+                {highlightRows.map((r) => (
+                  <div className="alhighrow" key={r.title}>
+                    <Markup html={r.icon} />
+                    <span>
+                      <b>{r.title}</b>
+                      <small>{r.text}</small>
+                    </span>
                   </div>
                 ))}
-              </div>
-            ) : null}
-
-            {item.blurb ? (
-              <p className="wblurb lead">{cleanDesc(item.blurb).replace(/\s+(Book|Learn more|Read more|Reserve)\.?$/i, "")}</p>
-            ) : null}
-
-            {highlights.length ? (
-              <section className="wsec first">
-                <h2>Highlights</h2>
-                <Bullets items={highlights} className="two" />
               </section>
             ) : null}
 
-            {guide ? <section className="wsec">
-              <button type="button" className="wguidebtn" onClick={() => setGuideOpen((v) => !v)} aria-expanded={guideOpen}>
-                <span>
-                  <b>What {KIND[item.art] || "this"} is actually like</b>
-                  <small>{guide.time}</small>
-                </span>
-                <Markup html={guideOpen ? ICONS.chevUp : ICONS.chevDown} />
-              </button>
-              {guideOpen ? (
-                <div className="wguide">
-                  <ol className="guidesteps">
-                    {guide.steps.map((s, i) => (
-                      <li key={i}>
-                        <span className="n">{i + 1}</span>
-                        <span>{s}</span>
-                      </li>
-                    ))}
-                  </ol>
-                  <div className="wguidecols">
-                    <div>
-                      <p className="guidehead">Bring</p>
-                      <div className="guidechips">{guide.bring.map((b) => <span className="guidechip" key={b}>{b}</span>)}</div>
-                    </div>
-                    <div>
-                      <p className="guidehead">Good for</p>
-                      <p className="guidetext">{guide.goodFor}</p>
-                      <p className="guidehead">Nervous?</p>
-                      <p className="guidetext">{guide.nerves}</p>
-                    </div>
-                  </div>
+            {blurb || highlights.length ? (
+              <section className="alsec aldesc">
+                <div className="aldesctext" ref={descRef}>
+                  {blurb ? <p>{blurb}</p> : null}
+                  {highlights.length ? (
+                    <>
+                      <p><b>Highlights</b></p>
+                      <ul>{highlights.map((h) => <li key={h}>{plainWords(h)}</li>)}</ul>
+                    </>
+                  ) : null}
                 </div>
-              ) : null}
-            </section> : null}
+                {descOver ? <MoreLink onClick={() => setModal("desc")}>Show more</MoreLink> : null}
+                {guide ? (
+                  <p className="aldescguide">
+                    <button type="button" className="alunder" onClick={() => setModal("guide")}>What {KIND[item.art] || "this"} is actually like</button>
+                  </p>
+                ) : null}
+              </section>
+            ) : guide ? (
+              <section className="alsec aldesc">
+                <MoreLink onClick={() => setModal("guide")}>What {KIND[item.art] || "this"} is actually like</MoreLink>
+              </section>
+            ) : null}
 
             {item.services && item.services.length ? (
-              <section className="wsec">
+              <section className="alsec">
                 <h2>What you can book</h2>
-                <div className="wmenu">
-                  {item.services.map((svc, svcIdx) => (
-                    <div className={"wsvc" + (svc.photo ? " haspic" : "")} key={svc.name + "|" + svcIdx}>
-                      {svc.photo ? <img className="wsvcpic" src={thumb(svc.photo, "thumb")} srcSet={srcSet(svc.photo, "thumb")} sizes={SIZES.thumb} alt={plainWords(svc.name)} loading="lazy" decoding="async" referrerPolicy="no-referrer" onError={(e) => ((e.currentTarget as HTMLImageElement).style.display = "none")} /> : null}
-                      <div className="wsvchead">
-                        <b>{plainWords(svc.name)}</b>
-                        {svc.desc && cleanDesc(svc.desc).length > 180 ? (
-                          <button type="button" className="svcabout" onClick={() => setOpenSvc(openSvc === svc.name ? null : svc.name)}>
-                            {openSvc === svc.name ? "Less" : "More"}
-                          </button>
+                <div className="alsvcs">
+                  {item.services.map((svc, svcIdx) => {
+                    const desc = svc.desc ? cleanDesc(svc.desc) : "";
+                    const long = desc.length > 140;
+                    const on = svc.variants.some((v) => v.optionIdx === optionIdx);
+                    return (
+                      <div className={"alsvc" + (on ? " on" : "")} key={svc.name + "|" + svcIdx}>
+                        {svc.photo ? (
+                          <div className="alsvcpic">
+                            <img src={thumb(svc.photo, "wide")} srcSet={srcSet(svc.photo, "wide")} sizes="(max-width: 1127px) 520px, 320px" alt={plainWords(svc.name)} loading="lazy" decoding="async" referrerPolicy="no-referrer" onError={(e) => ((e.currentTarget.parentElement as HTMLElement).style.display = "none")} />
+                          </div>
                         ) : null}
+                        <b className="alsvcname">{plainWords(svc.name)}</b>
+                        {desc ? (
+                          <p className="alsvcdesc">
+                            {openSvc === svc.name || !long ? desc : desc.slice(0, 140).replace(/\s+\S*$/, "") + "…"}
+                            {long ? <> <button type="button" className="alunder" onClick={() => setOpenSvc(openSvc === svc.name ? null : svc.name)}>{openSvc === svc.name ? "Show less" : "Show more"}</button></> : null}
+                          </p>
+                        ) : null}
+                        <div className="alvariants">
+                          {svc.variants.map((v) => (
+                            <button key={v.optionIdx} type="button" className="alvariant" aria-pressed={optionIdx === v.optionIdx} onClick={() => setOptionIdx(v.optionIdx)}>
+                              <span className="alradio" aria-hidden="true" />
+                              <span>{plainWords(v.label)}</span>
+                              <b>{v.price != null ? priceWith(v.price, v.per) : "Price on request"}</b>
+                            </button>
+                          ))}
+                        </div>
                       </div>
-                      {svc.desc ? <p className="svcdesc">{openSvc === svc.name || cleanDesc(svc.desc).length <= 180 ? cleanDesc(svc.desc) : cleanDesc(svc.desc).slice(0, 180).replace(/\s+\S*$/, "") + "…"}</p> : null}
-                      {svc.variants.map((v) => (
-                        <button key={v.optionIdx} type="button" className="wvariant" aria-pressed={optionIdx === v.optionIdx} onClick={() => setOptionIdx(v.optionIdx)}>
-                          <span className="tick"><Markup html={ICONS.check} /></span>
-                          <span>{plainWords(v.label)}</span>
-                          <b>{v.price != null ? priceWith(v.price, v.per) : "Price on request"}</b>
-                        </button>
-                      ))}
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </section>
             ) : item.options.length ? (
-              <section className="wsec">
+              <section className="alsec">
                 <h2>What you can book</h2>
-                <div className="wmenu">
+                <div className="alvariants list">
                   {item.options.map((o, i) => (
-                    <button key={o.name + i} type="button" className="wvariant" aria-pressed={optionIdx === i} onClick={() => setOptionIdx(i)}>
-                      <span className="tick"><Markup html={ICONS.check} /></span>
+                    <button key={o.name + i} type="button" className="alvariant" aria-pressed={optionIdx === i} onClick={() => setOptionIdx(i)}>
+                      <span className="alradio" aria-hidden="true" />
                       <span>{plainWords(o.name)}{o.detail ? " · " + plainWords(o.detail) : ""}</span>
                       <b>{o.price != null ? priceWith(o.price, o.per) : "Price on request"}</b>
                     </button>
@@ -723,12 +1110,12 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
             ) : null}
 
             {item.addons && item.addons.length ? (
-              <section className="wsec">
+              <section className="alsec">
                 <h2>Add-ons</h2>
-                <div className="wmenu">
+                <div className="alvariants list">
                   {item.addons.map((a, i) => (
-                    <button key={a.name} type="button" className="wvariant" aria-pressed={addonIdx.includes(i)} onClick={() => setAddonIdx((c) => (c.includes(i) ? c.filter((x) => x !== i) : [...c, i]))}>
-                      <span className="tick"><Markup html={ICONS.check} /></span>
+                    <button key={a.name} type="button" className="alvariant check" aria-pressed={addonIdx.includes(i)} onClick={() => setAddonIdx((c) => (c.includes(i) ? c.filter((x) => x !== i) : [...c, i]))}>
+                      <span className="alcheck" aria-hidden="true"><Markup html={ICONS.check} /></span>
                       <span>{a.name}</span>
                       <b>{a.price ? "+" + money(a.price) : "Free"}</b>
                     </button>
@@ -737,355 +1124,526 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
               </section>
             ) : null}
 
+            {allIncluded.length ? (
+              <section className="alsec" id="al-included">
+                <h2>What's included</h2>
+                <div className="alamen">
+                  {allIncluded.slice(0, 10).map(({ t, no }) => (
+                    <div className={"alamenrow" + (no ? " no" : "")} key={(no ? "n" : "y") + t}>
+                      <span className="alamenicon"><Markup html={amenityIcon(t)} /></span>
+                      <span>{no ? <span className="vh">Not included: </span> : null}{plainWords(t)}</span>
+                    </div>
+                  ))}
+                </div>
+                {allIncluded.length > 10 ? (
+                  <button type="button" className="aloutline" onClick={() => setModal("included")}>Show all {allIncluded.length} items</button>
+                ) : null}
+              </section>
+            ) : null}
+
+            {item.promos?.length ? (
+              <section className="alsec" id="deals">
+                <h2>Deals</h2>
+                <p className="alsecsub">From {item.title}'s own site. Days are in their local time.</p>
+                <ul className="aldeals">
+                  {item.promos.map((pr) => {
+                    const on = dealsNow.includes(pr);
+                    return (
+                      <li key={pr.text} className={on ? "on" : ""}>
+                        <span className="alamenicon"><Markup html={I.tag} /></span>
+                        <span className="aldealbody">
+                          <b>{plainWords(pr.text)}{on ? <em>Today</em> : null}</b>
+                          <small>{dayLabel(pr.days)}{pr.start || pr.end ? " · " + (pr.start ? clock12(pr.start) : "Open") + " to " + (pr.end ? clock12(pr.end) : "close") : ""}</small>
+                          <span className="aldealdays" aria-hidden="true">
+                            {pr.days.length ? DAY_SHORT.map((d, i) => (
+                              <i key={d} className={pr.days.includes(i) ? (i === today ? "hit today" : "hit") : ""}>{d}</i>
+                            )) : <i className={"hit" + (on ? " today" : "")}>Every day</i>}
+                          </span>
+                        </span>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </section>
+            ) : null}
+
+            {!visit ? (
+              <section className="alsec" id="al-dates">
+                <h2>{day.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}</h2>
+                <p className="alsecsub">
+                  {chipsToday.length
+                    ? chipsToday.length + (chipsToday.length === 1 ? " start time" : " start times") + (live ? " from their live calendar" : "") + (time ? " · " + fmtTime(time) + " picked" : "")
+                    : live ? "No departures on this date. Pick another day." : "No more start times today. Pick another day."}
+                </p>
+                <MonthPair dates={dates} dateIdx={state.dateIdx} onPickDate={setDate} chipsFor={chipsFor} />
+                <div className="alcalfoot">
+                  <span>{live ? "Live times from " + item.title + "'s own booking calendar." : "Days with start times are shown in black."}</span>
+                  {!done ? <button type="button" className="alunder strong" onClick={() => { jump("al-cols"); window.setTimeout(() => setPickerOpen(true), 400); }}>{time ? "Change time" : "Choose a time"}</button> : null}
+                </div>
+              </section>
+            ) : null}
           </div>
 
-          <aside className="wbook">
+          <aside className="alaside">
             {visit ? (
               // A place you walk into: a zoo, a museum, a show. Hours and the door, not a time slot.
-              <div className="wbookcard">
-                <div className="wbookhead">
-                  <span><b>Plan your visit</b></span>
-                  {score ? <span className="wrate"><Markup html={ICONS.star} /> {score.rating.toFixed(1)}</span> : null}
+              <div className="alreserve">
+                <div className="alreservehead">
+                  <span className="alprice"><b>Plan your visit</b></span>
+                  {score ? <span className="alreserverate"><Markup html={I.star} /> {score.rating.toFixed(1)} · <u>{fmtReviews(score.reviews)} reviews</u></span> : null}
                 </div>
-                {visitOpen ? <p className={"wopen" + (visitOpen.open ? " on" : "")}>{visitOpen.label}</p> : null}
-                {visitWeek?.some((d) => d && d.close > d.open) ? (
-                  <ul className="whours">{visitWeek.map((d, i) => <li key={i}><span>{DAYS[i]}</span>{d && d.close > d.open ? clock(d.open) + " to " + clock(d.close) : "Closed"}</li>)}</ul>
-                ) : contact?.hours?.length ? (
-                  <ul className="whours">{contact.hours.slice(0, 7).map((h) => <li key={h}>{h}</li>)}</ul>
-                ) : (
-                  <p className="wbooksub">Hours are not published. Call before you go.</p>
-                )}
+                {visitOpen ? <p className={"alopen" + (visitOpen.open ? " on" : "")}>{visitOpen.label}</p> : null}
+                <div className="albox">
+                  <div className="alboxcell static">
+                    <small>Hours</small>
+                    {visitWeek?.some((d) => d && d.close > d.open) ? (
+                      <ul className="alhours">{visitWeek.map((d, i) => <li key={i}><span>{DAYS[i]}</span><span>{d && d.close > d.open ? clock(d.open) + " to " + clock(d.close) : "Closed"}</span></li>)}</ul>
+                    ) : contact?.hours?.length ? (
+                      <ul className="alhours">{contact.hours.slice(0, 7).map((h) => <li key={h}><span>{h}</span></li>)}</ul>
+                    ) : (
+                      <span className="alboxval muted">Hours are not published. Call before you go.</span>
+                    )}
+                  </div>
+                </div>
                 {contact?.website || item.src ? (
-                  <a className="cta" style={{ width: "100%", marginTop: 12, display: "block", textAlign: "center" }} href={contact?.website || item.src} target="_blank" rel="noreferrer">Get tickets</a>
+                  <a className="alprimary" href={contact?.website || item.src} target="_blank" rel="noreferrer">Get tickets</a>
                 ) : contact?.phone ? (
-                  <a className="cta" style={{ width: "100%", marginTop: 12, display: "block", textAlign: "center" }} href={telHref(contact.phone)}>Call to plan</a>
+                  <a className="alprimary" href={telHref(contact.phone)}>Call to plan</a>
                 ) : null}
-                <p className="wbookfine">Tickets are sold by {item.title}. Prices and times on their side.</p>
+                <p className="alfine">Tickets are sold by {item.title}. Prices and times on their side.</p>
               </div>
             ) : done ? (
-              <div className="wbookcard">
-                <div className="confmark"><Markup html={ICONS.check} /></div>
-                <h3>{item.claimed && item.instant ? "You're booked" : "Request sent"}</h3>
-                <p className="wbooksub">{fmtDate(day)} · {time ? fmtTime(time) : ""} · {qty} {qty === 1 ? "guest" : "guests"}</p>
-                <p className="wbooksub">{picked ? plainWords(picked.name + (picked.detail ? " · " + picked.detail : "")) : item.title}</p>
-                <button type="button" className="cta" style={{ width: "100%", marginTop: 14 }} onClick={onClose}>Find another experience</button>
+              <div className="alreserve aldone">
+                <span className="aldonemark"><Markup html={ICONS.checkbig} /></span>
+                <h3>{instant ? "You're booked" : "Request sent"}</h3>
+                <p>{fmtDate(day)} · {time ? fmtTime(time) : ""} · {qty} {qty === 1 ? "guest" : "guests"}</p>
+                <p>{picked ? plainWords(picked.name + (picked.detail ? " · " + picked.detail : "")) : item.title}</p>
+                <button type="button" className="alprimary" onClick={onClose}>Find another experience</button>
               </div>
             ) : (
-              <div className="wbookcard">
-                <div className="wbookhead">
-                  {fromPrice(item) != null ? <span><b>{money(fromPrice(item) as number)}</b> from</span> : <span><b>Request to book</b></span>}
-                  {score ? <span className="wrate"><Markup html={ICONS.star} /> {score.rating.toFixed(1)}</span> : null}
+              <div className="alreserve">
+                <div className="alreservehead">
+                  {priceTag}
+                  {score ? <span className="alreserverate"><Markup html={I.star} /> {score.rating.toFixed(1)} · <u>{fmtReviews(score.reviews)} reviews</u></span> : null}
                 </div>
-                {duration || cancel ? (
-                  <p className="wbookmeta">
-                    {duration ? <span><Markup html={ICONS.clock} /> {duration}</span> : null}
-                    {cancel ? <span><Markup html={ICONS.check} /> {cancel}</span> : null}
-                  </p>
-                ) : null}
-                <div className="rowbetween" style={{ marginTop: 6, marginBottom: 6 }}>
-                  <p className="guidehead" style={{ margin: 0 }}>Guests</p>
-                  <span className="stepper">
-                    <button type="button" onClick={() => setQty(Math.max(1, qty - 1))} disabled={qty <= 1}>−</button>
-                    <span className="n">{qty}</span>
-                    <button type="button" onClick={() => setQty(Math.min(12, qty + 1))}>+</button>
-                  </span>
-                </div>
-                {needService && item.options.length > 1 ? (
-                  <>
-                    <p className="guidehead">What you're booking</p>
-                    {item.options.length <= 3 ? (
-                      <div className="bksvclist">
-                        {item.options.map((o, i) => (
-                          <button key={o.name + i} type="button" className={"bksvcopt" + (optionIdx === i ? " on" : "")} aria-pressed={optionIdx === i} onClick={() => setOptionIdx(i)}>
-                            <span>{plainWords(o.name)}{o.detail ? " · " + plainWords(o.detail) : ""}</span>
-                            <b>{o.price != null ? priceWith(o.price, o.per) : "On request"}</b>
-                          </button>
-                        ))}
+
+                <div className="alboxwrap" ref={popRef}>
+                  <div className="albox">
+                    {needService && item.options.length > 1 ? (
+                      <label className="alboxcell full sel">
+                        <small>Option</small>
+                        <span className="alboxval">{picked ? plainWords(picked.name) + (picked.detail ? " · " + plainWords(picked.detail) : "") : "Choose one"}</span>
+                        <Markup className="alselchev" html={I.chevDown} />
+                        <select aria-label="What you're booking" value={optionIdx ?? 0} onChange={(e) => setOptionIdx(Number(e.target.value))}>
+                          {item.options.map((o, i) => (
+                            <option key={o.name + i} value={i}>
+                              {plainWords(o.name)}{o.detail ? " · " + plainWords(o.detail) : ""}{o.price != null ? " — " + priceWith(o.price, o.per) : ""}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    ) : null}
+                    <div className="alboxrow">
+                      <button type="button" className={"alboxcell" + (pickerOpen ? " active" : "")} onClick={() => setPickerOpen((v) => !v)} aria-expanded={pickerOpen}>
+                        <small>Date</small>
+                        <span className="alboxval">{fmtDate(day)}</span>
+                      </button>
+                      <button type="button" className={"alboxcell" + (pickerOpen ? " active" : "")} onClick={() => setPickerOpen((v) => !v)} aria-expanded={pickerOpen}>
+                        <small>Start time</small>
+                        <span className={"alboxval" + (time ? "" : " muted")}>{time ? fmtTime(time) : "Add time"}</span>
+                      </button>
+                    </div>
+                    <div className="alboxcell full guests">
+                      <span>
+                        <small>Guests</small>
+                        <span className="alboxval">{qty} {qty === 1 ? "guest" : "guests"}</span>
+                      </span>
+                      <span className="alstep">
+                        <button type="button" onClick={() => setQty(Math.max(1, qty - 1))} disabled={qty <= 1} aria-label="Fewer guests">−</button>
+                        <button type="button" onClick={() => setQty(Math.min(12, qty + 1))} disabled={qty >= 12} aria-label="More guests">+</button>
+                      </span>
+                    </div>
+                  </div>
+                  {pickerOpen ? (
+                    <div className="alpop" role="dialog" aria-label="Date and start time">
+                      <div className="alpophead">
+                        <span>
+                          <b>{time ? fmtDate(day) + " · " + fmtTime(time) : "Pick a date and start time"}</b>
+                          <small>{live ? "Live from their booking calendar" : duration ? duration : "Times shown in the business's local time"}</small>
+                        </span>
                       </div>
-                    ) : (
-                      <select className="bksvcsel" aria-label="What you're booking" value={optionIdx ?? 0} onChange={(e) => setOptionIdx(Number(e.target.value))}>
-                        {item.options.map((o, i) => (
-                          <option key={o.name + i} value={i}>
-                            {plainWords(o.name)}{o.detail ? " · " + plainWords(o.detail) : ""}{o.price != null ? " — " + money(o.price) : ""}
-                          </option>
-                        ))}
-                      </select>
-                    )}
-                  </>
-                ) : null}
-                <p className="guidehead">Date and time</p>
-                <DayTimePicker
-                  dates={dates}
-                  dateIdx={state.dateIdx}
-                  onPickDate={setDate}
-                  chipsFor={chipsFor}
-                  time={time}
-                  onPickTime={(c) => setTime(c.time)}
-                  emptyNote={live ? "No departures on this date. Pick another day." : "No more start times today. Pick another day."}
-                  sourceNote={live ? "Live times from " + item.title + "'s own booking calendar." : undefined}
-                />
-                <p className="guidehead">Who's booking</p>
-                <div className="wguest">
-                  <input value={guest.name} placeholder="Your name" autoComplete="name" onChange={(e) => setGuest({ ...guest, name: e.target.value })} />
-                  <input value={guest.phone} placeholder="Mobile number" inputMode="tel" autoComplete="tel" onChange={(e) => setGuest({ ...guest, phone: e.target.value })} />
-                  <input value={guest.email || ""} placeholder="Email for your confirmation" inputMode="email" autoComplete="email" onChange={(e) => setGuest({ ...guest, email: e.target.value })} />
-                </div>
-                <div className="lines">
-                  {p.base && picked ? (
-                    <div className="line">
-                      <span>{plainWords(picked.name)}{perPerson(picked) ? " × " + qty + (qty === 1 ? " guest" : " guests") : ""}</span>
-                      <b>{money(p.base)}</b>
+                      <DayTimePicker
+                        dates={dates}
+                        dateIdx={state.dateIdx}
+                        onPickDate={setDate}
+                        chipsFor={chipsFor}
+                        time={time}
+                        onPickTime={(c) => { setTime(c.time); setPickerOpen(false); }}
+                        emptyNote={live ? "No departures on this date. Pick another day." : "No more start times today. Pick another day."}
+                        sourceNote={live ? "Live times from " + item.title + "'s own booking calendar." : undefined}
+                      />
+                      <div className="alpopfoot">
+                        <button type="button" className="alunder strong" onClick={() => setTime(null)} disabled={!time}>Clear time</button>
+                        <button type="button" className="aldark" onClick={() => setPickerOpen(false)}>Close</button>
+                      </div>
                     </div>
                   ) : null}
-                  {extras.map((a) => <div className="line" key={a.name}><span>{a.name}</span><b>{money(a.price ?? 0)}</b></div>)}
-                  {p.fee ? <div className="line"><span>{serviceFeeLabel(p)}</span><b>{money(p.fee)}</b></div> : null}
-                  <div className="line total"><span>Total</span><b>{p.total ? money(p.total) : "Pay on site"}</b></div>
-                  {payments && p.total ? <p className="wpaynote">Secure card payment. Your card is held and only charged once the booking is confirmed.</p> : null}
                 </div>
-                <button type="button" className="cta" style={{ width: "100%" }} disabled={!ready} onClick={book}>
+
+                <div className="albox alform">
+                  <div className="alboxrow">
+                    <label className="alboxcell">
+                      <small>Name</small>
+                      <input ref={nameRef} value={guest.name} placeholder="Your name" autoComplete="name" onChange={(e) => setGuest({ ...guest, name: e.target.value })} />
+                    </label>
+                    <label className="alboxcell">
+                      <small>Mobile</small>
+                      <input ref={phoneRef} value={guest.phone} placeholder="Mobile number" inputMode="tel" autoComplete="tel" onChange={(e) => setGuest({ ...guest, phone: e.target.value })} />
+                    </label>
+                  </div>
+                  <label className="alboxcell full">
+                    <small>Email</small>
+                    <input value={guest.email || ""} placeholder="Email for your confirmation" inputMode="email" autoComplete="email" onChange={(e) => setGuest({ ...guest, email: e.target.value })} />
+                  </label>
+                </div>
+
+                <button type="button" ref={reserveRef} className="alprimary" onClick={pressReserve} aria-disabled={!ready}>
                   {ready ? ctaLabel + (p.total ? " · " + money(p.total) : "") : time == null ? "Pick a time" : "Add your name and number"}
                 </button>
-                <p className="wbookfoot">
-                  {item.claimed && item.instant ? "Instant confirmation. " : "The operator confirms by text or email. "}
+                {payments && p.total ? (
+                  <p className="alfine center">Secure card payment. Your card is held and only charged once the booking is confirmed.</p>
+                ) : (
+                  <p className="alfine center">You won't be charged yet</p>
+                )}
+
+                {p.base && picked ? (
+                  <div className="allines">
+                    <div className="alline">
+                      <u>{perPerson(picked) && picked.price != null ? money(picked.price) + " × " + qty + (qty === 1 ? " guest" : " guests") : plainWords(picked.name)}</u>
+                      <span>{money(p.base)}</span>
+                    </div>
+                    {extras.map((a) => <div className="alline" key={a.name}><u>{a.name}</u><span>{money(a.price ?? 0)}</span></div>)}
+                    {p.fee ? <div className="alline"><u>{serviceFeeLabel(p)}</u><span>{money(p.fee)}</span></div> : null}
+                    <div className="alline total"><span>Total</span><span>{p.total ? money(p.total) : "Pay on site"}</span></div>
+                  </div>
+                ) : (
+                  <div className="allines">
+                    {extras.map((a) => <div className="alline" key={a.name}><u>{a.name}</u><span>{money(a.price ?? 0)}</span></div>)}
+                    <div className="alline total"><span>Total</span><span>{p.total ? money(p.total) : "Pay on site"}</span></div>
+                  </div>
+                )}
+                <p className="alfine">
+                  {instant ? "Instant confirmation. " : "The operator confirms by text or email. "}
                   {cancel ? cancel + "." : item.cancellation ? "Cancellation terms are set by " + item.title + ", see the policy below." : "Cancellation terms are set by the operator."}
                 </p>
               </div>
             )}
-            <WebAssistant item={item} />
           </aside>
         </div>
 
-        {/* Everything past the booking column runs the full width. The sticky card and Otto are
-            short, so leaving these sections in the narrow left column left the right half of the
-            page blank for the rest of the scroll. */}
-        <div className="wtail">
-              {includes.length || notIncluded.length ? (
-                <section className="wsec wfacts">
-                  {includes.length ? (
-                    <div>
-                      <h2>What's included</h2>
-                      <Bullets items={includes} />
-                    </div>
-                  ) : null}
-                  {notIncluded.length ? (
-                    <div>
-                      <h2>Not included</h2>
-                      <Bullets items={notIncluded} icon={ICONS.close} className="no" />
-                    </div>
-                  ) : null}
-                </section>
-              ) : null}
+        {(item.ytVideos && item.ytVideos.length) || item.tiktok ? (
+          <section className="alwide">
+            <h2>See it in action</h2>
+            <p className="alsecsub">Videos from {item.title}'s own channels.</p>
+            {item.ytVideos && item.ytVideos.length ? (
+              <div className={"alvideos" + (item.ytVideos.length === 1 ? " one" : "")}>
+                {item.ytVideos.slice(0, 2).map((v) => (
+                  <div className="alvideo" key={v.id}>
+                    <iframe
+                      src={"https://www.youtube-nocookie.com/embed/" + v.id + "?rel=0&modestbranding=1"}
+                      title={v.title}
+                      loading="lazy"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                    />
+                    <small>{v.title}</small>
+                  </div>
+                ))}
+              </div>
+            ) : null}
+            {item.tiktok ? (
+              <div className="altiktok">
+                <blockquote className="tiktok-embed" cite={"https://www.tiktok.com/@" + item.tiktok} data-unique-id={item.tiktok} data-embed-type="creator" style={{ maxWidth: 780, minWidth: 288 }}>
+                  <section>
+                    <a target="_blank" rel="noreferrer" href={"https://www.tiktok.com/@" + item.tiktok}>@{item.tiktok} on TikTok</a>
+                  </section>
+                </blockquote>
+                <TikTokScript />
+              </div>
+            ) : null}
+          </section>
+        ) : null}
 
-              {requirements.length || item.bring?.length || item.groupInfo?.length || waiverLines.length ? (
-              <section className="wsec wfacts">
-                {requirements.length ? (
-                <div>
-                  <h2>Who can go</h2>
-                  <Bullets items={requirements} icon={ICONS.dot} />
+        {score || item.quotes?.length ? (
+          <section className="alwide" id="al-reviews">
+            {topRated ? (
+              <div className="alfavbig">
+                <span className="alfavbignum">
+                  <span className="allaurel big"><Markup html={I.laurelL} /></span>
+                  <b>{score!.rating.toFixed(1)}</b>
+                  <span className="allaurel big flip"><Markup html={I.laurelL} /></span>
+                </span>
+                <b className="alfavbigtitle">Top rated</b>
+                <p>One of the most loved {typeName.toLowerCase()} listings on Outset, based on {fmtReviews(score!.reviews)} public reviews</p>
+              </div>
+            ) : score ? (
+              <h2 className="alreviewshead"><Markup html={I.star} /> {score.rating.toFixed(1)} · {fmtReviews(score.reviews)} reviews</h2>
+            ) : (
+              <h2>What guests say</h2>
+            )}
+            {score && !topRated && !item.quotes?.length ? <p className="alsecsub">{fmtReviews(score.reviews)} public reviews. Written reviews arrive once guests book through Outset.</p> : null}
+            {item.quotes?.length ? (
+              <>
+                <div className="alreviewgrid">
+                  {item.quotes.map((r, i) => (
+                    <article key={i} className="alreview">
+                      <header>
+                        <span className="alavatar sm" aria-hidden="true">{(r.author || "G").slice(0, 1).toUpperCase()}</span>
+                        <span><b>{r.author || "A guest"}</b>{r.date ? <small>{r.date}</small> : null}</span>
+                      </header>
+                      {r.rating ? <span className="alreviewstars" aria-label={Math.round(r.rating) + " stars"}>{Array.from({ length: Math.round(r.rating) }, (_, k) => <Markup key={k} html={I.star} />)}</span> : null}
+                      <p>{r.text}</p>
+                    </article>
+                  ))}
                 </div>
-                ) : null}
-                <div>
-                  {item.bring?.length ? (
-                    <>
-                      <h2>What to bring</h2>
-                      <Bullets items={item.bring} icon={ICONS.dot} />
-                    </>
-                  ) : item.groupInfo?.length ? (
-                    <>
-                      <h2>Groups</h2>
-                      <Bullets items={item.groupInfo} icon={ICONS.dot} />
-                    </>
-                  ) : waiverLines.length ? (
-                    <>
-                      <h2>Waiver and check-in</h2>
-                      <Bullets items={waiverLines} icon={ICONS.dot} />
-                    </>
-                  ) : null}
+                <p className="alsecsub">Reviews the operator publishes on their own site. Verified reviews from Outset bookings will show here too.</p>
+              </>
+            ) : null}
+          </section>
+        ) : null}
+
+        <section className="alwide" id="al-location">
+          <h2>Where you'll be</h2>
+          <p className="alsecsub dark">{placeName(item.area)}{metro && !item.area.includes(metro.name) ? " · " + metro.name + " area" : ""}</p>
+          <div className="alwhere">
+            <a className="alwherecard" href={contact ? mapsHref(contact, item.title + " " + item.area) : "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(item.title + " " + item.area)} target="_blank" rel="noreferrer">
+              <span className="alwherepin"><Markup html={I.pin} /></span>
+              <span>
+                <small>{item.meetingPoint ? "Meeting point" : "Address"}</small>
+                <b>{item.meetingPoint || address || item.area}</b>
+                {item.meetingPoint && address && item.meetingPoint !== address ? <span className="alwhereaddr">{address}</span> : null}
+                <u>Open in Maps</u>
+              </span>
+            </a>
+            <div className="alwhereside">
+              {contact?.phone ? (
+                <a className="alwhererow" href={telHref(contact.phone)}>
+                  <Markup html={I.phone} />
+                  <span><b>{fmtPhone(contact.phone)}</b><small>Call a person at the shop</small></span>
+                </a>
+              ) : null}
+              {hours.length ? (
+                <div className="alwhererow">
+                  <Markup html={I.clock} />
+                  <span><b>Hours</b>{hours.map((h) => <small key={h}>{h}</small>)}</span>
                 </div>
-              </section>
               ) : null}
-
-              {item.bring?.length && item.groupInfo?.length ? (
-                <section className="wsec">
-                  <h2>Groups</h2>
-                  <Bullets items={item.groupInfo} icon={ICONS.dot} />
-                </section>
+              {item.checkin ? (
+                <div className="alwhererow">
+                  <Markup html={I.door} />
+                  <span><b>When you arrive</b><small>{plainWords(item.checkin)}</small></span>
+                </div>
               ) : null}
-
-              <section className="wsec">
-                <h2>Meeting point and check-in</h2>
-                <div className="wmeet">
-                  <div className="contact">
-                    <a className="crow" href={contact ? mapsHref(contact, item.title + " " + item.area) : "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(item.title + " " + item.area)} target="_blank" rel="noreferrer">
-                      <Markup html={ICONS.pin} />
-                      <span><b>{item.meetingPoint || address || item.area}</b><small>{item.meetingPoint && address && item.meetingPoint !== address ? address + " · Open in Maps" : address ? "Open in Maps" : "Find on the map"}</small></span>
+            </div>
+          </div>
+          {item.locations?.length ? (
+            <div className="alvenues">
+              <h3>{item.locations.length + 1} locations{state.near ? ", nearest to " + state.near.label + " first" : ""}</h3>
+              <div className="alvenuegrid">
+                {[{ city: item.area, lat: item.lat, lon: item.lon, street: address || undefined, primary: true }, ...item.locations.map((l) => ({ ...l, city: l.city + (l.region ? ", " + l.region : ""), primary: false }))]
+                  .map((v) => ({ ...v, km: state.near && v.lat != null && v.lon != null ? kmBetween(state.near, { lat: v.lat, lon: v.lon }) : null }))
+                  .sort((a, b) => (a.km ?? Infinity) - (b.km ?? Infinity))
+                  .slice(0, 24)
+                  .map((v, i) => (
+                    <a key={i} className="alvenue" href={"https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent((v.street ? v.street + ", " : "") + v.city)} target="_blank" rel="noreferrer">
+                      <b>{v.city}</b>
+                      <small>{v.street || (v.primary ? "Main location" : "")}{v.km != null ? (v.street || v.primary ? " · " : "") + fmtDistance(v.km) + " away" : ""}</small>
                     </a>
-                    {contact?.phone ? (
-                      <a className="crow" href={telHref(contact.phone)}>
-                        <Markup html={ICONS.phone} />
-                        <span><b>{fmtPhone(contact.phone)}</b><small>Call a person at the shop</small></span>
-                      </a>
-                    ) : null}
-                    {hours.length ? (
-                      <div className="crow">
-                        <Markup html={ICONS.clock} />
-                        <span>{hours.map((h) => <b key={h}>{h}</b>)}<small>Hours</small></span>
-                      </div>
-                    ) : null}
-                  </div>
-                  {item.checkin ? (
-                    <div className="wcheckin">
-                      <p className="guidehead">When you arrive</p>
-                      <p>{plainWords(item.checkin)}</p>
-                    </div>
-                  ) : null}
+                  ))}
+              </div>
+            </div>
+          ) : null}
+        </section>
+
+        <section className="alwide" id="al-business">
+          <h2>About the business</h2>
+          <div className="albiz">
+            <div className="albizleft">
+              <div className="albizcard">
+                <div className="albizwho">
+                  <span className="alavatar lg" aria-hidden="true">{initial}</span>
+                  <b>{item.title}</b>
+                  <small>{typeName}</small>
                 </div>
-                {item.locations?.length ? (
-                  <div className="wvenues">
-                    <p className="guidehead">{item.locations.length + 1} locations{state.near ? ", nearest to " + state.near.label + " first" : ""}</p>
-                    <div className="wvenuegrid">
-                      {[{ city: item.area, lat: item.lat, lon: item.lon, street: address || undefined, primary: true }, ...item.locations.map((l) => ({ ...l, city: l.city + (l.region ? ", " + l.region : ""), primary: false }))]
-                        .map((v) => ({ ...v, km: state.near && v.lat != null && v.lon != null ? kmBetween(state.near, { lat: v.lat, lon: v.lon }) : null }))
-                        .sort((a, b) => (a.km ?? Infinity) - (b.km ?? Infinity))
-                        .slice(0, 24)
-                        .map((v, i) => (
-                          <a key={i} className="wvenue" href={"https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent((v.street ? v.street + ", " : "") + v.city)} target="_blank" rel="noreferrer">
-                            <b>{v.city}</b>
-                            <small>{v.street || (v.primary ? "Main location" : "")}{v.km != null ? (v.street || v.primary ? " · " : "") + fmtDistance(v.km) + " away" : ""}</small>
-                          </a>
-                        ))}
-                    </div>
-                  </div>
-                ) : null}
-              </section>
-
-              {item.promos?.length ? (
-                <section className="wsec" id="deals">
-                  <h2>Deals</h2>
-                  <p className="wdealnote">From {item.title}'s own site. Days are in their local time.</p>
-                  <ul className="wdeals">
-                    {item.promos.map((p) => {
-                      const on = dealsNow.includes(p);
-                      return (
-                        <li key={p.text} className={on ? "on" : ""}>
-                          <span className="wdealchips" aria-label={dayLabel(p.days)}>
-                            {p.days.length ? DAY_SHORT.map((d, i) => (
-                              <i key={d} className={p.days.includes(i) ? (i === today ? "hit today" : "hit") : ""}>{d}</i>
-                            )) : <i className={"hit" + (on ? " today" : "")}>Every day</i>}
-                          </span>
-                          <span className="wdealtext">
-                            {plainWords(p.text)}
-                            {p.start || p.end ? <small>{p.start ? clock12(p.start) : "Open"} to {p.end ? clock12(p.end) : "close"}</small> : null}
-                            {on ? <em>Today</em> : null}
-                          </span>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                </section>
-              ) : null}
-
-              {item.cancellation || item.waiverUrl || waiverLines.length && (item.bring?.length || item.groupInfo?.length) || otherPolicies.length ? (
-                <section className="wsec">
-                  <h2>Cancellation policy</h2>
-                  {item.cancellation ? <p className="wpolicytext">{plainWords(item.cancellation)}</p> : <p className="wpolicytext gap">{item.title} has not published cancellation terms. Otto will have them confirm before you pay.</p>}
-                  {otherPolicies.length ? <Bullets items={otherPolicies} icon={ICONS.dot} /> : null}
-                  {item.waiverUrl ? (
-                    <a className="wwaiver" href={item.waiverUrl} target="_blank" rel="noreferrer">
-                      <Markup html={ICONS.ticket} />
-                      <span><b>Sign the waiver online before you arrive</b><small>Saves time at check-in. Opens the operator's waiver form.</small></span>
-                    </a>
-                  ) : null}
-                </section>
-              ) : null}
-
-              {item.faq?.length ? (
-                <section className="wsec">
-                  <h2>Frequently asked questions</h2>
-                  <div className="wfaq">
-                    {item.faq.map((f, i) => (
-                      <div key={i} className={"wfaqitem" + (openFaq === i ? " open" : "")}>
-                        <button type="button" onClick={() => setOpenFaq(openFaq === i ? null : i)} aria-expanded={openFaq === i}>
-                          <span>{plainWords(f.q)}</span>
-                          <Markup html={openFaq === i ? ICONS.chevUp : ICONS.chevDown} />
-                        </button>
-                        {openFaq === i ? <p>{plainWords(f.a)}</p> : null}
-                      </div>
-                    ))}
-                  </div>
-                </section>
-              ) : null}
-
-              {(item.ytVideos && item.ytVideos.length) || item.tiktok ? (
-                <section className="wsec">
-                  <h2>See it in action</h2>
-                  <p className="wsecsub">Videos from {item.title}'s own channels.</p>
-                  {item.ytVideos && item.ytVideos.length ? (
-                    <div className={"wvideos" + (item.ytVideos.length === 1 ? " one" : "")}>
-                      {item.ytVideos.slice(0, 2).map((v) => (
-                        <div className="wvideo" key={v.id}>
-                          <iframe
-                            src={"https://www.youtube-nocookie.com/embed/" + v.id + "?rel=0&modestbranding=1"}
-                            title={v.title}
-                            loading="lazy"
-                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                            allowFullScreen
-                          />
-                          <small>{v.title}</small>
-                        </div>
-                      ))}
-                    </div>
-                  ) : null}
-                  {item.tiktok ? (
-                    <div className="wtiktok">
-                      <blockquote className="tiktok-embed" cite={"https://www.tiktok.com/@" + item.tiktok} data-unique-id={item.tiktok} data-embed-type="creator" style={{ maxWidth: 780, minWidth: 288 }}>
-                        <section>
-                          <a target="_blank" rel="noreferrer" href={"https://www.tiktok.com/@" + item.tiktok}>@{item.tiktok} on TikTok</a>
-                        </section>
-                      </blockquote>
-                      <TikTokScript />
-                    </div>
-                  ) : null}
-                </section>
-              ) : null}
-
-              {score || item.quotes?.length ? (
-                <section className="wsec">
-                  <h2>Reviews</h2>
+                <div className="albizstats">
                   {score ? (
-                    <div className="wreviews">
-                      <b>{score.rating.toFixed(1)}</b>
-                      <span>
-                        <span className="wstars" aria-hidden="true">{[0, 1, 2, 3, 4].map((i) => <Markup key={i} html={ICONS.star} />)}</span>
-                        <small>{fmtReviews(score.reviews)} public reviews{item.quotes?.length ? "" : ". Written reviews arrive once guests book through Outset."}</small>
-                      </span>
-                    </div>
+                    <>
+                      <span><b>{fmtReviews(score.reviews)}</b><small>Reviews</small></span>
+                      <span><b>{score.rating.toFixed(1)} <Markup html={I.star} /></b><small>Rating</small></span>
+                    </>
                   ) : null}
-                  {item.quotes?.length ? (
-                    <div className="wreviewgrid">
-                      {item.quotes.map((r, i) => (
-                        <article key={i} className="wreview">
-                          <header>
-                            <span className="wavatar sm">{(r.author || "G").slice(0, 1).toUpperCase()}</span>
-                            <span className="meta"><b>{r.author || "A guest"}</b>{r.rating ? <small className="wquotestars">{"★".repeat(Math.round(r.rating))}</small> : r.date ? <small>{r.date}</small> : null}</span>
-                          </header>
-                          <p>{r.text}</p>
-                        </article>
-                      ))}
-                      <p className="wreviewnote">Reviews the operator publishes on their own site. Verified reviews from Outset bookings will show here too.</p>
-                    </div>
-                  ) : null}
-                </section>
+                  {item.locations?.length ? <span><b>{item.locations.length + 1}</b><small>Locations</small></span> : null}
+                  <span><b>{item.claimed ? "Claimed" : "Request"}</b><small>{item.claimed ? "On Outset" : "Booking"}</small></span>
+                </div>
+              </div>
+              <ul className="albizfacts">
+                <li><Markup html={I.pin} /> <span>{placeName(item.area)}</span></li>
+                {duration ? <li><Markup html={I.clock} /> <span>{duration}</span></li> : null}
+                {instant ? <li><Markup html={I.bolt} /> <span>Instant confirmation</span></li> : <li><Markup html={I.message} /> <span>Confirms requests by text or email</span></li>}
+              </ul>
+            </div>
+            <div className="albizright">
+              <h3>Questions before you book?</h3>
+              <p className="alsecsub">Otto answers from {item.title}'s own information, and passes on anything it cannot.</p>
+              <div className="alotto">
+                <WebAssistant item={item} />
+              </div>
+              {contact?.phone ? <a className="aloutline" href={telHref(contact.phone)}>Call the business</a> : null}
+              {!item.claimed ? (
+                <p className="alclaim">
+                  <Markup html={I.shield} />
+                  <span>Is this your business? <button type="button" className="alunder strong" onClick={() => openOperator(item.id)}>Claim this listing</button> to answer guests and take bookings directly.</span>
+                </p>
               ) : null}
-        </div>
+            </div>
+          </div>
+        </section>
+
+        {knowCols.length ? (
+          <section className="alwide">
+            <h2>Things to know</h2>
+            <div className={"alknow c" + knowCols.length}>
+              {knowCols.map((c) => (
+                <div key={c.key} className="alknowcol">
+                  <span className="alknowicon"><Markup html={c.icon} /></span>
+                  <b>{c.title}</b>
+                  <ul>{c.lines.slice(0, 3).map((l, i) => <li key={i}>{plainWords(l)}</li>)}</ul>
+                  {c.lines.length > 3 || c.lines.some((l) => l.length > 90) || (c.key === "safety" && item.waiverUrl) ? <MoreLink onClick={() => setModal("know-" + c.key)}>Show more</MoreLink> : null}
+                </div>
+              ))}
+            </div>
+          </section>
+        ) : null}
+
+        {item.faq?.length ? (
+          <section className="alwide">
+            <h2>Frequently asked questions</h2>
+            <div className="alfaq">
+              {item.faq.map((f, i) => (
+                <div key={i} className={"alfaqitem" + (openFaq === i ? " open" : "")}>
+                  <button type="button" onClick={() => setOpenFaq(openFaq === i ? null : i)} aria-expanded={openFaq === i}>
+                    <span>{plainWords(f.q)}</span>
+                    <Markup html={I.chevDown} />
+                  </button>
+                  {openFaq === i ? <p>{plainWords(f.a)}</p> : null}
+                </div>
+              ))}
+            </div>
+          </section>
+        ) : null}
 
         {similar.length ? (
-          <section className="wrail">
-            <div className="wrailhead"><h2>More like this{metro ? " near " + metro.name : ""}</h2></div>
-            <div className="wrailrow">{similar.map((u) => <Card key={u.id} u={u} onOpen={onOpen} />)}</div>
+          <section className="alwide alrail">
+            <div className="alrailhead">
+              <h2>More like this{metro ? " near " + metro.name : ""}</h2>
+              <span className="alrailnav">
+                <button type="button" className="alround bordered" onClick={() => railBy(-1)} aria-label="Scroll back"><Markup html={I.chevLeft} /></button>
+                <button type="button" className="alround bordered" onClick={() => railBy(1)} aria-label="Scroll forward"><Markup html={I.chevRight} /></button>
+              </span>
+            </div>
+            <div className="alrailrow" ref={railRef}>{similar.map((u) => <Card key={u.id} u={u} onOpen={onOpen} />)}</div>
           </section>
         ) : null}
       </div>
+
+      {flash ? <div className="alflash" role="status">{flash}</div> : null}
+
+      {modal === "desc" ? (
+        <Modal label="About this experience" onClose={() => setModal(null)}>
+          <h2 className="almodaltitle">About this experience</h2>
+          {blurb ? <p className="almodaltext">{blurb}</p> : null}
+          {highlights.length ? (
+            <>
+              <h3 className="almodalsub">Highlights</h3>
+              <ul className="almodallist">{highlights.map((h) => <li key={h}>{plainWords(h)}</li>)}</ul>
+            </>
+          ) : null}
+        </Modal>
+      ) : null}
+
+      {modal === "guide" && guide ? (
+        <Modal label="What it's like" onClose={() => setModal(null)}>
+          <h2 className="almodaltitle">What {KIND[item.art] || "this"} is actually like</h2>
+          <p className="alsecsub">{guide.time}</p>
+          <ol className="alsteps">
+            {guide.steps.map((s, i) => (
+              <li key={i}><span className="n">{i + 1}</span><span>{s}</span></li>
+            ))}
+          </ol>
+          <h3 className="almodalsub">Bring</h3>
+          <ul className="almodallist">{guide.bring.map((b) => <li key={b}>{b}</li>)}</ul>
+          <h3 className="almodalsub">Good for</h3>
+          <p className="almodaltext">{guide.goodFor}</p>
+          <h3 className="almodalsub">Nervous?</h3>
+          <p className="almodaltext">{guide.nerves}</p>
+        </Modal>
+      ) : null}
+
+      {modal === "included" ? (
+        <Modal label="What's included" onClose={() => setModal(null)}>
+          <h2 className="almodaltitle">What's included</h2>
+          {includes.length ? (
+            <>
+              <h3 className="almodalsub">Included</h3>
+              <div className="alamenlist">
+                {includes.map((t) => (
+                  <div className="alamenrow" key={t}><span className="alamenicon"><Markup html={amenityIcon(t)} /></span><span>{plainWords(t)}</span></div>
+                ))}
+              </div>
+            </>
+          ) : null}
+          {notIncluded.length ? (
+            <>
+              <h3 className="almodalsub">Not included</h3>
+              <div className="alamenlist">
+                {notIncluded.map((t) => (
+                  <div className="alamenrow no" key={t}><span className="alamenicon"><Markup html={amenityIcon(t)} /></span><span><span className="vh">Not included: </span>{plainWords(t)}</span></div>
+                ))}
+              </div>
+            </>
+          ) : null}
+        </Modal>
+      ) : null}
+
+      {knowModal ? (
+        <Modal label={knowModal.title} onClose={() => setModal(null)}>
+          <h2 className="almodaltitle">{knowModal.title}</h2>
+          {knowModal.key === "rules" ? (
+            <>
+              {requirements.length ? <><ul className="almodallist">{requirements.map((l) => <li key={l}>{plainWords(l)}</li>)}</ul></> : null}
+              {item.bring?.length ? <><h3 className="almodalsub">What to bring</h3><ul className="almodallist">{item.bring.map((l) => <li key={l}>{plainWords(l)}</li>)}</ul></> : null}
+              {item.groupInfo?.length ? <><h3 className="almodalsub">Groups</h3><ul className="almodallist">{item.groupInfo.map((l) => <li key={l}>{plainWords(l)}</li>)}</ul></> : null}
+            </>
+          ) : knowModal.key === "safety" ? (
+            <>
+              {age ? <p className="almodaltext">Minimum age {age}.</p> : null}
+              {waiverLines.length ? <><h3 className="almodalsub">Waiver and check-in</h3><ul className="almodallist">{waiverLines.map((l) => <li key={l}>{plainWords(l)}</li>)}</ul></> : null}
+              {item.waiverUrl ? (
+                <a className="alwaiver" href={item.waiverUrl} target="_blank" rel="noreferrer">
+                  <Markup html={I.ticket} />
+                  <span><b>Sign the waiver online before you arrive</b><small>Saves time at check-in. Opens the operator's waiver form.</small></span>
+                </a>
+              ) : null}
+            </>
+          ) : (
+            <>
+              {cancel ? <h3 className="almodalsub">{cancel}</h3> : null}
+              {item.cancellation ? <p className="almodaltext">{plainWords(item.cancellation)}</p> : <p className="almodaltext muted">{item.title} has not published cancellation terms. Otto will have them confirm before you pay.</p>}
+              {otherPolicies.length ? <><h3 className="almodalsub">Other policies</h3><ul className="almodallist">{otherPolicies.map((l) => <li key={l}>{plainWords(l)}</li>)}</ul></> : null}
+            </>
+          )}
+        </Modal>
+      ) : null}
     </div>
   );
 }

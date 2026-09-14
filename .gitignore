@@ -14,3 +14,4 @@ backend/data/batches/
 backend/data/claim-secret.txt
 backend/data/snapshot.db
 backend/data/outreach-list.csv
+backend/data/florida-call-list.csv

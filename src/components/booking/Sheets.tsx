@@ -1,21 +1,24 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { currentLocation, searchPlaces, type Place } from "../../lib/places";
 import { CATS } from "../../data/categories";
+import { ART_LABEL } from "../../data/art";
 import { GUIDES } from "../../data/guides";
 import { ICONS } from "../../data/icons";
 import { ALL_METRO_ID, METROS, metroById, metroLabel } from "../../data/metros";
 import { SLOT_TIMES } from "../../data/slots";
-import type { Unclaimed, UnclaimedOption } from "../../data/types";
+import type { CategoryId, Unclaimed, UnclaimedOption } from "../../data/types";
 import {
   addressLine,
   contactFor,
   fmtHours,
   fmtPhone,
+  fromPrice,
   getCatalog,
   listingFacts,
   mapsDirHref,
   mapsQuery,
   optionLabel,
+  perPerson,
   placeLabel,
   plainWords,
   publicRating,
@@ -29,25 +32,50 @@ import { useApp } from "../../state/AppProvider";
 import { SIZES, srcSet, thumb } from "../../lib/images";
 import { embedAutoplay, listingMedia, photoCandidates, probePhotos, type Media } from "../../lib/media";
 import { cleanDesc, durationLabel, freeCancel, minAge } from "../../lib/listingDerive";
-import { DAY_SHORT, clock12, dayLabel, todaysDeals } from "../../lib/companyAgent";
+import { ASSISTANT_NAME, DAY_SHORT, clock12, companySuggestions, dayLabel, todaysDeals } from "../../lib/companyAgent";
 import { clockIn, zoneFor } from "../../lib/openNow";
 import { itemOpenState } from "../../lib/openNow";
+import { fetchAvailability, type LiveAvailability } from "../../lib/api";
+import { dateKey } from "../../lib/dates";
+import { searchSuggest, metroInQuery } from "../../lib/search";
+import { listingUrl } from "../../lib/site";
 import { Photo } from "../art/Photo";
+import { Art } from "../art/Art";
 import { Markup } from "../Markup";
+import {
+  IcBack,
+  IcChevron,
+  IcClose,
+  IcGlobe,
+  IcHeartOnPhoto,
+  IcLaurel,
+  IcMinus,
+  IcNavigate,
+  IcPin,
+  IcPlus,
+  IcSearch,
+  IcShare,
+  IcStar,
+} from "../explore/AirIcons";
+import { fmtRating } from "../explore/UnclaimedCard";
+import { applyFilters, browseList, nearFirst } from "../explore/feed";
+import { getPrefs, setPrefs, toggleSaved, usePrefs, type FeedFilters } from "../explore/prefs";
 import { SlotCalendar } from "./SlotCalendar";
 
 const QTY_MAX = 8;
 
 export function Sheets() {
-  const { state, listing, reqTarget, dates, closeSheet, confirm, confirmUnclaimed, setMetro, openChat } = useApp();
+  const { state, listing, reqTarget, dates, closeSheet, confirm, confirmUnclaimed, openChat, sendChat } = useApp();
   const on = state.sheet !== null;
+  // The listing and the search open full screen, the way Airbnb's app pushes them. The review sheet stays a sheet.
+  const full = state.sheet === "request" || state.sheet === "metro";
 
   return (
     <>
       <div className={"scrim" + (on ? " on" : "")} onClick={closeSheet} />
-      <div className={"sheet" + (on ? " on" : "")}>
-        <div className="grabber" />
-        <div className={"sheetbody" + (state.sheet === "request" ? " req" : "")}>
+      <div className={"sheet" + (on ? " on" : "") + (full ? " airfull" : "")}>
+        {full ? null : <div className="grabber" />}
+        <div className={"sheetbody" + (full ? " req" : "")}>
           {state.sheet === "review" && listing && state.slot ? (
             <ReviewBody
               listing={listing}
@@ -66,12 +94,13 @@ export function Sheets() {
               dates={dates}
               onBack={closeSheet}
               onConfirm={confirmUnclaimed}
-              onAsk={() => openChat(reqTarget.id)}
+              onAsk={(text) => {
+                openChat(reqTarget.id);
+                if (text) sendChat(text);
+              }}
             />
           ) : null}
-          {state.sheet === "metro" ? (
-            <MetroBody current={state.metroId} onPick={setMetro} onBack={closeSheet} />
-          ) : null}
+          {state.sheet === "metro" ? <SearchBody /> : null}
         </div>
       </div>
     </>
@@ -100,7 +129,7 @@ function ReviewBody({
     <>
       <p className="eyebrow">Your trip</p>
       <h3>{listing.title}</h3>
-      <p style={{ fontSize: 13, color: "var(--ink-soft)", margin: "6px 0 0" }}>
+      <p style={{ fontSize: 14, color: "var(--ink-soft)", margin: "6px 0 0" }}>
         {fmtDate(date)} · {fmtTime(slot)} · {qty} {listing.qtyUnit}
         {qty > 1 ? "s" : ""}
       </p>
@@ -124,26 +153,10 @@ function ReviewBody({
           <b>{money(p.total)}</b>
         </div>
       </div>
-      <div className="acctcard" style={{ marginTop: 6 }}>
-        <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-          <span
-            className="avatar"
-            style={{ borderRadius: 7, width: 40, height: 26, fontSize: 10, letterSpacing: ".04em" }}
-          >
-            VISA
-          </span>
-          <span style={{ flex: 1 }}>
-            <b style={{ fontSize: 13.5, display: "block" }}>Visa ···· 4291</b>
-            <small style={{ fontSize: 11.5, color: "var(--ink-faint)" }}>
-              Charged instantly
-            </small>
-          </span>
-        </div>
-      </div>
       <p className="note" style={{ textAlign: "left", padding: "12px 0 0" }}>
         Cancellation follows {listing.op}&apos;s policy above. A deposit or security hold may apply at check-in.
       </p>
-      <div className="dock" style={{ position: "static", background: "none", padding: "14px 0 20px" }}>
+      <div className="dock" style={{ position: "static", background: "none", padding: "14px 0 20px", border: "none" }}>
         <button className="cta ghost" onClick={onBack}>
           Back
         </button>
@@ -225,7 +238,7 @@ function Bullets({ items, icon = ICONS.dot, className = "" }: { items: string[];
   );
 }
 
-/** One hero slide on the phone sheet: the clip, the embed, or a photo. Broken media tells the sheet to drop it. */
+/** One hero slide on the phone listing: the clip, the embed, or a photo. Broken media tells the page to drop it. */
 function HeroSlide({ m, item, onBroken }: { m: Media; item: Unclaimed; onBroken: () => void }) {
   if (m.kind === "embed") {
     return <iframe className="wembed" src={embedAutoplay(m.src)} title={item.title + " video"} allow="autoplay; encrypted-media; picture-in-picture" allowFullScreen loading="lazy" />;
@@ -235,6 +248,37 @@ function HeroSlide({ m, item, onBroken }: { m: Media; item: Unclaimed; onBroken:
   }
   return <Photo src={m.src} kind={item.art} id={item.id + "req"} alt={item.title} size="wide" fallback={false} onBroken={onBroken} />;
 }
+
+/** A section of the listing: Airbnb's 22px heading over its content, with a hairline rule above. */
+function Section({ title, sub, children, id, innerRef }: { title?: string; sub?: string; children: ReactNode; id?: string; innerRef?: React.Ref<HTMLElement> }) {
+  return (
+    <section className="airsec" id={id} ref={innerRef}>
+      {title ? <h2>{title}</h2> : null}
+      {sub ? <p className="airsecsub">{sub}</p> : null}
+      {children}
+    </section>
+  );
+}
+
+/** Things-to-know row: title and a one-line summary, opening in place to the operator's full lines. */
+function KnowRow({ icon, title, summary, children }: { icon: string; title: string; summary: string; children: ReactNode }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className={"airknow" + (open ? " open" : "")}>
+      <button type="button" onClick={() => setOpen((v) => !v)} aria-expanded={open}>
+        <Markup html={icon} className="airknowico" />
+        <span className="airknowtext">
+          <b>{title}</b>
+          {open ? null : <small>{summary}</small>}
+        </span>
+        <IcChevron dir={open ? "up" : "down"} size={14} />
+      </button>
+      {open ? <div className="airknowbody">{children}</div> : null}
+    </div>
+  );
+}
+
+type TimeChip = { time: string; label: string; price?: number; seatsLeft?: number };
 
 function RequestBody({
   item,
@@ -247,13 +291,20 @@ function RequestBody({
   dates: Date[];
   onBack: () => void;
   onConfirm: (input: { dateIdx: number; slot: string; qty: number; optionIdx: number | null; addonIdx?: number[]; guest?: { name: string; phone: string; email?: string } }) => void;
-  onAsk: () => void;
+  onAsk: (text?: string) => void;
 }) {
+  const { state } = useApp();
+  const { saved } = usePrefs();
   const metro = metroById(item.metroId);
   const catName = CATS.find((c) => c.id === item.cat)?.name ?? item.cat;
-  const [dateIdx, setDateIdx] = useState(0);
+  // The day and party picked in the search sheet carry into the booking, the way Airbnb carries dates and guests.
+  const [dateIdx, setDateIdx] = useState(() => {
+    const w = getPrefs().when;
+    const i = w ? dates.findIndex((d) => dateKey(d) === w) : -1;
+    return i >= 0 ? i : 0;
+  });
   const [time, setTime] = useState<string | null>(null);
-  const [qty, setQty] = useState(2);
+  const [qty, setQty] = useState(() => Math.min(QTY_MAX, getPrefs().who || 2));
   const [optionIdx, setOptionIdx] = useState<number | null>(item.options.length === 1 ? 0 : null);
   const [pay, setPay] = useState(false);
   // The operator needs a way to reach whoever booked, and the API refuses a booking without it.
@@ -271,13 +322,19 @@ function RequestBody({
   const extras = addonIdx.map((i) => (item.addons || [])[i]).filter(Boolean);
   const [guideOpen, setGuideOpen] = useState(false);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
+  const [moreDesc, setMoreDesc] = useState(false);
+  const [nudge, setNudge] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+  const [stuck, setStuck] = useState(false);
   // The hero shows only media that really loads: no placeholder art on a listing. Photos are probed at thumbnail
   // size up front, and a slide that still fails drops out of the strip and the count.
   const [broken, setBroken] = useState<Set<string>>(new Set());
   const drop = (src: string) => setBroken((b) => (b.has(src) ? b : new Set(b).add(src)));
   const media = listingMedia(item, broken);
   const [slide, setSlide] = useState(0);
-  const stripRef = useRef<HTMLDivElement>(null);
+  const padRef = useRef<HTMLDivElement>(null);
+  const svcRef = useRef<HTMLElement>(null);
+  const dateRef = useRef<HTMLElement>(null);
   useEffect(() => probePhotos(photoCandidates(item).slice(0, 12), drop), [item.id]);
   const guide = GUIDES[item.art];
   const picked = optionIdx != null ? item.options[optionIdx] : null;
@@ -285,11 +342,10 @@ function RequestBody({
   const ready = time != null && (!needService || picked != null);
   const day = dates[dateIdx];
   const p = priceUnclaimed(picked, qty, extras);
-  const whenLine = time
-    ? [fmtDate(day), fmtTime(time), qty + (qty === 1 ? " person" : " people")].join(" · ")
-    : "";
-  const dockPrice = p.total ? money(p.total) : picked ? optionPrice(picked) || "Request" : "Request";
+  const instant = !!(item.claimed && item.instant);
+  const whenLine = time ? [fmtDate(day), fmtTime(time), qty + (qty === 1 ? " person" : " people")].join(" · ") : "";
   const score = publicRating(item);
+  const guestFav = !!score && score.rating >= 4.8 && score.reviews >= 100;
   const contact = contactFor(item);
   const facts = listingFacts(item);
   const here = useGuestPoint();
@@ -299,6 +355,51 @@ function RequestBody({
   const miles = here && pin ? milesBetween(here, pin) : null;
   const dist = miles != null && miles <= 150 && metro ? formatDistance(miles, metro.country) + " away" : null;
   const address = contact ? addressLine(contact) : null;
+  const isSaved = saved.includes(item.id);
+  const kind = ART_LABEL[item.art] || catName;
+
+  /* Live departures from the operator's own booking system, when they run one we can read. The picker paints with
+     the published times first and upgrades itself when this resolves; with no API it never resolves live. */
+  const [avail, setAvail] = useState<LiveAvailability | null>(null);
+  useEffect(() => {
+    let alive = true;
+    void fetchAvailability(item.id, dateKey(dates[0]), dates.length)
+      .then((a) => {
+        if (alive) setAvail(a);
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [item.id]);
+  const liveDays = useMemo(() => {
+    const m = new Map<string, TimeChip[]>();
+    if (!avail?.live) return m;
+    for (const d of avail.days) {
+      const chips = (d.slots || []).map((s) => {
+        const at = new Date(s.startsAt);
+        const hhmm = Number.isNaN(at.getTime()) ? s.label : String(at.getHours()).padStart(2, "0") + ":" + String(at.getMinutes()).padStart(2, "0");
+        return { time: hhmm, label: s.label || fmtTime(hhmm), price: s.priceCents != null ? s.priceCents / 100 : undefined, seatsLeft: s.seatsLeft };
+      });
+      if (chips.length) m.set(d.date, chips);
+    }
+    return m;
+  }, [avail]);
+  const live = liveDays.size > 0;
+  // Today only offers start times at least an hour out. Nobody can book a 7 AM slot at 8:30.
+  const chipsFor = (d: Date): TimeChip[] => {
+    const k = dateKey(d);
+    const isToday = k === dateKey(dates[0]);
+    const now = new Date();
+    const cutoff = now.getHours() * 60 + now.getMinutes() + 60;
+    const later = (t: string) => !isToday || Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5)) >= cutoff;
+    if (live) return (liveDays.get(k) || []).filter((c) => later(c.time)).sort((a, b) => a.time.localeCompare(b.time));
+    return SLOT_TIMES.filter(later).map((t) => ({ time: t, label: fmtTime(t) }));
+  };
+  const chips = chipsFor(day);
+  useEffect(() => {
+    if (time && !chips.some((c) => c.time === time)) setTime(null);
+  }, [dateIdx, live]);
 
   /* ---------- derived from the operator's own site, never invented. Same rules as the desktop page. ---------- */
   const requirements = item.requirements?.length ? item.requirements : facts.who.filter((l) => l.posted).map((l) => l.text);
@@ -314,80 +415,211 @@ function RequestBody({
   const openNow = itemOpenState(item);
   const dealsNow = todaysDeals(item);
   const today = item.promos?.length ? clockIn(zoneFor(item)).day : -1;
-  const badges: { icon: string; text: string; tone?: "open" | "closed" }[] = [];
-  if (openNow) badges.push({ icon: ICONS.clock, text: openNow.label, tone: openNow.open ? "open" : "closed" });
-  if (score && score.rating >= 4.8 && score.reviews >= 100) badges.push({ icon: ICONS.star, text: "Top rated" });
-  else if (score && score.reviews >= 1000) badges.push({ icon: ICONS.star, text: "Popular" });
-  if (cancel) badges.push({ icon: ICONS.check, text: cancel });
-  if (item.claimed && item.instant) badges.push({ icon: ICONS.bolt, text: "Instant confirmation" });
-  const quick: { icon: string; label: string; value: string }[] = [];
-  if (duration) quick.push({ icon: ICONS.clock, label: "Duration", value: duration });
-  if (age) quick.push({ icon: ICONS.user, label: "Minimum age", value: age + "+" });
+  /* Airbnb's highlight rows: an icon, a bold line, a grey line. Only facts this operator actually published. */
+  const rows: { icon: string; title: string; sub: string; tone?: "open" | "closed" }[] = [];
+  if (openNow) rows.push({ icon: ICONS.clock, title: openNow.label, sub: "From the hours they publish", tone: openNow.open ? "open" : "closed" });
+  if (guestFav && score) rows.push({ icon: ICONS.star, title: "Top rated", sub: "Rated " + fmtRating(score.rating) + " across " + fmtReviews(score.reviews) + " public reviews" });
+  else if (score && score.reviews >= 1000) rows.push({ icon: ICONS.star, title: "Popular", sub: fmtReviews(score.reviews) + " public reviews" });
+  if (cancel) rows.push({ icon: ICONS.check, title: cancel, sub: "Per their published cancellation terms" });
+  if (instant) rows.push({ icon: ICONS.bolt, title: "Instant confirmation", sub: "Your spot is confirmed as soon as you book" });
+  if (duration) rows.push({ icon: ICONS.clock, title: duration, sub: "Duration" });
+  if (age) rows.push({ icon: ICONS.user, title: "Ages " + age + "+", sub: "Minimum age" });
   if (item.groupInfo?.length) {
     const cap = item.groupInfo.map((g) => g.match(/(\d{1,3})\s*(?:guests?|people|passengers|riders|max)/i)).find(Boolean);
-    if (cap) quick.push({ icon: ICONS.user, label: "Group size", value: "Up to " + cap[1] });
+    if (cap) rows.push({ icon: ICONS.user, title: "Up to " + cap[1] + " guests", sub: "Group size" });
   }
-  if (item.season) quick.push({ icon: ICONS.compass, label: "Season", value: item.season });
-  if (item.waiverUrl) quick.push({ icon: ICONS.ticket, label: "Waiver", value: "Sign online first" });
+  if (item.season) rows.push({ icon: ICONS.compass, title: item.season, sub: "Season" });
+  if (item.waiverUrl) rows.push({ icon: ICONS.ticket, title: "Sign the waiver online", sub: "Saves time at check-in" });
   const hours = item.hoursText?.length ? item.hoursText : contact?.hours.map(fmtHours) || [];
   const videos = (item.ytVideos || []).slice(0, 2);
   const embed = !videos.length && !item.video && item.videoEmbed ? item.videoEmbed : null;
+  const blurb = item.blurb ? cleanDesc(item.blurb).replace(/\s+(Book|Learn more|Read more|Reserve)\.?$/i, "") : "";
+  const longBlurb = blurb.length > 260;
+  const from = fromPrice(item);
+  const fromUnit = item.options.find((o) => o.price === from);
+  const fromPer = from != null && (!fromUnit || perPerson(fromUnit)) ? " / person" : "";
+  const suggestions = useMemo(() => companySuggestions({ item, contact }).slice(0, 4), [item.id]);
+  const subtitle = [kind + " in " + item.area, metro && !item.area.includes(metro.name) && !item.area.includes(",") ? metro.name : null].filter(Boolean).join(", ");
+
+  const share = async () => {
+    const url = listingUrl(item.id);
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: item.title, url });
+        return;
+      }
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1800);
+    } catch {
+      /* dismissed */
+    }
+  };
+
+  // Checkout opens at its top; coming back from it lands where the guest left the listing.
+  const listScroll = useRef(0);
+  useEffect(() => {
+    if (!pay && padRef.current) padRef.current.scrollTop = listScroll.current;
+  }, [pay]);
+  const reserve = () => {
+    if (ready) {
+      listScroll.current = padRef.current?.scrollTop || 0;
+      setPay(true);
+      return;
+    }
+    const target = needService && !picked ? svcRef.current : dateRef.current;
+    setNudge(needService && !picked ? "Choose a service first" : "Pick a start time");
+    target?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+  useEffect(() => {
+    if (ready) setNudge(null);
+  }, [ready]);
+
+  const topButtons = (solid?: boolean) => (
+    <>
+      <button className={"aircircle" + (solid ? " solid" : "")} type="button" onClick={onBack} aria-label="Back">
+        <IcBack size={16} />
+      </button>
+      <span className="airtopright">
+        <button className={"aircircle" + (solid ? " solid" : "")} type="button" onClick={share} aria-label={copied ? "Link copied" : "Share"}>
+          {copied ? <Markup html={ICONS.check} /> : <IcShare size={16} />}
+        </button>
+        <button className={"aircircle" + (solid ? " solid" : "") + (isSaved ? " saved" : "")} type="button" onClick={() => toggleSaved(item.id)} aria-label={isSaved ? "Remove from wishlist" : "Save"} aria-pressed={isSaved}>
+          <IcHeartOnPhoto on={isSaved} size={16} />
+        </button>
+      </span>
+    </>
+  );
 
   if (pay && ready && time) {
+    const cta = !guestOk ? "Add your name and number" : instant ? (p.total ? "Confirm and pay " + money(p.total) : "Confirm booking") : "Request to book";
     return (
       <>
-        <div className="reqpad">
-          <div className="reqinner">
-            <p className="eyebrow">Your trip</p>
-            <h3>{item.title}</h3>
-            <p className="reqlede">{whenLine}</p>
-            {picked ? <p className="reqhint">{optionLabel(picked)}</p> : null}
-            <div className="lines">
-              {p.base ? (
-                <div className="line">
-                  <span>{picked ? optionLabel(picked) : "Experience"}</span>
-                  <b>{money(p.base)}</b>
-                </div>
-              ) : (
-                <div className="line">
-                  <span>Experience</span>
-                  <b>Pay with operator</b>
-                </div>
-              )}
-              {extras.map((a) => (
-                <div className="line" key={a.name}>
-                  <span>{a.name}</span>
-                  <b>{money(a.price ?? 0)}</b>
-                </div>
-              ))}
-              {p.fee ? (
-                <div className="line">
-                  <span>{serviceFeeLabel(p)}</span>
-                  <b>{money(p.fee)}</b>
+        <div className="reqpad airpay" key="pay">
+          <div className="airpaytop">
+            <button className="aircircle flat" type="button" onClick={() => setPay(false)} aria-label="Back to the listing">
+              <IcBack size={16} />
+            </button>
+            <h1>{instant ? "Confirm and pay" : "Request to book"}</h1>
+          </div>
+          <div className="airpaybody">
+            <div className="airpaycard">
+              <span className="airpaythumb">
+                {media.find((m) => m.kind === "photo") ? (
+                  <Photo src={(media.find((m) => m.kind === "photo") as { src: string }).src} kind={item.art} id={item.id + "pay"} alt="" size="thumb" />
+                ) : (
+                  <Art kind={item.art} id={item.id + "pay"} />
+                )}
+              </span>
+              <span className="airpaymeta">
+                <b>{item.title}</b>
+                <small>{kind}</small>
+                {score ? (
+                  <small className="airpayrate">
+                    <IcStar size={10} /> {fmtRating(score.rating)} ({fmtReviews(score.reviews)})
+                  </small>
+                ) : null}
+              </span>
+            </div>
+
+            <section className="airsec">
+              <h2>Your trip</h2>
+              <div className="airtriprow">
+                <span>
+                  <b>Date and time</b>
+                  <small>
+                    {fmtDate(day)} · {fmtTime(time)}
+                  </small>
+                </span>
+                <button type="button" className="airlink" onClick={() => setPay(false)}>
+                  Edit
+                </button>
+              </div>
+              <div className="airtriprow">
+                <span>
+                  <b>Guests</b>
+                  <small>{qty + (qty === 1 ? " person" : " people")}</small>
+                </span>
+                <button type="button" className="airlink" onClick={() => setPay(false)}>
+                  Edit
+                </button>
+              </div>
+              {picked ? (
+                <div className="airtriprow">
+                  <span>
+                    <b>Service</b>
+                    <small>{optionLabel(picked)}</small>
+                  </span>
                 </div>
               ) : null}
-              <div className="line total">
-                <span>Total</span>
-                <b>{p.total ? money(p.total) : "Pay on site"}</b>
+            </section>
+
+            <section className="airsec">
+              <h2>Price details</h2>
+              <div className="airlines">
+                {p.base ? (
+                  <div className="airline">
+                    <span>{picked ? optionLabel(picked) : "Experience"}</span>
+                    <span>{money(p.base)}</span>
+                  </div>
+                ) : (
+                  <div className="airline">
+                    <span>Experience</span>
+                    <span>Pay with operator</span>
+                  </div>
+                )}
+                {extras.map((a) => (
+                  <div className="airline" key={a.name}>
+                    <span>{a.name}</span>
+                    <span>{money(a.price ?? 0)}</span>
+                  </div>
+                ))}
+                {p.fee ? (
+                  <div className="airline">
+                    <span className="u">{serviceFeeLabel(p)}</span>
+                    <span>{money(p.fee)}</span>
+                  </div>
+                ) : null}
+                <div className="airline total">
+                  <b>Total</b>
+                  <b>{p.total ? money(p.total) : "Pay on site"}</b>
+                </div>
               </div>
-            </div>
-            <p className="guidehead" style={{ marginTop: 14 }}>Who's booking</p>
-            <div className="wguest">
-              <input value={guest.name} placeholder="Your name" autoComplete="name" onChange={(e) => setGuest({ ...guest, name: e.target.value })} />
-              <input value={guest.phone} placeholder="Mobile number" inputMode="tel" autoComplete="tel" onChange={(e) => setGuest({ ...guest, phone: e.target.value })} />
-              <input value={guest.email} placeholder="Email for your confirmation" inputMode="email" autoComplete="email" onChange={(e) => setGuest({ ...guest, email: e.target.value })} />
-            </div>
-            <p className="note" style={{ textAlign: "left", padding: "12px 0 0" }}>
-              {item.claimed && item.instant ? "Confirmed straight away." : "The operator confirms by text or email."} Meet at {item.area}.
-            </p>
+            </section>
+
+            <section className="airsec">
+              <h2>Who's booking</h2>
+              <p className="airsecsub">{item.title} uses these to reach you about this booking.</p>
+              <div className="airfields">
+                <label>
+                  <small>Name</small>
+                  <input value={guest.name} placeholder="Your name" autoComplete="name" onChange={(e) => setGuest({ ...guest, name: e.target.value })} />
+                </label>
+                <label>
+                  <small>Mobile number</small>
+                  <input value={guest.phone} placeholder="(555) 555-0123" inputMode="tel" autoComplete="tel" onChange={(e) => setGuest({ ...guest, phone: e.target.value })} />
+                </label>
+                <label>
+                  <small>Email</small>
+                  <input value={guest.email} placeholder="For your confirmation" inputMode="email" autoComplete="email" onChange={(e) => setGuest({ ...guest, email: e.target.value })} />
+                </label>
+              </div>
+            </section>
+
+            <section className="airsec">
+              <p className="airfine">
+                {instant
+                  ? "Confirmed straight away."
+                  : "This is a request. " + item.title + " confirms by text or email, and nothing is charged until they do."}{" "}
+                Meet at {item.area}.
+              </p>
+            </section>
           </div>
         </div>
-        <div className="dock reqdock">
-          <button className="cta ghost" onClick={() => setPay(false)}>
-            Back
-          </button>
+        <div className="airpayfoot">
           <button
-            className="cta"
+            className="airaccent wide"
+            type="button"
             disabled={!guestOk}
             onClick={() => {
               try {
@@ -405,24 +637,38 @@ function RequestBody({
               });
             }}
           >
-            {!guestOk ? "Add your name and number" : p.total ? "Confirm " + money(p.total) : "Confirm booking"}
+            {cta}
           </button>
         </div>
       </>
     );
   }
 
+  const heroH = media.length ? 300 : 0;
+
   return (
     <>
-      <div className="reqpad">
+      <div
+        className="reqpad airlisting"
+        key="listing"
+        ref={padRef}
+        onScroll={(e) => {
+          const s = e.currentTarget.scrollTop > Math.max(8, heroH - 64);
+          if (s !== stuck) setStuck(s);
+        }}
+      >
+        <div className={"airbar" + (media.length ? " overlay" : " static") + (stuck ? " stuck" : "")}>
+          <div className="airbarin">
+            {topButtons(!media.length || stuck)}
+          </div>
+        </div>
         {media.length ? (
-          <div className={"reqhero" + (media.length > 1 ? " strip" : "")}>
+          <div className="airhero">
             {media.length === 1 ? (
               <HeroSlide m={media[0]} item={item} onBroken={() => drop(media[0].src)} />
             ) : (
               <div
                 className="reqstrip"
-                ref={stripRef}
                 onScroll={(e) => {
                   const el = e.currentTarget;
                   setSlide(Math.min(media.length - 1, Math.round(el.scrollLeft / Math.max(1, el.clientWidth))));
@@ -435,491 +681,560 @@ function RequestBody({
                 ))}
               </div>
             )}
-            <button className="backbtn" type="button" onClick={onBack} aria-label="Close">
-              <Markup html={ICONS.close} />
-            </button>
-            {score ? (
-              <span className="rating">
-                <Markup html={ICONS.star} />
-                {score.rating.toFixed(1)}{" "}
-                <span className="count">({fmtReviews(score.reviews)})</span>
-              </span>
-            ) : null}
-            {media.length > 1 ? <span className="reqcount">{Math.min(slide, media.length - 1) + 1} / {media.length}</span> : null}
-          </div>
-        ) : (
-          <div className="reqtop">
-            <button className="backbtn" type="button" onClick={onBack} aria-label="Close">
-              <Markup html={ICONS.close} />
-            </button>
-            {score ? (
-              <span className="rating">
-                <Markup html={ICONS.star} />
-                {score.rating.toFixed(1)}{" "}
-                <span className="count">({fmtReviews(score.reviews)})</span>
+            {media.length > 1 ? (
+              <span className="aircounter">
+                {Math.min(slide, media.length - 1) + 1} / {media.length}
               </span>
             ) : null}
           </div>
-        )}
-        <div className="reqinner">
-        <p className="eyebrow">
-          {metro ? metro.name : item.area} · {catName}
-        </p>
-        <h3>{item.title}</h3>
-        {score ? (
-          <p className="reqrate">
-            <Markup html={ICONS.star} />
-            {score.rating.toFixed(1)}{" "}
-            <span className="count">({fmtReviews(score.reviews)} reviews)</span>
-          </p>
-        ) : null}
-        {badges.length ? (
-          <div className="reqbadges">
-            {badges.map((b) => (
-              <span key={b.text} className={"reqbadge" + (b.tone ? " " + b.tone : "")}><Markup html={b.icon} /> {b.text}</span>
-            ))}
-          </div>
-        ) : null}
-        {dealsNow.length ? (
-          <div className="reqdeal" aria-label="Today's deal">
-            <Markup html={ICONS.bolt} />
-            <span>
-              <b>Today's deal{dealsNow.length > 1 ? "s" : ""}</b>
-              {dealsNow.map((p) => (
-                <small key={p.text}>{plainWords(p.text)}{p.end ? " · until " + clock12(p.end) : p.start ? " · from " + clock12(p.start) : ""}</small>
-              ))}
-            </span>
-          </div>
-        ) : null}
-        {quick.length ? (
-          <div className="reqquick">
-            {quick.map((q) => (
-              <div key={q.label}>
-                <Markup html={q.icon} />
-                <span><small>{q.label}</small><b>{q.value}</b></span>
-              </div>
-            ))}
-          </div>
-        ) : null}
-        {item.quotes?.length ? (
-          <div className="reqquotes">
-            {item.quotes.slice(0, 2).map((r, i) => (
-              <blockquote key={i}>
-                <p>“{r.text.length > 140 ? r.text.slice(0, 140).replace(/\s+\S*$/, "") + "…" : r.text}”</p>
-                <footer>{r.rating ? "★".repeat(Math.round(r.rating)) + " " : ""}{r.author || "A guest"}</footer>
-              </blockquote>
-            ))}
-          </div>
-        ) : null}
-        {item.blurb ? (
-          <p className="reqblurb">
-            {cleanDesc(item.blurb).replace(/\s+(Book|Learn more|Read more|Reserve)\.?$/i, "")}
-            <span className="reqcredit"> · From their website</span>
-          </p>
-        ) : null}
-        {highlights.length ? (
-          <>
-            <p className="svchead">Highlights</p>
-            <Bullets items={highlights} icon={ICONS.check} />
-          </>
         ) : null}
 
-        {guide ? <><button type="button" className="guidebtn" onClick={() => setGuideOpen((v) => !v)} aria-expanded={guideOpen}>
-          <span>
-            <b>What {kindLabel(item.art)} is actually like</b>
-            <small>{guide.time}</small>
-          </span>
-          <Markup html={guideOpen ? ICONS.chevUp : ICONS.chevDown} />
-        </button>
-        {guideOpen ? (
-          <div className="guide">
-            <p className="guidehead">How the day goes</p>
-            <ol className="guidesteps">
-              {guide.steps.map((step, i) => (
-                <li key={i}>
-                  <span className="n">{i + 1}</span>
-                  <span>{step}</span>
-                </li>
-              ))}
-            </ol>
-            <p className="guidehead">Bring</p>
-            <div className="guidechips">
-              {guide.bring.map((b) => (
-                <span className="guidechip" key={b}>{b}</span>
-              ))}
-            </div>
-            <p className="guidehead">Good for</p>
-            <p className="guidetext">{guide.goodFor}</p>
-            <p className="guidehead">Nervous?</p>
-            <p className="guidetext">{guide.nerves}</p>
-            <p className="guidefoot">This is how {kindLabel(item.art)} usually works. {item.title}'s own prices, ages, limits and rules are listed below.</p>
-          </div>
-        ) : null}</> : null}
 
-        <p className="svchead">Meeting point and check-in</p>
-        <div className="contact">
-          <a
-            className="crow maps"
-            href={mapsDirHref(dest, here)}
-            target="_blank"
-            rel="noreferrer"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <Markup html={ICONS.nav} />
-            <span>
-              <b>{item.meetingPoint ? plainWords(item.meetingPoint) : place}</b>
-              {item.meetingPoint && address && item.meetingPoint !== address ? <small>{address}</small> : null}
-              <small className="go">{dist ? dist + " · Get directions" : "Get directions"}</small>
-            </span>
-          </a>
-          {contact?.phone ? (
-            <button type="button" className="crow" onClick={() => setCallOpen((v) => !v)} aria-expanded={callOpen}>
-              <Markup html={ICONS.phone} />
-              <span>
-                <b>{fmtPhone(contact.phone)}</b>
-                <small>{callOpen ? "Choose who to call" : "Tap to call"}</small>
-              </span>
-            </button>
-          ) : null}
-          {callOpen && contact?.phone ? (
-            <div className="callpick">
-              <button type="button" className="cta" onClick={onAsk}>
-                Call the 24/7 assistant
-              </button>
-              <a className="cta ghost" href={telHref(contact.phone)} onClick={(e) => e.stopPropagation()}>
-                Call a person at the shop
+        <div className={"airbody" + (media.length ? "" : " flat")}>
+          {state.removeId === item.id ? (
+            <div className="airnotice">
+              <b>Is this your business and you'd rather not be listed?</b>
+              <span>We take listings down within one business day. Send one line from a company email and it's gone.</span>
+              <a
+                className="airdark"
+                href={"mailto:harshils2340@gmail.com?subject=" + encodeURIComponent("Remove listing: " + item.title + " (" + item.id + ")") + "&body=" + encodeURIComponent("Please remove " + item.title + " from Outset.\n\nListing: " + listingUrl(item.id) + "\n")}
+              >
+                Request removal
               </a>
-              <p className="reqhint">The assistant answers by chat for now. Voice is coming.</p>
             </div>
           ) : null}
-          {hours.length ? (
-            <div className="crow">
-              <Markup html={ICONS.clock} />
+
+          <div className="airtitle">
+            <h1>{item.title}</h1>
+            <p>{subtitle}</p>
+            {duration || age ? <p className="soft">{[duration, age ? "Ages " + age + "+" : null].filter(Boolean).join(" · ")}</p> : null}
+          </div>
+
+          {score && guestFav ? (
+            <div className="airfav">
+              <span className="airfavnum">
+                <b>{fmtRating(score.rating)}</b>
+                <span className="airstars">
+                  {[0, 1, 2, 3, 4].map((i) => (
+                    <IcStar key={i} size={9} />
+                  ))}
+                </span>
+              </span>
+              <span className="airfavmid">
+                <IcLaurel />
+                <b>
+                  Guest
+                  <br />
+                  favourite
+                </b>
+                <IcLaurel flip />
+              </span>
+              <span className="airfavnum">
+                <b>{fmtReviews(score.reviews)}</b>
+                <small>Reviews</small>
+              </span>
+            </div>
+          ) : score ? (
+            <p className="airrateline">
+              <IcStar size={12} /> <b>{fmtRating(score.rating)}</b> · <span className="u">{fmtReviews(score.reviews)} reviews</span>
+            </p>
+          ) : null}
+
+          {dealsNow.length ? (
+            <div className="airdealnow" aria-label="Today's deal">
+              <Markup html={ICONS.bolt} />
               <span>
-                {hours.map((h) => (
-                  <b key={h}>{h}</b>
+                <b>Today's deal{dealsNow.length > 1 ? "s" : ""}</b>
+                {dealsNow.map((d) => (
+                  <small key={d.text}>
+                    {plainWords(d.text)}
+                    {d.end ? " · until " + clock12(d.end) : d.start ? " · from " + clock12(d.start) : ""}
+                  </small>
                 ))}
-                <small>Hours</small>
               </span>
             </div>
           ) : null}
-        </div>
-        {item.checkin ? (
-          <div className="reqbox">
-            <b>When you arrive</b>
-            {plainWords(item.checkin)}
-          </div>
-        ) : null}
 
-        <p className="svchead">Questions?</p>
-        <button type="button" className="cta askcta" onClick={onAsk}>
-          <Markup html={ICONS.spark} />
-          <span>
-            <b>Ask the 24/7 assistant</b>
-            <small>Instant answers from {item.title}'s published info only</small>
-          </span>
-        </button>
+          <section className="airsec airhost">
+            <span className="airavatar">{item.title.replace(/^the\s+/i, "").charAt(0).toUpperCase()}</span>
+            <span>
+              <b>Hosted by {item.title}</b>
+              <small>{[kind, item.area].join(" · ")}</small>
+            </span>
+          </section>
 
-        <p className="svchead">Who can go</p>
-        {requirements.length ? <Bullets items={requirements} /> : <FactList lines={facts.who.filter((l) => l.posted)} />}
-
-        {item.bring?.length ? (
-          <>
-            <p className="svchead">What to bring</p>
-            <Bullets items={item.bring} />
-          </>
-        ) : null}
-
-        {item.groupInfo?.length ? (
-          <>
-            <p className="svchead">Groups</p>
-            <Bullets items={item.groupInfo} />
-          </>
-        ) : null}
-
-        <p className="svchead">Waiver and check-in</p>
-        {waiverLines.length ? <Bullets items={waiverLines} /> : <FactList lines={facts.waiver.filter((l) => l.posted && l.text.length <= 160)} />}
-
-        {includes.length ? (
-          <>
-            <p className="svchead">What's included</p>
-            <Bullets items={includes} icon={ICONS.check} />
-          </>
-        ) : null}
-        {notIncluded.length ? (
-          <>
-            <p className="svchead">Not included</p>
-            <Bullets items={notIncluded} icon={ICONS.close} className="no" />
-          </>
-        ) : null}
-        {facts.note && !item.cancellation && !item.policies?.length ? (
-          <div className="reqbox">
-            <b>Good to know</b>
-            {facts.note}
-          </div>
-        ) : null}
-
-        {item.options.length ? (
-          <>
-            <p className="svchead">Choose a service</p>
-            {item.services && item.services.length ? (
-              <div className="svclist">
-                {item.services.map((svc, svcIdx) => (
-                  <div className="svc" key={svc.name + "|" + svcIdx}>
-                    {svc.photo ? <img className="svcpic" src={thumb(svc.photo, "thumb")} srcSet={srcSet(svc.photo, "thumb")} sizes={SIZES.thumb} alt={plainWords(svc.name)} loading="lazy" decoding="async" referrerPolicy="no-referrer" onError={(e) => ((e.currentTarget as HTMLImageElement).style.display = "none")} /> : null}
-                    <div className="svchead2">
-                      <b>{plainWords(svc.name)}</b>
-                      {svc.desc && cleanDesc(svc.desc).length > 140 ? (
-                        <button type="button" className="svcabout" onClick={() => setOpenSvc(openSvc === svc.name ? null : svc.name)}>
-                          {openSvc === svc.name ? "Less" : "More"}
-                        </button>
-                      ) : null}
-                    </div>
-                    {svc.desc ? <p className="svcdesc">{openSvc === svc.name || cleanDesc(svc.desc).length <= 140 ? cleanDesc(svc.desc) : cleanDesc(svc.desc).slice(0, 140).replace(/\s+\S*$/, "") + "…"}</p> : null}
-                    {svc.variants.map((v) => (
-                      <button
-                        key={svc.name + v.optionIdx}
-                        type="button"
-                        className="addon"
-                        aria-pressed={optionIdx === v.optionIdx}
-                        onClick={() => setOptionIdx(v.optionIdx)}
-                      >
-                        <span className="tick">
-                          <Markup html={ICONS.check} />
-                        </span>
-                        <span className="txt">
-                          <b>{plainWords(v.label)}</b>
-                        </span>
-                        <span className="mono" style={{ fontSize: 13, fontWeight: 500 }}>
-                          {v.price != null ? priceWith(v.price, v.per) : "Price on request"}
-                        </span>
-                      </button>
-                    ))}
+          {rows.length ? (
+            <section className="airsec">
+              <div className="airrows">
+                {rows.map((r) => (
+                  <div key={r.title + r.sub} className={"airrow" + (r.tone ? " " + r.tone : "")}>
+                    <Markup html={r.icon} className="airrowico" />
+                    <span className="airrowtext">
+                      <b>{r.title}</b>
+                      <small>{r.sub}</small>
+                    </span>
                   </div>
                 ))}
               </div>
-            ) : (
-              <div>
-                {item.options.map((o, i) => (
+            </section>
+          ) : null}
+
+          {blurb ? (
+            <section className="airsec">
+              <p className={"airdesc" + (longBlurb && !moreDesc ? " clamp" : "")}>{blurb}</p>
+              {longBlurb ? (
+                <button type="button" className="airmorebtn" onClick={() => setMoreDesc((v) => !v)}>
+                  {moreDesc ? "Show less" : "Show more"} <IcChevron size={10} dir={moreDesc ? "up" : "right"} />
+                </button>
+              ) : null}
+            </section>
+          ) : null}
+
+          {highlights.length ? (
+            <Section title="What you'll do">
+              <Bullets items={highlights} icon={ICONS.check} />
+            </Section>
+          ) : null}
+
+          {guide ? (
+            <section className="airsec">
+              <button type="button" className="airguide" onClick={() => setGuideOpen((v) => !v)} aria-expanded={guideOpen}>
+                <span>
+                  <b>What {kindLabel(item.art)} is actually like</b>
+                  <small>{guide.time}</small>
+                </span>
+                <IcChevron size={14} dir={guideOpen ? "up" : "down"} />
+              </button>
+              {guideOpen ? (
+                <div className="guide airguidebody">
+                  <p className="guidehead">How the day goes</p>
+                  <ol className="guidesteps">
+                    {guide.steps.map((step, i) => (
+                      <li key={i}>
+                        <span className="n">{i + 1}</span>
+                        <span>{step}</span>
+                      </li>
+                    ))}
+                  </ol>
+                  <p className="guidehead">Bring</p>
+                  <div className="guidechips">
+                    {guide.bring.map((b) => (
+                      <span className="guidechip" key={b}>
+                        {b}
+                      </span>
+                    ))}
+                  </div>
+                  <p className="guidehead">Good for</p>
+                  <p className="guidetext">{guide.goodFor}</p>
+                  <p className="guidehead">Nervous?</p>
+                  <p className="guidetext">{guide.nerves}</p>
+                  <p className="guidefoot">
+                    This is how {kindLabel(item.art)} usually works. {item.title}'s own prices, ages, limits and rules are listed below.
+                  </p>
+                </div>
+              ) : null}
+            </section>
+          ) : null}
+
+          {item.options.length ? (
+            <Section title="Choose a service" innerRef={svcRef}>
+              {item.services && item.services.length ? (
+                <div className="svclist">
+                  {item.services.map((svc, svcIdx) => (
+                    <div className="svc" key={svc.name + "|" + svcIdx}>
+                      {svc.photo ? <img className="svcpic" src={thumb(svc.photo, "thumb")} srcSet={srcSet(svc.photo, "thumb")} sizes={SIZES.thumb} alt={plainWords(svc.name)} loading="lazy" decoding="async" referrerPolicy="no-referrer" onError={(e) => ((e.currentTarget as HTMLImageElement).style.display = "none")} /> : null}
+                      <div className="svchead2">
+                        <b>{plainWords(svc.name)}</b>
+                        {svc.desc && cleanDesc(svc.desc).length > 140 ? (
+                          <button type="button" className="svcabout" onClick={() => setOpenSvc(openSvc === svc.name ? null : svc.name)}>
+                            {openSvc === svc.name ? "Less" : "More"}
+                          </button>
+                        ) : null}
+                      </div>
+                      {svc.desc ? <p className="svcdesc">{openSvc === svc.name || cleanDesc(svc.desc).length <= 140 ? cleanDesc(svc.desc) : cleanDesc(svc.desc).slice(0, 140).replace(/\s+\S*$/, "") + "…"}</p> : null}
+                      {svc.variants.map((v) => (
+                        <button key={svc.name + v.optionIdx} type="button" className="addon" aria-pressed={optionIdx === v.optionIdx} onClick={() => setOptionIdx(v.optionIdx)}>
+                          <span className="tick radio" />
+                          <span className="txt">
+                            <b>{plainWords(v.label)}</b>
+                          </span>
+                          <span className="addonprice">{v.price != null ? priceWith(v.price, v.per) : "Price on request"}</span>
+                        </button>
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="airoptions">
+                  {item.options.map((o, i) => (
+                    <button key={o.name + i} type="button" className="addon" aria-pressed={optionIdx === i} onClick={() => setOptionIdx(i)}>
+                      <span className="tick radio" />
+                      <span className="txt">
+                        <b>{plainWords(o.name)}</b>
+                        {o.detail ? <small>{plainWords(o.detail)}</small> : null}
+                      </span>
+                      {optionPrice(o) ? <span className="addonprice">{optionPrice(o)}</span> : null}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </Section>
+          ) : null}
+
+          {item.addons && item.addons.length ? (
+            <Section title="Add-ons">
+              <div className="airoptions">
+                {item.addons.map((a, i) => (
                   <button
-                    key={o.name + i}
+                    key={a.name + i}
                     type="button"
                     className="addon"
-                    aria-pressed={optionIdx === i}
-                    onClick={() => setOptionIdx(i)}
+                    aria-pressed={addonIdx.includes(i)}
+                    onClick={() => setAddonIdx((cur) => (cur.includes(i) ? cur.filter((x) => x !== i) : [...cur, i]))}
                   >
                     <span className="tick">
                       <Markup html={ICONS.check} />
                     </span>
                     <span className="txt">
-                      <b>{plainWords(o.name)}</b>
-                      {o.detail ? <small>{plainWords(o.detail)}</small> : null}
+                      <b>{a.name}</b>
+                      {a.detail ? <small>{a.detail}</small> : null}
                     </span>
-                    {optionPrice(o) ? (
-                      <span className="mono" style={{ fontSize: 13, fontWeight: 500 }}>
-                        {optionPrice(o)}
-                      </span>
-                    ) : null}
+                    <span className="addonprice">{a.price ? "+" + money(a.price) : "Free"}</span>
                   </button>
                 ))}
               </div>
-            )}
-          </>
-        ) : null}
+            </Section>
+          ) : null}
 
-        {item.addons && item.addons.length ? (
-          <>
-            <p className="svchead">Add-ons</p>
-            <div>
-              {item.addons.map((a, i) => (
-                <button
-                  key={a.name + i}
-                  type="button"
-                  className="addon"
-                  aria-pressed={addonIdx.includes(i)}
-                  onClick={() => setAddonIdx((cur) => (cur.includes(i) ? cur.filter((x) => x !== i) : [...cur, i]))}
-                >
-                  <span className="tick">
-                    <Markup html={ICONS.check} />
-                  </span>
-                  <span className="txt">
-                    <b>{a.name}</b>
-                    {a.detail ? <small>{a.detail}</small> : null}
-                  </span>
-                  <span className="mono" style={{ fontSize: 13, fontWeight: 500 }}>
-                    {a.price ? "+" + money(a.price) : "Free"}
-                  </span>
+          <Section title="Date and time" sub={live ? "Live times from their booking system" : "Start times for " + fmtDate(day)} innerRef={dateRef}>
+            <SlotCalendar
+              dates={dates}
+              dateIdx={dateIdx}
+              onPickDate={setDateIdx}
+              slots={chips.map((c) => c.time)}
+              time={time}
+              onPickTime={setTime}
+              dayMeta={live ? (d) => { const n = (liveDays.get(dateKey(d)) || []).length; return { open: n, full: n === 0 }; } : undefined}
+              slotMeta={
+                live
+                  ? (t) => {
+                      const c = chips.find((x) => x.time === t);
+                      const left = c?.seatsLeft;
+                      return {
+                        note: left === 0 ? "Sold out" : left != null && left <= 4 ? left + " left" : c?.price != null ? money(c.price) : undefined,
+                        disabled: left === 0,
+                        tone: left === 0 ? "gone" : left != null && left <= 4 ? "few" : undefined,
+                      };
+                    }
+                  : undefined
+              }
+            />
+            <div className="airguests">
+              <span>
+                <b>Guests</b>
+                <small>People in your group</small>
+              </span>
+              <span className="airstepper">
+                <button type="button" onClick={() => setQty(qty - 1)} disabled={qty <= 1} aria-label="Fewer people">
+                  <IcMinus />
                 </button>
-              ))}
+                <span className="n">{qty}</span>
+                <button type="button" onClick={() => setQty(qty + 1)} disabled={qty >= QTY_MAX} aria-label="More people">
+                  <IcPlus />
+                </button>
+              </span>
             </div>
-          </>
-        ) : null}
+          </Section>
 
-        {item.promos?.length ? (
-          <>
-            <p className="svchead">Deals</p>
-            <ul className="reqdeals">
-              {item.promos.map((p) => {
-                const on = dealsNow.includes(p);
-                return (
-                  <li key={p.text} className={on ? "on" : ""}>
-                    <span className="wdealchips" aria-label={dayLabel(p.days)}>
-                      {p.days.length ? DAY_SHORT.map((d, i) => (
-                        <i key={d} className={p.days.includes(i) ? (i === today ? "hit today" : "hit") : ""}>{d}</i>
-                      )) : <i className={"hit" + (on ? " today" : "")}>Every day</i>}
-                    </span>
-                    <span className="wdealtext">
-                      {plainWords(p.text)}
-                      {p.start || p.end ? <small>{p.start ? clock12(p.start) : "Open"} to {p.end ? clock12(p.end) : "close"}</small> : null}
-                    </span>
-                  </li>
-                );
-              })}
-            </ul>
-          </>
-        ) : null}
+          {includes.length || notIncluded.length ? (
+            <Section title="What's included">
+              {includes.length ? <Bullets items={includes} icon={ICONS.check} /> : null}
+              {notIncluded.length ? (
+                <>
+                  <p className="airminor">Not included</p>
+                  <Bullets items={notIncluded} icon={ICONS.close} className="no" />
+                </>
+              ) : null}
+            </Section>
+          ) : null}
 
-        {item.cancellation || item.waiverUrl || otherPolicies.length ? (
-          <>
-            <p className="svchead">Cancellation policy</p>
-            {item.cancellation ? (
-              <p className="reqpolicy">{plainWords(item.cancellation)}</p>
-            ) : (
-              <p className="reqpolicy gap">{item.title} has not published cancellation terms. Otto will have them confirm before you pay.</p>
-            )}
-            {otherPolicies.length ? <Bullets items={otherPolicies} /> : null}
-            {item.waiverUrl ? (
-              <a className="reqwaiver" href={item.waiverUrl} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}>
-                <Markup html={ICONS.ticket} />
+          <Section title="Where you'll be">
+            <div className="contact">
+              <a className="crow maps" href={mapsDirHref(dest, here)} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}>
+                <IcPin size={20} />
                 <span>
-                  <b>Sign the waiver online before you arrive</b>
-                  <small>Saves time at check-in. Opens the operator's waiver form.</small>
+                  <b>{item.meetingPoint ? plainWords(item.meetingPoint) : place}</b>
+                  {item.meetingPoint && address && item.meetingPoint !== address ? <small>{address}</small> : null}
+                  <small className="go">{dist ? dist + " · Get directions" : "Get directions"}</small>
                 </span>
               </a>
-            ) : null}
-          </>
-        ) : null}
-
-        {item.faq?.length ? (
-          <>
-            <p className="svchead">Frequently asked questions</p>
-            <div className="reqfaq">
-              {item.faq.map((f, i) => (
-                <div key={i} className={"reqfaqitem" + (openFaq === i ? " open" : "")}>
-                  <button type="button" onClick={() => setOpenFaq(openFaq === i ? null : i)} aria-expanded={openFaq === i}>
-                    <span>{plainWords(f.q)}</span>
-                    <Markup html={openFaq === i ? ICONS.chevUp : ICONS.chevDown} />
+              {contact?.phone ? (
+                <button type="button" className="crow" onClick={() => setCallOpen((v) => !v)} aria-expanded={callOpen}>
+                  <Markup html={ICONS.phone} />
+                  <span>
+                    <b>{fmtPhone(contact.phone)}</b>
+                    <small>{callOpen ? "Choose who to call" : "Tap to call"}</small>
+                  </span>
+                </button>
+              ) : null}
+              {callOpen && contact?.phone ? (
+                <div className="callpick">
+                  <button type="button" className="airaccent" onClick={() => onAsk()}>
+                    Call the 24/7 assistant
                   </button>
-                  {openFaq === i ? <p>{plainWords(f.a)}</p> : null}
+                  <a className="airghost" href={telHref(contact.phone)} onClick={(e) => e.stopPropagation()}>
+                    Call a person at the shop
+                  </a>
+                  <p className="reqhint">The assistant answers by chat for now. Voice is coming.</p>
                 </div>
-              ))}
-            </div>
-          </>
-        ) : null}
-
-        {videos.length || embed ? (
-          <>
-            <p className="svchead">See it in action</p>
-            <p className="reqhint" style={{ marginTop: 2 }}>Videos from {item.title}'s own channels.</p>
-            <div className="reqvideos">
-              {videos.map((v) => (
-                <div className="reqvideo" key={v.id}>
-                  <iframe
-                    src={"https://www.youtube-nocookie.com/embed/" + v.id + "?rel=0&modestbranding=1"}
-                    title={v.title}
-                    loading="lazy"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                    allowFullScreen
-                  />
-                  <small>{v.title}</small>
-                </div>
-              ))}
-              {embed ? (
-                <div className="reqvideo">
-                  <iframe src={embed} title={item.title + " video"} loading="lazy" allow="autoplay; encrypted-media; picture-in-picture" allowFullScreen />
+              ) : null}
+              {hours.length ? (
+                <div className="crow">
+                  <Markup html={ICONS.clock} />
+                  <span>
+                    {hours.map((h) => (
+                      <b key={h}>{h}</b>
+                    ))}
+                    <small>Hours</small>
+                  </span>
                 </div>
               ) : null}
             </div>
-          </>
-        ) : null}
+            {item.checkin ? (
+              <div className="reqbox">
+                <b>When you arrive</b>
+                {plainWords(item.checkin)}
+              </div>
+            ) : null}
+          </Section>
 
-        {score ? (
-          <>
-            <p className="svchead">Reviews</p>
-            <div className="reqreviews">
-              <b>{score.rating.toFixed(1)}</b>
-              <span>
-                <span className="stars" aria-hidden="true">{[0, 1, 2, 3, 4].map((i) => <Markup key={i} html={ICONS.star} />)}</span>
-                <small>{fmtReviews(score.reviews)} public reviews{item.quotes?.length ? "" : ". Written reviews arrive once guests book through Outset."}</small>
-              </span>
+          <section className="airsec">
+            <div className="airotto">
+              <div className="airottohead">
+                <span className="airottomark">
+                  <Markup html={ICONS.spark} />
+                </span>
+                <span>
+                  <b>Ask {ASSISTANT_NAME}</b>
+                  <small>Instant answers from {item.title}'s published info, 24/7</small>
+                </span>
+              </div>
+              {suggestions.length ? (
+                <div className="airottochips">
+                  {suggestions.map((s) => (
+                    <button key={s} type="button" onClick={() => onAsk(s)}>
+                      {s}
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+              <button type="button" className="airghost wide" onClick={() => onAsk()}>
+                Message {ASSISTANT_NAME}
+              </button>
             </div>
-          </>
-        ) : null}
+          </section>
 
-        <p className="svchead">Date and time</p>
-        <SlotCalendar
-          dates={dates}
-          dateIdx={dateIdx}
-          onPickDate={setDateIdx}
-          slots={SLOT_TIMES}
-          time={time}
-          onPickTime={setTime}
-        />
+          {score || item.quotes?.length ? (
+            <Section title={score ? "★ " + fmtRating(score.rating) + " · " + fmtReviews(score.reviews) + " reviews" : "Reviews"}>
+              {item.quotes?.length ? (
+                <div className="airquotes">
+                  {item.quotes.map((r, i) => (
+                    <blockquote key={i}>
+                      {r.rating ? (
+                        <span className="airstars">
+                          {Array.from({ length: Math.round(r.rating) }, (_, k) => (
+                            <IcStar key={k} size={9} />
+                          ))}
+                        </span>
+                      ) : null}
+                      <p>{r.text.length > 180 ? r.text.slice(0, 180).replace(/\s+\S*$/, "") + "…" : r.text}</p>
+                      <footer>{r.author || "A guest"}</footer>
+                    </blockquote>
+                  ))}
+                </div>
+              ) : (
+                <p className="airsecsub">Written reviews arrive once guests book through Outset.</p>
+              )}
+            </Section>
+          ) : null}
 
-        <div className="rowbetween" style={{ marginTop: 18, alignItems: "center" }}>
-          <p className="svchead" style={{ margin: 0 }}>
-            People
-          </p>
-          <span className="stepper">
-            <button type="button" onClick={() => setQty(qty - 1)} disabled={qty <= 1}>
-              −
-            </button>
-            <span className="n">{qty}</span>
-            <button type="button" onClick={() => setQty(qty + 1)} disabled={qty >= QTY_MAX}>
-              +
-            </button>
-          </span>
-        </div>
+          {item.promos?.length ? (
+            <Section title="Deals">
+              <ul className="reqdeals">
+                {item.promos.map((d) => {
+                  const onToday = dealsNow.includes(d);
+                  return (
+                    <li key={d.text} className={onToday ? "on" : ""}>
+                      <span className="wdealchips" aria-label={dayLabel(d.days)}>
+                        {d.days.length ? (
+                          DAY_SHORT.map((dn, i) => (
+                            <i key={dn} className={d.days.includes(i) ? (i === today ? "hit today" : "hit") : ""}>
+                              {dn}
+                            </i>
+                          ))
+                        ) : (
+                          <i className={"hit" + (onToday ? " today" : "")}>Every day</i>
+                        )}
+                      </span>
+                      <span className="wdealtext">
+                        {plainWords(d.text)}
+                        {d.start || d.end ? (
+                          <small>
+                            {d.start ? clock12(d.start) : "Open"} to {d.end ? clock12(d.end) : "close"}
+                          </small>
+                        ) : null}
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+            </Section>
+          ) : null}
+
+          <Section title="Things to know">
+            <div className="airknows">
+              <KnowRow icon={ICONS.user} title="Who can go" summary={requirements[0] ? plainWords(requirements[0]) : "Not published yet"}>
+                {requirements.length ? <Bullets items={requirements} /> : <FactList lines={facts.who.filter((l) => l.posted)} />}
+              </KnowRow>
+              {item.bring?.length ? (
+                <KnowRow icon={ICONS.ticket} title="What to bring" summary={plainWords(item.bring.slice(0, 3).join(", "))}>
+                  <Bullets items={item.bring} />
+                </KnowRow>
+              ) : null}
+              {item.groupInfo?.length ? (
+                <KnowRow icon={ICONS.user} title="Groups" summary={plainWords(item.groupInfo[0])}>
+                  <Bullets items={item.groupInfo} />
+                </KnowRow>
+              ) : null}
+              <KnowRow icon={ICONS.check} title="Waiver and check-in" summary={waiverLines[0] ? plainWords(waiverLines[0]) : item.waiverUrl ? "Sign online before you arrive" : "Not published yet"}>
+                {waiverLines.length ? <Bullets items={waiverLines} /> : <FactList lines={facts.waiver.filter((l) => l.posted && l.text.length <= 160)} />}
+                {item.waiverUrl ? (
+                  <a className="reqwaiver" href={item.waiverUrl} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}>
+                    <Markup html={ICONS.ticket} />
+                    <span>
+                      <b>Sign the waiver online before you arrive</b>
+                      <small>Saves time at check-in. Opens the operator's waiver form.</small>
+                    </span>
+                  </a>
+                ) : null}
+              </KnowRow>
+              <KnowRow icon={ICONS.clock} title="Cancellation policy" summary={cancel || (item.cancellation ? plainWords(item.cancellation) : "Confirmed with the operator before you pay")}>
+                {item.cancellation ? (
+                  <p className="reqpolicy">{plainWords(item.cancellation)}</p>
+                ) : (
+                  <p className="reqpolicy gap">{item.title} has not published cancellation terms. Otto will have them confirm before you pay.</p>
+                )}
+                {otherPolicies.length ? <Bullets items={otherPolicies} /> : null}
+                {facts.note && !item.cancellation && !item.policies?.length ? <p className="reqpolicy">{facts.note}</p> : null}
+              </KnowRow>
+            </div>
+          </Section>
+
+          {item.faq?.length ? (
+            <Section title="Frequently asked questions">
+              <div className="reqfaq">
+                {item.faq.map((f, i) => (
+                  <div key={i} className={"reqfaqitem" + (openFaq === i ? " open" : "")}>
+                    <button type="button" onClick={() => setOpenFaq(openFaq === i ? null : i)} aria-expanded={openFaq === i}>
+                      <span>{plainWords(f.q)}</span>
+                      <IcChevron size={14} dir={openFaq === i ? "up" : "down"} />
+                    </button>
+                    {openFaq === i ? <p>{plainWords(f.a)}</p> : null}
+                  </div>
+                ))}
+              </div>
+            </Section>
+          ) : null}
+
+          {videos.length || embed ? (
+            <Section title="See it in action" sub={"Videos from " + item.title + "'s own channels."}>
+              <div className="reqvideos">
+                {videos.map((v) => (
+                  <div className="reqvideo" key={v.id}>
+                    <iframe
+                      src={"https://www.youtube-nocookie.com/embed/" + v.id + "?rel=0&modestbranding=1"}
+                      title={v.title}
+                      loading="lazy"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                    />
+                    <small>{v.title}</small>
+                  </div>
+                ))}
+                {embed ? (
+                  <div className="reqvideo">
+                    <iframe src={embed} title={item.title + " video"} loading="lazy" allow="autoplay; encrypted-media; picture-in-picture" allowFullScreen />
+                  </div>
+                ) : null}
+              </div>
+            </Section>
+          ) : null}
         </div>
       </div>
-      <div className="dock reqdock">
-        <div className="price">
-          <b>{dockPrice}</b>
-          <span className="min">{ready ? whenLine : "Pick a time"}</span>
-        </div>
-        <button className="cta" disabled={!ready} onClick={() => setPay(true)}>
-          Book
+
+      <div className="airreserve">
+        <button type="button" className="airreserveprice" onClick={() => dateRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}>
+          {ready && p.total ? (
+            <span className="big">
+              <b>{money(p.total)}</b> total
+            </span>
+          ) : picked && picked.price != null ? (
+            <span className="big">
+              <b>{priceWith(picked.price, picked.per)}</b>
+            </span>
+          ) : from != null ? (
+            <span className="big">
+              From <b>{money(from)}</b>
+              {fromPer}
+            </span>
+          ) : (
+            <span className="big">
+              <b>{instant ? "Instant Book" : "Request to book"}</b>
+            </span>
+          )}
+          <span className={"when" + (nudge ? " nudge" : "")}>{nudge || (ready && time ? day.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" }) + " · " + fmtTime(time) : "Choose a date")}</span>
+        </button>
+        <button type="button" className="airaccent" onClick={reserve}>
+          {instant ? "Reserve" : "Request"}
         </button>
       </div>
     </>
   );
 }
 
+/* ---------------------------------------------------------------------------------------------------------------
+   Search: Airbnb's full-screen stacked sheet. Where (open, with a field and a suggestion list), then When and Who
+   folded, Clear all and Search along the bottom. Outset's Where field also finds activities and businesses, since
+   people search for "kayak" as often as for a town. Nothing applies until Search.
+   --------------------------------------------------------------------------------------------------------------- */
+
+type PendingPlace = { kind: "metro"; id: string } | { kind: "near"; place: Place } | null;
+
 function countInMetro(metroId: string): number {
   if (metroId === ALL_METRO_ID) return getCatalog().length;
   return getCatalog().filter((u) => u.metroId === metroId).length;
 }
 
-function MetroBody({
-  current,
-  onPick,
-  onBack,
-}: {
-  current: string;
-  onPick: (metroId: string) => void;
-  onBack: () => void;
-}) {
-  const { state, setNear } = useApp();
-  const [q, setQ] = useState("");
+function SearchBody() {
+  const { sheetMode } = usePrefs();
+  return sheetMode === "filters" ? <FiltersBody /> : <WhereWhenWho />;
+}
+
+function WhereWhenWho() {
+  const { state, dates, closeSheet, setQ, setMetro, setNear, openRequest } = useApp();
+  const prefs = getPrefs();
+  const [step, setStep] = useState<"where" | "when" | "who">("where");
+  const [text, setText] = useState("");
+  const [what, setWhat] = useState<string>(state.q);
+  const [where, setWhere] = useState<PendingPlace>(null);
+  const [when, setWhen] = useState<string | null>(prefs.when && dates.some((d) => dateKey(d) === prefs.when) ? prefs.when : null);
+  const [who, setWho] = useState<number | null>(prefs.who);
   const [hits, setHits] = useState<Place[]>([]);
   const [locating, setLocating] = useState(false);
-  const needle = q.trim().toLowerCase();
-  const filtered = METROS.filter((m) => {
-    if (!needle) return true;
-    return (m.name + " " + m.region + " " + m.country).toLowerCase().includes(needle);
-  });
+  const inputRef = useRef<HTMLInputElement>(null);
+  const needle = text.trim();
 
-  // Any town, beach or postcode, not just the 47 metros. Same place search the desktop uses.
+  // Any town, beach or postcode, not just the metros. Same place search the desktop uses.
   useEffect(() => {
     if (needle.length < 3) {
       setHits([]);
@@ -927,122 +1242,408 @@ function MetroBody({
     }
     let live = true;
     const t = window.setTimeout(() => {
-      void searchPlaces(q, state.near).then((r) => live && setHits(r));
+      void searchPlaces(needle, state.near).then((r) => live && setHits(r));
     }, 220);
     return () => {
       live = false;
       window.clearTimeout(t);
     };
-  }, [q, needle, state.near]);
+  }, [needle, state.near]);
 
-  const pickPlace = (place: Place) => {
-    setNear(place);
-    onBack();
+  const found = useMemo(() => (needle ? searchSuggest(getCatalog(), needle, { metroId: ALL_METRO_ID, cat: "all" }, 4) : null), [needle]);
+  const seeded = useMemo(() => METROS.map((m) => ({ m, n: countInMetro(m.id) })).filter((x) => x.n > 0).sort((a, b) => b.n - a.n), [state.catalogVersion]);
+
+  const placeName = where ? (where.kind === "near" ? where.place.label : metroLabel(where.id)) : state.near ? state.near.label : metroLabel(state.metroId);
+  const whenDate = when ? dates.find((d) => dateKey(d) === when) : undefined;
+  const whenName = whenDate ? whenDate.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" }) : "Any week";
+  const whoName = who ? who + (who === 1 ? " guest" : " guests") : "Add guests";
+
+  const pickPlace = (pl: PendingPlace) => {
+    setWhere(pl);
+    setText("");
+    setStep("when");
   };
 
   const useHere = async () => {
     setLocating(true);
     const pt = await currentLocation();
     setLocating(false);
-    if (pt) pickPlace({ label: "Near me", sub: "Your current location", lat: pt.lat, lon: pt.lon });
+    if (pt) pickPlace({ kind: "near", place: { label: "Near me", sub: "Your current location", lat: pt.lat, lon: pt.lon } });
   };
-  const seeded = filtered.filter((m) => countInMetro(m.id) > 0);
-  const rest = filtered.filter((m) => countInMetro(m.id) === 0);
-  const us = (rows: typeof METROS) => rows.filter((m) => m.country === "US");
-  const ca = (rows: typeof METROS) => rows.filter((m) => m.country === "CA");
+
+  const clearAll = () => {
+    setText("");
+    setWhat("");
+    setWhere({ kind: "metro", id: ALL_METRO_ID });
+    setWhen(null);
+    setWho(null);
+    setStep("where");
+  };
+
+  const run = () => {
+    let query = (what || needle).trim();
+    // "kayak tampa" with Tampa picked becomes a kayak search in Tampa, not a search for the word "tampa".
+    if (where?.kind === "metro") {
+      const named = metroInQuery(query);
+      if (named && named.metro.id === where.id) {
+        const cut = new Set(named.words);
+        query = query.split(/\s+/).filter((w) => !cut.has(w.toLowerCase().replace(/[^a-z0-9]+/g, ""))).join(" ").trim();
+      }
+    }
+    setPrefs({ when, who, view: "feed" });
+    setQ(query);
+    if (where?.kind === "metro") setMetro(where.id);
+    else if (where?.kind === "near") {
+      setNear(where.place);
+      closeSheet();
+    } else closeSheet();
+  };
 
   return (
-    <>
-      <p className="eyebrow">Where</p>
-      <h3>Choose an area</h3>
-      <p style={{ fontSize: 14, color: "var(--ink-soft)", margin: "4px 0 0" }}>
-        Search any place, use where you are, or pick one of {METROS.length} cities.
-      </p>
-      <div className="search" style={{ marginTop: 16 }}>
-        <input
-          placeholder="Town, beach, postcode"
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          aria-label="Search for a place"
-        />
+    <div className="airsearch">
+      <div className="airsearchtop">
+        <button type="button" className="aircircle flat bordered" onClick={closeSheet} aria-label="Close">
+          <IcClose size={12} />
+        </button>
+        <span className="airsearchtab">Experiences</span>
+        <span className="aircircle ghostslot" aria-hidden />
       </div>
-      <button type="button" className="metroitem metrohere" onClick={useHere} disabled={locating}>
-        <span>
-          <b>{locating ? "Finding you…" : "Use my current location"}</b>
-          <small>Sorts everything by how far it is from you</small>
-        </span>
-        <Markup html={ICONS.pin} />
-      </button>
-      {state.near ? (
-        <button type="button" className="metroitem" aria-pressed onClick={() => { setNear(null); onBack(); }}>
-          <span>
-            <b>{state.near.label}</b>
-            <small>Tap to clear and browse by city instead</small>
-          </span>
-          <Markup html={ICONS.close} />
+
+      <div className="airsearchcards">
+        {step === "where" ? (
+          <section className="airscard open">
+            <h2>Where to?</h2>
+            <label className="airsfield">
+              <IcSearch size={16} />
+              <input
+                ref={inputRef}
+                value={text}
+                autoFocus={false}
+                placeholder="Search places or activities"
+                aria-label="Search places or activities"
+                autoComplete="off"
+                autoCorrect="off"
+                spellCheck={false}
+                onChange={(e) => setText(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    run();
+                  }
+                }}
+              />
+              {text ? (
+                <button type="button" className="airsclear" aria-label="Clear" onClick={() => setText("")}>
+                  <IcClose size={8} />
+                </button>
+              ) : null}
+            </label>
+            {what || where ? (
+              <div className="airschips">
+                {what ? (
+                  <button type="button" className="airschip" onClick={() => setWhat("")} aria-label={"Remove " + what}>
+                    {what} <IcClose size={8} />
+                  </button>
+                ) : null}
+                {where ? (
+                  <button type="button" className="airschip" onClick={() => setWhere(null)} aria-label={"Remove " + placeName}>
+                    {placeName} <IcClose size={8} />
+                  </button>
+                ) : null}
+              </div>
+            ) : null}
+
+            <div className="airslist">
+              {needle ? (
+                <>
+                  {(found?.places ?? []).map((pl) => (
+                    <button type="button" key={"m" + pl.metro.id} className="airsitem" onClick={() => pickPlace({ kind: "metro", id: pl.metro.id })}>
+                      <span className="airstile">
+                        <IcPin size={20} />
+                      </span>
+                      <span>
+                        <b>{pl.metro.name}</b>
+                        <small>
+                          {pl.metro.region}, {pl.metro.country === "CA" ? "Canada" : "United States"} · {pl.count.toLocaleString()} places
+                        </small>
+                      </span>
+                    </button>
+                  ))}
+                  {(found?.activities ?? []).map((a) => (
+                    <button
+                      type="button"
+                      key={"a" + a.art}
+                      className="airsitem"
+                      onClick={() => {
+                        setWhat(a.query);
+                        setText("");
+                      }}
+                    >
+                      <span className="airstile art">
+                        <Art kind={a.art} id={"ss" + a.art} />
+                      </span>
+                      <span>
+                        <b>{a.label}</b>
+                        <small>{a.count.toLocaleString()} places</small>
+                      </span>
+                    </button>
+                  ))}
+                  {hits.map((h) => (
+                    <button type="button" key={"p" + h.label + h.lat} className="airsitem" onClick={() => pickPlace({ kind: "near", place: h })}>
+                      <span className="airstile">
+                        <IcPin size={20} />
+                      </span>
+                      <span>
+                        <b>{h.label}</b>
+                        <small>{h.sub}</small>
+                      </span>
+                    </button>
+                  ))}
+                  {(found?.operators ?? []).map((u) => {
+                    const m = metroById(u.metroId);
+                    return (
+                      <button type="button" key={"o" + u.id} className="airsitem" onClick={() => openRequest(u.id)}>
+                        <span className="airstile art">
+                          {u.cover ? <Photo src={u.cover} kind={u.art} id={u.id + "so"} alt="" size="thumb" /> : <Art kind={u.art} id={u.id + "so"} />}
+                        </span>
+                        <span>
+                          <b>{u.title}</b>
+                          <small>
+                            {(ART_LABEL[u.art] ? ART_LABEL[u.art] + " · " : "") + u.area}
+                            {m ? " · " + m.name : ""}
+                          </small>
+                        </span>
+                      </button>
+                    );
+                  })}
+                  {needle.length >= 2 ? (
+                    <button
+                      type="button"
+                      className="airsitem"
+                      onClick={() => {
+                        setWhat(needle);
+                        setText("");
+                      }}
+                    >
+                      <span className="airstile">
+                        <IcSearch size={18} />
+                      </span>
+                      <span>
+                        <b>Search for “{needle}”</b>
+                        <small>Every listing that mentions it</small>
+                      </span>
+                    </button>
+                  ) : null}
+                </>
+              ) : (
+                <>
+                  <button type="button" className="airsitem" onClick={useHere} disabled={locating}>
+                    <span className="airstile">
+                      <IcNavigate size={20} />
+                    </span>
+                    <span>
+                      <b>{locating ? "Finding you…" : "Nearby"}</b>
+                      <small>Find what's around you</small>
+                    </span>
+                  </button>
+                  <button type="button" className="airsitem" onClick={() => pickPlace({ kind: "metro", id: ALL_METRO_ID })}>
+                    <span className="airstile">
+                      <IcGlobe size={20} />
+                    </span>
+                    <span>
+                      <b>Anywhere</b>
+                      <small>{countInMetro(ALL_METRO_ID).toLocaleString()} places across the US and Canada</small>
+                    </span>
+                  </button>
+                  {state.near ? (
+                    <button
+                      type="button"
+                      className="airsitem"
+                      onClick={() => {
+                        setNear(null);
+                        closeSheet();
+                      }}
+                    >
+                      <span className="airstile">
+                        <IcClose size={14} />
+                      </span>
+                      <span>
+                        <b>{state.near.label}</b>
+                        <small>Tap to clear and browse by city instead</small>
+                      </span>
+                    </button>
+                  ) : null}
+                  <p className="airsgroup">Suggested destinations</p>
+                  {seeded.map(({ m, n }) => (
+                    <button type="button" key={m.id} className="airsitem" aria-pressed={state.metroId === m.id} onClick={() => pickPlace({ kind: "metro", id: m.id })}>
+                      <span className="airstile">
+                        <IcPin size={20} />
+                      </span>
+                      <span>
+                        <b>
+                          {m.name}, {m.region}
+                        </b>
+                        <small>{n.toLocaleString()} places</small>
+                      </span>
+                    </button>
+                  ))}
+                </>
+              )}
+            </div>
+          </section>
+        ) : (
+          <button type="button" className="airscard folded" onClick={() => setStep("where")}>
+            <span>Where</span>
+            <b>{[what, placeName].filter(Boolean).join(" · ")}</b>
+          </button>
+        )}
+
+        {step === "when" ? (
+          <section className="airscard open">
+            <h2>When's your trip?</h2>
+            <div className="airsdays">
+              {dates.map((d) => {
+                const k = dateKey(d);
+                return (
+                  <button type="button" key={k} className="airsday" aria-pressed={when === k} onClick={() => setWhen(when === k ? null : k)}>
+                    <small>{d.toLocaleDateString("en-US", { weekday: "short" })}</small>
+                    <b>{d.getDate()}</b>
+                    <small>{d.toLocaleDateString("en-US", { month: "short" })}</small>
+                  </button>
+                );
+              })}
+            </div>
+            <div className="airscardfoot">
+              <button type="button" className="airlink" onClick={() => { setWhen(null); setStep("who"); }}>
+                Skip
+              </button>
+              <button type="button" className="airdark" onClick={() => setStep("who")}>
+                Next
+              </button>
+            </div>
+          </section>
+        ) : (
+          <button type="button" className="airscard folded" onClick={() => setStep("when")}>
+            <span>When</span>
+            <b>{whenName}</b>
+          </button>
+        )}
+
+        {step === "who" ? (
+          <section className="airscard open">
+            <h2>Who's coming?</h2>
+            <div className="airguests">
+              <span>
+                <b>Guests</b>
+                <small>People in your group</small>
+              </span>
+              <span className="airstepper">
+                <button type="button" onClick={() => setWho(who && who > 1 ? who - 1 : null)} disabled={!who} aria-label="Fewer guests">
+                  <IcMinus />
+                </button>
+                <span className="n">{who || 0}</span>
+                <button type="button" onClick={() => setWho(Math.min(QTY_MAX, (who || 0) + 1))} disabled={(who || 0) >= QTY_MAX} aria-label="More guests">
+                  <IcPlus />
+                </button>
+              </span>
+            </div>
+          </section>
+        ) : (
+          <button type="button" className="airscard folded" onClick={() => setStep("who")}>
+            <span>Who</span>
+            <b>{whoName}</b>
+          </button>
+        )}
+      </div>
+
+      <div className="airsearchfoot">
+        <button type="button" className="airlink" onClick={clearAll}>
+          Clear all
         </button>
-      ) : null}
-      {hits.length ? <p className="metrogroup">Places</p> : null}
-      {hits.map((h) => (
-        <button type="button" className="metroitem" key={h.label + h.lat} onClick={() => pickPlace(h)}>
-          <span>
-            <b>{h.label}</b>
-            <small>{h.sub}</small>
-          </span>
-          <Markup html={ICONS.chev} />
-        </button>
-      ))}
-      <button
-        type="button"
-        className="metroitem"
-        aria-pressed={current === ALL_METRO_ID}
-        onClick={() => onPick(ALL_METRO_ID)}
-      >
-        <span>
-          <b>{metroLabel(ALL_METRO_ID)}</b>
-          <small>All cities</small>
-        </span>
-        <span className="count">{countInMetro(ALL_METRO_ID)}</span>
-      </button>
-      {seeded.length ? <p className="metrogroup">Available now</p> : null}
-      {us(seeded).map((m) => (
-        <MetroRow key={m.id} id={m.id} current={current} onPick={onPick} />
-      ))}
-      {ca(seeded).map((m) => (
-        <MetroRow key={m.id} id={m.id} current={current} onPick={onPick} />
-      ))}
-      {us(rest).length ? <p className="metrogroup">United States</p> : null}
-      {us(rest).map((m) => (
-        <MetroRow key={m.id} id={m.id} current={current} onPick={onPick} />
-      ))}
-      {ca(rest).length ? <p className="metrogroup">Canada</p> : null}
-      {ca(rest).map((m) => (
-        <MetroRow key={m.id} id={m.id} current={current} onPick={onPick} />
-      ))}
-      <div className="dock" style={{ position: "static", background: "none", padding: "14px 0 20px" }}>
-        <button className="cta" onClick={onBack}>
-          Done
+        <button type="button" className="airaccent go" onClick={run}>
+          <IcSearch size={16} /> Search
         </button>
       </div>
-    </>
+    </div>
   );
 }
 
-function MetroRow({
-  id,
-  current,
-  onPick,
-}: {
-  id: string;
-  current: string;
-  onPick: (metroId: string) => void;
-}) {
+const FILTERS: { key: keyof FeedFilters; title: string; sub: string; icon: string }[] = [
+  { key: "fav", title: "Guest favourites", sub: "4.8 or higher from 100+ reviews", icon: ICONS.star },
+  { key: "cancel", title: "Free cancellation", sub: "Published in their policy", icon: ICONS.check },
+  { key: "deal", title: "Deals today", sub: "A promo running today", icon: ICONS.bolt },
+  { key: "priced", title: "Shows prices", sub: "Prices on the listing", icon: ICONS.ticket },
+];
+
+function FiltersBody() {
+  const { state, closeSheet, setCat } = useApp();
+  const prefs = usePrefs();
+  const [cat, setPendingCat] = useState<CategoryId>(state.cat);
+  const [f, setF] = useState<FeedFilters>(prefs.filters);
+  const count = useMemo(() => {
+    const catalog = getCatalog();
+    const q = state.q.trim();
+    const base = q ? nearFirst(searchSuggest(catalog, q, { metroId: state.metroId, cat }).results, state.near) : browseList(catalog, cat, state.metroId, state.near);
+    return applyFilters(base, f).length;
+  }, [cat, f, state.q, state.metroId, state.near, state.catalogVersion]);
+
   return (
-    <button type="button" className="metroitem" aria-pressed={current === id} onClick={() => onPick(id)}>
-      <span>
-        <b>{metroLabel(id)}</b>
-      </span>
-      <span className="count">{countInMetro(id)}</span>
-    </button>
+    <div className="airsearch filters">
+      <div className="airfilterstop">
+        <button type="button" className="aircircle flat" onClick={closeSheet} aria-label="Close">
+          <IcClose size={14} />
+        </button>
+        <h1>Filters</h1>
+        <span className="aircircle ghostslot" aria-hidden />
+      </div>
+      <div className="airfiltersbody">
+        <section className="airfsec">
+          <h2>Recommended for you</h2>
+          <div className="airftiles">
+            {FILTERS.map((x) => (
+              <button key={x.key} type="button" className="airftile" aria-pressed={f[x.key]} onClick={() => setF({ ...f, [x.key]: !f[x.key] })}>
+                <Markup html={x.icon} />
+                <b>{x.title}</b>
+                <small>{x.sub}</small>
+              </button>
+            ))}
+          </div>
+        </section>
+        <section className="airfsec">
+          <h2>Type of experience</h2>
+          <div className="airfpills">
+            {CATS.map((c) => (
+              <button key={c.id} type="button" className="airfpill" aria-pressed={cat === c.id} onClick={() => setPendingCat(c.id)}>
+                <Markup html={ICONS[c.icon]} />
+                {c.name}
+              </button>
+            ))}
+          </div>
+        </section>
+      </div>
+      <div className="airsearchfoot">
+        <button
+          type="button"
+          className="airlink"
+          onClick={() => {
+            setF({ fav: false, cancel: false, deal: false, priced: false });
+            setPendingCat("all");
+          }}
+        >
+          Clear all
+        </button>
+        <button
+          type="button"
+          className="airdark"
+          onClick={() => {
+            setPrefs({ filters: f, view: "feed" });
+            if (cat !== state.cat) setCat(cat);
+            closeSheet();
+          }}
+        >
+          {count ? "Show " + (count > 1000 ? "1,000+" : count.toLocaleString()) + (count === 1 ? " experience" : " experiences") : "No exact matches"}
+        </button>
+      </div>
+    </div>
   );
 }

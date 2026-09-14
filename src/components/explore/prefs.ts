@@ -1,0 +1,95 @@
+import { useSyncExternalStore } from "react";
+
+/**
+ * Phone-only guest preferences that the app state does not carry: the wishlist, which page the Explore tab shows,
+ * the day and party size picked in the search sheet, and the feed filters. Kept here rather than in AppProvider so
+ * the phone can offer Airbnb's search and wishlist shape without changing the shared reducer. The wishlist and the
+ * search picks survive a reload; filters are per visit.
+ */
+export type FeedFilters = { fav: boolean; cancel: boolean; deal: boolean; priced: boolean };
+
+export type Prefs = {
+  saved: string[];
+  view: "feed" | "wishlists";
+  /** Day picked in When, as a date key ("2026-09-18"), or null for "Any week". */
+  when: string | null;
+  /** People in the party, or null for "Add guests". */
+  who: number | null;
+  filters: FeedFilters;
+  /** Which body the search sheet opens with: the stacked Where / When / Who cards, or the filters. */
+  sheetMode: "search" | "filters";
+};
+
+const NO_FILTERS: FeedFilters = { fav: false, cancel: false, deal: false, priced: false };
+
+function read<T>(key: string, fallback: T): T {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? (JSON.parse(raw) as T) : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+let prefs: Prefs = {
+  saved: read<string[]>("outset.saved", []),
+  view: "feed",
+  when: read<string | null>("outset.when", null),
+  who: read<number | null>("outset.who", null),
+  filters: NO_FILTERS,
+  sheetMode: "search",
+};
+
+const subs = new Set<() => void>();
+
+export function setPrefs(patch: Partial<Prefs>): void {
+  prefs = { ...prefs, ...patch };
+  try {
+    if ("saved" in patch) localStorage.setItem("outset.saved", JSON.stringify(prefs.saved));
+    if ("when" in patch) localStorage.setItem("outset.when", JSON.stringify(prefs.when));
+    if ("who" in patch) localStorage.setItem("outset.who", JSON.stringify(prefs.who));
+  } catch {
+    /* private mode */
+  }
+  subs.forEach((f) => f());
+}
+
+export function getPrefs(): Prefs {
+  return prefs;
+}
+
+export function usePrefs(): Prefs {
+  return useSyncExternalStore(
+    (f) => {
+      subs.add(f);
+      return () => subs.delete(f);
+    },
+    () => prefs,
+    () => prefs,
+  );
+}
+
+export function toggleSaved(id: string): void {
+  setPrefs({ saved: prefs.saved.includes(id) ? prefs.saved.filter((x) => x !== id) : [id, ...prefs.saved] });
+}
+
+export function clearFilters(): void {
+  setPrefs({ filters: NO_FILTERS });
+}
+
+export function activeFilterCount(f: FeedFilters): number {
+  return Object.values(f).filter(Boolean).length;
+}
+
+/** The feed filters, all read from facts the operator published. Cheap enough to run over the whole catalog. */
+export function passesFilters(
+  u: { rating?: number; reviews?: number; fc?: string; cancellation?: string },
+  f: FeedFilters,
+  extra: { priced: () => boolean; deal: () => boolean },
+): boolean {
+  if (f.fav && !((u.rating ?? 0) >= 4.8 && (u.reviews ?? 0) >= 100)) return false;
+  if (f.cancel && !(u.fc || /free cancel/i.test(u.cancellation || ""))) return false;
+  if (f.priced && !extra.priced()) return false;
+  if (f.deal && !extra.deal()) return false;
+  return true;
+}

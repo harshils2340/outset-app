@@ -1,50 +1,21 @@
-import { useDeferredValue, useEffect, useMemo, useState, type KeyboardEvent } from "react";
-import { ART_LABEL } from "../../data/art";
-import { CATS, CATMETA, VIRTUAL_CATS, inCat } from "../../data/categories";
-import { ALL_METRO_ID, metroById, metroShort } from "../../data/metros";
-import type { CategoryId, Unclaimed } from "../../data/types";
+import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
+import { CATS, CATMETA } from "../../data/categories";
+import { ALL_METRO_ID, metroShort } from "../../data/metros";
+import type { Unclaimed } from "../../data/types";
 import { ICONS } from "../../data/icons";
-import { getCatalog } from "../../lib/catalog";
-import { kmBetween } from "../../lib/places";
-import { ART_ALIASES, metroInQuery, searchSuggest, warmSearch, type SearchScope } from "../../lib/search";
-import { titleCase } from "../../lib/format";
+import { experienceById, getCatalog } from "../../lib/catalog";
+import { dateKey } from "../../lib/dates";
+import { searchSuggest, warmSearch, type SearchScope } from "../../lib/search";
 import { useApp } from "../../state/AppProvider";
-import { Art } from "../art/Art";
-import { Mark } from "../layout/Mark";
 import { Markup } from "../Markup";
+import { IcFilters, IcHeart, IcSearch } from "./AirIcons";
 import { UnclaimedCard } from "./UnclaimedCard";
+import { applyFilters, browseList, nearFirst } from "./feed";
+import { activeFilterCount, clearFilters, setPrefs, usePrefs } from "./prefs";
+import "../../styles/air-phone.css";
 
-type FeedRail = { id: string; title: string; items: Unclaimed[]; open: () => void };
-
-/**
- * All: one rail per catalog category (Classes and Culture are cuts of those, so they are not repeated here).
- * A Classes or Culture tab: one rail per kind, since its listings span several catalog categories.
- */
-function groupRails(list: Unclaimed[], cat: CategoryId, setCat: (c: CategoryId) => void, setQ: (q: string) => void): FeedRail[] {
-  const kinds = VIRTUAL_CATS[cat];
-  if (kinds) {
-    return kinds
-      .map((art) => ({ id: art, title: ART_LABEL[art], items: list.filter((u) => u.art === art), open: () => setQ(ART_ALIASES[art]?.[0] || art) }))
-      .filter((r) => r.items.length > 0);
-  }
-  return CATS.filter((c) => c.id !== "all" && !VIRTUAL_CATS[c.id])
-    .map((c) => ({ id: c.id, title: CATMETA[c.id].railTitle, items: list.filter((u) => inCat(u, c.id)), open: () => setCat(c.id) }))
-    .filter((r) => r.items.length > 0);
-}
-
-/** Cards rendered per rail before "Show more". Keeps the feed fast with thousands of operators. */
-/** An hour of driving. Wide enough that a small town still has something, tight enough to feel local. */
-const NEAR_RADIUS_KM = 80;
-
-const PAGE = 48;
-const RAIL_CAP = 24;
-
-function rowChunks<T>(items: T[], size: number): T[][] {
-  if (items.length <= size) return [items];
-  const rows: T[][] = [];
-  for (let i = 0; i < items.length; i += size) rows.push(items.slice(i, i + size));
-  return rows;
-}
+/** Cards mounted per page of the feed. More arrive as the guest nears the end, the way Airbnb's list does. */
+const PAGE = 18;
 
 /** Idle time if the browser offers it, the next tick if it does not. */
 function whenIdle(run: () => void): void {
@@ -54,15 +25,17 @@ function whenIdle(run: () => void): void {
 }
 
 export function ExploreView() {
-  const { state, setCat, setQ, setMetro, setTab, openMetro, openRequest } = useApp();
-  const [searchOpen, setSearchOpen] = useState(false);
-  const [hit, setHit] = useState(0);
+  const { state, dates, setCat, setQ, setMetro, openMetro } = useApp();
+  const prefs = usePrefs();
   const [limit, setLimit] = useState(PAGE);
+  const [scrolled, setScrolled] = useState(false);
+  const sentinel = useRef<HTMLDivElement>(null);
   const q = state.q.trim();
   const meta = CATMETA[state.cat] || CATMETA.all;
   const catalog = getCatalog();
+  const filterCount = activeFilterCount(prefs.filters);
 
-  // The word index over 55,000 operators is built in idle time once the catalog lands, so the first keystroke
+  // The word index over 55,000 operators is built in idle time once the catalog lands, so the first search
   // is not the one that pays for it.
   useEffect(() => {
     let live = true;
@@ -75,348 +48,206 @@ export function ExploreView() {
     };
   }, [catalog]);
 
-  // Typing stays smooth: the catalog is searched from a query that may lag a keystroke behind when the thread is busy.
   const dq = useDeferredValue(q);
   const scope = useMemo<SearchScope>(() => ({ metroId: state.metroId, cat: state.cat }), [state.metroId, state.cat]);
-  // A place chosen in Where beats the city list: everything within an hour's drive, nearest first.
   const near = state.near;
-  const browse = useMemo(() => {
-    // A listing with no photo, price, hours or description is real but has nothing to look at yet, so it
-    // stays out of the feed. Search by name and the claim links still reach it.
-    // A row of cards is a row of photographs. A listing with a price but no picture still shows the default
-    // illustration, which is what made three of them in a line look broken, so browse asks for a real cover.
-    // Search is deliberately untouched: someone looking for a business by name should still find it.
-    const inThisCat = (u: Unclaimed) => inCat(u, state.cat) && !!u.cover;
-    if (near) {
-      return catalog
-        .filter((u) => u.lat != null && u.lon != null && inThisCat(u) && kmBetween(near, { lat: u.lat, lon: u.lon }) <= NEAR_RADIUS_KM)
-        .sort((a, b) => kmBetween(near, { lat: a.lat!, lon: a.lon! }) - kmBetween(near, { lat: b.lat!, lon: b.lon! }));
-    }
-    return catalog.filter((u) => (state.metroId === ALL_METRO_ID || u.metroId === state.metroId) && inThisCat(u));
-  }, [catalog, state.metroId, state.cat, near]);
-  // One pass feeds the dropdown and the feed behind it, so a keystroke ranks the catalog once.
+  const browse = useMemo(() => browseList(catalog, state.cat, state.metroId, near), [catalog, state.metroId, state.cat, near]);
   const found = useMemo(() => (dq ? searchSuggest(catalog, dq, scope) : null), [catalog, dq, scope]);
   const cityEmpty = useMemo(
     () => state.metroId !== ALL_METRO_ID && !catalog.some((u) => u.metroId === state.metroId),
     [catalog, state.metroId],
   );
+  const list = useMemo(() => applyFilters(found ? nearFirst(found.results, near) : browse, prefs.filters), [found, browse, prefs.filters, near]);
 
-  const list = found ? found.results : browse;
-  const activities = found?.activities ?? [];
-  const operators = found?.operators ?? [];
-  const places = found?.places ?? [];
-  const rows = activities.length + operators.length + places.length;
-  const showPreview = searchOpen && q.length > 0;
+  // A new search, place, category or filter starts the list from the top.
+  useEffect(() => {
+    setLimit(PAGE);
+    const view = document.getElementById("view");
+    if (view && view.scrollTop > 140) view.scrollTop = 0;
+  }, [dq, state.cat, state.metroId, near, prefs.filters, prefs.view]);
+
+  // The header lifts off the feed with a shadow once the list scrolls under it.
+  useEffect(() => {
+    const view = document.getElementById("view");
+    if (!view) return;
+    const on = () => setScrolled(view.scrollTop > 4);
+    on();
+    view.addEventListener("scroll", on, { passive: true });
+    return () => view.removeEventListener("scroll", on);
+  }, []);
+
+  // More cards as the end of the list comes into view.
+  useEffect(() => {
+    const el = sentinel.current;
+    if (!el || typeof IntersectionObserver === "undefined") return;
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) setLimit((n) => n + PAGE);
+      },
+      { root: document.getElementById("view"), rootMargin: "1200px 0px" },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [list, limit]);
+
+  const place = state.near ? state.near.label : state.metroId === ALL_METRO_ID ? "" : metroShort(state.metroId);
+  const whenDate = prefs.when ? dates.find((d) => dateKey(d) === prefs.when) : undefined;
+  const whenLabel = whenDate ? whenDate.toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "Any week";
+  const whoLabel = prefs.who ? prefs.who + (prefs.who === 1 ? " guest" : " guests") : "Add guests";
+  const pillTitle = q && place ? q + " · " + place : q || place || "Where to?";
+  const pillSub = (place ? [whenLabel, whoLabel] : ["Anywhere", whenLabel, whoLabel]).join(" · ");
   const here = state.near ? " near " + state.near.label : state.metroId === ALL_METRO_ID ? "" : " in " + metroShort(state.metroId);
 
-  const emptyTitle = cityEmpty ? "Nothing in this city yet" : q ? "Nothing for “" + q + "”" : meta.emptyTitle;
-  const emptyBody = cityEmpty ? "Try Anywhere, or pick a city with listings." : meta.emptyBody;
-  const rails = groupRails(list, state.cat, setCat, setQ);
-  const manyRails = rails.length > 1;
+  const openSearch = () => {
+    setPrefs({ sheetMode: "search" });
+    openMetro();
+  };
+  const openFilters = () => {
+    setPrefs({ sheetMode: "filters" });
+    openMetro();
+  };
 
-  function pickMetro(id: string) {
-    // "kayak tampa" with Tampa picked becomes a kayak search in Tampa, not a search for the word "tampa".
-    const named = metroInQuery(state.q);
-    if (named && named.metro.id === id) {
-      const drop = new Set(named.words);
-      setQ(state.q.split(/\s+/).filter((w) => !drop.has(w.toLowerCase().replace(/[^a-z0-9]+/g, ""))).join(" ").trim());
-    }
-    setMetro(id);
-    setSearchOpen(false);
-    setHit(0);
-  }
+  if (prefs.view === "wishlists") return <Wishlists saved={prefs.saved} />;
 
-  function pickRow(i: number) {
-    if (i < activities.length) {
-      setQ(activities[i].query);
-      setHit(0);
-      return;
-    }
-    const o = i - activities.length;
-    if (o < operators.length) {
-      setSearchOpen(false);
-      openRequest(operators[o].id);
-      return;
-    }
-    pickMetro(places[o - operators.length].metro.id);
-  }
-
-  function onSearchKey(e: KeyboardEvent<HTMLInputElement>) {
-    if (!showPreview || !rows) {
-      if (e.key === "Escape") (e.target as HTMLInputElement).blur();
-      return;
-    }
-    if (e.key === "ArrowDown") {
-      e.preventDefault();
-      setHit((i) => Math.min(rows - 1, i + 1));
-    } else if (e.key === "ArrowUp") {
-      e.preventDefault();
-      setHit((i) => Math.max(0, i - 1));
-    } else if (e.key === "Enter") {
-      e.preventDefault();
-      pickRow(Math.min(hit, rows - 1));
-    } else if (e.key === "Escape") {
-      setSearchOpen(false);
-      (e.target as HTMLInputElement).blur();
-    }
-  }
+  const emptyTitle = cityEmpty ? "Nothing in this city yet" : q ? "No exact matches" : filterCount ? "No exact matches" : meta.emptyTitle;
+  const emptyBody = cityEmpty
+    ? "Try Anywhere, or pick a city with listings."
+    : q || filterCount
+      ? "Try changing or removing some of your filters or adjusting your search area."
+      : meta.emptyBody;
 
   return (
-    <>
-      <div className="apphead">
-        <div className="locrow">
-          <div className="brand">
-            <Mark size={22} />
-            <b>Outset</b>
-          </div>
-          <button className="avatar" type="button" onClick={() => setTab("account")} aria-label="Profile">
-            H
+    <div className="airexplore">
+      <header className={"airhead" + (scrolled ? " lifted" : "")}>
+        <div className="airpillrow">
+          <button type="button" className="airpill" onClick={openSearch} aria-label="Search">
+            <IcSearch size={18} className="airpillico" />
+            <span className="airpilltext">
+              <b>{pillTitle}</b>
+              <small>{pillSub}</small>
+            </span>
+          </button>
+          <button type="button" className={"airfilter" + (filterCount ? " on" : "")} onClick={openFilters} aria-label="Filters">
+            <IcFilters size={16} />
+            {filterCount ? <span className="airfiltercount">{filterCount}</span> : null}
           </button>
         </div>
-        <div className="searchwrap">
-          <div className={"search" + (showPreview ? " on" : "")}>
-            <Markup html={ICONS.search} />
-            <input
-              id="q"
-              placeholder={meta.search}
-              value={state.q}
-              autoComplete="off"
-              autoCorrect="off"
-              spellCheck={false}
-              onChange={(e) => {
-                setQ(e.target.value);
-                setHit(0);
-                setSearchOpen(true);
-              }}
-              onFocus={() => setSearchOpen(true)}
-              onBlur={() => window.setTimeout(() => setSearchOpen(false), 120)}
-              onKeyDown={onSearchKey}
-            />
-            <button
-              className="wherechip"
-              type="button"
-              onMouseDown={(e) => e.preventDefault()}
-              onClick={openMetro}
-            >
-              <b>{state.near ? state.near.label : metroShort(state.metroId)}</b>
-              <Markup html={ICONS.chev} className="locchev" />
+        <nav className="aircats" aria-label="Categories">
+          {CATS.map((c) => (
+            <button key={c.id} type="button" className="aircat" aria-pressed={state.cat === c.id} onClick={() => setCat(c.id)}>
+              <Markup html={ICONS[c.icon]} />
+              <span>{c.name}</span>
             </button>
-            {state.q ? (
+          ))}
+        </nav>
+      </header>
+
+      {list.length ? (
+        <>
+          <p className="aircount">
+            {list.length > 1000 ? "Over " + (Math.floor(list.length / 1000) * 1000).toLocaleString() : list.length.toLocaleString()}{" "}
+            {list.length === 1 ? "experience" : "experiences"}
+            {here}
+          </p>
+          <div className="airfeed">
+            {list.slice(0, limit).map((u) => (
+              <UnclaimedCard key={u.id} item={u} />
+            ))}
+          </div>
+          {list.length > limit ? (
+            <div ref={sentinel} className="airmore">
+              <button type="button" className="airghost" onClick={() => setLimit((n) => n + PAGE)}>
+                Show more
+              </button>
+            </div>
+          ) : (
+            <p className="airend">That's everything{here}.</p>
+          )}
+        </>
+      ) : (
+        <div className="airempty">
+          <h2>{emptyTitle}</h2>
+          <p>{emptyBody}</p>
+          <div className="airemptyfix">
+            {filterCount ? (
+              <button type="button" className="airghost" onClick={clearFilters}>
+                Remove all filters
+              </button>
+            ) : null}
+            {found?.otherCats ? (
+              <button type="button" className="airghost" onClick={() => setCat("all")}>
+                {found.otherCats.toLocaleString()} in other categories
+              </button>
+            ) : null}
+            {state.metroId !== ALL_METRO_ID || state.near ? (
+              <button type="button" className="airghost" onClick={() => setMetro(ALL_METRO_ID)}>
+                Search anywhere
+              </button>
+            ) : null}
+            {(found?.activities ?? []).map((a) => (
+              <button type="button" key={a.art} className="airghost" onClick={() => setQ(a.query)}>
+                {a.label} · {a.count.toLocaleString()}
+              </button>
+            ))}
+            {(found?.elsewhere ?? []).map((a) => (
               <button
                 type="button"
-                className="searchclear"
-                aria-label="Clear search"
-                onMouseDown={(e) => e.preventDefault()}
+                key={a.art}
+                className="airghost"
                 onClick={() => {
-                  setQ("");
-                  setHit(0);
+                  setMetro(ALL_METRO_ID);
+                  setQ(a.query);
                 }}
               >
-                <Markup html={ICONS.close} />
+                {a.label} anywhere · {a.count.toLocaleString()}
+              </button>
+            ))}
+            {(found?.places ?? []).map((pl) => (
+              <button type="button" key={pl.metro.id} className="airghost" onClick={() => setMetro(pl.metro.id)}>
+                {pl.metro.name} · {pl.count.toLocaleString()}
+              </button>
+            ))}
+            {q ? (
+              <button type="button" className="airghost" onClick={() => setQ("")}>
+                Clear search
               </button>
             ) : null}
           </div>
-          {showPreview ? (
-            <div className="searchpreview" onMouseDown={(e) => e.preventDefault()}>
-              {found?.nearMiss ? (
-                <div className="searchempty">
-                  <b>
-                    Nothing for “{q}”{here}.
-                  </b>
-                  <span>{rows || found.elsewhere.length ? "Closest in the catalog:" : "Try fewer words, or another city."}</span>
-                </div>
-              ) : null}
-              {activities.length ? <p className="searchgroup">Activities</p> : null}
-              {activities.map((a, i) => (
-                <button
-                  type="button"
-                  key={a.art}
-                  className={"searchhit" + (hit === i ? " on" : "")}
-                  onClick={() => pickRow(i)}
-                  onMouseEnter={() => setHit(i)}
-                >
-                  <span className="searchthumb">
-                    <Art kind={a.art} id={"sa" + a.art} />
-                  </span>
-                  <span className="searchmeta">
-                    <b>{a.label}</b>
-                    <small>
-                      {a.count} {a.count === 1 ? "place" : "places"}
-                      {here}
-                    </small>
-                  </span>
-                </button>
-              ))}
-              {operators.length ? <p className="searchgroup">Operators</p> : null}
-              {operators.map((u, i) => {
-                const idx = activities.length + i;
-                const metro = metroById(u.metroId);
-                return (
-                  <button
-                    type="button"
-                    key={u.id}
-                    className={"searchhit" + (hit === idx ? " on" : "")}
-                    onClick={() => pickRow(idx)}
-                    onMouseEnter={() => setHit(idx)}
-                  >
-                    <span className="searchthumb">
-                      <Art kind={u.art} id={u.id + "s"} />
-                    </span>
-                    <span className="searchmeta">
-                      <b>{u.title}</b>
-                      <small>
-                        {(ART_LABEL[u.art] ? ART_LABEL[u.art] + " · " : "") + u.area}
-                        {metro ? " · " + metro.name : ""}
-                      </small>
-                    </span>
-                  </button>
-                );
-              })}
-              {places.length ? <p className="searchgroup">Places</p> : null}
-              {places.map((pl, i) => {
-                const idx = activities.length + operators.length + i;
-                return (
-                  <button
-                    type="button"
-                    key={pl.metro.id}
-                    className={"searchhit" + (hit === idx ? " on" : "")}
-                    onClick={() => pickRow(idx)}
-                    onMouseEnter={() => setHit(idx)}
-                  >
-                    <span className="searchico">
-                      <Markup html={ICONS.pin} />
-                    </span>
-                    <span className="searchmeta">
-                      <b>{pl.metro.name}</b>
-                      <small>
-                        {pl.metro.region}, {pl.metro.country === "CA" ? "Canada" : "United States"} · {pl.count.toLocaleString()} places
-                      </small>
-                    </span>
-                  </button>
-                );
-              })}
-              {found && !found.nearMiss ? (
-                <div className="searchhint">
-                  {list.length.toLocaleString()} in the feed
-                  {state.cat !== "all" ? " · " + meta.railTitle : ""}
-                </div>
-              ) : null}
-              {(found?.elsewhere ?? []).map((a) => (
-                <button
-                  type="button"
-                  key={a.art}
-                  className="searchmore"
-                  onClick={() => {
-                    setMetro(ALL_METRO_ID);
-                    setQ(a.query);
-                  }}
-                >
-                  {a.label} anywhere · {a.count.toLocaleString()} places
-                </button>
-              ))}
-              {found?.otherCats ? (
-                <button type="button" className="searchmore" onClick={() => setCat("all")}>
-                  {found.otherCats.toLocaleString()} more outside {meta.railTitle}. Show all categories
-                </button>
-              ) : null}
-            </div>
-          ) : null}
-        </div>
-      </div>
-      <div className="chipbar">
-        {CATS.map((c) => (
-          <button key={c.id} className="chip" aria-pressed={state.cat === c.id} onClick={() => setCat(c.id)}>
-            <Markup html={ICONS[c.icon]} />
-            {c.name}
-          </button>
-        ))}
-      </div>
-      {list.length ? (
-        <>
-          <div className="feedhead">
-            <p className="eyebrow">{q ? "Matches" : meta.railTitle || "Near you"}</p>
-            <h2>
-              {list.length.toLocaleString()} {meta.head}
-            </h2>
-          </div>
-          {rails.map((rail) => (
-            <section key={rail.id} className="railblock">
-              {manyRails ? (
-                <div className="railhead">
-                  <button type="button" className="railtitle" onClick={rail.open}>
-                    <h2>{titleCase(rail.title)}</h2>
-                  </button>
-                  <span className="railcount">{rail.items.length}</span>
-                </div>
-              ) : null}
-              {rowChunks(manyRails ? rail.items.slice(0, RAIL_CAP) : rail.items.slice(0, limit), manyRails ? RAIL_CAP : 6).map((row, i) => (
-                <div className="rail" key={rail.id + "-" + i}>
-                  {row.map((u) => (
-                    <UnclaimedCard key={u.id} item={u} compact />
-                  ))}
-                  {manyRails && i === 0 && rail.items.length > RAIL_CAP ? (
-                    <button type="button" className="railmore" onClick={rail.open}>
-                      <b>See all {rail.items.length}</b>
-                      <small>{titleCase(rail.title)}</small>
-                    </button>
-                  ) : null}
-                </div>
-              ))}
-              {!manyRails && rail.items.length > limit ? (
-                <button type="button" className="cta ghost showmore" onClick={() => setLimit((n) => n + PAGE)}>
-                  Show more · {rail.items.length - limit} left
-                </button>
-              ) : null}
-            </section>
-          ))}
-        </>
-      ) : (
-        <div className="empty">
-          <div className="glyph">
-            <Markup html={ICONS.search} />
-          </div>
-          <b>{emptyTitle}</b>
-          <p>{emptyBody}</p>
-          {found ? (
-            <div className="emptyfix">
-              {found.otherCats ? (
-                <button type="button" className="cta ghost" onClick={() => setCat("all")}>
-                  {found.otherCats.toLocaleString()} in other categories
-                </button>
-              ) : null}
-              {state.metroId !== ALL_METRO_ID ? (
-                <button type="button" className="cta ghost" onClick={() => setMetro(ALL_METRO_ID)}>
-                  Search anywhere
-                </button>
-              ) : null}
-              {activities.map((a) => (
-                <button type="button" key={a.art} className="cta ghost" onClick={() => setQ(a.query)}>
-                  {a.label} · {a.count.toLocaleString()}
-                </button>
-              ))}
-              {found.elsewhere.map((a) => (
-                <button
-                  type="button"
-                  key={a.art}
-                  className="cta ghost"
-                  onClick={() => {
-                    setMetro(ALL_METRO_ID);
-                    setQ(a.query);
-                  }}
-                >
-                  {a.label} anywhere · {a.count.toLocaleString()}
-                </button>
-              ))}
-              {places.map((pl) => (
-                <button type="button" key={pl.metro.id} className="cta ghost" onClick={() => pickMetro(pl.metro.id)}>
-                  {pl.metro.name} · {pl.count.toLocaleString()}
-                </button>
-              ))}
-            </div>
-          ) : null}
         </div>
       )}
-      <div className="spacer" />
-    </>
+    </div>
+  );
+}
+
+/** Airbnb's Wishlists tab: everything the guest hearted, newest first, kept on this device. */
+function Wishlists({ saved }: { saved: string[] }) {
+  const items = saved.map((id) => experienceById(id)).filter((u): u is Unclaimed => !!u);
+  return (
+    <div className="airexplore">
+      <header className="airpagehead">
+        <h1>Wishlists</h1>
+      </header>
+      {items.length ? (
+        <>
+          <p className="airpagesub">
+            {items.length} saved · on this device
+          </p>
+          <div className="airfeed">
+            {items.map((u) => (
+              <UnclaimedCard key={u.id} item={u} />
+            ))}
+          </div>
+        </>
+      ) : (
+        <div className="airpageempty">
+          <IcHeart size={32} />
+          <h2>Create your first wishlist</h2>
+          <p>As you search, tap the heart icon to save your favourite experiences to a wishlist.</p>
+          <button type="button" className="airdark" onClick={() => setPrefs({ view: "feed" })}>
+            Start exploring
+          </button>
+        </div>
+      )}
+    </div>
   );
 }

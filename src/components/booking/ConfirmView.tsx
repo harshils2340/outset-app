@@ -76,7 +76,7 @@ export function ConfirmView() {
             <b>{where}</b>
           </div>
           <div className="trow">
-            <span>Paid</span>
+            <span>{b.paid ? "Paid" : instant ? "Total" : "Total, once confirmed"}</span>
             <b className="mono">{b.total ? money(b.total) : "On site"}</b>
           </div>
         </div>
