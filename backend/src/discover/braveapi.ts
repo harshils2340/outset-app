@@ -99,12 +99,21 @@ export type BraveRunStats = { skipped?: string; spent: number; failed: number; q
  * also return the same sites. So instead of oldest first:
  *   - a term's value is what its answered searches actually returned, candidates per request; unmeasured terms
  *     start at an average so they get tried;
- *   - a search is discounted when a destination within 35 km has already been searched for the same activity, or
+ *   - a search is discounted when a destination within 20 km has already been searched for the same activity, or
  *     is picked earlier in this run, because the results overlap;
  *   - and discounted again when the same destination already has another term for the same activity.
  * Picking is greedy, so each choice updates the discounts for the rest. Never-searched cells come before refreshes.
  */
 const INLAND = /^(Orlando|Kissimmee|Gainesville|Tallahassee)$/;
+/**
+ * How much a destination matters to the launch, beyond raw yield. Tampa Bay is the first market and the beach
+ * towns around it are where the call list is; college towns and quiet suburbs matter least for bookable experiences.
+ */
+const MARKET: Record<string, number> = {
+  Tampa: 1.6, Clearwater: 1.6, "St. Petersburg": 1.4, "Siesta Key": 1.4, Sarasota: 1.3, "Key West": 1.3, Destin: 1.3,
+  "Panama City Beach": 1.2, Miami: 1.2, "Miami Beach": 1.1, Orlando: 1.2, Kissimmee: 1.1,
+  Melbourne: 0.7, "Boca Raton": 0.7, "Delray Beach": 0.7, Gainesville: 0.6, Tallahassee: 0.6,
+};
 
 export function pickQueries(state: BraveState, budget: number, refreshMs: number): string[] {
   const km = (a: { lat: number; lon: number }, b: { lat: number; lon: number }) => {
@@ -136,12 +145,13 @@ export function pickQueries(state: BraveState, budget: number, refreshMs: number
   }
   const score = (c: Cell) => {
     let v = value(c.t.activity);
-    const nearDone = FL_DESTINATIONS.some((o) => o.name !== c.d.name && covered.has(c.t.activity + "|" + o.name) && km(o, c.d) <= 35);
+    const nearDone = FL_DESTINATIONS.some((o) => o.name !== c.d.name && covered.has(c.t.activity + "|" + o.name) && km(o, c.d) <= 20);
     if (nearDone) v *= 0.3;
     if (covered.has(c.t.activity + "|" + c.d.name)) v *= 0.5;
     // Measured yields came from the coast. Inland towns do not have fishing charters, jet skis or dolphin tours
     // worth a search; airboats are the exception, they run inland.
     if (INLAND.test(c.d.name) && /fishing|boat|jet-ski|paddle|kayak|snorkel|dolphin|sunset|parasail|scuba/.test(c.t.activity)) v *= 0.25;
+    v *= MARKET[c.d.name] ?? 1;
     return (c.fresh ? 1000 : 0) + v;
   };
   const out: string[] = [];
