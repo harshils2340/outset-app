@@ -61,6 +61,7 @@ import { fmtRating } from "../explore/UnclaimedCard";
 import { applyFilters, browseList, nearFirst } from "../explore/feed";
 import { getPrefs, setPrefs, toggleSaved, usePrefs, type FeedFilters } from "../explore/prefs";
 import { SlotCalendar } from "./SlotCalendar";
+import { ReviewCard, TYPE_NAME, bookableServices, tidyDuration, tidyHours, possessive, shownReviews, splitIncluded, tidyAddress, tidyCancel, tidyLength, tidyLine, tidyName } from "../web/WebListing";
 
 const QTY_MAX = 8;
 
@@ -231,7 +232,7 @@ function Bullets({ items, icon = ICONS.dot, className = "" }: { items: string[];
       {items.map((t) => (
         <li key={t}>
           <Markup html={icon} />
-          <span>{plainWords(t)}</span>
+          <span>{tidyLine(t)}</span>
         </li>
       ))}
     </ul>
@@ -350,13 +351,18 @@ function RequestBody({
   const facts = listingFacts(item);
   const here = useGuestPoint();
   const dest = mapsQuery(item, contact);
-  const place = placeLabel(item, contact);
+  const place = tidyAddress(placeLabel(item, contact));
   const pin = item.lat != null && item.lon != null ? { lat: item.lat, lng: item.lon } : null;
   const miles = here && pin ? milesBetween(here, pin) : null;
   const dist = miles != null && miles <= 150 && metro ? formatDistance(miles, metro.country) + " away" : null;
-  const address = contact ? addressLine(contact) : null;
+  const addressRaw = contact ? addressLine(contact) : null;
+  const address = addressRaw ? tidyAddress(addressRaw) : null;
+  const reviews = useMemo(() => shownReviews(item.quotes, item.title), [item.quotes, item.title]);
+  // A sign-off like "See you soon!" is not arrival information.
+  const checkin = item.checkin && !/^(see you|thank|welcome|we look forward|have fun|enjoy)\b/i.test(item.checkin.trim()) ? tidyLine(item.checkin) : "";
   const isSaved = saved.includes(item.id);
-  const kind = ART_LABEL[item.art] || catName;
+  // One business is "Museum in Saint Petersburg", not "Museums in": the singular type the desktop page uses.
+  const kind = TYPE_NAME[item.art] || ART_LABEL[item.art] || catName;
 
   /* Live departures from the operator's own booking system, when they run one we can read. The picker paints with
      the published times first and upgrades itself when this resolves; with no API it never resolves live. */
@@ -403,15 +409,18 @@ function RequestBody({
 
   /* ---------- derived from the operator's own site, never invented. Same rules as the desktop page. ---------- */
   const requirements = item.requirements?.length ? item.requirements : facts.who.filter((l) => l.posted).map((l) => l.text);
-  const includes = item.includes.filter((l) => !/\bnot included|excluded|not provided|bring your own\b/i.test(l));
-  const notIncluded = item.includes.filter((l) => /\bnot included|excluded|not provided\b/i.test(l)).map((l) => l.replace(/\s*\(?not included\)?/i, "").trim());
+  const included = splitIncluded(item.includes);
+  const includes = included.yes;
+  const notIncluded = included.no.map((n) => n.text);
   const reqKeys = new Set(requirements.map((r) => r.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim()));
   const highlights = (item.highlights?.length ? item.highlights : facts.about.slice(0, 6)).filter((h) => !reqKeys.has(h.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim()));
   const waiverLines = (item.policies?.filter((l) => /\bwaivers?\b|\bliabilit|\brelease form|\bsign(ed|ing)? (a |the |our |your )?(waiver|release|form)|\bcheck-?in\b/i.test(l)) || facts.waiver.filter((l) => l.posted).map((l) => l.text)).filter((l) => l.length <= 160);
   const otherPolicies = (item.policies || []).filter((l) => !/cancel|refund|waiver|liabilit/i.test(l));
-  const cancel = item.fc || freeCancel(item.cancellation);
+  const cancelRaw = item.fc || freeCancel(item.cancellation);
+  const cancel = cancelRaw ? tidyCancel(cancelRaw) : null;
   const age = minAge(requirements);
-  const duration = item.dur || durationLabel(item);
+  const durationRaw = item.dur || durationLabel(item);
+  const duration = durationRaw ? tidyDuration(durationRaw) : null;
   const openNow = itemOpenState(item);
   const dealsNow = todaysDeals(item);
   const today = item.promos?.length ? clockIn(zoneFor(item)).day : -1;
@@ -747,7 +756,7 @@ function RequestBody({
                 <b>Today's deal{dealsNow.length > 1 ? "s" : ""}</b>
                 {dealsNow.map((d) => (
                   <small key={d.text}>
-                    {plainWords(d.text)}
+                    {tidyLine(d.text)}
                     {d.end ? " · until " + clock12(d.end) : d.start ? " · from " + clock12(d.start) : ""}
                   </small>
                 ))}
@@ -829,7 +838,7 @@ function RequestBody({
                   <p className="guidehead">Nervous?</p>
                   <p className="guidetext">{guide.nerves}</p>
                   <p className="guidefoot">
-                    This is how {kindLabel(item.art)} usually works. {item.title}'s own prices, ages, limits and rules are listed below.
+                    This is how {kindLabel(item.art)} usually works. {possessive(item.title)} own prices, ages, limits and rules are listed below.
                   </p>
                 </div>
               ) : null}
@@ -838,13 +847,13 @@ function RequestBody({
 
           {item.options.length ? (
             <Section title="Choose a service" innerRef={svcRef}>
-              {item.services && item.services.length ? (
+              {bookableServices(item.services).length ? (
                 <div className="svclist">
-                  {item.services.map((svc, svcIdx) => (
+                  {bookableServices(item.services).map((svc, svcIdx) => (
                     <div className="svc" key={svc.name + "|" + svcIdx}>
-                      {svc.photo ? <img className="svcpic" src={thumb(svc.photo, "thumb")} srcSet={srcSet(svc.photo, "thumb")} sizes={SIZES.thumb} alt={plainWords(svc.name)} loading="lazy" decoding="async" referrerPolicy="no-referrer" onError={(e) => ((e.currentTarget as HTMLImageElement).style.display = "none")} /> : null}
+                      {svc.photo ? <img className="svcpic" src={thumb(svc.photo, "thumb")} srcSet={srcSet(svc.photo, "thumb")} sizes={SIZES.thumb} alt={tidyName(svc.name)} loading="lazy" decoding="async" referrerPolicy="no-referrer" onError={(e) => ((e.currentTarget as HTMLImageElement).style.display = "none")} /> : null}
                       <div className="svchead2">
-                        <b>{plainWords(svc.name)}</b>
+                        <b>{tidyName(svc.name)}</b>
                         {svc.desc && cleanDesc(svc.desc).length > 140 ? (
                           <button type="button" className="svcabout" onClick={() => setOpenSvc(openSvc === svc.name ? null : svc.name)}>
                             {openSvc === svc.name ? "Less" : "More"}
@@ -856,9 +865,9 @@ function RequestBody({
                         <button key={svc.name + v.optionIdx} type="button" className="addon" aria-pressed={optionIdx === v.optionIdx} onClick={() => setOptionIdx(v.optionIdx)}>
                           <span className="tick radio" />
                           <span className="txt">
-                            <b>{plainWords(v.label)}</b>
+                            <b>{tidyLength(v.label)}</b>
                           </span>
-                          <span className="addonprice">{v.price != null ? priceWith(v.price, v.per) : "Price on request"}</span>
+                          <span className={"addonprice" + (v.price != null ? "" : " ask")}>{v.price != null ? priceWith(v.price, v.per) : "Price on request"}</span>
                         </button>
                       ))}
                     </div>
@@ -870,8 +879,8 @@ function RequestBody({
                     <button key={o.name + i} type="button" className="addon" aria-pressed={optionIdx === i} onClick={() => setOptionIdx(i)}>
                       <span className="tick radio" />
                       <span className="txt">
-                        <b>{plainWords(o.name)}</b>
-                        {o.detail ? <small>{plainWords(o.detail)}</small> : null}
+                        <b>{tidyName(o.name)}</b>
+                        {o.detail ? <small>{tidyLength(o.detail)}</small> : null}
                       </span>
                       {optionPrice(o) ? <span className="addonprice">{optionPrice(o)}</span> : null}
                     </button>
@@ -963,7 +972,7 @@ function RequestBody({
               <a className="crow maps" href={mapsDirHref(dest, here)} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}>
                 <IcPin size={20} />
                 <span>
-                  <b>{item.meetingPoint ? plainWords(item.meetingPoint) : place}</b>
+                  <b>{item.meetingPoint ? tidyLine(item.meetingPoint) : place}</b>
                   {item.meetingPoint && address && item.meetingPoint !== address ? <small>{address}</small> : null}
                   <small className="go">{dist ? dist + " · Get directions" : "Get directions"}</small>
                 </span>
@@ -993,17 +1002,17 @@ function RequestBody({
                   <Markup html={ICONS.clock} />
                   <span>
                     {hours.map((h) => (
-                      <b key={h}>{h}</b>
+                      <b key={h}>{tidyHours(h)}</b>
                     ))}
                     <small>Hours</small>
                   </span>
                 </div>
               ) : null}
             </div>
-            {item.checkin ? (
+            {checkin ? (
               <div className="reqbox">
                 <b>When you arrive</b>
-                {plainWords(item.checkin)}
+                {checkin}
               </div>
             ) : null}
           </Section>
@@ -1016,7 +1025,7 @@ function RequestBody({
                 </span>
                 <span>
                   <b>Ask {ASSISTANT_NAME}</b>
-                  <small>Instant answers from {item.title}'s published info, 24/7</small>
+                  <small>Instant answers from {possessive(item.title)} published info, 24/7</small>
                 </span>
               </div>
               {suggestions.length ? (
@@ -1034,22 +1043,12 @@ function RequestBody({
             </div>
           </section>
 
-          {score || item.quotes?.length ? (
-            <Section title={score ? "★ " + fmtRating(score.rating) + " · " + fmtReviews(score.reviews) + " reviews" : "Reviews"}>
-              {item.quotes?.length ? (
+          {score || reviews.length ? (
+            <Section title={score ? "★ " + fmtRating(score.rating) + " · " + fmtReviews(score.reviews) + " reviews" : "What guests say"}>
+              {reviews.length ? (
                 <div className="airquotes">
-                  {item.quotes.map((r, i) => (
-                    <blockquote key={i}>
-                      {r.rating ? (
-                        <span className="airstars">
-                          {Array.from({ length: Math.round(r.rating) }, (_, k) => (
-                            <IcStar key={k} size={9} />
-                          ))}
-                        </span>
-                      ) : null}
-                      <p>{r.text.length > 180 ? r.text.slice(0, 180).replace(/\s+\S*$/, "") + "…" : r.text}</p>
-                      <footer>{r.author || "A guest"}</footer>
-                    </blockquote>
+                  {reviews.map((r) => (
+                    <ReviewCard key={r.key} r={r} />
                   ))}
                 </div>
               ) : (
@@ -1077,7 +1076,7 @@ function RequestBody({
                         )}
                       </span>
                       <span className="wdealtext">
-                        {plainWords(d.text)}
+                        {tidyLine(d.text)}
                         {d.start || d.end ? (
                           <small>
                             {d.start ? clock12(d.start) : "Open"} to {d.end ? clock12(d.end) : "close"}
@@ -1093,7 +1092,7 @@ function RequestBody({
 
           <Section title="Things to know">
             <div className="airknows">
-              <KnowRow icon={ICONS.user} title="Who can go" summary={requirements[0] ? plainWords(requirements[0]) : "Not published yet"}>
+              <KnowRow icon={ICONS.user} title="Who can go" summary={requirements[0] ? tidyLine(requirements[0]) : "Not published yet"}>
                 {requirements.length ? <Bullets items={requirements} /> : <FactList lines={facts.who.filter((l) => l.posted)} />}
               </KnowRow>
               {item.bring?.length ? (
@@ -1102,11 +1101,11 @@ function RequestBody({
                 </KnowRow>
               ) : null}
               {item.groupInfo?.length ? (
-                <KnowRow icon={ICONS.user} title="Groups" summary={plainWords(item.groupInfo[0])}>
+                <KnowRow icon={ICONS.user} title="Groups" summary={tidyLine(item.groupInfo[0])}>
                   <Bullets items={item.groupInfo} />
                 </KnowRow>
               ) : null}
-              <KnowRow icon={ICONS.check} title="Waiver and check-in" summary={waiverLines[0] ? plainWords(waiverLines[0]) : item.waiverUrl ? "Sign online before you arrive" : "Not published yet"}>
+              <KnowRow icon={ICONS.check} title="Waiver and check-in" summary={waiverLines[0] ? tidyLine(waiverLines[0]) : item.waiverUrl ? "Sign online before you arrive" : "Not published yet"}>
                 {waiverLines.length ? <Bullets items={waiverLines} /> : <FactList lines={facts.waiver.filter((l) => l.posted && l.text.length <= 160)} />}
                 {item.waiverUrl ? (
                   <a className="reqwaiver" href={item.waiverUrl} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}>
@@ -1118,9 +1117,9 @@ function RequestBody({
                   </a>
                 ) : null}
               </KnowRow>
-              <KnowRow icon={ICONS.clock} title="Cancellation policy" summary={cancel || (item.cancellation ? plainWords(item.cancellation) : "Confirmed with the operator before you pay")}>
+              <KnowRow icon={ICONS.clock} title="Cancellation policy" summary={cancel || (item.cancellation ? tidyLine(item.cancellation) : "Confirmed with the operator before you pay")}>
                 {item.cancellation ? (
-                  <p className="reqpolicy">{plainWords(item.cancellation)}</p>
+                  <p className="reqpolicy">{tidyLine(item.cancellation)}</p>
                 ) : (
                   <p className="reqpolicy gap">{item.title} has not published cancellation terms. Otto will have them confirm before you pay.</p>
                 )}
@@ -1136,10 +1135,10 @@ function RequestBody({
                 {item.faq.map((f, i) => (
                   <div key={i} className={"reqfaqitem" + (openFaq === i ? " open" : "")}>
                     <button type="button" onClick={() => setOpenFaq(openFaq === i ? null : i)} aria-expanded={openFaq === i}>
-                      <span>{plainWords(f.q)}</span>
+                      <span>{tidyLine(f.q)}</span>
                       <IcChevron size={14} dir={openFaq === i ? "up" : "down"} />
                     </button>
-                    {openFaq === i ? <p>{plainWords(f.a)}</p> : null}
+                    {openFaq === i ? <p>{tidyLine(f.a)}</p> : null}
                   </div>
                 ))}
               </div>
@@ -1147,7 +1146,7 @@ function RequestBody({
           ) : null}
 
           {videos.length || embed ? (
-            <Section title="See it in action" sub={"Videos from " + item.title + "'s own channels."}>
+            <Section title="See it in action" sub={"Videos from " + possessive(item.title) + " own channels."}>
               <div className="reqvideos">
                 {videos.map((v) => (
                   <div className="reqvideo" key={v.id}>

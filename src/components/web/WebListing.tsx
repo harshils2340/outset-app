@@ -40,7 +40,7 @@ const KIND: Record<string, string> = {
 };
 
 /** What the business is, in the words Airbnb uses for "Entire rental unit": the subtitle's first half. */
-const TYPE: Record<string, string> = {
+export const TYPE_NAME: Record<string, string> = {
   skydive: "Skydiving", heli: "Helicopter tour", balloon: "Hot air balloon ride", kart: "Go-kart track", escape: "Escape room", axe: "Axe throwing",
   paintball: "Paintball park", horse: "Trail riding", jetski: "Jet ski rental", pontoon: "Pontoon boat rental", fishing: "Fishing charter",
   parasail: "Parasailing", cruise: "Boat cruise", kayak: "Kayak and paddleboard rental", bowling: "Bowling alley", minigolf: "Mini golf",
@@ -70,7 +70,7 @@ type OptGroup = { name: string; rows: OptRow[] };
 
 /** "dolphin tour" reads "Dolphin tour"; a closing bracket the crawl cut off is put back; "Fishing page" is Fishing. */
 function tidyOpt(text: string): string {
-  let t = plainWords(text).replace(/\s+(?:page|tab|menu|section)$/i, "").trim();
+  let t = lengthWords(tidyName(text)).replace(/\s+(?:page|tab|menu|section)$/i, "").trim();
   const open = (t.match(/\(/g) || []).length;
   const close = (t.match(/\)/g) || []).length;
   if (open > close) t += ")";
@@ -91,6 +91,7 @@ function optKind(text: string): string {
  */
 function bookingGroups(item: Unclaimed): OptGroup[] {
   const groups = new Map<string, OptGroup>();
+  const skip = new Set<number>();
   const add = (name: string, row: OptRow) => {
     const key = name.toLowerCase();
     if (!groups.has(key)) groups.set(key, { name, rows: [] });
@@ -100,15 +101,20 @@ function bookingGroups(item: Unclaimed): OptGroup[] {
   if (item.services?.length) {
     for (const svc of item.services) for (const v of svc.variants) {
       const o = item.options[v.optionIdx];
-      add(tidyOpt(svc.name), { idx: v.optionIdx, label: tidyOpt(v.label || svc.name), sub: o?.detail && o.detail !== v.label ? plainWords(o.detail) : undefined, price: v.price, per: v.per, kind: optKind(svc.name + " " + v.label) });
+      if (isQuestion(svc.name) && !svc.variants.some((x) => x.price != null)) { skip.add(v.optionIdx); continue; }
+      add(isQuestion(svc.name) ? "Other options" : tidyOpt(svc.name), { idx: v.optionIdx, label: tidyOpt(v.label || svc.name), sub: o?.detail && o.detail !== v.label ? tidyLine(o.detail) : undefined, price: v.price, per: v.per, kind: optKind(svc.name + " " + v.label) });
     }
   }
   item.options.forEach((o, idx) => {
+    if (skip.has(idx) || (isQuestion(o.name) && !o.detail && o.price == null)) return;
     if ([...groups.values()].some((g) => g.rows.some((r) => r.idx === idx))) return;
     const name = tidyOpt(o.name);
+    // "How Do I Book A Cruise?" is a page heading the crawl read as a section, not a group of tickets.
+    const heading = /\?$/.test(name) && !!o.detail;
+    if (heading) return add("Other options", { idx, label: tidyOpt(o.detail), price: o.price, per: o.per, kind: optKind(o.detail) });
     const hasSection = item.options.filter((x) => tidyOpt(x.name) === name).length > 1 && !!o.detail;
     if (hasSection) add(name, { idx, label: tidyOpt(o.detail), price: o.price, per: o.per, kind: optKind(o.name + " " + o.detail) });
-    else add("Other options", { idx, label: name, sub: o.detail ? plainWords(o.detail) : undefined, price: o.price, per: o.per, kind: optKind(o.name + " " + o.detail) });
+    else add("Other options", { idx, label: name, sub: o.detail ? tidyLine(o.detail) : undefined, price: o.price, per: o.per, kind: optKind(o.name + " " + o.detail) });
   });
   // A section with one entry is not a section: fold those into one list so the picker is not a wall of headings.
   let out = [...groups.values()];
@@ -132,6 +138,190 @@ function placeName(area: string): string {
   const m = area.match(/^(.*),\s*([A-Z]{2})$/);
   if (!m || !REGION[m[2]]) return area;
   return m[1] + ", " + REGION[m[2]];
+}
+
+/* ---------- display tidying for scraped text. Formatting only: nothing here adds a fact. ---------- */
+
+/** "Spray Watersports'" and "Hubbard's Marina's": a name that ends in s takes the apostrophe alone. */
+export function possessive(name: string): string {
+  return /s$/i.test(name.trim()) ? name.trim() + "’" : name.trim() + "’s";
+}
+
+/** Space before punctuation, "( x )", doubled spaces, a leading bullet or list number: the crawl's leftovers. */
+export function tidyLine(text: string): string {
+  let t = plainWords(text)
+    .replace(/^\s*(?:[•·*\-–—:;,|>]+|\d{1,2}\s*[-.)]\s+)\s*/, "")
+    .replace(/\s+([,.;:!?)])/g, "$1")
+    .replace(/\(\s+/g, "(")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+  // A line still set in capitals reads as shouting: sentence case it, keeping short acronyms.
+  const letters = t.replace(/[^A-Za-z]/g, "");
+  if (letters.length >= 12 && letters.replace(/[^A-Z]/g, "").length / letters.length > 0.7) {
+    t = t.toLowerCase().replace(/(^|[.!?]\s+)([a-z])/g, (_m, p: string, c: string) => p + c.toUpperCase()).replace(/\b(am|pm|atv|utv|vip|faq|id|usa|fl)\b/g, (w) => w.toUpperCase());
+  }
+  // "Cancellations Cancellation requests received..." carries the page heading glued to the sentence.
+  const lead = t.match(/^([A-Za-z]+)\s+([A-Za-z]+)\b/);
+  if (lead && lead[1].toLowerCase().replace(/s$/, "") === lead[2].toLowerCase().replace(/s$/, "")) t = t.slice(lead[1].length).trim();
+  return t ? t.charAt(0).toUpperCase() + t.slice(1) : t;
+}
+
+const TITLE_SMALL = new Set(["a", "an", "and", "at", "by", "for", "in", "of", "on", "or", "the", "to", "with", "per", "vs"]);
+/** "Island Jet ski Tour" is a title with one word left lowercase: finish the title case the operator started. */
+export function tidyName(text: string): string {
+  const t = tidyLine(text).replace(/\b(\d+(?:\.\d+)?)[\s-]?(Hr|hr|HR)s?\b/g, (_m, n: string, h: string) => n + " " + (h === "hr" ? "hour" : "Hour"));
+  const words = t.split(" ");
+  const big = words.filter((w, i) => /^[A-Za-z]/.test(w) && (i === 0 || !TITLE_SMALL.has(w.toLowerCase())));
+  const capped = big.filter((w) => /^[A-Z]/.test(w)).length;
+  if (big.length < 3 || capped / big.length < 0.6 || capped === big.length) return t;
+  return words.map((w, i) => (i > 0 && TITLE_SMALL.has(w.toLowerCase()) ? w : w.replace(/^([a-z])/, (c) => c.toUpperCase()))).join(" ");
+}
+
+/**
+ * A service the crawl named after an FAQ heading ("How Do I Book A Cruise?", "Will I See Dolphins?"). With prices it
+ * is still the ticket menu, shown as Tickets without the FAQ answer as its description; without prices it is dropped.
+ */
+export const isQuestion = (name: string) => /\?\s*$/.test(name.trim());
+export function bookableServices<T extends { name: string; desc?: string | null; variants: { price: number | null }[] }>(services: T[] | undefined): T[] {
+  return (services || []).filter((svc) => !isQuestion(svc.name) || svc.variants.some((v) => v.price != null)).map((svc) => (isQuestion(svc.name) ? { ...svc, name: "Tickets", desc: null } : svc));
+}
+
+/** A variant label that is only a length: "1.5 hour" reads "1.5 hours", "1 hours" reads "1 hour". */
+export function tidyLength(text: string): string {
+  return lengthWords(tidyLine(text));
+}
+function lengthWords(text: string): string {
+  return text.replace(/^(\d+(?:\.\d+)?)\s*(hour|hr|minute|min|day|night|week)s?\.?$/i, (_m, n: string, u: string) => {
+    const unit = ({ hr: "hour", min: "minute" } as Record<string, string>)[u.toLowerCase()] || u.toLowerCase();
+    return n + " " + unit + (Number(n) === 1 ? "" : "s");
+  });
+}
+
+/** "of OperationsMon - Fri8:00 am" is a heading and a day glued to a time by the crawl: "Mon - Fri 8:00 am". */
+export function tidyHours(text: string): string {
+  return text.replace(/^\s*(?:hours\s+)?of\s+operations?:?\s*/i, "").replace(/^hours:?\s+/i, "").replace(/([A-Za-z])(\d)/g, "$1 $2").replace(/\s{2,}/g, " ").trim();
+}
+
+/** "60 min" reads "1 hour" and "90 min" "1.5 hours", so cards side by side state lengths the same way. */
+export function tidyDuration(text: string): string {
+  const t = text.trim();
+  const m = t.match(/^(\d+)\s*(?:m|mins?|minutes?)\.?$/i);
+  if (m) {
+    const n = Number(m[1]);
+    if (n >= 60 && n % 30 === 0) return n / 60 + (n === 60 ? " hour" : " hours");
+    return n + " min";
+  }
+  return t.replace(/^1 hours$/i, "1 hour").replace(/^(\d+(?:\.\d+)?)\s*hrs?$/i, (_x, n: string) => n + (Number(n) === 1 ? " hour" : " hours"));
+}
+
+/** "84457 Overseas Hwy, Islamorada, FL, 33036" loses the comma before the ZIP. */
+export function tidyAddress(text: string): string {
+  return text.replace(/,\s*(\d{5}(?:-\d{4})?|[A-Z]\d[A-Z] ?\d[A-Z]\d)$/, " $1");
+}
+
+/** "Free cancellation up to 48 hours before" ends on a preposition; say before what. */
+export function tidyCancel(text: string): string {
+  return text.replace(/\bbefore\.?$/i, "before your start time");
+}
+
+/**
+ * What's included, split the way a guest reads it. A short "Fuel (not included)" is struck through as Airbnb does
+ * with a missing amenity; a whole sentence ("Gratuity is not included in the ticket price") keeps its own words,
+ * because cutting "not included" out of the middle turns it into the opposite claim.
+ */
+const NOT_INCLUDED = /\bnot included\b|\bexcluded\b|\bnot provided\b|\bdoes(?: not|n[’']t) include\b/i;
+export function splitIncluded(lines: string[]): { yes: string[]; no: { text: string; strike: boolean }[] } {
+  const yes: string[] = [];
+  const no: { text: string; strike: boolean }[] = [];
+  const seen = new Set<string>();
+  for (const raw of lines) {
+    const line = tidyLine(raw).replace(/^not included:\s*/i, "").replace(/^./, (c) => c.toUpperCase());
+    const key = line.toLowerCase();
+    if (!line || seen.has(key)) continue;
+    seen.add(key);
+    if (/\bbring your own\b/i.test(line)) continue;
+    if (!NOT_INCLUDED.test(line)) { yes.push(line); continue; }
+    const short = line.replace(/\s*[-–:(,]*\s*(?:is |are )?(?:not included|excluded|not provided)\)?\.?\s*$/i, "").trim();
+    const clean = short !== line && !!short && short.split(/\s+/).length <= 4 && !/[:;]/.test(short) && !/\b(?:in|also|are|is|the|of|and|a|to|that|for|with)$/i.test(short);
+    if (clean && !NOT_INCLUDED.test(short)) no.push({ text: short.charAt(0).toUpperCase() + short.slice(1), strike: true });
+    else no.push({ text: line, strike: false });
+  }
+  // "Gratuity" struck through beside "Gratuity is not included in the ticket price" says the same thing twice.
+  const out = no.filter((n) => !n.strike || !no.some((m) => !m.strike && m.text.toLowerCase().startsWith(n.text.toLowerCase() + " ")));
+  return { yes, no: out };
+}
+
+/* ---------- reviews ---------- */
+
+export type ShownReview = { key: string; name: string | null; initial: string | null; when: string | null; source: string | null; stars: number | null; text: string };
+
+const MONTH_NAMES = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+const SOURCES: [RegExp, string][] = [[/trip\s*advisor/i, "Tripadvisor"], [/google/i, "Google"], [/yelp/i, "Yelp"], [/facebook/i, "Facebook"], [/^peek/i, "Peek"], [/fareharbor/i, "FareHarbor"], [/viator/i, "Viator"], [/getyourguide/i, "GetYourGuide"]];
+const sourceOf = (s: string) => SOURCES.find(([re]) => re.test(s))?.[1] || null;
+/** A platform named as "google" or "tripadvisor" reads "Google", "Tripadvisor"; "site" (the operator's own) names none. */
+const platformName = (s: string) => (/^(site|own|website)$/i.test(s.trim()) ? null : sourceOf(s) || (/^[a-z][a-z .-]{1,24}$/i.test(s.trim()) ? s.trim().charAt(0).toUpperCase() + s.trim().slice(1) : null));
+const GLOWING = /\b(amazing|awesome|great|best|fantastic|wonderful|recommend|loved?|excellent|perfect|fun|memorable|highlight|incredible|enjoyed|beautiful|thank)/i;
+const SOUR = /\b(disappoint|terrible|worst|rude|never again|waste|awful|horrible|refund|not recommend|avoid|unprofessional|bad\b|poor\b)/i;
+const NOT_A_REVIEW = /\b(leave us a|book (?:online|now)|read (?:all|more) reviews|verified reviews from|is trusted by|we offer|we set the standard|tired of|click here)\b/i;
+const NOT_A_NAME = /^(customer name|customer|anonymous|name|read more|testimonials?|reviews?|get in touch|google( reviews?| review)?|goggle|yelp!?|trip ?advisor|facebook|verified .*|guest|a guest|client|what|different|great|amazing|awesome|excellent|wonderful|fantastic|best|fun|highly recommend(ed)?|\d+(\.\d+)?)$/i;
+
+/** Dates are stored as ISO "2025-03-14" or "2025-03" and read "March 2025". Anything else is treated as no date. */
+function reviewDate(raw: string): string | null {
+  const iso = raw.trim().match(/^(\d{4})-(\d{2})(?:-(\d{2}))?$/);
+  if (!iso || +iso[2] < 1 || +iso[2] > 12) return null;
+  return MONTH_NAMES[+iso[2] - 1] + " " + iso[1];
+}
+
+/**
+ * The operator's published reviews as Airbnb review cards. The crawl picks up a site's labels along with the reviews
+ * ("Customer Name", "TripAdvisor", "via Google", a headline before the quote), so each field is shown only when it
+ * really is a name, a date, a source or a rating. Nothing is filled in: no name means no name, and a low star count
+ * stored against plainly glowing words is a parsing slip, so its number is not shown.
+ */
+export function shownReviews(quotes: { author?: string; rating?: number; text: string; date?: string; source?: string }[] | undefined, business: string): ShownReview[] {
+  const out: ShownReview[] = [];
+  const seen = new Set<string>();
+  for (const q of quotes || []) {
+    let text = decodeText(q.text)
+      .replace(/^(?:review)?ed on:\s*\d{1,2}\s+[A-Za-z]{3,9}\s+\d{4}\s*/i, "")
+      .replace(/^recommends(?=[A-Z])/, "")
+      .replace(/^[\s…."“”'‘’]+/, "")
+      .replace(/[\s"“”]+$/, "")
+      .replace(/\s*(?:Read more|See more|More)\s*$/i, "");
+    // "Best part of our Siesta trip " The gracious...": a headline, then the quote.
+    text = text.replace(/^(.{4,70}?[^\s])\s+["“”]\s+/, (_m, head: string) => (/[.!?]$/.test(head) ? head + " " : head + ". "));
+    text = tidySentence(text);
+    const key = text.toLowerCase().slice(0, 80);
+    if (text.length < 25 || NOT_A_REVIEW.test(text) || seen.has(key)) continue;
+    if (text.toLowerCase().startsWith(business.toLowerCase() + " is ")) continue;
+    seen.add(key);
+    let author = q.author && !/[<>]/.test(q.author) ? decodeText(q.author).replace(/^name:\s*/i, "").replace(/[\s/|,:;\-–]+$/, "").trim() : "";
+    let source = author ? sourceOf(author) : null;
+    if (source && author.split(/\s+/).length <= 3 && NOT_A_NAME.test(author.replace(/\breviews?\b/i, "").trim() || author)) author = "";
+    if (author && (NOT_A_NAME.test(author) || author.split(/\s+/).length > 3 || author.toLowerCase() === business.toLowerCase() || business.toLowerCase().includes(author.toLowerCase()) || /\b(guides?|adventure|tours?|experience|service)\b/i.test(author))) author = "";
+    if (author && author === author.toUpperCase() && author.length > 3) author = author.toLowerCase().replace(/\b[a-z]/g, (c) => c.toUpperCase());
+    if (q.source) source = platformName(q.source);
+    // Older files carried the platform in the date field ("via Google"); that is a source, and no date.
+    else if (q.date && /^via\s/i.test(q.date)) source = source || sourceOf(q.date);
+    const when = q.date ? reviewDate(q.date) : null;
+    let stars = typeof q.rating === "number" && q.rating >= 1 && q.rating <= 5 ? Math.round(q.rating) : null;
+    if (stars != null && stars <= 3 && GLOWING.test(text) && !SOUR.test(text)) stars = null;
+    out.push({ key: key + out.length, name: author || null, initial: author ? (author.match(/[A-Za-z0-9]/)?.[0] || "").toUpperCase() || null : null, when, source, stars, text });
+  }
+  return out;
+}
+
+function decodeText(s: string): string {
+  const el = typeof document !== "undefined" ? document.createElement("textarea") : null;
+  if (!el) return s;
+  el.innerHTML = s.replace(/<[^>]*>/g, " ");
+  return el.value.replace(/\s+/g, " ").trim();
+}
+
+/** Review text keeps the guest's own voice: only spacing and a lowercase first letter are touched. */
+function tidySentence(s: string): string {
+  const t = s.replace(/\s+([,.;:!?)])(?=\s|$)/g, "$1").replace(/\s{2,}/g, " ").trim();
+  return t.charAt(0).toUpperCase() + t.slice(1);
 }
 
 /* Line icons in Airbnb's weight: 24px, 1.6 stroke, round joins. */
@@ -203,12 +393,12 @@ function Card({ u, onOpen }: { u: Unclaimed; onOpen: (id: string) => void }) {
       </div>
       <div className="alcardbody">
         <span className="alcardtop">
-          <b>{u.title}</b>
+          <b title={u.title}>{u.title}</b>
           {score ? <span className="alcardrate"><Markup html={I.star} /> {score.rating.toFixed(1)}</span> : null}
         </span>
         <small>{u.area}</small>
-        {u.dur ? <small>{u.dur}</small> : u.fc ? <small>Free cancellation</small> : null}
-        <span className="alcardprice">{from != null ? <><b>{money(from)}</b> from</> : "Request to book"}</span>
+        {u.dur ? <small>{tidyDuration(u.dur)}</small> : u.fc ? <small>Free cancellation</small> : null}
+        <span className="alcardprice">{from != null ? <>From <b>{money(from)}</b></> : "Request to book"}</span>
       </div>
     </button>
   );
@@ -295,6 +485,42 @@ function MoreLink({ children, onClick }: { children: ReactNode; onClick: () => v
       <span>{children}</span>
       <Markup html={I.chevRight} />
     </button>
+  );
+}
+
+/**
+ * One review in Airbnb's card: the reviewer's initial and name, the source under it, then stars and date on one line
+ * and the text clamped to four lines with "Show more" only when it really runs over. Missing fields are left out.
+ */
+export function ReviewCard({ r }: { r: ShownReview }) {
+  const textRef = useRef<HTMLParagraphElement | null>(null);
+  const [open, setOpen] = useState(false);
+  const [over, setOver] = useState(false);
+  useLayoutEffect(() => {
+    const el = textRef.current;
+    if (el && !open) setOver(el.scrollHeight > el.clientHeight + 2);
+  }, [r.text, open]);
+  return (
+    <article className="alreview">
+      <header>
+        <span className={"alavatar sm" + (r.initial ? "" : " anon")} aria-hidden="true">{r.initial || <Markup html={I.person} />}</span>
+        <span>
+          <b>{r.name || "A guest"}</b>
+          {r.source ? <small>{r.source} review</small> : null}
+        </span>
+      </header>
+      {r.stars || r.when ? (
+        <span className="alreviewmeta">
+          {r.stars ? <span className="alreviewstars" role="img" aria-label={r.stars + (r.stars === 1 ? " star" : " stars")}>{Array.from({ length: r.stars }, (_, k) => <Markup key={k} html={I.star} />)}</span> : null}
+          {r.stars && r.when ? <span aria-hidden="true">·</span> : null}
+          {r.when ? <span>{r.when}</span> : null}
+        </span>
+      ) : null}
+      <p ref={textRef} className={open ? "open" : ""}>{r.text}</p>
+      {over || open ? (
+        <button type="button" className="alreviewmore" onClick={() => setOpen((v) => !v)} aria-expanded={open}>{open ? "Show less" : "Show more"}</button>
+      ) : null}
+    </article>
   );
 }
 
@@ -606,7 +832,8 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
   const metro = metroById(item.metroId);
   const score = publicRating(item);
   const contact = contactFor(item);
-  const address = contact ? addressLine(contact) : null;
+  const addressRaw = contact ? addressLine(contact) : null;
+  const address = addressRaw ? tidyAddress(addressRaw) : null;
   const facts = listingFacts(item);
   const guide = GUIDES[item.art];
   // The hero lays itself out from the media that really loads. Every photo is probed at thumbnail size up front so a
@@ -771,15 +998,18 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
 
   /* ---------- derived, never invented ---------- */
   const requirements = item.requirements?.length ? item.requirements : facts.who.filter((l) => l.posted).map((l) => l.text);
-  const includes = item.includes.filter((l) => !/\bnot included|excluded|not provided|bring your own\b/i.test(l));
-  const notIncluded = item.includes.filter((l) => /\bnot included|excluded|not provided\b/i.test(l)).map((l) => l.replace(/\s*\(?not included\)?/i, "").trim());
+  const included = splitIncluded(item.includes);
+  const includes = included.yes;
+  const notIncluded = included.no;
   const reqKeys = new Set(requirements.map((r) => r.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim()));
   const highlights = (item.highlights?.length ? item.highlights : facts.about.slice(0, 6)).filter((h) => !reqKeys.has(h.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim()));
   const waiverLines = (item.policies?.filter((l) => /\bwaivers?\b|\bliabilit|\brelease form|\bsign(ed|ing)? (a |the |our |your )?(waiver|release|form)|\bcheck-?in\b/i.test(l)) || facts.waiver.filter((l) => l.posted).map((l) => l.text)).filter((l) => l.length <= 160);
   const otherPolicies = (item.policies || []).filter((l) => !/cancel|refund|waiver|liabilit/i.test(l));
-  const cancel = item.fc || freeCancel(item.cancellation);
+  const cancelRaw = item.fc || freeCancel(item.cancellation);
+  const cancel = cancelRaw ? tidyCancel(cancelRaw) : null;
   const age = minAge(requirements);
-  const duration = item.dur || durationLabel(item);
+  const durationRaw = item.dur || durationLabel(item);
+  const duration = durationRaw ? tidyDuration(durationRaw) : null;
   const openNow = itemOpenState(item);
   const dealsNow = todaysDeals(item);
   const today = item.promos?.length ? clockIn(zoneFor(item)).day : -1;
@@ -790,9 +1020,13 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
   const hours = item.hoursText?.length ? item.hoursText : contact?.hours.map(fmtHours) || [];
   const topRated = !!score && score.rating >= TOP_RATING && score.reviews >= TOP_REVIEWS;
   const near = state.near ? nearestLocation(item, state.near) : null;
-  const typeName = TYPE[item.art] || "Experience";
+  const typeName = TYPE_NAME[item.art] || "Experience";
   const initial = (item.title.replace(/^the\s+/i, "").match(/[A-Za-z]/) || [item.title.slice(0, 1)])[0].toUpperCase();
-  const bookableCount = item.services?.length || item.options.filter((o) => o.price != null || o.name).length;
+  const bookableCount = bookableServices(item.services).length || item.options.filter((o) => o.price != null || o.name).length;
+  // A sign-off like "See you soon!" is not arrival information.
+  const checkin = item.checkin && !/^(see you|thank|welcome|we look forward|have fun|enjoy)\b/i.test(item.checkin.trim()) ? tidyLine(item.checkin) : "";
+  const reviews = useMemo(() => shownReviews(item.quotes, item.title), [item.quotes, item.title]);
+  const services = useMemo(() => bookableServices(item.services), [item.services]);
   const blurb = item.blurb ? cleanDesc(item.blurb).replace(/\s+(Book|Learn more|Read more|Reserve)\.?$/i, "") : "";
 
   // The grey line under the subtitle, Airbnb's "4 guests · 2 bedrooms · 2 beds": only what the operator states.
@@ -808,15 +1042,19 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
   const rows: { icon: string; title: string; text: string }[] = [];
   if (dealsNow.length) {
     const d = dealsNow[0];
-    rows.push({ icon: I.tag, title: "Deal today", text: plainWords(d.text) + (d.end ? ", until " + clock12(d.end) : d.start ? ", from " + clock12(d.start) : "") });
+    rows.push({ icon: I.tag, title: "Deal today", text: tidyLine(d.text) + (d.end ? ", until " + clock12(d.end) : d.start ? ", from " + clock12(d.start) : "") });
   }
-  if (live) rows.push({ icon: I.calendar, title: "Live times from their calendar", text: "Start times come straight from " + item.title + "'s own booking system." });
-  if (openNow?.open) rows.push({ icon: I.clock, title: "Open now", text: openNow.label + "." });
+  if (live) rows.push({ icon: I.calendar, title: "Live times from their calendar", text: "Start times come straight from " + possessive(item.title) + " own booking system." });
+  if (openNow?.open) {
+    // The label already opens with "Open now"; the grey line carries only the rest ("Closes 7 PM.").
+    const rest = openNow.label.replace(/^open now[,.]?\s*/i, "");
+    rows.push({ icon: I.clock, title: "Open now", text: rest ? rest.charAt(0).toUpperCase() + rest.slice(1) + "." : "From the hours they publish." });
+  }
   if (cancel) rows.push({ icon: I.calendar, title: cancel, text: "Plans change. Their published policy lets you cancel for a full refund." });
   if (instant) rows.push({ icon: I.bolt, title: "Instant confirmation", text: "Your spot is confirmed the moment you book." });
   else if (!visit) rows.push({ icon: I.message, title: "Request to book", text: "The business confirms by text or email. Nothing is charged until they do." });
-  else if (contact?.website || item.src) rows.push({ icon: I.ticket, title: "Tickets from the business", text: "Entry is sold on " + item.title + "'s own site, at their prices." });
-  if (item.meetingPoint) rows.push({ icon: I.door, title: "Meeting point", text: plainWords(item.meetingPoint) });
+  else if (contact?.website || item.src) rows.push({ icon: I.ticket, title: "Tickets from the business", text: "Entry is sold on " + possessive(item.title) + " own site, at their prices." });
+  if (item.meetingPoint) rows.push({ icon: I.door, title: "Meeting point", text: tidyLine(item.meetingPoint) });
   if (topRated && rows.length < 3) rows.push({ icon: I.medal, title: "Top rated", text: "Rated " + score!.rating.toFixed(1) + " from " + fmtReviews(score!.reviews) + " public reviews." });
   const highlightRows = rows.slice(0, 3);
 
@@ -824,12 +1062,12 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
   const rules = [...requirements, ...(item.bring || []).map((b) => "Bring " + b.charAt(0).toLowerCase() + b.slice(1)), ...(item.groupInfo || [])];
   const safety = [...(age ? ["Minimum age " + age] : []), ...waiverLines];
   if (item.waiverUrl && !safety.some((l) => /waiver/i.test(l))) safety.push("Waiver to sign before you arrive");
-  const cancelLines = [...(cancel ? [cancel] : []), ...(item.cancellation ? [plainWords(item.cancellation)] : []), ...otherPolicies];
+  const cancelLines = [...(cancel ? [cancel] : []), ...(item.cancellation ? [tidyLine(item.cancellation)] : []), ...otherPolicies];
   const knowCols: KnowCol[] = [];
   if (rules.length) knowCols.push({ key: "rules", title: "Who can go", icon: I.group, lines: rules });
   if (safety.length) knowCols.push({ key: "safety", title: "Safety and waiver", icon: I.shield, lines: safety });
   if (cancelLines.length || knowCols.length) {
-    knowCols.push({ key: "cancel", title: "Cancellation policy", icon: I.calendar, lines: cancelLines.length ? cancelLines : [item.title + " has not published cancellation terms. Otto will have them confirm before you pay."] });
+    knowCols.push({ key: "cancel", title: "Cancellation policy", icon: I.calendar, lines: cancelLines.length ? cancelLines : ["Not published yet. Otto will have the business confirm before you pay."] });
   }
 
   const cheapIdx = defaultOption(item.options);
@@ -949,7 +1187,7 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
     <span className="alprice"><b>Request to book</b></span>
   );
   const chipsToday = chipsFor(day);
-  const allIncluded = [...includes.map((t) => ({ t, no: false })), ...notIncluded.map((t) => ({ t, no: true }))];
+  const allIncluded = [...includes.map((t) => ({ t, no: false, strike: false })), ...notIncluded.map((n) => ({ t: n.text, no: true, strike: n.strike }))];
   const knowModal = knowCols.find((c) => "know-" + c.key === modal);
 
   return (
@@ -972,7 +1210,7 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
           <div className="alsublinks">
             {media.length ? <button type="button" tabIndex={navOn ? 0 : -1} onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}>Photos</button> : null}
             {allIncluded.length ? <button type="button" tabIndex={navOn ? 0 : -1} onClick={() => jump("al-included")}>What's included</button> : null}
-            {score || item.quotes?.length ? <button type="button" tabIndex={navOn ? 0 : -1} onClick={() => jump("al-reviews")}>Reviews</button> : null}
+            {score || reviews.length ? <button type="button" tabIndex={navOn ? 0 : -1} onClick={() => jump("al-reviews")}>Reviews</button> : null}
             <button type="button" tabIndex={navOn ? 0 : -1} onClick={() => jump("al-location")}>Location</button>
           </div>
           {navCta && !visit && !done ? (
@@ -1094,7 +1332,7 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
               <span className="alavatar" aria-hidden="true">{initial}</span>
               <span>
                 <b>Run by {item.title}</b>
-                <small>{item.claimed ? "Claimed business" + (instant ? " · Instant confirmation" : "") : "Requests go straight to the business"}</small>
+                <small>{item.claimed ? "Claimed business" + (instant ? " · Instant confirmation" : "") : visit ? "Tickets are sold by the business" : "Requests go straight to the business"}</small>
               </span>
             </section>
 
@@ -1114,19 +1352,20 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
 
             {blurb || highlights.length ? (
               <section className="alsec aldesc">
+                {/* The preview is the description alone, or the highlights when there is no description. Showing both
+                    under one height cap left a "Highlights" heading stranded above "Show more" with its list cut off. */}
                 <div className="aldesctext" ref={descRef}>
-                  {blurb ? <p>{blurb}</p> : null}
-                  {highlights.length ? (
+                  {blurb ? <p>{blurb}</p> : (
                     <>
                       <p><b>Highlights</b></p>
-                      <ul>{highlights.map((h) => <li key={h}>{plainWords(h)}</li>)}</ul>
+                      <ul>{highlights.map((h) => <li key={h}>{tidyLine(h)}</li>)}</ul>
                     </>
-                  ) : null}
+                  )}
                 </div>
-                {descOver ? <MoreLink onClick={() => setModal("desc")}>Show more</MoreLink> : null}
+                {descOver || (blurb && highlights.length) ? <MoreLink onClick={() => setModal("desc")}>Show more</MoreLink> : null}
                 {guide ? (
                   <p className="aldescguide">
-                    <button type="button" className="alunder" onClick={() => setModal("guide")}>What {KIND[item.art] || "this"} is actually like</button>
+                    <MoreLink onClick={() => setModal("guide")}>What {KIND[item.art] || "this"} is actually like</MoreLink>
                   </p>
                 ) : null}
               </section>
@@ -1136,22 +1375,22 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
               </section>
             ) : null}
 
-            {item.services && item.services.length ? (
+            {services.length ? (
               <section className="alsec">
                 <h2>What you can book</h2>
                 <div className="alsvcs">
-                  {item.services.map((svc, svcIdx) => {
-                    const desc = svc.desc ? cleanDesc(svc.desc) : "";
+                  {services.map((svc, svcIdx) => {
+                    const desc = svc.desc ? cleanDesc(svc.desc).replace(/\(\s+/g, "(").replace(/\s+\)/g, ")") : "";
                     const long = desc.length > 140;
                     const on = svc.variants.some((v) => v.optionIdx === optionIdx);
                     return (
                       <div className={"alsvc" + (on ? " on" : "")} key={svc.name + "|" + svcIdx}>
                         {svc.photo ? (
                           <div className="alsvcpic">
-                            <img src={thumb(svc.photo, "wide")} srcSet={srcSet(svc.photo, "wide")} sizes="(max-width: 1127px) 520px, 320px" alt={plainWords(svc.name)} loading="lazy" decoding="async" referrerPolicy="no-referrer" onError={(e) => ((e.currentTarget.parentElement as HTMLElement).style.display = "none")} />
+                            <img src={thumb(svc.photo, "wide")} srcSet={srcSet(svc.photo, "wide")} sizes="(max-width: 1127px) 520px, 320px" alt={tidyName(svc.name)} loading="lazy" decoding="async" referrerPolicy="no-referrer" onError={(e) => ((e.currentTarget.parentElement as HTMLElement).style.display = "none")} />
                           </div>
                         ) : null}
-                        <b className="alsvcname">{plainWords(svc.name)}</b>
+                        <b className="alsvcname">{tidyName(svc.name)}</b>
                         {desc ? (
                           <p className="alsvcdesc">
                             {openSvc === svc.name || !long ? desc : desc.slice(0, 140).replace(/\s+\S*$/, "") + "…"}
@@ -1162,8 +1401,8 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
                           {svc.variants.map((v) => (
                             <button key={v.optionIdx} type="button" className="alvariant" aria-pressed={optionIdx === v.optionIdx} onClick={() => setOptionIdx(v.optionIdx)}>
                               <span className="alradio" aria-hidden="true" />
-                              <span>{plainWords(v.label)}</span>
-                              <b>{v.price != null ? priceWith(v.price, v.per) : "Price on request"}</b>
+                              <span>{tidyLength(v.label)}</span>
+                              {v.price != null ? <b>{priceWith(v.price, v.per)}</b> : <em className="alask">Price on request</em>}
                             </button>
                           ))}
                         </div>
@@ -1179,8 +1418,8 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
                   {item.options.map((o, i) => (
                     <button key={o.name + i} type="button" className="alvariant" aria-pressed={optionIdx === i} onClick={() => setOptionIdx(i)}>
                       <span className="alradio" aria-hidden="true" />
-                      <span>{plainWords(o.name)}{o.detail ? " · " + plainWords(o.detail) : ""}</span>
-                      <b>{o.price != null ? priceWith(o.price, o.per) : "Price on request"}</b>
+                      <span>{tidyName(o.name)}{o.detail ? " · " + tidyLength(o.detail) : ""}</span>
+                      {o.price != null ? <b>{priceWith(o.price, o.per)}</b> : <em className="alask">Price on request</em>}
                     </button>
                   ))}
                 </div>
@@ -1206,10 +1445,10 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
               <section className="alsec" id="al-included">
                 <h2>What's included</h2>
                 <div className="alamen">
-                  {allIncluded.slice(0, 10).map(({ t, no }) => (
-                    <div className={"alamenrow" + (no ? " no" : "")} key={(no ? "n" : "y") + t}>
+                  {allIncluded.slice(0, 10).map(({ t, no, strike }) => (
+                    <div className={"alamenrow" + (no ? " no" : "") + (no && !strike ? " sentence" : "")} key={(no ? "n" : "y") + t}>
                       <span className="alamenicon"><Markup html={amenityIcon(t)} /></span>
-                      <span>{no ? <span className="vh">Not included: </span> : null}{plainWords(t)}</span>
+                      <span>{no && strike ? <span className="vh">Not included: </span> : null}{t}</span>
                     </div>
                   ))}
                 </div>
@@ -1222,7 +1461,7 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
             {item.promos?.length ? (
               <section className="alsec" id="deals">
                 <h2>Deals</h2>
-                <p className="alsecsub">From {item.title}'s own site. Days are in their local time.</p>
+                <p className="alsecsub">From {possessive(item.title)} own site. Days are in their local time.</p>
                 <ul className="aldeals">
                   {item.promos.map((pr) => {
                     const on = dealsNow.includes(pr);
@@ -1230,9 +1469,10 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
                       <li key={pr.text} className={on ? "on" : ""}>
                         <span className="alamenicon"><Markup html={I.tag} /></span>
                         <span className="aldealbody">
-                          <b>{plainWords(pr.text)}{on ? <em>Today</em> : null}</b>
-                          <small>{dayLabel(pr.days)}{pr.start || pr.end ? " · " + (pr.start ? clock12(pr.start) : "Open") + " to " + (pr.end ? clock12(pr.end) : "close") : ""}</small>
-                          <span className="aldealdays" aria-hidden="true">
+                          <b>{tidyLine(pr.text)}{on ? <em>Today</em> : null}</b>
+                          {/* The day chips already show the days; the grey line is only for a time window. */}
+                          {pr.start || pr.end ? <small>{(pr.start ? clock12(pr.start) : "Open") + " to " + (pr.end ? clock12(pr.end) : "close")}</small> : null}
+                          <span className="aldealdays" role="img" aria-label={dayLabel(pr.days)}>
                             {pr.days.length ? DAY_SHORT.map((d, i) => (
                               <i key={d} className={pr.days.includes(i) ? (i === today ? "hit today" : "hit") : ""}>{d}</i>
                             )) : <i className={"hit" + (on ? " today" : "")}>Every day</i>}
@@ -1255,7 +1495,7 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
                 </p>
                 <MonthPair dates={dates} dateIdx={state.dateIdx} onPickDate={setDate} chipsFor={chipsFor} />
                 <div className="alcalfoot">
-                  <span>{live ? "Live times from " + item.title + "'s own booking calendar." : "Days with start times are shown in black."}</span>
+                  <span>{live ? "Live times from " + possessive(item.title) + " own booking calendar." : "Days with start times are shown in black."}</span>
                   {!done ? <button type="button" className="alunder strong" onClick={() => { jump("al-cols"); window.setTimeout(() => setPickerOpen(true), 400); }}>{time ? "Change time" : "Choose a time"}</button> : null}
                 </div>
               </section>
@@ -1295,7 +1535,7 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
                 <span className="aldonemark"><Markup html={ICONS.checkbig} /></span>
                 <h3>{instant ? "You're booked" : "Request sent"}</h3>
                 <p>{fmtDate(day)} · {time ? fmtTime(time) : ""} · {qty} {qty === 1 ? "guest" : "guests"}</p>
-                <p>{picked ? plainWords(picked.name + (picked.detail ? " · " + picked.detail : "")) : item.title}</p>
+                <p>{picked ? tidyName(picked.name) + (picked.detail ? " · " + tidyLength(picked.detail) : "") : item.title}</p>
                 <button type="button" className="alprimary" onClick={onClose}>Find another experience</button>
               </div>
             ) : (
@@ -1312,7 +1552,7 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
                         <button type="button" className="aloptbtn" onClick={() => setOptOpen((v) => !v)} aria-haspopup="listbox" aria-expanded={optOpen}>
                           <small>{optGroups.length > 1 ? "Experience" : "Option"}</small>
                           <span className="alboxval">
-                            {pickedRow ? (optGroups.length > 1 ? pickedGroup!.name + " · " : "") + pickedRow.label : "Choose one"}
+                            {pickedRow ? (optGroups.length > 1 && pickedGroup!.name !== "Other options" && pickedGroup!.name !== pickedRow.label ? pickedGroup!.name + " · " : "") + pickedRow.label : "Choose one"}
                           </span>
                           <Markup className="alselchev" html={I.chevDown} />
                         </button>
@@ -1339,7 +1579,7 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
                                           <span>{r.label}</span>
                                           {r.sub ? <small>{r.sub}</small> : null}
                                         </span>
-                                        <b>{r.price != null ? priceWith(r.price, r.per) : "Ask"}</b>
+                                        {r.price != null ? <b>{priceWith(r.price, r.per)}</b> : <em className="alask">Price on request</em>}
                                       </button>
                                     ))}
                                   </div>
@@ -1386,7 +1626,7 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
                         time={time}
                         onPickTime={(c) => { setTime(c.time); setPickerOpen(false); }}
                         emptyNote={live ? "No departures on this date. Pick another day." : "No more start times today. Pick another day."}
-                        sourceNote={live ? "Live times from " + item.title + "'s own booking calendar." : undefined}
+                        sourceNote={live ? "Live times from " + possessive(item.title) + " own booking calendar." : undefined}
                       />
                       <div className="alpopfoot">
                         <button type="button" className="alunder strong" onClick={() => setTime(null)} disabled={!time}>Clear time</button>
@@ -1425,7 +1665,7 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
                 {p.base && picked ? (
                   <div className="allines">
                     <div className="alline">
-                      <u>{perPerson(picked) && picked.price != null ? money(picked.price) + " × " + qty + (qty === 1 ? " guest" : " guests") : plainWords(picked.name)}</u>
+                      <u>{perPerson(picked) && picked.price != null ? money(picked.price) + " × " + qty + (qty === 1 ? " guest" : " guests") : tidyName(picked.name)}</u>
                       <span>{money(p.base)}</span>
                     </div>
                     {extras.map((a) => <div className="alline" key={a.name}><u>{a.name}</u><span>{money(a.price ?? 0)}</span></div>)}
@@ -1450,7 +1690,7 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
         {(item.ytVideos && item.ytVideos.length) || item.tiktok ? (
           <section className="alwide">
             <h2>See it in action</h2>
-            <p className="alsecsub">Videos from {item.title}'s own channels.</p>
+            <p className="alsecsub">Videos from {possessive(item.title)} own channels.</p>
             {item.ytVideos && item.ytVideos.length ? (
               <div className={"alvideos" + (item.ytVideos.length === 1 ? " one" : "")}>
                 {item.ytVideos.slice(0, 2).map((v) => (
@@ -1480,7 +1720,7 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
           </section>
         ) : null}
 
-        {score || item.quotes?.length ? (
+        {score || reviews.length ? (
           <section className="alwide" id="al-reviews">
             {topRated ? (
               <div className="alfavbig">
@@ -1497,20 +1737,11 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
             ) : (
               <h2>What guests say</h2>
             )}
-            {score && !topRated && !item.quotes?.length ? <p className="alsecsub">{fmtReviews(score.reviews)} public reviews. Written reviews arrive once guests book through Outset.</p> : null}
-            {item.quotes?.length ? (
+            {score && !topRated && !reviews.length ? <p className="alsecsub">{fmtReviews(score.reviews)} public reviews. Written reviews arrive once guests book through Outset.</p> : null}
+            {reviews.length ? (
               <>
                 <div className="alreviewgrid">
-                  {item.quotes.map((r, i) => (
-                    <article key={i} className="alreview">
-                      <header>
-                        <span className="alavatar sm" aria-hidden="true">{(r.author || "G").slice(0, 1).toUpperCase()}</span>
-                        <span><b>{r.author || "A guest"}</b>{r.date ? <small>{r.date}</small> : null}</span>
-                      </header>
-                      {r.rating ? <span className="alreviewstars" aria-label={Math.round(r.rating) + " stars"}>{Array.from({ length: Math.round(r.rating) }, (_, k) => <Markup key={k} html={I.star} />)}</span> : null}
-                      <p>{r.text}</p>
-                    </article>
-                  ))}
+                  {reviews.map((r) => <ReviewCard key={r.key} r={r} />)}
                 </div>
                 <p className="alsecsub">Reviews the operator publishes on their own site. Verified reviews from Outset bookings will show here too.</p>
               </>
@@ -1526,7 +1757,7 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
               <span className="alwherepin"><Markup html={I.pin} /></span>
               <span>
                 <small>{item.meetingPoint ? "Meeting point" : "Address"}</small>
-                <b>{item.meetingPoint || address || item.area}</b>
+                <b>{item.meetingPoint ? tidyLine(item.meetingPoint) : address || item.area}</b>
                 {item.meetingPoint && address && item.meetingPoint !== address ? <span className="alwhereaddr">{address}</span> : null}
                 <u>Open in Maps</u>
               </span>
@@ -1541,13 +1772,13 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
               {hours.length ? (
                 <div className="alwhererow">
                   <Markup html={I.clock} />
-                  <span><b>Hours</b>{hours.map((h) => <small key={h}>{h}</small>)}</span>
+                  <span><b>Hours</b>{hours.map((h) => <small key={h}>{tidyHours(h)}</small>)}</span>
                 </div>
               ) : null}
-              {item.checkin ? (
+              {checkin ? (
                 <div className="alwhererow">
                   <Markup html={I.door} />
-                  <span><b>When you arrive</b><small>{plainWords(item.checkin)}</small></span>
+                  <span><b>When you arrive</b><small>{checkin}</small></span>
                 </div>
               ) : null}
             </div>
@@ -1597,12 +1828,12 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
               <ul className="albizfacts">
                 <li><Markup html={I.pin} /> <span>{placeName(item.area)}</span></li>
                 {duration ? <li><Markup html={I.clock} /> <span>{duration}</span></li> : null}
-                {instant ? <li><Markup html={I.bolt} /> <span>Instant confirmation</span></li> : <li><Markup html={I.message} /> <span>Confirms requests by text or email</span></li>}
+                {instant ? <li><Markup html={I.bolt} /> <span>Instant confirmation</span></li> : visit ? <li><Markup html={I.ticket} /> <span>Tickets on their own site</span></li> : <li><Markup html={I.message} /> <span>Confirms requests by text or email</span></li>}
               </ul>
             </div>
             <div className="albizright">
               <h3>Questions before you book?</h3>
-              <p className="alsecsub">Otto answers from {item.title}'s own information, and passes on anything it cannot.</p>
+              <p className="alsecsub">Otto answers from {possessive(item.title)} own information, and passes on anything it cannot.</p>
               <div className="alotto">
                 <WebAssistant item={item} />
               </div>
@@ -1625,7 +1856,7 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
                 <div key={c.key} className="alknowcol">
                   <span className="alknowicon"><Markup html={c.icon} /></span>
                   <b>{c.title}</b>
-                  <ul>{c.lines.slice(0, 3).map((l, i) => <li key={i}>{plainWords(l)}</li>)}</ul>
+                  <ul>{c.lines.slice(0, 3).map((l, i) => <li key={i}>{tidyLine(l)}</li>)}</ul>
                   {c.lines.length > 3 || c.lines.some((l) => l.length > 90) || (c.key === "safety" && item.waiverUrl) ? <MoreLink onClick={() => setModal("know-" + c.key)}>Show more</MoreLink> : null}
                 </div>
               ))}
@@ -1640,10 +1871,10 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
               {item.faq.map((f, i) => (
                 <div key={i} className={"alfaqitem" + (openFaq === i ? " open" : "")}>
                   <button type="button" onClick={() => setOpenFaq(openFaq === i ? null : i)} aria-expanded={openFaq === i}>
-                    <span>{plainWords(f.q)}</span>
+                    <span>{tidyLine(f.q)}</span>
                     <Markup html={I.chevDown} />
                   </button>
-                  {openFaq === i ? <p>{plainWords(f.a)}</p> : null}
+                  {openFaq === i ? <p>{tidyLine(f.a)}</p> : null}
                 </div>
               ))}
             </div>
@@ -1673,7 +1904,7 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
           {highlights.length ? (
             <>
               <h3 className="almodalsub">Highlights</h3>
-              <ul className="almodallist">{highlights.map((h) => <li key={h}>{plainWords(h)}</li>)}</ul>
+              <ul className="almodallist">{highlights.map((h) => <li key={h}>{tidyLine(h)}</li>)}</ul>
             </>
           ) : null}
         </Modal>
@@ -1705,7 +1936,7 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
               <h3 className="almodalsub">Included</h3>
               <div className="alamenlist">
                 {includes.map((t) => (
-                  <div className="alamenrow" key={t}><span className="alamenicon"><Markup html={amenityIcon(t)} /></span><span>{plainWords(t)}</span></div>
+                  <div className="alamenrow" key={t}><span className="alamenicon"><Markup html={amenityIcon(t)} /></span><span>{t}</span></div>
                 ))}
               </div>
             </>
@@ -1714,8 +1945,8 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
             <>
               <h3 className="almodalsub">Not included</h3>
               <div className="alamenlist">
-                {notIncluded.map((t) => (
-                  <div className="alamenrow no" key={t}><span className="alamenicon"><Markup html={amenityIcon(t)} /></span><span><span className="vh">Not included: </span>{plainWords(t)}</span></div>
+                {notIncluded.map((n) => (
+                  <div className={"alamenrow no" + (n.strike ? "" : " sentence")} key={n.text}><span className="alamenicon"><Markup html={amenityIcon(n.text)} /></span><span>{n.strike ? <span className="vh">Not included: </span> : null}{n.text}</span></div>
                 ))}
               </div>
             </>
@@ -1728,14 +1959,14 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
           <h2 className="almodaltitle">{knowModal.title}</h2>
           {knowModal.key === "rules" ? (
             <>
-              {requirements.length ? <><ul className="almodallist">{requirements.map((l) => <li key={l}>{plainWords(l)}</li>)}</ul></> : null}
-              {item.bring?.length ? <><h3 className="almodalsub">What to bring</h3><ul className="almodallist">{item.bring.map((l) => <li key={l}>{plainWords(l)}</li>)}</ul></> : null}
-              {item.groupInfo?.length ? <><h3 className="almodalsub">Groups</h3><ul className="almodallist">{item.groupInfo.map((l) => <li key={l}>{plainWords(l)}</li>)}</ul></> : null}
+              {requirements.length ? <><ul className="almodallist">{requirements.map((l) => <li key={l}>{tidyLine(l)}</li>)}</ul></> : null}
+              {item.bring?.length ? <><h3 className="almodalsub">What to bring</h3><ul className="almodallist">{item.bring.map((l) => <li key={l}>{tidyLine(l)}</li>)}</ul></> : null}
+              {item.groupInfo?.length ? <><h3 className="almodalsub">Groups</h3><ul className="almodallist">{item.groupInfo.map((l) => <li key={l}>{tidyLine(l)}</li>)}</ul></> : null}
             </>
           ) : knowModal.key === "safety" ? (
             <>
               {age ? <p className="almodaltext">Minimum age {age}.</p> : null}
-              {waiverLines.length ? <><h3 className="almodalsub">Waiver and check-in</h3><ul className="almodallist">{waiverLines.map((l) => <li key={l}>{plainWords(l)}</li>)}</ul></> : null}
+              {waiverLines.length ? <><h3 className="almodalsub">Waiver and check-in</h3><ul className="almodallist">{waiverLines.map((l) => <li key={l}>{tidyLine(l)}</li>)}</ul></> : null}
               {item.waiverUrl ? (
                 <a className="alwaiver" href={item.waiverUrl} target="_blank" rel="noreferrer">
                   <Markup html={I.ticket} />
@@ -1746,8 +1977,8 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
           ) : (
             <>
               {cancel ? <h3 className="almodalsub">{cancel}</h3> : null}
-              {item.cancellation ? <p className="almodaltext">{plainWords(item.cancellation)}</p> : <p className="almodaltext muted">{item.title} has not published cancellation terms. Otto will have them confirm before you pay.</p>}
-              {otherPolicies.length ? <><h3 className="almodalsub">Other policies</h3><ul className="almodallist">{otherPolicies.map((l) => <li key={l}>{plainWords(l)}</li>)}</ul></> : null}
+              {item.cancellation ? <p className="almodaltext">{tidyLine(item.cancellation)}</p> : <p className="almodaltext muted">{item.title} has not published cancellation terms yet. Otto will have the business confirm before you pay.</p>}
+              {otherPolicies.length ? <><h3 className="almodalsub">Other policies</h3><ul className="almodallist">{otherPolicies.map((l) => <li key={l}>{tidyLine(l)}</li>)}</ul></> : null}
             </>
           )}
         </Modal>

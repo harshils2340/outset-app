@@ -19,7 +19,11 @@ import { Photo } from "../art/Photo";
 import { useNearNow } from "./NearNow";
 import { Mark } from "../layout/Mark";
 import { Markup } from "../Markup";
+import { tidyDuration } from "./WebListing";
 
+
+/** "1 place", "2,418 places". */
+const places = (n: number) => n.toLocaleString("en-US") + (n === 1 ? " place" : " places");
 /**
  * Desktop home, laid out as airbnb.com: a white header with the Outset mark, a three-way switch and the account
  * menu; the Where / When / Who pill whose segments open as large popovers; the icon category bar with Filters;
@@ -283,7 +287,7 @@ function Card({ u, onOpen, near, rail }: { u: Unclaimed; onOpen: (id: string) =>
     return u.area + (metro && !u.area.includes(metro.name) ? " · " + metro.name : "") + extra;
   })();
   const detail = u.dur
-    ? u.dur
+    ? tidyDuration(u.dur)
     : openSt?.open && openSt.closesAt
       ? "Open until " + openSt.closesAt
       : openSt && !openSt.open
@@ -1052,7 +1056,7 @@ export function WebHome({ onOpenApp, onOperators }: { onOpenApp: () => void; onO
     rows.push({ key: "anywhere", head: "Suggested destinations", icon: ICONS.globe, title: "Anywhere", sub: "US and Canada", on: !near && state.metroId === ALL_METRO_ID, pick: () => { setNear(null); setMetro(ALL_METRO_ID); openSeg("when"); } });
     for (const id of POPULAR_METROS) {
       const m = METROS.find((x) => x.id === id);
-      if (m) rows.push({ key: "m" + m.id, icon: ICONS.pin, title: m.name + ", " + m.region, sub: (metroCounts.get(m.id) || 0).toLocaleString() + " places with photos", on: !near && state.metroId === m.id, pick: () => { setNear(null); setMetro(m.id); openSeg("when"); } });
+      if (m) rows.push({ key: "m" + m.id, icon: ICONS.pin, title: m.name + ", " + m.region, sub: places(metroCounts.get(m.id) || 0) + " with photos", on: !near && state.metroId === m.id, pick: () => { setNear(null); setMetro(m.id); openSeg("when"); } });
     }
   } else {
     // Where is for places: a state or city the guest typed leads, before kinds of thing and businesses.
@@ -1060,10 +1064,10 @@ export function WebHome({ onOpenApp, onOperators }: { onOpenApp: () => void; onO
     // would offer it: "Miami" used to list six map places called Miami and never our Miami.
     if (typedMetro) {
       const m = typedMetro.metro;
-      rows.push({ key: "tm" + m.id, head: "Places", icon: ICONS.pin, title: m.name + ", " + m.region, sub: "Things to do · " + (metroCounts.get(m.id) || 0).toLocaleString() + " places", on: !near && state.metroId === m.id, pick: () => { pickCity(m.id); openSeg("when"); } });
+      rows.push({ key: "tm" + m.id, head: "Places", icon: ICONS.pin, title: m.name + ", " + m.region, sub: "Things to do · " + places(metroCounts.get(m.id) || 0), on: !near && state.metroId === m.id, pick: () => { pickCity(m.id); openSeg("when"); } });
     }
     regionHits.forEach((r, i) => rows.push({ key: "r" + r.code, head: i === 0 && !typedMetro ? "Places" : undefined, icon: ICONS.pin, title: r.name, sub: r.count.toLocaleString() + " places · " + r.country, pick: () => pickPlace({ label: r.name, sub: r.country, lat: r.lat, lon: r.lon, region: r.code }) }));
-    spots.forEach((pl, i) => rows.push({ key: "s" + pl.metro.id, head: i === 0 && !regionHits.length ? "Cities" : undefined, icon: ICONS.pin, title: pl.metro.name + ", " + pl.metro.region, sub: pl.count.toLocaleString() + " places", pick: () => pickCity(pl.metro.id) }));
+    spots.forEach((pl, i) => rows.push({ key: "s" + pl.metro.id, head: i === 0 && !regionHits.length ? "Cities" : undefined, icon: ICONS.pin, title: pl.metro.name + ", " + pl.metro.region, sub: places(pl.count), pick: () => pickCity(pl.metro.id) }));
     if (typedMetro && placeOnly) {
       const m = typedMetro.metro;
       rails.slice(0, 4).forEach((r, i) => rows.push({ key: "tk" + r.art, head: i === 0 ? "Popular in " + m.name : undefined, icon: ICONS.spark, title: r.title, sub: pool.filter((u) => u.art === r.art).length.toLocaleString() + " places in " + m.name, pick: () => { setQ(kindQuery(r.art) + " " + m.name); setHit(-1); } }));
@@ -1073,7 +1077,7 @@ export function WebHome({ onOpenApp, onOperators }: { onOpenApp: () => void; onO
     // A typed city keeps map places to its own area: "Miami" should not offer Miami, Oklahoma.
     const tmc = typedMetro ? metroCoords(typedMetro.metro.id) : null;
     placeHits.filter((p) => !tmc || kmBetween({ lat: tmc.lat, lon: tmc.lng }, p) <= 150).forEach((p, i) => rows.push({ key: "p" + p.label + p.sub, head: i === 0 ? "Places on the map" : undefined, icon: ICONS.pin, title: p.label, sub: p.sub, pick: () => pickPlace(p) }));
-    (found?.elsewhere ?? []).forEach((a, i) => rows.push({ key: "e" + a.art, head: i === 0 ? "Elsewhere" : undefined, icon: ICONS.globe, title: a.label + " across the US and Canada", sub: a.count.toLocaleString() + " places", pick: () => { setNear(null); setMetro(ALL_METRO_ID); setQ(a.query); } }));
+    (found?.elsewhere ?? []).forEach((a, i) => rows.push({ key: "e" + a.art, head: i === 0 ? "Elsewhere" : undefined, icon: ICONS.globe, title: a.label + " across the US and Canada", sub: places(a.count), pick: () => { setNear(null); setMetro(ALL_METRO_ID); setQ(a.query); } }));
     if (found?.otherCats) rows.push({ key: "othercats", icon: ICONS.catAll, title: "Show all categories", sub: found.otherCats.toLocaleString() + " more outside " + catName(state.cat), pick: () => setCat("all") });
   }
 

@@ -10,6 +10,7 @@ import { useApp } from "../../state/AppProvider";
 import { Photo } from "../art/Photo";
 import { IcHeartOnPhoto, IcStar } from "./AirIcons";
 import { toggleSaved, usePrefs } from "./prefs";
+import { tidyDuration } from "../web/WebListing";
 
 /** "5.0", "4.9", "4.87": Airbnb never shows a bare "5" or a trailing zero past the first decimal. */
 export function fmtRating(r: number): string {
@@ -44,7 +45,7 @@ export function UnclaimedCard({ item }: { item: Unclaimed; compact?: boolean }) 
 
   const place = item.area + (metro && !item.area.includes(metro.name) && !item.area.includes(",") ? ", " + metro.name : "");
   const km = state.near && item.lat != null && item.lon != null ? kmBetween(state.near, { lat: item.lat, lon: item.lon }) : null;
-  const detail = [kind, item.dur, item.fc ? "Free cancellation" : null].filter(Boolean).join(" · ");
+  const detail = [kind, item.dur ? tidyDuration(item.dur) : null, item.fc ? "Free cancellation" : null].filter(Boolean).join(" · ");
   const unit = item.options.find((o) => o.price === from);
   const per = from != null && (!unit || perPerson(unit)) ? " / person" : "";
   const badge = guestFav ? "Guest favourite" : deal ? "Deal today" : instant ? "Instant Book" : null;

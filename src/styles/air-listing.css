@@ -176,7 +176,9 @@
 .almore{display:inline-flex;align-items:center;gap:4px;margin-top:24px;font-size:16px;line-height:20px;font-weight:600;color:var(--ink);}
 .almore span{text-decoration:underline;text-underline-offset:2px;}
 .almore svg{width:12px;height:12px;stroke-width:2.6;}
-.aldescguide{margin:16px 0 0;font-size:14px;}
+.aldescguide{margin:16px 0 0;}
+.aldescguide .almore{margin-top:0;}
+.aldesctext + .almore + .aldescguide{margin-top:20px;}
 .aldesc > .almore:first-child{margin-top:0;}
 
 /* 6. what you can book: Airbnb's room cards, carrying the options to pick */
@@ -193,6 +195,8 @@
 .alvariant:first-child{border-top:none;}
 .alvariant > span:nth-child(2){flex:1;min-width:0;}
 .alvariant b{font-weight:600;white-space:nowrap;font-variant-numeric:tabular-nums;}
+.alask{font-style:normal;font-weight:400;white-space:nowrap;color:var(--ink-soft);}
+.aloptrow > .alask{flex:none;font-size:14px;line-height:20px;}
 .alradio{width:20px;height:20px;border-radius:50%;border:1px solid #B0B0B0;flex:none;position:relative;}
 .alvariant[aria-pressed="true"] .alradio{border:6px solid var(--ink);}
 .alvariant:hover .alradio{border-color:var(--ink);}
@@ -209,6 +213,7 @@
 .alamenicon{position:relative;width:24px;height:24px;flex:none;}
 .alamenicon svg{width:24px;height:24px;}
 .alamenrow.no > span:last-child{text-decoration:line-through;}
+.alamenrow.no.sentence > span:last-child{text-decoration:none;}
 .alamenrow.no .alamenicon::after{content:"";position:absolute;left:-1px;right:-1px;top:50%;height:2px;background:var(--ink);transform:rotate(-45deg);box-shadow:0 0 0 1.5px #fff;border-radius:1px;}
 .aloutline{display:inline-flex;align-items:center;justify-content:center;margin-top:16px;padding:13px 23px;border:1px solid var(--ink);border-radius:8px;background:#fff;font-size:16px;line-height:20px;font-weight:600;color:var(--ink);text-decoration:none;}
 .aloutline:hover{background:#F7F7F7;}
@@ -329,23 +334,31 @@
 .altiktok{margin-top:24px;}
 
 /* 9. reviews */
-.alreviewshead{display:flex;align-items:center;gap:8px;font-size:26px !important;line-height:30px !important;}
-.alreviewshead svg{width:22px;height:22px;}
+.alreviewshead{display:flex;align-items:center;gap:8px;}
+.alreviewshead svg{width:18px;height:18px;}
 .alfavbig{display:flex;flex-direction:column;align-items:center;text-align:center;margin:0 0 40px;}
 .alfavbignum{display:flex;align-items:center;gap:8px;}
 .alfavbignum b{font-size:96px;line-height:1;font-weight:700;letter-spacing:-.04em;}
 .allaurel.big{width:56px;height:92px;}
 .alfavbigtitle{margin-top:8px;font-size:22px;line-height:26px;font-weight:600;}
-.alfavbig p{margin:8px 0 0;max-width:320px;font-size:16px;line-height:20px;color:var(--ink-soft);}
-.alreviewgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:40px 96px;margin:0 0 24px;max-width:1040px;}
-.alreview{display:flex;flex-direction:column;gap:8px;min-width:0;}
-.alreview header{display:flex;align-items:center;gap:12px;}
-.alreview header > span:last-child{display:flex;flex-direction:column;}
-.alreview header b{font-size:16px;line-height:20px;font-weight:600;}
+.alfavbig p{margin:8px 0 0;max-width:380px;font-size:16px;line-height:20px;color:var(--ink-soft);text-wrap:balance;}
+.alreviewgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:40px 96px;margin:0 0 32px;max-width:1040px;align-items:start;}
+/* Airbnb's review: initial and name, source under it, then stars and date on one line, four lines of text. */
+.alreview{display:flex;flex-direction:column;align-items:flex-start;gap:0;min-width:0;color:var(--ink);}
+.alreview header{display:flex;align-items:center;gap:12px;min-width:0;}
+.alreview header > span:last-child{display:flex;flex-direction:column;min-width:0;}
+.alreview header b{font-size:16px;line-height:20px;font-weight:600;overflow-wrap:anywhere;}
 .alreview header small{font-size:14px;line-height:18px;color:var(--ink-soft);}
-.alreviewstars{display:flex;gap:1px;margin-top:4px;}
-.alreviewstars svg{width:9px;height:9px;}
-.alreview p{margin:0;font-size:16px;line-height:24px;color:var(--ink);display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;}
+.alreview .alavatar.sm{width:48px;height:48px;font-size:18px;}
+.alavatar.anon{background:var(--surface-2);color:var(--ink-soft);}
+.alavatar.anon svg{width:22px;height:22px;}
+.alreviewmeta{display:flex;align-items:center;gap:6px;margin-top:12px;font-size:14px;line-height:18px;font-weight:600;color:var(--ink);}
+.alreviewstars{display:flex;gap:2px;}
+.alreviewstars svg{width:12px;height:12px;}
+.alreview p{margin:8px 0 0;font-size:16px;line-height:24px;color:var(--ink);overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden;}
+.alreview header + p{margin-top:12px;}
+.alreview p.open{display:block;-webkit-line-clamp:unset;overflow:visible;}
+.alreviewmore{margin-top:8px;padding:0;font-size:16px;line-height:24px;font-weight:600;color:var(--ink);text-decoration:underline;text-underline-offset:2px;}
 
 /* 10. where you'll be: a location card, never a fake map */
 .alwhere{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:24px;align-items:start;}
@@ -432,8 +445,8 @@ a.alwhererow:hover b{text-decoration:underline;}
 .alcardart .photo,.alcardart .photowrap,.alcardart svg{width:100%;height:100%;object-fit:cover;display:block;}
 .alcardbody{display:flex;flex-direction:column;min-width:0;font-size:15px;line-height:19px;}
 .alcardtop{display:flex;justify-content:space-between;gap:8px;min-width:0;}
-.alcardtop b{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.alcardrate{display:inline-flex;align-items:center;gap:4px;flex:none;font-size:14px;}
+.alcardtop b{min-width:0;font-weight:600;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+.alcardrate{display:inline-flex;align-items:center;align-self:flex-start;gap:4px;flex:none;font-size:14px;line-height:19px;}
 .alcardrate svg{width:11px;height:11px;}
 .alcardbody small{font-size:15px;color:var(--ink-soft);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .alcardprice{margin-top:4px;font-size:15px;}
@@ -517,6 +530,7 @@ a.alwhererow:hover b{text-decoration:underline;}
 .alconfirmprice{padding-top:24px;}
 .alconfirmprice h3{margin:0 0 24px;font-size:22px;line-height:26px;font-weight:600;}
 .alline .wrap{white-space:normal;}
+.alconfirmprice .alconfirmlines{margin:0 0 24px;}
 @media (max-width:1127px){.alconfirm{grid-template-columns:minmax(0,1fr) minmax(0,360px);gap:48px;}}
 
 /* ---------- booking option picker ---------- */
@@ -538,5 +552,6 @@ a.alwhererow:hover b{text-decoration:underline;}
 .aloptrow[aria-selected="true"]{background:#F2F2F2;box-shadow:inset 3px 0 0 var(--ink);}
 .aloptmain{display:flex;flex-direction:column;gap:2px;min-width:0;}
 .aloptmain > span{font-size:15px;line-height:20px;}
-.aloptmain small{font-size:13px;line-height:17px;color:var(--ink-soft);}
+/* The popover sits inside a box cell, whose small labels are capitals; an option's detail line is not a label. */
+.aloptmain small{font-size:13px;line-height:17px;font-weight:400;letter-spacing:0;text-transform:none;color:var(--ink-soft);}
 .aloptrow > b{flex:none;font-size:15px;line-height:20px;font-weight:600;font-variant-numeric:tabular-nums;}

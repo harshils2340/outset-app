@@ -2,7 +2,9 @@ import { useEffect } from "react";
 import "../../styles/air-listing.css";
 import { ICONS } from "../../data/icons";
 import type { Booking } from "../../data/types";
-import { addressLine, contactFor, experienceById, fmtPhone, mapsHref, plainWords, publicRating, telHref } from "../../lib/catalog";
+import { addressLine, contactFor, experienceById, fmtPhone, mapsHref, perPerson, publicRating, telHref } from "../../lib/catalog";
+import { priceUnclaimed, serviceFeeLabel } from "../../lib/pricing";
+import { tidyAddress, tidyLength, tidyName } from "./WebListing";
 import { fmtReviews, fmtTime, money } from "../../lib/format";
 import { Photo } from "../art/Photo";
 import { Mark } from "../layout/Mark";
@@ -24,7 +26,8 @@ export function WebConfirm({ booking, onDone, onOpen }: { booking: Booking; onDo
   const item = experienceById(booking.listing);
   if (!item) return null;
   const contact = contactFor(item);
-  const address = contact ? addressLine(contact) : null;
+  const addressRaw = contact ? addressLine(contact) : null;
+  const address = addressRaw ? tidyAddress(addressRaw) : null;
   const score = publicRating(item);
   const picked = booking.addons.length && /^\d+$/.test(booking.addons[0]) ? item.options[Number(booking.addons[0])] : null;
   const extras = booking.addons.filter((a) => !/^\d+$/.test(a));
@@ -32,6 +35,10 @@ export function WebConfirm({ booking, onDone, onOpen }: { booking: Booking; onDo
   const when = new Date(y, m - 1, d).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
   const instant = !!(item.claimed && item.instant);
   const first = booking.guest?.name ? booking.guest.name.split(" ")[0] : "";
+  // The price lines are the same breakdown the listing showed; they appear only when they add up to the stored total.
+  const addonRows = (item.addons || []).filter((a) => extras.includes(a.name));
+  const p = picked ? priceUnclaimed(picked, booking.qty, addonRows) : null;
+  const lines = p && p.base && booking.total && Math.abs(p.total - booking.total) < 0.01 ? p : null;
 
   return (
     <div className="wlisting al">
@@ -72,7 +79,7 @@ export function WebConfirm({ booking, onDone, onOpen }: { booking: Booking; onDo
               </div>
               {picked ? (
                 <div className="alconfirmrow">
-                  <span><b>Booking</b><small>{plainWords(picked.name)}{picked.detail ? " · " + plainWords(picked.detail) : ""}</small></span>
+                  <span><b>Booking</b><small>{tidyName(picked.name)}{picked.detail ? " · " + tidyLength(picked.detail) : ""}</small></span>
                 </div>
               ) : null}
               {extras.length ? (
@@ -85,7 +92,7 @@ export function WebConfirm({ booking, onDone, onOpen }: { booking: Booking; onDo
               </div>
               {booking.guest?.phone ? (
                 <div className="alconfirmrow">
-                  <span><b>Updates go to</b><small>{booking.guest.phone}{booking.guest.email ? " · " + booking.guest.email : ""}</small></span>
+                  <span><b>Updates go to</b><small>{fmtPhone(booking.guest.phone)}{booking.guest.email ? " · " + booking.guest.email : ""}</small></span>
                 </div>
               ) : null}
             </section>
@@ -123,7 +130,7 @@ export function WebConfirm({ booking, onDone, onOpen }: { booking: Booking; onDo
             <div className="alreserve alconfirmcard">
               <div className="alconfirmitem">
                 <div className="alconfirmart">
-                  <Photo src={item.cover} kind={item.art} id={"cf" + item.id} alt={item.title} />
+                  <Photo src={item.cover || item.photos?.[0]} kind={item.art} id={"cf" + item.id} alt={item.title} />
                 </div>
                 <span>
                   <b>{item.title}</b>
@@ -133,8 +140,14 @@ export function WebConfirm({ booking, onDone, onOpen }: { booking: Booking; onDo
               </div>
               <div className="alconfirmprice">
                 <h3>Price details</h3>
-                {picked ? (
-                  <div className="alline"><span className="wrap">{plainWords(picked.name)}</span><span>{booking.qty} {booking.qty === 1 ? "guest" : "guests"}</span></div>
+                {lines && picked ? (
+                  <div className="allines alconfirmlines">
+                    <div className="alline"><span className="wrap">{perPerson(picked) && picked.price != null ? money(picked.price) + " × " + booking.qty + (booking.qty === 1 ? " guest" : " guests") : tidyName(picked.name)}</span><span>{money(lines.base)}</span></div>
+                    {addonRows.map((a) => <div className="alline" key={a.name}><span className="wrap">{a.name}</span><span>{money(a.price ?? 0)}</span></div>)}
+                    {lines.fee ? <div className="alline"><span className="wrap">{serviceFeeLabel(lines)}</span><span>{money(lines.fee)}</span></div> : null}
+                  </div>
+                ) : picked ? (
+                  <div className="alline"><span className="wrap">{tidyName(picked.name)}</span><span>{booking.qty} {booking.qty === 1 ? "guest" : "guests"}</span></div>
                 ) : null}
                 <div className="alline total">
                   <span>{booking.paid ? "Paid by card" : "Total"}</span>

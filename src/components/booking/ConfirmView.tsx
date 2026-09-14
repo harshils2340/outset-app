@@ -4,6 +4,8 @@ import { experienceById } from "../../lib/catalog";
 import { fmtDate, fmtTime, money } from "../../lib/format";
 import { useApp } from "../../state/AppProvider";
 import { Markup } from "../Markup";
+import { Fragment } from "react";
+import { tidyLength, tidyName } from "../web/WebListing";
 
 export function ConfirmView() {
   const { state, openChat, openRequest, goto } = useApp();
@@ -25,7 +27,7 @@ export function ConfirmView() {
     : (b.addons || [])
         .map((idx) => {
           const o = u!.options[Number(idx)];
-          return o ? (o.detail ? o.name + " · " + o.detail : o.name) : null;
+          return o ? (o.detail ? tidyName(o.name) + " · " + tidyLength(o.detail) : tidyName(o.name)) : null;
         })
         .filter(Boolean);
 
@@ -55,18 +57,19 @@ export function ConfirmView() {
             </b>
           </div>
           <div className="trow">
-            <span>People</span>
-            <b>{b.qty}</b>
+            <span>Guests</span>
+            <b>{b.qty} {b.qty === 1 ? "guest" : "guests"}</b>
           </div>
           {addonNames.length ? (
             <div className="trow">
               <span>Service</span>
               <b>
-                {addonNames.map((n) => (
-                  <span key={String(n)}>
+                {/* Fragments, not spans: ".trow span" is the grey label style and turned the value grey. */}
+                {addonNames.map((n, i) => (
+                  <Fragment key={String(n)}>
+                    {i ? <br /> : null}
                     {n}
-                    <br />
-                  </span>
+                  </Fragment>
                 ))}
               </b>
             </div>
