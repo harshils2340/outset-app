@@ -1,0 +1,333 @@
+{
+ "chains": {
+  "at": "2026-09-14T05:39:35.889Z",
+  "brands": 54,
+  "candidates": 911,
+  "perChain": {
+   "pwat": {
+    "brand": "Painting with a Twist",
+    "florida": 25,
+    "fetches": 1
+   },
+   "pinots": {
+    "brand": "Pinot's Palette",
+    "florida": 1,
+    "fetches": 2
+   },
+   "boardbrush": {
+    "brand": "Board & Brush",
+    "florida": 6,
+    "fetches": 7
+   },
+   "colormemine": {
+    "brand": "Color Me Mine",
+    "florida": 11,
+    "fetches": 1
+   },
+   "surlatable": {
+    "brand": "Sur La Table",
+    "florida": 7,
+    "fetches": 7
+   },
+   "kidstrong": {
+    "brand": "KidStrong",
+    "florida": 18,
+    "fetches": 287
+   },
+   "moi": {
+    "brand": "Museum of Illusions",
+    "florida": 1,
+    "fetches": 1
+   },
+   "arworkshop": {
+    "brand": "AR Workshop",
+    "florida": 7,
+    "fetches": 8
+   },
+   "topgolf": {
+    "brand": "Topgolf",
+    "florida": 10,
+    "fetches": 1
+   },
+   "driveshack": {
+    "brand": "Drive Shack",
+    "florida": 1,
+    "fetches": 1
+   },
+   "popstroke": {
+    "brand": "PopStroke",
+    "florida": 10,
+    "fetches": 40
+   },
+   "puttshack": {
+    "brand": "Puttshack",
+    "florida": 2,
+    "fetches": 21
+   },
+   "urbanair": {
+    "brand": "Urban Air",
+    "florida": 17,
+    "fetches": 18
+   },
+   "skyzone": {
+    "brand": "Sky Zone",
+    "florida": 0,
+    "fetches": 1,
+    "note": "no Florida locations parsed"
+   },
+   "altitude": {
+    "brand": "Altitude Trampoline Park",
+    "florida": 8,
+    "fetches": 9
+   },
+   "launch": {
+    "brand": "Launch Trampoline Park",
+    "florida": 3,
+    "fetches": 1
+   },
+   "mainevent": {
+    "brand": "Main Event",
+    "florida": 3,
+    "fetches": 4
+   },
+   "dnb": {
+    "brand": "Dave & Buster's",
+    "florida": 9,
+    "fetches": 11
+   },
+   "round1": {
+    "brand": "Round1",
+    "florida": 1,
+    "fetches": 2
+   },
+   "bowlero": {
+    "brand": "Bowlero",
+    "florida": 13,
+    "fetches": 14
+   },
+   "luckystrike": {
+    "brand": "Lucky Strike",
+    "florida": 12,
+    "fetches": 13
+   },
+   "amf": {
+    "brand": "AMF",
+    "florida": 7,
+    "fetches": 8
+   },
+   "kings": {
+    "brand": "Kings Dining & Entertainment",
+    "florida": 2,
+    "fetches": 12
+   },
+   "chuckecheese": {
+    "brand": "Chuck E. Cheese",
+    "florida": 31,
+    "fetches": 1
+   },
+   "dezerland": {
+    "brand": "Dezerland Park",
+    "florida": 1,
+    "fetches": 1
+   },
+   "teg": {
+    "brand": "The Escape Game",
+    "florida": 7,
+    "fetches": 8
+   },
+   "escapology": {
+    "brand": "Escapology",
+    "florida": 11,
+    "fetches": 1
+   },
+   "breakout": {
+    "brand": "Breakout Games",
+    "florida": 1,
+    "fetches": 2
+   },
+   "tger": {
+    "brand": "The Great Escape Room",
+    "florida": 3,
+    "fetches": 17
+   },
+   "k1speed": {
+    "brand": "K1 Speed",
+    "florida": 7,
+    "fetches": 8
+   },
+   "andretti": {
+    "brand": "Andretti Indoor Karting & Games",
+    "florida": 1,
+    "fetches": 1
+   },
+   "ifly": {
+    "brand": "iFLY Indoor Skydiving",
+    "florida": 5,
+    "fetches": 6
+   },
+   "funspot": {
+    "brand": "Fun Spot America",
+    "florida": 2,
+    "fetches": 1
+   },
+   "crg": {
+    "brand": "Central Rock Gym",
+    "florida": 4,
+    "fetches": 5
+   },
+   "handstone": {
+    "brand": "Hand & Stone",
+    "florida": 82,
+    "fetches": 98
+   },
+   "massageenvy": {
+    "brand": "Massage Envy",
+    "florida": 112,
+    "fetches": 1
+   },
+   "nowmassage": {
+    "brand": "The NOW Massage",
+    "florida": 10,
+    "fetches": 1
+   },
+   "stretchlab": {
+    "brand": "StretchLab",
+    "florida": 27,
+    "fetches": 1
+   },
+   "orangethry": {
+    "brand": "Orangetheory Fitness",
+    "florida": 102,
+    "fetches": 106
+   },
+   "f45": {
+    "brand": "F45 Training",
+    "florida": 71,
+    "fetches": 1
+   },
+   "solidcore": {
+    "brand": "[solidcore]",
+    "florida": 15,
+    "fetches": 1
+   },
+   "corepower": {
+    "brand": "CorePower Yoga",
+    "florida": 3,
+    "fetches": 4
+   },
+   "hotworx": {
+    "brand": "HOTWORX",
+    "florida": 71,
+    "fetches": 10
+   },
+   "clubpilates": {
+    "brand": "Club Pilates",
+    "florida": 118,
+    "fetches": 1
+   },
+   "yogasix": {
+    "brand": "YogaSix",
+    "florida": 12,
+    "fetches": 1
+   },
+   "elements": {
+    "brand": "Elements Massage",
+    "florida": 8,
+    "fetches": 1
+   },
+   "rumble": {
+    "brand": "Rumble Boxing",
+    "florida": 5,
+    "fetches": 1
+   },
+   "otttrolley": {
+    "brand": "Old Town Trolley Tours",
+    "florida": 2,
+    "fetches": 2
+   },
+   "ghostsgrave": {
+    "brand": "Ghosts & Gravestones",
+    "florida": 2,
+    "fetches": 2
+   },
+   "ghostcity": {
+    "brand": "Ghost City Tours",
+    "florida": 4,
+    "fetches": 4
+   },
+   "usghostadv": {
+    "brand": "US Ghost Adventures",
+    "florida": 9,
+    "fetches": 10
+   },
+   "secretfood": {
+    "brand": "Secret Food Tours",
+    "florida": 5,
+    "fetches": 7
+   },
+   "tbfoodtours": {
+    "brand": "Tampa Bay Food Tours",
+    "florida": 3,
+    "fetches": 3
+   },
+   "ultflatours": {
+    "brand": "Ultimate Florida Tours",
+    "florida": 3,
+    "fetches": 1
+   }
+  },
+  "byKind": {
+   "fitness": 427,
+   "spa": 212,
+   "pottery": 50,
+   "arcade": 43,
+   "bowling": 35,
+   "trampoline": 28,
+   "tour": 28,
+   "escape": 22,
+   "yoga": 15,
+   "minigolf": 12,
+   "golf": 11,
+   "kart": 9,
+   "cooking": 7,
+   "skydive": 5,
+   "climbing": 4,
+   "themepark": 2,
+   "museum": 1
+  }
+ },
+ "osm": {
+  "at": "2026-09-14T05:44:37.040Z",
+  "requests": 1,
+  "elements": 1208,
+  "matched": 342,
+  "dropped": 866,
+  "candidates": 328,
+  "byActivity": {
+   "brewery": 141,
+   "kayak": 27,
+   "airboat-tour": 24,
+   "escape-room": 18,
+   "winery": 17,
+   "trampoline-park": 13,
+   "distillery": 11,
+   "climbing-gym": 10,
+   "pottery": 9,
+   "snorkel-tour": 7,
+   "dolphin-tour": 7,
+   "paint-and-sip": 6,
+   "paddleboard": 6,
+   "axe-throwing": 5,
+   "karaoke": 4,
+   "glass-blowing": 4,
+   "laser-tag": 4,
+   "go-karts": 4,
+   "ghost-tour": 2,
+   "food-tour": 2,
+   "eco-tour": 2,
+   "workshop": 2,
+   "walking-tour": 2,
+   "cooking-class": 1
+  }
+ }
+}
