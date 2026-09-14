@@ -311,6 +311,9 @@ export function toCatalogItem(r: CatalogRow): Record<string, unknown> {
     })),
     { title, art, family: r.family || "water" },
   ).map((p) => fullSize(p.url) || "");
+  // The screen judges the address the site publishes, which is after fullSize rewrites a Wix or Squarespace
+  // transform. Checking before that rewrite never found the verdict, so rejected logos came straight back.
+  const screenedRanked = keepScreened(ranked.filter(Boolean));
   const area = r.city ? (r.region && !r.city.includes(r.region) ? r.city + ", " + r.region : r.city) : r.region || "";
   const item: Record<string, unknown> = {
     id: "o-" + slug(r.domain),
@@ -355,7 +358,9 @@ export function toCatalogItem(r: CatalogRow): Record<string, unknown> {
       offerings.forEach((o, idx) => {
         const key = o.name.toLowerCase();
         if (NOT_A_SERVICE.test(o.name)) return;
-        const g = groups.get(key) || { name: o.name, desc: descs.get(key) || null, photo: fullSize(photos.get(key) || "") || undefined, variants: [] };
+        // A service thumbnail goes through the same screen: a logo or a dead link on a menu row is as broken as one in the gallery.
+        const svcPhoto = fullSize(photos.get(key) || "") || undefined;
+        const g = groups.get(key) || { name: o.name, desc: descs.get(key) || null, photo: svcPhoto && keepScreened([svcPhoto]).length ? svcPhoto : undefined, variants: [] };
         g.variants.push({
           label: silent(o.duration) || silent(o.detail) || "Standard",
           price: o.price_cents == null ? null : o.price_cents / 100,
@@ -384,8 +389,8 @@ export function toCatalogItem(r: CatalogRow): Record<string, unknown> {
       const b = [pick("description")[0], pick("site_desc")[0], pick("one_line")[0]].map((raw) => cleanBlurb(raw || "", { title, city: r.city, region: r.region })).find(Boolean) || "";
       return b && !/\b(purchase|shop|buy) (boards|paddles|gear|apparel|merch)/i.test(b) ? b : undefined;
     })(),
-    cover: ranked.find(Boolean) || undefined,
-    photos: uniq(ranked).slice(0, 10),
+    cover: screenedRanked.find(Boolean) || undefined,
+    photos: uniq(screenedRanked).slice(0, 10),
     ytVideos: pick("yt_video")
       .map((raw) => {
         try {
@@ -617,7 +622,8 @@ function photoVerdicts(): Map<string, PhotoVerdict> {
   return verdictCache;
 }
 
-const UNUSABLE_KIND = /^(?:graphic|map|document)$/;
+// "dead" is the screen saying the host answered 404 or 410: the picture no longer exists.
+const UNUSABLE_KIND = /^(?:graphic|map|document|dead)$/;
 
 /** One listing's photos with the screened-out ones removed, applying the two-page run rule. */
 export function keepScreened(urls: string[]): string[] {
