@@ -4,7 +4,8 @@ import { fileURLToPath } from "node:url";
 import { collectMedia, rankByShape, type Video } from "../src/enrich/imagescrape.ts";
 import { probeKind } from "../src/enrich/pagescan.ts";
 import { withDeadline } from "../src/scrape/fetch.ts";
-import { looksLikeSrcsetFragment } from "../src/enrich/srcset.ts";
+import { cleanImageUrl, looksLikeSrcsetFragment } from "../src/enrich/srcset.ts";
+import { REJECTED_KIND, fullSize } from "../src/sync/imageUrl.ts";
 
 /**
  * The photo crawl, without the database.
@@ -73,6 +74,22 @@ const mine = queue.operators.filter((_, i) => i % of === shard);
 
 mkdirSync(outDir, { recursive: true });
 const done: Record<string, Result> = existsSync(outPath) ? (JSON.parse(readFileSync(outPath, "utf8")) as Record<string, Result>) : {};
+// The photo screen's verdicts, committed beside this script. A saved result whose every photo the screen has since
+// rejected (a redesigned site's dead links, a logo) is not done: the work list queued it again for that reason.
+const verdictFile = join(backend, "data/photo-verdicts.json");
+const verdicts: Record<string, { kind?: string }> = existsSync(verdictFile) ? JSON.parse(readFileSync(verdictFile, "utf8")) : {};
+const allRejected = (r: Result): boolean => {
+  const urls = [r.cover || "", ...(r.photos || [])].filter(Boolean);
+  if (!urls.length) return false;
+  return urls.every((u) => {
+    const c = cleanImageUrl(u);
+    if (!c) return true;
+    const kinds = [u, c, fullSize(c) || ""].map((k) => verdicts[k]?.kind).filter((k): k is string => !!k);
+    return kinds.length > 0 && kinds.every((k) => REJECTED_KIND.test(k));
+  });
+};
+for (const [id, r] of Object.entries(done)) if (allRejected(r)) delete done[id];
+
 // An operator crawled by an earlier run under a different shard count (shard-2-of-6) is done too. Without this,
 // changing the number of runners re-crawls everything the old layout finished.
 const doneElsewhere = new Set<string>();
@@ -80,7 +97,7 @@ for (const f of readdirSync(outDir)) {
   if (!f.endsWith(".json") || join(outDir, f) === outPath) continue;
   try {
     for (const [id, r] of Object.entries(JSON.parse(readFileSync(join(outDir, f), "utf8")) as Record<string, Result>)) {
-      if (![r.cover || "", ...(r.photos || [])].some((u) => u && looksLikeSrcsetFragment(u))) doneElsewhere.add(id);
+      if (![r.cover || "", ...(r.photos || [])].some((u) => u && looksLikeSrcsetFragment(u)) && !allRejected(r)) doneElsewhere.add(id);
     }
   } catch {
     /* a half-written shard from a cancelled runner */

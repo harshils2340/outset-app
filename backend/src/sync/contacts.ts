@@ -11,6 +11,7 @@ import { crawledStructureFor, crawledStructureStats } from "./structureSidecar.t
 import { cleanImageUrl } from "../enrich/srcset.ts";
 import { reconcileArt } from "./artEvidence.ts";
 import { LOCATION_FACT, brandId, isChainLocation } from "./brandShare.ts";
+import { fullSize } from "./imageUrl.ts";
 import { METROS, categoryById, nearestMetro } from "../taxonomy/catalog.ts";
 import { rankForCover } from "../enrich/photorelevance.ts";
 import { existsSync, readFileSync as readFileSyncFs } from "node:fs";
@@ -1399,14 +1400,6 @@ function collapseRules(lines: string[]): string[] {
   return order.map((k) => byKey.get(k)!);
 }
 
-/** Wix lazy-load placeholders are 34px blurred stubs. Ask for the full image instead; tiny variants from other hosts are dropped. */
-function fullSize(u: string): string | undefined {
-  if (!u) return undefined;
-  const wix = u.match(/^(https?:\/\/static\.wixstatic\.com\/media\/[^/]+?)(?:\/v1\/|$)/);
-  if (wix) return wix[1] + "/v1/fill/w_1600,h_1000,al_c,q_85/" + wix[1].split("/media/")[1].replace(/%7E/gi, "~");
-  if (/[?&/](w|width)[=_]\d{1,2}\b|[?&/](h|height)[=_]\d{1,2}\b|blur_\d|\/w_1?\d{2},h_\d{2}\b/.test(u)) return undefined;
-  return u;
-}
 
 const SILENT = /\b(not|no|none|nothing)\b[^.]{0,50}\b(stated|specified|listed|mentioned|provided|published|given|indicated)\b|\bnot (state|specify|mention|list)\b|\bunspecified\b|\bn\/a\b|\bno information\b/i;
 /** A value that only says "not stated" is no value. */

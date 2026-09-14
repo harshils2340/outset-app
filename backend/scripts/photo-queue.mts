@@ -1,5 +1,8 @@
 import { DatabaseSync } from "node:sqlite";
 import { collapseChains } from "../src/sync/brandShare.ts";
+import { REJECTED_KIND, fullSize } from "../src/sync/imageUrl.ts";
+import { cleanImageUrl } from "../src/enrich/srcset.ts";
+import { existsSync as fileExists, readFileSync } from "node:fs";
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -82,8 +85,43 @@ const rows = db
   )
   .all(limit) as Row[];
 
+/**
+ * Operators that do have stored photos, all of which the photo screen has since rejected: dead links after a site
+ * redesign, logos, maps, scanned documents. The screen drops those from the published listing but not from the
+ * database, so the listing shows no picture while the query above still sees a cover and skips it for ever. Up
+ * River Adventures, on the first Tampa send list, lost all eight photos this way. Strict rule: every stored
+ * image has a rejected verdict. Images the screen has not judged yet do not count against an operator. These go
+ * first, because they are listings guests could already see.
+ */
+const verdictPath = join(here, "../data/photo-verdicts.json");
+const verdicts: Record<string, { kind?: string }> = fileExists(verdictPath) ? JSON.parse(readFileSync(verdictPath, "utf8")) : {};
+const rejected = (url: string): boolean => {
+  const clean = cleanImageUrl(url);
+  if (!clean) return true;
+  const keys = [url, clean, fullSize(clean) || ""].filter(Boolean);
+  const kinds = keys.map((k) => verdicts[k]?.kind).filter((k): k is string => !!k);
+  return kinds.length > 0 && kinds.every((k) => REJECTED_KIND.test(k));
+};
+const withPhotos = db
+  .prepare(
+    `SELECT o.id, o.domain, o.website, o.name, o.icon_key AS art, o.family, o.region,
+            o.review_count AS reviews, (o.metro_id IS NOT NULL) AS metro,
+            group_concat(f.fact_value, char(10)) AS urls
+       FROM operators o JOIN facts f ON f.operator_id = o.id AND f.fact_key IN ('cover', 'photo')
+      WHERE o.origin != 'demo' AND o.website IS NOT NULL AND o.website != '' AND o.name IS NOT NULL AND length(o.name) >= 3
+      GROUP BY o.id`,
+  )
+  .all() as (Row & { urls: string })[];
+const allRejected = Object.keys(verdicts).length
+  ? withPhotos.filter((r) => {
+      const urls = (r.urls || "").split("\n").filter(Boolean);
+      return urls.length > 0 && urls.every(rejected);
+    })
+  : [];
+if (allRejected.length) console.log(`${allRejected.length} operators have stored photos that the screen rejected, every one; queued first.`);
+
 // Chain locations collapse to one row per brand site; see src/sync/brandShare.ts.
-const queue = collapseChains(rows).map((r) => ({
+const queue = collapseChains([...allRejected, ...rows.filter((r) => !allRejected.some((a) => a.id === r.id))]).map((r) => ({
   id: r.id,
   domain: r.domain,
   website: r.website,
