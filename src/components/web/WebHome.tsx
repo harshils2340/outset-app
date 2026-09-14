@@ -3,7 +3,7 @@ import { createContext, useContext, useDeferredValue, useEffect, useMemo, useRef
 import { CATS, CATMETA, inCat } from "../../data/categories";
 import { ART_LABEL } from "../../data/art";
 import { ICONS } from "../../data/icons";
-import { ALL_METRO_ID, METROS, metroById } from "../../data/metros";
+import { ALL_METRO_ID, METROS, metroById, metroCoords } from "../../data/metros";
 import type { ArtKind, CategoryId, Unclaimed } from "../../data/types";
 import { fromPrice, getCatalog, publicRating } from "../../lib/catalog";
 import { listingFacts } from "../../lib/catalog";
@@ -12,7 +12,7 @@ import { ART_ALIASES, metroInQuery, parseIntent, searchSuggest, warmSearch, type
 import { loadListing } from "../../lib/catalogLoad";
 import { dealToday } from "../../lib/companyAgent";
 import { itemOpenState } from "../../lib/openNow";
-import { currentLocation, fmtDistance, nearestLocation, searchPlaces, type Place } from "../../lib/places";
+import { currentLocation, fmtDistance, kmBetween, nearestLocation, searchPlaces, type Place } from "../../lib/places";
 import { regionOfArea } from "../../data/regions";
 import { useApp } from "../../state/AppProvider";
 import { Photo } from "../art/Photo";
@@ -123,7 +123,14 @@ function whenIdle(run: () => void): void {
 /** What a "More kinds" link types into the search: the first alias, so the search names exactly that kind. */
 const kindQuery = (art: ArtKind) => ART_ALIASES[art]?.[0] || art;
 
-function rankForRail(list: Unclaimed[]): Unclaimed[] {
+function rankForRail(list: Unclaimed[], center?: { lat: number; lon: number } | null): Unclaimed[] {
+  // In a city, the city itself leads: a Miami row opening on Boca Raton, 70 km up the coast, reads as the wrong
+  // place. Listings in the city are lifted and the far edge of the metro area is pushed back, before quality.
+  const nearness = (u: Unclaimed) => {
+    if (!center || u.lat == null || u.lon == null) return 0;
+    const km = kmBetween(center, { lat: u.lat, lon: u.lon });
+    return km <= 25 ? 2 : km <= 50 ? 0.5 : -1.5;
+  };
   // A rail is photos. Places without one wait in search results until the crawl or the operator adds a picture.
   return list
     .filter((u) => !!u.cover)
@@ -131,8 +138,8 @@ function rankForRail(list: Unclaimed[]): Unclaimed[] {
       // "Popular Jet Ski Rentals" must open on jet ski rentals: a listing whose own words never confirm its kind
       // goes after every one that does, however many reviews it has.
       if (!!a.kindUnconfirmed !== !!b.kindUnconfirmed) return a.kindUnconfirmed ? 1 : -1;
-      const pa = (a.cover ? 3 : 0) + (fromPrice(a) != null ? 2 : 0) + Math.min(2, Math.log10((a.reviews || 0) + 1));
-      const pb = (b.cover ? 3 : 0) + (fromPrice(b) != null ? 2 : 0) + Math.min(2, Math.log10((b.reviews || 0) + 1));
+      const pa = (a.cover ? 3 : 0) + (fromPrice(a) != null ? 2 : 0) + Math.min(2, Math.log10((a.reviews || 0) + 1)) + nearness(a);
+      const pb = (b.cover ? 3 : 0) + (fromPrice(b) != null ? 2 : 0) + Math.min(2, Math.log10((b.reviews || 0) + 1)) + nearness(b);
       return pb - pa;
     });
 }
@@ -844,6 +851,15 @@ export function WebHome({ onOpenApp, onOperators }: { onOpenApp: () => void; onO
     const drop = new Set(typedMetro.words);
     return dq.split(/\s+/).filter((w) => !drop.has(w.toLowerCase().replace(/[^a-z0-9]+/g, ""))).join(" ");
   }, [dq, typedMetro]);
+  // "Miami" on its own is a place, not a keyword. A guest who types a city wants that city's things to do laid out
+  // as rows the way the home page lays them out, not a flat grid headed "Results for “Miami” in Miami".
+  const placeOnly = !!typedMetro && !qWithoutPlace.trim();
+  // The city being looked at, typed or picked, and its centre for ranking.
+  const activeMetro = typedMetro?.metro ?? (near ? undefined : metro);
+  const activeCenter = useMemo(() => {
+    const c = activeMetro ? metroCoords(activeMetro.id) : null;
+    return c ? { lat: c.lat, lon: c.lng } : null;
+  }, [activeMetro?.id]);
 
   // Where the guest is looking. The search reads the whole catalog and narrows here, so its index is built once.
   const scope = useMemo<SearchScope>(() => {
@@ -905,20 +921,20 @@ export function WebHome({ onOpenApp, onOperators }: { onOpenApp: () => void; onO
   };
 
   // The places the category tab, filters and search leave, before any order is applied. Filters count from here.
-  const base = useMemo(() => (q.trim() ? pool : pool.filter((u) => inCat(u, state.cat))), [pool, q, state.cat]);
+  const base = useMemo(() => (q.trim() && !placeOnly ? pool : pool.filter((u) => inCat(u, state.cat))), [pool, q, placeOnly, state.cat]);
 
   // Airbnb's two shapes: rows when nothing is narrowed, one flat grid once a category, order, price or search is.
-  const gridMode = !q.trim() && (state.cat !== "all" || effSort !== "relevance" || priceOn);
+  const gridMode = (!q.trim() || placeOnly) && (state.cat !== "all" || effSort !== "relevance" || priceOn);
   const gridList = useMemo(() => {
     if (!gridMode) return null;
     const list = base.filter(inPrice);
-    if (effSort === "relevance") return near ? list : rankForRail(list);
+    if (effSort === "relevance") return near ? list : rankForRail(list, activeCenter);
     return applySort(list);
   }, [gridMode, base, effSort, near, price.min, price.max]);
   const searchList = useMemo(() => {
-    if (!q.trim()) return null;
+    if (!q.trim() || placeOnly) return null;
     return applySort(pool.filter(inPrice));
-  }, [q, pool, effSort, near, price.min, price.max]);
+  }, [q, placeOnly, pool, effSort, near, price.min, price.max]);
 
   // Kinds with at least one listing here, scored by how many have a photo. The strongest HOME_RAILS become rails
   // in the mixed order above; the rest are links so the page is not sixty rails long.
@@ -982,11 +998,23 @@ export function WebHome({ onOpenApp, onOperators }: { onOpenApp: () => void; onO
     }
   } else {
     // Where is for places: a state or city the guest typed leads, before kinds of thing and businesses.
-    regionHits.forEach((r, i) => rows.push({ key: "r" + r.code, head: i === 0 ? "Places" : undefined, icon: ICONS.pin, title: r.name, sub: r.count.toLocaleString() + " places · " + r.country, pick: () => pickPlace({ label: r.name, sub: r.country, lat: r.lat, lon: r.lon, region: r.code }) }));
+    // A typed city leads with the city itself, since the word is stripped before the search runs and nothing else
+    // would offer it: "Miami" used to list six map places called Miami and never our Miami.
+    if (typedMetro) {
+      const m = typedMetro.metro;
+      rows.push({ key: "tm" + m.id, head: "Places", icon: ICONS.pin, title: m.name + ", " + m.region, sub: "Things to do · " + (metroCounts.get(m.id) || 0).toLocaleString() + " places", on: !near && state.metroId === m.id, pick: () => { pickCity(m.id); openSeg("when"); } });
+    }
+    regionHits.forEach((r, i) => rows.push({ key: "r" + r.code, head: i === 0 && !typedMetro ? "Places" : undefined, icon: ICONS.pin, title: r.name, sub: r.count.toLocaleString() + " places · " + r.country, pick: () => pickPlace({ label: r.name, sub: r.country, lat: r.lat, lon: r.lon, region: r.code }) }));
     spots.forEach((pl, i) => rows.push({ key: "s" + pl.metro.id, head: i === 0 && !regionHits.length ? "Cities" : undefined, icon: ICONS.pin, title: pl.metro.name + ", " + pl.metro.region, sub: pl.count.toLocaleString() + " places", pick: () => pickCity(pl.metro.id) }));
+    if (typedMetro && placeOnly) {
+      const m = typedMetro.metro;
+      rails.slice(0, 4).forEach((r, i) => rows.push({ key: "tk" + r.art, head: i === 0 ? "Popular in " + m.name : undefined, icon: ICONS.spark, title: r.title, sub: pool.filter((u) => u.art === r.art).length.toLocaleString() + " places in " + m.name, pick: () => { setQ(kindQuery(r.art) + " " + m.name); setHit(-1); } }));
+    }
     acts.forEach((a, i) => rows.push({ key: "a" + a.art, head: i === 0 ? "Activities" : undefined, icon: ICONS.spark, title: a.label, sub: a.count.toLocaleString() + (a.count === 1 ? " place" : " places") + inWhere, pick: () => { setQ(a.query); setHit(-1); } }));
     ops.forEach((u, i) => rows.push({ key: "o" + u.id, head: i === 0 ? "Businesses" : undefined, u, title: u.title, sub: ART_LABEL[u.art] + " · " + u.area, pick: () => { openSeg(null); openRequest(u.id); } }));
-    placeHits.forEach((p, i) => rows.push({ key: "p" + p.label + p.sub, head: i === 0 ? "Places on the map" : undefined, icon: ICONS.pin, title: p.label, sub: p.sub, pick: () => pickPlace(p) }));
+    // A typed city keeps map places to its own area: "Miami" should not offer Miami, Oklahoma.
+    const tmc = typedMetro ? metroCoords(typedMetro.metro.id) : null;
+    placeHits.filter((p) => !tmc || kmBetween({ lat: tmc.lat, lon: tmc.lng }, p) <= 150).forEach((p, i) => rows.push({ key: "p" + p.label + p.sub, head: i === 0 ? "Places on the map" : undefined, icon: ICONS.pin, title: p.label, sub: p.sub, pick: () => pickPlace(p) }));
     (found?.elsewhere ?? []).forEach((a, i) => rows.push({ key: "e" + a.art, head: i === 0 ? "Elsewhere" : undefined, icon: ICONS.globe, title: a.label + " across the US and Canada", sub: a.count.toLocaleString() + " places", pick: () => { setNear(null); setMetro(ALL_METRO_ID); setQ(a.query); } }));
     if (found?.otherCats) rows.push({ key: "othercats", icon: ICONS.catAll, title: "Show all categories", sub: found.otherCats.toLocaleString() + " more outside " + catName(state.cat), pick: () => setCat("all") });
   }
@@ -1002,6 +1030,9 @@ export function WebHome({ onOpenApp, onOperators }: { onOpenApp: () => void; onO
     } else if (e.key === "Enter") {
       e.preventDefault();
       if (hit >= 0 && rows[hit]) rows[hit].pick();
+      // Enter on a query that is only a place picks that place: the city, or the state the region match found.
+      else if (placeOnly && typedMetro) { pickCity(typedMetro.metro.id); runSearch(); }
+      else if (regionHits.length && !acts.length && !ops.length) rows.find((r) => r.key === "r" + regionHits[0].code)?.pick();
       else runSearch();
     }
   };
@@ -1025,7 +1056,7 @@ export function WebHome({ onOpenApp, onOperators }: { onOpenApp: () => void; onO
 
   const filterCount = (effSort !== "relevance" ? 1 : 0) + (priceOn ? 1 : 0);
   const resetFilters = () => { setSort("relevance"); setPrice({ min: null, max: null }); setCat("all"); };
-  const showRails = state.catalogReady && !q.trim() && !gridMode;
+  const showRails = state.catalogReady && (!q.trim() || placeOnly) && !gridMode;
 
   return (
     <CompareCtx.Provider value={{ ids: compareIds, toggle: toggleCompare }}>
@@ -1194,8 +1225,8 @@ export function WebHome({ onOpenApp, onOperators }: { onOpenApp: () => void; onO
         ) : null}
 
         {showRails ? rails.map((r, i) => {
-          const items = rankForRail(pool.filter((u) => u.art === r.art));
-          const title = titleCase(near ? `${r.title} near ${near.label}` : metro ? `${r.title} in ${metro.name}` : `Popular ${r.title}`);
+          const items = rankForRail(pool.filter((u) => u.art === r.art), activeCenter);
+          const title = titleCase(near ? `${r.title} near ${near.label}` : activeMetro ? `${r.title} in ${activeMetro.name}` : `Popular ${r.title}`);
           return <Rail key={r.art} title={title} items={items} onOpen={openRequest} near={near} eager={i < 2} onShowAll={() => { setQ(kindQuery(r.art)); window.scrollTo({ top: 0 }); }} />;
         }) : null}
 
