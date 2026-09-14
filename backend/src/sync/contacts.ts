@@ -12,6 +12,7 @@ import { cleanImageUrl } from "../enrich/srcset.ts";
 import { reconcileArt } from "./artEvidence.ts";
 import { LOCATION_FACT, brandId, isChainLocation } from "./brandShare.ts";
 import { fullSize } from "./imageUrl.ts";
+import { cleanQuote } from "./quotes.ts";
 import { METROS, categoryById, nearestMetro } from "../taxonomy/catalog.ts";
 import { rankForCover } from "../enrich/photorelevance.ts";
 import { existsSync, readFileSync as readFileSyncFs } from "node:fs";
@@ -456,8 +457,8 @@ export function toCatalogItem(r: CatalogRow): Record<string, unknown> {
           return null;
         }
       })
-      .filter((r) => !!r && r.text.length >= 30)
-      .map((r) => r as { author?: string; rating?: number; text: string; date?: string })
+      .map((r) => (r ? cleanQuote(r) : null))
+      .filter((r): r is { author?: string; rating?: number; text: string; date?: string } => !!r)
       .slice(0, 6),
     dur: durationOf(offerings.map((o) => o.duration || o.detail || "")) || undefined,
     fc: freeCancel(cleanPara(pick("cancellation")[0] || "") || pick("policy").filter((l) => /cancel|refund/i.test(l)).join(" ")) || undefined,
