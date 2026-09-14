@@ -475,3 +475,100 @@
 .odnotice b{font-size:14px;}
 .odnotice small{font-size:13px;color:var(--ink-soft);line-height:1.45;}
 .odnotice button{flex:none;border:1px solid var(--line-strong);background:#fff;border-radius:999px;padding:7px 14px;font-size:13px;font-weight:600;cursor:pointer;}
+
+/* ---------- live preview beside the editor ----------
+   A third grid column, sticky to the viewport. The frame inside is the real guest page at ?preview=1. */
+.od.pv:not(.compact){grid-template-columns:248px minmax(0,1fr) clamp(360px,var(--pvw,480px),calc(100vw - 768px));}
+.od.pv:not(.compact) .odmain{grid-row:1;}
+.odpreview{grid-column:3;grid-row:1;position:sticky;top:0;height:100vh;align-self:start;display:flex;flex-direction:column;min-width:0;background:var(--surface);border-left:1px solid var(--line);z-index:5;container-type:inline-size;}
+.odpreview.dragging{user-select:none;}
+.odpvgrip{position:absolute;left:-5px;top:0;bottom:0;width:10px;cursor:col-resize;z-index:3;touch-action:none;}
+.odpvgrip::after{content:"";position:absolute;left:4px;top:0;bottom:0;width:2px;background:transparent;transition:background .15s;}
+.odpvgrip:hover::after,.odpvgrip:focus-visible::after,.odpreview.dragging .odpvgrip::after{background:var(--accent);}
+.odpvgrip:focus-visible{outline:none;}
+.odpvbar{display:flex;align-items:center;gap:4px;padding:14px 10px 14px 18px;border-bottom:1px solid var(--line);}
+.odpvtitle{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;}
+.odpvtitle b{font-size:14.5px;font-weight:600;}
+.odpvtitle small{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--ink-faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.odpvdot{flex:none;width:7px;height:7px;border-radius:50%;background:var(--line-strong);}
+.odpvdot.on{background:var(--open);box-shadow:0 0 0 3px var(--open-bg);}
+.odpvbar .odseg{margin-right:4px;flex:none;}
+.odseg.small{padding:3px;}
+.odseg.small button{padding:5px 10px;font-size:12.5px;gap:5px;}
+.odseg.small button svg{width:15px;height:15px;}
+.odpvbar .odiconbtn svg{width:18px;height:18px;}
+.odpvbar a.odiconbtn:hover,.odpvbar button.odiconbtn:hover{background:var(--surface-2);color:var(--ink);}
+@container (max-width:520px){
+  .odpvbar .odseg button > span:last-child{display:none;}
+  .odpvbar .odseg button{padding:5px 8px;}
+}
+.odpvstage{flex:1;min-height:0;position:relative;display:flex;justify-content:center;align-items:flex-start;padding:16px;background:var(--surface-2);overflow:hidden;}
+.odpvstage.phone{padding:20px;align-items:center;}
+.odpvscreen{position:relative;overflow:hidden;border-radius:10px;background:#fff;box-shadow:0 0 0 1px var(--line),0 12px 32px -14px rgba(0,0,0,.28);}
+.odpvstage.phone .odpvscreen{border-radius:30px;box-shadow:0 0 0 7px #1d1d1f,0 0 0 8px #3a3a3c,0 20px 40px -16px rgba(0,0,0,.4);}
+.odpvscreen iframe{position:absolute;top:0;left:0;border:0;display:block;transform-origin:0 0;background:#fff;}
+.odpvloading{position:absolute;inset:0;display:grid;place-content:center;justify-items:center;gap:12px;padding:24px;background:var(--surface);color:var(--ink-faint);font-size:13px;text-align:center;}
+.odpvshield{position:absolute;inset:0;cursor:col-resize;}
+.odpvhint{margin:0;padding:9px 16px 11px;border-top:1px solid var(--line);font-size:12px;color:var(--ink-faint);text-align:center;}
+.odspin{width:22px;height:22px;border-radius:50%;border:2.5px solid var(--line-strong);border-top-color:var(--ink);animation:odspin .8s linear infinite;}
+@keyframes odspin{to{transform:rotate(360deg);}}
+.odpvtoggle.on{background:var(--surface-2);border-color:var(--line-strong);}
+@media (max-width:1700px){.od.pv:not(.compact) .odcols{grid-template-columns:1fr;}}
+@media (max-width:1180px){
+  .od.pv:not(.compact){grid-template-columns:200px minmax(0,1fr) clamp(340px,var(--pvw,480px),calc(100vw - 720px));}
+}
+
+/* ---------- autosave feedback ---------- */
+.odsavedtop{display:inline-flex;align-items:center;gap:4px;font-size:12.5px;color:var(--ink-faint);white-space:nowrap;margin-right:4px;}
+.odsavedtop.on{color:var(--open);font-weight:600;}
+.odsavedtop svg{width:14px;height:14px;}
+.odsaved > span:first-child::after,
+.odsvc.odsaved .odsvctitle small::after,
+.odhour.odsaved > b::after{content:"Saved";display:inline-block;margin-left:8px;font-size:11px;font-weight:600;line-height:1.5;color:var(--open);background:var(--open-bg);border-radius:999px;padding:0 7px;vertical-align:1px;animation:odsavedin .18s ease-out;}
+@keyframes odsavedin{from{opacity:0;transform:translateY(2px);}to{opacity:1;transform:none;}}
+@media (max-width:1700px){.od.pv .odsavedtop:not(.on){display:none;}}
+.od .odvar .opinput input{border:none;border-radius:0;padding:9px 0;background:transparent;}
+
+/* A jump lands here: a short ring so the eye finds the field. */
+.odflash{animation:odflash 1.6s ease-out;border-radius:12px;}
+@keyframes odflash{0%,35%{box-shadow:0 0 0 3px var(--accent);}100%{box-shadow:0 0 0 3px transparent;}}
+
+/* ---------- finish your listing ---------- */
+.odfinish .odcardhead{flex-wrap:wrap;}
+.odfinishlist{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;}
+.od.pv .odfinishlist{grid-template-columns:repeat(2,minmax(0,1fr));}
+.od.compact .odfinishlist{grid-template-columns:1fr;}
+.odfinishitem{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;text-align:left;color:var(--ink);min-width:0;}
+.odfinishitem:hover{border-color:var(--line-strong);background:var(--surface-2);}
+.odfinishitem .meta{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px;}
+.odfinishitem .meta b{font-size:13.5px;font-weight:600;}
+.odfinishitem .meta small{font-size:12px;color:var(--ink-faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.odfinishitem > span:last-child svg,.odfinishitem > svg{width:16px;height:16px;color:var(--ink-faint);}
+.odfinishitem .tick{width:22px;height:22px;border-radius:50%;border:1.5px solid var(--line-strong);display:grid;place-items:center;color:transparent;flex:none;}
+.odfinishitem .tick i{font-style:normal;font-size:11px;font-weight:700;color:var(--ink);}
+.odfinishitem .tick svg{width:14px;height:14px;}
+.odfinishitem.done{background:var(--surface-2);border-color:transparent;}
+.odfinishitem.done .tick{background:var(--open);border-color:var(--open);color:#fff;}
+.odfinishitem.done .meta b{color:var(--ink-soft);font-weight:500;}
+
+/* one-click defaults */
+.odquick{display:grid;gap:8px;padding:12px;border-radius:12px;background:var(--few-bg);}
+.odquick > small{font-size:12.5px;font-weight:600;color:var(--few);}
+.odquick .odchips button{display:inline-flex;align-items:center;gap:4px;background:var(--surface);}
+.odquick .odchips button svg{width:13px;height:13px;}
+.odfill{align-self:flex-start;}
+.odemptycta{margin-top:14px;}
+.odvar.unpriced .opinput{border-color:var(--few);background:var(--few-bg);}
+.odbanner.soft .odlink{margin-left:auto;}
+
+/* payout history */
+.odpayline .odstatus{flex:none;}
+.odpayline .odamt{min-width:72px;}
+.odstruck{text-decoration:line-through;color:var(--ink-faint);}
+.odseg button:disabled{opacity:.6;cursor:progress;}
+
+.odhour{position:relative;}
+.odhour.odsaved > b::after{position:absolute;left:0;top:calc(50% + 9px);margin:0;font-size:10.5px;line-height:15px;}
+.od.pv .odhour{grid-template-columns:84px 36px minmax(0,1fr) auto;gap:8px;}
+.od.pv .odtimes{gap:6px;min-width:0;}
+.od.pv .odtimes select{min-width:0;flex:1 1 0;padding:7px 4px;}

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { fmtTime } from "../../lib/format";
-import { DAY_NAMES, isoToDate, relDay, timeOptions, type DayHours } from "../../lib/operator";
+import { DAY_NAMES, hoursAreDefault, isoToDate, relDay, timeOptions, type DayHours } from "../../lib/operator";
 import { Markup } from "../Markup";
 import { OD_ICONS, useOp } from "./opContext";
 
@@ -30,9 +30,15 @@ export function OpHours() {
   return (
     <div className="odpage">
       <div className="odcols">
-        <section className="odcard">
+        <section className="odcard" data-jump="hours">
           <div className="odcardhead"><h3>Opening hours</h3></div>
-          <p className="odmuted">Guests can only pick times inside these hours. {p.hours.every((h) => !h.closed && h.open === "09:00" && h.close === "17:00") ? "We couldn't find your hours on your website, so we started you at 9 to 5 every day. Set your real hours before a guest books a time you're closed." : "Copied from your website."}</p>
+          <p className="odmuted">Guests can only pick times inside these hours. {hoursAreDefault(p) ? "We couldn't find your hours on your website, so we started you at 9 to 5 every day. Set your real hours before a guest books a time you're closed." : "Copied from your website. Change any day that is off."}</p>
+          {hoursAreDefault(p) && !p.hoursConfirmed ? (
+            <div className="odbanner soft">
+              <span>Open 9 to 5 every day?</span>
+              <button type="button" className="odlink" onClick={() => { set({ hoursConfirmed: true }); toast("Hours confirmed"); }}>Yes, these are right</button>
+            </div>
+          ) : null}
           <div className="odhours">
             {p.hours.map((h, i) => (
               <div className={"odhour" + (h.closed ? " closed" : "")} key={i}>

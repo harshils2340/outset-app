@@ -350,11 +350,37 @@ export async function uploadPhoto(listing: string, file: File): Promise<{ ok: bo
 
 /* ---------- payouts ---------- */
 
-export type PayoutStatus = { available: boolean; connected?: boolean; enabled?: boolean; detailsSubmitted?: boolean };
+export type PayoutInterval = "weekly" | "biweekly";
+export type PayoutState = "scheduled" | "paid" | "reversed" | "cancelled";
+export type PayoutLine = { code: string; date: string; amount: number; currency: string; state: PayoutState; paidAt?: string };
+
+/**
+ * A connected account also carries its ledger. Amounts are in cents. nextPayoutOn is a Monday (YYYY-MM-DD);
+ * nextAmount goes out that day, upcoming waits on later trip dates, paidTotal has already been sent.
+ */
+export type PayoutStatus = {
+  available: boolean;
+  connected?: boolean;
+  enabled?: boolean;
+  detailsSubmitted?: boolean;
+  interval?: PayoutInterval;
+  currency?: string;
+  nextPayoutOn?: string;
+  nextAmount?: number;
+  upcoming?: number;
+  paidTotal?: number;
+  history?: PayoutLine[];
+};
 
 export async function payoutStatus(listing: string): Promise<PayoutStatus> {
   const r = await call<PayoutStatus>(`/payouts/${encodeURIComponent(listing)}`, { headers: authHeaders(listing), timeout: 15000 });
   return r.ok && r.data ? r.data : { available: false };
+}
+
+/** Weekly or every two weeks, both paid on Mondays. */
+export async function setPayoutSchedule(listing: string, interval: PayoutInterval): Promise<{ ok: boolean; interval?: PayoutInterval; error?: string }> {
+  const r = await call<{ ok: boolean; interval: PayoutInterval }>(`/payouts/${encodeURIComponent(listing)}/schedule`, { method: "PUT", headers: authHeaders(listing), body: JSON.stringify({ interval }), timeout: 15000 });
+  return { ok: r.ok && !!r.data?.ok, interval: r.data?.interval, error: r.error };
 }
 
 /** Sends the operator to Stripe's hosted onboarding; they come back to the Payouts page. */

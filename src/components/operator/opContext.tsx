@@ -1,6 +1,6 @@
 import { createContext, useContext } from "react";
 import type { Unclaimed } from "../../data/types";
-import type { OpBooking, OpStatus, OperatorProfile } from "../../lib/operator";
+import type { JumpField, OpBooking, OpStatus, OperatorProfile } from "../../lib/operator";
 
 export type OpPage = "home" | "bookings" | "calendar" | "services" | "hours" | "listing" | "assistant" | "payouts" | "settings";
 
@@ -16,7 +16,13 @@ export type OpApi = {
   decide: (b: OpBooking, status: OpStatus) => void;
   openBooking: (id: string | null) => void;
   openedId: string | null;
+  /** Show or hide the live guest preview beside the editor. On the phone frame it opens the guest listing. */
   preview: () => void;
+  previewOpen: boolean;
+  /** Go to the page that holds a field, scroll to it, focus it and flash it. */
+  jump: (field: JumpField) => void;
+  /** The last jump asked for; a page that must open something first (a service row) reads it. */
+  jumpTo: { field: JumpField; n: number } | null;
   toast: (t: string) => void;
   logout: () => void;
 };
@@ -79,5 +85,9 @@ export const OD_ICONS: Record<string, string> = {
   mail: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>',
   search: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>',
   bolt: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M13 2 4 14h6l-1 8 9-12h-6l1-8Z"/></svg>',
+  monitor: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg>',
+  mobile: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M11 18.5h2"/></svg>',
+  reload: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg>',
+  eye: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>',
   pin: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-6-5.3-6-11a6 6 0 0 1 12 0c0 5.7-6 11-6 11Z"/><circle cx="12" cy="10" r="2.2"/></svg>',
 };

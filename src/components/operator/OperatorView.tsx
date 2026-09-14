@@ -1,11 +1,10 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Unclaimed } from "../../data/types";
 import { experienceById } from "../../lib/catalog";
 import { loadListing } from "../../lib/catalogLoad";
-import { allBookings, demoProfile, hydrateProfile, loadProfile, loadSession, saveProfile, saveSession, setBookingStatus, type OpBooking, type OpStatus, type OperatorProfile } from "../../lib/operator";
+import { JUMP_PAGE, allBookings, demoProfile, hydrateProfile, isDemoProfile, loadProfile, loadSession, saveProfile, saveSession, setBookingStatus, type JumpField, type OpBooking, type OpStatus, type OperatorProfile } from "../../lib/operator";
 import { useApp } from "../../state/AppProvider";
 import { decideBooking, fetchBookings, hasApi, signOutApi, takeClaimNotice, type RemoteBooking } from "../../lib/api";
-import { listingUrl } from "../../lib/site";
 import { Markup } from "../Markup";
 import { OpAssistant } from "./OpAssistant";
 import { OpBookings, BookingDrawer } from "./OpBookings";
@@ -15,9 +14,13 @@ import { OpHours } from "./OpHours";
 import { OpListing } from "./OpListing";
 import { OpLogin } from "./OpLogin";
 import { OpPayouts, OpSettings } from "./OpMore";
+import { OpPreview, loadPreviewPrefs, savePreviewPrefs } from "./OpPreview";
 import { OpServices } from "./OpServices";
 import { OpSidebar } from "./OpSidebar";
 import { OD_ICONS, OpCtx, PAGES, type OpApi, type OpPage } from "./opContext";
+
+/** Pages whose edits show on the guest listing, so the live preview can sit beside them. */
+const PREVIEW_PAGES: OpPage[] = ["listing", "services", "hours"];
 
 /**
  * Operator dashboard. The shape is the Uber Eats merchant app plus Booksy: a sidebar, an Accepting switch,
@@ -41,6 +44,15 @@ export function OperatorView({ compact = false }: { compact?: boolean }) {
   const [toastText, setToastText] = useState<string | null>(null);
   // Shown once, on the way in, when the server said this listing already had a different owner.
   const [claimNotice, setClaimNotice] = useState<{ email: string; at?: string } | null>(null);
+  // The live preview beside the editor. Open or closed, its size and device are remembered on this device.
+  const [previewOpen, setPreviewOpen] = useState(() => !compact && loadPreviewPrefs().open);
+  const [previewWidth, setPreviewWidth] = useState(() => loadPreviewPrefs().width);
+  const revealRef = useRef<((field: JumpField) => void) | null>(null);
+  const [jumpTo, setJumpTo] = useState<{ field: JumpField; n: number } | null>(null);
+  // Autosave feedback. Every edit already saves; this says so, next to the header, right after the owner changes something.
+  const [savedAt, setSavedAt] = useState(0);
+  const lastTouch = useRef(0);
+  const bodyRef = useRef<HTMLElement | null>(null);
   useEffect(() => {
     if (p) setClaimNotice(takeClaimNotice());
   }, [p?.id]);
@@ -67,7 +79,51 @@ export function OperatorView({ compact = false }: { compact?: boolean }) {
       return next;
     });
     touchCatalog();
+    // Only an edit the owner just made flashes Saved; a background fill-in from the detail file stays quiet.
+    if (Date.now() - lastTouch.current < 1500) setSavedAt(Date.now());
   }, [touchCatalog]);
+
+  const jump = useCallback((field: JumpField) => {
+    setPage(JUMP_PAGE[field]);
+    setOpenedId(null);
+    setJumpTo({ field, n: Date.now() });
+  }, []);
+
+  // After a jump, find the field on its page (a service row may need a render to open), bring it into view,
+  // focus it and flash it so the eye lands on it.
+  useEffect(() => {
+    if (!jumpTo) return;
+    let tries = 0;
+    let t = 0;
+    const seek = () => {
+      const el = bodyRef.current?.querySelector<HTMLElement>(`[data-jump~="${jumpTo.field}"]`);
+      if (!el) {
+        if (tries++ < 20) t = window.setTimeout(seek, 40);
+        return;
+      }
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      const input = el.matches("input,textarea,select,button") ? el : el.querySelector<HTMLElement>("input:not([type=file]),textarea,select");
+      input?.focus({ preventScroll: true });
+      el.classList.remove("odflash");
+      void el.offsetWidth;
+      el.classList.add("odflash");
+      window.setTimeout(() => el.classList.remove("odflash"), 1700);
+    };
+    t = window.setTimeout(seek, 0);
+    return () => window.clearTimeout(t);
+  }, [jumpTo]);
+
+  useEffect(() => {
+    if (!savedAt) return;
+    const t = window.setTimeout(() => setSavedAt(0), 2200);
+    return () => window.clearTimeout(t);
+  }, [savedAt]);
+
+
+  const showPreview = useCallback((open: boolean) => {
+    setPreviewOpen(open);
+    savePreviewPrefs({ open });
+  }, []);
 
   const u = useMemo(() => (p ? experienceById(p.id) : null), [p?.id, state.catalogVersion]);
   // The demo and a fresh claim start from the slim browse record. Pull the detail file and fill the gaps.
@@ -113,6 +169,45 @@ export function OperatorView({ compact = false }: { compact?: boolean }) {
   }, [p?.id]);
   const bookings = useMemo(() => (p ? allBookings(p, state.bookings, remote) : []), [p, state.bookings, remote]);
 
+  // Field-level Saved marks, and the preview following the owner around. One listener for every editor page,
+  // so no page has to wire it up field by field.
+  useEffect(() => {
+    const body = bodyRef.current;
+    if (!body) return;
+    const timers = new WeakMap<HTMLElement, number>();
+    const touch = () => { lastTouch.current = Date.now(); };
+    const onEdit = (e: Event) => {
+      touch();
+      const t = e.target as HTMLElement | null;
+      if (!t || (t as HTMLInputElement).type === "file" || t.closest(".odaddoff, .odsearch, .odchatin, [data-nosave]")) return;
+      const host = t.closest<HTMLElement>(".odfield, .odsvc, .odhour, .odaddon");
+      if (!host) return;
+      host.classList.add("odsaved");
+      window.clearTimeout(timers.get(host));
+      timers.set(host, window.setTimeout(() => host.classList.remove("odsaved"), 1600));
+    };
+    const onFocus = (e: FocusEvent) => {
+      const el = (e.target as HTMLElement | null)?.closest<HTMLElement>("[data-jump]");
+      const field = el?.dataset.jump?.split(" ")[0] as JumpField | undefined;
+      if (field) revealRef.current?.(field);
+    };
+    body.addEventListener("input", onEdit);
+    body.addEventListener("change", onEdit);
+    body.addEventListener("pointerdown", touch);
+    body.addEventListener("keydown", touch);
+    body.addEventListener("focusin", onFocus);
+    const top = body.parentElement;
+    top?.addEventListener("pointerdown", touch);
+    return () => {
+      body.removeEventListener("input", onEdit);
+      body.removeEventListener("change", onEdit);
+      body.removeEventListener("pointerdown", touch);
+      body.removeEventListener("keydown", touch);
+      body.removeEventListener("focusin", onFocus);
+      top?.removeEventListener("pointerdown", touch);
+    };
+  }, [p?.id, !!u, wantLogin]);
+
   const decide = useCallback((b: OpBooking, status: OpStatus) => {
     if (b.source === "remote" && p) {
       setRemote((cur) => (cur ? cur.map((x) => (x.code === b.code ? { ...x, status } : x)) : cur));
@@ -142,7 +237,8 @@ export function OperatorView({ compact = false }: { compact?: boolean }) {
       />
     );
   }
-  const isDemo = p.ownerEmail === "owner@example.com" && p.ownerName === "Demo owner";
+  const isDemo = isDemoProfile(p);
+  const previewShown = !compact && previewOpen && PREVIEW_PAGES.includes(page);
 
   const api: OpApi = {
     p,
@@ -160,8 +256,18 @@ export function OperatorView({ compact = false }: { compact?: boolean }) {
         openRequest(p.id);
         return;
       }
-      window.open(listingUrl(p.id), "_blank", "noopener");
+      // From a page with nothing to preview beside it, go to the listing with the preview open.
+      if (!PREVIEW_PAGES.includes(page)) {
+        setPage("listing");
+        setOpenedId(null);
+        showPreview(true);
+        return;
+      }
+      showPreview(!previewOpen);
     },
+    previewOpen: previewShown,
+    jump,
+    jumpTo,
     toast: setToastText,
     logout,
   };
@@ -172,7 +278,7 @@ export function OperatorView({ compact = false }: { compact?: boolean }) {
 
   return (
     <OpCtx.Provider value={api}>
-      <div className={"od" + (compact ? " compact" : "")}>
+      <div className={"od" + (compact ? " compact" : "") + (previewShown ? " pv" : "")} style={previewShown ? ({ "--pvw": previewWidth + "px" } as React.CSSProperties) : undefined}>
         {!compact ? (
           <OpSidebar
             p={p}
@@ -183,7 +289,11 @@ export function OperatorView({ compact = false }: { compact?: boolean }) {
             onBrand={() => { dispatch({ type: "back" }); }}
             onClaim={() => setWantLogin(true)}
             onSwitch={enter}
-            onPreview={api.preview}
+            onPreview={() => {
+              if (!PREVIEW_PAGES.includes(page)) setPage("listing");
+              setOpenedId(null);
+              showPreview(true);
+            }}
             onLogout={logout}
           />
         ) : null}
@@ -198,6 +308,16 @@ export function OperatorView({ compact = false }: { compact?: boolean }) {
               {!compact ? <small>{p.address || u.area}</small> : null}
             </div>
             <div className="odtopright">
+              {!compact ? (
+                <span className={"odsavedtop" + (savedAt ? " on" : "")} role="status" aria-live="polite">
+                  {savedAt ? <><Markup html={OD_ICONS.check} /> Saved</> : "Changes save automatically"}
+                </span>
+              ) : null}
+              {!compact && PREVIEW_PAGES.includes(page) ? (
+                <button type="button" className={"odghost odpvtoggle" + (previewOpen ? " on" : "")} onClick={() => showPreview(!previewOpen)} aria-pressed={previewOpen}>
+                  <Markup html={OD_ICONS.eye} /> {previewOpen ? "Hide preview" : "Preview"}
+                </button>
+              ) : null}
               {!p.published ? <span className="odpill off">Hidden from site</span> : null}
               <button type="button" className={"optoggle" + (p.accepting ? " on" : "")} onClick={() => { set({ accepting: !p.accepting }); setToastText(p.accepting ? "Paused. Guests can't book new times." : "Accepting bookings again."); }} aria-pressed={p.accepting}>
                 <span className="knob" />
@@ -206,7 +326,7 @@ export function OperatorView({ compact = false }: { compact?: boolean }) {
             </div>
           </header>
 
-          <main className="odbody">
+          <main className="odbody" ref={bodyRef}>
             {page === "home" ? <OpHome /> : null}
             {page === "bookings" ? <OpBookings /> : null}
             {page === "calendar" ? <OpCalendar /> : null}
@@ -234,6 +354,18 @@ export function OperatorView({ compact = false }: { compact?: boolean }) {
             </nav>
           ) : null}
         </div>
+
+        {previewShown ? (
+          <OpPreview
+            id={p.id}
+            title={p.title}
+            width={previewWidth}
+            onWidth={setPreviewWidth}
+            onClose={() => showPreview(false)}
+            onEdit={jump}
+            revealRef={revealRef}
+          />
+        ) : null}
 
         {opened ? <BookingDrawer b={opened} onClose={() => setOpenedId(null)} /> : null}
         {claimNotice ? (

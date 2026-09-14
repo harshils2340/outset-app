@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { money } from "../../lib/format";
 import { PER_UNITS, uid, type OpAddon, type OpService, type OpVariant } from "../../lib/operator";
 import { Markup } from "../Markup";
@@ -10,8 +10,14 @@ import { useReorder } from "./useReorder";
  * a capacity, a live switch and price options. Changes save on blur and show on the guest listing right away.
  */
 export function OpServices() {
-  const { p, set, preview, toast } = useOp();
+  const { p, set, preview, toast, compact, jumpTo } = useOp();
+  // The option a "set a price" jump should land on: the first one with no price, else the first option.
+  const target = p.services.find((s) => s.variants.some((v) => v.price == null)) || p.services[0] || null;
+  const targetVariant = target ? target.variants.find((v) => v.price == null) || target.variants[0] : null;
   const [openId, setOpenId] = useState<string | null>(null);
+  useEffect(() => {
+    if (jumpTo && (jumpTo.field === "price" || jumpTo.field === "services") && target) setOpenId(target.id);
+  }, [jumpTo?.n]);
 
   const patchService = (id: string, patch: Partial<OpService> | ((s: OpService) => OpService)) =>
     set((cur) => ({ ...cur, services: cur.services.map((s) => (s.id !== id ? s : typeof patch === "function" ? patch(s) : { ...s, ...patch })) }));
@@ -41,7 +47,7 @@ export function OpServices() {
       <div className="odbar">
         <p className="odmuted">This is your menu as guests see it. We copied it from your website. {!p.services.length ? <b>Nothing to book yet. Add your first service.</b> : unpriced ? <b>{unpriced} {unpriced === 1 ? "option has" : "options have"} no price yet.</b> : "Every option has a price."}</p>
         <div className="odbtns">
-          <button type="button" className="odghost" onClick={preview}><Markup html={OD_ICONS.external} /> Preview listing</button>
+          {compact ? <button type="button" className="odghost" onClick={preview}><Markup html={OD_ICONS.external} /> Preview listing</button> : null}
           <button type="button" className="cta small" onClick={addService}><Markup html={OD_ICONS.plus} /> Add service</button>
         </div>
       </div>
@@ -49,7 +55,7 @@ export function OpServices() {
       <p className="odreorderhint">Drag a service to reorder it, or focus the handle and press Space, then the arrow keys.</p>
       <span role="status" aria-live="polite" className="odsr">{reorder.spoken}</span>
 
-      <div className="odsvclist">
+      <div className="odsvclist" data-jump="services">
         {p.services.map((s, i) => {
           const open = openId === s.id;
           const from = s.variants.map((v) => v.price).filter((n): n is number => n != null);
@@ -84,8 +90,14 @@ export function OpServices() {
               </div>
               {open ? (
                 <div className="odsvcbody">
+                  {!s.live ? (
+                    <div className="odbanner soft">
+                      <span><b>Hidden from guests.</b> Switch it on once the name and a price are set.</span>
+                      <button type="button" className="odlink" onClick={() => patchService(s.id, { live: true })}>Make it live</button>
+                    </div>
+                  ) : null}
                   <div className="odgrid2">
-                    <label className="odfield"><span>Name</span><input value={s.name} onChange={(e) => patchService(s.id, { name: e.target.value })} /></label>
+                    <label className="odfield"><span>Name</span><input value={s.name} autoFocus={s.name === "New service"} onFocus={(e) => { if (e.target.value === "New service") e.target.select(); }} onChange={(e) => patchService(s.id, { name: e.target.value })} /></label>
                     <div className="odgrid2 tight">
                       <label className="odfield"><span>Duration</span>
                         <select value={s.durationMin} onChange={(e) => patchService(s.id, { durationMin: Number(e.target.value) })}>
@@ -99,7 +111,7 @@ export function OpServices() {
 
                   <div className="odvarhead"><b>Price options</b><small>Guests pick one. Price is per the unit you choose.</small></div>
                   {s.variants.map((v) => (
-                    <VariantRow key={v.id} v={v} onChange={(patch) => patchService(s.id, (cur) => ({ ...cur, variants: cur.variants.map((x) => (x.id === v.id ? { ...x, ...patch } : x)) }))} onRemove={() => patchService(s.id, (cur) => ({ ...cur, variants: cur.variants.filter((x) => x.id !== v.id) }))} canRemove={s.variants.length > 1} />
+                    <VariantRow key={v.id} v={v} jumpHere={v.id === targetVariant?.id} onChange={(patch) => patchService(s.id, (cur) => ({ ...cur, variants: cur.variants.map((x) => (x.id === v.id ? { ...x, ...patch } : x)) }))} onRemove={() => patchService(s.id, (cur) => ({ ...cur, variants: cur.variants.filter((x) => x.id !== v.id) }))} canRemove={s.variants.length > 1} />
                   ))}
                   <div className="odbtns">
                     <button type="button" className="odghost" onClick={() => patchService(s.id, (cur) => ({ ...cur, variants: [...cur.variants, { id: uid("v"), label: "", price: null, per: cur.variants[0]?.per || "person" }] }))}><Markup html={OD_ICONS.plus} /> Add option</button>
@@ -114,6 +126,7 @@ export function OpServices() {
           <div className="odempty">
             <b>No services yet</b>
             <p>Add what guests can book: a rental, a tour, a session. Each one gets its own price options.</p>
+            <button type="button" className="cta small odemptycta" data-jump="price" onClick={addService}><Markup html={OD_ICONS.plus} /> Add your first service</button>
           </div>
         ) : null}
       </div>
@@ -137,11 +150,11 @@ export function OpServices() {
   );
 }
 
-function VariantRow({ v, onChange, onRemove, canRemove }: { v: OpVariant; onChange: (patch: Partial<OpVariant>) => void; onRemove: () => void; canRemove: boolean }) {
+function VariantRow({ v, onChange, onRemove, canRemove, jumpHere }: { v: OpVariant; onChange: (patch: Partial<OpVariant>) => void; onRemove: () => void; canRemove: boolean; jumpHere?: boolean }) {
   return (
-    <div className="odvar">
+    <div className={"odvar" + (v.price == null ? " unpriced" : "")}>
       <input value={v.label} placeholder="Option, like 1 hour or Tandem" onChange={(e) => onChange({ label: e.target.value })} />
-      <label className="opinput"><span>$</span><input type="number" min={0} value={v.price ?? ""} placeholder="Set" onChange={(e) => onChange({ price: e.target.value === "" ? null : Number(e.target.value) })} /></label>
+      <label className="opinput" data-jump={jumpHere ? "price" : undefined}><span>$</span><input type="number" min={0} value={v.price ?? ""} placeholder="Set" aria-label={"Price for " + (v.label || "this option")} onChange={(e) => onChange({ price: e.target.value === "" ? null : Number(e.target.value) })} /></label>
       <select value={v.per} onChange={(e) => onChange({ per: e.target.value })}>
         {PER_UNITS.map((u) => <option key={u} value={u}>per {u}</option>)}
       </select>

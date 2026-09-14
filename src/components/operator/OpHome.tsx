@@ -7,7 +7,7 @@ import { BookingRow } from "./OpBookings";
 
 /** Home: today at a glance, what needs a decision, and the setup checklist. Uber Eats merchant home shape. */
 export function OpHome() {
-  const { p, bookings, go, set, compact, preview } = useOp();
+  const { p, bookings, go, set, compact, preview, jump } = useOp();
   const todayKey = dateKey(startOfToday());
   const fresh = bookings.filter((b) => b.status === "new");
   const today = bookings.filter((b) => b.date === todayKey && (b.status === "accepted" || b.status === "completed"));
@@ -65,7 +65,7 @@ export function OpHome() {
           </div>
           <div className="odchecks">
             {checks.map((c, i) => (
-              <button type="button" key={c.id} className={"odcheck" + (c.done ? " done" : "")} onClick={() => go(c.page as OpPage)}>
+              <button type="button" key={c.id} className={"odcheck" + (c.done ? " done" : "")} onClick={() => jump(c.field)}>
                 <span className="tick">{c.done ? <Markup html={OD_ICONS.check} /> : <i>{i + 1}</i>}</span>
                 <span>{c.label}</span>
                 <Markup html={OD_ICONS.chev} />

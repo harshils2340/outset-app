@@ -92,6 +92,8 @@ export type OperatorProfile = {
   decisions: Record<string, OpStatus>;
   notify: { email: boolean; sms: boolean; push: boolean };
   payout: { bank: string; last4: string; name: string; schedule: "daily" | "weekly" } | null;
+  /** The owner looked at the 9 to 5 hours we filled in for them and said they are right. */
+  hoursConfirmed?: boolean;
 };
 
 const SESSION_KEY = "outset.operator.session.v1";
@@ -179,13 +181,16 @@ export function claimedIds(): string[] {
   return read<string[]>(INDEX_KEY) || [];
 }
 
-/** Called once after the catalog loads so guest pages show operator edits. */
-export function applyStoredProfiles(): number {
+/**
+ * Called once after the catalog loads so guest pages show operator edits. The dashboard's live preview frame
+ * calls it again on every storage event with remote off: a preview only reads, it never saves to the API.
+ */
+export function applyStoredProfiles(opts: { remote?: boolean } = {}): number {
   let n = 0;
   for (const id of claimedIds()) {
     const p = loadProfile(id);
     if (p) {
-      pushToCatalog(p);
+      pushToCatalog(p, opts.remote !== false);
       n += 1;
     }
   }
@@ -355,7 +360,13 @@ function hash(s: string): number {
   return h >>> 0;
 }
 
+/** The demo dashboard a visitor sees before claiming. The only profile that may carry sample bookings. */
+export function isDemoProfile(p: Pick<OperatorProfile, "ownerEmail" | "ownerName">): boolean {
+  return p.ownerEmail === "owner@example.com" && p.ownerName === "Demo owner";
+}
+
 export function sampleBookings(p: OperatorProfile): OpBooking[] {
+  if (!isDemoProfile(p)) return [];
   // Prefer services with a price so the demo totals mean something. Fall back to anything bookable.
   const priced = p.services.map((s) => ({ ...s, variants: s.variants.filter((v) => v.price != null) })).filter((s) => s.variants.length);
   const svcs = priced.length ? priced : p.services.filter((s) => s.variants.length);
@@ -460,7 +471,7 @@ export function allBookings(p: OperatorProfile, guest: Booking[], remote: Remote
   const real = remote ? remoteBookingsFor(remote) : [];
   const codes = new Set(real.map((b) => b.code));
   const local = guestBookingsFor(p, guest).filter((b) => !codes.has(b.code));
-  const samples = real.length || local.length ? [] : p.bookings.filter((b) => b.source === "sample");
+  const samples = real.length || local.length || !isDemoProfile(p) ? [] : p.bookings.filter((b) => b.source === "sample");
   const mine = p.bookings.filter((b) => b.source !== "sample");
   return [...real, ...local, ...mine, ...samples].sort((a, b) => a.date.localeCompare(b.date) || a.slot.localeCompare(b.slot));
 }
@@ -489,15 +500,14 @@ export function toCatalog(p: OperatorProfile, base: Unclaimed): Partial<Unclaime
     if (!s.live || !s.variants.length) continue;
     const variants = s.variants.map((v) => {
       options.push({ name: s.name, detail: v.label, price: v.price, per: "/" + v.per });
-      return {
-    // A claimed shop that switched Instant Book on is the only kind a guest sees as Instant.
-    instant: p.instantBook,
-label: v.label, price: v.price, per: "/" + v.per, optionIdx: options.length - 1 };
+      return { label: v.label, price: v.price, per: "/" + v.per, optionIdx: options.length - 1 };
     });
     services.push({ name: s.name, desc: s.desc || null, variants });
   }
   const addons: UnclaimedOption[] = p.addons.map((a) => ({ name: a.name, detail: a.detail, price: a.price }));
   return {
+    // A claimed shop that switched Instant Book on is the only kind a guest sees as Instant.
+    instant: p.instantBook,
     title: p.title || base.title,
     cat: p.cat,
     blurb: p.blurb || base.blurb,
@@ -543,15 +553,17 @@ export function hydrateProfile(p: OperatorProfile, full: Unclaimed): OperatorPro
     next.policy = full.policies.slice(0, 8);
     changed = true;
   }
-  if (changed && !p.bookings.length) next.bookings = sampleBookings(next);
+  // Sample bookings belong to the demo dashboard only. A real owner's dashboard never shows made-up guests.
+  if (changed && !p.bookings.length && isDemoProfile(next)) next.bookings = sampleBookings(next);
   return changed ? next : p;
 }
 
-function pushToCatalog(p: OperatorProfile): void {
+function pushToCatalog(p: OperatorProfile, remote = true): void {
   const base = experienceById(p.id);
   if (!base) return;
   const patch = toCatalog(p, base);
   setOperatorOverride(p.id, patch, p.published);
+  if (!remote) return;
   // Persist beyond this browser when the operator arrived through a signed claim link.
   saveRemoteProfile(p.id, { profile: p, patch, published: p.published, owner: { name: p.ownerName, email: p.ownerEmail, phone: p.ownerPhone } });
 }
@@ -584,19 +596,61 @@ export function contactOf(p: OperatorProfile): OperatorContact | null {
   return u ? contactFor(u) : null;
 }
 
+/**
+ * A spot in the dashboard a checklist item, or a click on the live preview, can jump straight to.
+ * Each one names the page it lives on; the field itself carries data-jump="<name>" in the markup.
+ */
+export type JumpField = "title" | "about" | "photos" | "phone" | "address" | "policy" | "services" | "price" | "hours" | "owner" | "payout";
+
+export const JUMP_PAGE: Record<JumpField, "listing" | "services" | "hours" | "settings" | "payouts"> = {
+  title: "listing",
+  about: "listing",
+  photos: "listing",
+  phone: "listing",
+  address: "listing",
+  policy: "listing",
+  services: "services",
+  price: "services",
+  hours: "hours",
+  owner: "settings",
+  payout: "payouts",
+};
+
+/** True while the hours are still the 9 to 5 every day we fill in when a website names none. */
+export function hoursAreDefault(p: OperatorProfile): boolean {
+  return p.hours.every((h) => !h.closed && h.open === "09:00" && h.close === "17:00");
+}
+
+export function hasCancelLine(p: OperatorProfile): boolean {
+  return p.policy.some((l) => /cancel|refund/i.test(l));
+}
+
+export type SetupCheck = { id: string; label: string; hint: string; done: boolean; page: string; field: JumpField };
+
 /** Checklist that drives the setup progress on Home. */
-export function setupChecks(p: OperatorProfile): { id: string; label: string; done: boolean; page: string }[] {
+export function setupChecks(p: OperatorProfile): SetupCheck[] {
   const priced = p.services.flatMap((s) => s.variants).filter((v) => v.price != null).length;
   const total = p.services.flatMap((s) => s.variants).length;
   return [
-    { id: "owner", label: "Add your name and mobile for booking alerts", done: !!p.ownerName.trim() && !!(p.ownerPhone.trim() || p.ownerEmail.trim()), page: "settings" },
-    { id: "photos", label: "Add at least 3 photos", done: p.photos.length >= 3 && !!p.cover, page: "listing" },
-    { id: "prices", label: total ? "Set a price on every option" : "Add your first service", done: total > 0 && priced === total, page: "services" },
-    { id: "hours", label: "Confirm your opening hours", done: p.hours.some((h) => !h.closed), page: "hours" },
-    { id: "about", label: "Write a short description", done: p.blurb.trim().length >= 60, page: "listing" },
-    { id: "contact", label: "Add a phone number and address", done: !!p.phone && !!p.address, page: "listing" },
-    { id: "policy", label: "State your cancellation policy", done: p.policy.length > 0, page: "listing" },
-    { id: "payout", label: "Connect your bank for payouts", done: !!p.payout, page: "payouts" },
+    { id: "owner", label: "Add your name and mobile for booking alerts", hint: "So new bookings reach you", done: !!p.ownerName.trim() && !!(p.ownerPhone.trim() || p.ownerEmail.trim()), page: "settings", field: "owner" },
+    ...listingChecks(p).map((c) => (c.id === "cover" ? { ...c, label: "Add at least 3 photos", done: p.photos.length >= 3 && !!p.cover } : c.id === "price" ? { ...c, label: total ? "Set a price on every option" : "Add your first service", done: total > 0 && priced === total } : c)),
+    { id: "payout", label: "Connect your bank for payouts", hint: "Get paid for card bookings", done: !!p.payout, page: "payouts", field: "payout" },
+  ];
+}
+
+/**
+ * The few things that most change whether a guest books, in the order an owner should do them.
+ * Shown at the top of the Listing page; each item jumps to the one field that fixes it.
+ */
+export function listingChecks(p: OperatorProfile): SetupCheck[] {
+  const priced = p.services.some((s) => s.live && s.variants.some((v) => v.price != null));
+  return [
+    { id: "cover", label: "Cover photo", hint: "The first thing guests see", done: !!p.cover, page: "listing", field: "photos" },
+    { id: "price", label: "A priced service", hint: p.services.length ? "Guests book what has a price" : "Add what guests can book", done: priced, page: "services", field: "price" },
+    { id: "hours", label: "Opening hours", hint: "Check the times guests can pick", done: !hoursAreDefault(p) || !!p.hoursConfirmed, page: "hours", field: "hours" },
+    { id: "phone", label: "Phone number", hint: "Guests call before they book", done: !!p.phone.trim(), page: "listing", field: "phone" },
+    { id: "cancel", label: "Cancellation line", hint: "Guests look for it before paying", done: hasCancelLine(p), page: "listing", field: "policy" },
+    { id: "about", label: "Short description", hint: "Two or three sentences", done: p.blurb.trim().length >= 60, page: "listing", field: "about" },
   ];
 }
 

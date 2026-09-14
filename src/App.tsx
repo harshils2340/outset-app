@@ -15,9 +15,12 @@ import { AccountView } from "./components/account/AccountView";
 import { ConfirmView } from "./components/booking/ConfirmView";
 import { OperatorView } from "./components/operator/OperatorView";
 import { Sheets } from "./components/booking/Sheets";
+import { usePreviewMode } from "./components/operator/previewMode";
 
 export function App() {
   const { state, closeSheet, openOperator, reqTarget, openRequest, goto } = useApp();
+  // Inside the dashboard's live preview frame (?preview=1): read-only, re-renders on every owner edit.
+  usePreviewMode();
   const [web, setWeb] = useState(() => typeof window !== "undefined" && window.innerWidth > 1024);
   const [fit, setFit] = useState(1);
   useEffect(() => {
