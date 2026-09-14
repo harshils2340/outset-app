@@ -1,0 +1,101 @@
+name: Structure crawl
+# Reads the operator websites that have a price on nothing, and harvests what a guest actually reads: the
+# services, the prices and durations, what is included, the policies, the waiver and booking links, and the
+# opening hours. The photo crawl fills the pictures; this fills the rest of the page. 43,722 catalog
+# operators have a website and not one priced offering, and until now this crawl ran nowhere because it
+# needed SQLite. It does not: scripts/structure-queue.mts commits the work list, this reads it and commits
+# the results, and src/sync/structureSidecar.ts picks them up at sync time.
+#
+# Politeness over throughput. These requests come from GitHub's shared IP ranges, so a block would hurt every
+# project on the platform: twelve shards of four sites each, every one a different operator's host, one page
+# at a time with a pause between pages, robots.txt honoured by fetchHtml, and no retry storms.
+#
+# No browser is installed. This crawl is plain HTML parsing with cheerio and never starts Chromium, unlike
+# the photo crawl, so the playwright install step would only cost the runner two minutes for nothing.
+on:
+  schedule:
+    # Twice a day, well clear of the photo crawl's :41 slots and the photo screen's :17 ones. A site here
+    # costs about forty pages, so twelve runners at 170 minutes cover roughly 6,000 sites a run.
+    - cron: "9 3,15 * * *"
+  workflow_dispatch:
+    inputs:
+      concurrency:
+        description: Sites read at once per runner (1-8)
+        default: "4"
+      minutes:
+        description: Crawl budget per runner, under the job timeout
+        default: "170"
+      site-seconds:
+        description: Hard ceiling on one site, in seconds
+        default: "150"
+concurrency:
+  group: structure-crawl
+  cancel-in-progress: false
+
+jobs:
+  # Each runner takes every Nth operator, so all shards get the same mix of states and categories and no
+  # single one inherits a slow corner of the country. Results go up as artifacts; a single job commits them,
+  # because twelve runners pushing to main at once is a rebase fight nobody wins.
+  crawl:
+    runs-on: ubuntu-latest
+    timeout-minutes: 200
+    strategy:
+      fail-fast: false
+      matrix:
+        # Must stay in step with --of=12 below: a shard number the stripe never reaches gets no work.
+        shard: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci
+        working-directory: backend
+      - name: Read this shard
+        run: >
+          npx tsx scripts/crawl-structure-ci.mts
+          --shard=${{ matrix.shard }}
+          --of=12
+          --concurrency=${{ github.event.inputs.concurrency || 4 }}
+          --minutes=${{ github.event.inputs.minutes || 170 }}
+          --site-seconds=${{ github.event.inputs['site-seconds'] || 150 }}
+        working-directory: backend
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: structure-shard-${{ matrix.shard }}
+          path: backend/data/structure/*.json
+          if-no-files-found: ignore
+          retention-days: 1
+
+  collect:
+    needs: crawl
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: /tmp/shards
+          merge-multiple: true
+      - name: Gather the shards
+        run: |
+          mkdir -p backend/data/structure
+          cp -f /tmp/shards/*.json backend/data/structure/ 2>/dev/null || true
+          ls -la backend/data/structure/ || true
+      - name: Commit what the crawl read
+        run: |
+          git config user.name "Outset structure crawl"
+          git config user.email "noreply@onoutset.com"
+          git add backend/data/structure
+          git diff --cached --quiet && echo "nothing new" && exit 0
+          git commit -m "Structure crawl: services, prices and hours read from operator sites that had none"
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin main && git push origin main && exit 0
+            echo "push race, retrying ($attempt)"
+            sleep $((attempt * 10))
+          done
+          exit 1

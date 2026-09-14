@@ -7,6 +7,7 @@ import { writeLandingPages } from "./pages.ts";
 import { encodeWeek } from "./hours.ts";
 import { claimKeyHash } from "../lib/claim.ts";
 import { crawledPhotoStats, crawledPhotosFor } from "./photoSidecar.ts";
+import { crawledStructureFor, crawledStructureStats } from "./structureSidecar.ts";
 import { METROS, nearestMetro } from "../taxonomy/catalog.ts";
 import { rankForCover } from "../enrich/photorelevance.ts";
 import { existsSync, readFileSync as readFileSyncFs } from "node:fs";
@@ -212,10 +213,23 @@ function photoReuse(): Map<string, number> {
 
 /** One operator in the shape the guest app's Unclaimed type expects. Facts only, nothing invented. */
 export function toCatalogItem(r: CatalogRow): Record<string, unknown> {
-  const rawOfferings = db
+  const dbOfferings = db
     .prepare("SELECT name, detail, duration, price_cents, price_unit, source_url FROM offerings WHERE operator_id = ? ORDER BY price_cents IS NULL, price_cents")
     .all(r.id) as { name: string; detail: string | null; duration: string | null; price_cents: number | null; price_unit: string | null; source_url: string | null }[];
-  const rawFacts = db.prepare("SELECT fact_key, fact_value, source_url FROM facts WHERE operator_id = ?").all(r.id) as { fact_key: string; fact_value: string; source_url: string | null }[];
+  const dbFacts = db.prepare("SELECT fact_key, fact_value, source_url FROM facts WHERE operator_id = ?").all(r.id) as { fact_key: string; fact_value: string; source_url: string | null }[];
+  // What the cloud structure crawl read off this operator's site. It runs on GitHub Actions, where there is no
+  // database, so its rows reach a listing only here. Added, never substituted: a machine that already imported
+  // the same work has these rows in SQLite, so the merge drops duplicates by name and by key rather than
+  // printing every service twice, and a menu that came from a booking widget or an extraction still wins.
+  const crawled = crawledStructureFor(r.id);
+  const hasDbPrice = dbOfferings.some((o) => o.price_cents != null);
+  const seenOffering = new Set(dbOfferings.map((o) => (o.name + "|" + (o.detail || "") + "|" + (o.price_cents ?? "")).toLowerCase()));
+  const rawOfferings = [
+    ...dbOfferings,
+    ...(hasDbPrice ? [] : crawled.offerings.filter((o) => !seenOffering.has((o.name + "|" + (o.detail || "") + "|" + (o.price_cents ?? "")).toLowerCase()))),
+  ].sort((a, b) => Number(a.price_cents == null) - Number(b.price_cents == null) || (a.price_cents ?? 0) - (b.price_cents ?? 0));
+  const seenFact = new Set(dbFacts.map((f) => (f.fact_key + "|" + f.fact_value).toLowerCase()));
+  const rawFacts = [...dbFacts, ...crawled.facts.filter((f) => !seenFact.has((f.fact_key + "|" + f.fact_value).toLowerCase()))];
   // The operator's own pages: the catalog domain, the website field's host (sister brand or a second domain),
   // and site-builder hosts they publish on (mammothpack.wixsite.com is still mammothpack).
   const trusted = (url: string | null) => sourceIsOwn(url, r.domain) || (r.website ? sourceIsOwn(url, hostOf(r.website)) : false) || sameBrand(url, r.domain);
@@ -1674,6 +1688,8 @@ export function syncCatalogToApp(): { path: string; count: number } {
   for (const o of operators) if (o.thin && o.hrs) (o as { thin?: true }).thin = undefined;
   const crawl = crawledPhotoStats();
   if (crawl.operators) console.log(`Cloud photo crawl has reached ${crawl.operators.toLocaleString()} operators; ${crawl.withPhotos.toLocaleString()} of them have photos now.`);
+  const structure = crawledStructureStats();
+  if (structure.operators) console.log(`Cloud structure crawl has read ${structure.operators.toLocaleString()} sites; ${structure.withServices.toLocaleString()} have services and ${structure.withPrices.toLocaleString()} have a price.`);
   const thin = operators.filter((o) => o.thin).length;
   console.log(`${operators.length} listings, ${thin} with nothing a guest can act on yet (${Math.round((100 * thin) / operators.length)}%), left out of browse.`);
   const path = join(appDataDir, "../../public/catalog.json");
