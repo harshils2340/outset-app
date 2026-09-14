@@ -171,6 +171,11 @@ await book(FL, "E2E-004", 1);
 const co4 = calls.filter((c) => c.path === "checkout/sessions").at(-1);
 check("charged the listing's $213, not the $1 sent", co4?.body["metadata[code]"] === "E2E-004" && co4.body["line_items[0][price_data][unit_amount]"] === "21300", co4?.body);
 
+console.log("\n10b. A page cached before the labels were cleaned");
+await book(FL, "E2E-005", 213, "dolphin  TOUR", "adult.");
+const co5 = calls.filter((c) => c.path === "checkout/sessions").at(-1);
+check("still finds the $213 option", co5?.body["metadata[code]"] === "E2E-005" && co5.body["line_items[0][price_data][unit_amount]"] === "21300", co5?.body);
+
 console.log("\n11. Payout dashboard numbers");
 const st = (await (await app.request(`/payouts/${FL}`, { headers: { "x-session": session(FL) } })).json()) as { interval: string; paidTotal: number; history: unknown[] };
 check("reports the schedule and history", st.interval === "biweekly" && Array.isArray(st.history) && st.history.length === 2, st);

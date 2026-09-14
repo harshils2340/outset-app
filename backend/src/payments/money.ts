@@ -1,3 +1,5 @@
+import { expandAbbreviations } from "../sync/plainServices.ts";
+
 /**
  * The money split for one booking, in cents. Mirrors src/lib/pricing.ts: the guest pays the operator's price
  * plus a stepped service fee, and Outset keeps that fee plus a flat 5% of the operator's price. Stripe's
@@ -105,8 +107,14 @@ export function perPerson(o: PricedOption): boolean {
  * null when the option has no published price, which means no card payment.
  */
 export function priceBooking(options: PricedOption[], addons: PricedOption[], service: string, variant: string, qty: number, addonNames: string[]): { subtotal: number; fee: number; total: number } | null {
-  const key = (s: string | undefined) => (s || "").trim().toLowerCase();
-  const o = options.find((x) => key(x.name) === key(service) && key(x.detail) === key(variant)) || options.find((x) => key(x.name) === key(service) && !variant);
+  // Labels are cleaned at every sync ("2hr  Tour" becomes "2 hour tour"), and a guest's page can be older than the
+  // sync, so compare on letters and digits, then on the expanded form, before giving up on a match.
+  const key = (s: string | undefined) => (s || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+  const loose = (s: string | undefined) => key(expandAbbreviations(s || ""));
+  const same = (a: string | undefined, b: string | undefined) => key(a) === key(b) || loose(a) === loose(b);
+  const inService = options.filter((x) => same(x.name, service));
+  const priced = inService.filter((x) => x.price != null && x.price > 0);
+  const o = inService.find((x) => same(x.detail, variant)) || (!variant ? inService[0] : undefined) || (priced.length === 1 ? priced[0] : undefined);
   if (!o || o.price == null || !(o.price > 0)) return null;
   const base = perPerson(o) ? o.price * qty : o.price;
   const add = addonNames.map((n) => addons.find((a) => key(a.name) === key(n))?.price ?? 0).reduce((a, b) => a + b, 0);
