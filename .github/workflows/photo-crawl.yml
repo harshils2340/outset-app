@@ -5,11 +5,14 @@ name: Photo crawl
 # needs no database: scripts/photo-queue.mts commits the work list, this reads it and commits the results.
 #
 # Politeness over throughput. These requests come from GitHub's shared IP ranges, so a block would hurt every
-# project on the platform: six shards, four fetches each, robots.txt honoured, and no retry storms.
+# project on the platform: ten shards of four fetches each, every one against a different operator's host,
+# robots.txt honoured, and no retry storms.
 on:
   schedule:
-    # Twice a day, off the hour and away from the photo screen's :17 slots.
-    - cron: "41 4,16 * * *"
+    # Every six hours, off the hour and away from the photo screen's :17 slots. Ten runners at 170 minutes
+    # cover roughly 19,000 sites a run, so the whole backlog clears in about two runs and then the job is
+    # only picking up newly discovered operators.
+    - cron: "41 1,7,13,19 * * *"
   workflow_dispatch:
     inputs:
       concurrency:
@@ -32,8 +35,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # Must stay in step with --of=6 below: a shard number the stripe never reaches gets no work.
-        shard: [0, 1, 2, 3, 4, 5]
+        # Must stay in step with --of=10 below: a shard number the stripe never reaches gets no work.
+        shard: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -49,7 +52,7 @@ jobs:
         run: >
           npx tsx scripts/crawl-photos-ci.mts
           --shard=${{ matrix.shard }}
-          --of=6
+          --of=10
           --concurrency=${{ github.event.inputs.concurrency || 4 }}
           --minutes=${{ github.event.inputs.minutes || 170 }}
         working-directory: backend
