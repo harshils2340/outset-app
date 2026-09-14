@@ -77,7 +77,9 @@ const total = (db.prepare(`SELECT count(*) AS n FROM (${SELECT})`).get() as { n:
 const rows = db
   .prepare(
     `${SELECT}
-     ORDER BY EXISTS (SELECT 1 FROM sources s WHERE s.operator_id = o.id AND s.extractor = 'photos') ASC,
+     -- Florida first: it is the launch market, and every listing there is one Harshil can sell this month.
+     ORDER BY (o.region = 'FL') DESC,
+              EXISTS (SELECT 1 FROM sources s WHERE s.operator_id = o.id AND s.extractor = 'photos') ASC,
               metro DESC,
               o.review_count DESC NULLS LAST,
               o.name ASC
