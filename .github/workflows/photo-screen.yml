@@ -32,12 +32,32 @@ jobs:
         working-directory: backend
       - run: npx tsx scripts/screen-published.mts --minutes=38 --concurrency=${{ github.event.inputs.concurrency || 16 }}
         working-directory: backend
+      # Syncs push new public/o files while the screen runs, so a rebase of rewritten listings conflicts and the
+      # run's verdicts were being thrown away. The verdicts are the work; the rewrite is cheap. So keep the
+      # verdicts, start again from the newest main, merge them into its cache, re-apply them (judging nothing),
+      # and push. Retries if another push lands in between.
       - name: Commit what changed
         run: |
           git config user.name "Outset photo screen"
           git config user.email "noreply@onoutset.com"
-          git add backend/data/photo-verdicts.json public/o public/catalog.json
-          git diff --cached --quiet && echo "nothing to commit" && exit 0
-          git commit -m "Photo screen: booklet pages, price lists and logos removed from published listings"
-          git pull --rebase origin main
-          git push origin main
+          cp backend/data/photo-verdicts.json "$RUNNER_TEMP/verdicts.json"
+          for attempt in 1 2 3 4 5; do
+            git fetch -q origin main
+            git reset -q --hard origin/main
+            node -e '
+              const fs = require("fs");
+              const p = "backend/data/photo-verdicts.json";
+              let base = {};
+              try { base = JSON.parse(fs.readFileSync(p, "utf8")); } catch {}
+              const mine = JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP + "/verdicts.json", "utf8"));
+              for (const [k, v] of Object.entries(mine)) if (!base[k] || (base[k].kind || base[k]) === "unknown") base[k] = v;
+              fs.writeFileSync(p, JSON.stringify(base));
+            '
+            (cd backend && npx tsx scripts/screen-published.mts --minutes=0)
+            git add backend/data/photo-verdicts.json public/o public/catalog.json
+            git diff --cached --quiet && echo "nothing to commit" && exit 0
+            git commit -q -m "Photo screen: booklet pages, price lists and logos removed from published listings"
+            git push -q origin main && exit 0
+            sleep $((attempt * 10))
+          done
+          exit 1
