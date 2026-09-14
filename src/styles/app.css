@@ -1408,3 +1408,4 @@ video.wgalleryimg{width:100%;background:#000;}
   .bkchips{grid-template-columns:repeat(auto-fill,minmax(88px,1fr));}
   .bkday{height:44px;}
 }
+.wwaiting{max-width:var(--wrap,1120px);margin:4px auto 28px;padding:0 24px;}

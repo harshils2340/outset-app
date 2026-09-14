@@ -1648,8 +1648,20 @@ export function syncCatalogToApp(): { path: string; count: number } {
         return lines.length ? encodeWeek(lines) || undefined : undefined;
       })(),
       options: [], specs: [], includes: [], gap: "", lite: true,
+      /**
+       * Nothing here a guest can act on: no photo, no price, no hours, no services, no description. Most of
+       * these are map pins whose website has not been crawled yet, so the flag clears itself as the crawl
+       * reaches them. Browse and the rails leave them out rather than filling a grid with identical
+       * placeholders; searching the business by name still finds it, and its own page still opens, because
+       * every claim email links straight to one.
+       */
+      thin: !item.cover && !priced.length && !options.length && !item.hoursText && !(item.tags as string[] | undefined)?.length && !item.blurb ? (true as const) : undefined,
     };
   });
+  // Published hours can come from the contact record rather than the listing, so the flag is settled here.
+  for (const o of operators) if (o.thin && o.hrs) (o as { thin?: true }).thin = undefined;
+  const thin = operators.filter((o) => o.thin).length;
+  console.log(`${operators.length} listings, ${thin} with nothing a guest can act on yet (${Math.round((100 * thin) / operators.length)}%), left out of browse.`);
   const path = join(appDataDir, "../../public/catalog.json");
   writeFileSync(path, JSON.stringify({ generatedAt: new Date().toISOString(), operators, contacts: {} }));
   // The lite shard: what the home rails and the first search need, about a fifth of the size. Photo, price and reviews first.
