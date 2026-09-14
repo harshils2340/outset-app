@@ -32,7 +32,7 @@ export function OpHours() {
       <div className="odcols">
         <section className="odcard">
           <div className="odcardhead"><h3>Opening hours</h3></div>
-          <p className="odmuted">Guests can only pick times inside these hours. {p.hours.every((h) => !h.closed && h.open === "09:00" && h.close === "17:00") ? "We couldn't read hours from your site, so these are a placeholder. Fix them." : "Copied from your website."}</p>
+          <p className="odmuted">Guests can only pick times inside these hours. {p.hours.every((h) => !h.closed && h.open === "09:00" && h.close === "17:00") ? "We couldn't find your hours on your website, so we started you at 9 to 5 every day. Set your real hours before a guest books a time you're closed." : "Copied from your website."}</p>
           <div className="odhours">
             {p.hours.map((h, i) => (
               <div className={"odhour" + (h.closed ? " closed" : "")} key={i}>

@@ -315,7 +315,9 @@ export function defaultProfile(u: Unclaimed, owner: { name: string; email: strin
     ownerPhone: owner.phone,
     accepting: true,
     published: true,
-    instantBook: true,
+    // Off until the owner decides. A shop that claims its listing to look around should not start promising
+    // guests confirmed slots it has not seen; with this off, every booking arrives as a request to accept.
+    instantBook: false,
     assistant: true,
     title: u.title,
     cat: u.cat,

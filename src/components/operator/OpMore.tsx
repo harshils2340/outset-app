@@ -107,18 +107,20 @@ export function OpSettings() {
         </section>
 
         <section className="odcard">
-          <div className="odcardhead"><h3>Notifications</h3></div>
-          {([
-            ["push", "Push alerts for new requests", "A ping on your phone the moment a guest books."],
-            ["sms", "Text messages", "New requests and same-day cancellations by SMS."],
-            ["email", "Email", "A daily summary plus every new booking."],
-          ] as const).map(([k, label, sub]) => (
-            <div className="odrow" key={k}>
-              <span className="meta"><b>{label}</b><small>{sub}</small></span>
-              <button type="button" className={"optoggle" + (p.notify[k] ? " on" : "")} onClick={() => set({ notify: { ...p.notify, [k]: !p.notify[k] } })} aria-pressed={p.notify[k]}><span className="knob" /></button>
+          <div className="odcardhead"><h3>Booking alerts</h3></div>
+          {/* Only what actually happens. Push and text alerts are not built, and every booking email already
+              goes out, so switches for them would be promises the product does not keep. */}
+          {!hasApi() ? (
+            <p className="odmuted">Alerts start once your account is connected.</p>
+          ) : p.ownerEmail.trim() ? (
+            <div className="odrow">
+              <span className="meta"><b>Email</b><small>Every new request goes to {p.ownerEmail.trim()} straight away, with the guest's name and number so you can reach them.</small></span>
             </div>
-          ))}
-          <p className="odfine">Sending isn't switched on yet. These choices are saved for when it is.</p>
+          ) : (
+            <div className="odrow">
+              <span className="meta"><b>No email yet</b><small>Add your email under Owner. Until you do, booking requests have nowhere to reach you.</small></span>
+            </div>
+          )}
         </section>
       </div>
 
@@ -139,7 +141,7 @@ export function OpSettings() {
       <section className="odcard">
         <div className="odcardhead"><h3>Account</h3></div>
         <div className="odrow">
-          <span className="meta"><b>Log out</b><small>Your edits stay on this device.</small></span>
+          <span className="meta"><b>Log out</b><small>{hasApi() ? "Your listing and bookings stay saved to your account. Sign back in with your email." : "Your edits stay on this device."}</small></span>
           <button type="button" className="odghost" onClick={logout}><Markup html={OD_ICONS.logout} /> Log out</button>
         </div>
         <div className="odrow">
