@@ -64,22 +64,6 @@
   "activity": "cocktail-class"
  },
  {
-  "name": "Miami, FL Batch",
-  "website": "https://letsbatch.com/",
-  "domain": "letsbatch.com",
-  "street": null,
-  "city": "Miami",
-  "region": "FL",
-  "postal": null,
-  "lat": null,
-  "lon": null,
-  "phone": null,
-  "kind": "cooking",
-  "source": "web",
-  "sourceUrl": "https://letsbatch.com/experiences/bca50091-1869-4de8-8c4f-3668766c296e",
-  "activity": "cocktail-class"
- },
- {
   "name": "ABC Bartending School",
   "website": "https://abcbartendingschoolofmiami.net/",
   "domain": "abcbartendingschoolofmiami.net",
@@ -864,54 +848,6 @@
   "activity": "walking-tour"
  },
  {
-  "name": "Free walking tour",
-  "website": "https://guruwalk.com/",
-  "domain": "guruwalk.com",
-  "street": null,
-  "city": "Miami",
-  "region": "FL",
-  "postal": null,
-  "lat": null,
-  "lon": null,
-  "phone": null,
-  "kind": "tour",
-  "source": "web",
-  "sourceUrl": "https://www.guruwalk.com/miami",
-  "activity": "walking-tour"
- },
- {
-  "name": "FREETOUR.com",
-  "website": "https://freetour.com/",
-  "domain": "freetour.com",
-  "street": null,
-  "city": "Miami",
-  "region": "FL",
-  "postal": null,
-  "lat": null,
-  "lon": null,
-  "phone": null,
-  "kind": "tour",
-  "source": "web",
-  "sourceUrl": "https://www.freetour.com/miami",
-  "activity": "walking-tour"
- },
- {
-  "name": "Free Walking Tours",
-  "website": "https://freetoursbyfoot.com/",
-  "domain": "freetoursbyfoot.com",
-  "street": null,
-  "city": "Miami",
-  "region": "FL",
-  "postal": null,
-  "lat": null,
-  "lon": null,
-  "phone": null,
-  "kind": "tour",
-  "source": "web",
-  "sourceUrl": "https://freetoursbyfoot.com/free-walking-tours-miami/",
-  "activity": "walking-tour"
- },
- {
   "name": "Art Deco Tours",
   "website": "https://artdecotours.com/",
   "domain": "artdecotours.com",
@@ -1005,22 +941,6 @@
   "kind": "tour",
   "source": "web",
   "sourceUrl": "https://unlimitedbiking.com/miami/tours/",
-  "activity": "bike-tour"
- },
- {
-  "name": "Bike tours",
-  "website": "https://biketours.com/",
-  "domain": "biketours.com",
-  "street": null,
-  "city": "Miami",
-  "region": "FL",
-  "postal": null,
-  "lat": null,
-  "lon": null,
-  "phone": null,
-  "kind": "tour",
-  "source": "web",
-  "sourceUrl": "https://www.biketours.com/miami/",
   "activity": "bike-tour"
  },
  {
@@ -1616,22 +1536,6 @@
   "activity": "paddleboard"
  },
  {
-  "name": "Stand Up Paddle Board Rentals",
-  "website": "https://friendwitha.com/",
-  "domain": "friendwitha.com",
-  "street": null,
-  "city": "Miami",
-  "region": "FL",
-  "postal": null,
-  "lat": null,
-  "lon": null,
-  "phone": null,
-  "kind": "paddleboard",
-  "source": "web",
-  "sourceUrl": "https://friendwitha.com/rentals/stand-up-paddle-board/miami/",
-  "activity": "paddleboard"
- },
- {
   "name": "Biscayne Bay Paddle Board & Kayaks",
   "website": "https://biscaynepaddle.com/",
   "domain": "biscaynepaddle.com",
@@ -1933,22 +1837,6 @@
   "kind": "pontoon",
   "source": "web",
   "sourceUrl": "https://www.beachboatrental.com/",
-  "activity": "boat-rental"
- },
- {
-  "name": "SamBoat",
-  "website": "https://samboat.com/",
-  "domain": "samboat.com",
-  "street": null,
-  "city": "Miami",
-  "region": "FL",
-  "postal": null,
-  "lat": null,
-  "lon": null,
-  "phone": null,
-  "kind": "pontoon",
-  "source": "web",
-  "sourceUrl": "https://www.samboat.com/boat-rental/miami-usa",
   "activity": "boat-rental"
  },
  {
@@ -2368,38 +2256,6 @@
   "activity": "wine-tasting"
  },
  {
-  "name": "Star Wine List",
-  "website": "https://starwinelist.com/",
-  "domain": "starwinelist.com",
-  "street": null,
-  "city": "Miami",
-  "region": "FL",
-  "postal": null,
-  "lat": null,
-  "lon": null,
-  "phone": null,
-  "kind": "winery",
-  "source": "web",
-  "sourceUrl": "https://starwinelist.com/wine-guide/the-best-wine-restaurants-and-wine-bars-in-miami",
-  "activity": "wine-tasting"
- },
- {
-  "name": "Total Wine & More",
-  "website": "https://totalwine.com/",
-  "domain": "totalwine.com",
-  "street": null,
-  "city": "Miami",
-  "region": "FL",
-  "postal": null,
-  "lat": null,
-  "lon": null,
-  "phone": null,
-  "kind": "winery",
-  "source": "web",
-  "sourceUrl": "https://www.totalwine.com/experience/tasting-events/tour-de-bordeaux",
-  "activity": "wine-tasting"
- },
- {
   "name": "A Love Story Winery & Bistro",
   "website": "https://alovestorywinery.com/",
   "domain": "alovestorywinery.com",
@@ -2445,22 +2301,6 @@
   "kind": "brewery",
   "source": "web",
   "sourceUrl": "https://www.miamibrewbus.com/",
-  "activity": "brewery-tour"
- },
- {
-  "name": "Miami Brew Tour",
-  "website": "https://traferral.com/",
-  "domain": "traferral.com",
-  "street": null,
-  "city": "Miami",
-  "region": "FL",
-  "postal": null,
-  "lat": null,
-  "lon": null,
-  "phone": null,
-  "kind": "brewery",
-  "source": "web",
-  "sourceUrl": "https://www.traferral.com/miami-brew-bus",
   "activity": "brewery-tour"
  },
  {
@@ -2512,38 +2352,6 @@
   "activity": "spa"
  },
  {
-  "name": "at The Biltmore Hotel Hotel, Coral Gables",
-  "website": "https://biltmorehotel.com/",
-  "domain": "biltmorehotel.com",
-  "street": null,
-  "city": "Miami",
-  "region": "FL",
-  "postal": null,
-  "lat": null,
-  "lon": null,
-  "phone": null,
-  "kind": "spa",
-  "source": "web",
-  "sourceUrl": "https://biltmorehotel.com/wellness/miami-spa/",
-  "activity": "spa"
- },
- {
-  "name": "The Standard Hotels",
-  "website": "https://standardhotels.com/",
-  "domain": "standardhotels.com",
-  "street": null,
-  "city": "Miami",
-  "region": "FL",
-  "postal": null,
-  "lat": null,
-  "lon": null,
-  "phone": null,
-  "kind": "spa",
-  "source": "web",
-  "sourceUrl": "https://www.standardhotels.com/miami/properties/miami-beach",
-  "activity": "spa"
- },
- {
   "name": "Lux MedSpa Brickell",
   "website": "https://luxmedspabrickell.com/",
   "domain": "luxmedspabrickell.com",
@@ -2573,38 +2381,6 @@
   "kind": "spa",
   "source": "web",
   "sourceUrl": "https://www.acqualinaresort.com/acqualina-spa/",
-  "activity": "spa"
- },
- {
-  "name": "The Ritz-Carlton, South Beach",
-  "website": "https://ritzcarlton.com/",
-  "domain": "ritzcarlton.com",
-  "street": null,
-  "city": "Miami",
-  "region": "FL",
-  "postal": null,
-  "lat": null,
-  "lon": null,
-  "phone": null,
-  "kind": "spa",
-  "source": "web",
-  "sourceUrl": "https://www.ritzcarlton.com/en/hotels/miasb-the-ritz-carlton-south-beach/spa/",
-  "activity": "spa"
- },
- {
-  "name": "Four Seasons",
-  "website": "https://fourseasons.com/",
-  "domain": "fourseasons.com",
-  "street": null,
-  "city": "Miami",
-  "region": "FL",
-  "postal": null,
-  "lat": null,
-  "lon": null,
-  "phone": null,
-  "kind": "spa",
-  "source": "web",
-  "sourceUrl": "https://www.fourseasons.com/miami/spa/",
   "activity": "spa"
  },
  {
@@ -2656,22 +2432,6 @@
   "activity": "spa"
  },
  {
-  "name": "Luxury Spa",
-  "website": "https://trumphotels.com/",
-  "domain": "trumphotels.com",
-  "street": null,
-  "city": "Miami",
-  "region": "FL",
-  "postal": null,
-  "lat": null,
-  "lon": null,
-  "phone": null,
-  "kind": "spa",
-  "source": "web",
-  "sourceUrl": "https://www.trumphotels.com/miami/spa/miami-spa-resorts",
-  "activity": "spa"
- },
- {
   "name": "Leaf Spas & Wellness",
   "website": "https://leafspas.com/",
   "domain": "leafspas.com",
@@ -2701,22 +2461,6 @@
   "kind": "spa",
   "source": "web",
   "sourceUrl": "https://taospamiami.com/",
-  "activity": "spa"
- },
- {
-  "name": "Kimpton EPIC Hotel",
-  "website": "https://epichotel.com/",
-  "domain": "epichotel.com",
-  "street": null,
-  "city": "Miami",
-  "region": "FL",
-  "postal": null,
-  "lat": null,
-  "lon": null,
-  "phone": null,
-  "kind": "spa",
-  "source": "web",
-  "sourceUrl": "https://www.epichotel.com/downtown-miami-spa/",
   "activity": "spa"
  },
  {
@@ -2784,22 +2528,6 @@
   "activity": "date-night"
  },
  {
-  "name": "Date Night",
-  "website": "https://mayamiwynwood.com/",
-  "domain": "mayamiwynwood.com",
-  "street": null,
-  "city": "Miami",
-  "region": "FL",
-  "postal": null,
-  "lat": null,
-  "lon": null,
-  "phone": null,
-  "kind": "cooking",
-  "source": "web",
-  "sourceUrl": "https://www.mayamiwynwood.com/post/date-night-ideas-miami",
-  "activity": "date-night"
- },
- {
   "name": "The BreakRoom",
   "website": "https://thebreakroommiami.com/",
   "domain": "thebreakroommiami.com",
@@ -2861,22 +2589,6 @@
   "kind": "rage",
   "source": "web",
   "sourceUrl": "https://teambuilding.com/biz/the-break-room-miami",
-  "activity": "rage-room"
- },
- {
-  "name": "RageRoomFinder",
-  "website": "https://rageroomfinder.com/",
-  "domain": "rageroomfinder.com",
-  "street": null,
-  "city": "Miami",
-  "region": "FL",
-  "postal": null,
-  "lat": null,
-  "lon": null,
-  "phone": null,
-  "kind": "rage",
-  "source": "web",
-  "sourceUrl": "https://rageroomfinder.com/rage-room/florida/miami",
   "activity": "rage-room"
  },
  {
@@ -3184,22 +2896,6 @@
   "activity": "climbing-gym"
  },
  {
-  "name": "Florida Indoor Climbing Gyms",
-  "website": "https://indoorclimbing.com/",
-  "domain": "indoorclimbing.com",
-  "street": null,
-  "city": "Miami",
-  "region": "FL",
-  "postal": null,
-  "lat": null,
-  "lon": null,
-  "phone": null,
-  "kind": "climbing",
-  "source": "web",
-  "sourceUrl": "https://www.indoorclimbing.com/florida.html",
-  "activity": "climbing-gym"
- },
- {
   "name": "Purpose-Built Gym in Miami Features Over 100 Routes on 60-Foot Walls",
   "website": "https://climbingbusinessjournal.com/",
   "domain": "climbingbusinessjournal.com",
@@ -3437,22 +3133,6 @@
   "kind": "horse",
   "source": "web",
   "sourceUrl": "https://xploradventuregroup.com/why-a-horse-ride-on-the-beach-in-miami-should-be-on-your-bucket-list/",
-  "activity": "horseback"
- },
- {
-  "name": "Cool Everglades",
-  "website": "https://cooleverglades.com/",
-  "domain": "cooleverglades.com",
-  "street": null,
-  "city": "Miami",
-  "region": "FL",
-  "postal": null,
-  "lat": null,
-  "lon": null,
-  "phone": null,
-  "kind": "horse",
-  "source": "web",
-  "sourceUrl": "https://cooleverglades.com/activity/miami/horseback-riding-in-miami/",
   "activity": "horseback"
  },
  {
@@ -3744,22 +3424,6 @@
   "activity": "skydiving"
  },
  {
-  "name": "Skydive Miami 2020",
-  "website": "https://skydivemiami.com/",
-  "domain": "skydivemiami.com",
-  "street": null,
-  "city": "Miami",
-  "region": "FL",
-  "postal": null,
-  "lat": null,
-  "lon": null,
-  "phone": null,
-  "kind": "skydive",
-  "source": "web",
-  "sourceUrl": "https://www.skydivemiami.com/",
-  "activity": "skydiving"
- },
- {
   "name": "Skydive Miami South Beach",
   "website": "https://skydivesouthbeach.com/",
   "domain": "skydivesouthbeach.com",
@@ -3904,22 +3568,6 @@
   "activity": "pottery"
  },
  {
-  "name": "✓ Pottery Classes in Florida (FL)",
-  "website": "https://potteryclassesnearme.net/",
-  "domain": "potteryclassesnearme.net",
-  "street": null,
-  "city": "Miami Beach",
-  "region": "FL",
-  "postal": null,
-  "lat": null,
-  "lon": null,
-  "phone": null,
-  "kind": "pottery",
-  "source": "web",
-  "sourceUrl": "https://potteryclassesnearme.net/pottery-classes-fl/",
-  "activity": "pottery"
- },
- {
   "name": "The Studios at Florida School of Holistic Health",
   "website": "https://thestudiosatfshh.com/",
   "domain": "thestudiosatfshh.com",
@@ -3965,22 +3613,6 @@
   "kind": "tour",
   "source": "web",
   "sourceUrl": "https://mdpl.org/tours/",
-  "activity": "walking-tour"
- },
- {
-  "name": "SANDEMANs Tours",
-  "website": "https://neweuropetours.eu/",
-  "domain": "neweuropetours.eu",
-  "street": null,
-  "city": "Miami Beach",
-  "region": "FL",
-  "postal": null,
-  "lat": null,
-  "lon": null,
-  "phone": null,
-  "kind": "tour",
-  "source": "web",
-  "sourceUrl": "https://www.neweuropetours.eu/sandemans-tours/miami/free-tour-miami-beach/",
   "activity": "walking-tour"
  },
  {
@@ -4352,22 +3984,6 @@
   "activity": "brewery-tour"
  },
  {
-  "name": "The Spa at The Miami Beach EDITION",
-  "website": "https://editionhotels.com/",
-  "domain": "editionhotels.com",
-  "street": null,
-  "city": "Miami Beach",
-  "region": "FL",
-  "postal": null,
-  "lat": null,
-  "lon": null,
-  "phone": null,
-  "kind": "spa",
-  "source": "web",
-  "sourceUrl": "https://www.editionhotels.com/miami-beach/spa-and-fitness/",
-  "activity": "spa"
- },
- {
   "name": "Faena",
   "website": "https://faena.com/",
   "domain": "faena.com",
@@ -4381,38 +3997,6 @@
   "kind": "spa",
   "source": "web",
   "sourceUrl": "https://www.faena.com/miami-beach/wellness/tierra-santa-healing-house",
-  "activity": "spa"
- },
- {
-  "name": "The Setai",
-  "website": "https://thesetaihotel.com/",
-  "domain": "thesetaihotel.com",
-  "street": null,
-  "city": "Miami Beach",
-  "region": "FL",
-  "postal": null,
-  "lat": null,
-  "lon": null,
-  "phone": null,
-  "kind": "spa",
-  "source": "web",
-  "sourceUrl": "https://www.thesetaihotel.com/spa-miami-beach",
-  "activity": "spa"
- },
- {
-  "name": "The Goodtime Hotel",
-  "website": "https://thegoodtimehotel.com/",
-  "domain": "thegoodtimehotel.com",
-  "street": null,
-  "city": "Miami Beach",
-  "region": "FL",
-  "postal": null,
-  "lat": null,
-  "lon": null,
-  "phone": null,
-  "kind": "spa",
-  "source": "web",
-  "sourceUrl": "https://www.thegoodtimehotel.com/spa/",
   "activity": "spa"
  },
  {
@@ -4432,22 +4016,6 @@
   "activity": "spa"
  },
  {
-  "name": "Loews Miami Beach Hotel",
-  "website": "https://loewshotels.com/",
-  "domain": "loewshotels.com",
-  "street": null,
-  "city": "Miami Beach",
-  "region": "FL",
-  "postal": null,
-  "lat": null,
-  "lon": null,
-  "phone": null,
-  "kind": "spa",
-  "source": "web",
-  "sourceUrl": "https://www.loewshotels.com/miami-beach/sea-spa-services",
-  "activity": "spa"
- },
- {
   "name": "The National Hotel",
   "website": "https://theromantictourist.com/",
   "domain": "theromantictourist.com",
@@ -4462,22 +4030,6 @@
   "source": "web",
   "sourceUrl": "https://theromantictourist.com/properties/the-national-hotel-miami-beach/addons/couples-massage-e7a1b051-2a12-4173-b32c-7d159e3a6e9b",
   "activity": "massage"
- },
- {
-  "name": "Clutch.co",
-  "website": "https://clutch.co/",
-  "domain": "clutch.co",
-  "street": null,
-  "city": "Miami Beach",
-  "region": "FL",
-  "postal": null,
-  "lat": null,
-  "lon": null,
-  "phone": null,
-  "kind": "arcade",
-  "source": "web",
-  "sourceUrl": "https://clutch.co/developers/virtual-reality/miami",
-  "activity": "vr"
  },
  {
   "name": "Go-Kart Tracks in Miami, FL",
@@ -5200,22 +4752,6 @@
   "activity": "walking-tour"
  },
  {
-  "name": "Cool Destinations 2024",
-  "website": "https://cooldestinations.com/",
-  "domain": "cooldestinations.com",
-  "street": null,
-  "city": "Fort Lauderdale",
-  "region": "FL",
-  "postal": null,
-  "lat": null,
-  "lon": null,
-  "phone": null,
-  "kind": "tour",
-  "source": "web",
-  "sourceUrl": "https://www.cooldestinations.com/activity/fort-lauderdale/electric-bike-tour-of-fort-lauderdale/",
-  "activity": "bike-tour"
- },
- {
   "name": "Wannado Tours",
   "website": "https://wannadotours.com/",
   "domain": "wannadotours.com",
@@ -5566,22 +5102,6 @@
   "source": "web",
   "sourceUrl": "https://www.greetwell.com/us/direct/fort-lauderdale-sunset-catamaran-cruise",
   "activity": "sunset-cruise"
- },
- {
-  "name": "Fort Lauderdale Kayak Tours",
-  "website": "https://tripoutside.com/",
-  "domain": "tripoutside.com",
-  "street": null,
-  "city": "Fort Lauderdale",
-  "region": "FL",
-  "postal": null,
-  "lat": null,
-  "lon": null,
-  "phone": null,
-  "kind": "kayak",
-  "source": "web",
-  "sourceUrl": "https://tripoutside.com/browse/location:us:fl:fort-lauderdale/activity:water-sports:kayaking/adventure-type:guided",
-  "activity": "kayak-tour"
  },
  {
   "name": "Florida Vacation Travel Guide",
@@ -6048,22 +5568,6 @@
   "activity": "fishing-charter"
  },
  {
-  "name": "FishAnywhere",
-  "website": "https://fishanywhere.com/",
-  "domain": "fishanywhere.com",
-  "street": null,
-  "city": "Fort Lauderdale",
-  "region": "FL",
-  "postal": null,
-  "lat": null,
-  "lon": null,
-  "phone": null,
-  "kind": "fishing",
-  "source": "web",
-  "sourceUrl": "https://fishanywhere.com/locations/florida/fort-lauderdale",
-  "activity": "fishing-charter"
- },
- {
   "name": "Good Hit Sport Fishing",
   "website": "https://goodhitsportfishing.com/",
   "domain": "goodhitsportfishing.com",
@@ -6173,22 +5677,6 @@
   "kind": "pottery",
   "source": "web",
   "sourceUrl": "https://www.kupi.com/en-ae/explore/united-states/fort-lauderdale/hollywood-hot-glass",
-  "activity": "glass-blowing"
- },
- {
-  "name": "Working the Flame",
-  "website": "https://workingtheflame.com/",
-  "domain": "workingtheflame.com",
-  "street": null,
-  "city": "Fort Lauderdale",
-  "region": "FL",
-  "postal": null,
-  "lat": null,
-  "lon": null,
-  "phone": null,
-  "kind": "pottery",
-  "source": "web",
-  "sourceUrl": "https://workingtheflame.com/glass-blowing-classes-florida/",
   "activity": "glass-blowing"
  },
  {
@@ -6349,22 +5837,6 @@
   "kind": "brewery",
   "source": "web",
   "sourceUrl": "https://andareincentives.com/activity/fort-lauderdale-or-hollywood-brewery-tour/",
-  "activity": "brewery-tour"
- },
- {
-  "name": "Fort Lauderdale as Craft Beer Mecca? Here's Where to Indulge.",
-  "website": "https://traveler.marriott.com/",
-  "domain": "traveler.marriott.com",
-  "street": null,
-  "city": "Fort Lauderdale",
-  "region": "FL",
-  "postal": null,
-  "lat": null,
-  "lon": null,
-  "phone": null,
-  "kind": "brewery",
-  "source": "web",
-  "sourceUrl": "https://traveler.marriott.com/fort-lauderdale/fort-lauderdale-craft-beer-mecca-heres-indulge/",
   "activity": "brewery-tour"
  },
  {
@@ -6541,22 +6013,6 @@
   "kind": "spa",
   "source": "web",
   "sourceUrl": "https://betterbodydayspa.com/",
-  "activity": "massage"
- },
- {
-  "name": "Massage and Spa Services at Conrad Fort Lauderdale Beach",
-  "website": "https://hilton.com/",
-  "domain": "hilton.com",
-  "street": null,
-  "city": "Fort Lauderdale",
-  "region": "FL",
-  "postal": null,
-  "lat": null,
-  "lon": null,
-  "phone": null,
-  "kind": "spa",
-  "source": "web",
-  "sourceUrl": "https://www.hilton.com/en/hotels/fllcici-conrad-fort-lauderdale-beach/spa/",
   "activity": "massage"
  },
  {
@@ -7374,22 +6830,6 @@
   "source": "web",
   "sourceUrl": "https://flaglerhealing.com/west-palm-beach-escape-rooms-a-fun-and-unique-adventure-for-all/",
   "activity": "escape-room"
- },
- {
-  "name": "Travel Sports",
-  "website": "https://travelsports.com/",
-  "domain": "travelsports.com",
-  "street": null,
-  "city": "West Palm Beach",
-  "region": "FL",
-  "postal": null,
-  "lat": null,
-  "lon": null,
-  "phone": null,
-  "kind": "axe",
-  "source": "web",
-  "sourceUrl": "https://travelsports.com/facilities/game-of-axes-west-palm-beach",
-  "activity": "axe-throwing"
  },
  {
   "name": "Game of Axes",
@@ -8240,38 +7680,6 @@
   "activity": "wine-tasting"
  },
  {
-  "name": "17 Awesome Breweries in Palm Beach County, FL to Visit in 2026",
-  "website": "https://mywanderlustylife.com/",
-  "domain": "mywanderlustylife.com",
-  "street": null,
-  "city": "West Palm Beach",
-  "region": "FL",
-  "postal": null,
-  "lat": null,
-  "lon": null,
-  "phone": null,
-  "kind": "brewery",
-  "source": "web",
-  "sourceUrl": "https://www.mywanderlustylife.com/breweries-palm-beach-county/",
-  "activity": "brewery-tour"
- },
- {
-  "name": "Guided 3 Brewery Bus Tour",
-  "website": "https://travelpass.com/",
-  "domain": "travelpass.com",
-  "street": null,
-  "city": "West Palm Beach",
-  "region": "FL",
-  "postal": null,
-  "lat": null,
-  "lon": null,
-  "phone": null,
-  "kind": "brewery",
-  "source": "web",
-  "sourceUrl": "https://www.travelpass.com/destinations/state/city/experiences/RXhwZXJpZW5jZVByb2R1Y3Q6MzUxNDg2/Guided-3-Brewery-Bus-Tour-in-West-Palm-Beach",
-  "activity": "brewery-tour"
- },
- {
   "name": "Damn Good Beer Bus",
   "website": "https://damngoodbeerbus.com/",
   "domain": "damngoodbeerbus.com",
@@ -8701,22 +8109,6 @@
   "kind": "balloon",
   "source": "web",
   "sourceUrl": "https://www.alltimefavorites.com/local/Interactive-Games/interact-games-Hot-air-balloon-ride/Florida/West-Palm-Beach.htm",
-  "activity": "hot-air-balloon"
- },
- {
-  "name": "Miami Hot Air Balloon Festival",
-  "website": "https://westpalmbeach.events/",
-  "domain": "westpalmbeach.events",
-  "street": null,
-  "city": "West Palm Beach",
-  "region": "FL",
-  "postal": null,
-  "lat": null,
-  "lon": null,
-  "phone": null,
-  "kind": "balloon",
-  "source": "web",
-  "sourceUrl": "https://westpalmbeach.events/tickets/miami-hot-air-balloon-festival/",
   "activity": "hot-air-balloon"
  },
  {
@@ -9328,22 +8720,6 @@
   "activity": "escape-room"
  },
  {
-  "name": "Travel Sports",
-  "website": "https://flag-football.travelsports.com/",
-  "domain": "flag-football.travelsports.com",
-  "street": null,
-  "city": "Naples",
-  "region": "FL",
-  "postal": null,
-  "lat": null,
-  "lon": null,
-  "phone": null,
-  "kind": "axe",
-  "source": "web",
-  "sourceUrl": "https://flag-football.travelsports.com/facilities/swamp-axe-co",
-  "activity": "axe-throwing"
- },
- {
   "name": "SWFL Inc.",
   "website": "https://swflinc.com/",
   "domain": "swflinc.com",
@@ -9520,22 +8896,6 @@
   "activity": "ghost-tour"
  },
  {
-  "name": "TripIndicator",
-  "website": "https://tripindicator.com/",
-  "domain": "tripindicator.com",
-  "street": null,
-  "city": "Naples",
-  "region": "FL",
-  "postal": null,
-  "lat": null,
-  "lon": null,
-  "phone": null,
-  "kind": "tour",
-  "source": "web",
-  "sourceUrl": "https://www.tripindicator.com/naples-florida-top-ghost-vampire-tours/1/22381/N/4/118",
-  "activity": "ghost-tour"
- },
- {
   "name": "Tour Overview » Naples Historical Society",
   "website": "https://napleshistoricalsociety.org/",
   "domain": "napleshistoricalsociety.org",
@@ -9549,22 +8909,6 @@
   "kind": "tour",
   "source": "web",
   "sourceUrl": "https://napleshistoricalsociety.org/tour-overview/",
-  "activity": "walking-tour"
- },
- {
-  "name": "Naples Florida Vacation Homes, LLC",
-  "website": "https://naplesfloridavacationhomes.com/",
-  "domain": "naplesfloridavacationhomes.com",
-  "street": null,
-  "city": "Naples",
-  "region": "FL",
-  "postal": null,
-  "lat": null,
-  "lon": null,
-  "phone": null,
-  "kind": "tour",
-  "source": "web",
-  "sourceUrl": "https://www.naplesfloridavacationhomes.com/walking-around-naples-florida/",
   "activity": "walking-tour"
  },
  {
@@ -9933,22 +9277,6 @@
   "kind": "scuba",
   "source": "web",
   "sourceUrl": "https://scubamarco.com/pages/snorkeling",
-  "activity": "snorkel-tour"
- },
- {
-  "name": "Any Good Snorkeling In Southwest Florida Naples Area?",
-  "website": "https://tropicalsnorkeling.com/",
-  "domain": "tropicalsnorkeling.com",
-  "street": null,
-  "city": "Naples",
-  "region": "FL",
-  "postal": null,
-  "lat": null,
-  "lon": null,
-  "phone": null,
-  "kind": "scuba",
-  "source": "web",
-  "sourceUrl": "https://www.tropicalsnorkeling.com/any-good-snorkeling-in-southwest-florida-naples-area/",
   "activity": "snorkel-tour"
  },
  {
@@ -10656,22 +9984,6 @@
   "activity": "glass-blowing"
  },
  {
-  "name": "Cool",
-  "website": "https://coolnaples.com/",
-  "domain": "coolnaples.com",
-  "street": null,
-  "city": "Naples",
-  "region": "FL",
-  "postal": null,
-  "lat": null,
-  "lon": null,
-  "phone": null,
-  "kind": "pottery",
-  "source": "web",
-  "sourceUrl": "https://www.coolnaples.com/activity/naples/hands-on-blown-glass-bowl-experience-in-naples-florida/",
-  "activity": "glass-blowing"
- },
- {
   "name": "Naples Glassworks",
   "website": "https://naplesglassworks.com/",
   "domain": "naplesglassworks.com",
@@ -11328,22 +10640,6 @@
   "activity": "climbing-gym"
  },
  {
-  "name": "Climb Europe",
-  "website": "https://climb-europe.com/",
-  "domain": "climb-europe.com",
-  "street": null,
-  "city": "Naples",
-  "region": "FL",
-  "postal": null,
-  "lat": null,
-  "lon": null,
-  "phone": null,
-  "kind": "climbing",
-  "source": "web",
-  "sourceUrl": "https://climb-europe.com/pages/rock-climbing-italy-napoli",
-  "activity": "climbing-gym"
- },
- {
   "name": "Indoor Climbing & Playground in Fort Myers",
   "website": "https://fortrockclimbing.com/",
   "domain": "fortrockclimbing.com",
@@ -11472,22 +10768,6 @@
   "activity": "horseback"
  },
  {
-  "name": "Where to Find Horseback Riding Lessons and Camps in Collier and Lee Counties",
-  "website": "https://neafamily.com/",
-  "domain": "neafamily.com",
-  "street": null,
-  "city": "Naples",
-  "region": "FL",
-  "postal": null,
-  "lat": null,
-  "lon": null,
-  "phone": null,
-  "kind": "horse",
-  "source": "web",
-  "sourceUrl": "https://neafamily.com/horseback-riding-lessons-camps-collier-lee-counties/",
-  "activity": "horseback"
- },
- {
   "name": "Horseback Riding in Naples, Florida (Collier County)",
   "website": "https://newhorse.com/",
   "domain": "newhorse.com",
@@ -11552,38 +10832,6 @@
   "activity": "horseback"
  },
  {
-  "name": "Yumping",
-  "website": "https://yumping.com/",
-  "domain": "yumping.com",
-  "street": null,
-  "city": "Naples",
-  "region": "FL",
-  "postal": null,
-  "lat": null,
-  "lon": null,
-  "phone": null,
-  "kind": "heli",
-  "source": "web",
-  "sourceUrl": "https://www.yumping.com/en/helicopter-flights/naples",
-  "activity": "helicopter-tour"
- },
- {
-  "name": "HeliFly",
-  "website": "https://helifly.it/",
-  "domain": "helifly.it",
-  "street": null,
-  "city": "Naples",
-  "region": "FL",
-  "postal": null,
-  "lat": null,
-  "lon": null,
-  "phone": null,
-  "kind": "heli",
-  "source": "web",
-  "sourceUrl": "https://www.helifly.it/helicopter-tours-in-italy/naples-helicopter-tour/",
-  "activity": "helicopter-tour"
- },
- {
   "name": "Flex Air",
   "website": "https://flexairco.com/",
   "domain": "flexairco.com",
@@ -11600,38 +10848,6 @@
   "activity": "helicopter-tour"
  },
  {
-  "name": "World Tours",
-  "website": "https://worldtoursitaly.com/",
-  "domain": "worldtoursitaly.com",
-  "street": null,
-  "city": "Naples",
-  "region": "FL",
-  "postal": null,
-  "lat": null,
-  "lon": null,
-  "phone": null,
-  "kind": "heli",
-  "source": "web",
-  "sourceUrl": "https://www.worldtoursitaly.com/tours/helicopter-excursion",
-  "activity": "helicopter-tour"
- },
- {
-  "name": "Marco Island Living",
-  "website": "https://marcoislandliving.com/",
-  "domain": "marcoislandliving.com",
-  "street": null,
-  "city": "Naples",
-  "region": "FL",
-  "postal": null,
-  "lat": null,
-  "lon": null,
-  "phone": null,
-  "kind": "heli",
-  "source": "web",
-  "sourceUrl": "https://marcoislandliving.com/aerialtours/",
-  "activity": "helicopter-tour"
- },
- {
   "name": "Waterways",
   "website": "https://wwnaples.com/",
   "domain": "wwnaples.com",
@@ -11645,22 +10861,6 @@
   "kind": "balloon",
   "source": "web",
   "sourceUrl": "https://wwnaples.com/collier-county-fairgrounds/",
-  "activity": "hot-air-balloon"
- },
- {
-  "name": "Italy Adventure",
-  "website": "https://italy-adventure.com/",
-  "domain": "italy-adventure.com",
-  "street": null,
-  "city": "Naples",
-  "region": "FL",
-  "postal": null,
-  "lat": null,
-  "lon": null,
-  "phone": null,
-  "kind": "balloon",
-  "source": "web",
-  "sourceUrl": "https://www.italy-adventure.com/en/search-activity/naples/hot-air-balloon/",
   "activity": "hot-air-balloon"
  },
  {
@@ -11776,22 +10976,6 @@
   "activity": "skydiving"
  },
  {
-  "name": "Freedome",
-  "website": "https://freedome.it/",
-  "domain": "freedome.it",
-  "street": null,
-  "city": "Naples",
-  "region": "FL",
-  "postal": null,
-  "lat": null,
-  "lon": null,
-  "phone": null,
-  "kind": "skydive",
-  "source": "web",
-  "sourceUrl": "https://freedome.it/en/skydiving/naples/",
-  "activity": "skydiving"
- },
- {
   "name": "Fun 4 SWFL Kids",
   "website": "https://fun4swflkids.com/",
   "domain": "fun4swflkids.com",
@@ -11853,22 +11037,6 @@
   "kind": "cooking",
   "source": "web",
   "sourceUrl": "https://www.downtownsoho.com/",
-  "activity": "cocktail-class"
- },
- {
-  "name": "Fort Myers River District",
-  "website": "https://myriverdistrict.com/",
-  "domain": "myriverdistrict.com",
-  "street": null,
-  "city": "Fort Myers",
-  "region": "FL",
-  "postal": null,
-  "lat": null,
-  "lon": null,
-  "phone": null,
-  "kind": "cooking",
-  "source": "web",
-  "sourceUrl": "https://www.myriverdistrict.com/explore-category/bars/",
   "activity": "cocktail-class"
  },
  {
@@ -11949,22 +11117,6 @@
   "kind": "cooking",
   "source": "web",
   "sourceUrl": "https://artofcookingswfl.com/",
-  "activity": "cooking-class"
- },
- {
-  "name": "Luminary Hotel",
-  "website": "https://luminaryhotel.com/",
-  "domain": "luminaryhotel.com",
-  "street": null,
-  "city": "Fort Myers",
-  "region": "FL",
-  "postal": null,
-  "lat": null,
-  "lon": null,
-  "phone": null,
-  "kind": "cooking",
-  "source": "web",
-  "sourceUrl": "https://www.luminaryhotel.com/taste/the-workshop/",
   "activity": "cooking-class"
  },
  {
@@ -12592,22 +11744,6 @@
   "activity": "snorkel-tour"
  },
  {
-  "name": "phpmyadmin",
-  "website": "https://phpmyadmin.brownwoodinc.com/",
-  "domain": "phpmyadmin.brownwoodinc.com",
-  "street": null,
-  "city": "Fort Myers",
-  "region": "FL",
-  "postal": null,
-  "lat": null,
-  "lon": null,
-  "phone": null,
-  "kind": "scuba",
-  "source": "web",
-  "sourceUrl": "https://phpmyadmin.brownwoodinc.com/phpmyadmin/snorkeling-in-fort-myers-beach-florida/",
-  "activity": "snorkel-tour"
- },
- {
   "name": "Cruise",
   "website": "https://cruisefortmyers.com/",
   "domain": "cruisefortmyers.com",
@@ -12669,22 +11805,6 @@
   "kind": "cruise",
   "source": "web",
   "sourceUrl": "https://www.saltysamsmarina.com/sunset-day-cruise/",
-  "activity": "sunset-cruise"
- },
- {
-  "name": "Fort Myers Beach Sunset Cruise with Sanibel Lighthouse Views",
-  "website": "https://reservations.waverez.com/",
-  "domain": "reservations.waverez.com",
-  "street": null,
-  "city": "Fort Myers",
-  "region": "FL",
-  "postal": null,
-  "lat": null,
-  "lon": null,
-  "phone": null,
-  "kind": "cruise",
-  "source": "web",
-  "sourceUrl": "https://reservations.waverez.com/pelicanbaycharters/details/5267",
   "activity": "sunset-cruise"
  },
  {
@@ -12813,22 +11933,6 @@
   "kind": "paddleboard",
   "source": "web",
   "sourceUrl": "https://www.aceperformer.com/",
-  "activity": "paddleboard"
- },
- {
-  "name": "4 Fabulous Lunch Stops in Fort Myers Beach",
-  "website": "https://tripowervacationrentals.com/",
-  "domain": "tripowervacationrentals.com",
-  "street": null,
-  "city": "Fort Myers",
-  "region": "FL",
-  "postal": null,
-  "lat": null,
-  "lon": null,
-  "phone": null,
-  "kind": "paddleboard",
-  "source": "web",
-  "sourceUrl": "https://www.tripowervacationrentals.com/paddle-boarding/",
   "activity": "paddleboard"
  },
  {
@@ -13312,38 +12416,6 @@
   "activity": "brewery-tour"
  },
  {
-  "name": "Cape Coral Brewing Company, Momentum Brewery & More",
-  "website": "https://resortharbourproperties.com/",
-  "domain": "resortharbourproperties.com",
-  "street": null,
-  "city": "Fort Myers",
-  "region": "FL",
-  "postal": null,
-  "lat": null,
-  "lon": null,
-  "phone": null,
-  "kind": "brewery",
-  "source": "web",
-  "sourceUrl": "https://www.resortharbourproperties.com/local-area-guide/craft-breweries/",
-  "activity": "brewery-tour"
- },
- {
-  "name": "Sun Palace Vacation Homes",
-  "website": "https://sunpalacevacationhomes.com/",
-  "domain": "sunpalacevacationhomes.com",
-  "street": null,
-  "city": "Fort Myers",
-  "region": "FL",
-  "postal": null,
-  "lat": null,
-  "lon": null,
-  "phone": null,
-  "kind": "brewery",
-  "source": "web",
-  "sourceUrl": "https://www.sunpalacevacationhomes.com/food-and-drink-fort-myers-beach/fort-myers-brewery-guide-top-breweries-to-visit/",
-  "activity": "brewery-tour"
- },
- {
   "name": "Discover Point Ybel Brewing Company",
   "website": "https://pointybelbrew.com/",
   "domain": "pointybelbrew.com",
@@ -13357,22 +12429,6 @@
   "kind": "brewery",
   "source": "web",
   "sourceUrl": "https://pointybelbrew.com/",
-  "activity": "brewery-tour"
- },
- {
-  "name": "SWFL Brewery & Brewpub Guide",
-  "website": "https://ftmyersmagazine.com/",
-  "domain": "ftmyersmagazine.com",
-  "street": null,
-  "city": "Fort Myers",
-  "region": "FL",
-  "postal": null,
-  "lat": null,
-  "lon": null,
-  "phone": null,
-  "kind": "brewery",
-  "source": "web",
-  "sourceUrl": "https://www.ftmyersmagazine.com/guide-breweriesbrewpubs",
   "activity": "brewery-tour"
  },
  {
@@ -13741,22 +12797,6 @@
   "kind": "cooking",
   "source": "web",
   "sourceUrl": "https://hivebarsrq.com/",
-  "activity": "cocktail-class"
- },
- {
-  "name": "Sarasota Magazine",
-  "website": "https://sarasotamagazine.com/",
-  "domain": "sarasotamagazine.com",
-  "street": null,
-  "city": "Sarasota",
-  "region": "FL",
-  "postal": null,
-  "lat": null,
-  "lon": null,
-  "phone": null,
-  "kind": "cooking",
-  "source": "web",
-  "sourceUrl": "https://www.sarasotamagazine.com/eat-and-drink/2022/09/mattisons-forty-one-cocktail-masterclass",
   "activity": "cocktail-class"
  },
  {

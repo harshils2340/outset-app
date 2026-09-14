@@ -152,6 +152,31 @@ export async function refreshBrave(state: BraveState, opts: { key: string | unde
 }
 
 /** Candidates from every answered query in the state. Pure: no network. */
+/**
+ * Hosts that answer an activity search but do not run the activity: booking marketplaces and resellers, class and
+ * gym directories, vacation rentals and property managers, hotels, and retail chains. Found by reading a sample of
+ * the first 865 web candidates, where about four in ten were one of these.
+ */
+const NOT_OPERATOR_HOST = new RegExp(
+  [
+    "samboat", "fishanywhere", "tripoutside", "friendwitha", "traferral", "getmyboat", "boatsetter", "clickandboat", "fishingbooker",
+    "captainexperiences", "vrbo", "expedia", "klook", "headout", "musement", "tiqets", "isango", "bookmundi", "toursbylocals",
+    "withlocals", "guruwalk", "freetour", "citypass", "gocity", "sightseeingpass", "viator", "getyourguide", "tripadvisor",
+    "totalwine", "standardhotels", "marriott", "hilton", "hyatt", "fourseasons", "ritzcarlton", "wyndham", "sheraton",
+    "near-?me", "directory", "finder", "locator", "listings?", "vacation-?(homes?|rentals?)", "realty", "real-?estate",
+    "properties", "hotels?\\b", "resorts?-?group", "indoorclimbing\\.com",
+    // Magazines, blogs and districts that write about an activity, and sites about somewhere else entirely.
+    "living\\b", "magazine", "\\bblog", "destinations", "district", "italy", "europe", "letsbatch", "biketours\\.com", "travelpass", "travelsports",
+    // A Florida operator does not run its site from Italy, the UK or the EU.
+    "\\.(it|eu|uk|de|fr|es|au|nz)$",
+    // Server consoles and staging hosts that surface in results by accident.
+    "^(phpmyadmin|admin|staging|dev|test|cpanel|webmail)\\.",
+    // A booking platform's own reservations host is the platform, not the operator; the crawl finds operators by site.
+    "^reservations\\.",
+  ].join("|"),
+  "i",
+);
+
 export function candidatesFromBrave(state: BraveState): { candidates: Candidate[]; considered: number; dropped: Record<string, number> } {
   const dropped: Record<string, number> = {};
   const drop = (why: string) => void (dropped[why] = (dropped[why] || 0) + 1);
@@ -169,6 +194,10 @@ export function candidatesFromBrave(state: BraveState): { candidates: Candidate[
         if (!hostDestinations.has(host)) hostDestinations.set(host, new Set());
         hostDestinations.get(host)!.add(dest.name);
         if (DROP_HOSTS.test(host) || GOV_EDU.test(host) || BOARD_HOST.test(host)) { drop("aggregator, social, news, board or government"); continue; }
+        if (NOT_OPERATOR_HOST.test(host)) { drop("marketplace, directory, rental, hotel or retail"); continue; }
+        // Question and roundup titles are articles about operators, not operators: "Where to Find Horseback Riding
+        // Lessons", "Any Good Snorkeling In Southwest Florida", "Cool Destinations 2024".
+        if (/^(where to|any good|how to|what to|things to|guide to)\b|\b20(1\d|2\d)\b/i.test(h.title)) { drop("listicle or article"); continue; }
         let path = "/";
         try { path = new URL(h.url).pathname; } catch { /* keep root */ }
         if (LISTICLE.test(h.title) || NOT_OPERATOR_PATH.test(path)) { drop("listicle or article"); continue; }
