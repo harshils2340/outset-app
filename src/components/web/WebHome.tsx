@@ -5,7 +5,7 @@ import { ART_LABEL } from "../../data/art";
 import { ICONS } from "../../data/icons";
 import { ALL_METRO_ID, METROS, metroById, metroCoords } from "../../data/metros";
 import type { ArtKind, CategoryId, Unclaimed } from "../../data/types";
-import { fromPrice, getCatalog, publicRating } from "../../lib/catalog";
+import { experienceById, fromPrice, getCatalog, publicRating } from "../../lib/catalog";
 import { listingFacts } from "../../lib/catalog";
 import { fmtDate, fmtReviews, money, titleCase } from "../../lib/format";
 import { ART_ALIASES, metroInQuery, parseIntent, searchSuggest, warmSearch, type SearchScope } from "../../lib/search";
@@ -221,8 +221,57 @@ function Card({ u, onOpen, near, rail }: { u: Unclaimed; onOpen: (id: string) =>
   const metro = metroById(u.metroId);
   const from = fromPrice(u);
   const openSt = useMemo(() => itemOpenState(u), [u]);
-  const gallery = useMemo(() => Array.from(new Set([u.cover, ...(u.photos || [])].filter(Boolean) as string[])).slice(0, 5), [u.cover, u.photos]);
+  // Browse records carry only the cover. Hovering a card for a moment loads the listing's own photos and plays them
+  // as a slow slideshow, the way Airbnb's cards preview a stay, so a guest sees more than one picture without opening
+  // the listing. Only the hovered card fetches anything, and only once.
+  const [morePhotos, setMorePhotos] = useState<string[]>([]);
+  const gallery = useMemo(() => Array.from(new Set([u.cover, ...(u.photos || []), ...morePhotos].filter(Boolean) as string[])).slice(0, 6), [u.cover, u.photos, morePhotos]);
   const [pic, setPic] = useState(0);
+  const [playing, setPlaying] = useState(false);
+  const hoverTimer = useRef<number | null>(null);
+  const loaded = useRef(false);
+  const startPreview = (e: React.PointerEvent) => {
+    if (e.pointerType !== "mouse" || !u.cover) return;
+    if (typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
+    if (hoverTimer.current) window.clearTimeout(hoverTimer.current);
+    hoverTimer.current = window.setTimeout(async () => {
+      if (!loaded.current) {
+        loaded.current = true;
+        if (u.lite) await loadListing(u.id).catch(() => false);
+        const full = experienceById(u.id);
+        if (full?.photos?.length) setMorePhotos(full.photos.slice(0, 6));
+      }
+      setPlaying(true);
+    }, 900);
+  };
+  const stopPreview = () => {
+    if (hoverTimer.current) window.clearTimeout(hoverTimer.current);
+    hoverTimer.current = null;
+    setPlaying(false);
+    setPic(0);
+  };
+  const photoBox = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!playing || gallery.length < 2) return;
+    // Only move to a photo that has finished loading, skipping any still on its way, so a slow image proxy
+    // never shows a grey frame between pictures. The cover stays underneath as the floor.
+    const ready = (i: number) => {
+      if (i === 0) return true;
+      const img = photoBox.current?.querySelector<HTMLImageElement>(`.ah-card-slide[data-i="${i}"] img`);
+      return !!img && img.complete && img.naturalWidth > 0;
+    };
+    const t = window.setInterval(() => {
+      setPic((cur) => {
+        for (let k = 1; k <= gallery.length; k++) {
+          const n = (cur + k) % gallery.length;
+          if (ready(n)) return n;
+        }
+        return cur;
+      });
+    }, 1700);
+    return () => window.clearInterval(t);
+  }, [playing, gallery.length]);
+  useEffect(() => () => { if (hoverTimer.current) window.clearTimeout(hoverTimer.current); }, []);
   const badge = cardBadge(u, !!openSt?.open);
   const priced = from != null ? u.options.find((o) => o.price === from) : undefined;
   const per = (priced?.per || "").replace(/^\//, "").trim();
@@ -251,10 +300,19 @@ function Card({ u, onOpen, near, rail }: { u: Unclaimed; onOpen: (id: string) =>
     </span>
   ) : null;
   return (
-    <div className="ah-card">
+    // The hover lives on the whole card: a transparent button covers it for the click, so the photo never sees the pointer.
+    <div className="ah-card" onPointerEnter={startPreview} onPointerLeave={stopPreview}>
       <button type="button" className="ah-card-hit" onClick={() => onOpen(u.id)} aria-label={u.title + (score ? ", rated " + score.rating.toFixed(1) : "")} />
-      <div className="ah-card-photo">
-        <Photo key={gallery[pic] || "cover"} src={gallery[pic]} video={pic === 0 ? u.video : undefined} kind={u.art} id={"w" + u.id} alt="" />
+      <div className={"ah-card-photo" + (playing ? " is-playing" : "")} ref={photoBox}>
+        {/* The cover is always the bottom layer; the other photos are stacked above it and fade in when shown. */}
+        <Photo key={gallery[playing ? 0 : pic] || "cover"} src={gallery[playing ? 0 : pic]} video={(playing ? 0 : pic) === 0 ? u.video : undefined} kind={u.art} id={"w" + u.id} alt="" />
+        {playing && gallery.length > 1
+          ? gallery.slice(1).map((src, k) => (
+              <div key={src} data-i={k + 1} className={"ah-card-slide" + (k + 1 === pic ? " on" : "")} aria-hidden={k + 1 !== pic}>
+                <Photo src={src} kind={u.art} id={"w" + u.id + "-" + (k + 1)} alt="" fallback={false} />
+              </div>
+            ))
+          : null}
         {badge ? <span className={"ah-card-badge" + (badge === "Deal today" ? " deal" : "")}>{badge}</span> : null}
         <span className="ah-card-heart" aria-hidden="true"><Markup html={ICONS.heart} /></span>
         {gallery.length > 1 ? (
