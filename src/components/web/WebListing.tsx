@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState, type SyntheticEvent } from "react";
-import { apiConfig } from "../../lib/api";
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type SyntheticEvent } from "react";
+import { apiConfig, fetchAvailability, type LiveAvailability } from "../../lib/api";
 import { GUIDES } from "../../data/guides";
 import { ICONS } from "../../data/icons";
 import { metroById } from "../../data/metros";
@@ -15,11 +15,11 @@ import { DAY_SHORT, clock12, dayLabel, todaysDeals } from "../../lib/companyAgen
 import { fmtDistance, kmBetween, nearestLocation } from "../../lib/places";
 import { priceUnclaimed } from "../../lib/pricing";
 import { listingUrl } from "../../lib/site";
+import { dateKey, startOfToday } from "../../lib/dates";
 import { useApp } from "../../state/AppProvider";
 import { Photo } from "../art/Photo";
 import { WebAssistant } from "./WebAssistant";
 import { Markup } from "../Markup";
-import { SlotCalendar } from "../booking/SlotCalendar";
 
 /**
  * Desktop listing page. Airbnb hotel layout (photo grid, details left, sticky booking card right, similar below)
@@ -118,6 +118,222 @@ function Bullets({ items, icon = ICONS.check, className = "" }: { items: string[
   );
 }
 
+/** The service the card opens on: the cheapest one with a price, else the first. */
+function defaultOption(options: { price: number | null }[]): number | null {
+  if (!options.length) return null;
+  let best = 0;
+  for (let i = 1; i < options.length; i++) {
+    const a = options[i].price;
+    const b = options[best].price;
+    if (a != null && (b == null || a < b)) best = i;
+  }
+  return best;
+}
+
+/* ---------- date and time picker ---------- */
+
+const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+const WEEK_LETTER = ["S", "M", "T", "W", "T", "F", "S"];
+const WEEK_FULL = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+
+/** One start time offered for the selected day. `time` is the 24h key the booking carries. */
+export type TimeChip = { key: string; time: string; label: string; price?: number; seatsLeft?: number };
+
+/**
+ * The booking card's date and time picker, one column wide.
+ *
+ * Shape borrowed from the pages that do this best: Airbnb's stay picker (full-width month, one-line heading,
+ * unavailable days muted and not pickable, today ringed), GetYourGuide and Viator (pick a day, then a wrapped
+ * grid of start-time chips carrying the price, a dot on the days that have departures) and OpenTable and Resy
+ * (chips, cheapest highlighted, "show all" instead of a scroll box). Never two cramped columns: date, then
+ * times, then the button, the way Calendly and Booksy stack it.
+ */
+function DayTimePicker({ dates, dateIdx, onPickDate, chipsFor, time, onPickTime, emptyNote, sourceNote }: {
+  dates: Date[];
+  dateIdx: number;
+  onPickDate: (i: number) => void;
+  /** Start times for a day. Live operator departures when the API has them, published times otherwise. */
+  chipsFor: (d: Date) => TimeChip[];
+  time: string | null;
+  onPickTime: (c: TimeChip) => void;
+  emptyNote: string;
+  /** Shown under the chips when the times came from the operator's own booking calendar. */
+  sourceNote?: string;
+}) {
+  const selected = dates[dateIdx];
+  const selectedKey = dateKey(selected);
+  const first = dates[0];
+  const last = dates[dates.length - 1];
+  const [month, setMonth] = useState(() => new Date(selected.getFullYear(), selected.getMonth(), 1));
+  const [focusKey, setFocusKey] = useState<string | null>(null);
+  const [showAll, setShowAll] = useState(false);
+  const gridRef = useRef<HTMLTableSectionElement | null>(null);
+
+  // Follow the selection into its month, and start a new day's times collapsed.
+  useEffect(() => {
+    setMonth((m) => (m.getMonth() === selected.getMonth() && m.getFullYear() === selected.getFullYear() ? m : new Date(selected.getFullYear(), selected.getMonth(), 1)));
+    setShowAll(false);
+  }, [selectedKey]);
+
+  const bookable = useMemo(() => {
+    const m = new Map<string, number>();
+    dates.forEach((d, i) => m.set(dateKey(d), i));
+    return m;
+  }, [dates]);
+  // A day reads as available only when it really has start times left.
+  const openDays = useMemo(() => {
+    const s = new Set<string>();
+    dates.forEach((d) => { if (chipsFor(d).length) s.add(dateKey(d)); });
+    return s;
+  }, [dates, chipsFor]);
+
+  const firstMonth = useMemo(() => new Date(first.getFullYear(), first.getMonth(), 1), [first]);
+  const lastMonth = useMemo(() => new Date(last.getFullYear(), last.getMonth(), 1), [last]);
+  const canPrev = month > firstMonth;
+  const canNext = month < lastMonth;
+  const todayKey = dateKey(startOfToday());
+  const monthPrefix = `${month.getFullYear()}-${String(month.getMonth() + 1).padStart(2, "0")}`;
+
+  const rows = useMemo(() => {
+    const lead = new Date(month.getFullYear(), month.getMonth(), 1).getDay();
+    const days = new Date(month.getFullYear(), month.getMonth() + 1, 0).getDate();
+    const cells: (Date | null)[] = Array.from({ length: lead }, () => null);
+    for (let d = 1; d <= days; d++) cells.push(new Date(month.getFullYear(), month.getMonth(), d));
+    while (cells.length % 7) cells.push(null);
+    const out: (Date | null)[][] = [];
+    for (let i = 0; i < cells.length; i += 7) out.push(cells.slice(i, i + 7));
+    return out;
+  }, [month.getTime()]);
+
+  // Roving tab stop: one day in the grid is reachable by Tab, the arrows move it.
+  const inMonth = (k: string) => k.slice(0, 7) === monthPrefix;
+  const tabKey = focusKey && inMonth(focusKey) ? focusKey : inMonth(selectedKey) ? selectedKey : monthPrefix + "-01";
+  useEffect(() => {
+    if (!focusKey) return;
+    gridRef.current?.querySelector<HTMLButtonElement>(`[data-k="${focusKey}"]`)?.focus();
+  }, [focusKey, monthPrefix]);
+
+  const move = (by: number) => {
+    const [y, m, d] = tabKey.split("-").map(Number);
+    const next = new Date(y, m - 1, d + by);
+    const limit = new Date(lastMonth.getFullYear(), lastMonth.getMonth() + 1, 0);
+    if (next < firstMonth || next > limit) return;
+    if (next.getMonth() !== month.getMonth() || next.getFullYear() !== month.getFullYear()) setMonth(new Date(next.getFullYear(), next.getMonth(), 1));
+    setFocusKey(dateKey(next));
+  };
+  const onKey = (e: ReactKeyboardEvent<HTMLElement>) => {
+    const step: Record<string, number> = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -7, ArrowDown: 7, PageUp: -28, PageDown: 28 };
+    if (e.key in step) { e.preventDefault(); move(step[e.key]); return; }
+    if (e.key === "Home" || e.key === "End") {
+      e.preventDefault();
+      const [y, m, d] = tabKey.split("-").map(Number);
+      const wd = new Date(y, m - 1, d).getDay();
+      move(e.key === "Home" ? -wd : 6 - wd);
+    }
+  };
+
+  const chips = chipsFor(selected);
+  const shown = showAll || chips.length <= 9 ? chips : chips.slice(0, 9);
+  // A price on every chip only earns its room when the chips differ. One repeated figure is noise; the
+  // total below already carries it.
+  const showPrice = chips.some((c) => c.price != null) && new Set(chips.map((c) => c.price)).size > 1;
+  // Resy and OpenTable mark the cheapest sitting when the prices differ. With one price it means nothing.
+  const cheapest = useMemo(() => {
+    const priced = chips.filter((c) => c.price != null);
+    const lo = Math.min(...priced.map((c) => c.price!));
+    if (priced.length < 2 || lo === Math.max(...priced.map((c) => c.price!))) return null;
+    return lo;
+  }, [chips]);
+  const endsInView = !canNext && last.getDate() < new Date(last.getFullYear(), last.getMonth() + 1, 0).getDate();
+
+  return (
+    <div className="bkpick">
+      <div className="bkcal">
+        <div className="bkcalhead">
+          <button type="button" onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() - 1, 1))} disabled={!canPrev} aria-label="Previous month">
+            <Markup html={ICONS.back} />
+          </button>
+          <b aria-live="polite">{MONTHS[month.getMonth()]} {month.getFullYear()}</b>
+          <button type="button" onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() + 1, 1))} disabled={!canNext} aria-label="Next month">
+            <Markup html={ICONS.arrow} />
+          </button>
+        </div>
+        <table className="bkgrid" role="grid" aria-label={"Dates in " + MONTHS[month.getMonth()] + " " + month.getFullYear()}>
+          <thead>
+            <tr>
+              {WEEK_LETTER.map((w, i) => <th key={i} scope="col" abbr={WEEK_FULL[i]} title={WEEK_FULL[i]}>{w}</th>)}
+            </tr>
+          </thead>
+          <tbody ref={gridRef} onKeyDown={onKey}>
+            {rows.map((row, ri) => (
+              <tr key={ri}>
+                {row.map((d, ci) => {
+                  if (!d) return <td key={ci} />;
+                  const k = dateKey(d);
+                  const idx = bookable.get(k);
+                  const open = idx !== undefined && openDays.has(k);
+                  const on = k === selectedKey;
+                  return (
+                    <td key={ci}>
+                      <button
+                        type="button"
+                        data-k={k}
+                        className={"bkday" + (on ? " on" : "") + (k === todayKey ? " today" : "") + (open ? " open" : "")}
+                        tabIndex={k === tabKey ? 0 : -1}
+                        aria-disabled={!open}
+                        aria-pressed={on}
+                        aria-label={d.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" }) + (open ? "" : ", not available")}
+                        onFocus={() => setFocusKey(k)}
+                        onClick={() => { if (open && idx !== undefined) onPickDate(idx); }}
+                      >
+                        <span>{d.getDate()}</span>
+                        {open ? <i aria-hidden="true" /> : null}
+                      </button>
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        {endsInView ? <p className="bkcalfoot">Bookable through {MONTHS[last.getMonth()].slice(0, 3)} {last.getDate()}</p> : null}
+      </div>
+
+      <div className="bktimes">
+        <div className="bktimehead">
+          <span>Start times</span>
+          <span>{fmtDate(selected)}</span>
+        </div>
+        {chips.length ? (
+          <>
+            <div className="bkchips" role="group" aria-label="Start times">
+              {shown.map((c) => (
+                <button
+                  type="button"
+                  key={c.key}
+                  className={"bkchip" + (time === c.time ? " on" : "") + (cheapest != null && c.price === cheapest ? " best" : "")}
+                  aria-pressed={time === c.time}
+                  onClick={() => onPickTime(c)}
+                >
+                  <b>{c.label}</b>
+                  {showPrice && c.price != null ? <span>{money(c.price)}</span> : null}
+                  {c.seatsLeft != null && c.seatsLeft <= 3 ? <em>{c.seatsLeft} left</em> : null}
+                </button>
+              ))}
+            </div>
+            {chips.length > shown.length ? (
+              <button type="button" className="bkmore" onClick={() => setShowAll(true)}>Show all {chips.length} times</button>
+            ) : null}
+            {sourceNote ? <p className="bksource">{sourceNote}</p> : null}
+          </>
+        ) : (
+          <p className="bkempty">{emptyNote}</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose: () => void; onOpen: (id: string) => void }) {
   const { state, dates, confirmUnclaimed, setDate } = useApp();
   const metro = metroById(item.metroId);
@@ -137,10 +353,14 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
 
   const [time, setTime] = useState<string | null>(null);
   const [qty, setQty] = useState(2);
-  const [optionIdx, setOptionIdx] = useState<number | null>(item.options.length === 1 ? 0 : null);
+  // The card is live from the first paint: the cheapest service is already chosen, so nothing sends the
+  // guest off to the menu on the left before they can press the button.
+  const [optionIdx, setOptionIdx] = useState<number | null>(() => defaultOption(item.options));
+  // The catalog hydrates after first paint, so the menu can arrive a beat late; re-pick the default then.
   useEffect(() => {
-    if (optionIdx == null && item.options.length === 1) setOptionIdx(0);
-  }, [item.options.length]);
+    setOptionIdx(defaultOption(item.options));
+    setTime(null);
+  }, [item.id, item.options.length]);
   const [addonIdx, setAddonIdx] = useState<number[]>([]);
   const [openSvc, setOpenSvc] = useState<string | null>(null);
   const [guideOpen, setGuideOpen] = useState(false);
@@ -188,15 +408,57 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
   const visitWeek = useMemo(() => (visit ? itemWeek(item) : null), [visit, item]);
   const clock = (m: number) => fmtTime(String(Math.floor(m / 60)).padStart(2, "0") + ":" + String(m % 60).padStart(2, "0"));
   const ready = time != null && (!needService || picked != null) && guestOk;
+  // Say what pressing it does: a card payment, an instant booking, or a request the operator confirms.
+  const ctaLabel = payments && p.total ? "Book and pay" : item.claimed && item.instant ? "Book" : "Request to book";
   const day = dates[state.dateIdx];
+
+  /* Live departures from the operator's own booking system, when they run one we can read. The card paints
+     with the published times first and upgrades itself when this resolves; with no API it never resolves
+     true and nothing changes. */
+  const [avail, setAvail] = useState<LiveAvailability | null>(null);
+  useEffect(() => {
+    let alive = true;
+    setAvail(null);
+    void fetchAvailability(item.id, dateKey(dates[0]), dates.length).then((a) => { if (alive) setAvail(a); }).catch(() => {});
+    return () => { alive = false; };
+  }, [item.id]);
+  const liveDays = useMemo(() => {
+    const m = new Map<string, TimeChip[]>();
+    if (!avail?.live) return m;
+    for (const d of avail.days) {
+      const chips = (d.slots || []).map((s) => {
+        const at = new Date(s.startsAt);
+        const hhmm = Number.isNaN(at.getTime()) ? s.label : String(at.getHours()).padStart(2, "0") + ":" + String(at.getMinutes()).padStart(2, "0");
+        return { key: s.startsAt, time: hhmm, label: s.label || fmtTime(hhmm), price: s.priceCents != null ? s.priceCents / 100 : undefined, seatsLeft: s.seatsLeft };
+      });
+      if (chips.length) m.set(d.date, chips);
+    }
+    return m;
+  }, [avail]);
+  const live = liveDays.size > 0;
+
   // Today only shows start times at least an hour out. Nobody can book a 7 AM slot at 8:30.
-  const openSlots = useMemo(() => {
-    if (state.dateIdx !== 0) return SLOT_TIMES;
+  const chipsFor = useMemo(() => {
+    const todayKey = dateKey(dates[0]);
     const now = new Date();
     const cutoff = now.getHours() * 60 + now.getMinutes() + 60;
-    return SLOT_TIMES.filter((t) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3)) >= cutoff);
-  }, [state.dateIdx]);
+    const listed = picked?.price != null ? picked.price : undefined;
+    return (d: Date) => {
+      const k = dateKey(d);
+      const fromLive = liveDays.get(k);
+      if (live) return (fromLive || []).filter((c) => k !== todayKey || Number(c.time.slice(0, 2)) * 60 + Number(c.time.slice(3)) >= cutoff).slice().sort((a, b) => a.time.localeCompare(b.time));
+      return SLOT_TIMES.filter((t) => k !== todayKey || Number(t.slice(0, 2)) * 60 + Number(t.slice(3)) >= cutoff)
+        .map((t) => ({ key: t, time: t, label: fmtTime(t), price: listed }));
+    };
+  }, [live, liveDays, dates, picked?.price]);
+  const openSlots = useMemo(() => chipsFor(day).map((c) => c.time), [chipsFor, day]);
   useEffect(() => { if (time && !openSlots.includes(time)) setTime(null); }, [openSlots, time]);
+  // Land the guest on a day that actually has departures rather than an empty one.
+  useEffect(() => {
+    if (chipsFor(dates[state.dateIdx]).length) return;
+    const i = dates.findIndex((d) => chipsFor(d).length);
+    if (i >= 0 && i !== state.dateIdx) setDate(i);
+  }, [chipsFor]);
 
   const similar = useMemo(() => {
     const all = getCatalog().filter((u) => u.id !== item.id && u.art === item.art);
@@ -528,19 +790,40 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
                     <button type="button" onClick={() => setQty(Math.min(12, qty + 1))}>+</button>
                   </span>
                 </div>
+                {needService && item.options.length > 1 ? (
+                  <>
+                    <p className="guidehead">What you're booking</p>
+                    {item.options.length <= 3 ? (
+                      <div className="bksvclist">
+                        {item.options.map((o, i) => (
+                          <button key={o.name + i} type="button" className={"bksvcopt" + (optionIdx === i ? " on" : "")} aria-pressed={optionIdx === i} onClick={() => setOptionIdx(i)}>
+                            <span>{plainWords(o.name)}{o.detail ? " · " + plainWords(o.detail) : ""}</span>
+                            <b>{o.price != null ? priceWith(o.price, o.per) : "On request"}</b>
+                          </button>
+                        ))}
+                      </div>
+                    ) : (
+                      <select className="bksvcsel" aria-label="What you're booking" value={optionIdx ?? 0} onChange={(e) => setOptionIdx(Number(e.target.value))}>
+                        {item.options.map((o, i) => (
+                          <option key={o.name + i} value={i}>
+                            {plainWords(o.name)}{o.detail ? " · " + plainWords(o.detail) : ""}{o.price != null ? " — " + money(o.price) : ""}
+                          </option>
+                        ))}
+                      </select>
+                    )}
+                  </>
+                ) : null}
                 <p className="guidehead">Date and time</p>
-                <SlotCalendar
+                <DayTimePicker
                   dates={dates}
                   dateIdx={state.dateIdx}
                   onPickDate={setDate}
-                  slots={openSlots}
+                  chipsFor={chipsFor}
                   time={time}
-                  onPickTime={setTime}
-                  emptyNote="No more start times today. Pick another day."
+                  onPickTime={(c) => setTime(c.time)}
+                  emptyNote={live ? "No departures on this date. Pick another day." : "No more start times today. Pick another day."}
+                  sourceNote={live ? "Live times from " + item.title + "'s own booking calendar." : undefined}
                 />
-                {needService ? (
-                  <p className="wpicked">{picked ? plainWords(picked.name + (picked.detail ? " · " + picked.detail : "")) : "Choose what to book on the left"}</p>
-                ) : null}
                 <p className="guidehead">Who's booking</p>
                 <div className="wguest">
                   <input value={guest.name} placeholder="Your name" autoComplete="name" onChange={(e) => setGuest({ ...guest, name: e.target.value })} />
@@ -560,7 +843,7 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
                   {payments && p.total ? <p className="wpaynote">Secure card payment. Your card is held and only charged once the booking is confirmed.</p> : null}
                 </div>
                 <button type="button" className="cta" style={{ width: "100%" }} disabled={!ready} onClick={book}>
-                  {ready ? (p.total ? (payments ? "Book and pay · " : "Book · ") + money(p.total) : "Book") : needService && !picked ? "Choose a service" : time == null ? "Pick a time" : "Add your name and number"}
+                  {ready ? ctaLabel + (p.total ? " · " + money(p.total) : "") : time == null ? "Pick a time" : "Add your name and number"}
                 </button>
                 <p className="wbookfoot">
                   {item.claimed && item.instant ? "Instant confirmation. " : "The operator confirms by text or email. "}
