@@ -21,32 +21,281 @@ import { harvestHours } from "./hoursMarkup.ts";
  * Nothing in this file may import `db/client.ts`, `scrape/cpu.ts` or anything under `src/db`.
  * Politeness comes from `fetchHtml`, which honours robots.txt and identifies itself.
  */
-const SERVICE_WORDS =
-  /beach (chair|furniture|umbrella)|cabana|umbrella|jet ?ski|waverunner|\bpwc\b|kayak|canoe|paddle ?board|\bsup\b|pontoon|boat rental|boat tour|charter|fishing|cruise|\bsail(ing|boat|s)?\b|sunset|dolphin|snorkel|parasail|skydiv|tandem|helicopter|heli ?tour|balloon|\bkart|escape room|\baxe\b|paintball|airsoft|horse|trail ride|zipline|\btub(e|ing)\b|banana boat|flyboard|eco ?tour|mangrove|manatee|whale|scuba|\bdiv(e|ing)\b|\bsurf|wakeboard|water ?ski|yacht|catamaran|glass ?bottom|airboat|\batv|\butv|\bjeep|segway|\bbikes?\b|e-?bike|rental/i;
-const NOT_SERVICE = /blog|news|about|contact|faq|gallery|photo|review|career|job|privacy|terms|policy|sitemap|login|cart|account|gift|membership|sale|shop|store|merch|home$|location|weather|map|directions|press|partner|affiliate|franchise|donate|sponsor|newsletter|email|subscribe|coupon|special|deal/i;
+/**
+ * Service vocabulary, in three tiers.
+ *
+ * The catalog is no longer boats and skydives: it is 43,722 operators across golf, museums, camping, spas,
+ * breweries, rinks, dojos, potteries and forty other kinds. A word list that only knew "jet ski" found zero
+ * services on a swim school, so the list below names what each of those kinds actually sells.
+ *
+ * CORE  — an activity or product no other kind of page uses ("tee time", "escape room", "deep tissue"). Safe alone.
+ * UNIT  — the thing a guest buys rather than the activity ("green fee", "day pass", "drop-in", "stick and puck").
+ *         Also safe alone: navigation bars and legal pages do not use these phrases.
+ * RISKY — real service words that are also ordinary English: "class" in "world class", "session" in "session
+ *         cookies", "lane" in a street address, "flight" in "flight of stairs", "court" in "courthouse",
+ *         "table" in "table of contents", "night" in "opening night", "entry" in "entry-level", "ticket" in
+ *         "support ticket", "course" in "of course", "package" in "package delivery". A risky word only counts
+ *         when a companion signal — a price, a duration, a per-unit rate, a booking verb, or a core service
+ *         word — sits in the same text or in the context handed in by the caller (the price table around a
+ *         heading, the href of a link, the paragraph under a heading). NEGATIVE deletes the known idioms first
+ *         so no companion can rescue them.
+ */
+const CORE = new RegExp(
+  [
+    // Water: rentals, charters, cruises, dive and swim.
+    "jet ?ski", "waverunner", "\\bpwc\\b", "kayak", "canoe", "paddle ?board", "\\bsup\\b", "pontoon",
+    "boat (rental|tour|ride|trip)", "charter", "fishing", "\\bcruise", "\\bsail(ing|boat|s)?\\b", "sunset (cruise|sail|tour)",
+    "dolphin", "manatee", "whale", "snorkel", "parasail", "banana boat", "flyboard", "wakeboard", "water ?ski",
+    "yacht", "catamaran", "glass ?bottom", "airboat", "scuba", "\\bdiv(e|ing)\\b", "\\bsurf", "\\braft(ing)?\\b",
+    "white ?water", "pedal ?boat", "paddle ?boat", "swim lesson", "learn ?to ?swim", "lap swim", "open swim",
+    "water aerobics", "aqua ?(fit|robics)", "pool rental", "swim team", "lifeguard", "water ?slide", "lazy river",
+    "wave pool", "splash pad", "cabana", "beach (chair|furniture|umbrella)",
+    // Air.
+    "skydiv", "tandem", "helicopter", "heli ?tour", "balloon", "hot ?air", "glider", "gliding", "paraglid",
+    "hang ?glid", "discovery flight", "scenic flight", "flight (lesson|school|training)", "bungee", "zip ?line",
+    "aerial (adventure|park|silks)",
+    // Land and adrenaline.
+    "\\bkart(ing)?\\b", "go[- ]?kart", "escape room", "\\baxe\\b", "hatchet", "paintball", "airsoft", "laser ?tag",
+    "rage room", "smash room", "\\batv\\b", "\\butv\\b", "\\bjeep\\b", "segway", "\\bbikes?\\b", "e-?bike",
+    "horse ?back", "trail ride", "pony ride", "riding lesson", "hayride", "carriage ride", "sleigh ride",
+    "dog ?sled", "snowmobile", "snowshoe",
+    // Golf, mini golf, disc golf.
+    "tee ?time", "greens? ?fee", "(nine|18|9|eighteen) holes", "driving range", "bucket of balls", "range ball",
+    "golf (lesson|clinic|cart|club|simulator|school|package)", "foot ?golf", "mini(ature)? ?golf", "putt ?putt",
+    "disc golf", "frisbee golf",
+    // Courts and fields.
+    "pickle ?ball", "tennis (lesson|court|clinic|camp)", "squash court", "racquet ?ball", "badminton",
+    "volleyball court", "basketball court", "batting cage", "field rental", "turf rental",
+    // Ice and snow.
+    "public skat", "open skat", "stick (and|&|n) ?puck", "freestyle ice", "learn ?to ?skate", "skate rental",
+    "ice time", "rink rental", "curling", "broomball", "hockey (league|clinic|camp|school)", "figure skating",
+    "lift ticket", "ski (lesson|rental|pass|school|and ride)", "snowboard", "cross ?country ski", "nordic",
+    "gondola", "chair ?lift", "terrain park", "snow ?tub", "tubing hill", "\\btub(e|ing)\\b",
+    // Play: bowling, arcade, trampoline, billiards, karaoke.
+    "bowl(ing)?", "shoe rental", "cosmic bowl", "arcade", "game card", "play pass", "unlimited play", "\\btokens?\\b",
+    "laser maze", "\\bvr\\b", "virtual reality", "trampoline", "open jump", "jump (time|pass)", "ninja (course|warrior)",
+    "dodgeball", "foam pit", "soft play", "bounce house", "billiards", "pool table", "snooker", "\\bdarts\\b",
+    "shuffleboard", "karaoke",
+    // Ranges and targets.
+    "shooting (range|lane|lesson|bay)", "gun rental", "firearm", "range time", "archery", "target practice",
+    "clay shooting", "trap shooting", "skeet", "concealed carry",
+    // Climbing, fitness, martial arts, dance.
+    "climb(ing)?", "boulder(ing)?", "belay", "top ?rope", "harness rental", "personal train", "boot ?camp",
+    "cross ?fit", "\\bhiit\\b", "spin class", "indoor cycling", "pilates", "\\bbarre\\b", "zumba", "group fitness",
+    "open gym", "gymnastics", "tumbling", "cheer(leading)?", "parkour", "obstacle course", "yoga", "vinyasa",
+    "hatha", "ashtanga", "meditation", "sound bath", "\\breiki\\b", "teacher training", "martial arts", "karate",
+    "jiu ?jitsu", "\\bbjj\\b", "tae ?kwon ?do", "muay thai", "kick ?box", "\\bjudo\\b", "boxing", "\\bmma\\b",
+    "self ?defense", "belt test", "sparring", "fencing", "dance (class|lesson)", "ballet", "hip ?hop", "salsa",
+    "bachata", "tango", "ballroom", "swing dance", "wedding dance", "pole (dance|fitness)", "burlesque",
+    // Spa and wellness.
+    "massage", "deep tissue", "swedish", "hot stone", "prenatal", "facial", "microderm", "dermaplan",
+    "chemical peel", "manicure", "pedicure", "\\bmani\\b", "\\bpedi\\b", "nail (service|art)", "gel nails",
+    "waxing", "threading", "lash (extension|lift)", "brow (lamination|shaping|tint)", "body (wrap|scrub|treatment)",
+    "reflexolog", "acupunctur", "chiropract", "cupping", "sauna", "steam room", "cold plunge", "ice bath",
+    "contrast therapy", "float (tank|session|therapy)", "cryotherap", "halotherap", "salt room", "infrared",
+    "hydrotherap", "mud bath", "hammam", "\\bbanya\\b", "spa (package|day|treatment)", "bridal package",
+    // Drink: brewery, winery, distillery.
+    "tasting", "tap ?room", "cellar door", "(brewery|winery|distillery|vineyard|barrel|cave) tour", "barrel tasting",
+    "blending (class|session|experience)", "food pairing", "wine pairing", "cocktail class", "mixology",
+    // Make: cooking, pottery, craft.
+    "cooking class", "culinary", "baking class", "cake decorating", "knife skills", "chef'?s table", "private chef",
+    "sushi class", "pasta (class|making)", "pottery", "wheel throwing", "hand ?building", "clay class", "glaze",
+    "\\bkiln\\b", "studio time", "paint ?(and|n|&) ?sip", "paint your own", "canvas class", "candle (making|pouring)",
+    "glass ?blow", "jewelry (class|making)", "woodworking", "sewing class", "quilting", "flower (crown|arranging)",
+    "terrarium", "soap making", "leather ?work", "blacksmith", "welding class", "screen ?print", "improv class",
+    "acting class", "drama class",
+    // Culture: museum, zoo, aquarium, garden, theatre.
+    "general admission", "guided tour", "docent", "audio (guide|tour)", "self[- ]guided tour", "planetarium",
+    "\\bimax\\b", "exhibit", "gallery tour", "field trip", "school (group|program|tour)", "museum pass", "aquarium",
+    "\\bzoo\\b", "safari", "petting zoo", "animal encounter", "behind[- ]the[- ]scenes tour", "botanical", "garden tour",
+    "conservatory", "greenhouse", "farm tour", "corn maze", "pumpkin patch", "apple picking", "\\bu[- ]?pick\\b",
+    "haunted house", "matinee", "showtime", "season (ticket|subscription)", "student rush", "comedy show",
+    // Tours.
+    "walking tour", "food tour", "ghost tour", "bus tour", "trolley tour", "city tour", "pub crawl", "bike tour",
+    "segway tour", "sightseeing", "wine tour", "eco ?tour", "mangrove", "wildlife", "nature walk", "guided hike",
+    // Camping.
+    "camp ?site", "camp ?ground", "tent site", "tent pad", "\\brv (site|park|spot|hook)", "full hook ?up",
+    "hook ?up", "\\bcabins?\\b", "\\byurts?\\b", "glamping", "primitive site", "group site", "day ?use",
+    "pull[- ]?through", "back[- ]?in site", "bunk ?house", "tree ?house", "safari tent",
+    // Venue and party rentals.
+    "venue rental", "facility rental", "room rental", "party room", "private event", "birthday party",
+    "party package", "corporate (event|outing)", "team building", "pavilion rental", "picnic shelter", "hall rental",
+  ].join("|"),
+  "i",
+);
+
+/** What a guest buys, rather than what they do. Distinctive enough to stand alone. */
+const UNIT = new RegExp(
+  [
+    "day pass", "week pass", "month(ly)? pass", "annual pass", "season pass", "punch card", "class pack",
+    "multi[- ]?pass", "drop[- ]?in", "open (gym|play|skate|jump|bowl|climb)", "private (lesson|session|party)",
+    "group (lesson|rate|rates)", "semi[- ]private", "intro(ductory)? (class|lesson|session|offer|package)",
+    "beginner (class|lesson|course)", "trial class", "\\blessons?\\b", "\\bclinics?\\b", "\\bworkshops?\\b",
+    "summer camp", "day camp", "after ?school", "equipment rental", "gear rental", "\\brentals?\\b",
+    "per (night|game|hour|person|day|lane|court|table)", "half ?day", "full ?day", "half ?hour", "\\bguided\\b",
+  ].join("|"),
+  "i",
+);
+
+/** Real service words that are also ordinary English. Need a companion signal — see the tier comment above. */
+const RISKY = /\bclass(es)?\b|\bsessions?\b|\blanes?\b|\bcourts?\b|\btables?\b|\bnights?\b|\bflights?\b|\bentry\b|\btickets?\b|\bpart(y|ies)\b|\bmemberships?\b|\bpackages?\b|\badmissions?\b|\bcourses?\b|\btours?\b|\bprograms?\b/i;
+/** Idioms that merely contain a risky word. Deleted before the risky test, so no companion can rescue them. */
+const NEGATIVE = /world[- ]?class|first[- ]class|business class|class action|session (cookies?|storage|expire)|cookies?|flight of stairs|flight status|court ?(house|room)|food court|supreme court|table of contents|time ?table|entry[- ]level|no entry|data entry|third[- ]part(y|ies)|party of \d|(last|opening|good) ?night|tonight|overnight|support ticket|ticketing system|membership (agreement|terms)|of course|course of|virtual tour|tour de force|slide ?show|photo tour|video tour/gi;
+/** A price, a duration, a per-unit rate or a booking verb: proof the risky word names something sold. */
+const COMPANION =
+  /\$\s?\d|\b\d{1,3}\s?(min(ute)?s?|hours?|hrs?|days?|nights?|weeks?)\b|\bper\s+(person|adult|child|hour|day|night|game|group|lane|court|table|session|class)\b|\b(book|booking|reserve|reservation|register|registration|sign ?up|schedule|enroll|availability|buy tickets?|purchase)\b|\b(price|pricing|rates?|fees?)\b/i;
+
+/**
+ * Is this text the name of something a guest can book and pay for at this business?
+ * `ctx` is whatever the caller has nearby — the price table under a heading, a link's href, the paragraph
+ * that follows — and only ever rescues a risky word; it can never make a non-service word into a service.
+ */
+export function serviceLike(text: string, ctx = ""): boolean {
+  if (!text) return false;
+  if (CORE.test(text) || UNIT.test(text)) return true;
+  const stripped = text.replace(NEGATIVE, " ");
+  if (!RISKY.test(stripped)) return false;
+  return COMPANION.test(stripped) || COMPANION.test(ctx) || CORE.test(ctx) || UNIT.test(ctx);
+}
+
+/** Navigation, legal pages, merchandise and jobs. Checked after the word list, and it wins. */
+const NOT_SERVICE =
+  /blog|news|about|contact|faq|gallery|photo|review|testimonial|career|employment|hiring|\bjobs?\b|apply now|privacy|terms|policy|accessibility|sitemap|log ?in|sign ?in|my account|cart|checkout|wish ?list|gift|sale|shop|store|merch|apparel|t-?shirt|hoodie|sticker|\bmugs?\b|pro shop|home$|location|weather|\bmaps?\b|directions|parking|press|partner|affiliate|franchise|donate|sponsor|newsletter|email|subscribe|coupon|special|deal|covid|^\s*(upcoming |special )?events?\s*$|events? calendar|news (and|&) events|virtual tour/i;
 /** Pages worth crawling first when a site has many. */
-const CRAWL_FIRST = /rental|rent|tour|trip|price|pricing|rate|package|service|book|reserv|experience|adventure|charter|lesson|group|party|event|faq|policy|waiver|hour|about|activit|menu|option|what-we-offer|things-to-do/i;
+const CRAWL_FIRST =
+  /rental|rent|tour|trip|price|pricing|rate|package|service|book|reserv|experience|adventure|charter|lesson|clinic|class|schedule|program|camp|admission|ticket|membership|spa|menu|tee|range|court|lane|trail|site|cabin|tasting|treatment|party|birthday|group|event|faq|policy|waiver|hour|about|activit|option|what-we-offer|things-to-do/i;
 const CRAWL_SKIP = /\.(pdf|jpg|jpeg|png|gif|svg|webp|mp4|zip|css|js)$|\/(wp-json|feed|tag|category|author|cart|checkout|login|account|wp-admin|wp-content|xmlrpc)\b|blog\/|\/news\/|\/page\/\d|\?|#/i;
 const WAIVER = /waiver|release form|sign (the|your) (form|waiver)|smartwaiver|wherewolf|waiverforever/i;
 const BOOK = /book now|reserve|reservation|book online|buy tickets|schedule|check availability|fareharbor|peek\.com|xola|rezdy|checkfront|bookeo|resova/i;
 const HOURS = /\b(mon|tue|wed|thu|fri|sat|sun)[a-z]*\.?\s*(-|to|–|through)\s*(mon|tue|wed|thu|fri|sat|sun)[a-z]*\.?\s*[:,]?\s*\d{1,2}(:\d{2})?\s*(am|pm)?\s*(-|to|–)\s*\d{1,2}(:\d{2})?\s*(am|pm)|\b(open|hours)\b[^.]{0,40}\d{1,2}(:\d{2})?\s*(am|pm)\s*(-|to|–)\s*\d{1,2}(:\d{2})?\s*(am|pm)/i;
-const PRICE_NEAR = /\$\s?(\d{1,3}(?:,\d{3})+|\d{2,5})(?:\.\d{2})?(?:\s*(?:\/|per|an?|each)\s*(hour|hr|half.?hour|30 ?min|person|adult|child|kid|ski|boat|day|half.?day|trip|group|ride|flight|jump|room|lane|game)s?)?/i;
+const PRICE_NEAR = /\$\s?(\d{1,3}(?:,\d{3})+|\d{2,5})(?:\.\d{2})?(?:\s*(?:\/|per|an?|each)\s*(hour|hr|half.?hour|30 ?min|person|adult|child|kid|ski|boat|day|night|half.?day|trip|group|ride|flight|jump|room|lane|court|table|game|round|class|session|site)s?)?/i;
 
-/** Groups of service names that mean the same activity. The first regex match wins. */
+/**
+ * Groups of service names that mean the same activity. The first regex match wins, so the order is
+ * specific-before-generic: "Kids Karate Class" must reach martial arts before the generic class rule.
+ * `consolidate()` drops anything with no entry here, so this list is also the last gate: a name that no
+ * line below recognises never becomes a service.
+ */
 const CANON: [RegExp, string][] = [
-  [/jet ?ski|waverunner|pwc/i, "Jet ski rental"], [/paddle ?board|sup\b/i, "Paddleboard rental"], [/kayak|canoe/i, "Kayak rental"],
-  [/pontoon/i, "Pontoon rental"], [/pedal ?boat|paddle ?boat/i, "Pedal boat rental"], [/\bdock\b|swim platform/i, "Floating dock rental"],
-  [/\bmega\b|giant (sup|paddle)/i, "Giant paddleboard rental"], [/boat rental|boat rent/i, "Boat rental"], [/parasail/i, "Parasailing"],
-  [/banana boat|tube|tubing/i, "Banana boat and tubing"], [/flyboard/i, "Flyboarding"], [/snorkel/i, "Snorkel trip"],
-  [/scuba|dive/i, "Dive trip"], [/dolphin|manatee|whale|eco ?tour|mangrove|wildlife/i, "Wildlife tour"],
-  [/sunset|cruise|sail|catamaran|yacht|glass ?bottom|airboat|boat tour|harbor|harbour/i, "Boat tour"],
-  [/fishing|charter/i, "Fishing charter"], [/skydiv|tandem/i, "Tandem skydive"], [/helicopter|heli/i, "Helicopter tour"],
-  [/balloon/i, "Balloon flight"], [/escape room/i, "Escape room"], [/axe/i, "Axe throwing"], [/paintball|airsoft/i, "Paintball"],
-  [/kart/i, "Karting"], [/horse|trail ride/i, "Trail ride"], [/zipline/i, "Zipline"], [/surf|wakeboard|water ?ski/i, "Surf and wake"],
-  [/atv|utv|jeep|segway|bike/i, "Land rental"], [/beach (chair|furniture|umbrella)|cabana/i, "Beach furniture rental"],
+  // Water
+  [/jet ?ski|waverunner|pwc/i, "Jet ski rental"], [/paddle ?board|\bsup\b/i, "Paddleboard rental"],
+  [/kayak|canoe/i, "Kayak rental"], [/pontoon/i, "Pontoon rental"], [/pedal ?boat|paddle ?boat/i, "Pedal boat rental"],
+  [/\bdock\b|swim platform/i, "Floating dock rental"], [/boat rental|boat rent/i, "Boat rental"],
+  [/parasail/i, "Parasailing"], [/flyboard/i, "Flyboarding"], [/snorkel/i, "Snorkel trip"],
+  [/scuba|\bdiv(e|ing)\b/i, "Dive trip"], [/raft|white ?water/i, "Rafting trip"],
+  [/dolphin|manatee|whale|eco ?tour|mangrove|wildlife|nature walk|guided hike/i, "Wildlife tour"],
+  [/fishing|charter/i, "Fishing charter"],
+  [/sunset|cruise|sail|catamaran|yacht|glass ?bottom|airboat|boat tour|harbou?r/i, "Boat tour"],
+  [/surf|wakeboard|water ?ski/i, "Surf and wake"],
+  [/swim lesson|learn ?to ?swim|swim (class|school|team)/i, "Swim lessons"],
+  [/lap swim|open swim|water aerobics|aqua ?(fit|robics)|pool (rental|pass)/i, "Pool session"],
+  [/water ?slide|lazy river|wave pool|splash pad|water ?park/i, "Waterpark admission"],
+  [/beach (chair|furniture|umbrella)|cabana/i, "Beach furniture rental"],
+  // Air
+  [/skydiv|tandem jump/i, "Tandem skydive"], [/helicopter|heli ?tour/i, "Helicopter tour"],
+  [/balloon|hot ?air/i, "Balloon flight"], [/paraglid|hang ?glid/i, "Paragliding flight"],
+  [/glider|gliding|discovery flight|scenic flight|flight (lesson|school|training)/i, "Scenic flight"],
+  [/bungee/i, "Bungee jump"], [/zip ?line|aerial (adventure|park)/i, "Zipline"],
+  // Snow and ice (before the water "tubing" rule, so a hill is not a river)
+  [/snow ?tub|tubing hill/i, "Snow tubing"],
+  [/lift ticket|gondola|chair ?lift|terrain park/i, "Lift ticket"],
+  [/ski (lesson|school)|snowboard lesson|learn ?to ?ski/i, "Ski lesson"],
+  [/ski (rental|pass|and ride)|snowboard rental|cross ?country ski|nordic|snowshoe/i, "Ski rental"],
+  [/public skat|open skat|freestyle ice|figure skat|learn ?to ?skate/i, "Public skating"],
+  [/stick (and|&|n) ?puck|ice time|rink rental|hockey (league|clinic|camp|school)/i, "Ice time"],
+  [/curling|broomball/i, "Curling"], [/skate rental/i, "Skate rental"],
+  [/banana boat|\btub(e|ing)\b/i, "Banana boat and tubing"],
+  // Golf
+  [/tee ?time|greens? ?fee|(nine|18|9|eighteen) holes|round of golf/i, "Tee time"],
+  [/driving range|bucket of balls|range ball/i, "Driving range"],
+  [/golf (lesson|clinic|school)/i, "Golf lesson"], [/golf simulator/i, "Golf simulator"],
+  [/golf (cart|club) rental/i, "Golf cart rental"],
+  [/mini(ature)? ?golf|putt ?putt|foot ?golf/i, "Mini golf"], [/disc golf|frisbee golf/i, "Disc golf"],
+  // Courts and fields
+  [/pickle ?ball/i, "Pickleball court"], [/tennis/i, "Tennis court"],
+  [/squash|racquet ?ball|badminton|volleyball court|basketball court|batting cage|field rental|turf rental|\bcourts?\b/i, "Court rental"],
+  // Play
+  [/bowl/i, "Bowling"], [/shoe rental/i, "Shoe rental"],
+  [/arcade|game card|play pass|unlimited play|\btokens?\b|laser maze|\bvr\b|virtual reality/i, "Arcade play"],
+  [/laser ?tag/i, "Laser tag"], [/escape room/i, "Escape room"], [/rage room|smash room/i, "Rage room"],
+  [/trampoline|open jump|jump (time|pass)|ninja (course|warrior)|dodgeball|foam pit/i, "Jump session"],
+  [/soft play|bounce house|play ?ground/i, "Play session"],
+  [/billiards|pool table|snooker|\bdarts\b|shuffleboard/i, "Table rental"],
+  [/karaoke/i, "Karaoke room"], [/\bkart|go[- ]?kart/i, "Karting"],
+  [/\baxe\b|hatchet/i, "Axe throwing"], [/paintball|airsoft/i, "Paintball"],
+  // Ranges
+  [/archery|target practice/i, "Archery"],
+  [/shooting|gun rental|firearm|range time|clay shooting|trap shooting|skeet|concealed carry/i, "Range time"],
+  // Climbing, fitness, martial arts, dance, yoga
+  [/climb|boulder|belay|top ?rope/i, "Climbing pass"],
+  [/personal train/i, "Personal training"],
+  [/yoga|vinyasa|hatha|ashtanga/i, "Yoga class"],
+  [/meditation|sound bath|\breiki\b/i, "Meditation session"],
+  [/teacher training/i, "Teacher training"],
+  [/martial arts|karate|jiu ?jitsu|\bbjj\b|tae ?kwon ?do|muay thai|kick ?box|\bjudo\b|boxing|\bmma\b|self ?defense|belt test|sparring|fencing/i, "Martial arts class"],
+  [/gymnastics|tumbling|cheer|parkour|obstacle course/i, "Gymnastics class"],
+  [/dance|ballet|hip ?hop|salsa|bachata|tango|ballroom|swing|burlesque|pole (dance|fitness)/i, "Dance class"],
+  [/boot ?camp|cross ?fit|\bhiit\b|spin class|indoor cycling|pilates|\bbarre\b|zumba|group fitness|open gym/i, "Fitness class"],
+  // Spa and wellness
+  [/massage|deep tissue|swedish|hot stone|reflexolog|cupping|acupunctur|chiropract/i, "Massage"],
+  [/facial|microderm|dermaplan|chemical peel/i, "Facial"],
+  [/manicure|pedicure|\bmani\b|\bpedi\b|nail (service|art)|gel nails/i, "Manicure and pedicure"],
+  [/waxing|threading|lash (extension|lift)|brow (lamination|shaping|tint)/i, "Waxing and lashes"],
+  [/body (wrap|scrub|treatment)|mud bath|hydrotherap/i, "Body treatment"],
+  [/sauna|steam room|hammam|\bbanya\b|infrared|halotherap|salt room/i, "Sauna session"],
+  [/cold plunge|ice bath|contrast therapy|cryotherap/i, "Cold plunge"],
+  [/float (tank|session|therapy)/i, "Float session"],
+  [/spa (package|day)|bridal package/i, "Spa package"],
+  // Drink
+  [/tasting|tap ?room|cellar door|barrel tasting|\bflights?\b/i, "Tasting"],
+  [/(brewery|winery|distillery|vineyard|barrel|cave) tour/i, "Brewery tour"],
+  [/blending|food pairing|wine pairing|cocktail class|mixology/i, "Blending and pairing"],
+  // Make
+  [/cooking class|culinary|baking|cake decorating|knife skills|chef'?s table|private chef|sushi class|pasta (class|making)/i, "Cooking class"],
+  [/pottery|wheel throwing|hand ?building|clay|glaze|\bkiln\b/i, "Pottery class"],
+  [/paint ?(and|n|&) ?sip|paint your own|canvas class/i, "Paint and sip"],
+  [/candle|glass ?blow|jewelry|woodworking|sewing|quilting|flower (crown|arranging)|terrarium|soap making|leather ?work|blacksmith|welding|screen ?print/i, "Craft workshop"],
+  [/studio time/i, "Studio time"],
+  [/improv|acting class|drama class/i, "Acting class"],
+  // Culture
+  [/general admission|\badmission|museum pass|exhibit|planetarium|\bimax\b/i, "Admission"],
+  [/aquarium|\bzoo\b|safari|petting zoo|animal encounter/i, "Zoo admission"],
+  [/botanical|garden tour|conservatory|greenhouse|farm tour|corn maze|pumpkin patch|apple picking|\bu[- ]?pick\b/i, "Garden admission"],
+  [/haunted house/i, "Haunted house"],
+  [/matinee|showtime|season (ticket|subscription)|student rush|comedy show/i, "Show ticket"],
+  [/field trip|school (group|program|tour)|docent|audio (guide|tour)|guided tour|self[- ]guided tour|gallery tour|behind[- ]the[- ]scenes tour/i, "Guided tour"],
+  // Land rentals and rides
+  [/horse ?back|trail ride|pony ride|riding lesson|carriage ride|hayride|sleigh ride/i, "Trail ride"],
+  [/snowmobile|\batv\b|\butv\b|\bjeep\b|segway|dog ?sled/i, "Off-road tour"],
+  [/e-?bike|\bbikes?\b/i, "Bike rental"],
+  // Tours
+  [/walking tour|food tour|ghost tour|bus tour|trolley tour|city tour|pub crawl|sightseeing|wine tour|\btours?\b/i, "Guided tour"],
+  // Camping
+  [/camp ?site|camp ?ground|tent (site|pad)|primitive site|group site|pull[- ]?through|back[- ]?in site/i, "Campsite"],
+  [/\brv (site|park|spot|hook)|full hook ?up|hook ?up/i, "RV site"],
+  [/\bcabins?\b|\byurts?\b|glamping|bunk ?house|tree ?house|safari tent/i, "Cabin stay"],
+  [/day ?use/i, "Day use"],
+  // Venue and party
+  [/birthday|party (package|room)|private (event|party)|corporate (event|outing)|team building/i, "Party package"],
+  [/venue rental|facility rental|room rental|pavilion rental|picnic shelter|hall rental/i, "Venue rental"],
+  // Generic bookable units, last: only reached when nothing above named the activity.
+  [/summer camp|day camp|after ?school|\bcamps?\b/i, "Camp"],
+  [/private (lesson|session)|semi[- ]private|\blessons?\b/i, "Private lesson"],
+  [/\bclinics?\b/i, "Clinic"],
+  [/\bworkshops?\b/i, "Workshop"],
+  [/drop[- ]?in|day pass|week pass|month(ly)? pass|annual pass|season pass|punch card|class pack|multi[- ]?pass/i, "Day pass"],
+  [/\bmemberships?\b/i, "Membership"],
+  [/\bclass(es)?\b|\bcourses?\b|\bprograms?\b/i, "Class"],
+  [/\bsessions?\b/i, "Session"],
+  [/\blanes?\b/i, "Lane rental"],
+  [/\btables?\b/i, "Table rental"],
+  [/\btickets?\b|\bentry\b/i, "Ticket"],
+  [/\bnights?\b/i, "Overnight stay"],
+  [/equipment rental|gear rental|\brentals?\b/i, "Rental"],
+  [/\bpackages?\b/i, "Package"],
 ];
 
-function canon(name: string): string | null {
+export function canon(name: string): string | null {
   for (const [re, label] of CANON) if (re.test(name)) return label;
   return null;
 }
@@ -74,11 +323,47 @@ function dedupeVariants(vs: Variant[]): Variant[] {
   return out;
 }
 
+/**
+ * A service name has to read like something on a price list. The widened vocabulary reaches far more pages,
+ * so these three shapes — a document, a sentence, a feature bullet — are what it would otherwise drag in:
+ *   "2025-2026 Class Schedule", "Event Rental Info", "Trial Class Intake"  -> a page or a form, not a booking
+ *   "Book your massage today!", "Come explore our trails"                  -> marketing copy, not a line item
+ *   "Amenity: Pull-Through", "Includes 2 nights"                           -> a feature of something else
+ */
+export function bookableName(name: string): boolean {
+  const n = name.trim();
+  if (!n || n.split(/\s+/).length > 7) return false;
+  if (/[.?!:\/]$/.test(n)) return false;
+  // Image alt text ("Pilates by Simona Logo") and a heading that swallowed its own price ("Membership $89").
+  if (/\$|\blogos?\b|\u00a9/i.test(n)) return false;
+  // A document or a page, named by its last word.
+  if (/\b(schedule|calendar|info|information|intake|form|forms|waiver|polic(y|ies)|faq|faqs|terms|hours|directions|map|newsletter|checklist|handbook|rules|release|releases|list|overview|update|updates|announcement|flyer|flier|brochure|poster|pdf|menu)$/i.test(n)) return false;
+  // The heading over a price table ("Program Fees", "Court Fees", "Cost per Session") rather than a line in it.
+  // A green fee or a day-pass rate names the thing itself, so a core activity word keeps the name.
+  if (/\b(fees?|costs?|pricing|prices?|rates?)$/i.test(n) && !CORE.test(n)) return false;
+  // A price-table caption read the other way round ("Cost per Session", "Rates and Fees").
+  if (/^(costs?|prices?|pricing|rates?|fees?)\b/i.test(n)) return false;
+  // A picture gallery or a 360 walkthrough dressed up as a tour.
+  if (/slide ?show|virtual tour|photo tour|video tour/i.test(n)) return false;
+  // An instruction to the reader rather than a thing sold.
+  if (/^(book|call|visit|come|join|enjoy|explore|discover|find|see|get|sign|let|check|click|welcome|thank|meet|read|shop|order|start|try|ask)\b/i.test(n)) return false;
+  // The venue itself, not something sold in it: "The Escape Bowling Center", "Rozenvain Ballet Studio".
+  if (/\b(cent(er|re)|club|academy|company|alley|arena|complex|facility|studio|gym|museum|theatre|theater|brewery|winery|distillery|resort|lodge|park)$/i.test(n)) return false;
+  // Programs a guest joins for free rather than books: ambassador, volunteer, loyalty, referral, donations.
+  if (/\b(ambassador|volunteer|loyalty|rewards?|referral|fundrais\w*|scholarship|donations?|sponsorships?)\b/i.test(n)) return false;
+  // "Learn more" is a button; "Learn to Skate" is the beginner programme every rink sells.
+  if (/^learn (more|about|how|why)\b/i.test(n)) return false;
+  // A feature or inclusion of some other line.
+  if (/^(amenity|amenities|includes?|including|featur(e|es|ing)|note|please)\b/i.test(n)) return false;
+  return true;
+}
+
 /** Collapse near-duplicates to one line per activity, keeping the shortest original name and any price seen. */
 function consolidate(found: Map<string, Found>): Found[] {
   const groups = new Map<string, Found & { canon: string; descWords?: number }>();
   for (const f of found.values()) {
     if (/@|https?:|\.(com|net|org|ca)\b/i.test(f.name)) continue;
+    if (!bookableName(f.name)) continue;
     const c = canon(f.name);
     if (!c) continue;
     const weak = f.price == null && !f.variants?.length && f.name.split(/\s+/).length < 2;
@@ -216,16 +501,19 @@ function isAddon(label: string): boolean {
 
 /** Nearest service heading above an element: check preceding siblings at each ancestor level, then the page's main heading. */
 function headingAbove($: ReturnType<typeof load>, el: any): string | null {
+  // The element is the price table or price line this heading names, so its own text is the "price nearby"
+  // companion that lets a risky heading ("Lanes", "Court Time", "Nightly") count as a service.
+  const ctx = clean($(el).text()).slice(0, 400);
   let node = $(el);
   for (let depth = 0; depth < 8 && node.length; depth++) {
-    const prev = node.prevAll("h1, h2, h3, h4, h5, h6").filter((_, h) => SERVICE_WORDS.test($(h).text())).first();
+    const prev = node.prevAll("h1, h2, h3, h4, h5, h6").filter((_, h) => serviceLike(clean($(h).text()), ctx)).first();
     if (prev.length) return clean(prev.text());
     node = node.parent();
   }
-  const page = $("h1, h2").filter((_, h) => SERVICE_WORDS.test($(h).text())).first();
+  const page = $("h1, h2").filter((_, h) => serviceLike(clean($(h).text()), ctx)).first();
   if (page.length) return clean(page.text());
   const title = clean($("title").first().text()).split(/[|\-–]/)[0].trim();
-  return SERVICE_WORDS.test(title) ? title : null;
+  return serviceLike(title, ctx) ? title : null;
 }
 
 /** Read price tables and "label - $price" lists into variants and add-ons attached to the nearest service heading. */
@@ -234,14 +522,14 @@ function harvestPrices($: ReturnType<typeof load>, url: string, out: Map<string,
     // Above this it is almost always a boat, a board or a membership for sale, not a booking.
     if (price > 5000 || price < 5) return;
     // "Save $15", "$10 off", deposits and coupons are not things a guest books.
-    if (/\b(save|off|discount|coupon|deposit|refund|fee|tax|gratuity|tip|late|cancel|gift ?cards?|gift certificates?|membership|season pass|per (extra|additional))\b/i.test(rawLabel)) return;
+    if (/\b(save|off|discount|coupon|deposit|refund|fee|tax|gratuity|tip|late|cancel|gift ?cards?|gift certificates?|per (extra|additional))\b/i.test(rawLabel)) return;
     let label = rawLabel;
     if (isAddon(label)) {
       const k = label.toLowerCase();
       if (!addons.has(k)) addons.set(k, { name: titleCase(label), price, url });
       return;
     }
-    const svc = heading && SERVICE_WORDS.test(heading) ? heading : label;
+    const svc = heading && serviceLike(heading, "$" + price) ? heading : label;
     if (label.toLowerCase() === svc.toLowerCase()) label = "Standard";
     const key = svc.toLowerCase();
     const cur = out.get(key) || { name: titleCase(svc), detail: null, price: null, unit: null, url };
@@ -320,7 +608,7 @@ function harvestPrices($: ReturnType<typeof load>, url: string, out: Map<string,
     const after = text.slice(dollar).match(new RegExp("^\\$\\s?" + NUM));
     if (!after || before.length < 3 || before.length > 48) continue;
     const label = before;
-    if (!SERVICE_WORDS.test(label) && !/hour|hr|min|day|person|adult|child|kid|rider|ride|trip|flight|jump|game|lane|session|tour|package|standard|premium|private|group/i.test(label) && !isAddon(label)) continue;
+    if (!serviceLike(label, text) && !/hour|hr|min|day|person|adult|child|kid|rider|ride|trip|flight|jump|game|lane|session|tour|package|standard|premium|private|group/i.test(label) && !isAddon(label)) continue;
     attach(headingAbove($, el), label, toNum(after[1]), el);
     }
   });
@@ -399,7 +687,7 @@ function harvest(html: string, url: string, out: Map<string, Found>, links: Set<
     if (!abs || abs.origin !== origin) return;
     if (CRAWL_SKIP.test(abs.pathname + abs.search + abs.hash)) return;
     links.add(abs.origin + abs.pathname.replace(/\/$/, ""));
-    if (text.length >= 4 && text.length <= 60 && SERVICE_WORDS.test(text) && !NOT_SERVICE.test(text)) {
+    if (text.length >= 4 && text.length <= 60 && serviceLike(text, href) && !NOT_SERVICE.test(text)) {
       const key = text.toLowerCase();
       if (!out.has(key)) out.set(key, { name: titleCase(text), detail: null, price: null, unit: null, url, photo: photoNear($, el, url, false) });
     }
@@ -407,10 +695,13 @@ function harvest(html: string, url: string, out: Map<string, Found>, links: Set<
 
   $("h1, h2, h3").each((_, el) => {
     const text = clean(spaced($, el));
-    if (text.length < 4 || text.length > 70 || !SERVICE_WORDS.test(text) || NOT_SERVICE.test(text)) return;
+    if (text.length < 4 || text.length > 70) return;
+    // Read the copy under the heading first: it is the context that decides whether a risky heading
+    // ("Classes", "Sessions", "Party") names something sold or is just a section label.
+    const near = clean($(el).nextAll().slice(0, 3).text()).slice(0, 240);
+    if (!serviceLike(text, near) || NOT_SERVICE.test(text)) return;
     if (/@|https?:|\.(com|net|org|ca)\b/i.test(text)) return;
     const key = text.toLowerCase();
-    const near = clean($(el).nextAll().slice(0, 3).text()).slice(0, 240);
     const m = near.match(PRICE_NEAR) || text.match(PRICE_NEAR);
     const cur = out.get(key) || { name: titleCase(text), detail: null, price: null, unit: null, url };
     if (!cur.photo) {
@@ -428,7 +719,7 @@ function harvest(html: string, url: string, out: Map<string, Found>, links: Set<
       // Best paragraph under this heading: describes the activity, not a sales pitch, no phone numbers.
       const candidates = $(el).nextAll("p, div").slice(0, 4).map((_, n) => clean($(n).text())).get().filter((d) => d.length >= 60);
       const score = (d: string) =>
-        (SERVICE_WORDS.test(d) ? 2 : 0) + (/\(\d{3}\)|\d{3}[-.]\d{3}[-.]\d{4}|contact us|call us|sales|membership|coupon|discount/i.test(d) ? -3 : 0) + (d.length > 140 ? 1 : 0);
+        (serviceLike(d) ? 2 : 0) + (/\(\d{3}\)|\d{3}[-.]\d{3}[-.]\d{4}|contact us|call us|sales|membership|coupon|discount/i.test(d) ? -3 : 0) + (d.length > 140 ? 1 : 0);
       const best = candidates.sort((a, b) => score(b) - score(a))[0];
       if (best && score(best) > 0 && (!cur.desc || score(best) > score(cur.desc))) cur.desc = best.slice(0, 320).replace(/\s+\S*$/, "");
     }
