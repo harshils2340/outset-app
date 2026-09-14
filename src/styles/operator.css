@@ -469,3 +469,9 @@
 .od.compact .odsetup .odcardhead h3{flex-basis:100%;}
 .od.compact .odsetup .odprogress{flex:1;max-width:none;}
 @media (max-width:1180px){.odbrand span{display:none;}}
+
+.odnotice{display:flex;gap:14px;align-items:flex-start;justify-content:space-between;margin:0 0 18px;padding:14px 16px;border:1px solid #f3c89a;background:#fff8ef;border-radius:14px;}
+.odnotice span{display:flex;flex-direction:column;gap:3px;}
+.odnotice b{font-size:14px;}
+.odnotice small{font-size:13px;color:var(--ink-soft);line-height:1.45;}
+.odnotice button{flex:none;border:1px solid var(--line-strong);background:#fff;border-radius:999px;padding:7px 14px;font-size:13px;font-weight:600;cursor:pointer;}

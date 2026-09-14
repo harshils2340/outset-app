@@ -78,7 +78,7 @@ async function call<T>(path: string, init: RequestInit & { timeout?: number } = 
 
 /* ---------- profiles ---------- */
 
-export type RemoteProfile = { id: string; published: boolean; patch: Partial<Unclaimed>; updatedAt: string; profile?: unknown; owner?: { name: string; email: string; phone: string }; session?: string };
+export type RemoteProfile = { id: string; published: boolean; patch: Partial<Unclaimed>; updatedAt: string; profile?: unknown; owner?: { name: string; email: string; phone: string }; session?: string; alreadyClaimed?: string; claimedAt?: string };
 
 /** The operator's saved state from the API (with auth) or the static site (guest view). */
 export async function fetchRemoteProfile(id: string): Promise<RemoteProfile | null> {
@@ -97,12 +97,28 @@ export async function fetchRemoteProfile(id: string): Promise<RemoteProfile | nu
 }
 
 /** Records the claim on the server and stores the session it hands back. */
-export async function claimRemote(id: string, token: string, owner: { name: string; email: string; phone: string }): Promise<boolean> {
-  const r = await call<RemoteProfile>(`/claims/${encodeURIComponent(id)}`, { method: "POST", headers: { "x-claim-token": token }, body: JSON.stringify({ owner }) });
+/**
+ * Someone else may already have claimed this listing, usually a colleague, occasionally a forwarded email.
+ * The server says so; the dashboard shows it once. Held here rather than passed down because the screen
+ * that claims unmounts the moment the dashboard opens.
+ */
+let claimNotice: { email: string; at?: string } | null = null;
+export function takeClaimNotice(): { email: string; at?: string } | null {
+  const n = claimNotice;
+  claimNotice = null;
+  return n;
+}
+
+export async function claimRemote(id: string, token: string, owner?: { name: string; email: string; phone: string }): Promise<boolean> {
+  // Send the session too. An expiring link is exchanged for one first, and the raw v2 token on its own is
+  // not something the server can check here, so a claim posted with only the token came back 403 and the
+  // owner's address was never recorded, which is what sign-in codes and booking alerts run on.
+  const r = await call<RemoteProfile>(`/claims/${encodeURIComponent(id)}`, { method: "POST", headers: { ...authHeaders(id), "x-claim-token": token }, body: JSON.stringify(owner ? { owner } : {}) });
   if (r.ok && r.data?.session) {
     const prior = loadApiSession();
-    saveApiSession({ token: r.data.session, ids: Array.from(new Set([...(prior?.ids || []), id])), email: owner.email || prior?.email || "", exp: Date.now() + 29 * 86400000 });
+    saveApiSession({ token: r.data.session, ids: Array.from(new Set([...(prior?.ids || []), id])), email: owner?.email || prior?.email || "", exp: Date.now() + 29 * 86400000 });
   }
+  if (r.ok && r.data?.alreadyClaimed) claimNotice = { email: r.data.alreadyClaimed, at: r.data.claimedAt };
   return r.ok;
 }
 

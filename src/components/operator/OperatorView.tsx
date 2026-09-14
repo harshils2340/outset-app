@@ -4,7 +4,7 @@ import { experienceById } from "../../lib/catalog";
 import { loadListing } from "../../lib/catalogLoad";
 import { allBookings, demoProfile, hydrateProfile, loadProfile, loadSession, saveProfile, saveSession, setBookingStatus, type OpBooking, type OpStatus, type OperatorProfile } from "../../lib/operator";
 import { useApp } from "../../state/AppProvider";
-import { decideBooking, fetchBookings, hasApi, signOutApi, type RemoteBooking } from "../../lib/api";
+import { decideBooking, fetchBookings, hasApi, signOutApi, takeClaimNotice, type RemoteBooking } from "../../lib/api";
 import { listingUrl } from "../../lib/site";
 import { Markup } from "../Markup";
 import { OpAssistant } from "./OpAssistant";
@@ -39,6 +39,11 @@ export function OperatorView({ compact = false }: { compact?: boolean }) {
   const [page, setPage] = useState<OpPage>("home");
   const [openedId, setOpenedId] = useState<string | null>(null);
   const [toastText, setToastText] = useState<string | null>(null);
+  // Shown once, on the way in, when the server said this listing already had a different owner.
+  const [claimNotice, setClaimNotice] = useState<{ email: string; at?: string } | null>(null);
+  useEffect(() => {
+    if (p) setClaimNotice(takeClaimNotice());
+  }, [p?.id]);
 
   useEffect(() => {
     if (!toastText) return;
@@ -231,6 +236,18 @@ export function OperatorView({ compact = false }: { compact?: boolean }) {
         </div>
 
         {opened ? <BookingDrawer b={opened} onClose={() => setOpenedId(null)} /> : null}
+        {claimNotice ? (
+          <div className="odnotice">
+            <span>
+              <b>This listing was already claimed by {claimNotice.email}</b>
+              <small>
+                {claimNotice.at ? "on " + new Date(claimNotice.at).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" }) + ". " : ""}
+                You are signed in as well, so you can both manage it. If that was not you or someone you work with, write to hello@onoutset.com and we will sort it out.
+              </small>
+            </span>
+            <button type="button" onClick={() => setClaimNotice(null)} aria-label="Dismiss">Got it</button>
+          </div>
+        ) : null}
         {toastText ? <div className="odtoast">{toastText}</div> : null}
       </div>
     </OpCtx.Provider>

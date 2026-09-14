@@ -90,6 +90,12 @@ export function OpLogin({ claimId, claimToken, compact, onEnter, onBack }: { cla
           if (!ok) { setLinkState("bad"); return; }
         }
         rememberClaimToken(apiId, claimToken);
+        // Record the claim before anything else. It used to happen only when a profile was being created,
+        // so a second person opening a forwarded link for a listing that was already set up was never
+        // recorded at all, and neither the server nor the real owner ever heard about it.
+        const fromLink = ownerFromHash(window.location.hash);
+        if (isApi) await claimRemote(apiId, claimToken, fromLink || undefined);
+        if (!alive) return;
         const existing = loadProfile(apiId) || loadProfile(u.id);
         if (existing) { onEnter(existing); return; }
         // Another device may already hold this operator's edits.
@@ -97,17 +103,20 @@ export function OpLogin({ claimId, claimToken, compact, onEnter, onBack }: { cla
         if (!alive) return;
         const saved = remote?.profile as OperatorProfile | undefined;
         if (saved && saved.v === 1 && (saved.id === apiId || saved.id === u.id)) { saveProfile(saved); onEnter(saved); return; }
-        // The name, email and phone typed on the claim screen ride along in the link, so any device gets them.
-        const fromLink = ownerFromHash(window.location.hash);
+        // The address this link was sent to wins over the one already on file. Taking the stored one instead
+        // meant a second claimer simply re-sent the first owner's address, so the server could never tell
+        // that somebody else had walked in through a forwarded email.
         const p = defaultProfile(u, {
-          name: remote?.owner?.name || fromLink?.name || "",
-          email: remote?.owner?.email || fromLink?.email || contactFor(u)?.email || "",
-          phone: remote?.owner?.phone || fromLink?.phone || "",
+          name: fromLink?.name || remote?.owner?.name || "",
+          email: fromLink?.email || remote?.owner?.email || contactFor(u)?.email || "",
+          phone: fromLink?.phone || remote?.owner?.phone || "",
         });
         p.id = apiId;
         if (!isApi) p.bookings = sampleBookings(p);
         saveProfile(p);
-        void claimRemote(apiId, claimToken, { name: p.ownerName, email: p.ownerEmail, phone: p.ownerPhone });
+        // Only when the link carried no address: the claim above already sent one if it had.
+        if (!fromLink) await claimRemote(apiId, claimToken, { name: p.ownerName, email: p.ownerEmail, phone: p.ownerPhone });
+        if (!alive) return;
         onEnter(p);
         return;
       }

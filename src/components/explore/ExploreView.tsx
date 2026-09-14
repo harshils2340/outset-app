@@ -83,7 +83,10 @@ export function ExploreView() {
   const browse = useMemo(() => {
     // A listing with no photo, price, hours or description is real but has nothing to look at yet, so it
     // stays out of the feed. Search by name and the claim links still reach it.
-    const inThisCat = (u: Unclaimed) => inCat(u, state.cat) && !u.thin;
+    // A row of cards is a row of photographs. A listing with a price but no picture still shows the default
+    // illustration, which is what made three of them in a line look broken, so browse asks for a real cover.
+    // Search is deliberately untouched: someone looking for a business by name should still find it.
+    const inThisCat = (u: Unclaimed) => inCat(u, state.cat) && !!u.cover;
     if (near) {
       return catalog
         .filter((u) => u.lat != null && u.lon != null && inThisCat(u) && kmBetween(near, { lat: u.lat, lon: u.lon }) <= NEAR_RADIUS_KM)
