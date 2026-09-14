@@ -21,7 +21,7 @@ on:
         default: ""
       brave_budget:
         description: Most Brave Search API queries to spend this run (free plan is about 2,000 a month)
-        default: "400"
+        default: "230"
 concurrency:
   group: discover-florida
   cancel-in-progress: false
@@ -47,7 +47,7 @@ jobs:
           npx tsx scripts/discover-florida-ci.mts
           --sources=${{ github.event.inputs.sources || 'chains,osm,web' }}
           --chains=${{ github.event.inputs.chains || '' }}
-          --brave-budget=${{ github.event.inputs.brave_budget || 400 }}
+          --brave-budget=${{ github.event.inputs.brave_budget || 230 }}
         working-directory: backend
       - name: Commit what discovery found
         if: always()

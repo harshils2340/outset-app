@@ -46,7 +46,10 @@ const clean = (s: unknown, max: number) =>
 
 async function notifyNew(rec: StoredBooking, profile: StoredProfile | null): Promise<void> {
   const instant = rec.status === "accepted";
-  const title = clean((profile?.patch as { title?: string } | undefined)?.title, 120) || rec.listing;
+  // The published listing, for the business name and phone. An unclaimed listing has no profile, and without this
+  // the guest's confirmation said "Request sent: o-freedomjetskis-com".
+  const detail = await readJson<{ title?: string; contact?: { phone?: string; street?: string; city?: string } }>(`o/${rec.listing}.json`).catch(() => null);
+  const title = clean((profile?.patch as { title?: string } | undefined)?.title, 120) || clean(detail?.title, 120) || rec.listing;
   const when = `${rec.date} at ${rec.slot}, ${rec.qty} guest${rec.qty === 1 ? "" : "s"}`;
   const paid = rec.payment?.state === "authorized" ? (instant ? "Paid $" + rec.total + " by card." : "Card held for $" + rec.total + ", charged when you accept.") : rec.total != null ? "Total: $" + rec.total + " (paid on site)" : "";
   if (profile?.owner.email) {
@@ -54,6 +57,21 @@ async function notifyNew(rec: StoredBooking, profile: StoredProfile | null): Pro
       to: profile.owner.email,
       subject: (instant ? "New booking " : "Booking request ") + rec.code + ": " + rec.guest.name + ", " + when,
       text: `${rec.guest.name} ${instant ? "booked" : "asked to book"} ${rec.service || title}${rec.variant ? " (" + rec.variant + ")" : ""}.\n\nWhen: ${when}\nGuest: ${rec.guest.name}, ${rec.guest.phone}${rec.guest.email ? ", " + rec.guest.email : ""}\n${paid ? paid + "\n" : ""}${rec.addons.length ? "Add-ons: " + rec.addons.join(", ") + "\n" : ""}\n${instant ? "It is confirmed. " : "Accept or decline in your dashboard: "}${SITE}operators\n\nCode ${rec.code}`,
+      replyTo: rec.guest.email || undefined,
+    });
+  }
+  // Every listing is unclaimed until its owner signs in, and an unclaimed listing has no owner address, so a
+  // request to one reached nobody but the guest: they were told the shop would confirm and the shop never heard.
+  // The founder places those bookings by phone until the shop claims, so every request comes to the founder,
+  // with the shop's number, and a claimed shop's requests are copied too while the first ones come in.
+  const alertTo = process.env.BOOKING_ALERT_EMAIL || process.env.MAIL_REPLY_TO || "";
+  if (alertTo) {
+    const shopPhone = detail?.contact?.phone || "no phone on file";
+    const owner = profile?.owner.email ? "Claimed by " + profile.owner.email + " (they were emailed too)." : "UNCLAIMED: nobody at the shop has been told. Call them.";
+    await sendMail({
+      to: alertTo,
+      subject: (profile?.owner.email ? "Booking " : "CALL THE SHOP: booking ") + rec.code + " for " + title + ", " + when,
+      text: `${owner}\n\nShop: ${title}\nShop phone: ${shopPhone}${detail?.contact?.city ? "\nWhere: " + [detail.contact.street, detail.contact.city].filter(Boolean).join(", ") : ""}\nListing: ${SITE}#o=${rec.listing}\n\nGuest: ${rec.guest.name}, ${rec.guest.phone}${rec.guest.email ? ", " + rec.guest.email : ""}\nWants: ${rec.service || title}${rec.variant ? " (" + rec.variant + ")" : ""}\nWhen: ${when}\n${paid ? paid + "\n" : ""}${rec.addons.length ? "Add-ons: " + rec.addons.join(", ") + "\n" : ""}\nCode ${rec.code}`,
       replyTo: rec.guest.email || undefined,
     });
   }
