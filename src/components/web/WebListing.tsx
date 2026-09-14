@@ -792,6 +792,7 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
   const near = state.near ? nearestLocation(item, state.near) : null;
   const typeName = TYPE[item.art] || "Experience";
   const initial = (item.title.replace(/^the\s+/i, "").match(/[A-Za-z]/) || [item.title.slice(0, 1)])[0].toUpperCase();
+  const bookableCount = item.services?.length || item.options.filter((o) => o.price != null || o.name).length;
   const blurb = item.blurb ? cleanDesc(item.blurb).replace(/\s+(Book|Learn more|Read more|Reserve)\.?$/i, "") : "";
 
   // The grey line under the subtitle, Airbnb's "4 guests · 2 bedrooms · 2 beds": only what the operator states.
@@ -1580,7 +1581,7 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
                   <b>{item.title}</b>
                   <small>{typeName}</small>
                 </div>
-                <div className="albizstats">
+                <div className={"albizstats" + (score || item.locations?.length || bookableCount ? "" : " empty")}>
                   {score ? (
                     <>
                       <span><b>{fmtReviews(score.reviews)}</b><small>Reviews</small></span>
@@ -1588,7 +1589,9 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
                     </>
                   ) : null}
                   {item.locations?.length ? <span><b>{item.locations.length + 1}</b><small>Locations</small></span> : null}
-                  <span><b>{item.claimed ? "Claimed" : "Request"}</b><small>{item.claimed ? "On Outset" : "Booking"}</small></span>
+                  {/* Every stat is a number, as on Airbnb's host card: a word like "Request" set at a number's size read
+                      as a different, larger font. How booking works is already in the list beside the card. */}
+                  {bookableCount ? <span><b>{bookableCount}</b><small>{bookableCount === 1 ? "Experience" : "Experiences"}</small></span> : null}
                 </div>
               </div>
               <ul className="albizfacts">
