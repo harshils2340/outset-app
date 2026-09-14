@@ -65,6 +65,68 @@ const REGION: Record<string, string> = {
   NU: "Nunavut", ON: "Ontario", PE: "Prince Edward Island", QC: "Quebec", SK: "Saskatchewan", YT: "Yukon",
 };
 
+type OptRow = { idx: number; label: string; sub?: string; price: number | null; per?: string; kind: string };
+type OptGroup = { name: string; rows: OptRow[] };
+
+/** "dolphin tour" reads "Dolphin tour"; a closing bracket the crawl cut off is put back; "Fishing page" is Fishing. */
+function tidyOpt(text: string): string {
+  let t = plainWords(text).replace(/\s+(?:page|tab|menu|section)$/i, "").trim();
+  const open = (t.match(/\(/g) || []).length;
+  const close = (t.match(/\)/g) || []).length;
+  if (open > close) t += ")";
+  return t ? t.charAt(0).toUpperCase() + t.slice(1) : t;
+}
+
+/** Who a ticket is for, so the picker can offer Private / Per person / Kids filters the operator never labelled. */
+function optKind(text: string): string {
+  if (/\bprivate\b|just your group|whole boat|charter\b/i.test(text)) return "Private";
+  if (/\b(child|children|kids?|youth|junior|under \d+|\d+\s*(?:yrs?|years?) and (?:under|younger))\b/i.test(text)) return "Kids";
+  if (/\b(adult|senior|per person|by the seat|seat|shared)\b/i.test(text)) return "Per person";
+  return "";
+}
+
+/**
+ * What the booking picker lists: the operator's services with their price tiers, or, for a flat menu, options
+ * grouped by the section they were listed under. Rows sort by price inside a group so tiers read in order.
+ */
+function bookingGroups(item: Unclaimed): OptGroup[] {
+  const groups = new Map<string, OptGroup>();
+  const add = (name: string, row: OptRow) => {
+    const key = name.toLowerCase();
+    if (!groups.has(key)) groups.set(key, { name, rows: [] });
+    const g = groups.get(key)!;
+    if (!g.rows.some((r) => r.label.toLowerCase() === row.label.toLowerCase() && r.price === row.price)) g.rows.push(row);
+  };
+  if (item.services?.length) {
+    for (const svc of item.services) for (const v of svc.variants) {
+      const o = item.options[v.optionIdx];
+      add(tidyOpt(svc.name), { idx: v.optionIdx, label: tidyOpt(v.label || svc.name), sub: o?.detail && o.detail !== v.label ? plainWords(o.detail) : undefined, price: v.price, per: v.per, kind: optKind(svc.name + " " + v.label) });
+    }
+  }
+  item.options.forEach((o, idx) => {
+    if ([...groups.values()].some((g) => g.rows.some((r) => r.idx === idx))) return;
+    const name = tidyOpt(o.name);
+    const hasSection = item.options.filter((x) => tidyOpt(x.name) === name).length > 1 && !!o.detail;
+    if (hasSection) add(name, { idx, label: tidyOpt(o.detail), price: o.price, per: o.per, kind: optKind(o.name + " " + o.detail) });
+    else add("Other options", { idx, label: name, sub: o.detail ? plainWords(o.detail) : undefined, price: o.price, per: o.per, kind: optKind(o.name + " " + o.detail) });
+  });
+  // A section with one entry is not a section: fold those into one list so the picker is not a wall of headings.
+  let out = [...groups.values()];
+  const singles = out.filter((g) => g.rows.length === 1);
+  if (singles.length && out.length > 1) {
+    out = out.filter((g) => g.rows.length > 1);
+    const rest = out.find((g) => g.name === "Other options") || { name: "Other options", rows: [] as OptRow[] };
+    for (const g of singles) rest.rows.push(g.name === "Other options" ? g.rows[0] : { ...g.rows[0], label: g.name === g.rows[0].label ? g.name : g.name, sub: g.rows[0].label !== g.name ? g.rows[0].label : g.rows[0].sub });
+    if (!out.includes(rest)) out.push(rest);
+  }
+  for (const g of out) g.rows.sort((a, b) => (a.price ?? Infinity) - (b.price ?? Infinity));
+  // A lone "Other options" group is just the menu; call it that only when real sections sit beside it.
+  if (out.length === 1 && out[0].name === "Other options") out[0].name = "Options";
+  return out.sort((a, b) => (a.name === "Other options" ? 1 : b.name === "Other options" ? -1 : 0));
+}
+
+const optKinds = (groups: OptGroup[]) => ["Per person", "Kids", "Private"].filter((k) => groups.some((g) => g.rows.some((r) => r.kind === k)));
+
 /** "Clearwater Beach, FL" becomes "Clearwater Beach, Florida". */
 function placeName(area: string): string {
   const m = area.match(/^(.*),\s*([A-Z]{2})$/);
@@ -619,6 +681,21 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
   }, [flash]);
 
   const picked = optionIdx != null ? item.options[optionIdx] : null;
+  const optGroups = useMemo(() => bookingGroups(item), [item]);
+  const pickedGroup = optGroups.find((g) => g.rows.some((r) => r.idx === optionIdx)) || null;
+  const pickedRow = pickedGroup?.rows.find((r) => r.idx === optionIdx) || null;
+  const [optOpen, setOptOpen] = useState(false);
+  const [optFilter, setOptFilter] = useState<string>("all");
+  const optRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (!optOpen) return;
+    const onDown = (e: MouseEvent) => { if (optRef.current && !optRef.current.contains(e.target as Node)) setOptOpen(false); };
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") { e.stopPropagation(); setOptOpen(false); } };
+    document.addEventListener("mousedown", onDown);
+    window.addEventListener("keydown", onKey, true);
+    optRef.current?.querySelector(".aloptpop")?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    return () => { document.removeEventListener("mousedown", onDown); window.removeEventListener("keydown", onKey, true); };
+  }, [optOpen]);
   const extras = addonIdx.map((i) => (item.addons || [])[i]).filter(Boolean);
   const p = priceUnclaimed(picked, qty, extras);
   const needService = item.options.length > 0;
@@ -1230,18 +1307,46 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
                 <div className="alboxwrap" ref={popRef}>
                   <div className="albox">
                     {needService && item.options.length > 1 ? (
-                      <label className="alboxcell full sel">
-                        <small>Option</small>
-                        <span className="alboxval">{picked ? plainWords(picked.name) + (picked.detail ? " · " + plainWords(picked.detail) : "") : "Choose one"}</span>
-                        <Markup className="alselchev" html={I.chevDown} />
-                        <select aria-label="What you're booking" value={optionIdx ?? 0} onChange={(e) => setOptionIdx(Number(e.target.value))}>
-                          {item.options.map((o, i) => (
-                            <option key={o.name + i} value={i}>
-                              {plainWords(o.name)}{o.detail ? " · " + plainWords(o.detail) : ""}{o.price != null ? " — " + priceWith(o.price, o.per) : ""}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
+                      <div className="alboxcell full sel alopt" ref={optRef}>
+                        <button type="button" className="aloptbtn" onClick={() => setOptOpen((v) => !v)} aria-haspopup="listbox" aria-expanded={optOpen}>
+                          <small>{optGroups.length > 1 ? "Experience" : "Option"}</small>
+                          <span className="alboxval">
+                            {pickedRow ? (optGroups.length > 1 ? pickedGroup!.name + " · " : "") + pickedRow.label : "Choose one"}
+                          </span>
+                          <Markup className="alselchev" html={I.chevDown} />
+                        </button>
+                        {optOpen ? (
+                          <div className="aloptpop" role="listbox" aria-label="What you're booking">
+                            {optGroups.length > 1 || optKinds(optGroups).length > 1 ? (
+                              <div className="aloptchips" role="group" aria-label="Filter options">
+                                {[{ id: "all", label: "All" }, ...(optGroups.length > 1 && optGroups.length <= 5 ? optGroups.filter((g) => g.name !== "Other options").map((g) => ({ id: "g:" + g.name, label: g.name })) : []), ...(optKinds(optGroups).length > 1 ? optKinds(optGroups).map((k) => ({ id: "k:" + k, label: k })) : [])].map((c) => (
+                                  <button type="button" key={c.id} className="aloptchip" aria-pressed={optFilter === c.id} onClick={() => setOptFilter(c.id)}>{c.label}</button>
+                                ))}
+                              </div>
+                            ) : null}
+                            {optGroups
+                              .filter((g) => !optFilter.startsWith("g:") || "g:" + g.name === optFilter)
+                              .map((g) => {
+                                const rows = g.rows.filter((r) => !optFilter.startsWith("k:") || "k:" + r.kind === optFilter);
+                                if (!rows.length) return null;
+                                return (
+                                  <div className="aloptgroup" key={g.name}>
+                                    {optGroups.length > 1 ? <div className="aloptghead">{g.name}</div> : null}
+                                    {rows.map((r) => (
+                                      <button type="button" role="option" key={r.idx} aria-selected={r.idx === optionIdx} className="aloptrow" onClick={() => { setOptionIdx(r.idx); setOptOpen(false); }}>
+                                        <span className="aloptmain">
+                                          <span>{r.label}</span>
+                                          {r.sub ? <small>{r.sub}</small> : null}
+                                        </span>
+                                        <b>{r.price != null ? priceWith(r.price, r.per) : "Ask"}</b>
+                                      </button>
+                                    ))}
+                                  </div>
+                                );
+                              })}
+                          </div>
+                        ) : null}
+                      </div>
                     ) : null}
                     <div className="alboxrow">
                       <button type="button" className={"alboxcell" + (pickerOpen ? " active" : "")} onClick={() => setPickerOpen((v) => !v)} aria-expanded={pickerOpen}>

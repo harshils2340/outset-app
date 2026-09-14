@@ -28,6 +28,11 @@
 .ah-header.is-scrolled{border-bottom-color:var(--line);}
 .ah-header-space{height:calc(var(--hdr-top) + var(--hdr-search) + var(--hdr-cats));}
 .ah-top{height:var(--hdr-top);display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:16px;}
+/* The sides never shrink under their content, so the tabs cannot slide over "List your business". When the row
+   runs short, the host link goes first (it is also in the account menu), then the tab labels tighten. */
+.ah-top{grid-template-columns:minmax(max-content,1fr) auto minmax(max-content,1fr);}
+@media (max-width:1180px){.ah-host{display:none;}}
+@media (max-width:900px){.ah-switch button{padding:0 8px;gap:6px;font-size:14px;}.ah-switch button svg{width:24px;height:24px;}.ah-switch button::after{left:8px;right:8px;}}
 .ah-logo{justify-self:start;display:inline-flex;align-items:center;gap:8px;color:var(--accent);text-decoration:none;border-radius:8px;}
 .ah-logo svg{display:block;}
 .ah-logo b{font-size:22px;font-weight:700;letter-spacing:-.6px;}
