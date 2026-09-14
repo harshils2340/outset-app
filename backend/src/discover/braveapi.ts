@@ -91,6 +91,72 @@ export type BraveRunStats = { skipped?: string; spent: number; failed: number; q
  * Spend up to `budget` queries on the oldest (never-asked first) destination x term pairs, recording raw hits
  * into `state`. Stops at the first 401/402/403 (bad key or quota) or on repeated 429.
  */
+/**
+ * Which searches to spend this run's budget on, most new businesses per request first.
+ *
+ * The first run went down the grid in order and spent 38 searches on Miami Beach right after 38 on Miami, next door,
+ * which found 32 new businesses against Miami's 145. Two terms for one intent ("cocktail class", "mixology class")
+ * also return the same sites. So instead of oldest first:
+ *   - a term's value is what its answered searches actually returned, candidates per request; unmeasured terms
+ *     start at an average so they get tried;
+ *   - a search is discounted when a destination within 35 km has already been searched for the same activity, or
+ *     is picked earlier in this run, because the results overlap;
+ *   - and discounted again when the same destination already has another term for the same activity.
+ * Picking is greedy, so each choice updates the discounts for the rest. Never-searched cells come before refreshes.
+ */
+const INLAND = /^(Orlando|Kissimmee|Gainesville|Tallahassee)$/;
+
+export function pickQueries(state: BraveState, budget: number, refreshMs: number): string[] {
+  const km = (a: { lat: number; lon: number }, b: { lat: number; lon: number }) => {
+    const r = 6371, dLat = ((b.lat - a.lat) * Math.PI) / 180, dLon = ((b.lon - a.lon) * Math.PI) / 180;
+    const x = Math.sin(dLat / 2) ** 2 + Math.cos((a.lat * Math.PI) / 180) * Math.cos((b.lat * Math.PI) / 180) * Math.sin(dLon / 2) ** 2;
+    return 2 * r * Math.asin(Math.sqrt(x));
+  };
+  const { candidates } = candidatesFromBrave(state);
+  const perActivity = new Map<string, number>();
+  for (const c of candidates) if (c.activity) perActivity.set(c.activity, (perActivity.get(c.activity) || 0) + 1);
+  const askedPerActivity = new Map<string, number>();
+  const covered = new Set<string>(); // activity|destination already searched, by any term
+  for (const d of FL_DESTINATIONS) for (const t of FL_TERMS) {
+    if (!state.queries[`${t.term} ${d.name} FL`]) continue;
+    askedPerActivity.set(t.activity, (askedPerActivity.get(t.activity) || 0) + 1);
+    covered.add(t.activity + "|" + d.name);
+  }
+  const measured = [...askedPerActivity].map(([a, n]) => (perActivity.get(a) || 0) / n);
+  const prior = measured.length ? measured.reduce((x, y) => x + y, 0) / measured.length : 3;
+  const value = (activity: string) => (askedPerActivity.get(activity) ? (perActivity.get(activity) || 0) / askedPerActivity.get(activity)! : prior);
+
+  type Cell = { q: string; d: (typeof FL_DESTINATIONS)[number]; t: (typeof FL_TERMS)[number]; fresh: boolean };
+  const cells: Cell[] = [];
+  for (const d of FL_DESTINATIONS) for (const t of FL_TERMS) {
+    const q = `${t.term} ${d.name} FL`;
+    const e = state.queries[q];
+    if (e && Date.now() - Date.parse(e.at) <= refreshMs) continue;
+    cells.push({ q, d, t, fresh: !e });
+  }
+  const score = (c: Cell) => {
+    let v = value(c.t.activity);
+    const nearDone = FL_DESTINATIONS.some((o) => o.name !== c.d.name && covered.has(c.t.activity + "|" + o.name) && km(o, c.d) <= 35);
+    if (nearDone) v *= 0.3;
+    if (covered.has(c.t.activity + "|" + c.d.name)) v *= 0.5;
+    // Measured yields came from the coast. Inland towns do not have fishing charters, jet skis or dolphin tours
+    // worth a search; airboats are the exception, they run inland.
+    if (INLAND.test(c.d.name) && /fishing|boat|jet-ski|paddle|kayak|snorkel|dolphin|sunset|parasail|scuba/.test(c.t.activity)) v *= 0.25;
+    return (c.fresh ? 1000 : 0) + v;
+  };
+  const out: string[] = [];
+  const left = new Set(cells);
+  while (out.length < budget && left.size) {
+    let best: Cell | null = null, bestScore = -Infinity;
+    for (const c of left) { const sc = score(c); if (sc > bestScore) { bestScore = sc; best = c; } }
+    if (!best) break;
+    left.delete(best);
+    out.push(best.q);
+    covered.add(best.t.activity + "|" + best.d.name);
+  }
+  return out;
+}
+
 export async function refreshBrave(state: BraveState, opts: { key: string | undefined; budget: number; refreshDays?: number; log?: (m: string) => void }): Promise<BraveRunStats> {
   const log = opts.log || console.log;
   if (!opts.key) {
@@ -99,10 +165,8 @@ export async function refreshBrave(state: BraveState, opts: { key: string | unde
   }
   const refreshMs = (opts.refreshDays ?? 90) * 86_400_000;
   const all = FL_DESTINATIONS.flatMap((d) => FL_TERMS.map((t) => `${t.term} ${d.name} FL`));
-  const due = all
-    .filter((q) => !state.queries[q] || Date.now() - Date.parse(state.queries[q].at) > refreshMs)
-    .sort((a, b) => (state.queries[a] ? Date.parse(state.queries[a].at) : 0) - (state.queries[b] ? Date.parse(state.queries[b].at) : 0));
-  log(`web: ${all.length} queries in the grid, ${due.length} due, budget ${opts.budget} this run`);
+  const due = pickQueries(state, opts.budget, refreshMs);
+  log(`web: ${all.length} queries in the grid, ${due.length} picked by expected yield for a budget of ${opts.budget}`);
   const stats: BraveRunStats = { spent: 0, failed: 0 };
   let limited = 0;
   for (const q of due.slice(0, opts.budget)) {
