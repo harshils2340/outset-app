@@ -72,7 +72,8 @@
 }
 
 *{box-sizing:border-box;}
-html,body{max-width:100%;overflow-x:hidden;}
+/* clip, not hidden: hidden turns html and body into scroll containers, which stops the booking card sticking. */
+html,body{max-width:100%;overflow-x:clip;}
 body{
   margin:0; background:var(--ground); color:var(--ink);
   font-family:var(--f-body); font-size:15px; line-height:1.45;
