@@ -41,7 +41,11 @@ const braveBudget = Math.max(0, Number(arg("brave-budget", process.env.BRAVE_MAX
 const inCloud = !!(process.env.CI || process.env.GITHUB_ACTIONS || process.env.RENDER || process.env.OUTSET_PIPELINE);
 if (!inCloud) {
   // The founder's Mac froze under crawls started from agent sessions. A statewide run belongs on a runner.
-  const small = (!sources.has("chains") || (onlyChains.length > 0 && onlyChains.length <= 3)) && (!sources.has("web") || !process.env.BRAVE_SEARCH_API_KEY);
+  // The web source only calls the Brave Search API, one request a second, and never fetches an operator's site or
+  // starts a browser, so it cannot load the CPU the way the chain and map sources can. It may run here on its own,
+  // which is how discovery continues while GitHub Actions is unavailable. Chains and OpenStreetMap stay blocked.
+  const webOnly = sources.size === 1 && sources.has("web");
+  const small = webOnly || ((!sources.has("chains") || (onlyChains.length > 0 && onlyChains.length <= 3)) && (!sources.has("web") || !process.env.BRAVE_SEARCH_API_KEY));
   if (!small) {
     console.error("Blocked on this machine: statewide Florida discovery runs on GitHub Actions (discover-florida.yml).");
     console.error("Locally only a correctness test is allowed: --sources=chains --chains=<at most three ids>, or --sources=osm.");

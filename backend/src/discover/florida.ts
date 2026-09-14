@@ -37,6 +37,26 @@ export const FL_DESTINATIONS: Destination[] = [
   { name: "Vero Beach", lat: 27.6386, lon: -80.3973 },
   { name: "Boca Raton", lat: 26.3683, lon: -80.1289 },
   { name: "Delray Beach", lat: 26.4615, lon: -80.0728 },
+  // Added 14 September 2026 for the second free credit: coastal and nature towns that sell experiences, each more
+  // than 20 km from a destination above so their searches do not overlap.
+  { name: "Anna Maria Island", lat: 27.5314, lon: -82.7343 },
+  { name: "Venice", lat: 27.0998, lon: -82.4543 },
+  { name: "Punta Gorda", lat: 26.9298, lon: -82.0454 },
+  { name: "Sanibel", lat: 26.4483, lon: -82.0223 },
+  { name: "Marco Island", lat: 25.9412, lon: -81.7184 },
+  { name: "Everglades City", lat: 25.8573, lon: -81.3867 },
+  { name: "Homestead", lat: 25.4687, lon: -80.4776 },
+  { name: "Big Pine Key", lat: 24.6699, lon: -81.3540 },
+  { name: "Jupiter", lat: 26.9342, lon: -80.0942 },
+  { name: "Stuart", lat: 27.1975, lon: -80.2528 },
+  { name: "New Smyrna Beach", lat: 29.0258, lon: -80.9270 },
+  { name: "Amelia Island", lat: 30.6696, lon: -81.4626 },
+  { name: "Crystal River", lat: 28.9025, lon: -82.5926 },
+  { name: "Tarpon Springs", lat: 28.1461, lon: -82.7568 },
+  { name: "Santa Rosa Beach", lat: 30.3960, lon: -86.2288 },
+  { name: "Apalachicola", lat: 29.7255, lon: -84.9830 },
+  { name: "Ocala", lat: 29.1872, lon: -82.1401 },
+  { name: "Clermont", lat: 28.5494, lon: -81.7729 },
 ];
 
 /** Search term, the Outset category it lands in, a finer activity label, and words a relevant result must mention. */
@@ -81,6 +101,13 @@ export const FL_TERMS: ExperienceTerm[] = [
   { term: "hot air balloon", kind: "balloon", activity: "hot-air-balloon", must: /balloon/i },
   { term: "skydiving", kind: "skydive", activity: "skydiving", must: /skydiv|tandem/i },
   { term: "zipline", kind: "zipline", activity: "zipline", must: /zip ?line|zip/i },
+  // Florida-specific experiences the first grid missed.
+  { term: "manatee tour", kind: "cruise", activity: "manatee-tour", must: /manatee/i },
+  { term: "sandbar boat tour", kind: "cruise", activity: "sandbar-tour", must: /sandbar|sand bar|island hop/i },
+  { term: "eco tour", kind: "tour", activity: "eco-tour", must: /eco|nature|wildlife|mangrove|everglades/i },
+  { term: "surf lessons", kind: "surf", activity: "surf-lessons", must: /surf/i },
+  { term: "scuba diving", kind: "scuba", activity: "scuba", must: /scuba|dive|diving/i },
+  { term: "party boat", kind: "pontoon", activity: "party-boat", must: /party|tiki|booze|pontoon|cruise/i },
 ];
 
 const toRad = (d: number) => (d * Math.PI) / 180;
