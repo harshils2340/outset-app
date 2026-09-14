@@ -57,19 +57,18 @@ if (!existsSync(dbPath)) {
 const db = new DatabaseSync(dbPath, { readOnly: true });
 db.exec("PRAGMA busy_timeout = 120000");
 
-// "Populated" means a guest can see what this place sells and what it costs. An operator with offerings but
-// no price on any of them is still a name and an address, so it belongs in the queue.
+// Every operator with a website, not only the ones without a priced menu. A menu from a booking widget or
+// an extraction is better than a crawl's, and the catalog merge keeps it, but those listings still lack what
+// only the site says: opening hours, what is included, the meeting point, the cancellation policy. So they
+// are read too, after every listing that has no menu at all.
 const SELECT = `
   SELECT o.id, o.domain, o.website, o.name, o.icon_key AS art, o.family, o.region,
-         o.review_count AS reviews, (o.metro_id IS NOT NULL) AS metro
+         o.review_count AS reviews, (o.metro_id IS NOT NULL) AS metro,
+         EXISTS (SELECT 1 FROM offerings f WHERE f.operator_id = o.id AND f.price_cents IS NOT NULL AND f.price_cents > 0) AS priced
     FROM operators o
    WHERE o.origin != 'demo'
      AND o.website IS NOT NULL AND o.website != ''
      AND o.name IS NOT NULL AND length(o.name) >= 3
-     AND NOT EXISTS (
-           SELECT 1 FROM offerings f
-            WHERE f.operator_id = o.id AND f.price_cents IS NOT NULL AND f.price_cents > 0
-         )
 `;
 
 const total = (db.prepare(`SELECT count(*) AS n FROM (${SELECT})`).get() as { n: number }).n;
@@ -80,7 +79,8 @@ const total = (db.prepare(`SELECT count(*) AS n FROM (${SELECT})`).get() as { n:
 const rows = db
   .prepare(
     `${SELECT}
-     ORDER BY EXISTS (SELECT 1 FROM sources s WHERE s.operator_id = o.id AND s.extractor = 'site-structure') ASC,
+     ORDER BY priced ASC,
+              EXISTS (SELECT 1 FROM sources s WHERE s.operator_id = o.id AND s.extractor = 'site-structure') ASC,
               metro DESC,
               o.review_count DESC NULLS LAST,
               o.name ASC
@@ -105,5 +105,5 @@ const bytes = Buffer.byteLength(JSON.stringify(queue));
 const byRegion = new Map<string, number>();
 for (const q of queue) byRegion.set(q.region || "?", (byRegion.get(q.region || "?") || 0) + 1);
 const top = [...byRegion.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8);
-console.log(`${total} operators have a website and no priced offering. Wrote ${queue.length} to ${outPath} (${(bytes / 1e6).toFixed(2)} MB).`);
+console.log(`${total} operators have a website (unpriced first). Wrote ${queue.length} to ${outPath} (${(bytes / 1e6).toFixed(2)} MB).`);
 console.log("Biggest regions in the queue: " + top.map(([r, n]) => `${r} ${n}`).join(", "));
