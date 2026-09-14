@@ -52,7 +52,15 @@
 /* ---- title row ---- */
 .altitlerow{display:flex;align-items:flex-end;justify-content:space-between;gap:24px;padding:24px 0 24px;}
 .altitle{margin:0;font-family:var(--f-display);font-size:26px;line-height:30px;font-weight:600;letter-spacing:-.01em;color:var(--ink);min-width:0;}
+.altitlewrap{display:flex;align-items:center;flex-wrap:wrap;gap:8px 12px;min-width:0;}
 .alactions{display:flex;gap:4px;flex:none;margin-right:-8px;}
+
+/* ---- founder-only website link (lib/admin.ts); never rendered for guests ---- */
+.adminsite{display:inline-flex;align-items:center;gap:4px;flex:none;padding:3px 9px;border:1px dashed #B7791F;border-radius:999px;background:#FFF7E6;color:#7A4A0B;font:600 12px/16px var(--f-body, inherit);text-decoration:none;white-space:nowrap;}
+.adminsite:hover{background:#FDEBC8;}
+.adminsite:focus-visible{outline:2px solid #7A4A0B;outline-offset:2px;}
+.adminsite.icon{position:absolute;z-index:3;width:28px;height:28px;padding:0;justify-content:center;border-style:dashed;box-shadow:0 1px 3px rgba(0,0,0,.18);}
+.adminsite.icon svg{width:16px;height:16px;}
 .altextbtn{display:inline-flex;align-items:center;gap:8px;padding:8px;border-radius:8px;font-size:14px;font-weight:600;color:var(--ink);}
 .altextbtn span{text-decoration:underline;text-underline-offset:2px;}
 .altextbtn svg{width:16px;height:16px;stroke-width:2;}
@@ -194,6 +202,12 @@
 .alvariant{display:flex;align-items:center;gap:12px;width:100%;padding:12px 0;border-top:1px solid var(--line);text-align:left;font-size:14px;line-height:18px;color:var(--ink);}
 .alvariant:first-child{border-top:none;}
 .alvariant > span:nth-child(2){flex:1;min-width:0;}
+.alvarlabel{display:flex;flex-direction:column;gap:2px;}
+.alvarnote{font-size:12px;line-height:16px;color:var(--ink-faint);}
+.alsvcexplain{margin:0;font-size:13px;line-height:18px;color:var(--ink-faint);overflow-wrap:anywhere;}
+.alsvcexplain .explainitem{display:block;}
+.alsvcexplain b{font-weight:500;color:var(--ink);}
+.almoreopts{align-self:flex-start;margin-top:4px;padding:10px 0 2px;border-top:1px solid var(--line);width:100%;text-align:left;font-size:14px;line-height:18px;font-weight:600;color:var(--ink);text-decoration:underline;text-underline-offset:2px;}
 .alvariant b{font-weight:600;white-space:nowrap;font-variant-numeric:tabular-nums;}
 .alask{font-style:normal;font-weight:400;white-space:nowrap;color:var(--ink-soft);}
 .aloptrow > .alask{flex:none;font-size:14px;line-height:20px;}
@@ -225,6 +239,11 @@
 .aldealbody b{display:flex;flex-wrap:wrap;align-items:center;gap:8px;font-size:16px;line-height:20px;font-weight:600;}
 .aldealbody b em{font-style:normal;font-size:12px;line-height:16px;font-weight:600;padding:2px 8px;border-radius:4px;background:var(--accent);color:#fff;}
 .aldealbody small{font-size:14px;line-height:18px;color:var(--ink-soft);}
+.aldeals li .aldealtitle{font-weight:500;}
+.aldealdetail{font-size:14px;line-height:20px;color:var(--ink-soft);overflow-wrap:anywhere;}
+.aldealmeta{display:flex;flex-wrap:wrap;align-items:center;gap:4px 12px;}
+.aldealcode{font-size:14px;line-height:18px;color:var(--ink-soft);}
+.aldealcode b{display:inline;font-size:14px;font-weight:600;color:var(--ink);letter-spacing:.02em;}
 .aldealdays{display:flex;gap:4px;flex-wrap:wrap;margin-top:4px;}
 .aldealdays i{font-style:normal;font-size:12px;line-height:1;font-weight:600;padding:6px 8px;border-radius:999px;border:1px solid var(--line-strong);color:var(--ink-faint);}
 .aldealdays i.hit{border-color:var(--ink);color:var(--ink);}

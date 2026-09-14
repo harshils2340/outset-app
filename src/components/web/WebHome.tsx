@@ -19,7 +19,7 @@ import { Photo } from "../art/Photo";
 import { useNearNow } from "./NearNow";
 import { Mark } from "../layout/Mark";
 import { Markup } from "../Markup";
-import { tidyDuration } from "./WebListing";
+import { AdminSiteLink, liteDealTitle, tidyDuration } from "./WebListing";
 
 
 /** "1 place", "2,418 places". */
@@ -215,7 +215,8 @@ function CompareCheck({ id, title, small }: { id: string; title: string; small?:
 function cardBadge(u: Unclaimed, open: boolean): string | null {
   const score = publicRating(u);
   if (score && score.rating >= 4.8 && score.reviews >= 50) return "Top rated";
-  if (dealToday(u)) return "Deal today";
+  // A titled deal gets its own line under the card; the pill stays for a deal with no title.
+  if (dealToday(u) && !liteDealTitle(u.deal)) return "Deal today";
   if (open) return "Open now";
   return null;
 }
@@ -277,6 +278,8 @@ function Card({ u, onOpen, near, rail }: { u: Unclaimed; onOpen: (id: string) =>
   }, [playing, gallery.length]);
   useEffect(() => () => { if (hoverTimer.current) window.clearTimeout(hoverTimer.current); }, []);
   const badge = cardBadge(u, !!openSt?.open);
+  const dealTitle = liteDealTitle(u.deal);
+  const dealOn = !!dealTitle && dealToday(u);
   const priced = from != null ? u.options.find((o) => o.price === from) : undefined;
   const per = (priced?.per || "").replace(/^\//, "").trim();
   const where = (() => {
@@ -307,6 +310,8 @@ function Card({ u, onOpen, near, rail }: { u: Unclaimed; onOpen: (id: string) =>
     // The hover lives on the whole card: a transparent button covers it for the click, so the photo never sees the pointer.
     <div className="ah-card" onPointerEnter={startPreview} onPointerLeave={stopPreview}>
       <button type="button" className="ah-card-hit" onClick={() => onOpen(u.id)} aria-label={u.title + (score ? ", rated " + score.rating.toFixed(1) : "")} />
+      {/* Founder view only: sits above the card's click layer so it opens the site, not the listing. */}
+      <AdminSiteLink item={u} variant="icon" />
       <div className={"ah-card-photo" + (playing ? " is-playing" : "")} ref={photoBox}>
         {/* The cover is always the bottom layer; the other photos are stacked above it and fade in when shown. */}
         <Photo key={gallery[playing ? 0 : pic] || "cover"} src={gallery[playing ? 0 : pic]} video={(playing ? 0 : pic) === 0 ? u.video : undefined} kind={u.art} id={"w" + u.id} alt="" />
@@ -342,6 +347,12 @@ function Card({ u, onOpen, near, rail }: { u: Unclaimed; onOpen: (id: string) =>
         </div>
         <div className="ah-card-sub">{where}</div>
         <div className="ah-card-sub">{detail}</div>
+        {dealTitle ? (
+          <div className={"ah-card-deal" + (dealOn ? " today" : "")}>
+            {dealOn ? <span className="ah-card-dealtag">Today</span> : null}
+            <span className="ah-card-dealtext">{dealTitle}</span>
+          </div>
+        ) : null}
         <div className="ah-card-price">
           {from == null ? (
             <span>Request to book</span>

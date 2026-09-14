@@ -61,7 +61,7 @@ import { fmtRating } from "../explore/UnclaimedCard";
 import { applyFilters, browseList, nearFirst } from "../explore/feed";
 import { getPrefs, setPrefs, toggleSaved, usePrefs, type FeedFilters } from "../explore/prefs";
 import { SlotCalendar } from "./SlotCalendar";
-import { ReviewCard, TYPE_NAME, bookableServices, tidyDuration, tidyHours, possessive, shownReviews, splitIncluded, tidyAddress, tidyCancel, tidyLength, tidyLine, tidyName } from "../web/WebListing";
+import { AdminSiteLink, ExplainLine, ReviewCard, TYPE_NAME, bookableServices, dealShown, isStandardOnly, optionLength, splitVariants, variantNote, tidyDuration, tidyHours, possessive, shownReviews, splitIncluded, tidyAddress, tidyCancel, tidyLength, tidyLine, tidyName } from "../web/WebListing";
 
 const QTY_MAX = 8;
 
@@ -320,6 +320,7 @@ function RequestBody({
   const [callOpen, setCallOpen] = useState(false);
   const [addonIdx, setAddonIdx] = useState<number[]>([]);
   const [openSvc, setOpenSvc] = useState<string | null>(null);
+  const [moreSvc, setMoreSvc] = useState<string[]>([]);
   const extras = addonIdx.map((i) => (item.addons || [])[i]).filter(Boolean);
   const [guideOpen, setGuideOpen] = useState(false);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
@@ -344,7 +345,6 @@ function RequestBody({
   const day = dates[dateIdx];
   const p = priceUnclaimed(picked, qty, extras);
   const instant = !!(item.claimed && item.instant);
-  const whenLine = time ? [fmtDate(day), fmtTime(time), qty + (qty === 1 ? " person" : " people")].join(" · ") : "";
   const score = publicRating(item);
   const guestFav = !!score && score.rating >= 4.8 && score.reviews >= 100;
   const contact = contactFor(item);
@@ -715,6 +715,7 @@ function RequestBody({
 
           <div className="airtitle">
             <h1>{item.title}</h1>
+            <AdminSiteLink item={{ src: item.src, contact: contact || item.contact }} className="airadminsite" />
             <p>{subtitle}</p>
             {duration || age ? <p className="soft">{[duration, age ? "Ages " + age + "+" : null].filter(Boolean).join(" · ")}</p> : null}
           </div>
@@ -754,9 +755,10 @@ function RequestBody({
               <Markup html={ICONS.bolt} />
               <span>
                 <b>Today's deal{dealsNow.length > 1 ? "s" : ""}</b>
-                {dealsNow.map((d) => (
-                  <small key={d.text}>
-                    {tidyLine(d.text)}
+                {dealsNow.map((d, i) => (
+                  <small key={d.text + "|" + i}>
+                    {dealShown(d).title}
+                    {d.code ? " · code " + d.code : ""}
                     {d.end ? " · until " + clock12(d.end) : d.start ? " · from " + clock12(d.start) : ""}
                   </small>
                 ))}
@@ -860,16 +862,40 @@ function RequestBody({
                           </button>
                         ) : null}
                       </div>
+                      <ExplainLine explain={svc.explain} className="svcexplain" />
                       {svc.desc ? <p className="svcdesc">{openSvc === svc.name || cleanDesc(svc.desc).length <= 140 ? cleanDesc(svc.desc) : cleanDesc(svc.desc).slice(0, 140).replace(/\s+\S*$/, "") + "…"}</p> : null}
-                      {svc.variants.map((v) => (
-                        <button key={svc.name + v.optionIdx} type="button" className="addon" aria-pressed={optionIdx === v.optionIdx} onClick={() => setOptionIdx(v.optionIdx)}>
-                          <span className="tick radio" />
-                          <span className="txt">
-                            <b>{tidyLength(v.label)}</b>
-                          </span>
-                          <span className={"addonprice" + (v.price != null ? "" : " ask")}>{v.price != null ? priceWith(v.price, v.per) : "Price on request"}</span>
-                        </button>
-                      ))}
+                      {(() => {
+                        const key = svc.name + "|" + svcIdx;
+                        const { shown, hidden } = splitVariants(svc.variants, optionIdx, moreSvc.includes(key));
+                        const single = isStandardOnly(svc);
+                        return (
+                          <>
+                            {shown.map((v) => {
+                              const note = variantNote(v.explain, v.label);
+                              const length = single ? optionLength(item, v.optionIdx) : null;
+                              return (
+                                <button key={svc.name + v.optionIdx} type="button" className={"addon" + (single ? " single" : "")} aria-pressed={optionIdx === v.optionIdx} onClick={() => setOptionIdx(v.optionIdx)} aria-label={single ? tidyName(svc.name) : undefined}>
+                                  <span className="tick radio" />
+                                  <span className="txt">
+                                    {single ? (length ? <b>{length}</b> : null) : <b>{tidyLength(v.label)}</b>}
+                                    {note ? <small className="varnote">{note}</small> : null}
+                                  </span>
+                                  <span className={"addonprice" + (v.price != null ? "" : " ask")}>{v.price != null ? priceWith(v.price, v.per) : "Price on request"}</span>
+                                </button>
+                              );
+                            })}
+                            {hidden ? (
+                              <button type="button" className="svcmore" aria-expanded="false" onClick={() => setMoreSvc((c) => [...c, key])}>
+                                More options ({hidden})
+                              </button>
+                            ) : moreSvc.includes(key) && svc.variants.some((v) => v.moreOptions) ? (
+                              <button type="button" className="svcmore" aria-expanded="true" onClick={() => setMoreSvc((c) => c.filter((k) => k !== key))}>
+                                Fewer options
+                              </button>
+                            ) : null}
+                          </>
+                        );
+                      })()}
                     </div>
                   ))}
                 </div>
@@ -1060,29 +1086,39 @@ function RequestBody({
           {item.promos?.length ? (
             <Section title="Deals">
               <ul className="reqdeals">
-                {item.promos.map((d) => {
-                  const onToday = dealsNow.includes(d);
+                {item.promos.map((pr, prIdx) => {
+                  const onToday = dealsNow.includes(pr);
+                  const d = dealShown(pr);
                   return (
-                    <li key={d.text} className={onToday ? "on" : ""}>
-                      <span className="wdealchips" aria-label={dayLabel(d.days)}>
-                        {d.days.length ? (
-                          DAY_SHORT.map((dn, i) => (
-                            <i key={dn} className={d.days.includes(i) ? (i === today ? "hit today" : "hit") : ""}>
-                              {dn}
-                            </i>
-                          ))
-                        ) : (
-                          <i className={"hit" + (onToday ? " today" : "")}>Every day</i>
-                        )}
-                      </span>
+                    <li key={d.title + "|" + prIdx} className={onToday ? "on" : ""}>
                       <span className="wdealtext">
-                        {tidyLine(d.text)}
-                        {d.start || d.end ? (
-                          <small>
-                            {d.start ? clock12(d.start) : "Open"} to {d.end ? clock12(d.end) : "close"}
-                          </small>
-                        ) : null}
+                        <b className="wdealtitle">{d.title}</b>
+                        {onToday ? <em>Today</em> : null}
                       </span>
+                      {d.detail ? <p className="wdealdetail">{d.detail}</p> : null}
+                      {d.code || d.when ? (
+                        <span className="wdealmeta">
+                          {d.code ? <span>Code: <b>{d.code}</b></span> : null}
+                          {d.when ? <small>{d.when}</small> : null}
+                        </span>
+                      ) : null}
+                      {d.date ? (
+                        <span className="wdealchips">
+                          <i className={"hit" + (onToday ? " today" : "")}>{d.date}</i>
+                        </span>
+                      ) : (
+                        <span className="wdealchips" role="img" aria-label={dayLabel(d.days)}>
+                          {d.days.length ? (
+                            DAY_SHORT.map((dn, i) => (
+                              <i key={dn} className={d.days.includes(i) ? (i === today ? "hit today" : "hit") : ""}>
+                                {dn}
+                              </i>
+                            ))
+                          ) : (
+                            <i className={"hit" + (onToday ? " today" : "")}>Every day</i>
+                          )}
+                        </span>
+                      )}
                     </li>
                   );
                 })}

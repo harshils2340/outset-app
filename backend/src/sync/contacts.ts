@@ -1721,7 +1721,11 @@ export function syncCatalogToApp(): { path: string; count: number } {
       // The consolidated title, not a raw fragment, so the card and the listing's Deals section say the same thing.
       deal: (() => {
         const p = ((item.promos as { text: string; title?: string; days: number[] }[] | undefined) || []).find((x) => x.days.length);
-        return p ? p.days.join(",") + "|" + (p.title || p.text).slice(0, 40) : undefined;
+        // The title is short by construction; raw text is cut on a word so a card never shows "rentals on Sund".
+        const words = (p?.title || p?.text || "").split(/\s+/);
+        let label = "";
+        for (const w of words) { if ((label + " " + w).trim().length > 48) break; label = (label + " " + w).trim(); }
+        return p ? p.days.join(",") + "|" + (label || (p.title || p.text).slice(0, 48)) : undefined;
       })(),
       // Compact week from the published hours, so the home page can say "open now" without a detail file.
       hrs: (() => {

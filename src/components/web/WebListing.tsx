@@ -1,5 +1,5 @@
 import "../../styles/air-listing.css";
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode, type SyntheticEvent } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type KeyboardEvent as ReactKeyboardEvent, type ReactNode, type SyntheticEvent } from "react";
 import { apiConfig, fetchAvailability, type LiveAvailability } from "../../lib/api";
 import { GUIDES } from "../../data/guides";
 import { ICONS } from "../../data/icons";
@@ -16,6 +16,7 @@ import { DAY_SHORT, clock12, dayLabel, todaysDeals } from "../../lib/companyAgen
 import { fmtDistance, kmBetween, nearestLocation } from "../../lib/places";
 import { priceUnclaimed, serviceFeeLabel } from "../../lib/pricing";
 import { listingUrl } from "../../lib/site";
+import { adminWebsite, isAdmin, subscribeAdmin } from "../../lib/admin";
 import { dateKey, startOfToday } from "../../lib/dates";
 import { useApp } from "../../state/AppProvider";
 import { Photo } from "../art/Photo";
@@ -184,6 +185,106 @@ export function tidyName(text: string): string {
 export const isQuestion = (name: string) => /\?\s*$/.test(name.trim());
 export function bookableServices<T extends { name: string; desc?: string | null; variants: { price: number | null }[] }>(services: T[] | undefined): T[] {
   return (services || []).filter((svc) => !isQuestion(svc.name) || svc.variants.some((v) => v.price != null)).map((svc) => (isQuestion(svc.name) ? { ...svc, name: "Tickets", desc: null } : svc));
+}
+
+/* ---------- plain services, deals and the founder-only website link, shared with the phone sheet and cards ---------- */
+
+/** True while this browser has the admin view on (lib/admin.ts). Always false for guests and on the server. */
+export function useAdmin(): boolean {
+  return useSyncExternalStore(subscribeAdmin, isAdmin, () => false);
+}
+
+/**
+ * The operator's website, for Harshil comparing a listing with the real site. Renders nothing unless admin is on, so a
+ * guest never sees it. A click opens the site in a new tab and never reaches the card or listing underneath.
+ */
+export function AdminSiteLink({ item, variant = "text", className = "" }: { item: Pick<Unclaimed, "src" | "contact">; variant?: "text" | "icon"; className?: string }) {
+  const admin = useAdmin();
+  const href = admin ? adminWebsite(item) : null;
+  if (!href) return null;
+  const stop = (e: SyntheticEvent) => e.stopPropagation();
+  return (
+    <a
+      className={"adminsite" + (variant === "icon" ? " icon" : "") + (className ? " " + className : "")}
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      title={"Founder view: open " + href.replace(/^https:\/\/|\/$/g, "")}
+      aria-label={"Founder view: open the operator's website, " + href.replace(/^https:\/\/|\/$/g, "")}
+      onClick={stop}
+      onPointerDown={stop}
+      onKeyDown={stop}
+    >
+      {variant === "icon" ? <Markup html={I.globe} /> : <>Website <span aria-hidden="true">↗</span></>}
+    </a>
+  );
+}
+
+type Explain = { term: string; meaning: string };
+
+/** "What this means" under a service name: the jargon term in medium weight, its meaning in grey. Two at most. */
+export function ExplainLine({ explain, className }: { explain?: Explain[]; className: string }) {
+  const list = (explain || []).filter((e) => e.term && e.meaning).slice(0, 2);
+  if (!list.length) return null;
+  return (
+    <p className={className}>
+      <span className="vh">What this means: </span>
+      {list.map((e, i) => (
+        <span key={e.term} className="explainitem">
+          {i ? <span className="vh"> </span> : null}
+          <b>{e.term}:</b> {e.meaning}
+        </span>
+      ))}
+    </p>
+  );
+}
+
+/** A variant's own explained terms, as one small grey line. */
+export function variantNote(explain?: Explain[], label = ""): string {
+  // A tier called just "Full hookup" needs only the meaning under it, not the term again.
+  const same = (term: string) => term.trim().toLowerCase() === label.trim().toLowerCase();
+  return (explain || []).filter((e) => e.term && e.meaning).slice(0, 2).map((e) => (same(e.term) ? e.meaning : e.term + ": " + e.meaning)).join(" ");
+}
+
+/** A service priced once with no tier words of its own: the page prints only the price and length, not "Standard". */
+export function isStandardOnly(svc: { variants: { label: string }[] }): boolean {
+  return svc.variants.length === 1 && svc.variants[0].label.trim().toLowerCase() === "standard";
+}
+
+/** Tiers shown straight away, and those folded under "More options". The picked tier always stays visible. */
+export function splitVariants<V extends { optionIdx: number; moreOptions?: true }>(variants: V[], picked: number | null, open: boolean): { shown: V[]; hidden: number } {
+  const folded = variants.filter((v) => v.moreOptions);
+  if (open || !folded.length) return { shown: variants, hidden: 0 };
+  const shown = variants.filter((v) => !v.moreOptions || v.optionIdx === picked);
+  return { shown, hidden: variants.length - shown.length };
+}
+
+/** A length the option row states for a single-tier service: "2 hours", "90 min". Null when it states something else. */
+export function optionLength(item: Unclaimed, optionIdx: number): string | null {
+  const o = item.options[optionIdx];
+  const text = [o?.detail, o?.name].find((t) => t && /^\s*(?:about\s+)?\d+(?:\.\d+)?(?:\s*(?:-|to)\s*\d+(?:\.\d+)?)?\s*(?:hours?|hrs?|minutes?|mins?|days?|nights?)\.?\s*$/i.test(t));
+  return text ? tidyLength(text) : null;
+}
+
+export type DealShown = { title: string; detail: string; code: string | null; when: string | null; date: string | null; days: number[] };
+
+/** One deal as a card shows it. Older detail files carry only `text`; it becomes the title then. */
+export function dealShown(p: { text: string; days: number[]; start?: string; end?: string; title?: string; detail?: string; code?: string; date?: string }): DealShown {
+  const title = tidyLine(p.title || p.text);
+  const detailRaw = p.title ? (p.detail || "").trim() : "";
+  const detail = detailRaw && detailRaw.toLowerCase() !== title.toLowerCase() ? detailRaw : "";
+  const when = p.start || p.end ? (p.start ? clock12(p.start) : "Opening") + " to " + (p.end ? clock12(p.end) : "close") : null;
+  return { title, detail, code: p.code || null, when, date: p.date || null, days: p.date ? [] : p.days };
+}
+
+/** The deal title a lite record carries after its day list ("2|Half-price Tuesdays"). A title the sync cut mid-word ends on "…". */
+export function liteDealTitle(deal?: string): string | null {
+  if (!deal || !deal.includes("|")) return null;
+  let t = deal.slice(deal.indexOf("|") + 1).trim();
+  if (!t) return null;
+  // Lite titles are capped at 40 characters; a word cut there loses its tail rather than showing "on Sund".
+  if (t.length >= 40) t = t.replace(/[\s,;:]+\S*$/, "").replace(/[\s,;:]+(?:on|and|to|the|a|of|for|with)$/i, "") + "…";
+  return t;
 }
 
 /** A variant label that is only a length: "1.5 hour" reads "1.5 hours", "1 hours" reads "1 hour". */
@@ -358,6 +459,7 @@ const I = {
   sun: svg('<circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4"/>'),
   towel: svg('<path d="M6 3h12v18H6z"/><path d="M6 15h12M9 18h6"/>'),
   sparkle: svg('<path d="M12 3.5c.5 4.3 2.3 6.4 6.5 7-4.2.6-6 2.7-6.5 7-.5-4.3-2.3-6.4-6.5-7 4.2-.6 6-2.7 6.5-7z"/><path d="M19 3v3M17.5 4.5h3"/>'),
+  globe: svg('<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.5 3.8 5.5 3.8 9s-1.3 6.5-3.8 9c-2.5-2.5-3.8-5.5-3.8-9S9.5 5.5 12 3z"/>'),
   phone: svg('<path d="M21 16.4v2.9a2 2 0 0 1-2.2 2 19.5 19.5 0 0 1-8.5-3 19.2 19.2 0 0 1-5.9-5.9 19.5 19.5 0 0 1-3-8.5A2 2 0 0 1 3.4 1.8h2.9a2 2 0 0 1 2 1.7l.5 3.1a2 2 0 0 1-.6 1.8L7 9.6a15.5 15.5 0 0 0 6 6l1.2-1.2a2 2 0 0 1 1.8-.6l3.1.5a2 2 0 0 1 1.9 2.1z"/>'),
   laurelL: '<svg viewBox="0 0 20 32" fill="currentColor" aria-hidden="true"><path d="M15.7 30.8c-4.6-1.8-8.5-5.3-10.6-9.9a17 17 0 0 1-1.3-11C4.4 6.6 6 3.6 8.3 1.3l1.2 1a15.6 15.6 0 0 0-4.1 8.1 15.6 15.6 0 0 0 1.1 9.7c1.9 4.2 5.5 7.4 9.7 9.1z"/><path d="M4.5 9.3C2.6 8.4 1.5 6.3 1.6 4.2c2 .8 3.3 2.6 3.4 4.8zM3.9 14.6c-2.1-.4-3.6-2.2-3.9-4.3 2.1.3 3.7 1.9 4.2 3.9zM4.8 19.8C2.7 19.8 1 18.3.3 16.3c2.1-.1 4 1.3 4.7 3.3zM7.2 24.5c-2.1.3-4.1-.8-5.1-2.6 2.1-.4 4.2.5 5.3 2.3zM10.6 28.4c-2 .8-4.2.2-5.6-1.3 2-.8 4.2-.3 5.6 1.2z"/></svg>',
 };
@@ -857,6 +959,7 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
   }, [item.id, item.options.length]);
   const [addonIdx, setAddonIdx] = useState<number[]>([]);
   const [openSvc, setOpenSvc] = useState<string | null>(null);
+  const [moreSvc, setMoreSvc] = useState<string[]>([]);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
   const [done, setDone] = useState(false);
   const [guest, setGuest] = useState<{ name: string; phone: string; email?: string }>(() => {
@@ -1042,7 +1145,7 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
   const rows: { icon: string; title: string; text: string }[] = [];
   if (dealsNow.length) {
     const d = dealsNow[0];
-    rows.push({ icon: I.tag, title: "Deal today", text: tidyLine(d.text) + (d.end ? ", until " + clock12(d.end) : d.start ? ", from " + clock12(d.start) : "") });
+    rows.push({ icon: I.tag, title: "Deal today", text: dealShown(d).title + (d.code ? ", code " + d.code : "") + (d.end ? ", until " + clock12(d.end) : d.start ? ", from " + clock12(d.start) : "") });
   }
   if (live) rows.push({ icon: I.calendar, title: "Live times from their calendar", text: "Start times come straight from " + possessive(item.title) + " own booking system." });
   if (openNow?.open) {
@@ -1234,7 +1337,10 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
         ) : null}
 
         <div className="altitlerow" ref={media.length ? undefined : heroRef}>
-          <h1 className="altitle">{item.title}</h1>
+          <div className="altitlewrap">
+            <h1 className="altitle">{item.title}</h1>
+            <AdminSiteLink item={{ src: item.src, contact: contact || item.contact }} />
+          </div>
           <div className="alactions">
             <button type="button" className="altextbtn" onClick={() => void share()}>
               <Markup html={I.share} /> <span>Share</span>
@@ -1391,6 +1497,7 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
                           </div>
                         ) : null}
                         <b className="alsvcname">{tidyName(svc.name)}</b>
+                        <ExplainLine explain={svc.explain} className="alsvcexplain" />
                         {desc ? (
                           <p className="alsvcdesc">
                             {openSvc === svc.name || !long ? desc : desc.slice(0, 140).replace(/\s+\S*$/, "") + "…"}
@@ -1398,13 +1505,38 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
                           </p>
                         ) : null}
                         <div className="alvariants">
-                          {svc.variants.map((v) => (
-                            <button key={v.optionIdx} type="button" className="alvariant" aria-pressed={optionIdx === v.optionIdx} onClick={() => setOptionIdx(v.optionIdx)}>
-                              <span className="alradio" aria-hidden="true" />
-                              <span>{tidyLength(v.label)}</span>
-                              {v.price != null ? <b>{priceWith(v.price, v.per)}</b> : <em className="alask">Price on request</em>}
-                            </button>
-                          ))}
+                          {(() => {
+                            const key = svc.name + "|" + svcIdx;
+                            const { shown, hidden } = splitVariants(svc.variants, optionIdx, moreSvc.includes(key));
+                            const single = isStandardOnly(svc);
+                            return (
+                              <>
+                                {shown.map((v) => {
+                                  const note = variantNote(v.explain, v.label);
+                                  const length = single ? optionLength(item, v.optionIdx) : null;
+                                  return (
+                                    <button key={v.optionIdx} type="button" className={"alvariant" + (single ? " single" : "")} aria-pressed={optionIdx === v.optionIdx} onClick={() => setOptionIdx(v.optionIdx)} aria-label={single ? tidyName(svc.name) : undefined}>
+                                      <span className="alradio" aria-hidden="true" />
+                                      <span className="alvarlabel">
+                                        {single ? (length || "") : tidyLength(v.label)}
+                                        {note ? <small className="alvarnote">{note}</small> : null}
+                                      </span>
+                                      {v.price != null ? <b>{priceWith(v.price, v.per)}</b> : <em className="alask">Price on request</em>}
+                                    </button>
+                                  );
+                                })}
+                                {hidden ? (
+                                  <button type="button" className="almoreopts" aria-expanded="false" onClick={() => setMoreSvc((c) => [...c, key])}>
+                                    More options ({hidden})
+                                  </button>
+                                ) : moreSvc.includes(key) && svc.variants.some((v) => v.moreOptions) ? (
+                                  <button type="button" className="almoreopts" aria-expanded="true" onClick={() => setMoreSvc((c) => c.filter((k) => k !== key))}>
+                                    Fewer options
+                                  </button>
+                                ) : null}
+                              </>
+                            );
+                          })()}
                         </div>
                       </div>
                     );
@@ -1463,20 +1595,30 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
                 <h2>Deals</h2>
                 <p className="alsecsub">From {possessive(item.title)} own site. Days are in their local time.</p>
                 <ul className="aldeals">
-                  {item.promos.map((pr) => {
+                  {item.promos.map((pr, prIdx) => {
                     const on = dealsNow.includes(pr);
+                    const d = dealShown(pr);
                     return (
-                      <li key={pr.text} className={on ? "on" : ""}>
+                      <li key={d.title + "|" + prIdx} className={on ? "on" : ""}>
                         <span className="alamenicon"><Markup html={I.tag} /></span>
                         <span className="aldealbody">
-                          <b>{tidyLine(pr.text)}{on ? <em>Today</em> : null}</b>
-                          {/* The day chips already show the days; the grey line is only for a time window. */}
-                          {pr.start || pr.end ? <small>{(pr.start ? clock12(pr.start) : "Open") + " to " + (pr.end ? clock12(pr.end) : "close")}</small> : null}
-                          <span className="aldealdays" role="img" aria-label={dayLabel(pr.days)}>
-                            {pr.days.length ? DAY_SHORT.map((d, i) => (
-                              <i key={d} className={pr.days.includes(i) ? (i === today ? "hit today" : "hit") : ""}>{d}</i>
-                            )) : <i className={"hit" + (on ? " today" : "")}>Every day</i>}
-                          </span>
+                          <b className="aldealtitle">{d.title}{on ? <em>Today</em> : null}</b>
+                          {d.detail ? <span className="aldealdetail">{d.detail}</span> : null}
+                          {d.code || d.when ? (
+                            <span className="aldealmeta">
+                              {d.code ? <span className="aldealcode">Code: <b>{d.code}</b></span> : null}
+                              {d.when ? <small>{d.when}</small> : null}
+                            </span>
+                          ) : null}
+                          {d.date ? (
+                            <span className="aldealdays"><i className={"hit" + (on ? " today" : "")}>{d.date}</i></span>
+                          ) : (
+                            <span className="aldealdays" role="img" aria-label={dayLabel(d.days)}>
+                              {d.days.length ? DAY_SHORT.map((dn, i) => (
+                                <i key={dn} className={d.days.includes(i) ? (i === today ? "hit today" : "hit") : ""}>{dn}</i>
+                              )) : <i className={"hit" + (on ? " today" : "")}>Every day</i>}
+                            </span>
+                          )}
                         </span>
                       </li>
                     );

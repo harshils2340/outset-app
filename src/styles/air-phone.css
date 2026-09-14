@@ -140,6 +140,9 @@
 .aircardrate svg{margin-top:-2px;}
 .aircardrate span{color:var(--air-grey);}
 .aircardline{margin:2px 0 0;font-size:15px;line-height:19px;color:var(--air-grey);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.aircarddeal{display:flex;align-items:center;gap:6px;min-width:0;margin:2px 0 0;font-size:15px;line-height:19px;font-weight:500;color:var(--accent);}
+.aircarddealtext{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.aircarddealtag{flex:none;padding:1px 6px;border-radius:4px;background:var(--accent);color:var(--on-accent, #fff);font-size:11px;line-height:15px;font-weight:600;}
 .aircardprice{margin:6px 0 0;font-size:15px;line-height:19px;color:var(--ink);}
 .aircardprice b{font-weight:600;}
 .aircardprice .from{color:var(--ink);}
@@ -308,6 +311,11 @@
 #screen .airsec .addon[aria-pressed="true"] .tick{background:var(--ink);border-color:var(--ink);color:var(--surface);}
 #screen .airsec .addon[aria-pressed="true"] .tick.radio{background:var(--surface);border:7px solid var(--ink);}
 .addonprice{flex:none;max-width:45%;text-align:right;font-size:15px;font-weight:600;color:var(--ink);font-variant-numeric:tabular-nums;}
+#screen .airsec .svcexplain{margin:0 0 6px;font-size:13px;line-height:18px;color:var(--air-grey);overflow-wrap:anywhere;}
+#screen .airsec .svcexplain .explainitem{display:block;}
+#screen .airsec .svcexplain b{font-weight:500;color:var(--ink);}
+#screen .airsec .addon .txt small.varnote{font-size:12px;line-height:16px;margin-top:2px;}
+#screen .airsec .svcmore{display:block;width:100%;padding:12px 0 14px;text-align:left;font-size:15px;font-weight:600;color:var(--ink);text-decoration:underline;text-underline-offset:2px;}
 #screen .airsec .svc .svcpic{width:calc(100% + 32px);margin:-4px -16px 0;height:160px;border-radius:0;}
 
 /* date picker and guests inside the listing */
@@ -383,6 +391,17 @@
 #screen .airsec .reqdeals li{border-color:var(--line-strong);padding:16px;}
 #screen .airsec .reqdeals li.on{border-color:var(--accent);background:var(--accent-tint);}
 #screen .airsec .reqdeals .wdealtext{font-size:16px;}
+#screen .airsec .reqdeals .wdealtitle{font-size:16px;font-weight:500;line-height:20px;color:var(--ink);}
+#screen .airsec .reqdeals .wdealdetail{margin:0;font-size:14px;line-height:20px;color:var(--air-grey);overflow-wrap:anywhere;}
+#screen .airsec .reqdeals .wdealmeta{display:flex;flex-wrap:wrap;align-items:center;gap:4px 12px;font-size:14px;line-height:18px;color:var(--air-grey);}
+#screen .airsec .reqdeals .wdealmeta b{font-weight:600;color:var(--ink);letter-spacing:.02em;}
+#screen .airsec .reqdeals .wdealmeta small{font-size:14px;}
+#screen .airsec .reqdeals .wdealchips i.hit{background:var(--ink);color:var(--surface);}
+#screen .airsec .reqdeals .wdealchips i.hit.today{background:var(--accent);color:var(--on-accent);}
+
+/* founder-only website link beside the title and on cards (lib/admin.ts) */
+.airtitle .airadminsite{margin-top:8px;}
+.aircard .adminsite.icon{right:12px;bottom:12px;}
 
 /* things to know */
 .airknows{display:flex;flex-direction:column;}

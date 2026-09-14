@@ -318,8 +318,16 @@ export function promoOn(p: Promo, clock: { day: number; minutes: number }): bool
 /** The deals running right now in the operator's own time zone. Nothing when the site published none. */
 export function todaysDeals(item: Unclaimed, now = new Date()): Promo[] {
   if (!item.promos?.length) return [];
-  const clock = clockIn(zoneFor(item), now);
-  return item.promos.filter((p) => promoOn(p, clock));
+  const zone = zoneFor(item);
+  const clock = clockIn(zone, now);
+  // A dated deal ("May 10") runs on that date only: its empty day list does not mean every day.
+  let dateToday = "";
+  try {
+    dateToday = now.toLocaleDateString("en-US", { month: "long", day: "numeric", ...(zone ? { timeZone: zone } : {}) });
+  } catch {
+    dateToday = now.toLocaleDateString("en-US", { month: "long", day: "numeric" });
+  }
+  return item.promos.filter((p) => (p.date ? p.date.replace(/,\s*\d{4}$/, "") === dateToday && promoOn({ ...p, days: [] }, clock) : promoOn(p, clock)));
 }
 
 /** Lite records carry the first deal as "3,5|Glow nights $25". True when that deal names today in the operator's zone. */
@@ -933,6 +941,13 @@ function meetAnswer(ctx: CompanyContext, q: string): { text: string; state: Chat
   return { text: "They're in " + ctx.item.area + ", but no street address is published. " + nextStep(ctx), state: { topic: "meet" } };
 }
 
+/** The consolidated deal in guest words: its title and one sentence when the sync wrote them, else the raw text. */
+function dealWords(p: Promo): string {
+  const t = (p as Promo & { title?: string; detail?: string }).title;
+  const d = (p as Promo & { title?: string; detail?: string }).detail;
+  return t && d ? t + ". " + d : t || d || p.text;
+}
+
 function dealsAnswer(ctx: CompanyContext): { text: string; state: ChatState } {
   const promos = (ctx.item.promos || []).filter((p) => /[a-z]{3}/.test(p.text));
   if (!promos.length) return { text: "No deals published right now. The price on this page is what you pay.", state: { topic: "deals" } };
@@ -942,10 +957,12 @@ function dealsAnswer(ctx: CompanyContext): { text: string; state: ChatState } {
   if (today.length) {
     const p = today[0];
     const more = today.length - 1;
-    return { text: "Today: " + sentence(clip(p.text, 100) + (p.end ? " until " + clock12(p.end) : "")) + (more ? " " + more + " more deal" + (more > 1 ? "s" : "") + " on today." : ""), state: { topic: "deals" } };
+    return { text: "Today: " + sentence(clip(dealWords(p), 100) + (p.end ? " until " + clock12(p.end) : "")) + (p.code ? " Use code " + p.code + "." : "") + (more ? " " + more + " more deal" + (more > 1 ? "s" : "") + " on today." : ""), state: { topic: "deals" } };
   }
   const p = priced(promos)[0];
-  return { text: "Nothing today. " + dayLabel(p.days) + ": " + sentence(clip(p.text, 100)), state: { topic: "deals" } };
+  // A dated deal runs on its date; an empty day list there does not mean every day.
+  const when = p.date ? p.date : dayLabel(p.days);
+  return { text: "Nothing today. " + when + ": " + sentence(clip(dealWords(p), 100)) + (p.code ? " Use code " + p.code + "." : ""), state: { topic: "deals" } };
 }
 
 function waiverAnswer(ctx: CompanyContext): { text: string; state: ChatState } {

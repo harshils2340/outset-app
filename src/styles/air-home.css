@@ -249,6 +249,10 @@
 .ah-card-rate svg{width:12px;height:12px;display:block;}
 .ah-card-rate em{font-style:normal;color:var(--ink-soft);}
 .ah-card-sub{color:var(--ink-soft);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.ah-card-deal{display:flex;align-items:center;gap:6px;min-width:0;margin-top:2px;color:var(--accent);font-weight:500;}
+.ah-card-dealtext{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.ah-card-dealtag{flex:none;padding:1px 6px;border-radius:4px;background:var(--accent);color:var(--on-accent, #fff);font-size:11px;line-height:15px;font-weight:600;}
+.ah-card > .adminsite.icon{top:10px;right:46px;}
 .ah-card-price{margin-top:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .ah-card-price b{font-weight:600;}
 .ah-card.is-skel .ah-card-text{gap:6px;}

@@ -2,7 +2,7 @@ import { dateKey, startOfToday } from "../../lib/dates";
 import { fmtTime, money } from "../../lib/format";
 import { DAY_SHORT, bookingTotal, relDay, setupChecks, fmtTotal } from "../../lib/operator";
 import { Markup } from "../Markup";
-import { OD_ICONS, useOp, type OpPage } from "./opContext";
+import { OD_ICONS, useOp } from "./opContext";
 import { BookingRow } from "./OpBookings";
 
 /** Home: today at a glance, what needs a decision, and the setup checklist. Uber Eats merchant home shape. */

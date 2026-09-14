@@ -10,7 +10,7 @@ import { useApp } from "../../state/AppProvider";
 import { Photo } from "../art/Photo";
 import { IcHeartOnPhoto, IcStar } from "./AirIcons";
 import { toggleSaved, usePrefs } from "./prefs";
-import { tidyDuration } from "../web/WebListing";
+import { AdminSiteLink, liteDealTitle, tidyDuration } from "../web/WebListing";
 
 /** "5.0", "4.9", "4.87": Airbnb never shows a bare "5" or a trailing zero past the first decimal. */
 export function fmtRating(r: number): string {
@@ -48,7 +48,9 @@ export function UnclaimedCard({ item }: { item: Unclaimed; compact?: boolean }) 
   const detail = [kind, item.dur ? tidyDuration(item.dur) : null, item.fc ? "Free cancellation" : null].filter(Boolean).join(" · ");
   const unit = item.options.find((o) => o.price === from);
   const per = from != null && (!unit || perPerson(unit)) ? " / person" : "";
-  const badge = guestFav ? "Guest favourite" : deal ? "Deal today" : instant ? "Instant Book" : null;
+  // A deal with its own title reads as a line under the price ("Half-price Tuesdays"); only an untitled one keeps the badge.
+  const dealTitle = liteDealTitle(item.deal);
+  const badge = guestFav ? "Guest favourite" : deal && !dealTitle ? "Deal today" : instant ? "Instant Book" : null;
 
   const open = () => openRequest(item.id);
   const onKey = (e: KeyboardEvent<HTMLDivElement>) => {
@@ -94,6 +96,7 @@ export function UnclaimedCard({ item }: { item: Unclaimed; compact?: boolean }) 
         >
           <IcHeartOnPhoto on={isSaved} />
         </button>
+        <AdminSiteLink item={item} variant="icon" />
         {photos.length > 1 ? (
           <span className="airdots" aria-hidden>
             {photos.map((p, i) => (
@@ -118,6 +121,12 @@ export function UnclaimedCard({ item }: { item: Unclaimed; compact?: boolean }) 
           {km != null ? " · " + fmtDistance(km) + " away" : ""}
         </p>
         {detail ? <p className="aircardline">{detail}</p> : null}
+        {dealTitle ? (
+          <p className={"aircarddeal" + (deal ? " today" : "")}>
+            {deal ? <span className="aircarddealtag">Today</span> : null}
+            <span className="aircarddealtext">{dealTitle}</span>
+          </p>
+        ) : null}
         <p className="aircardprice">
           {from == null ? (
             <span>{instant ? "Instant Book" : "Request to book"}</span>
