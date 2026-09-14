@@ -24,7 +24,7 @@ import {
 } from "../../lib/catalog";
 import { fmtDate, fmtReviews, fmtTime, money, priceWith, unitLine } from "../../lib/format";
 import { formatDistance, milesBetween, type GeoPoint } from "../../lib/geo";
-import { priceFor, priceUnclaimed } from "../../lib/pricing";
+import { priceFor, priceUnclaimed, serviceFeeLabel } from "../../lib/pricing";
 import { useApp } from "../../state/AppProvider";
 import { SIZES, srcSet, thumb } from "../../lib/images";
 import { embedAutoplay, listingMedia, photoCandidates, probePhotos, type Media } from "../../lib/media";
@@ -116,7 +116,7 @@ function ReviewBody({
           </div>
         ) : null}
         <div className="line">
-          <span>Service fee</span>
+          <span>{serviceFeeLabel(p)}</span>
           <b>{money(p.fee)}</b>
         </div>
         <div className="line total">
@@ -362,7 +362,7 @@ function RequestBody({
               ))}
               {p.fee ? (
                 <div className="line">
-                  <span>Service fee</span>
+                  <span>{serviceFeeLabel(p)}</span>
                   <b>{money(p.fee)}</b>
                 </div>
               ) : null}

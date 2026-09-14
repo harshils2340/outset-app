@@ -244,7 +244,7 @@ export function companyReply(ctx: CompanyContext, question: string): string {
     const lines = priced(item);
     if (!lines.length) return notPublished(ctx, "prices");
     const extras = item.addons?.length ? " Add-ons: " + item.addons.map((a) => a.name + (a.price ? " " + money(a.price) : "")).join(", ") + "." : "";
-    return "Published prices: " + lines.join("; ") + "." + extras + " Outset adds a service fee at checkout.";
+    return "Published prices: " + lines.join("; ") + "." + extras + " Outset adds a service fee at checkout: 5% up to $100, 4% from $100 to $500, 3% above $500, capped at $25.";
   })());
 
   if (SERVICES.test(q)) parts.push((() => {

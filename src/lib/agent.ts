@@ -54,7 +54,7 @@ export function agentReply(
           : money(listing.price) + " per " + listing.qtyUnit;
     return (
       min +
-      ". An 8% service fee is added at checkout. Add-ons are optional and listed on the experience page."
+      ". A service fee is added at checkout: 5% up to $100, 4% from $100 to $500, 3% above $500, capped at $25. Add-ons are optional and listed on the experience page."
     );
   }
 

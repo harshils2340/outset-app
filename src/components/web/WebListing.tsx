@@ -13,7 +13,7 @@ import { cleanDesc, durationLabel, freeCancel, minAge } from "../../lib/listingD
 import { clockIn, itemOpenState, itemWeek, zoneFor } from "../../lib/openNow";
 import { DAY_SHORT, clock12, dayLabel, todaysDeals } from "../../lib/companyAgent";
 import { fmtDistance, kmBetween, nearestLocation } from "../../lib/places";
-import { priceUnclaimed } from "../../lib/pricing";
+import { priceUnclaimed, serviceFeeLabel } from "../../lib/pricing";
 import { listingUrl } from "../../lib/site";
 import { dateKey, startOfToday } from "../../lib/dates";
 import { useApp } from "../../state/AppProvider";
@@ -838,7 +838,7 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
                     </div>
                   ) : null}
                   {extras.map((a) => <div className="line" key={a.name}><span>{a.name}</span><b>{money(a.price ?? 0)}</b></div>)}
-                  {p.fee ? <div className="line"><span>Service fee</span><b>{money(p.fee)}</b></div> : null}
+                  {p.fee ? <div className="line"><span>{serviceFeeLabel(p)}</span><b>{money(p.fee)}</b></div> : null}
                   <div className="line total"><span>Total</span><b>{p.total ? money(p.total) : "Pay on site"}</b></div>
                   {payments && p.total ? <p className="wpaynote">Secure card payment. Your card is held and only charged once the booking is confirmed.</p> : null}
                 </div>
