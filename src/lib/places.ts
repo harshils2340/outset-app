@@ -3,7 +3,8 @@
  * limited to the US and Canada. No key. Results are cities, neighbourhoods, beaches, lakes and landmarks.
  */
 
-export type Place = { label: string; sub: string; lat: number; lon: number };
+/** `region` set means a whole state or province was picked: listings inside it, not within a radius of a point. */
+export type Place = { label: string; sub: string; lat: number; lon: number; region?: string };
 
 type PhotonFeature = {
   geometry: { coordinates: [number, number] };

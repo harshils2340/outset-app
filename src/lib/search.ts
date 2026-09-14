@@ -1,6 +1,7 @@
 import { ART_LABEL } from "../data/art";
 import { inCat } from "../data/categories";
 import { METROS, METRO_ALIASES, metroById, type Metro } from "../data/metros";
+import { CA_REGIONS, REGION_NAME, regionOfArea } from "../data/regions";
 import type { ArtKind, CategoryId, Unclaimed } from "../data/types";
 
 /**
@@ -822,6 +823,8 @@ export function searchListings(pool: Unclaimed[], q: string, scope?: SearchScope
 
 export type ActivityHit = { art: ArtKind; label: string; query: string; count: number };
 export type PlaceHit = { metro: Metro; count: number };
+/** A state or province, with its listing count and the middle of its listings for distance sorting. */
+export type RegionHit = { code: string; name: string; country: string; count: number; lat: number; lon: number };
 
 export type Suggestions = {
   /** Ranked results inside the category tab, for the feed behind the dropdown. */
@@ -836,6 +839,8 @@ export type Suggestions = {
   elsewhere: ActivityHit[];
   operators: Unclaimed[];
   places: PlaceHit[];
+  /** States and provinces the guest typed, misspellings included ("floruda"). */
+  regions: RegionHit[];
   /** True when nothing matched and the lists above are the nearest things the catalog does have. */
   nearMiss: boolean;
 };
@@ -852,7 +857,7 @@ const activityHit = (art: ArtKind, count: number): ActivityHit => ({
  * and the cities behind them, each counted from the catalog rather than guessed.
  */
 export function searchSuggest(pool: Unclaimed[], q: string, scope?: SearchScope, limit = 5): Suggestions {
-  const empty: Suggestions = { results: [], otherCats: 0, activities: [], elsewhere: [], operators: [], places: [], nearMiss: false };
+  const empty: Suggestions = { results: [], otherCats: 0, activities: [], elsewhere: [], operators: [], places: [], regions: [], nearMiss: false };
   if (!q.trim()) return empty;
   const idx = getIndex(pool);
   const p = parseQuery(q);
@@ -873,12 +878,16 @@ export function searchSuggest(pool: Unclaimed[], q: string, scope?: SearchScope,
   const activities = arts.slice(0, limit).map((a) => activityHit(a, counts.get(a) || 0));
 
   const metroCount = (m: Metro) => ({ metro: m, count: (idx.byMetro.get(m.id) || []).length });
-  const places = searchMetros(q, 3).map(metroCount);
+  const regions = searchRegions(pool, q);
+  // "Florida" names no city, so the cities under it are that state's biggest, not whatever brushed the word.
+  const places = regions.length
+    ? METROS.filter((m) => m.region === regions[0].code).map(metroCount).filter((x) => x.count > 0).sort((a, b) => b.count - a.count).slice(0, 4)
+    : searchMetros(q, 3).map(metroCount);
 
   const results = inTab.map((x) => x.e.u);
   const otherCats = scored.length - inTab.length;
   if (results.length) {
-    return { results, otherCats, activities, elsewhere: [], operators: results.slice(0, limit), places, nearMiss: false };
+    return { results, otherCats, activities, elsewhere: [], operators: results.slice(0, limit), places, regions, nearMiss: false };
   }
 
   // Nothing landed. Offer what the catalog really does have, in the order a guest would want it: the same
@@ -908,7 +917,8 @@ export function searchSuggest(pool: Unclaimed[], q: string, scope?: SearchScope,
     activities: nearArts,
     elsewhere,
     operators: [],
-    places: [...places, ...nearMetros(q).filter((m) => !seenMetro.has(m.id)).map(metroCount)].slice(0, 3),
+    places: regions.length ? places : [...places, ...nearMetros(q).filter((m) => !seenMetro.has(m.id)).map(metroCount)].slice(0, 3),
+    regions,
     nearMiss: true,
   };
 }
@@ -981,6 +991,54 @@ export function searchMetros(q: string, limit = 4): Metro[] {
     if (landed) out.push({ m, s: total + landed * 10 });
   }
   return out.sort((a, b) => b.s - a.s || a.m.name.localeCompare(b.m.name)).slice(0, limit).map((x) => x.m);
+}
+
+type RegionStat = { count: number; lat: number; lon: number };
+const regionStats = new WeakMap<Unclaimed[], Map<string, RegionStat>>();
+function statsFor(pool: Unclaimed[]): Map<string, RegionStat> {
+  let m = regionStats.get(pool);
+  if (m) return m;
+  m = new Map();
+  for (const u of pool) {
+    const code = regionOfArea(u.area);
+    if (!code) continue;
+    const r = m.get(code) || { count: 0, lat: 0, lon: 0 };
+    // Running mean of the coordinates, so "nearest first" inside a state measures from its middle.
+    if (typeof u.lat === "number" && typeof u.lon === "number") {
+      const n = r.count + 1;
+      r.lat += (u.lat - r.lat) / n;
+      r.lon += (u.lon - r.lon) / n;
+    }
+    r.count++;
+    m.set(code, r);
+  }
+  regionStats.set(pool, m);
+  return m;
+}
+
+/**
+ * States and provinces matching the whole query: a prefix ("flor"), or the name one or two typos off
+ * ("floruda", "californa"). Only whole names count; two-letter codes clash with words like "in", "me" and "or".
+ */
+export function searchRegions(pool: Unclaimed[], q: string, limit = 2): RegionHit[] {
+  const t = tokens(q).filter((w) => !FILLER.has(w)).join(" ");
+  if (t.length < 3) return [];
+  const stats = statsFor(pool);
+  const out: { hit: RegionHit; d: number }[] = [];
+  for (const [code, name] of Object.entries(REGION_NAME)) {
+    const n = norm(name);
+    let d = 9;
+    if (n.startsWith(t)) d = 0;
+    else {
+      d = editDistance(n, t);
+      if (t.length >= 4 && t.length < n.length) d = Math.min(d, editDistance(n.slice(0, t.length), t));
+    }
+    if (d > slack(t)) continue;
+    const st = stats.get(code);
+    if (!st?.count) continue;
+    out.push({ hit: { code, name, country: CA_REGIONS.has(code) ? "Canada" : "United States", count: st.count, lat: st.lat, lon: st.lon }, d });
+  }
+  return out.sort((a, b) => a.d - b.d || b.hit.count - a.hit.count).slice(0, limit).map((x) => x.hit);
 }
 
 /** Cities whose name is one typo away, for the "did you mean" line when a search finds nothing. */

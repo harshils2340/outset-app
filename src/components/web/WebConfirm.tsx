@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import "../../styles/air-listing.css";
 import { ICONS } from "../../data/icons";
 import type { Booking } from "../../data/types";
@@ -16,6 +17,10 @@ const PHONE = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" strok
  * details on the left, a summary card with the photo, the booking and the total on the right.
  */
 export function WebConfirm({ booking, onDone, onOpen }: { booking: Booking; onDone: () => void; onOpen: (id: string) => void }) {
+  // The page opens where the booking form was scrolled to; the confirmation belongs at the top, in view.
+  useEffect(() => {
+    window.scrollTo({ top: 0 });
+  }, [booking.code]);
   const item = experienceById(booking.listing);
   if (!item) return null;
   const contact = contactFor(item);

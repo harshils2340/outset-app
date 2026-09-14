@@ -13,6 +13,7 @@ import { loadListing } from "../../lib/catalogLoad";
 import { dealToday } from "../../lib/companyAgent";
 import { itemOpenState } from "../../lib/openNow";
 import { currentLocation, fmtDistance, nearestLocation, searchPlaces, type Place } from "../../lib/places";
+import { regionOfArea } from "../../data/regions";
 import { useApp } from "../../state/AppProvider";
 import { Photo } from "../art/Photo";
 import { useNearNow } from "./NearNow";
@@ -219,7 +220,8 @@ function Card({ u, onOpen, near, rail }: { u: Unclaimed; onOpen: (id: string) =>
   const priced = from != null ? u.options.find((o) => o.price === from) : undefined;
   const per = (priced?.per || "").replace(/^\//, "").trim();
   const where = (() => {
-    const n = near ? nearestLocation(u, near) : null;
+    // A distance from the middle of a whole state means nothing to a guest; the town does.
+    const n = near && !near.region ? nearestLocation(u, near) : null;
     const extra = u.locations?.length ? " · " + (u.locations.length + 1) + " locations" : "";
     if (n) return n.label + " · " + fmtDistance(n.km) + " away" + extra;
     return u.area + (metro && !u.area.includes(metro.name) ? " · " + metro.name : "") + extra;
@@ -754,6 +756,8 @@ export function WebHome({ onOpenApp, onOperators }: { onOpenApp: () => void; onO
   const [locating, setLocating] = useState(false);
   const metro = metroById(state.metroId);
   const RADIUS_KM = 80;
+  // A picked state holds every listing in it; a picked point holds what is within the radius.
+  const inNear = (u: Unclaimed, p: Place) => (p.region ? regionOfArea(u.area) === p.region : (nearestLocation(u, p)?.km ?? Infinity) <= RADIUS_KM);
   const pillRef = useRef<HTMLDivElement>(null);
   const whereInput = useRef<HTMLInputElement>(null);
   const mainRef = useRef<HTMLElement>(null);
@@ -845,7 +849,7 @@ export function WebHome({ onOpenApp, onOperators }: { onOpenApp: () => void; onO
   const scope = useMemo<SearchScope>(() => {
     const cat = state.cat;
     if (typedMetro) return { cat, metroId: typedMetro.metro.id };
-    if (near) return { cat, keep: (u: Unclaimed) => (nearestLocation(u, near)?.km ?? Infinity) <= RADIUS_KM };
+    if (near) return { cat, keep: (u: Unclaimed) => inNear(u, near) };
     if (state.metroId !== ALL_METRO_ID) return { cat, metroId: state.metroId };
     return { cat };
   }, [typedMetro, near, state.metroId, state.cat]);
@@ -868,7 +872,8 @@ export function WebHome({ onOpenApp, onOperators }: { onOpenApp: () => void; onO
       base = base.filter((u) => u.metroId === typedMetro.metro.id);
     } else if (near) {
       const km = (u: Unclaimed) => nearestLocation(u, near)?.km ?? Infinity;
-      base = base.filter((u) => km(u) <= RADIUS_KM).sort((a, b) => km(a) - km(b));
+      base = base.filter((u) => inNear(u, near));
+      if (!near.region) base.sort((a, b) => km(a) - km(b));
     } else if (state.metroId !== ALL_METRO_ID) {
       base = base.filter((u) => u.metroId === state.metroId);
     }
@@ -880,7 +885,7 @@ export function WebHome({ onOpenApp, onOperators }: { onOpenApp: () => void; onO
     if (found) return 0;
     let base = getCatalog().filter((u) => !u.cover);
     if (typedMetro) base = base.filter((u) => u.metroId === typedMetro.metro.id);
-    else if (near) base = base.filter((u) => (nearestLocation(u, near)?.km ?? Infinity) <= RADIUS_KM);
+    else if (near) base = base.filter((u) => inNear(u, near));
     else if (state.metroId !== ALL_METRO_ID) base = base.filter((u) => u.metroId === state.metroId);
     return base.filter((u) => inCat(u, state.cat)).length;
   }, [found, state.metroId, typedMetro, state.catalogVersion, near, state.cat]);
@@ -956,6 +961,7 @@ export function WebHome({ onOpenApp, onOperators }: { onOpenApp: () => void; onO
   const acts = found?.activities ?? [];
   const ops = found?.operators ?? [];
   const spots = found?.places ?? [];
+  const regionHits = found?.regions ?? [];
 
   const pickCity = (id: string) => {
     // "axe throwing denver" with Denver picked becomes an axe search in Denver, not a search for the word "denver".
@@ -975,9 +981,11 @@ export function WebHome({ onOpenApp, onOperators }: { onOpenApp: () => void; onO
       if (m) rows.push({ key: "m" + m.id, icon: ICONS.pin, title: m.name + ", " + m.region, sub: (metroCounts.get(m.id) || 0).toLocaleString() + " places with photos", on: !near && state.metroId === m.id, pick: () => { setNear(null); setMetro(m.id); openSeg("when"); } });
     }
   } else {
+    // Where is for places: a state or city the guest typed leads, before kinds of thing and businesses.
+    regionHits.forEach((r, i) => rows.push({ key: "r" + r.code, head: i === 0 ? "Places" : undefined, icon: ICONS.pin, title: r.name, sub: r.count.toLocaleString() + " places · " + r.country, pick: () => pickPlace({ label: r.name, sub: r.country, lat: r.lat, lon: r.lon, region: r.code }) }));
+    spots.forEach((pl, i) => rows.push({ key: "s" + pl.metro.id, head: i === 0 && !regionHits.length ? "Cities" : undefined, icon: ICONS.pin, title: pl.metro.name + ", " + pl.metro.region, sub: pl.count.toLocaleString() + " places", pick: () => pickCity(pl.metro.id) }));
     acts.forEach((a, i) => rows.push({ key: "a" + a.art, head: i === 0 ? "Activities" : undefined, icon: ICONS.spark, title: a.label, sub: a.count.toLocaleString() + (a.count === 1 ? " place" : " places") + inWhere, pick: () => { setQ(a.query); setHit(-1); } }));
     ops.forEach((u, i) => rows.push({ key: "o" + u.id, head: i === 0 ? "Businesses" : undefined, u, title: u.title, sub: ART_LABEL[u.art] + " · " + u.area, pick: () => { openSeg(null); openRequest(u.id); } }));
-    spots.forEach((pl, i) => rows.push({ key: "s" + pl.metro.id, head: i === 0 ? "Cities" : undefined, icon: ICONS.pin, title: pl.metro.name + ", " + pl.metro.region, sub: pl.count.toLocaleString() + " places", pick: () => pickCity(pl.metro.id) }));
     placeHits.forEach((p, i) => rows.push({ key: "p" + p.label + p.sub, head: i === 0 ? "Places on the map" : undefined, icon: ICONS.pin, title: p.label, sub: p.sub, pick: () => pickPlace(p) }));
     (found?.elsewhere ?? []).forEach((a, i) => rows.push({ key: "e" + a.art, head: i === 0 ? "Elsewhere" : undefined, icon: ICONS.globe, title: a.label + " across the US and Canada", sub: a.count.toLocaleString() + " places", pick: () => { setNear(null); setMetro(ALL_METRO_ID); setQ(a.query); } }));
     if (found?.otherCats) rows.push({ key: "othercats", icon: ICONS.catAll, title: "Show all categories", sub: found.otherCats.toLocaleString() + " more outside " + catName(state.cat), pick: () => setCat("all") });
