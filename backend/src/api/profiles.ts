@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { ID, linkEmailToListing, mayEdit, rateLimit, signSession, verifySession } from "./auth.ts";
 import { maskEmail } from "../lib/claimIndex.ts";
-import { readJson, writeJson } from "../lib/store.ts";
+import { privateStoreConfigured, readJson, updateJson, writePublicJson } from "../lib/store.ts";
 
 /**
  * Operator profiles: one JSON document per listing under public/profiles/. The guest site reads the
@@ -22,6 +22,16 @@ export type StoredProfile = {
 };
 
 const path = (id: string) => `profiles/${id}.json`;
+
+/**
+ * The copy the guest site reads: what the listing shows, nothing about the owner. The full record (owner email and
+ * phone, Stripe account, the dashboard state) stays in the private store.
+ */
+async function publishGuestCopy(rec: StoredProfile): Promise<void> {
+  // Without a private store the full record already sits at this path; a scrubbed copy would overwrite it.
+  if (!privateStoreConfigured()) return;
+  await writePublicJson(path(rec.id), { id: rec.id, published: rec.published, patch: rec.patch, updatedAt: rec.updatedAt }, `Listing: ${rec.id} updated by the operator`).catch((e) => console.error(`[profiles] guest copy for ${rec.id}: ${(e as Error).message}`));
+}
 const fresh = (id: string, now: string): StoredProfile => ({ id, claimedAt: now, updatedAt: now, owner: { name: "", email: "", phone: "" }, published: true, profile: null, patch: {} });
 const cleanOwner = (o: Partial<StoredProfile["owner"]> | undefined, cur: StoredProfile["owner"]) =>
   o ? { name: String(o.name ?? cur.name).slice(0, 120), email: String(o.email ?? cur.email).trim().toLowerCase().slice(0, 200), phone: String(o.phone ?? cur.phone).slice(0, 40) } : cur;
@@ -43,7 +53,8 @@ profiles.post("/claims/:id", rateLimit(30, 60 * 60 * 1000), async (c) => {
   if (!mayEdit(c, id)) return c.json({ error: "invalid claim link" }, 403);
   const body = (await c.req.json().catch(() => ({}))) as { owner?: Partial<StoredProfile["owner"]> };
   const now = new Date().toISOString();
-  const rec = (await readJson<StoredProfile>(path(id))) || fresh(id, now);
+  let priorEmail = "";
+  let takenOver = false;
   /**
    * A claim link is a bearer token: whoever holds it gets in. A forwarded email therefore reaches a stranger,
    * and before this the second claimer silently became a second owner with permanent sign-in-by-code access
@@ -51,15 +62,18 @@ profiles.post("/claims/:id", rateLimit(30, 60 * 60 * 1000), async (c) => {
    * claims from a second address of their own would be worse; but the first claim is remembered, every later
    * address is recorded, and the answer says so, so the dashboard can warn and a human can see it happen.
    */
-  const priorEmail = rec.owner.email;
-  rec.owner = cleanOwner(body.owner, rec.owner);
-  const takenOver = !!priorEmail && !!rec.owner.email && priorEmail.toLowerCase() !== rec.owner.email.toLowerCase();
-  if (takenOver) {
-    rec.alsoClaimedBy = Array.from(new Set([...(rec.alsoClaimedBy || []), rec.owner.email.toLowerCase()]));
-    console.warn(`[claim] ${id} first claimed by ${maskEmail(priorEmail)} on ${rec.claimedAt}, now also claimed by ${maskEmail(rec.owner.email)}`);
-  }
-  rec.updatedAt = now;
-  await writeJson(path(id), rec, `Claim: ${id}`);
+  // Read and write under one lock, so a claim cannot overwrite a payout or profile saved a moment earlier.
+  const rec = await updateJson<StoredProfile>(path(id), fresh(id, now), (cur) => {
+    const next = { ...cur };
+    priorEmail = cur.owner.email;
+    next.owner = cleanOwner(body.owner, cur.owner);
+    takenOver = !!priorEmail && !!next.owner.email && priorEmail.toLowerCase() !== next.owner.email.toLowerCase();
+    if (takenOver) next.alsoClaimedBy = Array.from(new Set([...(cur.alsoClaimedBy || []), next.owner.email.toLowerCase()]));
+    next.updatedAt = now;
+    return next;
+  }, `Claim: ${id}`);
+  if (takenOver) console.warn(`[claim] ${id} first claimed by ${maskEmail(priorEmail)} on ${rec.claimedAt}, now also claimed by ${maskEmail(rec.owner.email)}`);
+  await publishGuestCopy(rec);
   if (rec.owner.email) await linkEmailToListing(rec.owner.email, id);
   const prior = verifySession(c.req.header("x-session"));
   const ids = Array.from(new Set([...(prior?.ids || []), id]));
@@ -79,14 +93,18 @@ profiles.put("/profiles/:id", rateLimit(600, 60 * 60 * 1000), async (c) => {
     return c.json({ error: "bad json" }, 400);
   }
   const now = new Date().toISOString();
-  const rec = (await readJson<StoredProfile>(path(id))) || fresh(id, now);
-  if (body.profile !== undefined) rec.profile = body.profile;
-  if (body.patch && typeof body.patch === "object") rec.patch = body.patch;
-  if (typeof body.published === "boolean") rec.published = body.published;
-  const before = rec.owner.email;
-  rec.owner = cleanOwner(body.owner, rec.owner);
-  rec.updatedAt = now;
-  await writeJson(path(id), rec, `Profile: ${id} edited by the operator`);
+  let before = "";
+  const rec = await updateJson<StoredProfile>(path(id), fresh(id, now), (cur) => {
+    const next = { ...cur };
+    if (body.profile !== undefined) next.profile = body.profile;
+    if (body.patch && typeof body.patch === "object") next.patch = body.patch;
+    if (typeof body.published === "boolean") next.published = body.published;
+    before = cur.owner.email;
+    next.owner = cleanOwner(body.owner, cur.owner);
+    next.updatedAt = now;
+    return next;
+  }, `Profile: ${id} edited by the operator`);
+  await publishGuestCopy(rec);
   if (rec.owner.email && rec.owner.email !== before) await linkEmailToListing(rec.owner.email, id);
   return c.json({ ok: true, updatedAt: now });
 });
