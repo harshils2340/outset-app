@@ -44,6 +44,8 @@ const inflight = new Map<string, Promise<boolean>>();
 export function loadListing(id: string | null): Promise<boolean> {
   if (!id) return Promise.resolve(false);
   const cur = experienceById(id);
+  // `lite` alone says whether the detail file is still needed; a seed starts lite too, and that is where
+  // its claimKey comes from, so a claim link would spin forever without this fetch.
   if (!cur || !cur.lite) return Promise.resolve(false);
   if (inflight.has(id)) return inflight.get(id)!;
   const p = fetch(import.meta.env.BASE_URL + "o/" + encodeURIComponent(cur.detail || id) + ".json", { cache: "no-cache" })
@@ -51,9 +53,9 @@ export function loadListing(id: string | null): Promise<boolean> {
       if (!res.ok) return false;
       const full = (await res.json()) as Unclaimed;
       if (!looksLikeItem(full)) return false;
-      hydrateItem(full, id);
+      hydrateItem(full, cur.id);
       // A claimed operator's own edits, saved through the API, sit on top of the crawled record.
-      if (full.claimKey) void fetchRemoteProfile(id).then((r) => { if (r && r.patch) setOperatorOverride(id, r.patch, r.published !== false); });
+      if (full.claimKey) void fetchRemoteProfile(cur.detail || cur.id).then((r) => { if (r && r.patch) setOperatorOverride(cur.id, r.patch, r.published !== false); });
       return true;
     })
     .catch(() => false)

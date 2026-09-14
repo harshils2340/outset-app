@@ -13,6 +13,7 @@ export function siteUrl(src: string): string {
 let base: Unclaimed[] = UNCLAIMED;
 let catalog: Unclaimed[] = UNCLAIMED;
 let byId = new Map<string, Unclaimed>(UNCLAIMED.map((u) => [u.id, u]));
+let alias = new Map<string, string>();
 let contacts: Record<string, OperatorContact> = { ...CONTACTS };
 
 /** Edits made by claimed operators in their dashboard, layered over the scraped record. */
@@ -21,16 +22,28 @@ const overrides = new Map<string, Partial<Unclaimed>>();
 const unpublished = new Set<string>();
 
 function rebuild(): void {
-  const patched = overrides.size ? base.map((u) => (overrides.has(u.id) ? { ...u, ...overrides.get(u.id) } : u)) : base;
+  // A hand-verified seed keeps its own id and points at its crawled twin through `detail`. Claim links,
+  // landing pages and the API all speak the twin's id, so both have to lead to the same record.
+  alias = new Map();
+  for (const u of base) if (u.detail && u.detail !== u.id) alias.set(u.detail, u.id);
+  const key = (u: Unclaimed) => (overrides.has(u.id) ? u.id : u.detail && overrides.has(u.detail) ? u.detail : null);
+  const patched = overrides.size ? base.map((u) => { const k = key(u); return k ? { ...u, ...overrides.get(k) } : u; }) : base;
   byId = new Map(patched.map((u) => [u.id, u]));
-  catalog = unpublished.size ? patched.filter((u) => !unpublished.has(u.id)) : patched;
+  const hidden = (u: Unclaimed) => unpublished.has(u.id) || (!!u.detail && unpublished.has(u.detail));
+  catalog = unpublished.size ? patched.filter((u) => !hidden(u)) : patched;
+}
+
+/** The id this catalog stores a record under, given either that id or its crawled twin's. */
+export function resolveCatalogId(id: string): string {
+  return byId.has(id) ? id : alias.get(id) || id;
 }
 
 /**
  * Layer an operator's dashboard edits over their catalog record. Pass null to drop the override.
  * published=false pulls the listing from rails and search while keeping it reachable by id.
  */
-export function setOperatorOverride(id: string, patch: Partial<Unclaimed> | null, published: boolean): void {
+export function setOperatorOverride(rawId: string, patch: Partial<Unclaimed> | null, published: boolean): void {
+  const id = rawId;
   if (patch) overrides.set(id, patch);
   else overrides.delete(id);
   if (published) unpublished.delete(id);
@@ -105,7 +118,7 @@ export function fromPrice(item: Unclaimed): number | null {
 
 /** Swap a lite record for its full detail record. Overrides and publish state stay as they were. */
 export function hydrateItem(full: Unclaimed, targetId?: string): void {
-  const id = targetId || full.id;
+  const id = resolveCatalogId(targetId || full.id);
   const idx = base.findIndex((u) => u.id === id);
   if (idx === -1) return;
   const cur = base[idx];
@@ -115,7 +128,9 @@ export function hydrateItem(full: Unclaimed, targetId?: string): void {
     base[idx] = { ...full, lite: false };
   } else {
     // Seeds keep every fact a person checked; the crawl fills only what the seed left empty.
-    const merged: Unclaimed = { ...full, ...cur, id: cur.id, lite: false, detail: undefined };
+    // `detail` stays: it is how a claim link, a landing page or the API reaches this record by the twin's
+    // id. Clearing it once the crawl data merged made those ids stop resolving the moment a page loaded.
+    const merged: Unclaimed = { ...full, ...cur, id: cur.id, lite: false, detail: cur.detail };
     for (const k of Object.keys(full) as (keyof Unclaimed)[]) {
       const v = cur[k] as unknown;
       if (v == null || v === "" || (Array.isArray(v) && v.length === 0)) (merged as Record<string, unknown>)[k] = full[k];

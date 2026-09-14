@@ -71,13 +71,16 @@ export function OpLogin({ claimId, claimToken, compact, onEnter, onBack }: { cla
     let tries = 0;
     const tick = async () => {
       const u = experienceById(claimId);
+      // A hand-verified seed keeps its own id, but the claim token, the API and the saved profile are all
+      // keyed by its crawled twin, so every call below has to speak that id rather than the seed's.
+      const apiId = u ? u.detail || u.id : claimId;
       if (u?.claimKey) {
         // A link minted since expiring links landed is signed over the listing id AND an expiry, so the
         // static claimKey cannot check it. Ask the API, which has the secret, and take a session back.
         // Older links still verify here against claimKey, with no connection needed.
         let ok: boolean;
         if (isExpiringClaimToken(claimToken)) {
-          const r = await exchangeClaimToken(u.id, claimToken);
+          const r = await exchangeClaimToken(apiId, claimToken);
           if (!alive) return;
           ok = r.ok;
           if (!ok) { setLinkState(r.expired ? "expired" : "bad"); return; }
@@ -86,14 +89,14 @@ export function OpLogin({ claimId, claimToken, compact, onEnter, onBack }: { cla
           if (!alive) return;
           if (!ok) { setLinkState("bad"); return; }
         }
-        rememberClaimToken(u.id, claimToken);
-        const existing = loadProfile(u.id);
+        rememberClaimToken(apiId, claimToken);
+        const existing = loadProfile(apiId) || loadProfile(u.id);
         if (existing) { onEnter(existing); return; }
         // Another device may already hold this operator's edits.
-        const remote = await fetchRemoteProfile(u.id);
+        const remote = await fetchRemoteProfile(apiId);
         if (!alive) return;
         const saved = remote?.profile as OperatorProfile | undefined;
-        if (saved && saved.v === 1 && saved.id === u.id) { saveProfile(saved); onEnter(saved); return; }
+        if (saved && saved.v === 1 && (saved.id === apiId || saved.id === u.id)) { saveProfile(saved); onEnter(saved); return; }
         // The name, email and phone typed on the claim screen ride along in the link, so any device gets them.
         const fromLink = ownerFromHash(window.location.hash);
         const p = defaultProfile(u, {
@@ -101,9 +104,10 @@ export function OpLogin({ claimId, claimToken, compact, onEnter, onBack }: { cla
           email: remote?.owner?.email || fromLink?.email || contactFor(u)?.email || "",
           phone: remote?.owner?.phone || fromLink?.phone || "",
         });
+        p.id = apiId;
         if (!isApi) p.bookings = sampleBookings(p);
         saveProfile(p);
-        void claimRemote(u.id, claimToken, { name: p.ownerName, email: p.ownerEmail, phone: p.ownerPhone });
+        void claimRemote(apiId, claimToken, { name: p.ownerName, email: p.ownerEmail, phone: p.ownerPhone });
         onEnter(p);
         return;
       }

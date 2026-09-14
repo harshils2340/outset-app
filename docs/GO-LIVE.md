@@ -111,3 +111,8 @@ npx tsx scripts/pipeline.mts --once=sync      # or status, collect, discover, st
 npx tsx scripts/pipeline.mts --dry            # print the schedule
 ```
 `--once` runs the job in the foreground and exits with its code; the scheduler is untouched.
+
+### Testing a claim link locally
+Serve the build on port 5199 or 5173. Those are the only local origins the API allows, and on any other
+port every call dies in the browser's cross-origin check and the screen shows the same "that claim link
+didn't check out" message as a genuinely bad token. Two unrelated faults, one symptom.
