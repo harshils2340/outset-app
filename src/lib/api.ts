@@ -288,6 +288,25 @@ export async function decideBooking(listing: string, code: string, status: Remot
   return r.ok;
 }
 
+/* ---------- live availability ---------- */
+
+export type AvailabilitySlot = { startsAt: string; label: string; priceCents?: number; seatsLeft?: number; bookUrl: string };
+export type AvailabilityDay = { date: string; slots: AvailabilitySlot[] };
+export type LiveAvailability = { vendor: "fareharbor" | "peek" | "xola" | null; live: boolean; updatedAt?: string; days: AvailabilityDay[]; partial?: boolean; note?: string };
+
+/**
+ * The operator's real open dates and times, read from their own booking system (FareHarbor, Peek, Xola).
+ * Always resolves: with no API, an unsupported booking system or a vendor that did not answer it comes
+ * back `live: false` with no days, and the caller keeps showing whatever it showed before.
+ */
+export async function fetchAvailability(id: string, from?: string, days = 14): Promise<LiveAvailability> {
+  const q = new URLSearchParams();
+  if (from) q.set("from", from);
+  q.set("days", String(days));
+  const r = await call<LiveAvailability>(`/availability/${encodeURIComponent(id)}?${q}`, { timeout: 15000 });
+  return r.ok && r.data?.live ? { ...r.data, days: r.data.days || [] } : { vendor: r.data?.vendor ?? null, live: false, days: [] };
+}
+
 /* ---------- photo uploads ---------- */
 
 /** Resize in the browser, send JPEG bytes, get back a URL on the site. */
