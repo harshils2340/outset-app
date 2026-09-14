@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { collectMedia, rankByShape, type Video } from "../src/enrich/imagescrape.ts";
@@ -73,6 +73,19 @@ const mine = queue.operators.filter((_, i) => i % of === shard);
 
 mkdirSync(outDir, { recursive: true });
 const done: Record<string, Result> = existsSync(outPath) ? (JSON.parse(readFileSync(outPath, "utf8")) as Record<string, Result>) : {};
+// An operator crawled by an earlier run under a different shard count (shard-2-of-6) is done too. Without this,
+// changing the number of runners re-crawls everything the old layout finished.
+const doneElsewhere = new Set<string>();
+for (const f of readdirSync(outDir)) {
+  if (!f.endsWith(".json") || join(outDir, f) === outPath) continue;
+  try {
+    for (const [id, r] of Object.entries(JSON.parse(readFileSync(join(outDir, f), "utf8")) as Record<string, Result>)) {
+      if (![r.cover || "", ...(r.photos || [])].some((u) => u && looksLikeSrcsetFragment(u))) doneElsewhere.add(id);
+    }
+  } catch {
+    /* a half-written shard from a cancelled runner */
+  }
+}
 // Runs before 14 September 2026 split srcset on every comma and stored pieces of Wix transform URLs. Those
 // operators are forgotten here so this run reads them again with the fixed parser, instead of being skipped
 // for ever as done.
@@ -84,7 +97,7 @@ for (const [id, r] of Object.entries(done)) {
   }
 }
 if (redo) console.log(`${redo} operators had photos from the old comma-splitting parser and will be read again`);
-const todo = mine.filter((r) => !done[r.id]).slice(0, limit > 0 ? limit : undefined);
+const todo = mine.filter((r) => !done[r.id] && !doneElsewhere.has(r.id)).slice(0, limit > 0 ? limit : undefined);
 
 console.log(`shard ${shard} of ${of}: ${mine.length} operators, ${Object.keys(done).length} already done, ${todo.length} to crawl, ${concurrency} at a time, ${minutes} minute budget`);
 
