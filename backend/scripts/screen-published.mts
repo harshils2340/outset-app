@@ -143,10 +143,21 @@ async function main(): Promise<void> {
 
   const urls = new Set<string>();
   const listings = new Map<string, Listing>();
+  // What a guest sees first gets judged first: every cover, then the next few gallery slots, then the rest.
+  // Picking images in file order left a logo in White Knuckle's second gallery slot unjudged while tens of
+  // thousands of photos deep in other galleries were checked ahead of it.
+  const rank = new Map<string, number>();
+  const only = (process.argv.find((a) => a.startsWith("--ids=")) || "").slice(6).split(",").filter(Boolean);
   for (const f of files) {
+    if (only.length && !only.includes(f.replace(/\.json$/, ""))) continue;
     const d = JSON.parse(readFileSync(join(oDir, f), "utf8")) as Listing;
     listings.set(f, d);
-    for (const u of [d.cover, ...(d.photos || [])]) if (u && /^https?:/.test(u)) urls.add(u);
+    [d.cover, ...(d.photos || [])].forEach((u, i) => {
+      if (!u || !/^https?:/.test(u)) return;
+      urls.add(u);
+      const r = u === d.cover ? 0 : Math.min(i, 5);
+      if (!rank.has(u) || r < rank.get(u)!) rank.set(u, r);
+    });
   }
   // "unknown" means the fetch failed, usually the image proxy throttling a shared runner address, not a
   // verdict. Those come back for another try on later runs; after three we stop asking.
@@ -155,6 +166,7 @@ async function main(): Promise<void> {
       const v = verdicts[u];
       return !v || (v.kind === "unknown" && (v.tries || 1) < 3);
     })
+    .sort((a, b) => (rank.get(a) ?? 9) - (rank.get(b) ?? 9))
     .slice(0, limit);
   console.log(`${files.length} listings, ${urls.size} distinct images, ${todo.length} to judge (${Object.keys(verdicts).length} already known)`);
 
