@@ -9,7 +9,7 @@ on:
     inputs:
       concurrency:
         description: Parallel image fetches
-        default: "8"
+        default: "16"
 concurrency:
   group: photo-screen
   cancel-in-progress: false
@@ -26,7 +26,11 @@ jobs:
           node-version: 22
       - run: npm ci
         working-directory: backend
-      - run: npx tsx scripts/screen-published.mts --minutes=38 --concurrency=${{ github.event.inputs.concurrency || 8 }}
+      # sharp decodes and shrinks images on the runner so the screen can fetch from each host directly instead
+      # of through the image proxy, which throttles GitHub's shared addresses. Not added to package.json.
+      - run: npm i --no-save sharp@0.34.3
+        working-directory: backend
+      - run: npx tsx scripts/screen-published.mts --minutes=38 --concurrency=${{ github.event.inputs.concurrency || 16 }}
         working-directory: backend
       - name: Commit what changed
         run: |

@@ -26,7 +26,9 @@ const publicDir = join(here, "../../public");
 // Not under public/: Vite copies that directory into the build, and this cache is for the screen, not guests.
 const verdictPath = join(here, "../data/photo-verdicts.json");
 
-type Verdict = { kind: PhotoKind; page?: boolean; tries?: number };
+// "dead" is a verdict, not a failure: the host answered 404 or 410, so the image is gone and the listing is
+// showing a broken picture. A timeout or a refusal stays "unknown" and is retried on a later run.
+type Verdict = { kind: PhotoKind | "dead"; page?: boolean; tries?: number };
 type Verdicts = Record<string, Verdict>;
 type Listing = { id?: string; cover?: string; photos?: string[]; [k: string]: unknown };
 
@@ -46,7 +48,59 @@ function loadVerdicts(): Verdicts {
   }
 }
 
-async function pull(url: string, size?: number): Promise<{ width: number; height: number; rgba: Uint8Array } | null> {
+type Pixels = { width: number; height: number; rgba: Uint8Array };
+
+/**
+ * sharp is the same libvips the image proxy runs, so a 32x32 cover resize here gives the classifier the pixels
+ * it was tuned on. It is optional: installed only on the runner, never added to package.json.
+ */
+let sharpLib: ((input: Buffer, opts?: object) => {
+  resize: (w: number, h: number, o: object) => { ensureAlpha: () => { raw: () => { toBuffer: (o: { resolveWithObject: true }) => Promise<{ data: Buffer; info: { width: number; height: number } }> } } };
+}) | null | undefined;
+async function sharp() {
+  if (sharpLib === undefined) {
+    try {
+      sharpLib = ((await import("sharp")) as unknown as { default: typeof sharpLib }).default;
+    } catch {
+      sharpLib = null;
+    }
+  }
+  return sharpLib;
+}
+
+/**
+ * Fetch the image from its own host and shrink it here. The proxy route came back "unknown" for four images
+ * in five on GitHub's runners, because the proxy throttles their shared addresses; fetching from origin spreads
+ * the load over thousands of different hosts instead of hammering one.
+ */
+const GONE = { gone: true } as const;
+
+async function pullDirect(url: string, size: number): Promise<Pixels | typeof GONE | null> {
+  const lib = await sharp();
+  if (!lib) return null;
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), 20000);
+  try {
+    const res = await fetch(url, { signal: ctl.signal, redirect: "follow", headers: { "user-agent": "Mozilla/5.0 (compatible; OutsetBot/1.0)", accept: "image/avif,image/webp,image/png,image/jpeg,image/*;q=0.8" } });
+    if (res.status === 404 || res.status === 410) return GONE;
+    if (!res.ok) return null;
+    const len = Number(res.headers.get("content-length") || 0);
+    if (len > 25_000_000) return null;
+    const buf = Buffer.from(await res.arrayBuffer());
+    if (buf.length < 200 || buf.length > 25_000_000) return null;
+    const out = await lib(buf, { failOn: "none", limitInputPixels: 80_000_000 }).resize(size, size, { fit: "cover" }).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+    return { width: out.info.width, height: out.info.height, rgba: new Uint8Array(out.data) };
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function pull(url: string, size?: number): Promise<Pixels | typeof GONE | null> {
+  const direct = await pullDirect(url, size || 32);
+  if (direct) return direct;
+  // Some hosts refuse hotlinks from a bare fetch; the proxy still reaches those, so it stays as the fallback.
   for (let attempt = 0; attempt < 3; attempt++) {
     const ctl = new AbortController();
     const timer = setTimeout(() => ctl.abort(), 20000);
@@ -70,10 +124,11 @@ async function pull(url: string, size?: number): Promise<{ width: number; height
 async function judge(url: string): Promise<Verdict> {
   const small = await pull(url);
   if (!small) return { kind: "unknown" };
+  if ("gone" in small) return { kind: "dead" };
   const kind = classify(computeStats(small.width, small.height, small.rgba)).kind;
   if (kind !== "photo") return { kind };
   const big = await pull(url, 128);
-  return { kind, page: big ? scanPage(big.width, big.height, big.rgba).isPage : false };
+  return { kind, page: big && !("gone" in big) ? scanPage(big.width, big.height, big.rgba).isPage : false };
 }
 
 async function main(): Promise<void> {
@@ -133,7 +188,11 @@ async function main(): Promise<void> {
   let droppedJunk = 0;
   let droppedPages = 0;
   let demotedCovers = 0;
-  const junk = (u?: string) => !!u && !!verdicts[u] && verdicts[u].kind !== "unknown" && !isUsable(verdicts[u].kind);
+  const junk = (u?: string) => {
+    const v = u ? verdicts[u] : undefined;
+    if (!v || v.kind === "unknown") return false;
+    return v.kind === "dead" || !isUsable(v.kind);
+  };
   const page = (u?: string) => !!u && !!verdicts[u]?.page;
 
   for (const [f, d] of listings) {
