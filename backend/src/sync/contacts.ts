@@ -16,6 +16,8 @@ import { quotesFromFacts } from "./quotes.ts";
 import { METROS, categoryById, nearestMetro } from "../taxonomy/catalog.ts";
 import { rankForCover } from "../enrich/photorelevance.ts";
 import { existsSync, readFileSync as readFileSyncFs } from "node:fs";
+import { STANDARD, isEventSchedule, plainLabel, plainName, plainServices, type RawService } from "./plainServices.ts";
+import { consolidateDeals } from "./dealText.ts";
 
 /** A claimed operator's saved edits (public/profiles/<id>.json) win over what the crawl found. */
 function profileOverlay(id: string): { published: boolean; patch: Record<string, unknown> } | null {
@@ -261,6 +263,8 @@ export function toCatalogItem(r: CatalogRow): Record<string, unknown> {
     .filter((o) => !(MENU_CATEGORY.test(o.name) && (o.price_cents == null || o.price_cents < 3000)))
     // A $1 line is a deposit, a token or a placeholder; a $19,995 line is a boat for sale. Neither is a price a guest pays here.
     .filter((o) => !isForSale(o))
+    // "May 8, 2026, 9 a.m. check-in, 10:30 a.m. shotgun start" is one event's timetable, not a tier a guest books.
+    .filter((o) => !isEventSchedule(silent(o.duration) || silent(o.detail) || ""))
     .map((o) => ({ ...o, name: collapseRepeats(fixShouting(trimWords(o.name, 70))), price_cents: o.price_cents != null && o.price_cents < 200 ? null : o.price_cents }))
     // A half-day trip does not cost four dollars: keep the line, drop the number, let the page say "Price on request".
     .map((o) => {
@@ -356,12 +360,18 @@ export function toCatalogItem(r: CatalogRow): Record<string, unknown> {
       }
     })(),
     specs: uniq([...pick("spec"), ...pick("requirement"), ...pick("group")].map(cleanLine)).filter(isTidyLine).slice(0, 10),
-    options: offerings.map((o) => ({
-      name: o.name,
-      detail: silent(o.duration) || silent(o.detail) || "",
-      price: o.price_cents == null ? null : o.price_cents / 100,
-      per: o.price_unit && o.price_unit.startsWith("/") ? o.price_unit : undefined,
-    })),
+    // Names and details in plain words (plainServices.ts): the same cleaning the services below get, so the booking
+    // picker's sub-line and a service's tier label never disagree.
+    options: offerings.map((o) => {
+      const name = plainName(o.name, art);
+      const price = o.price_cents == null ? null : o.price_cents / 100;
+      return {
+        name,
+        detail: plainLabel(silent(o.duration) || silent(o.detail) || "", { service: name, kind: art, price }) || "",
+        price,
+        per: o.price_unit && o.price_unit.startsWith("/") ? o.price_unit : undefined,
+      };
+    }),
     services: (() => {
       const descs = new Map<string, string>();
       for (const raw of pick("service_desc")) {
@@ -383,22 +393,55 @@ export function toCatalogItem(r: CatalogRow): Record<string, unknown> {
           /* ignore */
         }
       }
-      const groups = new Map<string, { name: string; desc: string | null; photo?: string; variants: { label: string; price: number | null; per?: string; optionIdx: number }[] }>();
+      // A booking-widget item page ("fareharbor.com/.../items/538950/") is about one service, and the photos read off
+      // it are that item's own product shots. When a service has no thumbnail and every menu row on such a page is
+      // this service, its first screened photo becomes the service's picture. Nothing else is guessed.
+      const screenedSet = new Set(screenedRanked);
+      const photosByItemPage = new Map<string, string[]>();
+      for (const f of facts) {
+        if ((f.fact_key !== "photo" && f.fact_key !== "cover") || !f.source_url || !WIDGET_HOSTS.test(f.source_url) || !/\/items?\/\d+|\/products?\/\d+/i.test(f.source_url)) continue;
+        const url = fullSize(cleanImageUrl(f.fact_value) || "") || "";
+        if (!url || !screenedSet.has(url)) continue;
+        const list = photosByItemPage.get(f.source_url) || [];
+        if (!list.includes(url)) list.push(url);
+        photosByItemPage.set(f.source_url, list);
+      }
+      const namesByPage = new Map<string, Set<string>>();
+      for (const o of offerings) if (o.source_url) namesByPage.set(o.source_url, (namesByPage.get(o.source_url) || new Set()).add(o.name.toLowerCase()));
+      const groups = new Map<string, RawService & { pages: Set<string> }>();
       offerings.forEach((o, idx) => {
-        const key = o.name.toLowerCase();
         if (NOT_A_SERVICE.test(o.name)) return;
+        const rawKey = o.name.toLowerCase();
+        // Grouped by the plain name, so "4 Hr Charter" and "4 Hour Charter" are one service.
+        const name = plainName(o.name, art);
+        const key = name.toLowerCase();
         // A service thumbnail goes through the same screen: a logo or a dead link on a menu row is as broken as one in the gallery.
-        const svcPhoto = fullSize(photos.get(key) || "") || undefined;
-        const g = groups.get(key) || { name: o.name, desc: descs.get(key) || null, photo: svcPhoto && keepScreened([svcPhoto]).length ? svcPhoto : undefined, variants: [] };
+        const svcPhoto = fullSize(photos.get(rawKey) || "") || undefined;
+        const g = groups.get(key) || { name, desc: descs.get(rawKey) || null, photo: svcPhoto && keepScreened([svcPhoto]).length ? svcPhoto : undefined, variants: [], pages: new Set<string>() };
+        if (!g.desc && descs.get(rawKey)) g.desc = descs.get(rawKey)!;
+        if (o.source_url) g.pages.add(o.source_url);
         g.variants.push({
-          label: silent(o.duration) || silent(o.detail) || "Standard",
+          label: silent(o.duration) || silent(o.detail) || STANDARD,
           price: o.price_cents == null ? null : o.price_cents / 100,
           per: o.price_unit && o.price_unit.startsWith("/") ? o.price_unit : undefined,
           optionIdx: idx,
         });
         groups.set(key, g);
       });
-      return [...groups.values()].filter((g) => !/gift ?cards?|gift certificate|deposit|membership|season pass/i.test(g.name)).slice(0, 14);
+      for (const g of groups.values()) {
+        if (g.photo) continue;
+        for (const page of g.pages) {
+          const names = namesByPage.get(page);
+          const pics = photosByItemPage.get(page);
+          if (pics?.length && names && [...names].every((n) => plainName(n, art).toLowerCase() === g.name.toLowerCase())) {
+            g.photo = pics[0];
+            break;
+          }
+        }
+      }
+      // Plain labels, jargon explained, long size or count runs folded (plainServices.ts). Tiers that were event timetables are gone.
+      const plain = plainServices([...groups.values()].map(({ pages: _p, ...g }) => g), art);
+      return plain.filter((g) => !/gift ?cards?|gift certificate|deposit|membership|season pass/i.test(g.name)).slice(0, 14);
     })(),
     // "Private Ride for Two: up to 1 guests per booking" is a group cap, and "What to Bring: ..." belongs under bring.
     includes: uniq(pick("includes").map(cleanLine)).filter(isTidyLine).filter((l) => !/gift ?card|gift certificate|will be provided upon|directions will|upon purchas|up to \d+ guests? per booking|minimum \d+ guests? per booking|^what to bring\b/i.test(l)).slice(0, 10),
@@ -457,20 +500,26 @@ export function toCatalogItem(r: CatalogRow): Record<string, unknown> {
     quotes: quotesFromFacts(facts.filter((f) => f.fact_key === "review").map((f) => ({ value: decodeEntities(f.fact_value), sourceUrl: f.source_url }))),
     dur: durationOf(offerings.map((o) => o.duration || o.detail || "")) || undefined,
     fc: freeCancel(cleanPara(pick("cancellation")[0] || "") || pick("policy").filter((l) => /cancel|refund/i.test(l)).join(" ")) || undefined,
-    // Day-specific deals the site states, as written (scripts/promo-crawl.mts). Never invented.
-    promos: facts
-      .filter((f) => f.fact_key === "promo")
-      .map((f): { text: string; days: number[]; start?: string; end?: string } | null => {
-        try {
-          const p = JSON.parse(f.fact_value) as { text: string; days: number[]; start?: string; end?: string };
-          return typeof p.text === "string" && Array.isArray(p.days) ? { text: decodeEntities(p.text), days: p.days, start: p.start, end: p.end } : null;
-        } catch {
-          return null;
-        }
-      })
-      .filter((p): p is { text: string; days: number[]; start?: string; end?: string } => !!p && p.text.length <= 160)
-      .filter((p, i, a) => a.findIndex((x) => x.text.toLowerCase() === p.text.toLowerCase()) === i)
-      .slice(0, 8),
+    // Day-specific deals the site states (scripts/promo-crawl.mts), consolidated into at most three clear offers by
+    // dealText.ts: one title, the operator's most complete sentence, the stated days and code. Never invented.
+    // `text` stays for older readers of the detail file and carries the detail sentence (or the title when there is none).
+    promos: (() => {
+      const deals = consolidateDeals(
+        facts
+          .filter((f) => f.fact_key === "promo")
+          .map((f): { text: string; days: number[]; start?: string; end?: string } | null => {
+            try {
+              const p = JSON.parse(f.fact_value) as { text: string; days: number[]; start?: string; end?: string };
+              return typeof p.text === "string" && Array.isArray(p.days) ? { text: decodeEntities(p.text), days: p.days, start: p.start, end: p.end } : null;
+            } catch {
+              return null;
+            }
+          })
+          .filter((p): p is { text: string; days: number[]; start?: string; end?: string } => !!p && p.text.length <= 160)
+          .filter((p, i, a) => a.findIndex((x) => x.text.toLowerCase() === p.text.toLowerCase()) === i),
+      );
+      return deals.length ? deals.map((d) => ({ text: d.detail || d.title, ...d })) : undefined;
+    })(),
   };
   return tidyItem(item, r.domain);
 }
@@ -1668,10 +1717,11 @@ export function syncCatalogToApp(): { path: string; count: number } {
       tags: ((item.tags as string[]) || []).slice(0, 6),
       from: priced.length ? Math.min(...priced) : undefined,
       dur: item.dur, fc: item.fc, kindUnconfirmed: item.kindUnconfirmed,
-      // First day-specific deal, compact ("3,5|Glow nights $25"), so cards can badge "Deal today" without the detail file.
+      // First day-specific deal, compact ("2|Half-price Tuesdays"), so cards can badge "Deal today" without the detail file.
+      // The consolidated title, not a raw fragment, so the card and the listing's Deals section say the same thing.
       deal: (() => {
-        const p = ((item.promos as { text: string; days: number[] }[] | undefined) || []).find((x) => x.days.length);
-        return p ? p.days.join(",") + "|" + p.text.slice(0, 40) : undefined;
+        const p = ((item.promos as { text: string; title?: string; days: number[] }[] | undefined) || []).find((x) => x.days.length);
+        return p ? p.days.join(",") + "|" + (p.title || p.text).slice(0, 40) : undefined;
       })(),
       // Compact week from the published hours, so the home page can say "open now" without a detail file.
       hrs: (() => {

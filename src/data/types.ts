@@ -121,13 +121,23 @@ export type OperatorContact = {
   fetchedAt: string | null;
 };
 
+/** A word a first-time guest may not know, with one plain sentence saying what it means (backend/src/sync/glossary.ts). */
+export type Explained = { term: string; meaning: string };
+
 /** One bookable service with its price variants, grouped for display. optionIdx points into Unclaimed.options. */
 export type UnclaimedService = {
   name: string;
   desc: string | null;
   /** A picture of this specific service from the operator's site, when one sits next to it. */
   photo?: string;
-  variants: { label: string; price: number | null; per?: string; optionIdx: number }[];
+  /**
+   * Price tiers in plain words. `explain` carries at most two jargon terms the tier's label uses that the service
+   * name did not already explain. `moreOptions` marks tiers folded behind a "More options" control: the tail of a run
+   * that differs only by size or count, an exact repeat, or anything past the tenth visible tier.
+   */
+  variants: { label: string; price: number | null; per?: string; optionIdx: number; explain?: Explained[]; moreOptions?: true }[];
+  /** At most two jargon terms in the service name, explained ("Bareboat", "Full hookup"). */
+  explain?: Explained[];
 };
 
 /** A review as the operator republished it. `date` is ISO (YYYY-MM-DD or YYYY-MM); `source` is "site" or the platform the operator's page named. */
@@ -211,9 +221,14 @@ export type Unclaimed = {
   fc?: string;
   /** Lowest published price, carried on lite records so cards can show "From $X". */
   from?: number;
-  /** Day-specific deals from the operator's own site, as written. days: 0=Sun..6=Sat, empty = every day. start/end "HH:MM". */
-  promos?: { text: string; days: number[]; start?: string; end?: string }[];
-  /** Compact first deal on lite records: "3,5|Glow nights $25" (day list, then the text), for the card badge. */
+  /**
+   * Day-specific deals from the operator's own site, at most three, consolidated by backend/src/sync/dealText.ts.
+   * days: 0=Sun..6=Sat, empty = every day. start/end "HH:MM". `title` is the short line ("Half-price Tuesdays"),
+   * `detail` the operator's most complete sentence (may be empty), `code` a promo code they published, `date` a
+   * one-off holiday date ("May 10") shown instead of day chips. `text` is kept for older readers: detail, else title.
+   */
+  promos?: { text: string; days: number[]; start?: string; end?: string; title?: string; detail?: string; code?: string; date?: string }[];
+  /** Compact first deal on lite records: "2|Half-price Tuesdays" (day list, then the deal title), for the card badge. */
   deal?: string;
   /** Contact facts shipped inside the detail file. */
   contact?: OperatorContact;
