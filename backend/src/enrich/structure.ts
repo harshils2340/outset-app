@@ -37,6 +37,8 @@ export function saveSiteStructure(op: { id: string; domain: string; website: str
   if (scrape.status !== "ok") return base;
   const now = nowIso();
   const start = scrape.start;
+  // Was the listing's current rating filled from an earlier read of the operator's own AggregateRating? Then a re-read may refresh it.
+  const prevAgg = db.prepare("SELECT fact_value FROM facts WHERE operator_id = ? AND fact_key = 'aggregate_rating' AND confidence = 'site' LIMIT 1").get(op.id) as { fact_value: string } | undefined;
   db.prepare("DELETE FROM offerings WHERE operator_id = ? AND confidence = 'site'").run(op.id);
   db.prepare("DELETE FROM facts WHERE operator_id = ? AND confidence = 'site' AND fact_key NOT IN ('photo', 'cover', 'video', 'video_embed')").run(op.id);
   const insOff = db.prepare(
@@ -54,6 +56,7 @@ export function saveSiteStructure(op: { id: string; domain: string; website: str
   }
   for (const f of scrape.facts) insFact.run(randomUUID(), op.id, f.fact_key, f.fact_value, f.source_url);
   base.services = serviceCount(scrape);
+  applySiteAggregate(op.id, scrape, prevAgg?.fact_value || null);
   db.prepare(
     `UPDATE operators SET phone = COALESCE(phone, ?), hours = COALESCE(hours, ?), email = COALESCE(email, ?), updated_at = ? WHERE id = ?`,
   ).run(normalizePhone(scrape.contact.phone), scrape.contact.hours || null, scrape.contact.email || null, now, op.id);
@@ -62,6 +65,32 @@ export function saveSiteStructure(op: { id: string; domain: string; website: str
     "INSERT INTO sources (id, operator_id, url, fetched_at, http_status, extractor, robots_allowed, note) VALUES (?, ?, ?, ?, 200, 'site-structure', 1, ?)",
   ).run(randomUUID(), op.id, start, now, "deep " + base.pages + " pages: service names, descriptions, prices, waiver and booking links read from the site's own pages.");
   return base;
+}
+
+/**
+ * The operator's own schema.org AggregateRating fills `rating` and `review_count` only when discovery gave the listing
+ * neither. The `aggregate_rating` fact written with the scrape is the note of where the numbers came from.
+ */
+function applySiteAggregate(operatorId: string, scrape: ScrapeResult, previous: string | null): void {
+  const fact = scrape.facts.find((f) => f.fact_key === "aggregate_rating");
+  if (!fact) return;
+  let agg: { rating: number; count: number };
+  try {
+    agg = JSON.parse(fact.fact_value) as { rating: number; count: number };
+  } catch {
+    return;
+  }
+  if (!(agg.rating >= 1 && agg.rating <= 5) || !(agg.count >= 1)) return;
+  let prev: { rating: number; count: number } | null = null;
+  try {
+    prev = previous ? (JSON.parse(previous) as { rating: number; count: number }) : null;
+  } catch {
+    prev = null;
+  }
+  db.prepare(
+    `UPDATE operators SET rating = ?, review_count = ?, updated_at = ?
+     WHERE id = ? AND ((rating IS NULL AND review_count IS NULL) OR (rating IS ? AND review_count IS ?))`,
+  ).run(agg.rating, Math.round(agg.count), nowIso(), operatorId, prev ? prev.rating : -1, prev ? prev.count : -1);
 }
 
 export async function readSiteStructure(op: { id: string; domain: string; website: string }): Promise<StructureResult> {

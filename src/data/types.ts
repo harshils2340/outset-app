@@ -130,7 +130,8 @@ export type UnclaimedService = {
   variants: { label: string; price: number | null; per?: string; optionIdx: number }[];
 };
 
-export type GuestReview = { author?: string; rating?: number; text: string; date?: string };
+/** A review as the operator republished it. `date` is ISO (YYYY-MM-DD or YYYY-MM); `source` is "site" or the platform the operator's page named. */
+export type GuestReview = { author?: string; rating?: number; text: string; date?: string; source?: string };
 
 export type OperatorLocation = { city: string; region?: string; lat: number; lon: number; street?: string };
 

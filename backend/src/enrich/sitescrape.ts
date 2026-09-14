@@ -3,6 +3,7 @@ import { load } from "cheerio";
 import { largestFromSrcset } from "./srcset.ts";
 import { fetchHtml, sleep } from "../scrape/fetch.ts";
 import { harvestHours } from "./hoursMarkup.ts";
+import { normalizeReview, parseRating, selectReviews, sourceFromLabel, type AggregateRating, type RawReview, type Review, type ReviewSource } from "../sync/reviews.ts";
 
 /**
  * Site reading without a database.
@@ -660,7 +661,28 @@ function originOf(u: string): string {
   }
 }
 
-function harvest(html: string, url: string, out: Map<string, Found>, links: Set<string>, meta: { waiver?: string; book?: string; phone?: string; hours?: string; email?: string; desc?: string; bodies?: Map<string, string> }, addons: Map<string, Addon>, images?: SiteImage[]) {
+type HarvestMeta = {
+  waiver?: string;
+  book?: string;
+  phone?: string;
+  hours?: string;
+  email?: string;
+  desc?: string;
+  bodies?: Map<string, string>;
+  /** Every review read so far on this site, before dedupe and the cap. */
+  reviews?: Review[];
+  /** The operator's own AggregateRating with the most ratings behind it. */
+  aggregate?: AggregateRating | null;
+  /** Links named reviews, testimonials, guest book: read before other pages. */
+  reviewPages?: Set<string>;
+};
+
+function harvest(html: string, url: string, out: Map<string, Found>, links: Set<string>, meta: HarvestMeta, addons: Map<string, Addon>, images?: SiteImage[]) {
+  if (meta.reviews) {
+    const got = harvestReviews(html, url);
+    meta.reviews.push(...got.reviews);
+    if (got.aggregate && (!meta.aggregate || got.aggregate.count > meta.aggregate.count)) meta.aggregate = got.aggregate;
+  }
   const $ = load(html);
   const origin = new URL(url).origin;
   $("script, style, noscript, svg").remove();
@@ -688,6 +710,9 @@ function harvest(html: string, url: string, out: Map<string, Found>, links: Set<
     if (!abs || abs.origin !== origin) return;
     if (CRAWL_SKIP.test(abs.pathname + abs.search + abs.hash)) return;
     links.add(abs.origin + abs.pathname.replace(/\/$/, ""));
+    if (meta.reviewPages && (REVIEW_LINK.test(text) || REVIEW_LINK.test(abs.pathname.replace(/[-_/]+/g, " "))) && !/\/(?:reviews?|testimonials?)\/[^/]+\/./i.test(abs.pathname)) {
+      meta.reviewPages.add(abs.origin + abs.pathname.replace(/\/$/, ""));
+    }
     if (text.length >= 4 && text.length <= 60 && serviceLike(text, href) && !NOT_SERVICE.test(text)) {
       const key = text.toLowerCase();
       if (!out.has(key)) out.set(key, { name: titleCase(text), detail: null, price: null, unit: null, url, photo: photoNear($, el, url, false) });
@@ -796,6 +821,362 @@ function harvest(html: string, url: string, out: Map<string, Found>, links: Set<
   }
 }
 
+/* ---------------------------------------------------------------- reviews
+ *
+ * Customer reviews the operator publishes on its own pages, read on the same page visits as everything else:
+ *   1. schema.org Review and AggregateRating, as JSON-LD or microdata;
+ *   2. testimonial sections: review and testimonial cards, blockquote and cite, slider and carousel slides
+ *      under a "What our guests say" heading, and paragraph-plus-signature testimonial pages;
+ *   3. review widgets that print their reviews into the page (Trustindex, the Google Reviews plugins, Site Reviews,
+ *      Strong Testimonials, Elementor and Divi testimonials, a pre-rendered Elfsight or EmbedSocial block). The
+ *      platform the widget names becomes `source`; the widget is never followed to the platform.
+ * Rules (what counts, what is rejected, rating sanity, dedupe, the best twelve) live in `sync/reviews.ts`.
+ */
+
+/** A link or path that leads to reviews. Those pages are read early, within the same page budget. */
+export const REVIEW_LINK =
+  /\b(?:reviews?|testimonials?|guest[- ]?book|guestbook|kind[- ]words|raves?|what[- ](?:people|guests|customers|clients|our[- ](?:guests|customers|clients|riders|students))[- ](?:are[- ])?say(?:ing)?)\b/i;
+const REVIEW_HEADING =
+  /^(?:(?:our |recent |latest |guest |customer |client |google |tripadvisor |5[- ]star )*(?:reviews?|testimonials?)\b|what (?:people|(?:our )?(?:guests|customers|clients|riders|students|divers|families|travell?ers)) (?:are |have been )?say(?:ing)?|kind words|happy (?:customers|guests|campers|clients)|guest ?book|hear from our|(?:don'?t|do not) (?:just )?take our word|(?:reviews?|love) from our|what our (?:guests|customers|clients) think)/i;
+/** A class or id token that marks a review card or a testimonial. */
+const CARD_TOKEN = /(?:review|testimonial|kind-?words)/i; // a quick screen; isCardEl decides
+/** Words that name a part of a card, or chrome around cards, rather than a card ("ti-review-text-container", "review-count"). */
+const PART_WORD =
+  /^(?:text|content|body|message|comment|excerpt|description|quote|author|name|reviewer|date|time|meta|stars?|rating|ratings|score|header|footer|title|heading|headline|image|img|avatar|photo|pic|icon|logo|platform|source|count|summary|total|average|button|btn|link|nav|arrow|arrows|dots?|pagination|prev|next|intro|form|submit|write|badge|filter|sort|more|less|read|verified|profile|location|reply|response|cta|label|number|numbers|details|job|position|company|role|mark|marks|cite|designation|subtitle|caption|separator|divider|info|photo|thumb|thumbnail|video|media|input|ico)$/i;
+const REPLY_TOKEN = /(?:^|[-_])(?:reply|replies|response|owner[-_]?(?:answer|reply|response)|business[-_]?response|ti-reply)(?:$|[-_])/i;
+const FEED_SELECTOR = "[id^=cff], [class*=cff-], [class*=facebook-feed], [class*=fb-feed], [id*=sb_instagram], [class*=instagram-feed], [class*=twitter-feed], [class*=tiktok-feed]";
+const SLIDE_SELECTOR =
+  ".swiper-slide:not(.swiper-slide-duplicate), .slick-slide:not(.slick-cloned), .owl-item:not(.cloned), .carousel-item, .carousel-cell, .splide__slide:not(.is-clone), .glide__slide:not(.glide__slide--clone), .flickity-cell, .item, [class*=slide]:not([class*=slider]):not([class*=clone]):not([class*=slides])";
+
+type Cheerio$ = ReturnType<typeof load>;
+
+function tokensOf(el: any): string[] {
+  const a = el?.attribs || {};
+  return [...String(a.class || "").split(/\s+/), ...String(a.id || "").split(/\s+/)].filter(Boolean);
+}
+
+function isCardEl(el: any): boolean {
+  return tokensOf(el).some((t) => {
+    if (!CARD_TOKEN.test(t)) return false;
+    const words = t.toLowerCase().split(/[-_]+/);
+    const at = words.findIndex((w) => /^(?:customer|google|guest|client|user|site|tripadvisor|yelp|facebook|fb|product|star)?(?:reviews?|testimonials?)$/.test(w) || (w === "kind" && words.includes("words")));
+    return at >= 0 && !words.slice(at + 1).some((w) => PART_WORD.test(w));
+  });
+}
+
+const txt = ($: Cheerio$, el: any) => $(el).text().replace(/\s+/g, " ").trim();
+
+/** Platform named by the card itself (a logo, a link, a label, its classes) or by the widget around it. */
+function sourceNear($: Cheerio$, card: any): ReviewSource | null {
+  const own = [
+    tokensOf(card).join(" "),
+    $(card).find("img").map((_, i) => (i.attribs?.src || "") + " " + (i.attribs?.alt || "") + " " + (i.attribs?.title || "")).get().join(" "),
+    $(card).find("a[href]").map((_, a) => a.attribs?.href || "").get().filter((h) => /google\.[a-z.]+\/maps|g\.page|goo\.gl\/maps|tripadvisor\.|yelp\.|facebook\.com/i.test(h)).join(" "),
+    $(card).find("[class*=platform], [class*=source], [class*=logo], [class*=icon], [class*=google], [class*=tripadvisor], [class*=yelp], [class*=facebook]").map((_, e) => tokensOf(e).join(" ") + " " + (e.attribs?.title || "") + " " + (e.attribs?.["aria-label"] || "")).get().join(" "),
+  ].join(" ");
+  const label = txt($, card).match(/\b(?:posted on|review(?:ed)? on|via|from|on)\s+(google|trip ?advisor|yelp|facebook|viator|airbnb|expedia|trustpilot)\b|\b(google|trip ?advisor|yelp|facebook) (?:review|guest|user)\b/i);
+  const fromOwn = (label && sourceFromLabel(label[1] || label[2])) || sourceFromLabel(own.replace(/google-?(?:fonts?|analytics|tag|maps?-?api)/gi, ""));
+  if (fromOwn) return fromOwn;
+  // A widget container that names its platform: ti-widget data, "google-reviews", "wp-gr", "grw".
+  let node = $(card).parent();
+  for (let d = 0; d < 7 && node.length && !node.is("body"); d++) {
+    const t = tokensOf(node[0]).join(" ") + " " + Object.entries(node[0].attribs || {}).filter(([k]) => /^data-/.test(k)).map(([, v]) => v).join(" ");
+    if (/review|testimonial|widget|\bti-|grw|wp-gr|rplg|elfsight|eapps|embedsocial|trustmary/i.test(t)) {
+      if (/\bwp-gr\b|\bgrw\b|wp-google|rplg/i.test(t)) return "google";
+      const s = sourceFromLabel(t);
+      if (s) return s;
+    }
+    node = node.parent();
+  }
+  return null;
+}
+
+function ratingNear($: Cheerio$, card: any): { value: unknown; best: unknown } | null {
+  const c = $(card);
+  const micro = c.find("[itemprop=ratingValue]").first();
+  if (micro.length) return { value: micro.attr("content") || micro.text(), best: c.find("[itemprop=bestRating]").first().attr("content") || c.find("[itemprop=bestRating]").first().text() || undefined };
+  const data = c.find("[data-rating], [data-score], [data-stars], [data-rateit-value]").addBack("[data-rating], [data-score], [data-stars]").first();
+  if (data.length) {
+    const v = data.attr("data-rating") || data.attr("data-score") || data.attr("data-stars") || data.attr("data-rateit-value");
+    if (v && /^\d(?:\.\d+)?$/.test(v)) return { value: v, best: undefined };
+  }
+  const starBox = c.find("[class*=star], [class*=rating]").filter((_, e) => $(e).parentsUntil(card).filter("[class*=star], [class*=rating]").length === 0);
+  for (const box of starBox.toArray()) {
+    // A radio-button star widget: the checked input is the rating, and every label carries a "N out of 5" title.
+    const radios = $(box).find("input[type=radio]");
+    if (radios.length) {
+      const on = radios.filter((_, e) => e.attribs?.checked != null || /checked/i.test(e.attribs?.class || "")).first();
+      if (on.length && /^\d(?:\.\d)?$/.test(on.attr("value") || "")) return { value: on.attr("value"), best: undefined };
+      continue;
+    }
+    const label = (box.attribs?.["aria-label"] || box.attribs?.title || "") + " " + $(box).find("[aria-label], [title]").map((_, e) => (e.attribs?.["aria-label"] || "") + " " + (e.attribs?.title || "")).get().join(" ");
+    const m = label.match(/(\d(?:\.\d)?)\s*(?:out of|\/|of)\s*(\d{1,2})/i) || label.match(/(?:rated\s*)?(\d(?:\.\d)?)\s*stars?/i);
+    if (m) return { value: m[1], best: m[2] };
+    const cls = tokensOf(box).join(" ").match(/(?:stars?|rating)[-_](\d)(?:[-_]?(\d))?\b/i);
+    if (cls) return { value: cls[2] ? cls[1] + "." + cls[2] : cls[1], best: undefined };
+    const starLike = (e: any) => /star/i.test(tokensOf(e).join(" ") + " " + (e.attribs?.["data-icon"] || ""));
+    const stars = $(box).find("[class*=star], i, svg, span").filter((_, e) => starLike(e) && !$(e).find("*").toArray().some(starLike));
+    if (stars.length >= 1 && stars.length <= 5) {
+      const tok = (e: any) => tokensOf(e);
+      const isEmpty = (e: any) => tok(e).some((k) => /^(?:empty|off|e|far|inactive|outline|half|star-o|fa-star-o|fa-star-half-o)$|-(?:empty|off|outline|o|half|half-o)$/i.test(k));
+      const isFull = (e: any) => !isEmpty(e) && tok(e).some((k) => /^(?:full|fill|filled|active|checked|selected|gold|on|f|fas|rated|is-active)$|-(?:full|fill|filled|on|active|checked)$/i.test(k));
+      const full = stars.filter((_, e) => isFull(e));
+      const empty = stars.filter((_, e) => isEmpty(e));
+      if (full.length && full.length + empty.length === stars.length) return { value: full.length, best: undefined };
+      if (!empty.length && stars.length === 5) return { value: 5, best: undefined };
+    }
+    const glyphs = $(box).text().replace(/\s+/g, "");
+    const filled = (glyphs.match(/★|⭐/g) || []).length;
+    const hollow = (glyphs.match(/☆/g) || []).length;
+    if (filled >= 1 && filled + hollow <= 5 && /^[★⭐☆]+$/.test(glyphs)) return { value: filled, best: undefined };
+  }
+  // A star picture: alt="Five Stars", five-stars.webp, 4.5-star.png.
+  for (const img of c.find("img").toArray()) {
+    const words: Record<string, number> = { one: 1, two: 2, three: 3, four: 4, five: 5 };
+    const alt = (img.attribs?.alt || img.attribs?.title || "").trim();
+    const file = (img.attribs?.["data-src"] || img.attribs?.src || "").split("/").pop()?.split("?")[0] || "";
+    const m = alt.match(/^(?:rated\s+)?(one|two|three|four|five|[1-5](?:\.\d)?)(?:\s*(?:out of|\/)\s*5)?[\s-]*stars?(?: rating)?$/i) || file.match(/(?:^|[-_])(one|two|three|four|five|[1-5](?:[._]\d)?)[-_]?stars?(?:[-_.])/i);
+    if (m) return { value: words[m[1].toLowerCase()] ?? m[1].replace("_", "."), best: undefined };
+  }
+  const own = c.text().replace(/\s+/g, "");
+  const run = own.match(/^[★⭐☆]{1,5}|[★⭐☆]{5}/);
+  if (run && /★|⭐/.test(run[0])) return { value: (run[0].match(/★|⭐/g) || []).length, best: undefined };
+  return null;
+}
+
+function dateNear($: Cheerio$, card: any): string | null {
+  const c = $(card);
+  const t = c.find("time[datetime]").first().attr("datetime") || c.find("[itemprop=datePublished]").first().attr("content") || c.find("[itemprop=datePublished]").first().text();
+  if (t) return t.trim();
+  const el = c.find("[class*=date], [class*=time], [class*=posted]").filter((_, e) => txt($, e).length <= 40).first();
+  return el.length ? txt($, el) : null;
+}
+
+const AUTHOR_SELECTOR =
+  "[itemprop=author], [class*=author], [class*=reviewer], [class*=-name], [class*=_name], [class*=name-], [class*=name_], .name, [class*=client], [class*=customer], [class*=person], cite, footer";
+
+function authorNear($: Cheerio$, card: any): { text: string | null; el: any } {
+  const c = $(card);
+  const cands = c
+    .find(AUTHOR_SELECTOR)
+    .filter((_, e) => !/(?:img|image|avatar|photo|pic|icon|logo)/i.test(tokensOf(e).join(" ")))
+    .toArray();
+  for (const e of cands) {
+    const nameEl = $(e).find("[itemprop=name]").first();
+    const s = (nameEl.length ? txt($, nameEl) : txt($, e)) || (e.attribs?.content ?? "");
+    if (s && s.length <= 70 && s.split(/\s+/).length <= 8) return { text: s, el: e };
+  }
+  const short = c.find("h3, h4, h5, h6, strong, b, .title").filter((_, e) => {
+    const s = txt($, e);
+    return s.length >= 2 && s.length <= 40 && s.split(/\s+/).length <= 4 && !/[.!?]$/.test(s) && /^[A-Z]/.test(s);
+  }).first();
+  return short.length ? { text: txt($, short), el: short[0] } : { text: null, el: null };
+}
+
+const TEXT_SELECTOR =
+  "[itemprop=reviewBody], [class*=review-text], [class*=review_text], [class*=review-content], [class*=review-body], [class*=review-message], [class*=testimonial-text], [class*=testimonial-content], [class*=testimonial_content], [class*=testimonial-body], [class*=testimonial-quote], [class*=ti-review-content], [class*=wp-google-text], [class*=grw-review-text], [class*=testimonial__text], [class*=testimonial__content], [class*=et_pb_testimonial_description_inner], [class*=glsr-review-content], [class*=quote-text], [class*=-text], [class*=__text], [class*=content], [class*=excerpt], [class*=message], [class*=comment], blockquote, q";
+
+function textNear($: Cheerio$, card: any, authorEl: any): string {
+  const c = $(card);
+  const specific = c.find(TEXT_SELECTOR).filter((_, e) => !(authorEl && ($(e).is(authorEl) || $(e).find(authorEl).length)) && txt($, e).length >= 30).toArray();
+  if (specific.length) {
+    // The most specific match: one that holds no other match with most of its text.
+    const inner = specific.filter((e) => !specific.some((o) => o !== e && $(e).find(o).length && txt($, o).length >= txt($, e).length * 0.7));
+    if (inner.length) return $(inner[0]).text();
+  }
+  const ps = c.find("p").filter((_, e) => !(authorEl && ($(e).is(authorEl) || $(e).find(authorEl).length)) && txt($, e).length >= 20).toArray();
+  if (ps.length) return ps.map((p) => txt($, p)).join(" ");
+  const clone = c.clone();
+  clone.find(AUTHOR_SELECTOR + ", [class*=date], [class*=time], [class*=star], [class*=rating], h3, h4, h5, h6, button, a[class*=more]").remove();
+  return clone.text();
+}
+
+function readCard($: Cheerio$, card: any, pageUrl: string, loose: boolean, fallbackSource: ReviewSource | null): RawReview | null {
+  const a = authorNear($, card);
+  if (!a.text) {
+    // "- Priya S." on its own line under the words.
+    const sig = $(card).find("span, div, p, em, i, small").filter((_, e) => !$(e).children().length && /^[-–—~]\s*[A-Z]/.test(txt($, e)) && txt($, e).length <= 60).last();
+    if (sig.length) {
+      a.text = txt($, sig);
+      a.el = sig[0];
+    }
+  }
+  const text = textNear($, card, a.el);
+  if (!text || text.replace(/\s+/g, " ").trim().length < 30) return null;
+  const r = ratingNear($, card);
+  return { author: a.text, rating: r?.value, bestRating: r?.best, text, date: dateNear($, card), source: sourceNear($, card) || fallbackSource, sourceUrl: pageUrl, loose };
+}
+
+function jsonLdNodes($: Cheerio$): Record<string, unknown>[] {
+  const out: Record<string, unknown>[] = [];
+  const walk = (node: unknown, depth: number) => {
+    if (!node || depth > 8) return;
+    if (Array.isArray(node)) return node.forEach((n) => walk(n, depth + 1));
+    if (typeof node !== "object") return;
+    const o = node as Record<string, unknown>;
+    out.push(o);
+    for (const v of Object.values(o)) if (v && typeof v === "object") walk(v, depth + 1);
+  };
+  $('script[type="application/ld+json"]').each((_, el) => {
+    try {
+      walk(JSON.parse($(el).text().trim().replace(/^<!--|-->$/g, "")), 0);
+    } catch {
+      /* broken JSON-LD is common; skip it */
+    }
+  });
+  return out;
+}
+
+const typeIs = (o: Record<string, unknown>, re: RegExp) => [o["@type"]].flat().some((t) => typeof t === "string" && re.test(t));
+const nameOf = (v: unknown): string | null => {
+  if (!v) return null;
+  if (typeof v === "string") return v;
+  if (Array.isArray(v)) return nameOf(v[0]);
+  if (typeof v === "object") return nameOf((v as Record<string, unknown>).name);
+  return null;
+};
+
+/**
+ * Reviews and the operator's own aggregate rating on one page. No fetches: the crawl hands in pages it already
+ * read. Reviews come back cleaned and checked by `normalizeReview`, not yet deduped or capped across the site.
+ */
+export function harvestReviews(html: string, pageUrl: string): { reviews: Review[]; aggregate: AggregateRating | null } {
+  const empty = { reviews: [] as Review[], aggregate: null };
+  if (!/review|testimonial|blockquote|ratingvalue|what\s+(?:people|our|guests|customers|clients)|kind words|guest\s?book/i.test(html)) return empty;
+  const $ = load(html);
+  const raws: RawReview[] = [];
+  let aggregate: AggregateRating | null = null;
+  const takeAggregate = (value: unknown, best: unknown, countRaw: unknown) => {
+    const rating = parseRating(value, best);
+    const n = Number(String(countRaw ?? "").replace(/[^0-9]/g, ""));
+    if (rating == null || !Number.isFinite(n) || n < 1) return;
+    if (!aggregate || n > aggregate.count) aggregate = { rating, count: n, source: "site", sourceUrl: pageUrl };
+  };
+
+  // 1. JSON-LD.
+  for (const o of jsonLdNodes($)) {
+    if (typeIs(o, /Review$/) && (o.reviewBody || o.description)) {
+      const rr = o.reviewRating as Record<string, unknown> | undefined;
+      const publisher = nameOf(o.publisher);
+      raws.push({ author: nameOf(o.author), rating: rr && typeof rr === "object" ? rr.ratingValue : rr, bestRating: rr && typeof rr === "object" ? rr.bestRating : undefined, text: String(o.reviewBody || o.description), date: typeof o.datePublished === "string" ? o.datePublished : null, source: sourceFromLabel(publisher) || "site", sourceUrl: pageUrl });
+    }
+    if (typeIs(o, /^AggregateRating$/)) takeAggregate(o.ratingValue, o.bestRating, o.reviewCount ?? o.ratingCount);
+  }
+
+  // Business replies and social feeds are the business talking, never a review.
+  $("script, style, noscript, nav, " + FEED_SELECTOR).remove();
+  // Carousels repeat their first and last slides as clones.
+  $(".slick-cloned, .swiper-slide-duplicate, .owl-item.cloned, .splide__slide.is-clone, .glide__slide--clone, [aria-hidden=true][class*=clone]").remove();
+  $("*").filter((_, e) => tokensOf(e).some((t) => REPLY_TOKEN.test(t))).remove();
+
+  // 2. Microdata.
+  const done = new Set<any>();
+  $("[itemtype]").each((_, el) => {
+    const type = el.attribs?.itemtype || "";
+    if (/schema\.org\/AggregateRating\b/i.test(type)) {
+      const c = $(el);
+      takeAggregate(c.find("[itemprop=ratingValue]").attr("content") || c.find("[itemprop=ratingValue]").text(), c.find("[itemprop=bestRating]").attr("content"), c.find("[itemprop=reviewCount]").attr("content") || c.find("[itemprop=reviewCount]").text() || c.find("[itemprop=ratingCount]").attr("content") || c.find("[itemprop=ratingCount]").text());
+      return;
+    }
+    if (!/schema\.org\/(?:User|Critic)?Review\/?$/i.test(type)) return;
+    const c = $(el);
+    const body = c.find("[itemprop=reviewBody], [itemprop=description]").first();
+    const authorEl = c.find("[itemprop=author]").first();
+    const authorName = authorEl.find("[itemprop=name]").first();
+    const text = body.length ? body.text() : "";
+    if (!text) return;
+    done.add(el);
+    const r = ratingNear($, el);
+    raws.push({ author: authorName.length ? authorName.attr("content") || txt($, authorName) : authorEl.attr("content") || txt($, authorEl) || null, rating: r?.value, bestRating: r?.best, text, date: c.find("[itemprop=datePublished]").attr("content") || c.find("[itemprop=datePublished]").attr("datetime") || txt($, c.find("[itemprop=datePublished]")) || null, source: sourceNear($, el) || "site", sourceUrl: pageUrl });
+  });
+  const insideDone = (el: any) => done.has(el) || $(el).parents().toArray().some((p) => done.has(p));
+
+  // 3. Cards: review and testimonial elements and widget items, innermost only.
+  const cards = $("*").filter((_, e) => isCardEl(e) && !insideDone(e)).toArray();
+  const cardSet = new Set(cards);
+  const leaves = cards.filter((e) => !$(e).find("*").toArray().some((d) => cardSet.has(d) && txt($, d).length >= 30));
+  const itemsIn = (container: any): any[] => {
+    const slides = $(container).find(SLIDE_SELECTOR).toArray().filter((s) => txt($, s).length >= 30);
+    const leafSlides = slides.filter((s) => !slides.some((o) => o !== s && $(s).find(o).length));
+    if (leafSlides.length >= 2) return leafSlides;
+    const quotes = $(container).find("blockquote, li, article").toArray().filter((s) => txt($, s).length >= 30);
+    const leafQuotes = quotes.filter((s) => !quotes.some((o) => o !== s && $(s).find(o).length));
+    if (leafQuotes.length >= 2) return leafQuotes;
+    return [];
+  };
+  for (const card of leaves) {
+    if (raws.length >= 60) break;
+    const len = txt($, card).length;
+    const items = itemsIn(card);
+    const src = sourceNear($, card);
+    if (items.length) {
+      for (const it of items) {
+        done.add(it);
+        const r = readCard($, it, pageUrl, false, src);
+        if (r) raws.push(r);
+      }
+    } else if (len <= 3000) {
+      done.add(card);
+      const r = readCard($, card, pageUrl, false, null);
+      if (r) raws.push(r);
+    }
+  }
+
+  // 4. A section under a reviews heading: its slides, quotes or list items.
+  $("h1, h2, h3, h4, h5, h6, [class*=heading], [class*=title]").each((_, h) => {
+    const label = txt($, h);
+    if (!label || label.length > 70 || !REVIEW_HEADING.test(label)) return;
+    let node = $(h).parent();
+    for (let d = 0; d < 5 && node.length && !node.is("body"); d++) {
+      const items = itemsIn(node[0]).filter((it) => !insideDone(it));
+      if (items.length) {
+        for (const it of items.slice(0, 20)) {
+          done.add(it);
+          const r = readCard($, it, pageUrl, true, null);
+          if (r) raws.push(r);
+        }
+        return;
+      }
+      node = node.parent();
+    }
+  });
+
+  // 5. Bare blockquotes anywhere, and on a testimonials page, paragraphs signed "- Name".
+  $("blockquote").each((_, bq) => {
+    if (insideDone(bq)) return;
+    const cite = $(bq).find("cite, footer").first();
+    const next = $(bq).next();
+    const author = cite.length ? txt($, cite) : next.length && /^[-–—~]/.test(txt($, next)) && txt($, next).length <= 60 ? txt($, next) : null;
+    const clone = $(bq).clone();
+    clone.find("cite, footer").remove();
+    raws.push({ author, text: clone.text(), sourceUrl: pageUrl, loose: true });
+    done.add(bq);
+  });
+  let path = "";
+  try {
+    path = new URL(pageUrl).pathname;
+  } catch {
+    /* keep empty */
+  }
+  if (REVIEW_LINK.test(path.replace(/[-_/]+/g, " "))) {
+    $("main p, article p, .entry-content p, #content p, .content p, section p").each((_, p) => {
+      if (insideDone(p) || raws.length >= 60) return;
+      const t = txt($, p);
+      if (t.length < 40 || t.length > 1500) return;
+      const next = $(p).next();
+      const nextText = next.length ? txt($, next) : "";
+      const signed = /\s[-–—~]\s*[A-Z][\w.'’]*(?:\s+[A-Z][\w.'’]*){0,3}\s*$/.test(t);
+      const author = /^[-–—~]\s*\S/.test(nextText) && nextText.length <= 60 ? nextText : null;
+      if (!signed && !author) return;
+      done.add(p);
+      raws.push({ author, text: t, sourceUrl: pageUrl, loose: true });
+    });
+  }
+
+  const reviews = raws.map((r) => normalizeReview(r)).filter((r): r is Review => !!r);
+  return { reviews, aggregate };
+}
+
 /** One offering row, in the shape `offerings` stores: cents, not dollars, and the page it was read from. */
 export type ScrapedService = {
   name: string;
@@ -865,7 +1246,7 @@ export async function scrapeSite(op: { id: string; domain: string; website: stri
     const links = new Set<string>();
     const addons = new Map<string, Addon>();
     const images: SiteImage[] = [];
-    const meta: { waiver?: string; book?: string; phone?: string; hours?: string; email?: string; desc?: string; bodies?: Map<string, string> } = { bodies: new Map() };
+    const meta: HarvestMeta = { bodies: new Map(), reviews: [], reviewPages: new Set() };
     harvest(home.html, home.finalUrl || startUrl, found, links, meta, addons, images);
     base.pages = 1;
     // Breadth-first over the site's own pages, likely service and pricing pages first. Deep on purpose:
@@ -875,7 +1256,10 @@ export async function scrapeSite(op: { id: string; domain: string; website: stri
     const queue: string[] = [];
     const enqueue = (set: Set<string>) => {
       const fresh = [...set].filter((u) => !seen.has(u) && !queue.includes(u));
-      fresh.sort((a, b) => Number(CRAWL_FIRST.test(b)) - Number(CRAWL_FIRST.test(a)) || a.length - b.length);
+      // Up to three review or testimonial pages first, then likely service and pricing pages. Same page budget.
+      const reviewFirst = new Set([...(meta.reviewPages || [])].filter((u) => !seen.has(u)).sort((a, b) => a.length - b.length).slice(0, 3));
+      const rank = (u: string) => (reviewFirst.has(u) ? 2 : CRAWL_FIRST.test(u) ? 1 : 0);
+      fresh.sort((a, b) => rank(b) - rank(a) || a.length - b.length);
       queue.push(...fresh);
     };
     enqueue(links);
@@ -934,6 +1318,10 @@ export async function scrapeSite(op: { id: string; domain: string; website: stri
     if (meta.waiver) base.facts.push({ fact_key: "waiver_url", fact_value: meta.waiver, source_url: startUrl });
     if (meta.book) base.facts.push({ fact_key: "booking_url", fact_value: meta.book, source_url: startUrl });
     if (meta.hours) base.facts.push({ fact_key: "hours_text", fact_value: meta.hours, source_url: startUrl });
+    // One `review` fact per kept review, its value the Review model as JSON; see sync/reviews.ts.
+    for (const r of selectReviews(meta.reviews || [])) base.facts.push({ fact_key: "review", fact_value: JSON.stringify(r), source_url: r.sourceUrl });
+    // The operator's own schema.org AggregateRating. Only fills a listing's rating when discovery gave none (structure.ts).
+    if (meta.aggregate) base.facts.push({ fact_key: "aggregate_rating", fact_value: JSON.stringify(meta.aggregate), source_url: meta.aggregate.sourceUrl });
     base.contact = { ...(meta.phone ? { phone: meta.phone } : {}), ...(meta.email ? { email: meta.email } : {}), ...(meta.hours ? { hours: meta.hours } : {}) };
     return base;
   } catch (e) {

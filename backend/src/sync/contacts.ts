@@ -12,7 +12,7 @@ import { cleanImageUrl } from "../enrich/srcset.ts";
 import { reconcileArt } from "./artEvidence.ts";
 import { LOCATION_FACT, brandId, isChainLocation } from "./brandShare.ts";
 import { fullSize } from "./imageUrl.ts";
-import { cleanQuote } from "./quotes.ts";
+import { quotesFromFacts } from "./quotes.ts";
 import { METROS, categoryById, nearestMetro } from "../taxonomy/catalog.ts";
 import { rankForCover } from "../enrich/photorelevance.ts";
 import { existsSync, readFileSync as readFileSyncFs } from "node:fs";
@@ -342,8 +342,19 @@ export function toCatalogItem(r: CatalogRow): Record<string, unknown> {
     area,
     metroId: metroFor(r),
     src: r.domain,
-    rating: r.rating ?? undefined,
-    reviews: r.review_count ?? undefined,
+    // Discovery's rating wins. When discovery had none, the operator's own published AggregateRating stands in, the
+    // one the site crawl read from its structured data; the cloud crawl only reaches listings through its facts.
+    ...(() => {
+      if (r.rating != null) return { rating: r.rating, reviews: r.review_count ?? undefined };
+      try {
+        const a = JSON.parse(pick("aggregate_rating")[0] || "null") as { rating?: number; count?: number; ratingValue?: number; reviewCount?: number } | null;
+        const rating = Number(a?.rating ?? a?.ratingValue);
+        const count = Number(a?.count ?? a?.reviewCount);
+        return rating >= 1 && rating <= 5 && count >= 1 ? { rating: Math.round(rating * 10) / 10, reviews: count } : { rating: undefined, reviews: r.review_count ?? undefined };
+      } catch {
+        return { rating: undefined, reviews: r.review_count ?? undefined };
+      }
+    })(),
     specs: uniq([...pick("spec"), ...pick("requirement"), ...pick("group")].map(cleanLine)).filter(isTidyLine).slice(0, 10),
     options: offerings.map((o) => ({
       name: o.name,
@@ -442,24 +453,8 @@ export function toCatalogItem(r: CatalogRow): Record<string, unknown> {
     waiverUrl: pick("waiver_url").find((u) => /^https?:\/\/\S+$/.test(u) && !/\/w\/?$/.test(u)) || undefined,
     hoursText: uniq([...pick("hours_text"), ...pick("hours")].flatMap((h) => h.split(/\s*\|\s*/)).map((h) => cleanLine(h.replace(/^hours(?: & admission)?\s*/i, ""))).filter((h) => h.length > 3 && !/not stated/i.test(h) && HAS_TIME.test(h) && !/[ap]m[A-Za-z]/.test(h))).slice(0, 7),
     faq: uniqBy(pick("faq").flatMap(parseFaqs), (f) => f.q.toLowerCase()).slice(0, 8),
-    quotes: pick("review")
-      .map((raw) => {
-        try {
-          const r = JSON.parse(raw) as { a: string | null; r: number | null; t: string; d: string | null };
-          // "Liz S. | Yelp" keeps the name; the platform becomes the date slot when there is no date.
-          const parts = (r.a || "").split(/\s*[|·,]\s*/);
-          let author = parts[0]?.trim() || "";
-          // A sentence caught as a name ("Highly recommend booking today!") is not a name.
-          if (/[!?.]$/.test(author) || author.split(/\s+/).length > 5 || /\b(recommend|amazing|great|best|love|thank)\b/i.test(author)) author = "";
-          const via = parts.slice(1).find((x) => /yelp|tripadvisor|google|facebook|airbnb|viator|expedia/i.test(x));
-          return { author: author || undefined, rating: r.r || undefined, text: r.t, date: r.d || (via ? "via " + via.trim() : undefined) };
-        } catch {
-          return null;
-        }
-      })
-      .map((r) => (r ? cleanQuote(r) : null))
-      .filter((r): r is { author?: string; rating?: number; text: string; date?: string } => !!r)
-      .slice(0, 6),
+    // Reviews read off the operator's own pages, in either stored shape; see quotes.ts and reviews.ts for the rules.
+    quotes: quotesFromFacts(facts.filter((f) => f.fact_key === "review").map((f) => ({ value: decodeEntities(f.fact_value), sourceUrl: f.source_url }))),
     dur: durationOf(offerings.map((o) => o.duration || o.detail || "")) || undefined,
     fc: freeCancel(cleanPara(pick("cancellation")[0] || "") || pick("policy").filter((l) => /cancel|refund/i.test(l)).join(" ")) || undefined,
     // Day-specific deals the site states, as written (scripts/promo-crawl.mts). Never invented.

@@ -14,7 +14,9 @@ import { spawnWorkers } from "../scrape/cpu.ts";
 const UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36";
 
 type Offering = { name: string; detail: string | null; duration: string | null; price: number | null; unit: string; url: string; desc: string | null; photo: string | null; photos: string[] };
-type Company = { phone?: string | null; email?: string | null; street?: string | null; city?: string | null; region?: string | null; postal?: string | null; cover?: string | null; videoEmbed?: string | null; waiverUrl?: string | null; cancellation?: string | null; checkin?: string | null; faq?: string | null };
+type Company = { phone?: string | null; email?: string | null; street?: string | null; city?: string | null; region?: string | null; postal?: string | null; cover?: string | null; videoEmbed?: string | null; waiverUrl?: string | null; cancellation?: string | null; checkin?: string | null; faq?: string | null;
+  /** The booking system's own review average and count, when its public payload states them (Peek). No review text is published. */
+  aggregate?: { rating: number; count: number } | null };
 type WidgetResult = { vendor: "fareharbor" | "xola" | "peek"; offerings: Offering[]; company: Company; requirements: string[]; policies: string[]; includes: string[]; pages: number };
 
 async function getJson<T>(url: string): Promise<T | null> {
@@ -399,7 +401,12 @@ export async function readPeek(key: string, code: string): Promise<WidgetResult 
     if (doc) await harvest(doc, sub.activity);
   }
   if (!offerings.length) return null;
-  return { vendor: "peek", offerings, company: {}, requirements: [...req].slice(0, 10), policies: [...pol].slice(0, 10), includes: [...inc].slice(0, 10), pages: 1 + subs.length };
+  // Peek's partner record states the review average and count its checkout shows, unless the operator hid reviews.
+  const partner = (root.included || []).find((x) => x.type === "partner")?.attributes || {};
+  const avg = Number(partner["reviews-avg-rating"]);
+  const count = Number(partner["reviews-count"]);
+  const aggregate = !partner["disable-show-reviews"] && avg >= 1 && avg <= 5 && count >= 1 ? { rating: Math.round(avg * 10) / 10, count: Math.round(count) } : null;
+  return { vendor: "peek", offerings, company: { aggregate }, requirements: [...req].slice(0, 10), policies: [...pol].slice(0, 10), includes: [...inc].slice(0, 10), pages: 1 + subs.length };
 }
 
 /* ---------- store ---------- */
@@ -443,6 +450,11 @@ export function storeWidget(op: OpRow, w: WidgetResult): { offerings: number; fa
   fact("faq", w.company.faq);
   if (w.company.videoEmbed && !db.prepare("SELECT 1 FROM facts WHERE operator_id = ? AND fact_key = 'video_embed' LIMIT 1").get(op.id)) fact("video_embed", w.company.videoEmbed);
   fact("booking_vendor", w.vendor);
+  if (w.company.aggregate) {
+    // Same rule as the site's own AggregateRating: only fills a listing that discovery left without a rating.
+    fact("aggregate_rating", JSON.stringify({ ...w.company.aggregate, source: w.vendor, sourceUrl: op.booking_url }));
+    db.prepare("UPDATE operators SET rating = ?, review_count = ?, updated_at = ? WHERE id = ? AND rating IS NULL AND review_count IS NULL").run(w.company.aggregate.rating, w.company.aggregate.count, now, op.id);
+  }
   db.prepare(
     `UPDATE operators SET phone = COALESCE(phone, ?), email = COALESCE(email, ?), street = COALESCE(street, ?), city = COALESCE(city, ?),
        region = COALESCE(region, ?), postal = COALESCE(postal, ?), calendar_vendor = COALESCE(calendar_vendor, ?), updated_at = ? WHERE id = ?`,
