@@ -1,4 +1,5 @@
 import { DatabaseSync } from "node:sqlite";
+import { collapseChains } from "../src/sync/brandShare.ts";
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -88,7 +89,8 @@ const rows = db
   )
   .all(...(limit > 0 ? [limit] : [])) as Row[];
 
-const queue = rows.map((r) => ({
+// Chain locations collapse to one row per brand site; see src/sync/brandShare.ts.
+const queue = collapseChains(rows).map((r) => ({
   id: r.id,
   domain: r.domain,
   website: r.website,

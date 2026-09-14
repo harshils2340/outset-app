@@ -10,6 +10,7 @@ import { crawledPhotoStats, crawledPhotosFor } from "./photoSidecar.ts";
 import { crawledStructureFor, crawledStructureStats } from "./structureSidecar.ts";
 import { cleanImageUrl } from "../enrich/srcset.ts";
 import { reconcileArt } from "./artEvidence.ts";
+import { LOCATION_FACT, brandId, isChainLocation } from "./brandShare.ts";
 import { METROS, categoryById, nearestMetro } from "../taxonomy/catalog.ts";
 import { rankForCover } from "../enrich/photorelevance.ts";
 import { existsSync, readFileSync as readFileSyncFs } from "node:fs";
@@ -223,7 +224,14 @@ export function toCatalogItem(r: CatalogRow): Record<string, unknown> {
   // database, so its rows reach a listing only here. Added, never substituted: a machine that already imported
   // the same work has these rows in SQLite, so the merge drops duplicates by name and by key rather than
   // printing every service twice, and a menu that came from a booking widget or an extraction still wins.
-  const crawled = crawledStructureFor(r.id);
+  // A chain location reads its brand's crawl: menu and descriptive facts are the brand's, location facts its own.
+  const ownCrawl = crawledStructureFor(r.id);
+  const crawled = ownCrawl.offerings.length || ownCrawl.facts.length || !isChainLocation(r.domain)
+    ? ownCrawl
+    : (() => {
+        const b = crawledStructureFor(brandId(r.website));
+        return { offerings: b.offerings, facts: b.facts.filter((f) => !LOCATION_FACT.test(f.fact_key)) };
+      })();
   const hasDbPrice = dbOfferings.some((o) => o.price_cents != null);
   const seenOffering = new Set(dbOfferings.map((o) => (o.name + "|" + (o.detail || "") + "|" + (o.price_cents ?? "")).toLowerCase()));
   const rawOfferings = [
@@ -308,7 +316,7 @@ export function toCatalogItem(r: CatalogRow): Record<string, unknown> {
     // fetched the site, they are all there is, and when it has, the older harvest already earned its order.
     // cleanImageUrl first: crawls before 14 September 2026 split srcset on every comma and stored pieces of
     // Wix and Cloudinary transform URLs, which resolve to pages that do not exist.
-    keepScreened(uniq([...widgetPhotos, ...pick("cover"), ...pick("photo"), ...crawledPhotosFor(r.id).photos].map(cleanImageUrl).filter((u): u is string => !!u).filter(isPhotoName))).map((url) => ({
+    keepScreened(uniq([...widgetPhotos, ...pick("cover"), ...pick("photo"), ...crawledPhotosFor(r.id).photos, ...(isChainLocation(r.domain) ? crawledPhotosFor(brandId(r.website)).photos : [])].map(cleanImageUrl).filter((u): u is string => !!u).filter(isPhotoName))).map((url) => ({
       url,
       page: photoPage.get(url) || null,
       item: photoItem.get(url) || itemByPage.get(photoPage.get(url) || "") || null,
