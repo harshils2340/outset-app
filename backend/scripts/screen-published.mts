@@ -26,7 +26,7 @@ const publicDir = join(here, "../../public");
 // Not under public/: Vite copies that directory into the build, and this cache is for the screen, not guests.
 const verdictPath = join(here, "../data/photo-verdicts.json");
 
-type Verdict = { kind: PhotoKind; page?: boolean };
+type Verdict = { kind: PhotoKind; page?: boolean; tries?: number };
 type Verdicts = Record<string, Verdict>;
 type Listing = { id?: string; cover?: string; photos?: string[]; [k: string]: unknown };
 
@@ -47,14 +47,15 @@ function loadVerdicts(): Verdicts {
 }
 
 async function pull(url: string, size?: number): Promise<{ width: number; height: number; rgba: Uint8Array } | null> {
-  for (let attempt = 0; attempt < 2; attempt++) {
+  for (let attempt = 0; attempt < 3; attempt++) {
     const ctl = new AbortController();
     const timer = setTimeout(() => ctl.abort(), 20000);
     try {
       const res = await fetch(size ? tinyUrl(url, size) : tinyUrl(url), { signal: ctl.signal, headers: { "user-agent": "Mozilla/5.0 (compatible; OutsetBot/1.0)" } });
       clearTimeout(timer);
       if (res.status === 429 || res.status === 403) {
-        await new Promise((r) => setTimeout(r, 3000 + attempt * 4000));
+        // Shared runner addresses get throttled hard; wait longer each time rather than burning the attempt.
+        await new Promise((r) => setTimeout(r, 4000 + attempt * 8000));
         continue;
       }
       if (!res.ok) return null;
@@ -92,7 +93,14 @@ async function main(): Promise<void> {
     listings.set(f, d);
     for (const u of [d.cover, ...(d.photos || [])]) if (u && /^https?:/.test(u)) urls.add(u);
   }
-  const todo = Array.from(urls).filter((u) => !(u in verdicts)).slice(0, limit);
+  // "unknown" means the fetch failed, usually the image proxy throttling a shared runner address, not a
+  // verdict. Those come back for another try on later runs; after three we stop asking.
+  const todo = Array.from(urls)
+    .filter((u) => {
+      const v = verdicts[u];
+      return !v || (v.kind === "unknown" && (v.tries || 1) < 3);
+    })
+    .slice(0, limit);
   console.log(`${files.length} listings, ${urls.size} distinct images, ${todo.length} to judge (${Object.keys(verdicts).length} already known)`);
 
   let i = 0;
@@ -107,7 +115,7 @@ async function main(): Promise<void> {
       }
       const url = todo[i++];
       const v = await judge(url);
-      verdicts[url] = v;
+      verdicts[url] = v.kind === "unknown" ? { kind: "unknown", tries: (verdicts[url]?.tries || 0) + 1 } : v;
       const label = v.page ? "printed page" : v.kind;
       counts[label] = (counts[label] || 0) + 1;
       judged++;
