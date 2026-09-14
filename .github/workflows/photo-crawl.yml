@@ -1,0 +1,96 @@
+name: Photo crawl
+# Fetches the operator websites that have never been crawled and harvests their photos, so listings stop
+# being a name and an address. Three quarters of the catalog is empty and 22,310 of those have a website
+# nobody has fetched; this is the job that fills them. It runs on GitHub's runners, never on a laptop, and
+# needs no database: scripts/photo-queue.mts commits the work list, this reads it and commits the results.
+#
+# Politeness over throughput. These requests come from GitHub's shared IP ranges, so a block would hurt every
+# project on the platform: six shards, four fetches each, robots.txt honoured, and no retry storms.
+on:
+  schedule:
+    # Twice a day, off the hour and away from the photo screen's :17 slots.
+    - cron: "41 4,16 * * *"
+  workflow_dispatch:
+    inputs:
+      shards:
+        description: How many runners to split the work across (1-10)
+        default: "6"
+      concurrency:
+        description: Sites fetched at once per runner (1-8)
+        default: "4"
+      minutes:
+        description: Crawl budget per runner, under the job timeout
+        default: "170"
+concurrency:
+  group: photo-crawl
+  cancel-in-progress: false
+
+jobs:
+  # Each runner takes every Nth operator, so all shards get the same mix of states and categories and no
+  # single one inherits a slow corner of the country. Results go up as artifacts; a single job commits them,
+  # because six runners pushing to main at once is a rebase fight nobody wins.
+  crawl:
+    runs-on: ubuntu-latest
+    timeout-minutes: 200
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3, 4, 5]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci
+        working-directory: backend
+      # Sites that render their photos in JavaScript need a real browser; that is most of the ones a plain
+      # fetch already gave nothing for.
+      - run: npx playwright install --with-deps chromium
+        working-directory: backend
+      - name: Crawl this shard
+        run: >
+          npx tsx scripts/crawl-photos-ci.mts
+          --shard=${{ matrix.shard }}
+          --of=${{ github.event.inputs.shards || 6 }}
+          --concurrency=${{ github.event.inputs.concurrency || 4 }}
+          --minutes=${{ github.event.inputs.minutes || 170 }}
+        working-directory: backend
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: photos-shard-${{ matrix.shard }}
+          path: backend/data/photos/*.json
+          if-no-files-found: ignore
+          retention-days: 1
+
+  collect:
+    needs: crawl
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: /tmp/shards
+          merge-multiple: true
+      - name: Gather the shards
+        run: |
+          mkdir -p backend/data/photos
+          cp -f /tmp/shards/*.json backend/data/photos/ 2>/dev/null || true
+          ls -la backend/data/photos/ || true
+      - name: Commit what the crawl found
+        run: |
+          git config user.name "Outset photo crawl"
+          git config user.email "noreply@onoutset.com"
+          git add backend/data/photos
+          git diff --cached --quiet && echo "nothing new" && exit 0
+          git commit -m "Photo crawl: photos harvested from operator sites that had none"
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin main && git push origin main && exit 0
+            echo "push race, retrying ($attempt)"
+            sleep $((attempt * 10))
+          done
+          exit 1

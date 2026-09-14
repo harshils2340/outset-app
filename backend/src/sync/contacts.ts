@@ -6,6 +6,7 @@ import { db } from "../db/client.ts";
 import { writeLandingPages } from "./pages.ts";
 import { encodeWeek } from "./hours.ts";
 import { claimKeyHash } from "../lib/claim.ts";
+import { crawledPhotoStats, crawledPhotosFor } from "./photoSidecar.ts";
 import { METROS, nearestMetro } from "../taxonomy/catalog.ts";
 import { rankForCover } from "../enrich/photorelevance.ts";
 import { existsSync, readFileSync as readFileSyncFs } from "node:fs";
@@ -282,7 +283,9 @@ export function toCatalogItem(r: CatalogRow): Record<string, unknown> {
   const itemByPage = new Map<string, string>();
   for (const o of rawOfferings) if (o.source_url && !itemByPage.has(o.source_url)) itemByPage.set(o.source_url, o.name);
   const ranked = rankForCover(
-    keepScreened(uniq([...widgetPhotos, ...pick("cover"), ...pick("photo")].filter(isPhotoName))).map((url) => ({
+    // Photos the cloud crawl found go in behind the operator's own crawled set: when this machine has never
+    // fetched the site, they are all there is, and when it has, the older harvest already earned its order.
+    keepScreened(uniq([...widgetPhotos, ...pick("cover"), ...pick("photo"), ...crawledPhotosFor(r.id).photos].filter(isPhotoName))).map((url) => ({
       url,
       page: photoPage.get(url) || null,
       item: photoItem.get(url) || itemByPage.get(photoPage.get(url) || "") || null,
@@ -1669,6 +1672,8 @@ export function syncCatalogToApp(): { path: string; count: number } {
   });
   // Published hours can come from the contact record rather than the listing, so the flag is settled here.
   for (const o of operators) if (o.thin && o.hrs) (o as { thin?: true }).thin = undefined;
+  const crawl = crawledPhotoStats();
+  if (crawl.operators) console.log(`Cloud photo crawl has reached ${crawl.operators.toLocaleString()} operators; ${crawl.withPhotos.toLocaleString()} of them have photos now.`);
   const thin = operators.filter((o) => o.thin).length;
   console.log(`${operators.length} listings, ${thin} with nothing a guest can act on yet (${Math.round((100 * thin) / operators.length)}%), left out of browse.`);
   const path = join(appDataDir, "../../public/catalog.json");
