@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import { ID, linkEmailToListing, mayEdit, rateLimit, signSession, verifySession } from "./auth.ts";
+import { maskEmail } from "../lib/claimIndex.ts";
 import { readJson, writeJson } from "../lib/store.ts";
 
 /**
@@ -16,6 +17,8 @@ export type StoredProfile = {
   published: boolean;
   profile: unknown;
   patch: Record<string, unknown>;
+  /** Addresses that claimed this listing after the first one; a forwarded link leaves a trace here. */
+  alsoClaimedBy?: string[];
 };
 
 const path = (id: string) => `profiles/${id}.json`;
@@ -41,14 +44,27 @@ profiles.post("/claims/:id", rateLimit(30, 60 * 60 * 1000), async (c) => {
   const body = (await c.req.json().catch(() => ({}))) as { owner?: Partial<StoredProfile["owner"]> };
   const now = new Date().toISOString();
   const rec = (await readJson<StoredProfile>(path(id))) || fresh(id, now);
+  /**
+   * A claim link is a bearer token: whoever holds it gets in. A forwarded email therefore reaches a stranger,
+   * and before this the second claimer silently became a second owner with permanent sign-in-by-code access
+   * while the real owner was told nothing. Access still follows the token, because locking out an owner who
+   * claims from a second address of their own would be worse; but the first claim is remembered, every later
+   * address is recorded, and the answer says so, so the dashboard can warn and a human can see it happen.
+   */
+  const priorEmail = rec.owner.email;
   rec.owner = cleanOwner(body.owner, rec.owner);
+  const takenOver = !!priorEmail && !!rec.owner.email && priorEmail.toLowerCase() !== rec.owner.email.toLowerCase();
+  if (takenOver) {
+    rec.alsoClaimedBy = Array.from(new Set([...(rec.alsoClaimedBy || []), rec.owner.email.toLowerCase()]));
+    console.warn(`[claim] ${id} first claimed by ${maskEmail(priorEmail)} on ${rec.claimedAt}, now also claimed by ${maskEmail(rec.owner.email)}`);
+  }
   rec.updatedAt = now;
   await writeJson(path(id), rec, `Claim: ${id}`);
   if (rec.owner.email) await linkEmailToListing(rec.owner.email, id);
   const prior = verifySession(c.req.header("x-session"));
   const ids = Array.from(new Set([...(prior?.ids || []), id]));
   const session = signSession({ ids, email: rec.owner.email || prior?.email || "", exp: Date.now() + 30 * 86400000 });
-  return c.json({ ...rec, session });
+  return c.json({ ...rec, session, ...(takenOver ? { alreadyClaimed: maskEmail(priorEmail), claimedAt: rec.claimedAt } : {}) });
 });
 
 profiles.put("/profiles/:id", rateLimit(600, 60 * 60 * 1000), async (c) => {

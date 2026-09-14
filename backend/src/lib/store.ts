@@ -31,18 +31,26 @@ async function withLock<T>(key: string, fn: () => Promise<T>): Promise<T> {
   return run;
 }
 
-/** relPath is relative to public/, e.g. "profiles/o-acme-com.json". */
+/**
+ * relPath is relative to public/, e.g. "profiles/o-acme-com.json".
+ *
+ * Whichever store writes is the one that reads. With a token, writes go to the repository, so the repository
+ * is the truth and the checkout on disk is only a deploy-time snapshot; reading that snapshot instead would
+ * quietly lose data, because every write here is read-modify-write. A second booking read from a stale
+ * `bookings/<id>.json` rebuilds the array as it was when the container started and overwrites the first.
+ * The local copy is still the fallback for a path the repository does not have yet, and the only store at
+ * all when there is no token.
+ */
 export async function readJson<T>(relPath: string): Promise<T | null> {
   if (!SAFE.test(relPath)) throw new Error("bad path");
   const local = join(publicDir, relPath);
-  if (existsSync(local)) return JSON.parse(readFileSync(local, "utf8")) as T;
-  if (process.env.GITHUB_TOKEN) {
-    const res = await github(`public/${relPath}?ref=${BRANCH}`);
-    if (!res.ok) return null;
-    const j = (await res.json()) as { content: string };
-    return JSON.parse(Buffer.from(j.content, "base64").toString("utf8")) as T;
-  }
-  return null;
+  const onDisk = (): T | null => (existsSync(local) ? (JSON.parse(readFileSync(local, "utf8")) as T) : null);
+  if (!process.env.GITHUB_TOKEN) return onDisk();
+  const res = await github(`public/${relPath}?ref=${BRANCH}`);
+  if (res.status === 404) return onDisk();
+  if (!res.ok) throw new Error("GitHub read failed " + res.status + " for " + relPath);
+  const j = (await res.json()) as { content: string };
+  return JSON.parse(Buffer.from(j.content, "base64").toString("utf8")) as T;
 }
 
 export async function writeJson(relPath: string, value: unknown, message: string): Promise<void> {

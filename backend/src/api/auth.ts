@@ -78,8 +78,15 @@ export async function linkEmailToListing(email: string, id: string): Promise<voi
 /* ---------- rate limiting, in memory, per IP and per route ---------- */
 
 const hits = new Map<string, number[]>();
+/**
+ * Who to count a request against. X-Forwarded-For is a list the caller starts and each proxy appends to, so
+ * the first entry is whatever the caller typed: rotating a spoofed one walked straight through the ten-an-hour
+ * claim limit in testing. The last entry is the one our own proxy wrote and is the only one a caller cannot
+ * choose, so that is the one we trust.
+ */
 export function clientIp(c: Context): string {
-  return (c.req.header("x-forwarded-for") || "").split(",")[0].trim() || c.req.header("x-real-ip") || "local";
+  const chain = (c.req.header("x-forwarded-for") || "").split(",").map((s) => s.trim()).filter(Boolean);
+  return chain[chain.length - 1] || c.req.header("x-real-ip") || "local";
 }
 export function rateLimit(limit: number, windowMs: number) {
   return async (c: Context, next: Next) => {

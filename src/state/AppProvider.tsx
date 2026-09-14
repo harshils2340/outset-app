@@ -412,7 +412,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (typeof window === "undefined") return init;
     // A claim link names the business in the hash. Seed it now so the operator screen mounts with it on the first
     // render, instead of falling back to the demo dashboard and switching a second later.
-    const c = window.location.hash.match(/^#claim=([a-z0-9-]+)(?:&k=([A-Za-z0-9_-]+))?/i);
+    const c = window.location.hash.match(/^#claim=([a-z0-9-]+)(?:&k=([A-Za-z0-9_.~-]+))?/i);
     if (c) return { ...init, screen: "operator" as const, tab: "account" as const, operatorId: c[1], claimToken: c[2] || null };
     return atOperatorsPath() ? { ...init, screen: "operator" as const, tab: "account" as const } : init;
   });
@@ -428,7 +428,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     let alive = true;
     // The operator side is decided from the path and hash alone, before any catalog arrives, so an emailed
     // claim link opens the dashboard on the first paint and never gets rewritten to the guest home.
-    const early = window.location.hash.match(/^#claim=([a-z0-9-]+)(?:&k=([A-Za-z0-9_-]+))?/i);
+    const early = window.location.hash.match(/^#claim=([a-z0-9-]+)(?:&k=([A-Za-z0-9_.~-]+))?/i);
     if (early) dispatch({ type: "openOperator", id: early[1], token: early[2] || undefined });
     else if (atOperatorsPath()) dispatch({ type: "openOperator" });
     loadRemoteCatalog((n, complete) => {
@@ -461,7 +461,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         void confirmPaid(pd[2], code).then((r) => { if (r.paid) dispatch({ type: "paidReturn", code }); });
         window.history.replaceState(null, "", window.location.pathname + window.location.search);
       }
-      const c = window.location.hash.match(/^#claim=([a-z0-9-]+)(?:&k=([A-Za-z0-9_-]+))?/i);
+      const c = window.location.hash.match(/^#claim=([a-z0-9-]+)(?:&k=([A-Za-z0-9_.~-]+))?/i);
       if (c && experienceById(c[1])) {
         // Already on the operator screen from the early check; now the record exists, fetch its details.
         loadListing(c[1]).then((changed) => changed && dispatch({ type: "catalogLoaded", added: 1 }));

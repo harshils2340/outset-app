@@ -55,7 +55,14 @@ export function draftCopy(op: Op, sc: ReturnType<typeof scale>, offerings: strin
   const SITE = "https://onoutset.com/";
   const id = catalogId(op.domain);
   const listing = SITE + "#o=" + id;
-  const claim = SITE + "#claim=" + id + "&k=" + claimTokenV2(id);
+  /**
+   * The claim link carries the address we are writing to, the way the self-serve link carries what the owner
+   * typed. Without it the claimed profile has no owner email, so "email me a sign-in code" answers politely
+   * and sends nothing, and the operator never gets told about a booking. It is the same address already in
+   * the To line, so it reveals nothing the recipient does not have.
+   */
+  const owner = to ? "&o=" + Buffer.from(JSON.stringify({ n: "", e: to, p: "" })).toString("base64url") : "";
+  const claim = SITE + "#claim=" + id + "&k=" + claimTokenV2(id) + owner;
   const remove = SITE + "#remove=" + id;
   const vendor = op.calendar_vendor ? VENDOR_NAME[op.calendar_vendor] || null : null;
   const subject = "A page for " + op.name;
