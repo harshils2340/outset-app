@@ -500,7 +500,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const cur = window.location.hash;
     if (state.sheet === "request" && state.reqTargetId) {
       const want = "#o=" + state.reqTargetId;
-      if (cur !== want) window.history.replaceState(null, "", window.location.pathname + window.location.search + want);
+      if (cur !== want) window.history.replaceState({ outsetOverlay: true }, "", window.location.pathname + window.location.search + want);
     } else if (/^#o=/.test(cur)) {
       window.history.replaceState(null, "", window.location.pathname + window.location.search);
     }
@@ -515,8 +515,33 @@ export function AppProvider({ children }: { children: ReactNode }) {
     else if (!onOps && atOps && booted.current) window.history.pushState(null, "", base + window.location.hash.replace(/^#claim=.*$/, ""));
   }, [state.screen, state.catalogReady]);
 
+  // On a phone, back is a gesture people use constantly. With a listing open it used to leave the site
+  // altogether, which reads as the app locking up. An open sheet or chat gets its own history entry, so
+  // back closes that first and only the next one leaves.
+  const overlay = state.sheet !== null || state.screen === "chat";
+  const overlayRef = useRef(overlay);
+  overlayRef.current = overlay;
+  const pushedOverlay = useRef(false);
+  useEffect(() => {
+    if (!booted.current) return;
+    if (overlay && !pushedOverlay.current) {
+      pushedOverlay.current = true;
+      window.history.pushState({ outsetOverlay: true }, "", window.location.href);
+    } else if (!overlay && pushedOverlay.current) {
+      pushedOverlay.current = false;
+      // Closed with the X rather than back: drop our entry so the stack matches what the guest sees.
+      if ((window.history.state as { outsetOverlay?: boolean } | null)?.outsetOverlay) window.history.back();
+    }
+  }, [overlay]);
+
   useEffect(() => {
     const onPop = () => {
+      if (overlayRef.current) {
+        pushedOverlay.current = false;
+        if (state.screen === "chat") dispatch({ type: "back" });
+        else dispatch({ type: "closeSheet" });
+        return;
+      }
       const atOps = atOperatorsPath();
       if (atOps && state.screen !== "operator") dispatch({ type: "openOperator" });
       if (!atOps && state.screen === "operator") dispatch({ type: "back" });
@@ -524,6 +549,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
     window.addEventListener("popstate", onPop);
     return () => window.removeEventListener("popstate", onPop);
   }, [state.screen]);
+
+  // Escape closes whatever is on top, the way every other site behaves.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      if (state.sheet) dispatch({ type: "closeSheet" });
+      else if (state.screen === "chat" || state.screen === "detail") dispatch({ type: "back" });
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [state.sheet, state.screen]);
 
   useEffect(() => {
     if (!state.toast) return;

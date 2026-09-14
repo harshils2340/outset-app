@@ -5,6 +5,7 @@ import { ALL_METRO_ID, metroById, metroShort } from "../../data/metros";
 import type { CategoryId, Unclaimed } from "../../data/types";
 import { ICONS } from "../../data/icons";
 import { getCatalog } from "../../lib/catalog";
+import { kmBetween } from "../../lib/places";
 import { ART_ALIASES, metroInQuery, searchSuggest, warmSearch, type SearchScope } from "../../lib/search";
 import { titleCase } from "../../lib/format";
 import { useApp } from "../../state/AppProvider";
@@ -32,6 +33,9 @@ function groupRails(list: Unclaimed[], cat: CategoryId, setCat: (c: CategoryId) 
 }
 
 /** Cards rendered per rail before "Show more". Keeps the feed fast with thousands of operators. */
+/** An hour of driving. Wide enough that a small town still has something, tight enough to feel local. */
+const NEAR_RADIUS_KM = 80;
+
 const PAGE = 48;
 const RAIL_CAP = 24;
 
@@ -74,10 +78,17 @@ export function ExploreView() {
   // Typing stays smooth: the catalog is searched from a query that may lag a keystroke behind when the thread is busy.
   const dq = useDeferredValue(q);
   const scope = useMemo<SearchScope>(() => ({ metroId: state.metroId, cat: state.cat }), [state.metroId, state.cat]);
-  const browse = useMemo(
-    () => catalog.filter((u) => (state.metroId === ALL_METRO_ID || u.metroId === state.metroId) && inCat(u, state.cat)),
-    [catalog, state.metroId, state.cat],
-  );
+  // A place chosen in Where beats the city list: everything within an hour's drive, nearest first.
+  const near = state.near;
+  const browse = useMemo(() => {
+    const inThisCat = (u: Unclaimed) => inCat(u, state.cat);
+    if (near) {
+      return catalog
+        .filter((u) => u.lat != null && u.lon != null && inThisCat(u) && kmBetween(near, { lat: u.lat, lon: u.lon }) <= NEAR_RADIUS_KM)
+        .sort((a, b) => kmBetween(near, { lat: a.lat!, lon: a.lon! }) - kmBetween(near, { lat: b.lat!, lon: b.lon! }));
+    }
+    return catalog.filter((u) => (state.metroId === ALL_METRO_ID || u.metroId === state.metroId) && inThisCat(u));
+  }, [catalog, state.metroId, state.cat, near]);
   // One pass feeds the dropdown and the feed behind it, so a keystroke ranks the catalog once.
   const found = useMemo(() => (dq ? searchSuggest(catalog, dq, scope) : null), [catalog, dq, scope]);
   const cityEmpty = useMemo(
@@ -91,7 +102,7 @@ export function ExploreView() {
   const places = found?.places ?? [];
   const rows = activities.length + operators.length + places.length;
   const showPreview = searchOpen && q.length > 0;
-  const here = state.metroId === ALL_METRO_ID ? "" : " in " + metroShort(state.metroId);
+  const here = state.near ? " near " + state.near.label : state.metroId === ALL_METRO_ID ? "" : " in " + metroShort(state.metroId);
 
   const emptyTitle = cityEmpty ? "Nothing in this city yet" : q ? "Nothing for “" + q + "”" : meta.emptyTitle;
   const emptyBody = cityEmpty ? "Try Anywhere, or pick a city with listings." : meta.emptyBody;
@@ -182,7 +193,7 @@ export function ExploreView() {
               onMouseDown={(e) => e.preventDefault()}
               onClick={openMetro}
             >
-              <b>{metroShort(state.metroId)}</b>
+              <b>{state.near ? state.near.label : metroShort(state.metroId)}</b>
               <Markup html={ICONS.chev} className="locchev" />
             </button>
             {state.q ? (

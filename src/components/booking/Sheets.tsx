@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { currentLocation, searchPlaces, type Place } from "../../lib/places";
 import { CATS } from "../../data/categories";
 import { GUIDES } from "../../data/guides";
 import { ICONS } from "../../data/icons";
@@ -892,12 +893,43 @@ function MetroBody({
   onPick: (metroId: string) => void;
   onBack: () => void;
 }) {
+  const { state, setNear } = useApp();
   const [q, setQ] = useState("");
+  const [hits, setHits] = useState<Place[]>([]);
+  const [locating, setLocating] = useState(false);
   const needle = q.trim().toLowerCase();
   const filtered = METROS.filter((m) => {
     if (!needle) return true;
     return (m.name + " " + m.region + " " + m.country).toLowerCase().includes(needle);
   });
+
+  // Any town, beach or postcode, not just the 47 metros. Same place search the desktop uses.
+  useEffect(() => {
+    if (needle.length < 3) {
+      setHits([]);
+      return;
+    }
+    let live = true;
+    const t = window.setTimeout(() => {
+      void searchPlaces(q, state.near).then((r) => live && setHits(r));
+    }, 220);
+    return () => {
+      live = false;
+      window.clearTimeout(t);
+    };
+  }, [q, needle, state.near]);
+
+  const pickPlace = (place: Place) => {
+    setNear(place);
+    onBack();
+  };
+
+  const useHere = async () => {
+    setLocating(true);
+    const pt = await currentLocation();
+    setLocating(false);
+    if (pt) pickPlace({ label: "Near me", sub: "Your current location", lat: pt.lat, lon: pt.lon });
+  };
   const seeded = filtered.filter((m) => countInMetro(m.id) > 0);
   const rest = filtered.filter((m) => countInMetro(m.id) === 0);
   const us = (rows: typeof METROS) => rows.filter((m) => m.country === "US");
@@ -908,16 +940,42 @@ function MetroBody({
       <p className="eyebrow">Where</p>
       <h3>Choose an area</h3>
       <p style={{ fontSize: 14, color: "var(--ink-soft)", margin: "4px 0 0" }}>
-        {METROS.length} cities across the US and Canada.
+        Search any place, use where you are, or pick one of {METROS.length} cities.
       </p>
       <div className="search" style={{ marginTop: 16 }}>
         <input
-          placeholder="Search a city"
+          placeholder="Town, beach, postcode"
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          aria-label="Search a city"
+          aria-label="Search for a place"
         />
       </div>
+      <button type="button" className="metroitem metrohere" onClick={useHere} disabled={locating}>
+        <span>
+          <b>{locating ? "Finding you…" : "Use my current location"}</b>
+          <small>Sorts everything by how far it is from you</small>
+        </span>
+        <Markup html={ICONS.pin} />
+      </button>
+      {state.near ? (
+        <button type="button" className="metroitem" aria-pressed onClick={() => { setNear(null); onBack(); }}>
+          <span>
+            <b>{state.near.label}</b>
+            <small>Tap to clear and browse by city instead</small>
+          </span>
+          <Markup html={ICONS.close} />
+        </button>
+      ) : null}
+      {hits.length ? <p className="metrogroup">Places</p> : null}
+      {hits.map((h) => (
+        <button type="button" className="metroitem" key={h.label + h.lat} onClick={() => pickPlace(h)}>
+          <span>
+            <b>{h.label}</b>
+            <small>{h.sub}</small>
+          </span>
+          <Markup html={ICONS.chev} />
+        </button>
+      ))}
       <button
         type="button"
         className="metroitem"
