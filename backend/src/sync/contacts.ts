@@ -1,4 +1,4 @@
-import { mkdirSync, readdirSync, unlinkSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, readdirSync, unlinkSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { CITIES } from "../discover/cities.ts";
@@ -282,7 +282,7 @@ export function toCatalogItem(r: CatalogRow): Record<string, unknown> {
   const itemByPage = new Map<string, string>();
   for (const o of rawOfferings) if (o.source_url && !itemByPage.has(o.source_url)) itemByPage.set(o.source_url, o.name);
   const ranked = rankForCover(
-    uniq([...widgetPhotos, ...pick("cover"), ...pick("photo")].filter(isPhotoName)).map((url) => ({
+    keepScreened(uniq([...widgetPhotos, ...pick("cover"), ...pick("photo")].filter(isPhotoName))).map((url) => ({
       url,
       page: photoPage.get(url) || null,
       item: photoItem.get(url) || itemByPage.get(photoPage.get(url) || "") || null,
@@ -572,6 +572,44 @@ const HAS_TIME = /\d{1,2}(:\d{2})?\s*(a|p)\.?m\b|\d{1,2}:\d{2}|\bclosed\b|\b24 h
  * crawl already stored. Widget photos (filestack, fareharbor) have opaque names and pass through.
  */
 const DOC_PHOTO = /(?:^|[\/_\-. ])(?:pg|page|scan|doc)[-_]?\d{1,4}(?=[_\-.]|$)|^p\d{1,2}\.|\bpage[-_]?\d|booklet|\bscan(?:ned|s)?\b|document|\bpdf\b|certificate|\bcert\b|brochure|flyer|\bposter|infographic|(?:^|[\/_\-. ])menus?\d*(?=[\/_\-. (]|$)|menu-board|price[-_]?list|\brates?[-_.]|schedule|screen[-_ ]?shot|dummy|placeholder|og-default|^default[-_.]|^\d{3,4}x\d{3,4}(?:[-_]\d+)?\.(?:jpe?g|png|webp)$|mock-?ups?|mask[-_]?group|wordmark|lettermark|lockup|(?:^|[\/_\-. ])logo|newsletter|cartoon|clip-?art|illustration|graphics?\b|floor[-_]?plan|course[-_]?layout|(?:^|[\/_\-. ])layout(?=[\/_\-.]|$)|removebg|divider|spacer|qr[-_]?code|(?:^|[\/_\-. ])qr(?=[\/_\-. ]|$)|thank[-_ ]?you|(?:^|[\/_\-. ])sorry(?=[\/_\-. ]|$)|\bcoupon|voucher|sitemap|(?:^|[\/_\-. ])maps?(?=[\/_\-. ]|$)|favicon|apple-touch/i;
+/**
+ * What the cloud photo screen made of each image, keyed by url: `{ kind, page }`. `kind` is the pixel verdict
+ * (photo, graphic, map, document, unknown) and `page` marks an image that scans like a printed page.
+ *
+ * A single page-like image is usually the operator's own marketing flyer or a photo shot against white, so it
+ * stays; two or more in one listing is a scanned booklet, and a guest gallery of scorecard pages sells nothing.
+ * That run rule is why this cannot be a per-url filter. Missing file, or an image the screen has not reached
+ * yet, means keep: the screen runs every three hours and catches up.
+ */
+type PhotoVerdict = { kind?: string; page?: boolean };
+let verdictCache: Map<string, PhotoVerdict> | null = null;
+function photoVerdicts(): Map<string, PhotoVerdict> {
+  if (verdictCache) return verdictCache;
+  verdictCache = new Map();
+  try {
+    const raw = readFileSync(join(here, "../../data/photo-verdicts.json"), "utf8");
+    for (const [url, v] of Object.entries(JSON.parse(raw) as Record<string, PhotoVerdict>)) verdictCache.set(url, v);
+  } catch {
+    /* the screen has not run here yet */
+  }
+  return verdictCache;
+}
+
+const UNUSABLE_KIND = /^(?:graphic|map|document)$/;
+
+/** One listing's photos with the screened-out ones removed, applying the two-page run rule. */
+export function keepScreened(urls: string[]): string[] {
+  const v = photoVerdicts();
+  if (!v.size) return urls;
+  const pages = urls.filter((u) => v.get(u)?.page);
+  const booklet = pages.length >= 2 ? new Set(pages) : new Set<string>();
+  return urls.filter((u) => {
+    const verdict = v.get(u);
+    if (!verdict) return true;
+    return !UNUSABLE_KIND.test(verdict.kind || "") && !booklet.has(u);
+  });
+}
+
 export function isPhotoName(url: string): boolean {
   if (!url) return false;
   let name = url.split("?")[0].split("/").slice(-1)[0];
