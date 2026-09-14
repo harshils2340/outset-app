@@ -1655,7 +1655,16 @@ export function syncCatalogToApp(): { path: string; count: number } {
        * placeholders; searching the business by name still finds it, and its own page still opens, because
        * every claim email links straight to one.
        */
-      thin: !item.cover && !priced.length && !options.length && !item.hoursText && !(item.tags as string[] | undefined)?.length && !item.blurb ? (true as const) : undefined,
+      thin:
+        !item.cover &&
+        !priced.length &&
+        !options.length &&
+        // hoursText is always an array, and an empty array is truthy, so this has to ask for its length.
+        !(item.hoursText as string[] | undefined)?.length &&
+        !(item.tags as string[] | undefined)?.length &&
+        !item.blurb
+          ? (true as const)
+          : undefined,
     };
   });
   // Published hours can come from the contact record rather than the listing, so the flag is settled here.

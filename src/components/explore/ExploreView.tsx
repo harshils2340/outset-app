@@ -81,7 +81,9 @@ export function ExploreView() {
   // A place chosen in Where beats the city list: everything within an hour's drive, nearest first.
   const near = state.near;
   const browse = useMemo(() => {
-    const inThisCat = (u: Unclaimed) => inCat(u, state.cat);
+    // A listing with no photo, price, hours or description is real but has nothing to look at yet, so it
+    // stays out of the feed. Search by name and the claim links still reach it.
+    const inThisCat = (u: Unclaimed) => inCat(u, state.cat) && !u.thin;
     if (near) {
       return catalog
         .filter((u) => u.lat != null && u.lon != null && inThisCat(u) && kmBetween(near, { lat: u.lat, lon: u.lon }) <= NEAR_RADIUS_KM)
