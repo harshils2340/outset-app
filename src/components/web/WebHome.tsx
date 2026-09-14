@@ -387,12 +387,14 @@ export function WebHome({ onOpenApp, onOperators }: { onOpenApp: () => void; onO
     [qWithoutPlace, scope, state.catalogVersion],
   );
 
-  // Browse shows places a guest can act on. A listing with no photo, price, hours or services is real but
-  // unsellable, and a grid of those reads as broken, so it waits here until the crawl fills it in. Searching
-  // the business by name still finds it (that path returns `found.results` untouched) and its page still opens.
+  // Browse shows places a guest can act on, and a card is mostly its photo: a grid of scene illustrations
+  // reads as a broken page however good the listing behind it is. So browse needs a real photo, not just
+  // something to act on, and a listing waits here until the crawl finds one. Searching the business by name
+  // still finds it (that path returns `found.results` untouched) and its own page still opens, which the
+  // claim emails depend on.
   const pool = useMemo(() => {
     if (found) return found.results;
-    let base = getCatalog().filter((u) => !u.thin);
+    let base = getCatalog().filter((u) => !!u.cover);
     if (typedMetro) {
       base = base.filter((u) => u.metroId === typedMetro.metro.id);
     } else if (near) {
@@ -404,10 +406,10 @@ export function WebHome({ onOpenApp, onOperators }: { onOpenApp: () => void; onO
     return base;
   }, [found, state.metroId, typedMetro, state.catalogVersion, near]);
 
-  // How many nearby places are listed but still empty, so the page can say so instead of hiding the gap.
+  // How many nearby places are listed but have no photo yet, so the page can say so instead of hiding the gap.
   const waiting = useMemo(() => {
     if (found) return 0;
-    let base = getCatalog().filter((u) => u.thin);
+    let base = getCatalog().filter((u) => !u.cover);
     if (typedMetro) base = base.filter((u) => u.metroId === typedMetro.metro.id);
     else if (near) base = base.filter((u) => (nearestLocation(u, near)?.km ?? Infinity) <= RADIUS_KM);
     else if (state.metroId !== ALL_METRO_ID) base = base.filter((u) => u.metroId === state.metroId);
@@ -737,7 +739,7 @@ export function WebHome({ onOpenApp, onOperators }: { onOpenApp: () => void; onO
               {sorted.slice(0, 21).map((u) => <Card key={u.id} u={u} onOpen={openRequest} near={near} />)}
             </div>
             {sorted.length === 0 ? <div className="wempty"><b>Nothing here yet.</b><p>Try a wider area or another category.</p></div> : null}
-            {waiting > 0 ? <p className="wsecsub">{waiting.toLocaleString()} more {waiting === 1 ? "place is" : "places are"} listed nearby with only a name and address so far. Search one by name to open it.</p> : null}
+            {waiting > 0 ? <p className="wsecsub">{waiting.toLocaleString()} more {waiting === 1 ? "place is" : "places are"} listed nearby without a photo yet. Search one by name to open it.</p> : null}
           </section>
         ) : null}
         {state.catalogReady && !sorted && q.trim() ? (
@@ -821,7 +823,7 @@ export function WebHome({ onOpenApp, onOperators }: { onOpenApp: () => void; onO
         ) : null}
         {state.catalogReady && !sorted && !q.trim() && waiting > 0 ? (
           <p className="wsecsub wwaiting">
-            {waiting.toLocaleString()} more {waiting === 1 ? "place is" : "places are"} listed{near ? ` near ${near.label}` : metro ? ` in ${metro.name}` : ""} with only a name and address so far. They appear here as we gather their photos and prices; search one by name to open it now.
+            {waiting.toLocaleString()} more {waiting === 1 ? "place is" : "places are"} listed{near ? ` near ${near.label}` : metro ? ` in ${metro.name}` : ""} without a photo yet. They appear here as we gather their photos and prices; search one by name to open it now.
           </p>
         ) : null}
       </main>
