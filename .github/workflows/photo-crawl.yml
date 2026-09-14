@@ -12,9 +12,6 @@ on:
     - cron: "41 4,16 * * *"
   workflow_dispatch:
     inputs:
-      shards:
-        description: How many runners to split the work across (1-10)
-        default: "6"
       concurrency:
         description: Sites fetched at once per runner (1-8)
         default: "4"
@@ -35,6 +32,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        # Must stay in step with --of=6 below: a shard number the stripe never reaches gets no work.
         shard: [0, 1, 2, 3, 4, 5]
     steps:
       - uses: actions/checkout@v4
@@ -51,7 +49,7 @@ jobs:
         run: >
           npx tsx scripts/crawl-photos-ci.mts
           --shard=${{ matrix.shard }}
-          --of=${{ github.event.inputs.shards || 6 }}
+          --of=6
           --concurrency=${{ github.event.inputs.concurrency || 4 }}
           --minutes=${{ github.event.inputs.minutes || 170 }}
         working-directory: backend
