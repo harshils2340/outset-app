@@ -863,6 +863,9 @@ export function WebHome({ onOpenApp, onOperators }: { onOpenApp: () => void; onO
   // The pill starts as What alone. Where, When and Who appear once the guest has searched: the button, Enter,
   // or a pick from the What menu. Refining comes second, not before the guest has said what they want to do.
   const [searched, setSearched] = useState(false);
+  // Where, When and Who live in a modal: it opens on its own after the first search, and the chip in the pill
+  // (or the compact bar) reopens it. The value is the section that is unfolded.
+  const [refine, setRefine] = useState<"where" | "when" | "who" | null>(null);
   const near = state.near;
   const [sort, setSort] = useState<SortId>("relevance");
   const [price, setPrice] = useState<PriceRange>({ min: null, max: null });
@@ -908,10 +911,16 @@ export function WebHome({ onOpenApp, onOperators }: { onOpenApp: () => void; onO
   const expanded = !compact || seg !== null;
   const openSeg = (s: Seg | null) => {
     openedAt.current = window.scrollY;
-    // Anything that asks for Where, When or Who (a filter that needs a place, the compact bar) shows them.
-    if (s && s !== "what") setSearched(true);
-    setSeg(s);
     setHit(-1);
+    // Where, When and Who are a modal, not segments: anything that asks for one (the compact bar, a filter
+    // that needs a place) opens the modal on that section and leaves the pill as What alone.
+    if (s && s !== "what") {
+      setSearched(true);
+      setSeg(null);
+      setRefine(s);
+      return;
+    }
+    setSeg(s);
   };
   const focusSeg = (s: "where" | "what") => window.setTimeout(() => (s === "where" ? whereInput : whatInput).current?.focus(), 0);
 
@@ -929,10 +938,11 @@ export function WebHome({ onOpenApp, onOperators }: { onOpenApp: () => void; onO
     skipFocusOpen.current = true;
     if (was) pillRef.current?.querySelector<HTMLElement>(`[data-seg="${was}"]`)?.focus();
     skipFocusOpen.current = false;
-  }, !!seg && !filtersOpen && !compareOpen);
+  }, !!seg && !filtersOpen && !compareOpen && !refine);
+  useEscape(() => setRefine(null), !!refine && !filtersOpen && !compareOpen);
 
   useEffect(() => {
-    if (seg !== "where") return;
+    if (refine !== "where") return;
     let live = true;
     const t = window.setTimeout(() => {
       searchPlaces(whereText, near).then((r) => live && setPlaceHits(r));
@@ -941,13 +951,12 @@ export function WebHome({ onOpenApp, onOperators }: { onOpenApp: () => void; onO
       live = false;
       window.clearTimeout(t);
     };
-  }, [whereText, seg]);
+  }, [whereText, refine]);
 
-  /** Where is done once a place is picked: it closes and What opens, keeping whatever What already holds. */
+  /** Where is done once a place is picked: the modal moves on to When, keeping whatever What already holds. */
   const afterPlace = () => {
     setWhereText("");
-    openSeg("what");
-    focusSeg("what");
+    setRefine("when");
   };
   const pickPlace = (p: Place) => {
     setNear(p);
@@ -1148,9 +1157,15 @@ export function WebHome({ onOpenApp, onOperators }: { onOpenApp: () => void; onO
     prevSeg.current = seg;
   }, [seg]);
 
+  /** The first search opens the Where, When and Who modal once; after that the chip in the pill reopens it. */
+  const firstSearch = (text: string) => {
+    if (!text.trim()) return;
+    if (!searched) setRefine("where");
+    setSearched(true);
+  };
   const runSearch = () => {
     commitWhat();
-    setSearched(true);
+    firstSearch(q);
     setSeg(null);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -1161,7 +1176,7 @@ export function WebHome({ onOpenApp, onOperators }: { onOpenApp: () => void; onO
       setMetro(typedMetro.metro.id);
     }
     setQ(query);
-    setSearched(true);
+    firstSearch(query);
     setSeg(null);
     window.scrollTo({ top: 0 });
   };
@@ -1241,7 +1256,7 @@ export function WebHome({ onOpenApp, onOperators }: { onOpenApp: () => void; onO
       const typed = qWithoutPlace.trim().toLowerCase();
       if (typedMetro) {
         const m = typedMetro.metro;
-        whatRows.push({ key: "tm" + m.id, head: "Place", icon: ICONS.pin, title: whatTitle.replace(/[“”]/g, "") + " in " + m.name, sub: "Sets Where to " + m.name + ", " + m.region, pick: () => { commitWhat(); setSearched(true); setSeg(null); window.scrollTo({ top: 0 }); } });
+        whatRows.push({ key: "tm" + m.id, head: "Place", icon: ICONS.pin, title: whatTitle.replace(/[“”]/g, "") + " in " + m.name, sub: "Sets Where to " + m.name + ", " + m.region, pick: () => { commitWhat(); firstSearch(q); setSeg(null); window.scrollTo({ top: 0 }); } });
       }
       let first = true;
       for (const a of acts) {
@@ -1373,36 +1388,7 @@ export function WebHome({ onOpenApp, onOperators }: { onOpenApp: () => void; onO
 
         {expanded ? (
           <div className="ah-searchrow ah-gutter">
-            <div className={"ah-pill" + (seg ? " is-active" : "") + (searched ? "" : " solo")} ref={pillRef} role="search">
-              {searched ? (
-                <>
-                  <label className={"ah-seg where" + (seg === "where" ? " on" : "")} htmlFor="ah-where" data-seg="where-label">
-                    <span className="ah-seg-label">Where</span>
-                    <input
-                      id="ah-where"
-                      ref={whereInput}
-                      data-seg="where"
-                      className={placeName || typedMetro ? "has-place" : ""}
-                      value={whereText}
-                      autoComplete="off"
-                      spellCheck={false}
-                      placeholder={typedMetro ? typedMetro.metro.name + ", " + typedMetro.metro.region : placeName || "Search destinations"}
-                      role="combobox"
-                      aria-expanded={seg === "where"}
-                      aria-controls="ah-where-pop"
-                      aria-activedescendant={seg === "where" && hit >= 0 && rows[hit] ? "ah-row-" + hit : undefined}
-                      onFocus={() => { if (seg !== "where" && !skipFocusOpen.current) openSeg("where"); }}
-                      onClick={() => { if (seg !== "where") openSeg("where"); }}
-                      onChange={(e) => { setWhereText(e.target.value); setHit(-1); if (seg !== "where") openSeg("where"); }}
-                      onKeyDown={onWhereKey}
-                    />
-                    {seg === "where" && (whereText || placeName) ? (
-                      <button type="button" className="ah-clear" aria-label="Clear where" onMouseDown={(e) => e.preventDefault()} onClick={clearWhere}><Markup html={SVG.close} /></button>
-                    ) : null}
-                  </label>
-                  <span className="ah-div" />
-                </>
-              ) : null}
+            <div className={"ah-pill solo" + (seg ? " is-active" : "")} ref={pillRef} role="search">
               <label className={"ah-seg what" + (seg === "what" ? " on" : "")} htmlFor="ah-what" data-seg="what-label">
                 <span className="ah-seg-label">What</span>
                 <input
@@ -1427,40 +1413,27 @@ export function WebHome({ onOpenApp, onOperators }: { onOpenApp: () => void; onO
                 ) : null}
               </label>
               {searched ? (
-                <>
-                  <span className="ah-div" />
-                  <button type="button" className={"ah-seg when" + (seg === "when" ? " on" : "")} data-seg="when" aria-expanded={seg === "when"} aria-controls="ah-when-pop" onClick={() => openSeg(seg === "when" ? null : "when")}>
-                    <span className="ah-seg-label">When</span>
-                    <span className="ah-seg-value set">{dayLabel}</span>
-                  </button>
-                  <span className="ah-div" />
-                  <div className={"ah-seg who" + (seg === "who" ? " on" : "")}>
-                    <button type="button" className="ah-seg-hit" data-seg="who" aria-expanded={seg === "who"} aria-controls="ah-who-pop" onClick={() => openSeg(seg === "who" ? null : "who")}>
-                      <span className="ah-seg-label">Who</span>
-                      <span className="ah-seg-value set">{guestLabel}</span>
-                    </button>
-                    <button type="button" className={"ah-go" + (seg ? " wide" : "")} onClick={runSearch} aria-label="Search">
-                      <Markup html={SVG.search} />
-                      {seg ? <span>Search</span> : null}
-                    </button>
-                  </div>
-                </>
-              ) : (
-                <button type="button" className={"ah-go" + (seg ? " wide" : "")} onClick={runSearch} aria-label="Search">
-                  <Markup html={SVG.search} />
-                  {seg ? <span>Search</span> : null}
+                <button type="button" className="ah-refine-chip" aria-haspopup="dialog" aria-label={"Where, when and who: " + whereShort + ", " + dayLabel + ", " + guestLabel} onClick={() => openSeg("where")}>
+                  <span>{whereShort}</span>
+                  <i />
+                  <span>{dayLabel}</span>
+                  <i />
+                  <span>{guestLabel}</span>
                 </button>
-              )}
+              ) : null}
+              <button type="button" className={"ah-go" + (seg ? " wide" : "")} onClick={runSearch} aria-label="Search">
+                <Markup html={SVG.search} />
+                {seg ? <span>Search</span> : null}
+              </button>
 
-              {seg === "where" || seg === "what" ? (
-                <div className={"ah-pop " + seg} id={"ah-" + seg + "-pop"} role="listbox" aria-label={seg === "where" ? "Where" : "What"}>
-                  {seg === "what" && found?.nearMiss ? (
+              {seg === "what" ? (
+                <div className="ah-pop what" id="ah-what-pop" role="listbox" aria-label="What">
+                  {found?.nearMiss ? (
                     <p className="ah-pop-note">
                       Nothing for “{qWithoutPlace.trim()}”{inWhere}{rows.length ? ". Closest in the catalog:" : ". Try fewer words, or another place."}
                     </p>
                   ) : null}
-                  {seg === "where" && wt && !rows.length ? <p className="ah-pop-note">Keep typing, or try a bigger town nearby.</p> : null}
-                  {seg === "what" && !rows.length && !found?.nearMiss ? <p className="ah-pop-note">{q.trim() ? "Keep typing, or try fewer words." : "Nothing listed" + hereLine + " yet. Try another place."}</p> : null}
+                  {!rows.length && !found?.nearMiss ? <p className="ah-pop-note">{q.trim() ? "Keep typing, or try fewer words." : "Nothing listed" + hereLine + " yet. Try another place."}</p> : null}
                   {rows.map((r, i) => (
                     <div key={r.key}>
                       {r.head ? <p className="ah-pop-head">{r.head}</p> : null}
@@ -1485,28 +1458,6 @@ export function WebHome({ onOpenApp, onOperators }: { onOpenApp: () => void; onO
                       </button>
                     </div>
                   ))}
-                </div>
-              ) : null}
-              {seg === "when" ? (
-                <div className="ah-pop when" id="ah-when-pop">
-                  <Calendar dates={dates} idx={state.dateIdx} onPick={(i) => { setDate(i); openSeg("who"); }} />
-                  <div className="ah-chips">
-                    {[0, 1].map((i) => (
-                      <button type="button" key={i} aria-pressed={state.dateIdx === i} onClick={() => { setDate(i); openSeg("who"); }}>{i === 0 ? "Today" : "Tomorrow"}</button>
-                    ))}
-                    {(() => {
-                      const sat = dates.findIndex((d, i) => i > 1 && d.getDay() === 6);
-                      return sat > 0 ? <button type="button" aria-pressed={state.dateIdx === sat} onClick={() => { setDate(sat); openSeg("who"); }}>This Saturday</button> : null;
-                    })()}
-                    <span className="ah-chips-note">Operators take requests for the next {dates.length} days.</span>
-                  </div>
-                </div>
-              ) : null}
-              {seg === "who" ? (
-                <div className="ah-pop who" id="ah-who-pop">
-                  <Stepper label="Adults" sub="Ages 13 or above" value={who} min={1} max={12} onChange={setWho} />
-                  <Stepper label="Children" sub="Ages 12 and under" value={kids} min={0} max={10} onChange={setKids} />
-                  <p className="ah-pop-foot">Age and weight rules differ by activity. Each listing shows its own.</p>
                 </div>
               ) : null}
             </div>
@@ -1715,6 +1666,110 @@ export function WebHome({ onOpenApp, onOperators }: { onOpenApp: () => void; onO
                 {compareIds.length < 2 ? "Pick one more" : "Compare " + compareIds.length}
               </button>
             </span>
+          </div>
+        </div>
+      ) : null}
+
+      {refine ? (
+        <div className="ah-modal-scrim" onClick={() => setRefine(null)}>
+          <div className="ah-modal ah-refine" role="dialog" aria-modal="true" aria-labelledby="ah-refine-title" onClick={(e) => e.stopPropagation()}>
+            <div className="ah-modal-head">
+              <button type="button" className="ah-iconbtn" aria-label="Close" onClick={() => setRefine(null)}><Markup html={SVG.close} /></button>
+              <h2 id="ah-refine-title">Where, when and who</h2>
+              <span />
+            </div>
+            <div className="ah-modal-body">
+              <section className={"ah-fsec ah-rsec" + (refine === "where" ? " open" : "")}>
+                <button type="button" className="ah-rsec-head" aria-expanded={refine === "where"} onClick={() => setRefine("where")}>
+                  <h3>Where</h3>
+                  <span className="ah-rsec-value">{placeName || "Anywhere"}</span>
+                </button>
+                {refine === "where" ? (
+                  <div className="ah-rsec-body">
+                    <label className="ah-rinput">
+                      <Markup html={SVG.search} />
+                      <input
+                        ref={whereInput}
+                        autoFocus
+                        value={whereText}
+                        autoComplete="off"
+                        spellCheck={false}
+                        placeholder={placeName || "Search destinations"}
+                        aria-label="Where"
+                        onChange={(e) => { setWhereText(e.target.value); setHit(-1); }}
+                        onKeyDown={onWhereKey}
+                      />
+                      {whereText || placeName ? (
+                        <button type="button" className="ah-clear" aria-label="Clear where" onClick={clearWhere}><Markup html={SVG.close} /></button>
+                      ) : null}
+                    </label>
+                    {wt && !whereRows.length ? <p className="ah-pop-note">Keep typing, or try a bigger town nearby.</p> : null}
+                    <div className="ah-rlist" role="listbox" aria-label="Places">
+                      {whereRows.map((r, i) => (
+                        <div key={r.key}>
+                          {r.head ? <p className="ah-pop-head">{r.head}</p> : null}
+                          <button
+                            type="button"
+                            role="option"
+                            aria-selected={hit === i || !!r.on}
+                            className={"ah-pop-row" + (hit === i ? " hit" : "") + (r.on ? " on" : "")}
+                            onMouseEnter={() => setHit(i)}
+                            onClick={r.pick}
+                            disabled={r.key === "nearby" && locating}
+                          >
+                            <span className="ah-pop-icon"><Markup className="ah-ico" html={r.icon || ICONS.pin} /></span>
+                            <span className="ah-pop-text">
+                              <b>{r.title}</b>
+                              {r.sub ? <small>{r.sub}</small> : null}
+                            </span>
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+              </section>
+              <section className={"ah-fsec ah-rsec" + (refine === "when" ? " open" : "")}>
+                <button type="button" className="ah-rsec-head" aria-expanded={refine === "when"} onClick={() => setRefine("when")}>
+                  <h3>When</h3>
+                  <span className="ah-rsec-value">{dayLabel}</span>
+                </button>
+                {refine === "when" ? (
+                  <div className="ah-rsec-body">
+                    <Calendar dates={dates} idx={state.dateIdx} onPick={(i) => { setDate(i); setRefine("who"); }} />
+                    <div className="ah-chips">
+                      {[0, 1].map((i) => (
+                        <button type="button" key={i} aria-pressed={state.dateIdx === i} onClick={() => { setDate(i); setRefine("who"); }}>{i === 0 ? "Today" : "Tomorrow"}</button>
+                      ))}
+                      {(() => {
+                        const sat = dates.findIndex((d, i) => i > 1 && d.getDay() === 6);
+                        return sat > 0 ? <button type="button" aria-pressed={state.dateIdx === sat} onClick={() => { setDate(sat); setRefine("who"); }}>This Saturday</button> : null;
+                      })()}
+                      <span className="ah-chips-note">Operators take requests for the next {dates.length} days.</span>
+                    </div>
+                  </div>
+                ) : null}
+              </section>
+              <section className={"ah-fsec ah-rsec" + (refine === "who" ? " open" : "")}>
+                <button type="button" className="ah-rsec-head" aria-expanded={refine === "who"} onClick={() => setRefine("who")}>
+                  <h3>Who</h3>
+                  <span className="ah-rsec-value">{guestLabel}</span>
+                </button>
+                {refine === "who" ? (
+                  <div className="ah-rsec-body">
+                    <Stepper label="Adults" sub="Ages 13 or above" value={who} min={1} max={12} onChange={setWho} />
+                    <Stepper label="Children" sub="Ages 12 and under" value={kids} min={0} max={10} onChange={setKids} />
+                    <p className="ah-pop-foot">Age and weight rules differ by activity. Each listing shows its own.</p>
+                  </div>
+                ) : null}
+              </section>
+            </div>
+            <div className="ah-modal-foot">
+              <button type="button" className="ah-textbtn strong" onClick={() => { setWhereText(""); setNear(null); setMetro(ALL_METRO_ID); setDate(0); setWho(2); setKids(0); setRefine("where"); }}>Clear all</button>
+              <button type="button" className="ah-btn-dark" onClick={() => { setRefine(null); window.scrollTo({ top: 0 }); }}>
+                Show {base.length.toLocaleString()} {base.length === 1 ? "place" : "places"}
+              </button>
+            </div>
           </div>
         </div>
       ) : null}
