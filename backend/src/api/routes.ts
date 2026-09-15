@@ -46,7 +46,9 @@ app.use("*", async (c, next) => {
   await next();
   c.header("x-content-type-options", "nosniff");
   c.header("referrer-policy", "no-referrer");
-  c.header("cache-control", "no-store");
+  // Everything the API answers is per-operator or per-booking, except an uploaded photo, whose name is a hash
+  // of its own bytes and which the browser should keep.
+  if (!c.req.path.startsWith("/uploads/") || c.req.method !== "GET") c.header("cache-control", "no-store");
   // A booking carries a name, a phone number and an email, so never let a browser try this over plain HTTP.
   c.header("strict-transport-security", "max-age=31536000");
 });

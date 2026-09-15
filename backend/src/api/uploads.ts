@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { Hono } from "hono";
@@ -9,6 +9,11 @@ import { ID, mayEdit, rateLimit } from "./auth.ts";
  * Operator photo uploads. The browser resizes to 1600px and sends JPEG bytes as base64; the file is committed
  * to public/uploads/<listing>/<sha>.jpg through the GitHub contents API (or written locally), so it is served
  * by the site itself with no image host to run. Content-addressed: uploading the same photo twice is a no-op.
+ *
+ * The site only has the file after Render rebuilds, which is minutes away, so the operator who just uploaded a
+ * photo saw a broken image and reasonably concluded it had failed. GET /uploads/:id/:file serves the same bytes
+ * straight from the store in the meantime; the guest site keeps the canonical URL and serves it from the CDN
+ * once the deploy lands. The name is a hash of the bytes, so the answer can be cached for ever.
  */
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -42,6 +47,36 @@ async function storeBinary(relPath: string, bytes: Buffer, message: string): Pro
 }
 
 export const uploads = new Hono();
+
+const FILE = /^[a-f0-9]{20}\.(jpg|png)$/;
+
+/** Read the bytes back, from the repository when there is a token, from disk otherwise. */
+async function readBinary(relPath: string): Promise<Buffer | null> {
+  if (process.env.GITHUB_TOKEN) {
+    const res = await github(`public/${relPath}?ref=${BRANCH}`).catch(() => null);
+    if (!res || !res.ok) return null;
+    const j = (await res.json().catch(() => null)) as { content?: string } | null;
+    return j?.content ? Buffer.from(j.content, "base64") : null;
+  }
+  const local = join(publicDir, relPath);
+  return existsSync(local) ? readFileSync(local) : null;
+}
+
+/**
+ * The photo, for the minutes between the upload and the deploy that puts it on the site. Public on purpose: it
+ * is the same image the listing shows, and the name is a hash of the bytes, so it cannot be guessed or walked.
+ */
+uploads.get("/uploads/:id/:file", rateLimit(600, 60 * 60 * 1000), async (c) => {
+  const id = String(c.req.param("id") ?? "");
+  const file = String(c.req.param("file") ?? "");
+  if (!ID.test(id) || !FILE.test(file)) return c.json({ error: "not found" }, 404);
+  const bytes = await readBinary(`uploads/${id}/${file}`).catch(() => null);
+  if (!bytes) return c.json({ error: "not found" }, 404);
+  return c.body(bytes, 200, {
+    "content-type": file.endsWith(".png") ? "image/png" : "image/jpeg",
+    "cache-control": "public, max-age=31536000, immutable",
+  });
+});
 
 uploads.post("/uploads/:id", rateLimit(120, 60 * 60 * 1000), async (c) => {
   const id = String(c.req.param("id") ?? "");

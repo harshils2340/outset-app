@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { ArtKind } from "../../data/types";
-import { SIZES, srcSet, thumb, type PhotoSize } from "../../lib/images";
+import { SIZES, srcSet, thumb, uploadFallback, type PhotoSize } from "../../lib/images";
 import { Art } from "./Art";
 
 /**
@@ -29,6 +29,9 @@ export function Photo({ src, video, kind, id, alt, size = "card", fallback = tru
   const [state, setState] = useState<"loading" | "ok" | "broken">("loading");
   const [clipOk, setClipOk] = useState(true);
   const [proxied, setProxied] = useState(true);
+  // A photo the operator uploaded a moment ago is in the repository but not on the site until Render redeploys,
+  // so the proxy and the site both answer 404. The API can serve the same bytes now.
+  const [viaApi, setViaApi] = useState(false);
   const [seen, setSeen] = useState(false);
   const [priority] = useState(() => size === "hero" || size === "full" || (size === "card" && eagerLeft-- > 0));
   const ref = useRef<HTMLSpanElement>(null);
@@ -67,13 +70,14 @@ export function Photo({ src, video, kind, id, alt, size = "card", fallback = tru
     );
   }
   if (dead || !still) return fallback ? <Art kind={kind} id={id} /> : null;
-  const url = proxied ? thumb(still, size) : still;
+  const source = (viaApi ? uploadFallback(still) : undefined) || still;
+  const url = proxied ? thumb(source, size) : source;
   return (
     <span className={"photowrap" + (state === "ok" ? " ready" : "")}>
       <img
         className="photo"
         src={url}
-        srcSet={proxied ? srcSet(still, size) : undefined}
+        srcSet={proxied ? srcSet(source, size) : undefined}
         sizes={proxied ? SIZES[size] : undefined}
         alt={alt}
         loading={priority ? "eager" : "lazy"}
@@ -84,8 +88,12 @@ export function Photo({ src, video, kind, id, alt, size = "card", fallback = tru
         onError={() => {
           // The proxy can refuse a URL or rate-limit us. Fall back to the operator's original rather than a blank card;
           // a slow photo beats no photo, and the browser only pulls it for cards on screen.
-          if (proxied && url !== still) setProxied(false);
-          else if (still !== src) setClipOk(false);
+          if (proxied && url !== source) setProxied(false);
+          // Not on the site yet: ask the API for it directly, without the proxy in front.
+          else if (!viaApi && uploadFallback(still)) {
+            setViaApi(true);
+            setProxied(false);
+          } else if (still !== src) setClipOk(false);
           else setState("broken");
         }}
       />

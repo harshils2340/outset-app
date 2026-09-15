@@ -1,3 +1,4 @@
+import { API_URL } from "./api";
 /**
  * Operator photos are hotlinked from their own sites, which means multi-megabyte originals on every card.
  * wsrv.nl (images.weserv.nl) is a free, cached image proxy that resizes and re-encodes on the fly, so a card
@@ -24,6 +25,17 @@ export const SIZES: Record<PhotoSize, string> = {
 
 /** Already small or already a resizing CDN: leave it alone. */
 const SKIP = /^data:|wsrv\.nl|images\.weserv\.nl|\.svg(\?|$)|\.gif(\?|$)/i;
+
+/**
+ * A photo the operator uploaded a moment ago is in the repository but not yet on the site, so both the proxy
+ * and the site itself answer 404 until Render redeploys. The API can serve the same bytes now. Undefined for
+ * every other URL, and with no API configured.
+ */
+export function uploadFallback(url?: string): string | undefined {
+  if (!url || !API_URL) return undefined;
+  const m = /\/(uploads\/[a-z0-9-]{3,80}\/[a-f0-9]{20}\.(?:jpg|png))(?:\?|$)/i.exec(url);
+  return m ? API_URL + "/" + m[1] : undefined;
+}
 
 export function proxyUrl(url: string, size: PhotoSize, w: number): string {
   const square = size === "thumb" || size === "card";
