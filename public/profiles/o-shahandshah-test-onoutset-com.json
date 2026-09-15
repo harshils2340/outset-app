@@ -93,14 +93,14 @@
   "cancellation": "Free cancellation up to 24 hours before your start time.",
   "fc": "Free cancellation up to 24 hours before",
   "hoursText": [
-   "Sun: 09:00 to 19:00",
-   "Mon: 09:00 to 19:00",
-   "Tue: 09:00 to 19:00",
-   "Wed: 09:00 to 19:00",
-   "Thu: 09:00 to 19:00",
-   "Fri: 09:00 to 19:00",
-   "Sat: 09:00 to 19:00"
+   "Sun: 9:00 AM to 7:00 PM",
+   "Mon: 9:00 AM to 7:00 PM",
+   "Tue: 9:00 AM to 7:00 PM",
+   "Wed: 9:00 AM to 7:00 PM",
+   "Thu: 9:00 AM to 7:00 PM",
+   "Fri: 9:00 AM to 7:00 PM",
+   "Sat: 9:00 AM to 7:00 PM"
   ]
  },
- "updatedAt": "2026-09-15T07:02:28.492Z"
+ "updatedAt": "2026-09-15T18:17:37.671Z"
 }
