@@ -1104,9 +1104,7 @@ function RequestBody({
                     <ReviewCard key={r.key} r={r} />
                   ))}
                 </div>
-              ) : (
-                <p className="airsecsub">Written reviews arrive once guests book through Outset.</p>
-              )}
+              ) : null}
             </Section>
           ) : null}
 

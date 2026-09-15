@@ -65,6 +65,7 @@ type Job = {
 const JOBS: Job[] = [
   { name: "status", timeoutMs: MIN, args: [], needsRepo: false, note: "write the status file only" },
   { name: "collect", every: 30 * MIN, timeoutMs: 30 * MIN, args: ["src/index.ts", "enrich", "--collect-all"], needsRepo: true, needsKey: "OPENAI_API_KEY", note: "store finished OpenAI batches (already paid); never submits" },
+  { name: "reviews", at: "21:00", timeoutMs: HOUR, args: ["src/index.ts", "reviews", "5000", "8"], needsRepo: true, note: "written reviews an operator republishes on their own site, rules only, each site visited once; the 05:00 sync turns them into quotes" },
   { name: "discover", at: "22:00", timeoutMs: 3 * HOUR, args: ["src/index.ts", "discover", "--wave=3", "--concurrency=2"], needsRepo: true, note: "OpenStreetMap wave three, free" },
   { name: "structure", at: "23:00", timeoutMs: 4 * HOUR, args: ["src/index.ts", "structure", "5000", "4"], needsRepo: true, note: "menus and facts from each site, rules only" },
   { name: "photos", at: "00:00", timeoutMs: 4 * HOUR, args: ["src/index.ts", "photos", "5000", "4"], needsRepo: true, note: "photo crawl of each site" },

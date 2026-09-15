@@ -1933,13 +1933,12 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
             ) : (
               <h2>What guests say</h2>
             )}
-            {score && !topRated && !reviews.length ? <p className="alsecsub">{fmtReviews(score.reviews)} public reviews. Written reviews arrive once guests book through Outset.</p> : null}
             {reviews.length ? (
               <>
                 <div className="alreviewgrid">
                   {reviews.map((r) => <ReviewCard key={r.key} r={r} />)}
                 </div>
-                <p className="alsecsub">Reviews the operator publishes on their own site. Verified reviews from Outset bookings will show here too.</p>
+                <p className="alsecsub">Reviews the operator publishes on their own site.</p>
               </>
             ) : null}
           </section>
