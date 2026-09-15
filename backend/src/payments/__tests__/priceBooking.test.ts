@@ -35,3 +35,23 @@ test("a single priced option is charged its own price whatever the total says", 
   assert.equal(p?.subtotal, 50);
   assert.equal(p?.total, 50 + serviceFee(50));
 });
+
+/**
+ * A listing that does not price an experience has no total for it, extras or not. The guest page used to add
+ * the extras up on their own and call the sum the total, so a trip priced "on request" with a $30 wetsuit read
+ * "Confirm and pay $32" while this, the side that decides the money, returned null and the booking was stored
+ * with no price at all. src/lib/pricing.ts now answers the same way.
+ */
+test("an experience with no published price has no total, even beside a priced extra", () => {
+  const menu = [{ name: "Private charter", detail: "", price: null }];
+  const extras = [{ name: "Wetsuit", detail: "", price: 30 }];
+  assert.equal(priceBooking(menu, extras, "Private charter", "", 2, ["Wetsuit"], 32), null);
+});
+
+test("a priced experience still carries its extras", () => {
+  const menu = [{ name: "Sunset sail", detail: "", price: 40 }];
+  const extras = [{ name: "Wetsuit", detail: "", price: 30 }];
+  const p = priceBooking(menu, extras, "Sunset sail", "", 2, ["Wetsuit"]);
+  assert.equal(p?.subtotal, 110);
+  assert.equal(p?.total, 110 + serviceFee(110));
+});

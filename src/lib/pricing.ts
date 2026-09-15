@@ -52,9 +52,16 @@ export function priceFor(l: Listing, qty: number, addonIds: string[]): PriceBrea
   return breakdown(base, add);
 }
 
+/**
+ * The experience carries no published price on plenty of listings, and that is the honest gap, not a zero.
+ * Adding the extras up and calling the sum a total told a guest "Confirm and pay $32" for a trip priced "on
+ * request": the server prices from the listing, finds no price for the experience, and stores the booking with
+ * none, so nobody was charged the $32 and the operator got a booking that said nothing about money. The extras
+ * keep their own lines, because those prices are real; the total does not exist until the trip has one.
+ */
 export function priceUnclaimed(o: UnclaimedOption | null, qty: number, addons: UnclaimedOption[] = []): PriceBreakdown {
   const add = addons.reduce((n, a) => n + (a.price ?? 0), 0);
-  if (!o || o.price == null) return breakdown(0, add);
+  if (!o || o.price == null) return { base: 0, add, sub: 0, fee: 0, rate: 0, capped: false, total: 0 };
   const base = perPerson(o) ? o.price * qty : o.price;
   return breakdown(base, add);
 }
