@@ -97,8 +97,11 @@ export function App() {
 function AppView() {
   const { state } = useApp();
   const chat = state.screen === "chat";
+  // A sheet covers the screen it opened from, and that screen kept every one of its buttons in the tab order.
+  // A guest who opened a listing had to tab past the whole Explore feed they could not see, card by card,
+  // before reaching the date picker, and a screen reader read that feed out first.
   return (
-    <div className="view" id="view" style={{ overflowY: chat ? "hidden" : "auto" }}>
+    <div className="view" id="view" inert={!!state.sheet} style={{ overflowY: chat ? "hidden" : "auto" }}>
       {state.screen === "detail" ? <DetailView /> : null}
       {state.screen === "confirm" ? <ConfirmView /> : null}
       {state.screen === "chat" ? <ChatView /> : null}

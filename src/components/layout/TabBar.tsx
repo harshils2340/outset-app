@@ -26,7 +26,7 @@ export function TabBar() {
   const inboxCount = Object.keys(state.chats).length;
 
   return (
-    <nav className="tabbar airtabbar" id="tabbar">
+    <nav className="tabbar airtabbar" id="tabbar" inert={!!state.sheet}>
       {ITEMS.map((t) => {
         const onScreen = state.tab === t.tab && state.screen !== "detail" && state.screen !== "confirm";
         const current = onScreen && (t.tab !== "explore" || !!t.wishlists === (view === "wishlists"));
