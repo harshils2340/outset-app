@@ -316,6 +316,17 @@ console.log("\n4. The site, built against the local API");
 
 console.log("\n5. The API and the site, both local");
 {
+  /* Nothing else may already hold either port. `vite preview --strictPort` exits when :5199 is taken, and the
+     check below only asks whether the URL answers, so a dev server left running on that port made this step
+     pass "the site is being served from the temp dist" and then drove that other build for the whole run:
+     every dashboard step failed for reasons that had nothing to do with the code under test. Say so instead. */
+  for (const [what, url] of [["The API port", `${API_URL}/health`], ["The site port", `${SITE_URL}/`]] as [string, string][]) {
+    const busy = await fetch(url, { signal: AbortSignal.timeout(3000) }).then(() => true).catch(() => false);
+    if (busy) {
+      record(what + " is free", false, url + " is already answering. Stop whatever is on it: this run would test that server, not this build.");
+      process.exit(1);
+    }
+  }
   // A fresh start on the scratch branch: this listing has no claim, no bookings and no sign-in links yet.
   process.env.DATABASE_URL = E2E_DB;
   const pg = await import("../src/db/pg.ts");
