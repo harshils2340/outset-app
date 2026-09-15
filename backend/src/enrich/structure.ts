@@ -48,8 +48,11 @@ export function saveSiteStructure(op: { id: string; domain: string; website: str
   const insFact = db.prepare(
     "INSERT INTO facts (id, operator_id, fact_key, fact_value, source_url, confidence) VALUES (?, ?, ?, ?, ?, 'site')",
   );
-  const hasAi = db.prepare("SELECT 1 FROM offerings WHERE operator_id = ? AND confidence IN ('ai','seed','widget') LIMIT 1").get(op.id);
-  if (!hasAi) {
+  // A menu from the booking widget or the extraction wins, but only a menu with prices on it. Until 2026-09-14 any
+  // AI row blocked the site read, so an extraction that had missed the pricing page ("Hourly rides, price not
+  // stated") kept a later read of that page's "$130 an hour" out of the listing for good.
+  const hasPricedMenu = db.prepare("SELECT 1 FROM offerings WHERE operator_id = ? AND confidence IN ('ai','seed','widget') AND price_cents IS NOT NULL LIMIT 1").get(op.id);
+  if (!hasPricedMenu) {
     for (const s of scrape.services) {
       insOff.run(randomUUID(), op.id, s.name, s.detail, s.duration, s.price_cents, s.price_unit, s.currency, s.source_url);
     }

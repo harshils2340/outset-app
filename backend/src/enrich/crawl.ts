@@ -32,13 +32,35 @@ const VENDORS: [string, RegExp][] = [
   ["bookinglayer", /bookinglayer/i], ["rezgo", /rezgo\.com/i], ["singenuity", /singenuity/i],
 ];
 
-function visibleText(html: string): { title: string; text: string } {
+/** Tags whose text belongs to the line around them. `<strong>$130</strong>` is part of "Hourly $130", not a block of its own. */
+const INLINE = new Set(["a", "abbr", "b", "bdi", "bdo", "cite", "code", "data", "del", "dfn", "em", "font", "i", "ins", "kbd", "label", "mark", "q", "s", "samp", "small", "span", "strong", "sub", "sup", "time", "u", "var"]);
+const BLOCKS = "body, h1, h2, h3, h4, h5, h6, p, li, td, th, dt, dd, div, section, article, main, aside, blockquote, figcaption, summary, pre, address, button, caption, legend";
+
+/**
+ * An element's own text together with its inline descendants; block children get their own line. Until
+ * 2026-09-14 this dropped every child element, so `<li><span>Hourly</span><strong>$130</strong></li>` reached
+ * the model as "Hourly" and the extractor reported "prices not stated" for sites that print them in bold.
+ */
+function ownText($: ReturnType<typeof load>, el: any): string {
+  const parts: string[] = [];
+  for (const n of $(el).contents().toArray() as any[]) {
+    if (n.type === "text") parts.push(n.data || "");
+    else if (n.type === "tag") {
+      const name = String(n.name || "").toLowerCase();
+      if (name === "br") parts.push(" ");
+      else if (INLINE.has(name)) parts.push(" " + ownText($, n) + " ");
+    }
+  }
+  return parts.join("");
+}
+
+export function visibleText(html: string): { title: string; text: string } {
   const $ = load(html);
   $("script, style, noscript, svg, iframe, nav, footer, header, form, [aria-hidden='true']").remove();
   const title = $("title").first().text().trim();
   const parts: string[] = [];
-  $("h1, h2, h3, h4, p, li, td, th, dt, dd, span, div, a, label").each((_, el) => {
-    const t = $(el).clone().children().remove().end().text().replace(/\s+/g, " ").trim();
+  $(BLOCKS).each((_, el) => {
+    const t = ownText($, el).replace(/\s+/g, " ").replace(/\s+([,.;:!?)])/g, "$1").trim();
     if (t.length >= 2) parts.push(t);
   });
   const seen = new Set<string>();

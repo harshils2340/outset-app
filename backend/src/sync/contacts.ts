@@ -221,8 +221,8 @@ function photoReuse(): Map<string, number> {
 /** One operator in the shape the guest app's Unclaimed type expects. Facts only, nothing invented. */
 export function toCatalogItem(r: CatalogRow): Record<string, unknown> {
   const dbOfferings = db
-    .prepare("SELECT name, detail, duration, price_cents, price_unit, source_url FROM offerings WHERE operator_id = ? ORDER BY price_cents IS NULL, price_cents")
-    .all(r.id) as { name: string; detail: string | null; duration: string | null; price_cents: number | null; price_unit: string | null; source_url: string | null }[];
+    .prepare("SELECT name, detail, duration, price_cents, price_unit, source_url, confidence FROM offerings WHERE operator_id = ? ORDER BY price_cents IS NULL, price_cents")
+    .all(r.id) as { name: string; detail: string | null; duration: string | null; price_cents: number | null; price_unit: string | null; source_url: string | null; confidence: string }[];
   const dbFacts = db.prepare("SELECT fact_key, fact_value, source_url FROM facts WHERE operator_id = ?").all(r.id) as { fact_key: string; fact_value: string; source_url: string | null }[];
   // What the cloud structure crawl read off this operator's site. It runs on GitHub Actions, where there is no
   // database, so its rows reach a listing only here. Added, never substituted: a machine that already imported
@@ -240,7 +240,7 @@ export function toCatalogItem(r: CatalogRow): Record<string, unknown> {
   const seenOffering = new Set(dbOfferings.map((o) => (o.name + "|" + (o.detail || "") + "|" + (o.price_cents ?? "")).toLowerCase()));
   const rawOfferings = [
     ...dbOfferings,
-    ...(hasDbPrice ? [] : crawled.offerings.filter((o) => !seenOffering.has((o.name + "|" + (o.detail || "") + "|" + (o.price_cents ?? "")).toLowerCase()))),
+    ...(hasDbPrice ? [] : crawled.offerings.filter((o) => !seenOffering.has((o.name + "|" + (o.detail || "") + "|" + (o.price_cents ?? "")).toLowerCase())).map((o) => ({ ...o, confidence: "crawl" }))),
   ].sort((a, b) => Number(a.price_cents == null) - Number(b.price_cents == null) || (a.price_cents ?? 0) - (b.price_cents ?? 0));
   const seenFact = new Set(dbFacts.map((f) => (f.fact_key + "|" + f.fact_value).toLowerCase()));
   const rawFacts = [...dbFacts, ...crawled.facts.filter((f) => !seenFact.has((f.fact_key + "|" + f.fact_value).toLowerCase()))];
@@ -273,7 +273,11 @@ export function toCatalogItem(r: CatalogRow): Record<string, unknown> {
       if (cleanupLog) cleanupLog.priceNulled.push({ id: r.domain, name: o.name, oldPrice: o.price_cents! / 100, why });
       return { ...o, price_cents: null };
     })
-    .filter((o, i, a) => a.findIndex((x) => x.name.toLowerCase() === o.name.toLowerCase() && x.price_cents === o.price_cents && (x.duration || x.detail || "") === (o.duration || o.detail || "")) === i)
+    // One line per service and tier. The AI pass and the booking widget both describe "Seakart Adventure · 1 hour",
+    // one with the price and one without; rows are sorted priced-first and cheapest-first, so the first twin is the
+    // one a guest should see and the unpriced or dearer repeat goes. Until 2026-09-14 the price was part of the
+    // key, so a listing showed "1 hour $219" and "1 hour Price on request" side by side.
+    .filter((o, i, a) => a.findIndex((x) => x.name.toLowerCase() === o.name.toLowerCase() && (x.duration || x.detail || "").toLowerCase() === (o.duration || o.detail || "").toLowerCase()) === i)
     .map((o) => ({ ...o, price_unit: fixUnit(o) }));
   const title = cleanTitle(decodeEntities(r.name), { city: r.city, region: r.region, legalName: r.legal_name });
   const keysWithOwnBranch = new Set(rawFacts.filter((f) => trusted(f.source_url) && !offCity(f.source_url)).map((f) => f.fact_key));
@@ -295,6 +299,25 @@ export function toCatalogItem(r: CatalogRow): Record<string, unknown> {
   const kindText = [r.domain, ...rawOfferings.map((o) => o.name), ...rawFacts.filter((f) => /^(service|tag|description|site_desc|one_line|service_desc)$/.test(f.fact_key)).map((f) => f.fact_value)].join(" \n ");
   const kind = reconcileArt(artFromName(r.name, r.icon_key), r.name, kindText);
   const art = kind.art;
+  // A service that has a price never also says "Price on request". When one source read the price and another
+  // did not, the unpriced twin is the weaker read of the same menu, and a guest should see one line, priced.
+  // Likewise a source that read no price at all (an extraction that missed the pricing page, a widget whose
+  // prices sit behind its calendar) read the menu worse than the source that did, so its unpriced lines go too.
+  const pricedNames = new Set(offerings.filter((o) => o.price_cents != null).map((o) => plainName(o.name, art).toLowerCase()));
+  const pricedSources = new Set(offerings.filter((o) => o.price_cents != null).map((o) => o.confidence));
+  // A bare name with no tier ("Package · Standard · Price on request") next to priced tiers is noise, not a menu line.
+  const menu = offerings.filter((o) => o.price_cents != null || !pricedSources.size || (pricedSources.has(o.confidence) && !pricedNames.has(plainName(o.name, art).toLowerCase()) && !!(silent(o.duration) || silent(o.detail))));
+  // One unit per service: the tiers of a rate card are priced the same way, so the cheapest priced tier's unit is the
+  // service's. Without this a $650 eight-hour tier read as "/group" beside hourly tiers that said nothing.
+  const unitByService = new Map<string, string | undefined>();
+  for (const o of menu) {
+    const k = plainName(o.name, art).toLowerCase();
+    if (o.price_cents != null && !unitByService.has(k)) unitByService.set(k, o.price_unit && o.price_unit.startsWith("/") ? o.price_unit : undefined);
+  }
+  const perOf = (o: { name: string; price_unit: string | null }) => {
+    const k = plainName(o.name, art).toLowerCase();
+    return unitByService.has(k) ? unitByService.get(k) : o.price_unit && o.price_unit.startsWith("/") ? o.price_unit : undefined;
+  };
   const family = kind.movedFrom ? categoryById(art)?.family || r.family : r.family;
   /**
    * Cover choice, re-derived from facts we already hold. The order below is the order this function used to
@@ -365,14 +388,14 @@ export function toCatalogItem(r: CatalogRow): Record<string, unknown> {
     specs: uniq([...pick("spec"), ...pick("requirement"), ...pick("group")].map(cleanLine)).filter(isTidyLine).slice(0, 10),
     // Names and details in plain words (plainServices.ts): the same cleaning the services below get, so the booking
     // picker's sub-line and a service's tier label never disagree.
-    options: offerings.map((o) => {
+    options: menu.map((o) => {
       const name = plainName(o.name, art);
       const price = o.price_cents == null ? null : o.price_cents / 100;
       return {
         name,
         detail: plainLabel(silent(o.duration) || silent(o.detail) || "", { service: name, kind: art, price }) || "",
         price,
-        per: o.price_unit && o.price_unit.startsWith("/") ? o.price_unit : undefined,
+        per: perOf(o),
       };
     }),
     services: (() => {
@@ -410,9 +433,9 @@ export function toCatalogItem(r: CatalogRow): Record<string, unknown> {
         photosByItemPage.set(f.source_url, list);
       }
       const namesByPage = new Map<string, Set<string>>();
-      for (const o of offerings) if (o.source_url) namesByPage.set(o.source_url, (namesByPage.get(o.source_url) || new Set()).add(o.name.toLowerCase()));
+      for (const o of menu) if (o.source_url) namesByPage.set(o.source_url, (namesByPage.get(o.source_url) || new Set()).add(o.name.toLowerCase()));
       const groups = new Map<string, RawService & { pages: Set<string> }>();
-      offerings.forEach((o, idx) => {
+      menu.forEach((o, idx) => {
         if (NOT_A_SERVICE.test(o.name)) return;
         const rawKey = o.name.toLowerCase();
         // Grouped by the plain name, so "4 Hr Charter" and "4 Hour Charter" are one service.
@@ -426,7 +449,7 @@ export function toCatalogItem(r: CatalogRow): Record<string, unknown> {
         g.variants.push({
           label: silent(o.duration) || silent(o.detail) || STANDARD,
           price: o.price_cents == null ? null : o.price_cents / 100,
-          per: o.price_unit && o.price_unit.startsWith("/") ? o.price_unit : undefined,
+          per: perOf(o),
           optionIdx: idx,
         });
         groups.set(key, g);
@@ -444,6 +467,31 @@ export function toCatalogItem(r: CatalogRow): Record<string, unknown> {
       }
       // Plain labels, jargon explained, long size or count runs folded (plainServices.ts). Tiers that were event timetables are gone.
       const plain = plainServices([...groups.values()].map(({ pages: _p, ...g }) => g), art);
+      // Plain labels fold "2.5 hrs" and "2.5 hours" into one wording, so twins can only be seen now: the same tier at
+      // the same price (or one unpriced) is one line, and the same tier at two prices keeps each raw name in front.
+      for (const g of plain) {
+        const kept: typeof g.variants = [];
+        for (const v of g.variants) {
+          const twin = kept.find((k) => k.label.toLowerCase() === v.label.toLowerCase());
+          if (!twin) {
+            kept.push(v);
+            continue;
+          }
+          if (twin.price == null || v.price == null || twin.price === v.price) {
+            if (twin.price == null && v.price != null) Object.assign(twin, { price: v.price, per: v.per, optionIdx: v.optionIdx });
+            continue;
+          }
+          const rawT = menu[twin.optionIdx]?.name || "";
+          const rawV = menu[v.optionIdx]?.name || "";
+          if (rawT && rawV && rawT.toLowerCase() !== rawV.toLowerCase()) {
+            if (!twin.label.toLowerCase().startsWith(rawT.toLowerCase())) twin.label = rawT + " · " + twin.label;
+            kept.push({ ...v, label: rawV + " · " + v.label });
+          } else if (v.price < twin.price) {
+            Object.assign(twin, { price: v.price, per: v.per, optionIdx: v.optionIdx });
+          }
+        }
+        g.variants = kept;
+      }
       return plain.filter((g) => !/gift ?cards?|gift certificate|deposit|membership|season pass/i.test(g.name)).slice(0, 14);
     })(),
     // "Private Ride for Two: up to 1 guests per booking" is a group cap, and "What to Bring: ..." belongs under bring.
@@ -458,7 +506,8 @@ export function toCatalogItem(r: CatalogRow): Record<string, unknown> {
       .filter((a) => a.name.length >= 3 && !/^(an?|the|plus|extra|additional|only|just|from|starting|starts|add|adds|is|are|and|or|for)\b/i.test(a.name) && !/\b(fee|surcharge|deposit|tax|gratuity|tip|per person|per hour)\b/i.test(a.name))
       .slice(0, 6),
     // The honest gap line. Once the widget or crawl gave real rules and policies, say those instead of "not copied yet".
-    gap: pick("published_gap")[0] || pick("cancellation")[0] || (pick("policy").length || pick("requirement").length ? [...pick("policy")].slice(0, 3).join(" ") || "Ask the operator about cancellations." : DEFAULT_GAP),
+    // "Exact prices not stated" was written by an extraction that never saw the pricing page; once a menu line has a price, that gap is stale.
+    gap: pick("published_gap").filter((g) => !(menu.some((o) => o.price_cents != null) && /\b(price|prices|pricing|rates?|costs?)\b/i.test(g)))[0] || pick("cancellation")[0] || (pick("policy").length || pick("requirement").length ? [...pick("policy")].slice(0, 3).join(" ") || "Ask the operator about cancellations." : DEFAULT_GAP),
     blurb: (() => {
       // The first source whose text survives cleaning wins: a description that is all headings falls through to the meta line.
       const b = [pick("description")[0], pick("site_desc")[0], pick("one_line")[0]].map((raw) => cleanBlurb(raw || "", { title, city: r.city, region: r.region })).find(Boolean) || "";

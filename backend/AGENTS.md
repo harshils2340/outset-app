@@ -93,3 +93,13 @@ A claim link carries `k=<token>`, and the app checks it against the `claimKey` b
 `test-enter` skips the token instead of trying to forge one. Sessions are signed with `claimSecret()` by the same process that verifies them, so they work on any host without matching production. Copying the production `CLAIM_SECRET` to a laptop also works and makes links validate, but it puts a production secret on a dev machine, which is why this route is the better default.
 
 The code lives in `src/lib/testClaim.ts` and one marked branch plus three marked routes in `src/api/claims.ts`.
+
+## Prices on a listing
+
+If a guest can see a price on the operator's own website, the listing must show it, and a menu must be consistent: one line per service and tier, never the same tier once priced and once "Price on request". Three places enforce this, and every one has a story behind it (14 September 2026, 416 Jet Skis and Seakart Adventure):
+
+- `src/enrich/crawl.ts` `visibleText` keeps inline text (`<strong>$130</strong>`) on the line that names it. `npm test` runs the regression test; keep it green when touching the extractor.
+- `src/enrich/sitescrape.ts` `harvestPrices` attaches tier-only rate cards ("Weekdays · Hourly $130") to the activity the page sells instead of a service called "Hourly".
+- `src/enrich/structure.ts` lets a site read with prices into the database even when an earlier extraction left unpriced rows, and `src/sync/contacts.ts` shows one line per service and tier, drops an unpriced source when another source read prices, gives a rate card one unit, and retires a "prices not stated" gap line once any line is priced.
+
+Before calling a listing done, open the operator's pricing page and compare.

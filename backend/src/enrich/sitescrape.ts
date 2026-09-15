@@ -518,8 +518,41 @@ function headingAbove($: ReturnType<typeof load>, el: any): string | null {
   return serviceLike(title, ctx) ? title : null;
 }
 
+/** A rate-card row label that names a tier of something, never the thing itself: "Hourly", "4 hours", "Weekend", "Adult". */
+const TIER = /^(hourly|daily|weekly|nightly|half.?day|full.?day|all.?day|weekdays?|weekends?|adults?|child(ren)?|kids?|seniors?|youth|students?|peak|off.?peak|standard|premium|basic|deluxe|\d+\s*(hours?|hrs?|hr|min(ute)?s?|days?|nights?|weeks?|people|persons?|riders?|guests?|pax|players?|laps?|games?|rounds?)|per\s+(hour|day|night|person|ride|game))\b/i;
+
+/**
+ * What the page as a whole sells, for rate cards that name only tiers. A jet-ski site's pricing page reads
+ * "Weekdays · Hourly $130 · 4 hours $375" with no service heading anywhere: until 2026-09-14 those rows were
+ * attached to a service called "Hourly", which the name filter then threw away, and the listing said no price.
+ */
+/** The caption over a rate card ("Rental rates", "Pricing", "Rates & Fees"): it names the list, not the thing sold. */
+const PRICE_CAPTION = /^(our |the |current )?(rental |service |tour |class |lesson |charter |boat )?(rates?|prices?|pricing|fees?|costs?|rate card|price list)( (and|&) (rates?|fees?|prices?|costs?))?$/i;
+
+function pageCanon($: ReturnType<typeof load>): string | null {
+  const title = clean($("title").first().text());
+  const h1 = clean($("h1").first().text());
+  const desc = clean($('meta[name="description"]').attr("content") || "");
+  return canon(title) || canon(h1) || canon(desc);
+}
+
+/** The short group heading over a rate-card block ("Weekdays", "Weekends", "Peak season"), which is not a service but qualifies the tier under it. */
+function groupAbove($: ReturnType<typeof load>, el: any): string | null {
+  let node = $(el);
+  for (let depth = 0; depth < 4 && node.length; depth++) {
+    const prev = node.prevAll("h2, h3, h4, h5").first();
+    if (prev.length) {
+      const t = clean(prev.text());
+      return t.split(/\s+/).length <= 3 && !/\$/.test(t) && !serviceLike(t) ? t : null;
+    }
+    node = node.parent();
+  }
+  return null;
+}
+
 /** Read price tables and "label - $price" lists into variants and add-ons attached to the nearest service heading. */
-function harvestPrices($: ReturnType<typeof load>, url: string, out: Map<string, Found>, addons: Map<string, Addon>) {
+export function harvestPrices($: ReturnType<typeof load>, url: string, out: Map<string, Found>, addons: Map<string, Addon>) {
+  const fallback = pageCanon($);
   const attach = (heading: string | null, rawLabel: string, price: number, el?: any) => {
     // Above this it is almost always a boat, a board or a membership for sale, not a booking.
     if (price > 5000 || price < 5) return;
@@ -558,7 +591,8 @@ function harvestPrices($: ReturnType<typeof load>, url: string, out: Map<string,
         if (cells.length) rows.push(cells);
       });
     if (!rows.length) return;
-    const heading = headingAbove($, table);
+    const above = headingAbove($, table);
+    const heading = !above || PRICE_CAPTION.test(above) ? fallback || above : above;
     // Layout C: a header row naming price columns ("Price/Hour", "Half Day") and rows of [service, ..., $a, $b].
     const header = rows[0];
     const priceCols = header.map((h, i) => (/price|rate|hour|hr|half|day|week|min|adult|child|person|session|trip/i.test(h) ? i : -1)).filter((i) => i >= 0);
@@ -611,7 +645,13 @@ function harvestPrices($: ReturnType<typeof load>, url: string, out: Map<string,
     if (!after || before.length < 3 || before.length > 48) continue;
     const label = before;
     if (!serviceLike(label, text) && !/hour|hr|min|day|person|adult|child|kid|rider|ride|trip|flight|jump|game|lane|session|tour|package|standard|premium|private|group/i.test(label) && !isAddon(label)) continue;
-    attach(headingAbove($, el), label, toNum(after[1]), el);
+    const heading = headingAbove($, el);
+    if ((!heading || PRICE_CAPTION.test(heading)) && fallback && TIER.test(label) && !isAddon(label)) {
+      const group = groupAbove($, el);
+      attach(fallback, group ? group + " " + label : label, toNum(after[1]), el);
+      continue;
+    }
+    attach(heading, label, toNum(after[1]), el);
     }
   });
 }

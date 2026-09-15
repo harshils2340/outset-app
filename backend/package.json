@@ -26,6 +26,7 @@
     "status": "tsx src/index.ts status",
     "chrome:reap": "tsx src/index.ts chrome-reap",
     "cpu": "tsx scripts/cpu.mts",
+    "test": "node --import tsx --test \"src/**/__tests__/*.test.ts\"",
     "pipeline": "tsx scripts/pipeline.mts"
   },
   "dependencies": {
