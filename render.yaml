@@ -92,6 +92,12 @@ services:
       # nothing. Same value as the outset-payouts job below.
       - key: ADMIN_KEY
         sync: false
+      # Resend signs bounce and complaint events with this. Without it the webhook refuses every event, so a
+      # dead address is never suppressed and a spam complaint is never recorded, and outreach keeps mailing
+      # both until the sending domain is burned. The webhook is registered in Resend against
+      # POST /webhooks/resend; this is the signing secret it handed back.
+      - key: RESEND_WEBHOOK_SECRET
+        sync: false
       # OUTSET_TEST_CLAIM_EMAILS is deliberately NOT listed here. It is a testing-only bypass that lets the
       # addresses it names claim and release any listing without the website-email check, so it must never be
       # part of the production service definition. Unset is the safe default and the only correct value here.
