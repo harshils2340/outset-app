@@ -56,9 +56,9 @@ function form(obj: Record<string, string | number | undefined>): string {
 }
 
 /** Same shape as the helper in src/api/payouts.ts, so this exercises the real request. */
-async function stripe<T>(path: string, body?: Record<string, string | number | undefined>): Promise<{ ok: boolean; status: number; data: T; error?: string }> {
+async function stripe<T>(path: string, body?: Record<string, string | number | undefined>, method?: "GET" | "POST" | "DELETE"): Promise<{ ok: boolean; status: number; data: T; error?: string }> {
   const res = await fetch("https://api.stripe.com/v1/" + path, {
-    method: body ? "POST" : "GET",
+    method: method || (body ? "POST" : "GET"),
     headers: { authorization: "Bearer " + KEY, "content-type": "application/x-www-form-urlencoded" },
     body: body ? form(body) : undefined,
     signal: AbortSignal.timeout(20000),
@@ -92,6 +92,8 @@ const created = await stripe<{ id: string }>("accounts", {
   "business_profile[name]": "Connect E2E (not a real shop)",
   "business_profile[url]": SITE + "#o=" + LISTING,
   "capabilities[transfers][requested]": "true",
+  // Stripe refuses transfers on its own for a US account, so the API asks for both. See src/api/payouts.ts.
+  "capabilities[card_payments][requested]": "true",
   "metadata[listing]": LISTING,
 });
 check(
@@ -114,6 +116,21 @@ if (!created.ok) {
   process.exit(1);
 }
 const account = created.data.id;
+
+// A shop in the platform's own country must work too, since the API picks the country from the listing.
+if (platformCountry !== wanted) {
+  const home = await stripe<{ id: string }>("accounts", {
+    type: "express",
+    country: platformCountry,
+    email: "connect-e2e-home@onoutset.com",
+    "business_profile[name]": "Connect E2E home (not a real shop)",
+    "capabilities[transfers][requested]": "true",
+    "capabilities[card_payments][requested]": "true",
+    "metadata[listing]": LISTING,
+  });
+  check(`an Express account in the platform's own country (${platformCountry}) is created`, home.ok, home.ok ? home.data.id : home.error);
+  if (home.ok) await stripe("accounts/" + home.data.id, undefined, "DELETE");
+}
 
 /* ---------------------------------------------------------------- 3. the hosted onboarding link ------------ */
 
@@ -149,7 +166,7 @@ check("the transfers capability was requested", read.ok && !!read.data.capabilit
 /* ---------------------------------------------------------------- 5. clean up ------------------------------ */
 
 console.log("\n5. Cleanup");
-const gone = await stripe<{ deleted: boolean }>("accounts/" + account + "/delete", {});
+const gone = await stripe<{ deleted: boolean }>("accounts/" + account, undefined, "DELETE");
 check("the test account is deleted, so nothing is left on the platform", gone.ok && gone.data?.deleted === true, gone.ok ? account : gone.error);
 
 /* ---------------------------------------------------------------- summary ---------------------------------- */
