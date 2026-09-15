@@ -32,13 +32,17 @@ async function fetchCatalog(name: string): Promise<CatalogFile | null> {
  * Hand-verified entries always win over generated ones with the same domain.
  */
 export async function loadRemoteCatalog(onPhase?: (added: number, complete: boolean) => void): Promise<number> {
-  const lite = await fetchCatalog("catalog-lite.json");
+  // Both requests go out together. The full catalog used to wait for the lite shard to finish first, which put
+  // a 300 kB round trip in front of a 5 MB one for no reason. The lite shard is still the first one acted on.
+  const litePromise = fetchCatalog("catalog-lite.json");
+  const fullPromise = fetchCatalog("catalog.json");
+  const lite = await litePromise;
   let added = 0;
   if (lite) {
     added = mergeCatalog((lite.operators || []).filter(looksLikeItem), lite.contacts || {});
     onPhase?.(added, false);
   }
-  const full = await fetchCatalog("catalog.json");
+  const full = await fullPromise;
   if (!full) return added;
   added = mergeCatalog((full.operators || []).filter(looksLikeItem), full.contacts || {});
   onPhase?.(added, true);
@@ -47,22 +51,32 @@ export async function loadRemoteCatalog(onPhase?: (added: number, complete: bool
 
 const inflight = new Map<string, Promise<boolean>>();
 
-/** Fetch one operator's detail file and swap it into the catalog. Resolves true when the record changed. */
+/**
+ * Fetch one operator's detail file and swap it into the catalog. Resolves true when the record changed.
+ *
+ * An id the catalog has never heard of is fetched too, and merged in on its own. That is what lets a shared
+ * listing link open without the 5 MB catalog: the listing's own file is about 3 kB, and it is the only thing
+ * that page needs.
+ */
 export function loadListing(id: string | null): Promise<boolean> {
   if (!id) return Promise.resolve(false);
   const cur = experienceById(id);
   // `lite` alone says whether the detail file is still needed; a seed starts lite too, and that is where
   // its claimKey comes from, so a claim link would spin forever without this fetch.
-  if (!cur || !cur.lite) return Promise.resolve(false);
+  if (cur && !cur.lite) return Promise.resolve(false);
   if (inflight.has(id)) return inflight.get(id)!;
-  const p = fetch(import.meta.env.BASE_URL + "o/" + encodeURIComponent(cur.detail || id) + ".json", { cache: "no-cache" })
+  const path = cur?.detail || id;
+  const p = fetch(import.meta.env.BASE_URL + "o/" + encodeURIComponent(path) + ".json", { cache: "no-cache" })
     .then(async (res) => {
       if (!res.ok) return false;
       const full = (await res.json()) as Unclaimed;
       if (!looksLikeItem(full)) return false;
-      hydrateItem(full, cur.id);
+      // Known already: patch the record in place. Never seen: add it, so the page can render from this alone.
+      if (cur) hydrateItem(full, cur.id);
+      else if (!mergeCatalog([full], {})) return false;
+      const mine = cur?.id || full.id;
       // A claimed operator's own edits, saved through the API, sit on top of the crawled record.
-      if (full.claimKey) void fetchRemoteProfile(cur.detail || cur.id).then((r) => { if (r && r.patch) setOperatorOverride(cur.id, r.patch, r.published !== false); });
+      if (full.claimKey) void fetchRemoteProfile(path).then((r) => { if (r && r.patch) setOperatorOverride(mine, r.patch, r.published !== false); });
       return true;
     })
     .catch(() => false)

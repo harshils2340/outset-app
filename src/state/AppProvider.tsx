@@ -468,6 +468,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const early = window.location.hash.match(/^#claim=([a-z0-9-]+)(?:&k=([A-Za-z0-9_.~-]+))?/i);
     if (early) dispatch({ type: "openOperator", id: early[1], token: early[2] || undefined });
     else if (atOperatorsPath()) dispatch({ type: "openOperator" });
+    // A shared listing link needs that listing's own file and nothing else, so it is opened before the catalog
+    // is asked for. This used to sit inside the .then() below, which meant a guest on mobile data waited out
+    // the whole 5 MB catalog to see a 3 kB listing.
+    const deep = window.location.hash.match(/^#o=([a-z0-9-]+)/i);
+    if (deep) {
+      void loadListing(deep[1]).then((ok) => {
+        if (!alive || !ok) return;
+        dispatch({ type: "catalogLoaded", added: 1 });
+        dispatch({ type: "openRequest", id: deep[1] });
+      });
+    }
     loadRemoteCatalog((n, complete) => {
       // The lite shard paints the rails early; the full catalog replaces it a moment later.
       if (alive && !complete) dispatch({ type: "catalogLoaded", added: n });
@@ -478,7 +489,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       dispatch({ type: "catalogLoaded", added: added + edited, complete: true });
       // Deep link: #o=<operator id> opens that listing directly.
       const m = window.location.hash.match(/^#o=([a-z0-9-]+)/i);
-      if (m && experienceById(m[1])) {
+      if (m && experienceById(m[1]) && stateRef.current.reqTargetId !== m[1]) {
         dispatch({ type: "openRequest", id: m[1] });
         loadListing(m[1]).then((changed) => changed && dispatch({ type: "catalogLoaded", added: 1 }));
       }
