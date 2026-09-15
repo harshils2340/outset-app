@@ -1,0 +1,44 @@
+name: End-to-end rehearsal
+# The local harness (backend/scripts/e2e-local.mts), run in the cloud: a throwaway API and site, a headless
+# browser that claims, edits, books, accepts, declines, cancels, fills a time and is refused, and every email
+# read back and rendered. Nothing here reaches production: no Stripe key, no GitHub token, no mail key.
+# Runs nightly, on every push that touches the app or the API, and on demand. Screenshots, emails and the
+# API log are uploaded as an artifact.
+on:
+  schedule:
+    - cron: "0 7 * * *"
+  push:
+    branches: [main]
+    paths: ["src/**", "backend/src/**", "backend/scripts/e2e-*", "backend/scripts/payout-e2e.mts", "backend/scripts/test-listing.mts", ".github/workflows/e2e.yml"]
+  workflow_dispatch:
+concurrency:
+  group: e2e
+  cancel-in-progress: false
+jobs:
+  rehearse:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci
+      - run: npm ci
+        working-directory: backend
+      - name: Run the rehearsal
+        env:
+          CHROME: /usr/bin/google-chrome
+          E2E_COPY_TO: ${{ runner.temp }}/e2e
+          STRIPE_SECRET_KEY: ""
+          RESEND_API_KEY: ""
+          GITHUB_TOKEN: ""
+        run: npx tsx scripts/e2e-local.mts
+        working-directory: backend
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: e2e-${{ github.run_number }}
+          path: ${{ runner.temp }}/e2e
+          if-no-files-found: ignore
+          retention-days: 14
