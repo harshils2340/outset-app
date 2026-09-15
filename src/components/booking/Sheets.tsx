@@ -16,6 +16,7 @@ import {
   listingFacts,
   mapsDirHref,
   mapsQuery,
+  maxGuestsFor,
   optionLabel,
   perPerson,
   placeLabel,
@@ -60,6 +61,7 @@ import { SlotCalendar } from "./SlotCalendar";
 import { SearchSheet } from "../explore/SearchSheet";
 import { AdminSiteLink, ExplainLine, ReviewCard, TYPE_NAME, bookableServices, dealShown, isStandardOnly, optionLength, splitVariants, variantNote, tidyDuration, tidyHours, possessive, shownReviews, splitIncluded, tidyAddress, tidyCancel, tidyLength, tidyLine, tidyName } from "../web/WebListing";
 
+/** Only the starting point for the party picker before a service is chosen; the operator's own limit wins. */
 const QTY_MAX = 8;
 
 export function Sheets() {
@@ -304,6 +306,8 @@ function RequestBody({
   const [time, setTime] = useState<string | null>(null);
   const [qty, setQty] = useState(() => Math.min(QTY_MAX, getPrefs().who || 2));
   const [optionIdx, setOptionIdx] = useState<number | null>(item.options.length === 1 ? 0 : null);
+  // "Max guests per slot", as the operator set it for the service being booked.
+  const maxGuests = maxGuestsFor(item, optionIdx);
   const [pay, setPay] = useState(false);
   // The operator needs a way to reach whoever booked, and the API refuses a booking without it.
   const [guest, setGuest] = useState<{ name: string; phone: string; email: string }>(() => {
@@ -997,7 +1001,7 @@ function RequestBody({
                   <IcMinus />
                 </button>
                 <span className="n">{qty}</span>
-                <button type="button" onClick={() => setQty(qty + 1)} disabled={qty >= QTY_MAX} aria-label="More people">
+                <button type="button" onClick={() => setQty(Math.min(maxGuests, qty + 1))} disabled={qty >= maxGuests} aria-label="More people">
                   <IcPlus />
                 </button>
               </span>
@@ -1151,7 +1155,7 @@ function RequestBody({
 
           <Section title="Things to know">
             <div className="airknows">
-              <KnowRow icon={ICONS.user} title="Who can go" summary={requirements[0] ? tidyLine(requirements[0]) : "Not published yet"}>
+              <KnowRow icon={ICONS.user} title="Who can go" summary={requirements[0] ? tidyLine(requirements[0]) : "Contact the business to check"}>
                 {requirements.length ? <Bullets items={requirements} /> : <FactList lines={facts.who.filter((l) => l.posted)} />}
               </KnowRow>
               {item.bring?.length ? (
@@ -1164,7 +1168,7 @@ function RequestBody({
                   <Bullets items={item.groupInfo} />
                 </KnowRow>
               ) : null}
-              <KnowRow icon={ICONS.check} title="Waiver and check-in" summary={waiverLines[0] ? tidyLine(waiverLines[0]) : item.waiverUrl ? "Sign online before you arrive" : "Not published yet"}>
+              <KnowRow icon={ICONS.check} title="Waiver and check-in" summary={waiverLines[0] ? tidyLine(waiverLines[0]) : item.waiverUrl ? "Sign online before you arrive" : "Contact the business to check"}>
                 {waiverLines.length ? <Bullets items={waiverLines} /> : <FactList lines={facts.waiver.filter((l) => l.posted && l.text.length <= 160)} />}
                 {item.waiverUrl ? (
                   <a className="reqwaiver" href={item.waiverUrl} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}>
@@ -1176,11 +1180,11 @@ function RequestBody({
                   </a>
                 ) : null}
               </KnowRow>
-              <KnowRow icon={ICONS.clock} title="Cancellation policy" summary={cancel || (item.cancellation ? tidyLine(item.cancellation) : "Confirmed with the operator before you pay")}>
+              <KnowRow icon={ICONS.clock} title="Cancellation policy" summary={cancel || (item.cancellation ? tidyLine(item.cancellation) : "Contact the business for cancellation terms")}>
                 {item.cancellation ? (
                   <p className="reqpolicy">{tidyLine(item.cancellation)}</p>
                 ) : (
-                  <p className="reqpolicy gap">{item.title} has not published cancellation terms. Otto will have them confirm before you pay.</p>
+                  <p className="reqpolicy gap">Contact {item.title} for their cancellation terms before you book.</p>
                 )}
                 {otherPolicies.length ? <Bullets items={otherPolicies} /> : null}
                 {facts.note && !item.cancellation && !item.policies?.length ? <p className="reqpolicy">{facts.note}</p> : null}

@@ -1195,7 +1195,7 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
   if (rules.length) knowCols.push({ key: "rules", title: "Who can go", icon: I.group, lines: rules });
   if (safety.length) knowCols.push({ key: "safety", title: "Safety and waiver", icon: I.shield, lines: safety });
   if (cancelLines.length || knowCols.length) {
-    knowCols.push({ key: "cancel", title: "Cancellation policy", icon: I.calendar, lines: cancelLines.length ? cancelLines : ["Not published yet. Otto will have the business confirm before you pay."] });
+    knowCols.push({ key: "cancel", title: "Cancellation policy", icon: I.calendar, lines: cancelLines.length ? cancelLines : ["Contact the business for cancellation terms before you book."] });
   }
 
   const cheapIdx = defaultOption(item.options);
@@ -1702,7 +1702,7 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
                     ) : contact?.hours?.length ? (
                       <ul className="alhours">{contact.hours.slice(0, 7).map((h) => <li key={h}><span>{h}</span></li>)}</ul>
                     ) : (
-                      <span className="alboxval muted">Hours are not published. Call before you go.</span>
+                      <span className="alboxval muted">Call the business for hours.</span>
                     )}
                   </div>
                 </div>
@@ -2171,7 +2171,7 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
           ) : (
             <>
               {cancel ? <h3 className="almodalsub">{cancel}</h3> : null}
-              {item.cancellation ? <p className="almodaltext">{tidyLine(item.cancellation)}</p> : <p className="almodaltext muted">{item.title} has not published cancellation terms yet. Otto will have the business confirm before you pay.</p>}
+              {item.cancellation ? <p className="almodaltext">{tidyLine(item.cancellation)}</p> : <p className="almodaltext muted">Contact {item.title} for their cancellation terms before you book.</p>}
               {otherPolicies.length ? <><h3 className="almodalsub">Other policies</h3><ul className="almodallist">{otherPolicies.map((l) => <li key={l}>{tidyLine(l)}</li>)}</ul></> : null}
             </>
           )}

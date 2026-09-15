@@ -538,7 +538,7 @@ function CompareTable({ items, near, onOpen, onClose, onRemove }: { items: Uncla
               {row("From", (u) => { const f = fromPrice(u); return f != null ? <b>{money(f)}</b> : <span className="ah-muted">Request to book</span>; })}
               {row("Rating", (u) => { const sc = publicRating(u); return sc ? <span className="ah-cmp-rate"><Markup html={SVG.star} /> {sc.rating.toFixed(1)} <em className="ah-muted">({fmtReviews(sc.reviews)})</em></span> : <span className="ah-muted">No public rating</span>; })}
               {row("Where", (u) => { const n = near ? nearestLocation(u, near) : null; return n ? n.label + " · " + fmtDistance(n.km) + " away" : u.area; })}
-              {row("What you'd book", (u) => { const o = firstPriced(u) || u.options[0]; return o ? o.name + (o.detail ? " · " + o.detail : "") : <span className="ah-muted">Menu not published</span>; })}
+              {row("What you'd book", (u) => { const o = firstPriced(u) || u.options[0]; return o ? o.name + (o.detail ? " · " + o.detail : "") : <span className="ah-muted">Contact the business</span>; })}
               {row("Options", (u) => u.options.length ? u.options.length + (u.options.length === 1 ? " option" : " options") : <span className="ah-muted">None listed</span>)}
               {row("Who can go", (u) => { const f = listingFacts(u).who.find((l) => l.posted); return f ? f.text : <span className="ah-muted">Not posted</span>; })}
               {row("Included", (u) => u.includes.length ? u.includes.slice(0, 3).join(", ") : <span className="ah-muted">Not posted</span>)}
