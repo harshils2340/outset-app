@@ -75,6 +75,9 @@ export function OperatorView({ compact = false }: { compact?: boolean }) {
     setP((cur) => {
       if (!cur) return cur;
       const next = typeof patch === "function" ? patch(cur) : { ...cur, ...patch };
+      // The fill-in from the detail file hands back the same profile once there is nothing left to fill, and
+      // saving it wrote the whole record to the API again on every visit to the dashboard.
+      if (next === cur) return cur;
       saveProfile(next);
       return next;
     });
