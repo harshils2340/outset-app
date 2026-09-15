@@ -526,6 +526,26 @@ for (const [what, pattern] of [
   record(what, r.code === 0 && passed > 0, passed ? `${passed} tests passed` : "no test ran\n" + r.out.slice(-800));
 }
 
+/**
+ * The type checks, which nothing was running on the guest side.
+ *
+ * `tsc --noEmit -p .` at the root reads a solution file: `files: []` and two references, so without `-b` it
+ * has no inputs and exits 0 having checked nothing. Render builds the site with bare `vite build`, which
+ * strips types rather than checking them. `npm run build` does run `tsc -b`, and it had been failing for
+ * days on the guest unit tests, so nobody ran that either. Between the three, every line under `src/` went
+ * unchecked. `tsc -b` is the one that reads the projects, so it is the one this runs.
+ */
+console.log("\n8c. Type checks, both sides");
+for (const [what, cwd, args] of [
+  ["the guest app type-checks (tsc -b)", ROOT, ["tsc", "-b", "--force"]],
+  ["the supply API type-checks", BACKEND, ["tsc", "--noEmit", "-p", "."]],
+] as [string, string, string[]][]) {
+  const r = await run("npx", args, { cwd, env: childEnv(), quiet: true });
+  // TS5097 is the .ts extension on an import, which is how the backend's own ESM imports are written.
+  const problems = r.out.split("\n").filter((l) => /error TS/.test(l) && !/TS5097/.test(l));
+  record(what, problems.length === 0, problems.length ? problems.slice(0, 6).join("\n") : "clean");
+}
+
 /* ---------------------------------------------------------------- 9. the emails ----------------------------- */
 
 console.log("\n9. Every email, read back");

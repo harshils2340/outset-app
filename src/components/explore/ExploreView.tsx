@@ -1,7 +1,6 @@
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { CATS, CATMETA } from "../../data/categories";
 import { ALL_METRO_ID, metroShort } from "../../data/metros";
-import type { Unclaimed } from "../../data/types";
 import { ICONS } from "../../data/icons";
 import { getCatalog, savedListings } from "../../lib/catalog";
 import { dateKey } from "../../lib/dates";

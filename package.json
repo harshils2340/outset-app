@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build && node scripts/copy-operators.mjs",
+    "typecheck": "tsc -b",
     "preview": "vite preview",
     "backend": "npm run dev --prefix backend",
     "backend:ingest": "npm run ingest --prefix backend",
