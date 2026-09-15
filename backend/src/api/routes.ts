@@ -1,11 +1,21 @@
 import { Hono } from "hono";
 import { db, migrate } from "../db/client.ts";
-import { ingestTampaUnclaimed, addTarget } from "../ingest/load.ts";
-import { generateOutreachDrafts } from "../outreach/drafts.ts";
-import { scrapeOperator, scrapePending } from "../scrape/run.ts";
-import { refreshAllScores } from "../lib/completeness.ts";
+
+/**
+ * The crawler, the sync, the outreach drafts and the completeness pass are reachable only through the
+ * admin-gated routes below, but importing them here meant the API transpiled and evaluated all of them before
+ * it could answer a health check. On an instance that spins down when idle, a guest paid that on arrival.
+ * Loaded when one of those routes is actually called.
+ */
+const lazy = {
+  ingest: () => import("../ingest/load.ts"),
+  drafts: () => import("../outreach/drafts.ts"),
+  scrape: () => import("../scrape/run.ts"),
+  scores: () => import("../lib/completeness.ts"),
+  sync: () => import("../sync/contacts.ts"),
+};
 import { CATEGORIES, METROS } from "../taxonomy/catalog.ts";
-import { allContacts, contactFor, syncCatalogToApp, syncContactsToApp } from "../sync/contacts.ts";
+import { allContacts, contactFor } from "../sync/contacts.ts";
 
 migrate();
 
@@ -133,21 +143,26 @@ app.get("/contacts/:domain", (c) => {
   return c.json({ contact });
 });
 
-app.post("/contacts/sync", (c) => c.json({ contacts: syncContactsToApp(), catalog: syncCatalogToApp() }));
+app.post("/contacts/sync", async (c) => {
+  const { syncContactsToApp, syncCatalogToApp } = await lazy.sync();
+  return c.json({ contacts: syncContactsToApp(), catalog: syncCatalogToApp() });
+});
 
 app.post("/targets", async (c) => {
   const body = await c.req.json<{ website: string; metroId: string; name?: string; categoryId?: string }>();
+  const { addTarget } = await lazy.ingest();
   const id = addTarget(body);
   return c.json({ operatorId: id });
 });
 
-app.post("/ingest/tampa", (c) => {
-  const n = ingestTampaUnclaimed();
-  return c.json({ ingested: n });
+app.post("/ingest/tampa", async (c) => {
+  const { ingestTampaUnclaimed } = await lazy.ingest();
+  return c.json({ ingested: ingestTampaUnclaimed() });
 });
 
 app.post("/scrape", async (c) => {
   const limit = Number(c.req.query("limit") || 12);
+  const [{ scrapePending }, { refreshAllScores }] = await Promise.all([lazy.scrape(), lazy.scores()]);
   const results = await scrapePending(Math.min(50, Math.max(1, limit)));
   refreshAllScores();
   return c.json({ scraped: results.length, results });
@@ -155,6 +170,7 @@ app.post("/scrape", async (c) => {
 
 app.post("/scrape/one", async (c) => {
   const body = await c.req.json<{ operatorId: string; website: string; name?: string }>();
+  const [{ scrapeOperator }, { refreshAllScores }] = await Promise.all([lazy.scrape(), lazy.scores()]);
   const result = await scrapeOperator({
     operatorId: body.operatorId,
     website: body.website,
@@ -164,9 +180,9 @@ app.post("/scrape/one", async (c) => {
   return c.json(result);
 });
 
-app.post("/outreach/generate", (c) => {
-  const n = generateOutreachDrafts();
-  return c.json({ drafts: n });
+app.post("/outreach/generate", async (c) => {
+  const { generateOutreachDrafts } = await lazy.drafts();
+  return c.json({ drafts: generateOutreachDrafts() });
 });
 
 app.get("/outreach/drafts", (c) => {

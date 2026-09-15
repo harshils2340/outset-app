@@ -5,8 +5,8 @@
   "type": "module",
   "scripts": {
     "test": "tsx --test \"src/**/__tests__/*.test.ts\"",
-    "dev": "tsx watch src/index.ts serve",
-    "start": "tsx src/index.ts serve",
+    "dev": "tsx watch src/serve.ts",
+    "start": "tsx src/serve.ts",
     "ingest": "tsx src/index.ts ingest",
     "scrape": "tsx src/index.ts scrape",
     "outreach": "tsx src/index.ts outreach",
