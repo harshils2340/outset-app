@@ -3,6 +3,8 @@ import { ID, rateLimit } from "./auth.ts";
 import { getProfile, listBookings } from "../lib/repo.ts";
 import type { StoredBooking } from "./bookings.ts";
 import type { StoredProfile } from "./profiles.ts";
+import { instantOf, todayIn, zoneForArea } from "../lib/zone.ts";
+import { readJson } from "../lib/store.ts";
 
 /**
  * Which start times a guest may still book, and the one rule the booking route enforces so two guests cannot
@@ -92,21 +94,27 @@ function runOf(h: DayHours | undefined): { start: number; end: number } | null {
  * all, so a listing whose hours row read "Open until 12:00 AM" answered "No more start times today" on every
  * day of the year and neither the guest nor the operator was told why.
  */
-export function scheduledSlots(profile: DashboardProfile | null, date: string, now = new Date()): string[] {
+export function scheduledSlots(profile: DashboardProfile | null, date: string, now = new Date(), zone?: string | null): string[] {
   const d = dayOf(date);
   if (!d) return [];
-  const todayKey = iso(now);
+  // A shop's opening times are wall clock times where it stands, so both "what day is it" and "has this time
+  // passed" have to be asked in its zone. Without one, fall back to the server's, which is what this did
+  // everywhere before and is only right for a listing whose region we do not know.
+  const todayKey = zone ? todayIn(zone, now) : iso(now);
   if (date < todayKey) return [];
   // Notice: a time is bookable only when it is at least `lead` hours away. Unclaimed listings keep the one
   // hour the guest page always applied.
   const lead = profile ? (Number.isFinite(profile.leadHours) ? Number(profile.leadHours) : 2) : 1;
   const earliestMs = now.getTime() + lead * 3600000;
-  const soonEnough = (t: string) => new Date(d.getFullYear(), d.getMonth(), d.getDate(), Math.floor(minutes(t) / 60), minutes(t) % 60).getTime() >= earliestMs;
+  const atOf = (t: string) =>
+    zone ? instantOf(date, t, zone) : new Date(d.getFullYear(), d.getMonth(), d.getDate(), Math.floor(minutes(t) / 60), minutes(t) % 60).getTime();
+  const soonEnough = (t: string) => atOf(t) >= earliestMs;
   if (!profile || !Array.isArray(profile.hours) || profile.hours.length !== 7) {
     return DEFAULT_SLOTS.filter(soonEnough);
   }
   const window = Number.isFinite(profile.windowDays) && Number(profile.windowDays) > 0 ? Number(profile.windowDays) : 60;
-  const last = new Date(now.getFullYear(), now.getMonth(), now.getDate() + window);
+  const from = dayOf(todayKey) || new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const last = new Date(from.getFullYear(), from.getMonth(), from.getDate() + window);
   if (d > last) return [];
   const off = new Set(asArray<string>(profile.blockedDates).map(String));
   if (off.has(date)) return [];
@@ -156,8 +164,8 @@ export function bookedAt(list: StoredBooking[], date: string, slot: string, now 
 }
 
 /** Whether a time can still take `qty` more guests for `service`. */
-export function slotOpen(profile: DashboardProfile | null, bookings: StoredBooking[], date: string, slot: string, service: string, qty: number, now = new Date()): { open: boolean; reason?: string } {
-  if (!scheduledSlots(profile, date, now).includes(slot)) return { open: false, reason: "That time is not open for booking" };
+export function slotOpen(profile: DashboardProfile | null, bookings: StoredBooking[], date: string, slot: string, service: string, qty: number, now = new Date(), zone?: string | null): { open: boolean; reason?: string } {
+  if (!scheduledSlots(profile, date, now, zone).includes(slot)) return { open: false, reason: "That time is not open for booking" };
   const cap = capacityFor(profile, service);
   const taken = bookedAt(bookings, date, slot, now.getTime());
   if (cap == null) return taken.count ? { open: false, reason: "That time was just booked" } : { open: true };
@@ -189,7 +197,7 @@ export type OpenDay = { date: string; slots: string[] };
  *
  * Pure on purpose: everything it needs is passed in, so it can be tested without a database.
  */
-export function openDaysFor(profile: DashboardProfile | null, list: StoredBooking[], start: Date, days: number, service: string, guests: number, now: Date): OpenDay[] {
+export function openDaysFor(profile: DashboardProfile | null, list: StoredBooking[], start: Date, days: number, service: string, guests: number, now: Date, zone?: string | null): OpenDay[] {
   const cap = capacityFor(profile, service);
   const need = Math.max(1, guests);
   const nowMs = now.getTime();
@@ -205,7 +213,7 @@ export function openDaysFor(profile: DashboardProfile | null, list: StoredBookin
     const d = new Date(start.getFullYear(), start.getMonth(), start.getDate() + i);
     const date = iso(d);
     // Once per day, not once per slot.
-    const slots = scheduledSlots(profile, date, now).filter((t) => {
+    const slots = scheduledSlots(profile, date, now, zone).filter((t) => {
       const q = taken.get(date + "|" + t) || 0;
       return cap == null ? q === 0 : q + need <= cap;
     });
@@ -214,12 +222,33 @@ export function openDaysFor(profile: DashboardProfile | null, list: StoredBookin
   return out;
 }
 
+const ZONE_TTL = 60 * 60 * 1000;
+const zones = new Map<string, { at: number; zone: string | null }>();
+
+/**
+ * The listing's own timezone. Read from the generated detail file, which the nightly sync writes, so it is
+ * remembered for an hour rather than fetched on every slot request. A listing we cannot place answers null and
+ * the schedule falls back to the server's zone, unchanged.
+ */
+export async function zoneOf(listing: string): Promise<string | null> {
+  const hit = zones.get(listing);
+  if (hit && Date.now() - hit.at < ZONE_TTL) return hit.zone;
+  const detail = await readJson<{ area?: string; lat?: number; lon?: number }>(`o/${listing}.json`).catch(() => null);
+  const zone = zoneForArea(detail?.area, detail?.lat, detail?.lon);
+  if (zones.size > 5000) zones.clear();
+  zones.set(listing, { at: Date.now(), zone });
+  return zone;
+}
+
 export async function openSlots(listing: string, from: string, days: number, service = "", now = new Date(), guests = 1): Promise<{ known: boolean; claimed: boolean; days: OpenDay[] }> {
-  const rec = await getProfile<StoredProfile>(listing).catch(() => null);
+  const [rec, list, zone] = await Promise.all([
+    getProfile<StoredProfile>(listing).catch(() => null),
+    listBookings<StoredBooking>(listing).catch(() => [] as StoredBooking[]),
+    zoneOf(listing).catch(() => null),
+  ]);
   const profile = (rec?.profile as DashboardProfile | null) || null;
-  const list = await listBookings<StoredBooking>(listing).catch(() => [] as StoredBooking[]);
-  const start = dayOf(from) || new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  return { known: true, claimed: !!profile, days: openDaysFor(profile, list, start, days, service, guests, now) };
+  const start = dayOf(from) || dayOf(zone ? todayIn(zone, now) : iso(now)) || new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  return { known: true, claimed: !!profile, days: openDaysFor(profile, list, start, days, service, guests, now, zone) };
 }
 
 export const openSlotsRoute = new Hono();

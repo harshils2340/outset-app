@@ -81,3 +81,49 @@ test("a day off and a blocked time are closed, and capacity is read per service"
   assert.equal(capacityFor(PROFILE, "Private charter"), 1);
   assert.equal(capacityFor(PROFILE, "Sunset sail"), 4);
 });
+
+/**
+ * A shop's opening times are wall clock times where it stands. The API runs in UTC on Render, and every shop in
+ * North America is behind UTC, so building those times in the server's zone quietly removed the back half of
+ * every shop's day: a 9-to-5 Pacific shop at 11 AM Pacific offered nothing at all for today.
+ */
+
+const PACIFIC = {
+  hours: Array.from({ length: 7 }, () => ({ closed: false, open: "09:00", close: "17:00" })),
+  slotMinutes: 60,
+  leadHours: 2,
+  windowDays: 60,
+  blockedDates: [],
+  blockedSlots: [],
+  services: [{ name: "Sail", live: true, capacity: 8 }],
+};
+
+test("a shop's afternoon survives, whatever zone the server is in", () => {
+  const at11Pacific = new Date("2026-10-06T18:00:00Z");
+  const slots = scheduledSlots(PACIFIC, "2026-10-06", at11Pacific, "America/Los_Angeles");
+  // 11 AM there, two hours' notice, so one o'clock onwards.
+  assert.deepEqual(slots, ["13:00", "14:00", "15:00", "16:00"]);
+});
+
+test("the shop's own day decides what counts as today, not the server's", () => {
+  // 01:00 UTC on the 7th is still 6 PM on the 6th in Los Angeles, after closing.
+  const evening = new Date("2026-10-07T01:00:00Z");
+  assert.deepEqual(scheduledSlots(PACIFIC, "2026-10-06", evening, "America/Los_Angeles"), []);
+  assert.equal(scheduledSlots(PACIFIC, "2026-10-07", evening, "America/Los_Angeles").length, 8);
+  // The server, meanwhile, already thinks it is the 7th. That must not bring the 7th's morning forward.
+  assert.equal(scheduledSlots(PACIFIC, "2026-10-07", evening, "America/Los_Angeles")[0], "09:00");
+});
+
+test("an eastern shop and a pacific shop get different answers at the same instant", () => {
+  const at = new Date("2026-10-06T18:00:00Z"); // 2 PM Eastern, 11 AM Pacific
+  const east = scheduledSlots(PACIFIC, "2026-10-06", at, "America/New_York");
+  const west = scheduledSlots(PACIFIC, "2026-10-06", at, "America/Los_Angeles");
+  assert.deepEqual(east, ["16:00"]); // 2 PM + two hours' notice
+  assert.deepEqual(west, ["13:00", "14:00", "15:00", "16:00"]);
+});
+
+test("with no zone the old behaviour is kept, for a listing we cannot place", () => {
+  const at = new Date("2026-10-06T18:00:00Z");
+  // Not asserting the values, which depend on the server's zone by design; only that it still answers.
+  assert.equal(Array.isArray(scheduledSlots(PACIFIC, "2026-10-06", at)), true);
+});

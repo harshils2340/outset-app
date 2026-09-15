@@ -6,7 +6,7 @@ import type { StoredProfile } from "./profiles.ts";
 import { capture, createCheckout, releaseIntent, reverseTransfer, sessionStatus, stripeEnabled, verifyWebhook } from "../lib/stripe.ts";
 import { currencyForArea, priceBooking, releaseDate, splitBooking, type PricedOption, type Split } from "../payments/money.ts";
 import { mailDecision, mailNewBooking } from "./bookingMail.ts";
-import { slotOpen } from "./openSlots.ts";
+import { slotOpen, zoneOf } from "./openSlots.ts";
 import { fmtWhen } from "../lib/emailTemplate.ts";
 
 /**
@@ -224,7 +224,10 @@ bookings.post("/bookings", rateLimit(20, 60 * 60 * 1000), async (c) => {
   // One time, one party. The guest page hides a time once it is taken, but the page is a snapshot and two guests
   // can be looking at the same one; this is the check that actually stops the second booking.
   const existing = await listBookings<StoredBooking>(listing);
-  const room = slotOpen((profile?.profile as Parameters<typeof slotOpen>[0]) || null, existing, date, slot, clean(b.service, 120), qty);
+  // The shop's own zone, so this agrees with the picker the guest just used. Without it a 1 PM Pacific slot is
+  // read as 1 PM on the server and refused as being in the past.
+  const zone = await zoneOf(listing).catch(() => null);
+  const room = slotOpen((profile?.profile as Parameters<typeof slotOpen>[0]) || null, existing, date, slot, clean(b.service, 120), qty, new Date(), zone);
   if (!room.open) return c.json({ error: room.reason || "That time is not available", code: "slot_taken" }, 409);
   const rec: StoredBooking = {
     code,
@@ -284,7 +287,7 @@ bookings.post("/bookings", rateLimit(20, 60 * 60 * 1000), async (c) => {
       // webhook that lands after payment has to find the row. The time was checked before the session was created;
       // it is checked once more under the listing's lock, and if a second guest won that one-second race the guest
       // is told so here instead of paying for a time that is gone (the unused session expires on its own).
-      const stored = await insertBookingChecked(rec, (list) => slotOpen((profile?.profile as Parameters<typeof slotOpen>[0]) || null, list, date, slot, rec.service, qty).open);
+      const stored = await insertBookingChecked(rec, (list) => slotOpen((profile?.profile as Parameters<typeof slotOpen>[0]) || null, list, date, slot, rec.service, qty, new Date(), zone).open);
       if (stored === "refused") {
         console.error(`[bookings] ${code}: ${date} ${slot} filled while the checkout session was being created`);
         return c.json({ error: "That time was just booked", code: "slot_taken" }, 409);
@@ -295,7 +298,7 @@ bookings.post("/bookings", rateLimit(20, 60 * 60 * 1000), async (c) => {
       console.error("stripe checkout failed, falling back to pay on site: " + (e as Error).message);
     }
   }
-  const stored = await insertBookingChecked(rec, (list) => slotOpen((profile?.profile as Parameters<typeof slotOpen>[0]) || null, list, date, slot, rec.service, qty).open);
+  const stored = await insertBookingChecked(rec, (list) => slotOpen((profile?.profile as Parameters<typeof slotOpen>[0]) || null, list, date, slot, rec.service, qty, new Date(), zone).open);
   if (stored === "duplicate") return c.json({ error: "duplicate code" }, 409);
   if (stored === "refused") return c.json({ error: "That time was just booked", code: "slot_taken" }, 409);
   // The guest waited on three emails before their confirmation screen appeared. Their booking is already
