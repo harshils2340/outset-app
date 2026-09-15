@@ -96,6 +96,11 @@ export type OperatorProfile = {
   payout: { bank: string; last4: string; name: string; schedule: "daily" | "weekly" } | null;
   /** The owner looked at the 9 to 5 hours we filled in for them and said they are right. */
   hoursConfirmed?: boolean;
+  /**
+   * The operator's detail file has been read into this profile once. Filling the gaps from the crawl is a
+   * bootstrap, not a repair: after it has run, an empty menu or an empty gallery is the operator's own doing.
+   */
+  hydrated?: boolean;
 };
 
 const SESSION_KEY = "outset.operator.session.v1";
@@ -568,8 +573,14 @@ export function toCatalog(p: OperatorProfile, base: Unclaimed): Partial<Unclaime
 /**
  * A profile built from the slim browse record has no services, photos or blurb. Once the operator's detail file
  * arrives, fill only what is still empty; anything the operator typed stays as it is.
+ *
+ * It runs once and then never again, because "still empty" stops meaning "we have not filled this in yet" the
+ * moment the operator starts working. An owner who took their whole menu down, or deleted every photo, opened
+ * the dashboard again and found the crawled menu back, every time, with no way to keep it off: the profile
+ * had no record of the difference between a field nobody had filled and one the operator had emptied.
  */
 export function hydrateProfile(p: OperatorProfile, full: Unclaimed): OperatorProfile {
+  if (p.hydrated) return p;
   const next = { ...p };
   let changed = false;
   if (!p.services.length && (full.services?.length || full.options.length)) {
@@ -595,7 +606,9 @@ export function hydrateProfile(p: OperatorProfile, full: Unclaimed): OperatorPro
   }
   // Sample bookings belong to the demo dashboard only. A real owner's dashboard never shows made-up guests.
   if (changed && !p.bookings.length && isDemoProfile(next)) next.bookings = sampleBookings(next);
-  return changed ? next : p;
+  if (!changed) return p;
+  next.hydrated = true;
+  return next;
 }
 
 function pushToCatalog(p: OperatorProfile, remote = true): void {
