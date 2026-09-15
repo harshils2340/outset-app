@@ -173,7 +173,9 @@ bookings.get("/bookings/paid/:listing/:code", rateLimit(60, 60 * 60 * 1000), asy
       if (done && authorized) {
         const d = done;
         if (instant && d.payment?.intent) await captureBooking(listing, code, d.payment.intent);
-        await notifyNew(d, profile);
+        // The guest is on this request, back from Stripe and waiting for their confirmation. The webhook
+        // path above keeps its await: nobody is waiting on that one and Stripe retries a failure.
+        void notifyNew(d, profile).catch((e) => console.error(`[bookings] mail for ${code}: ${(e as Error).message}`));
         return c.json({ status: d.status, paid: true });
       }
     }
@@ -291,7 +293,10 @@ bookings.post("/bookings", rateLimit(20, 60 * 60 * 1000), async (c) => {
   const stored = await insertBookingChecked(rec, (list) => slotOpen((profile?.profile as Parameters<typeof slotOpen>[0]) || null, list, date, slot, rec.service, qty).open);
   if (stored === "duplicate") return c.json({ error: "duplicate code" }, 409);
   if (stored === "refused") return c.json({ error: "That time was just booked", code: "slot_taken" }, 409);
-  await notifyNew(rec, profile);
+  // The guest waited on three emails before their confirmation screen appeared. Their booking is already
+  // stored and the time already held, so the mail goes out behind the response. A failure is logged, and the
+  // operator sees the booking in their dashboard either way.
+  void notifyNew(rec, profile, detail).catch((e) => console.error(`[bookings] mail for ${code}: ${(e as Error).message}`));
   return c.json({ ok: true, status: rec.status, code });
 });
 

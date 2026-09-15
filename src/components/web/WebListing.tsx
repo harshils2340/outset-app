@@ -945,7 +945,9 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
   const drop = (src: string) => setBroken((b) => (b.has(src) ? b : new Set(b).add(src)));
   const media = listingMedia(item, broken);
   const hasVideo = media[0]?.kind !== "photo" && media.length > 0;
-  useEffect(() => probePhotos(candidates.slice(0, 12), drop), [candidates.join("|")]);
+  // Only the first five ever render in the hero, and each probe is a real image fetch competing with the hero
+  // photo the guest is waiting on. The rest are probed when the gallery opens.
+  useEffect(() => probePhotos(candidates.slice(0, 5), drop), [candidates.join("|")]);
 
   const [time, setTime] = useState<string | null>(null);
   const [qty, setQty] = useState(2);

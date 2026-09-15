@@ -28,8 +28,10 @@ export type BookingContext = {
 const clean = (s: unknown, max: number) => String(s ?? "").split("").filter((ch) => ch.charCodeAt(0) >= 32).join("").trim().slice(0, max);
 
 /** The business as the emails should name and place it. */
-export async function bookingContext(rec: StoredBooking, profile: StoredProfile | null): Promise<BookingContext> {
-  const detail = await readJson<Detail>(`o/${rec.listing}.json`).catch(() => null);
+export async function bookingContext(rec: StoredBooking, profile: StoredProfile | null, known?: Detail | null): Promise<BookingContext> {
+  // The booking route has already read this file to price the booking. Reading it again cost a second GitHub
+  // round trip on the one request a guest is actually waiting on.
+  const detail = known !== undefined ? known : await readJson<Detail>(`o/${rec.listing}.json`).catch(() => null);
   const patch = (profile?.patch || {}) as { title?: string; address?: string; phone?: string };
   const title = clean(patch.title, 120) || clean(detail?.title, 120) || rec.listing;
   const currency = rec.payment?.currency || currencyForArea(detail?.area, process.env.STRIPE_CURRENCY || "usd");
@@ -86,8 +88,11 @@ const card = (rec: StoredBooking) => rec.payment?.state === "authorized" || rec.
 
 /* ---------- when a booking is made ---------- */
 
-export async function mailNewBooking(rec: StoredBooking, profile: StoredProfile | null): Promise<void> {
-  const ctx = await bookingContext(rec, profile);
+export async function mailNewBooking(rec: StoredBooking, profile: StoredProfile | null, known?: Detail | null): Promise<void> {
+  const ctx = await bookingContext(rec, profile, known);
+  // Three separate people hear about one booking. Sending them one after another made the slowest of the three
+  // the cost of all three.
+  const outbox: Parameters<typeof sendMail>[0][] = [];
   const instant = rec.status === "accepted";
   const m = moneyOf(rec);
   const paid = card(rec) && m;
@@ -104,7 +109,7 @@ export async function mailNewBooking(rec: StoredBooking, profile: StoredProfile 
       cta: instant ? { label: "Open your bookings", url: DASHBOARD } : { label: "Accept or decline", url: DASHBOARD },
       after: instant ? [] : ["A request waits for your answer; the guest is told the moment you decide."],
     });
-    await sendMail({ to: ctx.ownerEmail, subject: (instant ? "New booking: " : "Booking request: ") + `${rec.guest.name}, ${fmtDay(rec.date)} ${rec.slot ? "at " + fmtWhen(rec.date, rec.slot).split(" at ")[1] : ""}`.trim(), ...e, replyTo: rec.guest.email || undefined });
+    outbox.push({ to: ctx.ownerEmail, subject: (instant ? "New booking: " : "Booking request: ") + `${rec.guest.name}, ${fmtDay(rec.date)} ${rec.slot ? "at " + fmtWhen(rec.date, rec.slot).split(" at ")[1] : ""}`.trim(), ...e, replyTo: rec.guest.email || undefined });
   }
 
   // Every listing is unclaimed until its owner signs in, and an unclaimed listing has no owner address, so a
@@ -123,7 +128,7 @@ export async function mailNewBooking(rec: StoredBooking, profile: StoredProfile 
       rows: [{ label: "Shop", value: ctx.title }, { label: "Shop phone", value: ctx.shopPhone || "no phone on file" }, ...bookingRows(rec, ctx, { guest: true })],
       cta: { label: "Open the listing", url: ctx.listingUrl },
     });
-    await sendMail({ to: alertTo, subject: (claimed ? "Booking " : "CALL THE SHOP: booking ") + `${rec.code} for ${ctx.title}, ${fmtWhen(rec.date, rec.slot)}`, ...e, replyTo: rec.guest.email || undefined });
+    outbox.push({ to: alertTo, subject: (claimed ? "Booking " : "CALL THE SHOP: booking ") + `${rec.code} for ${ctx.title}, ${fmtWhen(rec.date, rec.slot)}`, ...e, replyTo: rec.guest.email || undefined });
   }
 
   if (rec.guest.email) {
@@ -139,8 +144,13 @@ export async function mailNewBooking(rec: StoredBooking, profile: StoredProfile 
       cta: { label: "View the listing", url: ctx.listingUrl },
       after: instant ? ["Show up 15 minutes early. If there is a waiver, it is linked on the listing."] : [],
     });
-    await sendMail({ to: rec.guest.email, subject: (instant ? "You're booked: " : "Request sent: ") + `${ctx.title}, ${fmtWhen(rec.date, rec.slot)}`, ...e });
+    outbox.push({ to: rec.guest.email, subject: (instant ? "You're booked: " : "Request sent: ") + `${ctx.title}, ${fmtWhen(rec.date, rec.slot)}`, ...e });
   }
+  // One failure must not stop the others: an operator with a dead address should not cost the guest their receipt.
+  const sent = await Promise.allSettled(outbox.map((m) => sendMail(m)));
+  sent.forEach((r, i) => {
+    if (r.status === "rejected") console.error(`[mail] ${rec.code} to ${outbox[i].to}: ${String((r as PromiseRejectedResult).reason).slice(0, 160)}`);
+  });
 }
 
 /* ---------- when the operator decides ---------- */
