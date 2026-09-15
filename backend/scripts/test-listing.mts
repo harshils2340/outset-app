@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 import { db, nowIso } from "../src/db/client.ts";
 
 /**
- * A fake listing for testing the whole operator and money path: claim, dashboard edits and toggles, a guest
+ * A fake listing, "Shah and Shah Services", for testing the whole operator and money path: claim, dashboard edits and toggles, a guest
  * booking, payment, accept or decline, and the payout schedule.
  *
  * DO NOT run this against the production database yet. The live API charges real cards (Stripe live mode), and
@@ -26,10 +26,10 @@ import { db, nowIso } from "../src/db/client.ts";
  *   OUTSET_TEST_OWNER_EMAIL=you@example.com     claim it from a different inbox
  */
 
-const DOMAIN = "outset-test.onoutset.com";
+const DOMAIN = "shahandshah-test.onoutset.com";
 const SITE = "https://" + DOMAIN + "/";
 const OWNER = (process.env.OUTSET_TEST_OWNER_EMAIL || "harshils2340@gmail.com").trim().toLowerCase();
-const OPERATOR_ID = "test-operator-outset-sail";
+const OPERATOR_ID = "test-operator-shah-and-shah";
 const CATALOG_ID = "o-" + DOMAIN.replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 48);
 
 db.exec("PRAGMA busy_timeout = 120000");
@@ -66,7 +66,7 @@ db.prepare(
      claim_status, booking_mode, origin, calendar_vendor, completeness, rating, review_count, created_at, updated_at, street, postal, hours, lat, lon, osm_ref)
    VALUES (?, ?, ?, NULL, ?, NULL, ?, 'tampa', 'Clearwater Beach', 'FL', 'US', 'water', 'cruise', 'cruise',
      'unclaimed', 'request', 'test', NULL, 5, NULL, NULL, ?, ?, '1 Test Dock (not a real business)', '33767', NULL, 27.9772, -82.8279, NULL)`,
-).run(OPERATOR_ID, DOMAIN, "Outset Test Sail & Snorkel", SITE, OWNER, now, now);
+).run(OPERATOR_ID, DOMAIN, "Shah and Shah Services", SITE, OWNER, now, now);
 
 const offering = db.prepare(
   "INSERT INTO offerings (id, operator_id, name, detail, duration, price_cents, price_unit, currency, source_url, confidence) VALUES (?, ?, ?, ?, ?, ?, ?, 'USD', ?, 'site')",
@@ -93,7 +93,8 @@ f("meeting_point", "1 Test Dock, Clearwater Beach, FL. This is a test address.")
 f("service_desc", JSON.stringify({ name: "Sunset sail", desc: "A two-hour sail timed for sunset. Test service." }));
 f("service_desc", JSON.stringify({ name: "Snorkel trip", desc: "Three hours on the reef with gear included. Test service." }));
 f("service_desc", JSON.stringify({ name: "Private charter", desc: "The whole boat for up to six guests. Test service." }));
-f("faq", JSON.stringify({ q: "Is this a real business?", a: "No. It is a test listing for Outset's own checks." }));
+// parseFaqs in sync/contacts.ts reads "Q: ... ? A: ..." text, not JSON: a JSON blob here produced no FAQ at all.
+f("faq", "Q: Is this a real business? A: No. Shah and Shah Services is a test listing Outset uses to check claiming, booking and payouts end to end.");
 f("promo", JSON.stringify({ text: "Half-price snorkel trips every Tuesday. Test deal.", days: [2] }));
 db.exec("COMMIT");
 
