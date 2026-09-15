@@ -50,7 +50,9 @@ export function UnclaimedCard({ item }: { item: Unclaimed; compact?: boolean }) 
   const per = from != null && (!unit || perPerson(unit)) ? " / person" : "";
   // A deal with its own title reads as a line under the price ("Half-price Tuesdays"); only an untitled one keeps the badge.
   const dealTitle = liteDealTitle(item.deal);
-  const badge = guestFav ? "Guest favourite" : deal && !dealTitle ? "Deal today" : instant ? "Instant Book" : null;
+  // An operator who switched their listing off keeps the record, so the wishlist is the one place a card for it
+  // still turns up. It used to read "Instant Book" with a price, and opening it said the page was taken down.
+  const badge = item.offline ? "Not bookable" : guestFav ? "Guest favourite" : deal && !dealTitle ? "Deal today" : instant ? "Instant Book" : null;
 
   const open = () => openRequest(item.id);
   const onKey = (e: KeyboardEvent<HTMLDivElement>) => {
@@ -129,7 +131,7 @@ export function UnclaimedCard({ item }: { item: Unclaimed; compact?: boolean }) 
         ) : null}
         <p className="aircardprice">
           {from == null ? (
-            <span>{instant ? "Instant Book" : "Request to book"}</span>
+            <span>{item.offline ? "Not taking bookings" : instant ? "Instant Book" : "Request to book"}</span>
           ) : (
             <>
               <span className="from">From </span>

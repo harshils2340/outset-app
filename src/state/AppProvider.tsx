@@ -34,6 +34,12 @@ export type AppState = {
   catalogVersion: number;
   /** False until the fetched catalog has been merged (or the fetch failed), so the UI can show skeletons instead of seeds. */
   catalogReady: boolean;
+  /**
+   * False until the whole catalog has been tried, not just the lite shard `catalogReady` flips on. A screen
+   * that looks operators up by id has to wait for this one: most ids are only in the full file, so until it
+   * lands an id that resolves to nothing may just be one we have not reached yet.
+   */
+  catalogComplete: boolean;
   tab: TabId;
   screen: ScreenId;
   cat: CategoryId;
@@ -65,7 +71,7 @@ export type AppState = {
 
 type Action =
   | { type: "hydrate"; bookings: Booking[]; chats: Record<string, ChatMessage[]> }
-  | { type: "catalogLoaded"; added: number }
+  | { type: "catalogLoaded"; added: number; complete?: boolean }
   | { type: "catalogTouched" }
   | { type: "tab"; tab: TabId }
   | { type: "goto"; tab: TabId }
@@ -161,7 +167,7 @@ function reducer(state: AppState, action: Action): AppState {
     case "hydrate":
       return { ...state, hydrated: true, bookings: action.bookings, chats: action.chats };
     case "catalogLoaded":
-      return { ...state, catalogReady: true, catalogVersion: action.added ? state.catalogVersion + 1 : state.catalogVersion };
+      return { ...state, catalogReady: true, catalogComplete: state.catalogComplete || !!action.complete, catalogVersion: action.added ? state.catalogVersion + 1 : state.catalogVersion };
     case "catalogTouched":
       return { ...state, catalogVersion: state.catalogVersion + 1 };
     case "tab":
@@ -365,6 +371,7 @@ const initial: AppState = {
   hydrated: false,
   catalogVersion: 0,
   catalogReady: false,
+  catalogComplete: false,
   tab: "explore",
   screen: "explore",
   cat: "all",
@@ -468,7 +475,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (!alive) return;
       // Claimed operators' edits (prices, photos, published switch) layer over the scraped records.
       const edited = applyStoredProfiles();
-      dispatch({ type: "catalogLoaded", added: added + edited });
+      dispatch({ type: "catalogLoaded", added: added + edited, complete: true });
       // Deep link: #o=<operator id> opens that listing directly.
       const m = window.location.hash.match(/^#o=([a-z0-9-]+)/i);
       if (m && experienceById(m[1])) {

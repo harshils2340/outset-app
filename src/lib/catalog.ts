@@ -113,6 +113,26 @@ export function experienceById(id: string | null): Unclaimed | null {
   return null;
 }
 
+/**
+ * The saved listings a wishlist can show, in the order they were hearted, and how many ids came to nothing.
+ *
+ * Saved ids live in localStorage and outlive the page; the catalog arrives after the first paint and most
+ * operators are only in the full file, not the lite shard. So an id that resolves to nothing is two different
+ * things: one the catalog has not reached yet, and one that is genuinely gone. The wishlist has to tell them
+ * apart before it tells a guest holding twelve saves to "create your first wishlist".
+ *
+ * A listing the operator switched off keeps its record and carries `offline`, so it stays in the list and
+ * says so, rather than sitting there as a bookable card for a page that takes no bookings.
+ */
+export function savedListings(saved: readonly string[]): { items: Unclaimed[]; missing: number } {
+  const items: Unclaimed[] = [];
+  for (const id of saved) {
+    const u = experienceById(id);
+    if (u) items.push(u);
+  }
+  return { items, missing: saved.length - items.length };
+}
+
 export function fromPrice(item: Unclaimed): number | null {
   const priced = item.options.map((o) => o.price).filter((n): n is number => n != null);
   if (!priced.length) return item.from ?? null;

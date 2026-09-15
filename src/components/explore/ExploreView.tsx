@@ -3,7 +3,7 @@ import { CATS, CATMETA } from "../../data/categories";
 import { ALL_METRO_ID, metroShort } from "../../data/metros";
 import type { Unclaimed } from "../../data/types";
 import { ICONS } from "../../data/icons";
-import { experienceById, getCatalog } from "../../lib/catalog";
+import { getCatalog, savedListings } from "../../lib/catalog";
 import { dateKey } from "../../lib/dates";
 import { searchSuggest, warmSearch, type SearchScope } from "../../lib/search";
 import { useApp } from "../../state/AppProvider";
@@ -109,7 +109,7 @@ export function ExploreView() {
     openMetro();
   };
 
-  if (prefs.view === "wishlists") return <Wishlists saved={prefs.saved} />;
+  if (prefs.view === "wishlists") return <Wishlists saved={prefs.saved} complete={state.catalogComplete} />;
 
   const emptyTitle = cityEmpty ? "Nothing in this city yet" : q ? "No exact matches" : filterCount ? "No exact matches" : meta.emptyTitle;
   const emptyBody = cityEmpty
@@ -230,9 +230,31 @@ export function ExploreView() {
   );
 }
 
-/** Airbnb's Wishlists tab: everything the guest hearted, newest first, kept on this device. */
-function Wishlists({ saved }: { saved: string[] }) {
-  const items = saved.map((id) => experienceById(id)).filter((u): u is Unclaimed => !!u);
+/**
+ * Airbnb's Wishlists tab: everything the guest hearted, newest first, kept on this device.
+ *
+ * The saves outlive the page and the catalog does not: it is fetched after the first paint, and most
+ * operators arrive only with the full file. Looking each id up and dropping what does not resolve meant a
+ * guest who opened this tab on a cold start was told "Create your first wishlist" over a list of twelve, and
+ * pressed "Start exploring" to get back the saves they already had. Say the list is still coming instead.
+ */
+function Wishlists({ saved, complete }: { saved: string[]; complete: boolean }) {
+  const { items, missing } = savedListings(saved);
+  // Nothing resolved yet and the catalog is still on its way: this is a list loading, not an empty one.
+  if (!items.length && missing > 0 && !complete) {
+    return (
+      <div className="airexplore">
+        <header className="airpagehead">
+          <h1>Wishlists</h1>
+        </header>
+        <div className="airpageempty">
+          <IcHeart size={32} />
+          <h2>Loading your {missing === 1 ? "saved place" : missing.toLocaleString() + " saved places"}</h2>
+          <p>One moment while we look them up.</p>
+        </div>
+      </div>
+    );
+  }
   return (
     <div className="airexplore">
       <header className="airpagehead">
