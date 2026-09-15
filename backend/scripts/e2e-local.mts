@@ -391,17 +391,21 @@ console.log("\n7. Payouts");
   record("the payouts status route answers the operator", typeof status.available === "boolean", JSON.stringify(status).slice(0, 160));
 
   // A pay schedule needs a connected account. Stripe Connect onboarding is a person clicking through Stripe's
-  // own pages, so the account record is written straight into the temp store, the way payout-e2e.mts does.
-  const profilePath = join(store, "profiles", LISTING_ID + ".json");
-  if (existsSync(profilePath)) {
-    const rec = JSON.parse(readFileSync(profilePath, "utf8"));
-    rec.payout = { account: "acct_e2e_local", enabled: true, detailsSubmitted: true, updatedAt: new Date().toISOString() };
-    writeFileSync(profilePath, JSON.stringify(rec, null, 1));
+  // own pages, so the account record is written straight into the store, the way payout-e2e.mts does. Profiles
+  // live in Postgres now, so it goes in through the repo layer and is read back the same way; rewriting the
+  // JSON file this used to touch crashed the run, because that file is no longer there.
+  process.env.DATABASE_URL = E2E_DB;
+  const repo = await import("../src/lib/repo.ts");
+  type PayoutRec = { payout?: { interval?: string } };
+  const storedPayout = async () => ((await repo.getProfile(LISTING_ID)) as PayoutRec | null)?.payout?.interval;
+  {
+    const rec = await repo.getProfile(LISTING_ID);
+    if (rec) await repo.putProfile({ ...rec, payout: { account: "acct_e2e_local", enabled: true, detailsSubmitted: true, updatedAt: new Date().toISOString() } });
   }
   const toBi = (await fetch(`${API_URL}/payouts/${LISTING_ID}/schedule`, { method: "PUT", headers: auth, body: JSON.stringify({ interval: "biweekly" }) }).then((r) => r.json())) as { interval?: string };
-  const afterBi = JSON.parse(readFileSync(profilePath, "utf8")).payout?.interval;
+  const afterBi = await storedPayout();
   const toWeekly = (await fetch(`${API_URL}/payouts/${LISTING_ID}/schedule`, { method: "PUT", headers: auth, body: JSON.stringify({ interval: "weekly" }) }).then((r) => r.json())) as { interval?: string };
-  const afterWeekly = JSON.parse(readFileSync(profilePath, "utf8")).payout?.interval;
+  const afterWeekly = await storedPayout();
   record("the pay schedule changes to every two weeks and back to weekly", toBi.interval === "biweekly" && afterBi === "biweekly" && toWeekly.interval === "weekly" && afterWeekly === "weekly", `${toBi.interval} then ${toWeekly.interval}`);
 
   const stranger = await fetch(`${API_URL}/payouts/${LISTING_ID}/schedule`, { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ interval: "biweekly" }) });
@@ -412,7 +416,14 @@ console.log("\n7. Payouts");
   } else {
     const r = await run("npx", ["tsx", "scripts/payout-e2e.mts"], { cwd: BACKEND, env: childEnv({ STRIPE_SECRET_KEY: "", STORE_DIR: "", MAIL_DUMP_DIR: "" }), quiet: true });
     const passed = (r.out.match(/pass /g) || []).length;
-    record("the money path passes end to end against the Stripe recorder (payout-e2e.mts)", r.code === 0, `${passed} checks passed` + (r.code === 0 ? "" : "\n" + r.out.slice(-800)));
+    // payout-e2e.mts exits 0 when it skips for want of a database, so a run that never happened would have been
+    // recorded here as a pass. A pass has to mean checks actually ran.
+    const ran = passed > 0 && !/skipping the payout e2e/.test(r.out);
+    record(
+      "the money path passes end to end against the Stripe recorder (payout-e2e.mts)",
+      r.code === 0 && ran,
+      ran ? `${passed} checks passed` + (r.code === 0 ? "" : "\n" + r.out.slice(-800)) : "it did not run: " + r.out.trim().split("\n").slice(-2).join(" ").slice(0, 200),
+    );
   }
 
   const runOut = (await fetch(`${API_URL}/admin/payouts/run`, { method: "POST", headers: { "x-admin-key": ADMIN_KEY } }).then((r) => r.json())) as Record<string, unknown>;
@@ -446,9 +457,10 @@ async function stripeSection(session: string): Promise<void> {
   for (const s of paidSteps) results.push(s);
   void r;
 
-  // The webhook Stripe would send, signed with the local secret.
-  const list = JSON.parse(readFileSync(join(store, "bookings", LISTING_ID + ".json"), "utf8")) as { code: string; payment?: { session: string; intent: string | null } }[];
-  const rec = list.find((b) => b.code === code);
+  // The webhook Stripe would send, signed with the local secret. Bookings live in Postgres, so the session id
+  // is read back through the repo layer rather than out of a JSON file.
+  const repo = await import("../src/lib/repo.ts");
+  const rec = await repo.getBooking<{ code: string; listing: string; status: string; date: string; created: string; payment?: { session: string; intent: string | null } }>(LISTING_ID, code);
   const sessionId = rec?.payment?.session || "";
   const got = (await fetch(`https://api.stripe.com/v1/checkout/sessions/${encodeURIComponent(sessionId)}`, { headers: { authorization: "Bearer " + testKey } }).then((x) => x.json())) as { payment_intent?: string; payment_status?: string };
   const payload = JSON.stringify({ type: "checkout.session.completed", data: { object: { id: sessionId, payment_intent: got.payment_intent || rec?.payment?.intent, metadata: { code, listing: LISTING_ID } } } });
@@ -459,7 +471,7 @@ async function stripeSection(session: string): Promise<void> {
 
   const accepted = await fetch(`${API_URL}/bookings/${LISTING_ID}/${code}`, { method: "PATCH", headers: { "content-type": "application/json", "x-session": session }, body: JSON.stringify({ status: "accepted" }) });
   await sleep(1500);
-  const after = (JSON.parse(readFileSync(join(store, "bookings", LISTING_ID + ".json"), "utf8")) as { code: string; payment?: { state: string }; payout?: { state: string; amount: number } }[]).find((b) => b.code === code);
+  const after = await repo.getBooking<{ code: string; listing: string; status: string; date: string; created: string; payment?: { state: string }; payout?: { state: string; amount: number } }>(LISTING_ID, code);
   record("accepting captures the card and schedules the operator's share", accepted.ok && after?.payment?.state === "captured" && after?.payout?.state === "scheduled", JSON.stringify({ payment: after?.payment?.state, payout: after?.payout }));
 }
 

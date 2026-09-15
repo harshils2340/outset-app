@@ -45,6 +45,30 @@ const readStore = (rel) => {
     return null;
   }
 };
+
+/**
+ * Profiles and bookings live in Postgres, not in STORE, so the truth behind a switch or a booking is read back
+ * through the API with an operator session rather than off disk. STORE still holds the catalog files (o/*.json).
+ * The session comes from the same test bypass the operator entered the dashboard with.
+ */
+let opSession = "";
+async function session() {
+  if (opSession) return opSession;
+  const r = await fetch(`${API}/claims/${encodeURIComponent(ID)}/test-enter`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ email: EMAIL }),
+  }).catch(() => null);
+  const j = r && r.ok ? await r.json() : null;
+  opSession = j?.session || "";
+  return opSession;
+}
+async function apiJson(path) {
+  const s = await session();
+  if (!s) return null;
+  const r = await fetch(`${API}${path}`, { headers: { "x-session": s } }).catch(() => null);
+  return r && r.ok ? await r.json() : null;
+}
 const apiLog = () => {
   try {
     return API_LOG && existsSync(API_LOG) ? readFileSync(API_LOG, "utf8") : "";
@@ -52,12 +76,12 @@ const apiLog = () => {
     return "";
   }
 };
-const bookings = () => readStore(`bookings/${ID}.json`) || [];
+const bookings = async () => (await apiJson(`/bookings/${encodeURIComponent(ID)}`))?.bookings || [];
 /**
  * The full stored record. The unauthenticated GET /profiles/:id answers with only what a guest may see
- * (id, published, patch, updatedAt), so switches that live in `profile` are read from the store itself.
+ * (id, published, patch, updatedAt), so switches that live in `profile` are read with the operator's session.
  */
-const storedProfile = () => readStore(`profiles/${ID}.json`) || {};
+const storedProfile = async () => (await apiJson(`/profiles/${encodeURIComponent(ID)}`)) || {};
 
 /** The API's own view of the listing, which is what a second device or the guest page would read. */
 async function remoteProfile() {
@@ -286,7 +310,7 @@ async function flow(ctx) {
   // --- Accepting off, then on ---
   await clickIn(".odtop .optoggle");
   await sleep(2500);
-  const pausedSaved = await untilLocal(async () => storedProfile()?.profile?.accepting === false);
+  const pausedSaved = await untilLocal(async () => (await storedProfile())?.profile?.accepting === false);
   await shot("c4-accepting-off");
   // Can a guest still book while the operator is paused? Ask the API the way the site does.
   const probeCode = "E2EPAUSE";
@@ -301,7 +325,7 @@ async function flow(ctx) {
   const guestBlocked = !probe?.ok;
   await clickIn(".odtop .optoggle");
   await sleep(2000);
-  const acceptingBack = await untilLocal(async () => storedProfile()?.profile?.accepting === true);
+  const acceptingBack = await untilLocal(async () => (await storedProfile())?.profile?.accepting === true);
   record(
     "(c3) Accepting off then on",
     pausedSaved && acceptingBack && guestBlocked,
@@ -313,11 +337,11 @@ async function flow(ctx) {
   await until(() => !!document.querySelector(".odinstant .optoggle"), 8000);
   await clickIn(".odinstant .optoggle");
   await sleep(2500);
-  const instantOn = await untilLocal(async () => storedProfile()?.profile?.instantBook === true);
+  const instantOn = await untilLocal(async () => (await storedProfile())?.profile?.instantBook === true);
   await shot("c5-instant-book-on");
   await clickIn(".odinstant .optoggle");
   await sleep(2500);
-  const instantOff = await untilLocal(async () => storedProfile()?.profile?.instantBook === false);
+  const instantOff = await untilLocal(async () => (await storedProfile())?.profile?.instantBook === false);
   record("(c4) Instant Book on then off", instantOn && instantOff, instantOn ? "" : "instantBook never reached the API");
 
   // --- a new service with a price ---
@@ -422,10 +446,10 @@ async function flow(ctx) {
     await sleep(3000);
     if (String(await evaluate("location.host")).includes("stripe.com")) await payOnStripe(ctx);
   }
-  const landed = await untilLocal(async () => bookings().some((b) => b.guest?.name === "Harness Guest"), 15000);
+  const landed = await untilLocal(async () => (await bookings()).some((b) => b.guest?.name === "Harness Guest"), 15000);
   await sleep(1200);
   await shot("e2-request-sent");
-  const first = bookings().find((b) => b.guest?.name === "Harness Guest");
+  const first = (await bookings()).find((b) => b.guest?.name === "Harness Guest");
   record("(e) the guest books the sunset sail as a request", landed && first?.status === "new", landed ? `${first.code} ${first.service} ${first.status} $${first.total}` : `option:${bookedOk} day:${dayPicked} slot:${slotPicked}`);
 
   /* ================= (e2) that time is gone: from the API, from the page, and a second guest is refused ================= */
@@ -433,7 +457,7 @@ async function flow(ctx) {
   if (first) {
     // A time holds the service's capacity (the dashboard's per-service seat count, 8 by default). Fill what is
     // left at the booked time, then it must be gone everywhere and the next guest refused.
-    const svc = (storedProfile()?.profile?.services || []).find((x) => String(x.name).toLowerCase() === String(first.service).toLowerCase());
+    const svc = ((await storedProfile())?.profile?.services || []).find((x) => String(x.name).toLowerCase() === String(first.service).toLowerCase());
     const capacity = Number(svc?.capacity) > 0 ? Number(svc.capacity) : 1;
     const left = Math.max(0, capacity - Number(first.qty || 1));
     const filler = left
@@ -489,7 +513,7 @@ async function flow(ctx) {
     btn.click();
     return "accepted";
   });
-  const acceptedOk = await untilLocal(async () => bookings().find((b) => b.guest?.name === "Harness Guest")?.status === "accepted", 15000);
+  const acceptedOk = await untilLocal(async () => (await bookings()).find((b) => b.guest?.name === "Harness Guest")?.status === "accepted", 15000);
   await sleep(1200);
   await shot("g2-accepted");
   const acceptMail = /\[mail:dry\] to=harness\.guest@example\.com subject="Confirmed:/i.test(apiLog());
@@ -518,7 +542,7 @@ async function flow(ctx) {
     btn.click();
     return "declined";
   });
-  const declinedOk = await untilLocal(async () => bookings().find((b) => b.code === code2)?.status === "declined", 15000);
+  const declinedOk = await untilLocal(async () => (await bookings()).find((b) => b.code === code2)?.status === "declined", 15000);
   await sleep(1200);
   await shot("h-declined");
   const declineMail = /\[mail:dry\] to=harness\.two@example\.com subject="Not available:/i.test(apiLog());
@@ -530,7 +554,7 @@ async function flow(ctx) {
   await until(() => !!document.querySelector(".odinstant .optoggle"), 8000);
   await clickIn(".odinstant .optoggle");
   await sleep(2500);
-  const instantReady = await untilLocal(async () => storedProfile()?.profile?.instantBook === true);
+  const instantReady = await untilLocal(async () => (await storedProfile())?.profile?.instantBook === true);
   const code3 = "E2E-INST";
   const third = instantReady ? await fetch(`${API}/bookings`, {
     method: "POST",
@@ -541,11 +565,11 @@ async function flow(ctx) {
     }),
   }).then((r) => r.json()).catch((e) => ({ error: String(e) })) : null;
   await sleep(1500);
-  const instantRow = bookings().find((b) => b.code === code3);
+  const instantRow = (await bookings()).find((b) => b.code === code3);
   const instantMails = /\[mail:dry\] to=harness\.three@example\.com subject="You're booked:/i.test(apiLog()) && /\[mail:dry\] to=[^\n]* subject="New booking:/i.test(apiLog());
   await clickIn(".odinstant .optoggle");
   await sleep(2000);
-  await untilLocal(async () => storedProfile()?.profile?.instantBook === false);
+  await untilLocal(async () => (await storedProfile())?.profile?.instantBook === false);
   record("(h2) with Instant Book on, a booking confirms itself and both emails say booked", instantReady && third?.status === "accepted" && instantRow?.status === "accepted" && instantMails, `api:${third?.status} stored:${instantRow?.status} emails:${instantMails}`);
 
   /* ================= (h3) the operator cancels a confirmed booking and the guest is told ================= */
@@ -569,7 +593,7 @@ async function flow(ctx) {
     btn.click();
     return "cancelled";
   });
-  const cancelSaved = await untilLocal(async () => bookings().find((b) => b.code === code3)?.status === "cancelled", 15000);
+  const cancelSaved = await untilLocal(async () => (await bookings()).find((b) => b.code === code3)?.status === "cancelled", 15000);
   await sleep(1200);
   await shot("h3-cancelled");
   const cancelMail = /\[mail:dry\] to=harness\.three@example\.com subject="Cancelled:/i.test(apiLog());
