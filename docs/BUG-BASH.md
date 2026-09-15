@@ -279,31 +279,100 @@ nothing. Each step reads the before state, so none can pass on a time that was n
 - Still nothing checked against real Stripe, no workflow runs `npm test` on its own, and Render environment
   variables remain untouched from here.
 
+## 15 September 2026, sixth run (10:00 to 11:20 UTC)
+
+**Chosen, and why.** Coverage listed the Inbox tab and the operator chat as pages no run had opened, add-ons
+end to end as undriven, and the Account tab as unchecked, so this run took those, plus what the menu editor
+publishes when a row is half typed. Type checks on both sides and both sets of unit tests ran at the start and
+at the end. The full rehearsal was **skipped at the start**: the last entry said green and the only commit
+since it was that entry itself. It ran at the end, because every fix here touches `src/`: 39 steps, 0 failed,
+with 43 money checks, 46 route checks, 27 backend tests and 36 guest tests inside it.
+
+**Found and fixed.**
+
+- **Claiming a shop turned its opening hours into a 24 hour clock** (`179746a`). The dashboard stores
+  "09:00" because that is what a time input speaks, and the listing printed it straight out: a shop whose own
+  site says "9:00 AM - 5:00 PM" had its Hours block rewritten to "Sun: 09:00 to 17:00" the moment it claimed,
+  and Otto read the same back to any guest who asked what time they open. Every other time on the guest side
+  is fmtTime, and the rehearsal already forbids a 24 hour clock in an email. The week is still parsed back out
+  of these lines by open now, the calendar and the assistant, a close after midnight included, so that round
+  trip has its own test.
+- **A menu row the operator had not named yet was already on the guest listing** (`8c27a63`). One click on
+  "Add" under Add-ons put an empty row on the live page: an Add-ons section holding a nameless tick box
+  reading "Free", which a guest could tick and have turn up at the shop as an extra with no name. Typing the
+  price before the name made it a nameless box that charges $30. A service whose name is cleared did the same
+  to the picker. A row is on the menu once it has a name, and the setup checklist counts that same menu.
+- **The phone confirmation never named the add-ons the guest had just paid for** (`290fdf0`). A booking's
+  `addons` list holds two different things, the service as an index into the menu and every extra by name, and
+  this screen read the whole list as indexes, so every extra came out as nothing: a $30 dry bag was in the
+  total and nowhere on the screen, under a row labelled "Service". The desktop confirmation has named them all
+  along. That list has one reading now, in `storage.ts`, for all three screens that read it.
+- **Every guest's Profile tab was headed "Harshil"** (`1dc6be7`), the founder's own name, on the tab a guest
+  opens to find their trips. It uses the name the booking form already remembers on that device, and reads
+  "Profile" when nobody has booked there yet.
+- **Four rows on that tab did nothing at all** (`849e3d0`). Payments, Riders and waivers, Saved areas and Help
+  looked like the rest of the app, and a guest who pressed Help watched the screen not move. None is built, so
+  each says so where its chevron was. The "Run an experience" card had a tab stop and no key handler, so focus
+  landed on it and neither Enter nor Space opened the dashboard.
+- **The assistant chat named none of its three controls** (`305c245`), on a screen reached from the booking
+  box: a screen reader read the back button and the send button as "button" and the message box as "edit text,
+  blank" once the placeholder went, and Send sits disabled until something is typed without saying so.
+- **Otto greeted every guest with an em dash** (`56e95a2`), along with six of its answers, against the one
+  writing rule AGENTS.md states outright. A test reads the greeting and nine answers back.
+- **The rehearsal could pass while testing a server it did not start** (`a74885c`). `vite preview` exits when
+  :5199 is taken and the check after it only asked whether the URL answered, so a dev server left on that port
+  passed "the site is being served from the temp dist" and the run then drove that other build: this run's
+  first attempt reported the sidebar missing a Listing page and the published flag not reaching the API, on
+  code where neither is true. Both ports are checked before anything starts.
+
+**Checked and clean.** Hiding and deleting a service through the dashboard, including deleting every one of
+them, which sticks across a reload and does not come back. The Inbox thread list and its empty state. A guest
+listing at 400px on the listing, the chat, Trips, Inbox and Profile: nothing scrolls sideways or overlaps, and
+every control on those tabs has a name. A booking with a priced add-on end to end on a phone, from the picker
+through the total to the confirmation.
+
+**Needs Harshil.**
+
+- **Two services can share a name.** The demo shop carries "Dolphin Island excursion" twice, at $185 and $220,
+  because the scraped record lists them as two options. Pricing tells them apart by option label and the
+  capacity lookup takes the first match, so nothing is wrong today, but a shop that gives two same-named
+  services different capacities would get the first one's. Worth deciding whether the menu editor should merge
+  them.
+- **A guest can still book a service the operator hid a moment earlier**, and it is stored with no price and
+  reaches them as pay on site. That is the deliberate rule from the second run (never trust the browser's
+  number), but refusing the booking may read better than confirming one for something the shop took down.
+- Still nothing checked against real Stripe, no workflow runs `npm test` on its own, Render environment
+  variables remain untouched from here, and "Release this listing" still only releases on that device.
+
 ## Coverage
 
 **Verified so far.** Booking validation and odd input on every route that takes it. The money split,
 pay-on-site pricing, the service fee tiers. Double booking past capacity, and party size against a time's
 capacity. Payout scheduling, cycles and the payouts tiles. The Stripe Connect button. The booking and decision
-emails. The rehearsal itself, which now runs both sides' unit tests. Start times from a claimed shop's hours:
-odd hours, days off, blocked slots, the notice, the window, a shop open past midnight. The week a shop starts
-on, read from its own published hours. The booking box price lines, including a service with no price. Phone
-width at 400px on the guest listing, the booking flow and every dashboard page. Accessibility on the booking
-flow: focus order, input labels, disabled buttons. Colour contrast on the accent. The API unreachable and the
-API slow. The Availability page and the setup checklist counting itself. Search and browse: a query matching
-nothing, a metro with one listing, a category with none, paging, an unpublished or paused listing staying out
-of the lists, and every way out of an empty search. Claim and sign-in: an address that does not match the
-business, an expired link, an edited expiry, one listing's link used on another, a link claimed twice, a
-sign-in code typed wrong six times, and a session for one listing used on another.
+emails. The rehearsal itself, which runs both sides' unit tests and now refuses to run against a server it did
+not start. Start times from a claimed shop's hours: odd hours, days off, blocked slots, the notice, the window,
+a shop open past midnight. The week a shop starts on, read from its own published hours, and the hours a
+claimed shop shows a guest. The booking box price lines, including a service with no price. Phone width at
+400px on the guest listing, the booking flow, every dashboard page, and the Trips, Inbox, chat and Profile
+tabs. Accessibility on the booking flow and on the assistant chat: focus order, input labels, disabled buttons.
+Colour contrast on the accent. The API unreachable and the API slow. The Availability page and the setup
+checklist counting itself. Search and browse: a query matching nothing, a metro with one listing, a category
+with none, paging, an unpublished or paused listing staying out of the lists, and every way out of an empty
+search. Claim and sign-in: an address that does not match the business, an expired link, an edited expiry, one
+listing's link used on another, a link claimed twice, a sign-in code typed wrong six times, and a session for
+one listing used on another.
 
-Dashboard Calendar end to end: blocking a slot and a day through the dashboard, both reaching the guest picker
-and both reversible, plus what a day off does to the bookings already on it. Prices typed into the menu editor:
-a negative on a service, on an option and on an add-on, on both money paths. What a claimed shop with an empty
-menu is charged. The Trips tab: the operator's answer on each trip, and its empty states. What a guest is told
-was sent to them, against what the product can actually send. Settings and Assistant, read through.
+Dashboard Calendar end to end: blocking a slot and a day, both reaching the guest picker and both reversible,
+plus what a day off does to the bookings already on it. Services end to end: adding, hiding, deleting, deleting
+every one, and a row left half typed. Prices typed into the menu editor: a negative on a service, an option and
+an add-on, on both money paths. What a claimed shop with an empty menu is charged. Add-ons end to end on a
+phone, from the picker to the confirmation. The Trips tab, the Inbox tab and the Account tab, with their empty
+states. What a guest is told was sent to them, against what the product can actually send. Settings and
+Assistant, read through.
 
-**Not yet checked.** Services end to end through the dashboard: adding is driven by the rehearsal, hiding and
-deleting are not, and neither is reordering by drag or by keyboard. The Inbox tab and the operator chat, which
-no run has opened. The remaining empty states: a brand new claimed shop with nothing filled in, seen from the
-guest side. Add-ons end to end on a real listing (no catalog record was found carrying both an unpriced service
-and a paid add-on to drive by hand). A shop whose published hours are not on the half hour, through a real
-claim. The Account tab. The metro picker and the category rails on a phone. Photo upload on the Listing page.
+**Not yet checked.** Reordering services by drag or by keyboard. The operator chat for a hand-built listing
+(`src/data/listings.ts` is empty, so `agent.ts` and the `ChatView` operator path have no live case). A brand
+new claimed shop with nothing filled in, seen from the guest side: started here, but the guest page refilled
+its menu from the crawl through `hydrateProfile` before it could be read, which itself wants a look. A shop
+whose published hours are not on the half hour, through a real claim. The metro picker and the category rails
+on a phone. Photo upload on the Listing page. The Wishlists tab.
