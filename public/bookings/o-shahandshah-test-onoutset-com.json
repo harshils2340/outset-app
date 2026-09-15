@@ -19,7 +19,7 @@
   "payment": {
    "session": "cs_test_a1BD1hyxLD0fDSgD9c0EzxPpgBaebtjLAGRd4DD2bWGvrGpqkQRcJO10CS",
    "intent": "pi_3UFne6RdGyTDy4Jq0bUQI0pW",
-   "state": "authorized",
+   "state": "released",
    "currency": "usd",
    "subtotal": 18
   },
