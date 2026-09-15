@@ -9,7 +9,7 @@ on:
     - cron: "0 7 * * *"
   push:
     branches: [main]
-    paths: ["src/**", "backend/src/**", "backend/scripts/e2e-*", "backend/scripts/payout-e2e.mts", "backend/scripts/test-listing.mts", ".github/workflows/e2e.yml"]
+    paths: ["src/**", "backend/src/**", "backend/scripts/e2e-*", "backend/scripts/payout-e2e.mts", "backend/scripts/store-e2e.mts", "backend/scripts/test-listing.mts", ".github/workflows/e2e.yml"]
   workflow_dispatch:
 concurrency:
   group: e2e

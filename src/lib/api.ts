@@ -298,7 +298,9 @@ export type RemoteBooking = {
  */
 export async function submitBooking(b: Omit<RemoteBooking, "status" | "created">): Promise<{ ok: boolean; status?: RemoteBooking["status"]; checkoutUrl?: string; error?: string; taken?: boolean }> {
   const r = await call<{ ok: boolean; status: RemoteBooking["status"]; checkoutUrl?: string }>(`/bookings`, { method: "POST", body: JSON.stringify(b), timeout: 25000 });
-  return { ok: r.ok, status: r.data?.status, checkoutUrl: r.data?.checkoutUrl, error: r.error, taken: r.status === 409 && /just booked|not open|not enough room|not available/i.test(r.error || "") };
+  // Every refusal about the time itself, so the page can drop it and reload the picker. "spots left" and "holds
+  // N guests" are the API saying the time is there but the party does not fit, which is still a time problem.
+  return { ok: r.ok, status: r.data?.status, checkoutUrl: r.data?.checkoutUrl, error: r.error, taken: r.status === 409 && /just booked|not open|not enough room|not available|spots? left|holds \d+ guest/i.test(r.error || "") };
 }
 
 export type OpenSlots = { known: boolean; claimed: boolean; days: { date: string; slots: string[] }[] };
@@ -307,10 +309,15 @@ export type OpenSlots = { known: boolean; claimed: boolean; days: { date: string
  * Which start times a guest may still book: the shop's hours, notice and days off when it has claimed, the
  * standard times otherwise, minus every time that is already taken. `known: false` with no API, and the page
  * keeps its published times.
+ *
+ * `guests` is the party the page is about to book for. Capacity is per time, so a time with one seat left is
+ * open to one guest and not to two; without it the picker offered such a time to a family of four, who were
+ * refused, reloaded, and saw it offered again.
  */
-export async function fetchOpenSlots(id: string, from: string, days = 14, service?: string): Promise<OpenSlots> {
+export async function fetchOpenSlots(id: string, from: string, days = 14, service?: string, guests?: number): Promise<OpenSlots> {
   const q = new URLSearchParams({ from, days: String(days) });
   if (service) q.set("service", service);
+  if (guests && guests > 1) q.set("guests", String(Math.min(Math.round(guests), 60)));
   const r = await call<OpenSlots>(`/bookings/open/${encodeURIComponent(id)}?${q}`, { timeout: 12000 });
   return r.ok && r.data?.known ? { ...r.data, days: r.data.days || [] } : { known: false, claimed: false, days: [] };
 }

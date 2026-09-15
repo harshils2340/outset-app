@@ -15,6 +15,7 @@
  *   - a headless browser that claims the listing, edits it, books it, accepts and declines
  *   - the payout path, through scripts/payout-e2e.mts's Stripe recorder, or through Stripe TEST mode when
  *     STRIPE_TEST_SECRET_KEY (sk_test_...) is set
+ *   - the routes themselves, through scripts/store-e2e.mts, which drives them in process and reads the rows back
  *
  * Nothing is written to the repository: not public/, not dist/, not backend/data/outset.db. The only outbound
  * requests are the listing's own Unsplash photos, which the browser loads, and Stripe test mode when a test key
@@ -475,9 +476,30 @@ async function stripeSection(session: string): Promise<void> {
   record("accepting captures the card and schedules the operator's share", accepted.ok && after?.payment?.state === "captured" && after?.payout?.state === "scheduled", JSON.stringify({ payment: after?.payment?.state, payout: after?.payout }));
 }
 
-/* ---------------------------------------------------------------- 8. the emails ----------------------------- */
+/* ---------------------------------------------------------------- 8. the routes, in process ---------------- */
 
-console.log("\n8. Every email, read back");
+/**
+ * scripts/store-e2e.mts drives the claim, profile, sign-in, slot and booking routes in process against the same
+ * scratch database and checks the rows they write. The browser run above covers the journey; this covers the
+ * edges of it: odd bodies, a booking code that is not one, a dashboard record whose fields are the wrong shape,
+ * a time with room for one more guest but not two, and a service the shop's menu does not price.
+ */
+console.log("\n8. Every route, driven in process (store-e2e.mts)");
+{
+  const r = await run("npx", ["tsx", "scripts/store-e2e.mts"], { cwd: BACKEND, env: childEnv({ STRIPE_SECRET_KEY: "", STORE_DIR: "", MAIL_DUMP_DIR: "", OUTSET_TEST_CLAIM_EMAILS: "" }), quiet: true });
+  const passed = (r.out.match(/ {2}pass {2}/g) || []).length;
+  // It exits 0 when it skips for want of a database, so a pass has to mean checks actually ran.
+  const ran = passed > 0 && !/skipping the store e2e/.test(r.out);
+  record(
+    "the claim, profile, slot and booking routes pass their own checks (store-e2e.mts)",
+    r.code === 0 && ran,
+    ran ? `${passed} checks passed` + (r.code === 0 ? "" : "\n" + r.out.slice(-1200)) : "it did not run: " + r.out.trim().split("\n").slice(-2).join(" ").slice(0, 200),
+  );
+}
+
+/* ---------------------------------------------------------------- 9. the emails ----------------------------- */
+
+console.log("\n9. Every email, read back");
 {
   const files = readdirSync(mailDir).filter((f) => f.endsWith(".txt")).sort();
   const problems: string[] = [];

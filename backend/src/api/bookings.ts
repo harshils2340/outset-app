@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { ID, mayEdit, rateLimit } from "./auth.ts";
+import { ID, jsonBody, mayEdit, rateLimit } from "./auth.ts";
 import { readJson } from "../lib/store.ts";
 import { getBooking, getProfile, insertBookingChecked, listBookings, updateBooking } from "../lib/repo.ts";
 import type { StoredProfile } from "./profiles.ts";
@@ -94,6 +94,12 @@ async function refundBooking(listing: string, b: StoredBooking): Promise<{ refun
 
 const SITE = process.env.SITE_URL || "https://onoutset.com/";
 const STATUSES = ["new", "accepted", "declined", "completed", "noshow", "cancelled"];
+/**
+ * The shape every booking code has, the same one POST /bookings enforces. The routes that take a code in the
+ * path did not check it, so a code with a NUL byte in it reached Postgres and came back as
+ * `invalid byte sequence for encoding "UTF8"`: a 500 for what is only a bad link.
+ */
+const CODE = /^[A-Z0-9-]{4,16}$/;
 const SUCCESS = (code: string, listing: string) => `${SITE}#paid=${code}&o=${listing}`;
 const CANCEL = (listing: string) => `${SITE}#o=${listing}`;
 /**
@@ -150,6 +156,7 @@ bookings.get("/bookings/paid/:listing/:code", rateLimit(60, 60 * 60 * 1000), asy
   const listing = String(c.req.param("listing") ?? "");
   const code = String(c.req.param("code") ?? "").toUpperCase();
   if (!ID.test(listing)) return c.json({ error: "bad listing" }, 400);
+  if (!CODE.test(code)) return c.json({ error: "not found" }, 404);
   const b = await getBooking<StoredBooking>(listing, code);
   if (!b) return c.json({ error: "not found" }, 404);
   if (b.status === "pending" && b.payment?.session && stripeEnabled()) {
@@ -235,11 +242,20 @@ bookings.post("/bookings", rateLimit(20, 60 * 60 * 1000), async (c) => {
   // wins. This used to run only when Stripe was on, so a pay-on-site guest could send any total: a $40 sail
   // reached the operator as "Your price $1.00, you receive $0.95" and the guest's email said $1 too.
   const patch = (profile?.patch || {}) as { options?: PricedOption[]; addons?: PricedOption[] };
-  const priced = detail ? priceBooking(patch.options?.length ? patch.options : detail.options || [], patch.addons?.length ? patch.addons : detail.addons || [], rec.service, rec.variant, qty, rec.addons, rec.total) : null;
+  const menu = patch.options?.length ? patch.options : detail?.options || [];
+  const extras = patch.addons?.length ? patch.addons : detail?.addons || [];
+  const priced = menu.length ? priceBooking(menu, extras, rec.service, rec.variant, qty, rec.addons, rec.total) : null;
   if (priced && rec.total != null && Math.abs(priced.total - rec.total) > 0.5) console.warn(`[bookings] ${code}: browser total ${rec.total}, listing price ${priced.total}; charging the listing price`);
-  if (priced) {
-    rec.total = priced.total;
-    rec.pricing = { subtotal: priced.subtotal, fee: priced.fee };
+  // Once the listing has been read, its own menu is the only source of a price. This used to apply only when the
+  // menu could price the booking, so a service the menu does not sell kept whatever the browser sent:
+  // "Helicopter transfer, $5,000" reached the operator as "You receive $4,726.25" for something they do not
+  // offer. A booking the menu cannot price has no price, which is what a "price on request" line means, and the
+  // emails say so. Only a store the API could not read at all leaves the browser's number standing, because then
+  // there is nothing better to go on and an outage must not lose a real booking's price.
+  if (listingKnown) {
+    if (!priced && rec.total != null) console.warn(`[bookings] ${code}: the listing does not price "${rec.service}"; stored with no price instead of the browser's ${rec.total}`);
+    rec.total = priced ? priced.total : null;
+    if (priced) rec.pricing = { subtotal: priced.subtotal, fee: priced.fee };
   }
   const payNow = stripeEnabled() && !!priced && priced.total >= 1 && b.pay !== false;
   if (payNow) {
@@ -286,7 +302,8 @@ bookings.patch("/bookings/:listing/:code", rateLimit(300, 60 * 60 * 1000), async
   const id = String(c.req.param("listing") ?? "");
   const code = String(c.req.param("code") ?? "").toUpperCase();
   if (!mayEdit(c, id)) return c.json({ error: "not allowed" }, 403);
-  const body = (await c.req.json().catch(() => ({}))) as { status?: StoredBooking["status"]; note?: string };
+  if (!CODE.test(code)) return c.json({ error: "not found" }, 404);
+  const body = await jsonBody<{ status: StoredBooking["status"]; note: string }>(c);
   const status = body.status;
   if (!status || !STATUSES.includes(status)) return c.json({ error: "bad status" }, 400);
   const found = await updateBooking<StoredBooking>(id, code, (x) => ({ ...x, status, decidedAt: new Date().toISOString(), note: body.note ? clean(body.note, 300) : x.note }));

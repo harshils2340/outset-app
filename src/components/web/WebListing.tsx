@@ -1071,21 +1071,22 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
   const live = liveDays.size > 0;
 
   /* What is actually still open on Outset: the claimed shop's own hours minus every time already booked. Loaded
-     from the API, reloaded after a booking, and re-keyed on the picked service because capacity is per service. */
+     from the API, reloaded after a booking, and re-keyed on the picked service because capacity is per service,
+     and on the party size, because a time with one seat left is not open to two guests. */
   const [openMap, setOpenMap] = useState<Map<string, string[]> | null>(null);
   const [openTick, setOpenTick] = useState(0);
   const reloadOpen = useCallback(() => setOpenTick((n) => n + 1), []);
   useEffect(() => {
     if (!hasApi()) return;
     let alive = true;
-    void fetchOpenSlots(item.id, dateKey(dates[0]), dates.length, picked?.name).then((r) => {
+    void fetchOpenSlots(item.id, dateKey(dates[0]), dates.length, picked?.name, qty).then((r) => {
       if (!alive || !r.known) return;
       setOpenMap(new Map(r.days.map((d) => [d.date, d.slots])));
     });
     return () => {
       alive = false;
     };
-  }, [item.id, picked?.name, openTick]);
+  }, [item.id, picked?.name, qty, openTick]);
 
   // Today only shows start times at least an hour out. Nobody can book a 7 AM slot at 8:30.
   const chipsFor = useMemo(() => {

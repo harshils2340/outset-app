@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { ID, linkEmailToListing, mayEdit, rateLimit, signSession, verifySession } from "./auth.ts";
+import { ID, jsonBody, linkEmailToListing, mayEdit, rateLimit, signSession, verifySession } from "./auth.ts";
 import { maskEmail } from "../lib/claimIndex.ts";
 import { writePublicJson } from "../lib/store.ts";
 import { getProfile, updateProfile } from "../lib/repo.ts";
@@ -52,7 +52,7 @@ profiles.get("/profiles/:id", async (c) => {
 profiles.post("/claims/:id", rateLimit(30, 60 * 60 * 1000), async (c) => {
   const id = String(c.req.param("id") ?? "");
   if (!mayEdit(c, id)) return c.json({ error: "invalid claim link" }, 403);
-  const body = (await c.req.json().catch(() => ({}))) as { owner?: Partial<StoredProfile["owner"]> };
+  const body = await jsonBody<{ owner: Partial<StoredProfile["owner"]> }>(c);
   const now = new Date().toISOString();
   let priorEmail = "";
   let takenOver = false;
@@ -93,6 +93,9 @@ profiles.put("/profiles/:id", rateLimit(600, 60 * 60 * 1000), async (c) => {
   } catch {
     return c.json({ error: "bad json" }, 400);
   }
+  // `null`, a number and an array are all valid JSON and none of them is a profile. Reading a field off one
+  // answered 500 to what is only a bad request.
+  if (!body || typeof body !== "object" || Array.isArray(body)) return c.json({ error: "bad json" }, 400);
   const now = new Date().toISOString();
   let before = "";
   const rec = await updateProfile<StoredProfile>(id, fresh(id, now), (cur) => {

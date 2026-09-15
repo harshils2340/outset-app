@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { ID, mayEdit, rateLimit } from "./auth.ts";
+import { ID, jsonBody, mayEdit, rateLimit } from "./auth.ts";
 import { readJson } from "../lib/store.ts";
 import { getProfile, listBookings, listingsWithPayouts, updateBooking, updateProfile } from "../lib/repo.ts";
 import { chargeOf, setAccountDailyPayouts, settlementOf, stripeEnabled, transferForBooking } from "../lib/stripe.ts";
@@ -99,7 +99,7 @@ async function ledger(id: string, payout: Payout, now = new Date()) {
 payouts.put("/payouts/:id/schedule", rateLimit(60, 60 * 60 * 1000), async (c) => {
   const id = String(c.req.param("id") ?? "");
   if (!ID.test(id) || !mayEdit(c, id)) return c.json({ error: "not allowed" }, 403);
-  const body = (await c.req.json().catch(() => ({}))) as { interval?: string };
+  const body = await jsonBody<{ interval: string }>(c);
   if (body.interval !== "weekly" && body.interval !== "biweekly") return c.json({ error: "interval is weekly or biweekly" }, 400);
   const rec = await getProfile<ProfileWithPayout>(id);
   if (!rec?.payout) return c.json({ error: "set up payouts first" }, 404);

@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { ID, clientIp, rateLimit, signSession, type Session } from "./auth.ts";
+import { ID, clientIp, jsonBody, rateLimit, signSession, type Session } from "./auth.ts";
 import { claimTokenV2, verifyClaimToken } from "../lib/claim.ts";
 import { claimRule, emailMayClaim, maskEmail } from "../lib/claimIndex.ts";
 import { sendMail } from "../lib/mail.ts";
@@ -33,7 +33,7 @@ claims.get("/claims/:id/rule", rateLimit(120, 60 * 60 * 1000), async (c) => {
 claims.post("/claims/:id/request", rateLimit(10, 60 * 60 * 1000), async (c) => {
   const id = String(c.req.param("id") ?? "");
   if (!ID.test(id)) return c.json({ error: "bad id" }, 400);
-  const body = (await c.req.json().catch(() => ({}))) as { email?: string; name?: string; phone?: string };
+  const body = await jsonBody<{ email: string; name: string; phone: string }>(c);
   const email = String(body.email || "").trim().toLowerCase().slice(0, 200);
   const name = String(body.name || "").trim().slice(0, 120);
   const phone = String(body.phone || "").trim().slice(0, 40);
@@ -90,7 +90,7 @@ claims.post("/claims/:id/request", rateLimit(10, 60 * 60 * 1000), async (c) => {
 claims.post("/claims/:id/exchange", rateLimit(30, 60 * 60 * 1000), async (c) => {
   const id = String(c.req.param("id") ?? "");
   if (!ID.test(id)) return c.json({ error: "bad id" }, 400);
-  const body = (await c.req.json().catch(() => ({}))) as { token?: string };
+  const body = await jsonBody<{ token: string }>(c);
   const check = verifyClaimToken(id, String(body.token || ""));
   if (!check.ok) {
     console.log(`[claim] ${id}: link rejected (${check.reason}) from ${clientIp(c)}`);
@@ -128,7 +128,7 @@ claims.get("/claims/test-status", rateLimit(120, 60 * 60 * 1000), (c) => {
 claims.post("/claims/:id/test-enter", rateLimit(60, 60 * 60 * 1000), async (c) => {
   const id = String(c.req.param("id") ?? "");
   if (!ID.test(id)) return c.json({ error: "bad id" }, 400);
-  const body = (await c.req.json().catch(() => ({}))) as { email?: string };
+  const body = await jsonBody<{ email: string }>(c);
   const email = String(body.email || "").trim().toLowerCase().slice(0, 200);
   if (!testClaimAllows(email)) return c.json({ error: "not found" }, 404);
   logTestClaim("enter", email, id, clientIp(c));
@@ -144,7 +144,7 @@ claims.post("/claims/:id/test-enter", rateLimit(60, 60 * 60 * 1000), async (c) =
 claims.post("/claims/:id/test-unclaim", rateLimit(60, 60 * 60 * 1000), async (c) => {
   const id = String(c.req.param("id") ?? "");
   if (!ID.test(id)) return c.json({ error: "bad id" }, 400);
-  const body = (await c.req.json().catch(() => ({}))) as { email?: string };
+  const body = await jsonBody<{ email: string }>(c);
   const email = String(body.email || "").trim().toLowerCase().slice(0, 200);
   if (!testClaimAllows(email)) return c.json({ error: "not found" }, 404);
   logTestClaim("unclaim", email, id, clientIp(c));

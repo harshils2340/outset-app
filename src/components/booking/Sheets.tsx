@@ -389,19 +389,20 @@ function RequestBody({
     return m;
   }, [avail]);
   const live = liveDays.size > 0;
-  /* What is still open on Outset: the claimed shop's hours minus every time already booked. */
+  /* What is still open on Outset: the claimed shop's hours minus every time already booked, for a party this
+     size. Capacity is per service and per time, so a time with one seat left is not open to two guests. */
   const [openMap, setOpenMap] = useState<Map<string, string[]> | null>(null);
   useEffect(() => {
     if (!hasApi()) return;
     let alive = true;
-    void fetchOpenSlots(item.id, dateKey(dates[0]), dates.length, picked?.name).then((r) => {
+    void fetchOpenSlots(item.id, dateKey(dates[0]), dates.length, picked?.name, qty).then((r) => {
       if (!alive || !r.known) return;
       setOpenMap(new Map(r.days.map((d) => [d.date, d.slots])));
     });
     return () => {
       alive = false;
     };
-  }, [item.id, picked?.name]);
+  }, [item.id, picked?.name, qty]);
   // Today only offers start times at least an hour out. Nobody can book a 7 AM slot at 8:30.
   const chipsFor = (d: Date): TimeChip[] => {
     const k = dateKey(d);

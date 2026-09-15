@@ -40,6 +40,16 @@ export function verifySession(token: string | undefined): Session | null {
   }
 }
 
+/**
+ * The request's JSON body as an object, always. `c.req.json()` resolves to null for a body of `null`, which is
+ * valid JSON, and every route then read a field off it and answered 500 to what is only bad input. Anything that
+ * is not a plain object (null, a number, a string, an array) comes back as {} so the route's own checks run.
+ */
+export async function jsonBody<T extends object>(c: Context): Promise<Partial<T>> {
+  const v = await c.req.json().catch(() => null);
+  return v && typeof v === "object" && !Array.isArray(v) ? (v as Partial<T>) : {};
+}
+
 /** True when the request may edit listing `id`: a valid claim token for it, or a session that lists it. */
 export function mayEdit(c: Context, id: string): boolean {
   if (!ID.test(id)) return false;
@@ -99,7 +109,7 @@ const codeHash = (email: string, code: string) => createHmac("sha256", claimSecr
 export const auth = new Hono();
 
 auth.post("/auth/request-code", rateLimit(20, 60 * 60 * 1000), async (c) => {
-  const body = (await c.req.json().catch(() => ({}))) as { email?: string };
+  const body = await jsonBody<{ email: string }>(c);
   const email = String(body.email || "").trim().toLowerCase();
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return c.json({ error: "enter a valid email" }, 400);
   const ids = await idsForEmail(email);
@@ -122,7 +132,7 @@ auth.post("/auth/request-code", rateLimit(20, 60 * 60 * 1000), async (c) => {
 });
 
 auth.post("/auth/verify", rateLimit(30, 60 * 60 * 1000), async (c) => {
-  const body = (await c.req.json().catch(() => ({}))) as { email?: string; code?: string };
+  const body = await jsonBody<{ email: string; code: string }>(c);
   const email = String(body.email || "").trim().toLowerCase();
   const code = String(body.code || "").replace(/\D/g, "");
   const rec = codes.get(email);

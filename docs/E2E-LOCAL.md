@@ -73,10 +73,16 @@ starts, so neither can leak into the run.
      operator "New booking";
    - **(h3)** the operator cancels a confirmed booking from the drawer and the guest gets "Cancelled";
    - **(i)** payouts: the status route, the pay schedule changed to every two weeks and back, a stranger refused,
+     the dashboard's own payout tiles reading the operator's price less 5% rather than 5% off the guest total,
      the money path end to end through the Stripe recorder (`scripts/payout-e2e.mts`, 31 checks: split,
      capture on accept, release on decline, transfer on the pay day, refund and reversal), and
      `POST /admin/payouts/run` answering the admin key and nobody else;
    - **(j)** cleanup: both servers stopped, the temp store and database copy deleted (unless `--keep`).
+
+Then `scripts/store-e2e.mts` runs the routes in process against the same scratch database and reads the rows
+back. The browser covers the journey; this covers its edges: odd bodies (a body of `null` used to be a 500), a
+booking code that is not one, a dashboard record whose fields are the wrong shape, a time with room for one more
+guest but not two, and a service the shop's menu does not price.
 
 With a Stripe test key it also books a card booking, pays on Stripe's hosted page with
 `4242 4242 4242 4242`, posts a correctly signed `checkout.session.completed` to the local webhook (there is no
@@ -127,6 +133,7 @@ fails if any comes back:
   <outDir>`) when the screenshot driver is not around.
 - `backend/scripts/test-listing.mts` — the fake business itself.
 - `backend/scripts/payout-e2e.mts` — the money path against a Stripe recorder.
+- `backend/scripts/store-e2e.mts` — the claim, profile, sign-in, slot and booking routes, driven in process.
 
 ## The database
 

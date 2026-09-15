@@ -3,11 +3,31 @@ import { connectPayouts, hasApi, payoutStatus, setPayoutSchedule, type PayoutInt
 import { dateKey, startOfToday } from "../../lib/dates";
 import { money } from "../../lib/format";
 import { bookingTotal, deleteProfile, isoToDate, relDay } from "../../lib/operator";
-import { OPERATOR_FEE_RATE } from "../../lib/pricing";
+import { OPERATOR_FEE_RATE, SERVICE_FEE_CAP, serviceFee } from "../../lib/pricing";
 import { Markup } from "../Markup";
 import { OD_ICONS, PAGES, useOp } from "./opContext";
 
 const FEE = OPERATOR_FEE_RATE;
+
+/**
+ * The operator's own price behind a guest total. A booking's `total` is what the guest paid: the operator's
+ * price plus the guest's stepped service fee. The fee is a whole number of dollars and never more than $25, so
+ * there are only 26 candidates to try. Mirrors subtotalFromTotal in backend/src/payments/money.ts.
+ */
+function operatorPrice(total: number): number {
+  for (let fee = 0; fee <= SERVICE_FEE_CAP; fee++) {
+    const sub = Math.round((total - fee) * 100) / 100;
+    if (sub > 0 && serviceFee(sub) === fee) return sub;
+  }
+  return total;
+}
+
+/**
+ * What the operator receives for one booking: their price less Outset's 5%. Taking 5% off the guest total
+ * instead counted the guest's service fee as the operator's money, so the tiles here promised more than the
+ * booking email for the same trip ("You receive $194.75" against "$202" on this page).
+ */
+const payoutOf = (b: Parameters<typeof bookingTotal>[0]): number => operatorPrice(bookingTotal(b)) * (1 - FEE);
 
 /** Cents in the account's currency: "$1,240", "$7.50", "CA$95". */
 function cents(n: number, currency?: string): string {
@@ -42,9 +62,9 @@ export function OpPayouts() {
   // Money only from real bookings; sample rows never count.
   const real = bookings.filter((b) => b.source !== "sample");
   const done = real.filter((b) => b.status === "completed");
-  const gross = done.reduce((n, b) => n + bookingTotal(b), 0);
+  const earned = done.reduce((n, b) => n + payoutOf(b), 0);
   const upcomingLocal = real.filter((b) => b.status === "accepted" && b.date >= todayKey).reduce((n, b) => n + bookingTotal(b), 0);
-  const pending = done.filter((b) => b.date >= dateKey(new Date(Date.now() - 7 * 86400000))).reduce((n, b) => n + bookingTotal(b), 0);
+  const pending = done.filter((b) => b.date >= dateKey(new Date(Date.now() - 7 * 86400000))).reduce((n, b) => n + payoutOf(b), 0);
   const [status, setStatus] = useState<PayoutStatus | null>(null);
   const [busy, setBusy] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -93,8 +113,8 @@ export function OpPayouts() {
         </div>
       ) : (
         <div className="odstats">
-          <div><b>{money(Math.round(pending * (1 - FEE)))}</b><small>Next payout, after fees</small></div>
-          <div><b>{money(Math.round(gross * (1 - FEE)))}</b><small>Earned to date, after fees</small></div>
+          <div><b>{money(Math.round(pending))}</b><small>Next payout, after fees</small></div>
+          <div><b>{money(Math.round(earned))}</b><small>Earned to date, after fees</small></div>
           <div><b>{money(upcomingLocal)}</b><small>Confirmed, not yet completed</small></div>
           <div><b>{Math.round(FEE * 100)}%</b><small>Outset fee per booking</small></div>
         </div>

@@ -101,7 +101,91 @@ await json(`/profiles/${ID}`, { method: "PUT", headers: { "x-session": session }
 r = await json(`/bookings`, { method: "POST", body: JSON.stringify({ listing: ID, code: "E2E-S002", date: new Date(Date.now() + 2 * 86400000).toISOString().slice(0, 10), slot: "13:00", qty: 1, service: "Tour", variant: "1 hour", addons: [], total: 50, guest: { name: "Guest Two", phone: "4165550101", email: "" }, pay: false }) });
 check("hidden listing refuses with 409", r.status === 409, r);
 
-console.log("\n8. Unsubscribe list lives in the documents table");
+console.log("\n8. Bad input is answered, never crashed on");
+{
+  // `null` is valid JSON, so c.req.json() resolved to it and every route that read a field off the body
+  // answered 500 to what is only a bad request.
+  const nullBody = [
+    ["POST", "/auth/request-code"],
+    ["POST", "/auth/verify"],
+    ["POST", `/claims/${ID}/request`],
+    ["POST", `/claims/${ID}/exchange`],
+    ["POST", `/claims/${ID}/test-enter`],
+    ["PUT", `/profiles/${ID}`],
+    ["PUT", `/payouts/${ID}/schedule`],
+    ["PATCH", `/bookings/${ID}/E2E-S001`],
+  ] as const;
+  const codes: string[] = [];
+  for (const [method, path] of nullBody) {
+    const res = await json(path, { method, headers: { "x-session": session }, body: "null" });
+    codes.push(`${path} ${res.status}`);
+  }
+  check("a body of null is a 4xx on every route that reads one", codes.every((s) => !/ 5\d\d$/.test(s)), codes);
+
+  // A booking code is checked in the path the same way POST /bookings checks it. A code carrying a NUL byte
+  // reached Postgres and came back as `invalid byte sequence for encoding "UTF8"`: a 500 for a bad link.
+  r = await json(`/bookings/${ID}/${encodeURIComponent(" ")}`, { method: "PATCH", headers: { "x-session": session }, body: JSON.stringify({ status: "accepted" }) });
+  check("a booking code with a NUL byte is 404, not 500", r.status === 404, r);
+  r = await json(`/bookings/paid/${ID}/${encodeURIComponent(" ")}`);
+  check("the same code on the paid route is 404, not 500", r.status === 404, r);
+
+  // The dashboard record is stored as the operator's device sent it, so the guest routes must survive any
+  // shape in it. `services: "none"` took this listing's whole booking path down with a 500.
+  await json(`/profiles/${ID}`, { method: "PUT", headers: { "x-session": session }, body: JSON.stringify({ published: true, profile: { services: "none", blockedDates: 7, blockedSlots: "x", hours: "open" } }) });
+  r = await json(`/bookings/open/${ID}?days=2`);
+  check("a profile whose fields are not arrays still answers open slots", r.status === 200 && Array.isArray(r.body?.days), r);
+  r = await json(`/bookings`, { method: "POST", body: JSON.stringify({ listing: ID, code: "E2E-S900", date: new Date(Date.now() + 2 * 86400000).toISOString().slice(0, 10), slot: "09:00", qty: 1, service: "Tour", variant: "1 hour", addons: [], total: 50, guest: { name: "Guest Nine", phone: "4165550109", email: "" }, pay: false }) });
+  check("and still answers a booking for it", r.status < 500, r);
+}
+
+console.log("\n9. A time with room left says how much, and the picker offers it to a party that fits");
+{
+  const day = new Date(Date.now() + 3 * 86400000).toISOString().slice(0, 10);
+  const shop = {
+    hours: Array.from({ length: 7 }, () => ({ closed: false, open: "07:00", close: "19:00" })),
+    slotMinutes: 60, leadHours: 2, windowDays: 60, blockedDates: [], blockedSlots: [],
+    services: [{ name: "Tour", live: true, capacity: 4 }],
+  };
+  await json(`/profiles/${ID}`, { method: "PUT", headers: { "x-session": session }, body: JSON.stringify({ published: true, profile: shop }) });
+  const bookAt = (code: string, qty: number, total: number, slot = "09:00") =>
+    json(`/bookings`, { method: "POST", body: JSON.stringify({ listing: ID, code, date: day, slot, qty, service: "Tour", variant: "1 hour", addons: [], total, guest: { name: "Party " + code, phone: "4165550110", email: "" }, pay: false }) });
+  r = await bookAt("E2E-S910", 3, 150);
+  check("three of four seats are taken", r.status === 200, r);
+  const slotsFor = async (guests: number) => {
+    const res = await json(`/bookings/open/${ID}?from=${day}&days=1&service=Tour&guests=${guests}`);
+    return ((res.body?.days as { date: string; slots: string[] }[]) || [])[0]?.slots || [];
+  };
+  check("the time is still offered to one more guest", (await slotsFor(1)).includes("09:00"));
+  // The picker used to offer it to everyone, so a couple picked it, were refused, reloaded and saw it again.
+  check("and is not offered to a party of two", !(await slotsFor(2)).includes("09:00"));
+  r = await bookAt("E2E-S911", 2, 100);
+  check("a party of two is refused and told what is left", r.status === 409 && /only 1 spot left/i.test(String(r.body?.error)), r.body);
+  r = await bookAt("E2E-S912", 9, 450, "15:00");
+  check("a party of nine at an empty time is told the size that time holds", r.status === 409 && /holds 4 guests/i.test(String(r.body?.error)), r.body);
+  r = await bookAt("E2E-S913", 1, 50);
+  check("the last seat still books", r.status === 200, r);
+  r = await bookAt("E2E-S914", 1, 50);
+  check("and then the time is gone", r.status === 409 && /just booked/i.test(String(r.body?.error)), r.body);
+  check("gone from the picker too", !(await slotsFor(1)).includes("09:00"));
+}
+
+console.log("\n10. A service the shop's menu does not price has no price");
+{
+  const day = new Date(Date.now() + 4 * 86400000).toISOString().slice(0, 10);
+  await json(`/profiles/${ID}`, { method: "PUT", headers: { "x-session": session }, body: JSON.stringify({ published: true, patch: { title: "E2E Store Shop", options: [{ name: "Tour", detail: "1 hour", price: 50 }] }, profile: { hours: Array.from({ length: 7 }, () => ({ closed: false, open: "07:00", close: "19:00" })), slotMinutes: 60, leadHours: 2, services: [{ name: "Tour", live: true, capacity: 4 }] } }) });
+  // The browser's number used to stand whenever the menu could not price the booking, so an invented service
+  // reached the operator as "You receive $4,726.25" for something they do not sell.
+  r = await json(`/bookings`, { method: "POST", body: JSON.stringify({ listing: ID, code: "E2E-S920", date: day, slot: "09:00", qty: 1, service: "Helicopter transfer", variant: "", addons: [], total: 5000, guest: { name: "Guest Ten", phone: "4165550111", email: "" }, pay: false }) });
+  check("a service the menu does not sell is taken", r.status === 200, r);
+  let doc = await query<{ doc: { total: number | null } }>("select doc from bookings where code = $1", ["E2E-S920"]);
+  check("and stored with no price, not the browser's $5,000", doc[0]?.doc.total === null, doc[0]?.doc);
+  r = await json(`/bookings`, { method: "POST", body: JSON.stringify({ listing: ID, code: "E2E-S921", date: day, slot: "11:00", qty: 2, service: "Tour", variant: "1 hour", addons: [], total: 1, guest: { name: "Guest Eleven", phone: "4165550112", email: "" }, pay: false }) });
+  check("a service the menu does price is taken", r.status === 200, r);
+  doc = await query<{ doc: { total: number | null; pricing?: { subtotal: number; fee: number } } }>("select doc from bookings where code = $1", ["E2E-S921"]);
+  check("and priced from the menu, not the browser's $1", doc[0]?.doc.total === 105 && doc[0]?.doc.pricing?.subtotal === 100, doc[0]?.doc);
+}
+
+console.log("\n11. Unsubscribe list lives in the documents table");
 const { recordUnsub, localUnsubHashes } = await import("../src/lib/unsub.ts");
 await recordUnsub("optout@e2e-store.example");
 const hashes = await localUnsubHashes();

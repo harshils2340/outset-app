@@ -69,6 +69,12 @@ async function apiJson(path) {
   const r = await fetch(`${API}${path}`, { headers: { "x-session": s } }).catch(() => null);
   return r && r.ok ? await r.json() : null;
 }
+async function apiPatch(path, body) {
+  const s = await session();
+  if (!s) return null;
+  const r = await fetch(`${API}${path}`, { method: "PATCH", headers: { "content-type": "application/json", "x-session": s }, body: JSON.stringify(body) }).catch(() => null);
+  return r && r.ok ? await r.json() : null;
+}
 const apiLog = () => {
   try {
     return API_LOG && existsSync(API_LOG) ? readFileSync(API_LOG, "utf8") : "";
@@ -605,6 +611,34 @@ async function flow(ctx) {
   await sleep(1500);
   await shot("i-payouts-page");
   record("(i0) the payouts page renders in the dashboard", await has("payout"), "");
+
+  /* ================= (i1) the payouts tiles are the operator's money, not the guest's total =================
+     With no Stripe account connected the page falls back to what this shop's own bookings add up to. Those
+     tiles took 5% off the guest total, which counts the guest's service fee as the operator's money: a $19
+     booking read "$18 earned" on this page while the booking email for the same trip said "You receive
+     $17.10". The tile is the operator's price less Outset's 5% and nothing else. */
+  const acceptedRow = (await bookings()).find((b) => b.guest?.name === "Harness Guest");
+  let tile = "no booking to complete";
+  let want = "";
+  if (acceptedRow) {
+    await apiPatch(`/bookings/${encodeURIComponent(ID)}/${acceptedRow.code}`, { status: "completed" });
+    const sub = acceptedRow.pricing?.subtotal ?? acceptedRow.total ?? 0;
+    want = "$" + Math.round(sub * 0.95).toLocaleString("en-US");
+    await goto(`${BASE}/operators`);
+    await until(() => !!document.querySelector(".od .odbody"), 15000);
+    await openDashboardPage("Payouts");
+    await sleep(1500);
+    tile = await js(() => {
+      const t = [...document.querySelectorAll(".odstats div")].find((d) => d.textContent.includes("Earned to date"));
+      return t ? (t.querySelector("b")?.textContent || "").trim() : "MISSING tile";
+    });
+    await shot("i1-payouts-earned");
+  }
+  record(
+    "(i1) the payouts tiles pay the operator's price less 5%, not 5% off the guest total",
+    !!acceptedRow && tile === want,
+    `tile:${tile} want:${want} guest total:${acceptedRow?.total} operator price:${acceptedRow?.pricing?.subtotal}`,
+  );
 
   log("flow finished");
 }

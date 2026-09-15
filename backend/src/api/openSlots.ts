@@ -14,8 +14,8 @@ import type { StoredProfile } from "./profiles.ts";
  * reach the service's capacity; with no capacity known, one booking fills it. That is what "once you book
  * something it disappears" means here.
  *
- * `GET /bookings/open/:listing?from=YYYY-MM-DD&days=N&service=<name>` is public and read-only: it says which
- * times are open, never who booked them.
+ * `GET /bookings/open/:listing?from=YYYY-MM-DD&days=N&service=<name>&guests=N` is public and read-only: it says
+ * which times are open to a party that size, never who booked them.
  */
 
 /** The fixed times an unclaimed listing offers. Mirrors src/data/slots.ts. */
@@ -34,6 +34,13 @@ type DashboardProfile = {
   blockedSlots?: string[];
   services?: { name?: string; live?: boolean; capacity?: number }[];
 };
+
+/**
+ * The dashboard record is stored as the operator's device sent it, so nothing here may assume a field has the
+ * shape it should. `services: "none"` in one saved profile made this route, and every booking for that listing,
+ * answer 500 on `.filter is not a function`: one bad write took the shop's guest booking path down for good.
+ */
+const asArray = <T>(v: unknown): T[] => (Array.isArray(v) ? (v as T[]) : []);
 
 const hhmm = (m: number) => String(Math.floor(m / 60)).padStart(2, "0") + ":" + String(m % 60).padStart(2, "0");
 const minutes = (t: string) => {
@@ -72,14 +79,14 @@ export function scheduledSlots(profile: DashboardProfile | null, date: string, n
   const window = Number.isFinite(profile.windowDays) && Number(profile.windowDays) > 0 ? Number(profile.windowDays) : 60;
   const last = new Date(now.getFullYear(), now.getMonth(), now.getDate() + window);
   if (d > last) return [];
-  if ((profile.blockedDates || []).includes(date)) return [];
+  if (asArray<string>(profile.blockedDates).includes(date)) return [];
   const h = profile.hours[d.getDay()];
   if (!h || h.closed) return [];
   const open = minutes(h.open);
   const close = minutes(h.close);
   const step = Number.isFinite(profile.slotMinutes) && Number(profile.slotMinutes) >= 15 ? Number(profile.slotMinutes) : 60;
   if (!Number.isFinite(open) || !Number.isFinite(close) || close <= open) return [];
-  const blocked = new Set((profile.blockedSlots || []).filter((s) => s.startsWith(date + "|")).map((s) => s.slice(date.length + 1)));
+  const blocked = new Set(asArray<string>(profile.blockedSlots).filter((s) => String(s).startsWith(date + "|")).map((s) => String(s).slice(date.length + 1)));
   const out: string[] = [];
   for (let m = open; m + 1 <= close; m += step) {
     const t = hhmm(m);
@@ -90,9 +97,9 @@ export function scheduledSlots(profile: DashboardProfile | null, date: string, n
 
 /** How many guests one time can hold for a service. Unknown means one booking fills it. */
 export function capacityFor(profile: DashboardProfile | null, service: string): number | null {
-  const list = (profile?.services || []).filter((s) => s.live !== false);
-  const named = list.find((s) => key(s.name) === key(service));
-  const cap = named?.capacity ?? (list.length ? Math.max(...list.map((s) => Number(s.capacity) || 0)) : 0);
+  const live = asArray<NonNullable<DashboardProfile["services"]>[number]>(profile?.services).filter((s) => s && s.live !== false);
+  const named = live.find((s) => key(s.name) === key(service));
+  const cap = named?.capacity ?? (live.length ? Math.max(...live.map((s) => Number(s.capacity) || 0)) : 0);
   return Number.isFinite(cap) && cap > 0 ? cap : null;
 }
 
@@ -116,17 +123,30 @@ export function bookedAt(list: StoredBooking[], date: string, slot: string, now 
 }
 
 /** Whether a time can still take `qty` more guests for `service`. */
-export function slotOpen(profile: DashboardProfile | null, list: StoredBooking[], date: string, slot: string, service: string, qty: number, now = new Date()): { open: boolean; reason?: string } {
+export function slotOpen(profile: DashboardProfile | null, bookings: StoredBooking[], date: string, slot: string, service: string, qty: number, now = new Date()): { open: boolean; reason?: string } {
   if (!scheduledSlots(profile, date, now).includes(slot)) return { open: false, reason: "That time is not open for booking" };
   const cap = capacityFor(profile, service);
-  const taken = bookedAt(list, date, slot, now.getTime());
+  const taken = bookedAt(bookings, date, slot, now.getTime());
   if (cap == null) return taken.count ? { open: false, reason: "That time was just booked" } : { open: true };
-  return taken.qty + Math.max(1, qty) <= cap ? { open: true } : { open: false, reason: taken.qty ? "That time was just booked" : "Not enough room at that time" };
+  if (taken.qty + Math.max(1, qty) <= cap) return { open: true };
+  // A time with two seats left is still offered, so a party of four was told "that time was just booked" for a
+  // time nobody had taken out, reloaded the picker, saw it there, and was told the same thing again. Say what is
+  // actually left, so the guest can bring fewer people or pick a time that holds them all.
+  const left = cap - taken.qty;
+  if (left <= 0) return { open: false, reason: "That time was just booked" };
+  if (!taken.qty) return { open: false, reason: `That time holds ${cap} guest${cap === 1 ? "" : "s"}, not ${qty}` };
+  return { open: false, reason: `Only ${left} spot${left === 1 ? "" : "s"} left at that time` };
 }
 
 export type OpenDay = { date: string; slots: string[] };
 
-export async function openSlots(listing: string, from: string, days: number, service = "", now = new Date()): Promise<{ known: boolean; claimed: boolean; days: OpenDay[] }> {
+/**
+ * `guests` is the party the page is about to book for. A time that holds one more guest is open to a single
+ * guest and not to a couple, and the picker offered it to both: the couple picked it, were refused, reloaded,
+ * and saw it offered again. Asking for the party size means a time the party does not fit in is simply not
+ * there. It defaults to one, which is what the route answered before.
+ */
+export async function openSlots(listing: string, from: string, days: number, service = "", now = new Date(), guests = 1): Promise<{ known: boolean; claimed: boolean; days: OpenDay[] }> {
   const rec = await getProfile<StoredProfile>(listing).catch(() => null);
   const profile = (rec?.profile as DashboardProfile | null) || null;
   const list = await listBookings<StoredBooking>(listing).catch(() => [] as StoredBooking[]);
@@ -135,7 +155,7 @@ export async function openSlots(listing: string, from: string, days: number, ser
   for (let i = 0; i < days; i++) {
     const d = new Date(start.getFullYear(), start.getMonth(), start.getDate() + i);
     const date = iso(d);
-    const slots = scheduledSlots(profile, date, now).filter((t) => slotOpen(profile, list, date, t, service, 1, now).open);
+    const slots = scheduledSlots(profile, date, now).filter((t) => slotOpen(profile, list, date, t, service, guests, now).open);
     out.push({ date, slots });
   }
   return { known: true, claimed: !!profile, days: out };
@@ -152,6 +172,9 @@ openSlotsRoute.get("/bookings/open/:listing", rateLimit(240, 60 * 60 * 1000), as
   if (daysRaw && !/^\d{1,3}$/.test(daysRaw)) return c.json({ error: "days must be a number" }, 400);
   const days = Math.min(Math.max(Number(daysRaw || 14), 1), MAX_DAYS);
   const service = String(c.req.query("service") ?? "").slice(0, 120);
+  const guestsRaw = String(c.req.query("guests") ?? "").trim();
+  if (guestsRaw && !/^\d{1,2}$/.test(guestsRaw)) return c.json({ error: "guests must be a number" }, 400);
+  const guests = Math.min(Math.max(Number(guestsRaw || 1), 1), 60);
   c.header("cache-control", "no-store");
-  return c.json(await openSlots(id, fromRaw, days, service));
+  return c.json(await openSlots(id, fromRaw, days, service, new Date(), guests));
 });
