@@ -105,3 +105,16 @@ services:
       - key: DB_SEED_URL
         sync: false
       # OUTSET_CHROME: leave unset; the Playwright install under ~/.cache/ms-playwright is found automatically.
+
+  # Operators are paid every Monday. This is the same call .github/workflows/pay-operators.yml makes; it lives here
+  # too because GitHub Actions can be switched off for the account, and the money must still move. ADMIN_KEY is
+  # the same value as on outset-api. One transfer per booking code, so a second run pays nobody twice.
+  - type: cron
+    name: outset-payouts
+    runtime: node
+    schedule: "0 13 * * 1"
+    buildCommand: "true"
+    startCommand: curl -fsS -m 300 -X POST -H "x-admin-key:$ADMIN_KEY" https://outset-api.onrender.com/admin/payouts/run
+    envVars:
+      - key: ADMIN_KEY
+        sync: false
