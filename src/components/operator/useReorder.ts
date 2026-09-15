@@ -31,6 +31,10 @@ export function useReorder<T>({
   live.current = items;
   // What the list looked like before the grab, so Escape can restore it.
   const snapshot = useRef<readonly T[] | null>(null);
+  // Whether the drag that is ending landed on a row. A drag reorders the list as it passes over each row, so
+  // a drag the operator gave up on (Escape, or letting go over the page header) left the new order in place
+  // with nothing to undo it, while the keyboard path promises Escape puts the list back.
+  const landed = useRef(false);
 
   const indexOf = useCallback((id: string) => live.current.findIndex((x) => getId(x) === id), [getId]);
 
@@ -111,6 +115,7 @@ export function useReorder<T>({
       draggable: true,
       onDragStart: (e: React.DragEvent<HTMLElement>) => {
         snapshot.current = live.current;
+        landed.current = false;
         setDragging(id);
         // Firefox will not start a drag without payload.
         e.dataTransfer.effectAllowed = "move";
@@ -127,14 +132,21 @@ export function useReorder<T>({
         emit.current(moveTo(from, to));
       },
       onDragEnd: () => {
+        const was = snapshot.current;
         snapshot.current = null;
         setDragging(null);
         setOver(null);
+        if (!landed.current) {
+          if (was) emit.current([...was]);
+          setSpoken("Reorder cancelled, the original order is back.");
+          return;
+        }
         const at = indexOf(id);
         if (at >= 0) setSpoken(getLabel(live.current[at]) + " dropped at position " + (at + 1) + ".");
       },
       onDrop: (e: React.DragEvent<HTMLElement>) => {
         e.preventDefault();
+        landed.current = true;
         setOver(null);
       },
     }),
