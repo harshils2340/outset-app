@@ -61,7 +61,10 @@ uploads.post("/uploads/:id", rateLimit(120, 60 * 60 * 1000), async (c) => {
   try {
     await storeBinary(rel, bytes, `Photo upload for ${id}`);
   } catch (e) {
-    return c.json({ error: (e as Error).message.slice(0, 160) }, 502);
+    // Every screen prints the API's own `error` straight onto the operator's toast, so this has to be written
+    // for them. "GitHub write failed 401 {"message":"Bad credentials"...}" is for us, and it goes to the log.
+    console.error("upload store failed for " + id + ": " + (e as Error).message.slice(0, 300));
+    return c.json({ error: "We couldn't save that photo. Try again in a minute." }, 502);
   }
   return c.json({ ok: true, url: SITE + rel });
 });

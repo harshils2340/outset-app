@@ -380,25 +380,60 @@ export async function fetchAvailability(id: string, from?: string, days = 14): P
 
 /* ---------- photo uploads ---------- */
 
+/**
+ * The API refuses anything over 1.8 MB of JPEG. Aim under it with room to spare, because base64 and the JSON
+ * wrapper travel with the bytes.
+ */
+const UPLOAD_MAX_BYTES = 1_700_000;
+
+/** Bytes a data URL carries, from the length of its base64 tail. */
+export function dataUrlBytes(url: string): number {
+  const b64 = url.slice(url.indexOf(",") + 1);
+  const pad = b64.endsWith("==") ? 2 : b64.endsWith("=") ? 1 : 0;
+  return Math.max(0, Math.floor((b64.length * 3) / 4) - pad);
+}
+
+/**
+ * The passes the browser tries, in order, until one fits. 1600px at good quality is what a listing photo
+ * wants; a detailed photograph (spray, foliage, a crowd) can still come out of that pass over the cap, and
+ * the operator can do nothing about it, because this code made the file, not them. Telling them to "keep it
+ * under 1.8 MB" was advice for a file they never had. Shrink it here instead, and only give up when even the
+ * smallest pass is too big.
+ */
+const UPLOAD_PASSES: { max: number; quality: number }[] = [
+  { max: 1600, quality: 0.86 },
+  { max: 1600, quality: 0.72 },
+  { max: 1280, quality: 0.68 },
+  { max: 1024, quality: 0.62 },
+];
+
 /** Resize in the browser, send JPEG bytes, get back a URL on the site. */
 export async function uploadPhoto(listing: string, file: File): Promise<{ ok: boolean; url?: string; error?: string }> {
   if (!API_URL) return { ok: false, error: "Uploads switch on once the API is connected." };
-  const data = await new Promise<string>((resolve, reject) => {
-    const img = new Image();
+  const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+    const el = new Image();
     const src = URL.createObjectURL(file);
-    img.onload = () => {
-      const max = 1600;
-      const scale = Math.min(1, max / Math.max(img.width, img.height));
-      const canvas = document.createElement("canvas");
-      canvas.width = Math.round(img.width * scale);
-      canvas.height = Math.round(img.height * scale);
-      canvas.getContext("2d")!.drawImage(img, 0, 0, canvas.width, canvas.height);
-      URL.revokeObjectURL(src);
-      resolve(canvas.toDataURL("image/jpeg", 0.86));
-    };
-    img.onerror = () => reject(new Error("That file is not an image."));
-    img.src = src;
-  }).catch((e: Error) => { throw e; });
+    const done = (run: () => void) => { URL.revokeObjectURL(src); run(); };
+    el.onload = () => done(() => resolve(el));
+    // Every browser reads JPEG and PNG; a phone's HEIC or a RAW file lands here, and so does a renamed PDF.
+    el.onerror = () => done(() => reject(new Error("We couldn't read that file. JPEG or PNG works best.")));
+    el.src = src;
+  });
+  let data = "";
+  for (const pass of UPLOAD_PASSES) {
+    const scale = Math.min(1, pass.max / Math.max(img.width, img.height));
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.round(img.width * scale));
+    canvas.height = Math.max(1, Math.round(img.height * scale));
+    const ctx = canvas.getContext("2d");
+    // Without this the drawImage below threw inside an onload handler and the promise never settled, so the
+    // button sat on "Uploading 1..." for the rest of the session.
+    if (!ctx) return { ok: false, error: "This browser can't resize photos. Try another one." };
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    data = canvas.toDataURL("image/jpeg", pass.quality);
+    if (dataUrlBytes(data) <= UPLOAD_MAX_BYTES) break;
+  }
+  if (!data || dataUrlBytes(data) > UPLOAD_MAX_BYTES) return { ok: false, error: "That photo is too detailed to send. Try a smaller one." };
   const r = await call<{ ok: boolean; url: string }>(`/uploads/${encodeURIComponent(listing)}`, { method: "POST", headers: authHeaders(listing), body: JSON.stringify({ data, type: "image/jpeg" }), timeout: 45000 });
   return { ok: r.ok, url: r.data?.url, error: r.error };
 }

@@ -29,6 +29,8 @@ export function OpListing() {
   const onFiles = async (files: FileList | null) => {
     if (!files?.length) return;
     const list = Array.from(files).slice(0, 12);
+    // Picking twenty photos used to upload twelve and lose the other eight without a word.
+    if (files.length > list.length) toast("We'll take the first 12. Add the other " + (files.length - list.length) + " in a second batch.");
     setUploading(list.length);
     const added: string[] = [];
     for (const f of list) {
