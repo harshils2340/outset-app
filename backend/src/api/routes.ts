@@ -32,6 +32,8 @@ app.use("*", async (c, next) => {
   c.header("x-content-type-options", "nosniff");
   c.header("referrer-policy", "no-referrer");
   c.header("cache-control", "no-store");
+  // A booking carries a name, a phone number and an email, so never let a browser try this over plain HTTP.
+  c.header("strict-transport-security", "max-age=31536000");
 });
 app.get("/config", (c) => c.json({ payments: stripeEnabled(), mail: !!process.env.RESEND_API_KEY }));
 app.route("/", auth);

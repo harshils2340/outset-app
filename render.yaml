@@ -19,6 +19,27 @@ services:
       - type: rewrite
         source: /*
         destination: /index.html
+    # The site had only x-content-type-options. These are the rest of the cheap ones.
+    # SAMEORIGIN rather than DENY because the operator dashboard previews the guest page in an iframe
+    # (src/components/operator/OpPreview.tsx). geolocation stays on for the app's own "how far away" line
+    # (src/lib/places.ts). includeSubDomains is deliberately left off HSTS: www and api have no DNS records
+    # yet, and promising browsers that every future subdomain is HTTPS is a promise to keep on purpose.
+    headers:
+      - path: /*
+        name: Strict-Transport-Security
+        value: max-age=31536000
+      - path: /*
+        name: X-Frame-Options
+        value: SAMEORIGIN
+      - path: /*
+        name: Referrer-Policy
+        value: strict-origin-when-cross-origin
+      - path: /*
+        name: Permissions-Policy
+        value: geolocation=(self), camera=(), microphone=()
+      - path: /*
+        name: X-Content-Type-Options
+        value: nosniff
 
   - type: web
     name: outset-api
