@@ -1,4 +1,25 @@
 services:
+  # The guest site, onoutset.com. Render builds it from every push to main and serves dist from its CDN; nothing
+  # goes through GitHub Actions. Deep links (/operators, a shared listing) are rewritten to index.html so the
+  # app routes them. Backend and docs changes do not trigger a site build.
+  - type: web
+    name: outset-web
+    runtime: static
+    buildCommand: npm ci && npx vite build --base=/ && cp dist/index.html dist/404.html
+    staticPublishPath: dist
+    buildFilter:
+      ignoredPaths:
+        - backend/**
+        - docs/**
+        - .github/**
+    envVars:
+      - key: VITE_API_URL
+        value: https://outset-api.onrender.com
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+
   - type: web
     name: outset-api
     runtime: node

@@ -28,7 +28,7 @@ Check before repeating any of this: `curl https://outset-api.onrender.com/config
 Set `ADMIN_KEY` on Render to any long random string. The internal routes (raw operator rows, outreach drafts) then only answer to requests carrying `x-admin-key`; without it they are closed on the public host.
 
 ## 2. Point the site at the API
-GitHub repo → Settings → Secrets and variables → Actions → Variables → new variable `VITE_API_URL` = the Render URL. Push anything (or rerun the "Deploy site" workflow). The site then signs in, saves and books through the API.
+The site is the Render static site `outset-web` (in `render.yaml`, project Outset, environment Production), built from every push to `main`. Its `VITE_API_URL` env var is the API URL; the blueprint sets it to `https://outset-api.onrender.com`. Nothing about the site goes through GitHub Actions or GitHub Pages; the workflows under `.github/` are only the catalog crawls.
 
 ## 3. Mail DNS (do this before any send to a business)
 
