@@ -72,3 +72,22 @@ test("the notice reaches an after midnight start time as the near thing it is", 
   assert.equal(scheduledSlots({ hours, slotMinutes: 180, leadHours: 12 }, THU, wed).includes("00:00"), true);
   assert.equal(scheduledSlots({ hours, slotMinutes: 180, leadHours: 24 }, THU, wed).includes("00:00"), false);
 });
+
+/**
+ * A website is under no obligation to publish hours on the half hour, and this engine is what a guest is
+ * actually offered. Nothing here may round: a shop open 8:45 to 5:15 sells 8:45, and its twin in
+ * src/lib/__tests__/calendar.test.ts draws the operator the same rows.
+ */
+test("hours off the half hour are offered on their own minutes", () => {
+  assert.deepEqual(
+    scheduledSlots({ hours: week("08:45", "17:15"), slotMinutes: 90, leadHours: 0 }, THU, NOW),
+    ["08:45", "10:15", "11:45", "13:15", "14:45", "16:15"],
+  );
+});
+
+test("an odd close after midnight leaves its tail on the next date", () => {
+  assert.deepEqual(
+    scheduledSlots({ hours: week("18:20", "01:20"), slotMinutes: 120, leadHours: 0 }, FRI, NOW),
+    ["00:20", "18:20", "20:20", "22:20"],
+  );
+});

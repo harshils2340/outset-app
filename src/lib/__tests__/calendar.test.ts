@@ -54,3 +54,19 @@ test("an inverted day is a mistake, not a night shift, so it sells nothing", () 
   assert.deepEqual(slotsForDay(profile({ hours: week("18:00", "17:00") }), THU), []);
   assert.deepEqual(slotsForDay(profile({ hours: week("09:00", "09:00") }), THU), []);
 });
+
+/**
+ * Hours are read off the operator's own website, which is under no obligation to use half hours. Nothing in
+ * the chain may round them: the two selects on Availability carry the shop's own time as an extra entry, both
+ * slot engines count in minutes, and the calendar's rows are the union of every day's start times, so an odd
+ * one gets a row of its own rather than falling between two.
+ */
+test("hours off the half hour keep their own minutes all the way through", () => {
+  const p = profile({ hours: week("08:45", "17:15"), slotMinutes: 90 });
+  assert.deepEqual(slotsForDay(p, THU), ["08:45", "10:15", "11:45", "13:15", "14:45", "16:15"]);
+});
+
+test("an odd close after midnight still lands on the date the guest turns up on", () => {
+  const p = profile({ hours: week("18:20", "01:20"), slotMinutes: 120 });
+  assert.deepEqual(slotsForDay(p, FRI), ["00:20", "18:20", "20:20", "22:20"]);
+});
