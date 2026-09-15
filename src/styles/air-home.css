@@ -210,12 +210,13 @@
 .ah-arrows button svg{width:12px;height:12px;display:block;}
 .ah-arrows button:hover:not(:disabled){background:var(--line-strong);}
 .ah-arrows button:disabled{opacity:.5;cursor:not-allowed;}
-.ah-railrow{--cols:4;display:grid;grid-auto-flow:column;grid-auto-columns:calc((100% - (var(--cols) - 1) * 16px) / var(--cols));gap:16px;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;padding:4px 0;margin:-4px 0;}
+.ah-railrow{--cols:2;display:grid;grid-auto-flow:column;grid-auto-columns:calc((100% - (var(--cols) - 1) * 16px) / var(--cols));gap:16px;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;padding:4px 0;margin:-4px 0;}
 .ah-railrow::-webkit-scrollbar{display:none;}
-@media (min-width:950px){.ah-railrow{--cols:5;}}
-@media (min-width:1128px){.ah-railrow{--cols:6;}}
-@media (min-width:1440px){.ah-railrow{--cols:7;}}
-@media (min-width:1880px){.ah-railrow{--cols:8;}}
+/* Rails and the category grid share one column count, so a row on the home page and a row on Water look the same. */
+@media (min-width:744px){.ah-railrow{--cols:3;}}
+@media (min-width:950px){.ah-railrow{--cols:4;}}
+@media (min-width:1128px){.ah-railrow{--cols:5;}}
+@media (min-width:1640px){.ah-railrow{--cols:6;}}
 
 /* ---------- cards ---------- */
 .ah-card{position:relative;display:flex;flex-direction:column;gap:12px;min-width:0;scroll-snap-align:start;color:var(--ink);}
@@ -274,10 +275,10 @@
 .ah-results{padding:24px 0 8px;}
 .ah-results > .ah-rowhead{margin-bottom:24px;}
 .ah-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:24px;row-gap:40px;}
-@media (min-width:950px){.ah-grid{grid-template-columns:repeat(3,minmax(0,1fr));}}
-@media (min-width:1128px){.ah-grid{grid-template-columns:repeat(4,minmax(0,1fr));}}
-@media (min-width:1640px){.ah-grid{grid-template-columns:repeat(5,minmax(0,1fr));}}
-@media (min-width:1880px){.ah-grid{grid-template-columns:repeat(6,minmax(0,1fr));}}
+@media (min-width:744px){.ah-grid{grid-template-columns:repeat(3,minmax(0,1fr));column-gap:16px;}}
+@media (min-width:950px){.ah-grid{grid-template-columns:repeat(4,minmax(0,1fr));}}
+@media (min-width:1128px){.ah-grid{grid-template-columns:repeat(5,minmax(0,1fr));}}
+@media (min-width:1640px){.ah-grid{grid-template-columns:repeat(6,minmax(0,1fr));}}
 .ah-more{display:flex;flex-direction:column;align-items:center;gap:16px;margin:56px 0 16px;}
 .ah-more p{margin:0;font-size:14px;color:var(--ink-soft);}
 .ah-browse .ah-rail{padding-top:8px;}
