@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { liveVariants, toCatalog, type OperatorProfile } from "../operator";
+import { splitAddons } from "../storage";
 import type { Unclaimed } from "../../data/types";
 
 /**
@@ -47,4 +48,18 @@ test("a service with no name is not offered, and is not counted as a gap in the 
 test("a service switched off is still off, named or not", () => {
   const p = profile({ services: [{ ...service("Sunset tour"), live: false }] });
   assert.deepEqual(toCatalog(p, base).options, []);
+});
+
+/**
+ * The two things a booking's `addons` list holds: the service, as an index into the listing's menu, and every
+ * extra, by name. The phone confirmation read the whole list as indexes and so showed no extras at all.
+ */
+
+test("a booking's service and its extras are read apart", () => {
+  assert.deepEqual(splitAddons(["2", "Dry bag", "Photo pack"]), { optionIdx: 2, extras: ["Dry bag", "Photo pack"] });
+  assert.deepEqual(splitAddons(["0"]), { optionIdx: 0, extras: [] });
+  // A trip booked with no service picked, and an extra whose name happens to start with a digit.
+  assert.deepEqual(splitAddons(["2 wetsuits"]), { optionIdx: null, extras: ["2 wetsuits"] });
+  assert.deepEqual(splitAddons([]), { optionIdx: null, extras: [] });
+  assert.deepEqual(splitAddons(undefined), { optionIdx: null, extras: [] });
 });

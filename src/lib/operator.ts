@@ -4,6 +4,7 @@ import { addressLine, contactFor, experienceById, fmtPhone, getCatalog, setOpera
 import { dateKey, startOfToday } from "./dates";
 import { fmtTime } from "./format";
 import { freeCancel } from "./listingDerive";
+import { splitAddons } from "./storage";
 
 /**
  * Operator side data. One profile per claimed business, saved on-device.
@@ -437,9 +438,8 @@ export function guestBookingsFor(p: OperatorProfile, guest: Booking[]): OpBookin
   return guest
     .filter((b) => b.listing === p.id)
     .map((b) => {
-      const optIdx = b.addons.length && /^\d+$/.test(b.addons[0]) ? Number(b.addons[0]) : null;
-      const opt = optIdx != null && u ? u.options[optIdx] : null;
-      const extras = b.addons.filter((a) => !/^\d+$/.test(a));
+      const { optionIdx, extras } = splitAddons(b.addons);
+      const opt = optionIdx != null && u ? u.options[optionIdx] : null;
       return {
         id: "g" + b.code,
         code: b.code,

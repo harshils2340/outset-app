@@ -2,6 +2,7 @@ import { LISTINGS } from "../../data/listings";
 import { ICONS } from "../../data/icons";
 import { experienceById } from "../../lib/catalog";
 import { fmtDate, fmtTime, money } from "../../lib/format";
+import { splitAddons } from "../../lib/storage";
 import { useApp } from "../../state/AppProvider";
 import { Markup } from "../Markup";
 import { Fragment } from "react";
@@ -20,16 +21,16 @@ export function ConfirmView() {
   const op = l ? l.op : u!.title;
   // Only a shop that claimed its listing and switched Instant Book on can promise a confirmed slot.
   const instant = !!(u?.claimed && u?.instant);
-  const addonNames = l
-    ? (b.addons || [])
-        .map((id) => (l.addons || []).find((x) => x.id === id)?.name)
-        .filter(Boolean)
-    : (b.addons || [])
-        .map((idx) => {
-          const o = u!.options[Number(idx)];
-          return o ? (o.detail ? tidyName(o.name) + " · " + tidyLength(o.detail) : tidyName(o.name)) : null;
-        })
-        .filter(Boolean);
+  /* A catalog booking stores the service it picked as an index into the menu and every extra by name. This
+     screen read the whole list as indexes, so the extras came out as nothing: a guest who added a $30 dry bag
+     paid for it in the total and saw no dry bag anywhere on the screen that confirmed their booking. The
+     desktop confirmation has named them all along. */
+  const split = splitAddons(b.addons);
+  const o = !l && split.optionIdx != null ? u!.options[split.optionIdx] : null;
+  const serviceName = o ? (o.detail ? tidyName(o.name) + " · " + tidyLength(o.detail) : tidyName(o.name)) : null;
+  const extras = l
+    ? (b.addons || []).map((id) => (l.addons || []).find((x) => x.id === id)?.name).filter((n): n is string => !!n)
+    : split.extras;
 
   return (
     <div className="conf">
@@ -60,13 +61,19 @@ export function ConfirmView() {
             <span>Guests</span>
             <b>{b.qty} {b.qty === 1 ? "guest" : "guests"}</b>
           </div>
-          {addonNames.length ? (
+          {serviceName ? (
             <div className="trow">
               <span>Service</span>
+              <b>{serviceName}</b>
+            </div>
+          ) : null}
+          {extras.length ? (
+            <div className="trow">
+              <span>{extras.length === 1 ? "Add-on" : "Add-ons"}</span>
               <b>
                 {/* Fragments, not spans: ".trow span" is the grey label style and turned the value grey. */}
-                {addonNames.map((n, i) => (
-                  <Fragment key={String(n)}>
+                {extras.map((n, i) => (
+                  <Fragment key={n}>
                     {i ? <br /> : null}
                     {n}
                   </Fragment>

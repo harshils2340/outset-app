@@ -4,6 +4,7 @@ import { ICONS } from "../../data/icons";
 import type { Booking } from "../../data/types";
 import { addressLine, contactFor, experienceById, fmtPhone, mapsHref, perPerson, publicRating, telHref } from "../../lib/catalog";
 import { addonPrice, priceUnclaimed, serviceFeeLabel } from "../../lib/pricing";
+import { splitAddons } from "../../lib/storage";
 import { tidyAddress, tidyLength, tidyName } from "./WebListing";
 import { fmtReviews, fmtTime, money } from "../../lib/format";
 import { Photo } from "../art/Photo";
@@ -29,8 +30,8 @@ export function WebConfirm({ booking, onDone, onOpen }: { booking: Booking; onDo
   const addressRaw = contact ? addressLine(contact) : null;
   const address = addressRaw ? tidyAddress(addressRaw) : null;
   const score = publicRating(item);
-  const picked = booking.addons.length && /^\d+$/.test(booking.addons[0]) ? item.options[Number(booking.addons[0])] : null;
-  const extras = booking.addons.filter((a) => !/^\d+$/.test(a));
+  const { optionIdx, extras } = splitAddons(booking.addons);
+  const picked = optionIdx != null ? item.options[optionIdx] : null;
   const [y, m, d] = booking.date.split("-").map(Number);
   const when = new Date(y, m - 1, d).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
   const instant = !!(item.claimed && item.instant);

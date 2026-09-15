@@ -40,3 +40,15 @@ export function saveChats(chats: Record<string, ChatMessage[]>): void {
     /* ignore quota / private mode */
   }
 }
+
+/**
+ * A booking's `addons` list holds two different things: the service the guest picked, stored as its index into
+ * the listing's own menu, and every extra they added, stored by name. Three screens read it, and the phone
+ * confirmation read the whole list as indexes, so a guest who added a $30 dry bag paid for it in the total and
+ * saw no dry bag anywhere on the screen that confirmed their booking. One reading, in one place.
+ */
+export function splitAddons(addons: string[] | undefined): { optionIdx: number | null; extras: string[] } {
+  const list = addons || [];
+  const idx = list.find((a) => /^\d+$/.test(a));
+  return { optionIdx: idx == null ? null : Number(idx), extras: list.filter((a) => !/^\d+$/.test(a)) };
+}
