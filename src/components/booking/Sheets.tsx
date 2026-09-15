@@ -288,7 +288,7 @@ function RequestBody({
   item: Unclaimed;
   dates: Date[];
   onBack: () => void;
-  onConfirm: (input: { dateIdx: number; slot: string; qty: number; optionIdx: number | null; addonIdx?: number[]; guest?: { name: string; phone: string; email?: string } }) => void;
+  onConfirm: (input: { dateIdx: number; slot: string; qty: number; optionIdx: number | null; addonIdx?: number[]; guest?: { name: string; phone: string; email?: string } }) => void | Promise<unknown>;
   onAsk: (text?: string) => void;
 }) {
   const { state } = useApp();
@@ -322,6 +322,10 @@ function RequestBody({
   const [guideOpen, setGuideOpen] = useState(false);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
   const [moreDesc, setMoreDesc] = useState(false);
+  // The request goes to the API and can take a while on a slow connection. Without this the button looked
+  // untouched for up to 25 seconds, so a guest pressed it again, and again: each press is a fresh booking code
+  // and a fresh row at the shop. The desktop page already had it.
+  const [sending, setSending] = useState(false);
   const [nudge, setNudge] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [stuck, setStuck] = useState(false);
@@ -640,24 +644,29 @@ function RequestBody({
           <button
             className="airaccent wide"
             type="button"
-            disabled={!guestOk}
+            disabled={!guestOk || sending}
+            aria-busy={sending}
             onClick={() => {
+              if (sending) return;
               try {
                 localStorage.setItem("outset.guest", JSON.stringify(guest));
               } catch {
                 /* private mode */
               }
-              onConfirm({
-                dateIdx,
-                slot: time,
-                qty,
-                optionIdx,
-                addonIdx,
-                guest: { name: guest.name.trim(), phone: guest.phone.trim(), email: guest.email.trim() || undefined },
-              });
+              setSending(true);
+              void Promise.resolve(
+                onConfirm({
+                  dateIdx,
+                  slot: time,
+                  qty,
+                  optionIdx,
+                  addonIdx,
+                  guest: { name: guest.name.trim(), phone: guest.phone.trim(), email: guest.email.trim() || undefined },
+                }),
+              ).finally(() => setSending(false));
             }}
           >
-            {cta}
+            {sending ? "Sending…" : cta}
           </button>
         </div>
       </>
