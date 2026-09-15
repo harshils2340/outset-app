@@ -16,6 +16,18 @@ import { ConfirmView } from "./components/booking/ConfirmView";
 import { OperatorView } from "./components/operator/OperatorView";
 import { Sheets } from "./components/booking/Sheets";
 import { usePreviewMode } from "./components/operator/previewMode";
+import { Mark } from "./components/layout/Mark";
+
+/** Between "Book and pay" and Stripe's page. The guest sees this, not the confirmation, until checkout takes over. */
+function CheckoutSplash() {
+  return (
+    <div className="paysplash" role="status" aria-live="polite">
+      <Mark size={44} />
+      <b>Sending you to secure checkout…</b>
+      <small>Payment is handled by Stripe on the next page.</small>
+    </div>
+  );
+}
 
 export function App() {
   const { state, closeSheet, openOperator, reqTarget, openRequest, goto } = useApp();
@@ -61,6 +73,7 @@ export function App() {
             </div>
           </div>
         ) : null}
+        {state.checkingOut ? <CheckoutSplash /> : null}
       </>
     );
   }
@@ -74,6 +87,7 @@ export function App() {
           <TabBar />
           <Sheets />
           <Toast />
+          {state.checkingOut ? <CheckoutSplash /> : null}
         </div>
       </div>
     </div>

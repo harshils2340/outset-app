@@ -19,7 +19,7 @@ import { fmtDate, money, nowStamp } from "../lib/format";
 import { daySlotsOpen, openSeats } from "../lib/inventory";
 import { contactFor, experienceById, fromPrice, initials } from "../lib/catalog";
 import { loadListing, loadRemoteCatalog } from "../lib/catalogLoad";
-import { confirmPaid, submitBooking } from "../lib/api";
+import { confirmPaid, submitBooking, warmApi } from "../lib/api";
 import { companyGreeting, companyReply, companySuggestions } from "../lib/companyAgent";
 import type { Place } from "../lib/places";
 import { priceFor, priceUnclaimed } from "../lib/pricing";
@@ -55,6 +55,8 @@ export type AppState = {
   operatorId: string | null;
   /** Token from a signed claim link, checked against the listing's claimKey. */
   claimToken: string | null;
+  /** A paid booking has been sent and Stripe's page is about to take over. The listing stays behind a splash. */
+  checkingOut: boolean;
   /** Listing an owner arrived at from a "remove my listing" link. */
   removeId: string | null;
   sheet: SheetId;
@@ -89,7 +91,10 @@ type Action =
       optionIdx: number | null;
       addonIdx?: number[];
       guest?: { name: string; phone: string; email?: string };
+      /** A card step follows: stay on the listing behind a splash instead of showing the confirmation. */
+      pay?: boolean;
     }
+  | { type: "checkoutDone" }
   | { type: "back" }
   | { type: "openChat"; id: string }
   | { type: "openOperator"; id?: string; token?: string }
@@ -252,6 +257,9 @@ function reducer(state: AppState, action: Action): AppState {
         created: Date.now(),
         guest: action.guest,
       };
+      // With a card step ahead the guest stays on the listing behind a "sending you to checkout" screen; the
+      // confirmation only shows if Stripe does not take over (see checkoutDone).
+      if (action.pay) return { ...state, booking, bookings: [booking, ...state.bookings], checkingOut: true };
       return {
         ...state,
         booking,
@@ -260,6 +268,13 @@ function reducer(state: AppState, action: Action): AppState {
         screen: "confirm",
         toast: (u.claimed && u.instant ? "Confirmed - " : "Request sent - ") + booking.code,
       };
+    }
+    case "checkoutDone": {
+      // Stripe did not take over (no card step after all, or the API could not be reached): the booking stands
+      // as a request on this device, so show the confirmation the way an unpaid booking would.
+      const u = experienceById(state.booking?.listing ?? null);
+      const toast = state.booking ? (u?.claimed && u.instant ? "Confirmed - " : "Request sent - ") + state.booking.code : state.toast;
+      return { ...state, checkingOut: false, sheet: null, screen: "confirm", toast };
     }
     case "back": {
       if (state.screen === "operator") return { ...state, screen: "account" };
@@ -359,6 +374,7 @@ const initial: AppState = {
   reqTargetId: null,
   operatorId: null,
   claimToken: null,
+  checkingOut: false,
   removeId: null,
   sheet: null,
   toast: null,
@@ -386,7 +402,7 @@ type Api = {
   openRequest: (id: string) => void;
   closeSheet: () => void;
   confirm: () => void;
-  confirmUnclaimed: (input: { dateIdx: number; slot: string; qty: number; optionIdx: number | null; addonIdx?: number[]; guest?: { name: string; phone: string; email?: string } }) => void;
+  confirmUnclaimed: (input: { dateIdx: number; slot: string; qty: number; optionIdx: number | null; addonIdx?: number[]; guest?: { name: string; phone: string; email?: string }; pay?: boolean }) => void;
   back: () => void;
   openChat: (id: string) => void;
   openOperator: (id?: string) => void;
@@ -594,6 +610,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       openRequest: (id) => {
         dispatch({ type: "openRequest", id });
         loadListing(id).then((changed) => changed && dispatch({ type: "catalogLoaded", added: 1 }));
+        // The API host sleeps when idle. Waking it as the listing opens means "Book and pay" is not the request
+        // that pays for the cold start.
+        warmApi();
       },
       closeSheet: () => dispatch({ type: "closeSheet" }),
       confirm: () => dispatch({ type: "confirm" }),
@@ -614,7 +633,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
             guest: { name: input.guest?.name || "", phone: input.guest?.phone || "", email: input.guest?.email || "" },
           }).then((r) => {
             // Card on file: Stripe's hosted page takes over, then sends the guest back to #paid=<code>.
-            if (r.checkoutUrl) window.location.assign(r.checkoutUrl);
+            if (r.checkoutUrl) {
+              window.location.assign(r.checkoutUrl);
+              return;
+            }
+            if (input.pay) dispatch({ type: "checkoutDone" });
           });
         }, 0);
       },

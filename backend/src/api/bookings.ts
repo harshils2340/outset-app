@@ -249,12 +249,11 @@ bookings.post("/bookings", rateLimit(20, 60 * 60 * 1000), async (c) => {
       });
       rec.status = "pending";
       rec.payment = { session: co.id, intent: co.paymentIntent, state: "unpaid", currency, subtotal: priced!.subtotal };
-      let dupPending = false;
-      await updateJson<StoredBooking[]>(path(listing), [], (list) => {
-        if (list.some((x) => x.code === code)) { dupPending = true; return list; }
-        return [rec, ...list].slice(0, 2000);
-      }, `Booking ${code} awaiting payment`);
-      if (dupPending) return c.json({ error: "duplicate code" }, 409);
+      // The guest is off to Stripe the moment the session exists. The pending row is written behind the
+      // response: the store's per-file lock queues the webhook's update after it, nobody finishes checkout in
+      // the second or two the write takes, and the return path confirms from the session itself regardless.
+      void updateJson<StoredBooking[]>(path(listing), [], (list) => (list.some((x) => x.code === code) ? list : [rec, ...list].slice(0, 2000)), `Booking ${code} awaiting payment`)
+        .catch((e) => console.error(`[bookings] ${code}: could not store the pending row: ${(e as Error).message}`));
       return c.json({ ok: true, status: "pending", code, checkoutUrl: co.url });
     } catch (e) {
       console.error("stripe checkout failed, falling back to pay on site: " + (e as Error).message);

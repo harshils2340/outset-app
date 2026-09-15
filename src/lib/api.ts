@@ -251,6 +251,16 @@ export function signOutApi(): void {
   saveApiSession(null);
 }
 
+/* ---------- warm-up ---------- */
+
+let warmedAt = 0;
+/** Wakes the API before it is needed. The host sleeps when idle and the first request after that can take many seconds. */
+export function warmApi(): void {
+  if (!API_URL || Date.now() - warmedAt < 5 * 60 * 1000) return;
+  warmedAt = Date.now();
+  void fetch(API_URL + "/health", { signal: AbortSignal.timeout(60000), keepalive: true }).catch(() => undefined);
+}
+
 /* ---------- config ---------- */
 
 let configCache: { payments: boolean; mail: boolean } | null = null;

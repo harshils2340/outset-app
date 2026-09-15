@@ -1189,7 +1189,7 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
     } catch {
       /* ignore */
     }
-    confirmUnclaimed({ dateIdx: state.dateIdx, slot: time, qty, optionIdx, addonIdx, guest: { name: guest.name.trim(), phone: guest.phone.trim(), email: (guest.email || "").trim() || undefined } });
+    confirmUnclaimed({ dateIdx: state.dateIdx, slot: time, qty, optionIdx, addonIdx, guest: { name: guest.name.trim(), phone: guest.phone.trim(), email: (guest.email || "").trim() || undefined }, pay: payments && !!p.total });
     setDone(true);
   };
 

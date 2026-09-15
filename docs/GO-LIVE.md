@@ -59,6 +59,9 @@ npx tsx src/index.ts outreach-send --country=US --limit=50        # US only
 ```
 Sends to businesses are blocked until `MAIL_FROM` uses `@onoutset.com` and `MAIL_POSTAL` is set. Each email carries a signed claim link and an unsubscribe link. Unsubscribed addresses are skipped. 6,263 drafts have an email address today.
 
+## 3b. Keeping the API awake
+Render's free tier puts the API to sleep after 15 idle minutes, and the next request waits out a cold start of up to a minute. `.github/workflows/keep-warm.yml` pings `/health` every 12 minutes so "Book and pay" never pays for that wake-up, and the site pings it again as a listing opens. If the API URL changes, update the workflow.
+
 ## 4. Claiming from the site
 On `/operators`, an owner searches their business, enters their name, work email and mobile, and asks for the claim link. The API (`POST /claims/:id/request`) emails it only when the address matches the email found on the operator's own website, or lives at the operator's own domain. Anyone else is told which address to use. The check reads `public/claim-index.json`, written by `npm run sync` (on the Mac or by the cloud pipeline, which commits it with the catalog), so it stays current with each sync. The link opens the dashboard with no code, carries the typed name and phone, and records the claim so "Email me a sign-in code" works afterwards.
 

@@ -576,6 +576,14 @@ a.crow:active{background:var(--surface-2);}
 .wdist{display:inline-flex;align-items:center;gap:4px;color:var(--ink);font-weight:500;}
 .wdist svg{width:14px;height:14px;}
 .webmodal{position:fixed;inset:0;background:rgba(0,0,0,.45);display:grid;place-items:center;z-index:50;}
+/* between "Book and pay" and Stripe's page */
+.paysplash{position:fixed;inset:0;z-index:70;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:24px;text-align:center;background:var(--surface,#fff);color:var(--ink);animation:paysplashin .18s ease-out;}
+.screen .paysplash{position:absolute;border-radius:inherit;}
+.paysplash > :first-child{animation:paysplashpulse 1.4s ease-in-out infinite;}
+.paysplash b{font-size:18px;font-weight:600;letter-spacing:-.02em;}
+.paysplash small{font-size:13.5px;color:var(--ink-faint);max-width:32ch;}
+@keyframes paysplashpulse{0%,100%{opacity:1;}50%{opacity:.5;}}
+@keyframes paysplashin{from{opacity:0;}to{opacity:1;}}
 .webscreen{width:420px;height:min(860px,92vh);border-radius:28px;box-shadow:0 30px 80px rgba(0,0,0,.4);background:transparent;overflow:visible;}
 .webscreen .sheet{max-height:100%;height:100%;border-radius:28px;}
 .webscreen .grabber{display:none;}
