@@ -3,6 +3,7 @@ import { ALL_METRO_ID } from "../../data/metros";
 import type { CategoryId, Unclaimed } from "../../data/types";
 import { fromPrice } from "../../lib/catalog";
 import { dealToday } from "../../lib/companyAgent";
+import { WHAT_INTENTS, describeQuery, searchSuggest } from "../../lib/search";
 import { kmBetween, type Place } from "../../lib/places";
 import { passesFilters, type FeedFilters } from "./prefs";
 
@@ -58,4 +59,26 @@ export function nearFirst(list: Unclaimed[], near: Place | null): Unclaimed[] {
 export function applyFilters(list: Unclaimed[], f: FeedFilters): Unclaimed[] {
   if (!Object.values(f).some(Boolean)) return list;
   return list.filter((u) => passesFilters(u, f, { priced: () => fromPrice(u) != null, deal: () => dealToday(u) }));
+}
+
+/**
+ * Exactly what the Explore feed shows for a What and a place: the search inside the place (nearest first when a
+ * point is picked), or browse when What is empty, then the filters. The search sheet counts with this too, so a
+ * suggestion's number is the length of the feed it opens.
+ */
+export function feedFor(catalog: Unclaimed[], q: string, cat: CategoryId, metroId: string, near: Place | null, f: FeedFilters): Unclaimed[] {
+  const t = q.trim();
+  const list = t ? nearFirst(searchSuggest(catalog, t, { metroId: near ? ALL_METRO_ID : metroId, cat }).results, near) : browseList(catalog, cat, metroId, near);
+  return applyFilters(list, f);
+}
+
+/** The name a What query goes by on the phone: the occasion ("Date night"), or the words as typed ("Parasailing"). */
+export function whatLabel(q: string): string {
+  const t = q.trim();
+  if (!t) return "";
+  const chip = WHAT_INTENTS.find((c) => c.query === t.toLowerCase());
+  if (chip) return chip.label;
+  const d = describeQuery(t);
+  if (d.onlyIntent && !d.arts.length) return d.intent.label!;
+  return t.charAt(0).toUpperCase() + t.slice(1);
 }

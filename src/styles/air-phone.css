@@ -496,7 +496,7 @@
 .airscard.folded span{font-size:14px;font-weight:500;color:var(--air-grey);flex:none;}
 .airscard.folded b{font-size:14px;font-weight:600;color:var(--ink);min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .airscard.open{padding:24px 20px 20px;box-shadow:0 0 0 1px rgba(0,0,0,.04),0 6px 20px rgba(0,0,0,.18);}
-.airscard.open:first-child{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;}
+.airscard.open:first-child,.airscard.open.fill{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;}
 .airscard h2{margin:0 0 18px;font-family:var(--f-display);font-size:22px;font-weight:600;letter-spacing:-.01em;color:var(--ink);}
 .airsfield{
   display:flex;align-items:center;gap:12px;height:56px;padding:0 16px;flex:none;

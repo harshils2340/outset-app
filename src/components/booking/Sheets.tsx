@@ -1,10 +1,9 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { currentLocation, searchPlaces, type Place } from "../../lib/places";
 import { CATS } from "../../data/categories";
 import { ART_LABEL } from "../../data/art";
 import { GUIDES } from "../../data/guides";
 import { ICONS } from "../../data/icons";
-import { ALL_METRO_ID, METROS, metroById, metroLabel } from "../../data/metros";
+import { metroById } from "../../data/metros";
 import { SLOT_TIMES } from "../../data/slots";
 import type { CategoryId, Unclaimed, UnclaimedOption } from "../../data/types";
 import {
@@ -37,7 +36,7 @@ import { clockIn, zoneFor } from "../../lib/openNow";
 import { itemOpenState } from "../../lib/openNow";
 import { fetchAvailability, type LiveAvailability } from "../../lib/api";
 import { dateKey } from "../../lib/dates";
-import { searchSuggest, metroInQuery } from "../../lib/search";
+import { searchSuggest } from "../../lib/search";
 import { listingUrl } from "../../lib/site";
 import { Photo } from "../art/Photo";
 import { Art } from "../art/Art";
@@ -46,14 +45,11 @@ import {
   IcBack,
   IcChevron,
   IcClose,
-  IcGlobe,
   IcHeartOnPhoto,
   IcLaurel,
   IcMinus,
-  IcNavigate,
   IcPin,
   IcPlus,
-  IcSearch,
   IcShare,
   IcStar,
 } from "../explore/AirIcons";
@@ -61,6 +57,7 @@ import { fmtRating } from "../explore/UnclaimedCard";
 import { applyFilters, browseList, nearFirst } from "../explore/feed";
 import { getPrefs, setPrefs, toggleSaved, usePrefs, type FeedFilters } from "../explore/prefs";
 import { SlotCalendar } from "./SlotCalendar";
+import { SearchSheet } from "../explore/SearchSheet";
 import { AdminSiteLink, ExplainLine, ReviewCard, TYPE_NAME, bookableServices, dealShown, isStandardOnly, optionLength, splitVariants, variantNote, tidyDuration, tidyHours, possessive, shownReviews, splitIncluded, tidyAddress, tidyCancel, tidyLength, tidyLine, tidyName } from "../web/WebListing";
 
 const QTY_MAX = 8;
@@ -1238,369 +1235,12 @@ function RequestBody({
 }
 
 /* ---------------------------------------------------------------------------------------------------------------
-   Search: Airbnb's full-screen stacked sheet. Where (open, with a field and a suggestion list), then When and Who
-   folded, Clear all and Search along the bottom. Outset's Where field also finds activities and businesses, since
-   people search for "kayak" as often as for a town. Nothing applies until Search.
+   Search: the full-screen Where / What / When / Who sheet lives in explore/SearchSheet.tsx; Filters stays here.
    --------------------------------------------------------------------------------------------------------------- */
-
-type PendingPlace = { kind: "metro"; id: string } | { kind: "near"; place: Place } | null;
-
-function countInMetro(metroId: string): number {
-  if (metroId === ALL_METRO_ID) return getCatalog().length;
-  return getCatalog().filter((u) => u.metroId === metroId).length;
-}
 
 function SearchBody() {
   const { sheetMode } = usePrefs();
-  return sheetMode === "filters" ? <FiltersBody /> : <WhereWhenWho />;
-}
-
-function WhereWhenWho() {
-  const { state, dates, closeSheet, setQ, setMetro, setNear, openRequest } = useApp();
-  const prefs = getPrefs();
-  const [step, setStep] = useState<"where" | "when" | "who">("where");
-  const [text, setText] = useState("");
-  const [what, setWhat] = useState<string>(state.q);
-  const [where, setWhere] = useState<PendingPlace>(null);
-  const [when, setWhen] = useState<string | null>(prefs.when && dates.some((d) => dateKey(d) === prefs.when) ? prefs.when : null);
-  const [who, setWho] = useState<number | null>(prefs.who);
-  const [hits, setHits] = useState<Place[]>([]);
-  const [locating, setLocating] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
-  const needle = text.trim();
-
-  // Any town, beach or postcode, not just the metros. Same place search the desktop uses.
-  useEffect(() => {
-    if (needle.length < 3) {
-      setHits([]);
-      return;
-    }
-    let live = true;
-    const t = window.setTimeout(() => {
-      void searchPlaces(needle, state.near).then((r) => live && setHits(r));
-    }, 220);
-    return () => {
-      live = false;
-      window.clearTimeout(t);
-    };
-  }, [needle, state.near]);
-
-  const found = useMemo(() => (needle ? searchSuggest(getCatalog(), needle, { metroId: ALL_METRO_ID, cat: "all" }, 4) : null), [needle]);
-  const seeded = useMemo(() => METROS.map((m) => ({ m, n: countInMetro(m.id) })).filter((x) => x.n > 0).sort((a, b) => b.n - a.n), [state.catalogVersion]);
-
-  const placeName = where ? (where.kind === "near" ? where.place.label : metroLabel(where.id)) : state.near ? state.near.label : metroLabel(state.metroId);
-  const whenDate = when ? dates.find((d) => dateKey(d) === when) : undefined;
-  const whenName = whenDate ? whenDate.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" }) : "Any week";
-  const whoName = who ? who + (who === 1 ? " guest" : " guests") : "Add guests";
-
-  const pickPlace = (pl: PendingPlace) => {
-    setWhere(pl);
-    setText("");
-    setStep("when");
-  };
-
-  const useHere = async () => {
-    setLocating(true);
-    const pt = await currentLocation();
-    setLocating(false);
-    if (pt) pickPlace({ kind: "near", place: { label: "Near me", sub: "Your current location", lat: pt.lat, lon: pt.lon } });
-  };
-
-  const clearAll = () => {
-    setText("");
-    setWhat("");
-    setWhere({ kind: "metro", id: ALL_METRO_ID });
-    setWhen(null);
-    setWho(null);
-    setStep("where");
-  };
-
-  const run = () => {
-    let query = (what || needle).trim();
-    // "kayak tampa" with Tampa picked becomes a kayak search in Tampa, not a search for the word "tampa".
-    if (where?.kind === "metro") {
-      const named = metroInQuery(query);
-      if (named && named.metro.id === where.id) {
-        const cut = new Set(named.words);
-        query = query.split(/\s+/).filter((w) => !cut.has(w.toLowerCase().replace(/[^a-z0-9]+/g, ""))).join(" ").trim();
-      }
-    }
-    setPrefs({ when, who, view: "feed" });
-    setQ(query);
-    if (where?.kind === "metro") setMetro(where.id);
-    else if (where?.kind === "near") {
-      setNear(where.place);
-      closeSheet();
-    } else closeSheet();
-  };
-
-  return (
-    <div className="airsearch">
-      <div className="airsearchtop">
-        <button type="button" className="aircircle flat bordered" onClick={closeSheet} aria-label="Close">
-          <IcClose size={12} />
-        </button>
-        <span className="airsearchtab">Experiences</span>
-        <span className="aircircle ghostslot" aria-hidden />
-      </div>
-
-      <div className="airsearchcards">
-        {step === "where" ? (
-          <section className="airscard open">
-            <h2>Where to?</h2>
-            <label className="airsfield">
-              <IcSearch size={16} />
-              <input
-                ref={inputRef}
-                value={text}
-                autoFocus={false}
-                placeholder="Search places or activities"
-                aria-label="Search places or activities"
-                autoComplete="off"
-                autoCorrect="off"
-                spellCheck={false}
-                onChange={(e) => setText(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    run();
-                  }
-                }}
-              />
-              {text ? (
-                <button type="button" className="airsclear" aria-label="Clear" onClick={() => setText("")}>
-                  <IcClose size={8} />
-                </button>
-              ) : null}
-            </label>
-            {what || where ? (
-              <div className="airschips">
-                {what ? (
-                  <button type="button" className="airschip" onClick={() => setWhat("")} aria-label={"Remove " + what}>
-                    {what} <IcClose size={8} />
-                  </button>
-                ) : null}
-                {where ? (
-                  <button type="button" className="airschip" onClick={() => setWhere(null)} aria-label={"Remove " + placeName}>
-                    {placeName} <IcClose size={8} />
-                  </button>
-                ) : null}
-              </div>
-            ) : null}
-
-            <div className="airslist">
-              {needle ? (
-                <>
-                  {(found?.places ?? []).map((pl) => (
-                    <button type="button" key={"m" + pl.metro.id} className="airsitem" onClick={() => pickPlace({ kind: "metro", id: pl.metro.id })}>
-                      <span className="airstile">
-                        <IcPin size={20} />
-                      </span>
-                      <span>
-                        <b>{pl.metro.name}</b>
-                        <small>
-                          {pl.metro.region}, {pl.metro.country === "CA" ? "Canada" : "United States"} · {pl.count.toLocaleString()} places
-                        </small>
-                      </span>
-                    </button>
-                  ))}
-                  {(found?.activities ?? []).map((a) => (
-                    <button
-                      type="button"
-                      key={"a" + a.art}
-                      className="airsitem"
-                      onClick={() => {
-                        setWhat(a.query);
-                        setText("");
-                      }}
-                    >
-                      <span className="airstile art">
-                        <Art kind={a.art} id={"ss" + a.art} />
-                      </span>
-                      <span>
-                        <b>{a.label}</b>
-                        <small>{a.count.toLocaleString()} places</small>
-                      </span>
-                    </button>
-                  ))}
-                  {hits.map((h) => (
-                    <button type="button" key={"p" + h.label + h.lat} className="airsitem" onClick={() => pickPlace({ kind: "near", place: h })}>
-                      <span className="airstile">
-                        <IcPin size={20} />
-                      </span>
-                      <span>
-                        <b>{h.label}</b>
-                        <small>{h.sub}</small>
-                      </span>
-                    </button>
-                  ))}
-                  {(found?.operators ?? []).map((u) => {
-                    const m = metroById(u.metroId);
-                    return (
-                      <button type="button" key={"o" + u.id} className="airsitem" onClick={() => openRequest(u.id)}>
-                        <span className="airstile art">
-                          {u.cover ? <Photo src={u.cover} kind={u.art} id={u.id + "so"} alt="" size="thumb" /> : <Art kind={u.art} id={u.id + "so"} />}
-                        </span>
-                        <span>
-                          <b>{u.title}</b>
-                          <small>
-                            {(ART_LABEL[u.art] ? ART_LABEL[u.art] + " · " : "") + u.area}
-                            {m ? " · " + m.name : ""}
-                          </small>
-                        </span>
-                      </button>
-                    );
-                  })}
-                  {needle.length >= 2 ? (
-                    <button
-                      type="button"
-                      className="airsitem"
-                      onClick={() => {
-                        setWhat(needle);
-                        setText("");
-                      }}
-                    >
-                      <span className="airstile">
-                        <IcSearch size={18} />
-                      </span>
-                      <span>
-                        <b>Search for “{needle}”</b>
-                        <small>Every listing that mentions it</small>
-                      </span>
-                    </button>
-                  ) : null}
-                </>
-              ) : (
-                <>
-                  <button type="button" className="airsitem" onClick={useHere} disabled={locating}>
-                    <span className="airstile">
-                      <IcNavigate size={20} />
-                    </span>
-                    <span>
-                      <b>{locating ? "Finding you…" : "Nearby"}</b>
-                      <small>Find what's around you</small>
-                    </span>
-                  </button>
-                  <button type="button" className="airsitem" onClick={() => pickPlace({ kind: "metro", id: ALL_METRO_ID })}>
-                    <span className="airstile">
-                      <IcGlobe size={20} />
-                    </span>
-                    <span>
-                      <b>Anywhere</b>
-                      <small>{countInMetro(ALL_METRO_ID).toLocaleString()} places across the US and Canada</small>
-                    </span>
-                  </button>
-                  {state.near ? (
-                    <button
-                      type="button"
-                      className="airsitem"
-                      onClick={() => {
-                        setNear(null);
-                        closeSheet();
-                      }}
-                    >
-                      <span className="airstile">
-                        <IcClose size={14} />
-                      </span>
-                      <span>
-                        <b>{state.near.label}</b>
-                        <small>Tap to clear and browse by city instead</small>
-                      </span>
-                    </button>
-                  ) : null}
-                  <p className="airsgroup">Suggested destinations</p>
-                  {seeded.map(({ m, n }) => (
-                    <button type="button" key={m.id} className="airsitem" aria-pressed={state.metroId === m.id} onClick={() => pickPlace({ kind: "metro", id: m.id })}>
-                      <span className="airstile">
-                        <IcPin size={20} />
-                      </span>
-                      <span>
-                        <b>
-                          {m.name}, {m.region}
-                        </b>
-                        <small>{n.toLocaleString()} places</small>
-                      </span>
-                    </button>
-                  ))}
-                </>
-              )}
-            </div>
-          </section>
-        ) : (
-          <button type="button" className="airscard folded" onClick={() => setStep("where")}>
-            <span>Where</span>
-            <b>{[what, placeName].filter(Boolean).join(" · ")}</b>
-          </button>
-        )}
-
-        {step === "when" ? (
-          <section className="airscard open">
-            <h2>When's your trip?</h2>
-            <div className="airsdays">
-              {dates.map((d) => {
-                const k = dateKey(d);
-                return (
-                  <button type="button" key={k} className="airsday" aria-pressed={when === k} onClick={() => setWhen(when === k ? null : k)}>
-                    <small>{d.toLocaleDateString("en-US", { weekday: "short" })}</small>
-                    <b>{d.getDate()}</b>
-                    <small>{d.toLocaleDateString("en-US", { month: "short" })}</small>
-                  </button>
-                );
-              })}
-            </div>
-            <div className="airscardfoot">
-              <button type="button" className="airlink" onClick={() => { setWhen(null); setStep("who"); }}>
-                Skip
-              </button>
-              <button type="button" className="airdark" onClick={() => setStep("who")}>
-                Next
-              </button>
-            </div>
-          </section>
-        ) : (
-          <button type="button" className="airscard folded" onClick={() => setStep("when")}>
-            <span>When</span>
-            <b>{whenName}</b>
-          </button>
-        )}
-
-        {step === "who" ? (
-          <section className="airscard open">
-            <h2>Who's coming?</h2>
-            <div className="airguests">
-              <span>
-                <b>Guests</b>
-                <small>People in your group</small>
-              </span>
-              <span className="airstepper">
-                <button type="button" onClick={() => setWho(who && who > 1 ? who - 1 : null)} disabled={!who} aria-label="Fewer guests">
-                  <IcMinus />
-                </button>
-                <span className="n">{who || 0}</span>
-                <button type="button" onClick={() => setWho(Math.min(QTY_MAX, (who || 0) + 1))} disabled={(who || 0) >= QTY_MAX} aria-label="More guests">
-                  <IcPlus />
-                </button>
-              </span>
-            </div>
-          </section>
-        ) : (
-          <button type="button" className="airscard folded" onClick={() => setStep("who")}>
-            <span>Who</span>
-            <b>{whoName}</b>
-          </button>
-        )}
-      </div>
-
-      <div className="airsearchfoot">
-        <button type="button" className="airlink" onClick={clearAll}>
-          Clear all
-        </button>
-        <button type="button" className="airaccent go" onClick={run}>
-          <IcSearch size={16} /> Search
-        </button>
-      </div>
-    </div>
-  );
+  return sheetMode === "filters" ? <FiltersBody /> : <SearchSheet />;
 }
 
 const FILTERS: { key: keyof FeedFilters; title: string; sub: string; icon: string }[] = [

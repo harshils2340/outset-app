@@ -1135,3 +1135,30 @@ function nearName(idx: Index, t: string): Set<Entry> {
   }
   return out;
 }
+
+/* ---------- the What box ---------- */
+
+/**
+ * What a query names, for headings and the What box: the kinds of activity it spells out, whether those kinds are
+ * all it says ("jet ski rentals" is the jet ski kind, "jet ski joe's" is a business), and the occasion behind it.
+ * Reads the same parse the ranking uses, so a heading never disagrees with the grid under it.
+ */
+export function describeQuery(q: string): { arts: ArtKind[]; onlyKind: boolean; onlyIntent: boolean; intent: Intent } {
+  const p = parseQuery(q);
+  return {
+    arts: p.hardArts,
+    onlyKind: p.hardArts.length > 0 && p.all.every((t) => p.aliasWords.has(t)),
+    onlyIntent: !!p.intent.label && !p.all.length,
+    intent: p.intent,
+  };
+}
+
+/** Occasions guests search by rather than naming an activity, in the order the What box offers them. */
+export const WHAT_INTENTS: { label: string; query: string }[] = [
+  { label: "Date night", query: "date night" },
+  { label: "With kids", query: "with kids" },
+  { label: "Birthday", query: "birthday" },
+  { label: "Rainy day", query: "rainy day" },
+  { label: "Under $50", query: "under $50" },
+  { label: "Classes", query: "classes" },
+];

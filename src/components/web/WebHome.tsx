@@ -1,6 +1,6 @@
 import "../../styles/air-home.css";
 import { createContext, useContext, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
-import { CATS, CATMETA, inCat } from "../../data/categories";
+import { CATS, CATMETA, WORLDS, inCat, worldOf, type WorldChip } from "../../data/categories";
 import { ART_LABEL } from "../../data/art";
 import { ICONS } from "../../data/icons";
 import { ALL_METRO_ID, METROS, metroById, metroCoords } from "../../data/metros";
@@ -8,7 +8,7 @@ import type { ArtKind, CategoryId, Unclaimed } from "../../data/types";
 import { experienceById, fromPrice, getCatalog, publicRating } from "../../lib/catalog";
 import { listingFacts } from "../../lib/catalog";
 import { fmtDate, fmtReviews, money, titleCase } from "../../lib/format";
-import { ART_ALIASES, metroInQuery, parseIntent, searchSuggest, warmSearch, type SearchScope } from "../../lib/search";
+import { ART_ALIASES, WHAT_INTENTS, describeQuery, metroInQuery, parseIntent, searchMetros, searchRegions, searchSuggest, warmSearch, type SearchScope } from "../../lib/search";
 import { loadListing } from "../../lib/catalogLoad";
 import { dealToday } from "../../lib/companyAgent";
 import { itemOpenState } from "../../lib/openNow";
@@ -26,7 +26,8 @@ import { AdminSiteLink, liteDealTitle, tidyDuration } from "./WebListing";
 const places = (n: number) => n.toLocaleString("en-US") + (n === 1 ? " place" : " places");
 /**
  * Desktop home, laid out as airbnb.com: a white header with the Outset mark, a three-way switch and the account
- * menu; the Where / When / Who pill whose segments open as large popovers; the icon category bar with Filters;
+ * menu; the Where / What / When / Who pill whose segments open as large popovers (Where holds a place, What holds
+ * the activity or business, and the two never overwrite each other); the icon category bar with Filters;
  * rows of photo cards (Airbnb's "Guest favourites in X"); a flat card grid once a category, order, price or
  * search narrows things; and Airbnb's three-column footer. Styles live in styles/air-home.css under `ah-`.
  */
@@ -127,6 +128,37 @@ function whenIdle(run: () => void): void {
 /** What a "More kinds" link types into the search: the first alias, so the search names exactly that kind. */
 const kindQuery = (art: ArtKind) => ART_ALIASES[art]?.[0] || art;
 
+/**
+ * Result counts for What suggestions, memoised per place and query. Each is the length of the very search the row
+ * runs, so "Jet ski rentals · 32" opens a grid of 32 rather than an estimate from a different pass.
+ */
+const countMemo = new Map<string, number>();
+function searchCount(q: string, scope: SearchScope, scopeKey: string): number {
+  const key = scopeKey + "|" + q.trim().toLowerCase();
+  let n = countMemo.get(key);
+  if (n == null) {
+    if (countMemo.size > 400) countMemo.clear();
+    n = searchSuggest(getCatalog(), q, scope, 1).results.length;
+    countMemo.set(key, n);
+  }
+  return n;
+}
+
+/** The heading name for a What query: the kind's own title, the occasion, or the words in quotes. */
+function whatName(q: string): string {
+  const t = q.trim();
+  if (!t) return "";
+  const chip = WHAT_INTENTS.find((c) => c.query === t.toLowerCase());
+  if (chip) return chip.label;
+  const d = describeQuery(t);
+  if (d.onlyKind && d.arts.length === 1) {
+    const title = RAIL_KINDS.find((r) => r.art === d.arts[0])?.title || ART_LABEL[d.arts[0]] || t;
+    return title + (d.intent.maxPrice != null ? " under $" + d.intent.maxPrice : "") + (d.intent.kids ? " for kids" : "");
+  }
+  if (d.onlyIntent) return d.intent.label!;
+  return "“" + t.charAt(0).toUpperCase() + t.slice(1) + "”";
+}
+
 function rankForRail(list: Unclaimed[], center?: { lat: number; lon: number } | null): Unclaimed[] {
   // In a city, the city itself leads: a Miami row opening on Boca Raton, 70 km up the coast, reads as the wrong
   // place. Listings in the city are lifted and the far edge of the metro area is pushed back, before quality.
@@ -155,15 +187,9 @@ const CompareCtx = createContext<{ ids: string[]; toggle: (id: string) => void }
 const POPULAR_METROS = ["toronto", "nyc", "los-angeles", "chicago", "miami", "tampa", "vancouver", "austin", "denver", "seattle", "las-vegas", "boston", "atlanta", "san-diego", "montreal", "orlando"];
 
 /**
- * Airbnb's Homes / Experiences / Services switch, mapped onto Outset's own tabs: everything, food and drink,
- * and wellness. It writes the same category as the icon bar below, so the two never disagree.
+ * Airbnb's Homes / Experiences / Services switch, mapped onto Outset's worlds (data/categories.ts WORLDS): it picks
+ * the world and the category row under it shows only that world's chips.
  */
-const SWITCH: { id: CategoryId; label: string; icon: string }[] = [
-  { id: "all", label: "Experiences", icon: "catAll" },
-  { id: "food", label: "Food & drink", icon: "catFood" },
-  { id: "wellness", label: "Wellness", icon: "catWellness" },
-];
-
 type SortId = "relevance" | "distance" | "price" | "rating";
 const SORTS: { id: SortId; label: string }[] = [
   { id: "relevance", label: "Relevance" },
@@ -172,7 +198,7 @@ const SORTS: { id: SortId; label: string }[] = [
   { id: "rating", label: "Top rated" },
 ];
 
-type Seg = "where" | "when" | "who";
+type Seg = "where" | "what" | "when" | "who";
 type PriceRange = { min: number | null; max: number | null };
 
 const SVG = {
@@ -649,7 +675,7 @@ function UserMenu({ onOperators, onOpenApp }: { onOperators: () => void; onOpenA
   );
 }
 
-function CategoryBar({ cat, setCat, filterCount, onFilters }: { cat: CategoryId; setCat: (c: CategoryId) => void; filterCount: number; onFilters: () => void }) {
+function CategoryBar({ chips, selected, onPick, filterCount, onFilters }: { chips: WorldChip[]; selected: string; onPick: (c: WorldChip) => void; filterCount: number; onFilters: () => void }) {
   const ref = useRef<HTMLDivElement>(null);
   const [edge, setEdge] = useState({ prev: false, next: false });
   const measure = () => {
@@ -661,6 +687,7 @@ function CategoryBar({ cat, setCat, filterCount, onFilters }: { cat: CategoryId;
     window.addEventListener("resize", measure);
     return () => window.removeEventListener("resize", measure);
   }, []);
+  useEffect(measure, [chips]);
   const scroll = (dir: number) => ref.current?.scrollBy({ left: dir * ref.current.clientWidth * 0.7, behavior: "smooth" });
   const onKey = (e: React.KeyboardEvent<HTMLDivElement>) => {
     const keys = ["ArrowLeft", "ArrowRight", "Home", "End"];
@@ -677,17 +704,17 @@ function CategoryBar({ cat, setCat, filterCount, onFilters }: { cat: CategoryId;
       <div className={"ah-cats-track" + (edge.prev ? " fade-l" : "") + (edge.next ? " fade-r" : "")}>
         {edge.prev ? <button type="button" className="ah-cats-arrow prev" aria-label="Previous categories" onClick={() => scroll(-1)}><Markup html={SVG.left} /></button> : null}
         <div className="ah-cats-scroll" ref={ref} role="tablist" aria-label="Categories" onScroll={measure} onKeyDown={onKey}>
-          {CATS.map((c) => (
+          {chips.map((c) => (
             <button
               type="button"
               role="tab"
               key={c.id}
-              aria-selected={cat === c.id}
-              tabIndex={cat === c.id ? 0 : -1}
+              aria-selected={selected === c.id}
+              tabIndex={selected === c.id ? 0 : -1}
               className="ah-cat"
-              onClick={() => setCat(c.id)}
+              onClick={() => onPick(c)}
             >
-              <Markup html={ICONS[c.icon]} />
+              <Markup html={c.svg || ICONS[c.icon]} />
               <span>{c.name}</span>
             </button>
           ))}
@@ -817,7 +844,12 @@ function FiltersModal({ sort, price, prices, total, near, onApply, onClose, onNe
 
 export function WebHome({ onOpenApp, onOperators }: { onOpenApp: () => void; onOperators: () => void }) {
   const { state, setCat, setMetro, setNear, setDate, openRequest, dates } = useApp();
+  // What: the activity, occasion or business. Where: the words typed while looking for a place. The place itself
+  // lives in app state (near or metro), so the two boxes never overwrite each other.
   const [q, setQ] = useState("");
+  const [whereText, setWhereText] = useState("");
+  // A kind chip inside Food & drink or Wellness ("Breweries"). Experiences chips are the category tabs themselves.
+  const [artChip, setArtChip] = useState<ArtKind | null>(null);
   const [who, setWho] = useState(2);
   const [kids, setKids] = useState(0);
   const [seg, setSeg] = useState<Seg | null>(null);
@@ -835,11 +867,15 @@ export function WebHome({ onOpenApp, onOperators }: { onOpenApp: () => void; onO
   const [placeHits, setPlaceHits] = useState<Place[]>([]);
   const [locating, setLocating] = useState(false);
   const metro = metroById(state.metroId);
+  const world = WORLDS.find((w) => w.id === worldOf(state.cat))!;
+  const kindChip = artChip && world.chips.find((c) => c.art === artChip) ? artChip : null;
+  const chipOk = (u: Unclaimed) => !kindChip || u.art === kindChip;
   const RADIUS_KM = 80;
   // A picked state holds every listing in it; a picked point holds what is within the radius.
   const inNear = (u: Unclaimed, p: Place) => (p.region ? regionOfArea(u.area) === p.region : (nearestLocation(u, p)?.km ?? Infinity) <= RADIUS_KM);
   const pillRef = useRef<HTMLDivElement>(null);
   const whereInput = useRef<HTMLInputElement>(null);
+  const whatInput = useRef<HTMLInputElement>(null);
   const mainRef = useRef<HTMLElement>(null);
 
   // Airbnb's header: a hairline once the page moves, and the big pill folds into a small one after a short scroll.
@@ -863,8 +899,9 @@ export function WebHome({ onOpenApp, onOperators }: { onOpenApp: () => void; onO
   const openSeg = (s: Seg | null) => {
     openedAt.current = window.scrollY;
     setSeg(s);
-    if (s !== "where") setHit(-1);
+    setHit(-1);
   };
+  const focusSeg = (s: "where" | "what") => window.setTimeout(() => (s === "where" ? whereInput : whatInput).current?.focus(), 0);
 
   // Outside click and Escape close whichever segment is open.
   useEffect(() => {
@@ -884,17 +921,26 @@ export function WebHome({ onOpenApp, onOperators }: { onOpenApp: () => void; onO
 
   useEffect(() => {
     if (seg !== "where") return;
+    let live = true;
     const t = window.setTimeout(() => {
-      searchPlaces(q, near).then(setPlaceHits);
+      searchPlaces(whereText, near).then((r) => live && setPlaceHits(r));
     }, 220);
-    return () => window.clearTimeout(t);
-  }, [q, seg]);
+    return () => {
+      live = false;
+      window.clearTimeout(t);
+    };
+  }, [whereText, seg]);
 
+  /** Where is done once a place is picked: it closes and What opens, keeping whatever What already holds. */
+  const afterPlace = () => {
+    setWhereText("");
+    openSeg("what");
+    focusSeg("what");
+  };
   const pickPlace = (p: Place) => {
     setNear(p);
-    setQ("");
     // Rows stay rows, as on Airbnb: each is already measured from the place, and "Open right now" leads them.
-    openSeg("when");
+    afterPlace();
   };
   const useMyLocation = async () => {
     setLocating(true);
@@ -917,7 +963,7 @@ export function WebHome({ onOpenApp, onOperators }: { onOpenApp: () => void; onO
     };
   }, [state.catalogVersion]);
 
-  // A city typed into Where ("axe throwing denver") beats the saved place.
+  // A city typed into What ("axe throwing denver") beats the saved place until the menu closes, then moves to Where.
   const typedMetro = useMemo(() => (dq.trim() ? metroInQuery(dq) : null), [dq]);
   const qWithoutPlace = useMemo(() => {
     if (!typedMetro) return dq;
@@ -937,13 +983,14 @@ export function WebHome({ onOpenApp, onOperators }: { onOpenApp: () => void; onO
   // Where the guest is looking. The search reads the whole catalog and narrows here, so its index is built once.
   const scope = useMemo<SearchScope>(() => {
     const cat = state.cat;
-    if (typedMetro) return { cat, metroId: typedMetro.metro.id };
-    if (near) return { cat, keep: (u: Unclaimed) => inNear(u, near) };
-    if (state.metroId !== ALL_METRO_ID) return { cat, metroId: state.metroId };
-    return { cat };
-  }, [typedMetro, near, state.metroId, state.cat]);
+    const art = kindChip;
+    if (typedMetro) return { cat, metroId: typedMetro.metro.id, keep: art ? (u: Unclaimed) => u.art === art : undefined };
+    if (near) return { cat, keep: (u: Unclaimed) => (!art || u.art === art) && inNear(u, near) };
+    if (state.metroId !== ALL_METRO_ID) return { cat, metroId: state.metroId, keep: art ? (u: Unclaimed) => u.art === art : undefined };
+    return { cat, keep: art ? (u: Unclaimed) => u.art === art : undefined };
+  }, [typedMetro, near, state.metroId, state.cat, kindChip]);
 
-  // One pass feeds the Where dropdown and the results behind it, so a keystroke ranks the catalog once.
+  // One pass feeds the What dropdown and the results behind it, so a keystroke ranks the catalog once.
   const found = useMemo(
     () => (qWithoutPlace.trim() ? searchSuggest(getCatalog(), qWithoutPlace, scope, 6) : null),
     [qWithoutPlace, scope, state.catalogVersion],
@@ -956,7 +1003,7 @@ export function WebHome({ onOpenApp, onOperators }: { onOpenApp: () => void; onO
   // claim emails depend on.
   const pool = useMemo(() => {
     if (found) return found.results;
-    let base = getCatalog().filter((u) => !!u.cover);
+    let base = getCatalog().filter((u) => !!u.cover && chipOk(u));
     if (typedMetro) {
       base = base.filter((u) => u.metroId === typedMetro.metro.id);
     } else if (near) {
@@ -967,17 +1014,17 @@ export function WebHome({ onOpenApp, onOperators }: { onOpenApp: () => void; onO
       base = base.filter((u) => u.metroId === state.metroId);
     }
     return base;
-  }, [found, state.metroId, typedMetro, state.catalogVersion, near]);
+  }, [found, state.metroId, typedMetro, state.catalogVersion, near, kindChip]);
 
   // How many nearby places are listed but have no photo yet, so the page can say so instead of hiding the gap.
   const waiting = useMemo(() => {
     if (found) return 0;
-    let base = getCatalog().filter((u) => !u.cover);
+    let base = getCatalog().filter((u) => !u.cover && chipOk(u));
     if (typedMetro) base = base.filter((u) => u.metroId === typedMetro.metro.id);
     else if (near) base = base.filter((u) => inNear(u, near));
     else if (state.metroId !== ALL_METRO_ID) base = base.filter((u) => u.metroId === state.metroId);
     return base.filter((u) => inCat(u, state.cat)).length;
-  }, [found, state.metroId, typedMetro, state.catalogVersion, near, state.cat]);
+  }, [found, state.metroId, typedMetro, state.catalogVersion, near, state.cat, kindChip]);
 
   const priceOn = price.min != null || price.max != null;
   const inPrice = (u: Unclaimed) => {
@@ -1038,19 +1085,31 @@ export function WebHome({ onOpenApp, onOperators }: { onOpenApp: () => void; onO
     return out;
   }, [state.catalogVersion]);
 
+  const metroTotals = useMemo(() => {
+    const out = new Map<string, number>();
+    for (const u of getCatalog()) out.set(u.metroId, (out.get(u.metroId) || 0) + 1);
+    return out;
+  }, [state.catalogVersion]);
+
+  const nearName = (p: Place) => (p.label === "Near me" ? "you" : p.label);
   const placeName = near ? near.label + (near.sub ? ", " + near.sub.split(",")[0] : "") : metro ? metro.name + ", " + metro.region : "";
-  const whereShort = near ? near.label : metro ? metro.name : "Anywhere";
-  const inWhere = typedMetro ? " in " + typedMetro.metro.name : near ? " near " + near.label : metro ? " in " + metro.name : "";
+  const whereShort = typedMetro ? typedMetro.metro.name : near ? near.label : metro ? metro.name : "Anywhere";
+  const inWhere = typedMetro ? " in " + typedMetro.metro.name : near ? " near " + nearName(near) : metro ? " in " + metro.name : "";
+  /** Where a count applies, for the What menu: "in Miami", "near you", or everywhere. */
+  const hereLine = inWhere || " across the US and Canada";
+  const whatTitle = qWithoutPlace.trim() ? whatName(qWithoutPlace) : "";
+  const whatShort = whatTitle.replace(/[“”]/g, "") || "Any activity";
   const catName = (id: CategoryId) => CATS.find((c) => c.id === id)?.name || "All";
   const dayLabel = state.dateIdx === 0 ? "Today" : state.dateIdx === 1 ? "Tomorrow" : fmtDate(dates[state.dateIdx]);
   const guests = who + kids;
   const guestLabel = guests + (guests === 1 ? " guest" : " guests");
 
-  // The Where dropdown. Empty: nearby and suggested places. Typed: kinds of thing, businesses, cities, map places.
   const acts = found?.activities ?? [];
   const ops = found?.operators ?? [];
   const spots = found?.places ?? [];
-  const regionHits = found?.regions ?? [];
+  // Counts in the What menu come from the same search each row runs, keyed by where it runs.
+  const scopeKey = state.catalogVersion + ":" + state.cat + ":" + (kindChip || "") + ":" + (typedMetro ? "m" + typedMetro.metro.id : near ? "n" + near.lat + "," + near.lon + (near.region || "") : "m" + state.metroId);
+  const countFor = (query: string) => searchCount(query, scope, scopeKey);
 
   const pickCity = (id: string) => {
     // "axe throwing denver" with Denver picked becomes an axe search in Denver, not a search for the word "denver".
@@ -1060,75 +1119,195 @@ export function WebHome({ onOpenApp, onOperators }: { onOpenApp: () => void; onO
     setHit(-1);
   };
 
-  type Row = { key: string; head?: string; icon?: string; u?: Unclaimed; title: string; sub?: string; on?: boolean; pick: () => void };
-  const rows: Row[] = [];
-  if (!q.trim()) {
-    rows.push({ key: "nearby", head: "Nearby", icon: ICONS.nav, title: locating ? "Finding you…" : "Nearby", sub: "Find what's around you", on: near?.label === "Near me", pick: useMyLocation });
-    rows.push({ key: "anywhere", head: "Suggested destinations", icon: ICONS.globe, title: "Anywhere", sub: "US and Canada", on: !near && state.metroId === ALL_METRO_ID, pick: () => { setNear(null); setMetro(ALL_METRO_ID); openSeg("when"); } });
-    for (const id of POPULAR_METROS) {
-      const m = METROS.find((x) => x.id === id);
-      if (m) rows.push({ key: "m" + m.id, icon: ICONS.pin, title: m.name + ", " + m.region, sub: places(metroCounts.get(m.id) || 0) + " with photos", on: !near && state.metroId === m.id, pick: () => { setNear(null); setMetro(m.id); openSeg("when"); } });
-    }
-  } else {
-    // Where is for places: a state or city the guest typed leads, before kinds of thing and businesses.
-    // A typed city leads with the city itself, since the word is stripped before the search runs and nothing else
-    // would offer it: "Miami" used to list six map places called Miami and never our Miami.
-    if (typedMetro) {
-      const m = typedMetro.metro;
-      rows.push({ key: "tm" + m.id, head: "Places", icon: ICONS.pin, title: m.name + ", " + m.region, sub: "Things to do · " + places(metroCounts.get(m.id) || 0), on: !near && state.metroId === m.id, pick: () => { pickCity(m.id); openSeg("when"); } });
-    }
-    regionHits.forEach((r, i) => rows.push({ key: "r" + r.code, head: i === 0 && !typedMetro ? "Places" : undefined, icon: ICONS.pin, title: r.name, sub: r.count.toLocaleString() + " places · " + r.country, pick: () => pickPlace({ label: r.name, sub: r.country, lat: r.lat, lon: r.lon, region: r.code }) }));
-    spots.forEach((pl, i) => rows.push({ key: "s" + pl.metro.id, head: i === 0 && !regionHits.length ? "Cities" : undefined, icon: ICONS.pin, title: pl.metro.name + ", " + pl.metro.region, sub: places(pl.count), pick: () => pickCity(pl.metro.id) }));
-    if (typedMetro && placeOnly) {
-      const m = typedMetro.metro;
-      rails.slice(0, 4).forEach((r, i) => rows.push({ key: "tk" + r.art, head: i === 0 ? "Popular in " + m.name : undefined, icon: ICONS.spark, title: r.title, sub: pool.filter((u) => u.art === r.art).length.toLocaleString() + " places in " + m.name, pick: () => { setQ(kindQuery(r.art) + " " + m.name); setHit(-1); } }));
-    }
-    acts.forEach((a, i) => rows.push({ key: "a" + a.art, head: i === 0 ? "Activities" : undefined, icon: ICONS.spark, title: a.label, sub: a.count.toLocaleString() + (a.count === 1 ? " place" : " places") + inWhere, pick: () => { setQ(a.query); setHit(-1); } }));
-    ops.forEach((u, i) => rows.push({ key: "o" + u.id, head: i === 0 ? "Businesses" : undefined, u, title: u.title, sub: ART_LABEL[u.art] + " · " + u.area, pick: () => { openSeg(null); openRequest(u.id); } }));
-    // A typed city keeps map places to its own area: "Miami" should not offer Miami, Oklahoma.
-    const tmc = typedMetro ? metroCoords(typedMetro.metro.id) : null;
-    placeHits.filter((p) => !tmc || kmBetween({ lat: tmc.lat, lon: tmc.lng }, p) <= 150).forEach((p, i) => rows.push({ key: "p" + p.label + p.sub, head: i === 0 ? "Places on the map" : undefined, icon: ICONS.pin, title: p.label, sub: p.sub, pick: () => pickPlace(p) }));
-    (found?.elsewhere ?? []).forEach((a, i) => rows.push({ key: "e" + a.art, head: i === 0 ? "Elsewhere" : undefined, icon: ICONS.globe, title: a.label + " across the US and Canada", sub: places(a.count), pick: () => { setNear(null); setMetro(ALL_METRO_ID); setQ(a.query); } }));
-    if (found?.otherCats) rows.push({ key: "othercats", icon: ICONS.catAll, title: "Show all categories", sub: found.otherCats.toLocaleString() + " more outside " + catName(state.cat), pick: () => setCat("all") });
-  }
-
-  const onWhereKey = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "ArrowDown") {
-      e.preventDefault();
-      if (seg !== "where") openSeg("where");
-      setHit((i) => Math.min(rows.length - 1, i + 1));
-    } else if (e.key === "ArrowUp") {
-      e.preventDefault();
-      setHit((i) => Math.max(-1, i - 1));
-    } else if (e.key === "Enter") {
-      e.preventDefault();
-      if (hit >= 0 && rows[hit]) rows[hit].pick();
-      // Enter on a query that is only a place picks that place: the city, or the state the region match found.
-      else if (placeOnly && typedMetro) { pickCity(typedMetro.metro.id); runSearch(); }
-      else if (regionHits.length && !acts.length && !ops.length) rows.find((r) => r.key === "r" + regionHits[0].code)?.pick();
-      else runSearch();
-    }
+  /** A place typed into What ("kayak tampa") moves to Where, and What keeps the rest. */
+  const commitWhat = () => {
+    const m = q.trim() ? metroInQuery(q) : null;
+    if (!m) return;
+    const drop = new Set(m.words);
+    setNear(null);
+    setMetro(m.metro.id);
+    setQ(q.split(/\s+/).filter((w) => !drop.has(w.toLowerCase().replace(/[^a-z0-9]+/g, ""))).join(" ").trim());
   };
+  const commitRef = useRef(commitWhat);
+  commitRef.current = commitWhat;
+  const prevSeg = useRef<Seg | null>(null);
+  useEffect(() => {
+    if (prevSeg.current === "what" && seg !== "what") commitRef.current();
+    prevSeg.current = seg;
+  }, [seg]);
 
   const runSearch = () => {
+    commitWhat();
     setSeg(null);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
+  /** A What suggestion runs its search at once: the grid behind the menu is the answer. */
+  const pickWhat = (query: string) => {
+    if (typedMetro) {
+      setNear(null);
+      setMetro(typedMetro.metro.id);
+    }
+    setQ(query);
+    setSeg(null);
+    window.scrollTo({ top: 0 });
+  };
+
+  type Row = { key: string; head?: string; icon?: string; u?: Unclaimed; title: string; sub?: string; on?: boolean; pick: () => void };
+
+  // ---- Where: places only. Empty: nearby and suggested places. Typed: the city, states, cities, map places.
+  const wt = whereText.trim();
+  const whereMetro = useMemo(() => (wt ? metroInQuery(wt) : null), [wt]);
+  const whereRegions = useMemo(() => (wt ? searchRegions(getCatalog(), wt) : []), [wt, state.catalogVersion]);
+  const whereCities = useMemo(() => {
+    if (!wt) return [];
+    const list = whereRegions.length
+      ? METROS.filter((m) => m.region === whereRegions[0].code).sort((a, b) => (metroTotals.get(b.id) || 0) - (metroTotals.get(a.id) || 0)).slice(0, 4)
+      : searchMetros(wt, 3);
+    return list.filter((m) => (metroTotals.get(m.id) || 0) > 0 && m.id !== whereMetro?.metro.id);
+  }, [wt, whereRegions, whereMetro, metroTotals]);
+  const pickMetro = (id: string) => {
+    // "kayak tampa" typed into Where: Tampa is the place, and the kayak half goes to What if What is empty.
+    if (whereMetro && whereMetro.metro.id === id && !q.trim()) {
+      const drop = new Set(whereMetro.words);
+      const rest = wt.split(/\s+/).filter((w) => !drop.has(w.toLowerCase().replace(/[^a-z0-9]+/g, ""))).join(" ").trim();
+      if (rest) setQ(rest);
+    }
+    setNear(null);
+    setMetro(id);
+    afterPlace();
+  };
+
+  const whereRows: Row[] = [];
+  if (!wt) {
+    whereRows.push({ key: "nearby", head: "Nearby", icon: ICONS.nav, title: locating ? "Finding you…" : "Nearby", sub: "Find what's around you", on: near?.label === "Near me", pick: useMyLocation });
+    whereRows.push({ key: "anywhere", head: "Suggested destinations", icon: ICONS.globe, title: "Anywhere", sub: "US and Canada", on: !near && state.metroId === ALL_METRO_ID, pick: () => { setNear(null); setMetro(ALL_METRO_ID); afterPlace(); } });
+    for (const id of POPULAR_METROS) {
+      const m = METROS.find((x) => x.id === id);
+      if (m) whereRows.push({ key: "m" + m.id, icon: ICONS.pin, title: m.name + ", " + m.region, sub: places(metroCounts.get(m.id) || 0) + " with photos", on: !near && state.metroId === m.id, pick: () => pickMetro(m.id) });
+    }
+  } else {
+    // A typed city leads with the city itself: "Miami" used to list six map places called Miami and never our Miami.
+    if (whereMetro) {
+      const m = whereMetro.metro;
+      whereRows.push({ key: "tm" + m.id, head: "Places", icon: ICONS.pin, title: m.name + ", " + m.region, sub: "Things to do · " + places(metroCounts.get(m.id) || 0), on: !near && state.metroId === m.id, pick: () => pickMetro(m.id) });
+    }
+    whereRegions.forEach((r, i) => whereRows.push({ key: "r" + r.code, head: i === 0 && !whereMetro ? "Places" : undefined, icon: ICONS.pin, title: r.name, sub: r.count.toLocaleString() + " places · " + r.country, pick: () => pickPlace({ label: r.name, sub: r.country, lat: r.lat, lon: r.lon, region: r.code }) }));
+    whereCities.forEach((m, i) => whereRows.push({ key: "s" + m.id, head: i === 0 && !whereRegions.length ? "Cities" : undefined, icon: ICONS.pin, title: m.name + ", " + m.region, sub: places(metroTotals.get(m.id) || 0), on: !near && state.metroId === m.id, pick: () => pickMetro(m.id) }));
+    // A typed city keeps map places to its own area: "Miami" should not offer Miami, Oklahoma.
+    const tmc = whereMetro ? metroCoords(whereMetro.metro.id) : null;
+    placeHits.filter((p) => !tmc || kmBetween({ lat: tmc.lat, lon: tmc.lng }, p) <= 150).forEach((p, i) => whereRows.push({ key: "p" + p.label + p.sub, head: i === 0 ? "Places on the map" : undefined, icon: ICONS.pin, title: p.label, sub: p.sub, pick: () => pickPlace(p) }));
+  }
+
+  // ---- What: the activity or business, counted inside the chosen place.
+  const whatRows: Row[] = [];
+  const intentRows = (chips: { label: string; query: string }[], head: string) => {
+    let first = true;
+    for (const c of chips) {
+      const n = countFor(c.query);
+      if (!n) continue;
+      whatRows.push({ key: "i" + c.query, head: first ? head : undefined, icon: ICONS.spark, title: c.label, sub: n.toLocaleString() + hereLine, on: q.trim().toLowerCase() === c.query, pick: () => pickWhat(c.query) });
+      first = false;
+    }
+  };
+  // The same kinds the page shows as rails, in the same order, so the menu and the page agree.
+  const topKinds = useMemo(() => (seg === "what" && !qWithoutPlace.trim() ? rails.slice(0, 6).map((r) => r.art) : []), [seg, qWithoutPlace, rails]);
+  if (seg === "what") {
+    if (!qWithoutPlace.trim()) {
+      let first = true;
+      for (const art of topKinds) {
+        const query = kindQuery(art);
+        const n = countFor(query);
+        if (!n) continue;
+        const title = RAIL_KINDS.find((r) => r.art === art)?.title || ART_LABEL[art];
+        whatRows.push({ key: "k" + art, head: first ? "Popular" + hereLine : undefined, icon: ICONS.spark, title, sub: n.toLocaleString() + hereLine, pick: () => pickWhat(query) });
+        first = false;
+      }
+      intentRows(WHAT_INTENTS, "Ideas");
+    } else {
+      const typed = qWithoutPlace.trim().toLowerCase();
+      if (typedMetro) {
+        const m = typedMetro.metro;
+        whatRows.push({ key: "tm" + m.id, head: "Place", icon: ICONS.pin, title: whatTitle.replace(/[“”]/g, "") + " in " + m.name, sub: "Sets Where to " + m.name + ", " + m.region, pick: () => { commitWhat(); setSeg(null); window.scrollTo({ top: 0 }); } });
+      }
+      let first = true;
+      for (const a of acts) {
+        const n = countFor(a.query);
+        if (!n) continue;
+        whatRows.push({ key: "a" + a.art, head: first ? "Activities" : undefined, icon: ICONS.spark, title: RAIL_KINDS.find((r) => r.art === a.art)?.title || a.label, sub: n.toLocaleString() + hereLine, on: typed === a.query, pick: () => pickWhat(a.query) });
+        first = false;
+      }
+      ops.forEach((u, i) => whatRows.push({ key: "o" + u.id, head: i === 0 ? "Businesses" : undefined, u, title: u.title, sub: ART_LABEL[u.art] + " · " + u.area, pick: () => { commitWhat(); openSeg(null); openRequest(u.id); } }));
+      const words = typed.split(/\s+/);
+      const chips = WHAT_INTENTS.filter((c) => c.query !== typed && words.some((w) => w.length >= 2 && c.label.toLowerCase().split(/\s+/).some((lw) => lw.replace(/[^a-z0-9$]/g, "").startsWith(w.replace(/[^a-z0-9$]/g, "")))));
+      const d = describeQuery(qWithoutPlace);
+      if (d.onlyIntent && !WHAT_INTENTS.some((c) => c.query === typed)) chips.unshift({ label: d.intent.label!, query: qWithoutPlace.trim() });
+      intentRows(chips, "Ideas");
+      (found?.elsewhere ?? []).forEach((a, i) => whatRows.push({ key: "e" + a.art, head: i === 0 ? "Elsewhere" : undefined, icon: ICONS.globe, title: a.label + " across the US and Canada", sub: places(a.count), pick: () => { setNear(null); setMetro(ALL_METRO_ID); pickWhat(a.query); } }));
+      if (found?.otherCats) whatRows.push({ key: "othercats", icon: ICONS.catAll, title: "Show all categories", sub: found.otherCats.toLocaleString() + " more outside " + catName(state.cat), pick: () => setCat("all") });
+    }
+  }
+  const rows = seg === "what" ? whatRows : whereRows;
+
+  const moveHit = (e: React.KeyboardEvent<HTMLInputElement>, s: "where" | "what") => {
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      if (seg !== s) openSeg(s);
+      setHit((i) => Math.min(rows.length - 1, i + 1));
+      return true;
+    }
+    if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setHit((i) => Math.max(-1, i - 1));
+      return true;
+    }
+    return false;
+  };
+  const onWhereKey = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (moveHit(e, "where") || e.key !== "Enter") return;
+    e.preventDefault();
+    if (seg === "where" && hit >= 0 && rows[hit]) rows[hit].pick();
+    // Enter on a typed place picks it: the city, else the state the region match found, else the first place.
+    else if (whereMetro) pickMetro(whereMetro.metro.id);
+    else if (whereRegions.length) whereRows.find((r) => r.key === "r" + whereRegions[0].code)?.pick();
+    else if (wt && whereRows[0]) whereRows[0].pick();
+    else afterPlace();
+  };
+  const onWhatKey = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (moveHit(e, "what") || e.key !== "Enter") return;
+    e.preventDefault();
+    if (seg === "what" && hit >= 0 && rows[hit]) rows[hit].pick();
+    else runSearch();
+  };
 
   const clearWhere = () => {
-    setQ("");
+    setWhereText("");
     setNear(null);
     setMetro(ALL_METRO_ID);
     whereInput.current?.focus();
   };
+  const clearWhat = () => {
+    setQ("");
+    setHit(-1);
+    whatInput.current?.focus();
+  };
 
   const pickCat = (c: CategoryId) => {
     setCat(c);
+    setArtChip(null);
     if (window.scrollY > 0) window.scrollTo({ top: 0 });
+  };
+  /** Switching worlds starts on that world's All and keeps Where and What. */
+  const pickWorld = (id: string) => {
+    const w = WORLDS.find((x) => x.id === id);
+    if (w) pickCat(w.chips[0].cat);
+  };
+  const pickChip = (c: WorldChip) => {
+    pickCat(c.cat);
+    if (c.art) setArtChip(c.art);
   };
 
   const filterCount = (effSort !== "relevance" ? 1 : 0) + (priceOn ? 1 : 0);
-  const resetFilters = () => { setSort("relevance"); setPrice({ min: null, max: null }); setCat("all"); };
+  const resetFilters = () => { setSort("relevance"); setPrice({ min: null, max: null }); setCat("all"); setArtChip(null); };
   const showRails = state.catalogReady && (!q.trim() || placeOnly) && !gridMode;
 
   return (
@@ -1136,29 +1315,31 @@ export function WebHome({ onOpenApp, onOperators }: { onOpenApp: () => void; onO
     <div className={"web ah" + (compareIds.length ? " has-cmpbar" : "")}>
       <header className={"ah-header" + (scrolled ? " is-scrolled" : "") + (expanded ? " is-expanded" : " is-compact")}>
         <div className="ah-top ah-gutter">
-          <a className="ah-logo" href="./" aria-label="Outset home" onClick={(e) => { e.preventDefault(); setCat("all"); setQ(""); setSort("relevance"); setPrice({ min: null, max: null }); window.scrollTo({ top: 0 }); }}>
+          <a className="ah-logo" href="./" aria-label="Outset home" onClick={(e) => { e.preventDefault(); setCat("all"); setArtChip(null); setQ(""); setSort("relevance"); setPrice({ min: null, max: null }); window.scrollTo({ top: 0 }); }}>
             <Mark size={32} />
             <b>Outset</b>
           </a>
           {expanded ? (
             <nav className="ah-switch" aria-label="What to browse">
-              {SWITCH.map((s) => {
-                const on = s.id === "all" ? state.cat !== "food" && state.cat !== "wellness" : state.cat === s.id;
+              {WORLDS.map((w) => {
+                const on = w.id === world.id;
                 return (
-                  <button type="button" key={s.id} aria-current={on ? "page" : undefined} className={on ? "on" : ""} onClick={() => pickCat(s.id)}>
-                    <Markup html={ICONS[s.icon]} />
-                    <span>{s.label}</span>
+                  <button type="button" key={w.id} aria-current={on ? "page" : undefined} className={on ? "on" : ""} onClick={() => pickWorld(w.id)}>
+                    <Markup html={ICONS[w.icon]} />
+                    <span>{w.label}</span>
                   </button>
                 );
               })}
             </nav>
           ) : (
             <div className="ah-mini" role="group" aria-label="Search">
-              <button type="button" onClick={() => { openSeg("where"); window.setTimeout(() => whereInput.current?.focus(), 0); }}>{q.trim() || whereShort}</button>
+              <button type="button" aria-label={"Where: " + whereShort} onClick={() => { openSeg("where"); focusSeg("where"); }}>{whereShort}</button>
               <i />
-              <button type="button" onClick={() => openSeg("when")}>{dayLabel}</button>
+              <button type="button" aria-label={"What: " + whatShort} className={q.trim() ? "" : "soft"} onClick={() => { openSeg("what"); focusSeg("what"); }}>{whatShort}</button>
               <i />
-              <button type="button" className="soft" onClick={() => openSeg("who")}>{guestLabel}</button>
+              <button type="button" aria-label={"When: " + dayLabel} onClick={() => openSeg("when")}>{dayLabel}</button>
+              <i />
+              <button type="button" aria-label={"Who: " + guestLabel} className="soft" onClick={() => openSeg("who")}>{guestLabel}</button>
               <span className="ah-mini-go" aria-hidden="true"><Markup html={SVG.search} /></span>
             </div>
           )}
@@ -1177,22 +1358,46 @@ export function WebHome({ onOpenApp, onOperators }: { onOpenApp: () => void; onO
                   id="ah-where"
                   ref={whereInput}
                   data-seg="where"
-                  className={placeName && !q ? "has-place" : ""}
-                  value={q}
+                  className={placeName || typedMetro ? "has-place" : ""}
+                  value={whereText}
                   autoComplete="off"
                   spellCheck={false}
-                  placeholder={placeName || "Search destinations or activities"}
+                  placeholder={typedMetro ? typedMetro.metro.name + ", " + typedMetro.metro.region : placeName || "Search destinations"}
                   role="combobox"
                   aria-expanded={seg === "where"}
                   aria-controls="ah-where-pop"
                   aria-activedescendant={seg === "where" && hit >= 0 && rows[hit] ? "ah-row-" + hit : undefined}
                   onFocus={() => { if (seg !== "where" && !skipFocusOpen.current) openSeg("where"); }}
                   onClick={() => { if (seg !== "where") openSeg("where"); }}
-                  onChange={(e) => { setQ(e.target.value); setHit(-1); if (seg !== "where") openSeg("where"); }}
+                  onChange={(e) => { setWhereText(e.target.value); setHit(-1); if (seg !== "where") openSeg("where"); }}
                   onKeyDown={onWhereKey}
                 />
-                {seg === "where" && (q || placeName) ? (
+                {seg === "where" && (whereText || placeName) ? (
                   <button type="button" className="ah-clear" aria-label="Clear where" onMouseDown={(e) => e.preventDefault()} onClick={clearWhere}><Markup html={SVG.close} /></button>
+                ) : null}
+              </label>
+              <span className="ah-div" />
+              <label className={"ah-seg what" + (seg === "what" ? " on" : "")} htmlFor="ah-what" data-seg="what-label">
+                <span className="ah-seg-label">What</span>
+                <input
+                  id="ah-what"
+                  ref={whatInput}
+                  data-seg="what"
+                  value={q}
+                  autoComplete="off"
+                  spellCheck={false}
+                  placeholder="Search activities"
+                  role="combobox"
+                  aria-expanded={seg === "what"}
+                  aria-controls="ah-what-pop"
+                  aria-activedescendant={seg === "what" && hit >= 0 && rows[hit] ? "ah-row-" + hit : undefined}
+                  onFocus={() => { if (seg !== "what" && !skipFocusOpen.current) openSeg("what"); }}
+                  onClick={() => { if (seg !== "what") openSeg("what"); }}
+                  onChange={(e) => { setQ(e.target.value); setHit(-1); if (seg !== "what") openSeg("what"); }}
+                  onKeyDown={onWhatKey}
+                />
+                {seg === "what" && q ? (
+                  <button type="button" className="ah-clear" aria-label="Clear what" onMouseDown={(e) => e.preventDefault()} onClick={clearWhat}><Markup html={SVG.close} /></button>
                 ) : null}
               </label>
               <span className="ah-div" />
@@ -1212,14 +1417,15 @@ export function WebHome({ onOpenApp, onOperators }: { onOpenApp: () => void; onO
                 </button>
               </div>
 
-              {seg === "where" ? (
-                <div className="ah-pop where" id="ah-where-pop" role="listbox" aria-label="Where">
-                  {found?.nearMiss ? (
+              {seg === "where" || seg === "what" ? (
+                <div className={"ah-pop " + seg} id={"ah-" + seg + "-pop"} role="listbox" aria-label={seg === "where" ? "Where" : "What"}>
+                  {seg === "what" && found?.nearMiss ? (
                     <p className="ah-pop-note">
-                      Nothing for “{q.trim()}”{inWhere}{rows.length ? ". Closest in the catalog:" : ". Try fewer words, or another city."}
+                      Nothing for “{qWithoutPlace.trim()}”{inWhere}{rows.length ? ". Closest in the catalog:" : ". Try fewer words, or another place."}
                     </p>
                   ) : null}
-                  {q.trim() && !rows.length && !found?.nearMiss ? <p className="ah-pop-note">Keep typing, or try a bigger town nearby.</p> : null}
+                  {seg === "where" && wt && !rows.length ? <p className="ah-pop-note">Keep typing, or try a bigger town nearby.</p> : null}
+                  {seg === "what" && !rows.length && !found?.nearMiss ? <p className="ah-pop-note">{q.trim() ? "Keep typing, or try fewer words." : "Nothing listed" + hereLine + " yet. Try another place."}</p> : null}
                   {rows.map((r, i) => (
                     <div key={r.key}>
                       {r.head ? <p className="ah-pop-head">{r.head}</p> : null}
@@ -1273,7 +1479,7 @@ export function WebHome({ onOpenApp, onOperators }: { onOpenApp: () => void; onO
         ) : null}
 
         <div className="ah-catrow ah-gutter">
-          <CategoryBar cat={state.cat} setCat={pickCat} filterCount={filterCount} onFilters={() => setFiltersOpen(true)} />
+          <CategoryBar key={world.id} chips={world.chips} selected={kindChip || state.cat} onPick={pickChip} filterCount={filterCount} onFilters={() => setFiltersOpen(true)} />
         </div>
       </header>
       <div className="ah-header-space" aria-hidden="true" />
@@ -1330,7 +1536,7 @@ export function WebHome({ onOpenApp, onOperators }: { onOpenApp: () => void; onO
             <div className="ah-rowhead">
               <div className="ah-rowtitle">
                 <h2 id="ah-grid-title">
-                  {gridList.length > 1000 ? "Over 1,000" : gridList.length.toLocaleString()} {state.cat === "all" ? "experiences" : catName(state.cat).toLowerCase() + " experiences"}
+                  {gridList.length > 1000 ? "Over 1,000" : gridList.length.toLocaleString()} {kindChip ? (world.chips.find((c) => c.art === kindChip)?.name || "").toLowerCase() : state.cat === "all" ? "experiences" : catName(state.cat).toLowerCase() + " experiences"}
                   {inWhere}
                 </h2>
                 <p>
@@ -1356,34 +1562,25 @@ export function WebHome({ onOpenApp, onOperators }: { onOpenApp: () => void; onO
             <div className="ah-rowhead">
               <div className="ah-rowtitle">
                 <h2 id="ah-search-title">
-                  {intent.label ? intent.label : `Results for “${qWithoutPlace.trim() || q.trim()}”`}
-                  {inWhere}
+                  {whatTitle || "Things to do"}
+                  {hereLine} · {searchList.length.toLocaleString()}
                 </h2>
                 <p>
-                  {searchList.length.toLocaleString()} {searchList.length === 1 ? "place" : "places"}
-                  {intent.label ? " · " + (intent.kids ? "Only places whose published rules allow younger kids. " : "") + (intent.maxPrice != null ? "Starting price at or under $" + intent.maxPrice + ". " : "") + (intent.arts.length ? "One row per kind of plan, best first." : "Best fit first, then rating and reviews.") : ""}
+                  {intent.label
+                    ? (intent.kids ? "Only places whose published rules allow younger kids. " : "") + (intent.maxPrice != null ? "Starting price at or under $" + intent.maxPrice + ". " : "") + "Best fit first, then rating and reviews."
+                    : "Best fit first, then rating and reviews."}
                 </p>
               </div>
               <div className="ah-rowtools">
-                <button type="button" className="ah-showall" onClick={() => { setQ(""); whereInput.current?.focus(); }}>Clear search</button>
+                <button type="button" className="ah-showall" onClick={() => { setQ(""); window.scrollTo({ top: 0 }); }}>Clear what</button>
               </div>
             </div>
-            {intent.arts.length && searchList.length > 12 && effSort === "relevance" && !priceOn ? (
-              // A browse, not a search: "date night" is wineries, cooking classes, sunset sails, side by side.
-              <div className="ah-browse">
-                {intent.arts
-                  .map((art) => ({ art, items: rankForRail(searchList.filter((u) => u.art === art)) }))
-                  .filter((g) => g.items.length >= 2)
-                  .map((g) => (
-                    <Rail key={g.art} title={RAIL_KINDS.find((r) => r.art === g.art)?.title || g.art} items={g.items} onOpen={openRequest} near={near} />
-                  ))}
-              </div>
-            ) : searchList.length ? (
+            {searchList.length ? (
               <Grid items={searchList} onOpen={openRequest} near={near} resetKey={q + effSort + price.min + price.max} />
             ) : (
               // Never a bare no-match: every way out below is a real count from the catalog.
               <div className="ah-empty">
-                <h2>Nothing for “{qWithoutPlace.trim() || q.trim()}”{inWhere} yet</h2>
+                <h2>Nothing for “{qWithoutPlace.trim() || q.trim()}”{hereLine} yet</h2>
                 <p>Try one of these, or fewer words.</p>
                 <span className="ah-emptyfix">
                   {priceOn ? <button type="button" className="ah-btn-outline" onClick={() => setPrice({ min: null, max: null })}>Remove the price filter</button> : null}

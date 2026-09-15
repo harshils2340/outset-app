@@ -10,7 +10,7 @@ import { useApp } from "../../state/AppProvider";
 import { Markup } from "../Markup";
 import { IcFilters, IcHeart, IcSearch } from "./AirIcons";
 import { UnclaimedCard } from "./UnclaimedCard";
-import { applyFilters, browseList, nearFirst } from "./feed";
+import { applyFilters, browseList, nearFirst, whatLabel } from "./feed";
 import { activeFilterCount, clearFilters, setPrefs, usePrefs } from "./prefs";
 import "../../styles/air-phone.css";
 
@@ -94,9 +94,11 @@ export function ExploreView() {
   const whenDate = prefs.when ? dates.find((d) => dateKey(d) === prefs.when) : undefined;
   const whenLabel = whenDate ? whenDate.toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "Any week";
   const whoLabel = prefs.who ? prefs.who + (prefs.who === 1 ? " guest" : " guests") : "Add guests";
-  const pillTitle = q && place ? q + " · " + place : q || place || "Where to?";
-  const pillSub = (place ? [whenLabel, whoLabel] : ["Anywhere", whenLabel, whoLabel]).join(" · ");
-  const here = state.near ? " near " + state.near.label : state.metroId === ALL_METRO_ID ? "" : " in " + metroShort(state.metroId);
+  // The pill reads place then activity, the two parts of the search: "Tampa · Parasailing" over "Any week · Add guests".
+  const what = whatLabel(q);
+  const pillTitle = q || place ? (place || "Anywhere") + " · " + (what || "Any activity") : "Where to?";
+  const pillSub = (q || place ? [whenLabel, whoLabel] : ["Anywhere", whenLabel, whoLabel]).join(" · ");
+  const here = state.near ? " near " + (state.near.label === "Near me" ? "you" : state.near.label) : state.metroId === ALL_METRO_ID ? "" : " in " + metroShort(state.metroId);
 
   const openSearch = () => {
     setPrefs({ sheetMode: "search" });
@@ -145,9 +147,18 @@ export function ExploreView() {
       {list.length ? (
         <>
           <p className="aircount">
-            {list.length > 1000 ? "Over " + (Math.floor(list.length / 1000) * 1000).toLocaleString() : list.length.toLocaleString()}{" "}
-            {list.length === 1 ? "experience" : "experiences"}
-            {here}
+            {q ? (
+              <>
+                {what}
+                {here || " anywhere"} · {list.length.toLocaleString()}
+              </>
+            ) : (
+              <>
+                {list.length > 1000 ? "Over " + (Math.floor(list.length / 1000) * 1000).toLocaleString() : list.length.toLocaleString()}{" "}
+                {list.length === 1 ? "experience" : "experiences"}
+                {here}
+              </>
+            )}
           </p>
           <div className="airfeed">
             {list.slice(0, limit).map((u) => (
