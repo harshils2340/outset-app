@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { ID, jsonBody, linkEmailToListing, mayEdit, rateLimit, signSession, verifySession } from "./auth.ts";
+import { ID, idsWith, jsonBody, linkEmailToListing, mayEdit, rateLimit, signSession, verifySession } from "./auth.ts";
 import { maskEmail } from "../lib/claimIndex.ts";
 import { writePublicJson } from "../lib/store.ts";
 import { getProfile, updateProfile } from "../lib/repo.ts";
@@ -77,8 +77,7 @@ profiles.post("/claims/:id", rateLimit(30, 60 * 60 * 1000), async (c) => {
   await publishGuestCopy(rec);
   if (rec.owner.email) await linkEmailToListing(rec.owner.email, id);
   const prior = verifySession(c.req.header("x-session"));
-  const ids = Array.from(new Set([...(prior?.ids || []), id]));
-  const session = signSession({ ids, email: rec.owner.email || prior?.email || "", exp: Date.now() + 30 * 86400000 });
+  const session = signSession({ ids: idsWith(prior, id), email: rec.owner.email || prior?.email || "", exp: Date.now() + 30 * 86400000 });
   return c.json({ ...rec, session, ...(takenOver ? { alreadyClaimed: maskEmail(priorEmail), claimedAt: rec.claimedAt } : {}) });
 });
 

@@ -41,6 +41,15 @@ export function verifySession(token: string | undefined): Session | null {
 }
 
 /**
+ * The listings a freshly minted session should cover: the one the caller just proved, plus everything the
+ * session they arrived with already held. A session is one token for every listing it may edit, so a route
+ * that mints one without this signs the operator out of their other shops.
+ */
+export function idsWith(prior: Session | null, id: string): string[] {
+  return Array.from(new Set([...(prior?.ids || []), id]));
+}
+
+/**
  * The request's JSON body as an object, always. `c.req.json()` resolves to null for a body of `null`, which is
  * valid JSON, and every route then read a field off it and answered 500 to what is only bad input. Anything that
  * is not a plain object (null, a number, a string, an array) comes back as {} so the route's own checks run.

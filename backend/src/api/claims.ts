@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { ID, clientIp, jsonBody, rateLimit, signSession, type Session } from "./auth.ts";
+import { ID, clientIp, idsWith, jsonBody, rateLimit, signSession, verifySession, type Session } from "./auth.ts";
 import { claimTokenV2, verifyClaimToken } from "../lib/claim.ts";
 import { claimRule, emailMayClaim, maskEmail } from "../lib/claimIndex.ts";
 import { sendMail } from "../lib/mail.ts";
@@ -97,7 +97,12 @@ claims.post("/claims/:id/exchange", rateLimit(30, 60 * 60 * 1000), async (c) => 
     // "expired" is worth telling the owner, so the screen can offer a fresh link instead of a dead end.
     return c.json({ ok: false, reason: check.reason }, check.reason === "expired" ? 410 : 401);
   }
-  const session: Session = { ids: [id], email: "", exp: Date.now() + 30 * 86400000 };
+  // Keep whatever the caller was already signed in to. A session is one token for every listing it may edit,
+  // so handing back one scoped to this listing alone signed an operator out of their other shops the moment
+  // they opened a second claim link: the dashboard still listed those shops, and every save answered 403.
+  // The prior session is verified here, so nothing is added that the caller did not already hold.
+  const prior = verifySession(c.req.header("x-session"));
+  const session: Session = { ids: idsWith(prior, id), email: prior?.email || "", exp: Date.now() + 30 * 86400000 };
   return c.json({ ok: true, kind: check.kind, session: signSession(session), exp: session.exp });
 });
 
@@ -132,7 +137,7 @@ claims.post("/claims/:id/test-enter", rateLimit(60, 60 * 60 * 1000), async (c) =
   const email = String(body.email || "").trim().toLowerCase().slice(0, 200);
   if (!testClaimAllows(email)) return c.json({ error: "not found" }, 404);
   logTestClaim("enter", email, id, clientIp(c));
-  const session: Session = { ids: [id], email, exp: Date.now() + 30 * 86400000 };
+  const session: Session = { ids: idsWith(verifySession(c.req.header("x-session")), id), email, exp: Date.now() + 30 * 86400000 };
   return c.json({ ok: true, session: signSession(session), exp: session.exp });
 });
 

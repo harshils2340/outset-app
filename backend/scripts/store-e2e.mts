@@ -75,6 +75,29 @@ check("the owner sees the whole record", r.status === 200 && (r.body?.owner as {
 console.log("\n4. Sign-in by email code knows the listing");
 r = await json(`/auth/request-code`, { method: "POST", body: JSON.stringify({ email: OWNER.email }) });
 check("code request accepted", r.status === 200 && r.body?.ok === true, r);
+for (let i = 1; i <= 6; i++) r = await json(`/auth/verify`, { method: "POST", body: JSON.stringify({ email: OWNER.email, code: "000000" }) });
+check("a code typed wrong six times stops being guessable", r.status === 400 && /too many attempts/i.test(String(r.body?.error)), r.body);
+
+console.log("\n4b. A claim link for a second shop keeps the operator signed in to the first");
+{
+  // An operator with two shops opens the claim link for the second one. Before this the session it handed
+  // back was scoped to that shop alone, so the first stayed in the dashboard and every save of it was a 403.
+  const SECOND = "o-e2e-store-shop-two";
+  await query("delete from profiles where id = $1", [SECOND]);
+  await query("delete from profile_emails where listing = $1", [SECOND]);
+  r = await json(`/claims/${SECOND}/exchange`, { method: "POST", headers: { "x-session": session }, body: JSON.stringify({ token: claimTokenV2(SECOND) }) });
+  const widened = String(r.body?.session);
+  check("the second link is exchanged", r.status === 200 && !!widened, r);
+  r = await json(`/profiles/${SECOND}`, { method: "PUT", headers: { "x-session": widened }, body: JSON.stringify({ profile: { v: 1 }, patch: { title: "Second Shop" }, published: true, owner: OWNER }) });
+  check("the new session edits the second shop", r.status === 200, r);
+  r = await json(`/profiles/${ID}`, { method: "PUT", headers: { "x-session": widened }, body: JSON.stringify({ profile: { v: 1, instantBook: false }, patch: { title: "E2E Store Shop", options: [{ name: "Tour", detail: "1 hour", price: 50 }] }, published: true, owner: OWNER }) });
+  check("and still edits the first", r.status === 200, r);
+  // Nothing is widened that the caller did not already hold: a session for one shop is not a session for another.
+  r = await json(`/profiles/${SECOND}`, { method: "PUT", headers: { "x-session": linkSession }, body: JSON.stringify({ profile: { v: 1 }, patch: {}, published: true }) });
+  check("a session for one shop alone still cannot edit another", r.status === 403, r);
+  await query("delete from profiles where id = $1", [SECOND]);
+  await query("delete from profile_emails where listing = $1", [SECOND]);
+}
 
 console.log("\n5. A guest books (no card step)");
 r = await json(`/bookings`, { method: "POST", body: JSON.stringify({ listing: ID, code: "E2E-S001", date: new Date(Date.now() + 2 * 86400000).toISOString().slice(0, 10), slot: "11:00", qty: 2, service: "Tour", variant: "1 hour", addons: [], total: 100, guest: { name: "Guest One", phone: "4165550100", email: "guest@e2e-store.example" }, pay: false }) });
