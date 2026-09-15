@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { parseHours } from "../operator";
+import { hoursLine, parseHours } from "../operator";
+import { parseWeek } from "../openNow";
 
 /**
  * The week a shop gets the first time it claims, read from the hour lines its own website published.
@@ -63,4 +64,27 @@ test("a line with no hours and no day changes nothing", () => {
 
 test("the later line wins, so a seasonal list ends on the season it is in", () => {
   assert.equal(week(["Jun 22 - Aug 9: 9am-8pm daily", "Sep 8 - Sep 27: 9am-5pm daily"]), open("09:00", "17:00"));
+});
+
+/**
+ * The hours a claimed shop shows its guests. The dashboard keeps a 24 hour clock because that is what a time
+ * input speaks, and the listing used to print it straight out: claiming a shop turned its own
+ * "9:00 AM - 5:00 PM" into "Sun: 09:00 to 17:00", on the listing and in Otto's answer about opening time.
+ */
+
+const line = (open: string, close: string, closed = false) => hoursLine({ closed, open, close }, 0);
+
+test("a claimed shop reads its hours to guests on a twelve hour clock", () => {
+  assert.equal(line("09:00", "17:00"), "Sun: 9:00 AM to 5:00 PM");
+  assert.equal(line("00:00", "12:00"), "Sun: 12:00 AM to 12:00 PM");
+  assert.equal(line("18:30", "23:45"), "Sun: 6:30 PM to 11:45 PM");
+  assert.equal(line("09:00", "17:00", true), "Sun: Closed");
+});
+
+test("the line a guest reads is still the week the app reads back", () => {
+  // Open now, the calendar and the assistant all parse these lines again, including a close after midnight.
+  const week = parseWeek([hoursLine({ closed: false, open: "18:00", close: "01:00" }, 5)]);
+  assert.deepEqual(week?.[5], { open: 18 * 60, close: 25 * 60 });
+  const plain = parseWeek([hoursLine({ closed: false, open: "10:00", close: "18:00" }, 2)]);
+  assert.deepEqual(plain?.[2], { open: 10 * 60, close: 18 * 60 });
 });

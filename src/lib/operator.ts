@@ -2,6 +2,7 @@ import type { Booking, CategoryId, OperatorContact, Unclaimed, UnclaimedOption, 
 import { forgetClaim, saveRemoteProfile, type RemoteBooking } from "./api";
 import { addressLine, contactFor, experienceById, fmtPhone, getCatalog, setOperatorOverride, siteUrl } from "./catalog";
 import { dateKey, startOfToday } from "./dates";
+import { fmtTime } from "./format";
 import { freeCancel } from "./listingDerive";
 
 /**
@@ -514,6 +515,17 @@ export function fmtTotal(b: OpBooking): string {
 
 /* ---------- the listing the guest sees, rebuilt from the profile ---------- */
 
+/**
+ * One day of the week as the listing's Hours block reads it out, and as Otto quotes it back when a guest asks
+ * what time they open. The dashboard stores a 24 hour clock because that is what a time input speaks; a guest
+ * page does not. Claiming a shop used to swap its own "9:00 AM - 5:00 PM" line for "Sun: 09:00 to 17:00", so
+ * the one thing claiming should never change, the hours a guest reads, is the one thing it changed. Every
+ * other time on the guest side is fmtTime, down to the rule that emails may never print a 24 hour clock.
+ */
+export function hoursLine(h: DayHours, i: number): string {
+  return DAY_SHORT[i] + ": " + (h.closed ? "Closed" : fmtTime(h.open) + " to " + fmtTime(h.close));
+}
+
 export function toCatalog(p: OperatorProfile, base: Unclaimed): Partial<Unclaimed> {
   const options: UnclaimedOption[] = [];
   const services: UnclaimedService[] = [];
@@ -544,7 +556,7 @@ export function toCatalog(p: OperatorProfile, base: Unclaimed): Partial<Unclaime
     policies: p.policy.length ? p.policy : base.policies,
     cancellation: p.policy.find((l) => /cancel|refund/i.test(l)) || (p.policy.length ? undefined : base.cancellation),
     fc: freeCancel(p.policy.find((l) => /cancel|refund/i.test(l)) || (p.policy.length ? "" : base.cancellation)) || undefined,
-    hoursText: p.hours.some((h) => !h.closed) ? p.hours.map((h, i) => DAY_SHORT[i] + ": " + (h.closed ? "Closed" : h.open + " to " + h.close)) : base.hoursText,
+    hoursText: p.hours.some((h) => !h.closed) ? p.hours.map(hoursLine) : base.hoursText,
   };
 }
 
