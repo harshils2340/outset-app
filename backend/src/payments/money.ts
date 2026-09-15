@@ -118,16 +118,19 @@ export function priceBooking(options: PricedOption[], addons: PricedOption[], se
   // match won regardless, so an adult was charged the child's price. When the page sent a total, prefer the tier
   // whose own price adds up to it; the choice is still only ever among the listing's published prices.
   const labelled = inService.filter((x) => same(x.detail, variant));
-  const add0 = addonNames.map((n) => addons.find((a) => key(a.name) === key(n))?.price ?? 0).reduce((a, b) => a + b, 0);
+  // An extra counts only when it carries a real price, the same rule the experience itself is held to below.
+  // The dashboard's price box took whatever was typed, so a stray minus on "Beer package" (-20) came off the
+  // guest's bill, and enough of them drove the booking negative: subtotal -400, fee -0, and an operator email
+  // reading "you receive -$380". Zero and null already meant "no charge"; a negative means the same now.
+  const add = addonNames.map((n) => addons.find((a) => key(a.name) === key(n))?.price ?? 0).filter((n) => n > 0).reduce((a, b) => a + b, 0);
   const fits = (x: PricedOption) => {
     if (hintTotal == null || x.price == null) return false;
-    const sub = Math.round(((perPerson(x) ? x.price * qty : x.price) + add0) * 100) / 100;
+    const sub = Math.round(((perPerson(x) ? x.price * qty : x.price) + add) * 100) / 100;
     return Math.abs(sub + serviceFee(sub) - hintTotal) < 0.5;
   };
   const o = (labelled.length > 1 ? labelled.find(fits) : undefined) || labelled[0] || (!variant ? inService[0] : undefined) || (priced.length === 1 ? priced[0] : undefined);
   if (!o || o.price == null || !(o.price > 0)) return null;
   const base = perPerson(o) ? o.price * qty : o.price;
-  const add = addonNames.map((n) => addons.find((a) => key(a.name) === key(n))?.price ?? 0).reduce((a, b) => a + b, 0);
   const subtotal = Math.round((base + add) * 100) / 100;
   const fee = serviceFee(subtotal);
   return { subtotal, fee, total: subtotal + fee };

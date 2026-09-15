@@ -6,6 +6,14 @@ import { OD_ICONS, useOp } from "./opContext";
 import { useReorder } from "./useReorder";
 
 /**
+ * What a typed price box is worth. Empty means the operator has not set one. `min={0}` only marks a typed
+ * "-20" invalid and nothing on this page reads that, so a stray minus was saved and went straight to the
+ * guest listing: a negative extra came off the guest's bill, and enough of them put a booking's total below
+ * zero. A price is money, so it is never negative and never NaN.
+ */
+const priceFrom = (raw: string): number | null => (raw === "" ? null : Math.max(0, Number(raw) || 0));
+
+/**
  * Menu editor. Uber Eats menu manager plus Booksy service list: every service has a description, a duration,
  * a capacity, a live switch and price options. Changes save on blur and show on the guest listing right away.
  */
@@ -143,7 +151,7 @@ export function OpServices() {
           <div className="odaddon" key={a.id}>
             <input value={a.name} placeholder="Add-on name" aria-label="Add-on name" onChange={(e) => patchAddon(a.id, { name: e.target.value })} />
             <input value={a.detail} placeholder="Detail (optional)" aria-label={"Detail for " + (a.name || "this add-on")} onChange={(e) => patchAddon(a.id, { detail: e.target.value })} />
-            <label className="opinput"><span>$</span><input type="number" min={0} value={a.price ?? ""} placeholder="0" aria-label={"Price for " + (a.name || "this add-on")} onChange={(e) => patchAddon(a.id, { price: e.target.value === "" ? null : Number(e.target.value) })} /></label>
+            <label className="opinput"><span>$</span><input type="number" min={0} value={a.price ?? ""} placeholder="0" aria-label={"Price for " + (a.name || "this add-on")} onChange={(e) => patchAddon(a.id, { price: priceFrom(e.target.value) })} /></label>
             <button type="button" className="odiconbtn" onClick={() => set((cur) => ({ ...cur, addons: cur.addons.filter((x) => x.id !== a.id) }))} aria-label={"Remove " + (a.name || "this add-on")}><Markup html={OD_ICONS.trash} /></button>
           </div>
         ))}
@@ -156,7 +164,7 @@ function VariantRow({ v, onChange, onRemove, canRemove, jumpHere }: { v: OpVaria
   return (
     <div className={"odvar" + (v.price == null ? " unpriced" : "")}>
       <input value={v.label} placeholder="Option, like 1 hour or Tandem" aria-label="Option name" onChange={(e) => onChange({ label: e.target.value })} />
-      <label className="opinput" data-jump={jumpHere ? "price" : undefined}><span>$</span><input type="number" min={0} value={v.price ?? ""} placeholder="Set" aria-label={"Price for " + (v.label || "this option")} onChange={(e) => onChange({ price: e.target.value === "" ? null : Number(e.target.value) })} /></label>
+      <label className="opinput" data-jump={jumpHere ? "price" : undefined}><span>$</span><input type="number" min={0} value={v.price ?? ""} placeholder="Set" aria-label={"Price for " + (v.label || "this option")} onChange={(e) => onChange({ price: priceFrom(e.target.value) })} /></label>
       <select value={v.per} onChange={(e) => onChange({ per: e.target.value })}>
         {PER_UNITS.map((u) => <option key={u} value={u}>per {u}</option>)}
       </select>

@@ -55,3 +55,31 @@ test("a priced experience still carries its extras", () => {
   assert.equal(p?.subtotal, 110);
   assert.equal(p?.total, 110 + serviceFee(110));
 });
+
+/**
+ * The dashboard's price box took whatever was typed, and `min={0}` stops nothing, so an operator who meant $20
+ * and typed -20 published an extra that took money off the guest's bill. The experience's own price was already
+ * held to "positive or no price at all"; the extras were not, and enough of them drove a booking past zero:
+ * subtotal -400, fee -0, and an operator email reading "you receive -$380".
+ */
+const SAIL = [{ name: "Sunset sail", detail: "", price: 100 }];
+
+test("an extra priced below zero takes nothing off the bill", () => {
+  const extras = [{ name: "Beer package", detail: "", price: -20 }];
+  const p = priceBooking(SAIL, extras, "Sunset sail", "", 2, ["Beer package"]);
+  assert.equal(p?.subtotal, 200);
+  assert.equal(p?.total, 200 + serviceFee(200));
+});
+
+test("no pile of negative extras can make a booking cost less than nothing", () => {
+  const extras = [{ name: "Discount", detail: "", price: -500 }];
+  const p = priceBooking(SAIL, extras, "Sunset sail", "", 1, ["Discount"]);
+  assert.equal(p?.subtotal, 100);
+  assert.ok((p?.total ?? 0) > 0);
+});
+
+test("a free extra is still free, and a priced one still counts", () => {
+  const extras = [{ name: "Photo pack", detail: "", price: 0 }, { name: "Wetsuit", detail: "", price: 30 }];
+  assert.equal(priceBooking(SAIL, extras, "Sunset sail", "", 1, ["Photo pack"])?.subtotal, 100);
+  assert.equal(priceBooking(SAIL, extras, "Sunset sail", "", 1, ["Photo pack", "Wetsuit"])?.subtotal, 130);
+});

@@ -26,7 +26,7 @@ import {
 } from "../../lib/catalog";
 import { fmtDate, fmtReviews, fmtTime, money, priceWith, unitLine } from "../../lib/format";
 import { formatDistance, milesBetween, type GeoPoint } from "../../lib/geo";
-import { priceFor, priceUnclaimed, serviceFeeLabel } from "../../lib/pricing";
+import { addonPrice, priceFor, priceUnclaimed, serviceFeeLabel } from "../../lib/pricing";
 import { useApp } from "../../state/AppProvider";
 import { SIZES, srcSet, thumb } from "../../lib/images";
 import { embedAutoplay, listingMedia, photoCandidates, probePhotos, type Media } from "../../lib/media";
@@ -954,7 +954,7 @@ function RequestBody({
                       <b>{a.name}</b>
                       {a.detail ? <small>{a.detail}</small> : null}
                     </span>
-                    <span className="addonprice">{a.price ? "+" + money(a.price) : "Free"}</span>
+                    <span className="addonprice">{addonPrice(a) ? "+" + money(addonPrice(a)) : "Free"}</span>
                   </button>
                 ))}
               </div>

@@ -3,7 +3,7 @@ import "../../styles/air-listing.css";
 import { ICONS } from "../../data/icons";
 import type { Booking } from "../../data/types";
 import { addressLine, contactFor, experienceById, fmtPhone, mapsHref, perPerson, publicRating, telHref } from "../../lib/catalog";
-import { priceUnclaimed, serviceFeeLabel } from "../../lib/pricing";
+import { addonPrice, priceUnclaimed, serviceFeeLabel } from "../../lib/pricing";
 import { tidyAddress, tidyLength, tidyName } from "./WebListing";
 import { fmtReviews, fmtTime, money } from "../../lib/format";
 import { Photo } from "../art/Photo";
@@ -143,7 +143,7 @@ export function WebConfirm({ booking, onDone, onOpen }: { booking: Booking; onDo
                 {lines && picked ? (
                   <div className="allines alconfirmlines">
                     <div className="alline"><span className="wrap">{perPerson(picked) && picked.price != null ? money(picked.price) + " × " + booking.qty + (booking.qty === 1 ? " guest" : " guests") : tidyName(picked.name)}</span><span>{money(lines.base)}</span></div>
-                    {addonRows.map((a) => <div className="alline" key={a.name}><span className="wrap">{a.name}</span><span>{money(a.price ?? 0)}</span></div>)}
+                    {addonRows.map((a) => <div className="alline" key={a.name}><span className="wrap">{a.name}</span><span>{money(addonPrice(a))}</span></div>)}
                     {lines.fee ? <div className="alline"><span className="wrap">{serviceFeeLabel(lines)}</span><span>{money(lines.fee)}</span></div> : null}
                   </div>
                 ) : picked ? (

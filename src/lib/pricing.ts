@@ -59,9 +59,17 @@ export function priceFor(l: Listing, qty: number, addonIds: string[]): PriceBrea
  * none, so nobody was charged the $32 and the operator got a booking that said nothing about money. The extras
  * keep their own lines, because those prices are real; the total does not exist until the trip has one.
  */
+/**
+ * What one extra adds to the bill. Only a positive price is a price, on the extras as much as on the
+ * experience. Mirrors priceBooking in backend/src/payments/money.ts, which is what the guest is actually
+ * charged: a zero there means "pay on site", and a negative one, which the dashboard's price box used to
+ * accept, came off the bill and could drive a booking's total below zero.
+ */
+export const addonPrice = (a: { price: number | null }): number => (a.price != null && a.price > 0 ? a.price : 0);
+
 export function priceUnclaimed(o: UnclaimedOption | null, qty: number, addons: UnclaimedOption[] = []): PriceBreakdown {
-  const add = addons.reduce((n, a) => n + (a.price ?? 0), 0);
-  if (!o || o.price == null) return { base: 0, add, sub: 0, fee: 0, rate: 0, capped: false, total: 0 };
+  const add = addons.reduce((n, a) => n + addonPrice(a), 0);
+  if (!o || o.price == null || !(o.price > 0)) return { base: 0, add, sub: 0, fee: 0, rate: 0, capped: false, total: 0 };
   const base = perPerson(o) ? o.price * qty : o.price;
   return breakdown(base, add);
 }

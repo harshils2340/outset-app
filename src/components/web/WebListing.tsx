@@ -14,7 +14,7 @@ import { cleanDesc, durationLabel, freeCancel, minAge } from "../../lib/listingD
 import { clockIn, itemOpenState, itemWeek, zoneFor } from "../../lib/openNow";
 import { DAY_SHORT, clock12, dayLabel, todaysDeals } from "../../lib/companyAgent";
 import { fmtDistance, kmBetween, nearestLocation } from "../../lib/places";
-import { priceUnclaimed, serviceFeeLabel } from "../../lib/pricing";
+import { addonPrice, priceUnclaimed, serviceFeeLabel } from "../../lib/pricing";
 import { listingUrl } from "../../lib/site";
 import { adminWebsite, isAdmin, subscribeAdmin } from "../../lib/admin";
 import { dateKey, startOfToday } from "../../lib/dates";
@@ -1607,7 +1607,7 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
                     <button key={a.name} type="button" className="alvariant check" aria-pressed={addonIdx.includes(i)} onClick={() => setAddonIdx((c) => (c.includes(i) ? c.filter((x) => x !== i) : [...c, i]))}>
                       <span className="alcheck" aria-hidden="true"><Markup html={ICONS.check} /></span>
                       <span>{a.name}</span>
-                      <b>{a.price ? "+" + money(a.price) : "Free"}</b>
+                      <b>{addonPrice(a) ? "+" + money(addonPrice(a)) : "Free"}</b>
                     </button>
                   ))}
                 </div>
@@ -1859,13 +1859,13 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
                       <u>{perPerson(picked) && picked.price != null ? money(picked.price) + " × " + qty + (qty === 1 ? " guest" : " guests") : tidyName(picked.name)}</u>
                       <span>{money(p.base)}</span>
                     </div>
-                    {extras.map((a) => <div className="alline" key={a.name}><u>{a.name}</u><span>{money(a.price ?? 0)}</span></div>)}
+                    {extras.map((a) => <div className="alline" key={a.name}><u>{a.name}</u><span>{money(addonPrice(a))}</span></div>)}
                     {p.fee ? <div className="alline"><u>{serviceFeeLabel(p)}</u><span>{money(p.fee)}</span></div> : null}
                     <div className="alline total"><span>Total</span><span>{p.total ? money(p.total) : "Pay on site"}</span></div>
                   </div>
                 ) : (
                   <div className="allines">
-                    {extras.map((a) => <div className="alline" key={a.name}><u>{a.name}</u><span>{money(a.price ?? 0)}</span></div>)}
+                    {extras.map((a) => <div className="alline" key={a.name}><u>{a.name}</u><span>{money(addonPrice(a))}</span></div>)}
                     <div className="alline total"><span>Total</span><span>{p.total ? money(p.total) : "Pay on site"}</span></div>
                   </div>
                 )}
