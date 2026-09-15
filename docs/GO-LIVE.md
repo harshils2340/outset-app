@@ -22,7 +22,7 @@ Check before repeating any of this: `curl https://outset-api.onrender.com/config
 1. dashboard.stripe.com → Developers → API keys → copy the Secret key (`sk_test_...` to demo, `sk_live_...` for real money). Set it on the Render service as `STRIPE_SECRET_KEY`.
 2. Developers → Webhooks → Add endpoint → URL `https://<your render url>/stripe/webhook`, events `checkout.session.completed` and `checkout.session.expired`. Copy the signing secret (`whsec_...`) into `STRIPE_WEBHOOK_SECRET`.
 3. That is all. From then on "Book" becomes "Book and pay": the guest lands on Stripe's hosted page, the card is held, the operator gets the request, the money is captured when they accept and released when they decline. Instant-book listings capture at once. With no key, bookings fall back to pay on site.
-4. Payouts to operators: the platform account receives the money today; pay operators from the Stripe dashboard until Stripe Connect is switched on (next step once the first operators are live).
+4. Payouts to operators: the platform account receives the money. Once Stripe Connect (Express) is switched on in the Stripe dashboard, an operator connects their bank from the Payouts page (`POST /payouts/:id/connect` opens Stripe's hosted onboarding), and `.github/workflows/pay-operators.yml` calls `POST /admin/payouts/run` every Monday to transfer what is due. That workflow needs the `OUTSET_ADMIN_KEY` repository secret, equal to `ADMIN_KEY` on the API service. Until Connect is on, pay operators from the Stripe dashboard.
 
 ## 1c. Admin key
 Set `ADMIN_KEY` on Render to any long random string. The internal routes (raw operator rows, outreach drafts) then only answer to requests carrying `x-admin-key`; without it they are closed on the public host.
