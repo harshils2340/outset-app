@@ -43,7 +43,7 @@
    {
     "name": "test for me",
     "detail": "Standard",
-    "price": null,
+    "price": 40,
     "per": "/person"
    }
   ],
@@ -96,7 +96,7 @@
     "variants": [
      {
       "label": "Standard",
-      "price": null,
+      "price": 40,
       "per": "/person",
       "optionIdx": 4
      }
@@ -120,5 +120,5 @@
    "Sat: 9:00 AM to 7:00 PM"
   ]
  },
- "updatedAt": "2026-09-15T23:35:52.683Z"
+ "updatedAt": "2026-09-15T23:35:55.489Z"
 }
