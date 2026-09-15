@@ -625,16 +625,19 @@ function RequestBody({
                 </label>
                 <label>
                   <small>Email</small>
-                  <input value={guest.email} placeholder="For your confirmation" inputMode="email" autoComplete="email" onChange={(e) => setGuest({ ...guest, email: e.target.value })} />
+                  <input value={guest.email} placeholder="Where your confirmation goes" inputMode="email" autoComplete="email" onChange={(e) => setGuest({ ...guest, email: e.target.value })} />
                 </label>
               </div>
+              {/* Only the name and the mobile are required, and email is the one channel that is built, so a
+                  guest who skips it hears nothing: not the confirmation, not a decline, not a cancellation. */}
+              {!guest.email.trim() ? <p className="airsecsub">Leave it empty and we have no way to tell you when {item.title} answers. Your code stays under Trips on this device.</p> : null}
             </section>
 
             <section className="airsec">
               <p className="airfine">
                 {instant
                   ? "Confirmed straight away."
-                  : "This is a request. " + item.title + " confirms by email, and nothing is charged until they do."}{" "}
+                  : "This is a request. " + item.title + (guest.email.trim() ? " confirms by email, and nothing" : " confirms it, and nothing") + " is charged until they do."}{" "}
                 Meet at {item.area}.
               </p>
             </section>

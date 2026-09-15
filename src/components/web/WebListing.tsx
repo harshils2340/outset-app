@@ -1839,9 +1839,12 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
                   </div>
                   <label className="alboxcell full">
                     <small>Email</small>
-                    <input value={guest.email || ""} placeholder="Email for your confirmation" inputMode="email" autoComplete="email" onChange={(e) => setGuest({ ...guest, email: e.target.value })} />
+                    <input value={guest.email || ""} placeholder="Where your confirmation goes" inputMode="email" autoComplete="email" onChange={(e) => setGuest({ ...guest, email: e.target.value })} />
                   </label>
                 </div>
+                {/* Only the name and the mobile are required, and email is the one channel that is built, so a
+                    guest who skips it hears nothing: not the confirmation, not a decline, not a cancellation. */}
+                {!(guest.email || "").trim() ? <p className="alfine">Leave it empty and we have no way to tell you when {item.title} answers.</p> : null}
 
                 <button type="button" ref={reserveRef} className="alprimary" onClick={pressReserve} aria-disabled={!ready || sending} aria-busy={sending}>
                   {sending ? "Sending…" : ready ? ctaLabel + (p.total ? " · " + money(p.total) : "") : time == null ? "Pick a time" : "Add your name and number"}
@@ -1870,7 +1873,7 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
                   </div>
                 )}
                 <p className="alfine">
-                  {instant ? "Instant confirmation. " : "The operator confirms by email. "}
+                  {instant ? "Instant confirmation. " : (guest.email || "").trim() ? "The operator confirms by email. " : "The operator confirms your request. "}
                   {cancel ? cancel + "." : item.cancellation ? "Cancellation terms are set by " + item.title + ", see the policy below." : "Cancellation terms are set by the operator."}
                 </p>
               </div>

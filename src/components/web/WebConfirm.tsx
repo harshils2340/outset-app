@@ -90,9 +90,16 @@ export function WebConfirm({ booking, onDone, onOpen }: { booking: Booking; onDo
               <div className="alconfirmrow">
                 <span><b>Confirmation code</b><small>{booking.code}</small></span>
               </div>
+              {/* Only the email is a channel we send on. Text messages are not built, so a phone number listed
+                  under "Updates go to" was a promise nothing keeps: it is how the shop reaches the guest. */}
+              {booking.guest?.email ? (
+                <div className="alconfirmrow">
+                  <span><b>Updates go to</b><small>{booking.guest.email}</small></span>
+                </div>
+              ) : null}
               {booking.guest?.phone ? (
                 <div className="alconfirmrow">
-                  <span><b>Updates go to</b><small>{fmtPhone(booking.guest.phone)}{booking.guest.email ? " · " + booking.guest.email : ""}</small></span>
+                  <span><b>{item.title} can reach you on</b><small>{fmtPhone(booking.guest.phone)}</small></span>
                 </div>
               ) : null}
             </section>
@@ -100,7 +107,9 @@ export function WebConfirm({ booking, onDone, onOpen }: { booking: Booking; onDo
             <section className="alsec">
               <h2>What happens next</h2>
               <ol className="alsteps">
-                <li><span className="n">1</span><span>{instant ? "Your spot is confirmed. The details are in your confirmation email." : "The operator gets your request and confirms. You'll get an email the moment they answer."}</span></li>
+                {/* A guest who left the email box empty gets no mail, because there is nowhere to send it, and
+                    telling them one is coming is how a declined request goes unheard. */}
+                <li><span className="n">1</span><span>{instant ? (booking.guest?.email ? "Your spot is confirmed. The details are in your confirmation email." : "Your spot is confirmed. Keep the code above: it is your booking.") : booking.guest?.email ? "The operator gets your request and confirms. You'll get an email the moment they answer." : "The operator gets your request and confirms. With no email on the booking, check back here or call them for the answer."}</span></li>
                 <li><span className="n">2</span><span>Show up 15 minutes early. If there's a waiver, it's linked on the listing.</span></li>
                 <li><span className="n">3</span><span>Questions? Otto on the listing answers from the operator's own info.</span></li>
               </ol>

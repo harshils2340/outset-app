@@ -37,7 +37,7 @@ export function ConfirmView() {
         <Markup html={ICONS.checkbig} />
       </div>
       <h1>{instant ? "Booked." : "Request sent."}</h1>
-      <p>{instant ? op + " has it on their board. No call needed." : op + " confirms by email, usually within the day. Nothing is charged until they do."}</p>
+      <p>{instant ? op + " has it on their board. No call needed." : op + (b.guest?.email ? " confirms by email, usually within the day." : " confirms it, usually within the day.") + " Nothing is charged until they do."}</p>
       <div className="ticket">
         <div className="top">
           <small className="eyebrow">Check-in code</small>
@@ -98,7 +98,10 @@ export function ConfirmView() {
           See my trips
         </button>
       </div>
-      <p className="note">A confirmation was sent to your phone.</p>
+      {/* Text messages are not built, so nothing has ever reached the guest's phone. The email is real, and
+          only when they gave one: the email box is optional and the mobile is the required field, so a guest
+          who left it empty was told a confirmation had been sent when nothing had been. */}
+      <p className="note">{b.guest?.email ? "A copy is on its way to " + b.guest.email + "." : "Keep your code. This trip is saved under Trips."}</p>
     </div>
   );
 }
