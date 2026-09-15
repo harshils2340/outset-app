@@ -176,6 +176,13 @@
 .optoggle.small.on .knob::after{transform:translateX(14px);}
 
 /* ---------- login / claim ---------- */
+/* What a claim link shows while the dashboard loads: the mark and one line, never the claim form. */
+.odsplash{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;background:var(--surface);color:var(--ink);font-family:var(--f-display);text-align:center;padding:24px;}
+.odsplash > :first-child{animation:odsplashpulse 1.4s ease-in-out infinite;}
+.odsplash b{font-size:18px;font-weight:600;letter-spacing:-.02em;}
+.odsplash small{font-size:13.5px;color:var(--ink-faint);}
+.odsplash.compact{min-height:0;height:100%;}
+@keyframes odsplashpulse{0%,100%{opacity:1;}50%{opacity:.5;}}
 .odlogin{min-height:100vh;display:grid;grid-template-columns:minmax(0,1fr) 520px;background:var(--surface);color:var(--ink);font-family:var(--f-display);}
 .odlogin-side{padding:48px 64px;display:flex;flex-direction:column;justify-content:center;background:var(--ground);}
 .odlogin-brand{display:flex;align-items:center;gap:8px;color:var(--accent);margin-bottom:40px;text-align:left;}

@@ -330,6 +330,19 @@ export function OpLogin({ claimId, claimToken, compact, onEnter, onBack }: { cla
     </div>
   ) : null;
 
+  // A claim link goes straight to the dashboard. Until the listing and any saved profile land there is nothing
+  // to show but the brand, so the claim form never flashes in between. A bad or expired link falls through
+  // to the form below with its message.
+  if (linkState === "checking") {
+    return (
+      <div className={"odsplash" + (compact ? " compact" : "")} role="status" aria-live="polite">
+        <Mark size={44} />
+        <b>Opening your dashboard…</b>
+        <small>{picked ? picked.title : "One moment"}</small>
+      </div>
+    );
+  }
+
   return (
     <div className={"odlogin" + (compact ? " compact" : "")}>
       <div className="odlogin-side">
@@ -409,7 +422,6 @@ export function OpLogin({ claimId, claimToken, compact, onEnter, onBack }: { cla
           <>
             <button type="button" className="odlink" onClick={() => { setStep("pick"); setErr(null); }}><Markup html={OD_ICONS.back} /> Different business</button>
             {head}
-            {linkState === "checking" ? <p className="odmuted">Opening your dashboard…</p> : null}
             {linkState === "bad" ? <p className="oderr">That claim link didn't check out. Ask for a fresh one below, or sign in with your email.</p> : null}
             {linkState === "expired" ? <p className="oderr">That claim link has expired. Links stay good for a while so an old forwarded email cannot open your dashboard. Ask for a fresh one below, it arrives in a moment.</p> : null}
             <h2>Who's the owner?</h2>

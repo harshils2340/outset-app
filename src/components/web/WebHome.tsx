@@ -1,5 +1,5 @@
 import "../../styles/air-home.css";
-import { createContext, useContext, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, createContext, useContext, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { CATS, CATMETA, WORLDS, inCat, worldOf, type WorldChip } from "../../data/categories";
 import { ART_LABEL } from "../../data/art";
 import { ICONS } from "../../data/icons";
@@ -1673,98 +1673,97 @@ export function WebHome({ onOpenApp, onOperators }: { onOpenApp: () => void; onO
       {refine ? (
         <div className="ah-modal-scrim" onClick={() => setRefine(null)}>
           <div className="ah-modal ah-refine" role="dialog" aria-modal="true" aria-labelledby="ah-refine-title" onClick={(e) => e.stopPropagation()}>
-            <div className="ah-modal-head">
-              <button type="button" className="ah-iconbtn" aria-label="Close" onClick={() => setRefine(null)}><Markup html={SVG.close} /></button>
+            <div className="ah-refine-head">
+              <button type="button" className="ah-refine-x" aria-label="Close" onClick={() => setRefine(null)}><Markup html={SVG.close} /></button>
               <h2 id="ah-refine-title">Where, when and who</h2>
-              <span />
             </div>
-            <div className="ah-modal-body">
-              <section className={"ah-fsec ah-rsec" + (refine === "where" ? " open" : "")}>
-                <button type="button" className="ah-rsec-head" aria-expanded={refine === "where"} onClick={() => setRefine("where")}>
-                  <h3>Where</h3>
-                  <span className="ah-rsec-value">{placeName || "Anywhere"}</span>
-                </button>
-                {refine === "where" ? (
-                  <div className="ah-rsec-body">
-                    <label className="ah-rinput">
-                      <Markup html={SVG.search} />
-                      <input
-                        ref={whereInput}
-                        autoFocus
-                        value={whereText}
-                        autoComplete="off"
-                        spellCheck={false}
-                        placeholder={placeName || "Search destinations"}
-                        aria-label="Where"
-                        onChange={(e) => { setWhereText(e.target.value); setHit(-1); }}
-                        onKeyDown={onWhereKey}
-                      />
-                      {whereText || placeName ? (
-                        <button type="button" className="ah-clear" aria-label="Clear where" onClick={clearWhere}><Markup html={SVG.close} /></button>
-                      ) : null}
-                    </label>
-                    {wt && !whereRows.length ? <p className="ah-pop-note">Keep typing, or try a bigger town nearby.</p> : null}
-                    <div className="ah-rlist" role="listbox" aria-label="Places">
-                      {whereRows.map((r, i) => (
-                        <div key={r.key}>
-                          {r.head ? <p className="ah-pop-head">{r.head}</p> : null}
-                          <button
-                            type="button"
-                            role="option"
-                            aria-selected={hit === i || !!r.on}
-                            className={"ah-pop-row" + (hit === i ? " hit" : "") + (r.on ? " on" : "")}
-                            onMouseEnter={() => setHit(i)}
-                            onClick={r.pick}
-                            disabled={r.key === "nearby" && locating}
-                          >
-                            <span className="ah-pop-icon"><Markup className="ah-ico" html={r.icon || ICONS.pin} /></span>
-                            <span className="ah-pop-text">
-                              <b>{r.title}</b>
-                              {r.sub ? <small>{r.sub}</small> : null}
-                            </span>
-                          </button>
-                        </div>
-                      ))}
-                    </div>
+            <div className="ah-refine-body">
+              {refine === "where" ? (
+                <section className="ah-rcard open" aria-label="Where">
+                  <h3>Where to?</h3>
+                  <label className="ah-rinput">
+                    <Markup html={SVG.search} />
+                    <input
+                      ref={whereInput}
+                      autoFocus
+                      value={whereText}
+                      autoComplete="off"
+                      spellCheck={false}
+                      placeholder={placeName || "Search destinations"}
+                      aria-label="Where"
+                      onChange={(e) => { setWhereText(e.target.value); setHit(-1); }}
+                      onKeyDown={onWhereKey}
+                    />
+                    {whereText || placeName ? (
+                      <button type="button" className="ah-clear" aria-label="Clear where" onClick={clearWhere}><Markup html={SVG.close} /></button>
+                    ) : null}
+                  </label>
+                  {wt && !whereRows.length ? <p className="ah-pop-note">Keep typing, or try a bigger town nearby.</p> : null}
+                  <div className="ah-rgrid" role="listbox" aria-label="Places">
+                    {(wt ? whereRows : whereRows.slice(0, 8)).map((r, i) => (
+                      <Fragment key={r.key}>
+                        {r.head ? <p className="ah-pop-head">{r.head}</p> : null}
+                        <button
+                          type="button"
+                          role="option"
+                          aria-selected={hit === i || !!r.on}
+                          className={"ah-pop-row" + (hit === i ? " hit" : "") + (r.on ? " on" : "")}
+                          onMouseEnter={() => setHit(i)}
+                          onClick={r.pick}
+                          disabled={r.key === "nearby" && locating}
+                        >
+                          <span className="ah-pop-icon"><Markup className="ah-ico" html={r.icon || ICONS.pin} /></span>
+                          <span className="ah-pop-text">
+                            <b>{r.title}</b>
+                            {r.sub ? <small>{r.sub}</small> : null}
+                          </span>
+                        </button>
+                      </Fragment>
+                    ))}
                   </div>
-                ) : null}
-              </section>
-              <section className={"ah-fsec ah-rsec" + (refine === "when" ? " open" : "")}>
-                <button type="button" className="ah-rsec-head" aria-expanded={refine === "when"} onClick={() => setRefine("when")}>
-                  <h3>When</h3>
-                  <span className="ah-rsec-value">{dayLabel}</span>
+                </section>
+              ) : (
+                <button type="button" className="ah-rcard folded" onClick={() => setRefine("where")}>
+                  <span>Where</span>
+                  <b>{placeName || "Anywhere"}</b>
                 </button>
-                {refine === "when" ? (
-                  <div className="ah-rsec-body">
-                    <Calendar dates={dates} idx={state.dateIdx} onPick={(i) => { setDate(i); setRefine("who"); }} />
-                    <div className="ah-chips">
-                      {[0, 1].map((i) => (
-                        <button type="button" key={i} aria-pressed={state.dateIdx === i} onClick={() => { setDate(i); setRefine("who"); }}>{i === 0 ? "Today" : "Tomorrow"}</button>
-                      ))}
-                      {(() => {
-                        const sat = dates.findIndex((d, i) => i > 1 && d.getDay() === 6);
-                        return sat > 0 ? <button type="button" aria-pressed={state.dateIdx === sat} onClick={() => { setDate(sat); setRefine("who"); }}>This Saturday</button> : null;
-                      })()}
-                      <span className="ah-chips-note">Operators take requests for the next {dates.length} days.</span>
-                    </div>
+              )}
+              {refine === "when" ? (
+                <section className="ah-rcard open" aria-label="When">
+                  <h3>When?</h3>
+                  <Calendar dates={dates} idx={state.dateIdx} onPick={(i) => { setDate(i); setRefine("who"); }} />
+                  <div className="ah-chips">
+                    {[0, 1].map((i) => (
+                      <button type="button" key={i} aria-pressed={state.dateIdx === i} onClick={() => { setDate(i); setRefine("who"); }}>{i === 0 ? "Today" : "Tomorrow"}</button>
+                    ))}
+                    {(() => {
+                      const sat = dates.findIndex((d, i) => i > 1 && d.getDay() === 6);
+                      return sat > 0 ? <button type="button" aria-pressed={state.dateIdx === sat} onClick={() => { setDate(sat); setRefine("who"); }}>This Saturday</button> : null;
+                    })()}
+                    <span className="ah-chips-note">Operators take requests for the next {dates.length} days.</span>
                   </div>
-                ) : null}
-              </section>
-              <section className={"ah-fsec ah-rsec" + (refine === "who" ? " open" : "")}>
-                <button type="button" className="ah-rsec-head" aria-expanded={refine === "who"} onClick={() => setRefine("who")}>
-                  <h3>Who</h3>
-                  <span className="ah-rsec-value">{guestLabel}</span>
+                </section>
+              ) : (
+                <button type="button" className="ah-rcard folded" onClick={() => setRefine("when")}>
+                  <span>When</span>
+                  <b>{dayLabel}</b>
                 </button>
-                {refine === "who" ? (
-                  <div className="ah-rsec-body">
-                    <Stepper label="Adults" sub="Ages 13 or above" value={who} min={1} max={12} onChange={setWho} />
-                    <Stepper label="Children" sub="Ages 12 and under" value={kids} min={0} max={10} onChange={setKids} />
-                    <p className="ah-pop-foot">Age and weight rules differ by activity. Each listing shows its own.</p>
-                  </div>
-                ) : null}
-              </section>
+              )}
+              {refine === "who" ? (
+                <section className="ah-rcard open" aria-label="Who">
+                  <h3>Who's coming?</h3>
+                  <Stepper label="Adults" sub="Ages 13 or above" value={who} min={1} max={12} onChange={setWho} />
+                  <Stepper label="Children" sub="Ages 12 and under" value={kids} min={0} max={10} onChange={setKids} />
+                  <p className="ah-pop-foot">Age and weight rules differ by activity. Each listing shows its own.</p>
+                </section>
+              ) : (
+                <button type="button" className="ah-rcard folded" onClick={() => setRefine("who")}>
+                  <span>Who</span>
+                  <b>{guestLabel}</b>
+                </button>
+              )}
             </div>
-            <div className="ah-modal-foot">
+            <div className="ah-refine-foot">
               <button type="button" className="ah-textbtn strong" onClick={() => { setWhereText(""); setNear(null); setMetro(ALL_METRO_ID); setDate(0); setWho(2); setKids(0); setRefine("where"); }}>Clear all</button>
               <button type="button" className="ah-btn-dark" onClick={() => { setRefine(null); window.scrollTo({ top: 0 }); }}>
                 Show {base.length.toLocaleString()} {base.length === 1 ? "place" : "places"}
