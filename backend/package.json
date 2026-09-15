@@ -4,6 +4,7 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
+    "test": "tsx --test \"src/**/__tests__/*.test.ts\"",
     "dev": "tsx watch src/index.ts serve",
     "start": "tsx src/index.ts serve",
     "ingest": "tsx src/index.ts ingest",
