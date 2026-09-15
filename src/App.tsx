@@ -17,6 +17,18 @@ import { OperatorView } from "./components/operator/OperatorView";
 import { Sheets } from "./components/booking/Sheets";
 import { usePreviewMode } from "./components/operator/previewMode";
 import { Mark } from "./components/layout/Mark";
+import { experienceById } from "./lib/catalog";
+
+/** A listing link before the listing's own file has landed: the page it is about to be, not the home page. */
+function ListingSplash() {
+  return (
+    <div className="paysplash" role="status" aria-live="polite">
+      <Mark size={44} />
+      <b>Opening the listing…</b>
+      <small>One moment.</small>
+    </div>
+  );
+}
 
 /** Between "Book and pay" and Stripe's page. The guest sees this, not the confirmation, until checkout takes over. */
 function CheckoutSplash() {
@@ -51,11 +63,19 @@ export function App() {
       <>
         {state.screen === "confirm" && state.booking ? (
           <div className="web">
-            <WebConfirm booking={state.booking} onDone={() => { goto("explore"); window.scrollTo(0, 0); }} onOpen={(id) => { goto("explore"); openRequest(id); window.scrollTo(0, 0); }} />
+            {experienceById(state.booking.listing) || state.catalogComplete ? (
+              <WebConfirm booking={state.booking} onDone={() => { goto("explore"); window.scrollTo(0, 0); }} onOpen={(id) => { goto("explore"); openRequest(id); window.scrollTo(0, 0); }} />
+            ) : (
+              <ListingSplash />
+            )}
           </div>
         ) : state.screen !== "operator" && state.sheet === "request" && reqTarget ? (
           <div className="web">
             <WebListing item={reqTarget} onClose={closeSheet} onOpen={(id) => { window.scrollTo(0, 0); openRequest(id); }} />
+          </div>
+        ) : state.screen !== "operator" && state.sheet === "request" && state.reqTargetId && !state.catalogComplete ? (
+          <div className="web">
+            <ListingSplash />
           </div>
         ) : state.screen !== "operator" ? (
           <WebHome onOpenApp={openApp} onOperators={() => openOperator()} />
@@ -87,6 +107,7 @@ export function App() {
           <TabBar />
           <Sheets />
           <Toast />
+          {state.sheet === "request" && state.reqTargetId && !reqTarget && !state.catalogComplete ? <ListingSplash /> : null}
           {state.checkingOut ? <CheckoutSplash /> : null}
         </div>
       </div>

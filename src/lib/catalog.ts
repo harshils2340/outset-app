@@ -67,13 +67,24 @@ function domainOf(src: string): string {
 export function mergeCatalog(items: Unclaimed[], extraContacts: Record<string, OperatorContact>): number {
   const seenDomain = new Set(UNCLAIMED.map((u) => domainOf(u.src)));
   const seenId = new Set(UNCLAIMED.map((u) => u.id));
+  const had = new Map(base.map((u) => [u.id, u]));
   const added: Unclaimed[] = [];
   for (const it of items) {
     const d = domainOf(it.src);
     if (seenId.has(it.id) || (d && !d.startsWith("osm-") && seenDomain.has(d))) continue;
     seenId.add(it.id);
     if (d) seenDomain.add(d);
-    added.push(it);
+    // A listing already fetched in full (a shared link opened it before the catalog came) keeps its photos and
+    // menu; the catalog's slim copy of the same record must not take its place.
+    const cur = had.get(it.id);
+    added.push(cur && !cur.lite ? cur : it);
+  }
+  // A listing that arrived on its own before the catalog stays even when this catalog does not list it, or the
+  // page showing it would blink out and back.
+  for (const cur of base) {
+    if (cur.lite || seenId.has(cur.id)) continue;
+    seenId.add(cur.id);
+    added.push(cur);
   }
   // Hand-verified seeds keep their facts but borrow everything the crawl found that they lack: photos, videos,
   // grouped services, descriptions, social handles, pins.

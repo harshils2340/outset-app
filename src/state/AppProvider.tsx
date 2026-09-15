@@ -451,7 +451,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
     // render, instead of falling back to the demo dashboard and switching a second later.
     const c = window.location.hash.match(/^#claim=([a-z0-9-]+)(?:&k=([A-Za-z0-9_.~-]+))?/i);
     if (c) return { ...init, screen: "operator" as const, tab: "account" as const, operatorId: c[1], claimToken: c[2] || null };
-    return atOperatorsPath() ? { ...init, screen: "operator" as const, tab: "account" as const } : init;
+    if (atOperatorsPath()) return { ...init, screen: "operator" as const, tab: "account" as const };
+    // A listing link (#o=, or #remove= from an outreach email) is that listing from the first paint: the page shows
+    // a short "opening" state until the listing's own file lands, never the home page in between.
+    const o = window.location.hash.match(/^#(o|remove)=([a-z0-9-]+)/i);
+    if (o) return { ...init, sheet: "request" as const, reqTargetId: o[2], removeId: o[1].toLowerCase() === "remove" ? o[2] : init.removeId };
+    // Back from Stripe: the booking is already on this device, so the confirmation is the first screen too.
+    const pd = window.location.hash.match(/^#paid=([A-Z0-9-]+)&o=([a-z0-9-]+)/i);
+    if (pd) {
+      const code = pd[1].toUpperCase();
+      const booking = loadBookings().find((b) => b.code === code);
+      if (booking) return { ...init, screen: "confirm" as const, booking: { ...booking, paid: true }, sheet: null };
+    }
+    return init;
   });
   const stateRef = useRef(state);
   stateRef.current = state;
@@ -471,13 +483,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
     // A shared listing link needs that listing's own file and nothing else, so it is opened before the catalog
     // is asked for. This used to sit inside the .then() below, which meant a guest on mobile data waited out
     // the whole 5 MB catalog to see a 3 kB listing.
-    const deep = window.location.hash.match(/^#o=([a-z0-9-]+)/i);
+    const deep = window.location.hash.match(/^#(?:o|remove)=([a-z0-9-]+)/i);
     if (deep) {
       void loadListing(deep[1]).then((ok) => {
         if (!alive || !ok) return;
         dispatch({ type: "catalogLoaded", added: 1 });
         dispatch({ type: "openRequest", id: deep[1] });
       });
+    }
+    // Back from Stripe: the confirmation is already up (see the initial state). Fetch its listing, confirm the
+    // payment with the API, and drop the hash so a reload lands on the home page.
+    const paid = window.location.hash.match(/^#paid=([A-Z0-9-]+)&o=([a-z0-9-]+)/i);
+    if (paid) {
+      const code = paid[1].toUpperCase();
+      void loadListing(paid[2]).then((changed) => alive && changed && dispatch({ type: "catalogLoaded", added: 1 }));
+      dispatch({ type: "paidReturn", code });
+      void confirmPaid(paid[2], code).then((r) => { if (alive && r.paid) dispatch({ type: "paidReturn", code }); });
+      window.history.replaceState(null, "", window.location.pathname + window.location.search);
     }
     loadRemoteCatalog((n, complete) => {
       // The lite shard paints the rails early; the full catalog replaces it a moment later.
@@ -499,15 +521,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
         dispatch({ type: "removeRequest", id: target.id });
         dispatch({ type: "openRequest", id: target.id });
         loadListing(target.id).then((changed) => changed && dispatch({ type: "catalogLoaded", added: 1 }));
-      }
-      // Back from Stripe: #paid=<code>&o=<listing>. Confirm with the API, then show the confirmation page.
-      const pd = window.location.hash.match(/^#paid=([A-Z0-9-]+)&o=([a-z0-9-]+)/i);
-      if (pd) {
-        const code = pd[1].toUpperCase();
-        loadListing(pd[2]).then((changed) => changed && dispatch({ type: "catalogLoaded", added: 1 }));
-        dispatch({ type: "paidReturn", code });
-        void confirmPaid(pd[2], code).then((r) => { if (r.paid) dispatch({ type: "paidReturn", code }); });
-        window.history.replaceState(null, "", window.location.pathname + window.location.search);
       }
       const c = window.location.hash.match(/^#claim=([a-z0-9-]+)(?:&k=([A-Za-z0-9_.~-]+))?/i);
       if (c && experienceById(c[1])) {
