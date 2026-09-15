@@ -3,6 +3,7 @@ import { ID, clientIp, rateLimit, signSession, type Session } from "./auth.ts";
 import { claimTokenV2, verifyClaimToken } from "../lib/claim.ts";
 import { claimRule, emailMayClaim, maskEmail } from "../lib/claimIndex.ts";
 import { sendMail } from "../lib/mail.ts";
+import { renderEmail } from "../lib/emailTemplate.ts";
 import { deleteJson, readJson, updateJson } from "../lib/store.ts";
 import { logTestClaim, testClaimAllows } from "../lib/testClaim.ts";
 
@@ -57,20 +58,14 @@ claims.post("/claims/:id/request", rateLimit(10, 60 * 60 * 1000), async (c) => {
   const title = item?.title || "your business";
   const owner = Buffer.from(JSON.stringify({ n: name, e: email, p: phone })).toString("base64url");
   const link = `${SITE}#claim=${id}&k=${claimTokenV2(id)}&o=${owner}`;
-  const text = [
-    `Hi ${name || "there"},`,
-    "",
-    `Here is the link that opens the Outset dashboard for ${title}. It is only for the owner, so please do not forward it:`,
-    link,
-    "",
-    "It opens with no code. Check your prices and photos, set your hours, and switch bookings on when you are ready.",
-    "",
-    `If you did not ask for this, ignore this email and nothing changes. Questions: ${SUPPORT}`,
-    "",
-    "Harshil",
-    "Outset",
-  ].join("\n");
-  const r = await sendMail({ to: email, subject: `Your Outset claim link for ${title}`, text, replyTo: process.env.MAIL_REPLY_TO || undefined });
+  const mail = renderEmail({
+    eyebrow: "Your listing on Outset",
+    heading: `Open the dashboard for ${title}`,
+    intro: [`Hi ${name || "there"},`, `This link opens the Outset dashboard for ${title}. It is only for the owner, so please do not forward it.`],
+    cta: { label: "Open my dashboard", url: link },
+    after: ["It opens with no code. Check your prices and photos, set your hours, and switch bookings on when you are ready.", `If you did not ask for this, ignore this email and nothing changes. Questions: ${SUPPORT}`, "Harshil, Outset"],
+  });
+  const r = await sendMail({ to: email, subject: `Your Outset claim link for ${title}`, ...mail, replyTo: process.env.MAIL_REPLY_TO || undefined });
   console.log(`[claim] ${id}: link for ${maskEmail(email)} from ${clientIp(c)} ${r.sent ? "sent " + r.id : "not sent (" + r.error + ")"}`);
   // TEST BYPASS: on a host with no mail transport at all there is no inbox to check, so hand the link back
   // to the allowlisted tester instead of only writing it to the log. Never for a normal claim, and never

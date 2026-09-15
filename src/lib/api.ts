@@ -292,10 +292,27 @@ export type RemoteBooking = {
   payment?: { session: string; intent: string | null; state: "authorized" | "captured" | "released" | "unpaid" };
 };
 
-/** The guest's request goes to the operator. Resolves the server's status ("new" or "accepted" for instant book). */
-export async function submitBooking(b: Omit<RemoteBooking, "status" | "created">): Promise<{ ok: boolean; status?: RemoteBooking["status"]; checkoutUrl?: string; error?: string }> {
+/**
+ * The guest's request goes to the operator. Resolves the server's status ("new" or "accepted" for instant book).
+ * `taken` is true when the API refused because that time filled up while the guest was looking at it.
+ */
+export async function submitBooking(b: Omit<RemoteBooking, "status" | "created">): Promise<{ ok: boolean; status?: RemoteBooking["status"]; checkoutUrl?: string; error?: string; taken?: boolean }> {
   const r = await call<{ ok: boolean; status: RemoteBooking["status"]; checkoutUrl?: string }>(`/bookings`, { method: "POST", body: JSON.stringify(b), timeout: 25000 });
-  return { ok: r.ok, status: r.data?.status, checkoutUrl: r.data?.checkoutUrl, error: r.error };
+  return { ok: r.ok, status: r.data?.status, checkoutUrl: r.data?.checkoutUrl, error: r.error, taken: r.status === 409 && /just booked|not open|not enough room|not available/i.test(r.error || "") };
+}
+
+export type OpenSlots = { known: boolean; claimed: boolean; days: { date: string; slots: string[] }[] };
+
+/**
+ * Which start times a guest may still book: the shop's hours, notice and days off when it has claimed, the
+ * standard times otherwise, minus every time that is already taken. `known: false` with no API, and the page
+ * keeps its published times.
+ */
+export async function fetchOpenSlots(id: string, from: string, days = 14, service?: string): Promise<OpenSlots> {
+  const q = new URLSearchParams({ from, days: String(days) });
+  if (service) q.set("service", service);
+  const r = await call<OpenSlots>(`/bookings/open/${encodeURIComponent(id)}?${q}`, { timeout: 12000 });
+  return r.ok && r.data?.known ? { ...r.data, days: r.data.days || [] } : { known: false, claimed: false, days: [] };
 }
 
 /** After Stripe sends the guest back: confirm the payment landed. */

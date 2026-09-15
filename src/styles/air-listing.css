@@ -575,3 +575,6 @@ a.alwhererow:hover b{text-decoration:underline;}
 .aloptmain small{font-size:13px;line-height:17px;font-weight:400;letter-spacing:0;text-transform:none;color:var(--ink-soft);}
 .aloptrow > b{flex:none;font-size:15px;line-height:20px;font-weight:600;font-variant-numeric:tabular-nums;}
 .alpaused .aldonemark{background:var(--bg-soft,#f7f7f7);color:var(--ink-soft);}
+
+/* The booking box could not send: the time filled up, or the shop paused. Warm red, same as "only a few left". */
+.al .albookerror { color: #C13515; font-weight: 600; margin-top: 10px; }

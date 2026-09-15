@@ -1,4 +1,6 @@
 import nodemailer from "nodemailer";
+import { mkdirSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 
 /**
  * Sign-in codes and booking mail go through Resend as hello@onoutset.com.
@@ -56,6 +58,7 @@ async function sendResend(
 ): Promise<{ sent: boolean; id?: string; error?: string }> {
   if (!process.env.RESEND_API_KEY) {
     console.log(`[mail:dry] to=${to} subject=${JSON.stringify(msg.subject)}\n${msg.text}\n`);
+    dumpMail(to, msg);
     return { sent: false, error: "no mail key" };
   }
   // No List-Unsubscribe headers on outreach. The body already has a stop link.
@@ -79,5 +82,23 @@ async function sendResend(
     return { sent: true, id: j.id };
   } catch (e) {
     return { sent: false, error: (e as Error).message };
+  }
+}
+
+/**
+ * With MAIL_DUMP_DIR set (the local end-to-end harness does), every email that would have been sent is also
+ * written there as .html and .txt, so a person or a screenshot can check how it reads before it goes to anyone.
+ */
+let dumped = 0;
+function dumpMail(to: string, msg: { subject: string; text: string; html?: string }): void {
+  const dir = (process.env.MAIL_DUMP_DIR || "").trim();
+  if (!dir) return;
+  try {
+    mkdirSync(dir, { recursive: true });
+    const stem = String(++dumped).padStart(3, "0") + "-" + msg.subject.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 60);
+    writeFileSync(join(dir, stem + ".txt"), `To: ${to}\nSubject: ${msg.subject}\n\n${msg.text}`);
+    if (msg.html) writeFileSync(join(dir, stem + ".html"), msg.html);
+  } catch (e) {
+    console.error("[mail] dump failed: " + (e as Error).message);
   }
 }

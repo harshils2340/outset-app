@@ -63,9 +63,15 @@ starts, so neither can leak into the run.
      opening hours — each one checked against what the API actually stored;
    - **(d)** the guest page shows the new name, story, service and price;
    - **(e)** the guest books the sunset sail as a request;
+   - **(e2)** the booked time fills up (the rest of the service's capacity is booked through the API), and then
+     it is gone from `GET /bookings/open/:listing`, gone from the guest page's picker, and a further guest at
+     that time is refused with `409 slot_taken`;
    - **(f)** the founder alert and the guest's confirmation appear in the API log as `[mail:dry]` lines;
    - **(g)** the operator sees the request and accepts it, and the guest's confirmation email is printed;
    - **(h)** a second booking is declined and the guest is told;
+   - **(h2)** Instant Book switched on: a booking confirms on its own, the guest gets "You're booked" and the
+     operator "New booking";
+   - **(h3)** the operator cancels a confirmed booking from the drawer and the guest gets "Cancelled";
    - **(i)** payouts: the status route, the pay schedule changed to every two weeks and back, a stranger refused,
      the money path end to end through the Stripe recorder (`scripts/payout-e2e.mts`, 31 checks: split,
      capture on accept, release on decline, transfer on the pay day, refund and reversal), and
@@ -77,7 +83,12 @@ With a Stripe test key it also books a card booking, pays on Stripe's hosted pag
 `stripe listen` here, so the session is read back with the test key and the event is signed with the test's own
 webhook secret), accepts the booking so the card is captured, and runs the payout job.
 
-Screenshots and the API log are left in the temp directory, and the run prints both paths.
+After the scenario, every email the API produced is read back (**8**): each one must have an HTML version,
+human dates ("Wednesday, September 16 at 9:00 AM"), money with a currency ("$19.00 USD"), and no `undefined`;
+then each is rendered in the headless browser at inbox width so a person can look at them.
+
+Screenshots, the emails (`mail/*.html` and `.txt`) and the API log are left in the temp directory, and the run
+prints the paths. Set `E2E_COPY_TO=<dir>` to keep copies after the temp world is deleted.
 
 ## What it deliberately does not touch
 

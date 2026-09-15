@@ -34,7 +34,7 @@ import { cleanDesc, durationLabel, freeCancel, minAge } from "../../lib/listingD
 import { ASSISTANT_NAME, DAY_SHORT, clock12, companySuggestions, dayLabel, todaysDeals } from "../../lib/companyAgent";
 import { clockIn, zoneFor } from "../../lib/openNow";
 import { itemOpenState } from "../../lib/openNow";
-import { fetchAvailability, type LiveAvailability } from "../../lib/api";
+import { fetchAvailability, fetchOpenSlots, hasApi, type LiveAvailability } from "../../lib/api";
 import { dateKey } from "../../lib/dates";
 import { searchSuggest } from "../../lib/search";
 import { listingUrl } from "../../lib/site";
@@ -389,6 +389,19 @@ function RequestBody({
     return m;
   }, [avail]);
   const live = liveDays.size > 0;
+  /* What is still open on Outset: the claimed shop's hours minus every time already booked. */
+  const [openMap, setOpenMap] = useState<Map<string, string[]> | null>(null);
+  useEffect(() => {
+    if (!hasApi()) return;
+    let alive = true;
+    void fetchOpenSlots(item.id, dateKey(dates[0]), dates.length, picked?.name).then((r) => {
+      if (!alive || !r.known) return;
+      setOpenMap(new Map(r.days.map((d) => [d.date, d.slots])));
+    });
+    return () => {
+      alive = false;
+    };
+  }, [item.id, picked?.name]);
   // Today only offers start times at least an hour out. Nobody can book a 7 AM slot at 8:30.
   const chipsFor = (d: Date): TimeChip[] => {
     const k = dateKey(d);
@@ -397,12 +410,12 @@ function RequestBody({
     const cutoff = now.getHours() * 60 + now.getMinutes() + 60;
     const later = (t: string) => !isToday || Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5)) >= cutoff;
     if (live) return (liveDays.get(k) || []).filter((c) => later(c.time)).sort((a, b) => a.time.localeCompare(b.time));
-    return SLOT_TIMES.filter(later).map((t) => ({ time: t, label: fmtTime(t) }));
+    return (openMap ? openMap.get(k) || [] : SLOT_TIMES).filter(later).map((t) => ({ time: t, label: fmtTime(t) }));
   };
   const chips = chipsFor(day);
   useEffect(() => {
     if (time && !chips.some((c) => c.time === time)) setTime(null);
-  }, [dateIdx, live]);
+  }, [dateIdx, live, openMap]);
 
   /* ---------- derived from the operator's own site, never invented. Same rules as the desktop page. ---------- */
   const requirements = item.requirements?.length ? item.requirements : facts.who.filter((l) => l.posted).map((l) => l.text);
@@ -616,7 +629,7 @@ function RequestBody({
               <p className="airfine">
                 {instant
                   ? "Confirmed straight away."
-                  : "This is a request. " + item.title + " confirms by text or email, and nothing is charged until they do."}{" "}
+                  : "This is a request. " + item.title + " confirms by email, and nothing is charged until they do."}{" "}
                 Meet at {item.area}.
               </p>
             </section>

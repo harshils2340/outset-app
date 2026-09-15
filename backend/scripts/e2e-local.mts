@@ -28,7 +28,7 @@
 
 import { spawn, type ChildProcess } from "node:child_process";
 import { createHmac } from "node:crypto";
-import { appendFileSync, copyFileSync, cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { appendFileSync, copyFileSync, cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -91,7 +91,8 @@ const shots = join(tmp, "shots");
 const dbCopy = join(tmp, "outset.db");
 const apiLogPath = join(tmp, "api.log");
 const flowOut = join(tmp, "flow.json");
-for (const d of [store, dist, shots]) mkdirSync(d, { recursive: true });
+const mailDir = join(tmp, "mail");
+for (const d of [store, dist, shots, mailDir]) mkdirSync(d, { recursive: true });
 writeFileSync(apiLogPath, "");
 
 const children: ChildProcess[] = [];
@@ -121,6 +122,7 @@ const childEnv = (extra: Record<string, string> = {}): NodeJS.ProcessEnv => ({
   ADMIN_KEY,
   OUTSET_TEST_CLAIM_EMAILS: OWNER_EMAIL,
   BOOKING_ALERT_EMAIL: OWNER_EMAIL,
+  MAIL_DUMP_DIR: mailDir,
   ALLOWED_ORIGINS: SITE_URL,
   SITE_URL: SITE_URL + "/",
   PORT: String(API_PORT),
@@ -380,7 +382,7 @@ console.log("\n7. Payouts");
   if (testKey) {
     await stripeSection(session);
   } else {
-    const r = await run("npx", ["tsx", "scripts/payout-e2e.mts"], { cwd: BACKEND, env: childEnv({ STRIPE_SECRET_KEY: "", STORE_DIR: "" }), quiet: true });
+    const r = await run("npx", ["tsx", "scripts/payout-e2e.mts"], { cwd: BACKEND, env: childEnv({ STRIPE_SECRET_KEY: "", STORE_DIR: "", MAIL_DUMP_DIR: "" }), quiet: true });
     const passed = (r.out.match(/pass /g) || []).length;
     record("the money path passes end to end against the Stripe recorder (payout-e2e.mts)", r.code === 0, `${passed} checks passed` + (r.code === 0 ? "" : "\n" + r.out.slice(-800)));
   }
@@ -433,6 +435,42 @@ async function stripeSection(session: string): Promise<void> {
   record("accepting captures the card and schedules the operator's share", accepted.ok && after?.payment?.state === "captured" && after?.payout?.state === "scheduled", JSON.stringify({ payment: after?.payment?.state, payout: after?.payout }));
 }
 
+/* ---------------------------------------------------------------- 8. the emails ----------------------------- */
+
+console.log("\n8. Every email, read back");
+{
+  const files = readdirSync(mailDir).filter((f) => f.endsWith(".txt")).sort();
+  const problems: string[] = [];
+  for (const f of files) {
+    const body = readFileSync(join(mailDir, f), "utf8");
+    // Things no email should ever say: a raw ISO date, a 24 hour clock, JavaScript leaking, an empty name.
+    for (const [why, re] of [
+      ["ISO date", /\b\d{4}-\d{2}-\d{2}\b/],
+      ["24h clock", /\bat \d{2}:\d{2}(?! [AP]M)/],
+      ["undefined", /\bundefined\b/],
+      ["NaN", /\bNaN\b/],
+      ["object", /\[object /],
+      ["empty guest", /Guest: ,/],
+    ] as [string, RegExp][]) {
+      const m = re.exec(body.split("\n").slice(2).join("\n"));
+      if (m) problems.push(`${f}: ${why} ("${m[0]}")`);
+    }
+    // Every amount says which dollars it is: "$19.00 USD" or "CA$19.00", never a bare "$19".
+    for (const m of body.matchAll(/(CA)?\$[\d,]+(?:\.\d+)?( USD)?/g)) {
+      if (!m[1] && !m[2]) problems.push(`${f}: bare dollars ("${m[0]}")`);
+    }
+    if (!existsSync(join(mailDir, f.replace(/\.txt$/, ".html")))) problems.push(`${f}: no HTML version`);
+  }
+  record(`${files.length} emails were produced, each with an HTML version and human dates and money`, files.length > 0 && problems.length === 0, problems.length ? problems.slice(0, 6).join("; ") : files.map((f) => f.replace(/^\d+-/, "")).join(", ").slice(0, 300));
+  const r = await run("node", [join(here, "e2e-local-flow.mjs"), shots], {
+    cwd: BACKEND,
+    env: { ...process.env, CHROME, W: "680", H: "900", E2E_MODE: "mail", E2E_MAIL_DIR: mailDir, E2E_OUT: join(tmp, "mail.json") },
+  });
+  void r;
+  const mailSteps = existsSync(join(tmp, "mail.json")) ? (JSON.parse(readFileSync(join(tmp, "mail.json"), "utf8")) as Result[]) : [];
+  for (const s of mailSteps) results.push(s);
+}
+
 /* ---------------------------------------------------------------- 8. summary -------------------------------- */
 
 const failed = results.filter((r) => r.ok === false).length;
@@ -442,7 +480,15 @@ for (const r of results) console.log((r.ok === "warn" ? "WARN  " : r.ok ? "pass 
 console.log("-".repeat(70));
 console.log(`${results.length - failed - warned} passed, ${warned} warned, ${failed} failed`);
 console.log("Screenshots: " + shots);
+console.log("Emails:      " + mailDir);
 console.log("API log:     " + apiLogPath);
+// A place to keep the screenshots, the emails and the log after the temp world is deleted.
+if (process.env.E2E_COPY_TO) {
+  const to = process.env.E2E_COPY_TO;
+  for (const [from, name] of [[shots, "shots"], [mailDir, "mail"]] as [string, string][]) cpSync(from, join(to, name), { recursive: true });
+  copyFileSync(apiLogPath, join(to, "api.log"));
+  console.log("Copied to:   " + to);
+}
 
 if (KEEP) {
   console.log("\nLeft running for you (--keep). Nothing here touches production:");

@@ -19,7 +19,7 @@ import { fmtDate, money, nowStamp } from "../lib/format";
 import { daySlotsOpen, openSeats } from "../lib/inventory";
 import { contactFor, experienceById, fromPrice, initials } from "../lib/catalog";
 import { loadListing, loadRemoteCatalog } from "../lib/catalogLoad";
-import { confirmPaid, submitBooking, warmApi } from "../lib/api";
+import { confirmPaid, hasApi, submitBooking, warmApi } from "../lib/api";
 import { companyGreeting, companyReply, companySuggestions } from "../lib/companyAgent";
 import type { Place } from "../lib/places";
 import { priceFor, priceUnclaimed } from "../lib/pricing";
@@ -93,8 +93,13 @@ type Action =
       guest?: { name: string; phone: string; email?: string };
       /** A card step follows: stay on the listing behind a splash instead of showing the confirmation. */
       pay?: boolean;
+      /** The code the API already accepted, so the ticket on screen matches the operator's email. */
+      code?: string;
+      /** The card is held or charged through Stripe. */
+      paid?: boolean;
     }
   | { type: "checkoutDone" }
+  | { type: "toast"; text: string }
   | { type: "back" }
   | { type: "openChat"; id: string }
   | { type: "openOperator"; id?: string; token?: string }
@@ -213,7 +218,8 @@ function reducer(state: AppState, action: Action): AppState {
       if (!state.slot) return state;
       return { ...state, sheet: "review" };
     case "openRequest":
-      return { ...state, reqTargetId: action.id, sheet: "request" };
+      // A listing opened from the confirmation page (a link, the browser's back button) leaves that page behind.
+      return { ...state, reqTargetId: action.id, sheet: "request", screen: state.screen === "confirm" ? state.tab : state.screen };
     case "closeSheet":
       return { ...state, sheet: null };
     case "confirm": {
@@ -253,9 +259,10 @@ function reducer(state: AppState, action: Action): AppState {
         qty: action.qty,
         addons: [...(picked ? [String(action.optionIdx)] : []), ...extras.map((a) => a.name)],
         total: p.total,
-        code: makeCode(initials(u.title)),
+        code: action.code || makeCode(initials(u.title)),
         created: Date.now(),
         guest: action.guest,
+        paid: action.paid,
       };
       // With a card step ahead the guest stays on the listing behind a "sending you to checkout" screen; the
       // confirmation only shows if Stripe does not take over (see checkoutDone).
@@ -345,6 +352,8 @@ function reducer(state: AppState, action: Action): AppState {
       prev.push({ who: "them", t: reply, at });
       return { ...state, chats: { ...state.chats, [listing.id]: prev } };
     }
+    case "toast":
+      return { ...state, toast: action.text };
     case "toastOff":
       return { ...state, toast: null };
     default:
@@ -402,7 +411,12 @@ type Api = {
   openRequest: (id: string) => void;
   closeSheet: () => void;
   confirm: () => void;
-  confirmUnclaimed: (input: { dateIdx: number; slot: string; qty: number; optionIdx: number | null; addonIdx?: number[]; guest?: { name: string; phone: string; email?: string }; pay?: boolean }) => void;
+  /**
+   * Books a catalog listing. With the API connected the request goes there first and the ticket only shows once
+   * the API took it; a time that filled up meanwhile comes back as `taken`, with the error to show. A card
+   * booking (`pay`) keeps the listing behind the checkout splash and then leaves for Stripe's page.
+   */
+  confirmUnclaimed: (input: { dateIdx: number; slot: string; qty: number; optionIdx: number | null; addonIdx?: number[]; guest?: { name: string; phone: string; email?: string }; pay?: boolean }) => Promise<{ ok: boolean; error?: string; taken?: boolean; checkoutUrl?: string }>;
   back: () => void;
   openChat: (id: string) => void;
   openOperator: (id?: string) => void;
@@ -490,7 +504,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       window.addEventListener("hashchange", () => {
         const h = window.location.hash.match(/^#o=([a-z0-9-]+)/i);
         if (!h || !experienceById(h[1])) return;
-        if (stateRef.current.sheet === "request" && stateRef.current.reqTargetId === h[1]) return;
+        if (stateRef.current.sheet === "request" && stateRef.current.reqTargetId === h[1] && stateRef.current.screen !== "confirm") return;
         dispatch({ type: "openRequest", id: h[1] });
         loadListing(h[1]).then((changed) => changed && dispatch({ type: "catalogLoaded", added: 1 }));
       });
@@ -616,30 +630,36 @@ export function AppProvider({ children }: { children: ReactNode }) {
       },
       closeSheet: () => dispatch({ type: "closeSheet" }),
       confirm: () => dispatch({ type: "confirm" }),
-      confirmUnclaimed: (input) => {
-        dispatch({ type: "confirmUnclaimed", ...input });
-        // The request also goes to the operator through the API: email to them, a row in their dashboard.
+      confirmUnclaimed: async (input) => {
         const u = experienceById(stateRef.current.reqTargetId);
-        const booking = stateRef.current.bookings[0];
-        if (!u || !input.slot) return;
+        if (!u || !input.slot) return { ok: false, error: "Pick a time first." };
+        if (!hasApi()) {
+          // No API on this host: the booking lives on this device only, the way the demo always worked.
+          dispatch({ type: "confirmUnclaimed", ...input });
+          return { ok: true };
+        }
         const picked = input.optionIdx != null ? u.options[input.optionIdx] : null;
         const extras = (input.addonIdx || []).map((i) => (u.addons || [])[i]).filter(Boolean);
-        window.setTimeout(() => {
-          const b = stateRef.current.bookings[0];
-          if (!b || b === booking) return;
-          void submitBooking({
-            code: b.code, listing: u.id, date: b.date, slot: b.slot, qty: b.qty,
-            service: picked?.name || u.title, variant: picked?.detail || "", addons: extras.map((a) => a.name), total: b.total || null,
-            guest: { name: input.guest?.name || "", phone: input.guest?.phone || "", email: input.guest?.email || "" },
-          }).then((r) => {
-            // Card on file: Stripe's hosted page takes over, then sends the guest back to #paid=<code>.
-            if (r.checkoutUrl) {
-              window.location.assign(r.checkoutUrl);
-              return;
-            }
-            if (input.pay) dispatch({ type: "checkoutDone" });
-          });
-        }, 0);
+        const p = priceUnclaimed(picked, input.qty, extras);
+        const code = makeCode(initials(u.title));
+        // The request goes to the operator through the API: email to them, a row in their dashboard. Only once
+        // the API has it does the guest see a ticket; before this the page said "Request sent" while the API
+        // was answering 409 for a paused shop or a time that had just been taken.
+        const r = await submitBooking({
+          code, listing: u.id, date: dateKey(DATES[input.dateIdx]), slot: input.slot, qty: input.qty,
+          service: picked?.name || u.title, variant: picked?.detail || "", addons: extras.map((a) => a.name), total: p.total || null,
+          guest: { name: input.guest?.name || "", phone: input.guest?.phone || "", email: input.guest?.email || "" },
+        });
+        if (!r.ok) {
+          const error = r.taken ? (r.error || "That time was just booked") + ". Pick another time." : r.error ? r.error + "." : "Could not send the request. Check your connection and try again.";
+          dispatch({ type: "toast", text: error });
+          return { ok: false, error, taken: r.taken };
+        }
+        // Card on file: the listing stays behind the checkout splash and Stripe's hosted page takes over, then
+        // sends the guest back to #paid=<code>. No card step after all: the confirmation shows straight away.
+        dispatch({ type: "confirmUnclaimed", ...input, code, pay: !!r.checkoutUrl });
+        if (r.checkoutUrl) window.location.assign(r.checkoutUrl);
+        return { ok: true, checkoutUrl: r.checkoutUrl };
       },
       back: () => dispatch({ type: "back" }),
       openChat: (id) => dispatch({ type: "openChat", id }),

@@ -89,7 +89,9 @@ const webhook = async (type: string, code: string, listing: string) => {
 const iso = (d: Date) => d.toISOString().slice(0, 10);
 const trip = iso(new Date(Date.now() + 3 * 86400000));
 const book = (listing: string, code: string, total: number, service = "Dolphin tour", variant = "Adult") =>
-  app.request("/bookings", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ listing, code, date: trip, slot: "09:00", qty: 2, total, service, variant, guest: { name: "Guest One", phone: "4165550100", email: "guest@example.com" } }) });
+  // One time, one party: the booking route refuses a second booking at a time that is already taken, so each
+  // booking here takes its own start time. This test is about the money, not the calendar.
+  app.request("/bookings", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ listing, code, date: trip, slot: ["09:00", "11:00", "13:00", "15:00", "17:00"][(Number(code.replace(/\D/g, "")) - 1) % 5], qty: 2, total, service, variant, guest: { name: "Guest One", phone: "4165550100", email: "guest@example.com" } }) });
 const bookingOf = async (listing: string, code: string) => ((await readJson<{ code: string; status: string; payment?: { state: string; split?: { net: number; commission: number; guestFee: number; subtotal: number } }; payout?: { state: string; amount: number; currency: string; releaseOn: string; transfer?: string } }[]>(`bookings/${listing}.json`)) || []).find((b) => b.code === code);
 
 console.log("\n1. Guest books a Florida tour for $213");

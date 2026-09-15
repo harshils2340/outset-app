@@ -2,6 +2,7 @@ import { createHash, createHmac, randomInt, timingSafeEqual } from "node:crypto"
 import { Hono, type Context, type Next } from "hono";
 import { claimKeyHash, claimSecret } from "../lib/claim.ts";
 import { sendMail } from "../lib/mail.ts";
+import { renderEmail } from "../lib/emailTemplate.ts";
 import { readJson, updateJson } from "../lib/store.ts";
 
 /**
@@ -117,7 +118,16 @@ auth.post("/auth/request-code", rateLimit(20, 60 * 60 * 1000), async (c) => {
   if (ids.length) {
     const code = String(randomInt(100000, 999999));
     codes.set(email, { hash: codeHash(email, code), exp: Date.now() + 10 * 60 * 1000, tries: 0 });
-    await sendMail({ to: email, subject: "Your Outset sign-in code: " + code, text: `Your Outset sign-in code is ${code}. It works for 10 minutes.\n\nIf you did not ask for it, ignore this email.` });
+    await sendMail({
+      to: email,
+      subject: "Your Outset sign-in code: " + code,
+      ...renderEmail({
+        eyebrow: "Sign in",
+        heading: `Your code is ${code}`,
+        intro: ["Type it on the sign-in screen. It works for 10 minutes."],
+        after: ["If you did not ask for it, ignore this email and nothing changes."],
+      }),
+    });
   }
   return c.json({ ok: true });
 });

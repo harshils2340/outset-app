@@ -104,6 +104,20 @@ async function payOnStripe({ evaluate, send, sleep, shot }) {
 
 export default async function run(ctx) {
   try {
+    if (process.env.E2E_MODE === "mail") {
+      // Every email the API would have sent, rendered the way an inbox shows it (a 680px wide pane).
+      const { readdirSync } = await import("node:fs");
+      const dir = process.env.E2E_MAIL_DIR || "";
+      const files = dir ? readdirSync(dir).filter((f) => f.endsWith(".html")).sort() : [];
+      await ctx.send("Emulation.setDeviceMetricsOverride", { width: 680, height: 900, deviceScaleFactor: 1, mobile: false }).catch(() => undefined);
+      for (const f of files) {
+        await ctx.goto("file://" + join(dir, f));
+        await ctx.sleep(300);
+        await ctx.shot("mail-" + f.replace(/\.html$/, ""));
+      }
+      record("(m) every email rendered to a screenshot", files.length > 0, files.length + " emails");
+      return;
+    }
     if (process.env.E2E_MODE === "stripe") {
       await ctx.goto(process.env.E2E_CHECKOUT_URL || "");
       const ok = await payOnStripe(ctx);
@@ -414,6 +428,46 @@ async function flow(ctx) {
   const first = bookings().find((b) => b.guest?.name === "Harness Guest");
   record("(e) the guest books the sunset sail as a request", landed && first?.status === "new", landed ? `${first.code} ${first.service} ${first.status} $${first.total}` : `option:${bookedOk} day:${dayPicked} slot:${slotPicked}`);
 
+  /* ================= (e2) that time is gone: from the API, from the page, and a second guest is refused ================= */
+
+  if (first) {
+    // A time holds the service's capacity (the dashboard's per-service seat count, 8 by default). Fill what is
+    // left at the booked time, then it must be gone everywhere and the next guest refused.
+    const svc = (storedProfile()?.profile?.services || []).find((x) => String(x.name).toLowerCase() === String(first.service).toLowerCase());
+    const capacity = Number(svc?.capacity) > 0 ? Number(svc.capacity) : 1;
+    const left = Math.max(0, capacity - Number(first.qty || 1));
+    const filler = left
+      ? await fetch(`${API}/bookings`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ listing: ID, code: "E2E-FILL", date: first.date, slot: first.slot, qty: left, service: first.service, variant: first.variant, total: null, guest: { name: "Filler Party", phone: "4165550778", email: "" } }),
+        }).then((r) => r.json()).catch((e) => ({ error: String(e) }))
+      : { ok: true, skipped: true };
+    const open = await fetch(`${API}/bookings/open/${encodeURIComponent(ID)}?from=${first.date}&days=1&service=${encodeURIComponent(first.service)}`).then((r) => r.json()).catch(() => null);
+    const stillListed = !!open?.days?.[0]?.slots?.includes(first.slot);
+    // The page, reloaded: the picked day must not offer that start time any more.
+    await goto(`${BASE}/#o=${ID}`);
+    await until(() => document.body.innerText.includes("harness"), 15000);
+    await sleep(2500);
+    await js((k) => {
+      const d = [...document.querySelectorAll(".bkday")].find((b) => b.getAttribute("data-k") === k);
+      d?.click();
+      return d ? "day" : "MISSING day";
+    }, first.date);
+    await sleep(800);
+    const chipTimes = await js(() => [...document.querySelectorAll(".bkchip")].map((c) => c.textContent.trim()));
+    const fmt12 = (t) => { const [h, m] = t.split(":").map(Number); return (h % 12 || 12) + ":" + String(m).padStart(2, "0") + " " + (h >= 12 ? "PM" : "AM"); };
+    const onPage = Array.isArray(chipTimes) && chipTimes.some((t) => t.startsWith(fmt12(first.slot)));
+    await shot("e3-slot-gone-from-picker");
+    const again = await fetch(`${API}/bookings`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ listing: ID, code: "E2E-DUPE", date: first.date, slot: first.slot, qty: 1, service: first.service, variant: first.variant, total: first.total, guest: { name: "Second Guest", phone: "4165550777", email: "" } }),
+    }).then(async (r) => ({ status: r.status, body: await r.json().catch(() => ({})) })).catch((e) => ({ status: 0, body: { error: String(e) } }));
+    const refused = again.status === 409 && again.body?.code === "slot_taken";
+    record("(e2) a full time disappears from the API and the picker, and the next guest is refused", !!filler?.ok && !stillListed && !onPage && refused, `capacity ${capacity}, filled ${left}: ${filler?.ok ? "ok" : filler?.error}; api lists it: ${stillListed}, page shows it: ${onPage}, next booking: HTTP ${again.status} ${again.body?.error || ""}`);
+  }
+
   /* ================= (f) the founder alert and the guest email are in the API log ================= */
 
   const logNow = apiLog();
@@ -469,6 +523,57 @@ async function flow(ctx) {
   await shot("h-declined");
   const declineMail = /\[mail:dry\] to=harness\.two@example\.com subject="Not available:/i.test(apiLog());
   record("(h) a second booking is declined and the guest is told", !!second?.ok && declinedOk && declineMail, `booked:${!!second?.ok} declined:${declinedOk} email:${declineMail}`);
+
+  /* ================= (h2) Instant Book on: a booking confirms on its own and both sides hear "booked" ================= */
+
+  await openDashboardPage("Bookings");
+  await until(() => !!document.querySelector(".odinstant .optoggle"), 8000);
+  await clickIn(".odinstant .optoggle");
+  await sleep(2500);
+  const instantReady = await untilLocal(async () => storedProfile()?.profile?.instantBook === true);
+  const code3 = "E2E-INST";
+  const third = instantReady ? await fetch(`${API}/bookings`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      listing: ID, code: code3, date: isoDays(6), slot: "13:00", qty: 2, service: "Sunset sail", variant: "Adult", total: 40,
+      guest: { name: "Harness Guest Three", phone: "4165550125", email: "harness.three@example.com" },
+    }),
+  }).then((r) => r.json()).catch((e) => ({ error: String(e) })) : null;
+  await sleep(1500);
+  const instantRow = bookings().find((b) => b.code === code3);
+  const instantMails = /\[mail:dry\] to=harness\.three@example\.com subject="You're booked:/i.test(apiLog()) && /\[mail:dry\] to=[^\n]* subject="New booking:/i.test(apiLog());
+  await clickIn(".odinstant .optoggle");
+  await sleep(2000);
+  await untilLocal(async () => storedProfile()?.profile?.instantBook === false);
+  record("(h2) with Instant Book on, a booking confirms itself and both emails say booked", instantReady && third?.status === "accepted" && instantRow?.status === "accepted" && instantMails, `api:${third?.status} stored:${instantRow?.status} emails:${instantMails}`);
+
+  /* ================= (h3) the operator cancels a confirmed booking and the guest is told ================= */
+
+  await goto(`${BASE}/operators`);
+  await until(() => !!document.querySelector(".od .odbody"), 15000);
+  await openDashboardPage("Bookings");
+  await clickIn(".odtabs button, .odfilter button, button", "Upcoming");
+  await sleep(800);
+  const opened = await js(() => {
+    const row = [...document.querySelectorAll(".odbk")].find((r) => r.textContent.includes("Harness Guest Three"));
+    const btn = row?.querySelector(".odbkmain");
+    if (!btn) return "MISSING row";
+    btn.click();
+    return "opened";
+  });
+  await sleep(900);
+  const cancelled = await js(() => {
+    const btn = [...document.querySelectorAll(".oddraweractions button")].find((b) => b.textContent.trim() === "Cancel booking");
+    if (!btn) return "MISSING cancel";
+    btn.click();
+    return "cancelled";
+  });
+  const cancelSaved = await untilLocal(async () => bookings().find((b) => b.code === code3)?.status === "cancelled", 15000);
+  await sleep(1200);
+  await shot("h3-cancelled");
+  const cancelMail = /\[mail:dry\] to=harness\.three@example\.com subject="Cancelled:/i.test(apiLog());
+  record("(h3) the operator cancels a confirmed booking and the guest is emailed", cancelSaved && cancelMail, `open:${opened} click:${cancelled} saved:${cancelSaved} email:${cancelMail}`);
 
   /* ================= payouts page, as the operator sees it ================= */
 

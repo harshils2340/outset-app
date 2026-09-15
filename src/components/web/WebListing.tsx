@@ -1,6 +1,6 @@
 import "../../styles/air-listing.css";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type KeyboardEvent as ReactKeyboardEvent, type ReactNode, type SyntheticEvent } from "react";
-import { apiConfig, fetchAvailability, type LiveAvailability } from "../../lib/api";
+import { apiConfig, fetchAvailability, fetchOpenSlots, hasApi, type LiveAvailability } from "../../lib/api";
 import { GUIDES } from "../../data/guides";
 import { ICONS } from "../../data/icons";
 import { metroById } from "../../data/metros";
@@ -1070,6 +1070,23 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
   }, [avail]);
   const live = liveDays.size > 0;
 
+  /* What is actually still open on Outset: the claimed shop's own hours minus every time already booked. Loaded
+     from the API, reloaded after a booking, and re-keyed on the picked service because capacity is per service. */
+  const [openMap, setOpenMap] = useState<Map<string, string[]> | null>(null);
+  const [openTick, setOpenTick] = useState(0);
+  const reloadOpen = useCallback(() => setOpenTick((n) => n + 1), []);
+  useEffect(() => {
+    if (!hasApi()) return;
+    let alive = true;
+    void fetchOpenSlots(item.id, dateKey(dates[0]), dates.length, picked?.name).then((r) => {
+      if (!alive || !r.known) return;
+      setOpenMap(new Map(r.days.map((d) => [d.date, d.slots])));
+    });
+    return () => {
+      alive = false;
+    };
+  }, [item.id, picked?.name, openTick]);
+
   // Today only shows start times at least an hour out. Nobody can book a 7 AM slot at 8:30.
   const chipsFor = useMemo(() => {
     const todayKey = dateKey(dates[0]);
@@ -1080,10 +1097,11 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
       const k = dateKey(d);
       const fromLive = liveDays.get(k);
       if (live) return (fromLive || []).filter((c) => k !== todayKey || Number(c.time.slice(0, 2)) * 60 + Number(c.time.slice(3)) >= cutoff).slice().sort((a, b) => a.time.localeCompare(b.time));
-      return SLOT_TIMES.filter((t) => k !== todayKey || Number(t.slice(0, 2)) * 60 + Number(t.slice(3)) >= cutoff)
+      const base = openMap ? openMap.get(k) || [] : SLOT_TIMES;
+      return base.filter((t) => k !== todayKey || Number(t.slice(0, 2)) * 60 + Number(t.slice(3)) >= cutoff)
         .map((t) => ({ key: t, time: t, label: fmtTime(t), price: listed }));
     };
-  }, [live, liveDays, dates, picked?.price]);
+  }, [live, liveDays, dates, picked?.price, openMap]);
   const openSlots = useMemo(() => chipsFor(day).map((c) => c.time), [chipsFor, day]);
   useEffect(() => { if (time && !openSlots.includes(time)) setTime(null); }, [openSlots, time]);
   // Land the guest on a day that actually has departures rather than an empty one.
@@ -1159,7 +1177,7 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
   }
   if (cancel) rows.push({ icon: I.calendar, title: cancel, text: "Plans change. Their published policy lets you cancel for a full refund." });
   if (instant) rows.push({ icon: I.bolt, title: "Instant confirmation", text: "Your spot is confirmed the moment you book." });
-  else if (!visit) rows.push({ icon: I.message, title: "Request to book", text: "The business confirms by text or email. Nothing is charged until they do." });
+  else if (!visit) rows.push({ icon: I.message, title: "Request to book", text: "The business confirms by email. Nothing is charged until they do." });
   else if (contact?.website || item.src) rows.push({ icon: I.ticket, title: "Tickets from the business", text: "Entry is sold on " + possessive(item.title) + " own site, at their prices." });
   if (item.meetingPoint) rows.push({ icon: I.door, title: "Meeting point", text: tidyLine(item.meetingPoint) });
   if (topRated && rows.length < 3) rows.push({ icon: I.medal, title: "Top rated", text: "Rated " + score!.rating.toFixed(1) + " from " + fmtReviews(score!.reviews) + " public reviews." });
@@ -1182,15 +1200,31 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
   const from = fromPrice(item);
   const fromUnit = cheap && cheap.price != null ? priceWith(cheap.price, cheap.per).replace(/^\$[\d,.]+\s*/, "") || (perPerson(cheap) ? "/ person" : "") : "";
 
-  const book = () => {
-    if (!ready || !time) return;
+  const [sending, setSending] = useState(false);
+  const [bookError, setBookError] = useState<string | null>(null);
+  const book = async () => {
+    if (!ready || !time || sending) return;
     try {
       localStorage.setItem("outset.guest", JSON.stringify(guest));
     } catch {
       /* ignore */
     }
-    confirmUnclaimed({ dateIdx: state.dateIdx, slot: time, qty, optionIdx, addonIdx, guest: { name: guest.name.trim(), phone: guest.phone.trim(), email: (guest.email || "").trim() || undefined }, pay: payments && !!p.total });
-    setDone(true);
+    setSending(true);
+    setBookError(null);
+    const r = await confirmUnclaimed({ dateIdx: state.dateIdx, slot: time, qty, optionIdx, addonIdx, guest: { name: guest.name.trim(), phone: guest.phone.trim(), email: (guest.email || "").trim() || undefined }, pay: payments && !!p.total });
+    setSending(false);
+    if (r.ok) {
+      // A card booking leaves for Stripe behind the checkout splash; the "sent" panel is for the request path.
+      if (!r.checkoutUrl) setDone(true);
+      reloadOpen();
+      return;
+    }
+    setBookError(r.error || "Could not send the request.");
+    // The time filled up while the guest was looking at it: drop it from the picker and ask for another.
+    if (r.taken) {
+      setTime(null);
+      reloadOpen();
+    }
   };
 
   const nameRef = useRef<HTMLInputElement | null>(null);
@@ -1806,9 +1840,10 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
                   </label>
                 </div>
 
-                <button type="button" ref={reserveRef} className="alprimary" onClick={pressReserve} aria-disabled={!ready}>
-                  {ready ? ctaLabel + (p.total ? " · " + money(p.total) : "") : time == null ? "Pick a time" : "Add your name and number"}
+                <button type="button" ref={reserveRef} className="alprimary" onClick={pressReserve} aria-disabled={!ready || sending} aria-busy={sending}>
+                  {sending ? "Sending…" : ready ? ctaLabel + (p.total ? " · " + money(p.total) : "") : time == null ? "Pick a time" : "Add your name and number"}
                 </button>
+                {bookError ? <p className="alfine center albookerror" role="alert">{bookError}</p> : null}
                 {payments && p.total ? (
                   <p className="alfine center">Secure card payment. Your card is held and only charged once the booking is confirmed.</p>
                 ) : (
@@ -1832,7 +1867,7 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
                   </div>
                 )}
                 <p className="alfine">
-                  {instant ? "Instant confirmation. " : "The operator confirms by text or email. "}
+                  {instant ? "Instant confirmation. " : "The operator confirms by email. "}
                   {cancel ? cancel + "." : item.cancellation ? "Cancellation terms are set by " + item.title + ", see the policy below." : "Cancellation terms are set by the operator."}
                 </p>
               </div>
@@ -1981,7 +2016,7 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
               <ul className="albizfacts">
                 <li><Markup html={I.pin} /> <span>{placeName(item.area)}</span></li>
                 {duration ? <li><Markup html={I.clock} /> <span>{duration}</span></li> : null}
-                {instant ? <li><Markup html={I.bolt} /> <span>Instant confirmation</span></li> : visit ? <li><Markup html={I.ticket} /> <span>Tickets on their own site</span></li> : <li><Markup html={I.message} /> <span>Confirms requests by text or email</span></li>}
+                {instant ? <li><Markup html={I.bolt} /> <span>Instant confirmation</span></li> : visit ? <li><Markup html={I.ticket} /> <span>Tickets on their own site</span></li> : <li><Markup html={I.message} /> <span>Confirms requests by email</span></li>}
               </ul>
             </div>
             <div className="albizright">

@@ -37,7 +37,7 @@ export function ConfirmView() {
         <Markup html={ICONS.checkbig} />
       </div>
       <h1>{instant ? "Booked." : "Request sent."}</h1>
-      <p>{instant ? op + " has it on their board. No call needed." : op + " confirms by text or email, usually within the day. Nothing is charged until they do."}</p>
+      <p>{instant ? op + " has it on their board. No call needed." : op + " confirms by email, usually within the day. Nothing is charged until they do."}</p>
       <div className="ticket">
         <div className="top">
           <small className="eyebrow">Check-in code</small>

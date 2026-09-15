@@ -62,8 +62,8 @@ export function WebConfirm({ booking, onDone, onOpen }: { booking: Booking; onDo
             <h1 className="alconfirmtitle">{instant ? "You're booked" : "Request sent"}{first ? ", " + first : ""}</h1>
             <p className="alconfirmlead">
               {instant
-                ? "Your spot is confirmed. " + item.title + " has your details and a text with everything is on its way."
-                : item.title + " confirms by text or email, usually within the day. You won't be charged until they do."}
+                ? "Your spot is confirmed. " + item.title + " has your details" + (booking.guest?.email ? ", and a confirmation email is on its way." : ".")
+                : item.title + " confirms by email, usually within the day. " + (booking.paid ? "Your card is held and only charged when they confirm." : "You won't be charged until they do.")}
             </p>
 
             <section className="alsec">
@@ -100,7 +100,7 @@ export function WebConfirm({ booking, onDone, onOpen }: { booking: Booking; onDo
             <section className="alsec">
               <h2>What happens next</h2>
               <ol className="alsteps">
-                <li><span className="n">1</span><span>{instant ? "Your spot is confirmed. You'll get a text with the details." : "The operator gets your request and confirms. You'll get a text or email."}</span></li>
+                <li><span className="n">1</span><span>{instant ? "Your spot is confirmed. The details are in your confirmation email." : "The operator gets your request and confirms. You'll get an email the moment they answer."}</span></li>
                 <li><span className="n">2</span><span>Show up 15 minutes early. If there's a waiver, it's linked on the listing.</span></li>
                 <li><span className="n">3</span><span>Questions? Otto on the listing answers from the operator's own info.</span></li>
               </ol>
@@ -150,10 +150,10 @@ export function WebConfirm({ booking, onDone, onOpen }: { booking: Booking; onDo
                   <div className="alline"><span className="wrap">{tidyName(picked.name)}</span><span>{booking.qty} {booking.qty === 1 ? "guest" : "guests"}</span></div>
                 ) : null}
                 <div className="alline total">
-                  <span>{booking.paid ? "Paid by card" : "Total"}</span>
+                  <span>{booking.paid ? (instant ? "Paid by card" : "Held on your card") : "Total"}</span>
                   <span>{booking.total ? money(booking.total) : "Pay on site"}</span>
                 </div>
-                <p className="alfine">{booking.paid ? "Charged to your card." : instant ? "Pay as agreed with the business." : "You won't be charged until " + item.title + " confirms."}</p>
+                <p className="alfine">{booking.paid ? (instant ? "Charged to your card." : "Charged only when " + item.title + " confirms.") : instant ? "Pay as agreed with the business." : "You won't be charged until " + item.title + " confirms."}</p>
               </div>
             </div>
           </aside>

@@ -19,6 +19,7 @@ import { bookings } from "./bookings.ts";
 import { uploads } from "./uploads.ts";
 import { payouts } from "./payouts.ts";
 import { availability } from "./availability.ts";
+import { openSlotsRoute } from "./openSlots.ts";
 import { stripeEnabled } from "../lib/stripe.ts";
 
 export const app = new Hono();
@@ -42,6 +43,7 @@ app.route("/", bookings);
 app.route("/", uploads);
 app.route("/", payouts);
 app.route("/", availability);
+app.route("/", openSlotsRoute);
 
 app.get("/health", (c) => c.json({ ok: true, service: "outset-backend" }));
 

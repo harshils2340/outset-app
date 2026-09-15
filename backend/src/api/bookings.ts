@@ -1,10 +1,11 @@
 import { Hono } from "hono";
 import { ID, mayEdit, rateLimit } from "./auth.ts";
-import { sendMail } from "../lib/mail.ts";
 import { readJson, updateJson } from "../lib/store.ts";
 import type { StoredProfile } from "./profiles.ts";
 import { capture, createCheckout, releaseIntent, reverseTransfer, sessionStatus, stripeEnabled, verifyWebhook } from "../lib/stripe.ts";
 import { currencyForArea, priceBooking, releaseDate, splitBooking, type PricedOption, type Split } from "../payments/money.ts";
+import { mailDecision, mailNewBooking } from "./bookingMail.ts";
+import { slotOpen } from "./openSlots.ts";
 
 /**
  * Bookings, stored per listing under public/bookings/. A guest's request is written here, the operator
@@ -27,6 +28,8 @@ export type StoredBooking = {
   created: string;
   decidedAt?: string;
   note?: string;
+  /** The operator's price and the guest's service fee behind `total`, worked out from the listing at booking time. */
+  pricing?: { subtotal: number; fee: number };
   /** Stripe: authorized at booking, captured on accept, released on decline. */
   payment?: { session: string; intent: string | null; state: "authorized" | "captured" | "released" | "unpaid"; currency?: string; charge?: string | null; split?: Split; subtotal?: number };
   /**
@@ -62,12 +65,23 @@ export async function captureBooking(listing: string, code: string, intent: stri
   return true;
 }
 
-/** Refund or release the guest, and take back the operator's share if it was already sent. */
-async function refundBooking(listing: string, b: StoredBooking): Promise<void> {
-  if (!b.payment?.intent) return;
+/**
+ * Refund or release the guest, and take back the operator's share if it was already sent. Says which one
+ * happened so the guest's email can say "refunded" or "the hold was released" rather than guessing.
+ */
+async function refundBooking(listing: string, b: StoredBooking): Promise<{ refunded: boolean; released: boolean }> {
+  const out = { refunded: false, released: false };
+  if (!b.payment?.intent) return out;
   if (b.payment.state === "authorized" || b.payment.state === "captured") {
-    const ok = await releaseIntent(b.payment.intent).catch(() => false);
-    if (ok) await updateJson<StoredBooking[]>(path(listing), [], (l) => l.map((x) => (x.code === b.code ? { ...x, payment: { ...x.payment!, state: "released" as const } } : x)), `Booking ${b.code}: released`);
+    const ok = await releaseIntent(b.payment.intent).catch((e) => {
+      console.error(`[payments] release failed for ${b.code}: ${(e as Error).message}`);
+      return false;
+    });
+    if (ok) {
+      if (b.payment.state === "captured") out.refunded = true;
+      else out.released = true;
+      await updateJson<StoredBooking[]>(path(listing), [], (l) => l.map((x) => (x.code === b.code ? { ...x, payment: { ...x.payment!, state: "released" as const } } : x)), `Booking ${b.code}: released`);
+    }
   }
   if (b.payout?.state === "paid" && b.payout.transfer) {
     const back = await reverseTransfer(b.payout.transfer, b.code).catch((e) => {
@@ -78,6 +92,7 @@ async function refundBooking(listing: string, b: StoredBooking): Promise<void> {
   } else if (b.payout?.state === "scheduled") {
     await updateJson<StoredBooking[]>(path(listing), [], (l) => l.map((x) => (x.code === b.code ? { ...x, payout: { ...x.payout!, state: "cancelled" as const } } : x)), `Booking ${b.code}: payout cancelled`);
   }
+  return out;
 }
 
 const SITE = process.env.SITE_URL || "https://onoutset.com/";
@@ -94,45 +109,7 @@ const clean = (s: unknown, max: number) =>
     .trim()
     .slice(0, max);
 
-async function notifyNew(rec: StoredBooking, profile: StoredProfile | null): Promise<void> {
-  const instant = rec.status === "accepted";
-  // The published listing, for the business name and phone. An unclaimed listing has no profile, and without this
-  // the guest's confirmation said "Request sent: o-freedomjetskis-com".
-  const detail = await readJson<{ title?: string; contact?: { phone?: string; street?: string; city?: string } }>(`o/${rec.listing}.json`).catch(() => null);
-  const title = clean((profile?.patch as { title?: string } | undefined)?.title, 120) || clean(detail?.title, 120) || rec.listing;
-  const when = `${rec.date} at ${rec.slot}, ${rec.qty} guest${rec.qty === 1 ? "" : "s"}`;
-  const paid = rec.payment?.state === "authorized" ? (instant ? "Paid $" + rec.total + " by card." : "Card held for $" + rec.total + ", charged when you accept.") : rec.total != null ? "Total: $" + rec.total + " (paid on site)" : "";
-  if (profile?.owner.email) {
-    await sendMail({
-      to: profile.owner.email,
-      subject: (instant ? "New booking " : "Booking request ") + rec.code + ": " + rec.guest.name + ", " + when,
-      text: `${rec.guest.name} ${instant ? "booked" : "asked to book"} ${rec.service || title}${rec.variant ? " (" + rec.variant + ")" : ""}.\n\nWhen: ${when}\nGuest: ${rec.guest.name}, ${rec.guest.phone}${rec.guest.email ? ", " + rec.guest.email : ""}\n${paid ? paid + "\n" : ""}${rec.addons.length ? "Add-ons: " + rec.addons.join(", ") + "\n" : ""}\n${instant ? "It is confirmed. " : "Accept or decline in your dashboard: "}${SITE}operators\n\nCode ${rec.code}`,
-      replyTo: rec.guest.email || undefined,
-    });
-  }
-  // Every listing is unclaimed until its owner signs in, and an unclaimed listing has no owner address, so a
-  // request to one reached nobody but the guest: they were told the shop would confirm and the shop never heard.
-  // The founder places those bookings by phone until the shop claims, so every request comes to the founder,
-  // with the shop's number, and a claimed shop's requests are copied too while the first ones come in.
-  const alertTo = process.env.BOOKING_ALERT_EMAIL || process.env.MAIL_REPLY_TO || "";
-  if (alertTo) {
-    const shopPhone = detail?.contact?.phone || "no phone on file";
-    const owner = profile?.owner.email ? "Claimed by " + profile.owner.email + " (they were emailed too)." : "UNCLAIMED: nobody at the shop has been told. Call them.";
-    await sendMail({
-      to: alertTo,
-      subject: (profile?.owner.email ? "Booking " : "CALL THE SHOP: booking ") + rec.code + " for " + title + ", " + when,
-      text: `${owner}\n\nShop: ${title}\nShop phone: ${shopPhone}${detail?.contact?.city ? "\nWhere: " + [detail.contact.street, detail.contact.city].filter(Boolean).join(", ") : ""}\nListing: ${SITE}#o=${rec.listing}\n\nGuest: ${rec.guest.name}, ${rec.guest.phone}${rec.guest.email ? ", " + rec.guest.email : ""}\nWants: ${rec.service || title}${rec.variant ? " (" + rec.variant + ")" : ""}\nWhen: ${when}\n${paid ? paid + "\n" : ""}${rec.addons.length ? "Add-ons: " + rec.addons.join(", ") + "\n" : ""}\nCode ${rec.code}`,
-      replyTo: rec.guest.email || undefined,
-    });
-  }
-  if (rec.guest.email) {
-    await sendMail({
-      to: rec.guest.email,
-      subject: (instant ? "You're booked: " : "Request sent: ") + title + ", " + when,
-      text: `${instant ? "Your booking is confirmed." : "Your request is with " + title + ". You will get an email when they confirm" + (rec.payment ? "; your card is only charged then" : "") + "."}\n\n${rec.service || title}${rec.variant ? " (" + rec.variant + ")" : ""}\nWhen: ${when}\n${paid ? paid + "\n" : ""}Code ${rec.code}\n\nListing: ${SITE}#o=${rec.listing}`,
-    });
-  }
-}
+const notifyNew = mailNewBooking;
 
 export const bookings = new Hono();
 
@@ -215,6 +192,11 @@ bookings.post("/bookings", rateLimit(20, 60 * 60 * 1000), async (c) => {
   const accepting = (profile?.patch as { accepting?: boolean } | undefined)?.accepting ?? (profile?.profile as { accepting?: boolean } | null)?.accepting;
   if (profile && (profile.published === false || accepting === false)) return c.json({ error: profile.published === false ? "This listing is hidden right now" : "This business is not taking bookings right now" }, 409);
   const instant = !!(profile?.profile as { instantBook?: boolean } | null)?.instantBook;
+  // One time, one party. The guest page hides a time once it is taken, but the page is a snapshot and two guests
+  // can be looking at the same one; this is the check that actually stops the second booking.
+  const existing = (await readJson<StoredBooking[]>(path(listing))) || [];
+  const room = slotOpen((profile?.profile as Parameters<typeof slotOpen>[0]) || null, existing, date, slot, clean(b.service, 120), qty);
+  if (!room.open) return c.json({ error: room.reason || "That time is not available", code: "slot_taken" }, 409);
   const rec: StoredBooking = {
     code,
     listing,
@@ -235,7 +217,10 @@ bookings.post("/bookings", rateLimit(20, 60 * 60 * 1000), async (c) => {
   const patch = (profile?.patch || {}) as { options?: PricedOption[]; addons?: PricedOption[] };
   const priced = detail ? priceBooking(patch.options?.length ? patch.options : detail.options || [], patch.addons?.length ? patch.addons : detail.addons || [], rec.service, rec.variant, qty, rec.addons) : null;
   if (priced && rec.total != null && Math.abs(priced.total - rec.total) > 0.5) console.warn(`[bookings] ${code}: browser total ${rec.total}, listing price ${priced.total}; charging the listing price`);
-  if (priced) rec.total = priced.total;
+  if (priced) {
+    rec.total = priced.total;
+    rec.pricing = { subtotal: priced.subtotal, fee: priced.fee };
+  }
   const payNow = stripeEnabled() && !!priced && priced.total >= 1 && b.pay !== false;
   if (payNow) {
     try {
@@ -252,7 +237,16 @@ bookings.post("/bookings", rateLimit(20, 60 * 60 * 1000), async (c) => {
       // The guest is off to Stripe the moment the session exists. The pending row is written behind the
       // response: the store's per-file lock queues the webhook's update after it, nobody finishes checkout in
       // the second or two the write takes, and the return path confirms from the session itself regardless.
-      void updateJson<StoredBooking[]>(path(listing), [], (list) => (list.some((x) => x.code === code) ? list : [rec, ...list].slice(0, 2000)), `Booking ${code} awaiting payment`)
+      // The time was checked before the session was created; it is checked once more under the lock, and if a
+      // second guest won that one-second race the row is dropped and the founder alert says so.
+      void updateJson<StoredBooking[]>(path(listing), [], (list) => {
+        if (list.some((x) => x.code === code)) return list;
+        if (!slotOpen((profile?.profile as Parameters<typeof slotOpen>[0]) || null, list, date, slot, rec.service, qty).open) {
+          console.error(`[bookings] ${code}: ${date} ${slot} filled while the checkout session was being created; the row was not stored`);
+          return list;
+        }
+        return [rec, ...list].slice(0, 2000);
+      }, `Booking ${code} awaiting payment`)
         .catch((e) => console.error(`[bookings] ${code}: could not store the pending row: ${(e as Error).message}`));
       return c.json({ ok: true, status: "pending", code, checkoutUrl: co.url });
     } catch (e) {
@@ -260,6 +254,7 @@ bookings.post("/bookings", rateLimit(20, 60 * 60 * 1000), async (c) => {
     }
   }
   let dup = false;
+  let taken = false;
   await updateJson<StoredBooking[]>(
     path(listing),
     [],
@@ -268,11 +263,16 @@ bookings.post("/bookings", rateLimit(20, 60 * 60 * 1000), async (c) => {
         dup = true;
         return list;
       }
+      if (!slotOpen((profile?.profile as Parameters<typeof slotOpen>[0]) || null, list, date, slot, rec.service, qty).open) {
+        taken = true;
+        return list;
+      }
       return [rec, ...list].slice(0, 2000);
     },
     `Booking ${code} for ${listing}`,
   );
   if (dup) return c.json({ error: "duplicate code" }, 409);
+  if (taken) return c.json({ error: "That time was just booked", code: "slot_taken" }, 409);
   await notifyNew(rec, profile);
   return c.json({ ok: true, status: rec.status, code });
 });
@@ -304,21 +304,15 @@ bookings.patch("/bookings/:listing/:code", rateLimit(300, 60 * 60 * 1000), async
   );
   if (!found) return c.json({ error: "not found" }, 404);
   const f = found as StoredBooking;
+  let money = { refunded: false, released: false };
   if (f.payment?.intent && stripeEnabled()) {
     if (status === "accepted" && f.payment.state === "authorized") await captureBooking(id, code, f.payment.intent);
-    if (status === "declined" || status === "cancelled") await refundBooking(id, f);
+    if (status === "declined" || status === "cancelled") money = await refundBooking(id, f);
   }
-  if (f.guest.email && (status === "accepted" || status === "declined")) {
+  if (status === "accepted" || status === "declined" || status === "cancelled") {
     const profile = await readJson<StoredProfile>(`profiles/${id}.json`);
-    const title = clean((profile?.patch as { title?: string } | undefined)?.title, 120) || id;
-    await sendMail({
-      to: f.guest.email,
-      subject: (status === "accepted" ? "Confirmed: " : "Not available: ") + title + ", " + f.date + " at " + f.slot,
-      text:
-        status === "accepted"
-          ? `${title} confirmed your booking for ${f.date} at ${f.slot}, ${f.qty} guest${f.qty === 1 ? "" : "s"}.\nCode ${f.code}. Show up 15 minutes early.${f.note ? "\n\nFrom the operator: " + f.note : ""}\n\nListing: ${SITE}#o=${id}`
-          : `${title} cannot take your booking for ${f.date} at ${f.slot}.${f.note ? "\n\nFrom the operator: " + f.note : ""}\n\nPick another time: ${SITE}#o=${id}`,
-    });
+    const latest = ((await readJson<StoredBooking[]>(path(id))) || []).find((x) => x.code === code) || f;
+    await mailDecision(latest, profile, status, money);
   }
   return c.json({ ok: true, booking: f });
 });
