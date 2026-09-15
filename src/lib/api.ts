@@ -72,7 +72,13 @@ async function call<T>(path: string, init: RequestInit & { timeout?: number } = 
     const data = (await res.json().catch(() => null)) as (T & { error?: string }) | null;
     return { ok: res.ok, status: res.status, data: res.ok ? data : null, error: data?.error };
   } catch (e) {
-    return { ok: false, status: 0, data: null, error: (e as Error).message };
+    // `error` is what the screens print, and what the API sends back is written for a guest to read. What
+    // fetch throws is not: a guest who pressed "Request to book" while the API was down or slow was shown a
+    // toast that read "Failed to fetch." or "signal timed out.", and the claim screen said "Could not send the
+    // link: Failed to fetch". Every caller already has its own sentence for an API it could not reach, so leave
+    // them to it and put the real reason in the console.
+    console.warn(`[api] ${(init.method || "GET") + " " + path}: ${(e as Error).message}`);
+    return { ok: false, status: 0, data: null };
   }
 }
 
