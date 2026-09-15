@@ -662,14 +662,43 @@ export function timeOptions(step = 30): string[] {
   return out;
 }
 
+export const minutesOfDay = (t: string): number => {
+  const m = /^(\d{1,2}):(\d{2})$/.exec(t || "");
+  return m ? Number(m[1]) * 60 + Number(m[2]) : NaN;
+};
+
+/**
+ * The minutes a day's hours run for, from midnight of that day. A shop that closes after midnight ("10am to
+ * 12am", "6pm to 1am") stores a close at or before its open, and its own website is where those hours came
+ * from. Such a run ends past 1440 and its tail belongs to the next date. Mirrors runOf in the API's openSlots,
+ * down to the rule that only a close in the small hours wraps: an opening time raised past the closing time is
+ * an inverted day, not a night shift, and must not sell start times all night for a shop that is shut.
+ */
+export const LATEST_WRAP = 6 * 60;
+export function hoursRun(h: DayHours | undefined): { start: number; end: number } | null {
+  if (!h || h.closed) return null;
+  const open = minutesOfDay(h.open);
+  const close = minutesOfDay(h.close);
+  if (!Number.isFinite(open) || !Number.isFinite(close) || close === open) return null;
+  if (close > open) return { start: open, end: close };
+  return close <= LATEST_WRAP ? { start: open, end: close + 1440 } : null;
+}
+
+/**
+ * The start times this shop's hours put on one date: its own run up to midnight, plus whatever the day before
+ * left past midnight. A close at or before the open used to produce nothing, so a shop open until midnight
+ * showed the operator an empty calendar and offered a guest no time at all.
+ */
 export function slotsForDay(p: OperatorProfile, d: Date): string[] {
-  const h = p.hours[d.getDay()];
-  if (!h || h.closed) return [];
-  const [oh, om] = h.open.split(":").map(Number);
-  const [ch, cm] = h.close.split(":").map(Number);
+  const step = Number.isFinite(p.slotMinutes) && p.slotMinutes >= 15 ? p.slotMinutes : 60;
   const out: string[] = [];
-  for (let m = oh * 60 + om; m + 1 <= ch * 60 + cm; m += p.slotMinutes) out.push(String(Math.floor(m / 60)).padStart(2, "0") + ":" + String(m % 60).padStart(2, "0"));
-  return out;
+  const push = (m: number) => out.push(String(Math.floor((m % 1440) / 60)).padStart(2, "0") + ":" + String(m % 60).padStart(2, "0"));
+  const today = hoursRun(p.hours[d.getDay()]);
+  if (today) for (let m = today.start; m + 1 <= Math.min(today.end, 1440); m += step) push(m);
+  const before = new Date(d.getFullYear(), d.getMonth(), d.getDate() - 1);
+  const prev = hoursRun(p.hours[before.getDay()]);
+  if (prev && prev.end > 1440) for (let m = prev.start; m + 1 <= prev.end; m += step) if (m >= 1440) push(m);
+  return out.sort();
 }
 
 export function isoToDate(iso: string): Date {

@@ -62,7 +62,36 @@ function dayOf(date: string): Date | null {
 }
 const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 
-/** The times a shop's own settings open on one day, before bookings are counted. */
+/**
+ * The minutes one weekday's hours run for, as an open interval from midnight of that day. A shop that closes
+ * after midnight ("10am to 12am", "6pm to 1am") stores a closing time at or before its opening time, and its
+ * own website is where those hours came from, so this is not a typo an operator can be asked to fix. Such a run
+ * ends past 1440 and its tail belongs to the next calendar date. Closed, unreadable and zero-length days have
+ * no run at all.
+ *
+ * Only a close in the small hours wraps. An operator who raises the opening time past their own closing time
+ * has inverted the day by accident, not moved it past midnight, and reading 6pm to 5pm as a 23 hour shift
+ * would sell start times all night for a shop that is shut.
+ */
+const LATEST_WRAP = 6 * 60;
+function runOf(h: DayHours | undefined): { start: number; end: number } | null {
+  if (!h || h.closed) return null;
+  const open = minutes(h.open);
+  const close = minutes(h.close);
+  if (!Number.isFinite(open) || !Number.isFinite(close) || close === open) return null;
+  if (close > open) return { start: open, end: close };
+  return close <= LATEST_WRAP ? { start: open, end: close + 1440 } : null;
+}
+
+/**
+ * The times a shop's own settings open on one day, before bookings are counted.
+ *
+ * A day's own evening run ends at midnight, and the hours of the day before can leave a tail on this one: a
+ * shop open Friday 6pm to 1am offers midnight on Saturday, because Saturday is the date that guest turns up on
+ * and the date their booking is stored under. Before this, a close at or before the open produced nothing at
+ * all, so a listing whose hours row read "Open until 12:00 AM" answered "No more start times today" on every
+ * day of the year and neither the guest nor the operator was told why.
+ */
 export function scheduledSlots(profile: DashboardProfile | null, date: string, now = new Date()): string[] {
   const d = dayOf(date);
   if (!d) return [];
@@ -79,20 +108,24 @@ export function scheduledSlots(profile: DashboardProfile | null, date: string, n
   const window = Number.isFinite(profile.windowDays) && Number(profile.windowDays) > 0 ? Number(profile.windowDays) : 60;
   const last = new Date(now.getFullYear(), now.getMonth(), now.getDate() + window);
   if (d > last) return [];
-  if (asArray<string>(profile.blockedDates).includes(date)) return [];
-  const h = profile.hours[d.getDay()];
-  if (!h || h.closed) return [];
-  const open = minutes(h.open);
-  const close = minutes(h.close);
+  const off = new Set(asArray<string>(profile.blockedDates).map(String));
+  if (off.has(date)) return [];
   const step = Number.isFinite(profile.slotMinutes) && Number(profile.slotMinutes) >= 15 ? Number(profile.slotMinutes) : 60;
-  if (!Number.isFinite(open) || !Number.isFinite(close) || close <= open) return [];
   const blocked = new Set(asArray<string>(profile.blockedSlots).filter((s) => String(s).startsWith(date + "|")).map((s) => String(s).slice(date.length + 1)));
   const out: string[] = [];
-  for (let m = open; m + 1 <= close; m += step) {
-    const t = hhmm(m);
+  const push = (m: number) => {
+    const t = hhmm(m % 1440);
     if (soonEnough(t) && !blocked.has(t)) out.push(t);
-  }
-  return out;
+  };
+  // This day's own run, up to midnight. Anything past midnight is the next date's.
+  const today = runOf(profile.hours[d.getDay()]);
+  if (today) for (let m = today.start; m + 1 <= Math.min(today.end, 1440); m += step) push(m);
+  // The tail the day before left on this one, on the same grid its evening ran on. A day the operator took off
+  // is off for its late session too.
+  const before = new Date(d.getFullYear(), d.getMonth(), d.getDate() - 1);
+  const prev = off.has(iso(before)) ? null : runOf(profile.hours[before.getDay()]);
+  if (prev && prev.end > 1440) for (let m = prev.start; m + 1 <= prev.end; m += step) if (m >= 1440) push(m);
+  return out.sort();
 }
 
 /** How many guests one time can hold for a service. Unknown means one booking fills it. */

@@ -90,7 +90,10 @@ export function OpCalendar() {
           <div className="odcalcorner" />
           {days.map((d) => {
             const k = dateKey(d);
-            const closed = p.hours[d.getDay()].closed || p.blockedDates.includes(k);
+            // A day with no start times reads as off, whether that is the closed switch, a day off, or hours
+            // that leave no room for one. A day whose own switch is off can still carry the late session of
+            // the day before, and that is a day guests can book.
+            const closed = !slotsForDay(p, d).length || p.blockedDates.includes(k);
             const count = bookings.filter((b) => b.date === k && (b.status === "accepted" || b.status === "completed" || b.status === "new")).length;
             const past = k < todayKey;
             return (
@@ -118,8 +121,7 @@ function CalRow({ slot, days, byCell, toggleBlock, open }: { slot: string; days:
       {days.map((d) => {
         const k = dateKey(d);
         const key = k + "|" + slot;
-        const h = p.hours[d.getDay()];
-        const inHours = !h.closed && slotsForDay(p, d).includes(slot);
+        const inHours = slotsForDay(p, d).includes(slot);
         const dayOff = p.blockedDates.includes(k);
         const blocked = p.blockedSlots.includes(key);
         const items = byCell.get(key) || [];

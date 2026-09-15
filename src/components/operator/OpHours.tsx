@@ -1,10 +1,19 @@
 import { useState } from "react";
 import { fmtTime } from "../../lib/format";
-import { DAY_NAMES, hoursAreDefault, isoToDate, relDay, timeOptions, type DayHours } from "../../lib/operator";
+import { DAY_NAMES, LATEST_WRAP, hoursAreDefault, hoursRun, isoToDate, minutesOfDay, relDay, timeOptions, type DayHours } from "../../lib/operator";
 import { Markup } from "../Markup";
 import { OD_ICONS, useOp } from "./opContext";
 
 const TIMES = timeOptions(30);
+
+/**
+ * The half hour grid with one more entry when the shop's own time is not on it. Hours are read off the
+ * operator's website, which is under no obligation to use half hours: a shop open "8:45am to 5:15pm" had a
+ * time in neither select, so both sat blank and the row said nothing about the hours actually saved.
+ */
+function withTime(list: string[], t: string): string[] {
+  return list.includes(t) || !/^([01]\d|2[0-3]):[0-5]\d$/.test(t || "") ? list : [...list, t].sort();
+}
 
 /** Availability: weekly hours, slot length, notice, booking window and days off. Booksy's working hours screen. */
 export function OpHours() {
@@ -12,6 +21,14 @@ export function OpHours() {
   const [newOff, setNewOff] = useState("");
 
   const patchDay = (i: number, patch: Partial<DayHours>) => set((cur) => ({ ...cur, hours: cur.hours.map((h, j) => (j === i ? { ...h, ...patch } : h)) }));
+  // Moving the opening time past the closing time leaves a day that opens and never closes. It used to save
+  // anyway, and the day then offered guests no start time at all while the closing select sat blank. The
+  // closing time follows the opening one out of the way unless the shop really does close after midnight.
+  const patchOpen = (i: number, open: string) => {
+    const h = p.hours[i];
+    if (hoursRun({ ...h, open })) return patchDay(i, { open });
+    patchDay(i, { open, close: TIMES.find((t) => t > open) || "23:30" });
+  };
   // Copying a closed row would close the whole week, so that one asks for a second click.
   const [armed, setArmed] = useState<number | null>(null);
   const copyToAll = (i: number) => {
@@ -48,9 +65,19 @@ export function OpHours() {
                   <span className="odmuted">Closed</span>
                 ) : (
                   <span className="odtimes">
-                    <select value={h.open} onChange={(e) => patchDay(i, { open: e.target.value })}>{TIMES.map((t) => <option key={t} value={t}>{fmtTime(t)}</option>)}</select>
+                    <select value={h.open} onChange={(e) => patchOpen(i, e.target.value)}>{withTime(TIMES, h.open).map((t) => <option key={t} value={t}>{fmtTime(t)}</option>)}</select>
                     <span>to</span>
-                    <select value={h.close} onChange={(e) => patchDay(i, { close: e.target.value })}>{TIMES.filter((t) => t > h.open).map((t) => <option key={t} value={t}>{fmtTime(t)}</option>)}</select>
+                    {/* A shop open until midnight or later stores a closing time at or before its opening one,
+                        which is what the scrape reads off "10am to 12am". With only the later times listed, that
+                        day's own closing time was in no option at all, so the select sat blank on hours the shop
+                        really keeps. The late ones are listed and marked as the next day. */}
+                    <select value={h.close} onChange={(e) => patchDay(i, { close: e.target.value })}>
+                      {withTime(TIMES, h.close).filter((t) => t > h.open).map((t) => <option key={t} value={t}>{fmtTime(t)}</option>)}
+                      {withTime(TIMES, h.close).filter((t) => t < h.open && minutesOfDay(t) <= LATEST_WRAP).map((t) => <option key={t} value={t}>{fmtTime(t)}, next day</option>)}
+                    </select>
+                    {/* A day that opens and never closes offers guests nothing, and the only sign of it used to
+                        be an empty picker on the listing. Say it where the hours are set. */}
+                    {hoursRun(h) ? null : <small className="odwarn">These hours end before they start, so guests see no times on {DAY_NAMES[i]}.</small>}
                   </span>
                 )}
                 <button type="button" className={"odlink tiny" + (armed === i ? " danger" : "")} onClick={() => copyToAll(i)}>{armed === i ? "Close every day?" : "Apply to all"}</button>

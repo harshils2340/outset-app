@@ -414,8 +414,9 @@
 .odhour:first-child{border-top:none;}
 .odhour > b{font-size:14px;font-weight:600;}
 .odhour.closed > b{color:var(--ink-faint);}
-.odtimes{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink-faint);}
+.odtimes{display:flex;align-items:center;flex-wrap:wrap;gap:8px;font-size:13px;color:var(--ink-faint);}
 .odtimes select{border:1px solid var(--line-strong);border-radius:10px;padding:7px 8px;font-size:13.5px;background:var(--surface);color:var(--ink);font-family:inherit;}
+.odwarn{flex:1 1 100%;color:var(--few);font-size:12px;line-height:1.4;}
 .odaddoff{display:flex;gap:8px;align-items:center;}
 .odaddoff input{flex:1;min-width:0;border:1px solid var(--line-strong);border-radius:10px;padding:9px 12px;font-size:14px;background:var(--surface);color:var(--ink);font-family:inherit;outline:none;}
 .odaddoff input:focus{border-color:var(--ink);}
