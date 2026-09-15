@@ -1,5 +1,7 @@
+import { useEffect, useState } from "react";
 import { LISTINGS } from "../../data/listings";
 import { ICONS } from "../../data/icons";
+import { bookingStatus, hasApi } from "../../lib/api";
 import { startOfToday, dateKey } from "../../lib/dates";
 import { experienceById } from "../../lib/catalog";
 import { fmtDate, fmtTime } from "../../lib/format";
@@ -7,11 +9,52 @@ import { useApp } from "../../state/AppProvider";
 import { Art } from "../art/Art";
 import { Markup } from "../Markup";
 
+/**
+ * What the operator did with a booking, as the guest should read it. A request the operator declined used to
+ * sit here looking exactly like a confirmed trip: a title, a time, a party and a code, for a day the shop was
+ * not expecting anyone. The guest's device only ever knew it had sent the booking, so the answer is read back
+ * from the API.
+ */
+const STATUS: Record<string, { label: string; tone: string }> = {
+  pending: { label: "Payment not finished", tone: "var(--few)" },
+  new: { label: "Waiting on the operator", tone: "var(--ink)" },
+  accepted: { label: "Confirmed", tone: "var(--open)" },
+  completed: { label: "Confirmed", tone: "var(--open)" },
+  declined: { label: "Not available", tone: "var(--few)" },
+  cancelled: { label: "Cancelled", tone: "var(--few)" },
+};
+
+/**
+ * Answers already read, so flipping between tabs does not ask the API the same question again. A booking it
+ * has no answer for (one of the hand-built listings, or the API being down) is remembered as an empty answer,
+ * because the route a guest may call is rate limited and asking again every time the tab opens spends it.
+ */
+const answered: Record<string, string> = {};
+
 export function TripsView() {
   const { state, openListing, openRequest } = useApp();
   const today = startOfToday();
   const mine = state.bookings.slice().sort((a, b) => (a.date + a.slot).localeCompare(b.date + b.slot));
   const up = mine.filter((b) => b.date >= dateKey(today));
+  const [status, setStatus] = useState<Record<string, string>>(() => ({ ...answered }));
+  const codes = up.map((b) => b.code).join(",");
+
+  useEffect(() => {
+    if (!hasApi() || !up.length) return;
+    let alive = true;
+    void (async () => {
+      for (const b of up) {
+        if (b.code in answered) continue;
+        const s = await bookingStatus(b.listing, b.code);
+        answered[b.code] = s || "";
+        if (!alive) return;
+        if (s) setStatus((cur) => ({ ...cur, [b.code]: s }));
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [codes]);
 
   return (
     <>
@@ -28,6 +71,7 @@ export function TripsView() {
             const title = l ? l.title : u!.title;
             const art = l ? l.art : u!.art;
             const sub = l ? l.op + " · " + l.launch : u!.area;
+            const st = STATUS[status[b.code]] || null;
             return (
               <button
                 className="trip"
@@ -43,6 +87,7 @@ export function TripsView() {
                   <span className="when">
                     {fmtDate(d)} · {fmtTime(b.slot)} · {b.qty} {b.qty === 1 ? "person" : "people"}
                   </span>
+                  {st ? <span className="agentpill" style={{ marginTop: 6, color: st.tone }}>{st.label}</span> : null}
                 </span>
                 <span className="mono" style={{ fontSize: 11, color: "var(--ink-faint)", alignSelf: "center" }}>
                   {b.code}
@@ -56,8 +101,9 @@ export function TripsView() {
           <div className="glyph">
             <Markup html={ICONS.ticket} />
           </div>
-          <b>No trips booked yet</b>
-          <p>When you book, the confirmation lives here.</p>
+          {/* A guest whose trips have all been and gone has booked, so "no trips booked yet" was simply wrong. */}
+          <b>{mine.length ? "Nothing coming up" : "No trips booked yet"}</b>
+          <p>{mine.length ? "Your past trips stay in the confirmation emails. Book again and it shows here." : "When you book, the confirmation lives here."}</p>
         </div>
       )}
       <div className="spacer" />

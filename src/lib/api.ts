@@ -336,6 +336,19 @@ export async function confirmPaid(listing: string, code: string): Promise<{ stat
   return r.ok && r.data ? r.data : { paid: false };
 }
 
+/**
+ * What the operator has done with one booking: "new" while it is still a request, then "accepted",
+ * "declined", "cancelled" or "completed". The same public route the Stripe return reads, which answers a
+ * plain status when there is no payment to check.
+ *
+ * The guest's own device knows only that it sent the booking. Without this the Trips tab listed a request the
+ * operator had declined as an upcoming trip, with a code and a time, on a day the shop was not expecting them.
+ */
+export async function bookingStatus(listing: string, code: string): Promise<string | null> {
+  const r = await call<{ status: string }>(`/bookings/paid/${encodeURIComponent(listing)}/${encodeURIComponent(code)}`, { timeout: 12000 });
+  return r.ok && r.data?.status ? r.data.status : null;
+}
+
 export async function fetchBookings(listing: string): Promise<RemoteBooking[] | null> {
   const r = await call<{ bookings: RemoteBooking[] }>(`/bookings/${encodeURIComponent(listing)}`, { headers: authHeaders(listing) });
   return r.ok && r.data ? r.data.bookings : null;

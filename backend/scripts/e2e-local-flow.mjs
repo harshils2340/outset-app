@@ -526,7 +526,7 @@ async function flow(ctx) {
   await sleep(700);
   await setByPlaceholder("Your name", "Harness Guest");
   await setByPlaceholder("Mobile number", "4165550123");
-  await setByPlaceholder("Email for your confirmation", "harness.guest@example.com");
+  await setByPlaceholder("your confirmation goes", "harness.guest@example.com");
   await sleep(500);
   await shot("e1-booking-filled");
   await clickIn(".alprimary");
