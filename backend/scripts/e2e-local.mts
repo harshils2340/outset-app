@@ -497,6 +497,24 @@ console.log("\n8. Every route, driven in process (store-e2e.mts)");
   );
 }
 
+/* ---------------------------------------------------------------- 8b. the tests that need no server -------- */
+
+/**
+ * The unit tests on both sides. They need no database, no server and no browser, so nothing else in this
+ * rehearsal would notice them breaking: `npm test` in backend/ was not run here, and the guest side had no
+ * runner at all, which is how a search suggestion could promise 1,511 places and open an empty page.
+ */
+console.log("\n8b. Unit tests, both sides");
+// Both run from backend/, the only side with tsx installed; the guest tests are plain node:test files.
+for (const [what, pattern] of [
+  ["the supply and payments tests (backend)", "src/**/__tests__/*.test.ts"],
+  ["the guest search tests (src/lib)", "../src/lib/__tests__/*.test.ts"],
+] as [string, string][]) {
+  const r = await run("npx", ["tsx", "--test", pattern], { cwd: BACKEND, env: childEnv({ STRIPE_SECRET_KEY: "", STORE_DIR: "", MAIL_DUMP_DIR: "" }), quiet: true });
+  const passed = Number((r.out.match(/^# pass (\d+)/m) || [])[1] || 0);
+  record(what, r.code === 0 && passed > 0, passed ? `${passed} tests passed` : "no test ran\n" + r.out.slice(-800));
+}
+
 /* ---------------------------------------------------------------- 9. the emails ----------------------------- */
 
 console.log("\n9. Every email, read back");
