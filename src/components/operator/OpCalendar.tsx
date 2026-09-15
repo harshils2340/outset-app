@@ -105,7 +105,7 @@ export function OpCalendar() {
             // "Reopen this day" on a day that is only shut because its hours leave no room promised the opposite
             // of what the click does, which is to take the day off. Only a day actually taken off reopens.
             return (
-              <button type="button" key={k} className={"odcalday" + (k === todayKey ? " today" : "") + (closed ? " closed" : "") + (past ? " past" : "")} onClick={() => toggleDay(k)} disabled={past} title={past ? "Past day" : dayOff ? "Reopen this day" : "Take this day off"}>
+              <button type="button" key={k} data-k={k} className={"odcalday" + (k === todayKey ? " today" : "") + (closed ? " closed" : "") + (past ? " past" : "")} onClick={() => toggleDay(k)} disabled={past} title={past ? "Past day" : dayOff ? "Reopen this day" : "Take this day off"}>
                 <small>{DAY_SHORT[d.getDay()]}</small>
                 <b>{d.getDate()}</b>
                 <span>{closed ? (count ? "Off · " + count : "Off") : count ? count + (count === 1 ? " booking" : " bookings") : "Open"}</span>
@@ -136,9 +136,9 @@ function CalRow({ slot, days, byCell, toggleBlock, open }: { slot: string; days:
         // A day off, or hours that no longer reach this time, closes the cell to new time off but never hides a
         // booking that is already in it.
         const shut = !inHours || dayOff;
-        if (shut && !items.length) return <div key={key} className="odcalcell closed" />;
+        if (shut && !items.length) return <div key={key} data-k={key} className="odcalcell closed" />;
         return (
-          <div key={key} className={"odcalcell" + (shut ? " closed" : "") + (blocked ? " blocked" : "")}>
+          <div key={key} data-k={key} className={"odcalcell" + (shut ? " closed" : "") + (blocked ? " blocked" : "")}>
             {items.map((b) => (
               <button type="button" key={b.id} className={"odevent " + b.status} onClick={() => open(b.id)}>
                 <b>{b.guest}</b>

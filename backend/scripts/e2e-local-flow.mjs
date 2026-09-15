@@ -399,6 +399,89 @@ async function flow(ctx) {
   await shot("c7-hours-changed");
   record("(c6) opening hours saved to the API", hoursSaved, ((await remoteProfile())?.patch?.hoursText || [])[0] || "");
 
+  /* ================= (c7) the calendar: a blocked slot and a day off reach the guest =================
+     The owner blocks time here and then trusts the page. The key the calendar writes ("YYYY-MM-DD|HH:MM") and
+     the one scheduledSlots reads match by inspection, and nothing had ever driven the two together: a slot the
+     calendar hides and the API still sells is a guest turning up on a day the owner gave themselves off. */
+
+  /** The start times a guest is offered on one date, straight from the public picker route. */
+  const guestSlots = async (date) => {
+    const r = await fetch(`${API}/bookings/open/${encodeURIComponent(ID)}?from=${date}&days=1`).then((x) => (x.ok ? x.json() : null)).catch(() => null);
+    return r?.days?.[0]?.slots || [];
+  };
+
+  await openDashboardPage("Calendar");
+  await until(() => !!document.querySelector(".odcal .odcalcell"), 10000);
+  // Next week, so every column is far enough out that the notice cannot be what hides a time from a guest.
+  await js(() => {
+    document.querySelector('.odcalnav button[aria-label="Next"]')?.click();
+    return "next week";
+  });
+  await sleep(900);
+  const cellKey = await js(() => {
+    const fill = [...document.querySelectorAll(".odcalcell:not(.closed):not(.blocked) .odcalfill")][0];
+    return fill ? fill.parentElement.getAttribute("data-k") || "" : "";
+  });
+  const [calDate, calSlot] = String(cellKey || "|").split("|");
+  const slotOffered = (await guestSlots(calDate)).includes(calSlot);
+  await js((k) => {
+    const el = document.querySelector('.odcalcell[data-k="' + k + '"] .odcalfill');
+    if (!el) return "MISSING cell " + k;
+    el.click();
+    return "blocked " + k;
+  }, cellKey);
+  await sleep(2600);
+  const slotStored = await untilLocal(async () => ((await storedProfile())?.profile?.blockedSlots || []).includes(cellKey));
+  const slotGone = await untilLocal(async () => !(await guestSlots(calDate)).includes(calSlot));
+  await shot("c8-calendar-slot-blocked");
+  record(
+    "(c7) a slot blocked in the calendar is saved and stops being offered to guests",
+    !!cellKey && slotOffered && slotStored && slotGone,
+    `${cellKey} offered:${slotOffered} stored:${slotStored} gone:${slotGone}`,
+  );
+
+  // Reopening it puts the time back, so an owner who blocks the wrong cell can undo it.
+  await js((k) => {
+    const el = document.querySelector('.odcalcell[data-k="' + k + '"] .odcalfill');
+    if (!el) return "MISSING cell " + k;
+    el.click();
+    return "reopened " + k;
+  }, cellKey);
+  await sleep(2600);
+  const slotBack = await untilLocal(async () => (await guestSlots(calDate)).includes(calSlot));
+  record("(c8) reopening that slot offers the time again", slotBack, `${cellKey} back:${slotBack}`);
+
+  const dayKey = await js(() => {
+    const b = [...document.querySelectorAll(".odcalday:not(.past):not(.closed)")].find((x) => !x.disabled);
+    return b ? b.getAttribute("data-k") || "" : "";
+  });
+  const dayHadSlots = (await guestSlots(dayKey)).length;
+  await js((k) => {
+    const el = document.querySelector('.odcalday[data-k="' + k + '"]');
+    if (!el) return "MISSING day " + k;
+    el.click();
+    return "day off " + k;
+  }, dayKey);
+  await sleep(2600);
+  const dayStored = await untilLocal(async () => ((await storedProfile())?.profile?.blockedDates || []).includes(dayKey));
+  const dayShut = await untilLocal(async () => (await guestSlots(dayKey)).length === 0);
+  await shot("c9-calendar-day-off");
+  record(
+    "(c9) a day taken off in the calendar is saved and offers a guest no time at all",
+    !!dayKey && dayHadSlots > 0 && dayStored && dayShut,
+    `${dayKey} had:${dayHadSlots} stored:${dayStored} shut:${dayShut}`,
+  );
+
+  await js((k) => {
+    const el = document.querySelector('.odcalday[data-k="' + k + '"]');
+    if (!el) return "MISSING day " + k;
+    el.click();
+    return "reopened " + k;
+  }, dayKey);
+  await sleep(2600);
+  const dayBack = await untilLocal(async () => (await guestSlots(dayKey)).length > 0);
+  record("(c10) reopening that day offers its times again", dayBack, `${dayKey} back:${dayBack}`);
+
   /* ================= (d) every edit reached the guest page ================= */
 
   await goto(`${BASE}/#o=${ID}`);
