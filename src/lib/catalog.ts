@@ -188,6 +188,9 @@ export function optionLabel(o: UnclaimedOption): string {
  * a boat, a ski, a kart, a room, a lane, a group, or a block of time on a rental.
  */
 export function perPerson(o: UnclaimedOption): boolean {
+  // An operator who set this told us outright, so nothing is guessed. Only a scraped price falls through to the
+  // words below, which is why the unit can be anything they like without a made-up unit costing a guest money.
+  if (typeof o.perGuest === "boolean") return o.perGuest;
   const unit = (o.per || "").toLowerCase();
   const text = ((o.name || "") + " " + (o.detail || "")).toLowerCase();
   if (/person|adult|child|kid|senior|youth|guest|rider|passenger|jumper|seat/.test(unit + " " + text)) return true;

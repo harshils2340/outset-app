@@ -38,7 +38,15 @@ export type OpBooking = {
   source: "guest" | "sample" | "remote";
 };
 
-export type OpVariant = { id: string; label: string; price: number | null; per: string };
+export type OpVariant = {
+  id: string;
+  label: string;
+  price: number | null;
+  /** Free text: the suggestions are a starting point, not the choices. */
+  per: string;
+  /** True multiplies the price by the party size, false charges it once. Defaults to per person on a new row. */
+  perGuest?: boolean;
+};
 
 export type OpService = {
   id: string;
@@ -109,7 +117,13 @@ const INDEX_KEY = "outset.operator.index.v1";
 
 export const DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 export const DAY_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-export const PER_UNITS = ["person", "hour", "trip", "boat", "group", "vehicle", "room", "day"];
+/** Suggestions only. An operator can type any unit; these are what the box offers before they do. */
+export const PER_UNITS = ["person", "hour", "trip", "boat", "group", "vehicle", "room", "day", "night", "lane", "session", "class", "court", "table", "bike", "kart"];
+
+/** What a unit implies, for a row saved before the operator was asked outright. "person" and "guest" multiply. */
+export function perUnitLooksPerGuest(unit: string): boolean {
+  return /person|guest|adult|child|kid|senior|youth|rider|passenger|seat|head|player|climber|diver|jumper/i.test(unit || "");
+}
 
 let seq = 0;
 export function uid(prefix = "x"): string {
@@ -539,7 +553,7 @@ export function toCatalog(p: OperatorProfile, base: Unclaimed): Partial<Unclaime
     // than no line at all: there is nothing to tell them what they would be booking.
     if (!s.live || !s.variants.length || !s.name.trim()) continue;
     const variants = s.variants.map((v) => {
-      options.push({ name: s.name, detail: v.label, price: v.price, per: "/" + v.per });
+      options.push({ name: s.name, detail: v.label, price: v.price, per: "/" + v.per, perGuest: v.perGuest ?? perUnitLooksPerGuest(v.per) });
       return { label: v.label, price: v.price, per: "/" + v.per, optionIdx: options.length - 1 };
     });
     services.push({ name: s.name, desc: s.desc || null, variants });

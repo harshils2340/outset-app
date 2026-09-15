@@ -89,10 +89,13 @@ export function releaseDate(date: string): Date {
 
 /* ---------- the price, worked out on the server ---------- */
 
-export type PricedOption = { name: string; detail?: string; price: number | null; per?: string };
+export type PricedOption = { name: string; detail?: string; price: number | null; per?: string; perGuest?: boolean };
 
 /** Same rule as perPerson in src/lib/catalog.ts: whether a price is per guest or for the whole booking. */
 export function perPerson(o: PricedOption): boolean {
+  // The operator's own answer wins. A unit they typed themselves ("per cabin") must never be read as per person
+  // by accident, because that multiplies the card by the party size.
+  if (typeof o.perGuest === "boolean") return o.perGuest;
   const unit = (o.per || "").toLowerCase();
   const text = ((o.name || "") + " " + (o.detail || "")).toLowerCase();
   if (/person|adult|child|kid|senior|youth|guest|rider|passenger|jumper|seat/.test(unit + " " + text)) return true;

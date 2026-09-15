@@ -103,7 +103,13 @@ export type UnclaimedOption = {
   name: string;
   detail: string;
   price: number | null;
+  /** What the price buys, as the operator wrote it: "person", "hour", "cabin", "lane". Free text. */
   per?: string;
+  /**
+   * Whether to multiply by the party size. Set by the operator, and then it decides; absent on a scraped
+   * listing, where perPerson() still has to read the words and guess.
+   */
+  perGuest?: boolean;
 };
 
 /** Public contact facts for one operator, synced from the backend. null means the site did not publish it. */

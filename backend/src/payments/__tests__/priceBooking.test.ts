@@ -83,3 +83,28 @@ test("a free extra is still free, and a priced one still counts", () => {
   assert.equal(priceBooking(SAIL, extras, "Sunset sail", "", 1, ["Photo pack"])?.subtotal, 100);
   assert.equal(priceBooking(SAIL, extras, "Sunset sail", "", 1, ["Photo pack", "Wetsuit"])?.subtotal, 130);
 });
+
+/**
+ * The price unit is free text, because operators sell per cabin, per lane and per anything. The word therefore
+ * cannot be what decides whether the card is multiplied by the party size: an unrecognised unit used to fall
+ * through to per person, so "per cabin" at $400 would have billed a party of four $1,600. When the operator
+ * says outright, that wins; only a scraped price still has to be read from the words.
+ */
+
+test("the operator's own answer decides, whatever the unit is called", () => {
+  const flatCabin = [{ name: "Overnight", detail: "Cabin", price: 400, per: "/cabin", perGuest: false }];
+  const p = priceBooking(flatCabin, [], "Overnight", "Cabin", 4, []);
+  assert.equal(p?.subtotal, 400);
+
+  // And the other way: a unit that reads like a whole-boat price, charged per head because they said so.
+  const perHeadBoat = [{ name: "Charter", detail: "Standard", price: 50, per: "/boat", perGuest: true }];
+  assert.equal(priceBooking(perHeadBoat, [], "Charter", "Standard", 4, [])?.subtotal, 200);
+});
+
+test("a made-up unit with no answer still falls back to the old reading", () => {
+  // Nothing set perGuest here, which is a scraped listing. The heuristic is unchanged.
+  const scraped = [{ name: "Overnight", detail: "Cabin", price: 400, per: "/cabin" }];
+  assert.equal(priceBooking(scraped, [], "Overnight", "Cabin", 2, [])?.subtotal, 800);
+  const byHour = [{ name: "Rental", detail: "Standard", price: 60, per: "/hour" }];
+  assert.equal(priceBooking(byHour, [], "Rental", "Standard", 3, [])?.subtotal, 60);
+});

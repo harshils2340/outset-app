@@ -396,10 +396,23 @@
 .odvarhead{display:flex;flex-direction:column;gap:2px;margin-top:4px;}
 .odvarhead b{font-size:14px;font-weight:600;}
 .odvarhead small{font-size:12.5px;color:var(--ink-faint);}
-.odvar,.odaddon{display:grid;grid-template-columns:minmax(0,1fr) 110px 130px 34px;gap:8px;align-items:center;}
+.odvar{display:grid;grid-template-columns:minmax(0,1fr) 110px 128px 84px 34px;gap:8px;align-items:center;}
+.odaddon{display:grid;grid-template-columns:minmax(0,1fr) 110px 130px 34px;gap:8px;align-items:center;}
+/* The unit is free text: an operator sells per cabin, per lane or per anything, and the box takes it. */
+.odvarper{display:flex;align-items:center;gap:6px;border:1px solid var(--line-strong);border-radius:10px;padding:0 10px;background:var(--surface);min-width:0;}
+.odvarper > span{font-size:13px;color:var(--ink-faint);flex:none;}
+.odvar .odvarper input{border:none;padding:9px 0;border-radius:0;}
+.odvar .odvarper:focus-within{border-color:var(--ink);}
+/* Says outright whether the price is multiplied by the party size, so no unit has to be interpreted. */
+.odpermode{border:1px solid var(--line-strong);border-radius:10px;padding:9px 6px;font-size:12.5px;font-weight:600;background:var(--surface);color:var(--ink-soft);cursor:pointer;font-family:inherit;white-space:nowrap;}
+.odpermode.on{border-color:var(--accent,#495940);color:var(--accent,#495940);}
+.odpermode:focus-visible{outline:2px solid var(--ink);outline-offset:1px;}
 .odaddon{grid-template-columns:minmax(0,1fr) minmax(0,1fr) 110px 34px;}
-.od.compact .odvar,.od.compact .odaddon{grid-template-columns:minmax(0,1fr) 90px 34px;}
-.od.compact .odvar select,.od.compact .odaddon input:nth-child(2){grid-column:1 / -1;}
+.od.compact .odvar{grid-template-columns:minmax(0,1fr) 90px 34px;}
+.od.compact .odaddon{grid-template-columns:minmax(0,1fr) 90px 34px;}
+.od.compact .odvarper{grid-column:1 / -1;}
+.od.compact .odpermode{grid-column:1 / -1;}
+.od.compact .odaddon input:nth-child(2){grid-column:1 / -1;}
 .odvar input,.odaddon input,.odvar select{border:1px solid var(--line-strong);border-radius:10px;padding:9px 12px;font-size:14px;background:var(--surface);color:var(--ink);outline:none;min-width:0;width:100%;font-family:inherit;}
 .odvar input:focus,.odaddon input:focus,.odvar select:focus{border-color:var(--ink);}
 .od .opinput{padding:0 8px 0 10px;border-radius:10px;}

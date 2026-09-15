@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { money } from "../../lib/format";
-import { PER_UNITS, isPriced, liveVariants, uid, type OpAddon, type OpService, type OpVariant } from "../../lib/operator";
+import { PER_UNITS, isPriced, liveVariants, perUnitLooksPerGuest, uid, type OpAddon, type OpService, type OpVariant } from "../../lib/operator";
 import { Markup } from "../Markup";
 import { OD_ICONS, useOp } from "./opContext";
 import { useReorder } from "./useReorder";
@@ -17,6 +17,11 @@ const priceFrom = (raw: string): number | null => (raw === "" ? null : Math.max(
  * Menu editor. Uber Eats menu manager plus Booksy service list: every service has a description, a duration,
  * a capacity, a live switch and price options. Changes save on blur and show on the guest listing right away.
  */
+/** Suggestions for the price unit. The box takes anything; these just save typing. */
+function PerUnitSuggestions() {
+  return <datalist id="odperunits">{PER_UNITS.map((u) => <option key={u} value={u} />)}</datalist>;
+}
+
 export function OpServices() {
   const { p, set, preview, toast, compact, jumpTo } = useOp();
   // The option a "set a price" jump should land on: the first one with no price, else the first option.
@@ -54,6 +59,7 @@ export function OpServices() {
 
   return (
     <div className="odpage">
+      <PerUnitSuggestions />
       <div className="odbar">
         <p className="odmuted">This is your menu as guests see it. We copied it from your website. {!p.services.length ? <b>Nothing to book yet. Add your first service.</b> : unpriced ? <b>{unpriced} {unpriced === 1 ? "option has" : "options have"} no price yet.</b> : "Every option has a price."}</p>
         <div className="odbtns">
@@ -161,13 +167,31 @@ export function OpServices() {
 }
 
 function VariantRow({ v, onChange, onRemove, canRemove, jumpHere }: { v: OpVariant; onChange: (patch: Partial<OpVariant>) => void; onRemove: () => void; canRemove: boolean; jumpHere?: boolean }) {
+  const perGuest = v.perGuest ?? perUnitLooksPerGuest(v.per);
   return (
     <div className={"odvar" + (v.price == null ? " unpriced" : "")}>
       <input value={v.label} placeholder="Option, like 1 hour or Tandem" aria-label="Option name" onChange={(e) => onChange({ label: e.target.value })} />
       <label className="opinput" data-jump={jumpHere ? "price" : undefined}><span>$</span><input type="number" min={0} value={v.price ?? ""} placeholder="Set" aria-label={"Price for " + (v.label || "this option")} onChange={(e) => onChange({ price: priceFrom(e.target.value) })} /></label>
-      <select value={v.per} onChange={(e) => onChange({ per: e.target.value })}>
-        {PER_UNITS.map((u) => <option key={u} value={u}>per {u}</option>)}
-      </select>
+      <label className="opinput odvarper">
+        <span>per</span>
+        <input
+          list="odperunits"
+          value={v.per}
+          placeholder="person"
+          aria-label={"What the price for " + (v.label || "this option") + " buys"}
+          onChange={(e) => onChange({ per: e.target.value })}
+        />
+      </label>
+      {/* What the unit means for the bill, said outright rather than guessed from the word. */}
+      <button
+        type="button"
+        className={"odpermode" + (perGuest ? " on" : "")}
+        aria-pressed={perGuest}
+        title={perGuest ? "Multiplied by the number of guests" : "Charged once, whatever the party size"}
+        onClick={() => onChange({ perGuest: !perGuest })}
+      >
+        {perGuest ? "× guests" : "flat"}
+      </button>
       <button type="button" className="odiconbtn" disabled={!canRemove} onClick={onRemove} aria-label="Remove option"><Markup html={OD_ICONS.trash} /></button>
     </div>
   );
