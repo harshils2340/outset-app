@@ -243,9 +243,14 @@ bookings.post("/bookings", rateLimit(20, 60 * 60 * 1000), async (c) => {
   // The price comes from the listing, never from the number the browser sent, and a claimed listing's own menu
   // wins. This used to run only when Stripe was on, so a pay-on-site guest could send any total: a $40 sail
   // reached the operator as "Your price $1.00, you receive $0.95" and the guest's email said $1 too.
+  // A claimed shop's own menu is the menu, including when it is empty. The fallback used to turn on length, so
+  // an operator who hid or deleted every service left the guest page with nothing to pick while the price still
+  // came off the scraped file: with one priced row in that file, a booking with no service named was charged it
+  // and the operator was emailed money for something they had taken off the menu.
   const patch = (profile?.patch || {}) as { options?: PricedOption[]; addons?: PricedOption[] };
-  const menu = patch.options?.length ? patch.options : detail?.options || [];
-  const extras = patch.addons?.length ? patch.addons : detail?.addons || [];
+  const own = (k: "options" | "addons") => !!profile?.patch && k in patch;
+  const menu = own("options") ? patch.options || [] : detail?.options || [];
+  const extras = own("addons") ? patch.addons || [] : detail?.addons || [];
   const priced = menu.length ? priceBooking(menu, extras, rec.service, rec.variant, qty, rec.addons, rec.total) : null;
   if (priced && rec.total != null && Math.abs(priced.total - rec.total) > 0.5) console.warn(`[bookings] ${code}: browser total ${rec.total}, listing price ${priced.total}; charging the listing price`);
   // Once the listing has been read, its own menu is the only source of a price. This used to apply only when the

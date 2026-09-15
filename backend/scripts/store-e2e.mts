@@ -18,6 +18,9 @@ if (!process.env.E2E_DATABASE_URL) {
 process.env.DATABASE_URL = process.env.E2E_DATABASE_URL;
 process.env.CLAIM_SECRET = "e2e-claim-secret";
 process.env.OUTSET_DB = join(mkdtempSync(join(tmpdir(), "outset-store-e2e-")), "scratch.db");
+// The catalog files the routes read. Without this the store is the repository's own public/, which these
+// checks have no business reading, and no listing file can be laid down for a check that needs one.
+process.env.STORE_DIR = mkdtempSync(join(tmpdir(), "outset-store-e2e-public-"));
 delete process.env.GITHUB_TOKEN;
 delete process.env.RESEND_API_KEY;
 delete process.env.MAIL_SMTP_USER;
@@ -206,6 +209,36 @@ console.log("\n10. A service the shop's menu does not price has no price");
   check("a service the menu does price is taken", r.status === 200, r);
   doc = await query<{ doc: { total: number | null; pricing?: { subtotal: number; fee: number } } }>("select doc from bookings where code = $1", ["E2E-S921"]);
   check("and priced from the menu, not the browser's $1", doc[0]?.doc.total === 105 && doc[0]?.doc.pricing?.subtotal === 100, doc[0]?.doc);
+}
+
+console.log("\n10b. A shop that took its whole menu down is not priced from the scraped file");
+{
+  const { mkdirSync, writeFileSync } = await import("node:fs");
+  // The listing file the crawl left behind, which is what a guest saw before anyone claimed the business.
+  mkdirSync(join(process.env.STORE_DIR!, "o"), { recursive: true });
+  writeFileSync(join(process.env.STORE_DIR!, "o", `${ID}.json`), JSON.stringify({ title: "E2E Store Shop", area: "Tampa, FL", options: [{ name: "Tour", detail: "1 hour", price: 50 }], addons: [{ name: "Wetsuit", price: 30 }] }));
+  const day = new Date(Date.now() + 5 * 86400000).toISOString().slice(0, 10);
+  const shop = { hours: Array.from({ length: 7 }, () => ({ closed: false, open: "07:00", close: "19:00" })), slotMinutes: 60, leadHours: 2, services: [{ name: "Tour", live: true, capacity: 4 }] };
+  const book = (code: string, body: Record<string, unknown>) =>
+    json(`/bookings`, { method: "POST", body: JSON.stringify({ listing: ID, code, date: day, slot: "09:00", qty: 1, addons: [], guest: { name: "Guest " + code, phone: "4165550113", email: "" }, ...body }) });
+  const stored = async (code: string) => (await query<{ doc: { total: number | null } }>("select doc from bookings where code = $1", [code]))[0]?.doc;
+
+  // With no patch at all there is nothing of the operator's to read, so the scraped file is all there is.
+  await json(`/profiles/${ID}`, { method: "PUT", headers: { "x-session": session }, body: JSON.stringify({ published: true, profile: shop }) });
+  r = await book("E2E-S930", { service: "Tour", variant: "1 hour", total: 1 });
+  check("with no menu of their own, the scraped file prices the booking", r.status === 200 && (await stored("E2E-S930"))?.total === 53, await stored("E2E-S930"));
+
+  // The operator hid or deleted every service: the guest page offers nothing, and neither does the price.
+  await json(`/profiles/${ID}`, { method: "PUT", headers: { "x-session": session }, body: JSON.stringify({ published: true, patch: { title: "E2E Store Shop", options: [], addons: [] }, profile: shop }) });
+  r = await book("E2E-S931", { service: "Tour", variant: "1 hour", total: 53, slot: "10:00" });
+  check("an empty menu prices nothing, rather than falling back to the scraped file", r.status === 200 && (await stored("E2E-S931"))?.total === null, await stored("E2E-S931"));
+  r = await book("E2E-S932", { service: "", variant: "", total: 53, slot: "11:00" });
+  check("and a booking with no service named is not charged the one scraped price either", r.status === 200 && (await stored("E2E-S932"))?.total === null, await stored("E2E-S932"));
+
+  // An add-on the operator removed is not charged for, even though the scraped file still lists it.
+  await json(`/profiles/${ID}`, { method: "PUT", headers: { "x-session": session }, body: JSON.stringify({ published: true, patch: { title: "E2E Store Shop", options: [{ name: "Tour", detail: "1 hour", price: 50 }], addons: [] }, profile: shop }) });
+  r = await book("E2E-S933", { service: "Tour", variant: "1 hour", addons: ["Wetsuit"], total: 84, slot: "12:00" });
+  check("an add-on taken off the menu is not added to the bill", r.status === 200 && (await stored("E2E-S933"))?.total === 53, await stored("E2E-S933"));
 }
 
 console.log("\n11. Unsubscribe list lives in the documents table");
