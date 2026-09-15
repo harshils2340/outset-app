@@ -67,7 +67,7 @@ globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) =>
 const { app } = await import("../src/api/routes.ts");
 const { signSession } = await import("../src/api/auth.ts");
 const { runPayouts } = await import("../src/api/payouts.ts");
-const { getBooking, getProfile, listingsWithPayouts, putProfile } = await import("../src/lib/repo.ts");
+const { getBooking, getProfile, listBookings, listingsWithPayouts, putBooking, putProfile } = await import("../src/lib/repo.ts");
 const { migratePg, query } = await import("../src/db/pg.ts");
 await migratePg();
 await query("delete from bookings where listing like 'o-e2e-%'");
@@ -194,6 +194,58 @@ const st = (await (await app.request(`/payouts/${FL}`, { headers: { "x-session":
 check("reports the schedule and history", st.interval === "biweekly" && Array.isArray(st.history) && st.history.length === 2, st);
 const refused = await app.request(`/payouts/${FL}/schedule`, { method: "PUT", headers: { "content-type": "application/json", "x-session": session(ON) }, body: JSON.stringify({ interval: "weekly" }) });
 check("another owner cannot change the schedule", refused.status === 403);
+
+console.log("\n12. The pay day the dashboard shows");
+{
+  // A trip that was yesterday: its money is released today, so the very next run sends it. The page used to
+  // read the cycle's Monday straight out, so on any day but Monday it named a pay day in the past and filed
+  // the money under "later pay days" while the run would have paid it that same day.
+  const LG = "o-e2e-ledger";
+  const today = iso(new Date());
+  writeFileSync(join(store, "o", LG + ".json"), JSON.stringify({ id: LG, title: "Ledger Shop", area: "Tampa, FL", options: [], addons: [] }));
+  await putProfile({ id: LG, claimedAt: "2026-09-01T00:00:00Z", updatedAt: "2026-09-01T00:00:00Z", owner, published: true, profile: {}, patch: { title: "Ledger Shop" }, payout: { account: "acct_lg", enabled: true, detailsSubmitted: true, updatedAt: "2026-09-01T00:00:00Z" } } as E2EProfile);
+  await putBooking({ code: "E2E-LED", listing: LG, date: iso(new Date(Date.now() - 86400000)), slot: "09:00", qty: 1, service: "Tour", variant: "", addons: [], total: 100, guest: { name: "Guest", phone: "4165550100", email: "guest@example.com" }, status: "accepted", created: new Date().toISOString(), payout: { state: "scheduled", amount: 9500, currency: "usd", releaseOn: today } });
+  const led = (await (await app.request(`/payouts/${LG}`, { headers: { "x-session": session(LG) } })).json()) as { nextPayoutOn: string; nextAmount: number; upcoming: number };
+  check("the next pay day is never a date that has gone by", led.nextPayoutOn >= today, led);
+  check("money the next run will send is counted as going out, not as later", led.nextAmount === 9500 && led.upcoming === 0, led);
+}
+
+console.log("\n13. Bookings the API should refuse");
+{
+  const G = { name: "Odd Guest", phone: "4165550100", email: "odd@example.com" };
+  const post = (o: Record<string, unknown>) =>
+    app.request("/bookings", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ listing: FL, date: trip, slot: "07:00", qty: 1, service: "Dolphin tour", variant: "Adult", total: 213, guest: G, ...o }) });
+  const ghost = await post({ listing: "o-no-such-shop-anywhere", code: "E2E-GHOST" });
+  check("a booking for a listing that does not exist is refused", ghost.status === 404, await ghost.json());
+  check("and no booking was stored for it", (await listBookings("o-no-such-shop-anywhere")).length === 0);
+  const feb30 = await post({ code: "E2E-FEB30", date: `${new Date().getFullYear() + 1}-02-30` });
+  check("a day that is not on the calendar is refused", feb30.status === 400, await feb30.json());
+  for (const slot of ["24:00", "12:99", "99:99"]) {
+    const bad = await post({ code: "E2E-T" + slot.replace(":", ""), slot });
+    check(`${slot} is bad input, not a taken slot`, bad.status === 400, await bad.json());
+  }
+}
+
+console.log("\n14. A guest who pays on site");
+{
+  // With no Stripe key the server never priced the booking at all and kept whatever total the browser sent,
+  // so the operator's email could promise them $0.95 for a $213 tour.
+  const key = process.env.STRIPE_SECRET_KEY;
+  process.env.STRIPE_SECRET_KEY = "";
+  const r = await app.request("/bookings", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ listing: FL, code: "E2E-SITE", date: trip, slot: "07:00", qty: 2, service: "Dolphin tour", variant: "Adult", total: 1, guest: { name: "Site Payer", phone: "4165550100", email: "site@example.com" } }) });
+  process.env.STRIPE_SECRET_KEY = key;
+  check("the booking is taken as pay on site", r.status === 200 && ((await r.json()) as { status: string }).status === "new");
+  const b6 = await getBooking<{ code: string; listing: string; status: string; date: string; created: string; total: number; pricing?: { subtotal: number; fee: number } }>(FL, "E2E-SITE");
+  check("priced from the listing at $213, not the $1 sent", b6?.total === 213 && b6.pricing?.subtotal === 205 && b6.pricing.fee === 8, b6);
+}
+
+console.log("\n15. A date in another year says which year");
+{
+  const { fmtDay } = await import("../src/lib/emailTemplate.ts");
+  const now = new Date(2026, 11, 20);
+  check("this year needs no year", fmtDay("2026-12-25", now) === "Friday, December 25", fmtDay("2026-12-25", now));
+  check("next January carries its year", fmtDay("2027-01-03", now) === "Sunday, January 3, 2027", fmtDay("2027-01-03", now));
+}
 
 console.log(failures ? `\n${failures} check(s) failed` : "\nAll payout checks passed");
 process.exit(failures ? 1 : 0);

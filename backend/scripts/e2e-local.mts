@@ -103,12 +103,22 @@ for (const d of [store, dist, shots, mailDir]) mkdirSync(d, { recursive: true })
 writeFileSync(apiLogPath, "");
 
 const children: ChildProcess[] = [];
+/**
+ * The API and the site are started through npx, so the child here is a wrapper and the server itself is its
+ * grandchild. Signalling only the wrapper left the real server holding :8787 and :5199, and the next run died
+ * with EADDRINUSE. Both are started in their own process group (detached), so the whole group goes at once.
+ */
 function cleanup(): void {
   for (const c of children) {
     try {
-      c.kill("SIGTERM");
+      if (c.pid) process.kill(-c.pid, "SIGTERM");
+      else c.kill("SIGTERM");
     } catch {
-      /* already gone */
+      try {
+        c.kill("SIGTERM");
+      } catch {
+        /* already gone */
+      }
     }
   }
   if (!KEEP) rmSync(tmp, { recursive: true, force: true });
@@ -168,7 +178,8 @@ function run(cmd: string, args: string[], opts: { cwd: string; env?: NodeJS.Proc
 }
 
 function start(cmd: string, args: string[], opts: { cwd: string; env?: NodeJS.ProcessEnv; logTo?: string; tag: string }): ChildProcess {
-  const c = spawn(cmd, args, { cwd: opts.cwd, env: opts.env || process.env });
+  // Its own process group, so cleanup() can take the server down with its npx wrapper. See cleanup().
+  const c = spawn(cmd, args, { cwd: opts.cwd, env: opts.env || process.env, detached: true });
   children.push(c);
   const write = (d: Buffer) => {
     if (opts.logTo) appendFileSync(opts.logTo, String(d));

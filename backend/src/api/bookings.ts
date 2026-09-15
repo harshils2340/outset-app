@@ -95,6 +95,15 @@ const SITE = process.env.SITE_URL || "https://onoutset.com/";
 const STATUSES = ["new", "accepted", "declined", "completed", "noshow", "cancelled"];
 const SUCCESS = (code: string, listing: string) => `${SITE}#paid=${code}&o=${listing}`;
 const CANCEL = (listing: string) => `${SITE}#o=${listing}`;
+/**
+ * A real day on the calendar. "2027-02-30" parses and rolls forward to March 2, so without this the record
+ * kept 2027-02-30 while every email said Tuesday, March 2: one booking, two days.
+ */
+const realDate = (s: string): boolean => {
+  const [y, m, d] = s.split("-").map(Number);
+  const t = new Date(Date.UTC(y, m - 1, d));
+  return t.getUTCFullYear() === y && t.getUTCMonth() === m - 1 && t.getUTCDate() === d;
+};
 // Strip control characters so nothing odd lands in an email or a JSON file.
 const clean = (s: unknown, max: number) =>
   String(s ?? "")
@@ -172,15 +181,31 @@ bookings.post("/bookings", rateLimit(20, 60 * 60 * 1000), async (c) => {
   const qty = Number(b.qty);
   const code = clean(b.code, 16).toUpperCase();
   const guest = { name: clean(b.guest?.name, 80), phone: clean(b.guest?.phone, 24).replace(/[^\d+() -]/g, ""), email: clean(b.guest?.email, 200).toLowerCase() };
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || Number.isNaN(Date.parse(date))) return c.json({ error: "bad date" }, 400);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !realDate(date)) return c.json({ error: "bad date" }, 400);
   if (Date.parse(date) < Date.now() - 86400000 || Date.parse(date) > Date.now() + 366 * 86400000) return c.json({ error: "date out of range" }, 400);
-  if (!/^\d{2}:\d{2}$/.test(slot)) return c.json({ error: "bad time" }, 400);
+  // 24:00, 12:99 and 99:99 all passed a plain \d\d:\d\d and came back as 409 "that time is not open", which
+  // reads to a guest like someone else took it. Bad input is 400.
+  if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(slot)) return c.json({ error: "bad time" }, 400);
   if (!Number.isInteger(qty) || qty < 1 || qty > 60) return c.json({ error: "bad guest count" }, 400);
   if (!/^[A-Z0-9-]{4,16}$/.test(code)) return c.json({ error: "bad code" }, 400);
   if (guest.name.length < 2 || guest.phone.replace(/\D/g, "").length < 7) return c.json({ error: "name and mobile are required" }, 400);
   if (guest.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(guest.email)) return c.json({ error: "bad email" }, 400);
   const listing = String(b.listing);
   const profile = await getProfile<StoredProfile>(listing);
+  // The listing's own file: its menu and prices, and the proof that the listing exists at all. Before this,
+  // a booking for any invented id was accepted, stored a row and alerted the founder to call a shop that was
+  // never there. A store hiccup must not turn a real listing into a missing one, so only a clean read that
+  // finds nothing refuses.
+  type Detail = { title?: string; area?: string; options?: PricedOption[]; addons?: PricedOption[] };
+  let detail: Detail | null = null;
+  let listingKnown = true;
+  try {
+    detail = await readJson<Detail>(`o/${listing}.json`);
+  } catch (e) {
+    listingKnown = false;
+    console.error(`[bookings] could not read the listing file for ${listing}: ${(e as Error).message}`);
+  }
+  if (listingKnown && !detail && !profile) return c.json({ error: "no such listing" }, 404);
   // The dashboard's Published and Accepting switches. The guest page hides the booking box for both, but the
   // page is not the only client, and before this a paused shop's API still took the booking and emailed them.
   const accepting = (profile?.patch as { accepting?: boolean } | undefined)?.accepting ?? (profile?.profile as { accepting?: boolean } | null)?.accepting;
@@ -205,9 +230,9 @@ bookings.post("/bookings", rateLimit(20, 60 * 60 * 1000), async (c) => {
     status: instant ? "accepted" : "new",
     created: new Date().toISOString(),
   };
-  // With Stripe on and a price, the card is authorized first; the operator hears about it once it is.
-  // The card is charged what the listing says, never the number the browser sent. A claimed listing's own menu wins.
-  const detail = stripeEnabled() ? await readJson<{ title?: string; area?: string; options?: PricedOption[]; addons?: PricedOption[] }>(`o/${listing}.json`).catch(() => null) : null;
+  // The price comes from the listing, never from the number the browser sent, and a claimed listing's own menu
+  // wins. This used to run only when Stripe was on, so a pay-on-site guest could send any total: a $40 sail
+  // reached the operator as "Your price $1.00, you receive $0.95" and the guest's email said $1 too.
   const patch = (profile?.patch || {}) as { options?: PricedOption[]; addons?: PricedOption[] };
   const priced = detail ? priceBooking(patch.options?.length ? patch.options : detail.options || [], patch.addons?.length ? patch.addons : detail.addons || [], rec.service, rec.variant, qty, rec.addons) : null;
   if (priced && rec.total != null && Math.abs(priced.total - rec.total) > 0.5) console.warn(`[bookings] ${code}: browser total ${rec.total}, listing price ${priced.total}; charging the listing price`);

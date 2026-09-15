@@ -72,7 +72,11 @@ async function ledger(id: string, payout: Payout, now = new Date()) {
   const list = await listBookings<StoredBooking>(id);
   const interval = payout.interval || "weekly";
   const next = cycleStart(cycleOf(now, interval) + (payout.lastCycle === cycleOf(now, interval) ? 1 : 0), interval);
-  const nextDay = next.toISOString().slice(0, 10);
+  // A cycle pays on its Monday, and a run any later day of that cycle still pays, so once this cycle's Monday
+  // has gone by the next payout is the next run, not a date in the past. The page used to say "Next payout ·
+  // Monday, September 14" on the 15th and file money the next run would send under "later pay days".
+  const today = now.toISOString().slice(0, 10);
+  const nextDay = [next.toISOString().slice(0, 10), today].sort().at(-1)!;
   let upcoming = 0;
   let nextAmount = 0;
   let paid = 0;

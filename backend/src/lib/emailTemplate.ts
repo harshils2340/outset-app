@@ -45,13 +45,19 @@ const esc = (s: string) =>
 const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
-/** "Wednesday, September 16" from "2026-09-16". A bad date comes back as it was rather than as "Invalid Date". */
-export function fmtDay(date: string): string {
+/**
+ * "Wednesday, September 16" from "2026-09-16". A bad date comes back as it was rather than as "Invalid Date".
+ *
+ * A trip in another year carries its year, because bookings run up to a year ahead and "Sunday, January 3" in a
+ * December email does not say which January.
+ */
+export function fmtDay(date: string, now = new Date()): string {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date || "");
   if (!m) return date || "";
   const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
   if (Number.isNaN(d.getTime())) return date;
-  return `${DAYS[d.getDay()]}, ${MONTHS[d.getMonth()]} ${d.getDate()}`;
+  const year = d.getFullYear() === now.getFullYear() ? "" : `, ${d.getFullYear()}`;
+  return `${DAYS[d.getDay()]}, ${MONTHS[d.getMonth()]} ${d.getDate()}${year}`;
 }
 
 /** "2:00 PM" from "14:00". */
