@@ -103,3 +103,83 @@ failed, with 43 money-path checks and 37 route checks inside them. Both projects
 - Still nothing checked against real Stripe: no key was set, so the card path ran against the recorder only.
   Live capture, refund and Connect transfer settings still want a look in the dashboard.
 - Render environment variables remain untouched and unverified from here.
+
+## 15 September 2026, third run (07:00 to 08:40 UTC)
+
+**Chosen, and why.** The first two runs covered the money and the booking rules, so this one took the guest
+listing and booking box, the dashboard pages beyond Bookings, phone width and the accessibility and empty
+states, none of which anything had looked at. Type checks at the root and in `backend/`, and the unit tests,
+were run at the start and at the end. The full rehearsal was run because two commits since the last entry
+(`cf53c87`, `bb89e2d`) touched `backend/src` and `backend/scripts`: green before any change and green after,
+33 passed, 0 failed, with the 43 money checks and 37 route checks inside it.
+
+**Found and fixed.**
+
+- **A shop that closes after midnight could never be booked** (`56255e4`). Hours come off the operator's own
+  website, and "10am to 12am" or "6pm to 1am" reads back as a closing time at or before the opening one. Every
+  such day produced no start time at all: the listing's own hours row said "Open until 12:00 AM" while the
+  booking box said "No more start times today", on every day of the year. The operator's calendar hid it by
+  falling back to a 9 to 5 grid whenever no day produced a slot, so nobody would ever have noticed from the
+  dashboard. A day's run now ends at midnight and the rest belongs to the next date, which is the date the
+  guest turns up on, so notice, days off, blocked slots and capacity are unchanged. Only a close in the small
+  hours wraps, because an opening time dragged past the closing one is a mistake, not a night shift; the
+  Availability page says so on the row, and offers the after midnight closes it could not reach before.
+- **A trip priced "on request" showed a total made only of its extras** (`18aa465`). Picking an unpriced
+  service and a $30 wetsuit put "Total $32" in the box and "Confirm and pay $32" on the button, while the
+  server priced from the listing, found no price, and stored the booking with none. Nobody was ever charged
+  that $32.
+- **The Explore feed behind an open listing kept its whole tab order** (`18b64f2`). On a phone the listing is a
+  sheet over the feed: Tab from the top of an open listing went Search, Filters, nine category chips, then card
+  after card, about seventy stops before the booking box, and a screen reader read all of it first. Three
+  presses now.
+- **"Failed to fetch." was shown to guests** (`0789019`). Every screen prints the API's own `error`, which is
+  written for a guest; what `fetch` throws is not. With the API down, "Request to book" produced a toast
+  reading "Failed to fetch." and a slow one "signal timed out."; the claim screen said "Could not send the
+  link: Failed to fetch". Verified both ways against a dead port.
+- **The phone booking button never said it was working** (`daf1aa2`). It stayed untouched for as long as the
+  call took, up to 25 seconds, so an impatient guest pressed it again and a shop with room got two rows under
+  two codes. Confirmed against a server that accepts and never answers.
+- **The setup checklist and the Services banner miscounted** (`179178e`). Both counted options on services
+  switched off, which no guest can book, and both counted a price of zero as set while the money code on each
+  side reads a zero as no price. So the dashboard could say the menu was finished for an option the guest is
+  told to pay on site for.
+- **Smaller.** `npm test` did not exist though AGENTS.md tells you to keep it green (`34ec4b7`); the hours
+  selects, the day off date, the policy line, the photo address and the Otto test box had no accessible name,
+  and at 400px each day's closing time wrapped to its own line so the week took two and a half screens
+  (`b20b470`).
+
+**Checked and clean.** No sideways scroll or overlap at 400px on the guest listing, the whole booking flow or
+any dashboard page. Every visible input on the booking flow is named and every disabled button says why. Start
+times against odd hours, a closed day, a day off, a blocked slot, a 72 hour notice, a 7 day window, a slot
+length of zero and a malformed profile all behave. Eight new tests in `backend/src/api/__tests__/openSlots.ts`
+and `payments/__tests__/priceBooking.ts`; 18 pass.
+
+**Needs Harshil.**
+
+- The overnight fix changes what a claimed shop offers. Any live shop whose close is at or before its open
+  starts offering evening times tonight that it did not yesterday. Worth looking at the claimed shops once.
+- The routine's rehearsal command says `scripts/e2e-local.mts` from the root; it lives in `backend/scripts/`.
+  And `NODE_EXTRA_CA_CERTS` has to carry the proxy CA bundle as well as the Postgres certificate, or the
+  harness cannot reach the npm registry.
+- `npm test` now exists but no workflow runs it. `.github/workflows/` has eight jobs and none is the tests.
+- Still nothing checked against real Stripe, and Render environment variables remain untouched from here.
+
+## Coverage
+
+**Verified so far.** Booking validation and odd input on every route that takes it. The money split,
+pay-on-site pricing, the service fee tiers. Double booking past capacity, and party size against a time's
+capacity. Payout scheduling, cycles and the payouts tiles. The Stripe Connect button. The booking and decision
+emails. The rehearsal itself. Start times from a claimed shop's hours: odd hours, days off, blocked slots, the
+notice, the window, a shop open past midnight. The booking box price lines, including a service with no price.
+Phone width at 400px on the guest listing, the booking flow and every dashboard page. Accessibility on the
+booking flow: focus order, input labels, disabled buttons. The API unreachable and the API slow. The
+Availability page and the setup checklist counting itself.
+
+**Not yet checked.** Search and browse: a query matching nothing, a metro with one listing, a category with
+none, paging, an unpublished or paused listing appearing where it should not. Claim and sign-in: an address
+that does not match the business, an expired claim link, a link claimed twice, a sign-in code wrong five times,
+a session for one listing used on another. Dashboard Calendar end to end (blocking a slot and a day), Services
+(adding, hiding, deleting), Settings, Assistant. The remaining empty states: a brand new claimed shop with
+nothing filled in, a booking list of zero. Colour contrast on the accent. Add-ons end to end on a real listing
+(no catalog record was found carrying both an unpriced service and a paid add-on to drive by hand). A shop
+whose published hours are not on the half hour, through a real claim.
