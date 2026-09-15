@@ -344,6 +344,90 @@ through the total to the confirmation.
 - Still nothing checked against real Stripe, no workflow runs `npm test` on its own, Render environment
   variables remain untouched from here, and "Release this listing" still only releases on that device.
 
+## 15 September 2026, seventh run (11:00 to 12:00 UTC)
+
+**Chosen, and why.** Everything in the routine's own list was already covered, so this run took the Coverage
+section's "not yet checked" list from the top: the Wishlists tab, photo upload on the Listing page, reordering
+services, a shop whose published hours are not on the half hour, and the one the last run stopped at, a brand
+new claimed shop seen from the guest side, which it could not read because `hydrateProfile` kept refilling the
+menu from the crawl. That refill turned out to be the bug. Type checks on both sides and both sets of unit
+tests ran at the start and at the end, and the type check turned out to be checking nothing, which is the
+last item below. The full rehearsal was **skipped at the start**: the last entry said green and the only
+commit since it was that entry itself. It ran three times at the end, because every fix here touches `src/`
+or `backend/src`: 39 steps, 0 failed, with 43 money checks, 46 route checks, 29 backend tests and 47 guest
+tests inside it, then 41 steps once the type checks became a step of their own.
+
+**Found and fixed.**
+
+- **A menu the operator took down came back every time they opened the dashboard** (`4d1a389`). A profile
+  claimed off the slim browse record has no services, photos or blurb, so the dashboard reads the operator's
+  detail file and fills what is still empty. It ran on every load, and "still empty" only means "not filled in
+  yet" until the operator starts working: after that an empty menu is a menu they took down and an empty
+  gallery is photos they deleted. An owner who cleared either found the crawled version back on the next
+  visit, on the guest listing with it, and no way to keep it off. The fill is a one-time bootstrap now. This
+  is also what hid the last run's question, so the answer is there in the test: deleting every service now
+  sticks on the dashboard as well as on the guest page.
+- **The Wishlists tab told a guest holding twelve saves that they had none** (`1afe55e`). Saves live in
+  localStorage and survive a reload; the catalog is fetched after the first paint, and most operators are only
+  in the full file, not the lite shard the rails paint from. The tab looked each saved id up and dropped what
+  did not resolve, so opening it on a cold start showed "Create your first wishlist" and a button to go and
+  find the saves they already had. It counts what has not arrived and says the list is loading now. A saved
+  listing the operator has since switched off also sat there reading "Instant Book" with a price, and opening
+  it said the page had been taken down; it reads "Not bookable".
+- **A photo the browser itself made too big was refused with advice nobody could follow** (`939fc0d`). The
+  Listing page resizes to 1600px at one fixed quality and sends whatever comes out; the API refuses over
+  1.8 MB, and a detailed photograph, which is most of what these operators take, comes out over it. The
+  operator read "image too large; keep it under 1.8 MB" about a file they never had. The browser measures the
+  bytes now and steps quality, then size, until a pass fits. Three more on that path: a failed store answered
+  with its own internals (`GitHub write failed 401 {"message":"Bad credentials"...}` reaching an operator's
+  toast), a canvas with no 2d context threw inside an onload handler so the button sat on "Uploading 1..."
+  for the session, and picking more than twelve photos uploaded twelve and dropped the rest without a word.
+- **A service drag the operator gave up on kept the new order** (`2a9c609`). Dragging reorders the list as it
+  passes over each row, so by the time they change their mind it is already applied. Letting go over the page
+  header, or Escape mid-drag, cleared the drag and left that order with nothing to undo it, while the keyboard
+  path on the same handle promises Escape restores.
+- **A boot that threw left every screen waiting on a catalog that had already landed** (`0c21dcc`), and
+  **neither catalog fetch had a deadline** (`ad228fe`), so a connection that accepted the request and went
+  quiet never settled and nothing ever said the catalog was done.
+- **Nothing was type-checking the guest app, and `tsc -b` had been failing for days** (`7c8c4da`). Three
+  things had to be true at once and were. `tsc --noEmit -p .` at the root reads a solution file: `files` is
+  empty and the two real projects are references, so without `-b` it has no inputs and exits 0 having checked
+  nothing. That is the command this routine runs, and the one every entry above calls a clean type check.
+  Render builds the site with bare `vite build`, which strips types instead of checking them. And
+  `npm run build`, the one command that does run `tsc -b`, had been failing since the guest unit tests landed
+  in the fourth run: they live under `src/`, so the app project compiles them, and they import `node:test`
+  with no node types here. So every line under `src/` has gone unchecked for several days, and this run added
+  an unused import that nothing caught. The tests are out of the app project now, which makes `tsc -b` clean
+  and loses nothing, there is an `npm run typecheck`, and the rehearsal runs the real check on both sides as
+  its own step so it cannot go quiet again.
+- **Smaller.** The dashboard wrote the operator's whole record back to the API on every visit, because saving
+  ran on whatever the setter returned including the object it was handed (`12df4d4`).
+
+**Checked and clean.** Hours that are not on the half hour, end to end: the two Availability selects carry the
+shop's own time as an extra entry, both slot engines count in minutes, and the calendar's rows are the union
+of every day's start times, so an odd one gets its own row. Two cases on each engine are pinned now
+(`0e99b8e`), including an odd close after midnight. The keyboard reordering model itself (grab, arrows, drop,
+Escape) and its live region. The category rail at 400px: a contained horizontal scroller, every chip named.
+The metro picker's counts, which are the length of the feed each press opens.
+
+**Needs Harshil.**
+
+- **A claimed shop with an empty menu still takes bookings.** The booking box only requires a service when the
+  listing has options, which is right for an unclaimed shop and wrong for a claimed one that emptied its menu:
+  a guest can press "Request to book" with nothing picked. The fix above is what makes that state persist, so
+  it is reachable now where before the crawl quietly refilled it. The dashboard does say "Nothing to book yet"
+  in two places. Deciding whether the listing should pause itself is yours.
+- **Photo upload returns a URL for a file that does not exist yet.** With a token set, the bytes are committed
+  to `public/uploads/` and the reply points at the live site, so the operator sees the photo only after the
+  next deploy. Untested from here: no token was set, by the routine's own rule.
+- **The routine's own type-check command needs changing.** It says `npx tsc --noEmit -p .` at the root, which
+  checks nothing. `npx tsc -b`, or `npm run typecheck`, is the one that reads the projects. The backend's
+  command is right as it stands. Fixing this also meant editing two files outside the folders the routine
+  keeps runs inside, `tsconfig.app.json` and `package.json`, four lines between them. Nothing else this run
+  left `backend/src`, `backend/scripts`, `src/` or `docs/`.
+- Still nothing checked against real Stripe, no workflow runs `npm test` on its own, Render environment
+  variables remain untouched from here, and "Release this listing" still only releases on that device.
+
 ## Coverage
 
 **Verified so far.** Booking validation and odd input on every route that takes it. The money split,
@@ -370,9 +454,18 @@ phone, from the picker to the confirmation. The Trips tab, the Inbox tab and the
 states. What a guest is told was sent to them, against what the product can actually send. Settings and
 Assistant, read through.
 
-**Not yet checked.** Reordering services by drag or by keyboard. The operator chat for a hand-built listing
-(`src/data/listings.ts` is empty, so `agent.ts` and the `ChatView` operator path have no live case). A brand
-new claimed shop with nothing filled in, seen from the guest side: started here, but the guest page refilled
-its menu from the crawl through `hydrateProfile` before it could be read, which itself wants a look. A shop
-whose published hours are not on the half hour, through a real claim. The metro picker and the category rails
-on a phone. Photo upload on the Listing page. The Wishlists tab.
+The Wishlists tab: a cold start with saves, a saved listing switched off, the order they are shown in, and the
+empty state. Photo upload on the Listing page: a file too big for the API, one the browser cannot read, a
+batch over twelve, a canvas that will not open, and what a failed store tells the operator. Reordering
+services, by drag and by keyboard, including giving up part way through either. Filling a fresh profile from
+the crawled detail file, and what that does to a menu or a gallery the operator emptied. Hours that are not on
+the half hour, through both slot engines, both Availability selects and the calendar grid. The category rail
+at 400px. A catalog fetch that stalls, and a boot that throws after it lands. What actually type-checks the
+two projects, and what the three commands that look like they do really run.
+
+**Not yet checked.** The operator chat for a hand-built listing (`src/data/listings.ts` is empty, so
+`agent.ts` and the `ChatView` operator path still have no live case). The metro picker at 400px in a browser:
+its counts and its logic were read, the layout was not. What a guest can do on a claimed listing whose menu is
+empty, now that the state persists (see the seventh run's note). Photo upload against a real GitHub token, and
+the gap between the URL it returns and the deploy that makes the file exist. Drag reordering in a browser: the
+fix is reasoned from the drag model, and the repo has no renderer to test a hook in.
