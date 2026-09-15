@@ -340,6 +340,9 @@ export function toCatalogItem(r: CatalogRow): Record<string, unknown> {
     claimKey: claimKeyHash("o-" + slug(r.domain)),
     title,
     cat: family || "water",
+    // A test listing (origin 'test') is published so its own link, claim and booking work end to end, but it is left
+    // out of every list, search, landing page and sitemap. See backend/scripts/test-listing.mts.
+    ...(r.origin === "test" ? { unlisted: true } : {}),
     // True when nothing in the listing's own text confirms its kind yet; rails put these after confirmed ones.
     ...(kind.confirmed ? {} : { kindUnconfirmed: true }),
     art,
@@ -1734,7 +1737,7 @@ export function syncCatalogToApp(): { path: string; count: number } {
         const lines = own.length ? own : c?.hours || [];
         return lines.length ? encodeWeek(lines) || undefined : undefined;
       })(),
-      options: [], specs: [], includes: [], gap: "", lite: true,
+      options: [], specs: [], includes: [], gap: "", lite: true, unlisted: (item as { unlisted?: boolean }).unlisted || undefined,
       /**
        * Nothing here a guest can act on: no photo, no price, no hours, no services, no description. Most of
        * these are map pins whose website has not been crawled yet, so the flag clears itself as the crawl
@@ -1771,7 +1774,7 @@ export function syncCatalogToApp(): { path: string; count: number } {
     .slice(0, 2200)
     .map((x) => x.o);
   writeFileSync(join(appDataDir, "../../public/catalog-lite.json"), JSON.stringify({ generatedAt: new Date().toISOString(), operators: lite, contacts: {} }));
-  const pages = writeLandingPages(full as never);
+  const pages = writeLandingPages(full.filter((i) => !(i as { unlisted?: boolean }).unlisted) as never);
   console.log("Wrote " + pages.pages + " landing pages to public/p");
   return { path, count: operators.length };
 }

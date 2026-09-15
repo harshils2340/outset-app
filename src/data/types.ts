@@ -204,6 +204,8 @@ export type Unclaimed = {
   lite?: boolean;
   /** No photo, price, hours, services or description yet: real, but nothing a guest can act on, so browse leaves it out. */
   thin?: boolean;
+  /** A test listing: reachable by its own link, claimable and bookable, but never in a list, search or rail. */
+  unlisted?: boolean;
   /** Nothing in the listing's own text confirms its kind yet, so a kind rail lists it after the confirmed ones. */
   kindUnconfirmed?: boolean;
   /** Id of the detail file to fetch when it differs from this record's id (hand-verified seeds). */

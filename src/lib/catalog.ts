@@ -29,8 +29,9 @@ function rebuild(): void {
   const key = (u: Unclaimed) => (overrides.has(u.id) ? u.id : u.detail && overrides.has(u.detail) ? u.detail : null);
   const patched = overrides.size ? base.map((u) => { const k = key(u); return k ? { ...u, ...overrides.get(k) } : u; }) : base;
   byId = new Map(patched.map((u) => [u.id, u]));
-  const hidden = (u: Unclaimed) => unpublished.has(u.id) || (!!u.detail && unpublished.has(u.detail));
-  catalog = unpublished.size ? patched.filter((u) => !hidden(u)) : patched;
+  // Test listings are unlisted: every list, rail and search skips them, and their own link still opens them.
+  const hidden = (u: Unclaimed) => !!u.unlisted || unpublished.has(u.id) || (!!u.detail && unpublished.has(u.detail));
+  catalog = patched.filter((u) => !hidden(u));
 }
 
 /** The id this catalog stores a record under, given either that id or its crawled twin's. */

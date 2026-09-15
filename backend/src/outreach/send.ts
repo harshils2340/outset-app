@@ -36,7 +36,7 @@ export async function sendOutreach(opts: {
       .prepare(
         `SELECT o.* FROM operators o
          LEFT JOIN outreach_drafts d ON d.operator_id = o.id
-         WHERE o.origin != 'demo' AND o.email LIKE '%@%'
+         WHERE o.origin NOT IN ('demo', 'test') AND o.email LIKE '%@%'
          ORDER BY CASE WHEN o.domain LIKE '%cajun%' THEN 0 ELSE 1 END, o.review_count DESC NULLS LAST
          LIMIT 1`,
       )

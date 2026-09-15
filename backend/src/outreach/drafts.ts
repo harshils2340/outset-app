@@ -26,11 +26,11 @@ const VENDOR_NAME: Record<string, string> = { fareharbor: "FareHarbor", peek: "P
 
 /** Real numbers for the credibility line, read once per draft run. */
 export function scale(): { listings: number; metros: number; claimed: number; local: Map<string, number> } {
-  const listings = (db.prepare("SELECT COUNT(*) AS n FROM operators WHERE origin != 'demo' AND website IS NOT NULL").get() as { n: number }).n;
+  const listings = (db.prepare("SELECT COUNT(*) AS n FROM operators WHERE origin NOT IN ('demo', 'test') AND website IS NOT NULL").get() as { n: number }).n;
   const metros = (db.prepare("SELECT COUNT(DISTINCT metro_id) AS n FROM operators WHERE metro_id IS NOT NULL").get() as { n: number }).n;
-  const claimed = (db.prepare("SELECT COUNT(*) AS n FROM operators WHERE origin != 'demo' AND claim_status != 'unclaimed'").get() as { n: number }).n;
+  const claimed = (db.prepare("SELECT COUNT(*) AS n FROM operators WHERE origin NOT IN ('demo', 'test') AND claim_status != 'unclaimed'").get() as { n: number }).n;
   const local = new Map<string, number>();
-  for (const r of db.prepare("SELECT metro_id, COUNT(*) AS n FROM operators WHERE metro_id IS NOT NULL AND origin != 'demo' GROUP BY metro_id").all() as { metro_id: string; n: number }[]) local.set(r.metro_id, r.n);
+  for (const r of db.prepare("SELECT metro_id, COUNT(*) AS n FROM operators WHERE metro_id IS NOT NULL AND origin NOT IN ('demo', 'test') GROUP BY metro_id").all() as { metro_id: string; n: number }[]) local.set(r.metro_id, r.n);
   return { listings, metros, claimed, local };
 }
 
@@ -154,7 +154,7 @@ function plausibleEmail(op: Op): string | null {
 
 export function generateOutreachDrafts(): number {
   // Only operators we could actually email. Keeps the write transaction to seconds while crawls share the database.
-  const ops = (db.prepare("SELECT * FROM operators WHERE origin != 'demo' AND claim_status = 'unclaimed' AND email LIKE '%@%'").all() as Op[]).filter((op) => plausibleEmail(op));
+  const ops = (db.prepare("SELECT * FROM operators WHERE origin NOT IN ('demo', 'test') AND claim_status = 'unclaimed' AND email LIKE '%@%'").all() as Op[]).filter((op) => plausibleEmail(op));
   const sc = scale();
   let n = 0;
   db.exec("PRAGMA busy_timeout = 120000");
