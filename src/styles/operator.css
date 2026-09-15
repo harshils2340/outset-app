@@ -579,3 +579,36 @@
 .od.pv .odhour{grid-template-columns:84px 36px minmax(0,1fr) auto;gap:8px;}
 .od.pv .odtimes{gap:6px;min-width:0;}
 .od.pv .odtimes select{min-width:0;flex:1 1 0;padding:7px 4px;}
+
+/* ---- Home: one feed with tabs (Airbnb host Today), a quiet money line, setup last ---- */
+.odhome .odhello p{font-size:16px;}
+.ohfeed{padding:0;gap:0;overflow:hidden;}
+.ohtabs{display:flex;align-items:center;gap:4px;padding:8px 12px 0;border-bottom:1px solid var(--line);}
+.od.compact .ohtabs{padding:6px 8px 0;overflow-x:auto;}
+.ohtab{position:relative;display:inline-flex;align-items:center;gap:6px;padding:10px 12px 12px;font-size:14px;font-weight:600;color:var(--ink-faint);border-bottom:2px solid transparent;margin-bottom:-1px;white-space:nowrap;}
+.od.compact .ohtab{padding:8px 10px 10px;font-size:13.5px;}
+.ohtab:hover{color:var(--ink);}
+.ohtab.on{color:var(--ink);border-bottom-color:var(--ink);}
+.ohtab i{font-style:normal;font-size:11.5px;font-weight:700;min-width:20px;height:20px;padding:0 6px;border-radius:999px;background:var(--surface-3);color:var(--ink-soft);display:grid;place-items:center;}
+.ohtab.hot i{background:var(--accent);color:var(--on-accent);}
+.ohtab.hot.on{border-bottom-color:var(--accent);}
+.ohtabs .odlink{margin-left:auto;font-size:13px;padding-bottom:4px;white-space:nowrap;}
+.ohlist{padding:6px 20px 12px;display:grid;}
+.od.compact .ohlist{padding:4px 12px 10px;}
+.ohlist > .odbk + .odbk,.ohday .odbk + .odbk{border-top:1px solid var(--line);}
+.ohday{display:grid;}
+.ohday .odsub{margin:12px 0 2px;}
+.ohlist > .odmuted{padding:12px 0 4px;}
+.ohempty{display:flex;align-items:center;gap:10px;margin:0;padding:22px 20px;font-size:14.5px;color:var(--ink-soft);}
+.ohempty svg{width:20px;height:20px;color:var(--ink-faint);flex:none;}
+.ohpulse{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;}
+.od.compact .ohpulse{gap:8px;}
+.ohpulse > button{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px 18px;text-align:left;display:flex;flex-direction:column;gap:2px;min-width:0;}
+.od.compact .ohpulse > button{padding:12px 14px;}
+.ohpulse > button:hover{border-color:var(--line-strong);}
+.ohpulse small{font-size:12.5px;color:var(--ink-faint);line-height:1.3;}
+.ohpulse b{font-size:22px;font-weight:600;letter-spacing:-.02em;font-variant-numeric:tabular-nums;}
+.ohpulse span{font-size:12.5px;color:var(--ink-soft);}
+.odhome .odsetup{border-color:var(--line);box-shadow:none;}
+.odhome .odsetup .odcheck .tick{border-style:dashed;}
+.odhome .odsetup > .odmuted{font-size:12.5px;}
