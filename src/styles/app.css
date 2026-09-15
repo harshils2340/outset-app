@@ -535,6 +535,9 @@ a.crow:active{background:var(--surface-2);}
 .menu button:last-child{border-bottom:none;}
 .menu button svg{color:var(--ink-faint);}
 .menu button .arrow{margin-left:auto;color:var(--ink-faint);}
+/* A row that is not built yet says so where its chevron used to be. */
+.menu button .soon{font-size:13px;}
+
 
 .toast{
   position:absolute;left:50%;bottom:96px;transform:translate(-50%,14px);z-index:40;
