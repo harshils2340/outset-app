@@ -74,6 +74,10 @@ r = await json(`/profiles/${ID}`);
 check("guests see only the patch", r.status === 200 && (r.body?.patch as { title?: string })?.title === "E2E Store Shop" && r.body?.owner === undefined, r.body);
 r = await json(`/profiles/${ID}`, { headers: { "x-session": session } });
 check("the owner sees the whole record", r.status === 200 && (r.body?.owner as { email?: string })?.email === OWNER.email, r.body);
+r = await json(`/listing-edits`);
+const edits = (r.body?.edits as { id: string; patch: { title?: string }; published: boolean }[] | undefined) || [];
+const mine = edits.find((e) => e.id === ID);
+check("the nightly sync can read every listing's edits, owners left out", r.status === 200 && mine?.patch.title === "E2E Store Shop" && mine.published === true && !("owner" in (mine as object)), mine);
 
 console.log("\n4. Sign-in by email code knows the listing");
 r = await json(`/auth/request-code`, { method: "POST", body: JSON.stringify({ email: OWNER.email }) });

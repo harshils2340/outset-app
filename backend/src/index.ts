@@ -7,7 +7,7 @@ import { ingestAll, seedTaxonomy, addTarget } from "./ingest/load.ts";
 import { generateOutreachDrafts } from "./outreach/drafts.ts";
 import { scrapePending } from "./scrape/run.ts";
 import { refreshAllScores } from "./lib/completeness.ts";
-import { syncCatalogToApp, syncContactsToApp } from "./sync/contacts.ts";
+import { loadProfileOverlays, syncCatalogToApp, syncContactsToApp } from "./sync/contacts.ts";
 import { writeClaimIndex } from "./lib/claimIndex.ts";
 import { discoverAll, metroCoverage } from "./discover/osm.ts";
 import { budgetUsd, collectAll, collectBatch, dryRun, enrichPending, rate, spentUsd, submitBatch } from "./enrich/run.ts";
@@ -307,6 +307,8 @@ if (cmd === "sync") {
   }
   const out = syncContactsToApp();
   lap("Wrote " + out.count + " operator contact records to " + out.path);
+  const ov = await loadProfileOverlays();
+  lap("Loaded " + ov.count + " claimed listings' edits from " + ov.source);
   const cat = syncCatalogToApp();
   lap("Wrote " + cat.count + " operators to " + cat.path);
   const ci = writeClaimIndex();

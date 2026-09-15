@@ -19,16 +19,44 @@ import { existsSync, readFileSync as readFileSyncFs } from "node:fs";
 import { STANDARD, isEventSchedule, plainLabel, plainName, plainServices, type RawService } from "./plainServices.ts";
 import { consolidateDeals } from "./dealText.ts";
 
-/** A claimed operator's saved edits (public/profiles/<id>.json) win over what the crawl found. */
-function profileOverlay(id: string): { published: boolean; patch: Record<string, unknown> } | null {
-  const f = join(dirname(fileURLToPath(import.meta.url)), "../../../public/profiles", id + ".json");
-  if (!existsSync(f)) return null;
-  try {
-    const rec = JSON.parse(readFileSyncFs(f, "utf8")) as { published?: boolean; patch?: Record<string, unknown> };
-    return { published: rec.published !== false, patch: rec.patch || {} };
-  } catch {
-    return null;
+type Overlay = { published: boolean; patch: Record<string, unknown> };
+/** Claimed operators' saved edits, keyed by listing id. Filled by loadProfileOverlays before a sync. */
+const overlays = new Map<string, Overlay>();
+
+/**
+ * Load every claimed listing's edits so the catalog bakes them in. Straight from Postgres when this process has
+ * DATABASE_URL, else from the live API, which serves the same rows. With neither the catalog is built from the
+ * crawl alone, and says so. Nothing is read from the repository: operator edits never go there.
+ */
+export async function loadProfileOverlays(): Promise<{ count: number; source: string }> {
+  overlays.clear();
+  const put = (e: { id: string; published?: boolean; patch?: Record<string, unknown> }) => overlays.set(e.id, { published: e.published !== false, patch: e.patch || {} });
+  if ((process.env.DATABASE_URL || "").trim()) {
+    const { listProfileEdits } = await import("../lib/repo.ts");
+    const { closePg } = await import("../db/pg.ts");
+    try {
+      for (const e of await listProfileEdits()) put(e);
+      return { count: overlays.size, source: "postgres" };
+    } finally {
+      await closePg().catch(() => undefined);
+    }
   }
+  const api = (process.env.API_URL || "https://outset-api.onrender.com").replace(/\/$/, "");
+  try {
+    const res = await fetch(api + "/listing-edits", { signal: AbortSignal.timeout(60000) });
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    const j = (await res.json()) as { edits?: { id: string; published?: boolean; patch?: Record<string, unknown> }[] };
+    for (const e of j.edits || []) put(e);
+    return { count: overlays.size, source: api };
+  } catch (e) {
+    console.warn("[sync] operator edits could not be loaded (" + (e as Error).message + "); the catalog is built from the crawl alone this time");
+    return { count: 0, source: "none" };
+  }
+}
+
+/** A claimed operator's saved edits win over what the crawl found. */
+function profileOverlay(id: string): Overlay | null {
+  return overlays.get(id) || null;
 }
 
 const here = dirname(fileURLToPath(import.meta.url));

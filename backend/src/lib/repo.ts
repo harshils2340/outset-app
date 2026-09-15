@@ -41,6 +41,17 @@ export async function putProfile(p: ProfileDoc): Promise<void> {
   );
 }
 
+export type ProfileEdit = { id: string; published: boolean; patch: Record<string, unknown>; updatedAt: string };
+
+/** What every claimed listing shows guests: the operator's patch and the publish switch. Nothing about the owner. */
+export async function listProfileEdits(limit = 5000): Promise<ProfileEdit[]> {
+  const rows = await query<{ id: string; published: boolean; patch: Record<string, unknown> | null; updated_at: string }>(
+    "select id, published, doc->'patch' as patch, (doc->>'updatedAt') as updated_at from profiles order by updated_at desc limit $1",
+    [limit],
+  );
+  return rows.map((r) => ({ id: r.id, published: r.published !== false, patch: r.patch || {}, updatedAt: r.updated_at || "" }));
+}
+
 export async function deleteProfile(id: string): Promise<boolean> {
   const rows = await query<{ id: string }>("delete from profiles where id = $1 returning id", [id]);
   return rows.length > 0;

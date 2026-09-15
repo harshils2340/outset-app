@@ -1,13 +1,13 @@
 import { Hono } from "hono";
 import { ID, idsWith, jsonBody, linkEmailToListing, mayEdit, rateLimit, signSession, verifySession } from "./auth.ts";
 import { maskEmail } from "../lib/claimIndex.ts";
-import { writePublicJson } from "../lib/store.ts";
-import { getProfile, updateProfile } from "../lib/repo.ts";
+import { getProfile, listProfileEdits, updateProfile } from "../lib/repo.ts";
 
 /**
- * Operator profiles, one row per listing in Postgres. The guest site reads a scrubbed copy (`patch`: title, photos,
- * menu, hours...) from public/profiles/<id>.json at build time and on listing open; the owner's device restores
- * the full `profile` from the API. Writes need a claim token for that listing or a session that lists it.
+ * Operator profiles, one row per listing in Postgres. Guests read the `patch` (title, photos, menu, hours...) and
+ * the publish switch through GET /profiles/:id when a listing opens, and the nightly catalog sync reads them all
+ * through GET /listing-edits to bake them into the rails. The owner's device restores the full `profile` from the
+ * API. Writes need a claim token for that listing or a session that lists it. Nothing here touches a repository.
  */
 
 export type StoredProfile = {
@@ -22,22 +22,14 @@ export type StoredProfile = {
   alsoClaimedBy?: string[];
 };
 
-const path = (id: string) => `profiles/${id}.json`;
-
-/**
- * The copy the guest site reads: what the listing shows, nothing about the owner. The full record (owner email and
- * phone, Stripe account, the dashboard state) lives only in Postgres. Needs the GitHub token; a laptop without one
- * simply serves the profile from the API.
- */
-async function publishGuestCopy(rec: StoredProfile): Promise<void> {
-  if (!process.env.GITHUB_TOKEN) return;
-  await writePublicJson(path(rec.id), { id: rec.id, published: rec.published, patch: rec.patch, updatedAt: rec.updatedAt }, `Listing: ${rec.id} updated by the operator`).catch((e) => console.error(`[profiles] guest copy for ${rec.id}: ${(e as Error).message}`));
-}
 const fresh = (id: string, now: string): StoredProfile => ({ id, claimedAt: now, updatedAt: now, owner: { name: "", email: "", phone: "" }, published: true, profile: null, patch: {} });
 const cleanOwner = (o: Partial<StoredProfile["owner"]> | undefined, cur: StoredProfile["owner"]) =>
   o ? { name: String(o.name ?? cur.name).slice(0, 120), email: String(o.email ?? cur.email).trim().toLowerCase().slice(0, 200), phone: String(o.phone ?? cur.phone).slice(0, 40) } : cur;
 
 export const profiles = new Hono();
+
+/** Every claimed listing's guest-visible edits, for the nightly catalog sync. Nothing about the owners. */
+profiles.get("/listing-edits", rateLimit(60, 60 * 60 * 1000), async (c) => c.json({ edits: await listProfileEdits() }));
 
 profiles.get("/profiles/:id", async (c) => {
   const id = String(c.req.param("id") ?? "");
@@ -74,7 +66,6 @@ profiles.post("/claims/:id", rateLimit(30, 60 * 60 * 1000), async (c) => {
     return next;
   });
   if (takenOver) console.warn(`[claim] ${id} first claimed by ${maskEmail(priorEmail)} on ${rec.claimedAt}, now also claimed by ${maskEmail(rec.owner.email)}`);
-  await publishGuestCopy(rec);
   if (rec.owner.email) await linkEmailToListing(rec.owner.email, id);
   const prior = verifySession(c.req.header("x-session"));
   const session = signSession({ ids: idsWith(prior, id), email: rec.owner.email || prior?.email || "", exp: Date.now() + 30 * 86400000 });
@@ -107,7 +98,6 @@ profiles.put("/profiles/:id", rateLimit(600, 60 * 60 * 1000), async (c) => {
     next.updatedAt = now;
     return next;
   });
-  await publishGuestCopy(rec);
   if (rec.owner.email && rec.owner.email !== before) await linkEmailToListing(rec.owner.email, id);
   return c.json({ ok: true, updatedAt: now });
 });

@@ -27,7 +27,7 @@ This is the supply engine. The Vite app shows unclaimed operators across US and 
 
 ## Store
 
-Profiles, the email-to-listing index, bookings, payouts and the mail suppression list live in Neon Postgres: `src/db/pg.ts` (pool, schema created on boot) and `src/lib/repo.ts` (every read and write the routes need, row-locked updates, an advisory lock per listing for inserts so two guests cannot take the last spot). `DATABASE_URL` is required to serve. Documents keep their JSON shape in a `doc` jsonb column beside real columns for lookups. The catalog (`public/o/*.json`, `catalog.json`) stays static, and the scrubbed guest copy of a claimed profile is still published to `public/profiles/<id>.json` through `src/lib/store.ts` so the site and the nightly sync see operator edits. Nothing private goes to a repository any more.
+Profiles, the email-to-listing index, bookings, payouts and the mail suppression list live in Neon Postgres: `src/db/pg.ts` (pool, schema created on boot) and `src/lib/repo.ts` (every read and write the routes need, row-locked updates, an advisory lock per listing for inserts so two guests cannot take the last spot). `DATABASE_URL` is required to serve. Documents keep their JSON shape in a `doc` jsonb column beside real columns for lookups. The catalog (`public/o/*.json`, `catalog.json`) stays static. A claimed listing's edits reach guests through `GET /profiles/:id` when the listing opens and reach the rails through the nightly sync, which loads them with `loadProfileOverlays` (Postgres, else `GET /listing-edits`). The API never writes to a repository: no edit, claim, booking or unsubscribe makes a commit. `src/lib/store.ts` is read-only.
 
 ## Commands
 
