@@ -199,60 +199,81 @@ export function applyStoredProfiles(opts: { remote?: boolean } = {}): number {
 
 /* ---------- defaults from the scraped record ---------- */
 
-const TIME_RE = /(\d{1,2})(?::(\d{2}))?\s*(am|pm)?\s*(?:-|–|to)\s*(\d{1,2})(?::(\d{2}))?\s*(am|pm)/i;
-const DAY_RE: [RegExp, number[]][] = [
-  [/\b(daily|every ?day|7 days)\b/i, [0, 1, 2, 3, 4, 5, 6]],
-  [/\bmon(?:day)?\s*(?:-|–|to|through)\s*fri(?:day)?\b/i, [1, 2, 3, 4, 5]],
-  [/\bmon(?:day)?\s*(?:-|–|to|through)\s*sat(?:urday)?\b/i, [1, 2, 3, 4, 5, 6]],
-  [/\bmon(?:day)?\s*(?:-|–|to|through)\s*sun(?:day)?\b/i, [0, 1, 2, 3, 4, 5, 6]],
-  [/\bsat(?:urday)?\s*(?:-|–|to|through|&|and)\s*sun(?:day)?\b/i, [0, 6]],
-  [/\bweekends?\b/i, [0, 6]],
-  [/\bweekdays?\b/i, [1, 2, 3, 4, 5]],
-  [/\bsun(?:day)?\b/i, [0]],
-  [/\bmon(?:day)?\b/i, [1]],
-  [/\btue(?:s|sday)?\b/i, [2]],
-  [/\bwed(?:nesday)?\b/i, [3]],
-  [/\bthu(?:rs|rsday)?\b/i, [4]],
-  [/\bfri(?:day)?\b/i, [5]],
-  [/\bsat(?:urday)?\b/i, [6]],
-];
+// Plenty of sites write "9:00 a.m. – 6:00 p.m.", and with only bare am/pm accepted the whole line was dropped
+// and the shop was given an invented 9 to 5 week instead of the one it published.
+const TIME_RE = /(\d{1,2})(?::(\d{2}))?\s*([ap]\.?m\.?)?\s*(?:-|–|—|to)\s*(\d{1,2})(?::(\d{2}))?\s*([ap]\.?m\.?)/i;
+const DAY_NO: Record<string, number> = { sun: 0, mon: 1, tue: 2, wed: 3, thu: 4, fri: 5, sat: 6 };
+const DAY_WORD = "(sun|mon|tue|wed|thu|fri|sat)[a-z]*\\.?";
+/** "Friday through Sunday", "Tue-Sat", "Thurs – Mon". Wraps round the week, so Friday to Sunday is Fri, Sat, Sun. */
+const RANGE_RE = new RegExp("\\b" + DAY_WORD + "\\s*(?:-|–|—|to|through|thru|till|until)\\s*" + DAY_WORD + "\\b", "i");
+/** Every day the line names, in the order they appear: "Mon, Wed & Fri" is three days, not one. */
+const DAY_LIST_RE = new RegExp("\\b" + DAY_WORD + "\\b", "gi");
+const ALL_DAYS = [0, 1, 2, 3, 4, 5, 6];
+
+/**
+ * The days one published line is about. A named range is expanded round the week; anything else is every
+ * weekday name the line carries. Only "Friday through Sunday" style ranges expand: "Monday & Friday" is two
+ * days, not five.
+ */
+function daysIn(line: string): number[] | null {
+  if (/\b(daily|every ?day|7 days|all week)\b/i.test(line)) return ALL_DAYS;
+  if (/\bweekends?\b/i.test(line)) return [0, 6];
+  if (/\bweekdays?\b/i.test(line)) return [1, 2, 3, 4, 5];
+  const range = RANGE_RE.exec(line);
+  if (range) {
+    const from = DAY_NO[range[1].toLowerCase()];
+    const to = DAY_NO[range[2].toLowerCase()];
+    const out: number[] = [];
+    for (let i = 0; i < 7; i++) {
+      const d = (from + i) % 7;
+      out.push(d);
+      if (d === to) break;
+    }
+    return out;
+  }
+  const named = Array.from(line.matchAll(DAY_LIST_RE), (m) => DAY_NO[m[1].toLowerCase()]);
+  const uniq = named.filter((d, i) => named.indexOf(d) === i);
+  return uniq.length ? uniq : null;
+}
 
 function to24(h: number, m: number, ap: string | undefined, fallbackPm: boolean): string {
   let hh = h;
-  const a = (ap || "").toLowerCase();
+  const a = (ap || "").toLowerCase().replace(/\./g, "");
   if (a === "pm" && hh < 12) hh += 12;
   if (a === "am" && hh === 12) hh = 0;
   if (!a && fallbackPm && hh < 12 && hh < 8) hh += 12;
   return String(hh).padStart(2, "0") + ":" + String(m).padStart(2, "0");
 }
 
-/** Best effort read of scraped hour lines. Unknown days fall back to 9 to 5. */
+/**
+ * Best effort read of the hour lines the operator's own site published.
+ *
+ * A shop that published nothing has no week to show, so it starts on a plain 9 to 5 the owner can correct.
+ * A shop that published something has said which days it opens, and a day it did not name is a day it did not
+ * say it opens. Keeping the 9 to 5 on those days invented availability: "open Saturday & Sunday only from
+ * 11:00am to 7:00pm" came out as a shop open Monday to Friday 9 to 5, and a dropzone flying Friday through
+ * Sunday took Monday bookings. Unnamed days are closed instead, and the Availability page shows the whole
+ * week, so an owner who does open on one can switch it back on in a click.
+ */
 export function parseHours(lines: string[]): DayHours[] {
   const out: DayHours[] = Array.from({ length: 7 }, () => ({ closed: false, open: "09:00", close: "17:00" }));
-  let touched = false;
+  const spoken = Array.from({ length: 7 }, () => false);
   for (const line of lines) {
     const t = TIME_RE.exec(line);
     const closed = /\bclosed\b/i.test(line);
-    let days: number[] | null = null;
-    for (const [re, d] of DAY_RE) {
-      if (re.test(line)) {
-        days = d;
-        break;
-      }
-    }
-    if (!days) days = t ? [0, 1, 2, 3, 4, 5, 6] : null;
+    const days = daysIn(line) || (t ? ALL_DAYS : null);
     if (!days) continue;
     for (const d of days) {
       if (closed && !t) {
         out[d] = { closed: true, open: "09:00", close: "17:00" };
-        touched = true;
+        spoken[d] = true;
       } else if (t) {
         out[d] = { closed: false, open: to24(Number(t[1]), Number(t[2] || 0), t[3], false), close: to24(Number(t[4]), Number(t[5] || 0), t[6], true) };
-        touched = true;
+        spoken[d] = true;
       }
     }
   }
-  void touched;
+  if (spoken.some(Boolean)) for (let d = 0; d < 7; d++) if (!spoken[d]) out[d] = { closed: true, open: "09:00", close: "17:00" };
   return out;
 }
 

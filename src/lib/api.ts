@@ -5,7 +5,9 @@ import type { Unclaimed } from "../data/types";
  * the operator. Every call degrades cleanly when the API is unreachable, so the site never breaks, but
  * with VITE_API_URL set this is the production path.
  */
-export const API_URL = ((import.meta.env.VITE_API_URL as string | undefined) || "").replace(/\/$/, "");
+// `?.` so this module, and everything under src/lib that imports it, can be loaded by a plain node test run,
+// where import.meta.env does not exist. Vite still replaces the whole expression at build time.
+export const API_URL = ((import.meta.env?.VITE_API_URL as string | undefined) || "").replace(/\/$/, "");
 export const hasApi = () => !!API_URL;
 
 const TOKEN_PREFIX = "outset.claimtoken.";
