@@ -222,6 +222,63 @@ line-through.
 - Still nothing checked against real Stripe, no workflow runs `npm test` on its own, and Render environment
   variables remain untouched from here.
 
+## 15 September 2026, fifth run (09:00 to 10:20 UTC)
+
+**Chosen, and why.** Coverage listed the dashboard Calendar and Services first, and the Trips tab as a page no
+run had opened, so this run took those. Type checks on both sides and both sets of unit tests ran at the start
+and at the end. The full rehearsal was **skipped at the start**: the last entry said green and the only commit
+since it was that entry itself. It ran twice later, because the fixes touch `backend/src` and `src/`: 39 steps,
+0 failed, with the 43 money checks, 46 route checks, 27 backend tests and 27 guest tests inside it.
+
+**Found and fixed.**
+
+- **A price typed with a stray minus took money off the guest's bill** (`d906cdc`). The menu editor saved
+  whatever its price box was given, and `min={0}` marks a typed "-20" invalid without anyone reading it. An
+  extra at -20 came off the total and one at -500 drove a booking past zero: subtotal -400, fee -0, and an
+  operator email reading "you receive -$380". The experience's own price was already held to "positive or no
+  price"; its extras were not. The box clamps now and both money paths count only a positive price.
+- **Taking a day off hid the bookings already on it** (`09c6158`). The Calendar drew every cell of a day off as
+  closed and empty, so an owner who took Saturday off watched two confirmed bookings vanish from the page they
+  read to see who is turning up; narrowing the week's hours did the same. Both were still live everywhere else.
+  A booked time keeps its row now, and the header reads "Off · 2". Two smaller ones came with it: a day shut
+  only because its hours leave no room offered "Reopen this day" and then took the day off instead, and the
+  grid read this date's hours alone, so a shop open Friday 6pm to 1am with Friday off was still offered
+  midnight on Saturday, a time the API has never sold.
+- **A shop that took its menu down was still priced from the scraped file** (`4f5b4ed`). The fallback to the
+  crawled listing turned on the menu's length, so a menu the operator had emptied counted as no menu: hiding
+  or deleting every service left the guest page with nothing to pick while the price still came off the file,
+  and an add-on the operator removed was still added to the bill.
+- **A guest was told a text message had been sent** (`5744099`). "A confirmation was sent to your phone." sat
+  under every booking. Text messages are not built, and email is optional while the mobile is required, so a
+  guest who skipped the email box was told a confirmation had been sent when nothing had been sent anywhere,
+  and the decline, when it came, went nowhere either. Both booking forms now say what an empty email box
+  costs, and both confirmations name the address they wrote to or say there is none.
+- **The Trips tab showed a declined request as a trip** (`bd14b40`). A booking on the device only knew it had
+  been sent, so a request the operator declined kept its place with a title, a time, a party and a code, for a
+  day the shop was not expecting anyone. Each upcoming trip reads its answer back now. Its empty state also
+  told a guest whose trips had all happened that they had never booked.
+
+**Tests.** `slotsForDay` has its own file mirroring the API's `openSlots` tests, `priceUnclaimed` and
+`priceBooking` both cover a negative extra, and four store-e2e checks cover the menu, two of which fail without
+the fix. The rehearsal drives the Calendar end to end for the first time (`2cb720a`): a time the picker is
+offering is blocked with a click and has to leave the picker, then come back; a day is taken off and offers
+nothing. Each step reads the before state, so none can pass on a time that was never on offer.
+
+**Needs Harshil.**
+
+- **"Release this listing" only releases it on that device.** `deleteProfile` clears the local profile, the
+  override and the session, but nothing tells the API, so the `profiles` row stays and every guest still gets
+  the ex-owner's edits through `catalogLoad`, bookings still reach them, and their email is still on the
+  listing. The copy says "puts the listing back the way we built it". It wants a real unclaim route; the one
+  that exists (`test-unclaim`) is behind the test allowlist on purpose.
+- **A guest can book with no email at all.** The API requires a name and a mobile, nothing else, and email is
+  the only channel that exists. The copy is honest about it now, but the fix is either requiring the address
+  or building the text messages.
+- The new Trips status was type-checked and read, not driven in a browser: the rehearsal's guest flow is the
+  desktop site, which has no Trips tab. Worth a step from the phone frame next.
+- Still nothing checked against real Stripe, no workflow runs `npm test` on its own, and Render environment
+  variables remain untouched from here.
+
 ## Coverage
 
 **Verified so far.** Booking validation and odd input on every route that takes it. The money split,
@@ -238,10 +295,15 @@ of the lists, and every way out of an empty search. Claim and sign-in: an addres
 business, an expired link, an edited expiry, one listing's link used on another, a link claimed twice, a
 sign-in code typed wrong six times, and a session for one listing used on another.
 
-**Not yet checked.** Dashboard Calendar end to end (blocking a slot and a day, and whether a blocked slot in
-the week view reaches the guest picker; the key format matches, nothing has driven it). Services end to end
-(adding, hiding, deleting, and a negative price typed into an add-on, which `min={0}` does not stop and
-`priceBooking` sums without a guard). Settings and Assistant. The remaining empty states: a brand new claimed
-shop with nothing filled in, seen from the guest side. Add-ons end to end on a real listing (no catalog record
-was found carrying both an unpriced service and a paid add-on to drive by hand). A shop whose published hours
-are not on the half hour, through a real claim. The Trips and Inbox tabs, which no run has opened.
+Dashboard Calendar end to end: blocking a slot and a day through the dashboard, both reaching the guest picker
+and both reversible, plus what a day off does to the bookings already on it. Prices typed into the menu editor:
+a negative on a service, on an option and on an add-on, on both money paths. What a claimed shop with an empty
+menu is charged. The Trips tab: the operator's answer on each trip, and its empty states. What a guest is told
+was sent to them, against what the product can actually send. Settings and Assistant, read through.
+
+**Not yet checked.** Services end to end through the dashboard: adding is driven by the rehearsal, hiding and
+deleting are not, and neither is reordering by drag or by keyboard. The Inbox tab and the operator chat, which
+no run has opened. The remaining empty states: a brand new claimed shop with nothing filled in, seen from the
+guest side. Add-ons end to end on a real listing (no catalog record was found carrying both an unpriced service
+and a paid add-on to drive by hand). A shop whose published hours are not on the half hour, through a real
+claim. The Account tab. The metro picker and the category rails on a phone. Photo upload on the Listing page.
