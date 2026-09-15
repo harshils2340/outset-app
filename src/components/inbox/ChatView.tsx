@@ -27,7 +27,7 @@ export function ChatView() {
   return (
     <div className="chatwrap">
       <div className="chathead">
-        <button onClick={back} style={{ color: "var(--ink-soft)" }}>
+        <button onClick={back} aria-label="Back" style={{ color: "var(--ink-soft)" }}>
           <Markup html={ICONS.back} />
         </button>
         <span className="avatar">{thread.initials}</span>
@@ -63,7 +63,11 @@ export function ChatView() {
           </button>
         ))}
       </div>
+      {/* Three icon-only controls with no accessible name at all: a screen reader read the back button and the
+          send button as "button", and the composer as "edit text, blank" once the placeholder went. The send
+          button is also off until something is typed, and said nothing about why. */}
       <div className="composer">
+        <label className="vh" htmlFor="composer">Your message to {thread.name}</label>
         <textarea
           id="composer"
           rows={1}
@@ -81,7 +85,7 @@ export function ChatView() {
             }
           }}
         />
-        <button className="send" disabled={!draft.trim()} onClick={() => send(draft)}>
+        <button className="send" disabled={!draft.trim()} aria-label={draft.trim() ? "Send" : "Send, type a message first"} onClick={() => send(draft)}>
           <Markup html={ICONS.send} />
         </button>
       </div>
