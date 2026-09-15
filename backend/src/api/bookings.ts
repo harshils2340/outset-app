@@ -7,6 +7,7 @@ import { capture, createCheckout, releaseIntent, reverseTransfer, sessionStatus,
 import { currencyForArea, priceBooking, releaseDate, splitBooking, type PricedOption, type Split } from "../payments/money.ts";
 import { mailDecision, mailNewBooking } from "./bookingMail.ts";
 import { slotOpen } from "./openSlots.ts";
+import { fmtWhen } from "../lib/emailTemplate.ts";
 
 /**
  * Bookings, one row each in Postgres. A guest's request is written here, the operator gets an email, and the
@@ -234,7 +235,7 @@ bookings.post("/bookings", rateLimit(20, 60 * 60 * 1000), async (c) => {
   // wins. This used to run only when Stripe was on, so a pay-on-site guest could send any total: a $40 sail
   // reached the operator as "Your price $1.00, you receive $0.95" and the guest's email said $1 too.
   const patch = (profile?.patch || {}) as { options?: PricedOption[]; addons?: PricedOption[] };
-  const priced = detail ? priceBooking(patch.options?.length ? patch.options : detail.options || [], patch.addons?.length ? patch.addons : detail.addons || [], rec.service, rec.variant, qty, rec.addons) : null;
+  const priced = detail ? priceBooking(patch.options?.length ? patch.options : detail.options || [], patch.addons?.length ? patch.addons : detail.addons || [], rec.service, rec.variant, qty, rec.addons, rec.total) : null;
   if (priced && rec.total != null && Math.abs(priced.total - rec.total) > 0.5) console.warn(`[bookings] ${code}: browser total ${rec.total}, listing price ${priced.total}; charging the listing price`);
   if (priced) {
     rec.total = priced.total;
@@ -248,7 +249,7 @@ bookings.post("/bookings", rateLimit(20, 60 * 60 * 1000), async (c) => {
       const currency = currencyForArea(detail?.area, process.env.STRIPE_CURRENCY || "usd");
       const co = await createCheckout({
         code, listing, currency, title: clean((profile?.patch as { title?: string } | undefined)?.title, 120) || clean(detail?.title, 120) || listing,
-        description: `${rec.service || "Booking"}${rec.variant ? " (" + rec.variant + ")" : ""} · ${date} ${slot} · ${qty} guest${qty === 1 ? "" : "s"}`,
+        description: `${rec.service || "Booking"}${rec.variant ? " (" + rec.variant + ")" : ""} · ${fmtWhen(date, slot)} · ${qty} guest${qty === 1 ? "" : "s"}`,
         amount: rec.total!, email: guest.email || undefined, successUrl: SUCCESS(code, listing), cancelUrl: CANCEL(listing),
       });
       rec.status = "pending";
