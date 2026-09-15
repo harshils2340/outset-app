@@ -3,7 +3,7 @@ import { Hono, type Context, type Next } from "hono";
 import { claimKeyHash, claimSecret } from "../lib/claim.ts";
 import { sendMail } from "../lib/mail.ts";
 import { renderEmail } from "../lib/emailTemplate.ts";
-import { readJson, updateJson } from "../lib/store.ts";
+import { linkEmailHash, listingsForEmailHash } from "../lib/repo.ts";
 
 /**
  * Operator sign-in without passwords.
@@ -55,25 +55,14 @@ export function mayEdit(c: Context, id: string): boolean {
 
 export const emailHash = (email: string) => createHash("sha256").update(email.trim().toLowerCase()).digest("hex").slice(0, 32);
 
-/** Which listings an email has claimed. profiles/index.json: { [emailHash]: ids[] }. */
+/** Which listings an email has claimed (profile_emails, keyed by a hash of the address). */
 export async function idsForEmail(email: string): Promise<string[]> {
-  const idx = (await readJson<Record<string, string[]>>("profiles/index.json")) || {};
-  return idx[emailHash(email)] || [];
+  return listingsForEmailHash(emailHash(email));
 }
 
 export async function linkEmailToListing(email: string, id: string): Promise<void> {
   if (!email.trim() || !ID.test(id)) return;
-  const h = emailHash(email);
-  await updateJson<Record<string, string[]>>(
-    "profiles/index.json",
-    {},
-    (idx) => {
-      const cur = new Set(idx[h] || []);
-      cur.add(id);
-      return { ...idx, [h]: Array.from(cur) };
-    },
-    `Claim index: ${id}`,
-  );
+  await linkEmailHash(emailHash(email), id);
 }
 
 /* ---------- rate limiting, in memory, per IP and per route ---------- */

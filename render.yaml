@@ -35,6 +35,9 @@ services:
         value: "false"
       - key: CLAIM_SECRET
         sync: false
+      # Neon Postgres, the store for profiles, bookings, payouts and the mail list. The pooled connection string.
+      - key: DATABASE_URL
+        sync: false
       - key: GITHUB_TOKEN
         sync: false
       - key: GITHUB_REPO

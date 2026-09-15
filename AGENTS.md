@@ -22,7 +22,7 @@ This is "DoorDash for experiences" in the sense that guests pick a slot and pay.
 - The operator agent (`src/lib/agent.ts`) must not invent a price, policy, or open slot. If it does not know, it says it will have the owner confirm.
 - The company assistant (`src/lib/companyAgent.ts`) answers only from that operator's published facts and synced contact record. It refuses weather, directions, comparisons, reviews, and anything about other businesses, and hands off to a person at the shop. Keep the refusal list when adding intents.
 - Supply must be at real-world scale. Hand-typed operator lists are seeds, not the catalog. Grow the catalog with discovery (`backend/src/discover/`), never by inventing entries.
-- Bookings persist on-device (`src/lib/storage.ts`). Operator truth also lives in `backend/` SQLite. Do not invent live slots in the backend.
+- Bookings persist on-device (`src/lib/storage.ts`) and, through the API, in Postgres (`backend/src/lib/repo.ts`) together with claimed profiles. The supply catalog lives in `backend/` SQLite. Do not invent live slots in the backend.
 - Guest catalog is real operators across US and Canada metros, shown as Instant Book. Tampa is the densest verified batch. The backend metro grid is the same 47-city list.
 - Never start catalog crawls, Playwright, or the overnight pipeline on the founder's Mac. `photos`, `structure`, `enrich`, `owners`, `hours-crawl`, `promo-crawl`, `screen-covers`, all-state `discover`, and `pipeline` run on Render. Do not set `OUTSET_ALLOW_CRAWL`. Keep at least 10% CPU idle so Cursor stays usable (`cd backend && npm run cpu`). If headless Chrome is already on the CPU, `cd backend && npm run chrome:reap`.
 

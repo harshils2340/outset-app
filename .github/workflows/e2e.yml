@@ -33,6 +33,8 @@ jobs:
           STRIPE_SECRET_KEY: ""
           RESEND_API_KEY: ""
           GITHUB_TOKEN: ""
+          # A scratch Neon branch for the rehearsal's API. Without it the harness skips itself.
+          E2E_DATABASE_URL: ${{ secrets.E2E_DATABASE_URL }}
         run: npx tsx scripts/e2e-local.mts
         working-directory: backend
       - uses: actions/upload-artifact@v4

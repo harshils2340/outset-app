@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { ID, rateLimit } from "./auth.ts";
-import { readJson } from "../lib/store.ts";
+import { getProfile, listBookings } from "../lib/repo.ts";
 import type { StoredBooking } from "./bookings.ts";
 import type { StoredProfile } from "./profiles.ts";
 
@@ -122,9 +122,9 @@ export function slotOpen(profile: DashboardProfile | null, list: StoredBooking[]
 export type OpenDay = { date: string; slots: string[] };
 
 export async function openSlots(listing: string, from: string, days: number, service = "", now = new Date()): Promise<{ known: boolean; claimed: boolean; days: OpenDay[] }> {
-  const rec = await readJson<StoredProfile>(`profiles/${listing}.json`).catch(() => null);
+  const rec = await getProfile<StoredProfile>(listing).catch(() => null);
   const profile = (rec?.profile as DashboardProfile | null) || null;
-  const list = (await readJson<StoredBooking[]>(`bookings/${listing}.json`).catch(() => null)) || [];
+  const list = await listBookings<StoredBooking>(listing).catch(() => [] as StoredBooking[]);
   const start = dayOf(from) || new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const out: OpenDay[] = [];
   for (let i = 0; i < days; i++) {

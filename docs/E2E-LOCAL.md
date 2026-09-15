@@ -127,3 +127,7 @@ fails if any comes back:
   <outDir>`) when the screenshot driver is not around.
 - `backend/scripts/test-listing.mts` — the fake business itself.
 - `backend/scripts/payout-e2e.mts` — the money path against a Stripe recorder.
+
+## The database
+
+The API keeps profiles and bookings in Postgres, so the rehearsal needs a scratch branch of the Neon project: `neon branches create --name scratch`, then `E2E_DATABASE_URL=$(neon connection-string scratch --pooled) npx tsx scripts/e2e-local.mts`. The harness wipes the test listing's rows on that branch before it starts and never touches production. In GitHub Actions the same value is the repository secret `E2E_DATABASE_URL`; without it the rehearsal skips itself.

@@ -1,11 +1,12 @@
 import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 import { db, nowIso } from "../db/client.ts";
 import { claimSecret } from "./claim.ts";
-import { readJson, updateJson } from "./store.ts";
+import { getDoc, updateDoc } from "./repo.ts";
 
 /**
  * Outreach opt-out. CAN-SPAM and CASL both need a working unsubscribe that we honor right away.
- * The email carries a signed token. The public file stores only hashes, never the address.
+ * The email carries a signed token. The list stores only hashes, never the address: in Postgres on the API host,
+ * and in the local SQLite as a copy for a laptop sending outreach.
  */
 
 const FILE = "mail/unsub.json";
@@ -68,7 +69,7 @@ function rememberLocal(hash: string, at: string): void {
     );
     db.prepare("INSERT OR IGNORE INTO mail_unsub (email_hash, at) VALUES (?, ?)").run(hash, at);
   } catch {
-    // Render's disk is empty and ephemeral. The GitHub file is the real list.
+    // Render's disk is empty and ephemeral. Postgres is the real list.
   }
 }
 
@@ -83,21 +84,16 @@ export async function recordUnsub(email: string, reason: SuppressReason = "unsub
   const at = nowIso();
   rememberLocal(h, at);
   try {
-    await updateJson<UnsubFile>(
-      FILE,
-      { hashes: {} },
-      (cur) => ({
-        hashes: { ...(cur.hashes || {}), [h]: at },
-        reasons: { ...(cur.reasons || {}), [h]: reason },
-      }),
-      reason === "unsubscribe" ? "Mail unsubscribe" : "Mail suppression: " + reason,
-    );
+    await updateDoc<UnsubFile>(FILE, { hashes: {} }, (cur) => ({
+      hashes: { ...(cur.hashes || {}), [h]: at },
+      reasons: { ...(cur.reasons || {}), [h]: reason },
+    }));
   } catch (err) {
     console.error("unsub persist: " + (err as Error).message);
   }
 }
 
-/** Hashes we already have on this machine or in the public file. Does not call the API. */
+/** Hashes on this machine plus Postgres when this process can reach it. Does not call the API. */
 export async function localUnsubHashes(): Promise<Set<string>> {
   const set = new Set<string>();
   try {
@@ -106,7 +102,7 @@ export async function localUnsubHashes(): Promise<Set<string>> {
   } catch {
     /* no local table */
   }
-  const file = await readJson<UnsubFile>(FILE);
+  const file = await getDoc<UnsubFile>(FILE).catch(() => null);
   if (file?.hashes) for (const h of Object.keys(file.hashes)) set.add(h);
   return set;
 }

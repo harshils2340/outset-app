@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { ID, mayEdit, rateLimit } from "./auth.ts";
-import { readJson, updateJson } from "../lib/store.ts";
+import { readJson } from "../lib/store.ts";
+import { getBooking, getProfile, insertBookingChecked, listBookings, updateBooking } from "../lib/repo.ts";
 import type { StoredProfile } from "./profiles.ts";
 import { capture, createCheckout, releaseIntent, reverseTransfer, sessionStatus, stripeEnabled, verifyWebhook } from "../lib/stripe.ts";
 import { currencyForArea, priceBooking, releaseDate, splitBooking, type PricedOption, type Split } from "../payments/money.ts";
@@ -8,9 +9,8 @@ import { mailDecision, mailNewBooking } from "./bookingMail.ts";
 import { slotOpen } from "./openSlots.ts";
 
 /**
- * Bookings, stored per listing under public/bookings/. A guest's request is written here, the operator
- * gets an email, and the dashboard reads and decides through the same file. Guests are told by email
- * when the operator accepts or declines.
+ * Bookings, one row each in Postgres. A guest's request is written here, the operator gets an email, and the
+ * dashboard reads and decides through the same rows. Guests are told by email when the operator accepts or declines.
  */
 
 export type StoredBooking = {
@@ -39,9 +39,6 @@ export type StoredBooking = {
   payout?: { state: "scheduled" | "paid" | "reversed" | "cancelled"; amount: number; currency: string; releaseOn: string; transfer?: string; paidAt?: string; cycle?: number };
 };
 
-/** Listings with money owed or paid, so the payout run reads only those booking files. */
-export const PAYOUT_INDEX = "payouts/listings.json";
-
 /**
  * Card captured: record the split, schedule the operator's share, and remember the listing for the payout run.
  * Every capture in this file goes through here so no path takes money without owing the operator for it.
@@ -52,16 +49,15 @@ export async function captureBooking(listing: string, code: string, intent: stri
     return null;
   });
   if (!got?.ok) return false;
-  await updateJson<StoredBooking[]>(path(listing), [], (list) => list.map((x) => {
-    if (x.code !== code || !x.payment) return x;
+  await updateBooking<StoredBooking>(listing, code, (x) => {
+    if (!x.payment) return x;
     const split = splitBooking(x.total || 0, x.payment.currency || "usd", x.payment.subtotal);
     return {
       ...x,
       payment: { ...x.payment, state: "captured" as const, charge: got.charge, split },
       payout: x.payout || { state: "scheduled" as const, amount: split.net, currency: split.currency, releaseOn: releaseDate(x.date).toISOString().slice(0, 10) },
     };
-  }), `Booking ${code}: captured`);
-  await updateJson<string[]>(PAYOUT_INDEX, [], (ids) => (ids.includes(listing) ? ids : [...ids, listing]), `Payouts: ${listing} has money owed`);
+  });
   return true;
 }
 
@@ -80,7 +76,7 @@ async function refundBooking(listing: string, b: StoredBooking): Promise<{ refun
     if (ok) {
       if (b.payment.state === "captured") out.refunded = true;
       else out.released = true;
-      await updateJson<StoredBooking[]>(path(listing), [], (l) => l.map((x) => (x.code === b.code ? { ...x, payment: { ...x.payment!, state: "released" as const } } : x)), `Booking ${b.code}: released`);
+      await updateBooking<StoredBooking>(listing, b.code, (x) => ({ ...x, payment: { ...x.payment!, state: "released" as const } }));
     }
   }
   if (b.payout?.state === "paid" && b.payout.transfer) {
@@ -88,9 +84,9 @@ async function refundBooking(listing: string, b: StoredBooking): Promise<{ refun
       console.error(`[payments] reversal failed for ${b.code}: ${(e as Error).message}`);
       return false;
     });
-    if (back) await updateJson<StoredBooking[]>(path(listing), [], (l) => l.map((x) => (x.code === b.code ? { ...x, payout: { ...x.payout!, state: "reversed" as const } } : x)), `Booking ${b.code}: payout reversed`);
+    if (back) await updateBooking<StoredBooking>(listing, b.code, (x) => ({ ...x, payout: { ...x.payout!, state: "reversed" as const } }));
   } else if (b.payout?.state === "scheduled") {
-    await updateJson<StoredBooking[]>(path(listing), [], (l) => l.map((x) => (x.code === b.code ? { ...x, payout: { ...x.payout!, state: "cancelled" as const } } : x)), `Booking ${b.code}: payout cancelled`);
+    await updateBooking<StoredBooking>(listing, b.code, (x) => ({ ...x, payout: { ...x.payout!, state: "cancelled" as const } }));
   }
   return out;
 }
@@ -99,7 +95,6 @@ const SITE = process.env.SITE_URL || "https://onoutset.com/";
 const STATUSES = ["new", "accepted", "declined", "completed", "noshow", "cancelled"];
 const SUCCESS = (code: string, listing: string) => `${SITE}#paid=${code}&o=${listing}`;
 const CANCEL = (listing: string) => `${SITE}#o=${listing}`;
-const path = (id: string) => `bookings/${id}.json`;
 // Strip control characters so nothing odd lands in an email or a JSON file.
 const clean = (s: unknown, max: number) =>
   String(s ?? "")
@@ -123,17 +118,17 @@ bookings.post("/stripe/webhook", async (c) => {
   const code = String(s.metadata?.code || "").toUpperCase();
   const listing = String(s.metadata?.listing || "");
   if (!ID.test(listing) || !/^[A-Z0-9-]{4,16}$/.test(code)) return c.json({ ok: true });
-  const profile = await readJson<StoredProfile>(`profiles/${listing}.json`);
+  const profile = await getProfile<StoredProfile>(listing);
   const instant = !!(profile?.profile as { instantBook?: boolean } | null)?.instantBook;
-  let done: StoredBooking | null = null;
-  await updateJson<StoredBooking[]>(path(listing), [], (list) => list.map((x) => {
-    if (x.code !== code || x.status !== "pending") return x;
+  let authorized = false;
+  const done = await updateBooking<StoredBooking>(listing, code, (x) => {
+    if (x.status !== "pending") return x;
     if (ev.type === "checkout.session.expired") return { ...x, status: "cancelled" as const, payment: { ...(x.payment || { session: s.id, intent: null, state: "unpaid" as const }), state: "released" as const } };
-    done = { ...x, status: instant ? "accepted" : "new", payment: { ...x.payment, session: s.id, intent: s.payment_intent || x.payment?.intent || null, state: "authorized" } };
-    return done;
-  }), `Booking ${code}: payment ${ev.type === "checkout.session.expired" ? "expired" : "authorized"}`);
-  if (done) {
-    const d = done as StoredBooking;
+    authorized = true;
+    return { ...x, status: instant ? "accepted" : "new", payment: { ...x.payment, session: s.id, intent: s.payment_intent || x.payment?.intent || null, state: "authorized" } };
+  });
+  if (done && authorized) {
+    const d = done;
     if (instant && d.payment?.intent) await captureBooking(listing, code, d.payment.intent);
     await notifyNew(d, profile);
   }
@@ -145,22 +140,21 @@ bookings.get("/bookings/paid/:listing/:code", rateLimit(60, 60 * 60 * 1000), asy
   const listing = String(c.req.param("listing") ?? "");
   const code = String(c.req.param("code") ?? "").toUpperCase();
   if (!ID.test(listing)) return c.json({ error: "bad listing" }, 400);
-  const list = (await readJson<StoredBooking[]>(path(listing))) || [];
-  const b = list.find((x) => x.code === code);
+  const b = await getBooking<StoredBooking>(listing, code);
   if (!b) return c.json({ error: "not found" }, 404);
   if (b.status === "pending" && b.payment?.session && stripeEnabled()) {
     const st = await sessionStatus(b.payment.session).catch(() => null);
     if (st?.paid) {
-      const profile = await readJson<StoredProfile>(`profiles/${listing}.json`);
+      const profile = await getProfile<StoredProfile>(listing);
       const instant = !!(profile?.profile as { instantBook?: boolean } | null)?.instantBook;
-      let done: StoredBooking | null = null;
-      await updateJson<StoredBooking[]>(path(listing), [], (l) => l.map((x) => {
-        if (x.code !== code || x.status !== "pending") return x;
-        done = { ...x, status: instant ? "accepted" : "new", payment: { ...x.payment!, intent: st.paymentIntent || x.payment!.intent, state: "authorized" } };
-        return done;
-      }), `Booking ${code}: payment authorized`);
-      if (done) {
-        const d = done as StoredBooking;
+      let authorized = false;
+      const done = await updateBooking<StoredBooking>(listing, code, (x) => {
+        if (x.status !== "pending") return x;
+        authorized = true;
+        return { ...x, status: instant ? "accepted" : "new", payment: { ...x.payment!, intent: st.paymentIntent || x.payment!.intent, state: "authorized" } };
+      });
+      if (done && authorized) {
+        const d = done;
         if (instant && d.payment?.intent) await captureBooking(listing, code, d.payment.intent);
         await notifyNew(d, profile);
         return c.json({ status: d.status, paid: true });
@@ -186,7 +180,7 @@ bookings.post("/bookings", rateLimit(20, 60 * 60 * 1000), async (c) => {
   if (guest.name.length < 2 || guest.phone.replace(/\D/g, "").length < 7) return c.json({ error: "name and mobile are required" }, 400);
   if (guest.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(guest.email)) return c.json({ error: "bad email" }, 400);
   const listing = String(b.listing);
-  const profile = await readJson<StoredProfile>(`profiles/${listing}.json`);
+  const profile = await getProfile<StoredProfile>(listing);
   // The dashboard's Published and Accepting switches. The guest page hides the booking box for both, but the
   // page is not the only client, and before this a paused shop's API still took the booking and emailed them.
   const accepting = (profile?.patch as { accepting?: boolean } | undefined)?.accepting ?? (profile?.profile as { accepting?: boolean } | null)?.accepting;
@@ -194,7 +188,7 @@ bookings.post("/bookings", rateLimit(20, 60 * 60 * 1000), async (c) => {
   const instant = !!(profile?.profile as { instantBook?: boolean } | null)?.instantBook;
   // One time, one party. The guest page hides a time once it is taken, but the page is a snapshot and two guests
   // can be looking at the same one; this is the check that actually stops the second booking.
-  const existing = (await readJson<StoredBooking[]>(path(listing))) || [];
+  const existing = await listBookings<StoredBooking>(listing);
   const room = slotOpen((profile?.profile as Parameters<typeof slotOpen>[0]) || null, existing, date, slot, clean(b.service, 120), qty);
   if (!room.open) return c.json({ error: room.reason || "That time is not available", code: "slot_taken" }, 409);
   const rec: StoredBooking = {
@@ -234,45 +228,24 @@ bookings.post("/bookings", rateLimit(20, 60 * 60 * 1000), async (c) => {
       });
       rec.status = "pending";
       rec.payment = { session: co.id, intent: co.paymentIntent, state: "unpaid", currency, subtotal: priced!.subtotal };
-      // The guest is off to Stripe the moment the session exists. The pending row is written behind the
-      // response: the store's per-file lock queues the webhook's update after it, nobody finishes checkout in
-      // the second or two the write takes, and the return path confirms from the session itself regardless.
-      // The time was checked before the session was created; it is checked once more under the lock, and if a
-      // second guest won that one-second race the row is dropped and the founder alert says so.
-      void updateJson<StoredBooking[]>(path(listing), [], (list) => {
-        if (list.some((x) => x.code === code)) return list;
-        if (!slotOpen((profile?.profile as Parameters<typeof slotOpen>[0]) || null, list, date, slot, rec.service, qty).open) {
-          console.error(`[bookings] ${code}: ${date} ${slot} filled while the checkout session was being created; the row was not stored`);
-          return list;
-        }
-        return [rec, ...list].slice(0, 2000);
-      }, `Booking ${code} awaiting payment`)
-        .catch((e) => console.error(`[bookings] ${code}: could not store the pending row: ${(e as Error).message}`));
+      // The pending row is stored before the guest is sent to Stripe: a Postgres insert takes milliseconds, and the
+      // webhook that lands after payment has to find the row. The time was checked before the session was created;
+      // it is checked once more under the listing's lock, and if a second guest won that one-second race the guest
+      // is told so here instead of paying for a time that is gone (the unused session expires on its own).
+      const stored = await insertBookingChecked(rec, (list) => slotOpen((profile?.profile as Parameters<typeof slotOpen>[0]) || null, list, date, slot, rec.service, qty).open);
+      if (stored === "refused") {
+        console.error(`[bookings] ${code}: ${date} ${slot} filled while the checkout session was being created`);
+        return c.json({ error: "That time was just booked", code: "slot_taken" }, 409);
+      }
+      if (stored === "duplicate") return c.json({ error: "duplicate code" }, 409);
       return c.json({ ok: true, status: "pending", code, checkoutUrl: co.url });
     } catch (e) {
       console.error("stripe checkout failed, falling back to pay on site: " + (e as Error).message);
     }
   }
-  let dup = false;
-  let taken = false;
-  await updateJson<StoredBooking[]>(
-    path(listing),
-    [],
-    (list) => {
-      if (list.some((x) => x.code === code)) {
-        dup = true;
-        return list;
-      }
-      if (!slotOpen((profile?.profile as Parameters<typeof slotOpen>[0]) || null, list, date, slot, rec.service, qty).open) {
-        taken = true;
-        return list;
-      }
-      return [rec, ...list].slice(0, 2000);
-    },
-    `Booking ${code} for ${listing}`,
-  );
-  if (dup) return c.json({ error: "duplicate code" }, 409);
-  if (taken) return c.json({ error: "That time was just booked", code: "slot_taken" }, 409);
+  const stored = await insertBookingChecked(rec, (list) => slotOpen((profile?.profile as Parameters<typeof slotOpen>[0]) || null, list, date, slot, rec.service, qty).open);
+  if (stored === "duplicate") return c.json({ error: "duplicate code" }, 409);
+  if (stored === "refused") return c.json({ error: "That time was just booked", code: "slot_taken" }, 409);
   await notifyNew(rec, profile);
   return c.json({ ok: true, status: rec.status, code });
 });
@@ -280,7 +253,7 @@ bookings.post("/bookings", rateLimit(20, 60 * 60 * 1000), async (c) => {
 bookings.get("/bookings/:listing", async (c) => {
   const id = String(c.req.param("listing") ?? "");
   if (!mayEdit(c, id)) return c.json({ error: "not allowed" }, 403);
-  return c.json({ bookings: (await readJson<StoredBooking[]>(path(id))) || [] });
+  return c.json({ bookings: await listBookings<StoredBooking>(id) });
 });
 
 bookings.patch("/bookings/:listing/:code", rateLimit(300, 60 * 60 * 1000), async (c) => {
@@ -290,28 +263,17 @@ bookings.patch("/bookings/:listing/:code", rateLimit(300, 60 * 60 * 1000), async
   const body = (await c.req.json().catch(() => ({}))) as { status?: StoredBooking["status"]; note?: string };
   const status = body.status;
   if (!status || !STATUSES.includes(status)) return c.json({ error: "bad status" }, 400);
-  let found: StoredBooking | null = null;
-  await updateJson<StoredBooking[]>(
-    path(id),
-    [],
-    (list) =>
-      list.map((x) => {
-        if (x.code !== code) return x;
-        found = { ...x, status, decidedAt: new Date().toISOString(), note: body.note ? clean(body.note, 300) : x.note };
-        return found;
-      }),
-    `Booking ${code}: ${status}`,
-  );
+  const found = await updateBooking<StoredBooking>(id, code, (x) => ({ ...x, status, decidedAt: new Date().toISOString(), note: body.note ? clean(body.note, 300) : x.note }));
   if (!found) return c.json({ error: "not found" }, 404);
-  const f = found as StoredBooking;
+  const f = found;
   let money = { refunded: false, released: false };
   if (f.payment?.intent && stripeEnabled()) {
     if (status === "accepted" && f.payment.state === "authorized") await captureBooking(id, code, f.payment.intent);
     if (status === "declined" || status === "cancelled") money = await refundBooking(id, f);
   }
   if (status === "accepted" || status === "declined" || status === "cancelled") {
-    const profile = await readJson<StoredProfile>(`profiles/${id}.json`);
-    const latest = ((await readJson<StoredBooking[]>(path(id))) || []).find((x) => x.code === code) || f;
+    const profile = await getProfile<StoredProfile>(id);
+    const latest = (await getBooking<StoredBooking>(id, code)) || f;
     await mailDecision(latest, profile, status, money);
   }
   return c.json({ ok: true, booking: f });

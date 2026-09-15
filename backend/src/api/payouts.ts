@@ -1,9 +1,10 @@
 import { Hono } from "hono";
 import { ID, mayEdit, rateLimit } from "./auth.ts";
-import { readJson, updateJson } from "../lib/store.ts";
+import { readJson } from "../lib/store.ts";
+import { getProfile, listBookings, listingsWithPayouts, updateBooking, updateProfile } from "../lib/repo.ts";
 import { chargeOf, setAccountDailyPayouts, settlementOf, stripeEnabled, transferForBooking } from "../lib/stripe.ts";
 import { currencyForArea, cycleOf, cycleStart, type Interval } from "../payments/money.ts";
-import { PAYOUT_INDEX, type StoredBooking } from "./bookings.ts";
+import type { StoredBooking } from "./bookings.ts";
 import type { StoredProfile } from "./profiles.ts";
 
 /**
@@ -52,14 +53,14 @@ payouts.get("/payouts/:id", async (c) => {
   const id = String(c.req.param("id") ?? "");
   if (!ID.test(id) || !mayEdit(c, id)) return c.json({ error: "not allowed" }, 403);
   if (!stripeEnabled()) return c.json({ available: false });
-  const rec = await readJson<ProfileWithPayout>(`profiles/${id}.json`);
+  const rec = await getProfile<ProfileWithPayout>(id);
   if (!rec?.payout) return c.json({ available: true, connected: false });
   // Refresh the flags from Stripe so a finished onboarding shows without a second click.
   try {
     const acct = await stripe<{ payouts_enabled: boolean; details_submitted: boolean }>("accounts/" + rec.payout.account);
     const payout: Payout = { ...rec.payout, enabled: acct.payouts_enabled, detailsSubmitted: acct.details_submitted, updatedAt: new Date().toISOString() };
     if (payout.enabled !== rec.payout.enabled || payout.detailsSubmitted !== rec.payout.detailsSubmitted)
-      await updateJson<ProfileWithPayout>(`profiles/${id}.json`, rec, (cur) => ({ ...cur, payout }), `Payouts: ${id} status`);
+      await updateProfile<ProfileWithPayout>(id, rec, (cur) => ({ ...cur, payout }));
     return c.json({ available: true, connected: true, enabled: payout.enabled, detailsSubmitted: payout.detailsSubmitted, interval: payout.interval || "weekly", ...(await ledger(id, payout)) });
   } catch {
     return c.json({ available: true, connected: true, enabled: rec.payout.enabled, detailsSubmitted: rec.payout.detailsSubmitted, interval: rec.payout.interval || "weekly", ...(await ledger(id, rec.payout)) });
@@ -68,7 +69,7 @@ payouts.get("/payouts/:id", async (c) => {
 
 /** What the dashboard shows: money waiting on a trip date, what goes out on the next pay day, and what has been paid. */
 async function ledger(id: string, payout: Payout, now = new Date()) {
-  const list = (await readJson<StoredBooking[]>(`bookings/${id}.json`)) || [];
+  const list = await listBookings<StoredBooking>(id);
   const interval = payout.interval || "weekly";
   const next = cycleStart(cycleOf(now, interval) + (payout.lastCycle === cycleOf(now, interval) ? 1 : 0), interval);
   const nextDay = next.toISOString().slice(0, 10);
@@ -96,10 +97,10 @@ payouts.put("/payouts/:id/schedule", rateLimit(60, 60 * 60 * 1000), async (c) =>
   if (!ID.test(id) || !mayEdit(c, id)) return c.json({ error: "not allowed" }, 403);
   const body = (await c.req.json().catch(() => ({}))) as { interval?: string };
   if (body.interval !== "weekly" && body.interval !== "biweekly") return c.json({ error: "interval is weekly or biweekly" }, 400);
-  const rec = await readJson<ProfileWithPayout>(`profiles/${id}.json`);
+  const rec = await getProfile<ProfileWithPayout>(id);
   if (!rec?.payout) return c.json({ error: "set up payouts first" }, 404);
   const interval = body.interval as Interval;
-  await updateJson<ProfileWithPayout>(`profiles/${id}.json`, rec, (cur) => ({ ...cur, payout: { ...cur.payout!, interval, updatedAt: new Date().toISOString() } }), `Payouts: ${id} paid ${interval}`);
+  await updateProfile<ProfileWithPayout>(id, rec, (cur) => ({ ...cur, payout: { ...cur.payout!, interval, updatedAt: new Date().toISOString() } }));
   return c.json({ ok: true, interval });
 });
 
@@ -114,11 +115,11 @@ export type PayoutRun = { listings: number; paid: number; amount: Record<string,
 export async function runPayouts(now = new Date()): Promise<PayoutRun> {
   const out: PayoutRun = { listings: 0, paid: 0, amount: {}, skipped: [], failed: [] };
   if (!stripeEnabled()) return out;
-  const ids = (await readJson<string[]>(PAYOUT_INDEX)) || [];
+  const ids = await listingsWithPayouts();
   const today = now.toISOString().slice(0, 10);
   for (const id of ids) {
     out.listings++;
-    const rec = await readJson<ProfileWithPayout>(`profiles/${id}.json`);
+    const rec = await getProfile<ProfileWithPayout>(id);
     const payout = rec?.payout;
     if (!payout?.account) {
       out.skipped.push({ listing: id, reason: "no bank account connected" });
@@ -134,7 +135,7 @@ export async function runPayouts(now = new Date()): Promise<PayoutRun> {
       out.skipped.push({ listing: id, reason: "already paid this cycle" });
       continue;
     }
-    const list = (await readJson<StoredBooking[]>(`bookings/${id}.json`)) || [];
+    const list = await listBookings<StoredBooking>(id);
     const due = list.filter((b) => b.payout?.state === "scheduled" && b.payout.releaseOn <= today && b.payout.amount > 0 && ["accepted", "completed", "noshow"].includes(b.status));
     for (const b of due) {
       try {
@@ -143,7 +144,7 @@ export async function runPayouts(now = new Date()): Promise<PayoutRun> {
         const settled = charge ? await settlementOf(charge) : { currency: b.payout!.currency, rate: 1 };
         const amount = Math.round(b.payout!.amount * settled.rate);
         const transfer = await transferForBooking({ code: b.code, listing: id, account: payout.account, amount, currency: settled.currency, charge });
-        await updateJson<StoredBooking[]>(`bookings/${id}.json`, [], (l) => l.map((x) => (x.code === b.code ? { ...x, payout: { ...x.payout!, state: "paid" as const, transfer, paidAt: now.toISOString(), cycle } } : x)), `Payout ${b.code}: paid to ${id}`);
+        await updateBooking<StoredBooking>(id, b.code, (x) => ({ ...x, payout: { ...x.payout!, state: "paid" as const, transfer, paidAt: now.toISOString(), cycle } }));
         out.paid++;
         out.amount[settled.currency] = (out.amount[settled.currency] || 0) + amount;
       } catch (e) {
@@ -151,7 +152,7 @@ export async function runPayouts(now = new Date()): Promise<PayoutRun> {
       }
     }
     if (due.length && !out.failed.some((f) => due.some((b) => b.code === f.code)))
-      await updateJson<ProfileWithPayout>(`profiles/${id}.json`, rec!, (cur) => ({ ...cur, payout: { ...cur.payout!, lastCycle: cycle } }), `Payouts: ${id} paid for cycle ${cycle}`);
+      await updateProfile<ProfileWithPayout>(id, rec!, (cur) => ({ ...cur, payout: { ...cur.payout!, lastCycle: cycle } }));
   }
   return out;
 }
@@ -177,7 +178,7 @@ payouts.post("/payouts/:id/connect", rateLimit(20, 60 * 60 * 1000), async (c) =>
   const id = String(c.req.param("id") ?? "");
   if (!ID.test(id) || !mayEdit(c, id)) return c.json({ error: "not allowed" }, 403);
   if (!stripeEnabled()) return c.json({ error: "payouts are not switched on yet" }, 503);
-  const rec = await readJson<ProfileWithPayout>(`profiles/${id}.json`);
+  const rec = await getProfile<ProfileWithPayout>(id);
   if (!rec) return c.json({ error: "claim the listing first" }, 404);
   try {
     let account = rec.payout?.account;
@@ -197,7 +198,7 @@ payouts.post("/payouts/:id/connect", rateLimit(20, 60 * 60 * 1000), async (c) =>
       // Stripe sends whatever reaches the operator's balance to their bank the next business day; Outset decides
       // when money reaches the balance (their weekly or two-weekly pay day).
       await setAccountDailyPayouts(a.id).catch((e) => console.error(`[payouts] schedule for ${a.id}: ${(e as Error).message}`));
-      await updateJson<ProfileWithPayout>(`profiles/${id}.json`, rec, (cur) => ({ ...cur, payout: { account: a.id, enabled: false, detailsSubmitted: false, updatedAt: new Date().toISOString() } }), `Payouts: ${id} connected`);
+      await updateProfile<ProfileWithPayout>(id, rec, (cur) => ({ ...cur, payout: { account: a.id, enabled: false, detailsSubmitted: false, updatedAt: new Date().toISOString() } }));
     }
     const link = await stripe<{ url: string }>("account_links", {
       account,

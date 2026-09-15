@@ -45,7 +45,7 @@ app.route("/", payouts);
 app.route("/", availability);
 app.route("/", openSlotsRoute);
 
-app.get("/health", (c) => c.json({ ok: true, service: "outset-backend" }));
+app.get("/health", (c) => c.json({ ok: true, service: "outset-backend", store: "postgres", commit: (process.env.RENDER_GIT_COMMIT || "").slice(0, 10) || undefined }));
 
 // Everything below is internal tooling (raw operator rows, emails, outreach drafts with claim tokens).
 // It answers only with the admin key; on a public host with no key set it is closed.

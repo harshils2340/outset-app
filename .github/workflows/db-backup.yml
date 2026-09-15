@@ -1,0 +1,30 @@
+name: Nightly database backup
+# A pg_dump of the Neon database, kept as a workflow artifact (private to the repository's collaborators, 30 days).
+# Needs the repository secret DATABASE_URL; until it is set the job skips itself.
+on:
+  schedule:
+    - cron: "17 8 * * *"
+  workflow_dispatch:
+jobs:
+  dump:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+    steps:
+      - name: Skip until the secret exists
+        if: env.DATABASE_URL == ''
+        run: echo "DATABASE_URL secret is not set; nothing to back up."
+      - name: Dump
+        if: env.DATABASE_URL != ''
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client >/dev/null
+          pg_dump --no-owner --no-privileges --format=custom --file=outset-$(date -u +%Y%m%d).dump "$DATABASE_URL"
+          ls -la outset-*.dump
+      - name: Keep
+        if: env.DATABASE_URL != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: outset-db-${{ github.run_id }}
+          path: outset-*.dump
+          retention-days: 30

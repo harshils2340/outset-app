@@ -6,7 +6,8 @@ import { join } from "node:path";
 /**
  * End-to-end check of the money path, from a guest's booking to an operator's bank, with Stripe replaced by a
  * recorder. Nothing leaves the machine and no card is charged. It drives the real API routes and the real payout
- * run against a throwaway store:
+ * run against a scratch Postgres branch (E2E_DATABASE_URL, never production: the run deletes and rewrites the
+ * o-e2e-* listings) and a throwaway folder for the catalog files:
  *
  *   guest books a Florida tour -> checkout is in USD, not CAD
  *   Stripe reports the card held -> the operator is asked to accept
@@ -18,11 +19,16 @@ import { join } from "node:path";
  *   a shop without a connected bank -> money waits, with the reason
  *   a paid booking cancelled -> guest refunded and the transfer reversed
  *
- *   npx tsx scripts/payout-e2e.mts
+ *   E2E_DATABASE_URL=postgresql://... npx tsx scripts/payout-e2e.mts
  */
 
 const store = mkdtempSync(join(tmpdir(), "outset-payout-e2e-"));
 process.env.STORE_DIR = store;
+if (!process.env.E2E_DATABASE_URL) {
+  console.log("E2E_DATABASE_URL is not set; skipping the payout e2e (point it at a scratch Neon branch).");
+  process.exit(0);
+}
+process.env.DATABASE_URL = process.env.E2E_DATABASE_URL;
 process.env.STRIPE_SECRET_KEY = "sk_test_recorder";
 process.env.STRIPE_WEBHOOK_SECRET = "whsec_recorder";
 process.env.CLAIM_SECRET = "e2e-claim-secret";
@@ -61,7 +67,12 @@ globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) =>
 const { app } = await import("../src/api/routes.ts");
 const { signSession } = await import("../src/api/auth.ts");
 const { runPayouts } = await import("../src/api/payouts.ts");
-const { readJson, writeJson } = await import("../src/lib/store.ts");
+const { getBooking, getProfile, listingsWithPayouts, putProfile } = await import("../src/lib/repo.ts");
+const { migratePg, query } = await import("../src/db/pg.ts");
+await migratePg();
+await query("delete from bookings where listing like 'o-e2e-%'");
+await query("delete from profiles where id like 'o-e2e-%'");
+type E2EProfile = Parameters<typeof putProfile>[0];
 const { cycleOf, cycleStart, releaseDate } = await import("../src/payments/money.ts");
 
 let failures = 0;
@@ -76,8 +87,8 @@ mkdirSync(join(store, "o"), { recursive: true });
 writeFileSync(join(store, "o", FL + ".json"), JSON.stringify({ id: FL, title: "Tampa Tours", area: "Tampa, FL", options: [{ name: "Dolphin tour", detail: "Adult", price: 102.5 }], addons: [] }));
 writeFileSync(join(store, "o", ON + ".json"), JSON.stringify({ id: ON, title: "Tobermory Boats", area: "Tobermory, ON", options: [{ name: "Pontoon rental", detail: "Half day", price: 101, per: "/boat" }], addons: [] }));
 const owner = { name: "Sam Owner", email: "sam@example.com", phone: "8135550100" };
-await writeJson(`profiles/${FL}.json`, { id: FL, claimedAt: "2026-09-01T00:00:00Z", updatedAt: "2026-09-01T00:00:00Z", owner, published: true, profile: { instantBook: false }, patch: { title: "Tampa Tours" }, payout: { account: "acct_fl", enabled: true, detailsSubmitted: true, updatedAt: "2026-09-01T00:00:00Z" } }, "e2e");
-await writeJson(`profiles/${ON}.json`, { id: ON, claimedAt: "2026-09-01T00:00:00Z", updatedAt: "2026-09-01T00:00:00Z", owner, published: true, profile: { instantBook: true }, patch: { title: "Tobermory Boats" } }, "e2e");
+await putProfile({ id: FL, claimedAt: "2026-09-01T00:00:00Z", updatedAt: "2026-09-01T00:00:00Z", owner, published: true, profile: { instantBook: false }, patch: { title: "Tampa Tours" }, payout: { account: "acct_fl", enabled: true, detailsSubmitted: true, updatedAt: "2026-09-01T00:00:00Z" } });
+await putProfile({ id: ON, claimedAt: "2026-09-01T00:00:00Z", updatedAt: "2026-09-01T00:00:00Z", owner, published: true, profile: { instantBook: true }, patch: { title: "Tobermory Boats" } });
 
 const session = (id: string) => signSession({ ids: [id], email: owner.email, exp: Date.now() + 3600_000 });
 const webhook = async (type: string, code: string, listing: string) => {
@@ -92,7 +103,7 @@ const book = (listing: string, code: string, total: number, service = "Dolphin t
   // One time, one party: the booking route refuses a second booking at a time that is already taken, so each
   // booking here takes its own start time. This test is about the money, not the calendar.
   app.request("/bookings", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ listing, code, date: trip, slot: ["09:00", "11:00", "13:00", "15:00", "17:00"][(Number(code.replace(/\D/g, "")) - 1) % 5], qty: 2, total, service, variant, guest: { name: "Guest One", phone: "4165550100", email: "guest@example.com" } }) });
-const bookingOf = async (listing: string, code: string) => ((await readJson<{ code: string; status: string; payment?: { state: string; split?: { net: number; commission: number; guestFee: number; subtotal: number } }; payout?: { state: string; amount: number; currency: string; releaseOn: string; transfer?: string } }[]>(`bookings/${listing}.json`)) || []).find((b) => b.code === code);
+const bookingOf = async (listing: string, code: string) => getBooking<{ code: string; status: string; payment?: { state: string; split?: { net: number; commission: number; guestFee: number; subtotal: number } }; payout?: { state: string; amount: number; currency: string; releaseOn: string; transfer?: string } } & { listing: string; date: string; created: string }>(listing, code);
 
 console.log("\n1. Guest books a Florida tour for $213");
 const r1 = (await (await book(FL, "E2E-001", 213)).json()) as { status: string; checkoutUrl?: string };
@@ -114,7 +125,7 @@ b = await bookingOf(FL, "E2E-001");
 check("card captured", b?.payment?.state === "captured", b?.payment);
 check("split: $205 price, $8 guest fee, $10.25 commission, $194.75 to the operator", b?.payment?.split?.subtotal === 20500 && b.payment.split.guestFee === 800 && b.payment.split.commission === 1025 && b.payment.split.net === 19475, b?.payment?.split);
 check("operator's share scheduled for the day after the trip", b?.payout?.state === "scheduled" && b.payout.amount === 19475 && b.payout.releaseOn === iso(releaseDate(trip)), b?.payout);
-check("listing is on the payout list", ((await readJson<string[]>("payouts/listings.json")) || []).includes(FL));
+check("listing is on the payout list", (await listingsWithPayouts()).includes(FL));
 
 console.log("\n4. Payout run before the trip");
 let run = await runPayouts(new Date());
@@ -137,7 +148,7 @@ run = await runPayouts(new Date(payday.getTime() + 2 * 86400000));
 check("no second transfer", calls.filter((c) => c.path === "transfers").length === 1, run);
 
 console.log("\n7. Every two weeks");
-await writeJson(`profiles/${FL}.json`, { ...(await readJson<Record<string, unknown>>(`profiles/${FL}.json`))!, payout: { account: "acct_fl", enabled: true, detailsSubmitted: true, updatedAt: "x", interval: "biweekly" } }, "e2e");
+await putProfile({ ...(await getProfile<E2EProfile>(FL))!, payout: { account: "acct_fl", enabled: true, detailsSubmitted: true, updatedAt: "x", interval: "biweekly" } });
 settleUsd = true;
 await book(FL, "E2E-002", 213);
 await webhook("checkout.session.completed", "E2E-002", FL);

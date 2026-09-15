@@ -25,6 +25,10 @@ This is the supply engine. The Vite app shows unclaimed operators across US and 
 - Do not copy operator photos or marketing copy into the guest catalog. Store facts and our `iconKey` illustration.
 - Outreach commands write drafts. They do not send mail.
 
+## Store
+
+Profiles, the email-to-listing index, bookings, payouts and the mail suppression list live in Neon Postgres: `src/db/pg.ts` (pool, schema created on boot) and `src/lib/repo.ts` (every read and write the routes need, row-locked updates, an advisory lock per listing for inserts so two guests cannot take the last spot). `DATABASE_URL` is required to serve. Documents keep their JSON shape in a `doc` jsonb column beside real columns for lookups. The catalog (`public/o/*.json`, `catalog.json`) stays static, and the scrubbed guest copy of a claimed profile is still published to `public/profiles/<id>.json` through `src/lib/store.ts` so the site and the nightly sync see operator edits. Nothing private goes to a repository any more.
+
 ## Commands
 
 ```
@@ -80,7 +84,7 @@ What it changes, for the listed addresses only:
 
 - `POST /claims/:id/request` still runs the real check first. If the real check says no and the address is on the list, a second, separate branch approves it, prints `TEST CLAIM BYPASS: <email> claiming <id> from <ip>`, and emails the same signed link. Any other address is rejected exactly as before, with the same reason, hint and domains. Nothing is loosened.
 - `GET /claims/test-status?email=` answers `{ active: true }` for a listed address, `{ active: false }` for every other. The operator claim screen calls it before it shows any test UI, so a normal visitor never sees one. It never lists the allowlist.
-- `POST /claims/:id/test-unclaim` with `{ email }` releases a listing: deletes `public/profiles/<id>.json` and removes that id from every entry in `public/profiles/index.json`, which is what "claimed" means on this side. 404 for anyone not on the list, logged the same loud way. The app clears the matching on-device profile, claim token and session at the same time, so the business is genuinely unclaimed again.
+- `POST /claims/:id/test-unclaim` with `{ email }` releases a listing: deletes its `profiles` row and its `profile_emails` links in Postgres, which is what "claimed" means on this side. 404 for anyone not on the list, logged the same loud way. The app clears the matching on-device profile, claim token and session at the same time, so the business is genuinely unclaimed again.
 - `POST /claims/:id/test-enter` with `{ email }` opens the dashboard with no claim link at all. It answers with an ordinary signed session scoped to that one listing, the same shape `/auth/verify` returns. 404 for anyone not on the list, logged the same loud way.
 - On a host with no mail transport at all (no `RESEND_API_KEY`, no `MAIL_SMTP_USER`) a bypassed request also returns the link in the reply, so a laptop with no mail can finish the flow. On any host that can send, the link only goes to the inbox.
 

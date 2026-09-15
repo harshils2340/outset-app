@@ -3,9 +3,10 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 /**
- * JSON documents under public/ are the production store for operator profiles and bookings: one file per
- * listing, committed to the GitHub repo through the contents API when GITHUB_TOKEN is set (the site rebuilds
- * and guests see the change), or written to the local checkout on the laptop. No database to host.
+ * Files under public/ that the API reads or publishes: the catalog detail files (o/<id>.json, read-only here) and
+ * the scrubbed guest copy of each claimed profile (profiles/<id>.json), committed to the site repository through
+ * the contents API when GITHUB_TOKEN is set so the site rebuilds and guests see the change. Profiles, bookings,
+ * payouts and the mail list themselves live in Postgres (src/lib/repo.ts); nothing private is written here.
  */
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -27,7 +28,6 @@ const PRIVATE = /^(?:bookings|payouts|profiles)\//;
 export const privateStoreConfigured = () => !!DATA_REPO;
 const target = (relPath: string, forcePublic = false) =>
   !forcePublic && DATA_REPO && PRIVATE.test(relPath) ? { repo: DATA_REPO, branch: DATA_BRANCH, prefix: "" } : { repo: REPO, branch: BRANCH, prefix: "public/" };
-if (process.env.GITHUB_TOKEN && !DATA_REPO) console.warn("[store] DATA_REPO is not set: bookings and owner details are being written to the public site repository");
 const SAFE = /^[a-z0-9/_.-]{1,160}$/;
 
 async function github(path: string, init: RequestInit = {}, repo = REPO): Promise<Response> {

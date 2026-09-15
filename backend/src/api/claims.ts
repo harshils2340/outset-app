@@ -4,7 +4,8 @@ import { claimTokenV2, verifyClaimToken } from "../lib/claim.ts";
 import { claimRule, emailMayClaim, maskEmail } from "../lib/claimIndex.ts";
 import { sendMail } from "../lib/mail.ts";
 import { renderEmail } from "../lib/emailTemplate.ts";
-import { deleteJson, readJson, updateJson } from "../lib/store.ts";
+import { readJson } from "../lib/store.ts";
+import { deleteProfile, unlinkListing } from "../lib/repo.ts";
 import { logTestClaim, testClaimAllows } from "../lib/testClaim.ts";
 
 /**
@@ -147,25 +148,8 @@ claims.post("/claims/:id/test-unclaim", rateLimit(60, 60 * 60 * 1000), async (c)
   const email = String(body.email || "").trim().toLowerCase().slice(0, 200);
   if (!testClaimAllows(email)) return c.json({ error: "not found" }, 404);
   logTestClaim("unclaim", email, id, clientIp(c));
-  const removed = await deleteJson(`profiles/${id}.json`, `Test unclaim: ${id}`).catch(() => false);
-  let unlinked = 0;
-  const current = await readJson<Record<string, string[]>>("profiles/index.json").catch(() => null);
-  if (current && Object.values(current).some((ids) => (ids || []).includes(id))) {
-    await updateJson<Record<string, string[]>>(
-      "profiles/index.json",
-      {},
-      (idx) => {
-        const next: Record<string, string[]> = {};
-        for (const [k, ids] of Object.entries(idx)) {
-          const kept = (ids || []).filter((x) => x !== id);
-          if (kept.length !== (ids || []).length) unlinked += 1;
-          if (kept.length) next[k] = kept;
-        }
-        return next;
-      },
-      `Test unclaim index: ${id}`,
-    ).catch(() => undefined);
-  }
+  const removed = await deleteProfile(id).catch(() => false);
+  const unlinked = await unlinkListing(id).catch(() => 0);
   console.warn(`TEST CLAIM BYPASS: ${id} released, profile ${removed ? "deleted" : "was not there"}, unlinked from ${unlinked} email(s)`);
   return c.json({ ok: true, removed, unlinked });
 });

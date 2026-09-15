@@ -1,6 +1,7 @@
 import "./env.ts";
 import { serve } from "@hono/node-server";
 import { app } from "./api/routes.ts";
+import { migratePg, pgConfigured } from "./db/pg.ts";
 import { migrate } from "./db/client.ts";
 import { ingestAll, seedTaxonomy, addTarget } from "./ingest/load.ts";
 import { generateOutreachDrafts } from "./outreach/drafts.ts";
@@ -391,6 +392,11 @@ if (cmd === "status") {
 }
 
 if (cmd === "serve") {
+  if (!pgConfigured()) {
+    console.error("DATABASE_URL is not set. Profiles and bookings live in Postgres; the API will not serve without it.");
+    process.exit(1);
+  }
+  await migratePg();
   ingestAll();
   const port = Number(process.env.PORT || 8787);
   console.log("Outset backend on http://localhost:" + port);

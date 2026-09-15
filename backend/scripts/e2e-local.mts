@@ -2,13 +2,14 @@
  * The whole operator and money path, end to end, on this machine only.
  *
  * It exists because the live system cannot be used for a rehearsal: the production API runs Stripe in LIVE mode
- * (a card test charges a real card), bookings and owner details are written to the public site repository until
- * DATA_REPO points at a private one, and notification mail goes to real inboxes. So this builds a throwaway copy
+ * (a card test charges a real card), bookings and owner details live in the production database, and notification
+ * mail goes to real inboxes. So this builds a throwaway copy
  * of everything and runs the real code against it:
  *
  *   - a temp database with the production schema and the fake listing from scripts/test-listing.mts in it
  *     (--full-db copies the real catalog instead, which is faithful but boots slowly)
- *   - the real API (src/index.ts serve) on http://localhost:8787 with a temp STORE_DIR, no GitHub token, no data
+ *   - the real API (src/index.ts serve) on http://localhost:8787 against a scratch Neon branch (E2E_DATABASE_URL,
+ *     wiped of this listing first), with a temp STORE_DIR for the catalog files, no GitHub token, no data
  *     repository and no mail key, so every email is printed to the log instead of sent
  *   - the real site, built with VITE_API_URL pointing at that API and served from a temp dist on :5199
  *   - a headless browser that claims the listing, edits it, books it, accepts and declines
@@ -65,6 +66,12 @@ function record(step: string, ok: boolean | "warn", note = ""): void {
 /* ---------------------------------------------------------------- 1. refuse to touch production ------------- */
 
 const testKey = (process.env.STRIPE_TEST_SECRET_KEY || "").trim();
+/** The store is Postgres, so the rehearsal needs its own branch of it. Production is never used here. */
+const E2E_DB = (process.env.E2E_DATABASE_URL || "").trim();
+if (!E2E_DB) {
+  console.log("E2E_DATABASE_URL is not set. The API keeps bookings in Postgres, so the rehearsal needs a scratch Neon branch (neon branches create --name scratch; neon connection-string scratch --pooled). Skipping.");
+  process.exit(0);
+}
 {
   const problems: string[] = [];
   for (const name of ["STRIPE_SECRET_KEY", "STRIPE_TEST_SECRET_KEY"]) {
@@ -118,6 +125,8 @@ const childEnv = (extra: Record<string, string> = {}): NodeJS.ProcessEnv => ({
   OUTSET_DB: dbCopy,
   OUTSET_DB_PATH: dbCopy,
   STORE_DIR: store,
+  DATABASE_URL: E2E_DB,
+  E2E_DATABASE_URL: E2E_DB,
   CLAIM_SECRET,
   ADMIN_KEY,
   OUTSET_TEST_CLAIM_EMAILS: OWNER_EMAIL,
@@ -295,6 +304,14 @@ console.log("\n4. The site, built against the local API");
 
 console.log("\n5. The API and the site, both local");
 {
+  // A fresh start on the scratch branch: this listing has no claim, no bookings and no sign-in links yet.
+  process.env.DATABASE_URL = E2E_DB;
+  const pg = await import("../src/db/pg.ts");
+  await pg.migratePg();
+  await pg.query("delete from bookings where listing = $1", [LISTING_ID]);
+  await pg.query("delete from profile_emails where listing = $1", [LISTING_ID]);
+  await pg.query("delete from profiles where id = $1", [LISTING_ID]);
+  await pg.closePg();
   start("npx", ["tsx", "src/index.ts", "serve"], { cwd: BACKEND, env: childEnv(), logTo: apiLogPath, tag: "api" });
   const up = await waitFor(`${API_URL}/health`, 90000);
   if (!up) {
