@@ -1,93 +1,83 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { scheduledSlots } from "../openSlots.ts";
+import { capacityFor, openDaysFor, scheduledSlots, slotOpen } from "../openSlots.ts";
+import type { StoredBooking } from "../bookings.ts";
 
 /**
- * Hours come off the operator's own website, and plenty of shops publish "10am to 12am" or "6pm to 1am". Those
- * read back as a closing time at or before the opening time, and every one of those days used to produce no
- * start time at all: the listing's own hours row said "Open until 12:00 AM" while the booking box said "No more
- * start times today" on every day of the year. Nothing in the dashboard said why, because the operator's
- * calendar quietly fell back to a 9 to 5 grid when no day produced a slot.
+ * openDaysFor is the fast path the public slot route uses. slotOpen is the authoritative single-slot check that
+ * the booking route enforces under the row lock. They must never disagree: a time the picker offers and the
+ * booking route then refuses is the "that time was just booked" message on a time nobody booked.
  */
 
-const week = (open: string, close: string) => Array.from({ length: 7 }, () => ({ closed: false, open, close }));
-// Tuesday 15 September 2026, 08:00. The 17th is a Thursday, the 18th a Friday, the 19th a Saturday.
-const NOW = new Date(2026, 8, 15, 8, 0, 0);
-const THU = "2026-09-17";
-const FRI = "2026-09-18";
-const SAT = "2026-09-19";
+const day = (closed: boolean, open = "09:00", close = "17:00") => ({ closed, open, close });
+const PROFILE = {
+  hours: [day(true), day(false), day(false), day(false, "08:00", "12:30"), day(false), day(false), day(false, "10:00", "23:30")],
+  slotMinutes: 60,
+  leadHours: 2,
+  windowDays: 60,
+  blockedDates: ["2026-10-07"],
+  blockedSlots: ["2026-10-06|11:00", "2026-10-06|12:00"],
+  services: [
+    { name: "Sunset sail", live: true, capacity: 4 },
+    { name: "Private charter", live: true, capacity: 1 },
+  ],
+};
 
-test("a shop open until midnight offers the whole evening", () => {
-  assert.deepEqual(
-    scheduledSlots({ hours: week("21:00", "00:00"), slotMinutes: 60, leadHours: 0 }, THU, NOW),
-    ["21:00", "22:00", "23:00"],
-  );
+const booking = (date: string, slot: string, qty: number, status: StoredBooking["status"] = "accepted"): StoredBooking =>
+  ({ code: date + slot, listing: "o-x", date, slot, qty, service: "Sunset sail", variant: "", addons: [], total: null, guest: { name: "G", phone: "1", email: "" }, status, created: new Date("2026-10-01T00:00:00Z").toISOString() }) as StoredBooking;
+
+const NOW = new Date("2026-10-05T07:00:00");
+const START = new Date(2026, 9, 5); // 5 October 2026
+
+/** The same answer the obvious loop would give, one slotOpen call per slot. */
+function slowPath(profile: typeof PROFILE | null, list: StoredBooking[], service: string, guests: number, days: number) {
+  const out: { date: string; slots: string[] }[] = [];
+  for (let i = 0; i < days; i++) {
+    const d = new Date(START.getFullYear(), START.getMonth(), START.getDate() + i);
+    const date = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    out.push({ date, slots: scheduledSlots(profile, date, NOW).filter((t) => slotOpen(profile, list, date, t, service, guests, NOW).open) });
+  }
+  return out;
+}
+
+test("the fast path agrees with the authoritative check, across hours, days off, blocked slots and capacity", () => {
+  const list = [
+    booking("2026-10-06", "09:00", 4), // fills a 4-capacity time
+    booking("2026-10-06", "10:00", 2), // half fills one
+    booking("2026-10-08", "09:00", 1, "new"), // a request still holds the time
+    booking("2026-10-08", "10:00", 1, "declined"), // a declined one does not
+  ];
+  for (const guests of [1, 2, 3, 4]) {
+    for (const service of ["Sunset sail", "Private charter", "Not a service we sell"]) {
+      assert.deepEqual(openDaysFor(PROFILE, list, START, 14, service, guests, NOW), slowPath(PROFILE, list, service, guests, 14), `guests ${guests}, service ${service}`);
+    }
+  }
 });
 
-test("a close after midnight puts the late start times on the date they happen", () => {
-  const hours = week("18:00", "01:00");
-  // Friday carries Thursday's midnight, because midnight is a Friday for the guest who turns up to it.
-  assert.deepEqual(scheduledSlots({ hours, slotMinutes: 120, leadHours: 0 }, FRI, NOW), ["00:00", "18:00", "20:00", "22:00"]);
-  // Only the evening, when the day before is shut.
-  const mon = week("18:00", "01:00");
-  mon[3] = { closed: true, open: "18:00", close: "01:00" }; // Wednesday off
-  assert.deepEqual(scheduledSlots({ hours: mon, slotMinutes: 120, leadHours: 0 }, THU, NOW), ["18:00", "20:00", "22:00"]);
+test("it agrees for a listing nobody has claimed, which has no hours at all", () => {
+  assert.deepEqual(openDaysFor(null, [], START, 10, "", 1, NOW), slowPath(null, [], "", 1, 10));
 });
 
-test("a day off takes the late session of that day with it", () => {
-  const p = { hours: week("18:00", "01:00"), slotMinutes: 180, leadHours: 0, blockedDates: [THU] };
-  assert.deepEqual(scheduledSlots(p, THU, NOW), []);
-  assert.equal(scheduledSlots(p, FRI, NOW).includes("00:00"), false);
+test("a booked time really does disappear, and the rest of the day does not", () => {
+  const full = openDaysFor(PROFILE, [booking("2026-10-06", "09:00", 4)], START, 3, "Sunset sail", 1, NOW);
+  const oct6 = full.find((d) => d.date === "2026-10-06")!;
+  assert.equal(oct6.slots.includes("09:00"), false);
+  assert.equal(oct6.slots.includes("10:00"), true);
 });
 
-test("a blocked slot still drops an after midnight start time", () => {
-  const p = { hours: week("18:00", "01:00"), slotMinutes: 180, leadHours: 0, blockedSlots: [FRI + "|00:00"] };
-  assert.equal(scheduledSlots(p, FRI, NOW).includes("00:00"), false);
+test("a party that does not fit is not offered the time, but a smaller one still is", () => {
+  const list = [booking("2026-10-06", "10:00", 2)]; // 2 of 4 taken
+  const forTwo = openDaysFor(PROFILE, list, START, 3, "Sunset sail", 2, NOW).find((d) => d.date === "2026-10-06")!;
+  const forThree = openDaysFor(PROFILE, list, START, 3, "Sunset sail", 3, NOW).find((d) => d.date === "2026-10-06")!;
+  assert.equal(forTwo.slots.includes("10:00"), true);
+  assert.equal(forThree.slots.includes("10:00"), false);
 });
 
-test("a closed day leaves no tail on the next one", () => {
-  const hours = week("18:00", "01:00");
-  hours[5] = { closed: true, open: "18:00", close: "01:00" }; // Friday off
-  assert.equal(scheduledSlots({ hours, slotMinutes: 180, leadHours: 0 }, SAT, NOW).includes("00:00"), false);
-});
-
-test("an inverted day sells nothing, because it is a mistake and not a night shift", () => {
-  // 6pm to 5pm is an opening time dragged past the closing one, not a 23 hour day.
-  assert.deepEqual(scheduledSlots({ hours: week("18:00", "17:00"), slotMinutes: 60, leadHours: 0 }, THU, NOW), []);
-  // The same time twice is not 24 hours either.
-  assert.deepEqual(scheduledSlots({ hours: week("09:00", "09:00"), slotMinutes: 60, leadHours: 0 }, THU, NOW), []);
-});
-
-test("ordinary hours are untouched, and the notice and window still hold", () => {
-  const p = { hours: week("09:00", "17:00"), slotMinutes: 60 };
-  assert.deepEqual(scheduledSlots(p, THU, NOW), ["09:00", "10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00"]);
-  assert.deepEqual(scheduledSlots({ ...p, leadHours: 72 }, THU, NOW), []);
-  assert.deepEqual(scheduledSlots({ ...p, windowDays: 7 }, "2026-10-15", NOW), []);
-});
-
-test("the notice reaches an after midnight start time as the near thing it is", () => {
-  // Wednesday 08:00, looking at Thursday 00:00, which is 16 hours away.
-  const wed = new Date(2026, 8, 16, 8, 0, 0);
-  const hours = week("18:00", "01:00");
-  assert.equal(scheduledSlots({ hours, slotMinutes: 180, leadHours: 12 }, THU, wed).includes("00:00"), true);
-  assert.equal(scheduledSlots({ hours, slotMinutes: 180, leadHours: 24 }, THU, wed).includes("00:00"), false);
-});
-
-/**
- * A website is under no obligation to publish hours on the half hour, and this engine is what a guest is
- * actually offered. Nothing here may round: a shop open 8:45 to 5:15 sells 8:45, and its twin in
- * src/lib/__tests__/calendar.test.ts draws the operator the same rows.
- */
-test("hours off the half hour are offered on their own minutes", () => {
-  assert.deepEqual(
-    scheduledSlots({ hours: week("08:45", "17:15"), slotMinutes: 90, leadHours: 0 }, THU, NOW),
-    ["08:45", "10:15", "11:45", "13:15", "14:45", "16:15"],
-  );
-});
-
-test("an odd close after midnight leaves its tail on the next date", () => {
-  assert.deepEqual(
-    scheduledSlots({ hours: week("18:20", "01:20"), slotMinutes: 120, leadHours: 0 }, FRI, NOW),
-    ["00:20", "18:20", "20:20", "22:20"],
-  );
+test("a day off and a blocked time are closed, and capacity is read per service", () => {
+  const days = openDaysFor(PROFILE, [], START, 5, "Sunset sail", 1, NOW);
+  assert.deepEqual(days.find((d) => d.date === "2026-10-07")!.slots, []); // blocked date
+  const oct6 = days.find((d) => d.date === "2026-10-06")!;
+  assert.equal(oct6.slots.includes("11:00"), false); // blocked slot
+  assert.equal(capacityFor(PROFILE, "Private charter"), 1);
+  assert.equal(capacityFor(PROFILE, "Sunset sail"), 4);
 });

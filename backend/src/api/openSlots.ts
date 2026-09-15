@@ -179,19 +179,47 @@ export type OpenDay = { date: string; slots: string[] };
  * and saw it offered again. Asking for the party size means a time the party does not fit in is simply not
  * there. It defaults to one, which is what the route answered before.
  */
+/**
+ * Which times are open across a run of days, without asking the same question twice.
+ *
+ * The obvious loop calls slotOpen once per slot, and slotOpen rebuilds that day's whole schedule and rescans
+ * every booking each time, so a sixty day answer did that work several hundred times over. The party size and
+ * the service capacity do not change between slots, and the bookings can be counted in one pass, so they are.
+ * The result is the same as calling slotOpen on every slot, which is what the test asserts.
+ *
+ * Pure on purpose: everything it needs is passed in, so it can be tested without a database.
+ */
+export function openDaysFor(profile: DashboardProfile | null, list: StoredBooking[], start: Date, days: number, service: string, guests: number, now: Date): OpenDay[] {
+  const cap = capacityFor(profile, service);
+  const need = Math.max(1, guests);
+  const nowMs = now.getTime();
+  // One pass over the bookings instead of one pass per slot.
+  const taken = new Map<string, number>();
+  for (const b of list) {
+    if (!holdsSlot(b, nowMs)) continue;
+    const key = b.date + "|" + b.slot;
+    taken.set(key, (taken.get(key) || 0) + Math.max(1, Number(b.qty) || 1));
+  }
+  const out: OpenDay[] = [];
+  for (let i = 0; i < days; i++) {
+    const d = new Date(start.getFullYear(), start.getMonth(), start.getDate() + i);
+    const date = iso(d);
+    // Once per day, not once per slot.
+    const slots = scheduledSlots(profile, date, now).filter((t) => {
+      const q = taken.get(date + "|" + t) || 0;
+      return cap == null ? q === 0 : q + need <= cap;
+    });
+    out.push({ date, slots });
+  }
+  return out;
+}
+
 export async function openSlots(listing: string, from: string, days: number, service = "", now = new Date(), guests = 1): Promise<{ known: boolean; claimed: boolean; days: OpenDay[] }> {
   const rec = await getProfile<StoredProfile>(listing).catch(() => null);
   const profile = (rec?.profile as DashboardProfile | null) || null;
   const list = await listBookings<StoredBooking>(listing).catch(() => [] as StoredBooking[]);
   const start = dayOf(from) || new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const out: OpenDay[] = [];
-  for (let i = 0; i < days; i++) {
-    const d = new Date(start.getFullYear(), start.getMonth(), start.getDate() + i);
-    const date = iso(d);
-    const slots = scheduledSlots(profile, date, now).filter((t) => slotOpen(profile, list, date, t, service, guests, now).open);
-    out.push({ date, slots });
-  }
-  return { known: true, claimed: !!profile, days: out };
+  return { known: true, claimed: !!profile, days: openDaysFor(profile, list, start, days, service, guests, now) };
 }
 
 export const openSlotsRoute = new Hono();
