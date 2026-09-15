@@ -340,9 +340,9 @@ export function toCatalogItem(r: CatalogRow): Record<string, unknown> {
     claimKey: claimKeyHash("o-" + slug(r.domain)),
     title,
     cat: family || "water",
-    // A test listing (origin 'test') is published so its own link, claim and booking work end to end, but it is left
-    // out of every list, search, landing page and sitemap. See backend/scripts/test-listing.mts.
-    ...(r.origin === "test" ? { unlisted: true } : {}),
+    // The test listing (origin 'test') is published like any other shop, in every list, search, rail and landing
+    // page, so the founder can use it as a real business end to end. Only outreach skips it. The `unlisted` flag
+    // stays supported for a listing that should exist without being seen. See backend/scripts/test-listing.mts.
     // True when nothing in the listing's own text confirms its kind yet; rails put these after confirmed ones.
     ...(kind.confirmed ? {} : { kindUnconfirmed: true }),
     art,

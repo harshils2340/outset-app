@@ -11,9 +11,8 @@ import { db, nowIso } from "../src/db/client.ts";
  * harness instead (scripts/e2e-local.mts), which runs the API against a temporary store and Stripe test mode.
  *
  * It is a real row in the database with origin 'test', so the catalog sync publishes it like any listing and every
- * code path is the production one. What makes it safe:
- *   - the sync marks it unlisted: it never appears in browse, search, rails, landing pages or the sitemap, and only
- *     its own link opens it;
+ * code path is the production one: it appears in browse, search, rails and landing pages exactly as a real shop
+ * would, so the founder can walk the whole guest and operator path on the live site. What keeps it safe:
  *   - outreach skips origin 'test', so no claim email is ever drafted or sent for it;
  *   - the email on file is the founder's, so the ordinary claim request sends the claim link to the founder and
  *     nobody else can claim it (its domain is a subdomain nobody receives mail on);
@@ -71,17 +70,18 @@ db.prepare(
 const offering = db.prepare(
   "INSERT INTO offerings (id, operator_id, name, detail, duration, price_cents, price_unit, currency, source_url, confidence) VALUES (?, ?, ?, ?, ?, ?, ?, 'USD', ?, 'site')",
 );
-// Small prices on purpose: a live card test costs a few dollars, and Stripe's minimum charge is 50 cents.
-offering.run(randomUUID(), OPERATOR_ID, "Sunset sail", "Adult", "2 hours", 500, "person", SITE);
-offering.run(randomUUID(), OPERATOR_ID, "Sunset sail", "Child (5 to 12)", "2 hours", 300, "person", SITE);
-offering.run(randomUUID(), OPERATOR_ID, "Snorkel trip", "Standard", "3 hours", 800, "person", SITE);
-offering.run(randomUUID(), OPERATOR_ID, "Private charter", "Up to 6 guests", "4 hours", 1500, "boat", SITE);
+// Low but believable prices: the sync nulls a 90-minute-plus trip under $15 as a scrape error, and the shop should
+// read as real on a card. A live card test costs a few dollars, and a decline releases the hold.
+offering.run(randomUUID(), OPERATOR_ID, "Sunset sail", "Adult", "2 hours", 1900, "person", SITE);
+offering.run(randomUUID(), OPERATOR_ID, "Sunset sail", "Child (5 to 12)", "2 hours", 900, "person", SITE);
+offering.run(randomUUID(), OPERATOR_ID, "Snorkel trip", "Standard", "3 hours", 2500, "person", SITE);
+offering.run(randomUUID(), OPERATOR_ID, "Private charter", "Up to 6 guests", "4 hours", 4500, "boat", SITE);
 
 const fact = db.prepare("INSERT INTO facts (id, operator_id, fact_key, fact_value, source_url, confidence) VALUES (?, ?, ?, ?, ?, 'site')");
 const f = (k: string, v: string) => fact.run(randomUUID(), OPERATOR_ID, k, v, SITE);
 f("cover", photos[0]);
 for (const p of photos) f("photo", p);
-f("description", "This is a test listing used to check claiming, editing, booking, payment and payouts on Outset. It is not a real business, nothing here happens on the water, and it does not appear in search. A relaxed sunset sail and a snorkel trip off Clearwater Beach, with a private charter for small groups.");
+f("description", "A relaxed sunset sail and a snorkel trip off Clearwater Beach, with a private charter for small groups. Shah and Shah Services is Outset's own test listing: it is not a real business, and a booking here is a test of the site, not a trip.");
 f("hours_text", "Mon-Sun 9:00 AM - 7:00 PM");
 f("cancellation", "Free cancellation up to 24 hours before your start time.");
 f("includes", "Life jackets");
@@ -100,5 +100,5 @@ db.exec("COMMIT");
 
 console.log(`Test listing ready: ${CATALOG_ID}`);
 console.log(`  After the next catalog sync and deploy it opens at https://onoutset.com/#o=${CATALOG_ID}`);
-console.log(`  Claim it at https://onoutset.com/operators#claim=${CATALOG_ID} with ${OWNER} (search skips unlisted listings)`);
-console.log("  It never appears in browse, search, rails, landing pages, the sitemap or outreach.");
+console.log(`  Claim it at https://onoutset.com/operators#claim=${CATALOG_ID} with ${OWNER}`);
+console.log("  It is listed like any real shop (browse, search, rails, landing pages); only outreach skips it.");
