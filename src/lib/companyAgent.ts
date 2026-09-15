@@ -770,7 +770,7 @@ function slotAnswer(ctx: CompanyContext, q: string, prev: ChatState): { text: st
   const hit = slotsOn(ctx, day, at);
   if (hit.length) {
     const more = hit.length > 1 ? " " + (hit.length - 1) + " more around then." : "";
-    return { text: "Yes — " + slotLine(hit[0]) + "." + more, state: { topic: "slot", day: day ?? undefined } };
+    return { text: "Yes, " + slotLine(hit[0]) + "." + more, state: { topic: "slot", day: day ?? undefined } };
   }
   const all = liveSlots(ctx);
   if (all.length) return { text: "Nothing then. Next open time is " + slotLine(all[0]) + ".", state: { topic: "slot", day: day ?? undefined } };
@@ -783,7 +783,7 @@ function slotAnswer(ctx: CompanyContext, q: string, prev: ChatState): { text: st
     if (span && at != null) {
       const ok = at >= span.open && at < span.close;
       return {
-        text: ok ? "Yes, they're open " + name + " " + spanLabel(span) + ". Pick that time on this page to request it." : "Not at that time — " + name + " they're open " + spanLabel(span) + ".",
+        text: ok ? "Yes, they're open " + name + " " + spanLabel(span) + ". Pick that time on this page to request it." : "Not at that time. " + name + " they're open " + spanLabel(span) + ".",
         state: { topic: "slot", day },
       };
     }
@@ -797,8 +797,8 @@ function slotAnswer(ctx: CompanyContext, q: string, prev: ChatState): { text: st
 
 function bookAnswer(ctx: CompanyContext): { text: string; state: ChatState } {
   const slots = liveSlots(ctx);
-  if (slots.length) return { text: "Yes. Next open time is " + slotLine(slots[0]) + " — book it on this page.", state: { topic: "book" } };
-  return { text: "Yes — pick a service and time on this page and " + ctx.item.title + " confirms it.", state: { topic: "book" } };
+  if (slots.length) return { text: "Yes. Next open time is " + slotLine(slots[0]) + ". Book it on this page.", state: { topic: "book" } };
+  return { text: "Yes. Pick a service and time on this page and " + ctx.item.title + " confirms it.", state: { topic: "book" } };
 }
 
 function groupAnswer(ctx: CompanyContext, q: string): { text: string; state: ChatState } {
@@ -918,7 +918,7 @@ function cancelAnswer(ctx: CompanyContext): { text: string; state: ChatState } {
 
 function rainAnswer(ctx: CompanyContext, q: string): { text: string; state: ChatState } {
   if (/\b(forecast|will it|going to rain|weather (tomorrow|today))\b/i.test(q)) {
-    return { text: "I can't check the forecast — I only know what " + ctx.item.title + " publishes.", state: { topic: "outOfScope" } };
+    return { text: "I can't check the forecast. I only know what " + ctx.item.title + " publishes.", state: { topic: "outOfScope" } };
   }
   const line = findLine(ctx.item, /rain|weather|wind|storm|lightning|inclement/i);
   if (line) return { text: sentence(line), state: { topic: "rainPolicy" } };
@@ -966,7 +966,7 @@ function dealsAnswer(ctx: CompanyContext): { text: string; state: ChatState } {
 }
 
 function waiverAnswer(ctx: CompanyContext): { text: string; state: ChatState } {
-  if (ctx.item.waiverUrl) return { text: "Yes — there's an online waiver, and the link on this page lets you sign before you arrive.", state: { topic: "waiver" } };
+  if (ctx.item.waiverUrl) return { text: "Yes, there's an online waiver, and the link on this page lets you sign before you arrive.", state: { topic: "waiver" } };
   const line = findLine(ctx.item, /waiver|liabilit|release form/i);
   if (line) return { text: sentence(line), state: { topic: "waiver" } };
   return { text: "No waiver is mentioned in what they publish. " + nextStep(ctx), state: { topic: "waiver" } };
@@ -1110,7 +1110,7 @@ export function companySuggestions(ctx: CompanyContext): string[] {
 }
 
 export function companyGreeting(ctx: CompanyContext): string {
-  return "Hi, I'm " + ASSISTANT_NAME + ". Ask me anything about " + ctx.item.title + " — I answer from what they publish.";
+  return "Hi, I'm " + ASSISTANT_NAME + ". Ask me anything about " + ctx.item.title + ". I answer from what they publish.";
 }
 
 /* ---------- the engine ---------- */
