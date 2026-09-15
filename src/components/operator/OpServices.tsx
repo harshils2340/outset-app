@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { money } from "../../lib/format";
-import { PER_UNITS, uid, type OpAddon, type OpService, type OpVariant } from "../../lib/operator";
+import { PER_UNITS, isPriced, liveVariants, uid, type OpAddon, type OpService, type OpVariant } from "../../lib/operator";
 import { Markup } from "../Markup";
 import { OD_ICONS, useOp } from "./opContext";
 import { useReorder } from "./useReorder";
@@ -40,7 +40,9 @@ export function OpServices() {
 
   const patchAddon = (id: string, patch: Partial<OpAddon>) => set((cur) => ({ ...cur, addons: cur.addons.map((a) => (a.id === id ? { ...a, ...patch } : a)) }));
 
-  const unpriced = p.services.flatMap((s) => s.variants).filter((v) => v.price == null).length;
+  // The count on the menu is about the menu guests see: a service switched off is not a gap in it, and a zero
+  // is not a price, because the money code reads a zero as none and tells the guest to pay on site.
+  const unpriced = liveVariants(p).filter((v) => !isPriced(v)).length;
 
   return (
     <div className="odpage">

@@ -629,10 +629,21 @@ export function hasCancelLine(p: OperatorProfile): boolean {
 
 export type SetupCheck = { id: string; label: string; hint: string; done: boolean; page: string; field: JumpField };
 
+/**
+ * A price the guest will actually be charged. Zero is not one: the money code on both sides treats a zero as
+ * no published price, so a guest booking a $0 option is told "Pay on site" and the operator's email carries no
+ * money. The checklist counted it as done and said the menu was finished.
+ */
+export const isPriced = (v: OpVariant): boolean => v.price != null && v.price > 0;
+
+/** Only what guests can book. A service switched off is not on the menu, so it is not a gap in the menu. */
+export const liveVariants = (p: OperatorProfile): OpVariant[] => p.services.filter((s) => s.live).flatMap((s) => s.variants);
+
 /** Checklist that drives the setup progress on Home. */
 export function setupChecks(p: OperatorProfile): SetupCheck[] {
-  const priced = p.services.flatMap((s) => s.variants).filter((v) => v.price != null).length;
-  const total = p.services.flatMap((s) => s.variants).length;
+  const live = liveVariants(p);
+  const priced = live.filter(isPriced).length;
+  const total = live.length;
   return [
     { id: "owner", label: "Add your name and mobile for booking alerts", hint: "So new bookings reach you", done: !!p.ownerName.trim() && !!(p.ownerPhone.trim() || p.ownerEmail.trim()), page: "settings", field: "owner" },
     ...listingChecks(p).map((c) => (c.id === "cover" ? { ...c, label: "Add at least 3 photos", done: p.photos.length >= 3 && !!p.cover } : c.id === "price" ? { ...c, label: total ? "Set a price on every option" : "Add your first service", done: total > 0 && priced === total } : c)),
@@ -645,7 +656,7 @@ export function setupChecks(p: OperatorProfile): SetupCheck[] {
  * Shown at the top of the Listing page; each item jumps to the one field that fixes it.
  */
 export function listingChecks(p: OperatorProfile): SetupCheck[] {
-  const priced = p.services.some((s) => s.live && s.variants.some((v) => v.price != null));
+  const priced = liveVariants(p).some(isPriced);
   return [
     { id: "cover", label: "Cover photo", hint: "The first thing guests see", done: !!p.cover, page: "listing", field: "photos" },
     { id: "price", label: "A priced service", hint: p.services.length ? "Guests book what has a price" : "Add what guests can book", done: priced, page: "services", field: "price" },
