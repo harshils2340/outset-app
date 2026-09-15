@@ -182,7 +182,7 @@ bookings.get("/bookings/paid/:listing/:code", rateLimit(60, 60 * 60 * 1000), asy
 });
 
 bookings.post("/bookings", rateLimit(20, 60 * 60 * 1000), async (c) => {
-  const b = (await c.req.json().catch(() => null)) as (Partial<StoredBooking> & { pay?: boolean }) | null;
+  const b = (await c.req.json().catch(() => null)) as Partial<StoredBooking> | null;
   if (!b || !ID.test(String(b.listing))) return c.json({ error: "bad listing" }, 400);
   const date = clean(b.date, 10);
   const slot = clean(b.slot, 5);
@@ -257,7 +257,10 @@ bookings.post("/bookings", rateLimit(20, 60 * 60 * 1000), async (c) => {
     rec.total = priced ? priced.total : null;
     if (priced) rec.pricing = { subtotal: priced.subtotal, fee: priced.fee };
   }
-  const payNow = stripeEnabled() && !!priced && priced.total >= 1 && b.pay !== false;
+  // `pay` used to come off the request body, so anyone could post "pay": false and get a confirmed booking with
+  // no card: a free trip, the operator emailed "they pay you on the day", and the time consumed. Nothing in the
+  // app ever sent it. Whether a card is taken is now decided here alone, from the listing's own price.
+  const payNow = stripeEnabled() && !!priced && priced.total >= 1;
   if (payNow) {
     try {
       // Charge in the listing's own dollars. Every charge used to be in STRIPE_CURRENCY (cad), so a $213 tour in

@@ -57,7 +57,10 @@ async function sendResend(
   msg: { subject: string; text: string; html?: string; replyTo?: string; commercial?: boolean },
 ): Promise<{ sent: boolean; id?: string; error?: string }> {
   if (!process.env.RESEND_API_KEY) {
-    console.log(`[mail:dry] to=${to} subject=${JSON.stringify(msg.subject)}\n${msg.text}\n`);
+    // The subject of a sign-in mail is the code itself and the body of a claim mail is a working claim link, so
+    // with no mail key this used to write "sign in as any operator" into the server log. Only the shape is logged.
+    const secret = /sign-in code|claim link/i.test(msg.subject);
+    console.log(`[mail:dry] to=${to} subject=${JSON.stringify(secret ? msg.subject.replace(/[0-9]{4,}/g, "******") : msg.subject)}${secret ? ` (${msg.text.length} chars, body withheld)` : "\n" + msg.text}\n`);
     dumpMail(to, msg);
     return { sent: false, error: "no mail key" };
   }

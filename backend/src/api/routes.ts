@@ -10,6 +10,7 @@ import { allContacts, contactFor, syncCatalogToApp, syncContactsToApp } from "..
 migrate();
 
 import { cors } from "hono/cors";
+import { bodyLimit } from "hono/body-limit";
 import { profiles } from "./profiles.ts";
 import { auth } from "./auth.ts";
 import { claims } from "./claims.ts";
@@ -26,6 +27,10 @@ export const app = new Hono();
 
 // Browser calls come only from the site (and a dev server). Everything else is same-origin tooling.
 const ORIGINS = (process.env.ALLOWED_ORIGINS || "https://onoutset.com,https://www.onoutset.com,https://harshils2340.github.io,http://localhost:5173,http://localhost:5199").split(",").map((s) => s.trim());
+// An unauthenticated caller could stream an arbitrarily large body at the API, and the Stripe webhook has to
+// read the whole thing before it can check the signature. 2 MB is far above any real booking or profile write;
+// photo uploads have their own, larger, limit checked inside that route.
+app.use("*", bodyLimit({ maxSize: 2 * 1024 * 1024, onError: (c) => c.json({ error: "too large" }, 413) }));
 app.use("*", cors({ origin: (o) => (ORIGINS.includes(o) ? o : ""), allowHeaders: ["content-type", "x-claim-token", "x-session"], allowMethods: ["GET", "POST", "PUT", "PATCH", "OPTIONS"], maxAge: 600 }));
 app.use("*", async (c, next) => {
   await next();
@@ -53,7 +58,10 @@ app.get("/health", (c) => c.json({ ok: true, service: "outset-backend", store: "
 // It answers only with the admin key; on a public host with no key set it is closed.
 app.use("*", async (c, next) => {
   const key = process.env.ADMIN_KEY;
-  const local = !process.env.RENDER && !process.env.PORT_PUBLIC && (c.req.header("host") || "").startsWith("localhost");
+  // This used to read the Host header, which the caller controls: on any host that is not Render and has no
+  // ADMIN_KEY, `curl -H 'Host: localhost'` opened the internal tooling, including outreach drafts that carry
+  // live claim tokens. An explicit variable cannot be set by a request.
+  const local = process.env.OUTSET_LOCAL_ADMIN === "1";
   if (local && !key) return next();
   if (key && c.req.header("x-admin-key") === key) return next();
   return c.json({ error: "not found" }, 404);

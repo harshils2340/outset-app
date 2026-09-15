@@ -1,3 +1,4 @@
+import { timingSafeEqual } from "node:crypto";
 import { Hono } from "hono";
 import { ID, jsonBody, mayEdit, rateLimit } from "./auth.ts";
 import { readJson } from "../lib/store.ts";
@@ -171,9 +172,12 @@ export function runPayoutsOnce(now = new Date()): Promise<PayoutRun> {
 }
 
 /** For the founder or a cron: POST with the admin key to pay out now. */
-payouts.post("/admin/payouts/run", async (c) => {
-  const key = process.env.ADMIN_KEY;
-  if (!key || c.req.header("x-admin-key") !== key) return c.json({ error: "not found" }, 404);
+payouts.post("/admin/payouts/run", rateLimit(10, 60 * 60 * 1000), async (c) => {
+  // A plain !== short-circuits on the first wrong byte, and nothing capped the guesses.
+  const key = process.env.ADMIN_KEY || "";
+  const got = c.req.header("x-admin-key") || "";
+  const same = !!key && got.length === key.length && timingSafeEqual(Buffer.from(got), Buffer.from(key));
+  if (!same) return c.json({ error: "not found" }, 404);
   return c.json(await runPayoutsOnce());
 });
 

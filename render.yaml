@@ -84,6 +84,10 @@ services:
         value: https://onoutset.com,https://www.onoutset.com
       - key: SITE_URL
         value: https://onoutset.com/
+      # POST /admin/payouts/run answers 404 without this, so the Monday payout cron would pay nobody and say
+      # nothing. Same value as the outset-payouts job below.
+      - key: ADMIN_KEY
+        sync: false
       # OUTSET_TEST_CLAIM_EMAILS is deliberately NOT listed here. It is a testing-only bypass that lets the
       # addresses it names claim and release any listing without the website-email check, so it must never be
       # part of the production service definition. Unset is the safe default and the only correct value here.

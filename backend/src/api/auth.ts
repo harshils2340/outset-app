@@ -104,6 +104,22 @@ export function rateLimit(limit: number, windowMs: number) {
 /* ---------- email codes ---------- */
 
 const codes = new Map<string, { hash: string; exp: number; tries: number }>();
+
+/**
+ * The per-IP limit does not protect one address: a code is six digits and lives ten minutes, so guessing from
+ * many addresses never trips a per-account ceiling, and asking for a code in a loop both floods the owner's
+ * inbox from our sending domain and overwrites the real code they are trying to type. Counted per email too.
+ */
+const perEmail = new Map<string, number[]>();
+function emailLimit(key: string, limit: number, windowMs: number): boolean {
+  const now = Date.now();
+  const arr = (perEmail.get(key) || []).filter((t) => now - t < windowMs);
+  if (arr.length >= limit) return false;
+  arr.push(now);
+  perEmail.set(key, arr);
+  if (perEmail.size > 20000) perEmail.clear();
+  return true;
+}
 const codeHash = (email: string, code: string) => createHmac("sha256", claimSecret()).update(email.toLowerCase() + ":" + code).digest("hex");
 
 export const auth = new Hono();
@@ -112,8 +128,9 @@ auth.post("/auth/request-code", rateLimit(20, 60 * 60 * 1000), async (c) => {
   const body = await jsonBody<{ email: string }>(c);
   const email = String(body.email || "").trim().toLowerCase();
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return c.json({ error: "enter a valid email" }, 400);
+  // Same answer either way, so this cannot be probed for whether an address has an account.
+  if (!emailLimit("req:" + email, 5, 60 * 60 * 1000)) return c.json({ ok: true });
   const ids = await idsForEmail(email);
-  // Always answer the same way so an address cannot be probed for accounts.
   if (ids.length) {
     const code = String(randomInt(100000, 999999));
     codes.set(email, { hash: codeHash(email, code), exp: Date.now() + 10 * 60 * 1000, tries: 0 });
@@ -135,6 +152,7 @@ auth.post("/auth/verify", rateLimit(30, 60 * 60 * 1000), async (c) => {
   const body = await jsonBody<{ email: string; code: string }>(c);
   const email = String(body.email || "").trim().toLowerCase();
   const code = String(body.code || "").replace(/\D/g, "");
+  if (!emailLimit("ver:" + email, 15, 60 * 60 * 1000)) return c.json({ error: "too many attempts, try again later" }, 429);
   const rec = codes.get(email);
   if (!rec || rec.exp < Date.now()) return c.json({ error: "code expired, request a new one" }, 400);
   rec.tries += 1;
