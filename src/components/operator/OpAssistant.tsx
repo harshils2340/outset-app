@@ -88,7 +88,7 @@ export function OpAssistant() {
             {suggestions.map((s) => <button type="button" key={s} onClick={() => send(s)}>{s}</button>)}
           </div>
           <form className="odchatin" onSubmit={(e) => { e.preventDefault(); send(text); }}>
-            <input value={text} onChange={(e) => setText(e.target.value)} placeholder={"Ask " + ASSISTANT_NAME + " what a guest would"} />
+            <input value={text} onChange={(e) => setText(e.target.value)} aria-label={"Ask " + ASSISTANT_NAME + " a question"} placeholder={"Ask " + ASSISTANT_NAME + " what a guest would"} />
             <button type="submit" className="cta small" disabled={!text.trim()}>Send</button>
           </form>
         </section>

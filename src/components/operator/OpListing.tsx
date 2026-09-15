@@ -138,7 +138,7 @@ export function OpListing() {
               </div>
             ))}
             <div className="odaddoff">
-              <input value={newPolicy} onChange={(e) => setNewPolicy(e.target.value)} placeholder="Type a line, like: Ages 8 and up" onKeyDown={(e) => { if (e.key === "Enter" && newPolicy.trim()) { addPolicy(newPolicy); setNewPolicy(""); } }} />
+              <input value={newPolicy} onChange={(e) => setNewPolicy(e.target.value)} aria-label="Add a policy line" placeholder="Type a line, like: Ages 8 and up" onKeyDown={(e) => { if (e.key === "Enter" && newPolicy.trim()) { addPolicy(newPolicy); setNewPolicy(""); } }} />
               <button type="button" className="cta small" disabled={!newPolicy.trim()} onClick={() => { addPolicy(newPolicy); setNewPolicy(""); }}><Markup html={OD_ICONS.plus} /> Add</button>
             </div>
             {u.specs.length ? (
@@ -173,7 +173,7 @@ export function OpListing() {
             {p.photos.length === 0 ? <div className="odempty small"><b>No photos yet</b><p>{hasApi() ? "Upload three or more from your phone or computer. The first one becomes your cover." : "Paste a link to a photo from your website below. The first one becomes your cover."}</p></div> : null}
           </div>
           <div className="odaddoff">
-            <input value={newPhoto} onChange={(e) => setNewPhoto(e.target.value)} placeholder="https://yoursite.com/photo.jpg" onKeyDown={(e) => e.key === "Enter" && addPhoto()} />
+            <input value={newPhoto} onChange={(e) => setNewPhoto(e.target.value)} aria-label="Photo web address" placeholder="https://yoursite.com/photo.jpg" onKeyDown={(e) => e.key === "Enter" && addPhoto()} />
             <button type="button" className="cta small" disabled={!/^https?:\/\//i.test(newPhoto.trim())} onClick={addPhoto}><Markup html={OD_ICONS.plus} /> Add</button>
           </div>
         </section>

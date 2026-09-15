@@ -65,13 +65,13 @@ export function OpHours() {
                   <span className="odmuted">Closed</span>
                 ) : (
                   <span className="odtimes">
-                    <select value={h.open} onChange={(e) => patchOpen(i, e.target.value)}>{withTime(TIMES, h.open).map((t) => <option key={t} value={t}>{fmtTime(t)}</option>)}</select>
+                    <select value={h.open} aria-label={DAY_NAMES[i] + " opening time"} onChange={(e) => patchOpen(i, e.target.value)}>{withTime(TIMES, h.open).map((t) => <option key={t} value={t}>{fmtTime(t)}</option>)}</select>
                     <span>to</span>
                     {/* A shop open until midnight or later stores a closing time at or before its opening one,
                         which is what the scrape reads off "10am to 12am". With only the later times listed, that
                         day's own closing time was in no option at all, so the select sat blank on hours the shop
                         really keeps. The late ones are listed and marked as the next day. */}
-                    <select value={h.close} onChange={(e) => patchDay(i, { close: e.target.value })}>
+                    <select value={h.close} aria-label={DAY_NAMES[i] + " closing time"} onChange={(e) => patchDay(i, { close: e.target.value })}>
                       {withTime(TIMES, h.close).filter((t) => t > h.open).map((t) => <option key={t} value={t}>{fmtTime(t)}</option>)}
                       {withTime(TIMES, h.close).filter((t) => t < h.open && minutesOfDay(t) <= LATEST_WRAP).map((t) => <option key={t} value={t}>{fmtTime(t)}, next day</option>)}
                     </select>
@@ -111,7 +111,7 @@ export function OpHours() {
             <div className="odcardhead"><h3>Days off</h3></div>
             <p className="odmuted">Holidays, maintenance, weather days. Guests can't book these dates.</p>
             <div className="odaddoff">
-              <input type="date" value={newOff} onChange={(e) => setNewOff(e.target.value)} />
+              <input type="date" aria-label="Date to take off" value={newOff} onChange={(e) => setNewOff(e.target.value)} />
               <button type="button" className="cta small" disabled={!newOff} onClick={() => { if (!p.blockedDates.includes(newOff)) set({ blockedDates: [...p.blockedDates, newOff].sort() }); setNewOff(""); }}><Markup html={OD_ICONS.plus} /> Add</button>
             </div>
             {p.blockedDates.length === 0 ? <p className="odfine">No days off scheduled.</p> : null}
