@@ -52,3 +52,14 @@ export function splitAddons(addons: string[] | undefined): { optionIdx: number |
   const idx = list.find((a) => /^\d+$/.test(a));
   return { optionIdx: idx == null ? null : Number(idx), extras: list.filter((a) => !/^\d+$/.test(a)) };
 }
+
+/** The name, mobile and email the booking form remembers between trips. Empty when nobody has booked here. */
+export function loadGuest(): { name?: string; phone?: string; email?: string } {
+  try {
+    const raw = localStorage.getItem("outset.guest");
+    const parsed = raw ? (JSON.parse(raw) as Record<string, unknown>) : null;
+    return parsed && typeof parsed === "object" ? (parsed as { name?: string; phone?: string; email?: string }) : {};
+  } catch {
+    return {};
+  }
+}

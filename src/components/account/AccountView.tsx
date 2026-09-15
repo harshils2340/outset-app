@@ -1,14 +1,19 @@
 import { ICONS } from "../../data/icons";
+import { loadGuest } from "../../lib/storage";
 import { useApp } from "../../state/AppProvider";
 import { Markup } from "../Markup";
 
 export function AccountView() {
   const { state, openOperator } = useApp();
   const n = state.bookings.length;
+  // Every guest's Profile tab was headed "Harshil", the founder's own name, left over from the first build of
+  // this screen. The booking form already remembers who booked on this device; when nobody has, the tab is
+  // simply the tab.
+  const first = (loadGuest().name || "").trim().split(/\s+/)[0];
   return (
     <>
       <div className="apphead">
-        <h2 className="sec">Harshil</h2>
+        <h2 className="sec">{first || "Profile"}</h2>
       </div>
       <div className="acct">
         <div className="acctcard">
