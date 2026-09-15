@@ -720,6 +720,11 @@ export function hoursRun(h: DayHours | undefined): { start: number; end: number 
  * The start times this shop's hours put on one date: its own run up to midnight, plus whatever the day before
  * left past midnight. A close at or before the open used to produce nothing, so a shop open until midnight
  * showed the operator an empty calendar and offered a guest no time at all.
+ *
+ * A day the operator took off is this date's own business, and the calendar draws it closed itself. The tail
+ * belongs to another date, though, and scheduledSlots in the API drops it when that date is off, so a shop
+ * open Friday 6pm to 1am with Friday taken off offers a guest no midnight on Saturday. The calendar offered
+ * the operator that midnight as an open slot until this read the same day off.
  */
 export function slotsForDay(p: OperatorProfile, d: Date): string[] {
   const step = Number.isFinite(p.slotMinutes) && p.slotMinutes >= 15 ? p.slotMinutes : 60;
@@ -728,7 +733,7 @@ export function slotsForDay(p: OperatorProfile, d: Date): string[] {
   const today = hoursRun(p.hours[d.getDay()]);
   if (today) for (let m = today.start; m + 1 <= Math.min(today.end, 1440); m += step) push(m);
   const before = new Date(d.getFullYear(), d.getMonth(), d.getDate() - 1);
-  const prev = hoursRun(p.hours[before.getDay()]);
+  const prev = p.blockedDates.includes(dateKey(before)) ? null : hoursRun(p.hours[before.getDay()]);
   if (prev && prev.end > 1440) for (let m = prev.start; m + 1 <= prev.end; m += step) if (m >= 1440) push(m);
   return out.sort();
 }

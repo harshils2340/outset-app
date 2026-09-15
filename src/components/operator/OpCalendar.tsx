@@ -31,14 +31,6 @@ export function OpCalendar() {
     setAnchor(d);
   };
 
-  // Rows: every slot start across the open hours of the week, at the operator's slot interval.
-  const rows = useMemo(() => {
-    const all = new Set<string>();
-    for (const d of days) for (const s of slotsForDay(p, d)) all.add(s);
-    if (!all.size) for (const s of slotsForDay({ ...p, hours: p.hours.map(() => ({ closed: false, open: "09:00", close: "17:00" })) }, days[0])) all.add(s);
-    return Array.from(all).sort();
-  }, [days, p]);
-
   const byCell = useMemo(() => {
     const m = new Map<string, typeof bookings>();
     for (const b of bookings) {
@@ -48,6 +40,19 @@ export function OpCalendar() {
     }
     return m;
   }, [bookings]);
+
+  // Rows: every slot start across the open hours of the week, at the operator's slot interval, plus every time
+  // a guest is already booked in. A booking has to keep its row even when the day was taken off or the hours
+  // have moved since it was made: this is the page an owner reads to see who is turning up, and a row that is
+  // not here is a guest they will not know about until the guest is standing in front of them.
+  const rows = useMemo(() => {
+    const all = new Set<string>();
+    for (const d of days) for (const s of slotsForDay(p, d)) all.add(s);
+    const shown = new Set(days.map(dateKey));
+    for (const k of byCell.keys()) if (shown.has(k.slice(0, k.indexOf("|")))) all.add(k.slice(k.indexOf("|") + 1));
+    if (!all.size) for (const s of slotsForDay({ ...p, hours: p.hours.map(() => ({ closed: false, open: "09:00", close: "17:00" })) }, days[0])) all.add(s);
+    return Array.from(all).sort();
+  }, [days, p, byCell]);
 
   const toggleBlock = (key: string) => {
     const on = p.blockedSlots.includes(key);
@@ -93,14 +98,17 @@ export function OpCalendar() {
             // A day with no start times reads as off, whether that is the closed switch, a day off, or hours
             // that leave no room for one. A day whose own switch is off can still carry the late session of
             // the day before, and that is a day guests can book.
-            const closed = !slotsForDay(p, d).length || p.blockedDates.includes(k);
+            const dayOff = p.blockedDates.includes(k);
+            const closed = !slotsForDay(p, d).length || dayOff;
             const count = bookings.filter((b) => b.date === k && (b.status === "accepted" || b.status === "completed" || b.status === "new")).length;
             const past = k < todayKey;
+            // "Reopen this day" on a day that is only shut because its hours leave no room promised the opposite
+            // of what the click does, which is to take the day off. Only a day actually taken off reopens.
             return (
-              <button type="button" key={k} className={"odcalday" + (k === todayKey ? " today" : "") + (closed ? " closed" : "") + (past ? " past" : "")} onClick={() => toggleDay(k)} disabled={past} title={past ? "Past day" : closed ? "Reopen this day" : "Take this day off"}>
+              <button type="button" key={k} className={"odcalday" + (k === todayKey ? " today" : "") + (closed ? " closed" : "") + (past ? " past" : "")} onClick={() => toggleDay(k)} disabled={past} title={past ? "Past day" : dayOff ? "Reopen this day" : "Take this day off"}>
                 <small>{DAY_SHORT[d.getDay()]}</small>
                 <b>{d.getDate()}</b>
-                <span>{closed ? "Off" : count ? count + (count === 1 ? " booking" : " bookings") : "Open"}</span>
+                <span>{closed ? (count ? "Off · " + count : "Off") : count ? count + (count === 1 ? " booking" : " bookings") : "Open"}</span>
               </button>
             );
           })}
@@ -125,16 +133,19 @@ function CalRow({ slot, days, byCell, toggleBlock, open }: { slot: string; days:
         const dayOff = p.blockedDates.includes(k);
         const blocked = p.blockedSlots.includes(key);
         const items = byCell.get(key) || [];
-        if (!inHours || dayOff) return <div key={key} className="odcalcell closed" />;
+        // A day off, or hours that no longer reach this time, closes the cell to new time off but never hides a
+        // booking that is already in it.
+        const shut = !inHours || dayOff;
+        if (shut && !items.length) return <div key={key} className="odcalcell closed" />;
         return (
-          <div key={key} className={"odcalcell" + (blocked ? " blocked" : "")}>
+          <div key={key} className={"odcalcell" + (shut ? " closed" : "") + (blocked ? " blocked" : "")}>
             {items.map((b) => (
               <button type="button" key={b.id} className={"odevent " + b.status} onClick={() => open(b.id)}>
                 <b>{b.guest}</b>
                 <small>{b.qty} · {b.service}</small>
               </button>
             ))}
-            {!items.length ? (
+            {!items.length && !shut ? (
               <button type="button" className="odcalfill" onClick={() => toggleBlock(key)} aria-label={blocked ? "Reopen slot" : "Block slot"}>
                 {blocked ? "Time off" : ""}
               </button>
