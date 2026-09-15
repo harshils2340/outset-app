@@ -164,22 +164,84 @@ and `payments/__tests__/priceBooking.ts`; 18 pass.
 - `npm test` now exists but no workflow runs it. `.github/workflows/` has eight jobs and none is the tests.
 - Still nothing checked against real Stripe, and Render environment variables remain untouched from here.
 
+## 15 September 2026, fourth run (08:00 to 09:40 UTC)
+
+**Chosen, and why.** The first three runs took the money, the booking rules and the guest listing, so this one
+took the two areas Coverage still listed first: search and browse, and the claim and sign-in flows. Then the
+week of hours a shop starts on, because that is the first thing a new operator sees. Type checks at the root
+and in `backend/` and `npm test` ran at the start and at the end. The full rehearsal was run, because one
+commit since the last entry (`3e6ca56`) touched `backend/src` and `src/`: green before any change and green
+after, now 35 steps, 0 failed, with 43 money checks, 42 route checks, 24 backend tests and 16 guest tests
+inside it.
+
+**Found and fixed.**
+
+- **A search that found nothing sent the guest to another empty page** (`b6c7607`). "skydiving florida" in
+  the Water tab offered "Skydive · 7", "Key West · 425", "Miami · 1,587" and "Orlando · 1,511". Every one of
+  those opened an empty page: the activity count came from results outside the tab the guest was in, and the
+  city counts were the whole city's catalog, nothing to do with what was typed. "axe throwing honolulu" in
+  Honolulu offered the guest Honolulu. Each row now carries the size of the page its own press opens, and a
+  row whose page would be empty is not shown; an empty search in Banff points at "Miami · 2" and "Key West ·
+  1", which are real.
+- **Opening a claim link for a second shop signed the operator out of the first** (`0f2072f`).
+  `POST /claims/:id/exchange` minted a session scoped to the listing in the link alone and threw away the one
+  the caller arrived with. The first shop stayed in their dashboard and in the sidebar, and every save of it
+  answered 403 with nothing on screen to say why. It keeps the listings the caller already held now, the way
+  `POST /claims/:id` always has. A session for one shop still cannot edit another; an expired one widens
+  nothing.
+- **A shop that says it opens two days a week was given the other five** (`d93d53b`). The starting week is
+  read from the operator's own published hour lines, and every day those lines did not name kept an invented
+  9 to 5. "open Saturday & Sunday only from 11:00am to 7:00pm" came out open Monday to Friday, and a dropzone
+  whose site says "Friday through Sunday" was handed Monday to Thursday: two of the ten synced operators who
+  publish hours at all, and a guest could book a day the shop is shut. Three reading bugs went with it. Only
+  four day ranges were known, so "Friday through Sunday" read as Sunday alone; "Mon, Wed & Fri" read as
+  Monday; and a line written "9:00 a.m. - 6:00 p.m." was dropped whole, which is how a balloon company
+  publishing Monday to Saturday 9 to 6 got a 9 to 5 week. All ten now read exactly what their own site says.
+- **Nothing ran the unit tests** (`49f2f2e`). `backend/` had `npm test` and the guest side had no runner at
+  all, so a break in either passed the nightly rehearsal untouched. Both are a rehearsal step now, and a step
+  that produces no test counts as a failure rather than a pass.
+- **Smaller.** The option name, add-on name, detail and price on the menu editor had a placeholder and no
+  accessible name, so a screen reader read "edit text, blank" four times per add-on (`5e92a8c`).
+
+**Checked and clean.** A query matching nothing, a metro with one listing, a category with none in a city,
+paging, and an unpublished or paused listing staying out of every list and rail. An address that does not
+match the business, a claim link that has expired (410), one whose expiry was edited (401), one listing's link
+used on another, a sign-in code typed wrong six times, and a session for one listing used on another, by
+session and by claim token. Colour contrast on the accent: forest is 7.5:1 and sage is never used as text;
+every low-contrast pair in the CSS is white on a dark ground or an inactive control that also carries a
+line-through.
+
+**Needs Harshil.**
+
+- The hours fix changes the week a shop starts on. It only touches new claims, not shops already claimed, but
+  it is worth looking at the next one that comes in.
+- `--gone` (`#B0B0B0`) on `--gone-bg` (`#F2F2F2`) is 1.9:1. It is only ever a sold-out slot, which WCAG
+  exempts as an inactive control, and the time is struck through as well, so nothing depends on the colour.
+  Still hard to read. Darkening it is a palette decision, so it was left alone.
+- `.badge-avail` in `app.css` is dead: no component renders it. Safe to delete.
+- Still nothing checked against real Stripe, no workflow runs `npm test` on its own, and Render environment
+  variables remain untouched from here.
+
 ## Coverage
 
 **Verified so far.** Booking validation and odd input on every route that takes it. The money split,
 pay-on-site pricing, the service fee tiers. Double booking past capacity, and party size against a time's
 capacity. Payout scheduling, cycles and the payouts tiles. The Stripe Connect button. The booking and decision
-emails. The rehearsal itself. Start times from a claimed shop's hours: odd hours, days off, blocked slots, the
-notice, the window, a shop open past midnight. The booking box price lines, including a service with no price.
-Phone width at 400px on the guest listing, the booking flow and every dashboard page. Accessibility on the
-booking flow: focus order, input labels, disabled buttons. The API unreachable and the API slow. The
-Availability page and the setup checklist counting itself.
+emails. The rehearsal itself, which now runs both sides' unit tests. Start times from a claimed shop's hours:
+odd hours, days off, blocked slots, the notice, the window, a shop open past midnight. The week a shop starts
+on, read from its own published hours. The booking box price lines, including a service with no price. Phone
+width at 400px on the guest listing, the booking flow and every dashboard page. Accessibility on the booking
+flow: focus order, input labels, disabled buttons. Colour contrast on the accent. The API unreachable and the
+API slow. The Availability page and the setup checklist counting itself. Search and browse: a query matching
+nothing, a metro with one listing, a category with none, paging, an unpublished or paused listing staying out
+of the lists, and every way out of an empty search. Claim and sign-in: an address that does not match the
+business, an expired link, an edited expiry, one listing's link used on another, a link claimed twice, a
+sign-in code typed wrong six times, and a session for one listing used on another.
 
-**Not yet checked.** Search and browse: a query matching nothing, a metro with one listing, a category with
-none, paging, an unpublished or paused listing appearing where it should not. Claim and sign-in: an address
-that does not match the business, an expired claim link, a link claimed twice, a sign-in code wrong five times,
-a session for one listing used on another. Dashboard Calendar end to end (blocking a slot and a day), Services
-(adding, hiding, deleting), Settings, Assistant. The remaining empty states: a brand new claimed shop with
-nothing filled in, a booking list of zero. Colour contrast on the accent. Add-ons end to end on a real listing
-(no catalog record was found carrying both an unpriced service and a paid add-on to drive by hand). A shop
-whose published hours are not on the half hour, through a real claim.
+**Not yet checked.** Dashboard Calendar end to end (blocking a slot and a day, and whether a blocked slot in
+the week view reaches the guest picker; the key format matches, nothing has driven it). Services end to end
+(adding, hiding, deleting, and a negative price typed into an add-on, which `min={0}` does not stop and
+`priceBooking` sums without a guard). Settings and Assistant. The remaining empty states: a brand new claimed
+shop with nothing filled in, seen from the guest side. Add-ons end to end on a real listing (no catalog record
+was found carrying both an unpriced service and a paid add-on to drive by hand). A shop whose published hours
+are not on the half hour, through a real claim. The Trips and Inbox tabs, which no run has opened.
