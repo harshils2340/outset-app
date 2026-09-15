@@ -5,7 +5,11 @@ services:
   - type: web
     name: outset-web
     runtime: static
-    buildCommand: npm ci && npx vite build --base=/ && cp dist/index.html dist/404.html
+    # claim-index.json is removed from the published site on purpose. The API reads it from the repo checkout,
+    # nothing in src/ fetches it, and serving it put 142,549 operators' hashed emails and masked hints
+    # ("b...@example.com") on the CDN as a 6.6 MB download. The hash is an unsalted SHA-256 prefix, so with the
+    # hint and the domain beside it the real address is cheap to recover. Also 6.6 MB off every deploy.
+    buildCommand: npm ci && npx vite build --base=/ && cp dist/index.html dist/404.html && rm -f dist/claim-index.json
     staticPublishPath: dist
     buildFilter:
       ignoredPaths:
