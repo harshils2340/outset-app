@@ -515,6 +515,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
         dispatch({ type: "openRequest", id: h[1] });
         loadListing(h[1]).then((changed) => changed && dispatch({ type: "catalogLoaded", added: 1 }));
       });
+    }).catch(() => {
+      // A stored profile that will not parse used to take the whole boot down with it: the catalog had landed
+      // and nothing ever said so, so every screen that waits on it waited for good.
+      if (alive) dispatch({ type: "catalogLoaded", added: 0, complete: true });
     });
     return () => {
       alive = false;
