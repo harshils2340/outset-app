@@ -14,7 +14,7 @@
    "phone": "16473826727",
    "email": "malharshah04@gmail.com"
   },
-  "status": "new",
+  "status": "declined",
   "created": "2026-09-15T04:06:36.726Z",
   "payment": {
    "session": "cs_test_a1BD1hyxLD0fDSgD9c0EzxPpgBaebtjLAGRd4DD2bWGvrGpqkQRcJO10CS",
@@ -22,7 +22,8 @@
    "state": "authorized",
    "currency": "usd",
    "subtotal": 18
-  }
+  },
+  "decidedAt": "2026-09-15T04:07:16.541Z"
  },
  {
   "code": "SA-3E8781",
