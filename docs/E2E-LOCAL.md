@@ -133,8 +133,44 @@ fails if any comes back:
   <outDir>`) when the screenshot driver is not around.
 - `backend/scripts/test-listing.mts` — the fake business itself.
 - `backend/scripts/payout-e2e.mts` — the money path against a Stripe recorder.
+- `backend/scripts/connect-e2e.mts` — the Payouts button, against real Stripe in test mode.
+- `backend/scripts/card-e2e.mts` — the guest's card, against real Stripe in test mode.
 - `backend/scripts/store-e2e.mts` — the claim, profile, sign-in, slot and booking routes, driven in process.
 
 ## The database
 
 The API keeps profiles and bookings in Postgres, so the rehearsal needs a scratch branch of the Neon project: `neon branches create --name scratch`, then `E2E_DATABASE_URL=$(neon connection-string scratch --pooled) npx tsx scripts/e2e-local.mts`. The harness wipes the test listing's rows on that branch before it starts and never touches production. In GitHub Actions the same value is the repository secret `E2E_DATABASE_URL`; without it the rehearsal skips itself.
+
+## Against real Stripe, with a test key
+
+Two scripts need only a Stripe **test** secret key: no database, no API, no browser. Both refuse to start on a
+live key and clean up everything they create. Get the key from the Stripe dashboard in test mode (Developers,
+then API keys, the standard secret key starting `sk_test_`), not a restricted `rk_test_` one.
+
+```
+cd backend
+STRIPE_TEST_SECRET_KEY=sk_test_... npx tsx scripts/connect-e2e.mts
+STRIPE_TEST_SECRET_KEY=sk_test_... npx tsx scripts/card-e2e.mts
+```
+
+`connect-e2e.mts` covers the one seam every other test skipped: `POST /payouts/:id/connect`, the "Set up payouts
+with Stripe" button. Everything else writes a stand-in account record (`acct_e2e_local`) into the profile and
+never calls Stripe, which is how the API shipped asking for the `transfers` capability alone. Stripe allows that
+for a Canadian account and refuses it for a US one, so the button answered 502 for every US shop until
+`card_payments` was requested alongside it. The script makes the same calls `src/api/payouts.ts` makes, so a
+green run means the button works and the platform's Connect settings are right. When Stripe refuses, it prints
+Stripe's own message, which is the answer to whether a restriction is a Connect setting or a country limit.
+
+`card-e2e.mts` imports the functions in `src/lib/stripe.ts` and runs them against Stripe: the checkout session
+carries the listing's amount, currency and booking code and is unpaid with no intent yet; a card authorizes and
+waits; capture takes it and reports the charge; `settlementOf` reports the currency the money really landed in;
+`releaseIntent` refunds a captured payment in full and cancels one never captured; a declined card never becomes
+a booking; and a Canadian listing is held in Canadian dollars.
+
+Neither can complete Stripe's hosted pages, which are a person typing into Checkout or the Express onboarding
+form. `card-e2e.mts` authorizes with Stripe's own `pm_card_visa` test payment method instead, which is the
+server-side equivalent. Driving the hosted Checkout page for real is what `e2e-local.mts` does when
+`STRIPE_TEST_SECRET_KEY` is set, and that still needs the database.
+
+One thing worth knowing from a green run: a USD charge on this Canadian platform settles in CAD at about 1.39,
+which is why the payout run reads the settled currency and rate before it transfers the operator's share.
