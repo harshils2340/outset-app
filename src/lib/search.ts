@@ -892,32 +892,48 @@ export function searchSuggest(pool: Unclaimed[], q: string, scope?: SearchScope,
 
   // Nothing landed. Offer what the catalog really does have, in the order a guest would want it: the same
   // search in the tabs they are not looking at, then the kind they asked for wherever it exists, then the
-  // nearest thing to what they typed. Every count is a real count, so no row leads to an empty page.
+  // nearest thing to what they typed.
+  //
+  // Every count below is the size of the page its own button opens, under the guest's own category tab and
+  // the place their click leaves them in. Counting the city, or the kind, in the abstract is what put
+  // "Skydive · 7" and "Orlando · 1,511" under an empty Water tab and opened another empty page on both, and
+  // offered "Honolulu · 189" to a guest already looking at Honolulu. A row whose page would be empty is not
+  // shown at all; the "in other categories" way out covers the case where the tab is the only thing in the way.
+  const here: SearchScope = { metroId: scope?.metroId, cat, keep: scope?.keep };
   const spill = new Map<ArtKind, number>();
   for (const x of scored) spill.set(x.e.art, (spill.get(x.e.art) || 0) + 1);
-  let nearArts: ActivityHit[] = Array.from(spill.entries())
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, limit)
-    .map(([a, n]) => activityHit(a, n));
   const named = [...p.hardArts, ...p.softArts];
   const guess = named.length ? named : softArtsFor(p.all.length ? p.all : tokens(q), []);
-  if (!nearArts.length) {
-    // Same city, any category: a kayak search inside the Air tab still has 14 kayak places to point at.
-    const anyCat = { metroId: scope?.metroId, keep: scope?.keep };
-    nearArts = guess.map((a) => activityHit(a, countIn(idx, a, anyCat))).filter((a) => a.count > 0).slice(0, limit);
-  }
-  // The kind exists, the city does not have one. Say so with its real reach rather than sending them nowhere.
+  const kinds: ArtKind[] = [];
+  for (const a of [...spill.keys(), ...guess]) if (!kinds.includes(a)) kinds.push(a);
+  const nearArts: ActivityHit[] = kinds
+    .map((a) => activityHit(a, countIn(idx, a, here)))
+    .filter((a) => a.count > 0)
+    .sort((a, b) => b.count - a.count)
+    .slice(0, limit);
+  // The kind exists, this place does not have one. Clicking clears Where and keeps the tab, so count it that way.
   const elsewhere = nearArts.length
     ? []
-    : guess.map((a) => activityHit(a, (idx.byArt.get(a) || []).length)).filter((a) => a.count > 0).slice(0, limit);
-  const seenMetro = new Set(places.map((x) => x.metro.id));
+    : guess.map((a) => activityHit(a, countIn(idx, a, { cat }))).filter((a) => a.count > 0).slice(0, limit);
+  // Cities: how many results this very query has there, inside the tab, because that is the page the row opens.
+  // Only worth asking when the place is what is narrowing the search; a city the guest is already in is no way out.
+  const placed = !!scope?.keep || (!!scope?.metroId && scope.metroId !== "all");
+  const cityHits = new Map<string, number>();
+  if (placed) for (const x of rank(pool, q, undefined)) if (!narrow || inCat(x.e.u, cat!)) cityHits.set(x.e.metroId, (cityHits.get(x.e.metroId) || 0) + 1);
+  const ways: PlaceHit[] = [];
+  for (const m of regions.length ? METROS.filter((mm) => mm.region === regions[0].code) : [...searchMetros(q, 3), ...nearMetros(q)]) {
+    const count = cityHits.get(m.id) || 0;
+    if (!count || m.id === scope?.metroId || ways.some((w) => w.metro.id === m.id)) continue;
+    ways.push({ metro: m, count });
+  }
+  ways.sort((a, b) => b.count - a.count);
   return {
     results: [],
     otherCats,
     activities: nearArts,
     elsewhere,
     operators: [],
-    places: regions.length ? places : [...places, ...nearMetros(q).filter((m) => !seenMetro.has(m.id)).map(metroCount)].slice(0, 3),
+    places: ways.slice(0, regions.length ? 4 : 3),
     regions,
     nearMiss: true,
   };
