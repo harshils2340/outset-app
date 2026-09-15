@@ -9,9 +9,16 @@ function looksLikeItem(x: unknown): x is Unclaimed {
   return !!u && typeof u.id === "string" && typeof u.title === "string" && typeof u.cat === "string" && Array.isArray(u.options);
 }
 
+/**
+ * The full catalog is a big file over whatever connection the guest has, so this is generous. It is not
+ * optional, though: with no deadline a stalled fetch never settles, so nothing ever says the catalog is done
+ * and every screen that waits on that waits for the rest of the session.
+ */
+const CATALOG_TIMEOUT_MS = 45000;
+
 async function fetchCatalog(name: string): Promise<CatalogFile | null> {
   try {
-    const res = await fetch(import.meta.env.BASE_URL + name, { cache: "no-cache" });
+    const res = await fetch(import.meta.env.BASE_URL + name, { cache: "no-cache", signal: AbortSignal.timeout(CATALOG_TIMEOUT_MS) });
     if (!res.ok) return null;
     return (await res.json()) as CatalogFile;
   } catch {
