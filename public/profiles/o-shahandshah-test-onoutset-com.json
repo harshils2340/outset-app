@@ -39,6 +39,12 @@
     "detail": "4 hours",
     "price": 45,
     "per": "/person"
+   },
+   {
+    "name": "test for me",
+    "detail": "Standard",
+    "price": null,
+    "per": "/person"
    }
   ],
   "services": [
@@ -83,6 +89,18 @@
       "optionIdx": 3
      }
     ]
+   },
+   {
+    "name": "test for me",
+    "desc": null,
+    "variants": [
+     {
+      "label": "Standard",
+      "price": null,
+      "per": "/person",
+      "optionIdx": 4
+     }
+    ]
    }
   ],
   "addons": [],
@@ -102,5 +120,5 @@
    "Sat: 9:00 AM to 7:00 PM"
   ]
  },
- "updatedAt": "2026-09-15T23:35:40.911Z"
+ "updatedAt": "2026-09-15T23:35:45.377Z"
 }
