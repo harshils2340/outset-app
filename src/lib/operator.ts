@@ -530,14 +530,19 @@ export function toCatalog(p: OperatorProfile, base: Unclaimed): Partial<Unclaime
   const options: UnclaimedOption[] = [];
   const services: UnclaimedService[] = [];
   for (const s of p.services) {
-    if (!s.live || !s.variants.length) continue;
+    // A row with no name is one the operator has not finished. A nameless line in the guest's picker is worse
+    // than no line at all: there is nothing to tell them what they would be booking.
+    if (!s.live || !s.variants.length || !s.name.trim()) continue;
     const variants = s.variants.map((v) => {
       options.push({ name: s.name, detail: v.label, price: v.price, per: "/" + v.per });
       return { label: v.label, price: v.price, per: "/" + v.per, optionIdx: options.length - 1 };
     });
     services.push({ name: s.name, desc: s.desc || null, variants });
   }
-  const addons: UnclaimedOption[] = p.addons.map((a) => ({ name: a.name, detail: a.detail, price: a.price }));
+  // "Add" under Add-ons opens an empty row, and that row reached the guest listing before the operator had
+  // typed a character: an Add-ons section holding one nameless tick box reading "Free", which a guest could
+  // tick and have turn up at the shop as an extra with no name. An add-on is on the menu once it has a name.
+  const addons: UnclaimedOption[] = p.addons.filter((a) => a.name.trim()).map((a) => ({ name: a.name, detail: a.detail, price: a.price }));
   return {
     // A claimed shop that switched Instant Book on is the only kind a guest sees as Instant.
     instant: p.instantBook,
@@ -669,8 +674,11 @@ export type SetupCheck = { id: string; label: string; hint: string; done: boolea
  */
 export const isPriced = (v: OpVariant): boolean => v.price != null && v.price > 0;
 
-/** Only what guests can book. A service switched off is not on the menu, so it is not a gap in the menu. */
-export const liveVariants = (p: OperatorProfile): OpVariant[] => p.services.filter((s) => s.live).flatMap((s) => s.variants);
+/**
+ * Only what guests can book, which is what toCatalog publishes. A service switched off is not on the menu, so
+ * it is not a gap in the menu, and neither is one still waiting for a name: a guest never sees either.
+ */
+export const liveVariants = (p: OperatorProfile): OpVariant[] => p.services.filter((s) => s.live && s.name.trim()).flatMap((s) => s.variants);
 
 /** Checklist that drives the setup progress on Home. */
 export function setupChecks(p: OperatorProfile): SetupCheck[] {
