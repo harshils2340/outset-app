@@ -144,6 +144,11 @@ export type UnclaimedService = {
   variants: { label: string; price: number | null; per?: string; optionIdx: number; explain?: Explained[]; moreOptions?: true }[];
   /** At most two jargon terms in the service name, explained ("Bareboat", "Full hookup"). */
   explain?: Explained[];
+  /**
+   * The largest party this service takes at one start time, as the operator set it. Absent on a scraped listing,
+   * where nobody has told us and the picker falls back to a generous default.
+   */
+  maxGuests?: number;
 };
 
 /** A review as the operator republished it. `date` is ISO (YYYY-MM-DD or YYYY-MM); `source` is "site" or the platform the operator's page named. */

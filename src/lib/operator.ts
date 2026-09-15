@@ -556,7 +556,7 @@ export function toCatalog(p: OperatorProfile, base: Unclaimed): Partial<Unclaime
       options.push({ name: s.name, detail: v.label, price: v.price, per: "/" + v.per, perGuest: v.perGuest ?? perUnitLooksPerGuest(v.per) });
       return { label: v.label, price: v.price, per: "/" + v.per, optionIdx: options.length - 1 };
     });
-    services.push({ name: s.name, desc: s.desc || null, variants });
+    services.push({ name: s.name, desc: s.desc || null, variants, maxGuests: s.capacity > 0 ? s.capacity : undefined });
   }
   // "Add" under Add-ons opens an empty row, and that row reached the guest listing before the operator had
   // typed a character: an Add-ons section holding one nameless tick box reading "Free", which a guest could

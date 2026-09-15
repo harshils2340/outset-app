@@ -6,7 +6,7 @@ import { ICONS } from "../../data/icons";
 import { metroById } from "../../data/metros";
 import { SLOT_TIMES } from "../../data/slots";
 import type { Unclaimed } from "../../data/types";
-import { addressLine, contactFor, fmtHours, fmtPhone, fromPrice, getCatalog, listingFacts, mapsHref, perPerson, plainWords, publicRating, telHref } from "../../lib/catalog";
+import { addressLine, contactFor, fmtHours, fmtPhone, fromPrice, getCatalog, listingFacts, mapsHref, maxGuestsFor, perPerson, plainWords, publicRating, telHref } from "../../lib/catalog";
 import { DAYS, fmtDate, fmtReviews, fmtTime, money, priceWith } from "../../lib/format";
 import { srcSet, thumb } from "../../lib/images";
 import { embedAutoplay, isGif, listingMedia, photoCandidates, probePhotos, type Media } from "../../lib/media";
@@ -1041,6 +1041,8 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
   // guest who has it bookmarked learns why, but nothing here can be booked and the API refuses too. Both flags
   // only ever come from an owner's saved profile, so they count before the next sync stamps the record `claimed`.
   const paused = !!item.offline || item.accepting === false;
+  // The operator's own "max guests per slot" for the service being booked, not a number we picked.
+  const maxGuests = maxGuestsFor(item, optionIdx);
   const ready = !paused && time != null && (!needService || picked != null) && guestOk;
   const instant = !!(item.claimed && item.instant);
   // Say what pressing it does: a card payment, an instant booking, or a request the operator confirms.
@@ -1796,7 +1798,7 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
                       </span>
                       <span className="alstep">
                         <button type="button" onClick={() => setQty(Math.max(1, qty - 1))} disabled={qty <= 1} aria-label="Fewer guests">−</button>
-                        <button type="button" onClick={() => setQty(Math.min(12, qty + 1))} disabled={qty >= 12} aria-label="More guests">+</button>
+                        <button type="button" onClick={() => setQty(Math.min(maxGuests, qty + 1))} disabled={qty >= maxGuests} aria-label="More guests">+</button>
                       </span>
                     </div>
                   </div>

@@ -199,6 +199,19 @@ export function perPerson(o: UnclaimedOption): boolean {
   return true;
 }
 
+/**
+ * The largest party the guest picker offers for a service. The operator sets it per service ("Max guests per
+ * slot"); a scraped listing has nobody to ask, so it falls back to a generous number and the server has the
+ * final word either way, refusing anything the time cannot hold.
+ */
+export const GUESTS_UNKNOWN = 20;
+export const GUESTS_CEILING = 60;
+export function maxGuestsFor(item: Unclaimed, optionIdx: number | null): number {
+  const svc = optionIdx == null ? undefined : (item.services || []).find((x) => x.variants.some((v) => v.optionIdx === optionIdx));
+  const set = svc?.maxGuests;
+  return Math.min(GUESTS_CEILING, set && set > 0 ? set : GUESTS_UNKNOWN);
+}
+
 export function publicRating(item: Unclaimed): { rating: number; reviews: number } | null {
   if (item.rating == null || item.reviews == null || item.reviews < 1) return null;
   return { rating: item.rating, reviews: item.reviews };
