@@ -141,7 +141,11 @@ export function verifyWebhook(payload: string, header: string | undefined): bool
   const t = parts.t;
   const v1 = parts.v1;
   if (!t || !v1) return false;
-  if (Math.abs(Date.now() / 1000 - Number(t)) > 600) return false;
+  // Number("abc") is NaN and every comparison with NaN is false, so a non-numeric timestamp used to slip past
+  // the freshness check. The HMAC covers t, so this was never forgeable, but the check should still mean what
+  // it says.
+  const at = Number(t);
+  if (!Number.isFinite(at) || Math.abs(Date.now() / 1000 - at) > 600) return false;
   const want = createHmac("sha256", secret).update(t + "." + payload).digest("hex");
   return want.length === v1.length && timingSafeEqual(Buffer.from(want), Buffer.from(v1));
 }

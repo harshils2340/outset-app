@@ -125,10 +125,18 @@ const notifyNew = mailNewBooking;
 export const bookings = new Hono();
 
 /** Stripe calls this when the guest finishes checkout. Turns the pending row into a real request. */
-bookings.post("/stripe/webhook", async (c) => {
+bookings.post("/stripe/webhook", rateLimit(600, 60 * 60 * 1000), async (c) => {
   const raw = await c.req.text();
   if (!verifyWebhook(raw, c.req.header("stripe-signature"))) return c.json({ error: "bad signature" }, 400);
-  const ev = JSON.parse(raw) as { type: string; data: { object: { id: string; payment_intent?: string | null; metadata?: { code?: string; listing?: string } } } };
+  // The signature has already passed, so this is Stripe, but a truncated body would otherwise throw and answer
+  // 500, which tells Stripe to retry something that can never parse.
+  let ev: { type: string; data: { object: { id: string; payment_intent?: string | null; metadata?: { code?: string; listing?: string } } } };
+  try {
+    ev = JSON.parse(raw);
+  } catch {
+    console.error("[stripe] a signed webhook body did not parse");
+    return c.json({ ok: true });
+  }
   if (ev.type !== "checkout.session.completed" && ev.type !== "checkout.session.expired") return c.json({ ok: true });
   const s = ev.data.object;
   const code = String(s.metadata?.code || "").toUpperCase();
@@ -322,6 +330,28 @@ bookings.patch("/bookings/:listing/:code", rateLimit(300, 60 * 60 * 1000), async
   const body = await jsonBody<{ status: StoredBooking["status"]; note: string }>(c);
   const status = body.status;
   if (!status || !STATUSES.includes(status)) return c.json({ error: "bad status" }, 400);
+  // Reinstating a booking the operator already turned away is not a status change, it is a new booking: the
+  // time may have gone to somebody else in the meantime, and the guest's card was released when it was
+  // refused. Both are checked before anything is written.
+  const before = await getBooking<StoredBooking>(id, code);
+  if (!before) return c.json({ error: "not found" }, 404);
+  const reinstating = status === "accepted" && (before.status === "declined" || before.status === "cancelled");
+  if (reinstating) {
+    if (before.payment && before.payment.state === "released") {
+      return c.json({ error: "That booking was refunded, so it cannot be confirmed again. Ask the guest to book a new time." }, 409);
+    }
+    const [profile, list, zone] = await Promise.all([
+      getProfile<StoredProfile>(id).catch(() => null),
+      listBookings<StoredBooking>(id).catch(() => [] as StoredBooking[]),
+      zoneOf(id).catch(() => null),
+    ]);
+    // Its own row still sits in that time, so it must not count against itself.
+    const others = list.filter((x) => x.code !== code);
+    const room = slotOpen((profile?.profile as Parameters<typeof slotOpen>[0]) || null, others, before.date, before.slot, before.service, before.qty, new Date(), zone);
+    if (!room.open) return c.json({ error: room.reason || "That time is no longer free", code: "slot_taken" }, 409);
+  }
+  // Saying the same thing twice used to send the guest a second copy of the same email.
+  if (before.status === status && !body.note) return c.json({ ok: true, booking: before, unchanged: true });
   const found = await updateBooking<StoredBooking>(id, code, (x) => ({ ...x, status, decidedAt: new Date().toISOString(), note: body.note ? clean(body.note, 300) : x.note }));
   if (!found) return c.json({ error: "not found" }, 404);
   const f = found;
