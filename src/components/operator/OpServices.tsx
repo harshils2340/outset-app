@@ -141,10 +141,10 @@ export function OpServices() {
         <p className="odmuted">Extras guests can tack on at checkout, like a dry bag, a photo pack or an extra rider.</p>
         {p.addons.map((a) => (
           <div className="odaddon" key={a.id}>
-            <input value={a.name} placeholder="Add-on name" onChange={(e) => patchAddon(a.id, { name: e.target.value })} />
-            <input value={a.detail} placeholder="Detail (optional)" onChange={(e) => patchAddon(a.id, { detail: e.target.value })} />
-            <label className="opinput"><span>$</span><input type="number" min={0} value={a.price ?? ""} placeholder="0" onChange={(e) => patchAddon(a.id, { price: e.target.value === "" ? null : Number(e.target.value) })} /></label>
-            <button type="button" className="odiconbtn" onClick={() => set((cur) => ({ ...cur, addons: cur.addons.filter((x) => x.id !== a.id) }))} aria-label="Remove"><Markup html={OD_ICONS.trash} /></button>
+            <input value={a.name} placeholder="Add-on name" aria-label="Add-on name" onChange={(e) => patchAddon(a.id, { name: e.target.value })} />
+            <input value={a.detail} placeholder="Detail (optional)" aria-label={"Detail for " + (a.name || "this add-on")} onChange={(e) => patchAddon(a.id, { detail: e.target.value })} />
+            <label className="opinput"><span>$</span><input type="number" min={0} value={a.price ?? ""} placeholder="0" aria-label={"Price for " + (a.name || "this add-on")} onChange={(e) => patchAddon(a.id, { price: e.target.value === "" ? null : Number(e.target.value) })} /></label>
+            <button type="button" className="odiconbtn" onClick={() => set((cur) => ({ ...cur, addons: cur.addons.filter((x) => x.id !== a.id) }))} aria-label={"Remove " + (a.name || "this add-on")}><Markup html={OD_ICONS.trash} /></button>
           </div>
         ))}
       </section>
@@ -155,7 +155,7 @@ export function OpServices() {
 function VariantRow({ v, onChange, onRemove, canRemove, jumpHere }: { v: OpVariant; onChange: (patch: Partial<OpVariant>) => void; onRemove: () => void; canRemove: boolean; jumpHere?: boolean }) {
   return (
     <div className={"odvar" + (v.price == null ? " unpriced" : "")}>
-      <input value={v.label} placeholder="Option, like 1 hour or Tandem" onChange={(e) => onChange({ label: e.target.value })} />
+      <input value={v.label} placeholder="Option, like 1 hour or Tandem" aria-label="Option name" onChange={(e) => onChange({ label: e.target.value })} />
       <label className="opinput" data-jump={jumpHere ? "price" : undefined}><span>$</span><input type="number" min={0} value={v.price ?? ""} placeholder="Set" aria-label={"Price for " + (v.label || "this option")} onChange={(e) => onChange({ price: e.target.value === "" ? null : Number(e.target.value) })} /></label>
       <select value={v.per} onChange={(e) => onChange({ per: e.target.value })}>
         {PER_UNITS.map((u) => <option key={u} value={u}>per {u}</option>)}
