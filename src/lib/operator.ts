@@ -508,6 +508,8 @@ export function toCatalog(p: OperatorProfile, base: Unclaimed): Partial<Unclaime
   return {
     // A claimed shop that switched Instant Book on is the only kind a guest sees as Instant.
     instant: p.instantBook,
+    // Paused in the dashboard: the guest page and the booking API both refuse new bookings until it is back on.
+    accepting: p.accepting,
     title: p.title || base.title,
     cat: p.cat,
     blurb: p.blurb || base.blurb,

@@ -210,6 +210,10 @@ bookings.post("/bookings", rateLimit(20, 60 * 60 * 1000), async (c) => {
   if (guest.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(guest.email)) return c.json({ error: "bad email" }, 400);
   const listing = String(b.listing);
   const profile = await readJson<StoredProfile>(`profiles/${listing}.json`);
+  // The dashboard's Published and Accepting switches. The guest page hides the booking box for both, but the
+  // page is not the only client, and before this a paused shop's API still took the booking and emailed them.
+  const accepting = (profile?.patch as { accepting?: boolean } | undefined)?.accepting ?? (profile?.profile as { accepting?: boolean } | null)?.accepting;
+  if (profile && (profile.published === false || accepting === false)) return c.json({ error: profile.published === false ? "This listing is hidden right now" : "This business is not taking bookings right now" }, 409);
   const instant = !!(profile?.profile as { instantBook?: boolean } | null)?.instantBook;
   const rec: StoredBooking = {
     code,

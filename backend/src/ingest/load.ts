@@ -65,6 +65,7 @@ export function ingestTampaUnclaimed(): number {
   seedTaxonomy();
   const now = nowIso();
   let n = 0;
+  const touched: string[] = [];
   for (const u of TAMPA_UNCLAIMED) {
     const domain = u.src.replace(/^www\./, "");
     const cat = CATEGORIES.find((c) => c.id === u.art) || inferCategory([u.title, u.art].join(" "));
@@ -124,24 +125,26 @@ export function ingestTampaUnclaimed(): number {
     db.prepare(
       "INSERT INTO sources (id, operator_id, url, fetched_at, http_status, extractor, robots_allowed, note) VALUES (?, ?, ?, ?, 200, 'tampa-unclaimed-seed', 1, ?)",
     ).run(randomUUID(), op.id, "https://" + domain, now, "Facts copied from the operator site in Sept 2026. Not invented.");
+    touched.push(op.id);
     n += 1;
   }
-  refreshAllScores();
+  refreshAllScores(touched);
   return n;
 }
 
 export function ingestNationalTargets(): number {
   let n = 0;
+  const touched: string[] = [];
   for (const t of NATIONAL_TARGETS) {
-    addTarget({
+    touched.push(addTarget({
       website: t.website,
       metroId: t.metroId,
       categoryId: t.categoryId,
       name: t.name,
-    });
+    }));
     n += 1;
   }
-  refreshAllScores();
+  refreshAllScores(touched);
   return n;
 }
 

@@ -216,6 +216,10 @@ export type Unclaimed = {
   claimed?: boolean;
   /** Claimed operators can switch instant confirmation on; unclaimed listings are always requests. */
   instant?: boolean;
+  /** False when the claimed operator paused bookings in their dashboard: the page shows, nothing can be booked. */
+  accepting?: boolean;
+  /** The claimed operator switched Published off: the page opens by its own link but says so, and takes no booking. */
+  offline?: boolean;
   /** Compact week from published hours on lite records: Sunday first, [open, close] in minutes, [0,0] closed, null unknown. */
   hrs?: ([number, number] | null)[];
   /** Card facts carried on lite records: duration as the operator wrote it, and a free-cancellation line when their policy says so. */

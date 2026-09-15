@@ -27,7 +27,9 @@ function rebuild(): void {
   alias = new Map();
   for (const u of base) if (u.detail && u.detail !== u.id) alias.set(u.detail, u.id);
   const key = (u: Unclaimed) => (overrides.has(u.id) ? u.id : u.detail && overrides.has(u.detail) ? u.detail : null);
-  const patched = overrides.size ? base.map((u) => { const k = key(u); return k ? { ...u, ...overrides.get(k) } : u; }) : base;
+  // An unpublished listing keeps its record so its own link resolves, and carries `offline` so the page says it is
+  // hidden and takes no booking; before this the page opened and booked as if nothing had changed.
+  const patched = overrides.size || unpublished.size ? base.map((u) => { const k = key(u); const off = unpublished.has(u.id) || (!!u.detail && unpublished.has(u.detail)); return k || off ? { ...u, ...(k ? overrides.get(k) : null), ...(off ? { offline: true } : {}) } : u; }) : base;
   byId = new Map(patched.map((u) => [u.id, u]));
   // Test listings are unlisted: every list, rail and search skips them, and their own link still opens them.
   const hidden = (u: Unclaimed) => !!u.unlisted || unpublished.has(u.id) || (!!u.detail && unpublished.has(u.detail));

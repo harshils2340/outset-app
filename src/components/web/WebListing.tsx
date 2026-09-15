@@ -1035,7 +1035,11 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
   const visitOpen = useMemo(() => (visit ? itemOpenState(item) : null), [visit, item]);
   const visitWeek = useMemo(() => (visit ? itemWeek(item) : null), [visit, item]);
   const clock = (m: number) => fmtTime(String(Math.floor(m / 60)).padStart(2, "0") + ":" + String(m % 60).padStart(2, "0"));
-  const ready = time != null && (!needService || picked != null) && guestOk;
+  // The shop paused bookings or hid the listing in its dashboard. The page still opens by its own link, so a
+  // guest who has it bookmarked learns why, but nothing here can be booked and the API refuses too. Both flags
+  // only ever come from an owner's saved profile, so they count before the next sync stamps the record `claimed`.
+  const paused = !!item.offline || item.accepting === false;
+  const ready = !paused && time != null && (!needService || picked != null) && guestOk;
   const instant = !!(item.claimed && item.instant);
   // Say what pressing it does: a card payment, an instant booking, or a request the operator confirms.
   const ctaLabel = payments && p.total ? "Book and pay" : instant ? "Book" : "Request to book";
@@ -1316,7 +1320,7 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
             {score || reviews.length ? <button type="button" tabIndex={navOn ? 0 : -1} onClick={() => jump("al-reviews")}>Reviews</button> : null}
             <button type="button" tabIndex={navOn ? 0 : -1} onClick={() => jump("al-location")}>Location</button>
           </div>
-          {navCta && !visit && !done ? (
+          {navCta && !visit && !done && !paused ? (
             <div className="alsubcta">
               <span>{priceTag}{score ? <small><Markup html={I.star} /> {score.rating.toFixed(1)} · {fmtReviews(score.reviews)} reviews</small> : null}</span>
               <button type="button" className="alprimary" tabIndex={navOn ? 0 : -1} onClick={() => { jump("al-cols"); if (time == null) window.setTimeout(() => setPickerOpen(true), 450); }}>{ctaLabel}</button>
@@ -1671,6 +1675,13 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
                   <a className="alprimary" href={telHref(contact.phone)}>Call to plan</a>
                 ) : null}
                 <p className="alfine">Tickets are sold by {item.title}. Prices and times on their side.</p>
+              </div>
+            ) : paused ? (
+              <div className="alreserve aldone alpaused">
+                <span className="aldonemark"><Markup html={I.calendar} /></span>
+                <h3>{item.offline ? "This listing is hidden right now" : "Not taking bookings right now"}</h3>
+                <p>{item.offline ? item.title + " has taken this page down for the moment." : item.title + " has paused new bookings. Check back soon."}</p>
+                <button type="button" className="alprimary" onClick={onClose}>Find another experience</button>
               </div>
             ) : done ? (
               <div className="alreserve aldone">

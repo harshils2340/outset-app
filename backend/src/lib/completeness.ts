@@ -76,7 +76,12 @@ export function refreshGaps(operatorId: string): string[] {
   return gaps.map((g) => g.note);
 }
 
-export function refreshAllScores(): void {
-  const ids = db.prepare("SELECT id FROM operators").all() as { id: string }[];
+/**
+ * Rescore operators. With no argument it walks every row, which on the 140,000-operator catalog is minutes of
+ * CPU: the API used to run that twice at boot (once per seed ingest) and took over twelve minutes to answer
+ * /health. Ingests pass the ids they touched so boot rescores a few dozen rows, not the whole table.
+ */
+export function refreshAllScores(only?: string[]): void {
+  const ids = only ? only.map((id) => ({ id })) : (db.prepare("SELECT id FROM operators").all() as { id: string }[]);
   for (const row of ids) refreshGaps(row.id);
 }
