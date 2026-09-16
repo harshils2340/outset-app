@@ -117,6 +117,30 @@ crawler's trust rules and the API, keys, and workflows.
 - `src/components/operator/OpPreview.tsx`'s preview-panel prefs (`open`/`device`/`width`)
   already check `typeof` and compare against exact literals before use, so a stale value falls
   back cleanly with no crash. No change.
+- Every third party the site actually loads: grepped every `fetch(` call and every external
+  `<link>`/`<img>`/`<iframe>` host. `fonts.googleapis.com` (stylesheet) and `fonts.gstatic.com`
+  (font files) as expected, `wsrv.nl` for the photo proxy, `outset-api.onrender.com` for the
+  API, and one more the task brief did not name: `https://photon.komoot.io`, the place-search
+  geocoder called from `src/lib/places.ts`. Added to `connect-src`.
+
+## Found and fixed (continued)
+
+- `a64f22c9c` `index.html` had no Content-Security-Policy or Referrer-Policy at all. Added a CSP
+  meta tag (the site is static on GitHub Pages, so a meta tag is the only place a policy can
+  live) as the first thing in `<head>`: `script-src 'self'`, `object-src 'none'`,
+  `base-uri 'self'`, `frame-src` limited to the YouTube/Vimeo player hosts this review's embed
+  allowlist already uses, `form-action 'self' https://checkout.stripe.com`, and `connect-src`
+  covering the API and the geocoder found above. `img-src`/`media-src` allow `http:` and
+  `https:` to match the review's own URL-safety policy for photos; an https-only first draft was
+  tested and rejected because it silently dropped over a thousand real cover photos still served
+  over plain http by their own operator's site (`grep -c '"http://' public/catalog.json`).
+  Built the site and ran it under a real headless Chromium (the pre-installed Playwright
+  browser) at 1280 and 390 widths across the home page, a listing with an https cover, a real
+  listing with an http cover pulled from the production catalog, the booking box opened from a
+  listing, and the operator dashboard: zero CSP violations in the console. The only errors seen
+  were 403s from this sandbox's own outbound network proxy rejecting hosts outside it
+  (`bigwhite.com`, and intermittently `wsrv.nl`), confirmed by URL, not from the policy. Added a
+  `Referrer-Policy` meta of `strict-origin-when-cross-origin`.
 
 ## Found, not fixed
 
