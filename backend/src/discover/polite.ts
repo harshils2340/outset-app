@@ -1,4 +1,5 @@
 import { fetchHtml, robotsAllowed } from "../scrape/fetch.ts";
+import { safeFetch } from "../lib/safeFetch.ts";
 
 /**
  * Polite fetching for database-free discovery (chains, OpenStreetMap by name, the Brave Search API).
@@ -23,7 +24,7 @@ function crawlDelayMs(origin: string): Promise<number> {
   if (!crawlDelays.has(origin)) {
     crawlDelays.set(
       origin,
-      fetch(new URL("/robots.txt", origin), { headers: { "user-agent": BOT }, signal: AbortSignal.timeout(8000) })
+      safeFetch(new URL("/robots.txt", origin).href, { headers: { "user-agent": BOT }, timeoutMs: 8000, maxBytes: 300_000 })
         .then(async (res) => {
           if (!res.ok) return 0;
           let applies = false;
@@ -77,12 +78,12 @@ export async function getJson<T = unknown>(url: string, init: { method?: string;
     const u = new URL(url);
     if (!(await robotsAllowed(u.origin, u.pathname))) return null;
     return await perHost(url, async () => {
-      const res = await fetch(url, {
+      const res = await safeFetch(url, {
         method: init.method || "GET",
         body: init.body,
         headers: { accept: "application/json, text/plain, */*", "user-agent": BOT, ...(init.headers || {}) },
-        redirect: "follow",
-        signal: AbortSignal.timeout(20000),
+        timeoutMs: 20000,
+        maxBytes: 8_000_000,
       });
       if (!res.ok) return null;
       return (await res.json()) as T;

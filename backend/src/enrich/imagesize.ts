@@ -4,6 +4,7 @@
  */
 
 import { withCpuBudget } from "../scrape/cpu.ts";
+import { safeFetch } from "../lib/safeFetch.ts";
 
 export type ImageSize = { width: number; height: number; bytes: number };
 
@@ -69,31 +70,17 @@ export async function probeImage(url: string, timeoutMs = 8000): Promise<ImageSi
   return withCpuBudget(async () => {
     let out: ImageSize | null = null;
     try {
-      const res = await fetch(url, {
+      // A well-behaved server honors the Range header and answers with ~64 KB regardless of the full file
+      // size; the cap below only matters against one that ignores it and tries to stream the whole file.
+      const res = await safeFetch(url, {
         headers: { range: "bytes=0-65535", "user-agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0 Safari/537.36", accept: "image/*,*/*;q=0.8" },
-        signal: AbortSignal.timeout(timeoutMs),
-        redirect: "follow",
+        timeoutMs,
+        maxBytes: 1_000_000,
       });
       if (res.ok) {
-        const reader = res.body?.getReader();
-        const chunks: Uint8Array[] = [];
-        let got = 0;
-        if (reader) {
-          while (got < 65536) {
-            const { value, done } = await reader.read();
-            if (done || !value) break;
-            chunks.push(value);
-            got += value.length;
-          }
-          reader.cancel().catch(() => undefined);
-        }
-        const buf = new Uint8Array(got);
-        let o = 0;
-        for (const c of chunks) {
-          buf.set(c.subarray(0, Math.min(c.length, buf.length - o)), o);
-          o += c.length;
-          if (o >= buf.length) break;
-        }
+        const body = new Uint8Array(await res.arrayBuffer());
+        const got = Math.min(body.length, 65536);
+        const buf = body.subarray(0, got);
         out = parseImageSize(buf);
         if (out) out.bytes = Number(res.headers.get("content-range")?.split("/")[1] || res.headers.get("content-length") || got);
       }

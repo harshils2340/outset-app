@@ -14,7 +14,13 @@ const here = dirname(fileURLToPath(import.meta.url));
 const publicDir = process.env.STORE_DIR || join(here, "../../../public");
 const REPO = process.env.GITHUB_REPO || "harshils2340/outset-app";
 const BRANCH = process.env.GITHUB_BRANCH || "main";
+// Every caller already passes a fixed prefix plus an `ID`-validated catalog id (auth.ts: `/^[a-z0-9-]{3,80}$/`,
+// no dot or slash), so this never sees attacker input today. Kept strict anyway, and ".." refused explicitly,
+// since a relative path here reaches both the local checkout (fs.join) and, as a repo path, the GitHub API.
 const SAFE = /^[a-z0-9/_.-]{1,160}$/;
+function isSafeRelPath(p: string): boolean {
+  return SAFE.test(p) && !p.split("/").includes("..");
+}
 
 async function github(path: string): Promise<Response> {
   return fetch("https://api.github.com/repos/" + REPO + "/contents/" + path, {
@@ -25,7 +31,7 @@ async function github(path: string): Promise<Response> {
 
 /** relPath is relative to public/, e.g. "o/o-acme-com.json". The checkout wins; the repository fills a gap. */
 export async function readJson<T>(relPath: string): Promise<T | null> {
-  if (!SAFE.test(relPath)) throw new Error("bad path");
+  if (!isSafeRelPath(relPath)) throw new Error("bad path");
   const local = join(publicDir, relPath);
   if (existsSync(local)) return JSON.parse(readFileSync(local, "utf8")) as T;
   if (!process.env.GITHUB_TOKEN) return null;
