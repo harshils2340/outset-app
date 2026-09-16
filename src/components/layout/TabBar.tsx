@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import type { TabId } from "../../data/types";
 import { IcHeart, IcInbox, IcProfile, IcSearch, IcTicket } from "../explore/AirIcons";
 import { setPrefs, usePrefs } from "../explore/prefs";
+import { inboxThreads } from "../inbox/InboxView";
 import { useApp } from "../../state/AppProvider";
 
 type Item = { key: string; tab: TabId; name: string; icon: ReactNode; wishlists?: boolean };
@@ -23,7 +24,11 @@ export function TabBar() {
   const { view } = usePrefs();
   // The operator dashboard has its own bottom nav.
   if (state.screen === "chat" || state.screen === "operator") return null;
-  const inboxCount = Object.keys(state.chats).length;
+  // The same threads the Inbox tab lists, so the badge and the page never disagree: a thread whose operator
+  // has left the catalog left a "1" here over a page reading "No threads yet", and one that has not arrived
+  // yet still counts, because the tab says it is loading them.
+  const { rows, loading, total } = inboxThreads(state.chats, state.catalogComplete);
+  const inboxCount = loading ? total : rows.length;
 
   return (
     <nav className="tabbar airtabbar" id="tabbar" inert={!!state.sheet}>
