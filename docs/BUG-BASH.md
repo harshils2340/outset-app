@@ -428,6 +428,63 @@ The metro picker's counts, which are the length of the feed each press opens.
 - Still nothing checked against real Stripe, no workflow runs `npm test` on its own, Render environment
   variables remain untouched from here, and "Release this listing" still only releases on that device.
 
+## 16 September 2026, eighth run (04:55 to 05:40 UTC)
+
+**Chosen, and why.** Many commits had landed since the last entry, `src/` and `backend/src` among them, so the
+rule said run the full rehearsal, and it turned out to be the whole story: the rehearsal had been red since the
+dashboard rework (`b20aef20c`) and nobody could tell, because a control the harness cannot find is a step that
+quietly does nothing. First run here: **5 failed of 49**. Type checks on both sides and both sets of unit tests
+ran at the start and at the end. Then the two things Coverage still listed as unchecked that a browser can
+answer: the phone search sheet at 400px, and drag reordering driven for real.
+
+**Found and fixed.**
+
+- **The rehearsal drove a dashboard that is no longer there** (`f3f8bf15d`). Four reaches were stale, and every
+  one failed in silence, because the helpers answer `"MISSING ..."` and all but one caller threw the answer
+  away. The price box is a text input that parses what is typed, not a browser number box, so the harness never
+  typed a price and then reported the service and the guest page as broken. Cancelling a booking is two clicks
+  now, and it only made the first. The payouts tile keeps cents, so $18 less 5% reads $17.10, which is what the
+  booking email says, while the harness rounded to $17. The worst was the guest picker: the month grid lives
+  inside the date popover, which a fresh load starts closed, so the check that a booked-out time has left the
+  picker read an empty list of chips and **passed on it**. It opens the picker first now and reports how many
+  times it read, so an empty picker can no longer stand in for a time that is gone. Every miss is collected and
+  reported as its own check, and a failing unit-test step names the tests instead of counting the ones that
+  passed. With that, the rehearsal is green again: **50 passed, 0 failed**, and the three product checks it had
+  been reporting as broken were the harness all along.
+- **A landing page could have been published pointing at a laptop** (`92d7d4402`). `SITE_URL` is where a claim
+  email's link goes, and `backend/AGENTS.md` tells anyone testing that mail locally to set it to
+  `http://localhost:5173/`. `src/sync/pages.ts` read the same variable, so one `npm run sync` on that machine
+  would have written `<link rel="canonical" href="http://localhost:5173/...">` into every page under `public/p`,
+  a sitemap of localhost URLs and a robots.txt to match, all committed files. The pages resolve their own base
+  now: `PUBLIC_SITE_URL`, else `SITE_URL` when it is not a local address, else onoutset.com. The pages in the
+  repo today are clean, so this was a trap and not damage. It also unsticks `npm test`, which failed two of
+  these tests on any host with `SITE_URL` set, this rehearsal included, while passing on a bare shell.
+- **Two switches in the dashboard said nothing at all** (`e54bf1618`). An `.optoggle` is a knob and no text.
+  Availability has seven of them in a column, one per day, all reading "button, pressed", while the two selects
+  beside each one say "Monday opening time": an operator on a screen reader had no way to tell which day they
+  were closing. Settings has one for Instant Book whose only name sat in the row next to it. Both named, and a
+  test reads the source and fails when either loses its name again.
+
+**Checked and clean.** The phone search sheet at 400px, every card (Where, What, When, Who), typed and
+untyped: nothing scrolls sideways, nothing overlaps, every control has a name, and the counts beside each
+suggestion are the feed it opens. Service reordering driven in a real browser at last: the keyboard model
+(grab, arrow, drop, Escape restores) and the touch drag, including a drag given up part way, and the new order
+survives a reload. The compact dashboard at 400px, all nine pages. Six real listings at 400px, with and
+without a priced menu. Search suggestion counts against the whole 59,091 row catalog, 25 queries in three
+places, pressing every activity, place, elsewhere and family row: no row promises a count and opens an empty
+page.
+
+**Needs Harshil.**
+
+- **`npm test` was passing for the wrong reason.** Two of the landing page tests only passed because the shell
+  had no `SITE_URL`. There is still no workflow that runs `npm test`, so nothing would have caught it; the
+  rehearsal caught it only because it sets that variable. Worth a CI job that runs both test suites.
+- **The rehearsal is the only thing driving the dashboard, and it drifts silently.** One commit renamed four
+  controls and the run stayed quiet about all four. The new check closes that, but a rework that adds a page
+  still gets no coverage until someone writes the steps.
+- Still nothing checked against real Stripe, Render environment variables remain untouched from here, and
+  "Release this listing" still only releases on that device.
+
 ## Coverage
 
 **Verified so far.** Booking validation and odd input on every route that takes it. The money split,
@@ -463,9 +520,17 @@ the half hour, through both slot engines, both Availability selects and the cale
 at 400px. A catalog fetch that stalls, and a boot that throws after it lands. What actually type-checks the
 two projects, and what the three commands that look like they do really run.
 
+The phone search sheet (the metro picker) at 400px in a browser: all four cards, typed and untyped, nothing
+past the edge, every control named. Service reordering driven in a browser: the keyboard model and the touch
+drag, a drag given up part way, and the order surviving a reload. The compact dashboard at 400px, all nine
+pages, for sideways scroll and unnamed controls. Search suggestion counts against the whole catalog: every
+activity, place, elsewhere and family row pressed, none opening an empty page. Which controls the rehearsal
+can still find, now a check of its own.
+
 **Not yet checked.** The operator chat for a hand-built listing (`src/data/listings.ts` is empty, so
-`agent.ts` and the `ChatView` operator path still have no live case). The metro picker at 400px in a browser:
-its counts and its logic were read, the layout was not. What a guest can do on a claimed listing whose menu is
-empty, now that the state persists (see the seventh run's note). Photo upload against a real GitHub token, and
-the gap between the URL it returns and the deploy that makes the file exist. Drag reordering in a browser: the
-fix is reasoned from the drag model, and the repo has no renderer to test a hook in.
+`agent.ts` and the `ChatView` operator path still have no live case). What a guest can do on a claimed listing
+whose menu is empty, now that the state persists (see the seventh run's note). Photo upload against a real
+GitHub token, and the gap between the URL it returns and the deploy that makes the file exist. The mouse drag
+path of reordering: the keyboard and touch paths are driven in a browser now, the HTML5 drag events are not.
+The live guest preview beside the editor (`OpPreview`), which no rehearsal step opens. The Inbox and Trips
+tabs since the dashboard rework. A CI job that runs `npm test` on either side.
