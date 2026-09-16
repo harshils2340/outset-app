@@ -643,7 +643,11 @@ for (const [what, pattern] of [
 ] as [string, string][]) {
   const r = await run("npx", ["tsx", "--test", pattern], { cwd: BACKEND, env: childEnv({ STRIPE_SECRET_KEY: "", STORE_DIR: "", MAIL_DUMP_DIR: "" }), quiet: true });
   const passed = Number((r.out.match(/^# pass (\d+)/m) || [])[1] || 0);
-  record(what, r.code === 0 && passed > 0, passed ? `${passed} tests passed` : "no test ran\n" + r.out.slice(-800));
+  // A failing run used to report nothing but the number that passed, so "95 tests passed" was the whole
+  // account of two broken tests and there was no way to tell which two without running them by hand.
+  const failed = r.out.split("\n").filter((l) => /^not ok \d+ - /.test(l)).map((l) => l.replace(/^not ok \d+ - /, "").trim());
+  const ok = r.code === 0 && passed > 0 && !failed.length;
+  record(what, ok, ok ? `${passed} tests passed` : failed.length ? `${failed.length} failed of ${passed + failed.length}: ` + failed.slice(0, 6).join("; ") : "no test ran\n" + r.out.slice(-800));
 }
 
 /**

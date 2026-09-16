@@ -32,6 +32,10 @@ const NEW_SERVICE = "Harness kayak tour";
 const NEW_PRICE = 42;
 
 const results = [];
+/** Controls the harness reached for and did not find. See the note on `js` below. */
+const missed = [];
+/** The one reach allowed to come back empty: the sidebar probe already records its own miss. */
+const EXPECTED_MISSES = ["MISSING nav "];
 const record = (step, ok, note) => {
   results.push({ step, ok: ok === "warn" ? "warn" : !!ok, note: note ? String(note).slice(0, 400) : "" });
   console.log((ok === "warn" ? "  WARN  " : ok ? "  pass  " : "  FAIL  ") + step + (note ? "  -> " + String(note).slice(0, 300) : ""));
@@ -168,7 +172,17 @@ async function flow(ctx) {
 
   const text = () => evaluate("document.body.innerText");
   const has = async (needle) => (await text()).includes(needle);
-  const js = (fn, ...args) => evaluate(`(${fn.toString()})(${args.map((a) => JSON.stringify(a)).join(",")})`);
+  /**
+   * Every helper below answers "MISSING ..." when the control it reached for is not on the page, and every
+   * caller but one threw that answer away. So a dashboard rework could rename a control and the step that
+   * drives it would quietly do nothing: the rehearsal stayed green through the step itself and failed three
+   * checks later with no hint why. Collected here and reported as its own check at the end of the flow.
+   */
+  const js = async (fn, ...args) => {
+    const r = await evaluate(`(${fn.toString()})(${args.map((a) => JSON.stringify(a)).join(",")})`);
+    if (String(r).startsWith("MISSING")) missed.push(String(r));
+    return r;
+  };
 
   /** Click the first element matching sel whose text contains `txt` (or the first one when txt is null). */
   const clickIn = (sel, txt = null) =>
@@ -366,7 +380,9 @@ async function flow(ctx) {
   await sleep(400);
   await js((price) => {
     const open = document.querySelector(".odsvc.open");
-    const input = open?.querySelector('.odvar input[type="number"]');
+    // The price box is a text input that parses what is typed, not a browser number box: it has been
+    // `type="text"` since the menu editor learned to read "$45" and "45,000" and to refuse "-20".
+    const input = open?.querySelector('.odvar input[aria-label^="Price for"]');
     if (!input) return "MISSING price input";
     Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set.call(input, String(price));
     input.dispatchEvent(new Event("input", { bubbles: true }));
@@ -562,14 +578,26 @@ async function flow(ctx) {
     await goto(`${BASE}/#o=${ID}`);
     await until(() => document.body.innerText.includes("harness"), 15000);
     await sleep(2500);
+    // The month grid lives inside the date and time popover, which a fresh page load starts closed. Reaching
+    // straight for .bkday found nothing, so this check read an empty list of chips and called the time gone
+    // whatever the page was really offering.
+    await js(() => {
+      const cell = [...document.querySelectorAll(".alboxcell")].find((c) => (c.textContent || "").includes("Date"));
+      if (!cell) return "MISSING date cell";
+      if (cell.getAttribute("aria-expanded") !== "true") cell.click();
+      return "picker open";
+    });
+    await sleep(600);
     await js((k) => {
       const d = [...document.querySelectorAll(".bkday")].find((b) => b.getAttribute("data-k") === k);
       d?.click();
-      return d ? "day" : "MISSING day";
+      return d ? "day" : "MISSING day " + k;
     }, first.date);
     await sleep(800);
     const chipTimes = await js(() => [...document.querySelectorAll(".bkchip")].map((c) => c.textContent.trim()));
     const fmt12 = (t) => { const [h, m] = t.split(":").map(Number); return (h % 12 || 12) + ":" + String(m).padStart(2, "0") + " " + (h >= 12 ? "PM" : "AM"); };
+    // An empty picker is not proof the time is gone: it is proof nothing was read. Say so rather than pass.
+    const readChips = Array.isArray(chipTimes) && chipTimes.length > 0;
     const onPage = Array.isArray(chipTimes) && chipTimes.some((t) => t.startsWith(fmt12(first.slot)));
     await shot("e3-slot-gone-from-picker");
     const again = await fetch(`${API}/bookings`, {
@@ -578,7 +606,7 @@ async function flow(ctx) {
       body: JSON.stringify({ listing: ID, code: "E2E-DUPE", date: first.date, slot: first.slot, qty: 1, service: first.service, variant: first.variant, total: first.total, guest: { name: "Second Guest", phone: "4165550777", email: "" } }),
     }).then(async (r) => ({ status: r.status, body: await r.json().catch(() => ({})) })).catch((e) => ({ status: 0, body: { error: String(e) } }));
     const refused = again.status === 409 && again.body?.code === "slot_taken";
-    record("(e2) a full time disappears from the API and the picker, and the next guest is refused", !!filler?.ok && !stillListed && !onPage && refused, `capacity ${capacity}, filled ${left}: ${filler?.ok ? "ok" : filler?.error}; api lists it: ${stillListed}, page shows it: ${onPage}, next booking: HTTP ${again.status} ${again.body?.error || ""}`);
+    record("(e2) a full time disappears from the API and the picker, and the next guest is refused", !!filler?.ok && !stillListed && readChips && !onPage && refused, `capacity ${capacity}, filled ${left}: ${filler?.ok ? "ok" : filler?.error}; api lists it: ${stillListed}, picker read ${Array.isArray(chipTimes) ? chipTimes.length : 0} times, page shows it: ${onPage}, next booking: HTTP ${again.status} ${again.body?.error || ""}`);
   }
 
   /* ================= (f) the founder alert and the guest email are in the API log ================= */
@@ -676,9 +704,18 @@ async function flow(ctx) {
     return "opened";
   });
   await sleep(900);
-  const cancelled = await js(() => {
+  // Cancelling is two clicks: "Cancel booking" asks, "Yes, cancel it" does it. Clicking only the first one
+  // left the booking confirmed and the guest un-emailed, which is exactly what the harness then reported.
+  const asked = await js(() => {
     const btn = [...document.querySelectorAll(".oddraweractions button")].find((b) => b.textContent.trim() === "Cancel booking");
     if (!btn) return "MISSING cancel";
+    btn.click();
+    return "asked";
+  });
+  await sleep(400);
+  const cancelled = await js(() => {
+    const btn = [...document.querySelectorAll(".oddraweractions button")].find((b) => b.textContent.trim() === "Yes, cancel it");
+    if (!btn) return "MISSING cancel confirm";
     btn.click();
     return "cancelled";
   });
@@ -686,7 +723,7 @@ async function flow(ctx) {
   await sleep(1200);
   await shot("h3-cancelled");
   const cancelMail = /\[mail:dry\] to=harness\.three@example\.com subject="Cancelled:/i.test(apiLog());
-  record("(h3) the operator cancels a confirmed booking and the guest is emailed", cancelSaved && cancelMail, `open:${opened} click:${cancelled} saved:${cancelSaved} email:${cancelMail}`);
+  record("(h3) the operator cancels a confirmed booking and the guest is emailed", cancelSaved && cancelMail, `open:${opened} ask:${asked} click:${cancelled} saved:${cancelSaved} email:${cancelMail}`);
 
   /* ================= payouts page, as the operator sees it ================= */
 
@@ -706,7 +743,9 @@ async function flow(ctx) {
   if (acceptedRow) {
     await apiPatch(`/bookings/${encodeURIComponent(ID)}/${acceptedRow.code}`, { status: "completed" });
     const sub = acceptedRow.pricing?.subtotal ?? acceptedRow.total ?? 0;
-    want = "$" + Math.round(sub * 0.95).toLocaleString("en-US");
+    // The tile keeps cents, the way money() and the booking email do: $18 less 5% is "$17.10", not "$17".
+    const net = Math.round(sub * 0.95 * 100) / 100;
+    want = "$" + net.toLocaleString("en-US", { minimumFractionDigits: Number.isInteger(net) ? 0 : 2, maximumFractionDigits: 2 });
     await goto(`${BASE}/operators`);
     await until(() => !!document.querySelector(".od .odbody"), 15000);
     await openDashboardPage("Payouts");
@@ -721,6 +760,14 @@ async function flow(ctx) {
     "(i1) the payouts tiles pay the operator's price less 5%, not 5% off the guest total",
     !!acceptedRow && tile === want,
     `tile:${tile} want:${want} guest total:${acceptedRow?.total} operator price:${acceptedRow?.pricing?.subtotal}`,
+  );
+
+  // The steps above only mean anything if the harness found what it clicked and typed into.
+  const realMisses = missed.filter((m) => !EXPECTED_MISSES.some((e) => m.startsWith(e)));
+  record(
+    "(z) every control the harness reached for was on the page",
+    realMisses.length === 0,
+    realMisses.length ? realMisses.slice(0, 6).join("; ") : "nothing went missing",
   );
 
   log("flow finished");
