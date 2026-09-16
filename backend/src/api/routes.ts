@@ -41,7 +41,9 @@ const ORIGINS = (process.env.ALLOWED_ORIGINS || "https://onoutset.com,https://ww
 // read the whole thing before it can check the signature. 2 MB is far above any real booking or profile write;
 // photo uploads have their own, larger, limit checked inside that route.
 app.use("*", bodyLimit({ maxSize: 2 * 1024 * 1024, onError: (c) => c.json({ error: "too large" }, 413) }));
-app.use("*", cors({ origin: (o) => (ORIGINS.includes(o) ? o : ""), allowHeaders: ["content-type", "x-claim-token", "x-session"], allowMethods: ["GET", "POST", "PUT", "PATCH", "OPTIONS"], maxAge: 600 }));
+// DELETE is on this list because the dashboard's "Release this listing" uses it. A method missing here fails
+// only in a browser, on the preflight, so the route answers every in-process test and none of the real presses.
+app.use("*", cors({ origin: (o) => (ORIGINS.includes(o) ? o : ""), allowHeaders: ["content-type", "x-claim-token", "x-session"], allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"], maxAge: 600 }));
 app.use("*", async (c, next) => {
   await next();
   c.header("x-content-type-options", "nosniff");

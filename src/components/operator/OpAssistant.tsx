@@ -80,7 +80,9 @@ export function OpAssistant() {
         </div>
 
         <section className="odcard odchat">
-          <div className="odcardhead"><h3>Try it</h3><small className="odmuted">Same answers guests get</small></div>
+          {/* With the switch off there is nothing on the listing for a guest to ask, so "Same answers guests get"
+              would be untrue. Trying it here still works, which is the point: see what it would say, then decide. */}
+          <div className="odcardhead"><h3>Try it</h3><small className="odmuted">{p.assistant ? "Same answers guests get" : "Guests can't reach it while it's off"}</small></div>
           <div className="odchatlog">
             {msgs.map((m, i) => <div key={i} className={"odmsg " + m.who}>{m.t}</div>)}
           </div>
