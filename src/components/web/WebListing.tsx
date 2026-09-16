@@ -14,7 +14,7 @@ import { cleanDesc, durationLabel, freeCancel, minAge } from "../../lib/listingD
 import { clockIn, itemOpenState, itemWeek, zoneFor } from "../../lib/openNow";
 import { DAY_SHORT, clock12, dayLabel, todaysDeals } from "../../lib/companyAgent";
 import { fmtDistance, kmBetween, nearestLocation } from "../../lib/places";
-import { addonPrice, priceUnclaimed, serviceFeeLabel } from "../../lib/pricing";
+import { addonPrice, hasPrice, priceUnclaimed, serviceFeeLabel } from "../../lib/pricing";
 import { listingUrl } from "../../lib/site";
 import { adminWebsite, isAdmin, subscribeAdmin } from "../../lib/admin";
 import { dateKey, startOfToday } from "../../lib/dates";
@@ -1203,7 +1203,7 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
   const cheapIdx = defaultOption(item.options);
   const cheap = cheapIdx != null ? item.options[cheapIdx] : null;
   const from = fromPrice(item);
-  const fromUnit = cheap && cheap.price != null ? priceWith(cheap.price, cheap.per).replace(/^\$[\d,.]+\s*/, "") || (perPerson(cheap) ? "/ person" : "") : "";
+  const fromUnit = cheap && hasPrice(cheap.price) ? priceWith(cheap.price, cheap.per).replace(/^\$[\d,.]+\s*/, "") || (perPerson(cheap) ? "/ person" : "") : "";
 
   const [sending, setSending] = useState(false);
   const [bookError, setBookError] = useState<string | null>(null);
@@ -1565,7 +1565,7 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
                                         {single ? (length || "") : tidyLength(v.label)}
                                         {note ? <small className="alvarnote">{note}</small> : null}
                                       </span>
-                                      {v.price != null ? <b>{priceWith(v.price, v.per)}</b> : <em className="alask">Price on request</em>}
+                                      {hasPrice(v.price) ? <b>{priceWith(v.price, v.per)}</b> : <em className="alask">Price on request</em>}
                                     </button>
                                   );
                                 })}

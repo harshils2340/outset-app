@@ -27,7 +27,7 @@ import {
 } from "../../lib/catalog";
 import { fmtDate, fmtReviews, fmtTime, money, priceWith, unitLine } from "../../lib/format";
 import { formatDistance, milesBetween, type GeoPoint } from "../../lib/geo";
-import { addonPrice, priceFor, priceUnclaimed, serviceFeeLabel } from "../../lib/pricing";
+import { addonPrice, hasPrice, priceFor, priceUnclaimed, serviceFeeLabel } from "../../lib/pricing";
 import { useApp } from "../../state/AppProvider";
 import { SIZES, srcSet, thumb } from "../../lib/images";
 import { embedAutoplay, listingMedia, photoCandidates, probePhotos, type Media } from "../../lib/media";
@@ -601,7 +601,7 @@ function RequestBody({
                 {extras.map((a) => (
                   <div className="airline" key={a.name}>
                     <span>{a.name}</span>
-                    <span>{money(a.price ?? 0)}</span>
+                    <span>{money(addonPrice(a))}</span>
                   </div>
                 ))}
                 {p.fee ? (
@@ -909,7 +909,7 @@ function RequestBody({
                                     {single ? (length ? <b>{length}</b> : null) : <b>{tidyLength(v.label)}</b>}
                                     {note ? <small className="varnote">{note}</small> : null}
                                   </span>
-                                  <span className={"addonprice" + (v.price != null ? "" : " ask")}>{v.price != null ? priceWith(v.price, v.per) : "Price on request"}</span>
+                                  <span className={"addonprice" + (hasPrice(v.price) ? "" : " ask")}>{hasPrice(v.price) ? priceWith(v.price, v.per) : "Price on request"}</span>
                                 </button>
                               );
                             })}
@@ -1240,7 +1240,7 @@ function RequestBody({
             <span className="big">
               <b>{money(p.total)}</b> total
             </span>
-          ) : picked && picked.price != null ? (
+          ) : picked && hasPrice(picked.price) ? (
             <span className="big">
               <b>{priceWith(picked.price, picked.per)}</b>
             </span>

@@ -67,6 +67,13 @@ export function priceFor(l: Listing, qty: number, addonIds: string[]): PriceBrea
  */
 export const addonPrice = (a: { price: number | null }): number => (a.price != null && a.price > 0 ? a.price : 0);
 
+/**
+ * Whether there is a price worth showing. A scraped record can carry 0 where the crawler found a currency sign
+ * and no number, and "$0" or "From $0" reads as free rather than as unknown, which is a promise we cannot keep.
+ * Claimed listings already store null for this; scraped ones still need the guard at the point of display.
+ */
+export const hasPrice = (p: number | null | undefined): p is number => p != null && p > 0;
+
 export function priceUnclaimed(o: UnclaimedOption | null, qty: number, addons: UnclaimedOption[] = []): PriceBreakdown {
   const add = addons.reduce((n, a) => n + addonPrice(a), 0);
   if (!o || o.price == null || !(o.price > 0)) return { base: 0, add, sub: 0, fee: 0, rate: 0, capped: false, total: 0 };

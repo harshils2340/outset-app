@@ -145,7 +145,8 @@ export function savedListings(saved: readonly string[]): { items: Unclaimed[]; m
 }
 
 export function fromPrice(item: Unclaimed): number | null {
-  const priced = item.options.map((o) => o.price).filter((n): n is number => n != null);
+  // A zero is a price the crawler could not read, not a free trip, so it must not become "From $0".
+  const priced = item.options.map((o) => o.price).filter((n): n is number => n != null && n > 0);
   if (!priced.length) return item.from ?? null;
   return Math.min(...priced);
 }
