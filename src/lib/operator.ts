@@ -771,6 +771,18 @@ export function bookingTotal(b: OpBooking): number {
   return b.total ?? (b.price != null ? b.price * b.qty : 0);
 }
 
+/**
+ * Whether an Accept, a Decline or a Cancel on this booking reaches the guest at all.
+ *
+ * Email is the only channel that exists, text messages are still deferred, and the booking form asks for a
+ * name and a mobile and nothing else, so an address is optional. A decision is emailed by the API, which only
+ * holds bookings that came through it: one made in this same browser, and a sample row, are decided on the
+ * device and nothing goes anywhere. The drawer used to promise an automatic note in every one of those cases.
+ */
+export function guestHearsBack(b: OpBooking): boolean {
+  return b.source === "remote" && !!b.email?.trim();
+}
+
 /** "$120", or "Quote" when the option had no published price. */
 export function fmtTotal(b: OpBooking): string {
   if (b.total == null && b.price == null) return "Quote";

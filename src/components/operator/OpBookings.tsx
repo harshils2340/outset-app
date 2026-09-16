@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { dateKey, startOfToday } from "../../lib/dates";
 import { fmtTime, money } from "../../lib/format";
-import { fmtTotal, isoToDate, relDay, type OpBooking, type OpStatus } from "../../lib/operator";
+import { fmtTotal, guestHearsBack, isoToDate, relDay, type OpBooking, type OpStatus } from "../../lib/operator";
 import { Markup } from "../Markup";
 import { OD_ICONS, useOp } from "./opContext";
 
@@ -151,6 +151,9 @@ export function BookingDrawer({ b, onClose }: { b: OpBooking; onClose: () => voi
   };
   // A decline or cancel already sent the guest's money back; confirming it again would promise a time nobody has paid for.
   const refunded = b.source === "remote" && b.payment === "released";
+  // Whether a decision here reaches the guest at all: see guestHearsBack.
+  const heard = guestHearsBack(b);
+  const moneyBack = b.payment === "captured" || b.payment === "authorized";
   return (
     <div className="oddrawerwrap" onClick={onClose}>
       <aside className="oddrawer" role="dialog" aria-modal="true" aria-label={"Booking " + b.code} onClick={(e) => e.stopPropagation()}>
@@ -212,8 +215,21 @@ export function BookingDrawer({ b, onClose }: { b: OpBooking; onClose: () => voi
             <button type="button" className="cta ghost" onClick={() => { decide(b, "accepted"); onClose(); }}>Undo no-show</button>
           ) : null}
         </div>
-        {b.status === "new" ? <p className="odfine">Declining sends the guest an automatic note offering your next open time.</p> : null}
-        {b.status === "accepted" && !past && sure ? <p className="odfine">{b.payment === "captured" || b.payment === "authorized" ? "The guest gets their money back and an email saying you cancelled. This can't be undone." : "The guest gets an email saying you cancelled. This can't be undone."}</p> : null}
+        {/* What actually happens, rather than what would be nice. The decline email says the time is not free
+            and links back to the listing so the guest can pick another; it does not offer a time, because
+            nothing picks one. And email is the only channel there is, while the booking form only requires a
+            name and a mobile, so a guest who left the email box empty hears nothing at all. */}
+        {b.status === "new" ? (
+          <p className="odfine">
+            {heard ? "Declining emails the guest to say the time is not free, with a link back to your listing to pick another." : "This guest gets no email from us, so declining tells them nothing. Their mobile is above."}
+          </p>
+        ) : null}
+        {b.status === "accepted" && !past && sure ? (
+          <p className="odfine">
+            {moneyBack ? (heard ? "The guest gets their money back and an email saying you cancelled." : "The guest gets their money back, but no email, because we have no address for them.") : heard ? "The guest gets an email saying you cancelled." : "The guest gets no email, because we have no address for them. Their mobile is above."}
+            {" "}This can't be undone.
+          </p>
+        ) : null}
         {refunded ? <p className="odfine">The guest's card was refunded when this was {b.status}, so it can't be confirmed again. Ask them to book once more.</p> : null}
       </aside>
     </div>

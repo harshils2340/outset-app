@@ -1298,7 +1298,9 @@ function RequestBody({
               <span className="big">
                 <b>{item.offline ? "Hidden right now" : "Not taking bookings"}</b>
               </span>
-              <span className="why">{item.offline ? "The page is down for the moment." : "Check back soon."}</span>
+              {/* One short line: the bar keeps it on one row beside the button, so a longer sentence is cut off
+                  with an ellipsis. The section above carries the shop's own wording in full. */}
+              <span className="why">{item.offline ? "Taken down for now." : "Check back soon."}</span>
             </span>
             <button type="button" className="airaccent" onClick={onBack}>
               Find another
