@@ -2,7 +2,7 @@ import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { CATS, CATMETA } from "../../data/categories";
 import { ALL_METRO_ID, metroShort } from "../../data/metros";
 import { ICONS } from "../../data/icons";
-import { getCatalog, savedListings } from "../../lib/catalog";
+import { getCatalog, savedListings, stillArriving } from "../../lib/catalog";
 import { dateKey } from "../../lib/dates";
 import { searchSuggest, warmSearch, type SearchScope } from "../../lib/search";
 import { useApp } from "../../state/AppProvider";
@@ -262,7 +262,7 @@ export function ExploreView() {
 function Wishlists({ saved, complete }: { saved: string[]; complete: boolean }) {
   const { items, missing } = savedListings(saved);
   // Nothing resolved yet and the catalog is still on its way: this is a list loading, not an empty one.
-  if (!items.length && missing > 0 && !complete) {
+  if (stillArriving(missing, items.length, complete)) {
     return (
       <div className="airexplore">
         <header className="airpagehead">

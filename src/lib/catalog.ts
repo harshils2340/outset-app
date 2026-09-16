@@ -128,23 +128,41 @@ export function experienceById(id: string | null): Unclaimed | null {
 }
 
 /**
- * The saved listings a wishlist can show, in the order they were hearted, and how many ids came to nothing.
+ * The listings behind a list of ids, in the order given, and how many ids came to nothing.
  *
- * Saved ids live in localStorage and outlive the page; the catalog arrives after the first paint and most
- * operators are only in the full file, not the lite shard. So an id that resolves to nothing is two different
- * things: one the catalog has not reached yet, and one that is genuinely gone. The wishlist has to tell them
- * apart before it tells a guest holding twelve saves to "create your first wishlist".
+ * Three tabs are a list of ids kept in localStorage: Wishlists, Trips and Inbox. The ids outlive the page and
+ * the catalog does not, because it is fetched after the first paint and most operators are only in the full
+ * file, not the lite shard the rails paint from. So an id that resolves to nothing is two different things,
+ * one the catalog has not reached yet and one that is genuinely gone, and a tab that cannot tell them apart
+ * gets it wrong on every cold start.
+ */
+export function listingsByIds(ids: readonly string[]): { items: Unclaimed[]; missing: number } {
+  const items: Unclaimed[] = [];
+  for (const id of ids) {
+    const u = experienceById(id);
+    if (u) items.push(u);
+  }
+  return { items, missing: ids.length - items.length };
+}
+
+/**
+ * Whether a list of ids is still arriving rather than empty: nothing has resolved, something is outstanding,
+ * and the catalog has not finished loading. Wishlists reads it to avoid telling a guest holding twelve saves
+ * to "create your first wishlist"; Trips and Inbox read it because without it they rendered neither their rows
+ * nor their empty state, just the heading over a blank page.
+ */
+export function stillArriving(missing: number, resolved: number, catalogComplete: boolean): boolean {
+  return resolved === 0 && missing > 0 && !catalogComplete;
+}
+
+/**
+ * The saved listings a wishlist can show, in the order they were hearted, and how many ids came to nothing.
  *
  * A listing the operator switched off keeps its record and carries `offline`, so it stays in the list and
  * says so, rather than sitting there as a bookable card for a page that takes no bookings.
  */
 export function savedListings(saved: readonly string[]): { items: Unclaimed[]; missing: number } {
-  const items: Unclaimed[] = [];
-  for (const id of saved) {
-    const u = experienceById(id);
-    if (u) items.push(u);
-  }
-  return { items, missing: saved.length - items.length };
+  return listingsByIds(saved);
 }
 
 export function fromPrice(item: Unclaimed): number | null {

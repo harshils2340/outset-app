@@ -3,7 +3,7 @@ import { LISTINGS } from "../../data/listings";
 import { ICONS } from "../../data/icons";
 import { bookingStatus, hasApi } from "../../lib/api";
 import { startOfToday, dateKey } from "../../lib/dates";
-import { experienceById } from "../../lib/catalog";
+import { experienceById, stillArriving } from "../../lib/catalog";
 import { fmtDate, fmtTime } from "../../lib/format";
 import { loadProfile } from "../../lib/operator";
 import { useApp } from "../../state/AppProvider";
@@ -39,6 +39,11 @@ export function TripsView() {
   const up = mine.filter((b) => b.date >= dateKey(today));
   const [status, setStatus] = useState<Record<string, string>>(() => ({ ...answered }));
   const codes = up.map((b) => b.code).join(",");
+  /* Bookings come straight out of localStorage; the listing each one names is looked up in a catalog fetched
+     after the first paint. Every trip whose operator had not landed yet rendered as null, so a guest opening
+     this tab on a cold start saw "Trips" over a blank page instead of the trip they booked. */
+  const resolved = up.filter((b) => LISTINGS.some((x) => x.id === b.listing) || experienceById(b.listing)).length;
+  const pending = stillArriving(up.length - resolved, resolved, state.catalogComplete);
 
   // Every answer is re-asked when the tab comes back into focus, so an operator's accept in another tab (or
   // on their phone) shows here without a reload. The first pass still reads from the cache.
@@ -85,25 +90,33 @@ export function TripsView() {
       <div className="apphead">
         <h2 className="sec">Trips</h2>
       </div>
-      {up.length ? (
+      {pending ? (
+        <div className="empty">
+          <div className="glyph">
+            <Markup html={ICONS.ticket} />
+          </div>
+          <b>Loading your {up.length === 1 ? "trip" : up.length + " trips"}</b>
+          <p>One moment while we look them up.</p>
+        </div>
+      ) : up.length ? (
         <div className="cards">
           {up.map((b) => {
             const l = LISTINGS.find((x) => x.id === b.listing);
             const u = experienceById(b.listing);
-            if (!l && !u) return null;
             const d = new Date(b.date + "T00:00:00");
-            const title = l ? l.title : u!.title;
-            const art = l ? l.art : u!.art;
-            const sub = l ? l.op + " · " + l.launch : u!.area;
+            // A trip whose listing the catalog no longer carries is still a trip: the shop is expecting them,
+            // the code is in their email, and the money is spent. It used to render as null, so a confirmed
+            // booking simply vanished from the tab a guest opens to check it. What the booking itself stored
+            // carries the card instead, and there is nowhere to send a press.
+            const title = l ? l.title : u ? u.title : b.service || "Your booking";
+            const art = l ? l.art : u ? u.art : "generic";
+            const sub = l ? l.op + " · " + l.launch : u ? u.area : "Details are in your confirmation email";
             const st = STATUS[status[b.code]] || null;
-            return (
-              <button
-                className="trip"
-                key={b.code}
-                onClick={() => (l ? openListing(l.id) : openRequest(u!.id))}
-              >
+            const open = l ? () => openListing(l.id) : u ? () => openRequest(u.id) : null;
+            const inner = (
+              <>
                 <span className="thumb">
-                  <Art kind={art} id={(l ? l.id : u!.id) + "t" + b.code} />
+                  <Art kind={art} id={(l ? l.id : u ? u.id : b.listing) + "t" + b.code} />
                 </span>
                 <span className="info">
                   <b>{title}</b>
@@ -116,7 +129,18 @@ export function TripsView() {
                 <span className="mono" style={{ fontSize: 11, color: "var(--ink-faint)", alignSelf: "center" }}>
                   {b.code}
                 </span>
+              </>
+            );
+            // A card with no page behind it is not a button: a disabled one greys a confirmed trip, and an
+            // enabled one takes a press nowhere.
+            return open ? (
+              <button className="trip" key={b.code} onClick={open}>
+                {inner}
               </button>
+            ) : (
+              <div className="trip" key={b.code}>
+                {inner}
+              </div>
             );
           })}
         </div>
