@@ -1194,7 +1194,12 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
   const rules = [...requirements, ...(item.bring || []).map((b) => "Bring " + b.charAt(0).toLowerCase() + b.slice(1)), ...(item.groupInfo || [])];
   const safety = [...(age ? ["Minimum age " + age] : []), ...waiverLines];
   if (item.waiverUrl && !safety.some((l) => /waiver/i.test(l))) safety.push("Waiver to sign before you arrive");
-  const cancelLines = [...(cancel ? [cancel] : []), ...(item.cancellation ? [tidyLine(item.cancellation)] : []), ...otherPolicies];
+  // The short free-cancellation line and the full policy are often the same sentence, one with a period and one
+  // without: the column showed it twice. When the policy already says what the short line says, the policy alone stays.
+  const cancelKey = (t: string) => t.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+  const cancelFull = item.cancellation ? tidyLine(item.cancellation) : null;
+  const cancelShort = cancel && !(cancelFull && cancelKey(cancelFull).includes(cancelKey(cancel))) ? cancel : null;
+  const cancelLines = [...(cancelShort ? [cancelShort] : []), ...(cancelFull ? [cancelFull] : []), ...otherPolicies];
   const knowCols: KnowCol[] = [];
   if (rules.length) knowCols.push({ key: "rules", title: "Who can go", icon: I.group, lines: rules });
   if (safety.length) knowCols.push({ key: "safety", title: "Safety and waiver", icon: I.shield, lines: safety });
