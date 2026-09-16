@@ -47,6 +47,31 @@ function genericDays(line: string): number[] | null {
 
 const TIME_RE = /(\d{1,2})(?::(\d{2}))?\s*(am|pm|a\.m\.|p\.m\.)?\s*(?:-|–|—|to|until|till)\s*(\d{1,2})(?::(\d{2}))?\s*(am|pm|a\.m\.|p\.m\.)?/i;
 
+/**
+ * A line can carry days and a time range and still not be when the door is open. Two subjects turn up in the
+ * shipped catalog and both read backwards.
+ *
+ * A campground's quiet hours: "Quiet hours are from 11:00pm - 8:00am" is the only hours line 37 of them
+ * publish, so every one of those said "Closed, opens 11 PM" at lunchtime and "Open now, closes 8 AM" at two
+ * in the morning, and Otto answered "their hours say: quiet hours are from 11:00pm - 8:00am" when a guest
+ * asked whether they were open. The hours a campground states are the hours nobody may make a noise.
+ *
+ * A bar's happy hour: "Happy Hour Wednesday-Friday 12-6 PM" came after the same site's real "Wed 12:00 PM -
+ * 10:00 PM", and the later line wins, so the brewery shut four hours early three days a week. One shop's only
+ * hours line was "Happy Hour is Sunday 2:00-5:00PM, Mon-Fri 3:00-6:00PM", which read as opening at 2 AM.
+ */
+const NOT_TRADING_HOURS = /\b(?:quiet|happy)\s*hours?\b/i;
+
+/** Whether a published line is about when the shop is open, rather than about quiet hours or happy hour. */
+export function isTradingHoursLine(line: string): boolean {
+  return !NOT_TRADING_HOURS.test(line);
+}
+
+/** The hour lines an item publishes that are actually opening hours. */
+export function hourLines(item: Unclaimed): string[] {
+  return (item.hoursText || []).filter(isTradingHoursLine);
+}
+
 export type DaySpan = { open: number; close: number };
 export type Week = (DaySpan | null)[];
 
@@ -157,6 +182,7 @@ export function parseWeek(input: string[]): Week | null {
   const week: Week = [null, null, null, null, null, null, null];
   let any = false;
   for (const raw of lines) {
+    if (!isTradingHoursLine(raw)) continue;
     // The phone number goes before anything is read off the line, not just before the time: glued on with no
     // space it also hides the day, so "3132Tuesday - Friday" left a theatre open on Friday alone.
     const line = raw.replace(/\s+/g, " ").replace(PHONE_RE, " ").trim();
@@ -362,9 +388,14 @@ function compactDay(d: [number, number] | null): DaySpan | null {
 }
 
 export function itemWeek(item: Unclaimed): Week | null {
+  // A compact week in `catalog.json` was encoded from the item's own hour lines by an earlier parser, so when
+  // none of those lines are opening hours at all, the compact week is that misreading baked in and outliving
+  // the fix until the next sync writes the file again. The 37 campgrounds whose only line is their quiet
+  // hours ship one, and it is their opening hours turned inside out.
+  if (item.hoursText?.length && !hourLines(item).length) return null;
   const compact = item.hrs?.length ? item.hrs.map(compactDay) : null;
   if (compact && compact.some((d) => d)) return compact;
-  return parseWeek(item.hoursText?.length ? item.hoursText : contactFor(item)?.hours || []);
+  return parseWeek(hourLines(item).length ? hourLines(item) : contactFor(item)?.hours || []);
 }
 
 export function itemOpenState(item: Unclaimed, now = new Date()): OpenState | null {

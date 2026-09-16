@@ -154,3 +154,36 @@ test("a shop no longer tells a guest at three in the morning that it is open", (
   assert.equal(openStateAt(late, { day: 3, minutes: 30 })?.line, "Open · closes 2 AM");
   assert.equal(openStateAt(late, { day: 3, minutes: 90 })?.line, "Closes soon · 2 AM");
 });
+
+test("a campground's quiet hours are not its opening hours", () => {
+  // o-alpinelodgeandrv-com and 36 more publish one hours line and it is the hours nobody may make a noise.
+  // Read as opening hours it is the week turned inside out: shut all afternoon, open all night.
+  assert.equal(show(parseWeek(["Quiet Hours are from 10:00 PM to 8:00 AM"])), "(no hours)");
+  assert.equal(show(parseWeek(["? Yes, quiet hours are from 11:00pm - 8:00am"])), "(no hours)");
+  assert.equal(show(parseWeek(["Quiet hours are observed daily from 10:30 PM to 7:00 AM"])), "(no hours)");
+  // The compact week already in `catalog.json` came out of that same line, so it is not believed either.
+  const shipped = {
+    id: "o-alpinelodgeandrv-com",
+    title: "Alpine Lodge & RV Park",
+    area: "Denver, CO",
+    src: "alpinelodgeandrv.com",
+    hrs: [0, 1, 2, 3, 4, 5, 6].map(() => [1320, 1920] as [number, number]),
+    hoursText: ["Quiet Hours are from 10:00 PM to 8:00 AM"],
+  } as unknown as Unclaimed;
+  assert.equal(show(itemWeek(shipped)), "(no hours)");
+  assert.equal(itemOpenState(shipped, new Date("2026-09-16T08:00:00Z")), null);
+  // A shop that states both keeps the one that is its hours.
+  const both = { ...shipped, hrs: undefined, hoursText: ["Daily 9am-5pm", "Quiet hours from 11:00 PM to 8:00 AM"] } as unknown as Unclaimed;
+  assert.equal(show(itemWeek(both)), everyDay("09:00-17:00"));
+});
+
+test("a bar's happy hour does not close it four hours early", () => {
+  // o-deviantwolfebrewing-com states its real week and then its happy hour, and the later line wins, so
+  // Wednesday to Friday shut at 6 PM instead of 10. o-triplebottombrewing-com lost the same three days.
+  const real = ["Wed 12:00 PM - 10:00 PM", "Thu 12:00 PM - 10:00 PM", "Fri 12:00 PM - 10:00 PM", "Happy Hour Wednesday-Friday 12-6 PM"];
+  assert.equal(show(parseWeek(real)), "Sun -, Mon -, Tue -, Wed 12:00-22:00, Thu 12:00-22:00, Fri 12:00-22:00, Sat -");
+  // o-marina27-com's happy hour line named two day ranges at once and opened the place at 2 AM.
+  assert.equal(show(parseWeek(["Happy Hour is Sunday 2:00-5:00PM, Mon-Fri 3:00-6:00PM"])), "(no hours)");
+  // o-brewingaugust-com publishes nothing else, so it publishes nothing.
+  assert.equal(show(parseWeek(["Happy Hours Hours Monday 2 pm - 9 pm"])), "(no hours)");
+});

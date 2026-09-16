@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 import { CITIES } from "../discover/cities.ts";
 import { db } from "../db/client.ts";
 import { writeLandingPages } from "./pages.ts";
-import { encodeWeek } from "./hours.ts";
+import { encodeWeek, isTradingHoursLine } from "./hours.ts";
 import { claimKeyHash } from "../lib/claim.ts";
 import { crawledPhotoStats, crawledPhotosFor } from "./photoSidecar.ts";
 import { crawledStructureFor, crawledStructureStats } from "./structureSidecar.ts";
@@ -587,7 +587,7 @@ export function toCatalogItem(r: CatalogRow): Record<string, unknown> {
     cancellation: dropSilent(cleanPara(pick("cancellation")[0] || "")) || dropSilent(cleanPara(pick("policy").filter((l) => /cancel|refund/i.test(l)).join(" "))) || undefined,
     policies: uniq(pick("policy").map(cleanLine)).filter(isTidyLine).filter((l) => !/gift ?card|gift certificate/i.test(l)).slice(0, 8),
     waiverUrl: pick("waiver_url").find((u) => /^https?:\/\/\S+$/.test(u) && !/\/w\/?$/.test(u)) || undefined,
-    hoursText: uniq([...pick("hours_text"), ...pick("hours")].flatMap((h) => h.split(/\s*\|\s*/)).map((h) => cleanLine(h.replace(/^hours(?: & admission)?\s*/i, ""))).filter((h) => h.length > 3 && !/not stated/i.test(h) && HAS_TIME.test(h) && !/[ap]m[A-Za-z]/.test(h))).slice(0, 7),
+    hoursText: uniq([...pick("hours_text"), ...pick("hours")].flatMap((h) => h.split(/\s*\|\s*/)).map((h) => cleanLine(h.replace(/^hours(?: & admission)?\s*/i, ""))).filter((h) => h.length > 3 && !/not stated/i.test(h) && HAS_TIME.test(h) && !/[ap]m[A-Za-z]/.test(h) && isTradingHoursLine(h))).slice(0, 7),
     faq: uniqBy(pick("faq").flatMap(parseFaqs), (f) => f.q.toLowerCase()).slice(0, 8),
     // Reviews read off the operator's own pages, in either stored shape; see quotes.ts and reviews.ts for the rules.
     quotes: quotesFromFacts(facts.filter((f) => f.fact_key === "review").map((f) => ({ value: decodeEntities(f.fact_value), sourceUrl: f.source_url }))),

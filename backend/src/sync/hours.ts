@@ -43,6 +43,21 @@ function genericDays(line: string): number[] | null {
 
 export const TIME_RE = /(\d{1,2})(?::(\d{2}))?\s*(am|pm|a\.m\.|p\.m\.)?\s*(?:-|–|—|to|until|till)\s*(\d{1,2})(?::(\d{2}))?\s*(am|pm|a\.m\.|p\.m\.)?/i;
 
+/**
+ * A line can carry days and a time range and still not be when the door is open. Two subjects turn up in the
+ * shipped catalog and both read backwards: a campground's quiet hours ("Quiet hours are from 11:00pm -
+ * 8:00am", the only hours line 37 of them publish, so each said "Open now, closes 8 AM" at two in the
+ * morning), and a bar's happy hour ("Happy Hour Wednesday-Friday 12-6 PM", written after the same site's real
+ * "Wed 12:00 PM - 10:00 PM", and the later line wins). The twin of `isTradingHoursLine` in
+ * `src/lib/openNow.ts`; the two have to drop the same lines or a card and its listing page disagree.
+ */
+export const NOT_TRADING_HOURS = /\b(?:quiet|happy)\s*hours?\b/i;
+
+/** Whether a published line is about when the shop is open, rather than about quiet hours or happy hour. */
+export function isTradingHoursLine(line: string): boolean {
+  return !NOT_TRADING_HOURS.test(line);
+}
+
 function mins(h: number, m: number, ap: string | undefined, afternoonHint: boolean): number {
   let hh = h;
   const a = (ap || "").replace(/\./g, "").toLowerCase();
@@ -151,6 +166,7 @@ export function encodeWeek(input: string[]): WeekEnc | null {
   const week: WeekEnc = [null, null, null, null, null, null, null];
   let any = false;
   for (const raw of lines) {
+    if (!isTradingHoursLine(raw)) continue;
     // The phone number goes before anything is read off the line, not just before the time: glued on with no
     // space it also hides the day, so "3132Tuesday - Friday" left a theatre open on Friday alone.
     const line = raw.replace(/\s+/g, " ").replace(PHONE_RE, " ").trim();

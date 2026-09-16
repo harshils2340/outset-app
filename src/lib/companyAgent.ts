@@ -2,7 +2,7 @@ import type { OperatorContact, Unclaimed } from "../data/types";
 import type { LiveAvailability } from "./api";
 import { addressLine, fmtPhone, plainWords } from "./catalog";
 import { money } from "./format";
-import { clockIn, itemWeek, openStateAt, zoneFor, type Week } from "./openNow";
+import { clockIn, hourLines, itemWeek, openStateAt, zoneFor, type Week } from "./openNow";
 import { venueLabel } from "./places";
 
 /**
@@ -353,9 +353,9 @@ export function dayLabel(days: number[]): string {
 function weekFor(ctx: CompanyContext): Week | null {
   const week = itemWeek(ctx.item);
   if (!week || !week.some((d) => d && d.close > 0)) return null;
-  const text = (ctx.item.hoursText || []).join(" ");
+  const text = hourLines(ctx.item).join(" ");
   // "Summer: 8:30-6:30" and "Winter: 8:30-4:30" both parse onto every day; say both rather than pick one.
-  if ((ctx.item.hoursText || []).filter((l) => /\b(spring|summer|fall|autumn|winter|season|peak|off.?season|memorial day|labor day)\b/i.test(l)).length >= 2) return null;
+  if (hourLines(ctx.item).filter((l) => /\b(spring|summer|fall|autumn|winter|season|peak|off.?season|memorial day|labor day)\b/i.test(l)).length >= 2) return null;
   // "5-10:30 pm" means 5 PM. The shared parser reads it as 5 AM when only the close carries the suffix.
   if (text && !/\b\d{1,2}(:\d{2})?\s*a\.?m\b/i.test(text)) {
     return week.map((d) => (d && d.close > 0 && d.open < 7 * 60 && d.open + 12 * 60 < d.close ? { open: d.open + 12 * 60, close: d.close } : d));
@@ -682,7 +682,7 @@ function durationAnswer(ctx: CompanyContext, q: string, prev: ChatState): { text
 
 /** Hour lines as written, for when they can't be read into a week: "Spring & Summer: 8:30 AM - 6:30 PM; Fall & Winter: 8:30 AM - 4:30 PM". */
 function hoursAsWritten(item: Unclaimed): string | null {
-  const lines = (item.hoursText || []).map((l) => clip(l, 70)).filter(Boolean);
+  const lines = hourLines(item).map((l) => clip(l, 70)).filter(Boolean);
   if (!lines.length) return null;
   const seasonal = lines.filter((l) => /\b(spring|summer|fall|autumn|winter|season)\b/i.test(l));
   if (seasonal.length >= 2) return "Hours change by season. " + seasonal.slice(0, 2).join("; ") + ".";
@@ -696,7 +696,7 @@ function openNowAnswer(ctx: CompanyContext): { text: string; state: ChatState } 
   if (!st) {
     const next = nextOpenDay(week, clock.day);
     if (week && next) return { text: "No hours listed for today (" + DAY_NAMES[clock.day] + "). Next: " + DAY_NAMES[next.day] + " " + spanLabel(next.span) + ".", state: { topic: "openNow", day: clock.day } };
-    if (ctx.item.hoursText?.length) return { text: hoursAsWritten(ctx.item) as string, state: { topic: "openNow" } };
+    if (hourLines(ctx.item).length) return { text: hoursAsWritten(ctx.item) as string, state: { topic: "openNow" } };
     return { text: noFact(ctx, "opening hours"), state: { topic: "openNow" } };
   }
   if (st.open) return { text: "Yes, open now" + (st.closesAt ? " until " + st.closesAt : "") + ".", state: { topic: "openNow", day: clock.day } };
@@ -716,7 +716,7 @@ function closeTimeAnswer(ctx: CompanyContext, q: string): { text: string; state:
   const day = asked ?? clock.day;
   const opening = /\bopen(ing)?\b/i.test(q) && !/\bclos/i.test(q);
   if (!week) {
-    if (ctx.item.hoursText?.length) return { text: hoursAsWritten(ctx.item) as string, state: { topic: "closeTime" } };
+    if (hourLines(ctx.item).length) return { text: hoursAsWritten(ctx.item) as string, state: { topic: "closeTime" } };
     return { text: noFact(ctx, "opening hours"), state: { topic: "closeTime" } };
   }
   const span = week[day];
@@ -748,7 +748,7 @@ function dayHoursAnswer(ctx: CompanyContext, q: string, prev: ChatState): { text
   }
   const day = dayIn(q, clock.day) ?? prev.day ?? clock.day;
   if (!week) {
-    if (ctx.item.hoursText?.length) return { text: hoursAsWritten(ctx.item) as string, state: { topic: "dayHours" } };
+    if (hourLines(ctx.item).length) return { text: hoursAsWritten(ctx.item) as string, state: { topic: "dayHours" } };
     return { text: noFact(ctx, "opening hours"), state: { topic: "dayHours" } };
   }
   const span = week[day];
@@ -1035,7 +1035,7 @@ const CHIP = {
 function chipsFor(ctx: CompanyContext, topic: Topic | undefined): string[] {
   const { item } = ctx;
   const has = {
-    hours: !!weekFor(ctx) || !!item.hoursText?.length,
+    hours: !!weekFor(ctx) || !!hourLines(item).length,
     cancel: !!(item.cancellation || item.policies?.length || item.fc),
     included: item.includes.length > 0,
     bring: !!item.bring?.length,
@@ -1099,7 +1099,7 @@ export function companySuggestions(ctx: CompanyContext): string[] {
   if (offersOf(ctx).some((o) => o.price != null) || item.from != null) out.push(CHIP.price);
   if (item.includes.length) out.push(CHIP.included);
   else if (offersOf(ctx).length) out.push(CHIP.list);
-  if (weekFor(ctx) || item.hoursText?.length) out.push(CHIP.open);
+  if (weekFor(ctx) || hourLines(item).length) out.push(CHIP.open);
   if (item.promos?.length) out.push(CHIP.deals);
   if (item.cancellation || item.policies?.length || item.fc) out.push(CHIP.cancel);
   if (item.requirements?.length) out.push(CHIP.age);

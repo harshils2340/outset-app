@@ -33,7 +33,7 @@ import { SIZES, srcSet, thumb } from "../../lib/images";
 import { embedAutoplay, listingMedia, photoCandidates, probePhotos, type Media } from "../../lib/media";
 import { cleanDesc, durationLabel, freeCancel, minAge } from "../../lib/listingDerive";
 import { ASSISTANT_NAME, DAY_SHORT, assistantOn, clock12, companySuggestions, dayLabel, todaysDeals } from "../../lib/companyAgent";
-import { bookableStart, clockIn, zoneFor } from "../../lib/openNow";
+import { bookableStart, clockIn, hourLines, zoneFor } from "../../lib/openNow";
 import { itemOpenState } from "../../lib/openNow";
 import { fetchAvailability, fetchOpenSlots, hasApi, type LiveAvailability } from "../../lib/api";
 import { dateKey } from "../../lib/dates";
@@ -471,7 +471,7 @@ function RequestBody({
   }
   if (item.season) rows.push({ icon: ICONS.compass, title: item.season, sub: "Season" });
   if (item.waiverUrl) rows.push({ icon: ICONS.ticket, title: "Sign the waiver online", sub: "Saves time at check-in" });
-  const hours = item.hoursText?.length ? item.hoursText : contact?.hours.map(fmtHours) || [];
+  const hours = hourLines(item).length ? hourLines(item) : contact?.hours.map(fmtHours) || [];
   const videos = (item.ytVideos || []).slice(0, 2);
   const embed = !videos.length && !item.video && item.videoEmbed ? item.videoEmbed : null;
   const blurb = item.blurb ? cleanDesc(item.blurb).replace(/\s+(Book|Learn more|Read more|Reserve)\.?$/i, "") : "";

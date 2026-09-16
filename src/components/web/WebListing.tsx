@@ -12,7 +12,7 @@ import { DAYS, fmtDate, fmtReviews, fmtTime, money, priceWith } from "../../lib/
 import { srcSet, thumb } from "../../lib/images";
 import { embedAutoplay, isGif, listingMedia, photoCandidates, probePhotos, type Media } from "../../lib/media";
 import { cleanDesc, durationLabel, freeCancel, minAge } from "../../lib/listingDerive";
-import { bookableStart, clockIn, itemOpenState, itemWeek, zoneFor } from "../../lib/openNow";
+import { bookableStart, clockIn, hourLines, itemOpenState, itemWeek, zoneFor } from "../../lib/openNow";
 import { DAY_SHORT, assistantOn, clock12, dayLabel, todaysDeals } from "../../lib/companyAgent";
 import { fmtDistance, kmBetween, nearestLocation, venueLabel } from "../../lib/places";
 import { addonPrice, hasPrice, priceUnclaimed, serviceFeeLabel } from "../../lib/pricing";
@@ -1162,7 +1162,7 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
     const cap = (item.groupInfo || []).map((g) => g.match(/(\d{1,3})\s*(?:guests?|people|passengers|riders|max)/i)).find(Boolean);
     return cap ? Number(cap[1]) : null;
   })();
-  const hours = item.hoursText?.length ? item.hoursText : contact?.hours.map(fmtHours) || [];
+  const hours = hourLines(item).length ? hourLines(item) : contact?.hours.map(fmtHours) || [];
   const topRated = !!score && score.rating >= TOP_RATING && score.reviews >= TOP_REVIEWS;
   const near = state.near ? nearestLocation(item, state.near) : null;
   const typeName = TYPE_NAME[item.art] || "Experience";

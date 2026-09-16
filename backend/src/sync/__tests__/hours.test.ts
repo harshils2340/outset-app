@@ -83,3 +83,16 @@ test("no line can encode an hour the clock does not have", () => {
     }
   }
 });
+
+test("quiet hours and happy hour are not opening hours", () => {
+  // o-alpinelodgeandrv-com and 36 more campgrounds publish their quiet hours and nothing else, so the week
+  // shipped in `catalog.json` was their opening hours turned inside out: [1320, 1920] on all seven days.
+  assert.equal(show(encodeWeek(["Quiet Hours are from 10:00 PM to 8:00 AM"])), "(no hours)");
+  assert.equal(show(encodeWeek(["? Yes, quiet hours are from 11:00pm - 8:00am"])), "(no hours)");
+  // o-deviantwolfebrewing-com stated its real week first and its happy hour last, and the later line wins.
+  assert.equal(
+    show(encodeWeek(["Wed 12:00 PM - 10:00 PM", "Happy Hour Wednesday-Friday 12-6 PM"])),
+    "Sun -, Mon -, Tue -, Wed 12:00-22:00, Thu -, Fri -, Sat -",
+  );
+  assert.equal(show(encodeWeek(["Happy Hour is Sunday 2:00-5:00PM, Mon-Fri 3:00-6:00PM"])), "(no hours)");
+});
