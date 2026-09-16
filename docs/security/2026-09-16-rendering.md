@@ -3,6 +3,13 @@
 Scope: what the site renders and what the emails carry. Two other sessions covered the
 crawler's trust rules and the API, keys, and workflows.
 
+Five commits landed: a sanitizer for the two `dangerouslySetInnerHTML` sinks, a URL-safety
+library wired into every render/navigation sink that touches a crawled, operator, or guest URL,
+shape validation on every `localStorage` read, a Content-Security-Policy and Referrer-Policy for
+`index.html`, and a set of regression tests for the email layer that was already safe. 40 new
+tests across the two suites (`npm test` at the root, `npm test` in `backend/`); both suites, both
+typechecks, and `npx vite build` were green before the first change and after every one after it.
+
 ## Checked
 
 - `src/components/Markup.tsx` and its roughly 90 call sites across `src/components/`: every
@@ -42,6 +49,8 @@ crawler's trust rules and the API, keys, and workflows.
   exploitable. `src/lib/api.ts`'s `ownerFromHash` (the `&o=<base64url owner>` payload) is
   wrapped in try/catch, length-capped, and email-regex-checked before use; not itself an XSS
   vector, but see Needs Harshil below.
+- `sessionStorage`: grepped the whole of `src/`; nothing in the app uses it. Only `localStorage`
+  needed the read-side validation below.
 
 ## Found and fixed
 
@@ -123,8 +132,6 @@ crawler's trust rules and the API, keys, and workflows.
   API, and one more the task brief did not name: `https://photon.komoot.io`, the place-search
   geocoder called from `src/lib/places.ts`. Added to `connect-src`.
 
-## Found and fixed (continued)
-
 - `a64f22c9c` `index.html` had no Content-Security-Policy or Referrer-Policy at all. Added a CSP
   meta tag (the site is static on GitHub Pages, so a meta tag is the only place a policy can
   live) as the first thing in `<head>`: `script-src 'self'`, `object-src 'none'`,
@@ -173,11 +180,40 @@ crawler's trust rules and the API, keys, and workflows.
   `sendMail`'s own address check) so a future change that drops nodemailer for raw SMTP string
   building, or adds a field that skips `esc()`, fails a test instead of shipping the bug. No
   code in `emailTemplate.ts`, `bookingMail.ts`, `claims.ts` or `auth.ts` needed to change.
+- The operator dashboard and Otto, specifically for guest-typed text: `OpBookings.tsx`'s
+  booking detail drawer (`b.guest`, `b.note`, both guest-typed), `ChatView.tsx`, `WebAssistant.tsx`
+  and `OpAssistant.tsx`'s message lists (`m.t`/`m.text`, guest and Otto turns alike). Every one
+  renders through a plain `{expr}` JSX text node, which React escapes on its own, not through
+  `Markup` or any other `dangerouslySetInnerHTML` sink (already confirmed absent from these
+  files in the first check above). No markdown-to-HTML step exists anywhere in `agent.ts`,
+  `companyAgent.ts`, or the chat/assistant components, so there is no path from Otto's or a
+  guest's text to raw HTML. No change needed.
 
 ## Found, not fixed
 
-(updated as the review continues)
+- **Clickjacking: no `frame-ancestors`.** The `frame-ancestors` CSP directive, and
+  `X-Frame-Options`, are both explicitly ignored when delivered through a `<meta>` tag (per the
+  CSP spec); they only take effect as a real HTTP response header. GitHub Pages serves this site
+  as static files with no way for the repository to add response headers, so nothing in
+  `index.html` can stop another site from putting `onoutset.com` in an `<iframe>` and running a
+  UI-redressing attack over the booking flow (e.g. a transparent iframe over a fake "claim your
+  free gift" button that really clicks "Confirm booking"). Not fixable from this repository as
+  it stands; see Needs Harshil.
+- Whether Resend's own API neutralizes an embedded CRLF inside a `subject` or `reply_to` value
+  the same way nodemailer does. Not independently testable from here: it is a third party's
+  server-side behavior, and the rules for this review rule out sending real mail to check.
 
 ## Needs Harshil
 
-(updated as the review continues)
+- **Clickjacking protection needs a header, not a meta tag.** To close the `frame-ancestors` gap
+  above, the site needs to be served from something that can send an
+  `X-Frame-Options: DENY` or `Content-Security-Policy: frame-ancestors 'none'` response header,
+  for example fronting GitHub Pages with a CDN or edge worker that adds it, or moving the static
+  host to one that supports custom headers. This is an infrastructure decision, not a code
+  change, so it needs your call.
+- **Confirm `photon.komoot.io` is the intended geocoder.** This review found it as the one third
+  party the app talks to that the task brief did not name (`src/lib/places.ts`, used for
+  place/address search) and added it to the CSP's `connect-src` so the feature keeps working. If
+  it is intentional, no action; if it is a leftover from an earlier prototype, it is worth
+  swapping out and its privacy terms (guest search queries reach a third party today) are worth
+  a look either way.
