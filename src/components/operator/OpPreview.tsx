@@ -33,16 +33,34 @@ export function defaultPreviewWidth(): number {
  * Open by default: the preview is the point of the editor. Only a deliberate close is remembered. Prefs
  * saved before the split view (open: false with no `closedBy`) are treated as never having chosen.
  */
+/**
+ * The frame the operator is most likely to care about: the one they are on. A touch screen or a narrow window
+ * means they run the business from a phone or tablet, and their guests probably book from one too; a mouse on a
+ * wide screen gets the desktop listing. Only the starting point; the toggle is remembered once they pick.
+ */
+function defaultDevice(): PreviewDevice {
+  try {
+    if (window.matchMedia("(pointer: coarse)").matches || window.innerWidth < 1024) return "phone";
+  } catch {
+    /* no matchMedia */
+  }
+  return "desktop";
+}
+
+/** Prefs written before v2 carried a narrower default width; those widths are dropped so everyone starts at the half split. */
+const PREFS_VERSION = 2;
+
 export function loadPreviewPrefs(): Prefs {
-  const fallback: Prefs = { open: true, device: "desktop", width: defaultPreviewWidth() };
+  const fallback: Prefs = { open: true, device: defaultDevice(), width: defaultPreviewWidth() };
   try {
     const raw = localStorage.getItem(PREFS_KEY);
     if (!raw) return fallback;
-    const v = JSON.parse(raw) as Partial<Prefs> & { closedBy?: string };
+    const v = JSON.parse(raw) as Partial<Prefs> & { closedBy?: string; v?: number };
+    const dragged = v.v === PREFS_VERSION && typeof v.width === "number" && v.width >= PREVIEW_MIN_W;
     return {
       open: v.open === false && v.closedBy === "user" ? false : true,
-      device: v.device === "phone" ? "phone" : "desktop",
-      width: typeof v.width === "number" && v.width >= PREVIEW_MIN_W ? Math.min(v.width, maxWidth()) : defaultPreviewWidth(),
+      device: v.device === "phone" ? "phone" : v.device === "desktop" ? "desktop" : defaultDevice(),
+      width: dragged ? Math.min(v.width as number, maxWidth()) : defaultPreviewWidth(),
     };
   } catch {
     return fallback;
@@ -52,7 +70,7 @@ export function loadPreviewPrefs(): Prefs {
 export function savePreviewPrefs(patch: Partial<Prefs>): void {
   try {
     const cur = loadPreviewPrefs();
-    const next = { ...cur, ...patch, closedBy: patch.open === false ? "user" : patch.open === true ? undefined : (JSON.parse(localStorage.getItem(PREFS_KEY) || "{}") as { closedBy?: string }).closedBy };
+    const next = { ...cur, ...patch, v: PREFS_VERSION, closedBy: patch.open === false ? "user" : patch.open === true ? undefined : (JSON.parse(localStorage.getItem(PREFS_KEY) || "{}") as { closedBy?: string }).closedBy };
     localStorage.setItem(PREFS_KEY, JSON.stringify(next));
   } catch {
     /* private mode */
