@@ -66,12 +66,22 @@ tsconfig.json --allowImportingTsExtensions` and `npm test` in `backend/` (121 gr
   helper, used by the picker that shows when a listing has no service groups, checked `o.price == null` instead
   of `hasPrice`, so it printed the sentinel too. Now guarded the same way.
 
-After those four, ran the local rehearsal against a scratch Postgres (`postgresql-16`, self-signed cert combined
+After those three, ran the local rehearsal against a scratch Postgres (`postgresql-16`, self-signed cert combined
 with the CCR CA bundle for `NODE_EXTRA_CA_CERTS`): `backend/scripts/store-e2e.mts` (60 checks), then
 `backend/scripts/payout-e2e.mts` (43 checks), then the full browser rehearsal
 `backend/scripts/e2e-local.mts` with `CHROME=/opt/pw-browsers/chromium-1194/chrome-linux/chrome`. All 52 of its
 steps passed, including both projects' unit tests run inside it (164 root, 135 backend at that point) and all 14
 emails it produces read back for an HTML version, a human date and money with a currency.
+
+Also read `src/components/listing/DetailView.tsx` and `src/lib/inventory.ts` end to end (the booking surface for
+a hand-built `Listing`, as opposed to the scraped `Unclaimed` catalog `WebListing.tsx` covers). Nothing wrong
+found, but it is worth restating what an earlier run already noted: `src/data/listings.ts` ships empty by
+product rule, so this whole surface, `agent.ts` and the operator `ChatView` path have no live guest case right
+now. Its `Addon` type carries a plain, hand-typed price rather than a scraped one, so the `hasPrice` sentinel
+bug above does not apply there.
+
+Closed out against the latest `main` after a final fast-forward pull: `npx tsc -b` clean, 166 root tests green,
+`npx vite build` clean.
 
 **Found, not fixed.**
 
