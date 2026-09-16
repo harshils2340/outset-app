@@ -1,9 +1,10 @@
 import { ART_LABEL } from "../data/art";
-import { inCat } from "../data/categories";
-import { METROS, METRO_ALIASES, metroById, type Metro } from "../data/metros";
+import { CATS, VIRTUAL_CATS, inCat } from "../data/categories";
+import { METROS, METRO_ALIASES, metroById, metroCoords, type Metro } from "../data/metros";
 import { CA_REGIONS, REGION_NAME, regionOfArea } from "../data/regions";
 import { ART_ALIASES, INTENT_PHRASES } from "../data/synonyms";
 import type { ArtKind, CategoryId, Unclaimed } from "../data/types";
+import { milesBetween } from "./geo";
 
 /**
  * Guest search for Explore and the desktop home.
@@ -820,9 +821,16 @@ export type Suggestions = {
   places: PlaceHit[];
   /** States and provinces the guest typed, misspellings included ("floruda"). */
   regions: RegionHit[];
+  /**
+   * The category tab the kind the guest named belongs to, counted as browse in the guest's place. Offered when
+   * the kind itself has nothing there: "no pottery in Tampa, but Classes in Tampa has 41".
+   */
+  family: FamilyHit | null;
   /** True when nothing matched and the lists above are the nearest things the catalog does have. */
   nearMiss: boolean;
 };
+
+export type FamilyHit = { cat: CategoryId; name: string; count: number };
 
 const activityHit = (art: ArtKind, count: number): ActivityHit => ({
   art,
@@ -836,7 +844,7 @@ const activityHit = (art: ArtKind, count: number): ActivityHit => ({
  * and the cities behind them, each counted from the catalog rather than guessed.
  */
 export function searchSuggest(pool: Unclaimed[], q: string, scope?: SearchScope, limit = 5): Suggestions {
-  const empty: Suggestions = { results: [], otherCats: 0, activities: [], elsewhere: [], operators: [], places: [], regions: [], nearMiss: false };
+  const empty: Suggestions = { results: [], otherCats: 0, activities: [], elsewhere: [], operators: [], places: [], regions: [], family: null, nearMiss: false };
   if (!q.trim()) return empty;
   const idx = getIndex(pool);
   const p = parseQuery(q);
@@ -866,7 +874,7 @@ export function searchSuggest(pool: Unclaimed[], q: string, scope?: SearchScope,
   const results = inTab.map((x) => x.e.u);
   const otherCats = scored.length - inTab.length;
   if (results.length) {
-    return { results, otherCats, activities, elsewhere: [], operators: results.slice(0, limit), places, regions, nearMiss: false };
+    return { results, otherCats, activities, elsewhere: [], operators: results.slice(0, limit), places, regions, family: null, nearMiss: false };
   }
 
   // Nothing landed. Offer what the catalog really does have, in the order a guest would want it: the same
@@ -899,13 +907,28 @@ export function searchSuggest(pool: Unclaimed[], q: string, scope?: SearchScope,
   const placed = !!scope?.keep || (!!scope?.metroId && scope.metroId !== "all");
   const cityHits = new Map<string, number>();
   if (placed) for (const x of rank(pool, q, undefined)) if (!narrow || inCat(x.e.u, cat!)) cityHits.set(x.e.metroId, (cityHits.get(x.e.metroId) || 0) + 1);
-  const ways: PlaceHit[] = [];
+  // The cities the guest named come first, biggest first. Then every other city that has it, nearest to the
+  // guest's own city first, so a Tampa guest is sent to Orlando before Seattle even when Seattle has more.
+  const from = scope?.metroId && scope.metroId !== "all" ? metroCoords(scope.metroId) : null;
+  const away = (m: Metro) => {
+    const at = metroCoords(m.id);
+    return from && at ? milesBetween(from, at) : Infinity;
+  };
+  const cities: PlaceHit[] = [];
   for (const m of regions.length ? METROS.filter((mm) => mm.region === regions[0].code) : [...searchMetros(q, 3), ...nearMetros(q)]) {
     const count = cityHits.get(m.id) || 0;
-    if (!count || m.id === scope?.metroId || ways.some((w) => w.metro.id === m.id)) continue;
-    ways.push({ metro: m, count });
+    if (!count || m.id === scope?.metroId || cities.some((w) => w.metro.id === m.id)) continue;
+    cities.push({ metro: m, count });
   }
-  ways.sort((a, b) => b.count - a.count);
+  cities.sort((a, b) => b.count - a.count);
+  const rest: PlaceHit[] = [];
+  for (const m of METROS) {
+    const count = cityHits.get(m.id) || 0;
+    if (!count || m.id === scope?.metroId || cities.some((w) => w.metro.id === m.id)) continue;
+    rest.push({ metro: m, count });
+  }
+  rest.sort(from ? (a, b) => away(a.metro) - away(b.metro) || b.count - a.count : (a, b) => b.count - a.count);
+  const ways = [...cities, ...rest];
   return {
     results: [],
     otherCats,
@@ -914,8 +937,37 @@ export function searchSuggest(pool: Unclaimed[], q: string, scope?: SearchScope,
     operators: [],
     places: ways.slice(0, regions.length ? 4 : 3),
     regions,
+    family: guess.length ? familyHit(idx, guess[0], here) : null,
     nearMiss: true,
   };
+}
+
+/** The tab a kind sits under: its virtual tab (Classes, Culture) when it has one, else the tab most of its listings carry. */
+function familyOf(idx: Index, art: ArtKind): CategoryId | null {
+  for (const [cat, arts] of Object.entries(VIRTUAL_CATS) as [CategoryId, ArtKind[]][]) if (arts.includes(art)) return cat;
+  const tally = new Map<CategoryId, number>();
+  for (const i of idx.byArt.get(art) || []) {
+    const c = idx.entries[i].u.cat;
+    tally.set(c, (tally.get(c) || 0) + 1);
+  }
+  let best: CategoryId | null = null;
+  let n = 0;
+  for (const [c, k] of tally) if (k > n) (best = c), (n = k);
+  return best;
+}
+
+/**
+ * The kind's own tab as a way out, with the number of photographed listings browsing that tab shows in the
+ * guest's place. Nothing is offered when that page would be empty too.
+ */
+function familyHit(idx: Index, art: ArtKind, scope: SearchScope): FamilyHit | null {
+  const cat = familyOf(idx, art);
+  if (!cat) return null;
+  const place: SearchScope = { metroId: scope.metroId, keep: scope.keep };
+  let count = 0;
+  for (const e of idx.entries) if (e.u.cover && inScope(e.u, place) && inCat(e.u, cat)) count++;
+  if (!count) return null;
+  return { cat, name: CATS.find((c) => c.id === cat)?.name || cat, count };
 }
 
 /** How many listings of one kind sit inside the guest's current city and category. */

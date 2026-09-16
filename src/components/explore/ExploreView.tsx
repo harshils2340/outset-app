@@ -111,11 +111,14 @@ export function ExploreView() {
   if (prefs.view === "wishlists") return <Wishlists saved={prefs.saved} complete={state.catalogComplete} />;
 
   const emptyTitle = cityEmpty ? "Nothing in this city yet" : q ? "No exact matches" : filterCount ? "No exact matches" : meta.emptyTitle;
+  const waysOut = !!found && (!!found.family || found.places.length > 0 || found.elsewhere.length > 0 || found.activities.length > 0 || found.otherCats > 0);
   const emptyBody = cityEmpty
     ? "Try Anywhere, or pick a city with listings."
-    : q || filterCount
-      ? "Try changing or removing some of your filters or adjusting your search area."
-      : meta.emptyBody;
+    : q && waysOut
+      ? "Nothing listed for that" + (here || "") + " yet. Here is the closest the catalog has."
+      : q || filterCount
+        ? "Try changing or removing some of your filters or adjusting your search area."
+        : meta.emptyBody;
 
   return (
     <div className="airexplore">
@@ -176,6 +179,12 @@ export function ExploreView() {
         </>
       ) : (
         <div className="airempty">
+          {q ? (
+            <p className="aircount">
+              {what}
+              {here || " anywhere"} · 0
+            </p>
+          ) : null}
           <h2>{emptyTitle}</h2>
           <p>{emptyBody}</p>
           <div className="airemptyfix">
@@ -192,6 +201,19 @@ export function ExploreView() {
             {state.metroId !== ALL_METRO_ID || state.near ? (
               <button type="button" className="airghost" onClick={() => setMetro(ALL_METRO_ID)}>
                 Search anywhere
+              </button>
+            ) : null}
+            {found?.family ? (
+              <button
+                type="button"
+                className="airghost"
+                onClick={() => {
+                  setQ("");
+                  setCat(found.family!.cat);
+                }}
+              >
+                Browse {found.family.name}
+                {here} · {found.family.count.toLocaleString()}
               </button>
             ) : null}
             {(found?.activities ?? []).map((a) => (

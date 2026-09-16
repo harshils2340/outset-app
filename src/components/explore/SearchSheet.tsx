@@ -10,7 +10,7 @@ import { useApp } from "../../state/AppProvider";
 import { Art } from "../art/Art";
 import { Photo } from "../art/Photo";
 import { IcClose, IcGlobe, IcMinus, IcNavigate, IcPin, IcPlus, IcSearch } from "./AirIcons";
-import { browseList, feedFor, whatLabel } from "./feed";
+import { applyFilters, browseList, feedFor, whatLabel } from "./feed";
 import { getPrefs, setPrefs } from "./prefs";
 
 const QTY_MAX = 8;
@@ -36,7 +36,7 @@ function countInMetro(metroId: string): number {
 }
 
 export function SearchSheet() {
-  const { state, dates, closeSheet, setQ, setMetro, setNear, openRequest } = useApp();
+  const { state, dates, closeSheet, setQ, setCat, setMetro, setNear, openRequest } = useApp();
   const prefs = getPrefs();
   const [step, setStep] = useState<Step>("where");
   const [text, setText] = useState("");
@@ -127,10 +127,19 @@ export function SearchSheet() {
     const chips = WHAT_INTENTS.filter((c) => c.query !== low && words.some((w) => w.length >= 2 && c.label.toLowerCase().split(/\s+/).some((lw) => lw.startsWith(w))));
     const d = describeQuery(whatRest);
     if (d.onlyIntent && !d.arts.length && !WHAT_INTENTS.some((c) => c.query === low)) chips.unshift({ label: d.intent.label!, query: whatRest });
+    // Nothing here: the count is still shown, as 0, over the ways out the catalog really has. The family row
+    // browses the kind's own tab in this place, so it is counted the way browse counts, filters included.
+    const zero = !found.results.length;
+    const family = zero && found.family ? { ...found.family, n: applyFilters(browseList(catalog, found.family.cat, effMetro, effNear), prefs.filters).length } : null;
     return {
+      zero,
       acts: found.activities.map((a) => ({ ...a, n: count(a.query) })).filter((a) => a.n > 0),
       ops: found.operators,
       intents: chips.map((c) => ({ ...c, n: count(c.query) })).filter((c) => c.n > 0),
+      family: family && family.n > 0 ? family : null,
+      places: zero ? found.places : [],
+      elsewhere: zero ? found.elsewhere : [],
+      otherCats: zero ? found.otherCats : 0,
     };
   }, [step, whatRest, placeKey, prefs.filters]);
 
@@ -159,6 +168,12 @@ export function SearchSheet() {
   };
   const pickWhat = (query: string) => {
     if (typedMetro) setWhere({ kind: "metro", id: typedMetro.metro.id });
+    setWhat(query);
+    setStep("when");
+  };
+  /** A way out of an empty What: the same activity in another place, or anywhere. */
+  const pickWhatIn = (query: string, metroId: string) => {
+    setWhere({ kind: "metro", id: metroId });
     setWhat(query);
     setStep("when");
   };
@@ -323,7 +338,22 @@ export function SearchSheet() {
                   {typedMetro
                     ? item("tm", <IcPin size={20} />, (whatRest ? whatLabel(whatRest) : "Things to do") + " in " + typedMetro.metro.name, "Sets Where to " + metroLabel(typedMetro.metro.id), () => { settleWhat(what); setStep("when"); })
                     : null}
-                  {typed.acts.length ? <p className="airsgroup">Activities</p> : null}
+                  {typed.zero ? (
+                    <p className="airsgroup">
+                      {whatLabel(whatRest)}
+                      {hereName} · 0
+                    </p>
+                  ) : null}
+                  {typed.family
+                    ? item("fam", <IcSearch size={20} />, typed.family.name + hereName, n(typed.family.n) + " to browse", () => { setCat(typed.family!.cat); pickWhat(""); })
+                    : null}
+                  {typed.places.length ? <p className="airsgroup">Nearest with it</p> : null}
+                  {typed.places.map((pl) => item("pl" + pl.metro.id, <IcPin size={20} />, whatLabel(whatRest) + " in " + pl.metro.name, pl.count.toLocaleString() + " in " + pl.metro.name + ", " + pl.metro.region, () => pickWhatIn(whatRest, pl.metro.id)))}
+                  {typed.elsewhere.map((a) => item("el" + a.art, <IcGlobe size={20} />, a.label + " anywhere", a.count.toLocaleString() + " across the US and Canada", () => pickWhatIn(a.query, ALL_METRO_ID)))}
+                  {typed.otherCats
+                    ? item("oc", <IcSearch size={20} />, "In other categories", typed.otherCats.toLocaleString() + hereName, () => { setCat("all"); pickWhat(whatRest); })
+                    : null}
+                  {typed.acts.length ? <p className="airsgroup">{typed.zero ? "Close to it" + hereName : "Activities"}</p> : null}
                   {typed.acts.map((a) => item("a" + a.art, <Art kind={a.art} id={"ss" + a.art} />, a.label, n(a.n), () => pickWhat(a.query), { art: true, pressed: whatRest.toLowerCase() === a.query }))}
                   {typed.ops.length ? <p className="airsgroup">Businesses</p> : null}
                   {typed.ops.map((u) => {
@@ -339,7 +369,9 @@ export function SearchSheet() {
                   })}
                   {typed.intents.length ? <p className="airsgroup">Ideas</p> : null}
                   {typed.intents.map((c) => item("i" + c.query, <IcSearch size={18} />, c.label, n(c.n), () => pickWhat(c.query)))}
-                  {!typed.acts.length && !typed.ops.length && !typed.intents.length ? <p className="airsgroup">Nothing for “{whatRest}”{hereName} yet. Try fewer words, or another place.</p> : null}
+                  {!typed.acts.length && !typed.ops.length && !typed.intents.length && !typed.family && !typed.places.length && !typed.elsewhere.length && !typed.otherCats ? (
+                    <p className="airsgroup">Nothing for “{whatRest}”{hereName} yet. Try fewer words, or another place.</p>
+                  ) : null}
                 </>
               ) : (
                 <>

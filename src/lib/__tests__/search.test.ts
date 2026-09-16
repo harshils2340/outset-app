@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { inCat } from "../../data/categories";
 import { ALL_METRO_ID } from "../../data/metros";
 import type { CategoryId, Unclaimed } from "../../data/types";
 import { searchSuggest, type SearchScope } from "../search";
@@ -37,6 +38,12 @@ const CATALOG: Unclaimed[] = [
   // Orlando has a third listing that has nothing to do with skydiving, so a city row that counts the whole
   // city instead of the query reads 3 where the page it opens holds 2.
   op({ title: "Orlando Mini Golf", cat: "play", art: "minigolf", metroId: "orlando" }),
+  // Seattle has more skydiving than Orlando, and is further from Tampa than Orlando is.
+  op({ title: "Skydive Seattle", cat: "air", art: "skydive", metroId: "seattle" }),
+  op({ title: "Seattle Freefall", cat: "air", art: "skydive", metroId: "seattle" }),
+  op({ title: "Puget Sound Parachute Club", cat: "air", art: "skydive", metroId: "seattle" }),
+  // Tampa has a yoga studio, so the Classes tab is not empty there even though pottery is.
+  op({ title: "Tampa Yoga Loft", cat: "wellness", art: "yoga", metroId: "tampa" }),
 ];
 
 /** What each kind of row does when the guest presses it, as the feed and the desktop home both wire it up. */
@@ -63,17 +70,24 @@ function checkWaysOut(q: string, scope: SearchScope) {
     assert.ok(got > 0, `city row "${pl.metro.name}" opens an empty page for ${q}`);
     assert.ok(pl.count <= got, `city row "${pl.metro.name}" promised ${pl.count} and opened ${got}`);
   }
+  if (found.family) {
+    // Pressing the family clears What and browses that tab in the same place: photographed listings only.
+    const metroId = scope.metroId;
+    const got = CATALOG.filter((u) => !!u.cover && (!metroId || metroId === ALL_METRO_ID || u.metroId === metroId) && inCat(u, found.family!.cat)).length;
+    assert.ok(got > 0, `family row "${found.family.name}" opens an empty page for ${q}`);
+    assert.equal(found.family.count, got, `family row "${found.family.name}" promised ${found.family.count} and opened ${got}`);
+  }
   return found;
 }
 
 test("a kind the category tab hides is not offered as a way out of that tab", () => {
-  // Skydiving exists, twice, but not in the Water tab. Offering "Skydive, 2" there opened another empty page.
+  // Skydiving exists, five times, but not in the Water tab. Offering "Skydive, 2" there opened another empty page.
   const scope: SearchScope = { metroId: ALL_METRO_ID, cat: "water" as CategoryId };
   const found = checkWaysOut("skydiving", scope);
   assert.equal(found.activities.length, 0);
   assert.equal(found.elsewhere.length, 0);
   // The tab is the only thing in the way, and that is what the "in other categories" way out is for.
-  assert.equal(found.otherCats, 2);
+  assert.equal(found.otherCats, 5);
 });
 
 test("a city with none of what the guest asked for is not offered", () => {
@@ -105,4 +119,49 @@ test("a search that lands still reports what it found", () => {
   assert.equal(found.nearMiss, false);
   assert.equal(found.results.length, 1);
   assert.equal(found.results[0].title, "Bay Kayak Rentals");
+});
+
+test("cities that have the kind come nearest first, not biggest first", () => {
+  // From Tampa, Orlando's two skydiving centers are offered before Seattle's three.
+  const scope: SearchScope = { metroId: "tampa", cat: "all" as CategoryId };
+  const found = checkWaysOut("skydiving", scope);
+  assert.deepEqual(found.places.map((p) => p.metro.id), ["orlando", "seattle"]);
+  assert.equal(found.places[0].count, 2);
+  assert.equal(found.places[1].count, 3);
+});
+
+test("with no city picked, cities come biggest first", () => {
+  const found = searchSuggest(CATALOG, "skydiving miami", { metroId: ALL_METRO_ID, cat: "all" as CategoryId });
+  // Miami was named and has none, so the search is scoped nowhere and no city row is needed.
+  assert.equal(found.results.length, 0);
+  assert.ok(!found.places.some((p) => p.metro.id === "miami"));
+});
+
+test("a kind missing from the city offers the tab it lives in, counted there", () => {
+  // No pottery in Tampa. Pottery is a Classes kind, and Tampa's yoga studio makes the Classes tab worth opening.
+  const scope: SearchScope = { metroId: "tampa", cat: "all" as CategoryId };
+  const found = checkWaysOut("pottery class", scope);
+  assert.ok(found.family, "no family way out");
+  assert.equal(found.family.cat, "classes");
+  assert.equal(found.family.name, "Classes");
+  assert.equal(found.family.count, 1);
+});
+
+test("a kind whose tab is also empty in the city offers no family row", () => {
+  // Miami has an axe house and nothing else; no skydiving, and the Air tab there is empty too.
+  const scope: SearchScope = { metroId: "miami", cat: "all" as CategoryId };
+  const found = checkWaysOut("skydiving", scope);
+  assert.equal(found.family, null);
+});
+
+test("a kind with no virtual tab falls back to the tab most of its listings carry", () => {
+  // No axe throwing in Orlando; axe listings are Indoor, and Orlando has nothing indoor, so the family is not
+  // offered, while its Play tab (mini golf) is not the axe family and is not offered either.
+  const scope: SearchScope = { metroId: "orlando", cat: "all" as CategoryId };
+  const found = checkWaysOut("axe throwing", scope);
+  assert.equal(found.family, null);
+  // In Tampa the Indoor tab has the escape room, so "axe throwing" there offers Indoor.
+  const tampa = checkWaysOut("axe throwing", { metroId: "tampa", cat: "all" as CategoryId });
+  assert.equal(tampa.family?.cat, "indoor");
+  assert.equal(tampa.family?.count, 1);
 });

@@ -1268,6 +1268,8 @@ export function WebHome({ onOpenApp, onOperators }: { onOpenApp: () => void; onO
       if (d.onlyIntent && !WHAT_INTENTS.some((c) => c.query === typed)) chips.unshift({ label: d.intent.label!, query: qWithoutPlace.trim() });
       intentRows(chips, "Ideas");
       (found?.elsewhere ?? []).forEach((a, i) => whatRows.push({ key: "e" + a.art, head: i === 0 ? "Elsewhere" : undefined, icon: ICONS.globe, title: a.label + " across the US and Canada", sub: places(a.count), pick: () => { setNear(null); setMetro(ALL_METRO_ID); pickWhat(a.query); } }));
+      if (found?.nearMiss) spots.forEach((pl, i) => whatRows.push({ key: "np" + pl.metro.id, head: i === 0 ? "Nearest with it" : undefined, icon: ICONS.pin, title: whatShort + " in " + pl.metro.name, sub: places(pl.count) + " · " + pl.metro.region, pick: () => pickCity(pl.metro.id) }));
+      if (found?.family) whatRows.push({ key: "fam" + found.family.cat, head: "Browse instead", icon: ICONS.catAll, title: found.family.name + hereLine, sub: places(found.family.count) + " to browse", pick: () => { setQ(""); setCat(found.family!.cat); setSeg(null); } });
       if (found?.otherCats) whatRows.push({ key: "othercats", icon: ICONS.catAll, title: "Show all categories", sub: found.otherCats.toLocaleString() + " more outside " + catName(state.cat), pick: () => setCat("all") });
     }
   }
@@ -1580,6 +1582,9 @@ export function WebHome({ onOpenApp, onOperators }: { onOpenApp: () => void; onO
                   {spots.map((pl) => (
                     <button type="button" key={pl.metro.id} className="ah-btn-outline" onClick={() => pickCity(pl.metro.id)}>{pl.metro.name} · {pl.count.toLocaleString()}</button>
                   ))}
+                  {found?.family ? (
+                    <button type="button" className="ah-btn-outline" onClick={() => { setQ(""); setCat(found.family!.cat); }}>Browse {found.family.name}{hereLine} · {found.family.count.toLocaleString()}</button>
+                  ) : null}
                   {typedMetro || near || metro ? (
                     <button type="button" className="ah-btn-outline" onClick={() => { setNear(null); setMetro(ALL_METRO_ID); if (typedMetro) setQ(qWithoutPlace.trim()); }}>Search everywhere</button>
                   ) : null}
