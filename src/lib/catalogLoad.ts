@@ -51,6 +51,21 @@ export async function loadRemoteCatalog(onPhase?: (added: number, complete: bool
 
 const inflight = new Map<string, Promise<boolean>>();
 
+let onEdits: (() => void) | null = null;
+
+/**
+ * Told when a claimed operator's own edits land, which is always after the listing has already been drawn.
+ *
+ * The detail file and the operator's profile are two fetches, and only the first one is what `loadListing`
+ * resolves on. The second used to be a detached promise that patched the in-memory catalog and told nobody, so
+ * the page kept the record it had first paint: a guest opening a claimed listing by its link read the crawled
+ * title, blurb, prices, hours and policies, and never the operator's. Awaiting it instead would put an API
+ * round trip, up to the six second timeout, in front of every listing page, so it stays detached and says so.
+ */
+export function onListingEdits(fn: (() => void) | null): void {
+  onEdits = fn;
+}
+
 /**
  * Fetch one operator's detail file and swap it into the catalog. Resolves true when the record changed.
  *
@@ -76,7 +91,11 @@ export function loadListing(id: string | null): Promise<boolean> {
       else if (!mergeCatalog([full], {})) return false;
       const mine = cur?.id || full.id;
       // A claimed operator's own edits, saved through the API, sit on top of the crawled record.
-      if (full.claimKey) void fetchRemoteProfile(path).then((r) => { if (r && r.patch) setOperatorOverride(mine, r.patch, r.published !== false); });
+      if (full.claimKey) void fetchRemoteProfile(path).then((r) => {
+        if (!r || !r.patch) return;
+        setOperatorOverride(mine, r.patch, r.published !== false);
+        onEdits?.();
+      });
       return true;
     })
     .catch(() => false)

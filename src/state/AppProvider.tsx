@@ -18,7 +18,7 @@ import { dateKey, makeDates } from "../lib/dates";
 import { fmtDate, money, nowStamp } from "../lib/format";
 import { daySlotsOpen, openSeats } from "../lib/inventory";
 import { contactFor, experienceById, fromPrice, initials } from "../lib/catalog";
-import { loadListing, loadRemoteCatalog } from "../lib/catalogLoad";
+import { loadListing, loadRemoteCatalog, onListingEdits } from "../lib/catalogLoad";
 import { confirmPaid, hasApi, submitBooking, warmApi } from "../lib/api";
 import { assistantOn, companyGreeting, companyHandoff, companyReply, companySuggestions } from "../lib/companyAgent";
 import type { Place } from "../lib/places";
@@ -485,6 +485,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // True once the boot deep-link check has run. Until then the path-sync effect must not rewrite the URL,
   // or the lite catalog shard flipping catalogReady early would erase a #claim= link before it is read.
   const booted = useRef(false);
+
+  // A claimed operator's edits arrive one fetch behind the listing they belong to, so the page is already
+  // drawn from the crawled record when they land. Redraw it when they do, or the guest reads the operator's
+  // old title, prices, hours and policies for the whole visit.
+  useEffect(() => {
+    onListingEdits(() => dispatch({ type: "catalogTouched" }));
+    return () => onListingEdits(null);
+  }, []);
 
   useEffect(() => {
     dispatch({ type: "hydrate", bookings: loadBookings(), chats: loadChats() });
