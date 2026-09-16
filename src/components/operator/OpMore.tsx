@@ -3,7 +3,7 @@ import { connectPayouts, hasApi, payoutStatus, releaseRemoteProfile, setPayoutSc
 import { dateKey, startOfToday } from "../../lib/dates";
 import { money } from "../../lib/format";
 import { OWNER_EMAIL_MAX, OWNER_NAME_MAX, OWNER_PHONE_MAX, bookingTotal, deleteProfile, isoToDate, relDay, validOwnerEmail, validOwnerPhone } from "../../lib/operator";
-import { OPERATOR_FEE_RATE, SERVICE_FEE_CAP, serviceFee } from "../../lib/pricing";
+import { OPERATOR_FEE_RATE, SERVICE_FEE_CAP, operatorNet, serviceFee } from "../../lib/pricing";
 import { Markup } from "../Markup";
 import { OD_ICONS, PAGES, useOp } from "./opContext";
 
@@ -23,11 +23,12 @@ function operatorPrice(total: number): number {
 }
 
 /**
- * What the operator receives for one booking: their price less Outset's 5%. Taking 5% off the guest total
- * instead counted the guest's service fee as the operator's money, so the tiles here promised more than the
- * booking email for the same trip ("You receive $194.75" against "$202" on this page).
+ * What the operator receives for one booking: their price less Outset's 5%, worked out in whole cents by the
+ * same rule as the transfer and the booking email. Taking 5% off the guest total instead counted the guest's
+ * service fee as the operator's money, so the tiles here promised more than the booking email for the same
+ * trip ("You receive $194.75" against "$202" on this page).
  */
-const payoutOf = (b: Parameters<typeof bookingTotal>[0]): number => toCents(operatorPrice(bookingTotal(b)) * (1 - FEE));
+const payoutOf = (b: Parameters<typeof bookingTotal>[0]): number => operatorNet(operatorPrice(bookingTotal(b)));
 
 /** Money is kept to the cent. 95 × 0.95 + 0.0095 is not a number a bank pays, and a tile that read "$96" for $95.96 was rounding on its own. */
 const toCents = (n: number): number => Math.round(n * 100) / 100;

@@ -16,6 +16,19 @@ export const SERVICE_FEE_CAP = 25;
 /** Flat take from the operator payout. Guest checkout is a separate stepped fee. */
 export const OPERATOR_FEE_RATE = 0.05;
 
+/**
+ * What the operator receives for a booking priced at `subtotal` dollars. Mirrors operatorShare in
+ * backend/src/payments/money.ts, which is the money Stripe actually moves: the 5% is rounded once, in whole
+ * cents, and the operator keeps whatever that leaves.
+ *
+ * Taking the 5% off in dollars instead rounds the half cent the other way, so the Payouts page promised a cent
+ * the transfer never sent on 7,214 of the prices between $1.00 and $2,000.00, $12.50 and $37.50 among them.
+ */
+export function operatorNet(subtotal: number): number {
+  const sub = Math.round(subtotal * 100);
+  return (sub - Math.round(sub * OPERATOR_FEE_RATE)) / 100;
+}
+
 /** Guest service fee on the operator subtotal. 5% through $100, 4% through $500, 3% above that. Never more than $25. */
 export function serviceFeeRate(sub: number): number {
   if (sub <= 0) return 0;

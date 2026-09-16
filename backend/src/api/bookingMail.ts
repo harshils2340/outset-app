@@ -1,7 +1,7 @@
 import { sendMail } from "../lib/mail.ts";
 import { fmtDay, fmtMoney, fmtWhen, guests, renderEmail, type EmailLine, type EmailRow } from "../lib/emailTemplate.ts";
 import { readJson } from "../lib/store.ts";
-import { OPERATOR_FEE_RATE, currencyForArea, subtotalFromTotal } from "../payments/money.ts";
+import { OPERATOR_FEE_RATE, currencyForArea, operatorShare, subtotalFromTotal } from "../payments/money.ts";
 import type { StoredBooking } from "./bookings.ts";
 import type { StoredProfile } from "./profiles.ts";
 
@@ -57,7 +57,8 @@ export function moneyOf(rec: StoredBooking): { total: number; subtotal: number; 
   if (rec.total == null || !(rec.total > 0)) return null;
   const subtotal = rec.pricing?.subtotal ?? rec.payment?.subtotal ?? subtotalFromTotal(rec.total);
   const fee = Math.max(0, Math.round((rec.total - subtotal) * 100) / 100);
-  const net = Math.round(subtotal * (1 - OPERATOR_FEE_RATE) * 100) / 100;
+  // The same cents the Stripe transfer is made in, so the email cannot promise a cent the transfer does not send.
+  const net = operatorShare(Math.round(subtotal * 100)).operatorNet / 100;
   return { total: rec.total, subtotal, fee, net };
 }
 
