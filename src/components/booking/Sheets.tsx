@@ -67,14 +67,43 @@ const QTY_MAX = 8;
 
 export function Sheets() {
   const { state, listing, reqTarget, dates, closeSheet, confirm, confirmUnclaimed, openChat, sendChat } = useApp();
+  const { sheetMode } = usePrefs();
   const on = state.sheet !== null;
   // The listing and the search open full screen, the way Airbnb's app pushes them. The review sheet stays a sheet.
   const full = state.sheet === "request" || state.sheet === "metro";
+  // The name a screen reader reads when the sheet opens. The search sheet and Filters share one mode.
+  const name =
+    state.sheet === "request" ? reqTarget?.title || "Listing" : state.sheet === "metro" ? (sheetMode === "filters" ? "Filters" : "Search") : state.sheet === "review" ? "Review and pay" : undefined;
+
+  // Opening a sheet left focus on the page behind it, which is inert, so the keyboard had nowhere to go and a
+  // screen reader said nothing at all: a guest pressing Enter on a card watched the listing take the screen in
+  // silence. Closing it dropped focus to the body, so the next Tab started over at the top of the feed instead
+  // of at the card they came from. Focus moves into the sheet and comes back to whatever opened it.
+  const box = useRef<HTMLDivElement>(null);
+  const opener = useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    if (on) {
+      opener.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+      box.current?.focus();
+      return;
+    }
+    const back = opener.current;
+    opener.current = null;
+    // The feed re-renders while a sheet is open, so the card that opened it may be gone.
+    if (back && document.contains(back)) back.focus();
+  }, [on]);
 
   return (
     <>
       <div className={"scrim" + (on ? " on" : "")} onClick={closeSheet} />
-      <div className={"sheet" + (on ? " on" : "") + (full ? " airfull" : "")}>
+      <div
+        className={"sheet" + (on ? " on" : "") + (full ? " airfull" : "")}
+        ref={box}
+        tabIndex={on ? -1 : undefined}
+        role={on ? "dialog" : undefined}
+        aria-modal={on ? true : undefined}
+        aria-label={on ? name : undefined}
+      >
         {full ? null : <div className="grabber" />}
         <div className={"sheetbody" + (full ? " req" : "")}>
           {state.sheet === "review" && listing && state.slot ? (

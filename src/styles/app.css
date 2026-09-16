@@ -378,6 +378,8 @@ h2.sec{
   max-height:94%;display:flex;flex-direction:column;
 }
 .sheet.on{transform:translateY(0);}
+/* Focus lands here when the sheet opens, so a screen reader reads its name. No ring around the whole sheet. */
+.sheet:focus{outline:none;}
 .grabber{width:36px;height:5px;border-radius:3px;background:var(--line-strong);margin:10px auto 0;flex:none;}
 .sheetbody{overflow-y:auto;padding:10px 24px 0;}
 .sheetbody::-webkit-scrollbar{width:0;}
