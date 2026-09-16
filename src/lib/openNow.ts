@@ -259,7 +259,9 @@ export function zoneFor(item: Unclaimed): string | null {
   if (region === "KY" && lon != null && lon < -86.4) return "America/Chicago";
   if (region === "TN" && lon != null && lon > -85.3) return "America/New_York";
   if ((region === "ND" || region === "SD" || region === "NE" || region === "KS") && lon != null && lon < -101) return "America/Denver";
-  if (region === "OR" && lon != null && lon < -117.1) return "America/Boise";
+  // Mountain time in Oregon is Malheur County, the south east corner, so it is the east of the state that
+  // moves and not the west: Portland, Salem and the whole coast are Pacific.
+  if (region === "OR" && lon != null && lon > -118.3 && item.lat != null && item.lat < 44.3) return "America/Boise";
   if (region === "ID" && item.lat != null && item.lat > 45.6) return "America/Los_Angeles";
   if (region === "MI" && lon != null && lon < -88.5) return "America/Chicago";
   if (region === "BC" && lon != null && lon > -116) return "America/Edmonton";

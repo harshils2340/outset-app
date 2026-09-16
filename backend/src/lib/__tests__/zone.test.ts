@@ -18,6 +18,27 @@ test("the western halves of split states are corrected by longitude", () => {
   assert.equal(zoneForArea("Marquette, MI", 46.5, -87.4), "America/Detroit");
 });
 
+/**
+ * Oregon's Mountain time is Malheur County, in the south east corner, so it is the east of the state that
+ * moves. The rule read `lon < -117.1`, which is everything west of the Idaho border, so the API put the
+ * whole state on Mountain: an hour was taken off every Oregon shop's remaining start times, and after 11 PM
+ * Pacific the API had already moved on to tomorrow.
+ */
+test("Oregon is Pacific, except the Malheur County corner", () => {
+  assert.equal(zoneForArea("Portland, OR", 45.5231, -122.6765), "America/Los_Angeles");
+  assert.equal(zoneForArea("Coquille, OR", 43.1762, -124.1903), "America/Los_Angeles");
+  assert.equal(zoneForArea("Baker City, OR", 44.7749, -117.8324), "America/Los_Angeles");
+  assert.equal(zoneForArea("Ontario, OR", 44.0233, -116.9531), "America/Boise");
+});
+
+/** The two parsers are twins: a shop's card and the times the API offers it must be read on one clock. */
+test("a Portland shop's five o'clock is five o'clock in Portland", () => {
+  // 17:00 Pacific on 16 September 2026 is 00:00 UTC the next day, and still the sixteenth where the shop is.
+  const zone = zoneForArea("Portland, OR", 45.5231, -122.6765)!;
+  assert.equal(new Date(instantOf("2026-09-16", "17:00", zone)).toISOString(), "2026-09-17T00:00:00.000Z");
+  assert.equal(todayIn(zone, new Date("2026-09-17T00:30:00Z")), "2026-09-16");
+});
+
 test("no region and no coordinates means we do not know, and say so", () => {
   assert.equal(zoneForArea(""), null);
   assert.equal(zoneForArea(undefined), null);
