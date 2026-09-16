@@ -1,3 +1,6 @@
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { randomUUID } from "node:crypto";
 import { db, nowIso } from "../db/client.ts";
 import { claimTokenV2 } from "../lib/claim.ts";
@@ -48,9 +51,6 @@ function link(href: string, label: string): string {
 
 export function draftCopy(op: Op, sc: ReturnType<typeof scale>, offerings: string[], hasPhotos: boolean, hasRules: boolean, email?: string): { subject: string; body: string; html: string } {
   void sc;
-  void offerings;
-  void hasPhotos;
-  void hasRules;
   const to = (email || "").trim().toLowerCase();
   const SITE = "https://onoutset.com/";
   const id = catalogId(op.domain);
@@ -66,54 +66,30 @@ export function draftCopy(op: Op, sc: ReturnType<typeof scale>, offerings: strin
   const remove = SITE + "#remove=" + id;
   const vendor = op.calendar_vendor ? VENDOR_NAME[op.calendar_vendor] || null : null;
   const subject = "A page for " + op.name;
-  const city = (op.city || "").trim();
-  const where = city ? " so people in " + city + " can book you there" : "";
-  const who =
-    "I'm Harshil. I built Outset, think of it like OpenTable, but for tours and activities instead of dinner. People pick a time and book instead of calling and hoping someone picks up.";
-  const intro =
-    "I already made a page for " +
-    op.name +
-    " from your website" +
-    where +
-    ". It's only what you already have online, I didn't invent prices or hours.";
-  const money = "It's free for you. We take a small fee from the guest when they pay.";
-  const lines = [
-    "Hi,",
-    "",
-    who,
-    "",
-    intro,
-    "See the page: " + listing,
-    "",
-    money,
-    "",
-  ];
-  const paras = [
-    "<p>Hi,</p>",
-    "<p>" + esc(who) + "</p>",
-    "<p>" + esc(intro) + " " + link(listing, "See the page") + ".</p>",
-    "<p>" + esc(money) + "</p>",
-  ];
-  if (vendor) {
-    const keep = "If you already use " + vendor + ", keep it, this doesn't replace that.";
-    lines.push(keep, "");
-    paras.push("<p>" + esc(keep) + "</p>");
-  }
+  // The catalog size guests browse today: read from the published catalog when this process has it, else the last known count.
+  const listed = publishedCount();
+  const menu = offerings.length ? "your " + offerings.length + (offerings.length === 1 ? " service" : " services") + " with prices" : "what you sell";
+  const built = [menu, hasPhotos ? "your photos" : null, "your hours", hasRules ? "your cancellation policy" : null].filter(Boolean);
+  const who = "I'm Harshil. I run Outset, a site where people book local activities the way they book a table on OpenTable: pick a time, pay, done. No calling around.";
+  const intro = "I built a page for " + op.name + " from your website. It has " + built.slice(0, -1).join(", ") + " and " + built[built.length - 1] + ". I didn't make anything up. Have a look:";
+  const scale = "There are about " + listed + " activity businesses on Outset across the US and Canada, from Florida to British Columbia, and guests find them by city and activity.";
+  const money = "What it costs: nothing to be listed. When a booking comes through Outset, we keep 5% of it. No booking, no fee." + (vendor ? " If you already use " + vendor + ", keep it. This sits alongside it." : "");
+  const lines = ["Hi,", "", who, "", intro, listing, "", scale, "", money, ""];
+  const paras = ["<p>Hi,</p>", "<p>" + esc(who) + "</p>", "<p>" + esc(intro) + "<br>" + link(listing, listing) + "</p>", "<p>" + esc(scale) + "</p>", "<p>" + esc(money) + "</p>"];
   lines.push(
-    "If this is actually your shop, you can open the page from this link. Please don't forward it, it's meant for the owner:",
+    "If this is your business, this link opens your page so you can fix anything and switch bookings on. It's meant for the owner, so please don't forward it:",
     claim,
     "",
-    "If I have the wrong business, you can take the page down here:",
+    "If I've got the wrong business, this takes the page down:",
     remove,
     "",
     "Harshil",
+    "Outset",
   );
   paras.push(
-    "<p>If this is actually your shop, you can " +
-      link(claim, "open the page") +
-      " from this link. Please don't forward it, it's meant for the owner.</p>",
-    "<p>If I have the wrong business, you can " + link(remove, "take the page down") + ".</p>",
-    "<p>Harshil</p>",
+    "<p>If this is your business, " + link(claim, "this link opens your page") + " so you can fix anything and switch bookings on. It's meant for the owner, so please don't forward it.</p>",
+    "<p>If I've got the wrong business, " + link(remove, "this takes the page down") + ".</p>",
+    "<p>Harshil<br>Outset</p>",
   );
   if (to) {
     const stop = unsubPageUrl(to);
@@ -132,9 +108,25 @@ export function draftCopy(op: Op, sc: ReturnType<typeof scale>, offerings: strin
   };
 }
 
+/** How many listings the site publishes: the browse catalog's count, rounded down to the nearest thousand, with "59,000" as the floor if the file is missing. */
+function publishedCount(): string {
+  try {
+    const raw = readFileSync(join(dirname(fileURLToPath(import.meta.url)), "../../../public/catalog.json"), "utf8");
+    const n = (JSON.parse(raw) as { operators?: unknown[] }).operators?.length || 0;
+    if (n >= 1000) return (Math.floor(n / 1000) * 1000).toLocaleString("en-US");
+  } catch {
+    /* no catalog on this host */
+  }
+  return "59,000";
+}
+
 /** Fresh copy at send time so a stale SQLite draft never goes out. */
 export function composeOutreach(op: Op, email: string): { subject: string; body: string; html: string } {
-  return draftCopy(op, scale(), [], false, false, email);
+  // What the page really shows, so the email's claim ("your 41 services with prices") is true for this operator.
+  const priced = db.prepare("SELECT DISTINCT name FROM offerings WHERE operator_id = ? AND price_cents IS NOT NULL").all(op.id) as { name: string }[];
+  const hasPhotos = !!db.prepare("SELECT 1 FROM facts WHERE operator_id = ? AND fact_key IN ('cover', 'photo') LIMIT 1").get(op.id);
+  const hasRules = !!db.prepare("SELECT 1 FROM facts WHERE operator_id = ? AND fact_key = 'cancellation' LIMIT 1").get(op.id);
+  return draftCopy(op, scale(), priced.map((r) => r.name), hasPhotos, hasRules, email);
 }
 
 /**
