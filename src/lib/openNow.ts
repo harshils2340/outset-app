@@ -219,6 +219,46 @@ export function clockIn(zone: string | null, now = new Date()): { day: number; m
   }
 }
 
+/** The calendar date where the operator stands, as a YYYY-MM-DD key. The guest's own date when the zone is unknown. */
+export function dayKeyIn(zone: string | null, now = new Date()): string {
+  const local = () => `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+  if (!zone) return local();
+  try {
+    const parts = new Intl.DateTimeFormat("en-US", { timeZone: zone, year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(now);
+    const get = (t: string) => parts.find((p) => p.type === t)?.value || "";
+    const y = get("year");
+    const m = get("month");
+    const d = get("day");
+    return y && m && d ? `${y}-${m}-${d}` : local();
+  } catch {
+    return local();
+  }
+}
+
+/** A start time is bookable only once it is this far out. Mirrors the notice the API applies to an unclaimed listing. */
+const LEAD_MIN = 60;
+
+/**
+ * Whether a published start time is still far enough out to book, asked on the shop's clock rather than the
+ * guest's. Both are wall clock times where the business stands, so comparing them to the browser's clock is
+ * comparing two different zones: a guest in New York looking at a Los Angeles shop at 8 PM was cutting off
+ * everything before 9 PM Pacific, so the 6 PM Pacific start the API was still offering vanished, and the
+ * picker's "land on a day with departures" then moved them to tomorrow. It reads the other way too, a guest
+ * west of the shop being offered times that have already gone there. The picker's own note says "Times shown
+ * in the business's local time", which is exactly the promise this keeps.
+ */
+export function bookableStart(item: Unclaimed, now = new Date()): (dateKey: string, time: string) => boolean {
+  const zone = zoneFor(item);
+  const today = dayKeyIn(zone, now);
+  const cutoff = clockIn(zone, now).minutes + LEAD_MIN;
+  return (dateKey, time) => {
+    if (dateKey > today) return true;
+    if (dateKey < today) return false;
+    const m = /^(\d{1,2}):(\d{2})/.exec(time);
+    return m ? Number(m[1]) * 60 + Number(m[2]) >= cutoff : true;
+  };
+}
+
 /** Convenience for a catalog item: its week (compact on lite records, or parsed from hour lines) at the operator's local time. */
 /** The week an item publishes: compact on lite records, else parsed from its hour lines. Sunday first. */
 export function itemWeek(item: Unclaimed): Week | null {

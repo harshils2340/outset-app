@@ -33,7 +33,7 @@ import { SIZES, srcSet, thumb } from "../../lib/images";
 import { embedAutoplay, listingMedia, photoCandidates, probePhotos, type Media } from "../../lib/media";
 import { cleanDesc, durationLabel, freeCancel, minAge } from "../../lib/listingDerive";
 import { ASSISTANT_NAME, DAY_SHORT, clock12, companySuggestions, dayLabel, todaysDeals } from "../../lib/companyAgent";
-import { clockIn, zoneFor } from "../../lib/openNow";
+import { bookableStart, clockIn, zoneFor } from "../../lib/openNow";
 import { itemOpenState } from "../../lib/openNow";
 import { fetchAvailability, fetchOpenSlots, hasApi, type LiveAvailability } from "../../lib/api";
 import { dateKey } from "../../lib/dates";
@@ -412,13 +412,12 @@ function RequestBody({
       alive = false;
     };
   }, [item.id, picked?.name, qty]);
-  // Today only offers start times at least an hour out. Nobody can book a 7 AM slot at 8:30.
+  // Today only offers start times at least an hour out. Nobody can book a 7 AM slot at 8:30. "Today" and the
+  // cutoff are both read on the shop's clock, because the times themselves are its wall clock times.
+  const stillOpen = bookableStart(item);
   const chipsFor = (d: Date): TimeChip[] => {
     const k = dateKey(d);
-    const isToday = k === dateKey(dates[0]);
-    const now = new Date();
-    const cutoff = now.getHours() * 60 + now.getMinutes() + 60;
-    const later = (t: string) => !isToday || Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5)) >= cutoff;
+    const later = (t: string) => stillOpen(k, t);
     if (live) return (liveDays.get(k) || []).filter((c) => later(c.time)).sort((a, b) => a.time.localeCompare(b.time));
     return (openMap ? openMap.get(k) || [] : SLOT_TIMES).filter(later).map((t) => ({ time: t, label: fmtTime(t) }));
   };

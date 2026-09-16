@@ -11,7 +11,7 @@ import { DAYS, fmtDate, fmtReviews, fmtTime, money, priceWith } from "../../lib/
 import { srcSet, thumb } from "../../lib/images";
 import { embedAutoplay, isGif, listingMedia, photoCandidates, probePhotos, type Media } from "../../lib/media";
 import { cleanDesc, durationLabel, freeCancel, minAge } from "../../lib/listingDerive";
-import { clockIn, itemOpenState, itemWeek, zoneFor } from "../../lib/openNow";
+import { bookableStart, clockIn, itemOpenState, itemWeek, zoneFor } from "../../lib/openNow";
 import { DAY_SHORT, clock12, dayLabel, todaysDeals } from "../../lib/companyAgent";
 import { fmtDistance, kmBetween, nearestLocation } from "../../lib/places";
 import { addonPrice, hasPrice, priceUnclaimed, serviceFeeLabel } from "../../lib/pricing";
@@ -1098,21 +1098,20 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
     };
   }, [item.id, picked?.name, qty, openTick]);
 
-  // Today only shows start times at least an hour out. Nobody can book a 7 AM slot at 8:30.
+  // Today only shows start times at least an hour out. Nobody can book a 7 AM slot at 8:30. "Today" and "an
+  // hour out" are both read on the shop's clock, because the times themselves are its wall clock times.
   const chipsFor = useMemo(() => {
-    const todayKey = dateKey(dates[0]);
-    const now = new Date();
-    const cutoff = now.getHours() * 60 + now.getMinutes() + 60;
+    const stillOpen = bookableStart(item);
     const listed = picked?.price != null ? picked.price : undefined;
     return (d: Date) => {
       const k = dateKey(d);
       const fromLive = liveDays.get(k);
-      if (live) return (fromLive || []).filter((c) => k !== todayKey || Number(c.time.slice(0, 2)) * 60 + Number(c.time.slice(3)) >= cutoff).slice().sort((a, b) => a.time.localeCompare(b.time));
+      if (live) return (fromLive || []).filter((c) => stillOpen(k, c.time)).slice().sort((a, b) => a.time.localeCompare(b.time));
       const base = openMap ? openMap.get(k) || [] : SLOT_TIMES;
-      return base.filter((t) => k !== todayKey || Number(t.slice(0, 2)) * 60 + Number(t.slice(3)) >= cutoff)
+      return base.filter((t) => stillOpen(k, t))
         .map((t) => ({ key: t, time: t, label: fmtTime(t), price: listed }));
     };
-  }, [live, liveDays, dates, picked?.price, openMap]);
+  }, [live, liveDays, item, picked?.price, openMap]);
   const openSlots = useMemo(() => chipsFor(day).map((c) => c.time), [chipsFor, day]);
   useEffect(() => { if (time && !openSlots.includes(time)) setTime(null); }, [openSlots, time]);
   // Land the guest on a day that actually has departures rather than an empty one.
