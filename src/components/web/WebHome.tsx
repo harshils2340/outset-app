@@ -1283,24 +1283,27 @@ export function WebHome({ onOpenApp, onOperators }: { onOpenApp: () => void; onO
   }
   const rows = seg === "what" ? whatRows : whereRows;
 
+  /**
+   * The Where rows the modal actually draws. Untyped it shows a shortlist, so the arrows have to walk that and
+   * not the whole list: pressing down past the eighth row moved a highlight nobody could see.
+   */
+  const whereShown = wt ? whereRows : whereRows.slice(0, 8);
+
   const moveHit = (e: React.KeyboardEvent<HTMLInputElement>, s: "where" | "what") => {
-    if (e.key === "ArrowDown") {
-      e.preventDefault();
-      if (seg !== s) openSeg(s);
-      setHit((i) => Math.min(rows.length - 1, i + 1));
-      return true;
-    }
-    if (e.key === "ArrowUp") {
-      e.preventDefault();
-      setHit((i) => Math.max(-1, i - 1));
-      return true;
-    }
-    return false;
+    if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return false;
+    e.preventDefault();
+    const list = s === "what" ? whatRows : whereShown;
+    // Opening a segment starts the highlight over, so it may only happen when that segment is not open yet.
+    // Where is a modal and is already open around its own input; What reopened itself on every press, which
+    // reset the highlight to nothing and put it straight back on the first row, so holding the key went nowhere.
+    if (s === "what" && seg !== "what") openSeg("what");
+    setHit((i) => (e.key === "ArrowDown" ? Math.min(list.length - 1, i + 1) : Math.max(-1, i - 1)));
+    return true;
   };
   const onWhereKey = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (moveHit(e, "where") || e.key !== "Enter") return;
     e.preventDefault();
-    if (seg === "where" && hit >= 0 && rows[hit]) rows[hit].pick();
+    if (hit >= 0 && whereShown[hit]) whereShown[hit].pick();
     // Enter on a typed place picks it: the city, else the state the region match found, else the first place.
     else if (whereMetro) pickMetro(whereMetro.metro.id);
     else if (whereRegions.length) whereRows.find((r) => r.key === "r" + whereRegions[0].code)?.pick();
@@ -1700,6 +1703,10 @@ export function WebHome({ onOpenApp, onOperators }: { onOpenApp: () => void; onO
                       spellCheck={false}
                       placeholder={placeName || "Search destinations"}
                       aria-label="Where"
+                      role="combobox"
+                      aria-expanded={whereShown.length > 0}
+                      aria-controls="ah-where-list"
+                      aria-activedescendant={hit >= 0 && whereShown[hit] ? "ah-wrow-" + hit : undefined}
                       onChange={(e) => { setWhereText(e.target.value); setHit(-1); }}
                       onKeyDown={onWhereKey}
                     />
@@ -1709,12 +1716,13 @@ export function WebHome({ onOpenApp, onOperators }: { onOpenApp: () => void; onO
                   </label>
                   {locateNote ? <p className="ah-pop-note">{locateNote}</p> : null}
                   {wt && !whereRows.length ? <p className="ah-pop-note">Keep typing, or try a bigger town nearby.</p> : null}
-                  <div className="ah-rgrid" role="listbox" aria-label="Places">
-                    {(wt ? whereRows : whereRows.slice(0, 8)).map((r, i) => (
+                  <div className="ah-rgrid" id="ah-where-list" role="listbox" aria-label="Places">
+                    {whereShown.map((r, i) => (
                       <Fragment key={r.key}>
                         {r.head ? <p className="ah-pop-head">{r.head}</p> : null}
                         <button
                           type="button"
+                          id={"ah-wrow-" + i}
                           role="option"
                           aria-selected={hit === i || !!r.on}
                           className={"ah-pop-row" + (hit === i ? " hit" : "") + (r.on ? " on" : "")}
