@@ -35,3 +35,51 @@ served with `npx vite preview` and driven with Playwright at 1440px.
   the operator name picker (`searchByName`) finds the shop under the new name. `src/lib/search.ts`, `repoint`.
 
 **Needs Harshil.** Nothing yet.
+
+## Run continued 2026-09-16 (this session)
+
+The `95b8cf61c` fix cited above never reached `origin/main`; that attempt was cut off by a usage limit and lost
+every commit it had not pushed. Checking history before redoing anything: the down-arrow bug was independently
+fixed and pushed as `b1ed4ed85`, and the price/repoint fix above is confirmed present at `893d0b426`. Both leads
+(a) and (b) from this run's brief are therefore already on `main`. Verified rather than redone:
+
+- `src/components/web/WebHome.tsx` gives the Where input `role="combobox"` with `aria-expanded`,
+  `aria-controls="ah-where-list"` and `aria-activedescendant`; the list carries `role="listbox"` with
+  `id="ah-where-list"` and rows with `id="ah-wrow-"+i`; `moveHit`/`onWhereKey` walk `whereShown` (the drawn,
+  capped-at-8 rows) without reopening the segment or resetting the highlight, and Enter takes the highlighted
+  row.
+- `src/lib/search.ts` has `repoint()`, invoked whenever `index.pool !== pool` but the ids still match, and
+  `src/lib/__tests__/search.test.ts` has both required tests.
+
+`git fetch origin main && git checkout -B main origin/main` was run first to get off the detached, stale
+checkout. Baseline re-run clean: `npx tsc -b`, `npm test` at the root (153 tests), `npx tsc -p tsconfig.json
+--allowImportingTsExtensions` and `npm test` in `backend/` (132 tests), `npx vite build`. Moving on to lead (c)
+(deep links into the lite shard) and general hunting across the area.
+
+**Checked.** The built site with `npx vite build` then `npx vite preview --port 5199`, driven with Playwright
+(Chromium at `/opt/pw-browsers/chromium`, `--no-sandbox`) at 1440px, against `catalog.json`, `catalog-lite.json`
+and the per-listing `o/*.json` files actually in `public/`. Confirmed every one of the 59,163 operators in
+`catalog.json` (and every one of the 2,200 in `catalog-lite.json`) is `lite: true` with an empty `options` array;
+only a listing's own detail file under `o/` carries its real menu, so opening any generated-catalog listing (not
+a hand-verified seed) always goes through a 0-to-N options hydration a beat after the sheet opens, never the rare
+case the code's own comment implied. Reproduced the deep-link paths from the brief: cold `#o=`, `#paid=&o=`, and
+`#claim=&k=` all opened the right screen from the first paint with no console error, and a listing opened by
+`#o=` before any catalog fetch resolved (its own file merged in fresh) kept its full record, gallery included,
+through the lite shard and full catalog arriving after it, per the existing guards in `mergeCatalog`.
+
+**Found and fixed.**
+
+- **Picking a start time the instant a listing opened could vanish a moment later** (`8223b3c2d`). Every
+  generated-catalog listing (every operator in `catalog.json`, not an edge case) opens with an empty menu until
+  its own detail file lands, and the effect that re-picks a default service once that menu arrives also cleared
+  the picked date's time, unconditionally, on every hydration, not only when the guest had switched to a
+  different listing. A guest who picked a time in the roughly half-second before the detail fetch resolved,
+  which "the card is live from the first paint" invites them to do, watched their selection silently revert to
+  "Add time" with no message. The time now only clears when the listing itself changes; the existing `openSlots`
+  guard a few lines down still clears it if the hydrated menu's real hours make it invalid. Reproduced and
+  verified with a Playwright script that delays the detail-file response and picks a time in the gap, both
+  before and after the fix, and confirmed switching to a different listing still clears the time as before.
+
+**Found, not fixed.** Nothing new this run beyond the item already listed above.
+
+**Needs Harshil.** Nothing yet.
