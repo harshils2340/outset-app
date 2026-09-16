@@ -1,14 +1,38 @@
 import { inCat } from "../../data/categories";
 import { ALL_METRO_ID } from "../../data/metros";
+import { regionOfArea } from "../../data/regions";
 import type { CategoryId, Unclaimed } from "../../data/types";
 import { fromPrice } from "../../lib/catalog";
 import { dealToday } from "../../lib/companyAgent";
 import { WHAT_INTENTS, describeQuery, searchSuggest } from "../../lib/search";
-import { kmBetween, type Place } from "../../lib/places";
+import { nearestLocation, type Place } from "../../lib/places";
 import { passesFilters, type FeedFilters } from "./prefs";
 
 /** An hour of driving. Wide enough that a small town still has something, tight enough to feel local. */
 export const NEAR_RADIUS_KM = 80;
+
+/**
+ * Is this listing at the place the guest picked? A picked state or province holds every listing in it; a
+ * picked point holds whatever is within the radius, measured to the nearest of a chain's venues rather than
+ * to whichever one the catalog happens to lead with.
+ *
+ * The desktop home had this and the phone feed had a plain radius from the primary pin, so the two disagreed
+ * for the same guest in the same session: a picked province gave the desktop all 224 of Saskatchewan and the
+ * phone the 8 within an hour of the middle of it, each card reading "SK, 16 km away".
+ */
+export function atPlace(u: Unclaimed, near: Place): boolean {
+  if (near.region) return regionOfArea(u.area) === near.region;
+  return kmToPlace(u, near) <= NEAR_RADIUS_KM;
+}
+
+/** How far the guest is from this listing's nearest venue. Infinity when it has no pin at all. */
+export function kmToPlace(u: Unclaimed, near: Place): number {
+  return nearestLocation(u, near)?.km ?? Infinity;
+}
+
+/** Nearest first, but only for a picked point: a distance from the middle of a whole state is not an order. */
+const byDistance = (list: Unclaimed[], near: Place): Unclaimed[] =>
+  near.region ? list : list.sort((a, b) => kmToPlace(a, near) - kmToPlace(b, near));
 
 /**
  * The catalog arrives grouped by category, so the All tab would open on a wall of one kind of thing. Deal the
@@ -35,11 +59,7 @@ function interleave(list: Unclaimed[]): Unclaimed[] {
  */
 export function browseList(catalog: Unclaimed[], cat: CategoryId, metroId: string, near: Place | null): Unclaimed[] {
   const inThisCat = (u: Unclaimed) => inCat(u, cat) && !!u.cover;
-  if (near) {
-    return catalog
-      .filter((u) => u.lat != null && u.lon != null && inThisCat(u) && kmBetween(near, { lat: u.lat, lon: u.lon }) <= NEAR_RADIUS_KM)
-      .sort((a, b) => kmBetween(near, { lat: a.lat!, lon: a.lon! }) - kmBetween(near, { lat: b.lat!, lon: b.lon! }));
-  }
+  if (near) return byDistance(catalog.filter((u) => inThisCat(u) && atPlace(u, near)), near);
   const rows = catalog.filter((u) => (metroId === ALL_METRO_ID || u.metroId === metroId) && inThisCat(u));
   return cat === "all" ? interleave(rows) : rows;
 }
@@ -50,9 +70,7 @@ export function browseList(catalog: Unclaimed[], cat: CategoryId, metroId: strin
  */
 export function nearFirst(list: Unclaimed[], near: Place | null): Unclaimed[] {
   if (!near) return list;
-  const close = list
-    .filter((u) => u.lat != null && u.lon != null && kmBetween(near, { lat: u.lat, lon: u.lon }) <= NEAR_RADIUS_KM)
-    .sort((a, b) => kmBetween(near, { lat: a.lat!, lon: a.lon! }) - kmBetween(near, { lat: b.lat!, lon: b.lon! }));
+  const close = byDistance(list.filter((u) => atPlace(u, near)), near);
   return close.length ? close : list;
 }
 

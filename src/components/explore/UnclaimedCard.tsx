@@ -5,7 +5,7 @@ import type { Unclaimed } from "../../data/types";
 import { cardPlace, fromPrice, perPerson, publicRating } from "../../lib/catalog";
 import { dealToday } from "../../lib/companyAgent";
 import { money } from "../../lib/format";
-import { fmtDistance, kmBetween } from "../../lib/places";
+import { fmtDistance, nearestLocation } from "../../lib/places";
 import { useApp } from "../../state/AppProvider";
 import { Photo } from "../art/Photo";
 import { IcHeartOnPhoto, IcStar } from "./AirIcons";
@@ -44,7 +44,9 @@ export function UnclaimedCard({ item }: { item: Unclaimed; compact?: boolean }) 
   const isSaved = saved.includes(item.id);
 
   const place = cardPlace(item.area, metro?.name);
-  const km = state.near && item.lat != null && item.lon != null ? kmBetween(state.near, { lat: item.lat, lon: item.lon }) : null;
+  // A distance from the middle of a whole state means nothing to a guest, so a picked state shows none. A
+  // picked point measures to the nearest of a chain's venues, the way the desktop card does.
+  const km = state.near && !state.near.region ? nearestLocation(item, state.near)?.km ?? null : null;
   const detail = [kind, item.dur ? tidyDuration(item.dur) : null, item.fc ? "Free cancellation" : null].filter(Boolean).join(" · ");
   const unit = item.options.find((o) => o.price === from);
   const per = from != null && (!unit || perPerson(unit)) ? " / person" : "";

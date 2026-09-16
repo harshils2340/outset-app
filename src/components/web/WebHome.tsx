@@ -13,13 +13,13 @@ import { loadListing } from "../../lib/catalogLoad";
 import { dealToday } from "../../lib/companyAgent";
 import { itemOpenState } from "../../lib/openNow";
 import { currentLocation, fmtDistance, kmBetween, nearestLocation, searchPlaces, type Place } from "../../lib/places";
-import { regionOfArea } from "../../data/regions";
 import { useApp } from "../../state/AppProvider";
 import { Photo } from "../art/Photo";
 import { useNearNow } from "./NearNow";
 import { Mark } from "../layout/Mark";
 import { Markup } from "../Markup";
 import { AdminSiteLink, liteDealTitle, tidyDuration } from "./WebListing";
+import { atPlace } from "../explore/feed";
 
 
 /** "1 place", "2,418 places". */
@@ -880,9 +880,9 @@ export function WebHome({ onOpenApp, onOperators }: { onOpenApp: () => void; onO
   const world = WORLDS.find((w) => w.id === worldOf(state.cat))!;
   const kindChip = artChip && world.chips.find((c) => c.art === artChip) ? artChip : null;
   const chipOk = (u: Unclaimed) => !kindChip || u.art === kindChip;
-  const RADIUS_KM = 80;
-  // A picked state holds every listing in it; a picked point holds what is within the radius.
-  const inNear = (u: Unclaimed, p: Place) => (p.region ? regionOfArea(u.area) === p.region : (nearestLocation(u, p)?.km ?? Infinity) <= RADIUS_KM);
+  // A picked state holds every listing in it; a picked point holds what is within the radius. Shared with the
+  // phone feed in `explore/feed.ts`, because the two used to disagree for the same guest in the same session.
+  const inNear = atPlace;
   const pillRef = useRef<HTMLDivElement>(null);
   const whereInput = useRef<HTMLInputElement>(null);
   const whatInput = useRef<HTMLInputElement>(null);
