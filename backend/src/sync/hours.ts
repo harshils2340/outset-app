@@ -52,6 +52,59 @@ function mins(h: number, m: number, ap: string | undefined, afternoonHint: boole
   return hh * 60 + m;
 }
 
+/**
+ * A crawled hours line often carries the shop's own phone number glued on to it with no space between:
+ * "(512) 436-3505Office Hours: 9am-6pm". Read left to right, "436-3505" is a perfectly good time range, so
+ * the office hours behind it were never reached. That boat rental opened at 36:00 and closed at 47:00, which
+ * a guest read as "Closed, opens 12 PM" at every hour of every day, and a balloon ride whose line was
+ * ")Telephone505-293-6800 (7am to 9pm" took "05-293" and said it was open from 5 AM until 5 AM. Glued on,
+ * the number hides the day as well: "3132Tuesday" has no word boundary in front of Tuesday.
+ */
+const PHONE_RE = /(?:\+?1[\s.\-–]*)?(?:\(\d{3}\)\s*|\d{3}[\s.\-–]+)\d{3}[\s.\-–]*\d{4}/g;
+const TIME_SCAN = new RegExp(TIME_RE.source, "gi");
+
+/**
+ * An hour and minute a clock could show. 26, 36 and 52 turn up when digits from a date or a phone number are
+ * read as a time. A marked hour stops at 23 rather than 24, because nobody writes midnight as "24am" but a
+ * date can end in one: "4/14/2411am-1pm" offered "24am" before it offered the eleven o'clock behind it.
+ */
+function onTheClock(h: string | undefined, m: string | undefined, ap: string | undefined): boolean {
+  return Number(h) <= (ap ? 23 : 24) && Number(m || 0) <= 59;
+}
+
+/**
+ * The three ways a real shop writes a time that the hour and minute pattern cannot read, so the minutes get
+ * left behind and the hour joins whatever number came before it: seconds on the clock ("9:30:00 AM"), a dot
+ * for the colon ("6.30 am", "7.30am to 6pm"), and no separator at all ("Sun930am-11pm", "330pm-8pm").
+ */
+function normalizeClock(line: string): string {
+  return line
+    .replace(/(\d{1,2}:[0-5]\d):[0-5]\d/g, "$1")
+    .replace(/\b(\d{1,2})\.([0-5]\d)(?=\s*(?:[ap]\.?m\.?\b|[-–—]|\s+to\b))/gi, "$1:$2")
+    // No space before the marker is what says the digits are one token: "1130am" is half past eleven, while
+    // "October 317 am" is the thirty-first and seven o'clock.
+    .replace(/\b(\d{1,2})([0-5]\d)([ap]\.?m\.?)\b/gi, "$1:$2 $3");
+}
+
+/**
+ * The first range on the line that could be opening hours, in minutes since midnight. A candidate no clock
+ * could show, or one that spans less than half an hour or more than a day, is stepped over rather than taken,
+ * so "Open House November 7, 2026 - 10:00 AM - 5:00 PM" gives up the 10 to 5 behind the date instead of
+ * opening at 26 o'clock.
+ */
+export function firstSpan(line: string): [number, number] | null {
+  for (const t of normalizeClock(line).matchAll(TIME_SCAN)) {
+    if (!onTheClock(t[1], t[2], t[3]) || !onTheClock(t[4], t[5], t[6])) continue;
+    const open = mins(Number(t[1]), Number(t[2] || 0), t[3], false);
+    let close = mins(Number(t[4]), Number(t[5] || 0), t[6], true);
+    if (!t[6] && !t[3] && close <= open) close += 12 * 60;
+    if (close <= open) close += 24 * 60;
+    if (close - open < 30 || close - open > 24 * 60) continue;
+    return [open, close];
+  }
+  return null;
+}
+
 export type WeekEnc = ([number, number] | null)[];
 
 /** OpenStreetMap opening_hours ("Tu-Fr 16:00-21:00; Sa 10:00-22:00; Su off; PH 10:00-21:00") to plain lines the day parser reads. */
@@ -80,10 +133,12 @@ export function encodeWeek(input: string[]): WeekEnc | null {
   const week: WeekEnc = [null, null, null, null, null, null, null];
   let any = false;
   for (const raw of lines) {
-    const line = raw.replace(/\s+/g, " ").trim();
+    // The phone number goes before anything is read off the line, not just before the time: glued on with no
+    // space it also hides the day, so "3132Tuesday - Friday" left a theatre open on Friday alone.
+    const line = raw.replace(/\s+/g, " ").replace(PHONE_RE, " ").trim();
     if (!line) continue;
     const closed = /\bclosed\b/i.test(line);
-    const t = TIME_RE.exec(line);
+    const span = firstSpan(line);
     let days: number[] | null = null;
     for (const [re, d] of DAY_RE) {
       if (re.test(line)) {
@@ -93,19 +148,14 @@ export function encodeWeek(input: string[]): WeekEnc | null {
     }
     // Specific phrases first (weekdays, daily); otherwise any explicit day range or list on the line.
     if (!days || days.length === 1) days = genericDays(line) || days;
-    if (!days && t) days = [0, 1, 2, 3, 4, 5, 6];
+    if (!days && span) days = [0, 1, 2, 3, 4, 5, 6];
     if (!days) continue;
     for (const d of days) {
-      if (closed && !t) {
+      if (closed && !span) {
         week[d] = [0, 0];
         any = true;
-      } else if (t) {
-        const open = mins(Number(t[1]), Number(t[2] || 0), t[3], false);
-        let close = mins(Number(t[4]), Number(t[5] || 0), t[6], true);
-        if (!t[6] && !t[3] && close <= open) close += 12 * 60;
-        if (close <= open) close += 24 * 60;
-        if (close - open < 30 || close - open > 24 * 60) continue;
-        week[d] = [open, close];
+      } else if (span) {
+        week[d] = [span[0], span[1]];
         any = true;
       }
     }
