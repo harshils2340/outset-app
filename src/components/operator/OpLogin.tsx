@@ -140,6 +140,10 @@ export function OpLogin({ claimId, claimToken, compact, onEnter, onBack }: { cla
     return () => { alive = false; };
   }, [claimToken, claimId]);
   const mine = useMemo(() => Array.from(new Set(claimedIds())).map((id) => ({ id, p: loadProfile(id), u: experienceById(id) })).filter((x) => x.p && x.u && !(x.p.ownerEmail === "owner@example.com" && x.p.ownerName === "Demo owner")), [app.catalogVersion]);
+  /* Each row needs the catalog record behind the claim, and the catalog is fetched after the first paint. Until
+     it lands none of them resolve, so an owner who reloaded the dashboard was shown the claim screen with no
+     sign of the business they already own, which reads as having been signed out. Say the list is coming. */
+  const mineLoading = useMemo(() => !mine.length && claimedIds().length > 0 && !app.catalogComplete, [mine.length, app.catalogComplete, app.catalogVersion]);
   const demoCode = useMemo(() => String(100000 + Math.floor(Math.random() * 900000)), []);
   const [sending, setSending] = useState(false);
   const [signinEmail, setSigninEmail] = useState("");
@@ -412,6 +416,13 @@ export function OpLogin({ claimId, claimToken, compact, onEnter, onBack }: { cla
               </div>
             ) : q.trim().length >= 2 && dq === q ? (
               <p className="odmuted">No match yet. We add operators every day. Try another spelling or the name on your website.</p>
+            ) : null}
+
+            {mineLoading ? (
+              <div className="odmine">
+                <h3>Signed in on this device</h3>
+                <p className="odmuted">Looking up {claimedIds().length === 1 ? "your business" : "your businesses"}…</p>
+              </div>
             ) : null}
 
             {mine.length ? (

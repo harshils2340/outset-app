@@ -6,6 +6,7 @@ import { JUMP_PAGE, allBookings, applyStoredProfiles, demoProfile, hydrateProfil
 import { useApp } from "../../state/AppProvider";
 import { decideBooking, fetchBookings, hasApi, signOutApi, takeClaimNotice, type RemoteBooking } from "../../lib/api";
 import { Markup } from "../Markup";
+import { Mark } from "../layout/Mark";
 import { OpAssistant } from "./OpAssistant";
 import { OpBookings, BookingDrawer } from "./OpBookings";
 import { OpCalendar } from "./OpCalendar";
@@ -278,6 +279,35 @@ export function OperatorView({ compact = false }: { compact?: boolean }) {
     setOpenedId(null);
     setWantLogin(true);
   };
+
+  /* A signed-in owner whose catalog record has not arrived yet.
+     `u` is the listing behind the profile, looked up in a catalog that is fetched after the first paint: 23 MB
+     of it, and the dashboard needs it for the cover, the area and the guest preview. Until it lands `u` is null,
+     and this screen used to fall straight through to OpLogin, so an owner with a valid session and their own
+     saved profile opened the dashboard and was shown the sales pitch and a "Claim your business" search box.
+     They are signed in; say so and wait. Once the catalog is complete and the record is genuinely not there,
+     the claim screen is the right answer again. */
+  if (!wantLogin && p && !u && !state.catalogComplete) {
+    return (
+      <div className={"odlogin" + (compact ? " compact" : "")}>
+        <div className="odlogin-side">
+          <button type="button" className="odlogin-brand" onClick={back}>
+            <Mark size={30} />
+            <b>Outset</b>
+            <span>for operators</span>
+          </button>
+          <h1>Opening {p.title}</h1>
+          <p>You are signed in. One moment while we load your listing.</p>
+        </div>
+        <div className="odlogin-card">
+          {/* .odspin is sized, so it needs to be a box: in a plain run of text it collapses to a sliver. */}
+          <p className="odmuted" role="status" style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <span className="odspin" aria-hidden="true" /> Loading your dashboard…
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   if (!p || !u || wantLogin) {
     return (
