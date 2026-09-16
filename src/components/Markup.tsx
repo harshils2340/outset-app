@@ -1,3 +1,5 @@
+import { sanitizeSvg } from "../lib/sanitizeSvg";
+
 export function Markup({
   html,
   className,
@@ -7,5 +9,5 @@ export function Markup({
   className?: string;
   as?: "span" | "div";
 }) {
-  return <Tag className={className} dangerouslySetInnerHTML={{ __html: html }} />;
+  return <Tag className={className} dangerouslySetInnerHTML={{ __html: sanitizeSvg(html) }} />;
 }

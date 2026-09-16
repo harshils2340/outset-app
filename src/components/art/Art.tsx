@@ -1,4 +1,5 @@
 import { sceneInner } from "../../data/art";
+import { sanitizeSvg } from "../../lib/sanitizeSvg";
 
 export function Art({ kind, id }: { kind: string; id: string }) {
   const inner = sceneInner(kind, id);
@@ -9,7 +10,7 @@ export function Art({ kind, id }: { kind: string; id: string }) {
       preserveAspectRatio="xMidYMid slice"
       style={{ display: "block", width: "100%", height: "100%" }}
       aria-hidden="true"
-      dangerouslySetInnerHTML={{ __html: inner }}
+      dangerouslySetInnerHTML={{ __html: sanitizeSvg(inner) }}
     />
   );
 }
