@@ -336,8 +336,12 @@ export function toCatalogItem(r: CatalogRow): Record<string, unknown> {
     .map((o) => ({ ...o, price_unit: fixUnit(o) }));
   const title = cleanTitle(decodeEntities(r.name), { city: r.city, region: r.region, legalName: r.legal_name });
   const keysWithOwnBranch = new Set(rawFacts.filter((f) => trusted(f.source_url) && !offCity(f.source_url)).map((f) => f.fact_key));
+  // Once one of the page's own words is gambling spam, the whole page was hacked: a cover with no spam word in its
+  // own address (a plain "banner.jpg" on a throwaway host) is just as much the hack's as the sentence is.
+  const spamCompromised = rawFacts.some((f) => TEXT_KEYS.test(f.fact_key) && SPAM_LINE.test(f.fact_value));
   const facts = rawFacts.filter((f) => {
-    if (/^(photo|cover|video|video_embed|yt_video|tiktok_profile|social:)/.test(f.fact_key)) return true;
+    if (SPAM_LINE.test(f.fact_value)) return false;
+    if (/^(photo|cover|video|video_embed|yt_video|tiktok_profile|social:)/.test(f.fact_key)) return !spamCompromised;
     if (!trusted(f.source_url)) return false;
     if (offCity(f.source_url) && keysWithOwnBranch.has(f.fact_key)) return false;
     if (TEXT_KEYS.test(f.fact_key)) {
@@ -692,6 +696,13 @@ const TEXT_KEYS = /^(requirement|policy|bring|meeting_point|group|includes|spec|
 const GAP_LINE = /\b(not (stated|specified|mentioned|listed|published|provided|available on)|no specific .* (stated|listed|mentioned)|^not stated$|no information (available|provided))\b/i;
 const JUNK_LINE = /\b(call|contact|phone|email)( us)? (for|to)\b|\bsee (the |our )?faq|\bclick here|\bprint and color|\bsubscribe|\bnewsletter|\bfollow us|\bcookie|\bprivacy policy|\bterms (of|and) (service|use|conditions)|all rights reserved|©|\bcopyright\b|\bconsent to (the use|cookies|tracking)|\benable javascript|\bjavascript\b|\baccept all\b|\bopt[- ]?out\b|\bpowered by\b|\bwebsite by\b|\bskip to (main )?content|\btoggle (menu|navigation)/i;
 const RETAIL_LINE = /\b(restocking|rma\b|return shipping|return merchandise|free shipping|ships? within|shipping (cost|rate|polic)|in-?store pickup|wholesale)\b/i;
+/**
+ * A hacked WordPress page: gambling SEO spam injected into the description an operator never wrote. 97 published
+ * listings carried it as their blurb, a museum's or a golf course's cover photo a "slot gacor" banner from a
+ * throwaway domain. "Book your slot online" is a real sentence a booking page writes, so a bare "slot" plus
+ * "online" is not enough; every phrase here is a betting term on its own.
+ */
+export const SPAM_LINE = /\b(slot\s?(?:gacor|777|88|demo|jackpot)|situs\s+(?:slot|judi)|judi\s+(?:online|slot|bola)|togel|maxwin|rtp\s?(?:live|slot)|bandar\s?(?:slot|judi|togel)|agen\s?(?:slot|judi)|link\s?slot|jackpot\s?slot|deposit\s?(?:pulsa|dana|ovo|gopay|qris)|pg\s?soft|pragmatic\s?play)\b/i;
 const STALE_LINE = /\b20(1\d|2[0-5])\b|\bcovid|\bcoronavirus|\bpandemic/i;
 /** Menu headings a taproom or restaurant page lists with a starting price. */
 const MENU_CATEGORY = /^(?:food|foods|beer|beers|drafts?|draught|on tap|wine|wines|cocktails?|drinks?|beverages?|snacks?|appetizers?|starters?|small plates|shareables?|entrees?|mains?|desserts?|sides?|salads?|sandwiches?|burgers?|pizzas?|tacos?|brunch|lunch|dinner|breakfast|coffee|tea|kids menu|happy hour|cans?|bottles?|growlers?|crowlers?|flights?|pints?|merch|retail)$/i;
