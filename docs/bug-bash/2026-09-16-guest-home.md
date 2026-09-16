@@ -69,7 +69,7 @@ through the lite shard and full catalog arriving after it, per the existing guar
 
 **Found and fixed.**
 
-- **Picking a start time the instant a listing opened could vanish a moment later** (`8223b3c2d`). Every
+- **Picking a start time the instant a listing opened could vanish a moment later** (`352093485`). Every
   generated-catalog listing (every operator in `catalog.json`, not an edge case) opens with an empty menu until
   its own detail file lands, and the effect that re-picks a default service once that menu arrives also cleared
   the picked date's time, unconditionally, on every hydration, not only when the guest had switched to a
@@ -79,7 +79,19 @@ through the lite shard and full catalog arriving after it, per the existing guar
   guard a few lines down still clears it if the hydrated menu's real hours make it invalid. Reproduced and
   verified with a Playwright script that delays the detail-file response and picks a time in the gap, both
   before and after the fix, and confirmed switching to a different listing still clears the time as before.
+- **A browser window exactly 1024px wide loaded the phone frame instead of the desktop site** (`29ddd8697`).
+  `App.tsx` decided which one to render on load with `window.innerWidth > 1024`, so 1024px itself, this run's own
+  floor for "the layout from 1024px up", fell on the wrong side of it. Changed to `>= 1024`. Verified at 1023,
+  1024 and 1025px with Playwright: 1024 now renders `.web` (the desktop site) rather than `.stage` (the phone
+  frame), matching 1025 instead of 1023.
 
 **Found, not fixed.** Nothing new this run beyond the item already listed above.
+
+Also checked and found correct, not fixed because nothing was wrong: the Where, when and who modal's Escape key
+and outside-click close (both close the dialog; an earlier check with a loose CSS selector that also matched the
+always-present chip button had wrongly suggested otherwise), the Nearby button with geolocation granted (resolved
+to the guest's real coordinates and re-sorted distances correctly), the What box against a `<script>` tag (escaped
+in the DOM, no XSS, correct "nothing found" empty state), and the hover slideshow's arrow buttons (`stopPropagation`
+keeps them from opening the listing).
 
 **Needs Harshil.** Nothing yet.
