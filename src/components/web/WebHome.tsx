@@ -261,12 +261,19 @@ function Card({ u, onOpen, near, rail }: { u: Unclaimed; onOpen: (id: string) =>
   const [playing, setPlaying] = useState(false);
   const hoverTimer = useRef<number | null>(null);
   const loaded = useRef(false);
+  /**
+   * Whether the pointer is still on this card. The photos are a fetch away, and a guest running the pointer
+   * across a row leaves long before a slow connection answers: the slideshow then started on a card nobody was
+   * pointing at and played on, because the leave had already happened and nothing was left to stop it.
+   */
+  const hovering = useRef(false);
   // Set when the guest steps the photos with the arrows: the slideshow then holds that photo instead of moving on.
   const manual = useRef(false);
   const startPreview = (e: React.PointerEvent) => {
     if (e.pointerType !== "mouse" || !u.cover) return;
     if (typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
     if (hoverTimer.current) window.clearTimeout(hoverTimer.current);
+    hovering.current = true;
     hoverTimer.current = window.setTimeout(async () => {
       if (!loaded.current) {
         loaded.current = true;
@@ -274,12 +281,16 @@ function Card({ u, onOpen, near, rail }: { u: Unclaimed; onOpen: (id: string) =>
         const full = experienceById(u.id);
         if (full?.photos?.length) setMorePhotos(full.photos.slice(0, 6));
       }
+      // The photos were a fetch away and the pointer may have moved on while they arrived. They are kept, so a
+      // second hover plays at once, but a card the guest has left does not start playing behind them.
+      if (!hovering.current) return;
       setPlaying(true);
     }, 900);
   };
   const stopPreview = () => {
     if (hoverTimer.current) window.clearTimeout(hoverTimer.current);
     hoverTimer.current = null;
+    hovering.current = false;
     manual.current = false;
     setPlaying(false);
     setPic(0);
