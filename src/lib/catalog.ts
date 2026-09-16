@@ -170,6 +170,21 @@ export function hydrateItem(full: Unclaimed, targetId?: string): void {
       const v = cur[k] as unknown;
       if (v == null || v === "" || (Array.isArray(v) && v.length === 0)) (merged as Record<string, unknown>)[k] = full[k];
     }
+    /**
+     * `options` and `services` are one fact, not two. Every service variant carries an `optionIdx` that is a
+     * position in `options`, so taking the list from the seed and the variants from the crawl points those
+     * positions at a different list. Seeds carry options and never services, so the loop above did exactly
+     * that: a seed with four options got the crawl's services describing eight, and the reserve card then
+     * offered rows whose index landed on the wrong option or past the end. Clicking "2.5 hours, $220" could
+     * select nothing at all, or book a different trip than the one named on the row.
+     *
+     * So they move together. The seed's own options win when it has them, as every hand checked fact does,
+     * and the crawl's services are dropped with them rather than re-pointed; the picker then builds its rows
+     * from `options` alone, which is consistent. Only when the seed has no options do both come from the crawl.
+     */
+    const seedOptions = Array.isArray(cur.options) && cur.options.length > 0;
+    merged.options = seedOptions ? cur.options : full.options;
+    merged.services = seedOptions ? (cur.services?.length ? cur.services : undefined) : full.services;
     base[idx] = merged;
   }
   rebuild();
