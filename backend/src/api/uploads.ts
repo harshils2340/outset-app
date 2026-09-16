@@ -4,6 +4,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { Hono } from "hono";
 import { ID, mayEdit, rateLimit } from "./auth.ts";
+import { dimensionsTooLarge, stripImageMetadata } from "./imageSanitize.ts";
 
 /**
  * Operator photo uploads. The browser resizes to 1600px and sends JPEG bytes as base64; the file is committed
@@ -91,10 +92,16 @@ uploads.post("/uploads/:id", rateLimit(120, 60 * 60 * 1000), async (c) => {
   const png = bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47;
   if (!jpeg && !png) return c.json({ error: "only JPEG or PNG" }, 415);
   if (bytes.length > MAX_BYTES) return c.json({ error: "image too large; keep it under 1.8 MB" }, 413);
-  const sha = createHash("sha256").update(bytes).digest("hex").slice(0, 20);
+  // A pixel size big enough to be a decompression-style hog is not ruled out by a magic byte or a file-size
+  // cap; the browser already resizes to 1600px before sending, so anything this much bigger is not real.
+  if (dimensionsTooLarge(bytes)) return c.json({ error: "that image's dimensions look wrong; try re-saving and uploading again" }, 415);
+  // Strip EXIF/XMP (JPEG) or text/time metadata (PNG) before it rides into a public, permanent commit: a
+  // phone photo's own EXIF carries GPS coordinates the uploader never chose to publish.
+  const clean = stripImageMetadata(bytes, jpeg ? "jpeg" : "png");
+  const sha = createHash("sha256").update(clean).digest("hex").slice(0, 20);
   const rel = `uploads/${id}/${sha}.${jpeg ? "jpg" : "png"}`;
   try {
-    await storeBinary(rel, bytes, `Photo upload for ${id}`);
+    await storeBinary(rel, clean, `Photo upload for ${id}`);
   } catch (e) {
     // Every screen prints the API's own `error` straight onto the operator's toast, so this has to be written
     // for them. "GitHub write failed 401 {"message":"Bad credentials"...}" is for us, and it goes to the log.
