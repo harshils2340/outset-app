@@ -126,7 +126,8 @@ export const VENDORS: Vendor[] = [
     label: "Peek Pro",
     kind: "tours",
     match: [...host("peek.com", "peekpro.com")],
-    html: [...inHtml("peek.com", "peekpro.com"), /book\.peek\.com\/s\//i],
+    // book.peek.com/s/<key>/<code> and the same link under www.peek.com/s/.
+    html: [...inHtml("peek.com", "peekpro.com"), /(?:book|www)\.peek\.com\/s\//i],
     caps: caps({ catalog: true, availability: true }),
     note:
       "Catalog and availability PROVEN: GET https://book.peek.com/services/api/programs/<code> with 'Authorization: Key <uuid from the booking URL>' returns the program, its tickets and prices; GET https://book.peek.com/services/api/availability-dates?activity-id=..&start-date=..&end-date=..&tickets[0][ticket-id]=..&tickets[0][quantity]=1 returns priced open dates. The key is the public widget key embedded in the operator's own link, not a partner credential (src/enrich/widgets.ts readPeek, peekLowestFromAvailability). Booking needs Peek's partner API.",
@@ -136,7 +137,8 @@ export const VENDORS: Vendor[] = [
     label: "Xola",
     kind: "tours",
     match: [...host("xola.com", "xola.app")],
-    html: [...inHtml("xola.com", "xola.app"), /xola\.com\/checkout\.js/i, /data-seller=/i],
+    // checkout.xola.com/#seller/<id>, the x2-checkout.xola.app/flows/...?button=<id> flow, and the embed's data attributes.
+    html: [...inHtml("xola.com", "xola.app"), /xola\.com\/checkout\.js/i, /xola\.app\/flows\//i, /data-seller=/i, /data-button(?:-id)?=["'][a-f0-9]{24}/i],
     caps: caps({ catalog: true }),
     note:
       "Catalog PROVEN: GET https://xola.com/api/experiences?seller=<24-hex seller id>&limit=100 returns published experiences with prices, durations, photos and policies, unauthenticated (src/enrich/widgets.ts readXola). Availability NOT proven: Xola documents /api/experiences/<id>/availability but we have not confirmed it answers without an API key — probe it. Booking is partner-only.",
@@ -154,8 +156,9 @@ export const VENDORS: Vendor[] = [
     id: "checkfront",
     label: "Checkfront",
     kind: "tours",
-    match: [...host("checkfront.com")],
-    html: [...inHtml("checkfront.com"), /checkfront\.com\/lib\/js/i],
+    // <account>.checkfront.com and the newer <account>.checkfront.site storefront.
+    match: [...host("checkfront.com", "checkfront.site")],
+    html: [...inHtml("checkfront.com", "checkfront.site"), /checkfront\.(?:com|site)\/lib\/js/i],
     caps: caps({ partner: true }),
     note: "Checkfront's API lives at https://<account>.checkfront.com/api/3.0/item and /item/<id>/cal, but it requires an API token created inside the operator's own account. Nothing public.",
   },
@@ -218,7 +221,7 @@ export const VENDORS: Vendor[] = [
     label: "Bookeo",
     kind: "tours",
     match: [...host("bookeo.com")],
-    html: [...inHtml("bookeo.com"), /bookeo\.com\/bookeo\/b_[a-z0-9_]+_widget/i],
+    html: [...inHtml("bookeo.com"), /bookeo\.com\/bookeo\/b_[a-z0-9_]+_widget/i, /bookeo\.com\/widget\.js\?a=/i],
     caps: caps({ partner: true }),
     note: "Bookeo's API (https://api.bookeo.com/v2/) needs both an apiKey and a per-account secretKey. The bookeo.com/<account> page is a JS widget.",
   },
