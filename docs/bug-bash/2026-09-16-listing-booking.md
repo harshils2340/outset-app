@@ -1,0 +1,49 @@
+# Bug bash, 16 September 2026: the listing page and the booking flow
+
+One of six areas run in parallel. This one is `src/components/web/WebListing.tsx` and
+`src/styles/air-listing.css`, `src/components/web/WebConfirm.tsx`, the booking box and its date and time
+picker, `src/lib/pricing.ts`, `src/lib/inventory.ts`, `src/lib/openNow.ts`, `src/lib/listingDerive.ts`, the
+checkout hand-off and the return from Stripe, the phone-frame version of the same flow
+(`src/components/booking/Sheets.tsx`), and the emails a booking sends.
+
+**Checked.** `npm ci` at the root and in `backend/`, then the full baseline before any change and again after
+every commit: `npx tsc -b` and `npm test` at the root (145 tests green at the start, 147 after), `npx tsc -p
+tsconfig.json --allowImportingTsExtensions` and `npm test` in `backend/` (121 green), and `npx vite build`.
+`AGENTS.md` at the root and the nested ones under `src/`, `src/components/`, `src/components/booking/`,
+`src/components/listing/`, `src/lib/`, `src/state/` and `src/styles/`, and all fourteen runs in
+`docs/BUG-BASH.md` so nothing here is a redo.
+
+**Found and fixed.**
+
+- **A guest in another timezone lost the shop's remaining start times** (`96c6f836f`, landed by the run that
+  was cut off). The date picker's today cutoff read the shop's clock instead of the browser's, in
+  `bookableStart` and `dayKeyIn` in `src/lib/openNow.ts`.
+- **Picking a smaller service showed every date as fully booked** (`085500b74`, same run). The party size now
+  clamps to the picked service's capacity.
+- **A guest was promised an answer "usually within the day"** (`46ce4e563`). Both confirmation screens
+  (`WebConfirm.tsx`, `booking/ConfirmView.tsx`) and the request email (`backend/src/api/bookingMail.ts`) told
+  the guest the business "confirms by email, usually within the day". No operator agreed to that, so a shop
+  answering on Tuesday had broken a promise Outset made on their behalf. All three now say only what we know:
+  the request is with the business, nothing is charged until they confirm, and the guest hears the moment they
+  answer.
+- **"Show up 15 minutes early" was a rule nobody published** (`dc78c718e`). It sat on the desktop
+  confirmation's step list and in both booking emails (the instant confirmation and the accepted-booking
+  email), and it is wrong for a shop that says 10 minutes, 20 minutes, or nothing. All three now print the
+  operator's own arrival line and drop the step when there is none; the numbered steps close over the gap. The
+  sign-off guard the listing page already had ("See you soon!" is a goodbye, not arrival information) is one
+  exported `arrivalNote` helper now, shared by the listing page, the phone sheet and the confirmation, and
+  mirrored on the API side against the listing's detail file and the operator's published patch.
+- **A booking for next January read as though it were this January** (`9c2d2733f`). `fmtDate` in
+  `src/lib/format.ts` printed no year, so the confirmation ticket, the Trips list, the booking box and the
+  start-times header all showed "Sat, Jan 3" for a trip booked in late December. The year is printed whenever
+  the date is outside the current year and left off otherwise, so the date strip stays short. The desktop
+  confirmation's own long date, formatted separately, follows the same rule. Two cases pinned in
+  `src/lib/__tests__/fmtDate.test.ts`.
+
+**Found, not fixed.**
+
+_(in progress)_
+
+**Needs Harshil.**
+
+_(in progress)_
