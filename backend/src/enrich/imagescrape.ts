@@ -3,6 +3,7 @@ import { fetchHtml, sleep } from "../scrape/fetch.ts";
 import { renderPage } from "../scrape/render.ts";
 import { probeImage, shapeBonus } from "./imagesize.ts";
 import { largestFromSrcset } from "./srcset.ts";
+import { publishableImage } from "../sync/imageUrl.ts";
 
 /**
  * The photo harvest itself: fetch an operator's own pages, collect real photos and videos, drop logos,
@@ -92,6 +93,8 @@ function absUrl(src: string, base: string): string | null {
   try {
     const u = new URL(src.trim(), base);
     if (!/^https?:$/.test(u.protocol)) return null;
+    // A developer's own machine and a registrar's parking banner are addresses no guest can use.
+    if (!publishableImage(u.toString())) return null;
     return u.toString();
   } catch {
     return null;
