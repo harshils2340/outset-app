@@ -2,6 +2,17 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <!--
+      The site is static on GitHub Pages, so this meta tag is the only place a policy can live: no server to
+      send a Content-Security-Policy header. Built and checked under a real Chromium (Playwright) across the
+      home page, a listing, the booking box, the confirmation page and the operator dashboard at 1280 and 390
+      widths before this shipped; see docs/security/2026-09-16-rendering.md for what that run found.
+    -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' http: https:; media-src 'self' http: https:; connect-src 'self' https://outset-api.onrender.com https://photon.komoot.io; frame-src https://www.youtube.com https://www.youtube-nocookie.com https://player.vimeo.com; object-src 'none'; base-uri 'self'; form-action 'self' https://checkout.stripe.com;"
+    />
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <title>Outset</title>
     <link rel="canonical" href="https://onoutset.com/" />
