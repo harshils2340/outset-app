@@ -4,6 +4,7 @@ import { addressLine, fmtPhone, plainWords } from "./catalog";
 import { money } from "./format";
 import { clockIn, hourLines, itemWeek, openStateAt, zoneFor, type Week } from "./openNow";
 import { venueLabel } from "./places";
+import { hasPrice } from "./pricing";
 
 /**
  * Otto: the 24/7 assistant on a catalog listing.
@@ -187,7 +188,8 @@ function families(offers: Offer[]): { name: string; offers: Offer[] }[] {
   return [...map.values()].map((group) => ({ name: group[0].family, offers: group })).sort((a, b) => Number(extra(a.name)) - Number(extra(b.name)));
 }
 
-const priceOf = (o: Offer) => (o.price == null ? "" : money(o.price) + (o.per || ""));
+// A 0 here is the crawler finding a currency sign and no number, not a free offer: see hasPrice in pricing.ts.
+const priceOf = (o: Offer) => (hasPrice(o.price) ? money(o.price) + (o.per || "") : "");
 
 /** How a guest would name this offer in a sentence. */
 function offerLabel(o: Offer): string {
@@ -574,7 +576,7 @@ const nextStep = (ctx: CompanyContext) => (ctx.contact?.phone ? "Want their numb
 const noFact = (ctx: CompanyContext, what: string) => "They haven't published " + what + ". " + nextStep(ctx);
 
 function priceAnswer(ctx: CompanyContext): { text: string; state: ChatState } {
-  const offers = offersOf(ctx).filter((o) => o.price != null);
+  const offers = offersOf(ctx).filter((o) => hasPrice(o.price));
   if (!offers.length) {
     if (ctx.item.from != null) return { text: "From " + money(ctx.item.from) + ". They haven't published the rest of the price list.", state: { topic: "price" } };
     return { text: noFact(ctx, "prices"), state: { topic: "price" } };
@@ -599,8 +601,8 @@ function priceOfAnswer(ctx: CompanyContext, q: string, prev: ChatState): { text:
     const up = /\b(longer|bigger|pricier|more expensive|next)\b/i.test(rel);
     const base = (prev.offer && offers.find((o) => o.name === prev.offer)) || fam?.offers[0];
     const measure = (o: Offer) => (byTime ? o.minutes : o.price);
-    const inFamily = fam && fam.offers.filter((o) => measure(o) != null && o.price != null).length > 1;
-    const pool = (inFamily && fam ? fam.offers : offers).filter((o) => measure(o) != null && o.price != null);
+    const inFamily = fam && fam.offers.filter((o) => measure(o) != null && hasPrice(o.price)).length > 1;
+    const pool = (inFamily && fam ? fam.offers : offers).filter((o) => measure(o) != null && hasPrice(o.price));
     const sorted = [...pool].sort((a, b) => (measure(a) as number) - (measure(b) as number));
     if (!sorted.length) return { text: byTime ? "They don't publish lengths to compare." : "They don't publish prices to compare.", state: prev };
     if (base && measure(base) == null) {
@@ -624,7 +626,7 @@ function priceOfAnswer(ctx: CompanyContext, q: string, prev: ChatState): { text:
     const general = priceAnswer(ctx).text;
     return { text: thing ? "They don't list a " + thing + ". " + (general.match(/^.*?[.!?](?=\s|$)/) || [general])[0] : general, state: { topic: "price" } };
   }
-  const withPrice = fam.offers.filter((o) => o.price != null);
+  const withPrice = fam.offers.filter((o) => hasPrice(o.price));
   if (!withPrice.length) return { text: "They list " + fam.name + " but no price for it. " + nextStep(ctx), state: { topic: "priceOf", family: fam.name } };
   const sorted = [...withPrice].sort((a, b) => (a.price as number) - (b.price as number));
   if (sorted.length === 1) {
@@ -654,7 +656,7 @@ function listAnswer(ctx: CompanyContext, q: string): { text: string; state: Chat
   const build = () => (n === 1 ? "Just one: " + fams[0].name + "." : upper1(countWord(n)) + (n <= shown ? " things: " : " options: ") + list(fams.map((f) => f.name), shown) + ".");
   while (build().length > (wantsAll ? 170 : 115) && shown > 2) shown -= 1;
   const head = build();
-  const priced = offers.filter((o) => o.price != null).sort((a, b) => (a.price as number) - (b.price as number));
+  const priced = offers.filter((o) => hasPrice(o.price)).sort((a, b) => (a.price as number) - (b.price as number));
   return { text: head + (priced.length && n > 1 ? " Prices start at " + priceOf(priced[0]) + "." : ""), state: { topic: "list", family: fams[0].name } };
 }
 
@@ -666,7 +668,7 @@ function durationAnswer(ctx: CompanyContext, q: string, prev: ChatState): { text
   const named = hit || (prev.family ? families(offers).find((f) => f.name.toLowerCase() === prev.family?.toLowerCase()) || null : null);
   const timed = (named ? named.offers : []).filter((o) => o.minutes != null);
   if (named && timed.length) return { text: named.name + " runs " + range(spread(timed)) + ".", state: { topic: "duration", family: named.name } };
-  const hourly = offers.filter((o) => o.price != null).length > 0 && offers.filter((o) => o.price != null).every((o) => /\/(hr|hour)\b|per hour|hourly/i.test((o.per || "") + " " + o.label + " " + o.name));
+  const hourly = offers.filter((o) => hasPrice(o.price)).length > 0 && offers.filter((o) => hasPrice(o.price)).every((o) => /\/(hr|hour)\b|per hour|hourly/i.test((o.per || "") + " " + o.label + " " + o.name));
   if (hourly) return { text: "It's priced by the hour, so as long as you book.", state: { topic: "duration" } };
   const all = offers.filter((o) => o.minutes != null);
   if (hit && !timed.length && all.length) return { text: "They don't list a length for " + hit.name + ". Other options run " + range(spread(all)) + ".", state: { topic: "duration", family: hit.name } };
@@ -981,7 +983,7 @@ function contactAnswer(ctx: CompanyContext): { text: string; state: ChatState } 
 function describeAnswer(ctx: CompanyContext, q: string): { text: string; state: ChatState } {
   const hit = matchOffer(offersOf(ctx), q);
   if (hit) {
-    const price = hit.price != null ? " It's " + priceOf(hit) + "." : "";
+    const price = hasPrice(hit.price) ? " It's " + priceOf(hit) + "." : "";
     if (hit.desc && /[a-z]{3}/.test(hit.desc)) return { text: sentence(clip(hit.desc, 140)) + price, state: { topic: "describe", family: hit.family, offer: hit.name } };
     const dur = hit.minutes ? " Runs " + fmtDur(hit.minutes) + "." : "";
     return { text: offerLabel(hit) + "." + (price || dur), state: { topic: "describe", family: hit.family, offer: hit.name } };
@@ -1096,7 +1098,7 @@ function chipsFor(ctx: CompanyContext, topic: Topic | undefined): string[] {
 export function companySuggestions(ctx: CompanyContext): string[] {
   const { item } = ctx;
   const out: string[] = [];
-  if (offersOf(ctx).some((o) => o.price != null) || item.from != null) out.push(CHIP.price);
+  if (offersOf(ctx).some((o) => hasPrice(o.price)) || item.from != null) out.push(CHIP.price);
   if (item.includes.length) out.push(CHIP.included);
   else if (offersOf(ctx).length) out.push(CHIP.list);
   if (weekFor(ctx) || hourLines(item).length) out.push(CHIP.open);
@@ -1143,7 +1145,7 @@ function answerOne(ctx: CompanyContext, topic: Topic, q: string, prev: ChatState
     case "priceOf": return priceOfAnswer(ctx, q, prev);
     case "fee": return { text: FEE_LINE, state: { topic: "fee" } };
     case "cheapest": {
-      const priced = offersOf(ctx).filter((o) => o.price != null).sort((a, b) => (a.price as number) - (b.price as number));
+      const priced = offersOf(ctx).filter((o) => hasPrice(o.price)).sort((a, b) => (a.price as number) - (b.price as number));
       if (!priced.length) return priceAnswer(ctx);
       const o = priced[0];
       return { text: "The " + offerLabel(o) + " at " + priceOf(o) + ".", state: { topic: "cheapest", family: o.family, offer: o.name } };
@@ -1233,7 +1235,7 @@ export function companyAnswer(ctx: CompanyContext, question: string, prev: ChatS
     const gapB = b.match(/^They haven't published (.*)\.$/);
     const subject = offersOf(ctx).find((o) => o.name === first.state.offer);
     if (gapA && gapB) text = "They haven't published " + gapA[1] + " or " + gapB[1] + ". " + nextStep(ctx);
-    else if (["price", "priceOf", "cheapest"].includes(topics[0]) && topics[1] === "duration" && subject?.minutes && subject.price != null) {
+    else if (["price", "priceOf", "cheapest"].includes(topics[0]) && topics[1] === "duration" && subject?.minutes && hasPrice(subject.price)) {
       text = (topics[0] === "price" ? "From " : "") + priceOf(subject) + (topics[0] === "price" ? " for the " + subject.name : " for " + subject.name) + ", and it runs " + fmtDur(subject.minutes) + ".";
     }
     else if (b && b !== a) text = a + " " + (first.state.family && b.startsWith(first.state.family + " ") ? "It " + b.slice(first.state.family.length + 1) : b);

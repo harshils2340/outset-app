@@ -51,6 +51,17 @@ tsconfig.json --allowImportingTsExtensions` and `npm test` in `backend/` (121 gr
   `WebConfirm.tsx`'s price line) turn out to already be gated by `p.base` / `lines`, which `priceUnclaimed`
   zeroes out for the same sentinel, so those never actually reached a guest; left alone.
 
+- **Otto could tell a guest a trip is "$0.00"** (commit pending). The same `0`-means-unknown sentinel from the
+  bullet above reaches `src/lib/companyAgent.ts`, the 24/7 assistant, which builds its `Offer` list straight
+  from `item.services` / `item.options`. Its `priceOf` helper, and every filter deciding whether an offer counts
+  as "priced" (for "From $X", "Prices start at $X", the cheapest option, "is this one priced by the hour",
+  comparing two offers by price), checked only `price != null`, so a listing with an unpriced option would have
+  Otto state a price it does not know as though the shop had published it, which is exactly what
+  `AGENTS.md` forbids for the assistant. All of them now go through `hasPrice`, imported from `pricing.ts`. Left
+  alone: the live-vendor slot price in `liveSlots`/`slotLine` (real FareHarbor/Peek/Xola cents, not a scrape
+  sentinel), and `item.from`, which the sync job (`backend/src/sync/contacts.ts`) and `mergeOverride` in
+  `catalog.ts` already compute with the same `> 0` filter, so it can never be the sentinel at this layer.
+
 **Found, not fixed.**
 
 _(in progress, resumed run)_
