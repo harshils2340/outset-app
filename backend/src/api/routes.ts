@@ -37,7 +37,7 @@ import { stripeEnabled } from "../lib/stripe.ts";
 export const app = new Hono();
 
 // Browser calls come only from the site (and a dev server). Everything else is same-origin tooling.
-const ORIGINS = (process.env.ALLOWED_ORIGINS || "https://onoutset.com,https://www.onoutset.com,https://harshils2340.github.io,http://localhost:5173,http://localhost:5199").split(",").map((s) => s.trim());
+const ORIGINS = (process.env.ALLOWED_ORIGINS || "https://onoutset.com,https://www.onoutset.com,http://localhost:5173,http://localhost:5199").split(",").map((s) => s.trim());
 // An unauthenticated caller could stream an arbitrarily large body at the API, and the Stripe webhook has to
 // read the whole thing before it can check the signature. 2 MB is far above any real booking or profile write;
 // photo uploads have their own, larger, limit checked inside that route.
@@ -49,6 +49,10 @@ app.use("*", async (c, next) => {
   await next();
   c.header("x-content-type-options", "nosniff");
   c.header("referrer-policy", "no-referrer");
+  // Nothing here is ever meant to sit in a frame; the guest site never embeds the API in one.
+  c.header("x-frame-options", "DENY");
+  // No geolocation, camera, microphone or payment prompt originates from a JSON API.
+  c.header("permissions-policy", "geolocation=(), camera=(), microphone=(), payment=()");
   // Everything the API answers is per-operator or per-booking, except an uploaded photo, whose name is a hash
   // of its own bytes and which the browser should keep.
   if (!c.req.path.startsWith("/uploads/") || c.req.method !== "GET") c.header("cache-control", "no-store");
@@ -67,7 +71,9 @@ app.route("/", payouts);
 app.route("/", availability);
 app.route("/", openSlotsRoute);
 
-app.get("/health", (c) => c.json({ ok: true, service: "outset-backend", store: "postgres", commit: (process.env.RENDER_GIT_COMMIT || "").slice(0, 10) || undefined }));
+// No commit hash or other version marker: it costs an attacker nothing to ask, and a public git history
+// already maps a commit to whatever it fixed, so publishing which one is live points at what still isn't.
+app.get("/health", (c) => c.json({ ok: true }));
 
 // Everything below is internal tooling (raw operator rows, emails, outreach drafts with claim tokens).
 // It answers only with the admin key; on a public host with no key set it is closed.
