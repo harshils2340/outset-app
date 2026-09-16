@@ -39,10 +39,21 @@ crawler visits and every URL stored in the data as hostile.
   `*.checkfront.com`, `*.square.site`, `*.acuityscheduling.com`, and similarly for the rest),
   with only a path segment read out of the operator's own booking URL through a regex anchored
   to that vendor's own id format. None of these let a crawled page choose an arbitrary host.
+- `backend/src/api/uploads.ts`: magic-byte check for JPEG/PNG (so SVG and any non-raster upload was already
+  refused, confirmed, no change needed there), a byte-size cap, and (new, see below) a pixel-dimension cap
+  and EXIF/text metadata stripping.
+- `backend/src/lib/mail.ts` and every `sendMail` caller (`api/auth.ts`, `api/bookingMail.ts`, `api/claims.ts`,
+  `outreach/drafts.ts`, `outreach/send.ts`): which fields carry crawled operator names versus guest-typed
+  input versus developer-configured constants, and whether any of them are ever composed into a
+  `"Name <email>"` display-name string before reaching a header (they are not, anywhere in this codebase;
+  `to`/`replyTo` are always bare addresses).
+- `backend/scripts/pipeline.mts`'s commit-and-push step, and `backend/src/sync/contacts.ts`'s
+  `syncContactsToApp` (the generator for the one committed `.ts` source file, `src/data/contacts.ts`); see
+  **Needs Harshil** for what this confirmed.
 
 ## Found and fixed
 
-- `7cb833db7` Nothing in the crawl or enrich pipeline checked where a fetch actually
+- `6cc841195` Nothing in the crawl or enrich pipeline checked where a fetch actually
   connected. A hacked operator page, or a vendor's JSON response, naming
   `http://169.254.169.254/latest/meta-data/`, `http://localhost:6379/`, or an address on the
   service's own private network in an `<img src>`, a `<meta refresh>`, a redirect `Location`,
@@ -67,7 +78,7 @@ crawler visits and every URL stored in the data as hostile.
   with its body and final URL intact, all against a local test server or a fake resolver, no
   real network access.
 
-- `145339872` `SPAM_LINE` (in `backend/src/sync/contacts.ts`) only recognized Indonesian gambling phrases,
+- `63ff9b3f9` `SPAM_LINE` (in `backend/src/sync/contacts.ts`) only recognized Indonesian gambling phrases,
   only checked blurb-like text facts, and dropped only the offending fact, so everything else a hacked page
   produced (its other text, its offerings, a photo whose own address carried no spam word) still published.
   A hacked WordPress page can inject pharmacy, essay-mill, crypto/forex, adult, replica-goods or loan spam
@@ -123,13 +134,66 @@ crawler visits and every URL stored in the data as hostile.
   o-wchandymemphis-org o-westohiocamps-com o-windsorgymnastics-org
   ```
 
-- `7cb833db7` See **SSRF and hostile URLs** below; the same commit covers item 2's fixes.
+- `6cc841195` See **SSRF and hostile URLs** above; the same commit covers item 2's fixes.
+
+- `3783bf316` `publishableImage` (`backend/src/sync/imageUrl.ts`), the last gate before a stored photo fact
+  becomes a listing's cover or gallery image, never checked the URL scheme at all: for a `data:` URL,
+  `new URL(u).hostname` is `""`, which the private-host regex never matches, so a `data:`/`blob:`/`javascript:`
+  URL would have published unchanged. The private-host list was also IPv4-only plus a bare `::1`, missing the
+  `100.64.0.0/10` carrier-NAT range and IPv6 link-local/unique-local. Separately, a stored photo can already
+  be a `wsrv.nl` (`images.weserv.nl`) address when the operator's own site uses that free image proxy as its
+  own CDN; wsrv's own `errorredirect` parameter sends a guest's browser to any URL the page names if the
+  image fails to load, an open redirect riding what looks like an ordinary photo address, and nothing
+  stripped a query parameter this codebase's own wrapping never sets. Fixed: scheme restricted to
+  `http`/`https`, the private-host list extended, and a `wsrv.nl`-hosted address now refuses any query
+  parameter outside a small allowlist. `backend/src/sync/__tests__/imageUrl.test.ts` covers all three.
+
+- `e46cb5185` `backend/src/api/uploads.ts` already checked magic bytes and a byte-size cap, but not a claimed
+  pixel size (the browser resizes to 1600px before sending; the server should never legitimately see much
+  more, and a header can claim a size the file's own compressed bytes have nothing to do with, a
+  decompression-style resource hog once anything tries to decode it) or metadata (a phone photo's EXIF often
+  carries GPS coordinates the uploader never chose to publish, and this storage path commits straight to the
+  public repository, permanent). Added `backend/src/api/imageSanitize.ts`: `dimensionsTooLarge` (reuses
+  `enrich/imagesize.ts`'s own header parser, refuses over 4000px on a side or 16 megapixels) and
+  `stripJpegMetadata`/`stripPngMetadata`, which walk the file's own marker/chunk structure and drop JPEG
+  APP1 (EXIF/XMP) and APP13 (Photoshop IRB/IPTC) segments, or PNG `tEXt`/`zTXt`/`iTXt`/`eXIf`/`tIME` chunks,
+  leaving everything that affects decoding untouched; either bails out and returns the original bytes
+  unchanged the moment anything does not parse as a well-formed marker, so a real photo can never come back
+  truncated. `uploads.ts` now checks dimensions and strips metadata before hashing and storing.
+  `backend/src/api/__tests__/imageSanitize.test.ts` covers the strip on a GPS-shaped payload, an unchanged
+  file with no metadata, malformed input never throwing, and the dimension cap against an ordinary and an
+  oversized claim. SVG and non-raster uploads were already refused by the existing magic-byte check;
+  confirmed, no change needed.
+
+- `f77df3e7f` Every vendor reader (`enrich/availability.ts`'s FareHarbor/Peek/Xola price lookups and the nine
+  files under `enrich/vendors/`) called the global `fetch()` with a timeout but no byte cap, so a
+  compromised or just-buggy vendor server sending an enormous or slow-trickling response would have been
+  read in full into memory. Swapped every one of those `fetch()` calls (sixteen call sites across ten files)
+  for the guarded `safeFetch` added for item 2, with a 5 MB cap; `enrich/vendors/bookeo.ts` is the one
+  deliberate exception (its own manual redirect-following loop carries cookies across hops, and `safeFetch`
+  already follows redirects internally, so routing it through there would double up). Deep JSON nesting and
+  huge parsed arrays are bounded by the same byte cap, and every `JSON.parse`/`res.json()` call in these
+  files was already inside a `try`/`catch` that returns `null` on any parse failure, so a pathological-input
+  exception degrades the same way a timeout or a 500 already does. None of these vendor readers parse HTML
+  with cheerio (they extract with plain string matching), so there is no unbounded-cheerio-parse risk here
+  to cap separately.
+
+- `dc8f05205` A crawled (and sometimes hacked) operator's own name reaches a mail subject line unescaped
+  (`` `Your Outset claim link for ${title}` ``, `claims.ts`; `` `Booking ... for ${ctx.title}` ``,
+  `bookingMail.ts`), and a guest's own booking-form input reaches `replyTo` the same way, with `mail.ts`
+  itself doing no sanitizing of its own at the one chokepoint every send goes through, whatever protection
+  Resend's JSON body or nodemailer's own header composer happen to already have (a pre-existing regression
+  test, `mailHeaderInjection.test.ts`, already showed nodemailer folds a raw CRLF into the header rather than
+  starting a new one; that test predates this review). `sendMail` now folds any CRLF in the subject to a
+  space, drops a malformed `replyTo` silently rather than aborting the whole send over optional metadata, and
+  validates `to` with an explicit bare-address check (no whitespace, no `<>`) in place of the old regex.
+  Extended `mailHeaderInjection.test.ts` with three more cases.
 
 ## Found, not fixed
 
-- **One known false positive in the broadened screen**: `o-islandchillyachtcharters-com`'s `extraNote` field
-  concatenates eight separate real policy lines with " · " ("Booking/Reschedule/Cancellation/Refund Policy
-  available on site · Safety Policy available on site · ..."), and the repeated three-word phrase
+- **One known false positive in the broadened compromised-site screen**: `o-islandchillyachtcharters-com`'s
+  `extraNote` field concatenates eight separate real policy lines with " · " ("Booking/Reschedule/Cancellation/Refund
+  Policy available on site · Safety Policy available on site · ..."), and the repeated three-word phrase
   "policy available on site" is dense enough to trip `isKeywordStuffed` even after the rate-card false
   positives it originally caught (a Quebec pontoon operator's per-tier rate card, a scout camp's weekly class
   schedule, several others, all confirmed fixed by scoring stuffing on offerings with the narrower
@@ -139,19 +203,26 @@ crawler visits and every URL stored in the data as hostile.
   joined string; that is a larger change to where `extraNote` is assembled than fit in this pass. Cost of
   leaving it: this one real yacht-charter listing loses its crawled facts until someone loosens the rule or
   hand-clears it; the operator's row and claim link are unaffected.
-- Two long-tail junk-not-spam cases the screen also now catches, where quarantining is a defensible but not
-  clearly correct call: `o-scene75-com` and `o-easttnscouts-org`/`o-rfcity-org`-style pages where a scrape
-  glitch repeated a nav label or menu heading dozens of times in one offering description ("LASER TAG LASER
-  TAG..."), and `o-rfcity-org` specifically has what looks like binary or corrupted-encoding bytes in one
-  service description. Neither is a hacked page; both are already-unusable content either way, so the
-  quarantine's cost here is low, but it is worth a human glance rather than assuming every catch is a hack.
+- Two long-tail junk-not-spam cases the compromised-site screen also now catches, where quarantining is a
+  defensible but not clearly correct call: `o-scene75-com` and `o-easttnscouts-org`, where a scrape glitch
+  repeated a nav label or menu heading dozens of times in one offering description ("LASER TAG LASER TAG..."),
+  and `o-rfcity-org`, which has what looks like binary or corrupted-encoding bytes in one service description.
+  Neither is a hacked page; both are already-unusable content either way, so the quarantine's cost here is
+  low, but it is worth a human glance rather than assuming every catch is a hack.
 - The compromised-site screen is regex- and heuristic-based, not a language model reading the page, so it
   will miss a hacked page whose injected spam uses none of the phrases, scripts or repetition shapes covered
   here (a hand-written new category, a language not covered, a single non-repeated sentence of prose spam).
   It is a large improvement over the single gambling-phrase rule it replaces, not a guarantee.
-- Items 4, 5 and 6 from the task (upload validation, vendor/widget JSON and HTML parsing hardening, outreach
-  and claim mail header injection) were not reached in this pass; time went to items 1 and 2. See **Needs
-  Harshil** below.
+- `safeFetch`'s private-address check only covers a literal IP in a URL or one a DNS lookup resolves to at
+  fetch time; `publishableImage` (item 3) is synchronous and checks only a literal IP in the stored URL
+  string, with no DNS resolution at all (converting it to an async, DNS-backed check would touch every one
+  of its many call sites in the sync/enrich pipeline, a much larger change than fit in this pass). A domain
+  name that resolves to a private address is caught by `safeFetch` wherever the crawler actually fetches it,
+  but not by `publishableImage`'s own name-based check on a URL that is merely stored and never re-fetched.
+- Upload storage (item 4): an operator's photo, once accepted, commits straight to the public GitHub
+  repository (`backend/src/api/uploads.ts`'s `storeBinary`), permanent and with no redaction path short of a
+  history rewrite. That is a product/infra decision, not a code-level gap this pass could fix; see **Needs
+  Harshil**.
 
 ## Needs Harshil
 
@@ -164,6 +235,20 @@ crawler visits and every URL stored in the data as hostile.
 - The `o-islandchillyachtcharters-com` false positive above, and whether the two junk-not-spam cases are worth
   a narrower rule (skip `isKeywordStuffed` on a field that is a "·"-joined concatenation of several distinct
   facts, and check stuffing per source fact instead) or are fine left as occasional manual review.
-- Items 4 (`backend/src/api/uploads.ts` magic-byte and dimension checks), 5 (vendor/widget JSON and HTML
-  parsing hardening against a hostile huge or deep response) and 6 (outreach and claim mail header injection
-  from a crawled operator name or address) were not reached; worth a follow-up pass.
+- Whether operator photo uploads should keep committing straight to the public repository forever, or want a
+  moderation/redaction path (a private object store with a public read URL, say) now that uploads are
+  magic-byte-checked, dimension-capped and stripped of EXIF/text metadata but still permanent once merged.
+- `backend/scripts/pipeline.mts`'s commit step: checked, not changed. `git add -A` is scoped to a fixed
+  `PUSH_PATHS` allowlist (`public/catalog.json`, `public/claim-index.json`, `public/catalog-lite.json`,
+  `public/o`, `public/p`, `public/sitemap.xml`, `src/data/contacts.ts`), so a hacked page cannot make the
+  job stage or commit anything outside those catalog outputs; the commit message is a fixed string, never
+  interpolated with crawled data; and `src/data/contacts.ts`'s generator (`syncContactsToApp`,
+  `backend/src/sync/contacts.ts`) writes every value through `JSON.stringify`, never raw string
+  interpolation, so crawled text cannot break out of a string literal into executable code in that generated
+  file. `buildCatalogItems()` maps every operator through `toCatalogItem` with no per-row `try`/`catch`, so
+  an exception anywhere in the screen (this review's new code included) throws out of the whole `sync`
+  command, which exits non-zero, which `runSyncAndPush` checks before any `git add`/`commit`/`push` runs: a
+  screen failure already fails the job rather than publishing partial or unscreened output. Confirmed by
+  running `npm run ingest && npm run sync` locally (38 seed operators, no crash, no false-positive
+  quarantine, output discarded with `git checkout -- public src/data` after, per instructions) rather than
+  by reading the code alone.
