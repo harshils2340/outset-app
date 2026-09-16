@@ -146,6 +146,9 @@ input,textarea{font:inherit;color:inherit;}
   .statusbar{display:none !important;}
   .tabbar{padding-bottom:calc(8px + env(safe-area-inset-bottom));}
   .apphead{padding-top:10px;}
+  /* The sticky price bar on a listing page sat flush against the home indicator, 18px of padding was not
+     enough room on a phone with a safe-area inset, so the button crowded the gesture strip. */
+  .dock{padding-bottom:calc(18px + env(safe-area-inset-bottom));}
 }
 
 /* ---------- app chrome ---------- */
