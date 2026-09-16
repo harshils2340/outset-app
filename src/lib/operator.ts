@@ -3,7 +3,7 @@ import { forgetClaim, saveRemoteProfile, type RemoteBooking } from "./api";
 import { addressLine, contactFor, experienceById, fmtPhone, getCatalog, setOperatorOverride, siteUrl } from "./catalog";
 import { dateKey, startOfToday } from "./dates";
 import { fmtTime, money } from "./format";
-import { freeCancel } from "./listingDerive";
+import { durationLabel as menuDuration, freeCancel } from "./listingDerive";
 import { splitAddons } from "./storage";
 
 /**
@@ -848,7 +848,18 @@ export function toCatalog(p: OperatorProfile, base: Unclaimed): Partial<Unclaime
     hoursText: p.hours.some((h) => !h.closed) ? p.hours.map(hoursLine) : base.hoursText,
     // itemWeek() reads the compact `hrs` week before the hour lines, so a browse record that carries one would
     // keep showing the crawled hours after the operator changed them. The operator's hours win.
-    hrs: p.hours.some((h) => !h.closed) ? undefined : base.hrs,
+    //
+    // An empty week and not `undefined`, for the reason spelled out above `cancellation`: this patch reaches
+    // every guest who is not the operator as JSON, and JSON drops an undefined key, so the crawled week came
+    // back on the other side and was read first. The operator's own browser showed their hours and nobody
+    // else's did. A shop that published Monday to Saturday, 7 AM to 11 AM, and shut on Sunday, was advertised
+    // to every guest as open nine to five every day of the week, Sunday included.
+    hrs: p.hours.some((h) => !h.closed) ? [] : base.hrs,
+    // Same story for the duration on the card, the listing hero, the booking sheet and Otto's answer, all of
+    // which read `dur` before deriving one from the menu. `dur` is the duration crawled off the shop's site
+    // before it was claimed, so an operator whose every service now says 90 min was still advertised as "4
+    // hours". Their own menu wins where it states one; where it states none, the crawled fact stands.
+    dur: menuDuration({ ...base, options, services }) || base.dur,
     // The operator's own guide replaces the kind's default once they have opened that section; absent keeps the default.
     guide: p.guide ? { steps: p.guide.steps.filter((s) => s.trim()), bring: p.guide.bring.filter((s) => s.trim()), goodFor: p.guide.goodFor.trim() } : undefined,
     contact: contactPatch(p, base),
