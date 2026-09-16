@@ -47,19 +47,33 @@ export async function query<T extends pg.QueryResultRow = pg.QueryResultRow>(tex
   return r.rows;
 }
 
-/** One transaction; the callback's client holds any row locks it takes until commit. */
+/**
+ * One transaction; the callback's client holds any row locks it takes until commit.
+ *
+ * `query_timeout` above only abandons the query on the client's side: Postgres was never told to stop, so a
+ * query that hits it (the backstop for a server that has actually stopped answering, not the common case,
+ * which `statement_timeout` already ends before this ever fires) can leave the connection still waiting on a
+ * reply that may arrive minutes later, for a query nothing is listening for any more. A bare `c.release()`
+ * on that connection hands it back to the pool as if nothing were wrong, and whichever request draws it next
+ * inherits that stale wait, or a reply meant for this transaction. If the rollback below also times out, the
+ * connection is released with the error instead, which tells the pool to discard it rather than recycle it.
+ */
 export async function withTx<T>(fn: (c: pg.PoolClient) => Promise<T>): Promise<T> {
   const c = await db().connect();
   try {
     await c.query("begin");
     const out = await fn(c);
     await c.query("commit");
+    c.release();
     return out;
   } catch (e) {
-    await c.query("rollback").catch(() => undefined);
+    try {
+      await c.query("rollback");
+      c.release();
+    } catch (rollbackError) {
+      c.release(rollbackError as Error);
+    }
     throw e;
-  } finally {
-    c.release();
   }
 }
 
