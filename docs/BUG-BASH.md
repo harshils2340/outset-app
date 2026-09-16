@@ -619,6 +619,73 @@ the old behaviour and fails on it. 95 guest tests, 101 backend tests, both proje
   shop's card still shows the crawled `dur`. Still nothing checked against real Stripe, no workflow runs
   `npm test` on its own, and Render environment variables remain untouched from here.
 
+## 16 September 2026, eleventh run (08:05 to 09:00 UTC)
+
+**Chosen, and why.** Almost everything left on Coverage's "not yet checked" list is out of reach tonight (the
+operator chat needs a non-empty `src/data/listings.ts`, photo upload needs a real GitHub token, the Payouts
+page needs a connected Stripe account) or is a product call for you. So this run went looking for territory
+that was never on the list at all, and found one: **"Open now"**. `src/lib/openNow.ts` has no tests, appears
+nowhere in Coverage, and decides what a guest reads on every card, on the listing page, in the booking sheet,
+in the "Open right now near you" rail and in Otto's answers. Rather than read it, the whole shipped catalog was
+run through it: 59,091 operators, 14,509 of them with published hour lines, every hour of every day. The
+**rehearsal was skipped at the start**: the tenth run's entry said green and the only commit since it was that
+entry. Both type checks and both unit suites ran at the start and at the end, and the rehearsal ran at the end
+because both fixes touch `src/lib`; it is green, 50 passed and 0 failed.
+
+**Found and fixed.**
+
+- **A shop's phone number was being read as its opening hours** (`3ca26abcc`). A crawled hours line is one run
+  of text and the crawler often glues the shop's own phone number to the front of it: "(512) 436-3505Office
+  Hours: 9am-6pm". Read left to right, "436-3505" is a perfectly good time range, so the hours behind it were
+  never reached. Seventeen shops shipped a week no clock could show, opening at 26, 36 and 52 o'clock, and
+  their listings said "Closed, opens 12 PM" at every hour of every day. An Albuquerque balloon ride read
+  "05-293" off its own number and told guests at three in the morning it was open until 5 AM. Glued on, the
+  number hides the day too, so a Pennsylvania theatre published Friday alone out of Tuesday through Friday.
+  The number now goes before anything is read off the line, a candidate range whose hour no clock could show
+  is stepped over rather than taken, and three ways a real shop writes a time are read rather than lost: a dot
+  for the colon, seconds, and no separator at all. Across all 14,509, twenty-six weeks change and every one is
+  a correction; the other 14,483 are untouched. The same bad weeks are already baked into `catalog.json` and
+  live there until the next sync, so `itemWeek` treats a compact day no clock could show as a day that was
+  never published and falls back to the shop's own line.
+- **An hours line that marks the afternoon once was only marking half of it** (`648e8b9c4`). "Mon-Thurs: 3:00 -
+  10:00 pm" is a brewery that opens in the afternoon. An opening hour with no am or pm on it was read as AM
+  whatever followed it, so that brewery opened at three in the morning, and so did 141 other shops: tap rooms,
+  a distillery, theatres, a kart track running "Wednesday - Friday: 7-9:00PM", a winery open "1-6 PM". They
+  said "Open, closes 10 PM" in the middle of the night, they qualified for the "Open right now near you" rail,
+  and Otto answered "Yes, open now until 10 PM" at 3 AM. A marker written once at the end of a range now
+  covers both ends of it, unless the opening hour is the later of the two on a twelve hour clock, so "9-5" and
+  "8:30-5" stay mornings. Shops reading as open at 3 AM on a Wednesday fall from 596 to 534.
+
+**Checked and clean.** Every one of the 26 plus 142 changed weeks was read against its source line by hand:
+all are corrections, none loses hours a shop legitimately had. The two parsers are twins by design
+(`parseWeek` in `src/lib/openNow.ts`, `encodeWeek` in `backend/src/sync/hours.ts`) and a sweep confirms they
+agree on all 14,509 operators after the fix, as they must or a card and the page it opens would disagree.
+Late closers, stated days off, OSM `opening_hours` lines and 24-hour notation all still read as they did.
+
+**Tests.** `src/lib/__tests__/openNow.test.ts` (10) and `backend/src/sync/__tests__/hours.test.ts` (7), each
+pinned to a named operator in the catalog, and each checked against the old code and failing on it. They cover
+the phone number in front of the time and in front of the day, hours recovered from behind one, a date that
+must not become an opening time, the three unusual time formats, the shared afternoon marker, and the morning
+shapes that must not move. 106 guest tests and 108 backend tests pass, both projects type-check clean.
+
+**Needs Harshil.**
+
+- **The 17 bad weeks are still in `public/catalog.json` until a sync runs on Render.** The guest side now
+  refuses to believe them, so nobody sees "Closed, opens 12 PM" any more, but the compact weeks themselves are
+  only rewritten by `npm run sync`. Worth running one.
+- **Roughly 500 shops still read as open at 3 AM, and it is not the parser.** Most publish "Mon-Sun 12:00 AM -
+  11:59 PM", which is schema.org boilerplate for "call us" rather than a claim to be open all night, and a
+  handful have a campground's quiet hours ("No generators 10pm-7am") crawled as opening hours. Deciding
+  whether a 24-hour span means "always open" or "no hours stated" is a product call, and it belongs in the
+  extractor rather than here.
+- **The rehearsal command in the nightly prompt has the wrong path.** It says `scripts/e2e-local.mts`; the
+  file is at `backend/scripts/e2e-local.mts`. From the repo root the given command exits 0 with
+  ERR_MODULE_NOT_FOUND, so a run that trusted the exit code would record a green rehearsal that never ran.
+- The earlier runs' open calls stand: a claimed shop with an empty menu still takes bookings, a claimed shop's
+  card still shows the crawled `dur`, the rehearsal still cannot see a guest's rendered page, nothing is
+  checked against real Stripe, and no workflow runs `npm test` on its own.
+
+
 ## Coverage
 
 **Verified so far.** Booking validation and odd input on every route that takes it. The money split,
@@ -676,6 +743,13 @@ well as the device, and what an operator signing in again gets afterwards. Wheth
 guest's rendered listing page at all, on a cold open by link. The API's CORS allow list against every method
 the app sends.
 
+"Open now" end to end, run over the whole shipped catalog rather than read: what `parseWeek` and `encodeWeek`
+make of all 14,509 published hour lines, every hour of every day, and what the cards, the listing page, the
+booking sheet, the "Open right now near you" rail and Otto then say. A phone number, a date, an ISO date and a
+year glued into an hours line. The three unusual ways a shop writes a time. An unmarked opening hour against a
+marked closing one. That the two hour parsers, which are twins by design, agree on every operator. That a
+compact week already baked into `catalog.json` that no clock could show is not believed.
+
 **Not yet checked.** The operator chat for a hand-built listing (`src/data/listings.ts` is empty, so `agent.ts`
 and the `ChatView` operator path still have no live case, and nothing a guest can reach runs them). Photo
 upload against a real GitHub token, and the gap between the URL it returns and the deploy that makes the file
@@ -684,3 +758,8 @@ drag events are not. Whether a claimed shop's card should keep the crawled `dur`
 disagrees. Whether a claimed shop with an empty menu should pause its own listing. A rehearsal check that
 reads a claimed listing's rendered page and not only the API's JSON. A CI job that runs `npm test` on either
 side. The Payouts page driven against a connected Stripe account rather than the no-account fallback.
+Whether a shop publishing "12:00 AM - 11:59 PM" means it is open all night or has stated no hours at all, and
+the handful whose campground quiet hours were crawled as opening hours: both belong in the extractor. The
+timezone map in `zoneFor`, its longitude nudges for split states, and what a guest sees for an operator whose
+region cannot be read. `geo.ts` distance stamps and `places.ts` "near me" resolution, neither of which any run
+has looked at.
