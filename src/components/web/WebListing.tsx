@@ -7,7 +7,7 @@ import { metroById } from "../../data/metros";
 import { regionOfArea } from "../../data/regions";
 import { SLOT_TIMES } from "../../data/slots";
 import type { Unclaimed } from "../../data/types";
-import { addressLine, contactFor, fmtHours, fmtPhone, fromPrice, getCatalog, listingFacts, mapsHref, maxGuestsFor, perPerson, plainWords, publicRating, telHref } from "../../lib/catalog";
+import { addressLine, bookingPaused, contactFor, fmtHours, fmtPhone, fromPrice, getCatalog, listingFacts, mapsHref, maxGuestsFor, perPerson, plainWords, publicRating, telHref } from "../../lib/catalog";
 import { DAYS, fmtDate, fmtReviews, fmtTime, money, priceWith } from "../../lib/format";
 import { srcSet, thumb } from "../../lib/images";
 import { embedAutoplay, isGif, listingMedia, photoCandidates, probePhotos, type Media } from "../../lib/media";
@@ -1056,7 +1056,7 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
   // The shop paused bookings or hid the listing in its dashboard. The page still opens by its own link, so a
   // guest who has it bookmarked learns why, but nothing here can be booked and the API refuses too. Both flags
   // only ever come from an owner's saved profile, so they count before the next sync stamps the record `claimed`.
-  const paused = !!item.offline || item.accepting === false;
+  const paused = bookingPaused(item);
   // The operator's own "max guests per slot" for the service being booked, not a number we picked.
   const maxGuests = maxGuestsFor(item, optionIdx);
   // The party has to come down with it when a smaller service is picked. The picker asks the API for times

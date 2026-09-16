@@ -183,6 +183,17 @@ export function savedListings(saved: readonly string[]): { items: Unclaimed[]; m
   return listingsByIds(saved);
 }
 
+/**
+ * Whether this listing is taking bookings at all. `offline` is the dashboard's Published switch off, which
+ * pulls the page from every rail and search but leaves its own link working; `accepting: false` is the
+ * Accepting switch off, which leaves it listed and refuses new bookings. Both reach a guest through the
+ * operator's published patch, and the booking API refuses both, so every surface that offers a time has to
+ * read them or it offers a booking the API will turn away.
+ */
+export function bookingPaused(item: Unclaimed): boolean {
+  return !!item.offline || item.accepting === false;
+}
+
 export function fromPrice(item: Unclaimed): number | null {
   // A zero is a price the crawler could not read, not a free trip, so it must not become "From $0".
   const priced = item.options.map((o) => o.price).filter((n): n is number => n != null && n > 0);

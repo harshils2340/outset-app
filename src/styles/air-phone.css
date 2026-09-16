@@ -440,6 +440,11 @@
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;
 }
 .airreserveprice .when.nudge{color:var(--few);}
+/* The paused bar is a statement, not a jump link, so it drops the underline the date line carries. */
+.airreserveprice .why{
+  font-size:14px;line-height:18px;color:var(--ink-soft);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;
+}
 .airreserve .airaccent{flex:none;min-width:128px;}
 
 /* ---------- checkout ---------- */

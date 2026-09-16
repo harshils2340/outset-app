@@ -8,6 +8,7 @@ import { SLOT_TIMES } from "../../data/slots";
 import type { CategoryId, Unclaimed, UnclaimedOption } from "../../data/types";
 import {
   addressLine,
+  bookingPaused,
   contactFor,
   fmtHours,
   fmtPhone,
@@ -349,7 +350,14 @@ function RequestBody({
   const guide = GUIDES[item.art];
   const picked = optionIdx != null ? item.options[optionIdx] : null;
   const needService = item.options.length > 0;
-  const ready = time != null && (!needService || picked != null);
+  // The dashboard's Published and Accepting switches, the same pair the desktop page has always read. This
+  // screen read neither, so a shop that had hidden its page or paused bookings still offered a full picker
+  // here: a guest picked a service, a date, a time and a party, typed their name, number and email, pressed
+  // Request to book and only then got a toast saying the listing was hidden, with no way forward.
+  const paused = bookingPaused(item);
+  const pausedHead = item.offline ? "This listing is hidden right now" : "Not taking bookings right now";
+  const pausedWhy = item.offline ? item.title + " has taken this page down for the moment." : item.title + " has paused new bookings. Check back soon.";
+  const ready = !paused && time != null && (!needService || picked != null);
   const day = dates[dateIdx];
   const p = priceUnclaimed(picked, qty, extras);
   const instant = !!(item.claimed && item.instant);
@@ -980,6 +988,11 @@ function RequestBody({
             </Section>
           ) : null}
 
+          {paused ? (
+            <Section title={pausedHead} innerRef={dateRef}>
+              <p className="reqpolicy">{pausedWhy}</p>
+            </Section>
+          ) : (
           <Section title="Date and time" sub={live ? "Live times from their booking system" : "Start times for " + fmtDate(day)} innerRef={dateRef}>
             <SlotCalendar
               dates={dates}
@@ -1019,6 +1032,7 @@ function RequestBody({
               </span>
             </div>
           </Section>
+          )}
 
           {includes.length || notIncluded.length ? (
             <Section title="What's included">
@@ -1249,6 +1263,20 @@ function RequestBody({
       </div>
 
       <div className="airreserve">
+        {paused ? (
+          <>
+            <span className="airreserveprice">
+              <span className="big">
+                <b>{item.offline ? "Hidden right now" : "Not taking bookings"}</b>
+              </span>
+              <span className="why">{item.offline ? "The page is down for the moment." : "Check back soon."}</span>
+            </span>
+            <button type="button" className="airaccent" onClick={onBack}>
+              Find another
+            </button>
+          </>
+        ) : (
+        <>
         <button type="button" className="airreserveprice" onClick={() => dateRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}>
           {ready && p.total ? (
             <span className="big">
@@ -1273,6 +1301,8 @@ function RequestBody({
         <button type="button" className="airaccent" onClick={reserve}>
           {instant ? "Reserve" : "Request"}
         </button>
+        </>
+        )}
       </div>
     </>
   );
