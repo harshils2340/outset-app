@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { KINDS, MIN_METRO_LISTINGS, buildFaq, pageTitle, writeLandingPages, type Item } from "../pages.ts";
+import { KINDS, MIN_METRO_LISTINGS, buildFaq, pageTitle, publicSite, writeLandingPages, type Item } from "../pages.ts";
 import { METROS } from "../../taxonomy/catalog.ts";
 import { ART_ALIASES } from "../../../../src/data/synonyms.ts";
 
@@ -142,6 +142,36 @@ test("every written page is in the sitemap, and every internal link points at a 
     assert.match(r.read("index.html"), /Toronto, Ontario/);
   } finally {
     r.cleanup();
+  }
+});
+
+/**
+ * SITE_URL is where a claim email's link points, and backend/AGENTS.md tells anyone testing that mail from a
+ * laptop to set it to localhost. These pages are published, so one sync from that laptop used to write a
+ * canonical tag, a sitemap and a robots.txt full of localhost URLs into committed files. The rehearsal sets
+ * SITE_URL too, which is how this turned up: two tests here failed inside it and passed everywhere else.
+ */
+test("a local SITE_URL never reaches a canonical link, a card link or the sitemap", () => {
+  const had = { site: process.env.SITE_URL, pub: process.env.PUBLIC_SITE_URL };
+  process.env.SITE_URL = "http://localhost:5173/";
+  delete process.env.PUBLIC_SITE_URL;
+  const r = run(fixture);
+  try {
+    assert.equal(publicSite(), "https://onoutset.com/");
+    const html = r.read("cooking-in-toronto.html");
+    assert.doesNotMatch(html, /localhost/);
+    assert.match(html, /<link rel="canonical" href="https:\/\/onoutset\.com\/p\/cooking-in-toronto\.html">/);
+    assert.doesNotMatch(r.sitemap, /localhost/);
+    assert.equal(readFileSync(join(r.dir, "robots.txt"), "utf8").includes("localhost"), false);
+    // A real deployment somewhere else still says so, through the variable that means exactly that.
+    process.env.PUBLIC_SITE_URL = "https://staging.onoutset.com";
+    assert.equal(publicSite(), "https://staging.onoutset.com/");
+  } finally {
+    r.cleanup();
+    if (had.site === undefined) delete process.env.SITE_URL;
+    else process.env.SITE_URL = had.site;
+    if (had.pub === undefined) delete process.env.PUBLIC_SITE_URL;
+    else process.env.PUBLIC_SITE_URL = had.pub;
   }
 });
 

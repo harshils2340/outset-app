@@ -21,7 +21,22 @@ import { REGION_NAME } from "../../../src/data/regions.ts";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const defaultPublicDir = join(here, "../../../public");
-const SITE = process.env.SITE_URL || "https://onoutset.com/";
+/**
+ * The public home of these pages: what a canonical tag, a sitemap entry and every card link has to point at.
+ *
+ * SITE_URL is the address mail links use, and backend/AGENTS.md tells anyone testing claim mail from a laptop
+ * to set it to `http://localhost:5173/`. Reading it straight meant one `npm run sync` on that laptop wrote
+ * `<link rel="canonical" href="http://localhost:5173/...">` into every landing page, a sitemap of localhost
+ * URLs and a robots.txt pointing at it, all of them committed files. A local address is ignored here.
+ * PUBLIC_SITE_URL is the way to say the published site really does live somewhere else.
+ */
+const PUBLIC_SITE = "https://onoutset.com/";
+const LOCAL_ADDRESS = /^(?:https?:\/\/)?(?:localhost|127\.0\.0\.1|0\.0\.0\.0|\[::1\])(?::\d+)?(?:\/|$)/i;
+export function publicSite(): string {
+  const set = (process.env.PUBLIC_SITE_URL || process.env.SITE_URL || "").trim();
+  if (!set || LOCAL_ADDRESS.test(set)) return PUBLIC_SITE;
+  return set.endsWith("/") ? set : set + "/";
+}
 
 export const MIN_METRO_LISTINGS = 3;
 const MAX_CARDS = 24;
@@ -255,7 +270,7 @@ type Neighbour = { file: string; label: string; count: number };
 
 function page(kind: Kind, metro: Metro | null, items: Item[], nearby: Neighbour[], otherKinds: Neighbour[]): string {
   const title = pageTitle(kind, metro);
-  const canonical = `${SITE}p/${fileFor(kind.art, metro ? metro.id : null)}`;
+  const canonical = `${publicSite()}p/${fileFor(kind.art, metro ? metro.id : null)}`;
   const guide = GUIDES[kind.art as keyof typeof GUIDES];
   const priced = items.map(priceOf).filter((p): p is number => p != null);
   const minPrice = priced.length ? Math.min(...priced) : null;
@@ -272,7 +287,7 @@ function page(kind: Kind, metro: Metro | null, items: Item[], nearby: Neighbour[
           return `<li><span>${esc(s.name)}</span><span>${v && v.price != null ? esc(money(v.price)) : ""}</span></li>`;
         })
         .join("");
-      return `<a class="card" href="${SITE}#o=${esc(i.id)}">
+      return `<a class="card" href="${publicSite()}#o=${esc(i.id)}">
   <div class="art">${i.cover ? `<img src="${esc(i.cover)}" alt="${esc(i.title)}" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">` : ""}</div>
   <b>${esc(i.title)}</b><small>${esc(i.area)}</small>
   <div class="meta"><span>${from != null ? "From <b>" + esc(money(from)) + "</b>" : "Price on request"}</span>${i.rating ? `<span>★ ${Number(i.rating).toFixed(1)}${i.reviews ? " (" + Number(i.reviews).toLocaleString("en-US") + ")" : ""}</span>` : ""}</div>
@@ -287,7 +302,7 @@ function page(kind: Kind, metro: Metro | null, items: Item[], nearby: Neighbour[
       "@type": "ItemList",
       name: title,
       numberOfItems: items.length,
-      itemListElement: items.slice(0, MAX_CARDS).map((i, n) => ({ "@type": "ListItem", position: n + 1, name: i.title, url: `${SITE}#o=${i.id}` })),
+      itemListElement: items.slice(0, MAX_CARDS).map((i, n) => ({ "@type": "ListItem", position: n + 1, name: i.title, url: `${publicSite()}#o=${i.id}` })),
     },
     {
       "@context": "https://schema.org",
@@ -309,9 +324,9 @@ function page(kind: Kind, metro: Metro | null, items: Item[], nearby: Neighbour[
 <link rel="canonical" href="${canonical}">
 <script type="application/ld+json">${JSON.stringify(ld)}</script>
 <style>${CSS}</style></head><body>
-<header><div class="wrap top"><a class="logo" href="${SITE}">Outset</a><a class="cta" href="${SITE}">Open Outset</a></div></header>
+<header><div class="wrap top"><a class="logo" href="${publicSite()}">Outset</a><a class="cta" href="${publicSite()}">Open Outset</a></div></header>
 <main class="wrap">
-<nav class="crumbs"><a href="${SITE}">Outset</a><span>›</span><a href="index.html">By activity and city</a>${metro ? `<span>›</span><a href="${fileFor(kind.art, null)}">${esc(kind.search)}</a><span>›</span>${esc(metro.name)}` : `<span>›</span>${esc(kind.search)}`}</nav>
+<nav class="crumbs"><a href="${publicSite()}">Outset</a><span>›</span><a href="index.html">By activity and city</a>${metro ? `<span>›</span><a href="${fileFor(kind.art, null)}">${esc(kind.search)}</a><span>›</span>${esc(metro.name)}` : `<span>›</span>${esc(kind.search)}`}</nav>
 <h1>${esc(title)}</h1>
 <p class="lede">${lede}</p>
 <div class="grid">${cards}</div>
@@ -365,7 +380,7 @@ export function writeLandingPages(items: Item[], opts: { publicDir?: string } = 
   const urls: string[] = [];
   const write = (file: string, html: string) => {
     writeFileSync(join(dir, file), html);
-    urls.push(`${SITE}p/${file}`);
+    urls.push(`${publicSite()}p/${file}`);
   };
   let metroCount = 0;
   for (const kind of kindPages) {
@@ -400,15 +415,15 @@ export function writeLandingPages(items: Item[], opts: { publicDir?: string } = 
     .sort((a, b) => a.metro.name.localeCompare(b.metro.name));
   const index = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Things to do by activity and city · Outset</title>
 <meta name="description" content="Every activity Outset lists, by city: ${kindPages.length} kinds of thing to do across ${cities.length} cities in the US and Canada.">
-<link rel="canonical" href="${SITE}p/index.html"><style>${CSS}</style></head><body><header><div class="wrap top"><a class="logo" href="${SITE}">Outset</a><a class="cta" href="${SITE}">Open Outset</a></div></header><main class="wrap"><h1>Things to do by activity and city</h1>
+<link rel="canonical" href="${publicSite()}p/index.html"><style>${CSS}</style></head><body><header><div class="wrap top"><a class="logo" href="${publicSite()}">Outset</a><a class="cta" href="${publicSite()}">Open Outset</a></div></header><main class="wrap"><h1>Things to do by activity and city</h1>
 <h2>Everywhere</h2><div class="links">${kindPages.map((k) => `<a href="${fileFor(k.art, null)}">${esc(k.search)}<small>${(byKind.get(k.art) || []).length}</small></a>`).join("")}</div>
 ${cities.map((c) => `<h2>${esc(placeName(c.metro))}</h2><div class="links">${c.pages.map((p) => `<a href="${fileFor(p.kind.art, c.metro.id)}">${esc(p.kind.search)}<small>${p.items.length}</small></a>`).join("")}</div>`).join("\n")}
 </main><footer><div class="wrap">Outset · Book the jump. Skip the call.</div></footer></body></html>`;
   writeFileSync(join(dir, "index.html"), index);
   writeFileSync(
     join(publicDir, "sitemap.xml"),
-    `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${[SITE, `${SITE}p/index.html`, ...urls].map((u) => `<url><loc>${u}</loc></url>`).join("")}</urlset>`,
+    `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${[publicSite(), `${publicSite()}p/index.html`, ...urls].map((u) => `<url><loc>${u}</loc></url>`).join("")}</urlset>`,
   );
-  writeFileSync(join(publicDir, "robots.txt"), `User-agent: *\nAllow: /\nSitemap: ${SITE}sitemap.xml\n`);
+  writeFileSync(join(publicDir, "robots.txt"), `User-agent: *\nAllow: /\nSitemap: ${publicSite()}sitemap.xml\n`);
   return { pages: urls.length, metroPages: metroCount, kindPages: kindPages.length, urls };
 }
