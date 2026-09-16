@@ -185,6 +185,22 @@ export const NOT_EXPERIENCE = /\bmurals?\b|\bcar rentals?\b|\brent-?a-?car\b|\b(
 export const MARKETPLACES = /(^|\.)(sailo|getmyboat|boatsetter|viator|tripadvisor|airbnb|expedia|groupon|yelp|peek|fareharbor|getyourguide|klook|eventbrite|meetup|facebook|instagram|booking|hotels|vrbo|kayak|tours4fun|musement|headout|goldstar|boatbound|clickandboat|samboat|fishingbooker|fishanywhere|guidesly)\.(com|net|co|io|ca)$/i;
 
 /**
+ * Hosts that answer a search for an activity but never run one, at any depth: a booking vendor's own hosted
+ * pages, an app store, a marketplace or reseller, a retailer, a social network, a search engine, a business
+ * directory, a state registry. `src/discover/websearch.ts` already refuses these when it discovers operators,
+ * but rows reach the operators table from other sources too (OpenStreetMap website tags, chain locators, the
+ * Places lookups), so the catalog has to refuse them again or they ship as listings: Amazon.com was published
+ * as a hot air balloon ride in Fort Myers, youtube.com as a guide service in San Antonio, apps.apple.com as a
+ * fishing charter, and app.squareup.com, book.squareup.com and a Rezdy booking widget as jet ski rentals.
+ *
+ * A site builder is deliberately absent. `squarespace.com` is Squarespace, but `hide-away-cove.squarespace.com`
+ * is a campground's own website, and so are the 250 odd operators on wordpress.com, weebly.com, business.site
+ * and the rest. The hosts below carry no operator's own site on any subdomain.
+ */
+export const NOT_OPERATOR_HOST =
+  /(^|\.)(amazon|apple|google|youtube|wikipedia|craigslist|foursquare|indeed|glassdoor|ziprecruiter|zoominfo|linkedin|pinterest|tiktok|twitter|reddit|quora|nextdoor|mapquest|yellowpages|superpages|whitepages|manta|hotfrog|cylex|chamberofcommerce|bbb|apartments|roomies|zillow|trulia|realtor|redfin|sunbiz|opencorporates|bizapedia|almanac|affordabletours|livability|tagvenue|sightseeing|squareup|rezdy|bookeo|vagaro|fresha|mindbodyonline|booksy|xola|classpass|coursehorse|cozymeal|classbento|thumbtack|bark|angi|homeadvisor|tiqets|isango|bookmundi|toursbylocals|withlocals|guruwalk|freetour|citypass|gocity|sightseeingpass|tripoutside|friendwitha|captainexperiences|hipcamp|massagebook)\.(com|net|org|co|io|ca|me|us|gov)$/i;
+
+/**
  * Opening hours worth showing: a weekly pattern with times, or "closed". Snapshots like "Open today 9am-5pm" and
  * "Hours This Week Thursday 2:00 PM-4:00 PM" describe one day the crawler happened to visit, so they are dropped.
  */
@@ -1756,7 +1772,7 @@ export function buildCatalogItems(where?: (r: CatalogRow) => boolean): Record<st
   // A listing with no site, no phone, no photo and no menu gives a guest nothing to act on. Keep it for outreach only.
   const full = rows
     .filter((r) => (where ? where(r) : true))
-    .filter((r) => !MARKETPLACES.test(r.domain) && !dead.has(r.id) && !NOT_EXPERIENCE.test(r.name) && !/^\s*\$?\d+(\.\d+)?\s*$/.test(r.name))
+    .filter((r) => !MARKETPLACES.test(r.domain) && !NOT_OPERATOR_HOST.test(r.domain) && !dead.has(r.id) && !NOT_EXPERIENCE.test(r.name) && !/^\s*\$?\d+(\.\d+)?\s*$/.test(r.name))
     // "Home", "Welcome" and a bare domain are page titles, not business names. A guest cannot tell what they are.
     .filter((r) => { const t = cleanTitle(decodeEntities(r.name), { city: r.city, region: r.region, legalName: r.legal_name }); return t.length >= 3 && !SITE_WORDS.test(t) && !NAV_LABEL.test(t) && !GENERIC_TITLE.test(t) && !/^(?:https?:\/\/|www\.)/i.test(t); })
     // Outside the US and Canada, by pin or by address, is outside the market (a Cairns balloon flight tagged HI).
