@@ -84,6 +84,13 @@ through the lite shard and full catalog arriving after it, per the existing guar
   floor for "the layout from 1024px up", fell on the wrong side of it. Changed to `>= 1024`. Verified at 1023,
   1024 and 1025px with Playwright: 1024 now renders `.web` (the desktop site) rather than `.stage` (the phone
   frame), matching 1025 instead of 1023.
+- **A place search cached under the typed text alone kept using the wrong bias** (`55fc188eb`). `searchPlaces` in
+  `places.ts` takes the guest's current place as a bias so Photon ranks a query like "Spring" by what is actually
+  nearby, but the module-level cache keyed on the typed text alone. Typing the same word again after "Nearby" set
+  a bias, or after picking a different place earlier in the same session, silently returned whatever the first,
+  differently biased call had cached, with no sign anything was stale. The bias now rounds into the cache key
+  too. Two tests in `src/lib/__tests__/searchPlacesBias.test.ts` cover it, checked against the pre-fix code to
+  confirm they fail there.
 
 **Found, not fixed.** Nothing new this run beyond the item already listed above.
 
