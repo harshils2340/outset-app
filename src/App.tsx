@@ -61,7 +61,9 @@ export function App() {
   const { state, closeSheet, openOperator, reqTarget, openRequest, goto } = useApp();
   // Inside the dashboard's live preview frame (?preview=1): read-only, re-renders on every owner edit.
   usePreviewMode();
-  const [web, setWeb] = useState(() => typeof window !== "undefined" && window.innerWidth > 1024);
+  // 1024px itself is the desktop site's own floor, not the phone frame's: a window sized to exactly that width
+  // used to load the phone frame instead of the site everyone else at 1024px and up gets.
+  const [web, setWeb] = useState(() => typeof window !== "undefined" && window.innerWidth >= 1024);
   const [fit, setFit] = useState(1);
   useEffect(() => {
     const calc = () => setFit(window.innerWidth <= 1024 ? 1 : Math.min(1, (window.innerHeight - 110) / 832, (window.innerWidth - 48) / 400));
