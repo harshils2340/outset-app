@@ -70,7 +70,7 @@ export function AccountView() {
             </button>
           ))}
         </div>
-        <p className="note">Card payments, waivers and saved areas are on the way. For anything now, message the operator from your trip.</p>
+        <p className="note">Card payments, waivers and saved areas are not built yet. For anything now, message the operator from your trip.</p>
       </div>
       <div className="spacer" />
     </>
