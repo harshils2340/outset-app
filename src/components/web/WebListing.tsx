@@ -4,6 +4,7 @@ import { apiConfig, fetchAvailability, fetchOpenSlots, hasApi, type LiveAvailabi
 import { GUIDES } from "../../data/guides";
 import { ICONS } from "../../data/icons";
 import { metroById } from "../../data/metros";
+import { regionOfArea } from "../../data/regions";
 import { SLOT_TIMES } from "../../data/slots";
 import type { Unclaimed } from "../../data/types";
 import { addressLine, contactFor, fmtHours, fmtPhone, fromPrice, getCatalog, listingFacts, mapsHref, maxGuestsFor, perPerson, plainWords, publicRating, telHref } from "../../lib/catalog";
@@ -1132,8 +1133,8 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
     const all = getCatalog().filter((u) => u.id !== item.id && u.art === item.art);
     const near = all.filter((u) => u.metroId && u.metroId === item.metroId);
     // Same metro first, then the same state or province, then anywhere. Nobody in Washington DC wants San Jose.
-    const region = (item.area.match(/,\s*([A-Z]{2})\b/) || [])[1];
-    const sameRegion = region ? all.filter((u) => u.area.endsWith(", " + region)) : [];
+    const region = regionOfArea(item.area);
+    const sameRegion = region ? all.filter((u) => regionOfArea(u.area) === region) : [];
     const pool = near.length >= 4 ? near : sameRegion.length >= 4 ? sameRegion : near.length ? [...near, ...sameRegion] : all;
     const picks = pool.sort((a, b) => (b.cover ? 1 : 0) - (a.cover ? 1 : 0) || (b.reviews || 0) - (a.reviews || 0)).slice(0, 10);
     // "Near Tampa Bay" is only true when the picks are there, not when the fallback reached across the country.

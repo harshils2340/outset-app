@@ -12,8 +12,21 @@ export const REGION_NAME: Record<string, string> = {
 
 export const CA_REGIONS = new Set(["AB", "BC", "MB", "NB", "NL", "NS", "NT", "NU", "ON", "PE", "QC", "SK", "YT"]);
 
-/** The two-letter code at the end of a listing's area, or "" when it has none. */
+/**
+ * The state or province a listing's area names, or "" when it names none.
+ *
+ * Usually the code after the town ("Tampa, FL"), but an operator whose town the crawl never found publishes
+ * the code on its own ("SK"), which is the honest gap the rules ask for and not a missing region: 4,736 of the
+ * catalog's rows. Asking for a comma in front of it hid all of them from every state and province row, so a
+ * guest who picked Saskatchewan was shown 63 businesses out of 224, and the Northwest Territories one out of
+ * twelve. The town itself is never read, so the catalog's "Mt, NJ" stays in New Jersey, and every candidate is
+ * checked against the table, so a two letter word inside a place name cannot stand in for a code.
+ */
 export function regionOfArea(area: string | undefined): string {
-  const m = (area || "").match(/,\s*([A-Z]{2})\s*$/);
-  return m && REGION_NAME[m[1]] ? m[1] : "";
+  const parts = (area || "").split(",");
+  for (const part of parts.slice(parts.length > 1 ? 1 : 0)) {
+    const code = part.trim().toUpperCase();
+    if (code.length === 2 && REGION_NAME[code]) return code;
+  }
+  return "";
 }
