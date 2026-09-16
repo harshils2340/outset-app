@@ -429,7 +429,9 @@ export function toCatalogItem(r: CatalogRow): Record<string, unknown> {
       const price = o.price_cents == null ? null : o.price_cents / 100;
       return {
         name,
-        detail: plainLabel(silent(o.duration) || silent(o.detail) || "", { service: name, kind: art, price }) || "",
+        // The label a guest picks is the row's own detail ("Adult", "Single Rider", "Two Hour Rental"); the duration
+        // only stands in when there is none. Duration first collapsed five jet ski tiers into one "1 to 3 hours" row.
+        detail: plainLabel(silent(o.detail) || silent(o.duration) || "", { service: name, kind: art, price }) || "",
         price,
         per: perOf(o),
       };
