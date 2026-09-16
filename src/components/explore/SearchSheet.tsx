@@ -95,6 +95,15 @@ export function SearchSheet() {
     return list.map((m) => ({ m, n: countInMetro(m.id) })).filter((x) => x.n > 0).slice(0, 4);
   }, [needle, state.catalogVersion]);
 
+  // An activity typed into Where ("kayak", "axe throwing"): the phone sheet opens on Where, so guests type what
+  // they want to do there. It is not a place, even when the map has a town by that name, so it moves to What.
+  const activityTyped = useMemo(() => (needle && !cities.length && describeQuery(needle).onlyKind ? whatLabel(needle) : null), [needle, cities]);
+  const moveToWhat = () => {
+    setWhat(needle);
+    setText("");
+    setStep("what");
+  };
+
   // What, empty: the place's strongest kinds and the occasions people search by, each counted in the place.
   const ideas = useMemo(() => {
     if (step !== "what" || whatRest) return { kinds: [], intents: [] };
@@ -230,6 +239,7 @@ export function SearchSheet() {
                   if (e.key !== "Enter") return;
                   e.preventDefault();
                   if (cities[0]) pickCity(cities[0].m.id);
+                  else if (activityTyped) moveToWhat();
                   else if (hits[0]) pickPlace({ kind: "near", place: hits[0] });
                   else setStep("what");
                 }}
@@ -258,9 +268,10 @@ export function SearchSheet() {
                   {cities.map(({ m, n: k }) =>
                     item("m" + m.id, <IcPin size={20} />, m.name, m.region + ", " + (m.country === "CA" ? "Canada" : "United States") + " · " + k.toLocaleString() + " places", () => pickCity(m.id)),
                   )}
+                  {activityTyped ? item("act", <IcSearch size={20} />, activityTyped, "Search activities" + hereName, moveToWhat) : null}
                   {hits.length ? <p className="airsgroup">Places on the map</p> : null}
                   {hits.map((h) => item("p" + h.label + h.lat, <IcPin size={20} />, h.label, h.sub, () => pickPlace({ kind: "near", place: h })))}
-                  {!cities.length && !hits.length ? <p className="airsgroup">Keep typing, or try a bigger town nearby.</p> : null}
+                  {!cities.length && !hits.length && !activityTyped ? <p className="airsgroup">Keep typing, or try a bigger town nearby.</p> : null}
                 </>
               ) : (
                 <>
