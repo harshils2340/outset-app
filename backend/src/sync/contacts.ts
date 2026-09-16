@@ -822,6 +822,14 @@ export function keepScreened(urls: string[]): string[] {
   });
 }
 
+/**
+ * A logo lives in a directory of its own as often as in the file's own name ("company/logo/id.png"), and a CDN's
+ * own transform suffix can push the real name off the end of the path entirely ("logo biz.JPG/:/cr=t:0%,...",
+ * an image proxy's "i=-LOGO(1).jpg" carried in its own query string). The word "logo" anywhere in the address a
+ * guest's browser actually requests is still a logo, not only when it is the last thing before the extension.
+ */
+const LOGO_PATH = /(?:^|[/_\-. ?&=])logos?(?:[/_\-. (]|$)/i;
+
 export function isPhotoName(url: string): boolean {
   if (!url) return false;
   let name = url.split("?")[0].split("/").slice(-1)[0];
@@ -830,7 +838,14 @@ export function isPhotoName(url: string): boolean {
   } catch {
     /* keep the raw name */
   }
-  return !DOC_PHOTO.test(name);
+  if (DOC_PHOTO.test(name)) return false;
+  let full = url;
+  try {
+    full = decodeURIComponent(url);
+  } catch {
+    /* keep the raw address */
+  }
+  return !LOGO_PATH.test(full);
 }
 
 /** A boat, a cabin or a car with a sticker price was scraped from a dealer page on the operator's site. */
