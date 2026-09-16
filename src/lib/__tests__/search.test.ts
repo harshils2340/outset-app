@@ -3,7 +3,7 @@ import test from "node:test";
 import { inCat } from "../../data/categories";
 import { ALL_METRO_ID } from "../../data/metros";
 import type { CategoryId, Unclaimed } from "../../data/types";
-import { searchSuggest, type SearchScope } from "../search";
+import { searchListings, searchSuggest, type SearchScope } from "../search";
 
 /**
  * The ways out of an empty search.
@@ -164,4 +164,49 @@ test("a kind with no virtual tab falls back to the tab most of its listings carr
   const tampa = checkWaysOut("axe throwing", { metroId: "tampa", cat: "all" as CategoryId });
   assert.equal(tampa.family?.cat, "indoor");
   assert.equal(tampa.family?.count, 1);
+});
+
+/**
+ * What a search hands back after the catalog has been rebuilt.
+ *
+ * `rebuild()` in catalog.ts hands out a new array on every operator edit and every time a lite record is
+ * swapped for its own detail file. The ids and their order do not move, so the word index stands, but each
+ * folded entry also kept the object it folded. That object is what a search returned.
+ */
+
+/** The array catalog.ts hands out after an edit: the same listings, one of them a new object. */
+function edited(pool: Unclaimed[], id: string, patch: Partial<Unclaimed>): Unclaimed[] {
+  return pool.map((u) => (u.id === id ? { ...u, ...patch } : u));
+}
+
+test("a listing edited in place is the one a search hands back", () => {
+  const pool: Unclaimed[] = [
+    op({ title: "Bay Kayak Rentals", cat: "water", art: "kayak", metroId: "tampa", from: 65 }),
+    op({ title: "Tampa Paddle Shack", cat: "water", art: "kayak", metroId: "tampa", from: 80 }),
+  ];
+  const id = pool[0].id;
+  assert.equal(searchListings(pool, "kayak tampa")[0].id, id);
+
+  const after = edited(pool, id, { blurb: "Sunset trips from the Riverwalk.", cover: "https://example.com/new.jpg" });
+  const found = searchListings(after, "kayak tampa").find((u) => u.id === id);
+  assert.ok(found, "the edited listing dropped out of its own search");
+  assert.equal(found, after[0], "the search handed back the record the operator replaced");
+  assert.equal(found.blurb, "Sunset trips from the Riverwalk.");
+  assert.equal(found.cover, "https://example.com/new.jpg");
+});
+
+test("a price cap reads the price the operator saved", () => {
+  const pool: Unclaimed[] = [
+    op({ title: "Gulf Jet Ski Co", cat: "water", art: "jetski", metroId: "tampa", from: 200 }),
+  ];
+  const id = pool[0].id;
+  assert.equal(searchListings(pool, "jet ski under $50").length, 0);
+
+  // The operator puts a $40 half hour on their menu. The cap has to read that, not the crawled $200.
+  const cheaper = edited(pool, id, { from: 40, options: [{ name: "Half hour", detail: "", price: 40 }] });
+  assert.equal(searchListings(cheaper, "jet ski under $50").length, 1, "a $40 ride stayed out of an under $50 search");
+
+  // And the other way: a shop that raises its price is no longer under the cap.
+  const dearer = edited(cheaper, id, { from: 240, options: [{ name: "Half hour", detail: "", price: 240 }] });
+  assert.equal(searchListings(dearer, "jet ski under $50").length, 0, "a $240 ride was still offered under $50");
 });

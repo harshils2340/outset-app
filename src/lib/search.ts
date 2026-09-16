@@ -203,6 +203,11 @@ function startingPrice(u: Unclaimed): number | null {
   return priced.length ? Math.min(...priced) : u.from ?? null;
 }
 
+/** Rating and photo weight, read off the record rather than out of the hot loop. */
+function qualOf(u: Unclaimed): number {
+  return u.rating && u.reviews ? Math.min(6, Math.log10(u.reviews + 1) * 2) : 0;
+}
+
 function foldEntry(idx: Index, u: Unclaimed, i: number): void {
   const title = norm(u.title);
   const words = title ? title.split(" ") : [];
@@ -217,7 +222,7 @@ function foldEntry(idx: Index, u: Unclaimed, i: number): void {
     art: u.art,
     metroId: u.metroId,
     from,
-    qual: u.rating && u.reviews ? Math.min(6, Math.log10(u.reviews + 1) * 2) : 0,
+    qual: qualOf(u),
     kid: -1,
     grp: -1,
   });
@@ -265,6 +270,44 @@ function foldEntry(idx: Index, u: Unclaimed, i: number): void {
 }
 
 /**
+ * Point the folded entries at the records the new pool holds.
+ *
+ * `rebuild()` in catalog.ts hands out a new array, with new objects for the listings it changed, whenever an
+ * operator saves an edit or a lite record is swapped for its own detail file. The ids and their order do not
+ * move, so the postings still address the right listings, but every entry also kept the object it folded and
+ * that object is what a search handed back. A guest searching after an operator dropped their price got the
+ * record from before the edit: the old price on the card, the old photos, and a "under $50" search that
+ * filtered on a price nobody charges any more. The detail swap did the same thing the other way, handing back
+ * the slim copy of a listing whose full record had already arrived.
+ *
+ * Only the entries whose record actually changed are touched, which is one or two of 59,000 on an edit. The
+ * word postings are not rebuilt, so a listing renamed in the dashboard is still reachable by the name it was
+ * folded under until the catalog itself reloads; the entry's own name fields follow the edit, so the operator
+ * name picker finds it under the new one.
+ */
+function repoint(idx: Index, pool: Unclaimed[]): void {
+  for (let i = 0; i < idx.entries.length; i++) {
+    const u = pool[i];
+    const e = idx.entries[i];
+    if (e.u === u) continue;
+    e.u = u;
+    e.from = startingPrice(u);
+    e.qual = qualOf(u);
+    // Both are answered from published text the operator can edit, so they are asked again rather than kept.
+    e.kid = -1;
+    e.grp = -1;
+    const title = norm(u.title);
+    if (title !== e.title) {
+      e.title = title;
+      e.words = title ? title.split(" ") : [];
+      e.stem = stemPhrase(title);
+      e.compact = e.words.join("");
+    }
+  }
+  idx.pool = pool;
+}
+
+/**
  * Fold more of the catalog into the index, stopping after `ms` of work. Returns true once it is complete.
  * The search surfaces call this from idle time so the first keystroke does not pay for 55,000 listings.
  */
@@ -277,13 +320,13 @@ export function warmSearch(pool: Unclaimed[], ms = 12): boolean {
    * next keystroke: 387ms of blocked main thread measured here, several times that on a phone. Walking the ids
    * to check costs well under a millisecond by comparison.
    *
-   * When the ids match, the one listing that was enriched in place keeps its existing folded entry. It is
-   * indexed on title, area and tags, none of which enrichment changes, so there is nothing to re-read.
+   * When the ids match, the listings that changed are repointed in place rather than re-folded, so the index
+   * keeps its postings and still reads the records the rest of the app is holding.
    */
   const samePool =
     !!index && index.pool.length === pool.length && index.pool.every((u, i) => u.id === pool[i].id);
   if (!index || !samePool) index = newIndex(pool);
-  else index.pool = pool;
+  else if (index.pool !== pool) repoint(index, pool);
   const idx = index;
   if (idx.built >= pool.length) return true;
   const until = ms === Infinity ? Infinity : performance.now() + ms;
