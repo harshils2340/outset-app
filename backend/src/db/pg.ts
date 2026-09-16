@@ -11,13 +11,33 @@ let pool: pg.Pool | null = null;
 
 export const pgConfigured = () => !!(process.env.DATABASE_URL || "").trim();
 
+/**
+ * How long anything is allowed to hold a connection. Nothing bounded this before, and the pool is five wide,
+ * so five slow queries wedged the whole API: a guest reading a listing waited the full
+ * `connectionTimeoutMillis` and got a 500, and a database that had stopped answering rather than refusing
+ * connections held every request for as long as it liked. Ten seconds is far above any query here (the
+ * slowest, `/listing-edits`, reads 5,000 small rows), so this only ever turns "hangs" into "fails and frees
+ * the connection".
+ *
+ * The transaction timeout is the same argument for locks: `insertBookingChecked` holds an advisory lock on
+ * the listing for its transaction, so a connection left open mid-transaction stops every other booking for
+ * that shop until the backend is reaped.
+ */
+export const POOL_TIMEOUTS = {
+  /** Postgres cancels the query itself. */
+  statement_timeout: 10_000,
+  /** The client's own backstop, for a server that never answers at all. */
+  query_timeout: 12_000,
+  idle_in_transaction_session_timeout: 15_000,
+} as const;
+
 export function db(): pg.Pool {
   if (pool) return pool;
   const url = (process.env.DATABASE_URL || "").trim();
   if (!url) throw new Error("DATABASE_URL is not set");
   // Neon requires TLS. Setting ssl here (rather than through the URL) keeps pg from warning about sslmode aliases.
   const clean = url.replace(/[?&](sslmode|channel_binding)=[^&]*/g, "").replace(/\?&/, "?").replace(/\?$/, "");
-  pool = new pg.Pool({ connectionString: clean, ssl: { rejectUnauthorized: true }, max: 5, idleTimeoutMillis: 30_000, connectionTimeoutMillis: 15_000 });
+  pool = new pg.Pool({ connectionString: clean, ssl: { rejectUnauthorized: true }, max: 5, idleTimeoutMillis: 30_000, connectionTimeoutMillis: 15_000, ...POOL_TIMEOUTS });
   pool.on("error", (e) => console.error("[pg] idle client error: " + e.message));
   return pool;
 }
