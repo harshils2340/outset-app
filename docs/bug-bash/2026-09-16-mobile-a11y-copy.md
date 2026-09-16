@@ -20,3 +20,27 @@ with Playwright at 390x844 (scale 3), 360x640 and 1280x800.
 **Found, not fixed.** Nothing yet.
 
 **Needs Harshil.** Nothing yet.
+
+## 16 September 2026, continued (new session, picked up after a usage-limit cutoff)
+
+Restarted from `origin/main` (`git fetch origin main && git checkout -B main origin/main`) per the run's
+own instructions, since the checkout arrives as a detached HEAD. Confirmed the touch-target fix above
+(`047754a73`) was already landed and did not redo it.
+
+**Checked.** `npm ci` at the root and in `backend/`. `npx tsc -b` and `npm test` at the root (161 tests),
+`npx tsc -p tsconfig.json --allowImportingTsExtensions` and `npm test` in `backend/` (132 tests), and
+`npx vite build`, all green before and after the em dash fix below. Grepped every `.ts`/`.tsx` file under
+`src/` and `backend/src/` for the U+2014 em dash character (86 raw hits) and read each one in context.
+
+**Found and fixed.**
+
+- **Four backend files still used an em dash in prose comments and a vendor note, against the house
+  writing rule** (`10df5225c`). Not user-facing, but our own writing, so it follows AGENTS.md's "never an
+  em dash" rule same as guest copy. `backend/src/api/availability.ts`'s route doc comment, one inline
+  comment in `backend/src/enrich/availability.ts`, several doc comments in `backend/src/enrich/sitescrape.ts`
+  describing the service-vocabulary tiers, and two capability notes in `backend/src/enrich/vendors.ts`.
+  Replaced each with a comma, colon or period. Left every regex character class (`[-–—]` and similar, used
+  to strip em dashes out of scraped external text) and the HTML entity map in `rezdy.ts` alone, since those
+  are data, not our prose. Also left the em dash in two test fixtures
+  (`backend/src/enrich/__tests__/sitescrape.test.ts`, `crawl.test.ts`) that simulate a scraped external
+  page's HTML title, since that is fake foreign content, not copy we write to a user.
