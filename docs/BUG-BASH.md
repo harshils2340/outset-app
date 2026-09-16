@@ -551,6 +551,74 @@ and 98 backend tests pass, both projects type-check clean, and the rehearsal is 
 - Still nothing checked against real Stripe, no workflow runs `npm test` on its own, Render environment
   variables remain untouched from here, and "Release this listing" still only releases on that device.
 
+## 16 September 2026, tenth run (07:05 to 07:45 UTC)
+
+**Chosen, and why.** Coverage's "not yet checked" list, the two items a person actually touches: the dashboard's
+**Settings and Assistant pages, driven rather than read**. The rest of that list is out of reach tonight (photo
+upload needs a real GitHub token, the operator chat needs `src/data/listings.ts` to be non-empty) or is a
+product call. The full rehearsal was **skipped at the start**: the ninth run's entry said green and there were
+no commits since it. It ran twice at the end instead, because everything here touches `src/` and `backend/src`.
+Type checks on both sides and both unit suites ran at the start and the end.
+
+**Found and fixed.**
+
+- **The Assistant page's On/Off switch controlled nothing** (`7a3439ce`). `OperatorProfile.assistant` has been
+  saved and normalized since the dashboard was built, and nothing ever read it: `toCatalog` did not publish the
+  key, so no guest listing could see it. Driven in a browser against the rehearsal's test listing: the switch
+  moved to "Off", the device saved `assistant: false`, the published patch carried no `assistant` key at all,
+  and a guest in a clean browser still got the Otto panel and an answer quoting the shop's prices, on the
+  desktop listing and on a phone. The key is published now and one predicate, `assistantOn`, gates every place a
+  guest reaches Otto. A thread opened while it was on still opens, so nobody is cut off mid-question, but Otto
+  hands off to the shop. Only an explicit `false` switches it off, so older patches and every unclaimed listing
+  read as on.
+- **"Release this listing" released nothing that outlived the tab** (`0026f4f5`). It only cleared localStorage.
+  The profile row and the email links stayed, so `GET /profiles/:id` kept serving the operator's patch to every
+  guest, the nightly sync kept baking it into the rails, and signing back in handed the whole profile back.
+  `DELETE /profiles/:id` now deletes the row and unlinks every email, behind the same gate as every other write.
+  Bookings are left alone: guests hold codes for them. The app calls it before clearing the device, drops any
+  save still in the 1.2s debounce so a keystroke cannot write the profile straight back, and says so instead of
+  reporting a clean release when the server refuses.
+- **That fix was itself broken in a browser, and only driving it found out** (`83758d1e`). `DELETE` was missing
+  from the API's CORS `allowMethods`. A method missing there fails only on the preflight, so the route passed
+  every one of store-e2e's in-process checks and then did nothing at all when a real browser pressed the button.
+  A test now reads the methods `src/lib/api.ts` sends and fails when the allow list lacks one.
+- **No operator edit reached a guest's rendered listing page** (`1b9b7b66`), which is the big one and was found
+  underneath the others. `loadListing` fetches the detail file, resolves on it, and then fetches the operator's
+  profile in a detached promise that patched the in-memory catalog and told nobody. Nothing in React re-read the
+  catalog, so a guest opening a claimed listing by its link, which is every shared link, every email link and
+  every search result, read the crawled record for the whole visit: old title, blurb, prices, hours, policies.
+  Seen in a browser: the server's patch said the title was "Shah and Shah Services (edited by the harness)" and
+  the page's `h1` said "Shah and Shah Services", after a reload and twelve seconds. Awaiting the profile would
+  put an API round trip in front of every listing page, so it stays detached and announces itself through
+  `onListingEdits`; `AppProvider` subscribes once and bumps `catalogVersion`.
+
+**Checked and clean.** The Settings page driven: owner name, email and mobile with their validation and their
+error lines, the booking-alerts card against a valid, an invalid and a missing address, the Instant Book switch,
+removing sample bookings, and the release confirm-then-act pair. The Assistant page driven: the switch, the
+"What it knows" panel against what Otto actually quotes, the test chat, and the refusal list. The phone listing
+at 400px with the assistant off: nothing scrolls sideways, nothing overlaps.
+
+**Tests.** `src/lib/__tests__/assistantSwitch.test.ts` (7) pins the switch from profile to published patch to
+guest listing, that an older patch reads as on, the handoff line, and that every guest-side entry point calls
+`assistantOn`. `listingEdits.test.ts` (4) pins the announcement and its subscription.
+`backend/src/api/__tests__/cors.test.ts` (3) pins the allow list against what the app sends. store-e2e gained a
+section 12 for the release route (a stranger refused and nothing changed, the owner's session releases, row and
+links gone, guest gets the crawled record, sync drops the edits, bookings survive). Each one was checked against
+the old behaviour and fails on it. 95 guest tests, 101 backend tests, both projects type-check clean.
+
+**Needs Harshil.**
+
+- **The rehearsal cannot see what a guest's browser sees.** It passed 50 of 50 while an operator's edits were
+  not reaching any rendered listing page, because every check reads the API's JSON or calls the catalog code
+  directly. Its one guest-page check, step (d), happens to re-render for other reasons. Worth a check that
+  loads a claimed listing cold and compares the `h1` against the patch.
+- **The lite browse record does not carry `assistant`.** Deliberate: the shard is 1.3 MB and only the listing
+  page offers Otto, which always has the full record by then. If a rail or card ever offers Otto, it needs
+  adding to the sync.
+- The ninth run's two open calls stand: a claimed shop with an empty menu still takes bookings, and a claimed
+  shop's card still shows the crawled `dur`. Still nothing checked against real Stripe, no workflow runs
+  `npm test` on its own, and Render environment variables remain untouched from here.
+
 ## Coverage
 
 **Verified so far.** Booking validation and odd input on every route that takes it. The money split,
@@ -600,10 +668,19 @@ rails, the price filter, the price sort and in Otto's answers. The live guest pr
 (`OpPreview`), end to end: live edits without a reload, the read-only lock, click-to-edit jumping the editor to
 the right page, and both device sizes. A claimed listing with an empty menu seen from the guest side.
 
+The dashboard's Settings and Assistant pages driven rather than read: the owner fields and their validation,
+the booking-alerts card against a valid, invalid and missing address, the Instant Book switch, removing
+samples, the Assistant switch end to end from the profile through the published patch to both guest surfaces,
+the "What it knows" panel against what Otto quotes, and the test chat. "Release this listing" on the server as
+well as the device, and what an operator signing in again gets afterwards. Whether an operator's edits reach a
+guest's rendered listing page at all, on a cold open by link. The API's CORS allow list against every method
+the app sends.
+
 **Not yet checked.** The operator chat for a hand-built listing (`src/data/listings.ts` is empty, so `agent.ts`
 and the `ChatView` operator path still have no live case, and nothing a guest can reach runs them). Photo
 upload against a real GitHub token, and the gap between the URL it returns and the deploy that makes the file
 exist. The mouse drag path of reordering: the keyboard and touch paths are driven in a browser now, the HTML5
 drag events are not. Whether a claimed shop's card should keep the crawled `dur` once the operator's own menu
-disagrees (see this run's note). The dashboard Settings and Assistant pages driven rather than read. What a
-second device sees after "Release this listing". A CI job that runs `npm test` on either side.
+disagrees. Whether a claimed shop with an empty menu should pause its own listing. A rehearsal check that
+reads a claimed listing's rendered page and not only the API's JSON. A CI job that runs `npm test` on either
+side. The Payouts page driven against a connected Stripe account rather than the no-account fallback.
