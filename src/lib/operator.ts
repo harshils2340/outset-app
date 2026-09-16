@@ -825,7 +825,13 @@ export function toCatalog(p: OperatorProfile, base: Unclaimed): Partial<Unclaime
     title: p.title || base.title,
     cat: p.cat,
     blurb: p.blurb || base.blurb,
-    cover: p.cover || undefined,
+    // The cover the operator picked, as long as it is still in their gallery, else the first photo they have,
+    // else nothing. `undefined` is dropped by JSON on the way to every other device, so an operator who
+    // removed a photo they did not want on their listing, or emptied the gallery altogether, published
+    // `photos: []` and kept the crawled cover on every card, on the hero and in the guest's gallery, which
+    // reads `cover` before `photos`. Their own browser showed the scene art, so only they could not see it.
+    // "" survives the round trip and the Photo component falls back to the activity's scene art.
+    cover: (p.photos.includes(p.cover) ? p.cover : p.photos[0]) || "",
     photos: p.photos,
     options,
     services,

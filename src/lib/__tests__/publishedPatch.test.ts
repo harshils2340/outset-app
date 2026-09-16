@@ -4,6 +4,7 @@ import type { Unclaimed } from "../../data/types";
 import { defaultProfile, toCatalog } from "../operator";
 import { durationLabel as menuDuration } from "../listingDerive";
 import { itemWeek } from "../openNow";
+import { photoCandidates } from "../media";
 
 /**
  * What an operator's saved edits look like by the time they reach a guest who is not the operator.
@@ -86,4 +87,23 @@ test("a menu that states no duration leaves the crawled one standing", () => {
   const p = edited();
   p.services = [{ id: "s1", name: "Sunset cruise", desc: "", photo: "", live: true, durationMin: 90, capacity: 6, variants: [{ id: "v1", label: "Adult", price: 150, per: "person", perGuest: true }] }];
   assert.equal(asGuestSeesIt(toCatalog(p, base)).dur, "4 hours");
+});
+
+test("a photo the operator removed is gone from the guest's listing too", () => {
+  const withPhotos = { ...base, cover: "https://test.com/a.jpg", photos: ["https://test.com/a.jpg", "https://test.com/b.jpg"] } as unknown as Unclaimed;
+  const p = defaultProfile(withPhotos, { name: "O", email: "o@test.com", phone: "" });
+  p.hydrated = true;
+  // A fresh profile publishes the cover it was given, exactly as before.
+  assert.equal(({ ...withPhotos, ...(JSON.parse(JSON.stringify(toCatalog(p, withPhotos))) as Partial<Unclaimed>) }).cover, "https://test.com/a.jpg");
+  // The operator empties the gallery. `cover: undefined` never crossed the wire, so the crawled cover stayed
+  // on every card, on the listing hero and at the front of the guest's gallery, which reads it before photos.
+  p.photos = [];
+  p.cover = "";
+  const guest = { ...withPhotos, ...(JSON.parse(JSON.stringify(toCatalog(p, withPhotos))) as Partial<Unclaimed>) };
+  assert.equal(guest.cover, "", "the crawled cover has to be cleared by a value JSON keeps");
+  assert.deepEqual(photoCandidates(guest), []);
+  // Removing only the cover promotes the photo behind it rather than falling back to the crawled one.
+  p.photos = ["https://test.com/b.jpg"];
+  p.cover = "";
+  assert.equal(({ ...withPhotos, ...(JSON.parse(JSON.stringify(toCatalog(p, withPhotos))) as Partial<Unclaimed>) }).cover, "https://test.com/b.jpg");
 });
