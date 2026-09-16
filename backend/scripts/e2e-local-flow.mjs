@@ -319,6 +319,25 @@ async function flow(ctx) {
   await sleep(2500);
   const stillOpens = (await has("This listing is hidden right now")) && !(await has("Pick a time"));
   await shot("c3-guest-while-unpublished");
+  /* The same listing in the phone frame, which is what a phone opens and what "Open the phone app" reaches on
+     a desktop. It is a different screen with its own booking box, and it read neither switch, so a hidden shop
+     was offered with a full picker and a Request button, and the guest only found out after choosing a
+     service, a date, a time and a party and typing their name, mobile and email. */
+  await goto(`${BASE}/`);
+  await until(() => !!document.querySelector(".web"), 15000);
+  await js(() => {
+    const b = [...document.querySelectorAll("button")].find((x) => (x.textContent || "").trim() === "Open the phone app");
+    if (!b) return "MISSING open the phone app";
+    b.click();
+    return "opened the phone frame";
+  });
+  await sleep(1200);
+  await js((id) => { window.location.hash = "#o=" + id; return "opened the listing"; }, ID);
+  await until(() => !!document.querySelector("#screen .airlisting, #screen .reqpad"), 15000);
+  await sleep(2000);
+  const phoneSaysHidden = await has("This listing is hidden right now");
+  const phoneOffersBooking = await js(() => [...document.querySelectorAll(".airreserve button")].some((b) => /^(Reserve|Request)$/.test((b.textContent || "").trim())));
+  await shot("c3b-phone-while-unpublished");
   await goto(`${BASE}/operators`);
   await until(() => !!document.querySelector(".od .odbody"), 15000);
   await openDashboardPage("Listing");
@@ -326,6 +345,11 @@ async function flow(ctx) {
   await sleep(2500);
   const backOn = await untilLocal(async () => (await remoteProfile())?.published === true);
   record("(c2) Published off then on, guest link behaves as designed", offOk && stillOpens && backOn, offOk ? (stillOpens ? "hidden from lists, own link says it is hidden and takes no booking" : "guest page did not show the hidden notice, or still offered a booking") : "published flag did not reach the API");
+  record(
+    "(c2b) the same hidden listing in the phone app says so and offers no booking",
+    phoneSaysHidden && phoneOffersBooking === false,
+    `says hidden:${phoneSaysHidden} still offers a booking:${phoneOffersBooking}`,
+  );
 
   // --- Accepting off, then on ---
   await clickIn(".odtop .optoggle");
