@@ -120,8 +120,11 @@ export function experienceById(id: string | null): Unclaimed | null {
   const direct = byId.get(id);
   if (direct) return direct;
   // Generated ids from emails and landing pages can point at a hand-verified seed that kept its own id.
-  for (const u of byId.values()) if (u.detail === id) return u;
-  return null;
+  // rebuild() already maps every twin id to its seed, so this is the map it built rather than a walk over
+  // 59,000 records. The walk ran on every miss, and a miss is the common case: any id that is not in the
+  // catalog at all scanned the whole thing to return nothing, on every hash change and at boot.
+  const seed = alias.get(id);
+  return (seed ? byId.get(seed) : undefined) ?? null;
 }
 
 /**
