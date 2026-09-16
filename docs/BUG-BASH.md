@@ -685,6 +685,78 @@ shapes that must not move. 106 guest tests and 108 backend tests pass, both proj
   card still shows the crawled `dur`, the rehearsal still cannot see a guest's rendered page, nothing is
   checked against real Stripe, and no workflow runs `npm test` on its own.
 
+## 16 September 2026, twelfth run (09:05 to 10:25 UTC)
+
+**Chosen, and why.** Coverage's "not yet checked" list ends with the two things no run has opened:
+`zoneFor`, the map that decides which clock a shop's hours are read on, and `geo.ts` / `places.ts`, the
+distance stamps and "near me". Everything above them on that list is out of reach tonight (the operator chat
+needs a non-empty `src/data/listings.ts`, photo upload a real GitHub token, Payouts a connected Stripe
+account) or is a product call for you. Rather than read the map, the whole shipped catalog went through it:
+59,091 operators, every state and province, both parsers compared row by row. The **rehearsal was skipped at
+the start**: the eleventh run's entry said green and the only commit since it was that entry. Both type checks
+and both unit suites ran at the start and at the end, and the rehearsal ran twice at the end, because every
+fix here touches `src/` or `backend/src`: **50 passed, 0 failed** each time.
+
+**Found and fixed.**
+
+- **Every shop in Oregon was an hour ahead of itself** (`716246929`). Mountain time in Oregon is Malheur
+  County, in the south east corner, but the nudge asked for `lon < -117.1`, which is everything WEST of the
+  Idaho border, so 1,028 of the 1,029 Oregon listings were on Mountain time and the one that really is
+  Mountain was on Pacific. Portland, Salem, Eugene and the whole coast. A card read "Closed, opens 9 AM
+  tomorrow" while the shop still had an hour to run, the "Open right now near you" rail dropped them an hour
+  early, Otto answered on the wrong clock, and on the API side an hour came off every remaining start time
+  and the day rolled over to tomorrow at 11 PM. Both parsers are twins by design, so both moved.
+- **A shop whose town was never scraped had no state at all** (`42e1aa515`). The sync writes the area as
+  "town, code", and when the crawl never found a town it writes the code alone: 4,736 of the 59,091 rows, and
+  that is the honest gap the rules ask for, not a missing region. Both clocks wanted a comma in front of the
+  code, threw all of them away and fell back to a band of longitude. **1,669 operators were on a clock an hour
+  out**: a Tucson stable on Denver time, so it moved every spring while Arizona did not; a Kalispell outfitter
+  on Pacific; Saskatchewan keeping a daylight saving it does not observe; St John's losing its half hour.
+  Across a week that is 7,663 wrong "open now" readings on 377 shops.
+- **1,030 Canadian shops were priced in US dollars** (`8ee869924`). `currencyForArea` read the province with
+  the same comma-first regex, so every one of those areas took the fallback, which is usd. A Toronto booking
+  raised its payment intent in usd, both emails read "$185.00 USD" where they should have read "CA$185.00",
+  and the Connect account the payouts page offered was a US one. It reads the province the way the clock does
+  now, so the two cannot drift apart again.
+- **Picking a province showed a fraction of it** (`cbebda511`). The same gap in `regionOfArea` left those
+  4,736 listings in no state or province, so a guest who searched Saskatchewan was offered 63 businesses and
+  shown 63, when there are 224. Manitoba read 73 of 225, Newfoundland 34 of 94, the Northwest Territories one
+  of twelve. They were missing from the "more like this" rail on every listing page in their own state too.
+- **Smaller** (`78914ab42`). A feed card appended the metro to that same townless area, so fourteen Florida
+  rows read "FL, Orlando" instead of "Orlando, FL", and a landing page's FAQ listed a state code among the
+  towns its listings are in: "including places in FL, Tampa and Clearwater", on a published page.
+
+**Checked and clean.** The other eight split-state nudges, in both directions, against named operators:
+Florida's panhandle, El Paso, western Kentucky, eastern Tennessee, the Dakotas and Nebraska, north Idaho,
+Michigan's upper peninsula and the BC Kootenays. That the guest parser and the API parser agree on all 59,091
+rows after the change, as they must or a card and the times it opens would disagree. That no area the old
+regex read is now read differently: exactly one row, "Mt, NJ", would have moved to Montana under a naive
+left-to-right read, and the town is never read at all. 125 rows still have no region, down from 4,872.
+
+**Tests.** `src/lib/__tests__/zoneFor.test.ts` (5) and `regionOfArea.test.ts` (3),
+`backend/src/lib/__tests__/zone.test.ts` (+3), `backend/src/payments/__tests__/currency.test.ts` (4) and one
+more in `pages.test.ts`, each pinned to a named operator in the shipped catalog and each checked against the
+old code and failing on it. 114 guest tests and 116 backend tests pass, both projects type-check clean.
+
+**Needs Harshil.**
+
+- **The two distance stamps disagree on units.** `formatDistance` in `src/lib/geo.ts` gives a US listing miles
+  and a Canadian one kilometres; `fmtDistance` in `src/lib/places.ts` says "Metric everywhere" and gives
+  kilometres to everyone. A guest on a phone reads "5 km away" on the Explore card and "3.2 mi away" in the
+  sheet that card opens, for the same shop. Both look deliberate where they are written, so which one wins is
+  yours. The country is now cheap to know, from `regionOfArea` and `CA_REGIONS`.
+- **Arizona still moves on the Navajo Nation.** `AZ` is America/Phoenix for the whole state, and the Navajo
+  Nation in the north east does observe daylight saving. The same shape as the Oregon fix would handle it, but
+  the boundary is a reservation and not a longitude, so it wants a real decision.
+- **The 4,736 townless areas are a supply gap as well as a parsing one.** They now read correctly everywhere,
+  but a card that can only say "SK" is still a card with no town on it. Worth a pass in the enricher.
+- The fix to `regionOfArea` is one line in `src/data/regions.ts`, which is outside the folders this run
+  usually keeps to. Nothing else this run left `src/lib`, `src/components`, `backend/src` or `docs`.
+- The earlier runs' open calls stand: a claimed shop with an empty menu still takes bookings, a claimed shop's
+  card still shows the crawled `dur`, the rehearsal still cannot see a guest's rendered page, nothing is
+  checked against real Stripe, no workflow runs `npm test` on its own, and the bad weeks in `catalog.json`
+  still want a sync on Render.
+
 
 ## Coverage
 
@@ -750,6 +822,14 @@ year glued into an hours line. The three unusual ways a shop writes a time. An u
 marked closing one. That the two hour parsers, which are twins by design, agree on every operator. That a
 compact week already baked into `catalog.json` that no clock could show is not believed.
 
+Which clock a shop's hours are read on, run over the whole shipped catalog rather than read: `zoneFor` and its
+API twin `zoneForArea` against all 59,091 operators, every split-state nudge in both directions, and that the
+two parsers agree on every row. How a state or province is read out of an area line, including the 4,736 rows
+whose area is the code alone and the one row whose town would be mistaken for a code. What that gap was
+costing: the clock, the currency a booking is charged and paid out in, the state and province rows a search
+offers, the page a picked state opens, the "more like this" rail, a feed card's place line and a landing
+page's list of towns.
+
 **Not yet checked.** The operator chat for a hand-built listing (`src/data/listings.ts` is empty, so `agent.ts`
 and the `ChatView` operator path still have no live case, and nothing a guest can reach runs them). Photo
 upload against a real GitHub token, and the gap between the URL it returns and the deploy that makes the file
@@ -759,7 +839,8 @@ disagrees. Whether a claimed shop with an empty menu should pause its own listin
 reads a claimed listing's rendered page and not only the API's JSON. A CI job that runs `npm test` on either
 side. The Payouts page driven against a connected Stripe account rather than the no-account fallback.
 Whether a shop publishing "12:00 AM - 11:59 PM" means it is open all night or has stated no hours at all, and
-the handful whose campground quiet hours were crawled as opening hours: both belong in the extractor. The
-timezone map in `zoneFor`, its longitude nudges for split states, and what a guest sees for an operator whose
-region cannot be read. `geo.ts` distance stamps and `places.ts` "near me" resolution, neither of which any run
-has looked at.
+the handful whose campground quiet hours were crawled as opening hours: both belong in the extractor.
+`geo.ts` and `places.ts` read but not driven: the two helpers disagree on miles against kilometres, the Photon
+geocoder behind the Where box has never been exercised against a slow or dead endpoint, and `currentLocation`
+has never been driven with the browser's permission refused. Whether Arizona's Navajo Nation should keep
+daylight saving. The 4,736 listings whose area carries no town, as a supply gap rather than a parsing one.
