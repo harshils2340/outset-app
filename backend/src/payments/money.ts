@@ -1,3 +1,4 @@
+import { regionOfArea } from "../lib/zone.ts";
 import { expandAbbreviations } from "../sync/plainServices.ts";
 
 /**
@@ -58,11 +59,17 @@ export function splitBooking(totalDollars: number, currency: string, subtotalDol
 
 const CA_REGIONS = new Set(["AB", "BC", "MB", "NB", "NL", "NS", "NT", "NU", "ON", "PE", "QC", "SK", "YT"]);
 
-/** A listing is priced in its own country's dollars: "Tobermory, ON" in CAD, "Tampa, FL" in USD. */
+/**
+ * A listing is priced in its own country's dollars: "Tobermory, ON" in CAD, "Tampa, FL" in USD.
+ *
+ * The province is read the same way the clock reads it. Asking for a comma in front of the code sent every
+ * operator whose town was never scraped to the fallback, which is US dollars: 1,030 Canadian shops, whose
+ * bookings were charged, emailed and paid out in USD.
+ */
 export function currencyForArea(area: string | undefined, fallback = "usd"): string {
-  const m = (area || "").match(/,\s*([A-Z]{2})\s*$/);
-  if (!m) return fallback;
-  return CA_REGIONS.has(m[1]) ? "cad" : "usd";
+  const region = regionOfArea(area);
+  if (!region) return fallback;
+  return CA_REGIONS.has(region) ? "cad" : "usd";
 }
 
 /**
