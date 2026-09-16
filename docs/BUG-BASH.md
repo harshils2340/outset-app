@@ -758,6 +758,78 @@ old code and failing on it. 114 guest tests and 116 backend tests pass, both pro
   still want a sync on Render.
 
 
+## 16 September 2026, thirteenth run (10:00 to 11:40 UTC)
+
+**Chosen, and why.** Coverage's "not yet checked" list has `geo.ts` and `places.ts` as read but never driven:
+the Photon geocoder behind the Where box against a slow or dead endpoint, and `currentLocation` with the
+browser's permission refused. Everything above them is still out of reach (the operator chat wants a non-empty
+`src/data/listings.ts`, photo upload a real GitHub token, Payouts a connected Stripe account) or is a product
+call for you. So the Where box, the phone search sheet and the Explore feed were driven in Chromium with the
+geocoder killed, slowed, and answering late, and with location refused and with the prompt left unanswered.
+The **rehearsal was skipped at the start**: the twelfth run's entry says green and the only commit since it was
+that entry. Both type checks and both unit suites ran first, then the rehearsal ran at the end, because every
+fix here touches `src/` or `backend/src`: **50 passed, 0 failed**.
+
+**Found and fixed.**
+
+- **Pressing "Nearby" could kill it for the rest of the visit** (`52ec7b090`). The Where box and the phone
+  sheet both disable that row while they await `currentLocation()`, showing "Finding you…". The promise could
+  never settle. `getCurrentPosition` is given `timeout: 8000`, but the Geolocation spec stops that clock while
+  the browser asks for permission, so a guest who leaves the permission bar unanswered gets neither callback,
+  ever. Driven in Chromium with permission withheld, neither had fired 62 seconds later and the row was still
+  "Finding you…", still disabled, on the desktop and at 400px alike, with a reload the only way back. It
+  settles on a clock of its own now. A refusal also said nothing at all: the row just reset, so a guest pressed
+  it again and again. Both surfaces say why, and point at the box that does work.
+- **"Nearby" was the commonest town in the catalog** (`94c0b8840`). `npm run sync` wrote
+  `city: l.city || "Nearby"` for a chain's other venues, so every venue whose own town the crawl never read
+  shipped as a place called Nearby: **64 of them on 24 listings**, against 11 for Orlando, the next most
+  common. The app read it as a place name. Trapped of Vancouver offered a venue reading "Nearby · 3,337 km
+  away", the listing page headed seven of Exit's eight Calgary-area venues "Nearby", and every one of those
+  map links went off to Google Maps searching for a town called Nearby. The sync keeps the honest gap now, and
+  the guest side names a venue by its street, or says "Another location" and links to the coordinates, for the
+  bare pins already in `catalog.json`.
+- **A picked province was an hour's drive from the middle of it** (`793e0951b`). The desktop home and the phone
+  Explore feed each had their own answer to "is this listing at the place the guest picked", and `state.near`
+  is shared, so the same guest saw two catalogs one click apart. The Where box offers "Saskatchewan · 224
+  places"; picking it and pressing "Open the phone app" gave **8 cards**, the ones with photos within 80 km of
+  a point in a field near Davidson, each reading "SK · 16 km away", which is a distance from nothing a guest
+  has heard of. It gives 18 now, the province's photographed listings, named by their towns. The phone also
+  measured a chain from whichever pin the catalog leads with rather than its nearest venue, which places 182
+  listings wrongly and 60 of them by over 50 km. There is one definition now, `atPlace` in `explore/feed.ts`,
+  and the desktop imports it.
+- **Smaller** (`90ede5e91`). `fmtDistance` picked its band from the raw number and rounded afterwards, so
+  anything from 995 m to a kilometre read "1000 m away" and 9.96 km read "10.0 km".
+
+**Checked and clean.** The geocoder killed outright: the Where box degrades to the metros and the state rows,
+nothing hangs and nothing throws. The geocoder answering four seconds late while the guest keeps typing: the
+stale answer is discarded and the fresh one wins, as the effect's `live` flag intends. The ordinary near-me
+path with permission granted, on both surfaces, nearest first. No sideways scroll at 400px on any screen
+touched. That the 64 placeholder venues are the only non-place town in all 277 distinct venue towns shipped.
+
+**Tests.** `src/lib/__tests__/currentLocation.test.ts` (5), `venueLabel.test.ts` (6), `atPlace.test.ts` (6) and
+`fmtDistance.test.ts` (4), each pinned to a real catalog row where it names one. 134 guest tests and 116
+backend tests pass, both projects type-check clean, rehearsal 50 of 50.
+
+**Needs Harshil.**
+
+- **The Where box can only find a town through a third party.** Saskatoon has listings in our own catalog, but
+  it is not one of the 47 metros, so the only way to pick it is Photon. With Photon down or rate-limited (it is
+  free and unkeyed) the Where box loses every town in the US and Canada that is not a metro, and tells the
+  guest to "try a bigger town nearby". Indexing the towns our own `area` lines already carry would end the
+  dependency, but it is a product call.
+- **Trapped's own street address is in the wrong province.** The primary contact line reads "2273 Dundas
+  Street West, Vancouver, BC L5K 2L8": a Mississauga street and a Mississauga postcode under a Vancouver town
+  and pin. Street, postcode and area are read from different sources and glued together, so this shape can
+  repeat. Worth a sweep of postcode against region in the enricher.
+- The twelfth run's calls stand: the two distance helpers still disagree on miles against kilometres
+  (`formatDistance` in `geo.ts` gives a US listing miles, `fmtDistance` gives everyone kilometres), Arizona
+  still moves on the Navajo Nation, and the 4,736 townless areas are still a supply gap.
+- The earlier runs' open calls stand: a claimed shop with an empty menu still takes bookings, a claimed shop's
+  card still shows the crawled `dur`, the rehearsal still cannot see a guest's rendered page, nothing is
+  checked against real Stripe, no workflow runs `npm test` on its own, and the bad weeks and the 64 "Nearby"
+  venues in `catalog.json` both want a sync on Render.
+
+
 ## Coverage
 
 **Verified so far.** Booking validation and odd input on every route that takes it. The money split,
@@ -830,6 +902,14 @@ costing: the clock, the currency a booking is charged and paid out in, the state
 offers, the page a picked state opens, the "more like this" rail, a feed card's place line and a landing
 page's list of towns.
 
+Where the Where box gets its places, driven rather than read: the Photon geocoder killed outright, slowed
+to four seconds while the guest keeps typing, and answering after the query moved on. "Nearby" on both
+surfaces with the browser's permission refused and with the prompt left unanswered. The ordinary near-me path
+with permission granted. What a chain's other venues are called on a card, on the listing page and in Otto's
+answers, and the 64 that were called Nearby. Whether a listing is at the place a guest picked, on the desktop
+home and in the phone feed, for a picked point and for a picked state or province, for a chain and for a
+listing with no pin at all. The distance strings themselves, at every band boundary.
+
 **Not yet checked.** The operator chat for a hand-built listing (`src/data/listings.ts` is empty, so `agent.ts`
 and the `ChatView` operator path still have no live case, and nothing a guest can reach runs them). Photo
 upload against a real GitHub token, and the gap between the URL it returns and the deploy that makes the file
@@ -840,7 +920,7 @@ reads a claimed listing's rendered page and not only the API's JSON. A CI job th
 side. The Payouts page driven against a connected Stripe account rather than the no-account fallback.
 Whether a shop publishing "12:00 AM - 11:59 PM" means it is open all night or has stated no hours at all, and
 the handful whose campground quiet hours were crawled as opening hours: both belong in the extractor.
-`geo.ts` and `places.ts` read but not driven: the two helpers disagree on miles against kilometres, the Photon
-geocoder behind the Where box has never been exercised against a slow or dead endpoint, and `currentLocation`
-has never been driven with the browser's permission refused. Whether Arizona's Navajo Nation should keep
+`geo.ts`'s `formatDistance` and `places.ts`'s `fmtDistance` still disagree on miles against kilometres, which
+is a product call. Whether the Where box should index the towns our own catalog already names, instead of
+depending on Photon for every place that is not one of the 47 metros. Whether Arizona's Navajo Nation should keep
 daylight saving. The 4,736 listings whose area carries no town, as a supply gap rather than a parsing one.
