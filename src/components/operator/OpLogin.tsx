@@ -68,6 +68,8 @@ export function OpLogin({ claimId, claimToken, compact, onEnter, onBack }: { cla
   const [code, setCode] = useState("");
   const [err, setErr] = useState<string | null>(null);
   const [linkState, setLinkState] = useState<"idle" | "checking" | "bad" | "expired">(claimToken && claimId && !consumedLinks.has(claimToken) ? "checking" : "idle");
+  // The splash sits on one line for up to a minute while the catalog and the listing's file arrive.
+  const [slow, setSlow] = useState(false);
   const isApi = hasApi();
 
   // A signed claim link opens the dashboard directly. The listing file carries a hash of the emailed token;
@@ -133,8 +135,13 @@ export function OpLogin({ claimId, claimToken, compact, onEnter, onBack }: { cla
         return;
       }
       // The catalog and the detail file can take a while on a slow connection; keep checking for a full minute.
-      if (++tries < 120 && alive) setTimeout(tick, 500);
-      else if (alive) setLinkState("bad");
+      // Ten seconds of "Opening your dashboard…" and nothing else reads like a page that has stopped, so the
+      // splash says it is still going once it is past the usual wait.
+      tries += 1;
+      if (!alive) return;
+      if (tries === 20) setSlow(true);
+      if (tries < 120) setTimeout(tick, 500);
+      else setLinkState("bad");
     };
     tick();
     return () => { alive = false; };
@@ -363,7 +370,7 @@ export function OpLogin({ claimId, claimToken, compact, onEnter, onBack }: { cla
       <div className={"odsplash" + (compact ? " compact" : "")} role="status" aria-live="polite">
         <Mark size={44} />
         <b>Opening your dashboard…</b>
-        <small>{picked ? picked.title : "One moment"}</small>
+        <small>{slow ? "Still loading your listing. This can take a moment on a slow connection." : picked ? picked.title : "One moment"}</small>
       </div>
     );
   }
@@ -392,7 +399,14 @@ export function OpLogin({ claimId, claimToken, compact, onEnter, onBack }: { cla
           <>
             <h2>Find your business</h2>
             <p className="odmuted">Search by name. If we already built your listing, you'll claim it in under a minute.</p>
-            {claimId && !preset && app.catalogComplete ? <p className="oderr">We couldn't find the business named in that link. Search for it by name below, or write to {SUPPORT}.</p> : null}
+            {claimId && !preset && app.catalogComplete ? (
+              <p className="oderr">We couldn't find the business named in that link. Search for it by name below, or write to {SUPPORT}.</p>
+            ) : claimId && !preset && linkState === "bad" ? (
+              /* The link check waits a full minute for the catalog and the listing's own file, then gives up. If
+                 the listing never arrived, the link is not what went wrong and a fresh one will not help: the
+                 owner landed here on a bare "Find your business" screen with nothing said at all. */
+              <p className="oderr">We couldn't load your listing. Check your connection and open the link from your email again, or search for your business by name below.</p>
+            ) : null}
             <label className="odsearch">
               <Markup html={OD_ICONS.search} />
               <input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="Business name, like Tampa Bay Jet Ski" />
