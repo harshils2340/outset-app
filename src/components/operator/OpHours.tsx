@@ -77,7 +77,9 @@ export function OpHours() {
             {p.hours.map((h, i) => (
               <div className={"odhour" + (h.closed ? " closed" : "")} key={i}>
                 <b>{DAY_NAMES[i]}</b>
-                <button type="button" className={"optoggle small" + (h.closed ? "" : " on")} onClick={() => patchDay(i, { closed: !h.closed })} aria-pressed={!h.closed}><span className="knob" /></button>
+                {/* The two selects beside it say which day they belong to; this switch said nothing at all, so a
+                    screen reader read seven identical "button, pressed" rows with no way to tell Sunday from Monday. */}
+                <button type="button" className={"optoggle small" + (h.closed ? "" : " on")} onClick={() => patchDay(i, { closed: !h.closed })} aria-pressed={!h.closed} aria-label={"Open on " + DAY_NAMES[i]}><span className="knob" /></button>
                 {h.closed ? (
                   <span className="odmuted">Closed</span>
                 ) : (

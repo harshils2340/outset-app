@@ -273,7 +273,9 @@ export function OpSettings() {
         <div className="odcardhead"><h3>Bookings</h3></div>
         <div className="odrow">
           <span className="meta"><b>Instant Book</b><small>{p.instantBook ? "Bookings confirm automatically." : "You approve each booking."}</small></span>
-          <button type="button" className={"optoggle" + (p.instantBook ? " on" : "")} onClick={() => set({ instantBook: !p.instantBook })} aria-pressed={p.instantBook}><span className="knob" /></button>
+          {/* The "Instant Book" heading sits in the row beside this, not on the switch, so the switch itself
+              read as a bare "button, pressed". The Bookings page's copy of it has carried a name all along. */}
+          <button type="button" className={"optoggle" + (p.instantBook ? " on" : "")} onClick={() => set({ instantBook: !p.instantBook })} aria-pressed={p.instantBook} aria-label="Instant Book"><span className="knob" /></button>
         </div>
         {p.bookings.some((b) => b.source === "sample") ? (
           <div className="odrow">
