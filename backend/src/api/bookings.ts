@@ -260,8 +260,13 @@ bookings.post("/bookings", rateLimit(20, 60 * 60 * 1000), async (c) => {
   // and the operator was emailed money for something they had taken off the menu.
   const patch = (profile?.patch || {}) as { options?: PricedOption[]; addons?: PricedOption[] };
   const own = (k: "options" | "addons") => !!profile?.patch && k in patch;
-  const menu = own("options") ? patch.options || [] : detail?.options || [];
-  const extras = own("addons") ? patch.addons || [] : detail?.addons || [];
+  // A dashboard record is stored as the device sends it, so `options` or `addons` can be anything at all. A
+  // string has a length, so a menu of `"oops"` passed the emptiness check below and `priceBooking` then called
+  // `.filter` on it: every booking for that shop answered 500 until somebody fixed the row by hand. Anything
+  // that is not an array reads as an empty menu, so one bad write costs the shop its prices, not its bookings.
+  const asList = (v: unknown): PricedOption[] => (Array.isArray(v) ? (v as PricedOption[]) : []);
+  const menu = own("options") ? asList(patch.options) : asList(detail?.options);
+  const extras = own("addons") ? asList(patch.addons) : asList(detail?.addons);
   const priced = menu.length ? priceBooking(menu, extras, rec.service, rec.variant, qty, rec.addons, rec.total) : null;
   if (priced && rec.total != null && Math.abs(priced.total - rec.total) > 0.5) console.warn(`[bookings] ${code}: browser total ${rec.total}, listing price ${priced.total}; charging the listing price`);
   // Once the listing has been read, its own menu is the only source of a price. This used to apply only when the

@@ -243,6 +243,16 @@ console.log("\n10b. A shop that took its whole menu down is not priced from the 
   await json(`/profiles/${ID}`, { method: "PUT", headers: { "x-session": session }, body: JSON.stringify({ published: true, patch: { title: "E2E Store Shop", options: [{ name: "Tour", detail: "1 hour", price: 50 }], addons: [] }, profile: shop }) });
   r = await book("E2E-S933", { service: "Tour", variant: "1 hour", addons: ["Wetsuit"], total: 84, slot: "12:00" });
   check("an add-on taken off the menu is not added to the bill", r.status === 200 && (await stored("E2E-S933"))?.total === 53, await stored("E2E-S933"));
+
+  // The patch is stored as the device sends it, so a menu can be any shape at all. A string has a length, so
+  // it passed the "is there a menu" test and priceBooking then called .filter on it: every booking for that
+  // shop answered 500. A malformed menu costs the shop its prices, not its bookings.
+  await json(`/profiles/${ID}`, { method: "PUT", headers: { "x-session": session }, body: JSON.stringify({ published: true, patch: { title: "E2E Store Shop", options: "oops" }, profile: shop }) });
+  r = await book("E2E-S934", { service: "Tour", variant: "1 hour", total: 53, slot: "13:00" });
+  check("a menu that is not an array still takes the booking, with no price", r.status === 200 && (await stored("E2E-S934"))?.total === null, r);
+  await json(`/profiles/${ID}`, { method: "PUT", headers: { "x-session": session }, body: JSON.stringify({ published: true, patch: { title: "E2E Store Shop", options: [{ name: "Tour", detail: "1 hour", price: 50 }], addons: "oops" }, profile: shop }) });
+  r = await book("E2E-S935", { service: "Tour", variant: "1 hour", addons: ["Wetsuit"], total: 84, slot: "14:00" });
+  check("add-ons that are not an array price the experience alone", r.status === 200 && (await stored("E2E-S935"))?.total === 53, r);
 }
 
 console.log("\n11. Unsubscribe list lives in the documents table");
