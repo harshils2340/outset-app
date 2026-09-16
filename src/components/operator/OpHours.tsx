@@ -122,7 +122,7 @@ export function OpHours() {
             </label>
             <label className="odfield row"><span>How far ahead guests can book</span>
               <select value={p.windowDays} onChange={(e) => set({ windowDays: Number(e.target.value) })}>
-                {[7, 14, 30, 60, 90, 180, 365].map((d) => <option key={d} value={d}>{d < 30 ? d + " days" : d < 365 ? Math.round(d / 30) + " months" : "1 year"}</option>)}
+                {[7, 14, 30, 60, 90, 180, 365].map((d) => <option key={d} value={d}>{d < 30 ? d + " days" : d < 365 ? Math.round(d / 30) + (d < 60 ? " month" : " months") : "1 year"}</option>)}
               </select>
             </label>
             <p className="odfine">Capacity per slot is set on each service under Services.</p>
