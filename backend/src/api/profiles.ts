@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { ID, idsWith, jsonBody, linkEmailToListing, mayEdit, rateLimit, signSession, verifySession } from "./auth.ts";
+import { ID, bodyText, idsWith, jsonBody, linkEmailToListing, mayEdit, rateLimit, signSession, verifySession } from "./auth.ts";
 import { maskEmail } from "../lib/claimIndex.ts";
 import { deleteProfile, getProfile, listProfileEdits, unlinkListing, updateProfile } from "../lib/repo.ts";
 
@@ -24,7 +24,7 @@ export type StoredProfile = {
 
 const fresh = (id: string, now: string): StoredProfile => ({ id, claimedAt: now, updatedAt: now, owner: { name: "", email: "", phone: "" }, published: true, profile: null, patch: {} });
 const cleanOwner = (o: Partial<StoredProfile["owner"]> | undefined, cur: StoredProfile["owner"]) =>
-  o ? { name: String(o.name ?? cur.name).slice(0, 120), email: String(o.email ?? cur.email).trim().toLowerCase().slice(0, 200), phone: String(o.phone ?? cur.phone).slice(0, 40) } : cur;
+  o ? { name: bodyText(o.name, cur.name).slice(0, 120), email: bodyText(o.email, cur.email).trim().toLowerCase().slice(0, 200), phone: bodyText(o.phone, cur.phone).slice(0, 40) } : cur;
 
 export const profiles = new Hono();
 
@@ -91,7 +91,9 @@ profiles.put("/profiles/:id", rateLimit(600, 60 * 60 * 1000), async (c) => {
   const rec = await updateProfile<StoredProfile>(id, fresh(id, now), (cur) => {
     const next = { ...cur };
     if (body.profile !== undefined) next.profile = body.profile;
-    if (body.patch && typeof body.patch === "object") next.patch = body.patch;
+    // An array is an object, so `patch: [1,2,3]` was stored and then served to every guest who opened the
+    // listing and to the nightly sync, which both spread it over the catalog record as keys "0", "1", "2".
+    if (body.patch && typeof body.patch === "object" && !Array.isArray(body.patch)) next.patch = body.patch;
     if (typeof body.published === "boolean") next.published = body.published;
     before = cur.owner.email;
     next.owner = cleanOwner(body.owner, cur.owner);

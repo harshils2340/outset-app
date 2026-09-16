@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { ID, jsonBody, mayEdit, rateLimit } from "./auth.ts";
+import { ID, bodyText, jsonBody, mayEdit, rateLimit } from "./auth.ts";
 import { readJson } from "../lib/store.ts";
 import { getBooking, getProfile, insertBookingChecked, listBookings, updateBooking } from "../lib/repo.ts";
 import type { StoredProfile } from "./profiles.ts";
@@ -111,9 +111,10 @@ const realDate = (s: string): boolean => {
   const t = new Date(Date.UTC(y, m - 1, d));
   return t.getUTCFullYear() === y && t.getUTCMonth() === m - 1 && t.getUTCDate() === d;
 };
-// Strip control characters so nothing odd lands in an email or a JSON file.
+// Strip control characters so nothing odd lands in an email or a JSON file. `bodyText` rather than `String`
+// because `String({toString: 1})` throws, and that is ordinary JSON a request can carry.
 const clean = (s: unknown, max: number) =>
-  String(s ?? "")
+  bodyText(s)
     .split("")
     .filter((ch) => ch.charCodeAt(0) >= 32)
     .join("")
@@ -193,7 +194,8 @@ bookings.get("/bookings/paid/:listing/:code", rateLimit(60, 60 * 60 * 1000), asy
 
 bookings.post("/bookings", rateLimit(20, 60 * 60 * 1000), async (c) => {
   const b = (await c.req.json().catch(() => null)) as Partial<StoredBooking> | null;
-  if (!b || !ID.test(String(b.listing))) return c.json({ error: "bad listing" }, 400);
+  const listing = bodyText(b?.listing);
+  if (!b || !ID.test(listing)) return c.json({ error: "bad listing" }, 400);
   const date = clean(b.date, 10);
   const slot = clean(b.slot, 5);
   const qty = Number(b.qty);
@@ -208,7 +210,6 @@ bookings.post("/bookings", rateLimit(20, 60 * 60 * 1000), async (c) => {
   if (!/^[A-Z0-9-]{4,16}$/.test(code)) return c.json({ error: "bad code" }, 400);
   if (guest.name.length < 2 || guest.phone.replace(/\D/g, "").length < 7) return c.json({ error: "name and mobile are required" }, 400);
   if (guest.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(guest.email)) return c.json({ error: "bad email" }, 400);
-  const listing = String(b.listing);
   const profile = await getProfile<StoredProfile>(listing);
   // The listing's own file: its menu and prices, and the proof that the listing exists at all. Before this,
   // a booking for any invented id was accepted, stored a row and alerted the founder to call a shop that was

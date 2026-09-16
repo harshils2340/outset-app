@@ -152,6 +152,34 @@ console.log("\n8. Bad input is answered, never crashed on");
   }
   check("a body of null is a 4xx on every route that reads one", codes.every((s) => !/ 5\d\d$/.test(s)), codes);
 
+  // `String(v)` throws on an object whose `toString` is not callable, and `{"toString": 1}` is ordinary JSON
+  // that anyone can post. Every route that read a field that way answered 500: the claim request, the link
+  // exchange, both sign-in routes, the profile write and the booking route.
+  const hostile = { toString: 1 };
+  const bodies: [string, string, unknown][] = [
+    ["POST", "/auth/request-code", { email: hostile }],
+    ["POST", "/auth/verify", { email: hostile, code: hostile }],
+    ["POST", `/claims/${ID}/request`, { email: "a@x.com", name: hostile, phone: hostile }],
+    ["POST", `/claims/${ID}/exchange`, { token: hostile }],
+    ["POST", `/claims/${ID}/test-enter`, { email: hostile }],
+    ["POST", `/claims/${ID}/test-unclaim`, { email: hostile }],
+    ["PUT", `/profiles/${ID}`, { profile: { v: 1 }, patch: {}, owner: { name: hostile, email: hostile, phone: hostile } }],
+    ["POST", "/bookings", { listing: hostile, code: hostile, date: hostile, slot: hostile, guest: { name: hostile } }],
+  ];
+  const odd: string[] = [];
+  for (const [method, path, body] of bodies) {
+    const res = await json(path, { method, headers: { "x-session": session }, body: JSON.stringify(body) });
+    odd.push(`${path} ${res.status}`);
+  }
+  check("a field that cannot be turned into a string is a 4xx, not a 500", odd.every((s) => !/ 5\d\d$/.test(s)), odd);
+
+  // An array is an object, so a patch of [1,2,3] was stored whole and then served to every guest who opened
+  // the listing and to the nightly sync, which spread it over the catalog record as keys "0", "1" and "2".
+  await json(`/profiles/${ID}`, { method: "PUT", headers: { "x-session": session }, body: JSON.stringify({ published: true, patch: { title: "E2E Store Shop" } }) });
+  await json(`/profiles/${ID}`, { method: "PUT", headers: { "x-session": session }, body: JSON.stringify({ published: true, patch: [1, 2, 3] }) });
+  r = await json(`/profiles/${ID}`);
+  check("a patch that is an array is not stored over the operator's own", (r.body?.patch as { title?: string })?.title === "E2E Store Shop", r.body?.patch);
+
   // A booking code is checked in the path the same way POST /bookings checks it. A code carrying a NUL byte
   // reached Postgres and came back as `invalid byte sequence for encoding "UTF8"`: a 500 for a bad link.
   r = await json(`/bookings/${ID}/${encodeURIComponent("\0")}`, { method: "PATCH", headers: { "x-session": session }, body: JSON.stringify({ status: "accepted" }) });

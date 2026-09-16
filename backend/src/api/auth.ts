@@ -59,6 +59,21 @@ export async function jsonBody<T extends object>(c: Context): Promise<Partial<T>
   return v && typeof v === "object" && !Array.isArray(v) ? (v as Partial<T>) : {};
 }
 
+/**
+ * One field of a request body as text, safely.
+ *
+ * `String(v)` throws "Cannot convert object to primitive value" on an object whose `toString` is not callable,
+ * and `{"toString": 1}` is ordinary JSON that anyone can post. Every route that read a field with `String(...)`
+ * answered 500 to it: the claim request, the link exchange, both sign-in routes, the profile write and the
+ * booking route. JSON carries no other kind of text, so a string is a string, a number reads as its digits,
+ * and anything else is the field not being there.
+ */
+export function bodyText(v: unknown, fallback = ""): string {
+  if (typeof v === "string") return v;
+  if (typeof v === "number" && Number.isFinite(v)) return String(v);
+  return fallback;
+}
+
 /** True when the request may edit listing `id`: a valid claim token for it, or a session that lists it. */
 export function mayEdit(c: Context, id: string): boolean {
   if (!ID.test(id)) return false;
@@ -135,7 +150,7 @@ export const auth = new Hono();
 
 auth.post("/auth/request-code", rateLimit(20, 60 * 60 * 1000), async (c) => {
   const body = await jsonBody<{ email: string }>(c);
-  const email = String(body.email || "").trim().toLowerCase();
+  const email = bodyText(body.email).trim().toLowerCase();
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return c.json({ error: "enter a valid email" }, 400);
   // Same answer either way, so this cannot be probed for whether an address has an account.
   if (!emailLimit("req:" + email, 5, 60 * 60 * 1000)) return c.json({ ok: true });
@@ -159,8 +174,8 @@ auth.post("/auth/request-code", rateLimit(20, 60 * 60 * 1000), async (c) => {
 
 auth.post("/auth/verify", rateLimit(30, 60 * 60 * 1000), async (c) => {
   const body = await jsonBody<{ email: string; code: string }>(c);
-  const email = String(body.email || "").trim().toLowerCase();
-  const code = String(body.code || "").replace(/\D/g, "");
+  const email = bodyText(body.email).trim().toLowerCase();
+  const code = bodyText(body.code).replace(/\D/g, "");
   if (!emailLimit("ver:" + email, 15, 60 * 60 * 1000)) return c.json({ error: "too many attempts, try again later" }, 429);
   const rec = codes.get(email);
   if (!rec || rec.exp < Date.now()) return c.json({ error: "code expired, request a new one" }, 400);

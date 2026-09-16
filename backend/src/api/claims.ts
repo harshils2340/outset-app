@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { ID, clientIp, emailLimit, idsWith, jsonBody, rateLimit, signSession, verifySession, type Session } from "./auth.ts";
+import { ID, bodyText, clientIp, emailLimit, idsWith, jsonBody, rateLimit, signSession, verifySession, type Session } from "./auth.ts";
 import { claimTokenV2, verifyClaimToken } from "../lib/claim.ts";
 import { claimRule, emailMayClaim, maskEmail } from "../lib/claimIndex.ts";
 import { sendMail } from "../lib/mail.ts";
@@ -34,9 +34,9 @@ claims.post("/claims/:id/request", rateLimit(10, 60 * 60 * 1000), async (c) => {
   const id = String(c.req.param("id") ?? "");
   if (!ID.test(id)) return c.json({ error: "bad id" }, 400);
   const body = await jsonBody<{ email: string; name: string; phone: string }>(c);
-  const email = String(body.email || "").trim().toLowerCase().slice(0, 200);
-  const name = String(body.name || "").trim().slice(0, 120);
-  const phone = String(body.phone || "").trim().slice(0, 40);
+  const email = bodyText(body.email).trim().toLowerCase().slice(0, 200);
+  const name = bodyText(body.name).trim().slice(0, 120);
+  const phone = bodyText(body.phone).trim().slice(0, 40);
   if (!EMAIL.test(email)) return c.json({ error: "enter a valid email" }, 400);
 
   const { ok, rule } = await emailMayClaim(id, email);
@@ -96,7 +96,7 @@ claims.post("/claims/:id/exchange", rateLimit(30, 60 * 60 * 1000), async (c) => 
   const id = String(c.req.param("id") ?? "");
   if (!ID.test(id)) return c.json({ error: "bad id" }, 400);
   const body = await jsonBody<{ token: string }>(c);
-  const check = verifyClaimToken(id, String(body.token || ""));
+  const check = verifyClaimToken(id, bodyText(body.token));
   if (!check.ok) {
     console.log(`[claim] ${id}: link rejected (${check.reason}) from ${clientIp(c)}`);
     // "expired" is worth telling the owner, so the screen can offer a fresh link instead of a dead end.
@@ -139,7 +139,7 @@ claims.post("/claims/:id/test-enter", rateLimit(60, 60 * 60 * 1000), async (c) =
   const id = String(c.req.param("id") ?? "");
   if (!ID.test(id)) return c.json({ error: "bad id" }, 400);
   const body = await jsonBody<{ email: string }>(c);
-  const email = String(body.email || "").trim().toLowerCase().slice(0, 200);
+  const email = bodyText(body.email).trim().toLowerCase().slice(0, 200);
   if (!testClaimAllows(email)) return c.json({ error: "not found" }, 404);
   logTestClaim("enter", email, id, clientIp(c));
   const session: Session = { ids: idsWith(verifySession(c.req.header("x-session")), id), email, exp: Date.now() + 30 * 86400000 };
@@ -155,7 +155,7 @@ claims.post("/claims/:id/test-unclaim", rateLimit(60, 60 * 60 * 1000), async (c)
   const id = String(c.req.param("id") ?? "");
   if (!ID.test(id)) return c.json({ error: "bad id" }, 400);
   const body = await jsonBody<{ email: string }>(c);
-  const email = String(body.email || "").trim().toLowerCase().slice(0, 200);
+  const email = bodyText(body.email).trim().toLowerCase().slice(0, 200);
   if (!testClaimAllows(email)) return c.json({ error: "not found" }, 404);
   logTestClaim("unclaim", email, id, clientIp(c));
   const removed = await deleteProfile(id).catch(() => false);
