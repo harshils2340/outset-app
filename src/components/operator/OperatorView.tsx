@@ -64,14 +64,18 @@ export function OperatorView({ compact = false }: { compact?: boolean }) {
     if (p) setClaimNotice(takeClaimNotice());
   }, [p?.id]);
 
-  /* The demo dashboard has no session by design, and its saves are meant to stop at this browser, so it is the
-     one profile that must not raise this. Every other one is a real shop whose edits are going nowhere. */
+  /* Only a refusal about the business on screen. This device holds a profile per business it has ever claimed
+     plus the demo one, and every app load pushes all of them, so a session for one shop is refused for the
+     others by design; taking any refusal as this one's would tell an owner with a good session they were
+     signed out. The demo dashboard has no session at all by design, and its saves are meant to stop at this
+     browser, so it is the one profile that never raises this. */
   const demoHere = !!p && isDemoProfile(p);
+  const mineId = p?.id;
   useEffect(() => {
-    if (!hasApi() || demoHere) return;
-    onOperatorAuthLost(() => setSignedOut(true));
+    if (!hasApi() || demoHere || !mineId) return;
+    onOperatorAuthLost((id) => { if (id === mineId) setSignedOut(true); });
     return () => onOperatorAuthLost(null);
-  }, [demoHere]);
+  }, [demoHere, mineId]);
   useEffect(() => { setSignedOut(false); }, [p?.id]);
 
   useEffect(() => {

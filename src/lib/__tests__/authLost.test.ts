@@ -54,4 +54,16 @@ test("the dashboard listens for it and offers a way back in", () => {
   assert.ok(/Sign in again to publish your changes/.test(src), "the dashboard no longer says what an expired session costs");
   // The demo dashboard has no session by design and its saves are meant to stop at this browser.
   assert.ok(/isDemoProfile\(p\)/.test(src), "the demo dashboard would raise the signed-out notice too");
+  // A device pushes every business it has ever claimed on each app load, and a session for one is refused for
+  // another by design, so a dashboard that took any refusal as its own would cry wolf on a good session.
+  assert.ok(/id === mineId/.test(src), "the dashboard reacts to a refusal about another business as if it were its own");
+});
+
+test("the signal names the listing the refusal was about", () => {
+  const src = readFileSync(join(here, "../api.ts"), "utf8");
+  assert.ok(/onAuthLost\?\.\(id\)/.test(src), "the no-credentials path no longer names the listing");
+  assert.ok(/noteStatus = \(id: string, status: number\)/.test(src), "noteStatus no longer takes the listing it is about");
+  for (const call of ["noteStatus(id,", "noteStatus(listing,"]) {
+    assert.ok(src.includes(call), "a caller of noteStatus stopped passing the listing: " + call);
+  }
 });

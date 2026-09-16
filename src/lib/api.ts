@@ -75,9 +75,14 @@ function authHeaders(id: string): Record<string, string> {
  * and fire-and-forget, so a 403 was thrown away, and the header went on reading "Saved" because that word is
  * about this browser's storage. The operator went on fixing prices, hours and photos for as long as they liked
  * and not one of those edits reached a guest, while new booking requests stopped arriving just as quietly.
+ *
+ * It carries the listing the refusal was about, because a device holds a profile per business it has ever
+ * claimed plus the demo one, and `applyStoredProfiles` pushes every one of them on each app load. A session
+ * for one shop is refused for another by design, so a dashboard that took any refusal as its own would tell an
+ * operator with a perfectly good session that they had been signed out.
  */
-let onAuthLost: (() => void) | null = null;
-export function onOperatorAuthLost(fn: (() => void) | null): void {
+let onAuthLost: ((id: string) => void) | null = null;
+export function onOperatorAuthLost(fn: ((id: string) => void) | null): void {
   onAuthLost = fn;
 }
 /**
@@ -88,8 +93,8 @@ export function onOperatorAuthLost(fn: (() => void) | null): void {
 export function authLost(status: number): boolean {
   return status === 401 || status === 403;
 }
-const noteStatus = (status: number) => {
-  if (authLost(status)) onAuthLost?.();
+const noteStatus = (id: string, status: number) => {
+  if (authLost(status)) onAuthLost?.(id);
 };
 
 async function call<T>(path: string, init: RequestInit & { timeout?: number } = {}): Promise<{ ok: boolean; status: number; data: T | null; error?: string }> {
@@ -170,7 +175,7 @@ export function saveRemoteProfile(id: string, body: { profile: unknown; patch: P
   // a visitor sees before claiming. Either way the edit is going no further than this browser, and the
   // dashboard says which of the two it is, because only it knows whether the profile is the demo one.
   if (!h["x-claim-token"] && !h["x-session"]) {
-    onAuthLost?.();
+    onAuthLost?.(id);
     return;
   }
   queued.set(id, body);
@@ -182,7 +187,7 @@ export function saveRemoteProfile(id: string, body: { profile: unknown; patch: P
     queued.delete(id);
     if (q === undefined) return;
     const r = await call(`/profiles/${encodeURIComponent(id)}`, { method: "PUT", headers: authHeaders(id), body: JSON.stringify(q), timeout: 15000 });
-    noteStatus(r.status);
+    noteStatus(id, r.status);
   }, 1200));
 }
 
@@ -419,13 +424,13 @@ export async function fetchBookings(listing: string): Promise<RemoteBooking[] | 
   if (!claimTokenFor(listing) && !loadApiSession()) return null;
   const r = await call<{ bookings: RemoteBooking[] }>(`/bookings/${encodeURIComponent(listing)}`, { headers: authHeaders(listing) });
   // A refused poll is how an expired session shows up first: new requests simply stop arriving in the feed.
-  noteStatus(r.status);
+  noteStatus(listing, r.status);
   return r.ok && r.data ? r.data.bookings : null;
 }
 
 export async function decideBooking(listing: string, code: string, status: RemoteBooking["status"], note?: string): Promise<boolean> {
   const r = await call(`/bookings/${encodeURIComponent(listing)}/${encodeURIComponent(code)}`, { method: "PATCH", headers: authHeaders(listing), body: JSON.stringify({ status, note }) });
-  noteStatus(r.status);
+  noteStatus(listing, r.status);
   return r.ok;
 }
 
