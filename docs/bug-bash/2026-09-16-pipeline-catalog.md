@@ -45,6 +45,18 @@ to rules and generators only. Nothing under `public/` was edited by hand, so eve
   each side as "to" ("Walleye (May–October)" reads "Walleye (May to October)"), and anything left over as a comma
   or a period, the substitutes AGENTS.md names; `cleanLine` uses a plain hyphen for its own separator instead of
   manufacturing an en dash. `sync/__tests__/tidyDashes.test.ts` covers both.
+- **A hacked site's gambling spam was published as a museum's own words** (`f38f999da`, `o-345artgallery-com`).
+  97 published listings, an art gallery, golf courses, RV parks and museums among them, carried Indonesian
+  gambling SEO spam as their blurb ("MAXSLOT88 adalah situs SLOT777 dan platform slot gacor..." under a Chicago
+  art gallery's name), and a dozen more led with a "slot gacor" banner from a throwaway image host as their cover
+  photo (Route 66 Museum, the Connecticut Eastern Railroad Museum). The operators' own sites had been hacked with
+  the SEO-spam pattern common to compromised WordPress installs, and the crawl read the injected page straight
+  through; nothing screened for it, because photo and cover facts bypass the trust filter that already exists for
+  junk, stale and retail text in `src/sync/contacts.ts`. `SPAM_LINE` recognizes the betting-term phrases, careful
+  to leave "book your slot online" alone since that is a real sentence a booking page writes; once one of an
+  operator's own text facts is spam, none of its photo or cover facts are trusted either, on the reasoning that a
+  hacked page is hacked all the way through. `sync/__tests__/spamLine.test.ts` covers both the catch and the near
+  miss.
 
 **Found, not fixed.** In progress.
 
