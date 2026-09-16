@@ -148,9 +148,10 @@ services:
         sync: false
       # OUTSET_CHROME: leave unset; the Playwright install under ~/.cache/ms-playwright is found automatically.
 
-  # Operators are paid every Monday. This is the same call .github/workflows/pay-operators.yml makes; it lives here
-  # too because GitHub Actions can be switched off for the account, and the money must still move. ADMIN_KEY is
-  # the same value as on outset-api. One transfer per booking code, so a second run pays nobody twice.
+  # Operators are paid every Monday. ADMIN_KEY is the same value as on outset-api. One transfer per booking code,
+  # so a second run pays nobody twice. This used to be duplicated as a GitHub Actions workflow; GitHub disabled
+  # Actions for the account on 16 September 2026 because the crawl workflows used runners to read third-party
+  # sites, so every scheduled job now lives here and Actions carries only the end-to-end CI run.
   - type: cron
     name: outset-payouts
     runtime: node
@@ -160,3 +161,12 @@ services:
     envVars:
       - key: ADMIN_KEY
         sync: false
+
+  # The free API service sleeps after fifteen idle minutes and takes half a minute to wake, which a guest tapping
+  # Book would feel. A health ping every twelve minutes keeps it up. Same call the old keep-warm workflow made.
+  - type: cron
+    name: outset-keep-warm
+    runtime: node
+    schedule: "*/12 * * * *"
+    buildCommand: "true"
+    startCommand: curl -fsS -m 120 -o /dev/null -w "API answered in %{time_total}s\n" https://outset-api.onrender.com/health

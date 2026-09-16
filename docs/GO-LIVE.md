@@ -34,7 +34,7 @@ To test against real code without touching production, make a scratch branch (`n
 Set `ADMIN_KEY` on Render to any long random string. The internal routes (raw operator rows, outreach drafts) then only answer to requests carrying `x-admin-key`; without it they are closed on the public host.
 
 ## 2. Point the site at the API
-The site is the Render static site `outset-web` (in `render.yaml`, project Outset, environment Production), built from every push to `main`. Its `VITE_API_URL` env var is the API URL; the blueprint sets it to `https://outset-api.onrender.com`. Nothing about the site goes through GitHub Actions or GitHub Pages; the workflows under `.github/` are only the catalog crawls.
+The site is the Render static site `outset-web` (in `render.yaml`, project Outset, environment Production), built from every push to `main`. Its `VITE_API_URL` env var is the API URL; the blueprint sets it to `https://outset-api.onrender.com`. Nothing about the site goes through GitHub Actions or GitHub Pages. The only workflow under `.github/` is the end-to-end rehearsal (`e2e.yml`), plain CI. Every scheduled job (crawls, photo screen, payouts, keep-warm) runs on Render: the `outset-pipeline` worker and the cron services in `render.yaml`. GitHub disabled Actions for the account on 16 September 2026 because the crawl workflows used runners to read third-party sites; do not put a crawl, a ping or any non-CI job back under `.github/workflows`.
 
 ## 3. Mail DNS (do this before any send to a business)
 

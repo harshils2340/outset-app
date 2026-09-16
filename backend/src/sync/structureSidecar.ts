@@ -3,7 +3,8 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 /**
- * Site structure harvested by the crawl that runs on GitHub Actions, where there is no database.
+ * Site structure harvested by a crawl that ran without a database (GitHub Actions until 16 September 2026; the
+ * Render worker writes straight to SQLite now, so these files only carry what that older crawl read).
  *
  * Photos are half a listing. This is the other half: what the operator sells, what it costs, how long it
  * takes, what is included, the waiver and booking links, the opening hours. `scripts/structure-queue.mts`
