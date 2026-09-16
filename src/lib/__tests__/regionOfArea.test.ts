@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { regionOfArea } from "../../data/regions";
+import { cardPlace } from "../catalog";
 import type { Unclaimed } from "../../data/types";
 import { searchRegions } from "../search";
 
@@ -38,4 +39,18 @@ test("a province's row counts the listings that have no town", () => {
   const [hit] = searchRegions(pool, "saskatchewan");
   assert.equal(hit.code, "SK");
   assert.equal(hit.count, 4);
+});
+
+/**
+ * The place line on a feed card. An operator whose town was never scraped publishes its state as the whole
+ * area, and fourteen of those rows are inside a metro, so the card appended the metro to the state and read
+ * "FL, Orlando".
+ */
+test("a card reads town then state, whichever way round the area came", () => {
+  assert.equal(cardPlace("Clearwater Beach, FL", "Tampa Bay"), "Clearwater Beach, FL");
+  assert.equal(cardPlace("Tampa, FL", "Tampa Bay"), "Tampa, FL"); // the metro's name is already there
+  assert.equal(cardPlace("FL", "Orlando"), "Orlando, FL");
+  assert.equal(cardPlace("ON", "Toronto"), "Toronto, ON");
+  assert.equal(cardPlace("Weeki Wachee", "Tampa Bay"), "Weeki Wachee, Tampa Bay");
+  assert.equal(cardPlace("FL", undefined), "FL");
 });

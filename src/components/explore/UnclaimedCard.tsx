@@ -2,7 +2,7 @@ import { useRef, useState, type KeyboardEvent } from "react";
 import { metroById } from "../../data/metros";
 import { ART_LABEL } from "../../data/art";
 import type { Unclaimed } from "../../data/types";
-import { fromPrice, perPerson, publicRating } from "../../lib/catalog";
+import { cardPlace, fromPrice, perPerson, publicRating } from "../../lib/catalog";
 import { dealToday } from "../../lib/companyAgent";
 import { money } from "../../lib/format";
 import { fmtDistance, kmBetween } from "../../lib/places";
@@ -43,7 +43,7 @@ export function UnclaimedCard({ item }: { item: Unclaimed; compact?: boolean }) 
   const strip = useRef<HTMLDivElement>(null);
   const isSaved = saved.includes(item.id);
 
-  const place = item.area + (metro && !item.area.includes(metro.name) && !item.area.includes(",") ? ", " + metro.name : "");
+  const place = cardPlace(item.area, metro?.name);
   const km = state.near && item.lat != null && item.lon != null ? kmBetween(state.near, { lat: item.lat, lon: item.lon }) : null;
   const detail = [kind, item.dur ? tidyDuration(item.dur) : null, item.fc ? "Free cancellation" : null].filter(Boolean).join(" · ");
   const unit = item.options.find((o) => o.price === from);

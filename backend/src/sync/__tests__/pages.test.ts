@@ -185,3 +185,21 @@ test("a rerun removes pages whose listings are gone", () => {
     r.cleanup();
   }
 });
+
+/**
+ * An operator whose town the crawl never found publishes its area as the state code alone ("FL"), which is
+ * 4,736 rows in the shipped catalog and fourteen of them inside a metro. A state is not a town, and the FAQ
+ * line lists towns: "including places in FL, Tampa and Clearwater" is a published page saying it.
+ */
+test("a state code is never listed as one of a metro's towns", () => {
+  const items: Item[] = [
+    item("cooking", "tampa", 1, { area: "Tampa, FL" }),
+    item("cooking", "tampa", 2, { area: "Clearwater, FL" }),
+    item("cooking", "tampa", 3, { area: "FL" }),
+    item("cooking", "tampa", 4, { area: "FL" }),
+    item("cooking", "tampa", 5, { area: "FL" }),
+  ];
+  const [first] = buildFaq(KINDS.find((k) => k.art === "cooking")!, metro("tampa"), items);
+  assert.match(first.a, /including places in Tampa and Clearwater\b/);
+  assert.doesNotMatch(first.a, /\bFL\b/);
+});

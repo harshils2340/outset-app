@@ -3,7 +3,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { METROS } from "../taxonomy/catalog.ts";
 import { GUIDES } from "../../../src/data/guides.ts";
-import { REGION_NAME } from "../../../src/data/regions.ts";
+import { REGION_NAME, regionOfArea } from "../../../src/data/regions.ts";
 
 /**
  * Programmatic landing pages: one static page per activity and metro, "Escape rooms in Toronto, Ontario".
@@ -206,7 +206,9 @@ export function buildFaq(kind: Kind, metro: Metro | null, items: Item[]): Faq[] 
   const areaCount = new Map<string, number>();
   for (const i of items) {
     const town = String(i.area || "").replace(/,\s*[A-Z]{2}$/, "").trim();
-    if (town) areaCount.set(town, (areaCount.get(town) || 0) + 1);
+    // An operator whose town was never scraped has only its state as an area ("FL"), which is not a town and
+    // must not be listed as one: "including places in FL, Tampa and Clearwater".
+    if (town && !regionOfArea(town)) areaCount.set(town, (areaCount.get(town) || 0) + 1);
   }
   const towns = [...areaCount.entries()].sort((a, b) => b[1] - a[1]).map(([t]) => t).slice(0, 4);
   const withPhotos = items.filter((i) => i.cover).length;

@@ -1,6 +1,7 @@
 import { CONTACTS } from "../data/contacts";
 import { UNCLAIMED } from "../data/unclaimed";
 import type { OperatorContact, Unclaimed, UnclaimedOption } from "../data/types";
+import { regionOfArea } from "../data/regions";
 import type { GeoPoint } from "./geo";
 
 export function siteUrl(src: string): string {
@@ -292,6 +293,21 @@ export function telHref(raw: string): string {
 export function addressLine(c: OperatorContact): string | null {
   const parts = [c.street, [c.city, c.region].filter(Boolean).join(", "), c.postal].filter(Boolean);
   return parts.length ? parts.join(", ") : null;
+}
+
+/**
+ * The place line on a feed card: the listing's own area, with the metro's name added when the area does not
+ * already carry it.
+ *
+ * An operator whose town the crawl never found publishes its state as the whole area ("FL"), which is 4,736
+ * rows in the catalog and fourteen of them inside a metro. Appending the metro to that read "FL, Orlando",
+ * back to front. The town goes in front of the state, the way every other card reads.
+ */
+export function cardPlace(area: string, metroName: string | undefined): string {
+  const a = (area || "").trim();
+  if (!metroName || a.includes(metroName)) return a;
+  if (a.length === 2 && regionOfArea(a)) return metroName + ", " + a.toUpperCase();
+  return a.includes(",") ? a : a + ", " + metroName;
 }
 
 export function mapsHref(c: OperatorContact, fallbackName: string): string {
