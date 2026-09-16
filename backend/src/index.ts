@@ -6,7 +6,7 @@ import { migrate } from "./db/client.ts";
 import { ingestAll, seedTaxonomy, addTarget } from "./ingest/load.ts";
 import { generateOutreachDrafts } from "./outreach/drafts.ts";
 import { scrapePending } from "./scrape/run.ts";
-import { refreshAllScores } from "./lib/completeness.ts";
+import { refreshAllScores, refreshRecentScores } from "./lib/completeness.ts";
 import { loadProfileOverlays, syncCatalogToApp, syncContactsToApp } from "./sync/contacts.ts";
 import { writeClaimIndex } from "./lib/claimIndex.ts";
 import { discoverAll, metroCoverage } from "./discover/osm.ts";
@@ -99,7 +99,7 @@ if (cmd === "aisearch") {
   const only = process.argv.slice(3).filter((a) => !a.startsWith("--"));
   const mArg = process.argv.find((a) => a.startsWith("--max="));
   const r = await discoverAi({ cities: only, maxCalls: mArg ? Number(mArg.split("=")[1]) : 700 });
-  refreshAllScores();
+  refreshRecentScores();
   console.log("AI discovery: " + JSON.stringify(r));
   process.exit(0);
 }
@@ -114,7 +114,7 @@ if (cmd === "websearch") {
   const terms = process.argv.find((a) => a.startsWith("--terms="))?.slice(8).split(",").map((t) => t.trim()).filter(Boolean);
   const dArg = process.argv.find((a) => a.startsWith("--delay="));
   const r = await discoverWeb({ cities: only, terms, delayMs: dArg ? Number(dArg.split("=")[1]) : undefined });
-  refreshAllScores();
+  refreshRecentScores();
   console.log("Web discovery: " + JSON.stringify(r));
   process.exit(0);
 }
@@ -196,7 +196,7 @@ if (cmd === "widgets") {
     process.exit(0);
   }
   const out = await widgetsPending(limit, concurrency, process.argv.includes("--redo"));
-  refreshAllScores();
+  refreshRecentScores();
   console.log(`Widgets: ${out.ok}/${out.sites} operators, ${out.offerings} items, ${out.facts} facts. Run "npm run sync" to push to the app.`);
   process.exit(0);
 }

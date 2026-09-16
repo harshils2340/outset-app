@@ -81,6 +81,16 @@ export function refreshGaps(operatorId: string): string[] {
  * CPU: the API used to run that twice at boot (once per seed ingest) and took over twelve minutes to answer
  * /health. Ingests pass the ids they touched so boot rescores a few dozen rows, not the whole table.
  */
+/**
+ * Rescore only what a job could have changed. The full walk over 142,000 operators takes about forty minutes of one
+ * core, and a discovery or widget run touches a few hundred rows; those are the ones whose gaps moved.
+ */
+export function refreshRecentScores(hours = 24): number {
+  const ids = db.prepare("SELECT id FROM operators WHERE updated_at > datetime('now', ?) OR created_at > datetime('now', ?)").all("-" + hours + " hours", "-" + hours + " hours") as { id: string }[];
+  refreshAllScores(ids.map((r) => r.id));
+  return ids.length;
+}
+
 export function refreshAllScores(only?: string[]): void {
   const ids = only ? only.map((id) => ({ id })) : (db.prepare("SELECT id FROM operators").all() as { id: string }[]);
   for (const row of ids) refreshGaps(row.id);
