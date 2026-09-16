@@ -155,10 +155,14 @@ export async function claimRemote(id: string, token: string, owner?: { name: str
   return r.ok;
 }
 
-let pending: ReturnType<typeof setTimeout> | null = null;
-let queued: { id: string; body: unknown } | null = null;
+// One slot per listing, not one for the whole module. An owner of two shops who edits both inside the same
+// debounce window used to have the first shop's write silently overwritten by the second's: `queued` held only
+// one id at a time, so applyStoredProfiles() looping over every claimed business, or a quick switch between
+// two dashboards, sent the last listing touched and dropped every other one for that cycle.
+const pending = new Map<string, ReturnType<typeof setTimeout>>();
+const queued = new Map<string, unknown>();
 
-/** Debounced: the dashboard saves on every keystroke, the API hears about it once a second. */
+/** Debounced per listing: the dashboard saves on every keystroke, the API hears about each business once a second. */
 export function saveRemoteProfile(id: string, body: { profile: unknown; patch: Partial<Unclaimed>; published: boolean; owner: { name: string; email: string; phone: string } }): void {
   if (!API_URL) return;
   const h = authHeaders(id);
@@ -169,16 +173,17 @@ export function saveRemoteProfile(id: string, body: { profile: unknown; patch: P
     onAuthLost?.();
     return;
   }
-  queued = { id, body };
-  if (pending) clearTimeout(pending);
-  pending = setTimeout(async () => {
-    pending = null;
-    const q = queued;
-    queued = null;
-    if (!q) return;
-    const r = await call(`/profiles/${encodeURIComponent(q.id)}`, { method: "PUT", headers: authHeaders(q.id), body: JSON.stringify(q.body), timeout: 15000 });
+  queued.set(id, body);
+  const t = pending.get(id);
+  if (t) clearTimeout(t);
+  pending.set(id, setTimeout(async () => {
+    pending.delete(id);
+    const q = queued.get(id);
+    queued.delete(id);
+    if (q === undefined) return;
+    const r = await call(`/profiles/${encodeURIComponent(id)}`, { method: "PUT", headers: authHeaders(id), body: JSON.stringify(q), timeout: 15000 });
     noteStatus(r.status);
-  }, 1200);
+  }, 1200));
 }
 
 /**
@@ -191,11 +196,10 @@ export function saveRemoteProfile(id: string, body: { profile: unknown; patch: P
  * `false` means the server still holds it, and the caller has to say so rather than report a clean release.
  */
 export async function releaseRemoteProfile(id: string): Promise<boolean> {
-  if (queued?.id === id) {
-    queued = null;
-    if (pending) clearTimeout(pending);
-    pending = null;
-  }
+  const t = pending.get(id);
+  if (t) clearTimeout(t);
+  pending.delete(id);
+  queued.delete(id);
   if (!API_URL) return false;
   const h = authHeaders(id);
   if (!h["x-claim-token"] && !h["x-session"]) return false;
