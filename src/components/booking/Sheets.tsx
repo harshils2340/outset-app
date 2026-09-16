@@ -350,7 +350,9 @@ function RequestBody({
   const day = dates[dateIdx];
   const p = priceUnclaimed(picked, qty, extras);
   const instant = !!(item.claimed && item.instant);
-  const score = publicRating(item);
+  // The public rating and its count appear only beside written reviews we can actually show (see WebListing).
+  const reviews = useMemo(() => shownReviews(item.quotes, item.title), [item.quotes, item.title]);
+  const score = reviews.length ? publicRating(item) : null;
   const guestFav = !!score && score.rating >= 4.8 && score.reviews >= 100;
   const contact = contactFor(item);
   const facts = listingFacts(item);
@@ -362,7 +364,6 @@ function RequestBody({
   const dist = miles != null && miles <= 150 && metro ? formatDistance(miles, metro.country) + " away" : null;
   const addressRaw = contact ? addressLine(contact) : null;
   const address = addressRaw ? tidyAddress(addressRaw) : null;
-  const reviews = useMemo(() => shownReviews(item.quotes, item.title), [item.quotes, item.title]);
   // A sign-off like "See you soon!" is not arrival information.
   const checkin = item.checkin && !/^(see you|thank|welcome|we look forward|have fun|enjoy)\b/i.test(item.checkin.trim()) ? tidyLine(item.checkin) : "";
   const isSaved = saved.includes(item.id);

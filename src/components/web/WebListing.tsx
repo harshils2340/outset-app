@@ -932,7 +932,10 @@ type KnowCol = { key: string; title: string; icon: string; lines: string[]; extr
 export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose: () => void; onOpen: (id: string) => void }) {
   const { state, dates, confirmUnclaimed, setDate, openOperator } = useApp();
   const metro = metroById(item.metroId);
-  const score = publicRating(item);
+  // The public rating and its count appear only beside written reviews we can actually show. A number with
+  // nothing behind it reads as a promise of reviews, and the site does not make promises.
+  const reviews = useMemo(() => shownReviews(item.quotes, item.title), [item.quotes, item.title]);
+  const score = reviews.length ? publicRating(item) : null;
   const contact = contactFor(item);
   const addressRaw = contact ? addressLine(contact) : null;
   const address = addressRaw ? tidyAddress(addressRaw) : null;
@@ -1158,7 +1161,6 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
   const bookableCount = bookableServices(item.services).length || item.options.filter((o) => o.price != null || o.name).length;
   // A sign-off like "See you soon!" is not arrival information.
   const checkin = item.checkin && !/^(see you|thank|welcome|we look forward|have fun|enjoy)\b/i.test(item.checkin.trim()) ? tidyLine(item.checkin) : "";
-  const reviews = useMemo(() => shownReviews(item.quotes, item.title), [item.quotes, item.title]);
   const services = useMemo(() => bookableServices(item.services), [item.services]);
   const blurb = item.blurb ? cleanDesc(item.blurb).replace(/\s+(Book|Learn more|Read more|Reserve)\.?$/i, "") : "";
 
