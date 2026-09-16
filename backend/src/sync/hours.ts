@@ -119,6 +119,17 @@ function sharedMarker(open: number, close: number, openH: string, openAP: string
 }
 
 /**
+ * A span that covers the whole day is not opening hours. "12:00 AM - 11:59 PM" and "12:00 AM - 12:00 AM" are
+ * what a site builder writes into the markup when the owner never set any, and 166 operators in the shipped
+ * catalog carry one, 132 of them on all seven days: helicopter tours, jet ski rentals and fishing charters
+ * standing in "Open right now near you" at four in the morning under "Open, closes 11:59 PM", a closing time
+ * none of them ever stated. A late closer still counts: "6pm-2am" opens at a stated hour.
+ */
+function coversWholeDay(open: number, close: number): boolean {
+  return open === 0 && close >= 24 * 60 - 1;
+}
+
+/**
  * The first range on the line that could be opening hours, in minutes since midnight. A candidate no clock
  * could show, or one that spans less than half an hour or more than a day, is stepped over rather than taken,
  * so "Open House November 7, 2026 - 10:00 AM - 5:00 PM" gives up the 10 to 5 behind the date instead of
@@ -132,7 +143,7 @@ export function firstSpan(line: string): [number, number] | null {
     if (!t[6] && !t[3] && close <= open) close += 12 * 60;
     open = sharedMarker(open, close, t[1], t[3], t[4]);
     if (close <= open) close += 24 * 60;
-    if (close - open < 30 || close - open > 24 * 60) continue;
+    if (close - open < 30 || close - open > 24 * 60 || coversWholeDay(open, close)) continue;
     return [open, close];
   }
   return null;

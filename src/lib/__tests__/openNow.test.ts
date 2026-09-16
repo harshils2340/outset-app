@@ -187,3 +187,37 @@ test("a bar's happy hour does not close it four hours early", () => {
   // o-brewingaugust-com publishes nothing else, so it publishes nothing.
   assert.equal(show(parseWeek(["Happy Hours Hours Monday 2 pm - 9 pm"])), "(no hours)");
 });
+
+test("a day that never closes is not a day a shop stated its hours", () => {
+  // "12:00 AM - 11:59 PM" and "12:00 AM - 12:00 AM" are what a site builder writes into the markup when the
+  // owner never set hours. 166 operators shipped one, 132 of them on all seven days.
+  assert.equal(show(parseWeek(["Mon-Sun 12:00 AM - 11:59 PM"])), "(no hours)");
+  assert.equal(show(parseWeek(["Mon 12:00 AM - 12:00 AM"])), "(no hours)");
+  // The shop's real days on the same record survive: o-jsma-uoregon-edu is a museum shut Monday and Tuesday.
+  assert.equal(
+    show(parseWeek(["Mon 12:00 AM - 12:00 AM", "Tue 12:00 AM - 12:00 AM", "Wed 11:00 AM - 8:00 PM", "Thu-Sun 11:00 AM - 5:00 PM"])),
+    "Sun 11:00-17:00, Mon -, Tue -, Wed 11:00-20:00, Thu 11:00-17:00, Fri 11:00-17:00, Sat 11:00-17:00",
+  );
+  // A day that runs to the small hours is a stated closing time and still counts.
+  assert.equal(show(parseWeek(["Daily 6pm-2am"])), everyDay("18:00-26:00"));
+  assert.equal(show(parseWeek(["Daily 0:00-12:00"])), everyDay("00:00-12:00"));
+});
+
+test("a whole-day week already in the catalog is not believed either", () => {
+  // o-aerohelicoptertours-com and 165 more stood in "Open right now near you" at four in the morning under
+  // "Open · closes 11:59 PM", a closing time none of them ever stated. A lite record carries no hour lines,
+  // so the compact week has to refuse itself.
+  const heli = {
+    id: "o-aerohelicoptertours-com",
+    title: "Aero Helicopter Tours of South Beach",
+    area: "Miami Beach, FL",
+    src: "aerohelicoptertours.com",
+    hrs: [0, 1, 2, 3, 4, 5, 6].map(() => [0, 1439] as [number, number]),
+  } as unknown as Unclaimed;
+  assert.equal(show(itemWeek(heli)), "(no hours)");
+  // 4 AM in Miami, which is Eastern.
+  assert.equal(itemOpenState(heli, new Date("2026-09-16T08:00:00Z")), null);
+  // o-lakefrontbrewery-com keeps the four days it did state.
+  const brewery = { ...heli, area: "Milwaukee, WI", hrs: [[0, 1440], [660, 1260], [660, 1260], [660, 1260], [660, 1260], [0, 1440], [0, 1440]] } as unknown as Unclaimed;
+  assert.equal(show(itemWeek(brewery)), "Sun -, Mon 11:00-21:00, Tue 11:00-21:00, Wed 11:00-21:00, Thu 11:00-21:00, Fri -, Sat -");
+});

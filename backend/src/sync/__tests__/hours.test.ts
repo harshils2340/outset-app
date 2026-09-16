@@ -96,3 +96,16 @@ test("quiet hours and happy hour are not opening hours", () => {
   );
   assert.equal(show(encodeWeek(["Happy Hour is Sunday 2:00-5:00PM, Mon-Fri 3:00-6:00PM"])), "(no hours)");
 });
+
+test("a day that never closes is not a day a shop stated its hours", () => {
+  assert.equal(show(encodeWeek(["Mon-Sun 12:00 AM - 11:59 PM"])), "(no hours)");
+  assert.equal(show(encodeWeek(["Mon 12:00 AM - 12:00 AM"])), "(no hours)");
+  // o-jsma-uoregon-edu, a museum shut Monday and Tuesday: the days it did state survive.
+  assert.equal(
+    show(encodeWeek(["Mon 12:00 AM - 12:00 AM", "Tue 12:00 AM - 12:00 AM", "Wed 11:00 AM - 8:00 PM", "Thu-Sun 11:00 AM - 5:00 PM"])),
+    "Sun 11:00-17:00, Mon -, Tue -, Wed 11:00-20:00, Thu 11:00-17:00, Fri 11:00-17:00, Sat 11:00-17:00",
+  );
+  // A stated closing time in the small hours still counts.
+  assert.equal(show(encodeWeek(["Daily 6pm-2am"])), everyDay("18:00-26:00"));
+  assert.equal(show(encodeWeek(["Daily 0:00-12:00"])), everyDay("00:00-12:00"));
+});

@@ -61,6 +61,16 @@ function toMins(h: number, m: number, ap: string | undefined): number {
   return hh * 60 + m;
 }
 
+/**
+ * A span that covers the whole day is not opening hours. "00:00-23:59" and "00:00-24:00" are what a site
+ * builder writes into the markup when the owner never set any, and 166 operators in the shipped catalog
+ * carry one: helicopter tours, jet ski rentals and fishing charters standing in "Open right now near you" at
+ * four in the morning, each labelled "Open, closes 11:59 PM", a closing time none of them ever stated.
+ */
+function coversWholeDay(open: number, close: number): boolean {
+  return open === 0 && close >= 24 * 60 - 1;
+}
+
 /** Parses a "9am-5pm" style range (via TIME_RE) into minutes, inferring am/pm when one side omits it. */
 function parseRange(text: string): [number, number] | null {
   const t = TIME_RE.exec(text);
@@ -72,7 +82,7 @@ function parseRange(text: string): [number, number] | null {
     if (close <= open) close += 12 * 60;
   } else if (!t[6] && close <= open) close += 12 * 60;
   if (close <= open) close += 24 * 60;
-  if (close - open < 30 || close - open > 24 * 60) return null;
+  if (close - open < 30 || close - open > 24 * 60 || coversWholeDay(open, close)) return null;
   return [open, close];
 }
 
@@ -170,9 +180,10 @@ function applyOpeningHoursString(week: Week, raw: string) {
       if (open === null || close === null) return;
       if (open === 0 && close === 0) return setDays(week, days, "closed");
       if (close <= open) close += 24 * 60;
-      if (close - open >= 30) setDays(week, days, [open, close]);
+      if (close - open >= 30 && !coversWholeDay(open, close)) setDays(week, days, [open, close]);
     } else if (/closed/i.test(s)) setDays(week, days, "closed");
-    else setDays(week, days, [0, 24 * 60]); // "Mo-Su" alone means open all day
+    // A day named with no time at all states no hours for it. Reading "Mo" as open around the clock is a
+    // guess, and the wrong one: the museum whose markup listed "Mo" and "Tu" bare is shut on both days.
     return;
   }
   // Free-text variant ("Monday 9am-5pm", "Mon-Fri: 9:00 AM - 5:00 PM").
@@ -242,7 +253,7 @@ function applySpecs(week: Week, specs: unknown) {
       continue;
     }
     if (close <= open) close += 24 * 60;
-    if (close - open >= 30 && close - open <= 24 * 60) setDays(week, days, [open, close]);
+    if (close - open >= 30 && close - open <= 24 * 60 && !coversWholeDay(open, close)) setDays(week, days, [open, close]);
   }
 }
 
