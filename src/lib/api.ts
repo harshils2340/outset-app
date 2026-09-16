@@ -356,6 +356,9 @@ export async function bookingStatus(listing: string, code: string): Promise<stri
 }
 
 export async function fetchBookings(listing: string): Promise<RemoteBooking[] | null> {
+  // Without a claim token or a session the API answers 403 every time, and the demo dashboard a visitor sees
+  // before claiming has neither: it was asking for the demo shop's bookings every 45 seconds and logging a 403 each.
+  if (!claimTokenFor(listing) && !loadApiSession()) return null;
   const r = await call<{ bookings: RemoteBooking[] }>(`/bookings/${encodeURIComponent(listing)}`, { headers: authHeaders(listing) });
   return r.ok && r.data ? r.data.bookings : null;
 }
