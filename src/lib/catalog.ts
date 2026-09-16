@@ -21,6 +21,23 @@ const overrides = new Map<string, Partial<Unclaimed>>();
 /** Operators who switched their listing off. Still resolvable by id, hidden from every list. */
 const unpublished = new Set<string>();
 
+/**
+ * An operator's own menu is the whole truth about their prices, including when it is empty.
+ *
+ * A crawled record carries a `from` the crawler read off the site, and `fromPrice` falls back to it whenever no
+ * option is priced. That is right while nobody owns the listing. Once an operator publishes a menu it is wrong:
+ * a shop that hid or deleted every service went on advertising the crawled "From $199" on every card, rail,
+ * search row, compare table and wishlist tile, counted as priced in the price filter, sorted by that price, and
+ * had Otto answer "From $199" for a listing whose own page offers nothing to book. Same rule the booking API
+ * applies in `priceBooking`: once the patch owns `options`, nothing else prices the listing.
+ */
+function mergeOverride(u: Unclaimed, patch: Partial<Unclaimed>): Unclaimed {
+  const merged = { ...u, ...patch };
+  if (!("options" in patch)) return merged;
+  const priced = (patch.options || []).map((o) => o.price).filter((n): n is number => n != null && n > 0);
+  return { ...merged, from: priced.length ? Math.min(...priced) : undefined };
+}
+
 function rebuild(): void {
   // A hand-verified seed keeps its own id and points at its crawled twin through `detail`. Claim links,
   // landing pages and the API all speak the twin's id, so both have to lead to the same record.
@@ -29,7 +46,7 @@ function rebuild(): void {
   const key = (u: Unclaimed) => (overrides.has(u.id) ? u.id : u.detail && overrides.has(u.detail) ? u.detail : null);
   // An unpublished listing keeps its record so its own link resolves, and carries `offline` so the page says it is
   // hidden and takes no booking; before this the page opened and booked as if nothing had changed.
-  const patched = overrides.size || unpublished.size ? base.map((u) => { const k = key(u); const off = unpublished.has(u.id) || (!!u.detail && unpublished.has(u.detail)); return k || off ? { ...u, ...(k ? overrides.get(k) : null), ...(off ? { offline: true } : {}) } : u; }) : base;
+  const patched = overrides.size || unpublished.size ? base.map((u) => { const k = key(u); const off = unpublished.has(u.id) || (!!u.detail && unpublished.has(u.detail)); return k || off ? { ...(k ? mergeOverride(u, overrides.get(k)!) : u), ...(off ? { offline: true } : {}) } : u; }) : base;
   byId = new Map(patched.map((u) => [u.id, u]));
   // Test listings are unlisted: every list, rail and search skips them, and their own link still opens them.
   const hidden = (u: Unclaimed) => !!u.unlisted || unpublished.has(u.id) || (!!u.detail && unpublished.has(u.detail));
