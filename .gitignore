@@ -7,12 +7,11 @@ dist
 .DS_Store
 .vite
 
-backend/data/outset.db
-backend/data/outset.db-wal
-backend/data/outset.db-shm
+backend/data/*.db
+backend/data/*.db-wal
+backend/data/*.db-shm
 backend/data/batches/
 backend/data/claim-secret.txt
-backend/data/snapshot.db
 backend/data/outreach-list.csv
 backend/data/florida-call-list.csv
 
