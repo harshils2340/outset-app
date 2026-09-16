@@ -485,6 +485,72 @@ page.
 - Still nothing checked against real Stripe, Render environment variables remain untouched from here, and
   "Release this listing" still only releases on that device.
 
+## 16 September 2026, ninth run (06:00 to 07:00 UTC)
+
+**Chosen, and why.** Coverage's "not yet checked" list, from the top of what a customer or an operator can
+actually reach today: the Inbox and Trips tabs since the dashboard rework, the live guest preview beside the
+editor, and what a guest can do on a claimed listing whose menu is empty. The operator chat for a hand-built
+listing was skipped on purpose: `src/data/listings.ts` is still empty, so no guest can reach `agent.ts` at all.
+Type checks on both sides (`tsc -b` at the root, not `--noEmit -p .`, per the seventh run's note) and both sets
+of unit tests ran at the start and at the end. The full rehearsal was **skipped at the start**: the last entry
+said green and there were no commits since it at all. It ran at the end, because every fix here touches `src/`.
+
+**Found and fixed.**
+
+- **Trips and Inbox were a heading over a blank page** (`692d910bb`). Both tabs are a list of ids kept in
+  localStorage and looked up in a catalog fetched after the first paint: 23 MB of it, and most operators are in
+  that file alone, not the 1.3 MB lite shard the rails paint from. Every id that had not landed yet rendered as
+  null, and both tabs then branched on the count of ids rather than the count of rows they could draw, so the
+  list container was opened, filled with nothing, and the empty state skipped as well. Driven in a browser with
+  the catalog held back: a guest with a confirmed trip for tomorrow opened Trips and got the word "Trips" over
+  a blank page, while the tab bar badge beside it read 1. Both say they are loading now, the way Wishlists
+  already did, and that condition is one function all three read. A trip whose listing the catalog no longer
+  carries keeps its card instead of vanishing, because the shop is still expecting them and the code is still in
+  their email. The Inbox badge counted raw ids, so it sat on 1 over "No threads yet"; it reads the same answer
+  as the list now (`f7564a337`).
+- **An operator with a valid session was shown the sales pitch** (`1c90793a6`). The dashboard needs the catalog
+  record behind the claim, so until the catalog landed that lookup was null and the screen fell through to the
+  claim screen: an owner opening their dashboard read "Your bookings, the way they come in", the four selling
+  points, and a "Claim your business" search box for the business they already own. Same root cause as the two
+  tabs, on the side that matters more, and the one most likely to make an owner think they had been signed out.
+  It says "Opening <their shop>, you are signed in" and waits; once the catalog is complete and the record
+  really is missing, the claim screen is right again. The claim screen's own "Signed in on this device" list had
+  the milder version and now says it is looking them up.
+- **A shop that took its menu down kept advertising the crawled price** (`2451495fa`). `fromPrice` falls back to
+  the `from` the crawler read off the operator's site whenever no option is priced, which is honest while nobody
+  owns the listing and wrong the moment an operator publishes a menu. A claimed shop that hid or deleted every
+  service kept "From $199" on every card, rail, search row, compare table and wishlist tile, counted as priced
+  in the price filter and sorted by that price, while its own page offered nothing to book. Worse, Otto answered
+  "From $199. They haven't published the rest of the price list." to "how much is it", which is the assistant
+  quoting a price the operator had taken down, against the rule in AGENTS.md. The menu is the whole truth about
+  a shop's prices from the moment the patch owns `options`, the same rule `priceBooking` has applied on the API
+  since the second run and the nightly sync has always applied when it writes `catalog.json`. An edit that does
+  not touch the menu leaves the crawled price alone, so an unclaimed shop reads exactly as before.
+
+**Checked and clean.** The live guest preview beside the editor, opened for the first time by any run: it
+loads, an edit to the business name reaches the frame within a moment without a reload, the read-only ribbon is
+up and the booking controls are off, six regions are tagged for click-to-edit and clicking the services block
+jumped the editor to Services, and both Desktop and Phone render. A claimed listing whose menu is empty, seen
+from the guest side at 1440px and 400px: no price line, no "What you can book", no service picker, nothing
+promised. The new Trips card at 400px: no sideways scroll, no overlap.
+
+**Tests.** `src/lib/__tests__/coldStart.test.ts` (6) pins the shared loading condition and the id resolution;
+`claimedPrice.test.ts` (6) pins the from-price on a claimed, emptied, unpriced and repriced menu, that an edit
+which does not touch the menu changes nothing, and that Otto stops quoting the removed price. 84 guest tests
+and 98 backend tests pass, both projects type-check clean, and the rehearsal is green.
+
+**Needs Harshil.**
+
+- **A claimed shop with an empty menu still takes bookings, and now it is visible.** Confirmed in a browser:
+  the box reads "Request to book", "Pick a time" is live and Total says "Pay on site", for a shop with nothing
+  on its menu. The seventh run raised this and it is still your call whether the listing should pause itself.
+  The prices it advertises are honest now, which was the part that was a bug rather than a decision.
+- **A claimed shop's card still shows the crawled duration.** `toCatalog` does not publish `dur`, so a card can
+  say "2 hours" for a menu whose services are all four. Deciding which service's duration stands for the listing
+  is a product call, and the same rule would be needed in the backend sync, so it was left alone.
+- Still nothing checked against real Stripe, no workflow runs `npm test` on its own, Render environment
+  variables remain untouched from here, and "Release this listing" still only releases on that device.
+
 ## Coverage
 
 **Verified so far.** Booking validation and odd input on every route that takes it. The money split,
@@ -527,10 +593,17 @@ pages, for sideways scroll and unnamed controls. Search suggestion counts agains
 activity, place, elsewhere and family row pressed, none opening an empty page. Which controls the rehearsal
 can still find, now a check of its own.
 
-**Not yet checked.** The operator chat for a hand-built listing (`src/data/listings.ts` is empty, so
-`agent.ts` and the `ChatView` operator path still have no live case). What a guest can do on a claimed listing
-whose menu is empty, now that the state persists (see the seventh run's note). Photo upload against a real
-GitHub token, and the gap between the URL it returns and the deploy that makes the file exist. The mouse drag
-path of reordering: the keyboard and touch paths are driven in a browser now, the HTML5 drag events are not.
-The live guest preview beside the editor (`OpPreview`), which no rehearsal step opens. The Inbox and Trips
-tabs since the dashboard rework. A CI job that runs `npm test` on either side.
+Every screen that is a list of ids kept in localStorage, on a cold start with the catalog held back: Wishlists,
+Trips, Inbox, the Inbox badge, the operator dashboard itself and the claim screen's "Signed in on this device"
+list. What a claimed shop advertises once it empties, unprices or reprices its own menu, on the cards, the
+rails, the price filter, the price sort and in Otto's answers. The live guest preview beside the editor
+(`OpPreview`), end to end: live edits without a reload, the read-only lock, click-to-edit jumping the editor to
+the right page, and both device sizes. A claimed listing with an empty menu seen from the guest side.
+
+**Not yet checked.** The operator chat for a hand-built listing (`src/data/listings.ts` is empty, so `agent.ts`
+and the `ChatView` operator path still have no live case, and nothing a guest can reach runs them). Photo
+upload against a real GitHub token, and the gap between the URL it returns and the deploy that makes the file
+exist. The mouse drag path of reordering: the keyboard and touch paths are driven in a browser now, the HTML5
+drag events are not. Whether a claimed shop's card should keep the crawled `dur` once the operator's own menu
+disagrees (see this run's note). The dashboard Settings and Assistant pages driven rather than read. What a
+second device sees after "Release this listing". A CI job that runs `npm test` on either side.
