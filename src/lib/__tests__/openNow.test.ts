@@ -106,6 +106,35 @@ test("a week already baked into the catalog that no clock could show is not beli
   assert.equal(show(itemWeek(off)), "Sun closed, " + [1, 2, 3, 4, 5, 6].map((i) => D[i] + " 10:00-20:00").join(", "));
 });
 
+test("a marker written once at the end of a range covers both ends of it", () => {
+  // o-adventurebrewing-com opened at three in the morning, seven days a week, and so did 141 other shops:
+  // breweries, tap rooms, theatres, a kart track. Every one of them writes the marker once, at the end.
+  assert.equal(show(parseWeek(["Mon-Thurs: 3:00 – 10:00 pm"])), "Sun -, Mon 15:00-22:00, Tue 15:00-22:00, Wed 15:00-22:00, Thu 15:00-22:00, Fri -, Sat -");
+  assert.equal(show(parseWeek(["Wednesday - Friday: 7-9:00PM"])), "Sun -, Mon -, Tue -, Wed 19:00-21:00, Thu 19:00-21:00, Fri 19:00-21:00, Sat -");
+  assert.equal(show(parseWeek(["Wednesday-Sunday, 1-6 PM"])), "Sun 13:00-18:00, Mon -, Tue -, Wed 13:00-18:00, Thu 13:00-18:00, Fri 13:00-18:00, Sat 13:00-18:00");
+  assert.equal(show(parseWeek(["Everyday we are open! 4:07 – 5:33 PM"])), everyDay("16:07-17:33"));
+});
+
+test("a morning is still a morning", () => {
+  // The marker is only shared when the opening hour is the earlier of the two on a twelve hour clock. These
+  // are the shapes that would break if it were shared blindly.
+  assert.equal(show(parseWeek(["Daily 9-5"])), everyDay("09:00-17:00"));
+  assert.equal(show(parseWeek(["Fri-Sat: 8:30-5"])), "Sun -, Mon -, Tue -, Wed -, Thu -, Fri 08:30-17:00, Sat 08:30-17:00");
+  assert.equal(show(parseWeek(["Daily 10-6"])), everyDay("10:00-18:00"));
+  assert.equal(show(parseWeek(["Daily 11-7"])), everyDay("11:00-19:00"));
+  // Noon, which is where a twelve hour clock wraps, and the hour the marker is shared into.
+  assert.equal(show(parseWeek(["Saturday 12 – 10 PM"])), "Sun -, Mon -, Tue -, Wed -, Thu -, Fri -, Sat 12:00-22:00");
+  assert.equal(show(parseWeek(["Daily 12-5"])), everyDay("12:00-17:00"));
+  // Both hours before noon: there is no afternoon marker to share.
+  assert.equal(show(parseWeek(["Wednesday 7am – 9am"])), "Sun -, Mon -, Tue -, Wed 07:00-09:00, Thu -, Fri -, Sat -");
+  // A range from an hour to the same hour is a twelve hour day, not a day that starts and ends at 8 PM.
+  assert.equal(show(parseWeek(["Daily 8-8"])), everyDay("08:00-20:00"));
+  // A twenty four hour clock carries no marker to share.
+  assert.equal(show(parseWeek(["Daily 09:00-17:00"])), everyDay("09:00-17:00"));
+  assert.equal(show(parseWeek(["Daily 11:00-23:00"])), everyDay("11:00-23:00"));
+  assert.equal(show(parseWeek(["Daily 0:00-12:00"])), everyDay("00:00-12:00"));
+});
+
 test("the hours a shop keeps are still the hours it keeps", () => {
   assert.equal(show(parseWeek(["Mon-Fri 9am-5pm"])), "Sun -, Mon 09:00-17:00, Tue 09:00-17:00, Wed 09:00-17:00, Thu 09:00-17:00, Fri 09:00-17:00, Sat -");
   assert.equal(show(parseWeek(["Daily 10:00 AM to 6:00 PM"])), everyDay("10:00-18:00"));

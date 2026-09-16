@@ -94,6 +94,23 @@ function normalizeClock(line: string): string {
 }
 
 /**
+ * "Mon-Thurs: 3:00 - 10:00 pm" is a brewery that opens in the afternoon, not one that opens at three in the
+ * morning. A marker written once at the end of a range covers both ends of it, which is how a person reads
+ * every hours line on every shop's site, unless the opening hour is the later of the two on a twelve hour
+ * clock: "8:30-5" and "9-5" are mornings. An unmarked opening hour used to be read as AM whatever followed
+ * it, so hundreds of breweries, tap rooms and dropzones said "Open, closes 10 PM" at three in the morning
+ * and turned up in "Open right now near you" in the middle of the night.
+ */
+function sharedMarker(open: number, close: number, openH: string, openAP: string | undefined, closeH: string): number {
+  // An hour of 0, or of 13 upward, is written on a twenty four hour clock, which carries no marker to share.
+  if (openAP || Number(openH) < 1 || Number(openH) > 12 || Number(closeH) > 12) return open;
+  if (close < 12 * 60 || close >= 24 * 60) return open;
+  // Strictly earlier, so "8-8" stays a twelve hour day rather than becoming 8 PM to 8 PM the next morning.
+  const openRel = (Number(openH) % 12) * 60 + (open % 60);
+  return openRel < close - 12 * 60 ? openRel + 12 * 60 : open;
+}
+
+/**
  * The first range on the line that could be opening hours, in minutes since midnight. A candidate no clock
  * could show, or one that spans less than half an hour or more than a day, is stepped over rather than taken,
  * so "Open House November 7, 2026 - 10:00 AM - 5:00 PM" gives up the 10 to 5 behind the date instead of
@@ -102,9 +119,10 @@ function normalizeClock(line: string): string {
 function firstSpan(line: string): DaySpan | null {
   for (const t of normalizeClock(line).matchAll(TIME_SCAN)) {
     if (!onTheClock(t[1], t[2], t[3]) || !onTheClock(t[4], t[5], t[6])) continue;
-    const open = mins(Number(t[1]), Number(t[2] || 0), t[3], false);
+    let open = mins(Number(t[1]), Number(t[2] || 0), t[3], false);
     let close = mins(Number(t[4]), Number(t[5] || 0), t[6], true);
     if (!t[6] && !t[3] && close <= open) close += 12 * 60;
+    open = sharedMarker(open, close, t[1], t[3], t[4]);
     if (close <= open) close += 24 * 60;
     if (close - open < 30 || close - open > 24 * 60) continue;
     return { open, close };

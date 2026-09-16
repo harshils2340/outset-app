@@ -48,6 +48,17 @@ test("a dot, a second and a missing separator are all still times", () => {
   assert.equal(show(encodeWeek(["Scroll HoursMONDAY 1130am-9PM"])), everyDay("11:30-21:00"));
 });
 
+test("a marker written once at the end of a range covers both ends of it", () => {
+  // These are the hours the nightly sync bakes into the catalog, so a brewery that opens at three in the
+  // afternoon has to be encoded as one, or every card and rail in the app says it is open all night.
+  assert.equal(show(encodeWeek(["Mon-Thurs: 3:00 – 10:00 pm"])), "Sun -, Mon 15:00-22:00, Tue 15:00-22:00, Wed 15:00-22:00, Thu 15:00-22:00, Fri -, Sat -");
+  assert.equal(show(encodeWeek(["Wednesday-Sunday, 1-6 PM"])), "Sun 13:00-18:00, Mon -, Tue -, Wed 13:00-18:00, Thu 13:00-18:00, Fri 13:00-18:00, Sat 13:00-18:00");
+  // ...and a morning is still a morning.
+  assert.equal(show(encodeWeek(["Daily 9-5"])), everyDay("09:00-17:00"));
+  assert.equal(show(encodeWeek(["Daily 8-8"])), everyDay("08:00-20:00"));
+  assert.equal(show(encodeWeek(["Daily 11:00-23:00"])), everyDay("11:00-23:00"));
+});
+
 test("the hours a shop keeps are still the hours it keeps", () => {
   assert.equal(show(encodeWeek(["Mon-Fri 9am-5pm"])), "Sun -, Mon 09:00-17:00, Tue 09:00-17:00, Wed 09:00-17:00, Thu 09:00-17:00, Fri 09:00-17:00, Sat -");
   assert.equal(show(encodeWeek(["Sat: 8-4"])), "Sun -, Mon -, Tue -, Wed -, Thu -, Fri -, Sat 08:00-16:00");
