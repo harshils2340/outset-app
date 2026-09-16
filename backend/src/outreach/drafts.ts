@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { randomUUID } from "node:crypto";
+import { VENDORS } from "../enrich/vendors.ts";
 import { db, nowIso } from "../db/client.ts";
 import { claimTokenV2 } from "../lib/claim.ts";
 import { mailPostal, unsubPageUrl } from "../lib/unsub.ts";
@@ -25,7 +26,29 @@ function catalogId(domain: string): string {
   return "o-" + domain.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 48);
 }
 
-const VENDOR_NAME: Record<string, string> = { fareharbor: "FareHarbor", peek: "Peek", xola: "Xola", bookeo: "Bookeo", rezdy: "Rezdy", checkfront: "Checkfront", resova: "Resova", booksy: "Booksy", square: "Square", simplybook: "SimplyBook", rezgo: "Rezgo" };
+/** Vendors whose live calendar Outset reads (src/enrich/availability.ts): guests only see times the operator has open. */
+const LIVE_CALENDAR = new Set(["fareharbor", "peek", "xola"]);
+/** Vendors whose menu Outset reads straight from the widget (src/enrich/widgets.ts): the prices on the page are theirs. */
+const MENU_READ = new Set(["fareharbor", "peek", "xola", "acuity", "square", "checkfront", "burblesoft", "resova", "vallypro", "bookeo", "rezdy"]);
+
+export function vendorLabel(id: string | null | undefined): string | null {
+  if (!id) return null;
+  return VENDORS.find((v) => v.id === id)?.label || null;
+}
+
+/**
+ * The one sentence that stops "we already use FareHarbor" from being the reply. It says what is true for that
+ * vendor: the calendar is read live, the prices came from it, or simply that nothing replaces it.
+ */
+export function vendorLine(id: string | null | undefined, menuFromWidget: boolean): string | null {
+  const name = vendorLabel(id);
+  if (!name || !id) return null;
+  // Only claim the prices came from their widget when this operator's menu really did (offerings with confidence 'widget').
+  const priced = menuFromWidget && MENU_READ.has(id) ? " The prices on your page came straight from your " + name + " listings, so they match." : "";
+  if (LIVE_CALENDAR.has(id)) return "You already use " + name + ", so keep it. Outset reads your " + name + " calendar, so guests only see times you actually have open." + priced + " Nothing changes on your site; this is another door to the same shop.";
+  if (priced) return "You already use " + name + ", so keep it." + priced + " Nothing changes on your site; this is another door to the same shop, and each booking reaches you by email.";
+  return "If you already use " + name + " for bookings, keep it. Outset doesn't replace it; it's another place guests find you, and each booking reaches you by email.";
+}
 
 /** Real numbers for the credibility line, read once per draft run. */
 export function scale(): { listings: number; metros: number; claimed: number; local: Map<string, number> } {
@@ -49,7 +72,7 @@ function link(href: string, label: string): string {
   return "<a href=\"" + esc(href) + "\">" + esc(label) + "</a>";
 }
 
-export function draftCopy(op: Op, sc: ReturnType<typeof scale>, offerings: string[], hasPhotos: boolean, hasRules: boolean, email?: string): { subject: string; body: string; html: string } {
+export function draftCopy(op: Op, sc: ReturnType<typeof scale>, offerings: string[], hasPhotos: boolean, hasRules: boolean, email?: string, menuFromWidget = false): { subject: string; body: string; html: string } {
   void sc;
   const to = (email || "").trim().toLowerCase();
   const SITE = "https://onoutset.com/";
@@ -64,7 +87,7 @@ export function draftCopy(op: Op, sc: ReturnType<typeof scale>, offerings: strin
   const owner = to ? "&o=" + Buffer.from(JSON.stringify({ n: "", e: to, p: "" })).toString("base64url") : "";
   const claim = SITE + "#claim=" + id + "&k=" + claimTokenV2(id) + owner;
   const remove = SITE + "#remove=" + id;
-  const vendor = op.calendar_vendor ? VENDOR_NAME[op.calendar_vendor] || null : null;
+  const vendor = vendorLine(op.calendar_vendor, menuFromWidget);
   const subject = "A page for " + op.name;
   // The catalog size guests browse today: read from the published catalog when this process has it, else the last known count.
   const listed = publishedCount();
@@ -73,7 +96,7 @@ export function draftCopy(op: Op, sc: ReturnType<typeof scale>, offerings: strin
   const who = "I'm Harshil. I run Outset, a site where people book local activities the way they book a table on OpenTable: pick a time, pay, done. No calling around.";
   const intro = "I built a page for " + op.name + " from your website. It has " + built.slice(0, -1).join(", ") + " and " + built[built.length - 1] + ". I didn't make anything up. Have a look:";
   const scale = "There are about " + listed + " activity businesses on Outset across the US and Canada, from Florida to British Columbia, and guests find them by city and activity.";
-  const money = "What it costs: nothing to be listed. When a booking comes through Outset, we keep 5% of it. No booking, no fee." + (vendor ? " If you already use " + vendor + ", keep it. This sits alongside it." : "");
+  const money = "What it costs: nothing to be listed. When a booking comes through Outset, we keep 5% of it. No booking, no fee." + (vendor ? " " + vendor : "");
   const lines = ["Hi,", "", who, "", intro, listing, "", scale, "", money, ""];
   const paras = ["<p>Hi,</p>", "<p>" + esc(who) + "</p>", "<p>" + esc(intro) + "<br>" + link(listing, listing) + "</p>", "<p>" + esc(scale) + "</p>", "<p>" + esc(money) + "</p>"];
   lines.push(
@@ -126,7 +149,8 @@ export function composeOutreach(op: Op, email: string): { subject: string; body:
   const priced = db.prepare("SELECT DISTINCT name FROM offerings WHERE operator_id = ? AND price_cents IS NOT NULL").all(op.id) as { name: string }[];
   const hasPhotos = !!db.prepare("SELECT 1 FROM facts WHERE operator_id = ? AND fact_key IN ('cover', 'photo') LIMIT 1").get(op.id);
   const hasRules = !!db.prepare("SELECT 1 FROM facts WHERE operator_id = ? AND fact_key = 'cancellation' LIMIT 1").get(op.id);
-  return draftCopy(op, scale(), priced.map((r) => r.name), hasPhotos, hasRules, email);
+  const fromWidget = !!db.prepare("SELECT 1 FROM offerings WHERE operator_id = ? AND confidence = 'widget' AND price_cents IS NOT NULL LIMIT 1").get(op.id);
+  return draftCopy(op, scale(), priced.map((r) => r.name), hasPhotos, hasRules, email, fromWidget);
 }
 
 /**
