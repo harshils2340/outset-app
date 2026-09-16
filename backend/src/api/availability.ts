@@ -10,8 +10,8 @@ import { getAvailability } from "../enrich/availability.ts";
  * route reads that live (cached ten minutes, three upstream calls at most) so the listing page can show
  * real departures instead of our generic slot guesses.
  *
- * It answers `{ live: false }` for everything else — an operator on another booking system, a vendor that
- * is down, a listing we cannot resolve — and the page keeps whatever it showed before. CORS and the
+ * It answers `{ live: false }` for everything else, an operator on another booking system, a vendor that
+ * is down, a listing we cannot resolve, and the page keeps whatever it showed before. CORS and the
  * response headers come from the app-wide middleware in routes.ts; this is a public, read-only route, so
  * there is no auth, only a per-IP limit.
  */

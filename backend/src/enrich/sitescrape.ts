@@ -9,8 +9,8 @@ import { normalizeReview, parseRating, selectReviews, sourceFromLabel, type Aggr
  * Site reading without a database.
  *
  * This is the half of `structure.ts` that turns a website into structured content: it fetches the operator's
- * own pages and reads what they are organized around — navigation links, page titles, headings, price tables
- * — and returns services, prices, descriptions, add-ons, hours, waiver and booking links. Rule-based, no
+ * own pages and reads what they are organized around: navigation links, page titles, headings, price tables,
+ * and returns services, prices, descriptions, add-ons, hours, waiver and booking links. Rule-based, no
  * language model, nothing guessed: every row carries the page it came from.
  *
  * It is split out for the same reason the photo crawl was: the parsing needs nothing but HTML, while only the
@@ -30,15 +30,15 @@ import { normalizeReview, parseRating, selectReviews, sourceFromLabel, type Aggr
  * breweries, rinks, dojos, potteries and forty other kinds. A word list that only knew "jet ski" found zero
  * services on a swim school, so the list below names what each of those kinds actually sells.
  *
- * CORE  — an activity or product no other kind of page uses ("tee time", "escape room", "deep tissue"). Safe alone.
- * UNIT  — the thing a guest buys rather than the activity ("green fee", "day pass", "drop-in", "stick and puck").
+ * CORE  : an activity or product no other kind of page uses ("tee time", "escape room", "deep tissue"). Safe alone.
+ * UNIT  : the thing a guest buys rather than the activity ("green fee", "day pass", "drop-in", "stick and puck").
  *         Also safe alone: navigation bars and legal pages do not use these phrases.
- * RISKY — real service words that are also ordinary English: "class" in "world class", "session" in "session
+ * RISKY : real service words that are also ordinary English: "class" in "world class", "session" in "session
  *         cookies", "lane" in a street address, "flight" in "flight of stairs", "court" in "courthouse",
  *         "table" in "table of contents", "night" in "opening night", "entry" in "entry-level", "ticket" in
  *         "support ticket", "course" in "of course", "package" in "package delivery". A risky word only counts
- *         when a companion signal — a price, a duration, a per-unit rate, a booking verb, or a core service
- *         word — sits in the same text or in the context handed in by the caller (the price table around a
+ *         when a companion signal, a price, a duration, a per-unit rate, a booking verb, or a core service
+ *         word, sits in the same text or in the context handed in by the caller (the price table around a
  *         heading, the href of a link, the paragraph under a heading). NEGATIVE deletes the known idioms first
  *         so no companion can rescue them.
  */
@@ -139,7 +139,7 @@ const UNIT = new RegExp(
   "i",
 );
 
-/** Real service words that are also ordinary English. Need a companion signal — see the tier comment above. */
+/** Real service words that are also ordinary English. Need a companion signal, see the tier comment above. */
 const RISKY = /\bclass(es)?\b|\bsessions?\b|\blanes?\b|\bcourts?\b|\btables?\b|\bnights?\b|\bflights?\b|\bentry\b|\btickets?\b|\bpart(y|ies)\b|\bmemberships?\b|\bpackages?\b|\badmissions?\b|\bcourses?\b|\btours?\b|\bprograms?\b/i;
 /** Idioms that merely contain a risky word. Deleted before the risky test, so no companion can rescue them. */
 const NEGATIVE = /world[- ]?class|first[- ]class|business class|class action|session (cookies?|storage|expire)|cookies?|flight of stairs|flight status|court ?(house|room)|food court|supreme court|table of contents|time ?table|entry[- ]level|no entry|data entry|third[- ]part(y|ies)|party of \d|(last|opening|good) ?night|tonight|overnight|support ticket|ticketing system|membership (agreement|terms)|of course|course of|virtual tour|tour de force|slide ?show|photo tour|video tour/gi;
@@ -149,8 +149,8 @@ const COMPANION =
 
 /**
  * Is this text the name of something a guest can book and pay for at this business?
- * `ctx` is whatever the caller has nearby — the price table under a heading, a link's href, the paragraph
- * that follows — and only ever rescues a risky word; it can never make a non-service word into a service.
+ * `ctx` is whatever the caller has nearby: the price table under a heading, a link's href, the paragraph
+ * that follows, and only ever rescues a risky word; it can never make a non-service word into a service.
  */
 export function serviceLike(text: string, ctx = ""): boolean {
   if (!text) return false;
@@ -327,7 +327,7 @@ function dedupeVariants(vs: Variant[]): Variant[] {
 
 /**
  * A service name has to read like something on a price list. The widened vocabulary reaches far more pages,
- * so these three shapes — a document, a sentence, a feature bullet — are what it would otherwise drag in:
+ * so these three shapes, a document, a sentence, a feature bullet, are what it would otherwise drag in:
  *   "2025-2026 Class Schedule", "Event Rental Info", "Trial Class Intake"  -> a page or a form, not a booking
  *   "Book your massage today!", "Come explore our trails"                  -> marketing copy, not a line item
  *   "Amenity: Pull-Through", "Includes 2 nights"                           -> a feature of something else

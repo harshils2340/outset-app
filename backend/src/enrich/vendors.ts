@@ -119,7 +119,7 @@ export const VENDORS: Vendor[] = [
     html: [...inHtml("fareharbor.com"), /fareharbor\.com\/embeds\//i, /FH\.open\s*\(/],
     caps: caps({ catalog: true }),
     note:
-      "Catalog PROVEN: GET https://fareharbor.com/api/v1/companies/<shortname>/ and .../items/ return the company profile and every listed item with name, price, duration, description and photos, unauthenticated (src/enrich/widgets.ts readFareharbor). Availability NOT yet proven: the widget calls .../api/v1/companies/<shortname>/items/<pk>/minimal/availabilities/date/<YYYY-MM-DD>/ in the same unauthenticated family — probe it before claiming it. Booking needs the FareHarbor partner/affiliate API (keyed).",
+      "Catalog PROVEN: GET https://fareharbor.com/api/v1/companies/<shortname>/ and .../items/ return the company profile and every listed item with name, price, duration, description and photos, unauthenticated (src/enrich/widgets.ts readFareharbor). Availability NOT yet proven: the widget calls .../api/v1/companies/<shortname>/items/<pk>/minimal/availabilities/date/<YYYY-MM-DD>/ in the same unauthenticated family, probe it before claiming it. Booking needs the FareHarbor partner/affiliate API (keyed).",
   },
   {
     id: "peek",
@@ -141,7 +141,7 @@ export const VENDORS: Vendor[] = [
     html: [...inHtml("xola.com", "xola.app"), /xola\.com\/checkout\.js/i, /xola\.app\/flows\//i, /data-seller=/i, /data-button(?:-id)?=["'][a-f0-9]{24}/i],
     caps: caps({ catalog: true }),
     note:
-      "Catalog PROVEN: GET https://xola.com/api/experiences?seller=<24-hex seller id>&limit=100 returns published experiences with prices, durations, photos and policies, unauthenticated (src/enrich/widgets.ts readXola). Availability NOT proven: Xola documents /api/experiences/<id>/availability but we have not confirmed it answers without an API key — probe it. Booking is partner-only.",
+      "Catalog PROVEN: GET https://xola.com/api/experiences?seller=<24-hex seller id>&limit=100 returns published experiences with prices, durations, photos and policies, unauthenticated (src/enrich/widgets.ts readXola). Availability NOT proven: Xola documents /api/experiences/<id>/availability but we have not confirmed it answers without an API key, probe it. Booking is partner-only.",
   },
   {
     id: "rezdy",
@@ -560,7 +560,7 @@ export const VENDORS: Vendor[] = [
     match: [...host("teeitup.com", "teeitup.golf")],
     html: inHtml("teeitup.com", "teeitup.golf"),
     caps: caps({}),
-    note: "<course>.book.teeitup.com is a JS app fed by an internal JSON tee-sheet API. Likely readable without credentials but unprobed — set to true only after a probe.",
+    note: "<course>.book.teeitup.com is a JS app fed by an internal JSON tee-sheet API. Likely readable without credentials but unprobed, set to true only after a probe.",
   },
   {
     id: "foreup",
@@ -921,7 +921,7 @@ export const VENDORS: Vendor[] = [
     match: [...host("calendly.com")],
     html: [...inHtml("calendly.com"), /assets\.calendly\.com\/assets\/external\/widget/i],
     caps: caps({ partner: true }),
-    note: "Calendly's v2 API is OAuth/PAT only. The booking page fetches open slots from /api/booking/event_types/<uuid>/calendar/range?timezone=..&range_start=..&range_end=.. without a token — a strong availability candidate, unprobed, so left false.",
+    note: "Calendly's v2 API is OAuth/PAT only. The booking page fetches open slots from /api/booking/event_types/<uuid>/calendar/range?timezone=..&range_start=..&range_end=.. without a token, a strong availability candidate, unprobed, so left false.",
   },
   {
     id: "square",

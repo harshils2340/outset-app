@@ -380,7 +380,7 @@ async function peek(refKey: string, code: string, dates: string[]): Promise<Avai
     }
   }
 
-  // Dates the budget never reached still say "open" — one all-day slot, so the page can offer the date.
+  // Dates the budget never reached still say "open": one all-day slot, so the page can offer the date.
   for (const slot of open) {
     const list = byDate.get(slot.date)!;
     if (list.length) continue;
