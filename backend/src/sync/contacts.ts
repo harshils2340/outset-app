@@ -268,10 +268,14 @@ export function toCatalogItem(r: CatalogRow): Record<string, unknown> {
         const b = crawledStructureFor(brandId(r.website));
         return { offerings: b.offerings, facts: b.facts.filter((f) => !LOCATION_FACT.test(f.fact_key)) };
       })();
-  const hasDbPrice = dbOfferings.some((o) => o.price_cents != null);
-  const seenOffering = new Set(dbOfferings.map((o) => (o.name + "|" + (o.detail || "") + "|" + (o.price_cents ?? "")).toLowerCase()));
+  // A menu read from the operator's booking widget is the whole menu at today's prices. Rows a model or a page scrape
+  // produced earlier ("ATV Premium Tour $20" beside the widget's "$108") are stale or wrong next to it, so they go.
+  const widgetRows = dbOfferings.filter((o) => o.confidence === "widget");
+  const menuRows = widgetRows.length ? widgetRows : dbOfferings;
+  const hasDbPrice = menuRows.some((o) => o.price_cents != null);
+  const seenOffering = new Set(menuRows.map((o) => (o.name + "|" + (o.detail || "") + "|" + (o.price_cents ?? "")).toLowerCase()));
   const rawOfferings = [
-    ...dbOfferings,
+    ...menuRows,
     ...(hasDbPrice ? [] : crawled.offerings.filter((o) => !seenOffering.has((o.name + "|" + (o.detail || "") + "|" + (o.price_cents ?? "")).toLowerCase())).map((o) => ({ ...o, confidence: "crawl" }))),
   ].sort((a, b) => Number(a.price_cents == null) - Number(b.price_cents == null) || (a.price_cents ?? 0) - (b.price_cents ?? 0));
   const seenFact = new Set(dbFacts.map((f) => (f.fact_key + "|" + f.fact_value).toLowerCase()));
