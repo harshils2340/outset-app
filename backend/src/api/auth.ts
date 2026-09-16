@@ -125,6 +125,22 @@ export function clientIp(c: Context): string {
   const chain = (c.req.header("x-forwarded-for") || "").split(",").map((s) => s.trim()).filter(Boolean);
   return chain[chain.length - 1] || c.req.header("x-real-ip") || "local";
 }
+
+/**
+ * Drop every key whose hits have all aged out, instead of wiping the map. A cap that clears the whole map once
+ * it fills means whoever files the key that tips it over resets every other key's count too, including keys
+ * an attacker does not control: enough distinct IPs or email addresses (each is its own key) and the map never
+ * actually holds anyone to their limit. A sweep only ever removes what the window has already forgotten.
+ */
+function sweep(m: Map<string, number[]>, windowMs: number): void {
+  const now = Date.now();
+  for (const [k, arr] of m) {
+    const kept = arr.filter((t) => now - t < windowMs);
+    if (kept.length) m.set(k, kept);
+    else m.delete(k);
+  }
+}
+
 export function rateLimit(limit: number, windowMs: number) {
   return async (c: Context, next: Next) => {
     const key = clientIp(c) + "|" + c.req.routePath;
@@ -133,7 +149,7 @@ export function rateLimit(limit: number, windowMs: number) {
     if (arr.length >= limit) return c.json({ error: "too many requests, try again later" }, 429);
     arr.push(now);
     hits.set(key, arr);
-    if (hits.size > 50000) hits.clear();
+    if (hits.size > 50000) sweep(hits, windowMs);
     await next();
   };
 }
@@ -154,7 +170,7 @@ export function emailLimit(key: string, limit: number, windowMs: number): boolea
   if (arr.length >= limit) return false;
   arr.push(now);
   perEmail.set(key, arr);
-  if (perEmail.size > 20000) perEmail.clear();
+  if (perEmail.size > 20000) sweep(perEmail, windowMs);
   return true;
 }
 const codeHash = (email: string, code: string) => createHmac("sha256", claimSecret()).update(email.toLowerCase() + ":" + code).digest("hex");
