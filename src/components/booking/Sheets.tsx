@@ -426,6 +426,14 @@ function RequestBody({
   useEffect(() => {
     if (time && !chips.some((c) => c.time === time)) setTime(null);
   }, [dateIdx, live, openMap]);
+  // Land the guest on a day that has start times rather than an empty one, as the desktop page does: opened in
+  // the evening, the sheet said "No more start times today" under today's date and left the guest to find tomorrow.
+  // Runs when the times change (live departures or open slots arriving), never on a day the guest picked themselves.
+  useEffect(() => {
+    if (chipsFor(day).length) return;
+    const i = dates.findIndex((d) => chipsFor(d).length);
+    if (i >= 0 && i !== dateIdx) setDateIdx(i);
+  }, [live, openMap]);
 
   /* ---------- derived from the operator's own site, never invented. Same rules as the desktop page. ---------- */
   const requirements = item.requirements?.length ? item.requirements : facts.who.filter((l) => l.posted).map((l) => l.text);
