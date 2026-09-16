@@ -55,6 +55,9 @@ export function OpCalendar() {
   }, [days, p, byCell]);
 
   const toggleBlock = (key: string) => {
+    // Last week's empty slots took a click and turned into time off that nothing could ever use. Past cells
+    // are drawn without the button, and this is the guard behind it.
+    if (key.slice(0, 10) < todayKey) return;
     const on = p.blockedSlots.includes(key);
     set({ blockedSlots: on ? p.blockedSlots.filter((x) => x !== key) : [...p.blockedSlots, key] });
     toast(on ? "Slot reopened" : "Blocked as time off");
@@ -64,12 +67,18 @@ export function OpCalendar() {
     if (k < todayKey) return;
     const on = p.blockedDates.includes(k);
     set({ blockedDates: on ? p.blockedDates.filter((x) => x !== k) : [...p.blockedDates, k] });
-    toast(on ? "Day reopened" : "Day off added");
+    // Taking a day off stops new bookings; the ones already on it stay, and the toast used to say nothing
+    // about them, so an owner closing for a storm could think the guests had been told.
+    const held = bookings.filter((b) => b.date === k && (b.status === "accepted" || b.status === "new")).length;
+    toast(on ? "Day reopened" : held ? `Day off added. ${held} booking${held === 1 ? "" : "s"} that day still stand${held === 1 ? "s" : ""}; cancel ${held === 1 ? "it" : "them"} under Bookings.` : "Day off added");
   };
 
+  // The week label carries its year once it leaves this one: "Dec 28 to Jan 3" said nothing about which January.
+  const thisYear = startOfToday().getFullYear();
+  const span = (d: Date) => d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: d.getFullYear() === thisYear ? undefined : "numeric" });
   const label = compact
-    ? anchor.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })
-    : days[0].toLocaleDateString("en-US", { month: "short", day: "numeric" }) + " to " + days[6].toLocaleDateString("en-US", { month: "short", day: "numeric" });
+    ? anchor.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: anchor.getFullYear() === thisYear ? undefined : "numeric" })
+    : span(days[0]) + " to " + span(days[6]);
 
   const weekTotal = days.reduce((n, d) => n + bookings.filter((b) => b.date === dateKey(d) && (b.status === "accepted" || b.status === "completed")).reduce((m, b) => m + bookingTotal(b), 0), 0);
 
@@ -136,16 +145,18 @@ function CalRow({ slot, days, byCell, toggleBlock, open }: { slot: string; days:
         // A day off, or hours that no longer reach this time, closes the cell to new time off but never hides a
         // booking that is already in it.
         const shut = !inHours || dayOff;
+        // A slot that has gone by cannot be taken off; the day header is already disabled for the same reason.
+        const past = k < dateKey(startOfToday());
         if (shut && !items.length) return <div key={key} data-k={key} className="odcalcell closed" />;
         return (
-          <div key={key} data-k={key} className={"odcalcell" + (shut ? " closed" : "") + (blocked ? " blocked" : "")}>
+          <div key={key} data-k={key} className={"odcalcell" + (shut ? " closed" : "") + (blocked ? " blocked" : "") + (past ? " past" : "")}>
             {items.map((b) => (
               <button type="button" key={b.id} className={"odevent " + b.status} onClick={() => open(b.id)}>
                 <b>{b.guest}</b>
                 <small>{b.qty} · {b.service}</small>
               </button>
             ))}
-            {!items.length && !shut ? (
+            {!items.length && !shut && !past ? (
               <button type="button" className="odcalfill" onClick={() => toggleBlock(key)} aria-label={blocked ? "Reopen slot" : "Block slot"}>
                 {blocked ? "Time off" : ""}
               </button>

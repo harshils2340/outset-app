@@ -629,3 +629,113 @@
 .odhome .odsetup{border-color:var(--line);box-shadow:none;}
 .odhome .odsetup .odcheck .tick{border-style:dashed;}
 .odhome .odsetup > .odmuted{font-size:12.5px;}
+
+/* ---------- Settings and Payouts (owner contact validation) ---------- */
+.odfield > .oderr{font-weight:500;margin:0;line-height:1.4;}
+.odfield input[aria-invalid="true"]{border-color:var(--few);}
+
+/* ---------- Shell: autosave feedback ---------- */
+.odsavedtop.failed{color:var(--few);font-weight:600;}
+@media (max-width:1700px){.od.pv .odsavedtop.failed{display:inline-flex;}}
+
+/* ---------- Availability and calendar (hours, days off, time off) ---------- */
+/* The two time selects and "to" wrapped onto two lines at desktop width because a select will not shrink
+   below its widest option ("12:00 AM, next day"). Let them share the row instead. */
+.odtimes select{flex:1 1 0;width:0;min-width:0;}
+/* The closing list carries the longer labels ("2:00 AM, next day"), so it gets the larger share. */
+.odtimes select + span + select{flex:1.7 1 0;}
+.odtimes .odwarn{flex-basis:100%;}
+.odcalcell.past{background:var(--surface);opacity:.7;}
+.odcalcell.past.blocked{opacity:.5;}
+
+/* ---------- bookings feed and booking drawer (bug bash: bookings area) ---------- */
+/* The Copy code chip is a button beside two links: same shape, no button chrome. */
+.odcontactrow{flex-wrap:wrap;}
+.odcontactrow button.odchip{background:none;font:inherit;font-size:13.5px;font-weight:600;cursor:pointer;}
+.odcontactrow button.odchip:hover{background:var(--surface-2);}
+.odguestcontact{margin:-2px 0 0;font-size:13px;word-break:break-word;}
+.od .cta.danger{background:var(--few);color:#fff;border-color:var(--few);}
+
+/* ---------- services, options and add-ons (menu editor) ---------- */
+/* Every row has a handle now: the service card, each price option and each add-on. */
+.odgrip{touch-action:none;}
+.odvar{grid-template-columns:26px minmax(0,1fr) 110px 128px 84px 34px;}
+.odaddon{grid-template-columns:26px minmax(0,1fr) minmax(0,1fr) 110px 34px;}
+.od.compact .odvar{grid-template-columns:26px minmax(0,1fr) 90px 34px;}
+.od.compact .odaddon{grid-template-columns:26px minmax(0,1fr) 90px 34px;}
+.od.compact .odaddon input:nth-child(2){grid-column:auto;}
+.od.compact .odaddon input:nth-child(3){grid-column:1 / -1;}
+.odvar.held,.odaddon.held{outline:2px solid var(--accent);outline-offset:3px;border-radius:10px;}
+.odvar.lifting,.odaddon.lifting{opacity:.55;}
+.odvar.over,.odaddon.over{box-shadow:0 -2px 0 0 var(--accent);}
+.odaddon.unnamed input:first-of-type{border-color:var(--few);background:var(--few-bg);}
+.odwarn{color:var(--few);}
+.odundo{justify-content:space-between;}
+.odundo .odlink{margin-left:auto;}
+.odduration{display:flex;align-items:center;gap:8px;}
+.odduration input{width:88px;flex:none;}
+.odduration small{white-space:nowrap;}
+.odsvcphotos{display:flex;gap:8px;flex-wrap:wrap;}
+.odsvcphoto{width:72px;height:54px;border-radius:10px;overflow:hidden;padding:0;border:2px solid transparent;background:var(--surface-2);cursor:pointer;}
+.odsvcphoto .photowrap,.odsvcphoto .photo,.odsvcphoto img,.odsvcphoto svg{width:100%;height:100%;object-fit:cover;display:block;}
+.odsvcphoto.on{border-color:var(--ink);}
+.odsvcphoto:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+
+/* ---------- Listing editor and live preview (split view) ---------- */
+.odfine.warn{color:#b45309;}
+.odlines{display:flex;flex-direction:column;}
+.odlines .odaddoff{margin-top:10px;}
+.odlines + .odsub,.odfield + .odsub,.odsub + .odlines{margin-top:14px;}
+.odlineitem{gap:8px;padding:6px 0;}
+.odlineitem:first-child{border-top:none;}
+.odlinen{flex:none;width:22px;height:22px;border-radius:50%;background:var(--surface-3);color:var(--ink-soft);font-size:11.5px;font-weight:700;display:grid;place-items:center;}
+.odlinetext{flex:1;min-width:0;text-align:left;font-size:14px;font-weight:500;color:var(--ink);line-height:1.4;padding:6px 8px;margin:0 -8px;border-radius:8px;white-space:pre-wrap;word-break:break-word;background:none;}
+.odlinetext:hover{background:var(--surface-2);}
+.odlinetext:focus-visible{outline:2px solid var(--ink);outline-offset:0;}
+.odlineedit{flex:1;min-width:0;border:1px solid var(--ink);border-radius:8px;padding:6px 8px;font-size:14px;font-family:inherit;color:var(--ink);background:var(--surface);outline:none;}
+.odlinetools{display:flex;align-items:center;gap:0;flex:none;}
+.odiconbtn.small{width:28px;height:28px;}
+.odiconbtn.small svg{width:15px;height:15px;}
+.odiconbtn:disabled{opacity:.3;cursor:default;}
+.odiconbtn:not(:disabled):hover{background:var(--surface-2);color:var(--ink);}
+.odlines .odaddoff input:disabled{background:var(--surface-2);color:var(--ink-faint);}
+.odphotoorder{position:absolute;left:6px;top:6px;display:flex;align-items:center;gap:2px;background:rgba(255,255,255,.94);border-radius:999px;padding:2px;box-shadow:0 1px 4px rgba(0,0,0,.2);opacity:0;transition:opacity .12s;}
+.odphoto:hover .odphotoorder,.odphoto:focus-within .odphotoorder{opacity:1;}
+.odphotoorder span{font-size:11.5px;font-weight:700;color:#222;min-width:14px;text-align:center;}
+.odphotoorder button{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;color:#222;background:none;}
+.odphotoorder button svg{width:13px;height:13px;}
+.odphotoorder button:disabled{opacity:.3;}
+.odphotoorder button:not(:disabled):hover{background:var(--surface-2);}
+.odphoto.broken{background:var(--surface-3);outline:2px dashed #e5a15c;outline-offset:-2px;}
+.odphotodead{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:4px;padding:12px;text-align:center;color:var(--ink-soft);}
+.odphotodead b{font-size:12.5px;color:#b45309;}
+.odphotodead small{font-size:10.5px;color:var(--ink-faint);word-break:break-all;}
+.oddetails li{display:flex;align-items:center;justify-content:space-between;gap:10px;}
+.oddetails li .odlink{flex:none;}
+.oddetails li .odlink:disabled{opacity:.4;text-decoration:none;cursor:default;}
+/* Split view: the editor keeps at least 480 px beside the preview at the narrowest desktop width. */
+.od.pv:not(.compact){grid-template-columns:248px minmax(480px,1fr) clamp(340px,var(--pvw,480px),calc(100vw - 728px));}
+@media (max-width:1180px){
+  .od.pv:not(.compact){grid-template-columns:200px minmax(480px,1fr) clamp(340px,var(--pvw,480px),calc(100vw - 680px));}
+  .od.pv:not(.compact) .odbody{padding:16px;}
+  .od.pv:not(.compact) .odgrid2{grid-template-columns:1fr;}
+}
+.odpvgrip{width:14px;left:-7px;}
+.odpvgrip::before{content:"";position:absolute;left:4px;top:50%;width:6px;height:44px;margin-top:-22px;border-radius:3px;background:var(--line-strong);opacity:.9;box-shadow:0 0 0 2px var(--surface);transition:background .15s;}
+.odpvgrip:hover::before,.odpvgrip:focus-visible::before,.odpreview.dragging .odpvgrip::before{background:var(--accent);}
+.odpvgrip::after{left:6px;}
+.odpvbar .odpvtitle b{white-space:nowrap;}
+.od.pv .odpvtoggle.on{background:var(--ink);color:var(--surface);border-color:var(--ink);}
+.odphototools button:disabled{opacity:.45;cursor:default;}
+/* On the phone the trash stays on the option's first row; the unit and the flat/× guests switch take the rows under it. */
+.od.compact .odvar > .odgrip{grid-column:1;grid-row:1;}
+.od.compact .odvar > input[aria-label="Option name"]{grid-column:2;grid-row:1;}
+.od.compact .odvar > .opinput:not(.odvarper){grid-column:3;grid-row:1;}
+.od.compact .odvar > .odiconbtn{grid-column:4;grid-row:1;}
+.od.compact .odvar > .odvarper{grid-row:2;}
+.od.compact .odvar > .odpermode{grid-row:3;}
+/* The Saved mark on an add-on row used to land on its handle (the first span); it sits at the row's corner instead. */
+.odaddon.odsaved > .odgrip::after{content:none;}
+.odaddon.odsaved{position:relative;}
+.odaddon.odsaved::after{content:"Saved";position:absolute;right:44px;top:-9px;font-size:11px;font-weight:600;line-height:1.5;color:var(--open);background:var(--open-bg);border-radius:999px;padding:0 7px;animation:odsavedin .18s ease-out;pointer-events:none;}
+.odduration input{flex:1;min-width:0;width:auto;}

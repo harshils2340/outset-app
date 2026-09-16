@@ -65,6 +65,7 @@ const EDITABLE: { sel: string; field: JumpField; up?: string }[] = [
   { sel: ".alsvcs", field: "services", up: "section" },
   { sel: ".almain .alvariant", field: "services", up: "section" },
   { sel: "#al-location", field: "address" },
+  { sel: ".aldescguide", field: "guide" },
   // Phone guest page
   { sel: ".airtitle h1", field: "title" },
   { sel: ".airhero", field: "photos" },
@@ -104,7 +105,8 @@ const CSS = `
 .opvribbon.nudge{background:#c2410c}
 @media (max-width:1024px){.opvribbon{top:auto;bottom:92px}}
 [data-opv]{cursor:pointer;outline:2px dashed transparent;outline-offset:4px;border-radius:6px;transition:outline-color .12s}
-[data-opv]:hover,[data-opv].opvflash{outline-color:#ff5a1f}
+[data-opv]:hover,[data-opv].opvflash,[data-opv].opvlive{outline-color:#ff5a1f}
+[data-opv].opvlive{outline-style:solid}
 .opvchip{position:fixed;z-index:2147483001;pointer-events:none;background:#ff5a1f;color:#fff;font:600 12px/1 system-ui,-apple-system,sans-serif;
   border-radius:999px;padding:6px 10px;box-shadow:0 4px 12px rgba(0,0,0,.2);white-space:nowrap}
 .alprimary,.alsubcta button,.airaccent,.airreserve .airaccent{opacity:.55 !important;cursor:not-allowed !important}
@@ -117,6 +119,7 @@ const LABEL: Record<string, string> = {
   services: "Edit services and prices",
   address: "Edit contact and address",
   policy: "Edit policies",
+  guide: "Edit what it's like",
 };
 
 /**
@@ -205,6 +208,7 @@ export function usePreviewMode(): void {
     window.addEventListener("scroll", onScroll, { passive: true, capture: true });
 
     // The dashboard asks the preview to show the part the owner is editing.
+    let live = 0;
     const onMsg = (e: MessageEvent) => {
       if (e.origin !== window.location.origin) return;
       const m = e.data as PreviewMsg | null;
@@ -217,6 +221,11 @@ export function usePreviewMode(): void {
       if (!inView) el.scrollIntoView({ behavior: "smooth", block: r.height > window.innerHeight ? "start" : "center" });
       el.classList.add("opvflash");
       window.setTimeout(() => el.classList.remove("opvflash"), 1200);
+      // The part being edited stays marked while the owner works on it; the next field takes over the mark.
+      document.querySelectorAll(".opvlive").forEach((x) => { if (x !== el) x.classList.remove("opvlive"); });
+      el.classList.add("opvlive");
+      window.clearTimeout(live);
+      live = window.setTimeout(() => el.classList.remove("opvlive"), 6000);
     };
     window.addEventListener("message", onMsg);
 

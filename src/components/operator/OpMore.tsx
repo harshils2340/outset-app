@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { connectPayouts, hasApi, payoutStatus, setPayoutSchedule, type PayoutInterval, type PayoutState, type PayoutStatus } from "../../lib/api";
 import { dateKey, startOfToday } from "../../lib/dates";
 import { money } from "../../lib/format";
-import { bookingTotal, deleteProfile, isoToDate, relDay } from "../../lib/operator";
+import { OWNER_EMAIL_MAX, OWNER_NAME_MAX, OWNER_PHONE_MAX, bookingTotal, deleteProfile, isoToDate, relDay, validOwnerEmail, validOwnerPhone } from "../../lib/operator";
 import { OPERATOR_FEE_RATE, SERVICE_FEE_CAP, serviceFee } from "../../lib/pricing";
 import { Markup } from "../Markup";
 import { OD_ICONS, PAGES, useOp } from "./opContext";
@@ -27,7 +27,10 @@ function operatorPrice(total: number): number {
  * instead counted the guest's service fee as the operator's money, so the tiles here promised more than the
  * booking email for the same trip ("You receive $194.75" against "$202" on this page).
  */
-const payoutOf = (b: Parameters<typeof bookingTotal>[0]): number => operatorPrice(bookingTotal(b)) * (1 - FEE);
+const payoutOf = (b: Parameters<typeof bookingTotal>[0]): number => toCents(operatorPrice(bookingTotal(b)) * (1 - FEE));
+
+/** Money is kept to the cent. 95 × 0.95 + 0.0095 is not a number a bank pays, and a tile that read "$96" for $95.96 was rounding on its own. */
+const toCents = (n: number): number => Math.round(n * 100) / 100;
 
 /** Cents in the account's currency: "$1,240", "$7.50", "CA$95". */
 function cents(n: number, currency?: string): string {
@@ -57,7 +60,7 @@ const STATE_LABEL: Record<PayoutState, { label: string; cls: string }> = {
  * back to what this device's real bookings add up to, and sample rows never count.
  */
 export function OpPayouts() {
-  const { p, bookings, toast } = useOp();
+  const { p, bookings, toast, set } = useOp();
   const todayKey = dateKey(startOfToday());
   // Money only from real bookings; sample rows never count.
   const real = bookings.filter((b) => b.source !== "sample");
@@ -74,6 +77,13 @@ export function OpPayouts() {
     void payoutStatus(p.id).then((s) => { if (alive) setStatus(s); });
     return () => { alive = false; };
   }, [p.id]);
+  // Home's "Connect your bank for payouts" check reads p.payout, which nothing set once onboarding moved to Stripe,
+  // so the tick never came. Mirror the connected state into the profile; the bank details themselves stay with Stripe.
+  useEffect(() => {
+    if (!status?.available) return;
+    if (status.enabled && !p.payout) set({ payout: { bank: "Stripe", last4: "", name: "", schedule: "weekly" } });
+    if (!status.enabled && p.payout?.bank === "Stripe") set({ payout: null });
+  }, [status?.available, status?.enabled, p.payout, set]);
   const connect = async () => {
     setBusy(true);
     const r = await connectPayouts(p.id);
@@ -110,11 +120,19 @@ export function OpPayouts() {
           <div><b>{cents(ledger.upcoming || 0, ledger.currency)}</b><small>Scheduled for later pay days</small></div>
           <div><b>{cents(ledger.paidTotal || 0, ledger.currency)}</b><small>Paid out to date</small></div>
           <div><b>{Math.round(FEE * 100)}%</b><small>Outset fee per booking</small></div>
+          {/* A shop paid in more than one currency gets a tile per extra currency; the API never adds them into one number. */}
+          {(ledger.totals || []).slice(1).map((t) => (
+            <div key={t.currency}>
+              <b>{cents(t.nextAmount, t.currency)}</b>
+              <small>Also in {t.currency.toUpperCase()} · next payout{t.upcoming ? ", " + cents(t.upcoming, t.currency) + " later" : ""}{t.paidTotal ? ", " + cents(t.paidTotal, t.currency) + " paid" : ""}</small>
+            </div>
+          ))}
         </div>
       ) : (
         <div className="odstats">
-          <div><b>{money(Math.round(pending))}</b><small>Next payout, after fees</small></div>
-          <div><b>{money(Math.round(earned))}</b><small>Earned to date, after fees</small></div>
+          {/* No connected account means no pay day to promise; this tile said "Next payout" beside a card saying guests pay on site. */}
+          <div><b>{money(toCents(pending))}</b><small>Completed this week, after fees</small></div>
+          <div><b>{money(toCents(earned))}</b><small>Earned to date, after fees</small></div>
           <div><b>{money(upcomingLocal)}</b><small>Confirmed, not yet completed</small></div>
           <div><b>{Math.round(FEE * 100)}%</b><small>Outset fee per booking</small></div>
         </div>
@@ -180,7 +198,8 @@ export function OpPayouts() {
             {done.slice().reverse().slice(0, 8).map((b) => (
               <div className="odline" key={b.id}>
                 <span className="meta"><b>{b.guest}</b><small>{relDay(b.date)} · {b.service}</small></span>
-                <span className="odamt"><b>{money(Math.round(bookingTotal(b) * (1 - FEE)))}</b><small>of {money(bookingTotal(b))}</small></span>
+                {/* The same number as the tiles above. This row took 5% off the guest's total, so it read "$100 of $105" while the tile summed $95.95. */}
+                <span className="odamt"><b>{money(payoutOf(b))}</b><small>of {money(bookingTotal(b))}</small></span>
               </div>
             ))}
           </section>
@@ -194,6 +213,9 @@ export function OpPayouts() {
 export function OpSettings() {
   const { p, set, compact, go, logout, toast } = useOp();
   const [confirm, setConfirm] = useState(false);
+  const badEmail = !!p.ownerEmail.trim() && !validOwnerEmail(p.ownerEmail);
+  const badPhone = !!p.ownerPhone.trim() && !validOwnerPhone(p.ownerPhone);
+  const alertEmail = validOwnerEmail(p.ownerEmail) ? p.ownerEmail.trim() : "";
   return (
     <div className="odpage">
       {compact ? (
@@ -211,9 +233,22 @@ export function OpSettings() {
       <div className="odcols">
         <section className="odcard" data-jump="owner">
           <div className="odcardhead"><h3>Owner</h3></div>
-          <label className="odfield"><span>Name</span><input value={p.ownerName} onChange={(e) => set({ ownerName: e.target.value })} /></label>
-          <label className="odfield"><span>Email</span><input type="email" value={p.ownerEmail} onChange={(e) => set({ ownerEmail: e.target.value })} /></label>
-          <label className="odfield"><span>Mobile</span><input type="tel" value={p.ownerPhone} onChange={(e) => set({ ownerPhone: e.target.value })} /></label>
+          {/* The API cuts these at the same lengths (profiles.ts cleanOwner); before this a 5,000 character name and
+              "not an email" both saved with a green tick, and the alerts card promised to mail "not an email". */}
+          <label className="odfield">
+            <span>Name</span>
+            <input value={p.ownerName} maxLength={OWNER_NAME_MAX} autoComplete="name" onChange={(e) => set({ ownerName: e.target.value.slice(0, OWNER_NAME_MAX) })} onBlur={(e) => { const t = e.target.value.trim(); if (t !== p.ownerName) set({ ownerName: t }); }} />
+          </label>
+          <label className="odfield">
+            <span>Email</span>
+            <input type="email" value={p.ownerEmail} maxLength={OWNER_EMAIL_MAX} autoComplete="email" inputMode="email" spellCheck={false} aria-invalid={badEmail || undefined} onChange={(e) => set({ ownerEmail: e.target.value.slice(0, OWNER_EMAIL_MAX) })} onBlur={(e) => { const t = e.target.value.trim(); if (t !== p.ownerEmail) set({ ownerEmail: t }); }} />
+            {badEmail ? <small className="oderr">That's not an email address. Booking alerts can't reach it.</small> : null}
+          </label>
+          <label className="odfield">
+            <span>Mobile</span>
+            <input type="tel" value={p.ownerPhone} maxLength={OWNER_PHONE_MAX} autoComplete="tel" inputMode="tel" aria-invalid={badPhone || undefined} onChange={(e) => set({ ownerPhone: e.target.value.slice(0, OWNER_PHONE_MAX) })} onBlur={(e) => { const t = e.target.value.trim(); if (t !== p.ownerPhone) set({ ownerPhone: t }); }} />
+            {badPhone ? <small className="oderr">Enter a phone number with 7 to 15 digits, like +1 727 555 0100.</small> : null}
+          </label>
         </section>
 
         <section className="odcard">
@@ -222,13 +257,13 @@ export function OpSettings() {
               goes out, so switches for them would be promises the product does not keep. */}
           {!hasApi() ? (
             <p className="odmuted">Alerts start once your account is connected.</p>
-          ) : p.ownerEmail.trim() ? (
+          ) : alertEmail ? (
             <div className="odrow">
-              <span className="meta"><b>Email</b><small>Every new request goes to {p.ownerEmail.trim()} straight away, with the guest's name and number so you can reach them.</small></span>
+              <span className="meta"><b>Email</b><small>Every new request goes to {alertEmail} straight away, with the guest's name and number so you can reach them.</small></span>
             </div>
           ) : (
             <div className="odrow">
-              <span className="meta"><b>No email yet</b><small>Add your email under Owner. Until you do, booking requests have nowhere to reach you.</small></span>
+              <span className="meta"><b>{badEmail ? "Email needs fixing" : "No email yet"}</b><small>{badEmail ? "The address under Owner isn't valid. Until it is, booking requests have nowhere to reach you." : "Add your email under Owner. Until you do, booking requests have nowhere to reach you."}</small></span>
             </div>
           )}
         </section>

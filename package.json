@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "test": "node --import ./backend/node_modules/tsx/dist/loader.mjs --test \"src/lib/__tests__/*.test.ts\"",
     "build": "tsc -b && vite build && node scripts/copy-operators.mjs",
     "typecheck": "tsc -b",
     "preview": "vite preview",

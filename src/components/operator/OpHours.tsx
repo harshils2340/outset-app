@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { dateKey, startOfToday } from "../../lib/dates";
 import { fmtTime } from "../../lib/format";
 import { DAY_NAMES, LATEST_WRAP, hoursAreDefault, hoursRun, isoToDate, minutesOfDay, relDay, timeOptions, type DayHours } from "../../lib/operator";
 import { Markup } from "../Markup";
@@ -17,7 +18,7 @@ function withTime(list: string[], t: string): string[] {
 
 /** Availability: weekly hours, slot length, notice, booking window and days off. Booksy's working hours screen. */
 export function OpHours() {
-  const { p, set, toast } = useOp();
+  const { p, set, toast, bookings } = useOp();
   const [newOff, setNewOff] = useState("");
 
   const patchDay = (i: number, patch: Partial<DayHours>) => set((cur) => ({ ...cur, hours: cur.hours.map((h, j) => (j === i ? { ...h, ...patch } : h)) }));
@@ -27,7 +28,23 @@ export function OpHours() {
   const patchOpen = (i: number, open: string) => {
     const h = p.hours[i];
     if (hoursRun({ ...h, open })) return patchDay(i, { open });
-    patchDay(i, { open, close: TIMES.find((t) => t > open) || "23:30" });
+    // Opening at 11:30 PM has no later time on the grid. The old fallback saved 11:30 to 11:30, a day that
+    // opens and closes in the same minute and offers nothing; midnight is the next half hour.
+    patchDay(i, { open, close: TIMES.find((t) => t > open) || "00:00" });
+  };
+  // Bookings a guest holds on one date. Taking that date off does not cancel them, so the owner is told.
+  const heldOn = (d: string) => bookings.filter((b) => b.date === d && (b.status === "accepted" || b.status === "new")).length;
+  const todayKey = dateKey(startOfToday());
+  const addOff = () => {
+    const d = newOff;
+    setNewOff("");
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) return;
+    // The picker let any date through, and a day already gone sat in the list as "Yesterday" doing nothing.
+    if (d < todayKey) return toast("That day has already passed");
+    if (p.blockedDates.includes(d)) return toast("Already a day off");
+    set({ blockedDates: [...p.blockedDates, d].sort() });
+    const held = heldOn(d);
+    toast(held ? `Day off added. ${held} booking${held === 1 ? "" : "s"} that day still stand${held === 1 ? "s" : ""}; cancel ${held === 1 ? "it" : "them"} under Bookings.` : "Day off added");
   };
   // Copying a closed row would close the whole week, so that one asks for a second click.
   const [armed, setArmed] = useState<number | null>(null);
@@ -74,6 +91,10 @@ export function OpHours() {
                     <select value={h.close} aria-label={DAY_NAMES[i] + " closing time"} onChange={(e) => patchDay(i, { close: e.target.value })}>
                       {withTime(TIMES, h.close).filter((t) => t > h.open).map((t) => <option key={t} value={t}>{fmtTime(t)}</option>)}
                       {withTime(TIMES, h.close).filter((t) => t < h.open && minutesOfDay(t) <= LATEST_WRAP).map((t) => <option key={t} value={t}>{fmtTime(t)}, next day</option>)}
+                      {/* An inverted day ("6pm to 5pm", from a scrape or a slip) keeps a close that is in neither
+                          list, and the select then showed its first option, 6:30 PM, over a row whose warning
+                          said the hours end before they start. Show the time actually saved, named for what it is. */}
+                      {!hoursRun(h) && h.close <= h.open && /^([01]\d|2[0-3]):[0-5]\d$/.test(h.close) && minutesOfDay(h.close) > LATEST_WRAP ? <option value={h.close}>{fmtTime(h.close)} ({h.close === h.open ? "same as opening" : "before opening"})</option> : null}
                     </select>
                     {/* A day that opens and never closes offers guests nothing, and the only sign of it used to
                         be an empty picker on the listing. Say it where the hours are set. */}
@@ -111,13 +132,14 @@ export function OpHours() {
             <div className="odcardhead"><h3>Days off</h3></div>
             <p className="odmuted">Holidays, maintenance, weather days. Guests can't book these dates.</p>
             <div className="odaddoff">
-              <input type="date" aria-label="Date to take off" value={newOff} onChange={(e) => setNewOff(e.target.value)} />
-              <button type="button" className="cta small" disabled={!newOff} onClick={() => { if (!p.blockedDates.includes(newOff)) set({ blockedDates: [...p.blockedDates, newOff].sort() }); setNewOff(""); }}><Markup html={OD_ICONS.plus} /> Add</button>
+              <input type="date" aria-label="Date to take off" value={newOff} min={todayKey} onChange={(e) => setNewOff(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && newOff) { e.preventDefault(); addOff(); } }} />
+              <button type="button" className="cta small" disabled={!newOff} onClick={addOff}><Markup html={OD_ICONS.plus} /> Add</button>
             </div>
             {p.blockedDates.length === 0 ? <p className="odfine">No days off scheduled.</p> : null}
             {p.blockedDates.map((d) => (
               <div className="odline" key={d}>
-                <span className="meta"><b>{isoToDate(d).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}</b><small>{relDay(d)}</small></span>
+                {/* A day off next year read "Wednesday, December 25" with nothing to say which December. */}
+                <span className="meta"><b>{isoToDate(d).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: d.slice(0, 4) === todayKey.slice(0, 4) ? undefined : "numeric" })}</b><small>{relDay(d)}{heldOn(d) ? " · " + heldOn(d) + (heldOn(d) === 1 ? " booking" : " bookings") + " still on" : ""}</small></span>
                 <button type="button" className="odiconbtn" onClick={() => set({ blockedDates: p.blockedDates.filter((x) => x !== d) })} aria-label="Remove"><Markup html={OD_ICONS.trash} /></button>
               </div>
             ))}

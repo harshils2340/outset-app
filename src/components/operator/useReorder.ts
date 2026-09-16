@@ -23,6 +23,9 @@ export function useReorder<T>({
   const [dragging, setDragging] = useState<string | null>(null);
   const [over, setOver] = useState<string | null>(null);
   const [spoken, setSpoken] = useState("");
+  // The row whose handle is under the mouse. Only that row is draggable: a card that is always draggable
+  // swallows every mouse drag inside it, so an operator could not sweep-select the text in a name box.
+  const [armed, setArmed] = useState<string | null>(null);
 
   // Refs so the callbacks stay stable while still reading the current list.
   const emit = useRef(onReorder);
@@ -110,9 +113,82 @@ export function useReorder<T>({
     [grabbed, grab, drop, step, cancel],
   );
 
+  /**
+   * A finger on the handle. Phones do not fire HTML5 drag events, so a touch drag runs on pointer events:
+   * the handle captures the pointer, and whatever row sits under the finger is where the row goes.
+   */
+  const onPointerDown = useCallback(
+    (id: string) => (e: React.PointerEvent<HTMLElement>) => {
+      setArmed(id);
+      if (e.pointerType === "mouse") return;
+      e.preventDefault();
+      const grip = e.currentTarget;
+      try {
+        grip.setPointerCapture(e.pointerId);
+      } catch {
+        /* an old browser without capture still gets the keyboard path */
+      }
+      snapshot.current = live.current;
+      setDragging(id);
+      let moved = false;
+      const onMove = (ev: PointerEvent) => {
+        const under = document.elementFromPoint(ev.clientX, ev.clientY)?.closest<HTMLElement>("[data-rid]");
+        const target = under?.dataset.rid;
+        if (!target || target === id) return;
+        const from = indexOf(id);
+        const to = indexOf(target);
+        if (from < 0 || to < 0 || from === to) return;
+        moved = true;
+        setOver(target);
+        emit.current(moveTo(from, to));
+      };
+      const onUp = () => {
+        grip.removeEventListener("pointermove", onMove);
+        grip.removeEventListener("pointerup", onUp);
+        grip.removeEventListener("pointercancel", onCancel);
+        snapshot.current = null;
+        setDragging(null);
+        setOver(null);
+        setArmed(null);
+        if (!moved) return;
+        const at = indexOf(id);
+        if (at >= 0) setSpoken(getLabel(live.current[at]) + " dropped at position " + (at + 1) + ".");
+      };
+      const onCancel = () => {
+        const was = snapshot.current;
+        onUp();
+        if (was && moved) {
+          emit.current([...was]);
+          setSpoken("Reorder cancelled, the original order is back.");
+        }
+      };
+      grip.addEventListener("pointermove", onMove);
+      grip.addEventListener("pointerup", onUp);
+      grip.addEventListener("pointercancel", onCancel);
+    },
+    [getLabel, indexOf, moveTo],
+  );
+
+  const disarm = useCallback(() => setArmed(null), []);
+
+  /** Everything the handle needs: keyboard grab, touch drag, and arming the mouse drag on its row. */
+  const gripProps = useCallback(
+    (id: string) => ({
+      role: "button" as const,
+      tabIndex: 0,
+      "aria-pressed": grabbed === id,
+      onKeyDown: onKeyDown(id),
+      onPointerDown: onPointerDown(id),
+      onPointerUp: disarm,
+      onPointerCancel: disarm,
+    }),
+    [grabbed, onKeyDown, onPointerDown, disarm],
+  );
+
   const dragProps = useCallback(
     (id: string) => ({
-      draggable: true,
+      draggable: armed === id,
+      "data-rid": id,
       onDragStart: (e: React.DragEvent<HTMLElement>) => {
         snapshot.current = live.current;
         landed.current = false;
@@ -136,6 +212,7 @@ export function useReorder<T>({
         snapshot.current = null;
         setDragging(null);
         setOver(null);
+        setArmed(null);
         if (!landed.current) {
           if (was) emit.current([...was]);
           setSpoken("Reorder cancelled, the original order is back.");
@@ -150,8 +227,8 @@ export function useReorder<T>({
         setOver(null);
       },
     }),
-    [dragging, getLabel, indexOf, moveTo],
+    [armed, dragging, getLabel, indexOf, moveTo],
   );
 
-  return { grabbed, dragging, over, spoken, grab, drop, cancel, step, onKeyDown, dragProps };
+  return { grabbed, dragging, over, spoken, grab, drop, cancel, step, onKeyDown, gripProps, dragProps };
 }

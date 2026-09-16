@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Unclaimed } from "../../data/types";
 import { experienceById } from "../../lib/catalog";
 import { loadListing } from "../../lib/catalogLoad";
-import { JUMP_PAGE, allBookings, demoProfile, hydrateProfile, isDemoProfile, loadProfile, loadSession, saveProfile, saveSession, setBookingStatus, type JumpField, type OpBooking, type OpStatus, type OperatorProfile } from "../../lib/operator";
+import { JUMP_PAGE, allBookings, applyStoredProfiles, demoProfile, hydrateProfile, isDemoProfile, loadProfile, loadSession, profileKey, saveProfile, saveSession, setBookingStatus, type JumpField, type OpBooking, type OpStatus, type OperatorProfile } from "../../lib/operator";
 import { useApp } from "../../state/AppProvider";
 import { decideBooking, fetchBookings, hasApi, signOutApi, takeClaimNotice, type RemoteBooking } from "../../lib/api";
 import { Markup } from "../Markup";
@@ -39,7 +39,8 @@ export function OperatorView({ compact = false }: { compact?: boolean }) {
   });
   const [p, setP] = useState<OperatorProfile | null>(() => (session ? loadProfile(session) : null));
   const [wantLogin, setWantLogin] = useState(false);
-  const [page, setPage] = useState<OpPage>("home");
+  // Stripe sends the operator back to /operators#payouts after onboarding; that page, not Home, is where they left.
+  const [page, setPage] = useState<OpPage>(() => (typeof window !== "undefined" && window.location.hash === "#payouts" ? "payouts" : "home"));
   const [openedId, setOpenedId] = useState<string | null>(null);
   const [toastText, setToastText] = useState<string | null>(null);
   // Shown once, on the way in, when the server said this listing already had a different owner.
@@ -51,6 +52,8 @@ export function OperatorView({ compact = false }: { compact?: boolean }) {
   const [jumpTo, setJumpTo] = useState<{ field: JumpField; n: number } | null>(null);
   // Autosave feedback. Every edit already saves; this says so, next to the header, right after the owner changes something.
   const [savedAt, setSavedAt] = useState(0);
+  // The last write to this browser's storage was refused. Shown in the header until one goes through.
+  const [saveFailed, setSaveFailed] = useState(false);
   const lastTouch = useRef(0);
   const bodyRef = useRef<HTMLElement | null>(null);
   useEffect(() => {
@@ -65,6 +68,10 @@ export function OperatorView({ compact = false }: { compact?: boolean }) {
 
   const enter = useCallback((profile: OperatorProfile) => {
     saveSession(profile.id);
+    // The address bar keeps `#claim=<id>` for the business a claim link named. Switching to another business
+    // makes that stale: a reload reopened the link's business, not the one the owner had just switched to.
+    const h = window.location.hash.match(/^#claim=([a-z0-9-]+)/i);
+    if (h && h[1].toLowerCase() !== profile.id) window.history.replaceState(null, "", window.location.pathname + window.location.search);
     setSession(profile.id);
     setP(profile);
     setPage("home");
@@ -78,13 +85,37 @@ export function OperatorView({ compact = false }: { compact?: boolean }) {
       // The fill-in from the detail file hands back the same profile once there is nothing left to fill, and
       // saving it wrote the whole record to the API again on every visit to the dashboard.
       if (next === cur) return cur;
-      saveProfile(next);
+      // The updater runs at render time, so its feedback is queued rather than set in place.
+      if (saveProfile(next)) {
+        // Only an edit the owner just made flashes Saved; a background fill-in from the detail file stays quiet.
+        const mine = Date.now() - lastTouch.current < 1500;
+        window.setTimeout(() => { setSaveFailed(false); if (mine) setSavedAt(Date.now()); }, 0);
+      } else {
+        // The browser refused the write (storage full or blocked). The header used to flash Saved anyway.
+        window.setTimeout(() => { setSaveFailed(true); setSavedAt(0); setToastText("Couldn't save. This browser's storage is full or blocked."); }, 0);
+      }
       return next;
     });
     touchCatalog();
-    // Only an edit the owner just made flashes Saved; a background fill-in from the detail file stays quiet.
-    if (Date.now() - lastTouch.current < 1500) setSavedAt(Date.now());
   }, [touchCatalog]);
+
+  // Another tab (or window) of this dashboard saved the same business: take its copy, so the next edit here
+  // builds on it instead of writing this tab's stale profile over it. Two tabs editing the phone and the
+  // address used to end with one of the two edits gone.
+  useEffect(() => {
+    if (!p?.id) return;
+    const id = p.id;
+    const onStorage = (e: StorageEvent) => {
+      if (e.key !== profileKey(id) || !e.newValue) return;
+      const fresh = loadProfile(id);
+      if (!fresh) return;
+      setP(fresh);
+      applyStoredProfiles({ remote: false });
+      touchCatalog();
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, [p?.id, touchCatalog]);
 
   const jump = useCallback((field: JumpField) => {
     setPage(JUMP_PAGE[field]);
@@ -170,7 +201,9 @@ export function OperatorView({ compact = false }: { compact?: boolean }) {
     const t = window.setInterval(load, 45000);
     return () => { alive = false; window.clearInterval(t); };
   }, [p?.id]);
-  const bookings = useMemo(() => (p ? allBookings(p, state.bookings, remote) : []), [p, state.bookings, remote]);
+  // catalogVersion: a browser-local booking names its service through the listing, which fills in a moment
+  // after the dashboard opens; without it the row kept the scraped menu's name until the next edit.
+  const bookings = useMemo(() => (p ? allBookings(p, state.bookings, remote) : []), [p, state.bookings, remote, state.catalogVersion]);
 
   // Field-level Saved marks, and the preview following the owner around. One listener for every editor page,
   // so no page has to wire it up field by field.
@@ -211,10 +244,24 @@ export function OperatorView({ compact = false }: { compact?: boolean }) {
     };
   }, [p?.id, !!u, wantLogin]);
 
+  // Decisions on their way to the API, by booking code. A double tap on Accept used to send the PATCH twice,
+  // and the API mails the guest once per PATCH.
+  const deciding = useRef(new Map<string, OpStatus>());
   const decide = useCallback((b: OpBooking, status: OpStatus) => {
+    if (b.status === status) return;
     if (b.source === "remote" && p) {
+      if (deciding.current.get(b.code) === status) return;
+      deciding.current.set(b.code, status);
+      const was = b.status;
       setRemote((cur) => (cur ? cur.map((x) => (x.code === b.code ? { ...x, status } : x)) : cur));
-      void decideBooking(p.id, b.code, status).then((ok) => { if (!ok) setToastText("Could not save that. Check your connection."); });
+      void decideBooking(p.id, b.code, status).then((ok) => {
+        deciding.current.delete(b.code);
+        if (ok) return;
+        // The row went back to what it was, straight away, instead of showing "Confirmed" for 45 seconds
+        // until the next poll quietly undid it.
+        setRemote((cur) => (cur ? cur.map((x) => (x.code === b.code && x.status === status ? { ...x, status: was as RemoteBooking["status"] } : x)) : cur));
+        setToastText("Could not save that. Check your connection and try again.");
+      });
     } else set((cur) => setBookingStatus(cur, b, status));
     const word: Record<OpStatus, string> = { accepted: "Accepted", declined: "Declined", completed: "Marked complete", noshow: "Marked no-show", cancelled: "Cancelled", new: "Reopened" };
     setToastText(word[status] + " · " + b.guest);
@@ -223,6 +270,9 @@ export function OperatorView({ compact = false }: { compact?: boolean }) {
   const logout = () => {
     signOutApi();
     saveSession(null);
+    // A claim link's hash is kept until the claim is done (see AppProvider). Once the owner logs out it is done:
+    // leaving `#claim=<id>` in the address bar put them straight back in this dashboard on the next reload.
+    if (/^#claim=/i.test(window.location.hash)) window.history.replaceState(null, "", window.location.pathname + window.location.search);
     setSession(null);
     setP(null);
     setOpenedId(null);
@@ -232,8 +282,10 @@ export function OperatorView({ compact = false }: { compact?: boolean }) {
   if (!p || !u || wantLogin) {
     return (
       <OpLogin
-        claimId={state.operatorId}
-        claimToken={state.claimToken}
+        // After "Log out" or "Claim another business" the owner wants the pick screen, not the claim form for the
+        // business their link named (which after a log-out read "Claiming <their own shop>, who's the owner?").
+        claimId={wantLogin ? null : state.operatorId}
+        claimToken={wantLogin ? null : state.claimToken}
         compact={compact}
         onEnter={(profile) => { setWantLogin(false); enter(profile); }}
         onBack={back}
@@ -312,8 +364,8 @@ export function OperatorView({ compact = false }: { compact?: boolean }) {
             </div>
             <div className="odtopright">
               {!compact ? (
-                <span className={"odsavedtop" + (savedAt ? " on" : "")} role="status" aria-live="polite">
-                  {savedAt ? <><Markup html={OD_ICONS.check} /> Saved</> : "Changes save automatically"}
+                <span className={"odsavedtop" + (savedAt ? " on" : "") + (saveFailed ? " failed" : "")} role="status" aria-live="polite">
+                  {saveFailed ? <><Markup html={OD_ICONS.x} /> Not saved · storage full</> : savedAt ? <><Markup html={OD_ICONS.check} /> Saved</> : "Changes save automatically"}
                 </span>
               ) : null}
               {!compact && PREVIEW_PAGES.includes(page) ? (

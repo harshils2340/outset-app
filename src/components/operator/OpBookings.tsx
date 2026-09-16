@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { dateKey, startOfToday } from "../../lib/dates";
-import { fmtTime } from "../../lib/format";
+import { fmtTime, money } from "../../lib/format";
 import { fmtTotal, isoToDate, relDay, type OpBooking, type OpStatus } from "../../lib/operator";
 import { Markup } from "../Markup";
 import { OD_ICONS, useOp } from "./opContext";
@@ -52,8 +52,19 @@ export function BookingRow({ b, actions = false }: { b: OpBooking; actions?: boo
 }
 
 export function OpBookings() {
-  const { bookings, p, set } = useOp();
+  const { bookings, p, set, toast } = useOp();
   const [filter, setFilter] = useState<Filter>("new");
+  const toggleInstant = () => {
+    const on = !p.instantBook;
+    set((cur) => {
+      // Switching Instant Book on must not answer requests already waiting. A browser-local request reads its
+      // status from this switch, so each undecided one is pinned as a request first.
+      const decisions = { ...cur.decisions };
+      if (on) for (const b of bookings) if (b.source === "guest" && b.status === "new" && !decisions[b.code]) decisions[b.code] = "new";
+      return { ...cur, instantBook: on, decisions };
+    });
+    toast(on ? "Instant Book on. New bookings confirm on their own." : "Instant Book off. Each booking waits for your Accept.");
+  };
   const [q, setQ] = useState("");
   const todayKey = dateKey(startOfToday());
   const buckets: Record<Filter, OpBooking[]> = {
@@ -86,7 +97,7 @@ export function OpBookings() {
           <b><Markup html={OD_ICONS.bolt} /> Instant Book</b>
           <small>{p.instantBook ? "New bookings confirm on their own. Switch off to approve each one." : "Every booking waits for your Accept. Switch on to confirm automatically."}</small>
         </span>
-        <button type="button" className={"optoggle" + (p.instantBook ? " on" : "")} onClick={() => set({ instantBook: !p.instantBook })} aria-pressed={p.instantBook}>
+        <button type="button" className={"optoggle" + (p.instantBook ? " on" : "")} onClick={toggleInstant} aria-pressed={p.instantBook} aria-label="Instant Book">
           <span className="knob" />
         </button>
       </div>
@@ -113,16 +124,39 @@ export function OpBookings() {
 }
 
 export function BookingDrawer({ b, onClose }: { b: OpBooking; onClose: () => void }) {
-  const { decide, p } = useOp();
+  const { decide, p, toast } = useOp();
   const past = b.date < dateKey(startOfToday());
   const d = isoToDate(b.date);
   const svc = p.services.find((s) => s.name === b.service);
+  // Cancelling a confirmed booking refunds the guest and cannot be taken back, so it asks once.
+  const [sure, setSure] = useState(false);
+  const closeRef = useRef<HTMLButtonElement | null>(null);
+  // onClose is a fresh arrow each render of the shell; read through a ref so the effect runs once per booking.
+  const closeFn = useRef(onClose);
+  closeFn.current = onClose;
+  useEffect(() => {
+    setSure(false);
+    closeRef.current?.focus();
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") closeFn.current(); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [b.id]);
+  const copyCode = async () => {
+    try {
+      await navigator.clipboard.writeText(b.code);
+      toast("Code " + b.code + " copied");
+    } catch {
+      toast("Couldn't copy. The code is " + b.code);
+    }
+  };
+  // A decline or cancel already sent the guest's money back; confirming it again would promise a time nobody has paid for.
+  const refunded = b.source === "remote" && b.payment === "released";
   return (
     <div className="oddrawerwrap" onClick={onClose}>
-      <aside className="oddrawer" onClick={(e) => e.stopPropagation()}>
+      <aside className="oddrawer" role="dialog" aria-modal="true" aria-label={"Booking " + b.code} onClick={(e) => e.stopPropagation()}>
         <div className="oddrawerhead">
           <span className={"odstatus " + b.status}>{STATUS_LABEL[b.status]}</span>
-          <button type="button" className="odiconbtn" onClick={onClose} aria-label="Close"><Markup html={OD_ICONS.x} /></button>
+          <button type="button" className="odiconbtn" ref={closeRef} onClick={onClose} aria-label="Close"><Markup html={OD_ICONS.x} /></button>
         </div>
         <h2>{b.guest}</h2>
         <p className="odmuted">Booking {b.code}{b.source === "sample" ? " · sample" : ""}</p>
@@ -131,16 +165,21 @@ export function BookingDrawer({ b, onClose }: { b: OpBooking; onClose: () => voi
           <div><small>When</small><b>{d.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}</b><span>{fmtTime(b.slot)}{/\d+\s*(hours?|hrs?|min)/i.test(b.variant || "") ? " · " + b.variant : svc ? " · " + (svc.durationMin >= 60 ? (svc.durationMin / 60).toString().replace(/\.0$/, "") + (svc.durationMin === 60 ? " hour" : " hours") : svc.durationMin + " min") : ""}</span></div>
           <div><small>What</small><b>{b.service}</b><span>{b.variant || "Standard"}</span></div>
           <div><small>Who</small><b>{b.qty} {b.qty === 1 ? "guest" : "guests"}</b></div>
-          <div><small>Total</small><b>{fmtTotal(b)}</b>{b.addons?.length ? <span>Add-ons: {b.addons.join(", ")}</span> : null}</div>
+          {/* The guest's total includes Outset's service fee; when the API priced the booking the operator's own share is shown beside it. */}
+          <div><small>Total</small><b>{b.subtotal != null && b.total != null && b.subtotal < b.total ? "Guest pays " + money(b.total) + " · you receive " + money(b.subtotal) : fmtTotal(b)}</b>{b.addons?.length ? <span>Add-ons: {b.addons.join(", ")}</span> : null}</div>
         </div>
         {b.note ? <blockquote className="odnote">“{b.note}”</blockquote> : null}
 
         <div className="odcontactrow">
           <a className="odchip" href={b.phone ? "tel:" + b.phone : undefined} aria-disabled={!b.phone}><Markup html={OD_ICONS.phone} /> Call</a>
           <a className="odchip" href={b.email ? "mailto:" + b.email : undefined} aria-disabled={!b.email}><Markup html={OD_ICONS.mail} /> Email</a>
+          <button type="button" className="odchip" onClick={copyCode}><Markup html={OD_ICONS.ticket} /> Copy code</button>
         </div>
-        {!b.phone && !b.email ? <p className="odfine">Guest contact details arrive with real bookings once messaging is switched on.</p> : null}
+        {/* The number and address themselves: on a desktop a tel: link goes nowhere, and the owner reads them off the screen. */}
+        {b.phone || b.email ? <p className="odmuted odguestcontact">{[b.phone, b.email].filter(Boolean).join(" · ")}</p> : null}
+        {!b.phone && !b.email ? <p className="odfine">{b.source === "sample" ? "A sample row has no guest to contact. Real bookings carry the guest's mobile and email." : "This booking came without contact details."}</p> : null}
 
+        {b.status === "new" && past ? <p className="odfine">This date has already passed. Decline it so the guest hears back, or accept it if they came anyway.</p> : null}
         <div className="oddraweractions">
           {b.status === "new" ? (
             <>
@@ -154,17 +193,28 @@ export function BookingDrawer({ b, onClose }: { b: OpBooking; onClose: () => voi
               <button type="button" className="cta" onClick={() => { decide(b, "completed"); onClose(); }}>Mark completed</button>
             </>
           ) : null}
-          {b.status === "accepted" && !past ? (
+          {b.status === "accepted" && !past && !sure ? (
             <>
-              <button type="button" className="cta ghost" onClick={() => { decide(b, "cancelled"); onClose(); }}>Cancel booking</button>
+              <button type="button" className="cta ghost" onClick={() => setSure(true)}>Cancel booking</button>
               <button type="button" className="cta" onClick={() => { decide(b, "completed"); onClose(); }}>Mark completed</button>
             </>
           ) : null}
-          {b.status === "declined" || b.status === "cancelled" ? (
+          {b.status === "accepted" && !past && sure ? (
+            <>
+              <button type="button" className="cta ghost" onClick={() => setSure(false)} autoFocus>Keep it</button>
+              <button type="button" className="cta danger" onClick={() => { decide(b, "cancelled"); onClose(); }}>Yes, cancel it</button>
+            </>
+          ) : null}
+          {(b.status === "declined" || b.status === "cancelled") && !refunded ? (
             <button type="button" className="cta ghost" onClick={() => { decide(b, "accepted"); onClose(); }}>Reinstate as confirmed</button>
+          ) : null}
+          {b.status === "noshow" ? (
+            <button type="button" className="cta ghost" onClick={() => { decide(b, "accepted"); onClose(); }}>Undo no-show</button>
           ) : null}
         </div>
         {b.status === "new" ? <p className="odfine">Declining sends the guest an automatic note offering your next open time.</p> : null}
+        {b.status === "accepted" && !past && sure ? <p className="odfine">{b.payment === "captured" || b.payment === "authorized" ? "The guest gets their money back and an email saying you cancelled. This can't be undone." : "The guest gets an email saying you cancelled. This can't be undone."}</p> : null}
+        {refunded ? <p className="odfine">The guest's card was refunded when this was {b.status}, so it can't be confirmed again. Ask them to book once more.</p> : null}
       </aside>
     </div>
   );

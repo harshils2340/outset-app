@@ -8,23 +8,41 @@ export type PreviewDevice = "desktop" | "phone";
 type Prefs = { open: boolean; device: PreviewDevice; width: number };
 
 const PREFS_KEY = "outset.dashboard.preview.v1";
-/** Wider than the guest app's 1024 px phone cutoff, so the frame renders the desktop listing. */
-const DESKTOP_W = 1140;
+/**
+ * Just past the guest app's 1024 px phone cutoff, so the frame renders the desktop listing at the largest
+ * scale the panel allows. It used to be 1140, which shrank the page to 40% in a half-width panel.
+ */
+const DESKTOP_W = 1040;
 /** The phone the guest app's width check turns into its phone layout. */
 const PHONE_W = 390;
-export const PREVIEW_MIN_W = 360;
-export const PREVIEW_DEFAULT_W = 480;
+export const PREVIEW_MIN_W = 340;
+/** The least the editor keeps beside the preview. Below this the Basics fields wrap badly. */
+const EDITOR_MIN_W = 480;
 
+function sidebarWidth(): number {
+  return window.innerWidth <= 1180 ? 200 : 248;
+}
+
+/** Half of the space beside the sidebar: the split Harshil asked for, "half editing, half live preview". */
+export function defaultPreviewWidth(): number {
+  if (typeof window === "undefined") return 480;
+  return Math.round(Math.min(maxWidth(), Math.max(PREVIEW_MIN_W, (window.innerWidth - sidebarWidth()) / 2)));
+}
+
+/**
+ * Open by default: the preview is the point of the editor. Only a deliberate close is remembered. Prefs
+ * saved before the split view (open: false with no `closedBy`) are treated as never having chosen.
+ */
 export function loadPreviewPrefs(): Prefs {
-  const fallback: Prefs = { open: false, device: "desktop", width: PREVIEW_DEFAULT_W };
+  const fallback: Prefs = { open: true, device: "desktop", width: defaultPreviewWidth() };
   try {
     const raw = localStorage.getItem(PREFS_KEY);
     if (!raw) return fallback;
-    const v = JSON.parse(raw) as Partial<Prefs>;
+    const v = JSON.parse(raw) as Partial<Prefs> & { closedBy?: string };
     return {
-      open: v.open === true,
+      open: v.open === false && v.closedBy === "user" ? false : true,
       device: v.device === "phone" ? "phone" : "desktop",
-      width: typeof v.width === "number" && v.width >= PREVIEW_MIN_W ? v.width : PREVIEW_DEFAULT_W,
+      width: typeof v.width === "number" && v.width >= PREVIEW_MIN_W ? Math.min(v.width, maxWidth()) : defaultPreviewWidth(),
     };
   } catch {
     return fallback;
@@ -33,7 +51,9 @@ export function loadPreviewPrefs(): Prefs {
 
 export function savePreviewPrefs(patch: Partial<Prefs>): void {
   try {
-    localStorage.setItem(PREFS_KEY, JSON.stringify({ ...loadPreviewPrefs(), ...patch }));
+    const cur = loadPreviewPrefs();
+    const next = { ...cur, ...patch, closedBy: patch.open === false ? "user" : patch.open === true ? undefined : (JSON.parse(localStorage.getItem(PREFS_KEY) || "{}") as { closedBy?: string }).closedBy };
+    localStorage.setItem(PREFS_KEY, JSON.stringify(next));
   } catch {
     /* private mode */
   }
@@ -43,10 +63,9 @@ export function previewSrc(id: string): string {
   return import.meta.env.BASE_URL + "?preview=1#o=" + encodeURIComponent(id);
 }
 
-/** Largest width the panel may take: the editor keeps at least 520 px beside it. */
+/** Largest width the panel may take: the editor keeps EDITOR_MIN_W beside it. */
 function maxWidth(): number {
-  const side = window.innerWidth <= 1180 ? 200 : 248;
-  return Math.max(PREVIEW_MIN_W, window.innerWidth - side - 520);
+  return Math.max(PREVIEW_MIN_W, window.innerWidth - sidebarWidth() - EDITOR_MIN_W);
 }
 
 /**
@@ -142,6 +161,21 @@ export function OpPreview({ id, title, width, onWidth, onClose, onEdit, revealRe
     window.addEventListener("pointermove", move);
     window.addEventListener("pointerup", up);
   };
+  // The window got narrower: keep the editor's minimum by giving the panel back what it no longer has room for.
+  useEffect(() => {
+    const fit = () => {
+      const cap = maxWidth();
+      if (width > cap) onWidth(cap);
+    };
+    window.addEventListener("resize", fit);
+    fit();
+    return () => window.removeEventListener("resize", fit);
+  }, [width, onWidth]);
+  const resetWidth = () => {
+    const w = defaultPreviewWidth();
+    onWidth(w);
+    savePreviewPrefs({ width: w });
+  };
   const nudgeWidth = (e: React.KeyboardEvent) => {
     if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
     e.preventDefault();
@@ -166,10 +200,12 @@ export function OpPreview({ id, title, width, onWidth, onClose, onEdit, revealRe
         className="odpvgrip"
         role="separator"
         aria-orientation="vertical"
-        aria-label="Resize preview"
+        aria-label="Resize preview. Drag, or use the arrow keys. Double-click for half and half."
+        title="Drag to resize. Double-click for half and half."
         aria-valuenow={width}
         tabIndex={0}
         onPointerDown={startDrag}
+        onDoubleClick={resetWidth}
         onKeyDown={nudgeWidth}
       />
       <div className="odpvbar">

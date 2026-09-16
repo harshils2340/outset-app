@@ -179,7 +179,11 @@ export function ownerFromHash(hash: string): { name: string; email: string; phon
     const b64 = m[1].replace(/-/g, "+").replace(/_/g, "/");
     const bytes = Uint8Array.from(atob(b64), (ch) => ch.charCodeAt(0));
     const o = JSON.parse(new TextDecoder().decode(bytes)) as { n?: unknown; e?: unknown; p?: unknown };
-    return { name: String(o.n || ""), email: String(o.e || ""), phone: String(o.p || "") };
+    // The payload is not signed, so hold it to the same bounds the API applies when it mints a link: a hand-edited
+    // hash could otherwise seed the profile with a 3000-character name or an address in capitals that never
+    // matches the one the server linked for sign-in codes.
+    const email = String(o.e || "").trim().toLowerCase().slice(0, 200);
+    return { name: String(o.n || "").trim().slice(0, 120), email: EMAIL_RE.test(email) ? email : "", phone: String(o.p || "").trim().slice(0, 40) };
   } catch {
     return null;
   }
@@ -298,6 +302,8 @@ export type RemoteBooking = {
   decidedAt?: string;
   note?: string;
   payment?: { session: string; intent: string | null; state: "authorized" | "captured" | "released" | "unpaid" };
+  /** The API's split of `total`: the operator's price and the guest's service fee, in dollars. */
+  pricing?: { subtotal: number; fee: number };
 };
 
 /**
@@ -459,6 +465,8 @@ export type PayoutStatus = {
   nextAmount?: number;
   upcoming?: number;
   paidTotal?: number;
+  /** One line per currency the listing has been paid in; the fields above are the first (main) one. */
+  totals?: { currency: string; nextAmount: number; upcoming: number; paidTotal: number }[];
   history?: PayoutLine[];
 };
 

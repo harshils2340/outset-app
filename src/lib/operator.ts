@@ -2,7 +2,7 @@ import type { Booking, CategoryId, OperatorContact, Unclaimed, UnclaimedOption, 
 import { forgetClaim, saveRemoteProfile, type RemoteBooking } from "./api";
 import { addressLine, contactFor, experienceById, fmtPhone, getCatalog, setOperatorOverride, siteUrl } from "./catalog";
 import { dateKey, startOfToday } from "./dates";
-import { fmtTime } from "./format";
+import { fmtTime, money } from "./format";
 import { freeCancel } from "./listingDerive";
 import { splitAddons } from "./storage";
 
@@ -26,6 +26,8 @@ export type OpBooking = {
   price: number | null;
   qty: number;
   total: number | null;
+  /** The operator's own price before the guest's service fee, when the API priced the booking. */
+  subtotal?: number | null;
   addons?: string[];
   /** YYYY-MM-DD */
   date: string;
@@ -36,6 +38,8 @@ export type OpBooking = {
   created: number;
   /** guest: a real booking made in this browser's guest app. sample: seeded so the dashboard is not empty. */
   source: "guest" | "sample" | "remote";
+  /** The card behind a real booking. "released" means a decline or cancel already gave the money back. */
+  payment?: "authorized" | "captured" | "released" | "unpaid";
 };
 
 export type OpVariant = {
@@ -56,9 +60,75 @@ export type OpService = {
   durationMin: number;
   capacity: number;
   variants: OpVariant[];
+  /** One of the listing's gallery photos, shown next to this service on the guest page. */
+  photo?: string;
 };
 
 export type OpAddon = { id: string; name: string; detail: string; price: number | null };
+
+/* ---------- clean numbers for the menu editor ---------- */
+
+/** The most a single option or extra may cost. Stripe refuses a charge above $999,999.99, and no tour is that. */
+export const MAX_PRICE = 999999;
+/** The most guests one slot can take. Anything above is a typo, not a stadium. */
+export const MAX_CAPACITY = 1000;
+/** Minutes a service may run for: five minutes to a full day. */
+export const MIN_DURATION = 5;
+export const MAX_DURATION = 1440;
+export const DURATION_PRESETS = [15, 30, 45, 60, 90, 120, 150, 180, 240, 300, 360, 480];
+
+/**
+ * A price as typed, made clean: "$45", "45,000", "1,250.50" and "abc45" all read as the number inside, a
+ * blank box means no price, a minus is dropped (money is never negative), cents are rounded and the result is
+ * capped at MAX_PRICE. Anything that leaves no digits behind is no price. Never NaN, never Infinity.
+ */
+export function cleanPrice(raw: string | number | null | undefined): number | null {
+  if (raw == null) return null;
+  const text = String(raw).replace(/[^0-9.]/g, "");
+  const firstDot = text.indexOf(".");
+  const digits = firstDot < 0 ? text : text.slice(0, firstDot + 1) + text.slice(firstDot + 1).replace(/\./g, "");
+  if (!/\d/.test(digits)) return null;
+  const n = Math.round(Number(digits) * 100) / 100;
+  // A zero is not a price: the money code on both sides reads it as none, the checklist counts it as unset,
+  // and a guest was shown "From $0 / ski" for a shop that had simply not finished typing.
+  if (!Number.isFinite(n) || n <= 0) return null;
+  return Math.min(MAX_PRICE, n);
+}
+
+/** A whole number as typed, clamped to [min, max]; null when nothing numeric was typed. */
+export function cleanCount(raw: string | number | null | undefined, min: number, max: number): number | null {
+  if (raw == null) return null;
+  // "2.5" guests is 2, not 25: the whole part is what was meant, the dot is not.
+  const digits = String(raw).replace(/[^0-9.]/g, "").split(".")[0];
+  if (!digits) return null;
+  const n = Number(digits);
+  if (!Number.isFinite(n)) return max;
+  return Math.min(max, Math.max(min, Math.floor(n)));
+}
+
+/** Minutes as a label: "45 min", "1 hour", "1.5 hours", "1 h 45 min". */
+export function durationLabel(min: number): string {
+  if (!Number.isFinite(min) || min <= 0) return "";
+  if (min < 60) return min + " min";
+  const h = Math.floor(min / 60);
+  const m = min % 60;
+  if (m === 0) return h + (h === 1 ? " hour" : " hours");
+  if (m === 30) return h + ".5 hours";
+  return h + " h " + m + " min";
+}
+
+/** Bookings still to happen for a service, by the name a booking carries. Deleting the service orphans them. */
+export function upcomingBookingsFor(p: OperatorProfile, serviceName: string): OpBooking[] {
+  const today = dateKey(startOfToday());
+  const name = serviceName.trim().toLowerCase();
+  return p.bookings.filter((b) => b.service.trim().toLowerCase() === name && b.date >= today && (b.status === "new" || b.status === "accepted"));
+}
+
+/** Two services with the same name are one section on the guest page and one word on every booking. */
+export function duplicateServiceName(p: OperatorProfile, s: OpService): boolean {
+  const name = s.name.trim().toLowerCase();
+  return !!name && p.services.some((o) => o.id !== s.id && o.name.trim().toLowerCase() === name);
+}
 
 export type DayHours = { closed: boolean; open: string; close: string };
 
@@ -109,7 +179,17 @@ export type OperatorProfile = {
    * bootstrap, not a repair: after it has run, an empty menu or an empty gallery is the operator's own doing.
    */
   hydrated?: boolean;
+  /**
+   * The operator's own version of the "what it's actually like" guide on the listing. Absent on profiles saved
+   * before it existed, and on any profile the operator has not opened that section of: the page then shows the
+   * default for the activity kind (data/guides.ts).
+   */
+  guide?: OpGuide;
 };
+
+export type OpGuide = { steps: string[]; bring: string[]; goodFor: string };
+/** Length limits for the guide editor, the same ones the guest modal is laid out for. */
+export const GUIDE_LIMITS = { steps: 8, step: 240, bring: 10, bringItem: 80, goodFor: 200 } as const;
 
 const SESSION_KEY = "outset.operator.session.v1";
 const PROFILE_PREFIX = "outset.operator.profile.v1.";
@@ -142,11 +222,13 @@ function read<T>(key: string): T | null {
   }
 }
 
-function write(key: string, value: unknown): void {
+/** False when the browser refused the write (quota full, private mode): the caller must not claim it saved. */
+function write(key: string, value: unknown): boolean {
   try {
     localStorage.setItem(key, JSON.stringify(value));
+    return true;
   } catch {
-    /* ignore quota / private mode */
+    return false;
   }
 }
 
@@ -166,17 +248,140 @@ export function saveSession(id: string | null): void {
   write(SESSION_KEY, { id });
 }
 
-export function loadProfile(id: string): OperatorProfile | null {
-  const p = read<OperatorProfile>(PROFILE_PREFIX + id);
-  return p && p.v === 1 ? p : null;
+/** The localStorage key one business's profile lives under. The shell watches it for edits from another tab. */
+export function profileKey(id: string): string {
+  return PROFILE_PREFIX + id;
 }
 
-export function saveProfile(p: OperatorProfile): void {
-  write(PROFILE_PREFIX + p.id, p);
+const OP_STATUSES: OpStatus[] = ["new", "accepted", "declined", "completed", "noshow", "cancelled"];
+const CATS: Exclude<CategoryId, "all">[] = ["air", "water", "motorsport", "indoor", "outdoor", "play", "food", "wellness", "classes", "culture"];
+const isObj = (v: unknown): v is Record<string, unknown> => !!v && typeof v === "object" && !Array.isArray(v);
+const str = (v: unknown, fallback = ""): string => (typeof v === "string" ? v : typeof v === "number" && Number.isFinite(v) ? String(v) : fallback);
+const bool = (v: unknown, fallback: boolean): boolean => (typeof v === "boolean" ? v : fallback);
+const num = (v: unknown, fallback: number, min = 0, max = Number.MAX_SAFE_INTEGER): number => {
+  const n = typeof v === "number" ? v : typeof v === "string" && v.trim() ? Number(v) : NaN;
+  return Number.isFinite(n) ? Math.min(max, Math.max(min, n)) : fallback;
+};
+const strList = (v: unknown): string[] => (Array.isArray(v) ? v.filter((x): x is string => typeof x === "string" && !!x.trim()) : []);
+const objList = (v: unknown): Record<string, unknown>[] => (Array.isArray(v) ? v.filter(isObj) : []);
+const HHMM = /^\d{2}:\d{2}$/;
+const DEFAULT_DAY: DayHours = { closed: false, open: "09:00", close: "17:00" };
+
+/**
+ * A stored profile made safe to render, whatever version of the dashboard wrote it. A field an older build
+ * never knew about comes back with its default instead of undefined (a profile saved before blockedSlots
+ * existed took the Calendar page down with "cannot read includes of undefined"), a number typed into a text
+ * box comes back as a number, a row missing its id gets one, and a status or category that is not one of
+ * ours falls back. Keys this build does not know are kept, so a newer build's data survives a round trip.
+ * Nothing here invents content: an empty list stays empty.
+ */
+export function normalizeProfile(raw: unknown): OperatorProfile | null {
+  if (!isObj(raw) || typeof raw.id !== "string" || !raw.id) return null;
+  if (raw.v !== undefined && raw.v !== 1) return null;
+  const hours7 = Array.isArray(raw.hours) ? raw.hours : [];
+  const hours: DayHours[] = Array.from({ length: 7 }, (_, i) => {
+    const h = hours7[i];
+    if (!isObj(h)) return { ...DEFAULT_DAY };
+    const open = str(h.open);
+    const close = str(h.close);
+    return { closed: bool(h.closed, false), open: HHMM.test(open) ? open : DEFAULT_DAY.open, close: HHMM.test(close) ? close : DEFAULT_DAY.close };
+  });
+  const services: OpService[] = objList(raw.services).map((s) => ({
+    id: str(s.id) || uid("s"),
+    name: str(s.name),
+    desc: str(s.desc),
+    live: bool(s.live, true),
+    durationMin: num(s.durationMin, 60, 0, MAX_DURATION),
+    capacity: num(s.capacity, 8, 0, MAX_CAPACITY),
+    variants: objList(s.variants).map((v) => ({
+      id: str(v.id) || uid("v"),
+      label: str(v.label),
+      price: cleanPrice(typeof v.price === "number" || typeof v.price === "string" ? v.price : null),
+      per: str(v.per, "person") || "person",
+      ...(typeof v.perGuest === "boolean" ? { perGuest: v.perGuest } : {}),
+    })),
+    ...(typeof s.photo === "string" && s.photo ? { photo: s.photo } : {}),
+  }));
+  const addons: OpAddon[] = objList(raw.addons).map((a) => ({ id: str(a.id) || uid("a"), name: str(a.name), detail: str(a.detail), price: cleanPrice(typeof a.price === "number" || typeof a.price === "string" ? a.price : null) }));
+  const bookings: OpBooking[] = objList(raw.bookings)
+    .filter((b) => typeof b.id === "string" && typeof b.code === "string")
+    .map((b) => ({
+      ...(b as unknown as OpBooking),
+      guest: str(b.guest, "Guest"),
+      service: str(b.service),
+      variant: str(b.variant),
+      price: typeof b.price === "number" && Number.isFinite(b.price) ? b.price : null,
+      qty: num(b.qty, 1, 1),
+      total: typeof b.total === "number" && Number.isFinite(b.total) ? b.total : null,
+      date: str(b.date),
+      slot: str(b.slot),
+      status: OP_STATUSES.includes(b.status as OpStatus) ? (b.status as OpStatus) : "new",
+      created: num(b.created, Date.now()),
+      source: b.source === "sample" || b.source === "remote" ? b.source : "guest",
+    }));
+  const decisions: Record<string, OpStatus> = {};
+  if (isObj(raw.decisions)) for (const [k, v] of Object.entries(raw.decisions)) if (OP_STATUSES.includes(v as OpStatus)) decisions[k] = v as OpStatus;
+  const notify = isObj(raw.notify) ? raw.notify : {};
+  const payout = isObj(raw.payout) ? raw.payout : null;
+  const cat = CATS.includes(raw.cat as Exclude<CategoryId, "all">) ? (raw.cat as Exclude<CategoryId, "all">) : "outdoor";
+  const photos = strList(raw.photos);
+  const cover = str(raw.cover);
+  const p: OperatorProfile = {
+    ...(raw as object),
+    v: 1,
+    id: raw.id,
+    claimedAt: num(raw.claimedAt, Date.now()),
+    ownerName: str(raw.ownerName),
+    ownerEmail: str(raw.ownerEmail),
+    ownerPhone: str(raw.ownerPhone),
+    accepting: bool(raw.accepting, true),
+    published: bool(raw.published, true),
+    instantBook: bool(raw.instantBook, false),
+    assistant: bool(raw.assistant, true),
+    title: str(raw.title),
+    cat,
+    blurb: str(raw.blurb),
+    phone: str(raw.phone),
+    email: str(raw.email),
+    website: str(raw.website),
+    address: str(raw.address),
+    // A cover that is not in the gallery any more is a photo the operator removed.
+    cover: cover && (!photos.length || photos.includes(cover)) ? cover : photos[0] || "",
+    photos,
+    policy: strList(raw.policy),
+    services,
+    addons,
+    hours,
+    slotMinutes: num(raw.slotMinutes, 60, 15, 1440),
+    leadHours: num(raw.leadHours, 2, 0, 24 * 90),
+    windowDays: num(raw.windowDays, 60, 1, 730),
+    blockedDates: strList(raw.blockedDates),
+    blockedSlots: strList(raw.blockedSlots),
+    bookings,
+    decisions,
+    notify: { email: bool(notify.email, true), sms: bool(notify.sms, true), push: bool(notify.push, true) },
+    payout: payout ? { bank: str(payout.bank), last4: str(payout.last4), name: str(payout.name), schedule: payout.schedule === "weekly" ? "weekly" : "daily" } : null,
+  };
+  if (typeof raw.hoursConfirmed === "boolean") p.hoursConfirmed = raw.hoursConfirmed;
+  if (typeof raw.hydrated === "boolean") p.hydrated = raw.hydrated;
+  return p;
+}
+
+export function loadProfile(id: string): OperatorProfile | null {
+  return normalizeProfile(read<unknown>(PROFILE_PREFIX + id));
+}
+
+/**
+ * False when the browser would not keep the profile (storage full or blocked). The guest listing still gets
+ * the edit for this page load, and the caller must tell the operator it did not stick.
+ */
+export function saveProfile(p: OperatorProfile): boolean {
+  const ok = write(PROFILE_PREFIX + p.id, p);
   const idx = new Set(read<string[]>(INDEX_KEY) || []);
   idx.add(p.id);
   write(INDEX_KEY, Array.from(idx));
   pushToCatalog(p);
+  return ok;
 }
 
 /**
@@ -318,19 +523,25 @@ function servicesFrom(u: Unclaimed): OpService[] {
       live: true,
       durationMin: minutesIn(s.variants.map((v) => v.label).join(" ")) || 60,
       capacity: 8,
-      variants: s.variants.map((v) => ({ id: uid("v"), label: v.label, price: v.price, per: unitOf(v.per || u.options[v.optionIdx]?.per) })),
+      photo: s.photo || undefined,
+      variants: s.variants.map((v) => ({ id: uid("v"), label: v.label, price: cleanPrice(v.price), per: unitOf(v.per || u.options[v.optionIdx]?.per) })),
     }));
   }
   if (u.options.length) {
-    return u.options.map((o) => ({
-      id: uid("s"),
-      name: o.name,
-      desc: "",
-      live: true,
-      durationMin: minutesIn(o.detail) || 60,
-      capacity: 8,
-      variants: [{ id: uid("v"), label: o.detail || "Standard", price: o.price, per: unitOf(o.per) }],
-    }));
+    // The same rule as above: two options named "Dolphin Island excursion" are one service with two prices,
+    // not two rows the operator has to tell apart by the small print.
+    const byName = new Map<string, OpService>();
+    for (const o of u.options) {
+      const key = o.name.trim().toLowerCase();
+      const v: OpVariant = { id: uid("v"), label: o.detail || "Standard", price: cleanPrice(o.price), per: unitOf(o.per) };
+      const cur = byName.get(key);
+      if (cur) {
+        if (!cur.variants.some((x) => x.label.toLowerCase() === v.label.toLowerCase() && x.price === v.price)) cur.variants.push(v);
+        continue;
+      }
+      byName.set(key, { id: uid("s"), name: o.name, desc: "", live: true, durationMin: minutesIn(o.detail) || 60, capacity: 8, variants: [v] });
+    }
+    return [...byName.values()];
   }
   return [];
 }
@@ -419,7 +630,9 @@ export function sampleBookings(p: OperatorProfile): OpBooking[] {
   const offsets = [-21, -14, -9, -6, -3, -1, 0, 0, 1, 1, 2, 3, 4, 6, 8];
   const slots = ["09:00", "10:00", "11:00", "13:00", "14:00", "15:00", "16:00"];
   offsets.forEach((off, k) => {
-    const r = (seed + k * 7919) % 1000;
+    // Each row gets its own hash. `(seed + k * 7919) % 1000` made `r + k` a multiple of 4 for every row, so with
+    // two or four services every sample was the same service, the same party size and one of three names.
+    const r = hash(p.id + ":" + k + ":" + seed) % 1000;
     const s = svcs[(k + r) % svcs.length];
     const v = s.variants[r % s.variants.length];
     const d = new Date(today);
@@ -458,16 +671,19 @@ export function guestBookingsFor(p: OperatorProfile, guest: Booking[]): OpBookin
     .filter((b) => b.listing === p.id)
     .map((b) => {
       const { optionIdx, extras } = splitAddons(b.addons);
-      const opt = optionIdx != null && u ? u.options[optionIdx] : null;
+      // What the guest booked is what the booking wrote down at confirm time. The index in `addons` is only a
+      // fallback for bookings made before that was recorded: it points into the live menu, so deleting or
+      // reordering a service used to relabel every earlier booking row with whatever now sat at that position.
+      const opt = b.service == null && optionIdx != null && u ? u.options[optionIdx] : null;
       return {
         id: "g" + b.code,
         code: b.code,
         guest: b.guest?.name || "Guest " + b.code.slice(-2),
         email: b.guest?.email,
         phone: b.guest?.phone,
-        service: opt?.name || (u?.title ?? "Booking"),
-        variant: opt?.detail || "",
-        price: opt?.price ?? null,
+        service: b.service || opt?.name || (u?.title ?? "Booking"),
+        variant: b.service != null ? b.variant || "" : opt?.detail || "",
+        price: b.service != null ? b.price ?? null : opt?.price ?? null,
         qty: b.qty,
         total: b.total,
         addons: extras,
@@ -494,6 +710,7 @@ export function remoteBookingsFor(list: RemoteBooking[]): OpBooking[] {
     price: null,
     qty: b.qty,
     total: b.total,
+    subtotal: b.pricing?.subtotal ?? null,
     addons: b.addons,
     date: b.date,
     slot: b.slot,
@@ -501,6 +718,7 @@ export function remoteBookingsFor(list: RemoteBooking[]): OpBooking[] {
     note: b.note,
     created: Date.parse(b.created) || Date.now(),
     source: "remote" as const,
+    payment: b.payment?.state,
   }));
 }
 
@@ -529,7 +747,8 @@ export function bookingTotal(b: OpBooking): number {
 /** "$120", or "Quote" when the option had no published price. */
 export function fmtTotal(b: OpBooking): string {
   if (b.total == null && b.price == null) return "Quote";
-  return "$" + bookingTotal(b).toLocaleString("en-US");
+  // money() keeps cents at two places: a $7.50 add-on used to print "$7.5", and a fee total "$161.255".
+  return money(bookingTotal(b));
 }
 
 /* ---------- the listing the guest sees, rebuilt from the profile ---------- */
@@ -552,16 +771,22 @@ export function toCatalog(p: OperatorProfile, base: Unclaimed): Partial<Unclaime
     // A row with no name is one the operator has not finished. A nameless line in the guest's picker is worse
     // than no line at all: there is nothing to tell them what they would be booking.
     if (!s.live || !s.variants.length || !s.name.trim()) continue;
-    const variants = s.variants.map((v) => {
-      options.push({ name: s.name, detail: v.label, price: v.price, per: "/" + v.per, perGuest: v.perGuest ?? perUnitLooksPerGuest(v.per) });
-      return { label: v.label, price: v.price, per: "/" + v.per, optionIdx: options.length - 1 };
+    // "Add option" opens a blank row, and that row reached the guest page as a nameless "Price on request"
+    // line next to the finished ones. A row with no label and no price is one the operator is still typing.
+    // The last row stays whatever it holds, so a service is never published with nothing to pick.
+    const rows = s.variants.length === 1 ? s.variants : s.variants.filter((v) => v.label.trim() || v.price != null);
+    const variants = (rows.length ? rows : s.variants.slice(0, 1)).map((v) => {
+      // A price saved by an older editor could be negative or not a number at all; the guest sees neither.
+      const price = cleanPrice(v.price);
+      options.push({ name: s.name, detail: v.label, price, per: "/" + v.per, perGuest: v.perGuest ?? perUnitLooksPerGuest(v.per) });
+      return { label: v.label, price, per: "/" + v.per, optionIdx: options.length - 1 };
     });
-    services.push({ name: s.name, desc: s.desc || null, variants, maxGuests: s.capacity > 0 ? s.capacity : undefined });
+    services.push({ name: s.name, desc: s.desc || null, photo: s.photo || undefined, variants, maxGuests: s.capacity > 0 ? s.capacity : undefined });
   }
   // "Add" under Add-ons opens an empty row, and that row reached the guest listing before the operator had
   // typed a character: an Add-ons section holding one nameless tick box reading "Free", which a guest could
   // tick and have turn up at the shop as an extra with no name. An add-on is on the menu once it has a name.
-  const addons: UnclaimedOption[] = p.addons.filter((a) => a.name.trim()).map((a) => ({ name: a.name, detail: a.detail, price: a.price }));
+  const addons: UnclaimedOption[] = p.addons.filter((a) => a.name.trim()).map((a) => ({ name: a.name, detail: a.detail, price: cleanPrice(a.price) }));
   return {
     // A claimed shop that switched Instant Book on is the only kind a guest sees as Instant.
     instant: p.instantBook,
@@ -581,6 +806,34 @@ export function toCatalog(p: OperatorProfile, base: Unclaimed): Partial<Unclaime
     cancellation: p.policy.find((l) => /cancel|refund/i.test(l)) || (p.policy.length ? undefined : base.cancellation),
     fc: freeCancel(p.policy.find((l) => /cancel|refund/i.test(l)) || (p.policy.length ? "" : base.cancellation)) || undefined,
     hoursText: p.hours.some((h) => !h.closed) ? p.hours.map(hoursLine) : base.hoursText,
+    // itemWeek() reads the compact `hrs` week before the hour lines, so a browse record that carries one would
+    // keep showing the crawled hours after the operator changed them. The operator's hours win.
+    hrs: p.hours.some((h) => !h.closed) ? undefined : base.hrs,
+    // The operator's own guide replaces the kind's default once they have opened that section; absent keeps the default.
+    guide: p.guide ? { steps: p.guide.steps.filter((s) => s.trim()), bring: p.guide.bring.filter((s) => s.trim()), goodFor: p.guide.goodFor.trim() } : undefined,
+    contact: contactPatch(p, base),
+  };
+}
+
+/**
+ * The phone and address the guest page prints, from the profile. Before this the two fields saved and never
+ * reached the listing: the page kept reading the crawled contact record. The crawled record is read past any
+ * earlier override (`base` may already carry one), so clearing a field falls back to nothing, not to a stale edit.
+ */
+function contactPatch(p: OperatorProfile, base: Unclaimed): OperatorContact | undefined {
+  // A seed or a test item may carry no source domain; then there is no crawled record to read past.
+  const crawled = base.src ? contactFor({ ...base, contact: undefined }) : null;
+  const phone = (p.phone || "").trim() || null;
+  const address = (p.address || "").trim();
+  if (!crawled && !phone && !address) return undefined;
+  const blank: OperatorContact = { domain: "", website: null, phone: null, email: null, street: null, city: null, region: null, postal: null, hours: [], bookingVendor: null, fetchedAt: null };
+  const c = crawled || blank;
+  // Untouched since the claim: the profile carries the crawled line, or the area when the site had none.
+  const sameAddress = address === ((crawled && addressLine(crawled)) || base.area || "");
+  return {
+    ...c,
+    phone,
+    ...(sameAddress ? {} : { street: address || null, city: null, region: null, postal: null }),
   };
 }
 
@@ -667,7 +920,7 @@ export function contactOf(p: OperatorProfile): OperatorContact | null {
  * A spot in the dashboard a checklist item, or a click on the live preview, can jump straight to.
  * Each one names the page it lives on; the field itself carries data-jump="<name>" in the markup.
  */
-export type JumpField = "title" | "about" | "photos" | "phone" | "address" | "policy" | "services" | "price" | "hours" | "owner" | "payout";
+export type JumpField = "title" | "about" | "photos" | "phone" | "address" | "policy" | "guide" | "services" | "price" | "hours" | "owner" | "payout";
 
 export const JUMP_PAGE: Record<JumpField, "listing" | "services" | "hours" | "settings" | "payouts"> = {
   title: "listing",
@@ -676,6 +929,7 @@ export const JUMP_PAGE: Record<JumpField, "listing" | "services" | "hours" | "se
   phone: "listing",
   address: "listing",
   policy: "listing",
+  guide: "listing",
   services: "services",
   price: "services",
   hours: "hours",
@@ -690,6 +944,28 @@ export function hoursAreDefault(p: OperatorProfile): boolean {
 
 export function hasCancelLine(p: OperatorProfile): boolean {
   return p.policy.some((l) => /cancel|refund/i.test(l));
+}
+
+/* ---------- owner contact details (Settings) ---------- */
+
+/** The same caps the API applies (backend/src/api/profiles.ts cleanOwner), so nothing is cut off silently on save. */
+export const OWNER_NAME_MAX = 120;
+export const OWNER_EMAIL_MAX = 200;
+export const OWNER_PHONE_MAX = 40;
+
+/** One address, no spaces, a dot in the domain. Booking alerts go here, so "not an email" must not count. */
+export function validOwnerEmail(s: string): boolean {
+  const t = s.trim();
+  return t.length <= OWNER_EMAIL_MAX && /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(t);
+}
+
+/** Seven to fifteen digits once the punctuation is gone: "+1 (727) 555-0100", "727.555.0100". Letters or emoji are not a number. */
+export function validOwnerPhone(s: string): boolean {
+  const t = s.trim();
+  if (!t || t.length > OWNER_PHONE_MAX) return false;
+  if (!/^[+\d][\d\s().-]*(?:\s*(?:x|ext\.?)\s*\d{1,6})?$/i.test(t)) return false;
+  const digits = t.replace(/(?:x|ext\.?)\s*\d{1,6}$/i, "").replace(/\D/g, "");
+  return digits.length >= 7 && digits.length <= 15;
 }
 
 export type SetupCheck = { id: string; label: string; hint: string; done: boolean; page: string; field: JumpField };
@@ -713,7 +989,7 @@ export function setupChecks(p: OperatorProfile): SetupCheck[] {
   const priced = live.filter(isPriced).length;
   const total = live.length;
   return [
-    { id: "owner", label: "Add your name and mobile for booking alerts", hint: "So new bookings reach you", done: !!p.ownerName.trim() && !!(p.ownerPhone.trim() || p.ownerEmail.trim()), page: "settings", field: "owner" },
+    { id: "owner", label: "Add your name and mobile for booking alerts", hint: "So new bookings reach you", done: !!p.ownerName.trim() && (validOwnerPhone(p.ownerPhone) || validOwnerEmail(p.ownerEmail)), page: "settings", field: "owner" },
     ...listingChecks(p).map((c) => (c.id === "cover" ? { ...c, label: "Add at least 3 photos", done: p.photos.length >= 3 && !!p.cover } : c.id === "price" ? { ...c, label: total ? "Set a price on every option" : "Add your first service", done: total > 0 && priced === total } : c)),
     { id: "payout", label: "Connect your bank for payouts", hint: "Get paid for card bookings", done: !!p.payout, page: "payouts", field: "payout" },
   ];
@@ -797,5 +1073,6 @@ export function relDay(iso: string): string {
   if (diff === 0) return "Today";
   if (diff === 1) return "Tomorrow";
   if (diff === -1) return "Yesterday";
-  return DAY_SHORT[d.getDay()] + ", " + d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  // A date in another year names it: "Wed, Dec 25" for a day off next Christmas read as this one.
+  return DAY_SHORT[d.getDay()] + ", " + d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: d.getFullYear() === t.getFullYear() ? undefined : "numeric" });
 }

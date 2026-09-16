@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { claimedIds, loadProfile, setupChecks, type OperatorProfile } from "../../lib/operator";
+import { claimedIds, isDemoProfile, loadProfile, setupChecks, type OperatorProfile } from "../../lib/operator";
 import { Mark } from "../layout/Mark";
 import { Markup } from "../Markup";
 import { OD_ICONS, PAGES, PAGE_GROUPS, type OpPage } from "./opContext";
@@ -95,12 +95,14 @@ export function OpSidebar({
   // can fold Setup and Business away.
   const [folded, setFolded] = useState<Record<string, boolean>>({});
 
-  // Every other business claimed in this browser. One-business owners never see the list.
+  // Every other business claimed in this browser. One-business owners never see the list. The demo dashboard
+  // is stored like a claimed business but is not one: it was listed here as "Live · accepting" beside a real
+  // operator's own shop, so it stays out unless it is the one open now.
   const others = useMemo(() => {
     return claimedIds()
       .filter((id) => id !== p.id)
       .map((id) => loadProfile(id))
-      .filter((x): x is OperatorProfile => !!x);
+      .filter((x): x is OperatorProfile => !!x && !isDemoProfile(x));
   }, [p.id]);
 
   // setupChecks names the page each gap belongs to, so a page's badge is just its unfinished count.

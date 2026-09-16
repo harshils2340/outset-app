@@ -39,7 +39,8 @@ export function OpHome() {
   const nextToday = today.find((b) => b.slot >= new Date().toTimeString().slice(0, 5)) || null;
   const checks = setupChecks(p);
   const done = checks.filter((c) => c.done).length;
-  const hasSamples = p.bookings.some((b) => b.source === "sample");
+  // Judged on what is on screen: once a real booking hides the samples, the "rows marked Sample" note went on showing.
+  const hasSamples = bookings.some((b) => b.source === "sample");
   const hour = new Date().getHours();
   const hello = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
 

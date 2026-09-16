@@ -265,6 +265,12 @@ function reducer(state: AppState, action: Action): AppState {
         qty: action.qty,
         addons: [...(picked ? [String(action.optionIdx)] : []), ...extras.map((a) => a.name)],
         total: p.total,
+        // The service as it read now, so the operator's booking row keeps its name and price after the menu
+        // is reordered or the option deleted (the index in `addons` alone would then point at another line).
+        service: picked?.name || u.title,
+        variant: picked?.detail || "",
+        price: picked?.price ?? null,
+        per: picked?.per,
         code: action.code || makeCode(initials(u.title)),
         created: Date.now(),
         guest: action.guest,

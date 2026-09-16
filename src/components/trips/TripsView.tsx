@@ -5,6 +5,7 @@ import { bookingStatus, hasApi } from "../../lib/api";
 import { startOfToday, dateKey } from "../../lib/dates";
 import { experienceById } from "../../lib/catalog";
 import { fmtDate, fmtTime } from "../../lib/format";
+import { loadProfile } from "../../lib/operator";
 import { useApp } from "../../state/AppProvider";
 import { Art } from "../art/Art";
 import { Markup } from "../Markup";
@@ -39,12 +40,35 @@ export function TripsView() {
   const [status, setStatus] = useState<Record<string, string>>(() => ({ ...answered }));
   const codes = up.map((b) => b.code).join(",");
 
+  // Every answer is re-asked when the tab comes back into focus, so an operator's accept in another tab (or
+  // on their phone) shows here without a reload. The first pass still reads from the cache.
+  const [pass, setPass] = useState(0);
   useEffect(() => {
-    if (!hasApi() || !up.length) return;
+    const onFocus = () => setPass((n) => n + 1);
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+  }, []);
+
+  useEffect(() => {
+    if (!up.length) return;
+    if (!hasApi()) {
+      // No API on this host: the operator's dashboard lives in this same browser, and its decisions are in the
+      // profile it saves. Without this the guest saw no answer at all after the operator accepted or declined.
+      const next: Record<string, string> = {};
+      for (const b of up) {
+        const p = loadProfile(b.listing);
+        const d = p?.decisions[b.code] || (p?.instantBook ? "accepted" : "");
+        if (d) next[b.code] = d;
+      }
+      setStatus((cur) => ({ ...cur, ...next }));
+      return;
+    }
     let alive = true;
     void (async () => {
       for (const b of up) {
-        if (b.code in answered) continue;
+        if (pass === 0 && b.code in answered) continue;
+        // A booking the operator already settled does not change again; only open ones are re-asked.
+        if (pass > 0 && ["declined", "cancelled", "completed"].includes(answered[b.code] || "")) continue;
         const s = await bookingStatus(b.listing, b.code);
         answered[b.code] = s || "";
         if (!alive) return;
@@ -54,7 +78,7 @@ export function TripsView() {
     return () => {
       alive = false;
     };
-  }, [codes]);
+  }, [codes, pass]);
 
   return (
     <>

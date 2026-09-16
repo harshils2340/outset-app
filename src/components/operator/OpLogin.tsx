@@ -37,6 +37,13 @@ function openBypassLink(link: string): void {
   window.location.reload();
 }
 
+/**
+ * Claim links this page load has already walked through. The token stays in app state after the URL is
+ * cleaned, so without this "Log out" remounted the claim screen, which read the same link again and put the
+ * operator straight back in the dashboard they had just left.
+ */
+const consumedLinks = new Set<string>();
+
 async function sha256Hex(text: string): Promise<string> {
   const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
   return Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, "0")).join("");
@@ -60,13 +67,13 @@ export function OpLogin({ claimId, claimToken, compact, onEnter, onBack }: { cla
   const [phone, setPhone] = useState("");
   const [code, setCode] = useState("");
   const [err, setErr] = useState<string | null>(null);
-  const [linkState, setLinkState] = useState<"idle" | "checking" | "bad" | "expired">(claimToken && claimId ? "checking" : "idle");
+  const [linkState, setLinkState] = useState<"idle" | "checking" | "bad" | "expired">(claimToken && claimId && !consumedLinks.has(claimToken) ? "checking" : "idle");
   const isApi = hasApi();
 
   // A signed claim link opens the dashboard directly. The listing file carries a hash of the emailed token;
   // the detail file can arrive a moment after the page, so keep checking for a few seconds.
   useEffect(() => {
-    if (!claimToken || !claimId) return;
+    if (!claimToken || !claimId || consumedLinks.has(claimToken)) return;
     let alive = true;
     let tries = 0;
     const tick = async () => {
@@ -90,10 +97,15 @@ export function OpLogin({ claimId, claimToken, compact, onEnter, onBack }: { cla
           if (!ok) { setLinkState("bad"); return; }
         }
         rememberClaimToken(apiId, claimToken);
+        consumedLinks.add(claimToken);
+        const fromLink = ownerFromHash(window.location.hash);
+        // The token is a bearer secret and has done its job: take it (and the owner details) out of the address
+        // bar so a reload, a bookmark or a shared URL does not carry it. `#claim=<id>` stays so a refresh reopens
+        // this business rather than the demo.
+        if (/[&#](k|o)=/.test(window.location.hash)) window.history.replaceState(null, "", window.location.pathname + window.location.search + "#claim=" + claimId);
         // Record the claim before anything else. It used to happen only when a profile was being created,
         // so a second person opening a forwarded link for a listing that was already set up was never
         // recorded at all, and neither the server nor the real owner ever heard about it.
-        const fromLink = ownerFromHash(window.location.hash);
         if (isApi) await claimRemote(apiId, claimToken, fromLink || undefined);
         if (!alive) return;
         const existing = loadProfile(apiId) || loadProfile(u.id);
@@ -239,18 +251,27 @@ export function OpLogin({ claimId, claimToken, compact, onEnter, onBack }: { cla
     const r = await verifySignInCode(signinEmail, code);
     if (!r.ok) { setErr(r.error || "That code does not match."); return; }
     if (!r.ids.length) { setErr("No listing is linked to that email yet. Use the claim link from your email."); return; }
-    // Open the first listing this email owns; the profile comes from the API if this device has none.
-    const id = r.ids[0];
-    const existing = loadProfile(id);
-    if (existing) { onEnter(existing); return; }
-    const remote = await fetchRemoteProfile(id);
-    const saved = remote?.profile as OperatorProfile | undefined;
-    const u = experienceById(id);
-    if (saved && saved.v === 1) { saveProfile(saved); onEnter(saved); return; }
-    if (!u) { setErr("That listing is not loaded yet. Try again in a moment."); return; }
-    const p = defaultProfile(u, { name: remote?.owner?.name || "", email: signinEmail, phone: remote?.owner?.phone || "" });
-    saveProfile(p);
-    onEnter(p);
+    // Every listing this email owns gets a local copy, from the API when this device has none. The business
+    // switcher only lists what is stored here, so pulling just the first one left an owner of two shops with no
+    // way to reach the second on a new phone. The first one opens.
+    let first: OperatorProfile | null = null;
+    for (const id of r.ids) {
+      let p = loadProfile(id);
+      if (!p) {
+        const remote = await fetchRemoteProfile(id);
+        const saved = remote?.profile as OperatorProfile | undefined;
+        if (saved && saved.v === 1) p = saved;
+        else {
+          const u = experienceById(id);
+          if (!u) continue;
+          p = defaultProfile(u, { name: remote?.owner?.name || "", email: signinEmail.trim().toLowerCase(), phone: remote?.owner?.phone || "" });
+        }
+        saveProfile(p);
+      }
+      first = first || p;
+    }
+    if (!first) { setErr("That listing is not loaded yet. Try again in a moment."); return; }
+    onEnter(first);
   };
 
   /** New claim: the API emails the signed link, but only to an address it can tie to this business. */
@@ -367,6 +388,7 @@ export function OpLogin({ claimId, claimToken, compact, onEnter, onBack }: { cla
           <>
             <h2>Find your business</h2>
             <p className="odmuted">Search by name. If we already built your listing, you'll claim it in under a minute.</p>
+            {claimId && !preset && app.catalogComplete ? <p className="oderr">We couldn't find the business named in that link. Search for it by name below, or write to {SUPPORT}.</p> : null}
             <label className="odsearch">
               <Markup html={OD_ICONS.search} />
               <input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="Business name, like Tampa Bay Jet Ski" />
@@ -409,9 +431,9 @@ export function OpLogin({ claimId, claimToken, compact, onEnter, onBack }: { cla
             ) : null}
 
             <div className="odor"><span>already claimed?</span></div>
-            <label className="odfield"><span>Sign in with the email on your listing</span><input type="email" value={signinEmail} onChange={(e) => setSigninEmail(e.target.value)} placeholder="you@business.com" onKeyDown={(e) => e.key === "Enter" && signinEmail.includes("@") && (setMode("signin"), void startSignIn())} /></label>
+            <label className="odfield"><span>Sign in with the email on your listing</span><input type="email" maxLength={200} value={signinEmail} onChange={(e) => { setSigninEmail(e.target.value); if (mode === "signin") setErr(null); }} placeholder="you@business.com" onKeyDown={(e) => e.key === "Enter" && isApi && !sending && EMAIL.test(signinEmail.trim()) && (setMode("signin"), void startSignIn())} /></label>
             {err && mode === "signin" ? <p className="oderr">{err}</p> : null}
-            <button type="button" className="cta odwide" disabled={!signinEmail.includes("@") || sending || !isApi} onClick={() => { setMode("signin"); void startSignIn(); }}>{sending ? "Sending…" : "Email me a sign-in code"}</button>
+            <button type="button" className="cta odwide" disabled={!EMAIL.test(signinEmail.trim()) || sending || !isApi} onClick={() => { setMode("signin"); void startSignIn(); }}>{sending ? "Sending…" : "Email me a sign-in code"}</button>
             {!isApi ? <p className="odfine">Sign-in codes switch on once the API is connected.</p> : null}
             <div className="odor"><span>or</span></div>
             <button type="button" className="cta ghost odwide" onClick={demo}>See the demo dashboard</button>
@@ -426,9 +448,9 @@ export function OpLogin({ claimId, claimToken, compact, onEnter, onBack }: { cla
             {linkState === "expired" ? <p className="oderr">That claim link has expired. Links stay good for a while so an old forwarded email cannot open your dashboard. Ask for a fresh one below, it arrives in a moment.</p> : null}
             <h2>Who's the owner?</h2>
             <p className="odmuted">We'll send booking alerts here. Nothing goes out until you confirm.</p>
-            <label className="odfield"><span>Your name</span><input value={name} onChange={(e) => setName(e.target.value)} placeholder="Full name" /></label>
-            <label className="odfield"><span>Work email</span><input type="email" value={email} onChange={(e) => { setEmail(e.target.value); setErr(null); }} placeholder={rule?.domains.length ? "you@" + rule.domains[0] : "you@business.com"} onKeyDown={(e) => { if (e.key === "Enter" && isApi && canRequest) void requestLink(); }} /></label>
-            <label className="odfield"><span>Mobile for text alerts</span><input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="(555) 555-5555" /></label>
+            <label className="odfield"><span>Your name</span><input maxLength={120} value={name} onChange={(e) => setName(e.target.value)} placeholder="Full name" /></label>
+            <label className="odfield"><span>Work email</span><input type="email" maxLength={200} value={email} onChange={(e) => { setEmail(e.target.value); setErr(null); }} placeholder={rule?.domains.length ? "you@" + rule.domains[0] : "you@business.com"} onKeyDown={(e) => { if (e.key === "Enter" && isApi && canRequest) void requestLink(); }} /></label>
+            <label className="odfield"><span>Mobile for text alerts</span><input type="tel" maxLength={40} value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="(555) 555-5555" /></label>
             {isApi ? (
               <>
                 <p className="odmuted">{ruleLine}</p>
@@ -446,7 +468,7 @@ export function OpLogin({ claimId, claimToken, compact, onEnter, onBack }: { cla
                 ) : null}
               </>
             ) : (
-              <button type="button" className="cta odwide" disabled={!name.trim() || !email.trim()} onClick={() => { setMode("claim"); setStep("code"); setErr(null); }}>Send verification code</button>
+              <button type="button" className="cta odwide" disabled={!name.trim() || !EMAIL.test(email.trim())} onClick={() => { setMode("claim"); setStep("code"); setErr(null); }}>Send verification code</button>
             )}
             <p className="odfine">By continuing you confirm you're authorised to manage this business on Outset.</p>
           </>
