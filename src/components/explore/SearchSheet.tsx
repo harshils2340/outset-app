@@ -46,6 +46,7 @@ export function SearchSheet() {
   const [who, setWho] = useState<number | null>(prefs.who);
   const [hits, setHits] = useState<Place[]>([]);
   const [locating, setLocating] = useState(false);
+  const [locateNote, setLocateNote] = useState<string | null>(null);
   const whatRef = useRef<HTMLInputElement>(null);
   const needle = text.trim();
   const catalog = getCatalog();
@@ -184,9 +185,16 @@ export function SearchSheet() {
 
   const useHere = async () => {
     setLocating(true);
+    setLocateNote(null);
     const pt = await currentLocation();
     setLocating(false);
-    if (pt) pickPlace({ kind: "near", place: { label: "Near me", sub: "Your current location", lat: pt.lat, lon: pt.lon } });
+    // Refused, or the prompt was never answered. Saying nothing leaves the guest pressing a row that
+    // looks broken, so say it and point at the box that does work.
+    if (!pt) {
+      setLocateNote("We could not get your location. Type a town or a city instead.");
+      return;
+    }
+    pickPlace({ kind: "near", place: { label: "Near me", sub: "Your current location", lat: pt.lat, lon: pt.lon } });
   };
 
   const clearAll = () => {
@@ -291,6 +299,7 @@ export function SearchSheet() {
               ) : (
                 <>
                   {item("nearby", <IcNavigate size={20} />, locating ? "Finding you…" : "Nearby", "Find what's around you", useHere, { disabled: locating })}
+                  {locateNote ? <p className="airsgroup">{locateNote}</p> : null}
                   {item("anywhere", <IcGlobe size={20} />, "Anywhere", countInMetro(ALL_METRO_ID).toLocaleString() + " places across the US and Canada", () => pickPlace({ kind: "metro", id: ALL_METRO_ID }))}
                   <p className="airsgroup">Suggested destinations</p>
                   {seeded.map(({ m, n: k }) => item(m.id, <IcPin size={20} />, m.name + ", " + m.region, k.toLocaleString() + " places", () => pickPlace({ kind: "metro", id: m.id }), { pressed: !where && state.metroId === m.id }))}

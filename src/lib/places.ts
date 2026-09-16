@@ -61,14 +61,38 @@ export function fmtDistance(km: number): string {
   return Math.round(km) + " km";
 }
 
+/** How long we wait for a fix before giving up on our own clock. */
+export const LOCATE_TIMEOUT_MS = 10000;
+
+/**
+ * The guest's own position, or null if we cannot have it.
+ *
+ * The Geolocation timeout below does not cover the permission prompt: the spec stops its clock while the
+ * browser asks, so a guest who leaves the bar unanswered gets neither callback, ever. The promise then never
+ * settles and whichever control asked sits on "Finding you…", disabled, for the rest of the visit. So this
+ * settles on a clock of its own as well, and every path resolves.
+ */
 export function currentLocation(): Promise<{ lat: number; lon: number } | null> {
   return new Promise((resolve) => {
     if (typeof navigator === "undefined" || !navigator.geolocation) return resolve(null);
-    navigator.geolocation.getCurrentPosition(
-      (pos) => resolve({ lat: pos.coords.latitude, lon: pos.coords.longitude }),
-      () => resolve(null),
-      { enableHighAccuracy: false, timeout: 8000, maximumAge: 300000 },
-    );
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    let done = false;
+    const settle = (pt: { lat: number; lon: number } | null) => {
+      if (done) return;
+      done = true;
+      if (timer) clearTimeout(timer);
+      resolve(pt);
+    };
+    timer = setTimeout(() => settle(null), LOCATE_TIMEOUT_MS);
+    try {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => settle({ lat: pos.coords.latitude, lon: pos.coords.longitude }),
+        () => settle(null),
+        { enableHighAccuracy: false, timeout: 8000, maximumAge: 300000 },
+      );
+    } catch {
+      settle(null);
+    }
   });
 }
 

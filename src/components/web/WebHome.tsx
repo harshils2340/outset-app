@@ -875,6 +875,7 @@ export function WebHome({ onOpenApp, onOperators }: { onOpenApp: () => void; onO
   const intent = useMemo(() => parseIntent(dq), [dq]); // intent words survive place stripping
   const [placeHits, setPlaceHits] = useState<Place[]>([]);
   const [locating, setLocating] = useState(false);
+  const [locateNote, setLocateNote] = useState<string | null>(null);
   const metro = metroById(state.metroId);
   const world = WORLDS.find((w) => w.id === worldOf(state.cat))!;
   const kindChip = artChip && world.chips.find((c) => c.art === artChip) ? artChip : null;
@@ -961,9 +962,16 @@ export function WebHome({ onOpenApp, onOperators }: { onOpenApp: () => void; onO
   };
   const useMyLocation = async () => {
     setLocating(true);
+    setLocateNote(null);
     const pt = await currentLocation();
     setLocating(false);
-    if (!pt) return;
+    // Refused, or the prompt was never answered. Saying nothing leaves the guest pressing a row that
+    // looks broken, so say it and point at the box that does work.
+    if (!pt) {
+      setLocateNote("We could not get your location. Type a town or a city instead.");
+      return;
+    }
+    setLocateNote(null);
     pickPlace({ label: "Near me", sub: "Current location", lat: pt.lat, lon: pt.lon });
   };
 
@@ -1699,6 +1707,7 @@ export function WebHome({ onOpenApp, onOperators }: { onOpenApp: () => void; onO
                       <button type="button" className="ah-clear" aria-label="Clear where" onClick={clearWhere}><Markup html={SVG.close} /></button>
                     ) : null}
                   </label>
+                  {locateNote ? <p className="ah-pop-note">{locateNote}</p> : null}
                   {wt && !whereRows.length ? <p className="ah-pop-note">Keep typing, or try a bigger town nearby.</p> : null}
                   <div className="ah-rgrid" role="listbox" aria-label="Places">
                     {(wt ? whereRows : whereRows.slice(0, 8)).map((r, i) => (
