@@ -474,6 +474,8 @@ export type PayoutStatus = {
 };
 
 export async function payoutStatus(listing: string): Promise<PayoutStatus> {
+  // Same as fetchBookings: with nothing to authorise the request, the API answers 403 and the demo dashboard logged one.
+  if (!claimTokenFor(listing) && !loadApiSession()) return { available: false };
   const r = await call<PayoutStatus>(`/payouts/${encodeURIComponent(listing)}`, { headers: authHeaders(listing), timeout: 15000 });
   return r.ok && r.data ? r.data : { available: false };
 }
