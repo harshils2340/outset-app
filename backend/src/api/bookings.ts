@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { ID, bodyText, jsonBody, mayEdit, rateLimit } from "./auth.ts";
 import { readJson } from "../lib/store.ts";
-import { getBooking, getProfile, insertBookingChecked, listBookings, updateBooking } from "../lib/repo.ts";
+import { getBooking, getProfile, insertBookingChecked, listBookings, updateBooking, updateBookingChecked } from "../lib/repo.ts";
 import type { StoredProfile } from "./profiles.ts";
 import { capture, createCheckout, releaseIntent, reverseTransfer, sessionStatus, stripeEnabled, verifyWebhook } from "../lib/stripe.ts";
 import { currencyForArea, priceBooking, releaseDate, splitBooking, type PricedOption, type Split } from "../payments/money.ts";
@@ -336,30 +336,47 @@ bookings.patch("/bookings/:listing/:code", rateLimit(300, 60 * 60 * 1000), async
   const body = await jsonBody<{ status: StoredBooking["status"]; note: string }>(c);
   const status = body.status;
   if (!status || !STATUSES.includes(status)) return c.json({ error: "bad status" }, 400);
-  // Reinstating a booking the operator already turned away is not a status change, it is a new booking: the
-  // time may have gone to somebody else in the meantime, and the guest's card was released when it was
-  // refused. Both are checked before anything is written.
   const before = await getBooking<StoredBooking>(id, code);
   if (!before) return c.json({ error: "not found" }, 404);
-  const reinstating = status === "accepted" && (before.status === "declined" || before.status === "cancelled");
-  if (reinstating) {
-    if (before.payment && before.payment.state === "released") {
-      return c.json({ error: "That booking was refunded, so it cannot be confirmed again. Ask the guest to book a new time." }, 409);
+  // A "pending" row is still mid-Stripe-checkout, not a real request yet: no card is captured, and the webhook
+  // that turns it into one has not run. Deciding it here would leave that webhook's own guard
+  // (`x.status !== "pending"`) finding the row already decided once the guest does pay, with no capture, no
+  // payout ever scheduled, and a card nothing on this path releases.
+  if (before.status === "pending") return c.json({ error: "This booking is still waiting on payment" }, 409);
+  const [profile, zone] = await Promise.all([getProfile<StoredProfile>(id).catch(() => null), zoneOf(id).catch(() => null)]);
+  // Reinstating a booking the operator already turned away is not a status change, it is a new booking: the
+  // time may have gone to somebody else since, and the guest's card was released when it was refused. Both are
+  // checked, and the decision written, under the listing's advisory lock: the same one a fresh booking takes,
+  // so a reinstate racing a new guest into the same time cannot both win it, and two decide requests racing
+  // each other cannot both capture, refund or email for the same change.
+  let refused: "released" | "room" | null = null;
+  let roomReason = "";
+  let unchanged = false;
+  const found = await updateBookingChecked<StoredBooking>(id, code, (cur, others) => {
+    if (cur.status === status && !body.note) {
+      unchanged = true;
+      return cur;
     }
-    const [profile, list, zone] = await Promise.all([
-      getProfile<StoredProfile>(id).catch(() => null),
-      listBookings<StoredBooking>(id).catch(() => [] as StoredBooking[]),
-      zoneOf(id).catch(() => null),
-    ]);
-    // Its own row still sits in that time, so it must not count against itself.
-    const others = list.filter((x) => x.code !== code);
-    const room = slotOpen((profile?.profile as Parameters<typeof slotOpen>[0]) || null, others, before.date, before.slot, before.service, before.qty, new Date(), zone);
-    if (!room.open) return c.json({ error: room.reason || "That time is no longer free", code: "slot_taken" }, 409);
+    if (status === "accepted" && (cur.status === "declined" || cur.status === "cancelled")) {
+      if (cur.payment?.state === "released") {
+        refused = "released";
+        return "refused";
+      }
+      const room = slotOpen((profile?.profile as Parameters<typeof slotOpen>[0]) || null, others, cur.date, cur.slot, cur.service, cur.qty, new Date(), zone);
+      if (!room.open) {
+        refused = "room";
+        roomReason = room.reason || "That time is no longer free";
+        return "refused";
+      }
+    }
+    return { ...cur, status, decidedAt: new Date().toISOString(), note: body.note ? clean(body.note, 300) : cur.note };
+  });
+  if (found === null) return c.json({ error: "not found" }, 404);
+  if (found === "refused") {
+    if (refused === "released") return c.json({ error: "That booking was refunded, so it cannot be confirmed again. Ask the guest to book a new time." }, 409);
+    return c.json({ error: roomReason, code: "slot_taken" }, 409);
   }
-  // Saying the same thing twice used to send the guest a second copy of the same email.
-  if (before.status === status && !body.note) return c.json({ ok: true, booking: before, unchanged: true });
-  const found = await updateBooking<StoredBooking>(id, code, (x) => ({ ...x, status, decidedAt: new Date().toISOString(), note: body.note ? clean(body.note, 300) : x.note }));
-  if (!found) return c.json({ error: "not found" }, 404);
+  if (unchanged) return c.json({ ok: true, booking: found, unchanged: true });
   const f = found;
   let money = { refunded: false, released: false };
   if (f.payment?.intent && stripeEnabled()) {
@@ -367,7 +384,6 @@ bookings.patch("/bookings/:listing/:code", rateLimit(300, 60 * 60 * 1000), async
     if (status === "declined" || status === "cancelled") money = await refundBooking(id, f);
   }
   if (status === "accepted" || status === "declined" || status === "cancelled") {
-    const profile = await getProfile<StoredProfile>(id);
     const latest = (await getBooking<StoredBooking>(id, code)) || f;
     await mailDecision(latest, profile, status, money);
   }

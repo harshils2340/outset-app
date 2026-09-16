@@ -117,6 +117,27 @@ export async function insertBookingChecked<T extends BookingDoc>(b: T, open: (ex
   });
 }
 
+/**
+ * Change one booking under the listing's advisory lock, with every other booking for the listing available to
+ * `fn`. The same lock `insertBookingChecked` takes for a fresh booking, so a capacity check made here (an
+ * operator reinstating a declined booking) is serialised against a guest racing a new booking into the same
+ * time, not read before that insert's own lock is even taken. `fn` returning "refused" writes nothing;
+ * returning its argument unchanged writes nothing either, which is what a decide that changes nothing means.
+ */
+export async function updateBookingChecked<T extends BookingDoc>(listing: string, code: string, fn: (cur: T, others: T[]) => T | "refused"): Promise<T | null | "refused"> {
+  return withTx(async (c) => {
+    await c.query("select pg_advisory_xact_lock(hashtext($1))", [listing]);
+    const r = await c.query<{ doc: T }>("select doc from bookings where listing = $1 and code = $2 for update", [listing, code]);
+    const cur = r.rows[0]?.doc;
+    if (!cur) return null;
+    const others = await c.query<{ doc: T }>("select doc from bookings where listing = $1 and code <> $2 order by created desc limit 2000", [listing, code]);
+    const next = fn(cur, others.rows.map((x) => x.doc));
+    if (next === "refused") return "refused";
+    if (next !== cur) await c.query("update bookings set status = $3, date = $4, doc = $5, updated_at = now() where listing = $1 and code = $2", [listing, code, next.status, /^\d{4}-\d{2}-\d{2}$/.test(next.date) ? next.date : null, JSON.stringify(next)]);
+    return next;
+  });
+}
+
 /** Write a booking as it is, replacing any row with that code (the migration). */
 export async function putBooking(b: BookingDoc): Promise<void> {
   await query(

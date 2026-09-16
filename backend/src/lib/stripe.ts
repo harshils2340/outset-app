@@ -119,15 +119,24 @@ export async function setAccountDailyPayouts(account: string): Promise<void> {
   await call("accounts/" + encodeURIComponent(account), { "settings[payouts][schedule][interval]": "daily" });
 }
 
-/** Operator declined, or the hold expired: release it. A captured payment is refunded instead. */
+/**
+ * Operator declined, or the hold expired: release it. A captured payment is refunded instead.
+ *
+ * Both calls carry an idempotency key, like every other money-mover in this file. Without one, a retry after
+ * this call's own timeout (the guest and operator both wait on this from `refundBooking`, but the HTTP call to
+ * Stripe can still time out on a slow response after Stripe already acted on it) hits Stripe a second time: a
+ * cancel finds the intent no longer cancelable and a refund finds the charge already refunded, so the retry
+ * comes back an error either way and the booking is left recorded as never released, even though Stripe already
+ * did it. Keyed by the intent, a retry now replays the first call's own result instead of asking Stripe again.
+ */
 export async function releaseIntent(intentId: string): Promise<boolean> {
   const pi = await call<{ status: string }>("payment_intents/" + encodeURIComponent(intentId));
   if (pi.status === "requires_capture") {
-    const r = await call<{ status: string }>("payment_intents/" + encodeURIComponent(intentId) + "/cancel", {});
+    const r = await call<{ status: string }>("payment_intents/" + encodeURIComponent(intentId) + "/cancel", {}, "cancel-" + intentId);
     return r.status === "canceled";
   }
   if (pi.status === "succeeded") {
-    const r = await call<{ status: string }>("refunds", { payment_intent: intentId });
+    const r = await call<{ status: string }>("refunds", { payment_intent: intentId }, "refund-" + intentId);
     return r.status === "succeeded" || r.status === "pending";
   }
   return true;
