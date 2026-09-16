@@ -61,10 +61,12 @@ export function WebConfirm({ booking, onDone, onOpen }: { booking: Booking; onDo
           <div className="alconfirmmain">
             <span className="alconfirmmark"><Markup html={ICONS.checkbig} /></span>
             <h1 className="alconfirmtitle">{instant ? "You're booked" : "Request sent"}{first ? ", " + first : ""}</h1>
+            {/* No operator promised an answer within the day, so the lead says only that the request reached
+                them. When they answer is in the step list, and that is the one thing we do control. */}
             <p className="alconfirmlead">
               {instant
                 ? "Your spot is confirmed. " + item.title + " has your details" + (booking.guest?.email ? ", and a confirmation email is on its way." : ".")
-                : item.title + " confirms by email, usually within the day. " + (booking.paid ? "Your card is held and only charged when they confirm." : "You won't be charged until they do.")}
+                : item.title + " has your request. " + (booking.paid ? "Your card is held and only charged when they confirm." : "You won't be charged until they do.")}
             </p>
 
             <section className="alsec">

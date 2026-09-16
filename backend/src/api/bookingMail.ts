@@ -137,7 +137,9 @@ export async function mailNewBooking(rec: StoredBooking, profile: StoredProfile 
       heading: instant ? `You're booked with ${ctx.title}` : `Your request is with ${ctx.title}`,
       intro: instant
         ? [`Your spot is confirmed for ${fmtWhen(rec.date, rec.slot)}.`, paid ? `Your card was charged ${fmtMoney(m.total, ctx.currency)}.` : m ? `You pay ${ctx.title} on the day.` : ""]
-        : [`They confirm requests by email, usually within the day. You will get another email the moment they answer.`, paid ? `Your card is on hold for ${fmtMoney(m.total, ctx.currency)} and is only charged once they confirm.` : m ? `Nothing is charged now. You pay ${ctx.title} on the day.` : ""],
+        // No operator promised an answer within the day. What we know is that the request reached them and
+        // that this guest hears from us as soon as they answer.
+        : [`Your request is with ${ctx.title}. You will get another email the moment they answer.`, paid ? `Your card is on hold for ${fmtMoney(m.total, ctx.currency)} and is only charged once they confirm.` : m ? `Nothing is charged now. You pay ${ctx.title} on the day.` : ""],
       rows: bookingRows(rec, ctx),
       lines: guestLines(rec, ctx),
       priceNote: paid ? (instant ? "Charged to your card." : "Held on your card, charged when the operator confirms.") : m ? "Paid to the business on the day." : undefined,
