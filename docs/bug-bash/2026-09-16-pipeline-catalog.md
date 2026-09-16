@@ -64,7 +64,27 @@ to rules and generators only. Nothing under `public/` was edited by hand, so eve
   the listing page books from, already dropped these lines with `NOT_A_SERVICE`; `options`, the row a card's
   price is read from, kept every menu line unfiltered. Both use the same filter now.
   `sync/__tests__/notAService.test.ts` covers the regex both sides share.
+- **An escape room's cover was its own logo, not a photo of the room** (`bfcbfc1f5`, `o-escaperoomadventures-com`).
+  41 shipped photos were a business's own logo rather than a picture of the place: `isPhotoName` only ever looked
+  at the last slash-separated segment of an image's address, and a logo often sits in a directory of its own
+  ("company/logo/id.png", Little Lady Boat Co and Carolina Boat Rentals both booked through the same platform),
+  behind a CDN's transform suffix ("logo biz.JPG/:/cr=t:0%,...", Coastal Chaos Fishing Charters), or inside a
+  Next.js image proxy's own query string ("_next/image?url=%2Flogo.png", Marsh Beast Airboat Tours). `isPhotoName`
+  now decodes the full address and refuses one wherever "logo" sits in it, not only in the file's own name.
+  `sync/__tests__/isPhotoName.test.ts` covers the catch and a domain that merely spells the letters
+  ("prologodesign.com") staying a photo. One listing, Wallingford Rod and Gun Club, has every one of its seven
+  photos filed under a folder literally named `WA_sport_logo`; the filenames (`L1001504.JPG`) read as ordinary
+  camera photos, not logo art, but this sandbox has no network access to fetch and look, so it is left in
+  **Found, not fixed** below for the next run to confirm by eye.
 
-**Found, not fixed.** In progress.
+**Found, not fixed.**
+
+- `o-wallingfordrodandgunclub-org`: all seven published photos live in a directory named `WA_sport_logo`, so the
+  logo fix above now refuses all of them and the listing ships with no photo at all. The filenames look like an
+  ordinary camera roll, not artwork, so this may be a false positive from a club's odd folder name rather than an
+  actual logo; confirm by opening one of the URLs (the sandbox this run had no route to
+  `wallingfordrodandgunclub.org` to check itself) and, if they are real event photos, loosen `LOGO_PATH` in
+  `src/sync/contacts.ts` to require the "logo" segment sit within one or two directories of the file itself,
+  which still catches every other case found this run.
 
 **Needs Harshil.** In progress.
