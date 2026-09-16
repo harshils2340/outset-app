@@ -53,7 +53,7 @@ export async function withReplay<T>(vendor: string, fn: () => Promise<T>): Promi
   const requests: string[] = [];
   const realFetch = globalThis.fetch;
   const realSetTimeout = globalThis.setTimeout;
-  globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+  globalThis.fetch = (async (input: Parameters<typeof fetch>[0], init?: RequestInit) => {
     const url = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
     const method = (init?.method || "GET").toUpperCase();
     const body = typeof init?.body === "string" ? init.body : null;
