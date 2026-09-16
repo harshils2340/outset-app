@@ -97,6 +97,26 @@ crawler's trust rules and the API, keys, and workflows.
   requires `OUTSET_TEST_CLAIM_EMAILS` set on the API host) assigned `window.location.href`
   directly from the API's response with no check. Now requires `isPublicHttpUrl` first.
   Added `src/lib/__tests__/urlSafety.test.ts` covering all of the above.
+- `bc209cdcc` `WebListing.tsx` and `Sheets.tsx` each read `localStorage["outset.guest"]` into a
+  guest object and called `guest.name.trim()` right after, with no check on what `JSON.parse`
+  actually returned. A stored `name`/`phone` that was not a string crashed the listing page or
+  the booking sheet on mount. `storage.ts`'s `loadBookings`/`loadChats` only checked "is this an
+  array" or "is this an object", not the shape of what was inside, so a booking with `qty` or
+  `total` not a number, or a chat message with no valid role, still reached the trips list and
+  the confirmation screen. `api.ts`'s `loadApiSession` cast its parsed JSON straight to
+  `ApiSession`; a session whose `ids` was not a string array crashed `forgetClaim`'s
+  `ids.filter()`. `prefs.ts`'s wishlist/day/party-size reads were a bare cast with no array or
+  type check, so a corrupted `outset.saved` value crashed `toggleSaved`'s
+  `.includes()`/`.filter()` on the next heart tap. All four now validate shape field by field
+  before use, dropping only the row or field that does not fit rather than crashing the screen.
+  Added `src/lib/__tests__/storageShape.test.ts` (a minimal in-memory `localStorage`, since Node
+  has none, exercising the corrupted and wrong-shaped cases directly).
+- `src/lib/operator.ts`'s `normalizeProfile` already did this well before this review: every
+  field from a stored `OperatorProfile` is type-checked and defaulted (`str`/`num`/`bool`/
+  `strList`/`objList` helpers), which is the pattern the fixes above now follow. No change.
+- `src/components/operator/OpPreview.tsx`'s preview-panel prefs (`open`/`device`/`width`)
+  already check `typeof` and compare against exact literals before use, so a stale value falls
+  back cleanly with no crash. No change.
 
 ## Found, not fixed
 
