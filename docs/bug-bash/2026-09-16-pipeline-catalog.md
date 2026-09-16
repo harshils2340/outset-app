@@ -37,6 +37,15 @@ to rules and generators only. Nothing under `public/` was edited by hand, so eve
   again at sync, because facts already stored only clear when the catalog is written. 119 of the 208,791 photos in
   the shipped catalog go. `sync/__tests__/imageUrl.test.ts` covers both.
 
+- **A fish's season read "May–October"** (`d1cb81279`, `o-1000islandsfishingtrips-com`). `specs` and `highlights` are
+  built straight from an operator's own site text, and 2,551 published listings carried its em or en dash through
+  unchanged, against the AGENTS.md rule that the app's own copy never carries an em dash. `cleanLine`'s own
+  separator rule made it worse: a scraped "SUNDAY----10am-9PM" was rewritten into an en dash `cleanLine` invented
+  itself, not one the operator wrote. `tidyDashes` in `src/sync/contacts.ts` now rewrites a number or month on
+  each side as "to" ("Walleye (May–October)" reads "Walleye (May to October)"), and anything left over as a comma
+  or a period, the substitutes AGENTS.md names; `cleanLine` uses a plain hyphen for its own separator instead of
+  manufacturing an en dash. `sync/__tests__/tidyDashes.test.ts` covers both.
+
 **Found, not fixed.** In progress.
 
 **Needs Harshil.** In progress.
