@@ -251,7 +251,11 @@ export function toCatalogItem(r: CatalogRow): Record<string, unknown> {
   const dbOfferings = db
     .prepare("SELECT name, detail, duration, price_cents, price_unit, source_url, confidence FROM offerings WHERE operator_id = ? ORDER BY price_cents IS NULL, price_cents")
     .all(r.id) as { name: string; detail: string | null; duration: string | null; price_cents: number | null; price_unit: string | null; source_url: string | null; confidence: string }[];
-  const dbFacts = db.prepare("SELECT fact_key, fact_value, source_url FROM facts WHERE operator_id = ?").all(r.id) as { fact_key: string; fact_value: string; source_url: string | null }[];
+  // The booking widget's own text (confidence 'widget') comes first: pick(k)[0] is then the operator's cancellation
+  // policy, check-in note or requirement as their booking system states it, ahead of what a page scrape or a model read.
+  const factRank = (c: string | null) => (c === "widget" ? 0 : c === "site" ? 1 : 2);
+  const dbFacts = (db.prepare("SELECT fact_key, fact_value, source_url, confidence FROM facts WHERE operator_id = ?").all(r.id) as { fact_key: string; fact_value: string; source_url: string | null; confidence: string | null }[])
+    .sort((a, b) => factRank(a.confidence) - factRank(b.confidence));
   // What the cloud structure crawl read off this operator's site. It runs on GitHub Actions, where there is no
   // database, so its rows reach a listing only here. Added, never substituted: a machine that already imported
   // the same work has these rows in SQLite, so the merge drops duplicates by name and by key rather than

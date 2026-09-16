@@ -739,3 +739,13 @@
 .odaddon.odsaved{position:relative;}
 .odaddon.odsaved::after{content:"Saved";position:absolute;right:44px;top:-9px;font-size:11px;font-weight:600;line-height:1.5;color:var(--open);background:var(--open-bg);border-radius:999px;padding:0 7px;animation:odsavedin .18s ease-out;pointer-events:none;}
 .odduration input{flex:1;min-width:0;width:auto;}
+
+/* ---------- things to know: question and answer rows ---------- */
+.odfaq{display:grid;grid-template-columns:1fr auto;grid-template-areas:"q x" "a a";gap:6px 8px;padding:10px 0;border-top:1px solid var(--line);}
+.odfaq:first-child{border-top:none;padding-top:0;}
+.odfaq input{grid-area:q;}
+.odfaq textarea{grid-area:a;resize:vertical;line-height:1.45;}
+.odfaq input,.odfaq textarea{border:1px solid var(--line-strong);border-radius:10px;padding:9px 10px;font:inherit;font-size:14px;background:var(--surface);color:var(--ink);}
+.odfaq input:focus,.odfaq textarea:focus{border-color:var(--ink);outline:none;}
+.odfaq .odiconbtn{grid-area:x;align-self:center;}
+.odvh{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;}

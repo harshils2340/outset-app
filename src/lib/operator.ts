@@ -185,9 +185,23 @@ export type OperatorProfile = {
    * default for the activity kind (data/guides.ts).
    */
   guide?: OpGuide;
+  /**
+   * Things to know, each its own field so the operator edits the line guests actually read rather than a mixed
+   * policy list. Absent on a profile saved before these existed and on a listing whose owner has not touched them:
+   * the guest page then shows what the booking system or website published. Present (even empty) means the owner's
+   * version, and it replaces the published text.
+   */
+  cancellation?: string;
+  requirements?: string[];
+  includes?: string[];
+  checkin?: string;
+  faq?: OpFaq[];
 };
 
+export type OpFaq = { q: string; a: string };
 export type OpGuide = { steps: string[]; bring: string[]; goodFor: string };
+/** Length limits for the things-to-know editor, the sizes the guest page lays them out at. */
+export const KNOW_LIMITS = { cancellation: 240, requirements: 10, requirement: 160, includes: 12, include: 100, checkin: 240, faq: 8, question: 120, answer: 400 } as const;
 /** Length limits for the guide editor, the same ones the guest modal is laid out for. */
 export const GUIDE_LIMITS = { steps: 8, step: 240, bring: 10, bringItem: 80, goodFor: 200 } as const;
 
@@ -362,6 +376,16 @@ export function normalizeProfile(raw: unknown): OperatorProfile | null {
     notify: { email: bool(notify.email, true), sms: bool(notify.sms, true), push: bool(notify.push, true) },
     payout: payout ? { bank: str(payout.bank), last4: str(payout.last4), name: str(payout.name), schedule: payout.schedule === "weekly" ? "weekly" : "daily" } : null,
   };
+  if (typeof raw.cancellation === "string") p.cancellation = raw.cancellation.slice(0, KNOW_LIMITS.cancellation);
+  if (Array.isArray(raw.requirements)) p.requirements = strList(raw.requirements).slice(0, KNOW_LIMITS.requirements);
+  if (Array.isArray(raw.includes)) p.includes = strList(raw.includes).slice(0, KNOW_LIMITS.includes);
+  if (typeof raw.checkin === "string") p.checkin = raw.checkin.slice(0, KNOW_LIMITS.checkin);
+  if (Array.isArray(raw.faq)) {
+    p.faq = (raw.faq as unknown[])
+      .map((f) => (f && typeof f === "object" ? { q: str((f as { q?: unknown }).q).slice(0, KNOW_LIMITS.question), a: str((f as { a?: unknown }).a).slice(0, KNOW_LIMITS.answer) } : null))
+      .filter((f): f is OpFaq => !!f && (!!f.q.trim() || !!f.a.trim()))
+      .slice(0, KNOW_LIMITS.faq);
+  }
   if (typeof raw.hoursConfirmed === "boolean") p.hoursConfirmed = raw.hoursConfirmed;
   if (typeof raw.hydrated === "boolean") p.hydrated = raw.hydrated;
   return p;
@@ -587,6 +611,7 @@ export function defaultProfile(u: Unclaimed, owner: { name: string; email: strin
     cover: u.cover || "",
     photos: (u.photos || []).slice(),
     policy: [...(u.policies || []), ...(u.gap && !/not stated|not published|unknown|not copied|we'?ll ask|we will ask|ask when you request/i.test(u.gap) ? [u.gap] : [])].filter((l, i, a) => a.indexOf(l) === i).slice(0, 8),
+    ...knowFrom(u),
     services: servicesFrom(u),
     addons: (u.addons || []).map((a) => ({ id: uid("a"), name: a.name, detail: a.detail || "", price: a.price })),
     hours: parseHours(c?.hours || []),
@@ -803,8 +828,13 @@ export function toCatalog(p: OperatorProfile, base: Unclaimed): Partial<Unclaime
     gap: p.policy.length ? p.policy.join(" ") : base.gap,
     // The structured sections the listing page and Otto read. The operator's own lines replace the scraped ones.
     policies: p.policy.length ? p.policy : base.policies,
-    cancellation: p.policy.find((l) => /cancel|refund/i.test(l)) || (p.policy.length ? undefined : base.cancellation),
-    fc: freeCancel(p.policy.find((l) => /cancel|refund/i.test(l)) || (p.policy.length ? "" : base.cancellation)) || undefined,
+    cancellation: cancelLine(p, base) || undefined,
+    fc: freeCancel(cancelLine(p, base)) || undefined,
+    // The operator's own version replaces the published text once they have opened that field, even if they cleared it.
+    requirements: p.requirements ?? base.requirements,
+    includes: p.includes ?? base.includes,
+    checkin: p.checkin !== undefined ? p.checkin.trim() || undefined : base.checkin,
+    faq: p.faq ? p.faq.filter((f) => f.q.trim() && f.a.trim()) : base.faq,
     hoursText: p.hours.some((h) => !h.closed) ? p.hours.map(hoursLine) : base.hoursText,
     // itemWeek() reads the compact `hrs` week before the hour lines, so a browse record that carries one would
     // keep showing the crawled hours after the operator changed them. The operator's hours win.
@@ -846,10 +876,28 @@ function contactPatch(p: OperatorProfile, base: Unclaimed): OperatorContact | un
  * the dashboard again and found the crawled menu back, every time, with no way to keep it off: the profile
  * had no record of the difference between a field nobody had filled and one the operator had emptied.
  */
+/** The things-to-know fields as the listing publishes them: the operator starts from these and edits, not from blank boxes. */
+export function knowFrom(u: Unclaimed): Pick<OperatorProfile, "cancellation" | "requirements" | "includes" | "checkin" | "faq"> {
+  const out: Pick<OperatorProfile, "cancellation" | "requirements" | "includes" | "checkin" | "faq"> = {};
+  if (u.cancellation) out.cancellation = u.cancellation.slice(0, KNOW_LIMITS.cancellation);
+  if (u.requirements?.length) out.requirements = u.requirements.slice(0, KNOW_LIMITS.requirements);
+  if (u.includes?.length) out.includes = u.includes.slice(0, KNOW_LIMITS.includes);
+  if (u.checkin) out.checkin = u.checkin.slice(0, KNOW_LIMITS.checkin);
+  if (u.faq?.length) out.faq = u.faq.slice(0, KNOW_LIMITS.faq).map((f) => ({ q: f.q.slice(0, KNOW_LIMITS.question), a: f.a.slice(0, KNOW_LIMITS.answer) }));
+  return out;
+}
+
 export function hydrateProfile(p: OperatorProfile, full: Unclaimed): OperatorProfile {
   if (p.hydrated) return p;
   const next = { ...p };
   let changed = false;
+  // A profile from before the things-to-know fields existed starts from what the listing publishes, once.
+  for (const [k, v] of Object.entries(knowFrom(full)) as [keyof ReturnType<typeof knowFrom>, unknown][]) {
+    if (p[k] === undefined && v !== undefined) {
+      (next as Record<string, unknown>)[k] = v;
+      changed = true;
+    }
+  }
   if (!p.services.length && (full.services?.length || full.options.length)) {
     next.services = servicesFrom(full);
     changed = true;
@@ -943,7 +991,13 @@ export function hoursAreDefault(p: OperatorProfile): boolean {
 }
 
 export function hasCancelLine(p: OperatorProfile): boolean {
-  return p.policy.some((l) => /cancel|refund/i.test(l));
+  return !!p.cancellation?.trim() || p.policy.some((l) => /cancel|refund/i.test(l));
+}
+
+/** The cancellation line guests see: the operator's own field, else a cancellation line among their policies, else the published one. */
+function cancelLine(p: OperatorProfile, base: Unclaimed): string {
+  if (p.cancellation !== undefined) return p.cancellation.trim();
+  return p.policy.find((l) => /cancel|refund/i.test(l)) || (p.policy.length ? "" : base.cancellation || "");
 }
 
 /* ---------- owner contact details (Settings) ---------- */
