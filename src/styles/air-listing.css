@@ -416,6 +416,13 @@ a.alwhererow:hover b{text-decoration:underline;}
 .albizstats{display:flex;flex-direction:column;}
 .albizstats.empty{display:none;}
 .albizcard:has(.albizstats.empty){grid-template-columns:minmax(0,1fr);}
+/* With a single stat (no reviews to count, no second location) the card is one centred column and the stat reads as a
+   line under the name, "5 experiences", instead of a lone number floating beside the avatar. */
+.albizcard:has(.albizstats > span:only-child){grid-template-columns:minmax(0,1fr);row-gap:10px;}
+.albizstats:has(> span:only-child){flex-direction:row;justify-content:center;}
+.albizstats > span:only-child{flex-direction:row;align-items:baseline;gap:5px;padding:0;border-bottom:none;}
+.albizstats > span:only-child b{font-size:15px;line-height:20px;}
+.albizstats > span:only-child small{font-size:15px;line-height:20px;font-weight:400;color:var(--ink-soft);text-transform:lowercase;}
 .albizstats > span{display:flex;flex-direction:column;padding:12px 0;border-bottom:1px solid var(--line-strong);}
 .albizstats > span:first-child{padding-top:0;}
 .albizstats > span:last-child{border-bottom:none;padding-bottom:0;}

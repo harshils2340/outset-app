@@ -580,6 +580,24 @@ export function AppProvider({ children }: { children: ReactNode }) {
     else if (!onOps && atOps && booted.current) window.history.pushState(null, "", base + window.location.hash.replace(/^#claim=.*$/, ""));
   }, [state.screen, state.catalogReady]);
 
+  // A listing opens at the top of the page, wherever the rails were scrolled to, and the rails come back to that
+  // spot when it closes. Without this the listing appeared scrolled to wherever the guest had been on the home page.
+  // Keyed on the transition, not the mount, so React's development double-run of effects cannot undo it.
+  const listingOpen = state.sheet === "request" && !!state.reqTargetId;
+  const listingWasOpen = useRef(listingOpen);
+  const homeScrollY = useRef(0);
+  useEffect(() => {
+    if (listingOpen === listingWasOpen.current) return;
+    listingWasOpen.current = listingOpen;
+    if (listingOpen) {
+      homeScrollY.current = window.scrollY;
+      window.scrollTo({ top: 0 });
+    } else {
+      const y = homeScrollY.current;
+      window.setTimeout(() => window.scrollTo({ top: y }), 0);
+    }
+  }, [listingOpen]);
+
   // On a phone, back is a gesture people use constantly. With a listing open it used to leave the site
   // altogether, which reads as the app locking up. An open sheet or chat gets its own history entry, so
   // back closes that first and only the next one leaves.
