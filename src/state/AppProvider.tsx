@@ -288,13 +288,13 @@ function reducer(state: AppState, action: Action): AppState {
         toast: (u.claimed && u.instant ? "Confirmed - " : "Request sent - ") + booking.code,
       };
     }
-    case "checkoutDone": {
-      // Stripe did not take over (no card step after all, or the API could not be reached): the booking stands
-      // as a request on this device, so show the confirmation the way an unpaid booking would.
-      const u = experienceById(state.booking?.listing ?? null);
-      const toast = state.booking ? (u?.claimed && u.instant ? "Confirmed - " : "Request sent - ") + state.booking.code : state.toast;
-      return { ...state, checkingOut: false, sheet: null, screen: "confirm", toast };
-    }
+    case "checkoutDone":
+      // The guest is back on the listing without having paid: take the splash down and leave them exactly where
+      // they were, on the booking box they can use again. No confirmation, because the card step never
+      // happened: the row the API holds is `pending`, which the operator's dashboard does not even list, so
+      // "Request sent" would name a request nobody at the shop can see. Trips already calls it "Payment not
+      // finished".
+      return state.checkingOut ? { ...state, checkingOut: false } : state;
     case "back": {
       if (state.screen === "operator") return { ...state, screen: "account" };
       if (state.screen === "chat") {
@@ -485,6 +485,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // True once the boot deep-link check has run. Until then the path-sync effect must not rewrite the URL,
   // or the lite catalog shard flipping catalogReady early would erase a #claim= link before it is read.
   const booted = useRef(false);
+
+  /* Pressing the browser's own Back button on Stripe's page restores this one from the back/forward cache with
+     every bit of React state as it was, including the "Sending you to secure checkout" splash, which is fixed
+     over the whole app and carries no control at all. Nothing took it down, so a guest who changed their mind
+     about paying was left staring at it until they thought to reload. Stripe's own back link is a fresh load of
+     the listing (#o=) and was never affected. */
+  useEffect(() => {
+    const onShow = (e: PageTransitionEvent) => {
+      if (e.persisted) dispatch({ type: "checkoutDone" });
+    };
+    window.addEventListener("pageshow", onShow);
+    return () => window.removeEventListener("pageshow", onShow);
+  }, []);
 
   // A claimed operator's edits arrive one fetch behind the listing they belong to, so the page is already
   // drawn from the crawled record when they land. Redraw it when they do, or the guest reads the operator's
