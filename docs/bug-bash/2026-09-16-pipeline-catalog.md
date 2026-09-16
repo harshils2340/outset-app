@@ -76,6 +76,13 @@ to rules and generators only. Nothing under `public/` was edited by hand, so eve
   photos filed under a folder literally named `WA_sport_logo`; the filenames (`L1001504.JPG`) read as ordinary
   camera photos, not logo art, but this sandbox has no network access to fetch and look, so it is left in
   **Found, not fixed** below for the next run to confirm by eye.
+- **A card's deal badge read "Monday to", cut off mid-connector** (`906e60d52`, `o-viplaketravis-com`). Two
+  published cards read "4th hour free on boat rentals, Monday to" and "30% off cabin and boat rentals, Sunday
+  to": the 48-character cut already stopped on a whole word, so it never showed a stub like "Sund", but nothing
+  stopped it landing on a connector word with nothing after it, which reads as unfinished rather than short.
+  `compactDeal`, pulled out of `syncCatalogToApp` so it can be tested on its own, now drops a trailing connector
+  and its comma after the cut. `sync/__tests__/compactDeal.test.ts` covers both known cases plus a title that
+  already fits.
 
 **Found, not fixed.**
 
