@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { Suspense, lazy, useEffect, useState } from "react";
 import { useApp } from "./state/AppProvider";
 import { WebHome } from "./components/web/WebHome";
 import { WebListing } from "./components/web/WebListing";
@@ -13,11 +13,27 @@ import { InboxView } from "./components/inbox/InboxView";
 import { ChatView } from "./components/inbox/ChatView";
 import { AccountView } from "./components/account/AccountView";
 import { ConfirmView } from "./components/booking/ConfirmView";
-import { OperatorView } from "./components/operator/OperatorView";
 import { Sheets } from "./components/booking/Sheets";
 import { usePreviewMode } from "./components/operator/previewMode";
 import { Mark } from "./components/layout/Mark";
 import { experienceById } from "./lib/catalog";
+
+/**
+ * The operator dashboard is nine screens and the largest thing in the app, and a guest never opens it, so it
+ * is fetched when somebody actually goes to it rather than sitting in the bundle everyone downloads.
+ */
+const OperatorView = lazy(() => import("./components/operator/OperatorView").then((m) => ({ default: m.OperatorView })));
+
+/** While that chunk is on its way. Same shape as the other splashes, so it does not read as a broken page. */
+function DashboardSplash() {
+  return (
+    <div className="paysplash" role="status" aria-live="polite">
+      <Mark size={44} />
+      <b>Opening your dashboard…</b>
+      <small>One moment.</small>
+    </div>
+  );
+}
 
 /** A listing link before the listing's own file has landed: the page it is about to be, not the home page. */
 function ListingSplash() {
@@ -82,7 +98,9 @@ export function App() {
         ) : null}
         {state.screen === "operator" ? (
           <div className="web wop">
-            <OperatorView />
+            <Suspense fallback={<DashboardSplash />}>
+              <OperatorView />
+            </Suspense>
           </div>
         ) : null}
         {state.sheet && state.sheet !== "request" ? (
@@ -126,7 +144,11 @@ function AppView() {
       {state.screen === "detail" ? <DetailView /> : null}
       {state.screen === "confirm" ? <ConfirmView /> : null}
       {state.screen === "chat" ? <ChatView /> : null}
-      {state.screen === "operator" ? <OperatorView compact /> : null}
+      {state.screen === "operator" ? (
+        <Suspense fallback={<DashboardSplash />}>
+          <OperatorView compact />
+        </Suspense>
+      ) : null}
       {state.screen === "explore" ? <ExploreView /> : null}
       {state.screen === "trips" ? <TripsView /> : null}
       {state.screen === "inbox" ? <InboxView /> : null}
