@@ -14,10 +14,14 @@ type PhotonFeature = {
 const cache = new Map<string, Place[]>();
 
 export async function searchPlaces(q: string, bias?: { lat: number; lon: number } | null): Promise<Place[]> {
-  const key = q.trim().toLowerCase();
-  if (key.length < 2) return [];
+  const needle = q.trim().toLowerCase();
+  if (needle.length < 2) return [];
+  // The bias reorders Photon's own results, so the same typed text cached from a call with no bias, or a
+  // different one, must not stand in for a fresh call: the cache key carries it too, rounded to about 11 km
+  // so a few metres of drift in a repeat fix does not fragment the cache for nothing.
+  const key = needle + (bias ? "|" + bias.lat.toFixed(1) + "," + bias.lon.toFixed(1) : "");
   if (cache.has(key)) return cache.get(key)!;
-  const params = new URLSearchParams({ q: key, limit: "8", lang: "en" });
+  const params = new URLSearchParams({ q: needle, limit: "8", lang: "en" });
   if (bias) {
     params.set("lat", String(bias.lat));
     params.set("lon", String(bias.lon));
