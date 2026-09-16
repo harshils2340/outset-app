@@ -1619,7 +1619,7 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
                     <button key={o.name + i} type="button" className="alvariant" aria-pressed={optionIdx === i} onClick={() => setOptionIdx(i)}>
                       <span className="alradio" aria-hidden="true" />
                       <span>{tidyName(o.name)}{o.detail ? " · " + tidyLength(o.detail) : ""}</span>
-                      {o.price != null ? <b>{priceWith(o.price, o.per)}</b> : <em className="alask">Price on request</em>}
+                      {hasPrice(o.price) ? <b>{priceWith(o.price, o.per)}</b> : <em className="alask">Price on request</em>}
                     </button>
                   ))}
                 </div>
@@ -1795,7 +1795,7 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
                                           <span>{r.label}</span>
                                           {r.sub ? <small>{r.sub}</small> : null}
                                         </span>
-                                        {r.price != null ? <b>{priceWith(r.price, r.per)}</b> : <em className="alask">Price on request</em>}
+                                        {hasPrice(r.price) ? <b>{priceWith(r.price, r.per)}</b> : <em className="alask">Price on request</em>}
                                       </button>
                                     ))}
                                   </div>

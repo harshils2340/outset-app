@@ -40,10 +40,21 @@ tsconfig.json --allowImportingTsExtensions` and `npm test` in `backend/` (121 gr
   confirmation's own long date, formatted separately, follows the same rule. Two cases pinned in
   `src/lib/__tests__/fmtDate.test.ts`.
 
+- **A ticket priced "$0" instead of "Price on request"** (commit pending, resumed run). `src/lib/pricing.ts`'s
+  `hasPrice` guard exists exactly for this: a scraped record can carry a `0` price where the crawler found a
+  currency sign and no number, and "$0" reads as free instead of unknown. In `WebListing.tsx` the picker's
+  option list (`item.options.map`, used when a listing has no service groups) and the booking box's option
+  dropdown (`optGroups` rows, which carry both service-variant and flat-option prices) checked only
+  `price != null`, so a `0` sentinel passed through and printed "$0" next to a ticket nobody has a real price
+  for. The service-card picker a few lines above already used `hasPrice`; the option list and the dropdown now
+  match it. Two other `price != null` reads in the same file (the docked total's line label, and
+  `WebConfirm.tsx`'s price line) turn out to already be gated by `p.base` / `lines`, which `priceUnclaimed`
+  zeroes out for the same sentinel, so those never actually reached a guest; left alone.
+
 **Found, not fixed.**
 
-_(in progress)_
+_(in progress, resumed run)_
 
 **Needs Harshil.**
 
-_(in progress)_
+_(in progress, resumed run)_
