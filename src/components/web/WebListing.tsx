@@ -971,10 +971,18 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
   // The card is live from the first paint: the cheapest service is already chosen, so nothing sends the
   // guest off to the menu on the left before they can press the button.
   const [optionIdx, setOptionIdx] = useState<number | null>(() => defaultOption(item.options));
-  // The catalog hydrates after first paint, so the menu can arrive a beat late; re-pick the default then.
+  // The catalog hydrates after first paint, so the menu can arrive a beat late; re-pick the default then. Every
+  // generated listing opens with an empty menu until its own detail file lands, so this runs on essentially
+  // every listing a guest opens, not only a rare edit. A time already chosen for this same listing must survive
+  // that: it only clears when the guest has actually moved to a different listing, and the openSlots effect
+  // below still catches a time the hydrated menu makes invalid.
+  const prevItemId = useRef(item.id);
   useEffect(() => {
     setOptionIdx(defaultOption(item.options));
-    setTime(null);
+    if (prevItemId.current !== item.id) {
+      prevItemId.current = item.id;
+      setTime(null);
+    }
   }, [item.id, item.options.length]);
   const [addonIdx, setAddonIdx] = useState<number[]>([]);
   const [openSvc, setOpenSvc] = useState<string | null>(null);
