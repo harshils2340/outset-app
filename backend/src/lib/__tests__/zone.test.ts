@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { instantOf, todayIn, zoneForArea } from "../zone.ts";
+import { instantOf, regionOfArea, todayIn, zoneForArea } from "../zone.ts";
 
 /** These run under whatever TZ the machine has; the point is that none of the answers depend on it. */
 
@@ -37,6 +37,28 @@ test("a Portland shop's five o'clock is five o'clock in Portland", () => {
   const zone = zoneForArea("Portland, OR", 45.5231, -122.6765)!;
   assert.equal(new Date(instantOf("2026-09-16", "17:00", zone)).toISOString(), "2026-09-17T00:00:00.000Z");
   assert.equal(todayIn(zone, new Date("2026-09-17T00:30:00Z")), "2026-09-16");
+});
+
+/**
+ * An operator whose town was never scraped publishes its area as the code alone ("ON"). Asking for a comma in
+ * front of the code threw 4,736 of the catalog's rows away and fell back to a longitude band, which put 1,669
+ * operators on a clock an hour out, Arizona, Saskatchewan and Montana among them.
+ */
+test("a listing whose area is only its region code still has a region", () => {
+  assert.equal(regionOfArea("Clearwater Beach, FL"), "FL");
+  assert.equal(regionOfArea("ON"), "ON");
+  assert.equal(regionOfArea("Hollywood, fl"), "FL");
+  // The town is never read, so a "Mt, NJ" stays in New Jersey and a St. Petersburg is not a region.
+  assert.equal(regionOfArea("Mt, NJ"), "NJ");
+  assert.equal(regionOfArea("Weedon Island, St. Petersburg, FL"), "FL");
+  assert.equal(regionOfArea("Somewhere"), undefined);
+  assert.equal(regionOfArea(undefined), undefined);
+
+  assert.equal(zoneForArea("AZ", 31.5006, -110.8124), "America/Phoenix");
+  assert.equal(zoneForArea("MT", 48.0951, -114.03), "America/Denver");
+  assert.equal(zoneForArea("SK", 52.9826, -105.439), "America/Regina");
+  assert.equal(zoneForArea("NL", 47.5705, -52.7011), "America/St_Johns");
+  assert.equal(zoneForArea("OR", 43.6503, -117.2467), "America/Boise");
 });
 
 test("no region and no coordinates means we do not know, and say so", () => {

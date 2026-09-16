@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import type { Unclaimed } from "../../data/types";
-import { openStateAt, zoneFor, type Week } from "../openNow";
+import { openStateAt, regionOf, zoneFor, type Week } from "../openNow";
 
 /**
  * Which clock a shop's hours are read on.
@@ -73,4 +73,46 @@ test("a Salem shop is open at half past five in Salem", () => {
   const mt = new Intl.DateTimeFormat("en-US", { timeZone: "America/Boise", hour12: false, hour: "numeric", minute: "numeric" }).formatToParts(wed);
   const mtMin = (Number(mt.find((p) => p.type === "hour")!.value) % 24) * 60 + Number(mt.find((p) => p.type === "minute")!.value);
   assert.equal(openStateAt(week, { day, minutes: mtMin })?.open, false);
+});
+
+/**
+ * The sync writes the area as "town, code", but an operator whose town was never scraped gets the code on its
+ * own, which is the honest gap the rules ask for: 4,736 rows in the shipped catalog. Asking for a comma in
+ * front of the code threw all of them away and fell back to a longitude band, so a Tucson stable was on
+ * Denver time and moved an hour every spring, a Kalispell outfitter was on Pacific, and a Saskatchewan
+ * campground kept a daylight saving Saskatchewan does not observe. 1,669 operators were on the wrong clock.
+ */
+test("a listing whose area is only its region code still has a region", () => {
+  assert.equal(regionOf("Clearwater Beach, FL"), "FL");
+  assert.equal(regionOf("ON"), "ON");
+  assert.equal(regionOf("AZ"), "AZ");
+  // Whatever case the operator's own site wrote it in.
+  assert.equal(regionOf("Hollywood, fl"), "FL");
+  assert.equal(regionOf("Winters, Ca"), "CA");
+  // A place name is never mistaken for a region: the town is not read at all, and a two letter word inside
+  // one is not a code. Both are real rows in the catalog.
+  assert.equal(regionOf("Mt, NJ"), "NJ");
+  assert.equal(regionOf("Weedon Island, St. Petersburg, FL"), "FL");
+  assert.equal(regionOf("Cavan-Monaghan,, ON"), "ON");
+  assert.equal(regionOf("Somewhere"), undefined);
+  assert.equal(regionOf(""), undefined);
+  assert.equal(regionOf(undefined), undefined);
+});
+
+test("the bare code puts these operators back on their own clock", () => {
+  // Circle Z, a Patagonia ranch. Arizona keeps standard time all year; Denver does not.
+  assert.equal(zoneFor(at("AZ", 31.5006, -110.8124)), "America/Phoenix");
+  // Bigfork Outdoor Rentals, in Montana, which the longitude band put in Pacific time.
+  assert.equal(zoneFor(at("MT", 48.0951, -114.0300)), "America/Denver");
+  // Birch Hills Historical Museum. Saskatchewan does not move in the spring; Denver and Winnipeg both do.
+  assert.equal(zoneFor(at("SK", 52.9826, -105.4390)), "America/Regina");
+  // Bannerman Brewing, St John's, and its half hour.
+  assert.equal(zoneFor(at("NL", 47.5705, -52.7011)), "America/St_Johns");
+  // Aurora Village, Yellowknife. Aspen Valley RV Park, Idaho. The Owyhee Dam, in Malheur County.
+  assert.equal(zoneFor(at("NT", 62.5336, -114.2016)), "America/Yellowknife");
+  assert.equal(zoneFor(at("ID", 44.4980, -116.0310)), "America/Boise");
+  assert.equal(zoneFor(at("OR", 43.6503, -117.2467)), "America/Boise");
+  // A bare code still loses to a real area line, and an area with neither still falls back to the longitude.
+  assert.equal(zoneFor(at("Honolulu, HI", 21.3069, -157.8583)), "Pacific/Honolulu");
+  assert.equal(zoneFor(at("Somewhere", 34, -118)), "America/Los_Angeles");
 });

@@ -250,9 +250,25 @@ const REGION_TZ: Record<string, string> = {
   ON: "America/Toronto", QC: "America/Toronto", NS: "America/Halifax", NB: "America/Moncton", PE: "America/Halifax", NL: "America/St_Johns", MB: "America/Winnipeg", SK: "America/Regina", AB: "America/Edmonton", BC: "America/Vancouver", YT: "America/Whitehorse", NT: "America/Yellowknife", NU: "America/Iqaluit",
 };
 
+/**
+ * The state or province an area line names. Usually the code after the comma ("Clearwater Beach, FL"), but an
+ * operator whose town was never read publishes the code on its own ("ON"), which is an honest gap rather than
+ * a missing region: 4,736 rows in the shipped catalog, 1,030 of them Canadian. Every candidate is checked
+ * against the table, so a two letter word inside a place name cannot stand in for a region, and the town is
+ * never read, so the catalog's "Mt, NJ" stays in New Jersey instead of moving to Montana.
+ */
+export function regionOf(area: string | undefined | null): string | undefined {
+  const parts = String(area || "").split(",");
+  for (const part of parts.slice(parts.length > 1 ? 1 : 0)) {
+    const code = part.trim().toUpperCase();
+    if (code.length === 2 && REGION_TZ[code]) return code;
+  }
+  return undefined;
+}
+
 /** IANA zone for the operator from its state or province, with a longitude nudge for split states. Null when unknown. */
 export function zoneFor(item: Unclaimed): string | null {
-  const region = (item.area.match(/,\s*([A-Z]{2})\b/) || [])[1];
+  const region = regionOf(item.area);
   const lon = item.lon;
   if (region === "FL" && lon != null && lon < -85.1) return "America/Chicago";
   if (region === "TX" && lon != null && lon < -105) return "America/Denver";

@@ -27,8 +27,26 @@ const REGION_TZ: Record<string, string> = {
  * The IANA zone for a listing, from its area line ("Clearwater Beach, FL") and coordinates when it has them.
  * The refinements are the states a single zone gets wrong, and they match src/lib/openNow.ts exactly.
  */
+/**
+ * The state or province an area line names. Usually the code after the comma ("Clearwater Beach, FL"), but an
+ * operator whose town was never read publishes the code on its own ("ON"), which is an honest gap rather than
+ * a missing region: 4,736 rows in the shipped catalog, 1,030 of them Canadian. Every candidate is checked
+ * against the table, so a two letter word inside a place name cannot stand in for a region, and the town is
+ * never read, so the catalog's "Mt, NJ" stays in New Jersey instead of moving to Montana.
+ *
+ * Mirrors regionOf in src/lib/openNow.ts.
+ */
+export function regionOfArea(area?: string | null): string | undefined {
+  const parts = String(area || "").split(",");
+  for (const part of parts.slice(parts.length > 1 ? 1 : 0)) {
+    const code = part.trim().toUpperCase();
+    if (code.length === 2 && REGION_TZ[code]) return code;
+  }
+  return undefined;
+}
+
 export function zoneForArea(area?: string | null, lat?: number | null, lon?: number | null): string | null {
-  const region = ((area || "").match(/,\s*([A-Z]{2})\b/) || [])[1];
+  const region = regionOfArea(area);
   if (region === "FL" && lon != null && lon < -85.1) return "America/Chicago";
   if (region === "TX" && lon != null && lon < -105) return "America/Denver";
   if (region === "KY" && lon != null && lon < -86.4) return "America/Chicago";
