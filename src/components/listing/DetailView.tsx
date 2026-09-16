@@ -22,7 +22,7 @@ export function DetailView() {
     <>
       <div className="detailart">
         <Art kind={listing.art} id={listing.id + "d"} />
-        <button className="backbtn" onClick={back}>
+        <button className="backbtn" onClick={back} aria-label="Back">
           <Markup html={ICONS.back} />
         </button>
         <span className="rating" style={{ right: 14, top: 14 }}>
@@ -112,11 +112,11 @@ export function DetailView() {
         <div className="rowbetween">
           <h2 className="sec">{listing.qtyLabel}</h2>
           <span className="stepper">
-            <button onClick={() => bumpQty(-1)} disabled={state.qty <= 1}>
+            <button onClick={() => bumpQty(-1)} disabled={state.qty <= 1} aria-label={"Fewer " + listing.qtyLabel.toLowerCase()}>
               −
             </button>
-            <span className="n">{state.qty}</span>
-            <button onClick={() => bumpQty(1)} disabled={state.qty >= qtyCap}>
+            <span className="n" aria-live="polite">{state.qty}</span>
+            <button onClick={() => bumpQty(1)} disabled={state.qty >= qtyCap} aria-label={"More " + listing.qtyLabel.toLowerCase()}>
               +
             </button>
           </span>
