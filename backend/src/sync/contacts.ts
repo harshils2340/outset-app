@@ -440,7 +440,7 @@ export function toCatalogItem(r: CatalogRow): Record<string, unknown> {
         return { rating: undefined, reviews: r.review_count ?? undefined };
       }
     })(),
-    specs: uniq([...pick("spec"), ...pick("requirement"), ...pick("group")].map(cleanLine)).filter(isTidyLine).slice(0, 10),
+    specs: uniq([...pick("spec"), ...pick("requirement"), ...pick("group")].map((s) => tidyDashes(cleanLine(s)))).filter(isTidyLine).slice(0, 10),
     // Names and details in plain words (plainServices.ts): the same cleaning the services below get, so the booking
     // picker's sub-line and a service's tier label never disagree.
     options: menu.map((o) => {
@@ -593,7 +593,7 @@ export function toCatalogItem(r: CatalogRow): Record<string, unknown> {
     tags: uniq([...pick("google_category"), ...pick("service"), ...offerings.map((o) => o.name)].map((t) => collapseRepeats(fixShouting(t)))).filter((t) => !NOT_A_SERVICE.test(t) && !NAV_LABEL.test(t)).slice(0, 12),
     extraNote: [...pick("extra").slice(0, 1), ...pick("policy"), ...pick("checkin"), ...pick("meeting_point"), ...pick("season")].filter((l) => !SILENT.test(l)).join(" · ").slice(0, 700) || undefined,
     // Viator-shaped sections. Each only appears when the site said it.
-    highlights: collapseRules(uniq(pick("spec").map(cleanLine)).filter(isTidyLine).filter((l) => !/^what to bring\b|you are required to bring/i.test(l))).slice(0, 8),
+    highlights: collapseRules(uniq(pick("spec").map((s) => tidyDashes(cleanLine(s)))).filter(isTidyLine).filter((l) => !/^what to bring\b|you are required to bring/i.test(l))).slice(0, 8),
     requirements: collapseRules(uniq(pick("requirement").map(cleanLine)).filter(isTidyLine)).slice(0, 10),
     groupInfo: uniq(pick("group").map(cleanLine)).filter(isTidyLine).slice(0, 5),
     bring: uniq([...pick("bring"), ...[...pick("spec"), ...pick("includes")].filter((l) => /^what to bring\b/i.test(l)).map((l) => l.replace(/^what to bring[:\s-]*/i, ""))].map(cleanLine)).filter(isTidyLine).slice(0, 8),
@@ -1609,10 +1609,26 @@ function cleanLine(raw: string): string {
     // "Additional Information: ...", ": Daytime only 9-5", "SUNDAY----10am-9PM": scraped labels and separators, not words.
     .replace(/^\s*(?:additional (?:information|info|details)|please note|note|important|(?:cruise|tour|trip|lesson|class|event|package) details)\s*[:\-–]\s*/i, "")
     .replace(/^[\s:;,.\-–—|]+/, "")
-    .replace(/\s*-{2,}\s*/g, " – ")
+    .replace(/\s*-{2,}\s*/g, " - ")
     .replace(/\s+/g, " ")
     .trim()
     .slice(0, 240);
+}
+
+/**
+ * A menu's own em or en dash never survives to a guest. A number or month on each side ("2–15 years",
+ * "May–October") is a range and reads as "to"; anything else was punctuation and reads as a comma, the
+ * substitute AGENTS.md names for an em dash.
+ */
+const MONTH = "jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|june?|july?|aug(?:ust)?|sept?(?:ember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?";
+export function tidyDashes(raw: string): string {
+  return raw
+    .replace(/(\d)\s*[–—]\s*(?=\d)/g, "$1 to ")
+    .replace(new RegExp("\\b(" + MONTH + ")\\.?\\s*[\\u2013\\u2014]\\s*(?=[A-Za-z])", "gi"), "$1 to ")
+    // What is left joined two clauses, not a range: a capital letter after it was its own sentence, else a comma.
+    .replace(/\s*[–—]\s*(\S)/g, (_m, next: string) => (/[A-Z]/.test(next) ? ". " : ", ") + next)
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 function cleanPara(raw: string): string {
