@@ -1122,15 +1122,19 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
     if (i >= 0 && i !== state.dateIdx) setDate(i);
   }, [chipsFor]);
 
-  const similar = useMemo(() => {
+  // Recomputed when the catalog grows: a shared link opens the listing from its own file before the catalog
+  // arrives, and a rail built then held whatever few listings were loaded, from anywhere in the country.
+  const { similar, similarNear } = useMemo(() => {
     const all = getCatalog().filter((u) => u.id !== item.id && u.art === item.art);
     const near = all.filter((u) => u.metroId && u.metroId === item.metroId);
     // Same metro first, then the same state or province, then anywhere. Nobody in Washington DC wants San Jose.
     const region = (item.area.match(/,\s*([A-Z]{2})\b/) || [])[1];
     const sameRegion = region ? all.filter((u) => u.area.endsWith(", " + region)) : [];
     const pool = near.length >= 4 ? near : sameRegion.length >= 4 ? sameRegion : near.length ? [...near, ...sameRegion] : all;
-    return pool.sort((a, b) => (b.cover ? 1 : 0) - (a.cover ? 1 : 0) || (b.reviews || 0) - (a.reviews || 0)).slice(0, 10);
-  }, [item.id]);
+    const picks = pool.sort((a, b) => (b.cover ? 1 : 0) - (a.cover ? 1 : 0) || (b.reviews || 0) - (a.reviews || 0)).slice(0, 10);
+    // "Near Tampa Bay" is only true when the picks are there, not when the fallback reached across the country.
+    return { similar: picks, similarNear: picks.length > 0 && picks.every((u) => u.metroId === item.metroId) };
+  }, [item.id, state.catalogVersion]);
 
   /* ---------- derived, never invented ---------- */
   const requirements = item.requirements?.length ? item.requirements : facts.who.filter((l) => l.posted).map((l) => l.text);
@@ -2086,7 +2090,7 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
         {similar.length ? (
           <section className="alwide alrail">
             <div className="alrailhead">
-              <h2>More like this{metro ? " near " + metro.name : ""}</h2>
+              <h2>More like this{metro && similarNear ? " near " + metro.name : ""}</h2>
               <span className="alrailnav">
                 <button type="button" className="alround bordered" onClick={() => railBy(-1)} aria-label="Scroll back"><Markup html={I.chevLeft} /></button>
                 <button type="button" className="alround bordered" onClick={() => railBy(1)} aria-label="Scroll forward"><Markup html={I.chevRight} /></button>
