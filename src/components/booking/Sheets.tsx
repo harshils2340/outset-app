@@ -209,8 +209,9 @@ function kindLabel(art: keyof typeof GUIDES): string {
   return names[art] || "this";
 }
 
+// A 0 here is the crawler finding a currency sign and no number, not a free option: see hasPrice in pricing.ts.
 function optionPrice(o: UnclaimedOption): string | null {
-  if (o.price == null) return null;
+  if (!hasPrice(o.price)) return null;
   return priceWith(o.price, o.per);
 }
 

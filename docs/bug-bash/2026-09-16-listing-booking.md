@@ -62,6 +62,10 @@ tsconfig.json --allowImportingTsExtensions` and `npm test` in `backend/` (121 gr
   sentinel), and `item.from`, which the sync job (`backend/src/sync/contacts.ts`) and `mergeOverride` in
   `catalog.ts` already compute with the same `> 0` filter, so it can never be the sentinel at this layer.
 
+- **The phone app's flat option list had the same "$0" tell** (commit pending). `Sheets.tsx`'s own `optionPrice`
+  helper, used by the picker that shows when a listing has no service groups, checked `o.price == null` instead
+  of `hasPrice`, so it printed the sentinel too. Now guarded the same way.
+
 **Found, not fixed.**
 
 _(in progress, resumed run)_
