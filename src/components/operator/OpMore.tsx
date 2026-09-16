@@ -153,7 +153,7 @@ export function OpPayouts() {
             <div className="odcardhead"><h3>Bank account</h3>{status?.enabled ? <span className="odtag live">Payouts on</span> : status?.connected ? <span className="odtag">Finish setup</span> : null}</div>
             {status === null ? <p className="odmuted">Checking…</p> : null}
             {status && !status.available ? (
-              <p className="odmuted">Card payments and payouts switch on shortly. Until then guests pay you on site, and there is nothing to set up here.</p>
+              <p className="odmuted">Card payments and payouts are not switched on yet. Until then guests pay you on site, and there is nothing to set up here.</p>
             ) : null}
             {status?.available && !status.enabled ? (
               <>
