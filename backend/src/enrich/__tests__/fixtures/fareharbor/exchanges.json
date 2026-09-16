@@ -1,0 +1,1038 @@
+[
+ {
+  "key": "GET https://fareharbor.com/api/v1/companies/jetskimiamirentals/",
+  "url": "https://fareharbor.com/api/v1/companies/jetskimiamirentals/",
+  "status": 200,
+  "headers": [
+   [
+    "content-type",
+    "application/json"
+   ],
+   [
+    "set-cookie",
+    "fh-sticking-routing=58c5baa8156d68dc; Path=/; Secure; SameSite=None"
+   ],
+   [
+    "set-cookie",
+    "fh-target-language=en-us; Path=/; SameSite=None; Secure"
+   ],
+   [
+    "set-cookie",
+    "fh-units-language=en-us; Path=/; SameSite=None; Secure"
+   ],
+   [
+    "set-cookie",
+    "fh-content-language=en-us; Path=/; SameSite=None; Secure"
+   ]
+  ],
+  "body": "{\"company\":{\"processor_currency\":\"usd\",\"phone\":\"7862222039\",\"email\":\"miamirentalsjetski@gmail.com\",\"street\":\"\",\"city\":\"\",\"province\":\"\",\"postal_code\":\"\",\"image_background_cdn_url\":\"\",\"url_youtube\":\"\",\"smartwaiver_url\":\"https://waiver.smartwaiver.com/w/\",\"cancellation_notes\":\"Customers will receive a full refund or credit with 48 hours notice of cancellation. Customers will also receive a full refund or credit in case of operator cancellation due to weather or other unforeseen circumstances. Contact us by phone to cancel or inquire about a cancellation. No-shows will be charged the full price.\",\"booking_notes\":\"We look forward to having you as our guest!\\n\\n#Rules & Policy for Equipment Rental in Miami Beach, FL\\n\\nAt Jetski Miami Rental, our rules and policies will be strictly enforced to ensure the safety of all participants.\\n\\n- All renters must be at 18 years of age and provide proof of age.\\n\\n- Need to have a boater ID. (Check out the answers and a useful study guide here.)​\\n\\n- Have an ID in your possession at the time of rental.\\n\\n- Maximum number of people per jet ski is 2, with a weight capacity of 300 pounds\\n\\n- Safety rules must be followed at all times\\n\\n- The deposit is collected depending on the number of jet skis or if the owner wants to take a deposit​\\n\\n- If the damage on the jet ski is more than the deposit, the renter is responsible for it.\\n\\n- Renters agree they have no impediments or physical restrictions that will affect them when renting the jet ski.\\n\\n- If time is exceeded, you will lose $50 for every 30 minutes you are late.​\\n\\n- Damage that occurs during rent time will result in renters losing their deposits.\",\"faq\":\"\",\"about\":\"\",\"intro\":\"\",\"summary\":\"\",\"name\":\"Jet Ski Miami Rentals\",\"shortname\":\"jetskimiamirentals\"}}"
+ },
+ {
+  "key": "GET https://fareharbor.com/api/v1/companies/jetskimiamirentals/items/",
+  "url": "https://fareharbor.com/api/v1/companies/jetskimiamirentals/items/",
+  "status": 200,
+  "headers": [
+   [
+    "content-type",
+    "application/json"
+   ],
+   [
+    "set-cookie",
+    "fh-sticking-routing=58c5baa8156d68dc; Path=/; Secure; SameSite=None"
+   ],
+   [
+    "set-cookie",
+    "fh-target-language=en-us; Path=/; SameSite=None; Secure"
+   ],
+   [
+    "set-cookie",
+    "fh-units-language=en-us; Path=/; SameSite=None; Secure"
+   ],
+   [
+    "set-cookie",
+    "fh-content-language=en-us; Path=/; SameSite=None; Secure"
+   ]
+  ],
+  "body": "{\"items\":[{\"pk\":583877,\"name\":\"Jet Ski Rentals\",\"headline\":\"Ages 14+ • 1 - 3 Hours • Get out on the water!\",\"description\":\"\",\"description_text\":\"\",\"short_description\":\"\",\"booking_notes\":\"Hi 😁 I'm your instructor! Please read carefully so you're fully prepared for your adventure:\\n\\n⏰ *Please arrive 45 minutes before your scheduled appointment for check-in.*\\n\\n🚗 We recommend arriving by Uber to avoid the hassle of finding parking. If you choose to drive, please arrive early as parking is limited.\\n\\n👨‍👩‍👧 Children *5 years and older* must ride with an adult.\\n🚫 Children *under 5 years old* are not allowed for safety reasons.\\n🚤 Guests *14 years and older* may drive their own jet ski with a parent present on-site.\\n\\n## Group Reservations (5 Jet Skis or More)\\n\\nFor reservations of 5 jet skis or more, a $30 deposit per jet ski is required to fully secure your reservation.\\n\\n📞 Our Customer Service team will contact you after your booking to confirm your reservation and collect the deposit via Cash App or Zelle.\\n\\n✅ This deposit is applied toward your total balance, so it will be deducted from the amount due at check-in.\\n\\n⚠️ *Important: Any partial payments made are strictly non-refundable at any time.*\\n\\n# 💲***Please note that a required Marina Fee will be collected upon your arrival during the check-in process.***\\n\\n🔴 If you arrive after your scheduled tour time, the boat will depart without you.\\n❌ No refunds will be issued.\\n📅 Same-day or last-minute rescheduling is subject to a *$30 fee.*\\n\\n🌊 *Drivers under 38 years old:*\\nYou must complete the Florida Boating License before arrival.\\nIf you need assistance, please let us know in advance.\\n\\n🚨 *All final prices are subject to applicable taxes.*\\n\\n📲 *Florida Boating License:*\\nhttps://boattests101.com/united-states/florida/florida-rental?mcid=r4H3w7Owyou\\n\\n![Description of image](https://cdn.filestackcontent.com/XCY5BheuRKC1j3hDq5oW)\\n\\n📝 *Please complete the waiver before arriving.*\\nYour instructor will ask for your confirmation code.\\n\\nWaiver:\\nhttps://app.waiverforever.com/pending/5EINi70QVx1636857648\\n\\n💵 *Please bring cash to avoid additional transaction fees.*\\nAccepted payment methods:\\n✅ Cash\\n✅ Cash App\\n✅ Zelle\\n\\n🚫 Credit cards are not accepted.\\n\\n💸 Cash App: $riders305\\n💸 Zelle: xtrememiami2024@gmail.com\\n\\n🪪 Please bring a valid photo ID. \\n\\n📞 The marina is indoors. Please call us 10 minutes before arrival so we can assist you.\\n\\n☎️ +1 (786) 222-2039\\n\\nWe look forward to seeing you! 🌊☀️\",\"cancellation_notes\":\"Cancellation Policy\\n\\nPlease note that last-minute cancellations are non-refundable. The partial payment required to secure your reservation is non-refundable in all cases and will not be refunded for cancellations, no-shows, or changes made at the last minute.\",\"is_archived\":false,\"is_unlisted\":false,\"is_private\":false,\"image_cdn_url\":\"\",\"minimum_initial_party_size\":1,\"maximum_initial_party_size\":null,\"images\":[{\"image_cdn_url\":\"https://cdn.filestackcontent.com/M72x3aEQRGaoT1Il6PXU\"},{\"image_cdn_url\":\"https://cdn.filestackcontent.com/oUtZX1TcQbqjQt5yamea\"},{\"image_cdn_url\":\"https://cdn.filestackcontent.com/3PymUODuTUeU7P7BcMFA\"},{\"image_cdn_url\":\"https://cdn.filestackcontent.com/bWBVVGjmQqCS20ccu5DR\"},{\"image_cdn_url\":\"https://cdn.filestackcontent.com/k4aWvzAsTairFmQlhAhu\"}]},{\"pk\":635177,\"name\":\"Package Deal: Boat ride , Jetski and ATV\",\"headline\":\"2.5 Hours\",\"description\":\"\",\"description_text\":\"\",\"short_description\":\"\",\"booking_notes\":\"We look forward to having you as our guest!\\n\\nRules & Policy for Equipment Rental in Miami Beach, FL\\nAt Jetski Miami Rental, our rules and policies will be strictly enforced to ensure the safety of all participants.\\n\\nAll renters must be at 18 years of age and provide proof of age.\\n\\nNeed to have a boater ID. (Check out the answers and a useful study guide here.)​\\n\\nHave an ID in your possession at the time of rental.\\n\\nMaximum number of people per jet ski is 2, with a weight capacity of 300 pounds\\n\\nSafety rules must be followed at all times\\n\\nThe deposit is collected depending on the number of jet skis or if the owner wants to take a deposit​\\n\\nIf the damage on the jet ski is more than the deposit, the renter is responsible for it.\\n\\nRenters agree they have no impediments or physical restrictions that will affect them when renting the jet ski.\\n\\nIf time is exceeded, you will lose $50 for every 30 minutes you are late.​\\n\\nDamage that occurs during rent time will result in renters losing their deposits.\\n\\nFlorida state requirements:\\n\\n✅16 years or older\\n\\n✅36 year or younger required boating [license]\\n(https://boattests101.com/united-states/florida/florida-rental?mcid=r4H3w7Ow)\",\"cancellation_notes\":\"Customers will receive a full refund or credit with 48 hours notice of cancellation. Customers will also receive a full refund or credit in case of operator cancellation due to weather or other unforeseen circumstances. Contact us by phone to cancel or inquire about a cancellation. No-shows will be charged the full price.\",\"is_archived\":false,\"is_unlisted\":false,\"is_private\":false,\"image_cdn_url\":\"\",\"minimum_initial_party_size\":1,\"maximum_initial_party_size\":null,\"images\":[{\"image_cdn_url\":\"https://cdn.filestackcontent.com/Lvr8JSpeToajX92qTn6x\"}]},{\"pk\":603769,\"name\":\"ATV Rental Tours day and night tours\",\"headline\":\"1 Hour ATV Ride- Day or Night\",\"description\":\"\",\"description_text\":\"\",\"short_description\":null,\"booking_notes\":\"\",\"cancellation_notes\":\"\",\"is_archived\":false,\"is_unlisted\":false,\"is_private\":false,\"image_cdn_url\":\"\",\"minimum_initial_party_size\":1,\"maximum_initial_party_size\":null,\"images\":[{\"image_cdn_url\":\"https://cdn.filestackcontent.com/s4g32ddEQnuoPrpiZWCQ\"},{\"image_cdn_url\":\"https://cdn.filestackcontent.com/Nu7L0QxiQHWYgqjqLDWz\"},{\"image_cdn_url\":\"https://cdn.filestackcontent.com/nVJkyuYGQfaH0LrEEgJw\"}]},{\"pk\":686233,\"name\":\"ATV tours Groups discount 6+\",\"headline\":\"Special for groups only save money\",\"description\":\"\",\"description_text\":\"\",\"short_description\":null,\"booking_notes\":\"\",\"cancellation_notes\":\"\",\"is_archived\":false,\"is_unlisted\":false,\"is_private\":false,\"image_cdn_url\":\"\",\"minimum_initial_party_size\":1,\"maximum_initial_party_size\":null,\"images\":[{\"image_cdn_url\":\"https://cdn.filestackcontent.com/nFzhngtlSXOIQVi8mFPb\"},{\"image_cdn_url\":\"https://cdn.filestackcontent.com/aRx62xZATzSQ7xcui4XQ\"},{\"image_cdn_url\":\"https://cdn.filestackcontent.com/EdsL2AF6RHeUzaqgzNMJ\"}]},{\"pk\":689400,\"name\":\"1 Hour JETSKI Tour + 1 Hour Horseback Riding\",\"headline\":\"For ages 14+!• 2.5 Hours\",\"description\":\"\",\"description_text\":\"\",\"short_description\":\"\",\"booking_notes\":\"Thank you for booking with us! Please note, this activity takes place in 2 different locations.\\n\\nFirst, you will travel to the JETSKI Located at:\\n\\n555NE 15ST \\nMiami,FL 33132\\n\\nOnce complete, you will head over to the ATV Ride at our park. We are located inside By Brothers Park.\\n\\n15515 SW 177th avenue\\nMiami, Fl 33187\",\"cancellation_notes\":\"\",\"is_archived\":false,\"is_unlisted\":false,\"is_private\":false,\"image_cdn_url\":\"\",\"minimum_initial_party_size\":1,\"maximum_initial_party_size\":null,\"images\":[{\"image_cdn_url\":\"https://cdn.filestackcontent.com/a4F2xJuUSW6ZqAuwOLsm\"},{\"image_cdn_url\":\"https://cdn.filestackcontent.com/LMOSeS5vTkShxLNMOy07\"}]},{\"pk\":687167,\"name\":\"Catamaran + watersports & jetski\",\"headline\":\"\",\"description\":\"\",\"description_text\":\"\",\"short_description\":null,\"booking_notes\":\"Embark on the ultimate watersports adventure with our Watersports Catamaran Excursion in Miami! Feel the rush of riding Jet Skis, bouncing on the banana boat, and soaking up the sun on the catamaran for three hours. Meet fellow travelers, explore the beautiful isles, and create memories that will last a lifetime. With expert instructors ensuring your safety and all equipment provided, all you need to bring is your sense of adventure. Discover Miami like never before and make the most of your vacation with our thrilling watersports package. Don't miss out on this unforgettable experience!\",\"cancellation_notes\":\"24 hours before for refund\",\"is_archived\":false,\"is_unlisted\":false,\"is_private\":false,\"image_cdn_url\":\"\",\"minimum_initial_party_size\":1,\"maximum_initial_party_size\":null,\"images\":[{\"image_cdn_url\":\"https://cdn.filestackcontent.com/g2wJHMxEQ8WN5x4okRcP\"},{\"image_cdn_url\":\"https://cdn.filestackcontent.com/I74cJEGaQEjWemfqMfaT\"},{\"image_cdn_url\":\"https://cdn.filestackcontent.com/PkjMBywRmSm3maj2UuET\"},{\"image_cdn_url\":\"https://cdn.filestackcontent.com/1RNKJ85sQoq3Iw3YFaq7\"}]},{\"pk\":687153,\"name\":\"Horse Riding in Miami Countryside\",\"headline\":\"\",\"description\":\"\",\"description_text\":\"\",\"short_description\":\"\",\"booking_notes\":\"Please note this activity is NOT on the beach. This is in Miami's countryside.Adventure Group will take you to enjoy Miami's countryside while riding the horses with a tour guide through scenic trails through open fields, rolling hills, and wooded areas in a breathtakingly beautiful ranch.\",\"cancellation_notes\":\"Cancel 24 hours for full refund\",\"is_archived\":false,\"is_unlisted\":false,\"is_private\":false,\"image_cdn_url\":\"\",\"minimum_initial_party_size\":1,\"maximum_initial_party_size\":null,\"images\":[{\"image_cdn_url\":\"https://cdn.filestackcontent.com/jEPy3CgdS5KjJGeHGkv0\"},{\"image_cdn_url\":\"https://cdn.filestackcontent.com/s64D6nTSUGfYqMkwXcCQ\"},{\"image_cdn_url\":\"https://cdn.filestackcontent.com/ZyHLIQDySduAfjeQ1e8L\"},{\"image_cdn_url\":\"https://cdn.filestackcontent.com/hTM9pbnR0anfP1N8n9uI\"},{\"image_cdn_url\":\"https://cdn.filestackcontent.com/5b9iLboQcadp47AD2hMg\"}]},{\"pk\":583924,\"name\":\"Yacht Rental bella vita 50 ft\",\"headline\":\"Up to 13 People • 2 - 8 Hours • Cruise Trough Miami's Waters in Luxury!\",\"description\":\"\",\"description_text\":\"\",\"short_description\":\"\",\"booking_notes\":\"Dear Valued Guest,\\n\\nThank you for choosing us! We are excited to have you on board.\\n\\nYour yacht reservation has been received and is currently being processed.\\n\\n**Captain & Crew Deposit**\\n\\nOur Customer Service team will contact you within the next few hours to collect the required **$250 Captain & Crew Deposit**. This payment must be made via **Zelle** or **Cash App**. Payment instructions will be provided during the call.\\n\\nIf you have any questions or need immediate assistance, please contact us at **(786) 222-2039**.\\n\\n**Important Notice**\\n\\nTo ensure everything is properly arranged for your charter, all yacht reservations must be made **at least 24 hours in advance**. This allows us enough time to coordinate your captain, crew, and finalize all booking details to ensure a smooth and enjoyable experience.\\n\\nWe look forward to welcoming you aboard!\\n\\nBest regards,\\nCustomer Service Team\",\"cancellation_notes\":\"\",\"is_archived\":false,\"is_unlisted\":false,\"is_private\":false,\"image_cdn_url\":\"\",\"minimum_initial_party_size\":1,\"maximum_initial_party_size\":null,\"images\":[{\"image_cdn_url\":\"https://cdn.filestackcontent.com/YeysO8feSjahSYmjW3jc\"},{\"image_cdn_url\":\"https://cdn.filestackcontent.com/nYJMQ2YGQwCyZPs1OyY9\"},{\"image_cdn_url\":\"https://cdn.filestackcontent.com/40AzcNajSGaqdcgRPnR9\"},{\"image_cdn_url\":\"https://cdn.filestackcontent.com/UsnYrCGcQBiaW7D9HvD4\"},{\"image_cdn_url\":\"https://cdn.filestackcontent.com/h85L2STaQLeL0VriKM9x\"}]},{\"pk\":655781,\"name\":\"Yacht Rental Bella Lina 55'\",\"headline\":\"Up to 13 People • 2 - 8 Hours • Cruise Trough Miami's Waters in Luxury!\",\"description\":\"\",\"description_text\":\"\",\"short_description\":\"\",\"booking_notes\":\"Dear Valued Guest,\\n\\nThank you for choosing us! We are excited to have you on board.\\n\\nYour yacht reservation has been received and is currently being processed.\\n\\n**Captain & Crew Deposit**\\n\\nOur Customer Service team will contact you within the next few hours to collect the required **$300 Captain & Crew Deposit**. This payment must be made via **Zelle** or **Cash App**. Payment instructions will be provided during the call.\\n\\nIf you have any questions or need immediate assistance, please contact us at **(786) 222-2039**.\\n\\n**Important Notice**\\n\\nTo ensure everything is properly arranged for your charter, all yacht reservations must be made **at least 24 hours in advance**. This allows us enough time to coordinate your captain, crew, and finalize all booking details to ensure a smooth and enjoyable experience.\\n\\nWe look forward to welcoming you aboard!\\n\\nBest regards,\\n\\nCustomer Service Team\",\"cancellation_notes\":\"\",\"is_archived\":false,\"is_unlisted\":false,\"is_private\":false,\"image_cdn_url\":\"\",\"minimum_initial_party_size\":1,\"maximum_initial_party_size\":null,\"images\":[{\"image_cdn_url\":\"https://cdn.filestackcontent.com/FISX0dhOQkCSGD2Lk0YQ\"},{\"image_cdn_url\":\"https://cdn.filestackcontent.com/kqeubeLfQbatJg3nlgEb\"}]},{\"pk\":655804,\"name\":\"Yacht Rental Mr. Gems 45'\",\"headline\":\"Up to 13 People • 2 - 8 Hours • Cruise Trough Miami's Waters in Luxury!\",\"description\":\"\",\"description_text\":\"\",\"short_description\":null,\"booking_notes\":\"\",\"cancellation_notes\":\"\",\"is_archived\":false,\"is_unlisted\":false,\"is_private\":false,\"image_cdn_url\":\"\",\"minimum_initial_party_size\":1,\"maximum_initial_party_size\":null,\"images\":[{\"image_cdn_url\":\"https://cdn.filestackcontent.com/IXHBEgSYRHyYMPBkxsiu\"},{\"image_cdn_url\":\"https://cdn.filestackcontent.com/EUXlh16hTbCW5uwBC4wT\"},{\"image_cdn_url\":\"https://cdn.filestackcontent.com/HrZ8YcjMRrGJtC7jMTKQ\"},{\"image_cdn_url\":\"https://cdn.filestackcontent.com/Pyv0R4vRwyuubPXS7BMn\"},{\"image_cdn_url\":\"https://cdn.filestackcontent.com/Abp9iveiRvK1wwZVsIf2\"},{\"image_cdn_url\":\"https://cdn.filestackcontent.com/leeeJP4TUeqtpDWDOcdP\"}]},{\"pk\":656102,\"name\":\"Yacht Rental Navigator 55'\",\"headline\":\"Up to 13 People • 2 - 8 Hours • Cruise Trough Miami's Waters in Luxury!\",\"description\":\"\",\"description_text\":\"\",\"short_description\":null,\"booking_notes\":\"\",\"cancellation_notes\":\"\",\"is_archived\":false,\"is_unlisted\":false,\"is_private\":false,\"image_cdn_url\":\"\",\"minimum_initial_party_size\":1,\"maximum_initial_party_size\":null,\"images\":[{\"image_cdn_url\":\"https://cdn.filestackcontent.com/wogejagaQ0iMwBrgr4sm\"},{\"image_cdn_url\":\"https://cdn.filestackcontent.com/G8jZBHUR3uvtKwqIyYQ0\"},{\"image_cdn_url\":\"https://cdn.filestackcontent.com/4aw0xBVSghEfVvhqXVKQ\"},{\"image_cdn_url\":\"https://cdn.filestackcontent.com/cNyA3oDDTAzwnZkXa5Yc\"}]},{\"pk\":583921,\"name\":\"Sling Shot Rentals\",\"headline\":\"Ages 16+ • 1 - 24 Hours • Full Day Rentals Available!\",\"description\":\"\",\"description_text\":\"\",\"short_description\":null,\"booking_notes\":\"\",\"cancellation_notes\":\"\",\"is_archived\":false,\"is_unlisted\":false,\"is_private\":false,\"image_cdn_url\":\"\",\"minimum_initial_party_size\":1,\"maximum_initial_party_size\":null,\"images\":[{\"image_cdn_url\":\"https://cdn.filestackcontent.com/M8MOMYpiS6C9bIsAycud\"}]},{\"pk\":713163,\"name\":\"Parasailing + ATV\",\"headline\":\"free atv pictures\",\"description\":\"\",\"description_text\":\"\",\"short_description\":\"Best on water and land \",\"booking_notes\":\"appointment for check-in.\\nWe recommend arriving by Uber to avoid the hassle of finding parking. If you choose to come by car, please arrive early, parking is limited.\\n\\n‼️ $100 security deposit per Jetski which is refundable.\\n👨‍👩‍👧 Children 5 years and up MUST ride with an adult.\\n🚫 No children UNDER 5 are allowed for their own safety.\\n🚤 Only guests 18 YEARS AND OLDER are allowed to drive on their own with a parent at site to check them in and sign waiver for them, if they are under, they must ride with an adult 21+\\n\\n🔴 If you arrive after your scheduled tour time, the boat will depart without you.\\nNO refunds will be issued and rescheduling is subject to a $20 fee.\\n\\n🌊 IMPORTANT for drivers under 38 years old:\\nYou must complete the Florida Boating License before arrival.\\nIf you need help, let us know in advance.\\n\\n🚨 REMEMBER: All final prices are subject to applicable taxes‼️\\n\\n📲 [Get your license here]\\n\\n(https://boattests101.com/united-states/florida/florida-rental?mcid=r4H3w7Owyou)\\n\\n📝 Complete the waiver before arriving.\\n\\n(https://cdn.filestackcontent.com/aXmnXaYTjqaGAeQ7VD2Q)\\n\\nThe instructor will ask for your confirmation code.\\n\\nDescription of image\\n(https://app.waiverforever.com/pending/5EINi70QVx1636857648)\\n\\n⸻\\n💵 Please bring cash to avoid transaction fees.\\nAccepted payment: Cash / CashApp / Venmo / Zelle\\n🚫 No credit cards accepted\\n📸 Bring a valid photo ID\\n\\n⸻\\n\\n📞 Please call 10min before arrival so we can attend you.\\n\\n+1 (786) 222-2039\",\"cancellation_notes\":\"Cancellation Policy\\n\\nPlease note that last-minute cancellations are non-refundable. The partial payment required to secure your reservation is non-refundable in all cases and will not be refunded for cancellations, no-shows, or changes made at the last minute.\",\"is_archived\":false,\"is_unlisted\":false,\"is_private\":false,\"image_cdn_url\":\"\",\"minimum_initial_party_size\":1,\"maximum_initial_party_size\":null,\"images\":[{\"image_cdn_url\":\"https://cdn.filestackcontent.com/JdtPXQKmRsmkaL4SOFA3\"},{\"image_cdn_url\":\"https://cdn.filestackcontent.com/xiKz6ElQ2lpkBuuSEa5A\"},{\"image_cdn_url\":\"https://cdn.filestackcontent.com/gIsjwAGRW6giV3Rm2JWM\"},{\"image_cdn_url\":\"https://cdn.filestackcontent.com/Dq7mWJZSeCJxjFefkiuE\"},{\"image_cdn_url\":\"https://cdn.filestackcontent.com/M58fjgoQJ6j1Yeh26xs6\"}]},{\"pk\":736537,\"name\":\"Jetcar + ATV\",\"headline\":\"\",\"description\":\"\",\"description_text\":\"\",\"short_description\":\"\",\"booking_notes\":\"Hi 😁 I’m your instructor! Please read carefully so you’re fully prepared:\\n\\n# 💡 Please arrive 45 minutes before your appointment for check-in.\\n\\nWe recommend arriving by Uber to avoid the hassle of finding parking. If you choose to come by car, please arrive early, parking is limited.\\n\\n👨‍👩‍👧 Children 5 years and up MUST ride with an adult.\\n🚫 No children UNDER 5 are allowed for their own safety.\\n🚤 Only guests 14 YEARS AND OLDER are allowed to drive on their own with a parent at site.\\n\\n⚠️ Kindly be advised that any partial payments made are strictly non-refundable at any time.⚠️\\n\\n🔴 If you arrive after your scheduled tour time, the boat will depart without you.\\nNO refunds will be issued and rescheduling on the same day/last minute is subject to a $30 fee.\\n\\n🌊 IMPORTANT for drivers under 38 years old:\\nYou must complete the Florida Boating License before arrival.\\nIf you need help, let us know in advance.\\n\\n🚨 REMEMBER: All final prices are subject to applicable taxes‼️\\n\\n📲 [Get your license here]\\n\\n(https://boattests101.com/united-states/florida/florida-rental?mcid=r4H3w7Owyou)\\n\\n📝 Complete the waiver before arriving\\n\\nThe instructor will ask for your confirmation code.\\n\\n![Description of image](https://cdn.filestackcontent.com/JPJW2yUsTHmmv4jh3t1L)\\n(https://app.waiverforever.com/pending/5EINi70QVx1636857648)\\n\\n⸻\\n💵 Please bring cash to avoid additional transaction fees.\\nAccepted payment methods: Cash / CashApp / Venmo / Zelle\\n🚫 Credit cards are not accepted.\\n\\n📸 Bring a valid photo ID\\n\\n📞 The marina is indoor, please call 10min before arrival so we can attend you.\\n\\n+1 (786) 222-2039\",\"cancellation_notes\":\"Cancellation Policy\\n\\nPlease note that last-minute cancellations are non-refundable. The partial payment required to secure your reservation is non-refundable in all cases and will not be refunded for cancellations, no-shows, or changes made at the last minute.\",\"is_archived\":false,\"is_unlisted\":false,\"is_private\":false,\"image_cdn_url\":\"\",\"minimum_initial_party_size\":1,\"maximum_initial_party_size\":null,\"images\":[{\"image_cdn_url\":\"https://cdn.filestackcontent.com/ZP1bKLA4T1KH6Gch2TK6\"},{\"image_cdn_url\":\"https://cdn.filestackcontent.com/GYySKlzRuKYl7xjVz72w\"},{\"image_cdn_url\":\"https://cdn.filestackcontent.com/mUDULfDyTPmXKDx088ab\"},{\"image_cdn_url\":\"https://cdn.filestackcontent.com/C24kMA2SoK0rVsu0rg7A\"},{\"image_cdn_url\":\"https://cdn.filestackcontent.com/XQYGsjBsSEup61sk1b7p\"},{\"image_cdn_url\":\"https://cdn.filestackcontent.com/v6Xdc2YmQmyg0k3VQm7c\"},{\"image_cdn_url\":\"https://cdn.filestackcontent.com/L2VqoButQKGdffMq6lpO\"},{\"image_cdn_url\":\"https://cdn.filestackcontent.com/NPo2rBgTFe9riicIxz7g\"},{\"image_cdn_url\":\"https://cdn.filestackcontent.com/sZn6wvylT7ub3oGtJFsj\"},{\"image_cdn_url\":\"https://cdn.filestackcontent.com/dnJlv7dTdST7G1lXzCKf\"}]},{\"pk\":706920,\"name\":\"JET Cars + free boat ride\",\"headline\":\"\",\"description\":\"\",\"description_text\":\"\",\"short_description\":\"\",\"booking_notes\":\"⏰ Be on time – The boat will depart from the marina and cannot wait for late arrivals.\\n\\n✅ Arrive at least 25 minutes before your appointment for check-in.\\n\\n🌊 IMPORTANT for drivers under 38 years old:\\n\\nYou must complete the Florida Boating License before arrival.\\n\\nIf you need help, let us know in advance.\\n\\n📲 Get your license [here](https://boattests101.com/united-states/florida/florida-rental?mcid=r4H3w7Owyou)\\n\\n📝 Complete the [waiver](https://app.waiverforever.com/pending/5EINi70QVx1636857648) before arriving:\\n\\nThe instructor will ask for your confirmation code.\\n\\n⸻\\n\\n💵 Please bring cash to avoid transaction fees.\\n\\nAccepted payment: Cash / CashApp / Venmo / Zelle\\n\\n🚫 No credit cards accepted\",\"cancellation_notes\":\"Full refunds 24 hours before\",\"is_archived\":false,\"is_unlisted\":false,\"is_private\":false,\"image_cdn_url\":\"\",\"minimum_initial_party_size\":1,\"maximum_initial_party_size\":null,\"images\":[{\"image_cdn_url\":\"https://cdn.filestackcontent.com/SAhm4x9TgiBR54a4Dj86\"},{\"image_cdn_url\":\"https://cdn.filestackcontent.com/gqaULLH4TgKCX4gN4xqE\"},{\"image_cdn_url\":\"https://cdn.filestackcontent.com/oUGaLe1SpKt91X0UciSe\"},{\"image_cdn_url\":\"https://cdn.filestackcontent.com/am4kVZHOQe2Oe9tv89Gn\"}]},{\"pk\":736520,\"name\":\"Parasailing\",\"headline\":\"Parasailing in Miami\",\"description\":\"\",\"description_text\":\"\",\"short_description\":\"Soar high above the crystal-clear waters and enjoy breathtaking panoramic views on an unforgettable parasailing adventure.\",\"booking_notes\":\"Hi 😁 I’m your instructor! Please read carefully so you’re fully prepared:\\n\\n📍Meeting location:\\n3400 Pan American Dr\\nPier 9 Miami FL 33133\\n\\n💡 Please arrive 30 minutes before your appointment for check-in.\\nWe recommend arriving by Uber to avoid the hassle of finding parking. If you choose to come by car, please arrive early, parking is limited.\\n\\n‼️ $100 security deposit per Jetski which is refundable.\\n👨‍👩‍👧 Children 5 years and up MUST ride with an adult.\\n🚫 No children UNDER 5 are allowed for their own safety.\\n🚤 Only guests 18 YEARS AND OLDER are allowed to drive on their own with a parent at site to check them in and sign waiver for them, if they are under, they must ride with an adult 21+\\n\\n🔴 If you arrive after your scheduled tour time, the boat will depart without you.\\nNO refunds will be issued and rescheduling is subject to a $20 fee.\\n\\n🌊 IMPORTANT for drivers under 38 years old:\\nYou must complete the Florida Boating License before arrival.\\nIf you need help, let us know in advance.\\n\\n🚨 REMEMBER: All final prices are subject to applicable taxes‼️\\n\\n📲 [Get your license here]\\n\\n(https://boattests101.com/united-states/florida/florida-rental?mcid=r4H3w7Owyou)\\n\\n📝 Complete the waiver before arriving.\\n\\n(https://cdn.filestackcontent.com/aXmnXaYTjqaGAeQ7VD2Q)\\n\\nThe instructor will ask for your confirmation code.\\n\\nDescription of image\\n(https://app.waiverforever.com/pending/5EINi70QVx1636857648)\\n\\n⸻\\n💵 Please bring cash to avoid transaction fees.\\nAccepted payment: Cash / CashApp / Venmo / Zelle\\n🚫 No credit cards accepted\\n📸 Bring a valid photo ID\\n\\n⸻\\n\\n📞 Please call 10min before arrival so we can attend you.\\n\\n+1 (786) 222-2039\",\"cancellation_notes\":\"Cancellation Policy\\n\\nPlease note that last-minute cancellations are non-refundable. The partial payment required to secure your reservation is non-refundable in all cases and will not be refunded for cancellations, no-shows, or changes made at the last minute.\",\"is_archived\":false,\"is_unlisted\":false,\"is_private\":false,\"image_cdn_url\":\"\",\"minimum_initial_party_size\":1,\"maximum_initial_party_size\":null,\"images\":[{\"image_cdn_url\":\"https://cdn.filestackcontent.com/GoZks1FIRfq03qnuBcKi\"},{\"image_cdn_url\":\"https://cdn.filestackcontent.com/25Xt7M7BRtKz4jPxGidg\"},{\"image_cdn_url\":\"https://cdn.filestackcontent.com/lVAnpdxRIOpVYKYM667g\"},{\"image_cdn_url\":\"https://cdn.filestackcontent.com/UJB64C3qTIaMTswzmF8a\"},{\"image_cdn_url\":\"https://cdn.filestackcontent.com/CqoFqxgwQFKWIeawBFg6\"},{\"image_cdn_url\":\"https://cdn.filestackcontent.com/9gHODOgSrmQ17QaiuIo2\"}]},{\"pk\":583926,\"name\":\"Gift Card\",\"headline\":\"A gift for an unforgettable experience!\",\"description\":\"\",\"description_text\":\"\",\"short_description\":null,\"booking_notes\":\"After purchasing your gift cards, you can book an activity with your codes on our [website](https://www.jetskismiamirentals.com/)!\",\"cancellation_notes\":\"Gift card sales are final and non-refundable.\",\"is_archived\":false,\"is_unlisted\":false,\"is_private\":false,\"image_cdn_url\":\"\",\"minimum_initial_party_size\":1,\"maximum_initial_party_size\":null,\"images\":[{\"image_cdn_url\":\"https://cdn.filestackcontent.com/nUABNswQQMOmR2e0C7YX\"}]}]}"
+ },
+ {
+  "key": "GET https://fareharbor.com/api/v1/companies/jetskimiamirentals/calendar/YM/",
+  "url": "https://fareharbor.com/api/v1/companies/jetskimiamirentals/calendar/2026/09/",
+  "status": 200,
+  "headers": [
+   [
+    "content-type",
+    "application/json"
+   ],
+   [
+    "set-cookie",
+    "fh-sticking-routing=58c5baa8156d68dc; Path=/; Secure; SameSite=None"
+   ],
+   [
+    "set-cookie",
+    "fh-target-language=en-us; Path=/; SameSite=None; Secure"
+   ],
+   [
+    "set-cookie",
+    "fh-units-language=en-us; Path=/; SameSite=None; Secure"
+   ],
+   [
+    "set-cookie",
+    "fh-content-language=en-us; Path=/; SameSite=None; Secure"
+   ]
+  ],
+  "body": "{\"calendar\":{\"weeks\":[{\"days\":[{\"availabilities\":[{\"pk\":1932629106,\"is_bookable\":true,\"is_sold_out\":false,\"is_unlisted\":false,\"item\":{\"pk\":603769,\"uri\":\"/api/v1/companies/jetskimiamirentals/items/603769/\"}},{\"pk\":1936687390,\"is_bookable\":true,\"is_sold_out\":false,\"is_unlisted\":false,\"item\":{\"pk\":686233,\"uri\":\"/api/v1/companies/jetskimiamirentals/items/686233/\"}},{\"pk\":1812099361,\"is_bookable\":true,\"is_sold_out\":false,\"is_unlisted\":false,\"item\":{\"pk\":655781,\"uri\":\"/api/v1/companies/jetskimiamirentals/items/655781/\"}},{\"pk\":1932625742,\"is_bookable\":true,\"is_sold_out\":false,\"is_unlisted\":false,\"item\":{\"pk\":635177,\"uri\":\"/api/v1/companies/jetskimiamirentals/items/635177/\"}}]},{\"availabilities\":[{\"pk\":1932637148,\"is_bookable\":true,\"is_sold_out\":false,\"is_unlisted\":false,\"item\":{\"pk\":583924,\"uri\":\"/api/v1/companies/jetskimiamirentals/items/583924/\"}},{\"pk\":1932640684,\"is_bookable\":true,\"is_sold_out\":false,\"is_unlisted\":false,\"item\":{\"pk\":583921,\"uri\":\"/api/v1/companies/jetskimiamirentals/items/583921/\"}},{\"pk\":1812123007,\"is_bookable\":true,\"is_sold_out\":false,\"is_unlisted\":false,\"item\":{\"pk\":655804,\"uri\":\"/api/v1/companies/jetskimiamirentals/items/655804/\"}},{\"pk\":1812787163,\"is_bookable\":true,\"is_sold_out\":false,\"is_unlisted\":false,\"item\":{\"pk\":656102,\"uri\":\"/api/v1/companies/jetskimiamirentals/items/656102/\"}},{\"pk\":1974380005,\"is_bookable\":true,\"is_sold_out\":false,\"is_unlisted\":false,\"item\":{\"pk\":583877,\"uri\":\"/api/v1/companies/jetskimiamirentals/items/583877/\"}},{\"pk\":1936930403,\"is_bookable\":true,\"is_sold_out\":false,\"is_unlisted\":false,\"item\":{\"pk\":689400,\"uri\":\"/api/v1/companies/jetskimiamirentals/items/689400/\"}},{\"pk\":2040102826,\"is_bookable\":true,\"is_sold_out\":false,\"is_unlisted\":false,\"item\":{\"uri\":\"/api/v1/companies/jetskimiamirentals/items/713163/\"}},{\"pk\":2101136147,\"is_bookable\":true,\"is_sold_out\":false,\"is_unlisted\":false,\"item\":{\"pk\":736520,\"uri\":\"/api/v1/companies/jetskimiamirentals/items/736520/\"}},{\"pk\":1936759406,\"is_bookable\":true,\"is_sold_out\":false,\"is_unlisted\":false,\"item\":{\"pk\":687153,\"uri\":\"/api/v1/companies/jetskimiamirentals/items/687153/\"}},{\"pk\":2101159630,\"is_bookable\":true,\"is_sold_out\":false,\"is_unlisted\":false,\"item\":{\"pk\":736537,\"uri\":\"/api/v1/companies/jetskimiamirentals/items/736537/\"}},{\"pk\":1936731974,\"is_bookable\":true,\"is_sold_out\":false,\"is_unlisted\":false,\"item\":{\"pk\":687167,\"uri\":\"/api/v1/companies/jetskimiamirentals/items/687167/\"}}]},{\"availabilities\":[{\"pk\":2015864495,\"is_bookable\":true,\"is_sold_out\":false,\"is_unlisted\":false,\"item\":{\"uri\":\"/api/v1/companies/jetskimiamirentals/items/706920/\"}}]}]}]}}"
+ },
+ {
+  "key": "GET https://fareharbor.com/api/v1/companies/jetskimiamirentals/calendar/YM/",
+  "url": "https://fareharbor.com/api/v1/companies/jetskimiamirentals/calendar/2026/10/",
+  "status": 200,
+  "headers": [
+   [
+    "content-type",
+    "application/json"
+   ],
+   [
+    "set-cookie",
+    "fh-sticking-routing=58c5baa8156d68dc; Path=/; Secure; SameSite=None"
+   ],
+   [
+    "set-cookie",
+    "fh-target-language=en-us; Path=/; SameSite=None; Secure"
+   ],
+   [
+    "set-cookie",
+    "fh-units-language=en-us; Path=/; SameSite=None; Secure"
+   ],
+   [
+    "set-cookie",
+    "fh-content-language=en-us; Path=/; SameSite=None; Secure"
+   ]
+  ],
+  "body": "{\"calendar\":{\"weeks\":[{\"days\":[{\"availabilities\":[{\"pk\":1932637122,\"is_bookable\":true,\"is_sold_out\":false,\"is_unlisted\":false,\"item\":{\"pk\":583924,\"uri\":\"/api/v1/companies/jetskimiamirentals/items/583924/\"}},{\"pk\":1932641284,\"is_bookable\":true,\"is_sold_out\":false,\"is_unlisted\":false,\"item\":{\"pk\":583921,\"uri\":\"/api/v1/companies/jetskimiamirentals/items/583921/\"}},{\"pk\":1812099387,\"is_bookable\":true,\"is_sold_out\":false,\"is_unlisted\":false,\"item\":{\"pk\":655781,\"uri\":\"/api/v1/companies/jetskimiamirentals/items/655781/\"}},{\"pk\":1812121361,\"is_bookable\":true,\"is_sold_out\":false,\"is_unlisted\":false,\"item\":{\"pk\":655804,\"uri\":\"/api/v1/companies/jetskimiamirentals/items/655804/\"}},{\"pk\":1812787545,\"is_bookable\":true,\"is_sold_out\":false,\"is_unlisted\":false,\"item\":{\"pk\":656102,\"uri\":\"/api/v1/companies/jetskimiamirentals/items/656102/\"}},{\"pk\":1974379724,\"is_bookable\":true,\"is_sold_out\":false,\"is_unlisted\":false,\"item\":{\"pk\":583877,\"uri\":\"/api/v1/companies/jetskimiamirentals/items/583877/\"}},{\"pk\":1932630447,\"is_bookable\":true,\"is_sold_out\":false,\"is_unlisted\":false,\"item\":{\"pk\":603769,\"uri\":\"/api/v1/companies/jetskimiamirentals/items/603769/\"}},{\"pk\":1936687474,\"is_bookable\":true,\"is_sold_out\":false,\"is_unlisted\":false,\"item\":{\"pk\":686233,\"uri\":\"/api/v1/companies/jetskimiamirentals/items/686233/\"}},{\"pk\":1936930676,\"is_bookable\":true,\"is_sold_out\":false,\"is_unlisted\":false,\"item\":{\"pk\":689400,\"uri\":\"/api/v1/companies/jetskimiamirentals/items/689400/\"}},{\"pk\":2040102960,\"is_bookable\":true,\"is_sold_out\":false,\"is_unlisted\":false,\"item\":{\"pk\":713163,\"uri\":\"/api/v1/companies/jetskimiamirentals/items/713163/\"}},{\"pk\":2015864699,\"is_bookable\":true,\"is_sold_out\":false,\"is_unlisted\":false,\"item\":{\"pk\":706920,\"uri\":\"/api/v1/companies/jetskimiamirentals/items/706920/\"}},{\"pk\":2101136133,\"is_bookable\":true,\"is_sold_out\":false,\"is_unlisted\":false,\"item\":{\"pk\":736520,\"uri\":\"/api/v1/companies/jetskimiamirentals/items/736520/\"}},{\"pk\":1932627599,\"is_bookable\":true,\"is_sold_out\":false,\"is_unlisted\":false,\"item\":{\"pk\":635177,\"uri\":\"/api/v1/companies/jetskimiamirentals/items/635177/\"}},{\"pk\":1936759455,\"is_bookable\":true,\"is_sold_out\":false,\"is_unlisted\":false,\"item\":{\"pk\":687153,\"uri\":\"/api/v1/companies/jetskimiamirentals/items/687153/\"}},{\"pk\":2101159673,\"is_bookable\":true,\"is_sold_out\":false,\"is_unlisted\":false,\"item\":{\"pk\":736537,\"uri\":\"/api/v1/companies/jetskimiamirentals/items/736537/\"}},{\"pk\":1936732074,\"is_bookable\":true,\"is_sold_out\":false,\"is_unlisted\":false,\"item\":{\"pk\":687167,\"uri\":\"/api/v1/companies/jetskimiamirentals/items/687167/\"}}]}]}]}}"
+ },
+ {
+  "key": "GET https://fareharbor.com/api/v1/companies/jetskimiamirentals/items/603769/availabilities/1932629106/",
+  "url": "https://fareharbor.com/api/v1/companies/jetskimiamirentals/items/603769/availabilities/1932629106/",
+  "status": 200,
+  "headers": [
+   [
+    "content-type",
+    "application/json"
+   ],
+   [
+    "set-cookie",
+    "fh-sticking-routing=58c5baa8156d68dc; Path=/; Secure; SameSite=None"
+   ],
+   [
+    "set-cookie",
+    "fh-target-language=en-us; Path=/; SameSite=None; Secure"
+   ],
+   [
+    "set-cookie",
+    "fh-units-language=en-us; Path=/; SameSite=None; Secure"
+   ],
+   [
+    "set-cookie",
+    "fh-content-language=en-us; Path=/; SameSite=None; Secure"
+   ]
+  ],
+  "body": "{\"availability\":{\"pk\":1932629106,\"customer_type_rates\":[{\"pk\":8147746206,\"minimum_party_size\":1,\"maximum_party_size\":null,\"customer_prototype\":{\"display_name\":\"ATV Single Rider\",\"customer_type\":{\"singular\":\"ATV Single Rider\",\"note\":\"\"}}},{\"pk\":8147746209,\"minimum_party_size\":2,\"maximum_party_size\":null,\"customer_prototype\":{\"display_name\":\"ATV Double Riders\",\"customer_type\":{\"singular\":\"ATV Double Riders\",\"note\":\"\"}}}]}}"
+ },
+ {
+  "key": "GET https://fareharbor.com/api/v1/companies/jetskimiamirentals/availabilities/1932629106/effective-sheets/",
+  "url": "https://fareharbor.com/api/v1/companies/jetskimiamirentals/availabilities/1932629106/effective-sheets/",
+  "status": 200,
+  "headers": [
+   [
+    "content-type",
+    "application/json"
+   ],
+   [
+    "set-cookie",
+    "fh-sticking-routing=58c5baa8156d68dc; Path=/; Secure; SameSite=None"
+   ],
+   [
+    "set-cookie",
+    "fh-target-language=en-us; Path=/; SameSite=None; Secure"
+   ],
+   [
+    "set-cookie",
+    "fh-units-language=en-us; Path=/; SameSite=None; Secure"
+   ],
+   [
+    "set-cookie",
+    "fh-content-language=en-us; Path=/; SameSite=None; Secure"
+   ]
+  ],
+  "body": "{\"effective_sheets\":{\"total_sheet\":{\"pk\":610469}}}"
+ },
+ {
+  "key": "GET https://fareharbor.com/api/v1/companies/jetskimiamirentals/total-sheets/610469/pricing/availabilities/1932629106/",
+  "url": "https://fareharbor.com/api/v1/companies/jetskimiamirentals/total-sheets/610469/pricing/availabilities/1932629106/",
+  "status": 200,
+  "headers": [
+   [
+    "content-type",
+    "application/json"
+   ],
+   [
+    "set-cookie",
+    "fh-sticking-routing=58c5baa8156d68dc; Path=/; Secure; SameSite=None"
+   ],
+   [
+    "set-cookie",
+    "fh-target-language=en-us; Path=/; SameSite=None; Secure"
+   ],
+   [
+    "set-cookie",
+    "fh-units-language=en-us; Path=/; SameSite=None; Secure"
+   ],
+   [
+    "set-cookie",
+    "fh-content-language=en-us; Path=/; SameSite=None; Secure"
+   ]
+  ],
+  "body": "{\"price_previews\":{\"customer_types\":[{\"customer_type_rate\":8147746206,\"total\":10800},{\"customer_type_rate\":8147746209,\"total\":10800}]}}"
+ },
+ {
+  "key": "GET https://fareharbor.com/api/v1/companies/jetskimiamirentals/items/686233/availabilities/1936687390/",
+  "url": "https://fareharbor.com/api/v1/companies/jetskimiamirentals/items/686233/availabilities/1936687390/",
+  "status": 200,
+  "headers": [
+   [
+    "content-type",
+    "application/json"
+   ],
+   [
+    "set-cookie",
+    "fh-sticking-routing=58c5baa8156d68dc; Path=/; Secure; SameSite=None"
+   ],
+   [
+    "set-cookie",
+    "fh-target-language=en-us; Path=/; SameSite=None; Secure"
+   ],
+   [
+    "set-cookie",
+    "fh-units-language=en-us; Path=/; SameSite=None; Secure"
+   ],
+   [
+    "set-cookie",
+    "fh-content-language=en-us; Path=/; SameSite=None; Secure"
+   ]
+  ],
+  "body": "{\"availability\":{\"pk\":1936687390,\"customer_type_rates\":[{\"pk\":8163442235,\"minimum_party_size\":null,\"maximum_party_size\":null,\"customer_prototype\":{\"display_name\":\"ATV Single Rider\",\"customer_type\":{\"singular\":\"ATV Single Rider\",\"note\":\"\"}}},{\"pk\":8163442236,\"minimum_party_size\":null,\"maximum_party_size\":null,\"customer_prototype\":{\"display_name\":\"ATV Double Riders\",\"customer_type\":{\"singular\":\"ATV Double Riders\",\"note\":\"\"}}}]}}"
+ },
+ {
+  "key": "GET https://fareharbor.com/api/v1/companies/jetskimiamirentals/total-sheets/610469/pricing/availabilities/1936687390/",
+  "url": "https://fareharbor.com/api/v1/companies/jetskimiamirentals/total-sheets/610469/pricing/availabilities/1936687390/",
+  "status": 200,
+  "headers": [
+   [
+    "content-type",
+    "application/json"
+   ],
+   [
+    "set-cookie",
+    "fh-sticking-routing=58c5baa8156d68dc; Path=/; Secure; SameSite=None"
+   ],
+   [
+    "set-cookie",
+    "fh-target-language=en-us; Path=/; SameSite=None; Secure"
+   ],
+   [
+    "set-cookie",
+    "fh-units-language=en-us; Path=/; SameSite=None; Secure"
+   ],
+   [
+    "set-cookie",
+    "fh-content-language=en-us; Path=/; SameSite=None; Secure"
+   ]
+  ],
+  "body": "{\"price_previews\":{\"customer_types\":[{\"customer_type_rate\":8163442235,\"total\":10800},{\"customer_type_rate\":8163442236,\"total\":10800}]}}"
+ },
+ {
+  "key": "GET https://fareharbor.com/api/v1/companies/jetskimiamirentals/items/655781/availabilities/1812099361/",
+  "url": "https://fareharbor.com/api/v1/companies/jetskimiamirentals/items/655781/availabilities/1812099361/",
+  "status": 200,
+  "headers": [
+   [
+    "content-type",
+    "application/json"
+   ],
+   [
+    "set-cookie",
+    "fh-sticking-routing=58c5baa8156d68dc; Path=/; Secure; SameSite=None"
+   ],
+   [
+    "set-cookie",
+    "fh-target-language=en-us; Path=/; SameSite=None; Secure"
+   ],
+   [
+    "set-cookie",
+    "fh-units-language=en-us; Path=/; SameSite=None; Secure"
+   ],
+   [
+    "set-cookie",
+    "fh-content-language=en-us; Path=/; SameSite=None; Secure"
+   ]
+  ],
+  "body": "{\"availability\":{\"pk\":1812099361,\"customer_type_rates\":[{\"pk\":7611547130,\"minimum_party_size\":null,\"maximum_party_size\":null,\"customer_prototype\":{\"display_name\":\"Two Hour Private Yacht Rental\",\"customer_type\":{\"singular\":\"Two Hour Private Yacht Rental\",\"note\":\"\"}}},{\"pk\":7611547132,\"minimum_party_size\":null,\"maximum_party_size\":null,\"customer_prototype\":{\"display_name\":\"Four Hour Private Yacht Rental\",\"customer_type\":{\"singular\":\"Four Hour Private Yacht Rental\",\"note\":\"\"}}}]}}"
+ },
+ {
+  "key": "GET https://fareharbor.com/api/v1/companies/jetskimiamirentals/total-sheets/610469/pricing/availabilities/1812099361/",
+  "url": "https://fareharbor.com/api/v1/companies/jetskimiamirentals/total-sheets/610469/pricing/availabilities/1812099361/",
+  "status": 200,
+  "headers": [
+   [
+    "content-type",
+    "application/json"
+   ],
+   [
+    "set-cookie",
+    "fh-sticking-routing=58c5baa8156d68dc; Path=/; Secure; SameSite=None"
+   ],
+   [
+    "set-cookie",
+    "fh-target-language=en-us; Path=/; SameSite=None; Secure"
+   ],
+   [
+    "set-cookie",
+    "fh-units-language=en-us; Path=/; SameSite=None; Secure"
+   ],
+   [
+    "set-cookie",
+    "fh-content-language=en-us; Path=/; SameSite=None; Secure"
+   ]
+  ],
+  "body": "{\"price_previews\":{\"customer_types\":[{\"customer_type_rate\":7611547130,\"total\":64800},{\"customer_type_rate\":7611547132,\"total\":129600}]}}"
+ },
+ {
+  "key": "GET https://fareharbor.com/api/v1/companies/jetskimiamirentals/items/635177/availabilities/1932625742/",
+  "url": "https://fareharbor.com/api/v1/companies/jetskimiamirentals/items/635177/availabilities/1932625742/",
+  "status": 200,
+  "headers": [
+   [
+    "content-type",
+    "application/json"
+   ],
+   [
+    "set-cookie",
+    "fh-sticking-routing=58c5baa8156d68dc; Path=/; Secure; SameSite=None"
+   ],
+   [
+    "set-cookie",
+    "fh-target-language=en-us; Path=/; SameSite=None; Secure"
+   ],
+   [
+    "set-cookie",
+    "fh-units-language=en-us; Path=/; SameSite=None; Secure"
+   ],
+   [
+    "set-cookie",
+    "fh-content-language=en-us; Path=/; SameSite=None; Secure"
+   ]
+  ],
+  "body": "{\"availability\":{\"pk\":1932625742,\"customer_type_rates\":[{\"pk\":8147741074,\"minimum_party_size\":null,\"maximum_party_size\":null,\"customer_prototype\":{\"display_name\":\"Double rider: Boat, Jetski and ATV\",\"customer_type\":{\"singular\":\"Double rider: Boat, Jetski and ATV\",\"note\":\"\"}}},{\"pk\":8811441085,\"minimum_party_size\":null,\"maximum_party_size\":null,\"customer_prototype\":{\"display_name\":\"Single rider: Boat, Jetski and ATV\",\"customer_type\":{\"singular\":\"Single rider: Boat, Jetski and ATV\",\"note\":\"\"}}}]}}"
+ },
+ {
+  "key": "GET https://fareharbor.com/api/v1/companies/jetskimiamirentals/total-sheets/610469/pricing/availabilities/1932625742/",
+  "url": "https://fareharbor.com/api/v1/companies/jetskimiamirentals/total-sheets/610469/pricing/availabilities/1932625742/",
+  "status": 200,
+  "headers": [
+   [
+    "content-type",
+    "application/json"
+   ],
+   [
+    "set-cookie",
+    "fh-sticking-routing=58c5baa8156d68dc; Path=/; Secure; SameSite=None"
+   ],
+   [
+    "set-cookie",
+    "fh-target-language=en-us; Path=/; SameSite=None; Secure"
+   ],
+   [
+    "set-cookie",
+    "fh-units-language=en-us; Path=/; SameSite=None; Secure"
+   ],
+   [
+    "set-cookie",
+    "fh-content-language=en-us; Path=/; SameSite=None; Secure"
+   ]
+  ],
+  "body": "{\"price_previews\":{\"customer_types\":[{\"customer_type_rate\":8147741074,\"total\":24840},{\"customer_type_rate\":8811441085,\"total\":19440}]}}"
+ },
+ {
+  "key": "GET https://fareharbor.com/api/v1/companies/jetskimiamirentals/items/583924/availabilities/1932637148/",
+  "url": "https://fareharbor.com/api/v1/companies/jetskimiamirentals/items/583924/availabilities/1932637148/",
+  "status": 200,
+  "headers": [
+   [
+    "content-type",
+    "application/json"
+   ],
+   [
+    "set-cookie",
+    "fh-sticking-routing=58c5baa8156d68dc; Path=/; Secure; SameSite=None"
+   ],
+   [
+    "set-cookie",
+    "fh-target-language=en-us; Path=/; SameSite=None; Secure"
+   ],
+   [
+    "set-cookie",
+    "fh-units-language=en-us; Path=/; SameSite=None; Secure"
+   ],
+   [
+    "set-cookie",
+    "fh-content-language=en-us; Path=/; SameSite=None; Secure"
+   ]
+  ],
+  "body": "{\"availability\":{\"pk\":1932637148,\"customer_type_rates\":[{\"pk\":8147768704,\"minimum_party_size\":null,\"maximum_party_size\":null,\"customer_prototype\":{\"display_name\":\"Two Hour Private Yacht Rental\",\"customer_type\":{\"singular\":\"Two Hour Private Yacht Rental\",\"note\":\"\"}}},{\"pk\":8147768705,\"minimum_party_size\":null,\"maximum_party_size\":null,\"customer_prototype\":{\"display_name\":\"Three Hour Private Yacht Rental\",\"customer_type\":{\"singular\":\"Three Hour Private Yacht Rental\",\"note\":\"\"}}},{\"pk\":8147768706,\"minimum_party_size\":null,\"maximum_party_size\":null,\"customer_prototype\":{\"display_name\":\"Four Hour Private Yacht Rental\",\"customer_type\":{\"singular\":\"Four Hour Private Yacht Rental\",\"note\":\"\"}}}]}}"
+ },
+ {
+  "key": "GET https://fareharbor.com/api/v1/companies/jetskimiamirentals/total-sheets/610469/pricing/availabilities/1932637148/",
+  "url": "https://fareharbor.com/api/v1/companies/jetskimiamirentals/total-sheets/610469/pricing/availabilities/1932637148/",
+  "status": 200,
+  "headers": [
+   [
+    "content-type",
+    "application/json"
+   ],
+   [
+    "set-cookie",
+    "fh-sticking-routing=58c5baa8156d68dc; Path=/; Secure; SameSite=None"
+   ],
+   [
+    "set-cookie",
+    "fh-target-language=en-us; Path=/; SameSite=None; Secure"
+   ],
+   [
+    "set-cookie",
+    "fh-units-language=en-us; Path=/; SameSite=None; Secure"
+   ],
+   [
+    "set-cookie",
+    "fh-content-language=en-us; Path=/; SameSite=None; Secure"
+   ]
+  ],
+  "body": "{\"price_previews\":{\"customer_types\":[{\"customer_type_rate\":8147768704,\"total\":54000},{\"customer_type_rate\":8147768705,\"total\":75600},{\"customer_type_rate\":8147768706,\"total\":102600}]}}"
+ },
+ {
+  "key": "GET https://fareharbor.com/api/v1/companies/jetskimiamirentals/items/583921/availabilities/1932640684/",
+  "url": "https://fareharbor.com/api/v1/companies/jetskimiamirentals/items/583921/availabilities/1932640684/",
+  "status": 200,
+  "headers": [
+   [
+    "content-type",
+    "application/json"
+   ],
+   [
+    "set-cookie",
+    "fh-sticking-routing=58c5baa8156d68dc; Path=/; Secure; SameSite=None"
+   ],
+   [
+    "set-cookie",
+    "fh-target-language=en-us; Path=/; SameSite=None; Secure"
+   ],
+   [
+    "set-cookie",
+    "fh-units-language=en-us; Path=/; SameSite=None; Secure"
+   ],
+   [
+    "set-cookie",
+    "fh-content-language=en-us; Path=/; SameSite=None; Secure"
+   ]
+  ],
+  "body": "{\"availability\":{\"pk\":1932640684,\"customer_type_rates\":[{\"pk\":8147777085,\"minimum_party_size\":null,\"maximum_party_size\":null,\"customer_prototype\":{\"display_name\":\"One Hour Slingshot Rental\",\"customer_type\":{\"singular\":\"One Hour Slingshot Rental\",\"note\":\"Seats 2 people\"}}},{\"pk\":8147777087,\"minimum_party_size\":null,\"maximum_party_size\":null,\"customer_prototype\":{\"display_name\":\"Full Day Slingshot Rental\",\"customer_type\":{\"singular\":\"Full Day Slingshot Rental\",\"note\":\"24 Hours\"}}}]}}"
+ },
+ {
+  "key": "GET https://fareharbor.com/api/v1/companies/jetskimiamirentals/total-sheets/610469/pricing/availabilities/1932640684/",
+  "url": "https://fareharbor.com/api/v1/companies/jetskimiamirentals/total-sheets/610469/pricing/availabilities/1932640684/",
+  "status": 200,
+  "headers": [
+   [
+    "content-type",
+    "application/json"
+   ],
+   [
+    "set-cookie",
+    "fh-sticking-routing=58c5baa8156d68dc; Path=/; Secure; SameSite=None"
+   ],
+   [
+    "set-cookie",
+    "fh-target-language=en-us; Path=/; SameSite=None; Secure"
+   ],
+   [
+    "set-cookie",
+    "fh-units-language=en-us; Path=/; SameSite=None; Secure"
+   ],
+   [
+    "set-cookie",
+    "fh-content-language=en-us; Path=/; SameSite=None; Secure"
+   ]
+  ],
+  "body": "{\"price_previews\":{\"customer_types\":[{\"customer_type_rate\":8147777085,\"total\":12960},{\"customer_type_rate\":8147777087,\"total\":32400}]}}"
+ },
+ {
+  "key": "GET https://fareharbor.com/api/v1/companies/jetskimiamirentals/items/655804/availabilities/1812123007/",
+  "url": "https://fareharbor.com/api/v1/companies/jetskimiamirentals/items/655804/availabilities/1812123007/",
+  "status": 200,
+  "headers": [
+   [
+    "content-type",
+    "application/json"
+   ],
+   [
+    "set-cookie",
+    "fh-sticking-routing=58c5baa8156d68dc; Path=/; Secure; SameSite=None"
+   ],
+   [
+    "set-cookie",
+    "fh-target-language=en-us; Path=/; SameSite=None; Secure"
+   ],
+   [
+    "set-cookie",
+    "fh-units-language=en-us; Path=/; SameSite=None; Secure"
+   ],
+   [
+    "set-cookie",
+    "fh-content-language=en-us; Path=/; SameSite=None; Secure"
+   ]
+  ],
+  "body": "{\"availability\":{\"pk\":1812123007,\"customer_type_rates\":[{\"pk\":7611630403,\"minimum_party_size\":null,\"maximum_party_size\":null,\"customer_prototype\":{\"display_name\":\"Three Hour Private Yacht Rental\",\"customer_type\":{\"singular\":\"Three Hour Private Yacht Rental\",\"note\":\"\"}}},{\"pk\":7611630405,\"minimum_party_size\":null,\"maximum_party_size\":null,\"customer_prototype\":{\"display_name\":\"Four Hour Private Yacht Rental\",\"customer_type\":{\"singular\":\"Four Hour Private Yacht Rental\",\"note\":\"\"}}},{\"pk\":7611630407,\"minimum_party_size\":null,\"maximum_party_size\":null,\"customer_prototype\":{\"display_name\":\"Six Hour Private Yacht Rental\",\"customer_type\":{\"singular\":\"Six Hour Private Yacht Rental\",\"note\":\"\"}}},{\"pk\":7611630409,\"minimum_party_size\":null,\"maximum_party_size\":null,\"customer_prototype\":{\"display_name\":\"Five Hour Private Yacht Rental\",\"customer_type\":{\"singular\":\"Five Hour Private Yacht Rental\",\"note\":\"\"}}}]}}"
+ },
+ {
+  "key": "GET https://fareharbor.com/api/v1/companies/jetskimiamirentals/total-sheets/610469/pricing/availabilities/1812123007/",
+  "url": "https://fareharbor.com/api/v1/companies/jetskimiamirentals/total-sheets/610469/pricing/availabilities/1812123007/",
+  "status": 200,
+  "headers": [
+   [
+    "content-type",
+    "application/json"
+   ],
+   [
+    "set-cookie",
+    "fh-sticking-routing=58c5baa8156d68dc; Path=/; Secure; SameSite=None"
+   ],
+   [
+    "set-cookie",
+    "fh-target-language=en-us; Path=/; SameSite=None; Secure"
+   ],
+   [
+    "set-cookie",
+    "fh-units-language=en-us; Path=/; SameSite=None; Secure"
+   ],
+   [
+    "set-cookie",
+    "fh-content-language=en-us; Path=/; SameSite=None; Secure"
+   ]
+  ],
+  "body": "{\"price_previews\":{\"customer_types\":[{\"customer_type_rate\":7611630403,\"total\":75600},{\"customer_type_rate\":7611630405,\"total\":97200},{\"customer_type_rate\":7611630407,\"total\":129600},{\"customer_type_rate\":7611630409,\"total\":118800}]}}"
+ },
+ {
+  "key": "GET https://fareharbor.com/api/v1/companies/jetskimiamirentals/items/656102/availabilities/1812787163/",
+  "url": "https://fareharbor.com/api/v1/companies/jetskimiamirentals/items/656102/availabilities/1812787163/",
+  "status": 200,
+  "headers": [
+   [
+    "content-type",
+    "application/json"
+   ],
+   [
+    "set-cookie",
+    "fh-sticking-routing=58c5baa8156d68dc; Path=/; Secure; SameSite=None"
+   ],
+   [
+    "set-cookie",
+    "fh-target-language=en-us; Path=/; SameSite=None; Secure"
+   ],
+   [
+    "set-cookie",
+    "fh-units-language=en-us; Path=/; SameSite=None; Secure"
+   ],
+   [
+    "set-cookie",
+    "fh-content-language=en-us; Path=/; SameSite=None; Secure"
+   ]
+  ],
+  "body": "{\"availability\":{\"pk\":1812787163,\"customer_type_rates\":[{\"pk\":7614011418,\"minimum_party_size\":null,\"maximum_party_size\":null,\"customer_prototype\":{\"display_name\":\"Four Hour Private Yacht Rental\",\"customer_type\":{\"singular\":\"Four Hour Private Yacht Rental\",\"note\":\"\"}}},{\"pk\":7614011419,\"minimum_party_size\":null,\"maximum_party_size\":null,\"customer_prototype\":{\"display_name\":\"Six Hour Private Yacht Rental\",\"customer_type\":{\"singular\":\"Six Hour Private Yacht Rental\",\"note\":\"\"}}},{\"pk\":7614011420,\"minimum_party_size\":null,\"maximum_party_size\":null,\"customer_prototype\":{\"display_name\":\"Five Hour Private Yacht Rental\",\"customer_type\":{\"singular\":\"Five Hour Private Yacht Rental\",\"note\":\"\"}}}]}}"
+ },
+ {
+  "key": "GET https://fareharbor.com/api/v1/companies/jetskimiamirentals/total-sheets/610469/pricing/availabilities/1812787163/",
+  "url": "https://fareharbor.com/api/v1/companies/jetskimiamirentals/total-sheets/610469/pricing/availabilities/1812787163/",
+  "status": 200,
+  "headers": [
+   [
+    "content-type",
+    "application/json"
+   ],
+   [
+    "set-cookie",
+    "fh-sticking-routing=58c5baa8156d68dc; Path=/; Secure; SameSite=None"
+   ],
+   [
+    "set-cookie",
+    "fh-target-language=en-us; Path=/; SameSite=None; Secure"
+   ],
+   [
+    "set-cookie",
+    "fh-units-language=en-us; Path=/; SameSite=None; Secure"
+   ],
+   [
+    "set-cookie",
+    "fh-content-language=en-us; Path=/; SameSite=None; Secure"
+   ]
+  ],
+  "body": "{\"price_previews\":{\"customer_types\":[{\"customer_type_rate\":7614011418,\"total\":124200},{\"customer_type_rate\":7614011419,\"total\":172800},{\"customer_type_rate\":7614011420,\"total\":145800}]}}"
+ },
+ {
+  "key": "GET https://fareharbor.com/api/v1/companies/jetskimiamirentals/items/583877/availabilities/1974380005/",
+  "url": "https://fareharbor.com/api/v1/companies/jetskimiamirentals/items/583877/availabilities/1974380005/",
+  "status": 200,
+  "headers": [
+   [
+    "content-type",
+    "application/json"
+   ],
+   [
+    "set-cookie",
+    "fh-sticking-routing=58c5baa8156d68dc; Path=/; Secure; SameSite=None"
+   ],
+   [
+    "set-cookie",
+    "fh-target-language=en-us; Path=/; SameSite=None; Secure"
+   ],
+   [
+    "set-cookie",
+    "fh-units-language=en-us; Path=/; SameSite=None; Secure"
+   ],
+   [
+    "set-cookie",
+    "fh-content-language=en-us; Path=/; SameSite=None; Secure"
+   ]
+  ],
+  "body": "{\"availability\":{\"pk\":1974380005,\"customer_type_rates\":[{\"pk\":8329261582,\"minimum_party_size\":null,\"maximum_party_size\":null,\"customer_prototype\":{\"display_name\":\"One Hour Jet Ski Rental • Single Rider\",\"customer_type\":{\"singular\":\"One Hour Jet Ski Rental • Single Rider\",\"note\":\"\"}}},{\"pk\":8329261583,\"minimum_party_size\":null,\"maximum_party_size\":null,\"customer_prototype\":{\"display_name\":\"One hour double riders\",\"customer_type\":{\"singular\":\"One Hour Jet Ski Rental • Two Riders\",\"note\":\"\"}}},{\"pk\":8329261584,\"minimum_party_size\":null,\"maximum_party_size\":null,\"customer_prototype\":{\"display_name\":\"PICTURE package 2 videos multiple picture o\",\"customer_type\":{\"singular\":\"One Hour Exclusive Jet Ski Tour\",\"note\":\"\"}}},{\"pk\":8329261585,\"minimum_party_size\":null,\"maximum_party_size\":null,\"customer_prototype\":{\"display_name\":\"One hour  pics and videos\",\"customer_type\":{\"singular\":\"One Hour Jet Ski Rental Deluxe\",\"note\":\"\"}}},{\"pk\":8329261586,\"minimum_party_size\":null,\"maximum_party_size\":null,\"customer_prototype\":{\"display_name\":\"Two Hour Rental • One Jet Ski\",\"customer_type\":{\"singular\":\"Two Hour Rental • One Jet Ski\",\"note\":\"Jet Skis seat 2 people!\"}}},{\"pk\":8329261587,\"minimum_party_size\":null,\"maximum_party_size\":null,\"customer_prototype\":{\"display_name\":\"Special 3X1 Package • Three Hours\",\"customer_type\":{\"singular\":\"Special 3X1 Package • Three Hours\",\"note\":\"Jet Ski, Slingshot, Boat Ride\"}}}]}}"
+ },
+ {
+  "key": "GET https://fareharbor.com/api/v1/companies/jetskimiamirentals/total-sheets/610469/pricing/availabilities/1974380005/",
+  "url": "https://fareharbor.com/api/v1/companies/jetskimiamirentals/total-sheets/610469/pricing/availabilities/1974380005/",
+  "status": 200,
+  "headers": [
+   [
+    "content-type",
+    "application/json"
+   ],
+   [
+    "set-cookie",
+    "fh-sticking-routing=58c5baa8156d68dc; Path=/; Secure; SameSite=None"
+   ],
+   [
+    "set-cookie",
+    "fh-target-language=en-us; Path=/; SameSite=None; Secure"
+   ],
+   [
+    "set-cookie",
+    "fh-units-language=en-us; Path=/; SameSite=None; Secure"
+   ],
+   [
+    "set-cookie",
+    "fh-content-language=en-us; Path=/; SameSite=None; Secure"
+   ]
+  ],
+  "body": "{\"price_previews\":{\"customer_types\":[{\"customer_type_rate\":8329261582,\"total\":13500},{\"customer_type_rate\":8329261583,\"total\":16200},{\"customer_type_rate\":8329261585,\"total\":17820},{\"customer_type_rate\":8329261586,\"total\":28080},{\"customer_type_rate\":8329261587,\"total\":27000}]}}"
+ },
+ {
+  "key": "GET https://fareharbor.com/api/v1/companies/jetskimiamirentals/items/689400/availabilities/1936930403/",
+  "url": "https://fareharbor.com/api/v1/companies/jetskimiamirentals/items/689400/availabilities/1936930403/",
+  "status": 200,
+  "headers": [
+   [
+    "content-type",
+    "application/json"
+   ],
+   [
+    "set-cookie",
+    "fh-sticking-routing=58c5baa8156d68dc; Path=/; Secure; SameSite=None"
+   ],
+   [
+    "set-cookie",
+    "fh-target-language=en-us; Path=/; SameSite=None; Secure"
+   ],
+   [
+    "set-cookie",
+    "fh-units-language=en-us; Path=/; SameSite=None; Secure"
+   ],
+   [
+    "set-cookie",
+    "fh-content-language=en-us; Path=/; SameSite=None; Secure"
+   ]
+  ],
+  "body": "{\"availability\":{\"pk\":1936930403,\"customer_type_rates\":[{\"pk\":8164640172,\"minimum_party_size\":null,\"maximum_party_size\":null,\"customer_prototype\":{\"display_name\":\"JETSKI+ HORSE\",\"customer_type\":{\"singular\":\"JETSKI+ HORSE\",\"note\":\"\"}}}]}}"
+ },
+ {
+  "key": "GET https://fareharbor.com/api/v1/companies/jetskimiamirentals/total-sheets/610469/pricing/availabilities/1936930403/",
+  "url": "https://fareharbor.com/api/v1/companies/jetskimiamirentals/total-sheets/610469/pricing/availabilities/1936930403/",
+  "status": 200,
+  "headers": [
+   [
+    "content-type",
+    "application/json"
+   ],
+   [
+    "set-cookie",
+    "fh-sticking-routing=58c5baa8156d68dc; Path=/; Secure; SameSite=None"
+   ],
+   [
+    "set-cookie",
+    "fh-target-language=en-us; Path=/; SameSite=None; Secure"
+   ],
+   [
+    "set-cookie",
+    "fh-units-language=en-us; Path=/; SameSite=None; Secure"
+   ],
+   [
+    "set-cookie",
+    "fh-content-language=en-us; Path=/; SameSite=None; Secure"
+   ]
+  ],
+  "body": "{\"price_previews\":{\"customer_types\":[{\"customer_type_rate\":8164640172,\"total\":24840}]}}"
+ },
+ {
+  "key": "GET https://fareharbor.com/api/v1/companies/jetskimiamirentals/items/713163/availabilities/2040102826/",
+  "url": "https://fareharbor.com/api/v1/companies/jetskimiamirentals/items/713163/availabilities/2040102826/",
+  "status": 200,
+  "headers": [
+   [
+    "content-type",
+    "application/json"
+   ],
+   [
+    "set-cookie",
+    "fh-sticking-routing=58c5baa8156d68dc; Path=/; Secure; SameSite=None"
+   ],
+   [
+    "set-cookie",
+    "fh-target-language=en-us; Path=/; SameSite=None; Secure"
+   ],
+   [
+    "set-cookie",
+    "fh-units-language=en-us; Path=/; SameSite=None; Secure"
+   ],
+   [
+    "set-cookie",
+    "fh-content-language=en-us; Path=/; SameSite=None; Secure"
+   ]
+  ],
+  "body": "{\"availability\":{\"pk\":2040102826,\"customer_type_rates\":[{\"pk\":8617896120,\"minimum_party_size\":null,\"maximum_party_size\":null,\"customer_prototype\":{\"display_name\":\"parasailing atv\",\"customer_type\":{\"singular\":\"parasailing atv\",\"note\":\"\"}}}]}}"
+ },
+ {
+  "key": "GET https://fareharbor.com/api/v1/companies/jetskimiamirentals/total-sheets/610469/pricing/availabilities/2040102826/",
+  "url": "https://fareharbor.com/api/v1/companies/jetskimiamirentals/total-sheets/610469/pricing/availabilities/2040102826/",
+  "status": 200,
+  "headers": [
+   [
+    "content-type",
+    "application/json"
+   ],
+   [
+    "set-cookie",
+    "fh-sticking-routing=58c5baa8156d68dc; Path=/; Secure; SameSite=None"
+   ],
+   [
+    "set-cookie",
+    "fh-target-language=en-us; Path=/; SameSite=None; Secure"
+   ],
+   [
+    "set-cookie",
+    "fh-units-language=en-us; Path=/; SameSite=None; Secure"
+   ],
+   [
+    "set-cookie",
+    "fh-content-language=en-us; Path=/; SameSite=None; Secure"
+   ]
+  ],
+  "body": "{\"price_previews\":{\"customer_types\":[{\"customer_type_rate\":8617896120,\"total\":21600}]}}"
+ },
+ {
+  "key": "GET https://fareharbor.com/api/v1/companies/jetskimiamirentals/items/736520/availabilities/2101136147/",
+  "url": "https://fareharbor.com/api/v1/companies/jetskimiamirentals/items/736520/availabilities/2101136147/",
+  "status": 200,
+  "headers": [
+   [
+    "content-type",
+    "application/json"
+   ],
+   [
+    "set-cookie",
+    "fh-sticking-routing=58c5baa8156d68dc; Path=/; Secure; SameSite=None"
+   ],
+   [
+    "set-cookie",
+    "fh-target-language=en-us; Path=/; SameSite=None; Secure"
+   ],
+   [
+    "set-cookie",
+    "fh-units-language=en-us; Path=/; SameSite=None; Secure"
+   ],
+   [
+    "set-cookie",
+    "fh-content-language=en-us; Path=/; SameSite=None; Secure"
+   ]
+  ],
+  "body": "{\"availability\":{\"pk\":2101136147,\"customer_type_rates\":[{\"pk\":8902433815,\"minimum_party_size\":null,\"maximum_party_size\":null,\"customer_prototype\":{\"display_name\":\"Parasailing\",\"customer_type\":{\"singular\":\"Parasailing\",\"note\":\"\"}}}]}}"
+ },
+ {
+  "key": "GET https://fareharbor.com/api/v1/companies/jetskimiamirentals/total-sheets/610469/pricing/availabilities/2101136147/",
+  "url": "https://fareharbor.com/api/v1/companies/jetskimiamirentals/total-sheets/610469/pricing/availabilities/2101136147/",
+  "status": 200,
+  "headers": [
+   [
+    "content-type",
+    "application/json"
+   ],
+   [
+    "set-cookie",
+    "fh-sticking-routing=58c5baa8156d68dc; Path=/; Secure; SameSite=None"
+   ],
+   [
+    "set-cookie",
+    "fh-target-language=en-us; Path=/; SameSite=None; Secure"
+   ],
+   [
+    "set-cookie",
+    "fh-units-language=en-us; Path=/; SameSite=None; Secure"
+   ],
+   [
+    "set-cookie",
+    "fh-content-language=en-us; Path=/; SameSite=None; Secure"
+   ]
+  ],
+  "body": "{\"price_previews\":{\"customer_types\":[{\"customer_type_rate\":8902433815,\"total\":12960}]}}"
+ },
+ {
+  "key": "GET https://fareharbor.com/api/v1/companies/jetskimiamirentals/items/687153/availabilities/1936759406/",
+  "url": "https://fareharbor.com/api/v1/companies/jetskimiamirentals/items/687153/availabilities/1936759406/",
+  "status": 200,
+  "headers": [
+   [
+    "content-type",
+    "application/json"
+   ],
+   [
+    "set-cookie",
+    "fh-sticking-routing=58c5baa8156d68dc; Path=/; Secure; SameSite=None"
+   ],
+   [
+    "set-cookie",
+    "fh-target-language=en-us; Path=/; SameSite=None; Secure"
+   ],
+   [
+    "set-cookie",
+    "fh-units-language=en-us; Path=/; SameSite=None; Secure"
+   ],
+   [
+    "set-cookie",
+    "fh-content-language=en-us; Path=/; SameSite=None; Secure"
+   ]
+  ],
+  "body": "{\"availability\":{\"pk\":1936759406,\"customer_type_rates\":[{\"pk\":8163894720,\"minimum_party_size\":null,\"maximum_party_size\":null,\"customer_prototype\":{\"display_name\":\"Single horse riding\",\"customer_type\":{\"singular\":\"Single horse riding\",\"note\":\"12 years and up\"}}}]}}"
+ },
+ {
+  "key": "GET https://fareharbor.com/api/v1/companies/jetskimiamirentals/total-sheets/610469/pricing/availabilities/1936759406/",
+  "url": "https://fareharbor.com/api/v1/companies/jetskimiamirentals/total-sheets/610469/pricing/availabilities/1936759406/",
+  "status": 200,
+  "headers": [
+   [
+    "content-type",
+    "application/json"
+   ],
+   [
+    "set-cookie",
+    "fh-sticking-routing=58c5baa8156d68dc; Path=/; Secure; SameSite=None"
+   ],
+   [
+    "set-cookie",
+    "fh-target-language=en-us; Path=/; SameSite=None; Secure"
+   ],
+   [
+    "set-cookie",
+    "fh-units-language=en-us; Path=/; SameSite=None; Secure"
+   ],
+   [
+    "set-cookie",
+    "fh-content-language=en-us; Path=/; SameSite=None; Secure"
+   ]
+  ],
+  "body": "{\"price_previews\":{\"customer_types\":[{\"customer_type_rate\":8163894720,\"total\":12960}]}}"
+ },
+ {
+  "key": "GET https://fareharbor.com/api/v1/companies/jetskimiamirentals/items/736537/availabilities/2101159630/",
+  "url": "https://fareharbor.com/api/v1/companies/jetskimiamirentals/items/736537/availabilities/2101159630/",
+  "status": 200,
+  "headers": [
+   [
+    "content-type",
+    "application/json"
+   ],
+   [
+    "set-cookie",
+    "fh-sticking-routing=58c5baa8156d68dc; Path=/; Secure; SameSite=None"
+   ],
+   [
+    "set-cookie",
+    "fh-target-language=en-us; Path=/; SameSite=None; Secure"
+   ],
+   [
+    "set-cookie",
+    "fh-units-language=en-us; Path=/; SameSite=None; Secure"
+   ],
+   [
+    "set-cookie",
+    "fh-content-language=en-us; Path=/; SameSite=None; Secure"
+   ]
+  ],
+  "body": "{\"availability\":{\"pk\":2101159630,\"customer_type_rates\":[{\"pk\":8902575164,\"minimum_party_size\":null,\"maximum_party_size\":null,\"customer_prototype\":{\"display_name\":\"jetcar and atv\",\"customer_type\":{\"singular\":\"jetcar and atv\",\"note\":\"\"}}}]}}"
+ },
+ {
+  "key": "GET https://fareharbor.com/api/v1/companies/jetskimiamirentals/total-sheets/610469/pricing/availabilities/2101159630/",
+  "url": "https://fareharbor.com/api/v1/companies/jetskimiamirentals/total-sheets/610469/pricing/availabilities/2101159630/",
+  "status": 200,
+  "headers": [
+   [
+    "content-type",
+    "application/json"
+   ],
+   [
+    "set-cookie",
+    "fh-sticking-routing=58c5baa8156d68dc; Path=/; Secure; SameSite=None"
+   ],
+   [
+    "set-cookie",
+    "fh-target-language=en-us; Path=/; SameSite=None; Secure"
+   ],
+   [
+    "set-cookie",
+    "fh-units-language=en-us; Path=/; SameSite=None; Secure"
+   ],
+   [
+    "set-cookie",
+    "fh-content-language=en-us; Path=/; SameSite=None; Secure"
+   ]
+  ],
+  "body": "{\"price_previews\":{\"customer_types\":[{\"customer_type_rate\":8902575164,\"total\":37800}]}}"
+ },
+ {
+  "key": "GET https://fareharbor.com/api/v1/companies/jetskimiamirentals/items/687167/availabilities/1936731974/",
+  "url": "https://fareharbor.com/api/v1/companies/jetskimiamirentals/items/687167/availabilities/1936731974/",
+  "status": 200,
+  "headers": [
+   [
+    "content-type",
+    "application/json"
+   ],
+   [
+    "set-cookie",
+    "fh-sticking-routing=58c5baa8156d68dc; Path=/; Secure; SameSite=None"
+   ],
+   [
+    "set-cookie",
+    "fh-target-language=en-us; Path=/; SameSite=None; Secure"
+   ],
+   [
+    "set-cookie",
+    "fh-units-language=en-us; Path=/; SameSite=None; Secure"
+   ],
+   [
+    "set-cookie",
+    "fh-content-language=en-us; Path=/; SameSite=None; Secure"
+   ]
+  ],
+  "body": "{\"availability\":{\"pk\":1936731974,\"customer_type_rates\":[{\"pk\":8163803056,\"minimum_party_size\":null,\"maximum_party_size\":null,\"customer_prototype\":{\"display_name\":\"Passenger Catamaran\",\"customer_type\":{\"singular\":\"Passenger Catamaran\",\"note\":\"\"}}}]}}"
+ },
+ {
+  "key": "GET https://fareharbor.com/api/v1/companies/jetskimiamirentals/total-sheets/610469/pricing/availabilities/1936731974/",
+  "url": "https://fareharbor.com/api/v1/companies/jetskimiamirentals/total-sheets/610469/pricing/availabilities/1936731974/",
+  "status": 200,
+  "headers": [
+   [
+    "content-type",
+    "application/json"
+   ],
+   [
+    "set-cookie",
+    "fh-sticking-routing=58c5baa8156d68dc; Path=/; Secure; SameSite=None"
+   ],
+   [
+    "set-cookie",
+    "fh-target-language=en-us; Path=/; SameSite=None; Secure"
+   ],
+   [
+    "set-cookie",
+    "fh-units-language=en-us; Path=/; SameSite=None; Secure"
+   ],
+   [
+    "set-cookie",
+    "fh-content-language=en-us; Path=/; SameSite=None; Secure"
+   ]
+  ],
+  "body": "{\"price_previews\":{\"customer_types\":[{\"customer_type_rate\":8163803056,\"total\":17280}]}}"
+ },
+ {
+  "key": "GET https://fareharbor.com/api/v1/companies/jetskimiamirentals/items/706920/availabilities/2015864495/",
+  "url": "https://fareharbor.com/api/v1/companies/jetskimiamirentals/items/706920/availabilities/2015864495/",
+  "status": 200,
+  "headers": [
+   [
+    "content-type",
+    "application/json"
+   ],
+   [
+    "set-cookie",
+    "fh-sticking-routing=58c5baa8156d68dc; Path=/; Secure; SameSite=None"
+   ],
+   [
+    "set-cookie",
+    "fh-target-language=en-us; Path=/; SameSite=None; Secure"
+   ],
+   [
+    "set-cookie",
+    "fh-units-language=en-us; Path=/; SameSite=None; Secure"
+   ],
+   [
+    "set-cookie",
+    "fh-content-language=en-us; Path=/; SameSite=None; Secure"
+   ]
+  ],
+  "body": "{\"availability\":{\"pk\":2015864495,\"customer_type_rates\":[{\"pk\":8519635309,\"minimum_party_size\":null,\"maximum_party_size\":null,\"customer_prototype\":{\"display_name\":\"Jet car\",\"customer_type\":{\"singular\":\"Jet car\",\"note\":\"\"}}}]}}"
+ },
+ {
+  "key": "GET https://fareharbor.com/api/v1/companies/jetskimiamirentals/total-sheets/610469/pricing/availabilities/2015864495/",
+  "url": "https://fareharbor.com/api/v1/companies/jetskimiamirentals/total-sheets/610469/pricing/availabilities/2015864495/",
+  "status": 200,
+  "headers": [
+   [
+    "content-type",
+    "application/json"
+   ],
+   [
+    "set-cookie",
+    "fh-sticking-routing=58c5baa8156d68dc; Path=/; Secure; SameSite=None"
+   ],
+   [
+    "set-cookie",
+    "fh-target-language=en-us; Path=/; SameSite=None; Secure"
+   ],
+   [
+    "set-cookie",
+    "fh-units-language=en-us; Path=/; SameSite=None; Secure"
+   ],
+   [
+    "set-cookie",
+    "fh-content-language=en-us; Path=/; SameSite=None; Secure"
+   ]
+  ],
+  "body": "{\"price_previews\":{\"customer_types\":[{\"customer_type_rate\":8519635309,\"total\":32400}]}}"
+ }
+]

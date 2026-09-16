@@ -1,0 +1,1 @@
+Xola seller `5ff8c239f5657f0aa32ee4e5` (a cycle-boat operator in Beach Haven, NJ), captured 15 September 2026 with `readXola`: one exchange, `GET https://xola.com/api/experiences?seller=<id>&limit=100`, stored whole (147 KB). Headers other than content-type were dropped.

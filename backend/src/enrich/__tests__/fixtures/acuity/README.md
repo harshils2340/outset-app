@@ -1,0 +1,1 @@
+Zuma's Rescue Ranch, `zumasbookingpage.as.me/schedule/fc33f127`, captured 15 September 2026 with `readAcuity`: robots.txt and the schedule page whose head carries `var BUSINESS = {...};`, stored whole. Headers other than content-type were dropped.

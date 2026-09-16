@@ -1,0 +1,1 @@
+FishWater Outfitters (charleston-flyfishing.com; `book.vallypro.com/p/wwwfishwateroutfitterscom`, trip `66fc93ccfd2e05899e7ec87d`), captured 15 September 2026 with `readVallypro`: the business lookup and the departure feed for this month and next (3 exchanges), stored whole. Headers other than content-type were dropped. Month numbers in request URLs are normalised on replay.

@@ -1,0 +1,1 @@
+Burble dropzone 2943 (`store.burblesoft.com/?dz_id=2943`), captured 15 September 2026 with `readBurble`: the store's robots.txt (404), the store front and one detail page per jump product (6 exchanges), stored whole. Headers other than content-type and set-cookie were dropped.

@@ -1,0 +1,1 @@
+Rocky Fork Boat Rental, Ohio (`rocky-fork-boat-rental.checkfront.com`), captured 15 September 2026 with `readCheckfront`: robots.txt, /reserve/, the dated inventory JSON and one `POST /reserve/api/?call=rate` per item (20 exchanges), stored whole. Headers other than content-type were dropped. Dates in request URLs and bodies are normalised on replay.

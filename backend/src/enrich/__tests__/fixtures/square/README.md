@@ -1,0 +1,1 @@
+Eye Spy Escape Rooms, Abilene TX (Square widget `rivga4vgg85qfq`, location `LN0J87F6T53R6`), captured 15 September 2026 with `readSquare`: book.squareup.com/robots.txt and the location root whose `<meta name="widget">` carries the state, stored whole. Headers other than content-type were dropped.
