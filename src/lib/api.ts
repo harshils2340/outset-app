@@ -149,6 +149,28 @@ export function saveRemoteProfile(id: string, body: { profile: unknown; patch: P
   }, 1200);
 }
 
+/**
+ * "Release this listing" in Settings: drop the profile row and every email link, so the listing is unclaimed
+ * for guests and on the owner's other devices, not only in this browser.
+ *
+ * Any save still sitting in the debounce above is thrown away first. A keystroke a second before the press
+ * would otherwise land as a PUT after this DELETE and write the whole profile straight back.
+ *
+ * `false` means the server still holds it, and the caller has to say so rather than report a clean release.
+ */
+export async function releaseRemoteProfile(id: string): Promise<boolean> {
+  if (queued?.id === id) {
+    queued = null;
+    if (pending) clearTimeout(pending);
+    pending = null;
+  }
+  if (!API_URL) return false;
+  const h = authHeaders(id);
+  if (!h["x-claim-token"] && !h["x-session"]) return false;
+  const r = await call(`/profiles/${encodeURIComponent(id)}`, { method: "DELETE", headers: h, timeout: 10000 });
+  return r.ok;
+}
+
 /* ---------- claiming from the operator site ---------- */
 
 export type ClaimRule = { known: boolean; hasEmail: boolean; hint: string | null; domains: string[] };

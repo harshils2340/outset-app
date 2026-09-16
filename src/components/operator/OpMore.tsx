@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { connectPayouts, hasApi, payoutStatus, setPayoutSchedule, type PayoutInterval, type PayoutState, type PayoutStatus } from "../../lib/api";
+import { connectPayouts, hasApi, payoutStatus, releaseRemoteProfile, setPayoutSchedule, type PayoutInterval, type PayoutState, type PayoutStatus } from "../../lib/api";
 import { dateKey, startOfToday } from "../../lib/dates";
 import { money } from "../../lib/format";
 import { OWNER_EMAIL_MAX, OWNER_NAME_MAX, OWNER_PHONE_MAX, bookingTotal, deleteProfile, isoToDate, relDay, validOwnerEmail, validOwnerPhone } from "../../lib/operator";
@@ -213,6 +213,26 @@ export function OpPayouts() {
 export function OpSettings() {
   const { p, set, compact, go, logout, toast } = useOp();
   const [confirm, setConfirm] = useState(false);
+  const [releasing, setReleasing] = useState(false);
+  /**
+   * Release the listing on the server first, then on this device. Clearing localStorage alone left the profile
+   * row and the email link in place: every guest kept getting the operator's edits through GET /profiles/:id,
+   * the nightly sync kept baking them into the rails, and signing back in restored the lot. The owner had
+   * pressed a button that says it puts the listing back the way we built it.
+   */
+  const release = async () => {
+    if (releasing) return;
+    setReleasing(true);
+    const ok = hasApi() ? await releaseRemoteProfile(p.id) : true;
+    if (!ok) {
+      setReleasing(false);
+      setConfirm(false);
+      toast("Could not release the listing. Nothing was changed. Try again.");
+      return;
+    }
+    deleteProfile(p.id);
+    logout();
+  };
   const badEmail = !!p.ownerEmail.trim() && !validOwnerEmail(p.ownerEmail);
   const badPhone = !!p.ownerPhone.trim() && !validOwnerPhone(p.ownerPhone);
   const alertEmail = validOwnerEmail(p.ownerEmail) ? p.ownerEmail.trim() : "";
@@ -292,11 +312,11 @@ export function OpSettings() {
           <button type="button" className="odghost" onClick={logout}><Markup html={OD_ICONS.logout} /> Log out</button>
         </div>
         <div className="odrow">
-          <span className="meta"><b>Release this listing</b><small>Removes your edits and puts the listing back the way we built it.</small></span>
+          <span className="meta"><b>Release this listing</b><small>Removes your edits everywhere and puts the listing back the way we built it. You can claim it again from your email.</small></span>
           {confirm ? (
             <div className="odbtns">
-              <button type="button" className="odghost" onClick={() => setConfirm(false)}>Keep</button>
-              <button type="button" className="odghost danger" onClick={() => { deleteProfile(p.id); logout(); }}>Yes, release</button>
+              <button type="button" className="odghost" disabled={releasing} onClick={() => setConfirm(false)}>Keep</button>
+              <button type="button" className="odghost danger" disabled={releasing} onClick={() => void release()}>{releasing ? "Releasing…" : "Yes, release"}</button>
             </div>
           ) : (
             <button type="button" className="odghost danger" onClick={() => setConfirm(true)}>Release</button>

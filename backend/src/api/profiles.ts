@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { ID, idsWith, jsonBody, linkEmailToListing, mayEdit, rateLimit, signSession, verifySession } from "./auth.ts";
 import { maskEmail } from "../lib/claimIndex.ts";
-import { getProfile, listProfileEdits, updateProfile } from "../lib/repo.ts";
+import { deleteProfile, getProfile, listProfileEdits, unlinkListing, updateProfile } from "../lib/repo.ts";
 
 /**
  * Operator profiles, one row per listing in Postgres. Guests read the `patch` (title, photos, menu, hours...) and
@@ -100,4 +100,27 @@ profiles.put("/profiles/:id", rateLimit(600, 60 * 60 * 1000), async (c) => {
   });
   if (rec.owner.email && rec.owner.email !== before) await linkEmailToListing(rec.owner.email, id);
   return c.json({ ok: true, updatedAt: now });
+});
+
+/**
+ * "Release this listing" in the dashboard's Settings. Deletes the stored profile and unlinks the id from every
+ * email that could sign in to it, which is what "claimed" means on this side, so the listing goes back to the
+ * crawled record for every guest and on every device.
+ *
+ * Before this the app only cleared its own localStorage. The row stayed, so GET /profiles/:id kept serving the
+ * operator's patch to every guest who opened the listing, the nightly sync kept baking those edits into the
+ * rails, and the email link stayed, so the owner signing in again got the whole profile back. The button said
+ * "Removes your edits and puts the listing back the way we built it" and removed nothing that outlived the tab.
+ *
+ * Same gate as every other write here: a claim token for this listing, or a session that lists it. Bookings are
+ * deliberately left alone: guests hold codes for them and the shop is still expected to turn up.
+ */
+profiles.delete("/profiles/:id", rateLimit(30, 60 * 60 * 1000), async (c) => {
+  const id = String(c.req.param("id") ?? "");
+  if (!ID.test(id)) return c.json({ error: "bad id" }, 400);
+  if (!mayEdit(c, id)) return c.json({ error: "not allowed" }, 403);
+  const removed = await deleteProfile(id);
+  const unlinked = await unlinkListing(id);
+  console.warn(`[claim] ${id} released by its owner, profile ${removed ? "deleted" : "was not there"}, unlinked from ${unlinked} email(s)`);
+  return c.json({ ok: true, removed, unlinked });
 });

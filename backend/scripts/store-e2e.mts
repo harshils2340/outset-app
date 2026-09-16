@@ -252,6 +252,41 @@ const hashes = await localUnsubHashes();
 check("hash recorded and read back", hashes.has(emailHash("optout@e2e-store.example")));
 await query("delete from documents where key = 'mail/unsub.json'");
 
+/**
+ * Releasing a listing has to outlive the browser that pressed the button. Settings' "Release this listing"
+ * only cleared localStorage, so the profile row and the email link stayed: every guest kept being served the
+ * operator's patch, the nightly sync kept baking it into the rails, and the owner signing back in got the
+ * whole profile returned to them. Nothing the button promised actually happened.
+ */
+console.log("\n12. Releasing a listing clears it on the server, not only on the device");
+{
+  const before = await query<{ n: string }>("select count(*)::text as n from profile_emails where listing = $1", [ID]);
+  check("the listing is claimed and linked to at least one email to start with", Number(before[0]?.n || 0) > 0, before);
+
+  r = await json(`/profiles/${ID}`, { method: "DELETE" });
+  check("a stranger cannot release someone's listing", r.status === 403, r);
+  const still = await query<{ id: string }>("select id from profiles where id = $1", [ID]);
+  check("and the profile is untouched by the attempt", still.length === 1, still);
+
+  r = await json(`/profiles/${ID}`, { method: "DELETE", headers: { "x-session": session } });
+  check("the owner's session releases it", r.status === 200 && r.body?.removed === true, r);
+
+  const gone = await query<{ id: string }>("select id from profiles where id = $1", [ID]);
+  check("the profile row is gone", gone.length === 0, gone);
+  const unlinked = await query<{ n: string }>("select count(*)::text as n from profile_emails where listing = $1", [ID]);
+  check("no email can sign in to it any more, so it does not come back on the next sign-in", unlinked[0]?.n === "0", unlinked);
+
+  r = await json(`/profiles/${ID}`);
+  check("a guest opening the listing gets no patch, so the crawled record is what they see", r.status === 404, r);
+
+  const edits = ((await json("/listing-edits")).body?.edits as { id: string }[] | undefined) || [];
+  check("the nightly sync no longer carries the released listing's edits", !edits.some((e) => e.id === ID), edits.length);
+
+  // The guests who already booked still hold their codes, and the shop is still expected to turn up.
+  const kept = await query<{ code: string }>("select code from bookings where listing = $1", [ID]);
+  check("bookings already taken are left alone", kept.length > 0, kept.length);
+}
+
 console.log(failures ? `\n${failures} check(s) failed` : "\nAll store checks passed");
 await closePg();
 process.exit(failures ? 1 : 0);
