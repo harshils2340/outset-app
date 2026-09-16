@@ -937,7 +937,11 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
   const addressRaw = contact ? addressLine(contact) : null;
   const address = addressRaw ? tidyAddress(addressRaw) : null;
   const facts = listingFacts(item);
-  const guide = GUIDES[item.art];
+  // The operator's own guide (edited on the dashboard) replaces the steps, bring list and "good for" of the
+  // kind's default; the default's time and nerves lines stay. With no default for the kind, theirs stands alone.
+  const guide = item.guide && (item.guide.steps.length || item.guide.bring.length || item.guide.goodFor)
+    ? { ...(GUIDES[item.art] || { hook: "", time: "", nerves: "" }), ...item.guide }
+    : GUIDES[item.art];
   // The hero lays itself out from the media that really loads. Every photo is probed at thumbnail size up front so a
   // dead URL or a 40 px logo never claims a tile; a tile that still fails later drops out and the grid re-picks.
   const candidates = photoCandidates(item);
@@ -1034,7 +1038,6 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
   // Attractions sell entry, not a slot. With no menu to book, the card becomes hours plus a tickets link.
   const VISIT_ARTS = new Set(["zoo", "aquarium", "themepark", "waterpark", "museum", "garden", "theatre", "arcade", "icerink", "trampoline", "bowling", "minigolf", "billiards", "camping", "sauna", "swim", "tennis", "discgolf", "venue", "brewery", "winery", "distillery"]);
   const visit = !needService && VISIT_ARTS.has(item.art);
-  const visitOpen = useMemo(() => (visit ? itemOpenState(item) : null), [visit, item]);
   const visitWeek = useMemo(() => (visit ? itemWeek(item) : null), [visit, item]);
   const clock = (m: number) => fmtTime(String(Math.floor(m / 60)).padStart(2, "0") + ":" + String(m % 60).padStart(2, "0"));
   // The shop paused bookings or hid the listing in its dashboard. The page still opens by its own link, so a
@@ -1160,8 +1163,9 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
   const blurb = item.blurb ? cleanDesc(item.blurb).replace(/\s+(Book|Learn more|Read more|Reserve)\.?$/i, "") : "";
 
   // The grey line under the subtitle, Airbnb's "4 guests · 2 bedrooms · 2 beds": only what the operator states.
+  // The duration is not here: it belongs on the tiers and in the booking box. The line above this one is the
+  // open status ("Open · closes 7 PM"), and only when the business publishes hours; no hours, no line, no guess.
   const keyFacts: string[] = [];
-  if (duration) keyFacts.push(duration);
   if (groupCap) keyFacts.push("Up to " + groupCap + " guests");
   if (age) keyFacts.push("Ages " + age + "+");
   if (item.season && item.season.length <= 32) keyFacts.push(item.season);
@@ -1175,11 +1179,7 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
     rows.push({ icon: I.tag, title: "Deal today", text: dealShown(d).title + (d.code ? ", code " + d.code : "") + (d.end ? ", until " + clock12(d.end) : d.start ? ", from " + clock12(d.start) : "") });
   }
   if (live) rows.push({ icon: I.calendar, title: "Live times from their calendar", text: "Start times come straight from " + possessive(item.title) + " own booking system." });
-  if (openNow?.open) {
-    // The label already opens with "Open now"; the grey line carries only the rest ("Closes 7 PM.").
-    const rest = openNow.label.replace(/^open now[,.]?\s*/i, "");
-    rows.push({ icon: I.clock, title: "Open now", text: rest ? rest.charAt(0).toUpperCase() + rest.slice(1) + "." : "From the hours they publish." });
-  }
+  // Open status is the header line under the subtitle now, so it is not repeated as a highlight row.
   if (cancel) rows.push({ icon: I.calendar, title: cancel, text: "Plans change. Their published policy lets you cancel for a full refund." });
   if (instant) rows.push({ icon: I.bolt, title: "Instant confirmation", text: "Your spot is confirmed the moment you book." });
   else if (!visit) rows.push({ icon: I.message, title: "Request to book", text: "The business confirms by email. Nothing is charged until they do." });
@@ -1449,6 +1449,7 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
           <div className="almain">
             <section className="alsec alintro">
               <h2>{typeName} in {placeName(item.area)}</h2>
+              {openNow ? <p className={"alstatus " + (openNow.open ? (openNow.soon ? "soon" : "open") : "closed")}>{openNow.line}</p> : null}
               {keyFacts.length ? <p className="alfacts">{keyFacts.join(" · ")}</p> : null}
               {!topRated && score ? (
                 <p className="alrateline">
@@ -1695,7 +1696,6 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
                   <span className="alprice"><b>Plan your visit</b></span>
                   {score ? <span className="alreserverate"><Markup html={I.star} /> {score.rating.toFixed(1)} · <u>{fmtReviews(score.reviews)} reviews</u></span> : null}
                 </div>
-                {visitOpen ? <p className={"alopen" + (visitOpen.open ? " on" : "")}>{visitOpen.label}</p> : null}
                 <div className="albox">
                   <div className="alboxcell static">
                     <small>Hours</small>
@@ -2108,18 +2108,32 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
       {modal === "guide" && guide ? (
         <Modal label="What it's like" onClose={() => setModal(null)}>
           <h2 className="almodaltitle">What {KIND[item.art] || "this"} is actually like</h2>
-          <p className="alsecsub">{guide.time}</p>
-          <ol className="alsteps">
-            {guide.steps.map((s, i) => (
-              <li key={i}><span className="n">{i + 1}</span><span>{s}</span></li>
-            ))}
-          </ol>
-          <h3 className="almodalsub">Bring</h3>
-          <ul className="almodallist">{guide.bring.map((b) => <li key={b}>{b}</li>)}</ul>
-          <h3 className="almodalsub">Good for</h3>
-          <p className="almodaltext">{guide.goodFor}</p>
-          <h3 className="almodalsub">Nervous?</h3>
-          <p className="almodaltext">{guide.nerves}</p>
+          {guide.time ? <p className="alsecsub">{guide.time}</p> : null}
+          {guide.steps.length ? (
+            <ol className="alsteps">
+              {guide.steps.map((s, i) => (
+                <li key={i}><span className="n">{i + 1}</span><span>{s}</span></li>
+              ))}
+            </ol>
+          ) : null}
+          {guide.bring.length ? (
+            <>
+              <h3 className="almodalsub">Bring</h3>
+              <ul className="almodallist">{guide.bring.map((b, i) => <li key={i}>{b}</li>)}</ul>
+            </>
+          ) : null}
+          {guide.goodFor ? (
+            <>
+              <h3 className="almodalsub">Good for</h3>
+              <p className="almodaltext">{guide.goodFor}</p>
+            </>
+          ) : null}
+          {guide.nerves ? (
+            <>
+              <h3 className="almodalsub">Nervous?</h3>
+              <p className="almodaltext">{guide.nerves}</p>
+            </>
+          ) : null}
         </Modal>
       ) : null}
 

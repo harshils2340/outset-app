@@ -444,8 +444,10 @@ function RequestBody({
   const dealsNow = todaysDeals(item);
   const today = item.promos?.length ? clockIn(zoneFor(item)).day : -1;
   /* Airbnb's highlight rows: an icon, a bold line, a grey line. Only facts this operator actually published. */
-  const rows: { icon: string; title: string; sub: string; tone?: "open" | "closed" }[] = [];
-  if (openNow) rows.push({ icon: ICONS.clock, title: openNow.label, sub: "From the hours they publish", tone: openNow.open ? "open" : "closed" });
+  const rows: { icon: string; title: string; sub: string; tone?: "open" | "soon" | "closed" }[] = [];
+  // The same status line the desktop header shows, so the two do not word it differently: "Closes at 5 PM"
+  // rather than just "Open", and its own tone when closing time is near.
+  if (openNow) rows.push({ icon: ICONS.clock, title: openNow.line, sub: "From the hours they publish", tone: openNow.open ? (openNow.soon ? "soon" : "open") : "closed" });
   if (guestFav && score) rows.push({ icon: ICONS.star, title: "Top rated", sub: "Rated " + fmtRating(score.rating) + " across " + fmtReviews(score.reviews) + " public reviews" });
   else if (score && score.reviews >= 1000) rows.push({ icon: ICONS.star, title: "Popular", sub: fmtReviews(score.reviews) + " public reviews" });
   if (cancel) rows.push({ icon: ICONS.check, title: cancel, sub: "Per their published cancellation terms" });

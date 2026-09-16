@@ -277,6 +277,8 @@
 .airrow b{font-size:16px;font-weight:600;line-height:20px;}
 .airrow small{font-size:14px;line-height:18px;color:var(--air-grey);}
 .airrow.open b{color:var(--open);}
+/* Closing within the hour: the same warm tone the desktop header uses for it. */
+.airrow.soon b{color:var(--few);}
 
 .airdesc{margin:0;font-size:16px;line-height:24px;color:var(--ink);white-space:pre-line;}
 .airdesc.clamp{display:-webkit-box;-webkit-line-clamp:6;-webkit-box-orient:vertical;overflow:hidden;}
