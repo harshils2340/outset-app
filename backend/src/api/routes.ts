@@ -1,3 +1,4 @@
+import { timingSafeEqual } from "node:crypto";
 import { Hono } from "hono";
 import { db, migrate } from "../db/client.ts";
 
@@ -77,7 +78,11 @@ app.use("*", async (c, next) => {
   // live claim tokens. An explicit variable cannot be set by a request.
   const local = process.env.OUTSET_LOCAL_ADMIN === "1";
   if (local && !key) return next();
-  if (key && c.req.header("x-admin-key") === key) return next();
+  // A plain === gives up at the first wrong byte, which is the same weakness the payout run's own gate was
+  // already fixed for. This is the gate in front of everything else internal, the outreach drafts that carry
+  // live claim tokens among them, so it compares the same way.
+  const got = c.req.header("x-admin-key") || "";
+  if (key && got.length === key.length && timingSafeEqual(Buffer.from(got), Buffer.from(key))) return next();
   return c.json({ error: "not found" }, 404);
 });
 
