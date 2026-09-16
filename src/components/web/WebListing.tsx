@@ -993,7 +993,13 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
   const [done, setDone] = useState(false);
   const [guest, setGuest] = useState<{ name: string; phone: string; email?: string }>(() => {
     try {
-      return JSON.parse(localStorage.getItem("outset.guest") || "") || { name: "", phone: "", email: "" };
+      const raw: unknown = JSON.parse(localStorage.getItem("outset.guest") || "null");
+      const g = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
+      return {
+        name: typeof g.name === "string" ? g.name : "",
+        phone: typeof g.phone === "string" ? g.phone : "",
+        ...(typeof g.email === "string" ? { email: g.email } : {}),
+      };
     } catch {
       return { name: "", phone: "" };
     }
@@ -1008,7 +1014,8 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
   const [flash, setFlash] = useState<string | null>(null);
   const [saved, setSaved] = useState(() => {
     try {
-      return (JSON.parse(localStorage.getItem("outset.saved") || "[]") as string[]).includes(item.id);
+      const parsed: unknown = JSON.parse(localStorage.getItem("outset.saved") || "[]");
+      return Array.isArray(parsed) && parsed.includes(item.id);
     } catch {
       return false;
     }
@@ -1297,7 +1304,8 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
     const next = !saved;
     setSaved(next);
     try {
-      const list = (JSON.parse(localStorage.getItem("outset.saved") || "[]") as string[]).filter((x) => x !== item.id);
+      const parsed: unknown = JSON.parse(localStorage.getItem("outset.saved") || "[]");
+      const list = (Array.isArray(parsed) ? parsed.filter((x): x is string => typeof x === "string") : []).filter((x) => x !== item.id);
       localStorage.setItem("outset.saved", JSON.stringify(next ? [...list, item.id] : list));
     } catch {
       /* private window: the heart still fills for this visit */

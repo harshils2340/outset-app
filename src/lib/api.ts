@@ -47,8 +47,12 @@ export function forgetClaim(id: string): void {
 export type ApiSession = { token: string; ids: string[]; email: string; exp: number };
 export function loadApiSession(): ApiSession | null {
   try {
-    const s = JSON.parse(lsGet(SESSION_KEY) || "null") as ApiSession | null;
-    return s && s.exp > Date.now() ? s : null;
+    const raw: unknown = JSON.parse(lsGet(SESSION_KEY) || "null");
+    if (!raw || typeof raw !== "object") return null;
+    const s = raw as Record<string, unknown>;
+    if (typeof s.token !== "string" || typeof s.email !== "string" || typeof s.exp !== "number") return null;
+    if (!Array.isArray(s.ids) || !s.ids.every((x) => typeof x === "string")) return null;
+    return s.exp > Date.now() ? (s as unknown as ApiSession) : null;
   } catch {
     return null;
   }

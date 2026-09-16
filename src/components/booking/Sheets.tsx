@@ -347,7 +347,13 @@ function RequestBody({
   // The operator needs a way to reach whoever booked, and the API refuses a booking without it.
   const [guest, setGuest] = useState<{ name: string; phone: string; email: string }>(() => {
     try {
-      return { name: "", phone: "", email: "", ...(JSON.parse(localStorage.getItem("outset.guest") || "{}") as object) };
+      const raw: unknown = JSON.parse(localStorage.getItem("outset.guest") || "{}");
+      const g = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
+      return {
+        name: typeof g.name === "string" ? g.name : "",
+        phone: typeof g.phone === "string" ? g.phone : "",
+        email: typeof g.email === "string" ? g.email : "",
+      };
     } catch {
       return { name: "", phone: "", email: "" };
     }

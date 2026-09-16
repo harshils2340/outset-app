@@ -21,21 +21,45 @@ export type Prefs = {
 };
 
 const NO_FILTERS: FeedFilters = { fav: false, cancel: false, deal: false, priced: false };
+const DATE_KEY = /^\d{4}-\d{2}-\d{2}$/;
 
-function read<T>(key: string, fallback: T): T {
+// A stale or hand-edited value here used to reach `.includes`/`.filter` on `saved` straight from
+// `JSON.parse`, so a value that was not an array of ids took the whole Explore tab down.
+function readSaved(): string[] {
   try {
-    const raw = localStorage.getItem(key);
-    return raw ? (JSON.parse(raw) as T) : fallback;
+    const raw = localStorage.getItem("outset.saved");
+    const parsed: unknown = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed.filter((x): x is string => typeof x === "string") : [];
   } catch {
-    return fallback;
+    return [];
+  }
+}
+
+function readWhen(): string | null {
+  try {
+    const raw = localStorage.getItem("outset.when");
+    const parsed: unknown = raw ? JSON.parse(raw) : null;
+    return typeof parsed === "string" && DATE_KEY.test(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+function readWho(): number | null {
+  try {
+    const raw = localStorage.getItem("outset.who");
+    const parsed: unknown = raw ? JSON.parse(raw) : null;
+    return typeof parsed === "number" && Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : null;
+  } catch {
+    return null;
   }
 }
 
 let prefs: Prefs = {
-  saved: read<string[]>("outset.saved", []),
+  saved: readSaved(),
   view: "feed",
-  when: read<string | null>("outset.when", null),
-  who: read<number | null>("outset.who", null),
+  when: readWhen(),
+  who: readWho(),
   filters: NO_FILTERS,
   sheetMode: "search",
 };
