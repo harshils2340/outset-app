@@ -165,13 +165,15 @@ auth.post("/auth/request-code", rateLimit(20, 60 * 60 * 1000), async (c) => {
   const body = await jsonBody<{ email: string }>(c);
   const email = bodyText(body.email).trim().toLowerCase();
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return c.json({ error: "enter a valid email" }, 400);
-  // Same answer either way, so this cannot be probed for whether an address has an account.
+  // Same answer either way, in the same time either way: an address with no account must not make this
+  // route wait on a real mail send while one with an account does, or the response latency alone tells an
+  // attacker which addresses have an operator account.
   if (!emailLimit("req:" + email, 5, 60 * 60 * 1000)) return c.json({ ok: true });
   const ids = await idsForEmail(email);
   if (ids.length) {
     const code = String(randomInt(100000, 999999));
     codes.set(email, { hash: codeHash(email, code), exp: Date.now() + 10 * 60 * 1000, tries: 0 });
-    await sendMail({
+    void sendMail({
       to: email,
       subject: "Your Outset sign-in code: " + code,
       ...renderEmail({
@@ -180,7 +182,7 @@ auth.post("/auth/request-code", rateLimit(20, 60 * 60 * 1000), async (c) => {
         intro: ["Type it on the sign-in screen. It works for 10 minutes."],
         after: ["If you did not ask for it, ignore this email and nothing changes."],
       }),
-    });
+    }).catch((e) => console.error(`[auth] sign-in code mail: ${(e as Error).message}`));
   }
   return c.json({ ok: true });
 });
