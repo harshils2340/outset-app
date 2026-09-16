@@ -331,7 +331,21 @@ function foldEntry(idx: Index, u: Unclaimed, i: number): void {
  * The search surfaces call this from idle time so the first keystroke does not pay for 55,000 listings.
  */
 export function warmSearch(pool: Unclaimed[], ms = 12): boolean {
-  if (!index || index.pool !== pool) index = newIndex(pool);
+  /**
+   * The index is positional: entries, and the scratch arrays sized to the pool, are addressed by the pool's own
+   * indices. So it only has to be thrown away when the ids or their order change, not whenever the array is a
+   * new object. rebuild() in catalog.ts hands out a new array on every listing open, hover prefetch and
+   * operator override, and keying on identity meant a 59,000 entry index was discarded and re-folded on the
+   * next keystroke: 387ms of blocked main thread measured here, several times that on a phone. Walking the ids
+   * to check costs well under a millisecond by comparison.
+   *
+   * When the ids match, the one listing that was enriched in place keeps its existing folded entry. It is
+   * indexed on title, area and tags, none of which enrichment changes, so there is nothing to re-read.
+   */
+  const samePool =
+    !!index && index.pool.length === pool.length && index.pool.every((u, i) => u.id === pool[i].id);
+  if (!index || !samePool) index = newIndex(pool);
+  else index.pool = pool;
   const idx = index;
   if (idx.built >= pool.length) return true;
   const until = ms === Infinity ? Infinity : performance.now() + ms;
