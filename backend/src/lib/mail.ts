@@ -1,6 +1,7 @@
 import nodemailer from "nodemailer";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { maskEmail } from "./claimIndex.ts";
 
 /**
  * Sign-in codes and booking mail go through Resend as hello@onoutset.com.
@@ -79,7 +80,7 @@ async function sendResend(
     // The subject of a sign-in mail is the code itself and the body of a claim mail is a working claim link, so
     // with no mail key this used to write "sign in as any operator" into the server log. Only the shape is logged.
     const secret = /sign-in code|claim link/i.test(msg.subject);
-    console.log(`[mail:dry] to=${to} subject=${JSON.stringify(secret ? msg.subject.replace(/[0-9]{4,}/g, "******") : msg.subject)}${secret ? ` (${msg.text.length} chars, body withheld)` : "\n" + msg.text}\n`);
+    console.log(`[mail:dry] to=${maskEmail(to)} subject=${JSON.stringify(secret ? msg.subject.replace(/[0-9]{4,}/g, "******") : msg.subject)}${secret ? ` (${msg.text.length} chars, body withheld)` : "\n" + msg.text}\n`);
     dumpMail(to, msg);
     return { sent: false, error: "no mail key" };
   }

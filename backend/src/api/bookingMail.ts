@@ -1,6 +1,7 @@
 import { sendMail } from "../lib/mail.ts";
 import { fmtDay, fmtMoney, fmtWhen, guests, renderEmail, type EmailLine, type EmailRow } from "../lib/emailTemplate.ts";
 import { readJson } from "../lib/store.ts";
+import { maskEmail } from "../lib/claimIndex.ts";
 import { OPERATOR_FEE_RATE, currencyForArea, operatorShare, subtotalFromTotal } from "../payments/money.ts";
 import type { StoredBooking } from "./bookings.ts";
 import type { StoredProfile } from "./profiles.ts";
@@ -165,7 +166,7 @@ export async function mailNewBooking(rec: StoredBooking, profile: StoredProfile 
   // One failure must not stop the others: an operator with a dead address should not cost the guest their receipt.
   const sent = await Promise.allSettled(outbox.map((m) => sendMail(m)));
   sent.forEach((r, i) => {
-    if (r.status === "rejected") console.error(`[mail] ${rec.code} to ${outbox[i].to}: ${String((r as PromiseRejectedResult).reason).slice(0, 160)}`);
+    if (r.status === "rejected") console.error(`[mail] ${rec.code} to ${maskEmail(outbox[i].to)}: ${String((r as PromiseRejectedResult).reason).slice(0, 160)}`);
   });
 }
 
