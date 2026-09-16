@@ -371,21 +371,17 @@ function Card({ u, onOpen, near, rail }: { u: Unclaimed; onOpen: (id: string) =>
           </>
         ) : null}
         <CompareCheck id={u.id} title={u.title} small={gallery.length > 1} />
+        {/* The deal sits on the photo, so every card's text block has the same four lines and prices line up. */}
+        {dealTitle ? <span className={"ah-card-dealchip" + (dealOn ? " today" : "")}>{dealTitle}</span> : null}
       </div>
       <div className="ah-card-text">
         {/* Airbnb's grid puts the stars beside the title; its narrow rows move them to the end of the price line. */}
         <div className="ah-card-line1">
-          <span className="ah-card-title">{u.title}</span>
+          <span className="ah-card-title" title={u.title}>{u.title}</span>
           {rail ? null : stars}
         </div>
         <div className="ah-card-sub">{where}</div>
         <div className="ah-card-sub">{detail}</div>
-        {dealTitle ? (
-          <div className={"ah-card-deal" + (dealOn ? " today" : "")}>
-            {dealOn ? <span className="ah-card-dealtag">Today</span> : null}
-            <span className="ah-card-dealtext">{dealTitle}</span>
-          </div>
-        ) : null}
         <div className="ah-card-price">
           {from == null ? (
             <span>Request to book</span>

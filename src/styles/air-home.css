@@ -295,22 +295,21 @@
 .ah-cmpcheck .box{width:16px;height:16px;border-radius:4px;border:1.5px solid var(--ink);background:#fff;display:grid;place-items:center;line-height:0;}
 .ah-cmpcheck .box svg{width:10px;height:10px;}
 .ah-cmpcheck.on .box{background:var(--ink);color:#fff;}
-/* Every card's text block is the same height: two lines for the name, one each for place and length, one for a deal
-   (empty when there is none), and the price on the last line, so prices sit on one line across a row. */
-.ah-card-text{display:flex;flex-direction:column;min-width:0;min-height:calc(6lh + 8px);font-size:15px;line-height:19px;}
-.ah-card-line1{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;min-width:0;min-height:2lh;}
-/* A business name wraps to a second line rather than losing its last word to an ellipsis. */
-.ah-card-title{min-width:0;font-weight:600;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+/* Every card has the same four lines: name, place, length, price. Nothing optional sits between them, so the
+   rows of a rail line up without holes. The deal is a chip on the photo. */
+.ah-card-text{display:flex;flex-direction:column;min-width:0;font-size:15px;line-height:19px;}
+.ah-card-line1{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;min-width:0;}
+/* One line, as on airbnb.com's cards; the full name is on the listing and in the tooltip. */
+.ah-card-title{min-width:0;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .ah-card-rate{flex:none;display:inline-flex;align-items:center;gap:4px;font-weight:400;white-space:nowrap;}
 .ah-card-rate > span{line-height:0;}
 .ah-card-rate svg{width:12px;height:12px;display:block;}
 .ah-card-rate em{font-style:normal;color:var(--ink-soft);}
 .ah-card-sub{color:var(--ink-soft);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.ah-card-deal{display:flex;align-items:center;gap:6px;min-width:0;margin-top:2px;color:var(--accent);font-weight:500;}
-.ah-card-dealtext{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.ah-card-dealtag{flex:none;padding:1px 6px;border-radius:4px;background:var(--accent);color:var(--on-accent, #fff);font-size:11px;line-height:15px;font-weight:600;}
+.ah-card-dealchip{position:absolute;right:12px;bottom:12px;z-index:2;max-width:62%;padding:5px 10px;border-radius:999px;background:rgba(255,255,255,.96);color:var(--accent);font-size:12px;line-height:16px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;pointer-events:none;}
+.ah-card-dealchip.today{background:var(--accent);color:var(--on-accent, #fff);}
 .ah-card > .adminsite.icon{top:10px;right:46px;}
-.ah-card-price{margin-top:auto;padding-top:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.ah-card-price{margin-top:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .ah-card-price b{font-weight:600;}
 .ah-card.is-skel .ah-card-text{gap:6px;}
 .ah-skelline{height:14px;width:80%;border-radius:4px;}
@@ -319,9 +318,9 @@
 /* Rail cards are narrow: drop the review count, keep the stars. */
 .ah-railrow .ah-card-rate{display:inline-flex;vertical-align:baseline;}
 .ah-railrow .ah-card-rate em{display:none;}
-.ah-railrow .ah-card-text{font-size:14px;line-height:18px;min-height:calc(6lh + 6px);}
+.ah-railrow .ah-card-text{font-size:14px;line-height:18px;}
 .ah-railrow .ah-card-title{font-size:15px;line-height:19px;}
-.ah-railrow .ah-card-price{padding-top:4px;}
+.ah-railrow .ah-card-price{margin-top:4px;}
 .ah-card-dot{color:var(--ink-soft);}
 
 /* ---------- grid ---------- */
