@@ -20,7 +20,7 @@ import { daySlotsOpen, openSeats } from "../lib/inventory";
 import { contactFor, experienceById, fromPrice, initials } from "../lib/catalog";
 import { loadListing, loadRemoteCatalog } from "../lib/catalogLoad";
 import { confirmPaid, hasApi, submitBooking, warmApi } from "../lib/api";
-import { companyGreeting, companyReply, companySuggestions } from "../lib/companyAgent";
+import { assistantOn, companyGreeting, companyHandoff, companyReply, companySuggestions } from "../lib/companyAgent";
 import type { Place } from "../lib/places";
 import { priceFor, priceUnclaimed } from "../lib/pricing";
 import { applyStoredProfiles } from "../lib/operator";
@@ -314,6 +314,8 @@ function reducer(state: AppState, action: Action): AppState {
       const company = experienceById(action.id);
       if (!company) return state;
       if (state.chats[company.id]) return state.threadId === company.id ? state : { ...state, threadId: company.id };
+      // A shop that switched the assistant off gets no new thread opened in its name.
+      if (!assistantOn(company)) return state;
       const hello: ChatMessage = { who: "them", t: companyGreeting({ item: company, contact: contactFor(company) }), at: "now" };
       return { ...state, threadId: company.id, chats: { ...state.chats, [company.id]: [hello] } };
     }
@@ -329,6 +331,9 @@ function reducer(state: AppState, action: Action): AppState {
       }
       const company = experienceById(action.id);
       if (!company) return state;
+      // Same rule as ensureThread: an assistant the shop switched off does not greet a new guest. A thread
+      // opened while it was on still opens, so nobody loses a conversation they were already having.
+      if (!assistantOn(company) && !state.chats[company.id]) return state;
       const hello: ChatMessage = { who: "them", t: companyGreeting({ item: company, contact: contactFor(company) }), at: "now" };
       const chats = state.chats[company.id] ? state.chats : { ...state.chats, [company.id]: [hello] };
       return { ...state, threadId: company.id, chats, sheet: null, reqTargetId: null, screen: "chat" };
@@ -339,7 +344,10 @@ function reducer(state: AppState, action: Action): AppState {
         const at = nowStamp();
         const prev = (state.chats[company.id] || []).slice();
         prev.push({ who: "me", t: action.text, at });
-        prev.push({ who: "them", t: companyReply({ item: company, contact: contactFor(company) }, action.text), at });
+        const ctx = { item: company, contact: contactFor(company) };
+        // Switched off since this thread opened: Otto stops answering and says who does, rather than carrying
+        // on quoting a shop that asked it to stop.
+        prev.push({ who: "them", t: assistantOn(company) ? companyReply(ctx, action.text) : companyHandoff(ctx), at });
         return { ...state, chats: { ...state.chats, [company.id]: prev } };
       }
       const listing = listingById(state.threadId);

@@ -1113,6 +1113,23 @@ export function companyGreeting(ctx: CompanyContext): string {
   return "Hi, I'm " + ASSISTANT_NAME + ". Ask me anything about " + ctx.item.title + ". I answer from what they publish.";
 }
 
+/**
+ * Whether this listing offers Otto to guests. The Assistant page's switch writes `assistant` through the
+ * catalog patch; an unclaimed listing carries no such key and is on, which is what every listing did before
+ * the switch was wired up. Only an explicit false turns it off, so a patch that predates the key reads as on.
+ */
+export function assistantOn(item: Unclaimed): boolean {
+  return item.assistant !== false;
+}
+
+/**
+ * What a guest is told in a thread the operator has since switched Otto off in. The thread itself stays, so
+ * nobody is cut off mid-question; the next step is the shop, the same one contactAnswer offers.
+ */
+export function companyHandoff(ctx: CompanyContext): string {
+  return ctx.item.title + " answers questions themselves. " + (ctx.contact?.phone ? "Call " + fmtPhone(ctx.contact.phone) + "." : "A booking request on this page reaches them directly.");
+}
+
 /* ---------- the engine ---------- */
 
 const FEE_LINE = "Outset adds a service fee at checkout: 5% up to $100, 4% from $100 to $500, 3% above $500, capped at $25.";

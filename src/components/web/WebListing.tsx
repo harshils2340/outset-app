@@ -12,7 +12,7 @@ import { srcSet, thumb } from "../../lib/images";
 import { embedAutoplay, isGif, listingMedia, photoCandidates, probePhotos, type Media } from "../../lib/media";
 import { cleanDesc, durationLabel, freeCancel, minAge } from "../../lib/listingDerive";
 import { bookableStart, clockIn, itemOpenState, itemWeek, zoneFor } from "../../lib/openNow";
-import { DAY_SHORT, clock12, dayLabel, todaysDeals } from "../../lib/companyAgent";
+import { DAY_SHORT, assistantOn, clock12, dayLabel, todaysDeals } from "../../lib/companyAgent";
 import { fmtDistance, kmBetween, nearestLocation } from "../../lib/places";
 import { addonPrice, hasPrice, priceUnclaimed, serviceFeeLabel } from "../../lib/pricing";
 import { listingUrl } from "../../lib/site";
@@ -2042,11 +2042,22 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
               </ul>
             </div>
             <div className="albizright">
-              <h3>Questions before you book?</h3>
-              <p className="alsecsub">Otto answers from {possessive(item.title)} own information, and passes on anything it cannot.</p>
-              <div className="alotto">
-                <WebAssistant item={item} />
-              </div>
+              {/* The operator's Assistant switch. Off means this shop answers guests itself, so the panel goes
+                  and the phone number, which used to sit under it as a second option, becomes the first one. */}
+              {assistantOn(item) ? (
+                <>
+                  <h3>Questions before you book?</h3>
+                  <p className="alsecsub">Otto answers from {possessive(item.title)} own information, and passes on anything it cannot.</p>
+                  <div className="alotto">
+                    <WebAssistant item={item} />
+                  </div>
+                </>
+              ) : (
+                <>
+                  <h3>Questions before you book?</h3>
+                  <p className="alsecsub">{item.title} answers these themselves. {contact?.phone ? "Give them a call, or send" : "Send"} a booking request on this page and it reaches them directly.</p>
+                </>
+              )}
               {contact?.phone ? <a className="aloutline" href={telHref(contact.phone)}>Call the business</a> : null}
               {!item.claimed ? (
                 <p className="alclaim">

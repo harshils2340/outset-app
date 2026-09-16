@@ -819,6 +819,9 @@ export function toCatalog(p: OperatorProfile, base: Unclaimed): Partial<Unclaime
     instant: p.instantBook,
     // Paused in the dashboard: the guest page and the booking API both refuse new bookings until it is back on.
     accepting: p.accepting,
+    // The Assistant page's switch. Off means the listing stops offering Otto to guests; before this the switch
+    // saved and nothing read it, so an operator who turned Otto off still had it answering every guest.
+    assistant: p.assistant,
     title: p.title || base.title,
     cat: p.cat,
     blurb: p.blurb || base.blurb,

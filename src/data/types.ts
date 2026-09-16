@@ -234,6 +234,11 @@ export type Unclaimed = {
   accepting?: boolean;
   /** The claimed operator switched Published off: the page opens by its own link but says so, and takes no booking. */
   offline?: boolean;
+  /**
+   * False when the claimed operator switched the assistant off in their dashboard: the listing stops offering
+   * Otto and points guests at the shop instead. Absent means on, which is what every unclaimed listing is.
+   */
+  assistant?: boolean;
   /** Compact week from published hours on lite records: Sunday first, [open, close] in minutes, [0,0] closed, null unknown. */
   hrs?: ([number, number] | null)[];
   /** Card facts carried on lite records: duration as the operator wrote it, and a free-cancellation line when their policy says so. */

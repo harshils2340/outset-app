@@ -32,7 +32,7 @@ import { useApp } from "../../state/AppProvider";
 import { SIZES, srcSet, thumb } from "../../lib/images";
 import { embedAutoplay, listingMedia, photoCandidates, probePhotos, type Media } from "../../lib/media";
 import { cleanDesc, durationLabel, freeCancel, minAge } from "../../lib/listingDerive";
-import { ASSISTANT_NAME, DAY_SHORT, clock12, companySuggestions, dayLabel, todaysDeals } from "../../lib/companyAgent";
+import { ASSISTANT_NAME, DAY_SHORT, assistantOn, clock12, companySuggestions, dayLabel, todaysDeals } from "../../lib/companyAgent";
 import { bookableStart, clockIn, zoneFor } from "../../lib/openNow";
 import { itemOpenState } from "../../lib/openNow";
 import { fetchAvailability, fetchOpenSlots, hasApi, type LiveAvailability } from "../../lib/api";
@@ -1083,31 +1083,35 @@ function RequestBody({
             ) : null}
           </Section>
 
-          <section className="airsec">
-            <div className="airotto">
-              <div className="airottohead">
-                <span className="airottomark">
-                  <Markup html={ICONS.spark} />
-                </span>
-                <span>
-                  <b>Ask {ASSISTANT_NAME}</b>
-                  <small>Instant answers from {possessive(item.title)} published info, 24/7</small>
-                </span>
-              </div>
-              {suggestions.length ? (
-                <div className="airottochips">
-                  {suggestions.map((s) => (
-                    <button key={s} type="button" onClick={() => onAsk(s)}>
-                      {s}
-                    </button>
-                  ))}
+          {/* Hidden when the operator switched the assistant off on their Assistant page: offering "Ask Otto"
+              there opened a thread with an assistant the shop had turned off. */}
+          {assistantOn(item) ? (
+            <section className="airsec">
+              <div className="airotto">
+                <div className="airottohead">
+                  <span className="airottomark">
+                    <Markup html={ICONS.spark} />
+                  </span>
+                  <span>
+                    <b>Ask {ASSISTANT_NAME}</b>
+                    <small>Instant answers from {possessive(item.title)} published info, 24/7</small>
+                  </span>
                 </div>
-              ) : null}
-              <button type="button" className="airghost wide" onClick={() => onAsk()}>
-                Message {ASSISTANT_NAME}
-              </button>
-            </div>
-          </section>
+                {suggestions.length ? (
+                  <div className="airottochips">
+                    {suggestions.map((s) => (
+                      <button key={s} type="button" onClick={() => onAsk(s)}>
+                        {s}
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
+                <button type="button" className="airghost wide" onClick={() => onAsk()}>
+                  Message {ASSISTANT_NAME}
+                </button>
+              </div>
+            </section>
+          ) : null}
 
           {score || reviews.length ? (
             <Section title={score ? "★ " + fmtRating(score.rating) + " · " + fmtReviews(score.reviews) + " reviews" : "What guests say"}>
