@@ -8,7 +8,7 @@ import type { ArtKind, CategoryId, Unclaimed } from "../../data/types";
 import { experienceById, fromPrice, getCatalog, publicRating } from "../../lib/catalog";
 import { listingFacts } from "../../lib/catalog";
 import { fmtDate, fmtReviews, money, titleCase } from "../../lib/format";
-import { ART_ALIASES, WHAT_INTENTS, describeQuery, metroInQuery, parseIntent, searchMetros, searchRegions, searchSuggest, warmSearch, type SearchScope } from "../../lib/search";
+import { ART_ALIASES, WHAT_INTENTS, describeQuery, metroInQuery, parseIntent, searchMetros, searchRegions, searchSuggest, stripPlaceWords, warmSearch, type SearchScope } from "../../lib/search";
 import { loadListing } from "../../lib/catalogLoad";
 import { dealToday } from "../../lib/companyAgent";
 import { itemOpenState } from "../../lib/openNow";
@@ -990,11 +990,7 @@ export function WebHome({ onOpenApp, onOperators }: { onOpenApp: () => void; onO
 
   // A city typed into What ("axe throwing denver") beats the saved place until the menu closes, then moves to Where.
   const typedMetro = useMemo(() => (dq.trim() ? metroInQuery(dq) : null), [dq]);
-  const qWithoutPlace = useMemo(() => {
-    if (!typedMetro) return dq;
-    const drop = new Set(typedMetro.words);
-    return dq.split(/\s+/).filter((w) => !drop.has(w.toLowerCase().replace(/[^a-z0-9]+/g, ""))).join(" ");
-  }, [dq, typedMetro]);
+  const qWithoutPlace = useMemo(() => (typedMetro ? stripPlaceWords(dq, typedMetro.words) : dq), [dq, typedMetro]);
   // "Miami" on its own is a place, not a keyword. A guest who types a city wants that city's things to do laid out
   // as rows the way the home page lays them out, not a flat grid headed "Results for “Miami” in Miami".
   const placeOnly = !!typedMetro && !qWithoutPlace.trim();
@@ -1148,10 +1144,9 @@ export function WebHome({ onOpenApp, onOperators }: { onOpenApp: () => void; onO
   const commitWhat = () => {
     const m = q.trim() ? metroInQuery(q) : null;
     if (!m) return;
-    const drop = new Set(m.words);
     setNear(null);
     setMetro(m.metro.id);
-    setQ(q.split(/\s+/).filter((w) => !drop.has(w.toLowerCase().replace(/[^a-z0-9]+/g, ""))).join(" ").trim());
+    setQ(stripPlaceWords(q, m.words));
   };
   const commitRef = useRef(commitWhat);
   commitRef.current = commitWhat;
@@ -1201,8 +1196,7 @@ export function WebHome({ onOpenApp, onOperators }: { onOpenApp: () => void; onO
   const pickMetro = (id: string) => {
     // "kayak tampa" typed into Where: Tampa is the place, and the kayak half goes to What if What is empty.
     if (whereMetro && whereMetro.metro.id === id && !q.trim()) {
-      const drop = new Set(whereMetro.words);
-      const rest = wt.split(/\s+/).filter((w) => !drop.has(w.toLowerCase().replace(/[^a-z0-9]+/g, ""))).join(" ").trim();
+      const rest = stripPlaceWords(wt, whereMetro.words);
       if (rest) setQ(rest);
     }
     setNear(null);

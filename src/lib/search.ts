@@ -1066,6 +1066,20 @@ export function metroInQuery(q: string): { metro: Metro; words: string[] } | nul
 /** The words a guest puts in front of a city, longest first so "close to" wins over "to". */
 const PLACE_PREPOSITIONS = ["close to", "near to", "around", "near", "in", "at", "to"];
 
+/**
+ * The query with the words that named a place taken out, so "kayak tampa" leaves "kayak" behind once Tampa has
+ * moved to Where.
+ *
+ * `metroInQuery` returns those words normalised, accents and all folded away, so the comparison has to fold the
+ * same way. Stripping the punctuation by hand instead turned "montréal" into "montral", which matched nothing:
+ * a guest who typed their own city's name kept it in the What box as a keyword, so Montreal and Quebec City
+ * answered with a flat grid headed "“Montréal” in Montreal" instead of the city's rows.
+ */
+export function stripPlaceWords(text: string, words: readonly string[]): string {
+  const drop = new Set(words);
+  return text.split(/\s+/).filter((w) => !drop.has(norm(w))).join(" ").trim();
+}
+
 /** Cities matching what the guest typed, including a half-typed or misspelled name ("vancou", "montral"). */
 export function searchMetros(q: string, limit = 4): Metro[] {
   const toks = tokens(q).filter((t) => !FILLER.has(t));

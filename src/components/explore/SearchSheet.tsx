@@ -5,7 +5,7 @@ import type { ArtKind } from "../../data/types";
 import { getCatalog } from "../../lib/catalog";
 import { dateKey } from "../../lib/dates";
 import { currentLocation, searchPlaces, type Place } from "../../lib/places";
-import { ART_ALIASES, WHAT_INTENTS, describeQuery, metroInQuery, searchMetros, searchSuggest } from "../../lib/search";
+import { ART_ALIASES, WHAT_INTENTS, describeQuery, metroInQuery, searchMetros, searchSuggest, stripPlaceWords } from "../../lib/search";
 import { useApp } from "../../state/AppProvider";
 import { Art } from "../art/Art";
 import { Photo } from "../art/Photo";
@@ -25,10 +25,6 @@ type PendingPlace = { kind: "metro"; id: string } | { kind: "near"; place: Place
 type Step = "where" | "what" | "when" | "who";
 
 const kindQuery = (art: ArtKind) => ART_ALIASES[art]?.[0] || art;
-const stripWords = (text: string, words: string[]) => {
-  const drop = new Set(words);
-  return text.split(/\s+/).filter((w) => !drop.has(w.toLowerCase().replace(/[^a-z0-9]+/g, ""))).join(" ").trim();
-};
 
 function countInMetro(metroId: string): number {
   if (metroId === ALL_METRO_ID) return getCatalog().length;
@@ -76,7 +72,7 @@ export function SearchSheet() {
   // The place the sheet is about to search: the one picked here, else the feed's current one.
   const whatTyped = what.trim();
   const typedMetro = useMemo(() => (whatTyped ? metroInQuery(whatTyped) : null), [whatTyped]);
-  const whatRest = typedMetro ? stripWords(whatTyped, typedMetro.words) : whatTyped;
+  const whatRest = typedMetro ? stripPlaceWords(whatTyped, typedMetro.words) : whatTyped;
   const effMetro = typedMetro ? typedMetro.metro.id : where ? (where.kind === "metro" ? where.id : ALL_METRO_ID) : state.near ? ALL_METRO_ID : state.metroId;
   const effNear = typedMetro ? null : where ? (where.kind === "near" ? where.place : null) : state.near;
   const placeName = where ? (where.kind === "near" ? where.place.label : metroLabel(where.id)) : state.near ? state.near.label : metroLabel(state.metroId);
@@ -153,7 +149,7 @@ export function SearchSheet() {
     // "kayak tampa" typed into Where: Tampa is the place, and the kayak half fills What if What is empty.
     const named = metroInQuery(needle);
     if (named && named.metro.id === id && !what.trim()) {
-      const rest = stripWords(needle, named.words);
+      const rest = stripPlaceWords(needle, named.words);
       if (rest) setWhat(rest);
     }
     pickPlace({ kind: "metro", id });
@@ -163,7 +159,7 @@ export function SearchSheet() {
     const named = value.trim() ? metroInQuery(value) : null;
     if (!named) return value.trim();
     setWhere({ kind: "metro", id: named.metro.id });
-    const rest = stripWords(value, named.words);
+    const rest = stripPlaceWords(value, named.words);
     setWhat(rest);
     return rest;
   };
@@ -212,7 +208,7 @@ export function SearchSheet() {
     const named = query ? metroInQuery(query) : null;
     if (named) {
       place = { kind: "metro", id: named.metro.id };
-      query = stripWords(query, named.words);
+      query = stripPlaceWords(query, named.words);
     }
     setPrefs({ when, who, view: "feed" });
     setQ(query);

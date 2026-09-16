@@ -3,7 +3,7 @@ import test from "node:test";
 import { inCat } from "../../data/categories";
 import { ALL_METRO_ID } from "../../data/metros";
 import type { CategoryId, Unclaimed } from "../../data/types";
-import { searchListings, searchSuggest, type SearchScope } from "../search";
+import { metroInQuery, searchListings, searchSuggest, stripPlaceWords, type SearchScope } from "../search";
 
 /**
  * The ways out of an empty search.
@@ -209,4 +209,19 @@ test("a price cap reads the price the operator saved", () => {
   // And the other way: a shop that raises its price is no longer under the cap.
   const dearer = edited(cheaper, id, { from: 240, options: [{ name: "Half hour", detail: "", price: 240 }] });
   assert.equal(searchListings(dearer, "jet ski under $50").length, 0, "a $240 ride was still offered under $50");
+});
+
+test("a city typed with its own accents still moves to Where", () => {
+  // "Montréal" is how the city spells itself and how a French keyboard types it. The place words come back
+  // normalised, so stripping them by hand left "montral" behind and the city stayed in What as a keyword.
+  const named = metroInQuery("cafés montréal");
+  assert.equal(named?.metro.id, "montreal");
+  assert.equal(stripPlaceWords("cafés montréal", named!.words), "cafés");
+  assert.equal(stripPlaceWords("Montréal", named!.words), "");
+  // The plain spelling is unchanged.
+  const plain = metroInQuery("kayak montreal");
+  assert.equal(stripPlaceWords("kayak montreal", plain!.words), "kayak");
+  // A preposition belongs to the place, so it goes with it.
+  const prep = metroInQuery("cooking classes in tampa");
+  assert.equal(stripPlaceWords("cooking classes in tampa", prep!.words), "cooking classes");
 });
