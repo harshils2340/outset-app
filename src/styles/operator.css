@@ -135,6 +135,12 @@
 .odrow .meta small{font-size:13px;color:var(--ink-faint);line-height:1.4;}
 .odrow.odpublish,.odrow.odinstant{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:16px 20px;}
 .od.compact .odrow.odpublish,.od.compact .odrow.odinstant{padding:12px 14px;}
+/* On a phone the Preview button and the Published switch do not fit beside the words: the heading wrapped to
+   three lines in a narrow column and the sentence under it was cut off. The words take the full width and the
+   buttons sit on their own row beneath. */
+.od.compact .odrow.odpublish{flex-wrap:wrap;}
+.od.compact .odrow.odpublish .meta{flex-basis:100%;}
+.od.compact .odrow.odpublish .odbtns{margin-left:auto;}
 .odline{display:flex;align-items:center;gap:12px;padding:10px 0;border-top:1px solid var(--line);}
 .odline .meta{flex:1;min-width:0;display:flex;flex-direction:column;}
 .odline .meta b{font-size:14px;font-weight:600;}
