@@ -313,7 +313,8 @@ export function toCatalogItem(r: CatalogRow): Record<string, unknown> {
     // one with the price and one without; rows are sorted priced-first and cheapest-first, so the first twin is the
     // one a guest should see and the unpriced or dearer repeat goes. Until 2026-09-14 the price was part of the
     // key, so a listing showed "1 hour $219" and "1 hour Price on request" side by side.
-    .filter((o, i, a) => a.findIndex((x) => x.name.toLowerCase() === o.name.toLowerCase() && (x.duration || x.detail || "").toLowerCase() === (o.duration || o.detail || "").toLowerCase()) === i)
+    // Two rows are the same option when name and label match; the label is the detail, and the duration only when there is none.
+    .filter((o, i, a) => a.findIndex((x) => x.name.toLowerCase() === o.name.toLowerCase() && (x.detail || x.duration || "").toLowerCase() === (o.detail || o.duration || "").toLowerCase()) === i)
     .map((o) => ({ ...o, price_unit: fixUnit(o) }));
   const title = cleanTitle(decodeEntities(r.name), { city: r.city, region: r.region, legalName: r.legal_name });
   const keysWithOwnBranch = new Set(rawFacts.filter((f) => trusted(f.source_url) && !offCity(f.source_url)).map((f) => f.fact_key));
