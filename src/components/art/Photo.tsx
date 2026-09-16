@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { ArtKind } from "../../data/types";
 import { SIZES, srcSet, thumb, uploadFallback, type PhotoSize } from "../../lib/images";
+import { isPublicHttpUrl } from "../../lib/urlSafety";
 import { Art } from "./Art";
 
 /**
@@ -36,7 +37,7 @@ export function Photo({ src, video, kind, id, alt, size = "card", fallback = tru
   const [priority] = useState(() => size === "hero" || size === "full" || (size === "card" && eagerLeft-- > 0));
   const ref = useRef<HTMLSpanElement>(null);
 
-  const isClip = !!video && clipOk && /\.(mp4|webm|m4v|mov)(\?|$)/i.test(video);
+  const isClip = !!video && clipOk && isPublicHttpUrl(video) && /\.(mp4|webm|m4v|mov)(\?|$)/i.test(video);
   useEffect(() => {
     if (!isClip || seen || !ref.current || typeof IntersectionObserver === "undefined") return;
     const io = new IntersectionObserver((entries) => {
@@ -49,7 +50,8 @@ export function Photo({ src, video, kind, id, alt, size = "card", fallback = tru
     return () => io.disconnect();
   }, [isClip, seen]);
 
-  const still = video && clipOk && /\.gif(\?|$)/i.test(video) ? video : src;
+  const gifCover = video && clipOk && isPublicHttpUrl(video) && /\.gif(\?|$)/i.test(video) ? video : undefined;
+  const still = gifCover || (src && isPublicHttpUrl(src) ? src : undefined);
   const dead = !isClip && (!still || state === "broken");
   useEffect(() => {
     if (dead) onBroken?.();

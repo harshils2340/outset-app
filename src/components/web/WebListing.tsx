@@ -19,6 +19,7 @@ import { addonPrice, hasPrice, priceUnclaimed, serviceFeeLabel } from "../../lib
 import { listingUrl } from "../../lib/site";
 import { adminWebsite, isAdmin, subscribeAdmin } from "../../lib/admin";
 import { dateKey, startOfToday } from "../../lib/dates";
+import { safeHttpUrl } from "../../lib/urlSafety";
 import { useApp } from "../../state/AppProvider";
 import { Photo } from "../art/Photo";
 import { Mark } from "../layout/Mark";
@@ -538,7 +539,7 @@ function TikTokScript() {
  */
 function HeroTile({ m, item, i, onBroken }: { m: Media; item: Unclaimed; i: number; onBroken: () => void }) {
   if (m.kind === "embed") {
-    return <iframe className="alembed" src={embedAutoplay(m.src)} title={item.title + " video"} allow="autoplay; encrypted-media; picture-in-picture" allowFullScreen loading="lazy" />;
+    return <iframe className="alembed" src={embedAutoplay(m.src)} title={item.title + " video"} allow="autoplay; encrypted-media; picture-in-picture" allowFullScreen loading="lazy" sandbox="allow-scripts allow-same-origin allow-presentation" referrerPolicy="strict-origin-when-cross-origin" />;
   }
   if (m.kind === "clip") {
     return <Photo src={m.poster} video={m.src} kind={item.art} id={"wl" + item.id} alt={item.title} size="hero" fallback={false} onBroken={onBroken} />;
@@ -553,12 +554,13 @@ const PLAY = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><p
 function GallerySlide({ m, item, index }: { m: Media; item: Unclaimed; index: number }) {
   const stop = (e: SyntheticEvent) => e.stopPropagation();
   if (m.kind === "embed") {
-    return <iframe className="algalleryembed" src={m.src} title={item.title + " video"} allow="autoplay; encrypted-media; picture-in-picture" allowFullScreen onClick={stop} />;
+    return <iframe className="algalleryembed" src={m.src} title={item.title + " video"} allow="autoplay; encrypted-media; picture-in-picture" allowFullScreen sandbox="allow-scripts allow-same-origin allow-presentation" referrerPolicy="strict-origin-when-cross-origin" onClick={stop} />;
   }
-  if (m.kind === "clip" && !isGif(m.src)) {
-    return <video className="algalleryimg" src={m.src} poster={thumb(m.poster, "full")} controls autoPlay muted loop playsInline onClick={stop} aria-label={item.title + " video"} />;
+  const clipSrc = m.kind === "clip" ? safeHttpUrl(m.src) : undefined;
+  if (m.kind === "clip" && clipSrc && !isGif(clipSrc)) {
+    return <video className="algalleryimg" src={clipSrc} poster={thumb(m.poster, "full")} controls autoPlay muted loop playsInline onClick={stop} aria-label={item.title + " video"} />;
   }
-  return <img className="algalleryimg" src={m.kind === "clip" ? m.src : thumb(m.src, "full")} alt={item.title + " photo " + (index + 1)} decoding="async" fetchPriority="high" referrerPolicy="no-referrer" onClick={stop} />;
+  return <img className="algalleryimg" src={m.kind === "clip" ? clipSrc : thumb(m.src, "full")} alt={item.title + " photo " + (index + 1)} decoding="async" fetchPriority="high" referrerPolicy="no-referrer" onClick={stop} />;
 }
 
 /** Airbnb's modal: a white panel over a dimmed page, the close button top left, the body scrolling on its own. */
@@ -1059,6 +1061,8 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
   // Attractions sell entry, not a slot. With no menu to book, the card becomes hours plus a tickets link.
   const VISIT_ARTS = new Set(["zoo", "aquarium", "themepark", "waterpark", "museum", "garden", "theatre", "arcade", "icerink", "trampoline", "bowling", "minigolf", "billiards", "camping", "sauna", "swim", "tennis", "discgolf", "venue", "brewery", "winery", "distillery"]);
   const visit = !needService && VISIT_ARTS.has(item.art);
+  // The business's own site, crawled or operator-set: never trust it as a scheme without checking first.
+  const ticketHref = safeHttpUrl(contact?.website || item.src);
   const visitWeek = useMemo(() => (visit ? itemWeek(item) : null), [visit, item]);
   const clock = (m: number) => fmtTime(String(Math.floor(m / 60)).padStart(2, "0") + ":" + String(m % 60).padStart(2, "0"));
   // The shop paused bookings or hid the listing in its dashboard. The page still opens by its own link, so a
@@ -1210,7 +1214,7 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
   if (cancel) rows.push({ icon: I.calendar, title: cancel, text: "Plans change. Their published policy lets you cancel for a full refund." });
   if (instant) rows.push({ icon: I.bolt, title: "Instant confirmation", text: "Your spot is confirmed the moment you book." });
   else if (!visit) rows.push({ icon: I.message, title: "Request to book", text: "The business confirms by email. Nothing is charged until they do." });
-  else if (contact?.website || item.src) rows.push({ icon: I.ticket, title: "Tickets from the business", text: "Entry is sold on " + possessive(item.title) + " own site, at their prices." });
+  else if (ticketHref) rows.push({ icon: I.ticket, title: "Tickets from the business", text: "Entry is sold on " + possessive(item.title) + " own site, at their prices." });
   if (item.meetingPoint) rows.push({ icon: I.door, title: "Meeting point", text: tidyLine(item.meetingPoint) });
   if (topRated && rows.length < 3) rows.push({ icon: I.medal, title: "Top rated", text: "Rated " + score!.rating.toFixed(1) + " from " + fmtReviews(score!.reviews) + " public reviews." });
   const highlightRows = rows.slice(0, 3);
@@ -1740,8 +1744,8 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
                     )}
                   </div>
                 </div>
-                {contact?.website || item.src ? (
-                  <a className="alprimary" href={contact?.website || item.src} target="_blank" rel="noreferrer">Get tickets</a>
+                {ticketHref ? (
+                  <a className="alprimary" href={ticketHref} target="_blank" rel="noreferrer">Get tickets</a>
                 ) : contact?.phone ? (
                   <a className="alprimary" href={telHref(contact.phone)}>Call to plan</a>
                 ) : null}
@@ -2227,8 +2231,8 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
             <>
               {age ? <p className="almodaltext">Minimum age {age}.</p> : null}
               {waiverLines.length ? <><h3 className="almodalsub">Waiver and check-in</h3><ul className="almodallist">{waiverLines.map((l) => <li key={l}>{tidyLine(l)}</li>)}</ul></> : null}
-              {item.waiverUrl ? (
-                <a className="alwaiver" href={item.waiverUrl} target="_blank" rel="noreferrer">
+              {safeHttpUrl(item.waiverUrl) ? (
+                <a className="alwaiver" href={safeHttpUrl(item.waiverUrl)} target="_blank" rel="noreferrer">
                   <Markup html={I.ticket} />
                   <span><b>Sign the waiver online before you arrive</b><small>Saves time at check-in. Opens the operator's waiver form.</small></span>
                 </a>

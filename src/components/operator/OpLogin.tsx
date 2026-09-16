@@ -10,6 +10,7 @@ import { Markup } from "../Markup";
 import { useApp } from "../../state/AppProvider";
 import { OD_ICONS } from "./opContext";
 import { claimRemote, exchangeClaimToken, fetchClaimRule, fetchRemoteProfile, hasApi, isExpiringClaimToken, ownerFromHash, rememberClaimToken, requestClaimLink, requestSignInCode, testClaimActive, testEnter, testUnclaim, verifySignInCode, type ClaimRule } from "../../lib/api";
+import { isPublicHttpUrl } from "../../lib/urlSafety";
 
 /**
  * Claim and sign in. The owner searches by name, says who they are, and the signed claim link goes to the
@@ -30,7 +31,8 @@ const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 function openBypassLink(link: string): void {
   const i = link.indexOf("#");
   if (i < 0) {
-    window.location.href = link;
+    // A link with no hash at all is not the shape SITE_URL + "#claim=..." ever takes; never navigate to it.
+    if (isPublicHttpUrl(link)) window.location.href = link;
     return;
   }
   window.location.hash = link.slice(i);

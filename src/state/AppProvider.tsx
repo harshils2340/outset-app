@@ -25,6 +25,7 @@ import type { Place } from "../lib/places";
 import { priceFor, priceUnclaimed } from "../lib/pricing";
 import { applyStoredProfiles } from "../lib/operator";
 import { loadBookings, loadChats, saveBookings, saveChats } from "../lib/storage";
+import { isHttpsUrlOnHost } from "../lib/urlSafety";
 
 export const DATES = makeDates(10);
 
@@ -745,9 +746,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
         }
         // Card on file: the listing stays behind the checkout splash and Stripe's hosted page takes over, then
         // sends the guest back to #paid=<code>. No card step after all: the confirmation shows straight away.
-        dispatch({ type: "confirmUnclaimed", ...input, code, pay: !!r.checkoutUrl });
-        if (r.checkoutUrl) window.location.assign(r.checkoutUrl);
-        return { ok: true, checkoutUrl: r.checkoutUrl };
+        // The API is trusted for a lot, but not to pick where this tab navigates next: only Stripe's own
+        // checkout host is ever worth leaving the page for.
+        const goesToStripe = isHttpsUrlOnHost(r.checkoutUrl, "checkout.stripe.com");
+        dispatch({ type: "confirmUnclaimed", ...input, code, pay: goesToStripe });
+        if (goesToStripe) window.location.assign(r.checkoutUrl!);
+        return { ok: true, checkoutUrl: goesToStripe ? r.checkoutUrl : undefined };
       },
       back: () => dispatch({ type: "back" }),
       openChat: (id) => dispatch({ type: "openChat", id }),

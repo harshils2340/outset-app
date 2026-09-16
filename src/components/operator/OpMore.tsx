@@ -4,6 +4,7 @@ import { dateKey, startOfToday } from "../../lib/dates";
 import { money } from "../../lib/format";
 import { OWNER_EMAIL_MAX, OWNER_NAME_MAX, OWNER_PHONE_MAX, bookingTotal, deleteProfile, isoToDate, relDay, validOwnerEmail, validOwnerPhone } from "../../lib/operator";
 import { OPERATOR_FEE_RATE, SERVICE_FEE_CAP, operatorNet, serviceFee } from "../../lib/pricing";
+import { isHttpsUrlOnHost } from "../../lib/urlSafety";
 import { Markup } from "../Markup";
 import { OD_ICONS, PAGES, useOp } from "./opContext";
 
@@ -89,7 +90,8 @@ export function OpPayouts() {
     setBusy(true);
     const r = await connectPayouts(p.id);
     setBusy(false);
-    if (r.url) window.location.assign(r.url);
+    // Only Stripe's own onboarding host is ever worth leaving the dashboard for.
+    if (r.url && isHttpsUrlOnHost(r.url, "connect.stripe.com")) window.location.assign(r.url);
     else toast(r.error || "Could not open Stripe. Try again.");
   };
   // The ledger is real only when the API answered for a connected account.

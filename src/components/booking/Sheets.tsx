@@ -38,6 +38,7 @@ import { bookableStart, clockIn, hourLines, zoneFor } from "../../lib/openNow";
 import { itemOpenState } from "../../lib/openNow";
 import { fetchAvailability, fetchOpenSlots, hasApi, type LiveAvailability } from "../../lib/api";
 import { dateKey } from "../../lib/dates";
+import { safeHttpUrl } from "../../lib/urlSafety";
 import { searchSuggest } from "../../lib/search";
 import { listingUrl } from "../../lib/site";
 import { Photo } from "../art/Photo";
@@ -272,7 +273,7 @@ function Bullets({ items, icon = ICONS.dot, className = "" }: { items: string[];
 /** One hero slide on the phone listing: the clip, the embed, or a photo. Broken media tells the page to drop it. */
 function HeroSlide({ m, item, onBroken }: { m: Media; item: Unclaimed; onBroken: () => void }) {
   if (m.kind === "embed") {
-    return <iframe className="wembed" src={embedAutoplay(m.src)} title={item.title + " video"} allow="autoplay; encrypted-media; picture-in-picture" allowFullScreen loading="lazy" />;
+    return <iframe className="wembed" src={embedAutoplay(m.src)} title={item.title + " video"} allow="autoplay; encrypted-media; picture-in-picture" allowFullScreen loading="lazy" sandbox="allow-scripts allow-same-origin allow-presentation" referrerPolicy="strict-origin-when-cross-origin" />;
   }
   if (m.kind === "clip") {
     return <Photo src={m.poster} video={m.src} kind={item.art} id={item.id + "req"} alt={item.title} size="wide" fallback={false} onBroken={onBroken} />;
@@ -1228,8 +1229,8 @@ function RequestBody({
               ) : null}
               <KnowRow icon={ICONS.check} title="Waiver and check-in" summary={waiverLines[0] ? tidyLine(waiverLines[0]) : item.waiverUrl ? "Sign online before you arrive" : "Contact the business to check"}>
                 {waiverLines.length ? <Bullets items={waiverLines} /> : <FactList lines={facts.waiver.filter((l) => l.posted && l.text.length <= 160)} />}
-                {item.waiverUrl ? (
-                  <a className="reqwaiver" href={item.waiverUrl} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}>
+                {safeHttpUrl(item.waiverUrl) ? (
+                  <a className="reqwaiver" href={safeHttpUrl(item.waiverUrl)} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}>
                     <Markup html={ICONS.ticket} />
                     <span>
                       <b>Sign the waiver online before you arrive</b>

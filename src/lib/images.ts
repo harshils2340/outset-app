@@ -1,4 +1,5 @@
 import { API_URL } from "./api";
+import { isPublicHttpUrl } from "./urlSafety";
 /**
  * Operator photos are hotlinked from their own sites, which means multi-megabyte originals on every card.
  * wsrv.nl (images.weserv.nl) is a free, cached image proxy that resizes and re-encodes on the fly, so a card
@@ -23,8 +24,8 @@ export const SIZES: Record<PhotoSize, string> = {
   full: "100vw",
 };
 
-/** Already small or already a resizing CDN: leave it alone. */
-const SKIP = /^data:|wsrv\.nl|images\.weserv\.nl|\.svg(\?|$)|\.gif(\?|$)/i;
+/** Already a resizing CDN, or a format the proxy would only re-encode for no gain: leave it alone. */
+const SKIP = /wsrv\.nl|images\.weserv\.nl|\.svg(\?|$)|\.gif(\?|$)/i;
 
 /**
  * A photo the operator uploaded a moment ago is in the repository but not yet on the site, so both the proxy
@@ -46,19 +47,21 @@ export function proxyUrl(url: string, size: PhotoSize, w: number): string {
 }
 
 function proxyable(url: string): boolean {
-  return !SKIP.test(url) && /^https?:\/\//i.test(url);
+  return !SKIP.test(url);
 }
 
-/** The 2x proxy URL (the historical default), or the original when it cannot be proxied. */
+/** The 2x proxy URL (the historical default), the original when it cannot be proxied, or undefined when the
+ *  URL is not a public http(s) address: a crawled or operator-set cover is hostile input, and a data:, file:,
+ *  or javascript: URL never reaches an img or video src. */
 export function thumb(url: string | undefined, size: PhotoSize = "card"): string | undefined {
-  if (!url) return url;
+  if (!url || !isPublicHttpUrl(url)) return undefined;
   if (!proxyable(url)) return url;
   return proxyUrl(url, size, WIDTH[size]);
 }
 
 /** Two candidates, 1x and 2x, for `srcset`; undefined when the URL is not proxied so `src` alone applies. */
 export function srcSet(url: string | undefined, size: PhotoSize = "card"): string | undefined {
-  if (!url || !proxyable(url)) return undefined;
+  if (!url || !isPublicHttpUrl(url) || !proxyable(url)) return undefined;
   const w = WIDTH[size];
   return proxyUrl(url, size, w / 2) + " " + w / 2 + "w, " + proxyUrl(url, size, w) + " " + w + "w";
 }

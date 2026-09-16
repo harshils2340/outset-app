@@ -3,10 +3,16 @@ import { UNCLAIMED } from "../data/unclaimed";
 import type { OperatorContact, Unclaimed, UnclaimedOption } from "../data/types";
 import { regionOfArea } from "../data/regions";
 import type { GeoPoint } from "./geo";
+import { isPublicHttpUrl } from "./urlSafety";
 
+/** The crawler's own `src` field, always meant to be the operator's domain, as an https URL, or "" when it is
+ *  not a safe one to link to. A leading "//" is refused outright rather than resolved: prepending "https://"
+ *  in front of it would silently turn it into a working link to a host that was never the operator's own. */
 export function siteUrl(src: string): string {
-  if (/^https?:\/\//i.test(src)) return src;
-  return "https://" + src;
+  const s = src.trim();
+  if (s.startsWith("//")) return "";
+  const candidate = /^https?:\/\//i.test(s) ? s : "https://" + s;
+  return isPublicHttpUrl(candidate) ? candidate : "";
 }
 
 /* ---------- catalog registry ---------- */

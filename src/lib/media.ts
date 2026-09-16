@@ -1,5 +1,20 @@
 import type { Unclaimed } from "../data/types";
 import { thumb } from "./images";
+import { isPublicHttpUrl } from "./urlSafety";
+
+/** Only these embed a listing's video today. Anything else is hostile: an iframe with no host check is a
+ *  redirect and a phishing overlay for the price of one crawled or operator-set field. */
+const EMBED_HOSTS = new Set(["www.youtube.com", "youtube.com", "www.youtube-nocookie.com", "youtube-nocookie.com", "player.vimeo.com"]);
+
+/** True only for a video embed URL the page is willing to put in an iframe. */
+export function isSafeEmbedUrl(url: string): boolean {
+  if (!isPublicHttpUrl(url)) return false;
+  try {
+    return EMBED_HOSTS.has(new URL(url).hostname.toLowerCase());
+  } catch {
+    return false;
+  }
+}
 
 /**
  * Everything a listing can show in its hero: the operator's clip or embedded video first, then the photos with the
@@ -14,7 +29,7 @@ export type Media =
 export function listingMedia(item: Pick<Unclaimed, "cover" | "photos" | "video" | "videoEmbed">, broken: ReadonlySet<string>): Media[] {
   const out: Media[] = [];
   if (item.video && !broken.has(item.video)) out.push({ kind: "clip", src: item.video, poster: item.cover });
-  else if (item.videoEmbed && !broken.has(item.videoEmbed)) out.push({ kind: "embed", src: item.videoEmbed });
+  else if (item.videoEmbed && !broken.has(item.videoEmbed) && isSafeEmbedUrl(item.videoEmbed)) out.push({ kind: "embed", src: item.videoEmbed });
   const seen = new Set<string>();
   for (const src of [item.cover, ...(item.photos || [])]) {
     if (!src || seen.has(src) || broken.has(src)) continue;
