@@ -22,6 +22,8 @@ import { experienceById } from "./lib/catalog";
  * The operator dashboard is nine screens and the largest thing in the app, and a guest never opens it, so it
  * is fetched when somebody actually goes to it rather than sitting in the bundle everyone downloads.
  */
+import { EmbeddedCheckout } from "./components/booking/EmbeddedCheckout";
+
 const OperatorView = lazy(() => import("./components/operator/OperatorView").then((m) => ({ default: m.OperatorView })));
 
 /** While that chunk is on its way. Same shape as the other splashes, so it does not read as a broken page. */
@@ -113,7 +115,7 @@ export function App() {
             </div>
           </div>
         ) : null}
-        {state.checkingOut ? <CheckoutSplash /> : null}
+        {state.checkingOut ? (state.checkoutSecret ? <EmbeddedCheckout secret={state.checkoutSecret} /> : <CheckoutSplash />) : null}
       </>
     );
   }
@@ -128,7 +130,7 @@ export function App() {
           <Sheets />
           <Toast />
           {state.sheet === "request" && state.reqTargetId && !reqTarget && !state.catalogComplete ? <ListingSplash /> : null}
-          {state.checkingOut ? <CheckoutSplash /> : null}
+          {state.checkingOut ? (state.checkoutSecret ? <EmbeddedCheckout secret={state.checkoutSecret} /> : <CheckoutSplash />) : null}
         </div>
       </div>
     </div>

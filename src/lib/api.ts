@@ -348,11 +348,12 @@ export function warmApi(): void {
 
 /* ---------- config ---------- */
 
-let configCache: { payments: boolean; mail: boolean } | null = null;
+export type ApiConfig = { payments: boolean; mail: boolean; stripePublishableKey?: string | null };
+let configCache: ApiConfig | null = null;
 /** What the API has switched on. Cached for the session; false for everything when there is no API. */
-export async function apiConfig(): Promise<{ payments: boolean; mail: boolean }> {
+export async function apiConfig(): Promise<ApiConfig> {
   if (configCache) return configCache;
-  const r = await call<{ payments: boolean; mail: boolean }>(`/config`, { timeout: 5000 });
+  const r = await call<ApiConfig>(`/config`, { timeout: 5000 });
   configCache = r.ok && r.data ? r.data : { payments: false, mail: false };
   return configCache;
 }
@@ -383,11 +384,11 @@ export type RemoteBooking = {
  * The guest's request goes to the operator. Resolves the server's status ("new" or "accepted" for instant book).
  * `taken` is true when the API refused because that time filled up while the guest was looking at it.
  */
-export async function submitBooking(b: Omit<RemoteBooking, "status" | "created">): Promise<{ ok: boolean; status?: RemoteBooking["status"]; checkoutUrl?: string; error?: string; taken?: boolean }> {
-  const r = await call<{ ok: boolean; status: RemoteBooking["status"]; checkoutUrl?: string }>(`/bookings`, { method: "POST", body: JSON.stringify(b), timeout: 25000 });
+export async function submitBooking(b: Omit<RemoteBooking, "status" | "created"> & { embedded?: boolean }): Promise<{ ok: boolean; status?: RemoteBooking["status"]; checkoutUrl?: string; checkoutClientSecret?: string; error?: string; taken?: boolean }> {
+  const r = await call<{ ok: boolean; status: RemoteBooking["status"]; checkoutUrl?: string; checkoutClientSecret?: string }>(`/bookings`, { method: "POST", body: JSON.stringify(b), timeout: 25000 });
   // Every refusal about the time itself, so the page can drop it and reload the picker. "spots left" and "holds
   // N guests" are the API saying the time is there but the party does not fit, which is still a time problem.
-  return { ok: r.ok, status: r.data?.status, checkoutUrl: r.data?.checkoutUrl, error: r.error, taken: r.status === 409 && /just booked|not open|not enough room|not available|spots? left|holds \d+ guest/i.test(r.error || "") };
+  return { ok: r.ok, status: r.data?.status, checkoutUrl: r.data?.checkoutUrl, checkoutClientSecret: r.data?.checkoutClientSecret, error: r.error, taken: r.status === 409 && /just booked|not open|not enough room|not available|spots? left|holds \d+ guest/i.test(r.error || "") };
 }
 
 export type OpenSlots = { known: boolean; claimed: boolean; days: { date: string; slots: string[] }[] };

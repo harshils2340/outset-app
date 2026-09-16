@@ -29,13 +29,18 @@ async function call<T>(path: string, body?: Record<string, string | number | und
   return j;
 }
 
-export type Checkout = { id: string; url: string; paymentIntent: string | null };
+export type Checkout = { id: string; url: string | null; clientSecret: string | null; paymentIntent: string | null };
 
-/** A hosted payment page. Amount in dollars; the card is only authorized until capture(). */
-export async function createCheckout(o: { code: string; listing: string; title: string; description: string; amount: number; currency: string; email?: string; successUrl: string; cancelUrl: string }): Promise<Checkout> {
+/**
+ * A Checkout session. Amount in dollars; the card is only authorized until capture(). `embedded` asks for the
+ * form that mounts inside the listing page (Stripe.js renders it, so no card data ever reaches this server) and
+ * hands back a client secret instead of a hosted page URL; the fee is the same either way.
+ */
+export async function createCheckout(o: { code: string; listing: string; title: string; description: string; amount: number; currency: string; email?: string; successUrl: string; cancelUrl: string; embedded?: boolean }): Promise<Checkout> {
   const cents = Math.round(o.amount * 100);
-  const s = await call<{ id: string; url: string; payment_intent: string | null }>("checkout/sessions", {
+  const s = await call<{ id: string; url: string | null; client_secret: string | null; payment_intent: string | null }>("checkout/sessions", {
     mode: "payment",
+    ...(o.embedded ? { ui_mode: "embedded", return_url: o.successUrl } : { success_url: o.successUrl, cancel_url: o.cancelUrl }),
     "line_items[0][quantity]": 1,
     "line_items[0][price_data][currency]": o.currency,
     "line_items[0][price_data][unit_amount]": cents,
@@ -49,11 +54,9 @@ export async function createCheckout(o: { code: string; listing: string; title: 
     "metadata[listing]": o.listing,
     customer_email: o.email || undefined,
     client_reference_id: o.code,
-    success_url: o.successUrl,
-    cancel_url: o.cancelUrl,
     expires_at: Math.floor(Date.now() / 1000) + 30 * 60,
   });
-  return { id: s.id, url: s.url, paymentIntent: s.payment_intent };
+  return { id: s.id, url: s.url || null, clientSecret: s.client_secret || null, paymentIntent: s.payment_intent };
 }
 
 export async function sessionStatus(sessionId: string): Promise<{ paid: boolean; paymentIntent: string | null }> {

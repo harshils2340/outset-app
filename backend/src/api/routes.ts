@@ -59,7 +59,8 @@ app.use("*", async (c, next) => {
   // A booking carries a name, a phone number and an email, so never let a browser try this over plain HTTP.
   c.header("strict-transport-security", "max-age=31536000");
 });
-app.get("/config", (c) => c.json({ payments: stripeEnabled(), mail: !!process.env.RESEND_API_KEY }));
+// The publishable key is public by design: Stripe.js needs it to mount the embedded checkout form in the page.
+app.get("/config", (c) => c.json({ payments: stripeEnabled(), mail: !!process.env.RESEND_API_KEY, stripePublishableKey: stripeEnabled() ? (process.env.STRIPE_PUBLISHABLE_KEY || "").trim() || null : null }));
 app.route("/", auth);
 app.route("/", profiles);
 app.route("/", claims);

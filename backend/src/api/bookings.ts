@@ -294,6 +294,8 @@ bookings.post("/bookings", rateLimit(20, 60 * 60 * 1000), async (c) => {
         code, listing, currency, title: clean((profile?.patch as { title?: string } | undefined)?.title, 120) || clean(detail?.title, 120) || listing,
         description: `${rec.service || "Booking"}${rec.variant ? " (" + rec.variant + ")" : ""} · ${fmtWhen(date, slot)} · ${qty} guest${qty === 1 ? "" : "s"}`,
         amount: rec.total!, email: guest.email || undefined, successUrl: SUCCESS(code, listing), cancelUrl: CANCEL(listing),
+        // The app asks for the embedded form; an older page that does not gets the hosted page as before.
+        embedded: (b as { embedded?: unknown } | null)?.embedded === true,
       });
       rec.status = "pending";
       rec.payment = { session: co.id, intent: co.paymentIntent, state: "unpaid", currency, subtotal: priced!.subtotal };
@@ -307,7 +309,7 @@ bookings.post("/bookings", rateLimit(20, 60 * 60 * 1000), async (c) => {
         return c.json({ error: "That time was just booked", code: "slot_taken" }, 409);
       }
       if (stored === "duplicate") return c.json({ error: "duplicate code" }, 409);
-      return c.json({ ok: true, status: "pending", code, checkoutUrl: co.url });
+      return c.json({ ok: true, status: "pending", code, checkoutUrl: co.url || undefined, checkoutClientSecret: co.clientSecret || undefined });
     } catch (e) {
       console.error("stripe checkout failed, falling back to pay on site: " + (e as Error).message);
     }

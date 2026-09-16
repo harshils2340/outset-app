@@ -19,7 +19,7 @@ import { fmtDate, money, nowStamp } from "../lib/format";
 import { daySlotsOpen, openSeats } from "../lib/inventory";
 import { contactFor, experienceById, fromPrice, initials } from "../lib/catalog";
 import { loadListing, loadRemoteCatalog, onListingEdits } from "../lib/catalogLoad";
-import { confirmPaid, hasApi, submitBooking, warmApi } from "../lib/api";
+import { confirmPaid, hasApi, submitBooking, warmApi , apiConfig } from "../lib/api";
 import { assistantOn, companyGreeting, companyHandoff, companyReply, companySuggestions } from "../lib/companyAgent";
 import type { Place } from "../lib/places";
 import { priceFor, priceUnclaimed } from "../lib/pricing";
@@ -62,8 +62,10 @@ export type AppState = {
   operatorId: string | null;
   /** Token from a signed claim link, checked against the listing's claimKey. */
   claimToken: string | null;
-  /** A paid booking has been sent and Stripe's page is about to take over. The listing stays behind a splash. */
+  /** A paid booking has been sent and the card step is up: Stripe's form inside the page, or its hosted page. */
   checkingOut: boolean;
+  /** The embedded checkout session to mount, when the API returned one; null means the hosted page takes over. */
+  checkoutSecret: string | null;
   /** Listing an owner arrived at from a "remove my listing" link. */
   removeId: string | null;
   sheet: SheetId;
@@ -100,6 +102,8 @@ type Action =
       guest?: { name: string; phone: string; email?: string };
       /** A card step follows: stay on the listing behind a splash instead of showing the confirmation. */
       pay?: boolean;
+      /** Stripe's embedded checkout client secret, when the form mounts in the page. */
+      checkoutSecret?: string;
       /** The code the API already accepted, so the ticket on screen matches the operator's email. */
       code?: string;
       /** The card is held or charged through Stripe. */
@@ -279,7 +283,7 @@ function reducer(state: AppState, action: Action): AppState {
       };
       // With a card step ahead the guest stays on the listing behind a "sending you to checkout" screen; the
       // confirmation only shows if Stripe does not take over (see checkoutDone).
-      if (action.pay) return { ...state, booking, bookings: [booking, ...state.bookings], checkingOut: true };
+      if (action.pay) return { ...state, booking, bookings: [booking, ...state.bookings], checkingOut: true, checkoutSecret: action.checkoutSecret || null };
       return {
         ...state,
         booking,
@@ -295,7 +299,7 @@ function reducer(state: AppState, action: Action): AppState {
       // happened: the row the API holds is `pending`, which the operator's dashboard does not even list, so
       // "Request sent" would name a request nobody at the shop can see. Trips already calls it "Payment not
       // finished".
-      return state.checkingOut ? { ...state, checkingOut: false } : state;
+      return state.checkingOut ? { ...state, checkingOut: false, checkoutSecret: null } : state;
     case "back": {
       if (state.screen === "operator") return { ...state, screen: "account" };
       if (state.screen === "chat") {
@@ -406,6 +410,7 @@ const initial: AppState = {
   operatorId: null,
   claimToken: null,
   checkingOut: false,
+  checkoutSecret: null,
   removeId: null,
   sheet: null,
   toast: null,
@@ -440,6 +445,8 @@ type Api = {
    */
   confirmUnclaimed: (input: { dateIdx: number; slot: string; qty: number; optionIdx: number | null; addonIdx?: number[]; guest?: { name: string; phone: string; email?: string }; pay?: boolean }) => Promise<{ ok: boolean; error?: string; taken?: boolean; checkoutUrl?: string }>;
   back: () => void;
+  /** The guest closed the card form without paying: the listing comes back as it was. */
+  cancelCheckout: () => void;
   openChat: (id: string) => void;
   openOperator: (id?: string) => void;
   ensureThread: (id: string) => void;
@@ -734,7 +741,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
         // The request goes to the operator through the API: email to them, a row in their dashboard. Only once
         // the API has it does the guest see a ticket; before this the page said "Request sent" while the API
         // was answering 409 for a paused shop or a time that had just been taken.
+        // The embedded form needs Stripe's publishable key on the page; without it the hosted page is asked for.
+        const embedded = !!(await apiConfig()).stripePublishableKey;
         const r = await submitBooking({
+          embedded,
           code, listing: u.id, date: dateKey(DATES[input.dateIdx]), slot: input.slot, qty: input.qty,
           service: picked?.name || u.title, variant: picked?.detail || "", addons: extras.map((a) => a.name), total: p.total || null,
           guest: { name: input.guest?.name || "", phone: input.guest?.phone || "", email: input.guest?.email || "" },
@@ -748,12 +758,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
         // sends the guest back to #paid=<code>. No card step after all: the confirmation shows straight away.
         // The API is trusted for a lot, but not to pick where this tab navigates next: only Stripe's own
         // checkout host is ever worth leaving the page for.
+        // Embedded: the form mounts over the listing and Stripe brings the guest back to #paid= when it is done.
+        if (r.checkoutClientSecret) {
+          dispatch({ type: "confirmUnclaimed", ...input, code, pay: true, checkoutSecret: r.checkoutClientSecret });
+          return { ok: true, checkoutUrl: "embedded" };
+        }
         const goesToStripe = isHttpsUrlOnHost(r.checkoutUrl, "checkout.stripe.com");
         dispatch({ type: "confirmUnclaimed", ...input, code, pay: goesToStripe });
         if (goesToStripe) window.location.assign(r.checkoutUrl!);
         return { ok: true, checkoutUrl: goesToStripe ? r.checkoutUrl : undefined };
       },
       back: () => dispatch({ type: "back" }),
+      cancelCheckout: () => dispatch({ type: "checkoutDone" }),
       openChat: (id) => dispatch({ type: "openChat", id }),
       openOperator: (id) => {
         dispatch({ type: "openOperator", id });
