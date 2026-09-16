@@ -2,6 +2,7 @@ import "./env.ts";
 import { serve } from "@hono/node-server";
 import { app } from "./api/routes.ts";
 import { migratePg, pgConfigured } from "./db/pg.ts";
+import { startDeployWindow } from "./lib/deployWindow.ts";
 
 /**
  * The API's own entry point.
@@ -24,6 +25,8 @@ await migratePg();
 const port = Number(process.env.PORT || 8787);
 serve({ fetch: app.fetch, port });
 console.log("Outset backend on http://localhost:" + port);
+// Overnight sessions push all night; Render builds nothing between 4am and 10am Eastern and deploys once at the end.
+startDeployWindow();
 
 /**
  * The seed rows the admin-only /operators and /contacts routes read. They go in after the socket is listening,
