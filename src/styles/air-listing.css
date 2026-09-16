@@ -190,7 +190,8 @@
 .aldesc > .almore:first-child{margin-top:0;}
 
 /* 6. what you can book: Airbnb's room cards, carrying the options to pick */
-.alsvcs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;align-items:start;}
+/* Cards in a row share a height and their price rows sit on one line at the bottom; a short card no longer leaves a hole beside a tall one. */
+.alsvcs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;align-items:stretch;}
 .alsvc{display:flex;flex-direction:column;gap:4px;padding:16px;border:1px solid var(--line-strong);border-radius:var(--r-m);min-width:0;transition:box-shadow .15s;}
 .alsvc.on{box-shadow:0 0 0 1px var(--ink);border-color:var(--ink);}
 .alsvcpic{margin:-16px -16px 12px;aspect-ratio:3 / 2;overflow:hidden;border-radius:11px 11px 0 0;background:var(--surface-2);}
@@ -198,7 +199,7 @@
 .alsvcname{font-size:16px;line-height:20px;font-weight:600;}
 .alsvcdesc{margin:0;font-size:14px;line-height:18px;color:var(--ink-soft);overflow-wrap:anywhere;}
 .alsvcdesc .alunder{font-size:14px;font-weight:600;}
-.alvariants{display:flex;flex-direction:column;margin-top:8px;}
+.alvariants{display:flex;flex-direction:column;margin-top:auto;padding-top:8px;}
 .alvariant{display:flex;align-items:center;gap:12px;width:100%;padding:12px 0;border-top:1px solid var(--line);text-align:left;font-size:14px;line-height:18px;color:var(--ink);}
 .alvariant:first-child{border-top:none;}
 .alvariant > span:nth-child(2){flex:1;min-width:0;}
