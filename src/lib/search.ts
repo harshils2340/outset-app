@@ -959,8 +959,17 @@ export function metroInQuery(q: string): { metro: Metro; words: string[] } | nul
       if (!best || words.length > best.words.length) best = { metro: m, words };
     }
   }
+  if (!best) return null;
+  // "cooking classes in tampa", "escape room near miami": the preposition belongs to the place, so moving the
+  // city to Where leaves "cooking classes" behind rather than "cooking classes in".
+  for (const prep of PLACE_PREPOSITIONS) {
+    if (lq.includes(" " + prep + " " + best.words.join(" ") + " ")) return { metro: best.metro, words: [...prep.split(" "), ...best.words] };
+  }
   return best;
 }
+
+/** The words a guest puts in front of a city, longest first so "close to" wins over "to". */
+const PLACE_PREPOSITIONS = ["close to", "near to", "around", "near", "in", "at", "to"];
 
 /** Cities matching what the guest typed, including a half-typed or misspelled name ("vancou", "montral"). */
 export function searchMetros(q: string, limit = 4): Metro[] {

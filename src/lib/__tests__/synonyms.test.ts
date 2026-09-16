@@ -204,3 +204,18 @@ test("a broad want next to a named kind keeps the kind", () => {
   assert.deepEqual(describeQuery("learn to sail").arts, ["sailing"]);
   assert.deepEqual(describeQuery("learn to surf").arts, ["surf"]);
 });
+
+test("a city typed into What carries its preposition with it, so What keeps only the activity", () => {
+  const place = (q: string) => metroInQuery(q);
+  assert.deepEqual(place("cooking classes in tampa")?.words, ["in", "tampa"]);
+  assert.deepEqual(place("escape room near miami")?.words, ["near", "miami"]);
+  assert.deepEqual(place("things to do around orlando")?.words, ["around", "orlando"]);
+  assert.deepEqual(place("axe throwing close to denver")?.words, ["close", "to", "denver"]);
+  assert.deepEqual(place("walking tour in new york city")?.words, ["in", "new", "york", "city"]);
+  assert.deepEqual(place("tampa kayak")?.words, ["tampa"]);
+  assert.deepEqual(place("kayak tampa bay")?.words, ["tampa", "bay"]);
+  assert.equal(place("cooking classes near me"), null);
+  // The activity is still read off the rest of the query.
+  assert.deepEqual(describeQuery("cooking classes in tampa").arts, ["cooking"]);
+  assert.deepEqual(describeQuery("escape room near miami").arts, ["escape"]);
+});
