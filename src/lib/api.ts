@@ -67,6 +67,31 @@ function authHeaders(id: string): Record<string, string> {
   return h;
 }
 
+/**
+ * The dashboard, told when the API stops accepting this device.
+ *
+ * A session lasts thirty days and nothing renews it, and the claim link's own token expires too, so every
+ * operator who claimed a month ago reaches this state. Nothing used to notice: the profile save is debounced
+ * and fire-and-forget, so a 403 was thrown away, and the header went on reading "Saved" because that word is
+ * about this browser's storage. The operator went on fixing prices, hours and photos for as long as they liked
+ * and not one of those edits reached a guest, while new booking requests stopped arriving just as quietly.
+ */
+let onAuthLost: (() => void) | null = null;
+export function onOperatorAuthLost(fn: (() => void) | null): void {
+  onAuthLost = fn;
+}
+/**
+ * What an authenticated operator call's status means for the session behind it. 401 and 403 are the API
+ * saying this device may not edit the listing, which is a session or a link that has run out. Everything
+ * else, a network failure included, is not a reason to tell somebody they have been signed out.
+ */
+export function authLost(status: number): boolean {
+  return status === 401 || status === 403;
+}
+const noteStatus = (status: number) => {
+  if (authLost(status)) onAuthLost?.();
+};
+
 async function call<T>(path: string, init: RequestInit & { timeout?: number } = {}): Promise<{ ok: boolean; status: number; data: T | null; error?: string }> {
   if (!API_URL) return { ok: false, status: 0, data: null, error: "no api" };
   try {
@@ -137,7 +162,13 @@ let queued: { id: string; body: unknown } | null = null;
 export function saveRemoteProfile(id: string, body: { profile: unknown; patch: Partial<Unclaimed>; published: boolean; owner: { name: string; email: string; phone: string } }): void {
   if (!API_URL) return;
   const h = authHeaders(id);
-  if (!h["x-claim-token"] && !h["x-session"]) return;
+  // Nothing to prove this device may edit the listing. The session has run out, or this is the demo dashboard
+  // a visitor sees before claiming. Either way the edit is going no further than this browser, and the
+  // dashboard says which of the two it is, because only it knows whether the profile is the demo one.
+  if (!h["x-claim-token"] && !h["x-session"]) {
+    onAuthLost?.();
+    return;
+  }
   queued = { id, body };
   if (pending) clearTimeout(pending);
   pending = setTimeout(async () => {
@@ -145,7 +176,8 @@ export function saveRemoteProfile(id: string, body: { profile: unknown; patch: P
     const q = queued;
     queued = null;
     if (!q) return;
-    await call(`/profiles/${encodeURIComponent(q.id)}`, { method: "PUT", headers: authHeaders(q.id), body: JSON.stringify(q.body), timeout: 15000 });
+    const r = await call(`/profiles/${encodeURIComponent(q.id)}`, { method: "PUT", headers: authHeaders(q.id), body: JSON.stringify(q.body), timeout: 15000 });
+    noteStatus(r.status);
   }, 1200);
 }
 
@@ -382,11 +414,14 @@ export async function fetchBookings(listing: string): Promise<RemoteBooking[] | 
   // before claiming has neither: it was asking for the demo shop's bookings every 45 seconds and logging a 403 each.
   if (!claimTokenFor(listing) && !loadApiSession()) return null;
   const r = await call<{ bookings: RemoteBooking[] }>(`/bookings/${encodeURIComponent(listing)}`, { headers: authHeaders(listing) });
+  // A refused poll is how an expired session shows up first: new requests simply stop arriving in the feed.
+  noteStatus(r.status);
   return r.ok && r.data ? r.data.bookings : null;
 }
 
 export async function decideBooking(listing: string, code: string, status: RemoteBooking["status"], note?: string): Promise<boolean> {
   const r = await call(`/bookings/${encodeURIComponent(listing)}/${encodeURIComponent(code)}`, { method: "PATCH", headers: authHeaders(listing), body: JSON.stringify({ status, note }) });
+  noteStatus(r.status);
   return r.ok;
 }
 

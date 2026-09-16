@@ -786,6 +786,39 @@ async function flow(ctx) {
     `tile:${tile} want:${want} guest total:${acceptedRow?.total} operator price:${acceptedRow?.pricing?.subtotal}`,
   );
 
+  /* ================= (j) an operator whose session has run out =================
+     A session lasts thirty days and nothing renews it, so every operator who claimed a month ago reaches
+     this. The profile save is debounced and its answer used to be thrown away, so a 403 went unnoticed and
+     the header went on reading "Saved", which is about this browser's storage: the owner fixed prices, hours
+     and photos for as long as they liked and not one edit reached a guest. Run last, because it signs this
+     browser out. */
+  const STALE_TITLE = TITLE + " (typed after the session ran out)";
+  await goto(`${BASE}/operators`);
+  await until(() => !!document.querySelector(".od .odbody"), 15000);
+  const beforeStale = (await remoteProfile())?.patch?.title;
+  // Age the session the way thirty days would, and drop any claim token with it: what is left is a dashboard
+  // that still opens from this device's own storage and can prove nothing to the API.
+  await js(() => {
+    const s = JSON.parse(localStorage.getItem("outset.session.v1") || "null");
+    if (s) localStorage.setItem("outset.session.v1", JSON.stringify({ ...s, exp: Date.now() - 1000 }));
+    for (const k of Object.keys(localStorage)) if (k.startsWith("outset.claimtoken.")) localStorage.removeItem(k);
+    return s ? "aged" : "MISSING session";
+  });
+  await goto(`${BASE}/operators`);
+  await until(() => !!document.querySelector(".od .odbody"), 15000);
+  await openDashboardPage("Listing");
+  await until(() => !!document.querySelector('[data-jump="title"] input'), 8000);
+  await setValue('[data-jump="title"] input', STALE_TITLE);
+  await sleep(3000);
+  const toldThem = await has("Sign in again to publish your changes");
+  const afterStale = (await remoteProfile())?.patch?.title;
+  await shot("j-session-expired");
+  record(
+    "(j) an expired session says so instead of silently dropping every edit",
+    toldThem && afterStale === beforeStale && afterStale !== STALE_TITLE,
+    `notice shown:${toldThem} title at the API before:${beforeStale} after:${afterStale}`,
+  );
+
   // The steps above only mean anything if the harness found what it clicked and typed into.
   const realMisses = missed.filter((m) => !EXPECTED_MISSES.some((e) => m.startsWith(e)));
   record(

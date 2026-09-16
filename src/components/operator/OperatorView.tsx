@@ -4,7 +4,7 @@ import { experienceById } from "../../lib/catalog";
 import { loadListing } from "../../lib/catalogLoad";
 import { JUMP_PAGE, allBookings, applyStoredProfiles, demoProfile, hydrateProfile, isDemoProfile, loadProfile, loadSession, profileKey, saveProfile, saveSession, setBookingStatus, type JumpField, type OpBooking, type OpStatus, type OperatorProfile } from "../../lib/operator";
 import { useApp } from "../../state/AppProvider";
-import { decideBooking, fetchBookings, hasApi, signOutApi, takeClaimNotice, type RemoteBooking } from "../../lib/api";
+import { decideBooking, fetchBookings, hasApi, onOperatorAuthLost, signOutApi, takeClaimNotice, type RemoteBooking } from "../../lib/api";
 import { Markup } from "../Markup";
 import { Mark } from "../layout/Mark";
 import { OpAssistant } from "./OpAssistant";
@@ -55,11 +55,24 @@ export function OperatorView({ compact = false }: { compact?: boolean }) {
   const [savedAt, setSavedAt] = useState(0);
   // The last write to this browser's storage was refused. Shown in the header until one goes through.
   const [saveFailed, setSaveFailed] = useState(false);
+  // The API stopped accepting this device: a session that ran out, or a claim link past its expiry. Everything
+  // still saves here, so the dashboard reads exactly as it did, and nothing reaches a guest until they sign in.
+  const [signedOut, setSignedOut] = useState(false);
   const lastTouch = useRef(0);
   const bodyRef = useRef<HTMLElement | null>(null);
   useEffect(() => {
     if (p) setClaimNotice(takeClaimNotice());
   }, [p?.id]);
+
+  /* The demo dashboard has no session by design, and its saves are meant to stop at this browser, so it is the
+     one profile that must not raise this. Every other one is a real shop whose edits are going nowhere. */
+  const demoHere = !!p && isDemoProfile(p);
+  useEffect(() => {
+    if (!hasApi() || demoHere) return;
+    onOperatorAuthLost(() => setSignedOut(true));
+    return () => onOperatorAuthLost(null);
+  }, [demoHere]);
+  useEffect(() => { setSignedOut(false); }, [p?.id]);
 
   useEffect(() => {
     if (!toastText) return;
@@ -394,8 +407,8 @@ export function OperatorView({ compact = false }: { compact?: boolean }) {
             </div>
             <div className="odtopright">
               {!compact ? (
-                <span className={"odsavedtop" + (savedAt ? " on" : "") + (saveFailed ? " failed" : "")} role="status" aria-live="polite">
-                  {saveFailed ? <><Markup html={OD_ICONS.x} /> Not saved · storage full</> : savedAt ? <><Markup html={OD_ICONS.check} /> Saved</> : "Changes save automatically"}
+                <span className={"odsavedtop" + (savedAt && !signedOut ? " on" : "") + (saveFailed || signedOut ? " failed" : "")} role="status" aria-live="polite">
+                  {saveFailed ? <><Markup html={OD_ICONS.x} /> Not saved · storage full</> : signedOut ? <><Markup html={OD_ICONS.x} /> Saved here only · sign in again</> : savedAt ? <><Markup html={OD_ICONS.check} /> Saved</> : "Changes save automatically"}
                 </span>
               ) : null}
               {!compact && PREVIEW_PAGES.includes(page) ? (
@@ -412,6 +425,19 @@ export function OperatorView({ compact = false }: { compact?: boolean }) {
           </header>
 
           <main className="odbody" ref={bodyRef}>
+            {signedOut ? (
+              <div className="odnotice" role="status">
+                <span>
+                  <b>Sign in again to publish your changes</b>
+                  <small>
+                    Outset has signed this device out, so your edits are saved here and are not reaching your listing
+                    or your guests, and new booking requests are not coming through either. Sign in with the email on
+                    your listing and everything on this device goes up with your next edit.
+                  </small>
+                </span>
+                <button type="button" onClick={() => setWantLogin(true)}>Sign in</button>
+              </div>
+            ) : null}
             {page === "home" ? <OpHome /> : null}
             {page === "bookings" ? <OpBookings /> : null}
             {page === "calendar" ? <OpCalendar /> : null}
