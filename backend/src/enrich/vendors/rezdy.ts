@@ -1,4 +1,5 @@
 import { mineSentences, plain, type Company, type Offering, type WidgetResult } from "../widgets.ts";
+import { safeFetch } from "../../lib/safeFetch.ts";
 
 /**
  * Rezdy as a free, exact source.
@@ -112,14 +113,14 @@ export function rezdyRef(bookingUrlOrHtml: string): RezdyRef | null {
 
 async function defaultFetch(url: string): Promise<string | null> {
   try {
-    const res = await fetch(url, {
+    const res = await safeFetch(url, {
       headers: {
         "User-Agent": UA,
         Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
         "Accept-Language": "en-US,en;q=0.9",
       },
-      redirect: "follow",
-      signal: AbortSignal.timeout(15000),
+      timeoutMs: 15000,
+      maxBytes: 5_000_000,
     });
     if (res.status !== 200) return null;
     return await res.text();

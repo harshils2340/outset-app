@@ -1,4 +1,5 @@
 import { mineSentences, plain, type Offering, type WidgetResult } from "../widgets.ts";
+import { safeFetch } from "../../lib/safeFetch.ts";
 
 /**
  * Acuity Scheduling (Squarespace Scheduling) as a free, exact source.
@@ -99,7 +100,7 @@ async function disallows(origin: string): Promise<string[]> {
   if (hit) return hit;
   const out: string[] = [];
   try {
-    const res = await fetch(origin + "/robots.txt", { headers: { "User-Agent": UA }, signal: AbortSignal.timeout(15000) });
+    const res = await safeFetch(origin + "/robots.txt", { headers: { "User-Agent": UA }, timeoutMs: 15000, maxBytes: 5_000_000 });
     if (res.ok) {
       let star = false;
       for (const line of (await res.text()).split(/\r?\n/)) {
@@ -134,7 +135,7 @@ async function fetchBusiness(ref: AcuityRef): Promise<AcuityBusiness | null> {
   await pause(200);
   let html: string;
   try {
-    const res = await fetch(ref.url, { headers: { "User-Agent": UA, Accept: "text/html" }, redirect: "follow", signal: AbortSignal.timeout(15000) });
+    const res = await safeFetch(ref.url, { headers: { "User-Agent": UA, Accept: "text/html" }, timeoutMs: 15000, maxBytes: 5_000_000 });
     if (!res.ok) return null;
     html = await res.text();
   } catch {

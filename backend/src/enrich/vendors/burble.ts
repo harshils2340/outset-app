@@ -1,5 +1,6 @@
 import { mineSentences, plain, type Company, type Offering, type WidgetResult } from "../widgets.ts";
 import { robotsAllowed } from "../../scrape/fetch.ts";
+import { safeFetch } from "../../lib/safeFetch.ts";
 
 /**
  * Burble (skydiving manifest and booking). What is and is not public, checked 15 September 2026:
@@ -37,10 +38,10 @@ export function burbleRef(bookingUrlOrHtml: string): BurbleRef | null {
 
 async function getHtml(url: string, cookie: string | null): Promise<{ html: string; cookie: string | null } | null> {
   try {
-    const res = await fetch(url, {
+    const res = await safeFetch(url, {
       headers: { "User-Agent": UA, Accept: "text/html,application/xhtml+xml", "Accept-Language": "en-US,en;q=0.9", ...(cookie ? { Cookie: cookie } : {}) },
-      signal: AbortSignal.timeout(15000),
-      redirect: "follow",
+      timeoutMs: 15000,
+      maxBytes: 5_000_000,
     });
     if (!res.ok) return null;
     const set = typeof res.headers.getSetCookie === "function" ? res.headers.getSetCookie() : [];

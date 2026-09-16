@@ -1,5 +1,6 @@
 import type { Company, Offering, WidgetResult } from "../widgets.ts";
 import { mineSentences, plain } from "../widgets.ts";
+import { safeFetch } from "../../lib/safeFetch.ts";
 
 /**
  * Resova: escape rooms and similar timed rooms, booked at <company>.resova.us (also .com / .eu).
@@ -77,7 +78,7 @@ type RsCalendar = { data?: { dates?: { date: string; times?: RsSlot[] }[] } };
 
 async function shell(host: string): Promise<{ token: string; cookie: string } | null> {
   try {
-    const res = await fetch("https://" + host + "/", { headers: { "User-Agent": UA, Accept: "text/html" }, signal: AbortSignal.timeout(15000), redirect: "follow" });
+    const res = await safeFetch("https://" + host + "/", { headers: { "User-Agent": UA, Accept: "text/html" }, timeoutMs: 15000, maxBytes: 5_000_000 });
     if (!res.ok) return null;
     const html = await res.text();
     const token = html.match(/aeuToken\s*=\s*"([^"]+)"/)?.[1];
@@ -92,9 +93,10 @@ async function shell(host: string): Promise<{ token: string; cookie: string } | 
 
 async function api<T>(host: string, auth: { token: string; cookie: string }, path: string): Promise<T | null> {
   try {
-    const res = await fetch("https://" + host + "/api/booking/v1/" + path, {
+    const res = await safeFetch("https://" + host + "/api/booking/v1/" + path, {
       headers: { "User-Agent": UA, Accept: "application/json, text/plain, */*", "Content-Type": "application/json", "X-API-KEY": auth.token, Cookie: auth.cookie, Referer: "https://" + host + "/" },
-      signal: AbortSignal.timeout(15000),
+      timeoutMs: 15000,
+      maxBytes: 5_000_000,
     });
     if (!res.ok || !/json/i.test(res.headers.get("content-type") || "")) return null;
     return (await res.json()) as T;

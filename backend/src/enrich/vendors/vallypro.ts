@@ -1,5 +1,6 @@
 import type { Company, Offering, WidgetResult } from "../widgets.ts";
 import { mineSentences, plain } from "../widgets.ts";
+import { safeFetch } from "../../lib/safeFetch.ts";
 
 /**
  * VallyPro (Vally): guide and charter booking, book.vallypro.com/p/<slug>.
@@ -45,7 +46,7 @@ type VpInstance = {
 
 async function getJson<T>(url: string): Promise<T | null> {
   try {
-    const res = await fetch(url, { headers: { "User-Agent": UA, Accept: "application/json" }, signal: AbortSignal.timeout(15000) });
+    const res = await safeFetch(url, { headers: { "User-Agent": UA, Accept: "application/json" }, timeoutMs: 15000, maxBytes: 5_000_000 });
     if (!res.ok) return null;
     return (await res.json()) as T;
   } catch {

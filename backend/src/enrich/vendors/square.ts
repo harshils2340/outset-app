@@ -1,5 +1,6 @@
 import { mineSentences, plain } from "../widgets.ts";
 import type { Company, Offering, WidgetResult } from "../widgets.ts";
+import { safeFetch } from "../../lib/safeFetch.ts";
 
 /**
  * Square Appointments and Square Online, read from what the public booking pages already ship, no key and no browser.
@@ -64,7 +65,7 @@ function robotsFor(host: string): Promise<Robots> {
     p = (async () => {
       const out: Robots = { disallow: [], delayMs: 1000 };
       try {
-        const res = await fetch("https://" + host + "/robots.txt", { headers: { "User-Agent": UA }, signal: AbortSignal.timeout(15000) });
+        const res = await safeFetch("https://" + host + "/robots.txt", { headers: { "User-Agent": UA }, timeoutMs: 15000, maxBytes: 5_000_000 });
         if (!res.ok) return out;
         const text = await res.text();
         let mine = false;
@@ -96,7 +97,7 @@ async function politeGet(url: string, accept = "text/html"): Promise<{ status: n
   if (wait > 0) await pause(wait);
   lastHit.set(u.host, Date.now());
   try {
-    const res = await fetch(url, { headers: { "User-Agent": UA, Accept: accept, "Accept-Language": "en-US,en;q=0.9" }, signal: AbortSignal.timeout(15000), redirect: "follow" });
+    const res = await safeFetch(url, { headers: { "User-Agent": UA, Accept: accept, "Accept-Language": "en-US,en;q=0.9" }, timeoutMs: 15000, maxBytes: 5_000_000 });
     const text = await res.text();
     lastHit.set(new URL(res.url).host, Date.now());
     return { status: res.status, url: res.url, text };

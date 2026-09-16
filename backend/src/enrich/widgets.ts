@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { db, nowIso } from "../db/client.ts";
+import { safeFetch } from "../lib/safeFetch.ts";
 import { normalizePhone } from "../scrape/run.ts";
 import { withDeadline } from "../scrape/fetch.ts";
 import { spawnWorkers } from "../scrape/cpu.ts";
@@ -31,7 +32,7 @@ export type WidgetResult = { vendor: string; offerings: Offering[]; company: Com
 
 async function getJson<T>(url: string): Promise<T | null> {
   try {
-    const res = await fetch(url, { headers: { "User-Agent": UA, Accept: "application/json" }, signal: AbortSignal.timeout(15000) });
+    const res = await safeFetch(url, { headers: { "User-Agent": UA, Accept: "application/json" }, timeoutMs: 15000, maxBytes: 5_000_000 });
     if (!res.ok) return null;
     return (await res.json()) as T;
   } catch {
@@ -487,9 +488,10 @@ type JsonApiDoc = { data?: { id: string }; included?: { type: string; id: string
 async function peekGet<T>(key: string, path: string): Promise<T | null> {
   await new Promise((r) => setTimeout(r, 400));
   try {
-    const res = await fetch("https://book.peek.com/services/api/" + path, {
+    const res = await safeFetch("https://book.peek.com/services/api/" + path, {
       headers: { "User-Agent": UA, Accept: "application/vnd.api+json", Authorization: "Key " + key },
-      signal: AbortSignal.timeout(15000),
+      timeoutMs: 15000,
+      maxBytes: 5_000_000,
     });
     if (!res.ok) return null;
     return (await res.json()) as T;

@@ -1,5 +1,6 @@
 import { db } from "../db/client.ts";
 import { fareharborShortname, peekRef, xolaSeller } from "./widgets.ts";
+import { safeFetch } from "../lib/safeFetch.ts";
 
 /**
  * Real open dates and times, read live from the operator's own booking system.
@@ -68,10 +69,10 @@ function cacheSet(m: Map<string, Cached>, key: string, value: unknown): void {
 /** One upstream attempt. No retry: their server said what it said. */
 async function getJson<T>(url: string, headers: Record<string, string> = {}): Promise<T | null> {
   try {
-    const res = await fetch(url, {
+    const res = await safeFetch(url, {
       headers: { "User-Agent": UA, Accept: "application/json", ...headers },
-      signal: AbortSignal.timeout(TIMEOUT_MS),
-      redirect: "follow",
+      timeoutMs: TIMEOUT_MS,
+      maxBytes: 5_000_000,
     });
     if (!res.ok) return null;
     return (await res.json()) as T;

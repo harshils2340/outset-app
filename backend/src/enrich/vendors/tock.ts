@@ -1,4 +1,5 @@
 import type { Offering, WidgetResult } from "../widgets.ts";
+import { safeFetch } from "../../lib/safeFetch.ts";
 
 /**
  * Tock (exploretock.com): wineries, tasting experiences, cruises.
@@ -67,10 +68,10 @@ type Fetched = { status: number; challenged: boolean; html: string };
 
 async function getPage(url: string): Promise<Fetched | null> {
   try {
-    const res = await fetch(url, {
+    const res = await safeFetch(url, {
       headers: { "User-Agent": UA, Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8", "Accept-Language": "en-US,en;q=0.9" },
-      signal: AbortSignal.timeout(15000),
-      redirect: "follow",
+      timeoutMs: 15000,
+      maxBytes: 5_000_000,
     });
     const html = await res.text();
     const challenged = res.headers.get("cf-mitigated") === "challenge" || /<title>Just a moment\.\.\.<\/title>/.test(html);

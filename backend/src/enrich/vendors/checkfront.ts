@@ -1,5 +1,6 @@
 import { mineSentences, plain } from "../widgets.ts";
 import type { Company, Offering, WidgetResult } from "../widgets.ts";
+import { safeFetch } from "../../lib/safeFetch.ts";
 
 /**
  * Checkfront as a free, exact source. Every Checkfront account serves a hosted booking page at
@@ -68,7 +69,7 @@ const pause = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 async function getText(url: string, accept = "text/html,application/json"): Promise<string | null> {
   try {
-    const res = await fetch(url, { headers: { "User-Agent": UA, Accept: accept }, signal: AbortSignal.timeout(TIMEOUT) });
+    const res = await safeFetch(url, { headers: { "User-Agent": UA, Accept: accept }, timeoutMs: TIMEOUT, maxBytes: 5_000_000 });
     if (!res.ok) return null;
     return await res.text();
   } catch {
@@ -78,11 +79,12 @@ async function getText(url: string, accept = "text/html,application/json"): Prom
 
 async function postJson<T>(url: string, form: Record<string, string>): Promise<T | null> {
   try {
-    const res = await fetch(url, {
+    const res = await safeFetch(url, {
       method: "POST",
       headers: { "User-Agent": UA, Accept: "application/json", "Content-Type": "application/x-www-form-urlencoded" },
       body: new URLSearchParams(form).toString(),
-      signal: AbortSignal.timeout(TIMEOUT),
+      timeoutMs: TIMEOUT,
+      maxBytes: 5_000_000,
     });
     if (!res.ok) return null;
     const text = await res.text();
