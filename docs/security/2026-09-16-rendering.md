@@ -141,6 +141,38 @@ crawler's trust rules and the API, keys, and workflows.
   were 403s from this sandbox's own outbound network proxy rejecting hosts outside it
   (`bigwhite.com`, and intermittently `wsrv.nl`), confirmed by URL, not from the policy. Added a
   `Referrer-Policy` meta of `strict-origin-when-cross-origin`.
+- `backend/src/lib/emailTemplate.ts`: every dynamic value in the HTML half (`heading`, `intro`,
+  row labels and values, price line labels and amounts, the cta label and url, the footer)
+  already goes through a shared `esc()` before it reaches the markup. `esc()` does not escape a
+  single quote, but every attribute in the template is double-quoted, so that is not a gap. The
+  plain-text half carries the same values unescaped, which is correct: text/plain is never
+  rendered as HTML by a mail client.
+- Header injection: `backend/src/api/bookingMail.ts` concatenates `rec.guest.name` and
+  `rec.guest.email` (guest-typed, unescaped) straight into a `subject` string and a `replyTo`
+  field with no sanitizing of its own. Traced the safety to the mail transport instead: built the
+  exact message `mail.ts`'s SMTP path would (`nodemailer.createTransport`, the same call
+  `sendSmtp` makes) with a subject and a `replyTo` each carrying
+  `x\r\nBcc: victim@example.com`, and read back the raw generated MIME message with
+  `streamTransport`. In both cases nodemailer folded the payload into the existing header line
+  rather than starting a new `Bcc:`/`X-Injected:` header. `sendMail`'s own regex on `to` rejects
+  any address containing a newline before a transport is even built, which is the one field of
+  the three that is validated directly. Resend's HTTP path JSON-encodes the subject before it
+  ever leaves this server, so a literal CRLF cannot break out of the request body; whatever
+  Resend's own server does with an embedded CRLF inside a decoded field is outside this
+  repository and could not be tested from here without sending real mail, which the rules for
+  this review rule out.
+- `backend/src/api/claims.ts`: the owner's typed name, email and phone are packed into the claim
+  link as `Buffer.from(JSON.stringify({...})).toString("base64url")`, so they cannot carry
+  anything that breaks out of the URL, the HTML `href` attribute, or a header, regardless of
+  content. `backend/src/api/auth.ts`'s sign-in code is server-generated (`randomInt`, six
+  digits), and its `email` is checked by the same no-whitespace regex as `sendMail`'s `to`, so
+  there is no operator-facing text in that path to begin with.
+- Added `backend/src/lib/__tests__/emailTemplate.test.ts` (HTML escaping of `<script>`,
+  `"><img src=x onerror=alert(1)>` in a heading, a row, and a cta) and
+  `backend/src/lib/__tests__/mailHeaderInjection.test.ts` (the CRLF/Bcc cases above, plus
+  `sendMail`'s own address check) so a future change that drops nodemailer for raw SMTP string
+  building, or adds a field that skips `esc()`, fails a test instead of shipping the bug. No
+  code in `emailTemplate.ts`, `bookingMail.ts`, `claims.ts` or `auth.ts` needed to change.
 
 ## Found, not fixed
 
