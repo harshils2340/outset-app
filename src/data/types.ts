@@ -206,6 +206,8 @@ export type Unclaimed = {
   checkin?: string;
   cancellation?: string;
   policies?: string[];
+  /** The operator's own "what it's actually like" guide; absent means the page shows the kind's default (data/guides.ts). */
+  guide?: { steps: string[]; bring: string[]; goodFor: string };
   waiverUrl?: string;
   hoursText?: string[];
   faq?: { q: string; a: string }[];
@@ -299,6 +301,15 @@ export type Booking = {
   guest?: { name: string; phone: string; email?: string };
   /** Card held or charged through Stripe, as opposed to paid on site. */
   paid?: boolean;
+  /**
+   * What was booked, as it read at confirm time. `addons` carries the option's index, and the operator's
+   * dashboard used to look that index up in the live menu, so deleting or reordering a service relabelled
+   * every earlier booking with whatever now sat at that position. Old bookings have none of these.
+   */
+  service?: string;
+  variant?: string;
+  price?: number | null;
+  per?: string;
 };
 
 export type TabId = "explore" | "trips" | "inbox" | "account";

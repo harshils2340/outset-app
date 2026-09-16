@@ -118,7 +118,13 @@ export function parseWeek(input: string[]): Week | null {
   return any ? week : null;
 }
 
-export type OpenState = { open: boolean; label: string; closesAt?: string; opensAt?: string };
+/**
+ * `label` is the sentence ("Open now, closes 7 PM"); `line` is the Google Maps / Uber Eats header form
+ * ("Open · closes 7 PM", "Closes soon · 6:45 PM", "Closed · opens 9 AM tomorrow", "Closed today · opens Sat 9 AM").
+ * `soon` is set while open with under an hour left.
+ */
+export type OpenState = { open: boolean; label: string; line: string; soon?: boolean; closesAt?: string; opensAt?: string };
+const SOON_MIN = 60;
 
 function fmt(m: number): string {
   const h = Math.floor((m % (24 * 60)) / 60);
@@ -139,18 +145,28 @@ export function openStateAt(week: Week | null, clock: { day: number; minutes: nu
   const cur = clock.minutes;
   const today = week[day];
   const yesterday = week[(day + 6) % 7];
+  const openTill = (close: number, left: number): OpenState => {
+    const soon = left <= SOON_MIN;
+    return { open: true, label: "Open now, closes " + fmt(close), line: soon ? "Closes soon · " + fmt(close) : "Open · closes " + fmt(close), soon, closesAt: fmt(close) };
+  };
   // Late closers: yesterday's 6 PM to 2 AM still counts at 1 AM.
-  if (yesterday && yesterday.close > 24 * 60 && cur + 24 * 60 < yesterday.close) return { open: true, label: "Open now, closes " + fmt(yesterday.close), closesAt: fmt(yesterday.close) };
+  if (yesterday && yesterday.close > 24 * 60 && cur + 24 * 60 < yesterday.close) return openTill(yesterday.close, yesterday.close - (cur + 24 * 60));
   if (today === null) return null;
-  if (today.close === 0) return { open: false, label: "Closed today" };
-  if (cur >= today.open && cur < today.close) return { open: true, label: "Open now, closes " + fmt(today.close), closesAt: fmt(today.close) };
-  if (cur < today.open) return { open: false, label: "Opens today at " + fmt(today.open), opensAt: fmt(today.open) };
+  const closedToday = today.close === 0;
+  if (!closedToday && cur >= today.open && cur < today.close) return openTill(today.close, today.close - cur);
+  if (!closedToday && cur < today.open) return { open: false, label: "Opens today at " + fmt(today.open), line: "Closed · opens " + fmt(today.open), opensAt: fmt(today.open) };
   // Find the next open day.
   for (let i = 1; i <= 7; i += 1) {
     const d = week[(day + i) % 7];
-    if (d && d.close > 0) return { open: false, label: "Closed now, opens " + (i === 1 ? "tomorrow" : ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][(day + i) % 7]) + " at " + fmt(d.open), opensAt: fmt(d.open) };
+    if (d && d.close > 0) {
+      const when = i === 1 ? "tomorrow" : ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][(day + i) % 7];
+      const line = (closedToday ? "Closed today" : "Closed") + " · opens " + (i === 1 ? fmt(d.open) + " tomorrow" : when + " " + fmt(d.open));
+      // The sentence form stays as it was for the assistant and the phone sheet: "Closed today" carries no opensAt.
+      if (closedToday) return { open: false, label: "Closed today", line };
+      return { open: false, label: "Closed now, opens " + when + " at " + fmt(d.open), line, opensAt: fmt(d.open) };
+    }
   }
-  return { open: false, label: "Closed" };
+  return closedToday ? { open: false, label: "Closed today", line: "Closed today" } : { open: false, label: "Closed", line: "Closed" };
 }
 
 /* ---------- the operator's clock, not the guest's ---------- */

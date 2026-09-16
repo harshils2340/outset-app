@@ -578,3 +578,14 @@ a.alwhererow:hover b{text-decoration:underline;}
 
 /* The booking box could not send: the time filled up, or the shop paused. Warm red, same as "only a few left". */
 .al .albookerror { color: #C13515; font-weight: 600; margin-top: 10px; }
+
+/* Listing header open status (guest listing header area): the Google Maps line under the subtitle.
+   Open is the same green the walk-in box already uses for "Open now"; closing within the hour is the app's
+   warm --few; closed is muted. Nothing is printed when the business publishes no hours. */
+.alstatus{margin:4px 0 0;font-size:15px;line-height:20px;font-weight:600;color:var(--ink-soft);}
+.alstatus.open{color:#008A05;}
+.alstatus.soon{color:var(--few);}
+.alstatus.closed{color:var(--ink-soft);}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) .alstatus.open{color:#5FCB6A;} }
+:root[data-theme="dark"] .alstatus.open{color:#5FCB6A;}
+.alstatus + .alfacts{margin-top:2px;}
