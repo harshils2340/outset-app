@@ -446,8 +446,10 @@ export function toCatalogItem(r: CatalogRow): Record<string, unknown> {
     })(),
     specs: uniq([...pick("spec"), ...pick("requirement"), ...pick("group")].map((s) => tidyDashes(cleanLine(s)))).filter(isTidyLine).slice(0, 10),
     // Names and details in plain words (plainServices.ts): the same cleaning the services below get, so the booking
-    // picker's sub-line and a service's tier label never disagree.
-    options: menu.map((o) => {
+    // picker's sub-line and a service's tier label never disagree. A membership or a gift card is not an experience
+    // a guest books a slot for, and the services list below already knows that; this row feeds a card's "from"
+    // price too, so a $10 membership tier was quoting a charter's price as a season pass, not a trip out.
+    options: menu.filter((o) => !NOT_A_SERVICE.test(o.name)).map((o) => {
       const name = plainName(o.name, art);
       const price = o.price_cents == null ? null : o.price_cents / 100;
       return {
@@ -1588,7 +1590,7 @@ function isTidyLine(l: string): boolean {
 }
 
 /** Things a site sells that a guest does not book a time for. */
-const NOT_A_SERVICE = /\b(gift ?cards?|gift certificates?|e-?gift|merch(andise)?|t-?shirts?|hats?|apparel|donation|membership|season pass|parking)\b/i;
+export const NOT_A_SERVICE = /\b(gift ?cards?|gift certificates?|e-?gift|merch(andise)?|t-?shirts?|hats?|apparel|donation|membership|season pass|parking)\b/i;
 
 function uniq(list: string[]): string[] {
   const seen = new Set<string>();
