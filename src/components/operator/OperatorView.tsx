@@ -425,6 +425,24 @@ export function OperatorView({ compact = false }: { compact?: boolean }) {
           </header>
 
           <main className="odbody" ref={bodyRef}>
+            {/* Both notices live inside the page body. As a direct child of `.od` an `.odnotice` is auto-placed
+                by the grid, and `.odmain` holds column two, so it landed in a 248px strip in column one, behind
+                the fixed sidebar and below the fold: measured at x 8, width 248, y 473 on a 1440 screen. The
+                claim one is the only thing that tells an owner somebody else walked in through a forwarded
+                link, and nobody could read it. In the phone frame `.od` is a column, so it was under the tab
+                bar there instead. */}
+            {claimNotice ? (
+              <div className="odnotice">
+                <span>
+                  <b>This listing was already claimed by {claimNotice.email}</b>
+                  <small>
+                    {claimNotice.at ? "on " + new Date(claimNotice.at).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" }) + ". " : ""}
+                    You are signed in as well, so you can both manage it. If that was not you or someone you work with, write to hello@onoutset.com and we will sort it out.
+                  </small>
+                </span>
+                <button type="button" onClick={() => setClaimNotice(null)} aria-label="Dismiss">Got it</button>
+              </div>
+            ) : null}
             {signedOut ? (
               <div className="odnotice" role="status">
                 <span>
@@ -479,18 +497,6 @@ export function OperatorView({ compact = false }: { compact?: boolean }) {
         ) : null}
 
         {opened ? <BookingDrawer b={opened} onClose={() => setOpenedId(null)} /> : null}
-        {claimNotice ? (
-          <div className="odnotice">
-            <span>
-              <b>This listing was already claimed by {claimNotice.email}</b>
-              <small>
-                {claimNotice.at ? "on " + new Date(claimNotice.at).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" }) + ". " : ""}
-                You are signed in as well, so you can both manage it. If that was not you or someone you work with, write to hello@onoutset.com and we will sort it out.
-              </small>
-            </span>
-            <button type="button" onClick={() => setClaimNotice(null)} aria-label="Dismiss">Got it</button>
-          </div>
-        ) : null}
         {toastText ? <div className="odtoast">{toastText}</div> : null}
       </div>
     </OpCtx.Provider>
