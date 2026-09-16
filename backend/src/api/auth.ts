@@ -120,7 +120,7 @@ const codes = new Map<string, { hash: string; exp: number; tries: number }>();
  * inbox from our sending domain and overwrites the real code they are trying to type. Counted per email too.
  */
 const perEmail = new Map<string, number[]>();
-function emailLimit(key: string, limit: number, windowMs: number): boolean {
+export function emailLimit(key: string, limit: number, windowMs: number): boolean {
   const now = Date.now();
   const arr = (perEmail.get(key) || []).filter((t) => now - t < windowMs);
   if (arr.length >= limit) return false;

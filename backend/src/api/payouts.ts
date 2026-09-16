@@ -48,6 +48,41 @@ type Payout = {
 };
 type ProfileWithPayout = StoredProfile & { payout?: Payout };
 
+/**
+ * The transfer a booking's payout goes out as, fixed on the first attempt. Stripe's idempotency key is the
+ * booking code, and a retry under the same key with a different amount is refused outright ("Keys for
+ * idempotent requests can only be used with the same parameters"). The amount used to be recomputed from the
+ * charge's exchange rate on every run, so a booking whose transfer succeeded but whose state write failed
+ * could never be marked paid once the rate moved.
+ */
+type TransferSnapshot = { transferAmount?: number; transferCurrency?: string };
+type BookingPayout = NonNullable<StoredBooking["payout"]> & TransferSnapshot;
+export type PayoutBooking = Omit<StoredBooking, "payout"> & { payout?: BookingPayout };
+
+/** What the payout run reads and writes, so a test can hand it a fake store and a fake Stripe. */
+export type PayoutDeps = {
+  stripeEnabled: () => boolean;
+  listingsWithPayouts: () => Promise<string[]>;
+  getProfile: (id: string) => Promise<ProfileWithPayout | null>;
+  updateProfile: (id: string, initial: ProfileWithPayout, fn: (cur: ProfileWithPayout) => ProfileWithPayout) => Promise<ProfileWithPayout>;
+  listBookings: (id: string) => Promise<PayoutBooking[]>;
+  updateBooking: (id: string, code: string, fn: (cur: PayoutBooking) => PayoutBooking) => Promise<PayoutBooking | null>;
+  chargeOf: typeof chargeOf;
+  settlementOf: typeof settlementOf;
+  transferForBooking: typeof transferForBooking;
+};
+const realDeps: PayoutDeps = {
+  stripeEnabled,
+  listingsWithPayouts,
+  getProfile: (id) => getProfile<ProfileWithPayout>(id),
+  updateProfile: (id, initial, fn) => updateProfile<ProfileWithPayout>(id, initial, fn),
+  listBookings: (id) => listBookings<PayoutBooking>(id),
+  updateBooking: (id, code, fn) => updateBooking<PayoutBooking>(id, code, fn),
+  chargeOf,
+  settlementOf,
+  transferForBooking,
+};
+
 export const payouts = new Hono();
 
 payouts.get("/payouts/:id", async (c) => {
@@ -70,7 +105,18 @@ payouts.get("/payouts/:id", async (c) => {
 
 /** What the dashboard shows: money waiting on a trip date, what goes out on the next pay day, and what has been paid. */
 async function ledger(id: string, payout: Payout, now = new Date()) {
-  const list = await listBookings<StoredBooking>(id);
+  return ledgerOf(await listBookings<StoredBooking>(id), payout, now);
+}
+
+export type LedgerTotals = { currency: string; nextAmount: number; upcoming: number; paidTotal: number };
+
+/**
+ * One total per currency. A listing whose guests paid in both USD and CAD (a charge that settled in the
+ * platform's currency, a listing that moved) used to have every amount added into one number under the first
+ * booking's currency. The top-level fields are the listing's main currency (the one with the most bookings);
+ * `totals` carries every currency, and the page shows the others beside it.
+ */
+export function ledgerOf(list: StoredBooking[], payout: Payout, now = new Date()) {
   const interval = payout.interval || "weekly";
   const next = cycleStart(cycleOf(now, interval) + (payout.lastCycle === cycleOf(now, interval) ? 1 : 0), interval);
   // A cycle pays on its Monday, and a run any later day of that cycle still pays, so once this cycle's Monday
@@ -78,22 +124,27 @@ async function ledger(id: string, payout: Payout, now = new Date()) {
   // Monday, September 14" on the 15th and file money the next run would send under "later pay days".
   const today = now.toISOString().slice(0, 10);
   const nextDay = [next.toISOString().slice(0, 10), today].sort().at(-1)!;
-  let upcoming = 0;
-  let nextAmount = 0;
-  let paid = 0;
-  let currency = "";
+  const byCurrency = new Map<string, LedgerTotals & { count: number }>();
   const history: { code: string; date: string; amount: number; currency: string; state: string; paidAt?: string }[] = [];
   for (const b of list) {
     if (!b.payout) continue;
-    currency ||= b.payout.currency;
+    const cur = (b.payout.currency || "").toLowerCase();
+    let t = byCurrency.get(cur);
+    if (!t) byCurrency.set(cur, (t = { currency: cur, nextAmount: 0, upcoming: 0, paidTotal: 0, count: 0 }));
+    t.count++;
     if (b.payout.state === "scheduled") {
-      if (b.payout.releaseOn <= nextDay) nextAmount += b.payout.amount;
-      else upcoming += b.payout.amount;
+      if (b.payout.releaseOn <= nextDay) t.nextAmount += b.payout.amount;
+      else t.upcoming += b.payout.amount;
     }
-    if (b.payout.state === "paid") paid += b.payout.amount;
-    history.push({ code: b.code, date: b.date, amount: b.payout.amount, currency: b.payout.currency, state: b.payout.state, paidAt: b.payout.paidAt });
+    if (b.payout.state === "paid") t.paidTotal += b.payout.amount;
+    history.push({ code: b.code, date: b.date, amount: b.payout.amount, currency: cur, state: b.payout.state, paidAt: b.payout.paidAt });
   }
-  return { currency, nextPayoutOn: nextDay, nextAmount, upcoming, paidTotal: paid, history: history.slice(0, 50) };
+  // Most bookings first, then alphabetical, so the main currency is stable from one read to the next.
+  const totals: LedgerTotals[] = [...byCurrency.values()]
+    .sort((a, b) => b.count - a.count || a.currency.localeCompare(b.currency))
+    .map(({ currency, nextAmount, upcoming, paidTotal }) => ({ currency, nextAmount, upcoming, paidTotal }));
+  const main = totals[0] || { currency: "", nextAmount: 0, upcoming: 0, paidTotal: 0 };
+  return { currency: main.currency, nextPayoutOn: nextDay, nextAmount: main.nextAmount, upcoming: main.upcoming, paidTotal: main.paidTotal, totals, history: history.slice(0, 50) };
 }
 
 /** Weekly or every two weeks, both on Mondays. */
@@ -117,14 +168,14 @@ export type PayoutRun = { listings: number; paid: number; amount: Record<string,
  * week or every other week). Each booking is its own transfer keyed by its code, so running this twice, or on
  * two servers at once, cannot pay a booking twice. Money owed to a shop that has not connected a bank waits.
  */
-export async function runPayouts(now = new Date()): Promise<PayoutRun> {
+export async function runPayouts(now = new Date(), deps: PayoutDeps = realDeps): Promise<PayoutRun> {
   const out: PayoutRun = { listings: 0, paid: 0, amount: {}, skipped: [], failed: [] };
-  if (!stripeEnabled()) return out;
-  const ids = await listingsWithPayouts();
+  if (!deps.stripeEnabled()) return out;
+  const ids = await deps.listingsWithPayouts();
   const today = now.toISOString().slice(0, 10);
   for (const id of ids) {
     out.listings++;
-    const rec = await getProfile<ProfileWithPayout>(id);
+    const rec = await deps.getProfile(id);
     const payout = rec?.payout;
     if (!payout?.account) {
       out.skipped.push({ listing: id, reason: "no bank account connected" });
@@ -140,24 +191,34 @@ export async function runPayouts(now = new Date()): Promise<PayoutRun> {
       out.skipped.push({ listing: id, reason: "already paid this cycle" });
       continue;
     }
-    const list = await listBookings<StoredBooking>(id);
+    const list = await deps.listBookings(id);
     const due = list.filter((b) => b.payout?.state === "scheduled" && b.payout.releaseOn <= today && b.payout.amount > 0 && ["accepted", "completed", "noshow"].includes(b.status));
     for (const b of due) {
       try {
-        const charge = b.payment?.charge || (b.payment?.intent ? await chargeOf(b.payment.intent) : null);
-        // A transfer funded by a charge must be in the currency that charge settled in.
-        const settled = charge ? await settlementOf(charge) : { currency: b.payout!.currency, rate: 1 };
-        const amount = Math.round(b.payout!.amount * settled.rate);
-        const transfer = await transferForBooking({ code: b.code, listing: id, account: payout.account, amount, currency: settled.currency, charge });
-        await updateBooking<StoredBooking>(id, b.code, (x) => ({ ...x, payout: { ...x.payout!, state: "paid" as const, transfer, paidAt: now.toISOString(), cycle } }));
+        const charge = b.payment?.charge || (b.payment?.intent ? await deps.chargeOf(b.payment.intent) : null);
+        // The transfer's amount and currency are fixed the first time this booking is attempted and reused on
+        // every retry, because the idempotency key `transfer-<code>` (which is what stops a double pay when
+        // the transfer went through but the state write did not) only replays under identical parameters.
+        let amount = b.payout!.transferAmount;
+        let currency = b.payout!.transferCurrency;
+        if (amount == null || !currency) {
+          // A transfer funded by a charge must be in the currency that charge settled in.
+          const settled = charge ? await deps.settlementOf(charge) : { currency: b.payout!.currency, rate: 1 };
+          amount = Math.round(b.payout!.amount * settled.rate);
+          currency = settled.currency;
+          const snap = { transferAmount: amount, transferCurrency: currency };
+          await deps.updateBooking(id, b.code, (x) => ({ ...x, payout: { ...x.payout!, ...snap } }));
+        }
+        const transfer = await deps.transferForBooking({ code: b.code, listing: id, account: payout.account, amount, currency, charge });
+        await deps.updateBooking(id, b.code, (x) => ({ ...x, payout: { ...x.payout!, state: "paid" as const, transfer, paidAt: now.toISOString(), cycle } }));
         out.paid++;
-        out.amount[settled.currency] = (out.amount[settled.currency] || 0) + amount;
+        out.amount[currency] = (out.amount[currency] || 0) + amount;
       } catch (e) {
         out.failed.push({ code: b.code, error: (e as Error).message.slice(0, 200) });
       }
     }
     if (due.length && !out.failed.some((f) => due.some((b) => b.code === f.code)))
-      await updateProfile<ProfileWithPayout>(id, rec!, (cur) => ({ ...cur, payout: { ...cur.payout!, lastCycle: cycle } }));
+      await deps.updateProfile(id, rec!, (cur) => ({ ...cur, payout: { ...cur.payout!, lastCycle: cycle } }));
   }
   return out;
 }
@@ -208,10 +269,25 @@ payouts.post("/payouts/:id/connect", rateLimit(20, 60 * 60 * 1000), async (c) =>
         "metadata[listing]": id,
       });
       account = a.id;
+      // The account id is written down the moment Stripe hands it over, before anything else that can fail.
+      // It used to be saved last, after the payout-schedule call, so a failed write left an Express account
+      // nobody referenced and the next click created a second one for the same shop. If the write fails once,
+      // it is tried again from a fresh read; a profile that already got an account in between (a double click)
+      // keeps that one.
+      const withAccount = (cur: ProfileWithPayout): ProfileWithPayout =>
+        cur.payout?.account ? cur : { ...cur, payout: { account: a.id, enabled: false, detailsSubmitted: false, updatedAt: new Date().toISOString() } };
+      let saved: ProfileWithPayout;
+      try {
+        saved = await updateProfile<ProfileWithPayout>(id, rec, withAccount);
+      } catch (e) {
+        console.error(`[payouts] could not save account ${a.id} for ${id}, retrying: ${(e as Error).message}`);
+        const fresh = (await getProfile<ProfileWithPayout>(id)) || rec;
+        saved = await updateProfile<ProfileWithPayout>(id, fresh, withAccount);
+      }
+      account = saved.payout?.account || a.id;
       // Stripe sends whatever reaches the operator's balance to their bank the next business day; Outset decides
       // when money reaches the balance (their weekly or two-weekly pay day).
-      await setAccountDailyPayouts(a.id).catch((e) => console.error(`[payouts] schedule for ${a.id}: ${(e as Error).message}`));
-      await updateProfile<ProfileWithPayout>(id, rec, (cur) => ({ ...cur, payout: { account: a.id, enabled: false, detailsSubmitted: false, updatedAt: new Date().toISOString() } }));
+      await setAccountDailyPayouts(account).catch((e) => console.error(`[payouts] schedule for ${account}: ${(e as Error).message}`));
     }
     const link = await stripe<{ url: string }>("account_links", {
       account,

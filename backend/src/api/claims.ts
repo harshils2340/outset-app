@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { ID, clientIp, idsWith, jsonBody, rateLimit, signSession, verifySession, type Session } from "./auth.ts";
+import { ID, clientIp, emailLimit, idsWith, jsonBody, rateLimit, signSession, verifySession, type Session } from "./auth.ts";
 import { claimTokenV2, verifyClaimToken } from "../lib/claim.ts";
 import { claimRule, emailMayClaim, maskEmail } from "../lib/claimIndex.ts";
 import { sendMail } from "../lib/mail.ts";
@@ -54,6 +54,11 @@ claims.post("/claims/:id/request", rateLimit(10, 60 * 60 * 1000), async (c) => {
     console.log(`[claim] ${id}: ${reason} for ${maskEmail(email)} from ${clientIp(c)}`);
     return c.json({ ok: false, reason, hint: rule.hint, domains: rule.domains });
   }
+
+  // The per-IP limit above does not protect one inbox: anyone who knows the address on an operator's site can
+  // have a working claim link mailed there from every IP they can find, which floods the owner and sends the
+  // sending domain to spam. Counted per address too, and said plainly, since "Send it again" is a real button.
+  if (!emailLimit("claim:" + email, 5, 60 * 60 * 1000)) return c.json({ error: "we have already sent several links to that address in the past hour. Check your spam folder, or try again in an hour." }, 429);
 
   const item = await readJson<{ title?: string }>(`o/${id}.json`).catch(() => null);
   const title = item?.title || "your business";
