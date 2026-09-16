@@ -33,7 +33,10 @@ export function WebConfirm({ booking, onDone, onOpen }: { booking: Booking; onDo
   const { optionIdx, extras } = splitAddons(booking.addons);
   const picked = optionIdx != null ? item.options[optionIdx] : null;
   const [y, m, d] = booking.date.split("-").map(Number);
-  const when = new Date(y, m - 1, d).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
+  // A trip in another year carries its year: bookings run up to a year ahead, and "Sunday, January 3" on a
+  // confirmation written in December does not say which January.
+  const trip = new Date(y, m - 1, d);
+  const when = trip.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: trip.getFullYear() === new Date().getFullYear() ? undefined : "numeric" });
   const instant = !!(item.claimed && item.instant);
   const first = booking.guest?.name ? booking.guest.name.split(" ")[0] : "";
   // The price lines are the same breakdown the listing showed; they appear only when they add up to the stored total.

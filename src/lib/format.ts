@@ -15,8 +15,14 @@ export function fmtTime(t: string): string {
   return hh + ":" + String(m).padStart(2, "0") + " " + ap;
 }
 
-export function fmtDate(d: Date): string {
-  return DAYS[d.getDay()] + ", " + d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+/**
+ * "Sat, Jan 3", and "Sat, Jan 3, 2027" for a date outside the current year. The booking window runs up to a
+ * year ahead, so a January trip booked in December read on the ticket, the trip list and the booking box as
+ * though it were this January. The year is left off the common case so the date strip stays short.
+ */
+export function fmtDate(d: Date, now: Date = new Date()): string {
+  const year = d.getFullYear() === now.getFullYear() ? undefined : ("numeric" as const);
+  return DAYS[d.getDay()] + ", " + d.toLocaleDateString("en-US", { month: "short", day: "numeric", year });
 }
 
 export function nowStamp(): string {
