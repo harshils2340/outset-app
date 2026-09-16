@@ -57,6 +57,13 @@ to rules and generators only. Nothing under `public/` was edited by hand, so eve
   operator's own text facts is spam, none of its photo or cover facts are trusted either, on the reasoning that a
   hacked page is hacked all the way through. `sync/__tests__/spamLine.test.ts` covers both the catch and the near
   miss.
+- **A boat charter's card quoted a $10 membership tier as its price** (`29012643d`, `o-acadiachartercompany-com`).
+  1,484 published listings showed a card's "from" price off a membership, season pass or gift card: Acadia
+  Charter Company's card read "From $6,500" priced by a "Blue Water Club Membership" tier, while its two real
+  charters both carry "Price on request", nothing a guest could book at that price at all. `services`, the row
+  the listing page books from, already dropped these lines with `NOT_A_SERVICE`; `options`, the row a card's
+  price is read from, kept every menu line unfiltered. Both use the same filter now.
+  `sync/__tests__/notAService.test.ts` covers the regex both sides share.
 
 **Found, not fixed.** In progress.
 
