@@ -830,12 +830,17 @@ export function toCatalog(p: OperatorProfile, base: Unclaimed): Partial<Unclaime
     gap: p.policy.length ? p.policy.join(" ") : base.gap,
     // The structured sections the listing page and Otto read. The operator's own lines replace the scraped ones.
     policies: p.policy.length ? p.policy : base.policies,
-    cancellation: cancelLine(p, base) || undefined,
-    fc: freeCancel(cancelLine(p, base)) || undefined,
+    // A cleared field is published as "" and not as undefined. This patch reaches guests through JSON (the API's
+    // GET /profiles/:id and the nightly sync), and JSON drops an undefined key, so `{ ...scraped, ...patch }` on
+    // the other side found no key and kept the scraped line: an operator who removed their cancellation policy
+    // saw it back on their listing from any other device, together with the "Free cancellation" badge (`fc`)
+    // read from it. An empty string survives the round trip and reads as "no line" everywhere it is used.
+    cancellation: cancelLine(p, base),
+    fc: freeCancel(cancelLine(p, base)) || "",
     // The operator's own version replaces the published text once they have opened that field, even if they cleared it.
     requirements: p.requirements ?? base.requirements,
     includes: p.includes ?? base.includes,
-    checkin: p.checkin !== undefined ? p.checkin.trim() || undefined : base.checkin,
+    checkin: p.checkin !== undefined ? p.checkin.trim() : base.checkin,
     faq: p.faq ? p.faq.filter((f) => f.q.trim() && f.a.trim()) : base.faq,
     hoursText: p.hours.some((h) => !h.closed) ? p.hours.map(hoursLine) : base.hoursText,
     // itemWeek() reads the compact `hrs` week before the hour lines, so a browse record that carries one would

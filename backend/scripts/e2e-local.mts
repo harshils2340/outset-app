@@ -24,6 +24,13 @@
  *   npx tsx scripts/e2e-local.mts            run everything and clean up
  *   npx tsx scripts/e2e-local.mts --keep     leave the API and the site running so you can click through
  *   npx tsx scripts/e2e-local.mts --full-db  copy the whole catalog database instead of starting empty
+ *   npx tsx scripts/e2e-local.mts --no-browser  skip the headless-browser steps (6, the hosted Checkout, the
+ *                                               mail render); the API, things-to-know, payout and route checks
+ *                                               still run
+ *
+ * Step 6b, things to know: the operator's cancellation policy, requirements, what's included and FAQ go through
+ * the same PUT /profiles/:id the dashboard uses and are read back the way a guest's browser and the nightly
+ * sync read them, so a cleared cancellation line stays cleared instead of falling back to the scraped one.
  *
  * See docs/E2E-LOCAL.md.
  */
@@ -39,6 +46,8 @@ const here = dirname(fileURLToPath(import.meta.url));
 const BACKEND = join(here, "..");
 const ROOT = join(BACKEND, "..");
 const KEEP = process.argv.includes("--keep");
+/** No headless browser at all: the API-driven steps still run, the browser ones are recorded as skipped. */
+const NO_BROWSER = process.argv.includes("--no-browser") || process.env.E2E_NO_BROWSER === "1";
 
 const API_PORT = 8787;
 const SITE_PORT = 5199;
@@ -380,11 +389,118 @@ console.log("\n6. Claim, edit, book, accept and decline, in a headless browser")
   };
   const flowFile = join(here, "e2e-local-flow.mjs");
   const useDriver = existsSync(DRIVER);
-  const r = useDriver ? await run("node", [DRIVER, shots, flowFile], { cwd: BACKEND, env }) : await run("node", [flowFile, shots], { cwd: BACKEND, env });
-  if (r.code !== 0) console.log("    (the browser run exited " + r.code + ")");
-  const steps = existsSync(flowOut) ? (JSON.parse(readFileSync(flowOut, "utf8")) as Result[]) : [];
-  for (const s of steps) results.push(s);
-  if (!steps.length) record("the browser scenario produced results", false, "no results file; see the output above");
+  if (NO_BROWSER) {
+    record("(a-h3) the browser scenario", "warn", "skipped: --no-browser");
+  } else {
+    const r = useDriver ? await run("node", [DRIVER, shots, flowFile], { cwd: BACKEND, env }) : await run("node", [flowFile, shots], { cwd: BACKEND, env });
+    if (r.code !== 0) console.log("    (the browser run exited " + r.code + ")");
+    const steps = existsSync(flowOut) ? (JSON.parse(readFileSync(flowOut, "utf8")) as Result[]) : [];
+    for (const s of steps) results.push(s);
+    if (!steps.length) record("the browser scenario produced results", false, "no results file; see the output above");
+  }
+}
+
+/* ---------------------------------------------------------------- 6b. things to know ----------------------- */
+
+/**
+ * The things-to-know fields (cancellation policy, requirements, what's included, check-in, FAQ), without a
+ * browser. The profile is built and published by the same guest-side code the dashboard runs (defaultProfile,
+ * toCatalog), saved through the same PUT /profiles/:id, and read back three ways: the guest's GET /profiles/:id,
+ * the guest catalog layering that GET feeds (mergeCatalog + setOperatorOverride + experienceById, which is what
+ * the listing page renders from), and the nightly sync's overlay (loadProfileOverlays + buildCatalogItems).
+ *
+ * The last two go through JSON, and that is the point of the clearing check: a patch key set to undefined does
+ * not survive JSON, so `{ ...scraped, ...patch }` on the other side kept the scraped cancellation line after the
+ * operator had removed theirs. toCatalog now publishes "" for a cleared field.
+ */
+console.log("\n6b. Things to know: cancellation, requirements, included, FAQ, through the API and the guest catalog code");
+{
+  type Unclaimed = import("../../src/data/types.ts").Unclaimed;
+  const op = await import("../../src/lib/operator.ts");
+  const cat = await import("../../src/lib/catalog.ts");
+  const base = detail as unknown as Unclaimed;
+  const owner = { name: "Harness Owner", email: OWNER_EMAIL, phone: "8135550100" };
+
+  const enter = (await fetch(`${API_URL}/claims/${LISTING_ID}/test-enter`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email: OWNER_EMAIL }) }).then((r) => r.json())) as { session?: string };
+  const session = enter.session || "";
+  record("(k1) the operator enters the dashboard for the test listing", !!session, session ? "session issued" : JSON.stringify(enter));
+  const auth = { "content-type": "application/json", "x-session": session };
+
+  // The profile as the dashboard holds it: whatever an earlier step saved (the browser run adds a service), else
+  // the one a fresh claim starts from. Either way it must start from the listing's published lines, not blanks.
+  const held = (await fetch(`${API_URL}/profiles/${LISTING_ID}`, { headers: auth }).then((r) => (r.ok ? r.json() : null)).catch(() => null)) as { profile?: unknown } | null;
+  let p = op.normalizeProfile(held?.profile) || op.defaultProfile(base, owner);
+  p = op.hydrateProfile(p, base);
+  const scrapedCancel = String(base.cancellation || "");
+  record(
+    "(k2) the profile starts from the published things-to-know lines (knowFrom), never from blank boxes",
+    !!scrapedCancel && p.cancellation === scrapedCancel && (p.includes || []).length === (base.includes || []).length && (p.faq || []).length === (base.faq || []).length,
+    `cancellation "${p.cancellation || ""}", ${(p.includes || []).length} included, ${(p.faq || []).length} FAQ`,
+  );
+
+  const CANCEL = "Free cancellation up to 48 hours before your start time, set by the harness.";
+  const REQ = "Bring a photo ID (harness requirement).";
+  const INC = "A harness towel";
+  const FAQ = { q: "Was this FAQ written by the harness?", a: "Yes. It proves an operator's own question and answer reach the guest listing." };
+  p = { ...p, cancellation: CANCEL, requirements: [...(p.requirements || []), REQ], includes: [...(p.includes || []), INC], faq: [...(p.faq || []), FAQ] };
+  const save = async (prof: typeof p) => {
+    const patch = op.toCatalog(prof, base);
+    const r = await fetch(`${API_URL}/profiles/${LISTING_ID}`, { method: "PUT", headers: auth, body: JSON.stringify({ profile: prof, patch, published: prof.published, owner }) });
+    return { ok: r.ok, status: r.status, patch };
+  };
+  const guestPatch = async () => (await fetch(`${API_URL}/profiles/${LISTING_ID}`).then((r) => r.json())) as { published?: boolean; patch?: Partial<Unclaimed>; owner?: unknown };
+  /** What the listing page renders from once GET /profiles/:id has answered: the API's patch layered over the detail file. */
+  const guestSees = (remote: { published?: boolean; patch?: Partial<Unclaimed> }) => {
+    cat.mergeCatalog([base], {});
+    cat.setOperatorOverride(LISTING_ID, remote.patch || null, remote.published !== false);
+    return cat.experienceById(LISTING_ID);
+  };
+
+  const saved = await save(p);
+  record("(k3) the edit saves through PUT /profiles/:id like the dashboard's own save", saved.ok, "HTTP " + saved.status);
+  let remote = await guestPatch();
+  const rp = remote.patch || {};
+  record(
+    "(k4) the guest JSON the API serves carries the operator's cancellation, requirement, included item and FAQ pair, and no owner",
+    rp.cancellation === CANCEL && !!rp.requirements?.includes(REQ) && !!rp.includes?.includes(INC) && !!rp.faq?.some((f) => f.q === FAQ.q && f.a === FAQ.a) && remote.owner === undefined,
+    JSON.stringify({ cancellation: rp.cancellation, requirements: rp.requirements, includes: rp.includes, faq: (rp.faq || []).length, fc: rp.fc }).slice(0, 300),
+  );
+  let seen = guestSees(remote);
+  record(
+    "(k5) a guest opening the listing sees the operator's cancellation line instead of the scraped one",
+    !!seen && seen.cancellation === CANCEL && seen.cancellation !== scrapedCancel && seen.fc === "Free cancellation up to 48 hours before" && !!seen.faq?.some((f) => f.q === FAQ.q),
+    seen ? `cancellation "${seen.cancellation}", fc "${seen.fc}", ${(seen.faq || []).length} FAQ` : "no listing",
+  );
+
+  // Cleared on purpose. The listing must then show no cancellation line at all, not the scraped one again.
+  const cleared = await save({ ...p, cancellation: "" });
+  remote = await guestPatch();
+  const has = remote.patch ? Object.prototype.hasOwnProperty.call(remote.patch, "cancellation") : false;
+  record(
+    "(k6) clearing the cancellation field publishes an empty line that survives JSON, not a missing key",
+    cleared.ok && has && remote.patch?.cancellation === "" && remote.patch?.fc === "",
+    `key present: ${has}, value ${JSON.stringify(remote.patch?.cancellation)}, fc ${JSON.stringify(remote.patch?.fc)}`,
+  );
+  seen = guestSees(remote);
+  record(
+    "(k7) the guest listing then shows no cancellation line rather than the scraped one, and no Free cancellation badge",
+    !!seen && !seen.cancellation && !seen.fc && !!seen.requirements?.includes(REQ),
+    seen ? `cancellation ${JSON.stringify(seen.cancellation)}, fc ${JSON.stringify(seen.fc)}` : "no listing",
+  );
+  // The nightly sync reads the same rows straight from Postgres and layers them the same way.
+  {
+    process.env.DATABASE_URL = E2E_DB;
+    const sync = await import("../src/sync/contacts.ts");
+    const loaded = await sync.loadProfileOverlays();
+    const item = sync.buildCatalogItems((r) => r.origin === "test").find((i) => i.id === LISTING_ID) as { cancellation?: string; fc?: string; requirements?: string[] } | undefined;
+    record(
+      "(k8) the nightly sync builds the listing with the cleared line cleared too, and the operator's requirement in",
+      loaded.count > 0 && !!item && !item.cancellation && !item.fc && !!item.requirements?.includes(REQ),
+      `${loaded.count} overlays from ${loaded.source}; cancellation ${JSON.stringify(item?.cancellation)}, fc ${JSON.stringify(item?.fc)}`,
+    );
+  }
+  // Put the operator's line back so the rest of the run (and --keep) shows a listing with a policy on it.
+  await save(p);
 }
 
 /* ---------------------------------------------------------------- 7. payouts -------------------------------- */
@@ -460,6 +576,10 @@ async function stripeSection(session: string): Promise<void> {
   }).then((r) => r.json())) as { checkoutUrl?: string; status?: string };
   record("Stripe Checkout opens for a card booking", !!booked.checkoutUrl, booked.checkoutUrl ? booked.checkoutUrl.slice(0, 60) + "…" : JSON.stringify(booked));
   if (!booked.checkoutUrl) return;
+  if (NO_BROWSER) {
+    record("(i) the guest pays the hosted Checkout with the test card", "warn", "skipped: --no-browser (paying needs Stripe's own page)");
+    return;
+  }
 
   const r = await run("node", [join(here, "e2e-local-flow.mjs"), shots], {
     cwd: BACKEND,
@@ -573,11 +693,15 @@ console.log("\n9. Every email, read back");
     if (!existsSync(join(mailDir, f.replace(/\.txt$/, ".html")))) problems.push(`${f}: no HTML version`);
   }
   record(`${files.length} emails were produced, each with an HTML version and human dates and money`, files.length > 0 && problems.length === 0, problems.length ? problems.slice(0, 6).join("; ") : files.map((f) => f.replace(/^\d+-/, "")).join(", ").slice(0, 300));
-  const r = await run("node", [join(here, "e2e-local-flow.mjs"), shots], {
-    cwd: BACKEND,
-    env: { ...process.env, CHROME, W: "680", H: "900", E2E_MODE: "mail", E2E_MAIL_DIR: mailDir, E2E_OUT: join(tmp, "mail.json") },
-  });
-  void r;
+  if (NO_BROWSER) {
+    record("(m) every email rendered to a screenshot", "warn", "skipped: --no-browser");
+  } else {
+    const r = await run("node", [join(here, "e2e-local-flow.mjs"), shots], {
+      cwd: BACKEND,
+      env: { ...process.env, CHROME, W: "680", H: "900", E2E_MODE: "mail", E2E_MAIL_DIR: mailDir, E2E_OUT: join(tmp, "mail.json") },
+    });
+    void r;
+  }
   const mailSteps = existsSync(join(tmp, "mail.json")) ? (JSON.parse(readFileSync(join(tmp, "mail.json"), "utf8")) as Result[]) : [];
   for (const s of mailSteps) results.push(s);
 }
