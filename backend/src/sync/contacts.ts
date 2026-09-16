@@ -1838,6 +1838,23 @@ export function buildCatalogItems(where?: (r: CatalogRow) => boolean): Record<st
   return dropDuplicateOperators(full as Record<string, unknown>[]);
 }
 
+/**
+ * A card's compact deal badge ("2|Half-price Tuesdays"): the first day-specific promo, its title cut on a word so
+ * a card never shows "rentals on Sund", and never left ending on a connector a card cannot finish ("Monday to").
+ */
+export function compactDeal(promos: { text: string; title?: string; days: number[] }[]): string | undefined {
+  const p = promos.find((x) => x.days.length);
+  if (!p) return undefined;
+  const words = (p.title || p.text || "").split(/\s+/);
+  let label = "";
+  for (const w of words) {
+    if ((label + " " + w).trim().length > 48) break;
+    label = (label + " " + w).trim();
+  }
+  label = label.replace(/(?:\s+(?:and|or|to|on|at|in|of|for|with|the|a|an|from|by|&))+$/i, "").replace(/,\s*$/, "");
+  return p.days.join(",") + "|" + (label || (p.title || p.text).slice(0, 48));
+}
+
 /** Write public/catalog.json: every real operator plus its contact facts. The app fetches it at startup. */
 export function syncCatalogToApp(): { path: string; count: number } {
   const full = buildCatalogItems();
@@ -1872,14 +1889,7 @@ export function syncCatalogToApp(): { path: string; count: number } {
       dur: item.dur, fc: item.fc, kindUnconfirmed: item.kindUnconfirmed,
       // First day-specific deal, compact ("2|Half-price Tuesdays"), so cards can badge "Deal today" without the detail file.
       // The consolidated title, not a raw fragment, so the card and the listing's Deals section say the same thing.
-      deal: (() => {
-        const p = ((item.promos as { text: string; title?: string; days: number[] }[] | undefined) || []).find((x) => x.days.length);
-        // The title is short by construction; raw text is cut on a word so a card never shows "rentals on Sund".
-        const words = (p?.title || p?.text || "").split(/\s+/);
-        let label = "";
-        for (const w of words) { if ((label + " " + w).trim().length > 48) break; label = (label + " " + w).trim(); }
-        return p ? p.days.join(",") + "|" + (label || (p.title || p.text).slice(0, 48)) : undefined;
-      })(),
+      deal: compactDeal((item.promos as { text: string; title?: string; days: number[] }[] | undefined) || []),
       // Compact week from the published hours, so the home page can say "open now" without a detail file.
       hrs: (() => {
         const own = (item.hoursText as string[] | undefined) || [];
