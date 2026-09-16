@@ -46,7 +46,20 @@ export function verifySession(token: string | undefined): Session | null {
  * that mints one without this signs the operator out of their other shops.
  */
 export function idsWith(prior: Session | null, id: string): string[] {
-  return Array.from(new Set([...(prior?.ids || []), id]));
+  return idsMerged(prior, [id]);
+}
+
+/**
+ * The same rule for a sign-in, which proves a whole list at once rather than one listing.
+ *
+ * An owner of two shops holds one address per shop, because a claim link only ever goes to the address on that
+ * business's own website. Signing in with either one used to mint a session scoped to that address's listings
+ * alone, so the other shop was still in the dashboard's switcher and every save of it answered 403. The prior
+ * session is HMAC-verified and unexpired here, so nothing is added that the caller did not already hold, and an
+ * expired one adds nothing at all.
+ */
+export function idsMerged(prior: Session | null, ids: string[]): string[] {
+  return Array.from(new Set([...(prior?.ids || []), ...ids]));
 }
 
 /**
@@ -187,7 +200,7 @@ auth.post("/auth/verify", rateLimit(30, 60 * 60 * 1000), async (c) => {
   const want = codeHash(email, code);
   if (want.length !== rec.hash.length || !timingSafeEqual(Buffer.from(want), Buffer.from(rec.hash))) return c.json({ error: "that code does not match" }, 400);
   codes.delete(email);
-  const ids = await idsForEmail(email);
+  const ids = idsMerged(verifySession(c.req.header("x-session")), await idsForEmail(email));
   const session: Session = { ids, email, exp: Date.now() + SESSION_DAYS * 86400000 };
   return c.json({ session: signSession(session), ids, exp: session.exp });
 });

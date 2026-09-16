@@ -316,7 +316,13 @@ export async function requestSignInCode(email: string): Promise<{ ok: boolean; e
 }
 
 export async function verifySignInCode(email: string, code: string): Promise<{ ok: boolean; ids: string[]; error?: string }> {
-  const r = await call<{ session: string; ids: string[]; exp: number }>(`/auth/verify`, { method: "POST", body: JSON.stringify({ email, code }) });
+  // Send the session this device already holds. A claim link only ever goes to the address on that business's
+  // own website, so an owner of two shops holds one address per shop: without this, signing in with either one
+  // came back scoped to that address's listings alone and dropped the other shop, which stayed in the
+  // dashboard's switcher and answered 403 on every save. The API verifies the token before it keeps anything
+  // from it, so this cannot widen a session beyond what the device already had.
+  const prior = loadApiSession();
+  const r = await call<{ session: string; ids: string[]; exp: number }>(`/auth/verify`, { method: "POST", headers: prior ? { "x-session": prior.token } : {}, body: JSON.stringify({ email, code }) });
   if (!r.ok || !r.data) return { ok: false, ids: [], error: r.error };
   saveApiSession({ token: r.data.session, ids: r.data.ids, email, exp: r.data.exp });
   return { ok: true, ids: r.data.ids };

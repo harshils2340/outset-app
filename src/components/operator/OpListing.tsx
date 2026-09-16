@@ -266,7 +266,10 @@ export function OpListing() {
       <div className="odrow odpublish">
         <span className="meta">
           <b>{p.published ? "Your listing is live on Outset" : "Your listing is hidden"}</b>
-          <small>{p.published ? "Guests can find and book you. Switch off to take the page down without losing anything." : "Nobody can see or book you. Switch on when you're ready."}</small>
+          {/* Hidden is not gone: the record keeps its own link, so a guest with a bookmark or an old email
+              still opens the page and reads that it is down. Saying "nobody can see you" left an owner to
+              find that out from a guest. */}
+          <small>{p.published ? "Guests can find and book you. Switch off to take the page down without losing anything." : "You are off every list, rail and search, and nothing can be booked. A guest who already has your link opens a page that says it is hidden. Switch on when you're ready."}</small>
         </span>
         <div className="odbtns">
           {compact ? <button type="button" className="odghost" onClick={preview}><Markup html={OD_ICONS.external} /> Preview</button> : null}
