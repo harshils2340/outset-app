@@ -40,7 +40,7 @@ tsconfig.json --allowImportingTsExtensions` and `npm test` in `backend/` (121 gr
   confirmation's own long date, formatted separately, follows the same rule. Two cases pinned in
   `src/lib/__tests__/fmtDate.test.ts`.
 
-- **A ticket priced "$0" instead of "Price on request"** (commit pending, resumed run). `src/lib/pricing.ts`'s
+- **A ticket priced "$0" instead of "Price on request"** (`99d091ee1`, resumed run). `src/lib/pricing.ts`'s
   `hasPrice` guard exists exactly for this: a scraped record can carry a `0` price where the crawler found a
   currency sign and no number, and "$0" reads as free instead of unknown. In `WebListing.tsx` the picker's
   option list (`item.options.map`, used when a listing has no service groups) and the booking box's option
@@ -51,7 +51,7 @@ tsconfig.json --allowImportingTsExtensions` and `npm test` in `backend/` (121 gr
   `WebConfirm.tsx`'s price line) turn out to already be gated by `p.base` / `lines`, which `priceUnclaimed`
   zeroes out for the same sentinel, so those never actually reached a guest; left alone.
 
-- **Otto could tell a guest a trip is "$0.00"** (commit pending). The same `0`-means-unknown sentinel from the
+- **Otto could tell a guest a trip is "$0.00"** (`1c649fec9`). The same `0`-means-unknown sentinel from the
   bullet above reaches `src/lib/companyAgent.ts`, the 24/7 assistant, which builds its `Offer` list straight
   from `item.services` / `item.options`. Its `priceOf` helper, and every filter deciding whether an offer counts
   as "priced" (for "From $X", "Prices start at $X", the cheapest option, "is this one priced by the hour",
@@ -62,14 +62,21 @@ tsconfig.json --allowImportingTsExtensions` and `npm test` in `backend/` (121 gr
   sentinel), and `item.from`, which the sync job (`backend/src/sync/contacts.ts`) and `mergeOverride` in
   `catalog.ts` already compute with the same `> 0` filter, so it can never be the sentinel at this layer.
 
-- **The phone app's flat option list had the same "$0" tell** (commit pending). `Sheets.tsx`'s own `optionPrice`
+- **The phone app's flat option list had the same "$0" tell** (`dd4d9015a`). `Sheets.tsx`'s own `optionPrice`
   helper, used by the picker that shows when a listing has no service groups, checked `o.price == null` instead
   of `hasPrice`, so it printed the sentinel too. Now guarded the same way.
 
+After those four, ran the local rehearsal against a scratch Postgres (`postgresql-16`, self-signed cert combined
+with the CCR CA bundle for `NODE_EXTRA_CA_CERTS`): `backend/scripts/store-e2e.mts` (60 checks), then
+`backend/scripts/payout-e2e.mts` (43 checks), then the full browser rehearsal
+`backend/scripts/e2e-local.mts` with `CHROME=/opt/pw-browsers/chromium-1194/chrome-linux/chrome`. All 52 of its
+steps passed, including both projects' unit tests run inside it (164 root, 135 backend at that point) and all 14
+emails it produces read back for an HTML version, a human date and money with a currency.
+
 **Found, not fixed.**
 
-_(in progress, resumed run)_
+_(none open)_
 
 **Needs Harshil.**
 
-_(in progress, resumed run)_
+_(none)_
