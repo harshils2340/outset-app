@@ -610,7 +610,9 @@ export function defaultProfile(u: Unclaimed, owner: { name: string; email: strin
     address: (c && addressLine(c)) || u.area,
     cover: u.cover || "",
     photos: (u.photos || []).slice(),
-    policy: [...(u.policies || []), ...(u.gap && !/not stated|not published|unknown|not copied|we'?ll ask|we will ask|ask when you request/i.test(u.gap) ? [u.gap] : [])].filter((l, i, a) => a.indexOf(l) === i).slice(0, 8),
+    // The published cancellation line has its own field below; the same sentence is not also an "other policy",
+    // or the card shows it twice and the operator edits one copy while the other stays.
+    policy: [...(u.policies || []), ...(u.gap && !/not stated|not published|unknown|not copied|we'?ll ask|we will ask|ask when you request/i.test(u.gap) ? [u.gap] : [])].filter((l, i, a) => a.indexOf(l) === i && l !== u.cancellation).slice(0, 8),
     ...knowFrom(u),
     services: servicesFrom(u),
     addons: (u.addons || []).map((a) => ({ id: uid("a"), name: a.name, detail: a.detail || "", price: a.price })),
@@ -916,7 +918,7 @@ export function hydrateProfile(p: OperatorProfile, full: Unclaimed): OperatorPro
     changed = true;
   }
   if (!p.policy.length && full.policies?.length) {
-    next.policy = full.policies.slice(0, 8);
+    next.policy = full.policies.filter((l) => l !== (next.cancellation ?? full.cancellation)).slice(0, 8);
     changed = true;
   }
   // Sample bookings belong to the demo dashboard only. A real owner's dashboard never shows made-up guests.
