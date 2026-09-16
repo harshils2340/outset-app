@@ -154,9 +154,9 @@ console.log("\n8. Bad input is answered, never crashed on");
 
   // A booking code is checked in the path the same way POST /bookings checks it. A code carrying a NUL byte
   // reached Postgres and came back as `invalid byte sequence for encoding "UTF8"`: a 500 for a bad link.
-  r = await json(`/bookings/${ID}/${encodeURIComponent(" ")}`, { method: "PATCH", headers: { "x-session": session }, body: JSON.stringify({ status: "accepted" }) });
+  r = await json(`/bookings/${ID}/${encodeURIComponent("\0")}`, { method: "PATCH", headers: { "x-session": session }, body: JSON.stringify({ status: "accepted" }) });
   check("a booking code with a NUL byte is 404, not 500", r.status === 404, r);
-  r = await json(`/bookings/paid/${ID}/${encodeURIComponent(" ")}`);
+  r = await json(`/bookings/paid/${ID}/${encodeURIComponent("\0")}`);
   check("the same code on the paid route is 404, not 500", r.status === 404, r);
 
   // The dashboard record is stored as the operator's device sent it, so the guest routes must survive any
