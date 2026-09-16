@@ -67,6 +67,16 @@ own instructions, since the checkout arrives as a detached HEAD. Confirmed the t
   `eventually` in string literals; the only other hits were a hot-air-balloon description and a jet-ski
   add-on note, both literal "on the way down" through the air, not a roadmap promise.
 
+- **Three bottom-anchored bars were missing `env(safe-area-inset-bottom)`, so their buttons crowded the
+  home indicator on a phone with a safe area** (`11b9603d9`, `c03b2c3d7`). The guest tab bar and the
+  search/pay sheet footers already carried this padding; three siblings did not: the sticky price bar on
+  a listing page (`.dock` in `src/styles/app.css`, used by `DetailView.tsx`), the compact operator
+  dashboard's bottom tab bar (`.odtabs` in `src/styles/operator.css`), and its booking detail's
+  bottom-sheet drawer (`.od.compact .oddrawer`). All three now add `env(safe-area-inset-bottom)` to
+  their existing bottom padding, the same fix already applied to `.tabbar`. Grepped both stylesheets
+  for every `position:fixed` / `position:sticky` rule anchored to `bottom:0` to check the rest; nothing
+  else was missing it, and the operator's compact toast already sits at `bottom:96px`, well clear.
+
 **Checked, this round.** Playwright screenshots at 390x844 (dark and light), 360x640 and 1280x800 of the
 explore feed, the search sheet, a listing detail (unclaimed Request flow), the Wishlists, Trips, Inbox
 and Profile tabs, and the compact operator dashboard's Home and Bookings screens. Read
