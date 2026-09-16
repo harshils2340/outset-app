@@ -829,6 +829,66 @@ backend tests pass, both projects type-check clean, rehearsal 50 of 50.
   checked against real Stripe, no workflow runs `npm test` on its own, and the bad weeks and the 64 "Nearby"
   venues in `catalog.json` both want a sync on Render.
 
+## 16 September 2026, fourteenth run
+
+**What I checked and why.** Everything the thirteenth run left green was left alone: no commit had touched
+`backend/src`, `src/` or the scripts since its log entry, so the rehearsal was skipped at the start and the
+time went on the "Not yet checked" list instead. Type checks and `npm test` on both sides first (clean, 134
+and 116), then the two hours questions that list has been carrying since the eleventh run, read against all
+31,950 hour lines and all 59,091 operators in the shipped catalog rather than by eye. That ran into a third
+bug in the same week of code, and that into a fourth in the publish path beside it. The rehearsal was run at
+the end, twice, because by then the changes reached code it drives.
+
+**Found and fixed.**
+
+- **37 campgrounds published their quiet hours as their opening hours** (`983654db5`). "Quiet hours are from
+  11:00pm - 8:00am" is the only hours line each of them has, so the week was the truth turned inside out:
+  "Closed, opens 11 PM" at lunchtime, "Open now, closes 8 AM" at two in the morning, and Otto answering
+  "their hours say: quiet hours are from 11:00pm - 8:00am" to a guest asking whether they were open. Seven
+  bars lost hours the same way: a trailing "Happy Hour Wednesday-Friday 12-6 PM" comes after the site's own
+  "Wed 12:00 PM - 10:00 PM" and the later line wins, so the brewery shut four hours early three days a week,
+  and one shop's only line opened it at 2 AM. 44 operators, 43 weeks changed, 38 of them to an honest gap.
+- **166 operators claimed to be open at four in the morning, 132 of them every day** (`e52499519`): 25
+  helicopter tours, 17 fishing charters, 7 jet ski rentals and the rest, standing in "Open right now near
+  you" all night under "Open, closes 11:59 PM", a closing time none of them stated. Two readings put them
+  there. A day named in the markup with no time at all was read as open around the clock, which is a guess
+  and the wrong one, since the Jordan Schnitzer Museum of Art lists "Mo" and "Tu" bare because it is shut on
+  both. And "00:00-23:59", which is what a site builder writes when the owner never set any hours.
+- **An operator's own opening hours never reached a guest who was not the operator** (`ec5bea47d`). The patch
+  cleared the crawled compact week with `hrs: undefined`, and the same patch goes to every other device as
+  JSON, which drops an undefined key. A shop that published Monday to Saturday, 7 AM to 11 AM, and shut on
+  Sunday was advertised as open nine to five all week, Sunday included, to everyone except the operator,
+  whose own screen was right the whole time. The crawled `dur` outlived the menu the same way: a shop whose
+  every service now said 90 min was still "4 hours" on the card, the hero, the booking sheet and in Otto.
+- **A photo an operator removed stayed on their listing** (`936f35a2b`), for the same JSON reason: emptying
+  the gallery published `photos: []` and left the crawled cover, which the card, the hero and the guest's
+  gallery all read first.
+
+**Checked and clean.** The other subjects that carry a time range and are not quiet hours: office, kitchen,
+gate and pool hours are trading hours and stay; "last admission at 3:30pm" sits behind the real range and was
+already stepped over. Every remaining `undefined` in the published patch (`guide`, `contact`, `cover` before
+this run, a service's `maxGuests`) against the same round trip: only `hrs` and `cover` meant "clear this".
+A stated closing time in the small hours ("6pm-2am") and a stated closed day survive all four fixes.
+
+**Tests.** `publishedPatch.test.ts` (5) and `hoursMarkup.test.ts` (3) are new, `openNow.test.ts` and
+`sync/__tests__/hours.test.ts` gain 4 between them, each pinned to the operator it names. 143 guest tests and
+121 backend tests pass, both projects type-check clean, rehearsal 50 of 50 twice.
+
+**Needs Harshil.**
+
+- **210 operators still carry the wrong week in `catalog.json`**, because this morning's sync (`44b7237bd`,
+  07:12) ran on the old code. The app refuses the 166 whole-day weeks from the compact form alone, and the 44
+  quiet-hour ones on the listing page and in Otto, but not on a card or in the "Open right now near you"
+  rail, where a lite record carries no hour lines to fall back on. A sync on Render clears all 210.
+- **A judgment call worth your eye**: 158 of those 166 now publish no hours at all rather than a whole day.
+  If any of them genuinely trade around the clock, that is now an honest gap and only a re-crawl that reads a
+  real statement ("Open 24 hours") puts it back. In these categories I could not find a credible one.
+- The thirteenth run's calls stand: the Where box still depends on Photon for every town that is not one of
+  the 47 metros, and Trapped's street address is still in the wrong province. The twelfth's stand too: the two
+  distance helpers still disagree on miles against kilometres, Arizona still moves on the Navajo Nation, and
+  the 4,736 townless areas are still a supply gap. The earlier runs' open calls stand: a claimed shop with an
+  empty menu still takes bookings, the rehearsal still cannot see a guest's rendered page, nothing is checked
+  against real Stripe, no workflow runs `npm test` on its own, and the 64 "Nearby" venues still want a sync.
 
 ## Coverage
 
@@ -910,17 +970,24 @@ answers, and the 64 that were called Nearby. Whether a listing is at the place a
 home and in the phone feed, for a picked point and for a picked state or province, for a chain and for a
 listing with no pin at all. The distance strings themselves, at every band boundary.
 
+Whether a line that carries days and a time range is opening hours at all, over all 31,950 hour lines in the
+shipped catalog: a campground's quiet hours and a bar's happy hour against the subjects that are trading hours
+after all (office, kitchen, gate and pool hours, last admission). A span that covers the whole day and a day
+named in the markup with no time at all, through the extractor, both hour parsers and the compact week already
+in `catalog.json`. Every field of the published operator patch against the JSON round trip that carries it to
+a guest who is not the operator: which `undefined` meant "clear this" and which meant "leave it", and what the
+hours, the duration and the cover then say on a card, a hero, a booking sheet and in Otto.
+
 **Not yet checked.** The operator chat for a hand-built listing (`src/data/listings.ts` is empty, so `agent.ts`
 and the `ChatView` operator path still have no live case, and nothing a guest can reach runs them). Photo
 upload against a real GitHub token, and the gap between the URL it returns and the deploy that makes the file
 exist. The mouse drag path of reordering: the keyboard and touch paths are driven in a browser now, the HTML5
-drag events are not. Whether a claimed shop's card should keep the crawled `dur` once the operator's own menu
-disagrees. Whether a claimed shop with an empty menu should pause its own listing. A rehearsal check that
-reads a claimed listing's rendered page and not only the API's JSON. A CI job that runs `npm test` on either
-side. The Payouts page driven against a connected Stripe account rather than the no-account fallback.
-Whether a shop publishing "12:00 AM - 11:59 PM" means it is open all night or has stated no hours at all, and
-the handful whose campground quiet hours were crawled as opening hours: both belong in the extractor.
-`geo.ts`'s `formatDistance` and `places.ts`'s `fmtDistance` still disagree on miles against kilometres, which
-is a product call. Whether the Where box should index the towns our own catalog already names, instead of
-depending on Photon for every place that is not one of the 47 metros. Whether Arizona's Navajo Nation should keep
-daylight saving. The 4,736 listings whose area carries no town, as a supply gap rather than a parsing one.
+drag events are not. Whether a claimed shop with an empty menu should pause its own listing. A rehearsal check
+that reads a claimed listing's rendered page and not only the API's JSON. A CI job that runs `npm test` on
+either side. The Payouts page driven against a connected Stripe account rather than the no-account fallback.
+Whether a shop that genuinely trades around the clock can say so at all, now that a whole-day span is read as
+no statement: only a crawl that reads the words "Open 24 hours" would carry it. `geo.ts`'s `formatDistance`
+and `places.ts`'s `fmtDistance` still disagree on miles against kilometres, which is a product call. Whether
+the Where box should index the towns our own catalog already names, instead of depending on Photon for every
+place that is not one of the 47 metros. Whether Arizona's Navajo Nation should keep daylight saving. The 4,736
+listings whose area carries no town, as a supply gap rather than a parsing one.
