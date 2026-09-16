@@ -52,3 +52,39 @@ test("an operator's own photo is left alone", () => {
   assert.match(String(fullSize("https://static.wixstatic.com/media/abc~mv2.jpg")), /w_1600,h_1000/);
   assert.equal(fullSize("https://example.com/a.jpg?w=34"), undefined);
 });
+
+/** No address the app's own image proxy or a photo screen could ask for: an inline blob, not a fetch. */
+test("an inline data or blob URL is never a published photo", () => {
+  for (const u of [
+    "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAAB",
+    "blob:https://example.com/9f6a1c2e-2b0a-4f3a-9c1e-6a0b1c2d3e4f",
+    "javascript:alert(1)",
+    "file:///etc/passwd",
+    "vbscript:msgbox(1)",
+  ]) {
+    assert.equal(publishableImage(u), false, u + " should be refused");
+  }
+});
+
+test("a private or carrier-NAT address, IPv6 loopback included, is refused", () => {
+  for (const u of ["http://100.64.0.5/a.jpg", "http://100.100.1.1/a.jpg", "http://[::1]/a.jpg", "http://[fe80::1]/a.jpg", "http://[fd12::9]/a.jpg", "http://box.localhost/a.jpg"]) {
+    assert.equal(publishableImage(u), false, u + " should be refused");
+  }
+  // A public IP that merely starts the same way as a private range stays published.
+  for (const u of ["http://100.63.255.255/a.jpg", "http://100.128.0.1/a.jpg", "http://8.8.8.8/a.jpg"]) {
+    assert.equal(publishableImage(u), true, u + " should be kept");
+  }
+});
+
+/**
+ * A stored photo can already be a wsrv.nl (images.weserv.nl) address when the operator's own site uses it as
+ * their CDN. `errorredirect` sends a guest's browser to any URL the page names if the image fails to load: an
+ * open redirect riding what looks like an ordinary image address. Only the parameters this codebase's own
+ * wrapping (`src/lib/images.ts`, `backend/src/enrich/photoquality.ts`) ever sets are let through unexamined.
+ */
+test("a wsrv.nl address with an unrecognized query parameter is refused", () => {
+  assert.equal(publishableImage("https://wsrv.nl/?url=example.com/a.jpg&errorredirect=https://evil.example/phish"), false);
+  assert.equal(publishableImage("https://images.weserv.nl/?url=example.com/a.jpg&errorredirect=https://evil.example/phish"), false);
+  // The plain, ordinary wrap this codebase itself produces stays published.
+  assert.equal(publishableImage("https://wsrv.nl/?url=example.com%2Fa.jpg&w=800&output=webp&q=78"), true);
+});

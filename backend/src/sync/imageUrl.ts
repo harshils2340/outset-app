@@ -10,7 +10,15 @@
  * and a guest's browser asked their own machine for it and got nothing.
  */
 const PRIVATE_HOST =
-  /^(?:localhost|127(?:\.\d{1,3}){3}|0\.0\.0\.0|10(?:\.\d{1,3}){3}|192\.168(?:\.\d{1,3}){2}|169\.254(?:\.\d{1,3}){2}|172\.(?:1[6-9]|2\d|3[01])(?:\.\d{1,3}){2}|\[?::1\]?|[^.]+\.(?:local|internal|localdomain|lan|test|invalid|example))$/i;
+  /^(?:localhost|127(?:\.\d{1,3}){3}|0(?:\.\d{1,3}){3}|10(?:\.\d{1,3}){3}|192\.168(?:\.\d{1,3}){2}|169\.254(?:\.\d{1,3}){2}|172\.(?:1[6-9]|2\d|3[01])(?:\.\d{1,3}){2}|100\.(?:6[4-9]|[7-9]\d|1[01]\d|12[0-7])(?:\.\d{1,3}){2}|\[?::1\]?|\[?fe80:[0-9a-f:]*\]?|\[?f[cd][0-9a-f]{2}:[0-9a-f:]*\]?|[^.]+\.(?:local|internal|localdomain|lan|test|invalid|example|localhost))$/i;
+
+/** wsrv.nl (images.weserv.nl) is a free image proxy we wrap trusted URLs through ourselves. A stored photo
+ * address can already be one, when the operator's own site uses it as their CDN, and an unrecognized query
+ * parameter there is not always harmless: `errorredirect` sends a guest's browser to an arbitrary URL of the
+ * page author's choosing if the image fails to load, an open redirect riding a legitimate-looking image host.
+ * Only the parameters this codebase's own wrapping ever sets are allowed through unexamined. */
+const WSRV_HOST = /(^|\.)(?:wsrv\.nl|images\.weserv\.nl)$/i;
+const WSRV_SAFE_PARAMS = new Set(["url", "w", "h", "fit", "output", "q", "il", "n", "dpr", "cs", "a", "blur", "sharp", "gam", "we"]);
 
 /**
  * What a registrar shows when the business let its domain lapse, or never built the site. It is the only image
@@ -39,13 +47,20 @@ export function fullSize(u: string): string | undefined {
  */
 export function publishableImage(u: string): boolean {
   if (!u) return false;
-  let host: string;
+  let url: URL;
   try {
-    host = new URL(u).hostname;
+    url = new URL(u);
   } catch {
     return false;
   }
+  // Only ever a real fetch a guest's browser makes over the network: never `data:` (an inline blob with no
+  // address a photo screen or the app's own image proxy could ask for), `blob:`, `javascript:` or a bare file path.
+  if (url.protocol !== "http:" && url.protocol !== "https:") return false;
+  const host = url.hostname.replace(/^\[|\]$/g, "");
   if (PRIVATE_HOST.test(host) || PARKED_HOST.test(host)) return false;
+  if (WSRV_HOST.test(host)) {
+    for (const key of url.searchParams.keys()) if (!WSRV_SAFE_PARAMS.has(key.toLowerCase())) return false;
+  }
   return !PARKED_PATH.test(u);
 }
 
