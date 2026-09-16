@@ -13,6 +13,20 @@ const SMTP_USER = (process.env.MAIL_SMTP_USER || "").trim();
 const SMTP_PASS = (process.env.MAIL_SMTP_PASS || "").trim();
 const SMTP_FROM = process.env.MAIL_SMTP_FROM || (SMTP_USER ? "Harshil <" + SMTP_USER + ">" : "");
 
+/**
+ * A raw newline in a header value is how header injection works: an extra Bcc or Cc line, a spoofed From, a
+ * whole second message smuggled into one send. `subject` and `replyTo` can carry a crawled (and sometimes
+ * hacked) operator's own name straight from the catalog, or a guest's own booking-form input, so neither is
+ * trusted text by the time it reaches here, whatever protection Resend's JSON body or nodemailer's own header
+ * composer already happens to have. Folds a run of CR/LF into one space rather than rejecting the whole send
+ * over a formatting character in a field that is not itself the address.
+ */
+function sanitizeHeaderText(s: string): string {
+  return s.replace(/[\r\n]+/g, " ").trim();
+}
+/** No whitespace (a folded or embedded newline included), no `<`/`>` (a display-name wrapper is not a bare address), one @, one dot after it. */
+const BARE_EMAIL = /^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/;
+
 export async function sendMail(msg: {
   to: string;
   subject: string;
@@ -21,10 +35,15 @@ export async function sendMail(msg: {
   replyTo?: string;
   commercial?: boolean;
 }): Promise<{ sent: boolean; id?: string; error?: string }> {
-  const to = msg.to.trim();
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) return { sent: false, error: "bad address" };
-  if (msg.commercial && SMTP_USER && SMTP_PASS) return sendSmtp(to, msg);
-  return sendResend(to, msg);
+  const to = sanitizeHeaderText(msg.to);
+  if (!BARE_EMAIL.test(to)) return { sent: false, error: "bad address" };
+  // A malformed reply-to (an injection attempt, a guest's typo) is worth losing, not worth losing the whole
+  // mail over: dropped silently, same as if the caller had never set one.
+  const replyToRaw = msg.replyTo ? sanitizeHeaderText(msg.replyTo) : undefined;
+  const replyTo = replyToRaw && BARE_EMAIL.test(replyToRaw) ? replyToRaw : undefined;
+  const clean = { ...msg, subject: sanitizeHeaderText(msg.subject).slice(0, 300), replyTo };
+  if (msg.commercial && SMTP_USER && SMTP_PASS) return sendSmtp(to, clean);
+  return sendResend(to, clean);
 }
 
 async function sendSmtp(
