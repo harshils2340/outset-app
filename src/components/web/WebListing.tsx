@@ -168,6 +168,15 @@ export function tidyLine(text: string): string {
   return t ? t.charAt(0).toUpperCase() + t.slice(1) : t;
 }
 
+/**
+ * What the operator says about arriving, or "" when they say nothing. A sign-off like "See you soon!" is not
+ * arrival information. This is the only arrival line a guest is ever shown: Outset has no rule of its own.
+ */
+export function arrivalNote(item: { checkin?: string }): string {
+  if (!item.checkin || /^(see you|thank|welcome|we look forward|have fun|enjoy)\b/i.test(item.checkin.trim())) return "";
+  return tidyLine(item.checkin);
+}
+
 const TITLE_SMALL = new Set(["a", "an", "and", "at", "by", "for", "in", "of", "on", "or", "the", "to", "with", "per", "vs"]);
 /** "Island Jet ski Tour" is a title with one word left lowercase: finish the title case the operator started. */
 export function tidyName(text: string): string {
@@ -1168,8 +1177,7 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
   const typeName = TYPE_NAME[item.art] || "Experience";
   const initial = (item.title.replace(/^the\s+/i, "").match(/[A-Za-z]/) || [item.title.slice(0, 1)])[0].toUpperCase();
   const bookableCount = bookableServices(item.services).length || item.options.filter((o) => o.price != null || o.name).length;
-  // A sign-off like "See you soon!" is not arrival information.
-  const checkin = item.checkin && !/^(see you|thank|welcome|we look forward|have fun|enjoy)\b/i.test(item.checkin.trim()) ? tidyLine(item.checkin) : "";
+  const checkin = arrivalNote(item);
   const services = useMemo(() => bookableServices(item.services), [item.services]);
   const blurb = item.blurb ? cleanDesc(item.blurb).replace(/\s+(Book|Learn more|Read more|Reserve)\.?$/i, "") : "";
 

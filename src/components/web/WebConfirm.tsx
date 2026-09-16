@@ -5,7 +5,7 @@ import type { Booking } from "../../data/types";
 import { addressLine, contactFor, experienceById, fmtPhone, mapsHref, perPerson, publicRating, telHref } from "../../lib/catalog";
 import { addonPrice, priceUnclaimed, serviceFeeLabel } from "../../lib/pricing";
 import { splitAddons } from "../../lib/storage";
-import { tidyAddress, tidyLength, tidyName } from "./WebListing";
+import { arrivalNote, tidyAddress, tidyLength, tidyName } from "./WebListing";
 import { fmtReviews, fmtTime, money } from "../../lib/format";
 import { Photo } from "../art/Photo";
 import { Mark } from "../layout/Mark";
@@ -38,6 +38,18 @@ export function WebConfirm({ booking, onDone, onOpen }: { booking: Booking; onDo
   const first = booking.guest?.name ? booking.guest.name.split(" ")[0] : "";
   // The price lines are the same breakdown the listing showed; they appear only when they add up to the stored total.
   const addonRows = (item.addons || []).filter((a) => extras.includes(a.name));
+  const arrival = arrivalNote(item);
+  const steps = [
+    instant
+      ? booking.guest?.email
+        ? "Your spot is confirmed. The details are in your confirmation email."
+        : "Your spot is confirmed. Keep the code above: it is your booking."
+      : booking.guest?.email
+        ? "The operator gets your request and confirms. You'll get an email the moment they answer."
+        : "The operator gets your request and confirms. With no email on the booking, check back here or call them for the answer.",
+    arrival,
+    "Questions? Otto on the listing answers from the operator's own info.",
+  ].filter(Boolean);
   const p = picked ? priceUnclaimed(picked, booking.qty, addonRows) : null;
   const lines = p && p.base && booking.total && Math.abs(p.total - booking.total) < 0.01 ? p : null;
 
@@ -111,10 +123,12 @@ export function WebConfirm({ booking, onDone, onOpen }: { booking: Booking; onDo
               <h2>What happens next</h2>
               <ol className="alsteps">
                 {/* A guest who left the email box empty gets no mail, because there is nowhere to send it, and
-                    telling them one is coming is how a declined request goes unheard. */}
-                <li><span className="n">1</span><span>{instant ? (booking.guest?.email ? "Your spot is confirmed. The details are in your confirmation email." : "Your spot is confirmed. Keep the code above: it is your booking.") : booking.guest?.email ? "The operator gets your request and confirms. You'll get an email the moment they answer." : "The operator gets your request and confirms. With no email on the booking, check back here or call them for the answer."}</span></li>
-                <li><span className="n">2</span><span>Show up 15 minutes early. If there's a waiver, it's linked on the listing.</span></li>
-                <li><span className="n">3</span><span>Questions? Otto on the listing answers from the operator's own info.</span></li>
+                    telling them one is coming is how a declined request goes unheard. The arrival step is the
+                    operator's own line or nothing: no shop asked us to tell their guests to come 15 minutes
+                    early, so the numbering closes over the gap. */}
+                {steps.map((text, i) => (
+                  <li key={text}><span className="n">{i + 1}</span><span>{text}</span></li>
+                ))}
               </ol>
             </section>
 

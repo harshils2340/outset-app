@@ -14,7 +14,7 @@ import type { StoredProfile } from "./profiles.ts";
 const SITE = (process.env.SITE_URL || "https://onoutset.com/").replace(/\/?$/, "/");
 const DASHBOARD = SITE + "operators";
 
-type Detail = { title?: string; area?: string; contact?: { phone?: string; street?: string; city?: string } };
+type Detail = { title?: string; area?: string; checkin?: string; contact?: { phone?: string; street?: string; city?: string } };
 
 export type BookingContext = {
   title: string;
@@ -23,20 +23,33 @@ export type BookingContext = {
   shopPhone: string;
   ownerEmail: string;
   listingUrl: string;
+  arrival: string;
 };
 
 const clean = (s: unknown, max: number) => String(s ?? "").split("").filter((ch) => ch.charCodeAt(0) >= 32).join("").trim().slice(0, max);
+
+/**
+ * What the business says about arriving, or "" when they say nothing. The guest listing shows the same line and
+ * drops the same sign-offs ("See you soon!"), which are a goodbye and not arrival information. Outset has no
+ * arrival rule of its own, so with nothing here the email says nothing.
+ */
+const SIGN_OFF = /^(see you|thank|welcome|we look forward|have fun|enjoy)\b/i;
+
+function arrivalLine(patch: { checkin?: string }, detail: Detail | null): string {
+  const raw = clean(patch.checkin ?? detail?.checkin, 240);
+  return raw && !SIGN_OFF.test(raw) ? raw : "";
+}
 
 /** The business as the emails should name and place it. */
 export async function bookingContext(rec: StoredBooking, profile: StoredProfile | null, known?: Detail | null): Promise<BookingContext> {
   // The booking route has already read this file to price the booking. Reading it again cost a second GitHub
   // round trip on the one request a guest is actually waiting on.
   const detail = known !== undefined ? known : await readJson<Detail>(`o/${rec.listing}.json`).catch(() => null);
-  const patch = (profile?.patch || {}) as { title?: string; address?: string; phone?: string };
+  const patch = (profile?.patch || {}) as { title?: string; address?: string; phone?: string; checkin?: string };
   const title = clean(patch.title, 120) || clean(detail?.title, 120) || rec.listing;
   const currency = rec.payment?.currency || currencyForArea(detail?.area, process.env.STRIPE_CURRENCY || "usd");
   const where = clean(patch.address, 160) || [detail?.contact?.street, detail?.contact?.city].filter(Boolean).join(", ") || clean(detail?.area, 80);
-  return { title, currency, where, shopPhone: clean(patch.phone, 40) || clean(detail?.contact?.phone, 40), ownerEmail: profile?.owner.email || "", listingUrl: `${SITE}#o=${rec.listing}` };
+  return { title, currency, where, shopPhone: clean(patch.phone, 40) || clean(detail?.contact?.phone, 40), ownerEmail: profile?.owner.email || "", listingUrl: `${SITE}#o=${rec.listing}`, arrival: arrivalLine(patch, detail) };
 }
 
 /** What the guest pays and what the operator gets, in dollars. */
@@ -144,7 +157,7 @@ export async function mailNewBooking(rec: StoredBooking, profile: StoredProfile 
       lines: guestLines(rec, ctx),
       priceNote: paid ? (instant ? "Charged to your card." : "Held on your card, charged when the operator confirms.") : m ? "Paid to the business on the day." : undefined,
       cta: { label: "View the listing", url: ctx.listingUrl },
-      after: instant ? ["Show up 15 minutes early. If there is a waiver, it is linked on the listing."] : [],
+      after: instant && ctx.arrival ? [ctx.arrival] : [],
     });
     outbox.push({ to: rec.guest.email, subject: (instant ? "You're booked: " : "Request sent: ") + `${ctx.title}, ${fmtWhen(rec.date, rec.slot)}`, ...e });
   }
@@ -174,7 +187,7 @@ export async function mailDecision(rec: StoredBooking, profile: StoredProfile | 
       lines: guestLines(rec, ctx),
       priceNote: charged ? "Charged to your card." : m ? "Paid to the business on the day." : undefined,
       cta: { label: "View the listing", url: ctx.listingUrl },
-      after: ["Show up 15 minutes early. If there is a waiver, it is linked on the listing."],
+      after: ctx.arrival ? [ctx.arrival] : [],
     });
     await sendMail({ to: rec.guest.email, subject: `Confirmed: ${ctx.title}, ${when}`, ...e });
     return;

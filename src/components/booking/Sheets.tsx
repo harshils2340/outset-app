@@ -59,7 +59,7 @@ import { applyFilters, browseList, nearFirst } from "../explore/feed";
 import { getPrefs, setPrefs, toggleSaved, usePrefs, type FeedFilters } from "../explore/prefs";
 import { SlotCalendar } from "./SlotCalendar";
 import { SearchSheet } from "../explore/SearchSheet";
-import { AdminSiteLink, ExplainLine, ReviewCard, TYPE_NAME, bookableServices, dealShown, isStandardOnly, optionLength, splitVariants, variantNote, tidyDuration, tidyHours, possessive, shownReviews, splitIncluded, tidyAddress, tidyCancel, tidyLength, tidyLine, tidyName } from "../web/WebListing";
+import { AdminSiteLink, ExplainLine, ReviewCard, TYPE_NAME, arrivalNote, bookableServices, dealShown, isStandardOnly, optionLength, splitVariants, variantNote, tidyDuration, tidyHours, possessive, shownReviews, splitIncluded, tidyAddress, tidyCancel, tidyLength, tidyLine, tidyName } from "../web/WebListing";
 
 /** Only the starting point for the party picker before a service is chosen; the operator's own limit wins. */
 const QTY_MAX = 8;
@@ -367,8 +367,7 @@ function RequestBody({
   const dist = miles != null && miles <= 150 && metro ? formatDistance(miles, metro.country) + " away" : null;
   const addressRaw = contact ? addressLine(contact) : null;
   const address = addressRaw ? tidyAddress(addressRaw) : null;
-  // A sign-off like "See you soon!" is not arrival information.
-  const checkin = item.checkin && !/^(see you|thank|welcome|we look forward|have fun|enjoy)\b/i.test(item.checkin.trim()) ? tidyLine(item.checkin) : "";
+  const checkin = arrivalNote(item);
   const isSaved = saved.includes(item.id);
   // One business is "Museum in Saint Petersburg", not "Museums in": the singular type the desktop page uses.
   const kind = TYPE_NAME[item.art] || ART_LABEL[item.art] || catName;
