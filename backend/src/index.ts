@@ -11,9 +11,10 @@ import { loadProfileOverlays, syncCatalogToApp, syncContactsToApp } from "./sync
 import { writeClaimIndex } from "./lib/claimIndex.ts";
 import { discoverAll, metroCoverage } from "./discover/osm.ts";
 import { budgetUsd, collectAll, collectBatch, dryRun, enrichPending, rate, spentUsd, submitBatch } from "./enrich/run.ts";
-import { discoverSearch } from "./discover/searchapi.ts";
+import { discoverSearch, isCached, planSearch, providerOf, PRICE_PER_1K_USD, PRICING_DATE } from "./discover/searchapi.ts";
 import { discoverWeb } from "./discover/websearch.ts";
 import { discoverAi } from "./discover/aisearch.ts";
+import { placesCommand } from "./discover/places.ts";
 import { sendOutreach } from "./outreach/send.ts";
 import { recordUnsub } from "./lib/unsub.ts";
 import { ownersCsv, ownersPending } from "./enrich/owners.ts";
@@ -25,7 +26,6 @@ import { collectPhotos, photosPending } from "./enrich/images.ts";
 import { widgetsPending, widgetForOperator } from "./enrich/widgets.ts";
 import { loadOsmLocations, locationsPending } from "./enrich/locations.ts";
 import { reviewsForOperator, reviewsPending } from "./enrich/reviews.ts";
-import { CITIES } from "./discover/cities.ts";
 import { installChromeGuard, reapOrphanChrome } from "./scrape/render.ts";
 import { guardLaptopJob } from "./scrape/guard.ts";
 import { measureIdle, MIN_IDLE } from "./scrape/cpu.ts";
@@ -104,28 +104,60 @@ if (cmd === "aisearch") {
   process.exit(0);
 }
 
+if (cmd === "places") {
+  process.exit(await placesCommand(process.argv.slice(3)));
+}
+
 if (cmd === "websearch") {
+  // npm run websearch -- Toronto --terms=cooking,pottery,tour   (a category id or a WEB_TERMS phrase; default: every term)
   const only = process.argv.slice(3).filter((a) => !a.startsWith("--"));
-  const r = await discoverWeb({ cities: only });
+  const terms = process.argv.find((a) => a.startsWith("--terms="))?.slice(8).split(",").map((t) => t.trim()).filter(Boolean);
+  const dArg = process.argv.find((a) => a.startsWith("--delay="));
+  const r = await discoverWeb({ cities: only, terms, delayMs: dArg ? Number(dArg.split("=")[1]) : undefined });
   refreshAllScores();
   console.log("Web discovery: " + JSON.stringify(r));
   process.exit(0);
 }
 
 if (cmd === "search") {
-  const keys = (process.env.SEARCHAPI_KEYS || process.env.SEARCHAPI_KEY || "").split(",").map((k) => k.trim()).filter(Boolean);
-  if (!keys.length) {
-    console.error("SEARCHAPI_KEY or SEARCHAPI_KEYS is not set. Put it in backend/.env.");
-    process.exit(1);
-  }
+  // Google Maps discovery over the whole taxonomy (src/discover/searchterms.ts) x the coverage grid.
+  //   --categories=cooking,pottery   --cities=Toronto,ON   --metro=toronto (or a comma list, or "all" for every metro)
+  //   --pages=1   --concurrency=4   --budget=N (paid requests for the whole run; cache hits are free)
+  //   --dry-run   prints the query list, cache hits, paid requests and the cost at each provider. Sends nothing, needs no key.
   const arg = (k: string) => process.argv.find((a) => a.startsWith("--" + k + "="))?.split("=")[1];
   const categories = arg("categories")?.split(",").filter(Boolean);
   const cities = arg("cities")?.split(",").filter(Boolean);
+  const metros = arg("metro")?.split(",").filter(Boolean);
   const concurrency = Number(arg("concurrency") || 4);
   const maxPages = Number(arg("pages") || 1);
   const budget = arg("budget") ? Number(arg("budget")) : undefined;
-  console.log(`SearchApi discovery: ${cities?.length || CITIES.length} cities x ${categories?.length || CATEGORIES.length} categories, ${maxPages} page(s) each, ${keys.length} key(s)${budget ? ", budget " + budget + " queries" : ""}.`);
-  const stats = await discoverSearch({ keys, categories, cities, concurrency, maxPages, budget });
+  const plan = planSearch({ categories, cities, metros, budget });
+  const usd = (n: number) => "$" + n.toFixed(2);
+  const scope = `${plan.cities.length} cities x ${plan.terms.length} terms (${plan.categories} categories), ${maxPages} page(s) each`;
+  if (process.argv.includes("--dry-run")) {
+    console.log(`Dry run: ${scope}.`);
+    if (plan.cities.length <= 3) {
+      for (const city of plan.cities) {
+        console.log(`\n${city.name}, ${city.region} (${city.country}) @${city.lat},${city.lon}`);
+        for (const term of plan.terms) console.log(`  ${isCached(term.q, city) ? "cached" : "paid  "}  ${term.q.padEnd(28)} -> ${term.categoryId}`);
+      }
+    } else {
+      console.log("Cities: " + plan.cities.map((c) => c.name + " " + c.region).join(", "));
+      console.log("Terms: " + plan.terms.map((t) => `${t.q} -> ${t.categoryId}`).join("; "));
+    }
+    console.log(`\n${plan.jobs.length} page-1 queries, ${plan.cached} already cached, ${plan.paid} paid requests${budget ? " (budget " + budget + ")" : ""}${maxPages > 1 ? "; pages after the first are only fetched when a page is full, so they are not counted" : ""}.`);
+    console.log(`Estimated cost (pricing read ${PRICING_DATE}, 1 request per page): Serper ${usd(plan.costUsd.serper)} at $${PRICE_PER_1K_USD.serper}/1k, SearchApi ${usd(plan.costUsd.searchapi)} at $${PRICE_PER_1K_USD.searchapi}/1k, SerpApi ${usd(plan.costUsd.serpapi)} at $${PRICE_PER_1K_USD.serpapi}/1k.`);
+    console.log("Nothing was sent.");
+    process.exit(0);
+  }
+  const keys = (process.env.SEARCHAPI_KEYS || process.env.SEARCHAPI_KEY || "").split(",").map((k) => k.trim()).filter(Boolean);
+  if (!keys.length) {
+    console.error("SEARCHAPI_KEY or SEARCHAPI_KEYS is not set. Put it in backend/.env, or add --dry-run to see the plan without one.");
+    process.exit(1);
+  }
+  const prov = providerOf(keys[0]);
+  console.log(`Google Maps discovery via ${prov}: ${scope}, ${keys.length} key(s). ${plan.cached} cached, ${plan.paid} paid requests, about ${usd(plan.costUsd[prov])}${budget ? ", budget " + budget + " requests" : ""}.`);
+  const stats = await discoverSearch({ keys, categories, cities, metros, concurrency, maxPages, budget });
   refreshAllScores();
   const total = (db.prepare("SELECT COUNT(*) AS n FROM operators WHERE origin != 'demo'").get() as { n: number }).n;
   console.log(`Done${stats.stoppedEarly ? " (stopped early: credits or budget)" : ""}. ${stats.queries} queries, ${stats.results} results, ${stats.inserted} new, ${stats.merged} merged into known operators, ${stats.skipped} skipped. Catalog now ${total} operators.`);

@@ -3,6 +3,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { CITIES, type City } from "./cities.ts";
 import { upsertPlace, type SearchStats } from "./searchapi.ts";
+import { categoryById } from "../taxonomy/catalog.ts";
 
 /**
  * Web-search discovery for the categories OpenStreetMap tags poorly: classes, studios, tours, indoor venues.
@@ -41,6 +42,8 @@ export const WEB_TERMS: { term: string; category: string }[] = [
 ];
 
 const DROP = /(^|\.)(yelp|tripadvisor|eventbrite|classpass|groupon|facebook|instagram|reddit|quora|timeout|blogto|narcity|wikipedia|youtube|google|coursehorse|airbnb|viator|getyourguide|cozymeal|classbento|thumbtack|bark|expedia|booking|hotels|kayak|tiktok|pinterest|linkedin|x|twitter|meetup|amazon|apple|nextdoor|mapquest|yellowpages|bbb|foursquare|zomato|opentable|resy|tock|peek|fareharbor|xola|rezdy|bookeo|mindbodyonline|vagaro|fresha|booksy|squareup|shopify|wix|squarespace|eventbrite|dojobusiness|craigslist|indeed|glassdoor|patch|nytimes|cntraveler|lonelyplanet|thrillist|eater|forbes|usatoday|cbc|ctvnews|globalnews|citynews|nypost|chicagotribune|latimes|sfgate|seattletimes|denverpost|dallasnews|houstonchronicle|ajc|tampabay|orlandosentinel|miamiherald|sun-sentinel|bostonglobe|philly|inquirer|washingtonpost|baltimoresun|cleveland|freep|detroitnews|startribune|kansascity|stltoday|azcentral|reviewjournal|oregonlive|sandiegouniontribune|mercurynews|sacbee|fresnobee|mlive|jsonline|dispatch|cincinnati|courier-journal|tennessean|commercialappeal|charlotteobserver|newsobserver|postandcourier|thestate|greenvilleonline|richmond|pilotonline|dailypress|wtop|wjla|wusa9|nbcwashington)\.(com|ca|org|net|co|io)$/i;
+/** Tourism boards, classifieds and travel magazines list operators; they are not one. */
+const BOARD = /^(visit|destination|discover|explore|tourism|travel|kijiji|thecuriouscreature)[a-z-]*\.(com|ca|org|net|co)$|\.travel$/i;
 const GOV = /\.(gov|edu|mil)$|\.(ca|us)\.gov$|\b(city|county|town)of[a-z]+\.(com|org|ca)$|\.[a-z]+\.ca\.gov/i;
 
 function hostOf(url: string): string | null {
@@ -107,7 +110,15 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 export async function discoverWeb(opts: { terms?: string[]; cities?: string[]; delayMs?: number } = {}): Promise<SearchStats> {
   const stats: SearchStats = { queries: 0, results: 0, inserted: 0, merged: 0, skipped: 0, stoppedEarly: false };
-  const terms = opts.terms?.length ? WEB_TERMS.filter((t) => opts.terms!.includes(t.category) || opts.terms!.includes(t.term)) : WEB_TERMS;
+  // A category with no hand-written term (skydive, kart, camping) searches by its taxonomy query instead.
+  const terms = opts.terms?.length
+    ? opts.terms.flatMap((want) => {
+        const known = WEB_TERMS.filter((t) => t.category === want || t.term === want);
+        if (known.length) return known;
+        const cat = categoryById(want);
+        return cat ? [{ term: cat.searchQuery, category: cat.id }] : [];
+      }).filter((t, i, all) => all.findIndex((o) => o.term === t.term) === i)
+    : WEB_TERMS;
   const cities = opts.cities?.length ? CITIES.filter((c) => opts.cities!.includes(c.name) || opts.cities!.includes(c.region)) : CITIES;
   const seenHost = new Set<string>();
   for (const city of cities) {
@@ -118,7 +129,7 @@ export async function discoverWeb(opts: { terms?: string[]; cities?: string[]; d
         if (!cached) stats.queries++;
         for (const h of hits) {
           const host = hostOf(h.url);
-          if (!host || DROP.test(host) || GOV.test(host)) continue;
+          if (!host || DROP.test(host) || GOV.test(host) || BOARD.test(host)) continue;
           // Aggregator pages and listicles name several businesses; the operator's own site names one.
           if (/\b(best|top \d|things to do|guide to|near me)\b/i.test(h.title) && !/\.(com|ca|net|org|co)\/?$/.test(h.url)) continue;
           const key = host + "|" + city.name;
