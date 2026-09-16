@@ -6,7 +6,28 @@ code in `backend/src/sync`, `backend/src/enrich` and `backend/src/discover` that
 to rules and generators only. Nothing under `public/` was edited by hand, so every count below is what the next
 `npm run sync` on Render will change, not what is live this minute.
 
-**Checked.** In progress. See the end of this file for the final counts.
+**Checked.** All 59,162 files under `public/o/` and `public/catalog.json`, scanned by script for each rule below
+rather than sampled, because a keyword or a regex check runs over the whole catalog in seconds: gambling-spam
+phrases in every text field and in `cover`/`photos` (109 files matched, 97 in `blurb`, 12 only in a photo address);
+an em or en dash inside `specs` and `highlights` (159 and 18 raw hits; 2,551 files the earlier run's count, not
+reproduced exactly here since some of those may have already cleared on other fields); `options` names against
+`NOT_A_SERVICE` (1,484 listings); a card's `deal` label against a trailing-connector check (2 of 33 published
+deals); an image address against a bounded "logo" check across the whole address rather than only its last
+segment (41 of 208,791 photos). Two specific leads were checked and found already correct, not a bug: `art:
+"museum"` on 345artgallery.com is right, since the taxonomy's own label for that category is "Museums and
+galleries" (`src/taxonomy/catalog.ts`); and a rating and review count are never shown without written reviews
+behind them already (`WebListing.tsx`: "The public rating and its count appear only beside written reviews we can
+actually show"), so a review count with no text is never surfaced as a promise of reviews. Prices, hours and
+category assignments across a broader eyeball sample (roughly 150 listings across metros and categories) turned
+up nothing past what is listed below.
+
+**Checked**, no further count-scanning done for lack of time: chain-location naming, near-duplicate OSM nodes
+sharing one phone number (spot-checked; too many false positives from multi-site parks and campgrounds sharing an
+office line to build a safe rule from phone alone, see Needs Harshil), and the pipeline schedule
+(`backend/scripts/pipeline.mts`) for overlap risk: the file already documents a single queue where "a job can
+never overlap itself," each job is a hard-timeout child process, and `screen` (03:30, pixel-based cover and gallery
+screening) is the AI counterpart to this run's rule-based `isPhotoName` fix, a useful backstop since a cover only
+gets screened once (`cover_screened`) and never rechecked.
 
 **Found and fixed.**
 
@@ -93,5 +114,28 @@ to rules and generators only. Nothing under `public/` was edited by hand, so eve
   `wallingfordrodandgunclub.org` to check itself) and, if they are real event photos, loosen `LOGO_PATH` in
   `src/sync/contacts.ts` to require the "logo" segment sit within one or two directories of the file itself,
   which still catches every other case found this run.
+- Near-duplicate OSM nodes sharing one phone number: 123 groups of two or more listings, different titles, same
+  area, same phone. A few read as the same place published twice (`o-osm-way-721208607` "Cherokee Bear Zoo" and
+  `o-osm-way-721208594` "Cherokee Bear Zoo and Exotic Animals", Cherokee, NC), but most are not duplicates at
+  all: a city's parks department sharing one office line across several real, distinct golf courses and museums,
+  and a campground's four different numbered camp sites sharing the front-desk number
+  (`o-osm-node-5678618221`..`o-osm-node-5678599529`, San Francisco, CA). A phone-number match alone is not a safe
+  signal to dedupe on; it would need the same lat/lon within a few metres and a close title match together
+  before merging two rows, and building and proving that rule safely did not fit in this run.
+- 148 published option or service prices over $10,000 (`o-acadiachartercompany-com`'s two charters aside, since
+  the membership tiers that triggered them are gone as of this run's price fix): a private pilot's license at
+  $15,000 to $19,570, a wedding venue rental at $12,500 to $18,500, a luxury safari at $10,560. Read by eye,
+  fifteen of fifteen sampled are real prices for a real, expensive experience (flight training, an African
+  safari, a private event space), not an extraction error; no rule change proposed.
 
-**Needs Harshil.** In progress.
+**Needs Harshil.**
+
+- 96 real operators (a Chicago art gallery, golf courses, museums, RV parks) have a hacked website right now,
+  serving Indonesian gambling SEO spam to anyone who visits, Outset's crawler included. The fix in this run stops
+  the catalog from republishing it, but the operator's own site is still compromised. Worth a one-line email to
+  each ("your website may have been compromised") as a goodwill gesture, separate from anything this pipeline
+  can do; the list is reproducible from `SPAM_LINE` in `src/sync/contacts.ts` against `rawFacts`.
+- Whether to build a phone-plus-location dedup rule for the 123 near-duplicate OSM groups noted above. It would
+  catch real duplicates like the Cherokee Bear Zoo pair, but the false-positive rate for shared park-department
+  and campground office numbers means it needs a product call on how much risk of wrongly merging two distinct,
+  real listings is acceptable, not just a code fix.
