@@ -96,4 +96,15 @@ open, and close on Escape. No changes needed there.
   row risks the rest of the compact dashboard. Left it; worth a proper pass if Harshil wants the guest
   count to never hide.
 
-**Needs Harshil.** Nothing.
+**Needs Harshil.**
+
+- The guest catalog's price display (`money()` in `src/lib/format.ts`, used by every card, listing page
+  and the booking sheets) always prints a bare "$", never "CA$" or "USD", even though the operator
+  dashboard's own payout screen already knows how to show a Canadian amount as "CA$95"
+  (`OpMore.tsx`'s `cents()`). AGENTS.md asks for money with its unit, and the catalog covers the US and
+  Canada. Fixing the display alone would be misleading, though: `Listing`/`Unclaimed` carry no currency
+  field, so the scraped and OSM-sourced prices going into `money()` are not tagged USD or CAD anywhere
+  in `src/data/` or the backend catalog pipeline that feeds it. Showing "CA$" would mean guessing from
+  the metro instead of the operator's own listed currency, which is exactly the kind of invented fact
+  AGENTS.md rules out. This needs a currency field threaded through the catalog pipeline (the
+  pipeline-and-catalog area's territory, not a wording fix), so flagging it rather than guessing at one.
