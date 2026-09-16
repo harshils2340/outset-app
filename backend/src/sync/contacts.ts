@@ -298,6 +298,36 @@ export function toCatalogItem(r: CatalogRow): Record<string, unknown> {
   ].sort((a, b) => Number(a.price_cents == null) - Number(b.price_cents == null) || (a.price_cents ?? 0) - (b.price_cents ?? 0));
   const seenFact = new Set(dbFacts.map((f) => (f.fact_key + "|" + f.fact_value).toLowerCase()));
   const rawFacts = [...dbFacts, ...crawled.facts.filter((f) => !seenFact.has((f.fact_key + "|" + f.fact_value).toLowerCase()))];
+  // Once any fact the crawl read off this operator's own pages is hacked-page spam, in any form isCompromisedText
+  // knows, the whole page was hacked and nothing else the crawl read off it is trusted for this sync either, not
+  // only the field that tripped the screen: a plain "banner.jpg" from a throwaway host next to a spam sentence is
+  // just as much the hack's as the sentence itself, and an offering's own name ("MAXSLOT88 Tour · $0") can carry
+  // the same injected text a blurb does. The operator's row (and so its claim link) is untouched; only what this
+  // sync would have published from the crawl is withheld.
+  const MEDIA_FACT_KEY = /^(photo|cover|video|video_embed|service_photo)$/;
+  // A run of a script a fact has no business carrying (FOREIGN_SCRIPT_RUN) only counts toward the compromise
+  // decision when it is isolated to one place. A hacked page injects spam into one field while the rest of the
+  // operator's own facts stay in the site's real language; a genuinely bilingual listing (a Hawaii tour desk
+  // that states every option's name in Japanese too, a dojo whose instructor bio repeats in Japanese) carries
+  // the same script across more than one of its own facts or offerings, which is a deliberate feature of the
+  // whole listing, not an anomaly. Found by the 16 September 2026 catalog scan: three real Hawaii operators
+  // whose bilingual listings this exact rule was written to stop from being wrongly quarantined.
+  const foreignScriptHits = [
+    ...rawFacts.filter((f) => TEXT_KEYS.test(f.fact_key) && FOREIGN_SCRIPT_RUN.test(f.fact_value)),
+    ...rawOfferings.filter((o) => FOREIGN_SCRIPT_RUN.test(o.name + " " + (o.detail || ""))),
+  ];
+  const isolatedForeignScript = foreignScriptHits.length === 1;
+  const hasSpamText =
+    rawFacts.some((f) => (TEXT_KEYS.test(f.fact_key) || MEDIA_FACT_KEY.test(f.fact_key)) && isCompromisedText(f.fact_value)) ||
+    // The narrower phrase check, not the full one: a compact rate card can legitimately repeat a short phrase
+    // across most of its own length, which is exactly the shape isKeywordStuffed looks for.
+    rawOfferings.some((o) => isCompromisedPhrase(o.name + " " + (o.detail || "")));
+  const spamCompromised = hasSpamText || isolatedForeignScript;
+  if (spamCompromised) {
+    const reason = hasSpamText ? "hacked-page spam in a crawled fact or offering" : "an isolated run of a script the rest of the listing never uses";
+    console.warn(`[sync] quarantined ${r.domain} (o-${slug(r.domain)}): ${reason}`);
+    cleanupLog?.quarantined.push({ id: r.domain, reason });
+  }
   // The operator's own pages: the catalog domain, the website field's host (sister brand or a second domain),
   // and site-builder hosts they publish on (mammothpack.wixsite.com is still mammothpack).
   const trusted = (url: string | null) => sourceIsOwn(url, r.domain) || (r.website ? sourceIsOwn(url, hostOf(r.website)) : false) || sameBrand(url, r.domain);
@@ -305,7 +335,8 @@ export function toCatalogItem(r: CatalogRow): Record<string, unknown> {
   // Rows the audit showed to be noise: another business's page, another town's branch, merch, "not stated" filler, stale or junk lines.
   // A chain's pricing page often sits under another branch's path (/vaughan/hours-pricing on the Mississauga record).
   // Same-branch rows win; other-branch rows fill in only when this branch has none, since chain menus are shared.
-  const own = rawOfferings.filter((o) => trusted(o.source_url));
+  // A quarantined operator publishes no crawled offering either: a spam page's own menu names are as much the hack's as its blurb.
+  const own = (spamCompromised ? [] : rawOfferings).filter((o) => trusted(o.source_url));
   const onSite = own.some((o) => !offCity(o.source_url)) ? own.filter((o) => !offCity(o.source_url)) : own;
   const isMerch = (o: { name: string; detail: string | null; source_url?: string | null }) => MERCH.test(o.name + " " + (o.detail || "")) || /\/(merch|shop|apparel)(\/|$)/i.test((o.source_url || "").replace(/^https?:\/\/[^/]+/, "")) || (SPIRITS.test(o.name) && !/tasting|tour|flight|class|experience|pairing|session/i.test(o.name + " " + (o.detail || "")));
   const merchCount = onSite.filter(isMerch).length;
@@ -336,20 +367,20 @@ export function toCatalogItem(r: CatalogRow): Record<string, unknown> {
     .map((o) => ({ ...o, price_unit: fixUnit(o) }));
   const title = cleanTitle(decodeEntities(r.name), { city: r.city, region: r.region, legalName: r.legal_name });
   const keysWithOwnBranch = new Set(rawFacts.filter((f) => trusted(f.source_url) && !offCity(f.source_url)).map((f) => f.fact_key));
-  // Once one of the page's own words is gambling spam, the whole page was hacked: a cover with no spam word in its
-  // own address (a plain "banner.jpg" on a throwaway host) is just as much the hack's as the sentence is.
-  const spamCompromised = rawFacts.some((f) => TEXT_KEYS.test(f.fact_key) && SPAM_LINE.test(f.fact_value));
-  const facts = rawFacts.filter((f) => {
-    if (SPAM_LINE.test(f.fact_value)) return false;
-    if (/^(photo|cover|video|video_embed|yt_video|tiktok_profile|social:)/.test(f.fact_key)) return !spamCompromised;
-    if (!trusted(f.source_url)) return false;
-    if (offCity(f.source_url) && keysWithOwnBranch.has(f.fact_key)) return false;
-    if (TEXT_KEYS.test(f.fact_key)) {
-      const v = f.fact_value;
-      if (GAP_LINE.test(v) || JUNK_LINE.test(v) || RETAIL_LINE.test(v) || STALE_LINE.test(v)) return false;
-    }
-    return true;
-  });
+  // A quarantined operator's record stays (its title, domain, category and location all come from the operators
+  // table, not the crawl, so the listing still exists to browse and its claim link still works), but nothing the
+  // crawl read off its site publishes: no text fact, no offering, no photo. See spamCompromised above.
+  const facts = spamCompromised
+    ? []
+    : rawFacts.filter((f) => {
+        if (!trusted(f.source_url)) return false;
+        if (offCity(f.source_url) && keysWithOwnBranch.has(f.fact_key)) return false;
+        if (TEXT_KEYS.test(f.fact_key)) {
+          const v = f.fact_value;
+          if (GAP_LINE.test(v) || JUNK_LINE.test(v) || RETAIL_LINE.test(v) || STALE_LINE.test(v)) return false;
+        }
+        return true;
+      });
   const pick = (k: string) => facts.filter((f) => f.fact_key === k).map((f) => (/^(photo|video|yt_video|social:)/.test(k) ? f.fact_value : decodeEntities(f.fact_value)));
   // Booking-widget item photos are the operator's own curated product shots. They beat whatever the crawl scored highest.
   const widgetPhotos = uniq(facts.filter((f) => f.fact_key === "photo" && /fareharbor|xola|filestack/i.test((f.source_url || "") + " " + f.fact_value)).map((f) => f.fact_value));
@@ -699,12 +730,108 @@ const GAP_LINE = /\b(not (stated|specified|mentioned|listed|published|provided|a
 const JUNK_LINE = /\b(call|contact|phone|email)( us)? (for|to)\b|\bsee (the |our )?faq|\bclick here|\bprint and color|\bsubscribe|\bnewsletter|\bfollow us|\bcookie|\bprivacy policy|\bterms (of|and) (service|use|conditions)|all rights reserved|©|\bcopyright\b|\bconsent to (the use|cookies|tracking)|\benable javascript|\bjavascript\b|\baccept all\b|\bopt[- ]?out\b|\bpowered by\b|\bwebsite by\b|\bskip to (main )?content|\btoggle (menu|navigation)/i;
 const RETAIL_LINE = /\b(restocking|rma\b|return shipping|return merchandise|free shipping|ships? within|shipping (cost|rate|polic)|in-?store pickup|wholesale)\b/i;
 /**
- * A hacked WordPress page: gambling SEO spam injected into the description an operator never wrote. 97 published
- * listings carried it as their blurb, a museum's or a golf course's cover photo a "slot gacor" banner from a
+ * A hacked WordPress page: SEO spam injected into a fact an operator never wrote. 97 published listings
+ * carried gambling spam as their blurb, a museum's or a golf course's cover photo a "slot gacor" banner from a
  * throwaway domain. "Book your slot online" is a real sentence a booking page writes, so a bare "slot" plus
- * "online" is not enough; every phrase here is a betting term on its own.
+ * "online" is not enough; every phrase here is a spam term on its own, whichever category or language the
+ * injected page used, not something an English, French or Spanish tour operator's page would write about its
+ * own business. Categories: gambling and betting, counterfeit pharmacy, essay mills, crypto/forex pump
+ * schemes, adult content, replica goods, payday-loan spam. `\b` only delimits correctly around scripts where
+ * JS treats the letters as "word" characters (Latin, including Vietnamese's diacritics, since a phrase like
+ * "cờ bạc" still starts and ends on a plain ASCII letter); CJK and Cyrillic spam terms are matched as a plain
+ * substring instead, in `HACKED_SCRIPT_SPAM` below, since wrapping them in `\b` would silently never match.
  */
-export const SPAM_LINE = /\b(slot\s?(?:gacor|777|88|demo|jackpot)|situs\s+(?:slot|judi)|judi\s+(?:online|slot|bola)|togel|maxwin|rtp\s?(?:live|slot)|bandar\s?(?:slot|judi|togel)|agen\s?(?:slot|judi)|link\s?slot|jackpot\s?slot|deposit\s?(?:pulsa|dana|ovo|gopay|qris)|pg\s?soft|pragmatic\s?play)\b/i;
+export const SPAM_LINE =
+  /\b(slot\s?(?:gacor|777|88|demo|jackpot)|situs\s+(?:slot|judi)|judi\s+(?:online|slot|bola)|togel|maxwin|rtp\s?(?:live|slot)|bandar\s?(?:slot|judi|togel)|agen\s?(?:slot|judi)|link\s?slot|jackpot\s?slot|deposit\s?(?:pulsa|dana|ovo|gopay|qris)|pg\s?soft|pragmatic\s?play|daftar\s?(?:slot|situs)\s?(?:online|resmi)|casino\s?en\s?ligne\s?(?:gratuit|argent\s?r[ée]el)|paris\s?sportifs?\s?en\s?ligne|casino\s?online\s?(?:gratis|dinero\s?real)|apuestas\s?deportivas\s?online|tragamonedas\s?online|cờ\s?bạc\s?trực\s?tuyến|casino\s?trực\s?tuyến|nhà\s?cái\s?uy\s?tín|cá\s?cược\s?bóng\s?đá|đánh\s?bạc\s?online|buy\s?(?:viagra|cialis|xanax|valium|oxycontin|vicodin|percocet|adderall|tramadol|ambien|klonopin|phentermine)\s?(?:online|no\s?prescription)|(?:viagra|cialis)\s?(?:online|without\s?a?\s?prescription)|generic\s?viagra\s?online|order\s?xanax\s?online|xanax\s?(?:online|without\s?(?:a\s?)?prescription|for\s?sale)|oxycontin\s?(?:online|for\s?sale)|oxycodone\s?(?:online|for\s?sale|no\s?prescription)|vicodin\s?(?:online|for\s?sale)|percocet\s?(?:online|for\s?sale)|adderall\s?(?:online|without\s?prescription|for\s?sale)|tramadol\s?(?:online|for\s?sale|no\s?prescription)|buy\s?painkillers?\s?online|buy\s?(?:an?\s?)?essays?\s?online|write\s?my\s?(?:essay|paper|assignment)\s?(?:for\s?me|online|cheap)|essay\s?writing\s?service|paper\s?writing\s?service|dissertation\s?writing\s?service|homework\s?help\s?online|coursework\s?writing\s?service|plagiarism[- ]free\s?essays?|custom\s?essays?\s?(?:online|cheap)|pay\s?(?:someone|for)\s?to\s?write\s?my\s?(?:essay|paper)|forex\s?trading\s?signals?|forex\s?robot\s?(?:ea)?|binary\s?options?\s?(?:trading|broker|signals?)|crypto(?:currency)?\s?trading\s?bot|bitcoin\s?(?:mining|investment)\s?(?:platform|program)|guaranteed\s?(?:daily|weekly|monthly)\s?(?:profit|returns?|roi)|double\s?your\s?(?:bitcoin|investment)\s?(?:in|within)|pip\s?signals?\s?service|xxx\s?(?:videos?|cams?|tube|movies?)|live\s?sex\s?cams?|nude\s?cams?\s?(?:free|online)|adult\s?dating\s?(?:site|online)|escorts?\s?(?:in|near)\s?(?:you|me)\b|hardcore\s?porn(?:hub)?|free\s?porn\s?(?:videos?|tube)|replica\s?(?:watches?|handbags?|designer\s?bags?|sneakers?)|aaa\s?replica\s?(?:watches?|bags?)|fake\s?(?:rolex|designer)\s?(?:watches?|bags?)|knockoff\s?designer\s?(?:bags?|watches?)|super\s?clone\s?(?:watches?|rolex)|payday\s?loans?\s?(?:online|no\s?credit\s?check|instant\s?approval)|instant\s?cash\s?loans?\s?no\s?credit\s?check|bad\s?credit\s?loans?\s?guaranteed\s?approval|same[- ]day\s?loan\s?approval|no\s?credit\s?check\s?loans?\s?online)\b/i;
+/** The same categories, in scripts `\b` does not delimit: matched as a plain substring, not word-wrapped. */
+const HACKED_SCRIPT_SPAM =
+  /казино\s?онлайн|игровые\s?автоматы|ставки\s?на\s?спорт|букмекерск(?:ая|ой|ую|ий)?\s?контор|займ\s?онлайн\s?без\s?отказа|オンラインカジノ|パチスロ|賭博サイト|スロットオンライン|出会い系サイト|澳门赌场|在线赌场|网络赌场|老虎机游戏|博彩公司|六合彩开奖|正规代写|论文代写/i;
+/**
+ * A run of 8 or more CJK, Hangul, Cyrillic, Thai or Arabic characters in a fact the crawl expects to be
+ * English, French or Spanish text (this catalog is US and Canada operators, `AGENTS.md`). A real operator's
+ * page does not carry a paragraph in a script the rest of its own site never uses; a hacked page injecting
+ * spam in the attacker's own language does. A short foreign word (a dish name, a loanword) is not enough to
+ * flag on its own; a run this long is not something the extractor would otherwise pull off an English page.
+ */
+export const FOREIGN_SCRIPT_RUN = /[぀-ヿ㐀-鿿가-힯Ѐ-ӿ฀-๿؀-ۿ]{8,}/;
+/**
+ * The same three-word (ten character or longer) phrase repeated five or more times, AND making up over a
+ * third of the whole field by character count: a spam generator's signature, not something a person writes.
+ * Both bars matter. A rate card naming five boat tiers repeats "Hour Private Charter" as many times as a spam
+ * page repeats a phrase, but that repeat is a fifth of a much longer price list, not most of the text; a real
+ * multi-offering page's shared cancellation sentence turns up three or four times across the page, not five.
+ * Checked once against every field this run flagged on the published catalog (script scan, 16 Sept 2026,
+ * see the security review report): at these two bars together, zero of the sixty-odd genuine boat-rate-card,
+ * event-calendar and repeated-disclaimer fields it originally caught still trip it.
+ */
+function isKeywordStuffed(text: string): boolean {
+  const words = text.toLowerCase().match(/[a-z0-9']+/g);
+  if (!words || words.length < 16) return false;
+  const counts = new Map<string, number>();
+  for (let i = 0; i + 2 < words.length; i++) {
+    const phrase = words[i] + " " + words[i + 1] + " " + words[i + 2];
+    if (phrase.length < 10) continue;
+    counts.set(phrase, (counts.get(phrase) || 0) + 1);
+  }
+  let top = 0;
+  let topPhrase = "";
+  for (const [phrase, count] of counts) {
+    if (count > top) {
+      top = count;
+      topPhrase = phrase;
+    }
+  }
+  return top >= 5 && (top * topPhrase.length) / text.length >= 0.35;
+}
+/**
+ * A handful of single words real gambling spam repeats far more than any legitimate business copy would, but
+ * only when the same word keeps turning up right next to itself: "casino pin up casino pin up casino" repeats
+ * within a few words every time, where a real business that happens to be named for, or sit next to, a casino
+ * ("Casino Parties LLC", the "4 Way Casino" next to an RV park) says the word occasionally across a whole
+ * paragraph, never twice within a handful of words of each other more than once or twice. Three such tight
+ * repeats is not something ordinary prose produces. "slot" is deliberately not in this list: a real booking
+ * page can legitimately say it several times ("Slot 1: 9am, Slot 2: 11am..."); `SPAM_LINE` already covers
+ * "slot" paired with a betting word. Checked against every "casino"-adjacent listing the 16 September 2026
+ * catalog scan turned up (the security review report): this version no longer catches either.
+ */
+const SUSPECT_WORDS = new Set(["casino", "jackpot", "bettor", "judi", "togel", "taruhan", "paito"]);
+function hasRepeatedSuspectWord(text: string): boolean {
+  const words = text.toLowerCase().match(/[a-z']+/g);
+  if (!words) return false;
+  let tight = 0;
+  for (let i = 0; i < words.length; i++) {
+    if (!SUSPECT_WORDS.has(words[i])) continue;
+    for (let j = i + 1; j <= Math.min(i + 4, words.length - 1); j++) {
+      if (words[j] === words[i]) {
+        tight++;
+        break;
+      }
+    }
+  }
+  return tight >= 3;
+}
+/**
+ * A phrase-based spam category, in either script family, or the same suspect word packed tightly together.
+ * No stuffing check: a compact rate card ("Reserve, 1 hour $140, plus tax and gas included, Reserve, 2
+ * hours...") can legitimately repeat a short phrase across most of its own length, the same shape
+ * `isKeywordStuffed` looks for, so offerings (see below) are screened with this narrower check instead of the
+ * full one.
+ */
+export function isCompromisedPhrase(value: string): boolean {
+  return SPAM_LINE.test(value) || HACKED_SCRIPT_SPAM.test(value) || hasRepeatedSuspectWord(value);
+}
+/**
+ * Everything this sync treats as a sign one fact came off a hacked page: everything `isCompromisedPhrase`
+ * catches, plus phrase-stuffing. Used on every text fact and, since the 16 Sept 2026 bug bash, on every photo,
+ * cover and video fact too, not only the blurb, because a hack that spam-writes the page's words also
+ * spam-writes its images. `FOREIGN_SCRIPT_RUN` is deliberately not folded in here: whether a script mismatch
+ * is a hacked page or a real bilingual listing (a Hawaii tour desk's Japanese menu line, a dojo's bilingual
+ * instructor bio) depends on whether the same script turns up in more than one of the operator's own facts,
+ * which only the caller in `toCatalogItem` can see; see spamCompromised there.
+ */
+export function isCompromisedText(value: string): boolean {
+  return isCompromisedPhrase(value) || isKeywordStuffed(value);
+}
 const STALE_LINE = /\b20(1\d|2[0-5])\b|\bcovid|\bcoronavirus|\bpandemic/i;
 /** Menu headings a taproom or restaurant page lists with a starting price. */
 const MENU_CATEGORY = /^(?:food|foods|beer|beers|drafts?|draught|on tap|wine|wines|cocktails?|drinks?|beverages?|snacks?|appetizers?|starters?|small plates|shareables?|entrees?|mains?|desserts?|sides?|salads?|sandwiches?|burgers?|pizzas?|tacos?|brunch|lunch|dinner|breakfast|coffee|tea|kids menu|happy hour|cans?|bottles?|growlers?|crowlers?|flights?|pints?|merch|retail)$/i;
@@ -867,10 +994,11 @@ export type CleanupLog = {
   shouted: { id: string; field: string; before: string; after: string }[];
   deduped: { id: string; field: string; text: string }[];
   dupes: { kept: string; dropped: string; why: string; shared: string }[];
+  quarantined: { id: string; reason: string }[];
 };
 let cleanupLog: CleanupLog | null = null;
 export function startCleanupLog(): CleanupLog {
-  cleanupLog = { priceNulled: [], shouted: [], deduped: [], dupes: [] };
+  cleanupLog = { priceNulled: [], shouted: [], deduped: [], dupes: [], quarantined: [] };
   return cleanupLog;
 }
 
