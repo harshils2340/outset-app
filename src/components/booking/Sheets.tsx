@@ -308,6 +308,9 @@ function RequestBody({
   const [optionIdx, setOptionIdx] = useState<number | null>(item.options.length === 1 ? 0 : null);
   // "Max guests per slot", as the operator set it for the service being booked.
   const maxGuests = maxGuestsFor(item, optionIdx);
+  // The party comes down with it, for the same reason as on the desktop page: the open times are asked for a
+  // party this size, so one larger than the service holds leaves every date empty with nothing saying why.
+  useEffect(() => { setQty((q) => Math.min(q, maxGuests)); }, [maxGuests]);
   const [pay, setPay] = useState(false);
   // The operator needs a way to reach whoever booked, and the API refuses a booking without it.
   const [guest, setGuest] = useState<{ name: string; phone: string; email: string }>(() => {

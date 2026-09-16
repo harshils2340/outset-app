@@ -1049,6 +1049,11 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
   const paused = !!item.offline || item.accepting === false;
   // The operator's own "max guests per slot" for the service being booked, not a number we picked.
   const maxGuests = maxGuestsFor(item, optionIdx);
+  // The party has to come down with it when a smaller service is picked. The picker asks the API for times
+  // that hold this many guests, and a service that holds fewer than the party has no such time on any date, so
+  // a party left above the new limit emptied every day in the calendar and the page read as fully booked for
+  // good. The stepper's own "+" was already held at the limit; only the number it started from was not.
+  useEffect(() => { setQty((q) => Math.min(q, maxGuests)); }, [maxGuests]);
   const ready = !paused && time != null && (!needService || picked != null) && guestOk;
   const instant = !!(item.claimed && item.instant);
   // Say what pressing it does: a card payment, an instant booking, or a request the operator confirms.
