@@ -3,6 +3,7 @@ import type { LiveAvailability } from "./api";
 import { addressLine, fmtPhone, plainWords } from "./catalog";
 import { money } from "./format";
 import { clockIn, itemWeek, openStateAt, zoneFor, type Week } from "./openNow";
+import { venueLabel } from "./places";
 
 /**
  * Otto: the 24/7 assistant on a catalog listing.
@@ -133,7 +134,7 @@ function familyOf(name: string, ctx: CompanyContext): string {
   s = s.replace(/,\s*\d+\s*(students?|people|persons?|guests?|players?)\b/gi, " ");
   s = s.replace(/\b(weekends?|weekdays?|weeknights?)\b/gi, " ");
   s = s.replace(/\bper (hour|person|day|night|lane|group|game|round)\b/gi, " ");
-  const cities = [ctx.contact?.city, ...(ctx.item.locations || []).map((l) => l.city)].filter(Boolean) as string[];
+  const cities = [ctx.contact?.city, ...(ctx.item.locations || []).map((l) => venueLabel({ city: l.city }))].filter(Boolean) as string[];
   for (const c of cities) s = s.replace(new RegExp("\\b" + c.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "\\b", "gi"), " ");
   s = s.replace(/\(\s*\)/g, " ").replace(/\s+/g, " ").replace(/(\s*[–—,:\/-])+\s*$/, "").trim();
   return s.length > 2 ? s : plainWords(name);

@@ -208,12 +208,14 @@ function tidyHours(lines: string[]): string[] {
 const DEFAULT_GAP = "Prices, hours and eligibility are not copied here yet. We will ask when you request.";
 
 /** A chain's other venues, for nearest-location distance. Empty for the usual single-site operator. */
-function extraLocations(operatorId: string): { city: string; region?: string; lat: number; lon: number; street?: string }[] | undefined {
+function extraLocations(operatorId: string): { city?: string; region?: string; lat: number; lon: number; street?: string }[] | undefined {
   const rows = db
     .prepare("SELECT city, region, street, lat, lon FROM locations WHERE operator_id = ? ORDER BY city LIMIT 60")
     .all(operatorId) as { city: string | null; region: string | null; street: string | null; lat: number; lon: number }[];
   if (!rows.length) return undefined;
-  return rows.map((l) => ({ city: l.city || "Nearby", region: l.region || undefined, lat: Math.round(l.lat * 1e4) / 1e4, lon: Math.round(l.lon * 1e4) / 1e4, street: l.street || undefined }));
+  // A venue whose town the crawl never found keeps the honest gap. This used to write "Nearby", which became
+  // the commonest town in the whole catalog: 64 venues, read by the app as a place name.
+  return rows.map((l) => ({ city: l.city || undefined, region: l.region || undefined, lat: Math.round(l.lat * 1e4) / 1e4, lon: Math.round(l.lon * 1e4) / 1e4, street: l.street || undefined }));
 }
 
 /** "Deer Harbor Charters" and "DEER HARBOR CHARTERS LLC" are one business. */

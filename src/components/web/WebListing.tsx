@@ -14,7 +14,7 @@ import { embedAutoplay, isGif, listingMedia, photoCandidates, probePhotos, type 
 import { cleanDesc, durationLabel, freeCancel, minAge } from "../../lib/listingDerive";
 import { bookableStart, clockIn, itemOpenState, itemWeek, zoneFor } from "../../lib/openNow";
 import { DAY_SHORT, assistantOn, clock12, dayLabel, todaysDeals } from "../../lib/companyAgent";
-import { fmtDistance, kmBetween, nearestLocation } from "../../lib/places";
+import { fmtDistance, kmBetween, nearestLocation, venueLabel } from "../../lib/places";
 import { addonPrice, hasPrice, priceUnclaimed, serviceFeeLabel } from "../../lib/pricing";
 import { listingUrl } from "../../lib/site";
 import { adminWebsite, isAdmin, subscribeAdmin } from "../../lib/admin";
@@ -1998,16 +1998,24 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
             <div className="alvenues">
               <h3>{item.locations.length + 1} locations{state.near ? ", nearest to " + state.near.label + " first" : ""}</h3>
               <div className="alvenuegrid">
-                {[{ city: item.area, lat: item.lat, lon: item.lon, street: address || undefined, primary: true }, ...item.locations.map((l) => ({ ...l, city: l.city + (l.region ? ", " + l.region : ""), primary: false }))]
+                {[{ city: item.area, lat: item.lat, lon: item.lon, street: address || undefined, primary: true }, ...item.locations.map((l) => ({ ...l, city: venueLabel({ city: l.city, region: l.region }), primary: false }))]
                   .map((v) => ({ ...v, km: state.near && v.lat != null && v.lon != null ? kmBetween(state.near, { lat: v.lat, lon: v.lon }) : null }))
                   .sort((a, b) => (a.km ?? Infinity) - (b.km ?? Infinity))
                   .slice(0, 24)
-                  .map((v, i) => (
-                    <a key={i} className="alvenue" href={"https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent((v.street ? v.street + ", " : "") + v.city)} target="_blank" rel="noreferrer">
-                      <b>{v.city}</b>
-                      <small>{v.street || (v.primary ? "Main location" : "")}{v.km != null ? (v.street || v.primary ? " · " : "") + fmtDistance(v.km) + " away" : ""}</small>
-                    </a>
-                  ))}
+                  .map((v, i) => {
+                    // A venue the crawl found as a bare pin has no town and no street. It is still one of this
+                    // chain's places and still measurable, so it says that much, and its map link goes to the
+                    // coordinates rather than searching for a town by whatever name we invented.
+                    const title = v.city || v.street || "Another location";
+                    const line = [v.street && v.street !== title ? v.street : v.primary ? "Main location" : "", v.km != null ? fmtDistance(v.km) + " away" : ""].filter(Boolean).join(" · ");
+                    const query = [v.street, v.city].filter(Boolean).join(", ") || v.lat + "," + v.lon;
+                    return (
+                      <a key={i} className="alvenue" href={"https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(query)} target="_blank" rel="noreferrer">
+                        <b>{title}</b>
+                        <small>{line}</small>
+                      </a>
+                    );
+                  })}
               </div>
             </div>
           ) : null}

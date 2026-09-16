@@ -97,18 +97,34 @@ export function currentLocation(): Promise<{ lat: number; lon: number } | null> 
 }
 
 /**
+ * The name to show one of a chain's venues by: its town, else its street. A venue the crawl found as a bare
+ * pin has neither, and gets no name here rather than a made-up one. Callers show the distance alone.
+ *
+ * `npm run sync` used to write "Nearby" as the town of every venue whose own town was never found, which made
+ * it the commonest town in the catalog by three to one: 64 venues on 24 listings. The app read it as a place
+ * name, so a card said "Nearby · 3,337 km away" and the listing page's map link went looking for a town
+ * called Nearby. The sync no longer writes it; this refuses to believe the ones already in `catalog.json`,
+ * which keep it until a sync runs on Render.
+ */
+export function venueLabel(l: { city?: string; region?: string; street?: string }): string {
+  const city = (l.city || "").trim();
+  if (city && city !== "Nearby") return city + (l.region ? ", " + l.region : "");
+  return (l.street || "").trim();
+}
+
+/**
  * The operator's closest location to the guest: the primary pin or one of a chain's other venues.
- * Returns null when the operator has no pin at all.
+ * Returns null when the operator has no pin at all. `label` is empty when the venue cannot be named.
  */
 export function nearestLocation(
-  u: { lat?: number; lon?: number; area: string; locations?: { city: string; region?: string; lat: number; lon: number }[] },
+  u: { lat?: number; lon?: number; area: string; locations?: { city?: string; region?: string; street?: string; lat: number; lon: number }[] },
   near: { lat: number; lon: number },
 ): { lat: number; lon: number; km: number; label: string; alt: boolean } | null {
   let best: { lat: number; lon: number; km: number; label: string; alt: boolean } | null = null;
   if (u.lat != null && u.lon != null) best = { lat: u.lat, lon: u.lon, km: kmBetween(near, { lat: u.lat, lon: u.lon }), label: u.area, alt: false };
   for (const l of u.locations || []) {
     const km = kmBetween(near, l);
-    if (!best || km < best.km) best = { lat: l.lat, lon: l.lon, km, label: l.city + (l.region ? ", " + l.region : ""), alt: true };
+    if (!best || km < best.km) best = { lat: l.lat, lon: l.lon, km, label: venueLabel(l), alt: true };
   }
   return best;
 }
