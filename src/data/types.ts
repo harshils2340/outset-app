@@ -63,7 +63,8 @@ export type ArtKind =
   | "discgolf"
   | "billiards"
   | "motorsport"
-  | "sauna";
+  | "sauna"
+  | "paddleboard";
 
 export type PriceUnit = "person" | "hr" | "trip";
 

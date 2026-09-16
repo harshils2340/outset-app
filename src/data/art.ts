@@ -150,7 +150,7 @@ export function sceneInner(kind: string, id: string): string {
       <circle cx="236" cy="58" r="30" fill="#F2B981" opacity=".85"/>
       <path d="M0 150q40-22 80-8t70 4 70-10 80 6v58H0z" fill="#D89B78" opacity=".55"/>
       <path d="M0 168q50-18 100-4t90 2 110-8v42H0z" fill="#C4785A" opacity=".5"/>`;
-  const near: Record<string, string> = {};
+  const near: Record<string, string> = { paddleboard: "kayak" };
   return scenes[kind] || scenes[near[kind] || ""] || scenes.generic;
 }
 
@@ -218,5 +218,6 @@ export const ART_LABEL: Record<string, string> = {
   billiards: "Billiards",
   motorsport: "Motorsport",
   sauna: "Sauna",
+  paddleboard: "Paddleboard",
 };
 

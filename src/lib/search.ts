@@ -2,6 +2,7 @@ import { ART_LABEL } from "../data/art";
 import { inCat } from "../data/categories";
 import { METROS, METRO_ALIASES, metroById, type Metro } from "../data/metros";
 import { CA_REGIONS, REGION_NAME, regionOfArea } from "../data/regions";
+import { ART_ALIASES, INTENT_PHRASES } from "../data/synonyms";
 import type { ArtKind, CategoryId, Unclaimed } from "../data/types";
 
 /**
@@ -15,72 +16,8 @@ import type { ArtKind, CategoryId, Unclaimed } from "../data/types";
 
 /* ---------- synonyms ---------- */
 
-/** Words guests type that should still hit the listing. First entry is the canonical phrase for that kind. */
-export const ART_ALIASES: Record<ArtKind, string[]> = {
-  skydive: ["skydive", "skydiving", "parachute", "dropzone", "tandem jump", "freefall", "wind tunnel", "indoor skydiving"],
-  heli: ["helicopter", "heli", "chopper", "seaplane", "helicopter tour", "air tour"],
-  balloon: ["balloon", "hot air", "hot air balloon", "sunrise flight"],
-  kart: ["kart", "karting", "go kart", "gokart", "racing", "indoor karting", "kart track"],
-  escape: ["escape room", "escape", "puzzle", "escape game", "mystery room"],
-  axe: ["axe throwing", "axe", "ax", "hatchet"],
-  paintball: ["paintball", "airsoft", "gel blaster"],
-  horse: ["horse", "horseback", "trail ride", "riding", "equestrian", "stables", "pony", "dude ranch"],
-  jetski: ["jet ski", "jetski", "waverunner", "wave runner", "pwc", "sea doo", "seadoo", "personal watercraft"],
-  pontoon: ["pontoon", "boat rental", "party boat", "deck boat", "tritoon", "boat hire"],
-  fishing: ["fishing", "charter", "inshore", "offshore", "deep sea fishing", "fly fishing", "fishing guide", "bass fishing"],
-  parasail: ["parasail", "parasailing", "para sail"],
-  cruise: ["cruise", "sail", "sailing", "ferry", "harbor", "harbour", "whale", "sunset cruise", "dinner cruise", "boat tour", "catamaran", "dolphin tour", "airboat", "riverboat"],
-  kayak: ["kayak", "kayaking", "canoe", "paddle", "paddleboard", "paddle board", "sup", "rowing", "stand up paddle"],
-  bowling: ["bowling", "bowl", "lanes", "bowling alley"],
-  minigolf: ["mini golf", "minigolf", "putt putt", "putt-putt", "miniature golf", "adventure golf"],
-  arcade: ["arcade", "arcades", "game room", "pinball", "barcade", "virtual reality", "vr"],
-  trampoline: ["trampoline", "trampoline park", "jump park", "bounce", "foam pit"],
-  lasertag: ["laser tag", "lasertag", "laser quest"],
-  icerink: ["ice skating", "ice rink", "skating rink", "skating", "hockey", "figure skating", "learn to skate"],
-  waterpark: ["water park", "waterpark", "water slides", "splash", "lazy river", "wave pool"],
-  themepark: ["theme park", "amusement park", "roller coaster", "rides", "boardwalk"],
-  zoo: ["zoo", "safari", "wildlife park", "animal park", "petting zoo", "aviary"],
-  aquarium: ["aquarium", "sea life", "marine life"],
-  karaoke: ["karaoke", "ktv", "private room", "singing room"],
-  climbing: ["climbing", "bouldering", "rock climbing", "climb", "rock gym", "belay", "top rope"],
-  range: ["shooting range", "gun range", "shooting", "range", "clay", "skeet", "trap", "pistol", "firearm", "sporting clays"],
-  archery: ["archery", "bow", "arrows", "archery tag"],
-  golf: ["golf", "tee time", "tee times", "driving range", "golf course", "country club", "putting green", "18 holes"],
-  zipline: ["zipline", "zip line", "ziplining", "canopy tour", "ropes course", "aerial park", "treetop", "adventure park"],
-  ski: ["ski", "skiing", "snowboard", "snowboarding", "ski resort", "lift ticket", "ski lesson", "tubing", "snow tubing", "terrain park", "cross country skiing", "nordic"],
-  bike: ["bike", "bicycle", "e-bike", "ebike", "cycling", "bike rental", "mountain bike", "mtb", "bike tour", "moped", "scooter rental"],
-  snowmobile: ["snowmobile", "snowmobiling", "sled", "sledding"],
-  rafting: ["rafting", "whitewater", "white water", "raft", "tubing", "float trip"],
-  scuba: ["scuba", "diving", "dive", "snorkel", "snorkeling", "freediving", "open water", "padi", "dive shop"],
-  surf: ["surf", "surfing", "surf lesson", "surfboard", "wakeboard", "kitesurf", "windsurf", "surf camp"],
-  paragliding: ["paragliding", "paraglide", "hang gliding", "hang glide", "tandem flight"],
-  gliding: ["glider", "gliding", "sailplane", "soaring"],
-  brewery: ["brewery", "breweries", "beer", "taproom", "brew tour", "craft beer", "brewpub", "beer garden", "beer tasting"],
-  winery: ["winery", "wineries", "wine", "vineyard", "tasting", "wine tasting", "wine tour", "cellar door"],
-  distillery: ["distillery", "distilleries", "whiskey", "bourbon", "spirits", "gin", "rum", "tequila"],
-  cooking: ["cooking", "cooking class", "culinary", "baking", "pasta making", "sushi class", "chef", "food class"],
-  spa: ["spa", "massage", "facial", "hot springs", "float", "day spa", "massage therapy", "med spa", "salt room"],
-  yoga: ["yoga", "pilates", "meditation", "breathwork", "hot yoga", "vinyasa"],
-  dance: ["dance", "dancing", "salsa", "ballroom", "dance class", "hip hop", "bachata", "swing dance", "tango", "line dancing", "zumba"],
-  tour: ["tour", "tours", "food tour", "walking tour", "ghost tour", "segway", "city tour", "sightseeing", "guided tour", "trolley tour", "bus tour", "haunted tour"],
-  rage: ["rage room", "rage", "smash room", "break room", "demolition room"],
-  theatre: ["theatre", "theater", "show", "shows", "comedy", "comedy club", "play", "musical", "live music", "concert", "improv", "stand up", "standup", "broadway", "opera", "symphony", "orchestra"],
-  museum: ["museum", "gallery", "exhibit", "science center", "planetarium", "art museum", "history museum", "observatory"],
-  garden: ["garden", "botanical", "botanic", "arboretum", "conservatory", "greenhouse"],
-  camping: ["camping", "campground", "glamping", "campsite", "cabin", "cabins", "rv park", "yurt", "koa", "tent site"],
-  tennis: ["tennis", "pickleball", "court", "courts", "squash", "badminton", "racquet", "padel"],
-  swim: ["swim", "swimming", "pool", "swim lessons", "aquatic center", "lap swim", "swim school"],
-  martialarts: ["martial arts", "boxing", "kickboxing", "jiu jitsu", "bjj", "karate", "taekwondo", "muay thai", "mma", "judo", "krav maga", "fencing", "self defense", "wrestling", "grappling"],
-  gymnastics: ["gymnastics", "cheer", "tumbling", "parkour", "ninja", "ninja warrior", "open gym"],
-  fitness: ["fitness", "crossfit", "barre", "spin", "cycling class", "bootcamp", "hiit", "gym class", "workout", "rowing studio"],
-  venue: ["venue", "event venue", "party venue", "event space", "banquet", "party room", "private room", "birthday party venue", "function hall"],
-  sailing: ["sailing", "sailing lessons", "sailing school", "sailboat", "learn to sail", "yacht charter", "yacht"],
-  discgolf: ["disc golf", "frisbee golf", "driving range", "topgolf", "golf simulator", "footgolf", "disc golf course"],
-  billiards: ["billiards", "pool hall", "pool table", "darts", "shuffleboard", "ping pong", "table tennis", "snooker"],
-  motorsport: ["motocross", "atv", "utv", "off-road", "offroad", "dirt bike", "side by side", "dune buggy", "drag strip", "race track", "racing school", "drift", "rally", "mud park"],
-  sauna: ["sauna", "bathhouse", "cold plunge", "banya", "hot springs", "thermal", "hammam", "steam room", "ice bath", "contrast therapy"],
-  pottery: ["pottery", "ceramics", "paint and sip", "art class", "painting", "glassblowing", "candle making", "sip and paint", "paint night", "wheel throwing"],
-};
+// The synonym table lives in src/data/synonyms.ts; it is re-exported here for the screens that already import it.
+export { ART_ALIASES, WHAT_INTENTS } from "../data/synonyms";
 
 /* ---------- text ---------- */
 
@@ -374,19 +311,40 @@ type AliasHit = { art: ArtKind; start: number; end: number; words: number; rank:
  * dropped when they sit inside a longer one. "jet ski" is not a ski resort, "mini golf" is not a golf course,
  * "pool hall" is not a swimming pool. Same-art overlaps ("cooking class" and "cooking") both stay.
  */
-function aliasHits(lq: string): { kept: AliasHit[]; dropped: AliasHit[] } {
-  const found: AliasHit[] = [];
+/**
+ * The spellings one alias answers to: itself, its plurals, and its -ing form ("kayak" reaches "kayaks" and
+ * "kayaking", "axe throw" reaches "axe throwing"). Irregular forms ("swimming", "canoeing") are listed outright.
+ */
+function aliasForms(w: string): string[] {
+  const ing = w.endsWith("e") ? w.slice(0, -1) + "ing" : w + "ing";
+  return [w, w + "s", w + "es", ing];
+}
+
+type AliasForm = { art: ArtKind; form: string; words: number; rank: number };
+let aliasFormsCache: AliasForm[] | null = null;
+function allAliasForms(): AliasForm[] {
+  if (aliasFormsCache) return aliasFormsCache;
+  const out: AliasForm[] = [];
   for (const [art, words] of Object.entries(ART_ALIASES) as [ArtKind, string[]][]) {
     for (let rank = 0; rank < words.length; rank++) {
-      const w = words[rank];
-      for (const form of [w, w + "s", w + "es"]) {
-        const needle = " " + form + " ";
-        let at = lq.indexOf(needle);
-        while (at >= 0) {
-          found.push({ art, start: at + 1, end: at + 1 + form.length, words: w.split(" ").length, rank });
-          at = lq.indexOf(needle, at + 1);
-        }
-      }
+      const w = norm(words[rank]);
+      if (!w) continue;
+      const n = w.split(" ").length;
+      for (const form of aliasForms(w)) out.push({ art, form, words: n, rank });
+    }
+  }
+  aliasFormsCache = out;
+  return out;
+}
+
+function aliasHits(lq: string): { kept: AliasHit[]; dropped: AliasHit[] } {
+  const found: AliasHit[] = [];
+  for (const { art, form, words, rank } of allAliasForms()) {
+    const needle = " " + form + " ";
+    let at = lq.indexOf(needle);
+    while (at >= 0) {
+      found.push({ art, start: at + 1, end: at + 1 + form.length, words, rank });
+      at = lq.indexOf(needle, at + 1);
     }
   }
   found.sort((a, b) => b.end - b.start - (a.end - a.start) || a.start - b.start);
@@ -400,7 +358,19 @@ function aliasHits(lq: string): { kept: AliasHit[]; dropped: AliasHit[] } {
 }
 
 function queryArtHits(q: string): AliasHit[] {
-  return aliasHits(" " + norm(q) + " ").kept.sort((a, b) => a.start - b.start);
+  const lq = " " + norm(q) + " ";
+  const kept = aliasHits(lq).kept;
+  // A word inside a place name is not an activity: "Fort Myers" is not a fort to visit.
+  const place = metroInQuery(q);
+  if (place) {
+    const at = lq.indexOf(" " + place.words.join(" ") + " ");
+    if (at >= 0) {
+      const start = at + 1;
+      const end = at + 1 + place.words.join(" ").length;
+      return kept.filter((h) => !(start <= h.start && h.end <= end)).sort((a, b) => a.start - b.start);
+    }
+  }
+  return kept.sort((a, b) => a.start - b.start);
 }
 
 /** Every single-word alias, flattened once, so a typo or a half-typed word can still reach the activity. */
@@ -450,25 +420,6 @@ export type Intent = {
   words: string[];
 };
 
-const INTENTS: { re: RegExp; label: string; arts: ArtKind[]; kids?: boolean; group?: boolean }[] = [
-  { re: /\b(birthday|bday|party|celebrat)/i, label: "Birthday ideas", arts: ["rage", "venue", "gymnastics", "kart", "escape", "axe", "trampoline", "lasertag", "bowling", "arcade", "minigolf", "karaoke", "paintball", "waterpark", "pontoon", "cruise", "jetski", "parasail"], group: true },
-  { re: /\b(bachelor|bachelorette|stag|hen|guys? trip|girls? trip|boys? trip)\b/i, label: "Bachelor and bachelorette", arts: ["pontoon", "jetski", "kart", "axe", "brewery", "distillery", "winery", "range", "karaoke", "paintball", "cruise", "skydive", "parasail", "spa"], group: true },
-  { re: /\b(team|corporate|coworkers?|office|company outing|work event|team building)\b/i, label: "Team outings", arts: ["escape", "rage", "tour", "axe", "kart", "bowling", "cooking", "brewery", "archery", "range", "climbing", "lasertag", "paintball", "pontoon", "cruise"], group: true },
-  { re: /\b(kids?|children|child|family|families|toddler|teen(ager)?s?)\b/i, label: "Family friendly", arts: ["zoo", "museum", "garden", "swim", "gymnastics", "camping", "aquarium", "trampoline", "minigolf", "bowling", "waterpark", "themepark", "icerink", "arcade", "lasertag", "horse", "kayak", "pontoon", "cruise", "escape", "kart", "parasail", "balloon"], kids: true },
-  { re: /\b(date night|night out|date|romantic|couples?|anniversary|proposal|honeymoon|valentine)/i, label: "Date ideas", arts: ["winery", "tour", "theatre", "sauna", "cooking", "cruise", "balloon", "pottery", "dance", "minigolf", "icerink", "spa", "brewery", "distillery", "karaoke", "bowling", "heli", "kayak", "horse"] },
-  { re: /\b(adrenaline|thrill|extreme|adventure|adventurous|crazy|wild|scary|dare)/i, label: "Adrenaline", arts: ["skydive", "zipline", "rafting", "paragliding", "jetski", "parasail", "kart", "range", "climbing", "paintball", "heli"] },
-  { re: /\b(calm|relax|relaxing|chill|peaceful|quiet|scenic|nature|wildlife|dolphin|manatee|sunset|sunrise)/i, label: "Calm and scenic", arts: ["kayak", "balloon", "winery", "spa", "yoga", "gliding", "cruise", "horse"] },
-  { re: /\b(rain|rainy|indoor|indoors|inside|bad weather|too hot|air ?con)/i, label: "Rainy day", arts: ["bowling", "museum", "theatre", "billiards", "swim", "arcade", "escape", "axe", "kart", "climbing", "trampoline", "lasertag", "karaoke", "aquarium", "spa", "cooking", "pottery", "icerink"] },
-  { re: /\b(water|beach|lake|ocean|bay|river|on the water)\b/i, label: "On the water", arts: ["jetski", "kayak", "pontoon", "fishing", "cruise", "parasail"] },
-  { re: /\b(sky|air|fly|flying|view from above|aerial)\b/i, label: "Up in the air", arts: ["skydive", "heli", "balloon", "parasail"] },
-  { re: /\b(drinks?|beer|wine|tasting|brew|cocktail|whiskey|bourbon|foodie|eat|taste)\b/i, label: "Food and drink", arts: ["brewery", "winery", "distillery", "cooking"] },
-  { re: /\b(class|classes|lesson|lessons|learn|workshop|course)\b/i, label: "Classes and lessons", arts: ["cooking", "pottery", "dance", "yoga", "fitness", "martialarts", "gymnastics", "swim", "surf", "sailing", "scuba", "archery", "climbing", "tennis"] },
-  { re: /\b(culture|cultural|arts? and culture|sightseeing|history|historic|exhibits?)\b/i, label: "Culture", arts: ["museum", "theatre", "garden", "zoo", "aquarium", "tour"] },
-  { re: /\b(snow|winter|ski|skiing|cold|sled|slopes)\b/i, label: "Winter", arts: ["ski", "snowmobile", "icerink", "spa"] },
-  { re: /\b(girls? day|spa day|self.?care|pamper|treat yourself|unwind|de-?stress|wellness)\b/i, label: "Unwind", arts: ["spa", "yoga", "winery", "pottery", "balloon"] },
-  { re: /\b(things to do|what to do|activities|fun|stuff to do|weekend|tonight|today|ideas?)\b/i, label: "Things to do", arts: [] },
-];
-
 /** The whole query tokens that a regex match touches. "rainy" is stripped when the intent matched "rain". */
 function wholeWords(lq: string, index: number, length: number): { words: string[]; start: number; end: number } {
   const start = lq.lastIndexOf(" ", index) + 1;
@@ -494,7 +445,7 @@ export function parseIntent(q: string): Intent {
     const at = lq.replace(/\$/g, " ").indexOf(needle);
     if (at >= 0) claimed.push({ start: at + 1, end: at + needle.length - 1 });
   }
-  for (const it of INTENTS) {
+  for (const it of INTENT_PHRASES) {
     const re = new RegExp(it.re.source, "gi");
     let fired = false;
     for (const m of lq.matchAll(re)) {
@@ -522,9 +473,8 @@ export function kidFriendly(u: Unclaimed): boolean {
   return !["skydive", "paintball", "axe"].includes(u.art);
 }
 
-const FILLER = new Set(["rental", "rentals", "rent", "near", "me", "in", "the", "a", "an", "and", "for", "with", "best", "cheap", "tour", "tours", "ideas", "idea", "stuff", "things", "to", "do", "of", "on", "at", "good", "great", "top", "nearby", "around", "here", "my", "our", "we", "i", "some", "any", "night", "day", "tonight", "today", "now", "this", "weekend", "open", "place", "places", "spot", "spots", "options", "local", "close", "closest", "nearest", "budget", "affordable", "inexpensive"]);
+const FILLER = new Set(["rental", "rentals", "rent", "near", "me", "in", "the", "a", "an", "and", "for", "with", "best", "cheap", "tour", "tours", "ideas", "idea", "stuff", "things", "to", "do", "of", "on", "at", "good", "great", "top", "nearby", "around", "here", "my", "our", "we", "i", "some", "any", "night", "day", "tonight", "today", "now", "this", "weekend", "open", "place", "places", "spot", "spots", "options", "local", "close", "closest", "nearest", "budget", "affordable", "inexpensive", "something", "somewhere", "anything", "anywhere", "want", "looking", "find", "go", "get", "book"]);
 
-const wordIn = (hay: string, w: string) => new RegExp("(^|[^a-z0-9])" + w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "(s|es)?($|[^a-z0-9])", "i").test(hay);
 
 /** Everything about the query that does not depend on the listing, parsed once and reused across the catalog. */
 type ParsedQuery = {
@@ -659,9 +609,24 @@ function queryTerms(idx: Index, p: ParsedQuery): Term[] {
   return out;
 }
 
+/** One pattern per kind: every alias of four letters or more, as whole words, with the plural allowed. */
+const aliasRe = new Map<ArtKind, RegExp | null>();
+function aliasPattern(art: ArtKind): RegExp | null {
+  let re = aliasRe.get(art);
+  if (re === undefined) {
+    const words = (ART_ALIASES[art] || []).map(norm).filter((w) => w.length >= 4);
+    re = words.length ? new RegExp("(^|[^a-z0-9])(" + words.map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|") + ")(s|es)?($|[^a-z0-9])", "i") : null;
+    aliasRe.set(art, re);
+  }
+  return re;
+}
+
 /** Aliases of the named activities that turn up in this listing's own name or its service menu. */
 function aliasIn(text: string, arts: ArtKind[]): boolean {
-  for (const a of arts) for (const w of ART_ALIASES[a] || []) if (w.length >= 4 && wordIn(text, w)) return true;
+  for (const a of arts) {
+    const re = aliasPattern(a);
+    if (re && re.test(text)) return true;
+  }
   return false;
 }
 
@@ -1173,22 +1138,14 @@ function nearName(idx: Index, t: string): Set<Entry> {
  * all it says ("jet ski rentals" is the jet ski kind, "jet ski joe's" is a business), and the occasion behind it.
  * Reads the same parse the ranking uses, so a heading never disagrees with the grid under it.
  */
-export function describeQuery(q: string): { arts: ArtKind[]; onlyKind: boolean; onlyIntent: boolean; intent: Intent } {
+export function describeQuery(q: string): { arts: ArtKind[]; kinds: ArtKind[]; onlyKind: boolean; onlyIntent: boolean; intent: Intent } {
   const p = parseQuery(q);
   return {
     arts: p.hardArts,
+    /** Every kind the results will be drawn from: the ones named, else the ones a typo or prefix reached, else the occasion's. */
+    kinds: p.arts,
     onlyKind: p.hardArts.length > 0 && p.all.every((t) => p.aliasWords.has(t)),
     onlyIntent: !!p.intent.label && !p.all.length,
     intent: p.intent,
   };
 }
-
-/** Occasions guests search by rather than naming an activity, in the order the What box offers them. */
-export const WHAT_INTENTS: { label: string; query: string }[] = [
-  { label: "Date night", query: "date night" },
-  { label: "With kids", query: "with kids" },
-  { label: "Birthday", query: "birthday" },
-  { label: "Rainy day", query: "rainy day" },
-  { label: "Under $50", query: "under $50" },
-  { label: "Classes", query: "classes" },
-];
