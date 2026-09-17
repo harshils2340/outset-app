@@ -32,7 +32,7 @@ import { addonPrice, hasPrice, priceFor, priceUnclaimed, serviceFeeLabel } from 
 import { useApp } from "../../state/AppProvider";
 import { SIZES, srcSet, thumb } from "../../lib/images";
 import { embedAutoplay, listingMedia, photoCandidates, probePhotos, type Media } from "../../lib/media";
-import { cleanDesc, durationLabel, freeCancel, minAge } from "../../lib/listingDerive";
+import { cleanDesc, durationLabel, freeCancel, groupCap, minAge } from "../../lib/listingDerive";
 import { ASSISTANT_NAME, DAY_SHORT, assistantOn, clock12, companySuggestions, dayLabel, todaysDeals } from "../../lib/companyAgent";
 import { bookableStart, clockIn, hourLines, zoneFor } from "../../lib/openNow";
 import { itemOpenState } from "../../lib/openNow";
@@ -517,10 +517,8 @@ function RequestBody({
   if (instant) rows.push({ icon: ICONS.bolt, title: "Instant confirmation", sub: "Your spot is confirmed as soon as you book" });
   if (duration) rows.push({ icon: ICONS.clock, title: duration, sub: "Duration" });
   if (age) rows.push({ icon: ICONS.user, title: "Ages " + age + "+", sub: "Minimum age" });
-  if (item.groupInfo?.length) {
-    const cap = item.groupInfo.map((g) => g.match(/(\d{1,3})\s*(?:guests?|people|passengers|riders|max)/i)).find(Boolean);
-    if (cap) rows.push({ icon: ICONS.user, title: "Up to " + cap[1] + " guests", sub: "Group size" });
-  }
+  const cap = groupCap(item.groupInfo);
+  if (cap != null) rows.push({ icon: ICONS.user, title: "Up to " + cap + " guests", sub: "Group size" });
   if (item.season) rows.push({ icon: ICONS.compass, title: item.season, sub: "Season" });
   if (item.waiverUrl) rows.push({ icon: ICONS.ticket, title: "Sign the waiver online", sub: "Saves time at check-in" });
   const hours = hourLines(item).length ? hourLines(item) : contact?.hours.map(fmtHours) || [];

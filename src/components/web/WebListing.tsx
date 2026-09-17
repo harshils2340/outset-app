@@ -11,7 +11,7 @@ import { addressLine, bookingPaused, contactFor, fmtHours, fmtPhone, fromPrice, 
 import { DAYS, fmtDate, fmtReviews, fmtTime, money, priceWith } from "../../lib/format";
 import { srcSet, thumb } from "../../lib/images";
 import { embedAutoplay, isGif, listingMedia, photoCandidates, probePhotos, type Media } from "../../lib/media";
-import { cleanDesc, durationLabel, freeCancel, minAge } from "../../lib/listingDerive";
+import { cleanDesc, durationLabel, freeCancel, groupCap as readGroupCap, minAge } from "../../lib/listingDerive";
 import { bookableStart, clockIn, hourLines, itemOpenState, itemWeek, zoneFor } from "../../lib/openNow";
 import { DAY_SHORT, assistantOn, clock12, dayLabel, todaysDeals } from "../../lib/companyAgent";
 import { fmtDistance, kmBetween, nearestLocation, venueLabel } from "../../lib/places";
@@ -1186,10 +1186,7 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
   const openNow = itemOpenState(item);
   const dealsNow = todaysDeals(item);
   const today = item.promos?.length ? clockIn(zoneFor(item)).day : -1;
-  const groupCap = (() => {
-    const cap = (item.groupInfo || []).map((g) => g.match(/(\d{1,3})\s*(?:guests?|people|passengers|riders|max)/i)).find(Boolean);
-    return cap ? Number(cap[1]) : null;
-  })();
+  const groupCap = readGroupCap(item.groupInfo);
   const hours = hourLines(item).length ? hourLines(item) : contact?.hours.map(fmtHours) || [];
   const topRated = !!score && score.rating >= TOP_RATING && score.reviews >= TOP_REVIEWS;
   const near = state.near ? nearestLocation(item, state.near) : null;
