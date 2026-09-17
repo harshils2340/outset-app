@@ -890,6 +890,77 @@ A stated closing time in the small hours ("6pm-2am") and a stated closed day sur
   empty menu still takes bookings, the rehearsal still cannot see a guest's rendered page, nothing is checked
   against real Stripe, no workflow runs `npm test` on its own, and the 64 "Nearby" venues still want a sync.
 
+## 17 September 2026, fifteenth run (05:00 to 06:40 UTC)
+
+**Chosen, and why.** 115 commits had landed since the fourteenth run's entry, `src/` and `backend/src` among
+them, so the rule said run the full rehearsal, and that was the whole story again: **23 of 52 steps failed**,
+and the cause was not any of them. The time then went on the newest thing in the product and the one no run has
+looked at, the guest's card step: Stripe's embedded checkout (`7d49ebab1`, sixteen hours old) and the `/config`
+read it depends on. Type checks on both sides and both unit suites ran at the start and at the end.
+
+**Found and fixed.**
+
+- **The page's own policy blocked every call to its API unless that API was the production one** (`a386941d5f`).
+  The site is static, so its Content-Security-Policy is a meta tag in `index.html`, and its `connect-src` named
+  `https://outset-api.onrender.com` and nothing else. Any build pointed elsewhere could not reach its own API at
+  all: Chromium refuses the fetch before it leaves the page, and every call in `src/lib/api.ts` then degrades
+  exactly the way it does with no API, which is silent by design. Proved in Chromium against the rehearsal's own
+  site: `Refused to connect to http://localhost:8787/claims/.../rule`, and zero requests in the API log. So the
+  rehearsal has been red since the policy landed and reading as a broken product, no test bypass on the claim
+  screen, no operator edit reaching the API, no booking ever sent, and `npm run dev` against a local API is the
+  same. The origin a build was pointed at now goes into `connect-src` at build time; a build with no
+  `VITE_API_URL` is untouched. `hooks.stripe.com` joined `frame-src` with it, which is where Stripe puts a card's
+  3D Secure challenge, so leaving it out fails the payment and not the frame.
+- **A slow `/config` once told the guest they would not be charged, then took their card** (`bf008195cd`).
+  `apiConfig` remembered a failed read for the rest of the session, and the API host sleeps when idle while that
+  read gives it five seconds. So the first guest of the morning could read "Request to book, $213" with "You
+  won't be charged yet" under it, on a shop that takes cards. Pressing it created a Stripe session all the same:
+  the API decides that from the listing's own price and has never asked the browser. It also cost the embedded
+  form, which needs the publishable key from this same read and fell back to the hosted page for the visit.
+- **A card form that failed to load once could not be tried again** (`3178eb2819`). The Stripe.js promise was
+  kept whatever became of it, so one blocked or dropped request left every later attempt awaiting that same
+  rejection and failing with no request at all, under a message reading "You can try again from the booking box".
+- **Five email checks in the rehearsal went quiet the day the log stopped printing addresses** (`5eb87c5728`).
+  Masking the recipient in the `[mail:dry]` line was right; the five checks grepped that line for the raw
+  address, so from that commit on all five reported a product that had stopped emailing anyone, while the step at
+  the end of the same run read 14 messages and passed. They read the messages themselves now, out of
+  `MAIL_DUMP_DIR`, which is also stricter: two of the harness's guests share a first letter and a domain.
+- **The phone told a guest nothing would be charged, then asked for their card** (`09a6507adc`). The desktop
+  listing has read `/config` and said "Secure card payment, your card is held" since cards were switched on. The
+  phone's review-and-pay screen never read it, so on the same listing it said "This is a request. <shop> confirms
+  by email, and nothing is charged until they do" over a button reading "Request to book". That is the screen
+  most guests see: on a phone the frame goes away and this is the whole app.
+- **The card form said `aria-modal` and let the keyboard walk straight out of it** (`0a69c71d53`). Nothing moved
+  focus into it, Escape did nothing, and Tab went from the dialog into the listing underneath, on the one screen
+  in the flow whose only way out is a single button.
+
+**Green after the fixes.** Rehearsal **52 passed, 0 failed**, from 29 of 52. 224 guest tests and 189 backend
+tests pass, both projects type-check clean. 22 new tests across `csp`, `apiConfig`, `stripeJs`, `cardNotice` and
+`checkoutDialog`, each checked against the old code and failing on it.
+
+**Needs Harshil.**
+
+- **Closing the card form holds the guest's own time for thirty minutes.** The booking row is written as
+  `pending` before Stripe is reached, and `holdsSlot` counts a pending row for `PENDING_HOLD_MS`. Every unclaimed
+  listing has no capacity set, so one held row fills the time. A guest who closes the form, or whose form fails
+  to load, is told "You can try again from the booking box", presses again, and is answered **409 "That time was
+  just booked"** about their own abandoned attempt, and the picker then drops that time. The fix is a route that
+  expires the Stripe session and releases the row when the guest closes, and it touches the money path, so it was
+  not written blind: with no Stripe key nothing here can create a pending row at all, so the happy path cannot be
+  driven tonight. It wants a run with `STRIPE_TEST_SECRET_KEY`, which this routine may not set.
+- **Nothing tonight could touch real Stripe, and the whole embedded checkout is in that gap.** The form is
+  mounted by Stripe.js with a live publishable key; with no key it is never reached. What was checked is the
+  code around it and the policy it needs. The 3D Secure host added to `frame-src` is Stripe's documented policy,
+  not something observed failing here. Worth one pass with a test key: `STRIPE_TEST_SECRET_KEY=sk_test_... npx
+  tsx scripts/e2e-local.mts` drives the hosted page, and the embedded one still wants a person.
+- **The CSP fix needed `index.html` and `vite.config.ts`**, both outside the folders this routine keeps to, plus
+  a new `src/lib/csp.ts` that only the Vite config imports. Nothing else this run left `src/lib`,
+  `src/components`, `backend/scripts` or `docs`.
+- The earlier runs' calls stand: a claimed shop with an empty menu still takes bookings, the two distance helpers
+  still disagree on miles against kilometres, Arizona still moves on the Navajo Nation, 210 operators still carry
+  the wrong week and 64 venues are still called Nearby in `catalog.json` until a sync runs, the Where box still
+  depends on Photon, and no workflow runs `npm test` on its own.
+
 ## Coverage
 
 **Verified so far.** Booking validation and odd input on every route that takes it. The money split,
@@ -978,16 +1049,25 @@ in `catalog.json`. Every field of the published operator patch against the JSON 
 a guest who is not the operator: which `undefined` meant "clear this" and which meant "leave it", and what the
 hours, the duration and the cover then say on a card, a hero, a booking sheet and in Otto.
 
-**Not yet checked.** The operator chat for a hand-built listing (`src/data/listings.ts` is empty, so `agent.ts`
-and the `ChatView` operator path still have no live case, and nothing a guest can reach runs them). Photo
-upload against a real GitHub token, and the gap between the URL it returns and the deploy that makes the file
-exist. The mouse drag path of reordering: the keyboard and touch paths are driven in a browser now, the HTML5
-drag events are not. Whether a claimed shop with an empty menu should pause its own listing. A rehearsal check
-that reads a claimed listing's rendered page and not only the API's JSON. A CI job that runs `npm test` on
-either side. The Payouts page driven against a connected Stripe account rather than the no-account fallback.
-Whether a shop that genuinely trades around the clock can say so at all, now that a whole-day span is read as
-no statement: only a crawl that reads the words "Open 24 hours" would carry it. `geo.ts`'s `formatDistance`
-and `places.ts`'s `fmtDistance` still disagree on miles against kilometres, which is a product call. Whether
-the Where box should index the towns our own catalog already names, instead of depending on Photon for every
-place that is not one of the 47 metros. Whether Arizona's Navajo Nation should keep daylight saving. The 4,736
-listings whose area carries no town, as a supply gap rather than a parsing one.
+The guest's card step, since Stripe's embedded checkout replaced the redirect: which page the API's own
+`payNow` takes a card on (every priced booking of a dollar or more, request as much as instant book), what
+each surface tells the guest about that before they press, and what the phone said that the desktop did not.
+The `/config` read both surfaces and the embedded form depend on, against a first read that fails. Stripe.js
+against a load that fails and a second attempt. The card dialog's keyboard: focus in, Escape out, Tab kept
+inside, and the two states that replace the form announcing themselves. The Content-Security-Policy in
+`index.html` against a real Chromium: which hosts an API call, Stripe.js, the embedded frame and a 3D Secure
+challenge each need, and what a blocked fetch looks like to `src/lib/api.ts` (exactly like no API at all).
+What the rehearsal's own mail checks are reading, and whether they can still tell two recipients apart.
+
+**Not yet checked.** Anything that needs a real Stripe key: the embedded card form itself mounted by
+Stripe.js, the hosted page, 3D Secure, the Payouts page against a connected account, and the pending row a
+closed card form leaves holding the guest's own time for thirty minutes (see this run's Needs Harshil). The
+operator chat for a hand-built listing (`src/data/listings.ts` is empty, so `agent.ts` and the `ChatView`
+operator path still have no live case). Photo upload against a real GitHub token, and the gap between the URL
+it returns and the deploy that makes the file exist. The mouse drag path of reordering: the keyboard and touch
+paths are driven in a browser, the HTML5 drag events are not. A rehearsal check that reads a claimed listing's
+rendered page and not only the API's JSON. A CI job that runs `npm test` on either side. Whether a claimed shop
+with an empty menu should pause its own listing. Whether a shop that genuinely trades around the clock can say
+so at all. `geo.ts`'s `formatDistance` and `places.ts`'s `fmtDistance` still disagree on miles against
+kilometres. Whether the Where box should index the towns our own catalog already names. Whether Arizona's
+Navajo Nation should keep daylight saving. The 4,736 listings whose area carries no town, as a supply gap.
