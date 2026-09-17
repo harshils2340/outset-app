@@ -15,8 +15,46 @@ import { Mark } from "../layout/Mark";
 export function EmbeddedCheckout({ secret }: { secret: string }) {
   const { cancelCheckout } = useApp();
   const host = useRef<HTMLDivElement | null>(null);
+  const box = useRef<HTMLDivElement | null>(null);
+  const closeBtn = useRef<HTMLButtonElement | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
+  // `cancelCheckout` is rebuilt on every render of the provider, so it is read through a ref rather than put in
+  // the effect's deps, where it would steal focus back to Close on every keystroke the guest types.
+  const cancel = useRef(cancelCheckout);
+  cancel.current = cancelCheckout;
+  /**
+   * It says aria-modal, so it has to behave like one. It did not: nothing moved focus into it, Escape did
+   * nothing, and Tab walked straight out into the listing behind, card fields then chips then the whole feed,
+   * on a dialog whose only way out is one button. Escape closes it, focus starts on Close, and Tab stays
+   * inside. Stripe's own frame is one stop in that ring and keeps its own fields' order.
+   */
+  useEffect(() => {
+    closeBtn.current?.focus();
+    const FOCUSABLE = 'button:not([disabled]), iframe, a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        cancel.current();
+        return;
+      }
+      if (e.key !== "Tab" || !box.current) return;
+      const stops = [...box.current.querySelectorAll<HTMLElement>(FOCUSABLE)];
+      if (!stops.length) return;
+      const first = stops[0];
+      const last = stops[stops.length - 1];
+      const here = document.activeElement as HTMLElement | null;
+      if (!e.shiftKey && here === last) {
+        e.preventDefault();
+        first.focus();
+      } else if (e.shiftKey && (here === first || !here || !box.current.contains(here))) {
+        e.preventDefault();
+        last.focus();
+      }
+    };
+    document.addEventListener("keydown", onKey, true);
+    return () => document.removeEventListener("keydown", onKey, true);
+  }, []);
   useEffect(() => {
     let checkout: StripeCheckout | null = null;
     let gone = false;
@@ -40,14 +78,15 @@ export function EmbeddedCheckout({ secret }: { secret: string }) {
   }, [secret]);
   return (
     <div className="paycheckout" role="dialog" aria-modal="true" aria-label="Pay for your booking">
-      <div className="paycheckoutbox">
+      <div className="paycheckoutbox" ref={box}>
         <div className="paycheckouthead">
           <Mark size={28} />
           <b>Secure payment</b>
-          <button type="button" className="paycheckoutclose" onClick={cancelCheckout} aria-label="Close without paying">Close</button>
+          <button type="button" ref={closeBtn} className="paycheckoutclose" onClick={cancelCheckout} aria-label="Close without paying">Close</button>
         </div>
-        {error ? <p className="paycheckouterr">{error} You can try again from the booking box.</p> : null}
-        {!ready && !error ? <p className="paycheckoutwait">Loading the card form…</p> : null}
+        {/* Both of these replace the card form itself, so a screen reader has to be told rather than shown. */}
+        {error ? <p className="paycheckouterr" role="alert">{error} You can try again from the booking box.</p> : null}
+        {!ready && !error ? <p className="paycheckoutwait" role="status">Loading the card form…</p> : null}
         <div ref={host} className="paycheckoutform" />
         <small className="paycheckoutnote">Handled by Stripe. Your card is only held until the business confirms.</small>
       </div>
