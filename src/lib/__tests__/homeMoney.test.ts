@@ -163,3 +163,11 @@ test("the booking drawer's 'you receive' is what the operator receives", () => {
   assert.ok(line.includes("money(bookingPayout(b))"), "the drawer is promising the operator's price, not their payout");
   assert.ok(!line.includes("money(b.subtotal)"), "the drawer is promising the operator's price, not their payout");
 });
+
+test("the calendar's week total is the same money as Home's tile", () => {
+  const src = readFileSync(new URL("../../components/operator/OpCalendar.tsx", import.meta.url), "utf8");
+  assert.ok(/weekTotal = payoutSum\(/.test(src), "the calendar week total is back to summing guest totals");
+  assert.ok(!/bookingTotal\s*\(/.test(src), "the calendar is showing an operator a guest total again");
+  // Home's first tile links straight to this page, so the two have to name one number.
+  assert.ok(/weekTotal \? <b>/.test(src), "the calendar prints a money figure when there is no money to print");
+});

@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { dateKey, startOfToday } from "../../lib/dates";
 import { fmtTime, money } from "../../lib/format";
-import { DAY_SHORT, bookingTotal, slotsForDay } from "../../lib/operator";
+import { DAY_SHORT, payoutSum, slotsForDay } from "../../lib/operator";
 import { Markup } from "../Markup";
 import { OD_ICONS, useOp } from "./opContext";
 
@@ -80,7 +80,10 @@ export function OpCalendar() {
     ? anchor.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: anchor.getFullYear() === thisYear ? undefined : "numeric" })
     : span(days[0]) + " to " + span(days[6]);
 
-  const weekTotal = days.reduce((n, d) => n + bookings.filter((b) => b.date === dateKey(d) && (b.status === "accepted" || b.status === "completed")).reduce((m, b) => m + bookingTotal(b), 0), 0);
+  // The operator's own money, after Outset's fee, the same number Home, Payouts and the booking email give.
+  // This line summed guest totals, so the week the Home tile called $110.20 read $121 on the page that tile
+  // links to. Sample rows are not money here either, and with none there is no figure to print.
+  const weekTotal = payoutSum(days.flatMap((d) => bookings.filter((b) => b.date === dateKey(d) && (b.status === "accepted" || b.status === "completed"))));
 
   return (
     <div className="odpage odcalpage">
@@ -94,7 +97,7 @@ export function OpCalendar() {
         <div className="odcallegend">
           <span><i className="bk" /> Booked</span>
           <span><i className="off" /> Time off</span>
-          <b>{money(weekTotal)} {compact ? "today" : "this week"}</b>
+          {weekTotal ? <b>{money(weekTotal)} {compact ? "today" : "this week"}</b> : null}
         </div>
       </div>
       <p className="odmuted odcalhint">Click an empty slot to block it as time off. Click a day name to take the whole day off.</p>
