@@ -20,6 +20,7 @@ import { STANDARD, isEventSchedule, plainLabel, plainName, plainServices, type R
 import { consolidateDeals } from "./dealText.ts";
 import { durationFrom } from "../../../src/lib/duration.ts";
 import { onlyOperatorCancels } from "../../../src/lib/cancellation.ts";
+import { bookableRow, tidyRowName } from "../../../src/lib/menuRow.ts";
 
 type Overlay = { published: boolean; patch: Record<string, unknown> };
 /** Claimed operators' saved edits, keyed by listing id. Filled by loadProfileOverlays before a sync. */
@@ -410,6 +411,7 @@ export function toCatalogItem(r: CatalogRow): Record<string, unknown> {
     const k = plainName(o.name, art).toLowerCase();
     return unitByService.has(k) ? unitByService.get(k) : o.price_unit && o.price_unit.startsWith("/") ? o.price_unit : undefined;
   };
+  const { optionIdxOf, menuRowOf } = bookableOptions(menu, art);
   const family = kind.movedFrom ? categoryById(art)?.family || r.family : r.family;
   /**
    * Cover choice, re-derived from facts we already hold. The order below is the order this function used to
@@ -482,8 +484,8 @@ export function toCatalogItem(r: CatalogRow): Record<string, unknown> {
     // picker's sub-line and a service's tier label never disagree. A membership or a gift card is not an experience
     // a guest books a slot for, and the services list below already knows that; this row feeds a card's "from"
     // price too, so a $10 membership tier was quoting a charter's price as a season pass, not a trip out.
-    options: menu.filter((o) => !NOT_A_SERVICE.test(o.name)).map((o) => {
-      const name = plainName(o.name, art);
+    options: menu.filter((_o, idx) => optionIdxOf.has(idx)).map((o) => {
+      const name = tidyRowName(plainName(o.name, art));
       const price = o.price_cents == null ? null : o.price_cents / 100;
       return {
         name,
@@ -532,10 +534,11 @@ export function toCatalogItem(r: CatalogRow): Record<string, unknown> {
       for (const o of menu) if (o.source_url) namesByPage.set(o.source_url, (namesByPage.get(o.source_url) || new Set()).add(o.name.toLowerCase()));
       const groups = new Map<string, RawService & { pages: Set<string> }>();
       menu.forEach((o, idx) => {
-        if (NOT_A_SERVICE.test(o.name)) return;
+        const optionIdx = optionIdxOf.get(idx);
+        if (optionIdx == null) return;
         const rawKey = o.name.toLowerCase();
         // Grouped by the plain name, so "4 Hr Charter" and "4 Hour Charter" are one service.
-        const name = plainName(o.name, art);
+        const name = tidyRowName(plainName(o.name, art));
         const key = name.toLowerCase();
         // A service thumbnail goes through the same screen: a logo or a dead link on a menu row is as broken as one in the gallery.
         const svcPhoto = fullSize(photos.get(rawKey) || "") || undefined;
@@ -546,7 +549,7 @@ export function toCatalogItem(r: CatalogRow): Record<string, unknown> {
           label: silent(o.duration) || silent(o.detail) || STANDARD,
           price: o.price_cents == null ? null : o.price_cents / 100,
           per: perOf(o),
-          optionIdx: idx,
+          optionIdx,
         });
         groups.set(key, g);
       });
@@ -577,8 +580,8 @@ export function toCatalogItem(r: CatalogRow): Record<string, unknown> {
             if (twin.price == null && v.price != null) Object.assign(twin, { price: v.price, per: v.per, optionIdx: v.optionIdx });
             continue;
           }
-          const rawT = menu[twin.optionIdx]?.name || "";
-          const rawV = menu[v.optionIdx]?.name || "";
+          const rawT = menu[menuRowOf[twin.optionIdx]]?.name || "";
+          const rawV = menu[menuRowOf[v.optionIdx]]?.name || "";
           if (rawT && rawV && rawT.toLowerCase() !== rawV.toLowerCase()) {
             if (!twin.label.toLowerCase().startsWith(rawT.toLowerCase())) twin.label = rawT + " · " + twin.label;
             kept.push({ ...v, label: rawV + " · " + v.label });
@@ -1743,6 +1746,33 @@ function isTidyLine(l: string): boolean {
 
 /** Things a site sells that a guest does not book a time for. */
 export const NOT_A_SERVICE = /\b(gift ?cards?|gift certificates?|e-?gift|merch(andise)?|t-?shirts?|hats?|apparel|donation|membership|season pass|parking)\b/i;
+
+/**
+ * Which rows of a crawled menu become bookable options, and where each one lands in that shorter list.
+ *
+ * `options` and `services` are two views of one menu: every service tier carries an `optionIdx` that is a
+ * position in `options`. They have to drop the same rows and count them the same way. They did not. The
+ * options filter dropped a membership or a gift card and closed the gap, while the services loop went on
+ * counting through the whole menu, so a shop whose menu opened with a gift card gave every tier after it an
+ * index one too far: the last tier pointed past the end of the list and the ones before it at the wrong trip,
+ * so picking "2.5 hours, $220" would have booked the row below it. Nothing shipped with this, because
+ * `public/o` was written before the options filter existed. The next sync is what would have carried it.
+ *
+ * It is also where a row that is no kind of service comes out (`src/lib/menuRow.ts`): the archive of what a
+ * museum used to show, and an FAQ heading with nothing priced under it.
+ */
+export function bookableOptions(menu: { name: string; price_cents: number | null }[], art: string): { optionIdxOf: Map<number, number>; menuRowOf: number[] } {
+  const optionIdxOf = new Map<number, number>();
+  /** The other way round: the menu row each published option came from, for the code that re-reads its raw name. */
+  const menuRowOf: number[] = [];
+  menu.forEach((o, idx) => {
+    if (NOT_A_SERVICE.test(o.name)) return;
+    if (!bookableRow(plainName(o.name, art), o.price_cents == null ? null : o.price_cents / 100)) return;
+    optionIdxOf.set(idx, menuRowOf.length);
+    menuRowOf.push(idx);
+  });
+  return { optionIdxOf, menuRowOf };
+}
 
 function uniq(list: string[]): string[] {
   const seen = new Set<string>();
