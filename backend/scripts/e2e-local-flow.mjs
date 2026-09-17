@@ -682,6 +682,54 @@ async function flow(ctx) {
   const acceptMail = mailSent("harness.guest@example.com", "Confirmed:");
   record("(g) the operator accepts and the guest is emailed", rowShown && acceptedOk && acceptMail, `row:${rowShown} accepted:${acceptedOk} email:${acceptMail}`);
 
+  /* ================= (g2) the dashboard's front page, and the money it promises =================
+     Home is the page an owner opens every morning and the one page this rehearsal had never opened. Its two
+     tiles summed each booking's total, which is what the guest paid: the operator's price plus the guest's
+     service fee. A $116 sail read "$121 on the books" beside a booking email promising $110.20, and the
+     Payouts page the tile links to gave a third number. The tile is the operator's price less Outset's 5%. */
+
+  await openDashboardPage("Home");
+  const homeShown = await until(() => !!document.querySelector(".odhome .ohfeed"), 15000);
+  await shot("g3-home-front-page");
+  const homeTiles = await js(() =>
+    [...document.querySelectorAll(".ohpulse > button")].map((b) => {
+      const pick = (sel) => {
+        const el = b.querySelector(sel);
+        return el ? el.textContent.trim() : "";
+      };
+      return { label: pick("small"), money: pick("b"), note: pick("span") };
+    }),
+  );
+  {
+    // The same window Home reads, on the same clock: today through the next seven days, confirmed only.
+    const localKey = (n) => {
+      const d = new Date();
+      d.setHours(0, 0, 0, 0);
+      d.setDate(d.getDate() + n);
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    };
+    const onBooks = (await bookings()).filter((b) => b.status === "accepted" && b.date >= localKey(0) && b.date < localKey(7));
+    // operatorShare in backend/src/payments/money.ts: the 5% is rounded once, in whole cents.
+    const netCents = onBooks.reduce((n, b) => {
+      const sub = Math.round(Number(b.pricing?.subtotal ?? 0) * 100);
+      return n + (sub - Math.round(sub * 0.05));
+    }, 0);
+    const grossCents = onBooks.reduce((n, b) => n + Math.round(Number(b.total ?? 0) * 100), 0);
+    const dollars = (c) => "$" + (c / 100).toLocaleString("en-US", { minimumFractionDigits: c % 100 === 0 ? 0 : 2, maximumFractionDigits: 2 });
+    const tile = Array.isArray(homeTiles) ? homeTiles[0] : null;
+    const ok = !!tile && tile.money === dollars(netCents) && (netCents === grossCents || tile.money !== dollars(grossCents));
+    // Nothing on the books is not proof of anything: a booking was accepted two steps ago, so it means the
+    // harness booked outside the window this tile reads. Say so rather than pass on an empty page.
+    const verdict = !homeShown ? false : netCents ? ok : "warn";
+    record(
+      "(g2) the dashboard's front page promises the operator their own money, not the guest's total",
+      verdict,
+      netCents
+        ? `${onBooks.length} on the books: tile ${tile ? tile.money : "no tile"}, payout ${dollars(netCents)}, guest totals ${dollars(grossCents)}`
+        : `nothing on the books, and Home shows ${Array.isArray(homeTiles) ? homeTiles.length : "unreadable"} money tiles`,
+    );
+  }
+
   /* ================= (h) a second booking is declined ================= */
 
   const code2 = "E2E-DECL";
