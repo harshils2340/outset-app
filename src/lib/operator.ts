@@ -4,6 +4,7 @@ import { addressLine, contactFor, experienceById, fmtPhone, getCatalog, setOpera
 import { dateKey, startOfToday } from "./dates";
 import { fmtTime, money } from "./format";
 import { durationLabel as menuDuration, freeCancel } from "./listingDerive";
+import { operatorNet, subtotalFromTotal } from "./pricing";
 import { splitAddons } from "./storage";
 
 /**
@@ -769,6 +770,48 @@ export function setBookingStatus(p: OperatorProfile, b: OpBooking, status: OpSta
 
 export function bookingTotal(b: OpBooking): number {
   return b.total ?? (b.price != null ? b.price * b.qty : 0);
+}
+
+/**
+ * What the operator receives for one booking: their own price behind the guest total, less Outset's 5%,
+ * worked out by the same rule as the transfer, the Payouts page and the "You receive" line in their booking
+ * email. A booking's `total` is what the guest paid, which carries the guest's service fee on top.
+ *
+ * Only real bookings are money. A sample row's total is the operator's price with no guest fee on it, so
+ * taking a fee back off it would invent a discount the demo never gave; `isMoney` is the filter for that.
+ */
+export function bookingPayout(b: OpBooking): number {
+  return operatorNet(subtotalFromTotal(bookingTotal(b)));
+}
+
+/** A booking whose money is real. Sample rows are examples, and the Payouts page has never counted them. */
+export const isMoney = (b: OpBooking): boolean => b.source !== "sample";
+
+/** Cent-exact sum of what the operator receives across a list of bookings. */
+export function payoutSum(rows: OpBooking[]): number {
+  return rows.filter(isMoney).reduce((n, b) => n + Math.round(bookingPayout(b) * 100), 0) / 100;
+}
+
+/**
+ * Money still to come: confirmed, not yet run, from today through the next seven days. The Home page's first
+ * tile. A trip completed today is money already earned, and counting it here as well put the same booking in
+ * both of that page's tiles at once.
+ */
+export function onTheBooks(bookings: OpBooking[], from: Date = startOfToday()): OpBooking[] {
+  const todayKey = dateKey(from);
+  const end = new Date(from);
+  end.setDate(end.getDate() + 7);
+  const endKey = dateKey(end);
+  return bookings.filter((b) => b.status === "accepted" && b.date >= todayKey && b.date < endKey && isMoney(b));
+}
+
+/** Money earned: trips completed in the last `days` days, up to and including today. The Home page's second tile. */
+export function completedLately(bookings: OpBooking[], days = 30, from: Date = startOfToday()): OpBooking[] {
+  const todayKey = dateKey(from);
+  const start = new Date(from);
+  start.setDate(start.getDate() - days);
+  const startKey = dateKey(start);
+  return bookings.filter((b) => b.status === "completed" && b.date >= startKey && b.date <= todayKey && isMoney(b));
 }
 
 /**

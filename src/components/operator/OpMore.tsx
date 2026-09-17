@@ -2,8 +2,8 @@ import { useEffect, useState } from "react";
 import { connectPayouts, hasApi, payoutStatus, releaseRemoteProfile, setPayoutSchedule, type PayoutInterval, type PayoutState, type PayoutStatus } from "../../lib/api";
 import { dateKey, startOfToday } from "../../lib/dates";
 import { money } from "../../lib/format";
-import { OWNER_EMAIL_MAX, OWNER_NAME_MAX, OWNER_PHONE_MAX, bookingTotal, deleteProfile, isoToDate, relDay, validOwnerEmail, validOwnerPhone } from "../../lib/operator";
-import { OPERATOR_FEE_RATE, SERVICE_FEE_CAP, operatorNet, serviceFee } from "../../lib/pricing";
+import { OWNER_EMAIL_MAX, OWNER_NAME_MAX, OWNER_PHONE_MAX, bookingPayout, bookingTotal, deleteProfile, isoToDate, payoutSum, relDay, validOwnerEmail, validOwnerPhone } from "../../lib/operator";
+import { OPERATOR_FEE_RATE } from "../../lib/pricing";
 import { isHttpsUrlOnHost } from "../../lib/urlSafety";
 import { Markup } from "../Markup";
 import { OD_ICONS, PAGES, useOp } from "./opContext";
@@ -11,25 +11,13 @@ import { OD_ICONS, PAGES, useOp } from "./opContext";
 const FEE = OPERATOR_FEE_RATE;
 
 /**
- * The operator's own price behind a guest total. A booking's `total` is what the guest paid: the operator's
- * price plus the guest's stepped service fee. The fee is a whole number of dollars and never more than $25, so
- * there are only 26 candidates to try. Mirrors subtotalFromTotal in backend/src/payments/money.ts.
- */
-function operatorPrice(total: number): number {
-  for (let fee = 0; fee <= SERVICE_FEE_CAP; fee++) {
-    const sub = Math.round((total - fee) * 100) / 100;
-    if (sub > 0 && serviceFee(sub) === fee) return sub;
-  }
-  return total;
-}
-
-/**
  * What the operator receives for one booking: their price less Outset's 5%, worked out in whole cents by the
  * same rule as the transfer and the booking email. Taking 5% off the guest total instead counted the guest's
  * service fee as the operator's money, so the tiles here promised more than the booking email for the same
- * trip ("You receive $194.75" against "$202" on this page).
+ * trip ("You receive $194.75" against "$202" on this page). It lives in operator.ts because Home's tiles are
+ * the same promise on the page an owner opens first, and they were making the older mistake.
  */
-const payoutOf = (b: Parameters<typeof bookingTotal>[0]): number => operatorNet(operatorPrice(bookingTotal(b)));
+const payoutOf = bookingPayout;
 
 /** Money is kept to the cent. 95 × 0.95 + 0.0095 is not a number a bank pays, and a tile that read "$96" for $95.96 was rounding on its own. */
 const toCents = (n: number): number => Math.round(n * 100) / 100;
@@ -68,7 +56,9 @@ export function OpPayouts() {
   const real = bookings.filter((b) => b.source !== "sample");
   const done = real.filter((b) => b.status === "completed");
   const earned = done.reduce((n, b) => n + payoutOf(b), 0);
-  const upcomingLocal = real.filter((b) => b.status === "accepted" && b.date >= todayKey).reduce((n, b) => n + bookingTotal(b), 0);
+  // Beside three tiles that say "after fees", this one summed guest totals, so the one number here an operator
+  // can compare with Home's "On the books" was the only one on either page carrying the guest's service fee.
+  const upcomingLocal = payoutSum(real.filter((b) => b.status === "accepted" && b.date >= todayKey));
   const pending = done.filter((b) => b.date >= dateKey(new Date(Date.now() - 7 * 86400000))).reduce((n, b) => n + payoutOf(b), 0);
   const [status, setStatus] = useState<PayoutStatus | null>(null);
   const [busy, setBusy] = useState(false);
@@ -136,7 +126,7 @@ export function OpPayouts() {
           {/* No connected account means no pay day to promise; this tile said "Next payout" beside a card saying guests pay on site. */}
           <div><b>{money(toCents(pending))}</b><small>Completed this week, after fees</small></div>
           <div><b>{money(toCents(earned))}</b><small>Earned to date, after fees</small></div>
-          <div><b>{money(upcomingLocal)}</b><small>Confirmed, not yet completed</small></div>
+          <div><b>{money(upcomingLocal)}</b><small>Confirmed, not yet completed, after fees</small></div>
           <div><b>{Math.round(FEE * 100)}%</b><small>Outset fee per booking</small></div>
         </div>
       )}
@@ -144,7 +134,7 @@ export function OpPayouts() {
           answer was, three lines above a card saying "guests pay you on site". An operator reading it had been
           told their money was coming on a pay day that does not exist yet. */}
       {status && !status.available ? (
-        <p className="odmuted">Card payments are not switched on yet, so guests pay you on the day and nothing is paid out through Outset. The figures above are what your completed bookings come to, less the {Math.round(FEE * 100)}% Outset keeps of your price, which is the same number your booking emails give.</p>
+        <p className="odmuted">Card payments are not switched on yet, so guests pay you on the day and nothing is paid out through Outset. The figures above are what your bookings come to, less the {Math.round(FEE * 100)}% Outset keeps of your price, which is the same number your booking emails give.</p>
       ) : (
         <p className="odmuted">Guests pay by card when they book. An accepted booking is paid on your next pay day after the experience date, then Stripe sends it to your bank, usually within 1 to 2 business days. Outset keeps {Math.round(FEE * 100)}% of your price; the guest's service fee is separate.</p>
       )}

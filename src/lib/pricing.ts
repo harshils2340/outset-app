@@ -42,6 +42,20 @@ export function serviceFee(sub: number): number {
   return Math.min(raw, SERVICE_FEE_CAP);
 }
 
+/**
+ * The operator's own price behind a guest total, which is the inverse of `serviceFee`. The fee is a whole
+ * number of dollars and never more than $25, so there are only 26 candidates to try. Mirrors
+ * subtotalFromTotal in backend/src/payments/money.ts, which is the number the booking email prints.
+ */
+export function subtotalFromTotal(total: number): number {
+  for (let fee = 0; fee <= SERVICE_FEE_CAP; fee++) {
+    const sub = Math.round((total - fee) * 100) / 100;
+    if (sub > 0 && serviceFee(sub) === fee) return sub;
+  }
+  // A total no subtotal produces (an old row, a rounding edge): treat it all as the operator's price.
+  return total;
+}
+
 export function serviceFeeLabel(p: Pick<PriceBreakdown, "rate" | "capped">): string {
   if (p.capped) return "Service fee";
   if (!p.rate) return "Service fee";

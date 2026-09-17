@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { dateKey, startOfToday } from "../../lib/dates";
 import { fmtTime, money } from "../../lib/format";
-import { DAY_SHORT, bookingTotal, setupChecks } from "../../lib/operator";
+import { DAY_SHORT, completedLately, onTheBooks, payoutSum, setupChecks } from "../../lib/operator";
 import type { OpBooking } from "../../lib/operator";
 import { Markup } from "../Markup";
 import { OD_ICONS, useOp } from "./opContext";
@@ -27,15 +27,13 @@ export function OpHome() {
   })();
   const upcoming = bookings.filter((b) => b.date > todayKey && b.date < weekEnd && b.status === "accepted").sort(bySlot);
   const later = bookings.filter((b) => b.date >= weekEnd && b.status === "accepted").length;
-  const week = [...today, ...upcoming];
-  const month = (() => {
-    const d = new Date(startOfToday());
-    d.setDate(d.getDate() - 30);
-    const k = dateKey(d);
-    return bookings.filter((b) => b.date >= k && b.date <= todayKey && b.status === "completed");
-  })();
-  const weekTotal = week.reduce((n, b) => n + bookingTotal(b), 0);
-  const monthTotal = month.reduce((n, b) => n + bookingTotal(b), 0);
+  // Money on this page is the operator's own, after Outset's fee, which is the number their booking email and
+  // the Payouts page give. A booking's total is what the guest paid, and it carries the guest's service fee.
+  // Summing those instead read "$122 on the books" for a trip the email promised $110.20 for.
+  const week = onTheBooks(bookings);
+  const month = completedLately(bookings);
+  const weekTotal = payoutSum(week);
+  const monthTotal = payoutSum(month);
   const nextToday = today.find((b) => b.slot >= new Date().toTimeString().slice(0, 5)) || null;
   const checks = setupChecks(p);
   const done = checks.filter((c) => c.done).length;
@@ -67,6 +65,12 @@ export function OpHome() {
   // Upcoming, grouped by day so a week reads as a short list, not seven boxes.
   const days = new Map<string, OpBooking[]>();
   for (const b of upcoming) days.set(b.date, [...(days.get(b.date) || []), b]);
+  // A day's line carries the operator's share too, and only when there is one: a day of quotes, or a demo's
+  // sample rows, printed a flat "$0" beside two real bookings.
+  const dayMoney = (items: OpBooking[]) => {
+    const m = payoutSum(items);
+    return m ? " · " + money(m) : "";
+  };
   const dayLabel = (k: string) => {
     const d = new Date(k + "T12:00:00");
     const diff = Math.round((d.getTime() - startOfToday().getTime()) / 86400000);
@@ -136,7 +140,7 @@ export function OpHome() {
             <div className="ohlist">
               {[...days.entries()].map(([k, items]) => (
                 <div className="ohday" key={k}>
-                  <h4 className="odsub">{dayLabel(k)} · {items.length} {items.length === 1 ? "booking" : "bookings"} · {money(items.reduce((n, b) => n + bookingTotal(b), 0))}</h4>
+                  <h4 className="odsub">{dayLabel(k)} · {items.length} {items.length === 1 ? "booking" : "bookings"}{dayMoney(items)}</h4>
                   {items.map((b) => <BookingRow key={b.id} b={b} />)}
                 </div>
               ))}
@@ -153,12 +157,12 @@ export function OpHome() {
           <button type="button" onClick={() => go("calendar")}>
             <small>On the books, next 7 days</small>
             <b>{money(weekTotal)}</b>
-            <span>{week.length} {week.length === 1 ? "booking" : "bookings"}</span>
+            <span>{week.length} {week.length === 1 ? "booking" : "bookings"} · after fees</span>
           </button>
           <button type="button" onClick={() => go("payouts")}>
             <small>Completed, last 30 days</small>
             <b>{money(monthTotal)}</b>
-            <span>{month.length} {month.length === 1 ? "trip" : "trips"}</span>
+            <span>{month.length} {month.length === 1 ? "trip" : "trips"} · after fees</span>
           </button>
         </div>
       ) : null}
