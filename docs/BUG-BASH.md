@@ -1294,6 +1294,10 @@ tests pass, both projects type-check clean, rehearsal 53 of 53.
   **28 listings** those differ, and o-destinhelicopters-com reads "up to 6 hours before" over a policy whose
   full refund needs 24 hours notice. Fixing it means deciding which clause owns the badge when a shop states
   three windows, which is a product call.
+- **This container checked out a detached HEAD and a stale local `main`**, 50 ahead and 50 behind the remote,
+  so `git push -u origin main` pushes the wrong thing and is refused. The run's commits went up with
+  `git push origin HEAD:main`, a fast-forward; nothing was forced and the stale branch was left alone. Worth
+  knowing before a later run reaches for `--force`.
 - The earlier runs' calls stand: everything needing a real Stripe key is untouched, Home's three tabs are
   still `role="tab"` with nothing to control, the party picker still offers 20 on listings that state less,
   6,513 rated listings still show a star rating on their card and none on the page it opens, Arizona still
