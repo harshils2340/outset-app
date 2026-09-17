@@ -1303,6 +1303,69 @@ tests pass, both projects type-check clean, rehearsal 53 of 53.
   6,513 rated listings still show a star rating on their card and none on the page it opens, Arizona still
   moves on the Navajo Nation, `groupCap` still counts no players or anglers, and no workflow runs `npm test`.
 
+## 17 September 2026, twenty-first run (11:00 to 12:00 UTC)
+
+**Checked, and why.** The Coverage list had the menu's prices, units, durations, tier labels and collisions
+all verified, but not what the rows are *called*, so that is where this run went: every one of the 79,406
+options and 62,054 services in the shipped catalog, read as a guest reads them. Not the rehearsal: the last
+entry says 53 of 53 green and nothing since it touched code, so that time went on the hunt instead. The
+rehearsal was run at the end, because this run did change code it covers.
+
+**Found and fixed.**
+
+- **A museum's closed exhibitions were a menu row a guest could book** (`a6bc2de56`). The crawl reads a shop's
+  menu off their own pages and brings those pages' headings with it. "Past Exhibitions" is a bookable row on
+  **333 listings** and carries a price on **118**, so the booking box took a date, a party and a card for an
+  exhibition that closed: $5 at the Anchorage Museum, $22 at the Audain, **$3,000 per group** at o-aahmsnj-org.
+  An FAQ heading does the same on 17 more, and a sentence the crawl cut in half put "Tickets are" and
+  "Admission is" on the menu of 93 shops. One rule in `src/lib/menuRow.ts`, read by the catalog on every record
+  the app loads (so the 59,162 shipped detail files are right tonight, with no sync) and by the booking API,
+  which prices from the same menu. 405 rows go, off 350 listings; 110 shops are left with no menu, which is
+  the honest state and what two thirds of the catalog already ships as. A name that only sounds like one of
+  these stays: o-clearholistictherapies-com keeps its $150 Past Life Regression, o-escapology-com its room
+  called "Who Stole Mona?", and o-intheflowflyfishing-com the $150 and $300 under "Ready to go fishing?".
+- **Every service tier after a gift card pointed at the wrong trip** (`0dda90e3f`). `options` and `services`
+  are two views of one menu joined by an `optionIdx`. An earlier run taught `options` to drop a membership, a
+  season pass and a gift card, the way `services` already did, but the services loop went on numbering its
+  tiers against the whole menu. From the first dropped row on, every tier was one place too far: picking
+  "2.5 hours, $220" would have selected the row under it, and the last tier pointed past the end at nothing.
+  Nothing shipped with it, because `public/o` predates the options filter; the next sync is what would have
+  carried it. One map now decides which rows become options and where each lands, and both views read it.
+- **A shop's description was the theme's Lorem ipsum** (`4f88c0eb7`). 26 listings publish a page theme's
+  placeholder as their own words, on the blurb under the title or on a service a guest picks: "Lorem ipsum
+  dolor sit amet, consectetur adipiscing elit." is 56 characters of well-formed prose ending on a full stop,
+  so every check `cleanBlurb` makes waved it through. Ten more publish binary, because the crawl read a PDF as
+  text at o-elgintexas-gov and o-hallcounty-org. Both now read as no description. Fifteen more lost a byte of
+  an apostrophe or a dash and printed a black diamond mid-sentence; that is real copy with one character
+  missing, so it is repaired rather than dropped (`src/lib/ownWords.ts`, read by the catalog and by the sync).
+
+**Green after the fixes.** 339 guest tests (21 new) and 201 backend tests (5 new), both projects type-check
+clean, rehearsal 53 of 53.
+
+**Needs Harshil.**
+
+- **108 of the archive rows carried a real admission tier** ("Adults $17", "Museum admission $5", "Seniors",
+  "Student with ID"). The price is almost certainly the shop's real admission, attached by the crawl to the
+  wrong heading. Dropping the row loses a bookable admission at about 60 museums until a re-crawl reads it
+  under a proper name. The alternative was to keep a row that says a guest is booking the past, which is
+  worse. If you would rather keep them, the line to move is `ARCHIVE_ROW` in `src/lib/menuRow.ts`.
+- **338 rows are called "Buy Tickets" and 123 "Schedule a tour".** Those are buttons, not services, but each
+  one does lead to the thing the shop sells, so nothing was dropped or renamed. "Tickets" and "Tour" would
+  read better and it is a supply call, not a bug.
+- **Four listings price a real menu under an FAQ heading**: o-escapegameknoxville-net sells every room under
+  "What is an escape room?" ($40 for two, $545 for a pizza party) and o-totallytikitours-com its adult and
+  child fares under "How Do I Book A Cruise?". Those are kept, because dropping them takes the shop's whole
+  menu, so they still read oddly to a guest.
+- **17 listings still show mojibake** ("speciesâ€"Chinook" at o-lastcastguiding-com): a Windows-1252 byte read
+  as UTF-8, a different fault from the lost byte fixed here, and one worth a pass over the crawler.
+- Setting up the local Postgres for the rehearsal needs SSL: `pg.ts` connects with `ssl: { rejectUnauthorized:
+  true }`, so a plain cluster answers "The server does not support SSL connections". A self-signed cert in the
+  data directory plus `NODE_EXTRA_CA_CERTS` is what worked here.
+- The earlier runs' calls stand: everything needing a real Stripe key is untouched, Home's three tabs are
+  still `role="tab"` with nothing to control, the party picker still offers 20 on listings that state less,
+  6,513 rated listings still show a star rating on their card and none on the page it opens, Arizona still
+  moves on the Navajo Nation, `groupCap` still counts no players or anglers, and no workflow runs `npm test`.
+
 
 ## Coverage
 
@@ -1432,6 +1495,13 @@ The bar that decides Top rated, over all 7,517 listings that publish a rating, o
 it. The count printed beside the stars, on all ten lines that print it. That a service can never fold every
 tier away behind "More options". `promoOn` and `todaysDeals` against the 48 deals the catalog ships.
 
+What a menu row is called, over all 79,406 shipped options and 62,054 services: the archive of what a shop
+used to show, an FAQ heading the crawl took for a service, and a sentence it cut in half, each against the
+rows that only sound like one of those (a priced escape room named as a question, "Past Life Regression").
+That `options` and `services` still drop the same rows and count them the same way, so no tier points at
+another trip. Whether a description is the shop talking at all, over every blurb and service description in
+the catalog: a page theme's Lorem ipsum, a PDF read as text, and a lost byte printing a black diamond.
+
 How far away a shop is, on every surface that prints it, over all 59,163 shipped listings: which unit each
 country reads, that the cards, the listing page's key facts, the compare table, a chain's venue rows and the
 booking sheet all answer alike, and every band boundary in both units. The group size and the minimum age a
@@ -1439,7 +1509,9 @@ listing states, each read by the listing page and by Otto, over all 59,162 shipp
 listing anywhere reads two ways, and that a number beside a ceiling word which counts inches, minutes, days,
 miles, kilometres per hour, pounds or dollars is never quoted as a party size or an age.
 
-**Not yet checked.** Anything that needs a real Stripe key: the embedded card form itself mounted by
+**Not yet checked.** Whether the 108 archive rows that carried a real admission tier should keep that price
+under a name a re-crawl reads properly, and whether "Buy Tickets" (338 rows) and "Schedule a tour" (123)
+should be renamed. The 17 listings still showing Windows-1252 mojibake. Anything that needs a real Stripe key: the embedded card form itself mounted by
 Stripe.js, the hosted page, 3D Secure, the Payouts page against a connected account, and the pending row a
 closed card form leaves holding the guest's own time for thirty minutes (see this run's Needs Harshil). The
 operator chat for a hand-built listing (`src/data/listings.ts` is empty, so `agent.ts` and the `ChatView`
