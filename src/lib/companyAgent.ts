@@ -2,7 +2,7 @@ import type { OperatorContact, Unclaimed } from "../data/types";
 import type { LiveAvailability } from "./api";
 import { addressLine, fmtPhone, plainWords } from "./catalog";
 import { money } from "./format";
-import { groupCap } from "./listingDerive";
+import { groupCap, minAge } from "./listingDerive";
 import { clockIn, hourLines, itemWeek, openStateAt, zoneFor, type Week } from "./openNow";
 import { venueLabel } from "./places";
 import { hasPrice } from "./pricing";
@@ -473,16 +473,34 @@ function ageIn(q: string): number | null {
   return Number.isFinite(n) && n <= 99 ? n : null;
 }
 
+/**
+ * A number sitting next to a ceiling or floor word that is a height, a clock, a calendar window, a weight or a
+ * price, and so is not anybody's age. "Children must be at least 48 inches tall" is not a minimum age of 48.
+ */
+const NOT_AN_AGE = String.raw`(?!\s*(?:"|”|''|′|″|inch|inches|ft|feet|foot|'|cm\b|minutes?|mins?|hours?|hrs?|days?|weeks?|months?|%|lbs?|pounds?|kg\b|dollars?))`;
+/** The same bar `minAge` keeps on the listing page: a minimum age nobody would write outside it. */
+const plausibleAge = (n: number) => Number.isFinite(n) && n >= 2 && n <= 21;
+
 /** The minimum age the operator publishes, with the line it came from. */
 function ageRule(item: Unclaimed): { min?: number; line: string } | null {
+  // The listing page's reader answers first, for the same reason the group size one does: these disagreed on
+  // 83 of the 1,210 listings where both had a number. Otto's own scan bridged "must be at least" to the first
+  // number within twelve characters, whatever that number counted, so it told guests the minimum age was 48
+  // ("at least 48 inches tall"), 30 ("arrive 30 minutes prior"), 14 ("canceled 14 days in advance") and 62
+  // (a senior ticket price). It reads the requirement lines, which is where an age rule is written.
+  const stated = minAge(item.requirements || []);
+  if (stated != null) {
+    const line = (item.requirements || []).find((l) => minAge([l]) === stated) || (item.requirements || [])[0];
+    return { min: stated, line: clip(line) };
+  }
   const lines = corpus(item);
   for (const l of lines) {
-    let m = l.match(/\b(?:minimum age|age minimum|must be(?: at least)?)\D{0,12}(\d{1,2})\b/i);
-    if (m) return { min: Number(m[1]), line: clip(l) };
+    let m = l.match(new RegExp(String.raw`\b(?:minimum age|age minimum|must be(?: at least)?)\D{0,12}(\d{1,2})\b` + NOT_AN_AGE, "i"));
+    if (m && plausibleAge(Number(m[1]))) return { min: Number(m[1]), line: clip(l) };
     m = l.match(/\bages?\s*(\d{1,2})\s*(?:\+|and (?:up|older|above))/i) || l.match(/\b(\d{1,2})\s*(?:years?|yrs?)\s*(?:and\s*)?(?:\+|up|older|above)\b/i);
-    if (m) return { min: Number(m[1]), line: clip(l) };
+    if (m && plausibleAge(Number(m[1]))) return { min: Number(m[1]), line: clip(l) };
     m = l.match(/\b(?:no children|no kids|not permitted|no one)\D{0,14}under\D{0,6}(\d{1,2})\b/i) || l.match(/\bunder\s*(\d{1,2})\s*(?:are\s*)?not\b/i);
-    if (m) return { min: Number(m[1]), line: clip(l) };
+    if (m && plausibleAge(Number(m[1]))) return { min: Number(m[1]), line: clip(l) };
   }
   const any = lines.find((l) => /\b(ages?|years? old|minors?|(children|kids) (under|over|must|aged?)|under \d{1,2}|adults? only|all ages|family.friendly)\b/i.test(l) && !/waiver/i.test(l));
   return any ? { line: clip(any) } : null;
@@ -836,8 +854,11 @@ function ageAnswer(ctx: CompanyContext, q: string): { text: string; state: ChatS
   // Rules that name one experience ("Capybara Encounter minimum age 10") answer per experience.
   const scoped: { what: string; min: number }[] = [];
   for (const l of corpus(ctx.item)) {
-    const m = l.match(/\b(?:minimum age|age minimum|at least|ages?)\D{0,6}(\d{1,2})\b/i) || l.match(/\b(\d{1,2})\s*(?:years?|yrs?)\s*(?:and\s*)?(?:\+|up|older)\b/i);
-    if (!m) continue;
+    // Same two guards as `ageRule`, and for the same reason: "Children must be at least 48 inches tall to
+    // paddle in any of our kayak tours" had this answering a parent asking about an eight year old with
+    // "Not for Kayak Tour (48+)".
+    const m = l.match(new RegExp(String.raw`\b(?:minimum age|age minimum|at least|ages?)\D{0,6}(\d{1,2})\b` + NOT_AN_AGE, "i")) || l.match(/\b(\d{1,2})\s*(?:years?|yrs?)\s*(?:and\s*)?(?:\+|up|older)\b/i);
+    if (!m || !plausibleAge(Number(m[1]))) continue;
     const f = fams.find((x) => x.name.split(" ").length >= 2 && l.toLowerCase().includes(x.name.toLowerCase()));
     if (f && !scoped.some((s) => s.what === f.name)) scoped.push({ what: f.name, min: Number(m[1]) });
   }
