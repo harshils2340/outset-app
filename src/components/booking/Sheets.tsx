@@ -36,7 +36,7 @@ import { cleanDesc, durationLabel, freeCancel, minAge } from "../../lib/listingD
 import { ASSISTANT_NAME, DAY_SHORT, assistantOn, clock12, companySuggestions, dayLabel, todaysDeals } from "../../lib/companyAgent";
 import { bookableStart, clockIn, hourLines, zoneFor } from "../../lib/openNow";
 import { itemOpenState } from "../../lib/openNow";
-import { fetchAvailability, fetchOpenSlots, hasApi, type LiveAvailability } from "../../lib/api";
+import { apiConfig, fetchAvailability, fetchOpenSlots, hasApi, type LiveAvailability } from "../../lib/api";
 import { dateKey } from "../../lib/dates";
 import { safeHttpUrl } from "../../lib/urlSafety";
 import { searchSuggest } from "../../lib/search";
@@ -398,6 +398,14 @@ function RequestBody({
   const day = dates[dateIdx];
   const p = priceUnclaimed(picked, qty, extras);
   const instant = !!(item.claimed && item.instant);
+  // Whether a card is taken is decided by the API from the listing's own price, not by this screen, and it
+  // takes one on a request as much as on an instant booking: the card is held and captured when the shop
+  // accepts. This screen said nothing about a card at all, so a guest on a phone pressed "Request to book"
+  // under the line "nothing is charged until they do" and Stripe's card form came up. The desktop page has
+  // read this since cards were switched on; this is the same read. Off, or unanswered, and nothing changes.
+  const [payments, setPayments] = useState(false);
+  useEffect(() => { let alive = true; void apiConfig().then((c) => { if (alive) setPayments(c.payments); }); return () => { alive = false; }; }, []);
+  const cardNow = payments && !!p.total;
   // The public rating and its count appear only beside written reviews we can actually show (see WebListing).
   const reviews = useMemo(() => shownReviews(item.quotes, item.title), [item.quotes, item.title]);
   const score = reviews.length ? publicRating(item) : null;
@@ -577,7 +585,8 @@ function RequestBody({
   );
 
   if (pay && ready && time) {
-    const cta = !guestOk ? "Add your name and number" : instant ? (p.total ? "Confirm and pay " + money(p.total) : "Confirm booking") : "Request to book";
+    // The same three labels the desktop listing uses, so the two surfaces cannot promise different things.
+    const cta = !guestOk ? "Add your name and number" : cardNow ? "Book and pay " + money(p.total!) : instant ? (p.total ? "Confirm and pay " + money(p.total) : "Confirm booking") : "Request to book";
     return (
       <>
         <div className="reqpad airpay" key="pay">
@@ -696,9 +705,11 @@ function RequestBody({
 
             <section className="airsec">
               <p className="airfine">
-                {instant
-                  ? "Confirmed straight away."
-                  : "This is a request. " + item.title + (guest.email.trim() ? " confirms by email, and nothing" : " confirms it, and nothing") + " is charged until they do."}{" "}
+                {cardNow
+                  ? "Secure card payment. Your card is held and only charged once " + item.title + (instant ? " has you booked." : " confirms.")
+                  : instant
+                    ? "Confirmed straight away."
+                    : "This is a request. " + item.title + (guest.email.trim() ? " confirms by email, and nothing" : " confirms it, and nothing") + " is charged until they do."}{" "}
                 Meet at {item.area}.
               </p>
             </section>
