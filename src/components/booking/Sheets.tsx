@@ -61,7 +61,8 @@ import { applyFilters, browseList, nearFirst } from "../explore/feed";
 import { getPrefs, setPrefs, toggleSaved, usePrefs, type FeedFilters } from "../explore/prefs";
 import { SlotCalendar } from "./SlotCalendar";
 import { SearchSheet } from "../explore/SearchSheet";
-import { AdminSiteLink, ExplainLine, ReviewCard, TYPE_NAME, arrivalNote, bookableServices, dealShown, isStandardOnly, optionLength, splitVariants, variantNote, tidyDuration, tidyHours, possessive, shownReviews, splitIncluded, tidyAddress, tidyCancel, tidyLength, tidyLine, tidyName } from "../web/WebListing";
+import { AdminSiteLink, ExplainLine, ReviewCard, TYPE_NAME, arrivalNote, bookableServices, dealShown, isStandardOnly, optionLength, splitVariants, variantNote, tidyDuration, tidyHours, possessive, splitIncluded, tidyAddress, tidyCancel, tidyLength, tidyLine, tidyName } from "../web/WebListing";
+import { shownReviews } from "../../lib/reviews";
 
 /** Only the starting point for the party picker before a service is chosen; the operator's own limit wins. */
 const QTY_MAX = 8;
