@@ -2,6 +2,7 @@ import type { OperatorContact, Unclaimed } from "../data/types";
 import type { LiveAvailability } from "./api";
 import { addressLine, fmtPhone, plainWords } from "./catalog";
 import { money } from "./format";
+import { groupCap } from "./listingDerive";
 import { clockIn, hourLines, itemWeek, openStateAt, zoneFor, type Week } from "./openNow";
 import { venueLabel } from "./places";
 import { hasPrice } from "./pricing";
@@ -493,10 +494,23 @@ const digits = (l: string) => l.replace(/\b(two|three|four|five|six|seven|eight|
 
 function capacityRule(item: Unclaimed): { max?: number; line: string } | null {
   const lines = [...(item.groupInfo || []), ...item.specs, ...(item.requirements || []), ...(item.policies || [])];
+  // The listing page's own reader answers first, so the page and Otto can never name different numbers. They
+  // used to, on 267 of the 1,722 listings where both had one: the page reads the group lines carefully, and
+  // the scan below took the first ceiling word it saw and the first count after it, which is the floor of a
+  // range ("Baskets hold 2 to 6 passengers" gave 2) and the head of a thousands separator ("accommodate up to
+  // 10,000 people" gave 10). It only reads `groupInfo`, so the wider scan still has the rest to itself.
+  const stated = groupCap(item.groupInfo);
+  if (stated != null) {
+    const line = (item.groupInfo || []).find((l) => groupCap([l]) === stated) || (item.groupInfo || [])[0];
+    return { max: stated, line: clip(line) };
+  }
   for (const l of lines) {
     const d = digits(l);
     const m =
-      d.match(/\b(?:up to|maximum(?: of)?|max(?:imum)?(?: of)?|capacity(?: of)?|accommodates?(?: up to)?|holds?(?: up to)?|seats?(?: up to)?|no more than)\s*(\d{1,3})\b(?!\s*(?:lanes?|hours?|hrs?|days?|minutes?|mins?|years?|weeks?|%|lbs?|pounds?|feet|ft))/i) ||
+      // The units are every unit a shop states next to a ceiling word that is not a count of people. Otto told
+      // guests a group limit of 20 because the shop advertises "Views up to 20 miles on a clear day", and 48
+      // because a pony ride asks riders to be "up to 48 inches tall".
+      d.match(/\b(?:up to|maximum(?: of)?|max(?:imum)?(?: of)?|capacity(?: of)?|accommodates?(?: up to)?|holds?(?: up to)?|seats?(?: up to)?|no more than)\s*(\d{1,3})\b(?!\s*(?:lanes?|hours?|hrs?|days?|minutes?|mins?|years?|weeks?|%|lbs?|pounds?|feet|ft|in\b|inch|yards?|m\b|met(?:er|re)s?|km|miles?|"|”))/i) ||
       d.match(/\b(\d{1,2})\s*(?:-|to|–)\s*(\d{1,3})\s*(?:players?|people|guests?|persons?|passengers?|participants?)\b/i);
     if (m) {
       const max = Number(m[2] || m[1]);
