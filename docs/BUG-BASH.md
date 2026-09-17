@@ -1166,6 +1166,79 @@ ran at the end, because these fixes are in the two pages it drives: **53 of 53**
   listings, the two distance helpers still disagree on miles against kilometres, Arizona still moves on the
   Navajo Nation, and no workflow runs `npm test` on its own.
 
+## 17 September 2026, nineteenth run (09:00 to 10:30 UTC)
+
+**Chosen, and why.** No commit had landed since the eighteenth run's entry, which says the rehearsal was green
+at **53 of 53**, so it was **skipped at the start**: both type checks and both unit suites ran instead. The
+time went on two of the open calls Coverage had been carrying for several runs, both of them cases of one fact
+being read by two different readers that disagree, which is the shape of bug the last four runs kept turning
+up. The rehearsal ran twice at the end, because every fix is in code it drives: **53 of 53** both times.
+
+Worth recording for the next run: `npx tsc --noEmit -p .` at the root checks **nothing**. The root
+`tsconfig.json` is solution style, `"files": []` with two references, so that command exits 0 having read no
+source at all. `npx tsc -b` is the one that checks the app, and it is what ran here. The root `node_modules`
+was also absent on this container, which made two unrelated suites fail until `npm install` ran.
+
+**Found and fixed.**
+
+- **Every American listing told guests how far away it was in kilometres** (`891a1720b`). `fmtDistance` in
+  `places.ts` printed metric to everyone, and it is what the desktop feed card, the phone card, the listing
+  page's key facts, the compare table and a chain's venue rows all call. **51,940** of the catalog's 59,163
+  listings are in the United States, so a guest in Tampa read "19 km away" on the card, opened the booking
+  sheet that card links to, and read "12 mi away" for the same shop: the sheet asked the other copy of the
+  rule, `formatDistance` in `geo.ts`, which has been country aware all along. One rule now, in `geo.ts`,
+  because `places.ts` reaches for `navigator` and the backend's own tests typecheck their way into `geo.ts`
+  through `pricing.ts`. The country is a required argument, so a sixth call site cannot assume one. Canada is
+  unchanged.
+- **Otto told a guest a different group size than the page they were reading it on** (`55ad76814`). On **267**
+  of the 1,722 shipped listings where both had a number they named different ones. The page reads the group
+  lines with `groupCap`, which knows a range's floor from its ceiling and knows "10,000" is not "10"; Otto had
+  its own reader that took the first ceiling word and the first count after it, so "Baskets hold 2 to 6
+  passengers" gave 2 under a page saying 6. `capacityRule` asks the page's reader first. Otto keeps its wider
+  scan of specs, requirements and policies for listings whose group lines say nothing, and that scan no longer
+  reads a number that is not a count of people: it was answering 20 because a shop advertises "Views up to 20
+  miles on a clear day", 48 from a pony ride's rider height and 5 from a "max 5 km/h" sign. Thirteen listings
+  lose a number that way and quote the line instead.
+- **Otto read a height in inches as a minimum age and turned an eight year old away** (`ec73a3d86`).
+  "Children must be at least 48 inches tall to paddle in any of our kayak tours" had the assistant answering a
+  parent with **"Not for Kayak Tour (48+)"**. Two of Otto's readers bridged "must be at least" to the first
+  number a few characters later and never asked what it counted, so an age came out of a height, a "30 minutes
+  prior" check-in, a "14 days in advance" refund window and the age on a senior ticket. **198** shipped
+  listings quoted an age outside 2 to 21, and the page and Otto disagreed on **83** of the 1,210 where both had
+  a number. The page's `minAge`, which wants an age word beside the number and keeps the answer between 2 and
+  21, answers first; Otto's own scan carries the same two guards. 182 listings lose a number that was never an
+  age. The listing page's own answers are untouched by either of the last two fixes.
+
+**Tests.** `fmtDistance.test.ts` rewritten (11 cases, 5 fail on the old reading), `groupSize.test.ts` (5, four
+fail) and `minAgeAnswer.test.ts` (4, all four fail). Each case is pinned to the real listing it came from and
+first asserts that listing still carries the line, so a later sync that fixes the data makes the test say so
+rather than pass quietly. Three of them sweep all 59,162 shipped detail files and assert no listing anywhere
+reads two ways: on the old code those three report 267, 72 and 198. 299 guest tests and 196 backend tests
+pass, both projects type-check clean.
+
+**Needs Harshil.**
+
+- **351 listings could print a group size they currently do not, and 32 would change the one they print.**
+  `groupCap` counts "guests, people, passengers, riders" but not **players, persons, participants or anglers**,
+  and does not read number words, so "Maximum six passengers per sail" and "Up to 4 players per game" print
+  nothing. Widening it makes the page and Otto agree on all 2,073 listings that answer (measured), gains 351
+  and loses none, but moves 32: about 23 of those are plainly better (an escape room's "Rooms hold 2-10
+  players; can host up to 70 people per hour" stops printing 70), and **9 get smaller** because the shop lists
+  its smallest craft first, so o-nextwavewatersports-com would say "Up to 2 guests" on a jet ski line while it
+  also runs a 49-guest catamaran. That last group is a judgement call about which of several craft the line is
+  for, so it is yours. The others: o-chicagoboatrentals-com, o-cocoabeachparasail-com, o-confusioncharters-com,
+  o-heliny-com, o-jordanlakerental-com, o-mintjuleptours-com, o-sjwatersports-com, o-skypirateparasail-com.
+- **A minimum age over 21 can never be printed.** `minAge` caps at 21, so "The registered renter and driver of
+  the boat must be at least 25 years of age" shows nothing on the page and is now quoted rather than counted by
+  Otto. The cap is what keeps senior fares and ticket rows out; raising it to 25 would admit boat and car
+  rental floors, which are real rules guests get turned away by.
+- The earlier runs' calls stand: everything needing a real Stripe key is still untouched, Home's three tabs are
+  still `role="tab"` with nothing to control, `Sunset sail` is still listed twice on the test shop, the party
+  picker still offers 20 on listings that state less, 6,513 rated listings still show a star rating on their
+  card and none on the page it opens, Arizona still moves on the Navajo Nation, and no workflow runs
+  `npm test` on its own.
+
+
 ## Coverage
 
 **Verified so far.** Booking validation and odd input on every route that takes it. The money split,
@@ -1290,6 +1363,13 @@ The bar that decides Top rated, over all 7,517 listings that publish a rating, o
 it. The count printed beside the stars, on all ten lines that print it. That a service can never fold every
 tier away behind "More options". `promoOn` and `todaysDeals` against the 48 deals the catalog ships.
 
+How far away a shop is, on every surface that prints it, over all 59,163 shipped listings: which unit each
+country reads, that the cards, the listing page's key facts, the compare table, a chain's venue rows and the
+booking sheet all answer alike, and every band boundary in both units. The group size and the minimum age a
+listing states, each read by the listing page and by Otto, over all 59,162 shipped detail files: that no
+listing anywhere reads two ways, and that a number beside a ceiling word which counts inches, minutes, days,
+miles, kilometres per hour, pounds or dollars is never quoted as a party size or an age.
+
 **Not yet checked.** Anything that needs a real Stripe key: the embedded card form itself mounted by
 Stripe.js, the hosted page, 3D Secure, the Payouts page against a connected account, and the pending row a
 closed card form leaves holding the guest's own time for thirty minutes (see this run's Needs Harshil). The
@@ -1299,11 +1379,10 @@ it returns and the deploy that makes the file exist. The mouse drag path of reor
 paths are driven in a browser, the HTML5 drag events are not. A rehearsal check that reads a claimed listing's
 rendered page and not only the API's JSON. A CI job that runs `npm test` on either side. Whether a claimed shop
 with an empty menu should pause its own listing. Whether a shop that genuinely trades around the clock can say
-so at all. `geo.ts`'s `formatDistance` and `places.ts`'s `fmtDistance` still disagree on miles against
-kilometres. Whether the Where box should index the towns our own catalog already names. Whether Arizona's
+so at all. Whether the Where box should index the towns our own catalog already names. Whether Arizona's
 Navajo Nation should keep daylight saving. The 4,736 listings whose area carries no town, as a supply gap.
 Whether the party picker should take the group size a listing states (1,255 state one under 20, and the
-picker offers 20). Why the listing page and Otto still name different group sizes on 799 listings. The
+picker offers 20). The
 glossary behind a tier label (`explain`, `variantNote`) and the "More options" folding, which an earlier run
 read but did not drive in a browser. Deals and promos on a listing driven in a browser, and the promo crawl's
 output; only the rules behind them are read so far. Whether the listing page should print a rating with no
@@ -1313,4 +1392,8 @@ it. The two listings that put the review's headline in the author slot, so a car
 Whether the phone sheet should call one badge "Guest favourite" on the photo and "Top rated" in the row under
 it. The dashboard Home tabs as a screen reader meets them: they are `role="tab"` with no panel to control and
 no arrow keys, and putting that right needs `src/styles`. Whether the Next 7
-days tab should list the week's unanswered requests as well as its confirmed bookings.
+days tab should list the week's unanswered requests as well as its confirmed bookings. Whether `groupCap`
+should count players, persons, participants and anglers and read number words: 351 listings would print a
+group size they currently do not and 32 would change theirs, 9 of them downwards (see this run's Needs
+Harshil). Whether a minimum age over 21 should be printable at all, for boat and car
+rental floors.
