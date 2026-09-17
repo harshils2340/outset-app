@@ -8,7 +8,7 @@ import { regionOfArea } from "../../data/regions";
 import { SLOT_TIMES } from "../../data/slots";
 import type { Unclaimed } from "../../data/types";
 import { addressLine, bookingPaused, contactFor, fmtHours, fmtPhone, fromPrice, getCatalog, listingFacts, mapsHref, maxGuestsFor, perPerson, plainWords, publicRating, telHref, topRated as isTopRated } from "../../lib/catalog";
-import { DAYS, fmtDate, fmtReviews, fmtTime, money, priceWith } from "../../lib/format";
+import { DAYS, fmtDate, fmtReviews, fmtTime, money, priceWith, reviewsLine } from "../../lib/format";
 import { srcSet, thumb } from "../../lib/images";
 import { embedAutoplay, isGif, listingMedia, photoCandidates, probePhotos, type Media } from "../../lib/media";
 import { cleanDesc, durationLabel, freeCancel, groupCap as readGroupCap, minAge } from "../../lib/listingDerive";
@@ -1150,7 +1150,7 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
   else if (!visit) rows.push({ icon: I.message, title: "Request to book", text: "The business confirms by email. Nothing is charged until they do." });
   else if (ticketHref) rows.push({ icon: I.ticket, title: "Tickets from the business", text: "Entry is sold on " + possessive(item.title) + " own site, at their prices." });
   if (item.meetingPoint) rows.push({ icon: I.door, title: "Meeting point", text: tidyLine(item.meetingPoint) });
-  if (topRatedHere && rows.length < 3) rows.push({ icon: I.medal, title: "Top rated", text: "Rated " + score!.rating.toFixed(1) + " from " + fmtReviews(score!.reviews) + " public reviews." });
+  if (topRatedHere && rows.length < 3) rows.push({ icon: I.medal, title: "Top rated", text: "Rated " + score!.rating.toFixed(1) + " from " + reviewsLine(score!.reviews, "public") + "." });
   const highlightRows = rows.slice(0, 3);
 
   // Things to know, Airbnb's three columns. A column with nothing stated stays out.
@@ -1332,7 +1332,7 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
           </div>
           {navCta && !visit && !done && !paused ? (
             <div className="alsubcta">
-              <span>{priceTag}{score ? <small><Markup html={I.star} /> {score.rating.toFixed(1)} · {fmtReviews(score.reviews)} reviews</small> : null}</span>
+              <span>{priceTag}{score ? <small><Markup html={I.star} /> {score.rating.toFixed(1)} · {reviewsLine(score.reviews)}</small> : null}</span>
               <button type="button" className="alprimary" tabIndex={navOn ? 0 : -1} onClick={() => { jump("al-cols"); if (time == null) window.setTimeout(() => setPickerOpen(true), 450); }}>{ctaLabel}</button>
             </div>
           ) : null}
@@ -1424,7 +1424,7 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
               {keyFacts.length ? <p className="alfacts">{keyFacts.join(" · ")}</p> : null}
               {!topRatedHere && score ? (
                 <p className="alrateline">
-                  <Markup html={I.star} /> <b>{score.rating.toFixed(1)}</b> · <button type="button" className="alunder" onClick={() => jump("al-reviews")}>{fmtReviews(score.reviews)} reviews</button>
+                  <Markup html={I.star} /> <b>{score.rating.toFixed(1)}</b> · <button type="button" className="alunder" onClick={() => jump("al-reviews")}>{reviewsLine(score.reviews)}</button>
                 </p>
               ) : null}
             </section>
@@ -1665,7 +1665,7 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
               <div className="alreserve">
                 <div className="alreservehead">
                   <span className="alprice"><b>Plan your visit</b></span>
-                  {score ? <span className="alreserverate"><Markup html={I.star} /> {score.rating.toFixed(1)} · <u>{fmtReviews(score.reviews)} reviews</u></span> : null}
+                  {score ? <span className="alreserverate"><Markup html={I.star} /> {score.rating.toFixed(1)} · <u>{reviewsLine(score.reviews)}</u></span> : null}
                 </div>
                 <div className="albox">
                   <div className="alboxcell static">
@@ -1705,7 +1705,7 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
               <div className="alreserve">
                 <div className="alreservehead">
                   {priceTag}
-                  {score ? <span className="alreserverate"><Markup html={I.star} /> {score.rating.toFixed(1)} · <u>{fmtReviews(score.reviews)} reviews</u></span> : null}
+                  {score ? <span className="alreserverate"><Markup html={I.star} /> {score.rating.toFixed(1)} · <u>{reviewsLine(score.reviews)}</u></span> : null}
                 </div>
 
                 <div className="alboxwrap" ref={popRef}>
@@ -1897,10 +1897,10 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
                   <span className="allaurel big flip"><Markup html={I.laurelL} /></span>
                 </span>
                 <b className="alfavbigtitle">Top rated</b>
-                <p>One of the most loved {typeName.toLowerCase()} listings on Outset, based on {fmtReviews(score!.reviews)} public reviews</p>
+                <p>One of the most loved {typeName.toLowerCase()} listings on Outset, based on {reviewsLine(score!.reviews, "public")}</p>
               </div>
             ) : score ? (
-              <h2 className="alreviewshead"><Markup html={I.star} /> {score.rating.toFixed(1)} · {fmtReviews(score.reviews)} reviews</h2>
+              <h2 className="alreviewshead"><Markup html={I.star} /> {score.rating.toFixed(1)} · {reviewsLine(score.reviews)}</h2>
             ) : (
               <h2>What guests say</h2>
             )}

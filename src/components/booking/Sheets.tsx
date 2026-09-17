@@ -27,7 +27,7 @@ import {
   topRated,
   type FactLine,
 } from "../../lib/catalog";
-import { fmtDate, fmtReviews, fmtTime, money, priceWith, unitLine } from "../../lib/format";
+import { fmtDate, fmtReviews, fmtTime, money, priceWith, reviewsLine, unitLine } from "../../lib/format";
 import { formatDistance, milesBetween, type GeoPoint } from "../../lib/geo";
 import { addonPrice, hasPrice, priceFor, priceUnclaimed, serviceFeeLabel } from "../../lib/pricing";
 import { useApp } from "../../state/AppProvider";
@@ -514,8 +514,8 @@ function RequestBody({
   // The same status line the desktop header shows, so the two do not word it differently: "Closes at 5 PM"
   // rather than just "Open", and its own tone when closing time is near.
   if (openNow) rows.push({ icon: ICONS.clock, title: openNow.line, sub: "From the hours they publish", tone: openNow.open ? (openNow.soon ? "soon" : "open") : "closed" });
-  if (guestFav && score) rows.push({ icon: ICONS.star, title: "Top rated", sub: "Rated " + fmtRating(score.rating) + " across " + fmtReviews(score.reviews) + " public reviews" });
-  else if (score && score.reviews >= 1000) rows.push({ icon: ICONS.star, title: "Popular", sub: fmtReviews(score.reviews) + " public reviews" });
+  if (guestFav && score) rows.push({ icon: ICONS.star, title: "Top rated", sub: "Rated " + fmtRating(score.rating) + " across " + reviewsLine(score.reviews, "public") });
+  else if (score && score.reviews >= 1000) rows.push({ icon: ICONS.star, title: "Popular", sub: reviewsLine(score.reviews, "public") });
   if (cancel) rows.push({ icon: ICONS.check, title: cancel, sub: "Per their published cancellation terms" });
   if (instant) rows.push({ icon: ICONS.bolt, title: "Instant confirmation", sub: "Your spot is confirmed as soon as you book" });
   if (duration) rows.push({ icon: ICONS.clock, title: duration, sub: "Duration" });
@@ -846,7 +846,7 @@ function RequestBody({
             </div>
           ) : score ? (
             <p className="airrateline">
-              <IcStar size={12} /> <b>{fmtRating(score.rating)}</b> · <span className="u">{fmtReviews(score.reviews)} reviews</span>
+              <IcStar size={12} /> <b>{fmtRating(score.rating)}</b> · <span className="u">{reviewsLine(score.reviews)}</span>
             </p>
           ) : null}
 
@@ -1180,7 +1180,7 @@ function RequestBody({
           ) : null}
 
           {score || reviews.length ? (
-            <Section title={score ? "★ " + fmtRating(score.rating) + " · " + fmtReviews(score.reviews) + " reviews" : "What guests say"}>
+            <Section title={score ? "★ " + fmtRating(score.rating) + " · " + reviewsLine(score.reviews) : "What guests say"}>
               {reviews.length ? (
                 <div className="airquotes">
                   {reviews.map((r) => (

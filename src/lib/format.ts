@@ -47,6 +47,14 @@ export function fmtReviews(n: number): string {
   return n.toLocaleString("en-US");
 }
 
+/**
+ * "1 review", "2,431 reviews", "1 public review": the count with its own word. Every surface that printed the two
+ * together wrote "reviews" whatever the number, so a shop with one told a guest "1 reviews".
+ */
+export function reviewsLine(n: number, adjective = ""): string {
+  return fmtReviews(n) + " " + (adjective ? adjective + " " : "") + "review" + (n === 1 ? "" : "s");
+}
+
 /** "$80" plus its unit as "$80 / person". Units come in as "/person", "/hr", "each". */
 export function priceWith(amount: number, per?: string | null): string {
   const unit = (per || "").replace(/^\//, "").trim();
