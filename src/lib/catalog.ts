@@ -4,6 +4,7 @@ import type { OperatorContact, Unclaimed, UnclaimedOption } from "../data/types"
 import { regionOfArea } from "../data/regions";
 import type { GeoPoint } from "./geo";
 import { bookableMenu } from "./menuRow";
+import { ownWords } from "./ownWords";
 import { isPublicHttpUrl } from "./urlSafety";
 
 /** The crawler's own `src` field, always meant to be the operator's domain, as an https URL, or "" when it is
@@ -88,6 +89,28 @@ function domainOf(src: string): string {
   return src.replace(/^https?:\/\//i, "").replace(/^www\./i, "").split("/")[0].toLowerCase();
 }
 
+/**
+ * A crawled record as every surface should read it, applied once where records arrive rather than in each of
+ * the pages, sheets, rails, search and answers that read them.
+ *
+ * Two things the crawl brings back are not what they look like. A menu row can be the page's own heading
+ * rather than a service, and it is bookable and priced like any other row (`menuRow.ts`). A description can be
+ * the theme's Latin filler or a PDF read as text, which says the shop is not real (`ownWords.ts`). Both are
+ * fixed here so the card, the listing page, the booking box, the operator's own description box and Otto never
+ * disagree about what this shop published.
+ */
+function asPublished(raw: Unclaimed): Unclaimed {
+  const item = bookableMenu(raw);
+  const blurb = ownWords(item.blurb);
+  const descs = (item.services || []).map((s) => ownWords(s.desc));
+  if (blurb === (item.blurb || "") && descs.every((d, i) => d === ((item.services || [])[i].desc || ""))) return item;
+  return {
+    ...item,
+    ...(blurb === (item.blurb || "") ? {} : { blurb }),
+    ...(item.services ? { services: item.services.map((s, i) => ({ ...s, desc: descs[i] || null })) } : {}),
+  };
+}
+
 /** Merge generated operators in. Seeds keep priority: same domain or id in the seed list is skipped. */
 export function mergeCatalog(items: Unclaimed[], extraContacts: Record<string, OperatorContact>): number {
   const seenDomain = new Set(UNCLAIMED.map((u) => domainOf(u.src)));
@@ -95,10 +118,7 @@ export function mergeCatalog(items: Unclaimed[], extraContacts: Record<string, O
   const had = new Map(base.map((u) => [u.id, u]));
   const added: Unclaimed[] = [];
   for (const raw of items) {
-    // A crawled menu carries rows that are the page's headings rather than the shop's services, and they are
-    // bookable and priced like any other row. One rule, here and in the sync, so the card's "from", the picker,
-    // the price filter and Otto all read the same menu. See `menuRow.ts`.
-    const it = bookableMenu(raw);
+    const it = asPublished(raw);
     const d = domainOf(it.src);
     if (seenId.has(it.id) || (d && !d.startsWith("osm-") && seenDomain.has(d))) continue;
     seenId.add(it.id);
@@ -119,7 +139,7 @@ export function mergeCatalog(items: Unclaimed[], extraContacts: Record<string, O
   // grouped services, descriptions, social handles, pins.
   const remoteByDomain = new Map<string, Unclaimed>();
   for (const raw of items) {
-    const it = bookableMenu(raw);
+    const it = asPublished(raw);
     const d = domainOf(it.src);
     if (d) remoteByDomain.set(d, it);
   }
@@ -215,9 +235,9 @@ export function fromPrice(item: Unclaimed): number | null {
 
 /** Swap a lite record for its full detail record. Overrides and publish state stay as they were. */
 export function hydrateItem(raw: Unclaimed, targetId?: string): void {
-  // The detail file is where a listing's menu really lives, so this is the read that decides what the booking
-  // box offers. Same rule as `mergeCatalog` above.
-  const full = bookableMenu(raw);
+  // The detail file is where a listing's menu and its description really live, so this is the read that decides
+  // what the booking box offers and what the page says. Same rule as `mergeCatalog` above.
+  const full = asPublished(raw);
   const id = resolveCatalogId(targetId || full.id);
   const idx = base.findIndex((u) => u.id === id);
   if (idx === -1) return;

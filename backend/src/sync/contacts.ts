@@ -21,6 +21,7 @@ import { consolidateDeals } from "./dealText.ts";
 import { durationFrom } from "../../../src/lib/duration.ts";
 import { onlyOperatorCancels } from "../../../src/lib/cancellation.ts";
 import { bookableRow, tidyRowName } from "../../../src/lib/menuRow.ts";
+import { ownWords } from "../../../src/lib/ownWords.ts";
 
 type Overlay = { published: boolean; patch: Record<string, unknown> };
 /** Claimed operators' saved edits, keyed by listing id. Filled by loadProfileOverlays before a sync. */
@@ -1545,7 +1546,11 @@ function cutLeadingFragment(t: string): string {
  * upper case, sentences sit one space apart, and the text ends on a sentence inside 600 characters. Navigation text
  * and anything under 40 characters come back empty, since an empty blurb beats junk.
  */
-export function cleanBlurb(raw: string, ctx: { title?: string; city?: string | null; region?: string | null } = {}): string {
+export function cleanBlurb(rawText: string, ctx: { title?: string; city?: string | null; region?: string | null } = {}): string {
+  // A theme's Latin filler and a PDF read as text both come through every check below: "Lorem ipsum dolor sit
+  // amet, consectetur adipiscing elit." is 56 characters of well-formed prose ending on a full stop, and 26
+  // shipped listings publish it. An empty blurb beats junk, and it beats filler for the same reason.
+  const raw = ownWords(rawText);
   if (!raw) return "";
   const lines = raw.split(/\r?\n+/).map((l) => l.replace(/\s+/g, " ").trim()).filter(Boolean);
   const body = lines.length > 1 ? lines.filter((l) => !isHeadingLine(l)) : lines;
@@ -1617,7 +1622,9 @@ export function cleanBlurb(raw: string, ctx: { title?: string; city?: string | n
 
 /** "Ultimate Tour (ULT) Rates For 3 or more passengers ..." starts with the title and widget labels. Keep the copy. */
 function scrubDesc(name: string, desc: string): string {
-  let d = desc.replace(/\s+/g, " ").trim();
+  // The same screen the blurb gets: o-elgintexas-gov and o-hallcounty-org read a PDF as a service description,
+  // and 20 more ship a page theme's "Lorem ipsum" under a real service.
+  let d = ownWords(desc).replace(/\s+/g, " ").trim();
   const n = name.replace(/\s+/g, " ").trim();
   if (n && d.toLowerCase().startsWith(n.toLowerCase())) d = d.slice(n.length).replace(/^[\s:\-–|]+/, "");
   d = d.replace(/^(?:(?:rates?|pricing|prices?|duration|about(?: this)?|flight distance|(?:\w+ )?details?|overview|description|read more|learn more)\s*:?\s*)+/i, "");
