@@ -1,6 +1,7 @@
 import type { OperatorContact, Unclaimed } from "../data/types";
 import type { LiveAvailability } from "./api";
 import { addressLine, fmtPhone, plainWords } from "./catalog";
+import { withoutNoticeWindows } from "./duration";
 import { money } from "./format";
 import { groupCap, minAge } from "./listingDerive";
 import { clockIn, hourLines, itemWeek, openStateAt, zoneFor, type Week } from "./openNow";
@@ -107,7 +108,10 @@ const OFFER_NOUN = /^(rentals?|tours?|packages?|admission|lessons?|class(es)?|in
 
 /** Minutes a piece of text states, or null. Reads "90 minutes", "1.5 hours", "1 hr 30 min", "half day". */
 export function minutesIn(text: string): number | null {
-  const t = String(text || "").toLowerCase();
+  // How much notice a cancellation needs is not how long the thing runs. Asked "how long is it?", Otto told a
+  // campground's guests "About 72 hours" off the line "Cancellations prior to 72 hours", and a golf course's
+  // twilight round "2 hours" because the rate starts two hours before close. See duration.ts.
+  const t = withoutNoticeWindows(text).toLowerCase();
   if (/\bhalf[ -]day\b/.test(t)) return 240;
   if (/\b(full|all)[ -]day\b/.test(t)) return 480;
   const frac = t.match(/\b(\d+)\/(\d+)\s*(?:hours?|hrs?\b|hr\b)/);

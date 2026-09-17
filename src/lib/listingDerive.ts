@@ -1,5 +1,6 @@
 import type { Unclaimed } from "../data/types";
 import { plainWords } from "./catalog";
+import { durationFrom } from "./duration";
 
 /**
  * Derivations shared by the desktop listing page and the phone listing sheet. Every function reads what the
@@ -100,12 +101,17 @@ export function groupCap(lines: string[] | undefined): number | null {
   return null;
 }
 
-/** Longest duration mentioned across the menu, as the operator wrote it. */
+/**
+ * The first length the menu states, as the operator wrote it, for a listing whose crawled `dur` is empty.
+ *
+ * This reader had no idea what a booking can be, while the backend's, which writes `dur` in the first place,
+ * has refused a policy window and an implausible length all along. So the page printed exactly the durations
+ * the sync had already declined: 135 of the 178 shipped listings that fall back to this one, among them a
+ * campground whose "Cancellations prior to 72 hours" read as a 72 hour trip and a yoga studio advertising
+ * "200 hours" off a teacher training. Worse on a claimed shop, where this reader wins over the crawled fact
+ * (`publishedPatch`): 130 listings would have replaced a good `dur` with one of these on the day they claimed.
+ * One rule now, in `duration.ts`, and the sync calls the same one.
+ */
 export function durationLabel(item: Unclaimed): string | null {
-  const texts = [...(item.services || []).flatMap((s) => s.variants.map((v) => v.label)), ...item.options.map((o) => o.detail)];
-  const found = texts.map((t) => t.match(/\b(\d+(?:\.\d+)?)\s*(?:-|to)?\s*(\d+)?\s*(hours?|hrs?|minutes?|mins?|days?)\b/i)).filter(Boolean) as RegExpMatchArray[];
-  if (!found.length) return null;
-  const m = found[0];
-  const unit = /min/i.test(m[3]) ? "min" : /day/i.test(m[3]) ? (Number(m[2] || m[1]) === 1 ? "day" : "days") : Number(m[2] || m[1]) === 1 ? "hour" : "hours";
-  return (m[2] ? m[1] + " to " + m[2] : m[1]) + " " + unit;
+  return durationFrom([...(item.services || []).flatMap((s) => s.variants.map((v) => v.label)), ...item.options.map((o) => o.detail)]);
 }

@@ -2,6 +2,7 @@ import type { Booking, CategoryId, OperatorContact, Unclaimed, UnclaimedOption, 
 import { forgetClaim, saveRemoteProfile, type RemoteBooking } from "./api";
 import { addressLine, contactFor, experienceById, fmtPhone, getCatalog, setOperatorOverride, siteUrl } from "./catalog";
 import { dateKey, startOfToday } from "./dates";
+import { withoutNoticeWindows } from "./duration";
 import { fmtTime, money } from "./format";
 import { durationLabel as menuDuration, freeCancel } from "./listingDerive";
 import { operatorNet, subtotalFromTotal } from "./pricing";
@@ -571,9 +572,13 @@ function servicesFrom(u: Unclaimed): OpService[] {
   return [];
 }
 
-/** "1.5 hours", "90 min", "2 hr" as minutes; 0 when the text names none. */
+/**
+ * "1.5 hours", "90 min", "2 hr" as minutes; 0 when the text names none. A notice or refund window is not a
+ * length (see duration.ts), so a service imported from "Cancellations prior to 72 hours" no longer opens the
+ * dashboard as a booking a whole day long.
+ */
 export function minutesIn(text: string | null | undefined): number {
-  const m = (text || "").match(/(\d+(?:\.\d+)?)\s*(?:-|to)?\s*(\d+(?:\.\d+)?)?\s*(hours?|hrs?|h\b|minutes?|mins?|m\b)/i);
+  const m = withoutNoticeWindows(text || "").match(/(\d+(?:\.\d+)?)\s*(?:-|to)?\s*(\d+(?:\.\d+)?)?\s*(hours?|hrs?|h\b|minutes?|mins?|m\b)/i);
   if (!m) return 0;
   const n = Number(m[2] || m[1]);
   const mins = /^(m|min|mins|minute|minutes)$/i.test(m[3]) ? n : n * 60;

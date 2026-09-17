@@ -18,6 +18,7 @@ import { rankForCover } from "../enrich/photorelevance.ts";
 import { existsSync, readFileSync as readFileSyncFs } from "node:fs";
 import { STANDARD, isEventSchedule, plainLabel, plainName, plainServices, type RawService } from "./plainServices.ts";
 import { consolidateDeals } from "./dealText.ts";
+import { durationFrom } from "../../../src/lib/duration.ts";
 
 type Overlay = { published: boolean; patch: Record<string, unknown> };
 /** Claimed operators' saved edits, keyed by listing id. Filled by loadProfileOverlays before a sync. */
@@ -670,21 +671,15 @@ export function toCatalogItem(r: CatalogRow): Record<string, unknown> {
   return tidyItem(item, r.domain);
 }
 
-/** "2 hours", "90 min", "1 to 4 hours": the first duration the menu states. */
+/**
+ * "2 hours", "90 min", "1 to 4 hours": the first duration the menu states, and the `dur` every guest surface
+ * prints. The rule moved to `src/lib/duration.ts` so that the guest page, which derives one when this wrote
+ * none, and Otto, who answers "how long is it?", cannot read the same menu line differently. The line-wide
+ * test this used to run also threw away a "4-hour experience with priority scheduling", because "priority"
+ * carries "prior"; only the span a notice rule governs goes now.
+ */
 function durationOf(texts: string[]): string | null {
-  for (const t of texts) {
-    const m = t.match(/\b(\d+(?:\.\d+)?)\s*(?:-|to)?\s*(\d+)?\s*(hours?|hrs?|minutes?|mins?|days?)\b/i);
-    if (!m) continue;
-    const n = Number(m[2] || m[1]);
-    if (/notice|advance|prior|before|cancel|refund/i.test(t)) continue;
-    const isMin = /min/i.test(m[3]);
-    const isDay = /day/i.test(m[3]);
-    // A booking is minutes to a day or two. Anything longer is a policy window that leaked into the menu text.
-    if ((isMin && n > 600) || (!isMin && !isDay && n > 14) || (isDay && n > 7)) continue;
-    const unit = isMin ? "min" : isDay ? (n === 1 ? "day" : "days") : n === 1 ? "hour" : "hours";
-    return (m[2] ? m[1] + " to " + m[2] : m[1]) + " " + unit;
-  }
-  return null;
+  return durationFrom(texts);
 }
 
 /** "Free cancellation up to 48 hours before", only when the operator's own words promise a full refund. */
