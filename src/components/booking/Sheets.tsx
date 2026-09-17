@@ -652,8 +652,12 @@ function RequestBody({
               <h2>Price details</h2>
               <div className="airlines">
                 {p.base ? (
+                  // A per-person price is multiplied by the party, and this line is the only place that says so
+                  // before the guest pays. Both desktop surfaces have shown "$29 × 4 guests" since cards were
+                  // switched on; the phone showed "Sunset sail · 2 hours  $116" over a tier row reading "$29",
+                  // and on a phone the frame goes away and this screen is the whole app.
                   <div className="airline">
-                    <span>{picked ? optionLabel(picked) : "Experience"}</span>
+                    <span>{picked && perPerson(picked) && hasPrice(picked.price) ? money(picked.price) + " × " + qty + (qty === 1 ? " guest" : " guests") : picked ? optionLabel(picked) : "Experience"}</span>
                     <span>{money(p.base)}</span>
                   </div>
                 ) : (
