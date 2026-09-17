@@ -820,6 +820,17 @@ export function onTheBooks(bookings: OpBooking[], from: Date = startOfToday()): 
   return bookings.filter((b) => b.status === "accepted" && b.date >= todayKey && b.date < endKey && isMoney(b));
 }
 
+/**
+ * What the Home page's Next 7 days tab says when it has nothing to list. That tab lists confirmed bookings
+ * only, so "Your calendar is open" was told to a shop with five requests waiting in that very week, two lines
+ * under a Needs action badge reading 5, and to a shop whose next booking is eight days out.
+ */
+export function weekAheadLine(waiting: number, later: number): string {
+  if (waiting > 0) return `Nothing confirmed in the next 7 days. ${waiting} ${waiting === 1 ? "request is" : "requests are"} still waiting on your answer.`;
+  if (later > 0) return `Nothing in the next 7 days. ${later} ${later === 1 ? "booking" : "bookings"} after that.`;
+  return "Nothing booked in the next 7 days. Your calendar is open.";
+}
+
 /** Money earned: trips completed in the last `days` days, up to and including today. The Home page's second tile. */
 export function completedLately(bookings: OpBooking[], days = 30, from: Date = startOfToday()): OpBooking[] {
   const todayKey = dateKey(from);

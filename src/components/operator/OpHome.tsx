@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { dateKey, startOfToday } from "../../lib/dates";
 import { fmtTime, money } from "../../lib/format";
-import { DAY_SHORT, completedLately, onTheBooks, payoutSum, setupChecks } from "../../lib/operator";
+import { DAY_SHORT, completedLately, onTheBooks, payoutSum, setupChecks, weekAheadLine } from "../../lib/operator";
 import type { OpBooking } from "../../lib/operator";
 import { Markup } from "../Markup";
 import { OD_ICONS, useOp } from "./opContext";
@@ -65,6 +65,12 @@ export function OpHome() {
   // Upcoming, grouped by day so a week reads as a short list, not seven boxes.
   const days = new Map<string, OpBooking[]>();
   for (const b of upcoming) days.set(b.date, [...(days.get(b.date) || []), b]);
+  // This tab lists confirmed bookings only, so "Your calendar is open" was told to a shop with five requests
+  // waiting in that very week, two lines under a Needs action badge reading 5, and to a shop whose next
+  // booking is eight days out. Say what is actually there.
+  const freshSoon = fresh.filter((b) => b.date >= todayKey && b.date < weekEnd).length;
+  const emptyWeek = weekAheadLine(freshSoon, later);
+
   // A day's line carries the operator's share too, and only when there is one: a day of quotes, or a demo's
   // sample rows, printed a flat "$0" beside two real bookings.
   const dayMoney = (items: OpBooking[]) => {
@@ -147,7 +153,7 @@ export function OpHome() {
               {later ? <p className="odmuted">{later} more after that. <button type="button" className="odlink" onClick={() => go("calendar")}>Open calendar</button></p> : null}
             </div>
           ) : (
-            <p className="ohempty"><Markup html={OD_ICONS.calendar} />Nothing booked in the next 7 days. Your calendar is open.</p>
+            <p className="ohempty"><Markup html={OD_ICONS.calendar} />{emptyWeek}</p>
           )
         ) : null}
       </section>
