@@ -24,6 +24,7 @@ import {
   plainWords,
   publicRating,
   telHref,
+  topRated,
   type FactLine,
 } from "../../lib/catalog";
 import { fmtDate, fmtReviews, fmtTime, money, priceWith, unitLine } from "../../lib/format";
@@ -410,7 +411,8 @@ function RequestBody({
   // The public rating and its count appear only beside written reviews we can actually show (see WebListing).
   const reviews = useMemo(() => shownReviews(item.quotes, item.title), [item.quotes, item.title]);
   const score = reviews.length ? publicRating(item) : null;
-  const guestFav = !!score && score.rating >= 4.8 && score.reviews >= 100;
+  // The same bar the two cards use, plus this surface's rule that a rating shows only beside reviews to read.
+  const guestFav = !!score && topRated(item);
   const contact = contactFor(item);
   const facts = listingFacts(item);
   const here = useGuestPoint();

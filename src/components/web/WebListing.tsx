@@ -7,7 +7,7 @@ import { metroById } from "../../data/metros";
 import { regionOfArea } from "../../data/regions";
 import { SLOT_TIMES } from "../../data/slots";
 import type { Unclaimed } from "../../data/types";
-import { addressLine, bookingPaused, contactFor, fmtHours, fmtPhone, fromPrice, getCatalog, listingFacts, mapsHref, maxGuestsFor, perPerson, plainWords, publicRating, telHref } from "../../lib/catalog";
+import { addressLine, bookingPaused, contactFor, fmtHours, fmtPhone, fromPrice, getCatalog, listingFacts, mapsHref, maxGuestsFor, perPerson, plainWords, publicRating, telHref, topRated as isTopRated } from "../../lib/catalog";
 import { DAYS, fmtDate, fmtReviews, fmtTime, money, priceWith } from "../../lib/format";
 import { srcSet, thumb } from "../../lib/images";
 import { embedAutoplay, isGif, listingMedia, photoCandidates, probePhotos, type Media } from "../../lib/media";
@@ -867,10 +867,6 @@ function DayTimePicker({ dates, dateIdx, onPickDate, chipsFor, time, onPickTime,
   );
 }
 
-/** Only listings with at least this many reviews at this rating get Airbnb's "Guest favourite" style strip. */
-const TOP_RATING = 4.8;
-const TOP_REVIEWS = 100;
-
 type KnowCol = { key: string; title: string; icon: string; lines: string[]; extra?: ReactNode };
 
 export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose: () => void; onOpen: (id: string) => void }) {
@@ -1120,7 +1116,9 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
   const today = item.promos?.length ? clockIn(zoneFor(item)).day : -1;
   const groupCap = readGroupCap(item.groupInfo);
   const hours = hourLines(item).length ? hourLines(item) : contact?.hours.map(fmtHours) || [];
-  const topRated = !!score && score.rating >= TOP_RATING && score.reviews >= TOP_REVIEWS;
+  // The same bar the cards use, and beside it this page's own rule: a rating is printed only where
+  // there are written reviews to read under it, which is what `score` already carries.
+  const topRatedHere = !!score && isTopRated(item);
   const near = state.near ? nearestLocation(item, state.near) : null;
   const typeName = TYPE_NAME[item.art] || "Experience";
   const initial = (item.title.replace(/^the\s+/i, "").match(/[A-Za-z]/) || [item.title.slice(0, 1)])[0].toUpperCase();
@@ -1152,7 +1150,7 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
   else if (!visit) rows.push({ icon: I.message, title: "Request to book", text: "The business confirms by email. Nothing is charged until they do." });
   else if (ticketHref) rows.push({ icon: I.ticket, title: "Tickets from the business", text: "Entry is sold on " + possessive(item.title) + " own site, at their prices." });
   if (item.meetingPoint) rows.push({ icon: I.door, title: "Meeting point", text: tidyLine(item.meetingPoint) });
-  if (topRated && rows.length < 3) rows.push({ icon: I.medal, title: "Top rated", text: "Rated " + score!.rating.toFixed(1) + " from " + fmtReviews(score!.reviews) + " public reviews." });
+  if (topRatedHere && rows.length < 3) rows.push({ icon: I.medal, title: "Top rated", text: "Rated " + score!.rating.toFixed(1) + " from " + fmtReviews(score!.reviews) + " public reviews." });
   const highlightRows = rows.slice(0, 3);
 
   // Things to know, Airbnb's three columns. A column with nothing stated stays out.
@@ -1424,14 +1422,14 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
               <h2>{typeName} in {placeName(item.area)}</h2>
               {openNow ? <p className={"alstatus " + (openNow.open ? (openNow.soon ? "soon" : "open") : "closed")}>{openNow.line}</p> : null}
               {keyFacts.length ? <p className="alfacts">{keyFacts.join(" · ")}</p> : null}
-              {!topRated && score ? (
+              {!topRatedHere && score ? (
                 <p className="alrateline">
                   <Markup html={I.star} /> <b>{score.rating.toFixed(1)}</b> · <button type="button" className="alunder" onClick={() => jump("al-reviews")}>{fmtReviews(score.reviews)} reviews</button>
                 </p>
               ) : null}
             </section>
 
-            {topRated ? (
+            {topRatedHere ? (
               <button type="button" className="alfav" onClick={() => jump("al-reviews")}>
                 <span className="alfavbadge">
                   <span className="allaurel"><Markup html={I.laurelL} /></span>
@@ -1451,7 +1449,7 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
               </button>
             ) : null}
 
-            <section className={"alsec alhost" + (topRated ? " tight" : "")}>
+            <section className={"alsec alhost" + (topRatedHere ? " tight" : "")}>
               <span className="alavatar" aria-hidden="true">{initial}</span>
               <span>
                 <b>Run by {item.title}</b>
@@ -1891,7 +1889,7 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
 
         {score || reviews.length ? (
           <section className="alwide" id="al-reviews">
-            {topRated ? (
+            {topRatedHere ? (
               <div className="alfavbig">
                 <span className="alfavbignum">
                   <span className="allaurel big"><Markup html={I.laurelL} /></span>

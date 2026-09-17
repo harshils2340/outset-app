@@ -5,7 +5,7 @@ import { ART_LABEL } from "../../data/art";
 import { ICONS } from "../../data/icons";
 import { ALL_METRO_ID, METROS, metroById, metroCoords } from "../../data/metros";
 import type { ArtKind, CategoryId, Unclaimed } from "../../data/types";
-import { experienceById, fromPrice, getCatalog, publicRating } from "../../lib/catalog";
+import { experienceById, fromPrice, getCatalog, publicRating, topRated } from "../../lib/catalog";
 import { listingFacts } from "../../lib/catalog";
 import { fmtDate, fmtReviews, money, titleCase } from "../../lib/format";
 import { ART_ALIASES, WHAT_INTENTS, describeQuery, metroInQuery, parseIntent, searchMetros, searchRegions, searchSuggest, stripPlaceWords, warmSearch, type SearchScope } from "../../lib/search";
@@ -239,8 +239,7 @@ function CompareCheck({ id, title, small }: { id: string; title: string; small?:
 
 /** The card's pill: Top rated beats a deal beats open now, one pill at most, the way Airbnb shows one badge. */
 function cardBadge(u: Unclaimed, open: boolean): string | null {
-  const score = publicRating(u);
-  if (score && score.rating >= 4.8 && score.reviews >= 50) return "Top rated";
+  if (topRated(u)) return "Top rated";
   // A titled deal gets its own line under the card; the pill stays for a deal with no title.
   if (dealToday(u) && !liteDealTitle(u.deal)) return "Deal today";
   if (open) return "Open now";

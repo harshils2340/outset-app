@@ -305,6 +305,20 @@ export function publicRating(item: Unclaimed): { rating: number; reviews: number
   return { rating: item.rating, reviews: item.reviews };
 }
 
+/**
+ * The bar a listing clears to be called top rated (a guest favourite on the phone): the operator's own published
+ * rating, from enough reviews for it to mean anything. One bar in one place, because the desktop card's pill, the
+ * phone card's badge, the listing page's laurel and the phone sheet's have to agree. They did not: the desktop
+ * card alone asked for 50 reviews where everything else asks for 100, so 758 listings shipped a card promising
+ * "Top rated" that opened a page saying nothing of the sort.
+ */
+export const TOP_RATED_RATING = 4.8;
+export const TOP_RATED_REVIEWS = 100;
+export function topRated(item: Unclaimed): boolean {
+  const score = publicRating(item);
+  return !!score && score.rating >= TOP_RATED_RATING && score.reviews >= TOP_RATED_REVIEWS;
+}
+
 /** Synced public contact facts for an experience, matched by the operator's domain. */
 export function contactFor(item: Unclaimed): OperatorContact | null {
   if (item.contact) return item.contact;

@@ -2,7 +2,7 @@ import { useRef, useState, type KeyboardEvent } from "react";
 import { metroById } from "../../data/metros";
 import { ART_LABEL } from "../../data/art";
 import type { Unclaimed } from "../../data/types";
-import { cardPlace, fromPrice, perPerson, publicRating } from "../../lib/catalog";
+import { cardPlace, fromPrice, perPerson, publicRating, topRated } from "../../lib/catalog";
 import { dealToday } from "../../lib/companyAgent";
 import { money } from "../../lib/format";
 import { fmtDistance, nearestLocation } from "../../lib/places";
@@ -32,7 +32,7 @@ export function UnclaimedCard({ item }: { item: Unclaimed; compact?: boolean }) 
   const kind = ART_LABEL[item.art] || item.cat;
   const score = publicRating(item);
   // Same bar the desktop card uses, so a business is a guest favourite on both surfaces or neither.
-  const guestFav = !!score && score.rating >= 4.8 && score.reviews >= 100;
+  const guestFav = topRated(item);
   const deal = dealToday(item);
   const instant = !!(item.claimed && item.instant);
   const [broken, setBroken] = useState<Set<string>>(new Set());
