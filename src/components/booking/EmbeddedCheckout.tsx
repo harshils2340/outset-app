@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { apiConfig } from "../../lib/api";
+import { loadStripeJs, type StripeCheckout } from "../../lib/stripeJs";
 import { useApp } from "../../state/AppProvider";
 import { Mark } from "../layout/Mark";
 
@@ -10,28 +11,6 @@ import { Mark } from "../layout/Mark";
  * set (#paid=<code>), which is the confirmation the hosted page always used. Close puts the listing back as it was;
  * the unpaid session expires on its own and the API's expiry webhook clears the pending row.
  */
-
-type StripeCheckout = { mount: (el: HTMLElement) => void; destroy: () => void };
-type StripeJs = (key: string) => { initEmbeddedCheckout: (o: { clientSecret: string }) => Promise<StripeCheckout> };
-declare global {
-  interface Window { Stripe?: StripeJs }
-}
-
-let stripeJs: Promise<StripeJs> | null = null;
-function loadStripe(): Promise<StripeJs> {
-  if (window.Stripe) return Promise.resolve(window.Stripe);
-  if (!stripeJs) {
-    stripeJs = new Promise((resolve, reject) => {
-      const s = document.createElement("script");
-      s.src = "https://js.stripe.com/v3/";
-      s.async = true;
-      s.onload = () => (window.Stripe ? resolve(window.Stripe) : reject(new Error("Stripe.js did not load")));
-      s.onerror = () => reject(new Error("Stripe.js did not load"));
-      document.head.appendChild(s);
-    });
-  }
-  return stripeJs;
-}
 
 export function EmbeddedCheckout({ secret }: { secret: string }) {
   const { cancelCheckout } = useApp();
@@ -45,7 +24,7 @@ export function EmbeddedCheckout({ secret }: { secret: string }) {
       try {
         const key = (await apiConfig()).stripePublishableKey;
         if (!key) throw new Error("Payments are not set up on this site yet.");
-        const stripe = await loadStripe();
+        const stripe = await loadStripeJs();
         checkout = await stripe(key).initEmbeddedCheckout({ clientSecret: secret });
         if (gone || !host.current) { checkout.destroy(); return; }
         checkout.mount(host.current);
