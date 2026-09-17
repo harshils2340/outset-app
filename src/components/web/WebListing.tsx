@@ -4,7 +4,7 @@ import { apiConfig, fetchAvailability, fetchOpenSlots, hasApi, type LiveAvailabi
 import { GUIDES } from "../../data/guides";
 import { ICONS } from "../../data/icons";
 import { metroById } from "../../data/metros";
-import { regionOfArea } from "../../data/regions";
+import { countryOfArea, countryOfRegion, regionOfArea } from "../../data/regions";
 import { SLOT_TIMES } from "../../data/slots";
 import type { Unclaimed } from "../../data/types";
 import { addressLine, bookingPaused, contactFor, fmtHours, fmtPhone, fromPrice, getCatalog, listingFacts, mapsHref, maxGuestsFor, perPerson, plainWords, publicRating, telHref, topRated as isTopRated } from "../../lib/catalog";
@@ -14,7 +14,8 @@ import { embedAutoplay, isGif, listingMedia, photoCandidates, probePhotos, type 
 import { cleanDesc, durationLabel, freeCancel, groupCap as readGroupCap, minAge } from "../../lib/listingDerive";
 import { bookableStart, clockIn, hourLines, itemOpenState, itemWeek, zoneFor } from "../../lib/openNow";
 import { DAY_SHORT, assistantOn, clock12, dayLabel, todaysDeals } from "../../lib/companyAgent";
-import { fmtDistance, kmBetween, nearestLocation, venueLabel } from "../../lib/places";
+import { fmtDistance } from "../../lib/geo";
+import { kmBetween, nearestLocation, venueLabel } from "../../lib/places";
 import { addonPrice, hasPrice, priceUnclaimed, serviceFeeLabel } from "../../lib/pricing";
 import { shownReviews, type ShownReview } from "../../lib/reviews";
 import { listingUrl } from "../../lib/site";
@@ -1135,7 +1136,7 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
   if (age) keyFacts.push("Ages " + age + "+");
   if (item.season && item.season.length <= 32) keyFacts.push(item.season);
   if (item.locations?.length) keyFacts.push(item.locations.length + 1 + " locations");
-  if (near) keyFacts.push(fmtDistance(near.km) + " from " + state.near!.label);
+  if (near) keyFacts.push(fmtDistance(near.km, countryOfArea(item.area)) + " from " + state.near!.label);
 
   // Three highlight rows, Airbnb's "Self check-in / Great location / Free cancellation", from what the listing has.
   const rows: { icon: string; title: string; text: string }[] = [];
@@ -1953,7 +1954,7 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
             <div className="alvenues">
               <h3>{item.locations.length + 1} locations{state.near ? ", nearest to " + state.near.label + " first" : ""}</h3>
               <div className="alvenuegrid">
-                {[{ city: item.area, lat: item.lat, lon: item.lon, street: address || undefined, primary: true }, ...item.locations.map((l) => ({ ...l, city: venueLabel({ city: l.city, region: l.region }), primary: false }))]
+                {[{ city: item.area, region: regionOfArea(item.area), lat: item.lat, lon: item.lon, street: address || undefined, primary: true }, ...item.locations.map((l) => ({ ...l, region: l.region || regionOfArea(item.area), city: venueLabel({ city: l.city, region: l.region }), primary: false }))]
                   .map((v) => ({ ...v, km: state.near && v.lat != null && v.lon != null ? kmBetween(state.near, { lat: v.lat, lon: v.lon }) : null }))
                   .sort((a, b) => (a.km ?? Infinity) - (b.km ?? Infinity))
                   .slice(0, 24)
@@ -1962,7 +1963,9 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
                     // chain's places and still measurable, so it says that much, and its map link goes to the
                     // coordinates rather than searching for a town by whatever name we invented.
                     const title = v.city || v.street || "Another location";
-                    const line = [v.street && v.street !== title ? v.street : v.primary ? "Main location" : "", v.km != null ? fmtDistance(v.km) + " away" : ""].filter(Boolean).join(" · ");
+                    // A chain can straddle the border, so each venue is measured in its own country's units and
+                    // falls back to the listing's when the crawl never read its province or state.
+                    const line = [v.street && v.street !== title ? v.street : v.primary ? "Main location" : "", v.km != null ? fmtDistance(v.km, countryOfRegion(v.region)) + " away" : ""].filter(Boolean).join(" · ");
                     const query = [v.street, v.city].filter(Boolean).join(", ") || v.lat + "," + v.lon;
                     return (
                       <a key={i} className="alvenue" href={"https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(query)} target="_blank" rel="noreferrer">

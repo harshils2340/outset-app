@@ -1,11 +1,13 @@
 import { useRef, useState, type KeyboardEvent } from "react";
 import { metroById } from "../../data/metros";
 import { ART_LABEL } from "../../data/art";
+import { countryOfArea } from "../../data/regions";
 import type { Unclaimed } from "../../data/types";
 import { cardPlace, fromPrice, perPerson, publicRating, topRated } from "../../lib/catalog";
 import { dealToday } from "../../lib/companyAgent";
 import { money } from "../../lib/format";
-import { fmtDistance, nearestLocation } from "../../lib/places";
+import { fmtDistance } from "../../lib/geo";
+import { nearestLocation } from "../../lib/places";
 import { useApp } from "../../state/AppProvider";
 import { Photo } from "../art/Photo";
 import { IcHeartOnPhoto, IcStar } from "./AirIcons";
@@ -122,7 +124,7 @@ export function UnclaimedCard({ item }: { item: Unclaimed; compact?: boolean }) 
         </div>
         <p className="aircardline">
           {place}
-          {km != null ? " · " + fmtDistance(km) + " away" : ""}
+          {km != null ? " · " + fmtDistance(km, countryOfArea(item.area)) + " away" : ""}
         </p>
         {detail ? <p className="aircardline">{detail}</p> : null}
         {dealTitle ? (

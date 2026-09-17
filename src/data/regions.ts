@@ -12,6 +12,16 @@ export const REGION_NAME: Record<string, string> = {
 
 export const CA_REGIONS = new Set(["AB", "BC", "MB", "NB", "NL", "NS", "NT", "NU", "ON", "PE", "QC", "SK", "YT"]);
 
+/** The country a two-letter state or province code sits in. Anything we do not know is American, which 51,940 of the catalog's 59,163 rows are. */
+export function countryOfRegion(code: string | undefined): "US" | "CA" {
+  return CA_REGIONS.has(String(code || "").toUpperCase()) ? "CA" : "US";
+}
+
+/** The country a listing's area line names ("Kelowna, BC" is Canada, "Tampa, FL" is not). */
+export function countryOfArea(area: string | undefined): "US" | "CA" {
+  return countryOfRegion(regionOfArea(area));
+}
+
 /**
  * The state or province a listing's area names, or "" when it names none.
  *

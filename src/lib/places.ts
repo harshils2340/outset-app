@@ -58,19 +58,6 @@ export function kmBetween(a: { lat: number; lon: number }, b: { lat: number; lon
   return 2 * r * Math.asin(Math.sqrt(x));
 }
 
-/**
- * "450 m", "2.1 km", "12 km". Metric everywhere, metres under a kilometre.
- *
- * Each band is picked from the rounded number, not the raw one, or the rounding pushes the answer out of the
- * band that chose it: 999.6 m was shown as "1000 m" rather than "1.0 km", and 9.96 km as "10.0 km".
- */
-export function fmtDistance(km: number): string {
-  const metres = Math.round(km * 100) * 10;
-  if (metres < 1000) return Math.max(10, metres) + " m";
-  const tenths = Math.round(km * 10) / 10;
-  return (tenths < 10 ? tenths.toFixed(1) : String(Math.round(km))) + " km";
-}
-
 /** How long we wait for a fix before giving up on our own clock. */
 export const LOCATE_TIMEOUT_MS = 10000;
 
