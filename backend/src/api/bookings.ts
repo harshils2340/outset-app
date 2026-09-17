@@ -8,6 +8,7 @@ import { currencyForArea, priceBooking, releaseDate, splitBooking, type PricedOp
 import { mailDecision, mailNewBooking } from "./bookingMail.ts";
 import { slotOpen, zoneOf } from "./openSlots.ts";
 import { fmtWhen } from "../lib/emailTemplate.ts";
+import { bookableRow } from "../../../src/lib/menuRow.ts";
 
 /**
  * Bookings, one row each in Postgres. A guest's request is written here, the operator gets an email, and the
@@ -266,7 +267,11 @@ bookings.post("/bookings", rateLimit(20, 60 * 60 * 1000), async (c) => {
   // `.filter` on it: every booking for that shop answered 500 until somebody fixed the row by hand. Anything
   // that is not an array reads as an empty menu, so one bad write costs the shop its prices, not its bookings.
   const asList = (v: unknown): PricedOption[] => (Array.isArray(v) ? (v as PricedOption[]) : []);
-  const menu = own("options") ? asList(patch.options) : asList(detail?.options);
+  // The crawled menu carries rows that are the page's own headings, not the shop's services, and a museum's
+  // "Past Exhibitions" came priced: $5 at o-anchoragemuseum-org, $3,000 at o-aahmsnj-org. The app stopped
+  // offering them (`src/lib/menuRow.ts`), and the server prices from the same menu, so a request naming one
+  // now has no price rather than that one. A shop's own published menu is their own words and is untouched.
+  const menu = own("options") ? asList(patch.options) : asList(detail?.options).filter((o) => bookableRow(o.name, o.price));
   const extras = own("addons") ? asList(patch.addons) : asList(detail?.addons);
   const priced = menu.length ? priceBooking(menu, extras, rec.service, rec.variant, qty, rec.addons, rec.total) : null;
   if (priced && rec.total != null && Math.abs(priced.total - rec.total) > 0.5) console.warn(`[bookings] ${code}: browser total ${rec.total}, listing price ${priced.total}; charging the listing price`);

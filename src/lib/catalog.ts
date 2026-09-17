@@ -3,6 +3,7 @@ import { UNCLAIMED } from "../data/unclaimed";
 import type { OperatorContact, Unclaimed, UnclaimedOption } from "../data/types";
 import { regionOfArea } from "../data/regions";
 import type { GeoPoint } from "./geo";
+import { bookableMenu } from "./menuRow";
 import { isPublicHttpUrl } from "./urlSafety";
 
 /** The crawler's own `src` field, always meant to be the operator's domain, as an https URL, or "" when it is
@@ -93,7 +94,11 @@ export function mergeCatalog(items: Unclaimed[], extraContacts: Record<string, O
   const seenId = new Set(UNCLAIMED.map((u) => u.id));
   const had = new Map(base.map((u) => [u.id, u]));
   const added: Unclaimed[] = [];
-  for (const it of items) {
+  for (const raw of items) {
+    // A crawled menu carries rows that are the page's headings rather than the shop's services, and they are
+    // bookable and priced like any other row. One rule, here and in the sync, so the card's "from", the picker,
+    // the price filter and Otto all read the same menu. See `menuRow.ts`.
+    const it = bookableMenu(raw);
     const d = domainOf(it.src);
     if (seenId.has(it.id) || (d && !d.startsWith("osm-") && seenDomain.has(d))) continue;
     seenId.add(it.id);
@@ -113,7 +118,8 @@ export function mergeCatalog(items: Unclaimed[], extraContacts: Record<string, O
   // Hand-verified seeds keep their facts but borrow everything the crawl found that they lack: photos, videos,
   // grouped services, descriptions, social handles, pins.
   const remoteByDomain = new Map<string, Unclaimed>();
-  for (const it of items) {
+  for (const raw of items) {
+    const it = bookableMenu(raw);
     const d = domainOf(it.src);
     if (d) remoteByDomain.set(d, it);
   }
@@ -208,7 +214,10 @@ export function fromPrice(item: Unclaimed): number | null {
 }
 
 /** Swap a lite record for its full detail record. Overrides and publish state stay as they were. */
-export function hydrateItem(full: Unclaimed, targetId?: string): void {
+export function hydrateItem(raw: Unclaimed, targetId?: string): void {
+  // The detail file is where a listing's menu really lives, so this is the read that decides what the booking
+  // box offers. Same rule as `mergeCatalog` above.
+  const full = bookableMenu(raw);
   const id = resolveCatalogId(targetId || full.id);
   const idx = base.findIndex((u) => u.id === id);
   if (idx === -1) return;
