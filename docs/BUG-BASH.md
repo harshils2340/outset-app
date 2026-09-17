@@ -961,6 +961,75 @@ tests pass, both projects type-check clean. 22 new tests across `csp`, `apiConfi
   the wrong week and 64 venues are still called Nearby in `catalog.json` until a sync runs, the Where box still
   depends on Photon, and no workflow runs `npm test` on its own.
 
+## 17 September 2026, sixteenth run (06:00 to 06:40 UTC)
+
+**Chosen, and why.** No commit had landed since the fifteenth run's entry, which says green, so the
+**rehearsal was skipped at the start**: both type checks and both unit suites ran instead, and the time went on
+the one thing high on the list that Coverage does not claim, the booking box's grouped service picker and the
+option rows behind it. That turned into the money path within the hour. The rehearsal ran twice at the end,
+because every fix here reaches code it drives.
+
+**Found and fixed.**
+
+- **A room's capacity was read as its price per head** (`220ae94e8`). `perPerson` searched the option's name and
+  detail for a person word *before* it looked at the unit the operator's own site printed, so a capacity ("Event
+  space for up to 200 guests"), a ratio ("2:1 guest to guide") and a seat count ("Jets seating 12-19
+  passengers") all said "per person". "$18,500 / group" was then multiplied by the party: the booking box quoted
+  a party of four **$74,000**, and `money.ts` charged the card the same, because the two are twins by design.
+  **1,726 priced options on 808 operators** were multiplied that way, among them 643 trips, 624 group rates, 179
+  hourly rates and 82 campsite nights. A stated unit settles it now and is read first, which is the rule the
+  claimed side has always used (`perUnitLooksPerGuest` reads the unit and nothing else). Nothing moves the other
+  way: no guest starts being charged more than before.
+- **The phone never said the party was what turned $29 into $116** (`231f20fd8`). The Price details line is the
+  only place that says a per-person price was multiplied, and both desktop surfaces have shown "$29 × 4 guests"
+  since cards were switched on. The phone's review-and-pay screen showed "Sunset sail · 2 hours  $116" under a
+  tier row reading "$29", leaving the guest to work out where the other three came from. On a phone the frame
+  goes away and that screen is the whole app.
+- **Nine listings told guests "Up to 0 guests"** (`ce6b1b563`). The listing page took the first "<number>
+  <people>" on a group line and called it the maximum. A thousands separator left the tail behind, so "Group
+  events for 10 to 3,000 guests" matched "000 guests". On **47** more the number was a floor the line had just
+  stated: "Helicopter tours require minimum 2 passengers" read "Up to 2 guests, Group size", which sends a
+  family of four away from a flight that would have taken them, and a line naming both ("minimum 6 guests,
+  maximum 10") showed the smaller. Otto has never made either mistake. There is one reader now, `groupCap` in
+  `listingDerive.ts`, shared by both surfaces: 27 listings corrected, 47 floor-only lines now show no row rather
+  than a wrong one, 3,966 unchanged and none gained. The lines themselves are still listed in full under Groups.
+
+**Checked and clean.** Service tier labels that collide, over all 62,054 services shipped: exactly one, on the
+test shop, and the server already resolves it from the guest's own total. Add-ons with no price: none in the
+catalog, and a blank price in the dashboard is documented to mean a free extra, so "Free" is right. The
+Availability page against hours that end before they start: three earlier fixes already hold, including a
+select that sat blank on an inverted day. Per-service `maxGuests` against a party already chosen: the picker
+brings the party down with it. Whether the perPerson change ever charges more: it does not, on any of the
+44,317 priced options in the catalog.
+
+**Tests.** `perPerson.test.ts` on each side (8 and 7, including one that holds the two implementations to the
+same answer), `partyLine.test.ts` (4) and `groupCap.test.ts` (7), each pinned to the real rows it names and each
+checked against the old code and failing on it. One existing assertion in `priceBooking.test.ts` pinned the old
+reading of a scraped "/cabin" as per person, which its own comment calls the hazard; it is updated, and an
+unknown unit still falls back to the words. 243 guest tests and 196 backend tests pass, both projects
+type-check clean, rehearsal **52 of 52** twice.
+
+**Needs Harshil.**
+
+- **The listing page and Otto still name different group sizes on 799 listings.** They read different fields on
+  purpose: Otto also reads specs, requirements and policies, the page reads only `groupInfo`. Both are honest
+  now, but a guest who asks Otto "how many of us can come" can get one number and read another on the page.
+  Which of the two is the listing's answer is a product call.
+- **A guest can still ask for a party larger than the shop says it takes.** 1,255 listings state a group size
+  under 20, mostly six-passenger boats, and the picker offers up to 20 on any scraped listing, because
+  `maxGuestsFor` only reads a `maxGuests` a claimed operator set. Wiring `groupCap` into the picker is a
+  behaviour change on thousands of listings and wants your call, not a night's.
+- **`Sunset sail` is listed twice on the test shop**, both "2 hours", at $29 and $19, so the booking box shows
+  two rows a guest cannot tell apart. The dashboard warns an operator who does this ("Another service has this
+  name"), and the server picks the right tier from the guest's total, so nothing is mischarged. It is your own
+  test data, easy to fix from Services.
+- The earlier runs' calls stand: everything needing a real Stripe key is still untouched, a claimed shop with an
+  empty menu still takes bookings, the two distance helpers still disagree on miles against kilometres, Arizona
+  still moves on the Navajo Nation, 210 operators still carry the wrong week and 64 venues are still called
+  Nearby in `catalog.json` until a sync runs, the Where box still depends on Photon, and no workflow runs
+  `npm test` on its own.
+
+
 ## Coverage
 
 **Verified so far.** Booking validation and odd input on every route that takes it. The money split,
@@ -1059,6 +1128,15 @@ inside, and the two states that replace the form announcing themselves. The Cont
 challenge each need, and what a blocked fetch looks like to `src/lib/api.ts` (exactly like no API at all).
 What the rehearsal's own mail checks are reading, and whether they can still tell two recipients apart.
 
+Which price a guest is charged by the party and which once, run over all 44,317 priced options in the shipped
+catalog rather than read: a capacity, a guide ratio and a seat count in an option's own words against the unit
+its site printed, on both sides of the money path, and that the guest page and the server still answer
+identically. What each surface tells a guest about that multiplication before they pay. The group size a
+listing states, over all 4,040 listings that state one: a thousands separator, a floor stated as a ceiling, a
+line naming both, and a line that names no ceiling at all, against the reader Otto uses for the same question.
+Service tier labels that collide, over all 62,054 services shipped. Add-ons with no price, and what a blank
+price in the dashboard means. Availability hours that end before they start.
+
 **Not yet checked.** Anything that needs a real Stripe key: the embedded card form itself mounted by
 Stripe.js, the hosted page, 3D Secure, the Payouts page against a connected account, and the pending row a
 closed card form leaves holding the guest's own time for thirty minutes (see this run's Needs Harshil). The
@@ -1071,3 +1149,9 @@ with an empty menu should pause its own listing. Whether a shop that genuinely t
 so at all. `geo.ts`'s `formatDistance` and `places.ts`'s `fmtDistance` still disagree on miles against
 kilometres. Whether the Where box should index the towns our own catalog already names. Whether Arizona's
 Navajo Nation should keep daylight saving. The 4,736 listings whose area carries no town, as a supply gap.
+Whether the party picker should take the group size a listing states (1,255 state one under 20, and the
+picker offers 20). Why the listing page and Otto still name different group sizes on 799 listings. The
+glossary behind a tier label (`explain`, `variantNote`) and the "More options" folding, which this run read
+but did not drive in a browser. The operator dashboard's Home feed (Needs action, Today, Next 7 days), which
+no run has opened. Deals and promos on a listing, and the promo crawl's output. Reviews and quotes as a guest
+reads them.
