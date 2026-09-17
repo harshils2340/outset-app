@@ -21,6 +21,7 @@ import { useNearNow } from "./NearNow";
 import { Mark } from "../layout/Mark";
 import { Markup } from "../Markup";
 import { AdminSiteLink, liteDealTitle, tidyDuration } from "./WebListing";
+import { freeCancelBadge } from "../../lib/cancellation";
 import { atPlace } from "../explore/feed";
 
 
@@ -337,7 +338,7 @@ function Card({ u, onOpen, near, rail }: { u: Unclaimed; onOpen: (id: string) =>
       ? "Open until " + openSt.closesAt
       : openSt && !openSt.open
         ? openSt.label
-        : u.fc
+        : freeCancelBadge(u)
           ? "Free cancellation"
           : ART_LABEL[u.art];
   const step = (d: number) => {

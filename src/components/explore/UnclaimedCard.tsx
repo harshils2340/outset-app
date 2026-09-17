@@ -13,6 +13,7 @@ import { Photo } from "../art/Photo";
 import { IcHeartOnPhoto, IcStar } from "./AirIcons";
 import { toggleSaved, usePrefs } from "./prefs";
 import { AdminSiteLink, liteDealTitle, tidyDuration } from "../web/WebListing";
+import { freeCancelBadge } from "../../lib/cancellation";
 
 /** "5.0", "4.9", "4.87": Airbnb never shows a bare "5" or a trailing zero past the first decimal. */
 export function fmtRating(r: number): string {
@@ -49,7 +50,7 @@ export function UnclaimedCard({ item }: { item: Unclaimed; compact?: boolean }) 
   // A distance from the middle of a whole state means nothing to a guest, so a picked state shows none. A
   // picked point measures to the nearest of a chain's venues, the way the desktop card does.
   const km = state.near && !state.near.region ? nearestLocation(item, state.near)?.km ?? null : null;
-  const detail = [kind, item.dur ? tidyDuration(item.dur) : null, item.fc ? "Free cancellation" : null].filter(Boolean).join(" · ");
+  const detail = [kind, item.dur ? tidyDuration(item.dur) : null, freeCancelBadge(item) ? "Free cancellation" : null].filter(Boolean).join(" · ");
   const unit = item.options.find((o) => o.price === from);
   const per = from != null && (!unit || perPerson(unit)) ? " / person" : "";
   // A deal with its own title reads as a line under the price ("Half-price Tuesdays"); only an untitled one keeps the badge.

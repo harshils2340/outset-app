@@ -16,16 +16,7 @@ export function cleanDesc(raw: string): string {
     .trim();
 }
 
-/** "Free cancellation up to 48 hours before" when the operator's own policy says so. Null otherwise. */
-export function freeCancel(text: string | undefined): string | null {
-  if (!text) return null;
-  if (!/full refund|free cancellation|100% refund|fully refundable/i.test(text)) return null;
-  const m = text.match(/(\d+)\s*(hours?|hrs?|days?)/i);
-  if (!m) return "Free cancellation";
-  const n = Number(m[1]);
-  const unit = /day/i.test(m[2]) ? (n === 1 ? "day" : "days") : n === 1 ? "hour" : "hours";
-  return `Free cancellation up to ${n} ${unit} before`;
-}
+export { freeCancel } from "./cancellation";
 
 /** Minimum age from lines like "Must be 18+", "Minimum age 8", "ages 6 and up". */
 export function minAge(lines: string[]): number | null {

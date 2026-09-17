@@ -19,6 +19,7 @@ import { existsSync, readFileSync as readFileSyncFs } from "node:fs";
 import { STANDARD, isEventSchedule, plainLabel, plainName, plainServices, type RawService } from "./plainServices.ts";
 import { consolidateDeals } from "./dealText.ts";
 import { durationFrom } from "../../../src/lib/duration.ts";
+import { onlyOperatorCancels } from "../../../src/lib/cancellation.ts";
 
 type Overlay = { published: boolean; patch: Record<string, unknown> };
 /** Claimed operators' saved edits, keyed by listing id. Filled by loadProfileOverlays before a sync. */
@@ -646,7 +647,13 @@ export function toCatalogItem(r: CatalogRow): Record<string, unknown> {
     // Reviews read off the operator's own pages, in either stored shape; see quotes.ts and reviews.ts for the rules.
     quotes: quotesFromFacts(facts.filter((f) => f.fact_key === "review").map((f) => ({ value: decodeEntities(f.fact_value), sourceUrl: f.source_url }))),
     dur: durationOf(offerings.map((o) => o.duration || o.detail || "")) || undefined,
-    fc: freeCancel(cleanPara(pick("cancellation")[0] || "") || pick("policy").filter((l) => /cancel|refund/i.test(l)).join(" ")) || undefined,
+    // Judged against every line the shop publishes about cancelling, not just the first, because the promise
+    // to a guest who cancels and the promise about a trip the shop calls off are often in different lines.
+    fc:
+      freeCancel(
+        cleanPara(pick("cancellation")[0] || "") || pick("policy").filter((l) => /cancel|refund/i.test(l)).join(" "),
+        [cleanPara(pick("cancellation")[0] || ""), ...pick("policy").filter((l) => /cancel|refund/i.test(l))].join(" "),
+      ) || undefined,
     // Day-specific deals the site states (scripts/promo-crawl.mts), consolidated into at most three clear offers by
     // dealText.ts: one title, the operator's most complete sentence, the stated days and code. Never invented.
     // `text` stays for older readers of the detail file and carries the detail sentence (or the title when there is none).
@@ -682,10 +689,17 @@ function durationOf(texts: string[]): string | null {
   return durationFrom(texts);
 }
 
-/** "Free cancellation up to 48 hours before", only when the operator's own words promise a full refund. */
-function freeCancel(text: string): string | null {
+/**
+ * "Free cancellation up to 48 hours before", only when the operator's own words promise a full refund, and
+ * only when that promise is one they make to a guest who cancels. A shop that refunds a trip it calls off
+ * itself for weather is not offering free cancellation, and 31 shipped listings carried the badge on the
+ * strength of exactly that sentence. The rule is `src/lib/cancellation.ts`, which every guest surface reads
+ * too, so a claimed shop's own policy text is judged the same way.
+ */
+function freeCancel(text: string, corpus?: string): string | null {
   if (!text || !/full refund|free cancellation|100% refund|fully refundable/i.test(text)) return null;
   if (/non-?refundable|no refunds?\b/i.test(text) && !/full refund/i.test(text)) return null;
+  if (onlyOperatorCancels(corpus || text)) return null;
   const m = text.match(/(\d+)\s*(hours?|hrs?|days?)/i);
   if (!m) return "Free cancellation";
   const n = Number(m[1]);

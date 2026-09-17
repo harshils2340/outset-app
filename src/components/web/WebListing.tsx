@@ -11,7 +11,8 @@ import { addressLine, bookingPaused, contactFor, fmtHours, fmtPhone, fromPrice, 
 import { DAYS, fmtDate, fmtReviews, fmtTime, money, priceWith, reviewsLine } from "../../lib/format";
 import { srcSet, thumb } from "../../lib/images";
 import { embedAutoplay, isGif, listingMedia, photoCandidates, probePhotos, type Media } from "../../lib/media";
-import { cleanDesc, durationLabel, freeCancel, groupCap as readGroupCap, minAge } from "../../lib/listingDerive";
+import { cleanDesc, durationLabel, groupCap as readGroupCap, minAge } from "../../lib/listingDerive";
+import { freeCancelBadge } from "../../lib/cancellation";
 import { bookableStart, clockIn, hourLines, itemOpenState, itemWeek, zoneFor } from "../../lib/openNow";
 import { DAY_SHORT, assistantOn, clock12, dayLabel, todaysDeals } from "../../lib/companyAgent";
 import { fmtDistance } from "../../lib/geo";
@@ -443,7 +444,7 @@ function Card({ u, onOpen }: { u: Unclaimed; onOpen: (id: string) => void }) {
           {score ? <span className="alcardrate"><Markup html={I.star} /> {score.rating.toFixed(1)}</span> : null}
         </span>
         <small>{u.area}</small>
-        {u.dur ? <small>{tidyDuration(u.dur)}</small> : u.fc ? <small>Free cancellation</small> : null}
+        {u.dur ? <small>{tidyDuration(u.dur)}</small> : freeCancelBadge(u) ? <small>Free cancellation</small> : null}
         <span className="alcardprice">{from != null ? <>From <b>{money(from)}</b></> : "Request to book"}</span>
       </div>
     </button>
@@ -1107,7 +1108,7 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
   const highlights = (item.highlights?.length ? item.highlights : facts.about.slice(0, 6)).filter((h) => !reqKeys.has(h.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim()));
   const waiverLines = (item.policies?.filter((l) => /\bwaivers?\b|\bliabilit|\brelease form|\bsign(ed|ing)? (a |the |our |your )?(waiver|release|form)|\bcheck-?in\b/i.test(l)) || facts.waiver.filter((l) => l.posted).map((l) => l.text)).filter((l) => l.length <= 160);
   const otherPolicies = (item.policies || []).filter((l) => !/cancel|refund|waiver|liabilit/i.test(l));
-  const cancelRaw = item.fc || freeCancel(item.cancellation);
+  const cancelRaw = freeCancelBadge(item);
   const cancel = cancelRaw ? tidyCancel(cancelRaw) : null;
   const age = minAge(requirements);
   const durationRaw = item.dur || durationLabel(item);

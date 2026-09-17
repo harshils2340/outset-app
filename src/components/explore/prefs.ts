@@ -1,5 +1,7 @@
 import { useSyncExternalStore } from "react";
 
+import { freeCancelBadge } from "../../lib/cancellation";
+
 /**
  * Phone-only guest preferences that the app state does not carry: the wishlist, which page the Explore tab shows,
  * the day and party size picked in the search sheet, and the feed filters. Kept here rather than in AppProvider so
@@ -112,7 +114,9 @@ export function passesFilters(
   extra: { priced: () => boolean; deal: () => boolean },
 ): boolean {
   if (f.fav && !((u.rating ?? 0) >= 4.8 && (u.reviews ?? 0) >= 100)) return false;
-  if (f.cancel && !(u.fc || /free cancel/i.test(u.cancellation || ""))) return false;
+  // The badge the cards and the listing page draw, so the filter cannot let in a shop whose policy only
+  // refunds a trip the shop itself calls off.
+  if (f.cancel && !freeCancelBadge(u)) return false;
   if (f.priced && !extra.priced()) return false;
   if (f.deal && !extra.deal()) return false;
   return true;

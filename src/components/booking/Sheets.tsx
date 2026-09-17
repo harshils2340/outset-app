@@ -33,7 +33,8 @@ import { addonPrice, hasPrice, priceFor, priceUnclaimed, serviceFeeLabel } from 
 import { useApp } from "../../state/AppProvider";
 import { SIZES, srcSet, thumb } from "../../lib/images";
 import { embedAutoplay, listingMedia, photoCandidates, probePhotos, type Media } from "../../lib/media";
-import { cleanDesc, durationLabel, freeCancel, groupCap, minAge } from "../../lib/listingDerive";
+import { cleanDesc, durationLabel, groupCap, minAge } from "../../lib/listingDerive";
+import { freeCancelBadge } from "../../lib/cancellation";
 import { ASSISTANT_NAME, DAY_SHORT, assistantOn, clock12, companySuggestions, dayLabel, todaysDeals } from "../../lib/companyAgent";
 import { bookableStart, clockIn, hourLines, zoneFor } from "../../lib/openNow";
 import { itemOpenState } from "../../lib/openNow";
@@ -501,7 +502,7 @@ function RequestBody({
   const highlights = (item.highlights?.length ? item.highlights : facts.about.slice(0, 6)).filter((h) => !reqKeys.has(h.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim()));
   const waiverLines = (item.policies?.filter((l) => /\bwaivers?\b|\bliabilit|\brelease form|\bsign(ed|ing)? (a |the |our |your )?(waiver|release|form)|\bcheck-?in\b/i.test(l)) || facts.waiver.filter((l) => l.posted).map((l) => l.text)).filter((l) => l.length <= 160);
   const otherPolicies = (item.policies || []).filter((l) => !/cancel|refund|waiver|liabilit/i.test(l));
-  const cancelRaw = item.fc || freeCancel(item.cancellation);
+  const cancelRaw = freeCancelBadge(item);
   const cancel = cancelRaw ? tidyCancel(cancelRaw) : null;
   const age = minAge(requirements);
   const durationRaw = item.dur || durationLabel(item);
