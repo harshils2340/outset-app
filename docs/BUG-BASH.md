@@ -1030,6 +1030,73 @@ type-check clean, rehearsal **52 of 52** twice.
   `npm test` on its own.
 
 
+## 17 September 2026, seventeenth run (07:00 to 08:40 UTC)
+
+**Chosen, and why.** No commit had landed since the sixteenth run's entry, which says green, so the
+**rehearsal was skipped at the start**: both type checks and both unit suites ran instead. The time went on
+the one thing Coverage names that no run has ever opened, the **operator dashboard's Home feed**. It is the
+screen an owner opens every morning, and inside an hour it turned into the money path again. The rehearsal
+ran at the end, because every fix here reaches code it drives, and it now opens that page itself.
+
+**Found and fixed.**
+
+- **The front page counted the guest's service fee as the operator's money** (`53f076ba5`). Home's two tiles
+  summed each booking's `total`, which is what the guest paid: the operator's price plus the guest's stepped
+  service fee. What an operator receives is that price less Outset's 5%, which is what their booking email
+  prints as "You receive" and what the Payouts page has shown since that page was corrected. A $29 a head
+  sail for four read **"$121 on the books"** beside an email promising **$110.20**, and the Payouts page the
+  second tile opens named that $110.20 for the same trips. Two smaller readings went with it: a trip
+  completed today was money on the books *and* money earned in the last 30 days, in both tiles at once, and
+  sample rows, which Payouts has never counted, were money here. There is one payout rule now,
+  `bookingPayout`, which the Payouts page reads as well.
+- **A price the API had already recorded was guessed back out of the total** (`4d5fbc0cb`). The guest fee
+  steps down at $100 and at $500, so a total does not name one price: **600** of the operator prices between
+  $1 and $2,000 in cent steps share a total with a higher one, and the inverse hands back the higher. A
+  $495.01 trip was promised **$475.01** against the **$470.26** Stripe sends. The same commit fixes the
+  booking drawer, which printed "Guest pays $121 · you receive $116": that $116 is the "Your price" line of
+  the email, a whole fee above the "You receive" line under it.
+- **The calendar's week total was the guest's money too** (`9071e3467`), on the very page Home's first tile
+  opens, so the week Home now calls $110.20 read $121 there. A week with nothing in it prints no figure at
+  all now, rather than "$0 this week" beside a grid of sample rows.
+- **"Your calendar is open" was told to a shop with five requests waiting in that week** (`dfab7f227`). The
+  Next 7 days tab lists confirmed bookings only, so a week of unanswered requests read as an empty week, two
+  lines under a Needs action badge reading 5. A shop whose next booking is eight days out was told the same,
+  with no mention of the bookings behind it.
+- **The rehearsal opens Home** (`844e38774`), which no check had ever done, and that is how these tiles went
+  unread. It accepts a request, reads the "On the books" tile and holds it to the API's own record of the
+  booking. An empty page warns rather than passes.
+
+**Checked and clean**, read rather than driven except where the rehearsal now goes. The Home feed's buckets
+against the Bookings page's: the same rows, the same statuses, nothing lost between them. The setup
+checklist's twelve jump targets, every one present on its page. The tab the page opens on, and what
+answering a request does to it. `DAY_SHORT` against `getDay()` on the day headings. The samples banner and
+its Remove. The hidden and paused banners on a freshly claimed shop, which starts published. Accept and
+Decline from Home, which is the same `decide` the Bookings page uses, rollback and all.
+
+**Tests.** `homeMoney.test.ts` (14) and `homeEmpty.test.ts` (5). Each is pinned to the figures the old code
+gave as well as the right ones ($121 against $110.20, $475.01 against $470.26), and each carries a source
+check that fails on the old page outright; one walks every price whose guest total is shared and holds the
+dashboard to `splitBooking` in `backend/src/payments/money.ts` cent for cent. 262 guest tests and 196
+backend tests pass, both projects type-check clean, and the rehearsal ran three times: **52 of 52** before
+the new Home check existed, then **53 of 53** twice with it, its screenshot showing the tile reading
+"$17.10 · 1 booking · after fees" where it would have read $19.
+
+**Needs Harshil.**
+
+- **Home's three tabs are `role="tab"` with nothing to control.** No `aria-controls`, no `role="tabpanel"`,
+  no arrow-key movement, and the "All requests" link sits inside the `role="tablist"` itself. Doing it
+  properly moves that link, which `.ohtabs` positions, and the night's rules keep me out of `src/styles`.
+- **The "Next 7 days" tab still shows confirmed bookings only.** The line is honest now, but whether that tab
+  should list the week's unanswered requests beside its confirmed ones is a product call, not a night's.
+- The earlier runs' calls stand: everything needing a real Stripe key is still untouched, `Sunset sail` is
+  still listed twice on the test shop, the party picker still offers 20 on listings that state less, the page
+  and Otto still name different group sizes on 799 listings, the two distance helpers still disagree on miles
+  against kilometres, Arizona still moves on the Navajo Nation, and no workflow runs `npm test` on its own.
+- **This clone opened on a detached HEAD**, and its local `main` pointed at a 15 September commit that
+  `origin/main` does not contain (the Render payout blueprint one, which upstream has since replaced by
+  another route). I moved `main` onto `origin/main` and pushed there. Nothing was lost, but a session
+  starting here does not begin on a branch.
+
 ## Coverage
 
 **Verified so far.** Booking validation and odd input on every route that takes it. The money split,
@@ -1137,6 +1204,14 @@ line naming both, and a line that names no ceiling at all, against the reader Ot
 Service tier labels that collide, over all 62,054 services shipped. Add-ons with no price, and what a blank
 price in the dashboard means. Availability hours that end before they start.
 
+The operator dashboard's Home feed, which the rehearsal now opens and reads the money tiles of, and which
+this run read through besides: the three tabs and which one it opens on, the feed's buckets against the
+Bookings page's, the setup checklist's twelve jump targets, Accept and Decline from Home, the samples
+banner, the hidden and paused banners, and the empty states of all three tabs. What every page of the
+dashboard tells an operator they will be paid, against the "You receive" line of their own booking email:
+Home's two tiles, the calendar's week total, the booking drawer and the Payouts tiles, over all 600 prices
+between $1 and $2,000 whose guest total names more than one operator price.
+
 **Not yet checked.** Anything that needs a real Stripe key: the embedded card form itself mounted by
 Stripe.js, the hosted page, 3D Secure, the Payouts page against a connected account, and the pending row a
 closed card form leaves holding the guest's own time for thirty minutes (see this run's Needs Harshil). The
@@ -1151,7 +1226,8 @@ kilometres. Whether the Where box should index the towns our own catalog already
 Navajo Nation should keep daylight saving. The 4,736 listings whose area carries no town, as a supply gap.
 Whether the party picker should take the group size a listing states (1,255 state one under 20, and the
 picker offers 20). Why the listing page and Otto still name different group sizes on 799 listings. The
-glossary behind a tier label (`explain`, `variantNote`) and the "More options" folding, which this run read
-but did not drive in a browser. The operator dashboard's Home feed (Needs action, Today, Next 7 days), which
-no run has opened. Deals and promos on a listing, and the promo crawl's output. Reviews and quotes as a guest
-reads them.
+glossary behind a tier label (`explain`, `variantNote`) and the "More options" folding, which an earlier run
+read but did not drive in a browser. Deals and promos on a listing, and the promo crawl's output. Reviews and
+quotes as a guest reads them. The dashboard Home tabs as a screen reader meets them: they are `role="tab"`
+with no panel to control and no arrow keys, and putting that right needs `src/styles`. Whether the Next 7
+days tab should list the week's unanswered requests as well as its confirmed bookings.
