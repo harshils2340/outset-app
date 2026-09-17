@@ -7,10 +7,16 @@
       send a Content-Security-Policy header. Built and checked under a real Chromium (Playwright) across the
       home page, a listing, the booking box, the confirmation page and the operator dashboard at 1280 and 390
       widths before this shipped; see docs/security/2026-09-16-rendering.md for what that run found.
+
+      connect-src names the production API. A build pointed at any other one (the dev server, the nightly
+      rehearsal, a preview) has its own origin added here at build time by the cspApiOrigin plugin in
+      vite.config.ts, because a blocked fetch reads to this app exactly like no API at all.
+      hooks.stripe.com is where Stripe puts a card's 3D Secure challenge, so leaving it out of frame-src
+      fails the payment rather than the frame.
     -->
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'self'; script-src 'self' https://js.stripe.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' http: https:; media-src 'self' http: https:; connect-src 'self' https://outset-api.onrender.com https://photon.komoot.io https://api.stripe.com; frame-src https://www.youtube.com https://www.youtube-nocookie.com https://player.vimeo.com https://js.stripe.com; object-src 'none'; base-uri 'self'; form-action 'self' https://checkout.stripe.com;"
+      content="default-src 'self'; script-src 'self' https://js.stripe.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' http: https:; media-src 'self' http: https:; connect-src 'self' https://outset-api.onrender.com https://photon.komoot.io https://api.stripe.com; frame-src https://www.youtube.com https://www.youtube-nocookie.com https://player.vimeo.com https://js.stripe.com https://hooks.stripe.com; object-src 'none'; base-uri 'self'; form-action 'self' https://checkout.stripe.com;"
     />
     <meta name="referrer" content="strict-origin-when-cross-origin" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />

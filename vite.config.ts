@@ -1,8 +1,29 @@
-import { defineConfig } from "vite";
+import { defineConfig, loadEnv, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
+import { withApiOrigin } from "./src/lib/csp";
 
-export default defineConfig({
-  plugins: [react()],
+/**
+ * The CSP in index.html named the production API host and nothing else, so a build pointed anywhere else could
+ * not talk to its own API: Chromium refused every fetch and the app took that for "no API today". This puts the
+ * origin the build was pointed at into connect-src, in dev and in a build alike. See src/lib/csp.ts.
+ *
+ * `loadEnv` rather than `process.env` because it reads the .env files and the inline VITE_ variables the same
+ * way the app's own `import.meta.env.VITE_API_URL` is read, so the policy cannot name a different host than the
+ * one the bundle calls.
+ */
+function cspApiOrigin(mode: string): Plugin {
+  const apiUrl = loadEnv(mode, ".", "VITE_").VITE_API_URL;
+  return {
+    name: "outset-csp-api-origin",
+    transformIndexHtml: {
+      order: "pre",
+      handler: (html) => withApiOrigin(html, apiUrl),
+    },
+  };
+}
+
+export default defineConfig(({ mode }) => ({
+  plugins: [react(), cspApiOrigin(mode)],
   server: {
     // Vite's default host resolves to the IPv6 loopback on this machine, so a browser that reaches
     // localhost over IPv4 got connection refused. Pin the IPv4 loopback, which is what browsers here try.
@@ -30,4 +51,4 @@ export default defineConfig({
       ],
     },
   },
-});
+}));
