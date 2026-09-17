@@ -1097,6 +1097,75 @@ the new Home check existed, then **53 of 53** twice with it, its screenshot show
   another route). I moved `main` onto `origin/main` and pushed there. Nothing was lost, but a session
   starting here does not begin on a branch.
 
+## 17 September 2026, eighteenth run (09:00 to 10:40 UTC)
+
+**Chosen, and why.** No commit had landed since the seventeenth run's entry, which says the rehearsal was green
+at **53 of 53**, so it was **skipped at the start**: both type checks and both unit suites ran instead, all
+clean. The time went on the highest thing Coverage still listed as never looked at, **reviews and quotes as a
+guest reads them**, over all 1,023 shipped listings that publish a quote and all 7,517 that publish a rating.
+The rehearsal ran at the end because the fixes are in the listing page and the booking sheet it drives.
+
+**Found and fixed.**
+
+- **The comment form under a shop's reviews was being shown to guests as a review** (`e4490b0a0`). The crawl
+  keeps what sat around the quotes on the operator's own page, and brought the page's furniture with it. Two
+  listings drew a review card reading **"Your email address will not be published. Required fields are marked
+  *"**, signed **"Name *"**. Three more drew the shop's own banner as a guest's words: "JOIN OUR TOP-RATED SAN
+  DIEGO CRUISES", "BOOK ONLINE NOW", "Follow our IG page", that last one signed with a link to the shop's
+  Instagram, which the card printed as the reviewer's name with "H" in the avatar circle. Nine more reviewers
+  carried the site's label glued to the end of the name: "Laura G.Rating: 5", "MarkExecutive", "SophieDesigner",
+  "AvaSoftware Engineer", "Jake M.Manager", "SCB Designs INC". Six of those are no longer reviews and the nine
+  names read without the label. Over all **4,753** reviews the app can draw, nothing else moves: 4,747 remain,
+  none added. A rule that dropped loud text would have been tidier and cost seven real reviews, so shouting is
+  still a review.
+- **A card promising Top rated opened a page that had never heard of it, on 758 listings** (`357ad77cd`). Four
+  surfaces decide this and the desktop feed card alone asked for **50** public reviews at 4.8 where the phone
+  card, the listing page and the phone sheet all asked for **100**. So 758 shipped listings had a desktop card
+  shouting "Top rated" over a page with no laurel and no such line, and a phone card for the same business with
+  no badge at all, which is exactly what the phone card's own comment says must never happen ("the same bar the
+  desktop card uses, so a business is a guest favourite on both surfaces or neither"). One bar now, `topRated`
+  in `src/lib/catalog.ts`, and the stricter of the two is the one kept.
+- **A shop with one public review told every guest it had "1 reviews"** (`253a3f5c4`). Ten places print the
+  count and the word together and every one wrote "reviews" whatever the number. **207** shipped listings
+  publish exactly one.
+
+**Checked and clean**, read or scanned rather than driven. Every author name on every shipped review (2,479 of
+4,753 carry one) against being a person's name; every review text against site chrome, cookie lines, nav and
+price fragments; every stored date against the "March 2025" it has to read as, every star count against the
+words beside it, and every source label against the eight platforms named. The "More options" fold on the
+booking box: a service can never fold every tier away, because the first one ordered is never folded. `promoOn`
+and `todaysDeals` against the 48 deals on the 37 listings that publish one, including the five that run every
+day and the five with a start or end time.
+
+**Tests.** `reviews.test.ts` (13), `topRated.test.ts` (5) and `reviewCount.test.ts` (3). Each review case is
+pinned to the real listing it came from and asserts the listing still carries the raw text, so the test says so
+rather than passing quietly if a later sync fixes the data. Eight of the thirteen fail outright on the old
+reading; the five that pass are the guards on what must not change. The reading itself moved to
+`src/lib/reviews.ts` so a test can load it: `WebListing.tsx` imports CSS, which is why none of this had ever
+been tested. 283 guest tests and 196 backend tests pass, both projects type-check clean, and the rehearsal
+ran at the end, because these fixes are in the two pages it drives: **53 of 53**, 0 failed.
+
+**Needs Harshil.**
+
+- **6,513 listings show a star rating on their card and none on the page they open.** The listing page and the
+  booking sheet print a rating only where there are written reviews under it, on purpose (the comment says so).
+  The feed card, the phone card, the confirmation page, the compare table and the rating sort all print it
+  unconditionally, because a lite record has no quotes to check. So a guest clicks "4.2 (2,797)" and lands on a
+  page that never mentions a rating, has no Reviews link and no reviews section, then books and sees "4.2
+  (2,797)" again on the confirmation. 1,699 of those clear the Top rated bar and show no laurel either. Both
+  branches the page keeps for "a rating with no reviews" are currently unreachable. Which way this should go is
+  a product call: print the rating on the page with an honest empty section, or drop it from the cards.
+- **Two listings put the review's headline in the author slot**, so a card is signed "Birthday sailing trip" or
+  "Excellent trip" with a "B" in the avatar. There is no rule that tells a headline from a name without also
+  throwing away real ones, and it is six cards on two listings.
+- **The phone sheet calls the same badge two names on one screen**: "Guest favourite" on the photo and "Top
+  rated" in the highlight row under it. The desktop says "Top rated" in both places. Copy, so yours.
+- The earlier runs' calls stand: everything needing a real Stripe key is still untouched, Home's three tabs are
+  still `role="tab"` with nothing to control, `Sunset sail` is still listed twice on the test shop, the party
+  picker still offers 20 on listings that state less, the page and Otto still name different group sizes on 799
+  listings, the two distance helpers still disagree on miles against kilometres, Arizona still moves on the
+  Navajo Nation, and no workflow runs `npm test` on its own.
+
 ## Coverage
 
 **Verified so far.** Booking validation and odd input on every route that takes it. The money split,
@@ -1212,6 +1281,15 @@ dashboard tells an operator they will be paid, against the "You receive" line of
 Home's two tiles, the calendar's week total, the booking drawer and the Payouts tiles, over all 600 prices
 between $1 and $2,000 whose guest total names more than one operator price.
 
+The reviews and quotes a guest reads, over all 1,023 shipped listings that publish one and all 4,753 review
+cards they draw: what is not a guest talking (the comment form under the reviews, the shop's own banner, a
+call to follow their Instagram) and what is not a reviewer's name (a link, a company, the site's rating label
+or a job title run onto the end of a first name), each pinned to the listing it came from; every stored date,
+every star count against the words beside it, every source label; and that a shouted review is still a review.
+The bar that decides Top rated, over all 7,517 listings that publish a rating, on all four surfaces that draw
+it. The count printed beside the stars, on all ten lines that print it. That a service can never fold every
+tier away behind "More options". `promoOn` and `todaysDeals` against the 48 deals the catalog ships.
+
 **Not yet checked.** Anything that needs a real Stripe key: the embedded card form itself mounted by
 Stripe.js, the hosted page, 3D Secure, the Payouts page against a connected account, and the pending row a
 closed card form leaves holding the guest's own time for thirty minutes (see this run's Needs Harshil). The
@@ -1227,7 +1305,12 @@ Navajo Nation should keep daylight saving. The 4,736 listings whose area carries
 Whether the party picker should take the group size a listing states (1,255 state one under 20, and the
 picker offers 20). Why the listing page and Otto still name different group sizes on 799 listings. The
 glossary behind a tier label (`explain`, `variantNote`) and the "More options" folding, which an earlier run
-read but did not drive in a browser. Deals and promos on a listing, and the promo crawl's output. Reviews and
-quotes as a guest reads them. The dashboard Home tabs as a screen reader meets them: they are `role="tab"`
-with no panel to control and no arrow keys, and putting that right needs `src/styles`. Whether the Next 7
+read but did not drive in a browser. Deals and promos on a listing driven in a browser, and the promo crawl's
+output; only the rules behind them are read so far. Whether the listing page should print a rating with no
+written reviews under it: 6,513 rated listings show one on their card, their confirmation and the compare
+table and none on the page those open, and 1,699 of those clear the Top rated bar with no laurel to show for
+it. The two listings that put the review's headline in the author slot, so a card is signed "Excellent trip".
+Whether the phone sheet should call one badge "Guest favourite" on the photo and "Top rated" in the row under
+it. The dashboard Home tabs as a screen reader meets them: they are `role="tab"` with no panel to control and
+no arrow keys, and putting that right needs `src/styles`. Whether the Next 7
 days tab should list the week's unanswered requests as well as its confirmed bookings.
