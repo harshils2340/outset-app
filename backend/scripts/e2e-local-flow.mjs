@@ -15,7 +15,7 @@
  * Results are written as JSON to E2E_OUT; e2e-local.mts prints the pass or fail lines from it.
  */
 
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 const BASE = process.env.E2E_BASE || "http://localhost:5199";
@@ -86,6 +86,29 @@ const apiLog = () => {
     return "";
   }
 };
+/**
+ * Did the API write this message, to this person, about this?
+ *
+ * These five checks used to grep the API's own `[mail:dry]` line for the recipient's raw address. That line
+ * masks the address now ("h...@gmail.com") so a log export cannot leak real inboxes, and every one of the five
+ * stopped matching the day the masking landed: five emails the API had in fact written, reported as a product
+ * that never sent them. The messages themselves are what to read, and MAIL_DUMP_DIR has them with a real
+ * "To:" line, which the masked log cannot give: two of the harness's guests share a first letter and a domain.
+ */
+const rx = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const mailbox = () => {
+  const dir = process.env.E2E_MAIL_DIR || "";
+  if (!dir || !existsSync(dir)) return [];
+  try {
+    return readdirSync(dir).filter((f) => f.endsWith(".txt")).map((f) => readFileSync(join(dir, f), "utf8"));
+  } catch {
+    return [];
+  }
+};
+const mailSent = (email, subject) => {
+  const want = new RegExp(`^To: ${rx(String(email).toLowerCase())}\\nSubject: ${subject}`, "im");
+  return mailbox().some((m) => want.test(m));
+};
 const bookings = async () => (await apiJson(`/bookings/${encodeURIComponent(ID)}`))?.bookings || [];
 /**
  * The full stored record. The unauthenticated GET /profiles/:id answers with only what a guest may see
@@ -140,7 +163,6 @@ export default async function run(ctx) {
   try {
     if (process.env.E2E_MODE === "mail") {
       // Every email the API would have sent, rendered the way an inbox shows it (a 680px wide pane).
-      const { readdirSync } = await import("node:fs");
       const dir = process.env.E2E_MAIL_DIR || "";
       const files = dir ? readdirSync(dir).filter((f) => f.endsWith(".html")).sort() : [];
       await ctx.send("Emulation.setDeviceMetricsOverride", { width: 680, height: 900, deviceScaleFactor: 1, mobile: false }).catch(() => undefined);
@@ -633,12 +655,12 @@ async function flow(ctx) {
     record("(e2) a full time disappears from the API and the picker, and the next guest is refused", !!filler?.ok && !stillListed && readChips && !onPage && refused, `capacity ${capacity}, filled ${left}: ${filler?.ok ? "ok" : filler?.error}; api lists it: ${stillListed}, picker read ${Array.isArray(chipTimes) ? chipTimes.length : 0} times, page shows it: ${onPage}, next booking: HTTP ${again.status} ${again.body?.error || ""}`);
   }
 
-  /* ================= (f) the founder alert and the guest email are in the API log ================= */
+  /* ================= (f) the founder alert and the guest email were both written ================= */
 
-  const logNow = apiLog();
-  const founderMail = /\[mail:dry\] to=harshils2340@gmail\.com subject=.*(CALL THE SHOP|Booking )/i.test(logNow);
-  const guestMail = /\[mail:dry\] to=harness\.guest@example\.com subject="Request sent/i.test(logNow);
-  record("(f) founder alert and guest confirmation printed to the API log", founderMail && guestMail, `founder:${founderMail} guest:${guestMail}`);
+  const founderMail = mailSent("harshils2340@gmail.com", "(.*CALL THE SHOP|Booking )");
+  const guestMail = mailSent("harness.guest@example.com", "Request sent");
+  // A mailbox that is empty because nothing was passed down is not two emails that were never written.
+  record("(f) founder alert and guest confirmation were written", founderMail && guestMail, mailbox().length ? `founder:${founderMail} guest:${guestMail}` : "the harness was given no mail directory to read");
 
   /* ================= (g) the operator sees the request and accepts it ================= */
 
@@ -657,7 +679,7 @@ async function flow(ctx) {
   const acceptedOk = await untilLocal(async () => (await bookings()).find((b) => b.guest?.name === "Harness Guest")?.status === "accepted", 15000);
   await sleep(1200);
   await shot("g2-accepted");
-  const acceptMail = /\[mail:dry\] to=harness\.guest@example\.com subject="Confirmed:/i.test(apiLog());
+  const acceptMail = mailSent("harness.guest@example.com", "Confirmed:");
   record("(g) the operator accepts and the guest is emailed", rowShown && acceptedOk && acceptMail, `row:${rowShown} accepted:${acceptedOk} email:${acceptMail}`);
 
   /* ================= (h) a second booking is declined ================= */
@@ -686,7 +708,7 @@ async function flow(ctx) {
   const declinedOk = await untilLocal(async () => (await bookings()).find((b) => b.code === code2)?.status === "declined", 15000);
   await sleep(1200);
   await shot("h-declined");
-  const declineMail = /\[mail:dry\] to=harness\.two@example\.com subject="Not available:/i.test(apiLog());
+  const declineMail = mailSent("harness.two@example.com", "Not available:");
   record("(h) a second booking is declined and the guest is told", !!second?.ok && declinedOk && declineMail, `booked:${!!second?.ok} declined:${declinedOk} email:${declineMail}`);
 
   /* ================= (h2) Instant Book on: a booking confirms on its own and both sides hear "booked" ================= */
@@ -707,7 +729,7 @@ async function flow(ctx) {
   }).then((r) => r.json()).catch((e) => ({ error: String(e) })) : null;
   await sleep(1500);
   const instantRow = (await bookings()).find((b) => b.code === code3);
-  const instantMails = /\[mail:dry\] to=harness\.three@example\.com subject="You're booked:/i.test(apiLog()) && /\[mail:dry\] to=[^\n]* subject="New booking:/i.test(apiLog());
+  const instantMails = mailSent("harness.three@example.com", "You're booked:") && mailbox().some((m) => /^Subject: New booking:/im.test(m));
   await clickIn(".odinstant .optoggle");
   await sleep(2000);
   await untilLocal(async () => (await storedProfile())?.profile?.instantBook === false);
@@ -746,7 +768,7 @@ async function flow(ctx) {
   const cancelSaved = await untilLocal(async () => (await bookings()).find((b) => b.code === code3)?.status === "cancelled", 15000);
   await sleep(1200);
   await shot("h3-cancelled");
-  const cancelMail = /\[mail:dry\] to=harness\.three@example\.com subject="Cancelled:/i.test(apiLog());
+  const cancelMail = mailSent("harness.three@example.com", "Cancelled:");
   record("(h3) the operator cancels a confirmed booking and the guest is emailed", cancelSaved && cancelMail, `open:${opened} ask:${asked} click:${cancelled} saved:${cancelSaved} email:${cancelMail}`);
 
   /* ================= payouts page, as the operator sees it ================= */

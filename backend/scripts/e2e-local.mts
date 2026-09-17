@@ -384,6 +384,10 @@ console.log("\n6. Claim, edit, book, accept and decline, in a headless browser")
     E2E_STORE: store,
     E2E_TITLE: String(detail.title || ""),
     E2E_APILOG: apiLogPath,
+    // Every message the API wrote, as MAIL_DUMP_DIR left it: "To:" and "Subject:" and the body. The mail checks
+    // read these rather than the API log, whose recipient is masked on purpose and cannot tell two of the
+    // harness's guests at the same domain apart.
+    E2E_MAIL_DIR: mailDir,
     E2E_OUT: flowOut,
     E2E_STRIPE: testKey ? "1" : "",
   };
