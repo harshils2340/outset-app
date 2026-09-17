@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { dateKey, startOfToday } from "../../lib/dates";
 import { fmtTime, money } from "../../lib/format";
-import { fmtTotal, guestHearsBack, isoToDate, relDay, type OpBooking, type OpStatus } from "../../lib/operator";
+import { bookingPayout, fmtTotal, guestHearsBack, isoToDate, relDay, type OpBooking, type OpStatus } from "../../lib/operator";
 import { Markup } from "../Markup";
 import { OD_ICONS, useOp } from "./opContext";
 
@@ -168,8 +168,10 @@ export function BookingDrawer({ b, onClose }: { b: OpBooking; onClose: () => voi
           <div><small>When</small><b>{d.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}</b><span>{fmtTime(b.slot)}{/\d+\s*(hours?|hrs?|min)/i.test(b.variant || "") ? " · " + b.variant : svc ? " · " + (svc.durationMin >= 60 ? (svc.durationMin / 60).toString().replace(/\.0$/, "") + (svc.durationMin === 60 ? " hour" : " hours") : svc.durationMin + " min") : ""}</span></div>
           <div><small>What</small><b>{b.service}</b><span>{b.variant || "Standard"}</span></div>
           <div><small>Who</small><b>{b.qty} {b.qty === 1 ? "guest" : "guests"}</b></div>
-          {/* The guest's total includes Outset's service fee; when the API priced the booking the operator's own share is shown beside it. */}
-          <div><small>Total</small><b>{b.subtotal != null && b.total != null && b.subtotal < b.total ? "Guest pays " + money(b.total) + " · you receive " + money(b.subtotal) : fmtTotal(b)}</b>{b.addons?.length ? <span>Add-ons: {b.addons.join(", ")}</span> : null}</div>
+          {/* The guest's total carries Outset's service fee, and the operator's own price still carries Outset's
+              5%. "You receive" was printing that price, which is the email's "Your price" line, a whole fee
+              above the "You receive" line underneath it: $116 here against the $110.20 the transfer sends. */}
+          <div><small>Total</small><b>{b.subtotal != null && b.total != null && b.subtotal < b.total ? "Guest pays " + money(b.total) + " · you receive " + money(bookingPayout(b)) : fmtTotal(b)}</b>{b.addons?.length ? <span>Add-ons: {b.addons.join(", ")}</span> : null}</div>
         </div>
         {b.note ? <blockquote className="odnote">“{b.note}”</blockquote> : null}
 

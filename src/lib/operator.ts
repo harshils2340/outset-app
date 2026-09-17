@@ -781,7 +781,22 @@ export function bookingTotal(b: OpBooking): number {
  * taking a fee back off it would invent a discount the demo never gave; `isMoney` is the filter for that.
  */
 export function bookingPayout(b: OpBooking): number {
-  return operatorNet(subtotalFromTotal(bookingTotal(b)));
+  return operatorNet(bookingSubtotal(b));
+}
+
+/**
+ * The operator's own price behind a booking. The API records it when it prices the booking, and that is the
+ * number the transfer and the "Your price" line in the email use, so it is read first.
+ *
+ * Working it back out of the guest total is a guess, because the service fee steps down at $100 and $500 and
+ * stops at $25: 600 of the operator prices between $1 and $2,000 in cent steps share a total with a higher
+ * price, and the inverse returns the higher one. A $495.01 trip totals $515.01, comes back as $500.01, and
+ * was shown to the operator as "you receive $475.01" against the $470.26 Stripe sends. The guess stays for a
+ * booking made in this browser, which never had the API price it, and it is right for every other price.
+ */
+export function bookingSubtotal(b: OpBooking): number {
+  if (b.subtotal != null && b.subtotal > 0) return b.subtotal;
+  return subtotalFromTotal(bookingTotal(b));
 }
 
 /** A booking whose money is real. Sample rows are examples, and the Payouts page has never counted them. */

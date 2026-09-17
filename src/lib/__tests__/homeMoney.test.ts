@@ -118,3 +118,48 @@ test("Home's money tiles and the Payouts tiles read the one payout rule", () => 
   assert.ok(/payoutOf = bookingPayout/.test(more), "the Payouts page has grown a second payout rule");
   assert.ok(/upcomingLocal = payoutSum\(/.test(more), "the Payouts page's confirmed tile stopped taking fees off");
 });
+
+/**
+ * The price the API already recorded, against working it back out of the guest total.
+ *
+ * The service fee steps down at $100 and at $500 and stops at $25, so a total does not name one price: 600 of
+ * the prices between $1 and $2,000 in cent steps share a total with a higher one, and the inverse returns the
+ * higher. Every one of them is a booking the API priced and stored the price of, so nothing has to be guessed.
+ */
+
+test("a price the API recorded is read, not guessed back out of the total", () => {
+  // $495.01 takes a 4% fee of $20, and $515.01 also comes off $500.01, whose 4% fee is $20 too.
+  assert.equal(serviceFee(495.01), 20);
+  assert.equal(subtotalFromTotal(515.01), 500.01);
+  const guessed = bk({ total: 515.01, subtotal: null });
+  const known = bk({ total: 515.01, subtotal: 495.01 });
+  assert.equal(bookingPayout(guessed), 475.01);
+  assert.equal(bookingPayout(known), 470.26);
+  assert.equal(Math.round(bookingPayout(known) * 100), splitBooking(515.01, "usd", 495.01).net);
+});
+
+test("every price the API can record pays out the cent the transfer sends", () => {
+  let checked = 0;
+  for (let c = 9800; c <= 50100; c++) {
+    const sub = c / 100;
+    const total = Math.round((sub + serviceFee(sub)) * 100) / 100;
+    if (Math.abs(subtotalFromTotal(total) - sub) < 0.001) continue;
+    checked += 1;
+    assert.equal(Math.round(bookingPayout(bk({ total, subtotal: sub })) * 100), splitBooking(total, "usd", sub).net, "payout on a $" + sub + " price");
+  }
+  // Every price whose total is shared is in this band: 99 of them just under $100, 501 just under $500.
+  assert.equal(checked, 600);
+});
+
+test("a booking the API never priced still falls back to the total", () => {
+  assert.equal(bookingPayout(bk({ total: 121, subtotal: null, source: "guest" })), 110.2);
+  assert.equal(bookingPayout(bk({ total: 121, subtotal: undefined, source: "guest" })), 110.2);
+});
+
+test("the booking drawer's 'you receive' is what the operator receives", () => {
+  const src = readFileSync(new URL("../../components/operator/OpBookings.tsx", import.meta.url), "utf8");
+  const line = src.slice(src.indexOf("<small>Total</small>"), src.indexOf("</div>", src.indexOf("<small>Total</small>")));
+  assert.ok(line.includes("you receive"), "the drawer's money line moved");
+  assert.ok(line.includes("money(bookingPayout(b))"), "the drawer is promising the operator's price, not their payout");
+  assert.ok(!line.includes("money(b.subtotal)"), "the drawer is promising the operator's price, not their payout");
+});
