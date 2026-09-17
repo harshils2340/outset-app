@@ -349,12 +349,35 @@ export function warmApi(): void {
 /* ---------- config ---------- */
 
 export type ApiConfig = { payments: boolean; mail: boolean; stripePublishableKey?: string | null };
+/** What a page assumes while it has no answer: nothing is switched on. Never remembered as one. */
+export const NO_CONFIG: ApiConfig = { payments: false, mail: false, stripePublishableKey: null };
+/** An answer worth remembering, read defensively: this is JSON from the network. */
+export function normalizeConfig(data: ApiConfig): ApiConfig {
+  return { payments: !!data.payments, mail: !!data.mail, stripePublishableKey: data.stripePublishableKey || null };
+}
 let configCache: ApiConfig | null = null;
-/** What the API has switched on. Cached for the session; false for everything when there is no API. */
+let configInFlight: Promise<ApiConfig> | null = null;
+/**
+ * What the API has switched on. A real answer is remembered for the session; a failure is not.
+ *
+ * It used to remember the failure too, and the API host sleeps when idle: one `/config` that ran past its five
+ * seconds while the host woke up left the listing reading "You won't be charged yet" under a button saying
+ * "Request to book · $213", for the rest of that visit, on a shop whose card payments are switched on. Pressing
+ * it created a Stripe session all the same, because the API decides that from the listing's own price, so the
+ * guest was sent to a card form after being told they would not be charged. It also cost the embedded form, which
+ * needs the publishable key from here and quietly fell back to Stripe's hosted page.
+ */
 export async function apiConfig(): Promise<ApiConfig> {
   if (configCache) return configCache;
+  // One read, however many callers: the listing page and the booking both ask as the page opens.
+  configInFlight ??= readConfig();
+  return configInFlight;
+}
+async function readConfig(): Promise<ApiConfig> {
   const r = await call<ApiConfig>(`/config`, { timeout: 5000 });
-  configCache = r.ok && r.data ? r.data : { payments: false, mail: false };
+  configInFlight = null;
+  if (!r.ok || !r.data) return NO_CONFIG;
+  configCache = normalizeConfig(r.data);
   return configCache;
 }
 
