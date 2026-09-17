@@ -101,10 +101,14 @@ test("the operator's own answer decides, whatever the unit is called", () => {
   assert.equal(priceBooking(perHeadBoat, [], "Charter", "Standard", 4, [])?.subtotal, 200);
 });
 
-test("a made-up unit with no answer still falls back to the old reading", () => {
-  // Nothing set perGuest here, which is a scraped listing. The heuristic is unchanged.
+test("a scraped unit naming a thing is charged once, and an unknown one still falls back to the words", () => {
+  // Nothing set perGuest on any of these, which is a scraped listing. A unit that names a thing decides on its
+  // own now, so the cabin above is $400 whether or not the operator ever came and said so.
   const scraped = [{ name: "Overnight", detail: "Cabin", price: 400, per: "/cabin" }];
-  assert.equal(priceBooking(scraped, [], "Overnight", "Cabin", 2, [])?.subtotal, 800);
+  assert.equal(priceBooking(scraped, [], "Overnight", "Cabin", 2, [])?.subtotal, 400);
   const byHour = [{ name: "Rental", detail: "Standard", price: 60, per: "/hour" }];
   assert.equal(priceBooking(byHour, [], "Rental", "Standard", 3, [])?.subtotal, 60);
+  // A unit we have never seen says nothing either way, so the option's own words still decide.
+  const unknown = [{ name: "Adult ticket", detail: "Standard", price: 20, per: "/wristband" }];
+  assert.equal(priceBooking(unknown, [], "Adult ticket", "Standard", 3, [])?.subtotal, 60);
 });

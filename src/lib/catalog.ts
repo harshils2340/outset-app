@@ -255,6 +255,16 @@ export function optionLabel(o: UnclaimedOption): string {
   return o.detail ? o.name + " · " + o.detail : o.name;
 }
 
+/** A unit that names a person, so the price is multiplied by the party: "/person", "/adult", "/rider". */
+export const PERSON_UNIT = /^(?:person|people|adult|child|children|kid|senior|youth|student|guest|rider|passenger|jumper|seat|head|pax)s?$/;
+
+/**
+ * A unit that names the whole booking, one vehicle, one room or a length of time, so the price is charged once
+ * however many go: "/group", "/trip", "/boat", "/night", "/hr", "/30 min".
+ */
+export const FLAT_UNIT =
+  /^(?:\d+\s*)?(?:half[\s-])?(?:hr|hrs|hour|hours|min|mins|minute|minutes|day|days|night|nights|week|weeks|month|months|season|boat|vessel|yacht|pontoon|ski|jet ?ski|kart|kayak|canoe|paddleboard|board|bike|vehicle|car|cart|room|cabin|suite|site|lane|table|court|bay|group|party|trip|charter|tour|rental|booking|slot|session|game|round)s?$/;
+
 /**
  * Experiences are priced per person unless the operator's unit says the price covers a thing:
  * a boat, a ski, a kart, a room, a lane, a group, or a block of time on a rental.
@@ -263,10 +273,16 @@ export function perPerson(o: UnclaimedOption): boolean {
   // An operator who set this told us outright, so nothing is guessed. Only a scraped price falls through to the
   // words below, which is why the unit can be anything they like without a made-up unit costing a guest money.
   if (typeof o.perGuest === "boolean") return o.perGuest;
-  const unit = (o.per || "").toLowerCase();
+  const unit = (o.per || "").toLowerCase().replace(/^\//, "").trim();
   const text = ((o.name || "") + " " + (o.detail || "")).toLowerCase();
+  // A stated unit settles it, and it is read before the words, because the words carry the party a service
+  // holds as often as the party it is priced for: "Event space for up to 200 guests" at "$18,500 / group" was
+  // read as a price per guest, so the booking box quoted a party of four $74,000 and the card was charged it.
+  // A capacity, a ratio ("2:1 guest to guide") and a seat count all said "per person" the same way, on 1,726
+  // priced options across 808 operators. Only a unit naming a person multiplies the bill now.
+  if (PERSON_UNIT.test(unit)) return true;
+  if (FLAT_UNIT.test(unit)) return false;
   if (/person|adult|child|kid|senior|youth|guest|rider|passenger|jumper|seat/.test(unit + " " + text)) return true;
-  if (/\/(hr|hour|boat|ski|kart|vehicle|room|lane|group|trip|day|half day|half-day|week|session|game)\b/.test(unit)) return false;
   if (/\b(rental|per hour|hourly|half day|full day|all day|\d+\s*(hr|hour|hours|min|minutes))\b/.test(text) && /rental|boat|ski|pontoon|kayak|paddle|bike|kart/.test(text + " " + unit)) return false;
   return true;
 }
