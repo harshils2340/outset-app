@@ -1239,6 +1239,67 @@ pass, both projects type-check clean.
   `npm test` on its own.
 
 
+## 17 September 2026, twentieth run (10:00 to 11:30 UTC)
+
+**Chosen, and why.** The nineteenth run's entry says the rehearsal was green at **53 of 53** and nothing had
+landed since, so it was skipped at the start: both type checks and both unit suites ran instead (`npx tsc -b`
+at the root, since `tsc --noEmit -p .` there still checks nothing, and `tsc --noEmit -p .` in `backend/`). It
+ran at the end, because both fixes are in code it drives, and one of its own checks (k7) reads the Free
+cancellation badge: **53 of 53**. The hunt went after the shape of bug the last five runs kept finding, one
+fact with two readers that disagree, in the two places on a listing page nobody had swept: **how long it
+runs** and **what happens if you cancel**. Both turned out to have a reader that knew the rules and a reader
+that did not, and on both the careless one is what a guest reads.
+
+**Found and fixed.**
+
+- **A campground told guests its trip ran 72 hours, which was its cancellation window** (`2c6d9cbe5`). The
+  page, the booking sheet, a claimed shop's published patch and Otto all read a length off the same menu
+  lines. Only the sync's reader knew those lines also state how much notice a cancellation needs and how far
+  ahead a tee time opens, so the page printed what the sync had refused on **135 of the 178** shipped listings
+  that fall back to it: "72 hours" from "Cancellations prior to 72 hours", "200 hours" from a yoga teacher
+  training, "716 days". Otto read them out loud too, and a golf course's twilight round came back as "2 hours"
+  because the rate starts two hours before close. Worse on a claimed shop, where the menu reader wins over the
+  crawled fact: **130 listings** would have swapped a good duration for one of these the day they claimed,
+  o-a1abeachrentals-com going from "2 hours" to "24 hours". One rule now in `src/lib/duration.ts`, which drops
+  only the span a notice rule governs, so a "4-hour experience with priority scheduling" keeps its four hours,
+  which the sync's line-wide test threw away because "priority" carries "prior".
+- **A shop whose policy opens "NON-REFUNDABLE, non-cancellable" advertised Free cancellation** (`0e9f28eea`).
+  The badge asked only whether "full refund" appeared anywhere in the policy, so it also caught the other
+  promise operators publish, the one about a trip they call off themselves for weather. **72 of the 1,314**
+  shipped listings carrying the badge had nothing behind it: "All sales are final. Full refund in case of
+  operator cancellation due to weather", "Tickets purchased are non-refundable", "Deposits fully refundable
+  only if weather causes trip cancellation", and one whose 12 hour window is sold separately as Trip
+  Protection. The feed card, the listing page, the venue rows, the booking box and the Free cancellation
+  filter all drew it, and the filter offered those shops to a guest who asked for exactly this. The rule now
+  reads the policy a claim at a time over the cancellation text and the policy lines together, because the two
+  promises usually sit in different lines, and keeps the badge only where a guest who cancels is promised
+  something. o-seaspiritfishing-com keeps its badge on a policy line, o-hornbyislandsailing-com on
+  "Cancellations up to 48 hours before trip without fee".
+
+**Tests.** `duration.test.ts` (10 cases, 7 fail on the old reader) and `freeCancel.test.ts` (9). Each case is
+pinned to the real listing it came from and first asserts that listing still carries the line. Three sweep all
+59,162 shipped detail files: no listing derives a length nobody could book, none lets a claim replace a good
+duration with a window, and none keeps a badge its policy never promises. 318 guest tests and 196 backend
+tests pass, both projects type-check clean, rehearsal 53 of 53.
+
+**Needs Harshil.**
+
+- **The Free cancellation badge is now judged from the policy text, not only from the published `fc`.** That
+  is what makes the 72 disappear without a sync, and it means a listing whose text says nothing either way
+  keeps whatever the sync wrote. The rule errs towards not promising: about five of the 72 state a guest
+  window in words that stop short of a refund ("48 hour cancellation policy", "Customer Cancellation are
+  accepted 48 hours in advance"), and those lose the badge. If you would rather under-promise less, the line
+  to move is `onlyOperatorCancels` in `src/lib/cancellation.ts`.
+- **The window on the badge is still the first number in the policy, not the number beside the promise.** On
+  **28 listings** those differ, and o-destinhelicopters-com reads "up to 6 hours before" over a policy whose
+  full refund needs 24 hours notice. Fixing it means deciding which clause owns the badge when a shop states
+  three windows, which is a product call.
+- The earlier runs' calls stand: everything needing a real Stripe key is untouched, Home's three tabs are
+  still `role="tab"` with nothing to control, the party picker still offers 20 on listings that state less,
+  6,513 rated listings still show a star rating on their card and none on the page it opens, Arizona still
+  moves on the Navajo Nation, `groupCap` still counts no players or anglers, and no workflow runs `npm test`.
+
+
 ## Coverage
 
 **Verified so far.** Booking validation and odd input on every route that takes it. The money split,
@@ -1344,7 +1405,11 @@ identically. What each surface tells a guest about that multiplication before th
 listing states, over all 4,040 listings that state one: a thousands separator, a floor stated as a ceiling, a
 line naming both, and a line that names no ceiling at all, against the reader Otto uses for the same question.
 Service tier labels that collide, over all 62,054 services shipped. Add-ons with no price, and what a blank
-price in the dashboard means. Availability hours that end before they start.
+price in the dashboard means. Availability hours that end before they start. How long a booking runs, over all 59,162 shipped detail files:
+the sync's reader, the page's, the dashboard's and Otto's against the notice periods, refund windows and
+teacher trainings that sit in the same menu lines, and what a claim then does to a good crawled duration. The
+"Free cancellation" badge, over all 1,314 listings that carry one: whether the shop promises a guest who
+cancels anything at all, on the card, the listing page, the venue rows, the booking box and the filter.
 
 The operator dashboard's Home feed, which the rehearsal now opens and reads the money tiles of, and which
 this run read through besides: the three tabs and which one it opens on, the feed's buckets against the
@@ -1385,7 +1450,9 @@ Whether the party picker should take the group size a listing states (1,255 stat
 picker offers 20). The
 glossary behind a tier label (`explain`, `variantNote`) and the "More options" folding, which an earlier run
 read but did not drive in a browser. Deals and promos on a listing driven in a browser, and the promo crawl's
-output; only the rules behind them are read so far. Whether the listing page should print a rating with no
+output; only the rules behind them are read so far. Which clause on a policy owns the number the Free
+cancellation badge prints, on the 28 listings where the first number in the text is not the one beside the
+refund promise (see this run's Needs Harshil). Whether the listing page should print a rating with no
 written reviews under it: 6,513 rated listings show one on their card, their confirmation and the compare
 table and none on the page those open, and 1,699 of those clear the Top rated bar with no laurel to show for
 it. The two listings that put the review's headline in the author slot, so a card is signed "Excellent trip".
