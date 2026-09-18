@@ -24,6 +24,7 @@ import { bookableRow, tidyRowName } from "../../../src/lib/menuRow.ts";
 import { ownWords } from "../../../src/lib/ownWords.ts";
 import { dialPhone } from "../../../src/lib/phone.ts";
 import { streetOf } from "../../../src/lib/address.ts";
+import { REGION_NAME } from "../../../src/data/regions.ts";
 
 type Overlay = { published: boolean; patch: Record<string, unknown> };
 /** Claimed operators' saved edits, keyed by listing id. Filled by loadProfileOverlays before a sync. */
@@ -121,6 +122,20 @@ export function allContacts(): OperatorContact[] {
   return rows.map(toContact);
 }
 
+/**
+ * The two-letter code the rest of the app reads a state by. 47 operators publish the name spelled out, so
+ * their area line is "West Union, Ohio", and every reader of a state asks for a code: `regionOfArea` answers
+ * nothing for them, which costs those listings the right clock, the currency their booking is charged in, the
+ * state row a search offers and the state page that row opens.
+ */
+const REGION_CODE = new Map(Object.entries(REGION_NAME).map(([code, name]) => [name.toLowerCase(), code]));
+export function regionCode(region: string | null): string | null {
+  const r = (region || "").trim();
+  if (!r) return null;
+  if (/^[A-Za-z]{2}$/.test(r)) return r.toUpperCase();
+  return REGION_CODE.get(r.toLowerCase()) || r;
+}
+
 function toContact(r: Row): OperatorContact {
   return {
     domain: r.domain,
@@ -132,7 +147,7 @@ function toContact(r: Row): OperatorContact {
     // A town, a bare house number or the shop's phone is not a street, and the page prints whatever is here.
     street: streetOf(r) || null,
     city: r.city,
-    region: r.region,
+    region: regionCode(r.region),
     postal: r.postal,
     hours: tidyHours(r.hours ? r.hours.split(" | ") : r.hours_text ? [r.hours_text] : []),
     bookingVendor: r.calendar_vendor,
@@ -461,7 +476,8 @@ export function toCatalogItem(r: CatalogRow): Record<string, unknown> {
   // The screen judges the address the site publishes, which is after fullSize rewrites a Wix or Squarespace
   // transform. Checking before that rewrite never found the verdict, so rejected logos came straight back.
   const screenedRanked = keepScreened(ranked.filter(Boolean));
-  const area = r.city ? (r.region && !r.city.includes(r.region) ? r.city + ", " + r.region : r.city) : r.region || "";
+  const region = regionCode(r.region);
+  const area = r.city ? (region && !r.city.includes(region) ? r.city + ", " + region : r.city) : region || "";
   const item: Record<string, unknown> = {
     id: "o-" + slug(r.domain),
     claimKey: claimKeyHash("o-" + slug(r.domain)),
