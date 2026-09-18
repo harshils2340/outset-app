@@ -1,7 +1,8 @@
 import { db, nowIso } from "../db/client.ts";
 import { sendMail } from "../lib/mail.ts";
 import { composeOutreach } from "./drafts.ts";
-import { emailHash, loadUnsubHashes, mailPostal } from "../lib/unsub.ts";
+import { emailHash, loadSuppression, mailPostal, unsubPageUrl } from "../lib/unsub.ts";
+import { outreachBlockers } from "./guards.ts";
 
 type OpRow = {
   id: string;
@@ -30,8 +31,23 @@ export async function sendOutreach(opts: {
   country?: string;
 }): Promise<{ sent: number; skipped: number; failed: number }> {
   const out = { sent: 0, skipped: 0, failed: 0 };
-  const blocked = await loadUnsubHashes();
+  const suppression = await loadSuppression();
+  const blocked = suppression.hashes;
+  // Printed before the sample send too, because a sample to yourself is where these are meant to be caught.
+  const blockers = outreachBlockers({
+    claimSecret: process.env.CLAIM_SECRET || "",
+    mailFrom: process.env.MAIL_FROM || "",
+    postal: mailPostal(),
+    unsubUrl: unsubPageUrl("owner@example.com"),
+    suppression,
+  });
+  for (const b of blockers) console.error("outreach: " + b);
   if (opts.to) {
+    // A sample is still a commercial email landing in somebody's inbox, so the list covers it too.
+    if (blocked.has(emailHash(opts.to.trim().toLowerCase()))) {
+      console.error("sample not sent: " + opts.to + " is on the unsubscribe list");
+      return out;
+    }
     const op = db
       .prepare(
         `SELECT o.* FROM operators o
@@ -54,15 +70,7 @@ export async function sendOutreach(opts: {
     console.log(r.sent ? "sample sent " + r.id : "sample not sent: " + r.error);
     return out;
   }
-  if (!opts.dry && !mailPostal()) {
-    console.error("Set MAIL_POSTAL to a PO box or mailbox (not a made-up street) before sending to businesses.");
-    return out;
-  }
-  const fromOk = /@onoutset\.com>/i.test(process.env.MAIL_FROM || "") || /@onoutset\.com$/i.test(process.env.MAIL_FROM || "");
-  if (!opts.dry && !fromOk) {
-    console.error("MAIL_FROM is still the Resend test address. Set MAIL_FROM to Harshil <hello@onoutset.com>.");
-    return out;
-  }
+  if (!opts.dry && blockers.length) return out;
   let sql = `SELECT d.id, d.to_email, o.domain, o.name, o.email, o.city, o.region, o.metro_id, o.website, o.completeness, o.origin, o.calendar_vendor
        FROM outreach_drafts d JOIN operators o ON o.id = d.operator_id
        WHERE d.status = 'draft' AND d.to_email IS NOT NULL AND d.to_email LIKE '%@%' AND o.claim_status = 'unclaimed'

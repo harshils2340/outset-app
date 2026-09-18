@@ -1,5 +1,6 @@
 import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 import { db, nowIso } from "../db/client.ts";
+import { pgConfigured } from "../db/pg.ts";
 import { claimSecret } from "./claim.ts";
 import { getDoc, updateDoc } from "./repo.ts";
 
@@ -93,33 +94,56 @@ export async function recordUnsub(email: string, reason: SuppressReason = "unsub
   }
 }
 
+/**
+ * Where a suppression list came from, because an empty list and a list nobody could read look identical and
+ * mean opposite things. The real list lives in Postgres: the SQLite table only holds what this machine itself
+ * recorded, which on a laptop that has never served the unsubscribe route is nothing at all.
+ */
+export type Suppression = { hashes: Set<string>; fromDb: boolean; fromApi: boolean; error?: string };
+
 /** Hashes on this machine plus Postgres when this process can reach it. Does not call the API. */
-export async function localUnsubHashes(): Promise<Set<string>> {
-  const set = new Set<string>();
+export async function localSuppression(): Promise<Suppression> {
+  const hashes = new Set<string>();
   try {
     db.exec("CREATE TABLE IF NOT EXISTS mail_unsub (email_hash TEXT PRIMARY KEY, at TEXT NOT NULL)");
-    for (const r of db.prepare("SELECT email_hash FROM mail_unsub").all() as { email_hash: string }[]) set.add(r.email_hash);
+    for (const r of db.prepare("SELECT email_hash FROM mail_unsub").all() as { email_hash: string }[]) hashes.add(r.email_hash);
   } catch {
     /* no local table */
   }
-  const file = await getDoc<UnsubFile>(FILE).catch(() => null);
-  if (file?.hashes) for (const h of Object.keys(file.hashes)) set.add(h);
-  return set;
+  if (!pgConfigured()) return { hashes, fromDb: false, fromApi: false, error: "DATABASE_URL is not set" };
+  try {
+    const file = await getDoc<UnsubFile>(FILE);
+    if (file?.hashes) for (const h of Object.keys(file.hashes)) hashes.add(h);
+    return { hashes, fromDb: true, fromApi: false };
+  } catch (err) {
+    return { hashes, fromDb: false, fromApi: false, error: (err as Error).message };
+  }
 }
 
-/** Local list plus whatever Render has recorded, so a send on the Mac honors clicks from the live site. */
-export async function loadUnsubHashes(): Promise<Set<string>> {
-  const set = await localUnsubHashes();
+export async function localUnsubHashes(): Promise<Set<string>> {
+  return (await localSuppression()).hashes;
+}
+
+/**
+ * Local list plus whatever Render has recorded, so a send on the Mac honors clicks from the live site.
+ * Says whether either of those two answered: a send that cannot read the list must not go out, because the
+ * list is the only thing standing between an opt-out and another email.
+ */
+export async function loadSuppression(): Promise<Suppression> {
+  const local = await localSuppression();
+  let error = local.error;
   try {
     const res = await fetch(API + "/mail/unsubscribed", { signal: AbortSignal.timeout(35000) });
     if (res.ok) {
       const j = (await res.json()) as { hashes?: string[] };
-      for (const h of j.hashes || []) set.add(h);
+      for (const h of j.hashes || []) local.hashes.add(h);
+      return { ...local, fromApi: true };
     }
-  } catch {
-    /* offline send still uses the local file */
+    error = "GET " + API + "/mail/unsubscribed answered " + res.status;
+  } catch (e) {
+    error = (e as Error).message;
   }
-  return set;
+  return { ...local, fromApi: false, error };
 }
 
 /** Footer required on commercial outreach. Does not repeat if the draft already has the link. */

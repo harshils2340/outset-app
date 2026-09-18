@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { rateLimit } from "./auth.ts";
-import { localUnsubHashes, parseUnsubToken, recordUnsub } from "../lib/unsub.ts";
+import { localSuppression, parseUnsubToken, recordUnsub } from "../lib/unsub.ts";
 
 function page(title: string, msg: string): string {
   return `<!doctype html>
@@ -43,8 +43,15 @@ unsub.post("/unsubscribe", rateLimit(60, 60 * 60 * 1000), async (c) => {
   return c.text("OK", 200);
 });
 
-/** Hashes only, so the Mac send job can skip people who opted out on Render. */
+/**
+ * Hashes only, so the Mac send job can skip people who opted out on Render.
+ *
+ * A database that cannot be read answers 503 rather than 200 with whatever this host happens to hold. The
+ * list lives in Postgres; the local table is only what this process itself recorded, so a 200 carrying that
+ * alone tells a sender "nobody has unsubscribed" and the next run mails every one of them again.
+ */
 unsub.get("/mail/unsubscribed", async (c) => {
-  const hashes = [...(await localUnsubHashes())];
-  return c.json({ hashes });
+  const list = await localSuppression();
+  if (!list.fromDb) return c.json({ error: "suppression list unavailable" }, 503);
+  return c.json({ hashes: [...list.hashes] });
 });
