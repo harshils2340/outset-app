@@ -10,7 +10,6 @@ import {
   addressLine,
   bookingPaused,
   contactFor,
-  fmtHours,
   fmtPhone,
   fromPrice,
   getCatalog,
@@ -38,6 +37,7 @@ import { cleanDesc, durationLabel, groupCap, minAge, splitPolicies } from "../..
 import { freeCancelBadge } from "../../lib/cancellation";
 import { ASSISTANT_NAME, DAY_SHORT, assistantOn, clock12, companySuggestions, dayLabel, todaysDeals } from "../../lib/companyAgent";
 import { bookableStart, clockIn, hourLines, itemWeek, zoneFor } from "../../lib/openNow";
+import { displayHours } from "../../lib/hoursText";
 import { noStartTimesNote, startTimesOn } from "../../lib/startTimes";
 import { itemOpenState } from "../../lib/openNow";
 import { apiConfig, fetchAvailability, fetchOpenSlots, hasApi, type LiveAvailability } from "../../lib/api";
@@ -65,7 +65,7 @@ import { applyFilters, browseList, nearFirst } from "../explore/feed";
 import { getPrefs, setPrefs, toggleSaved, usePrefs, type FeedFilters } from "../explore/prefs";
 import { SlotCalendar } from "./SlotCalendar";
 import { SearchSheet } from "../explore/SearchSheet";
-import { AdminSiteLink, ExplainLine, ReviewCard, TYPE_NAME, arrivalNote, bookableServices, dealShown, isStandardOnly, optionLength, splitVariants, variantNote, tidyDuration, tidyHours, possessive, splitIncluded, tidyAddress, tidyCancel, tidyLength, tidyLine, tidyName } from "../web/WebListing";
+import { AdminSiteLink, ExplainLine, ReviewCard, TYPE_NAME, arrivalNote, bookableServices, dealShown, isStandardOnly, optionLength, splitVariants, variantNote, tidyDuration, possessive, splitIncluded, tidyAddress, tidyCancel, tidyLength, tidyLine, tidyName } from "../web/WebListing";
 import { shownReviews } from "../../lib/reviews";
 
 /** Only the starting point for the party picker before a service is chosen; the operator's own limit wins. */
@@ -538,7 +538,7 @@ function RequestBody({
   if (cap != null) rows.push({ icon: ICONS.user, title: "Up to " + cap + " guests", sub: "Group size" });
   if (item.season) rows.push({ icon: ICONS.compass, title: item.season, sub: "Season" });
   if (item.waiverUrl) rows.push({ icon: ICONS.ticket, title: "Sign the waiver online", sub: "Saves time at check-in" });
-  const hours = hourLines(item).length ? hourLines(item) : contact?.hours.map(fmtHours) || [];
+  const hours = displayHours(hourLines(item).length ? hourLines(item) : contact?.hours || []);
   const videos = (item.ytVideos || []).slice(0, 2);
   const embed = !videos.length && !item.video && item.videoEmbed ? item.videoEmbed : null;
   const blurb = item.blurb ? cleanDesc(item.blurb).replace(/\s+(Book|Learn more|Read more|Reserve)\.?$/i, "") : "";
@@ -1151,7 +1151,7 @@ function RequestBody({
                   <Markup html={ICONS.clock} />
                   <span>
                     {hours.map((h) => (
-                      <b key={h}>{tidyHours(h)}</b>
+                      <b key={h}>{h}</b>
                     ))}
                     <small>Hours</small>
                   </span>

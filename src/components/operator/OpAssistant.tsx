@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
-import { contactFor, fmtHours, listingFacts } from "../../lib/catalog";
+import { contactFor, listingFacts } from "../../lib/catalog";
+import { displayHours } from "../../lib/hoursText";
 import { ASSISTANT_NAME, companyGreeting, companyReply, companySuggestions } from "../../lib/companyAgent";
 import { fmtTime, money } from "../../lib/format";
 import { DAY_SHORT } from "../../lib/operator";
@@ -53,7 +54,7 @@ export function OpAssistant() {
               <div>
                 <small>Hours</small>
                 {p.hours.map((h, i) => <span key={i}>{DAY_SHORT[i]}: {h.closed ? "Closed" : fmtTime(h.open) + " to " + fmtTime(h.close)}</span>)}
-                {ctx.contact?.hours.length ? ctx.contact.hours.slice(0, 2).map((l, i) => <span key={"c" + i} className="odmuted">Site says: {fmtHours(l)}</span>) : null}
+                {ctx.contact?.hours.length ? displayHours(ctx.contact.hours).slice(0, 2).map((l, i) => <span key={"c" + i} className="odmuted">Site says: {l}</span>) : null}
               </div>
               <div>
                 <small>Contact</small>

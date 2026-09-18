@@ -7,13 +7,14 @@ import { metroById } from "../../data/metros";
 import { countryOfArea, countryOfRegion, regionOfArea } from "../../data/regions";
 import { SLOT_TIMES } from "../../data/slots";
 import type { Unclaimed } from "../../data/types";
-import { addressLine, bookingPaused, contactFor, fmtHours, fmtPhone, fromPrice, getCatalog, guestCapFor, listingFacts, mapsHref, maxGuestsFor, perPerson, plainWords, publicRating, telHref, topRated as isTopRated } from "../../lib/catalog";
+import { addressLine, bookingPaused, contactFor, fmtPhone, fromPrice, getCatalog, guestCapFor, listingFacts, mapsHref, maxGuestsFor, perPerson, plainWords, publicRating, telHref, topRated as isTopRated } from "../../lib/catalog";
 import { DAYS, fmtDate, fmtReviews, fmtTime, money, priceWith, reviewsLine } from "../../lib/format";
 import { srcSet, thumb } from "../../lib/images";
 import { embedAutoplay, isGif, listingMedia, photoCandidates, probePhotos, type Media } from "../../lib/media";
 import { bringLine, cleanDesc, durationLabel, groupCap as readGroupCap, minAge, splitPolicies } from "../../lib/listingDerive";
 import { freeCancelBadge } from "../../lib/cancellation";
 import { bookableStart, clockIn, hourLines, itemOpenState, itemWeek, zoneFor } from "../../lib/openNow";
+import { displayHours } from "../../lib/hoursText";
 import { noStartTimesNote, startTimesOn } from "../../lib/startTimes";
 import { DAY_SHORT, assistantOn, clock12, dayLabel, todaysDeals } from "../../lib/companyAgent";
 import { fmtDistance } from "../../lib/geo";
@@ -311,11 +312,6 @@ function lengthWords(text: string): string {
     const unit = ({ hr: "hour", min: "minute" } as Record<string, string>)[u.toLowerCase()] || u.toLowerCase();
     return n + " " + unit + (Number(n) === 1 ? "" : "s");
   });
-}
-
-/** "of OperationsMon - Fri8:00 am" is a heading and a day glued to a time by the crawl: "Mon - Fri 8:00 am". */
-export function tidyHours(text: string): string {
-  return text.replace(/^\s*(?:hours\s+)?of\s+operations?:?\s*/i, "").replace(/^hours:?\s+/i, "").replace(/([A-Za-z])(\d)/g, "$1 $2").replace(/\s{2,}/g, " ").trim();
 }
 
 /** "60 min" reads "1 hour" and "90 min" "1.5 hours", so cards side by side state lengths the same way. */
@@ -1133,7 +1129,7 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
   const dealsNow = todaysDeals(item);
   const today = item.promos?.length ? clockIn(zoneFor(item)).day : -1;
   const groupCap = readGroupCap(item.groupInfo);
-  const hours = hourLines(item).length ? hourLines(item) : contact?.hours.map(fmtHours) || [];
+  const hours = displayHours(hourLines(item).length ? hourLines(item) : contact?.hours || []);
   // The same bar the cards use, and beside it this page's own rule: a rating is printed only where
   // there are written reviews to read under it, which is what `score` already carries.
   const topRatedHere = !!score && isTopRated(item);
@@ -1697,8 +1693,8 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
                     <small>Hours</small>
                     {visitWeek?.some((d) => d && d.close > d.open) ? (
                       <ul className="alhours">{visitWeek.map((d, i) => <li key={i}><span>{DAYS[i]}</span><span>{d && d.close > d.open ? clock(d.open) + " to " + clock(d.close) : "Closed"}</span></li>)}</ul>
-                    ) : contact?.hours?.length ? (
-                      <ul className="alhours">{contact.hours.slice(0, 7).map((h) => <li key={h}><span>{h}</span></li>)}</ul>
+                    ) : hours.length ? (
+                      <ul className="alhours">{hours.slice(0, 7).map((h) => <li key={h}><span>{h}</span></li>)}</ul>
                     ) : (
                       <span className="alboxval muted">Call the business for hours.</span>
                     )}
@@ -1965,7 +1961,7 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
               {hours.length ? (
                 <div className="alwhererow">
                   <Markup html={I.clock} />
-                  <span><b>Hours</b>{hours.map((h) => <small key={h}>{tidyHours(h)}</small>)}</span>
+                  <span><b>Hours</b>{hours.map((h) => <small key={h}>{h}</small>)}</span>
                 </div>
               ) : null}
               {checkin ? (

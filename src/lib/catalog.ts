@@ -535,25 +535,6 @@ export function listingFacts(item: Unclaimed): ListingFacts {
   return { about, who, waiver, note };
 }
 
-const DAY_NAMES: Record<string, string> = { Mo: "Mon", Tu: "Tue", We: "Wed", Th: "Thu", Fr: "Fri", Sa: "Sat", Su: "Sun" };
-
-function to12h(t: string): string {
-  const m = t.match(/^(\d{1,2}):(\d{2})$/);
-  if (!m) return t;
-  const h = Number(m[1]);
-  const suffix = h >= 12 ? "pm" : "am";
-  const h12 = h % 12 === 0 ? 12 : h % 12;
-  return m[2] === "00" ? h12 + suffix : h12 + ":" + m[2] + suffix;
-}
-
-/** "Mo-Fr 09:00-20:00" to "Mon-Fri 9am-8pm". Leaves anything it cannot parse as written. */
-export function fmtHours(line: string): string {
-  const m = line.match(/^([A-Za-z,-]+)\s+(\d{1,2}:\d{2})-(\d{1,2}:\d{2})$/);
-  if (!m) return line;
-  const days = m[1].replace(/Mo|Tu|We|Th|Fr|Sa|Su/g, (d) => DAY_NAMES[d] || d);
-  return days + " " + to12h(m[2]) + "-" + to12h(m[3]);
-}
-
 /** Guests should never have to know the jargon. Expand it where it shows. */
 const GLOSSARY: [RegExp, string][] = [
   [/\bSUPs?\b/g, "Stand-up paddleboard"], [/\bPWCs?\b/g, "Personal watercraft"], [/\bATVs?\b/g, "Four-wheeler (ATV)"],
