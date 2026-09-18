@@ -122,6 +122,14 @@ const hits = new Map<string, number[]>();
  * choose, so that is the one we trust.
  */
 export function clientIp(c: Context): string {
+  // On Render the request has been through Cloudflare, and the last X-Forwarded-For entry is then a Cloudflare
+  // edge address that changes from one connection to the next. Counting on it, 130 requests from one laptop
+  // landed on dozens of different keys and never met the 120-an-hour ceiling: the limiter was not limiting
+  // anyone in production. Cloudflare writes CF-Connecting-IP on every request it forwards, overwriting whatever
+  // the caller sent, so that is the caller's address when it is present. Without a proxy in front, the header
+  // is as forgeable as X-Forwarded-For already was, and no worse.
+  const cf = (c.req.header("cf-connecting-ip") || "").trim();
+  if (cf) return cf;
   const chain = (c.req.header("x-forwarded-for") || "").split(",").map((s) => s.trim()).filter(Boolean);
   return chain[chain.length - 1] || c.req.header("x-real-ip") || "local";
 }
