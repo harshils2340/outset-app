@@ -71,6 +71,11 @@ services:
       # services from 4am to 10am Eastern, while the overnight sessions push, and deploys once when the window ends.
       - key: RENDER_API_KEY
         sync: false
+      # Who may read GET /admin/metrics with an emailed-code session, comma separated. Unset means nobody, so
+      # the internal dashboard is closed until this is set here (harshils2340@gmail.com). The route answers 404
+      # to everyone else, and x-admin-key still works for curl. See docs/METRICS.md.
+      - key: ADMIN_EMAILS
+        sync: false
       - key: RESEND_API_KEY
         sync: false
       - key: STRIPE_SECRET_KEY

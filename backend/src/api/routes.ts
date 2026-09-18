@@ -32,6 +32,7 @@ import { uploads } from "./uploads.ts";
 import { payouts } from "./payouts.ts";
 import { availability } from "./availability.ts";
 import { openSlotsRoute } from "./openSlots.ts";
+import { metrics } from "./metrics.ts";
 import { stripeEnabled } from "../lib/stripe.ts";
 
 export const app = new Hono();
@@ -71,6 +72,10 @@ app.route("/", uploads);
 app.route("/", payouts);
 app.route("/", availability);
 app.route("/", openSlotsRoute);
+// Above the blanket admin-key gate on purpose: the internal metrics page signs in with an emailed code and has
+// no key to send, and that gate answers 404 to everything without one. The route does its own check (a session
+// whose email is in ADMIN_EMAILS, or the same x-admin-key for curl) and answers 404 to anyone else.
+app.route("/", metrics);
 
 // No commit hash or other version marker: it costs an attacker nothing to ask, and a public git history
 // already maps a commit to whatever it fixed, so publishing which one is live points at what still isn't.

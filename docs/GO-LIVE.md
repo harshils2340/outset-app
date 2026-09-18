@@ -33,6 +33,15 @@ To test against real code without touching production, make a scratch branch (`n
 ## 1c. Admin key
 Set `ADMIN_KEY` on Render to any long random string. The internal routes (raw operator rows, outreach drafts) then only answer to requests carrying `x-admin-key`; without it they are closed on the public host.
 
+## 1d. The internal metrics page
+Set `ADMIN_EMAILS` on the **outset-api** service to `harshils2340@gmail.com` (comma separated if it ever needs more). It is in `render.yaml` with `sync: false`. Unset means nobody, and then the page cannot be signed in to at all. With it set, `GET /admin/metrics?days=90` answers a session signed in with an emailed code from that address, or `x-admin-key` for curl, and 404 to everyone else:
+
+```
+curl -s -H "x-admin-key: $ADMIN_KEY" 'https://outset-api.onrender.com/admin/metrics?days=30' | jq .
+```
+
+Outreach sends, claims, bookings, money and the catalog funnel, each with a per-day series. See `docs/METRICS.md` for what every figure means and why an unknown one is `null` rather than 0.
+
 ## 2. Point the site at the API
 The site is the Render static site `outset-web` (in `render.yaml`, project Outset, environment Production), built from every push to `main`. Its `VITE_API_URL` env var is the API URL; the blueprint sets it to `https://outset-api.onrender.com`. Nothing about the site goes through GitHub Actions or GitHub Pages. The only workflow under `.github/` is the end-to-end rehearsal (`e2e.yml`), plain CI. Every scheduled job (crawls, photo screen, payouts, keep-warm) runs on Render: the `outset-pipeline` worker and the cron services in `render.yaml`. GitHub disabled Actions for the account on 16 September 2026 because the crawl workflows used runners to read third-party sites; do not put a crawl, a ping or any non-CI job back under `.github/workflows`.
 

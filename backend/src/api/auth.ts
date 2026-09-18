@@ -4,6 +4,7 @@ import { claimKeyHash, claimSecret } from "../lib/claim.ts";
 import { sendMail } from "../lib/mail.ts";
 import { renderEmail } from "../lib/emailTemplate.ts";
 import { linkEmailHash, listingsForEmailHash } from "../lib/repo.ts";
+import { isAdminEmail } from "../lib/admin.ts";
 
 /**
  * Operator sign-in without passwords.
@@ -194,7 +195,9 @@ auth.post("/auth/request-code", rateLimit(20, 60 * 60 * 1000), async (c) => {
   // attacker which addresses have an operator account.
   if (!emailLimit("req:" + email, 5, 60 * 60 * 1000)) return c.json({ ok: true });
   const ids = await idsForEmail(email);
-  if (ids.length) {
+  // An address in ADMIN_EMAILS has usually claimed nothing, so the check above would silently send it no code
+  // and the internal metrics page could never be signed in to. Same code, same session, no listings on it.
+  if (ids.length || isAdminEmail(email)) {
     const code = String(randomInt(100000, 999999));
     codes.set(email, { hash: codeHash(email, code), exp: Date.now() + 10 * 60 * 1000, tries: 0 });
     void sendMail({

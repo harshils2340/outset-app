@@ -2,6 +2,7 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 import { Hono } from "hono";
 import { rateLimit } from "./auth.ts";
 import { recordUnsub, type SuppressReason } from "../lib/unsub.ts";
+import { recordOutreachEvent } from "../lib/outreachLog.ts";
 
 /**
  * Delivery feedback from Resend.
@@ -95,6 +96,9 @@ webhooks.post("/webhooks/resend", rateLimit(600, 60 * 60 * 1000), async (c) => {
   const addresses = addressesIn(ev);
   for (const address of addresses) {
     await recordUnsub(address, reason);
+    // Counted as well as suppressed: the suppression list says "do not mail this again", the log says how many
+    // of the emails that went out came back, which is the number that says whether outreach is working.
+    if (reason !== "unsubscribe") await recordOutreachEvent(address, reason);
     // Loud on purpose: a rising count here is the early warning that sending is going wrong.
     console.warn(`[mail:${reason}] suppressed ${address}`);
   }

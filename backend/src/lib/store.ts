@@ -29,6 +29,17 @@ async function github(path: string): Promise<Response> {
   });
 }
 
+/**
+ * Where a generated file sits on this host, or null when the checkout does not have it. For the one file too
+ * big to parse into memory on a free instance (catalog.json is 23 MB), which is read as a stream instead.
+ * Same path rules as readJson, so the two cannot disagree about what "public/" means.
+ */
+export function localPath(relPath: string): string | null {
+  if (!isSafeRelPath(relPath)) throw new Error("bad path");
+  const local = join(publicDir, relPath);
+  return existsSync(local) ? local : null;
+}
+
 /** relPath is relative to public/, e.g. "o/o-acme-com.json". The checkout wins; the repository fills a gap. */
 export async function readJson<T>(relPath: string): Promise<T | null> {
   if (!isSafeRelPath(relPath)) throw new Error("bad path");

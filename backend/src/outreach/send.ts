@@ -1,6 +1,7 @@
 import { db, nowIso } from "../db/client.ts";
 import { sendMail } from "../lib/mail.ts";
-import { composeOutreach } from "./drafts.ts";
+import { catalogId, composeOutreach } from "./drafts.ts";
+import { recordSend } from "../lib/outreachLog.ts";
 import { emailHash, loadSuppression, mailPostal, unsubPageUrl } from "../lib/unsub.ts";
 import { outreachBlockers } from "./guards.ts";
 
@@ -103,7 +104,11 @@ export async function sendOutreach(opts: {
     }
     const res = await sendMail({ to, subject: copy.subject, text: copy.body, replyTo: process.env.MAIL_REPLY_TO || undefined, commercial: true });
     if (res.sent) {
-      db.prepare("UPDATE outreach_drafts SET status = 'sent', subject = ?, body = ?, created_at = ? WHERE id = ?").run(copy.subject, copy.body, nowIso(), r.id);
+      const at = nowIso();
+      db.prepare("UPDATE outreach_drafts SET status = 'sent', subject = ?, body = ?, created_at = ? WHERE id = ?").run(copy.subject, copy.body, at, r.id);
+      // The SQLite row above is on this machine only; the API host cannot see it. Postgres is where the count
+      // of what outreach has done has to live. Never throws: the email has already gone out either way.
+      await recordSend({ email: to, listing: catalogId(r.domain), at });
       out.sent++;
     } else {
       db.prepare("UPDATE outreach_drafts SET status = 'failed' WHERE id = ?").run(r.id);

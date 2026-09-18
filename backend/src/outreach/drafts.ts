@@ -24,7 +24,7 @@ type Op = {
 };
 
 /** The guest app keys catalog operators by domain: "o-" + slug(domain). Deep links use that id, not the DB uuid. */
-function catalogId(domain: string): string {
+export function catalogId(domain: string): string {
   return "o-" + domain.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 48);
 }
 
