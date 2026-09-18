@@ -11,7 +11,7 @@ import { addressLine, bookingPaused, contactFor, fmtHours, fmtPhone, fromPrice, 
 import { DAYS, fmtDate, fmtReviews, fmtTime, money, priceWith, reviewsLine } from "../../lib/format";
 import { srcSet, thumb } from "../../lib/images";
 import { embedAutoplay, isGif, listingMedia, photoCandidates, probePhotos, type Media } from "../../lib/media";
-import { cleanDesc, durationLabel, groupCap as readGroupCap, minAge } from "../../lib/listingDerive";
+import { cleanDesc, durationLabel, groupCap as readGroupCap, minAge, splitPolicies } from "../../lib/listingDerive";
 import { freeCancelBadge } from "../../lib/cancellation";
 import { bookableStart, clockIn, hourLines, itemOpenState, itemWeek, zoneFor } from "../../lib/openNow";
 import { noStartTimesNote, startTimesOn } from "../../lib/startTimes";
@@ -1120,7 +1120,8 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
   const reqKeys = new Set(requirements.map((r) => r.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim()));
   const highlights = (item.highlights?.length ? item.highlights : facts.about.slice(0, 6)).filter((h) => !reqKeys.has(h.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim()));
   const waiverLines = (item.policies?.filter((l) => /\bwaivers?\b|\bliabilit|\brelease form|\bsign(ed|ing)? (a |the |our |your )?(waiver|release|form)|\bcheck-?in\b/i.test(l)) || facts.waiver.filter((l) => l.posted).map((l) => l.text)).filter((l) => l.length <= 160);
-  const otherPolicies = (item.policies || []).filter((l) => !/cancel|refund|waiver|liabilit/i.test(l));
+  const policies = splitPolicies(item.policies || []);
+  const otherPolicies = policies.other;
   const cancelRaw = freeCancelBadge(item);
   const cancel = cancelRaw ? tidyCancel(cancelRaw) : null;
   const age = minAge(requirements);
@@ -1177,12 +1178,19 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
   const cancelKey = (t: string) => t.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
   const cancelFull = item.cancellation ? tidyLine(item.cancellation) : null;
   const cancelShort = cancel && !(cancelFull && cancelKey(cancelFull).includes(cancelKey(cancel))) ? cancel : null;
-  const cancelLines = [...(cancelShort ? [cancelShort] : []), ...(cancelFull ? [cancelFull] : []), ...otherPolicies];
+  // A shop that states its terms as one of its policy lines rather than in `cancellation` was told it had none.
+  const cancelLines: string[] = [];
+  for (const line of [...(cancelShort ? [cancelShort] : []), ...(cancelFull ? [cancelFull] : []), ...policies.cancel.map(tidyLine)]) {
+    if (line && !cancelLines.some((p) => cancelKey(p).includes(cancelKey(line)))) cancelLines.push(line);
+  }
+  // The rest of what a shop publishes ("No outside food", "$20 fuel surcharge") is not a cancellation term, so the
+  // column says so in its heading instead of filing them all under one.
+  const policyLines = [...(cancelLines.length ? cancelLines : ["Contact the business for cancellation terms before you book."]), ...otherPolicies];
   const knowCols: KnowCol[] = [];
   if (rules.length) knowCols.push({ key: "rules", title: "Who can go", icon: I.group, lines: rules });
   if (safety.length) knowCols.push({ key: "safety", title: "Safety and waiver", icon: I.shield, lines: safety });
-  if (cancelLines.length || knowCols.length) {
-    knowCols.push({ key: "cancel", title: "Cancellation policy", icon: I.calendar, lines: cancelLines.length ? cancelLines : ["Contact the business for cancellation terms before you book."] });
+  if (cancelLines.length || otherPolicies.length || knowCols.length) {
+    knowCols.push({ key: "cancel", title: otherPolicies.length ? "Policies" : "Cancellation policy", icon: I.calendar, lines: policyLines });
   }
 
   const cheapIdx = defaultOption(item.options);
@@ -2195,7 +2203,12 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
           ) : (
             <>
               {cancel ? <h3 className="almodalsub">{cancel}</h3> : null}
-              {item.cancellation ? <p className="almodaltext">{tidyLine(item.cancellation)}</p> : <p className="almodaltext muted">Contact {item.title} for their cancellation terms before you book.</p>}
+              {cancelFull ? <p className="almodaltext">{cancelFull}</p> : null}
+              {cancelLines.some((l) => l !== cancel && l !== cancelFull) ? (
+                <ul className="almodallist">{cancelLines.filter((l) => l !== cancel && l !== cancelFull).map((l) => <li key={l}>{l}</li>)}</ul>
+              ) : cancelLines.length ? null : (
+                <p className="almodaltext muted">Contact {item.title} for their cancellation terms before you book.</p>
+              )}
               {otherPolicies.length ? <><h3 className="almodalsub">Other policies</h3><ul className="almodallist">{otherPolicies.map((l) => <li key={l}>{tidyLine(l)}</li>)}</ul></> : null}
             </>
           )}

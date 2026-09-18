@@ -18,6 +18,28 @@ export function cleanDesc(raw: string): string {
 
 export { freeCancel } from "./cancellation";
 
+/**
+ * A shop's published policy lines, sorted into the columns a guest reads them under. The waiver rule is the one
+ * the "Safety and waiver" column already used, kept first so a line is never printed in two columns at once.
+ *
+ * Both surfaces used to put everything that was not a waiver under the heading "Cancellation policy", so 2,129
+ * listings headed "No outside food or drink permitted" and "$20 fuel surcharge may apply" as cancellation terms,
+ * and 74 more had their real terms ("Full refund if canceled 5 days or more before sail date") swallowed by the
+ * same filter and were told to contact the business instead, on the page where Otto quotes the line.
+ */
+const WAIVER_LINE = /\bwaivers?\b|\bliabilit|\brelease form|\bsign(ed|ing)? (a |the |our |your )?(waiver|release|form)|\bcheck-?in\b/i;
+const CANCEL_LINE = /\bcancel\w*|\brefund\w*|\breschedul\w*|\bno[- ]?shows?\b/i;
+
+export function splitPolicies(lines: string[]): { cancel: string[]; other: string[] } {
+  const cancel: string[] = [];
+  const other: string[] = [];
+  for (const line of lines) {
+    if (WAIVER_LINE.test(line)) continue;
+    (CANCEL_LINE.test(line) ? cancel : other).push(line);
+  }
+  return { cancel, other };
+}
+
 /** Minimum age from lines like "Must be 18+", "Minimum age 8", "ages 6 and up". */
 export function minAge(lines: string[]): number | null {
   for (const l of lines) {

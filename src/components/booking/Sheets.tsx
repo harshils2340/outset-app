@@ -34,7 +34,7 @@ import { addonPrice, hasPrice, priceFor, priceUnclaimed, serviceFeeLabel } from 
 import { useApp } from "../../state/AppProvider";
 import { SIZES, srcSet, thumb } from "../../lib/images";
 import { embedAutoplay, listingMedia, photoCandidates, probePhotos, type Media } from "../../lib/media";
-import { cleanDesc, durationLabel, groupCap, minAge } from "../../lib/listingDerive";
+import { cleanDesc, durationLabel, groupCap, minAge, splitPolicies } from "../../lib/listingDerive";
 import { freeCancelBadge } from "../../lib/cancellation";
 import { ASSISTANT_NAME, DAY_SHORT, assistantOn, clock12, companySuggestions, dayLabel, todaysDeals } from "../../lib/companyAgent";
 import { bookableStart, clockIn, hourLines, itemWeek, zoneFor } from "../../lib/openNow";
@@ -509,7 +509,10 @@ function RequestBody({
   const reqKeys = new Set(requirements.map((r) => r.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim()));
   const highlights = (item.highlights?.length ? item.highlights : facts.about.slice(0, 6)).filter((h) => !reqKeys.has(h.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim()));
   const waiverLines = (item.policies?.filter((l) => /\bwaivers?\b|\bliabilit|\brelease form|\bsign(ed|ing)? (a |the |our |your )?(waiver|release|form)|\bcheck-?in\b/i.test(l)) || facts.waiver.filter((l) => l.posted).map((l) => l.text)).filter((l) => l.length <= 160);
-  const otherPolicies = (item.policies || []).filter((l) => !/cancel|refund|waiver|liabilit/i.test(l));
+  const policies = splitPolicies(item.policies || []);
+  const otherPolicies = policies.other;
+  // A cancellation term stated as a policy line rather than in `cancellation` is still their cancellation term.
+  const cancelPolicies = policies.cancel.filter((l) => !item.cancellation || !tidyLine(item.cancellation).toLowerCase().includes(tidyLine(l).toLowerCase()));
   const cancelRaw = freeCancelBadge(item);
   const cancel = cancelRaw ? tidyCancel(cancelRaw) : null;
   const age = minAge(requirements);
@@ -1273,12 +1276,17 @@ function RequestBody({
                   </a>
                 ) : null}
               </KnowRow>
-              <KnowRow icon={ICONS.clock} title="Cancellation policy" summary={cancel || (item.cancellation ? tidyLine(item.cancellation) : "Contact the business for cancellation terms")}>
+              <KnowRow
+                icon={ICONS.clock}
+                title={otherPolicies.length ? "Policies" : "Cancellation policy"}
+                summary={cancel || (item.cancellation ? tidyLine(item.cancellation) : cancelPolicies[0] ? tidyLine(cancelPolicies[0]) : "Contact the business for cancellation terms")}
+              >
                 {item.cancellation ? (
                   <p className="reqpolicy">{tidyLine(item.cancellation)}</p>
-                ) : (
+                ) : cancelPolicies.length ? null : (
                   <p className="reqpolicy gap">Contact {item.title} for their cancellation terms before you book.</p>
                 )}
+                {cancelPolicies.length ? <Bullets items={cancelPolicies} /> : null}
                 {otherPolicies.length ? <Bullets items={otherPolicies} /> : null}
                 {facts.note && !item.cancellation && !item.policies?.length ? <p className="reqpolicy">{facts.note}</p> : null}
               </KnowRow>
