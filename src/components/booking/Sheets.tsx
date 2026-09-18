@@ -38,7 +38,7 @@ import { cleanDesc, durationLabel, groupCap, minAge } from "../../lib/listingDer
 import { freeCancelBadge } from "../../lib/cancellation";
 import { ASSISTANT_NAME, DAY_SHORT, assistantOn, clock12, companySuggestions, dayLabel, todaysDeals } from "../../lib/companyAgent";
 import { bookableStart, clockIn, hourLines, itemWeek, zoneFor } from "../../lib/openNow";
-import { startTimesOn } from "../../lib/startTimes";
+import { noStartTimesNote, startTimesOn } from "../../lib/startTimes";
 import { itemOpenState } from "../../lib/openNow";
 import { apiConfig, fetchAvailability, fetchOpenSlots, hasApi, type LiveAvailability } from "../../lib/api";
 import { dateKey } from "../../lib/dates";
@@ -1063,6 +1063,7 @@ function RequestBody({
               slots={chips.map((c) => c.time)}
               time={time}
               onPickTime={setTime}
+              emptyNote={live ? "No departures on this date. Pick another day." : noStartTimesNote(week ? week[day.getDay()] ?? null : null, day.toLocaleDateString("en-US", { weekday: "long" }))}
               dayMeta={live ? (d) => { const n = (liveDays.get(dateKey(d)) || []).length; return { open: n, full: n === 0 }; } : undefined}
               slotMeta={
                 live

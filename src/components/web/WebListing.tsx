@@ -14,7 +14,7 @@ import { embedAutoplay, isGif, listingMedia, photoCandidates, probePhotos, type 
 import { cleanDesc, durationLabel, groupCap as readGroupCap, minAge } from "../../lib/listingDerive";
 import { freeCancelBadge } from "../../lib/cancellation";
 import { bookableStart, clockIn, hourLines, itemOpenState, itemWeek, zoneFor } from "../../lib/openNow";
-import { startTimesOn } from "../../lib/startTimes";
+import { noStartTimesNote, startTimesOn } from "../../lib/startTimes";
 import { DAY_SHORT, assistantOn, clock12, dayLabel, todaysDeals } from "../../lib/companyAgent";
 import { fmtDistance } from "../../lib/geo";
 import { kmBetween, nearestLocation, venueLabel } from "../../lib/places";
@@ -1083,6 +1083,11 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
     };
   }, [live, liveDays, item, picked?.price, openMap]);
   const openSlots = useMemo(() => chipsFor(day).map((c) => c.time), [chipsFor, day]);
+  // An empty picker says why it is empty. A day the shop publishes as closed is not "no more start times
+  // today", least of all under a date five days out.
+  const emptyNote = live
+    ? "No departures on this date. Pick another day."
+    : noStartTimesNote(itemWeek(item)?.[day.getDay()] ?? null, day.toLocaleDateString("en-US", { weekday: "long" }));
   useEffect(() => { if (time && !openSlots.includes(time)) setTime(null); }, [openSlots, time]);
   // Land the guest on a day that actually has departures rather than an empty one.
   useEffect(() => {
@@ -1656,7 +1661,7 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
                 <p className="alsecsub">
                   {chipsToday.length
                     ? chipsToday.length + (chipsToday.length === 1 ? " start time" : " start times") + (live ? " from their live calendar" : "") + (time ? " · " + fmtTime(time) + " picked" : "")
-                    : live ? "No departures on this date. Pick another day." : "No more start times today. Pick another day."}
+                    : emptyNote}
                 </p>
                 <MonthPair dates={dates} dateIdx={state.dateIdx} onPickDate={setDate} chipsFor={chipsFor} />
                 <div className="alcalfoot">
@@ -1798,7 +1803,7 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
                         chipsFor={chipsFor}
                         time={time}
                         onPickTime={(c) => { setTime(c.time); setPickerOpen(false); }}
-                        emptyNote={live ? "No departures on this date. Pick another day." : "No more start times today. Pick another day."}
+                        emptyNote={emptyNote}
                         sourceNote={live ? "Live times from " + possessive(item.title) + " own booking calendar." : undefined}
                       />
                       <div className="alpopfoot">

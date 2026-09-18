@@ -46,6 +46,20 @@ function hhmm(m: number): string {
   return String(Math.floor(m / 60)).padStart(2, "0") + ":" + String(m % 60).padStart(2, "0");
 }
 
+/** Whether the operator's site states this weekday as one they are shut. */
+export function closedOnDay(day: StatedDay): boolean {
+  return !!day && day.close <= day.open;
+}
+
+/**
+ * The line under a picker with nothing in it. "No more start times today" is the right answer when the notice
+ * period has eaten the rest of today, and the wrong one under a Saturday five days out that the shop is simply
+ * closed on, which is now 1,737 days across 1,014 listings. `weekday` is the day's own name ("Saturday").
+ */
+export function noStartTimesNote(day: StatedDay, weekday: string): string {
+  return closedOnDay(day) ? "They are closed on " + weekday + "s. Pick another day." : "No more start times today. Pick another day.";
+}
+
 /** The start times `fixed` leaves standing on a day the operator's site states, in the order given. */
 export function startTimesOn(day: StatedDay, fixed: string[]): string[] {
   if (!day) return fixed;

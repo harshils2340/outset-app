@@ -3,7 +3,7 @@ import test from "node:test";
 import { readFileSync, readdirSync } from "node:fs";
 
 import { itemWeek } from "../openNow";
-import { startTimesOn } from "../startTimes";
+import { noStartTimesNote, startTimesOn } from "../startTimes";
 import { SLOT_TIMES } from "../../data/slots";
 import type { Unclaimed } from "../../data/types";
 
@@ -88,4 +88,18 @@ test("both booking surfaces read the one helper, so neither offers a time the ot
     assert.match(src, /startTimesOn\(week \? week\[d\.getDay\(\)\] \?\? null : null, SLOT_TIMES\)/, name + " filters its fixed times");
   }
   assert.match(read("../../../backend/src/api/openSlots.ts"), /startTimesOn\(week \? week\[d\.getDay\(\)\] \?\? null : null, DEFAULT_SLOTS\)/, "the API filters the same way");
+});
+
+test("an empty picker says why, and does not call next Saturday today", () => {
+  assert.equal(noStartTimesNote({ open: 0, close: 0 }, "Saturday"), "They are closed on Saturdays. Pick another day.");
+  assert.equal(noStartTimesNote({ open: 10 * 60, close: 16 * 60 }, "Saturday"), "No more start times today. Pick another day.");
+  assert.equal(noStartTimesNote(null, "Saturday"), "No more start times today. Pick another day.");
+  const read = (rel: string) => readFileSync(new URL(rel, import.meta.url), "utf8");
+  for (const [name, src] of [
+    ["the phone listing sheet", read("../../components/booking/Sheets.tsx")],
+    ["the desktop listing page", read("../../components/web/WebListing.tsx")],
+  ] as const) {
+    assert.match(src, /noStartTimesNote\(/, name + " asks why the day is empty");
+    assert.doesNotMatch(src, /: "No more start times today\. Pick another day\."/, name + " keeps no hardcoded copy of it");
+  }
 });
