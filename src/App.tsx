@@ -26,6 +26,19 @@ import { EmbeddedCheckout } from "./components/booking/EmbeddedCheckout";
 
 const OperatorView = lazy(() => import("./components/operator/OperatorView").then((m) => ({ default: m.OperatorView })));
 
+/**
+ * The private metrics page at /admin. Nothing links to it, it is lazy so its code and its stylesheet never
+ * reach the bundle a guest downloads, and the path is read once at boot: it cannot change under a running app,
+ * so the early return below keeps the same hooks on every render of this component.
+ */
+const AdminView = lazy(() => import("./components/admin/AdminView").then((m) => ({ default: m.AdminView })));
+const ADMIN_ROUTE = ((): boolean => {
+  if (typeof window === "undefined") return false;
+  const base = import.meta.env.BASE_URL.replace(/\/?$/, "/");
+  const p = window.location.pathname;
+  return p === base + "admin" || p === base + "admin/";
+})();
+
 /** While that chunk is on its way. Same shape as the other splashes, so it does not read as a broken page. */
 function DashboardSplash() {
   return (
@@ -60,6 +73,14 @@ function CheckoutSplash() {
 }
 
 export function App() {
+  // /admin is its own page: no tab bar, no sheets, no phone frame, and nothing about it in any navigation.
+  if (ADMIN_ROUTE) {
+    return (
+      <Suspense fallback={null}>
+        <AdminView />
+      </Suspense>
+    );
+  }
   const { state, closeSheet, openOperator, reqTarget, openRequest, goto } = useApp();
   // Inside the dashboard's live preview frame (?preview=1): read-only, re-renders on every owner edit.
   usePreviewMode();

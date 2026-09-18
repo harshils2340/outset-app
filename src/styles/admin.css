@@ -1,0 +1,214 @@
+/*
+  The private metrics page at /admin. Imported by src/components/admin/AdminView.tsx rather than by main.tsx,
+  so it rides along with that lazily loaded chunk and never reaches the bundle a guest downloads.
+
+  Colour comes from the app's own tokens in app.css (--surface, --ink, --line, ...). The four chart hues are
+  the only new ones: the app's accent green is too dark and too grey to separate from a second series, so this
+  is a four-hue categorical set, checked for colour-blind separation and for contrast against the chart surface
+  in both modes (OKLCH lightness band, chroma floor, deutan/protan/tritan separation, 3:1 against the surface).
+  Light and dark are two separate sets, not one flipped.
+*/
+.adbody {
+  --ad-1: #2f7d4f;
+  --ad-2: #1668b3;
+  --ad-3: #c1620e;
+  --ad-4: #8a4fc0;
+  --ad-grid: rgba(0, 0, 0, 0.08);
+  --ad-cross: rgba(0, 0, 0, 0.32);
+  background: var(--ground);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .adbody {
+    --ad-1: #4e9c6a;
+    --ad-2: #4a92d8;
+    --ad-3: #c97c2c;
+    --ad-4: #a277d4;
+    --ad-grid: rgba(255, 255, 255, 0.10);
+    --ad-cross: rgba(255, 255, 255, 0.40);
+  }
+}
+:root[data-theme="dark"] .adbody {
+  --ad-1: #4e9c6a;
+  --ad-2: #4a92d8;
+  --ad-3: #c97c2c;
+  --ad-4: #a277d4;
+  --ad-grid: rgba(255, 255, 255, 0.10);
+  --ad-cross: rgba(255, 255, 255, 0.40);
+}
+
+/* ---------- page ---------- */
+.adpage {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 24px 16px 64px;
+  color: var(--ink);
+  font-family: var(--f-body);
+}
+.adhead {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 20px;
+  align-items: flex-end;
+  justify-content: space-between;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--line);
+}
+.adhead h1 {
+  margin: 0;
+  font-family: var(--f-display);
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+.adwho { margin: 2px 0 0; color: var(--ink-soft); font-size: 13px; }
+.adcontrols { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.adrange { display: flex; gap: 4px; padding: 3px; background: var(--surface-2); border-radius: var(--r-m); }
+.adstamp { color: var(--ink-faint); font-size: 12px; }
+
+.adbtn {
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  border: 1px solid var(--line-strong);
+  background: var(--surface);
+  color: var(--ink);
+  border-radius: var(--r-s);
+  padding: 7px 12px;
+  cursor: pointer;
+}
+.adbtn:hover { background: var(--surface-2); }
+.adbtn[disabled] { opacity: 0.55; cursor: default; }
+.adbtn-range { border: 0; background: transparent; }
+.adbtn-range.on { background: var(--surface); box-shadow: var(--shadow-search); }
+.adbtn-go { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.adbtn-go:hover { background: var(--accent-press); }
+.adbtn-plain { border: 0; background: transparent; color: var(--ink-soft); padding: 4px 0; text-align: left; }
+
+.adstate {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 8px;
+  margin: 28px 0; padding: 18px; border: 1px solid var(--line); border-radius: var(--r-m);
+  background: var(--surface); color: var(--ink-soft);
+}
+.aderr { color: var(--few); }
+.adstate.aderr b { color: var(--ink); }
+
+/* ---------- headline tiles ---------- */
+.adtiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 12px;
+  margin: 20px 0 8px;
+}
+.adtile {
+  display: flex; flex-direction: column; gap: 4px;
+  padding: 14px 14px 12px;
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-m);
+}
+.adtile-label { font-size: 12px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink-faint); }
+.adtile-value { font-family: var(--f-display); font-size: 27px; font-weight: 700; line-height: 1.1; letter-spacing: -0.02em; }
+.adtile-delta { font-size: 12px; color: var(--ink-soft); }
+.adtile-delta em { font-style: normal; color: var(--ink-faint); }
+.adtile-sub { font-size: 12px; color: var(--ink-faint); }
+.adup { color: var(--ad-1); }
+.addown { color: var(--few); }
+.adspark { display: block; margin: 4px 0 2px; }
+
+/* ---------- sections ---------- */
+.adsection {
+  margin: 28px 0 0;
+  padding: 18px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-l);
+}
+.adsection h2 { margin: 0; font-family: var(--f-display); font-size: 19px; font-weight: 700; }
+.adsection h3 { margin: 22px 0 8px; font-size: 14px; font-weight: 700; color: var(--ink); }
+.adblurb { margin: 4px 0 16px; color: var(--ink-soft); font-size: 13px; max-width: 70ch; }
+.adwhy { margin: 8px 0 0; color: var(--ink-faint); font-size: 12px; }
+.adnull { color: var(--ink-faint); font-style: italic; }
+
+/* ---------- charts ---------- */
+.adchart { position: relative; }
+.adchart svg { display: block; overflow: visible; touch-action: pan-y; }
+.adchart svg:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: var(--r-s); }
+.adgrid { stroke: var(--ad-grid); stroke-width: 1; }
+.adcross { stroke: var(--ad-cross); stroke-width: 1; stroke-dasharray: 3 3; }
+.adknob { stroke: var(--surface); stroke-width: 2; }
+.adaxis { fill: var(--ink-faint); font-size: 11px; font-family: var(--f-body); }
+.adlegend { display: flex; flex-wrap: wrap; gap: 4px 14px; list-style: none; margin: 0 0 8px; padding: 0; font-size: 12px; color: var(--ink-soft); }
+.adlegend i, .adread i { display: inline-block; width: 9px; height: 9px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; }
+.adread { display: flex; flex-wrap: wrap; gap: 4px 16px; min-height: 20px; margin-top: 6px; font-size: 12px; color: var(--ink-soft); }
+.adread b { color: var(--ink); }
+.adread-hint { color: var(--ink-faint); }
+.adempty {
+  display: flex; flex-direction: column; gap: 4px;
+  padding: 22px 16px; border: 1px dashed var(--line-strong); border-radius: var(--r-m);
+  background: var(--surface-2); color: var(--ink-soft); font-size: 13px;
+}
+.adempty b { color: var(--ink); font-size: 14px; }
+
+/* ---------- funnel ---------- */
+.adfunnel { list-style: none; margin: 0; padding: 0; }
+.adfunnel-row { display: flex; align-items: center; gap: 10px; }
+.adfunnel-label { flex: 0 0 84px; font-size: 13px; font-weight: 600; }
+.adfunnel-track { flex: 1 1 auto; height: 26px; background: var(--surface-2); border-radius: var(--r-s); overflow: hidden; }
+.adfunnel-bar { height: 100%; background: var(--ad-2); border-radius: var(--r-s); }
+.adfunnel-val { flex: 0 0 auto; min-width: 74px; text-align: right; font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.adfunnel-note { margin: 3px 0 0 94px; font-size: 12px; color: var(--ink-faint); }
+.adfunnel-conv { margin: 10px 0 10px 94px; font-size: 12px; color: var(--ink-soft); }
+.adfunnel-conv b { font-size: 14px; color: var(--ink); }
+
+/* ---------- share bar, row bars ---------- */
+.adshare-track { height: 22px; background: var(--surface-3); border-radius: var(--r-s); overflow: hidden; }
+.adshare-part { height: 100%; background: var(--ad-1); }
+.adshare-legend { margin: 8px 0 0; font-size: 13px; color: var(--ink-soft); }
+.adshare-legend b { color: var(--ink); font-variant-numeric: tabular-nums; }
+.adrows { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 7px; }
+.adrows li { display: flex; align-items: center; gap: 10px; }
+.adrows-label { flex: 0 0 84px; font-size: 13px; text-transform: capitalize; }
+.adrows-track { flex: 1 1 auto; height: 16px; background: var(--surface-2); border-radius: var(--r-s); overflow: hidden; }
+.adrows-bar { height: 100%; border-radius: var(--r-s); }
+.adrows-val { flex: 0 0 auto; min-width: 78px; text-align: right; font-size: 13px; font-variant-numeric: tabular-nums; }
+.adrows-val em { font-style: normal; color: var(--ink-faint); }
+
+/* ---------- facts and tables ---------- */
+.adfacts { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px; margin: 16px 0 0; }
+.adfacts > div { padding: 10px 12px; background: var(--surface-2); border-radius: var(--r-m); }
+.adfacts dt { font-size: 12px; color: var(--ink-faint); }
+.adfacts dd { margin: 2px 0 0; font-size: 17px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.adfacts dd em { font-style: normal; font-size: 12px; font-weight: 500; color: var(--ink-faint); }
+.adtablewrap { overflow-x: auto; }
+.adtable { width: 100%; border-collapse: collapse; font-size: 13px; }
+.adtable th, .adtable td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+.adtable th { font-size: 11px; letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink-faint); }
+.adnum { text-align: right; font-variant-numeric: tabular-nums; }
+.adid { font-family: var(--f-mono); color: var(--ink-soft); }
+.adpill { display: inline-block; padding: 2px 8px; border-radius: 999px; background: var(--surface-3); font-size: 12px; font-weight: 600; text-transform: capitalize; }
+.adpill-accepted, .adpill-completed { background: var(--accent-tint); color: var(--accent-press); }
+.adpill-declined, .adpill-cancelled, .adpill-noshow { background: var(--few-bg); color: var(--few); }
+.adpill-new, .adpill-pending { background: var(--open-bg); color: var(--open); }
+
+/* ---------- sign-in, and the 404 ---------- */
+.adgate { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px 16px; background: var(--ground); }
+.adgate-card {
+  display: flex; flex-direction: column; gap: 8px; width: 100%; max-width: 340px;
+  padding: 24px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-l);
+  color: var(--ink); font-family: var(--f-body);
+}
+.adgate-card h1 { margin: 0 0 6px; font-family: var(--f-display); font-size: 20px; font-weight: 700; }
+.adgate-card label { font-size: 12px; color: var(--ink-soft); }
+.adgate-card input {
+  font: inherit; padding: 10px 12px; border: 1px solid var(--line-strong); border-radius: var(--r-s);
+  background: var(--app-bg); color: var(--ink);
+}
+.adgate-card .aderr { margin: 4px 0 0; font-size: 13px; }
+
+@media (max-width: 560px) {
+  .adpage { padding: 16px 16px 48px; }
+  .adsection { padding: 14px; border-radius: var(--r-m); }
+  .adhead { align-items: flex-start; }
+  .adfunnel-label { flex-basis: 66px; }
+  .adfunnel-note, .adfunnel-conv { margin-left: 0; }
+  .adfunnel-val { min-width: 58px; }
+  .adrows-label { flex-basis: 66px; }
+}
