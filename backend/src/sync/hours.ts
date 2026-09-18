@@ -156,7 +156,10 @@ export function osmToLines(raw: string): string[] {
   if (!/\b(Mo|Tu|We|Th|Fr|Sa|Su)\b/.test(raw) || !/\d{1,2}:\d{2}|\boff\b/.test(raw)) return [];
   const FULL: Record<string, string> = { Mo: "Mon", Tu: "Tue", We: "Wed", Th: "Thu", Fr: "Fri", Sa: "Sat", Su: "Sun" };
   const out: string[] = [];
-  for (const rule of raw.split(/\s*;\s*/)) {
+  // Rules are separated by a semicolon, by "||" for a fallback rule, and by a comma once the rule before it
+  // has stated its hours: in "Mo-Fr 05:45-19:00, Sa 07:00-12:00" the comma separates two rules, while in
+  // "Fr,Sa 12:00-19:00" it separates two days of one. The app's twin of this reader says the same.
+  for (const rule of raw.split(/\s*(?:;|\|\|)\s*/).flatMap((r) => r.split(/(?<=\d{1,2}:\d{2}|\boff)\s*,\s*(?=(?:Mo|Tu|We|Th|Fr|Sa|Su|PH)\b)/i))) {
     const m = rule.match(/^\s*((?:(?:Mo|Tu|We|Th|Fr|Sa|Su)(?:-(?:Mo|Tu|We|Th|Fr|Sa|Su))?(?:\s*,\s*)?)+)\s*(.*)$/);
     if (!m) continue;
     const days = m[1].replace(/\s+/g, "").split(",").map((d) => d.split("-").map((x) => FULL[x] || x).join("-")).join(", ");

@@ -109,3 +109,19 @@ test("a day that never closes is not a day a shop stated its hours", () => {
   assert.equal(show(encodeWeek(["Daily 6pm-2am"])), everyDay("18:00-26:00"));
   assert.equal(show(encodeWeek(["Daily 0:00-12:00"])), everyDay("00:00-12:00"));
 });
+
+/**
+ * OpenStreetMap writes a week as a list of rules, separated by a semicolon, by "||" for a fallback rule, or
+ * by a comma once the rule before it has stated its hours. Reading only the semicolon left a pilates studio
+ * open one day out of five and a gallery with no Sunday, on both sides of the app at once.
+ */
+test("a comma after a rule's hours starts the next rule, and a comma before them lists days", () => {
+  assert.equal(
+    show(encodeWeek(["Tu 08:00-12:00, We 16:15-19:30, Th 08:00-13:00, Fr 07:30-12:00, Sa 09:00-12:00 || \"by appointment\""])),
+    "Sun -, Mon -, Tue 08:00-12:00, Wed 16:15-19:30, Thu 08:00-13:00, Fri 07:30-12:00, Sat 09:00-12:00",
+  );
+  assert.equal(
+    show(encodeWeek(["Fr,Sa 12:00-19:00, Su 12:00-16:00; \"by appointment\""])),
+    "Sun 12:00-16:00, Mon -, Tue -, Wed -, Thu -, Fri 12:00-19:00, Sat 12:00-19:00",
+  );
+});

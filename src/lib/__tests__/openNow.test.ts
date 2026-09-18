@@ -221,3 +221,21 @@ test("a whole-day week already in the catalog is not believed either", () => {
   const brewery = { ...heli, area: "Milwaukee, WI", hrs: [[0, 1440], [660, 1260], [660, 1260], [660, 1260], [660, 1260], [0, 1440], [0, 1440]] } as unknown as Unclaimed;
   assert.equal(show(itemWeek(brewery)), "Sun -, Mon 11:00-21:00, Tue 11:00-21:00, Wed 11:00-21:00, Thu 11:00-21:00, Fri -, Sat -");
 });
+
+/**
+ * OpenStreetMap writes a week as a list of rules, and the separator between two of them is a semicolon, "||"
+ * for a fallback, or a comma once the rule before it has stated its hours. Reading only the semicolon left a
+ * pilates studio open one day a week out of five, a gallery with no Sunday and a barre studio with no
+ * weekend, on 5 of the 112 listings that publish their hours this way.
+ */
+test("a comma after a rule's hours starts the next rule, and a comma before them lists days", () => {
+  const studio = parseWeek(["Tu 08:00-12:00, We 16:15-19:30, Th 08:00-13:00, Fr 07:30-12:00, Sa 09:00-12:00 || \"by appointment\""]);
+  assert.equal(studio?.filter(Boolean).length, 5);
+  assert.deepEqual(studio?.[2], { open: 8 * 60, close: 12 * 60 });
+  assert.deepEqual(studio?.[6], { open: 9 * 60, close: 12 * 60 });
+  assert.equal(studio?.[0], null);
+  const gallery = parseWeek(["Fr,Sa 12:00-19:00, Su 12:00-16:00; \"by appointment\""]);
+  assert.deepEqual(gallery?.[5], { open: 12 * 60, close: 19 * 60 });
+  assert.deepEqual(gallery?.[6], { open: 12 * 60, close: 19 * 60 });
+  assert.deepEqual(gallery?.[0], { open: 12 * 60, close: 16 * 60 });
+});
