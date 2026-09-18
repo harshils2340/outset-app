@@ -37,7 +37,8 @@ import { embedAutoplay, listingMedia, photoCandidates, probePhotos, type Media }
 import { cleanDesc, durationLabel, groupCap, minAge } from "../../lib/listingDerive";
 import { freeCancelBadge } from "../../lib/cancellation";
 import { ASSISTANT_NAME, DAY_SHORT, assistantOn, clock12, companySuggestions, dayLabel, todaysDeals } from "../../lib/companyAgent";
-import { bookableStart, clockIn, hourLines, zoneFor } from "../../lib/openNow";
+import { bookableStart, clockIn, hourLines, itemWeek, zoneFor } from "../../lib/openNow";
+import { startTimesOn } from "../../lib/startTimes";
 import { itemOpenState } from "../../lib/openNow";
 import { apiConfig, fetchAvailability, fetchOpenSlots, hasApi, type LiveAvailability } from "../../lib/api";
 import { dateKey } from "../../lib/dates";
@@ -477,11 +478,15 @@ function RequestBody({
   // Today only offers start times at least an hour out. Nobody can book a 7 AM slot at 8:30. "Today" and the
   // cutoff are both read on the shop's clock, because the times themselves are its wall clock times.
   const stillOpen = bookableStart(item);
+  // With no API to ask, the fixed times still drop the ones this shop's own published hours are shut for, so
+  // the picker and the "Closed today" row above it cannot say different things. Same rule the API applies.
+  const week = useMemo(() => itemWeek(item), [item]);
   const chipsFor = (d: Date): TimeChip[] => {
     const k = dateKey(d);
     const later = (t: string) => stillOpen(k, t);
     if (live) return (liveDays.get(k) || []).filter((c) => later(c.time)).sort((a, b) => a.time.localeCompare(b.time));
-    return (openMap ? openMap.get(k) || [] : SLOT_TIMES).filter(later).map((t) => ({ time: t, label: fmtTime(t) }));
+    const base = openMap ? openMap.get(k) || [] : startTimesOn(week ? week[d.getDay()] ?? null : null, SLOT_TIMES);
+    return base.filter(later).map((t) => ({ time: t, label: fmtTime(t) }));
   };
   const chips = chipsFor(day);
   useEffect(() => {

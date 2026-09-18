@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { capacityFor, openDaysFor, scheduledSlots, slotOpen } from "../openSlots.ts";
+import { DEFAULT_SLOTS, capacityFor, openDaysFor, scheduledSlots, slotOpen } from "../openSlots.ts";
 import type { StoredBooking } from "../bookings.ts";
 
 /**
@@ -126,4 +126,54 @@ test("with no zone the old behaviour is kept, for a listing we cannot place", ()
   const at = new Date("2026-10-06T18:00:00Z");
   // Not asserting the values, which depend on the server's zone by design; only that it still answers.
   assert.equal(Array.isArray(scheduledSlots(PACIFIC, "2026-10-06", at)), true);
+});
+
+/**
+ * An unclaimed listing has no dashboard, so its picker offers the six fixed times. Its own website still
+ * publishes hours, and offering 7 AM at a brewery that opens at four is inventing availability: 13,386 shipped
+ * listings did it, 1,014 of them on days they state as closed.
+ */
+
+const MONDAY = "2026-10-05"; // a Monday
+const NOON = new Date("2026-10-04T12:00:00"); // the Sunday before, so nothing is cut by the notice
+
+/** A week with one weekday stated and the rest left unsaid, Sunday first. */
+const weekWith = (dayIdx: number, day: { open: number; close: number } | null) =>
+  [null, null, null, null, null, null, null].map((d, i) => (i === dayIdx ? day : d));
+
+test("an unclaimed listing offers only the fixed times its own hours are open for", () => {
+  // o-10kbrew-com opens at 4 PM on a Monday and was offering every time from 7 AM.
+  assert.deepEqual(scheduledSlots(null, MONDAY, NOON, undefined, weekWith(1, { open: 16 * 60, close: 21 * 60 })), ["17:00"]);
+  // o-1000islandsheritagemuseum-com, 10 to 4.
+  assert.deepEqual(scheduledSlots(null, MONDAY, NOON, undefined, weekWith(1, { open: 10 * 60, close: 16 * 60 })), ["11:00", "13:00", "15:00"]);
+});
+
+test("a day the shop states as closed offers nothing at all", () => {
+  assert.deepEqual(scheduledSlots(null, MONDAY, NOON, undefined, weekWith(1, { open: 0, close: 0 })), []);
+});
+
+test("a day the shop says nothing about keeps all six, because nobody has called it shut", () => {
+  assert.deepEqual(scheduledSlots(null, MONDAY, NOON, undefined, weekWith(1, null)), DEFAULT_SLOTS);
+  assert.deepEqual(scheduledSlots(null, MONDAY, NOON, undefined, null), DEFAULT_SLOTS);
+  assert.deepEqual(scheduledSlots(null, MONDAY, NOON), DEFAULT_SLOTS);
+});
+
+test("hours none of the six land in still leave the shop bookable, on its own opening time", () => {
+  // o-5280karate-org, 6 PM to 9 PM. 626 listings would otherwise have lost every start time they had.
+  assert.deepEqual(scheduledSlots(null, MONDAY, NOON, undefined, weekWith(1, { open: 18 * 60, close: 21 * 60 })), ["18:00", "20:00"]);
+  // o-7cswimschool-com, 5:30 to 6:30 in the morning.
+  assert.deepEqual(scheduledSlots(null, MONDAY, NOON, undefined, weekWith(1, { open: 5 * 60 + 30, close: 6 * 60 + 30 })), ["05:30"]);
+});
+
+test("a claimed shop is untouched: its own dashboard hours still decide", () => {
+  const shut = weekWith(1, { open: 0, close: 0 });
+  assert.deepEqual(scheduledSlots(PROFILE, "2026-10-05", NOW, undefined, shut), scheduledSlots(PROFILE, "2026-10-05", NOW));
+});
+
+test("the booking route takes exactly the times the picker offered, and no others", () => {
+  const week = weekWith(1, { open: 16 * 60, close: 21 * 60 });
+  const offered = scheduledSlots(null, MONDAY, NOON, undefined, week);
+  for (const t of DEFAULT_SLOTS) {
+    assert.equal(slotOpen(null, [], MONDAY, t, "", 1, NOON, undefined, week).open, offered.includes(t), t);
+  }
 });

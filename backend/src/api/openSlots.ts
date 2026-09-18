@@ -5,6 +5,8 @@ import type { StoredBooking } from "./bookings.ts";
 import type { StoredProfile } from "./profiles.ts";
 import { instantOf, todayIn, zoneForArea } from "../lib/zone.ts";
 import { readJson } from "../lib/store.ts";
+import { encodeWeek, isTradingHoursLine } from "../sync/hours.ts";
+import { startTimesOn, type StatedDay } from "../../../src/lib/startTimes.ts";
 
 /**
  * Which start times a guest may still book, and the one rule the booking route enforces so two guests cannot
@@ -12,7 +14,8 @@ import { readJson } from "../lib/store.ts";
  *
  * A claimed shop's dashboard sets the hours, the slot length, the notice, the window, days off and blocked
  * slots (all in `profile`, the dashboard's own record). An unclaimed listing has none of that, so it offers
- * the same fixed times the guest page always showed. Either way a time drops out once the bookings at it
+ * the fixed times the guest page always showed, minus the ones its own published hours say it is shut for
+ * (`week`, and `src/lib/startTimes.ts` for the rule). Either way a time drops out once the bookings at it
  * reach the service's capacity; with no capacity known, one booking fills it. That is what "once you book
  * something it disappears" means here.
  *
@@ -25,6 +28,9 @@ export const DEFAULT_SLOTS = ["07:00", "09:00", "11:00", "13:00", "15:00", "17:0
 const MAX_DAYS = 60;
 /** A guest on the Stripe page holds the time this long; the session itself expires after 30 minutes. */
 const PENDING_HOLD_MS = 30 * 60 * 1000;
+
+/** The seven days an unclaimed listing's own website publishes, Sunday first. Null when it publishes none. */
+export type PublishedWeek = StatedDay[] | null;
 
 type DayHours = { closed: boolean; open: string; close: string };
 type DashboardProfile = {
@@ -94,7 +100,7 @@ function runOf(h: DayHours | undefined): { start: number; end: number } | null {
  * all, so a listing whose hours row read "Open until 12:00 AM" answered "No more start times today" on every
  * day of the year and neither the guest nor the operator was told why.
  */
-export function scheduledSlots(profile: DashboardProfile | null, date: string, now = new Date(), zone?: string | null): string[] {
+export function scheduledSlots(profile: DashboardProfile | null, date: string, now = new Date(), zone?: string | null, week?: PublishedWeek): string[] {
   const d = dayOf(date);
   if (!d) return [];
   // A shop's opening times are wall clock times where it stands, so both "what day is it" and "has this time
@@ -110,7 +116,10 @@ export function scheduledSlots(profile: DashboardProfile | null, date: string, n
     zone ? instantOf(date, t, zone) : new Date(d.getFullYear(), d.getMonth(), d.getDate(), Math.floor(minutes(t) / 60), minutes(t) % 60).getTime();
   const soonEnough = (t: string) => atOf(t) >= earliestMs;
   if (!profile || !Array.isArray(profile.hours) || profile.hours.length !== 7) {
-    return DEFAULT_SLOTS.filter(soonEnough);
+    // Nobody has claimed this listing, so the fixed times are all we have, minus the ones the shop's own
+    // website says it is shut for. `startTimes.ts` has the rule and the phone and desktop pages read the same
+    // one; a day the site says nothing about keeps all six.
+    return startTimesOn(week ? week[d.getDay()] ?? null : null, DEFAULT_SLOTS).filter(soonEnough);
   }
   const window = Number.isFinite(profile.windowDays) && Number(profile.windowDays) > 0 ? Number(profile.windowDays) : 60;
   const from = dayOf(todayKey) || new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -164,8 +173,8 @@ export function bookedAt(list: StoredBooking[], date: string, slot: string, now 
 }
 
 /** Whether a time can still take `qty` more guests for `service`. */
-export function slotOpen(profile: DashboardProfile | null, bookings: StoredBooking[], date: string, slot: string, service: string, qty: number, now = new Date(), zone?: string | null): { open: boolean; reason?: string } {
-  if (!scheduledSlots(profile, date, now, zone).includes(slot)) return { open: false, reason: "That time is not open for booking" };
+export function slotOpen(profile: DashboardProfile | null, bookings: StoredBooking[], date: string, slot: string, service: string, qty: number, now = new Date(), zone?: string | null, week?: PublishedWeek): { open: boolean; reason?: string } {
+  if (!scheduledSlots(profile, date, now, zone, week).includes(slot)) return { open: false, reason: "That time is not open for booking" };
   const cap = capacityFor(profile, service);
   const taken = bookedAt(bookings, date, slot, now.getTime());
   if (cap == null) return taken.count ? { open: false, reason: "That time was just booked" } : { open: true };
@@ -197,7 +206,7 @@ export type OpenDay = { date: string; slots: string[] };
  *
  * Pure on purpose: everything it needs is passed in, so it can be tested without a database.
  */
-export function openDaysFor(profile: DashboardProfile | null, list: StoredBooking[], start: Date, days: number, service: string, guests: number, now: Date, zone?: string | null): OpenDay[] {
+export function openDaysFor(profile: DashboardProfile | null, list: StoredBooking[], start: Date, days: number, service: string, guests: number, now: Date, zone?: string | null, week?: PublishedWeek): OpenDay[] {
   const cap = capacityFor(profile, service);
   const need = Math.max(1, guests);
   const nowMs = now.getTime();
@@ -213,7 +222,7 @@ export function openDaysFor(profile: DashboardProfile | null, list: StoredBookin
     const d = new Date(start.getFullYear(), start.getMonth(), start.getDate() + i);
     const date = iso(d);
     // Once per day, not once per slot.
-    const slots = scheduledSlots(profile, date, now, zone).filter((t) => {
+    const slots = scheduledSlots(profile, date, now, zone, week).filter((t) => {
       const q = taken.get(date + "|" + t) || 0;
       return cap == null ? q === 0 : q + need <= cap;
     });
@@ -223,32 +232,69 @@ export function openDaysFor(profile: DashboardProfile | null, list: StoredBookin
 }
 
 const ZONE_TTL = 60 * 60 * 1000;
-const zones = new Map<string, { at: number; zone: string | null }>();
+type DetailFile = { area?: string; lat?: number; lon?: number; hrs?: ([number, number] | null)[]; hoursText?: string[] };
+type ListingFacts = { zone: string | null; week: PublishedWeek };
+const facts = new Map<string, { at: number; facts: ListingFacts }>();
 
 /**
- * The listing's own timezone. Read from the generated detail file, which the nightly sync writes, so it is
- * remembered for an hour rather than fetched on every slot request. A listing we cannot place answers null and
- * the schedule falls back to the server's zone, unchanged.
+ * The week the operator's own website publishes, as the guest app reads it (`itemWeek` in `src/lib/openNow.ts`).
+ * The compact week the nightly sync baked into the detail file comes first, and the hour lines themselves are
+ * the fallback, read by the sync's own parser, which is that file's twin. Lines that are not trading hours at
+ * all (a campground's quiet hours) take the compact week down with them, because it was encoded from them.
  */
+function weekIn(detail: DetailFile | null): PublishedWeek {
+  if (!detail) return null;
+  const lines = (detail.hoursText || []).filter(isTradingHoursLine);
+  if (detail.hoursText?.length && !lines.length) return null;
+  const compact = Array.isArray(detail.hrs) && detail.hrs.length === 7 ? detail.hrs.map(statedDay) : null;
+  if (compact && compact.some((d) => d)) return compact;
+  const parsed = lines.length ? encodeWeek(lines) : null;
+  return parsed ? parsed.map(statedDay) : null;
+}
+
+/** One encoded day as a stated day, dropping anything no clock could show. Mirrors `compactDay`. */
+function statedDay(d: [number, number] | null): StatedDay {
+  if (!d) return null;
+  const [open, close] = d;
+  if (open === 0 && close === 0) return { open, close };
+  const whole = close - open >= 24 * 60 - 1;
+  return !whole && open >= 0 && open < 24 * 60 && close > open && close - open <= 24 * 60 ? { open, close } : null;
+}
+
+/**
+ * The listing's own timezone and published week. Read from the generated detail file, which the nightly sync
+ * writes, so they are remembered for an hour rather than fetched on every slot request. A listing we cannot
+ * place answers a null zone and the schedule falls back to the server's, unchanged.
+ */
+async function factsOf(listing: string): Promise<ListingFacts> {
+  const hit = facts.get(listing);
+  if (hit && Date.now() - hit.at < ZONE_TTL) return hit.facts;
+  const detail = await readJson<DetailFile>(`o/${listing}.json`).catch(() => null);
+  const found: ListingFacts = { zone: zoneForArea(detail?.area, detail?.lat, detail?.lon), week: weekIn(detail) };
+  if (facts.size > 5000) facts.clear();
+  facts.set(listing, { at: Date.now(), facts: found });
+  return found;
+}
+
 export async function zoneOf(listing: string): Promise<string | null> {
-  const hit = zones.get(listing);
-  if (hit && Date.now() - hit.at < ZONE_TTL) return hit.zone;
-  const detail = await readJson<{ area?: string; lat?: number; lon?: number }>(`o/${listing}.json`).catch(() => null);
-  const zone = zoneForArea(detail?.area, detail?.lat, detail?.lon);
-  if (zones.size > 5000) zones.clear();
-  zones.set(listing, { at: Date.now(), zone });
-  return zone;
+  return (await factsOf(listing)).zone;
+}
+
+/** The hours the listing's own site publishes, for the days an unclaimed listing may offer start times on. */
+export async function weekOf(listing: string): Promise<PublishedWeek> {
+  return (await factsOf(listing)).week;
 }
 
 export async function openSlots(listing: string, from: string, days: number, service = "", now = new Date(), guests = 1): Promise<{ known: boolean; claimed: boolean; days: OpenDay[] }> {
-  const [rec, list, zone] = await Promise.all([
+  const [rec, list, known] = await Promise.all([
     getProfile<StoredProfile>(listing).catch(() => null),
     listBookings<StoredBooking>(listing).catch(() => [] as StoredBooking[]),
-    zoneOf(listing).catch(() => null),
+    factsOf(listing).catch(() => ({ zone: null, week: null }) as ListingFacts),
   ]);
   const profile = (rec?.profile as DashboardProfile | null) || null;
+  const zone = known.zone;
   const start = dayOf(from) || dayOf(zone ? todayIn(zone, now) : iso(now)) || new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  return { known: true, claimed: !!profile, days: openDaysFor(profile, list, start, days, service, guests, now, zone) };
+  return { known: true, claimed: !!profile, days: openDaysFor(profile, list, start, days, service, guests, now, zone, known.week) };
 }
 
 export const openSlotsRoute = new Hono();

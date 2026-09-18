@@ -14,6 +14,7 @@ import { embedAutoplay, isGif, listingMedia, photoCandidates, probePhotos, type 
 import { cleanDesc, durationLabel, groupCap as readGroupCap, minAge } from "../../lib/listingDerive";
 import { freeCancelBadge } from "../../lib/cancellation";
 import { bookableStart, clockIn, hourLines, itemOpenState, itemWeek, zoneFor } from "../../lib/openNow";
+import { startTimesOn } from "../../lib/startTimes";
 import { DAY_SHORT, assistantOn, clock12, dayLabel, todaysDeals } from "../../lib/companyAgent";
 import { fmtDistance } from "../../lib/geo";
 import { kmBetween, nearestLocation, venueLabel } from "../../lib/places";
@@ -1069,11 +1070,14 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
   const chipsFor = useMemo(() => {
     const stillOpen = bookableStart(item);
     const listed = picked?.price != null ? picked.price : undefined;
+    // With no API to ask, the fixed times still drop the ones this shop's own published hours are shut for, so
+    // the picker and the hours row a few lines above it cannot say different things. Same rule the API applies.
+    const week = itemWeek(item);
     return (d: Date) => {
       const k = dateKey(d);
       const fromLive = liveDays.get(k);
       if (live) return (fromLive || []).filter((c) => stillOpen(k, c.time)).slice().sort((a, b) => a.time.localeCompare(b.time));
-      const base = openMap ? openMap.get(k) || [] : SLOT_TIMES;
+      const base = openMap ? openMap.get(k) || [] : startTimesOn(week ? week[d.getDay()] ?? null : null, SLOT_TIMES);
       return base.filter((t) => stillOpen(k, t))
         .map((t) => ({ key: t, time: t, label: fmtTime(t), price: listed }));
     };
