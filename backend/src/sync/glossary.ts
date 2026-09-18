@@ -132,9 +132,11 @@ const WATER = rows([
   ["Hoverboard", "hover ?boards?", "A water-jet board you ride just above the surface, like a flyboard for carving.", { only: ["jetski", "parasail"] }],
   ["Banana boat", "banana (?:boats?|rides?)", "A long inflatable seating several riders, towed behind a boat.", { any: true }],
   ["Tubing", "tub(?:e|es|ing)", "Riding a big inflatable ring, either towed by a boat or floating down a river."],
-  ["Class II rapids", "class (?:ii|2)(?: rapids| whitewater| water)?", "Easy rapids with small waves, fine for beginners.", { any: true }],
-  ["Class III rapids", "class (?:iii|3)(?: rapids| whitewater| water)?", "Moderate rapids with bigger waves that take some paddling.", { any: true }],
-  ["Class IV rapids", "class (?:iv|4)(?: rapids| whitewater| water)?", "Powerful rapids for fit, confident rafters.", { any: true }],
+  // A roman numeral grade is a river and nothing else; a digit needs the river said out loud, because
+  // "Boxing Class 4-Pack" is a card of four classes and was being explained as powerful rapids.
+  ["Class II rapids", "class (?:ii(?: rapids| whitewater| water)?|2(?: rapids| whitewater| water))", "Easy rapids with small waves, fine for beginners.", { any: true }],
+  ["Class III rapids", "class (?:iii(?: rapids| whitewater| water)?|3(?: rapids| whitewater| water))", "Moderate rapids with bigger waves that take some paddling.", { any: true }],
+  ["Class IV rapids", "class (?:iv(?: rapids| whitewater| water)?|4(?: rapids| whitewater| water))", "Powerful rapids for fit, confident rafters.", { any: true }],
   ["Discover Scuba", "discover scuba(?: diving)?|try scuba|intro(?:ductory)? (?:to )?scuba|resort course", "A first try at scuba with an instructor, no certification needed.", { any: true }],
   ["PADI", /(?<![A-Za-z])PADI(?![A-Za-z])/, "The largest scuba training body; its card shows you are certified.", { any: true }],
   ["Open Water certification", "open water(?: diver)?(?: certification| course)?", "The first full scuba certificate, for diving to 18 m (60 ft) with a buddy.", { only: ["scuba"] }],
