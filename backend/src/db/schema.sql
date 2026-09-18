@@ -119,6 +119,13 @@ CREATE TABLE IF NOT EXISTS mail_unsub (
 
 CREATE INDEX IF NOT EXISTS idx_operators_metro ON operators(metro_id);
 CREATE INDEX IF NOT EXISTS idx_operators_category ON operators(category_id);
+-- Discovery matches every incoming place against the operators we already have, by domain, then phone, then the
+-- name with a city or a pin. Domain is unique so it was already indexed; the other three were full scans of
+-- 142,000 rows with lower() run on every one of them, four times per result. A Google Maps result took about
+-- thirty seconds to file, which does not make a full pass slow, it makes it impossible.
+CREATE INDEX IF NOT EXISTS idx_operators_phone ON operators(phone) WHERE phone IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_operators_name_lower ON operators(lower(name));
+CREATE INDEX IF NOT EXISTS idx_operators_name_city_lower ON operators(lower(name), lower(city));
 CREATE INDEX IF NOT EXISTS idx_offerings_op ON offerings(operator_id);
 CREATE INDEX IF NOT EXISTS idx_facts_op ON facts(operator_id);
 

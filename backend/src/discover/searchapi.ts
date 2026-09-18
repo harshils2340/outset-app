@@ -142,7 +142,12 @@ export function isCached(q: string, city: City, page = 1): boolean {
   return existsSync(cachePathFor(q, city, page));
 }
 
-/** A request left the machine and will be billed. Appended before the response is read, so a failed call still counts. */
+/**
+ * A request that will be billed. Called once the provider has answered with something other than a refusal:
+ * "not enough credits", an unauthorised key and a rate limit cost nothing, and counting them would have the cap
+ * closing in on a number no card ever saw. A request that times out is not counted either, which undercounts by
+ * the rare timeout and is the side to err on for a guard that stops work.
+ */
 function recordSpend(provider: ProviderId, q: string, city: City): void {
   try {
     appendFileSync(ledgerPath, [new Date().toISOString(), provider, q, city.name + " " + city.region].join("\t") + "\n");
@@ -176,7 +181,6 @@ export async function searchPlaces(q: string, city: City, page: number, ring: Ke
     const apiKey = ring.current();
     const prov = providerOf(apiKey);
     if (prov === "serper") {
-      recordSpend(prov, q, city);
       const res = await fetch(SERPER, {
         method: "POST",
         headers: { "X-API-KEY": apiKey, "content-type": "application/json" },
@@ -206,6 +210,7 @@ export async function searchPlaces(q: string, city: City, page: number, ring: Ke
         throw new Error("Serper HTTP 400 for " + q + " " + city.name + ": " + body.slice(0, 120));
       }
       if (!res.ok) throw new Error("Serper HTTP " + res.status + " for " + q + " " + city.name);
+      recordSpend(prov, q, city);
       const json = (await res.json()) as { places?: SerperPlace[] };
       const places = (json.places || []).map(fromSerper);
       writeFileSync(cachePath, JSON.stringify({ local_results: places, provider: "serper" }));
@@ -225,7 +230,6 @@ export async function searchPlaces(q: string, city: City, page: number, ring: Ke
     } else {
       params.set("page", String(page));
     }
-    recordSpend(prov, q, city);
     const res = await fetch((serp ? SERPAPI : ENDPOINT) + "?" + params.toString(), { signal: AbortSignal.timeout(90000) });
     if (res.status === 429) {
       limited += 1;
@@ -243,6 +247,7 @@ export async function searchPlaces(q: string, city: City, page: number, ring: Ke
       continue;
     }
     if (!res.ok) throw new Error("SearchApi HTTP " + res.status + " for " + q + " " + city.name);
+    recordSpend(prov, q, city);
     const json = (await res.json()) as PlacesResponse;
     writeFileSync(cachePath, JSON.stringify(json));
     return { places: json.local_results || [], cached: false };
@@ -255,10 +260,20 @@ function sleep(ms: number): Promise<void> {
 
 export type SearchStats = { queries: number; results: number; inserted: number; merged: number; skipped: number; stoppedEarly: boolean };
 
-const findByDomain = () => db.prepare("SELECT id FROM operators WHERE domain = ?");
-const findByPhone = () => db.prepare("SELECT id FROM operators WHERE phone = ? AND phone IS NOT NULL");
-const findByNameCity = () => db.prepare("SELECT id FROM operators WHERE lower(name) = lower(?) AND lower(city) = lower(?)");
-const findByNameNear = () => db.prepare("SELECT id FROM operators WHERE lower(name) = lower(?) AND lat IS NOT NULL AND abs(lat - ?) < 0.02 AND abs(lon - ?) < 0.02");
+/**
+ * Prepared once, not once per result. These four run for every place a run sees, so re-preparing them meant
+ * parsing and planning four statements per listing, tens of thousands of times in a pass.
+ */
+const prepared = new Map<string, ReturnType<typeof db.prepare>>();
+const stmt = (sql: string) => {
+  let s = prepared.get(sql);
+  if (!s) prepared.set(sql, (s = db.prepare(sql)));
+  return s;
+};
+const findByDomain = () => stmt("SELECT id FROM operators WHERE domain = ?");
+const findByPhone = () => stmt("SELECT id FROM operators WHERE phone = ? AND phone IS NOT NULL");
+const findByNameCity = () => stmt("SELECT id FROM operators WHERE lower(name) = lower(?) AND lower(city) = lower(?)");
+const findByNameNear = () => stmt("SELECT id FROM operators WHERE lower(name) = lower(?) AND lat IS NOT NULL AND abs(lat - ?) < 0.02 AND abs(lon - ?) < 0.02");
 
 /**
  * Google's own business type beats the term we searched with. Order matters: a specific type ("climbing gym",
@@ -371,7 +386,7 @@ export function upsertPlace(p: Place, categoryId: string, city: City, stats: Sea
     (r.lat != null && r.lon != null ? (findByNameNear().get(r.name, r.lat, r.lon) as { id: string } | undefined) : undefined);
 
   if (existing) {
-    db.prepare(
+    stmt(
       `UPDATE operators SET
         website = COALESCE(website, ?), phone = COALESCE(phone, ?), street = COALESCE(street, ?), city = COALESCE(city, ?),
         region = COALESCE(region, ?), postal = COALESCE(postal, ?), lat = COALESCE(lat, ?), lon = COALESCE(lon, ?),
@@ -390,7 +405,7 @@ export function upsertPlace(p: Place, categoryId: string, city: City, stats: Sea
     return;
   }
 
-  db.prepare(
+  stmt(
     `INSERT INTO operators (
       id, domain, name, website, phone, street, postal, metro_id, city, region, country, family, category_id, icon_key,
       claim_status, booking_mode, origin, completeness, lat, lon, rating, review_count, created_at, updated_at
@@ -400,7 +415,7 @@ export function upsertPlace(p: Place, categoryId: string, city: City, stats: Sea
     r.family, r.category_id, r.icon_key, r.lat, r.lon, r.rating, r.review_count, now, now,
   );
   if (r.google_type) {
-    db.prepare(
+    stmt(
       "INSERT INTO facts (id, operator_id, fact_key, fact_value, source_url, confidence) VALUES (?, (SELECT id FROM operators WHERE domain = ?), 'google_category', ?, 'searchapi:google_maps', 'listed')",
     ).run(randomUUID(), r.domain, r.google_type);
   }
