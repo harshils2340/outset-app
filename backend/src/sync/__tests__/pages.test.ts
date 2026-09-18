@@ -91,7 +91,7 @@ test("the Toronto cooking page: title, h1, real count, cards with price and phot
     assert.match(html, /<h1>Cooking classes in Toronto, Ontario<\/h1>/);
     assert.match(html, /3 cooking classes around Toronto, 3 with prices/);
     assert.match(html, /<link rel="canonical" href="https:\/\/onoutset\.com\/p\/cooking-in-toronto\.html">/);
-    assert.match(html, /<img src="https:\/\/x\/1\.jpg"/);
+    assert.match(html, /<img src="https:\/\/wsrv\.nl\/\?url=x%2F1\.jpg&amp;w=560/);
     assert.match(html, /From <b>\$60<\/b>/);
     assert.match(html, /From <b>\$140<\/b>/);
     assert.match(html, /href="https:\/\/onoutset\.com\/#o=o-cooking-toronto-1"/);
@@ -217,6 +217,37 @@ test("a listing with nothing on it is left off a page, out of its counts, and ca
     // The all-metros page counts the same way: four real listings, not eight rows.
     assert.match(r.read("cooking-in-anywhere.html"), /<h1>Cooking classes in the US and Canada<\/h1>/);
     assert.match(r.read("cooking-in-anywhere.html"), /4 cooking classes across the US and Canada/);
+  } finally {
+    r.cleanup();
+  }
+});
+
+/**
+ * 1,087 of the 39,044 covers we hold are `http://` addresses, because that is what the operator's own site
+ * serves. These pages are served over https, so the browser refused the image, `onerror` took the tag out and
+ * the card was a grey square: 387 photos across 306 of the 1,481 published pages. The app never had this
+ * because it proxies every card photo through wsrv.nl, which answers over https whatever the original was.
+ */
+test("a card photo is proxied, so an operator's http image still appears on an https page", () => {
+  const items: Item[] = [
+    item("cooking", "toronto", 1, { cover: "http://shop.example/kitchen.jpg" }),
+    item("cooking", "toronto", 2, { cover: "https://shop.example/pasta.png" }),
+    item("cooking", "toronto", 3, { cover: "https://shop.example/tour.gif" }),
+    item("cooking", "toronto", 4, { cover: "data:image/png;base64,iVBORw0KGgo=" }),
+  ];
+  const r = run(items);
+  try {
+    const html = r.read("cooking-in-toronto.html");
+    // Nothing on the page is fetched over http, and the operator's own address is not what the browser asks for.
+    assert.doesNotMatch(html, /src="http:\/\//);
+    assert.doesNotMatch(html, /srcset="[^"]*http:\/\//);
+    assert.match(html, /<img src="https:\/\/wsrv\.nl\/\?url=shop\.example%2Fkitchen\.jpg&amp;w=560/);
+    assert.match(html, /srcset="https:\/\/wsrv\.nl\/\?url=shop\.example%2Fpasta\.png&amp;w=280[^"]*280w, [^"]*&amp;w=560[^"]*560w"/);
+    assert.match(html, /sizes="\(max-width: 700px\) 50vw, 280px"/);
+    // A gif is left alone, the way the app leaves it alone, because the proxy would only re-encode it.
+    assert.match(html, /<img src="https:\/\/shop\.example\/tour\.gif"/);
+    // A cover that is not an http address is not a photo: no tag at all, rather than a strange one.
+    assert.doesNotMatch(html, /data:image/);
   } finally {
     r.cleanup();
   }

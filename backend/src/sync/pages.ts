@@ -200,6 +200,44 @@ export function placeName(metro: Metro): string {
 export const pageTitle = (kind: Kind, metro: Metro | null) => `${kind.search} in ${metro ? placeName(metro) : "the US and Canada"}`;
 const fileFor = (art: string, metroId: string | null) => `${art}-in-${metroId || "anywhere"}.html`;
 
+/**
+ * Card photos go through the same wsrv.nl proxy the app's own cards use, at the same 360/720 widths, rather
+ * than being hotlinked from the operator's site.
+ *
+ * Two reasons, and the first is that the picture did not appear at all. 1,087 of the 39,044 covers we hold are
+ * `http://` addresses, because that is what the operator's own site serves, and these pages are served over
+ * https: a browser refuses the insecure image, `onerror` takes the tag out, and the card is a grey square. That
+ * was 387 photos across 306 of the 1,481 published pages. The app never had the problem because the proxy is
+ * https whatever the original was. The second is weight: a page is 24 cards, and hotlinking meant 24 originals,
+ * some of them 6 MB, to fill a 250 px tile.
+ *
+ * Same URL shape as `proxyUrl` in src/lib/images.ts, which is the file to keep this in step with, and the same
+ * rule for what is not worth proxying. The widths are this grid's, not the app's: a tile here is at least
+ * 250 px, so 280 is the 1x candidate and 560 the retina one.
+ */
+const PROXY_SKIP = /wsrv\.nl|images\.weserv\.nl|\.svg(\?|$)|\.gif(\?|$)/i;
+const CARD_W = 560;
+export const CARD_SIZES = "(max-width: 700px) 50vw, 280px";
+
+export function cardPhoto(url: string, w: number): string {
+  const bare = url.replace(/^https?:\/\//i, "");
+  return "https://wsrv.nl/?url=" + encodeURIComponent(bare) + "&w=" + w + "&h=" + w + "&fit=cover&output=webp&q=68&il&n=-1";
+}
+
+/**
+ * `src` and `srcset` for one card's photo: the proxy at 1x and 2x, or the original when it cannot be proxied.
+ * Null for anything that is not an http(s) address, the same answer `thumb` in src/lib/images.ts gives: a
+ * crawled or operator-set cover is hostile input and a card is better off with no photo than a strange one.
+ */
+export function cardImage(url: string): { src: string; srcSet?: string } | null {
+  if (!/^https?:\/\//i.test(url)) return null;
+  if (PROXY_SKIP.test(url)) return { src: url };
+  return {
+    src: cardPhoto(url, CARD_W),
+    srcSet: `${cardPhoto(url, CARD_W / 2)} ${CARD_W / 2}w, ${cardPhoto(url, CARD_W)} ${CARD_W}w`,
+  };
+}
+
 function kmBetween(a: { lat: number; lon: number }, b: { lat: number; lon: number }): number {
   const d = Math.PI / 180;
   const h = Math.sin(((b.lat - a.lat) * d) / 2) ** 2 + Math.cos(a.lat * d) * Math.cos(b.lat * d) * Math.sin(((b.lon - a.lon) * d) / 2) ** 2;
@@ -325,8 +363,9 @@ function page(kind: Kind, metro: Metro | null, items: Item[], nearby: Neighbour[
           return `<li><span>${esc(s.name)}</span><span>${v && v.price != null ? esc(money(v.price)) : ""}</span></li>`;
         })
         .join("");
+      const photo = i.cover ? cardImage(i.cover) : null;
       return `<a class="card" href="${publicSite()}#o=${esc(i.id)}">
-  <div class="art">${i.cover ? `<img src="${esc(i.cover)}" alt="${esc(i.title)}" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">` : ""}</div>
+  <div class="art">${photo ? `<img src="${esc(photo.src)}"${photo.srcSet ? ` srcset="${esc(photo.srcSet)}" sizes="${CARD_SIZES}"` : ""} alt="${esc(i.title)}" width="560" height="560" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">` : ""}</div>
   <b>${esc(i.title)}</b><small>${esc(i.area)}</small>
   <div class="meta"><span>${from != null ? "From <b>" + esc(money(from)) + "</b>" : "Price on request"}</span>${i.rating ? `<span>★ ${Number(i.rating).toFixed(1)}${i.reviews ? " (" + Number(i.reviews).toLocaleString("en-US") + ")" : ""}</span>` : ""}</div>
   ${menu ? `<ul class="menu">${menu}</ul>` : ""}
