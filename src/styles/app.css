@@ -921,14 +921,27 @@ video.photo{background:#000;}
 }
 
 /* ---------- embedded checkout over the listing ---------- */
-.paycheckout{position:fixed;inset:0;z-index:70;display:flex;align-items:flex-start;justify-content:center;padding:24px 16px;overflow:auto;background:rgba(20,24,20,.55);}
-.paycheckoutbox{width:min(520px,100%);background:#fff;color:#1b1f1b;border-radius:18px;padding:16px 16px 14px;box-shadow:0 24px 60px rgba(0,0,0,.25);}
-.paycheckouthead{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
-.paycheckouthead b{flex:1;font-size:16px;font-weight:600;letter-spacing:-.01em;}
-.paycheckoutclose{border:1px solid rgba(0,0,0,.15);background:#fff;border-radius:999px;padding:6px 12px;font:inherit;font-size:13px;cursor:pointer;}
+.paycheckout{position:fixed;inset:0;z-index:70;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(16,20,16,.6);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);animation:paycheckoutin .18s ease-out;}
+.paycheckoutbox{width:min(480px,100%);max-height:calc(100dvh - 32px);display:flex;flex-direction:column;background:#fff;color:#1b1f1b;border-radius:20px;box-shadow:0 30px 80px rgba(0,0,0,.35);animation:paycheckoutup .22s cubic-bezier(.2,.8,.2,1);overflow:hidden;}
+.paycheckouthead{display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid rgba(0,0,0,.07);}
+.paycheckouthead b{flex:1;font-size:15.5px;font-weight:600;letter-spacing:-.01em;}
+.paycheckoutclose{border:1px solid rgba(0,0,0,.14);background:#fff;border-radius:999px;padding:6px 12px;font:inherit;font-size:13px;cursor:pointer;color:#1b1f1b;}
 .paycheckoutclose:hover{background:#f3f4f2;}
-.paycheckoutform{min-height:120px;}
-.paycheckoutwait,.paycheckouterr{margin:8px 0;font-size:14px;color:#5b615b;}
-.paycheckouterr{color:#a13b2e;}
-.paycheckoutnote{display:block;margin-top:10px;font-size:12.5px;color:#6b716b;text-align:center;}
-@media (max-width:600px){.paycheckout{padding:0;align-items:stretch;}.paycheckoutbox{border-radius:0;min-height:100%;}}
+.paycheckoutbody{position:relative;flex:1;min-height:0;overflow:auto;-webkit-overflow-scrolling:touch;padding:8px 8px 0;}
+.paycheckoutform{opacity:0;transition:opacity .2s ease;}
+.paycheckoutform.on{opacity:1;}
+.paycheckoutskel{position:absolute;inset:8px 8px 0;display:flex;flex-direction:column;gap:12px;padding:16px;}
+.paycheckoutskel .skel{display:block;height:14px;border-radius:7px;background:linear-gradient(90deg,#eeefec 25%,#f7f8f6 50%,#eeefec 75%);background-size:200% 100%;animation:paycheckoutshimmer 1.1s linear infinite;}
+.paycheckoutskel .skel.l{width:40%;height:18px;}
+.paycheckoutskel .skel.m{width:70%;height:34px;border-radius:10px;}
+.paycheckoutskel .skel.f{width:100%;height:44px;border-radius:10px;}
+.paycheckoutskel .skel.h{width:55%;}
+.paycheckoutskel .skel.btn{width:100%;height:46px;border-radius:12px;margin-top:8px;background:linear-gradient(90deg,#dfe3dc 25%,#eaede7 50%,#dfe3dc 75%);background-size:200% 100%;}
+.paycheckouterr{margin:8px 8px 4px;font-size:14px;color:#a13b2e;}
+.paycheckoutwait{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;}
+.paycheckoutnote{display:block;padding:10px 16px 12px;font-size:12.5px;color:#6b716b;text-align:center;border-top:1px solid rgba(0,0,0,.07);}
+@keyframes paycheckoutin{from{opacity:0}to{opacity:1}}
+@keyframes paycheckoutup{from{transform:translateY(14px);opacity:0}to{transform:none;opacity:1}}
+@keyframes paycheckoutshimmer{from{background-position:200% 0}to{background-position:-200% 0}}
+@media (max-width:600px){.paycheckout{padding:0;align-items:stretch;}.paycheckoutbox{width:100%;max-height:100dvh;border-radius:0;}}
+@media (prefers-reduced-motion:reduce){.paycheckout,.paycheckoutbox{animation:none;}.paycheckoutskel .skel{animation:none;}}

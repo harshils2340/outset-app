@@ -1,3 +1,4 @@
+import { warmCheckout } from "../../lib/stripeJs";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { CATS } from "../../data/categories";
 import { ART_LABEL } from "../../data/art";
@@ -402,6 +403,8 @@ function RequestBody({
   const pausedHead = item.offline ? "This listing is hidden right now" : "Not taking bookings right now";
   const pausedWhy = item.offline ? item.title + " has taken this page down for the moment." : item.title + " has paused new bookings. Check back soon.";
   const ready = !paused && time != null && (!needService || picked != null);
+  // The card form's script and config load now, while the guest reads the price, so "Book and pay" opens it at once.
+  useEffect(() => { if (ready) warmCheckout(); }, [ready]);
   const day = dates[dateIdx];
   const p = priceUnclaimed(picked, qty, extras);
   const instant = !!(item.claimed && item.instant);

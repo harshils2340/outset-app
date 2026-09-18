@@ -1,3 +1,4 @@
+import { warmCheckout } from "../lib/stripeJs";
 import { createContext, useContext, useEffect, useMemo, useReducer, useRef, type ReactNode } from "react";
 import { LISTINGS } from "../data/listings";
 import { ALL_METRO_ID } from "../data/metros";
@@ -742,6 +743,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         // the API has it does the guest see a ticket; before this the page said "Request sent" while the API
         // was answering 409 for a paused shop or a time that had just been taken.
         // The embedded form needs Stripe's publishable key on the page; without it the hosted page is asked for.
+        warmCheckout();
         const embedded = !!(await apiConfig()).stripePublishableKey;
         const r = await submitBooking({
           embedded,

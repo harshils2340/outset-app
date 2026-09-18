@@ -1,3 +1,4 @@
+import { warmCheckout } from "../../lib/stripeJs";
 import "../../styles/air-listing.css";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type KeyboardEvent as ReactKeyboardEvent, type ReactNode, type SyntheticEvent } from "react";
 import { apiConfig, fetchAvailability, fetchOpenSlots, hasApi, type LiveAvailability } from "../../lib/api";
@@ -1018,6 +1019,8 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
   // good. The stepper's own "+" was already held at the limit; only the number it started from was not.
   useEffect(() => { setQty((q) => Math.min(q, maxGuests)); }, [maxGuests]);
   const ready = !paused && time != null && (!needService || picked != null) && guestOk;
+  // The card form's script and config load now, while the guest reads the price, so "Book and pay" opens it at once.
+  useEffect(() => { if (ready && p.total) warmCheckout(); }, [ready, p.total]);
   const instant = !!(item.claimed && item.instant);
   // Say what pressing it does: a card payment, an instant booking, or a request the operator confirms.
   const ctaLabel = payments && p.total ? "Book and pay" : instant ? "Book" : "Request to book";

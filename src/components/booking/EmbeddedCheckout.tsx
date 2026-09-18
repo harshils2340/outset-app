@@ -10,6 +10,10 @@ import { Mark } from "../layout/Mark";
  * fee is the same as the hosted page. When the payment completes Stripe sends the tab to the return URL the API
  * set (#paid=<code>), which is the confirmation the hosted page always used. Close puts the listing back as it was;
  * the unpaid session expires on its own and the API's expiry webhook clears the pending row.
+ *
+ * Speed: Stripe.js and the page config are fetched by warmCheckout() (lib/stripeJs) the moment a booking box is
+ * complete, before "Book and pay" is pressed, so the only wait left when the session arrives is Stripe drawing
+ * its form, behind a skeleton the shape of that form. The page behind the dialog stops scrolling while it is up.
  */
 
 export function EmbeddedCheckout({ secret }: { secret: string }) {
@@ -53,7 +57,15 @@ export function EmbeddedCheckout({ secret }: { secret: string }) {
       }
     };
     document.addEventListener("keydown", onKey, true);
-    return () => document.removeEventListener("keydown", onKey, true);
+    // The listing behind must not scroll under the form, on a wheel or a thumb.
+    const prev = { overflow: document.body.style.overflow, touch: document.body.style.touchAction };
+    document.body.style.overflow = "hidden";
+    document.body.style.touchAction = "none";
+    return () => {
+      document.removeEventListener("keydown", onKey, true);
+      document.body.style.overflow = prev.overflow;
+      document.body.style.touchAction = prev.touch;
+    };
   }, []);
   useEffect(() => {
     let checkout: StripeCheckout | null = null;
@@ -77,17 +89,26 @@ export function EmbeddedCheckout({ secret }: { secret: string }) {
     };
   }, [secret]);
   return (
-    <div className="paycheckout" role="dialog" aria-modal="true" aria-label="Pay for your booking">
+    <div className="paycheckout" role="dialog" aria-modal="true" aria-label="Pay for your booking" onClick={(e) => { if (e.target === e.currentTarget) cancelCheckout(); }}>
       <div className="paycheckoutbox" ref={box}>
         <div className="paycheckouthead">
-          <Mark size={28} />
+          <Mark size={26} />
           <b>Secure payment</b>
           <button type="button" ref={closeBtn} className="paycheckoutclose" onClick={cancelCheckout} aria-label="Close without paying">Close</button>
         </div>
-        {/* Both of these replace the card form itself, so a screen reader has to be told rather than shown. */}
-        {error ? <p className="paycheckouterr" role="alert">{error} You can try again from the booking box.</p> : null}
-        {!ready && !error ? <p className="paycheckoutwait" role="status">Loading the card form…</p> : null}
-        <div ref={host} className="paycheckoutform" />
+        <div className="paycheckoutbody">
+          {/* Both of these replace the card form itself, so a screen reader has to be told rather than shown. */}
+          {error ? <p className="paycheckouterr" role="alert">{error} You can try again from the booking box.</p> : null}
+          {!ready && !error ? (
+            <>
+              <p className="paycheckoutwait" role="status">Loading the card form…</p>
+              <div className="paycheckoutskel" aria-hidden="true">
+                <span className="skel l" /><span className="skel m" /><span className="skel f" /><span className="skel f" /><span className="skel h" /><span className="skel btn" />
+              </div>
+            </>
+          ) : null}
+          <div ref={host} className={"paycheckoutform" + (ready ? " on" : "")} />
+        </div>
         <small className="paycheckoutnote">Handled by Stripe. Your card is only held until the business confirms.</small>
       </div>
     </div>

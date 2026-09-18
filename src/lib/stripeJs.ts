@@ -39,3 +39,13 @@ export function loadStripeJs(): Promise<StripeJs> {
   });
   return pending;
 }
+
+/**
+ * Fetch what the card form needs ahead of time: the page config (which carries the publishable key) and
+ * Stripe.js itself, about 200 KB. Called when a booking box is complete, so "Book and pay" opens the form
+ * without a download in the way. Safe to call often; each part loads once. Never throws.
+ */
+export function warmCheckout(): void {
+  if (typeof window === "undefined" || typeof document === "undefined") return;
+  void import("./api").then(({ apiConfig }) => apiConfig()).then((c) => { if (c.stripePublishableKey) void loadStripeJs().catch(() => undefined); }).catch(() => undefined);
+}
