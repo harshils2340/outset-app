@@ -95,7 +95,11 @@ export async function applyDeployWindow(now = new Date()): Promise<void> {
 
 /** Runs on boot and every ten minutes. An instance asleep at the boundary catches up on its next wake. */
 export function startDeployWindow(): void {
-  if (!(process.env.RENDER_API_KEY || "").trim()) return;
+  if (!(process.env.RENDER_API_KEY || "").trim()) {
+    console.log("[deploy-window] RENDER_API_KEY is not set; auto-deploy stays on around the clock");
+    return;
+  }
+  console.log("[deploy-window] armed: no auto-deploys " + WINDOW_START + ":00 to " + WINDOW_END + ":00 Eastern, one catch-up deploy after; " + (inQuietWindow() ? "inside" : "outside") + " the window now");
   void applyDeployWindow();
   const t = setInterval(() => void applyDeployWindow(), CHECK_MS);
   t.unref();
