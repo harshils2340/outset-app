@@ -9,7 +9,7 @@ import { claimKeyHash } from "../lib/claim.ts";
 import { crawledPhotoStats, crawledPhotosFor } from "./photoSidecar.ts";
 import { crawledStructureFor, crawledStructureStats } from "./structureSidecar.ts";
 import { cleanImageUrl } from "../enrich/srcset.ts";
-import { reconcileArt } from "./artEvidence.ts";
+import { artFromName, reconcileArt } from "./artEvidence.ts";
 import { LOCATION_FACT, brandId, isChainLocation } from "./brandShare.ts";
 import { fullSize } from "./imageUrl.ts";
 import { quotesFromFacts } from "./quotes.ts";
@@ -709,30 +709,6 @@ function freeCancel(text: string, corpus?: string): string | null {
   const n = Number(m[1]);
   const unit = /day/i.test(m[2]) ? (n === 1 ? "day" : "days") : n === 1 ? "hour" : "hours";
   return "Free cancellation up to " + n + " " + unit + " before";
-}
-
-/** "Hawaiian Parasail" is parasailing whatever OpenStreetMap tagged it. The name wins when it names the activity outright. */
-const ART_BY_NAME: [RegExp, string][] = [
-  // Airboat, swamp and whale-watching outfits are tours, not sunset sails.
-  [/airboat|swamp|alligator|gator|everglades|whale watch|dolphin watch|glass ?bottom/i, "tour"],
-  [/\bparasail/i, "parasail"],
-  [/\bjet ?ski|waverunner|sea-?doo/i, "jetski"],
-  [/\bskydiv|\btandem jump|\bparachut/i, "skydive"],
-  [/\baxe|\bhatchet/i, "axe"],
-  [/\bescape (room|game)|\bescape\b/i, "escape"],
-  [/\bkart|\bkarting/i, "kart"],
-  [/\bpaintball|\bairsoft|\blaser tag/i, "paintball"],
-  [/\bhelicopter|\bheli\b|\bhelitour/i, "heli"],
-  [/\bballoon/i, "balloon"],
-  [/\bkayak|\bpaddle ?board|\bcanoe|\bsup\b|\bpaddl/i, "kayak"],
-  [/\bpontoon/i, "pontoon"],
-  [/\bhorse|\bequestrian|\btrail ride|\bstable/i, "horse"],
-  [/\bfishing|\bcharter fish|\bsportfish|\bangl/i, "fishing"],
-  [/\bsunset (cruise|sail)|\bcruise|\bsailing|\bcatamaran|\byacht/i, "cruise"],
-];
-function artFromName(name: string, fallback: string): string {
-  for (const [re, art] of ART_BY_NAME) if (re.test(name)) return art;
-  return fallback;
 }
 
 /* ---------- audit-driven filters (9 Sept 2026 data QA) ---------- */
