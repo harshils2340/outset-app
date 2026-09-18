@@ -7,7 +7,7 @@ import { metroById } from "../../data/metros";
 import { countryOfArea, countryOfRegion, regionOfArea } from "../../data/regions";
 import { SLOT_TIMES } from "../../data/slots";
 import type { Unclaimed } from "../../data/types";
-import { addressLine, bookingPaused, contactFor, fmtHours, fmtPhone, fromPrice, getCatalog, listingFacts, mapsHref, maxGuestsFor, perPerson, plainWords, publicRating, telHref, topRated as isTopRated } from "../../lib/catalog";
+import { addressLine, bookingPaused, contactFor, fmtHours, fmtPhone, fromPrice, getCatalog, guestCapFor, listingFacts, mapsHref, maxGuestsFor, perPerson, plainWords, publicRating, telHref, topRated as isTopRated } from "../../lib/catalog";
 import { DAYS, fmtDate, fmtReviews, fmtTime, money, priceWith, reviewsLine } from "../../lib/format";
 import { srcSet, thumb } from "../../lib/images";
 import { embedAutoplay, isGif, listingMedia, photoCandidates, probePhotos, type Media } from "../../lib/media";
@@ -1006,8 +1006,10 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
   // guest who has it bookmarked learns why, but nothing here can be booked and the API refuses too. Both flags
   // only ever come from an owner's saved profile, so they count before the next sync stamps the record `claimed`.
   const paused = bookingPaused(item);
-  // The operator's own "max guests per slot" for the service being booked, not a number we picked.
+  // The operator's own "max guests per slot" for the service being booked, else the ceiling their own site
+  // states, not a number we picked. Named here too, so a stepper that has stopped says what stopped it.
   const maxGuests = maxGuestsFor(item, optionIdx);
+  const guestCap = guestCapFor(item, optionIdx);
   // The party has to come down with it when a smaller service is picked. The picker asks the API for times
   // that hold this many guests, and a service that holds fewer than the party has no such time on any date, so
   // a party left above the new limit emptied every day in the calendar and the page read as fully booked for
@@ -1766,7 +1768,9 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
                     </div>
                     <div className="alboxcell full guests">
                       <span>
-                        <small>Guests</small>
+                        {/* A stepper that stops names the limit that stopped it, in the label the cell already
+                            has, so a guest is not left pressing a dead "+". */}
+                        <small>{guestCap != null ? "Guests · up to " + guestCap : "Guests"}</small>
                         <span className="alboxval">{qty} {qty === 1 ? "guest" : "guests"}</span>
                       </span>
                       <span className="alstep">

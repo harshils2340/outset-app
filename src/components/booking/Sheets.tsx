@@ -14,6 +14,7 @@ import {
   fmtPhone,
   fromPrice,
   getCatalog,
+  guestCapFor,
   listingFacts,
   mapsDirHref,
   mapsQuery,
@@ -341,8 +342,10 @@ function RequestBody({
   const [time, setTime] = useState<string | null>(null);
   const [qty, setQty] = useState(() => Math.min(QTY_MAX, getPrefs().who || 2));
   const [optionIdx, setOptionIdx] = useState<number | null>(item.options.length === 1 ? 0 : null);
-  // "Max guests per slot", as the operator set it for the service being booked.
+  // "Max guests per slot" as the operator set it for the service being booked, else the ceiling the shop's own
+  // site states. Named here too, so a stepper that has stopped says whose limit stopped it.
   const maxGuests = maxGuestsFor(item, optionIdx);
+  const guestCap = guestCapFor(item, optionIdx);
   // The party comes down with it, for the same reason as on the desktop page: the open times are asked for a
   // party this size, so one larger than the service holds leaves every date empty with nothing saying why.
   useEffect(() => { setQty((q) => Math.min(q, maxGuests)); }, [maxGuests]);
@@ -1073,7 +1076,9 @@ function RequestBody({
             <div className="airguests">
               <span>
                 <b>Guests</b>
-                <small>People in your group</small>
+                {/* A stepper that stops says whose limit stopped it, because a dead "+" with no reason beside it
+                    reads as the page being broken. */}
+                <small>{guestCap != null ? "This shop takes up to " + guestCap + (guestCap === 1 ? " guest" : " guests") : "People in your group"}</small>
               </span>
               <span className="airstepper">
                 <button type="button" onClick={() => setQty(qty - 1)} disabled={qty <= 1} aria-label="Fewer people">

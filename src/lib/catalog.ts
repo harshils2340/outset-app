@@ -3,6 +3,7 @@ import { UNCLAIMED } from "../data/unclaimed";
 import type { OperatorContact, Unclaimed, UnclaimedOption } from "../data/types";
 import { regionOfArea } from "../data/regions";
 import type { GeoPoint } from "./geo";
+import { groupCap } from "./groupSize";
 import { bookableMenu } from "./menuRow";
 import { ownWords } from "./ownWords";
 import { isPublicHttpUrl } from "./urlSafety";
@@ -317,16 +318,35 @@ export function perPerson(o: UnclaimedOption): boolean {
 }
 
 /**
- * The largest party the guest picker offers for a service. The operator sets it per service ("Max guests per
- * slot"); a scraped listing has nobody to ask, so it falls back to a generous number and the server has the
- * final word either way, refusing anything the time cannot hold.
+ * The largest party this listing itself says it can take, or null when nothing says.
+ *
+ * Two things can say. A claimed operator sets it per service in their dashboard ("Max guests per slot"), and
+ * that is the shop speaking today, so it wins. Otherwise the shop's own website already stated one, and the
+ * listing page prints it as a key fact: "Up to 6 guests" off "Boat accommodates up to 6 passengers".
+ *
+ * The picker ignored that line, so on 1,217 shipped listings the same screen said "Up to 6 guests" in its facts
+ * and offered twenty in its stepper, 471 of them priced per person: a six seat helicopter quoted a party of
+ * twenty $9,074.80, and a charter whose own menu row reads "up to maximum party size of 6" took a request for
+ * twenty. Nothing downstream catches it either, because an unclaimed listing has no capacity for the server to
+ * check against. The picker is the only guard there is, so it reads the line the page is already printing.
+ *
+ * Only a stated ceiling under the fallback binds. A shop that says it takes 3,000 is telling us it has room,
+ * not that the picker should offer sixty, and widening it is a product call rather than this fix.
  */
 export const GUESTS_UNKNOWN = 20;
 export const GUESTS_CEILING = 60;
-export function maxGuestsFor(item: Unclaimed, optionIdx: number | null): number {
+export function guestCapFor(item: Unclaimed, optionIdx: number | null): number | null {
   const svc = optionIdx == null ? undefined : (item.services || []).find((x) => x.variants.some((v) => v.optionIdx === optionIdx));
   const set = svc?.maxGuests;
-  return Math.min(GUESTS_CEILING, set && set > 0 ? set : GUESTS_UNKNOWN);
+  if (set && set > 0) return Math.min(GUESTS_CEILING, set);
+  const stated = groupCap(item.groupInfo);
+  return stated != null && stated > 0 && stated < GUESTS_UNKNOWN ? stated : null;
+}
+
+/** The largest party the guest picker offers, which is that ceiling when there is one and a generous fallback
+ *  when the listing states nothing at all. */
+export function maxGuestsFor(item: Unclaimed, optionIdx: number | null): number {
+  return guestCapFor(item, optionIdx) ?? GUESTS_UNKNOWN;
 }
 
 export function publicRating(item: Unclaimed): { rating: number; reviews: number } | null {
