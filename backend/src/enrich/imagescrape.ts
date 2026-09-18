@@ -23,6 +23,28 @@ import { publishableImage } from "../sync/imageUrl.ts";
  * og-default.jpg, 700x400.png) and page chrome (dividers, spacers). Tested on the last two path segments and the alt.
  */
 export const BAD_NAME = /logo|icon|sprite|poster|flyer|giftcard|gift-card|gift_card|guide\d*\b|safety[-_]?guide|rules|waiver|form\b|page[-_]?\d|(?:^|[\/_\-. ])pg[-_]?\d{1,3}(?=[\/_\-.]|$)|(?:^|[\/_\-. ])p\d{1,2}(?=[_\-.]|$)|booklet|scan|document|pdf|certificate|license|licence|permit|card\d*\b|brochure|infographic|(?:^|[\/_\-. ])menus?(?=[\/_\-. (]|$)|menu-board|price-?list|schedule|badge|award|seal|payment|visa|mastercard|paypal|amex|tripadvisor|yelp|facebook|instagram|twitter|youtube|tiktok|google|bbb|chamber|certif|arrow|button|btn|banner-ad|placeholder|dummy|og-default|(?:^|\/)default[-_.]|(?:^|[\/_\-. ])\d{3,4}x\d{3,4}(?:[-_]\d+)?\.(?:jpe?g|png|webp)$|loading|spinner|pixel|tracking|avatar|profile|headshot|staff|team|map|flag|check|star|rating|review|coupon|gift|card|menu-?icon|hamburger|close|play|calendar|clock|phone|mail|social|footer|header|branding|brand|pattern|texture|blank|spacer|1x1|transparent|favicon|apple-touch|thumb-?nail|widget|weather|covid|member|rates?\b|price|pricing|special|deal|promo|sale|desktop|mobile|screen[-_ ]?shot|text|title|heading|quote|testimonial|partner|sponsor|affiliate|accessib|audioeye|mock-?ups?|mask[-_]?group|wordmark|lettermark|lockup|newsletter|cartoon|clip-?art|illustration|graphics?\b|floor[-_]?plan|course[-_]?layout|(?:^|[\/_\-. ])layout(?=[\/_\-.]|$)|removebg|divider|qr[-_]?code|(?:^|[\/_\-. ])qr(?=[\/_\-. ]|$)|thank[-_ ]?you|(?:^|[\/_\-. ])sorry(?=[\/_\-. ]|$)/i;
+/**
+ * A bot check is not a photograph. A site running BotDetect or a similar challenge answers with a one-off
+ * CAPTCHA image whose address carries `get=image`, which is enough to get it past the extension gate above,
+ * and whose path is `/.well-known/captcha/...` so no file name ever reaches BAD_NAME. Ten shipped listings
+ * have one as their cover and eleven more carry one in the gallery, and it is not even a picture a guest can
+ * see: the address is bound to the crawler's IP and a timestamp, so it answers nothing months later.
+ *
+ * Tested on the whole address, query string included, and mirrored in sync/contacts.ts `isPhotoName` so the
+ * next sync drops the ones already stored.
+ */
+export const CHALLENGE_IMAGE = /\/\.well-known\/captcha\b|botdetect|(?:^|[/_\-. ?&=])captchas?(?:[/_\-. ?&=]|$)/i;
+
+export function isChallengeImage(url: string): boolean {
+  let full = url;
+  try {
+    full = decodeURIComponent(url);
+  } catch {
+    /* keep the raw address */
+  }
+  return CHALLENGE_IMAGE.test(full);
+}
+
 const GOOD_NAME = /jet|ski|kayak|paddle|boat|pontoon|charter|fish|cruise|sail|sunset|dolphin|snorkel|parasail|skydiv|tandem|jump|heli|balloon|kart|race|track|escape|room|axe|throw|paintball|horse|trail|ride|tour|rental|water|beach|ocean|lake|river|bay|island|adventure|fun|guest|group|family|action|hero|slide|gallery|photo|img_|dsc|image/i;
 const PAGE_FIRST = /rental|rent|tour|trip|gallery|photo|experience|adventure|charter|activit|service|package|about/i;
 const SKIP = /\.(pdf|zip|css|js|mp4|webm)$|\/(wp-json|feed|tag|category|author|cart|checkout|login|account|wp-admin|xmlrpc)\b|blog\/|\/news\/|\/page\/\d|\?|#/i;
@@ -118,6 +140,7 @@ export function harvestImages(html: string, pageUrl: string, seen: Map<string, P
     if (!/\.(jpe?g|png|webp|avif)$/i.test(path) && !/\.(jpe?g|png|webp)/i.test(url) && !/image|photo|upload|media|cdn|img/i.test(url)) return;
     if (/\.(svg|gif|ico)(\?|$)/i.test(path)) return;
     const name = path.split("/").slice(-2).join("/");
+    if (isChallengeImage(url)) return;
     if (BAD_NAME.test(name) || BAD_NAME.test(alt)) return;
     let score = base;
     if (GOOD_NAME.test(name) || GOOD_NAME.test(alt)) score += 2;

@@ -9,6 +9,7 @@ import { claimKeyHash } from "../lib/claim.ts";
 import { crawledPhotoStats, crawledPhotosFor } from "./photoSidecar.ts";
 import { crawledStructureFor, crawledStructureStats } from "./structureSidecar.ts";
 import { cleanImageUrl } from "../enrich/srcset.ts";
+import { isChallengeImage } from "../enrich/imagescrape.ts";
 import { artFromName, reconcileArt } from "./artEvidence.ts";
 import { LOCATION_FACT, brandId, isChainLocation } from "./brandShare.ts";
 import { fullSize } from "./imageUrl.ts";
@@ -983,6 +984,8 @@ export function isPhotoName(url: string): boolean {
     /* keep the raw name */
   }
   if (DOC_PHOTO.test(name)) return false;
+  // A bot check the crawl was served instead of a page. See isChallengeImage in enrich/imagescrape.ts.
+  if (isChallengeImage(url)) return false;
   let full = url;
   try {
     full = decodeURIComponent(url);
