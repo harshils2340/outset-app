@@ -232,7 +232,7 @@ export function openDaysFor(profile: DashboardProfile | null, list: StoredBookin
 }
 
 const ZONE_TTL = 60 * 60 * 1000;
-type DetailFile = { area?: string; lat?: number; lon?: number; hrs?: ([number, number] | null)[]; hoursText?: string[] };
+export type DetailFile = { area?: string; lat?: number; lon?: number; hrs?: ([number, number] | null)[]; hoursText?: string[]; contact?: { hours?: string[] } | null };
 type ListingFacts = { zone: string | null; week: PublishedWeek };
 const facts = new Map<string, { at: number; facts: ListingFacts }>();
 
@@ -242,13 +242,16 @@ const facts = new Map<string, { at: number; facts: ListingFacts }>();
  * the fallback, read by the sync's own parser, which is that file's twin. Lines that are not trading hours at
  * all (a campground's quiet hours) take the compact week down with them, because it was encoded from them.
  */
-function weekIn(detail: DetailFile | null): PublishedWeek {
+export function weekIn(detail: DetailFile | null): PublishedWeek {
   if (!detail) return null;
   const lines = (detail.hoursText || []).filter(isTradingHoursLine);
   if (detail.hoursText?.length && !lines.length) return null;
   const compact = Array.isArray(detail.hrs) && detail.hrs.length === 7 ? detail.hrs.map(statedDay) : null;
   if (compact && compact.some((d) => d)) return compact;
-  const parsed = lines.length ? encodeWeek(lines) : null;
+  // Hundreds of listings publish no hours of their own and carry them on their synced contact record instead,
+  // which is where the listing page reads them from too (`contactFor`). Missing that made the two disagree.
+  const from = lines.length ? lines : detail.contact?.hours || [];
+  const parsed = from.length ? encodeWeek(from) : null;
   return parsed ? parsed.map(statedDay) : null;
 }
 
@@ -257,8 +260,9 @@ function statedDay(d: [number, number] | null): StatedDay {
   if (!d) return null;
   const [open, close] = d;
   if (open === 0 && close === 0) return { open, close };
-  const whole = close - open >= 24 * 60 - 1;
-  return !whole && open >= 0 && open < 24 * 60 && close > open && close - open <= 24 * 60 ? { open, close } : null;
+  // "00:00-23:59" is what a site builder writes when the owner never set any hours, not a shop open all day.
+  if (open === 0 && close >= 24 * 60 - 1) return null;
+  return open >= 0 && open < 24 * 60 && close > open && close - open <= 24 * 60 ? { open, close } : null;
 }
 
 /**

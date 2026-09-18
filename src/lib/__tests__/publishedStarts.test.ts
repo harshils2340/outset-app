@@ -6,6 +6,7 @@ import { itemWeek } from "../openNow";
 import { noStartTimesNote, startTimesOn } from "../startTimes";
 import { SLOT_TIMES } from "../../data/slots";
 import type { Unclaimed } from "../../data/types";
+import { weekIn } from "../../../backend/src/api/openSlots";
 
 /**
  * The start times an unclaimed listing offers, against the hours the same page prints above them. Every shop
@@ -102,4 +103,16 @@ test("an empty picker says why, and does not call next Saturday today", () => {
     assert.match(src, /noStartTimesNote\(/, name + " asks why the day is empty");
     assert.doesNotMatch(src, /: "No more start times today\. Pick another day\."/, name + " keeps no hardcoded copy of it");
   }
+});
+
+test("the API reads a shop's week the same way the page does, on every listing that ships one", () => {
+  let same = 0;
+  for (const f of readdirSync(dir)) {
+    const item = JSON.parse(readFileSync(new URL(f, dir), "utf8")) as Unclaimed;
+    const mine = itemWeek(item);
+    const theirs = weekIn(item as Parameters<typeof weekIn>[0]);
+    assert.deepEqual(theirs, mine, item.id + ": the API and the listing page read different hours");
+    if (mine) same++;
+  }
+  assert.ok(same > 10000, "read the shipped catalog, saw only " + same + " weeks");
 });
