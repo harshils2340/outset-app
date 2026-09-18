@@ -71,7 +71,10 @@ claims.post("/claims/:id/request", rateLimit(10, 60 * 60 * 1000), async (c) => {
     cta: { label: "Open my dashboard", url: link },
     after: ["It opens with no code. Check your prices and photos, set your hours, and switch bookings on when you are ready.", `If you did not ask for this, ignore this email and nothing changes. Questions: ${SUPPORT}`, "Harshil, Outset"],
   });
-  const r = await sendMail({ to: email, subject: `Your Outset claim link for ${title}`, ...mail, replyTo: process.env.MAIL_REPLY_TO || undefined });
+  // Plain text, like the outreach email this answers. The two land in the same business inbox minutes apart, and
+  // a designed HTML reply to a plainly written note reads as a different, automated sender. The link is a bare
+  // URL on its own line, which every mail client makes clickable. Guest-facing mail keeps its HTML.
+  const r = await sendMail({ to: email, subject: `Your Outset claim link for ${title}`, text: mail.text, replyTo: process.env.MAIL_REPLY_TO || undefined });
   console.log(`[claim] ${id}: link for ${maskEmail(email)} from ${clientIp(c)} ${r.sent ? "sent " + r.id : "not sent (" + r.error + ")"}`);
   // TEST BYPASS: on a host with no mail transport at all there is no inbox to check, so hand the link back
   // to the allowlisted tester instead of only writing it to the log. Never for a normal claim, and never
