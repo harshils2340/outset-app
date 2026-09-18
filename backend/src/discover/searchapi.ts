@@ -171,6 +171,29 @@ export function searchSpendUsd(): number {
   }
 }
 
+/**
+ * The same ledger, added up per UTC day, for the spend-over-time line on the internal metrics page. Each line
+ * starts with the ISO timestamp of the request, so the day is the first ten characters; a line written before
+ * the timestamp column existed has no day to file it under and is left out of the series rather than dated
+ * today, which would draw a spike on a day nothing was spent. The totals on the page still come from
+ * searchSpendUsd(), so nothing is lost, only unplaced.
+ */
+export function searchSpendByDay(): Map<string, number> {
+  const by = new Map<string, number>();
+  try {
+    for (const line of readFileSync(ledgerPath, "utf8").split("\n")) {
+      if (!line) continue;
+      const [at, prov] = line.split("\t");
+      const day = (at || "").slice(0, 10);
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) continue;
+      by.set(day, (by.get(day) || 0) + (PRICE_PER_1K_USD[prov as ProviderId] ?? PRICE_PER_1K_USD.searchapi) / 1000);
+    }
+  } catch {
+    /* no ledger yet */
+  }
+  return by;
+}
+
 export async function searchPlaces(q: string, city: City, page: number, ring: KeyRing): Promise<{ places: Place[]; cached: boolean }> {
   mkdirSync(cacheDir, { recursive: true });
   const cachePath = cachePathFor(q, city, page);

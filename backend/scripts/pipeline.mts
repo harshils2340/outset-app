@@ -23,7 +23,7 @@ import { isLaptop } from "../src/scrape/guard.ts";
  *   npx tsx scripts/pipeline.mts                 run forever
  *   npx tsx scripts/pipeline.mts --dry           print the schedule and exit
  *   npx tsx scripts/pipeline.mts --once=sync     run one job and exit (status, collect, discover, structure,
- *                                                photos, hours, promo, screen, owners, sync, search)
+ *                                                photos, hours, promo, screen, owners, sync, spend, search)
  *
  * Money: nothing scheduled here spends anything. `collect` only stores batches that were already paid for when
  * they were submitted from the laptop. The one paid job, `search`, is on demand: it never runs on a schedule and
@@ -81,6 +81,13 @@ const JOBS: Job[] = [
   { name: "screen", at: "03:30", timeoutMs: 3 * HOUR, args: ["scripts/screen-covers.mts"], needsRepo: true, note: "drop map, logo, flyer and scanned-page covers and gallery photos" },
   { name: "owners", at: "04:00", timeoutMs: HOUR, args: ["src/index.ts", "owners", "2000", "8"], needsRepo: true, note: "owner names and contact pages" },
   { name: "sync", at: "05:00", timeoutMs: HOUR, args: ["src/index.ts", "sync"], needsRepo: true, note: "read-only catalog sync, commit and push public/ and src/data" },
+  /**
+   * Accounting, not work: discovery and extraction spend is counted on this disk and nowhere else, so the
+   * internal metrics page can only show it if the worker posts it. After the sync, so a night's crawling is
+   * already in the ledgers when the reading is taken. It spends nothing and cannot fail the pipeline: with no
+   * ADMIN_KEY, no API_URL, no network or a non-200, the script says so and exits 0.
+   */
+  { name: "spend", at: "06:00", timeoutMs: 10 * MIN, args: ["scripts/report-spend.mts"], needsRepo: true, note: "post what discovery and extraction have cost to POST /admin/spend, for the internal metrics page" },
   /**
    * Google Maps discovery over the whole taxonomy. On demand only: every answer is cached on the disk, so a
    * second run of the same grid is free and finds nothing new, and the money is only worth spending when the

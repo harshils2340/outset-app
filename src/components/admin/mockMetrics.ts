@@ -24,7 +24,7 @@ function rng(seed: number): () => number {
   };
 }
 
-export function buildMetrics(days: number, opts: { empty?: boolean } = {}): AdminMetrics {
+export function buildMetrics(days: number, opts: { empty?: boolean; noSpend?: boolean } = {}): AdminMetrics {
   const end = Date.parse("2026-09-18T00:00:00.000Z");
   const start = end - (days - 1) * DAY;
   const r = rng(7 + days);
@@ -62,6 +62,61 @@ export function buildMetrics(days: number, opts: { empty?: boolean } = {}): Admi
   fee = Math.round(fee * 100) / 100;
   const claimed = opts.empty ? 0 : 418;
   const total = 59214;
+  const bookingsTotal = opts.empty ? 0 : inRange + 64;
+
+  // Spend: the worker's snapshot, with its own per-day series. Discovery is spiky because the Google Maps pass
+  // is one run on one day, and extraction trickles; the fixture keeps that shape so the chart is worth looking
+  // at. `noSpend` is the state before the worker has ever posted, which the page must render as unknown.
+  const costsByDay: AdminMetrics["costs"]["byDay"] = [];
+  let discovery = 0;
+  let extraction = 0;
+  for (let i = 0; i < days; i += 1) {
+    const day = dayString(start + i * DAY);
+    const d = opts.empty ? 0 : r() < 0.9 ? 0 : Math.round(r() * 300) / 100;
+    const e = opts.empty ? 0 : Math.round(r() * 14) / 100;
+    costsByDay.push({ day, discovery: d, extraction: e });
+    discovery += d;
+    extraction += e;
+  }
+  // Plus the one Google Maps pass, which was billed before this window and so has no day inside it.
+  discovery = Math.round((discovery + (opts.empty ? 0 : 18.2)) * 100) / 100;
+  extraction = Math.round(extraction * 100) / 100;
+  const spendTotal = Math.round((discovery + extraction) * 100) / 100;
+  const capUsd = 60;
+  const per = (n: number) => (n > 0 ? Math.round((spendTotal / n) * 100) / 100 : null);
+  const costs: AdminMetrics["costs"] = opts.noSpend
+    ? {
+        currency: "usd",
+        discovery: null,
+        extraction: null,
+        compute: null,
+        total: null,
+        asOf: null,
+        note: "The pipeline worker has not posted a spend snapshot yet, so discovery and extraction are unknown. Compute: Render's public API has no cost, billing or invoice endpoint.",
+        byDay: [],
+        perClaim: null,
+        perBooking: null,
+        capUsd: null,
+        capUsedPct: null,
+        computeRunRateMonthly: null,
+      }
+    : {
+        currency: "usd",
+        discovery,
+        extraction,
+        // Render publishes no billing endpoint, so this is null on the real page too, never a number.
+        compute: null,
+        total: spendTotal,
+        asOf: "2026-09-18T06:00:12.000Z",
+        note: "Compute: Running now: outset-api (web_service, free), outset-pipeline (background_worker, starter). Render's public API has no cost, billing or invoice endpoint.",
+        byDay: costsByDay,
+        perClaim: per(claimed),
+        perBooking: per(bookingsTotal),
+        capUsd,
+        capUsedPct: Math.round((spendTotal / capUsd) * 1000) / 10,
+        computeRunRateMonthly: null,
+      };
+
   return {
     generatedAt: "2026-09-18T22:04:11.000Z",
     days,
@@ -89,8 +144,9 @@ export function buildMetrics(days: number, opts: { empty?: boolean } = {}): Admi
             { id: "o-riverbend-tubing", email: "book@riverbendtubing.com", claimedAt: "2026-09-16T17:55:00.000Z", published: false },
           ],
     },
+    costs,
     bookings: {
-      total: opts.empty ? 0 : inRange + 64,
+      total: bookingsTotal,
       inRange,
       byStatus: opts.empty
         ? { new: 0, accepted: 0, completed: 0, declined: 0, cancelled: 0, noshow: 0, pending: 0 }
@@ -143,5 +199,8 @@ export async function mockResult(name: string, days: number): Promise<MetricsRes
   if (name === "error") return { ok: false, notFound: false, error: "The API did not answer in time." };
   if (name === "notfound" || name === "404") return { ok: false, notFound: true };
   if (name === "empty") return { ok: true, data: buildMetrics(days, { empty: true }) };
+  // Everything else populated, but the worker has never posted its spend: the cost section must say so rather
+  // than show zeros.
+  if (name === "nospend") return { ok: true, data: buildMetrics(days, { noSpend: true }) };
   return { ok: true, data: buildMetrics(days) };
 }

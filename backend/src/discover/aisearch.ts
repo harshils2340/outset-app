@@ -2,7 +2,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync, appendFileSync } fr
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { CITIES, type City } from "./cities.ts";
-import { searchSpendUsd, upsertPlace, type SearchStats } from "./searchapi.ts";
+import { searchSpendByDay, searchSpendUsd, upsertPlace, type SearchStats } from "./searchapi.ts";
 import { db } from "../db/client.ts";
 
 /**
@@ -108,6 +108,34 @@ export function paidSpendUsd(): { discovery: number; extraction: number; total: 
     extraction = Number((db.prepare("SELECT COALESCE(SUM(usd), 0) AS usd FROM extract_spend").get() as { usd: number }).usd);
   } catch { /* table absent */ }
   return { discovery, extraction, total: discovery + extraction };
+}
+
+/**
+ * The same three sources, split by the UTC day the money was spent on, for the spend-over-time line on the
+ * internal metrics page. Both ledgers carry an ISO timestamp per line and `extract_spend` an `at` column, so
+ * no day is guessed. The days need not add up to paidSpendUsd(): a ledger line written before the timestamp
+ * column existed counts in the total and belongs to no day, and the total is the figure the page reports.
+ */
+export function paidSpendByDayUsd(): { day: string; discovery: number; extraction: number }[] {
+  const discovery = searchSpendByDay();
+  const extraction = new Map<string, number>();
+  const add = (m: Map<string, number>, day: string, usd: number) => {
+    if (/^\d{4}-\d{2}-\d{2}$/.test(day)) m.set(day, (m.get(day) || 0) + usd);
+  };
+  try {
+    for (const line of readFileSync(ledger, "utf8").split("\n")) {
+      if (!line) continue;
+      const f = line.split("\t");
+      add(discovery, (f[0] || "").slice(0, 10), 0.025 + Number(f[3] || 0) * 2e-6);
+    }
+  } catch { /* no ledger yet */ }
+  try {
+    const rows = db.prepare("SELECT substr(at, 1, 10) AS day, COALESCE(SUM(usd), 0) AS usd FROM extract_spend GROUP BY 1").all() as { day: string; usd: number }[];
+    for (const r of rows) add(extraction, r.day || "", Number(r.usd) || 0);
+  } catch { /* table absent */ }
+  const days = [...new Set([...discovery.keys(), ...extraction.keys()])].sort();
+  const cents = (n: number) => Math.round(n * 100) / 100;
+  return days.map((day) => ({ day, discovery: cents(discovery.get(day) || 0), extraction: cents(extraction.get(day) || 0) }));
 }
 
 const PAID_CAP_USD = Number(process.env.PAID_CAP_USD || 20);

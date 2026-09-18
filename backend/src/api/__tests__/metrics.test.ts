@@ -12,10 +12,20 @@ process.env.CLAIM_SECRET ||= "metrics-test-secret";
 const STORE = mkdtempSync(join(tmpdir(), "outset-metrics-"));
 process.env.STORE_DIR = STORE;
 
-const { clampDays, clearCatalogCache, collectMetrics, dayRange, fillDays, makeMetrics, pgDeps, shortName, summarizeBookings } = await import("../metrics.ts");
+const { buildCosts, clampDays, clearCatalogCache, collectMetrics, dayRange, fillDays, makeMetrics, pgDeps, shortName, summarizeBookings } = await import("../metrics.ts");
+const { parseSnapshot } = await import("../../lib/spendLog.ts");
 const { signSession } = await import("../auth.ts");
 type MetricsDeps = import("../metrics.ts").MetricsDeps;
 type BookingGroup = import("../metrics.ts").BookingGroup;
+type ComputeCost = import("../../lib/renderCost.ts").ComputeCost;
+type SpendSnapshot = import("../../lib/spendLog.ts").SpendSnapshot;
+
+/** Render publishes no billing endpoint, so this is what the real one answers: null with the reason. */
+const NO_COMPUTE: ComputeCost = { monthToDate: null, runRateMonthly: null, services: null, note: "Render's public API has no cost endpoint." };
+
+function snapshot(over: Partial<SpendSnapshot> = {}): SpendSnapshot {
+  return { discovery: 0, extraction: 0, total: 0, capUsd: null, at: "2026-09-18T05:10:00.000Z", byDay: [], ...over };
+}
 
 const NOW = new Date("2026-09-18T12:00:00Z");
 
@@ -37,6 +47,8 @@ function deps(over: Partial<MetricsDeps> = {}): MetricsDeps {
     recentBookings: async () => [],
     bookedListings: async () => 0,
     catalog: async () => ({ total: null, reachable: null, asOf: null, note: null }),
+    spend: async () => null,
+    compute: async () => NO_COMPUTE,
     ...over,
   };
 }
@@ -206,6 +218,174 @@ test("a guest is shown by first name and an initial, never in full", () => {
   assert.equal(shortName(null), "");
 });
 
+/* ---------- what it costs ---------- */
+
+const RANGE = dayRange(3, NOW);
+
+test("cost per claim and cost per booking are the total divided by each count", () => {
+  const c = buildCosts({ snapshot: snapshot({ discovery: 30, extraction: 9 }), compute: NO_COMPUTE, claimed: 4, bookings: 26, range: RANGE });
+  assert.equal(c.discovery, 30);
+  assert.equal(c.extraction, 9);
+  assert.equal(c.total, 39);
+  assert.equal(c.perClaim, 9.75);
+  assert.equal(c.perBooking, 1.5);
+  assert.equal(c.currency, "usd");
+  assert.equal(c.asOf, "2026-09-18T05:10:00.000Z");
+});
+
+test("a zero denominator is null, never Infinity and never a zero pretending to be a fact", () => {
+  const c = buildCosts({ snapshot: snapshot({ discovery: 12, extraction: 3 }), compute: NO_COMPUTE, claimed: 0, bookings: 0, range: RANGE });
+  assert.equal(c.total, 15);
+  assert.equal(c.perClaim, null);
+  assert.equal(c.perBooking, null);
+  // The bug this test exists for: dividing by zero and shipping the result.
+  assert.ok(!Number.isFinite(c.perClaim as number));
+  const nulls = buildCosts({ snapshot: snapshot({ discovery: 12 }), compute: NO_COMPUTE, claimed: null, bookings: null, range: RANGE });
+  assert.equal(nulls.perClaim, null);
+  assert.equal(nulls.perBooking, null);
+});
+
+test("no snapshot from the worker means null with a reason, not nothing spent", () => {
+  const c = buildCosts({ snapshot: null, compute: NO_COMPUTE, claimed: 10, bookings: 10, range: RANGE });
+  assert.equal(c.discovery, null);
+  assert.equal(c.extraction, null);
+  assert.equal(c.total, null);
+  assert.equal(c.perClaim, null);
+  assert.equal(c.perBooking, null);
+  assert.equal(c.asOf, null);
+  assert.deepEqual(c.byDay, []);
+  assert.match(c.note || "", /has not posted a spend snapshot/);
+});
+
+test("compute is null with Render's own reason beside it, and a total without it says so", () => {
+  const c = buildCosts({ snapshot: snapshot({ discovery: 5, extraction: 1 }), compute: NO_COMPUTE, claimed: 2, bookings: 0, range: RANGE });
+  assert.equal(c.compute, null);
+  assert.equal(c.computeRunRateMonthly, null);
+  // The total is the sources that reported, and the note names the one that did not.
+  assert.equal(c.total, 6);
+  assert.match(c.note || "", /Compute: Render's public API has no cost endpoint\./);
+});
+
+test("a compute figure, if Render ever gives one, joins the total and the per-unit costs", () => {
+  const c = buildCosts({
+    snapshot: snapshot({ discovery: 10, extraction: 2 }),
+    compute: { monthToDate: 21, runRateMonthly: 28, services: null, note: "from an invoice" },
+    claimed: 3,
+    bookings: 6,
+    range: RANGE,
+  });
+  assert.equal(c.compute, 21);
+  assert.equal(c.computeRunRateMonthly, 28);
+  assert.equal(c.total, 33);
+  assert.equal(c.perClaim, 11);
+  assert.equal(c.perBooking, 5.5);
+});
+
+test("the cap percentage is paid API spend against the worker's cap, and hosting is not under it", () => {
+  const c = buildCosts({
+    snapshot: snapshot({ discovery: 30, extraction: 9 }),
+    compute: { monthToDate: 100, runRateMonthly: null, services: null, note: "x" },
+    claimed: 1,
+    bookings: 1,
+    range: RANGE,
+  });
+  assert.equal(c.capUsd, null);
+  assert.equal(c.capUsedPct, null);
+  const capped = buildCosts({
+    snapshot: snapshot({ discovery: 30, extraction: 9, capUsd: 60 }),
+    compute: { monthToDate: 100, runRateMonthly: null, services: null, note: "x" },
+    claimed: 1,
+    bookings: 1,
+    range: RANGE,
+  });
+  assert.equal(capped.capUsd, 60);
+  // 39 of 60, not 139 of 60: the $100 of hosting is not what the paid-call cap guards.
+  assert.equal(capped.capUsedPct, 65);
+  const zeroCap = buildCosts({ snapshot: snapshot({ discovery: 1, capUsd: 0 }), compute: NO_COMPUTE, claimed: 1, bookings: 1, range: RANGE });
+  assert.equal(zeroCap.capUsedPct, null);
+});
+
+test("the spend series is filled across the window and clipped to it", () => {
+  const c = buildCosts({
+    snapshot: snapshot({
+      discovery: 9,
+      byDay: [
+        { day: "2026-08-01", discovery: 5, extraction: 0 },
+        { day: "2026-09-17", discovery: 4, extraction: 1 },
+        { day: "2026-09-30", discovery: 7, extraction: 0 },
+      ],
+    }),
+    compute: NO_COMPUTE,
+    claimed: 1,
+    bookings: 1,
+    range: RANGE,
+  });
+  assert.deepEqual(
+    c.byDay.map((d) => d.day),
+    ["2026-09-16", "2026-09-17", "2026-09-18"],
+  );
+  assert.deepEqual(c.byDay[0], { day: "2026-09-16", discovery: 0, extraction: 0 });
+  assert.deepEqual(c.byDay[1], { day: "2026-09-17", discovery: 4, extraction: 1 });
+});
+
+test("the costs block rides on the payload without disturbing the money block", async () => {
+  const m = await collectMetrics(
+    deps({
+      spend: async () => snapshot({ discovery: 20, extraction: 5, capUsd: 60 }),
+      claimTotals: async () => ({ claimed: 5, published: 5 }),
+      bookingGroups: async () => [group({ n: 10, total: 1000, fee: 100 })],
+    }),
+    3,
+    NOW,
+  );
+  assert.equal(m.costs.total, 25);
+  assert.equal(m.costs.perClaim, 5);
+  assert.equal(m.costs.perBooking, 2.5);
+  assert.equal(m.costs.capUsedPct, 41.7);
+  // Earned and spent are separate figures and neither has been folded into the other.
+  assert.equal(m.money.gross, 1000);
+  assert.equal(m.money.fee, 100);
+});
+
+/* ---------- the snapshot the worker posts ---------- */
+
+test("a posted snapshot is cleaned: total recomputed, days sorted, junk dropped", () => {
+  const p = parseSnapshot({
+    discovery: 12.3456,
+    extraction: 1,
+    total: 999,
+    capUsd: 60,
+    at: "2026-09-18T05:10:00.000Z",
+    byDay: [
+      { day: "2026-09-18", discovery: 1.005, extraction: 0 },
+      { day: "not a day", discovery: 1, extraction: 1 },
+      { day: "2026-09-17", discovery: 2, extraction: 0.5 },
+      { day: "2026-09-16", discovery: -1, extraction: 0 },
+    ],
+  });
+  assert.ok(p.ok);
+  assert.equal(p.value.discovery, 12.35);
+  // The posted total is not believed: it is the two parts, so the three figures can never disagree.
+  assert.equal(p.value.total, 13.35);
+  assert.equal(p.value.capUsd, 60);
+  assert.deepEqual(
+    p.value.byDay.map((d) => d.day),
+    ["2026-09-17", "2026-09-18"],
+  );
+});
+
+test("a snapshot with a number that is not a number is refused", () => {
+  assert.equal(parseSnapshot({ discovery: "banana", extraction: 0 }).ok, false);
+  assert.equal(parseSnapshot({ discovery: Number.POSITIVE_INFINITY, extraction: 0 }).ok, false);
+  assert.equal(parseSnapshot({ discovery: -3, extraction: 0 }).ok, false);
+  assert.equal(parseSnapshot(null).ok, false);
+  assert.equal(parseSnapshot({ discovery: 1, extraction: 0, byDay: Array.from({ length: 401 }, () => ({ day: "2026-09-18", discovery: 0, extraction: 0 })) }).ok, false);
+  // An empty post is a legitimate "nothing spent yet" from a worker with no ledgers.
+  const empty = parseSnapshot({});
+  assert.ok(empty.ok);
+  assert.equal(empty.value.total, 0);
+});
+
 /* ---------- the gate ---------- */
 
 const app = makeMetrics(deps());
@@ -253,6 +433,28 @@ test("an expired session is 404", async () => {
   process.env.ADMIN_EMAILS = "harshils2340@gmail.com";
   const res = await app.request("/admin/metrics", { headers: { "x-session": session("harshils2340@gmail.com", Date.now() - 1000) } });
   assert.equal(res.status, 404);
+});
+
+test("POST /admin/spend is 404 without a credential, whatever it is asked to store", async () => {
+  process.env.ADMIN_EMAILS = "harshils2340@gmail.com";
+  process.env.ADMIN_KEY = "metrics-admin-key";
+  const post = (headers: Record<string, string> = {}) =>
+    app.request("/admin/spend", { method: "POST", headers: { "content-type": "application/json", ...headers }, body: JSON.stringify({ discovery: 1, extraction: 2 }) });
+  assert.equal((await post()).status, 404);
+  assert.equal((await post({ "x-admin-key": "metrics-admin-keZ" })).status, 404);
+  assert.equal((await post({ "x-session": session("someone@else.com") })).status, 404);
+  assert.equal((await post({ "x-session": session("harshils2340@gmail.com", Date.now() - 1000) })).status, 404);
+});
+
+test("POST /admin/spend refuses a body it cannot trust, and says so as 400 not 404", async () => {
+  process.env.ADMIN_KEY = "metrics-admin-key";
+  const res = await app.request("/admin/spend", {
+    method: "POST",
+    headers: { "content-type": "application/json", "x-admin-key": "metrics-admin-key" },
+    body: JSON.stringify({ discovery: "banana", extraction: 0 }),
+  });
+  // 400 is only ever seen by a caller that already got through the gate, so it leaks nothing.
+  assert.equal(res.status, 400);
 });
 
 test("the days query reaches the payload", async () => {

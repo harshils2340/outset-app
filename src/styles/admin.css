@@ -13,6 +13,8 @@
   --ad-2: #1668b3;
   --ad-3: #c1620e;
   --ad-4: #8a4fc0;
+  --ad-spend: #b3402f;
+  --ad-spend-tint: rgba(179, 64, 47, 0.09);
   --ad-grid: rgba(0, 0, 0, 0.08);
   --ad-cross: rgba(0, 0, 0, 0.32);
   background: var(--ground);
@@ -23,6 +25,8 @@
     --ad-2: #4a92d8;
     --ad-3: #c97c2c;
     --ad-4: #a277d4;
+    --ad-spend: #e0796a;
+    --ad-spend-tint: rgba(224, 121, 106, 0.13);
     --ad-grid: rgba(255, 255, 255, 0.10);
     --ad-cross: rgba(255, 255, 255, 0.40);
   }
@@ -32,6 +36,8 @@
   --ad-2: #4a92d8;
   --ad-3: #c97c2c;
   --ad-4: #a277d4;
+  --ad-spend: #e0796a;
+  --ad-spend-tint: rgba(224, 121, 106, 0.13);
   --ad-grid: rgba(255, 255, 255, 0.10);
   --ad-cross: rgba(255, 255, 255, 0.40);
 }
@@ -170,6 +176,26 @@
 .adrows-bar { height: 100%; border-radius: var(--r-s); }
 .adrows-val { flex: 0 0 auto; min-width: 78px; text-align: right; font-size: 13px; font-variant-numeric: tabular-nums; }
 .adrows-val em { font-style: normal; color: var(--ink-faint); }
+
+/* ---------- what it costs ----------
+  Money out is warm and sits behind a red rule down the left edge; money in is the green and blue above. The
+  two are never in one chart, never in one total, and the cost numbers carry a minus sign, so nothing here can
+  be mistaken for revenue at a glance or added to it by eye. */
+.adsection-cost { border-left: 3px solid var(--ad-spend); background: linear-gradient(to right, var(--ad-spend-tint), transparent 260px), var(--surface); }
+.adcosthero { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; margin: 0 0 6px; }
+.adtile-cost { border-color: var(--ad-spend); background: var(--surface-2); }
+.adtile-cost .adtile-value { color: var(--ad-spend); font-size: 34px; }
+.adminus { margin-right: 1px; }
+.adunknown { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-direction: column; gap: 6px; font-size: 12px; color: var(--ink-faint); }
+.adunknown b { color: var(--ink-soft); }
+
+.admeter-track { height: 22px; background: var(--surface-3); border-radius: var(--r-s); overflow: hidden; }
+.admeter-fill { height: 100%; }
+.admeter-legend { margin: 8px 0 0; font-size: 13px; color: var(--ink-soft); }
+.admeter-legend b { color: var(--ink); font-variant-numeric: tabular-nums; }
+.admeter-over { color: var(--few); }
+/* A cost fact is a number and a short gloss; the gloss goes under it rather than wrapping around it. */
+.adsection-cost .adfacts dd em { display: block; margin-top: 2px; }
 
 /* ---------- facts and tables ---------- */
 .adfacts { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px; margin: 16px 0 0; }

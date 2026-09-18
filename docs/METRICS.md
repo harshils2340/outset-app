@@ -1,8 +1,8 @@
 # The internal metrics page
 
 One private page for the founder: how much outreach went out and what came back, how many listings are claimed,
-every booking, the money, and each of those as a line over time. Nobody else sees it, and nothing it reports is
-exposed on any guest or operator route.
+every booking, the money earned, the money spent to earn it, and each of those as a line over time. Nobody else
+sees it, and nothing it reports is exposed on any guest or operator route.
 
 ## Who can read it
 
@@ -58,6 +58,84 @@ ascending, including the days nothing happened on, so a chart can plot it straig
   not in the catalog, and counting those would put more businesses at the top of the funnel than exist to claim.
 - **Anything unknown is `null`, never 0.** If a catalog file is not in the checkout, the count is null and
   `catalog.note` says which file and why. Zero and "could not read it" mean opposite things.
+
+## What it costs
+
+`costs` is money **out**. It is never added to `money`, which is money in: one is what guests paid, the other is
+what Outset paid to find the businesses they booked. The page draws them in different colours, in different
+sections, and never in one chart.
+
+```
+"costs": { "currency": "usd",
+           "discovery": 34.89, "extraction": 5.92, "compute": null, "total": 40.81,
+           "asOf": "2026-09-18T06:00:12.000Z",
+           "note": "Compute: Running now: outset-api (web_service, free), ... Render's public API has no cost, billing or invoice endpoint.",
+           "byDay": [{ "day": "2026-09-18", "discovery": 0.5, "extraction": 0.1 }],
+           "perClaim": 0.1, "perBooking": 0.34,
+           "capUsd": 60, "capUsedPct": 68,
+           "computeRunRateMonthly": null }
+```
+
+- **discovery** is paid search: the Google Maps SERP ledger (`backend/data/searchapi-ledger.txt`, priced per
+  provider by `PRICE_PER_1K_USD` in `backend/src/discover/searchapi.ts`) plus the model web-search ledger
+  (`backend/data/aisearch-ledger.txt`, about 2.5 cents a call plus $2 per million tokens).
+- **extraction** is `SUM(usd)` over the `extract_spend` table in the worker's SQLite database.
+- **compute** is **always null**, and the note says why. Render's public API has no cost, billing or invoice
+  endpoint of any kind: checked on 18 September 2026 against its full published API index, where the only
+  metrics endpoints are CPU, memory, bandwidth and disk, with a physical unit and no currency anywhere. The
+  note instead names, from `GET /v1/services`, which services are actually running and on which plan, because
+  that is a fact the API will answer for. Multiplying plan list prices would produce a confident number that is
+  not a bill (no disk, no bandwidth, no credits or proration), and a wrong figure on a unit-economics page is
+  worse than an empty one. `backend/src/lib/renderCost.ts`, cached an hour, five minutes on a failure. The key
+  is read server-side only and never goes near the browser.
+- **total** is the sources that reported, and is null when none did. The note names what is missing from it.
+- **perClaim** is total ÷ `claims.claimed`, **perBooking** is total ÷ `bookings.total`, both lifetime so they
+  match the lifetime spend. **A zero denominator is null**, never Infinity and never a zero: the first business
+  to claim did not cost nothing, we just cannot divide yet.
+- **capUsedPct** is discovery + extraction against `capUsd` (the worker's `PAID_CAP_USD`). Hosting is not under
+  that cap, so it is deliberately not in the numerator. Over 100% is shown as over, not clamped.
+- **byDay** covers the window, filled, ascending. It is empty (not a row of zeros) when no snapshot exists. The
+  days need not add to `total`: a ledger line written before the timestamp column existed counts in the total
+  and belongs to no day.
+- `asOf` is when the **worker** read its ledgers, not when the page was generated.
+
+### How the spend gets to Postgres
+
+The same wall as outreach: discovery and extraction are counted in files and SQLite on the pipeline worker's
+disk, which the deployed API cannot read. So the worker posts them.
+
+`POST /admin/spend` takes `{discovery, extraction, total, capUsd, at, byDay:[{day, discovery, extraction}]}` and
+replaces the single row in the Postgres table `spend_snapshot` (`backend/src/lib/spendLog.ts`). It is behind the
+**same gate** as `GET /admin/metrics`: the admin key or an `ADMIN_EMAILS` session, and 404 for everyone else. The
+posted `total` is not believed — it is recomputed from the two parts, so the three figures can never disagree —
+and a body with a NaN, a negative, or more than 400 days is 400 and changes nothing.
+
+```
+curl -s -X POST -H "x-admin-key: $ADMIN_KEY" -H 'content-type: application/json' \
+  -d '{"discovery":34.89,"extraction":5.92,"capUsd":60}' \
+  https://outset-api.onrender.com/admin/spend
+```
+
+The nightly pipeline does it at **06:00**, after the 05:00 sync, as the `spend` job
+(`backend/scripts/report-spend.mts`, run from the repo clone like every other job). It reads `paidSpendUsd()` and
+`paidSpendByDayUsd()` from `backend/src/discover/aisearch.ts` — never a ledger on its own, which would miss the
+Google Maps requests entirely — and it **cannot fail the pipeline**: no key, no `API_URL`, no network or a
+non-200 is one line on stdout and exit 0. Run it by hand with
+`npx tsx scripts/pipeline.mts --once=spend`.
+
+### Two environment variables on the worker
+
+Both go on the **outset-pipeline** service (they are in `render.yaml` under it):
+
+| Variable | Value | Why |
+| --- | --- | --- |
+| `ADMIN_KEY` | the same value as on outset-api and outset-payouts | opens `POST /admin/spend` |
+| `API_URL` | `https://outset-api.onrender.com` | where to post it (already in `render.yaml` as a plain value) |
+
+Without them the job is a no-op and the page shows "not tracked yet" with the reason, never a false zero.
+
+Spend figures are **not** published anywhere in the repo or under `public/`: harshils2340/outset-app is a public
+repository, and what the business spends is not world-readable. It lives in Postgres and on this page only.
 
 ## Where the numbers come from
 

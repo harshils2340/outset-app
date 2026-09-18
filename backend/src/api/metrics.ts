@@ -4,6 +4,8 @@ import { query } from "../db/pg.ts";
 import { verifySession } from "./auth.ts";
 import { hasAdminKey, isAdminEmail } from "../lib/admin.ts";
 import { outreachDays, outreachTotals, type OutreachDay, type OutreachTotals } from "../lib/outreachLog.ts";
+import { computeCost, type ComputeCost } from "../lib/renderCost.ts";
+import { parseSnapshot, putSpend, readSpend, type SpendDay, type SpendSnapshot } from "../lib/spendLog.ts";
 import { localPath, readJson } from "../lib/store.ts";
 import { getDoc } from "../lib/repo.ts";
 import type { UnsubFile } from "../lib/unsub.ts";
@@ -84,6 +86,10 @@ export type MetricsDeps = {
   recentBookings(limit: number): Promise<RecentBooking[]>;
   bookedListings(): Promise<number>;
   catalog(): Promise<CatalogCounts>;
+  /** The pipeline worker's last spend snapshot, or null when it has never posted one. */
+  spend(): Promise<SpendSnapshot | null>;
+  /** What the hosting costs, as far as Render will say. See lib/renderCost.ts: it will not say. */
+  compute(): Promise<ComputeCost>;
 };
 
 /* ---------- the Postgres implementation of those ---------- */
@@ -186,6 +192,8 @@ export const pgDeps: MetricsDeps = {
   },
 
   catalog: catalogCounts,
+  spend: readSpend,
+  compute: computeCost,
 };
 
 /** "Christina Delacroix" -> "Christina D." A name is enough to recognise a booking; the rest is the guest's. */
@@ -278,6 +286,93 @@ async function catalogCounts(): Promise<CatalogCounts> {
   return value;
 }
 
+/* ---------- what it costs ---------- */
+
+export type Costs = {
+  currency: "usd";
+  discovery: number | null;
+  extraction: number | null;
+  compute: number | null;
+  total: number | null;
+  asOf: string | null;
+  note: string | null;
+  byDay: SpendDay[];
+  perClaim: number | null;
+  perBooking: number | null;
+  capUsd: number | null;
+  capUsedPct: number | null;
+  computeRunRateMonthly: number | null;
+};
+
+/**
+ * What Outset spends, beside what it earns. Never added to the money block: one is revenue and the other is a
+ * bill, and a page that summed them would be reporting a number that means nothing.
+ *
+ * Three rules, and they are all the same rule:
+ *  - A source that has not reported is `null`, not 0. The worker posts discovery and extraction; before its
+ *    first post there is no figure, and "we have spent nothing on discovery" is a different claim from "nobody
+ *    has told the API what discovery cost". Compute is null permanently because Render publishes no billing
+ *    endpoint at all; the note says so rather than a list price dressed up as a bill.
+ *  - `total` adds up only the sources that reported, and is null when none did. It is honest about being a
+ *    partial total because the note names what is missing from it.
+ *  - perClaim and perBooking divide by a count, so a zero denominator is `null`. Infinity is not a cost per
+ *    claim, and neither is 0: the first business to claim has not cost nothing, we just cannot divide yet.
+ */
+export function buildCosts(opts: {
+  snapshot: SpendSnapshot | null;
+  compute: ComputeCost;
+  claimed: number | null;
+  bookings: number | null;
+  range: string[];
+}): Costs {
+  const { snapshot, compute, claimed, bookings, range } = opts;
+  const discovery = snapshot ? money(snapshot.discovery) : null;
+  const extraction = snapshot ? money(snapshot.extraction) : null;
+  const computeUsd = compute.monthToDate == null ? null : money(compute.monthToDate);
+
+  const known = [discovery, extraction, computeUsd].filter((v): v is number => v != null);
+  const total = known.length ? money(known.reduce((a, b) => a + b, 0)) : null;
+
+  const per = (denominator: number | null): number | null =>
+    total == null || denominator == null || denominator <= 0 ? null : money(total / denominator);
+
+  // The cap guards paid API calls on the worker, which is discovery plus extraction; the hosting bill is not
+  // under it, so the percentage is deliberately computed from the snapshot's own total and not from `total`.
+  const paid = snapshot ? money(snapshot.discovery + snapshot.extraction) : null;
+  const capUsd = snapshot?.capUsd ?? null;
+  const capUsedPct = paid == null || capUsd == null || capUsd <= 0 ? null : Math.round((paid / capUsd) * 1000) / 10;
+
+  // Only the days in the window, filled, so the chart plots it straight. No snapshot means no series at all
+  // rather than a flat line of zeros, which would draw "we spent nothing" across the whole range.
+  const inRange = (snapshot?.byDay || []).filter((d) => d.day >= range[0] && d.day <= range[range.length - 1]);
+  const byDay = snapshot ? fillDays<SpendDay>(range, inRange, (day) => ({ day, discovery: 0, extraction: 0 })) : [];
+
+  const notes: string[] = [];
+  if (!snapshot) {
+    notes.push(
+      "The pipeline worker has not posted a spend snapshot yet, so discovery and extraction are unknown. They are counted in ledger files and in SQLite on the worker's own disk, which the deployed API cannot read; the nightly `spend` job posts them to POST /admin/spend.",
+    );
+  }
+  notes.push("Compute: " + compute.note);
+
+  return {
+    // Spend is billed in US dollars whatever currency a booking was taken in, so this is not money.currency.
+    currency: "usd",
+    discovery,
+    extraction,
+    compute: computeUsd,
+    total,
+    asOf: snapshot?.at ?? null,
+    note: notes.join(" ") || null,
+    byDay,
+    perClaim: per(claimed),
+    perBooking: per(bookings),
+    capUsd,
+    capUsedPct,
+    computeRunRateMonthly: compute.runRateMonthly == null ? null : money(compute.runRateMonthly),
+  };
+}
+
 /* ---------- putting it together ---------- */
 
 export type Metrics = Awaited<ReturnType<typeof collectMetrics>>;
@@ -285,7 +380,7 @@ export type Metrics = Awaited<ReturnType<typeof collectMetrics>>;
 export async function collectMetrics(deps: MetricsDeps, days: number, now = new Date()) {
   const since = rangeStart(days, now);
   const range = dayRange(days, now);
-  const [outTotals, outDays, supp, claimT, claimD, claimR, groups, bookDays, bookR, bookedListings, catalog] = await Promise.all([
+  const [outTotals, outDays, supp, claimT, claimD, claimR, groups, bookDays, bookR, bookedListings, catalog, snapshot, compute] = await Promise.all([
     deps.outreachTotals(),
     deps.outreachDays(since),
     deps.suppression(),
@@ -297,6 +392,8 @@ export async function collectMetrics(deps: MetricsDeps, days: number, now = new 
     deps.recentBookings(RECENT),
     deps.bookedListings(),
     deps.catalog(),
+    deps.spend(),
+    deps.compute(),
   ]);
 
   const bookings = summarizeBookings(groups);
@@ -342,6 +439,10 @@ export async function collectMetrics(deps: MetricsDeps, days: number, now = new 
       asOf: catalog.asOf,
       note: catalog.note,
     },
+    // Cost per claimed business and cost per booking are the point of this block, so both denominators are the
+    // lifetime counts, matching the lifetime spend the worker reports. A window's spend against a window's
+    // claims would need the worker to report spend per day for every day ever, which it does not.
+    costs: buildCosts({ snapshot, compute, claimed: claimT.claimed, bookings: bookings.total, range }),
     funnel: {
       reachable: catalog.reachable,
       emailed: outTotals.sent,
@@ -437,6 +538,33 @@ export function makeMetrics(deps: MetricsDeps = pgDeps) {
     } catch (e) {
       console.error("[metrics] " + (e as Error).message);
       return c.json({ error: "metrics unavailable" }, 500);
+    }
+  });
+
+  /**
+   * The pipeline worker posts what it has spent. Same gate as the page, so the admin key opens it and a curl
+   * can correct a snapshot by hand; same 404 for everyone else, for the same reason.
+   *
+   * One snapshot at a time, replaced: this is a running total read off the worker's ledgers, not an event
+   * stream, so the newest reading is the only one worth keeping. A malformed body is 400 and changes nothing,
+   * because a stored NaN would put a NaN on the page.
+   */
+  app.post("/admin/spend", async (c) => {
+    if (!isAdminRequest(c)) return c.json({ error: "not found" }, 404);
+    let body: unknown;
+    try {
+      body = await c.req.json();
+    } catch {
+      return c.json({ error: "expected a JSON body" }, 400);
+    }
+    const parsed = parseSnapshot(body);
+    if (!parsed.ok) return c.json({ error: parsed.error }, 400);
+    try {
+      await putSpend(parsed.value);
+      return c.json({ ok: true, stored: { discovery: parsed.value.discovery, extraction: parsed.value.extraction, total: parsed.value.total, days: parsed.value.byDay.length } });
+    } catch (e) {
+      console.error("[spend] " + (e as Error).message);
+      return c.json({ error: "spend snapshot not stored" }, 500);
     }
   });
   return app;

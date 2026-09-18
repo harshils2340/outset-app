@@ -3,7 +3,7 @@ import "../../styles/admin.css";
 import { money } from "../../lib/format";
 import { adminSessionEmail, fetchAdminMetrics, mockName, RANGES, type AdminMetrics, type Maybe, type MetricsResult } from "../../lib/adminApi";
 import { AdminSignIn } from "./AdminSignIn";
-import { ChartEmpty, Funnel, RowBars, ShareBar, Sparkline, TimeChart, type Point } from "./charts";
+import { ChartEmpty, Funnel, Meter, RowBars, ShareBar, Sparkline, TimeChart, type Point } from "./charts";
 
 /**
  * Harshil's private metrics page, at /admin. It answers one question: is outreach turning into claims, and do
@@ -22,6 +22,9 @@ import { ChartEmpty, Funnel, RowBars, ShareBar, Sparkline, TimeChart, type Point
 const NULL_REASONS: Record<string, string> = {
   complained: "Spam complaints arrive on a provider webhook that is not recorded yet.",
   reachable: "The reachable count lives in the pipeline's own database, which the live API cannot read.",
+  spend: "The pipeline worker has not posted a spend snapshot yet, so nothing is known about what was spent. That is not the same as nothing having been spent.",
+  compute: "Render publishes no cost or billing endpoint, so the hosting bill cannot be read from anywhere the API can reach.",
+  perUnit: "Cost per unit needs both a spend figure and something to divide it by. One of the two is missing or zero.",
   default: "The API cannot measure this yet.",
 };
 
@@ -68,9 +71,27 @@ function Tile({ label, value, values, color, sub }: { label: string; value: Reac
   );
 }
 
-function Section({ id, title, blurb, children }: { id: string; title: string; blurb: string; children: React.ReactNode }) {
+/**
+ * A cost, big enough to read across the room. It is deliberately not the `Tile` the earnings use: the label
+ * carries the word "cost", the value is in the spend colour, and there is no sparkline, because a per-unit cost
+ * has no daily series behind it and a decorative line would imply one.
+ */
+function CostTile({ label, value, sub, reason }: { label: string; value: Maybe; sub: string; reason?: string }) {
   return (
-    <section className="adsection" aria-labelledby={id}>
+    <div className="adtile adtile-cost">
+      <span className="adtile-label">{label}</span>
+      <strong className="adtile-value">
+        {value == null ? null : <span className="adminus" aria-hidden="true">−</span>}
+        <Money v={value} reason={reason} />
+      </strong>
+      <span className="adtile-sub">{sub}</span>
+    </div>
+  );
+}
+
+function Section({ id, title, blurb, children, tone }: { id: string; title: string; blurb: string; children: React.ReactNode; tone?: "cost" }) {
+  return (
+    <section className={"adsection" + (tone === "cost" ? " adsection-cost" : "")} aria-labelledby={id}>
       <h2 id={id}>{title}</h2>
       <p className="adblurb">{blurb}</p>
       {children}
@@ -95,6 +116,25 @@ function Dashboard({ m }: { m: AdminMetrics }) {
   const moneyDays: Point[] = m.money.byDay.map((d) => ({ day: d.day, values: [Math.max(0, d.gross - d.fee), d.fee] }));
   const moneyValues = m.money.byDay.map((d) => d.gross);
   const statuses = Object.entries(m.bookings.byStatus || {}).map(([label, value]) => ({ label, value }));
+
+  // Cost is drawn warm and revenue cool, and the two never share a chart, so no reader can mistake one for the
+  // other or add them up by eye. Compute has no colour of its own here because it has never had a value.
+  const costSources = [
+    { label: "Discovery", value: m.costs.discovery, color: "var(--ad-spend)", why: NULL_REASONS.spend },
+    { label: "Extraction", value: m.costs.extraction, color: "var(--ad-3)", why: NULL_REASONS.spend },
+    // The reason here is the short one; the API's own full note is printed once at the foot of the section.
+    { label: "Compute", value: m.costs.compute, color: "var(--ad-4)", why: NULL_REASONS.compute },
+  ];
+  const knownCosts = costSources.filter((s) => s.value != null) as { label: string; value: number; color: string; why: string }[];
+  // Two sources missing for the same reason is one sentence, not the same sentence twice.
+  const unknownCosts = [...new Map(costSources.filter((s) => s.value == null).map((s) => [s.why, s])).values()].map((s) => ({
+    labels: costSources.filter((o) => o.value == null && o.why === s.why).map((o) => o.label).join(" and "),
+    why: s.why,
+  }));
+  const costDays: Point[] = m.costs.byDay.map((d) => ({ day: d.day, values: [d.discovery, d.extraction] }));
+  // The cap guards paid API calls, which is discovery plus extraction. Hosting is not under it, so it is not in
+  // the numerator, and if neither half has reported there is nothing to measure.
+  const paidSpend = m.costs.discovery == null && m.costs.extraction == null ? null : (m.costs.discovery || 0) + (m.costs.extraction || 0);
   const bounceRate = m.outreach.sent && m.outreach.bounced != null && m.outreach.sent > 0 ? (m.outreach.bounced / m.outreach.sent) * 100 : null;
 
   return (
@@ -166,7 +206,7 @@ function Dashboard({ m }: { m: AdminMetrics }) {
       <Section id="ad-bookings" title="Bookings" blurb="Every booking across every listing, whoever took it.">
         <TimeChart title="Bookings per day" points={bookDays} series={[{ label: "Bookings", color: "var(--ad-3)" }]} kind="bars" height={200} emptyReason="No booking was made in this range." />
         <h3>By status</h3>
-        <RowBars rows={statuses} color="var(--ad-2)" title="Bookings by status" />
+        <RowBars rows={statuses} color="var(--ad-2)" title="Bookings by status" emptyReason="No bookings in this range." />
         <h3>Most recent bookings</h3>
         {m.bookings.recent.length ? (
           <div className="adtablewrap">
@@ -211,6 +251,87 @@ function Dashboard({ m }: { m: AdminMetrics }) {
           <div><dt>Payouts paid</dt><dd><Money v={m.money.payouts.paid} /></dd></div>
           <div><dt>Payouts reversed</dt><dd><Money v={m.money.payouts.reversed} /></dd></div>
         </dl>
+      </Section>
+
+      <Section
+        id="ad-costs"
+        tone="cost"
+        title="What this costs"
+        blurb={`Money out, in ${(m.costs.currency || "usd").toUpperCase()}. Nothing here belongs in the Money section above and the two are never added together: one is what guests paid, this is what Outset paid to go and find the businesses they booked. The two figures that matter are underneath.`}
+      >
+        <div className="adcosthero">
+          <CostTile
+            label="Cost per claimed business"
+            value={m.costs.perClaim}
+            reason={NULL_REASONS.perUnit}
+            sub={m.claims.claimed == null || m.costs.total == null ? "needs total spend and a claim count" : `${money(Math.round(m.costs.total * 100) / 100)} spent, ${m.claims.claimed.toLocaleString("en-US")} claimed`}
+          />
+          <CostTile
+            label="Cost per booking"
+            value={m.costs.perBooking}
+            reason={NULL_REASONS.perUnit}
+            sub={m.bookings.total == null || m.costs.total == null ? "needs total spend and a booking count" : `${money(Math.round(m.costs.total * 100) / 100)} spent, ${m.bookings.total.toLocaleString("en-US")} bookings`}
+          />
+        </div>
+
+        <h3>Where it went</h3>
+        {knownCosts.length ? (
+          <RowBars
+            rows={knownCosts.map((s) => ({ label: s.label, value: s.value, color: s.color }))}
+            color="var(--ad-spend)"
+            title="Spend by source"
+            fmt={(n) => money(Math.round(n * 100) / 100)}
+            emptyReason="Every source that has reported has reported zero."
+          />
+        ) : (
+          <ChartEmpty label="Spend by source" reason="No source has reported a figure yet, so there is nothing to split." />
+        )}
+        {unknownCosts.length ? (
+          <ul className="adunknown">
+            {unknownCosts.map((s) => (
+              <li key={s.labels}>
+                <b>{s.labels}</b> <span className="adnull">not tracked yet</span> — {s.why}
+              </li>
+            ))}
+          </ul>
+        ) : null}
+
+        <h3>Spend per day</h3>
+        {costDays.length ? (
+          <TimeChart
+            title="Discovery and extraction per day"
+            points={costDays}
+            series={[{ label: "Discovery", color: "var(--ad-spend)" }, { label: "Extraction", color: "var(--ad-3)" }]}
+            kind="bars"
+            height={200}
+            fmt={(n) => money(Math.round(n * 100) / 100)}
+            emptyReason="Nothing was spent on discovery or extraction in this range."
+          />
+        ) : (
+          <ChartEmpty label="Spend per day" reason={NULL_REASONS.spend} />
+        )}
+
+        <h3>The paid-call cap</h3>
+        <Meter
+          value={paidSpend}
+          cap={m.costs.capUsd}
+          label="Paid-call cap"
+          fmt={(n) => money(Math.round(n * 100) / 100)}
+          color="var(--ad-spend)"
+          overColor="var(--few)"
+        />
+        <p className="adwhy">The cap (PAID_CAP_USD on the pipeline worker) stops paid discovery and extraction calls. Hosting is not under it, so it is not counted in the bar.</p>
+
+        <dl className="adfacts">
+          <div><dt>Discovery</dt><dd><Money v={m.costs.discovery} reason={NULL_REASONS.spend} /> <em>Google Maps and model search</em></dd></div>
+          <div><dt>Extraction</dt><dd><Money v={m.costs.extraction} reason={NULL_REASONS.spend} /> <em>model calls that read a site</em></dd></div>
+          <div><dt>Compute</dt><dd><Money v={m.costs.compute} reason={NULL_REASONS.compute} /> <em>hosting</em></dd></div>
+          <div><dt>Total spent</dt><dd><Money v={m.costs.total} reason={NULL_REASONS.spend} /> <em>of the sources that reported</em></dd></div>
+          <div><dt>Cap used</dt><dd>{m.costs.capUsedPct == null ? <span className="adnull">not known</span> : m.costs.capUsedPct.toFixed(1) + "%"} <em>of {m.costs.capUsd == null ? "no cap reported" : money(m.costs.capUsd)}</em></dd></div>
+          <div><dt>Hosting run rate</dt><dd><Money v={m.costs.computeRunRateMonthly} reason={NULL_REASONS.compute} /> <em>per month</em></dd></div>
+        </dl>
+        {m.costs.asOf ? <p className="adwhy">Spend read on the worker {when(m.costs.asOf)}. It is a lifetime total, not this range.</p> : null}
+        {m.costs.note ? <p className="adwhy">{m.costs.note}</p> : null}
       </Section>
     </>
   );

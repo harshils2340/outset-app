@@ -309,10 +309,26 @@ export function ShareBar({ part, whole, partLabel, wholeLabel }: { part: number;
   );
 }
 
-/** Horizontal bars for a small set of named counts (booking statuses). Labels sit outside the bar, so they never clip. */
-export function RowBars({ rows, color, title }: { rows: { label: string; value: number }[]; color: string; title: string }) {
+/**
+ * Horizontal bars for a small set of named amounts (booking statuses, spend by source). Labels sit outside the
+ * bar, so they never clip. A row may carry its own colour, which is how the cost section keeps each source
+ * separable while the section as a whole stays in one family.
+ */
+export function RowBars({
+  rows,
+  color,
+  title,
+  fmt = (n: number) => n.toLocaleString("en-US"),
+  emptyReason = "Nothing in this range.",
+}: {
+  rows: { label: string; value: number; color?: string }[];
+  color: string;
+  title: string;
+  fmt?: (n: number) => string;
+  emptyReason?: string;
+}) {
   const max = Math.max(...rows.map((r) => r.value), 1);
-  if (!rows.length || rows.every((r) => !r.value)) return <ChartEmpty label={title} reason="No bookings in this range." />;
+  if (!rows.length || rows.every((r) => !r.value)) return <ChartEmpty label={title} reason={emptyReason} />;
   const totalAll = rows.reduce((a, r) => a + r.value, 0);
   return (
     <ul className="adrows">
@@ -320,11 +336,37 @@ export function RowBars({ rows, color, title }: { rows: { label: string; value: 
         <li key={r.label}>
           <span className="adrows-label">{r.label}</span>
           <div className="adrows-track">
-            <div className="adrows-bar" style={{ width: `${Math.max(0.5, (r.value / max) * 100)}%`, background: color }} />
+            <div className="adrows-bar" style={{ width: `${Math.max(0.5, (r.value / max) * 100)}%`, background: r.color || color }} />
           </div>
-          <span className="adrows-val">{r.value.toLocaleString("en-US")}<em>{totalAll ? ` · ${((r.value / totalAll) * 100).toFixed(0)}%` : ""}</em></span>
+          <span className="adrows-val">{fmt(r.value)}<em>{totalAll ? ` · ${((r.value / totalAll) * 100).toFixed(0)}%` : ""}</em></span>
         </li>
       ))}
     </ul>
+  );
+}
+
+/**
+ * How much of a budget is gone: one bar against a ceiling, with the ceiling drawn as the end of the track and
+ * not as a line somewhere inside it.
+ *
+ * Over the cap is a real state and it is drawn, not clamped: the bar fills and turns to the "over" colour, and
+ * the label still reads the true percentage, because a meter pinned at 100% would hide the one case worth
+ * noticing. A cap of zero or an unknown spend is not a meter at all and says so.
+ */
+export function Meter({ value, cap, label, fmt, color, overColor }: { value: number | null; cap: number | null; label: string; fmt: (n: number) => string; color: string; overColor: string }) {
+  if (value == null || cap == null || cap <= 0) {
+    return <ChartEmpty label={label} reason={value == null ? "Nothing has reported a figure to measure against the cap." : "No cap is set, so there is no share of it to show."} />;
+  }
+  const pct = (value / cap) * 100;
+  const over = pct > 100;
+  return (
+    <div className="admeter">
+      <div className="admeter-track" role="img" aria-label={`${label}: ${fmt(value)} of ${fmt(cap)}, ${pct.toFixed(1)} percent${over ? ", over the cap" : ""}.`}>
+        <div className="admeter-fill" style={{ width: `${Math.min(100, Math.max(0.6, pct))}%`, background: over ? overColor : color }} />
+      </div>
+      <p className="admeter-legend">
+        <b>{fmt(value)}</b> of <b>{fmt(cap)}</b> · {pct.toFixed(1)}% {over ? <strong className="admeter-over">over the cap</strong> : "of the cap used"}
+      </p>
+    </div>
   );
 }

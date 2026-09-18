@@ -16,6 +16,7 @@ export type OutreachDay = { day: string; sent: number; bounced: number };
 export type ClaimDay = { day: string; claimed: number };
 export type BookingDay = { day: string; booked: number; gross: number };
 export type MoneyDay = { day: string; gross: number; fee: number };
+export type CostDay = { day: string; discovery: number; extraction: number };
 
 export type AdminMetrics = {
   generatedAt: string;
@@ -46,6 +47,27 @@ export type AdminMetrics = {
     payouts: { scheduled: Maybe; paid: Maybe; reversed: Maybe };
     byDay: MoneyDay[];
   };
+  /**
+   * What Outset spends, which is a different kind of number from `money` and must never be added to it: one is
+   * revenue and the other is a bill. Every figure here is US dollars whatever currency a booking was taken in.
+   * A source that has not reported is null with the reason in `note`, and `perClaim`/`perBooking` are null when
+   * their denominator is zero rather than Infinity or a zero that reads as "free".
+   */
+  costs: {
+    currency: string;
+    discovery: Maybe;
+    extraction: Maybe;
+    compute: Maybe;
+    total: Maybe;
+    asOf: string | null;
+    note: string | null;
+    byDay: CostDay[];
+    perClaim: Maybe;
+    perBooking: Maybe;
+    capUsd: Maybe;
+    capUsedPct: Maybe;
+    computeRunRateMonthly: Maybe;
+  };
   catalog: { total: Maybe; claimed: Maybe; unclaimed: Maybe; reachable: Maybe; asOf: string | null };
   funnel: { reachable: Maybe; emailed: Maybe; claimed: Maybe; listed: Maybe; booked: Maybe };
 };
@@ -75,12 +97,41 @@ export function adminSessionEmail(): string | null {
   return loadApiSession()?.email || null;
 }
 
+/**
+ * The site and the API deploy separately, so this page can be newer than the service it is reading. An API that
+ * predates the costs block is not an error and must not blank the whole page: the block is filled in as all
+ * nulls with a note that says which side is behind, which is the same honesty rule every other figure follows.
+ */
+export function withCosts(data: AdminMetrics): AdminMetrics {
+  if (data.costs && Array.isArray(data.costs.byDay)) return data;
+  return {
+    ...data,
+    costs: {
+      currency: "usd",
+      discovery: null,
+      extraction: null,
+      compute: null,
+      total: null,
+      asOf: null,
+      note: "This API build does not report costs yet, so nothing here is known. It is not a claim that nothing was spent.",
+      byDay: [],
+      perClaim: null,
+      perBooking: null,
+      capUsd: null,
+      capUsedPct: null,
+      computeRunRateMonthly: null,
+    },
+  };
+}
+
 export async function fetchAdminMetrics(days: number, signal?: AbortSignal): Promise<MetricsResult> {
   // `DEV &&` first so a production build folds the branch away and never emits the fixture as a chunk.
   const mock = DEV ? mockName() : null;
   if (DEV && mock) {
     const { mockResult } = await import("../components/admin/mockMetrics");
-    return mockResult(mock, days);
+    const r = await mockResult(mock, days);
+    // Through the same filler as a real answer, so a fixture can never hand the page a shape the API would not.
+    return r.ok ? { ok: true, data: withCosts(r.data) } : r;
   }
   const session = loadApiSession();
   if (!API_URL) return { ok: false, notFound: false, error: "This build has no API configured, so there is nothing to read." };
@@ -99,7 +150,7 @@ export async function fetchAdminMetrics(days: number, signal?: AbortSignal): Pro
     if (!data || typeof data !== "object" || !Array.isArray(data.outreach?.byDay)) {
       return { ok: false, notFound: false, error: "The API answered with something this page does not understand." };
     }
-    return { ok: true, data };
+    return { ok: true, data: withCosts(data) };
   } catch (e) {
     const msg = (e as Error).name === "TimeoutError" ? "The API did not answer in time." : "Could not reach the API.";
     return { ok: false, notFound: false, error: msg };

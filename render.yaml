@@ -159,6 +159,15 @@ services:
         sync: false
       - key: DB_SEED_URL
         sync: false
+      # The nightly `spend` job posts what discovery and extraction have cost to POST /admin/spend on the API,
+      # because those ledgers and the extract_spend table live on this worker's disk and the deployed API cannot
+      # read them. Without either of these the job prints one line and exits 0; the metrics page then shows
+      # "not reported yet" rather than a false zero. ADMIN_KEY is the same value as on outset-api and on
+      # outset-payouts. See docs/METRICS.md.
+      - key: ADMIN_KEY
+        sync: false
+      - key: API_URL
+        value: https://outset-api.onrender.com
       # OUTSET_CHROME: leave unset; the Playwright install under ~/.cache/ms-playwright is found automatically.
 
   # Operators are paid every Monday. ADMIN_KEY is the same value as on outset-api. One transfer per booking code,
