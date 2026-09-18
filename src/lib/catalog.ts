@@ -5,6 +5,7 @@ import { regionOfArea } from "../data/regions";
 import type { GeoPoint } from "./geo";
 import { groupCap } from "./groupSize";
 import { bookableMenu } from "./menuRow";
+import { addressOf, streetOf } from "./address";
 import { ownWords } from "./ownWords";
 import { dialPhone, displayPhone } from "./phone";
 import { isPublicHttpUrl } from "./urlSafety";
@@ -386,8 +387,7 @@ export function telHref(raw: string): string | null {
 }
 
 export function addressLine(c: OperatorContact): string | null {
-  const parts = [c.street, [c.city, c.region].filter(Boolean).join(", "), c.postal].filter(Boolean);
-  return parts.length ? parts.join(", ") : null;
+  return addressOf(c);
 }
 
 /**
@@ -411,7 +411,7 @@ export function mapsHref(c: OperatorContact, fallbackName: string): string {
 }
 
 export function mapsQuery(item: Unclaimed, c: OperatorContact | null): string {
-  if (c?.street) {
+  if (c && streetOf(c)) {
     const line = addressLine(c);
     if (line) return line;
   }

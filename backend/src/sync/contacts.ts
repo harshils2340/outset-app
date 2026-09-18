@@ -23,6 +23,7 @@ import { onlyOperatorCancels } from "../../../src/lib/cancellation.ts";
 import { bookableRow, tidyRowName } from "../../../src/lib/menuRow.ts";
 import { ownWords } from "../../../src/lib/ownWords.ts";
 import { dialPhone } from "../../../src/lib/phone.ts";
+import { streetOf } from "../../../src/lib/address.ts";
 
 type Overlay = { published: boolean; patch: Record<string, unknown> };
 /** Claimed operators' saved edits, keyed by listing id. Filled by loadProfileOverlays before a sync. */
@@ -128,7 +129,8 @@ function toContact(r: Row): OperatorContact {
     // the ones already stored are only cleared by a rule that runs when the catalog is written.
     phone: dialPhone(silent(r.phone)),
     email: r.email,
-    street: r.street,
+    // A town, a bare house number or the shop's phone is not a street, and the page prints whatever is here.
+    street: streetOf(r) || null,
     city: r.city,
     region: r.region,
     postal: r.postal,

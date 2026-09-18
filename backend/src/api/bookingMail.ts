@@ -3,6 +3,7 @@ import { fmtDay, fmtMoney, fmtWhen, guests, renderEmail, type EmailLine, type Em
 import { readJson } from "../lib/store.ts";
 import { maskEmail } from "../lib/claimIndex.ts";
 import { dialPhone } from "../../../src/lib/phone.ts";
+import { streetOf } from "../../../src/lib/address.ts";
 import { OPERATOR_FEE_RATE, currencyForArea, operatorShare, subtotalFromTotal } from "../payments/money.ts";
 import type { StoredBooking } from "./bookings.ts";
 import type { StoredProfile } from "./profiles.ts";
@@ -16,7 +17,7 @@ import type { StoredProfile } from "./profiles.ts";
 const SITE = (process.env.SITE_URL || "https://onoutset.com/").replace(/\/?$/, "/");
 const DASHBOARD = SITE + "operators";
 
-type Detail = { title?: string; area?: string; checkin?: string; contact?: { phone?: string; street?: string; city?: string } };
+type Detail = { title?: string; area?: string; checkin?: string; contact?: { phone?: string; street?: string; city?: string; region?: string } };
 
 export type BookingContext = {
   title: string;
@@ -60,7 +61,10 @@ export async function bookingContext(rec: StoredBooking, profile: StoredProfile 
   const patch = (profile?.patch || {}) as { title?: string; address?: string; phone?: string; checkin?: string };
   const title = clean(patch.title, 120) || clean(detail?.title, 120) || rec.listing;
   const currency = rec.payment?.currency || currencyForArea(detail?.area, process.env.STRIPE_CURRENCY || "usd");
-  const where = clean(patch.address, 160) || [detail?.contact?.street, detail?.contact?.city].filter(Boolean).join(", ") || clean(detail?.area, 80);
+  // The same street the listing page prints: a town or a bare house number in that field is not an address,
+  // and "Where: Sarasota, Sarasota" is what the guest's own confirmation said.
+  const street = detail?.contact ? streetOf(detail.contact) : "";
+  const where = clean(patch.address, 160) || [street, detail?.contact?.city].filter(Boolean).join(", ") || clean(detail?.area, 80);
   return { title, currency, where, shopPhone: phoneLine(patch.phone) || phoneLine(detail?.contact?.phone), ownerEmail: profile?.owner.email || "", listingUrl: `${SITE}#o=${rec.listing}`, arrival: arrivalLine(patch, detail) };
 }
 
