@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { hoursLine, parseHours } from "../operator";
+import type { Unclaimed } from "../../data/types";
+import { defaultProfile, hoursLine, hoursRun, parseHours } from "../operator";
 import { parseWeek } from "../openNow";
 
 /**
@@ -87,4 +88,65 @@ test("the line a guest reads is still the week the app reads back", () => {
   assert.deepEqual(week?.[5], { open: 18 * 60, close: 25 * 60 });
   const plain = parseWeek([hoursLine({ closed: false, open: "10:00", close: "18:00" }, 2)]);
   assert.deepEqual(plain?.[2], { open: 10 * 60, close: 18 * 60 });
+});
+
+/**
+ * The dashboard used to read these lines with a second parser of its own, and on 230 of the 4,482 shops
+ * whose hours we hold it disagreed with the one the guest page uses. Every case below is a real shop's own
+ * published line, and every one of them handed the owner a week their website never stated.
+ */
+
+test("an evening range keeps its pm on the hour it opens, not only the hour it shuts", () => {
+  // adkkart.com: a karting track running 7pm to 9pm was handed a dashboard opening at 7 in the morning.
+  assert.equal(week(["Wednesday - Friday: 7-9:00PM"]), "Sun off, Mon off, Tue off, Wed 19:00-21:00, Thu 19:00-21:00, Fri 19:00-21:00, Sat off");
+  // ahoyrentals.com, where "1-5 PM" opened a boat rental at one in the morning.
+  assert.equal(week(["Monday to Friday 1-5 PM"]), "Sun off, Mon 13:00-17:00, Tue 13:00-17:00, Wed 13:00-17:00, Thu 13:00-17:00, Fri 13:00-17:00, Sat off");
+  // 18reasons.org: a 5 to 10:30 evening class, not a 5 AM one.
+  assert.equal(week(["Monday through Thursday: 5-10:30 pm"]), "Sun off, Mon 17:00-22:30, Tue 17:00-22:30, Wed 17:00-22:30, Thu 17:00-22:30, Fri off, Sat off");
+});
+
+test("a shop that shuts after midnight closes on the next day's clock, and the calendar still finds its run", () => {
+  // ajboatrental.com. A close at or before the open is what the two selects and `hoursRun` already speak.
+  assert.equal(week(["Every day from 10AM to 12AM"]), open("10:00", "00:00"));
+  assert.deepEqual(hoursRun(parseHours(["Every day from 10AM to 12AM"])[3]), { start: 10 * 60, end: 24 * 60 });
+  // allseasonbrewing.com, open Friday and Saturday until two in the morning.
+  assert.equal(week(["Friday-Saturday: 12pm-2am"]), "Sun off, Mon off, Tue off, Wed off, Thu off, Fri 12:00-02:00, Sat 12:00-02:00");
+});
+
+test("OpenStreetMap's own syntax is a week, not an unreadable line", () => {
+  // acuitymaasc.com. 88 shops publish their hours this way, and every one of them got the invented 9 to 5.
+  assert.equal(week(["Su off; Mo \"by appointment\"; Tu-Fr 09:00-16:30; Sa \"by appointment\""]), "Sun off, Mon off, Tue 09:00-16:30, Wed 09:00-16:30, Thu 09:00-16:30, Fri 09:00-16:30, Sat off");
+});
+
+test("a happy hour is not a trading hour on the dashboard either", () => {
+  // deviantwolfebrewing.com published one line, and it was the two hours the beer is cheap.
+  assert.equal(week(["Happy Hour Wednesday-Friday 12-6 PM"]), open("09:00", "17:00"));
+});
+
+test("a phone number glued to an hours line is not the hour it opens", () => {
+  assert.equal(week(["(512) 436-3505Office Hours: 9am-6pm"]), open("09:00", "18:00"));
+});
+
+/**
+ * Which lines the prefill reads at all. It read the synced contact record and nothing else, so 10,508 shops
+ * whose hours a guest could read on their own listing page were handed a 9 to 5 the day they claimed, and the
+ * page changed under them. `itemWeek` is what the listing page, the booking sheet and Otto read.
+ */
+
+const listing = (extra: Record<string, unknown>) =>
+  ({ id: "o-test-com", title: "Test", src: "test.com", area: "Tampa, FL", cat: "water", art: "jetski", options: [], services: [], tags: [], includes: [], specs: [], gap: "", ...extra }) as unknown as Unclaimed;
+const profileWeek = (u: Unclaimed) =>
+  defaultProfile(u, { name: "O", email: "o@test.com", phone: "" }).hours.map((h, i) => D[i] + (h.closed ? " off" : " " + h.open + "-" + h.close)).join(", ");
+
+test("a claim starts on the week the listing page was already showing", () => {
+  assert.equal(profileWeek(listing({ hoursText: ["Fri-Sun 8:00 am - 6:00 pm"] })), "Sun 08:00-18:00, Mon off, Tue off, Wed off, Thu off, Fri 08:00-18:00, Sat 08:00-18:00");
+  // The contact record is the fallback, the way the page falls back to it.
+  assert.equal(profileWeek(listing({ contact: { domain: "test.com", hours: ["Mon-Fri 10am-4pm"] } })), "Sun off, Mon 10:00-16:00, Tue 10:00-16:00, Wed 10:00-16:00, Thu 10:00-16:00, Fri 10:00-16:00, Sat off");
+  // Nothing published anywhere is still the plain 9 to 5 the owner confirms or corrects.
+  assert.equal(profileWeek(listing({})), open("09:00", "17:00"));
+});
+
+test("a quiet hours line claims the same way it browses: no week at all", () => {
+  // The 37 campgrounds whose only hours line is when nobody may make a noise.
+  assert.equal(profileWeek(listing({ hoursText: ["Quiet hours are from 11:00pm - 8:00am"] })), open("09:00", "17:00"));
 });
