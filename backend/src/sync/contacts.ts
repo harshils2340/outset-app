@@ -13,7 +13,7 @@ import { artFromName, reconcileArt } from "./artEvidence.ts";
 import { LOCATION_FACT, brandId, isChainLocation } from "./brandShare.ts";
 import { fullSize } from "./imageUrl.ts";
 import { quotesFromFacts } from "./quotes.ts";
-import { METROS, categoryById, nearestMetro } from "../taxonomy/catalog.ts";
+import { METROS, familyForArt, nearestMetro } from "../taxonomy/catalog.ts";
 import { rankForCover } from "../enrich/photorelevance.ts";
 import { existsSync, readFileSync as readFileSyncFs } from "node:fs";
 import { STANDARD, isEventSchedule, plainLabel, plainName, plainServices, type RawService } from "./plainServices.ts";
@@ -413,7 +413,11 @@ export function toCatalogItem(r: CatalogRow): Record<string, unknown> {
     return unitByService.has(k) ? unitByService.get(k) : o.price_unit && o.price_unit.startsWith("/") ? o.price_unit : undefined;
   };
   const { optionIdxOf, menuRowOf } = bookableOptions(menu, art);
-  const family = kind.movedFrom ? categoryById(art)?.family || r.family : r.family;
+  // The family is the tab a guest browses under (`inCat` in src/data/categories.ts), and the kind is the chip
+  // inside it, so the two have to agree. Following discovery's family unless `reconcileArt` moved the kind left
+  // 529 listings in a tab their own kind is not in, because a name settles the kind too: 119 parasail operators
+  // were under Water rather than Air, and 198 airboat and swamp tours were under Water rather than Outdoor.
+  const family = familyForArt(art, r.family);
   /**
    * Cover choice, re-derived from facts we already hold. The order below is the order this function used to
    * publish, so the widget shots still lead and a tie changes nothing; `rankForCover` only moves a photo up when

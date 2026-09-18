@@ -146,6 +146,16 @@ export function categoryById(id: string): CategoryDef | undefined {
   return CATEGORIES.find((c) => c.id === id);
 }
 
+/**
+ * The tab a kind is browsed under. A listing's kind is settled after discovery filed it, by its own name and
+ * its own text, and the tab has to follow it: the app cuts the tabs by family (`inCat`, src/data/categories.ts)
+ * and draws the chips inside them by kind, so a listing whose family is not its kind's family is in a tab its
+ * chip does not appear in. `fallback` covers a kind this file does not define.
+ */
+export function familyForArt(art: string, fallback: string | null): string | null {
+  return categoryById(art)?.family || fallback;
+}
+
 export function inferCategory(text: string): CategoryDef {
   const t = text.toLowerCase();
   if (/wave.?runner|waverunner|\bpwc\b|jet.?ski/.test(t)) return categoryById("jetski")!;
