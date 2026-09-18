@@ -6,6 +6,7 @@ import { VENDORS } from "../enrich/vendors.ts";
 import { db, nowIso } from "../db/client.ts";
 import { claimTokenV2 } from "../lib/claim.ts";
 import { mailPostal, unsubPageUrl } from "../lib/unsub.ts";
+import { outreachAddress } from "./address.ts";
 
 type Op = {
   id: string;
@@ -153,24 +154,9 @@ export function composeOutreach(op: Op, email: string): { subject: string; body:
   return draftCopy(op, scale(), priced.map((r) => r.name), hasPhotos, hasRules, email, fromWidget);
 }
 
-/**
- * An address scraped from a partner's page (a river walk listing a Legoland inbox) must not get the claim link.
- * Keep the operator's own domain, a personal mailbox, or nothing.
- */
-function plausibleEmail(op: Op): string | null {
-  const e = (op.email || "").trim().toLowerCase();
-  if (!/^[^@\s]+@[^@\s]+\.[a-z]{2,}$/.test(e)) return null;
-  const host = e.split("@")[1];
-  const own = op.domain.toLowerCase().replace(/^www\./, "");
-  if (host === own || host.endsWith("." + own) || own.endsWith("." + host)) return e;
-  if (/^(gmail|yahoo|hotmail|outlook|icloud|aol|me|live|msn|comcast|att|verizon|bellsouth|shaw|rogers|telus|sympatico|bell)\./.test(host)) return e;
-  if (/^(info|hello|contact|book|bookings|reservations|sales|tours|office|admin|support)@/.test(e)) return null;
-  return null;
-}
-
 export function generateOutreachDrafts(): number {
   // Only operators we could actually email. Keeps the write transaction to seconds while crawls share the database.
-  const ops = (db.prepare("SELECT * FROM operators WHERE origin NOT IN ('demo', 'test') AND claim_status = 'unclaimed' AND email LIKE '%@%'").all() as Op[]).filter((op) => plausibleEmail(op));
+  const ops = (db.prepare("SELECT * FROM operators WHERE origin NOT IN ('demo', 'test') AND claim_status = 'unclaimed' AND email LIKE '%@%'").all() as Op[]).filter((op) => outreachAddress(op));
   const sc = scale();
   let n = 0;
   db.exec("PRAGMA busy_timeout = 120000");
@@ -183,7 +169,7 @@ export function generateOutreachDrafts(): number {
   for (const op of ops) {
     const offerings = (offQ.all(op.id) as { name: string; price_cents: number | null }[]).map((o) => o.name + (o.price_cents != null ? " · $" + (o.price_cents / 100).toFixed(0) : ""));
     const keys = new Set((factQ.all(op.id) as { fact_key: string }[]).map((f) => f.fact_key));
-    const to = plausibleEmail(op);
+    const to = outreachAddress(op);
     if (!to) continue;
     const { subject, body } = draftCopy(op, sc, offerings, keys.has("cover"), keys.has("requirement") || keys.has("policy") || keys.has("cancellation"), to);
     ins.run(randomUUID(), op.id, to, subject, body, nowIso());
