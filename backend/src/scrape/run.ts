@@ -3,6 +3,7 @@ import { db, nowIso } from "../db/client.ts";
 import { inferCategory } from "../taxonomy/catalog.ts";
 import { extractPage } from "./extract.ts";
 import { fetchHtml, sleep } from "./fetch.ts";
+import { dialPhone } from "../../../src/lib/phone.ts";
 
 export type ScrapeResult = {
   operatorId: string;
@@ -16,14 +17,14 @@ function domainOf(url: string): string {
   return new URL(url.startsWith("http") ? url : "https://" + url).hostname.replace(/^www\./, "");
 }
 
-/** Keep phones in E.164 when they are North American. Reject junk like the INT_MAX overflow some CMSs emit. */
+/**
+ * Keep phones in E.164 when they are North American, and store nothing when the page's phone field is not a
+ * number a guest can ring. This used to keep whatever it could not read, verbatim, which is how two numbers in
+ * one field, a percent-encoded `tel:` link and "1-800-GAMBLER" became the numbers 258 listings ask guests to
+ * call. `src/lib/phone.ts` is the one reader; the app uses it on the other side of the same fact.
+ */
 export function normalizePhone(raw: string | null | undefined): string | null {
-  if (!raw) return null;
-  const digits = raw.replace(/\D/g, "");
-  const n = digits.length === 11 && digits.startsWith("1") ? digits.slice(1) : digits;
-  if (n === "2147483647") return null;
-  if (n.length !== 10 || /^[01]/.test(n) || /^[01]/.test(n.slice(3))) return raw.trim() || null;
-  return "+1" + n;
+  return dialPhone(raw);
 }
 
 function firstUrl(domain: string): string {

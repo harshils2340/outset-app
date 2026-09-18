@@ -419,6 +419,8 @@ function RequestBody({
   // The same bar the two cards use, plus this surface's rule that a rating shows only beside reviews to read.
   const guestFav = !!score && topRated(item);
   const contact = contactFor(item);
+  // Null when the shop published something that is not a number a guest can ring, and then no call is offered.
+  const callHref = contact?.phone ? telHref(contact.phone) : null;
   const facts = listingFacts(item);
   const here = useGuestPoint();
   const dest = mapsQuery(item, contact);
@@ -1124,7 +1126,7 @@ function RequestBody({
                   <small className="go">{dist ? dist + " · Get directions" : "Get directions"}</small>
                 </span>
               </a>
-              {contact?.phone ? (
+              {callHref && contact?.phone ? (
                 <button type="button" className="crow" onClick={() => setCallOpen((v) => !v)} aria-expanded={callOpen}>
                   <Markup html={ICONS.phone} />
                   <span>
@@ -1133,12 +1135,12 @@ function RequestBody({
                   </span>
                 </button>
               ) : null}
-              {callOpen && contact?.phone ? (
+              {callOpen && callHref ? (
                 <div className="callpick">
                   <button type="button" className="airaccent" onClick={() => onAsk()}>
                     Call the 24/7 assistant
                   </button>
-                  <a className="airghost" href={telHref(contact.phone)} onClick={(e) => e.stopPropagation()}>
+                  <a className="airghost" href={callHref} onClick={(e) => e.stopPropagation()}>
                     Call a person at the shop
                   </a>
                   <p className="reqhint">The assistant answers by chat for now. Voice is coming.</p>

@@ -27,6 +27,8 @@ export function WebConfirm({ booking, onDone, onOpen }: { booking: Booking; onDo
   const item = experienceById(booking.listing);
   if (!item) return null;
   const contact = contactFor(item);
+  // Null when the shop published something that is not a number a guest can ring, and then no call is offered.
+  const callHref = contact?.phone ? telHref(contact.phone) : null;
   const addressRaw = contact ? addressLine(contact) : null;
   const address = addressRaw ? tidyAddress(addressRaw) : null;
   const score = publicRating(item);
@@ -141,8 +143,8 @@ export function WebConfirm({ booking, onDone, onOpen }: { booking: Booking; onDo
                 <Markup html={PIN} />
                 <span><b>{address || item.area}</b><small>Get directions</small></span>
               </a>
-              {contact?.phone ? (
-                <a className="alwhererow alconfirmgap" href={telHref(contact.phone)}>
+              {callHref && contact?.phone ? (
+                <a className="alwhererow alconfirmgap" href={callHref}>
                   <Markup html={PHONE} />
                   <span><b>{fmtPhone(contact.phone)}</b><small>Running late? Call the shop</small></span>
                 </a>

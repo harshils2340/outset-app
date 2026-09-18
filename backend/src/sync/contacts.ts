@@ -22,6 +22,7 @@ import { durationFrom } from "../../../src/lib/duration.ts";
 import { onlyOperatorCancels } from "../../../src/lib/cancellation.ts";
 import { bookableRow, tidyRowName } from "../../../src/lib/menuRow.ts";
 import { ownWords } from "../../../src/lib/ownWords.ts";
+import { dialPhone } from "../../../src/lib/phone.ts";
 
 type Overlay = { published: boolean; patch: Record<string, unknown> };
 /** Claimed operators' saved edits, keyed by listing id. Filled by loadProfileOverlays before a sync. */
@@ -123,7 +124,9 @@ function toContact(r: Row): OperatorContact {
   return {
     domain: r.domain,
     website: r.website,
-    phone: silent(r.phone),
+    // The crawl refuses a field that is not a number as it reads a page, and the sync refuses it again, because
+    // the ones already stored are only cleared by a rule that runs when the catalog is written.
+    phone: dialPhone(silent(r.phone)),
     email: r.email,
     street: r.street,
     city: r.city,

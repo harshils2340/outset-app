@@ -6,6 +6,7 @@ import type { GeoPoint } from "./geo";
 import { groupCap } from "./groupSize";
 import { bookableMenu } from "./menuRow";
 import { ownWords } from "./ownWords";
+import { dialPhone, displayPhone } from "./phone";
 import { isPublicHttpUrl } from "./urlSafety";
 
 /** The crawler's own `src` field, always meant to be the operator's domain, as an https URL, or "" when it is
@@ -375,15 +376,13 @@ export function contactFor(item: Unclaimed): OperatorContact | null {
 }
 
 export function fmtPhone(raw: string): string {
-  const digits = raw.replace(/\D/g, "");
-  const n = digits.length === 11 && digits.startsWith("1") ? digits.slice(1) : digits;
-  if (n.length !== 10) return raw;
-  return "(" + n.slice(0, 3) + ") " + n.slice(3, 6) + "-" + n.slice(6);
+  return displayPhone(raw);
 }
 
-export function telHref(raw: string): string {
-  const digits = raw.replace(/[^\d+]/g, "");
-  return "tel:" + (digits.startsWith("+") ? digits : "+1" + digits.replace(/^1/, ""));
+/** The call link, or null when what the operator published is not a number a guest can ring: see `phone.ts`. */
+export function telHref(raw: string): string | null {
+  const dial = dialPhone(raw);
+  return dial ? "tel:" + dial : null;
 }
 
 export function addressLine(c: OperatorContact): string | null {

@@ -1,6 +1,7 @@
 import type { OperatorContact, Unclaimed } from "../data/types";
 import type { LiveAvailability } from "./api";
-import { addressLine, fmtPhone, plainWords } from "./catalog";
+import { addressLine, plainWords } from "./catalog";
+import { callablePhone } from "./phone";
 import { withoutNoticeWindows } from "./duration";
 import { money } from "./format";
 import { groupCap, minAge } from "./listingDerive";
@@ -607,7 +608,10 @@ function readQuestion(ctx: CompanyContext, q: string, prev: ChatState): Topic[] 
 
 /* ---------- answers ---------- */
 
-const nextStep = (ctx: CompanyContext) => (ctx.contact?.phone ? "Want their number?" : "A booking request on this page reaches them directly.");
+/** The number Otto reads out, or null: a field that is two numbers or an unrendered template is not one. */
+const shopPhone = (ctx: CompanyContext) => callablePhone(ctx.contact?.phone);
+
+const nextStep = (ctx: CompanyContext) => (shopPhone(ctx) ? "Want their number?" : "A booking request on this page reaches them directly.");
 
 const noFact = (ctx: CompanyContext, what: string) => "They haven't published " + what + ". " + nextStep(ctx);
 
@@ -1015,7 +1019,8 @@ function waiverAnswer(ctx: CompanyContext): { text: string; state: ChatState } {
 }
 
 function contactAnswer(ctx: CompanyContext): { text: string; state: ChatState } {
-  if (ctx.contact?.phone) return { text: "Call " + fmtPhone(ctx.contact.phone) + ".", state: { topic: "contact" } };
+  const phone = shopPhone(ctx);
+  if (phone) return { text: "Call " + phone + ".", state: { topic: "contact" } };
   return { text: "They haven't published a phone number. A booking request on this page reaches them directly.", state: { topic: "contact" } };
 }
 
@@ -1147,7 +1152,7 @@ export function companySuggestions(ctx: CompanyContext): string[] {
   if (item.bring?.length) out.push(CHIP.bring);
   out.push(CHIP.meet);
   if (offersOf(ctx).length || item.blurb) out.push(CHIP.list);
-  if (ctx.contact?.phone) out.push("What's your phone number?");
+  if (shopPhone(ctx)) out.push("What's your phone number?");
   return [...new Set(out)].slice(0, 4);
 }
 
@@ -1169,7 +1174,8 @@ export function assistantOn(item: Unclaimed): boolean {
  * nobody is cut off mid-question; the next step is the shop, the same one contactAnswer offers.
  */
 export function companyHandoff(ctx: CompanyContext): string {
-  return ctx.item.title + " answers questions themselves. " + (ctx.contact?.phone ? "Call " + fmtPhone(ctx.contact.phone) + "." : "A booking request on this page reaches them directly.");
+  const phone = shopPhone(ctx);
+  return ctx.item.title + " answers questions themselves. " + (phone ? "Call " + phone + "." : "A booking request on this page reaches them directly.");
 }
 
 /* ---------- the engine ---------- */

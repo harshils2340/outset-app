@@ -2,6 +2,7 @@ import { sendMail } from "../lib/mail.ts";
 import { fmtDay, fmtMoney, fmtWhen, guests, renderEmail, type EmailLine, type EmailRow } from "../lib/emailTemplate.ts";
 import { readJson } from "../lib/store.ts";
 import { maskEmail } from "../lib/claimIndex.ts";
+import { dialPhone } from "../../../src/lib/phone.ts";
 import { OPERATOR_FEE_RATE, currencyForArea, operatorShare, subtotalFromTotal } from "../payments/money.ts";
 import type { StoredBooking } from "./bookings.ts";
 import type { StoredProfile } from "./profiles.ts";
@@ -30,6 +31,16 @@ export type BookingContext = {
 const clean = (s: unknown, max: number) => String(s ?? "").split("").filter((ch) => ch.charCodeAt(0) >= 32).join("").trim().slice(0, max);
 
 /**
+ * A shop phone worth printing in the "CALL THE SHOP" alert: the line as published, so an extension and a
+ * second number reach the person reading it, but only when there is a number in it at all. Without this the
+ * alert asked the founder to ring an unrendered template placeholder, or a winery's "1-800-GAMBLER".
+ */
+const phoneLine = (v: unknown) => {
+  const text = clean(v, 40);
+  return dialPhone(text) ? text : "";
+};
+
+/**
  * What the business says about arriving, or "" when they say nothing. The guest listing shows the same line and
  * drops the same sign-offs ("See you soon!"), which are a goodbye and not arrival information. Outset has no
  * arrival rule of its own, so with nothing here the email says nothing.
@@ -50,7 +61,7 @@ export async function bookingContext(rec: StoredBooking, profile: StoredProfile 
   const title = clean(patch.title, 120) || clean(detail?.title, 120) || rec.listing;
   const currency = rec.payment?.currency || currencyForArea(detail?.area, process.env.STRIPE_CURRENCY || "usd");
   const where = clean(patch.address, 160) || [detail?.contact?.street, detail?.contact?.city].filter(Boolean).join(", ") || clean(detail?.area, 80);
-  return { title, currency, where, shopPhone: clean(patch.phone, 40) || clean(detail?.contact?.phone, 40), ownerEmail: profile?.owner.email || "", listingUrl: `${SITE}#o=${rec.listing}`, arrival: arrivalLine(patch, detail) };
+  return { title, currency, where, shopPhone: phoneLine(patch.phone) || phoneLine(detail?.contact?.phone), ownerEmail: profile?.owner.email || "", listingUrl: `${SITE}#o=${rec.listing}`, arrival: arrivalLine(patch, detail) };
 }
 
 /** What the guest pays and what the operator gets, in dollars. */

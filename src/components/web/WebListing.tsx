@@ -880,6 +880,8 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
   const reviews = useMemo(() => shownReviews(item.quotes, item.title), [item.quotes, item.title]);
   const score = reviews.length ? publicRating(item) : null;
   const contact = contactFor(item);
+  // Null when the shop published something that is not a number a guest can ring, and then no call is offered.
+  const callHref = contact?.phone ? telHref(contact.phone) : null;
   const addressRaw = contact ? addressLine(contact) : null;
   const address = addressRaw ? tidyAddress(addressRaw) : null;
   const facts = listingFacts(item);
@@ -1704,8 +1706,8 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
                 </div>
                 {ticketHref ? (
                   <a className="alprimary" href={ticketHref} target="_blank" rel="noreferrer">Get tickets</a>
-                ) : contact?.phone ? (
-                  <a className="alprimary" href={telHref(contact.phone)}>Call to plan</a>
+                ) : callHref ? (
+                  <a className="alprimary" href={callHref}>Call to plan</a>
                 ) : null}
                 <p className="alfine">Tickets are sold by {item.title}. Prices and times on their side.</p>
               </div>
@@ -1954,8 +1956,8 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
               </span>
             </a>
             <div className="alwhereside">
-              {contact?.phone ? (
-                <a className="alwhererow" href={telHref(contact.phone)}>
+              {callHref && contact?.phone ? (
+                <a className="alwhererow" href={callHref}>
                   <Markup html={I.phone} />
                   <span><b>{fmtPhone(contact.phone)}</b><small>Call a person at the shop</small></span>
                 </a>
@@ -2046,10 +2048,10 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
               ) : (
                 <>
                   <h3>Questions before you book?</h3>
-                  <p className="alsecsub">{item.title} answers these themselves. {contact?.phone ? "Give them a call, or send" : "Send"} a booking request on this page and it reaches them directly.</p>
+                  <p className="alsecsub">{item.title} answers these themselves. {callHref ? "Give them a call, or send" : "Send"} a booking request on this page and it reaches them directly.</p>
                 </>
               )}
-              {contact?.phone ? <a className="aloutline" href={telHref(contact.phone)}>Call the business</a> : null}
+              {callHref ? <a className="aloutline" href={callHref}>Call the business</a> : null}
               {!item.claimed ? (
                 <p className="alclaim">
                   <Markup html={I.shield} />
