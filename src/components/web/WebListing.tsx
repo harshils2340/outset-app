@@ -1477,7 +1477,9 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
               <span className="alavatar" aria-hidden="true">{initial}</span>
               <span>
                 <b>Run by {item.title}</b>
-                <small>{item.claimed ? "Claimed business" + (instant ? " · Instant confirmation" : "") : visit ? "Tickets are sold by the business" : "Requests go straight to the business"}</small>
+                {/* Whether a shop has claimed its page is ours to know, not the guest's: this line describes how a
+                    booking reaches them, which reads the same either way, so no listing looks second class. */}
+                <small>{instant ? "Instant confirmation" : visit ? "Tickets are sold by the business" : "Requests go straight to the business"}</small>
               </span>
             </section>
 
@@ -2051,12 +2053,13 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
                 </>
               )}
               {callHref ? <a className="aloutline" href={callHref}>Call the business</a> : null}
-              {!item.claimed ? (
-                <p className="alclaim">
-                  <Markup html={I.shield} />
-                  <span>Is this your business? <button type="button" className="alunder strong" onClick={() => openOperator(item.id)}>Claim this listing</button> to answer guests and take bookings directly.</span>
-                </p>
-              ) : null}
+              {/* On every listing, claimed or not, and worded for an owner rather than about the page's status:
+                  "Claim this listing" only appeared on unclaimed ones, which told a guest which shops had not
+                  signed up. An owner who is already signed in lands in their dashboard from the same link. */}
+              <p className="alclaim">
+                <Markup html={I.shield} />
+                <span>Work here? <button type="button" className="alunder strong" onClick={() => openOperator(item.id)}>Manage this listing</button> to answer guests and take bookings directly.</span>
+              </p>
             </div>
           </div>
         </section>
