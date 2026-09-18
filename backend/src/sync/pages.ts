@@ -11,9 +11,10 @@ import { REGION_NAME, regionOfArea } from "../../../src/data/regions.ts";
  * These exist for search engines and shared links; the app itself stays the product.
  *
  * Rules:
- * - A listing reaches a page only if browse would show it. A page is a browse surface with a Google result in
- *   front of it, so the catalog's own `thin` flag applies here exactly as it does to the rails, and the count in
- *   the h1, the lede, the FAQ, the pills and the JSON-LD counts what a guest can actually see.
+ * - A listing reaches a page only if browse would show it and its kind is confirmed. A page is a browse surface
+ *   with a Google result in front of it, so the catalog's own `thin` flag applies here exactly as it does to the
+ *   rails, a guessed kind is not published as a fact, and the count in the h1, the lede, the FAQ, the pills and
+ *   the JSON-LD counts what a guest can actually see.
  * - A metro page exists when the kind has at least MIN_METRO_LISTINGS listings in that metro. The all-metros page
  *   ("-in-anywhere") exists for every kind with a listing anywhere, metro or not. Nothing is published empty; the
  *   directory is cleared first so a page whose kind lost its listings disappears.
@@ -137,6 +138,11 @@ export type Item = Record<string, unknown> & {
   services?: { name: string; desc: string | null; variants: { label: string; price: number | null }[] }[];
   hrs?: unknown[] | null;
   hoursText?: string[] | null;
+  /**
+   * Set in sync/contacts.ts when nothing in the listing's own text confirms its kind: the kind is a guess off
+   * the business name. The rails already put these behind every confirmed listing.
+   */
+  kindUnconfirmed?: boolean;
   /**
    * The catalog's own "nothing a guest can act on" flag, set in sync/contacts.ts: no photo, no price, no hours,
    * no services, no tags, no description. Browse and the rails leave these out rather than filling a grid with
@@ -358,9 +364,10 @@ export function writeLandingPages(items: Item[], opts: { publicDir?: string } = 
   mkdirSync(dir, { recursive: true });
   for (const f of readdirSync(dir)) if (f.endsWith(".html")) unlinkSync(join(dir, f));
 
-  // Group once: kind -> every listing, and kind -> metro -> listings. A listing browse would not show is not a
-  // listing to publish, so it is dropped before anything is grouped, counted or used to decide a page exists.
-  const listable = items.filter((i) => !i.thin);
+  // Group once: kind -> every listing, and kind -> metro -> listings. A listing browse would not show, and a
+  // listing whose kind we only guessed, are dropped before anything is grouped, counted or used to decide a
+  // page exists. A page states its kind as fact in the title, the count and the JSON-LD; a guess cannot go there.
+  const listable = items.filter((i) => !i.thin && !i.kindUnconfirmed);
 
   const byKind = new Map<string, Item[]>();
   const byKindMetro = new Map<string, Map<string, Item[]>>();

@@ -223,6 +223,42 @@ test("a listing with nothing on it is left off a page, out of its counts, and ca
 });
 
 /**
+ * `kindUnconfirmed` means nothing in the listing's own text confirms its kind: it was guessed off the business
+ * name. The rails put these last for exactly that reason. The landing pages stated the guess as fact, to a
+ * search engine, in a title, a count and a schema.org ItemList: "Escape rooms in Tampa Bay, Florida" opened on
+ * Anna Maria Beach Resort™, Anna Maria Island Inn ™ and AMI Locals, and said there were 35 escape rooms when
+ * 32 were escape rooms. 1,624 shipped listings carry the flag, across 239 pages, and 17 metro pages existed
+ * only because guesses pushed them over the three-listing bar.
+ */
+test("a kind we only guessed is not published as a fact, counted, or allowed to create a page", () => {
+  const items: Item[] = [
+    item("escape", "tampa", 1, { area: "Tampa, FL", cover: "https://x/1.jpg", from: 30 }),
+    item("escape", "tampa", 2, { area: "Tampa, FL", cover: "https://x/2.jpg", from: 35 }),
+    item("escape", "tampa", 3, { area: "Clearwater, FL", from: 40 }),
+    item("escape", "tampa", 4, { area: "Anna Maria Island, FL", title: "Anna Maria Beach Resort", kindUnconfirmed: true }),
+    // Three cooking classes in Toronto, two of them guesses, so there is no Toronto cooking page.
+    item("cooking", "toronto", 1, { area: "Toronto, ON" }),
+    item("cooking", "toronto", 2, { area: "Toronto, ON", kindUnconfirmed: true }),
+    item("cooking", "toronto", 3, { area: "Toronto, ON", kindUnconfirmed: true }),
+  ];
+  const r = run(items);
+  try {
+    assert.deepEqual(r.files, ["cooking-in-anywhere.html", "escape-in-anywhere.html", "escape-in-tampa.html", "index.html"]);
+    const html = r.read("escape-in-tampa.html");
+    assert.match(html, /<h1>Escape rooms in Tampa Bay, Florida<\/h1>/);
+    assert.match(html, /3 escape rooms around Tampa Bay/);
+    assert.match(html, /Outset lists 3 escape rooms around Tampa Bay/);
+    assert.match(html, /"numberOfItems":3/);
+    assert.doesNotMatch(html, /Anna Maria/);
+    // The guessed listing is not a town of Tampa Bay's either, since it is not on the page.
+    assert.doesNotMatch(html, /Anna Maria Island/);
+    assert.match(r.read("cooking-in-anywhere.html"), /"numberOfItems":1/);
+  } finally {
+    r.cleanup();
+  }
+});
+
+/**
  * An operator whose town the crawl never found publishes its area as the state code alone ("FL"), which is
  * 4,736 rows in the shipped catalog and fourteen of them inside a metro. A state is not a town, and the FAQ
  * line lists towns: "including places in FL, Tampa and Clearwater" is a published page saying it.
