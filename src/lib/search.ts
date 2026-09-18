@@ -1087,7 +1087,10 @@ export function searchMetros(q: string, limit = 4): Metro[] {
   const out: { m: Metro; s: number }[] = [];
   for (const m of METROS) {
     const hay = [...namesFor(m), norm(m.region)];
-    const words = Array.from(new Set(hay.flatMap((h) => h.split(" "))));
+    // A nickname made of several words only counts as the whole phrase. Denver's is "front range", and letting
+    // its words stand alone made "gun range", "driving range" and "archery range" all suggest Denver.
+    const phrases = new Set((METRO_ALIASES[m.id] || []).map(norm).filter((a) => a.includes(" ")));
+    const words = Array.from(new Set(hay.filter((h) => !phrases.has(h)).flatMap((h) => h.split(" "))));
     let total = 0;
     let landed = 0;
     for (const t of toks) {

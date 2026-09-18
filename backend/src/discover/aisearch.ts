@@ -2,7 +2,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync, appendFileSync } fr
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { CITIES, type City } from "./cities.ts";
-import { upsertPlace, type SearchStats } from "./searchapi.ts";
+import { searchSpendUsd, upsertPlace, type SearchStats } from "./searchapi.ts";
 import { db } from "../db/client.ts";
 
 /**
@@ -91,13 +91,17 @@ async function withRetry<T>(fn: () => T, tries = 8): Promise<T> {
   }
 }
 
-/** Money spent on paid model calls so far, across discovery (this ledger) and extraction (extract_spend). */
+/**
+ * Money spent on paid calls so far: model discovery (this ledger), Google Maps discovery (the SERP ledger in
+ * searchapi.ts) and extraction (extract_spend). The Maps run is the larger of the two discovery bills, so
+ * leaving it out let a run cross the cap with the cap still reading zero.
+ */
 export function paidSpendUsd(): { discovery: number; extraction: number; total: number } {
-  let discovery = 0;
+  let discovery = searchSpendUsd();
   try {
     const lines = readFileSync(ledger, "utf8").split("\n").filter(Boolean);
     // Web search tool call plus tokens: about 2.5 cents per call at medium context, plus $2 per million tokens.
-    discovery = lines.length * 0.025 + lines.reduce((n, l) => n + Number(l.split("\t")[3] || 0), 0) * 2e-6;
+    discovery += lines.length * 0.025 + lines.reduce((n, l) => n + Number(l.split("\t")[3] || 0), 0) * 2e-6;
   } catch { /* no ledger yet */ }
   let extraction = 0;
   try {

@@ -143,6 +143,11 @@ export const ART_ALIASES: Record<ArtKind, string[]> = {
     "rifle range", "pistol range", "clays", "clay shooting", "clay pigeon", "sporting clays", "sporting clay", "skeet", "skeet shooting",
     "trap", "trap shooting", "pistol", "rifle", "shotgun", "handgun", "firearm", "firearms", "shoot guns", "gun rental", "machine gun",
     "firearms training", "gun training", "concealed carry", "ccw class", "shooting lessons", "shooting sports",
+    // What these places call themselves on Google. Most of the ones a guest can actually book time at are a
+    // club, not a "range": Silverdale Gun Club, Ansonia Rod and Gun Club, and hundreds like them.
+    "gun club", "gun clubs", "rod and gun club", "rod gun club", "shooting club", "rifle club", "pistol club", "trap club", "skeet club",
+    "sportsman club", "sportsmans club", "sportsmen club", "sportsmens club", "conservation club", "fish and game club",
+    "shooting center", "shooting centre", "shooting sports center", "target shooting", "clay target", "gun and rifle club",
   ],
   archery: [
     "archery", "archery range", "archery lessons", "archery class", "bow", "bow and arrow", "arrows", "bow range", "archery tag",

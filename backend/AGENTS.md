@@ -50,6 +50,17 @@ On macOS, one crawl at a time. `src/scrape/cpu.ts` keeps at least 10% CPU idle: 
 
 Florida discovery runs on the Render pipeline worker (`npx tsx scripts/discover-florida-ci.mts` from that clone), never on the Mac and never on GitHub Actions: GitHub disabled Actions for the account on 16 September 2026 over the crawl workflows, and only the e2e CI run may live under `.github/workflows`. `scripts/discover-florida-ci.mts` opens no database and writes `data/discovered/florida-{chains,osm,web}.json`: every Florida location of the brands in `src/discover/chains.ts` (franchise location pages, store-locator JSON, sitemaps), OpenStreetMap businesses named for what they do (`src/discover/osmnames.ts`, one Overpass request), and the Brave Search API (`src/discover/braveapi.ts`, only when the `BRAVE_SEARCH_API_KEY` secret is set). Outside CI the script refuses anything bigger than three chains. `npx tsx scripts/import-discovered.mts --dry` shows what is new, by kind and city; it is a dry run by default and inserts with `--write` only candidates that are not already an operator (domain, website, OSM element, phone, name and city, same name or same brand nearby).
 
+`npm run search` is Google Maps discovery (`src/discover/searchapi.ts`): one query per city and Google phrasing,
+every result a real listed business with its name, address, phone, website, rating and review count. It is the only
+source that reaches businesses OpenStreetMap has never heard of, which is most of them: Silverdale Gun Club in West
+Lincoln, Ontario, 829 Google reviews, is in no OSM extract at all. Until 18 September 2026 it had only ever been run
+for the first eight water and air phrasings, so ranges, clubs, bowling, escape rooms, spas and classes were missing
+from the catalog everywhere. `npm run search --dry-run` prices a run and sends nothing. It costs money, so it runs on
+the Render worker on demand and never on a schedule: `npx tsx scripts/pipeline.mts --once=search` in a shell on
+`outset-pipeline`, with `SEARCHAPI_KEYS` set there. Answers are cached on disk per term, city and page, so a second
+run of the same grid is free. Every billed request is a line in `data/searchapi-ledger.txt`, which `paidSpendUsd()`
+adds to the model spend, so `PAID_CAP_USD` sees this money too.
+
 `npm run enrich` is the deep pass. `src/enrich/crawl.ts` fetches up to 8 of the operator's own pages (about, pricing, tours, FAQ, contact, policies), collects public social handles from their links (Instagram, Facebook, TikTok, YouTube, Yelp, TripAdvisor, Google) and detects the booking vendor. `src/enrich/extract.ts` sends the page text to Claude with a fixed nullable schema and a no-guessing prompt. Results land as offerings and facts with `confidence = 'ai'` and a source URL per fact, and are replaced on re-run. Seed rows are never touched. Social networks themselves are not scraped: they are login-walled and their terms forbid it.
 
 Covers are chosen by `src/enrich/photorelevance.ts`, not by whichever photo scored highest. `photoquality.ts` says an image is a photograph; this says whether it is a photograph of this business, reading the file name, the alt text, the page it sat on and the booking item it illustrates against the operator's activity words, and demoting a lone wild animal, a close-up, a staff portrait, merch and a file that turns up on other operators' domains. It runs at photo-crawl time and again in `npm run sync`, so a better cover comes out of a sync with no new crawl. It only reorders: every photo stays in the gallery.

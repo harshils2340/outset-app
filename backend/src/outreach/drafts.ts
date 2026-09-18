@@ -104,6 +104,8 @@ export function draftCopy(op: Op, sc: ReturnType<typeof scale>, f: PageFacts, em
   void sc;
   const to = (email || "").trim().toLowerCase();
   const SITE = "https://onoutset.com/";
+  const TERMS = SITE + "terms.html";
+  const PRIVACY = SITE + "privacy.html";
   const id = catalogId(op.domain);
   const listing = SITE + "#o=" + id;
   /**
@@ -132,8 +134,24 @@ export function draftCopy(op: Op, sc: ReturnType<typeof scale>, f: PageFacts, em
     : "I built a page for " + op.name + " from your website, but your site gave me very little to put on it, so the page is thin. Nothing on it is invented, and the link below lets you fill in the rest. Have a look:";
   const scale = "There are about " + listed + " activity businesses on Outset across the US and Canada, from Florida to British Columbia, and guests find them by city and activity.";
   const money = "What it costs: nothing to be listed. When a booking comes through Outset, we keep 5% of it. No booking, no fee." + (vendor ? " " + vendor : "");
-  const lines = ["Hi,", "", who, "", intro, listing, "", scale, "", money, ""];
-  const paras = ["<p>Hi,</p>", "<p>" + esc(who) + "</p>", "<p>" + esc(intro) + "<br>" + link(listing, listing) + "</p>", "<p>" + esc(scale) + "</p>", "<p>" + esc(money) + "</p>"];
+  /**
+   * The two questions an owner asks before they will take an online booking: what happens when the weather kills
+   * the day, and who these people are legally. Both are answered here rather than left for them to go looking for.
+   * The weather sentence describes what the code already does: an operator decline refunds the card in full
+   * (`refundBooking` in src/api/bookings.ts), or releases the hold when nothing was captured.
+   */
+  const weather = "Weather: if you call a day off, you decline the booking in your dashboard and the guest is refunded in full, automatically, to the card they paid with. Nothing for you to process, no fee to them, and we take no commission on a day that did not run.";
+  const legal = "Our terms and privacy policy, so you know who you are dealing with: " + TERMS + " and " + PRIVACY + ".";
+  const lines = ["Hi,", "", who, "", intro, listing, "", scale, "", money, "", weather, "", legal, ""];
+  const paras = [
+    "<p>Hi,</p>",
+    "<p>" + esc(who) + "</p>",
+    "<p>" + esc(intro) + "<br>" + link(listing, listing) + "</p>",
+    "<p>" + esc(scale) + "</p>",
+    "<p>" + esc(money) + "</p>",
+    "<p>" + esc(weather) + "</p>",
+    "<p>Our " + link(TERMS, "terms") + " and " + link(PRIVACY, "privacy policy") + ", so you know who you are dealing with.</p>",
+  ];
   lines.push(
     "If this is your business, this link opens your page so you can fix anything and switch bookings on. It's meant for the owner, so please don't forward it:",
     claim,

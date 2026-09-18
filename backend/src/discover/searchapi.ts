@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { db, nowIso } from "../db/client.ts";
@@ -33,6 +33,12 @@ export const PRICING_DATE = "16 September 2026";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const cacheDir = join(here, "../../data/searchapi");
+/**
+ * One line per request we actually paid for, so the money this module spends is visible to the same cap that
+ * guards the model calls. Without it a Maps run was free as far as `paidSpendUsd()` could tell, and the
+ * pipeline's paid cap could not stop, or even see, a run across every city and term.
+ */
+const ledgerPath = join(here, "../../data/searchapi-ledger.txt");
 const ENDPOINT = "https://www.searchapi.io/api/v1/search";
 const SERPAPI = "https://serpapi.com/search.json";
 
@@ -136,6 +142,30 @@ export function isCached(q: string, city: City, page = 1): boolean {
   return existsSync(cachePathFor(q, city, page));
 }
 
+/** A request left the machine and will be billed. Appended before the response is read, so a failed call still counts. */
+function recordSpend(provider: ProviderId, q: string, city: City): void {
+  try {
+    appendFileSync(ledgerPath, [new Date().toISOString(), provider, q, city.name + " " + city.region].join("\t") + "\n");
+  } catch {
+    /* the ledger is accounting, never a reason to stop a run */
+  }
+}
+
+/** USD billed by this module so far, from the ledger. Cache hits are not in it, because they cost nothing. */
+export function searchSpendUsd(): number {
+  try {
+    let usd = 0;
+    for (const line of readFileSync(ledgerPath, "utf8").split("\n")) {
+      if (!line) continue;
+      const prov = line.split("\t")[1] as ProviderId;
+      usd += (PRICE_PER_1K_USD[prov] ?? PRICE_PER_1K_USD.searchapi) / 1000;
+    }
+    return usd;
+  } catch {
+    return 0;
+  }
+}
+
 export async function searchPlaces(q: string, city: City, page: number, ring: KeyRing): Promise<{ places: Place[]; cached: boolean }> {
   mkdirSync(cacheDir, { recursive: true });
   const cachePath = cachePathFor(q, city, page);
@@ -146,6 +176,7 @@ export async function searchPlaces(q: string, city: City, page: number, ring: Ke
     const apiKey = ring.current();
     const prov = providerOf(apiKey);
     if (prov === "serper") {
+      recordSpend(prov, q, city);
       const res = await fetch(SERPER, {
         method: "POST",
         headers: { "X-API-KEY": apiKey, "content-type": "application/json" },
@@ -194,6 +225,7 @@ export async function searchPlaces(q: string, city: City, page: number, ring: Ke
     } else {
       params.set("page", String(page));
     }
+    recordSpend(prov, q, city);
     const res = await fetch((serp ? SERPAPI : ENDPOINT) + "?" + params.toString(), { signal: AbortSignal.timeout(90000) });
     if (res.status === 429) {
       limited += 1;
@@ -241,7 +273,10 @@ const TYPE_TO_CATEGORY: [RegExp, string][] = [
   [/arcade|amusement center|family entertainment/i, "arcade"], [/water park/i, "waterpark"], [/amusement park|theme park/i, "themepark"],
   [/\bzoo\b|wildlife park|safari park|animal park/i, "zoo"], [/aquarium/i, "aquarium"], [/karaoke/i, "karaoke"],
   [/rock climbing|climbing gym|bouldering/i, "climbing"], [/ice skating|ice rink|skating rink/i, "icerink"],
-  [/shooting range|gun range|gun club|firearms/i, "range"], [/archery/i, "archery"],
+  // Most places a guest can book range time at call themselves a club, and `club$` in NOISE would have thrown
+  // every one of them away: Silverdale Gun Club, Ontario, typed "Gun club", is the example that found this.
+  [/shooting range|gun range|gun club|shooting club|rifle club|pistol club|trap club|skeet club|rod and gun|sportsman|sportsmen|firearms/i, "range"],
+  [/archery/i, "archery"],
   [/zip ?line|aerial adventure|ropes course|adventure park/i, "zipline"], [/ski resort|ski school|ski area|snowboard/i, "ski"],
   [/snowmobile/i, "snowmobile"], [/rafting|tubing/i, "rafting"], [/scuba|dive shop|dive center|diving|snorkel/i, "scuba"],
   [/surf/i, "surf"], [/bicycle rental|bike rental|e-bike/i, "bike"],
@@ -253,7 +288,7 @@ const TYPE_TO_CATEGORY: [RegExp, string][] = [
   [/botanical garden|arboretum|garden/i, "garden"], [/campground|glamping|rv park/i, "camping"],
   [/pickleball|tennis|racquet/i, "tennis"], [/pool hall|billiard|snooker|darts/i, "billiards"], [/swim|\bpool\b|aquatic center/i, "swim"],
   [/martial arts|boxing|karate|jiu|taekwondo|kickbox|\bmma\b|muay/i, "martialarts"], [/gymnastics|cheer|tumbling/i, "gymnastics"],
-  [/pilates|fitness|\bgym\b|spin|barre|crossfit|cycling studio/i, "fitness"],
+  [/pilates|fitness|\bgym\b|spin|barre|crossfit|cycling studio|indoor cycling/i, "fitness"],
   [/event venue|banquet|wedding venue|party|\bvenue\b/i, "venue"],
   [/atv|off-?road|motorsport|race track|racing|dirt bike|utv|motocross|speedway/i, "motorsport"],
   [/horse|stable|equestrian|trail rid/i, "horse"], [/fishing charter|fishing guide|charter fishing|fishing/i, "fishing"],

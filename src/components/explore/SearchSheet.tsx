@@ -94,7 +94,9 @@ export function SearchSheet() {
 
   // An activity typed into Where ("kayak", "axe throwing"): the phone sheet opens on Where, so guests type what
   // they want to do there. It is not a place, even when the map has a town by that name, so it moves to What.
-  const activityTyped = useMemo(() => (needle && !cities.length && describeQuery(needle).onlyKind ? whatLabel(needle) : null), [needle, cities]);
+  // It is offered even when a city also matched, because a city can match by accident: Denver's alias is
+  // "front range", so "gun range" used to offer Denver and nothing else, and the activity had nowhere to go.
+  const activityTyped = useMemo(() => (needle && describeQuery(needle).onlyKind ? whatLabel(needle) : null), [needle]);
   const moveToWhat = () => {
     setWhat(needle);
     setText("");
@@ -205,6 +207,26 @@ export function SearchSheet() {
   const run = () => {
     let query = what.trim();
     let place = where;
+    /**
+     * Whatever is still sitting in the Where box counts. The sheet opens on Where, so a guest who types
+     * "gun range" there and presses Search typed the only thing they were ever asked for: dropping it because
+     * no suggestion was tapped made the button look dead, which is exactly how it read on a phone.
+     * A city goes to Where, anything else goes to What, and "gun range toronto" splits into both.
+     */
+    const typed = text.trim();
+    if (typed) {
+      const typedCity = metroInQuery(typed);
+      if (typedCity) {
+        place = { kind: "metro", id: typedCity.metro.id };
+        const rest = stripPlaceWords(typed, typedCity.words);
+        if (rest && !query) query = rest;
+      } else if (describeQuery(typed).onlyKind || !hits.length) {
+        // An activity, or a word the map could not place: it is what they want to do, not where.
+        if (!query) query = typed;
+      } else {
+        place = { kind: "near", place: hits[0] };
+      }
+    }
     const named = query ? metroInQuery(query) : null;
     if (named) {
       place = { kind: "metro", id: named.metro.id };
@@ -218,6 +240,14 @@ export function SearchSheet() {
       closeSheet();
     } else closeSheet();
   };
+
+  /**
+   * A phone screen is about 660 points tall. With four cards stacked on it the suggestion list under the box
+   * was 140 points, a row and a half, so picking anything meant scrolling a small box inside a scrolling sheet.
+   * While the guest is actually typing, the cards they have not reached yet step aside and the list gets the
+   * screen; they come back the moment the box is empty or a suggestion is taken.
+   */
+  const typing = (step === "where" && !!needle) || (step === "what" && !!whatRest);
 
   const item = (key: string, icon: ReactNode, title: string, sub: string, onClick: () => void, opts: { art?: boolean; pressed?: boolean; disabled?: boolean } = {}) => (
     <button type="button" key={key} className="airsitem" aria-pressed={opts.pressed} disabled={opts.disabled} onClick={onClick}>
@@ -257,8 +287,8 @@ export function SearchSheet() {
                 onKeyDown={(e) => {
                   if (e.key !== "Enter") return;
                   e.preventDefault();
-                  if (cities[0]) pickCity(cities[0].m.id);
-                  else if (activityTyped) moveToWhat();
+                  if (activityTyped) moveToWhat();
+                  else if (cities[0]) pickCity(cities[0].m.id);
                   else if (hits[0]) pickPlace({ kind: "near", place: hits[0] });
                   else setStep("what");
                 }}
@@ -284,12 +314,15 @@ export function SearchSheet() {
             <div className="airslist">
               {needle ? (
                 <>
+                  {/* Typed an activity: that row goes first, because the activity is what they said, not the city that brushed past it. */}
+                  {activityTyped ? item("act", <IcSearch size={20} />, activityTyped, "Search activities" + hereName, moveToWhat) : null}
                   {cities.map(({ m, n: k }) =>
                     item("m" + m.id, <IcPin size={20} />, m.name, m.region + ", " + (m.country === "CA" ? "Canada" : "United States") + " · " + k.toLocaleString() + " places", () => pickCity(m.id)),
                   )}
-                  {activityTyped ? item("act", <IcSearch size={20} />, activityTyped, "Search activities" + hereName, moveToWhat) : null}
-                  {hits.length ? <p className="airsgroup">Places on the map</p> : null}
-                  {hits.map((h) => item("p" + h.label + h.lat, <IcPin size={20} />, h.label, h.sub, () => pickPlace({ kind: "near", place: h })))}
+                  {/* A named activity is not a destination. The map has hamlets called Gun Range and Sauna, and
+                      offering them under what the guest typed sent them to an empty corner of Texas. */}
+                  {!activityTyped && hits.length ? <p className="airsgroup">Places on the map</p> : null}
+                  {!activityTyped ? hits.map((h) => item("p" + h.label + h.lat, <IcPin size={20} />, h.label, h.sub, () => pickPlace({ kind: "near", place: h }))) : null}
                   {!cities.length && !hits.length && !activityTyped ? <p className="airsgroup">Keep typing, or try a bigger town nearby.</p> : null}
                 </>
               ) : (
@@ -303,7 +336,7 @@ export function SearchSheet() {
               )}
             </div>
           </section>
-        ) : (
+        ) : typing ? null : (
           <button type="button" className="airscard folded" onClick={() => goStep("where")}>
             <span>Where</span>
             <b>{typedMetro ? metroLabel(typedMetro.metro.id) : placeName}</b>
@@ -388,7 +421,7 @@ export function SearchSheet() {
               )}
             </div>
           </section>
-        ) : (
+        ) : typing ? null : (
           <button type="button" className="airscard folded" onClick={() => goStep("what")}>
             <span>What</span>
             <b>{whatRest ? whatLabel(whatRest) : "Any activity"}</b>
@@ -419,7 +452,7 @@ export function SearchSheet() {
               </button>
             </div>
           </section>
-        ) : (
+        ) : typing ? null : (
           <button type="button" className="airscard folded" onClick={() => goStep("when")}>
             <span>When</span>
             <b>{whenName}</b>
@@ -445,7 +478,7 @@ export function SearchSheet() {
               </span>
             </div>
           </section>
-        ) : (
+        ) : typing ? null : (
           <button type="button" className="airscard folded" onClick={() => goStep("who")}>
             <span>Who</span>
             <b>{whoName}</b>

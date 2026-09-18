@@ -147,8 +147,16 @@ services:
         sync: false
       - key: OUTSET_EXTRACT_BUDGET_USD
         value: "8"
+      # Every paid call this worker can make, added up: model extraction plus both discovery ledgers. Raised from
+      # 20 to 60 on 18 September 2026 for the approved Google Maps pass, which is about $31 on its own and had no
+      # room under the old cap. The pass is on demand, never scheduled, and carries its own 32,000-request budget.
       - key: PAID_CAP_USD
-        value: "20"
+        value: "60"
+      # Google Maps discovery (Serper, SerpApi or SearchApi.io; the key's shape picks the provider). Comma
+      # separated. Paste the same value that is in backend/.env. Without it the `search` job refuses to run,
+      # which is the safe default: no key, no spend.
+      - key: SEARCHAPI_KEYS
+        sync: false
       - key: DB_SEED_URL
         sync: false
       # OUTSET_CHROME: leave unset; the Playwright install under ~/.cache/ms-playwright is found automatically.

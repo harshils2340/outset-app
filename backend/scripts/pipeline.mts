@@ -23,11 +23,15 @@ import { isLaptop } from "../src/scrape/guard.ts";
  *   npx tsx scripts/pipeline.mts                 run forever
  *   npx tsx scripts/pipeline.mts --dry           print the schedule and exit
  *   npx tsx scripts/pipeline.mts --once=sync     run one job and exit (status, collect, discover, structure,
- *                                                photos, hours, promo, screen, owners, sync)
+ *                                                photos, hours, promo, screen, owners, sync, search)
  *
- * Money: nothing here submits an extraction batch or calls a paid search. `collect` only stores batches that
- * were already paid for when they were submitted from the laptop. Any future job marked `spends` is skipped
- * once paidSpendUsd() reaches PAID_CAP_USD (same numbers as src/discover/aisearch.ts).
+ * Money: nothing scheduled here spends anything. `collect` only stores batches that were already paid for when
+ * they were submitted from the laptop. The one paid job, `search`, is on demand: it never runs on a schedule and
+ * only runs when somebody opens a shell on this worker and asks for it by name. Any job marked `spends` is
+ * skipped once paidSpendUsd() reaches PAID_CAP_USD (same numbers as src/discover/aisearch.ts), and carries its
+ * own request budget on top of that.
+ *
+ *   npx tsx scripts/pipeline.mts --once=search   the Google Maps pass, about $31 and three hours
  */
 
 const TZ = process.env.PIPELINE_TZ || "America/Toronto";
@@ -77,6 +81,13 @@ const JOBS: Job[] = [
   { name: "screen", at: "03:30", timeoutMs: 3 * HOUR, args: ["scripts/screen-covers.mts"], needsRepo: true, note: "drop map, logo, flyer and scanned-page covers and gallery photos" },
   { name: "owners", at: "04:00", timeoutMs: HOUR, args: ["src/index.ts", "owners", "2000", "8"], needsRepo: true, note: "owner names and contact pages" },
   { name: "sync", at: "05:00", timeoutMs: HOUR, args: ["src/index.ts", "sync"], needsRepo: true, note: "read-only catalog sync, commit and push public/ and src/data" },
+  /**
+   * Google Maps discovery over the whole taxonomy. On demand only: every answer is cached on the disk, so a
+   * second run of the same grid is free and finds nothing new, and the money is only worth spending when the
+   * term list or the city list grows. `--budget` is a hard ceiling in paid requests, so at Serper's $1 per
+   * thousand this job cannot bill more than about $32 however long it runs.
+   */
+  { name: "search", timeoutMs: 6 * HOUR, args: ["src/index.ts", "search", "--concurrency=4", "--budget=32000"], needsRepo: true, needsKey: "SEARCHAPI_KEYS", spends: true, note: "Google Maps listings for every category in every city; paid, capped, cached" },
 ];
 
 type JobState = { lastStart?: string; lastEnd?: string; lastResult?: string; lastExitCode?: number | null; lastSeconds?: number; lastDay?: string; lastLine?: string };
@@ -109,7 +120,7 @@ function localNow(): { day: string; hhmm: string; minutes: number } {
   return { day: `${get("year")}-${get("month")}-${get("day")}`, hhmm: `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`, minutes: h * 60 + m };
 }
 
-/** Same arithmetic as paidSpendUsd() in src/discover/aisearch.ts: web-search ledger plus the extract_spend table. */
+/** Same arithmetic as paidSpendUsd() in src/discover/aisearch.ts: both discovery ledgers plus the extract_spend table. */
 function paidSpend(): { discovery: number; extraction: number; total: number } {
   let discovery = 0;
   try {
@@ -117,6 +128,15 @@ function paidSpend(): { discovery: number; extraction: number; total: number } {
     discovery = lines.length * 0.025 + lines.reduce((n, l) => n + Number(l.split("\t")[3] || 0), 0) * 2e-6;
   } catch {
     /* no ledger */
+  }
+  // Google Maps discovery, one line per billed request, priced by the provider that served it.
+  try {
+    const per1k: Record<string, number> = { serper: 1.0, serpapi: 7.25, searchapi: 2.5 };
+    for (const line of readFileSync(join(REPO_DIR, "backend/data/searchapi-ledger.txt"), "utf8").split("\n")) {
+      if (line) discovery += (per1k[line.split("\t")[1]] ?? per1k.searchapi) / 1000;
+    }
+  } catch {
+    /* no Maps ledger */
   }
   let extraction = 0;
   if (existsSync(DB_PATH)) {

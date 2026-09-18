@@ -73,13 +73,27 @@ export const SEARCH_TERMS: SearchTerm[] = [
   ...t("gymnastics", "gymnastics open gym", "gymnastics center"),
   ...t("venue", "party venue", "event venue"),
   ...t("billiards", "pool hall", "billiards"),
+  /**
+   * Added 18 September 2026, after Silverdale Gun Club in West Lincoln, Ontario turned out to be missing from
+   * Outset and from OpenStreetMap alike. Each of these is a phrasing guests use on Google that no term above
+   * reaches, and each one maps to a category the catalog already has: a club rather than a "range", the indoor
+   * and simulator forms of a sport, and the places filed under a word we never asked for. About $0.23 a term.
+   */
+  ...t("range", "gun club"),
+  ...t("skydive", "indoor skydiving"),
+  ...t("golf", "golf simulator"),
+  ...t("arcade", "vr arcade"),
+  ...t("zipline", "ropes course"),
+  ...t("spa", "hot springs"),
+  ...t("zoo", "petting zoo"),
+  ...t("icerink", "curling club"),
   // Food and drink
   ...t("brewery", "brewery", "brewery tour"),
   ...t("winery", "winery", "wine tasting"),
   ...t("distillery", "distillery", "distillery tour"),
   ...t("cooking", "cooking class", "cooking classes", "cooking school"),
   // Wellness and classes
-  ...t("spa", "day spa", "spa", "massage spa"),
+  ...t("spa", "day spa", "spa"),
   ...t("sauna", "sauna bathhouse", "sauna"),
   ...t("yoga", "yoga studio", "yoga classes"),
   ...t("dance", "dance classes", "dance studio"),
