@@ -14,7 +14,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { readFileSync, readdirSync } from "node:fs";
 
-import { splitPolicies } from "../listingDerive";
+import { bringLine, splitPolicies } from "../listingDerive";
 
 const dir = new URL("../../../public/o/", import.meta.url);
 type Detail = { id: string; policies?: string[]; bring?: string[]; cancellation?: string };
@@ -91,4 +91,36 @@ test("neither surface heads other policies as a cancellation policy", () => {
     assert.doesNotMatch(src, /filter\(\(l\) => !\/cancel\|refund\|waiver\|liabilit\/i\.test\(l\)\)/, name + " keeps no copy of the old filter");
     assert.match(src, /otherPolicies\.length \? "Policies" : "Cancellation policy"/, name + " names the column after what is in it");
   }
+});
+
+/* ---------- what to bring ---------- */
+
+test("an acronym keeps its capitals when the page says to bring it", () => {
+  assert.equal(bringLine("ID for age verification"), "Bring ID for age verification"); // o-averybrewing-com
+  assert.equal(bringLine("BYOB allowed with reservation for events"), "Bring BYOB allowed with reservation for events"); // o-agawambowl-com
+  assert.equal(bringLine("US Coast Guard approved life vest if bringing own"), "Bring US Coast Guard approved life vest if bringing own"); // o-adventureisland-com
+  assert.equal(bringLine("SPF apparel and hat"), "Bring SPF apparel and hat"); // o-biloxideepsea-com
+});
+
+test("ordinary prose still reads as one sentence", () => {
+  assert.equal(bringLine("Water shoes and a towel"), "Bring water shoes and a towel");
+  assert.equal(bringLine("Closed-toe shoes"), "Bring closed-toe shoes");
+  assert.equal(bringLine("your own fishing poles"), "Bring your own fishing poles");
+});
+
+test("every bring line the catalog ships keeps the letters the shop typed", () => {
+  let repaired = 0;
+  for (const d of details()) {
+    for (const b of d.bring || []) {
+      const line = bringLine(b);
+      assert.ok(line.startsWith("Bring "), d.id);
+      const rest = line.slice("Bring ".length);
+      const before = b.charAt(0).toLowerCase() + b.slice(1); // what the page printed before
+      if (rest !== before) {
+        repaired++;
+        assert.equal(rest, b, d.id + " leaves " + b + " alone");
+      }
+    }
+  }
+  assert.ok(repaired > 100, "bring lines the old rule mangled: " + repaired);
 });

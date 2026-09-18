@@ -40,6 +40,15 @@ export function splitPolicies(lines: string[]): { cancel: string[]; other: strin
   return { cancel, other };
 }
 
+/**
+ * One "what to bring" line as the "Who can go" column reads it. The first letter is only lowered when the word is
+ * ordinary prose: "ID for check-in" was printed as "Bring iD for check-in" on 170 lines across 140 listings, and
+ * "BYOB allowed" as "Bring bYOB allowed". This is the rule Otto's own bring answer already used.
+ */
+export function bringLine(text: string): string {
+  return "Bring " + (/^[A-Z][a-z]/.test(text) ? text.charAt(0).toLowerCase() + text.slice(1) : text);
+}
+
 /** Minimum age from lines like "Must be 18+", "Minimum age 8", "ages 6 and up". */
 export function minAge(lines: string[]): number | null {
   for (const l of lines) {

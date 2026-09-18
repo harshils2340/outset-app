@@ -11,7 +11,7 @@ import { addressLine, bookingPaused, contactFor, fmtHours, fmtPhone, fromPrice, 
 import { DAYS, fmtDate, fmtReviews, fmtTime, money, priceWith, reviewsLine } from "../../lib/format";
 import { srcSet, thumb } from "../../lib/images";
 import { embedAutoplay, isGif, listingMedia, photoCandidates, probePhotos, type Media } from "../../lib/media";
-import { cleanDesc, durationLabel, groupCap as readGroupCap, minAge, splitPolicies } from "../../lib/listingDerive";
+import { bringLine, cleanDesc, durationLabel, groupCap as readGroupCap, minAge, splitPolicies } from "../../lib/listingDerive";
 import { freeCancelBadge } from "../../lib/cancellation";
 import { bookableStart, clockIn, hourLines, itemOpenState, itemWeek, zoneFor } from "../../lib/openNow";
 import { noStartTimesNote, startTimesOn } from "../../lib/startTimes";
@@ -1170,7 +1170,7 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
   const highlightRows = rows.slice(0, 3);
 
   // Things to know, Airbnb's three columns. A column with nothing stated stays out.
-  const rules = [...requirements, ...(item.bring || []).map((b) => "Bring " + b.charAt(0).toLowerCase() + b.slice(1)), ...(item.groupInfo || [])];
+  const rules = [...requirements, ...(item.bring || []).map(bringLine), ...(item.groupInfo || [])];
   const safety = [...(age ? ["Minimum age " + age] : []), ...waiverLines];
   if (item.waiverUrl && !safety.some((l) => /waiver/i.test(l))) safety.push("Waiver to sign before you arrive");
   // The short free-cancellation line and the full policy are often the same sentence, one with a period and one
