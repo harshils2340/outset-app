@@ -1602,6 +1602,71 @@ rehearsal 53 of 53 on the tree that is pushed, run on a local Postgres with TLS 
   on the page it opens, Arizona still moves on the Navajo Nation, `groupCap` still counts no players or
   anglers, 18,056 listings still draw the generic cover, and no workflow runs `npm test`.
 
+## 18 September 2026, twenty-sixth run (08:20 to 09:45 UTC)
+
+**Checked, and why.** Coverage named two things no run had read, both of them left over from the run before
+it, which read the phone and the address on a shop's contact block and stopped there: the email address on
+file for a claimed shop, and the hours that block carries. Both are the shop's own facts, both are printed or
+acted on without a single test, and the hours turned out to be read twice over by two different parsers. The
+type checks and both unit suites ran first; the full rehearsal was skipped as a look-see, because the last
+entry was green and nothing had landed since, and then run at the end, because all four fixes are in code it
+covers.
+
+**Found and fixed.** Four, in the order a shop meets them.
+
+- **A karting track that runs 7pm to 9pm was handed a dashboard opening at 7 in the morning** (`a6b7f3ac2`).
+  The week a claimed shop starts on had an hour parser of its own, and on **230 of the 4,482** shops whose
+  crawled hours we hold it disagreed with the reader the listing page, the "Open now" line, the booking sheet
+  and Otto all share. The pm at the end of a range was never shared with its start, so "Wednesday - Friday:
+  7-9:00PM" opened at 07:00 and "Monday to Friday 1-5 PM" at 01:00, on 46 shops; 163 got a day whose close
+  landed at or before its open, one of them opening at 30 o'clock; the 88 publishing OpenStreetMap syntax read
+  as nothing at all; and a brewery's happy hour was taken for its trading hours. The prefill also read only
+  the synced contact record, so **10,508** shops whose published hours a guest could already read on their
+  listing were handed an invented 9 to 5 the day they claimed. One reader now, and the claim starts on the
+  week `itemWeek` gives the page.
+- **A pilates studio published five days of hours and the app read one** (`869614f79`). Both readers of
+  OpenStreetMap's syntax, the app's and the sync's twin, split a week on the semicolon alone. A rule is also
+  separated by "||" and by a comma once the rule before it has stated its hours. Five of the 112 listings that
+  publish this way lost days: one day out of five at the pilates studio, no Sunday at a gallery, no weekend at
+  a barre studio, on the cards, the pages, the booking sheet and in Otto alike.
+- **A gallery told guests its hours were `Fr,Sa 12:00-19:00; Su off; PH off`** (`681574abe`). The Hours block
+  printed whatever the crawl stored. Of the **14,812** listings that show one, 126 printed that syntax, 226
+  the quote marks around "by appointment", 361 the punctuation swept up in front of the hours (") (6am-4pm",
+  "& Location 8am-8pm", a calendar emoji), 29 a zero-width space, one of them inside "Monday to Friday", and
+  21 ran a day onto the end of the time before it: "Sun - Thur: 11am - 11pmFri - Sat: 11am - 1am". The "Plan
+  your visit" box on a walk-in listing printed the contact record with no tidying at all and never the
+  listing's own hours. `src/lib/hoursText.ts` is the one reader for all three surfaces. Shouted hours stay
+  shouted: a shop that shouts is still stating its hours.
+- **A charter captain's own claim link was addressed to i...@********ng.com** (`036007020`). The address on
+  file is how an owner proves a listing is theirs. Of the **14,746** listings that carry one, 96 carry
+  something nobody could write to: 32 still percent-encoded because the site hid them from scrapers, 42 a site
+  template's own inbox ("info@mysite.com"), the rest markup, an IP address, a masked name, a zero-width space
+  or a trailing dot. For **12** of them the address we hold is at free mail, so the domain rule cannot vouch
+  for the owner either and they cannot claim at all. `src/lib/email.ts` decodes the hidden ones and refuses
+  the rest, and the crawl, the sync, the claim index and the dashboard prefill read it the same way.
+
+**Green after the fixes.** 400 guest tests and 226 backend tests (22 new), both projects type-check clean,
+rehearsal 53 of 53 on the tree that is pushed, run on a local Postgres with TLS and the Chromium on disk.
+
+**Needs Harshil.**
+
+- **The hours fixes reach guests without a sync; the email one mostly does not.** The app reads the shipped
+  catalog through the new readers, so tonight's listing pages and any claim made tonight are already right.
+  The stored facts change when `npm run sync` next runs on Render, and that is also when the 96 broken
+  addresses leave `claim-index.json` and the 42 template inboxes stop being hashed. Until then those owners
+  still meet the old hint on the claim screen.
+- **6 listings publish hours in a dialect no reader speaks**: nth-weekday and month rules, "Su[2] 13:00-15:30;
+  Jan off; Feb off" and "May Mo[-1] - Oct Mo[2]". They print as written, which is honest and ugly. Whether a
+  seasonal or nth-weekday rule is worth reading out is a product call.
+- **12 operators cannot claim their own listing until the next sync** (o-majesticmountainmarina-com,
+  o-lostcoastsportfishing-com, o-fishinnaples-com and nine more): the address on file is at gmail, msn or aol
+  and is stored wrong, so neither the hash nor the domain rule can let them in. If one of them writes in
+  before the sync, the test bypass is the way through.
+- The earlier runs' calls stand: everything needing a real Stripe key is untouched, Home's three tabs are
+  still `role="tab"` with nothing to control, 6,513 rated listings show a rating on their card and none on the
+  page it opens, Arizona still moves on the Navajo Nation, `groupCap` still counts no players or anglers,
+  18,056 listings still draw the generic cover, and no workflow runs `npm test`.
+
 ## Coverage
 
 **Verified so far.** Booking validation and odd input on every route that takes it. The money split,
@@ -1775,9 +1840,19 @@ never decoded, a vanity number, a template placeholder, a number with no country
 every one of the 46,516 that publish one, against the town and the state printed beside it and the Maps query
 built from both; the postcode; and the state a listing's area line names, as a code or spelled out.
 
+The hours a shop's contact block carries, on every surface that prints them and in both readers that parse
+them, over all 14,812 listings that show an Hours block: OpenStreetMap's own syntax, the quote marks around
+"by appointment", the punctuation and the invisible characters the crawl swept up with the hours, a day run
+onto the end of the time before it, a happy hour taken for a trading hour, and the rules a week is split
+into. The week a claim starts a dashboard on, over all 4,482 shops whose crawled hours we hold, against the
+week the listing page was already showing: an evening range read as a morning one, a close before its own
+open, a week published in a syntax the prefill could not read, and the 10,508 shops whose published hours the
+prefill never looked at. The email address on file for a shop, over all 14,746 that carry one: what the claim
+gate hashes, what the claim screen shows a masked hint of and what the dashboard prefills as the inbox
+booking alerts go to.
+
 **Not yet checked.** Which town the 64 listings whose street names one town and whose city names another are
-actually in, as a supply question. The email address on a claimed shop's own listing, and the hours the
-contact block carries, neither of which any run has read. Whether the 108 archive rows that carried a real admission tier should keep that price
+actually in, as a supply question. Whether the 108 archive rows that carried a real admission tier should keep that price
 under a name a re-crawl reads properly, and whether "Buy Tickets" (338 rows) and "Schedule a tour" (123)
 should be renamed. The 2 listings still showing Windows-1252 mojibake (an earlier run counted 17; 2 is what
 actually ships). Anything that needs a real Stripe key: the embedded card form itself mounted by
@@ -1815,4 +1890,9 @@ policies, so the "Things to know" headings are checked in a browser and not only
 without waiting for a sync. Whether the 51 kinds of waves two and three should have a scene of their own, on
 the 18,056 listings with no cover that draw the generic one instead. Whether `inferCategory` should read a
 bare "charter" as fishing, and whether its last resort should still be jet ski. What a card, a rail and a
-search result look like for a kind with no scene and no photo, driven in a browser rather than counted.
+search result look like for a kind with no scene and no photo, driven in a browser rather than counted. Whether the 6 listings publishing an nth-weekday or month rule ("Su[2] 13:00-15:30; Jan off; Feb off",
+"May Mo[-1] - Oct Mo[2]") should have those rules read out to a guest, or the line dropped: they print as
+written today. Whether the 12 operators whose published address is at free mail and stored wrong need a way
+in before the next sync rewrites `claim-index.json`. Whether the sync should drop an hours line that is only
+a heading ("Schedule Mon: 9:00 AM - 3:00 PM"). Whether a claimed shop's own email and website should ever
+appear on the guest page, which they deliberately do not.
