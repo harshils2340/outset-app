@@ -37,8 +37,12 @@ export function EmbeddedCheckout({ secret }: { secret: string }) {
     closeBtn.current?.focus();
     const FOCUSABLE = 'button:not([disabled]), iframe, a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
     const onKey = (e: KeyboardEvent) => {
+      // Escape is stopped here, like the listing's own modals: the app's window-level Escape closes whatever
+      // sheet is on top, and the listing is that sheet, so one Escape used to take down the form and the listing
+      // under it, dropping the guest on the home page with the booking box gone.
       if (e.key === "Escape") {
         e.preventDefault();
+        e.stopPropagation();
         cancel.current();
         return;
       }
@@ -57,14 +61,19 @@ export function EmbeddedCheckout({ secret }: { secret: string }) {
       }
     };
     document.addEventListener("keydown", onKey, true);
-    // The listing behind must not scroll under the form, on a wheel or a thumb.
-    const prev = { overflow: document.body.style.overflow, touch: document.body.style.touchAction };
+    // The listing behind must not scroll under the form, on a wheel or a thumb. Locked on <html> as well as
+    // <body>: app.css clips html's overflow-x, and once the root's overflow is not plain `visible` the viewport
+    // scrolls by the root's values, not body's, so body alone left the page rolling under the form.
+    const root = document.documentElement;
+    const prev = { overflow: document.body.style.overflow, touch: document.body.style.touchAction, root: root.style.overflow };
     document.body.style.overflow = "hidden";
     document.body.style.touchAction = "none";
+    root.style.overflow = "hidden";
     return () => {
       document.removeEventListener("keydown", onKey, true);
       document.body.style.overflow = prev.overflow;
       document.body.style.touchAction = prev.touch;
+      root.style.overflow = prev.root;
     };
   }, []);
   useEffect(() => {

@@ -41,3 +41,17 @@ test("the two states that replace the card form announce themselves", () => {
 test("the close button says what closing costs", () => {
   assert.match(SRC, /aria-label="Close without paying"/);
 });
+
+test("Escape closes the form only, not the listing under it", () => {
+  // AppProvider's window-level Escape closes whatever sheet is on top, and the listing is that sheet. Without
+  // this stop, one Escape took down both and left the guest on the home page with the booking box gone.
+  const esc = SRC.slice(SRC.indexOf('e.key === "Escape"'));
+  assert.match(esc.slice(0, 600), /e\.stopPropagation\(\)/);
+});
+
+test("the page behind is locked on the root, not only on body", () => {
+  // app.css clips html's overflow-x, so the viewport scrolls by html's overflow values; body's `hidden` alone
+  // let a wheel roll the listing under the form.
+  assert.match(SRC, /root\.style\.overflow = "hidden"/);
+  assert.match(SRC, /root\.style\.overflow = prev\.root/);
+});
