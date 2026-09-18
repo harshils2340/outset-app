@@ -22,7 +22,7 @@ import { Mark } from "../layout/Mark";
 import { Markup } from "../Markup";
 import { AdminSiteLink, liteDealTitle, tidyDuration } from "./WebListing";
 import { freeCancelBadge } from "../../lib/cancellation";
-import { atPlace } from "../explore/feed";
+import { withinDrive, kmToPlace, NEAR_RADIUS_KM, DRIVE_RADIUS_KM } from "../explore/feed";
 
 
 /** "1 place", "2,418 places". */
@@ -895,7 +895,8 @@ export function WebHome({ onOpenApp, onOperators }: { onOpenApp: () => void; onO
   const chipOk = (u: Unclaimed) => !kindChip || u.art === kindChip;
   // A picked state holds every listing in it; a picked point holds what is within the radius. Shared with the
   // phone feed in `explore/feed.ts`, because the two used to disagree for the same guest in the same session.
-  const inNear = atPlace;
+  // The home pool reaches as far as a day trip; the rows on it are cut to what is truly near (see nearPool).
+  const inNear = withinDrive;
   const pillRef = useRef<HTMLDivElement>(null);
   const whereInput = useRef<HTMLInputElement>(null);
   const whatInput = useRef<HTMLInputElement>(null);
@@ -1050,6 +1051,11 @@ export function WebHome({ onOpenApp, onOperators }: { onOpenApp: () => void; onO
     return base;
   }, [found, state.metroId, typedMetro, state.catalogVersion, near, kindChip]);
 
+  // A picked point: the rows show only what is truly near; the ring between near and a day trip is one row of its own.
+  const nearPoint = !!near && !near.region;
+  const nearPool = useMemo(() => (nearPoint ? pool.filter((u) => kmToPlace(u, near!) <= NEAR_RADIUS_KM) : pool), [pool, near, nearPoint]);
+  const drivePool = useMemo(() => (nearPoint ? pool.filter((u) => { const km = kmToPlace(u, near!); return km > NEAR_RADIUS_KM && km <= DRIVE_RADIUS_KM; }) : []), [pool, near, nearPoint]);
+
   // How many nearby places are listed but have no photo yet, so the page can say so instead of hiding the gap.
   const waiting = useMemo(() => {
     if (found) return 0;
@@ -1094,7 +1100,7 @@ export function WebHome({ onOpenApp, onOperators }: { onOpenApp: () => void; onO
   // in the mixed order above; the rest are links so the page is not sixty rails long.
   const { rails, moreKinds } = useMemo(() => {
     const count = new Map<ArtKind, { n: number; covers: number }>();
-    for (const u of pool) {
+    for (const u of nearPool) {
       if (!inCat(u, state.cat)) continue;
       const c = count.get(u.art) || { n: 0, covers: 0 };
       c.n++;
@@ -1110,7 +1116,7 @@ export function WebHome({ onOpenApp, onOperators }: { onOpenApp: () => void; onO
       rails: present.filter((r) => top.has(r.art)),
       moreKinds: present.filter((r) => !top.has(r.art)).map((r) => ({ ...r, n: count.get(r.art)!.n })),
     };
-  }, [pool, state.cat]);
+  }, [nearPool, state.cat]);
   const openNow = useNearNow(near, state.catalogVersion);
   // Photographed places per city, for the Where menu's suggestions.
   const metroCounts = useMemo(() => {
@@ -1502,14 +1508,18 @@ export function WebHome({ onOpenApp, onOperators }: { onOpenApp: () => void; onO
         ) : null}
 
         {showRails && openNow.length ? (
-          <Rail title={"Open right now near " + near!.label} note="From their published hours" items={openNow} onOpen={openRequest} near={near} eager />
+          <Rail title={"Open right now near " + nearName(near!)} note="From their published hours" items={openNow} onOpen={openRequest} near={near} eager />
         ) : null}
 
         {showRails ? rails.map((r, i) => {
-          const items = rankForRail(pool.filter((u) => u.art === r.art), activeCenter);
-          const title = titleCase(near ? `${r.title} near ${near.label}` : activeMetro ? `${r.title} in ${activeMetro.name}` : `Popular ${r.title}`);
+          const items = rankForRail(nearPool.filter((u) => u.art === r.art), activeCenter);
+          // "near you", not "near Near Me": the place's own name stays out of title case.
+          const title = near ? titleCase(r.title) + " near " + nearName(near) : titleCase(activeMetro ? `${r.title} in ${activeMetro.name}` : `Popular ${r.title}`);
           return <Rail key={r.art} title={title} items={items} onOpen={openRequest} near={near} eager={i < 2} onShowAll={() => { setQ(kindQuery(r.art)); window.scrollTo({ top: 0 }); }} />;
         }) : null}
+        {showRails && nearPoint && drivePool.length >= 4 ? (
+          <Rail title={"Worth the drive from " + nearName(near!)} note={"Between " + NEAR_RADIUS_KM + " and " + DRIVE_RADIUS_KM + " km away, a day out rather than an afternoon"} items={rankForRail(drivePool.filter((u) => inCat(u, state.cat)), activeCenter)} onOpen={openRequest} near={near} />
+        ) : null}
 
         {showRails && !rails.length && !openNow.length ? (
           <div className="ah-empty">
@@ -1521,7 +1531,7 @@ export function WebHome({ onOpenApp, onOperators }: { onOpenApp: () => void; onO
 
         {showRails && moreKinds.length ? (
           <section className="ah-inspire" aria-labelledby="ah-more-kinds">
-            <h2 id="ah-more-kinds">More kinds{near ? ` near ${near.label}` : metro ? ` in ${metro.name}` : ""}</h2>
+            <h2 id="ah-more-kinds">More kinds{near ? ` near ${nearName(near)}` : metro ? ` in ${metro.name}` : ""}</h2>
             <div className="ah-inspire-grid">
               {moreKinds.map((k) => (
                 <button type="button" key={k.art} onClick={() => { setQ(kindQuery(k.art)); window.scrollTo({ top: 0 }); }}>

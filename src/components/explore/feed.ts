@@ -9,7 +9,14 @@ import { nearestLocation, type Place } from "../../lib/places";
 import { passesFilters, type FeedFilters } from "./prefs";
 
 /** An hour of driving. Wide enough that a small town still has something, tight enough to feel local. */
-export const NEAR_RADIUS_KM = 80;
+/**
+ * "Near" is a distance a guest would actually go for an afternoon: 40 km is under an hour's drive in the places
+ * we list. A 78 km fishing charter is a day trip, and it used to sit in the "near you" row as if it were around
+ * the corner. Up to 100 km still counts as reachable and is shown, but as "worth the drive", and search results
+ * keep that wider circle so a guest who types the thing they want can still find it.
+ */
+export const NEAR_RADIUS_KM = 40;
+export const DRIVE_RADIUS_KM = 100;
 
 /**
  * Is this listing at the place the guest picked? A picked state or province holds every listing in it; a
@@ -20,9 +27,14 @@ export const NEAR_RADIUS_KM = 80;
  * for the same guest in the same session: a picked province gave the desktop all 224 of Saskatchewan and the
  * phone the 8 within an hour of the middle of it, each card reading "SK, 16 km away".
  */
-export function atPlace(u: Unclaimed, near: Place): boolean {
+export function atPlace(u: Unclaimed, near: Place, radiusKm = NEAR_RADIUS_KM): boolean {
   if (near.region) return regionOfArea(u.area) === near.region;
-  return kmToPlace(u, near) <= NEAR_RADIUS_KM;
+  return kmToPlace(u, near) <= radiusKm;
+}
+
+/** Reachable for a day out: within DRIVE_RADIUS_KM of a picked point, or anywhere in a picked region. */
+export function withinDrive(u: Unclaimed, near: Place): boolean {
+  return atPlace(u, near, DRIVE_RADIUS_KM);
 }
 
 /** How far the guest is from this listing's nearest venue. Infinity when it has no pin at all. */
