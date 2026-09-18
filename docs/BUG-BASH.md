@@ -1544,6 +1544,64 @@ rehearsal 53 of 53 on the tree that is pushed.
   and no workflow runs `npm test`.
 
 
+## 18 September 2026, twenty-fifth run (08:15 to 09:20 UTC)
+
+**Checked, and why.** Coverage had the listing page, the booking box, the menu, the money, the hours, the
+prose, the reviews and the kind a listing is filed under all verified, and never once the contact block: the
+number a guest taps to call the shop and the address under "Where you'll be". Both are printed on every
+listing page, both are what a guest falls back on when they want a person, and neither has a single test. So
+this run read the phone and the address of all 59,162 shipped listings. The type checks and both unit suites
+ran at the start; the full rehearsal was skipped as a look-see, because the last entry was green and nothing
+had landed since, and then run twice at the end, because these fixes are in code it covers.
+
+**Found and fixed.** Four, all of them a guest reading a real fact of a real shop and getting a wrong one.
+
+- **A winery told guests to call 1-800-GAMBLER, and 240 listings dialled two numbers at once** (`aab1b42ae`).
+  The scrape's normaliser kept anything it could not read verbatim, and the app dialled it by stripping
+  everything but digits and a plus: 170 listings publishing two or three numbers in one field opened
+  `tel:+13047256399+17033092130`, 46 with an extension dialled the extension onto the end of the number, 36
+  whose `tel:` link was never decoded turned `%20` into the digits 2 and 0, and 18 asked a guest to ring
+  something that is not a number: an unrendered template placeholder, half a number, and o-clautiere-com, a
+  winery whose published phone is the gambling helpline. **258 of the 36,698 listings with a phone.** One
+  reader now, `src/lib/phone.ts`, used by the page, by Otto, by the profile a claim prefills, by the scrape
+  that stores the fact and by the sync that publishes it. No number to ring means no call offered at all. A
+  vanity number stays unread on purpose: a keypad would spell out "(603) 257-BOAT" and "1-800-GAMBLER" alike.
+- **A glass studio in Sarasota told guests to come to Sarasota, Sarasota, FL** (`41c1eb572`). Of the 46,516
+  listings that publish a street, **730 do not publish a street**: 533 repeat the town the next line already
+  names, 114 are a bare house number or suite ("3615, Wharton, TX", and one museum's whole address is "420,
+  OH"), 64 hold a town and a state, on most of them a different town from the city beside it ("Agawam, MA,
+  Boston, MA"), and 19 carry the shop's own phone number in front of the road name or a doubled comma. Every
+  one is also the text behind "Get directions". `src/lib/address.ts` is the one reader; the line falls back to
+  the town and state the rest of the page already says, and the guest's confirmation email reads the same rule.
+- **Forty-seven listings said "West Union, Ohio", and every reader of a state wants OH** (`dd6b0f1e0`). The
+  sync builds the area line from the operator's own region, and 47 publish the state spelled out.
+  `regionOfArea` answers nothing for a name, so those listings lose the clock their hours are read on, the
+  currency a booking is charged in, the state row a search offers and the page it opens. Oregon, Utah, Nevada
+  and Arizona are among them. A name the app knows becomes its code; anything else stays as published.
+- **A Baja tour's address ended in "xico"** (`a33fb92c6`). Thirty postal fields hold something no letter could
+  be addressed with: two codes joined by a semicolon, a whole street address, half a code ("Canada N0G"), and
+  four where the crawl kept the tail of a word. One postcode prints now, or none.
+
+**Green after the fixes.** 379 guest tests and 225 backend tests (22 new), both projects type-check clean,
+rehearsal 53 of 53 on the tree that is pushed, run on a local Postgres with TLS and the Chromium on disk.
+
+**Needs Harshil.**
+
+- **The phone and address fixes reach guests without a sync; the region and postcode ones do not.** The app
+  reads the shipped catalog through the new readers, so tonight's listing pages are already right. The stored
+  facts stay as they are in `public/catalog.json` and `public/o/*.json` until `npm run sync` runs on Render,
+  which is also when the 47 area lines and the 30 postcodes change.
+- **64 listings name one town in their street and another as their city**, so we place them in the second:
+  o-agawambowl-com is filed under Boston with "Agawam, MA" in its address, o-chaosrooms-com under Asheville
+  with "Charlotte, NC". Dropping the street is right either way, but which town the shop is actually in is a
+  supply question, not a display one.
+- **8 listings publish a phone outside North America** (a London brewery, a Spanish tour operator). The ones
+  with a country code still work; "02073971010" with none cannot be placed and now offers no call.
+- The earlier runs' calls stand: everything needing a real Stripe key is untouched, Home's three tabs are
+  still `role="tab"` with nothing to control, 6,513 rated listings show a star rating on their card and none
+  on the page it opens, Arizona still moves on the Navajo Nation, `groupCap` still counts no players or
+  anglers, 18,056 listings still draw the generic cover, and no workflow runs `npm test`.
+
 ## Coverage
 
 **Verified so far.** Booking validation and odd input on every route that takes it. The money split,
@@ -1711,7 +1769,15 @@ the two words that are branding rather than an activity; the same words as the e
 by; and whether the tab a listing browses under is the one its own chip sits in. That every kind the catalog
 ships has a label, an alias list and a place in the app's own `ArtKind`.
 
-**Not yet checked.** Whether the 108 archive rows that carried a real admission tier should keep that price
+The contact block a guest reads, over all 59,162 shipped listings: the phone on every one of the 36,698 that
+publish one, against the link the page builds from it (two numbers in one field, an extension, a `tel:` link
+never decoded, a vanity number, a template placeholder, a number with no country we can place); the street on
+every one of the 46,516 that publish one, against the town and the state printed beside it and the Maps query
+built from both; the postcode; and the state a listing's area line names, as a code or spelled out.
+
+**Not yet checked.** Which town the 64 listings whose street names one town and whose city names another are
+actually in, as a supply question. The email address on a claimed shop's own listing, and the hours the
+contact block carries, neither of which any run has read. Whether the 108 archive rows that carried a real admission tier should keep that price
 under a name a re-crawl reads properly, and whether "Buy Tickets" (338 rows) and "Schedule a tour" (123)
 should be renamed. The 2 listings still showing Windows-1252 mojibake (an earlier run counted 17; 2 is what
 actually ships). Anything that needs a real Stripe key: the embedded card form itself mounted by
