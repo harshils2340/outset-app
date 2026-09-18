@@ -63,7 +63,7 @@ async function sendSmtp(
       to,
       subject: msg.subject,
       text: msg.text,
-      html: msg.html,
+      ...(msg.html ? { html: msg.html } : {}),
       replyTo: msg.replyTo || process.env.MAIL_REPLY_TO || "hello@onoutset.com",
     });
     return { sent: true, id: String(info.messageId || "smtp") };
