@@ -1734,6 +1734,72 @@ the tree that is pushed, on a local Postgres with TLS and the Chromium on disk.
   page it opens, Arizona still moves on the Navajo Nation, `groupCap` still counts no players or anglers,
   18,056 listings still draw the generic cover, and no workflow runs `npm test`.
 
+## 18 September 2026, twenty-eighth run (11:20 to 12:45 UTC)
+
+**Checked.** The 1,481 static landing pages under `public/p` and the generator behind them,
+`backend/src/sync/pages.ts`, which no earlier run has opened: they are not in the Coverage list at all and
+they are the first thing a guest meets when Google sends them here, before the app has loaded. Read the
+generator, then swept all 1,481 shipped pages and regenerated the whole set from the shipped catalog to check
+the fixes, plus the six worst pages at 400px in the Chromium on disk.
+
+**Skipped the rehearsal on purpose.** The twenty-seventh entry records it green at 53 of 53, and the only
+commit since is that entry itself, so nothing it covers has moved. Type checks and `npm test` instead, and
+the hour went on the pages. Worth repeating from an earlier run: `npx tsc --noEmit -p .` at the root checks
+nothing at all, because the root `tsconfig.json` is `"files": []` plus two references. `-p tsconfig.app.json`
+is the one that checks the app, and it is clean.
+
+**Found and fixed.**
+
+- **2,787 cards on those pages were a grey square, a name and "Price on request"** (`1d9abcf74`). The catalog
+  marks a listing `thin` when there is nothing on it a guest can act on, and 17,155 of the 59,163 shipped
+  listings are thin. Browse and the rails leave them out on purpose. The pages took every listing, so thin
+  ones filled 866 of the 1,481 pages, and on six of them (surf in Key West, spas in Lake Tahoe, four more)
+  every single card was empty. Every number on every page counted them too: the lede, "Outset lists 35 escape
+  rooms around Tampa Bay", the city pills, the index and the JSON-LD `numberOfItems`. 144 metro pages existed
+  only because empty listings pushed them over the three-listing bar.
+- **"Escape rooms in Tampa Bay, Florida" opened on Anna Maria Beach Resort™, Anna Maria Island Inn ™ and AMI
+  Locals** (`e29b0ad60`). 1,624 listings carry `kindUnconfirmed`, meaning nothing in the listing's own text
+  confirms its kind and it was guessed off the business name. The rails already put every one of them last.
+  The pages published the guess as a fact, to a search engine, in an h1, a meta description, a count and a
+  schema.org ItemList, under the business's own trademark. 239 pages held one; 17 existed only because of
+  them, paintball in Tampa Bay among them with five listings and one paintball field.
+- **387 photos were a grey square because the shop serves them over http** (`8bfca4d99`). The pages hotlinked
+  the operator's own image. 1,087 of the 39,044 covers we hold are `http://` addresses, because that is what
+  the operator's site serves, and these pages are https: the browser refuses the image, `onerror` takes the
+  tag out, and the card loses its photo. 306 of the 1,481 pages had at least one, and the listings it hit are
+  the ones that have a photo, so it cost the pages their best cards. They go through the same wsrv.nl proxy
+  the app's cards use now, with a 1x and a 2x candidate, which also stops a page pulling 24 multi-megabyte
+  originals to fill 250 px tiles.
+- **A skydive centre's only photo was the bot check its own site served our crawler** (`0d9f8969e`). Ten
+  listings have a CAPTCHA as their cover and eleven more carry one in the gallery: a site running BotDetect
+  answers a crawler with a challenge image, whose address ends in no file name for any name filter to catch
+  while `get=image` in its query satisfied the gate that asks whether an address looks like a picture. The
+  address is bound to the crawler's IP and a timestamp, so it answers nothing for a guest either.
+- **"Outset lists 1 cooking classe"** (`d87ca70a5`), found by the test written for the one above. The FAQ made
+  its singular by stripping a trailing s, and the title tag and lede did not try at all ("1 cooking classes").
+  Latent today, since the smallest kind in the catalog has 9 listings, and the FAQ text is what a search
+  engine quotes as an answer.
+
+**Green after the fixes.** 254 backend tests (5 new), both projects type-check clean. The regenerated page set
+is 1,320 pages: 0 images over http (15,042 of 15,044 proxied, the two gifs left alone by design), 0 thin
+cards, 0 guessed-kind cards, 0 dangling links, all 60,237 pill counts agreeing with the page they link to,
+every page carrying at least one photo, and no sideways scroll at 400px.
+
+**Needs Harshil.**
+
+- **The pages shipped in `public/p` still have all of this until a sync runs.** They are generated output, and
+  regenerating 1,481 committed files overnight without you is not a call I wanted to make, so the fixes are in
+  the generator and the shipped HTML is unchanged. `npm run sync` publishes them, and also clears the ten
+  CAPTCHA covers, which only go at sync time.
+- **That sync will delete 160 pages**, 1,480 to 1,320: 144 built on listings browse already refuses to show
+  and 17 built on guessed kinds, verified with `npx tsx scripts/landing-pages-dry.mts`. Every kind keeps its
+  all-metros page. If you would rather keep the indexed surface and fix the counts instead, the filter is one
+  line in `writeLandingPages` and this is the run to say so.
+- The earlier runs' calls stand: everything needing a real Stripe key is untouched, Home's three tabs are
+  still `role="tab"` with nothing to control, 6,513 rated listings show a rating on their card and none on the
+  page it opens, Arizona still moves on the Navajo Nation, `groupCap` still counts no players or anglers,
+  18,056 listings still draw the generic cover, and no workflow runs `npm test`.
+
 ## Coverage
 
 **Verified so far.** Booking validation and odd input on every route that takes it. The money split,
@@ -1926,7 +1992,21 @@ draft may be sent to, against the reader the claim index and the sync already sh
 the claim email against what the operator's page actually holds, on a shop with everything on it, with a
 menu and no prices, with one thing and with nothing at all.
 
-**Not yet checked.** Which town the 64 listings whose street names one town and whose city names another are
+The 1,481 static landing pages under `public/p` and the generator behind them, read and then swept over
+every shipped page: which listings reach a page at all, against the two flags the catalog already sets for
+listings browse will not show and kinds it only guessed; every count on a page against the cards under it,
+across the lede, the meta description, the FAQ, the city pills, the index and the JSON-LD; every internal
+link and every card link against the page and the listing it opens; all 60,237 pill counts against the page
+each one links to; every image address on every page against the scheme the page itself is served over; the
+JSON-LD of all 1,481 pages parsed; and the pages at 400px in a real Chromium. The photo filters behind a
+cover, against a bot check the crawl was served instead of a page.
+
+**Not yet checked.** Whether the landing pages should say they are showing 24 of the 35 they counted, which
+is what a page with more than 24 listings does today, and whether a kind's all-metros page needs paging at
+all. The guide copy in `src/data/guides.ts`, one block per kind, read against the kind it is printed on: the
+pages print it verbatim and no run has compared the two. Whether a page should carry an `og:` card at all,
+since a shared link currently previews as nothing. Whether the 160 pages the next sync deletes should be
+kept with honest counts instead (see this run's Needs Harshil). Which town the 64 listings whose street names one town and whose city names another are
 actually in, as a supply question. Whether the 108 archive rows that carried a real admission tier should keep that price
 under a name a re-crawl reads properly, and whether "Buy Tickets" (338 rows) and "Schedule a tour" (123)
 should be renamed. The 2 listings still showing Windows-1252 mojibake (an earlier run counted 17; 2 is what
