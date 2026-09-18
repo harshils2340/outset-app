@@ -2112,7 +2112,14 @@ export function syncCatalogToApp(): { path: string; count: number } {
     .slice(0, 2200)
     .map((x) => x.o);
   writeFileSync(join(appDataDir, "../../public/catalog-lite.json"), JSON.stringify({ generatedAt: new Date().toISOString(), operators: lite, contacts: {} }));
-  const pages = writeLandingPages(full.filter((i) => !(i as { unlisted?: boolean }).unlisted) as never);
+  // The landing pages get the same listings browse gets. `thin` is decided above, on the browse record, so it is
+  // carried across by id rather than worked out a second time from a different shape.
+  const thinIds = new Set(operators.filter((o) => o.thin).map((o) => o.id as string));
+  const pages = writeLandingPages(
+    full
+      .filter((i) => !(i as { unlisted?: boolean }).unlisted)
+      .map((i) => (thinIds.has(i.id as string) ? { ...i, thin: true } : i)) as never,
+  );
   console.log("Wrote " + pages.pages + " landing pages to public/p");
   return { path, count: operators.length };
 }

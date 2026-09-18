@@ -187,6 +187,42 @@ test("a rerun removes pages whose listings are gone", () => {
 });
 
 /**
+ * 17,155 of the 59,163 shipped listings carry the catalog's `thin` flag: no photo, no price, no hours, no
+ * services, no tags, no description. Browse and the rails leave them out on purpose. The landing pages took
+ * every listing, so 2,787 cards across 866 published pages were a grey square, a name and "Price on request",
+ * six pages were nothing else, and every count on every page (the lede, the FAQ, the pills, the JSON-LD) was
+ * measured on listings a guest cannot act on.
+ */
+test("a listing with nothing on it is left off a page, out of its counts, and cannot create a page", () => {
+  const items: Item[] = [
+    item("cooking", "toronto", 1, { area: "Toronto, ON", cover: "https://x/1.jpg", options: [{ name: "Pasta night", price: 95 }] }),
+    item("cooking", "toronto", 2, { area: "Toronto, ON", cover: "https://x/2.jpg", from: 60 }),
+    item("cooking", "toronto", 3, { area: "Toronto, ON", cover: "https://x/3.jpg", from: 80 }),
+    item("cooking", "toronto", 4, { area: "Toronto, ON", thin: true }),
+    item("cooking", "toronto", 5, { area: "Toronto, ON", thin: true }),
+    // Niagara reaches three listings only by counting two empty ones, so it gets no page at all.
+    item("cooking", "niagara", 1),
+    item("cooking", "niagara", 2, { thin: true }),
+    item("cooking", "niagara", 3, { thin: true }),
+  ];
+  const r = run(items);
+  try {
+    assert.deepEqual(r.files, ["cooking-in-anywhere.html", "cooking-in-toronto.html", "index.html"]);
+    const html = r.read("cooking-in-toronto.html");
+    assert.match(html, /3 cooking classes around Toronto, 3 with prices/);
+    assert.match(html, /Outset lists 3 cooking classes around Toronto\./);
+    assert.match(html, /"numberOfItems":3/);
+    assert.doesNotMatch(html, /o-cooking-toronto-4/);
+    assert.doesNotMatch(html, /cooking-in-niagara\.html/);
+    // The all-metros page counts the same way: four real listings, not eight rows.
+    assert.match(r.read("cooking-in-anywhere.html"), /<h1>Cooking classes in the US and Canada<\/h1>/);
+    assert.match(r.read("cooking-in-anywhere.html"), /4 cooking classes across the US and Canada/);
+  } finally {
+    r.cleanup();
+  }
+});
+
+/**
  * An operator whose town the crawl never found publishes its area as the state code alone ("FL"), which is
  * 4,736 rows in the shipped catalog and fourteen of them inside a metro. A state is not a town, and the FAQ
  * line lists towns: "including places in FL, Tampa and Clearwater" is a published page saying it.

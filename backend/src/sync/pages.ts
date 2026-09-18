@@ -11,6 +11,9 @@ import { REGION_NAME, regionOfArea } from "../../../src/data/regions.ts";
  * These exist for search engines and shared links; the app itself stays the product.
  *
  * Rules:
+ * - A listing reaches a page only if browse would show it. A page is a browse surface with a Google result in
+ *   front of it, so the catalog's own `thin` flag applies here exactly as it does to the rails, and the count in
+ *   the h1, the lede, the FAQ, the pills and the JSON-LD counts what a guest can actually see.
  * - A metro page exists when the kind has at least MIN_METRO_LISTINGS listings in that metro. The all-metros page
  *   ("-in-anywhere") exists for every kind with a listing anywhere, metro or not. Nothing is published empty; the
  *   directory is cleared first so a page whose kind lost its listings disappears.
@@ -134,6 +137,12 @@ export type Item = Record<string, unknown> & {
   services?: { name: string; desc: string | null; variants: { label: string; price: number | null }[] }[];
   hrs?: unknown[] | null;
   hoursText?: string[] | null;
+  /**
+   * The catalog's own "nothing a guest can act on" flag, set in sync/contacts.ts: no photo, no price, no hours,
+   * no services, no tags, no description. Browse and the rails leave these out rather than filling a grid with
+   * identical placeholders, and a landing page is the same grid with a search engine pointed at it.
+   */
+  thin?: boolean;
 };
 
 type Metro = (typeof METROS)[number];
@@ -349,10 +358,13 @@ export function writeLandingPages(items: Item[], opts: { publicDir?: string } = 
   mkdirSync(dir, { recursive: true });
   for (const f of readdirSync(dir)) if (f.endsWith(".html")) unlinkSync(join(dir, f));
 
-  // Group once: kind -> every listing, and kind -> metro -> listings.
+  // Group once: kind -> every listing, and kind -> metro -> listings. A listing browse would not show is not a
+  // listing to publish, so it is dropped before anything is grouped, counted or used to decide a page exists.
+  const listable = items.filter((i) => !i.thin);
+
   const byKind = new Map<string, Item[]>();
   const byKindMetro = new Map<string, Map<string, Item[]>>();
-  for (const i of items) {
+  for (const i of listable) {
     if (!byKind.has(i.art)) byKind.set(i.art, []);
     byKind.get(i.art)!.push(i);
     if (!i.metroId) continue;
