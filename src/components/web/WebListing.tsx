@@ -1001,7 +1001,10 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
   const visit = !needService && VISIT_ARTS.has(item.art);
   // The business's own site, crawled or operator-set: never trust it as a scheme without checking first.
   const ticketHref = safeHttpUrl(contact?.website || item.src);
-  const visitWeek = useMemo(() => (visit ? itemWeek(item) : null), [visit, item]);
+  // The week this shop publishes, read once: the visit panel, the start times and the empty picker's line all
+  // ask it, and parsing an operator's hour lines three times a render buys nothing.
+  const week = useMemo(() => itemWeek(item), [item]);
+  const visitWeek = visit ? week : null;
   const clock = (m: number) => fmtTime(String(Math.floor(m / 60)).padStart(2, "0") + ":" + String(m % 60).padStart(2, "0"));
   // The shop paused bookings or hid the listing in its dashboard. The page still opens by its own link, so a
   // guest who has it bookmarked learns why, but nothing here can be booked and the API refuses too. Both flags
@@ -1072,7 +1075,6 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
     const listed = picked?.price != null ? picked.price : undefined;
     // With no API to ask, the fixed times still drop the ones this shop's own published hours are shut for, so
     // the picker and the hours row a few lines above it cannot say different things. Same rule the API applies.
-    const week = itemWeek(item);
     return (d: Date) => {
       const k = dateKey(d);
       const fromLive = liveDays.get(k);
@@ -1087,7 +1089,7 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
   // today", least of all under a date five days out.
   const emptyNote = live
     ? "No departures on this date. Pick another day."
-    : noStartTimesNote(itemWeek(item)?.[day.getDay()] ?? null, day.toLocaleDateString("en-US", { weekday: "long" }));
+    : noStartTimesNote(week ? week[day.getDay()] ?? null : null, day.toLocaleDateString("en-US", { weekday: "long" }));
   useEffect(() => { if (time && !openSlots.includes(time)) setTime(null); }, [openSlots, time]);
   // Land the guest on a day that actually has departures rather than an empty one.
   useEffect(() => {
