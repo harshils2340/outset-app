@@ -858,26 +858,43 @@ function FiltersModal({ sort, price, prices, total, near, onApply, onClose, onNe
 /* Page                                                                                                          */
 /* ------------------------------------------------------------------------------------------------------------ */
 
+/**
+ * What the guest searched for outlives this page's mount.
+ *
+ * App.tsx swaps this page out for WebListing while a listing is open, so every useState below started over when
+ * "Back to results" brought it back. A guest who searched "jet ski", opened one and came back landed on the plain
+ * home page, whose first rail is "Popular Pontoon and Boat Rentals": to them, the jet ski page had sent them to
+ * boats, and the scroll position that AppProvider restores dropped them in the middle of that rail. The search,
+ * its filters and the pill's shape are kept here at module scope, and every mount starts from them.
+ */
+const remembered: { q: string; whereText: string; artChip: ArtKind | null; who: number; kids: number; searched: boolean; sort: SortId; price: PriceRange } = {
+  q: "", whereText: "", artChip: null, who: 2, kids: 0, searched: false, sort: "relevance", price: { min: null, max: null },
+};
+
 export function WebHome({ onOpenApp, onOperators }: { onOpenApp: () => void; onOperators: () => void }) {
   const { state, setCat, setMetro, setNear, setDate, openRequest, dates } = useApp();
   // What: the activity, occasion or business. Where: the words typed while looking for a place. The place itself
   // lives in app state (near or metro), so the two boxes never overwrite each other.
-  const [q, setQ] = useState("");
-  const [whereText, setWhereText] = useState("");
+  const [q, setQ] = useState(remembered.q);
+  const [whereText, setWhereText] = useState(remembered.whereText);
   // A kind chip inside Food & drink or Wellness ("Breweries"). Experiences chips are the category tabs themselves.
-  const [artChip, setArtChip] = useState<ArtKind | null>(null);
-  const [who, setWho] = useState(2);
-  const [kids, setKids] = useState(0);
+  const [artChip, setArtChip] = useState<ArtKind | null>(remembered.artChip);
+  const [who, setWho] = useState(remembered.who);
+  const [kids, setKids] = useState(remembered.kids);
   const [seg, setSeg] = useState<Seg | null>(null);
   // The pill starts as What alone. Where, When and Who appear once the guest has searched: the button, Enter,
   // or a pick from the What menu. Refining comes second, not before the guest has said what they want to do.
-  const [searched, setSearched] = useState(false);
+  const [searched, setSearched] = useState(remembered.searched);
   // Where, When and Who live in a modal: it opens on its own after the first search, and the chip in the pill
   // (or the compact bar) reopens it. The value is the section that is unfolded.
   const [refine, setRefine] = useState<"where" | "when" | "who" | null>(null);
   const near = state.near;
-  const [sort, setSort] = useState<SortId>("relevance");
-  const [price, setPrice] = useState<PriceRange>({ min: null, max: null });
+  const [sort, setSort] = useState<SortId>(remembered.sort);
+  const [price, setPrice] = useState<PriceRange>(remembered.price);
+  // Written back on every change, so the next mount (after a listing closes) picks up where this one left off.
+  useEffect(() => {
+    Object.assign(remembered, { q, whereText, artChip, who, kids, searched, sort, price });
+  }, [q, whereText, artChip, who, kids, searched, sort, price]);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [compareIds, setCompareIds] = useState<string[]>([]);
   const [compareOpen, setCompareOpen] = useState(false);
