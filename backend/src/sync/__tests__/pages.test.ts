@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { KINDS, MIN_METRO_LISTINGS, buildFaq, pageTitle, publicSite, writeLandingPages, type Item } from "../pages.ts";
+import { KINDS, MIN_METRO_LISTINGS, buildFaq, pageTitle, publicSite, singular, writeLandingPages, type Item } from "../pages.ts";
 import { METROS } from "../../taxonomy/catalog.ts";
 import { ART_ALIASES } from "../../../../src/data/synonyms.ts";
 
@@ -223,6 +223,31 @@ test("a listing with nothing on it is left off a page, out of its counts, and ca
 });
 
 /**
+ * A page that found exactly one of something said "1 cooking classes" in its title tag and its lede, and
+ * "Outset lists 1 cooking classe" in the FAQ a search engine reads as an answer, because the singular was a
+ * stripped trailing s. Every kind's own noun has to survive it, including the eleven that name a pair.
+ */
+test("a page with one listing names one of it, for every kind", () => {
+  assert.equal(singular("cooking classes"), "cooking class");
+  assert.equal(singular("escape rooms"), "escape room");
+  assert.equal(singular("museums and galleries"), "museum or gallery");
+  assert.equal(singular("boat tours and cruises"), "boat tour or cruise");
+  assert.equal(singular("saunas and bathhouses"), "sauna or bathhouse");
+  assert.equal(singular("motorsport and off-road operators"), "motorsport or off-road operator");
+  assert.equal(singular("breweries"), "brewery");
+  assert.equal(singular("bowling alleys"), "bowling alley");
+  assert.equal(singular("zoos"), "zoo");
+  assert.equal(singular("ski areas"), "ski area");
+  // No kind is left ending in a plural s, an "es" that was a doubled consonant, or an invented word.
+  for (const k of KINDS) {
+    const one = singular(k.plural);
+    assert.doesNotMatch(one, /(?:[^s]s|ies)$/, `"1 ${one}" reads as a plural (${k.art})`);
+    assert.doesNotMatch(one, /\b\w+(?:ch|sh|ss|x|z)e$/, `"1 ${one}" is not a word (${k.art})`);
+    assert.equal(one.split(" ").length, k.plural.split(" ").length, `${k.plural} lost a word becoming ${one}`);
+  }
+});
+
+/**
  * `kindUnconfirmed` means nothing in the listing's own text confirms its kind: it was guessed off the business
  * name. The rails put these last for exactly that reason. The landing pages stated the guess as fact, to a
  * search engine, in a title, a count and a schema.org ItemList: "Escape rooms in Tampa Bay, Florida" opened on
@@ -253,6 +278,7 @@ test("a kind we only guessed is not published as a fact, counted, or allowed to 
     // The guessed listing is not a town of Tampa Bay's either, since it is not on the page.
     assert.doesNotMatch(html, /Anna Maria Island/);
     assert.match(r.read("cooking-in-anywhere.html"), /"numberOfItems":1/);
+    assert.match(r.read("cooking-in-anywhere.html"), /1 cooking class across the US and Canada/);
   } finally {
     r.cleanup();
   }

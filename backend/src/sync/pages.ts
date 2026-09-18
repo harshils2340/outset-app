@@ -158,6 +158,27 @@ const money = (n: number) => (Number.isInteger(n) ? "$" + n.toLocaleString("en-U
 const list = (xs: string[]) => (xs.length <= 1 ? xs.join("") : xs.slice(0, -1).join(", ") + " and " + xs[xs.length - 1]);
 const lower = (s: string) => s.charAt(0).toLowerCase() + s.slice(1);
 
+/**
+ * One of them, for a page that found exactly one: "cooking classes" is "1 cooking class", not "1 cooking
+ * classes" and not the "1 cooking classe" that stripping a trailing s produced. Only the last noun changes,
+ * and a noun pair becomes a choice, so "museums and galleries" is "museum or gallery".
+ */
+export function singular(plural: string): string {
+  const one = (phrase: string) => {
+    const words = phrase.split(" ");
+    const last = words[words.length - 1];
+    words[words.length - 1] = /(?:ch|sh|ss|x|z)es$/i.test(last)
+      ? last.slice(0, -2)
+      : /[^aeiou]ies$/i.test(last)
+        ? last.slice(0, -3) + "y"
+        : /s$/i.test(last) && !/ss$/i.test(last)
+          ? last.slice(0, -1)
+          : last;
+    return words.join(" ");
+  };
+  return plural.split(" and ").map(one).join(" or ");
+}
+
 /** The lowest price the operator publishes, from whichever shape the item arrived in. */
 export function priceOf(i: Item): number | null {
   const prices = [
@@ -230,7 +251,7 @@ export function buildFaq(kind: Kind, metro: Metro | null, items: Item[]): Faq[] 
   faq.push({
     q: `How many ${plural} are there in ${city}?`,
     a:
-      `Outset lists ${n} ${n === 1 ? plural.replace(/s$/, "") : plural} ${metro ? "around " + metro.name : "across the US and Canada"}` +
+      `Outset lists ${n} ${n === 1 ? singular(plural) : plural} ${metro ? "around " + metro.name : "across the US and Canada"}` +
       (metro && towns.length > 1 ? `, including places in ${list(towns)}` : "") +
       `. ${withPhotos ? `${withPhotos} of them have photos.` : "Photos are added as each operator's site is read."}`,
   });
@@ -327,12 +348,13 @@ function page(kind: Kind, metro: Metro | null, items: Item[], nearby: Neighbour[
       mainEntity: faq.map((f) => ({ "@type": "Question", name: f.q, acceptedAnswer: { "@type": "Answer", text: f.a } })),
     },
   ];
+  const many = items.length === 1 ? singular(kind.plural) : kind.plural;
   const description =
-    `${items.length} ${kind.plural} ${metro ? "around " + placeName(metro) : "across the US and Canada"} on Outset` +
+    `${items.length} ${many} ${metro ? "around " + placeName(metro) : "across the US and Canada"} on Outset` +
     (minPrice != null ? `, from ${money(minPrice)}` : "") +
     `. ${withPhotos ? "Photos, menus and prices" : "Menus and prices"} from each operator's own website. Pick a listing and request a time.`;
   const lede =
-    `${items.length} ${esc(kind.plural)} ${metro ? "around " + esc(metro.name) : "across the US and Canada"}` +
+    `${items.length} ${esc(many)} ${metro ? "around " + esc(metro.name) : "across the US and Canada"}` +
     (priced.length ? `, ${priced.length} with prices from the operator's own site${minPrice != null ? " (from " + esc(money(minPrice)) + ")" : ""}` : "") +
     `. Open a listing to see its menu, then request a time. No phone tag.`;
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
