@@ -23,6 +23,7 @@ import { onlyOperatorCancels } from "../../../src/lib/cancellation.ts";
 import { bookableRow, tidyRowName } from "../../../src/lib/menuRow.ts";
 import { ownWords } from "../../../src/lib/ownWords.ts";
 import { dialPhone } from "../../../src/lib/phone.ts";
+import { contactEmail } from "../../../src/lib/email.ts";
 import { postalOf, streetOf } from "../../../src/lib/address.ts";
 import { REGION_NAME } from "../../../src/data/regions.ts";
 
@@ -143,7 +144,9 @@ function toContact(r: Row): OperatorContact {
     // The crawl refuses a field that is not a number as it reads a page, and the sync refuses it again, because
     // the ones already stored are only cleared by a rule that runs when the catalog is written.
     phone: dialPhone(silent(r.phone)),
-    email: r.email,
+    // The same rule the claim gate reads the address by: an address still percent-encoded, a site template's
+    // own inbox or a name masked with asterisks is not one an owner could be written to at.
+    email: contactEmail(r.email),
     // A town, a bare house number or the shop's phone is not a street, and the page prints whatever is here.
     street: streetOf(r) || null,
     city: r.city,

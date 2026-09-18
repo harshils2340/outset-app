@@ -4,6 +4,7 @@ import { inferCategory } from "../taxonomy/catalog.ts";
 import { extractPage } from "./extract.ts";
 import { fetchHtml, sleep } from "./fetch.ts";
 import { dialPhone } from "../../../src/lib/phone.ts";
+import { contactEmail } from "../../../src/lib/email.ts";
 
 export type ScrapeResult = {
   operatorId: string;
@@ -69,7 +70,9 @@ export async function scrapeOperator(opts: {
     const merged = pages.map((p) => extractPage(p.html, p.finalUrl || start));
     const pageName = merged.map((m) => m.name).find(Boolean) || "";
     const phones = merged.map((m) => normalizePhone(m.telephone)).filter(Boolean) as string[];
-    const emails = merged.map((m) => m.email).filter(Boolean) as string[];
+    // Read the same way the claim gate will read it: a page that hides its address from scrapers publishes it
+    // percent-encoded, and a template's "info@mysite.com" is nobody's inbox.
+    const emails = merged.map((m) => contactEmail(m.email)).filter(Boolean) as string[];
     const cities = merged.map((m) => m.city).filter(Boolean) as string[];
     const regions = merged.map((m) => m.region).filter(Boolean) as string[];
     const streets = merged.map((m) => m.street).filter(Boolean) as string[];

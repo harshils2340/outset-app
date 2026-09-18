@@ -4,6 +4,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { db } from "../db/client.ts";
 import { readJson } from "./store.ts";
+import { contactEmail } from "../../../src/lib/email.ts";
 
 /**
  * Who may claim a listing: the email published on the operator's own website, or any address at the
@@ -59,7 +60,11 @@ export function writeClaimIndex(): { path: string; count: number; withEmail: num
     const id = "o-" + slug(r.domain);
     const domains = Array.from(new Set([ownDomain(r.domain), r.website ? ownDomain(hostOf(r.website)) : null].filter((x): x is string => !!x)));
     const entry: Entry = { d: domains };
-    const email = (r.email || "").trim().toLowerCase();
+    // Only an address an owner could be asked to write from: `contactEmail` decodes the ones a site hid from
+    // scrapers and drops a template's own inbox, a masked name and markup. A row with none falls through to
+    // the domain rule, which is better than hashing something nobody can type and telling the owner their
+    // claim link goes to "i...@********ng.com".
+    const email = (contactEmail(r.email) || "").toLowerCase();
     if (EMAIL.test(email)) {
       entry.k = emailKey(email);
       entry.h = maskEmail(email);

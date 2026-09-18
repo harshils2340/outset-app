@@ -2,6 +2,7 @@ import type { Booking, CategoryId, OperatorContact, Unclaimed, UnclaimedOption, 
 import { forgetClaim, saveRemoteProfile, type RemoteBooking } from "./api";
 import { addressLine, contactFor, experienceById, getCatalog, setOperatorOverride, siteUrl } from "./catalog";
 import { callablePhone } from "./phone";
+import { contactEmail } from "./email";
 import { dateKey, startOfToday } from "./dates";
 import { withoutNoticeWindows } from "./duration";
 import { fmtTime, money } from "./format";
@@ -575,7 +576,10 @@ export function defaultProfile(u: Unclaimed, owner: { name: string; email: strin
     // Only a number a guest could actually ring: the crawl also stores two numbers in one field, a `tel:` link
     // still percent-encoded and the odd unrendered template, and none of those is worth prefilling as theirs.
     phone: callablePhone(c?.phone) || "",
-    email: c?.email || "",
+    // The inbox this shop's booking alerts go to, and only an address someone could write to: the crawl also
+    // stored addresses still percent-encoded, a site template's own "info@mysite.com" and a name masked with
+    // asterisks, none of which is worth handing an owner as theirs.
+    email: contactEmail(c?.email) || "",
     website: c?.website || (u.src && !u.src.startsWith("osm-") ? siteUrl(u.src) : ""),
     address: (c && addressLine(c)) || u.area,
     cover: u.cover || "",
