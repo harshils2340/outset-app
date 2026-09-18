@@ -318,7 +318,10 @@ bookings.post("/bookings", rateLimit(20, 60 * 60 * 1000), async (c) => {
       if (stored === "duplicate") return c.json({ error: "duplicate code" }, 409);
       return c.json({ ok: true, status: "pending", code, checkoutUrl: co.url || undefined, checkoutClientSecret: co.clientSecret || undefined });
     } catch (e) {
-      console.error("stripe checkout failed, falling back to pay on site: " + (e as Error).message);
+      // A priced booking never turns into a no-card request because Stripe hiccupped: that is a free trip the
+      // operator is told "they pay you on the day" about. The guest is asked to try again instead.
+      console.error(`[bookings] ${code}: stripe checkout failed: ` + (e as Error).message);
+      return c.json({ error: "The payment form could not be started. Please try again in a moment." }, 502);
     }
   }
   const stored = await insertBookingChecked(rec, (list) => slotOpen((profile?.profile as Parameters<typeof slotOpen>[0]) || null, list, date, slot, rec.service, qty, new Date(), zone, week).open);

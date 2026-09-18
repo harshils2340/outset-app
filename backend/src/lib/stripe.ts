@@ -40,7 +40,8 @@ export async function createCheckout(o: { code: string; listing: string; title: 
   const cents = Math.round(o.amount * 100);
   const s = await call<{ id: string; url: string | null; client_secret: string | null; payment_intent: string | null }>("checkout/sessions", {
     mode: "payment",
-    ...(o.embedded ? { ui_mode: "embedded", return_url: o.successUrl } : { success_url: o.successUrl, cancel_url: o.cancelUrl }),
+    // Stripe's current API names the in-page form "embedded_page" ("embedded" alone is refused as retired).
+    ...(o.embedded ? { ui_mode: "embedded_page", return_url: o.successUrl } : { success_url: o.successUrl, cancel_url: o.cancelUrl }),
     "line_items[0][quantity]": 1,
     "line_items[0][price_data][currency]": o.currency,
     "line_items[0][price_data][unit_amount]": cents,
