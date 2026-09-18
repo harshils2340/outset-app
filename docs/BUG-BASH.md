@@ -1427,6 +1427,63 @@ clean, rehearsal 53 of 53 four times, the last on the tree that is pushed.
   anglers, and no workflow runs `npm test`.
 
 
+## 18 September 2026, twenty-third run (06:00 to 07:00 UTC)
+
+**Checked, and why.** Coverage had the menu, the money, the hours and the booking box verified, and the prose
+under them almost not at all, so this run read the "Things to know" block of the guest listing on every shipped
+listing: the 34,205 spec bullets, 16,781 included lines, 14,382 highlights, 13,710 requirements, 6,581
+what-to-bring lines, 19,364 policy lines and 3,194 meeting points, each against the heading it is printed
+under. Then the menu glossary, the one part of a tier label a guest reads that no run had opened. Not the
+rehearsal to start with, because the last entry says 53 of 53 green and nothing since it touched code; it was
+run at the end, once, because this run changed code it covers.
+
+**Found and fixed.** Three, one of them on nearly five thousand listings.
+
+- **A shop's house rules were its cancellation policy, and its cancellation policy was nowhere** (`cdf993a8a`).
+  Both listing surfaces put every policy line that is not a waiver under the heading "Cancellation policy".
+  **2,129 listings publish no cancellation term at all and other policies besides**, so that column read "No
+  outside food, beverages or ice chests permitted" (o-22ndstreet-com) and "$20 fuel surcharge may apply" under
+  a heading saying those are the terms for cancelling; **2,658 more** mixed the two. The same filter dropped
+  the terms themselves: 74 listings state them only as a policy line rather than in `cancellation`, so
+  o-ancloterivertours-com's "Full refund if canceled 5 days or more before sail date" never reached the page,
+  which told the guest to contact the business, on the page where Otto quotes that line back at them. **1,118
+  more listings** lose a second term the same way ("No show: $15 fee", "Reservations are non-refundable"), and
+  a line naming both a waiver and a check-in was printed twice, once in each column. One splitter in
+  `src/lib/listingDerive.ts` now sorts a shop's policy lines the way the columns read them, and the column is
+  named after what is in it.
+- **The desktop listing told 140 shops' guests to bring an iD** (`9c2a33f85`). The "Who can go" column prints
+  the what-to-bring list as a sentence each, lowercasing the first letter to follow the word "Bring". On 170
+  lines that first word is an acronym or a name: "Bring iD for age verification" (o-averybrewing-com), "Bring
+  bYOB allowed with reservation" (o-agawambowl-com), "Bring uS Coast Guard approved life vest"
+  (o-adventureisland-com). Otto answers the same question off the same list and has always held the first
+  letter of anything that is not ordinary prose; the page reads that rule now.
+- **A boxing gym's four class pack was explained as powerful whitewater rapids** (`219472ecf`). The glossary
+  under a tier label matched "Class II/III/IV" with the river optional, so a bare "Class 4" counted anywhere:
+  o-htdnyc-com's "Boxing Class 4-Pack" is the only shipped case, on both its tiers. A roman numeral still
+  explains itself alone; a digit now needs the river beside it. The other 3,659 explanations the next sync
+  would ship were read by kind and are in place.
+
+**Clean, and worth knowing.** The fact bullets themselves are honest: over 105,000 of them, no HTML, no
+entities, no lorem ipsum, no "click here", 15 lines carrying the shop's own email and 2 a URL, all of them in
+context. Meeting points are honest too, including the 70 that say the place varies and when you will be told.
+
+**Green after the fixes.** 364 guest tests (9 new) and 210 backend tests (3 new), both projects type-check
+clean, rehearsal 53 of 53 on the tree that is pushed.
+
+**Needs Harshil.**
+
+- **The two glossary lines already shipped stay wrong until a sync.** `public/o/o-htdnyc-com.json` carries the
+  rapids sentence in its `explain`, because explanations are baked in by `npm run sync`, not read at load time.
+- **"Policies" is the heading a mixed column now gets.** It is the honest name for a list that holds a
+  cancellation term and a house rule together, but it is a product word, not a bug fix: if you would rather it
+  read "Good to know" or split into a fourth column, the line is `knowCols.push({ key: "cancel" ...`, and a
+  fourth column needs `src/styles/air-listing.css`, which these runs do not touch.
+- The earlier runs' calls stand: everything needing a real Stripe key is untouched, Home's three tabs are still
+  `role="tab"` with nothing to control, 6,513 rated listings still show a star rating on their card and none on
+  the page it opens, Arizona still moves on the Navajo Nation, `groupCap` still counts no players or anglers,
+  and no workflow runs `npm test`.
+
+
 ## Coverage
 
 **Verified so far.** Booking validation and odd input on every route that takes it. The money split,
@@ -1578,6 +1635,16 @@ and the line under a picker with nothing in it. That the slot route, the booking
 the desktop page all read one rule for it, and that the API's reader of a shop's published week and the
 listing page's return the same week on every one of the 59,162 listings that ship.
 
+
+What a guest reads under "Things to know", over every shipped listing: which column each of a shop's policy
+lines belongs in and the heading it is printed under, that no line is printed in two columns or lost, the
+cancellation terms a shop states as a policy line rather than in `cancellation`, and the what-to-bring list
+turned into sentences. The prose bullets themselves, over all 34,205 specs, 16,781 included lines, 14,382
+highlights, 13,710 requirements, 6,581 bring lines, 19,364 policies and 3,194 meeting points: markup,
+entities, placeholder copy, a call to action, a contact detail, a duplicate and a heading taken for a fact.
+The menu glossary, over every service and variant label the catalog would explain: each of the 3,661
+explanations against the activity it was printed on, and the words that mean two things in two places.
+
 **Not yet checked.** Whether the 108 archive rows that carried a real admission tier should keep that price
 under a name a re-crawl reads properly, and whether "Buy Tickets" (338 rows) and "Schedule a tour" (123)
 should be renamed. The 2 listings still showing Windows-1252 mojibake (an earlier run counted 17; 2 is what
@@ -1591,9 +1658,8 @@ paths are driven in a browser, the HTML5 drag events are not. A rehearsal check 
 rendered page and not only the API's JSON. A CI job that runs `npm test` on either side. Whether a claimed shop
 with an empty menu should pause its own listing. Whether a shop that genuinely trades around the clock can say
 so at all. Whether the Where box should index the towns our own catalog already names. Whether Arizona's
-Navajo Nation should keep daylight saving. The 4,736 listings whose area carries no town, as a supply gap. The
-glossary behind a tier label (`explain`, `variantNote`) and the "More options" folding, which an earlier run
-read but did not drive in a browser. Deals and promos on a listing driven in a browser, and the promo crawl's
+Navajo Nation should keep daylight saving. The 4,736 listings whose area carries no town, as a supply gap. The "More options"
+folding and `variantNote`, which an earlier run read but did not drive in a browser. Deals and promos on a listing driven in a browser, and the promo crawl's
 output; only the rules behind them are read so far. Which clause on a policy owns the number the Free
 cancellation badge prints, on the 28 listings where the first number in the text is not the one beside the
 refund promise (see this run's Needs Harshil). Whether the listing page should print a rating with no
@@ -1610,4 +1676,8 @@ Harshil). Whether a minimum age over 21 should be printable at all, for boat and
 rental floors. Whether the 505 listings stating a group size of 20 or more should widen the picker past 20, towards the 60
 the API already takes. Whether an unclaimed shop open past midnight should sell its small hours on the next
 date, the way a claimed one does, on the 481 that state one. Whether a shop whose week states only closed days, 18 of them, should be
-bookable at all on the days it says nothing about.
+bookable at all on the days it says nothing about. Whether a mixed policy column should read "Policies" or split
+into a fourth column, which needs `src/styles`. Whether the rehearsal should open a listing that carries
+policies, so the "Things to know" headings are checked in a browser and not only by their source. Whether
+`explain` should be read at load time like `menuRow`, so a glossary fix reaches the shipped detail files
+without waiting for a sync.
