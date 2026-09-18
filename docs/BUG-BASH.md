@@ -1667,6 +1667,73 @@ rehearsal 53 of 53 on the tree that is pushed, run on a local Postgres with TLS 
   page it opens, Arizona still moves on the Navajo Nation, `groupCap` still counts no players or anglers,
   18,056 listings still draw the generic cover, and no workflow runs `npm test`.
 
+## 18 September 2026, twenty-seventh run (10:00 to 11:10 UTC)
+
+**Checked, and why.** Coverage's two lists between them name every guest and dashboard surface this run was
+pointed at, so the hunt went somewhere no run has been: the word "unsubscribe" does not appear once in the
+previous 1,898 lines of this log, and nor does "outreach". That is the one path in this product that writes
+to a real business owner who never asked to hear from us, which makes it the only place where a bug is a
+legal problem as well as an embarrassing one. Type checks and both unit suites first; the rehearsal was
+skipped as a look-see (last entry green, nothing landed since) and run at the end, because all three fixes
+are in `backend/src`.
+
+**Found and fixed.** Three, in the order an operator meets them.
+
+- **Outreach would mail everyone who had unsubscribed, whenever the list could not be read** (`b2f7155a3`).
+  The suppression list is the only thing between an operator who asked us to stop and another email. It
+  lives in Postgres, written by the unsubscribe route and by the Resend webhook that records hard bounces and
+  spam complaints. `loadUnsubHashes` fetched it from the API and, on any failure, carried on with "the local
+  file" - which is only what that machine itself recorded, and the machine that sends is not the machine that
+  serves the unsubscribe route, so on the Mac it holds nothing. An API asleep, a timeout, a 503, and the send
+  read an empty list and mailed every opt-out, every dead address and everyone who had reported us as spam.
+  The list now says where it came from and a send that could read neither Postgres nor the API refuses.
+  `GET /mail/unsubscribed` answers 503 rather than 200 with a partial list. Two more dead-link checks joined
+  the same gate: without `CLAIM_SECRET` this machine signs with one of its own, so every claim link and every
+  unsubscribe link in the mailing is unverifiable by the API, and `unsubPageUrl` reads `SITE_URL` while the
+  rest of the mail hardcodes onoutset.com, so a laptop left set for local testing puts
+  `http://localhost:5173/unsubscribe.html` in a commercial email.
+- **A claim email was addressed to `%73ere%6eew%61%74%65rsp%6frts@gmail.com`** (`7be39e57e`). Last night's run
+  gave the crawled address one reader, `src/lib/email.ts`, and wired it into the claim index, the dashboard
+  prefill and the sync. It missed the one place that puts an address in a To line. The draft generator kept
+  its own regex, which cannot tell an address from the way a site hid it from scrapers, so the 32
+  percent-encoded ones were mailed as written, a guaranteed hard bounce against our own sending domain, while
+  the decoded address sat there deliverable. An address the crawl kept a full stop on was dropped instead, so
+  that operator hears from us never.
+- **44,312 shops with no opening hours were emailed "It has your hours"** (`0cdf6ab2d`). The claim email lists
+  what we built on the operator's page and puts the link to that page on the next line, under the sentence "I
+  didn't make anything up". Photos and the cancellation policy were read from the operator's facts; "your
+  hours" was pasted in for everyone, and **44,312 of the 59,162** listings we ship publish none. **18,096**
+  have no hours, no photo and no price, and were told "It has what you sell and your hours", two claims and
+  both false. The facts are read before they are claimed now, hours through the sync's own `tidyHours` so the
+  mail and the Hours block agree; a genuinely thin page is described as thin, which is the pitch anyway. Three
+  more in the same file: the draft and the copy written at send time counted services and policies differently
+  (the draft called every service one "with prices" and a house rule a cancellation policy), and
+  `publishedCount` parsed the 23 MB `catalog.json` once per draft inside a loop over every unclaimed operator.
+
+**Green after the fixes.** 249 backend tests (23 new), both projects type-check clean, rehearsal 53 of 53 on
+the tree that is pushed, on a local Postgres with TLS and the Chromium on disk.
+
+**Needs Harshil.**
+
+- **`npm run outreach-send` will now refuse on your Mac until `CLAIM_SECRET` is set there** to the value on
+  outset-api, and `MAIL_POSTAL`, `MAIL_FROM` and `SITE_URL` with it. `--dry` prints the same list and runs. If
+  any outreach has already gone out from a machine without that secret, the claim links and the unsubscribe
+  links in those emails are dead, and the owners who clicked either were told the link was not valid.
+- **An unsubscribe token is signed with `CLAIM_SECRET`, so rotating it kills every unsubscribe link already in
+  an inbox.** Claim links dying on a rotation is the point of them; opt-out links dying is a compliance
+  problem. A separate `MAIL_SECRET`, or accepting the previous secret for a while, is the fix, and it is your
+  call because it is a new variable on Render.
+- **`GET /mail/unsubscribed` is public**: anyone can download the opt-out list as hashes and test whether a
+  known address is on it. Gating it behind `ADMIN_KEY` means the sending machine needs that key, and with the
+  new guard a missing key stops the send rather than quietly widening it, which is safe but is a workflow
+  change. Left open deliberately.
+- The outreach email's "If I've got the wrong business, this takes the page down" opens a `mailto:` to you,
+  not a takedown; the panel it lands on says one business day. Honest on the page, oversold in the mail.
+- The earlier runs' calls stand: everything needing a real Stripe key is untouched, Home's three tabs are
+  still `role="tab"` with nothing to control, 6,513 rated listings show a rating on their card and none on the
+  page it opens, Arizona still moves on the Navajo Nation, `groupCap` still counts no players or anglers,
+  18,056 listings still draw the generic cover, and no workflow runs `npm test`.
+
 ## Coverage
 
 **Verified so far.** Booking validation and odd input on every route that takes it. The money split,
@@ -1851,6 +1918,14 @@ prefill never looked at. The email address on file for a shop, over all 14,746 t
 gate hashes, what the claim screen shows a masked hint of and what the dashboard prefills as the inbox
 booking alerts go to.
 
+Outreach, the mail we send to a business that never asked for it, read end to end for the first time: the
+suppression list behind every send, which of its two readers actually holds it and what a send does when it
+cannot be read; the unsubscribe token, the static page it lands on, the API route it posts to, and that
+route's CORS and rate limit; the Resend bounce and complaint webhook into the same list; which address a
+draft may be sent to, against the reader the claim index and the sync already share; and every sentence of
+the claim email against what the operator's page actually holds, on a shop with everything on it, with a
+menu and no prices, with one thing and with nothing at all.
+
 **Not yet checked.** Which town the 64 listings whose street names one town and whose city names another are
 actually in, as a supply question. Whether the 108 archive rows that carried a real admission tier should keep that price
 under a name a re-crawl reads properly, and whether "Buy Tickets" (338 rows) and "Schedule a tour" (123)
@@ -1895,4 +1970,11 @@ search result look like for a kind with no scene and no photo, driven in a brows
 written today. Whether the 12 operators whose published address is at free mail and stored wrong need a way
 in before the next sync rewrites `claim-index.json`. Whether the sync should drop an hours line that is only
 a heading ("Schedule Mon: 9:00 AM - 3:00 PM"). Whether a claimed shop's own email and website should ever
-appear on the guest page, which they deliberately do not.
+appear on the guest page, which they deliberately do not. Whether an unsubscribe token should outlive a
+`CLAIM_SECRET` rotation, and whether `GET /mail/unsubscribed` should stay public (see this run's Needs
+Harshil). The outreach send driven against a live API rather than read: a real draft run, a real `--dry`,
+and what the drafts table looks like after a send that was refused. Whether "this takes the page down" in
+the claim email should say what it does, which is a `mailto:` and one business day. The outreach list
+script, `scripts/outreach-list.mts`, and the `GET /outreach/drafts` route it reads. Whether Gmail's one-click
+`List-Unsubscribe` headers should be sent after all: the code deliberately leaves them off to stay out of
+Promotions, which is a deliverability bet against a bulk-sender expectation.
