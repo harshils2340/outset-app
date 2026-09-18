@@ -23,7 +23,7 @@ import { onlyOperatorCancels } from "../../../src/lib/cancellation.ts";
 import { bookableRow, tidyRowName } from "../../../src/lib/menuRow.ts";
 import { ownWords } from "../../../src/lib/ownWords.ts";
 import { dialPhone } from "../../../src/lib/phone.ts";
-import { streetOf } from "../../../src/lib/address.ts";
+import { postalOf, streetOf } from "../../../src/lib/address.ts";
 import { REGION_NAME } from "../../../src/data/regions.ts";
 
 type Overlay = { published: boolean; patch: Record<string, unknown> };
@@ -148,7 +148,7 @@ function toContact(r: Row): OperatorContact {
     street: streetOf(r) || null,
     city: r.city,
     region: regionCode(r.region),
-    postal: r.postal,
+    postal: postalOf(r.postal) || null,
     hours: tidyHours(r.hours ? r.hours.split(" | ") : r.hours_text ? [r.hours_text] : []),
     bookingVendor: r.calendar_vendor,
     fetchedAt: r.fetched_at,

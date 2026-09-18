@@ -49,8 +49,20 @@ export function streetOf(c: { street?: string | null; city?: string | null; regi
   return street;
 }
 
+/**
+ * A postcode a letter could be addressed with. Thirty listings publish something else in the field: two codes
+ * joined by a semicolon, a whole street address, half a code ("Canada N0G"), and four rows where the crawl kept
+ * the tail of a word, so a Baja tour's address ends in "xico" and a California one in "lifornia".
+ */
+const POSTCODE = /\b(\d{5}(?:-\d{4})?|[A-Za-z]\d[A-Za-z][ -]?\d[A-Za-z]\d)\b/;
+
+export function postalOf(postal: string | null | undefined): string {
+  const m = POSTCODE.exec(String(postal || "").trim());
+  return m ? m[1] : "";
+}
+
 /** The street, town, state and postcode as one line, or null when the operator published none of them. */
 export function addressOf(c: { street?: string | null; city?: string | null; region?: string | null; postal?: string | null }): string | null {
-  const parts = [streetOf(c), [c.city, c.region].filter(Boolean).join(", "), c.postal].filter(Boolean);
+  const parts = [streetOf(c), [c.city, c.region].filter(Boolean).join(", "), postalOf(c.postal)].filter(Boolean);
   return parts.length ? parts.join(", ") : null;
 }

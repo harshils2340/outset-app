@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { addressOf, streetOf } from "../address";
+import { addressOf, postalOf, streetOf } from "../address";
 
 /**
  * The line under "Where you'll be", which is also what the Maps link searches for. Every contact below is a
@@ -40,6 +40,18 @@ test("spacing a crawl left behind is tidied, not dropped", () => {
   assert.equal(streetOf({ street: "10930 Endeavour Way", city: "Seminole " }), "10930 Endeavour Way"); // o-rappbrewing-com
   assert.equal(streetOf({ street: "301 Montée Outaouais, , C.P. 190," }), "301 Montée Outaouais, C.P. 190"); // o-golfrockland-ca
   assert.equal(streetOf({ street: "13722 Champions Drive," }), "13722 Champions Drive"); // o-championsgolfclub-com
+});
+
+test("a postcode is one postcode, or none", () => {
+  assert.equal(postalOf("T0J 2V0;T0J 0Y9"), "T0J 2V0"); // o-11bridgescampground-ca
+  assert.equal(postalOf("06510-2302;06510"), "06510-2302"); // o-britishart-yale-edu
+  assert.equal(postalOf("249 Deerhurst Highlands Dr, Huntsville, P1H 2E8"), "P1H 2E8"); // o-deerhurstresort-com
+  assert.equal(postalOf("AB T3J 0L1"), "T3J 0L1"); // o-wingfieldgolf-ca
+  assert.equal(postalOf("xico"), ""); // o-bajaridesandtours-com, the tail of "Mexico"
+  assert.equal(postalOf("Canada N0G"), ""); // o-fairbanksequestrian-net, half a code
+  assert.equal(postalOf("840003"), ""); // o-blackbeltutah-com
+  assert.equal(postalOf(null), "");
+  assert.equal(addressOf({ city: "Vernon", region: "BC", postal: "lifornia" }), "Vernon, BC");
 });
 
 test("the addresses the other 45,786 listings publish are unchanged", () => {
