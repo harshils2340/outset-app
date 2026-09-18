@@ -1484,6 +1484,66 @@ clean, rehearsal 53 of 53 on the tree that is pushed.
   and no workflow runs `npm test`.
 
 
+## 18 September 2026, twenty-fourth run (07:10 to 08:00 UTC)
+
+**Checked, and why.** Coverage had the listing page, the money, the hours, the booking box, the menu, the
+prose and the counts a search promises all verified, and never once what kind of thing a listing is: the chip
+a guest browses it by and the tab that chip sits in. So this run read the kind of every one of the 59,163
+shipped listings against the business's own name. The rehearsal was run, once, at the end, because the fixes
+are in `toCatalogItem`, which step 3 of it builds a listing through.
+
+**Found and fixed.** Two, both on the browse surface rather than one listing.
+
+- **A golf club, six breweries and four wineries were filed under Horseback riding** (`e52fdbfae`). The rules
+  that read a kind out of a business name matched inside longer words. "gator" sits in purgatory, propagator
+  and instigator, so a ski resort, a brewery and a sportfishing charter were swamp tours; "horse" sits in
+  Horseshoe, Horseheads, Horsefly and Horseless, so a golf club, a BMX track, a car museum and four RV parks
+  were horseback rides; "cruise" sits in Cruiser, so the Land Cruiser Heritage Museum and two snowmobile clubs
+  sold sunset sails; "angl" sits in Anglebrook and Anglican, so a golf club, two art galleries and a church
+  camp were fishing charters; "axe" sits in Axemann and Axelrod, so a brewery and a performing arts academy
+  had throwing lanes. A bare "escape" is leisure branding, not a room with a lock in it, and it put a wellness
+  spa, two massage studios, a craft brewery, a bowling centre, a dance studio, an electric bike hire, a
+  pottery studio, three RV parks, Six Flags Great Escape and a balloon company called Grape Escape in Escape
+  rooms. **171 shipped listings change kind, 160 of them filed as confirmed today**, so they rank ahead of the
+  real ones in their rail. The same words judge the text a listing is confirmed by, and its own name is part
+  of that text, so they are tightened there too: replayed over all 428 escape, 628 horse, 172 axe, 2,485
+  fishing and 141 kart listings with their shipped detail files, that costs no listing its confirmation, and
+  "Seakart Adventure", which rents small boats, stops confirming itself as a go-kart track.
+- **119 parasail operators were under the Water tab and none of them under Air** (`3db5be239`). The app cuts
+  its browse tabs by family and draws the chips inside them by kind, so the two have to agree, and the sync
+  only moved the family when `reconcileArt` moved the kind. A listing's own name settles its kind as well, and
+  that path never moved the family: **529 shipped listings are in a tab their own chip is not in**, 198
+  airboat and swamp tours under Water rather than Outdoor beside the parasailing, a brewery under Food with an
+  axe chip, a museum under Play with a helicopter chip.
+
+**Clean, and worth knowing.** Every one of the 63 kinds the catalog ships has a label and an alias list in the
+app, and no listing ships a kind the app's own `ArtKind` does not know. Only `snowmobile` is defined and never
+used.
+
+**Green after the fixes.** 364 guest tests and 219 backend tests (9 new), both projects type-check clean,
+rehearsal 53 of 53 on the tree that is pushed.
+
+**Needs Harshil.**
+
+- **Both fixes are baked in at sync time.** The 171 kinds and the 529 tabs stay wrong in `public/catalog.json`
+  and `public/o/*.json` until `npm run sync` runs on Render.
+- **167 of the 171 land on a kind this container cannot read.** A name that names nothing now keeps the kind
+  discovery filed the listing under, which is the category whose map search found the business, and that is
+  why it is the right thing to fall back to. But `backend/data/outset.db` is empty here, so which kind each
+  one actually lands on is unseen. Worth a look at the sync's diff on Render before it publishes.
+- **18,056 listings, 31% of the catalog, draw the same generic peach gradient.** They have no cover photo and a
+  kind with no scene: `src/data/art.ts` draws 13, the wave-one kinds, and nothing for the 51 kinds of waves two
+  and three. Museums are 2,601 of them, golf 2,182, spas 1,861, camping 1,843, breweries 1,009. Browse hides
+  them because it asks for a cover; search does not. `src/data` is outside what these runs touch.
+- **Three private jet charter companies are in Fishing charters.** `inferCategory` in
+  `backend/src/taxonomy/catalog.ts` reads a bare "charter" as fishing. Left alone: it only files listings
+  discovery finds from now on, and all three are already marked unconfirmed.
+- The earlier runs' calls stand: everything needing a real Stripe key is untouched, Home's three tabs are still
+  `role="tab"` with nothing to control, 6,513 rated listings still show a star rating on their card and none on
+  the page it opens, Arizona still moves on the Navajo Nation, `groupCap` still counts no players or anglers,
+  and no workflow runs `npm test`.
+
+
 ## Coverage
 
 **Verified so far.** Booking validation and odd input on every route that takes it. The money split,
@@ -1645,6 +1705,12 @@ entities, placeholder copy, a call to action, a contact detail, a duplicate and 
 The menu glossary, over every service and variant label the catalog would explain: each of the 3,661
 explanations against the activity it was printed on, and the words that mean two things in two places.
 
+What kind of thing a listing is filed as, over all 59,163 shipped listings: every rule that reads a kind out
+of a business name, against the name it reads, including the activity words that sit inside ordinary ones and
+the two words that are branding rather than an activity; the same words as the evidence a kind is confirmed
+by; and whether the tab a listing browses under is the one its own chip sits in. That every kind the catalog
+ships has a label, an alias list and a place in the app's own `ArtKind`.
+
 **Not yet checked.** Whether the 108 archive rows that carried a real admission tier should keep that price
 under a name a re-crawl reads properly, and whether "Buy Tickets" (338 rows) and "Schedule a tour" (123)
 should be renamed. The 2 listings still showing Windows-1252 mojibake (an earlier run counted 17; 2 is what
@@ -1680,4 +1746,7 @@ bookable at all on the days it says nothing about. Whether a mixed policy column
 into a fourth column, which needs `src/styles`. Whether the rehearsal should open a listing that carries
 policies, so the "Things to know" headings are checked in a browser and not only by their source. Whether
 `explain` should be read at load time like `menuRow`, so a glossary fix reaches the shipped detail files
-without waiting for a sync.
+without waiting for a sync. Whether the 51 kinds of waves two and three should have a scene of their own, on
+the 18,056 listings with no cover that draw the generic one instead. Whether `inferCategory` should read a
+bare "charter" as fishing, and whether its last resort should still be jet ski. What a card, a rail and a
+search result look like for a kind with no scene and no photo, driven in a browser rather than counted.
