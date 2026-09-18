@@ -2115,6 +2115,17 @@ export function syncCatalogToApp(): { path: string; count: number } {
     .slice(0, 2200)
     .map((x) => x.o);
   writeFileSync(join(appDataDir, "../../public/catalog-lite.json"), JSON.stringify({ generatedAt: new Date().toISOString(), operators: lite, contacts: {} }));
+  // Live times need each vendor-backed listing's booking link, and the API host has no facts table: the link is
+  // published here, keyed by catalog id, for the API to read (bookingUrlFor in enrich/availability.ts). These are
+  // FareHarbor, Peek and Xola pages, public by nature; the guest page itself still never shows them.
+  const published = new Set((operators as { id: string }[]).map((o) => o.id));
+  const liveUrls: Record<string, string> = {};
+  for (const row of db.prepare("SELECT o.domain AS domain, f.fact_value AS url FROM operators o JOIN facts f ON f.operator_id = o.id AND f.fact_key = 'booking_url' WHERE f.fact_value LIKE '%fareharbor.com/%' OR f.fact_value LIKE '%peek.com/s/%' OR f.fact_value LIKE '%xola.%'").all() as { domain: string; url: string }[]) {
+    const id = "o-" + slug(row.domain);
+    if (published.has(id) && !liveUrls[id]) liveUrls[id] = row.url;
+  }
+  writeFileSync(join(appDataDir, "../../public/live-index.json"), JSON.stringify({ generatedAt: new Date().toISOString(), urls: liveUrls }));
+  console.log("Wrote live booking links for " + Object.keys(liveUrls).length + " listings to public/live-index.json");
   // The landing pages get the same listings browse gets. `thin` is decided above, on the browse record, so it is
   // carried across by id rather than worked out a second time from a different shape.
   const thinIds = new Set(operators.filter((o) => o.thin).map((o) => o.id as string));

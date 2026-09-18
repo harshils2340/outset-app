@@ -455,19 +455,54 @@ async function xola(seller: string, dates: string[]): Promise<Availability> {
  * the site uses ("o-<domain slug>"), because the listing page only ever knows the latter.
  */
 export function bookingUrlFor(operatorId: string): string | null {
-  const byId = db.prepare("SELECT fact_value FROM facts WHERE operator_id = ? AND fact_key = 'booking_url' LIMIT 1").get(operatorId) as { fact_value?: string } | undefined;
-  if (byId?.fact_value) return byId.fact_value;
-  if (!operatorId.startsWith("o-")) return null;
-  // "o-example-com" was built as slug(domain); match it back without scanning every row in JS.
-  const row = db
-    .prepare(
-      `SELECT f.fact_value AS fact_value FROM operators o
-         JOIN facts f ON f.operator_id = o.id AND f.fact_key = 'booking_url'
-        WHERE 'o-' || replace(replace(lower(o.domain), '.', '-'), '/', '-') = ?
-        LIMIT 1`,
-    )
-    .get(operatorId) as { fact_value?: string } | undefined;
-  return row?.fact_value || null;
+  try {
+    const byId = db.prepare("SELECT fact_value FROM facts WHERE operator_id = ? AND fact_key = 'booking_url' LIMIT 1").get(operatorId) as { fact_value?: string } | undefined;
+    if (byId?.fact_value) return byId.fact_value;
+    if (!operatorId.startsWith("o-")) return null;
+    // "o-example-com" was built as slug(domain); match it back without scanning every row in JS.
+    const row = db
+      .prepare(
+        `SELECT f.fact_value AS fact_value FROM operators o
+           JOIN facts f ON f.operator_id = o.id AND f.fact_key = 'booking_url'
+          WHERE 'o-' || replace(replace(lower(o.domain), '.', '-'), '/', '-') = ?
+          LIMIT 1`,
+      )
+      .get(operatorId) as { fact_value?: string } | undefined;
+    return row?.fact_value || null;
+  } catch {
+    // The API host carries no crawl database; the published index below answers there.
+    return null;
+  }
+}
+
+/**
+ * The booking links the sync publishes beside the catalog (public/live-index.json), for a host with no crawl
+ * database. Fetched once an hour; a miss costs nothing more than the lookup.
+ */
+const LIVE_INDEX_URL = (process.env.SITE_URL || "https://onoutset.com/").replace(/\/?$/, "/") + "live-index.json";
+const LIVE_INDEX_TTL_MS = 60 * 60 * 1000;
+let liveIndex: { at: number; urls: Record<string, string> } | null = null;
+let liveIndexLoading: Promise<void> | null = null;
+export async function publishedBookingUrl(operatorId: string): Promise<string | null> {
+  if (!liveIndex || Date.now() - liveIndex.at > LIVE_INDEX_TTL_MS) {
+    if (!liveIndexLoading) {
+      liveIndexLoading = (async () => {
+        try {
+          const res = await fetch(LIVE_INDEX_URL, { signal: AbortSignal.timeout(10000), headers: { accept: "application/json" } });
+          if (res.ok) {
+            const j = (await res.json()) as { urls?: Record<string, string> };
+            liveIndex = { at: Date.now(), urls: j.urls || {} };
+          } else if (!liveIndex) liveIndex = { at: Date.now() - LIVE_INDEX_TTL_MS + 60000, urls: {} };
+        } catch {
+          if (!liveIndex) liveIndex = { at: Date.now() - LIVE_INDEX_TTL_MS + 60000, urls: {} };
+        } finally {
+          liveIndexLoading = null;
+        }
+      })();
+    }
+    await liveIndexLoading;
+  }
+  return liveIndex?.urls[operatorId] || null;
 }
 
 export function vendorFor(bookingUrl: string): "fareharbor" | "peek" | "xola" | null {
@@ -489,7 +524,7 @@ export async function getAvailability(operatorId: string, fromISO: string, days:
     const hit = cacheGet<Availability>(cache, key, TTL_MS);
     if (hit) return hit;
 
-    const bookingUrl = bookingUrlFor(operatorId);
+    const bookingUrl = bookingUrlFor(operatorId) || (await publishedBookingUrl(operatorId));
     if (!bookingUrl) return dead(null, "no booking url");
     const vendor = vendorFor(bookingUrl);
     if (!vendor) return dead(null, "unsupported booking system");
