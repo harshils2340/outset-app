@@ -1367,6 +1367,66 @@ clean, rehearsal 53 of 53.
   moves on the Navajo Nation, `groupCap` still counts no players or anglers, and no workflow runs `npm test`.
 
 
+## 18 September 2026, twenty-second run (05:00 to 06:10 UTC)
+
+**Checked, and why.** Coverage had the menu, the money and a claimed shop's calendar verified, and the guest
+booking box itself only through those. So this run read the booking box against the facts printed a few rows
+above it on the same page, over the whole shipped catalog: the group size, and the opening hours. Not the
+rehearsal to start with, because the last entry says 53 of 53 green and nothing since it touched code; it was
+run at the end instead, four times, because this run did change code it covers.
+
+**Found and fixed.** Four things, three of them on every unclaimed listing in the catalog.
+
+- **A six seat helicopter let a guest pick twenty, and quoted them $9,074.80** (`4cc478903`). The listing page
+  prints the group size the shop's own site states, "Up to 6 guests" off "Boat accommodates up to 6
+  passengers", and the party stepper under it ignored that line and offered twenty. **1,217 shipped listings**
+  state a ceiling under twenty; **471** are priced per person, so the same screen quoted a party the shop had
+  just said it cannot take: o-airmaui-com at $453.74 a seat, o-allinonecharters-com whose own menu row reads
+  "up to maximum party size of 6". Nothing catches it downstream either, because an unclaimed listing has no
+  capacity for the server to check, so the picker is the only guard there is. `maxGuestsFor` reads that line
+  now unless the operator set a capacity of their own, which still wins; only a stated ceiling under the
+  fallback binds, and both steppers name the limit beside themselves.
+- **A brewery that opens at four was taking seven in the morning requests, on 13,386 listings** (`43aaa6629`).
+  An unclaimed listing has no dashboard, so its picker offered the same six fixed times every day of the year,
+  whatever the shop's own website said, one screen reading "Closed today" over a row of 7 AM to 5 PM. That is
+  **13,386 listings offering a time on a day they publish hours for that falls outside them** (67,083
+  day-slots) and **1,014 offering all six on 1,737 days they state as closed**: o-10thstreetmotocross-com is
+  shut six days a week and took requests on every one. The fixed times are now filtered by the week the shop
+  publishes, in one rule (`src/lib/startTimes.ts`) read by the slot route, the booking route, the phone sheet
+  and the desktop page. A day the site says nothing about keeps all six, because the page prints no hours row
+  for it either. A day with hours none of the six land in falls back to the shop's own opening time on the
+  same two hour grid, so 626 listings keep start times rather than losing every one.
+- **The API and the listing page read a shop's hours two different ways** (`5b6f0e42c`). Found by writing the
+  twin test rather than by reading: the slot route's new reader threw away a day stated as a full 24 hours
+  from an opening time other than midnight, and did not know that hundreds of listings publish no hours of
+  their own and carry them on their synced contact record, which the page reads through `contactFor`. So the
+  API offered all six times where the page offered 4 PM to 9 PM (o-5rightsbrewing-com). A test now walks all
+  59,162 shipped listings and asserts the two return the same week for every one.
+- **An empty picker called next Saturday today** (`03fe90f25`). "No more start times today" is right when the
+  notice has eaten the rest of today and wrong under a date five days out, which after the fix above is 1,737
+  days across 1,014 listings. A stated closed day now reads "They are closed on Saturdays."
+
+**Green after the fixes.** 355 guest tests (16 new) and 207 backend tests (6 new), both projects type-check
+clean, rehearsal 53 of 53 four times, the last on the tree that is pushed.
+
+**Needs Harshil.**
+
+- **The other direction is yours to call.** 505 listings state a group size of twenty or more, up to "10,000
+  people" on a picnic ground, and the picker still stops at twenty for them. Widening it to the 60 the API
+  already accepts is a product decision, not a bug, so nothing was changed. `GUESTS_UNKNOWN` in
+  `src/lib/catalog.ts` is the line.
+- **An unclaimed shop open past midnight loses its tail.** A claimed shop's 10 PM to 8 AM run sells its small
+  hours on the next date; an unclaimed one is read up to midnight only, because there is no dashboard to say
+  which service runs then. 481 listings state a day that runs past midnight.
+- **The mojibake count was wrong, and smaller.** The last entry's 17 listings are 2 in what actually ships:
+  o-lastcastguiding-com ("speciesâ€”Chinook") in a service description and one more in a quote. Still worth a
+  pass over the crawler, but it is not 17 pages of it.
+- The earlier runs' calls stand: everything needing a real Stripe key is untouched, Home's three tabs are
+  still `role="tab"` with nothing to control, 6,513 rated listings still show a star rating on their card and
+  none on the page it opens, Arizona still moves on the Navajo Nation, `groupCap` still counts no players or
+  anglers, and no workflow runs `npm test`.
+
+
 ## Coverage
 
 **Verified so far.** Booking validation and odd input on every route that takes it. The money split,
@@ -1509,9 +1569,19 @@ listing states, each read by the listing page and by Otto, over all 59,162 shipp
 listing anywhere reads two ways, and that a number beside a ceiling word which counts inches, minutes, days,
 miles, kilometres per hour, pounds or dollars is never quoted as a party size or an age.
 
+The booking box against the facts the same page prints above it. The party the picker offers, over all 1,722
+shipped listings that state a group size: a stated floor, a thousands separator, a per service capacity an
+operator set, and the quote a party larger than the shop takes was being given. The start times an unclaimed
+listing offers, over all 14,330 listings with a readable week: every fixed time against every stated day, a
+day stated as closed, a day the site says nothing about, hours no fixed time lands in, hours past midnight,
+and the line under a picker with nothing in it. That the slot route, the booking route, the phone sheet and
+the desktop page all read one rule for it, and that the API's reader of a shop's published week and the
+listing page's return the same week on every one of the 59,162 listings that ship.
+
 **Not yet checked.** Whether the 108 archive rows that carried a real admission tier should keep that price
 under a name a re-crawl reads properly, and whether "Buy Tickets" (338 rows) and "Schedule a tour" (123)
-should be renamed. The 17 listings still showing Windows-1252 mojibake. Anything that needs a real Stripe key: the embedded card form itself mounted by
+should be renamed. The 2 listings still showing Windows-1252 mojibake (an earlier run counted 17; 2 is what
+actually ships). Anything that needs a real Stripe key: the embedded card form itself mounted by
 Stripe.js, the hosted page, 3D Secure, the Payouts page against a connected account, and the pending row a
 closed card form leaves holding the guest's own time for thirty minutes (see this run's Needs Harshil). The
 operator chat for a hand-built listing (`src/data/listings.ts` is empty, so `agent.ts` and the `ChatView`
@@ -1521,9 +1591,7 @@ paths are driven in a browser, the HTML5 drag events are not. A rehearsal check 
 rendered page and not only the API's JSON. A CI job that runs `npm test` on either side. Whether a claimed shop
 with an empty menu should pause its own listing. Whether a shop that genuinely trades around the clock can say
 so at all. Whether the Where box should index the towns our own catalog already names. Whether Arizona's
-Navajo Nation should keep daylight saving. The 4,736 listings whose area carries no town, as a supply gap.
-Whether the party picker should take the group size a listing states (1,255 state one under 20, and the
-picker offers 20). The
+Navajo Nation should keep daylight saving. The 4,736 listings whose area carries no town, as a supply gap. The
 glossary behind a tier label (`explain`, `variantNote`) and the "More options" folding, which an earlier run
 read but did not drive in a browser. Deals and promos on a listing driven in a browser, and the promo crawl's
 output; only the rules behind them are read so far. Which clause on a policy owns the number the Free
@@ -1539,4 +1607,7 @@ days tab should list the week's unanswered requests as well as its confirmed boo
 should count players, persons, participants and anglers and read number words: 351 listings would print a
 group size they currently do not and 32 would change theirs, 9 of them downwards (see this run's Needs
 Harshil). Whether a minimum age over 21 should be printable at all, for boat and car
-rental floors.
+rental floors. Whether the 505 listings stating a group size of 20 or more should widen the picker past 20, towards the 60
+the API already takes. Whether an unclaimed shop open past midnight should sell its small hours on the next
+date, the way a claimed one does, on the 481 that state one. Whether a shop whose week states only closed days, 18 of them, should be
+bookable at all on the days it says nothing about.
