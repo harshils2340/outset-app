@@ -479,12 +479,31 @@ export type LiveAvailability = { vendor: "fareharbor" | "peek" | "xola" | null; 
  * Always resolves: with no API, an unsupported booking system or a vendor that did not answer it comes
  * back `live: false` with no days, and the caller keeps showing whatever it showed before.
  */
+/**
+ * One listing view asks for the same dates from three places at once: the booking box, the phone sheet and the
+ * assistant. Those were three requests to the same URL, and with the API's per-caller limit now actually
+ * counting, a guest opening a few listings could be rate-limited out of the times they came to see. Calls in
+ * flight share one promise, and an answer is kept for five minutes, well inside the API's own ten-minute cache.
+ */
+const availCache = new Map<string, { at: number; value: Promise<LiveAvailability> }>();
+const AVAIL_TTL_MS = 5 * 60 * 1000;
+
 export async function fetchAvailability(id: string, from?: string, days = 14): Promise<LiveAvailability> {
   const q = new URLSearchParams();
   if (from) q.set("from", from);
   q.set("days", String(days));
-  const r = await call<LiveAvailability>(`/availability/${encodeURIComponent(id)}?${q}`, { timeout: 15000 });
-  return r.ok && r.data?.live ? { ...r.data, days: r.data.days || [] } : { vendor: r.data?.vendor ?? null, live: false, days: [] };
+  const key = `${id}|${from || ""}|${days}`;
+  const hit = availCache.get(key);
+  if (hit && Date.now() - hit.at < AVAIL_TTL_MS) return hit.value;
+  const value = (async () => {
+    const r = await call<LiveAvailability>(`/availability/${encodeURIComponent(id)}?${q}`, { timeout: 15000 });
+    return r.ok && r.data?.live ? { ...r.data, days: r.data.days || [] } : { vendor: r.data?.vendor ?? null, live: false, days: [] };
+  })();
+  availCache.set(key, { at: Date.now(), value });
+  // A failed lookup must not be pinned for five minutes; only a real answer is worth keeping.
+  void value.catch(() => availCache.delete(key));
+  if (availCache.size > 40) for (const [k, v] of availCache) if (Date.now() - v.at > AVAIL_TTL_MS) availCache.delete(k);
+  return value;
 }
 
 /* ---------- photo uploads ---------- */

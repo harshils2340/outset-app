@@ -21,18 +21,22 @@ const listing = (id: string) => JSON.parse(readFileSync(new URL(id + ".json", di
 /* ---------- the badge that was never earned ---------- */
 
 test("a non-refundable booking does not advertise free cancellation", () => {
-  // o-sailtheseawolf-com: "You have booked a NON-REFUNDABLE, non-cancellable purchase."
+  // o-sailtheseawolf-com: "You have booked a NON-REFUNDABLE, non-cancellable purchase." The sync used to ship this
+  // listing with the badge as well, and this proved the page stripped it; the sync stopped setting it, so both the
+  // stored flag and the drawn badge are checked, and either one coming back fails here.
   const j = listing("o-sailtheseawolf-com");
   assert.match(j.cancellation || "", /NON-REFUNDABLE, non-cancellable/i, "the policy changed, so this case needs a new listing");
-  assert.equal(j.fc, "Free cancellation");
   assert.equal(freeCancelBadge(j), null);
+  assert.equal(freeCancelBadge({ ...j, fc: "Free cancellation" }), null, "a badge in the file must still be stripped");
 });
 
 test("a refund the shop pays when it calls the day off is not the guest's", () => {
   for (const id of ["o-2muddy-com", "o-paradisesailinghawaii-com", "o-gcovecharters-com"]) {
     const j = listing(id);
-    assert.ok(j.fc, id + " no longer carries the badge, so this case needs a new listing");
+    // These shops refund when they call the day off, which is not a guest's right to cancel. The sync no longer
+    // badges them, so the badge is forced back on to prove the page still refuses to draw it.
     assert.equal(freeCancelBadge(j), null, id);
+    assert.equal(freeCancelBadge({ ...j, fc: "Free cancellation" }), null, id + " with the badge forced on");
   }
 });
 

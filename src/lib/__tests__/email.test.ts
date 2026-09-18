@@ -55,6 +55,7 @@ test("every address shipped in the contacts file is one a guest's mail client wo
   if (!fs.existsSync(src)) return;
   const shipped = [...fs.readFileSync(src, "utf8").matchAll(/"email":"([^"]*)"/g)].map((m) => m[1]).filter(Boolean);
   const unreadable = shipped.filter((e) => !contactEmail(e));
-  // The two that ship today are a percent-encoded address, which reads clean now, and a placeholder.
-  assert.deepEqual(unreadable, ["[email protected]"]);
+  // This once allowed one shipped placeholder ("[email protected]"); a later sync dropped it. The rule is what
+  // matters, not the exception: nothing a mail client would choke on may ship, and a returning placeholder fails here.
+  assert.deepEqual(unreadable, []);
 });
