@@ -6,6 +6,7 @@ import { VENDORS } from "../enrich/vendors.ts";
 import { db, nowIso } from "../db/client.ts";
 import { claimTokenV2 } from "../lib/claim.ts";
 import { mailPostal, unsubPageUrl } from "../lib/unsub.ts";
+import { tidyHours } from "../sync/contacts.ts";
 import { outreachAddress } from "./address.ts";
 
 type Op = {
@@ -73,7 +74,33 @@ function link(href: string, label: string): string {
   return "<a href=\"" + esc(href) + "\">" + esc(label) + "</a>";
 }
 
-export function draftCopy(op: Op, sc: ReturnType<typeof scale>, offerings: string[], hasPhotos: boolean, hasRules: boolean, email?: string, menuFromWidget = false): { subject: string; body: string; html: string } {
+/**
+ * What this operator's page will actually show, so the email can name what is on it and nothing else.
+ *
+ * The email says "I didn't make anything up" in the same breath, and an owner checks by clicking the link
+ * directly under it, so every item here is read from the same place the sync reads it from when it writes
+ * the page. `hours` was not read at all: the sentence said "your hours" to every operator, and 44,312 of the
+ * 59,162 listings we ship publish no hours.
+ */
+export type PageFacts = {
+  /** Service names that carry a price. */
+  priced: string[];
+  /** Every service on the menu, priced or not. */
+  services: number;
+  photos: boolean;
+  hours: boolean;
+  rules: boolean;
+  /** The menu was read from the operator's own booking widget, so the prices are theirs. */
+  menuFromWidget: boolean;
+};
+
+/** "a", "a and b", "a, b and c". A one-item list used to read "It has  and your hours." */
+function andList(parts: string[]): string {
+  if (parts.length < 2) return parts[0] || "";
+  return parts.slice(0, -1).join(", ") + " and " + parts[parts.length - 1];
+}
+
+export function draftCopy(op: Op, sc: ReturnType<typeof scale>, f: PageFacts, email?: string): { subject: string; body: string; html: string } {
   void sc;
   const to = (email || "").trim().toLowerCase();
   const SITE = "https://onoutset.com/";
@@ -88,14 +115,21 @@ export function draftCopy(op: Op, sc: ReturnType<typeof scale>, offerings: strin
   const owner = to ? "&o=" + Buffer.from(JSON.stringify({ n: "", e: to, p: "" })).toString("base64url") : "";
   const claim = SITE + "#claim=" + id + "&k=" + claimTokenV2(id) + owner;
   const remove = SITE + "#remove=" + id;
-  const vendor = vendorLine(op.calendar_vendor, menuFromWidget);
+  const vendor = vendorLine(op.calendar_vendor, f.menuFromWidget);
   const subject = "A page for " + op.name;
   // The catalog size guests browse today: read from the published catalog when this process has it, else the last known count.
   const listed = publishedCount();
-  const menu = offerings.length ? "your " + offerings.length + (offerings.length === 1 ? " service" : " services") + " with prices" : "what you sell";
-  const built = [menu, hasPhotos ? "your photos" : null, "your hours", hasRules ? "your cancellation policy" : null].filter(Boolean);
+  const menu = f.priced.length
+    ? "your " + f.priced.length + (f.priced.length === 1 ? " service" : " services") + " with prices"
+    : f.services
+      ? "your " + f.services + (f.services === 1 ? " service" : " services")
+      : null;
+  const built = [menu, f.photos ? "your photos" : null, f.hours ? "your hours" : null, f.rules ? "your cancellation policy" : null].filter(Boolean) as string[];
   const who = "I'm Harshil. I run Outset, a site where people book local activities the way they book a table on OpenTable: pick a time, pay, done. No calling around.";
-  const intro = "I built a page for " + op.name + " from your website. It has " + built.slice(0, -1).join(", ") + " and " + built[built.length - 1] + ". I didn't make anything up. Have a look:";
+  // A page with nothing on it is still worth showing, but it cannot be sold as one that has their things on it.
+  const intro = built.length
+    ? "I built a page for " + op.name + " from your website. It has " + andList(built) + ". I didn't make anything up. Have a look:"
+    : "I built a page for " + op.name + " from your website, but your site gave me very little to put on it, so the page is thin. Nothing on it is invented, and the link below lets you fill in the rest. Have a look:";
   const scale = "There are about " + listed + " activity businesses on Outset across the US and Canada, from Florida to British Columbia, and guests find them by city and activity.";
   const money = "What it costs: nothing to be listed. When a booking comes through Outset, we keep 5% of it. No booking, no fee." + (vendor ? " " + vendor : "");
   const lines = ["Hi,", "", who, "", intro, listing, "", scale, "", money, ""];
@@ -132,8 +166,18 @@ export function draftCopy(op: Op, sc: ReturnType<typeof scale>, offerings: strin
   };
 }
 
-/** How many listings the site publishes: the browse catalog's count, rounded down to the nearest thousand, with "59,000" as the floor if the file is missing. */
+/**
+ * How many listings the site publishes: the browse catalog's count, rounded down to the nearest thousand,
+ * with "59,000" as the floor if the file is missing. Read once per process: catalog.json is 23 MB, and this
+ * sits inside the copy, which a draft run writes once per operator.
+ */
+let listedOnce: string | null = null;
 function publishedCount(): string {
+  if (listedOnce) return listedOnce;
+  return (listedOnce = readPublishedCount());
+}
+
+function readPublishedCount(): string {
   try {
     const raw = readFileSync(join(dirname(fileURLToPath(import.meta.url)), "../../../public/catalog.json"), "utf8");
     const n = (JSON.parse(raw) as { operators?: unknown[] }).operators?.length || 0;
@@ -144,14 +188,53 @@ function publishedCount(): string {
   return "59,000";
 }
 
+/**
+ * One reader of what an operator's page holds, for the draft and for the copy written at send time, so the
+ * two cannot disagree. They used to: the draft counted every service as one "with prices".
+ * Statements are prepared once, because the draft run walks every unclaimed operator inside one transaction.
+ */
+let stmt: {
+  priced: ReturnType<typeof db.prepare>;
+  services: ReturnType<typeof db.prepare>;
+  photos: ReturnType<typeof db.prepare>;
+  rules: ReturnType<typeof db.prepare>;
+  widget: ReturnType<typeof db.prepare>;
+  hours: ReturnType<typeof db.prepare>;
+  hoursText: ReturnType<typeof db.prepare>;
+} | null = null;
+
+function statements() {
+  return (stmt ??= {
+    priced: db.prepare("SELECT DISTINCT name FROM offerings WHERE operator_id = ? AND price_cents IS NOT NULL"),
+    services: db.prepare("SELECT COUNT(DISTINCT name) AS n FROM offerings WHERE operator_id = ?"),
+    photos: db.prepare("SELECT 1 FROM facts WHERE operator_id = ? AND fact_key IN ('cover', 'photo') LIMIT 1"),
+    // Only a cancellation fact. The draft generator also counted a requirement or a house rule, and the
+    // sentence it feeds says "your cancellation policy", which neither of those is.
+    rules: db.prepare("SELECT 1 FROM facts WHERE operator_id = ? AND fact_key = 'cancellation' LIMIT 1"),
+    widget: db.prepare("SELECT 1 FROM offerings WHERE operator_id = ? AND confidence = 'widget' AND price_cents IS NOT NULL LIMIT 1"),
+    hours: db.prepare("SELECT hours FROM operators WHERE id = ?"),
+    hoursText: db.prepare("SELECT fact_value FROM facts WHERE operator_id = ? AND fact_key = 'hours_text' LIMIT 1"),
+  });
+}
+
+export function pageFacts(operatorId: string): PageFacts {
+  const q = statements();
+  const hours = (q.hours.get(operatorId) as { hours: string | null } | undefined)?.hours;
+  const hoursText = (q.hoursText.get(operatorId) as { fact_value: string } | undefined)?.fact_value;
+  return {
+    priced: (q.priced.all(operatorId) as { name: string }[]).map((r) => r.name),
+    services: (q.services.get(operatorId) as { n: number }).n,
+    photos: !!q.photos.get(operatorId),
+    // The same two sources and the same filter the sync publishes an Hours block from.
+    hours: tidyHours(hours ? hours.split(" | ") : hoursText ? [hoursText] : []).length > 0,
+    rules: !!q.rules.get(operatorId),
+    menuFromWidget: !!q.widget.get(operatorId),
+  };
+}
+
 /** Fresh copy at send time so a stale SQLite draft never goes out. */
 export function composeOutreach(op: Op, email: string): { subject: string; body: string; html: string } {
-  // What the page really shows, so the email's claim ("your 41 services with prices") is true for this operator.
-  const priced = db.prepare("SELECT DISTINCT name FROM offerings WHERE operator_id = ? AND price_cents IS NOT NULL").all(op.id) as { name: string }[];
-  const hasPhotos = !!db.prepare("SELECT 1 FROM facts WHERE operator_id = ? AND fact_key IN ('cover', 'photo') LIMIT 1").get(op.id);
-  const hasRules = !!db.prepare("SELECT 1 FROM facts WHERE operator_id = ? AND fact_key = 'cancellation' LIMIT 1").get(op.id);
-  const fromWidget = !!db.prepare("SELECT 1 FROM offerings WHERE operator_id = ? AND confidence = 'widget' AND price_cents IS NOT NULL LIMIT 1").get(op.id);
-  return draftCopy(op, scale(), priced.map((r) => r.name), hasPhotos, hasRules, email, fromWidget);
+  return draftCopy(op, scale(), pageFacts(op.id), email);
 }
 
 export function generateOutreachDrafts(): number {
@@ -161,17 +244,13 @@ export function generateOutreachDrafts(): number {
   let n = 0;
   db.exec("PRAGMA busy_timeout = 120000");
   db.prepare("DELETE FROM outreach_drafts WHERE status = 'draft'").run();
-  const offQ = db.prepare("SELECT name, price_cents FROM offerings WHERE operator_id = ? ORDER BY price_cents IS NULL, price_cents LIMIT 6");
-  const factQ = db.prepare("SELECT fact_key FROM facts WHERE operator_id = ? AND fact_key IN ('cover','requirement','policy','cancellation') GROUP BY fact_key");
   const ins = db.prepare("INSERT INTO outreach_drafts (id, operator_id, to_email, subject, body, status, created_at) VALUES (?, ?, ?, ?, ?, 'draft', ?)");
   // One transaction: the write lock is held for seconds, not minutes, while crawls share the database.
   db.exec("BEGIN IMMEDIATE");
   for (const op of ops) {
-    const offerings = (offQ.all(op.id) as { name: string; price_cents: number | null }[]).map((o) => o.name + (o.price_cents != null ? " · $" + (o.price_cents / 100).toFixed(0) : ""));
-    const keys = new Set((factQ.all(op.id) as { fact_key: string }[]).map((f) => f.fact_key));
     const to = outreachAddress(op);
     if (!to) continue;
-    const { subject, body } = draftCopy(op, sc, offerings, keys.has("cover"), keys.has("requirement") || keys.has("policy") || keys.has("cancellation"), to);
+    const { subject, body } = draftCopy(op, sc, pageFacts(op.id), to);
     ins.run(randomUUID(), op.id, to, subject, body, nowIso());
     n += 1;
   }

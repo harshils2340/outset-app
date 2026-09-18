@@ -231,7 +231,7 @@ export const NOT_OPERATOR_HOST =
  * Opening hours worth showing: a weekly pattern with times, or "closed". Snapshots like "Open today 9am-5pm" and
  * "Hours This Week Thursday 2:00 PM-4:00 PM" describe one day the crawler happened to visit, so they are dropped.
  */
-function tidyHours(lines: string[]): string[] {
+export function tidyHours(lines: string[]): string[] {
   const out: string[] = [];
   for (const raw of lines) {
     let h = raw.replace(/^\s*hours(?: of operation| & admission)?\s*:?\s*/i, "").replace(/\s+/g, " ").trim();
