@@ -96,7 +96,12 @@ export function harvestVideos(html: string, pageUrl: string, seen: Map<string, V
     if (!/\.gif(\?|$)/i.test(src)) return;
     const w = dims($(el).attr("width"));
     const h = dims($(el).attr("height"));
-    if ((w && w < 400) || (h && h < 250)) return;
+    // `dims` answers 0 for an attribute that is not there, and a size test written against a declared size
+    // passes everything that declares none. That is exactly the shape of a beacon: `<img src=".../g.gif">`
+    // with no width, no height and no alt. A GIF only stands in for a video when the markup says it is big
+    // enough to be one; the cost of asking is a genuine hero GIF that omits its size, and the fallback for
+    // that is the cover the photo screen picked.
+    if (!w || !h || w < 400 || h < 250) return;
     if ($(el).closest("header, nav, footer, aside").length) return;
     addFile(src, 2, null, String($(el).attr("alt") || "") + " " + String($(el).attr("class") || ""));
   });

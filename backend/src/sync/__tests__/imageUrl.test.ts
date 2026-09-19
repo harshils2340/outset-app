@@ -38,6 +38,41 @@ test("a registrar's parking banner is not a photo of the business", () => {
   }
 });
 
+/**
+ * A beacon is not a picture of a business. These all shipped as the `video` a listing leads its hero with,
+ * under a "Video" badge, because the video fact was the one image no screen ever looked at.
+ */
+test("an analytics beacon, a spam filter's receipt and a layout spacer are not photos", () => {
+  for (const u of [
+    "https://pixel.wp.com/e.gif?c=site-not-found&u=https%3A//www.ajogolfcourse.com/&rand=0.084", // AJO Golf Course
+    "https://pixel.wp.com/g.gif?blog=3276749&v=wpcom&host=ahlandance.com", // Ah Lan Dance
+    "https://moderate15-v4.cleantalk.org/pixel/724cccfb2b9109ebe0a3181f19695a50.gif", // 868 Estate Vineyards
+    "https://analytics.alpine.io/collect/p.gif",
+    "https://zcsub-cmpzourl.maillist-manage.com/images/spacer.gif",
+    "https://www.facebook.com/security/hsts-pixel.gif",
+    "https://www.google.com/images/cleardot.gif",
+    "http://applehillgolf.com/wp-content/plugins/soliloquy/assets/css/images/holder.gif", // Apple Hill Golf Course
+    "https://aroundlakemurray.simplybook.me/v2/themes/assets/img/waiting.gif",
+    "https://www.bushwoodgc.com/images/blank.gif?crc=4208392903", // Bushwood Golf Club
+    "https://www.nissanpartsforyou.com/assets/images/grey.gif",
+  ]) {
+    assert.equal(publishableImage(u), false, u + " should be refused");
+  }
+});
+
+test("a photograph is not a beacon because of what it is called or where it sits", () => {
+  for (const u of [
+    // A real photograph can be called white.png; only a solid-colour GIF is taken for a spacer.
+    "https://www.liveactionsportfishing.com/wp-content/uploads/2024/09/white.png",
+    "https://example.com/photos/pixelated-sunset.jpg",
+    "https://example.com/tracks/trail-map-photo.jpg",
+    "https://pixelperfectphoto.com/gallery/kayak.jpg",
+    "https://example.com/collections/boats/one.jpg",
+  ]) {
+    assert.equal(publishableImage(u), true, u + " should be kept");
+  }
+});
+
 test("an operator's own photo is left alone", () => {
   for (const u of [
     "https://cdn.prod.website-files.com/6617b9233975c2e1cdf0a7a6/68cabad4707e934792c3b411_SC_04_groupD_grey_0345.webp",

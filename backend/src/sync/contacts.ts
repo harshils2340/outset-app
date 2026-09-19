@@ -658,7 +658,18 @@ export function toCatalogItem(r: CatalogRow): Record<string, unknown> {
       .slice(0, 3),
     tiktok: pick("tiktok_profile")[0] || undefined,
     instagram: pick("social:instagram")[0] || undefined,
-    video: pick("video")[0] || undefined,
+    // The clip leads the hero, in front of every photo and under a "Video" badge, and it was the one image on a
+    // listing that no screen ever looked at: photos pass cleanImageUrl, isPhotoName, the photo screen's verdicts
+    // and fullSize, and the video fact passed none of them. So 1,062 listings led with whatever the crawl found,
+    // among them a WordPress.com beacon reading "site-not-found", four CleanTalk spam-filter pixels, a PayPal
+    // Buy Now button, a Facebook login button, a TripAdvisor badge, a Google Maps close icon, a scorecard, a
+    // course map, a registrar's required-field icon and eleven spacer GIFs. Hold it to the same screens: what
+    // survives is the shop's own moving cover, and what does not falls back to the cover the photo screen chose.
+    // Every candidate is screened, not only the best-scoring one, so a beacon in front of a real clip costs the
+    // clip nothing. A GIF is judged as the picture it is, by the same name rules as a photo; a real video file
+    // is judged only on whether a guest can load it, because those rules read a file name for a scanned page
+    // and a brewery's own hero clip is called 7-Seas-Home-Page-1-1.mp4.
+    video: keepScreened(pick("video").filter((u) => (/\.gif(\?|$)/i.test(u) ? isPhotoName(u) : true)).filter((u) => !!fullSize(u)))[0] || undefined,
     videoEmbed: pick("video_embed")[0] || undefined,
     lat: r.lat ?? undefined,
     lon: r.lon ?? undefined,

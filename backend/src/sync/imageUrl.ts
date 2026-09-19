@@ -30,6 +30,23 @@ const PARKED_HOST =
   /(^|\.)(?:hugedomains|sedoparking|sedo|afternic|bodis|parkingcrew|cashparking|domainmarket|brandbucket|squadhelp|atom|gname|sitecdn)\.com$|^bat\.bing\.com$/i;
 const PARKED_PATH = /\/parking-page\/|coming[-_+%\s]?soon|under[-_+%\s]?construction|under[-_+%\s]?suspension/i;
 
+/**
+ * An image request whose only job is to be fetched: an analytics beacon, a spam filter's receipt, a layout
+ * spacer, a theme's placeholder. It is never a picture of a business, and it is usually one transparent pixel.
+ * `bat.bing.com` above was the first of these found, one at a time; these are the rest, by what they have in
+ * common. A host whose first label announces it counts (`pixel.wp.com`, `analytics.alpine.io`), a path filed
+ * under one (`moderate15-v4.cleantalk.org/pixel/<hash>.gif`, `/collect/p.gif`), and the standard placeholder
+ * file names. A solid colour is only taken as a spacer when it is a GIF, because a real photograph can be
+ * called white.png and no real photograph is a GIF called white.gif.
+ */
+const PIXEL_HOST = /^(?:pixel|pixels|analytics|beacon|beacons|stats|telemetry|metrics|track|tracker|tracking)\./i;
+/** A host that serves only some other company's own interface. `paypalobjects.com` is PayPal's button art, and
+ *  a "Buy Now" button led six listings' heroes as their video. No photograph has ever come from one. */
+const VENDOR_CHROME = /(^|\.)paypalobjects\.com$/i;
+const PIXEL_PATH = /\/(?:pixel|pixels|collect|beacon|track|tracking|telemetry)\//i;
+const PIXEL_NAME =
+  /(?:^|\/)(?:spacer|cleardot|clear|blank|transparent|trans|holder|placeholder|waiting|loading|spinner|pixel|px|dot|1x1|hsts-pixel)\.(?:gif|png)$|(?:^|\/)(?:grey|gray|white)\.gif$/i;
+
 /** Wix lazy-load placeholders are 34px blurred stubs. Ask for the full image instead; tiny variants from other hosts are dropped. */
 export function fullSize(u: string): string | undefined {
   if (!u) return undefined;
@@ -58,6 +75,7 @@ export function publishableImage(u: string): boolean {
   if (url.protocol !== "http:" && url.protocol !== "https:") return false;
   const host = url.hostname.replace(/^\[|\]$/g, "");
   if (PRIVATE_HOST.test(host) || PARKED_HOST.test(host)) return false;
+  if (PIXEL_HOST.test(host) || VENDOR_CHROME.test(host) || PIXEL_PATH.test(url.pathname) || PIXEL_NAME.test(url.pathname)) return false;
   if (WSRV_HOST.test(host)) {
     for (const key of url.searchParams.keys()) if (!WSRV_SAFE_PARAMS.has(key.toLowerCase())) return false;
   }
