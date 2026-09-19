@@ -6,6 +6,7 @@ import { join } from "node:path";
 import { KINDS, MIN_METRO_LISTINGS, buildFaq, pageTitle, publicSite, singular, writeLandingPages, type Item } from "../pages.ts";
 import { METROS } from "../../taxonomy/catalog.ts";
 import { ART_ALIASES } from "../../../../src/data/synonyms.ts";
+import { GUIDES } from "../../../../src/data/guides.ts";
 
 const metro = (id: string) => METROS.find((m) => m.id === id)!;
 
@@ -331,4 +332,28 @@ test("a state code is never listed as one of a metro's towns", () => {
   const [first] = buildFaq(KINDS.find((k) => k.art === "cooking")!, metro("tampa"), items);
   assert.match(first.a, /including places in Tampa and Clearwater\b/);
   assert.doesNotMatch(first.a, /\bFL\b/);
+});
+
+/**
+ * The guide block ("What escape rooms are actually like") is the only prose on a landing page that is ours
+ * rather than an operator's, and it is keyed on the listing's art kind. Nothing connects the two but that
+ * string: rename an art kind and the guide stops being found, silently, on every page and every listing page
+ * for that activity. 14 of the 64 kinds have one, so a quiet loss of one is a fifteenth of the prose gone.
+ */
+test("every guide we have written is printed on a kind that exists", () => {
+  const orphans = Object.keys(GUIDES).filter((art) => !KINDS.some((k) => k.art === art));
+  assert.deepEqual(orphans, [], "guides written for an art kind no KIND uses are never printed");
+});
+
+test("the guide heading agrees with its own subject, for all 64 kinds", () => {
+  // The heading picks "is" or "are" by whether the search label ends in an s. Every kind goes through it,
+  // whether or not it has a guide today, because a guide written later inherits the heading as it stands.
+  const plural = (s: string) => /s$/.test(s);
+  for (const k of KINDS) {
+    const verb = plural(k.search) ? "are" : "is";
+    const looksPlural = /\b(rentals|rooms|tours|classes|courses|charters|alleys|parks|rinks|ranges|gyms|venues|studios|resorts|halls|centers|centres|bars|lessons|rides|saunas|spas|zoos|aquariums|museums|gardens|campgrounds|breweries|wineries|distilleries|courts|pools|ziplines|arcades)\b/i.test(k.search);
+    if (looksPlural) assert.equal(verb, "are", `"${k.search}" is a plural noun but the heading would say "${verb}"`);
+    // A gerund or a mass noun ("Skydiving", "Paintball", "Mini golf") must not be called plural.
+    if (/(?:ing|ball|golf|tag)$/i.test(k.search)) assert.equal(verb, "is", `"${k.search}" reads as singular but the heading would say "${verb}"`);
+  }
 });
