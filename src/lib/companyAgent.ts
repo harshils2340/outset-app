@@ -396,7 +396,9 @@ type Slot = { when: string; price?: number; seats?: number; date: string };
 function liveSlots(ctx: CompanyContext): Slot[] {
   const days = ctx.live?.live ? ctx.live.days || [] : [];
   const out: Slot[] = [];
-  for (const d of days) for (const s of d.slots || []) out.push({ when: s.label, date: d.date, price: s.priceCents != null ? s.priceCents / 100 : undefined, seats: s.seatsLeft });
+  // A row marked timeUnknown only says the date is open: its midnight is a placeholder, not a departure, so
+  // Otto would have read out "Monday Sunset Cruise" as a start time. Rule 4: never invent an open slot.
+  for (const d of days) for (const s of d.slots || []) if (!s.timeUnknown) out.push({ when: s.label, date: d.date, price: s.priceCents != null ? s.priceCents / 100 : undefined, seats: s.seatsLeft });
   return out;
 }
 

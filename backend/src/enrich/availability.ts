@@ -34,6 +34,12 @@ export type Slot = {
   priceCents?: number;
   seatsLeft?: number;
   bookUrl: string;
+  /**
+   * Set on a row that exists only to mark the date as open: the vendor said this date has departures and the
+   * request budget ran out before their clock times were read. `startsAt` then carries the date and a
+   * midnight that means nothing, so nothing may offer it as a start time.
+   */
+  timeUnknown?: true;
 };
 export type AvailabilityDay = { date: string; slots: Slot[] };
 export type Availability = {
@@ -381,11 +387,12 @@ async function peek(refKey: string, code: string, dates: string[]): Promise<Avai
     }
   }
 
-  // Dates the budget never reached still say "open": one all-day slot, so the page can offer the date.
+  // Dates the budget never reached still say "open": one marker row, so a caller can tell an open date whose
+  // times we could not read from a date the shop is shut. It is not a departure and carries no time.
   for (const slot of open) {
     const list = byDate.get(slot.date)!;
     if (list.length) continue;
-    list.push({ startsAt: slot.date + "T00:00", label: slot.activity.name || "Available", bookUrl });
+    list.push({ startsAt: slot.date + "T00:00", label: slot.activity.name || "Available", bookUrl, timeUnknown: true });
   }
   for (const list of byDate.values()) list.sort((x, y) => x.startsAt.localeCompare(y.startsAt));
   return shape("peek", byDate, dates, timed < open.length ? { partial: true, note: `exact times read for ${timed} of ${open.length} open dates` } : {});

@@ -470,7 +470,11 @@ export async function decideBooking(listing: string, code: string, status: Remot
 
 /* ---------- live availability ---------- */
 
-export type AvailabilitySlot = { startsAt: string; label: string; priceCents?: number; seatsLeft?: number; bookUrl: string };
+/**
+ * `timeUnknown` marks a row that only says the date is open: the vendor's own times were never read, so its
+ * `startsAt` carries a midnight that means nothing. See `liveTimes.ts`, which drops them.
+ */
+export type AvailabilitySlot = { startsAt: string; label: string; priceCents?: number; seatsLeft?: number; bookUrl: string; timeUnknown?: true };
 export type AvailabilityDay = { date: string; slots: AvailabilitySlot[] };
 export type LiveAvailability = { vendor: "fareharbor" | "peek" | "xola" | null; live: boolean; updatedAt?: string; days: AvailabilityDay[]; partial?: boolean; note?: string };
 
