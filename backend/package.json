@@ -28,7 +28,8 @@
     "chrome:reap": "tsx src/index.ts chrome-reap",
     "cpu": "tsx scripts/cpu.mts",
     "pipeline": "tsx scripts/pipeline.mts",
-    "overture": "tsx src/index.ts overture"
+    "overture": "tsx src/index.ts overture",
+    "osm-facts": "tsx src/index.ts osm-facts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.124.0",

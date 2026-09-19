@@ -119,6 +119,9 @@ type Row = {
   name: string | null;
   category: string | null;
   website: string | null;
+  email: string | null;
+  social: string | null;
+  status: string | null;
   phone: string | null;
   street: string | null;
   city: string | null;
@@ -141,6 +144,12 @@ function hostOf(url: string | null): string | null {
   }
 }
 
+/** A public Instagram or Facebook page, kept as a fact with its source, the way the site crawl keeps them. */
+function noteSocial(operatorId: string, url: string): void {
+  if (stmt("SELECT 1 FROM facts WHERE operator_id = ? AND fact_key = 'social' AND fact_value = ? LIMIT 1").get(operatorId, url)) return;
+  stmt("INSERT INTO facts (id, operator_id, fact_key, fact_value, source_url, confidence) VALUES (?, ?, 'social', ?, 'overture', 'listed')").run(randomUUID(), operatorId, url);
+}
+
 export type OvertureStats = { read: number; skipped: Record<string, number>; inserted: number; merged: number };
 
 /**
@@ -155,6 +164,9 @@ export function keep(r: Row): { ok: true; host: string } | { ok: false; why: str
   if (!host) return { ok: false, why: "no website" };
   if (SOCIAL.test(host)) return { ok: false, why: "social page, not a site" };
   if (r.lat == null || r.lon == null) return { ok: false, why: "no pin" };
+  // Overture tracks whether a business is still trading. A shut one is the worst kind of filler: a guest rings
+  // a dead number. 186,790 places in the United States alone are marked permanently closed.
+  if (r.status === "permanently_closed" || r.status === "temporarily_closed") return { ok: false, why: "closed" };
   // Overture scores how sure it is the place is real. Below half is a place it is guessing at.
   if (r.confidence != null && r.confidence < 0.5) return { ok: false, why: "low confidence" };
   return { ok: true, host };
@@ -183,24 +195,27 @@ function upsert(r: Row, host: string, stats: OvertureStats): void {
 
   if (existing) {
     stmt(
-      `UPDATE operators SET website = COALESCE(website, ?), phone = COALESCE(phone, ?), street = COALESCE(street, ?),
-        city = COALESCE(city, ?), region = COALESCE(region, ?), postal = COALESCE(postal, ?),
+      `UPDATE operators SET website = COALESCE(website, ?), phone = COALESCE(phone, ?), email = COALESCE(email, ?),
+        street = COALESCE(street, ?), city = COALESCE(city, ?), region = COALESCE(region, ?), postal = COALESCE(postal, ?),
         lat = COALESCE(lat, ?), lon = COALESCE(lon, ?), metro_id = COALESCE(metro_id, ?), updated_at = ?
        WHERE id = ?`,
-    ).run(r.website, phone, r.street, r.city, r.region, r.postal, r.lat, r.lon, metro?.id || null, now, existing.id);
+    ).run(r.website, phone, r.email, r.street, r.city, r.region, r.postal, r.lat, r.lon, metro?.id || null, now, existing.id);
+    if (r.social) noteSocial(existing.id, r.social);
     stats.merged++;
     return;
   }
 
+  const id = randomUUID();
   stmt(
     `INSERT INTO operators (
-      id, domain, name, website, phone, street, postal, metro_id, city, region, country, family, category_id, icon_key,
+      id, domain, name, website, phone, email, street, postal, metro_id, city, region, country, family, category_id, icon_key,
       claim_status, booking_mode, origin, completeness, lat, lon, created_at, updated_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'unclaimed', 'request', 'overture', 0, ?, ?, ?, ?)`,
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'unclaimed', 'request', 'overture', 0, ?, ?, ?, ?)`,
   ).run(
-    randomUUID(), host, r.name!.trim(), r.website, phone, r.street, r.postal, metro?.id || null, r.city, r.region,
+    id, host, r.name!.trim(), r.website, phone, r.email, r.street, r.postal, metro?.id || null, r.city, r.region,
     country, cat.family, cat.id, cat.iconKey, r.lat, r.lon, now, now,
   );
+  if (r.social) noteSocial(id, r.social);
   stats.inserted++;
 }
 
@@ -243,6 +258,9 @@ export async function pullBox(id: string, opts: { refresh?: boolean } = {}): Pro
     `SELECT names.primary AS name,
             categories.primary AS category,
             websites[1] AS website,
+            emails[1] AS email,
+            socials[1] AS social,
+            operating_status AS status,
             phones[1] AS phone,
             addresses[1].freeform AS street,
             addresses[1].locality AS city,

@@ -119,6 +119,22 @@ if (cmd === "websearch") {
   process.exit(0);
 }
 
+if (cmd === "osm-facts") {
+  // Opening hours, phones, emails and descriptions out of the Overpass answers already on disk. No network.
+  const { importOsmFacts } = await import("./discover/osmfacts.ts");
+  const st = importOsmFacts({
+    onProgress: (done, total, s) =>
+      process.stdout.write(`  ${done}/${total} files, ${s.matched.toLocaleString()} matched, ${s.hours.toLocaleString()} hours, ${s.phone.toLocaleString()} phones\r`),
+  });
+  process.stdout.write("\n");
+  console.log(
+    `${st.files} files, ${st.elements.toLocaleString()} elements, ${st.matched.toLocaleString()} matched a listing.\n` +
+      `  hours ${st.hours.toLocaleString()}, phones ${st.phone.toLocaleString()}, emails ${st.email.toLocaleString()}, websites ${st.website.toLocaleString()}, descriptions ${st.description.toLocaleString()}`,
+  );
+  console.log('Run "npm run sync" to publish.');
+  process.exit(0);
+}
+
 if (cmd === "overture") {
   // Free discovery from the Overture Maps open place dataset. No key, no credits.
   //   overture                 every box, US and Canada

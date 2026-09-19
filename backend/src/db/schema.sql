@@ -130,6 +130,7 @@ CREATE INDEX IF NOT EXISTS idx_operators_name_city_lower ON operators(lower(name
 -- and without an index that check is a full scan of the child table per row: removing 130,000 rows that had been
 -- imported by mistake scanned gaps and outreach_drafts 130,000 times each and ran for over ten minutes before it
 -- was given up on.
+CREATE INDEX IF NOT EXISTS idx_operators_osm_ref ON operators(osm_ref);
 CREATE INDEX IF NOT EXISTS idx_gaps_op ON gaps(operator_id);
 CREATE INDEX IF NOT EXISTS idx_outreach_drafts_op ON outreach_drafts(operator_id);
 CREATE INDEX IF NOT EXISTS idx_offerings_op ON offerings(operator_id);
