@@ -429,7 +429,15 @@ function slotsOn(ctx: CompanyContext, day: number | null, minutes: number | null
 /* ---------- reading the question ---------- */
 
 const OUT_OF_SCOPE =
-  /(how far|distance|miles (from|away)|downtown|close to (the )?(airport|hotel|beach|city)|\breviews?\b|rated|ratings?|stars on|worth it|safe\?|weather (forecast|tomorrow|today)|forecast|will it (rain|snow)|traffic|directions|how (do|to) (i )?get there|uber|lyft|hotel|competitor|compare|better than|other (company|place|shop|operator)|near(by|est)|yelp|tripadvisor|reddit|news|who owns|lawsuit|accident|safety record|injur)/i;
+  /(how far|distance|miles (from|away)|downtown|close to (the )?(airport|hotel|beach|city)|\breviews?\b|\brated\b|\bratings?\b|stars on|worth it|safe\?|weather (forecast|tomorrow|today)|forecast|will it (rain|snow)|traffic|directions|how (do|to) (i )?get there|uber|lyft|hotel|competitor|compare|better than|other (company|place|shop|operator)|near(by|est)|yelp|tripadvisor|reddit|\bnews\b|who owns|lawsuit|accident|safety record|injur)/i;
+
+/**
+ * Topics that outrank the out-of-scope gate, because the words that trip it are also how a guest asks these.
+ * "How far in advance do I need to book" is a notice period, not a distance; "the nearest opening" is the next
+ * departure, not a nearby business; a pet question often carries a place word. One list, read by both gates:
+ * they used to hold different lists, so the `pets` exemption was granted and then quietly taken back.
+ */
+const IN_SCOPE_ANYWAY: Topic[] = ["rainPolicy", "meet", "pets", "walkin", "next"];
 
 const DAY_RE = /\b(sun|mon|tues?|wed(nes)?|thur?s?|fri|sat(ur)?)(day)?s?\b/i;
 const DAY_KEY: Record<string, number> = { sun: 0, mon: 1, tue: 2, tues: 2, wed: 3, wednes: 3, thu: 4, thur: 4, thurs: 4, fri: 5, sat: 6, satur: 6 };
@@ -574,8 +582,8 @@ function readQuestion(ctx: CompanyContext, q: string, prev: ChatState): Topic[] 
 
   const blocksSlot = /(deal|promo|special|discount|happy hour)/i.test(t) || hits.some((h) => ["dayHours", "closeTime", "openNow", "price", "priceOf", "cheapest"].includes(h));
   if (/(can i|can we|could i|do you have|any(thing)?\b|is there|availab|slot|spot|space|come by|come in|drop in|get in)/i.test(t) && (namesDay || namesTime) && !blocksSlot) add("slot");
-  if (/(next (one|slot|time|departure|opening|available|trip|tour|sail)|when'?s the next|earliest|soonest)/i.test(t)) add("next");
-  if (/(walk.?ins?|without (a )?(booking|reservation|appointment)|need (a )?(reservation|appointment)|book ahead|in advance)/i.test(t)) add("walkin");
+  if (/((next|nearest) (one|slot|time|departure|opening|available|trip|tour|sail)|when'?s the next|earliest|soonest)/i.test(t)) add("next");
+  if (/(walk.?ins?|without (a )?(booking|reservation|appointment)|need (a )?(reservation|appointment)|book ahead|how far ahead|ahead of time|in advance)/i.test(t)) add("walkin");
   if (/(book|reserve|reservation|sign up|buy tickets?)/i.test(t) && !hits.includes("slot")) add("book");
 
   if (partySize(t) != null || /(group|party of|birthday|corporate|team|bachelor|how many (people|can)|capacity)/i.test(t)) add("group");
@@ -600,7 +608,7 @@ function readQuestion(ctx: CompanyContext, q: string, prev: ChatState): Topic[] 
     else if (/^(what about|how about|and)\b/i.test(t)) add("describe");
   }
 
-  if (OUT_OF_SCOPE.test(t) && !hits.some((h) => ["rainPolicy", "meet", "pets"].includes(h))) return ["outOfScope"];
+  if (OUT_OF_SCOPE.test(t) && !hits.some((h) => IN_SCOPE_ANYWAY.includes(h))) return ["outOfScope"];
   if (!hits.length && namedOffer) add("describe");
   if (!hits.length) add("search");
   return hits;
@@ -1254,7 +1262,7 @@ export function companyAnswer(ctx: CompanyContext, question: string, prev: ChatS
 
   const topics = readQuestion(ctx, q, prev);
 
-  if (topics[0] === "outOfScope" || (OUT_OF_SCOPE.test(q) && !topics.includes("rainPolicy") && !topics.includes("meet"))) {
+  if (topics[0] === "outOfScope" || (OUT_OF_SCOPE.test(q) && !topics.some((t) => IN_SCOPE_ANYWAY.includes(t)))) {
     const faq = faqMatch(ctx.item, q);
     if (faq) return { text: faq, chips: chipsFor(ctx, prev.topic), state: { topic: "describe" } };
     const out = answerOne(ctx, "outOfScope", q, prev);
