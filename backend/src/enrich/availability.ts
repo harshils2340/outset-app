@@ -407,8 +407,29 @@ async function peek(refKey: string, code: string, dates: string[]): Promise<Avai
 type XolaExp = { id: string; name: string; status?: string; visible?: boolean; priceSchemes?: { price: number }[] };
 type XolaAvail = Record<string, Record<string, Record<string, number>> | unknown[]>;
 
-async function xola(seller: string, dates: string[]): Promise<Availability> {
+/**
+ * A Xola booking link is the seller's own id on 9 of the 54 listings that carry one, and a button embed on the
+ * other 45. `xolaSeller` hands the button back as "button:<id>", which is not a seller and was being sent to
+ * the experience feed as one, so every one of those 45 shops answered "experience feed unavailable" and showed
+ * a guest our guessed nine, eleven and one instead of their own departures. The button names its seller,
+ * which is what `readXola` has always done; kept for an hour, so it costs a call once.
+ */
+async function xolaSellerId(ref: string, b: ReturnType<typeof budget>): Promise<string | null> {
+  if (!ref.startsWith("button:")) return ref;
+  const ckey = "xola-button:" + ref;
+  const known = cacheGet<string>(catalogCache, ckey, CATALOG_TTL_MS);
+  if (known) return known;
+  const doc = await b.get<{ seller?: { id?: string } }>("https://xola.com/api/buttons/" + encodeURIComponent(ref.slice(7)));
+  const id = doc?.seller?.id;
+  if (!id || !/^[a-f0-9]{24}$/i.test(id)) return null;
+  cacheSet(catalogCache, ckey, id);
+  return id;
+}
+
+async function xola(ref: string, dates: string[]): Promise<Availability> {
   const b = budget(MAX_CALLS);
+  const seller = await xolaSellerId(ref, b);
+  if (!seller) return dead("xola", "button names no seller");
 
   const ckey = "xola:" + seller;
   let exps = cacheGet<XolaExp[]>(catalogCache, ckey, CATALOG_TTL_MS);

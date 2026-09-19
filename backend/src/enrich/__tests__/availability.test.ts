@@ -44,6 +44,8 @@ const INDEX = {
     "o-two-boats-test": "https://fareharbor.com/embeds/book/twoboats/?full-items=yes",
     "o-peek-budget-test": "https://book.peek.com/s/2530f333-35eb-43fc-b661-6c7d3c95dfea/LR2Jm",
     "o-other-vendor-test": "https://www.rezdy.com/booking?w=123",
+    "o-xola-button-test": "https://xola.com/button/6a7b8c9d0e1f2a3b4c5d6e7f",
+    "o-xola-nobutton-test": "https://xola.com/button/1112223334445556667778a9",
   },
 };
 
@@ -135,4 +137,49 @@ test("a listing with no booking url, and one on a system we cannot read, both an
   );
   assert.equal(other.live, false);
   assert.equal(other.vendor, null);
+});
+
+test("a Xola button embed names its seller before the experience feed is asked", async () => {
+  const id = "o-xola-button-test";
+  const seller = "5f1a2b3c4d5e6f708192a3b4";
+  const asked: string[] = [];
+  const r = await withVendor(
+    (url) => {
+      asked.push(url);
+      if (url.includes("live-index.json")) return INDEX;
+      if (url.includes("/api/buttons/")) return { seller: { id: seller } };
+      if (url.includes("/api/experiences")) {
+        // The feed is only ever asked for the real seller, never for "button:<id>".
+        if (!url.includes("seller=" + seller)) return undefined;
+        return { data: [{ id: "e1", name: "Night Dive", priceSchemes: [{ price: 150 }, { price: 99.5 }] }] };
+      }
+      if (url.includes("/api/availability")) return { e1: { "2026-09-20": { "930": 4, "1730": 0 } } };
+      return undefined;
+    },
+    () => getAvailability(id, "2026-09-20", 2),
+  );
+
+  assert.equal(r.live, true);
+  assert.equal(r.vendor, "xola");
+  assert.ok(asked.some((u) => u.includes("/api/buttons/6a7b8c9d0e1f2a3b4c5d6e7f")));
+  const slots = r.days[0].slots;
+  // 09:30 has seats; the 17:30 departure states none left and is not offered.
+  assert.deepEqual(slots.map((s) => s.startsAt), ["2026-09-20T09:30"]);
+  assert.equal(slots[0].seatsLeft, 4);
+  assert.equal(slots[0].priceCents, 9950);
+  assert.equal(slots[0].bookUrl, "https://checkout.xola.com/index.html#seller/" + seller + "/experiences/e1");
+});
+
+test("a Xola button whose seller cannot be read answers dead rather than guessing", async () => {
+  const r = await withVendor(
+    (url) => {
+      if (url.includes("live-index.json")) return INDEX;
+      if (url.includes("/api/buttons/")) return { seller: {} };
+      return undefined;
+    },
+    () => getAvailability("o-xola-nobutton-test", "2026-09-20", 2),
+  );
+  assert.equal(r.live, false);
+  assert.equal(r.vendor, "xola");
+  assert.deepEqual(r.days, []);
 });
