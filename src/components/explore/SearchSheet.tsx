@@ -103,6 +103,17 @@ export function SearchSheet() {
     setStep("what");
   };
 
+  /**
+   * A business typed into Where, by name. The sheet opens on Where, so somebody looking for one shop types its
+   * name there, and until now a name was neither a city nor an activity, so the sheet answered "Keep typing".
+   * Searched across the whole catalog rather than the city in the pill: naming a business means you want that
+   * business, wherever it is.
+   */
+  const businessHits = useMemo(() => {
+    if (needle.length < 3 || activityTyped) return [];
+    return searchSuggest(catalog, needle, { metroId: ALL_METRO_ID, cat: state.cat }, 3).operators;
+  }, [needle, activityTyped, state.cat, state.catalogVersion]);
+
   // What, empty: the place's strongest kinds and the occasions people search by, each counted in the place.
   const ideas = useMemo(() => {
     if (step !== "what" || whatRest) return { kinds: [], intents: [] };
@@ -220,8 +231,9 @@ export function SearchSheet() {
         place = { kind: "metro", id: typedCity.metro.id };
         const rest = stripPlaceWords(typed, typedCity.words);
         if (rest && !query) query = rest;
-      } else if (describeQuery(typed).onlyKind || !hits.length) {
-        // An activity, or a word the map could not place: it is what they want to do, not where.
+      } else if (describeQuery(typed).onlyKind || businessHits.length || !hits.length) {
+        // An activity, a business we have by that name, or a word the map could not place: it is what they are
+        // looking for, not where they are going. The map will happily geocode a shop's name into a suburb.
         if (!query) query = typed;
       } else {
         place = { kind: "near", place: hits[0] };
@@ -288,6 +300,7 @@ export function SearchSheet() {
                   if (e.key !== "Enter") return;
                   e.preventDefault();
                   if (activityTyped) moveToWhat();
+                  else if (businessHits.length && !cities.length) moveToWhat();
                   else if (cities[0]) pickCity(cities[0].m.id);
                   else if (hits[0]) pickPlace({ kind: "near", place: hits[0] });
                   else setStep("what");
@@ -319,11 +332,23 @@ export function SearchSheet() {
                   {cities.map(({ m, n: k }) =>
                     item("m" + m.id, <IcPin size={20} />, m.name, m.region + ", " + (m.country === "CA" ? "Canada" : "United States") + " · " + k.toLocaleString() + " places", () => pickCity(m.id)),
                   )}
+                  {businessHits.length ? <p className="airsgroup">Businesses</p> : null}
+                  {businessHits.map((u) => {
+                    const m = metroById(u.metroId);
+                    return item(
+                      "b" + u.id,
+                      u.cover ? <Photo src={u.cover} kind={u.art} id={u.id + "wo"} alt="" size="thumb" /> : <Art kind={u.art} id={u.id + "wo"} />,
+                      u.title,
+                      (ART_LABEL[u.art] ? ART_LABEL[u.art] + " · " : "") + u.area + (m ? " · " + m.name : ""),
+                      () => openRequest(u.id),
+                      { art: true },
+                    );
+                  })}
                   {/* A named activity is not a destination. The map has hamlets called Gun Range and Sauna, and
                       offering them under what the guest typed sent them to an empty corner of Texas. */}
                   {!activityTyped && hits.length ? <p className="airsgroup">Places on the map</p> : null}
                   {!activityTyped ? hits.map((h) => item("p" + h.label + h.lat, <IcPin size={20} />, h.label, h.sub, () => pickPlace({ kind: "near", place: h }))) : null}
-                  {!cities.length && !hits.length && !activityTyped ? <p className="airsgroup">Keep typing, or try a bigger town nearby.</p> : null}
+                  {!cities.length && !hits.length && !activityTyped && !businessHits.length ? <p className="airsgroup">Keep typing, or try a bigger town nearby.</p> : null}
                 </>
               ) : (
                 <>
