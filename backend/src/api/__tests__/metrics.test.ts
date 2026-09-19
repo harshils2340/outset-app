@@ -235,11 +235,15 @@ test("cost per claim and cost per booking are the total divided by each count", 
 
 test("a zero denominator is null, never Infinity and never a zero pretending to be a fact", () => {
   const c = buildCosts({ snapshot: snapshot({ discovery: 12, extraction: 3 }), compute: NO_COMPUTE, claimed: 0, bookings: 0, range: RANGE });
+  // Read the two before asserting on them: assert.equal narrows its argument to the value it was
+  // compared against, so a cast after the null check no longer type-checks.
+  const perClaim = c.perClaim;
+  const perBooking = c.perBooking;
   assert.equal(c.total, 15);
-  assert.equal(c.perClaim, null);
-  assert.equal(c.perBooking, null);
+  assert.equal(perClaim, null);
+  assert.equal(perBooking, null);
   // The bug this test exists for: dividing by zero and shipping the result.
-  assert.ok(!Number.isFinite(c.perClaim as number));
+  assert.ok(perClaim === null || !Number.isFinite(perClaim));
   const nulls = buildCosts({ snapshot: snapshot({ discovery: 12 }), compute: NO_COMPUTE, claimed: null, bookings: null, range: RANGE });
   assert.equal(nulls.perClaim, null);
   assert.equal(nulls.perBooking, null);
