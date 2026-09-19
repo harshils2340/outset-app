@@ -3,26 +3,32 @@ import test from "node:test";
 import { readFileSync } from "node:fs";
 
 import { companyReply } from "../companyAgent";
-import type { Unclaimed } from "../../data/types";
+import type { OperatorContact, Unclaimed } from "../../data/types";
 
 /**
  * What Otto refuses, and what it only looked like it should refuse.
  *
- * Rule 4 in `companyAgent.ts` says Otto never answers about weather, traffic or other businesses. The gate that
- * enforces it had no test.
+ * Rule 4 in `companyAgent.ts` says Otto never confirms a booking and never answers about weather, traffic or
+ * other businesses. Two gates enforce it and neither had a test.
  *
- * It reads the question for words that belong to somebody else's business. Several of those
+ * The out-of-scope gate reads the question for words that belong to somebody else's business. Several of those
  * words are also how a guest asks this shop an ordinary question: "how far in advance do I need to book" is a
  * notice period, "the nearest opening" is the next departure, and "rated" sits inside "operated". Those guests
  * were told "I only know what X publishes, so I can't help with that".
  *
- * `o-1000islandscruises-ca` is a real shipped listing, with published hours, policies and a menu.
+ * The other gate is intent order. `book` fired on any question carrying the word "booking", and it was read
+ * before `cancel`, so a guest trying to cancel was answered "Yes. Pick a service and time on this page", with
+ * the shop's own published refund policy sitting right there unread. The same "Yes." answered "is my booking
+ * confirmed?", which is the one thing Otto must never say.
+ *
+ * `o-1000islandscruises-ca` is a real shipped listing: it publishes a refund policy, hours and a phone.
  */
 
 const dir = new URL("../../../public/o/", import.meta.url);
 const listing = (id: string) => JSON.parse(readFileSync(new URL(id + ".json", dir), "utf8")) as Unclaimed;
 const cruises = listing("o-1000islandscruises-ca");
-const ask = (q: string, item: Unclaimed = cruises) => companyReply({ item, contact: null }, q);
+const ask = (q: string, item: Unclaimed = cruises, contact: OperatorContact | null = null) =>
+  companyReply({ item, contact }, q);
 
 const REFUSAL = /so I can't help with that/;
 
@@ -81,4 +87,50 @@ test("the two scope gates exempt the same topics, so a pet question survives bot
   const said = ask("can I bring a dog on the tour, how far is it?");
   assert.doesNotMatch(said, REFUSAL);
   assert.match(said, /pet policy/i);
+});
+
+/* ---------- a booking the guest already has ---------- */
+
+test("a guest cancelling is read the shop's refund policy, not offered the booking flow", () => {
+  const policy = /Ticket Assurance refundable up to 3 hours/;
+  assert.match(cruises.cancellation!, policy, "the listing changed, so this case needs a new one");
+  for (const q of [
+    "cancel my booking please",
+    "how do I cancel my booking?",
+    "I need to cancel my reservation",
+    "can I get a refund on my booking?",
+    "can I reschedule my booking?",
+  ]) {
+    const said = ask(q);
+    assert.match(said, policy, q);
+    assert.doesNotMatch(said, /^Yes\./, q);
+  }
+  // A shop with no published policy says so rather than pointing at the booking flow.
+  assert.match(ask("cancel my booking please", listing("o-033b649-netsolhost-com")), /haven't published a cancellation policy/);
+});
+
+test("Otto never says a booking it cannot see is confirmed", () => {
+  for (const q of ["is my booking confirmed?", "did my reservation go through?", "where's my booking?", "can you check my reservation?"]) {
+    const said = ask(q);
+    assert.doesNotMatch(said, /^Yes\./, q);
+    assert.match(said, /can't look up a booking you already have/, q);
+    assert.match(said, /Kingston 1000 Islands Cruises can check it/, q);
+  }
+  // With a number on file it hands the guest the shop instead.
+  const said = ask("is my booking confirmed?", cruises, { phone: "+16135495544" } as OperatorContact);
+  assert.match(said, /Call /);
+});
+
+test("making a booking still reads as making one", () => {
+  for (const q of ["can I book online?", "how do I book?", "do you take walk-ins?"]) {
+    assert.doesNotMatch(ask(q), /can't look up a booking/, q);
+  }
+  assert.match(ask("can I book online?"), /^Yes\./);
+});
+
+test("an entry rule is still an entry rule unless the guest is cancelling", () => {
+  // The `rules` reader matches "need to", which "I need to cancel my reservation" also says.
+  for (const q of ["do I need to swim?", "do I need a licence?", "must I be 18?", "do I need experience?"]) {
+    assert.doesNotMatch(ask(q), /cancellation|refund/i, q);
+  }
 });

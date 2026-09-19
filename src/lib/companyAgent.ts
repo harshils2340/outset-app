@@ -439,6 +439,18 @@ const OUT_OF_SCOPE =
  */
 const IN_SCOPE_ANYWAY: Topic[] = ["rainPolicy", "meet", "pets", "walkin", "next"];
 
+/** Undoing a booking rather than making one. Read in two places, so it lives here. */
+const CANCEL_RE = /(cancel|refund|reschedul|no.?show|deposit|money back)/i;
+
+/**
+ * A question about a booking the guest already holds. Otto cannot see one: these listings are request to book
+ * and the shop confirms. Saying "Yes" to "is my booking confirmed" is the one answer it must never give.
+ */
+function asksAboutOwnBooking(q: string): boolean {
+  if (!/\b(my|our)\s+(booking|reservation|order|tickets?)\b/i.test(q)) return false;
+  return /\b(confirm\w*|go(es|ne)? through|went through|co(me|mes|ming)? through|came through|status|valid|receiv\w*|show\w* up|find|look ?up|check)\b|\bwhere'?s\b|\bwhere is\b/i.test(q);
+}
+
 const DAY_RE = /\b(sun|mon|tues?|wed(nes)?|thur?s?|fri|sat(ur)?)(day)?s?\b/i;
 const DAY_KEY: Record<string, number> = { sun: 0, mon: 1, tue: 2, tues: 2, wed: 3, wednes: 3, thu: 4, thur: 4, thurs: 4, fri: 5, sat: 6, satur: 6 };
 
@@ -584,15 +596,18 @@ function readQuestion(ctx: CompanyContext, q: string, prev: ChatState): Topic[] 
   if (/(can i|can we|could i|do you have|any(thing)?\b|is there|availab|slot|spot|space|come by|come in|drop in|get in)/i.test(t) && (namesDay || namesTime) && !blocksSlot) add("slot");
   if (/((next|nearest) (one|slot|time|departure|opening|available|trip|tour|sail)|when'?s the next|earliest|soonest)/i.test(t)) add("next");
   if (/(walk.?ins?|without (a )?(booking|reservation|appointment)|need (a )?(reservation|appointment)|book ahead|how far ahead|ahead of time|in advance)/i.test(t)) add("walkin");
-  if (/(book|reserve|reservation|sign up|buy tickets?)/i.test(t) && !hits.includes("slot")) add("book");
+  // "How do I cancel my booking" is a cancellation question that happens to say "booking". Leave it to `cancel`,
+  // which reads the shop's own refund policy, rather than answering "Yes, pick a service and time on this page".
+  if (/(book|reserve|reservation|sign up|buy tickets?)/i.test(t) && !hits.includes("slot") && !CANCEL_RE.test(t)) add("book");
 
   if (partySize(t) != null || /(group|party of|birthday|corporate|team|bachelor|how many (people|can)|capacity)/i.test(t)) add("group");
   if (ageIn(t) != null || /\b(age|kid|kids|child|children|minor|toddler|baby|infant|senior|teen|year old)\b/i.test(t)) add("age");
-  if (/(do i need|need to|have to|must |require|experience|beginner|first.?time|licen[sc]e|certif|swim|weight|height|how tall|pregnan|wheelchair|disab)/i.test(t)) add("rules");
+  // Same reason as `book` above: "I need to cancel my reservation" is not a question about who may take part.
+  if (/(do i need|need to|have to|must |require|experience|beginner|first.?time|licen[sc]e|certif|swim|weight|height|how tall|pregnan|wheelchair|disab)/i.test(t) && !CANCEL_RE.test(t)) add("rules");
   if (/\b(dogs?|pets?|puppy|service animal)\b/i.test(t)) add("pets");
   if (/(what (should|do) (i|we) bring|bring|wear|what to wear|dress code)/i.test(t) && !/\bbring (my|our|a|the) (kid|child|son|daughter|dogs?|pets?|\d)/i.test(t)) add("bring");
   if (/(include|included|come with|provided|supplied|gear|equipment|what do (i|we) get|life ?jackets?|on ?board|bathroom|restroom|wifi|food|drinks?|alcohol|\bbar\b|byob)/i.test(t)) add("included");
-  if (/(cancel|refund|reschedul|no.?show|deposit|money back)/i.test(t)) add("cancel");
+  if (CANCEL_RE.test(t)) add("cancel");
   if (/(\brain|weather|storm|windy|snow(s|ing)?\b)/i.test(t)) add("rainPolicy");
   if (/(where|address|located|location|meet|meeting point|dock|launch|find you|check.?in|parking)/i.test(t)) add("meet");
   if (/(deal|promo|special|discount|coupon|happy hour)/i.test(t)) add("deals");
@@ -846,7 +861,14 @@ function slotAnswer(ctx: CompanyContext, q: string, prev: ChatState): { text: st
   return { text: "I can't see their live calendar. Pick a date and time on this page and they confirm it.", state: { topic: "slot", day: day ?? undefined } };
 }
 
-function bookAnswer(ctx: CompanyContext): { text: string; state: ChatState } {
+function bookAnswer(ctx: CompanyContext, q: string): { text: string; state: ChatState } {
+  if (asksAboutOwnBooking(q)) {
+    const phone = shopPhone(ctx);
+    return {
+      text: "I can't look up a booking you already have. " + (phone ? "Call " + phone + "." : ctx.item.title + " can check it for you."),
+      state: { topic: "book" },
+    };
+  }
   const slots = liveSlots(ctx);
   if (slots.length) return { text: "Yes. Next open time is " + slotLine(slots[0]) + ". Book it on this page.", state: { topic: "book" } };
   return { text: "Yes. Pick a service and time on this page and " + ctx.item.title + " confirms it.", state: { topic: "book" } };
@@ -1209,7 +1231,7 @@ function answerOne(ctx: CompanyContext, topic: Topic, q: string, prev: ChatState
     case "closeTime": return closeTimeAnswer(ctx, q);
     case "dayHours": return dayHoursAnswer(ctx, q, prev);
     case "slot": return slotAnswer(ctx, q, prev);
-    case "book": return bookAnswer(ctx);
+    case "book": return bookAnswer(ctx, q);
     case "group": return groupAnswer(ctx, q);
     case "age": return ageAnswer(ctx, q);
     case "rules": return rulesAnswer(ctx, q);
