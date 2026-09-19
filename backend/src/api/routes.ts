@@ -75,8 +75,11 @@ app.get("/where", (c) => {
   const city = h("cf-ipcity") || null;
   const region = h("cf-region-code") || null;
   const country = (h("cf-ipcountry") || "").toUpperCase() || null;
-  // A guess this coarse is worth ten minutes in a shared cache and nothing more.
-  c.header("cache-control", "public, max-age=600");
+  // Ten minutes in the guest's own browser, and nowhere else. This body is read off the caller's IP address,
+  // so it differs for every guest and varies by nothing a cache can key on. `public` invited Cloudflare, which
+  // already fronts this API, and any proxy between it and the guest, to hand one guest's city to the next: a
+  // whole city's worth of visitors opening the home on wherever the first of them happened to be.
+  c.header("cache-control", "private, max-age=600");
   return c.json({ lat, lon, city, region, country: country === "T1" || country === "XX" ? null : country });
 });
 
