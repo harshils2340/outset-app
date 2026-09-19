@@ -1931,6 +1931,50 @@ type-check clean.
   page it opens; `groupCap` still counts no players or anglers; 18,056 listings still draw the generic cover;
   and no workflow runs `npm test`.
 
+## 19 September 2026, thirty-first run (07:00 to 08:20 UTC)
+
+**Checked, and why.** No commits landed after the thirtieth entry, which reported both projects clean and the
+rehearsal green, so the rehearsal was skipped at the start and the hour went on new ground. Type checks and
+both test suites were run first and were green (418 app, 311 backend). Coverage named one thing under
+accessibility it had never driven: the photo lightbox's keyboard, a `role="dialog"` with no focus trap. Pulling
+on it showed the gap was not one dialog but every dialog the desktop site has, so that is the area: all five of
+them driven in a real Chromium, by Tab, by Escape and by the wheel, and then the one other thing in the app
+that claims `aria-modal` without the page behind it being inert.
+
+**Found and fixed.** One fault, in six places, in front of every guest who opens a photo.
+
+- **Every dialog says `aria-modal="true"` and none of them behaved like one** (`510cf17a5`). `aria-modal` is a
+  promise that the page behind is not there. Tab walked out of all five into the page under the scrim. On the
+  listing's "Show more" the *first* Tab did, because its Close button is the last thing in the document, so one
+  press landed on "Back to results" at the top of a page the guest could not see; Compare gave 8 of 12 stops to
+  the feed behind it. A wheel over the full-screen lightbox rolled the listing 1,600 px underneath, so closing
+  the photos left the guest somewhere else entirely: the lightbox and the modal locked `document.body`, and
+  `app.css` clips `html`'s overflow-x, which makes `html` the scroller and `body { overflow: hidden }` worth
+  nothing. That was written down for the card form in an earlier run and never told to anything else; Compare,
+  Filters and Where, when and who never tried to lock anything at all. The lightbox also never moved focus into
+  itself, so a guest who pressed "Show all photos" was still standing on the button behind the scrim, and it
+  did not even say `aria-modal`. One hook (`useModal`) now carries focus in and back, the Tab ring and the page
+  lock, and the five call sites use it. Focus only moves when it is not already inside, so the Where box keeps
+  its own field; stops are measured by their rects, because `offsetParent` is null for everything inside a
+  fixed scrim.
+- **The operator's booking drawer had the same hole** (`be72c76bc`). Tab out of a booking's detail and the
+  operator was somewhere in the list behind it, and closing the drawer dropped focus at the top of the document
+  rather than on the card it was opened from. Same hook, one line.
+
+**Ran the rehearsal after the fixes**, because both touch code it covers: 53 of 53, against a local Postgres
+and the Chromium on disk. 432 app tests (14 new) and 311 backend tests, both projects type-check clean.
+
+**Needs Harshil.**
+
+- **The phone sheets are the one dialog family left, and they are fine for a different reason.** `App.tsx` and
+  the tab bar go `inert` while a sheet is up, which takes the page behind out of the tab order outright. That is
+  the better answer and it cannot be used on the desktop, where the dialogs live inside the tree they would have
+  to inert. Worth knowing the two surfaces solve this differently on purpose.
+- The earlier runs' calls stand, unchanged: 215 GIFs still lead a hero and the 70 cleared videos wait for a
+  sync; 50 of 64 kinds have no guide; anything needing a real Stripe key is untouched; Home's three tabs are
+  still `role="tab"` with nothing to control; 6,513 rated listings show a rating on their card and none on the
+  page it opens; and no workflow runs `npm test`.
+
 ## Coverage
 
 **Verified so far.** Booking validation and odd input on every route that takes it. The money split,
@@ -2149,6 +2193,11 @@ instead; which slides each surface probes before a guest can reach them, against
 than five; and every screen behind a published image, against the video fact, which passed none of them, and
 against the beacons, spacers, payment buttons and badges that had become 70 listings' hero clip.
 
+Every dialog in the app, driven in a real Chromium by Tab, by Escape and by the wheel: the listing's photo
+lightbox and its "Show more" modal, the home's Filters, Compare and Where, when and who, the operator's
+booking drawer, the card form and the phone sheets. Focus in and back, the Tab ring closed, the page behind
+held still, and which surface keeps the page out of the tab order with `inert` instead.
+
 **Not yet checked.** Whether the landing pages should say they are showing 24 of the 35 they counted, which
 is what a page with more than 24 listings does today, and whether a kind's all-metros page needs paging at
 all. Whether the 50 kinds with no guide should have one written (see this run's Needs Harshil), and whether
@@ -2172,8 +2221,7 @@ Navajo Nation should keep daylight saving. The 4,736 listings whose area carries
 folding and `variantNote`, which an earlier run read but did not drive in a browser. Deals and promos on a listing driven in a browser, and the promo crawl's
 output; only the rules behind them are read so far. Whether a GIF should stand in for a video at
 all: 215 still lead a hero, and the rule that would clear them takes real photographs with them (see the
-thirtieth run's Needs Harshil). The lightbox's own keyboard, which is a `role="dialog"` with no focus
-trap and nothing focused when it opens; the card dialog's keyboard was checked, this one never was. Whether a fold should keep the largest spelling of a photograph rather than the first: it is the first on
+thirtieth run's Needs Harshil). Whether a fold should keep the largest spelling of a photograph rather than the first: it is the first on
 181 of the 1,251 folds, and the first is what the card already loaded. Which clause on a policy owns the number the Free
 cancellation badge prints, on the 28 listings where the first number in the text is not the one beside the
 refund promise (see this run's Needs Harshil). Whether the listing page should print a rating with no
