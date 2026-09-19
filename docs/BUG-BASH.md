@@ -1800,6 +1800,78 @@ every page carrying at least one photo, and no sideways scroll at 400px.
   page it opens, Arizona still moves on the Navajo Nation, `groupCap` still counts no players or anglers,
   18,056 listings still draw the generic cover, and no workflow runs `npm test`.
 
+## 19 September 2026, twenty-ninth run (04:30 to 06:00 UTC)
+
+**Checked, and why.** Thirty-five commits landed after the twenty-eighth entry was written, touching
+`backend/src`, `src/` and the scripts, so nothing in Coverage could be taken on trust and the rehearsal was
+owed a run rather than a skip. That code is also the least examined in the repo: written in the last twelve
+hours, by other runs, and never bug-bashed. So this run went at the guest and operator paths that changed
+last night, rather than at a fresh line on Coverage's list: the first-load location guess
+(`src/lib/here.ts`, `GET /where`), the publish gate and the duplicate rules in `backend/src/sync/contacts.ts`,
+the new `/admin` metrics gate, and search-by-name in the phone sheet. Also finished the one Coverage item
+that was cheap to close properly: the guide copy in `src/data/guides.ts` against the kind it is printed on.
+
+**Ran the rehearsal, twice.** Type checks and `npm test` first, then the full `e2e-local.mts` against a local
+Postgres with the Chromium on disk, once to establish the baseline and once on the finished tree. Both green
+at 53 of 53. Two notes for whoever sets this up next: the container has no cluster, so one has to be
+initdb'd as the `postgres` user and given a self-signed cert, because `src/db/pg.ts` requires TLS
+unconditionally; and `npx tsc --noEmit -p .` at the root still checks nothing, `-p tsconfig.app.json` is the
+one that checks the app.
+
+**Found and fixed.**
+
+- **The supply project had stopped type-checking** (`861963d99`). `assert.equal` in `@types/node` 22 carries an
+  `asserts actual is T` signature, so comparing `perClaim` against `null` narrowed it to `null` and the
+  `as number` cast on the next line became a cast from `null`. Red on `main` since the `/admin` page landed
+  at 18:30, which is after the last entry was written and reported both projects clean.
+- **A guest in Manitoba opened an empty home page headed "winnipeg"** (`e6f6559c6`). The new first-paint guess
+  maps the browser's time zone to a metro, and `America/Winnipeg` was mapped to `"winnipeg"`, which is not one
+  of the 47. Nothing downstream checks: the home filters every rail on `u.metroId === state.metroId`, so not
+  one listing matched, and `metroLabel` and `metroShort` print an unknown id exactly as typed, so the Where
+  pill and the heading read in lower case. Manitoba has no metro and the nearest that does is 700 km away,
+  past the 240 km a guess may reach, so the zone answers nothing now and the home opens on Anywhere. The
+  lookup validates its own answer, so the next typo cannot ship the same way.
+- **`GET /where` was publicly cacheable** (`65c25349e`). It answers with the city Cloudflare resolved the
+  request from, and it is the one route that overrides the API's blanket `no-store`. It did so with
+  `public, max-age=600` and no `Vary`: a body read off the caller's IP, offered to Cloudflare and every proxy
+  between it and the guest as a document they may hand to somebody else. `private` now.
+- **A shop that claimed its listing could lose its page** (`53e01043d`, `0d9df3c5d`, `00862406c`). Three
+  separate routes to the same outcome, all of them the same mistake: a rule reading only the crawl, deciding
+  the fate of the one kind of listing with a person behind it, before that person's edits are merged in.
+  (1) Last night's publish gate asks whether a crawler has ever read a photo, a service or an hours line off
+  the business's own site, and drops 12,332 listings on its first run. Correct for a lead; wrong for an
+  operator who claimed their listing and typed all of that in by hand, who would have watched their page
+  disappear on the next sync. The same went for a shop whose scraped name was its page title, or whose pin was
+  wrong. (2) When the sync decides two rows are one business it kept the one with the canonical host, then
+  more reviews, then the shorter domain, so a claimed shop could lose to an unclaimed copy of itself; and a
+  claimed map pin was dropped outright whenever a scraped row carried the same name in the same metro. In
+  every case the claim, the session, the dashboard and the claim email all point at the id that was dropped,
+  so the operator's dashboard kept working while the page it edits was off the site. (3) `POST /contacts/sync`
+  ran the whole catalog sync without calling `loadProfileOverlays` first, so the catalog it published reverted
+  every claimed shop to whatever a crawler last saw. All three fixed, with the two decisions pulled out as
+  named functions a test can drive with no database.
+- **The guide copy checked out, and a rename would have broken it silently** (`d6bcba369`). All 14 guides
+  match the kind they are printed on and none is orphaned; nothing but an art string joins the two. Two tests
+  hold it, plus the is/are in the heading across all 64 kinds.
+
+**Green after the fixes.** 303 backend tests (13 new) and 406 app tests (4 new), both projects type-check
+clean, rehearsal 53 of 53.
+
+**Needs Harshil.**
+
+- **50 of the 64 kinds have no guide at all**, so most landing pages and most listing pages print no "what it
+  is actually like" section. The 14 that exist are the original water and air activities; everything crawled
+  since (museums, golf, bowling, spas, climbing, breweries, classes) has none. That is a content job, not a
+  bug fix, and writing 50 blocks of activity prose overnight without you is not a call I wanted to make.
+- **The publish gate still drops 12,332 listings on its first run.** That was a deliberate decision last
+  night and this run only carved out the claimed ones. Worth confirming you still want it before the next
+  sync, since it is the largest single change to what the site shows.
+- The earlier runs' calls stand, unchanged: the `public/p` pages still ship last night's content until a sync
+  runs and that sync deletes 160 of them; anything needing a real Stripe key is untouched; Home's three tabs
+  are still `role="tab"` with nothing to control; 6,513 rated listings show a rating on their card and none on
+  the page it opens; `groupCap` still counts no players or anglers; 18,056 listings still draw the generic
+  cover; and no workflow runs `npm test`.
+
 ## Coverage
 
 **Verified so far.** Booking validation and odd input on every route that takes it. The money split,
@@ -2001,10 +2073,20 @@ each one links to; every image address on every page against the scheme the page
 JSON-LD of all 1,481 pages parsed; and the pages at 400px in a real Chromium. The photo filters behind a
 cover, against a bot check the crawl was served instead of a page.
 
+Where the home opens on a first visit, driven rather than read: every time zone in the table against the 47
+metros, an unmapped zone, a browser with no `Intl`, and what an id that names no metro does to the rails, the
+Where pill and the headings. `GET /where` and what a cache may do with it. Every rule that decides whether a
+crawled row gets a page at all, and both rules that pick a winner when two rows are one business, each against
+a listing whose operator has claimed it: the publish gate, the name, domain and pin filters, the shared-photo
+duplicate resolution, the map-pin duplicate rule, and the order `loadProfileOverlays` has to run in. The guide
+copy in `src/data/guides.ts` against the kind it is printed on: all 14 blocks, orphaned keys, and the is/are in
+the heading across all 64 kinds. The `/admin` metrics gate read through: both doors, the 404 for everyone else,
+and that it sits above the blanket admin-key middleware on purpose.
+
 **Not yet checked.** Whether the landing pages should say they are showing 24 of the 35 they counted, which
 is what a page with more than 24 listings does today, and whether a kind's all-metros page needs paging at
-all. The guide copy in `src/data/guides.ts`, one block per kind, read against the kind it is printed on: the
-pages print it verbatim and no run has compared the two. Whether a page should carry an `og:` card at all,
+all. Whether the 50 kinds with no guide should have one written (see this run's Needs Harshil), and whether
+the JSON-LD `numberOfItems` should say 35 when only 24 `itemListElement` entries follow it. Whether a page should carry an `og:` card at all,
 since a shared link currently previews as nothing. Whether the 160 pages the next sync deletes should be
 kept with honest counts instead (see this run's Needs Harshil). Which town the 64 listings whose street names one town and whose city names another are
 actually in, as a supply question. Whether the 108 archive rows that carried a real admission tier should keep that price
