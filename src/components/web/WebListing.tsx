@@ -29,6 +29,7 @@ import { safeHttpUrl } from "../../lib/urlSafety";
 import { useApp } from "../../state/AppProvider";
 import { Photo } from "../art/Photo";
 import { Mark } from "../layout/Mark";
+import { useModal } from "../layout/useModal";
 import { WebAssistant } from "./WebAssistant";
 import { Markup } from "../Markup";
 
@@ -497,24 +498,22 @@ function GallerySlide({ m, item, index }: { m: Media; item: Unclaimed; index: nu
 
 /** Airbnb's modal: a white panel over a dimmed page, the close button top left, the body scrolling on its own. */
 function Modal({ label, onClose, children, wide = false }: { label: string; onClose: () => void; children: ReactNode; wide?: boolean }) {
-  const closeRef = useRef<HTMLButtonElement | null>(null);
+  const box = useRef<HTMLDivElement | null>(null);
+  // Focus in and back, Tab kept inside, and the listing behind held still. It used to lock `body` alone, which
+  // locks nothing here, and its Close button is the last thing in the document, so the first Tab out of it
+  // wrapped to "Back to results" at the top of the page the scrim was covering.
+  useModal(box);
   useEffect(() => {
     // Captured and stopped so the app's own Escape (which closes the whole listing) does not fire too.
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") { e.stopPropagation(); onClose(); } };
     window.addEventListener("keydown", onKey, true);
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    closeRef.current?.focus();
-    return () => {
-      window.removeEventListener("keydown", onKey, true);
-      document.body.style.overflow = prev;
-    };
+    return () => window.removeEventListener("keydown", onKey, true);
   }, []);
   return (
     <div className="almodal" role="dialog" aria-modal="true" aria-label={label} onClick={onClose}>
-      <div className={"almodalbox" + (wide ? " wide" : "")} onClick={(e) => e.stopPropagation()}>
+      <div className={"almodalbox" + (wide ? " wide" : "")} ref={box} onClick={(e) => e.stopPropagation()}>
         <div className="almodalhead">
-          <button type="button" ref={closeRef} className="alround" onClick={onClose} aria-label="Close">
+          <button type="button" className="alround" onClick={onClose} aria-label="Close">
             <Markup html={I.close} />
           </button>
         </div>
@@ -938,6 +937,7 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
   const [payments, setPayments] = useState(false);
   useEffect(() => { let alive = true; void apiConfig().then((c) => { if (alive) setPayments(c.payments); }); return () => { alive = false; }; }, []);
   const [gallery, setGallery] = useState<number | null>(null);
+  const galleryBox = useRef<HTMLDivElement | null>(null);
   // The rest of the photos, probed once the gallery has been opened. This is the half of the comment above the
   // hero probe that was never written: only the first five were ever checked, so on 20,987 listings the 52,016
   // slides past the fifth reached the lightbox unexamined, and a dead URL or a 40 px logo took a full slide and
@@ -969,12 +969,12 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
       if (e.key === "ArrowLeft") setGallery((g) => (g == null ? g : (g - 1 + media.length) % media.length));
     };
     window.addEventListener("keydown", onKey, true);
-    document.body.style.overflow = "hidden";
-    return () => {
-      window.removeEventListener("keydown", onKey, true);
-      document.body.style.overflow = "";
-    };
+    return () => window.removeEventListener("keydown", onKey, true);
   }, [gallery, media.length]);
+  // The scrim covers the page, so the page behind it has to stop: it locked `body` only, which locks nothing
+  // once `html` is the scroller, so a wheel over a full-screen photo rolled the listing underneath it. Focus
+  // never came in here at all, so a guest who opened the photos was still standing on "Show all photos".
+  useModal(galleryBox, gallery != null);
   useEffect(() => {
     // A tile dropping out of the list must not leave the lightbox pointing past the end.
     if (gallery != null && gallery >= media.length) setGallery(media.length ? media.length - 1 : null);
@@ -1416,7 +1416,7 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
         ) : null}
 
         {gallery != null && media[gallery] ? (
-          <div className="algallery" onClick={() => setGallery(null)} role="dialog" aria-label="Photos">
+          <div className="algallery" ref={galleryBox} onClick={() => setGallery(null)} role="dialog" aria-modal="true" aria-label="Photos">
             <div className="algalleryhead" onClick={(e) => e.stopPropagation()}>
               <button type="button" className="algalleryclose" onClick={() => setGallery(null)} aria-label="Close">
                 <Markup html={I.close} /> <span>Close</span>

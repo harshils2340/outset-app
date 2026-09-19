@@ -19,6 +19,7 @@ import { useApp } from "../../state/AppProvider";
 import { Photo } from "../art/Photo";
 import { useNearNow } from "./NearNow";
 import { Mark } from "../layout/Mark";
+import { useModal } from "../layout/useModal";
 import { Markup } from "../Markup";
 import { AdminSiteLink, liteDealTitle, tidyDuration } from "./WebListing";
 import { freeCancelBadge } from "../../lib/cancellation";
@@ -514,6 +515,8 @@ function CompareTable({ items, near, onOpen, onClose, onRemove }: { items: Uncla
     Promise.all(items.map((u) => loadListing(u.id))).then((r) => r.some(Boolean) && touchCatalog());
   }, [items.map((u) => u.id).join(",")]);
   useEscape(onClose);
+  const box = useRef<HTMLDivElement | null>(null);
+  useModal(box);
   const row = (label: string, cell: (u: Unclaimed) => React.ReactNode) => (
     <tr key={label}>
       <th scope="row">{label}</th>
@@ -523,9 +526,9 @@ function CompareTable({ items, near, onOpen, onClose, onRemove }: { items: Uncla
   const firstPriced = (u: Unclaimed) => u.options.find((o) => o.price != null);
   return (
     <div className="ah-modal-scrim" onClick={onClose}>
-      <div className="ah-modal wide" role="dialog" aria-modal="true" aria-label="Compare" onClick={(e) => e.stopPropagation()}>
+      <div className="ah-modal wide" ref={box} role="dialog" aria-modal="true" aria-label="Compare" onClick={(e) => e.stopPropagation()}>
         <div className="ah-modal-head">
-          <button type="button" className="ah-iconbtn" aria-label="Close" onClick={onClose} autoFocus><Markup html={SVG.close} /></button>
+          <button type="button" className="ah-iconbtn" aria-label="Close" onClick={onClose}><Markup html={SVG.close} /></button>
           <h2>Compare</h2>
           <span />
         </div>
@@ -768,6 +771,8 @@ function FiltersModal({ sort, price, prices, total, near, onApply, onClose, onNe
   const [dmin, setDmin] = useState(price.min ?? lo);
   const [dmax, setDmax] = useState(price.max ?? hi);
   useEscape(onClose);
+  const box = useRef<HTMLDivElement | null>(null);
+  useModal(box);
   const BINS = 40;
   const bins = useMemo(() => {
     const out = new Array(BINS).fill(0);
@@ -782,9 +787,9 @@ function FiltersModal({ sort, price, prices, total, near, onApply, onClose, onNe
   const pct = (v: number) => (v - lo) / Math.max(1, hi - lo);
   return (
     <div className="ah-modal-scrim" onClick={onClose}>
-      <div className="ah-modal" role="dialog" aria-modal="true" aria-labelledby="ah-filters-title" onClick={(e) => e.stopPropagation()}>
+      <div className="ah-modal" ref={box} role="dialog" aria-modal="true" aria-labelledby="ah-filters-title" onClick={(e) => e.stopPropagation()}>
         <div className="ah-modal-head">
-          <button type="button" className="ah-iconbtn" aria-label="Close" onClick={onClose} autoFocus><Markup html={SVG.close} /></button>
+          <button type="button" className="ah-iconbtn" aria-label="Close" onClick={onClose}><Markup html={SVG.close} /></button>
           <h2 id="ah-filters-title">Filters</h2>
           <span />
         </div>
@@ -968,6 +973,8 @@ export function WebHome({ onOpenApp, onOperators }: { onOpenApp: () => void; onO
     skipFocusOpen.current = false;
   }, !!seg && !filtersOpen && !compareOpen && !refine);
   useEscape(() => setRefine(null), !!refine && !filtersOpen && !compareOpen);
+  const refineBox = useRef<HTMLDivElement | null>(null);
+  useModal(refineBox, !!refine);
 
   useEffect(() => {
     if (refine !== "where") return;
@@ -1718,7 +1725,7 @@ export function WebHome({ onOpenApp, onOperators }: { onOpenApp: () => void; onO
 
       {refine ? (
         <div className="ah-modal-scrim" onClick={() => setRefine(null)}>
-          <div className="ah-modal ah-refine" role="dialog" aria-modal="true" aria-labelledby="ah-refine-title" onClick={(e) => e.stopPropagation()}>
+          <div className="ah-modal ah-refine" ref={refineBox} role="dialog" aria-modal="true" aria-labelledby="ah-refine-title" onClick={(e) => e.stopPropagation()}>
             <div className="ah-refine-head">
               <button type="button" className="ah-refine-x" aria-label="Close" onClick={() => setRefine(null)}><Markup html={SVG.close} /></button>
               <h2 id="ah-refine-title">Where, when and who</h2>
