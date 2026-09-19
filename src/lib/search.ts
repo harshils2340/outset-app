@@ -97,12 +97,15 @@ const slack = (t: string) => (t.length >= 8 ? 2 : t.length >= 4 ? 1 : 0);
  */
 const REL_HALF = 5;
 
+/** The indexed word is the typed token, letter for letter. */
+const REL_EXACT = 10;
+
 /**
  * How strongly one typed token matches one indexed word, 0 for no match. The order is the ranking order:
  * the same word, the same stem, the word the guest is part way through typing, then a typo, then a fragment.
  */
 function relate(word: string, wordStem: string, tok: string, tokStem: string): number {
-  if (word === tok) return 10;
+  if (word === tok) return REL_EXACT;
   if (wordStem === tokStem) return 9;
   if (word.startsWith(tok)) return tok.length >= 3 ? 8 : 7;
   if (tok.length >= 4 && wordStem.startsWith(tokStem)) return 8;
@@ -170,6 +173,8 @@ type Index = {
   pts: Float64Array;
   hits: Int32Array;
   reqHits: Int32Array;
+  /** Listings whose own area or metro is, letter for letter, a word the guest spent naming where they are. */
+  atPlace: Uint8Array;
   cur: Float64Array;
 };
 
@@ -189,6 +194,7 @@ function newIndex(pool: Unclaimed[]): Index {
     pts: new Float64Array(n),
     hits: new Int32Array(n),
     reqHits: new Int32Array(n),
+    atPlace: new Uint8Array(n),
     cur: new Float64Array(n),
   };
 }
@@ -766,10 +772,11 @@ function rank(pool: Unclaimed[], q: string, scope?: SearchScope): Scored[] {
   }
 
   // Word pass: for each thing the guest asked for, the best place it lands on each listing.
-  const { pts, hits, reqHits, cur } = idx;
+  const { pts, hits, reqHits, atPlace, cur } = idx;
   pts.fill(0);
   hits.fill(0);
   reqHits.fill(0);
+  atPlace.fill(0);
   const terms = queryTerms(idx, p);
   let needReq = 0;
   for (const term of terms) {
@@ -791,6 +798,9 @@ function rank(pool: Unclaimed[], q: string, scope?: SearchScope): Scored[] {
           const e = post >>> 4;
           const s = w * MASK_WEIGHT[post & 15];
           if (s > cur[e]) cur[e] = s;
+          // The word is spelled exactly this way in the listing's own area or metro, and the guest did not
+          // spend it naming the activity: they named this listing's town. See the bonus below.
+          if (term.req && w === REL_EXACT && post & F_PLACE) atPlace[e] = 1;
         }
       }
     }
@@ -830,7 +840,18 @@ function rank(pool: Unclaimed[], q: string, scope?: SearchScope): Scored[] {
     const name = nameScore(e, p);
     s += p.hardArts.length && !onArt ? name * 0.5 : name;
     s += pts[i];
+    /**
+     * Being where the guest is looking.
+     *
+     * Only the 47 metros carried this, so a guest who named any other town got nothing for it and a shop
+     * whose *name* looked like the town outranked the shops actually in it: "spa mesa" opened on Mysa
+     * Wellness Spa in Brooklyn, "brewery bellingham" on The Bell in Scona in Edmonton, "bowling milwaukee"
+     * on Milwaukie Bowl in Oregon, and "horse sarasota" on The Dark Horse Mercantile in Saratoga Springs.
+     * A town spelled exactly the way the guest spelled it now counts too, for less than a metro, because
+     * towns share names across states and a metro is the place the guest actually picked.
+     */
     if (p.metro && e.metroId === p.metro.id) s += 20;
+    else if (atPlace[i]) s += 12;
     if (p.arts.length && s < 24) return;
     s += e.qual + (e.u.cover ? 2 : 0) + (e.from != null ? 1 : 0);
     if (wantsCheap && e.from != null) s += e.from <= 40 ? 6 : e.from <= 75 ? 3 : 0;
