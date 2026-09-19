@@ -187,8 +187,14 @@ app.get("/contacts/:domain", (c) => {
 });
 
 app.post("/contacts/sync", async (c) => {
-  const { syncContactsToApp, syncCatalogToApp } = await lazy.sync();
-  return c.json({ contacts: syncContactsToApp(), catalog: syncCatalogToApp() });
+  const { syncContactsToApp, syncCatalogToApp, loadProfileOverlays } = await lazy.sync();
+  const contacts = syncContactsToApp();
+  // The same order `npm run sync` uses, and for the same reason: the overlay map is module state that
+  // buildCatalogItems reads, so a catalog built before it is loaded is a catalog with every claimed operator's
+  // menu, hours, photos and prices stripped back to whatever the crawler last saw, and with the listings a
+  // crawler never reached dropped altogether. This route skipped it and published exactly that.
+  const overlays = await loadProfileOverlays();
+  return c.json({ contacts, catalog: syncCatalogToApp(), overlays: overlays.count, overlaySource: overlays.source });
 });
 
 app.post("/targets", async (c) => {
