@@ -1903,6 +1903,35 @@ function uniqBy<T>(list: T[], key: (t: T) => string): T[] {
  * catalog once rather than comparing 55,000 rows with each other; a URL or a line that a dozen listings share is a
  * stock photo or a generic label and proves nothing, so it is skipped.
  */
+export type DuplicateSide = { claimed: boolean; canonical: boolean; reviews: number; domain: string };
+
+/**
+ * Two rows that share enough photos and priced menu lines to be one business. Which one keeps the page.
+ *
+ * Claimed first, and above everything else. The other three tests read the crawl, and the crawl has no opinion
+ * on which of two rows a person actually signed in to and filled in: a shop that claimed its page could lose to
+ * an unclaimed copy of itself on review count or on having a shorter domain, and its operator would find their
+ * listing gone from the site with nothing on their dashboard to explain it. Their claim, their session, their
+ * edits and the link in their claim email are all on the id that was dropped.
+ *
+ * After that: the row whose domain is the site's own canonical host, then the one with more reviews, then the
+ * shorter domain.
+ */
+export function betterDuplicate(a: DuplicateSide, b: DuplicateSide): { keep: "a" | "b"; why: string } {
+  const tests: { why: string; of: (s: DuplicateSide) => number }[] = [
+    { why: "claimed by its operator", of: (s) => (s.claimed ? 1 : 0) },
+    { why: "canonical host", of: (s) => (s.canonical ? 1 : 0) },
+    { why: "more reviews", of: (s) => s.reviews },
+    { why: "shorter domain", of: (s) => -s.domain.length },
+  ];
+  for (const t of tests) {
+    const va = t.of(a);
+    const vb = t.of(b);
+    if (va !== vb) return { keep: vb > va ? "b" : "a", why: t.why };
+  }
+  return { keep: "a", why: "shorter domain" };
+}
+
 function dropDuplicateOperators(full: Record<string, unknown>[]): Record<string, unknown>[] {
   const index = (key: string, i: number, map: Map<string, number[]>) => {
     const at = map.get(key);
@@ -1951,23 +1980,14 @@ function dropDuplicateOperators(full: Record<string, unknown>[]): Record<string,
       const row = db.prepare("SELECT website FROM operators WHERE domain = ? LIMIT 1").get(domain) as { website: string | null } | undefined;
       canonical.set(domain, row?.website ? hostOf(row.website) : "");
     }
-    const score = (i: number) => {
+    const side = (i: number): DuplicateSide => {
       const domain = String(full[i].src);
-      return [canonical.get(domain) === domain ? 1 : 0, Number(full[i].reviews) || 0, -domain.length];
+      return { claimed: !!full[i].claimed, canonical: canonical.get(domain) === domain, reviews: Number(full[i].reviews) || 0, domain };
     };
-    const sa = score(a);
-    const sb = score(b);
-    const why = sa[0] !== sb[0] ? "canonical host" : sa[1] !== sb[1] ? "more reviews" : "shorter domain";
-    let keep = a;
-    let drop = b;
-    for (let k = 0; k < sa.length; k++) {
-      if (sa[k] === sb[k]) continue;
-      if (sb[k] > sa[k]) {
-        keep = b;
-        drop = a;
-      }
-      break;
-    }
+    const verdict = betterDuplicate(side(a), side(b));
+    const keep = verdict.keep === "a" ? a : b;
+    const drop = verdict.keep === "a" ? b : a;
+    const why = verdict.why;
     dropped.add(drop);
     const shared = n.photos + " photos, " + n.options + " menu lines";
     cleanupLog?.dupes.push({ kept: String(full[keep].src), dropped: String(full[drop].src), why, shared });
@@ -2078,7 +2098,10 @@ export function buildCatalogItems(where?: (r: CatalogRow) => boolean): Record<st
     .filter((item) => (item as unknown as { published?: boolean }).published !== false);
   // A map pin and the operator's own site for the same business in the same metro: keep the site row, drop the pin.
   const siteKeys = new Set(full.filter((i) => !String(i.id).startsWith("o-osm-")).map((i) => titleKey(String(i.title)) + "|" + (i.metroId || i.area)));
-  const pinDupes = full.filter((i) => String(i.id).startsWith("o-osm-") && siteKeys.has(titleKey(String(i.title)) + "|" + (i.metroId || i.area)));
+  // Not one an operator has claimed: the claim is on this id, the dashboard edits this id, and the link in
+  // their claim email opens this id. Dropping it in favour of an unclaimed row of the same business takes the
+  // page they filled in off the site and leaves them signed in to a listing no guest can reach.
+  const pinDupes = full.filter((i) => String(i.id).startsWith("o-osm-") && !i.claimed && siteKeys.has(titleKey(String(i.title)) + "|" + (i.metroId || i.area)));
   for (const d of pinDupes) full.splice(full.indexOf(d), 1);
   console.log("Left out " + dead.size + " map-only rows with nothing a guest can use and " + pinDupes.length + " map pins that duplicate a site row.");
   return dropDuplicateOperators(full as Record<string, unknown>[]);

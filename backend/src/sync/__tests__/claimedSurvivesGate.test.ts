@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { passesCatalogFilters } from "../contacts.ts";
+import { betterDuplicate, passesCatalogFilters, type DuplicateSide } from "../contacts.ts";
 
 /**
  * A listing its operator has claimed is never dropped by the crawl-quality filters.
@@ -65,4 +65,31 @@ test("a claim answers the name, the domain and the pin as well as the crawl gap"
 test("claiming is the only exemption, so a lead nobody claimed still gets no page", () => {
   const dead = new Set(["o-other-com"]);
   assert.equal(passesCatalogFilters(row({ id: "o-other-com" }), { dead, claimed: (id) => id === "o-example-com" }), false);
+});
+
+/**
+ * The other two ways a claimed listing could lose its page, both of them the same mistake: a rule that reads
+ * the crawl deciding between two rows for one business, when only one of them has a person behind it.
+ */
+
+const side = (over: Partial<DuplicateSide> = {}): DuplicateSide => ({ claimed: false, canonical: true, reviews: 40, domain: "bayside.com", ...over });
+
+test("between two rows for one business, the claimed one keeps the page", () => {
+  const claimedRow = side({ claimed: true, canonical: false, reviews: 0, domain: "baysidejetskirentals.com" });
+  const crawledRow = side({ canonical: true, reviews: 900, domain: "bayside.com" });
+  // The claimed row loses every crawl test: not the canonical host, no reviews, the longer domain.
+  assert.deepEqual(betterDuplicate(claimedRow, crawledRow), { keep: "a", why: "claimed by its operator" });
+  assert.deepEqual(betterDuplicate(crawledRow, claimedRow), { keep: "b", why: "claimed by its operator" });
+});
+
+test("with neither claimed, the crawl decides as it always did", () => {
+  assert.deepEqual(betterDuplicate(side({ canonical: true }), side({ canonical: false })), { keep: "a", why: "canonical host" });
+  assert.deepEqual(betterDuplicate(side({ reviews: 10 }), side({ reviews: 80 })), { keep: "b", why: "more reviews" });
+  assert.deepEqual(betterDuplicate(side({ domain: "a-very-long-domain-name.com" }), side({ domain: "short.com" })), { keep: "b", why: "shorter domain" });
+});
+
+test("with both claimed, the crawl decides between them rather than nothing deciding", () => {
+  const a = side({ claimed: true, reviews: 10 });
+  const b = side({ claimed: true, reviews: 80 });
+  assert.deepEqual(betterDuplicate(a, b), { keep: "b", why: "more reviews" });
 });
