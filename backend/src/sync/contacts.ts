@@ -1977,6 +1977,38 @@ function dropDuplicateOperators(full: Record<string, unknown>[]): Record<string,
 }
 
 /**
+ * Whether a crawled row is worth a page on the site.
+ *
+ * Three rules, all of them reading the crawl and nothing else: the domain we found the business on, the name we
+ * scraped off it, the pin OpenStreetMap gave it, and whether any crawler has ever read a photo, a service or an
+ * hours line from its own site (that last one is `dead`, worked out by the caller against the facts table and
+ * the JSON shards).
+ *
+ * And one rule above all three: a listing its operator has claimed is never refused. A claim is a person
+ * answering by hand every question these rules ask of a crawler, and their answers are merged in further down,
+ * after these filters have already decided the row gets no page. Without this, a shop that claimed its listing,
+ * typed in its menu, its hours and its photos and pressed Publish loses its page on the next sync for the sole
+ * reason that no crawler ever reached its website. Pausing a listing is a separate, later filter on
+ * `published`, and stays the operator's own choice.
+ */
+export function passesCatalogFilters(
+  r: Pick<CatalogRow, "id" | "domain" | "name" | "legal_name" | "city" | "region" | "lat" | "lon">,
+  opts: { dead: Set<string> | ReadonlySet<string>; claimed: (id: string) => boolean },
+): boolean {
+  if (opts.claimed(r.id)) return true;
+  if (MARKETPLACES.test(r.domain) || NOT_OPERATOR_HOST.test(r.domain)) return false;
+  if (opts.dead.has(r.id)) return false;
+  if (NOT_EXPERIENCE.test(r.name) || /^\s*\$?\d+(\.\d+)?\s*$/.test(r.name)) return false;
+  // "Home", "Welcome" and a bare domain are page titles, not business names. A guest cannot tell what they are.
+  const t = cleanTitle(decodeEntities(r.name), { city: r.city, region: r.region, legalName: r.legal_name });
+  if (t.length < 3 || SITE_WORDS.test(t) || NAV_LABEL.test(t) || GENERIC_TITLE.test(t) || /^(?:https?:\/\/|www\.)/i.test(t)) return false;
+  // Outside the US and Canada, by pin or by address, is outside the market (a Cairns balloon flight tagged HI).
+  if (r.lat != null && r.lon != null && !inNorthAmerica(r.lat, r.lon)) return false;
+  if (r.region && r.region.length === 2 && !NA_REGION.test(r.region.toUpperCase())) return false;
+  return true;
+}
+
+/**
  * Every catalog listing, built and cleaned, writing nothing. `syncCatalogToApp` writes what this returns; a check
  * script can call it with a filter (one metro, say) to read the same items the site would publish.
  */
@@ -2016,13 +2048,25 @@ export function buildCatalogItems(where?: (r: CatalogRow) => boolean): Record<st
     if (crawledPhotosFor(id).photos.length) dead.delete(id);
     else if (crawledStructureFor(id).offerings.length || crawledHoursFor(id)) dead.delete(id);
   }
+  /**
+   * A listing an operator has claimed is never dropped by any of this.
+   *
+   * Every filter below reads the crawl: the name we scraped, the domain we found it on, the pin OpenStreetMap
+   * gave it, and whether a crawler has ever read a photo, a service or an hours line off its site. A claim is a
+   * person answering all of that by hand, and their edits are applied further down, after these filters have
+   * already decided the row is not worth a page. So a shop that claimed its listing, typed in its menu, its
+   * hours and its photos and pressed Publish would have had its page deleted by the next sync for the sole
+   * reason that no crawler ever reached its website. The gate above went in on 18 September 2026 and drops
+   * 12,332 listings on its first run; every claimed one among them is an operator we asked to sign up.
+   *
+   * `published: false` is a different question and is still honoured below: pausing a listing is the
+   * operator's own choice, and this does not undo it.
+   */
+  const claimed = (id: string) => overlays.has(id);
+  for (const id of Array.from(dead)) if (claimed(id)) dead.delete(id);
   const full = rows
     .filter((r) => (where ? where(r) : true))
-    .filter((r) => !MARKETPLACES.test(r.domain) && !NOT_OPERATOR_HOST.test(r.domain) && !dead.has(r.id) && !NOT_EXPERIENCE.test(r.name) && !/^\s*\$?\d+(\.\d+)?\s*$/.test(r.name))
-    // "Home", "Welcome" and a bare domain are page titles, not business names. A guest cannot tell what they are.
-    .filter((r) => { const t = cleanTitle(decodeEntities(r.name), { city: r.city, region: r.region, legalName: r.legal_name }); return t.length >= 3 && !SITE_WORDS.test(t) && !NAV_LABEL.test(t) && !GENERIC_TITLE.test(t) && !/^(?:https?:\/\/|www\.)/i.test(t); })
-    // Outside the US and Canada, by pin or by address, is outside the market (a Cairns balloon flight tagged HI).
-    .filter((r) => (r.lat == null || r.lon == null || inNorthAmerica(r.lat, r.lon)) && (!r.region || r.region.length !== 2 || NA_REGION.test(r.region.toUpperCase())))
+    .filter((r) => passesCatalogFilters(r, { dead, claimed }))
     .map(toCatalogItem)
     .map((item) => {
       const ov = profileOverlay(String(item.id));
