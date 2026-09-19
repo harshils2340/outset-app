@@ -2025,6 +2025,67 @@ tests, both projects type-check clean.
   still `role="tab"` with nothing to control; 6,513 rated listings show a rating on their card and none on the
   page it opens; and no workflow runs `npm test`.
 
+## 19 September 2026, thirty-third run (09:00 to 10:00 UTC)
+
+**Checked, and why.** Nothing landed after the thirty-second entry, so the rehearsal was skipped at the start.
+Type checks and both suites were run first and were green (445 app, 311 backend). Then the one feature on the
+guest listing page that no run has ever opened: **live departures read from the operator's own booking system**
+(`backend/src/enrich/availability.ts`, `GET /availability/:id`, and the three surfaces that draw it). Coverage
+names every other part of the booking box, and the word FareHarbor does not appear in this log once, though
+1,664 shipped listings carry a booking link we can read. It had no test of its own. So: every vendor path
+driven with hand written payloads shaped the way each vendor answers, and every booking link in
+`public/live-index.json` put through the resolvers.
+
+**Found and fixed.**
+
+- **Two boats leaving at nine were drawn as two chips with one key, and picking either lit both** (`824b62246`).
+  A FareHarbor company calendar is every trip that company sells, so a shop running two boats at nine answers
+  with two departures on the same start time. Both pickers drew a chip each, keyed on the time they share:
+  React saw one key twice, the phone drew "9:00 AM" twice in a row, and a pick is a time and nothing else, so
+  clicking one showed both as chosen. The phone read the seats and the price off whichever chip it found
+  first, which is how a 40 seat boat came to read "2 left". One chip per start time now, built once in
+  `src/lib/liveTimes.ts` instead of a copy of the same twelve lines in each picker: the clock alone when two
+  trips leave then, the lowest of their prices, and a seat count only when every departure at that time states
+  one. The same change ends three other small disagreements between the two pickers: four seats was "few" on
+  the phone and not on the desktop, the phone's day dot counted departures that had already gone, and the wall
+  clock was read by parsing a zoneless time into a Date and asking the browser for the hours back.
+- **Otto read out a Peek date it had no times for as a departure called "Sunset Cruise"** (`07bac87a8`). Peek
+  costs one call for which dates are open and one more per date for that date's times, and the budget stops
+  after three, so most open dates in a ten day window come back with no times at all. A marker row stood in
+  for them carrying a midnight that means nothing, and nothing downstream knew that: the phone printed
+  "12:00 AM", and a guest could book it. The marker says `timeUnknown` now, Otto skips it, and no picker
+  offers it. A shop that genuinely leaves at midnight keeps its midnight, which is the only thing that now
+  looks like one.
+- **45 of the 54 Xola shops showed our guessed times, because a button embed is not a seller** (`502f65b42`).
+  `xolaSeller` hands a button embed back as `button:<id>` to say so, and the availability reader sent that
+  string to the experience feed as a seller id. Every one of those 45 answered "experience feed unavailable"
+  and fell back to a generic nine, eleven and one for a shop whose own calendar we could have read. It now
+  resolves the button to its seller, which `readXola` has always done, kept for an hour so the call budget is
+  where it was.
+
+**Swept and clean.** All 1,664 booking links in `live-index.json` through `fareharborShortname`, `peekRef` and
+`xolaSeller`: 1,354 distinct FareHarbor shortnames, 237 Peek programs, 54 Xola sellers, none malformed. Six
+rows publish a bare `https://fareharbor.com/` that names no company; they answer dead, which is right.
+
+**Ran the rehearsal after the fixes**, because they touch the listing page and the phone booking sheet it
+drives: 53 of 53, against a local Postgres and the Chromium on disk. 454 app tests (9 new) and 316 backend
+tests (5 new), both projects type-check clean.
+
+**Needs Harshil.**
+
+- **A Peek shop now offers two bookable dates where it used to offer eight, six of them fake.** Not lying is
+  the right trade, but the honest fix is to ask for the picked date's times: a single date request spends the
+  whole budget on that date, which the reader was built for and nothing ever wired up. Three ways to do it,
+  and picking one is your call, because it is a politeness budget and not a bug: widen `MAX_CALLS` for Peek
+  alone; have the picker ask for a date it has no times for, which needs the day to stay pickable and so
+  needs plumbing through both calendars; or accept fewer bookable dates. 239 listings sit on Peek.
+- Nothing was checked against a live vendor. These are someone else's servers and the tests answer from
+  payloads shaped by hand, so a vendor that has quietly changed its JSON would still read as a shop with
+  nothing open, and we would not know.
+- The earlier runs' calls stand, unchanged: 65 of 59,125 listings ship an FAQ; 215 GIFs still lead a hero and
+  the 70 cleared videos wait for a sync; 50 of 64 kinds have no guide; anything needing a real Stripe key is
+  untouched; Home's three tabs are still `role="tab"` with nothing to control; and no workflow runs `npm test`.
+
 ## Coverage
 
 **Verified so far.** Booking validation and odd input on every route that takes it. The money split,
@@ -2257,7 +2318,21 @@ lightbox and its "Show more" modal, the home's Filters, Compare and Where, when 
 booking drawer, the card form and the phone sheets. Focus in and back, the Tab ring closed, the page behind
 held still, and which surface keeps the page out of the tab order with `inert` instead.
 
-**Not yet checked.** Whether the landing pages should say they are showing 24 of the 35 they counted, which
+Live departures read from the operator's own booking system, over all 1,664 shipped listings that carry a
+booking link: every FareHarbor shortname, Peek program and Xola seller against the resolvers; each vendor's
+reader driven with payloads shaped the way it answers; two trips leaving at one time on all three surfaces
+that draw them; an open date whose times the budget never read; a departure the vendor says is full; and a
+Xola button embed, which is what 45 of the 54 Xola links are.
+
+**Not yet checked.** How a Peek shop should get the times for a date the call budget never reached, which
+is the one thing this run left open behind a fix (see the thirty-third run's Needs Harshil): 239 listings
+now show the two dates we timed rather than eight, six of which were a midnight the shop never sells. Any
+live vendor against its real server rather than a payload shaped by hand, so a vendor that has quietly
+changed its JSON reads as a shop with nothing open and nobody knows. Whether the six rows publishing a bare
+`https://fareharbor.com/` should be in `live-index.json` at all. Whether a vendor that answers with nothing
+open across the whole window should leave the page showing our guessed nine, eleven and one, which it does.
+Whether the vendor's own `bookUrl` for a departure should ever be offered to a guest: every reader carries
+one and no surface draws it. Whether the landing pages should say they are showing 24 of the 35 they counted, which
 is what a page with more than 24 listings does today, and whether a kind's all-metros page needs paging at
 all. Whether the 50 kinds with no guide should have one written (see this run's Needs Harshil), and whether
 the JSON-LD `numberOfItems` should say 35 when only 24 `itemListElement` entries follow it. Whether a page should carry an `og:` card at all,
