@@ -6,7 +6,7 @@ import { contactEmail } from "./email";
 import { dateKey, startOfToday } from "./dates";
 import { withoutNoticeWindows } from "./duration";
 import { fmtTime, money } from "./format";
-import { durationLabel as menuDuration, freeCancel } from "./listingDerive";
+import { durationLabel as menuDuration, faqText, freeCancel } from "./listingDerive";
 import { itemWeek, parseWeek, type Week } from "./openNow";
 import { operatorNet, subtotalFromTotal } from "./pricing";
 import { splitAddons } from "./storage";
@@ -968,7 +968,7 @@ export function knowFrom(u: Unclaimed): Pick<OperatorProfile, "cancellation" | "
   if (u.requirements?.length) out.requirements = u.requirements.slice(0, KNOW_LIMITS.requirements);
   if (u.includes?.length) out.includes = u.includes.slice(0, KNOW_LIMITS.includes);
   if (u.checkin) out.checkin = u.checkin.slice(0, KNOW_LIMITS.checkin);
-  if (u.faq?.length) out.faq = u.faq.slice(0, KNOW_LIMITS.faq).map((f) => ({ q: f.q.slice(0, KNOW_LIMITS.question), a: f.a.slice(0, KNOW_LIMITS.answer) }));
+  if (u.faq?.length) out.faq = u.faq.slice(0, KNOW_LIMITS.faq).map((f) => ({ q: faqText(f.q).slice(0, KNOW_LIMITS.question), a: faqText(f.a).slice(0, KNOW_LIMITS.answer) }));
   return out;
 }
 

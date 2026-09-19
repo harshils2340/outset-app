@@ -82,3 +82,13 @@ export { groupCap } from "./groupSize";
 export function durationLabel(item: Unclaimed): string | null {
   return durationFrom([...(item.services || []).flatMap((s) => s.variants.map((v) => v.label)), ...item.options.map((o) => o.detail)]);
 }
+
+/**
+ * A Q&A page's own label, kept by the crawl: "A. We generally launch at daybreak" and "Q: How long is it?".
+ * Four surfaces print a shipped FAQ (the desktop listing, the phone sheet, Otto and the dashboard prefill an
+ * operator edits), and all four printed the label. Formatting only: nothing here changes a fact. The mark
+ * after the letter is what makes it a label, so an answer that opens "A life jacket is provided" is left be.
+ */
+export function faqText(text: string): string {
+  return String(text || "").replace(/^\s*[QA]\s*[.:)\]]\s+/i, "").trim();
+}

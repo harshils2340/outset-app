@@ -12,7 +12,7 @@ import { addressLine, bookingPaused, contactFor, fmtPhone, fromPrice, getCatalog
 import { DAYS, fmtDate, fmtReviews, fmtTime, money, priceWith, reviewsLine } from "../../lib/format";
 import { srcSet, thumb } from "../../lib/images";
 import { embedAutoplay, isGif, listingMedia, photoCandidates, probePhotos, type Media } from "../../lib/media";
-import { bringLine, cleanDesc, durationLabel, groupCap as readGroupCap, minAge, splitPolicies } from "../../lib/listingDerive";
+import { bringLine, cleanDesc, durationLabel, faqText, groupCap as readGroupCap, minAge, splitPolicies } from "../../lib/listingDerive";
 import { freeCancelBadge } from "../../lib/cancellation";
 import { bookableStart, clockIn, hourLines, itemOpenState, itemWeek, zoneFor } from "../../lib/openNow";
 import { displayHours } from "../../lib/hoursText";
@@ -157,9 +157,9 @@ export function possessive(name: string): string {
   return /s$/i.test(name.trim()) ? name.trim() + "’" : name.trim() + "’s";
 }
 
-/** Space before punctuation, "( x )", doubled spaces, a leading bullet or list number: the crawl's leftovers. */
+/** Space before punctuation, "( x )", doubled spaces, a leading bullet, list number or Q&A label: the crawl's leftovers. */
 export function tidyLine(text: string): string {
-  let t = plainWords(text)
+  let t = plainWords(faqText(text))
     .replace(/^\s*(?:[•·*\-–—:;,|>]+|\d{1,2}\s*[-.)]\s+)\s*/, "")
     .replace(/\s+([,.;:!?)])/g, "$1")
     .replace(/\(\s+/g, "(")

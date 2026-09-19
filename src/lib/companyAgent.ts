@@ -4,7 +4,7 @@ import { addressLine, plainWords } from "./catalog";
 import { callablePhone } from "./phone";
 import { withoutNoticeWindows } from "./duration";
 import { money } from "./format";
-import { groupCap, minAge } from "./listingDerive";
+import { faqText, groupCap, minAge } from "./listingDerive";
 import { clockIn, hourLines, itemWeek, openStateAt, zoneFor, type Week } from "./openNow";
 import { venueLabel } from "./places";
 import { hasPrice } from "./pricing";
@@ -1079,11 +1079,11 @@ function faqMatch(item: Unclaimed, q: string): string | null {
   if (qw.length < 2) return null;
   let best: { score: number; a: string } | null = null;
   for (const f of item.faq) {
-    const fw = new Set(words(f.q));
+    const fw = new Set(words(faqText(f.q)));
     let hit = 0;
     for (const w of qw) if (fw.has(w)) hit += 1;
     const score = hit / Math.max(2, Math.min(qw.length, fw.size));
-    if (hit >= 2 && score >= 0.5 && (!best || score > best.score)) best = { score, a: f.a };
+    if (hit >= 2 && score >= 0.5 && (!best || score > best.score)) best = { score, a: faqText(f.a) };
   }
   return best ? sentence(clip(best.a, 190)) : null;
 }
