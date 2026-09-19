@@ -69,18 +69,19 @@ type Job = {
 const JOBS: Job[] = [
   { name: "status", timeoutMs: MIN, args: [], needsRepo: false, note: "write the status file only" },
   { name: "collect", every: 30 * MIN, timeoutMs: 30 * MIN, args: ["src/index.ts", "enrich", "--collect-all"], needsRepo: true, needsKey: "OPENAI_API_KEY", note: "store finished OpenAI batches (already paid); never submits" },
-  { name: "reviews", at: "21:00", timeoutMs: HOUR, args: ["src/index.ts", "reviews", "5000", "8"], needsRepo: true, note: "written reviews an operator republishes on their own site, rules only, each site visited once; the 05:00 sync turns them into quotes" },
+  { name: "reviews", every: 6 * HOUR, timeoutMs: 4 * HOUR, args: ["src/index.ts", "reviews", "40000", "12"], needsRepo: true, note: "written reviews an operator republishes on their own site, rules only, each site visited once; the 05:00 sync turns them into quotes" },
   { name: "discover", at: "22:00", timeoutMs: 3 * HOUR, args: ["src/index.ts", "discover", "--wave=3", "--concurrency=2"], needsRepo: true, note: "OpenStreetMap wave three, free" },
   { name: "widget-links", at: "19:00", timeoutMs: 2 * HOUR, args: ["scripts/widget-links.mts", "--limit=2000", "--concurrency=4", "--write"], needsRepo: true, note: "booking embeds for operators tagged with a vendor but lacking a reader-shaped booking_url; rules only, 1 to 3 pages per site" },
-  { name: "widgets", at: "20:00", timeoutMs: 4 * HOUR, args: ["src/index.ts", "widgets", "3000", "3", "--redo"], needsRepo: true, note: "FareHarbor, Xola and Peek menus with the exact online price per customer type, from each widget's own feed; rules only, one host, paced" },
-  { name: "structure", at: "23:00", timeoutMs: 4 * HOUR, args: ["src/index.ts", "structure", "5000", "4"], needsRepo: true, note: "menus and facts from each site, rules only" },
-  { name: "photos", at: "00:00", timeoutMs: 4 * HOUR, args: ["src/index.ts", "photos", "5000", "4"], needsRepo: true, note: "photo crawl of each site" },
-  { name: "hours", at: "01:00", timeoutMs: 4 * HOUR, args: ["scripts/hours-crawl.mts", "5000", "6"], needsRepo: true, note: "opening hours from each site" },
+  { name: "widgets", every: 6 * HOUR, timeoutMs: 4 * HOUR, args: ["src/index.ts", "widgets", "20000", "6", "--redo"], needsRepo: true, note: "FareHarbor, Xola and Peek menus with the exact online price per customer type, from each widget's own feed; rules only, one host, paced" },
+  { name: "structure", every: 90 * MIN, timeoutMs: 6 * HOUR, args: ["src/index.ts", "structure", "40000", "16"], needsRepo: true, note: "menus and facts from each site, rules only" },
+  { name: "photos", every: 45 * MIN, timeoutMs: 6 * HOUR, args: ["src/index.ts", "photos", "25000", "8"], needsRepo: true, note: "photo crawl of each site" },
+  { name: "hours", every: 2 * HOUR, timeoutMs: 4 * HOUR, args: ["scripts/hours-crawl.mts", "40000", "16"], needsRepo: true, note: "opening hours from each site" },
   { name: "promo", at: "02:00", timeoutMs: 3 * HOUR, args: ["scripts/promo-crawl.mts", "--limit=5000"], needsRepo: true, note: "day-specific deals from each site" },
   { name: "purge-names", at: "03:20", timeoutMs: 10 * MIN, args: ["scripts/purge-bad-names.mts"], needsRepo: true, note: "delete stored images the crawler's filename rule now refuses (guides, scanned pages, flyers); no network" },
   { name: "screen", at: "03:30", timeoutMs: 3 * HOUR, args: ["scripts/screen-covers.mts"], needsRepo: true, note: "drop map, logo, flyer and scanned-page covers and gallery photos" },
-  { name: "owners", at: "04:00", timeoutMs: HOUR, args: ["src/index.ts", "owners", "2000", "8"], needsRepo: true, note: "owner names and contact pages" },
-  { name: "sync", at: "05:00", timeoutMs: HOUR, args: ["src/index.ts", "sync"], needsRepo: true, note: "read-only catalog sync, commit and push public/ and src/data" },
+  { name: "owners", every: 4 * HOUR, timeoutMs: 3 * HOUR, args: ["src/index.ts", "owners", "20000", "16"], needsRepo: true, note: "owner names and contact pages" },
+  { name: "pagecache", every: 2 * HOUR, timeoutMs: 15 * MIN, args: ["scripts/prune-pagecache.mts"], needsRepo: true, note: "keep the shared page cache under its size cap; no network" },
+  { name: "sync", every: 3 * HOUR, timeoutMs: 2 * HOUR, args: ["src/index.ts", "sync"], needsRepo: true, note: "read-only catalog sync, commit and push public/ and src/data" },
   /**
    * Accounting, not work: discovery and extraction spend is counted on this disk and nowhere else, so the
    * internal metrics page can only show it if the worker posts it. After the sync, so a night's crawling is
