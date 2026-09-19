@@ -121,6 +121,12 @@ export function pendingStructure(limit: number, redo = false): { id: string; dom
 }
 
 export async function readPendingStructures(limit: number, concurrency = 6, redo = false): Promise<StructureResult[]> {
+  /**
+   * Twenty-two seconds a site, not forty. Timing six real sites by hand gave a median of about seven seconds
+   * and a mean of ten, the difference being a handful of very large sites: one college site alone took
+   * twenty-nine. The tail is what the crawl spends its day on, and a site that has given us nothing in
+   * twenty-two seconds is worth coming back to later rather than holding a worker slot now.
+   */
   const queue = pendingStructure(limit, redo);
   const out: StructureResult[] = [];
   let i = 0;
@@ -130,7 +136,7 @@ export async function readPendingStructures(limit: number, concurrency = 6, redo
     await sleep(w * 400);
     while (i < queue.length) {
       const op = queue[i++];
-      const r = await withDeadline(readSiteStructure(op), 40000, op.domain).catch((e) => ({ operatorId: op.id, domain: op.domain, pages: 0, services: 0, status: "error" as const, error: (e as Error).message }));
+      const r = await withDeadline(readSiteStructure(op), 22000, op.domain).catch((e) => ({ operatorId: op.id, domain: op.domain, pages: 0, services: 0, status: "error" as const, error: (e as Error).message }));
       out.push(r);
       done += 1;
       if (r.status !== "ok") {
