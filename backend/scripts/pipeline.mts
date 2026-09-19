@@ -70,7 +70,10 @@ const JOBS: Job[] = [
   { name: "status", timeoutMs: MIN, args: [], needsRepo: false, note: "write the status file only" },
   { name: "collect", every: 30 * MIN, timeoutMs: 30 * MIN, args: ["src/index.ts", "enrich", "--collect-all"], needsRepo: true, needsKey: "OPENAI_API_KEY", note: "store finished OpenAI batches (already paid); never submits" },
   { name: "reviews", every: 6 * HOUR, timeoutMs: 4 * HOUR, args: ["src/index.ts", "reviews", "40000", "12"], needsRepo: true, note: "written reviews an operator republishes on their own site, rules only, each site visited once; the 05:00 sync turns them into quotes" },
-  { name: "discover", at: "22:00", timeoutMs: 3 * HOUR, args: ["src/index.ts", "discover", "--wave=3", "--concurrency=2"], needsRepo: true, note: "OpenStreetMap wave three, free" },
+  // Weekly, not nightly. Overture carries everything OpenStreetMap has and a great deal it does not, so three
+  // hours of Overpass every night was three hours the crawls could have had. Kept because the two disagree at
+  // the edges and OpenStreetMap is the one with the pins for places with no web presence at all.
+  { name: "discover", every: 7 * 24 * HOUR, timeoutMs: 3 * HOUR, args: ["src/index.ts", "discover", "--wave=3", "--concurrency=2"], needsRepo: true, note: "OpenStreetMap wave three, free, weekly since Overture covers more" },
   { name: "widget-links", at: "19:00", timeoutMs: 2 * HOUR, args: ["scripts/widget-links.mts", "--limit=2000", "--concurrency=4", "--write"], needsRepo: true, note: "booking embeds for operators tagged with a vendor but lacking a reader-shaped booking_url; rules only, 1 to 3 pages per site" },
   { name: "widgets", every: 6 * HOUR, timeoutMs: 4 * HOUR, args: ["src/index.ts", "widgets", "20000", "6", "--redo"], needsRepo: true, note: "FareHarbor, Xola and Peek menus with the exact online price per customer type, from each widget's own feed; rules only, one host, paced" },
   { name: "structure", every: 90 * MIN, timeoutMs: 6 * HOUR, args: ["src/index.ts", "structure", "40000", "16"], needsRepo: true, note: "menus and facts from each site, rules only" },
