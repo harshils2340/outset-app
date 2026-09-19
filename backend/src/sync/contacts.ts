@@ -7,7 +7,7 @@ import { writeLandingPages } from "./pages.ts";
 import { encodeWeek, isTradingHoursLine } from "./hours.ts";
 import { claimKeyHash } from "../lib/claim.ts";
 import { crawledPhotoStats, crawledPhotosFor } from "./photoSidecar.ts";
-import { crawledStructureFor, crawledStructureStats } from "./structureSidecar.ts";
+import { crawledStructureFor, crawledStructureStats, crawledHoursFor } from "./structureSidecar.ts";
 import { cleanImageUrl } from "../enrich/srcset.ts";
 import { isChallengeImage } from "../enrich/imagescrape.ts";
 import { artFromName, reconcileArt } from "./artEvidence.ts";
@@ -2009,6 +2009,13 @@ export function buildCatalogItems(where?: (r: CatalogRow) => boolean): Record<st
           AND NOT EXISTS (SELECT 1 FROM facts h WHERE h.operator_id = o.id AND h.fact_key = 'hours_text')`,
     ).all() as { id: string }[]).map((r) => r.id),
   );
+  // Photos from the cloud crawl live in JSON shards, not in facts, so the query above cannot see them. Without
+  // this, every listing whose only photo came from that crawl would be treated as having nothing to show and
+  // would drop off the site: 25,000 of the 37,841 published with a cover.
+  for (const id of Array.from(dead)) {
+    if (crawledPhotosFor(id).photos.length) dead.delete(id);
+    else if (crawledStructureFor(id).offerings.length || crawledHoursFor(id)) dead.delete(id);
+  }
   const full = rows
     .filter((r) => (where ? where(r) : true))
     .filter((r) => !MARKETPLACES.test(r.domain) && !NOT_OPERATOR_HOST.test(r.domain) && !dead.has(r.id) && !NOT_EXPERIENCE.test(r.name) && !/^\s*\$?\d+(\.\d+)?\s*$/.test(r.name))
