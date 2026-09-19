@@ -103,9 +103,16 @@ export const SEARCH_TERMS: SearchTerm[] = [
 ];
 
 /** Terms for the given category ids, or every term when none are given. Unknown ids are ignored. */
-export function termsForCategories(ids?: string[]): SearchTerm[] {
-  if (!ids?.length) return SEARCH_TERMS;
-  return SEARCH_TERMS.filter((s) => ids.includes(s.categoryId));
+export function termsForCategories(ids?: string[], opts: { onePer?: boolean } = {}): SearchTerm[] {
+  const list = ids?.length ? SEARCH_TERMS.filter((s) => ids.includes(s.categoryId)) : SEARCH_TERMS;
+  if (!opts.onePer) return list;
+  /**
+   * The broadest phrasing per category and no more. A Maps page answers with twenty businesses whatever it was
+   * asked, so when the budget is a fixed number of credits, covering every city with one phrasing each fills far
+   * more of the catalog than covering a few cities three ways. The first phrasing listed is the broadest.
+   */
+  const seen = new Set<string>();
+  return list.filter((t) => (seen.has(t.categoryId) ? false : (seen.add(t.categoryId), true)));
 }
 
 /** Category ids in the taxonomy that no term covers. Empty is the invariant a test keeps. */

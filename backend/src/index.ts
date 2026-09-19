@@ -162,7 +162,10 @@ if (cmd === "search") {
   const concurrency = Number(arg("concurrency") || 4);
   const maxPages = Number(arg("pages") || 1);
   const budget = arg("budget") ? Number(arg("budget")) : undefined;
-  const plan = planSearch({ categories, cities, metros, budget });
+  // --one-per: the broadest phrasing per category only. A page answers with twenty businesses whatever it was
+  // asked, so on a fixed number of credits this reaches every city instead of a handful of them three ways.
+  const onePer = process.argv.includes("--one-per");
+  const plan = planSearch({ categories, cities, metros, budget, onePer });
   const usd = (n: number) => "$" + n.toFixed(2);
   const scope = `${plan.cities.length} cities x ${plan.terms.length} terms (${plan.categories} categories), ${maxPages} page(s) each`;
   if (process.argv.includes("--dry-run")) {
@@ -188,7 +191,7 @@ if (cmd === "search") {
   }
   const prov = providerOf(keys[0]);
   console.log(`Google Maps discovery via ${prov}: ${scope}, ${keys.length} key(s). ${plan.cached} cached, ${plan.paid} paid requests, about ${usd(plan.costUsd[prov])}${budget ? ", budget " + budget + " requests" : ""}.`);
-  const stats = await discoverSearch({ keys, categories, cities, metros, concurrency, maxPages, budget });
+  const stats = await discoverSearch({ keys, categories, cities, metros, concurrency, maxPages, budget, onePer });
   refreshAllScores();
   const total = (db.prepare("SELECT COUNT(*) AS n FROM operators WHERE origin != 'demo'").get() as { n: number }).n;
   console.log(`Done${stats.stoppedEarly ? " (stopped early: credits or budget)" : ""}. ${stats.queries} queries, ${stats.results} results, ${stats.inserted} new, ${stats.merged} merged into known operators, ${stats.skipped} skipped. Catalog now ${total} operators.`);

@@ -468,7 +468,13 @@ export function cityForMetro(metroId: string): City | null {
   return best || { name: m.name, region: m.region, country: m.country, lat: m.lat, lon: m.lon };
 }
 
-export type SearchScope = { categories?: string[]; cities?: string[]; metros?: string[] };
+export type SearchScope = {
+  categories?: string[];
+  cities?: string[];
+  metros?: string[];
+  /** One phrasing per category instead of all of them: more of the map for the same number of credits. */
+  onePer?: boolean;
+};
 
 /** Cities in scope: --metro ids first (all when "all"), else --cities names or region codes, else the whole grid. */
 export function citiesInScope(opts: SearchScope): City[] {
@@ -501,7 +507,7 @@ export type SearchPlan = {
 
 /** Every term x city the run would visit, how many are already cached, and what the rest would cost. Sends nothing. */
 export function planSearch(opts: SearchScope & { budget?: number }): SearchPlan {
-  const terms = termsForCategories(opts.categories);
+  const terms = termsForCategories(opts.categories, { onePer: opts.onePer });
   const cities = citiesInScope(opts);
   const jobs: SearchJob[] = [];
   for (const city of cities) for (const term of terms) jobs.push({ term, city });

@@ -47,7 +47,8 @@ export const CATEGORY_MAP: Record<string, string> = {
   ferry_boat_company: "cruise", sightseeing_boat_tour: "cruise",
   scuba_diving_center: "scuba", scuba_instructor: "scuba", snorkeling: "scuba",
   surfing: "surf", surf_school: "surf", surf_lessons: "surf",
-  swimming_instructor: "swim", swimming_pool: "swim", swimming_lessons: "swim",
+  // A swimming lesson is bookable; "swimming_pool" is mostly municipal and school pools, so it is left out.
+  swimming_instructor: "swim", swimming_lessons: "swim",
   sailing_club: "sailing", sailing_school: "sailing", white_water_rafting: "rafting", rafting: "rafting",
   // Air
   skydiving_center: "skydive", skydiving: "skydive", parachuting: "skydive",
@@ -96,7 +97,10 @@ export const CATEGORY_MAP: Record<string, string> = {
   // Wellness and classes
   spas: "spa", day_spa: "spa", health_spa: "spa", massage_therapist: "spa", massage: "spa",
   sauna: "sauna", bathhouse: "sauna", hot_springs: "sauna",
-  yoga_studio: "yoga", yoga: "yoga", pilates_studio: "fitness", fitness_center: "fitness", gym: "fitness",
+  yoga_studio: "yoga", yoga: "yoga", pilates_studio: "fitness",
+  // Deliberately not here: "gym" and "fitness_center". Overture has 125,313 of them in the US and Canada, and a
+  // gym is a membership, not something a guest books an afternoon of. They were the single largest source of
+  // filler in the first import and were removed again.
   dance_school: "dance", dance_studio: "dance", dance_instruction: "dance",
   pottery_class: "pottery", pottery_studio: "pottery", art_school: "pottery", art_classes: "pottery",
   martial_arts_club: "martialarts", martial_arts_school: "martialarts", boxing_gym: "martialarts", karate: "martialarts",
