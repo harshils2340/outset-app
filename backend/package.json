@@ -27,10 +27,12 @@
     "status": "tsx src/index.ts status",
     "chrome:reap": "tsx src/index.ts chrome-reap",
     "cpu": "tsx scripts/cpu.mts",
-    "pipeline": "tsx scripts/pipeline.mts"
+    "pipeline": "tsx scripts/pipeline.mts",
+    "overture": "tsx src/index.ts overture"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.124.0",
+    "@duckdb/node-api": "^1.5.5-r.5",
     "@hono/node-server": "^1.14.1",
     "cheerio": "^1.0.0",
     "hono": "^4.7.8",

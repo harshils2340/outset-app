@@ -119,6 +119,37 @@ if (cmd === "websearch") {
   process.exit(0);
 }
 
+if (cmd === "overture") {
+  // Free discovery from the Overture Maps open place dataset. No key, no credits.
+  //   overture                 every box, US and Canada
+  //   overture ca-east us-west only these
+  //   --refresh                ignore the on-disk cache and read S3 again
+  const { BOXES, importBox, OVERTURE_RELEASE } = await import("./discover/overture.ts");
+  const picked = process.argv.slice(3).filter((a) => !a.startsWith("--"));
+  const boxes = picked.length ? picked : Object.keys(BOXES);
+  const refresh = process.argv.includes("--refresh");
+  console.log(`Overture ${OVERTURE_RELEASE}: ${boxes.length} box(es) [${boxes.join(", ")}]`);
+  const total = { read: 0, inserted: 0, merged: 0 };
+  const skipped: Record<string, number> = {};
+  for (const b of boxes) {
+    const t0 = Date.now();
+
+    const st = await importBox(b, {
+      refresh,
+      onProgress: (done, total, s) => process.stdout.write(`  ${b}: ${done.toLocaleString()}/${total.toLocaleString()} read, ${s.inserted.toLocaleString()} new, ${s.merged.toLocaleString()} filled in\n`),
+    });
+    total.read += st.read;
+    total.inserted += st.inserted;
+    total.merged += st.merged;
+    for (const [k, v] of Object.entries(st.skipped)) skipped[k] = (skipped[k] || 0) + v;
+    console.log(`  ${b.padEnd(11)} ${st.read.toLocaleString().padStart(8)} read  ${st.inserted.toLocaleString().padStart(7)} new  ${st.merged.toLocaleString().padStart(7)} filled in  ${Math.round((Date.now() - t0) / 1000)}s`);
+  }
+  console.log(`\n${total.read.toLocaleString()} places read, ${total.inserted.toLocaleString()} new operators, ${total.merged.toLocaleString()} existing ones filled in.`);
+  for (const [why, n] of Object.entries(skipped).sort((a, b) => b[1] - a[1])) console.log(`  skipped, ${why}: ${n.toLocaleString()}`);
+  console.log('Run "npm run sync" to publish.');
+  process.exit(0);
+}
+
 if (cmd === "search") {
   // Google Maps discovery over the whole taxonomy (src/discover/searchterms.ts) x the coverage grid.
   //   --categories=cooking,pottery   --cities=Toronto,ON   --metro=toronto (or a comma list, or "all" for every metro)
