@@ -2138,6 +2138,66 @@ backend tests, both projects type-check clean.
   lead a hero, 50 of 64 kinds have no guide, anything needing a real Stripe key is untouched, Home's three
   tabs are still `role="tab"` with nothing to control, and no workflow runs `npm test`.
 
+## 19 September 2026, thirty-fifth run (11:00 to 12:40 UTC)
+
+**Checked, and why.** Nothing landed after the thirty-fourth entry, whose rehearsal it records as green, so
+the rehearsal was skipped at the start and run twice at the end instead, once the fixes touched `src/lib`.
+Type checks and both suites were run first and were green (467 app, 316 backend). Coverage claims search and
+browse as verified, but on inspection what was verified is the shell of it: a query matching nothing, paging,
+an unpublished listing staying out, the ways out of an empty page, and the suggestion counts. What a guest
+types against what they are actually shown, ranked, had never been swept. So: `src/lib/search.ts`, 1,272
+lines and the largest guest-facing module with no ranking test of its own, driven over all 59,126 shipped
+listings.
+
+**Found and fixed.**
+
+- **A guest looking for golf in Fort Myers opened on a course at Fort Benning, Georgia** (`2eb443457`). The
+  search glues an adjacent pair of typed words into one spelling so "jet ski" still finds a shop called
+  Jetski. Matching that glued spelling accepted a word that was only its front, and the front of "fortmyers"
+  is "fort", so the "myers" half of the query was answered by any Fort in North America. "brewery fort
+  lauderdale" opened on Fort Hill Brewery in Massachusetts, "theatre fort myers" on Fort Smith Little Theatre
+  in Arkansas, "scuba virginia beach" on Dive Utah, and it was the only answer there was. Of 2,496 activity
+  and city queries 2,365 are unchanged, none gained a result, and every first card that moved landed in the
+  place the guest named.
+- **A guest asking for a spa in Mesa opened on one in Brooklyn** (`2510a853f`). Being in the place the guest
+  named was worth 20 points, and only the 47 metros could earn them. A town that is not one earned nothing,
+  so a one-letter typo in a business name, which scores in the highest field there is, beat the town spelled
+  right: Mysa Wellness Spa in Brooklyn for "spa mesa", Milwaukie Bowl in Oregon for "bowling milwaukee", The
+  Bell in Scona in Edmonton for "brewery bellingham", The Dark Horse Mercantile in Saratoga Springs for "horse
+  sarasota". A town spelled exactly as typed now counts too, for less than a metro. Of 1,093 town searches the
+  first card was in another town 144 times and is now 95; 87 were in another state and are now 69. It only
+  reorders, so no page gained or lost a listing.
+- **A guest searching tennis in Tampa was offered "Nashville · 313", and opened nothing** (`dbcda36fe`).
+  Nashville answers "tennis" because Tennessee does, and it has 313 listings and no tennis. The empty state
+  was taught to count what its own button opens on 15 September (the fourth run); the found state, which is what a guest
+  sees the moment a filter clears the grid under a search that did land, still counted the whole city. Both
+  count one ranking now and a city whose page would be empty is not offered. Pressed all 1,383 activity,
+  elsewhere and city rows the catalog offers across 64 kinds and 8 cities: none promises more than it opens,
+  where 7 did.
+
+**Swept and clean.** Every kind against every metro that has three or more of it, 1,417 queries: not one
+comes back empty. The same over the 90 busiest towns that are not one of the 47 metros, 1,093 queries. A
+shop searched for by its own name, which still comes back first. Both ways a guest splits a word the operator
+joins, and the split the catalog spells as one word. The
+two search surfaces both move a typed metro into Where before they search, which is why none of this showed
+on a metro: it only ever bit a guest who named a town, which is most towns.
+
+**Ran the rehearsal after the fixes**: 53 of 53, against a local Postgres with TLS and the Chromium on disk.
+476 app tests (14 new, across three files) and 316 backend tests, both projects type-check clean.
+
+**Needs Harshil.**
+
+- **Two towns of the same name are still a coin toss.** "golf springfield" cannot know which Springfield, and
+  the catalog has several; so do Columbia, Madison, Henderson, Richmond and Portland. 69 town searches still
+  open on another state for this reason. Asking for the state, or leaning on where the guest is, is a product
+  call, not a fix.
+- **A city row still cannot see the guest's filters.** It counts the query in that city, which is what the
+  phone sheet already promises, but a price range set on the desktop can still empty the page it opens. The
+  filters live outside `search.ts` and putting them inside it is a bigger change than tonight's.
+- The earlier runs' calls stand: the Peek call budget, 65 of 59,125 listings ship an FAQ, 215 GIFs lead a
+  hero, 50 of 64 kinds have no guide, anything needing a real Stripe key, Home's three tabs, the desktop Who
+  offering 22 where the phone stops at 8, and no workflow runs `npm test`.
+
 ## Coverage
 
 **Verified so far.** Booking validation and odd input on every route that takes it. The money split,
@@ -2158,7 +2218,10 @@ one listing used on another. The desktop home's search pill as controls rather t
 When and Where each actually change, and whether the party a guest picks reaches the box they book in. Every
 "Show N places" button on the home, against the list the page then draws. Every service name and price tier
 label the crawl holds, through the module that rewrites them for a guest (`plainServices.ts`). That no screen
-in the app prints an em dash, now a test of its own.
+in the app prints an em dash, now a test of its own. What a guest actually gets back for what they type,
+ranked, over the whole shipped catalog: every kind against every metro and against the 90 busiest towns that
+are not one, a glued spelling both ways round, a place name whose halves are two words, a town that is not a
+metro, and every activity, elsewhere and city row pressed against the page it opens.
 
 Dashboard Calendar end to end: blocking a slot and a day, both reaching the guest picker and both reversible,
 plus what a day off does to the bookings already on it. Services end to end: adding, hiding, deleting, deleting
@@ -2380,8 +2443,15 @@ reader driven with payloads shaped the way it answers; two trips leaving at one 
 that draw them; an open date whose times the budget never read; a departure the vendor says is full; and a
 Xola button embed, which is what 45 of the 54 Xola links are.
 
-**Not yet checked.** How a Peek shop should get the times for a date the call budget never reached, which
-is the one thing this run left open behind a fix (see the thirty-third run's Needs Harshil): 239 listings
+**Not yet checked.** Which of two towns of the same name a guest means: "golf springfield" cannot tell, and
+Columbia, Madison, Henderson, Richmond and Portland are the same, which is 69 town searches still opening in
+another state (see this run's Needs Harshil). Whether a city row should be able to see the guest's own price
+filter, which lives outside `search.ts`, so a row that counts honestly can still open a page a filter has
+emptied. Whether the front of a word the guest really typed should reach a much shorter one the catalog
+carries: "bellingham" reaches "bell", which is the same rule that lets "helicopter" reach a listing filed
+under "heli". Whether a party of twelve should filter the feed rather than surprise the guest in the booking
+box. How a Peek shop should get the times for a date the call budget never reached, which
+is the one thing the thirty-third run left open behind a fix (see its Needs Harshil): 239 listings
 now show the two dates we timed rather than eight, six of which were a midnight the shop never sells. Any
 live vendor against its real server rather than a payload shaped by hand, so a vendor that has quietly
 changed its JSON reads as a shop with nothing open and nobody knows. Whether the six rows publishing a bare
