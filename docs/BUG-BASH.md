@@ -1872,6 +1872,65 @@ clean, rehearsal 53 of 53.
   the page it opens; `groupCap` still counts no players or anglers; 18,056 listings still draw the generic
   cover; and no workflow runs `npm test`.
 
+## 19 September 2026, thirtieth run (06:00 to 07:20 UTC)
+
+**Checked, and why.** No commits landed after the twenty-ninth entry, which reported both projects clean and
+the rehearsal green, so the rehearsal was skipped at the start and the hour went on new ground instead. Type
+checks and `npm test` were run first and were green. The area picked was the one surface Coverage names on
+every line except its own: a listing's photographs. Every rule about what a guest reads has been swept over
+the whole catalog, and nothing had ever been swept over what a guest looks at. So: `src/lib/media.ts`, the
+hero and the lightbox on both surfaces, and the screens behind a published image, over all 59,125 shipped
+listings and their 244,058 photos.
+
+**Found and fixed.** Three, all of them in front of every guest who opens a listing.
+
+- **A guest saw the same photograph three times** (`029b8922a`). `listingMedia` dropped a repeat only when two
+  entries were the same string, and the crawl keeps every spelling it saw: one photograph linked under both
+  schemes, with and without `www.`, and at whatever widths its resizing CDN was asked for. 832 listings showed
+  one picture between two and eight times, 657 of them inside the five tiles of the hero, so a museum opened on
+  the same doorway twice and "Show all photos" promised nine and gave four. It folds on the file a URL reaches
+  now, with the query set aside only once the path already names the image: `/_next/image?url=` and
+  `/ImageRepository/Path?filePath=` carry the picture in the query, and folding it away there would collapse a
+  whole gallery into one tile.
+- **A golf club led its listing with a tracking pixel** (`762e3f94f`). The clip goes in front of every photo,
+  in the biggest tile, under a "Video" badge, and it was the one image on a listing no screen ever looked at:
+  photos pass `cleanImageUrl`, `isPhotoName`, the photo screen's verdicts and `fullSize`, the video fact passed
+  none of them. 1,062 listings led with whatever the crawl found, among them a WordPress.com beacon whose own
+  query reads `c=site-not-found`, four CleanTalk spam-filter receipts, a PayPal Buy Now button, a Facebook
+  login button, a TripAdvisor badge, a Google Maps close icon, a scorecard, a course map and eleven spacer
+  GIFs. Two holes: the sync published the fact unscreened, and the crawl took any GIF whose markup declared no
+  size, because `dims()` answers 0 for an absent attribute and a test written against a declared size passes
+  everything that declares none, which is every beacon ever written. `publishableImage` now knows what a beacon
+  looks like as one rule rather than the `bat.bing.com` it had collected by hand. Over the shipped catalog this
+  drops 70 videos, no real video file, and 5 photos, all 5 of them gambling spam.
+- **Half the photos in the desktop lightbox were never checked** (`e177c3017`), though the comment beside the
+  probe said they were. The hero probes its photos at thumbnail size so a dead URL or a 40 px logo never claims
+  a tile; the desktop probed the first five, which is all the hero renders, and the effect for the rest was
+  never written. The lightbox shows every photo, so on 20,987 listings the 52,016 slides past the fifth reached
+  a guest unexamined. The phone sheet has always probed all twelve, so the two surfaces disagreed about how
+  many photos the same listing has.
+
+**Ran the rehearsal after the fixes**, because all three touch code it covers: 53 of 53, against a local
+Postgres and the Chromium on disk. 418 app tests (12 new) and 311 backend tests (8 new), both projects
+type-check clean.
+
+**Needs Harshil.**
+
+- **215 GIFs still lead a hero.** The screens cleared the beacons and the spacers; what is left is site
+  furniture with a plausible name: a language flag, `icon-search.gif` on nine Joomla golf sites, a CMS
+  thumbnail endpoint (`getImage.gif?ID=101601`). The obvious rule, treating an `icon` or `badge` in the path as
+  furniture, was measured and rejected: it takes six genuine Nova Scotia park photographs served through a
+  Drupal image style called `feature_icon`. Worth deciding whether a GIF should stand in for a video at all,
+  which is a product call, not a fix.
+- **The photo fixes reach guests tonight; the video fix waits for a sync.** `media.ts` is read at load time, so
+  the 832 galleries are right on the next deploy. The 70 videos are stored facts and only clear when
+  `npm run sync` next writes the catalog.
+- The earlier runs' calls stand, unchanged: 50 of 64 kinds still have no guide; the publish gate still drops
+  12,332 listings on its first run; anything needing a real Stripe key is untouched; Home's three tabs are
+  still `role="tab"` with nothing to control; 6,513 rated listings show a rating on their card and none on the
+  page it opens; `groupCap` still counts no players or anglers; 18,056 listings still draw the generic cover;
+  and no workflow runs `npm test`.
+
 ## Coverage
 
 **Verified so far.** Booking validation and odd input on every route that takes it. The money split,
@@ -2083,6 +2142,13 @@ copy in `src/data/guides.ts` against the kind it is printed on: all 14 blocks, o
 the heading across all 64 kinds. The `/admin` metrics gate read through: both doors, the 404 for everyone else,
 and that it sits above the blanket admin-key middleware on purpose.
 
+The photographs a guest looks at, over all 59,125 shipped listings and the 244,058 photos they carry: how the
+hero and the lightbox decide a picture is a repeat, on both surfaces, against one photograph linked under two
+schemes, under two hostnames and at four sizes, and against the hosts that carry the image in the query
+instead; which slides each surface probes before a guest can reach them, against every listing that ships more
+than five; and every screen behind a published image, against the video fact, which passed none of them, and
+against the beacons, spacers, payment buttons and badges that had become 70 listings' hero clip.
+
 **Not yet checked.** Whether the landing pages should say they are showing 24 of the 35 they counted, which
 is what a page with more than 24 listings does today, and whether a kind's all-metros page needs paging at
 all. Whether the 50 kinds with no guide should have one written (see this run's Needs Harshil), and whether
@@ -2104,7 +2170,11 @@ with an empty menu should pause its own listing. Whether a shop that genuinely t
 so at all. Whether the Where box should index the towns our own catalog already names. Whether Arizona's
 Navajo Nation should keep daylight saving. The 4,736 listings whose area carries no town, as a supply gap. The "More options"
 folding and `variantNote`, which an earlier run read but did not drive in a browser. Deals and promos on a listing driven in a browser, and the promo crawl's
-output; only the rules behind them are read so far. Which clause on a policy owns the number the Free
+output; only the rules behind them are read so far. Whether a GIF should stand in for a video at
+all: 215 still lead a hero, and the rule that would clear them takes real photographs with them (see the
+thirtieth run's Needs Harshil). The lightbox's own keyboard, which is a `role="dialog"` with no focus
+trap and nothing focused when it opens; the card dialog's keyboard was checked, this one never was. Whether a fold should keep the largest spelling of a photograph rather than the first: it is the first on
+181 of the 1,251 folds, and the first is what the card already loaded. Which clause on a policy owns the number the Free
 cancellation badge prints, on the 28 listings where the first number in the text is not the one beside the
 refund promise (see this run's Needs Harshil). Whether the listing page should print a rating with no
 written reviews under it: 6,513 rated listings show one on their card, their confirmation and the compare
