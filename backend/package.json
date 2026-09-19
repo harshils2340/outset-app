@@ -29,7 +29,8 @@
     "cpu": "tsx scripts/cpu.mts",
     "pipeline": "tsx scripts/pipeline.mts",
     "overture": "tsx src/index.ts overture",
-    "osm-facts": "tsx src/index.ts osm-facts"
+    "osm-facts": "tsx src/index.ts osm-facts",
+    "crawl:here": "tsx scripts/crawl-here.mts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.124.0",
