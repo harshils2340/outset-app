@@ -2086,6 +2086,58 @@ tests (5 new), both projects type-check clean.
   the 70 cleared videos wait for a sync; 50 of 64 kinds have no guide; anything needing a real Stripe key is
   untouched; Home's three tabs are still `role="tab"` with nothing to control; and no workflow runs `npm test`.
 
+## 19 September 2026, thirty-fourth run (10:00 to 11:30 UTC)
+
+**Checked, and why.** Nothing landed after the thirty-third entry, whose rehearsal it records as green, so
+the rehearsal was skipped at the start. Type checks and both suites were run first and were green (454 app,
+316 backend). The area picked was the one guest-facing module with no test of its own and no mention anywhere
+in this log: `backend/src/sync/plainServices.ts`, 481 lines that rewrite every service name and price tier
+label a guest reads. Then, because that came back clean, the surface those labels sit on: the desktop home's
+search pill, which Coverage names only as a set of dialogs whose focus was checked.
+
+**Found and fixed.**
+
+- **A guest who said six guests on the home page was quoted for two on every listing they opened**
+  (`5af40ef2f`). The desktop home's Who stepper was a label and nothing else: `guests` was read once, to
+  write the words on its own chip, and never again. The date beside it carried into the booking box all
+  along through app state, and the phone sheet has carried both since it was built, so the gap was invisible
+  from either side. The pick now goes where the phone already keeps it, so both booking boxes read one rule
+  for it and the shop's own ceiling still wins: a party of six on a jet ski that holds two opens on two.
+  Driven in a real Chromium: pick six, open a listing, the box now opens on six where it read two.
+- **Two buttons on one page promised different numbers of places, and the bigger one was wrong**
+  (`baec16b56`). The Where, when and who modal's foot counted `base`, the pool the filters count from, which
+  is the list before the price range is applied. Driven in a browser with a maximum set: Filters said "Show
+  90 places", Where, when and who said "Show 828", and the grid behind both drew 90. It now counts the list
+  the page will actually draw. With no range set the number is what it always was.
+- **The metrics page joined a sentence with an em dash** (`69580572d`), which `AGENTS.md` forbids. Otto's
+  answers have been held to that rule since the assistant tests were written; nothing held the screens to it.
+  A sweep over every source file the app ships now does, with regular expressions exempt.
+- **Three new tests read their sources from the shell's directory** (`02d25e26e`), so `npm test` at the root
+  passed and the rehearsal failed on the same files: it runs the guest tests from `backend/`. Mine now read
+  from `import.meta.url`, the way the rest of the suite always has.
+
+**Swept and clean.** Every raw service name and detail line the crawl holds (51,452 names and 14,716 detail
+lines in `backend/data/structure`) through `plainName` and `plainLabel`, checked for a number the operator
+never wrote, a word the module invented, a doubled space, "1 hours" and unbalanced brackets: nothing but six
+labels whose brackets were already unbalanced in the shop's own text. Both booking boxes' start-time pickers
+were read against each other after last night's `liveTimes.ts` refactor, and they agree.
+
+**Ran the rehearsal after the fixes**, because they touch the guest listing page, the booking flow and the
+home: 53 of 53, against a local Postgres with SSL on and the Chromium on disk. 462 app tests (8 new) and 316
+backend tests, both projects type-check clean.
+
+**Needs Harshil.**
+
+- **The desktop Who now offers up to 22 people (12 adults, 10 children) and the phone's picker stops at 8.**
+  A party of 15 picked on the desktop shows as 15 on the phone sheet with its "+" disabled, which is honest
+  but odd. One number for the largest party either surface offers is your call, and the API already takes 60.
+- Nothing about the Who picker filters the feed: a party of twelve is still shown listings that state a
+  ceiling of four, and only finds out in the booking box. Making the party a filter is a feature, not a fix,
+  so it was left alone.
+- The earlier runs' calls stand, unchanged: the Peek call budget, 65 of 59,125 listings ship an FAQ, 215 GIFs
+  lead a hero, 50 of 64 kinds have no guide, anything needing a real Stripe key is untouched, Home's three
+  tabs are still `role="tab"` with nothing to control, and no workflow runs `npm test`.
+
 ## Coverage
 
 **Verified so far.** Booking validation and odd input on every route that takes it. The money split,
@@ -2102,7 +2154,11 @@ checklist counting itself. Search and browse: a query matching nothing, a metro 
 with none, paging, an unpublished or paused listing staying out of the lists, and every way out of an empty
 search. Claim and sign-in: an address that does not match the business, an expired link, an edited expiry, one
 listing's link used on another, a link claimed twice, a sign-in code typed wrong six times, and a session for
-one listing used on another.
+one listing used on another. The desktop home's search pill as controls rather than dialogs: what Who,
+When and Where each actually change, and whether the party a guest picks reaches the box they book in. Every
+"Show N places" button on the home, against the list the page then draws. Every service name and price tier
+label the crawl holds, through the module that rewrites them for a guest (`plainServices.ts`). That no screen
+in the app prints an em dash, now a test of its own.
 
 Dashboard Calendar end to end: blocking a slot and a day, both reaching the guest picker and both reversible,
 plus what a day off does to the bookings already on it. Services end to end: adding, hiding, deleting, deleting
