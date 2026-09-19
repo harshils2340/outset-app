@@ -19,6 +19,7 @@ import { rankForCover } from "../enrich/photorelevance.ts";
 import { existsSync, readFileSync as readFileSyncFs } from "node:fs";
 import { STANDARD, isEventSchedule, plainLabel, plainName, plainServices, type RawService } from "./plainServices.ts";
 import { consolidateDeals } from "./dealText.ts";
+import { buildLiteShard, type LiteRow } from "./liteShard.ts";
 import { durationFrom } from "../../../src/lib/duration.ts";
 import { onlyOperatorCancels } from "../../../src/lib/cancellation.ts";
 import { bookableRow, tidyRowName } from "../../../src/lib/menuRow.ts";
@@ -2108,12 +2109,8 @@ export function syncCatalogToApp(): { path: string; count: number } {
   console.log(`${operators.length} listings, ${thin} with nothing a guest can act on yet (${Math.round((100 * thin) / operators.length)}%), left out of browse.`);
   const path = join(appDataDir, "../../public/catalog.json");
   writeFileSync(path, JSON.stringify({ generatedAt: new Date().toISOString(), operators, contacts: {} }));
-  // The lite shard: what the home rails and the first search need, about a fifth of the size. Photo, price and reviews first.
-  const lite = (operators as { cover?: unknown; from?: unknown; reviews?: unknown; metroId?: unknown }[])
-    .map((o) => ({ o, s: (o.cover ? 4 : 0) + (o.from != null ? 3 : 0) + Math.min(3, Math.log10((Number(o.reviews) || 0) + 1)) + (o.metroId ? 1 : 0) }))
-    .sort((a, b) => b.s - a.s)
-    .slice(0, 2200)
-    .map((x) => x.o);
+  // A scale model of the browsable catalog, so the first paint shows the mix the finished page shows.
+  const lite = buildLiteShard(operators as LiteRow[]);
   writeFileSync(join(appDataDir, "../../public/catalog-lite.json"), JSON.stringify({ generatedAt: new Date().toISOString(), operators: lite, contacts: {} }));
   // Live times need each vendor-backed listing's booking link, and the API host has no facts table: the link is
   // published here, keyed by catalog id, for the API to read (bookingUrlFor in enrich/availability.ts). These are
