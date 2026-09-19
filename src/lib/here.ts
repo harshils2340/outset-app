@@ -1,4 +1,4 @@
-import { METROS, metroCoords } from "../data/metros";
+import { METROS, metroById, metroCoords } from "../data/metros";
 import type { Place } from "./places";
 import { API_URL } from "./api";
 
@@ -56,13 +56,17 @@ function nearestMetro(lat: number, lon: number, maxKm = 240): { id: string; km: 
 /**
  * The metro a time zone points at. One entry per zone we list a metro in; a zone that covers several metros
  * names the biggest, because a coarse right answer beats no answer and the guest can retype it.
+ *
+ * A zone we list no metro in belongs nowhere here. America/Winnipeg was mapped to a "winnipeg" that is not one
+ * of the 47 metros, and the nearest that is, Minneapolis, is 700 km away, well past the 240 km a guessed point
+ * is allowed to reach. So Manitoba falls through to Anywhere, which is the whole catalog and is honest, rather
+ * than to a metro with nothing in it.
  */
-const ZONE_METRO: Record<string, string> = {
+export const ZONE_METRO: Record<string, string> = {
   "America/Toronto": "toronto",
   "America/Montreal": "montreal",
   "America/Vancouver": "vancouver",
   "America/Edmonton": "calgary",
-  "America/Winnipeg": "winnipeg",
   "America/Halifax": "halifax",
   "America/St_Johns": "halifax",
   "America/New_York": "nyc",
@@ -75,11 +79,18 @@ const ZONE_METRO: Record<string, string> = {
   "Pacific/Honolulu": "honolulu",
 };
 
-/** The metro the browser's own clock implies, with no network call and no permission. */
+/**
+ * The metro the browser's own clock implies, with no network call and no permission.
+ *
+ * The answer is checked against the metro list before it is returned. Nothing downstream checks: the home
+ * filters every rail on `u.metroId === state.metroId` and the pill prints the id as typed, so an id that is
+ * not a metro opens an empty home headed "in winnipeg" rather than falling back to Anywhere.
+ */
 export function metroFromTimeZone(): string | null {
   try {
     const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    return ZONE_METRO[zone] || null;
+    const id = ZONE_METRO[zone];
+    return id && metroById(id) ? id : null;
   } catch {
     return null;
   }
