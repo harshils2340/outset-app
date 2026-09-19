@@ -3,6 +3,7 @@ import { dateKey, startOfToday } from "../../lib/dates";
 import { fmtTime, money } from "../../lib/format";
 import { bookingPayout, fmtTotal, guestHearsBack, isoToDate, relDay, type OpBooking, type OpStatus } from "../../lib/operator";
 import { Markup } from "../Markup";
+import { useModal } from "../layout/useModal";
 import { OD_ICONS, useOp } from "./opContext";
 
 /**
@@ -131,6 +132,10 @@ export function BookingDrawer({ b, onClose }: { b: OpBooking; onClose: () => voi
   // Cancelling a confirmed booking refunds the guest and cannot be taken back, so it asks once.
   const [sure, setSure] = useState(false);
   const closeRef = useRef<HTMLButtonElement | null>(null);
+  const box = useRef<HTMLElement | null>(null);
+  // It says aria-modal, so Tab has to stay in it and the feed it came from gets the focus back. Declared first
+  // so the opener it remembers is the booking card, not the Close button the effect below moves focus to.
+  useModal(box);
   // onClose is a fresh arrow each render of the shell; read through a ref so the effect runs once per booking.
   const closeFn = useRef(onClose);
   closeFn.current = onClose;
@@ -156,7 +161,7 @@ export function BookingDrawer({ b, onClose }: { b: OpBooking; onClose: () => voi
   const moneyBack = b.payment === "captured" || b.payment === "authorized";
   return (
     <div className="oddrawerwrap" onClick={onClose}>
-      <aside className="oddrawer" role="dialog" aria-modal="true" aria-label={"Booking " + b.code} onClick={(e) => e.stopPropagation()}>
+      <aside className="oddrawer" ref={box} role="dialog" aria-modal="true" aria-label={"Booking " + b.code} onClick={(e) => e.stopPropagation()}>
         <div className="oddrawerhead">
           <span className={"odstatus " + b.status}>{STATUS_LABEL[b.status]}</span>
           <button type="button" className="odiconbtn" ref={closeRef} onClick={onClose} aria-label="Close"><Markup html={OD_ICONS.x} /></button>

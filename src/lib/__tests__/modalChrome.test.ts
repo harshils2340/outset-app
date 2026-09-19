@@ -14,6 +14,7 @@ import { tabWrap } from "../dialog";
 const HOOK = readFileSync(new URL("../../components/layout/useModal.ts", import.meta.url), "utf8");
 const LISTING = readFileSync(new URL("../../components/web/WebListing.tsx", import.meta.url), "utf8");
 const HOME = readFileSync(new URL("../../components/web/WebHome.tsx", import.meta.url), "utf8");
+const DRAWER = readFileSync(new URL("../../components/operator/OpBookings.tsx", import.meta.url), "utf8");
 
 test("Tab off the last stop comes back to the first", () => {
   assert.equal(tabWrap(4, 3, false), 0);
@@ -81,6 +82,12 @@ test("all three of the home's dialogs use it", () => {
   assert.match(HOME, /className="ah-modal ah-refine" ref=\{refineBox\}/, "Where, when and who");
   assert.match(HOME, /useModal\(refineBox, !!refine\)/);
   assert.equal(HOME.match(/useModal\(/g)?.length, 3);
+});
+
+test("the operator's booking drawer is the same kind of dialog", () => {
+  // The only other thing in the app claiming aria-modal that is not already made inert by the page behind it.
+  assert.match(DRAWER, /className="oddrawer" ref=\{box\} role="dialog" aria-modal="true"/);
+  assert.match(DRAWER, /useModal\(box\);/);
 });
 
 test("the two dialogs that autofocused their close button leave it to the hook", () => {
