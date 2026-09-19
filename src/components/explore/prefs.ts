@@ -103,6 +103,15 @@ export function clearFilters(): void {
   setPrefs({ filters: NO_FILTERS });
 }
 
+/**
+ * The party a booking box opens on: the one the guest picked in Who, never above the ceiling the service
+ * states, and two when they picked nobody. Both booking boxes read it, because the phone sheet carried the
+ * pick and the desktop page did not, so a guest who said six on the home page was asked for two again.
+ */
+export function startingParty(cap: number): number {
+  return Math.max(1, Math.min(cap, prefs.who || 2));
+}
+
 export function activeFilterCount(f: FeedFilters): number {
   return Object.values(f).filter(Boolean).length;
 }

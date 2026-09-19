@@ -24,6 +24,7 @@ import { Markup } from "../Markup";
 import { AdminSiteLink, liteDealTitle, tidyDuration } from "./WebListing";
 import { freeCancelBadge } from "../../lib/cancellation";
 import { withinDrive, kmToPlace, NEAR_RADIUS_KM, DRIVE_RADIUS_KM } from "../explore/feed";
+import { getPrefs, setPrefs } from "../explore/prefs";
 
 
 /** "1 place", "2,418 places". */
@@ -872,8 +873,22 @@ function FiltersModal({ sort, price, prices, total, near, onApply, onClose, onNe
  * boats, and the scroll position that AppProvider restores dropped them in the middle of that rail. The search,
  * its filters and the pill's shape are kept here at module scope, and every mount starts from them.
  */
+/** The two steppers' ceilings. A party larger than this is a call to the shop, not a booking box. */
+const ADULTS_MAX = 12;
+const KIDS_MAX = 10;
+
+/**
+ * The party the guest last picked, split back into the two steppers. Only the total is kept (that is what a
+ * booking takes), and it outlives a reload, so the pill has to be able to read it back.
+ */
+function rememberedParty(): { who: number; kids: number } {
+  const total = Math.min(ADULTS_MAX + KIDS_MAX, getPrefs().who || 2);
+  const adults = Math.max(1, Math.min(ADULTS_MAX, total));
+  return { who: adults, kids: Math.max(0, total - adults) };
+}
+
 const remembered: { q: string; whereText: string; artChip: ArtKind | null; who: number; kids: number; searched: boolean; sort: SortId; price: PriceRange } = {
-  q: "", whereText: "", artChip: null, who: 2, kids: 0, searched: false, sort: "relevance", price: { min: null, max: null },
+  q: "", whereText: "", artChip: null, ...rememberedParty(), searched: false, sort: "relevance", price: { min: null, max: null },
 };
 
 export function WebHome({ onOpenApp, onOperators }: { onOpenApp: () => void; onOperators: () => void }) {
@@ -886,6 +901,15 @@ export function WebHome({ onOpenApp, onOperators }: { onOpenApp: () => void; onO
   const [artChip, setArtChip] = useState<ArtKind | null>(remembered.artChip);
   const [who, setWho] = useState(remembered.who);
   const [kids, setKids] = useState(remembered.kids);
+  /**
+   * Who is a pick, not a label. The total carries into the booking box on every listing this guest opens, the
+   * way the date already does through app state, and the way the phone sheet has always carried its own.
+   */
+  const pickParty = (adults: number, children: number, cleared = false) => {
+    setWho(adults);
+    setKids(children);
+    setPrefs({ who: cleared ? null : adults + children });
+  };
   const [seg, setSeg] = useState<Seg | null>(null);
   // The pill starts as What alone. Where, When and Who appear once the guest has searched: the button, Enter,
   // or a pick from the What menu. Refining comes second, not before the guest has said what they want to do.
@@ -1811,8 +1835,8 @@ export function WebHome({ onOpenApp, onOperators }: { onOpenApp: () => void; onO
               {refine === "who" ? (
                 <section className="ah-rcard open" aria-label="Who">
                   <h3>Who's coming?</h3>
-                  <Stepper label="Adults" sub="Ages 13 or above" value={who} min={1} max={12} onChange={setWho} />
-                  <Stepper label="Children" sub="Ages 12 and under" value={kids} min={0} max={10} onChange={setKids} />
+                  <Stepper label="Adults" sub="Ages 13 or above" value={who} min={1} max={ADULTS_MAX} onChange={(n) => pickParty(n, kids)} />
+                  <Stepper label="Children" sub="Ages 12 and under" value={kids} min={0} max={KIDS_MAX} onChange={(n) => pickParty(who, n)} />
                   <p className="ah-pop-foot">Age and weight rules differ by activity. Each listing shows its own.</p>
                 </section>
               ) : (
@@ -1823,7 +1847,7 @@ export function WebHome({ onOpenApp, onOperators }: { onOpenApp: () => void; onO
               )}
             </div>
             <div className="ah-refine-foot">
-              <button type="button" className="ah-textbtn strong" onClick={() => { setWhereText(""); setNear(null); setMetro(ALL_METRO_ID); setDate(0); setWho(2); setKids(0); setRefine("where"); }}>Clear all</button>
+              <button type="button" className="ah-textbtn strong" onClick={() => { setWhereText(""); setNear(null); setMetro(ALL_METRO_ID); setDate(0); pickParty(2, 0, true); setRefine("where"); }}>Clear all</button>
               <button type="button" className="ah-btn-dark" onClick={() => { setRefine(null); window.scrollTo({ top: 0 }); }}>
                 Show {base.length.toLocaleString()} {base.length === 1 ? "place" : "places"}
               </button>

@@ -27,6 +27,7 @@ import { adminWebsite, isAdmin, subscribeAdmin } from "../../lib/admin";
 import { dateKey, startOfToday } from "../../lib/dates";
 import { fewSeats, liveChipsByDate, type TimeChip } from "../../lib/liveTimes";
 import { safeHttpUrl } from "../../lib/urlSafety";
+import { startingParty } from "../explore/prefs";
 import { useApp } from "../../state/AppProvider";
 import { Photo } from "../art/Photo";
 import { Mark } from "../layout/Mark";
@@ -899,7 +900,9 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
   useEffect(() => probePhotos(candidates.slice(0, 5), drop), [candidates.join("|")]);
 
   const [time, setTime] = useState<string | null>(null);
-  const [qty, setQty] = useState(2);
+  // The party picked in Who on the home page opens the box, the way the date already does and the way the
+  // phone sheet has always carried its own pick. The shop's own ceiling still wins, here and in the clamp below.
+  const [qty, setQty] = useState(() => startingParty(maxGuestsFor(item, defaultOption(item.options))));
   // The card is live from the first paint: the cheapest service is already chosen, so nothing sends the
   // guest off to the menu on the left before they can press the button.
   const [optionIdx, setOptionIdx] = useState<number | null>(() => defaultOption(item.options));

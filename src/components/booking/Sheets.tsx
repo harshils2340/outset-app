@@ -64,7 +64,7 @@ import {
 } from "../explore/AirIcons";
 import { fmtRating } from "../explore/UnclaimedCard";
 import { applyFilters, browseList, nearFirst } from "../explore/feed";
-import { getPrefs, setPrefs, toggleSaved, usePrefs, type FeedFilters } from "../explore/prefs";
+import { getPrefs, setPrefs, startingParty, toggleSaved, usePrefs, type FeedFilters } from "../explore/prefs";
 import { SlotCalendar } from "./SlotCalendar";
 import { SearchSheet } from "../explore/SearchSheet";
 import { AdminSiteLink, ExplainLine, ReviewCard, TYPE_NAME, arrivalNote, bookableServices, dealShown, isStandardOnly, optionLength, splitVariants, variantNote, tidyDuration, possessive, splitIncluded, tidyAddress, tidyCancel, tidyLength, tidyLine, tidyName } from "../web/WebListing";
@@ -341,7 +341,7 @@ function RequestBody({
     return i >= 0 ? i : 0;
   });
   const [time, setTime] = useState<string | null>(null);
-  const [qty, setQty] = useState(() => Math.min(QTY_MAX, getPrefs().who || 2));
+  const [qty, setQty] = useState(() => startingParty(QTY_MAX));
   const [optionIdx, setOptionIdx] = useState<number | null>(item.options.length === 1 ? 0 : null);
   // "Max guests per slot" as the operator set it for the service being booked, else the ceiling the shop's own
   // site states. Named here too, so a stepper that has stopped says whose limit stopped it.
