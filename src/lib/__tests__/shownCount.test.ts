@@ -13,7 +13,8 @@ import { readFileSync } from "node:fs";
  * Both now count the list the page will actually draw.
  */
 
-const home = readFileSync("src/components/web/WebHome.tsx", "utf8");
+// The rehearsal runs these from `backend/`, so the path is read from this file rather than the shell.
+const home = readFileSync(new URL("../../components/web/WebHome.tsx", import.meta.url), "utf8");
 
 test("the refine modal promises the list the page draws", () => {
   assert.match(home, /const shownCount = \(gridList \?\? searchList \?\? base\)\.length;/);

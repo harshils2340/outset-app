@@ -4,6 +4,9 @@ import { readFileSync } from "node:fs";
 
 import { setPrefs, startingParty } from "../../components/explore/prefs";
 
+/** The rehearsal runs these from `backend/`, so a source path is read from this file rather than the shell. */
+const read = (rel: string) => readFileSync(new URL(rel, import.meta.url), "utf8");
+
 /**
  * The party a guest picks in Who, against the party the booking box then opens on.
  *
@@ -39,9 +42,9 @@ test("no pick is two guests, the way it always was", () => {
 });
 
 test("both booking boxes read the pick, and the desktop Who writes it", () => {
-  const phone = readFileSync("src/components/booking/Sheets.tsx", "utf8");
-  const page = readFileSync("src/components/web/WebListing.tsx", "utf8");
-  const home = readFileSync("src/components/web/WebHome.tsx", "utf8");
+  const phone = read("../../components/booking/Sheets.tsx");
+  const page = read("../../components/web/WebListing.tsx");
+  const home = read("../../components/web/WebHome.tsx");
   // One rule, in one place, for the party a box opens on.
   assert.match(phone, /useState\(\(\) => startingParty\(QTY_MAX\)\)/);
   assert.match(page, /useState\(\(\) => startingParty\(maxGuestsFor\(item, defaultOption\(item\.options\)\)\)\)/);

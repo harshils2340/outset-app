@@ -1,6 +1,7 @@
 import { strict as assert } from "node:assert";
 import test from "node:test";
 import { readFileSync, readdirSync, statSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { join } from "node:path";
 
 /**
@@ -14,7 +15,8 @@ import { join } from "node:path";
  * those lines are the one exception.
  */
 
-const ROOT = "src";
+/** The rehearsal runs these from `backend/`, so the app is found from this file rather than the shell. */
+const ROOT = fileURLToPath(new URL("../..", import.meta.url));
 const EM = "—";
 /** The dash sits inside a regular expression literal on this line. */
 const IN_REGEX = /(?:^|[^\\])\/[^/\n]*—[^/\n]*\/[a-z]*/;
