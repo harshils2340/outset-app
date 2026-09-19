@@ -1,4 +1,5 @@
 import { warmCheckout } from "../lib/stripeJs";
+import { guessPlace, rememberPlace, savedPlace } from "../lib/here";
 import { createContext, useContext, useEffect, useMemo, useReducer, useRef, type ReactNode } from "react";
 import { LISTINGS } from "../data/listings";
 import { ALL_METRO_ID } from "../data/metros";
@@ -575,6 +576,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
       // the operator screen reads it and the URL should survive a refresh until the claim is done.
       if (r) window.history.replaceState(null, "", window.location.pathname + window.location.search);
       booted.current = true;
+
+      /**
+       * Open on what is near the guest. A place they chose on an earlier visit is theirs and is restored as it
+       * was; otherwise the site guesses one, from the API's read of where the request came from or the browser's
+       * own time zone, and never asks permission to do it. The guess is skipped for someone who arrived on a
+       * listing link, since they came for that page, not for a city.
+       */
+      if (!window.location.hash.startsWith("#o=") && !window.location.hash.startsWith("#claim=")) {
+        const mine = savedPlace();
+        if (mine) dispatch({ type: "near", near: mine });
+        else void guessPlace().then((p) => { if (p && !stateRef.current.near) dispatch({ type: "near", near: p }); });
+      }
+
       // A listing link pasted while the app is already open should still open that listing.
       window.addEventListener("hashchange", () => {
         const h = window.location.hash.match(/^#o=([a-z0-9-]+)/i);
@@ -709,8 +723,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setTab: (tab) => dispatch({ type: "tab", tab }),
       setCat: (cat) => dispatch({ type: "cat", cat }),
       setQ: (q) => dispatch({ type: "q", q }),
-      setMetro: (metroId) => dispatch({ type: "metro", metroId }),
-      setNear: (near) => dispatch({ type: "near", near }),
+      setMetro: (metroId) => {
+        // Picking a city is a decision too, and it clears `near`, so the remembered point goes with it: without
+        // this the next visit would restore the old point and quietly undo the city the guest chose.
+        rememberPlace(null);
+        dispatch({ type: "metro", metroId });
+      },
+      setNear: (near) => {
+        // A place the guest picked is remembered, so the next visit opens where they left off rather than on a guess.
+        rememberPlace(near);
+        dispatch({ type: "near", near });
+      },
       openMetro: () => dispatch({ type: "openMetro" }),
       setDate: (dateIdx) => dispatch({ type: "date", dateIdx }),
       openListing: (id) => dispatch({ type: "openListing", id }),

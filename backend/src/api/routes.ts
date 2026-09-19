@@ -61,6 +61,25 @@ app.use("*", async (c, next) => {
   c.header("strict-transport-security", "max-age=31536000");
 });
 // The publishable key is public by design: Stripe.js needs it to mount the embedded checkout form in the page.
+/**
+ * Roughly where the caller is, so the home can open on what is near them without asking for permission first.
+ * Cloudflare sits in front of this API and tags each request with the address it resolved; a browser prompt is
+ * a worse first impression than a city that is approximately right, and the guest can type any other place.
+ * Everything here is a header Cloudflare already sends, nothing is stored, and a caller it cannot place gets nulls.
+ */
+app.get("/where", (c) => {
+  const h = (k: string) => (c.req.header(k) || "").trim();
+  const num = (v: string) => { const n = Number(v); return Number.isFinite(n) && n !== 0 ? n : null; };
+  const lat = num(h("cf-iplatitude"));
+  const lon = num(h("cf-iplongitude"));
+  const city = h("cf-ipcity") || null;
+  const region = h("cf-region-code") || null;
+  const country = (h("cf-ipcountry") || "").toUpperCase() || null;
+  // A guess this coarse is worth ten minutes in a shared cache and nothing more.
+  c.header("cache-control", "public, max-age=600");
+  return c.json({ lat, lon, city, region, country: country === "T1" || country === "XX" ? null : country });
+});
+
 app.get("/config", (c) => c.json({ payments: stripeEnabled(), mail: !!process.env.RESEND_API_KEY, stripePublishableKey: stripeEnabled() ? (process.env.STRIPE_PUBLISHABLE_KEY || "").trim() || null : null }));
 app.route("/", auth);
 app.route("/", profiles);
