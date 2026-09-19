@@ -952,12 +952,34 @@ export function searchSuggest(pool: Unclaimed[], q: string, scope?: SearchScope,
   }
   const activities = arts.slice(0, limit).map((a) => activityHit(a, counts.get(a) || 0));
 
-  const metroCount = (m: Metro) => ({ metro: m, count: (idx.byMetro.get(m.id) || []).length });
   const regions = searchRegions(pool, q);
-  // "Florida" names no city, so the cities under it are that state's biggest, not whatever brushed the word.
-  const places = regions.length
-    ? METROS.filter((m) => m.region === regions[0].code).map(metroCount).filter((x) => x.count > 0).sort((a, b) => b.count - a.count).slice(0, 4)
-    : searchMetros(q, 3).map(metroCount);
+  // "Florida" names no city, so the cities offered under it are that state's, not whatever brushed the word.
+  const nearby = regions.length ? METROS.filter((m) => m.region === regions[0].code) : searchMetros(q, 3);
+
+  /**
+   * How many listings this very query has in a city, inside the guest's own tab, because that is the page a
+   * city row opens.
+   *
+   * Counting the city itself, every listing in it of every kind, is what offered a guest searching tennis in
+   * Tampa "Nashville · 313" and opened an empty page on it: Nashville answers "tennis" because Tennessee
+   * does, and it has 313 listings and no tennis. The empty state was already counted this way; the found
+   * state, which is what the guest sees once a filter clears the grid under it, was not.
+   *
+   * Ranked once, without the guest's place, and only when there is a city worth counting for. A guest who is
+   * already looking everywhere has that ranking in hand, so only a narrowed search pays for it.
+   */
+  const wide = !scope?.keep && (!scope?.metroId || scope.metroId === "all");
+  let byCity: Map<string, number> | null = null;
+  const cityCounts = (): Map<string, number> => {
+    if (!byCity) {
+      byCity = new Map();
+      for (const x of wide ? scored : rank(pool, q, undefined)) if (!narrow || inCat(x.e.u, cat!)) byCity.set(x.e.metroId, (byCity.get(x.e.metroId) || 0) + 1);
+    }
+    return byCity;
+  };
+  const metroCount = (m: Metro) => ({ metro: m, count: cityCounts().get(m.id) || 0 });
+  const withListings = nearby.length ? nearby.map(metroCount).filter((x) => x.count > 0) : [];
+  const places = regions.length ? withListings.sort((a, b) => b.count - a.count).slice(0, 4) : withListings;
 
   const results = inTab.map((x) => x.e.u);
   const otherCats = scored.length - inTab.length;
@@ -993,8 +1015,7 @@ export function searchSuggest(pool: Unclaimed[], q: string, scope?: SearchScope,
   // Cities: how many results this very query has there, inside the tab, because that is the page the row opens.
   // Only worth asking when the place is what is narrowing the search; a city the guest is already in is no way out.
   const placed = !!scope?.keep || (!!scope?.metroId && scope.metroId !== "all");
-  const cityHits = new Map<string, number>();
-  if (placed) for (const x of rank(pool, q, undefined)) if (!narrow || inCat(x.e.u, cat!)) cityHits.set(x.e.metroId, (cityHits.get(x.e.metroId) || 0) + 1);
+  const cityHits = placed ? cityCounts() : new Map<string, number>();
   // The cities the guest named come first, biggest first. Then every other city that has it, nearest to the
   // guest's own city first, so a Tampa guest is sent to Orlando before Seattle even when Seattle has more.
   const from = scope?.metroId && scope.metroId !== "all" ? metroCoords(scope.metroId) : null;
