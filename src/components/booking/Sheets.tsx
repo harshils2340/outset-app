@@ -43,6 +43,7 @@ import { noStartTimesNote, startTimesOn } from "../../lib/startTimes";
 import { itemOpenState } from "../../lib/openNow";
 import { apiConfig, fetchAvailability, fetchOpenSlots, hasApi, type LiveAvailability } from "../../lib/api";
 import { dateKey } from "../../lib/dates";
+import { fewSeats, liveChipsByDate, type TimeChip } from "../../lib/liveTimes";
 import { safeHttpUrl } from "../../lib/urlSafety";
 import { searchSuggest } from "../../lib/search";
 import { listingUrl } from "../../lib/site";
@@ -316,8 +317,6 @@ function KnowRow({ icon, title, summary, children }: { icon: string; title: stri
   );
 }
 
-type TimeChip = { time: string; label: string; price?: number; seatsLeft?: number };
-
 function RequestBody({
   item,
   dates,
@@ -452,19 +451,7 @@ function RequestBody({
       alive = false;
     };
   }, [item.id]);
-  const liveDays = useMemo(() => {
-    const m = new Map<string, TimeChip[]>();
-    if (!avail?.live) return m;
-    for (const d of avail.days) {
-      const chips = (d.slots || []).map((s) => {
-        const at = new Date(s.startsAt);
-        const hhmm = Number.isNaN(at.getTime()) ? s.label : String(at.getHours()).padStart(2, "0") + ":" + String(at.getMinutes()).padStart(2, "0");
-        return { time: hhmm, label: s.label || fmtTime(hhmm), price: s.priceCents != null ? s.priceCents / 100 : undefined, seatsLeft: s.seatsLeft };
-      });
-      if (chips.length) m.set(d.date, chips);
-    }
-    return m;
-  }, [avail]);
+  const liveDays = useMemo(() => liveChipsByDate(avail), [avail]);
   const live = liveDays.size > 0;
   /* What is still open on Outset: the claimed shop's hours minus every time already booked, for a party this
      size. Capacity is per service and per time, so a time with one seat left is not open to two guests. */
@@ -491,7 +478,7 @@ function RequestBody({
     const later = (t: string) => stillOpen(k, t);
     if (live) return (liveDays.get(k) || []).filter((c) => later(c.time)).sort((a, b) => a.time.localeCompare(b.time));
     const base = openMap ? openMap.get(k) || [] : startTimesOn(week ? week[d.getDay()] ?? null : null, SLOT_TIMES);
-    return base.filter(later).map((t) => ({ time: t, label: fmtTime(t) }));
+    return base.filter(later).map((t) => ({ key: t, time: t, label: fmtTime(t) }));
   };
   const chips = chipsFor(day);
   useEffect(() => {
@@ -1072,16 +1059,20 @@ function RequestBody({
               time={time}
               onPickTime={setTime}
               emptyNote={live ? "No departures on this date. Pick another day." : noStartTimesNote(week ? week[day.getDay()] ?? null : null, day.toLocaleDateString("en-US", { weekday: "long" }))}
-              dayMeta={live ? (d) => { const n = (liveDays.get(dateKey(d)) || []).length; return { open: n, full: n === 0 }; } : undefined}
+              dayMeta={live ? (d) => {
+                // The dot counts the departures the picker would really offer, so today cannot read as open in
+                // the grid and empty under it once its last start time has gone.
+                const n = chipsFor(d).length;
+                return { open: n, full: n === 0 };
+              } : undefined}
               slotMeta={
                 live
                   ? (t) => {
                       const c = chips.find((x) => x.time === t);
                       const left = c?.seatsLeft;
                       return {
-                        note: left === 0 ? "Sold out" : left != null && left <= 4 ? left + " left" : c?.price != null ? money(c.price) : undefined,
-                        disabled: left === 0,
-                        tone: left === 0 ? "gone" : left != null && left <= 4 ? "few" : undefined,
+                        note: fewSeats(left) ? left + " left" : c?.price != null ? money(c.price) : undefined,
+                        tone: fewSeats(left) ? "few" : undefined,
                       };
                     }
                   : undefined

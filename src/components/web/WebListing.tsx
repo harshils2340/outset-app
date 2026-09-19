@@ -25,6 +25,7 @@ import { shownReviews, type ShownReview } from "../../lib/reviews";
 import { listingUrl } from "../../lib/site";
 import { adminWebsite, isAdmin, subscribeAdmin } from "../../lib/admin";
 import { dateKey, startOfToday } from "../../lib/dates";
+import { fewSeats, liveChipsByDate, type TimeChip } from "../../lib/liveTimes";
 import { safeHttpUrl } from "../../lib/urlSafety";
 import { useApp } from "../../state/AppProvider";
 import { Photo } from "../art/Photo";
@@ -669,7 +670,7 @@ const WEEK_LETTER = ["S", "M", "T", "W", "T", "F", "S"];
 const WEEK_FULL = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
 /** One start time offered for the selected day. `time` is the 24h key the booking carries. */
-export type TimeChip = { key: string; time: string; label: string; price?: number; seatsLeft?: number };
+export type { TimeChip };
 
 /**
  * The booking card's date and time picker, one column wide.
@@ -849,7 +850,7 @@ function DayTimePicker({ dates, dateIdx, onPickDate, chipsFor, time, onPickTime,
                 >
                   <b>{c.label}</b>
                   {showPrice && c.price != null ? <span>{money(c.price)}</span> : null}
-                  {c.seatsLeft != null && c.seatsLeft <= 3 ? <em>{c.seatsLeft} left</em> : null}
+                  {fewSeats(c.seatsLeft) ? <em>{c.seatsLeft} left</em> : null}
                 </button>
               ))}
             </div>
@@ -1045,19 +1046,7 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
     void fetchAvailability(item.id, dateKey(dates[0]), dates.length).then((a) => { if (alive) setAvail(a); }).catch(() => {});
     return () => { alive = false; };
   }, [item.id]);
-  const liveDays = useMemo(() => {
-    const m = new Map<string, TimeChip[]>();
-    if (!avail?.live) return m;
-    for (const d of avail.days) {
-      const chips = (d.slots || []).map((s) => {
-        const at = new Date(s.startsAt);
-        const hhmm = Number.isNaN(at.getTime()) ? s.label : String(at.getHours()).padStart(2, "0") + ":" + String(at.getMinutes()).padStart(2, "0");
-        return { key: s.startsAt, time: hhmm, label: s.label || fmtTime(hhmm), price: s.priceCents != null ? s.priceCents / 100 : undefined, seatsLeft: s.seatsLeft };
-      });
-      if (chips.length) m.set(d.date, chips);
-    }
-    return m;
-  }, [avail]);
+  const liveDays = useMemo(() => liveChipsByDate(avail), [avail]);
   const live = liveDays.size > 0;
 
   /* What is actually still open on Outset: the claimed shop's own hours minus every time already booked. Loaded
