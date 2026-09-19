@@ -1144,6 +1144,14 @@ export function WebHome({ onOpenApp, onOperators }: { onOpenApp: () => void; onO
     return applySort(pool.filter(inPrice));
   }, [q, placeOnly, pool, effSort, near, price.min, price.max]);
 
+  /**
+   * What a button that says "Show N places" is promising: the list the page will actually draw, not the one
+   * before the price range was applied. `base` is the pool the filters count from, so the Where, when and who
+   * modal was promising 828 places with a price range set that left 90, while the Filters modal beside it,
+   * reading the same page at the same moment, said 90.
+   */
+  const shownCount = (gridList ?? searchList ?? base).length;
+
   // Kinds with at least one listing here, scored by how many have a photo. The strongest HOME_RAILS become rails
   // in the mixed order above; the rest are links so the page is not sixty rails long.
   const { rails, moreKinds } = useMemo(() => {
@@ -1849,7 +1857,7 @@ export function WebHome({ onOpenApp, onOperators }: { onOpenApp: () => void; onO
             <div className="ah-refine-foot">
               <button type="button" className="ah-textbtn strong" onClick={() => { setWhereText(""); setNear(null); setMetro(ALL_METRO_ID); setDate(0); pickParty(2, 0, true); setRefine("where"); }}>Clear all</button>
               <button type="button" className="ah-btn-dark" onClick={() => { setRefine(null); window.scrollTo({ top: 0 }); }}>
-                Show {base.length.toLocaleString()} {base.length === 1 ? "place" : "places"}
+                Show {shownCount.toLocaleString()} {shownCount === 1 ? "place" : "places"}
               </button>
             </div>
           </div>
