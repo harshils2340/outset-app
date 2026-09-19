@@ -290,7 +290,7 @@ function Dashboard({ m }: { m: AdminMetrics }) {
           <ul className="adunknown">
             {unknownCosts.map((s) => (
               <li key={s.labels}>
-                <b>{s.labels}</b> <span className="adnull">not tracked yet</span> — {s.why}
+                <b>{s.labels}</b> <span className="adnull">not tracked yet</span>: {s.why}
               </li>
             ))}
           </ul>
@@ -397,7 +397,7 @@ export function AdminView() {
           <button type="button" className="adbtn adbtn-go" onClick={() => void load()} disabled={loading}>
             {loading ? "Reading…" : "Refresh"}
           </button>
-          <span className="adstamp">{generated ? `Generated ${generated}` : "—"}</span>
+          <span className="adstamp">{generated ? `Generated ${generated}` : "Not generated yet"}</span>
         </div>
       </header>
 
