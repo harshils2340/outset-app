@@ -586,7 +586,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (!window.location.hash.startsWith("#o=") && !window.location.hash.startsWith("#claim=")) {
         const mine = savedPlace();
         if (mine) dispatch({ type: "near", near: mine });
-        else void guessPlace().then((p) => { if (p && !stateRef.current.near) dispatch({ type: "near", near: p }); });
+        else
+          void guessPlace().then((g) => {
+            // Only if the guest has not picked meanwhile: a slow guess must never move them off their own choice.
+            if (!g || stateRef.current.near || stateRef.current.metroId !== ALL_METRO_ID) return;
+            if (g.kind === "point") dispatch({ type: "near", near: g.place });
+            else dispatch({ type: "metro", metroId: g.metroId });
+          });
       }
 
       // A listing link pasted while the app is already open should still open that listing.

@@ -85,31 +85,35 @@ export function metroFromTimeZone(): string | null {
   }
 }
 
-function placeOfMetro(id: string): Place | null {
-  const m = METROS.find((x) => x.id === id);
-  const c = metroCoords(id);
-  return m && c ? { label: m.name, sub: m.region, lat: c.lat, lon: c.lng, region: m.region } : null;
-}
-
 /**
- * The guest's place on a first visit: the API's read of where the request came from, else the time zone's metro.
- * Resolves to null when neither can say, and the home then opens on everywhere, exactly as it used to.
+ * Where to open the home on a first visit.
+ *
+ * The two guesses are not equally sharp, and pretending otherwise would hurt. A point good to the city can carry
+ * "near you", which means within 40 km. A time zone only names a region: America/Toronto covers Waterloo and
+ * Barrie as well, and drawing a 40 km circle on Toronto's centre would hide a guest in Waterloo from everything
+ * around them. So a coarse guess picks the metro instead, which is the whole area and honestly labelled.
  */
-export async function guessPlace(): Promise<Place | null> {
-  if (!API_URL) return placeOfMetro(metroFromTimeZone() || "");
+export type Guess = { kind: "point"; place: Place } | { kind: "metro"; metroId: string } | null;
+
+export async function guessPlace(): Promise<Guess> {
+  const coarse = (): Guess => {
+    const id = metroFromTimeZone();
+    return id ? { kind: "metro", metroId: id } : null;
+  };
+  if (!API_URL) return coarse();
   try {
     const res = await fetch(`${API_URL}/where`, { signal: AbortSignal.timeout(4000) });
     if (res.ok) {
       const w = (await res.json()) as { lat?: number; lon?: number; city?: string; region?: string };
       if (typeof w.lat === "number" && typeof w.lon === "number") {
-        // A named city is the honest label; without one, say the metro it falls in rather than a bare point.
-        const near = nearestMetro(w.lat, w.lon);
-        if (w.city) return { label: w.city, sub: w.region || "", lat: w.lat, lon: w.lon, region: w.region };
-        if (near) return placeOfMetro(near.id);
+        // A named city is a point worth standing on; coordinates without one only place a metro.
+        if (w.city) return { kind: "point", place: { label: w.city, sub: w.region || "", lat: w.lat, lon: w.lon, region: w.region } };
+        const m = nearestMetro(w.lat, w.lon);
+        if (m) return { kind: "metro", metroId: m.id };
       }
     }
   } catch {
     /* the guess is optional; the time zone still has a say */
   }
-  return placeOfMetro(metroFromTimeZone() || "");
+  return coarse();
 }
