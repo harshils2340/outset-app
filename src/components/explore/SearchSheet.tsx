@@ -235,6 +235,15 @@ export function SearchSheet() {
         // An activity, a business we have by that name, or a word the map could not place: it is what they are
         // looking for, not where they are going. The map will happily geocode a shop's name into a suburb.
         if (!query) query = typed;
+        /**
+         * Naming a business means that business, wherever it is. The feed is filtered by the city in the pill,
+         * so on the live site "White Knuckle Watersports" typed from Toronto answered "No exact matches": the
+         * shop is in Clearwater Beach. When the guest has not chosen a city themselves and the name matches a
+         * business we hold, the search widens to everywhere rather than returning nothing.
+         */
+        if (!place && businessHits.length && !businessHits.some((u) => u.metroId === state.metroId)) {
+          place = { kind: "metro", id: ALL_METRO_ID };
+        }
       } else {
         place = { kind: "near", place: hits[0] };
       }
