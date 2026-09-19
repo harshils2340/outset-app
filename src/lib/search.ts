@@ -91,6 +91,13 @@ function editDistance(a: string, b: string): number {
 const slack = (t: string) => (t.length >= 8 ? 2 : t.length >= 4 ? 1 : 0);
 
 /**
+ * The indexed word is only the front of the typed token: "heli" under a guest typing "helicopter". Worth a
+ * little, and worth nothing at all against a spelling the guest never typed, where the front of the token is
+ * simply the other word of the pair.
+ */
+const REL_HALF = 5;
+
+/**
  * How strongly one typed token matches one indexed word, 0 for no match. The order is the ranking order:
  * the same word, the same stem, the word the guest is part way through typing, then a typo, then a fragment.
  */
@@ -100,7 +107,7 @@ function relate(word: string, wordStem: string, tok: string, tokStem: string): n
   if (word.startsWith(tok)) return tok.length >= 3 ? 8 : 7;
   if (tok.length >= 4 && wordStem.startsWith(tokStem)) return 8;
   // "helicopter" should reach a listing filed under "heli", but "skydiving" must not reach every "Sky" in a name.
-  if (word.length >= 4 && tok.startsWith(word)) return 5;
+  if (word.length >= 4 && tok.startsWith(word)) return REL_HALF;
   const max = slack(tok);
   if (!max) return 0;
   if (Math.abs(word.length - tok.length) <= max) {
@@ -615,7 +622,15 @@ function hasNear(idx: Index, t: string): boolean {
  * guest spent it naming the activity: "denver" in "axe throwing denver" has to land somewhere, "axe" does not,
  * because the listing is already known to be an axe place.
  */
-type Term = { forms: string[]; req: boolean };
+/**
+ * One spelling of one thing the guest asked for. `glued` marks the spelling the guest did not type, the two
+ * tokens run together, which is matched more strictly: see `REL_HALF`.
+ */
+type Form = { w: string; glued: boolean };
+type Term = { forms: Form[]; req: boolean };
+
+const typed = (w: string): Form => ({ w, glued: false });
+const glued = (w: string): Form => ({ w, glued: true });
 
 /**
  * Query tokens, with the two ways a guest splits a word differently from the operator folded in:
@@ -624,14 +639,14 @@ type Term = { forms: string[]; req: boolean };
 function queryTerms(idx: Index, p: ParsedQuery): Term[] {
   const toks = p.all;
   const out: Term[] = [];
-  const term = (forms: string[], src: string[]) => out.push({ forms, req: src.some((t) => !p.aliasWords.has(t)) });
+  const term = (forms: Form[], src: string[]) => out.push({ forms, req: src.some((t) => !p.aliasWords.has(t)) });
   for (let i = 0; i < toks.length; i++) {
     const t = toks[i];
     // "jet ski" may be one word in the catalog, so the joined spelling answers both halves.
     const next = toks[i + 1];
     if (next && idx.vocab.has(t + next)) {
-      term([t, t + next], [t]);
-      term([next, t + next], [next]);
+      term([typed(t), glued(t + next)], [t]);
+      term([typed(next), glued(t + next)], [next]);
       i++;
       continue;
     }
@@ -641,14 +656,14 @@ function queryTerms(idx: Index, p: ParsedQuery): Term[] {
       let split = false;
       for (let c = 4; c <= t.length - 4 && !split; c++) {
         if (idx.vocab.has(t.slice(0, c)) && idx.vocab.has(t.slice(c))) {
-          term([t.slice(0, c)], [t]);
-          term([t.slice(c)], [t]);
+          term([typed(t.slice(0, c))], [t]);
+          term([typed(t.slice(c))], [t]);
           split = true;
         }
       }
       if (split) continue;
     }
-    term([t], [t]);
+    term([typed(t)], [t]);
   }
   return out;
 }
@@ -761,7 +776,16 @@ function rank(pool: Unclaimed[], q: string, scope?: SearchScope): Scored[] {
     if (term.req) needReq++;
     cur.fill(0);
     for (const form of term.forms) {
-      for (const m of matchWords(idx, form)) {
+      for (const m of matchWords(idx, form.w)) {
+        /**
+         * A word that is merely the front of the glued spelling is the guest's *other* word, not this one.
+         * "fort myers" glues to "fortmyers", and every Fort Smith, Fort Garry and Fort Benning in the catalog
+         * answered the "myers" half through it: a guest asking for golf in Fort Myers opened on a course at
+         * Fort Benning, Georgia, and one asking for a brewery in Fort Lauderdale opened on Fort Hill, in
+         * Massachusetts. The glued spelling still answers both halves when the catalog really does carry it
+         * ("Jetski Miami" for "jet ski"), which is the whole point of gluing them.
+         */
+        if (form.glued && m.rel === REL_HALF) continue;
         const w = m.rel;
         for (const post of m.v.post) {
           const e = post >>> 4;
