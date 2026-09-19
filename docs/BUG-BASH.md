@@ -1975,6 +1975,56 @@ and the Chromium on disk. 432 app tests (14 new) and 311 backend tests, both pro
   still `role="tab"` with nothing to control; 6,513 rated listings show a rating on their card and none on the
   page it opens; and no workflow runs `npm test`.
 
+## 19 September 2026, thirty-second run (08:00 to 08:40 UTC)
+
+**Checked, and why.** Nothing landed after the thirty-first entry, so the rehearsal was skipped at the start.
+Type checks and both suites were run first and were green (432 app, 311 backend). Coverage names Otto's answers
+on a dozen particular facts, but never the gate that decides whether Otto should answer at all, and
+`AGENTS.md` makes that a hard product rule: the company assistant answers only from published facts, refuses
+weather, directions, comparisons, reviews and other businesses, and never confirms a booking. 1,294 lines, two
+gates, no test on either. That is the area: both gates driven with a battery of real guest questions over 400
+shipped listings, in scope and out, then every answer diffed against the old ones so nothing else moved.
+
+**Found and fixed.** The gate was wrong in both directions.
+
+- **Otto refused the commonest booking question there is** (`4cc5d8321`). The out-of-scope reader looks for
+  words that belong to somebody else's business, and several of them are also how a guest asks this shop an
+  ordinary question. "How far in advance do I need to book" is a notice period, not a distance. "The nearest
+  opening" is the next departure. "Rated" and "news" carried no word boundaries, so they matched inside
+  "operated" and "newsletter". Every one came back as "I only know what they publish, so I can't help with
+  that", on all 400 listings. The gate also ran twice over two different exemption lists, so a pet question
+  carrying a place word was let through by the first and refused by the second. Both read one list now.
+- **A guest asking Otto to cancel was told "Yes"** (`7498a2c5c`). Any question carrying the word "booking"
+  matched the `book` intent, and `book` was read before `cancel`, so "how do I cancel my booking", "I need to
+  cancel my reservation" and "can I get a refund on my booking" were all answered "Yes. Pick a service and time
+  on this page and they confirm it". The shop's own published refund policy was sitting right there, and Otto
+  gave it happily to anyone who asked without saying "booking". The same "Yes." answered **"is my booking
+  confirmed?"** and "did my reservation go through?", which is the one answer rule 4 says it must never give:
+  Otto cannot see a booking, these listings are request to book, and the shop confirms.
+- **A shop's FAQ answer was printed with the page's "A." still on the front** (`5908db044`). Pulling on the
+  FAQ fallback inside the refusal branch turned this up: 65 listings ship an FAQ, 73 entries between them, and
+  two kept the label the Q&A page set the answer under. Four surfaces print them and all four printed it, the
+  dashboard an operator edits after claiming included. One reader now, and the mark after the letter is what
+  makes it a label, so "A life jacket is provided" is left be. The other 71 entries were swept for markup,
+  entities and empty sides and are clean; the sweep is a test.
+
+**Ran the rehearsal after the fixes**, because one of them touches the listing page and the `knowFrom` prefill
+it covers: 53 of 53, against a local Postgres and the Chromium on disk. 445 app tests (13 new) and 311 backend
+tests, both projects type-check clean.
+
+**Needs Harshil.**
+
+- **Only 65 of 59,125 listings ship an FAQ at all.** Otto's best answers come from one, and the operator's
+  dashboard starts from one. That is a supply question, not a bug, but it is a big gap in what Otto can say.
+- **Two small scope calls were left alone on purpose.** "Is there a hotel nearby?" is refused, but "where's the
+  nearest hotel?" is answered with this shop's own meeting point, because the meeting-point reader matches
+  "where"; the answer is about this shop and invents nothing, so it was left. "Can I sign up for your
+  newsletter?" still reads as a booking question, because `book` matches "sign up".
+- The earlier runs' calls stand, unchanged: 215 GIFs still lead a hero and the 70 cleared videos wait for a
+  sync; 50 of 64 kinds have no guide; anything needing a real Stripe key is untouched; Home's three tabs are
+  still `role="tab"` with nothing to control; 6,513 rated listings show a rating on their card and none on the
+  page it opens; and no workflow runs `npm test`.
+
 ## Coverage
 
 **Verified so far.** Booking validation and odd input on every route that takes it. The money split,
@@ -2023,6 +2073,15 @@ list. What a claimed shop advertises once it empties, unprices or reprices its o
 rails, the price filter, the price sort and in Otto's answers. The live guest preview beside the editor
 (`OpPreview`), end to end: live edits without a reload, the read-only lock, click-to-edit jumping the editor to
 the right page, and both device sizes. A claimed listing with an empty menu seen from the guest side.
+
+Otto's scope, both gates driven rather than read, over 400 shipped listings and every answer diffed against
+the old one: what a guest asks this shop in words that also name somebody else's business (a notice period
+phrased "how far in advance", the nearest opening, a rating word inside an ordinary one), what must still be
+refused (another operator, a forecast, reviews, a drive, who owns it), and that the gate's two copies exempt
+the same topics. The `book` intent against the `cancel` one: cancelling, a refund and a reschedule read as
+themselves, and a booking Otto cannot see is never called confirmed. The questions and answers a shop
+publishes, over all 73 shipped FAQ entries: a Q&A page's own label, markup, entities and an empty side, on all
+four surfaces that print one.
 
 The dashboard's Settings and Assistant pages driven rather than read: the owner fields and their validation,
 the booking-alerts card against a valid, invalid and missing address, the Instant Book switch, removing
@@ -2211,7 +2270,10 @@ actually ships). Anything that needs a real Stripe key: the embedded card form i
 Stripe.js, the hosted page, 3D Secure, the Payouts page against a connected account, and the pending row a
 closed card form leaves holding the guest's own time for thirty minutes (see this run's Needs Harshil). The
 operator chat for a hand-built listing (`src/data/listings.ts` is empty, so `agent.ts` and the `ChatView`
-operator path still have no live case). Photo upload against a real GitHub token, and the gap between the URL
+operator path still have no live case). Whether the 59,060 listings with no FAQ should have one, as a
+supply question, since it is Otto's best source and the dashboard's starting point. Whether "where's the
+nearest hotel?" should answer with this shop's own meeting point, which it does because the meeting-point
+reader matches "where", and whether "sign up" should read as booking, which makes a newsletter question one. Photo upload against a real GitHub token, and the gap between the URL
 it returns and the deploy that makes the file exist. The mouse drag path of reordering: the keyboard and touch
 paths are driven in a browser, the HTML5 drag events are not. A rehearsal check that reads a claimed listing's
 rendered page and not only the API's JSON. A CI job that runs `npm test` on either side. Whether a claimed shop
