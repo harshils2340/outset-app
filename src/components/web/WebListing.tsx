@@ -895,7 +895,7 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
   const media = listingMedia(item, broken);
   const hasVideo = media[0]?.kind !== "photo" && media.length > 0;
   // Only the first five ever render in the hero, and each probe is a real image fetch competing with the hero
-  // photo the guest is waiting on. The rest are probed when the gallery opens.
+  // photo the guest is waiting on. The rest are probed when the gallery opens; see deepProbe below.
   useEffect(() => probePhotos(candidates.slice(0, 5), drop), [candidates.join("|")]);
 
   const [time, setTime] = useState<string | null>(null);
@@ -938,6 +938,15 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
   const [payments, setPayments] = useState(false);
   useEffect(() => { let alive = true; void apiConfig().then((c) => { if (alive) setPayments(c.payments); }); return () => { alive = false; }; }, []);
   const [gallery, setGallery] = useState<number | null>(null);
+  // The rest of the photos, probed once the gallery has been opened. This is the half of the comment above the
+  // hero probe that was never written: only the first five were ever checked, so on 20,987 listings the 52,016
+  // slides past the fifth reached the lightbox unexamined, and a dead URL or a 40 px logo took a full slide and
+  // a place in the count. The phone sheet has always probed all twelve, so the two surfaces disagreed about how
+  // many photos the same listing has. Still not before the gallery opens: a probe is a real fetch competing
+  // with the hero the guest is waiting on.
+  const [deepProbe, setDeepProbe] = useState(false);
+  useEffect(() => { if (gallery != null) setDeepProbe(true); }, [gallery]);
+  useEffect(() => (deepProbe ? probePhotos(candidates.slice(5), drop) : undefined), [deepProbe, candidates.join("|")]);
   /** Which modal is open: the description, the full included list, a Things to know column, or the guide. */
   const [modal, setModal] = useState<string | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
