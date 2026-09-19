@@ -1988,14 +1988,27 @@ export function buildCatalogItems(where?: (r: CatalogRow) => boolean): Record<st
        ORDER BY completeness DESC, name ASC`,
     )
     .all() as CatalogRow[];
+  /**
+   * A listing reaches guests once we have read something off its own site: a photo, a service, or its hours.
+   * A name, a website and a phone number is a lead, not a page worth opening, and it is what discovery hands
+   * us before any crawl has run.
+   *
+   * This became load-bearing on 18 September 2026, when open place data took the catalog from 142,628
+   * operators to 423,380 overnight. The old rule published anything with a website or a phone, which would
+   * have put 350,258 listings on the site: a 136 MB catalog.json fetched by every visitor at startup, against
+   * 23 MB today, and 350,258 files under public/o. The crawl fills these in over about three days, and each
+   * listing publishes itself on the sync after it is read, so the catalog grows as fast as we learn something
+   * real and never faster.
+   */
   const dead = new Set(
     (db.prepare(
-      `SELECT o.id FROM operators o WHERE o.website IS NULL AND o.phone IS NULL
-         AND NOT EXISTS (SELECT 1 FROM facts f WHERE f.operator_id = o.id AND f.fact_key = 'cover')
-         AND NOT EXISTS (SELECT 1 FROM offerings x WHERE x.operator_id = o.id)`,
+      `SELECT o.id FROM operators o
+        WHERE NOT EXISTS (SELECT 1 FROM facts f WHERE f.operator_id = o.id AND f.fact_key IN ('cover', 'photo'))
+          AND NOT EXISTS (SELECT 1 FROM offerings x WHERE x.operator_id = o.id)
+          AND o.hours IS NULL
+          AND NOT EXISTS (SELECT 1 FROM facts h WHERE h.operator_id = o.id AND h.fact_key = 'hours_text')`,
     ).all() as { id: string }[]).map((r) => r.id),
   );
-  // A listing with no site, no phone, no photo and no menu gives a guest nothing to act on. Keep it for outreach only.
   const full = rows
     .filter((r) => (where ? where(r) : true))
     .filter((r) => !MARKETPLACES.test(r.domain) && !NOT_OPERATOR_HOST.test(r.domain) && !dead.has(r.id) && !NOT_EXPERIENCE.test(r.name) && !/^\s*\$?\d+(\.\d+)?\s*$/.test(r.name))
