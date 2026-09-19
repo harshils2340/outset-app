@@ -83,6 +83,13 @@ const JOBS: Job[] = [
   { name: "purge-names", at: "03:20", timeoutMs: 10 * MIN, args: ["scripts/purge-bad-names.mts"], needsRepo: true, note: "delete stored images the crawler's filename rule now refuses (guides, scanned pages, flyers); no network" },
   { name: "screen", at: "03:30", timeoutMs: 3 * HOUR, args: ["scripts/screen-covers.mts"], needsRepo: true, note: "drop map, logo, flyer and scanned-page covers and gallery photos" },
   { name: "owners", every: 4 * HOUR, timeoutMs: 3 * HOUR, args: ["src/index.ts", "owners", "20000", "16"], needsRepo: true, note: "owner names and contact pages" },
+  /**
+   * Overture Maps, the free open place dataset. Weekly because Overture publishes monthly, and first on boot
+   * because this worker keeps its own database: an import run on a laptop reaches nobody until this job has
+   * run here. About fifteen minutes for the whole of the United States and Canada, all of it cached on the
+   * disk afterwards, and not a penny either way.
+   */
+  { name: "overture", every: 7 * 24 * HOUR, timeoutMs: 2 * HOUR, args: ["src/index.ts", "overture"], needsRepo: true, note: "open place data for the US and Canada, free, weekly" },
   { name: "pagecache", every: 2 * HOUR, timeoutMs: 15 * MIN, args: ["scripts/prune-pagecache.mts"], needsRepo: true, note: "keep the shared page cache under its size cap; no network" },
   { name: "sync", every: 3 * HOUR, timeoutMs: 2 * HOUR, args: ["src/index.ts", "sync"], needsRepo: true, note: "read-only catalog sync, commit and push public/ and src/data" },
   /**

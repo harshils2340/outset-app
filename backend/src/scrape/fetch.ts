@@ -92,32 +92,77 @@ export function prunePageCache(capBytes = CACHE_CAP_BYTES): { kept: number; remo
 
 const UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36";
 
-export async function robotsAllowed(origin: string, path: string): Promise<boolean> {
+/**
+ * robots.txt, remembered per origin for the life of the process and on disk between runs.
+ *
+ * It was refetched before every single page, so each page cost two requests rather than one and a site with
+ * eight pages read its robots.txt eight times. On a backlog of 203,665 sites that is the larger half of the
+ * crawl spent asking permission it already had.
+ */
+const robotsMem = new Map<string, { rules: string[]; at: number }>();
+const ROBOTS_MS = 12 * 3600_000;
+
+function robotsFile(origin: string): string {
+  return join(CACHE_DIR, "robots", createHash("sha256").update(origin).digest("hex") + ".gz");
+}
+
+async function robotsRules(origin: string): Promise<string[]> {
+  const hot = robotsMem.get(origin);
+  if (hot && Date.now() - hot.at < ROBOTS_MS) return hot.rules;
+  if (!CACHE_OFF) {
+    try {
+      const p = robotsFile(origin);
+      if (Date.now() - statSync(p).mtimeMs < ROBOTS_MS) {
+        const rules = JSON.parse(gunzipSync(readFileSync(p)).toString("utf8")) as string[];
+        robotsMem.set(origin, { rules, at: Date.now() });
+        return rules;
+      }
+    } catch {
+      /* not cached */
+    }
+  }
+  let rules: string[] = [];
   try {
     const res = await safeFetch(new URL("/robots.txt", origin).href, {
       headers: { "user-agent": UA },
       timeoutMs: 8000,
       maxBytes: 300_000,
     });
-    if (!res.ok) return true;
-    const text = await res.text();
-    const lines = text.split(/\r?\n/);
-    let applies = false;
-    for (const raw of lines) {
-      const line = raw.trim();
-      if (!line || line.startsWith("#")) continue;
-      const [k, ...rest] = line.split(":");
-      const v = rest.join(":").trim();
-      if (/^user-agent$/i.test(k)) {
-        applies = v === "*" || v.toLowerCase().includes("outset");
-      } else if (applies && /^disallow$/i.test(k)) {
-        if (v && path.startsWith(v)) return false;
-      }
-    }
-    return true;
+    if (res.ok) rules = disallowsFor(await res.text());
   } catch {
-    return true;
+    /* unreachable robots.txt is not a refusal */
   }
+  robotsMem.set(origin, { rules, at: Date.now() });
+  if (!CACHE_OFF) {
+    try {
+      const p = robotsFile(origin);
+      mkdirSync(dirname(p), { recursive: true });
+      writeFileSync(p, gzipSync(Buffer.from(JSON.stringify(rules))));
+    } catch {
+      /* optimisation only */
+    }
+  }
+  return rules;
+}
+
+/** The Disallow paths that apply to us: the ones under `*` or under our own name. */
+export function disallowsFor(text: string): string[] {
+  const out: string[] = [];
+  let applies = false;
+  for (const raw of text.split(/\r?\n/)) {
+    const line = raw.trim();
+    if (!line || line.startsWith("#")) continue;
+    const [k, ...rest] = line.split(":");
+    const v = rest.join(":").trim();
+    if (/^user-agent$/i.test(k)) applies = v === "*" || v.toLowerCase().includes("outset");
+    else if (applies && /^disallow$/i.test(k) && v) out.push(v);
+  }
+  return out;
+}
+
+export async function robotsAllowed(origin: string, path: string): Promise<boolean> {
+  const rules = await robotsRules(origin);
+  return !rules.some((d) => path.startsWith(d));
 }
 
 export async function fetchHtml(url: string): Promise<{ status: number; html: string; finalUrl: string }> {
