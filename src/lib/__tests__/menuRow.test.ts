@@ -77,6 +77,57 @@ test("a name that ends in one of those words on purpose is untouched", () => {
   }
 });
 
+/* ---------- the page's own punctuation ---------- */
+
+test("a nav arrow on either end of a row is the site's chrome, not the service", () => {
+  assert.equal(tidyRowName("< Exhibitions"), "Exhibitions");
+  assert.equal(tidyRowName("> Private Events Rental"), "Private Events Rental");
+  assert.equal(tidyRowName("Program Punch Card Flyer>>"), "Program Punch Card Flyer");
+  assert.equal(tidyRowName("Tickets Here <"), "Tickets Here");
+});
+
+test("an arrow that means less than or more than stays", () => {
+  // 67 rows lead or trail an arrow; these are the ones where it carries the meaning.
+  for (const name of [
+    "Golf Weekday Juniors (<17) and Seniors (50+) Resident",
+    "All Day LaDue Boat & Equipment Rental (> 6 Hours)",
+    "Hilton Head -> Daufuskie Island Daily Round Trip Ferry",
+    "Pickup OR Delivery (KP <-> Margay)",
+    "Digital photo scan < 200 DPI",
+    "< 299 photos +",
+  ]) {
+    assert.equal(tidyRowName(name), name, name);
+  }
+});
+
+test("a phone number is not the name of a service booked here", () => {
+  assert.equal(tidyRowName("Lake George Boat Tour (518) 801-7208"), "Lake George Boat Tour");
+  assert.equal(tidyRowName("campground (606-663-3650)"), "campground");
+  assert.equal(tidyRowName("Fire Island Sup Co. 631-326-7926"), "Fire Island Sup Co.");
+  assert.equal(tidyRowName("Adobe RV Park ~ 928-565-3010 ~ 55"), "Adobe RV Park ~ 55");
+  assert.equal(tidyRowName("Private Charter (Call to Book 808-742-6331)"), "Private Charter (Call to Book)");
+  // A row named for its own numbers keeps them.
+  assert.equal(tidyRowName("Cabin 101 2 Night Stay"), "Cabin 101 2 Night Stay");
+});
+
+test("a price list's dot leaders and an icon font's glyph are not part of the name", () => {
+  assert.equal(tidyRowName("1 passenger …………"), "1 passenger");
+  assert.equal(tidyRowName("2 passengers ......."), "2 passengers");
+  // A Font Awesome codepoint out of the private use area, which draws as an empty box for a guest.
+  assert.equal(tidyRowName(" Season Pass upgrade"), "Season Pass upgrade");
+  assert.equal(tidyRowName("​SUP Lessons 75 minutes"), "SUP Lessons 75 minutes");
+});
+
+test("add-ons are tidied with everything else in the booking box", () => {
+  const item = {
+    options: [{ name: "Standard", price: 40 }],
+    addons: [{ name: " Season Pass upgrade", price: 20 }, { name: "1 passenger ………", price: 10 }],
+  };
+  const out = bookableMenu(item);
+  assert.deepEqual(out.addons.map((a) => a.name), ["Season Pass upgrade", "1 passenger"]);
+  assert.equal(out.addons[0].price, 20);
+});
+
 /* ---------- options and services stay one fact ---------- */
 
 test("dropping a row re-points every tier that came after it", () => {

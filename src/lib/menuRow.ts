@@ -41,10 +41,47 @@ export const FAQ_ROW =
  */
 const DANGLING_WORD = /[\s;,:-]+(?:are|is|was|were|and|or|the|of|for|to|with|from|that|this|our|your)$/i;
 
+/**
+ * Punctuation the page carried that the service did not. A nav arrow on either end ("< Exhibitions",
+ * "Program Punch Card Flyer>>") is the site's own chrome; a price list's dot leaders ("1 passenger ………………")
+ * are the space between the name and the price; a zero width space is nothing at all. 67 shipped rows lead or
+ * trail an arrow, 19 add-ons end in leaders and 18 begin with an invisible character.
+ *
+ * A leading arrow only goes when a letter follows it, because "< 299 photos" and "(> 6 Hours)" mean less and
+ * more, and a trailing one only when it is doubled, for the same reason.
+ */
+const NAV_ARROW_HEAD = /^\s*[<>]+\s*(?=[A-Za-z])/;
+const NAV_ARROW_TAIL = /(?:\s+[<>]+|[<>]{2,})\s*$/;
+const DOT_LEADERS = /[\s.·•…]{3,}$/;
+/**
+ * Zero width and bidi marks, and the private use area, where an icon font keeps its glyphs: nine rows lead with
+ * a Font Awesome codepoint the crawl swept up with the label, and it draws as an empty box on anyone else's
+ * machine (" Season Pass upgrade").
+ */
+const INVISIBLE = /[​-‏‪-‮⁠﻿-]/g;
+
+/**
+ * A phone number is not the name of a service a guest books here: "Lake George Boat Tour (518) 801-7208" and
+ * "campground (606-663-3650)" are two of the 8 that carry one. A separator or brackets are required, so a row
+ * named for its own numbers ("Cabin 101 2 Night Stay") keeps them.
+ */
+const ROW_PHONE = /\s*(?:\+?1[\s.-])?(?:\(\d{3}\)\s*|\d{3}[\s.-])\d{3}[\s.-]\d{4}(?!\d)/g;
+
 /** A row name as a guest should read it, with a half-cut sentence's trailing word taken off. */
 export function tidyRowName(raw: string): string {
-  const name = raw.trim();
-  const cut = name.replace(DANGLING_WORD, "").trim();
+  const name = raw.replace(INVISIBLE, "").trim();
+  let cut = name
+    .replace(ROW_PHONE, " ")
+    .replace(NAV_ARROW_HEAD, "")
+    .replace(NAV_ARROW_TAIL, "")
+    .replace(DOT_LEADERS, "")
+    // Whatever the strips left holding an empty bracket, a doubled separator or a doubled space.
+    .replace(/\(\s*\)|\[\s*\]/g, " ")
+    .replace(/([~|·])(?:\s*\1)+/g, "$1")
+    .replace(/\s+/g, " ")
+    .replace(/([([])\s+|\s+([)\]])/g, "$1$2")
+    .trim();
+  cut = cut.replace(DANGLING_WORD, "").trim();
   return cut.length >= 2 ? cut : name;
 }
 
@@ -72,14 +109,17 @@ type Grouped = { name: string; variants: Tier[] };
  * lists (see `hydrateItem`), so filtering either on its own would leave a tier pointing at the wrong trip or
  * past the end of the list.
  */
-export function bookableMenu<T extends { options?: Row[]; services?: Grouped[] }>(item: T): T {
+export function bookableMenu<T extends { options?: Row[]; services?: Grouped[]; addons?: { name: string }[] }>(item: T): T {
   const options = item.options || [];
   const services = item.services || [];
+  // Add-ons are picked in the same booking box and carry the same page cruft: 37 of them lead with an
+  // invisible character or trail a price list's dot leaders.
+  const addons = item.addons || [];
   const keep: number[] = [];
   for (let i = 0; i < options.length; i++) if (bookableRow(options[i].name, options[i].price)) keep.push(i);
   const renamed = (rows: { name: string }[]) => rows.some((r) => tidyRowName(r.name) !== r.name);
   // Most of the catalog is already clean, and this runs over every record the app loads, so leave those alone.
-  if (keep.length === options.length && !renamed(options) && !renamed(services)) return item;
+  if (keep.length === options.length && !renamed(options) && !renamed(services) && !renamed(addons)) return item;
 
   const moved = new Map(keep.map((from, to) => [from, to]));
   const nextOptions = keep.map((i) => ({ ...options[i], name: tidyRowName(options[i].name) }));
@@ -88,5 +128,10 @@ export function bookableMenu<T extends { options?: Row[]; services?: Grouped[] }
     // A service whose every tier named an archive goes with them; the picker builds its rows from the tiers.
     .filter((s) => s.variants.length > 0 && bookableRow(s.name, s.variants.find((v) => v.price != null && v.price > 0)?.price ?? null));
 
-  return { ...item, options: nextOptions, ...(item.services ? { services: nextServices } : {}) };
+  return {
+    ...item,
+    options: nextOptions,
+    ...(item.services ? { services: nextServices } : {}),
+    ...(item.addons ? { addons: addons.map((a) => ({ ...a, name: tidyRowName(a.name) })) } : {}),
+  };
 }
