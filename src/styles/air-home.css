@@ -10,10 +10,6 @@
   --hdr-top:80px;
   --hdr-search:82px;
   --hdr-cats:78px;
-  /* The concierge row under the search pill. The header is fixed, so its height has to be reserved below it
-     like every other band, or the first rail heading renders half behind it. One row at every width, which is
-     what makes this number true rather than approximately true. */
-  --hdr-ask:50px;
   --ah-grey:#B0B0B0;
   --ah-chip:#F2F2F2;
   background:#fff;
@@ -33,7 +29,8 @@
 /* The four rows plus the header's own bottom hairline, which is part of its box and so part of what has to be
    reserved under it. Leaving the border out made the spacer one pixel short of the header from the beginning:
    invisible while the first thing below was a heading with space above it, and wrong arithmetic regardless. */
-.ah-header-space{height:calc(var(--hdr-top) + var(--hdr-search) + var(--hdr-ask) + var(--hdr-cats) + 1px);}
+.ah-header-space{height:calc(var(--hdr-top) + var(--hdr-search) + var(--hdr-cats) + 1px);}
+.ah.has-ask .ah-header-space{height:calc(var(--hdr-top) + 1px);}
 .ah-top{height:var(--hdr-top);display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:16px;}
 /* The sides never shrink under their content, so the tabs cannot slide over "List your business". When the row
    runs short, the host link goes first (it is also in the account menu), then the tab labels tighten. */
@@ -56,6 +53,28 @@
 .ah-switch button:focus-visible{outline-offset:-6px;border-radius:12px;}
 
 .ah-right{justify-self:end;display:flex;align-items:center;gap:8px;}
+
+/* Browse vs Ask. One control, two modes, stays in the header so you always know which you are in. */
+.ah-modes{
+  display:flex;align-items:center;gap:2px;height:42px;padding:3px;
+  border:1px solid var(--line-strong);border-radius:999px;background:#EBEBEB;
+}
+.ah-modes button{
+  height:100%;min-width:76px;padding:0 16px;border-radius:999px;border:0;background:transparent;
+  color:var(--ink-soft);font:inherit;font-size:14px;font-weight:650;cursor:pointer;
+}
+.ah-modes button.on{background:#fff;color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.14);}
+.ah.has-ask .ah-modes button.on{background:var(--accent);color:var(--on-accent);box-shadow:none;}
+.ah.has-ask .ah-header{border-bottom-color:color-mix(in srgb, var(--accent) 28%, var(--line));}
+.ah.has-ask .ah-host{display:none;}
+.ah-modes button:hover:not(.on){color:var(--ink);}
+.ah.has-ask .ah-modes button.on:hover{color:var(--on-accent);}
+.ah.has-ask{
+  display:flex;flex-direction:column;min-height:100vh;
+}
+@media (max-width:743px){
+  .ah-modes button{min-width:64px;padding:0 12px;font-size:13px;}
+}
 .ah-host{height:40px;padding:0 12px;border-radius:20px;font-size:14px;font-weight:500;color:var(--ink);white-space:nowrap;}
 .ah-host:hover{background:var(--surface-2);}
 .ah-usermenu{position:relative;}
@@ -462,43 +481,3 @@
 @keyframes ah-kenburns{from{transform:scale(1)}to{transform:scale(1.05)}}
 @media (prefers-reduced-motion: reduce){.ah-card-slide{transition:none}.ah-card-photo.is-playing .ah-card-slide.on .photo{animation:none}}
 
-/*
-  The one way into the agent, on the page itself.
-
-  A switch rather than a link, because that is what it is: flipping it does not navigate anywhere, it turns
-  the guest app into the phone it already has with the agent open in it. Given the room a full-width row has,
-  it says what it does in words rather than making anybody guess from an icon.
-*/
-.ah-ask {
-  display: inline-flex;
-  align-items: center;
-  gap: 11px;
-  border: 1px solid var(--line-strong);
-  background: var(--surface);
-  color: var(--ink);
-  border-radius: 999px;
-  padding: 7px 18px 7px 7px;
-  font: inherit;
-  cursor: pointer;
-  transition: border-color .12s ease, background .12s ease;
-}
-.ah-ask:hover { border-color: var(--accent-soft); }
-.ah-ask.on { border-color: var(--accent); background: var(--accent-tint); }
-/* The knob reads as the moving part of a switch even though it does not travel: filled when on, outlined when off. */
-.ah-askknob {
-  width: 30px; height: 30px; border-radius: 50%;
-  display: grid; place-items: center; flex: none;
-  background: var(--accent-tint); color: var(--accent);
-}
-.ah-ask.on .cg-askknob, .ah-ask.on .ah-askknob { background: var(--accent); color: var(--on-accent); }
-.ah-askknob svg { width: 15px; height: 15px; }
-.ah-asktext { display: flex; flex-direction: column; line-height: 1.25; text-align: left; }
-.ah-asktext b { font-size: 14.5px; font-weight: 600; }
-.ah-asktext small { font-size: 12.5px; color: var(--ink-soft); }
-
-/* On a phone the subtitle is the first thing to go; the name and the mark carry it. */
-@media (max-width: 743px) {
-  .ah-asktext small { display: none; }
-  .ah-ask { padding-right: 14px; }
-}
-}

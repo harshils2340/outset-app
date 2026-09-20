@@ -25,7 +25,7 @@ function whenIdle(run: () => void): void {
   else window.setTimeout(run, 50);
 }
 
-export function ExploreView({ onAsk, asking }: { onAsk: () => void; asking: boolean }) {
+export function ExploreView({ onAsk, onCloseAsk, asking }: { onAsk: () => void; onCloseAsk?: () => void; asking: boolean }) {
   const { state, dates, setCat, setQ, setMetro, openMetro } = useApp();
   const prefs = usePrefs();
   const [limit, setLimit] = useState(PAGE);
@@ -143,7 +143,7 @@ export function ExploreView({ onAsk, asking }: { onAsk: () => void; asking: bool
                 <small>{pillSub}</small>
               </span>
             </button>
-            <button type="button" className={"airask" + (asking ? " on" : "")} onClick={onAsk} aria-pressed={asking} aria-label="Ask Outset for anything">
+            <button type="button" className={"airask" + (asking ? " on" : "")} onClick={() => (asking ? onCloseAsk?.() : onAsk())} aria-pressed={asking} aria-label={asking ? "Back to browse" : "Ask"}>
               <Markup html={ICONS.spark} />
             </button>
             <button type="button" className="airfilter" onClick={openFilters} aria-label="Filters">
@@ -203,7 +203,7 @@ export function ExploreView({ onAsk, asking }: { onAsk: () => void; asking: bool
             wide site, which matters because a judge scanning a QR code and the laptop on stage are looking at
             the same product.
           */}
-          <button type="button" className={"airask" + (asking ? " on" : "")} onClick={onAsk} aria-pressed={asking} aria-label="Ask Outset for anything">
+          <button type="button" className={"airask" + (asking ? " on" : "")} onClick={() => (asking ? onCloseAsk?.() : onAsk())} aria-pressed={asking} aria-label={asking ? "Back to browse" : "Ask"}>
             <Markup html={ICONS.spark} />
           </button>
           <button type="button" className={"airfilter" + (filterCount ? " on" : "")} onClick={openFilters} aria-label="Filters">

@@ -18,14 +18,20 @@ const src = (rel: string) => readFileSync(new URL(rel, import.meta.url), "utf8")
 const APP = src("../../App.tsx");
 const PROVIDER = src("../../state/AppProvider.tsx");
 const LISTING = src("../../components/web/WebListing.tsx");
+const HOME = src("../../components/web/WebHome.tsx");
 
 test("the listing page opens the agent through the provider, not through a local flag", () => {
   assert.match(LISTING, /openAsk\s*\(/, "the listing's Ask button no longer calls openAsk");
 });
 
 test("the file that renders the overlay reads the state the provider keeps", () => {
-  assert.match(APP, /<WebConcierge\b/, "App.tsx is the only place that renders the concierge");
-  assert.match(APP, /state\.asking/, "App.tsx renders the overlay from something other than state.asking");
+  assert.match(APP, /state\.asking/, "App.tsx renders Ask from something other than state.asking");
+  assert.match(HOME, /<WebConcierge\b/, "the desktop site embeds the agent on the home page");
+  assert.match(HOME, /\bah-modes\b/, "Browse and Ask share one toggle on the desktop header");
+  assert.match(APP, /asking=\{askOnSite\}/, "desktop Ask is a home-page mode, not a second tree");
+  assert.match(APP, /<WebConcierge\b/, "the phone frame still renders the agent");
+  assert.doesNotMatch(APP, /cameFromWeb/, "Ask must not jump the desktop site into the phone frame");
+  assert.doesNotMatch(APP, /setWeb\(false\);\s*\n\s*openAsk|openAsk\([^)]*\);\s*\n\s*setWeb\(false\)/, "Ask must not call setWeb(false)");
   assert.doesNotMatch(
     APP,
     /useState<[^>]*>\(\s*ASKED_FOR|setAsking\s*\(/,

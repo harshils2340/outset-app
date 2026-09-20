@@ -104,7 +104,7 @@ const EXAMPLES = [
   "something to do near me tonight",
 ];
 
-export function WebConcierge({ seed, framed, onClose }: { seed?: string; framed?: boolean; onClose: () => void }) {
+export function WebConcierge({ seed, framed, embed, onClose }: { seed?: string; framed?: boolean; embed?: boolean; onClose: () => void }) {
   const { state, openRequest, confirmUnclaimed } = useApp();
   /**
    * The opening line is the first render, not a timer that fires into it. As a delayed `add` it could be
@@ -154,8 +154,6 @@ export function WebConcierge({ seed, framed, onClose }: { seed?: string; framed?
    */
   const [elapsed, setElapsed] = useState(0);
 
-  useModal(box);
-
   /**
    * The place the home already opened on, as a sentence the reader understands. A point the guest chose or one
    * read off their connection is a town; a metro is the city we filed them under. "Anywhere" is not a place,
@@ -189,8 +187,11 @@ export function WebConcierge({ seed, framed, onClose }: { seed?: string; framed?
    * Declared before the effect that focuses the box's own field, so the hook reads the real opener rather than
    * that field. It then puts focus on the first stop and the effect below moves it to the field, which is
    * where it belongs: this opens ready to be typed into.
+   *
+   * Embed is a page mode under the site header, not a dialog. Locking the page and trapping Tab would hide
+   * Browse from the keyboard and freeze the rest of the site as if a scrim were still up.
    */
-  useModal(box);
+  useModal(box, !embed);
 
   const add = (e: Said) => setEntries((cur) => [...cur, { ...e, id: nextId.current++ }]);
 
@@ -206,18 +207,19 @@ export function WebConcierge({ seed, framed, onClose }: { seed?: string; framed?
     el.select();
   }, [manual]);
 
-  // Escape closes, as every other overlay on the site does.
+  // Escape closes, as every other overlay on the site does. In embed it only dismisses history, because
+  // leaving Ask is the Browse tab in the site header, not a dialog Close.
   useEffect(() => {
     const on = (e: KeyboardEvent) => {
       if (e.key !== "Escape") return;
       // Innermost first: the transcript, then the history, then the overlay itself.
       if (manualRef.current) setManual("");
       else if (history) setHistory(null);
-      else onClose();
+      else if (!embed) onClose();
     };
     document.addEventListener("keydown", on);
     return () => document.removeEventListener("keydown", on);
-  }, [onClose, history]);
+  }, [embed, onClose, history]);
 
   /**
    * A question in flight when the overlay closes is abandoned, so its answer cannot arrive into nothing.
@@ -497,21 +499,25 @@ export function WebConcierge({ seed, framed, onClose }: { seed?: string; framed?
   return (
     <div
       ref={box}
-      className={"cg" + (framed ? " cg-framed" : "")}
-      role="dialog"
-      aria-modal="true"
-      aria-label="Ask Outset"
+      className={"cg" + (framed ? " cg-framed" : "") + (embed ? " cg-embed" : "")}
+      role={embed ? "region" : "dialog"}
+      aria-modal={embed ? undefined : "true"}
+      aria-label="Ask"
       onClick={(e) => {
-        if (!framed && e.target === e.currentTarget) onClose();
+        if (!framed && !embed && e.target === e.currentTarget) onClose();
       }}
     >
       <section className="cg-thread">
         <header className="cg-top">
-          <Mark size={30} />
-          <span className="cg-who">
-            <b>Ask Outset</b>
-            <small>Reads the shops' own booking systems</small>
-          </span>
+          {embed ? null : (
+            <>
+              <Mark size={30} />
+              <span className="cg-who">
+                <b>Ask</b>
+                <small>Live times from the shops around you</small>
+              </span>
+            </>
+          )}
           <div className="cg-tools">
             <button type="button" className="cg-tool" onClick={() => setHistory(history ? null : loadConversations())} aria-pressed={!!history}>
               History
@@ -520,9 +526,11 @@ export function WebConcierge({ seed, framed, onClose }: { seed?: string; framed?
               New
             </button>
           </div>
+          {embed ? null : (
           <button type="button" className="cg-x" onClick={onClose} aria-label="Close">
             <Markup html={ICONS.close} />
           </button>
+          )}
         </header>
 
         {history ? (

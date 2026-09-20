@@ -96,12 +96,13 @@ test("the concierge overlay is a dialog too, and holds the page behind it still"
   // focus on the body rather than on the button that opened it.
   // Whitespace-tolerant: the overlay's opening tag is written over several lines, and which line an attribute
   // sits on is not what this is checking.
-  assert.match(CONCIERGE, /ref=\{box\}\s+className=\{"cg"[\s\S]*?role="dialog"\s+aria-modal="true"/);
-  assert.match(CONCIERGE, /useModal\(box\);/);
+  assert.match(CONCIERGE, /role=\{embed \? "region" : "dialog"\}/);
+  assert.match(CONCIERGE, /aria-modal=\{embed \? undefined : "true"\}/);
+  assert.match(CONCIERGE, /useModal\(box, !embed\)/);
   // Before the effect that focuses the field, or the hook reads that field as the opener and has nowhere to
   // put focus back.
   assert.ok(
-    CONCIERGE.indexOf("useModal(box);") < CONCIERGE.indexOf("inputRef.current?.focus();"),
+    CONCIERGE.indexOf("useModal(box, !embed)") < CONCIERGE.indexOf("inputRef.current?.focus();"),
     "useModal has to be declared before the box focuses its own field",
   );
 });

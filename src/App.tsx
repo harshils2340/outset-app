@@ -1,4 +1,4 @@
-import { Suspense, lazy, useEffect, useRef, useState } from "react";
+import { Suspense, lazy, useEffect, useState } from "react";
 import { useApp } from "./state/AppProvider";
 import { WebHome } from "./components/web/WebHome";
 import { WebListing } from "./components/web/WebListing";
@@ -111,25 +111,10 @@ export function App() {
   }
   const { state, closeSheet, openOperator, reqTarget, openRequest, goto, openAsk, closeAsk } = useApp();
   /**
-   * The concierge. An overlay rather than a screen: the guest is mid-thought when they ask, and a thought that
-   * ends in a business should leave them on that business's page with the site still behind them. `null` is
-   * closed; a string is open, and a non-empty one is asked the moment it opens.
-   *
-   * It lives in the provider, not here, because a listing page opens it too, and this file is the only place
-   * that renders it. Held in both, the listing's `openAsk` set a string nothing read and its button did
-   * nothing at all.
+   * The agent. `null` is browse; a string is Ask, and a non-empty one is sent as soon as it opens.
+   * Lives in the provider so a listing can open the same thread the home toggle does.
    */
   const asking = state.asking;
-  /**
-   * Whether the phone frame was entered by turning the agent on, so turning it off puts the site back.
-   *
-   * One toggle, and flipping it turns the UI into a phone you type into rather than opening a panel over the
-   * site. The app already has a phone: `.stage` holds a real device frame that the whole guest app runs
-   * inside, and it is what a guest on an actual phone gets. So the toggle does not build a phone, it goes to
-   * the one that is already there and opens the agent in it, which is why it looks the same on a laptop as it
-   * does on the phone behind a QR code.
-   */
-  const cameFromWeb = useRef(false);
   const [safeDemo, setSafeDemo] = useState(SAFE_DEMO);
   const [web, setWeb] = useState(() => typeof window !== "undefined" && window.innerWidth >= 1024 && !WALLET_HASH());
   const [fit, setFit] = useState(1);
@@ -161,32 +146,8 @@ export function App() {
     window.addEventListener("resize", calc);
     return () => window.removeEventListener("resize", calc);
   }, []);
-  /**
-   * The one control. On: the phone, with the agent open in it. Off: back to wherever they were.
-   *
-   * At phone width there is no site to come back to and `web` is already false, so the same control simply
-   * opens and closes the agent. That is the point of having one: it means the same thing everywhere.
-   */
   const toggleAsk = (on: boolean, seed = "") => (on ? openAsk(seed) : closeAsk());
-  /**
-   * The frame follows the agent, whoever opened it. The home's switch is not the only way in: a listing page
-   * has an Ask button too, and a screen that opens the agent should not have to know about the phone frame to
-   * get the same behaviour. A load that arrives on `#ask` is already open on the first render, so the ref
-   * starts where the state does and this leaves the site alone.
-   */
-  const wasAsking = useRef(asking != null);
-  useEffect(() => {
-    const on = asking != null;
-    if (on === wasAsking.current) return;
-    wasAsking.current = on;
-    if (on) {
-      cameFromWeb.current = web;
-      setWeb(false);
-      return;
-    }
-    if (cameFromWeb.current) setWeb(true);
-    cameFromWeb.current = false;
-  }, [asking, web]);
+  const askOnSite = web && asking != null && state.screen !== "operator" && !(state.screen === "confirm" && state.booking);
 
   const openApp = () => {
     closeSheet();
@@ -216,14 +177,9 @@ export function App() {
           <WebHome
             onOpenApp={openApp}
             onOperators={() => openOperator()}
-            /*
-              Flipping the switch does not open a panel over the site: it goes to the phone the app already
-              has and opens the agent in it. That is what Harshil asked for, and it is why the laptop and a
-              QR code land on the same surface rather than two that merely resemble each other.
-            */
             onAsk={(seed) => toggleAsk(true, seed)}
-            /* The switch on the home page reads as on while the thread is open, and closes it again. */
-            asking={asking != null}
+            asking={askOnSite}
+            askSeed={asking || ""}
             onCloseAsk={() => toggleAsk(false)}
           />
         ) : null}
@@ -243,7 +199,6 @@ export function App() {
           </div>
         ) : null}
         {state.checkingOut ? (state.checkoutSecret ? <EmbeddedCheckout secret={state.checkoutSecret} /> : <CheckoutSplash />) : null}
-        {asking != null ? <WebConcierge seed={asking} onClose={() => toggleAsk(false)} /> : null}
         {safeDemo ? (
           <SafeBookDemo
             onClose={() => {
@@ -272,7 +227,7 @@ export function App() {
       <div className="device" style={{ transform: `scale(${fit})`, transformOrigin: "center center" }}>
         <div className="screen" id="screen">
           <StatusBar />
-          <AppView onAsk={() => toggleAsk(true)} asking={asking != null} />
+          <AppView onAsk={() => toggleAsk(true)} onCloseAsk={() => toggleAsk(false)} asking={asking != null} />
           <TabBar />
           <Sheets />
           <Toast />
@@ -303,7 +258,7 @@ export function App() {
   );
 }
 
-function AppView({ onAsk, asking }: { onAsk: () => void; asking: boolean }) {
+function AppView({ onAsk, onCloseAsk, asking }: { onAsk: () => void; onCloseAsk: () => void; asking: boolean }) {
   const { state } = useApp();
   const chat = state.screen === "chat";
   // A sheet covers the screen it opened from, and that screen kept every one of its buttons in the tab order.
@@ -319,7 +274,7 @@ function AppView({ onAsk, asking }: { onAsk: () => void; asking: boolean }) {
           <OperatorView compact />
         </Suspense>
       ) : null}
-      {state.screen === "explore" ? <ExploreView onAsk={onAsk} asking={asking} /> : null}
+      {state.screen === "explore" ? <ExploreView onAsk={onAsk} onCloseAsk={onCloseAsk} asking={asking} /> : null}
       {state.screen === "trips" ? <TripsView /> : null}
       {state.screen === "inbox" ? <InboxView /> : null}
       {state.screen === "account" ? <AccountView /> : null}

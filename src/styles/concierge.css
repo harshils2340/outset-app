@@ -483,6 +483,32 @@
 
 .cg-framed { position: absolute; inset: 0; z-index: 20; background: var(--surface); }
 .cg-framed .cg-thread { max-width: none; width: 100%; box-shadow: none; }
+.cg.cg-embed {
+  position: relative;
+  inset: auto;
+  z-index: 0;
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  flex: 1 1 auto;
+  min-height: calc(100vh - var(--hdr-top, 80px) - 1px);
+  background: #fff;
+}
+.cg-embed .cg-thread {
+  flex: 1 1 auto;
+  max-width: 720px;
+  width: 100%;
+  margin: 0 auto;
+  box-shadow: none;
+  background: #fff;
+  min-height: calc(100vh - var(--hdr-top, 80px) - 1px);
+}
+.cg-embed .cg-top {
+  justify-content: flex-end;
+  background: #fff;
+  border-bottom: 0;
+  padding: 10px 16px 0;
+}
 /*
   `.screen` is the phone either way `framed` is passed: a real mobile browser, where it is the whole viewport
   and the mockup's own fake status bar is already hidden by `app.css`'s own media query, or the desktop mockup,

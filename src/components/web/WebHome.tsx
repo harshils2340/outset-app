@@ -20,6 +20,7 @@ import { Mark } from "../layout/Mark";
 import { useModal } from "../layout/useModal";
 import { Markup } from "../Markup";
 import { AdminSiteLink, liteDealTitle, tidyDuration } from "./WebListing";
+import { WebConcierge } from "./WebConcierge";
 import { freeCancelBadge } from "../../lib/cancellation";
 import { withinDrive, kmToPlace, awayLine, atMetro, NEAR_RADIUS_KM, DRIVE_RADIUS_KM } from "../explore/feed";
 import { mergeMapsHits, useMapsNearby } from "../../lib/mapsNearby";
@@ -929,7 +930,7 @@ const remembered: { q: string; whereText: string; artChip: ArtKind | null; who: 
   q: "", whereText: "", artChip: null, ...rememberedParty(), searched: false, sort: "relevance", price: { min: null, max: null },
 };
 
-export function WebHome({ onOpenApp, onOperators, onAsk, asking = false, onCloseAsk }: { onOpenApp: () => void; onOperators: () => void; onAsk: (seed?: string) => void; asking?: boolean; onCloseAsk?: () => void }) {
+export function WebHome({ onOpenApp, onOperators, onAsk, asking = false, askSeed = "", onCloseAsk }: { onOpenApp: () => void; onOperators: () => void; onAsk: (seed?: string) => void; asking?: boolean; askSeed?: string; onCloseAsk?: () => void }) {
   const { state, setCat, setMetro, setNear, setDate, openRequest, dates } = useApp();
   // What: the activity, occasion or business. Where: the words typed while looking for a place. The place itself
   // lives in app state (near or metro), so the two boxes never overwrite each other.
@@ -1003,7 +1004,7 @@ export function WebHome({ onOpenApp, onOperators, onAsk, asking = false, onClose
     window.addEventListener("scroll", on, { passive: true });
     return () => window.removeEventListener("scroll", on);
   }, []);
-  const expanded = !compact || seg !== null;
+  const expanded = !asking && (!compact || seg !== null);
   const openSeg = (s: Seg | null) => {
     openedAt.current = window.scrollY;
     setHit(-1);
@@ -1499,18 +1500,30 @@ export function WebHome({ onOpenApp, onOperators, onAsk, asking = false, onClose
   const filterCount = (effSort !== "relevance" ? 1 : 0) + (priceOn ? 1 : 0);
   const resetFilters = () => { setSort("relevance"); setPrice({ min: null, max: null }); setCat("all"); setArtChip(null); };
   const showRails = state.catalogReady && !state.locating && (!q.trim() || placeOnly) && !gridMode;
+  const modeSwitch = (
+    <div className="ah-modes" role="tablist" aria-label="Browse or Ask">
+      <button type="button" role="tab" aria-selected={!asking} className={!asking ? "on" : ""} onClick={() => onCloseAsk?.()}>
+        Browse
+      </button>
+      <button type="button" role="tab" aria-selected={asking} className={asking ? "on" : ""} onClick={() => onAsk()}>
+        Ask
+      </button>
+    </div>
+  );
 
   return (
     <CompareCtx.Provider value={{ ids: compareIds, toggle: toggleCompare }}>
-    <div className={"web ah" + (compareIds.length ? " has-cmpbar" : "")}>
+    <div className={"web ah" + (compareIds.length ? " has-cmpbar" : "") + (asking ? " has-ask" : "")}>
       <header className={"ah-header" + (scrolled ? " is-scrolled" : "") + (expanded ? " is-expanded" : " is-compact")}>
         <div className="ah-top ah-gutter">
-          <a className="ah-logo" href="./" aria-label="Outset home" onClick={(e) => { e.preventDefault(); setCat("all"); setArtChip(null); setQ(""); setSearched(false); setSort("relevance"); setPrice({ min: null, max: null }); window.scrollTo({ top: 0 }); }}>
+          <a className="ah-logo" href="./" aria-label="Outset home" onClick={(e) => { e.preventDefault(); onCloseAsk?.(); setCat("all"); setArtChip(null); setQ(""); setSearched(false); setSort("relevance"); setPrice({ min: null, max: null }); window.scrollTo({ top: 0 }); }}>
             <Mark size={32} />
             <b>Outset</b>
           </a>
-          {expanded ? (
-            <nav className="ah-ask-toggle" aria-label="What to browse">
+          {asking ? (
+            modeSwitch
+          ) : expanded ? (
+            <nav className="ah-switch" aria-label="What to browse">
               {WORLDS.map((w) => {
                 const on = w.id === world.id;
                 return (
@@ -1542,12 +1555,13 @@ export function WebHome({ onOpenApp, onOperators, onAsk, asking = false, onClose
             </div>
           )}
           <div className="ah-right">
+            {asking ? null : modeSwitch}
             <button type="button" className="ah-host" onClick={onOperators}>List your business</button>
             <UserMenu onOperators={onOperators} onOpenApp={onOpenApp} />
           </div>
         </div>
 
-        {expanded ? (
+        {expanded && !asking ? (
           <div className="ah-searchrow ah-gutter">
             <div className={"ah-pill solo" + (seg ? " is-active" : "")} ref={pillRef} role="search">
               <label className={"ah-seg what" + (seg === "what" ? " on" : "")} htmlFor="ah-what" data-seg="what-label">
@@ -1625,45 +1639,19 @@ export function WebHome({ onOpenApp, onOperators, onAsk, asking = false, onClose
           </div>
         ) : null}
 
-        {/*
-          The one control, on the page itself rather than inside a panel.
-
-          Flipping it does not open an overlay over the site: it puts the guest on the phone the app already
-          has, with the agent open in it, typing. That is the product as somebody actually holds it, and it is
-          the same surface a QR code opens, so what is on the laptop and what is in a judge's hand agree.
-
-          One control and no examples under it. A row of suggested sentences was a second way in and a second
-          decision, and the box itself says what to type better than three specimens of it do.
-        */}
-        {/*
-          Not gated on `expanded`, which is `!compact || seg !== null`: on a phone the switch only appeared
-          once the search had been opened, and the phone is exactly where this is meant to be used. A judge
-          scanning the QR code found the catalogue and no way into the agent at all. One row, on screen from
-          the first paint, at every width.
-        */}
-        <div className="ah-askrow ah-gutter">
-          <button
-            type="button"
-            className={"ah-ask" + (asking ? " on" : "")}
-            role="switch"
-            aria-checked={asking}
-            onClick={() => (asking ? onCloseAsk?.() : onAsk())}
-          >
-            <span className="ah-askknob" aria-hidden="true"><Markup html={ICONS.spark} /></span>
-            <span className="ah-asktext">
-              <b>Ask Outset</b>
-              <small>Say what you want to do and get times you can book</small>
-            </span>
-          </button>
-        </div>
-
+        {!asking ? (
         <div className="ah-catrow ah-gutter">
           <CategoryBar key={world.id} chips={world.chips} selected={kindChip || state.cat} onPick={pickChip} filterCount={filterCount} onFilters={() => setFiltersOpen(true)} />
         </div>
+        ) : null}
       </header>
       <div className="ah-header-space" aria-hidden="true" />
       {seg && compact ? <div className="ah-scrim" onClick={() => setSeg(null)} /> : null}
 
+      {asking ? (
+        <WebConcierge seed={askSeed} embed onClose={() => onCloseAsk?.()} />
+      ) : (
+      <>
       <main className="ah-main ah-gutter" ref={mainRef} id="ah-main">
         {!state.catalogReady || state.locating ? (
           <>
@@ -1842,8 +1830,10 @@ export function WebHome({ onOpenApp, onOperators, onAsk, asking = false, onClose
           </div>
         </div>
       </footer>
+      </>
+      )}
 
-      {compareIds.length ? (
+      {!asking && compareIds.length ? (
         <div className="ah-cmpbar" role="region" aria-label="Compare">
           <div className="ah-gutter ah-cmpbar-in">
             <span className="ah-cmpbar-lead">
