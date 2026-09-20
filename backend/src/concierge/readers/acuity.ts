@@ -204,7 +204,7 @@ type AcuityType = {
   active?: boolean;
   private?: boolean;
   /** `"service"` or `"class"`. Both have start times; a class has a fixed one and a roster. */
-  type?: string;
+  type?: string | null;
   calendarIDs?: number[];
 };
 
