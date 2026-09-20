@@ -15,6 +15,7 @@ const HOOK = readFileSync(new URL("../../components/layout/useModal.ts", import.
 const LISTING = readFileSync(new URL("../../components/web/WebListing.tsx", import.meta.url), "utf8");
 const HOME = readFileSync(new URL("../../components/web/WebHome.tsx", import.meta.url), "utf8");
 const DRAWER = readFileSync(new URL("../../components/operator/OpBookings.tsx", import.meta.url), "utf8");
+const CONCIERGE = readFileSync(new URL("../../components/web/WebConcierge.tsx", import.meta.url), "utf8");
 
 test("Tab off the last stop comes back to the first", () => {
   assert.equal(tabWrap(4, 3, false), 0);
@@ -85,9 +86,36 @@ test("all three of the home's dialogs use it", () => {
 });
 
 test("the operator's booking drawer is the same kind of dialog", () => {
-  // The only other thing in the app claiming aria-modal that is not already made inert by the page behind it.
   assert.match(DRAWER, /className="oddrawer" ref=\{box\} role="dialog" aria-modal="true"/);
   assert.match(DRAWER, /useModal\(box\);/);
+});
+
+test("the concierge overlay is a dialog too, and holds the page behind it still", () => {
+  // It shipped claiming aria-modal and behaving like nothing of the kind: driven in Chromium, 23 of 24 Tab
+  // stops walked out into the home underneath the scrim, a wheel rolled that home 900 px, and closing left
+  // focus on the body rather than on the button that opened it.
+  assert.match(CONCIERGE, /ref=\{box\} className=\{"cg"[\s\S]*?role="dialog" aria-modal="true"/);
+  assert.match(CONCIERGE, /useModal\(box\);/);
+  // Before the effect that focuses the field, or the hook reads that field as the opener and has nowhere to
+  // put focus back.
+  assert.ok(
+    CONCIERGE.indexOf("useModal(box);") < CONCIERGE.indexOf("inputRef.current?.focus();"),
+    "useModal has to be declared before the box focuses its own field",
+  );
+});
+
+test("every dialog claiming aria-modal on the site uses the hook", () => {
+  // The count is the point: a new surface that says aria-modal and does it by hand fails here.
+  for (const [name, src] of [
+    ["WebListing", LISTING],
+    ["WebHome", HOME],
+    ["OpBookings", DRAWER],
+    ["WebConcierge", CONCIERGE],
+  ] as const) {
+    const claims = src.match(/aria-modal="true"/g)?.length ?? 0;
+    if (!claims) continue;
+    assert.match(src, /useModal\(/, name + " claims aria-modal, so it owes the page behind it the hook");
+  }
 });
 
 test("the two dialogs that autofocused their close button leave it to the hook", () => {

@@ -42,6 +42,7 @@ import {
 } from "../../lib/conciergeHistory";
 import { useApp } from "../../state/AppProvider";
 import { Mark } from "../layout/Mark";
+import { useModal } from "../layout/useModal";
 import { Markup } from "../Markup";
 
 /**
@@ -136,6 +137,7 @@ export function WebConcierge({ seed, framed, onClose }: { seed?: string; framed?
   const running = useRef<AbortController | null>(null);
   const logRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const box = useRef<HTMLDivElement>(null);
   const inputId = useId();
 
   /**
@@ -153,6 +155,20 @@ export function WebConcierge({ seed, framed, onClose }: { seed?: string; framed?
     }
     return null;
   })();
+
+  /**
+   * It says `aria-modal`, so it has to behave like one, and it did not.
+   *
+   * Driven in a real Chromium, 23 of 24 Tab stops walked straight out of the overlay into the home page
+   * underneath it, which a full-screen scrim covers: a focus ring on things nobody can see. A wheel over the
+   * thread rolled that page 900 px, so closing left the guest somewhere else entirely. And focus never came
+   * back to whatever opened it.
+   *
+   * Declared before the effect that focuses the box's own field, so the hook reads the real opener rather than
+   * that field. It then puts focus on the first stop and the effect below moves it to the field, which is
+   * where it belongs: this opens ready to be typed into.
+   */
+  useModal(box);
 
   const add = (e: Said) => setEntries((cur) => [...cur, { ...e, id: nextId.current++ }]);
 
@@ -383,7 +399,7 @@ export function WebConcierge({ seed, framed, onClose }: { seed?: string; framed?
   };
 
   return (
-    <div className={"cg" + (framed ? " cg-framed" : "") + (phone && !framed ? " cg-asphone" : "")} role="dialog" aria-modal="true" aria-label="Ask Outset for anything">
+    <div ref={box} className={"cg" + (framed ? " cg-framed" : "") + (phone && !framed ? " cg-asphone" : "")} role="dialog" aria-modal="true" aria-label="Ask Outset for anything">
       <section className="cg-thread">
         <header className="cg-top">
           <Mark size={30} />
