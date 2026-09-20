@@ -65,6 +65,21 @@ type FhAvail = {
 };
 
 /**
+ * A departure that has already left is not an answer to "tonight". The calendar publishes the whole of today,
+ * and the earliest departure of each item is the one we offer, so a guest asking at nine in the evening was
+ * being shown this morning's ten o'clock as if they could still take it.
+ *
+ * `start_at` carries the shop's own UTC offset, which is why the time shown is the operator's local one, and it
+ * is also what makes this comparable from a server in another time zone. A time with no offset is left alone:
+ * we would not know whose clock it is on.
+ */
+export function departed(startAt: string | undefined, now: number = Date.now()): boolean {
+  if (!startAt || !/(?:Z|[+-]\d{2}:?\d{2})$/.test(startAt.trim())) return false;
+  const t = Date.parse(startAt);
+  return Number.isFinite(t) && t < now;
+}
+
+/**
  * Live departures from FareHarbor. Four public calls: the month's calendar, then for each departure we price,
  * its customer types, the sheet that applies online, and that sheet's totals. Pricing is the slow part, so only
  * the first few departures of each distinct item are priced: a guest is choosing between "Heli Tour #1" and
@@ -80,7 +95,7 @@ export async function fareharborLive(bookingUrl: string, opts: { from?: Date; da
 
   // The calendar is published a month at a time, so a fortnight's horizon can straddle two of them.
   const months = new Set<string>();
-  for (let i = 0; i <= horizon; i += 1) {
+  for (let i = 0; i < Math.max(horizon, 1); i += 1) {
     const d = new Date(start.getTime() + i * 86400_000);
     months.add(`${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, "0")}/`);
   }
@@ -98,8 +113,13 @@ export async function fareharborLive(bookingUrl: string, opts: { from?: Date; da
    * quietly became the day after tomorrow and the noon flight a guest was asking about was never offered.
    */
   const ymd = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  /**
+   * A day's horizon is that day, not that day and the next one. "escape room tonight" asks for one day, and
+   * counting the last day from the first one rather than past it was offering tomorrow evening under a line
+   * that says "here is what's actually free", with nothing saying the date had moved.
+   */
   const firstDay = ymd(start);
-  const lastDay = ymd(new Date(start.getTime() + horizon * 86400_000));
+  const lastDay = ymd(new Date(start.getTime() + Math.max(horizon - 1, 0) * 86400_000));
 
   // One entry per item per day: the earliest bookable departure of each.
   const picked: { av: FhAvail; date: string }[] = [];
@@ -109,6 +129,7 @@ export async function fareharborLive(bookingUrl: string, opts: { from?: Date; da
     if (date < firstDay || date > lastDay) continue;
     for (const av of day.availabilities || []) {
       if (!av.is_bookable || av.is_sold_out || av.is_unlisted || av.is_bookable_only_by_phone) continue;
+      if (departed(av.start_at)) continue;
       const key = date + "|" + (av.item?.pk ?? av.item?.name ?? "");
       if (seen.has(key)) continue;
       seen.add(key);
