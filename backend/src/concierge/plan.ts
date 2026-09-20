@@ -82,23 +82,26 @@ export function readIntent(text: string): Intent {
 
   /**
    * A province is not a town of the same name. "skydiving in ontario" found Ontario, California, and offered a
-   * dropzone in Perris to somebody standing in Waterloo. When the sentence named a region, a city whose name is
-   * that same word is not what they meant.
+   * dropzone in Perris to somebody standing in Waterloo. The guard for that used to skip the town lookup
+   * altogether whenever a region was named, which threw away the town in the way people actually write an
+   * address: "escape room in kitchener ontario" searched the whole province by review count and answered with
+   * Toronto, a hundred kilometres away. The town is read either way now; naming the region says which of the
+   * towns of that name was meant, so Ontario, California, is still not an answer to a question about Ontario.
    */
-  const regionWord = Object.entries(REGIONS).find(([, code]) => code === region)?.[0] ?? null;
-  const placeRow = region && regionWord ? undefined : db
+  const placeRow = db
     .prepare(
       `SELECT city, region, COUNT(*) AS n, AVG(lat) AS lat, AVG(lon) AS lon FROM operators
         WHERE city IS NOT NULL AND length(city) >= 4 AND lat IS NOT NULL AND instr(?, lower(city)) > 0
+          AND (? IS NULL OR region = ?)
         GROUP BY lower(city), region HAVING n >= 3 ORDER BY n DESC LIMIT 1`,
     )
-    .get(t) as { city: string; region: string; lat: number; lon: number } | undefined;
+    .get(t, region, region) as { city: string; region: string; lat: number; lon: number } | undefined;
   if (placeRow) {
     city = placeRow.city;
     region = region || placeRow.region;
     point = { lat: placeRow.lat, lon: placeRow.lon };
-  } else if (!region) {
-    const metro = METROS.find((x) => t.includes(x.name.toLowerCase()));
+  } else {
+    const metro = METROS.find((x) => t.includes(x.name.toLowerCase()) && (!region || x.region === region));
     if (metro) {
       city = metro.name;
       region = metro.region;
@@ -259,6 +262,11 @@ export function windowFor(when: Intent["when"], now = new Date()): { from: Date;
   if (when === "tomorrow") return { from: new Date(now.getTime() + 86400_000), days: 1 };
   if (when === "today" || when === "tonight") return { from: now, days: 1 };
   if (when === "weekend") {
+    /**
+     * Sunday is the weekend. Walking forward to the next Saturday from a Sunday morning skipped the day the
+     * guest was standing in and answered with next week, six days out, without saying so.
+     */
+    if (now.getDay() === 0) return { from: now, days: 1 };
     const d = new Date(now);
     while (d.getDay() !== 6) d.setDate(d.getDate() + 1);
     return { from: d, days: 2 };
