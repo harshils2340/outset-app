@@ -463,6 +463,13 @@ function namesSomeoneElse(ctx: CompanyContext, q: string): boolean {
   return !new RegExp(m[0].replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i").test(own);
 }
 
+/**
+ * Signing up is how a guest asks to book at some shops and how they ask about a mailing list at others. Otto
+ * read every "sign up" as a booking, so "can I sign up for your newsletter?" was answered "Yes. Pick a service
+ * and time on this page", which is a yes to something this page cannot do.
+ */
+const NOT_A_BOOKING = /\b(newsletter|mailing list|e-?mail list|email updates?|waiver|release form|an account|text alerts?)\b/i;
+
 /** Undoing a booking rather than making one. Read in two places, so it lives here. */
 const CANCEL_RE = /(cancel|refund|reschedul|no.?show|deposit|money back)/i;
 
@@ -471,7 +478,10 @@ const CANCEL_RE = /(cancel|refund|reschedul|no.?show|deposit|money back)/i;
  * and the shop confirms. Saying "Yes" to "is my booking confirmed" is the one answer it must never give.
  */
 function asksAboutOwnBooking(q: string): boolean {
-  if (!/\b(my|our)\s+(booking|reservation|order|tickets?)\b/i.test(q)) return false;
+  // "Is the booking confirmed?" is the same guest as "is my booking confirmed?" and was getting "Yes." A
+  // determiner is what makes it one booking rather than the shop's policy on bookings in general, so a bare
+  // plural ("are bookings confirmed instantly?") still reads as a question about how booking here works.
+  if (!/\b(my|our|the|this|that)\s+(booking|reservation|order|tickets?)\b/i.test(q)) return false;
   return /\b(confirm\w*|go(es|ne)? through|went through|co(me|mes|ming)? through|came through|status|valid|receiv\w*|show\w* up|find|look ?up|check)\b|\bwhere'?s\b|\bwhere is\b/i.test(q);
 }
 
@@ -622,7 +632,7 @@ function readQuestion(ctx: CompanyContext, q: string, prev: ChatState): Topic[] 
   if (/(walk.?ins?|without (a )?(booking|reservation|appointment)|need (a )?(reservation|appointment)|book ahead|how far ahead|ahead of time|in advance)/i.test(t)) add("walkin");
   // "How do I cancel my booking" is a cancellation question that happens to say "booking". Leave it to `cancel`,
   // which reads the shop's own refund policy, rather than answering "Yes, pick a service and time on this page".
-  if (/(book|reserve|reservation|sign up|buy tickets?)/i.test(t) && !hits.includes("slot") && !CANCEL_RE.test(t)) add("book");
+  if ((/(book|reserve|reservation|buy tickets?)/i.test(t) || (/\bsign up\b/i.test(t) && !NOT_A_BOOKING.test(t))) && !hits.includes("slot") && !CANCEL_RE.test(t)) add("book");
 
   if (partySize(t) != null || /(group|party of|birthday|corporate|team|bachelor|how many (people|can)|capacity)/i.test(t)) add("group");
   if (ageIn(t) != null || /\b(age|kid|kids|child|children|minor|toddler|baby|infant|senior|teen|year old)\b/i.test(t)) add("age");

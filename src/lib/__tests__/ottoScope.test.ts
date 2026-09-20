@@ -178,3 +178,33 @@ test("a shop whose own meeting point is a hotel keeps answering about it", () =>
   assert.doesNotMatch(ask("do we meet at the hotel?", atHotel), REFUSAL);
   assert.match(ask("where is the hotel we meet at?", atHotel), /Marriott/);
 });
+
+/* ---------- signing up ---------- */
+
+test("signing up for a mailing list is not a booking", () => {
+  // "Sign up" was read as `book`, so Otto said "Yes. Pick a service and time on this page" to a newsletter.
+  for (const q of ["can I sign up for your newsletter?", "can I sign up for the mailing list?", "how do I sign up for email updates?"]) {
+    const said = ask(q);
+    assert.doesNotMatch(said, /Pick a service and time/, q);
+    assert.doesNotMatch(said, /^Yes\./, q);
+  }
+  // Signing up for the thing itself is still booking it.
+  for (const q of ["how do I sign up?", "can I sign up online?"]) {
+    assert.match(ask(q), /^Yes\./, q);
+  }
+});
+
+/* ---------- a booking the guest already has, without the "my" ---------- */
+
+test("Otto never says a booking is confirmed, whichever word the guest puts in front of it", () => {
+  // `asksAboutOwnBooking` needed "my" or "our". Every other determiner fell through to `book`, whose answer
+  // opens "Yes.", which is the one answer rule 4 forbids.
+  for (const q of ["is the booking confirmed?", "did the reservation go through?", "is that reservation confirmed?", "where is the booking?"]) {
+    const said = ask(q);
+    assert.doesNotMatch(said, /^Yes\./, q);
+    assert.match(said, /can't look up a booking you already have/, q);
+  }
+  // How booking here works in general is still a question about this page, not about one booking.
+  assert.match(ask("are bookings confirmed instantly?"), /^Yes\./);
+  assert.doesNotMatch(ask("can I book the sunset cruise?"), /can't look up a booking/);
+});
