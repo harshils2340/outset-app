@@ -143,8 +143,17 @@ type FhCompany = {
 };
 
 export function fareharborShortname(bookingUrl: string): string | null {
-  const m = bookingUrl.match(/fareharbor\.com\/(?:embeds\/book\/)?([a-z0-9-]+)\/?/i);
-  if (!m || /^(api|embeds|book|widgets|static)$/i.test(m[1])) return null;
+  /**
+   * Not every FareHarbor link a shop publishes is a booking page. A signed waiver link is
+   * `fareharbor.com/waivers?shortname=enrgkayaking&bookingUuid=...`, which carries the company outright, and
+   * `fareharbor.com/legal/privacy/` carries none at all. Reading the first path segment as the company asked
+   * FareHarbor about a shop called "waivers" and got nothing back, so a kayak outfitter with a live calendar
+   * read as a business with nothing bookable online.
+   */
+  const named = bookingUrl.match(/[?&]shortname=([a-z0-9-]+)/i);
+  if (named) return named[1];
+  const m = bookingUrl.match(/fareharbor\.com\/(?:embeds\/(?:book|api\/v\d+)\/)?([a-z0-9-]+)\/?/i);
+  if (!m || /^(api|embeds|book|widgets|static|waivers|legal|help|support|pages|www)$/i.test(m[1])) return null;
   return m[1];
 }
 

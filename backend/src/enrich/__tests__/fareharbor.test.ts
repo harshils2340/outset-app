@@ -13,6 +13,14 @@ test("fareharborShortname reads the company from every FareHarbor link shape", (
   assert.equal(fareharborShortname("https://fareharbor.com/api/v1/companies/x/"), null);
   assert.equal(fareharborShortname("https://fareharbor.com/embeds/"), null);
   assert.equal(fareharborShortname("https://xola.com/"), null);
+  // A waiver link names the company in its query; the first path segment is the word "waivers".
+  assert.equal(
+    fareharborShortname("https://fareharbor.com/waivers?shortname=enrgkayaking&bookingUuid=ecf456fa-6872-445b-b601-9a7337b1e48e"),
+    "enrgkayaking",
+  );
+  // A link to FareHarbor's own pages is not a shop at all.
+  assert.equal(fareharborShortname("https://fareharbor.com/legal/privacy/"), null);
+  assert.equal(fareharborShortname("https://fareharbor.com/"), null);
 });
 
 test("FareHarbor: Jetski Miami Rentals reads 33 priced rows from the price sheet, fees included", async () => {
