@@ -2485,6 +2485,78 @@ onto `5da532e0e`, which landed during the run.
 - The earlier runs' calls stand: Peek's 257 links and no feed, the six rows publishing a bare
   `https://fareharbor.com/`, and anything needing a real Stripe key.
 
+## 20 September 2026, fortieth run (09:00 to 10:15 UTC)
+
+**Checked, and why.** Two commits landed after the thirty-ninth run's log was written, `c022a45f5` and
+`b2b3549b8`, and between them they are 3,500 new lines: five booking-system readers (Acuity, Rezdy, Square,
+TripWorks, Xola, plus a documented negative for Bookeo), a rewritten concierge overlay and a rewritten
+`concierge.css`. Nothing had read any of it. Coverage lists every area tonight's brief suggests as already
+verified, so the whole run went on the newest code instead, which is also the code most likely to embarrass
+Harshil: the concierge overlay is the surface a guest types a sentence into. The rehearsal was run, because
+those two commits touch `backend/src` and `src/` and the rule says so; it was run twice, because the first
+re-run tripped the harness's own guard against a site port it did not open (a Chromium session of this run's
+was on 5199), which is that guard working.
+
+**Found and fixed.**
+
+- **`main` was red, and had been since 04:42** (`9f5d4b4a8`). `npx tsc --noEmit` in `backend/` failed on
+  `acuity.ts`: `AcuityType.type` is declared `string | undefined` and is filled from `str()`, which returns
+  `string | null`. One line. This is the fourth night's log to record a red `main` and the third to ask for a
+  type-check on push.
+- **The concierge overlay's rewrite dropped its focus trap** (`1d8425f41`). `c022a45f5` rebuilt
+  `WebConcierge.tsx` and lost the `ref={box}` and the `useModal(box)` that the thirty-sixth run put there. It
+  still said `aria-modal="true"`. Driven in a real Chromium at 400px and 1280px: Tab walked back out into the
+  home under the scrim, a wheel rolled that home, and closing left focus on the body. Both `modalChrome`
+  tests had been failing on `main` and nobody ran them. Restored, and driven again: 0 of 12 Tab presses now
+  land outside the dialog.
+- **Half the Xola shops we can read were being sent to the browser agent** (`5a459247a`). `vendors.ts` records
+  in its own comment that "half of Xola lives on `xola.app`, not `xola.com`" and widened its detection to
+  match. Four other copies of that same list were not widened: two in `plan.ts` deciding the route, one
+  choosing which reader to call, and `READABLE` in `resolve.ts`. All four said `xola.com`. So all 27
+  `x2-checkout.xola.app` and `checkout.xola.app` links in the shipped `live-index.json`, every one of which
+  `xolaRef` parses perfectly, were routed away from the reader written for them and the guest was told there
+  was no feed. Square had the same gap: `squareRef` reads `square.site/book/<LOC>/<slug>`, the Appointments
+  profile page, and no copy sent one to it. The list now lives once, in `readable.ts`, with a SQL twin for the
+  three `ORDER BY`s that also named a subset, including the sub-select that picks which booking link to use
+  when a shop has two.
+- **Every shop header in the concierge answer ran together as one word** (`fdf88cddb`). `b2b3549b8` rewrote
+  `concierge.css` and deleted the rules for eight classes the shipped component still draws: `.cg-opt`,
+  `.cg-shop`, `.cg-via`, `.cg-row`, `.cg-typing`, `.cg-status`, `.cg-got`, `.cg-compare`. A name, a day and a
+  source line are three inline children of one button, so with nothing between them a guest read
+  "Escapology WaterlooSun, Sep 20 · WaterlooRead live from their Resova calendar" on every answer the overlay
+  gave, on a card with no border, no padding and no shadow. Found by driving the overlay against a stubbed
+  shortlist rather than by reading it. The eight are back, in the new stylesheet's own idiom.
+
+**Swept and clean.** The five new readers read line by line against the trap list in
+`concierge/AGENTS.md`: every one of them takes local dates rather than `toISOString()`, every one marks
+`taxIncluded: false` and says why, every one keeps a child, youth or senior fare out of the headline unless
+nothing else is sold, and every one drops a slot that has already started today against the shop's own clock,
+read from the shop's own timezone through `Intl`. The overlay itself driven at 400px and 1280px, answered and
+with the history panel open: no sideways scroll, nothing past the edge that is not inside a scroller a thumb
+can reach, no unnamed control, no page error.
+
+**Green after the fixes.** Both projects type-check clean, 592 app tests (3 new) and 508 backend tests (6
+new), and 53 of 53 rehearsal steps against a local Postgres with TLS and the Chromium on disk.
+
+**Needs Harshil.**
+
+- **`concierge.css` carries about 330 lines for a panel that does not exist.** `b2b3549b8` added rules for 35
+  classes twice over, in two blocks with different values, for a component built around `.cg-card`,
+  `.cg-open`, `.cg-starter`, `.cg-work`, `.cg-receipt` and `.cg-trace`. Nothing in `src/` renders any of them.
+  Its second block also overrides `.cg-slot` and `.cg-slot-when`, which are live, and it reaches for four
+  custom properties (`--cg-accent`, `--cg-line`, `--cg-raise`, `--cg-raise-hi`) that are defined nowhere, so
+  all 13 uses fall back to a dark panel's white alphas and a lime `#8fc46a` that is not the brand forest. It
+  looks as though a further overlay rewrite was expected and did not land. I left it rather than delete a
+  third of your stylesheet on a guess; the new test warns on the dead half rather than failing on it.
+- **Nothing runs a type-check or `npm test` on a push**, and tonight that cost a red `main` for four and a
+  half hours plus two failing tests nobody saw. Everything else on this list has been asked for three nights
+  running; this one is now the cause of its own entries.
+- **The readers have no tests of their own.** 2,600 lines of Acuity, Rezdy, Square, TripWorks and Xola landed
+  with none, and `readable.test.ts` is the first file to touch any of them. The helpers worth pinning are pure
+  and easy: `priceOfSlot`, `isAgeGatedFare`, `rateLabel`, and each reader's `*Ref`.
+- The earlier runs' calls stand: Peek's 257 links and no feed, the six rows publishing a bare
+  `https://fareharbor.com/`, and anything needing a real Stripe key.
+
 ## Coverage
 
 **Verified so far.** The name a guest reads: the business name on all 59,125 shipped listings, against the
@@ -2761,6 +2833,15 @@ to be against how old the boat is; and which sense of an accessibility, height, 
 published line carries. All of it measured the same way: 19,710 answers to 30 ordinary questions over a
 657-listing sample spanning the catalog, unchanged to the byte, against 5,256 answers that had to change.
 
+The five booking-system readers that landed on 20 September, read against the trap list their own AGENTS.md
+keeps: local dates rather than UTC, tax quoted as excluded, a concession fare kept out of the headline, and a
+slot that has already started dropped against the shop's own clock. Which booking links reach a reader at
+all, over every link the shipped `live-index.json` carries, against each reader's own URL parser. The
+concierge overlay driven in a real Chromium at 400px and 1280px against a stubbed shortlist: the focus trap,
+the scroll lock, sideways scroll, anything past the edge, every control named, and the shop card, the slot
+rows, the narrow chips and the history panel as a guest sees them. Every class the overlay renders against
+the stylesheet that dresses it, now a test of its own.
+
 **Not yet checked.** Whether the concierge's watch window should have a browser door of its own: with
 `ADMIN_KEY` set it now answers a browser 404 and only curl gets in, and the metrics page's emailed-code
 sign-in is the pattern it lacks. Whether a concierge session id should be eight characters of `Math.random`
@@ -2856,4 +2937,14 @@ regions ("ontario california") should take the first one it recognises, which it
 out of "under 18s" should filter prices, which it does. The outreach list
 script, `scripts/outreach-list.mts`, and the `GET /outreach/drafts` route it reads. Whether Gmail's one-click
 `List-Unsubscribe` headers should be sent after all: the code deliberately leaves them off to stay out of
-Promotions, which is a deliverability bet against a bulk-sender expectation.
+Promotions, which is a deliverability bet against a bulk-sender expectation. Whether `concierge.css`'s 330 lines for a
+panel nothing renders should be deleted or a component written for them (see the fortieth run's Needs
+Harshil), and whether the four `--cg-` custom properties they reach for should exist. The five new readers
+against a real vendor server rather than read: Acuity, Rezdy, Square, TripWorks and Xola have never answered
+anything here, so a vendor whose JSON has quietly changed reads as a shop with nothing open. Their pure
+helpers, which have no tests: `priceOfSlot`, `isAgeGatedFare` (a hyphenated party size such as "2-4 players"
+reads as a child fare to it), `rateLabel` and the price sheets behind them. Bookeo's 46 shops, which are a
+documented negative from this address and want one `bookeoProbe` run from the Render worker. Whether a Xola
+waiver or gift shell with no button id should be routed as a feed at all: four shipped links are, and the
+reader correctly answers nothing for them. The concierge overlay's booking form, its error states and its
+"copy the conversation" panel, none of which this run reached.
