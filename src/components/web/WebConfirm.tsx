@@ -101,6 +101,10 @@ export function WebConfirm({ booking, onDone, onOpen }: { booking: Booking; onDo
                 <div className="alconfirmrow">
                   <span><b>Booking</b><small>{tidyName(picked.name)}{picked.detail ? " · " + tidyLength(picked.detail) : ""}</small></span>
                 </div>
+              ) : booking.service ? (
+                <div className="alconfirmrow">
+                  <span><b>Booking</b><small>{booking.service}</small></span>
+                </div>
               ) : null}
               {extras.length ? (
                 <div className="alconfirmrow">

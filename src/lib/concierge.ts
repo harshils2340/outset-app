@@ -1,6 +1,8 @@
 import { isConcessionFare, openFarePrice } from "../../backend/src/lib/fares";
+import { ART_LABEL } from "../data/art";
+import type { ArtKind, Unclaimed } from "../data/types";
 import { API_URL } from "./api";
-import { domainOf, getCatalog } from "./catalog";
+import { domainOf, experienceById, getCatalog, rememberOverlay } from "./catalog";
 import { dateFromKey } from "./dates";
 import { fmtDate, fmtTime, money, plural } from "./format";
 
@@ -369,7 +371,15 @@ let builtFrom = 0;
  * Built on demand and rebuilt when the catalog grows, because `catalog.json` merges in after first paint and
  * a map built before that holds the seeds alone.
  */
-export function listingIdFor(option: { domain: string }): string | null {
+function foldPlace(s: string): string {
+  return s.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+}
+
+/**
+ * The catalog listing for this shop, or null when the domain is a chain whose seed is in another city.
+ * Escapology Waterloo used to book the Tampa seed because both sit on escapology.com.
+ */
+export function listingIdFor(option: { domain: string; city?: string | null; name?: string | null }): string | null {
   const cat = getCatalog();
   if (!byDomain || builtFrom !== cat.length) {
     byDomain = new Map();
@@ -381,7 +391,57 @@ export function listingIdFor(option: { domain: string }): string | null {
     builtFrom = cat.length;
   }
   const want = domainOf(option.domain || "");
-  return (want && byDomain.get(want)) || null;
+  if (!want) return null;
+  const city = foldPlace(option.city || "");
+  const first = byDomain.get(want) || null;
+  if (!city) return first;
+  const match = (u: Unclaimed | null) => {
+    if (!u) return false;
+    return foldPlace([u.title, u.area].join(" ")).includes(city);
+  };
+  if (match(experienceById(first))) return first;
+  for (const u of cat) {
+    if (domainOf(u.src) === want && match(u)) return u.id;
+  }
+  return null;
+}
+
+/**
+ * A listing Ask can book against. Catalog first, then a stub so a live shop we have never ingested still
+ * finishes on Outset instead of dumping the guest onto the vendor's own pay page.
+ */
+export function listingForOption(option: ConciergeOption): string {
+  const existing = listingIdFor(option);
+  if (existing) return existing;
+  const host = domainOf(option.domain || "");
+  const place = foldPlace(option.city || "").replace(/ /g, "").slice(0, 16);
+  const slug = ((host || option.name).toLowerCase().replace(/[^a-z0-9]+/g, "") + place).slice(0, 48) || "shop";
+  const id = "cg-" + slug;
+  if (experienceById(id)) return id;
+  const art = (ART_LABEL[option.category] ? option.category : "tour") as ArtKind;
+  const here = `${option.city || ""} ${option.region || ""}`;
+  const u: Unclaimed = {
+    id,
+    title: option.name,
+    cat: "play",
+    art,
+    area: [option.city, option.region].filter(Boolean).join(", ") || option.city || "",
+    metroId: /\b(waterloo|kitchener)\b/i.test(here) ? "waterloo" : "",
+    src: host,
+    specs: [],
+    options: option.services.filter((s) => s.name).map((s) => ({
+      name: s.name,
+      detail: s.unit || "",
+      price: s.price,
+      per: s.per === "group" ? "group" : s.per === "person" ? "person" : undefined,
+    })),
+    includes: [],
+    gap: "",
+    rating: option.rating ?? undefined,
+    reviews: option.reviews ?? undefined,
+  };
+  rememberOverlay(u);
+  return id;
 }
 
 /* ---------- saying it out loud ---------- */
@@ -566,44 +626,24 @@ export function stepLine(s: ConciergeStep): string | null {
 /**
  * The one line a helpful person would open with.
  *
- * The screen used to say three things before it said anything: what it had assumed, then the price spread in
- * its own bubble, then a paragraph about what it could and could not read. A guest reading that has scrolled
- * past three grey boxes before reaching a single business. Somebody standing behind a counter would say "three
- * axe throwing places near Waterloo, nineteen to twenty five a head" and then point at them.
- *
- * So: what was found, where, and what it costs, in one sentence. The caveats move under the list where they
- * belong, because they qualify the answer rather than delay it.
+ * What was found and where, in one sentence. Prices live on the cards. The hour they asked for is
+ * the time on the row.
  */
 export function headline(answer: ConciergeAnswer, shown: Pick[]): string {
   const what = (answer.intent?.categoryLabel || "").toLowerCase();
   const where = answer.intent?.city ? " near " + answer.intent.city : "";
-  const c = answer.compare;
-  const spread = !c ? "" : c.cheapest === c.dearest ? `, ${money(c.cheapest)} a head` : `, ${money(c.cheapest)} to ${money(c.dearest)} a head`;
 
   if (shown.length) {
     const shops = new Set(shown.map((p) => p.option.name));
     const times = plural(shown.length, "time");
     const at = shops.size === 1 ? ` at ${shown[0].option.name}` : ` across ${plural(shops.size, "place")}`;
-    // The nearest slot to the hour they asked for is the thing they most want to know, so it is in the sentence.
-    const nearest = shown.map((p) => p.offset).filter((n): n is number => n != null).sort((a, b) => Math.abs(a) - Math.abs(b))[0];
-    const clock = nearest == null ? "" : nearest === 0 ? ", one exactly when you asked" : `, closest is ${offsetLine(nearest)}`;
     const price = livePrice(shown);
-    return `${times}${at}${clock}${price ? `, from ${money(price.amount)}${price.taxIncluded ? "" : " + tax"}` : ""}.`;
+    return `${times}${at}${price ? `, from ${money(price.amount)}${price.taxIncluded ? "" : " + tax"}` : ""}.`;
   }
 
   const n = answer.counts.total;
   if (!n) return "";
-  /*
-   * Where the figures came from, when none of them is a live quote.
-   *
-   * Without it the screen contradicts itself. "Nothing with live times comes in under $50 a head, the cheapest
-   * I can quote is $90.10" sat directly above "5 sunset sail places near Toronto, $20 to $39.99 a head", and
-   * both are true: the first is about departures we can read, the second about menus our crawl read off their
-   * pages. A guest reading the two in order sees a flat lie, and the only thing separating them is a source
-   * nobody stated.
-   */
-  const source = answer.compare ? " from their own sites" : "";
-  return `${plural(n, what ? what + " place" : "place")}${where}${spread}${source}.`;
+  return `${plural(n, what ? what + " place" : "place")}${where}.`;
 }
 
 /** The cheapest live ticket on show, and whether that figure already carries tax. */
@@ -665,9 +705,9 @@ export function noTimesLine(options: ConciergeOption[]): string {
    * reader that replays those endpoints is the piece that is missing rather than the shops' own systems.
    */
   const phone = options.filter((o) => o.route === "phone").length;
-  if (phone === options.length) return "These take bookings by phone rather than online, so there is no calendar to read. Here is what they charge:";
-  if (phone === 0) return "I cannot read these shops' booking systems yet, so I will not pretend to quote you a time. Here is what they charge, off their own sites:";
-  return "I cannot read most of these booking systems yet, and one of them takes bookings by phone. Here is what they charge, off their own sites:";
+  if (phone === options.length) return "These book by phone. Here is what they charge:";
+  if (phone === 0) return "No live times I can read. Prices from their sites:";
+  return "No live times I can read on most of these. One books by phone. Prices from their sites:";
 }
 
 /** The three piles the answer sorts into, in the order the page shows them. Mirrors `payload()`'s own order. */

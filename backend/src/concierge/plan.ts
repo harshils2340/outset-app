@@ -10,6 +10,7 @@ import { rezdyLive } from "./readers/rezdy.ts";
 import { tripworksLive } from "./readers/tripworks.ts";
 import { squareLive } from "./readers/square.ts";
 import { acuityLive } from "./readers/acuity.ts";
+import { foreupLive } from "./readers/foreup.ts";
 import { isReadable, readerFor, unreadableSql } from "./readable.ts";
 import { Trace } from "./session.ts";
 import { recordDemand } from "./demand.ts";
@@ -108,6 +109,20 @@ export function matchRegion(text: string): string | null {
 
 /** Every place in the catalog whose name appears in the sentence, with how many businesses sit there. */
 export type PlaceMatch = { city: string; region: string; n: number; lat: number; lon: number };
+
+/**
+ * Whether `phrase` appears in `haystack` as its own word, not merely as a run of the same letters inside a
+ * longer one.
+ *
+ * `instr()` in the SQL above is a cheap superset filter, not the actual test: it said yes to Vail, Colorado,
+ * for "any**avail**able at 3pm?", and a guest asking a plain follow-up about Waterloo escape rooms was silently
+ * answered about kayaking near a ski town two provinces away. The same class of bug sat in the metro lookup
+ * below (`t.includes(name)`), so both go through this one boundary check.
+ */
+function wordIn(haystack: string, phrase: string): boolean {
+  const esc = phrase.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp("\\b" + esc + "\\b", "i").test(haystack);
+}
 
 /**
  * What, where, when and how many, out of a sentence a person actually typed.
@@ -357,13 +372,15 @@ export function readIntent(text: string, prior?: Intent | null, device?: { lat: 
    * fifty-five operators' worth of guests in Waterloo, Iowa. Which one they meant is not guessable from the
    * sentence, so the whole list comes back and the planner asks.
    */
-  const allPlaces = db
-    .prepare(
-      `SELECT city, region, COUNT(*) AS n, AVG(lat) AS lat, AVG(lon) AS lon FROM operators
-        WHERE city IS NOT NULL AND length(city) >= 4 AND lat IS NOT NULL AND instr(?, lower(city)) > 0
-        GROUP BY lower(city), region HAVING n >= 3 ORDER BY n DESC LIMIT 20`,
-    )
-    .all(t) as PlaceMatch[];
+  const allPlaces = (
+    db
+      .prepare(
+        `SELECT city, region, COUNT(*) AS n, AVG(lat) AS lat, AVG(lon) AS lon FROM operators
+          WHERE city IS NOT NULL AND length(city) >= 4 AND lat IS NOT NULL AND instr(?, lower(city)) > 0
+          GROUP BY lower(city), region HAVING n >= 3 ORDER BY n DESC LIMIT 20`,
+      )
+      .all(t) as PlaceMatch[]
+  ).filter((r) => wordIn(t, r.city));
 
   /**
    * A province is not a town of the same name, but it is also not a reason to forget the town. Dropping the
@@ -432,7 +449,7 @@ export function readIntent(text: string, prior?: Intent | null, device?: { lat: 
       point = { lat: device.lat, lon: device.lon };
     }
   } else {
-    const metro = METROS.find((x) => t.includes(x.name.toLowerCase()) && (!region || x.region === region));
+    const metro = METROS.find((x) => wordIn(t, x.name.toLowerCase()) && (!region || x.region === region));
     if (metro) {
       city = metro.name;
       region = metro.region;
@@ -828,7 +845,7 @@ function isAnotherOperator(host: string, ownDomain: string): boolean {
  * checking "is this host another operator" first made every FareHarbor link in the product look like a link to
  * a rival, and silently turned off live availability everywhere.
  */
-const BOOKING_HOSTS = /(?:^|\.)(?:fareharbor|peek|xola|checkfront|bookeo|resova|rezdy|acuityscheduling|squareup|square|setmore|calendly|mindbodyonline|tripworks|bookwhen|eventbrite|regiondo|roller|zaui|simplybook|viator|getyourguide|boatsetter|gotab|opentable|resy|exploretock|hostedbookings)\.[a-z.]{2,7}$/i;
+const BOOKING_HOSTS = /(?:^|\.)(?:fareharbor|peek|xola|checkfront|bookeo|resova|rezdy|acuityscheduling|squareup|square|setmore|calendly|mindbodyonline|tripworks|bookwhen|eventbrite|regiondo|roller|zaui|simplybook|viator|getyourguide|boatsetter|gotab|opentable|resy|exploretock|hostedbookings|foreupsoftware)\.[a-z.]{2,7}$/i;
 
 export function usableBookingUrl(url: string | null, ownDomain: string): string {
   if (!url) return "";
@@ -1147,8 +1164,9 @@ export async function plan(text: string, opts: { ask?: number; prior?: Intent | 
    * same rule as everywhere else: answer, then let them correct it.
    */
   /**
-   * Said once, not on every turn. "Taking Waterloo, Ontario — there is more than one" above all three
-   * answers in a row reads as a stutter, and the guest settled the question by not objecting the first time.
+   * Said once, not on every turn. Naming the pick out loud ("Taking Waterloo, Ontario, there is more
+   * than one") sat above every answer and read as the product talking to itself. The biggest still
+   * wins; the other towns sit as chips if they want a different one.
    */
   const amb = asked.has("place-note") ? null : placeAmbiguity(intent);
   if (amb && amb.length > 1) {
@@ -1156,9 +1174,8 @@ export async function plan(text: string, opts: { ask?: number; prior?: Intent | 
     const [chosen, ...others] = amb;
     tr.step("ambiguous", intent.city + " is " + amb.length + " places; taking " + chosen.region + " and offering the rest",
       { detail: amb.map((r) => r.region + " (" + r.n + ")").join(", ") });
-    loosened = "Taking " + chosen.city + ", " + regionName(chosen.region) + " — there is more than one.";
     narrow = {
-      question: "Did you mean a different " + chosen.city + "?",
+      question: "",
       why: "place",
       choices: others.map((r) => ({ label: r.city + ", " + r.region, text: text + " " + regionName(r.region) })),
     };
@@ -1346,7 +1363,15 @@ export async function plan(text: string, opts: { ask?: number; prior?: Intent | 
    * Once per shop, ever. Whatever is found is written down, so the second guest to ask about that town pays
    * none of it, and the ones nobody asks about are never fetched at all.
    */
-  const unresolved = options.filter((o) => !o.bookingUrl && o.route !== "feed");
+  /**
+   * Includes a shop already marked `agent` (a booking link we found once but had no reader for), not only one
+   * with no link at all. `resolveBooking` itself is the guard against re-fetching the same page forever: it
+   * skips straight back to the cached miss once `READER_GENERATION` has not moved past what found it, so this
+   * costs nothing extra for the common case and only spends a fetch when the readers have genuinely gotten
+   * wider since — which is exactly how adventurerooms.ca's Checkfront embed gets found on the next ask instead
+   * of staying `agent` forever because the one crawl of its `/booknow/` page predates that detection.
+   */
+  const unresolved = options.filter((o) => (!o.bookingUrl || o.route === "agent") && o.route !== "feed");
   if (unresolved.length && (opts.resolve ?? true)) {
     const rows = db
       .prepare(`SELECT id, domain, website FROM operators WHERE domain IN (${unresolved.map(() => "?").join(",")})`)
@@ -1431,6 +1456,8 @@ export async function plan(text: string, opts: { ask?: number; prior?: Intent | 
             return peekLive(o.bookingUrl, { from, days });
           case "resova":
             return resovaLive(o.bookingUrl, { from, days, maxItems: 4 });
+          case "foreup":
+            return foreupLive(o.bookingUrl, { from, days });
           default:
             /**
              * Six items, not three. Zoom Tours sells four day tours and we priced three of them, so the
@@ -1691,7 +1718,7 @@ function namedLike(intent: Intent, limit: number): Option[] {
     return {
       name: r.name, domain: r.domain, city: r.city, region: r.region, rating: r.rating, reviews: r.review_count,
       category: r.category_id, bookingUrl: booking, departures: [], services: servicesFor(r.domain, r.category_id),
-      route: booking ? (/fareharbor|resova/i.test(booking) ? "feed" : "agent") : r.phone ? "phone" : "agent",
+      route: booking ? (isReadable(booking) ? "feed" : "agent") : r.phone ? "phone" : "agent",
       phone: r.phone,
     } as Option;
   });

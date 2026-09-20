@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { candidateFromPlace, FIELD_MASK, placesQueries, type GooglePlace, type PlacesResponse } from "../places.ts";
+import { candidateFromPlace, FIELD_MASK, locationBias, nearbyHitFromPlace, placesQueries, BIAS_RADIUS_M, type GooglePlace, type PlacesResponse } from "../places.ts";
 import { METROS } from "../../taxonomy/catalog.ts";
 
 /** Hand-written from the Text Search (New) reference example shape; no request was ever made for this. */
@@ -121,4 +121,41 @@ test("the query grid is metro x term and a term filter matches by word or catego
   // food, walking, ghost, bike, segway and helicopter tours: the filter is a substring of the term or its category.
   assert.equal(placesQueries({ metros: ["toronto"], terms: ["tour"] }).length, 6);
   assert.throws(() => placesQueries({ metros: ["atlantis"] }), /unknown metro/);
+});
+
+test("Text Search is biased to a 40 km circle on the pin, the way Maps ranks near you", () => {
+  assert.equal(BIAS_RADIUS_M, 40_000);
+  assert.deepEqual(locationBias(43.4643, -80.5204), {
+    circle: { center: { latitude: 43.4643, longitude: -80.5204 }, radius: 40_000 },
+  });
+  const kw = placesQueries({ metros: ["waterloo"], terms: ["karate"] });
+  assert.deepEqual(kw.map((x) => x.text), ["karate in Waterloo, ON"]);
+  assert.equal(kw[0].metro.lat, 43.46);
+  assert.equal(kw[0].metro.lon, -80.52);
+});
+
+test("a live nearby hit keeps a named pin even without a website, and still drops directories", () => {
+  const dojo: GooglePlace = {
+    id: "ChIJ_kw_karate",
+    displayName: { text: "Sealy's Karate" },
+    formattedAddress: "Waterloo, ON, Canada",
+    addressComponents: [
+      { longText: "Waterloo", shortText: "Waterloo", types: ["locality", "political"] },
+      { longText: "Ontario", shortText: "ON", types: ["administrative_area_level_1", "political"] },
+    ],
+    location: { latitude: 43.4643, longitude: -80.5204 },
+    businessStatus: "OPERATIONAL",
+  };
+  const hit = nearbyHitFromPlace(dojo, toronto);
+  assert.ok(hit);
+  assert.equal(hit.name, "Sealy's Karate");
+  assert.equal(hit.website, "");
+  assert.equal(hit.lat, 43.4643);
+  assert.equal(hit.city, "Waterloo");
+  const yelp: GooglePlace = {
+    ...dojo,
+    id: "ChIJ_yelp",
+    websiteUri: "https://www.yelp.ca/biz/sealys",
+  };
+  assert.equal(nearbyHitFromPlace(yelp, toronto), null);
 });

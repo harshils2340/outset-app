@@ -15,6 +15,10 @@ backend/data/claim-secret.txt
 backend/data/outreach-list.csv
 backend/data/florida-call-list.csv
 backend/data/pagecache/
+backend/data/osm/
+backend/data/aisearch/
+backend/data/aisearch-ledger.txt
+backend/data/coverage-audit.csv
 
 # Neon CLI link to the project (ids only, but per-checkout)
 .neon

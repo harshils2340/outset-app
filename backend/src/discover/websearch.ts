@@ -39,6 +39,11 @@ export const WEB_TERMS: { term: string; category: string }[] = [
   { term: "surf lessons", category: "surf" },
   { term: "helicopter tours", category: "heli" },
   { term: "go karting", category: "kart" },
+  { term: "martial arts school", category: "martialarts" },
+  { term: "karate", category: "martialarts" },
+  { term: "taekwondo", category: "martialarts" },
+  { term: "boxing gym", category: "martialarts" },
+  { term: "jiu jitsu", category: "martialarts" },
 ];
 
 const DROP = /(^|\.)(yelp|tripadvisor|eventbrite|classpass|groupon|facebook|instagram|reddit|quora|timeout|blogto|narcity|wikipedia|youtube|google|coursehorse|airbnb|viator|getyourguide|cozymeal|classbento|thumbtack|bark|expedia|booking|hotels|kayak|tiktok|pinterest|linkedin|x|twitter|meetup|amazon|apple|nextdoor|mapquest|yellowpages|bbb|foursquare|zomato|opentable|resy|tock|peek|fareharbor|xola|rezdy|bookeo|mindbodyonline|vagaro|fresha|booksy|squareup|shopify|wix|squarespace|eventbrite|dojobusiness|craigslist|indeed|glassdoor|patch|nytimes|cntraveler|lonelyplanet|thrillist|eater|forbes|usatoday|cbc|ctvnews|globalnews|citynews|nypost|chicagotribune|latimes|sfgate|seattletimes|denverpost|dallasnews|houstonchronicle|ajc|tampabay|orlandosentinel|miamiherald|sun-sentinel|bostonglobe|philly|inquirer|washingtonpost|baltimoresun|cleveland|freep|detroitnews|startribune|kansascity|stltoday|azcentral|reviewjournal|oregonlive|sandiegouniontribune|mercurynews|sacbee|fresnobee|mlive|jsonline|dispatch|cincinnati|courier-journal|tennessean|commercialappeal|charlotteobserver|newsobserver|postandcourier|thestate|greenvilleonline|richmond|pilotonline|dailypress|wtop|wjla|wusa9|nbcwashington)\.(com|ca|org|net|co|io)$/i;

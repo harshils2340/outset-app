@@ -109,6 +109,7 @@ type Action =
   | { type: "confirm" }
   | {
       type: "confirmUnclaimed";
+      listing?: string;
       dateIdx: number;
       /** The listing date as YYYY-MM-DD. Wins over `dateIdx` when the concierge booked a day outside the 10-day strip. */
       date?: string;
@@ -117,6 +118,9 @@ type Action =
       optionIdx: number | null;
       addonIdx?: number[];
       guest?: { name: string; phone: string; email?: string };
+      /** Live calendar price, when the guest booked a time the shop published rather than a menu row. */
+      service?: string;
+      total?: number | null;
       /** A card step follows: stay on the listing behind a splash instead of showing the confirmation. */
       pay?: boolean;
       /** Stripe's embedded checkout client secret, when the form mounts in the page. */
@@ -277,24 +281,23 @@ function reducer(state: AppState, action: Action): AppState {
       };
     }
     case "confirmUnclaimed": {
-      const u = experienceById(state.reqTargetId);
+      const u = experienceById(action.listing || state.reqTargetId);
       if (!u || !action.slot) return state;
       const picked = action.optionIdx != null ? u.options[action.optionIdx] : null;
-      if (u.options.length > 0 && !picked) return state;
+      if (action.optionIdx != null && u.options.length > 0 && !picked) return state;
       const extras = (action.addonIdx || []).map((i) => (u.addons || [])[i]).filter(Boolean);
       const p = priceUnclaimed(picked, action.qty, extras);
+      const total = action.total != null && Number.isFinite(action.total) ? action.total : p.total;
       const booking: Booking = {
         listing: u.id,
         date: action.date && /^\d{4}-\d{2}-\d{2}$/.test(action.date) ? action.date : dateKey(DATES[action.dateIdx]),
         slot: action.slot,
         qty: action.qty,
         addons: [...(picked ? [String(action.optionIdx)] : []), ...extras.map((a) => a.name)],
-        total: p.total,
-        // The service as it read now, so the operator's booking row keeps its name and price after the menu
-        // is reordered or the option deleted (the index in `addons` alone would then point at another line).
-        service: picked?.name || u.title,
+        total,
+        service: action.service || picked?.name || u.title,
         variant: picked?.detail || "",
-        price: picked?.price ?? null,
+        price: picked?.price ?? (action.total != null ? action.total : null),
         per: picked?.per,
         code: action.code || makeCode(initials(u.title)),
         created: Date.now(),
@@ -607,8 +610,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }
       // No fix. A clock city is the fallback, labelled as that city, not a 40 km circle on an IP centroid.
       const zone = metroFromTimeZone();
-      if (start.guess?.kind === "metro") {
-        apply(start.guess);
+      const clock = start.guess;
+      if (clock?.kind === "metro") {
+        apply(clock);
         return;
       }
       if (zone) {
@@ -889,8 +893,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       closeSheet: () => dispatch({ type: "closeSheet" }),
       confirm: () => dispatch({ type: "confirm" }),
       confirmUnclaimed: async (input) => {
-        if (input.listing) {
-          dispatch({ type: "openRequest", id: input.listing });
+        if (input.listing && !experienceById(input.listing)) {
           await loadListing(input.listing);
         }
         const u = experienceById(input.listing || stateRef.current.reqTargetId);
@@ -920,6 +923,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
           guest: { name: input.guest?.name || "", phone: input.guest?.phone || "", email: input.guest?.email || "" },
         });
         if (!r.ok) {
+          // A concierge-only host answers 404 JSON for /bookings. Hold the trip on this device so Ask can finish.
+          if (r.error && /not found/i.test(r.error)) {
+            dispatch({ type: "confirmUnclaimed", ...input, date, code });
+            return { ok: true };
+          }
           const error = r.taken ? (r.error || "That time was just booked") + ". Pick another time." : r.error ? r.error + "." : "Could not send the request. Check your connection and try again.";
           dispatch({ type: "toast", text: error });
           return { ok: false, error, taken: r.taken };

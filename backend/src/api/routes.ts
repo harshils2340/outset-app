@@ -30,6 +30,7 @@ import { webhooks } from "./webhooks.ts";
 import { bookings } from "./bookings.ts";
 import { wallet } from "./wallet.ts";
 import { concierge } from "./concierge.ts";
+import { nearby } from "./nearby.ts";
 import { uploads } from "./uploads.ts";
 import { payouts } from "./payouts.ts";
 import { availability } from "./availability.ts";
@@ -40,7 +41,7 @@ import { stripeEnabled } from "../lib/stripe.ts";
 export const app = new Hono();
 
 // Browser calls come only from the site (and a dev server). Everything else is same-origin tooling.
-const ORIGINS = (process.env.ALLOWED_ORIGINS || "https://onoutset.com,https://www.onoutset.com,http://localhost:5173,http://localhost:5199").split(",").map((s) => s.trim());
+const ORIGINS = (process.env.ALLOWED_ORIGINS || "https://onoutset.com,https://www.onoutset.com,https://harshils2340.github.io,http://localhost:5173,http://localhost:5199").split(",").map((s) => s.trim());
 // An unauthenticated caller could stream an arbitrarily large body at the API, and the Stripe webhook has to
 // read the whole thing before it can check the signature. 2 MB is far above any real booking or profile write;
 // photo uploads have their own, larger, limit checked inside that route.
@@ -98,6 +99,7 @@ app.route("/", payouts);
 app.route("/", availability);
 app.route("/", openSlotsRoute);
 app.route("/", concierge);
+app.route("/", nearby);
 // Above the blanket admin-key gate on purpose: the internal metrics page signs in with an emailed code and has
 // no key to send, and that gate answers 404 to everything without one. The route does its own check (a session
 // whose email is in ADMIN_EMAILS, or the same x-admin-key for curl) and answers 404 to anyone else.

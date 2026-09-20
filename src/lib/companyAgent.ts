@@ -383,7 +383,7 @@ function nextOpenDay(week: Week | null, from: number): { day: number; span: { op
   if (!week) return null;
   for (let i = 1; i <= 7; i += 1) {
     const d = (from + i) % 7;
-    const span = week[d];
+      const span = week[d];
     if (span && span.close > 0) return { day: d, span };
   }
   return null;

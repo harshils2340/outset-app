@@ -237,12 +237,13 @@ export type Opening = { guess: Guess; chosen: boolean; recheck: boolean };
  * Wait, then use the GPS pin. The clock city is only the fallback when the browser will not give a fix.
  */
 export function openingFeed(open: Opening): NonNullable<Guess> | { kind: "wait" } {
-  if (open.guess?.kind === "point") {
+  const g = open.guess;
+  if (g?.kind === "point") {
     // A GPS pin or a town they typed. An IP city centroid is not a pin: wait for GPS.
-    if (open.chosen || open.guess.place.label === "Near me") return open.guess;
+    if (open.chosen || g.place.label === "Near me") return g;
     return { kind: "wait" };
   }
-  if (open.guess?.kind === "metro" && open.chosen) return open.guess;
+  if (g?.kind === "metro" && open.chosen) return g;
   return { kind: "wait" };
 }
 

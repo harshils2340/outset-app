@@ -26,7 +26,8 @@ export type ReaderVendor =
   | "rezdy"
   | "tripworks"
   | "square"
-  | "acuity";
+  | "acuity"
+  | "foreup";
 
 /**
  * Ordered, and the order is load-bearing in one place: Acuity's Squarespace host is
@@ -47,7 +48,18 @@ const RULES: [ReaderVendor, RegExp][] = [
   ["peek", /peek\.com/i],
   ["resova", /resova/i],
   ["fareharbor", /fareharbor/i],
+  ["foreup", /foreupsoftware\.com/i],
 ];
+
+/**
+ * How many times this list has gotten smarter. `resolve.ts` writes it beside every "no reader for this shop"
+ * result, so a shop resolved before Checkfront's account-embed detection landed (adventurerooms.ca: its own
+ * `/booknow/` page was written down instead of the `adventureroomscanada.checkfront.com/reserve/` iframe it
+ * embeds, because nothing extracted that embed yet) gets looked at again instead of staying wrong forever. A
+ * shop already found readable is never re-checked — only a past miss is worth another look — so bump this by
+ * one whenever `RULES` or `SQL_LIKES` above, or `vendors.ts`'s detection, gets wider.
+ */
+export const READER_GENERATION = 3;
 
 /** The reader for this booking link, or null when no reader knows it. */
 export function readerFor(url: string | null | undefined): ReaderVendor | null {
@@ -88,6 +100,7 @@ const SQL_LIKES = [
   "%squarespacescheduling%",
   "%squarespace-scheduling%",
   "%.as.me%",
+  "%foreupsoftware.com%",
 ];
 
 /** `true` for a link no reader knows, so `ORDER BY unreadableSql(col)` puts the quotable shops first. */

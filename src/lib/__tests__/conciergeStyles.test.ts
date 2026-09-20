@@ -44,10 +44,11 @@ function styled(css: string): Set<string> {
 test("every class the overlay renders has a rule in concierge.css", () => {
   const have = styled(CSS);
   /**
-   * `cg-b` takes a second class built as `"cg-" + e.kind`, which no literal scan can see. They are listed
-   * here so the rest of the check can stay strict.
+   * `cg-b` takes a second class built as `"cg-" + e.kind`, and the working trace's list items take one built
+   * as `"cg-t-" + tone(s.kind)` (`cg-t-go`, `cg-t-warn`, `cg-t-dim`, all styled below). Neither is whole in a
+   * literal scan, so each is listed here by its own bare prefix rather than by every kind it could produce.
    */
-  const dynamic = new Set(["cg-me", "cg-them", "cg-answer"]);
+  const dynamic = new Set(["cg-me", "cg-them", "cg-answer", "cg-t-"]);
   const missing = [...rendered(TSX)].filter((c) => !have.has(c) && !dynamic.has(c)).sort();
   assert.deepEqual(missing, [], missing.length + " classes are drawn with no rule anywhere");
 });
@@ -61,4 +62,10 @@ test("the shop header's three lines are three lines", () => {
 
 test("the classes built from the agent's own kinds are styled too", () => {
   for (const kind of ["cg-me", "cg-them"]) assert.ok(styled(CSS).has(kind), kind);
+});
+
+test("Ask never dumps a guest onto the vendor's own pay page", () => {
+  assert.doesNotMatch(TSX, /window\.open/);
+  assert.match(TSX, /listingForOption/);
+  assert.match(TSX, /confirmUnclaimed/);
 });

@@ -1,15 +1,16 @@
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { CATS, CATMETA } from "../../data/categories";
-import { ALL_METRO_ID, metroShort } from "../../data/metros";
+import { ALL_METRO_ID, metroCoords, metroShort } from "../../data/metros";
 import { ICONS } from "../../data/icons";
 import { getCatalog, savedListings, stillArriving } from "../../lib/catalog";
 import { dateKey } from "../../lib/dates";
+import { mergeMapsHits, useMapsNearby } from "../../lib/mapsNearby";
 import { searchSuggest, warmSearch, type SearchScope } from "../../lib/search";
 import { useApp } from "../../state/AppProvider";
 import { Markup } from "../Markup";
 import { IcFilters, IcHeart, IcSearch } from "./AirIcons";
 import { UnclaimedCard } from "./UnclaimedCard";
-import { applyFilters, browseList, nearFirst, whatLabel } from "./feed";
+import { applyFilters, atMetro, browseList, nearFirst, whatLabel } from "./feed";
 import { activeFilterCount, clearFilters, setPrefs, usePrefs } from "./prefs";
 import "../../styles/air-phone.css";
 import { useDeadCovers, withPhotos } from "../../lib/deadCovers";
@@ -49,15 +50,29 @@ export function ExploreView({ onAsk, asking }: { onAsk: () => void; asking: bool
   }, [catalog]);
 
   const dq = useDeferredValue(q);
-  const scope = useMemo<SearchScope>(() => ({ metroId: state.metroId, cat: state.cat }), [state.metroId, state.cat]);
+  const scope = useMemo<SearchScope>(() => {
+    if (state.metroId === ALL_METRO_ID) return { cat: state.cat };
+    return { cat: state.cat, keep: (u) => atMetro(u, state.metroId) };
+  }, [state.metroId, state.cat]);
   const near = state.near;
   const browse = useMemo(() => browseList(catalog, state.cat, state.metroId, near), [catalog, state.metroId, state.cat, near]);
   const found = useMemo(() => (dq ? searchSuggest(catalog, dq, scope) : null), [catalog, dq, scope]);
+  const mapsPin = near && !near.region
+    ? { lat: near.lat, lon: near.lon }
+    : (() => {
+      if (state.metroId === ALL_METRO_ID) return null;
+      const c = metroCoords(state.metroId);
+      return c ? { lat: c.lat, lon: c.lng } : null;
+    })();
+  const mapsHits = useMapsNearby(dq, mapsPin?.lat ?? null, mapsPin?.lon ?? null);
   const cityEmpty = useMemo(
-    () => state.metroId !== ALL_METRO_ID && !catalog.some((u) => u.metroId === state.metroId),
+    () => state.metroId !== ALL_METRO_ID && !catalog.some((u) => atMetro(u, state.metroId)),
     [catalog, state.metroId],
   );
-  const listed = useMemo(() => applyFilters(found ? nearFirst(found.results, near) : browse, prefs.filters), [found, browse, prefs.filters, near]);
+  const listed = useMemo(() => {
+    const base = found ? mergeMapsHits(found.results, mapsHits) : browse;
+    return applyFilters(found ? nearFirst(base, near) : base, prefs.filters);
+  }, [found, mapsHits, browse, prefs.filters, near]);
   /**
    * Browse promises a photograph, so a listing whose cover turned out to be dead leaves the feed. Only browse:
    * a saved listing stays in Wishlists whatever happened to its picture, because the guest put it there.

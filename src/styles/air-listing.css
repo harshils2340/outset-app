@@ -435,9 +435,8 @@ a.alwhererow:hover b{text-decoration:underline;}
 .albizfacts svg{width:24px;height:24px;}
 .albizright h3{margin:0 0 8px;font-size:18px;line-height:22px;font-weight:600;}
 .albizright > .alsecsub{margin:0 0 16px;}
-.alotto .wassist{margin-top:0;border-color:var(--line-strong);border-radius:var(--r-m);box-shadow:none;}
-.albizright > .aloutline{margin-top:24px;background:var(--ink);border-color:var(--ink);color:#fff;}
-.albizright > .aloutline:hover{background:#000;}
+.albizright > .aloutline:first-of-type{margin-top:24px;background:var(--ink);border-color:var(--ink);color:#fff;}
+.albizright > .aloutline:first-of-type:hover{background:#000;}
 .alclaim{display:flex;gap:12px;align-items:flex-start;margin:24px 0 0;padding-top:24px;border-top:1px solid var(--line);font-size:14px;line-height:20px;color:var(--ink-soft);}
 .alclaim > span:first-child{flex:none;width:24px;height:24px;}
 .alclaim svg{width:24px;height:24px;color:var(--ink);}

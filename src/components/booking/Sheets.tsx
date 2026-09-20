@@ -37,7 +37,7 @@ import { SIZES, srcSet, thumb } from "../../lib/images";
 import { embedAutoplay, listingMedia, photoCandidates, probePhotos, type Media } from "../../lib/media";
 import { cleanDesc, durationLabel, groupCap, minAge, splitPolicies } from "../../lib/listingDerive";
 import { freeCancelBadge } from "../../lib/cancellation";
-import { ASSISTANT_NAME, DAY_SHORT, assistantOn, clock12, companySuggestions, dayLabel, todaysDeals } from "../../lib/companyAgent";
+import { DAY_SHORT, clock12, companySuggestions, dayLabel, todaysDeals } from "../../lib/companyAgent";
 import { bookableStart, clockIn, hourLines, itemWeek, zoneFor } from "../../lib/openNow";
 import { displayHours } from "../../lib/hoursText";
 import { noStartTimesNote, startTimesOn } from "../../lib/startTimes";
@@ -75,7 +75,7 @@ import { shownReviews } from "../../lib/reviews";
 const QTY_MAX = 8;
 
 export function Sheets() {
-  const { state, listing, reqTarget, dates, closeSheet, confirm, confirmUnclaimed, openChat, sendChat } = useApp();
+  const { state, listing, reqTarget, dates, closeSheet, confirm, confirmUnclaimed, openAsk } = useApp();
   const { sheetMode } = usePrefs();
   const on = state.sheet !== null;
   // The listing and the search open full screen, the way Airbnb's app pushes them. The review sheet stays a sheet.
@@ -133,10 +133,7 @@ export function Sheets() {
               dates={dates}
               onBack={closeSheet}
               onConfirm={confirmUnclaimed}
-              onAsk={(text) => {
-                openChat(reqTarget.id);
-                if (text) sendChat(text);
-              }}
+              onAsk={(text) => openAsk(text || "What should I know about " + reqTarget.title + " before booking?")}
             />
           ) : null}
           {state.sheet === "metro" ? <SearchBody /> : null}
@@ -1135,12 +1132,12 @@ function RequestBody({
               {callOpen && callHref ? (
                 <div className="callpick">
                   <button type="button" className="airaccent" onClick={() => onAsk()}>
-                    Call the 24/7 assistant
+                    Ask Outset instead
                   </button>
                   <a className="airghost" href={callHref} onClick={(e) => e.stopPropagation()}>
                     Call a person at the shop
                   </a>
-                  <p className="reqhint">The assistant answers by chat for now. Voice is coming.</p>
+                  <p className="reqhint">Outset answers by chat for now. Voice is coming.</p>
                 </div>
               ) : null}
               {hours.length ? (
@@ -1163,35 +1160,31 @@ function RequestBody({
             ) : null}
           </Section>
 
-          {/* Hidden when the operator switched the assistant off on their Assistant page: offering "Ask Otto"
-              there opened a thread with an assistant the shop had turned off. */}
-          {assistantOn(item) ? (
-            <section className="airsec">
-              <div className="airotto">
-                <div className="airottohead">
-                  <span className="airottomark">
-                    <Markup html={ICONS.spark} />
-                  </span>
-                  <span>
-                    <b>Ask {ASSISTANT_NAME}</b>
-                    <small>Instant answers from {possessive(item.title)} published info, 24/7</small>
-                  </span>
-                </div>
-                {suggestions.length ? (
-                  <div className="airottochips">
-                    {suggestions.map((s) => (
-                      <button key={s} type="button" onClick={() => onAsk(s)}>
-                        {s}
-                      </button>
-                    ))}
-                  </div>
-                ) : null}
-                <button type="button" className="airghost wide" onClick={() => onAsk()}>
-                  Message {ASSISTANT_NAME}
-                </button>
+          <section className="airsec">
+            <div className="airotto">
+              <div className="airottohead">
+                <span className="airottomark">
+                  <Markup html={ICONS.spark} />
+                </span>
+                <span>
+                  <b>Ask Outset</b>
+                  <small>Reads {possessive(item.title)} published info, and live availability, 24/7</small>
+                </span>
               </div>
-            </section>
-          ) : null}
+              {suggestions.length ? (
+                <div className="airottochips">
+                  {suggestions.map((s) => (
+                    <button key={s} type="button" onClick={() => onAsk(s)}>
+                      {s}
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+              <button type="button" className="airghost wide" onClick={() => onAsk()}>
+                Message Outset
+              </button>
+            </div>
+          </section>
 
           {score || reviews.length ? (
             <Section title={score ? "★ " + fmtRating(score.rating) + " · " + reviewsLine(score.reviews) : "What guests say"}>

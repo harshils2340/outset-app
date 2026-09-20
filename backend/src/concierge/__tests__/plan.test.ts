@@ -70,6 +70,10 @@ for (const name of ["Burrard Boat Tours", "Coal Harbour Cruises", "Stanley Park 
 for (const name of ["Columbia River Tours", "Fort Vancouver Cruises", "Ruby Junction Boats"]) {
   shop({ name, city: "Vancouver", region: "WA", lat: 45.63, lon: -122.67, category: BOAT.id, reviews: 30 });
 }
+// Vail: a town whose name is also the last four letters of an ordinary English word.
+for (const name of ["Vail Escape Room", "Mountain Time Escape", "Frisco Escape"]) {
+  shop({ name, city: "Vail", region: "CO", lat: 39.64, lon: -106.37, category: ESCAPE.id, reviews: 50 });
+}
 
 test("naming the province as well as the town keeps the town", () => {
   /**
@@ -96,6 +100,22 @@ test("a province is still not a town of the same name", () => {
   assert.equal(i.point, null);
   const regions = new Set(candidates(i).map((o) => o.region));
   assert.deepEqual([...regions], ["ON"]);
+});
+
+test("a word that merely contains a town's name is not that town", () => {
+  /**
+   * "any**avail**able at 3pm?" is a real follow-up a guest typed after asking about escape rooms in Waterloo,
+   * and it silently teleported the whole conversation to Vail, Colorado, because the town lookup was a bare
+   * `instr()` substring test with no word boundary. A prior turn's place has to survive a sentence that merely
+   * contains the town's letters, and a sentence that actually names the town still has to find it.
+   */
+  const i = readIntent("escape room, anything available at 3pm?");
+  assert.equal(i.city, null, "'available' is not Vail");
+  assert.equal(i.region, null);
+
+  const named = readIntent("escape room in vail");
+  assert.equal(named.city, "Vail");
+  assert.equal(named.region, "CO");
 });
 
 test("the state a guest typed says which town of that name they meant", () => {

@@ -15,7 +15,7 @@
 export type VendorId =
   | "fareharbor" | "peek" | "xola" | "checkfront" | "bookeo" | "resova" | "rezdy"
   | "acuity" | "square" | "setmore" | "calendly" | "mindbody" | "tripworks" | "bookwhen"
-  | "eventbrite" | "wix" | "unknown";
+  | "eventbrite" | "wix" | "foreup" | "unknown";
 
 export type VendorHit = {
   vendor: VendorId;
@@ -42,6 +42,15 @@ const RULES: {
   hosted?: (account: string, haystack: string) => string;
   hasFeed?: boolean;
 }[] = [
+  {
+    // Golf's own vendor: a course embeds a plain link or iframe to its own booking page rather than a widget
+    // with a separate account id, so the "account" is just the course (and, where named, schedule) path.
+    vendor: "foreup",
+    detect: /foreupsoftware\.com/i,
+    account: /foreupsoftware\.com\/index\.php\/booking\/(\d+(?:\/\d+)?)/i,
+    hosted: (a) => `https://foreupsoftware.com/index.php/booking/${a}`,
+    hasFeed: true,
+  },
   {
     vendor: "fareharbor",
     detect: /fareharbor\.com/i,

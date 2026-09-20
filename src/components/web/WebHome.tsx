@@ -21,7 +21,8 @@ import { useModal } from "../layout/useModal";
 import { Markup } from "../Markup";
 import { AdminSiteLink, liteDealTitle, tidyDuration } from "./WebListing";
 import { freeCancelBadge } from "../../lib/cancellation";
-import { withinDrive, kmToPlace, awayLine, NEAR_RADIUS_KM, DRIVE_RADIUS_KM } from "../explore/feed";
+import { withinDrive, kmToPlace, awayLine, atMetro, NEAR_RADIUS_KM, DRIVE_RADIUS_KM } from "../explore/feed";
+import { mergeMapsHits, useMapsNearby } from "../../lib/mapsNearby";
 import { getPrefs, setPrefs } from "../explore/prefs";
 import { reportDeadCover, useDeadCovers, withPhotos } from "../../lib/deadCovers";
 
@@ -205,7 +206,7 @@ const CompareCtx = createContext<{ ids: string[]; toggle: (id: string) => void }
 
 
 /** The Where menu's shortlist: the biggest cities a guest would type, not the first twelve metros in the file. */
-const POPULAR_METROS = ["toronto", "nyc", "los-angeles", "chicago", "miami", "tampa", "vancouver", "austin", "denver", "seattle", "las-vegas", "boston", "atlanta", "san-diego", "montreal", "orlando"];
+const POPULAR_METROS = ["toronto", "waterloo", "nyc", "los-angeles", "chicago", "miami", "tampa", "vancouver", "austin", "denver", "seattle", "las-vegas", "boston", "atlanta", "san-diego", "montreal", "orlando"];
 
 /**
  * Airbnb's Homes / Experiences / Services switch, mapped onto Outset's worlds (data/categories.ts WORLDS): it picks
@@ -1108,13 +1109,22 @@ export function WebHome({ onOpenApp, onOperators, onAsk, asking = false, onClose
   );
   const chipClash = !!(kindChip && namedArts.length && !namedArts.includes(kindChip));
 
+  const mapsPin = useMemo(() => {
+    if (near && !near.region) return { lat: near.lat, lon: near.lon };
+    const id = typedMetro?.metro.id ?? (!near && state.metroId !== ALL_METRO_ID ? state.metroId : null);
+    if (!id) return null;
+    const c = metroCoords(id);
+    return c ? { lat: c.lat, lon: c.lng } : null;
+  }, [near, typedMetro, state.metroId]);
+  const mapsHits = useMapsNearby(qWithoutPlace, mapsPin?.lat ?? null, mapsPin?.lon ?? null);
+
   // Where the guest is looking. The search reads the whole catalog and narrows here, so its index is built once.
   const scope = useMemo<SearchScope>(() => {
     const cat = state.cat;
     const art = chipClash ? null : kindChip;
-    if (typedMetro) return { cat, metroId: typedMetro.metro.id, keep: art ? (u: Unclaimed) => u.art === art : undefined };
+    if (typedMetro) return { cat, keep: (u: Unclaimed) => (!art || u.art === art) && atMetro(u, typedMetro.metro.id) };
     if (near) return { cat, keep: (u: Unclaimed) => (!art || u.art === art) && inNear(u, near) };
-    if (state.metroId !== ALL_METRO_ID) return { cat, metroId: state.metroId, keep: art ? (u: Unclaimed) => u.art === art : undefined };
+    if (state.metroId !== ALL_METRO_ID) return { cat, keep: (u: Unclaimed) => (!art || u.art === art) && atMetro(u, state.metroId) };
     return { cat, keep: art ? (u: Unclaimed) => u.art === art : undefined };
   }, [typedMetro, near, state.metroId, state.cat, kindChip, chipClash]);
 
@@ -1147,20 +1157,20 @@ export function WebHome({ onOpenApp, onOperators, onAsk, asking = false, onClose
   // directly, so the shop is one keystroke and one click from its own page either way.
   const deadSet = useDeadCovers();
   const pool = useMemo(() => {
-    if (found) return withPhotos(found.results, deadSet);
+    if (found) return withPhotos(mergeMapsHits(found.results, mapsHits), deadSet);
     let base = withPhotos(getCatalog().filter((u) => !!u.cover && chipOk(u)), deadSet);
     if (typedMetro) {
-      base = base.filter((u) => u.metroId === typedMetro.metro.id);
+      base = base.filter((u) => atMetro(u, typedMetro.metro.id));
     } else if (near) {
       const km = (u: Unclaimed) => nearestLocation(u, near)?.km ?? Infinity;
       base = base.filter((u) => inNear(u, near));
       if (!near.region) base.sort((a, b) => km(a) - km(b));
     } else if (state.metroId !== ALL_METRO_ID) {
-      base = base.filter((u) => u.metroId === state.metroId);
+      base = base.filter((u) => atMetro(u, state.metroId));
     }
     return base;
     // `deadSet` is one module-level Set that is only ever added to, so its size is what changes, not its identity.
-  }, [found, state.metroId, typedMetro, state.catalogVersion, near, kindChip, deadSet, deadSet.size]);
+  }, [found, mapsHits, state.metroId, typedMetro, state.catalogVersion, near, kindChip, deadSet, deadSet.size]);
 
   // A picked point: the rows show only what is truly near; the ring between near and a day trip is one row of its own.
   const nearPoint = !!near && !near.region;
@@ -1171,9 +1181,9 @@ export function WebHome({ onOpenApp, onOperators, onAsk, asking = false, onClose
   const waiting = useMemo(() => {
     if (found) return 0;
     let base = getCatalog().filter((u) => !u.cover && chipOk(u));
-    if (typedMetro) base = base.filter((u) => u.metroId === typedMetro.metro.id);
+    if (typedMetro) base = base.filter((u) => atMetro(u, typedMetro.metro.id));
     else if (near) base = base.filter((u) => inNear(u, near));
-    else if (state.metroId !== ALL_METRO_ID) base = base.filter((u) => u.metroId === state.metroId);
+    else if (state.metroId !== ALL_METRO_ID) base = base.filter((u) => atMetro(u, state.metroId));
     return base.filter((u) => inCat(u, state.cat)).length;
   }, [found, state.metroId, typedMetro, state.catalogVersion, near, state.cat, kindChip]);
 
@@ -1204,7 +1214,11 @@ export function WebHome({ onOpenApp, onOperators, onAsk, asking = false, onClose
   }, [gridMode, base, effSort, near, price.min, price.max]);
   const searchList = useMemo(() => {
     if (!q.trim() || placeOnly) return null;
-    return applySort(pool.filter(inPrice));
+    const list = pool.filter(inPrice);
+    if (near && !near.region && effSort === "relevance") {
+      return list.slice().sort((a, b) => kmToPlace(a, near) - kmToPlace(b, near));
+    }
+    return applySort(list);
   }, [q, placeOnly, pool, effSort, near, price.min, price.max]);
 
   /**
@@ -1239,8 +1253,13 @@ export function WebHome({ onOpenApp, onOperators, onAsk, asking = false, onClose
   const openNow = useNearNow(near, state.catalogVersion);
   // Photographed places per city, for the Where menu's suggestions.
   const metroCounts = useMemo(() => {
+    const catalog = getCatalog();
     const out = new Map<string, number>();
-    for (const u of getCatalog()) if (u.cover) out.set(u.metroId, (out.get(u.metroId) || 0) + 1);
+    for (const u of catalog) if (u.cover) out.set(u.metroId, (out.get(u.metroId) || 0) + 1);
+    for (const id of POPULAR_METROS) {
+      if (out.get(id)) continue;
+      out.set(id, catalog.filter((u) => u.cover && atMetro(u, id)).length);
+    }
     return out;
   }, [state.catalogVersion]);
 

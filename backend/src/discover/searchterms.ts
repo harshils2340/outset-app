@@ -98,7 +98,7 @@ export const SEARCH_TERMS: SearchTerm[] = [
   ...t("yoga", "yoga studio", "yoga classes"),
   ...t("dance", "dance classes", "dance studio"),
   ...t("pottery", "pottery class", "pottery studio", "art classes"),
-  ...t("martialarts", "boxing gym classes", "martial arts school", "jiu jitsu"),
+  ...t("martialarts", "martial arts school", "karate", "jiu jitsu"),
   ...t("fitness", "pilates studio", "fitness classes", "spin studio"),
 ];
 

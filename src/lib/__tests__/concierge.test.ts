@@ -4,6 +4,8 @@ import {
   compareLine,
   headline,
   headlineService,
+  listingForOption,
+  listingIdFor,
   menuPrice,
   noTimesLine,
   refinements,
@@ -25,6 +27,7 @@ import {
   type ConciergeDeparture,
   type ConciergeOption,
 } from "../concierge";
+import { experienceById } from "../catalog";
 import { dateFromKey } from "../dates";
 
 /**
@@ -341,7 +344,7 @@ test("a shortlist with no live times is one sentence, not three paragraphs", () 
     counts: { quoted: 0, priced: 3, total: 3 },
     options: [OPT("A", 0, 19.99), OPT("B", 0, 21.99), OPT("C", 0, 25)],
   });
-  assert.equal(headline(answer, []), "3 axe throwing places near Waterloo, $19.99 to $25 a head from their own sites.");
+  assert.equal(headline(answer, []), "3 axe throwing places near Waterloo.");
 });
 
 test("one place is one place, not 1 places", () => {
@@ -351,19 +354,19 @@ test("one place is one place, not 1 places", () => {
     counts: { quoted: 0, priced: 1, total: 1 },
     options: [OPT("A", 0, 32)],
   });
-  assert.equal(headline(answer, []), "1 escape room place near Guelph, $32 a head from their own sites.");
+  assert.equal(headline(answer, []), "1 escape room place near Guelph.");
 });
 
-test("live times lead with the times, the shop and the nearest slot to the hour asked for", () => {
+test("live times lead with the times, the shop and the price", () => {
   const live = { ...OPT("Escapology Waterloo", 2), offsets: [-25, 45] };
   const answer = ANSWER({ counts: { quoted: 1, priced: 0, total: 1 }, options: [live] });
   const shown = spreadDepartures([live], 4);
-  assert.equal(headline(answer, shown), "2 times at Escapology Waterloo, closest is 25 min earlier, from $99.51 + tax.");
+  assert.equal(headline(answer, shown), "2 times at Escapology Waterloo, from $99.51 + tax.");
 });
 
-test("a slot exactly on the hour is said as the good news it is", () => {
+test("a slot on the hour is not announced separately from the time on the row", () => {
   const live = { ...OPT("Escapology Waterloo", 2), offsets: [0, 45] };
-  assert.equal(headline(ANSWER({ options: [live] }), spreadDepartures([live], 4)), "2 times at Escapology Waterloo, one exactly when you asked, from $99.51 + tax.");
+  assert.equal(headline(ANSWER({ options: [live] }), spreadDepartures([live], 4)), "2 times at Escapology Waterloo, from $99.51 + tax.");
 });
 
 test("times at more than one shop are counted by shop, not by card", () => {
@@ -379,7 +382,7 @@ test("a shop with its own booking page is never described as publishing no times
   // they do not, and telling a guest to phone them, is the product calling its own gap their absence.
   const agents = [{ ...OPT("Bad Axe", 0, 19.99), route: "agent" as const }, { ...OPT("Riot Axe", 0, 25), route: "agent" as const }];
   const line = noTimesLine(agents);
-  assert.match(line, /cannot read/);
+  assert.match(line, /No live times/);
   assert.ok(!/phone|call/i.test(line), line);
 });
 
@@ -391,7 +394,7 @@ test("a shop with no booking system at all is the one that is a phone call", () 
 test("a mix says both, rather than picking one and being wrong about the other", () => {
   const mixed = [{ ...OPT("A", 0, 20), route: "phone" as const }, { ...OPT("B", 0, 25), route: "agent" as const }];
   const line = noTimesLine(mixed);
-  assert.match(line, /cannot read/);
+  assert.match(line, /No live times/);
   assert.match(line, /phone/);
 });
 
@@ -470,7 +473,7 @@ test("a menu price is never set beside a live one without saying which is which"
     counts: { quoted: 0, priced: 2, total: 5 },
     options: [OPT("A", 0, 20), OPT("B", 0, 39.99)],
   });
-  assert.equal(headline(answer, []), "5 sunset sail places near Toronto, $20 to $39.99 a head from their own sites.");
+  assert.equal(headline(answer, []), "5 sunset sail places near Toronto.");
 });
 
 test("a live quote says nothing about their own sites, because it did not come from one", () => {
@@ -581,4 +584,60 @@ test("a clock time from a vendor page is the HH:MM the booking API takes", () =>
   assert.equal(slotOf("7:00 PM"), "19:00");
   assert.equal(slotOf("12:00 am"), "00:00");
   assert.equal(slotOf("nope"), null);
+});
+
+test("a live shop we do not hold still becomes a listing Ask can book", () => {
+  const id = listingForOption({
+    name: "Sealy's Karate",
+    domain: "sealyskarate.example",
+    city: "Waterloo",
+    region: "ON",
+    rating: null,
+    reviews: null,
+    category: "martialarts",
+    bookingUrl: "",
+    departures: [],
+    route: "feed",
+    phone: null,
+    services: [{ name: "Drop-in", price: 20, unit: "class", per: "person" }],
+  });
+  assert.equal(id, "cg-sealyskarateexamplewaterloo");
+  const u = experienceById(id);
+  assert.equal(u?.title, "Sealy's Karate");
+  assert.equal(u?.metroId, "waterloo");
+  assert.equal(u?.options[0]?.name, "Drop-in");
+  assert.equal(listingForOption({
+    name: "Sealy's Karate",
+    domain: "sealyskarate.example",
+    city: "Waterloo",
+    region: "ON",
+    rating: null,
+    reviews: null,
+    category: "martialarts",
+    bookingUrl: "",
+    departures: [],
+    route: "feed",
+    phone: null,
+    services: [],
+  }), id);
+});
+
+test("a chain in Waterloo is not booked as the Tampa shop that shares the domain", () => {
+  assert.equal(listingIdFor({ domain: "escapology.com", city: "Waterloo", name: "Escapology Waterloo" }), null);
+  const id = listingForOption({
+    name: "Escapology Waterloo",
+    domain: "escapology.com",
+    city: "Waterloo",
+    region: "ON",
+    rating: null,
+    reviews: null,
+    category: "escape",
+    bookingUrl: "",
+    departures: [],
+    route: "feed",
+    phone: null,
+    services: [],
+  });
+  assert.notEqual(id, "u-escgy");
+  assert.equal(experienceById(id)?.area, "Waterloo, ON");
 });

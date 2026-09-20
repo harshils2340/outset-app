@@ -1,5 +1,5 @@
 import { inCat } from "../../data/categories";
-import { ALL_METRO_ID } from "../../data/metros";
+import { ALL_METRO_ID, metroCoords } from "../../data/metros";
 import { countryOfArea, regionOfArea } from "../../data/regions";
 import type { CategoryId, Unclaimed } from "../../data/types";
 import { fromPrice } from "../../lib/catalog";
@@ -31,6 +31,19 @@ export const DRIVE_RADIUS_KM = 100;
 export function atPlace(u: Unclaimed, near: Place, radiusKm = NEAR_RADIUS_KM): boolean {
   if (near.region) return regionOfArea(u.area) === near.region;
   return kmToPlace(u, near) <= radiusKm;
+}
+
+/**
+ * A city picked by name. Catalog rows still carry the metro they were filed under, often the nearest of the
+ * old 47, so a Waterloo dojo can be tagged Toronto. The guest named the town, so the pin wins: anything
+ * within an afternoon of the city centre counts, plus anything already filed as that metro.
+ */
+export function atMetro(u: Unclaimed, metroId: string, radiusKm = NEAR_RADIUS_KM): boolean {
+  if (!metroId || metroId === ALL_METRO_ID) return true;
+  if (u.metroId === metroId) return true;
+  const c = metroCoords(metroId);
+  if (!c) return false;
+  return kmToPlace(u, { label: metroId, sub: "", lat: c.lat, lon: c.lng }) <= radiusKm;
 }
 
 /** Reachable for a day out: within DRIVE_RADIUS_KM of a picked point, or anywhere in a picked region. */
@@ -87,7 +100,7 @@ function interleave(list: Unclaimed[]): Unclaimed[] {
 export function browseList(catalog: Unclaimed[], cat: CategoryId, metroId: string, near: Place | null): Unclaimed[] {
   const inThisCat = (u: Unclaimed) => inCat(u, cat) && !!u.cover;
   if (near) return byDistance(catalog.filter((u) => inThisCat(u) && atPlace(u, near)), near);
-  const rows = catalog.filter((u) => (metroId === ALL_METRO_ID || u.metroId === metroId) && inThisCat(u));
+  const rows = catalog.filter((u) => inThisCat(u) && atMetro(u, metroId));
   return cat === "all" ? interleave(rows) : rows;
 }
 
@@ -113,7 +126,15 @@ export function applyFilters(list: Unclaimed[], f: FeedFilters): Unclaimed[] {
  */
 export function feedFor(catalog: Unclaimed[], q: string, cat: CategoryId, metroId: string, near: Place | null, f: FeedFilters): Unclaimed[] {
   const t = q.trim();
-  const list = t ? nearFirst(searchSuggest(catalog, t, { metroId: near ? ALL_METRO_ID : metroId, cat }).results, near) : browseList(catalog, cat, metroId, near);
+  const list = t
+    ? nearFirst(
+      searchSuggest(catalog, t, {
+        cat,
+        keep: near || metroId === ALL_METRO_ID ? undefined : (u) => atMetro(u, metroId),
+      }).results,
+      near,
+    )
+    : browseList(catalog, cat, metroId, near);
   return applyFilters(list, f);
 }
 

@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 import { DROP_HOSTS } from "./braveapi.ts";
 import { hostOf, phoneE164, type Candidate } from "./chains.ts";
 import { WEB_TERMS } from "./websearch.ts";
-import { METROS, type MetroDef } from "../taxonomy/catalog.ts";
+import { METROS, nearestMetro, type MetroDef } from "../taxonomy/catalog.ts";
 
 /**
  * Google Places API (New) Text Search as a discovery source: for every "<activity> in <city>" pair, the businesses
@@ -12,7 +12,9 @@ import { METROS, type MetroDef } from "../taxonomy/catalog.ts";
  * asked for: a search on Outset shows at least what Maps shows.
  *
  * Endpoint: POST https://places.googleapis.com/v1/places:searchText, headers X-Goog-Api-Key and X-Goog-FieldMask,
- * body { textQuery, pageSize: 20, pageToken }. Up to 3 pages (60 results) per query, which is the API's ceiling.
+ * body { textQuery, pageSize: 20, pageToken, locationBias: 40 km circle on the metro pin }. Up to 3 pages
+ * (60 results) per query, which is the API's ceiling. The bias is what makes "karate" in Waterloo return the
+ * dojos Maps shows, instead of Toronto schools that match the city name in our metro grid.
  *
  * Price, read from developers.google.com/maps/billing-and-pricing/pricing and the Text Search reference on
  * 16 September 2026 (both pages "Last updated 2026-09-10"):
@@ -57,6 +59,12 @@ export const USD_PER_REQUEST = 0.035;
 export const FREE_REQUESTS_PER_MONTH = 1000;
 export const MAX_PAGES = 3;
 export const PAGE_SIZE = 20;
+/** Same afternoon radius the guest home uses. Maps ranks inside this circle, not the whole metro name. */
+export const BIAS_RADIUS_M = 40_000;
+
+export function locationBias(lat: number, lon: number, radiusM = BIAS_RADIUS_M): { circle: { center: { latitude: number; longitude: number }; radius: number } } {
+  return { circle: { center: { latitude: lat, longitude: lon }, radius: radiusM } };
+}
 
 /** One search: an activity term (from WEB_TERMS, so the category is known) in one metro. */
 export type PlacesQuery = { term: string; category: string; metro: MetroDef; text: string };
@@ -155,7 +163,11 @@ export async function searchPlaces(queries: PlacesQuery[], opts: { key: string; 
     if (cached.pages.length && !pageToken) { cached.done = true; writeFileSync(cachePath(q.text), JSON.stringify(cached, null, 1) + "\n"); continue; }
     while (cached.pages.length < MAX_PAGES) {
       if (stats.requests >= opts.budget) { stats.stopped = `budget of ${opts.budget} requests used`; break; }
-      const body: Record<string, unknown> = { textQuery: q.text, pageSize: PAGE_SIZE };
+      const body: Record<string, unknown> = {
+        textQuery: q.text,
+        pageSize: PAGE_SIZE,
+        locationBias: locationBias(q.metro.lat, q.metro.lon),
+      };
       if (pageToken) body.pageToken = pageToken;
       let res: Response;
       try {
@@ -297,6 +309,80 @@ export function writeCandidateFiles(queries: PlacesQuery[]): { file: string; cou
     out.push({ file, count: candidates.length });
   }
   return out;
+}
+
+/** One Maps listing, after the same website / operational filters the batch job uses. */
+export type NearbyHit = {
+  placeId: string;
+  name: string;
+  website: string;
+  host: string;
+  lat: number;
+  lon: number;
+  rating: number | null;
+  reviews: number | null;
+  city: string;
+  region: string;
+  phone: string | null;
+};
+
+export function nearbyHitFromPlace(p: GooglePlace, metro: MetroDef): NearbyHit | null {
+  if (!p.id) return null;
+  if (p.businessStatus && p.businessStatus !== "OPERATIONAL") return null;
+  const name = (p.displayName?.text || "").replace(/\s+/g, " ").trim();
+  if (name.length < 3) return null;
+  const lat = typeof p.location?.latitude === "number" ? p.location.latitude : null;
+  const lon = typeof p.location?.longitude === "number" ? p.location.longitude : null;
+  if (lat == null || lon == null) return null;
+  const host = (p.websiteUri && hostOf(p.websiteUri)) || "";
+  if (host) {
+    const asCom = host.replace(/\.(co\.)?[a-z]{2,3}$/i, ".com");
+    if (DROP_HOSTS.test(host) || DROP_HOSTS.test(asCom)) return null;
+  }
+  return {
+    placeId: p.id,
+    name: name.slice(0, 120),
+    website: p.websiteUri || "",
+    host,
+    lat,
+    lon,
+    rating: typeof p.rating === "number" ? p.rating : null,
+    reviews: typeof p.userRatingCount === "number" ? p.userRatingCount : null,
+    city: component(p, "locality") || component(p, "postal_town") || component(p, "sublocality") || metro.name,
+    region: component(p, "administrative_area_level_1", "shortText") || metro.region,
+    phone: phoneE164(p.nationalPhoneNumber) || p.nationalPhoneNumber || null,
+  };
+}
+
+/**
+ * One page of Text Search around a pin, the way Maps ranks "karate" near you. Cached on disk so a repeat
+ * of the same words in the same ~1 km cell is free. Does not crawl the shop's site.
+ */
+export async function nearbyTextSearch(opts: { key: string; q: string; lat: number; lon: number }): Promise<NearbyHit[]> {
+  const text = opts.q.trim().slice(0, 80);
+  if (text.length < 2) return [];
+  mkdirSync(CACHE_DIR, { recursive: true });
+  const cacheFile = join(CACHE_DIR, "near-" + slug(text) + "-" + opts.lat.toFixed(2) + "-" + opts.lon.toFixed(2) + ".json");
+  if (existsSync(cacheFile)) {
+    try {
+      return JSON.parse(readFileSync(cacheFile, "utf8")) as NearbyHit[];
+    } catch {
+      /* refetch */
+    }
+  }
+  const metro = nearestMetro(opts.lat, opts.lon, 400) || METROS[0];
+  const res = await fetch(ENDPOINT, {
+    method: "POST",
+    headers: { "content-type": "application/json", "X-Goog-Api-Key": opts.key, "X-Goog-FieldMask": FIELD_MASK },
+    body: JSON.stringify({ textQuery: text, pageSize: PAGE_SIZE, locationBias: locationBias(opts.lat, opts.lon) }),
+    signal: AbortSignal.timeout(12_000),
+  });
+  appendFileSync(LEDGER, `${new Date().toISOString()}\tnearby\t${text}\tpage 1\t${res.status}\n`);
+  if (!res.ok) return [];
+  const json = (await res.json()) as PlacesResponse;
+  const hits = (json.places || []).map((p) => nearbyHitFromPlace(p, metro)).filter((h): h is NearbyHit => !!h);
+  writeFileSync(cacheFile, JSON.stringify(hits, null, 1) + "\n");
+  return hits;
 }
 
 /** Paid requests recorded in the ledger this calendar month (UTC), to say how much of the free 1,000 is left. */

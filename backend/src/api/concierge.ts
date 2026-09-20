@@ -5,8 +5,14 @@ import { isAdminRequest } from "./metrics.ts";
 import { plan, type Answer } from "../concierge/plan.ts";
 import { liveFor } from "../concierge/live.ts";
 import { getSession, recordTurn, allSessions, Trace } from "../concierge/session.ts";
-import { CONCIERGE_PAGE } from "./conciergePage.ts";
 import { SESSIONS_PAGE } from "./sessionsPage.ts";
+
+/**
+ * Where the real agent lives. `SITE_URL` is the same variable every other mailed link in the backend already
+ * points at the deployed site with (`claims.ts`, `bookings.ts`, `wallet.ts`...), so a laptop pointed at a dev
+ * server by setting it once gets that everywhere, `/go` included, rather than needing a variable of its own.
+ */
+const SITE = (process.env.SITE_URL || "https://onoutset.com/").replace(/\/?$/, "/");
 
 /**
  * The concierge: a sentence in, bookable options out.
@@ -30,8 +36,14 @@ function mayWatch(c: Context): boolean {
   return isAdminRequest(c);
 }
 
-/** The page itself. A thread on a phone; the same page on a wide screen also shows what the agent is doing. */
-concierge.get("/go", (c) => c.html(CONCIERGE_PAGE));
+/**
+ * `/go` used to serve its own hand-rolled copy of the concierge: a second implementation of the same screen,
+ * written once and then never touched again while the real one, the overlay `WebConcierge.tsx` opens on the
+ * site, kept moving. It drifted on every axis that matters: stale opening copy, and options rendered one row
+ * per departure instead of grouped by shop, so the same two businesses printed four times over. There is one
+ * agent UI now, and this is a door to it rather than a second one.
+ */
+concierge.get("/go", (c) => c.redirect(SITE + "#ask="));
 
 /** Every conversation the agent has had since this process started, step by step. Internal: see below. */
 concierge.get("/sessions", rateLimit(120, 60 * 60 * 1000), (c) => {

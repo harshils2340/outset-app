@@ -26,7 +26,6 @@ const MAY = new Set([
   "src/concierge/agent.ts",
   "src/concierge/sniff.ts",
   "src/scrape/render.ts",
-  "src/api/conciergePage.ts",
   "src/api/sessionsPage.ts",
 ]);
 

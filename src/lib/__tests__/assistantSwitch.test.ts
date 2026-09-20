@@ -110,19 +110,16 @@ test("the handoff names the shop and offers the way through to a person", () => 
 });
 
 /**
- * The three places a guest can reach Otto. A component test would need a renderer the repo does not have, so
- * this reads the source: every entry point must consult the switch, or the next one added quietly ignores it.
+ * The desktop listing and the phone sheet used to be two of the three places a guest could reach Otto, and
+ * this test held both of them to the switch. Both were folded into Ask Outset, the one agent surface in the
+ * product: neither builds its own Otto chat any more, so neither has anything left to gate. What is left is
+ * `AppProvider`, which still opens a guest's own pre-existing Otto thread from before the fold (a returning
+ * guest's conversation should not vanish), and that path still has to consult the switch: a shop that has
+ * since turned Otto off should not go on answering into a thread it opened while it was still on.
  */
-test("every guest-side entry point to the assistant consults the switch", () => {
-  const files = [
-    ["../../components/web/WebListing.tsx", "the desktop listing's Otto panel"],
-    ["../../components/booking/Sheets.tsx", "the phone listing's Ask Otto block"],
-    ["../../state/AppProvider.tsx", "the chat thread a guest opens"],
-  ] as const;
-  for (const [rel, what] of files) {
-    const src = readFileSync(join(here, rel), "utf8");
-    assert.ok(/\bassistantOn\s*\(/.test(src), what + " (" + rel + ") does not call assistantOn");
-  }
+test("the chat thread a guest reopens still consults the switch", () => {
+  const src = readFileSync(join(here, "../../state/AppProvider.tsx"), "utf8");
+  assert.ok(/\bassistantOn\s*\(/.test(src), "AppProvider.tsx does not call assistantOn");
 });
 
 /**

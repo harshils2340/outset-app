@@ -26,6 +26,7 @@ let base: Unclaimed[] = UNCLAIMED;
 let catalog: Unclaimed[] = UNCLAIMED;
 let byId = new Map<string, Unclaimed>(UNCLAIMED.map((u) => [u.id, u]));
 let alias = new Map<string, string>();
+let overlay = new Map<string, Unclaimed>();
 let contacts: Record<string, OperatorContact> = { ...CONTACTS };
 
 /** Edits made by claimed operators in their dashboard, layered over the scraped record. */
@@ -184,7 +185,12 @@ export function experienceById(id: string | null): Unclaimed | null {
   // 59,000 records. The walk ran on every miss, and a miss is the common case: any id that is not in the
   // catalog at all scanned the whole thing to return nothing, on every hash change and at boot.
   const seed = alias.get(id);
-  return (seed ? byId.get(seed) : undefined) ?? null;
+  return (seed ? byId.get(seed) : undefined) ?? overlay.get(id) ?? null;
+}
+
+/** A Maps hit that is not in the catalog yet, so opening the card still has a page. */
+export function rememberOverlay(u: Unclaimed): void {
+  overlay.set(u.id, u);
 }
 
 /**
@@ -380,7 +386,16 @@ export function topRated(item: Unclaimed): boolean {
 /** Synced public contact facts for an experience, matched by the operator's domain. */
 export function contactFor(item: Unclaimed): OperatorContact | null {
   if (item.contact) return item.contact;
-  return contacts[domainOf(item.src)] ?? null;
+  const c = contacts[domainOf(item.src)] ?? null;
+  if (!c) return null;
+  // A chain domain is not a location. Escapology Waterloo must not inherit the Tampa shop's street.
+  const listing = (item.area || "").toLowerCase();
+  const shop = [c.city, c.region].filter(Boolean).join(" ").toLowerCase();
+  if (listing && shop) {
+    const town = listing.split(",")[0].trim();
+    if (town && !shop.includes(town) && !listing.includes((c.city || "").toLowerCase())) return null;
+  }
+  return c;
 }
 
 export function fmtPhone(raw: string): string {

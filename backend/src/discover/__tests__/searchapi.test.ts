@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { categoryOfType, cityForMetro, citiesInScope, fromSerper, placeToOperator, planSearch, refineCategory, type Place } from "../searchapi.ts";
 import { SEARCH_TERMS, termsForCategories, uncoveredCategories } from "../searchterms.ts";
-import { CATEGORIES } from "../../taxonomy/catalog.ts";
+import { CATEGORIES, METROS } from "../../taxonomy/catalog.ts";
 import type { City } from "../cities.ts";
 
 // Hand-written in the providers' shapes. Nothing here was fetched; the test never touches the network or the database.
@@ -145,7 +145,7 @@ test("a metro id resolves to the city string the cache was built with, and a pla
   assert.equal(cityForMetro("tampa")?.name, "Tampa");
   assert.equal(cityForMetro("niagara")?.name, "Niagara Falls");
   assert.equal(cityForMetro("nowhere"), null);
-  assert.equal(citiesInScope({ metros: ["all"] }).length, 47);
+  assert.equal(citiesInScope({ metros: ["all"] }).length, METROS.length);
   assert.throws(() => citiesInScope({ metros: ["nowhere"] }));
 
   const plan = planSearch({ metros: ["toronto"], categories: ["heli", "cooking"] });

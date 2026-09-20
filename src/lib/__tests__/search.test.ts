@@ -227,3 +227,9 @@ test("a city typed with its own accents still moves to Where", () => {
   const prep = metroInQuery("cooking classes in tampa");
   assert.equal(stripPlaceWords("cooking classes in tampa", prep!.words), "cooking classes");
 });
+
+test("Waterloo, Kitchener and KW are their own metro, not Toronto", () => {
+  assert.equal(metroInQuery("karate in waterloo")?.metro.id, "waterloo");
+  assert.equal(metroInQuery("karate kitchener")?.metro.id, "waterloo");
+  assert.equal(metroInQuery("escape room kw")?.metro.id, "waterloo");
+});

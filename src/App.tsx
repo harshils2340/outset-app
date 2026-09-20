@@ -263,7 +263,12 @@ export function App() {
   }
   return (
     <div className="stage">
-      <button type="button" className="wghost stageback" onClick={() => setWeb(true)}>Back to the site</button>
+      <button type="button" className="wghost stageback" onClick={() => setWeb(true)}>
+        <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
+          <path d="M12.5 4.5 7 10l5.5 5.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+        Back to the site
+      </button>
       <div className="device" style={{ transform: `scale(${fit})`, transformOrigin: "center center" }}>
         <div className="screen" id="screen">
           <StatusBar />

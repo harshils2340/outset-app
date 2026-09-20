@@ -90,7 +90,7 @@ export const CITIES: City[] = [
   c("Kauai", "HI", "US", 22.05, -159.50), c("Anchorage", "AK", "US", 61.22, -149.90), c("Juneau", "AK", "US", 58.30, -134.42),
   c("Seward", "AK", "US", 60.10, -149.44), c("Fairbanks", "AK", "US", 64.84, -147.72),
   // Canada
-  c("Toronto", "ON", "CA", 43.65, -79.38), c("Niagara Falls", "ON", "CA", 43.09, -79.08), c("Ottawa", "ON", "CA", 45.42, -75.70),
+  c("Toronto", "ON", "CA", 43.65, -79.38), c("Waterloo", "ON", "CA", 43.46, -80.52), c("Niagara Falls", "ON", "CA", 43.09, -79.08), c("Ottawa", "ON", "CA", 45.42, -75.70),
   c("Muskoka", "ON", "CA", 45.05, -79.30), c("Kingston", "ON", "CA", 44.23, -76.48), c("London", "ON", "CA", 42.98, -81.25),
   c("Hamilton", "ON", "CA", 43.26, -79.87), c("Barrie", "ON", "CA", 44.39, -79.69), c("Kelowna", "BC", "CA", 49.89, -119.50),
   c("Kitchener", "ON", "CA", 43.45, -80.49), c("Cambridge", "ON", "CA", 43.36, -80.31), c("Guelph", "ON", "CA", 43.55, -80.25),

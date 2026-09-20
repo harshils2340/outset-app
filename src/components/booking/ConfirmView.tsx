@@ -27,7 +27,7 @@ export function ConfirmView() {
      desktop confirmation has named them all along. */
   const split = splitAddons(b.addons);
   const o = !l && split.optionIdx != null ? u!.options[split.optionIdx] : null;
-  const serviceName = o ? (o.detail ? tidyName(o.name) + " · " + tidyLength(o.detail) : tidyName(o.name)) : null;
+  const serviceName = o ? (o.detail ? tidyName(o.name) + " · " + tidyLength(o.detail) : tidyName(o.name)) : (b.service || null);
   const extras = l
     ? (b.addons || []).map((id) => (l.addons || []).find((x) => x.id === id)?.name).filter((n): n is string => !!n)
     : split.extras;

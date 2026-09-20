@@ -6,12 +6,13 @@ import {
   askConcierge,
   conciergeReady,
   headline,
+  listingForOption,
   refinements,
   stepLine,
   understood,
   headlineService,
-  listingIdFor,
   missedTheHour,
+  noTimesLine,
   offsetLine,
   priceLine,
   resetConcierge,
@@ -72,12 +73,36 @@ type Said =
   | { kind: "me"; text: string }
   | { kind: "them"; text: string }
   | { kind: "note"; text: string }
-  | { kind: "answer"; answer: ConciergeAnswer };
+  /**
+   * An answer keeps the trace that produced it.
+   *
+   * The steps used to be thrown away the moment the answer landed, which meant the single most convincing
+   * thing the product does, going and reading eleven shops' booking systems in three seconds, was visible
+   * only as a sentence that flickered past under three dots. Kept here, an answer can show its own working
+   * on demand, and the demo stops depending on somebody watching the right four seconds.
+   */
+  | { kind: "answer"; answer: ConciergeAnswer; steps: ConciergeStep[] };
 type Entry = Said & { id: number };
 
-const OPENER = "What do you want to do?";
+/**
+ * The greeting, said the way a person would say it rather than a landing page would print it. It carries what
+ * the agent does in one breath, because there is no separate screen to explain that on: this is a text thread,
+ * and a text thread has messages in it, not a hero and a numbered list.
+ */
+const OPENER = "Tell me what you want to do and I'll check who's actually free, live, right now.";
 
-const EXAMPLES = ["escape room in Waterloo tonight, 4 of us", "jet ski in Tampa this Saturday, 2 of us"];
+/**
+ * The first things a guest could say, offered as quick replies under the greeting rather than as a page of
+ * cards. A messaging app suggests replies you can tap; it does not show you a grid of examples and an
+ * illustrated three-step guide, so neither does this. Two are deliberately untidy, a lower-case "saturday" and
+ * a budget with no activity attached, because the reader handles that and a demo that only shows tidy input is
+ * selling the wrong thing.
+ */
+const EXAMPLES = [
+  "escape room in Waterloo tonight, 4 of us",
+  "axe throwing near Waterloo",
+  "something to do near me tonight",
+];
 
 export function WebConcierge({ seed, framed, onClose }: { seed?: string; framed?: boolean; onClose: () => void }) {
   const { state, openRequest, confirmUnclaimed } = useApp();
@@ -88,8 +113,10 @@ export function WebConcierge({ seed, framed, onClose }: { seed?: string; framed?
    */
   const [entries, setEntries] = useState<Entry[]>(() => (seed ? [] : [{ kind: "them", text: OPENER, id: 0 }]));
   const [busy, setBusy] = useState(false);
-  /** The agent's own steps, only so the wait can say which shop it is on. Never drawn as a panel. */
+  /** The agent's own steps for the question in flight, capped, so the working card stays cheap to draw. */
   const [steps, setSteps] = useState<ConciergeStep[]>([]);
+  /** The same steps, uncapped, so the answer can keep the whole trace when it lands. */
+  const stepsRef = useRef<ConciergeStep[]>([]);
   const [draft, setDraft] = useState("");
   const [history, setHistory] = useState<Conversation[] | null>(null);
   const [copied, setCopied] = useState("");
@@ -118,6 +145,16 @@ export function WebConcierge({ seed, framed, onClose }: { seed?: string; framed?
   const inputRef = useRef<HTMLInputElement>(null);
   const box = useRef<HTMLDivElement>(null);
   const inputId = useId();
+  /**
+   * How long the question in flight has been running, in tenths of a second.
+   *
+   * Said out loud while it works, because the wait is the product doing the thing nobody else does: a guest
+   * watching "3.4s" climb while shop names go past is watching eleven booking systems being read, and a
+   * spinner with no clock on it reads as a page that has stopped.
+   */
+  const [elapsed, setElapsed] = useState(0);
+
+  useModal(box);
 
   /**
    * The place the home already opened on, as a sentence the reader understands. A point the guest chose or one
@@ -208,6 +245,14 @@ export function WebConcierge({ seed, framed, onClose }: { seed?: string; framed?
     if (el) el.scrollTop = el.scrollHeight;
   }, [entries.length, busy]);
 
+  // The clock runs only while something is in flight, and is reset by the question rather than by the tick,
+  // so a second question does not inherit the first one's elapsed time.
+  useEffect(() => {
+    if (!busy) return;
+    const t = window.setInterval(() => setElapsed((n) => n + 1), 100);
+    return () => window.clearInterval(t);
+  }, [busy]);
+
   /** Set once the place question has been answered from what the site knows, so it cannot answer it twice. */
   const placeGiven = useRef(false);
 
@@ -224,7 +269,13 @@ export function WebConcierge({ seed, framed, onClose }: { seed?: string; framed?
       // `silent` is the app answering a question on the guest's behalf. It is not something they said, so it
       // does not go in the thread as their words; the note above it says what was assumed instead.
       if (!opts.silent) add({ kind: "me", text });
-      setSteps([]);
+      // A silent turn is the same question still being worked on, so its trace continues rather than starts:
+      // "read your sentence, asked where, answered it from the browser" is one story told once.
+      if (!opts.silent) {
+        setSteps([]);
+        stepsRef.current = [];
+        setElapsed(0);
+      }
       autoNext.current = !!opts.auto;
       setBusy(true);
 
@@ -233,9 +284,16 @@ export function WebConcierge({ seed, framed, onClose }: { seed?: string; framed?
       const sentence = session.current ? text : withPlace(text, place);
       const r = await askConcierge(sentence, {
         session: session.current,
-        // Kept only to narrate the wait. There is no trace panel any more, and on a phone there never was.
+        /*
+          Two copies on purpose. The state drives the working card while it runs and is capped, because
+          rendering sixty lines forty times is the one thing that could make the wait slower than it is. The
+          ref is the whole trace, uncapped, and it is what the finished answer keeps: "how I got this" that
+          starts at step thirty is not how it got it.
+        */
         onStep: (st) => {
-          if (!gone.current) setSteps((cur) => (cur.length > 40 ? [...cur.slice(-30), st] : [...cur, st]));
+          if (gone.current) return;
+          stepsRef.current = [...stepsRef.current, st];
+          setSteps((cur) => (cur.length > 40 ? [...cur.slice(-30), st] : [...cur, st]));
         },
         signal: ctl.signal,
       });
@@ -271,7 +329,7 @@ export function WebConcierge({ seed, framed, onClose }: { seed?: string; framed?
       }
 
       setBusy(false);
-      add({ kind: "answer", answer: r.answer });
+      add({ kind: "answer", answer: r.answer, steps: stepsRef.current });
       keep({ q: sentence, at: Date.now(), ms: r.answer.ms, answer: r.answer });
     },
     [place],
@@ -339,7 +397,9 @@ export function WebConcierge({ seed, framed, onClose }: { seed?: string; framed?
     const back: Entry[] = [];
     for (const t of c.turns) {
       if (!t.auto) back.push({ kind: "me", text: t.q, id: nextId.current++ });
-      if (t.answer) back.push({ kind: "answer", answer: t.answer, id: nextId.current++ });
+      // A conversation read back off this device has the answers but not the trace: what the agent did is
+      // not written to storage, and inventing a plausible one would be the worst kind of demo.
+      if (t.answer) back.push({ kind: "answer", answer: t.answer, steps: [], id: nextId.current++ });
       else if (t.error) back.push({ kind: "them", text: t.error, id: nextId.current++ });
     }
     setEntries(back.length ? back : [{ kind: "them", text: OPENER, id: 0 }]);
@@ -359,17 +419,12 @@ export function WebConcierge({ seed, framed, onClose }: { seed?: string; framed?
     inputRef.current?.focus();
   };
 
-  /** A business we already hold a page for opens that page. Anything else opens the shop's own booking site. */
-  const open = (o: ConciergeOption, d?: ConciergeDeparture) => {
-    const id = listingIdFor(o);
-    if (id) {
-      onClose();
-      window.scrollTo(0, 0);
-      openRequest(id);
-      return;
-    }
-    const url = d?.bookUrl || o.bookingUrl;
-    if (url) window.open(url, "_blank", "noopener,noreferrer");
+  /** Every shop in the shortlist opens on Outset. A live time we have never ingested still gets a page. */
+  const open = (o: ConciergeOption) => {
+    const id = listingForOption(o);
+    onClose();
+    window.scrollTo(0, 0);
+    openRequest(id);
   };
 
   const rememberGuest = (g: { name: string; phone: string; email: string }) => {
@@ -381,12 +436,10 @@ export function WebConcierge({ seed, framed, onClose }: { seed?: string; framed?
   };
 
   const sendBook = async (o: ConciergeOption, d: ConciergeDeparture, party: number, guest: { name: string; phone: string; email: string }) => {
-    const id = listingIdFor(o);
+    const id = listingForOption(o);
     const slot = slotOf(d.time);
-    const url = d.bookUrl || o.bookingUrl;
     if (!id || !slot || !/^\d{4}-\d{2}-\d{2}$/.test(d.date)) {
-      if (url) window.open(url, "_blank", "noopener,noreferrer");
-      add({ kind: "them", text: "I cannot finish that on Outset. Their own book page is open, pay them there." });
+      add({ kind: "them", text: "I could not hold that time on Outset. Pick another one." });
       return;
     }
     const dateIdx = Math.max(0, DATES.findIndex((day) => dateKey(day) === d.date));
@@ -413,7 +466,7 @@ export function WebConcierge({ seed, framed, onClose }: { seed?: string; framed?
       onClose();
       return;
     }
-    add({ kind: "them", text: r.checkoutUrl === "embedded" ? "Hold the card on the next screen. Then you are booked." : "Booked. Check your email for the confirmation." });
+    add({ kind: "them", text: r.checkoutUrl === "embedded" ? "Hold the card on the next screen. Then you are booked." : "You're on the list. Keep that confirmation on the next screen." });
     onClose();
   };
 
@@ -432,6 +485,15 @@ export function WebConcierge({ seed, framed, onClose }: { seed?: string; framed?
     void sendBook(o, d, party, guest);
   };
 
+  /**
+   * Nothing has been asked yet, so the thread is a standing invitation rather than one grey bubble.
+   *
+   * The opener still lives in `entries`, because the transcript, the history and the "New" button all reason
+   * about a thread that has one line in it. It is simply drawn as the opening screen instead of as a message
+   * until the guest says something.
+   */
+  const opening = !busy && entries.length === 1 && entries[0].kind === "them" && entries[0].text === OPENER;
+
   return (
     <div
       ref={box}
@@ -448,6 +510,7 @@ export function WebConcierge({ seed, framed, onClose }: { seed?: string; framed?
           <Mark size={30} />
           <span className="cg-who">
             <b>Ask Outset</b>
+            <small>Reads the shops' own booking systems</small>
           </span>
           <div className="cg-tools">
             <button type="button" className="cg-tool" onClick={() => setHistory(history ? null : loadConversations())} aria-pressed={!!history}>
@@ -491,7 +554,7 @@ export function WebConcierge({ seed, framed, onClose }: { seed?: string; framed?
         <div className="cg-log" ref={logRef} role="log" aria-live="polite" aria-relevant="additions">
           {entries.map((e) =>
             e.kind === "answer" ? (
-              <Answered key={e.id} answer={e.answer} onAsk={ask} onOpen={open} onBook={book} />
+              <Answered key={e.id} answer={e.answer} steps={e.steps} onAsk={ask} onOpen={open} onBook={book} />
             ) : e.kind === "note" ? (
               <p className="cg-note" key={e.id}>{e.text}</p>
             ) : (
@@ -501,16 +564,13 @@ export function WebConcierge({ seed, framed, onClose }: { seed?: string; framed?
               </div>
             ),
           )}
-          {busy ? (
-            <>
-              <div className="cg-typing" aria-label="Checking who's free">
-                <i /><i /><i />
-              </div>
-              <p className="cg-note cg-status">{status || "Checking who's free"}</p>
-            </>
-          ) : null}
-          {!busy && entries.length === 1 && entries[0].kind === "them" ? (
-            <div className="cg-chips">
+          {busy ? <Working steps={steps} status={status} elapsed={elapsed} /> : null}
+          {/*
+            Quick replies under the greeting, the way a phone suggests them, not a page of example cards. They
+            disappear the moment anything has actually been asked, same as any messaging app's own suggestions.
+          */}
+          {opening ? (
+            <div className="cg-chips cg-suggest">
               {EXAMPLES.map((ex) => (
                 <button type="button" key={ex} onClick={() => void ask(ex)}>
                   {ex}
@@ -558,14 +618,34 @@ export function WebConcierge({ seed, framed, onClose }: { seed?: string; framed?
             ref={inputRef}
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
-            placeholder="jet ski in Tampa Saturday, 2 of us"
+            placeholder="escape room in Waterloo tonight, 4 of us"
             autoComplete="off"
             enterKeyHint="send"
             maxLength={300}
           />
-          <button type="submit" aria-label="Ask" disabled={!draft.trim()}>
-            <Markup html={ICONS.send} />
-          </button>
+          {/*
+            While it works the send button is a stop button. A guest who has changed their mind can already
+            type over it, since a second question cancels the first, but somebody watching a shop take its twelve
+            seconds needs a way out that does not require thinking of another question first.
+          */}
+          {busy ? (
+            <button
+              type="button"
+              className="cg-stop"
+              aria-label="Stop"
+              onClick={() => {
+                running.current?.abort();
+                running.current = null;
+                setBusy(false);
+              }}
+            >
+              <span />
+            </button>
+          ) : (
+            <button type="submit" aria-label="Ask" disabled={!draft.trim()}>
+              <Markup html={ICONS.send} />
+            </button>
+          )}
         </form>
       </section>
     </div>
@@ -636,9 +716,116 @@ function HistoryPanel({
   );
 }
 
+
+/**
+ * What it is doing, while it does it.
+ *
+ * Three bouncing dots for twelve seconds is indistinguishable from a hang, and it also throws away the most
+ * persuasive thing on the screen: that the wait is a dozen booking systems being read one after another. So
+ * the wait says what it is on, keeps the two lines before it so movement is visible, and runs a clock. The
+ * clock matters twice over in a demo: it is the proof this is happening now rather than out of a cache.
+ */
+function Working({ steps, status, elapsed }: { steps: ConciergeStep[]; status: string | null; elapsed: number }) {
+  // Newest last in the trace; newest first here, because the one it is on belongs at the top next to the clock.
+  const said: string[] = [];
+  for (let i = steps.length - 1; i >= 0 && said.length < 4; i--) {
+    const line = stepLine(steps[i]);
+    if (line && !said.includes(line)) said.push(line);
+  }
+  const behind = said.slice(1);
+
+  return (
+    <div className="cg-work" aria-label="Checking who's free">
+      <div className="cg-work-top">
+        <span className="cg-work-dot" aria-hidden="true" />
+        <b>{status || "Checking who's free"}</b>
+        <span className="cg-work-clock">{(elapsed / 10).toFixed(1)}s</span>
+      </div>
+      {behind.length ? (
+        <ul className="cg-work-past">
+          {behind.map((line, i) => (
+            <li key={line} style={{ opacity: 0.66 - i * 0.18 }}>
+              {line}
+            </li>
+          ))}
+        </ul>
+      ) : null}
+    </div>
+  );
+}
+
+/**
+ * The receipt under an answer: what was checked, how long it took, and every step on request.
+ *
+ * Closed it is one quiet line, because a guest booking a jet ski does not want a log. Open it is the whole
+ * trace the agent wrote about itself: the shops it asked, the ones that timed out, the budget it applied,
+ * the calendars it read. That is the part that makes somebody believe the times on the screen, and it is the
+ * difference between a chat interface and evidence, and it is exactly what a demo needs to be able to show
+ * on purpose rather than hope somebody catches it going past.
+ */
+function Trace({ answer, steps }: { answer: ConciergeAnswer; steps: ConciergeStep[] }) {
+  const [open, setOpen] = useState(false);
+  const asked = new Set(steps.filter((s) => s.kind === "ask").map((s) => s.text)).size;
+  const live = new Set(
+    answer.options.filter((o) => o.departures.length).map((o) => o.domain),
+  ).size;
+
+  const bits: string[] = [];
+  if (asked) bits.push(asked === 1 ? "1 booking system read" : asked + " booking systems read");
+  else if (answer.counts.total) bits.push(answer.counts.total === 1 ? "1 place checked" : answer.counts.total + " places checked");
+  if (live) bits.push(live === 1 ? "1 live calendar" : live + " live calendars");
+  if (answer.ms) bits.push((answer.ms / 1000).toFixed(1) + "s");
+
+  return (
+    <div className={"cg-receipt" + (open ? " on" : "")}>
+      <button
+        type="button"
+        className="cg-receipt-top"
+        onClick={() => setOpen(!open)}
+        aria-expanded={open}
+        disabled={!steps.length}
+      >
+        <span className="cg-receipt-mark" aria-hidden="true" />
+        <span className="cg-receipt-line">{bits.join(" · ") || "Checked live"}</span>
+        {steps.length ? <span className="cg-receipt-more">{open ? "Hide" : "How I got this"}</span> : null}
+      </button>
+      {open && steps.length ? (
+        <ol className="cg-trace">
+          {steps.map((s, i) => (
+            <li key={i} className={"cg-t-" + tone(s.kind)}>
+              <span className="cg-trace-at">{(s.ms / 1000).toFixed(1)}s</span>
+              <span className="cg-trace-kind">{s.kind}</span>
+              <span className="cg-trace-text">
+                {s.text}
+                {s.detail ? <em>{s.detail}</em> : null}
+              </span>
+            </li>
+          ))}
+        </ol>
+      ) : null}
+    </div>
+  );
+}
+
+/**
+ * How a step reads at a glance. Only three tones, because a trace where every line is a different colour is
+ * a trace nobody scans: what went right, what went wrong, and everything the agent merely decided.
+ */
+function tone(kind: string): "go" | "warn" | "dim" {
+  if (kind === "answer" || kind === "catalog" || kind === "resolve" || kind === "compare") return "go";
+  if (kind === "timeout" || kind === "skip" || kind === "loosen" || kind === "widen" || kind === "budget") return "warn";
+  return "dim";
+}
+
+/** The rating a shop carries, said in one short string, or nothing when nobody has rated it. */
+function stars(o: ConciergeOption): string | null {
+  if (o.rating == null) return null;
+  return "★ " + o.rating.toFixed(1) + (o.reviews ? " (" + o.reviews.toLocaleString() + ")" : "");
+}
+
 /**
  * One answer, said the way somebody behind a counter would say it: the finding first, in a sentence, then the
- * businesses, then anything that qualifies them.
+ * businesses, then anything that qualifies them, then the receipt.
  *
  * The order of the businesses is `payload()`'s own: live times first, then the shops we can at least price off
  * their own site, then the ones that publish nothing. A guest is never shown an empty screen, which is the
@@ -646,11 +833,13 @@ function HistoryPanel({
  */
 function Answered({
   answer,
+  steps,
   onAsk,
   onOpen,
   onBook,
 }: {
   answer: ConciergeAnswer;
+  steps: ConciergeStep[];
   onAsk: (text: string) => void;
   onOpen: (o: ConciergeOption, d?: ConciergeDeparture) => void;
   onBook: (o: ConciergeOption, d: ConciergeDeparture, party: number) => void;
@@ -665,15 +854,15 @@ function Answered({
    * that anything typed works too.
    */
   if (answer.followUp) {
-    const got = understood(answer);
     return (
-      <>
+      <div className="cg-answer">
         {/*
-          What it took from the sentence, above what it still needs. Somebody who wrote out their party, their
-          budget, the day and the place and got back a four item menu concluded it had not listened. It had;
-          it only lacked an activity, and this line is the whole difference.
+          What it took from the sentence, above what it still needs, as separate pills rather than one grey
+          line. Somebody who wrote out their party, their budget, the day and the place and got back a four
+          item menu concluded it had not listened. It had; it only lacked an activity, and reading back the
+          five things it did get, one chip each, is the whole difference.
         */}
-        {got ? <p className="cg-note cg-got">Got: {got}</p> : null}
+        <Read answer={answer} />
         <div className="cg-b cg-them">{answer.followUp.question}</div>
         {answer.followUp.choices.length ? (
           <div className="cg-chips">
@@ -685,7 +874,7 @@ function Answered({
           </div>
         ) : null}
         <p className="cg-note">Or just tell me in your own words.</p>
-      </>
+      </div>
     );
   }
 
@@ -698,22 +887,38 @@ function Answered({
   // funnel stopped gating an answer behind a question.
   const narrow = answer.narrow?.choices?.length ? answer.narrow : null;
   const next = refinements(answer, shown);
+  const unread = priced.length ? priced : rest;
 
   if (!answer.options.length) {
     return <div className="cg-b cg-them">I could not find anywhere for that. Try another town or activity.</div>;
   }
 
   return (
-    <>
+    <div className="cg-answer">
       {answer.loosened ? <div className="cg-b cg-them cg-loosened">{answer.loosened}</div> : null}
-      {line ? <div className="cg-b cg-them cg-compare">{line}</div> : null}
+      {line ? <p className="cg-say">{line}</p> : null}
+      <Read answer={answer} />
       {missed ? <p className="cg-note">Nothing at that exact time. These are the closest.</p> : null}
 
-      {shops.length
-        ? shops.map((shop) => (
-            <Shop key={shop.option.domain} option={shop.option} slots={shop.slots} party={party} onOpen={onOpen} onBook={onBook} />
-          ))
-        : (priced.length ? priced : rest).slice(0, 4).map((o) => <Priced key={o.domain} option={o} onOpen={onOpen} />)}
+      {shops.length ? (
+        shops.map((shop) => (
+          <Shop key={shop.option.domain} option={shop.option} slots={shop.slots} party={party} onOpen={onOpen} onBook={onBook} />
+        ))
+      ) : (
+        <>
+          {/*
+            Why there are no times on these, said as our own limitation rather than as a claim about the
+            shop. Most of them do publish their availability; we cannot read their page yet, and a guest told
+            to phone a shop that takes bookings online is the product looking broken.
+          */}
+          <p className="cg-note">{noTimesLine(unread.slice(0, 4))}</p>
+          {unread.slice(0, 4).map((o) => (
+            <Priced key={o.domain} option={o} onOpen={onOpen} />
+          ))}
+        </>
+      )}
+
+      <Trace answer={answer} steps={steps} />
 
       {/*
         What a person says next, in one row: the agent's own offer to narrow first, then the standing actions.
@@ -735,7 +940,22 @@ function Answered({
           ))}
         </div>
       ) : null}
-    </>
+    </div>
+  );
+}
+
+/** What the agent took from the sentence, one chip per thing, or nothing when it took nothing worth saying. */
+function Read({ answer }: { answer: ConciergeAnswer }) {
+  const got = understood(answer);
+  if (!got) return null;
+  return (
+    <div className="cg-read" aria-label="What I understood">
+      {got.split(" · ").map((bit) => (
+        <span className="cg-readbit" key={bit}>
+          {bit}
+        </span>
+      ))}
+    </div>
   );
 }
 
@@ -743,7 +963,7 @@ function Answered({
  * One shop, its open times, one Book on each time.
  *
  * Three rides at the same dock used to be three cards, each with a listing link and a calendar credit. A guest
- * paying for a jet ski wants the time and the price.
+ * paying for a jet ski wants the time and the price, so the shop is the card and its times are rows inside it.
  */
 function Shop({
   option,
@@ -760,62 +980,107 @@ function Shop({
 }) {
   const sameDay = slots.length > 0 && slots.every((s) => s.departure.date === slots[0].departure.date);
   const day = sameDay ? whenLine({ date: slots[0].departure.date, time: "" }) : null;
+  const rated = stars(option);
   return (
-    <article className="cg-opt">
-      <button type="button" className="cg-shop" onClick={() => onOpen(option, slots[0]?.departure)}>
-        <b>{option.name}</b>
-        <small>{[day, option.city].filter(Boolean).join(" · ")}</small>
+    <article className="cg-card">
+      <div className="cg-card-top">
+        <button type="button" className="cg-card-name" onClick={() => onOpen(option, slots[0]?.departure)}>
+          <b>{option.name}</b>
+          <small>{[option.city, rated].filter(Boolean).join(" · ")}</small>
+        </button>
         {/*
           Whose calendar these times came out of.
-          
-          This is the claim the whole product rests on: not our guess at their availability, theirs. It was
-          lost when the card became one shop with its times grouped under it, and it belongs here rather than
-          on each row, because it is a fact about the shop and not about any one departure.
+
+          This is the claim the whole product rests on: not our guess at their availability, theirs. It is a
+          fact about the shop rather than about any one departure, so it sits once at the top of the card,
+          and it is the loudest quiet thing on the screen because it is the reason to believe the rest.
         */}
-        {option.via ? <small className="cg-via">Read live from {option.via}</small> : null}
-      </button>
-      {slots.map(({ departure, offset }) => {
-        const few = fewSeats(departure.seatsLeft ?? undefined);
-        return (
-          <div className="cg-slot" key={departure.date + departure.time + departure.item}>
-            <div className="cg-slot-when">
-              {fmtTime(departure.time)}
-              {departure.item ? <small>{departure.item}</small> : null}
-              {offset != null && offset !== 0 ? <em className="cg-off">{offsetLine(offset)}</em> : null}
+        {option.via ? (
+          <span className="cg-live" title={"Read live from " + option.via}>
+            <i aria-hidden="true" />
+            Live
+          </span>
+        ) : null}
+      </div>
+      {option.via ? <p className="cg-source">Read from {option.via} just now</p> : null}
+      {day ? <p className="cg-day">{day}</p> : null}
+
+      <div className="cg-slots">
+        {slots.map(({ departure, offset }) => {
+          const few = fewSeats(departure.seatsLeft ?? undefined);
+          return (
+            <div className="cg-slot" key={departure.date + departure.time + departure.item}>
+              <div className="cg-slot-when">
+                <span className="cg-slot-time">{fmtTime(departure.time)}</span>
+                {offset != null ? (
+                  <em className={offset === 0 ? "cg-onthehour" : "cg-off"}>{offsetLine(offset)}</em>
+                ) : null}
+                {departure.item ? <small>{departure.item}</small> : null}
+              </div>
+              <div className="cg-slot-right">
+                <span className="cg-price">{priceLine(departure)}</span>
+                {/*
+                  Seats left whenever the vendor states them, not only when they are running out. A real
+                  remaining count is the strongest thing on the row that says this was read a second ago
+                  rather than crawled last week. It turns warm once there are few enough to matter.
+                */}
+                {departure.seatsLeft != null && departure.seatsLeft > 0 ? (
+                  <span className={few ? "cg-few" : "cg-seats"}>
+                    {few ? "Only " : ""}
+                    {departure.seatsLeft} left
+                  </span>
+                ) : null}
+                <button type="button" className="cg-book" onClick={() => onBook(option, departure, party)}>
+                  Book
+                </button>
+              </div>
             </div>
-            <span className="cg-price">{priceLine(departure)}</span>
-            {/*
-              Seats left whenever the vendor states them, not only when they are running out. A real remaining
-              count is the strongest thing on the row that says this was read a second ago rather than crawled
-              last week. It turns warm once there are few enough to matter.
-            */}
-            {departure.seatsLeft != null && departure.seatsLeft > 0 ? (
-              <span className={few ? "cg-few" : "cg-seats"}>
-                {few ? "Only " : ""}
-                {departure.seatsLeft} left
-              </span>
-            ) : null}
-            <button type="button" className="cg-book" onClick={() => onBook(option, departure, party)}>
-              Book
-            </button>
-          </div>
-        );
-      })}
+          );
+        })}
+      </div>
+
+      <button type="button" className="cg-ghost" onClick={() => onOpen(option, slots[0]?.departure)}>
+        Photos, prices and what to bring
+      </button>
     </article>
   );
 }
 
-/** A shop we can price but not time. The whole row opens their page. */
+/**
+ * A shop we can price but not time: its cheapest published figure, and a way through to its page.
+ *
+ * Quieter than a live card on purpose. A menu price read off their website last week and a seat read off
+ * their calendar a second ago are not the same claim, and the two must never look alike on one screen.
+ */
 function Priced({ option, onOpen }: { option: ConciergeOption; onOpen: (o: ConciergeOption) => void }) {
   const s = headlineService(option);
   const line = s ? serviceLine(s) : null;
+  const rated = stars(option);
+  const phone = option.route === "phone" ? option.phone : null;
   return (
-    <button type="button" className="cg-opt" onClick={() => onOpen(option)}>
-      <b>{option.name}</b>
-      <small>{option.city || s?.name || option.category}</small>
-      <span className="cg-row">
-        <span className="cg-price">{line || "Price on request"}</span>
-      </span>
-    </button>
+    <article className="cg-card cg-quietcard">
+      <div className="cg-card-top">
+        <button type="button" className="cg-card-name" onClick={() => onOpen(option)}>
+          <b>{option.name}</b>
+          <small>{[option.city, rated].filter(Boolean).join(" · ") || option.category}</small>
+        </button>
+        <span className="cg-tag">{phone ? "By phone" : "From their site"}</span>
+      </div>
+      <div className="cg-quietrow">
+        <span className="cg-price">
+          {line || "Price on request"}
+          {s?.name ? <em>{s.name}</em> : null}
+        </span>
+        {phone ? (
+          <a className="cg-ghost cg-call" href={"tel:" + phone.replace(/[^\d+]/g, "")}>
+            Call {phone}
+          </a>
+        ) : (
+          <button type="button" className="cg-ghost" onClick={() => onOpen(option)}>
+            See their times
+          </button>
+        )}
+      </div>
+    </article>
   );
 }

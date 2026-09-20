@@ -10,7 +10,7 @@ import { useApp } from "../../state/AppProvider";
 import { Art } from "../art/Art";
 import { Photo } from "../art/Photo";
 import { IcClose, IcGlobe, IcMinus, IcNavigate, IcPin, IcPlus, IcSearch } from "./AirIcons";
-import { applyFilters, browseList, feedFor, whatLabel } from "./feed";
+import { applyFilters, atMetro, browseList, feedFor, whatLabel } from "./feed";
 import { getPrefs, setPrefs } from "./prefs";
 
 const QTY_MAX = 8;
@@ -28,7 +28,7 @@ const kindQuery = (art: ArtKind) => ART_ALIASES[art]?.[0] || art;
 
 function countInMetro(metroId: string): number {
   if (metroId === ALL_METRO_ID) return getCatalog().length;
-  return getCatalog().filter((u) => u.metroId === metroId).length;
+  return getCatalog().filter((u) => atMetro(u, metroId)).length;
 }
 
 export function SearchSheet() {
