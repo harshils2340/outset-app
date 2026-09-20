@@ -289,7 +289,9 @@ export async function sniffBookingPage(url: string, opts: { browser?: Browser; t
   // What a person would actually see on the page, as a fallback and as a cross-check on the endpoint.
   let domTimes: string[] = [];
   try {
-    const text = await page.evaluate(() => document.body?.innerText || "");
+    // Playwright's own reader rather than a function evaluated in the page: this is a Node project, so the
+    // browser's globals are not in its type library and `document` here does not compile.
+    const text = await page.innerText("body", { timeout: 2000 });
     domTimes = findTimes(text);
   } catch {
     /* page already gone */

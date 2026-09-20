@@ -106,7 +106,11 @@ concierge.post("/concierge/stream", rateLimit(60, 60 * 60 * 1000), async (c) => 
       (a) => ({ ok: true as const, a }),
       (e) => ({ ok: false as const, e }),
     );
-    let done: { ok: true; a: Answer } | { ok: false; e: unknown } | null = null;
+    type Settled = { ok: true; a: Answer } | { ok: false; e: unknown };
+    let done: Settled | null = null;
+    // Read through a call, not the variable: it is only ever assigned from a callback, so reading it directly
+    // lets the compiler decide it is forever null and the branches below have nothing to narrow.
+    const settled = () => done;
     work.then((v) => {
       done = v;
       flush?.();
@@ -114,7 +118,7 @@ concierge.post("/concierge/stream", rateLimit(60, 60 * 60 * 1000), async (c) => 
 
     for (;;) {
       while (queue.length) await stream.writeSSE({ event: "step", data: queue.shift()! });
-      if (done) break;
+      if (settled()) break;
       await new Promise<void>((res) => {
         flush = res;
         // A tick of its own, so a plan that finishes with an empty queue is never waited on forever.
@@ -123,11 +127,13 @@ concierge.post("/concierge/stream", rateLimit(60, 60 * 60 * 1000), async (c) => 
       flush = null;
     }
 
-    if (!done!.ok) {
+    const result = settled()!;
+    if (!result.ok) {
+      console.error("concierge stream failed:", result.e);
       await stream.writeSSE({ event: "failed", data: JSON.stringify({ error: "Something broke reaching the shops." }) });
       return;
     }
-    const a = done!.a;
+    const a = result.a;
     session.intent = a.intent;
     recordTurn(session, r.text, trace, outcomeOf(a));
     await stream.writeSSE({ event: "answer", data: JSON.stringify(payload(a, Date.now() - trace.t0, session.id)) });

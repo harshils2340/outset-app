@@ -24,7 +24,7 @@ async function call<T>(path: string, body?: Record<string, string | number | und
     body: body ? form(body) : undefined,
     signal: AbortSignal.timeout(20000),
   });
-  const j = (await res.json()) as T & { error?: { message?: string } };
+  const j = (await res.json()) as T & { error?: { message?: string; code?: string } };
   const code = j.error?.code || "";
   if (!res.ok) throw new Error("stripe: " + (code ? code + ": " : "") + (j.error?.message || res.status));
   return j;
