@@ -14,7 +14,7 @@ import { join } from "node:path";
  * scratch file first. Nothing here reads it: the whole answer comes from the stub below.
  */
 process.env.OUTSET_DB = process.env.OUTSET_DB || join(tmpdir(), "outset-concierge-test.db");
-const { departed, fareharborLive } = await import("../live.ts");
+const { departed, fareharborLive, clearFeedCache } = await import("../live.ts");
 
 const SHOP = "https://fareharbor.com/embeds/book/torontohelitours/?full-items=yes";
 
@@ -30,6 +30,8 @@ function avail(pk: number, itemPk: number, name: string, startAt: string): Recor
 
 /** One FareHarbor, answering from a table instead of the network. */
 function stubFareharbor(days: { date: string; avs: Record<string, unknown>[] }[]): { calls: string[] } {
+  // A new stub is a new world: the reader caches responses by URL for a minute, and these tests share URLs.
+  clearFeedCache();
   const calls: string[] = [];
   const body = (url: string): unknown => {
     if (url.includes("/calendar/")) {

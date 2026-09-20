@@ -38,8 +38,22 @@ test("an empty question is refused before anything is searched", async () => {
 test("a sentence with nothing to search on gets a question back, not an empty screen", async () => {
   const r = await ask({ text: "something fun" });
   assert.equal(r.status, 200);
-  const body = (await r.json()) as { followUp: string | null; options: unknown[]; counts: { total: number } };
-  assert.ok(body.followUp && body.followUp.length > 10);
+  /**
+   * `followUp` is an object now, not a string: a question arrives with the answers to it, so the guest taps
+   * rather than guessing what phrasing will be understood. A question with nothing to tap is a form.
+   */
+  const body = (await r.json()) as {
+    followUp: { question: string; choices: { label: string; text: string }[]; why: string } | null;
+    options: unknown[];
+    counts: { total: number };
+  };
+  assert.ok(body.followUp, "a sentence with nowhere in it gets a question back");
+  assert.ok(body.followUp.question.length > 10);
+  /**
+   * `choices` are the towns with the most businesses, so against this test's empty catalog there are none to
+   * offer. What must always hold is that the field exists and is a list: the page renders it without checking.
+   */
+  assert.ok(Array.isArray(body.followUp.choices), "a question always carries a choices list, even an empty one");
   assert.deepEqual(body.options, []);
   assert.equal(body.counts.total, 0);
 });

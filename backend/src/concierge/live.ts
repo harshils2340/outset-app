@@ -217,7 +217,8 @@ export async function fareharborLive(bookingUrl: string, opts: { from?: Date; da
    * reverses. What this actually buys is one month's cold latency, which on a slow company is several seconds.
    */
   const days: FhDay[] = [];
-  const cals = await Promise.all(months.map((m) => getJson<{ calendar?: { weeks?: { days?: FhDay[] }[] } }>(base + "calendar/" + m)));
+  // `months` is a Set, so it is spread before mapping; Set has no .map and this threw at runtime, not compile.
+  const cals = await Promise.all([...months].map((m) => getJson<{ calendar?: { weeks?: { days?: FhDay[] }[] } }>(base + "calendar/" + m)));
   for (const cal of cals) {
     for (const w of cal?.calendar?.weeks || []) days.push(...(w.days || []));
   }
