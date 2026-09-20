@@ -2411,6 +2411,80 @@ disk, 498 backend tests (5 new) and 577 app tests (6 new), both projects type-ch
 - The earlier runs' calls stand: Peek's 257 links and no feed, the 6 rows publishing a bare
   `https://fareharbor.com/`, and anything needing a real Stripe key.
 
+## 20 September 2026, thirty-ninth run (08:00 to 09:00 UTC)
+
+**Checked, and why.** Every area tonight's list suggests is already down as verified, and nothing had landed
+since the thirty-eighth run's log when this one started, so the rehearsal was not re-run at the top: the type
+checks and both suites were run instead and were green (577 app, 498 backend). The time went on the two
+entries Coverage has been carrying under Otto for several runs, both of them a question read as the wrong
+thing, and then on the rest of `companyAgent.ts` read the same way. Otto is the product's third promise and
+the only surface that answers a guest in sentences, so a wrong answer there is a wrong answer with our name
+on it, on all 59,125 shipped listings at once.
+
+**Found and fixed.**
+
+- **Asked where the nearest hotel was, Otto gave the shop's own dock** (`f139bcbd2`). `meet` outranks the
+  out-of-scope gate so "where do we meet" survives a place word, and the exemption was every question the
+  `meet` reader matches, which is every question carrying "where". So "where's the nearest hotel?", "where can
+  I get an uber?" and "where are the best reviews?" were each answered with this shop's meeting point, its
+  street address or the town it sits in, on every listing in the catalog. An address a guest did not ask for
+  is worse than a refusal, because it reads as an answer. Words that can only be somebody else's now break
+  the exemption, unless the operator publishes the word themselves: 234 listings meet at a hotel lobby or an
+  airport terminal and keep their answer. Both gates read the new list, because they held different lists once
+  before and the second quietly took the `pets` exemption back.
+- **Otto said Yes to a newsletter, and Yes to a booking it cannot see** (`70c295d90`). Two ways into the reply
+  that opens "Yes. Pick a service and time on this page". "Sign up" was read as booking, so "can I sign up for
+  your newsletter?" was a yes to something the page cannot do. And `asksAboutOwnBooking`, which exists to stop
+  the one answer rule 4 forbids, needed the word "my" or "our": "is the booking confirmed?" and "did the
+  reservation go through?" both fell through to that same "Yes.", for a booking Otto cannot look up and a shop
+  that has not confirmed it. Both on every shipped listing. "Are bookings confirmed instantly?" is still a
+  question about how booking here works, and still answers.
+- **Asked whether they open on Christmas, Otto read out today's hours** (`f7749d124`). A shop publishes a week,
+  never a calendar. "Christmas" names no weekday, so the hours chain found no day and fell through to its
+  "open right now" branch: on all 14,499 listings that publish hours, a guest asking about Christmas,
+  Thanksgiving, New Year's Eve or December 25 was told "Not yet. They open today at 9 AM". A holiday or a date
+  now answers that they publish a normal week and not holiday hours, with that week beside it. "Good Friday"
+  and "Easter Monday" are holidays rather than this week's Friday and Monday.
+- **"How old do you have to be" was answered with the shop's first entry rule** (`237104d35`). That sentence
+  says neither "age" nor a number, which is all the age reader looked for, so it read as a generic rules
+  question, matched no rule topic, and fell to the first requirement line plus a count of the rest. On Ali'i
+  Ocean Tours that was a briefing about how to swim with mantas. It now gives the published minimum age, or
+  says none is published. "How old is the boat" is still not a question about the guest.
+- **A restaurant reachable by boat was read as this boat's accessibility note** (`baa628b5a`). `rulesAnswer`
+  picks the published lines carrying a topic's words and never checked which sense it had found, so "accessib"
+  matched "dinner at one of the area restaurants that are accessible by boat" and that is what a guest asking
+  whether the trip is wheelchair accessible was read. 23 shipped listings hold only that sense of the word.
+  Each rule topic can now name the sense it is not.
+
+**Swept and clean.** The rest of `companyAgent.ts` read line by line: the offer matcher and its family folding,
+the price, duration, group, deals, waiver, bring, included and cancellation answers, the chips, the compound
+two-questions-in-one path, and the FAQ that beats an assembled answer. Twenty-five ordinary guest questions
+asked of five listings of different shapes turned up nothing else wrong: what is left is Otto saying it does not
+know (cash, cards, tipping, photos, arriving late, changing a time), which is rule 3 working.
+
+**How the five were checked.** 19,710 answers to 30 legitimate questions over a 657-listing sample spanning
+the whole catalog, diffed before and against after: not one byte changed. The same sample for the questions
+that were wrong: 5,256 of 5,913 answers changed, which is every listing sampled for every one of them.
+
+**Green after the fixes.** 53 of 53 rehearsal steps against a local Postgres with TLS and the Chromium on disk,
+586 app tests (9 new) and 498 backend tests, both projects type-check clean, and clean again after rebasing
+onto `5da532e0e`, which landed during the run.
+
+**Needs Harshil.**
+
+- **Nothing runs a type-check or `npm test` on a push.** This is the third night's log to say it and the
+  thirty-eighth run counted five red-on-main incidents. `5da532e0e` landed mid-run and was clean, which is
+  luck rather than a process.
+- **A shop that trades on a holiday cannot say so.** The fix above is honest, not complete: `OperatorProfile`
+  has nowhere to hold "open Boxing Day, closed Christmas Day", so a claimed shop that does trade is told by
+  its own assistant that it might not be. A holiday exception list on the Availability page is the real answer.
+- **Otto has no answer for the six commonest questions it hears after price and hours**, going by what a guest
+  would plausibly type: cash, cards, gift cards, tipping, photographs, and what happens if they are late. Each
+  is a fact the shop knows and almost none publish, so widening Otto is the wrong end: the dashboard's "What it
+  knows" panel could ask for these six by name.
+- The earlier runs' calls stand: Peek's 257 links and no feed, the six rows publishing a bare
+  `https://fareharbor.com/`, and anything needing a real Stripe key.
+
 ## Coverage
 
 **Verified so far.** The name a guest reads: the business name on all 59,125 shipped listings, against the
@@ -2679,6 +2753,14 @@ custom header against the CORS allow list, the id, the setup-mode webhook branch
 the server's rule agree, and the saved-card booking path against the Checkout one for the slot race, the
 duplicate, the release and the payout. That the availability corpus replays the same wherever it is run.
 
+What Otto makes of a question, read end to end rather than sampled: the out-of-scope gate against the five
+topics allowed to outrank it, and the words in a "where" question that can only be somebody else's place; both
+ways into the "Yes" that answers a booking request, against a mailing list and against a booking the guest
+already holds; a holiday and a calendar date against the week a shop actually publishes; how old the guest has
+to be against how old the boat is; and which sense of an accessibility, height, weight or dress word a
+published line carries. All of it measured the same way: 19,710 answers to 30 ordinary questions over a
+657-listing sample spanning the catalog, unchanged to the byte, against 5,256 answers that had to change.
+
 **Not yet checked.** Whether the concierge's watch window should have a browser door of its own: with
 `ADMIN_KEY` set it now answers a browser 404 and only curl gets in, and the metrics page's emailed-code
 sign-in is the pattern it lacks. Whether a concierge session id should be eight characters of `Math.random`
@@ -2716,9 +2798,7 @@ Stripe.js, the hosted page, 3D Secure, the Payouts page against a connected acco
 closed card form leaves holding the guest's own time for thirty minutes (see this run's Needs Harshil). The
 operator chat for a hand-built listing (`src/data/listings.ts` is empty, so `agent.ts` and the `ChatView`
 operator path still have no live case). Whether the 59,060 listings with no FAQ should have one, as a
-supply question, since it is Otto's best source and the dashboard's starting point. Whether "where's the
-nearest hotel?" should answer with this shop's own meeting point, which it does because the meeting-point
-reader matches "where", and whether "sign up" should read as booking, which makes a newsletter question one. Photo upload against a real GitHub token, and the gap between the URL
+supply question, since it is Otto's best source and the dashboard's starting point. Photo upload against a real GitHub token, and the gap between the URL
 it returns and the deploy that makes the file exist. The mouse drag path of reordering: the keyboard and touch
 paths are driven in a browser, the HTML5 drag events are not. A rehearsal check that reads a claimed listing's
 rendered page and not only the API's JSON. A CI job that runs `npm test` on either side. Whether a claimed shop
