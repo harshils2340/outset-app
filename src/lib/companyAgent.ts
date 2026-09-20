@@ -441,6 +441,28 @@ const OUT_OF_SCOPE =
  */
 const IN_SCOPE_ANYWAY: Topic[] = ["rainPolicy", "meet", "pets", "walkin", "next"];
 
+/**
+ * Somebody else's premises, somebody else's ride, somebody else's opinion. No exemption above reaches these,
+ * because no question about this shop's own meeting point can be about one.
+ *
+ * The `meet` exemption is there so a guest asking where to meet survives a place word, and it was wide enough
+ * to swallow every out-of-scope word a question starting "where" could carry: "where's the nearest hotel?",
+ * "where can I get an uber?" and "where are the best reviews?" were all answered with this shop's own dock.
+ * Handing a guest an address they did not ask for is worse than saying no, because it reads as an answer.
+ *
+ * A word the operator publishes themselves is theirs to answer, so a tour that meets in a hotel lobby or at an
+ * airport terminal keeps its meeting point: `namesSomeoneElse` checks the shop's own location lines first.
+ */
+const SOMEONE_ELSE =
+  /(hotels?|motels?|hostels?|airbnb|\bairport\b|\buber\b|\blyft\b|\btaxis?\b|yelp|tripadvisor|\breddit\b|\breviews?\b|\brated\b|\bratings?\b|stars on|who owns|lawsuit|\bdowntown\b|\btraffic\b|directions|how (do|to) (i )?get there)/i;
+
+function namesSomeoneElse(ctx: CompanyContext, q: string): boolean {
+  const m = q.match(SOMEONE_ELSE);
+  if (!m) return false;
+  const own = [ctx.item.meetingPoint || "", ctx.item.checkin || "", ctx.item.area || "", ctx.contact?.street || "", ctx.contact?.city || ""].join(" ");
+  return !new RegExp(m[0].replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i").test(own);
+}
+
 /** Undoing a booking rather than making one. Read in two places, so it lives here. */
 const CANCEL_RE = /(cancel|refund|reschedul|no.?show|deposit|money back)/i;
 
@@ -625,7 +647,7 @@ function readQuestion(ctx: CompanyContext, q: string, prev: ChatState): Topic[] 
     else if (/^(what about|how about|and)\b/i.test(t)) add("describe");
   }
 
-  if (OUT_OF_SCOPE.test(t) && !hits.some((h) => IN_SCOPE_ANYWAY.includes(h))) return ["outOfScope"];
+  if ((OUT_OF_SCOPE.test(t) || SOMEONE_ELSE.test(t)) && (!hits.some((h) => IN_SCOPE_ANYWAY.includes(h)) || namesSomeoneElse(ctx, t))) return ["outOfScope"];
   if (!hits.length && namedOffer) add("describe");
   if (!hits.length) add("search");
   return hits;
@@ -1292,7 +1314,7 @@ export function companyAnswer(ctx: CompanyContext, question: string, prev: ChatS
 
   const topics = readQuestion(ctx, q, prev);
 
-  if (topics[0] === "outOfScope" || (OUT_OF_SCOPE.test(q) && !topics.some((t) => IN_SCOPE_ANYWAY.includes(t)))) {
+  if (topics[0] === "outOfScope" || ((OUT_OF_SCOPE.test(q) || SOMEONE_ELSE.test(q)) && (!topics.some((t) => IN_SCOPE_ANYWAY.includes(t)) || namesSomeoneElse(ctx, q)))) {
     const faq = faqMatch(ctx.item, q);
     if (faq) return { text: faq, chips: chipsFor(ctx, prev.topic), state: { topic: "describe" } };
     const out = answerOne(ctx, "outOfScope", q, prev);

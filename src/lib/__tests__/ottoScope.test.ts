@@ -143,3 +143,38 @@ test("an entry rule is still an entry rule unless the guest is cancelling", () =
     assert.doesNotMatch(ask(q), /cancellation|refund/i, q);
   }
 });
+
+/* ---------- somebody else's place, asked as "where" ---------- */
+
+test("a question about somebody else's place is not answered with this shop's address", () => {
+  // `meet` outranks the out-of-scope gate so "where do we meet" survives a place word, and the exemption was
+  // wide enough that any question starting "where" did too. Kingston publishes a meeting point, so each of
+  // these was answered "Meet at dock located at 1 Brock St", which reads as an answer to what was asked.
+  assert.match(cruises.meetingPoint!, /1 Brock St/, "the listing changed, so this case needs a new one");
+  for (const q of [
+    "where's the nearest hotel?",
+    "where can I get an uber?",
+    "where are the best reviews?",
+    "where is the closest hotel to the dock?",
+    "where do I find a taxi?",
+    "where is it rated highest?",
+  ]) {
+    assert.match(ask(q), REFUSAL, q);
+  }
+});
+
+test("where this shop is, and where to park at it, are still answered", () => {
+  for (const q of ["where do we meet?", "where are you located?", "what's the address?", "where do we check in?"]) {
+    assert.doesNotMatch(ask(q), REFUSAL, q);
+  }
+  // "Nearest" is an out-of-scope word and their own parking is not somebody else's place.
+  assert.doesNotMatch(ask("where's the nearest parking?"), REFUSAL);
+  assert.match(ask("where's the nearest parking?"), /[Pp]arking/);
+});
+
+test("a shop whose own meeting point is a hotel keeps answering about it", () => {
+  // The exemption-breaker is about whose place it is, not about the word, so a pickup at a hotel is still theirs.
+  const atHotel = { ...cruises, meetingPoint: "Meet in the lobby of the Marriott Hotel on Ontario St" };
+  assert.doesNotMatch(ask("do we meet at the hotel?", atHotel), REFUSAL);
+  assert.match(ask("where is the hotel we meet at?", atHotel), /Marriott/);
+});
