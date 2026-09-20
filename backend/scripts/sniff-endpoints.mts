@@ -2,7 +2,7 @@ import "../src/env.ts";
 import { chromium } from "playwright";
 import { randomUUID } from "node:crypto";
 import { db } from "../src/db/client.ts";
-import { sniffBookingPage } from "../src/concierge/sniff.ts";
+import { sniffBookingPage, varsByDate } from "../src/concierge/sniff.ts";
 import { isLaptop } from "../src/scrape/guard.ts";
 import { cpuIdle, MIN_IDLE } from "../src/scrape/cpu.ts";
 
@@ -103,8 +103,14 @@ if (!list.length) {
 }
 console.log(`sniffing ${list.length} booking pages, ${concurrency} at a time${dry ? " (dry)" : ""}\n`);
 
-// Headless without exception.
-const browser = await chromium.launch({ headless: true });
+/**
+ * A browser per worker. Sharing one means a page that takes the browser down with it — a crashed renderer,
+ * an out-of-memory tab — fails every other shop in the run with "Target page, context or browser has been
+ * closed", which is what happened: eight of ten pages reported an error that belonged to a ninth.
+ */
+async function browserFor(): Promise<import("playwright").Browser> {
+  return chromium.launch({ headless: true });
+}
 const ins = db.prepare(
   `INSERT INTO booking_endpoints (id, operator_id, page_url, endpoint, method, post_body, content_type, score, sample_times, sample_prices, found_at)
    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -114,6 +120,8 @@ let found = 0, none = 0, i = 0;
 const vendors: Record<string, number> = {};
 
 async function worker(): Promise<void> {
+  const browser = await browserFor();
+  try {
   while (i < list.length) {
     const t = list[i++];
     // The same courtesy the rest of the crawlers show: pause when the machine is busy.
@@ -125,20 +133,35 @@ async function worker(): Promise<void> {
       console.log(`  --  ${t.domain.padEnd(34)} ${r.note ?? "nothing"}`);
       continue;
     }
+    /**
+     * Proved, not guessed. An endpoint that answers the same thing for every date is opening hours or a price
+     * list, and storing it would have the replay reader offering a shop's Monday trading hours as bookable
+     * slots. Unknown (no date in the request at all) is kept, flagged by a lower score, because plenty of
+     * these return a whole month and filter client-side.
+     */
+    const varies = await varsByDate(best.url, best.method, best.body);
+    if (varies !== true) {
+      none += 1;
+      const why = varies === false ? "same answer on two dates: not a calendar" : "no date in the request: cannot be asked about a day";
+      console.log(`  --  ${t.domain.padEnd(34)} ${why}`);
+      continue;
+    }
     found += 1;
     const host = new URL(best.url).hostname.replace(/^www\./, "");
     vendors[host] = (vendors[host] || 0) + 1;
-    console.log(`  [${String(best.score).padStart(2)}] ${t.domain.padEnd(34)} ${best.method} ${best.url.slice(0, 74)}`);
+    console.log(`  [${String(best.score).padStart(2)}] date-varying ${t.domain.padEnd(30)} ${best.method} ${best.url.slice(0, 62)}`);
     if (best.times.length) console.log(`       ${best.times.slice(0, 10).join(" ")}${best.prices.length ? "   " + best.prices.slice(0, 4).map((p) => "$" + p).join(" ") : ""}`);
     if (!dry && t.id !== "adhoc") {
-      ins.run(randomUUID(), t.id, t.url, best.url, best.method, best.body, best.type, best.score,
+      ins.run(randomUUID(), t.id, t.url, best.url, best.method, best.body, best.type, best.score + 5,
         best.times.slice(0, 20).join(","), best.prices.slice(0, 12).join(","), new Date().toISOString());
     }
+  }
+  } finally {
+    await browser.close().catch(() => {});
   }
 }
 
 await Promise.all(Array.from({ length: concurrency }, worker));
-await browser.close();
 
 console.log(`\n${found} with an endpoint, ${none} without.`);
 const byHost = Object.entries(vendors).sort((a, b) => b[1] - a[1]);

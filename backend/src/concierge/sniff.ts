@@ -136,6 +136,50 @@ function scoreOf(url: string, body: string, type: string): { score: number; why:
 }
 
 /**
+ * Does this endpoint actually know what day it is?
+ *
+ * The strongest signal that a request is a calendar, and the one that cannot be faked by a payload that
+ * merely contains clock values: ask it about two different days and see whether the answer changes. Bad Axe
+ * Throwing's `/wp-json/badaxe/v1/location/list/` scored eleven on thirty times and two prices and is a list
+ * of branch opening hours, identical every day of the year. A reviews feed, a locations list and a price
+ * sheet all look like availability until you move the date.
+ *
+ * This is what makes the endpoint safe to replay later without a browser. An endpoint that does not vary is
+ * not availability, whatever else is in it — and one with no date in it at all cannot be asked about a
+ * particular day, which is the only question the concierge has. Both are refused.
+ */
+export async function varsByDate(url: string, method: string, body: string | null): Promise<boolean | null> {
+  const sub = (s: string, iso: string) =>
+    s.replace(/\d{4}-\d{2}-\d{2}/g, iso).replace(/\d{4}\/\d{2}\/\d{2}/g, iso.replace(/-/g, "/"));
+  const day = (n: number) => {
+    const d = new Date(Date.now() + n * 86400_000);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  };
+  // No date anywhere in the request: it cannot be asked about a different day, so this proves nothing.
+  if (!/\d{4}[-/]\d{2}[-/]\d{2}/.test(url + (body ?? ""))) return null;
+
+  const get = async (iso: string): Promise<string | null> => {
+    try {
+      const res = await fetch(sub(url, iso), {
+        method,
+        headers: { "user-agent": UA, accept: "application/json, text/plain, */*" },
+        body: body ? sub(body, iso) : undefined,
+        signal: AbortSignal.timeout(12000),
+      });
+      if (!res.ok) return null;
+      return (await res.text()).slice(0, 200000);
+    } catch {
+      return null;
+    }
+  };
+  // Two days a fortnight apart, both in the future, so a shop closed on one weekday does not decide it.
+  const [a, b] = await Promise.all([get(day(2)), get(day(16))]);
+  if (a == null || b == null) return null;
+  const times = (t: string) => [...new Set(findTimes(t))].sort().join(",");
+  return a !== b || times(a) !== times(b);
+}
+
+/**
  * Open one booking page, let it load, and keep whatever it asked for.
  *
  * The page is also nudged: many widgets do not fetch anything until somebody clicks "Book". So after the
@@ -198,6 +242,44 @@ export async function sniffBookingPage(url: string, opts: { browser?: Browser; t
         if (seen.length) break;
       }
     }
+    /**
+     * Then pick a date, which is when the availability request actually fires.
+     *
+     * Opening the widget gets you the marketing page and a calendar with nothing chosen. The XHR that asks
+     * "what is free" almost always waits for a day to be selected, so a sniff that only clicks "Book" sees
+     * the shop's opening hours, its price list, its locations — everything except the thing it came for.
+     * That is why Bad Axe's `/location/list/` won: it was the only request that had been made.
+     *
+     * A future date, never today, because plenty of shops grey out the current day after their cutoff and a
+     * disabled cell fires nothing.
+     */
+    const target = new Date(Date.now() + 3 * 86400_000);
+    const dayNum = String(target.getDate());
+    const iso = `${target.getFullYear()}-${String(target.getMonth() + 1).padStart(2, "0")}-${String(target.getDate()).padStart(2, "0")}`;
+    const dateTargets = [
+      `[data-date="${iso}"]`,
+      `[data-day="${iso}"]`,
+      `td[data-date*="${iso}"]`,
+      `[aria-label*="${target.toLocaleDateString("en-US", { month: "long", day: "numeric" })}"]`,
+      // A calendar cell is usually just the number, and usually not a disabled one.
+      `td:not([class*="disabled"]):not([class*="unavailable"]) >> text="${dayNum}"`,
+      `button:not([disabled]):not([class*="disabled"]) >> text="${dayNum}"`,
+      `[class*="day"]:not([class*="disabled"]) >> text="${dayNum}"`,
+    ];
+    for (const frame of [page, ...page.frames().filter((f) => f !== page.mainFrame())]) {
+      for (const sel of dateTargets) {
+        try {
+          const el = (frame as typeof page).locator(sel).first();
+          if (!(await el.count().catch(() => 0))) continue;
+          await el.click({ timeout: 2500 });
+          await page.waitForTimeout(3500);
+          break;
+        } catch {
+          /* not a clickable cell; try the next shape */
+        }
+      }
+    }
+
     // Widgets often live in an iframe; its requests are captured the same way, but it needs time to boot.
     if (!seen.length && page.frames().length > 1) await page.waitForTimeout(3000);
   } catch (e) {
