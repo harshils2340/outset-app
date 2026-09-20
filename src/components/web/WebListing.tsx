@@ -17,7 +17,7 @@ import { freeCancelBadge } from "../../lib/cancellation";
 import { bookableStart, clockIn, hourLines, itemOpenState, itemWeek, zoneFor } from "../../lib/openNow";
 import { displayHours } from "../../lib/hoursText";
 import { noStartTimesNote, startTimesOn } from "../../lib/startTimes";
-import { DAY_SHORT, clock12, dayLabel, todaysDeals } from "../../lib/companyAgent";
+import { DAY_SHORT, assistantOn, clock12, dayLabel, todaysDeals } from "../../lib/companyAgent";
 import { fmtDistance } from "../../lib/geo";
 import { kmBetween, nearestLocation, venueLabel } from "../../lib/places";
 import { addonPrice, hasPrice, priceUnclaimed, serviceFeeLabel } from "../../lib/pricing";
@@ -2043,10 +2043,20 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
             </div>
             <div className="albizright">
               <h3>Questions before you book?</h3>
-              <p className="alsecsub">Ask Outset reads {possessive(item.title)} own published information, and can check live availability while you wait.</p>
-              <button type="button" className="aloutline" onClick={() => openAsk("What should I know about " + item.title + " before booking?")}>
-                Ask Outset about {item.title}
-                </button>
+              {/* The operator's Assistant switch. Off means this shop answers guests itself, so the agent goes
+                  and the phone number, which sits under it as a second option, becomes the first one. The phone
+                  listing has honoured this switch all along; the desktop one stopped when its Otto panel became
+                  an Ask Outset button, and offered the shop's own information back to a guest either way. */}
+              {assistantOn(item) ? (
+                <>
+                  <p className="alsecsub">Ask Outset reads {possessive(item.title)} own published information, and can check live availability while you wait.</p>
+                  <button type="button" className="aloutline" onClick={() => openAsk("What should I know about " + item.title + " before booking?")}>
+                    Ask Outset about {item.title}
+                  </button>
+                </>
+              ) : (
+                <p className="alsecsub">{item.title} answers these themselves. {callHref ? "Give them a call, or send" : "Send"} a booking request on this page and it reaches them directly.</p>
+              )}
               {callHref ? <a className="aloutline" href={callHref}>Call the business</a> : null}
               {/* On every listing, claimed or not, and worded for an owner rather than about the page's status:
                   "Claim this listing" only appeared on unclaimed ones, which told a guest which shops had not

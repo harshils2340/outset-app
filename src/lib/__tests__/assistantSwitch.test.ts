@@ -124,3 +124,22 @@ test("every guest-side entry point to the assistant consults the switch", () => 
     assert.ok(/\bassistantOn\s*\(/.test(src), what + " (" + rel + ") does not call assistantOn");
   }
 });
+
+/**
+ * Naming the switch is not obeying it. The desktop listing kept calling `assistantOn` elsewhere on the page
+ * while its own way in, the "Ask Outset about <shop>" button, sat outside every branch of it, so a shop that
+ * had switched the assistant off was still offering a guest its own published answers. This reads the branch
+ * itself: the button that opens the agent must be inside the switch's true arm.
+ */
+test("the desktop listing's Ask button sits inside the switch, not beside it", () => {
+  const src = readFileSync(join(here, "../../components/web/WebListing.tsx"), "utf8");
+  const open = src.indexOf("assistantOn(item) ?");
+  assert.ok(open > 0, "the listing no longer branches on assistantOn(item)");
+  const close = src.indexOf(") : (", open);
+  assert.ok(close > open, "the switch has no off branch, so a shop that turned it off is told nothing");
+  const on = src.slice(open, close);
+  assert.match(on, /openAsk\s*\(/, "the Ask Outset button is outside the assistant switch");
+  // And the off arm has to say something: an empty panel under "Questions before you book?" is worse than none.
+  const off = src.slice(close, close + 600);
+  assert.match(off, /answers these themselves/, "the off branch does not hand the guest to the shop");
+});
