@@ -2557,6 +2557,69 @@ new), and 53 of 53 rehearsal steps against a local Postgres with TLS and the Chr
 - The earlier runs' calls stand: Peek's 257 links and no feed, the six rows publishing a bare
   `https://fareharbor.com/`, and anything needing a real Stripe key.
 
+## 20 September 2026, forty-first run (10:00 to 11:30 UTC)
+
+**Checked, and why.** One commit landed after the fortieth run's log was written: Harshil's own
+`55c696943`, "Open Near me on the GPS pin", 443 lines across the home, the listing page, search and the app
+provider. Nothing had read it, it is the newest thing a guest touches, and the brief's first two unchecked
+areas (the guest listing page and its booking box, then search and browse) are exactly what it rewrote. So
+the whole run went there. The rehearsal was run, twice, because that commit touches `src/` and so did four of
+tonight's five fixes.
+
+**Found and fixed.**
+
+- **The app's type-check was red on main** (`16f52f37f`). `rememberCoords` always answers a point and
+  `openingFeed` always answers one of three shapes, and both were declared as the nullable `Guess`. A
+  possibly-null `feed.kind` stops TypeScript narrowing a union, so every field read after it in `withPlace`
+  failed too: eight errors from two words. Worth saying plainly, because this run's own brief says to type
+  check with `npx tsc --noEmit -p .` at the root, and that project checks nothing at all. `npm run typecheck`
+  (`tsc -b`) catches it, and so does the rehearsal's own step. Verified both ways on the old commit.
+- **"Ask Outset about this shop" did nothing at all** (`b0b2742e9`). The desktop listing traded Otto's panel
+  for a button that dispatches `openAsk`, and the provider's `asking` is a string nothing renders: `App.tsx`
+  kept a second copy in its own `useState` and drew the overlay from that one. Driven in a real Chromium:
+  before, clicking it left `role=dialog` at 0; after, the concierge opens. The provider's own comment already
+  said it holds this state "so any screen can open the same overlay", so `App.tsx` now reads it.
+- **A guest who arrived on a shared listing link got a home that never stopped loading** (`e6c142fd5`). The
+  feed opens in `locating` and waits for GPS rather than painting the clock's city, and the one effect that
+  ends that wait only ran when the visit *began* on the home. A listing link is not the home, so "Back to
+  results" drew two skeleton rails and left them there: 0 cards, no empty state, no explanation, still there
+  at 70 seconds. This is the outreach email's link and every shared link. Asking is now a question about the
+  screen the guest is looking at (`shouldLocate`), so a listing link still prompts nobody and the home behind
+  it settles a place when it is reached. 14 rails and 118 cards, driven.
+- **An operator who switched the assistant off still had it offered** (`74b15869b`). The Assistant page says
+  "Guests can't reach it while it's off". The phone listing has honoured that switch all along; the desktop
+  listing did too until its Otto panel became the Ask button above, which was drawn for every shop. The test
+  that guards this had been failing on main since 09:34 and nobody ran it.
+- **A heading counted 22 and the grid drew 18** (`8b8fc433f`). A dead cover takes its listing out of any grid
+  that promises photographs, and that happened inside `Grid` and `Rail`, after every count on the page had
+  been taken from a list that still held them. "Escape rooms in Toronto · 22" over 18 cards, the Filters
+  modal's "Show N places" promising 22 at the same instant, no Show more and no other way to the missing
+  four. The filter now runs once, on the pool both the counts and the cards come from.
+
+**Swept and clean.** The guest listing at 400px over eight shapes (12 options, no prices at all, mixed priced
+and unpriced, add-ons, four venues, a 60-character name): nothing scrolls sideways, nothing sits past the
+edge outside a scroller. The service picker on a shop whose eleven options read as nine "6 hours · $120"
+rows: each one carries its own boat's name as a heading, so they are told apart. A search that matches
+nothing: a named count, real suggestions and a way out, never a bare no-match.
+
+**Green after the fixes.** Both projects type-check clean (`tsc -b` and the backend's own), 604 app tests (5
+new) and 508 backend tests, and 53 of 53 rehearsal steps against a local Postgres with TLS and the Chromium
+on disk, run once mid-way and once on the finished tree.
+
+**Needs Harshil.**
+
+- **Nothing runs a type-check or `npm test` on a push**, and tonight it cost a red `main` for four hours and
+  two failing tests nobody saw, for the fourth night running. One more detail for whoever wires it: run
+  `npm run typecheck`, not `tsc --noEmit -p .`, because the root project is empty.
+- **If every cover on the page dies, the home goes silently blank.** The kind list is non-empty, so "Nothing
+  in X here yet" never appears, and every rail returns null: header, category chips, footer and nothing in
+  between. Rare in the wild and total when it happens. I left it, because what the page should say instead is
+  a product decision.
+- **`55c696943` carries a lot of reformatting.** Roughly half its listing-page diff is whitespace that moved
+  closing tags off their own indentation, which is what buried the assistant switch going missing.
+- The earlier runs' calls stand: `concierge.css`'s dead panel, the readers with no tests of their own, Peek's
+  257 links, and anything needing a real Stripe key.
+
 ## Coverage
 
 **Verified so far.** The name a guest reads: the business name on all 59,125 shipped listings, against the
@@ -2842,6 +2905,13 @@ the scroll lock, sideways scroll, anything past the edge, every control named, a
 rows, the narrow chips and the history panel as a guest sees them. Every class the overlay renders against
 the stylesheet that dresses it, now a test of its own.
 
+The newest guest code, `55c696943`, driven rather than read: what a guest who arrives on a shared listing
+link sees when they press "Back to results", and where the home asks the browser for a location at all; the
+listing page's business panel, its one way into the agent and the operator switch above it; the counts
+printed over browse and over search against the cards actually drawn under them, with dead covers in play;
+the no-match search state and its way out; and the guest listing at 400px over eight listing shapes, from
+twelve options to none priced at all.
+
 **Not yet checked.** Whether the concierge's watch window should have a browser door of its own: with
 `ADMIN_KEY` set it now answers a browser 404 and only curl gets in, and the metrics page's emailed-code
 sign-in is the pattern it lacks. Whether a concierge session id should be eight characters of `Math.random`
@@ -2932,7 +3002,15 @@ phone, neither of which has been driven. The hosted page's account id is now rig
 the page it builds has still never been opened. Whether the 12 shipped names that are not names at all ("You
 are being redirected...", "SITE1212", "bocaratonobserver.com") should fall back to something, and whether the
 12 carrying an emoji are branding or a marketplace's tile icon. Peek, which is 257 links and the next
-feed worth reading. Any live vendor against its real server rather than a stub. Whether a sentence naming two
+feed worth reading. What the home should say when every cover on it is dead: today it draws a header, the
+category chips, a footer and nothing between them, because the kind list is not empty so the "Nothing here
+yet" state never fires (see this run's Needs Harshil). Whether the `waiting` line should count a listing
+whose cover died as one of the "places listed without a photo yet", which it does not. The rest of the
+operator dashboard beyond Bookings driven in a browser: Calendar, Services, Availability, Settings and the
+setup checklist counting itself, which are read and unit tested but never clicked. The claim and sign-in
+flows against a wrong address, an expired link, a link claimed twice and five wrong codes, beyond what the
+rehearsal's happy path walks. A metro with one listing and a category with none, as browse rather than as
+search. Any live vendor against its real server rather than a stub. Whether a sentence naming two
 regions ("ontario california") should take the first one it recognises, which it does. Whether a budget read
 out of "under 18s" should filter prices, which it does. The outreach list
 script, `scripts/outreach-list.mts`, and the `GET /outreach/drafts` route it reads. Whether Gmail's one-click
