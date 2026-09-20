@@ -52,6 +52,6 @@ concierge.post("/concierge/ask", rateLimit(60, 60 * 60 * 1000), async (c) => {
 /** Live availability for one business, by domain, for when a guest is already looking at one. */
 concierge.get("/concierge/live/:domain", rateLimit(120, 60 * 60 * 1000), async (c) => {
   const days = Math.max(1, Math.min(Math.floor(Number(c.req.query("days"))) || 7, 30));
-  const r = await liveFor(c.req.param("domain"), { days });
+  const r = await liveFor(c.req.param("domain") || "", { days });
   return c.json(r);
 });
