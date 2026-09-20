@@ -97,6 +97,8 @@ type Action =
   | {
       type: "confirmUnclaimed";
       dateIdx: number;
+      /** The listing date as YYYY-MM-DD. Wins over `dateIdx` when the concierge booked a day outside the 10-day strip. */
+      date?: string;
       slot: string;
       qty: number;
       optionIdx: number | null;
@@ -267,7 +269,7 @@ function reducer(state: AppState, action: Action): AppState {
       const p = priceUnclaimed(picked, action.qty, extras);
       const booking: Booking = {
         listing: u.id,
-        date: dateKey(DATES[action.dateIdx]),
+        date: action.date && /^\d{4}-\d{2}-\d{2}$/.test(action.date) ? action.date : dateKey(DATES[action.dateIdx]),
         slot: action.slot,
         qty: action.qty,
         addons: [...(picked ? [String(action.optionIdx)] : []), ...extras.map((a) => a.name)],
@@ -445,7 +447,7 @@ type Api = {
    * the API took it; a time that filled up meanwhile comes back as `taken`, with the error to show. A card
    * booking (`pay`) keeps the listing behind the checkout splash and then leaves for Stripe's page.
    */
-  confirmUnclaimed: (input: { dateIdx: number; slot: string; qty: number; optionIdx: number | null; addonIdx?: number[]; guest?: { name: string; phone: string; email?: string }; pay?: boolean }) => Promise<{ ok: boolean; error?: string; taken?: boolean; checkoutUrl?: string }>;
+  confirmUnclaimed: (input: { listing?: string; dateIdx: number; date?: string; slot: string; qty: number; optionIdx: number | null; addonIdx?: number[]; service?: string; total?: number | null; guest?: { name: string; phone: string; email?: string }; pay?: boolean }) => Promise<{ ok: boolean; error?: string; taken?: boolean; checkoutUrl?: string }>;
   back: () => void;
   /** The guest closed the card form without paying: the listing comes back as it was. */
   cancelCheckout: () => void;
@@ -812,16 +814,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
       closeSheet: () => dispatch({ type: "closeSheet" }),
       confirm: () => dispatch({ type: "confirm" }),
       confirmUnclaimed: async (input) => {
-        const u = experienceById(stateRef.current.reqTargetId);
+        if (input.listing) {
+          dispatch({ type: "openRequest", id: input.listing });
+          await loadListing(input.listing);
+        }
+        const u = experienceById(input.listing || stateRef.current.reqTargetId);
         if (!u || !input.slot) return { ok: false, error: "Pick a time first." };
+        const date = input.date && /^\d{4}-\d{2}-\d{2}$/.test(input.date) ? input.date : dateKey(DATES[input.dateIdx]);
         if (!hasApi()) {
           // No API on this host: the booking lives on this device only, the way the demo always worked.
-          dispatch({ type: "confirmUnclaimed", ...input });
+          dispatch({ type: "confirmUnclaimed", ...input, date });
           return { ok: true };
         }
         const picked = input.optionIdx != null ? u.options[input.optionIdx] : null;
         const extras = (input.addonIdx || []).map((i) => (u.addons || [])[i]).filter(Boolean);
         const p = priceUnclaimed(picked, input.qty, extras);
+        const total = input.total != null && Number.isFinite(input.total) ? input.total : p.total;
         const code = makeCode(initials(u.title));
         // The request goes to the operator through the API: email to them, a row in their dashboard. Only once
         // the API has it does the guest see a ticket; before this the page said "Request sent" while the API
@@ -832,8 +840,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         const r = await submitBooking({
           embedded,
           wallet: loadWalletId() || undefined,
-          code, listing: u.id, date: dateKey(DATES[input.dateIdx]), slot: input.slot, qty: input.qty,
-          service: picked?.name || u.title, variant: picked?.detail || "", addons: extras.map((a) => a.name), total: p.total || null,
+          code, listing: u.id, date, slot: input.slot, qty: input.qty,
+          service: input.service || picked?.name || u.title, variant: picked?.detail || "", addons: extras.map((a) => a.name), total: total || null,
           guest: { name: input.guest?.name || "", phone: input.guest?.phone || "", email: input.guest?.email || "" },
         });
         if (!r.ok) {
@@ -843,7 +851,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         }
         // Otto held the saved card: skip Stripe Checkout and show the ticket.
         if (r.charged) {
-          dispatch({ type: "confirmUnclaimed", ...input, code, pay: false, paid: true });
+          dispatch({ type: "confirmUnclaimed", ...input, date, code, pay: false, paid: true });
           return { ok: true };
         }
         // Card on file: the listing stays behind the checkout splash and Stripe's hosted page takes over, then
@@ -852,11 +860,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
         // checkout host is ever worth leaving the page for.
         // Embedded: the form mounts over the listing and Stripe brings the guest back to #paid= when it is done.
         if (r.checkoutClientSecret) {
-          dispatch({ type: "confirmUnclaimed", ...input, code, pay: true, checkoutSecret: r.checkoutClientSecret });
+          dispatch({ type: "confirmUnclaimed", ...input, date, code, pay: true, checkoutSecret: r.checkoutClientSecret });
           return { ok: true, checkoutUrl: "embedded" };
         }
         const goesToStripe = isHttpsUrlOnHost(r.checkoutUrl, "checkout.stripe.com");
-        dispatch({ type: "confirmUnclaimed", ...input, code, pay: goesToStripe });
+        dispatch({ type: "confirmUnclaimed", ...input, date, code, pay: goesToStripe });
         if (goesToStripe) window.location.assign(r.checkoutUrl!);
         return { ok: true, checkoutUrl: goesToStripe ? r.checkoutUrl : undefined };
       },

@@ -1,13 +1,8 @@
 /*
   The concierge overlay.
 
-  Every colour here is a token from app.css, which is the difference between this and the page the API renders
-  for itself: `/go` hard-codes forest, sage and paper, so it is light-only and drifts the day the palette moves.
-  This inherits the palette, and with it dark mode, for free.
-
-  Two columns on a wide screen, one on a narrow one. The thread is the product; the panel beside it is there
-  because a thread on its own reads like any other chatbot, and the point is that real businesses are answering
-  out of their real calendars.
+  A single thread, centered, with the site dimmed behind it. The right-hand "what the agent is doing" panel
+  was demo chrome: a guest paying for a jet ski does not need a trace of FareHarbor reads beside the times.
 */
 
 .cg {
@@ -15,7 +10,8 @@
   inset: 0;
   z-index: 60;
   display: flex;
-  background: var(--ground);
+  justify-content: center;
+  background: color-mix(in srgb, var(--bezel) 52%, transparent);
   font-family: var(--f-body);
   color: var(--ink);
 }
@@ -23,11 +19,12 @@
 .cg-thread {
   display: flex;
   flex-direction: column;
-  flex: 0 0 440px;
-  max-width: 100%;
+  flex: 1 1 auto;
+  width: min(480px, 100%);
+  max-width: 480px;
   height: 100%;
   background: var(--surface);
-  border-right: 1px solid var(--line);
+  box-shadow: 0 0 0 1px var(--line);
 }
 
 .cg-top {
@@ -100,19 +97,82 @@
   border-radius: var(--r-l);
   padding: 12px 14px;
   font: inherit;
-  cursor: pointer;
   animation: cg-pop .18s ease-out;
 }
-.cg-opt:hover { border-color: var(--accent-soft); box-shadow: var(--shadow-card); }
+.cg-opt button { cursor: pointer; }
 .cg-opt b { display: block; font-size: 15px; font-weight: 600; margin-bottom: 2px; }
 .cg-opt small { display: block; color: var(--ink-soft); font-size: 13px; }
+.cg-shop {
+  display: block;
+  width: 100%;
+  border: 0;
+  background: none;
+  padding: 0;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+}
+.cg-shop:hover b { color: var(--accent); }
+.cg-slot {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+}
+.cg-slot-when {
+  flex: 1;
+  min-width: 0;
+  font-weight: 650;
+  font-size: 15px;
+}
+.cg-slot-when small {
+  display: block;
+  font-weight: 400;
+  color: var(--ink-soft);
+  font-size: 13px;
+  margin-top: 1px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cg-slot-when .cg-off {
+  display: block;
+  margin-left: 0;
+  font-style: normal;
+  font-weight: 500;
+  font-size: 12px;
+}
+.cg-slot .cg-price { flex: none; }
+.cg-slot .cg-book { flex: none; }
 .cg-when { color: var(--ink) !important; font-weight: 500; margin-top: 2px; }
 .cg-row { display: flex; align-items: baseline; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
 .cg-price { font-weight: 700; color: var(--accent); font-size: 15px; }
 .cg-price em { font-style: normal; font-weight: 400; color: var(--ink-soft); font-size: 13px; }
-.cg-few { color: var(--few); background: var(--few-bg); font-size: 12px; font-weight: 600; padding: 2px 7px; border-radius: 999px; }
+.cg-few { color: var(--few); background: var(--few-bg); font-size: 12px; font-weight: 600; padding: 2px 7px; border-radius: 999px; flex: none; }
 .cg-go { margin-left: auto; color: var(--open); font-weight: 600; font-size: 14px; }
 .cg-go.soft { color: var(--ink-soft); font-size: 13px; }
+.cg-acts { display: flex; gap: 8px; margin-top: 10px; }
+.cg-book {
+  border: 0; background: var(--accent); color: var(--on-accent);
+  border-radius: 8px; padding: 8px 14px; font: inherit; font-weight: 650;
+}
+.cg-more {
+  border: 1px solid var(--line-strong); background: transparent; color: var(--ink);
+  border-radius: 8px; padding: 8px 12px; font: inherit; font-weight: 600;
+}
+.cg-guest {
+  display: grid; gap: 8px; padding: 12px 14px; border-top: 1px solid var(--line);
+}
+.cg-guest input {
+  border: 1px solid var(--line-strong); border-radius: 8px; padding: 10px 12px; font: inherit;
+  background: var(--surface);
+}
+.cg-guest button {
+  border: 0; background: var(--accent); color: var(--on-accent);
+  border-radius: 8px; padding: 10px; font: inherit; font-weight: 650; cursor: pointer;
+}
 
 .cg-typing { align-self: flex-start; background: var(--surface-2); border-radius: 19px; padding: 13px 16px; display: flex; gap: 4px; }
 .cg-typing i { width: 7px; height: 7px; background: var(--ink-faint); border-radius: 50%; animation: cg-blink 1.1s infinite; }
@@ -164,10 +224,23 @@
 .t-dim { color: #5d6b57; }
 .t-lit { color: #fff; }
 
-/* Narrow: the thread is the whole product, and the machinery is not something a phone needs to show. */
+/* Framed: inside the phone app this is a screen, not a modal over the desktop site. */
+.cg-framed {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  background: var(--surface);
+}
+.cg-framed .cg-thread {
+  max-width: none;
+  width: 100%;
+  box-shadow: none;
+}
+
+/* Narrow: the thread is the whole product. */
 @media (max-width: 900px) {
-  .cg-stage { display: none; }
-  .cg-thread { flex: 1 1 auto; border-right: 0; }
+  .cg { background: var(--ground); }
+  .cg-thread { max-width: none; width: 100%; box-shadow: none; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -186,7 +259,8 @@
 .cg-when em { font-style: normal; font-weight: 600; font-size: 12.5px; margin-left: 8px; }
 .cg-off { color: #9A6B08; }
 .cg-onthehour { color: var(--accent); }
-.cg-via { color: var(--ink-faint) !important; font-size: 12px; margin-top: 3px; }
+/* Sits under the shop's name on its card: one statement of source per shop, not one per departure. */
+.cg-via { display: block; color: var(--ink-faint); font-size: 12px; margin-top: 3px; }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) .cg-off { color: #E3B341; }
@@ -194,15 +268,6 @@
 
 /* Seats left when there are plenty: a fact, not a warning, so it is quiet until `.cg-few` takes over. */
 .cg-seats { color: var(--open); background: var(--open-bg); font-size: 12px; font-weight: 600; padding: 2px 7px; border-radius: 999px; }
-
-/*
-  The phone.
-
-  Two versions of the same screen. Inside the app's phone frame it is one of the app's own screens, so it is
-  absolute within `.screen` and inherits that frame's rounded corners instead of covering the browser. On a
-  real phone `.screen` is the viewport and the two are the same thing.
-*/
-.cg-framed { position: absolute; z-index: 20; }
 
 @media (max-width: 900px) {
   /*
@@ -296,33 +361,6 @@
 .cg-tool[aria-pressed="true"] { background: var(--accent-tint); color: var(--accent); font-weight: 600; }
 
 /*
-  The phone, on a laptop.
-
-  A toggle rather than a breakpoint. The wide view is the one that shows the agent working, which is what you
-  want when you are testing it; the phone is the product as a guest actually holds it, which is what you want
-  when you are judging it. Wanting each on purpose is the whole point, so it is a control, not a window width.
-*/
-.cg-asphone { background: rgba(20, 22, 19, .62); backdrop-filter: blur(3px); align-items: center; justify-content: center; }
-.cg-asphone .cg-stage { display: none; }
-.cg-asphone .cg-thread {
-  flex: 0 0 auto;
-  width: 390px;
-  max-width: calc(100vw - 32px);
-  height: min(844px, calc(100vh - 48px));
-  border: 1px solid var(--line-strong);
-  border-radius: 34px;
-  overflow: hidden;
-  box-shadow: 0 24px 70px rgba(0, 0, 0, .45);
-}
-.cg-asphone .cg-top { padding-top: 16px; }
-.cg-asphone .cg-input { padding-bottom: 16px; }
-/* Below the two-column breakpoint the thread is already the whole screen, so the frame would only shrink it. */
-@media (max-width: 900px) {
-  .cg-asphone { background: var(--ground); backdrop-filter: none; }
-  .cg-asphone .cg-thread { width: auto; max-width: 100%; height: 100%; border: 0; border-radius: 0; box-shadow: none; flex: 1 1 auto; }
-}
-
-/*
   Past conversations.
 
   Over the thread rather than beside it: it is somewhere you go and come back from, and on the phone there is
@@ -381,10 +419,8 @@
 */
 .cg-who { min-width: 0; }
 .cg-who b, .cg-who small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.cg-asphone .cg-who small { display: none; }
 /* Four tools at 7px of padding each left the title ten pixels short of "Ask Outset" and it truncated to
    "Ask Ou…". Five pixels and a slightly smaller label buy back more than that. */
-.cg-asphone .cg-tool { padding: 6px 5px; font-size: 12.5px; }
 @media (max-width: 460px) {
   .cg-who small { display: none; }
   .cg-tool { padding: 6px 5px; font-size: 12.5px; }

@@ -5,6 +5,9 @@ import { isConcessionFare } from "../lib/fares.ts";
 import { resovaLive } from "./resova.ts";
 import { peekLive } from "./peek.ts";
 import { checkfrontLive } from "./drivers/checkfront.ts";
+import { xolaLive } from "./readers/xola.ts";
+import { rezdyLive } from "./readers/rezdy.ts";
+import { tripworksLive } from "./readers/tripworks.ts";
 import { Trace } from "./session.ts";
 import { recordDemand } from "./demand.ts";
 import { nextNeed } from "./needs.ts";
@@ -908,7 +911,7 @@ export function candidates(intent: Intent, limit = 8, radiusKm = 40): Option[] {
          * quote, which is what it is good for.
          */
         ORDER BY (booking IS NULL),
-                 (booking NOT LIKE '%fareharbor%' AND booking NOT LIKE '%resova%' AND booking NOT LIKE '%peek.com%' AND booking NOT LIKE '%checkfront%'),
+                 (booking NOT LIKE '%fareharbor%' AND booking NOT LIKE '%resova%' AND booking NOT LIKE '%peek.com%' AND booking NOT LIKE '%checkfront%' AND booking NOT LIKE '%xola%' AND booking NOT LIKE '%rezdy%' AND booking NOT LIKE '%tripworks%'),
                  (NOT EXISTS (SELECT 1 FROM offerings x WHERE x.operator_id = o.id AND x.price_cents IS NOT NULL)),
                  ${order}
         LIMIT ?`,
@@ -932,7 +935,7 @@ export function candidates(intent: Intent, limit = 8, radiusKm = 40): Option[] {
       departures: [],
       services: servicesFor(r.domain, r.category_id),
       // Without a link we can use, this one is a phone call, whatever the crawl thought it had found.
-      route: booking ? (/fareharbor|resova|peek\.com|checkfront/i.test(booking) ? "feed" : "agent") : r.phone ? "phone" : "agent",
+      route: booking ? (/fareharbor|resova|peek\.com|checkfront|xola\.com|rezdy\.com|tripworks\./i.test(booking) ? "feed" : "agent") : r.phone ? "phone" : "agent",
       phone: r.phone,
     };
   });
@@ -1353,7 +1356,7 @@ export async function plan(text: string, opts: { ask?: number; prior?: Intent | 
       if (!o) continue;
       o.bookingUrl = usableBookingUrl(r.bookingUrl, o.domain);
       if (o.bookingUrl) {
-        o.route = /fareharbor|resova|peek\.com|checkfront/i.test(o.bookingUrl) ? "feed" : "agent";
+        o.route = /fareharbor|resova|peek\.com|checkfront|xola\.com|rezdy\.com|tripworks\./i.test(o.bookingUrl) ? "feed" : "agent";
         if (r.outcome === "found") gained += 1;
       }
     }
@@ -1403,7 +1406,13 @@ export async function plan(text: string, opts: { ask?: number; prior?: Intent | 
       tr.step("ask", o.name, { who: o.name, detail: "reading their booking system" });
       /** Whichever feed this shop runs. Both answer in the same shape, so nothing downstream has to care. */
       const readFeed = (from: Date, days: number) =>
-        /checkfront\.(?:com|site)/i.test(o.bookingUrl)
+        /tripworks\./i.test(o.bookingUrl)
+          ? tripworksLive(o.bookingUrl, { from, days })
+          : /xola\.com/i.test(o.bookingUrl)
+          ? xolaLive(o.bookingUrl, { from, days })
+          : /rezdy\.com/i.test(o.bookingUrl)
+          ? rezdyLive(o.bookingUrl, { from, days })
+          : /checkfront\.(?:com|site)/i.test(o.bookingUrl)
           ? checkfrontLive(o.bookingUrl, { date: from })
           : /peek\.com/i.test(o.bookingUrl)
           ? peekLive(o.bookingUrl, { from, days })
@@ -1429,7 +1438,7 @@ export async function plan(text: string, opts: { ask?: number; prior?: Intent | 
           o.widened = true;
         }
       }
-      if (live) o.via = live.vendor === "fareharbor" ? "their FareHarbor calendar" : live.vendor === "resova" ? "their Resova calendar" : live.vendor === "peek" ? "their Peek calendar" : live.vendor === "checkfront" ? "their Checkfront calendar" : "their " + live.vendor + " calendar";
+      if (live) o.via = live.vendor === "fareharbor" ? "their FareHarbor calendar" : live.vendor === "resova" ? "their Resova calendar" : live.vendor === "peek" ? "their Peek calendar" : live.vendor === "checkfront" ? "their Checkfront calendar" : live.vendor === "xola" ? "their Xola calendar" : live.vendor === "rezdy" ? "their Rezdy calendar" : live.vendor === "tripworks" ? "their TripWorks calendar" : "their " + live.vendor + " calendar";
 
       /**
        * Nearest the time they asked for, not earliest in the day.

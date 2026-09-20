@@ -13,7 +13,9 @@ import {
   priceLine,
   readFrames,
   serviceLine,
+  slotOf,
   spreadDepartures,
+  groupShops,
   splitOptions,
   stepLine,
   understood,
@@ -180,6 +182,18 @@ test("a shop with one departure does not hold up the second round", () => {
 test("spreading stops when the departures run out rather than looping", () => {
   assert.equal(spreadDepartures([OPT("A", 1)], 4).length, 1);
   assert.deepEqual(spreadDepartures([], 4), []);
+});
+
+test("three times at one dock are one shop, not three listings", () => {
+  const shops = groupShops(spreadDepartures([OPT("Beach", 3)], 4));
+  assert.equal(shops.length, 1);
+  assert.equal(shops[0].option.name, "Beach");
+  assert.equal(shops[0].slots.length, 3);
+});
+
+test("a second shop stays its own card after grouping", () => {
+  const shops = groupShops(spreadDepartures([OPT("A", 3), OPT("B", 3), OPT("C", 3)], 4));
+  assert.deepEqual(shops.map((s) => [s.option.name, s.slots.length]), [["A", 2], ["B", 1], ["C", 1]]);
 });
 
 test("live times come first, then places we can at least price, then the rest", () => {
@@ -560,4 +574,11 @@ test("a status too long for a phone is cut rather than wrapped three lines deep"
   const long = stepLine({ ms: 10, kind: "answer", text: "Niagara Falls Tours Toronto Zoom Tours: 24 times, from price on request, all of them" });
   assert.ok(long && long.length <= 76, String(long?.length));
   assert.match(long!, /\u2026$/);
+});
+
+test("a clock time from a vendor page is the HH:MM the booking API takes", () => {
+  assert.equal(slotOf("12:00"), "12:00");
+  assert.equal(slotOf("7:00 PM"), "19:00");
+  assert.equal(slotOf("12:00 am"), "00:00");
+  assert.equal(slotOf("nope"), null);
 });

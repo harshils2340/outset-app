@@ -38,7 +38,7 @@ export type Resolved = {
 };
 
 /** The vendors a reader exists for today. */
-const READABLE = /fareharbor|resova|peek\.com|checkfront/i;
+const READABLE = /fareharbor|resova|peek\.com|checkfront|xola\.com|rezdy\.com|tripworks\./i;
 
 /**
  * Has this shop already been looked at? Written whatever the answer, including "nothing", because the second

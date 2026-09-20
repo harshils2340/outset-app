@@ -43,7 +43,7 @@ export type Departure = {
 
 export type LiveRead = {
   business: string;
-  vendor: "fareharbor" | "resova" | "peek" | "checkfront" | "replay" | "agent" | "none";
+  vendor: "fareharbor" | "resova" | "peek" | "checkfront" | "xola" | "rezdy" | "acuity" | "tripworks" | "bookeo" | "square" | "replay" | "agent" | "none";
   departures: Departure[];
   /** Said plainly when there is nothing to sell, because "no availability" is an answer, not a failure. */
   note: string | null;

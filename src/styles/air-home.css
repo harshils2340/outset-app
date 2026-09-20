@@ -463,63 +463,42 @@
 @media (prefers-reduced-motion: reduce){.ah-card-slide{transition:none}.ah-card-photo.is-playing .ah-card-slide.on .photo{animation:none}}
 
 /*
-  The concierge entry, one line under the search pill.
+  The one way into the agent, on the page itself.
 
-  Two different questions sit here. The pill finds businesses in the catalog; this one asks what is actually
-  free tonight and what it costs, which the catalog cannot hold. The examples are whole sentences because the
-  first thing anybody asks a box like this is what it will understand, and a sentence answers that faster than
-  any placeholder.
+  A switch rather than a link, because that is what it is: flipping it does not navigate anywhere, it turns
+  the guest app into the phone it already has with the agent open in it. Given the room a full-width row has,
+  it says what it does in words rather than making anybody guess from an icon.
 */
-.ah-askrow {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  /*
-    One row at every width, scrolling sideways rather than wrapping.
-    
-    Wrapping made the header's height depend on how many examples fitted, and the header is fixed with its
-    height reserved by `.ah-header-space` below it. At 1024px the examples wrapped to a second line, the header
-    grew past the space reserved for it, and the first rail heading rendered with its top half behind it.
-  */
-  flex-wrap: nowrap;
-  overflow-x: auto;
-  scrollbar-width: none;
-  height: var(--hdr-ask);
-  padding-top: 10px;
-}
-.ah-askrow::-webkit-scrollbar { display: none; }
 .ah-ask {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  border: 1px solid var(--accent-soft);
-  background: var(--accent-tint);
-  color: var(--ink);
-  border-radius: 999px;
-  padding: 8px 15px;
-  font: inherit;
-  font-size: 14px;
-  cursor: pointer;
-}
-.ah-ask:hover { border-color: var(--accent); }
-.ah-ask b { font-weight: 600; color: var(--accent); }
-.ah-ask span { color: var(--ink-soft); }
-.ah-ask svg { width: 15px; height: 15px; color: var(--accent); flex: none; }
-.ah-askex {
+  gap: 11px;
   border: 1px solid var(--line-strong);
   background: var(--surface);
-  color: var(--ink-soft);
+  color: var(--ink);
   border-radius: 999px;
-  padding: 8px 14px;
+  padding: 7px 18px 7px 7px;
   font: inherit;
-  font-size: 13.5px;
   cursor: pointer;
-  white-space: nowrap;
+  transition: border-color .12s ease, background .12s ease;
 }
-.ah-askex:hover { border-color: var(--accent-soft); color: var(--ink); }
+.ah-ask:hover { border-color: var(--accent-soft); }
+.ah-ask.on { border-color: var(--accent); background: var(--accent-tint); }
+/* The knob reads as the moving part of a switch even though it does not travel: filled when on, outlined when off. */
+.ah-askknob {
+  width: 30px; height: 30px; border-radius: 50%;
+  display: grid; place-items: center; flex: none;
+  background: var(--accent-tint); color: var(--accent);
+}
+.ah-ask.on .cg-askknob, .ah-ask.on .ah-askknob { background: var(--accent); color: var(--on-accent); }
+.ah-askknob svg { width: 15px; height: 15px; }
+.ah-asktext { display: flex; flex-direction: column; line-height: 1.25; text-align: left; }
+.ah-asktext b { font-size: 14.5px; font-weight: 600; }
+.ah-asktext small { font-size: 12.5px; color: var(--ink-soft); }
 
-/* On a phone the examples run past the edge, so they scroll sideways rather than stacking three rows high. */
-/* No room for the explanatory half of the button on a phone; the examples say it better anyway. */
+/* On a phone the subtitle is the first thing to go; the name and the mark carry it. */
 @media (max-width: 743px) {
-  .ah-ask span { display: none; }
+  .ah-asktext small { display: none; }
+  .ah-ask { padding-right: 14px; }
+}
 }

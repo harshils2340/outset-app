@@ -136,7 +136,6 @@ function whenIdle(run: () => void): void {
  * agent reads a sentence: the activity, the place, the time and the party size all at once. Kept short enough
  * to fit one line on a laptop.
  */
-const ASK_EXAMPLES = ["escape room tonight, 4 of us", "helicopter tour in toronto at 4:30pm", "axe throwing under $30 a head"];
 
 /** What a "More kinds" link types into the search: the first alias, so the search names exactly that kind. */
 const kindQuery = (art: ArtKind) => ART_ALIASES[art]?.[0] || art;
@@ -923,7 +922,7 @@ const remembered: { q: string; whereText: string; artChip: ArtKind | null; who: 
   q: "", whereText: "", artChip: null, ...rememberedParty(), searched: false, sort: "relevance", price: { min: null, max: null },
 };
 
-export function WebHome({ onOpenApp, onOperators, onAsk }: { onOpenApp: () => void; onOperators: () => void; onAsk: (seed?: string) => void }) {
+export function WebHome({ onOpenApp, onOperators, onAsk, asking = false, onCloseAsk }: { onOpenApp: () => void; onOperators: () => void; onAsk: (seed?: string) => void; asking?: boolean; onCloseAsk?: () => void }) {
   const { state, setCat, setMetro, setNear, setDate, openRequest, dates } = useApp();
   // What: the activity, occasion or business. Where: the words typed while looking for a place. The place itself
   // lives in app state (near or metro), so the two boxes never overwrite each other.
@@ -1459,7 +1458,7 @@ export function WebHome({ onOpenApp, onOperators, onAsk }: { onOpenApp: () => vo
             <b>Outset</b>
           </a>
           {expanded ? (
-            <nav className="ah-switch" aria-label="What to browse">
+            <nav className="ah-ask-toggle" aria-label="What to browse">
               {WORLDS.map((w) => {
                 const on = w.id === world.id;
                 return (
@@ -1575,27 +1574,36 @@ export function WebHome({ onOpenApp, onOperators, onAsk }: { onOpenApp: () => vo
         ) : null}
 
         {/*
-          The concierge, one line under the box that searches the catalog.
+          The one control, on the page itself rather than inside a panel.
 
-          Those are two different questions. The pill finds businesses; this answers "is there a seat at seven
-          tonight, and what will it cost me", which no catalog holds, by reading each shop's own booking system
-          while the guest waits. The examples are real sentences rather than a prompt, because the first thing
-          anybody asks a box like this is what it will understand.
+          Flipping it does not open an overlay over the site: it puts the guest on the phone the app already
+          has, with the agent open in it, typing. That is the product as somebody actually holds it, and it is
+          the same surface a QR code opens, so what is on the laptop and what is in a judge's hand agree.
+
+          One control and no examples under it. A row of suggested sentences was a second way in and a second
+          decision, and the box itself says what to type better than three specimens of it do.
         */}
-        {expanded ? (
-          <div className="ah-askrow ah-gutter">
-            <button type="button" className="ah-ask" onClick={() => onAsk()}>
-              <Markup html={ICONS.spark} />
-              <b>Ask for anything</b>
-              <span>and get times you can actually book</span>
-            </button>
-            {ASK_EXAMPLES.map((ex) => (
-              <button type="button" className="ah-askex" key={ex} onClick={() => onAsk(ex)}>
-                {ex}
-              </button>
-            ))}
-          </div>
-        ) : null}
+        {/*
+          Not gated on `expanded`, which is `!compact || seg !== null`: on a phone the switch only appeared
+          once the search had been opened, and the phone is exactly where this is meant to be used. A judge
+          scanning the QR code found the catalogue and no way into the agent at all. One row, on screen from
+          the first paint, at every width.
+        */}
+        <div className="ah-askrow ah-gutter">
+          <button
+            type="button"
+            className={"ah-ask" + (asking ? " on" : "")}
+            role="switch"
+            aria-checked={asking}
+            onClick={() => (asking ? onCloseAsk?.() : onAsk())}
+          >
+            <span className="ah-askknob" aria-hidden="true"><Markup html={ICONS.spark} /></span>
+            <span className="ah-asktext">
+              <b>Ask Outset</b>
+              <small>Say what you want to do and get times you can book</small>
+            </span>
+          </button>
+        </div>
 
         <div className="ah-catrow ah-gutter">
           <CategoryBar key={world.id} chips={world.chips} selected={kindChip || state.cat} onPick={pickChip} filterCount={filterCount} onFilters={() => setFiltersOpen(true)} />

@@ -1,4 +1,4 @@
-import { Suspense, lazy, useEffect, useState } from "react";
+import { Suspense, lazy, useEffect, useRef, useState } from "react";
 import { useApp } from "./state/AppProvider";
 import { WebHome } from "./components/web/WebHome";
 import { WebListing } from "./components/web/WebListing";
@@ -116,6 +116,16 @@ export function App() {
    * closed; a string is open, and a non-empty one is asked the moment it opens.
    */
   const [asking, setAsking] = useState<string | null>(ASKED_FOR);
+  /**
+   * Whether the phone frame was entered by turning the agent on, so turning it off puts the site back.
+   *
+   * One toggle, and flipping it turns the UI into a phone you type into rather than opening a panel over the
+   * site. The app already has a phone: `.stage` holds a real device frame that the whole guest app runs
+   * inside, and it is what a guest on an actual phone gets. So the toggle does not build a phone, it goes to
+   * the one that is already there and opens the agent in it, which is why it looks the same on a laptop as it
+   * does on the phone behind a QR code.
+   */
+  const cameFromWeb = useRef(false);
   const [safeDemo, setSafeDemo] = useState(SAFE_DEMO);
   const [web, setWeb] = useState(() => typeof window !== "undefined" && window.innerWidth >= 1024 && !WALLET_HASH());
   const [fit, setFit] = useState(1);
@@ -147,6 +157,25 @@ export function App() {
     window.addEventListener("resize", calc);
     return () => window.removeEventListener("resize", calc);
   }, []);
+  /**
+   * The one control. On: the phone, with the agent open in it. Off: back to wherever they were.
+   *
+   * At phone width there is no site to come back to and `web` is already false, so the same control simply
+   * opens and closes the agent. That is the point of having one: it means the same thing everywhere.
+   */
+  const toggleAsk = (on: boolean, seed = "") => {
+    if (on) {
+      cameFromWeb.current = web;
+      closeSheet();
+      setWeb(false);
+      setAsking(seed);
+      return;
+    }
+    setAsking(null);
+    if (cameFromWeb.current) setWeb(true);
+    cameFromWeb.current = false;
+  };
+
   const openApp = () => {
     closeSheet();
     goto("explore");
@@ -172,7 +201,19 @@ export function App() {
             <ListingSplash />
           </div>
         ) : state.screen !== "operator" ? (
-          <WebHome onOpenApp={openApp} onOperators={() => openOperator()} onAsk={(seed) => setAsking(seed || "")} />
+          <WebHome
+            onOpenApp={openApp}
+            onOperators={() => openOperator()}
+            /*
+              Flipping the switch does not open a panel over the site: it goes to the phone the app already
+              has and opens the agent in it. That is what Harshil asked for, and it is why the laptop and a
+              QR code land on the same surface rather than two that merely resemble each other.
+            */
+            onAsk={(seed) => toggleAsk(true, seed)}
+            /* The switch on the home page reads as on while the thread is open, and closes it again. */
+            asking={asking != null}
+            onCloseAsk={() => toggleAsk(false)}
+          />
         ) : null}
         {state.screen === "operator" ? (
           <div className="web wop">
@@ -190,7 +231,7 @@ export function App() {
           </div>
         ) : null}
         {state.checkingOut ? (state.checkoutSecret ? <EmbeddedCheckout secret={state.checkoutSecret} /> : <CheckoutSplash />) : null}
-        {asking != null ? <WebConcierge seed={asking} onClose={() => setAsking(null)} /> : null}
+        {asking != null ? <WebConcierge seed={asking} onClose={() => toggleAsk(false)} /> : null}
         {safeDemo ? (
           <SafeBookDemo
             onClose={() => {
@@ -214,7 +255,7 @@ export function App() {
       <div className="device" style={{ transform: `scale(${fit})`, transformOrigin: "center center" }}>
         <div className="screen" id="screen">
           <StatusBar />
-          <AppView />
+          <AppView onAsk={() => toggleAsk(true)} asking={asking != null} />
           <TabBar />
           <Sheets />
           <Toast />
@@ -225,7 +266,7 @@ export function App() {
             takes its rounded corners rather than covering the browser and the frame with it. On a real phone
             `.screen` is the viewport, so this is the full-screen version either way.
           */}
-          {asking != null ? <WebConcierge seed={asking} framed onClose={() => setAsking(null)} /> : null}
+          {asking != null ? <WebConcierge seed={asking} framed onClose={() => toggleAsk(false)} /> : null}
         </div>
       </div>
       {safeDemo ? (
@@ -245,7 +286,7 @@ export function App() {
   );
 }
 
-function AppView() {
+function AppView({ onAsk, asking }: { onAsk: () => void; asking: boolean }) {
   const { state } = useApp();
   const chat = state.screen === "chat";
   // A sheet covers the screen it opened from, and that screen kept every one of its buttons in the tab order.
@@ -261,7 +302,7 @@ function AppView() {
           <OperatorView compact />
         </Suspense>
       ) : null}
-      {state.screen === "explore" ? <ExploreView /> : null}
+      {state.screen === "explore" ? <ExploreView onAsk={onAsk} asking={asking} /> : null}
       {state.screen === "trips" ? <TripsView /> : null}
       {state.screen === "inbox" ? <InboxView /> : null}
       {state.screen === "account" ? <AccountView /> : null}

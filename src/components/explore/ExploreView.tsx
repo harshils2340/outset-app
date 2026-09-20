@@ -24,7 +24,7 @@ function whenIdle(run: () => void): void {
   else window.setTimeout(run, 50);
 }
 
-export function ExploreView() {
+export function ExploreView({ onAsk, asking }: { onAsk: () => void; asking: boolean }) {
   const { state, dates, setCat, setQ, setMetro, openMetro } = useApp();
   const prefs = usePrefs();
   const [limit, setLimit] = useState(PAGE);
@@ -136,6 +136,17 @@ export function ExploreView() {
               <b>{pillTitle}</b>
               <small>{pillSub}</small>
             </span>
+          </button>
+          {/*
+            The one way in, in the row a guest's thumb is already on.
+
+            At this width the app is already a phone, so the toggle has nothing to change about the UI: it
+            opens the agent and that is all it ever does. Same control, same words, same meaning as on the
+            wide site, which matters because a judge scanning a QR code and the laptop on stage are looking at
+            the same product.
+          */}
+          <button type="button" className={"airask" + (asking ? " on" : "")} onClick={onAsk} aria-pressed={asking} aria-label="Ask Outset for anything">
+            <Markup html={ICONS.spark} />
           </button>
           <button type="button" className={"airfilter" + (filterCount ? " on" : "")} onClick={openFilters} aria-label="Filters">
             <IcFilters size={16} />

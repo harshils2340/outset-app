@@ -4,30 +4,32 @@ import { ALL_METRO_ID, metroLabel } from "../../data/metros";
 import { ICONS } from "../../data/icons";
 import {
   askConcierge,
+  conciergeReady,
   headline,
-  headlineService,
   refinements,
   stepLine,
   understood,
-  conciergeReady,
+  headlineService,
   listingIdFor,
-  menuPrice,
   missedTheHour,
-  noTimesLine,
   offsetLine,
   priceLine,
   resetConcierge,
   serviceLine,
+  slotOf,
   splitOptions,
   spreadDepartures,
+  groupShops,
   whenLine,
   withPlace,
   type ConciergeAnswer,
   type ConciergeDeparture,
-  type ConciergeOption,
   type ConciergeStep,
+  type ConciergeOption,
 } from "../../lib/concierge";
-import { money } from "../../lib/format";
+import { fmtTime } from "../../lib/format";
+import { dateKey } from "../../lib/dates";
+import { loadGuest } from "../../lib/storage";
 import { fewSeats } from "../../lib/liveTimes";
 import {
   copyText,
@@ -40,9 +42,8 @@ import {
   whenLabel,
   type Conversation,
 } from "../../lib/conciergeHistory";
-import { useApp } from "../../state/AppProvider";
+import { DATES, useApp } from "../../state/AppProvider";
 import { Mark } from "../layout/Mark";
-import { useModal } from "../layout/useModal";
 import { Markup } from "../Markup";
 
 /**
@@ -73,51 +74,22 @@ type Said =
   | { kind: "answer"; answer: ConciergeAnswer };
 type Entry = Said & { id: number };
 
-const PHONE_KEY = "outset.concierge.phone";
+const OPENER = "What do you want to do?";
 
-/** The mode this device was last left in. Wide on a laptop unless the guest chose otherwise. */
-function readPhoneMode(): boolean {
-  try {
-    return localStorage.getItem(PHONE_KEY) === "1";
-  } catch {
-    return false;
-  }
-}
-
-function writePhoneMode(on: boolean): void {
-  try {
-    localStorage.setItem(PHONE_KEY, on ? "1" : "0");
-  } catch {
-    /* Private window: the toggle still works, it just will not be remembered. */
-  }
-}
-
-const OPENER = "Tell me what you want to do and roughly where. I will check what is actually free right now.";
-
-/** Colour by the kind of step, so a wall of lines still reads at a glance. Mirrors the panel on `/go`. */
-const STEP_TONE: Record<string, string> = {
-  read: "biz", carry: "biz", clock: "biz", catalog: "go", ask: "go", answer: "go",
-  assume: "warn", widen: "warn", loosen: "warn", question: "hot", ambiguous: "hot",
-  skip: "dim", compare: "lit",
-};
+const EXAMPLES = ["escape room in Waterloo tonight, 4 of us", "jet ski in Tampa this Saturday, 2 of us"];
 
 export function WebConcierge({ seed, framed, onClose }: { seed?: string; framed?: boolean; onClose: () => void }) {
-  const { state, openRequest } = useApp();
+  const { state, openRequest, confirmUnclaimed } = useApp();
   /**
    * The opening line is the first render, not a timer that fires into it. As a delayed `add` it could be
    * written twice: the effect below re-runs whenever the guest's place settles, and a cleared timeout either
    * loses the line or, guarded the other way, writes a second one under the first.
    */
   const [entries, setEntries] = useState<Entry[]>(() => (seed ? [] : [{ kind: "them", text: OPENER, id: 0 }]));
-  const [steps, setSteps] = useState<ConciergeStep[]>([]);
   const [busy, setBusy] = useState(false);
+  /** The agent's own steps, only so the wait can say which shop it is on. Never drawn as a panel. */
+  const [steps, setSteps] = useState<ConciergeStep[]>([]);
   const [draft, setDraft] = useState("");
-  /**
-   * The phone. A toggle rather than a breakpoint, because on a laptop the wide layout is the one that shows
-   * the agent working and the narrow one is the product as a guest holds it, and testing means wanting each
-   * on purpose. Remembered, so the mode survives a reload the way the conversation does.
-   */
-  const [phone, setPhone] = useState(readPhoneMode);
   const [history, setHistory] = useState<Conversation[] | null>(null);
   const [copied, setCopied] = useState("");
   /**
@@ -129,6 +101,12 @@ export function WebConcierge({ seed, framed, onClose }: { seed?: string; framed?
    * nothing is worse than no copy button, so the text is put where it can be selected by hand.
    */
   const [manual, setManual] = useState("");
+  const [pending, setPending] = useState<{ option: ConciergeOption; departure: ConciergeDeparture; party: number } | null>(null);
+  const [guestForm, setGuestForm] = useState(() => {
+    const g = loadGuest();
+    return { name: g.name || "", phone: g.phone || "", email: g.email || "" };
+  });
+  const [booking, setBooking] = useState(false);
   const manualRef = useRef<HTMLTextAreaElement>(null);
   const session = useRef<string | null>(null);
   /** Every turn of the conversation on screen, for copying it out and for putting it back after a reload. */
@@ -137,7 +115,6 @@ export function WebConcierge({ seed, framed, onClose }: { seed?: string; framed?
   const running = useRef<AbortController | null>(null);
   const logRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const box = useRef<HTMLDivElement>(null);
   const inputId = useId();
 
   /**
@@ -147,7 +124,13 @@ export function WebConcierge({ seed, framed, onClose }: { seed?: string; framed?
    */
   const place = state.near?.label || (state.metroId !== ALL_METRO_ID ? metroLabel(state.metroId) : null);
 
-  /** The newest step worth saying out loud, so a long wait says what it is waiting on. */
+  /**
+   * The newest step worth saying out loud, so a long wait says what it is waiting on.
+   *
+   * A cold shop is given twelve seconds because it is worth waiting for, and on a phone there is no trace
+   * panel beside the thread. One unchanging sentence for thirteen seconds reads exactly like a hang; the shop
+   * it is actually on, changing as it moves, reads as progress.
+   */
   const status = (() => {
     for (let i = steps.length - 1; i >= 0; i--) {
       const line = stepLine(steps[i]);
@@ -155,20 +138,6 @@ export function WebConcierge({ seed, framed, onClose }: { seed?: string; framed?
     }
     return null;
   })();
-
-  /**
-   * It says `aria-modal`, so it has to behave like one, and it did not.
-   *
-   * Driven in a real Chromium, 23 of 24 Tab stops walked straight out of the overlay into the home page
-   * underneath it, which a full-screen scrim covers: a focus ring on things nobody can see. A wheel over the
-   * thread rolled that page 900 px, so closing left the guest somewhere else entirely. And focus never came
-   * back to whatever opened it.
-   *
-   * Declared before the effect that focuses the box's own field, so the hook reads the real opener rather than
-   * that field. It then puts focus on the first stop and the effect below moves it to the field, which is
-   * where it belongs: this opens ready to be typed into.
-   */
-  useModal(box);
 
   const add = (e: Said) => setEntries((cur) => [...cur, { ...e, id: nextId.current++ }]);
 
@@ -239,21 +208,18 @@ export function WebConcierge({ seed, framed, onClose }: { seed?: string; framed?
       // `silent` is the app answering a question on the guest's behalf. It is not something they said, so it
       // does not go in the thread as their words; the note above it says what was assumed instead.
       if (!opts.silent) add({ kind: "me", text });
-      autoNext.current = !!opts.auto;
       setSteps([]);
+      autoNext.current = !!opts.auto;
       setBusy(true);
 
       // Only the opening question carries the guest's place; after that the agent is holding the conversation
       // and appending a town to "and something cheaper?" would overrule what it already knows.
       const sentence = session.current ? text : withPlace(text, place);
-      // It was their own place that went in, so it is said out loud once, the way every other guess is.
-      if (!session.current && place && sentence !== text) {
-        add({ kind: "note", text: `Looking around ${place}, because that is where you are. Name another town and I will redo it.` });
-      }
       const r = await askConcierge(sentence, {
         session: session.current,
-        onStep: (s) => {
-          if (!gone.current) setSteps((cur) => (cur.length > 220 ? [...cur.slice(-200), s] : [...cur, s]));
+        // Kept only to narrate the wait. There is no trace panel any more, and on a phone there never was.
+        onStep: (st) => {
+          if (!gone.current) setSteps((cur) => (cur.length > 40 ? [...cur.slice(-30), st] : [...cur, st]));
         },
         signal: ctl.signal,
       });
@@ -284,7 +250,6 @@ export function WebConcierge({ seed, framed, onClose }: { seed?: string; framed?
       if (r.answer.followUp?.why === "place" && place && !placeGiven.current) {
         placeGiven.current = true;
         keep({ q: sentence, at: Date.now(), ms: r.answer.ms, answer: r.answer });
-        add({ kind: "note", text: `Looking around ${place}, because that is where you are. Name another town and I will redo it.` });
         void ask(place, { silent: true, auto: true });
         return;
       }
@@ -337,11 +302,6 @@ export function WebConcierge({ seed, framed, onClose }: { seed?: string; framed?
     else setManual(text);
   };
 
-  const copyCurrent = () => {
-    if (!convo.current) return;
-    void copyOut(transcript(convo.current), "current");
-  };
-
   /**
    * Put a past conversation back on the screen.
    *
@@ -354,7 +314,6 @@ export function WebConcierge({ seed, framed, onClose }: { seed?: string; framed?
     running.current?.abort();
     running.current = null;
     setBusy(false);
-    setSteps([]);
     setHistory(null);
     session.current = c.id;
     convo.current = c;
@@ -377,18 +336,8 @@ export function WebConcierge({ seed, framed, onClose }: { seed?: string; framed?
     session.current = null;
     convo.current = null;
     placeGiven.current = false;
-    /*
-     * The shared link's question stays asked, the way reopening a past conversation leaves it asked.
-     *
-     * Clearing it re-armed the opening effect, which re-runs whenever `ask` is rebuilt, and `ask` is rebuilt
-     * whenever the guest's place changes. `AppProvider` refines that place from the network after the first
-     * render, and its "do not interrupt a guest mid-thought" guard only covers a sheet, which this overlay
-     * deliberately is not. So a guest who opened an `#ask=` link, pressed New and started typing could have
-     * the link's own question re-ask itself into their fresh thread a second later.
-     */
-    asked.current = seed ?? null;
+    asked.current = null;
     setEntries([{ kind: "them", text: OPENER, id: 0 }]);
-    setSteps([]);
     setBusy(false);
     nextId.current = 1;
     inputRef.current?.focus();
@@ -407,28 +356,86 @@ export function WebConcierge({ seed, framed, onClose }: { seed?: string; framed?
     if (url) window.open(url, "_blank", "noopener,noreferrer");
   };
 
+  const rememberGuest = (g: { name: string; phone: string; email: string }) => {
+    try {
+      localStorage.setItem("outset.guest", JSON.stringify(g));
+    } catch {
+      /* ignore */
+    }
+  };
+
+  const sendBook = async (o: ConciergeOption, d: ConciergeDeparture, party: number, guest: { name: string; phone: string; email: string }) => {
+    const id = listingIdFor(o);
+    const slot = slotOf(d.time);
+    const url = d.bookUrl || o.bookingUrl;
+    if (!id || !slot || !/^\d{4}-\d{2}-\d{2}$/.test(d.date)) {
+      if (url) window.open(url, "_blank", "noopener,noreferrer");
+      add({ kind: "them", text: "I cannot finish that on Outset. Their own book page is open, pay them there." });
+      return;
+    }
+    const dateIdx = Math.max(0, DATES.findIndex((day) => dateKey(day) === d.date));
+    setBooking(true);
+    const r = await confirmUnclaimed({
+      listing: id,
+      dateIdx,
+      date: d.date,
+      slot,
+      qty: Math.min(60, Math.max(1, party)),
+      optionIdx: null,
+      service: d.item || o.name,
+      total: d.fromPrice,
+      guest: { name: guest.name.trim(), phone: guest.phone.trim(), email: guest.email.trim() || undefined },
+    });
+    setBooking(false);
+    if (!r.ok) {
+      add({ kind: "them", text: r.error || "That time could not be booked. Try another." });
+      return;
+    }
+    setPending(null);
+    if (r.checkoutUrl && r.checkoutUrl !== "embedded") {
+      add({ kind: "them", text: "Sending you to Stripe to hold the card." });
+      onClose();
+      return;
+    }
+    add({ kind: "them", text: r.checkoutUrl === "embedded" ? "Hold the card on the next screen. Then you are booked." : "Booked. Check your email for the confirmation." });
+    onClose();
+  };
+
+  const book = (o: ConciergeOption, d: ConciergeDeparture, party: number) => {
+    const g = { ...guestForm, ...loadGuest() };
+    const name = (g.name || guestForm.name).trim();
+    const phone = (g.phone || guestForm.phone).replace(/\D/g, "");
+    if (name.length < 2 || phone.length < 7) {
+      setGuestForm({ name: g.name || guestForm.name, phone: g.phone || guestForm.phone, email: g.email || guestForm.email });
+      setPending({ option: o, departure: d, party });
+      add({ kind: "them", text: "Name and mobile, then I will book that time." });
+      return;
+    }
+    const guest = { name, phone: g.phone || guestForm.phone, email: (g.email || guestForm.email || "").trim() };
+    rememberGuest(guest);
+    void sendBook(o, d, party, guest);
+  };
+
   return (
-    <div ref={box} className={"cg" + (framed ? " cg-framed" : "") + (phone && !framed ? " cg-asphone" : "")} role="dialog" aria-modal="true" aria-label="Ask Outset for anything">
+    <div
+      className={"cg" + (framed ? " cg-framed" : "")}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Ask Outset"
+      onClick={(e) => {
+        if (!framed && e.target === e.currentTarget) onClose();
+      }}
+    >
       <section className="cg-thread">
         <header className="cg-top">
           <Mark size={30} />
           <span className="cg-who">
             <b>Ask Outset</b>
-            <small>{place ? "Real times near " + place : "Real times at real businesses"}</small>
           </span>
           <div className="cg-tools">
-            <button type="button" className="cg-tool" onClick={() => setHistory(history ? null : loadConversations())} aria-pressed={!!history} title="Past conversations">
+            <button type="button" className="cg-tool" onClick={() => setHistory(history ? null : loadConversations())} aria-pressed={!!history}>
               History
             </button>
-            {/* Copies the whole exchange as plain text, so a wrong answer can be pasted at whoever can fix it. */}
-            <button type="button" className="cg-tool" onClick={() => copyCurrent()} disabled={!convo.current?.turns.length}>
-              {copied === "current" ? "Copied" : "Copy"}
-            </button>
-            {!framed ? (
-              <button type="button" className="cg-tool" onClick={() => { const n = !phone; setPhone(n); writePhoneMode(n); }} aria-pressed={phone} title="Swap between the phone and the wide view">
-                {phone ? "Wide" : "Phone"}
-              </button>
-            ) : null}
             <button type="button" className="cg-tool" onClick={startOver} disabled={!session.current && entries.length < 2}>
               New
             </button>
@@ -459,7 +466,7 @@ export function WebConcierge({ seed, framed, onClose }: { seed?: string; framed?
                 <Markup html={ICONS.close} />
               </button>
             </div>
-            <p className="cg-note">Your browser would not let the page write to the clipboard, which is normal over plain http. It is selected already.</p>
+            <p className="cg-note">Select and copy the text below.</p>
             <textarea ref={manualRef} className="cg-manualtext" readOnly value={manual} aria-label="The conversation as text" />
           </div>
         ) : null}
@@ -467,7 +474,7 @@ export function WebConcierge({ seed, framed, onClose }: { seed?: string; framed?
         <div className="cg-log" ref={logRef} role="log" aria-live="polite" aria-relevant="additions">
           {entries.map((e) =>
             e.kind === "answer" ? (
-              <Answered key={e.id} answer={e.answer} onAsk={ask} onOpen={open} />
+              <Answered key={e.id} answer={e.answer} onAsk={ask} onOpen={open} onBook={book} />
             ) : e.kind === "note" ? (
               <p className="cg-note" key={e.id}>{e.text}</p>
             ) : (
@@ -479,18 +486,43 @@ export function WebConcierge({ seed, framed, onClose }: { seed?: string; framed?
           )}
           {busy ? (
             <>
-              <div className="cg-typing" aria-label="Checking with the shops">
+              <div className="cg-typing" aria-label="Checking who's free">
                 <i /><i /><i />
               </div>
-              {/*
-                What it is doing, for the wait the panel beside it cannot cover. A cold shop is given twelve
-                seconds because it is worth waiting for, and twelve seconds of bouncing dots reads as a hang.
-              */}
-              {status ? <p className="cg-note cg-status">{status}</p> : null}
+              <p className="cg-note cg-status">{status || "Checking who's free"}</p>
             </>
           ) : null}
+          {!busy && entries.length === 1 && entries[0].kind === "them" ? (
+            <div className="cg-chips">
+              {EXAMPLES.map((ex) => (
+                <button type="button" key={ex} onClick={() => void ask(ex)}>
+                  {ex}
+                </button>
+              ))}
+            </div>
+          ) : null}
+          {pending ? (
+            <form
+              className="cg-guest"
+              onSubmit={(e) => {
+                e.preventDefault();
+                const name = guestForm.name.trim();
+                const phone = guestForm.phone.trim();
+                if (name.length < 2 || phone.replace(/\D/g, "").length < 7) return;
+                rememberGuest(guestForm);
+                const hold = pending;
+                void sendBook(hold.option, hold.departure, hold.party, guestForm);
+              }}
+            >
+              <p className="cg-note">{pending.option.name}, {whenLine(pending.departure)}</p>
+              <input value={guestForm.name} onChange={(e) => setGuestForm({ ...guestForm, name: e.target.value })} placeholder="Your name" autoComplete="name" required />
+              <input value={guestForm.phone} onChange={(e) => setGuestForm({ ...guestForm, phone: e.target.value })} placeholder="Mobile" autoComplete="tel" required />
+              <input value={guestForm.email} onChange={(e) => setGuestForm({ ...guestForm, email: e.target.value })} placeholder="Email" autoComplete="email" />
+              <button type="submit" disabled={booking}>{booking ? "Booking…" : "Book"}</button>
+            </form>
+          ) : null}
           {!conciergeReady() ? (
-            <p className="cg-note">This build has no API to ask, so there is nothing live to read. Set VITE_API_URL and it works.</p>
+            <p className="cg-note">Ask is offline on this build.</p>
           ) : null}
         </div>
 
@@ -509,7 +541,7 @@ export function WebConcierge({ seed, framed, onClose }: { seed?: string; framed?
             ref={inputRef}
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
-            placeholder="escape room tonight, 4 of us"
+            placeholder="jet ski in Tampa Saturday, 2 of us"
             autoComplete="off"
             enterKeyHint="send"
             maxLength={300}
@@ -519,26 +551,6 @@ export function WebConcierge({ seed, framed, onClose }: { seed?: string; framed?
           </button>
         </form>
       </section>
-
-      {/*
-        What the agent is doing, while it does it. Not decoration: the phone thread on its own reads like any
-        other chatbot, and the point of this product is that these are real businesses answering out of their
-        real calendars. Hidden on a narrow screen, where the thread is the whole product.
-      */}
-      <aside className="cg-stage" aria-hidden="true">
-        <h2>What the agent is doing</h2>
-        <div className="cg-steps">
-          {steps.map((s, i) => (
-            <div className="cg-step" key={i}>
-              <span className="cg-ms">{s.ms}ms</span>
-              <span className={"cg-kind t-" + (STEP_TONE[s.kind] || "lit")}>{s.kind}</span>
-              <span className="cg-text">{s.text}</span>
-              {s.detail ? <span className="cg-detail">{s.detail}</span> : null}
-            </div>
-          ))}
-          {!steps.length ? <p className="cg-idle">Ask something and watch it read their booking systems.</p> : null}
-        </div>
-      </aside>
     </div>
   );
 }
@@ -619,10 +631,12 @@ function Answered({
   answer,
   onAsk,
   onOpen,
+  onBook,
 }: {
   answer: ConciergeAnswer;
   onAsk: (text: string) => void;
   onOpen: (o: ConciergeOption, d?: ConciergeDeparture) => void;
+  onBook: (o: ConciergeOption, d: ConciergeDeparture, party: number) => void;
 }) {
   const { quoted, priced, rest } = splitOptions(answer.options);
 
@@ -638,9 +652,9 @@ function Answered({
     return (
       <>
         {/*
-          What it took from the sentence, above what it still needs. A guest who wrote out the party, the
-          budget, the day, the hour and the place and got back a four item menu concluded it had not listened.
-          It had; it only lacked an activity. This line is the whole difference.
+          What it took from the sentence, above what it still needs. Somebody who wrote out their party, their
+          budget, the day and the place and got back a four item menu concluded it had not listened. It had;
+          it only lacked an activity, and this line is the whole difference.
         */}
         {got ? <p className="cg-note cg-got">Got: {got}</p> : null}
         <div className="cg-b cg-them">{answer.followUp.question}</div>
@@ -658,79 +672,36 @@ function Answered({
     );
   }
 
+  const party = answer.intent?.party || 2;
   const shown = spreadDepartures(quoted, 4);
-  // The shops in the comparison that the live list did not already show, so nothing appears twice.
-  const seen = new Set(shown.map((p) => p.option.domain));
-  const alsoPriced = priced.filter((o) => !seen.has(o.domain)).slice(0, 3);
+  const shops = groupShops(shown);
   const line = headline(answer, shown);
   const missed = missedTheHour(answer, shown);
-  const next = refinements(answer, shown);
-  // An offer to narrow, which arrives with the results rather than in front of them.
+  // An offer to narrow arrives WITH the results rather than in front of them, which is the whole reason the
+  // funnel stopped gating an answer behind a question.
   const narrow = answer.narrow?.choices?.length ? answer.narrow : null;
-  const got = narrow ? understood(answer) : "";
+  const next = refinements(answer, shown);
 
   if (!answer.options.length) {
-    return <div className="cg-b cg-them">I could not find anywhere for that. Try another activity, or a bigger town nearby.</div>;
+    return <div className="cg-b cg-them">I could not find anywhere for that. Try another town or activity.</div>;
   }
 
   return (
     <>
-      {/*
-        What the search could not honour, said before what it found.
-        
-        This is the honest version of an empty result. A guest who capped the budget at $50 a head and is being
-        shown $95 tickets needs that sentence to carry more weight than the list under it, or the cap looks
-        like it was applied when it was not. As a plain grey bubble above a bolder headline it read as
-        throat-clearing, which is the one thing it must not read as.
-      */}
       {answer.loosened ? <div className="cg-b cg-them cg-loosened">{answer.loosened}</div> : null}
-
-      {/*
-        The answer, in one sentence: what was found, where, and what it costs. Everything that qualifies it
-        sits under the list instead, so nothing stands between the question and the businesses.
-      */}
       {line ? <div className="cg-b cg-them cg-compare">{line}</div> : null}
-      {/* Still narrowing means it is not sure it has what they meant, so it shows its reading of the sentence. */}
-      {narrow && got ? <p className="cg-note cg-got">Got: {got}</p> : null}
-      {missed ? <p className="cg-note">Nothing at exactly that time, so these are the closest.</p> : null}
+      {missed ? <p className="cg-note">Nothing at that exact time. These are the closest.</p> : null}
 
-      {/*
-        Whichever pile has something in it, in the order `payload()` ranks them.
-        
-        `rest` used to be dropped on the floor, and that is a real answer thrown away: a shop with no readable
-        feed and no price our crawl caught is still a business near the guest, and `counts.total` had already
-        told them it existed. It surfaced the day the budget filter started dropping over-cap prices, which
-        emptied `priced` and left a headline, a budget line and no businesses under either of them.
-      */}
-      {shown.length
-        ? shown.map(({ option, departure, offset }, i) => (
-            <Offer key={option.domain + departure.date + departure.time + i} option={option} departure={departure} offset={offset} onOpen={onOpen} />
+      {shops.length
+        ? shops.map((shop) => (
+            <Shop key={shop.option.domain} option={shop.option} slots={shop.slots} party={party} onOpen={onOpen} onBook={onBook} />
           ))
         : (priced.length ? priced : rest).slice(0, 4).map((o) => <Priced key={o.domain} option={o} onOpen={onOpen} />)}
 
-      {shown.length && alsoPriced.length ? (
-        <>
-          <p className="cg-note">Also nearby, priced but without a time I can read:</p>
-          {alsoPriced.map((o) => (
-            <Priced key={o.domain} option={o} onOpen={onOpen} />
-          ))}
-        </>
-      ) : null}
-
-      {/* The caveat qualifies the list, so it goes under it. It used to be a paragraph in front of it. */}
-      {!shown.length && priced.length ? <p className="cg-note">{noTimesLine(priced.slice(0, 4))}</p> : null}
-      {!shown.length && !priced.length && rest.length ? (
-        <p className="cg-note">These are near you, but they publish neither a time nor a price I can read, so I am not going to quote you one.</p>
-      ) : null}
-      {answer.assumptions?.length ? <p className="cg-note">Assuming {answer.assumptions.join(" and ")}. Say otherwise and I will redo it.</p> : null}
-
       {/*
-        What a person says next, in one row.
-        
-        Two kinds of thing, and they belong together because to a guest they are one thing: what can I say now.
-        The agent's own offer to narrow comes first, in the accent, because it is the thing it just suggested;
-        the standing actions follow, quieter, because they are always available. `plan.ts` reads every one of
-        these out of a sentence already, and almost nobody would think to type them.
+        What a person says next, in one row: the agent's own offer to narrow first, then the standing actions.
+        `plan.ts` reads every one of these out of a sentence already and almost nobody would think to type
+        them, so a shortlist with no way to push back on it is a dead end.
       */}
       {narrow ? <p className="cg-note">{narrow.question}</p> : null}
       {narrow || next.length ? (
@@ -752,79 +723,81 @@ function Answered({
 }
 
 /**
- * A real departure at a real shop: what it is, when it starts, how far that is from the hour they asked for,
- * what it costs before tax, how full it is, and whose calendar it was read out of.
+ * One shop, its open times, one Book on each time.
  *
- * The offset and the source are not decoration. A slot that has quietly slid an hour and a half is how a guest
- * misses their dinner, and "read live from their FareHarbor calendar" is the claim the whole product rests on:
- * this is not our guess at their availability, it is their availability.
+ * Three rides at the same dock used to be three cards, each with a listing link and a calendar credit. A guest
+ * paying for a jet ski wants the time and the price.
  */
-function Offer({
+function Shop({
   option,
-  departure,
-  offset,
+  slots,
+  party,
   onOpen,
+  onBook,
 }: {
   option: ConciergeOption;
-  departure: ConciergeDeparture;
-  offset: number | null;
+  slots: { departure: ConciergeDeparture; offset: number | null }[];
+  party: number;
   onOpen: (o: ConciergeOption, d?: ConciergeDeparture) => void;
+  onBook: (o: ConciergeOption, d: ConciergeDeparture, party: number) => void;
 }) {
-  const few = fewSeats(departure.seatsLeft ?? undefined);
-  // The vendor would not quote this departure, but the shop publishes a price for the activity on its own site.
-  const fallback = departure.fromPrice == null ? menuPrice(option) : null;
+  const sameDay = slots.length > 0 && slots.every((s) => s.departure.date === slots[0].departure.date);
+  const day = sameDay ? whenLine({ date: slots[0].departure.date, time: "" }) : null;
   return (
-    <button type="button" className="cg-opt" onClick={() => onOpen(option, departure)}>
-      <b>{option.name}</b>
-      <small>
-        {departure.item}
-        {option.city ? " · " + option.city : ""}
-      </small>
-      <small className="cg-when">
-        {whenLine(departure)}
-        {offset != null ? <em className={offset === 0 ? "cg-onthehour" : "cg-off"}>{offsetLine(offset)}</em> : null}
-      </small>
-      {option.via ? <small className="cg-via">Read live from {option.via}</small> : null}
-      <span className="cg-row">
-        <span className="cg-price">
-          {departure.fromPrice == null && fallback != null ? money(fallback) : priceLine(departure)}
-          {departure.priceLabel && departure.fromPrice != null ? <em> · {departure.priceLabel}</em> : null}
-          {/* Their published price for this activity, not this departure's, so it never passes for a quote. */}
-          {departure.fromPrice == null && fallback != null ? <em> from their site</em> : null}
-        </span>
+    <article className="cg-opt">
+      <button type="button" className="cg-shop" onClick={() => onOpen(option, slots[0]?.departure)}>
+        <b>{option.name}</b>
+        <small>{[day, option.city].filter(Boolean).join(" · ")}</small>
         {/*
-          Seats left, whenever the vendor states them. Not only when they are running out: a real remaining
-          count is the strongest thing on the card that says this was read from their system a second ago and
-          not from a crawl last week. It turns warm once there are few enough to matter.
+          Whose calendar these times came out of.
+          
+          This is the claim the whole product rests on: not our guess at their availability, theirs. It was
+          lost when the card became one shop with its times grouped under it, and it belongs here rather than
+          on each row, because it is a fact about the shop and not about any one departure.
         */}
-        {departure.seatsLeft != null && departure.seatsLeft > 0 ? (
-          <span className={few ? "cg-few" : "cg-seats"}>
-            {few ? "Only " : ""}
-            {departure.seatsLeft} {departure.seatsLeft === 1 ? "seat" : "seats"} left
-          </span>
-        ) : null}
-        <span className="cg-go">{listingIdFor(option) ? "See this listing" : "Book on their site"} &rarr;</span>
-      </span>
-    </button>
+        {option.via ? <small className="cg-via">Read live from {option.via}</small> : null}
+      </button>
+      {slots.map(({ departure, offset }) => {
+        const few = fewSeats(departure.seatsLeft ?? undefined);
+        return (
+          <div className="cg-slot" key={departure.date + departure.time + departure.item}>
+            <div className="cg-slot-when">
+              {fmtTime(departure.time)}
+              {departure.item ? <small>{departure.item}</small> : null}
+              {offset != null && offset !== 0 ? <em className="cg-off">{offsetLine(offset)}</em> : null}
+            </div>
+            <span className="cg-price">{priceLine(departure)}</span>
+            {/*
+              Seats left whenever the vendor states them, not only when they are running out. A real remaining
+              count is the strongest thing on the row that says this was read a second ago rather than crawled
+              last week. It turns warm once there are few enough to matter.
+            */}
+            {departure.seatsLeft != null && departure.seatsLeft > 0 ? (
+              <span className={few ? "cg-few" : "cg-seats"}>
+                {few ? "Only " : ""}
+                {departure.seatsLeft} left
+              </span>
+            ) : null}
+            <button type="button" className="cg-book" onClick={() => onBook(option, departure, party)}>
+              Book
+            </button>
+          </div>
+        );
+      })}
+    </article>
   );
 }
 
-/** No live feed, but the crawl read their own menu. A price a guest can act on beats a blank screen. */
+/** A shop we can price but not time. The whole row opens their page. */
 function Priced({ option, onOpen }: { option: ConciergeOption; onOpen: (o: ConciergeOption) => void }) {
-  // The cheapest row a guest could actually buy, not whichever the shop's own page happened to list first.
   const s = headlineService(option);
   const line = s ? serviceLine(s) : null;
   return (
     <button type="button" className="cg-opt" onClick={() => onOpen(option)}>
       <b>{option.name}</b>
-      <small>
-        {s?.name || option.category}
-        {option.city ? " · " + option.city : ""}
-        {option.rating ? " · " + option.rating + "★" : ""}
-      </small>
+      <small>{option.city || s?.name || option.category}</small>
       <span className="cg-row">
         <span className="cg-price">{line || "Price on request"}</span>
-        <span className="cg-go soft">{option.route === "phone" ? "We would call them" : "Check their times"} &rarr;</span>
       </span>
     </button>
   );

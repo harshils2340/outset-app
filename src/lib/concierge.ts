@@ -386,6 +386,18 @@ export function listingIdFor(option: { domain: string }): string | null {
 
 /* ---------- saying it out loud ---------- */
 
+/** HH:MM the booking API accepts. Vendor times are usually 24h; a 7:00 PM from a page still has to book. */
+export function slotOf(t: string): string | null {
+  const m = /^(\d{1,2}):([0-5]\d)(?:\s*([ap]m))?$/i.exec(t.trim());
+  if (!m) return null;
+  let h = Number(m[1]);
+  const ap = (m[3] || "").toLowerCase();
+  if (ap === "pm" && h < 12) h += 12;
+  if (ap === "am" && h === 12) h = 0;
+  if (h > 23) return null;
+  return String(h).padStart(2, "0") + ":" + m[2];
+}
+
 /**
  * "Sat, Sep 20 at 12:00 PM", in the shop's own wall clock.
  *
@@ -691,6 +703,27 @@ export function spreadDepartures(quoted: ConciergeOption[], cap = 4): Pick[] {
     if (!added) break;
   }
   return out;
+}
+
+/**
+ * The same picks, one shop at a time.
+ *
+ * Spreading is how we choose which four times to keep. Showing them is a different job: three 10 o'clock,
+ * 11 o'clock and 1 o'clock rides at one dock are one choice with three times, not three listings.
+ */
+export function groupShops(shown: Pick[]): { option: ConciergeOption; slots: { departure: ConciergeDeparture; offset: number | null }[] }[] {
+  const order: string[] = [];
+  const byDomain = new Map<string, { option: ConciergeOption; slots: { departure: ConciergeDeparture; offset: number | null }[] }>();
+  for (const p of shown) {
+    let g = byDomain.get(p.option.domain);
+    if (!g) {
+      g = { option: p.option, slots: [] };
+      byDomain.set(p.option.domain, g);
+      order.push(p.option.domain);
+    }
+    g.slots.push({ departure: p.departure, offset: p.offset });
+  }
+  return order.map((d) => byDomain.get(d)!);
 }
 
 /**
