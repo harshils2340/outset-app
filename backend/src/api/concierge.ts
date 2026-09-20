@@ -1,6 +1,7 @@
-import { Hono } from "hono";
+import { Hono, type Context } from "hono";
 import { streamSSE } from "hono/streaming";
 import { rateLimit } from "./auth.ts";
+import { isAdminRequest } from "./metrics.ts";
 import { plan, type Answer } from "../concierge/plan.ts";
 import { liveFor } from "../concierge/live.ts";
 import { getSession, recordTurn, allSessions, Trace } from "../concierge/session.ts";
@@ -16,11 +17,27 @@ import { SESSIONS_PAGE } from "./sessionsPage.ts";
  */
 export const concierge = new Hono();
 
+/**
+ * Who may watch the agent work.
+ *
+ * The two doors the rest of the internal tooling has, plus the laptop door the blanket gate in routes.ts
+ * carries: `OUTSET_LOCAL_ADMIN=1` on a host with no `ADMIN_KEY`. That is the machine this window is actually
+ * used on. `concierge` is mounted above that blanket gate, because the routes below it answer a stranger's
+ * browser by design, so these two have to say it themselves.
+ */
+function mayWatch(c: Context): boolean {
+  if (process.env.OUTSET_LOCAL_ADMIN === "1" && !(process.env.ADMIN_KEY || "").trim()) return true;
+  return isAdminRequest(c);
+}
+
 /** The page itself. A thread on a phone; the same page on a wide screen also shows what the agent is doing. */
 concierge.get("/go", (c) => c.html(CONCIERGE_PAGE));
 
-/** Every conversation the agent has had since this process started, step by step. */
-concierge.get("/sessions", (c) => c.html(SESSIONS_PAGE));
+/** Every conversation the agent has had since this process started, step by step. Internal: see below. */
+concierge.get("/sessions", rateLimit(120, 60 * 60 * 1000), (c) => {
+  if (!mayWatch(c)) return c.json({ error: "not found" }, 404);
+  return c.html(SESSIONS_PAGE);
+});
 
 /** Shapes an answer for the page. Shared by the plain route and the streaming one so they cannot drift. */
 function payload(a: Answer, ms: number, sessionId: string) {
@@ -148,8 +165,22 @@ concierge.post("/concierge/reset", rateLimit(120, 60 * 60 * 1000), async (c) => 
   return c.json({ session: s.id, ok: true });
 });
 
-/** Every conversation this process has served, as JSON, for the window that watches. */
-concierge.get("/concierge/sessions", (c) => {
+/**
+ * Every conversation this process has served, as JSON, for the window that watches.
+ *
+ * Behind the admin gate, which it was not. `concierge` is mounted above the blanket x-admin-key middleware,
+ * because the routes above hold a guest's question and have to answer a stranger's browser, and these two came
+ * up alongside them: unauthenticated, uncounted, and handing anyone who asked the last forty guests' sentences.
+ * On the site the sentence has the guest's own town appended to it by `withPlace`, so that is other people's
+ * questions and roughly where each of them was sitting. It also printed every live session id, and
+ * `getSession` adopts any id a caller sends, so a stranger could carry on somebody else's conversation.
+ *
+ * `isAdminRequest` rather than the middleware below for the same reason the metrics page uses it: a browser
+ * signs in with an emailed code and has no key to send, and 404 is what the rest of the internal tooling
+ * answers anyone else.
+ */
+concierge.get("/concierge/sessions", rateLimit(120, 60 * 60 * 1000), (c) => {
+  if (!mayWatch(c)) return c.json({ error: "not found" }, 404);
   return c.json({
     sessions: allSessions().slice(0, 40).map((s) => ({
       id: s.id, at: s.at, lastAt: s.lastAt,
