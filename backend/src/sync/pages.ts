@@ -6,21 +6,30 @@ import { GUIDES } from "../../../src/data/guides.ts";
 import { REGION_NAME, regionOfArea } from "../../../src/data/regions.ts";
 
 /**
- * Programmatic landing pages: one static page per activity and metro, "Escape rooms in Toronto, Ontario".
- * Real operators, real prices and photos, an FAQ made only of facts the listings hold, and links into the app.
- * These exist for search engines and shared links; the app itself stays the product.
+ * Programmatic landing pages: one static page per activity and metro, "Escape rooms in Toronto, Ontario", plus
+ * one per activity and real city beneath the metro grid, "Cooking classes in Waterloo, Ontario", for any town
+ * that clears MIN_METRO_LISTINGS on its own even though it is not one of the 47 metros. Real operators, real
+ * prices and photos, an FAQ made only of facts the listings hold, and links into the app. These exist for
+ * search engines and shared links; the app itself stays the product.
  *
  * Rules:
  * - A listing reaches a page only if browse would show it and its kind is confirmed. A page is a browse surface
  *   with a Google result in front of it, so the catalog's own `thin` flag applies here exactly as it does to the
  *   rails, a guessed kind is not published as a fact, and the count in the h1, the lede, the FAQ, the pills and
  *   the JSON-LD counts what a guest can actually see.
- * - A metro page exists when the kind has at least MIN_METRO_LISTINGS listings in that metro. The all-metros page
- *   ("-in-anywhere") exists for every kind with a listing anywhere, metro or not. Nothing is published empty; the
- *   directory is cleared first so a page whose kind lost its listings disappears.
+ * - A metro page exists when the kind has at least MIN_METRO_LISTINGS listings in that metro. A city page exists
+ *   when the kind has at least MIN_METRO_LISTINGS listings in that city's own `area`, whether or not the city
+ *   sits inside a metro, unless the city IS a metro's own main town (Tampa inside tampa, Toronto inside toronto):
+ *   that page is the metro page, not a second one. The all-metros page ("-in-anywhere") exists for every kind
+ *   with a listing anywhere, metro or city or neither. Nothing is published empty; the directory is cleared
+ *   first so a page whose kind lost its listings disappears.
  * - The title and h1 use the phrasing people type into Google (`search`), which is one of the kind's aliases in
  *   src/data/synonyms.ts, plus the city and its state or province in full.
- * - Every page lands in sitemap.xml, and every internal link points at a page that was written in the same run.
+ * - A city page links up to its metro page when the kind has one there, sideways to the same activity in the
+ *   nearest other cities, and down to its listings. A metro page links down to the city pages inside it.
+ * - Every page lands in sitemap-pages.xml (one child of the sitemap.xml index sync/contacts.ts writes, alongside
+ *   listingPages.ts's own sitemap-listings-*.xml), and every internal link points at a page that was written in
+ *   the same run.
  */
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -153,6 +162,13 @@ export type Item = Record<string, unknown> & {
 
 type Metro = (typeof METROS)[number];
 
+/**
+ * A named place a page can be about: a metro from taxonomy/catalog.ts, or a real city built straight from
+ * listings' own `area` line. A Metro already has every field a Place needs, so passing one where a Place is
+ * asked for takes no conversion; a city is a small object built to the same shape in buildCityPlaces below.
+ */
+export type Place = { id: string; name: string; region: string; lat: number; lon: number };
+
 const esc = (s: unknown) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 const money = (n: number) => (Number.isInteger(n) ? "$" + n.toLocaleString("en-US") : "$" + n.toFixed(2));
 const list = (xs: string[]) => (xs.length <= 1 ? xs.join("") : xs.slice(0, -1).join(", ") + " and " + xs[xs.length - 1]);
@@ -191,14 +207,17 @@ export function priceOf(i: Item): number | null {
 
 const hasHours = (i: Item) => (Array.isArray(i.hrs) && i.hrs.some((h) => h != null)) || !!(i.hoursText && i.hoursText.length);
 
-/** "Toronto, Ontario", "Tampa Bay, Florida", and "Washington DC" when the name already says where it is. */
-export function placeName(metro: Metro): string {
+/** "Toronto, Ontario", "Tampa Bay, Florida", and "Washington DC" when the name already says where it is. Takes
+ * a metro or a city Place: both carry the same `name`/`region` shape. */
+export function placeName(metro: Place): string {
   const region = REGION_NAME[metro.region] || metro.region;
   return metro.name.includes(metro.region) || metro.name.includes(region.split(",")[0]) ? metro.name : `${metro.name}, ${region}`;
 }
 
-export const pageTitle = (kind: Kind, metro: Metro | null) => `${kind.search} in ${metro ? placeName(metro) : "the US and Canada"}`;
-const fileFor = (art: string, metroId: string | null) => `${art}-in-${metroId || "anywhere"}.html`;
+export const pageTitle = (kind: Kind, metro: Place | null) => `${kind.search} in ${metro ? placeName(metro) : "the US and Canada"}`;
+/** The landing page file name for a kind, everywhere (`metroId` null) or in one metro. Shared with listingPages.ts
+ * so a listing page can link to the exact same file a landing page was (or was not) written to. */
+export const fileFor = (art: string, metroId: string | null) => `${art}-in-${metroId || "anywhere"}.html`;
 
 /**
  * Card photos go through the same wsrv.nl proxy the app's own cards use, at the same 360/720 widths, rather
@@ -271,7 +290,7 @@ footer{border-top:1px solid #ebebeb;padding:20px 0 40px;color:#717171;font-size:
 type Faq = { q: string; a: string };
 
 /** Questions answered only from what the listings hold. A question with no fact behind it is left out. */
-export function buildFaq(kind: Kind, metro: Metro | null, items: Item[]): Faq[] {
+export function buildFaq(kind: Kind, metro: Place | null, items: Item[]): Faq[] {
   const city = metro ? metro.name : "the US and Canada";
   const n = items.length;
   const plural = kind.plural;
@@ -344,7 +363,15 @@ export function buildFaq(kind: Kind, metro: Metro | null, items: Item[]): Faq[] 
 
 type Neighbour = { file: string; label: string; count: number };
 
-function page(kind: Kind, metro: Metro | null, items: Item[], nearby: Neighbour[], otherKinds: Neighbour[]): string {
+/**
+ * A city page's extra links: `upLink` is its metro page, only passed when that metro page actually exists
+ * (a metro whose kind fell under MIN_METRO_LISTINGS never gets a page to link up to). `subPlaces` is the
+ * opposite direction on a metro page: the city pages this run wrote inside it, so a metro page reaches every
+ * town beneath it in one hop, not just the metro's own aggregate.
+ */
+type Extra = { upLink?: Neighbour; subPlaces?: Neighbour[]; subHeading?: string };
+
+function page(kind: Kind, metro: Place | null, items: Item[], nearby: Neighbour[], otherKinds: Neighbour[], extra: Extra = {}): string {
   const title = pageTitle(kind, metro);
   const canonical = `${publicSite()}p/${fileFor(kind.art, metro ? metro.id : null)}`;
   const guide = GUIDES[kind.art as keyof typeof GUIDES];
@@ -364,7 +391,11 @@ function page(kind: Kind, metro: Metro | null, items: Item[], nearby: Neighbour[
         })
         .join("");
       const photo = i.cover ? cardImage(i.cover) : null;
-      return `<a class="card" href="${publicSite()}#o=${esc(i.id)}">
+      // A listing with a cover photo gets its own static page (listingPages.ts, /l/<id>.html): send the crawler
+      // there instead of straight to the hash route, so it reaches the listing's full facts in one hop from here.
+      // A listing with no cover has no listing page (see listingPages.ts scope), so its card keeps the old link.
+      const cardHref = i.cover ? `${publicSite()}l/${esc(i.id)}.html` : `${publicSite()}#o=${esc(i.id)}`;
+      return `<a class="card" href="${cardHref}">
   <div class="art">${photo ? `<img src="${esc(photo.src)}"${photo.srcSet ? ` srcset="${esc(photo.srcSet)}" sizes="${CARD_SIZES}"` : ""} alt="${esc(i.title)}" width="560" height="560" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">` : ""}</div>
   <b>${esc(i.title)}</b><small>${esc(i.area)}</small>
   <div class="meta"><span>${from != null ? "From <b>" + esc(money(from)) + "</b>" : "Price on request"}</span>${i.rating ? `<span>★ ${Number(i.rating).toFixed(1)}${i.reviews ? " (" + Number(i.reviews).toLocaleString("en-US") + ")" : ""}</span>` : ""}</div>
@@ -404,12 +435,13 @@ function page(kind: Kind, metro: Metro | null, items: Item[], nearby: Neighbour[
 <style>${CSS}</style></head><body>
 <header><div class="wrap top"><a class="logo" href="${publicSite()}">Outset</a><a class="cta" href="${publicSite()}">Open Outset</a></div></header>
 <main class="wrap">
-<nav class="crumbs"><a href="${publicSite()}">Outset</a><span>›</span><a href="index.html">By activity and city</a>${metro ? `<span>›</span><a href="${fileFor(kind.art, null)}">${esc(kind.search)}</a><span>›</span>${esc(metro.name)}` : `<span>›</span>${esc(kind.search)}`}</nav>
+<nav class="crumbs"><a href="${publicSite()}">Outset</a><span>›</span><a href="index.html">By activity and city</a>${metro ? `<span>›</span><a href="${fileFor(kind.art, null)}">${esc(kind.search)}</a>${extra.upLink ? `<span>›</span><a href="${extra.upLink.file}">${esc(extra.upLink.label)}</a>` : ""}<span>›</span>${esc(metro.name)}` : `<span>›</span>${esc(kind.search)}`}</nav>
 <h1>${esc(title)}</h1>
 <p class="lede">${lede}</p>
 <div class="grid">${cards}</div>
 ${guide ? `<section class="guide"><h2>What ${esc(lower(kind.search))} ${/s$/.test(kind.search) ? "are" : "is"} actually like</h2><p>${esc(guide.hook)}</p><ol>${guide.steps.map((s) => `<li>${esc(s)}</li>`).join("")}</ol><p><b>Bring:</b> ${esc(guide.bring.join(", "))}. <b>Good for:</b> ${esc(guide.goodFor)}</p></section>` : ""}
 <section class="faq"><h2>Questions</h2>${faq.map((f) => `<h3>${esc(f.q)}</h3><p>${esc(f.a)}</p>`).join("")}</section>
+${extra.subPlaces && extra.subPlaces.length ? `<h2>${esc(extra.subHeading || "")}</h2><div class="links">${extra.subPlaces.map(pill).join("")}</div>` : ""}
 ${nearby.length ? `<h2>${esc(kind.search)} ${metro ? "near " + esc(metro.name) : "by city"}</h2><div class="links">${nearby.map(pill).join("")}</div>` : ""}
 ${otherKinds.length ? `<h2>Other things to do${metro ? " in " + esc(metro.name) : ""}</h2><div class="links">${otherKinds.map(pill).join("")}</div>` : ""}
 </main>
@@ -417,7 +449,13 @@ ${otherKinds.length ? `<h2>Other things to do${metro ? " in " + esc(metro.name) 
 </body></html>`;
 }
 
-export type LandingPagesResult = { pages: number; metroPages: number; kindPages: number; urls: string[] };
+/**
+ * `existingPages` names every landing page this run actually wrote, as the key a listing page can look itself
+ * up by: `art` for the all-metros page, `art|metroId` for a metro one, `art|cityId` for a real city beneath a
+ * metro (or with no metro at all). listingPages.ts uses it to decide whether a listing has an activity-and-city
+ * page to link to at all, rather than guessing from MIN_METRO_LISTINGS a second time in a different module.
+ */
+export type LandingPagesResult = { pages: number; metroPages: number; cityPages: number; kindPages: number; urls: string[]; existingPages: Set<string> };
 
 export function writeLandingPages(items: Item[], opts: { publicDir?: string } = {}): LandingPagesResult {
   const publicDir = opts.publicDir || defaultPublicDir;
@@ -443,6 +481,51 @@ export function writeLandingPages(items: Item[], opts: { publicDir?: string } = 
   }
   const metroById = new Map(METROS.map((m) => [m.id, m]));
 
+  /**
+   * Real cities beneath the metro grid. 7,529 distinct towns sit in the catalog's `area` field and only 47 of
+   * them get a metro page; 2,572 activity-and-city pairs clear MIN_METRO_LISTINGS on the town alone, more than
+   * twice what the metro grid covers. A city page exists once its own town clears the bar, in the same shape a
+   * metro page does, so "cooking classes in Waterloo" or "kayak rental in Clearwater" has somewhere of ours to
+   * land instead of folding into Toronto or Tampa Bay.
+   *
+   * The town is the listing's own `area` with its trailing region code stripped, the same read buildFaq uses;
+   * an area that is only a region code ("FL", a scrape that never found the town) is not a town and is dropped
+   * here exactly as it is there. The region code rides along in the slug because two states can share a town
+   * name ("Springfield, IL" and "Springfield, MA" are not one city).
+   */
+  const slugifyTown = (s: string) =>
+    s
+      .normalize("NFKD")
+      .replace(/[̀-ͯ]/g, "")
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "");
+  const normCmp = (s: string) => s.normalize("NFKD").replace(/[̀-ͯ]/g, "").toLowerCase().trim();
+  // Metros whose catalog `area` town name is not the metro's own display name: the metro is "Tampa Bay" but
+  // every listing in it reads "Tampa, FL"; "Washington DC" is the metro, "Washington, DC" the town. Without
+  // this, Tampa and Washington would each get a second, near-duplicate page under their own town name.
+  const METRO_MAIN_TOWN: Record<string, string> = { tampa: "Tampa", dc: "Washington" };
+  const isMetroMainCity = (town: string, region: string, metro: Metro) =>
+    region === metro.region && (normCmp(town) === normCmp(metro.name) || normCmp(town) === normCmp(METRO_MAIN_TOWN[metro.id] || "\0"));
+
+  type CityMeta = { town: string; region: string; metroId: string | null };
+  const byKindCity = new Map<string, Map<string, Item[]>>();
+  const cityMetaById = new Map<string, CityMeta>();
+  for (const i of listable) {
+    const town = String(i.area || "").replace(/,\s*[A-Z]{2}$/, "").trim();
+    const region = regionOfArea(i.area);
+    if (!town || !region || regionOfArea(town)) continue; // no town, or the "town" is itself a bare region code
+    let cityId = `${slugifyTown(town)}-${region.toLowerCase()}`;
+    if (!slugifyTown(town)) continue; // nothing left of the town after slugging (punctuation-only name)
+    if (metroById.has(cityId)) cityId = cityId + "-town"; // never shadow a metro's own file name
+    if (!byKindCity.has(i.art)) byKindCity.set(i.art, new Map());
+    const m = byKindCity.get(i.art)!;
+    if (!m.has(cityId)) m.set(cityId, []);
+    m.get(cityId)!.push(i);
+    if (!cityMetaById.has(cityId)) cityMetaById.set(cityId, { town, region, metroId: i.metroId || null });
+  }
+
   // Decide the page set first, so every link on every page points at a page this run writes.
   const kindPages = KINDS.filter((k) => (byKind.get(k.art) || []).length > 0);
   const metroPages = new Map<string, { kind: Kind; metro: Metro; items: Item[] }[]>(); // by metro id
@@ -459,15 +542,39 @@ export function writeLandingPages(items: Item[], opts: { publicDir?: string } = 
     metrosOfKind.set(kind.art, list);
   }
 
+  // Same decision, one town at a time: a city page exists once its own count clears the bar, unless the town
+  // IS a metro's main city, in which case the metro page above is already its page and a second one would be a
+  // near-duplicate. `cityPagesByCityId` is the reverse index a city page needs for "other things to do here."
+  const citiesOfKind = new Map<string, { cityId: string; place: Place; items: Item[]; metroId: string | null }[]>();
+  const cityPagesByCityId = new Map<string, { kind: Kind; cityId: string; items: Item[] }[]>();
+  for (const kind of kindPages) {
+    const cities: { cityId: string; place: Place; items: Item[]; metroId: string | null }[] = [];
+    for (const [cityId, local] of byKindCity.get(kind.art) || []) {
+      if (local.length < MIN_METRO_LISTINGS) continue;
+      const meta = cityMetaById.get(cityId)!;
+      const metro = meta.metroId ? metroById.get(meta.metroId) : undefined;
+      if (metro && isMetroMainCity(meta.town, meta.region, metro)) continue; // this town IS the metro's own page
+      const place: Place = { id: cityId, name: meta.town, region: meta.region, lat: metro?.lat ?? 0, lon: metro?.lon ?? 0 };
+      const sorted = local.slice().sort(rank);
+      cities.push({ cityId, place, items: sorted, metroId: meta.metroId });
+      if (!cityPagesByCityId.has(cityId)) cityPagesByCityId.set(cityId, []);
+      cityPagesByCityId.get(cityId)!.push({ kind, cityId, items: sorted });
+    }
+    citiesOfKind.set(kind.art, cities);
+  }
+
   const urls: string[] = [];
+  const existingPages = new Set<string>();
   const write = (file: string, html: string) => {
     writeFileSync(join(dir, file), html);
     urls.push(`${publicSite()}p/${file}`);
   };
   let metroCount = 0;
+  let cityCount = 0;
   for (const kind of kindPages) {
     const all = (byKind.get(kind.art) || []).slice().sort(rank);
     const metros = metrosOfKind.get(kind.art) || [];
+    const cities = citiesOfKind.get(kind.art) || [];
     const byCity = metros
       .slice()
       .sort((a, b) => b.items.length - a.items.length)
@@ -476,6 +583,7 @@ export function writeLandingPages(items: Item[], opts: { publicDir?: string } = 
       .filter((k) => k.art !== kind.art)
       .map((k) => ({ file: fileFor(k.art, null), label: k.search, count: (byKind.get(k.art) || []).length }));
     write(fileFor(kind.art, null), page(kind, null, all, byCity, otherKindsAnywhere));
+    existingPages.add(kind.art);
     for (const { metro, items: local } of metros) {
       const nearby = metros
         .filter((m) => m.metro.id !== metro.id)
@@ -486,8 +594,43 @@ export function writeLandingPages(items: Item[], opts: { publicDir?: string } = 
         .filter((p) => p.kind.art !== kind.art)
         .sort((a, b) => b.items.length - a.items.length)
         .map((p) => ({ file: fileFor(p.kind.art, metro.id), label: p.kind.search, count: p.items.length }));
-      write(fileFor(kind.art, metro.id), page(kind, metro, local, nearby, otherKinds));
+      // Down: the city pages this run wrote inside this metro, for this same kind, so the metro page reaches
+      // every town beneath it in one hop.
+      const subPlaces = cities
+        .filter((c) => c.metroId === metro.id)
+        .sort((a, b) => b.items.length - a.items.length)
+        .map((c) => ({ file: fileFor(kind.art, c.cityId), label: placeName(c.place), count: c.items.length }));
+      write(fileFor(kind.art, metro.id), page(kind, metro, local, nearby, otherKinds, { subPlaces, subHeading: `${kind.search} by city in ${metro.name}` }));
+      existingPages.add(kind.art + "|" + metro.id);
       metroCount += 1;
+    }
+    for (const city of cities) {
+      const parentMetro = city.metroId ? metroById.get(city.metroId) : undefined;
+      const parentEntry = parentMetro ? metros.find((m) => m.metro.id === parentMetro.id) : undefined;
+      // Up: this city's metro page, only when this kind actually has one there (a metro can qualify for a
+      // kind while falling short of it for another, and a page never links to one this run did not write).
+      const upLink = parentEntry ? { file: fileFor(kind.art, parentEntry.metro.id), label: placeName(parentEntry.metro), count: parentEntry.items.length } : undefined;
+      // Sideways: the same activity in the nearest other cities. Cities have no coordinates of their own, so a
+      // city in the same metro is treated as nearest (it was assigned that metro precisely for being close to
+      // it), then real distance between the metros involved, then how many listings the neighbour has.
+      const nearbyCities = cities
+        .filter((c) => c.cityId !== city.cityId)
+        .sort(
+          (a, b) =>
+            (a.metroId === city.metroId ? 0 : 1) - (b.metroId === city.metroId ? 0 : 1) ||
+            kmBetween(city.place, a.place) - kmBetween(city.place, b.place) ||
+            b.items.length - a.items.length ||
+            a.place.name.localeCompare(b.place.name),
+        )
+        .slice(0, MAX_NEARBY)
+        .map((c) => ({ file: fileFor(kind.art, c.cityId), label: placeName(c.place), count: c.items.length }));
+      const otherKindsInCity = (cityPagesByCityId.get(city.cityId) || [])
+        .filter((p) => p.kind.art !== kind.art)
+        .sort((a, b) => b.items.length - a.items.length)
+        .map((p) => ({ file: fileFor(p.kind.art, city.cityId), label: p.kind.search, count: p.items.length }));
+      write(fileFor(kind.art, city.cityId), page(kind, city.place, city.items, nearbyCities, otherKindsInCity, { upLink }));
+      existingPages.add(kind.art + "|" + city.cityId);
+      cityCount += 1;
     }
   }
 
@@ -502,8 +645,16 @@ export function writeLandingPages(items: Item[], opts: { publicDir?: string } = 
 ${cities.map((c) => `<h2>${esc(placeName(c.metro))}</h2><div class="links">${c.pages.map((p) => `<a href="${fileFor(p.kind.art, c.metro.id)}">${esc(p.kind.search)}<small>${p.items.length}</small></a>`).join("")}</div>`).join("\n")}
 </main><footer><div class="wrap">Outset · Book the jump. Skip the call.</div></footer></body></html>`;
   writeFileSync(join(dir, "index.html"), index);
+  /**
+   * A sitemap can hold at most 50,000 URLs. This one alone never gets close, but the listing pages
+   * (listingPages.ts, /l/<id>.html) do, so the two are kept in separate files from the start: this is
+   * `sitemap-pages.xml`, one of the children a `sitemap.xml` index links to, not the index itself. Whatever
+   * calls both writeLandingPages and writeListingPages (sync/contacts.ts) writes that index last, from both
+   * results, so it always names every child file this run actually produced. robots.txt still points at
+   * `sitemap.xml` either way: that name is the index's, not this file's, on any host new enough to have one.
+   */
   writeFileSync(
-    join(publicDir, "sitemap.xml"),
+    join(publicDir, "sitemap-pages.xml"),
     `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${[publicSite(), `${publicSite()}p/index.html`, ...urls].map((u) => `<url><loc>${u}</loc></url>`).join("")}</urlset>`,
   );
   writeFileSync(join(publicDir, "robots.txt"), `User-agent: *\nAllow: /\nSitemap: ${publicSite()}sitemap.xml\n`);
@@ -513,8 +664,10 @@ ${cities.map((c) => `<h2>${esc(placeName(c.metro))}</h2><div class="links">${c.p
    * block of real copy and links that the app replaces on mount, and the links are written here so they can only
    * ever name pages this run actually produced. Skipped when a caller aimed the run at a directory of its own.
    */
-  if (!opts.publicDir) {
-    const home = join(publicDir, "..", "index.html");
+  {
+    // During the site build this is dist/index.html, which vite has already produced; a run aimed at a scratch
+    // directory has no index.html there and is left alone.
+    const home = join(publicDir, "index.html");
     try {
       const html = readFileSync(home, "utf8");
       const start = "<!-- seo-links:start -->";
@@ -534,5 +687,5 @@ ${cities.map((c) => `<h2>${esc(placeName(c.metro))}</h2><div class="links">${c.p
       /* no template to update on this host */
     }
   }
-  return { pages: urls.length, metroPages: metroCount, kindPages: kindPages.length, urls };
+  return { pages: urls.length, metroPages: metroCount, cityPages: cityCount, kindPages: kindPages.length, urls, existingPages };
 }

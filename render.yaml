@@ -9,7 +9,10 @@ services:
     # nothing in src/ fetches it, and serving it put 142,549 operators' hashed emails and masked hints
     # ("b...@example.com") on the CDN as a 6.6 MB download. The hash is an unsalted SHA-256 prefix, so with the
     # hint and the domain beside it the real address is cheap to recover. Also 6.6 MB off every deploy.
-    buildCommand: npm ci && npx vite build --base=/ && cp dist/index.html dist/404.html && rm -f dist/claim-index.json
+    # build-pages.mts writes the activity-and-city pages, the per-listing pages, the sitemaps and robots.txt into
+    # dist. They are not committed: about 14,500 files that every sync would rewrite. A failure there fails the
+    # build on purpose, because a deploy with no sitemap drops the whole site out of the index.
+    buildCommand: npm ci && npx vite build --base=/ && npx tsx scripts/build-pages.mts && cp dist/index.html dist/404.html && rm -f dist/claim-index.json
     staticPublishPath: dist
     buildFilter:
       ignoredPaths:

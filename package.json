@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "test": "node --import ./backend/node_modules/tsx/dist/loader.mjs --test \"src/lib/__tests__/*.test.ts\"",
-    "build": "tsc -b && vite build && node scripts/copy-operators.mjs",
+    "build": "tsc -b && vite build && node scripts/copy-operators.mjs && tsx scripts/build-pages.mts",
     "typecheck": "tsc -b",
     "preview": "vite preview",
     "backend": "npm run dev --prefix backend",
@@ -32,6 +32,7 @@
     "@types/react": "^19.1.2",
     "@types/react-dom": "^19.1.2",
     "@vitejs/plugin-react": "^4.4.1",
+    "tsx": "^4.23.13",
     "typescript": "~5.8.3",
     "vite": "^6.3.5"
   }

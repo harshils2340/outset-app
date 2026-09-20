@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import { CITIES } from "../discover/cities.ts";
 import { db } from "../db/client.ts";
 import { writeLandingPages } from "./pages.ts";
+import { writeListingPages } from "./listingPages.ts";
 import { encodeWeek, isTradingHoursLine } from "./hours.ts";
 import { claimKeyHash } from "../lib/claim.ts";
 import { crawledPhotoStats, crawledPhotosFor } from "./photoSidecar.ts";
@@ -2221,14 +2222,18 @@ export function syncCatalogToApp(): { path: string; count: number } {
   }
   writeFileSync(join(appDataDir, "../../public/live-index.json"), JSON.stringify({ generatedAt: new Date().toISOString(), urls: liveUrls }));
   console.log("Wrote live booking links for " + Object.keys(liveUrls).length + " listings to public/live-index.json");
-  // The landing pages get the same listings browse gets. `thin` is decided above, on the browse record, so it is
-  // carried across by id rather than worked out a second time from a different shape.
+  // The landing pages and the listing pages get the same listings browse gets. `thin` is decided above, on the
+  // browse record, so it is carried across by id rather than worked out a second time from a different shape.
   const thinIds = new Set(operators.filter((o) => o.thin).map((o) => o.id as string));
-  const pages = writeLandingPages(
-    full
-      .filter((i) => !(i as { unlisted?: boolean }).unlisted)
-      .map((i) => (thinIds.has(i.id as string) ? { ...i, thin: true } : i)) as never,
-  );
-  console.log("Wrote " + pages.pages + " landing pages to public/p");
+  const listable = full
+    .filter((i) => !(i as { unlisted?: boolean }).unlisted)
+    .map((i) => (thinIds.has(i.id as string) ? { ...i, thin: true } : i)) as never;
+  // The static pages a search engine reads, the activity-and-city ones and one per listing worth indexing, are
+  // built into `dist` by scripts/build-pages.mts during the site build, not written here. There are about 14,500
+  // of them and every sync rewrites most, so committing them put hundreds of megabytes a week of churn into a
+  // repository already carrying the catalog. They are built from public/catalog.json and public/o, which this
+  // sync does write, so the pages are reproducible from what it commits.
+  void writeLandingPages;
+  void writeListingPages;
   return { path, count: operators.length };
 }

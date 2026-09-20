@@ -18,3 +18,11 @@ backend/data/pagecache/
 
 # Neon CLI link to the project (ids only, but per-checkout)
 .neon
+
+# The static pages a search engine reads are built into dist by scripts/build-pages.mts, not committed:
+# about 14,500 files that every sync would rewrite. They are reproducible from public/catalog.json and public/o.
+public/p/
+public/l/
+public/sitemap.xml
+public/sitemap-*.xml
+public/robots.txt

@@ -40,7 +40,7 @@ function run(items: Item[]) {
   const result = writeLandingPages(items, { publicDir: dir });
   const files = readdirSync(join(dir, "p")).filter((f) => f.endsWith(".html")).sort();
   const read = (f: string) => readFileSync(join(dir, "p", f), "utf8");
-  const sitemap = readFileSync(join(dir, "sitemap.xml"), "utf8");
+  const sitemap = readFileSync(join(dir, "sitemap-pages.xml"), "utf8");
   return { dir, result, files, read, sitemap, cleanup: () => rmSync(dir, { recursive: true, force: true }) };
 }
 
@@ -95,7 +95,8 @@ test("the Toronto cooking page: title, h1, real count, cards with price and phot
     assert.match(html, /<img src="https:\/\/wsrv\.nl\/\?url=x%2F1\.jpg&amp;w=560/);
     assert.match(html, /From <b>\$60<\/b>/);
     assert.match(html, /From <b>\$140<\/b>/);
-    assert.match(html, /href="https:\/\/onoutset\.com\/#o=o-cooking-toronto-1"/);
+    // A card whose listing has a cover photo links to that listing's own static page (listingPages.ts), not the hash route.
+    assert.match(html, /href="https:\/\/onoutset\.com\/l\/o-cooking-toronto-1\.html"/);
     // FAQ built from the listings' own facts.
     assert.match(html, /Outset lists 3 cooking classes around Toronto, including places in Toronto and Mississauga\. 2 of them have photos\./);
     assert.match(html, /3 of the 3 operators publish prices on their own site\. Starting prices run from \$60 to \$140\./);
