@@ -94,7 +94,9 @@ test("the concierge overlay is a dialog too, and holds the page behind it still"
   // It shipped claiming aria-modal and behaving like nothing of the kind: driven in Chromium, 23 of 24 Tab
   // stops walked out into the home underneath the scrim, a wheel rolled that home 900 px, and closing left
   // focus on the body rather than on the button that opened it.
-  assert.match(CONCIERGE, /ref=\{box\} className=\{"cg"[\s\S]*?role="dialog" aria-modal="true"/);
+  // Whitespace-tolerant: the overlay's opening tag is written over several lines, and which line an attribute
+  // sits on is not what this is checking.
+  assert.match(CONCIERGE, /ref=\{box\}\s+className=\{"cg"[\s\S]*?role="dialog"\s+aria-modal="true"/);
   assert.match(CONCIERGE, /useModal\(box\);/);
   // Before the effect that focuses the field, or the hook reads that field as the opener and has nowhere to
   // put focus back.
