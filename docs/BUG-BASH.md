@@ -2321,6 +2321,96 @@ disk, 361 backend tests (8 new) and 481 app tests (5 new), both projects type-ch
 - The earlier runs' calls stand: Peek's 257 links and no feed, the 6 rows publishing a bare
   `https://fareharbor.com/`, anything needing a real Stripe key, and no workflow runs `npm test`.
 
+## 20 September 2026, thirty-eighth run (07:15 to 08:30 UTC)
+
+**Checked, and why.** The concierge inside the guest app, which landed in five commits after the
+thirty-seventh run's log and is in no Coverage list: `src/lib/concierge.ts`, `conciergeHistory.ts`, the
+806-line `WebConcierge` overlay, the guest wallet, and the availability corpus. It is the newest thing a guest
+can touch and the strongest claim the product makes, so a wrong number or a leak here is the most expensive
+kind. Everything on tonight's suggested list was already down as verified with nothing since touching it. The
+rehearsal was run four times, because those commits touched `src/` and `backend/src`, because the first run
+came back red, and because `origin/main` moved under the run and took it red a second time.
+
+**Found and fixed.**
+
+- **Anyone could read the last forty guests' questions** (`ba63c4583`). `GET /concierge/sessions` and the
+  `/sessions` page it feeds were public, unauthenticated and uncounted. They sit above the blanket
+  x-admin-key gate in `routes.ts`, which is right for the ask and stream routes beside them and wrong for
+  these: they hand out every conversation this process has served, and on the site `withPlace` has already
+  appended the guest's own town to the sentence before it is sent. They also printed every live session id,
+  and `getSession` adopts any id a caller sends, so a stranger could carry on somebody else's conversation.
+  Both now use the same two doors as the rest of the internal tooling, plus the laptop door the blanket gate
+  itself carries, and both are counted.
+- **An hour read as a town** (`6e4456f7e`). `withPlace` adds the guest's city when their sentence names
+  nowhere, and decided a sentence named a place by finding a preposition followed by any letter. "in the
+  evening", "at seven", "at sunset", "by myself", "on monday at eight": eleven of twelve ordinary place-less
+  sentences tripped it, so the city was never attached and the agent came back asking where they were, over
+  no results. The same failure "near me" caused, from the other end.
+- **The overlay said `aria-modal` and behaved like nothing of the kind** (`7e2c3d146`). Driven in Chromium at
+  1280px and 400px: 23 of 24 Tab stops walked out into the home page under a full-screen scrim, a wheel over
+  the thread rolled that home 900 px, and Escape left focus on the body. Every other dialog on the site has
+  used `useModal` since the run that wrote `modalChrome.test.ts`; this one shipped after it and without it.
+- **A copied conversation quoted the child fare** (`9293f7aad`). The history exists so a wrong answer can be
+  pasted at whoever can fix it, which only works if it says what was on the screen. It took the first priced
+  row off the shop's menu, in the shop's own page order, so "Child (under 12) $15" above "Adult $30" copied
+  out as $15 while the card read $30: the defect `headlineService` was written to fix, back in the one place
+  whose whole job is fidelity. It also listed no priced shop at all once anything had a live time, while the
+  screen shows up to three under "Also nearby".
+- **The rehearsal was failing 69 of the availability corpus** (`0a5e78d8f`). `availability.ts` builds the
+  live-index URL from `SITE_URL` at import, which is right on a real host and wrong inside a recording. The
+  rehearsal sets `SITE_URL` to its own localhost, as `backend/AGENTS.md` tells anyone testing to, so every
+  case asked for a key none of them holds: the index 404ed, every shop lost its booking link, and the corpus
+  read as the reader having regressed on a machine where nothing was broken.
+- **The backend type-check was red, twice** (`d4a282b15`, then `88fab909c`). First in three places: a settled
+  promise read from the variable a callback assigns, a Stripe error's `code` missing from the shape the
+  response is cast to, and `document` inside a `page.evaluate` in a project whose lib is ES2022. Then, when
+  `origin/main` was fetched at the end of the run, `src/concierge/agent.ts` had arrived a few hours earlier
+  with thirteen more of the same last kind. A function handed to `page.evaluate` runs inside the page, where
+  those globals exist, so DOM joins the lib, which is what a project driving Playwright needs. What that costs
+  is that `document` in ordinary server code is a production crash rather than a build error, so a test now
+  names the files allowed to say these words: three that drive a browser, two that write a page for one, and
+  the per-vendor drivers directory, which is what every file in it does. All of it type-only, so `npm test`
+  stayed green through every one, the fourth and fifth time this gap has bitten (183a54975, 908a771cf). The
+  new guard earned itself within the hour: `origin/main` moved twice more during the run, and the second
+  move's new Checkfront driver tripped it.
+- **Pressing New could re-ask the shared question** (`107b7dd28`). `startOver` cleared the ref that marks the
+  opening question as asked, re-arming an effect that re-runs whenever the guest's place changes, which
+  `AppProvider` refines from the network after first render. Reasoned from the code, not observed: the
+  refinement needs a network this box does not have.
+
+**Swept and clean.** The guest wallet end to end, the one new money path: the cap and its clamp, `x-wallet`
+in the CORS allow list, the 48-character id, the setup-mode webhook branch, and that the browser's
+`ottoCanPay` and the server's `agentMayCharge` agree. The saved-card booking path against the Checkout one:
+the slot race, the duplicate, the release on both, and that an instant booking still schedules its payout.
+
+**Green after the fixes.** 53 of 53 rehearsal steps against a local Postgres with TLS and the Chromium on
+disk, 498 backend tests (5 new) and 577 app tests (6 new), both projects type-check clean.
+
+**Needs Harshil.**
+
+- **Nothing runs a project type-check on a push**, and `origin/main` was red when this run fetched it. That
+  is five red-on-main incidents now, two of them tonight, and the rehearsal is the only thing that reads
+  either type-check. A CI job that runs `npm test` and both type-checks on every push is the single
+  highest-value thing missing from this repository.
+- **`origin/main` was force-updated while this run was working**, which is worth knowing about rather than
+  acting on. This clone is shallow (52 commits), it starts on a detached head, and its local `main` ref is
+  left over from before the rewrite, 50 ahead and 52 behind. This run's eight commits were rebased onto the
+  new `origin/main` and pushed as a fast-forward from that detached head, so nothing was lost and nothing was
+  forced. The stale local ref was left alone: a shallow clone cannot tell what is really only there.
+- **26 em dashes have arrived in the concierge's comments** in the last few hours, 7 in `agent.ts` and 19 in
+  `plan.ts`, which AGENTS.md forbids anywhere. Left alone rather than rewritten, because it is somebody
+  else's prose from a few hours ago and no test reads a backend comment. The em dash test only reads what the
+  app prints at a guest, and could be widened to the source if the rule is meant to hold there too.
+- **`/sessions` has no browser door on Render.** The metrics page signs in with an emailed code; this window
+  has no sign-in of its own, so with `ADMIN_KEY` set it now answers a browser 404 and only curl gets in. That
+  is the safe end of the trade and it does make the watch window harder to open from a laptop that is not the
+  Mac. Worth a sign-in like `/admin`'s if the window is going to be used.
+- **A concierge session id is eight characters of `Math.random`.** The listing is closed now, so they are no
+  longer published, but they are neither unguessable nor issued from a CSPRNG, and `getSession` adopts any id
+  a caller sends. Low value to an attacker today; worth `randomBytes` the moment a session holds anything.
+- The earlier runs' calls stand: Peek's 257 links and no feed, the 6 rows publishing a bare
+  `https://fareharbor.com/`, and anything needing a real Stripe key.
+
 ## Coverage
 
 **Verified so far.** The name a guest reads: the business name on all 59,125 shipped listings, against the
@@ -2579,7 +2669,25 @@ and private rates, a $0 total, a sold out day); the vendor table's account ids a
 vendor as well as embedding it; and the `/go` page's markup, escaping and copy. Both concierge routes: their
 input guards and the per-caller counting every other public route here already had.
 
-**Not yet checked.** Which of two towns of the same name a guest means: "golf springfield" cannot tell, and
+The concierge inside the guest app, read and driven for the first time: the sentence a guest types against the
+place the home already opened on, over every ordinary way of saying an hour, a day and a month rather than a
+town; the overlay as a dialog in a real Chromium at 1280px and 400px, for focus in, the Tab ring, the page
+behind held still and focus back to its opener; the transcript a guest copies out against what the screen
+actually drew, on the price it quotes and on the shops it lists; and both watch routes, for who may read other
+guests' questions and whether anyone counts them. The guest wallet end to end: the cap and its clamp, the
+custom header against the CORS allow list, the id, the setup-mode webhook branch, that the browser's rule and
+the server's rule agree, and the saved-card booking path against the Checkout one for the slot race, the
+duplicate, the release and the payout. That the availability corpus replays the same wherever it is run.
+
+**Not yet checked.** Whether the concierge's watch window should have a browser door of its own: with
+`ADMIN_KEY` set it now answers a browser 404 and only curl gets in, and the metrics page's emailed-code
+sign-in is the pattern it lacks. Whether a concierge session id should be eight characters of `Math.random`
+rather than `randomBytes`, since `getSession` adopts any id a caller sends. The concierge overlay against a
+live API: nothing here could give it one, so its answers, its chips, its history panel and its "Also nearby"
+rows have been read and unit tested but never seen full of real shops. The wallet against a real Stripe key,
+which is the same wall as everything else on that list. Whether the in-app concierge should be reachable at
+all from the phone frame's own tab bar, rather than only from the home's pill and an `#ask=` link.
+Which of two towns of the same name a guest means: "golf springfield" cannot tell, and
 Columbia, Madison, Henderson, Richmond and Portland are the same, which is 69 town searches still opening in
 another state (see this run's Needs Harshil). Whether a city row should be able to see the guest's own price
 filter, which lives outside `search.ts`, so a row that counts honestly can still open a page a filter has
