@@ -1447,6 +1447,34 @@ function looksSeo(raw: string, ctx: TitleContext): boolean {
 }
 
 /**
+ * Things a shop puts in its page title that are never part of its name: the phone number, the price, the
+ * licence number, "by appointment only", and the ellipsis a listing site leaves when it cuts a title short.
+ *
+ * All five ship today. "Beverly Hills Day Spa (850) 714-4459" and "Wet Willy's WaterSports 609-972-1730" are
+ * two of the 12 names carrying a phone number, "Jasmine Day Spa (561) 557-3748 By appointment only Lic#
+ * MM32019" carries four of these at once, "Orlando Fishing for $99" is one of 7 quoting a price we do not
+ * otherwise stand behind and that goes stale on its own, and "GGs Spa ..." is one of 15 ending in an ellipsis.
+ * A guest reads the name on the card, the hero, the page title, the landing pages and the confirmation.
+ */
+function stripContactCruft(t: string): string {
+  return t
+    // (850) 714-4459, 910-705-6253, (239) 765.8500. A separator or brackets are required, so a name's own
+    // digits ("Hangar 45 1000 Islands") are not read as a number.
+    .replace(/(?:\+?1[\s.-])?(?:\(\d{3}\)\s*|\d{3}[\s.-])\d{3}[\s.-]\d{4}(?!\d)/g, " ")
+    // "Lic# MM32019". A "#", "no." or "number" is required, so "Licensed Captain" keeps its word.
+    .replace(/\blic(?:ense|ence)?\.?\s*(?:#|no\.?|number)\s*[A-Za-z0-9-]{2,}\b/gi, " ")
+    .replace(/\bby appointment(?:s)?(?: only)?\b\.?/gi, " ")
+    // The figure and whatever introduces it: "Starting at $45", "from $143.05", "for $99", "$10 off".
+    .replace(/\b(?:starting|starts|start)?\s*(?:at|from|for|only|just)?\s*\$\s?\d[\d,]*(?:\.\d{2})?\s*(?:off\b)?/gi, " ")
+    // "GGs Spa ...", "Dillies Jet Ski Rentals LLC...": a listing site's own truncation, not a name.
+    .replace(/\s*(?:\.{2,}|…)\s*$/, "")
+    // "Boat Rentals & More(by appointment only)" must not be left holding an empty bracket.
+    .replace(/\(\s*\)|\[\s*\]|\{\s*\}/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/**
  * The name a guest sees. Sites publish "Sky Combat Ace | San Diego", "Welcome to the Official Axe & Ale Website",
  * "FISH AND SONS KENAI CHARTERS", "CLEARWATER Jet ski RENTAL AT CLEARWATER BEACH" and "[Alchemy]". Keep the business,
  * drop the tagline, the site words, the location tail and the shouting. With a context, the operator's legal name
@@ -1455,9 +1483,11 @@ function looksSeo(raw: string, ctx: TitleContext): boolean {
 export function cleanTitle(raw: string, ctx: TitleContext = {}): string {
   const legal = (ctx.legalName || "").replace(/\s+/g, " ").trim();
   if (legal.split(" ").length >= 2 && looksSeo(raw, ctx)) return cleanTitle(legal);
-  let t = raw.replace(/\s+/g, " ").trim();
+  // Zero-width joiners and bidi marks came through the crawl inside four names and print as nothing at all.
+  let t = raw.replace(/[​-‏‪-‮⁠﻿]/g, "").replace(/\s+/g, " ").trim();
   t = t.replace(/^\[(.+)\]$/, "$1").replace(/\s*\[(.*?)\]\s*$/, (_m, x: string) => (x.length <= 12 ? " " + x : "")).trim();
   t = t.replace(/^(?:welcome to|welcome)\s+(?:the\s+)?(?:official\s+)?/i, "").replace(/\s*[-–—|:]?\s*(?:official )?(?:web ?site|home ?page)\s*$/i, "").trim();
+  t = stripContactCruft(t);
   // "A | B" and "A – B" are name plus tagline: keep the part that is a name (the first, unless it is a site word).
   // "A - B" with a plain hyphen is often one name ("Fifty - Fifty Water Sports"), so it stays whole when short.
   const isName = (x: string) => !SITE_WORDS.test(x) && !/^(?:book|reserve|call|save|best|top|#1|\d+%|free|official|voted|your|premier|the best|the #1|the premier)\b/i.test(x);
@@ -1477,9 +1507,16 @@ export function cleanTitle(raw: string, ctx: TitleContext = {}): string {
   // "labarre", "bfunk": a name typed in lower case reads as a slug. Capitalise each word; brands with inner caps are left alone.
   if (t === t.toLowerCase() && /^[a-z]/.test(t)) t = t.replace(/(^|\s)([a-z])/g, (_m, sp: string, ch: string) => sp + ch.toUpperCase());
   t = t.replace(/^[\s\-–—|:]+|[\s\-–—|:,]+$/g, "").trim();
+  /**
+   * Cut to length first, then drop the dangling word, because cutting at a word boundary makes one of its own.
+   * 15 published names ended on a preposition for exactly that reason: "Balloon Delivery & Balloon Decor by",
+   * "Day Trip Adventure with Boat, Snorkel in", "Zip Line, Kayak, Rock Climb, And". The rule below was written
+   * for "Midwest Powered Paragliding In" and ran before the 70 character trim, so it never saw them.
+   */
+  t = t.length > 70 ? trimWords(t, 70) : t;
   // "Midwest Powered Paragliding In", "Paint, Sip Wine, have fun at our": a page title cut mid-sentence.
   t = t.replace(/(?:\s+(?:of|for|with|and|or|to|our|your|at our|by|at|in)\b)+\s*$/i, "").trim();
-  t = (t.length > 70 ? trimWords(t, 70) : t).replace(/[\s\-–—|:,]+$/g, "");
+  t = t.replace(/[\s\-–—|:,]+$/g, "");
   // Never a stub or a bare domain: fall back to the legal name, then to the raw title.
   if (t.length < 3 || /^(?:https?:\/\/|www\.)|^[a-z0-9-]+\.[a-z]{2,}$/i.test(t)) return legal.length >= 3 ? legal : raw.trim();
   return t;
