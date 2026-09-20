@@ -310,13 +310,47 @@ const SELF_REFERENCE =
   /\b(?:near|around|close to|by|in|at|from)\s+(?:me|us|here|my\s+(?:place|area|location|office|home|city|town))\b|\bnear\s?by\b|\bclose\s?by\b|\baround\s+here\b|\bin\s+my\s+area\b/gi;
 
 /**
+ * The words that follow one of those prepositions and are never the start of a town.
+ *
+ * Without this the check was a preposition and any letter, and "escape room in the evening" is exactly that,
+ * so the sentence was taken to name a place. The guest's own city, which the home had already opened on, was
+ * never added, and the agent came back asking where they were. The hour and the day are the two things a
+ * person says after "at" and "in" far more often than a town: "at seven", "in the morning", "by myself", "at
+ * sunset", "on monday at eight". Eleven of twelve ordinary sentences that name nowhere tripped it.
+ *
+ * Of the two directions to be wrong in, this one is the cheap one. A place here that the list rejects ("in
+ * the villages") only means the guest's own city is appended to the end of a sentence that already named one,
+ * and `plan.ts` takes the place it reads first, which is still theirs.
+ */
+const NOT_A_PLACE = new Set(
+  (
+    "the a an my our your their his her its this that these those some any another each either every " +
+    "morning mornings afternoon afternoons evening evenings night nights noon midnight midday " +
+    "dawn dusk sunset sunrise lunch lunchtime dinner dinnertime breakfast brunch " +
+    "today tonight tomorrow now later soon anytime sometime " +
+    "monday tuesday wednesday thursday friday saturday sunday mon tue tues wed weds thu thur thurs fri sat sun " +
+    "weekend weekends weekday weekdays week month " +
+    "january february march april may june july august september october november december " +
+    "jan feb mar apr jun jul aug sep sept oct nov dec " +
+    "one two three four five six seven eight nine ten eleven twelve half quarter o " +
+    "me us myself ourselves him them anyone someone everyone " +
+    "about around under over between roughly approx least most all home work"
+  ).split(" "),
+);
+
+/**
  * Whether the sentence already carries a place. Deliberately shallow: it looks for the words a person puts in
  * front of one rather than trying to recognise town names, which is `plan.ts`'s job and needs the catalog to
- * do it. A false positive costs nothing, since the sentence goes to the reader either way; a false negative
- * appends a place the reader then ignores in favour of the one that was named.
+ * do it. A false positive costs the guest their own city and a wasted turn being asked for it; a false
+ * negative appends a place the reader then ignores in favour of the one that was named.
  */
+const PLACE_LEAD = /\b(?:in|near|around|by|at|close to|downtown)\s+([a-z][a-z'’-]*)/gi;
+
 function namesAPlace(text: string): boolean {
-  return /\b(in|near|around|by|at|close to|downtown)\s+[a-z]/i.test(text);
+  for (const m of text.matchAll(PLACE_LEAD)) {
+    if (!NOT_A_PLACE.has(m[1].toLowerCase())) return true;
+  }
+  return false;
 }
 
 /* ---------- an option is a business we already have a page for ---------- */

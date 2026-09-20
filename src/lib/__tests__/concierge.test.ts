@@ -287,6 +287,31 @@ test("a town the guest named still beats the one they are sitting in", () => {
   assert.equal(withPlace("axe throwing near kitchener", "Toronto, ON"), "axe throwing near kitchener");
 });
 
+test("an hour is not a place, and neither is a day", () => {
+  // The check was a preposition and any letter, so "in the evening" read as a town and the guest's own city
+  // was never attached. They got asked where they were instead of an answer.
+  for (const said of [
+    "escape room in the evening",
+    "something fun in the morning",
+    "axe throwing tonight at seven",
+    "jet ski rental around noon",
+    "karting at half past six",
+    "escape room by myself",
+    "boat tour at sunset",
+    "escape room on monday at eight",
+    "paintball in july",
+    "something to do at home",
+  ]) {
+    assert.equal(withPlace(said, "Toronto, ON"), said + " near Toronto, ON", said);
+  }
+});
+
+test("a town still counts when an hour is said first", () => {
+  // The rule reads every preposition in the sentence, not just the first one it finds.
+  assert.equal(withPlace("escape room in the evening in waterloo", "Toronto, ON"), "escape room in the evening in waterloo");
+  assert.equal(withPlace("axe throwing at seven near kitchener", "Toronto, ON"), "axe throwing at seven near kitchener");
+});
+
 test("help me is not a place, and nor is anything else that merely contains the word", () => {
   // The self-reference has to follow a preposition, or "help me plan" loses its verb.
   assert.equal(withPlace("help me find something fun", "Toronto, ON"), "help me find something fun near Toronto, ON");
