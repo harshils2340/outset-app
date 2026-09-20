@@ -43,7 +43,7 @@ export type Departure = {
 
 export type LiveRead = {
   business: string;
-  vendor: "fareharbor" | "resova" | "replay" | "agent" | "none";
+  vendor: "fareharbor" | "resova" | "peek" | "checkfront" | "replay" | "agent" | "none";
   departures: Departure[];
   /** Said plainly when there is nothing to sell, because "no availability" is an answer, not a failure. */
   note: string | null;
@@ -351,7 +351,18 @@ export async function fareharborLive(bookingUrl: string, opts: { from?: Date; da
 /** The booking link we hold for an operator, by domain. */
 export function bookingUrlFor(domain: string): string | null {
   const row = db
-    .prepare("SELECT f.fact_value AS u FROM facts f JOIN operators o ON o.id = f.operator_id WHERE o.domain = ? AND f.fact_key = 'booking_url' LIMIT 1")
+    /**
+     * The READABLE link wins, not whichever row came first.
+     *
+     * `LIMIT 1` with no ORDER BY is answered from `idx_facts_op_key` in rowid order, so a shop holding both
+     * its own hand-built page and a FareHarbor one we later found is answered from the older, unreadable row
+     * and its live calendar is never opened. Thirty-eight operators are in exactly that state today.
+     */
+    .prepare(
+      `SELECT f.fact_value AS u FROM facts f JOIN operators o ON o.id = f.operator_id
+        WHERE o.domain = ? AND f.fact_key = 'booking_url'
+        ORDER BY (f.fact_value NOT LIKE '%fareharbor%' AND f.fact_value NOT LIKE '%resova%' AND f.fact_value NOT LIKE '%peek.com%') LIMIT 1`,
+    )
     .get(domain) as { u: string } | undefined;
   return row?.u || null;
 }

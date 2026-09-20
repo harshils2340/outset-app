@@ -67,8 +67,15 @@ const RULES: {
   {
     vendor: "peek",
     detect: /(?:book\.)?peek\.com/i,
-    account: /peek\.com\/s\/([a-z0-9-]{6,})/i,
+    /**
+     * Peek writes the same account three ways and this only knew one of them. `/s/<uuid>` is the common
+     * form, `/w/<uuid>` turns up just as often, and plenty of links are on `www.peek.com` rather than
+     * `book.`. Matching only the first shape filed the rest as accountless and unreadable, on a vendor that
+     * answers in JSON in about a second.
+     */
+    account: /peek\.com\/(?:s|w)\/([a-z0-9-]{6,})/i,
     hosted: (a) => `https://book.peek.com/s/${a}`,
+    hasFeed: true,
   },
   {
     /**

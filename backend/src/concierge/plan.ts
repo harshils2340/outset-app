@@ -3,9 +3,12 @@ import { CATEGORIES, METROS, inferCategory } from "../taxonomy/catalog.ts";
 import { fareharborLive, feedIsWarm, type Departure } from "./live.ts";
 import { isConcessionFare } from "../lib/fares.ts";
 import { resovaLive } from "./resova.ts";
+import { peekLive } from "./peek.ts";
+import { checkfrontLive } from "./drivers/checkfront.ts";
 import { Trace } from "./session.ts";
 import { recordDemand } from "./demand.ts";
 import { nextNeed } from "./needs.ts";
+import { resolveMany } from "./resolve.ts";
 
 /**
  * One sentence in, real bookable options out.
@@ -38,6 +41,13 @@ export type Intent = {
   atMinute: number | null;
   /** A genre when they have not named an activity: "on the water", "puzzles and games". */
   genre: string | null;
+  /**
+   * Where the device says they are, when it is willing to say. Used when the sentence names nowhere, and to
+   * settle which of several towns of the same name they meant without having to ask.
+   */
+  near?: { lat: number; lon: number } | null;
+  /** True when the place came from the device rather than from something they typed, so the answer can say so. */
+  placeFromDevice?: boolean;
   /** Questions already put to them, so the agent narrows instead of circling. */
   asked?: string[];
   /** Businesses already shown, for "show me something else". */
@@ -101,7 +111,7 @@ export type PlaceMatch = { city: string; region: string; n: number; lat: number;
  * before it. Without somewhere to put it, the agent asked a question, got an answer, and threw away the
  * question.
  */
-export function readIntent(text: string, prior?: Intent | null): Intent {
+export function readIntent(text: string, prior?: Intent | null, device?: { lat: number; lon: number } | null): Intent {
   const t = text.toLowerCase();
 
   /**
@@ -363,12 +373,58 @@ export function readIntent(text: string, prior?: Intent | null): Intent {
   // When the sentence names several places, the one with the most businesses is the one it is about.
   const bestName = placeRows.length ? placeRows[0].city.toLowerCase() : null;
   const sameName = placeRows.filter((r) => r.city.toLowerCase() === bestName);
-  const placeRow = sameName[0];
+
+  /**
+   * When the device knows where they are, the nearest town of that name is the one they meant.
+   *
+   * There are eleven Waterloos in this catalog. Taking the biggest is right about half the time and asking
+   * costs a turn; somebody standing at 42.49, -92.34 who types "waterloo" means Iowa, and knowing that beats
+   * both. Only towns already matched by name are considered, so this narrows an answer and can never invent
+   * a different place.
+   */
+  const placeRow =
+    device && sameName.length > 1
+      ? [...sameName].sort((a, b) => {
+          const kx = Math.cos((device.lat * Math.PI) / 180);
+          const d = (r: PlaceMatch) => (r.lat - device.lat) ** 2 + ((r.lon - device.lon) * kx) ** 2;
+          return d(a) - d(b);
+        })[0]
+      : sameName[0];
 
   if (placeRow) {
     city = placeRow.city;
     region = region || placeRow.region;
     point = { lat: placeRow.lat, lon: placeRow.lon };
+  } else if (device) {
+    /**
+     * Nowhere was named, and the device knows where they are.
+     *
+     * "Near me" is the easiest question in the product and used to be among the hardest: the word "me" is not
+     * a town, so the agent asked a guest where they were while holding their coordinates. The nearest town we
+     * hold businesses for is named back to them in the answer, so a wrong guess costs one tap to correct, and
+     * the search itself is centred on their actual position rather than that town's middle, because "near me"
+     * ought to mean near them.
+     */
+    const spot = db
+      .prepare(
+        `SELECT city, region, COUNT(*) AS n, AVG(lat) AS lat, AVG(lon) AS lon FROM operators
+          WHERE city IS NOT NULL AND lat IS NOT NULL AND abs(lat - ?) < 1.2 AND abs(lon - ?) < 1.8
+          GROUP BY lower(city), region HAVING n >= 3
+          /*
+           * The town a person would name, not whichever centroid is nearest. Strict distance answered "East
+           * York" for Toronto, "Dartmouth" for Halifax and "Coconut Grove" for Miami: a small suburb's middle
+           * is often closer than a big city's. Dividing distance by the number of businesses lets a
+           * substantially larger place a little further off win, which is how somebody would answer if asked
+           * where they were.
+           */
+          ORDER BY ((AVG(lat) - ?) * (AVG(lat) - ?) + (AVG(lon) - ?) * (AVG(lon) - ?)) / (n * n) ASC LIMIT 1`,
+      )
+      .get(device.lat, device.lon, device.lat, device.lat, device.lon, device.lon) as PlaceMatch | undefined;
+    if (spot) {
+      city = spot.city;
+      region = spot.region;
+      point = { lat: device.lat, lon: device.lon };
+    }
   } else {
     const metro = METROS.find((x) => t.includes(x.name.toLowerCase()) && (!region || x.region === region));
     if (metro) {
@@ -427,6 +483,8 @@ export function readIntent(text: string, prior?: Intent | null): Intent {
     cover: cover ?? prior?.cover ?? null,
     atMinute: atMinute ?? prior?.atMinute ?? null,
     genre: genre ?? prior?.genre ?? null,
+    /** The device position rides along, so a later turn can still settle "near me" or which Waterloo. */
+    near: device ?? prior?.near ?? null,
     refine,
     lastCheapest: prior?.lastCheapest ?? null,
     asked: [...new Set([...(prior?.asked || []), ...(noBudget ? ["budget"] : [])])],
@@ -486,6 +544,19 @@ export type Option = {
    * because the shop happens to run Checkfront.
    */
   services: { name: string; price: number | null; unit: string | null; per: "person" | "group" }[];
+};
+
+/**
+ * The least a thing can plausibly cost, by activity. A line below this is nearly always a fragment of a page
+ * rather than a price. Set low enough that a genuinely cheap shop still gets through.
+ */
+const FLOOR_CENTS: Record<string, number> = {
+  jetski: 4000, pontoon: 5000, cruise: 2000, fishing: 4000, sailing: 3000, rafting: 2000, scuba: 3000,
+  heli: 5000, balloon: 10000, skydive: 10000, parasail: 4000, gliding: 5000, paragliding: 5000,
+  kart: 1500, paintball: 1500, escape: 1500, axe: 1500, lasertag: 1000, climbing: 1000,
+  bowling: 800, trampoline: 1000, minigolf: 700, arcade: 500, karaoke: 1000, rage: 1500,
+  spa: 3000, sauna: 1500, cooking: 3000, horse: 3000, zipline: 3000, snowmobile: 5000,
+  winery: 1000, distillery: 1000, kayak: 1500, paddleboard: 1500, bike: 1000,
 };
 
 /**
@@ -550,6 +621,13 @@ function servicesFor(domain: string, categoryId?: string | null): Option["servic
       const cents = (r as { cents: number | null }).cents;
       // Per head, a local activity is a few dollars to a few hundred. Anything past that is private hire.
       if (cents != null && (cents < 300 || cents > 40000)) return false;
+      /**
+       * And a floor per activity, because that general one is far too low to catch the real accidents. The
+       * grader found "$4.50 Open Bowling" and "$3.00 Pontoon Boat 26 feet - 12pp/115Hp" offered as the price
+       * of an evening: the first is one game on a weekday afternoon, the second was never a price at all.
+       * Both clear 300 cents comfortably, and one absurd number makes the real ones beside it look invented.
+       */
+      if (cents != null && categoryId && FLOOR_CENTS[categoryId] != null && cents < FLOOR_CENTS[categoryId]) return false;
       return true;
     })
     .slice(0, 4)
@@ -816,7 +894,8 @@ export function candidates(intent: Intent, limit = 8, radiusKm = 40): Option[] {
   const rows = db
     .prepare(
       `SELECT o.name, o.domain, o.city, o.region, o.rating, o.review_count, o.category_id, o.phone,
-              (SELECT f.fact_value FROM facts f WHERE f.operator_id = o.id AND f.fact_key = 'booking_url' LIMIT 1) AS booking
+              (SELECT f.fact_value FROM facts f WHERE f.operator_id = o.id AND f.fact_key = 'booking_url'
+                ORDER BY (f.fact_value NOT LIKE '%fareharbor%' AND f.fact_value NOT LIKE '%resova%' AND f.fact_value NOT LIKE '%peek.com%') LIMIT 1) AS booking
          FROM operators o
         WHERE ${where.join(" AND ")}
         /*
@@ -829,7 +908,7 @@ export function candidates(intent: Intent, limit = 8, radiusKm = 40): Option[] {
          * quote, which is what it is good for.
          */
         ORDER BY (booking IS NULL),
-                 (booking NOT LIKE '%fareharbor%' AND booking NOT LIKE '%resova%'),
+                 (booking NOT LIKE '%fareharbor%' AND booking NOT LIKE '%resova%' AND booking NOT LIKE '%peek.com%' AND booking NOT LIKE '%checkfront%'),
                  (NOT EXISTS (SELECT 1 FROM offerings x WHERE x.operator_id = o.id AND x.price_cents IS NOT NULL)),
                  ${order}
         LIMIT ?`,
@@ -853,7 +932,7 @@ export function candidates(intent: Intent, limit = 8, radiusKm = 40): Option[] {
       departures: [],
       services: servicesFor(r.domain, r.category_id),
       // Without a link we can use, this one is a phone call, whatever the crawl thought it had found.
-      route: booking ? (/fareharbor|resova/i.test(booking) ? "feed" : "agent") : r.phone ? "phone" : "agent",
+      route: booking ? (/fareharbor|resova|peek\.com|checkfront/i.test(booking) ? "feed" : "agent") : r.phone ? "phone" : "agent",
       phone: r.phone,
     };
   });
@@ -930,9 +1009,9 @@ export function priceOf(o: Option): number | null {
  * or a near miss offered with an apology. So this either asks for the one thing it is missing, or it loosens
  * the search until it has something to show and says which rule it broke to get there.
  */
-export async function plan(text: string, opts: { ask?: number; prior?: Intent | null; trace?: Trace; deadlineMs?: number } = {}): Promise<Answer> {
+export async function plan(text: string, opts: { ask?: number; prior?: Intent | null; trace?: Trace; deadlineMs?: number; near?: { lat: number; lon: number } | null; resolve?: boolean; resolveMs?: number } = {}): Promise<Answer> {
   const tr = opts.trace ?? new Trace();
-  const intent = readIntent(text, opts.prior);
+  const intent = readIntent(text, opts.prior, opts.near ?? opts.prior?.near ?? null);
   tr.step("read", [intent.categoryLabel || "anything", intent.city || intent.region || "anywhere", intent.party + " people", intent.when].join(" \u00b7 "),
     { detail: intent.maxPerPerson ? "under $" + intent.maxPerPerson + " a head" : undefined });
   if (opts.prior && (opts.prior.categoryId || opts.prior.city)) {
@@ -1250,6 +1329,37 @@ export async function plan(text: string, opts: { ask?: number; prior?: Intent | 
    * The shops are asked at the same time, not one after another. Each is a handful of round trips to its
    * booking provider, so asking three in turn took nineteen seconds with the machine idle for most of it.
    */
+  /**
+   * Find the booking system of the shops we are about to show, now.
+   *
+   * The catalog holds a booking link for 8,370 of 423,161 businesses, because finding one meant crawling the
+   * shop's site and only 6.5% have ever been fetched. Pre-crawling the other 315,281 is weeks of worker time
+   * spent mostly on shops nobody will ever ask about. A search returns eight businesses, and eight is
+   * nothing: resolve those, and the rest of the catalog costs nothing until somebody asks.
+   *
+   * Once per shop, ever. Whatever is found is written down, so the second guest to ask about that town pays
+   * none of it, and the ones nobody asks about are never fetched at all.
+   */
+  const unresolved = options.filter((o) => !o.bookingUrl && o.route !== "feed");
+  if (unresolved.length && (opts.resolve ?? true)) {
+    const rows = db
+      .prepare(`SELECT id, domain, website FROM operators WHERE domain IN (${unresolved.map(() => "?").join(",")})`)
+      .all(...unresolved.map((o) => o.domain)) as { id: string; domain: string; website: string | null }[];
+    const found = await resolveMany(rows, { budgetMs: opts.resolveMs ?? 7000, max: 6 });
+    let gained = 0;
+    for (const r of found.values()) {
+      if (!r.bookingUrl) continue;
+      const o = options.find((x) => x.domain === r.domain);
+      if (!o) continue;
+      o.bookingUrl = usableBookingUrl(r.bookingUrl, o.domain);
+      if (o.bookingUrl) {
+        o.route = /fareharbor|resova|peek\.com|checkfront/i.test(o.bookingUrl) ? "feed" : "agent";
+        if (r.outcome === "found") gained += 1;
+      }
+    }
+    if (gained) tr.step("resolve", gained + " booking system" + (gained === 1 ? "" : "s") + " found on their own sites just now", { detail: "never fetched before; kept for good" });
+  }
+
   const feeds = options.filter((o) => o.route === "feed").slice(0, opts.ask ?? 3);
   for (const o of options) {
     if (feeds.includes(o)) continue;
@@ -1293,7 +1403,11 @@ export async function plan(text: string, opts: { ask?: number; prior?: Intent | 
       tr.step("ask", o.name, { who: o.name, detail: "reading their booking system" });
       /** Whichever feed this shop runs. Both answer in the same shape, so nothing downstream has to care. */
       const readFeed = (from: Date, days: number) =>
-        /resova/i.test(o.bookingUrl)
+        /checkfront\.(?:com|site)/i.test(o.bookingUrl)
+          ? checkfrontLive(o.bookingUrl, { date: from })
+          : /peek\.com/i.test(o.bookingUrl)
+          ? peekLive(o.bookingUrl, { from, days })
+          : /resova/i.test(o.bookingUrl)
           ? resovaLive(o.bookingUrl, { from, days, maxItems: 4 })
           /**
            * Six items, not three. Zoom Tours sells four day tours and we priced three of them, so the fourth
@@ -1315,7 +1429,7 @@ export async function plan(text: string, opts: { ask?: number; prior?: Intent | 
           o.widened = true;
         }
       }
-      if (live) o.via = live.vendor === "fareharbor" ? "their FareHarbor calendar" : live.vendor === "resova" ? "their Resova calendar" : "their " + live.vendor + " calendar";
+      if (live) o.via = live.vendor === "fareharbor" ? "their FareHarbor calendar" : live.vendor === "resova" ? "their Resova calendar" : live.vendor === "peek" ? "their Peek calendar" : live.vendor === "checkfront" ? "their Checkfront calendar" : "their " + live.vendor + " calendar";
 
       /**
        * Nearest the time they asked for, not earliest in the day.
@@ -1460,6 +1574,21 @@ export async function plan(text: string, opts: { ask?: number; prior?: Intent | 
    * Tell the crawler what a real person just wanted. Every business here that we could not price or time is
    * the best crawl target in the catalog, and until now nothing wrote that down.
    */
+  /**
+   * A refinement that empties the screen is worse than the answer it replaced. "Anything cheaper" came back
+   * with no businesses and no explanation, which reads as the product breaking rather than as there being
+   * nothing cheaper. If a refinement leaves nothing, its constraint comes off and the answer says so.
+   */
+  if (!options.length && intent.refine) {
+    options = candidates({ ...intent, maxPerPerson: null, seen: [], refine: null });
+    if (options.length) {
+      loosened = loosened ?? (intent.refine === "other"
+        ? "That is everything I can find near " + (intent.city || "you") + ". Here they are again."
+        : "Nothing matched once I narrowed it, so this is the wider list.");
+      tr.step("refine", "the refinement emptied the answer; widening rather than showing nothing");
+    }
+  }
+
   recordDemand(intent, options);
   const gaps = options.filter((o) => !o.departures.length && !o.services.some((x) => x.price != null)).length;
   if (gaps) tr.step("queue", gaps + " of these had nothing published: queued for the crawler", { detail: "the next crawl starts with what people asked for" });
@@ -1501,7 +1630,8 @@ function namedLike(intent: Intent, limit: number): Option[] {
   const rows = db
     .prepare(
       `SELECT o.name, o.domain, o.city, o.region, o.rating, o.review_count, o.category_id, o.phone,
-              (SELECT f.fact_value FROM facts f WHERE f.operator_id = o.id AND f.fact_key = 'booking_url' LIMIT 1) AS booking
+              (SELECT f.fact_value FROM facts f WHERE f.operator_id = o.id AND f.fact_key = 'booking_url'
+                ORDER BY (f.fact_value NOT LIKE '%fareharbor%' AND f.fact_value NOT LIKE '%resova%' AND f.fact_value NOT LIKE '%peek.com%') LIMIT 1) AS booking
          FROM operators o
         WHERE o.origin != 'demo' AND o.name IS NOT NULL AND o.lat IS NOT NULL
           AND abs(o.lat - ?) < ? AND abs(o.lon - ?) < ? AND (${like})
