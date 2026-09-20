@@ -72,6 +72,36 @@ test("a shop priced off its own site says so, and says which route it took", () 
   assert.match(text, /Bad Axe Throwing · Kitchener - \$19\.99 per person · route agent/);
 });
 
+test("the price copied out is the one the card printed, not the child fare above it", () => {
+  // The crawl returns a shop's menu in its own page order, and `headlineService` exists because a site that
+  // lists "Child (under 12) $15" above "Adult $30" put $15 on the card. The transcript took the first priced
+  // row, so it quoted $15 for a screen that said $30: a wrong answer reported with the wrong number on it.
+  const kid = OPT({
+    name: "Riot Axe", domain: "riotaxe.com", departures: [], offsets: undefined, via: undefined, route: "agent",
+    services: [
+      { name: "Child (under 12)", price: 15, unit: null, per: "person" },
+      { name: "Adult", price: 30, unit: null, per: "person" },
+    ],
+  });
+  const text = turnText(TURN({ answer: ANSWER({ options: [kid], counts: { quoted: 0, priced: 1, total: 1 } }) }));
+  assert.match(text, /Riot Axe · Waterloo - \$30 per person/);
+  assert.doesNotMatch(text, /\$15/);
+});
+
+test("the shops shown under a live time as also nearby are in the transcript too", () => {
+  // The screen lists up to three priced shops under "Also nearby, priced but without a time I can read". The
+  // transcript listed none of them the moment anything had a live time, so it dropped businesses the guest
+  // was looking at while claiming to be what was on the screen.
+  const live = OPT({ name: "Bad Axe", domain: "badaxe.com" });
+  const also = OPT({
+    name: "Riot Axe", domain: "riotaxe.com", departures: [], offsets: undefined, via: undefined, route: "agent",
+    services: [{ name: "Walk-in", price: 24, unit: null, per: "person" }],
+  });
+  const text = turnText(TURN({ answer: ANSWER({ options: [live, also], counts: { quoted: 1, priced: 1, total: 2 } }) }));
+  assert.match(text, /Bad Axe/);
+  assert.match(text, /Riot Axe · Waterloo - \$24 per person · route agent/);
+});
+
 test("a shop with nothing published is still listed, not silently dropped", () => {
   const bare = OPT({ name: "Gray Line Toronto", departures: [], offsets: undefined, via: undefined, route: "phone", city: "Toronto", services: [] });
   const text = turnText(TURN({ answer: ANSWER({ options: [bare], counts: { quoted: 0, priced: 0, total: 1 } }) }));

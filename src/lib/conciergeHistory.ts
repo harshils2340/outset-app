@@ -1,4 +1,4 @@
-import { headline, offsetLine, priceLine, serviceLine, splitOptions, spreadDepartures, whenLine, type ConciergeAnswer } from "./concierge";
+import { headline, headlineService, offsetLine, priceLine, serviceLine, splitOptions, spreadDepartures, whenLine, type ConciergeAnswer } from "./concierge";
 import { money } from "./format";
 
 /**
@@ -170,8 +170,20 @@ export function turnText(t: Turn): string {
     lines.push("    " + option.name + " - " + departure.item);
     lines.push("      " + bits.join(" · "));
   }
-  for (const o of (shown.length ? [] : priced).slice(0, 4)) {
-    const s = o.services.find((x) => x.price != null);
+  /*
+   * The priced shops, chosen and quoted the way the screen chose and quoted them.
+   *
+   * Two ways this said something the guest never saw. It took the first priced row off the shop's own page,
+   * and the crawl returns them in page order, so a site listing "Child (under 12) $15" above "Adult $30" was
+   * copied out as $15: the very defect `headlineService` exists to fix, reintroduced in the one place whose
+   * job is to say what was on the screen. And it listed no priced shop at all whenever a live time was found,
+   * while the screen shows up to three of them under "Also nearby, priced but without a time I can read", so
+   * a transcript quietly dropped businesses the guest was looking at. Mirrors `Answered` in WebConcierge.
+   */
+  const seen = new Set(shown.map((p) => p.option.domain));
+  const alsoPriced = shown.length ? priced.filter((o) => !seen.has(o.domain)).slice(0, 3) : priced.slice(0, 4);
+  for (const o of alsoPriced) {
+    const s = headlineService(o);
     lines.push("    " + o.name + (o.city ? " · " + o.city : "") + " - " + (s ? serviceLine(s) : "price on request") + " · route " + o.route);
   }
   if (!shown.length && !priced.length) {
