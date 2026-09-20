@@ -310,20 +310,29 @@ function durationLabel(minutes: number | null): string | null {
  * Equestrian's lesson booking and the rest of its menu is not what the operator put on its website; reading
  * the whole menu there would answer a riding lesson with a stable tour.
  */
-function wanted(t: AcuityType, ref: AcuityRef): boolean {
+function wanted(t: AcuityType, ref: AcuityRef | null): boolean {
   if (t.active === false || t.private === true) return false;
-  if (ref.onlyTypes.length && !ref.onlyTypes.includes(t.id)) return false;
-  if (ref.onlyCategories.length) {
-    const cat = (t.category || "").trim().toLowerCase();
-    if (!ref.onlyCategories.some((c) => c.trim().toLowerCase() === cat)) return false;
+  if (ref) {
+    if (ref.onlyTypes.length && !ref.onlyTypes.includes(t.id)) return false;
+    if (ref.onlyCategories.length) {
+      const cat = (t.category || "").trim().toLowerCase();
+      if (!ref.onlyCategories.some((c) => c.trim().toLowerCase() === cat)) return false;
+    }
+    if (ref.onlyCalendars.length && t.calendarIDs?.length && !t.calendarIDs.some((c) => ref.onlyCalendars.includes(c))) return false;
   }
-  if (ref.onlyCalendars.length && t.calendarIDs?.length && !t.calendarIDs.some((c) => ref.onlyCalendars.includes(c))) return false;
   /**
    * Not a night out. The same rule the menu reader applies, for the same reason: "Gift Certificate" and
    * "Consultation (free)" are real bookable appointment types and neither is the answer to "what can I do in
    * Galveston on Saturday". Deliberately narrow — "private charter" is a real thing a guest buys and stays.
    */
   if (/\b(gift\s*(card|certificate|voucher)|waitlist|account balance)\b/i.test(t.name)) return false;
+  /**
+   * An add-on is not an outing. It is sold beside a booking, never instead of one, and it is both the
+   * cheapest line on the menu and free at every slot — so the cheapest-wins rule below reads "Add-on: hot
+   * towels, $10" as the price of a massage. Same bug as Peek quoting "Cancellation Insurance, $2.60" as a
+   * boat trip.
+   */
+  if (/(\badd[- ]?on\b|\badd'?[ln]?t\b|\badditional\s+(person|guest|passenger|angler|rider|player|hour)|\bextra\s+(person|guest|passenger|angler|rider|player)|\bupgrade\b|\benhancement\b)/i.test(t.name)) return false;
   return true;
 }
 
@@ -433,7 +442,19 @@ export async function acuityLive(
   }
   const name = shop.name || bookingUrl;
 
-  const types = shop.types.filter((t) => wanted(t, ref));
+  const bookable = shop.types.filter((t) => wanted(t, null));
+  /**
+   * The link's own filter, and the whole menu when the filter matches nothing.
+   *
+   * A shop that links to one service wants that service read, so the filter leads. But the filters in this
+   * catalog have been rotting for a while: She's My Golf Pro links to `?categories[]=Clinic Series` and its
+   * category is now called " Weekly Clinic Sign-Up", Morningside Stables links to an appointment type it has
+   * since retired, and Body Balance's category carries a `®` that no longer survives the round trip. Honouring
+   * a stale filter to the letter turns three shops with full diaries into three phone calls, so a filter that
+   * selects nothing is treated as out of date rather than as an answer.
+   */
+  const filtered = bookable.filter((t) => wanted(t, ref));
+  const types = filtered.length ? filtered : bookable;
   if (!types.length) {
     return {
       business: name,

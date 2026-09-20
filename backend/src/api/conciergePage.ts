@@ -24,8 +24,14 @@ export const CONCIERGE_PAGE = `<!doctype html>
   html,body{margin:0;height:100%}
   body{font-family:Figtree,system-ui,-apple-system,sans-serif;background:var(--paper);color:var(--ink);
        display:flex;overflow:hidden}
-  .thread{display:flex;flex-direction:column;flex:0 0 420px;max-width:100%;height:100dvh;background:var(--card);
-          border-right:1px solid var(--line)}
+  /*
+   * One surface. The trace panel that used to sit beside this was a second thing to look at on a screen whose
+   * whole point is that you talk to it, and there is now one way in (the switch on the site), so a page
+   * showing its own console was a second entry point as well. What the agent did still lives at /sessions,
+   * where somebody debugging can go and find it.
+   */
+  .thread{display:flex;flex-direction:column;width:min(480px,100%);margin:0 auto;height:100dvh;
+          background:var(--card);border-left:1px solid var(--line);border-right:1px solid var(--line)}
   .top{padding:14px 18px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px;flex:none}
   .mark{width:30px;height:30px;border-radius:9px;background:var(--forest);color:#fff;display:grid;place-items:center;
         font-weight:700;font-size:15px}
@@ -57,8 +63,6 @@ export const CONCIERGE_PAGE = `<!doctype html>
   input{flex:1;border:1px solid var(--line);border-radius:22px;padding:12px 16px;font:inherit;font-size:16px;outline:none;background:var(--paper)}
   input:focus{border-color:var(--sage)}
   button.send{border:0;background:var(--forest);color:#fff;border-radius:50%;width:44px;height:44px;font-size:18px;cursor:pointer;flex:none}
-  .stage{flex:1;display:flex;flex-direction:column;background:#101410;color:#d7ded4;overflow:hidden}
-  .stage h2{margin:0;padding:14px 20px;font-size:13px;letter-spacing:.09em;text-transform:uppercase;
             color:#8fa383;border-bottom:1px solid #1e241d;font-weight:600;flex:none}
   .steps{flex:1;overflow-y:auto;padding:16px 20px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px;line-height:1.75}
   .step{opacity:0;animation:in .25s forwards}
@@ -68,7 +72,7 @@ export const CONCIERGE_PAGE = `<!doctype html>
   .hero{padding:18px 20px;border-top:1px solid #1e241d;flex:none}
   .hero b{color:#fff;font-size:15px}
   .hero small{color:#8a9784;display:block}
-  @media (max-width:900px){ .stage{display:none} .thread{flex:1 1 auto;border:0} }
+  @media (max-width:900px){ .thread{width:100%;border:0} }
 </style>
 </head>
 <body>
@@ -83,16 +87,17 @@ export const CONCIERGE_PAGE = `<!doctype html>
       <button class="send" type="submit" aria-label="Send">&uarr;</button>
     </form>
   </div>
-  <div class="stage">
-    <h2>What the agent is doing <a href="/sessions" target="_blank" style="float:right;color:#5d6b57;text-decoration:none;letter-spacing:0">every session &rarr;</a></h2>
-    <div class="steps" id="steps"></div>
-    <div class="hero"><b id="heroA">Nothing running</b><small id="heroB">Ask something on the phone.</small></div>
-  </div>
 
 <script>
-const log = document.getElementById('log'), steps = document.getElementById('steps');
+const log = document.getElementById('log');
+/*
+ * The trace panel is gone from this page: one surface, one way in. These stay as no-ops so the streaming
+ * reader below still has somewhere to hand each step, and so /sessions, which is where the trace lives
+ * now, keeps receiving exactly the same events.
+ */
+const steps = { innerHTML: '', scrollTop: 0, scrollHeight: 0, appendChild(){} };
+const heroA = { set textContent(_v){} }, heroB = { set textContent(_v){} };
 const f = document.getElementById('f'), q = document.getElementById('q');
-const heroA = document.getElementById('heroA'), heroB = document.getElementById('heroB');
 
 function bubble(text, who){ const d=document.createElement('div'); d.className='b '+who; d.textContent=text;
   log.appendChild(d); log.scrollTop=log.scrollHeight; return d; }
@@ -348,9 +353,14 @@ function render(data){
           ? "That time is free:"
           : "Here's what's actually free:", 'them');
     // One each first, so four slots show four businesses rather than two of the same shop twice.
+    /*
+      One shop, one card. Offering a slot at a time put "Escapology Waterloo" on screen twice in a row with
+      two of its rooms, which reads as the same place over and over rather than as a choice of times, and
+      crowds out the other businesses entirely. Different shops first, then a second time from each.
+    */
     let n=0;
     for(const o of quoted){ if(n<4 && o.departures[0]){ offer(o,o.departures[0],0); n++; } }
-    for(const o of quoted){ if(n<4 && o.departures[1]){ offer(o,o.departures[1],1); n++; } }
+    for(const o of quoted){ if(n<5 && o.departures[1]){ offer(o,o.departures[1],1); n++; } }
     heroA.textContent=quoted[0].name;
     heroB.textContent='Live from their own booking system, not our database.';
 }

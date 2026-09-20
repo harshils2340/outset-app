@@ -118,6 +118,14 @@ export function squareRef(url: string): SquareRef | null {
   if (/square\.site\/book\/[A-Z0-9]{8,}/.test(u)) return { kind: "page", url: u };
   if (/square(?:up\.com|\.site)\/appointments\/book\/[A-Z0-9]{8,}\//.test(u)) return { kind: "page", url: u };
 
+  /**
+   * An Appointments URL we cannot read an id out of — `…/appointments/book/<widget>` with no location,
+   * `square.site/book/<slug>` with no location — is still an Appointments URL, so it is fetched rather than
+   * refused. Every one of them in this catalog turns out to be a `404`, which is a dead link in our own
+   * catalog and worth saying, not a vendor we failed to recognise.
+   */
+  if (/squareup\.com\/appointments\//i.test(u) || /square\.site\/book\//i.test(u)) return { kind: "page", url: u };
+
   if (/square\.link\/u\//i.test(u)) return { kind: "notBooking", what: "a Square payment link" };
   if (/checkout\.square\.site/i.test(u)) return { kind: "notBooking", what: "a Square checkout page" };
   if (/\.square\.site/i.test(u)) return { kind: "notBooking", what: "a Square Online storefront" };
@@ -199,7 +207,7 @@ type SquareShop = {
  * description alone. A shop called "Bill & Ted's" appears in this catalog and a naive `&amp;`-first unescape
  * turns its description into invalid JSON.
  */
-function shopOf(html: string, fallbackUrl: string): SquareShop | null {
+function shopOf(html: string): SquareShop | null {
   const m = html.match(/<meta\s+name="widget"\s+content="([\s\S]*?)"\s*\/?>/);
   if (!m) return null;
   const json = m[1]
@@ -247,6 +255,12 @@ function shopOf(html: string, fallbackUrl: string): SquareShop | null {
       if (v["is_visible_in_default_booking"] === false) continue;
       const vid = str(v["item_variation_token"]) || str(v["id"]);
       if (!vid) continue;
+      /**
+       * The same test the service name gets, because either half can be the add-on. Cruise South Texas sells
+       * "SHORT TRIP" with variations "1-6 Passengers, $450" and "Add't Person, $75", and the cheapest-wins
+       * rule reads the $75 as the price of the trip.
+       */
+      if (!bookableByAGuest(`${name} ${str(v["name"]) ?? ""}`)) continue;
       const tokens = ((v["staff_ids"] as unknown[] | undefined) ?? [])
         .map((x) => (typeof x === "string" ? tokenOf.get(x) : null))
         .filter((x): x is string => !!x);
@@ -425,21 +439,24 @@ export async function squareLive(
        * shop closed its Appointments profile and kept its store. The page that comes back is a storefront,
        * and saying so is the difference between "the catalog holds the wrong link" and "this reader broke".
        */
-      const storefront = !!html && /\.square\.site\b/.test(html) && /squareup\.com\/appointments\/book\//.test(html) === false;
+      const storefront = !!html && /\.square\.site\b/.test(html);
       return {
         business: bookingUrl,
         vendor: VENDOR,
         departures: [],
-        note: storefront
-          ? "This Square booking profile now redirects to the shop's Square Online store, which has no times to read."
-          : "Square did not name a booking widget on this page.",
+        note: html === null
+          // Four links in this catalog are 404s: the shop moved or closed its Square profile.
+          ? "This Square booking link no longer exists."
+          : storefront
+            ? "This Square booking profile now redirects to the shop's Square Online store, which has no times to read."
+            : "Square did not name a booking widget on this page.",
       };
     }
     widget = { kind: "widget", widgetId: found[1], locationId: found[2] };
   }
 
   const page = await get(`https://book.squareup.com/appointments/${widget.widgetId}/location/${widget.locationId}`);
-  const shop = page ? shopOf(page, bookingUrl) : null;
+  const shop = page ? shopOf(page) : null;
   if (!shop) {
     return { business: bookingUrl, vendor: VENDOR, departures: [], note: "Square did not answer for this shop." };
   }
@@ -535,7 +552,7 @@ export async function squareLive(
           rates: price != null
             ? [{ label: variantName ? `${service.name} · ${variantName}` : service.name, price, minParty: null, maxParty: null }]
             : [],
-          bookUrl: `https://book.squareup.com/appointments/${shop.widgetId}/location/${shop.locationId}`,
+          bookUrl: shop.bookUrl,
           // Square's buyer availability says a start is free; it does not say how many places are left.
           seatsLeft: null,
         };

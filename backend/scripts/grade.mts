@@ -34,13 +34,33 @@ import { CATEGORIES } from "../src/taxonomy/catalog.ts";
  *   read      what the sentence plainly said came back in the intent: the party, the day, the budget, the place
  *   capped    nothing is offered above a budget the agent itself accepted
  *
- *   npx tsx scripts/grade.mts                 20 conversations
- *   npx tsx scripts/grade.mts --n=60          more
- *   npx tsx scripts/grade.mts --seed=7        the same 20 again, to check a fix
- *   npx tsx scripts/grade.mts --failures      print only what went wrong
+ *   npx tsx scripts/grade.mts                 20 conversations, no shop contacted
+ *   npx tsx scripts/grade.mts --n=10000       a sweep; it is only the catalog and the clock
+ *   npx tsx scripts/grade.mts --seed=7        the same conversations again, to check a fix
+ *   npx tsx scripts/grade.mts --dry           print the conversations and grade nothing
+ *   npx tsx scripts/grade.mts --n=40 --ask=2  a spot check that really reads two shops a turn
+ *   npx tsx scripts/grade.mts --jobs=4        processes; the default is 8
+ *   npx tsx scripts/grade.mts --failures      every failure, not just the grouped counts
  *
  * Exits non-zero below the passing bar, so it can gate a deploy and can be run over and over while fixing.
  */
+
+/**
+ * The grader reads the catalog and must never write to it.
+ *
+ * `plan()` calls `recordDemand()`, which bumps `crawl_demand` and `search_demand` so the next crawl starts
+ * with whatever real guests asked for and could not be quoted a price on. That is the right behaviour in
+ * production and exactly wrong here: ten thousand invented conversations would put a quarter of a million
+ * fake asks in front of the crawler and send it after businesses nobody ever asked about. Read-only turns
+ * those writes into the no-op the demand writer already handles, and it removes the write lock, which is
+ * what made eight processes on one SQLite file slower than one.
+ *
+ * The cache and mmap settings are a grader concern rather than a product one: the file is 1.1 GB, the
+ * default page cache is 2 MB, and every shard was re-reading the same pages through the kernel.
+ */
+db.exec("PRAGMA query_only = true");
+db.exec("PRAGMA mmap_size = 2147483648");
+db.exec("PRAGMA cache_size = -131072");
 
 const args = process.argv.slice(2);
 const arg = (k: string) => args.find((a) => a.startsWith("--" + k + "="))?.split("=")[1];
@@ -781,7 +801,14 @@ async function grade(c: Convo): Promise<Note[]> {
     const t0 = Date.now();
     let a: Answer;
     try {
-      a = await plan(say, { ask: ASK, prior, deadlineMs: 9000 });
+      /**
+       * `resolve` is the other way plan() reaches the internet, and it is not governed by `ask`: it fetches
+       * up to six of the shortlisted businesses' own websites looking for a booking link they have never
+       * been crawled for. In production that is right — eight shops is nothing and the finding is kept for
+       * good — but it happens on every turn, so a sweep would fetch tens of thousands of sites. It is tied
+       * to `--ask` here so that `--ask=0` means what it says: nothing outside this machine is contacted.
+       */
+      a = await plan(say, { ask: ASK, resolve: ASK > 0, prior, deadlineMs: 9000 });
     } catch (err) {
       note("aligned", "threw", false, (err as Error).message.slice(0, 120));
       break;
