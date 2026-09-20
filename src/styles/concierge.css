@@ -1,24 +1,33 @@
 /*
-  Ask Outset: a phone conversation, not an app screen.
+  Agent Mode: a real text thread, not an app screen wearing chat bubbles.
 
-  The guest is not filling out a form or reading a dashboard, they are texting somebody who happens to be very
-  good at reading booking calendars. Every choice here follows from that: bubbles the shape a messaging app
-  actually uses, quick replies as pills above the keyboard rather than a grid of cards, a card in the thread
-  reading as a rich attachment (a link preview, a location pin) rather than a floating admin panel. The one
-  thing a real thread does not have that this one needs is a receipt: the trace folds under an answer, closed
-  by default, because that is the proof this was read live and not typed by hand.
+  Harshil's own words for this: he wants it to look like an actual iPhone Messages conversation, close enough
+  to pass in a screen recording, because there is no real phone number wired up yet to text for real. So this
+  is not "Outset's chat UI" with the brand's green and rounded chip buttons — it borrows iOS Messages' own
+  colours, spacing and type directly: system blue for the guest's own bubble, iOS grey for the agent's,
+  -apple-system first in the font stack so a real iPhone renders actual San Francisco, not a web font standing
+  in for it. A card in the thread reads as a rich attachment, and a question back reads as an iMessage
+  business-chat quick-reply list, because that is the closest real, shipping thing to what this is pretending
+  to be — never a row of coloured pill buttons, which is the tell that gives away an AI chat demo.
 */
 
 .cg {
+  --imsg-blue: #0B84FE;
+  --imsg-gray: #E9E9EB;
+  --imsg-gray-ink: #000000;
   position: fixed;
   inset: 0;
   z-index: 60;
   display: flex;
   justify-content: center;
   background: color-mix(in srgb, var(--bezel) 52%, transparent);
-  font-family: var(--f-body);
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", var(--f-body);
   color: var(--ink);
 }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .cg { --imsg-gray: #26262A; --imsg-gray-ink: #FFFFFF; }
+}
+:root[data-theme="dark"] .cg { --imsg-gray: #26262A; --imsg-gray-ink: #FFFFFF; }
 
 .cg-thread {
   position: relative;
@@ -37,21 +46,32 @@
 .cg-top {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 11px 14px;
+  gap: 9px;
+  padding: 11px 10px;
   border-bottom: 1px solid var(--line);
   flex: none;
-  background: color-mix(in srgb, var(--surface) 92%, var(--surface-2));
+  background: color-mix(in srgb, var(--surface) 96%, transparent);
+  backdrop-filter: saturate(1.6) blur(14px);
 }
-.cg-who { flex: 1; min-width: 0; }
-.cg-who b { display: block; font-size: 15.5px; font-weight: 650; letter-spacing: -.01em; }
-.cg-who small { display: block; color: var(--ink-soft); font-size: 11.5px; margin-top: 1px; }
-.cg-who b, .cg-who small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cg-back {
+  border: 0; background: none; color: var(--imsg-blue, #007AFF); cursor: pointer; padding: 6px 2px 6px 4px;
+  display: grid; place-items: center; flex: none;
+}
+.cg-back:hover { opacity: .6; }
+/* A round contact photo, the way a name in Messages always carries one. */
+.cg-avatar {
+  flex: none; width: 30px; height: 30px; border-radius: 50%; overflow: hidden;
+  display: grid; place-items: center; background: var(--surface-2);
+}
+.cg-who { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; }
+.cg-who b { font-size: 15px; font-weight: 650; letter-spacing: -.01em; }
+.cg-who small { color: var(--ink-soft); font-size: 11px; margin-top: -1px; }
+.cg-who b, .cg-who small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
 
 /* History and New: two quiet text links in the corner, the way an iOS nav bar keeps a secondary action. */
-.cg-tools { display: flex; align-items: center; gap: 14px; flex: none; }
+.cg-tools { display: flex; align-items: center; gap: 12px; flex: none; }
 .cg-tool {
-  border: 0; background: none; color: var(--accent); font: inherit; font-size: 13.5px; font-weight: 600;
+  border: 0; background: none; color: var(--imsg-blue, var(--accent)); font: inherit; font-size: 13px; font-weight: 500;
   cursor: pointer; padding: 4px 2px; white-space: nowrap;
 }
 .cg-tool:hover:not(:disabled) { opacity: .7; }
@@ -75,8 +95,8 @@
   flex-direction: column;
   gap: 3px;
   scroll-behavior: smooth;
-  /* A faint tint, not white: the surface a real Messages thread sits on is never the same as its bubbles. */
-  background: color-mix(in srgb, var(--surface) 97%, var(--ink) 3%);
+  /* Messages threads sit on flat white (black in dark mode), not a tinted app surface. */
+  background: var(--surface);
 }
 /*
   Nothing in the thread may be squashed to make room. The log is a flex column, so every child is shrinkable
@@ -90,19 +110,44 @@
 
 @keyframes cg-pop { from { opacity: 0; transform: translateY(6px) scale(.98); } to { opacity: 1; transform: none; } }
 
-/* One bubble. The guest's sit right in the accent, the agent's left in a soft grey, as any thread does. */
+/* One bubble. The guest's in iMessage blue, the agent's in iOS grey — the two colours that read as "a text". */
 .cg-b {
-  max-width: 82%;
-  padding: 9px 14px;
-  border-radius: 19px;
-  font-size: 15.5px;
-  line-height: 1.38;
+  position: relative;
+  max-width: 78%;
+  padding: 8px 13px;
+  border-radius: 18px;
+  font-size: 16px;
+  line-height: 1.32;
   white-space: pre-wrap;
   animation: cg-pop .16s cubic-bezier(.2, .9, .3, 1.1);
-  box-shadow: 0 1px 1px rgba(0, 0, 0, .04);
 }
-.cg-me { align-self: flex-end; background: var(--accent); color: var(--on-accent); border-bottom-right-radius: 5px; }
-.cg-them { align-self: flex-start; background: var(--surface-2); color: var(--ink); border-bottom-left-radius: 5px; }
+.cg-me { align-self: flex-end; background: var(--imsg-blue); color: #fff; border-bottom-right-radius: 4px; }
+.cg-them { align-self: flex-start; background: var(--imsg-gray); color: var(--imsg-gray-ink); border-bottom-left-radius: 4px; }
+/*
+  The tail: two overlapping circles cut from the corner, the actual technique iOS bubbles use rather than a
+  triangle, because a real Messages bubble's tail is a rounded curl, not a speech-bubble point.
+*/
+.cg-me::after {
+  content: ""; position: absolute; bottom: 0; right: -6px; width: 14px; height: 16px;
+  background: var(--imsg-blue); border-bottom-left-radius: 11px 12px; z-index: -1;
+}
+.cg-me::before {
+  content: ""; position: absolute; bottom: 0; right: -9px; width: 9px; height: 16px;
+  background: var(--surface); border-bottom-left-radius: 9px; z-index: -1;
+}
+.cg-them::after {
+  content: ""; position: absolute; bottom: 0; left: -6px; width: 14px; height: 16px;
+  background: var(--imsg-gray); border-bottom-right-radius: 11px 12px; z-index: -1;
+}
+.cg-them::before {
+  content: ""; position: absolute; bottom: 0; left: -9px; width: 9px; height: 16px;
+  background: var(--surface); border-bottom-right-radius: 9px; z-index: -1;
+}
+/* Only the last bubble in a burst gets a tail, exactly as Messages does. */
+.cg-log > .cg-me + .cg-me::after, .cg-log > .cg-me + .cg-me::before,
+.cg-log > .cg-them + .cg-them::after, .cg-log > .cg-them + .cg-them::before { display: none; }
+.cg-log > .cg-me + .cg-me { border-bottom-right-radius: 18px; }
+.cg-log > .cg-them + .cg-them { border-bottom-left-radius: 18px; }
 .cg-note { align-self: flex-start; color: var(--ink-faint); font-size: 12px; line-height: 1.5; margin: 4px 6px 0 !important; max-width: 92%; }
 .cg-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
@@ -119,7 +164,7 @@
 */
 .cg-typing {
   align-self: flex-start; display: flex; gap: 4px;
-  background: var(--surface-2); border-radius: 19px; padding: 13px 16px;
+  background: var(--imsg-gray); border-radius: 19px; padding: 13px 16px;
 }
 .cg-typing i { width: 7px; height: 7px; border-radius: 50%; background: var(--ink-faint); animation: cg-breathe 1.3s ease-in-out infinite; }
 .cg-typing i:nth-child(2) { animation-delay: .15s; }
@@ -131,6 +176,25 @@
   agent, just tinted amber, because it is still something said in the thread rather than a system banner.
 */
 .cg-loosened { background: #FDF4E3; color: #6B4A05; font-weight: 500; }
+
+/*
+  A question the agent asked, answered by tapping — styled as Apple Business Chat renders its own quick-reply
+  messages: a rounded card of full-width rows with hairlines between them, not a row of coloured pill buttons.
+  That is the one detail that gives away a generic AI chat demo fastest, so it is the one this deliberately
+  does not do.
+*/
+.cg-quickreply {
+  align-self: flex-start; max-width: 78%; margin-top: 2px !important;
+  background: var(--imsg-gray); border-radius: 18px; overflow: hidden;
+}
+.cg-quickreply button {
+  display: block; width: 100%; border: 0; border-top: 1px solid color-mix(in srgb, var(--imsg-gray-ink) 12%, transparent);
+  background: none; color: var(--imsg-blue); font: inherit; font-size: 16px; font-weight: 400;
+  text-align: center; padding: 11px 14px; cursor: pointer;
+}
+.cg-quickreply button:first-child { border-top: 0; }
+.cg-quickreply button:hover { background: color-mix(in srgb, var(--imsg-gray-ink) 6%, transparent); }
+.cg-quickreply button:active { background: color-mix(in srgb, var(--imsg-gray-ink) 10%, transparent); }
 
 /* ---------- quick replies ---------- */
 
@@ -146,12 +210,14 @@
   transition: background .12s ease, color .12s ease;
 }
 .cg-chips button:hover { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
-.cg-suggest {
-  flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; align-self: stretch; padding: 1px 1px 2px;
-}
-.cg-suggest::-webkit-scrollbar { display: none; }
+/*
+  Wraps rather than scrolling sideways: a lone chip clipped at the edge of the screen with nothing to say it
+  continues read as broken layout, not as an invitation to swipe. Four short examples wrap onto two lines on a
+  phone and read as a deliberate little grid instead.
+*/
+.cg-suggest { align-self: stretch; margin-top: 10px; }
 .cg-suggest button {
-  flex: none; border-color: var(--line-strong); background: var(--surface); color: var(--ink-soft); font-weight: 500;
+  border-color: var(--line-strong); background: var(--surface); color: var(--ink-soft); font-weight: 500;
 }
 .cg-suggest button:hover { background: var(--surface-2); color: var(--ink); border-color: var(--ink-soft); }
 .cg-actions .cg-quiet { border-color: var(--line-strong); color: var(--ink-soft); font-weight: 500; }
@@ -287,43 +353,41 @@
 .cg-row { display: flex; align-items: baseline; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
 .cg-day { margin: 9px 0 0; font-size: 12.5px; font-weight: 650; color: var(--ink-soft); }
 
-.cg-slots { margin-top: 8px; display: flex; flex-direction: column; gap: 6px; }
+.cg-slots { margin-top: 8px; display: flex; flex-direction: column; gap: 10px; }
 /*
-  A row was three ideas fighting one line: the time and the item's own name shared a flex column against price,
-  seats and a Book button in another, and on a phone-width card ("Sabotage! - 90 Minute Adventure") lost the
-  fight and cut off mid-word while a plain "12:15 PM" wrapped onto two lines anyway. Two rows instead of one
-  column split in two: the time and what it is get the card's full width first, price/seats/Book get their own
-  line under it, right-aligned the way a receipt lists a total under its line items rather than beside them.
+  One line for what it is and what it costs, said once, then its times underneath as a row of taps. This
+  replaced a full price/seats/Book block repeated per departure — six hourly slots at the same rate read as
+  six near-identical rows, which is a wall of text on a phone with nothing new to read after the first one.
 */
-.cg-slot {
-  display: flex; flex-wrap: wrap; align-items: center; row-gap: 7px; column-gap: 9px;
-  background: var(--surface-2);
-  border-radius: 12px;
-  padding: 10px 12px;
-}
-.cg-slot-when { flex: 1 1 100%; min-width: 0; display: flex; align-items: baseline; flex-wrap: wrap; gap: 2px 7px; }
-.cg-slot-time { font-size: 15.5px; font-weight: 700; letter-spacing: -.005em; white-space: nowrap; }
-.cg-slot-when small {
-  display: block; flex: 1 1 auto; min-width: 60%; color: var(--ink-soft); font-size: 12.5px;
+.cg-slotgroup-head { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.cg-item {
+  flex: 1 1 auto; min-width: 0; color: var(--ink-soft); font-size: 12.5px; font-weight: 600;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
-.cg-slot-when em { flex: none; font-style: normal; font-weight: 600; font-size: 11.5px; }
-.cg-off { color: #9A6B08; }
-.cg-onthehour { color: var(--accent); }
-
-.cg-slot-right { flex: 1 1 100%; display: flex; align-items: center; gap: 7px; }
-.cg-price { font-weight: 700; color: var(--accent); font-size: 14.5px; margin-right: auto; }
+.cg-price { font-weight: 700; color: var(--accent); font-size: 14.5px; }
 .cg-price em { display: block; font-style: normal; font-weight: 400; color: var(--ink-soft); font-size: 12px; margin-top: 1px; }
 
-.cg-seats { color: var(--open); background: var(--open-bg); font-size: 11px; font-weight: 650; padding: 3px 7px; border-radius: 999px; white-space: nowrap; }
-.cg-few { color: var(--few); background: var(--few-bg); font-size: 11px; font-weight: 650; padding: 3px 7px; border-radius: 999px; white-space: nowrap; }
-
-.cg-book {
-  border: 0; background: var(--accent); color: var(--on-accent);
-  border-radius: 9px; padding: 8px 14px; font: inherit; font-size: 13.5px; font-weight: 650; cursor: pointer;
-  transition: background .12s ease;
+/*
+  Its own name, deliberately not `.cg-chips`: that class already means the agent's own follow-up pills
+  (accent-colored, meant to look proposed). A booking time is not a suggestion, it is a fact read off a real
+  calendar, so it gets its own quiet, neutral pill rather than borrowing the "I suggest this" styling by
+  accident because the class name happened to match.
+*/
+.cg-timechips { margin-top: 6px; display: flex; flex-wrap: wrap; gap: 7px; }
+.cg-timechip {
+  border: 1px solid var(--line); background: var(--surface-2); color: var(--ink);
+  border-radius: 999px; padding: 8px 13px; font: inherit; font-size: 14px; font-weight: 650; cursor: pointer;
+  display: flex; align-items: center; gap: 5px; white-space: nowrap;
+  transition: background .12s ease, border-color .12s ease;
 }
-.cg-book:hover { background: var(--accent-press); }
+.cg-timechip:hover { background: var(--accent-tint); border-color: var(--accent); }
+/* The one that best matches a time the guest actually named, if they named one. */
+.cg-timechip-best { border-color: var(--accent); background: var(--accent-tint); color: var(--accent); }
+.cg-timechip em {
+  font-style: normal; font-weight: 650; font-size: 10.5px; color: var(--few); background: var(--few-bg);
+  border-radius: 999px; padding: 2px 6px;
+}
+.cg-timechip-few { border-color: var(--few); }
 
 .cg-ghost {
   display: block; width: 100%; margin-top: 9px;
@@ -349,48 +413,6 @@
 .cg-quietrow .cg-ghost { width: auto; margin-top: 0; flex: none; background: var(--surface); }
 .cg-call { white-space: nowrap; }
 
-/* ---------- how it knows ---------- */
-
-/*
-  Closed, one small caption under the card: what it checked and how fast, the kind of line a receipt from a
-  delivery app already gets. Open, the whole trace, dark because it is machinery and should not be mistaken
-  for something anybody said.
-*/
-.cg-receipt { align-self: stretch; }
-.cg-receipt-top {
-  display: flex; align-items: center; gap: 7px; width: 100%;
-  border: 0; background: none; padding: 2px 4px; margin-top: 2px !important;
-  font: inherit; font-size: 11.5px; color: var(--ink-faint); text-align: left; cursor: pointer;
-}
-.cg-receipt-top:disabled { cursor: default; }
-.cg-receipt-top:hover:not(:disabled) { color: var(--ink-soft); }
-.cg-receipt-mark { flex: none; width: 5px; height: 5px; border-radius: 50%; background: var(--accent-soft); }
-.cg-receipt-line { flex: 1; min-width: 0; font-variant-numeric: tabular-nums; }
-.cg-receipt-more { flex: none; color: var(--accent); font-weight: 650; }
-
-.cg-trace {
-  list-style: none;
-  margin: 4px 0 0 !important;
-  padding: 11px 12px;
-  background: var(--bezel);
-  border-radius: 14px;
-  max-height: 260px;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  font-size: 11.5px;
-  line-height: 1.4;
-}
-.cg-trace li { display: flex; gap: 8px; align-items: baseline; }
-.cg-trace-at { flex: none; width: 34px; text-align: right; color: #6D7A67; font-variant-numeric: tabular-nums; }
-.cg-trace-kind { flex: none; width: 54px; font-size: 9.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; }
-.cg-trace-text { min-width: 0; color: #E8EEE3; }
-.cg-trace-text em { display: block; font-style: normal; color: #7D8A77; font-size: 11px; }
-.cg-t-go .cg-trace-kind { color: #8FC873; }
-.cg-t-warn .cg-trace-kind { color: #E3B341; }
-.cg-t-dim .cg-trace-kind { color: #7D8A77; }
-
 /* ---------- booking, and the composer ---------- */
 
 .cg-guest {
@@ -406,34 +428,37 @@
   border-radius: 10px; padding: 10px; font: inherit; font-weight: 650; cursor: pointer;
 }
 
+/* The iMessage compose bar: a plain grey field and a circular blue arrow, not a branded search box. */
 .cg-input {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 9px 10px calc(9px + env(safe-area-inset-bottom));
+  padding: 7px 8px calc(7px + env(safe-area-inset-bottom));
   border-top: 1px solid var(--line);
   flex: none;
-  background: color-mix(in srgb, var(--surface) 92%, var(--surface-2));
+  background: color-mix(in srgb, var(--surface) 96%, transparent);
+  backdrop-filter: saturate(1.6) blur(14px);
 }
 .cg-input input {
   flex: 1; min-width: 0;
-  border: 1px solid var(--line-strong); border-radius: 20px;
-  padding: 10px 15px; font: inherit;
+  border: 1px solid color-mix(in srgb, var(--imsg-gray-ink, var(--ink)) 20%, transparent);
+  border-radius: 20px;
+  padding: 8px 15px; font: inherit;
   /* 16px exactly: anything smaller and iOS Safari zooms the page on focus and never zooms back out. */
   font-size: 16px;
   background: var(--surface); color: var(--ink);
 }
-.cg-input input:focus { outline: none; border-color: var(--accent-soft); }
+.cg-input input:focus { outline: none; border-color: var(--imsg-blue, var(--accent-soft)); }
 .cg-input input::placeholder { color: var(--ink-faint); }
 .cg-input button {
-  border: 0; background: var(--accent); color: var(--on-accent); border-radius: 50%;
-  width: 34px; height: 34px; cursor: pointer; flex: none; display: grid; place-items: center;
+  border: 0; background: var(--imsg-blue); color: #fff; border-radius: 50%;
+  width: 30px; height: 30px; cursor: pointer; flex: none; display: grid; place-items: center;
   transition: background .12s ease, transform .1s ease;
 }
-.cg-input button:hover:not(:disabled) { background: var(--accent-press); }
+.cg-input button:hover:not(:disabled) { opacity: .85; }
 .cg-input button:active:not(:disabled) { transform: scale(.92); }
-.cg-input button:disabled { opacity: .4; cursor: default; }
-.cg-input svg { width: 16px; height: 16px; }
+.cg-input button:disabled { opacity: .35; cursor: default; }
+.cg-input svg { width: 15px; height: 15px; }
 /* While it works, the send button is a stop button: a way out that does not need another question first. */
 .cg-stop span { width: 11px; height: 11px; border-radius: 3px; background: currentColor; display: block; }
 
@@ -509,6 +534,87 @@
   border-bottom: 0;
   padding: 10px 16px 0;
 }
+
+/*
+  On desktop the embed thread sits inside its own phone-shaped bezel: the same notch, status bar and home
+  indicator `.device`/`.screen` in app.css already draw for the app's own mockup, borrowed rather than
+  reinvented. Below the app's `1025px` floor this is a real phone already, so `.cg-phone` is a plain
+  pass-through wrapper there, exactly what rendered before it existed.
+*/
+.cg-phone { display: contents; }
+@media (min-width: 1025px) {
+  .cg-phone {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex: 1 1 auto;
+    padding: 28px 16px 40px;
+    background: var(--ground);
+  }
+  /*
+    Fixed at 390x800 this fit a tall laptop screen and nothing shorter: a window with less than about 900px of
+    height above it cut the bottom off the device, home indicator and all, with no way to see the composer.
+    Capping the height at the space actually left after the page header and this wrapper's own padding, and
+    deriving the width from that through `aspect-ratio` rather than setting both, keeps it a real phone's
+    proportions at every size instead of squashing one axis.
+  */
+  .cg-phone-bezel {
+    position: relative;
+    flex: none;
+    height: min(800px, calc(100vh - var(--hdr-top, 80px) - 68px));
+    aspect-ratio: 390 / 800;
+    background: var(--bezel);
+    padding: 10px;
+    border-radius: 48px;
+    box-shadow:
+      0 0 0 1px rgba(255, 255, 255, .08) inset,
+      0 24px 60px -18px rgba(0, 0, 0, .45),
+      0 60px 120px -40px rgba(0, 0, 0, .35);
+  }
+  .cg-phone-bezel::before {
+    content: "";
+    position: absolute;
+    top: 22px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 96px;
+    height: 26px;
+    border-radius: 16px;
+    background: #000;
+    z-index: 30;
+    pointer-events: none;
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, .06) inset;
+  }
+  .cg-phone-screen {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    border-radius: 38px;
+    background: var(--app-bg);
+    display: flex;
+    flex-direction: column;
+  }
+  .cg-phone-screen::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    bottom: 8px;
+    transform: translateX(-50%);
+    width: 120px;
+    height: 4px;
+    border-radius: 3px;
+    background: rgba(0, 0, 0, .75);
+    z-index: 30;
+    pointer-events: none;
+  }
+  .cg-phone-screen .statusbar { flex: none; }
+  /* The embed thread otherwise sizes itself off the viewport, which is right when it is the viewport and wrong
+     the moment it is 780px tall inside a bezel: here it fills the screen it was actually given instead. */
+  .cg-phone-screen .cg.cg-embed { min-height: 0; height: 100%; background: var(--app-bg); }
+  .cg-phone-screen .cg-embed .cg-thread { min-height: 0; height: 100%; max-width: none; }
+}
+
 /*
   `.screen` is the phone either way `framed` is passed: a real mobile browser, where it is the whole viewport
   and the mockup's own fake status bar is already hidden by `app.css`'s own media query, or the desktop mockup,
@@ -529,9 +635,6 @@
   .cg-b, .cg-work, .cg-say { max-width: 86%; }
   .cg-b { font-size: 16px; }
   .cg-card { padding: 12px; border-radius: 16px; }
-  .cg-slot-time { font-size: 15.5px; }
-  .cg-trace li { flex-wrap: wrap; }
-  .cg-trace-text { flex: 1 1 100%; padding-left: 42px; margin-top: -2px; }
 }
 
 @media (max-width: 460px) {
@@ -540,11 +643,9 @@
 }
 
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) .cg-off { color: #E3B341; }
   :root:not([data-theme="light"]) .cg-loosened { background: #33280E; color: #F0DFB6; }
   :root:not([data-theme="light"]) .cg-card { box-shadow: none; }
 }
-[data-theme="dark"] .cg-off { color: #E3B341; }
 [data-theme="dark"] .cg-loosened { background: #33280E; color: #F0DFB6; }
 [data-theme="dark"] .cg-card { box-shadow: none; }
 

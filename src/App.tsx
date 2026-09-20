@@ -146,7 +146,22 @@ export function App() {
     window.addEventListener("resize", calc);
     return () => window.removeEventListener("resize", calc);
   }, []);
-  const toggleAsk = (on: boolean, seed = "") => (on ? openAsk(seed) : closeAsk());
+  /**
+   * Opening the agent switches to the phone frame the same way "Open the phone app" does, rather than
+   * opening the embedded panel on the wide site. It is a real iPhone message thread it is standing in for,
+   * and the embedded panel — a chat box docked into a browser-width page — never looked like one; the phone
+   * frame, with its own status bar and rounded screen, does.
+   */
+  const toggleAsk = (on: boolean, seed = "") => {
+    if (!on) {
+      closeAsk();
+      return;
+    }
+    closeSheet();
+    goto("explore");
+    setWeb(false);
+    openAsk(seed);
+  };
   const askOnSite = web && asking != null && state.screen !== "operator" && !(state.screen === "confirm" && state.booking);
 
   const openApp = () => {

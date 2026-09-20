@@ -13,7 +13,6 @@ import {
   headlineService,
   missedTheHour,
   noTimesLine,
-  offsetLine,
   priceLine,
   resetConcierge,
   serviceLine,
@@ -90,19 +89,6 @@ type Entry = Said & { id: number };
  * and a text thread has messages in it, not a hero and a numbered list.
  */
 const OPENER = "Tell me what you want to do and I'll check who's actually free, live, right now.";
-
-/**
- * The first things a guest could say, offered as quick replies under the greeting rather than as a page of
- * cards. A messaging app suggests replies you can tap; it does not show you a grid of examples and an
- * illustrated three-step guide, so neither does this. Two are deliberately untidy, a lower-case "saturday" and
- * a budget with no activity attached, because the reader handles that and a demo that only shows tidy input is
- * selling the wrong thing.
- */
-const EXAMPLES = [
-  "escape room in Waterloo tonight, 4 of us",
-  "axe throwing near Waterloo",
-  "something to do near me tonight",
-];
 
 export function WebConcierge({ seed, framed, embed, onClose }: { seed?: string; framed?: boolean; embed?: boolean; onClose: () => void }) {
   const { state, openRequest, confirmUnclaimed } = useApp();
@@ -487,22 +473,13 @@ export function WebConcierge({ seed, framed, embed, onClose }: { seed?: string; 
     void sendBook(o, d, party, guest);
   };
 
-  /**
-   * Nothing has been asked yet, so the thread is a standing invitation rather than one grey bubble.
-   *
-   * The opener still lives in `entries`, because the transcript, the history and the "New" button all reason
-   * about a thread that has one line in it. It is simply drawn as the opening screen instead of as a message
-   * until the guest says something.
-   */
-  const opening = !busy && entries.length === 1 && entries[0].kind === "them" && entries[0].text === OPENER;
-
   return (
     <div
       ref={box}
       className={"cg" + (framed ? " cg-framed" : "") + (embed ? " cg-embed" : "")}
       role={embed ? "region" : "dialog"}
       aria-modal={embed ? undefined : "true"}
-      aria-label="Ask"
+      aria-label="Agent"
       onClick={(e) => {
         if (!framed && !embed && e.target === e.currentTarget) onClose();
       }}
@@ -511,10 +488,19 @@ export function WebConcierge({ seed, framed, embed, onClose }: { seed?: string; 
         <header className="cg-top">
           {embed ? null : (
             <>
-              <Mark size={30} />
+              {framed ? (
+                <button type="button" className="cg-back" onClick={onClose} aria-label="Back">
+                  <svg width="11" height="18" viewBox="0 0 11 18" fill="none" aria-hidden="true">
+                    <path d="M9.5 1.5 1.5 9l8 7.5" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </button>
+              ) : null}
+              <span className="cg-avatar">
+                <Mark size={20} />
+              </span>
               <span className="cg-who">
-                <b>Ask</b>
-                <small>Live times from the shops around you</small>
+                <b>Outset</b>
+                <small>Agent</small>
               </span>
             </>
           )}
@@ -526,7 +512,7 @@ export function WebConcierge({ seed, framed, embed, onClose }: { seed?: string; 
               New
             </button>
           </div>
-          {embed ? null : (
+          {embed || framed ? null : (
           <button type="button" className="cg-x" onClick={onClose} aria-label="Close">
             <Markup html={ICONS.close} />
           </button>
@@ -562,7 +548,7 @@ export function WebConcierge({ seed, framed, embed, onClose }: { seed?: string; 
         <div className="cg-log" ref={logRef} role="log" aria-live="polite" aria-relevant="additions">
           {entries.map((e) =>
             e.kind === "answer" ? (
-              <Answered key={e.id} answer={e.answer} steps={e.steps} onAsk={ask} onOpen={open} onBook={book} />
+              <Answered key={e.id} answer={e.answer} onAsk={ask} onOpen={open} onBook={book} />
             ) : e.kind === "note" ? (
               <p className="cg-note" key={e.id}>{e.text}</p>
             ) : (
@@ -573,19 +559,6 @@ export function WebConcierge({ seed, framed, embed, onClose }: { seed?: string; 
             ),
           )}
           {busy ? <Working steps={steps} status={status} elapsed={elapsed} /> : null}
-          {/*
-            Quick replies under the greeting, the way a phone suggests them, not a page of example cards. They
-            disappear the moment anything has actually been asked, same as any messaging app's own suggestions.
-          */}
-          {opening ? (
-            <div className="cg-chips cg-suggest">
-              {EXAMPLES.map((ex) => (
-                <button type="button" key={ex} onClick={() => void ask(ex)}>
-                  {ex}
-                </button>
-              ))}
-            </div>
-          ) : null}
           {pending ? (
             <form
               className="cg-guest"
@@ -650,7 +623,7 @@ export function WebConcierge({ seed, framed, embed, onClose }: { seed?: string; 
               <span />
             </button>
           ) : (
-            <button type="submit" aria-label="Ask" disabled={!draft.trim()}>
+            <button type="submit" aria-label="Send" disabled={!draft.trim()}>
               <Markup html={ICONS.send} />
             </button>
           )}
@@ -762,69 +735,6 @@ function Working({ steps, status, elapsed }: { steps: ConciergeStep[]; status: s
   );
 }
 
-/**
- * The receipt under an answer: what was checked, how long it took, and every step on request.
- *
- * Closed it is one quiet line, because a guest booking a jet ski does not want a log. Open it is the whole
- * trace the agent wrote about itself: the shops it asked, the ones that timed out, the budget it applied,
- * the calendars it read. That is the part that makes somebody believe the times on the screen, and it is the
- * difference between a chat interface and evidence, and it is exactly what a demo needs to be able to show
- * on purpose rather than hope somebody catches it going past.
- */
-function Trace({ answer, steps }: { answer: ConciergeAnswer; steps: ConciergeStep[] }) {
-  const [open, setOpen] = useState(false);
-  const asked = new Set(steps.filter((s) => s.kind === "ask").map((s) => s.text)).size;
-  const live = new Set(
-    answer.options.filter((o) => o.departures.length).map((o) => o.domain),
-  ).size;
-
-  const bits: string[] = [];
-  if (asked) bits.push(asked === 1 ? "1 booking system read" : asked + " booking systems read");
-  else if (answer.counts.total) bits.push(answer.counts.total === 1 ? "1 place checked" : answer.counts.total + " places checked");
-  if (live) bits.push(live === 1 ? "1 live calendar" : live + " live calendars");
-  if (answer.ms) bits.push((answer.ms / 1000).toFixed(1) + "s");
-
-  return (
-    <div className={"cg-receipt" + (open ? " on" : "")}>
-      <button
-        type="button"
-        className="cg-receipt-top"
-        onClick={() => setOpen(!open)}
-        aria-expanded={open}
-        disabled={!steps.length}
-      >
-        <span className="cg-receipt-mark" aria-hidden="true" />
-        <span className="cg-receipt-line">{bits.join(" · ") || "Checked live"}</span>
-        {steps.length ? <span className="cg-receipt-more">{open ? "Hide" : "How I got this"}</span> : null}
-      </button>
-      {open && steps.length ? (
-        <ol className="cg-trace">
-          {steps.map((s, i) => (
-            <li key={i} className={"cg-t-" + tone(s.kind)}>
-              <span className="cg-trace-at">{(s.ms / 1000).toFixed(1)}s</span>
-              <span className="cg-trace-kind">{s.kind}</span>
-              <span className="cg-trace-text">
-                {s.text}
-                {s.detail ? <em>{s.detail}</em> : null}
-              </span>
-            </li>
-          ))}
-        </ol>
-      ) : null}
-    </div>
-  );
-}
-
-/**
- * How a step reads at a glance. Only three tones, because a trace where every line is a different colour is
- * a trace nobody scans: what went right, what went wrong, and everything the agent merely decided.
- */
-function tone(kind: string): "go" | "warn" | "dim" {
-  if (kind === "answer" || kind === "catalog" || kind === "resolve" || kind === "compare") return "go";
-  if (kind === "timeout" || kind === "skip" || kind === "loosen" || kind === "widen" || kind === "budget") return "warn";
-  return "dim";
-}
-
 /** The rating a shop carries, said in one short string, or nothing when nobody has rated it. */
 function stars(o: ConciergeOption): string | null {
   if (o.rating == null) return null;
@@ -841,13 +751,11 @@ function stars(o: ConciergeOption): string | null {
  */
 function Answered({
   answer,
-  steps,
   onAsk,
   onOpen,
   onBook,
 }: {
   answer: ConciergeAnswer;
-  steps: ConciergeStep[];
   onAsk: (text: string) => void;
   onOpen: (o: ConciergeOption, d?: ConciergeDeparture) => void;
   onBook: (o: ConciergeOption, d: ConciergeDeparture, party: number) => void;
@@ -891,11 +799,35 @@ function Answered({
   const shops = groupShops(shown);
   const line = headline(answer, shown);
   const missed = missedTheHour(answer, shown);
-  // An offer to narrow arrives WITH the results rather than in front of them, which is the whole reason the
-  // funnel stopped gating an answer behind a question.
-  const narrow = answer.narrow?.choices?.length ? answer.narrow : null;
-  const next = refinements(answer, shown);
+  const narrow = answer.narrow?.question ? answer.narrow : null;
+  // Just the one genuinely useful tap ("Something else"), not the receipt-style row of five: a real text back
+  // says "cheaper" or "earlier" typed, not tapped from a menu offered after every reply.
+  const next = refinements(answer, shown).slice(0, 1);
   const unread = priced.length ? priced : rest;
+
+  /**
+   * A real text thread asks one thing, waits, and only then answers — it does not text you a question and a
+   * full price comparison in the same breath. So a turn that still has something worth asking (how many, how
+   * long, when) is just that question, texted the way the next one would be answered: tap a quick reply or
+   * type over it. The results this same search already found are not thrown away, they simply are not this
+   * message; the next turn, once nothing is left to ask, is the one that shows them.
+   */
+  if (narrow) {
+    return (
+      <div className="cg-answer">
+        <div className="cg-b cg-them">{narrow.question}</div>
+        {narrow.choices.length ? (
+          <div className="cg-quickreply">
+            {narrow.choices.map((c) => (
+              <button type="button" key={c.text} onClick={() => onAsk(c.text)}>
+                {c.label}
+              </button>
+            ))}
+          </div>
+        ) : null}
+      </div>
+    );
+  }
 
   if (!answer.options.length) {
     return <div className="cg-b cg-them">I could not find anywhere for that. Try another town or activity.</div>;
@@ -926,21 +858,8 @@ function Answered({
         </>
       )}
 
-      <Trace answer={answer} steps={steps} />
-
-      {/*
-        What a person says next, in one row: the agent's own offer to narrow first, then the standing actions.
-        `plan.ts` reads every one of these out of a sentence already and almost nobody would think to type
-        them, so a shortlist with no way to push back on it is a dead end.
-      */}
-      {narrow ? <p className="cg-note">{narrow.question}</p> : null}
-      {narrow || next.length ? (
+      {next.length ? (
         <div className="cg-chips cg-actions">
-          {narrow?.choices.map((c) => (
-            <button type="button" key={c.text} onClick={() => onAsk(c.text)}>
-              {c.label}
-            </button>
-          ))}
           {next.map((r) => (
             <button type="button" className="cg-quiet" key={r.text} onClick={() => onAsk(r.text)}>
               {r.label}
@@ -965,6 +884,33 @@ function Read({ answer }: { answer: ConciergeAnswer }) {
       ))}
     </div>
   );
+}
+
+/**
+ * A shop's departures, folded to one line per (item, price) so the times underneath it can just be times.
+ *
+ * "1 Hour Jet Ski · $80 + tax" said six times over, once per hourly slot, is the price repeating itself for
+ * no reason a guest would want on a phone. Said once, with the six times as a row of taps underneath, it reads
+ * the same amount of information in a fifth of the height.
+ */
+function groupByItem(
+  slots: { departure: ConciergeDeparture; offset: number | null }[],
+): { key: string; item: string | null; price: string; entries: { departure: ConciergeDeparture; offset: number | null }[] }[] {
+  const groups: { key: string; item: string | null; price: string; entries: { departure: ConciergeDeparture; offset: number | null }[] }[] = [];
+  const byKey = new Map<string, (typeof groups)[number]>();
+  for (const s of slots) {
+    const item = s.departure.item || null;
+    const price = priceLine(s.departure);
+    const key = `${item}||${price}`;
+    let g = byKey.get(key);
+    if (!g) {
+      g = { key, item, price, entries: [] };
+      byKey.set(key, g);
+      groups.push(g);
+    }
+    g.entries.push(s);
+  }
+  return groups;
 }
 
 /**
@@ -1014,37 +960,37 @@ function Shop({
       {day ? <p className="cg-day">{day}</p> : null}
 
       <div className="cg-slots">
-        {slots.map(({ departure, offset }) => {
-          const few = fewSeats(departure.seatsLeft ?? undefined);
-          return (
-            <div className="cg-slot" key={departure.date + departure.time + departure.item}>
-              <div className="cg-slot-when">
-                <span className="cg-slot-time">{fmtTime(departure.time)}</span>
-                {offset != null ? (
-                  <em className={offset === 0 ? "cg-onthehour" : "cg-off"}>{offsetLine(offset)}</em>
-                ) : null}
-                {departure.item ? <small>{departure.item}</small> : null}
-              </div>
-              <div className="cg-slot-right">
-                <span className="cg-price">{priceLine(departure)}</span>
-                {/*
-                  Seats left whenever the vendor states them, not only when they are running out. A real
-                  remaining count is the strongest thing on the row that says this was read a second ago
-                  rather than crawled last week. It turns warm once there are few enough to matter.
-                */}
-                {departure.seatsLeft != null && departure.seatsLeft > 0 ? (
-                  <span className={few ? "cg-few" : "cg-seats"}>
-                    {few ? "Only " : ""}
-                    {departure.seatsLeft} left
-                  </span>
-                ) : null}
-                <button type="button" className="cg-book" onClick={() => onBook(option, departure, party)}>
-                  Book
-                </button>
-              </div>
+        {groupByItem(slots).map((group) => (
+          <div className="cg-slotgroup" key={group.key}>
+            <div className="cg-slotgroup-head">
+              {group.item ? <span className="cg-item">{group.item}</span> : null}
+              <span className="cg-price">{group.price}</span>
             </div>
-          );
-        })}
+            {/*
+              One row of tappable times instead of a full price/seats/Book block repeated per departure: six
+              hourly slots at the same price used to be six near-identical cards, which on a phone is a wall of
+              "1 Hour · $80 + tax · 10 left · Book" with nothing to actually compare. Tapping a time books it,
+              same as the old per-row Book button did.
+            */}
+            <div className="cg-timechips">
+              {group.entries.map(({ departure, offset }) => {
+                const few = fewSeats(departure.seatsLeft ?? undefined);
+                return (
+                  <button
+                    type="button"
+                    key={departure.date + departure.time + departure.item}
+                    className={"cg-timechip" + (offset === 0 ? " cg-timechip-best" : "") + (few ? " cg-timechip-few" : "")}
+                    onClick={() => onBook(option, departure, party)}
+                    title={departure.item || undefined}
+                  >
+                    {fmtTime(departure.time)}
+                    {few ? <em>{departure.seatsLeft} left</em> : null}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ))}
       </div>
 
       <button type="button" className="cg-ghost" onClick={() => onOpen(option, slots[0]?.departure)}>

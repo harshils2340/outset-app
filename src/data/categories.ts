@@ -15,6 +15,24 @@ export const CATS = [
 ] as Category[];
 
 /**
+ * One accent per category, shared by every screen that draws the category strip (the wide site and the phone
+ * app alike), so a jet ski and a museum do not read as the same grey word in a list. Selected only: a whole
+ * row lit up at once is a toy box, one colour picked out of grey is a choice about what you are looking at.
+ */
+export const CAT_COLOR: Partial<Record<CategoryId, string>> = {
+  air: "#2F80ED",
+  water: "#0891B2",
+  motorsport: "#E11D48",
+  indoor: "#7C3AED",
+  outdoor: "#16A34A",
+  play: "#DB2777",
+  food: "#EA580C",
+  wellness: "#8B7FD8",
+  classes: "#4F46E5",
+  culture: "#9A5B13",
+};
+
+/**
  * Tabs the catalog does not know about. `cat` on a record is set by the sync (backend), so Classes and Culture
  * are cut by kind of activity here instead. A kind may sit in two tabs: yoga is Wellness and Classes.
  */

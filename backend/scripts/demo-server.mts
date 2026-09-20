@@ -73,7 +73,10 @@ app.route("/", nearby);
  * Hold a trip on this process so Ask can finish without Postgres. With Stripe TEST keys it also opens Checkout
  * so the CAP demo can show a card hold on Outset. It never talks to FareHarbor, Peek or the shop's own pay page.
  */
-const holds = new Map<string, { listing: string; session: string }>();
+const holds = new Map<
+  string,
+  { listing: string; session: string; sent: boolean; service?: string; date: string; slot: string; qty: number; guest: { name: string; email: string } }
+>();
 const CODE = /^[A-Z0-9-]{4,16}$/;
 
 app.get("/bookings/paid/:listing/:code", async (c) => {
@@ -84,8 +87,39 @@ app.get("/bookings/paid/:listing/:code", async (c) => {
   if (!testStripe) return c.json({ status: "new", paid: false });
   const { sessionStatus } = await import("../src/lib/stripe.ts");
   const st = await sessionStatus(hold.session).catch(() => null);
+  // The card only actually clears here, so the confirmation goes out on the poll that first sees it paid,
+  // not when checkout merely opened — an abandoned Stripe tab must not still land an email.
+  if (st?.paid && !hold.sent) {
+    hold.sent = true;
+    void sendConfirmation(hold);
+  }
   return c.json({ status: st?.paid ? "new" : "pending", paid: !!st?.paid });
 });
+
+/**
+ * The guest's own confirmation, sent through the same Resend account and template the real API uses.
+ * A demo that ends in "booked" with no email in the guest's inbox is not proof the agent finishes anything.
+ */
+async function sendConfirmation(o: {
+  listing: string; service?: string; date: string; slot: string; qty: number; guest: { name: string; email: string };
+}): Promise<void> {
+  if (!o.guest.email) return;
+  const { sendMail } = await import("../src/lib/mail.ts");
+  const { renderEmail, fmtWhen, guests } = await import("../src/lib/emailTemplate.ts");
+  const { text, html } = renderEmail({
+    eyebrow: "Booked",
+    heading: `You're booked: ${o.service || o.listing}`,
+    intro: [`${fmtWhen(o.date, o.slot)}, ${guests(o.qty)}. Outset booked this for you — nothing else to do.`],
+    rows: [
+      { label: "Experience", value: o.service || o.listing },
+      { label: "When", value: fmtWhen(o.date, o.slot) },
+      { label: "Guests", value: guests(o.qty) },
+    ],
+    footer: "Outset — hello@onoutset.com",
+  });
+  const sent = await sendMail({ to: o.guest.email, subject: `Booked: ${o.service || o.listing}`, text, html }).catch((e) => ({ sent: false, error: (e as Error).message }));
+  console.log(sent.sent ? `    confirmation emailed to ${o.guest.email}` : `    [demo] confirmation email failed: ${sent.error || "unknown error"}`);
+}
 
 app.post("/bookings", async (c) => {
   const b = (await c.req.json().catch(() => null)) as {
@@ -98,6 +132,7 @@ app.post("/bookings", async (c) => {
   const qty = Number(b?.qty);
   const name = (b?.guest?.name || "").trim();
   const phone = (b?.guest?.phone || "").replace(/\D/g, "");
+  const email = (b?.guest?.email || "").trim();
   if (listing.length < 3 || !/^\d{4}-\d{2}-\d{2}$/.test(date) || !/^([01]\d|2[0-3]):[0-5]\d$/.test(slot)) {
     return c.json({ error: "bad booking" }, 400);
   }
@@ -121,13 +156,16 @@ app.post("/bookings", async (c) => {
         cancelUrl: `${SITE}#ask`,
       });
       if (co.url && co.url.startsWith("https://checkout.stripe.com/")) {
-        holds.set(code, { listing, session: co.id });
+        holds.set(code, { listing, session: co.id, sent: false, service: b?.service, date, slot, qty, guest: { name, email } });
         return c.json({ ok: true, status: "pending", checkoutUrl: co.url });
       }
     } catch (e) {
       console.warn("[demo] Stripe test checkout failed: " + (e as Error).message);
     }
   }
+  // No charge to wait on (Stripe TEST is off, or the listing carries no price): the booking is done the
+  // moment it is accepted, so the confirmation goes out now rather than never.
+  void sendConfirmation({ listing, service: b?.service, date, slot, qty, guest: { name, email } });
   return c.json({ ok: true, status: "new" });
 });
 app.get("/", (c) => c.redirect("/go"));
@@ -163,6 +201,7 @@ async function warm(): Promise<void> {
     "helicopter tour in toronto at 4:30pm",
     "parasailing in toronto for 2",
     "boat tour near toronto",
+    "jet ski rental in toronto for 2 people",
     "escape room in toronto for 6",
     "something fun in toronto tonight",
   ];

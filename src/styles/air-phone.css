@@ -85,16 +85,24 @@
 }
 .aircats::-webkit-scrollbar{height:0;}
 .aircat{
-  flex:none;display:flex;flex-direction:column;align-items:center;gap:6px;
+  flex:none;display:flex;flex-direction:column;align-items:center;gap:4px;
   padding:0 0 10px;min-width:44px;background:none;
   color:var(--air-grey);border-bottom:2px solid transparent;margin-bottom:-1px;
   transition:color .15s ease,border-color .15s ease;
 }
-.aircat svg{display:block;width:24px;height:24px;opacity:.72;}
+/*
+  A colour disc behind the icon, one shade per activity, picked out only once it is selected: the strip that
+  says "these are different things to go do" rather than one grey nav bar with different words on it.
+*/
+.aircat > :first-child{
+  display:grid;place-items:center;width:36px;height:36px;border-radius:50%;
+  background:none;opacity:.72;transition:background-color .15s ease,opacity .15s ease;
+}
+.aircat svg{display:block;width:22px;height:22px;}
 .aircat span{font-size:12px;font-weight:600;white-space:nowrap;line-height:16px;}
 .aircat:active svg{transform:scale(.94);}
-.aircat[aria-pressed="true"]{color:var(--ink);border-bottom-color:var(--ink);}
-.aircat[aria-pressed="true"] svg{opacity:1;}
+.aircat[aria-pressed="true"]{color:var(--cat-a,var(--ink));border-bottom-color:var(--cat-a,var(--ink));}
+.aircat[aria-pressed="true"] > :first-child{opacity:1;background:var(--cat-a,var(--ink));color:#fff;}
 
 .aircount{margin:0;padding:20px var(--air-gutter) 4px;text-align:center;font-size:14px;font-weight:600;color:var(--ink);}
 .airfeed{display:flex;flex-direction:column;gap:24px;padding:16px var(--air-gutter) 0;}

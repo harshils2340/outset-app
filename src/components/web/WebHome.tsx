@@ -1,6 +1,6 @@
 import "../../styles/air-home.css";
 import { Fragment, createContext, useContext, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
-import { CATS, CATMETA, WORLDS, inCat, worldOf, type WorldChip } from "../../data/categories";
+import { CAT_COLOR, CATS, CATMETA, WORLDS, inCat, worldOf, type WorldChip } from "../../data/categories";
 import { ART_LABEL } from "../../data/art";
 import { ICONS } from "../../data/icons";
 import { ALL_METRO_ID, METROS, metroById, metroCoords } from "../../data/metros";
@@ -17,6 +17,7 @@ import { useApp } from "../../state/AppProvider";
 import { Photo } from "../art/Photo";
 import { useNearNow } from "./NearNow";
 import { Mark } from "../layout/Mark";
+import { StatusBar } from "../layout/StatusBar";
 import { useModal } from "../layout/useModal";
 import { Markup } from "../Markup";
 import { AdminSiteLink, liteDealTitle, tidyDuration } from "./WebListing";
@@ -771,6 +772,7 @@ function CategoryBar({ chips, selected, onPick, filterCount, onFilters }: { chip
               aria-selected={selected === c.id}
               tabIndex={selected === c.id ? 0 : -1}
               className="ah-cat"
+              style={CAT_COLOR[c.cat] ? ({ "--cat-a": CAT_COLOR[c.cat] } as React.CSSProperties) : undefined}
               onClick={() => onPick(c)}
             >
               <Markup html={c.svg || ICONS[c.icon]} />
@@ -1501,12 +1503,12 @@ export function WebHome({ onOpenApp, onOperators, onAsk, asking = false, askSeed
   const resetFilters = () => { setSort("relevance"); setPrice({ min: null, max: null }); setCat("all"); setArtChip(null); };
   const showRails = state.catalogReady && !state.locating && (!q.trim() || placeOnly) && !gridMode;
   const modeSwitch = (
-    <div className="ah-modes" role="tablist" aria-label="Browse or Ask">
+    <div className="ah-modes" role="tablist" aria-label="Browse or Agent Mode">
       <button type="button" role="tab" aria-selected={!asking} className={!asking ? "on" : ""} onClick={() => onCloseAsk?.()}>
         Browse
       </button>
       <button type="button" role="tab" aria-selected={asking} className={asking ? "on" : ""} onClick={() => onAsk()}>
-        Ask
+        Agent
       </button>
     </div>
   );
@@ -1649,7 +1651,23 @@ export function WebHome({ onOpenApp, onOperators, onAsk, asking = false, askSeed
       {seg && compact ? <div className="ah-scrim" onClick={() => setSeg(null)} /> : null}
 
       {asking ? (
-        <WebConcierge seed={askSeed} embed onClose={() => onCloseAsk?.()} />
+        /*
+          A guest asking Outset something is texting an agent, not filling out a page, and it should look like
+          the thing it is: an iPhone, not a chat widget stretched across a browser tab. `.device`/`.screen`
+          already draw exactly this bezel for the app's own phone mockup (`App.tsx`'s `.stage`); this borrows
+          the same notch, status bar and home indicator around the identical `embed` thread rather than
+          swapping the guest onto that second tree, which is the jump `6d33774042` undid because closing it
+          left a dim overlay behind on the listings. On an actual phone this is already the full screen, so
+          the bezel only draws on desktop, the same floor as `.device`'s own `1025px` media query.
+        */
+        <div className="cg-phone">
+          <div className="cg-phone-bezel">
+            <div className="cg-phone-screen">
+              <StatusBar />
+              <WebConcierge seed={askSeed} embed onClose={() => onCloseAsk?.()} />
+            </div>
+          </div>
+        </div>
       ) : (
       <>
       <main className="ah-main ah-gutter" ref={mainRef} id="ah-main">

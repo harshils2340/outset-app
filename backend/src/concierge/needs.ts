@@ -30,23 +30,28 @@ export type Need = {
 /**
  * Per activity, what matters most first.
  *
- * `party` is on nearly everything because price is usually per head, but it is not always the first thing:
- * for a rental the clock decides the price and the number of people only decides how many you hire.
+ * Rentals and charters lead with "when", not "party": a live booking calendar is the whole reason this
+ * product exists, and nothing shows that off like asking what time somebody actually wants to go and then
+ * ranking real times around it. `nextNeed` answers "when" for this group with `timeOfDayNeed` below (a real
+ * clock question) instead of the generic `whenNeed` (a day of the week), and `known` holds it to a real hour.
  */
+const RENTAL_CATS = new Set([
+  "jetski", "pontoon", "kayak", "paddleboard", "bike", "snowmobile", "sailing", "fishing", "cruise", "surf", "scuba", "rafting",
+]);
+
 const BY_CATEGORY: Record<string, NeedId[]> = {
-  // Rentals and charters: the clock is the price.
-  jetski: ["duration", "party"],
-  pontoon: ["duration", "party"],
-  kayak: ["duration", "party"],
-  paddleboard: ["duration", "party"],
-  bike: ["duration", "party"],
-  snowmobile: ["duration", "party"],
-  sailing: ["duration", "party"],
-  fishing: ["duration", "party"],
-  cruise: ["duration", "party"],
-  surf: ["duration", "party"],
-  scuba: ["duration", "party"],
-  rafting: ["duration", "party"],
+  jetski: ["when", "party"],
+  pontoon: ["when", "party"],
+  kayak: ["when", "party"],
+  paddleboard: ["when", "party"],
+  bike: ["when", "party"],
+  snowmobile: ["when", "party"],
+  sailing: ["when", "party"],
+  fishing: ["when", "party"],
+  cruise: ["when", "party"],
+  surf: ["when", "party"],
+  scuba: ["when", "party"],
+  rafting: ["when", "party"],
 
   // Sessions sold by the head, in a fixed slot: who and when.
   escape: ["party", "when"],
@@ -137,16 +142,16 @@ function durationNeed(intent: Intent): Need {
   };
 }
 
-function partyNeed(intent: Intent): Need {
+/**
+ * No buttons: a headcount is any number at all, and four preset choices cannot stand in for it. Party of 3, 5
+ * or 11 tapped the nearest wrong button before, which is worse than asking plainly and letting the number they
+ * actually type answer it.
+ */
+function partyNeed(): Need {
   return {
     id: "party",
     question: "How many of you?",
-    choices: [
-      { label: "Just 2", add: "for 2 people" },
-      { label: "4", add: "for 4 people" },
-      { label: "6", add: "for 6 people" },
-      { label: "More than 8", add: "for 10 people" },
-    ],
+    choices: [],
   };
 }
 
@@ -158,6 +163,25 @@ function whenNeed(): Need {
       { label: "Tonight", add: "tonight" },
       { label: "Tomorrow", add: "tomorrow" },
       { label: "This weekend", add: "this weekend" },
+    ],
+  };
+}
+
+/**
+ * A real clock question, not a day of the week. Each choice's text carries an actual part-of-day word
+ * (`plan.ts`'s own reader turns "morning", "afternoon" and "evening" into a clock minute), so tapping one does
+ * not just narrow the day — it makes every live time on screen rank itself by distance from that hour, the
+ * nearest one called out and the rest marked "+40m", "+1h20m". That live-ranking is the whole demonstration
+ * that these are somebody's real calendars and not a list; asking about people first buried it two turns down.
+ */
+function timeOfDayNeed(intent: Intent): Need {
+  return {
+    id: "when",
+    question: "What time do you want to " + (intent.categoryId === "fishing" || intent.categoryId === "cruise" || intent.categoryId === "sailing" ? "go out" : "go") + "?",
+    choices: [
+      { label: "Morning", add: "this morning" },
+      { label: "Afternoon", add: "this afternoon" },
+      { label: "Evening", add: "this evening" },
     ],
   };
 }
@@ -176,9 +200,13 @@ function budgetNeed(): Need {
 
 /** Has the guest already settled this, one way or another? */
 export function known(intent: Intent, id: NeedId): boolean {
-  // `assumed` carries "two of you" exactly when nobody counted heads, so its absence is the guest saying so.
-  if (id === "party") return !(intent.assumed || []).some((a) => a.includes("two of you"));
-  if (id === "when") return intent.when !== "any" || intent.atMinute != null;
+  if (id === "party") return !!intent.partyStated;
+  if (id === "when") {
+    // A rental's "when" is a clock question: "tomorrow" names a day but not an hour, and the whole point of
+    // asking is to rank live times against one. Everywhere else a day is a real answer to "when".
+    if (intent.categoryId && RENTAL_CATS.has(intent.categoryId)) return intent.atMinute != null;
+    return intent.when !== "any" || intent.atMinute != null;
+  }
   if (id === "budget") return intent.maxPerPerson != null;
   if (id === "duration") return /\b(\d{1,2}\s*(?:hour|hr|min)|half day|full day|all day|overnight)\b/i.test(intent.text);
   return false;
@@ -196,8 +224,8 @@ export function nextNeed(intent: Intent): Need | null {
   for (const id of order) {
     if (asked.has("need:" + id) || known(intent, id)) continue;
     if (id === "duration") return durationNeed(intent);
-    if (id === "party") return partyNeed(intent);
-    if (id === "when") return whenNeed();
+    if (id === "party") return partyNeed();
+    if (id === "when") return intent.categoryId && RENTAL_CATS.has(intent.categoryId) ? timeOfDayNeed(intent) : whenNeed();
     if (id === "budget") return budgetNeed();
   }
   return null;

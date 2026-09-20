@@ -241,16 +241,28 @@
 .ah-cats-track{position:relative;flex:1;min-width:0;height:100%;}
 .ah-cats-scroll{display:flex;gap:32px;height:100%;overflow-x:auto;scrollbar-width:none;padding:0 2px;}
 .ah-cats-scroll::-webkit-scrollbar{display:none;}
-.ah-cat{position:relative;flex:none;min-width:56px;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:4px 0 0;color:var(--ink-soft);}
-.ah-cat > span:first-child{line-height:0;opacity:.72;transition:opacity .15s ease;}
-.ah-cat svg{width:24px;height:24px;}
+.ah-cat{position:relative;flex:none;min-width:56px;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;padding:4px 0 0;color:var(--ink-soft);}
+/*
+  A little colour disc behind the icon, one shade per activity, rather than Airbnb's own grey-to-black
+  underline: this is the one moment on the page that says "these are different things to go do", not just
+  different words in the same list. It stays a plain outline until picked, so the strip is not ten colours
+  shouting over each other before anyone has chosen anything.
+*/
+.ah-cat > span:first-child{
+  line-height:0; display:grid; place-items:center; width:38px; height:38px; border-radius:50%;
+  background:transparent; opacity:.85; transition:background-color .15s ease,opacity .15s ease;
+}
+.ah-cat svg{width:22px;height:22px;}
 .ah-cat > span:last-child{font-size:12px;font-weight:600;line-height:16px;white-space:nowrap;}
-.ah-cat::after{content:"";position:absolute;left:0;right:0;bottom:10px;height:2px;background:transparent;transition:background-color .15s ease;}
+.ah-cat::after{content:"";position:absolute;left:8px;right:8px;bottom:0;height:2px;background:transparent;border-radius:2px;transition:background-color .15s ease;}
 .ah-cat:hover{color:var(--ink);}
-.ah-cat:hover > span:first-child,.ah-cat[aria-selected="true"] > span:first-child{opacity:1;}
-.ah-cat:hover::after{background:var(--line-strong);}
-.ah-cat[aria-selected="true"]{color:var(--ink);}
-.ah-cat[aria-selected="true"]::after{background:var(--ink);}
+.ah-cat:hover > span:first-child{opacity:1;background:var(--surface-2);}
+.ah-cat[aria-selected="true"] > span:first-child{
+  opacity:1; color:#fff;
+  background:var(--cat-a,var(--ink));
+}
+.ah-cat[aria-selected="true"]{color:var(--cat-a,var(--ink));}
+.ah-cat[aria-selected="true"]::after{background:var(--cat-a,var(--ink));}
 .ah-cat:focus-visible{outline-offset:-4px;border-radius:8px;}
 .ah-cats-track.fade-l::before,.ah-cats-track.fade-r::after{content:"";position:absolute;top:0;bottom:0;width:72px;z-index:1;pointer-events:none;}
 .ah-cats-track.fade-l::before{left:0;background:linear-gradient(to right,#fff 45%,rgba(255,255,255,0));}

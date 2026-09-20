@@ -2052,7 +2052,7 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
                   <p className="alsecsub">Ask Outset reads {possessive(item.title)} own published information, and can check live availability while you wait.</p>
                   <button type="button" className="aloutline" onClick={() => openAsk("What should I know about " + item.title + " before booking?")}>
                     Ask Outset about {item.title}
-                  </button>
+                </button>
                 </>
               ) : (
                 <p className="alsecsub">{item.title} answers these themselves. {callHref ? "Give them a call, or send" : "Send"} a booking request on this page and it reaches them directly.</p>

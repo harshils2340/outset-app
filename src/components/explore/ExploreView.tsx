@@ -1,5 +1,5 @@
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
-import { CATS, CATMETA } from "../../data/categories";
+import { CAT_COLOR, CATS, CATMETA } from "../../data/categories";
 import { ALL_METRO_ID, metroCoords, metroShort } from "../../data/metros";
 import { ICONS } from "../../data/icons";
 import { getCatalog, savedListings, stillArriving } from "../../lib/catalog";
@@ -152,7 +152,7 @@ export function ExploreView({ onAsk, onCloseAsk, asking }: { onAsk: () => void; 
           </div>
           <nav className="aircats" aria-label="Categories">
             {CATS.map((c) => (
-              <button key={c.id} type="button" className="aircat" aria-pressed={state.cat === c.id} onClick={() => setCat(c.id)}>
+              <button key={c.id} type="button" className="aircat" aria-pressed={state.cat === c.id} style={CAT_COLOR[c.id] ? ({ "--cat-a": CAT_COLOR[c.id] } as React.CSSProperties) : undefined} onClick={() => setCat(c.id)}>
                 <Markup html={ICONS[c.icon]} />
                 <span>{c.name}</span>
               </button>
@@ -213,7 +213,7 @@ export function ExploreView({ onAsk, onCloseAsk, asking }: { onAsk: () => void; 
         </div>
         <nav className="aircats" aria-label="Categories">
           {CATS.map((c) => (
-            <button key={c.id} type="button" className="aircat" aria-pressed={state.cat === c.id} onClick={() => setCat(c.id)}>
+            <button key={c.id} type="button" className="aircat" aria-pressed={state.cat === c.id} style={CAT_COLOR[c.id] ? ({ "--cat-a": CAT_COLOR[c.id] } as React.CSSProperties) : undefined} onClick={() => setCat(c.id)}>
               <Markup html={ICONS[c.icon]} />
               <span>{c.name}</span>
             </button>

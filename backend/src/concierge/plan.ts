@@ -67,6 +67,14 @@ export type Intent = {
   places?: PlaceMatch[];
   /** Fields nobody said out loud, so the answer can admit what it guessed instead of pretending it was told. */
   assumed?: string[];
+  /**
+   * True once the guest has actually counted heads, in this sentence or an earlier one in the same
+   * conversation. `party` itself cannot answer this: it starts at the default of 2, and once that default has
+   * ridden along through `prior` for a turn it is a real, truthy number indistinguishable from a guest who
+   * really did say "two of us" — which used to mean the party question was asked on turn one and then never
+   * asked again, because everything after that read the carried default as an answer already given.
+   */
+  partyStated?: boolean;
 };
 
 const NUM_WORDS: Record<string, number> = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10, a: 1, couple: 2 };
@@ -153,7 +161,11 @@ export function readIntent(text: string, prior?: Intent | null, device?: { lat: 
     t.match(new RegExp("\\b" + N + "\\s+(?:" + HEADWORD + ")\\b")) ||
     t.match(new RegExp("\\bparty of\\s+" + N + "\\b")) ||
     t.match(new RegExp("\\bgroup of\\s+" + N + "\\b")) ||
-    (heads ? ([""] as unknown as RegExpMatchArray) : null);
+    (heads ? ([""] as unknown as RegExpMatchArray) : null) ||
+    // A reply that is nothing but a number ("2", "5") is a headcount and nothing else: the one place a bare
+    // digit is read as an answer rather than ignored, because it is asked for as its own whole message, the
+    // way "How many of you?" gets no preset buttons to tap and expects exactly this back.
+    t.trim().match(/^(\d{1,3})$/);
   if (heads > 1) party = heads;
   else if (m && m[1]) party = num(m[1]) || 2;
   else if (/\b(me and my|my partner and i|just us two|date night)\b/.test(t)) party = 2;
@@ -372,7 +384,7 @@ export function readIntent(text: string, prior?: Intent | null, device?: { lat: 
    * fifty-five operators' worth of guests in Waterloo, Iowa. Which one they meant is not guessable from the
    * sentence, so the whole list comes back and the planner asks.
    */
-  const allPlaces = (
+  const exactPlaces = (
     db
       .prepare(
         `SELECT city, region, COUNT(*) AS n, AVG(lat) AS lat, AVG(lon) AS lon FROM operators
@@ -381,6 +393,26 @@ export function readIntent(text: string, prior?: Intent | null, device?: { lat: 
       )
       .all(t) as PlaceMatch[]
   ).filter((r) => wordIn(t, r.city));
+
+  /**
+   * A one-letter slip in the town's name — "tornto" for "toronto" — must not read as nowhere named and drop
+   * a guest who was completely clear about where they were into a "where are you?" prompt. Tried only when
+   * nothing matched exactly, against town names of five letters or more so a short, common word already
+   * covered by real language (a genre, a day) is never quietly reinterpreted as some unrelated town, and
+   * only when the sentence actually has a word long enough to be a typo of one.
+   */
+  const allPlaces =
+    exactPlaces.length || !t.split(/[^a-z]+/).some((tok) => tok.length >= 5)
+      ? exactPlaces
+      : (
+          db
+            .prepare(
+              `SELECT city, region, COUNT(*) AS n, AVG(lat) AS lat, AVG(lon) AS lon FROM operators
+                WHERE city IS NOT NULL AND length(city) >= 5 AND lat IS NOT NULL
+                GROUP BY lower(city), region HAVING n >= 3 ORDER BY n DESC LIMIT 400`,
+            )
+            .all() as PlaceMatch[]
+        ).filter((r) => near(r.city.toLowerCase(), 1));
 
   /**
    * A province is not a town of the same name, but it is also not a reason to forget the town. Dropping the
@@ -500,6 +532,7 @@ export function readIntent(text: string, prior?: Intent | null, device?: { lat: 
     region: saidPlace ? region : (prior?.region ?? null),
     point: saidPlace ? point : (prior?.point ?? null),
     party: saidParty ? party : (prior?.party ?? 2),
+    partyStated: saidParty || !!prior?.partyStated,
     when: saidWhen ? when : (prior?.when ?? "any"),
     maxPerPerson: maxPerPerson ?? prior?.maxPerPerson ?? null,
     maxTotal: maxTotal ?? prior?.maxTotal ?? null,
@@ -516,7 +549,7 @@ export function readIntent(text: string, prior?: Intent | null, device?: { lat: 
   };
 
   // Said out loud rather than quietly applied, because a wrong guess a guest cannot see is a wrong answer.
-  if (!saidParty && !prior?.party) assumed.push("two of you");
+  if (!merged.partyStated) assumed.push("two of you");
   if (!saidWhen && atMinute == null && (!prior || prior.when === "any")) assumed.push("any time in the next fortnight");
   merged.assumed = assumed;
   return merged;
