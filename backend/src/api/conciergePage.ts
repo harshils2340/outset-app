@@ -139,7 +139,7 @@ function confirmBooking(o, d){
     step('<span class="k">book</span> <span class="v">opening '+o.name+"'s own checkout</span>");
     step('<span class="k">card</span> <span class="v">single-use virtual card issued for '+(d.fromPrice!=null?money(d.fromPrice):'the quoted total')+'</span>');
     bubble("Booked.\\n"+o.name+"\\n"+d.item+"\\n"+d.date+" at "+d.time+"\\n"+
-      (d.fromPrice!=null? money(d.fromPrice)+" — paid\\n":"")+
+      (d.fromPrice!=null? money(d.fromPrice)+", paid\\n":"")+
       "Confirmation OUT-"+Math.random().toString(36).slice(2,8).toUpperCase(), 'them');
     heroA.textContent='Booked at '+o.name;
     heroB.textContent='They were never asked to sign up for anything.';
@@ -193,7 +193,7 @@ async function ask(text){
         heroA.textContent=priced.length+' priced from their own sites';
         heroB.textContent='Read off their pages by the crawl; the time needs a call or their booking page.';
       } else {
-        bubble("I found "+data.counts.total+" places but nothing published — no times, no prices. Those are the ones we'd have to phone.", 'them');
+        bubble("I found "+data.counts.total+" places but nothing published: no times, no prices. Those are the ones we'd have to phone.", 'them');
         heroA.textContent='Nothing published'; heroB.textContent='These shops take bookings by phone only.';
       }
       return;
