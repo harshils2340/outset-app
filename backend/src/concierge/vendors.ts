@@ -105,11 +105,31 @@ const RULES: {
   { vendor: "wix", detect: /bookings-viewer|wix\.com\/_api\/bookings|booking-calendar/i },
 ];
 
+/**
+ * A vendor's own site is not one of its accounts. Most of these ids are read out of a subdomain or the first
+ * path segment, and a shop's booking page nearly always links back to the vendor as well: the powered-by badge
+ * on a Checkfront page is `www.checkfront.com`, so the account came back as "www" and the hosted booking page we
+ * built for that shop was `https://www.checkfront.com/reserve/`, which is Checkfront's own marketing site.
+ */
+const NOT_AN_ACCOUNT = /^(?:www|help|support|blog|docs|api|app|apps|cdn|assets|static|status|secure|info|news|embeds|widgets|book|booking|pages|legal|about|contact|login|signup|partners)$/i;
+
+/**
+ * The first id on the page that could be a shop rather than the vendor itself. Taking the first match outright
+ * meant one link to the vendor's own site, higher up the page than the widget, decided the account.
+ */
+function accountIn(haystack: string, re: RegExp): string | null {
+  const all = new RegExp(re.source, re.flags.includes("g") ? re.flags : re.flags + "g");
+  for (const m of haystack.matchAll(all)) {
+    if (m[1] && !NOT_AN_ACCOUNT.test(m[1])) return m[1];
+  }
+  return null;
+}
+
 /** Recognise the vendor from any text that came off the shop's page: the HTML, a script src, an iframe src. */
 export function detectVendor(haystack: string): VendorHit {
   for (const r of RULES) {
     if (!r.detect.test(haystack)) continue;
-    const account = r.account ? haystack.match(r.account)?.[1] ?? null : null;
+    const account = r.account ? accountIn(haystack, r.account) : null;
     return {
       vendor: r.vendor,
       account,
