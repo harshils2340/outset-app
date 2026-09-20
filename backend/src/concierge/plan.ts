@@ -201,7 +201,7 @@ function servicesFor(domain: string): { name: string; price: number | null; unit
 /** The shortlist: businesses that match, best reviewed first, the ones we can quote times for first of all. */
 export function candidates(intent: Intent, limit = 8, radiusKm = 40): Option[] {
   const where: string[] = ["o.origin != 'demo'", "o.name IS NOT NULL"];
-  const args: unknown[] = [];
+  const args: (string | number)[] = [];
   if (intent.categoryId) {
     where.push("o.category_id = ?");
     args.push(intent.categoryId);
