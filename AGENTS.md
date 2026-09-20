@@ -26,6 +26,16 @@ This is "DoorDash for experiences" in the sense that guests pick a slot and pay.
 - Guest catalog is real operators across US and Canada metros, shown as Instant Book. Tampa is the densest verified batch. The backend metro grid is the same 47-city list.
 - Never start catalog crawls, Playwright, or the overnight pipeline on the founder's Mac. `photos`, `structure`, `enrich`, `owners`, `hours-crawl`, `promo-crawl`, `screen-covers`, all-state `discover`, and `pipeline` run on Render. Do not set `OUTSET_ALLOW_CRAWL`. Keep at least 10% CPU idle so Cursor stays usable (`cd backend && npm run cpu`). If headless Chrome is already on the CPU, `cd backend && npm run chrome:reap`.
 
+## The concierge
+
+`backend/src/concierge/` is the newest surface: a sentence in, real bookable options out. It reads what, where,
+when and how many out of "escape room in waterloo tonight, 4 of us", shortlists the catalog by distance, then
+asks each shop's own booking system what is actually free and what it really costs. `npx tsx
+scripts/demo-server.mts` runs it alone at `/go`, without Postgres or Stripe. Read
+`backend/src/concierge/AGENTS.md` before touching any of it: it carries the vendor coverage numbers, the four
+fulfilment routes, and a list of bugs that are easy to reintroduce (UTC dates, tax-exclusive prices, child
+fares quoted as the headline, a province matched as a town).
+
 ## Backend (supply)
 
 `backend/` discovers real operators from OpenStreetMap (`npm run backend:discover`, one Overpass query per state or province, cached in `backend/data/osm/`), stores unclaimed operator profiles, scrapes public websites, scores completeness, and drafts claim emails. `npm run backend:sync` writes each operator's public contact facts (website, phone, email, street address, hours) into `src/data/contacts.ts`, keyed by domain, so every listing page embeds them. Instant book stays off until an operator claims. See `backend/AGENTS.md`.
