@@ -163,17 +163,47 @@ export function inferCategory(text: string): CategoryDef {
   if (/\bsup\b|paddle/.test(t)) return categoryById("paddleboard")!;
   if (/pontoon/.test(t)) return categoryById("pontoon")!;
   if (/fish|charter/.test(t)) return categoryById("fishing")!;
-  if (/sail|cruise|catamaran/.test(t)) return categoryById("cruise")!;
+  /**
+   * The compound activities come before the words they contain. "Parasailing" contains "sail" and the cruise
+   * rule ran first, so a search for parasailing in Toronto answered with sunset cruises and party boats, and
+   * Parasail Toronto itself only surfaced once the party size happened to reach twenty. Same shape as "axe"
+   * inside "relaxed": a short word buried in a longer one. "Sail" also needs its own boundary so it cannot
+   * be found inside another word entirely.
+   */
+  if (/parasail/.test(t)) return categoryById("parasail")!;
+  if (/\bsail|cruise|catamaran/.test(t)) return categoryById("cruise")!;
   if (/skydive|tandem jump/.test(t)) return categoryById("skydive")!;
   if (/helicopter|\bheli\b/.test(t)) return categoryById("heli")!;
   if (/balloon/.test(t)) return categoryById("balloon")!;
-  if (/parasail/.test(t)) return categoryById("parasail")!;
   if (/kart/.test(t)) return categoryById("kart")!;
   if (/escape/.test(t)) return categoryById("escape")!;
   if (/\baxe\b/.test(t)) return categoryById("axe")!;
   if (/paintball/.test(t)) return categoryById("paintball")!;
   if (/horse|trail ride/.test(t)) return categoryById("horse")!;
-  const byId = [...CATEGORIES].sort((a, b) => b.id.length - a.id.length).find((c) => t.includes(c.id));
+  /**
+   * The remaining sixty-odd activities, matched by their own id, but only where a word starts.
+   *
+   * This was a bare substring test, which is a quiet disaster over ids this short: "relaxed" contains "axe",
+   * so an offsite brief asking for "something relaxed" came back as axe throwing; "Orange County Boat Tours"
+   * contains "range" and classified as a shooting range; "surface", "abundance", "whisky" and "avenue" carry
+   * surf, dance, ski and venue. Requiring a word boundary in front keeps the cases the substring test was
+   * there for — "escaperoom" written as one word still matches "escape" — and drops the accidents.
+   *
+   * Longest id first, so "paddleboard" is not taken by "board" and "snowmobile" not by "bike".
+   */
+  /**
+   * A leading word boundary was not enough on its own. "Skin" starts with "ski", so 3,165 spas and skincare
+   * studios read as ski resorts, and "Golfin'" reads as golf where "Disc Golf" should win. The short ids need
+   * the word to END there too; the long ones keep the prefix match, because that is what lets "escaperoom"
+   * and "kayaking" resolve at all.
+   */
+  const byId = [...CATEGORIES]
+    .sort((a, b) => b.id.length - a.id.length)
+    .find((c) => {
+      // Short ids must end the word, give or take an English ending: "ski", "skis", "skiing" — never "skin".
+      const pat = c.id.length <= 4 ? "\\b" + c.id + "(?:s|es|ing)?\\b" : "\\b" + c.id;
+      return new RegExp(pat).test(t);
+    });
   if (byId) return byId;
   return categoryById("jetski")!;
 }

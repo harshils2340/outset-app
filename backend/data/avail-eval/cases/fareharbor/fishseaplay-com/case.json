@@ -1,0 +1,317 @@
+{
+  "id": "fareharbor/fishseaplay-com",
+  "vendor": "fareharbor",
+  "domain": "fishseaplay.com",
+  "bookingUrl": "https://fareharbor.com/embeds/book/seaplaycharters/?full-items=yes&flow=1131951",
+  "operatorId": "case-fareharbor-fishseaplay-com",
+  "from": "2026-09-20",
+  "days": 14,
+  "capturedAt": "2026-09-20T04:27:56.830Z",
+  "observed": {
+    "vendor": "fareharbor",
+    "live": true,
+    "updatedAt": "2026-09-20T04:27:56.830Z",
+    "days": [
+      {
+        "date": "2026-09-20",
+        "slots": [
+          {
+            "startsAt": "2026-09-20T06:30",
+            "label": "6:30 AM · Jetty Fishing Charter",
+            "bookUrl": "https://fareharbor.com/seaplaycharters/items/528064/availability/1963755050/book/"
+          },
+          {
+            "startsAt": "2026-09-20T12:30",
+            "label": "12:30 PM · Jetty Fishing Charter",
+            "bookUrl": "https://fareharbor.com/seaplaycharters/items/528064/availability/1963755058/book/"
+          },
+          {
+            "startsAt": "2026-09-20T12:30",
+            "label": "12:30 PM · Shark Charter",
+            "bookUrl": "https://fareharbor.com/seaplaycharters/items/528091/availability/1963755689/book/"
+          }
+        ]
+      },
+      {
+        "date": "2026-09-21",
+        "slots": [
+          {
+            "startsAt": "2026-09-21T06:30",
+            "label": "6:30 AM · Jetty Fishing Charter",
+            "bookUrl": "https://fareharbor.com/seaplaycharters/items/528064/availability/1963754475/book/"
+          },
+          {
+            "startsAt": "2026-09-21T06:30",
+            "label": "6:30 AM · Shark Charter",
+            "bookUrl": "https://fareharbor.com/seaplaycharters/items/528091/availability/1963755190/book/"
+          },
+          {
+            "startsAt": "2026-09-21T12:30",
+            "label": "12:30 PM · Jetty Fishing Charter",
+            "bookUrl": "https://fareharbor.com/seaplaycharters/items/528064/availability/1963754483/book/"
+          },
+          {
+            "startsAt": "2026-09-21T12:30",
+            "label": "12:30 PM · Shark Charter",
+            "bookUrl": "https://fareharbor.com/seaplaycharters/items/528091/availability/1963755197/book/"
+          }
+        ]
+      },
+      {
+        "date": "2026-09-22",
+        "slots": [
+          {
+            "startsAt": "2026-09-22T06:30",
+            "label": "6:30 AM · Jetty Fishing Charter",
+            "bookUrl": "https://fareharbor.com/seaplaycharters/items/528064/availability/1963754594/book/"
+          },
+          {
+            "startsAt": "2026-09-22T06:30",
+            "label": "6:30 AM · Shark Charter",
+            "bookUrl": "https://fareharbor.com/seaplaycharters/items/528091/availability/1963755278/book/"
+          },
+          {
+            "startsAt": "2026-09-22T12:30",
+            "label": "12:30 PM · Jetty Fishing Charter",
+            "bookUrl": "https://fareharbor.com/seaplaycharters/items/528064/availability/1963754605/book/"
+          },
+          {
+            "startsAt": "2026-09-22T12:30",
+            "label": "12:30 PM · Shark Charter",
+            "bookUrl": "https://fareharbor.com/seaplaycharters/items/528091/availability/1963755287/book/"
+          }
+        ]
+      },
+      {
+        "date": "2026-09-23",
+        "slots": [
+          {
+            "startsAt": "2026-09-23T06:30",
+            "label": "6:30 AM · Jetty Fishing Charter",
+            "bookUrl": "https://fareharbor.com/seaplaycharters/items/528064/availability/1963754722/book/"
+          },
+          {
+            "startsAt": "2026-09-23T06:30",
+            "label": "6:30 AM · Shark Charter",
+            "bookUrl": "https://fareharbor.com/seaplaycharters/items/528091/availability/1963755367/book/"
+          },
+          {
+            "startsAt": "2026-09-23T12:30",
+            "label": "12:30 PM · Jetty Fishing Charter",
+            "bookUrl": "https://fareharbor.com/seaplaycharters/items/528064/availability/1963754733/book/"
+          },
+          {
+            "startsAt": "2026-09-23T12:30",
+            "label": "12:30 PM · Shark Charter",
+            "bookUrl": "https://fareharbor.com/seaplaycharters/items/528091/availability/1963755442/book/"
+          }
+        ]
+      },
+      {
+        "date": "2026-09-24",
+        "slots": [
+          {
+            "startsAt": "2026-09-24T06:30",
+            "label": "6:30 AM · Jetty Fishing Charter",
+            "bookUrl": "https://fareharbor.com/seaplaycharters/items/528064/availability/1963754816/book/"
+          },
+          {
+            "startsAt": "2026-09-24T06:30",
+            "label": "6:30 AM · Shark Charter",
+            "bookUrl": "https://fareharbor.com/seaplaycharters/items/528091/availability/1963755503/book/"
+          },
+          {
+            "startsAt": "2026-09-24T12:30",
+            "label": "12:30 PM · Jetty Fishing Charter",
+            "bookUrl": "https://fareharbor.com/seaplaycharters/items/528064/availability/1963754827/book/"
+          },
+          {
+            "startsAt": "2026-09-24T12:30",
+            "label": "12:30 PM · Shark Charter",
+            "bookUrl": "https://fareharbor.com/seaplaycharters/items/528091/availability/1963755512/book/"
+          }
+        ]
+      },
+      {
+        "date": "2026-09-25",
+        "slots": [
+          {
+            "startsAt": "2026-09-25T06:30",
+            "label": "6:30 AM · Jetty Fishing Charter",
+            "bookUrl": "https://fareharbor.com/seaplaycharters/items/528064/availability/1963754902/book/"
+          },
+          {
+            "startsAt": "2026-09-25T06:30",
+            "label": "6:30 AM · Shark Charter",
+            "bookUrl": "https://fareharbor.com/seaplaycharters/items/528091/availability/1963755572/book/"
+          },
+          {
+            "startsAt": "2026-09-25T12:30",
+            "label": "12:30 PM · Jetty Fishing Charter",
+            "bookUrl": "https://fareharbor.com/seaplaycharters/items/528064/availability/1963754913/book/"
+          },
+          {
+            "startsAt": "2026-09-25T12:30",
+            "label": "12:30 PM · Shark Charter",
+            "bookUrl": "https://fareharbor.com/seaplaycharters/items/528091/availability/1963755581/book/"
+          }
+        ]
+      },
+      {
+        "date": "2026-09-26",
+        "slots": [
+          {
+            "startsAt": "2026-09-26T12:30",
+            "label": "12:30 PM · Jetty Fishing Charter",
+            "bookUrl": "https://fareharbor.com/seaplaycharters/items/528064/availability/1963754995/book/"
+          },
+          {
+            "startsAt": "2026-09-26T12:30",
+            "label": "12:30 PM · Shark Charter",
+            "bookUrl": "https://fareharbor.com/seaplaycharters/items/528091/availability/1963755649/book/"
+          }
+        ]
+      },
+      {
+        "date": "2026-09-27",
+        "slots": [
+          {
+            "startsAt": "2026-09-27T06:30",
+            "label": "6:30 AM · Jetty Fishing Charter",
+            "bookUrl": "https://fareharbor.com/seaplaycharters/items/528064/availability/1963755066/book/"
+          },
+          {
+            "startsAt": "2026-09-27T06:30",
+            "label": "6:30 AM · Shark Charter",
+            "bookUrl": "https://fareharbor.com/seaplaycharters/items/528091/availability/1963755692/book/"
+          },
+          {
+            "startsAt": "2026-09-27T12:30",
+            "label": "12:30 PM · Jetty Fishing Charter",
+            "bookUrl": "https://fareharbor.com/seaplaycharters/items/528064/availability/1963755072/book/"
+          },
+          {
+            "startsAt": "2026-09-27T12:30",
+            "label": "12:30 PM · Shark Charter",
+            "bookUrl": "https://fareharbor.com/seaplaycharters/items/528091/availability/1963755695/book/"
+          }
+        ]
+      },
+      {
+        "date": "2026-09-28",
+        "slots": [
+          {
+            "startsAt": "2026-09-28T06:30",
+            "label": "6:30 AM · Jetty Fishing Charter",
+            "bookUrl": "https://fareharbor.com/seaplaycharters/items/528064/availability/1963754495/book/"
+          },
+          {
+            "startsAt": "2026-09-28T06:30",
+            "label": "6:30 AM · Shark Charter",
+            "bookUrl": "https://fareharbor.com/seaplaycharters/items/528091/availability/1963755207/book/"
+          },
+          {
+            "startsAt": "2026-09-28T12:30",
+            "label": "12:30 PM · Jetty Fishing Charter",
+            "bookUrl": "https://fareharbor.com/seaplaycharters/items/528064/availability/1963754506/book/"
+          },
+          {
+            "startsAt": "2026-09-28T12:30",
+            "label": "12:30 PM · Shark Charter",
+            "bookUrl": "https://fareharbor.com/seaplaycharters/items/528091/availability/1963755214/book/"
+          }
+        ]
+      },
+      {
+        "date": "2026-09-29",
+        "slots": [
+          {
+            "startsAt": "2026-09-29T06:30",
+            "label": "6:30 AM · Jetty Fishing Charter",
+            "bookUrl": "https://fareharbor.com/seaplaycharters/items/528064/availability/1963754617/book/"
+          },
+          {
+            "startsAt": "2026-09-29T06:30",
+            "label": "6:30 AM · Shark Charter",
+            "bookUrl": "https://fareharbor.com/seaplaycharters/items/528091/availability/1963755296/book/"
+          },
+          {
+            "startsAt": "2026-09-29T12:30",
+            "label": "12:30 PM · Jetty Fishing Charter",
+            "bookUrl": "https://fareharbor.com/seaplaycharters/items/528064/availability/1963754629/book/"
+          },
+          {
+            "startsAt": "2026-09-29T12:30",
+            "label": "12:30 PM · Shark Charter",
+            "bookUrl": "https://fareharbor.com/seaplaycharters/items/528091/availability/1963755305/book/"
+          }
+        ]
+      },
+      {
+        "date": "2026-09-30",
+        "slots": [
+          {
+            "startsAt": "2026-09-30T06:30",
+            "label": "6:30 AM · Jetty Fishing Charter",
+            "bookUrl": "https://fareharbor.com/seaplaycharters/items/528064/availability/1963755079/book/"
+          },
+          {
+            "startsAt": "2026-09-30T06:30",
+            "label": "6:30 AM · Shark Charter",
+            "bookUrl": "https://fareharbor.com/seaplaycharters/items/528091/availability/1963755697/book/"
+          },
+          {
+            "startsAt": "2026-09-30T12:30",
+            "label": "12:30 PM · Jetty Fishing Charter",
+            "bookUrl": "https://fareharbor.com/seaplaycharters/items/528064/availability/1963755084/book/"
+          },
+          {
+            "startsAt": "2026-09-30T12:30",
+            "label": "12:30 PM · Shark Charter",
+            "bookUrl": "https://fareharbor.com/seaplaycharters/items/528091/availability/1963755699/book/"
+          }
+        ]
+      },
+      {
+        "date": "2026-10-01",
+        "slots": [
+          {
+            "startsAt": "2026-10-01T06:30",
+            "label": "6:30 AM · Jetty Fishing Charter",
+            "bookUrl": "https://fareharbor.com/seaplaycharters/items/528064/availability/1963754507/book/"
+          },
+          {
+            "startsAt": "2026-10-01T12:30",
+            "label": "12:30 PM · Jetty Fishing Charter",
+            "bookUrl": "https://fareharbor.com/seaplaycharters/items/528064/availability/1963754521/book/"
+          }
+        ]
+      },
+      {
+        "date": "2026-10-02",
+        "slots": [
+          {
+            "startsAt": "2026-10-02T06:30",
+            "label": "6:30 AM · Jetty Fishing Charter",
+            "bookUrl": "https://fareharbor.com/seaplaycharters/items/528064/availability/1963754625/book/"
+          },
+          {
+            "startsAt": "2026-10-02T12:30",
+            "label": "12:30 PM · Jetty Fishing Charter",
+            "bookUrl": "https://fareharbor.com/seaplaycharters/items/528064/availability/1963754638/book/"
+          }
+        ]
+      },
+      {
+        "date": "2026-10-03",
+        "slots": [
+          {
+            "startsAt": "2026-10-03T12:30",
+            "label": "12:30 PM · Jetty Fishing Charter",
+            "bookUrl": "https://fareharbor.com/seaplaycharters/items/528064/availability/1963754755/book/"
+          }
+        ]
+      }
+    ]
+  }
+}

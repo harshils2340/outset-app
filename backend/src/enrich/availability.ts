@@ -1,6 +1,7 @@
 import { db } from "../db/client.ts";
 import { fareharborShortname, peekRef, xolaSeller } from "./widgets.ts";
 import { safeFetch } from "../lib/safeFetch.ts";
+import { openFarePrice } from "../lib/fares.ts";
 
 /**
  * Real open dates and times, read live from the operator's own booking system.
@@ -212,8 +213,27 @@ async function fareharbor(shortname: string, dates: string[]): Promise<Availabil
   if (!items.length) return dead("fareharbor", "no bookable items");
   const byPk = new Map(items.map((i) => [i.pk, i]));
 
+  /**
+   * One row per departure, however many times the calendar hands it to us.
+   *
+   * A FareHarbor month calendar is laid out in whole weeks, so it runs from the Sunday before the first of the
+   * month to the Saturday after the last: September 2026 answers with 30 August to 3 October, and October with
+   * 27 September to 31 October. Any window that crosses a month boundary therefore reads the straddling week
+   * twice, and every departure in it was being added twice. Hawaii Glass Bottom Boats' 27 September came back
+   * as 38 rows that were 19 departures, the same 8:15 cruise listed twice with the same seat count and the same
+   * book link, and roughly half of all fourteen day windows cross a boundary.
+   *
+   * `book_url` carries FareHarbor's own availability primary key and so is the departure's identity; where the
+   * company hides it, the trip and its start are. Two boats running the same trip name at nine are two items
+   * with two pks and stay two rows, which is what a guest choosing between them needs.
+   */
+  const seen = new Set<string>();
+
   const add = (at: string, a: FhAvailability, item: FhItem): void => {
     if (!a.start_at || a.is_unlisted || a.is_sold_out || a.is_bookable === false) return;
+    const identity = at + "|" + (a.book_url || `${a.start_at}|${item.pk}`);
+    if (seen.has(identity)) return;
+    seen.add(identity);
     // Capacity zero on a departure FareHarbor still calls bookable and not sold out means the company keeps its
     // numbers private, not that the boat is full: 135 of Hubbard's Marina's 151 September departures read that
     // way. So is_sold_out and is_bookable decide whether to show it, and a seat count is only quoted when real.
@@ -301,17 +321,32 @@ type PeekTimes = {
 
 const peekHeaders = (key: string) => ({ Accept: "application/vnd.api+json", Authorization: "Key " + key });
 
-type PeekPrices = { pricing?: { price?: { amount?: string }; list_price?: { amount?: string } }[] }[];
+type PeekPrices = { pricing?: { price?: { amount?: string }; list_price?: { amount?: string } }[]; ticket_id?: string }[];
 
-function peekLowest(prices: PeekPrices | undefined): number | undefined {
-  const amounts: number[] = [];
+/**
+ * The cheapest fare an adult could actually buy on this departure.
+ *
+ * It used to be the cheapest row of any kind, and a Peek price row carries no name, so an operator selling
+ * Adult $100 and Infant $20 had every slot on the guest's listing page labelled $20. The concierge already
+ * refused to do that for FareHarbor; the listing page, which reads this file, had no such rule at all, and
+ * the two surfaces quoted different prices for the same shop.
+ *
+ * The name is a join away: a Peek price row names its `ticket_id`, and the program document lists tickets
+ * with their names. `tickets` is that map. Where an operator publishes no ticket names, which is common
+ * because plenty of shops price by duration rather than by person, nothing is filtered and the cheapest
+ * stands, because an unnamed price is still better than none.
+ */
+function peekLowest(prices: PeekPrices | undefined, tickets?: Map<string, string>): number | undefined {
+  const rows: { amount: number; label: string | null }[] = [];
   for (const p of prices || []) {
+    const label = (p.ticket_id && tickets?.get(p.ticket_id)) || null;
     for (const row of p.pricing || []) {
       const n = Number(row.price?.amount ?? row.list_price?.amount);
-      if (Number.isFinite(n) && n > 0) amounts.push(n);
+      if (Number.isFinite(n) && n > 0) rows.push({ amount: n, label });
     }
   }
-  return amounts.length ? Math.round(Math.min(...amounts) * 100) : undefined;
+  const best = openFarePrice(rows, (r) => r.amount, (r) => r.label);
+  return best == null ? undefined : Math.round(best * 100);
 }
 
 async function peek(refKey: string, code: string, dates: string[]): Promise<Availability> {
@@ -319,16 +354,28 @@ async function peek(refKey: string, code: string, dates: string[]): Promise<Avai
   const api = "https://book.peek.com/services/api/";
   const h = peekHeaders(refKey);
 
-  const ckey = "peek:" + refKey + ":" + code;
-  let activities = cacheGet<{ id: string; name: string }[]>(catalogCache, ckey, CATALOG_TTL_MS);
-  if (!activities) {
+  // "peek2": the cached shape gained the ticket names, and an entry written by the old code would be read
+  // as an array of activities and lose them silently.
+  const ckey = "peek2:" + refKey + ":" + code;
+  type PeekCatalog = { activities: { id: string; name: string }[]; tickets: [string, string][] };
+  let cat = cacheGet<PeekCatalog>(catalogCache, ckey, CATALOG_TTL_MS);
+  if (!cat) {
     const doc = await b.get<PeekDoc>(api + "programs/" + encodeURIComponent(code), h);
     if (!doc?.included) return dead("peek", "program unavailable");
-    activities = doc.included
-      .filter((x) => x.type === "activity" && typeof x.attributes?.name === "string")
-      .map((x) => ({ id: x.id, name: String(x.attributes.name) }));
-    cacheSet(catalogCache, ckey, activities);
+    cat = {
+      activities: doc.included
+        .filter((x) => x.type === "activity" && typeof x.attributes?.name === "string")
+        .map((x) => ({ id: x.id, name: String(x.attributes.name) })),
+      // The fare names, so a price row's ticket_id can be resolved and an infant fare never becomes the
+      // headline. Shops that price by duration rather than by person publish none of these, which is fine.
+      tickets: doc.included
+        .filter((x) => x.type === "ticket" && typeof x.attributes?.name === "string")
+        .map((x) => [x.id, String(x.attributes.name)] as [string, string]),
+    };
+    cacheSet(catalogCache, ckey, cat);
   }
+  const activities = cat.activities;
+  const ticketNames = new Map(cat.tickets);
   if (!activities.length) return dead("peek", "no activities");
 
   const from = dates[0];
@@ -376,9 +423,32 @@ async function peek(refKey: string, code: string, dates: string[]): Promise<Avai
       const time = `${pad(h24)}:${m[2]}`;
       const spots = typeof row.attributes?.spots === "number" ? row.attributes.spots : undefined;
       if (spots === 0) continue;
-      const priceCents = peekLowest(row.attributes?.prices);
-      byDate.get(slot.date)!.push({
-        startsAt: `${slot.date}T${time}`,
+      const priceCents = peekLowest(row.attributes?.prices, ticketNames);
+      /**
+       * One row per start, not one per way of buying it.
+       *
+       * Peek answers with a row per bookable variant of a timeslot, and for a rental that is one per
+       * duration: Bowen Island E-Bikes' eleven o'clock came back four times, refids ...420, ...1860, ...3300
+       * and ...4740, which are seven hours, one day, two days and three days, at $49, $98, $147 and $196.
+       * Miami Tours' nine o'clock came back five times the same way. Nothing in what we show distinguishes
+       * them, because the label is the activity's name and the book link is the shop's one booking page, so a
+       * guest saw the same line four times and three of the prices were not the price of what they picked.
+       * They also ate the forty slot ceiling: ten real departures filled it as forty rows.
+       *
+       * So a start is one row, priced at the cheapest way in, which is what `fromPrice` means everywhere else
+       * in the catalog; the guest chooses the duration on Peek's own page. Seats are the largest any variant
+       * offers rather than their sum, because they are the same bikes counted once per duration.
+       */
+      const startsAt = `${slot.date}T${time}`;
+      const list = byDate.get(slot.date)!;
+      const already = list.find((x) => x.startsAt === startsAt && !x.timeUnknown);
+      if (already) {
+        if (priceCents != null && (already.priceCents == null || priceCents < already.priceCents)) already.priceCents = priceCents;
+        if (spots != null && (already.seatsLeft == null || spots > already.seatsLeft)) already.seatsLeft = spots;
+        continue;
+      }
+      list.push({
+        startsAt,
         label: labelOf(time, slot.activity.name),
         ...(priceCents != null ? { priceCents } : {}),
         ...(spots != null ? { seatsLeft: spots } : {}),
@@ -511,6 +581,15 @@ const LIVE_INDEX_URL = (process.env.SITE_URL || "https://onoutset.com/").replace
 const LIVE_INDEX_TTL_MS = 60 * 60 * 1000;
 let liveIndex: { at: number; urls: Record<string, string> } | null = null;
 let liveIndexLoading: Promise<void> | null = null;
+/**
+ * Drop the cached index. Only the availability corpus under src/eval calls this: each recorded case carries its
+ * own one-entry index, and without a reset between cases the first case's index would answer for all of them.
+ */
+export function resetLiveIndexCache(): void {
+  liveIndex = null;
+  liveIndexLoading = null;
+}
+
 export async function publishedBookingUrl(operatorId: string): Promise<string | null> {
   if (!liveIndex || Date.now() - liveIndex.at > LIVE_INDEX_TTL_MS) {
     if (!liveIndexLoading) {

@@ -1,0 +1,96 @@
+{
+  "id": "fareharbor/washingtoncountyguns-com",
+  "vendor": "fareharbor",
+  "domain": "washingtoncountyguns.com",
+  "bookingUrl": "https://fareharbor.com/embeds/book/washingtoncountyguns/?full-items=yes&flow=51803",
+  "operatorId": "case-fareharbor-washingtoncountyguns-com",
+  "from": "2026-09-20",
+  "days": 14,
+  "capturedAt": "2026-09-20T04:28:14.598Z",
+  "observed": {
+    "vendor": "fareharbor",
+    "live": true,
+    "updatedAt": "2026-09-20T04:28:14.598Z",
+    "days": [
+      {
+        "date": "2026-09-20",
+        "slots": []
+      },
+      {
+        "date": "2026-09-21",
+        "slots": []
+      },
+      {
+        "date": "2026-09-22",
+        "slots": []
+      },
+      {
+        "date": "2026-09-23",
+        "slots": []
+      },
+      {
+        "date": "2026-09-24",
+        "slots": []
+      },
+      {
+        "date": "2026-09-25",
+        "slots": []
+      },
+      {
+        "date": "2026-09-26",
+        "slots": [
+          {
+            "startsAt": "2026-09-26T10:00",
+            "label": "10:00 AM · Machine Gun Rental",
+            "bookUrl": "https://fareharbor.com/washingtoncountyguns/items/83397/availability/1968235792/book/"
+          },
+          {
+            "startsAt": "2026-09-26T11:00",
+            "label": "11:00 AM · Machine Gun Rental",
+            "seatsLeft": 2,
+            "bookUrl": "https://fareharbor.com/washingtoncountyguns/items/83397/availability/1968235799/book/"
+          },
+          {
+            "startsAt": "2026-09-26T12:00",
+            "label": "12:00 PM · Machine Gun Rental",
+            "seatsLeft": 2,
+            "bookUrl": "https://fareharbor.com/washingtoncountyguns/items/83397/availability/1968235806/book/"
+          },
+          {
+            "startsAt": "2026-09-26T15:00",
+            "label": "3:00 PM · Machine Gun Rental",
+            "bookUrl": "https://fareharbor.com/washingtoncountyguns/items/83397/availability/1968235827/book/"
+          }
+        ]
+      },
+      {
+        "date": "2026-09-27",
+        "slots": []
+      },
+      {
+        "date": "2026-09-28",
+        "slots": []
+      },
+      {
+        "date": "2026-09-29",
+        "slots": []
+      },
+      {
+        "date": "2026-09-30",
+        "slots": []
+      },
+      {
+        "date": "2026-10-01",
+        "slots": []
+      },
+      {
+        "date": "2026-10-02",
+        "slots": []
+      },
+      {
+        "date": "2026-10-03",
+        "slots": []
+      }
+    ]
+  }
+}

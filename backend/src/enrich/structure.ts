@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { demandedTargets } from "../concierge/demand.ts";
 import { db, nowIso } from "../db/client.ts";
 import { sleep, withDeadline } from "../scrape/fetch.ts";
 import { spawnWorkers } from "../scrape/cpu.ts";
@@ -106,11 +107,26 @@ export async function readSiteStructure(op: { id: string; domain: string; websit
 }
 
 export function pendingStructure(limit: number, redo = false): { id: string; domain: string; website: string }[] {
+  /**
+   * What guests asked for, first.
+   *
+   * The fallback order below is `(metro_id IS NULL), review_count DESC NULLS LAST, name ASC`, and only 35,844
+   * of 423,161 operators have a review count — so for 92% of the backlog it is `name ASC`, an alphabetical
+   * march through 315,284 sites. The concierge knows which businesses a real person was just shown and could
+   * not be quoted a price for, and those are strictly better targets than whatever begins with "A".
+   *
+   * Demand is a prefix, not a replacement: when nobody has asked for anything the queue behaves exactly as it
+   * always did, so this cannot stall a cold pipeline.
+   */
+  const wanted = redo ? [] : demandedTargets(Math.min(limit, 2000));
+  if (wanted.length >= limit) return wanted.slice(0, limit).map(({ id, domain, website }) => ({ id, domain, website }));
+
   // redo: sites read before the deep crawl existed (their source note lacks "deep"). Metro operators with the most reviews first.
   const cond = redo
     ? `AND NOT EXISTS (SELECT 1 FROM sources s WHERE s.operator_id = o.id AND s.extractor = 'site-structure' AND s.note LIKE 'deep %')`
     : `AND NOT EXISTS (SELECT 1 FROM sources s WHERE s.operator_id = o.id AND s.extractor = 'site-structure')`;
-  return db
+  const seen = new Set(wanted.map((w) => w.id));
+  const rest = db
     .prepare(
       `SELECT id, domain, website FROM operators o
        WHERE origin != 'demo' AND website IS NOT NULL ${cond}
@@ -118,6 +134,10 @@ export function pendingStructure(limit: number, redo = false): { id: string; dom
        LIMIT ?`,
     )
     .all(limit) as { id: string; domain: string; website: string }[];
+  return [
+    ...wanted.map(({ id, domain, website }) => ({ id, domain, website })),
+    ...rest.filter((r) => !seen.has(r.id)),
+  ].slice(0, limit);
 }
 
 export async function readPendingStructures(limit: number, concurrency = 6, redo = false): Promise<StructureResult[]> {

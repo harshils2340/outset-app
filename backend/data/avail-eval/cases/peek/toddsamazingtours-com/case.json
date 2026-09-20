@@ -1,0 +1,17 @@
+{
+  "id": "peek/toddsamazingtours-com",
+  "vendor": "peek",
+  "domain": "toddsamazingtours.com",
+  "bookingUrl": "https://book.peek.com/s/9943baa2-51cf-4811-9220-f9673bd5e48b/7OM8J",
+  "operatorId": "case-peek-toddsamazingtours-com",
+  "from": "2026-09-20",
+  "days": 14,
+  "capturedAt": "2026-09-20T04:29:11.863Z",
+  "observed": {
+    "vendor": "peek",
+    "live": false,
+    "updatedAt": "2026-09-20T04:29:11.862Z",
+    "days": [],
+    "note": "program unavailable"
+  }
+}

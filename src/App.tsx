@@ -3,6 +3,8 @@ import { useApp } from "./state/AppProvider";
 import { WebHome } from "./components/web/WebHome";
 import { WebListing } from "./components/web/WebListing";
 import { WebConfirm } from "./components/web/WebConfirm";
+import { WebConcierge } from "./components/web/WebConcierge";
+import { SafeBookDemo } from "./components/web/SafeBookDemo";
 import { StatusBar } from "./components/layout/StatusBar";
 import { TabBar } from "./components/layout/TabBar";
 import { Toast } from "./components/layout/Toast";
@@ -72,6 +74,32 @@ function CheckoutSplash() {
   );
 }
 
+function SAFE_DEMO(): boolean {
+  if (typeof window === "undefined") return false;
+  return /^#safe\b/i.test(window.location.hash);
+}
+
+function WALLET_HASH(): boolean {
+  if (typeof window === "undefined") return false;
+  return /^#wallet\b/i.test(window.location.hash);
+}
+
+/**
+ * `#ask` opens the concierge on load, so the answer to "what is actually free tonight" survives a refresh, can
+ * be sent to somebody as a link, and can sit behind a QR code. It is read once, like the admin path above: a
+ * hash the guest arrived on is a starting state, not something that changes under a running app.
+ */
+function ASKED_FOR(): string | null {
+  if (typeof window === "undefined") return null;
+  const m = /^#ask(?:=(.*))?$/i.exec(window.location.hash);
+  if (!m) return null;
+  try {
+    return decodeURIComponent(m[1] || "");
+  } catch {
+    return "";
+  }
+}
+
 export function App() {
   // /admin is its own page: no tab bar, no sheets, no phone frame, and nothing about it in any navigation.
   if (ADMIN_ROUTE) {
@@ -82,12 +110,37 @@ export function App() {
     );
   }
   const { state, closeSheet, openOperator, reqTarget, openRequest, goto } = useApp();
+  /**
+   * The concierge. An overlay rather than a screen: the guest is mid-thought when they ask, and a thought that
+   * ends in a business should leave them on that business's page with the site still behind them. `null` is
+   * closed; a string is open, and a non-empty one is asked the moment it opens.
+   */
+  const [asking, setAsking] = useState<string | null>(ASKED_FOR);
+  const [safeDemo, setSafeDemo] = useState(SAFE_DEMO);
+  const [web, setWeb] = useState(() => typeof window !== "undefined" && window.innerWidth >= 1024 && !WALLET_HASH());
+  const [fit, setFit] = useState(1);
+  /**
+   * `#ask` arriving at a page that is already open. A shared link opens in whatever tab the person has, and a
+   * hash that only changes navigates nothing: without this, the link works from cold and does nothing warm,
+   * which is the half that gets shown to somebody.
+   */
+  useEffect(() => {
+    const on = () => {
+      const seed = ASKED_FOR();
+      if (seed != null) setAsking(seed);
+      setSafeDemo(SAFE_DEMO());
+      if (WALLET_HASH()) {
+        setWeb(false);
+        goto("account");
+      }
+    };
+    window.addEventListener("hashchange", on);
+    return () => window.removeEventListener("hashchange", on);
+  }, [goto]);
   // Inside the dashboard's live preview frame (?preview=1): read-only, re-renders on every owner edit.
   usePreviewMode();
   // 1024px itself is the desktop site's own floor, not the phone frame's: a window sized to exactly that width
   // used to load the phone frame instead of the site everyone else at 1024px and up gets.
-  const [web, setWeb] = useState(() => typeof window !== "undefined" && window.innerWidth >= 1024);
-  const [fit, setFit] = useState(1);
   useEffect(() => {
     const calc = () => setFit(window.innerWidth <= 1024 ? 1 : Math.min(1, (window.innerHeight - 110) / 832, (window.innerWidth - 48) / 400));
     calc();
@@ -119,7 +172,7 @@ export function App() {
             <ListingSplash />
           </div>
         ) : state.screen !== "operator" ? (
-          <WebHome onOpenApp={openApp} onOperators={() => openOperator()} />
+          <WebHome onOpenApp={openApp} onOperators={() => openOperator()} onAsk={(seed) => setAsking(seed || "")} />
         ) : null}
         {state.screen === "operator" ? (
           <div className="web wop">
@@ -137,6 +190,21 @@ export function App() {
           </div>
         ) : null}
         {state.checkingOut ? (state.checkoutSecret ? <EmbeddedCheckout secret={state.checkoutSecret} /> : <CheckoutSplash />) : null}
+        {asking != null ? <WebConcierge seed={asking} onClose={() => setAsking(null)} /> : null}
+        {safeDemo ? (
+          <SafeBookDemo
+            onClose={() => {
+              setSafeDemo(false);
+              if (SAFE_DEMO()) window.history.replaceState(null, "", window.location.pathname + window.location.search);
+            }}
+            onOpenAccount={() => {
+              setSafeDemo(false);
+              if (SAFE_DEMO()) window.history.replaceState(null, "", window.location.pathname + window.location.search);
+              goto("account");
+              setWeb(false);
+            }}
+          />
+        ) : null}
       </>
     );
   }
@@ -152,8 +220,27 @@ export function App() {
           <Toast />
           {state.sheet === "request" && state.reqTargetId && !reqTarget && !state.catalogComplete ? <ListingSplash /> : null}
           {state.checkingOut ? (state.checkoutSecret ? <EmbeddedCheckout secret={state.checkoutSecret} /> : <CheckoutSplash />) : null}
+          {/*
+            Inside the phone frame the concierge is one of the app's own screens, so it sits in the frame and
+            takes its rounded corners rather than covering the browser and the frame with it. On a real phone
+            `.screen` is the viewport, so this is the full-screen version either way.
+          */}
+          {asking != null ? <WebConcierge seed={asking} framed onClose={() => setAsking(null)} /> : null}
         </div>
       </div>
+      {safeDemo ? (
+        <SafeBookDemo
+          onClose={() => {
+            setSafeDemo(false);
+            if (SAFE_DEMO()) window.history.replaceState(null, "", window.location.pathname + window.location.search);
+          }}
+          onOpenAccount={() => {
+            setSafeDemo(false);
+            if (SAFE_DEMO()) window.history.replaceState(null, "", window.location.pathname + window.location.search);
+            goto("account");
+          }}
+        />
+      ) : null}
     </div>
   );
 }

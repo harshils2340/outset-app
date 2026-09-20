@@ -76,6 +76,7 @@ export function OpAssistant() {
               <li>Guess a price, a policy or an open time you haven't set.</li>
               <li>Talk about weather, directions, reviews or other businesses.</li>
               <li>Promise anything on your behalf. It says it'll have you confirm.</li>
+              <li>Take a card in chat. Guests pay on Stripe, themselves or from a card they saved on Profile. Otto never sees the number. The hold waits until you Accept.</li>
             </ul>
           </section>
         </div>

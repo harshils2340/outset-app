@@ -1,0 +1,1125 @@
+{
+  "id": "xola/cellardoortours-ca",
+  "vendor": "xola",
+  "domain": "cellardoortours.ca",
+  "bookingUrl": "https://checkout.xola.app/#buttons/678a84da6672b2d3f40ab4a0?cache=1760978201389",
+  "operatorId": "case-xola-cellardoortours-ca",
+  "from": "2026-09-20",
+  "days": 14,
+  "capturedAt": "2026-09-20T04:29:37.049Z",
+  "observed": {
+    "vendor": "xola",
+    "live": true,
+    "updatedAt": "2026-09-20T04:29:37.049Z",
+    "days": [
+      {
+        "date": "2026-09-20",
+        "slots": [
+          {
+            "startsAt": "2026-09-20T11:00",
+            "label": "11:00 AM · Bachelorette & Special Occasions",
+            "priceCents": 16900,
+            "seatsLeft": 70,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/6787ebe1a74e57640400d2ca"
+          }
+        ]
+      },
+      {
+        "date": "2026-09-21",
+        "slots": [
+          {
+            "startsAt": "2026-09-21T10:00",
+            "label": "10:00 AM · Lunch Tour",
+            "priceCents": 20900,
+            "seatsLeft": 90,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/67856b4c04f6887f1e0b409c"
+          },
+          {
+            "startsAt": "2026-09-21T10:00",
+            "label": "10:00 AM · Private Lunch Tour",
+            "priceCents": 34900,
+            "seatsLeft": 74,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/67aeaaf1cbb40c0a530ed743"
+          },
+          {
+            "startsAt": "2026-09-21T10:00",
+            "label": "10:00 AM · Bench Tour",
+            "priceCents": 20900,
+            "seatsLeft": 70,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/68067c2e1b0e2d2ae002765c"
+          },
+          {
+            "startsAt": "2026-09-21T10:00",
+            "label": "10:00 AM · Step-On Lunch Tour",
+            "priceCents": 19900,
+            "seatsLeft": 100,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/6860170e616c27056c0b84df"
+          },
+          {
+            "startsAt": "2026-09-21T10:00",
+            "label": "10:00 AM · Old Town Tour",
+            "priceCents": 16900,
+            "seatsLeft": 184,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/68961a2e7844cc1abb01a924"
+          },
+          {
+            "startsAt": "2026-09-21T11:00",
+            "label": "11:00 AM · Bachelorette & Special Occasions",
+            "priceCents": 16900,
+            "seatsLeft": 70,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/6787ebe1a74e57640400d2ca"
+          },
+          {
+            "startsAt": "2026-09-21T12:00",
+            "label": "12:00 PM · Private Bench Tour",
+            "priceCents": 34900,
+            "seatsLeft": 74,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/6849c7c3fa3172d56a0a575d"
+          },
+          {
+            "startsAt": "2026-09-21T12:00",
+            "label": "12:00 PM · Private Bench Tour VIP",
+            "priceCents": 39900,
+            "seatsLeft": 74,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/6849d4971272206dc80e6dff"
+          },
+          {
+            "startsAt": "2026-09-21T12:00",
+            "label": "12:00 PM · Private Wine Tour",
+            "priceCents": 29900,
+            "seatsLeft": 70,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/685a1110bd958fec610388a1"
+          },
+          {
+            "startsAt": "2026-09-21T12:00",
+            "label": "12:00 PM · Private Corporate Tour",
+            "priceCents": 17900,
+            "seatsLeft": 70,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/685a1501d0e552e169039767"
+          },
+          {
+            "startsAt": "2026-09-21T13:00",
+            "label": "1:00 PM · Private Dinner Tour",
+            "priceCents": 39900,
+            "seatsLeft": 74,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/67aeae3a53690020370f980d"
+          }
+        ]
+      },
+      {
+        "date": "2026-09-22",
+        "slots": [
+          {
+            "startsAt": "2026-09-22T10:00",
+            "label": "10:00 AM · Lunch Tour",
+            "priceCents": 20900,
+            "seatsLeft": 44,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/67856b4c04f6887f1e0b409c"
+          },
+          {
+            "startsAt": "2026-09-22T10:00",
+            "label": "10:00 AM · Private Lunch Tour",
+            "priceCents": 34900,
+            "seatsLeft": 46,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/67aeaaf1cbb40c0a530ed743"
+          },
+          {
+            "startsAt": "2026-09-22T10:00",
+            "label": "10:00 AM · Bench Tour",
+            "priceCents": 20900,
+            "seatsLeft": 42,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/68067c2e1b0e2d2ae002765c"
+          },
+          {
+            "startsAt": "2026-09-22T10:00",
+            "label": "10:00 AM · Step-On Lunch Tour",
+            "priceCents": 19900,
+            "seatsLeft": 100,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/6860170e616c27056c0b84df"
+          },
+          {
+            "startsAt": "2026-09-22T10:00",
+            "label": "10:00 AM · Old Town Tour",
+            "priceCents": 16900,
+            "seatsLeft": 156,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/68961a2e7844cc1abb01a924"
+          },
+          {
+            "startsAt": "2026-09-22T11:00",
+            "label": "11:00 AM · Bachelorette & Special Occasions",
+            "priceCents": 16900,
+            "seatsLeft": 42,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/6787ebe1a74e57640400d2ca"
+          },
+          {
+            "startsAt": "2026-09-22T12:00",
+            "label": "12:00 PM · Private Bench Tour",
+            "priceCents": 34900,
+            "seatsLeft": 46,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/6849c7c3fa3172d56a0a575d"
+          },
+          {
+            "startsAt": "2026-09-22T12:00",
+            "label": "12:00 PM · Private Bench Tour VIP",
+            "priceCents": 39900,
+            "seatsLeft": 46,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/6849d4971272206dc80e6dff"
+          },
+          {
+            "startsAt": "2026-09-22T12:00",
+            "label": "12:00 PM · Private Wine Tour",
+            "priceCents": 29900,
+            "seatsLeft": 42,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/685a1110bd958fec610388a1"
+          },
+          {
+            "startsAt": "2026-09-22T12:00",
+            "label": "12:00 PM · Private Corporate Tour",
+            "priceCents": 17900,
+            "seatsLeft": 42,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/685a1501d0e552e169039767"
+          },
+          {
+            "startsAt": "2026-09-22T13:00",
+            "label": "1:00 PM · Dinner Tour & Afternoon Tour",
+            "priceCents": 22900,
+            "seatsLeft": 10,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/6787e8cdc2fb28e8fc0831f4"
+          },
+          {
+            "startsAt": "2026-09-22T13:00",
+            "label": "1:00 PM · Private Dinner Tour",
+            "priceCents": 39900,
+            "seatsLeft": 46,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/67aeae3a53690020370f980d"
+          }
+        ]
+      },
+      {
+        "date": "2026-09-23",
+        "slots": [
+          {
+            "startsAt": "2026-09-23T10:00",
+            "label": "10:00 AM · Lunch Tour",
+            "priceCents": 20900,
+            "seatsLeft": 68,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/67856b4c04f6887f1e0b409c"
+          },
+          {
+            "startsAt": "2026-09-23T10:00",
+            "label": "10:00 AM · Private Lunch Tour",
+            "priceCents": 34900,
+            "seatsLeft": 60,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/67aeaaf1cbb40c0a530ed743"
+          },
+          {
+            "startsAt": "2026-09-23T10:00",
+            "label": "10:00 AM · Bench Tour",
+            "priceCents": 20900,
+            "seatsLeft": 56,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/68067c2e1b0e2d2ae002765c"
+          },
+          {
+            "startsAt": "2026-09-23T10:00",
+            "label": "10:00 AM · Step-On Lunch Tour",
+            "priceCents": 19900,
+            "seatsLeft": 100,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/6860170e616c27056c0b84df"
+          },
+          {
+            "startsAt": "2026-09-23T10:00",
+            "label": "10:00 AM · Old Town Tour",
+            "priceCents": 16900,
+            "seatsLeft": 170,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/68961a2e7844cc1abb01a924"
+          },
+          {
+            "startsAt": "2026-09-23T11:00",
+            "label": "11:00 AM · Bachelorette & Special Occasions",
+            "priceCents": 16900,
+            "seatsLeft": 56,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/6787ebe1a74e57640400d2ca"
+          },
+          {
+            "startsAt": "2026-09-23T12:00",
+            "label": "12:00 PM · Private Bench Tour",
+            "priceCents": 34900,
+            "seatsLeft": 60,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/6849c7c3fa3172d56a0a575d"
+          },
+          {
+            "startsAt": "2026-09-23T12:00",
+            "label": "12:00 PM · Private Bench Tour VIP",
+            "priceCents": 39900,
+            "seatsLeft": 60,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/6849d4971272206dc80e6dff"
+          },
+          {
+            "startsAt": "2026-09-23T12:00",
+            "label": "12:00 PM · Private Wine Tour",
+            "priceCents": 29900,
+            "seatsLeft": 56,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/685a1110bd958fec610388a1"
+          },
+          {
+            "startsAt": "2026-09-23T12:00",
+            "label": "12:00 PM · Private Corporate Tour",
+            "priceCents": 17900,
+            "seatsLeft": 56,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/685a1501d0e552e169039767"
+          },
+          {
+            "startsAt": "2026-09-23T13:00",
+            "label": "1:00 PM · Dinner Tour & Afternoon Tour",
+            "priceCents": 22900,
+            "seatsLeft": 68,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/6787e8cdc2fb28e8fc0831f4"
+          },
+          {
+            "startsAt": "2026-09-23T13:00",
+            "label": "1:00 PM · Private Dinner Tour",
+            "priceCents": 39900,
+            "seatsLeft": 60,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/67aeae3a53690020370f980d"
+          }
+        ]
+      },
+      {
+        "date": "2026-09-24",
+        "slots": [
+          {
+            "startsAt": "2026-09-24T10:00",
+            "label": "10:00 AM · Lunch Tour",
+            "priceCents": 20900,
+            "seatsLeft": 90,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/67856b4c04f6887f1e0b409c"
+          },
+          {
+            "startsAt": "2026-09-24T10:00",
+            "label": "10:00 AM · Private Lunch Tour",
+            "priceCents": 34900,
+            "seatsLeft": 74,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/67aeaaf1cbb40c0a530ed743"
+          },
+          {
+            "startsAt": "2026-09-24T10:00",
+            "label": "10:00 AM · Bench Tour",
+            "priceCents": 20900,
+            "seatsLeft": 70,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/68067c2e1b0e2d2ae002765c"
+          },
+          {
+            "startsAt": "2026-09-24T10:00",
+            "label": "10:00 AM · Step-On Lunch Tour",
+            "priceCents": 19900,
+            "seatsLeft": 100,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/6860170e616c27056c0b84df"
+          },
+          {
+            "startsAt": "2026-09-24T10:00",
+            "label": "10:00 AM · Old Town Tour",
+            "priceCents": 16900,
+            "seatsLeft": 184,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/68961a2e7844cc1abb01a924"
+          },
+          {
+            "startsAt": "2026-09-24T11:00",
+            "label": "11:00 AM · Bachelorette & Special Occasions",
+            "priceCents": 16900,
+            "seatsLeft": 70,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/6787ebe1a74e57640400d2ca"
+          },
+          {
+            "startsAt": "2026-09-24T12:00",
+            "label": "12:00 PM · Private Bench Tour",
+            "priceCents": 34900,
+            "seatsLeft": 74,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/6849c7c3fa3172d56a0a575d"
+          },
+          {
+            "startsAt": "2026-09-24T12:00",
+            "label": "12:00 PM · Private Bench Tour VIP",
+            "priceCents": 39900,
+            "seatsLeft": 74,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/6849d4971272206dc80e6dff"
+          },
+          {
+            "startsAt": "2026-09-24T12:00",
+            "label": "12:00 PM · Private Wine Tour",
+            "priceCents": 29900,
+            "seatsLeft": 70,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/685a1110bd958fec610388a1"
+          },
+          {
+            "startsAt": "2026-09-24T12:00",
+            "label": "12:00 PM · Private Corporate Tour",
+            "priceCents": 17900,
+            "seatsLeft": 70,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/685a1501d0e552e169039767"
+          },
+          {
+            "startsAt": "2026-09-24T13:00",
+            "label": "1:00 PM · Dinner Tour & Afternoon Tour",
+            "priceCents": 22900,
+            "seatsLeft": 70,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/6787e8cdc2fb28e8fc0831f4"
+          },
+          {
+            "startsAt": "2026-09-24T13:00",
+            "label": "1:00 PM · Private Dinner Tour",
+            "priceCents": 39900,
+            "seatsLeft": 74,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/67aeae3a53690020370f980d"
+          }
+        ]
+      },
+      {
+        "date": "2026-09-25",
+        "slots": [
+          {
+            "startsAt": "2026-09-25T10:00",
+            "label": "10:00 AM · Lunch Tour",
+            "priceCents": 20900,
+            "seatsLeft": 56,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/67856b4c04f6887f1e0b409c"
+          },
+          {
+            "startsAt": "2026-09-25T10:00",
+            "label": "10:00 AM · Private Lunch Tour",
+            "priceCents": 34900,
+            "seatsLeft": 60,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/67aeaaf1cbb40c0a530ed743"
+          },
+          {
+            "startsAt": "2026-09-25T10:00",
+            "label": "10:00 AM · Bench Tour",
+            "priceCents": 20900,
+            "seatsLeft": 56,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/68067c2e1b0e2d2ae002765c"
+          },
+          {
+            "startsAt": "2026-09-25T10:00",
+            "label": "10:00 AM · Step-On Lunch Tour",
+            "priceCents": 19900,
+            "seatsLeft": 100,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/6860170e616c27056c0b84df"
+          },
+          {
+            "startsAt": "2026-09-25T10:00",
+            "label": "10:00 AM · Old Town Tour",
+            "priceCents": 16900,
+            "seatsLeft": 170,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/68961a2e7844cc1abb01a924"
+          },
+          {
+            "startsAt": "2026-09-25T11:00",
+            "label": "11:00 AM · Bachelorette & Special Occasions",
+            "priceCents": 16900,
+            "seatsLeft": 56,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/6787ebe1a74e57640400d2ca"
+          },
+          {
+            "startsAt": "2026-09-25T12:00",
+            "label": "12:00 PM · Private Bench Tour VIP",
+            "priceCents": 39900,
+            "seatsLeft": 60,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/6849d4971272206dc80e6dff"
+          },
+          {
+            "startsAt": "2026-09-25T12:00",
+            "label": "12:00 PM · Private Wine Tour",
+            "priceCents": 29900,
+            "seatsLeft": 56,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/685a1110bd958fec610388a1"
+          },
+          {
+            "startsAt": "2026-09-25T12:00",
+            "label": "12:00 PM · Private Corporate Tour",
+            "priceCents": 17900,
+            "seatsLeft": 56,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/685a1501d0e552e169039767"
+          },
+          {
+            "startsAt": "2026-09-25T13:00",
+            "label": "1:00 PM · Dinner Tour & Afternoon Tour",
+            "priceCents": 22900,
+            "seatsLeft": 68,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/6787e8cdc2fb28e8fc0831f4"
+          },
+          {
+            "startsAt": "2026-09-25T13:00",
+            "label": "1:00 PM · Private Dinner Tour",
+            "priceCents": 39900,
+            "seatsLeft": 60,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/67aeae3a53690020370f980d"
+          }
+        ]
+      },
+      {
+        "date": "2026-09-26",
+        "slots": [
+          {
+            "startsAt": "2026-09-26T10:00",
+            "label": "10:00 AM · Lunch Tour",
+            "priceCents": 20900,
+            "seatsLeft": 14,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/67856b4c04f6887f1e0b409c"
+          },
+          {
+            "startsAt": "2026-09-26T10:00",
+            "label": "10:00 AM · Private Lunch Tour",
+            "priceCents": 34900,
+            "seatsLeft": 18,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/67aeaaf1cbb40c0a530ed743"
+          },
+          {
+            "startsAt": "2026-09-26T10:00",
+            "label": "10:00 AM · Step-On Lunch Tour",
+            "priceCents": 19900,
+            "seatsLeft": 100,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/6860170e616c27056c0b84df"
+          },
+          {
+            "startsAt": "2026-09-26T11:00",
+            "label": "11:00 AM · Bachelorette & Special Occasions",
+            "priceCents": 16900,
+            "seatsLeft": 14,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/6787ebe1a74e57640400d2ca"
+          },
+          {
+            "startsAt": "2026-09-26T12:00",
+            "label": "12:00 PM · Private Bench Tour",
+            "priceCents": 34900,
+            "seatsLeft": 18,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/6849c7c3fa3172d56a0a575d"
+          },
+          {
+            "startsAt": "2026-09-26T12:00",
+            "label": "12:00 PM · Private Bench Tour VIP",
+            "priceCents": 39900,
+            "seatsLeft": 18,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/6849d4971272206dc80e6dff"
+          },
+          {
+            "startsAt": "2026-09-26T12:00",
+            "label": "12:00 PM · Private Wine Tour",
+            "priceCents": 29900,
+            "seatsLeft": 14,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/685a1110bd958fec610388a1"
+          },
+          {
+            "startsAt": "2026-09-26T12:00",
+            "label": "12:00 PM · Private Corporate Tour",
+            "priceCents": 17900,
+            "seatsLeft": 14,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/685a1501d0e552e169039767"
+          },
+          {
+            "startsAt": "2026-09-26T13:00",
+            "label": "1:00 PM · Dinner Tour & Afternoon Tour",
+            "priceCents": 22900,
+            "seatsLeft": 16,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/6787e8cdc2fb28e8fc0831f4"
+          },
+          {
+            "startsAt": "2026-09-26T13:00",
+            "label": "1:00 PM · Private Dinner Tour",
+            "priceCents": 39900,
+            "seatsLeft": 18,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/67aeae3a53690020370f980d"
+          }
+        ]
+      },
+      {
+        "date": "2026-09-27",
+        "slots": [
+          {
+            "startsAt": "2026-09-27T10:00",
+            "label": "10:00 AM · Lunch Tour",
+            "priceCents": 20900,
+            "seatsLeft": 92,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/67856b4c04f6887f1e0b409c"
+          },
+          {
+            "startsAt": "2026-09-27T10:00",
+            "label": "10:00 AM · Private Lunch Tour",
+            "priceCents": 34900,
+            "seatsLeft": 74,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/67aeaaf1cbb40c0a530ed743"
+          },
+          {
+            "startsAt": "2026-09-27T10:00",
+            "label": "10:00 AM · Bench Tour",
+            "priceCents": 20900,
+            "seatsLeft": 70,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/68067c2e1b0e2d2ae002765c"
+          },
+          {
+            "startsAt": "2026-09-27T10:00",
+            "label": "10:00 AM · Old Town Tour",
+            "priceCents": 16900,
+            "seatsLeft": 178,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/68961a2e7844cc1abb01a924"
+          },
+          {
+            "startsAt": "2026-09-27T11:00",
+            "label": "11:00 AM · Bachelorette & Special Occasions",
+            "priceCents": 16900,
+            "seatsLeft": 70,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/6787ebe1a74e57640400d2ca"
+          },
+          {
+            "startsAt": "2026-09-27T12:00",
+            "label": "12:00 PM · Private Bench Tour",
+            "priceCents": 34900,
+            "seatsLeft": 74,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/6849c7c3fa3172d56a0a575d"
+          },
+          {
+            "startsAt": "2026-09-27T12:00",
+            "label": "12:00 PM · Private Bench Tour VIP",
+            "priceCents": 39900,
+            "seatsLeft": 74,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/6849d4971272206dc80e6dff"
+          },
+          {
+            "startsAt": "2026-09-27T12:00",
+            "label": "12:00 PM · Private Wine Tour",
+            "priceCents": 29900,
+            "seatsLeft": 70,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/685a1110bd958fec610388a1"
+          },
+          {
+            "startsAt": "2026-09-27T12:00",
+            "label": "12:00 PM · Private Corporate Tour",
+            "priceCents": 17900,
+            "seatsLeft": 70,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/685a1501d0e552e169039767"
+          },
+          {
+            "startsAt": "2026-09-27T13:00",
+            "label": "1:00 PM · Dinner Tour & Afternoon Tour",
+            "priceCents": 22900,
+            "seatsLeft": 70,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/6787e8cdc2fb28e8fc0831f4"
+          },
+          {
+            "startsAt": "2026-09-27T13:00",
+            "label": "1:00 PM · Private Dinner Tour",
+            "priceCents": 39900,
+            "seatsLeft": 74,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/67aeae3a53690020370f980d"
+          }
+        ]
+      },
+      {
+        "date": "2026-09-28",
+        "slots": [
+          {
+            "startsAt": "2026-09-28T10:00",
+            "label": "10:00 AM · Lunch Tour",
+            "priceCents": 20900,
+            "seatsLeft": 90,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/67856b4c04f6887f1e0b409c"
+          },
+          {
+            "startsAt": "2026-09-28T10:00",
+            "label": "10:00 AM · Private Lunch Tour",
+            "priceCents": 34900,
+            "seatsLeft": 74,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/67aeaaf1cbb40c0a530ed743"
+          },
+          {
+            "startsAt": "2026-09-28T10:00",
+            "label": "10:00 AM · Bench Tour",
+            "priceCents": 20900,
+            "seatsLeft": 70,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/68067c2e1b0e2d2ae002765c"
+          },
+          {
+            "startsAt": "2026-09-28T10:00",
+            "label": "10:00 AM · Step-On Lunch Tour",
+            "priceCents": 19900,
+            "seatsLeft": 100,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/6860170e616c27056c0b84df"
+          },
+          {
+            "startsAt": "2026-09-28T10:00",
+            "label": "10:00 AM · Old Town Tour",
+            "priceCents": 16900,
+            "seatsLeft": 184,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/68961a2e7844cc1abb01a924"
+          },
+          {
+            "startsAt": "2026-09-28T11:00",
+            "label": "11:00 AM · Bachelorette & Special Occasions",
+            "priceCents": 16900,
+            "seatsLeft": 70,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/6787ebe1a74e57640400d2ca"
+          },
+          {
+            "startsAt": "2026-09-28T12:00",
+            "label": "12:00 PM · Private Bench Tour",
+            "priceCents": 34900,
+            "seatsLeft": 74,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/6849c7c3fa3172d56a0a575d"
+          },
+          {
+            "startsAt": "2026-09-28T12:00",
+            "label": "12:00 PM · Private Bench Tour VIP",
+            "priceCents": 39900,
+            "seatsLeft": 74,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/6849d4971272206dc80e6dff"
+          },
+          {
+            "startsAt": "2026-09-28T12:00",
+            "label": "12:00 PM · Private Wine Tour",
+            "priceCents": 29900,
+            "seatsLeft": 70,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/685a1110bd958fec610388a1"
+          },
+          {
+            "startsAt": "2026-09-28T12:00",
+            "label": "12:00 PM · Private Corporate Tour",
+            "priceCents": 17900,
+            "seatsLeft": 70,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/685a1501d0e552e169039767"
+          },
+          {
+            "startsAt": "2026-09-28T13:00",
+            "label": "1:00 PM · Dinner Tour & Afternoon Tour",
+            "priceCents": 22900,
+            "seatsLeft": 70,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/6787e8cdc2fb28e8fc0831f4"
+          },
+          {
+            "startsAt": "2026-09-28T13:00",
+            "label": "1:00 PM · Private Dinner Tour",
+            "priceCents": 39900,
+            "seatsLeft": 74,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/67aeae3a53690020370f980d"
+          }
+        ]
+      },
+      {
+        "date": "2026-09-29",
+        "slots": [
+          {
+            "startsAt": "2026-09-29T10:00",
+            "label": "10:00 AM · Lunch Tour",
+            "priceCents": 20900,
+            "seatsLeft": 68,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/67856b4c04f6887f1e0b409c"
+          },
+          {
+            "startsAt": "2026-09-29T10:00",
+            "label": "10:00 AM · Private Lunch Tour",
+            "priceCents": 34900,
+            "seatsLeft": 60,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/67aeaaf1cbb40c0a530ed743"
+          },
+          {
+            "startsAt": "2026-09-29T10:00",
+            "label": "10:00 AM · Bench Tour",
+            "priceCents": 20900,
+            "seatsLeft": 56,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/68067c2e1b0e2d2ae002765c"
+          },
+          {
+            "startsAt": "2026-09-29T10:00",
+            "label": "10:00 AM · Step-On Lunch Tour",
+            "priceCents": 19900,
+            "seatsLeft": 100,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/6860170e616c27056c0b84df"
+          },
+          {
+            "startsAt": "2026-09-29T10:00",
+            "label": "10:00 AM · Old Town Tour",
+            "priceCents": 16900,
+            "seatsLeft": 170,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/68961a2e7844cc1abb01a924"
+          },
+          {
+            "startsAt": "2026-09-29T11:00",
+            "label": "11:00 AM · Bachelorette & Special Occasions",
+            "priceCents": 16900,
+            "seatsLeft": 56,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/6787ebe1a74e57640400d2ca"
+          },
+          {
+            "startsAt": "2026-09-29T12:00",
+            "label": "12:00 PM · Private Bench Tour",
+            "priceCents": 34900,
+            "seatsLeft": 60,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/6849c7c3fa3172d56a0a575d"
+          },
+          {
+            "startsAt": "2026-09-29T12:00",
+            "label": "12:00 PM · Private Bench Tour VIP",
+            "priceCents": 39900,
+            "seatsLeft": 60,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/6849d4971272206dc80e6dff"
+          },
+          {
+            "startsAt": "2026-09-29T12:00",
+            "label": "12:00 PM · Private Wine Tour",
+            "priceCents": 29900,
+            "seatsLeft": 56,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/685a1110bd958fec610388a1"
+          },
+          {
+            "startsAt": "2026-09-29T12:00",
+            "label": "12:00 PM · Private Corporate Tour",
+            "priceCents": 17900,
+            "seatsLeft": 56,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/685a1501d0e552e169039767"
+          },
+          {
+            "startsAt": "2026-09-29T13:00",
+            "label": "1:00 PM · Dinner Tour & Afternoon Tour",
+            "priceCents": 22900,
+            "seatsLeft": 72,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/6787e8cdc2fb28e8fc0831f4"
+          },
+          {
+            "startsAt": "2026-09-29T13:00",
+            "label": "1:00 PM · Private Dinner Tour",
+            "priceCents": 39900,
+            "seatsLeft": 60,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/67aeae3a53690020370f980d"
+          }
+        ]
+      },
+      {
+        "date": "2026-09-30",
+        "slots": [
+          {
+            "startsAt": "2026-09-30T10:00",
+            "label": "10:00 AM · Lunch Tour",
+            "priceCents": 20900,
+            "seatsLeft": 65,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/67856b4c04f6887f1e0b409c"
+          },
+          {
+            "startsAt": "2026-09-30T10:00",
+            "label": "10:00 AM · Private Lunch Tour",
+            "priceCents": 34900,
+            "seatsLeft": 60,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/67aeaaf1cbb40c0a530ed743"
+          },
+          {
+            "startsAt": "2026-09-30T10:00",
+            "label": "10:00 AM · Bench Tour",
+            "priceCents": 20900,
+            "seatsLeft": 56,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/68067c2e1b0e2d2ae002765c"
+          },
+          {
+            "startsAt": "2026-09-30T10:00",
+            "label": "10:00 AM · Step-On Lunch Tour",
+            "priceCents": 19900,
+            "seatsLeft": 100,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/6860170e616c27056c0b84df"
+          },
+          {
+            "startsAt": "2026-09-30T10:00",
+            "label": "10:00 AM · Old Town Tour",
+            "priceCents": 16900,
+            "seatsLeft": 170,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/68961a2e7844cc1abb01a924"
+          },
+          {
+            "startsAt": "2026-09-30T11:00",
+            "label": "11:00 AM · Bachelorette & Special Occasions",
+            "priceCents": 16900,
+            "seatsLeft": 56,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/6787ebe1a74e57640400d2ca"
+          },
+          {
+            "startsAt": "2026-09-30T12:00",
+            "label": "12:00 PM · Private Bench Tour",
+            "priceCents": 34900,
+            "seatsLeft": 60,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/6849c7c3fa3172d56a0a575d"
+          },
+          {
+            "startsAt": "2026-09-30T12:00",
+            "label": "12:00 PM · Private Bench Tour VIP",
+            "priceCents": 39900,
+            "seatsLeft": 60,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/6849d4971272206dc80e6dff"
+          },
+          {
+            "startsAt": "2026-09-30T12:00",
+            "label": "12:00 PM · Private Wine Tour",
+            "priceCents": 29900,
+            "seatsLeft": 56,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/685a1110bd958fec610388a1"
+          },
+          {
+            "startsAt": "2026-09-30T12:00",
+            "label": "12:00 PM · Private Corporate Tour",
+            "priceCents": 17900,
+            "seatsLeft": 56,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/685a1501d0e552e169039767"
+          },
+          {
+            "startsAt": "2026-09-30T13:00",
+            "label": "1:00 PM · Dinner Tour & Afternoon Tour",
+            "priceCents": 22900,
+            "seatsLeft": 76,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/6787e8cdc2fb28e8fc0831f4"
+          },
+          {
+            "startsAt": "2026-09-30T13:00",
+            "label": "1:00 PM · Private Dinner Tour",
+            "priceCents": 39900,
+            "seatsLeft": 60,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/67aeae3a53690020370f980d"
+          }
+        ]
+      },
+      {
+        "date": "2026-10-01",
+        "slots": [
+          {
+            "startsAt": "2026-10-01T10:00",
+            "label": "10:00 AM · Lunch Tour",
+            "priceCents": 20900,
+            "seatsLeft": 7,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/67856b4c04f6887f1e0b409c"
+          },
+          {
+            "startsAt": "2026-10-01T10:00",
+            "label": "10:00 AM · Private Lunch Tour",
+            "priceCents": 34900,
+            "seatsLeft": 32,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/67aeaaf1cbb40c0a530ed743"
+          },
+          {
+            "startsAt": "2026-10-01T10:00",
+            "label": "10:00 AM · Bench Tour",
+            "priceCents": 20900,
+            "seatsLeft": 28,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/68067c2e1b0e2d2ae002765c"
+          },
+          {
+            "startsAt": "2026-10-01T10:00",
+            "label": "10:00 AM · Step-On Lunch Tour",
+            "priceCents": 19900,
+            "seatsLeft": 100,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/6860170e616c27056c0b84df"
+          },
+          {
+            "startsAt": "2026-10-01T10:00",
+            "label": "10:00 AM · Old Town Tour",
+            "priceCents": 16900,
+            "seatsLeft": 142,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/68961a2e7844cc1abb01a924"
+          },
+          {
+            "startsAt": "2026-10-01T11:00",
+            "label": "11:00 AM · Bachelorette & Special Occasions",
+            "priceCents": 16900,
+            "seatsLeft": 28,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/6787ebe1a74e57640400d2ca"
+          },
+          {
+            "startsAt": "2026-10-01T12:00",
+            "label": "12:00 PM · Private Bench Tour",
+            "priceCents": 34900,
+            "seatsLeft": 32,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/6849c7c3fa3172d56a0a575d"
+          },
+          {
+            "startsAt": "2026-10-01T12:00",
+            "label": "12:00 PM · Private Bench Tour VIP",
+            "priceCents": 39900,
+            "seatsLeft": 32,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/6849d4971272206dc80e6dff"
+          },
+          {
+            "startsAt": "2026-10-01T12:00",
+            "label": "12:00 PM · Private Wine Tour",
+            "priceCents": 29900,
+            "seatsLeft": 28,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/685a1110bd958fec610388a1"
+          },
+          {
+            "startsAt": "2026-10-01T12:00",
+            "label": "12:00 PM · Private Corporate Tour",
+            "priceCents": 17900,
+            "seatsLeft": 28,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/685a1501d0e552e169039767"
+          },
+          {
+            "startsAt": "2026-10-01T13:00",
+            "label": "1:00 PM · Dinner Tour & Afternoon Tour",
+            "priceCents": 22900,
+            "seatsLeft": 12,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/6787e8cdc2fb28e8fc0831f4"
+          },
+          {
+            "startsAt": "2026-10-01T13:00",
+            "label": "1:00 PM · Private Dinner Tour",
+            "priceCents": 39900,
+            "seatsLeft": 32,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/67aeae3a53690020370f980d"
+          }
+        ]
+      },
+      {
+        "date": "2026-10-02",
+        "slots": [
+          {
+            "startsAt": "2026-10-02T10:00",
+            "label": "10:00 AM · Lunch Tour",
+            "priceCents": 20900,
+            "seatsLeft": 14,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/67856b4c04f6887f1e0b409c"
+          },
+          {
+            "startsAt": "2026-10-02T10:00",
+            "label": "10:00 AM · Private Lunch Tour",
+            "priceCents": 34900,
+            "seatsLeft": 18,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/67aeaaf1cbb40c0a530ed743"
+          },
+          {
+            "startsAt": "2026-10-02T10:00",
+            "label": "10:00 AM · Step-On Lunch Tour",
+            "priceCents": 19900,
+            "seatsLeft": 100,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/6860170e616c27056c0b84df"
+          },
+          {
+            "startsAt": "2026-10-02T11:00",
+            "label": "11:00 AM · Bachelorette & Special Occasions",
+            "priceCents": 16900,
+            "seatsLeft": 14,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/6787ebe1a74e57640400d2ca"
+          },
+          {
+            "startsAt": "2026-10-02T12:00",
+            "label": "12:00 PM · Private Bench Tour",
+            "priceCents": 34900,
+            "seatsLeft": 18,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/6849c7c3fa3172d56a0a575d"
+          },
+          {
+            "startsAt": "2026-10-02T12:00",
+            "label": "12:00 PM · Private Bench Tour VIP",
+            "priceCents": 39900,
+            "seatsLeft": 18,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/6849d4971272206dc80e6dff"
+          },
+          {
+            "startsAt": "2026-10-02T12:00",
+            "label": "12:00 PM · Private Wine Tour",
+            "priceCents": 29900,
+            "seatsLeft": 14,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/685a1110bd958fec610388a1"
+          },
+          {
+            "startsAt": "2026-10-02T12:00",
+            "label": "12:00 PM · Private Corporate Tour",
+            "priceCents": 17900,
+            "seatsLeft": 14,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/685a1501d0e552e169039767"
+          },
+          {
+            "startsAt": "2026-10-02T13:00",
+            "label": "1:00 PM · Dinner Tour & Afternoon Tour",
+            "priceCents": 22900,
+            "seatsLeft": 2,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/6787e8cdc2fb28e8fc0831f4"
+          },
+          {
+            "startsAt": "2026-10-02T13:00",
+            "label": "1:00 PM · Private Dinner Tour",
+            "priceCents": 39900,
+            "seatsLeft": 18,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/67aeae3a53690020370f980d"
+          }
+        ]
+      },
+      {
+        "date": "2026-10-03",
+        "slots": [
+          {
+            "startsAt": "2026-10-03T10:00",
+            "label": "10:00 AM · Lunch Tour",
+            "priceCents": 20900,
+            "seatsLeft": 25,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/67856b4c04f6887f1e0b409c"
+          },
+          {
+            "startsAt": "2026-10-03T10:00",
+            "label": "10:00 AM · Private Lunch Tour",
+            "priceCents": 34900,
+            "seatsLeft": 18,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/67aeaaf1cbb40c0a530ed743"
+          },
+          {
+            "startsAt": "2026-10-03T10:00",
+            "label": "10:00 AM · Step-On Lunch Tour",
+            "priceCents": 19900,
+            "seatsLeft": 100,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/6860170e616c27056c0b84df"
+          },
+          {
+            "startsAt": "2026-10-03T11:00",
+            "label": "11:00 AM · Bachelorette & Special Occasions",
+            "priceCents": 16900,
+            "seatsLeft": 14,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/6787ebe1a74e57640400d2ca"
+          },
+          {
+            "startsAt": "2026-10-03T12:00",
+            "label": "12:00 PM · Private Bench Tour",
+            "priceCents": 34900,
+            "seatsLeft": 18,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/6849c7c3fa3172d56a0a575d"
+          },
+          {
+            "startsAt": "2026-10-03T12:00",
+            "label": "12:00 PM · Private Bench Tour VIP",
+            "priceCents": 39900,
+            "seatsLeft": 18,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/6849d4971272206dc80e6dff"
+          },
+          {
+            "startsAt": "2026-10-03T12:00",
+            "label": "12:00 PM · Private Wine Tour",
+            "priceCents": 29900,
+            "seatsLeft": 14,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/685a1110bd958fec610388a1"
+          },
+          {
+            "startsAt": "2026-10-03T12:00",
+            "label": "12:00 PM · Private Corporate Tour",
+            "priceCents": 17900,
+            "seatsLeft": 14,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/685a1501d0e552e169039767"
+          },
+          {
+            "startsAt": "2026-10-03T13:00",
+            "label": "1:00 PM · Dinner Tour & Afternoon Tour",
+            "priceCents": 22900,
+            "seatsLeft": 20,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/6787e8cdc2fb28e8fc0831f4"
+          },
+          {
+            "startsAt": "2026-10-03T13:00",
+            "label": "1:00 PM · Private Dinner Tour",
+            "priceCents": 39900,
+            "seatsLeft": 18,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/678563a733ab97f9ca0a4f71/experiences/67aeae3a53690020370f980d"
+          }
+        ]
+      }
+    ],
+    "partial": true,
+    "note": "12 of 15 experiences read"
+  }
+}

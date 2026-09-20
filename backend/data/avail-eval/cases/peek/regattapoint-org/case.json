@@ -1,0 +1,17 @@
+{
+  "id": "peek/regattapoint-org",
+  "vendor": "peek",
+  "domain": "regattapoint.org",
+  "bookingUrl": "https://book.peek.com/s/7bed9ae4-55f5-43df-96f7-5abb6431bf73/o6BjJ?gaClientId=1338291990.1745842738&gaSessionId=1750782855",
+  "operatorId": "case-peek-regattapoint-org",
+  "from": "2026-09-20",
+  "days": 14,
+  "capturedAt": "2026-09-20T04:29:06.449Z",
+  "observed": {
+    "vendor": "peek",
+    "live": false,
+    "updatedAt": "2026-09-20T04:29:06.449Z",
+    "days": [],
+    "note": "no activities"
+  }
+}

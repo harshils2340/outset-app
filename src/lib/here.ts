@@ -1,4 +1,4 @@
-import { METROS, metroById, metroCoords } from "../data/metros";
+import { ALL_METRO_ID, METROS, metroById, metroCoords } from "../data/metros";
 import type { Place } from "./places";
 import { API_URL } from "./api";
 
@@ -9,16 +9,39 @@ import { API_URL } from "./api";
  * No is sticky: the guest who refuses once never sees what is near them again. So the home opens on a place it
  * guessed, and the guest retypes it in a second if it is wrong.
  *
- * Two guesses, best first. The API sits behind Cloudflare, which tags each request with the city it resolved, so
- * `/where` usually answers with a point good to the city. Failing that, the browser's own time zone names a
- * region ("America/Toronto"), which is enough to pick the nearest metro we list. Neither asks permission,
- * neither costs a round trip the page waits on, and an explicit choice always wins over both.
+ * Three answers, best first, and the first two cost nothing: the place the guest chose on an earlier visit, the
+ * answer the API gave on an earlier visit, and the browser's own time zone, which names a region
+ * ("America/Toronto") and so a metro. All three are reads of this device, so `opening()` below can be called
+ * during the first render and the home's first paint is already the right city. Only when none of them answers,
+ * or the stored answer has aged, does `guessPlace()` go and ask the API, which sits behind Cloudflare and is
+ * tagged with the city it resolved the caller's address to. An explicit choice always wins over every guess.
+ *
+ * None of this used to happen until the whole 22 MB catalog had landed, because the call sat inside that
+ * download's `.then()` and needed none of it. The home therefore opened on Anywhere, painted a full set of
+ * rails for the whole of the US and Canada, and only then jumped to the guest's own city. That is the flicker
+ * this file exists to remove, so keep every path here synchronous or optional.
  */
 
+/** The point the guest picked themselves. */
 const KEY = "outset.place.v1";
+/** The city, or Anywhere, the guest picked themselves. A choice too, and it used to be forgotten on reload. */
+const METRO_KEY = "outset.metro.v1";
+/** The last answer the API gave, so a repeat visit opens on it without waiting for a round trip. */
+const GUESS_KEY = "outset.guess.v1";
+
+/**
+ * How long a stored guess is trusted, and how long before it is checked again.
+ *
+ * A guess is read off an IP address, so it is stale the moment the guest travels, but it is also right for
+ * months on end for everybody else. Six hours is a working day: a guest who flies somewhere sees the new city
+ * on their next visit, and everyone else never pays for the call. Past a month the guess is not shown at all,
+ * because opening a returning guest on a city they were in last summer is worse than opening on their time zone.
+ */
+const RECHECK_MS = 6 * 60 * 60 * 1000;
+const KEEP_MS = 30 * 24 * 60 * 60 * 1000;
 
 /** The place the guest last chose themselves. Kept so a guess never overrules a decision. */
-export function savedPlace(): Place | null {
+function savedPlace(): Place | null {
   try {
     const raw = localStorage.getItem(KEY);
     if (!raw) return null;
@@ -33,6 +56,31 @@ export function rememberPlace(p: Place | null): void {
   try {
     if (p) localStorage.setItem(KEY, JSON.stringify(p));
     else localStorage.removeItem(KEY);
+  } catch {
+    /* private mode */
+  }
+}
+
+/**
+ * The city, or Anywhere, the guest last chose themselves.
+ *
+ * Picking a city was a decision the site forgot the moment the tab closed: `setMetro` cleared the remembered
+ * point and stored nothing, so the next visit guessed again and could drop a guest who had deliberately chosen
+ * Denver back into wherever their address resolves. Anywhere counts as a choice too, and is stored as itself.
+ */
+function savedMetro(): string | null {
+  try {
+    const id = localStorage.getItem(METRO_KEY);
+    return id && (id === ALL_METRO_ID || metroById(id)) ? id : null;
+  } catch {
+    return null;
+  }
+}
+
+export function rememberMetro(id: string | null): void {
+  try {
+    if (id) localStorage.setItem(METRO_KEY, id);
+    else localStorage.removeItem(METRO_KEY);
   } catch {
     /* private mode */
   }
@@ -106,6 +154,74 @@ export function metroFromTimeZone(): string | null {
  */
 export type Guess = { kind: "point"; place: Place } | { kind: "metro"; metroId: string } | null;
 
+/**
+ * Are these the same answer? A recheck that agrees must change nothing, or every visit past the first would
+ * re-dispatch the place it is already showing, and the home would rebuild all of its rails to draw the same
+ * cards in the same order. Points are compared loosely: Cloudflare moves a city's centroid by a few hundred
+ * metres between reads, which is not the guest moving.
+ */
+export function sameGuess(a: Guess, b: Guess): boolean {
+  if (!a || !b) return !a && !b;
+  if (a.kind !== b.kind) return false;
+  if (a.kind === "metro" && b.kind === "metro") return a.metroId === b.metroId;
+  if (a.kind === "point" && b.kind === "point") return Math.abs(a.place.lat - b.place.lat) < 0.02 && Math.abs(a.place.lon - b.place.lon) < 0.02;
+  return false;
+}
+
+type StoredGuess = { at: number; guess: Guess };
+
+/** The last answer the API gave, if it is recent enough to open on. `age` drives whether it is checked again. */
+function storedGuess(): { guess: Guess; age: number } | null {
+  try {
+    const raw = localStorage.getItem(GUESS_KEY);
+    if (!raw) return null;
+    const v = JSON.parse(raw) as Partial<StoredGuess>;
+    const age = Date.now() - Number(v?.at || 0);
+    if (!Number.isFinite(age) || age < 0 || age > KEEP_MS) return null;
+    const g = v.guess;
+    if (g && g.kind === "metro" && metroById(g.metroId)) return { guess: g, age };
+    if (g && g.kind === "point" && typeof g.place?.lat === "number" && typeof g.place?.lon === "number" && typeof g.place?.label === "string") return { guess: g, age };
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+function rememberGuess(g: Guess): void {
+  try {
+    if (g) localStorage.setItem(GUESS_KEY, JSON.stringify({ at: Date.now(), guess: g } satisfies StoredGuess));
+  } catch {
+    /* private mode */
+  }
+}
+
+/**
+ * Where the home opens, decided before the first render and without touching the network.
+ *
+ * `chosen` is the guest's own decision and nothing later may overrule it. `recheck` says the API is worth
+ * asking: either there is no stored answer or the stored one has aged past `RECHECK_MS`. A guest who was here
+ * this morning gets neither a fetch nor a second render.
+ */
+export type Opening = { guess: Guess; chosen: boolean; recheck: boolean };
+
+export function opening(): Opening {
+  const mine = savedPlace();
+  if (mine) return { guess: { kind: "point", place: mine }, chosen: true, recheck: false };
+  const metroId = savedMetro();
+  if (metroId) return { guess: metroId === ALL_METRO_ID ? null : { kind: "metro", metroId }, chosen: true, recheck: false };
+  const stored = storedGuess();
+  if (stored) return { guess: stored.guess, chosen: false, recheck: stored.age > RECHECK_MS };
+  const zone = metroFromTimeZone();
+  return { guess: zone ? { kind: "metro", metroId: zone } : null, chosen: false, recheck: true };
+}
+
+/**
+ * Ask the API where the caller is. Only called when `opening()` said a stored answer is missing or old, so
+ * this is off the first paint's path entirely: whatever it returns refines a home that is already drawn.
+ *
+ * The time zone is still the fallback when the API cannot be reached, and it is not stored when it is: a
+ * fallback is not an answer, and caching it would stop the next visit from asking again.
+ */
 export async function guessPlace(): Promise<Guess> {
   const coarse = (): Guess => {
     const id = metroFromTimeZone();
@@ -118,9 +234,16 @@ export async function guessPlace(): Promise<Guess> {
       const w = (await res.json()) as { lat?: number; lon?: number; city?: string; region?: string };
       if (typeof w.lat === "number" && typeof w.lon === "number") {
         // A named city is a point worth standing on; coordinates without one only place a metro.
-        if (w.city) return { kind: "point", place: { label: w.city, sub: w.region || "", lat: w.lat, lon: w.lon, region: w.region } };
-        const m = nearestMetro(w.lat, w.lon);
-        if (m) return { kind: "metro", metroId: m.id };
+        const g: Guess = w.city
+          ? { kind: "point", place: { label: w.city, sub: w.region || "", lat: w.lat, lon: w.lon, region: w.region } }
+          : (() => {
+              const m = nearestMetro(w.lat, w.lon);
+              return m ? { kind: "metro" as const, metroId: m.id } : null;
+            })();
+        if (g) {
+          rememberGuess(g);
+          return g;
+        }
       }
     }
   } catch {

@@ -114,6 +114,20 @@ create table if not exists documents (
   doc jsonb not null,
   updated_at timestamptz not null default now()
 );
+
+create table if not exists guest_wallets (
+  id text primary key,
+  stripe_customer text,
+  payment_method text,
+  brand text,
+  last4 text,
+  max_cents int not null default 25000,
+  otto boolean not null default true,
+  email text,
+  setup_session text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
 `;
 
 let migrated: Promise<void> | null = null;

@@ -1,0 +1,507 @@
+{
+  "id": "fareharbor/go-lanai-com",
+  "vendor": "fareharbor",
+  "domain": "go-lanai.com",
+  "bookingUrl": "https://fareharbor.com/embeds/book/go-lanai/?schedule-uuid=3a1d039a-d95f-4033-aa0e-213e2960b86c&full-items=yes&flow=136250",
+  "operatorId": "case-fareharbor-go-lanai-com",
+  "from": "2026-09-20",
+  "days": 14,
+  "capturedAt": "2026-09-20T04:28:26.976Z",
+  "observed": {
+    "vendor": "fareharbor",
+    "live": true,
+    "updatedAt": "2026-09-20T04:28:26.976Z",
+    "days": [
+      {
+        "date": "2026-09-20",
+        "slots": [
+          {
+            "startsAt": "2026-09-20T06:30",
+            "label": "6:30 AM · Mā'alaea, Maui → Mānele, Lāna'i",
+            "bookUrl": "https://fareharbor.com/go-lanai/items/126009/availability/1812690201/book/"
+          },
+          {
+            "startsAt": "2026-09-20T08:30",
+            "label": "8:30 AM · Mānele, Lāna'i → Mā'alaea, Maui",
+            "bookUrl": "https://fareharbor.com/go-lanai/items/126010/availability/1812692543/book/"
+          },
+          {
+            "startsAt": "2026-09-20T11:00",
+            "label": "11:00 AM · Mā'alaea, Maui → Mānele, Lāna'i",
+            "bookUrl": "https://fareharbor.com/go-lanai/items/126009/availability/1812690574/book/"
+          },
+          {
+            "startsAt": "2026-09-20T13:00",
+            "label": "1:00 PM · Mānele, Lāna'i → Mā'alaea, Maui",
+            "bookUrl": "https://fareharbor.com/go-lanai/items/126010/availability/1812692899/book/"
+          },
+          {
+            "startsAt": "2026-09-20T15:30",
+            "label": "3:30 PM · Mā'alaea, Maui → Mānele, Lāna'i",
+            "bookUrl": "https://fareharbor.com/go-lanai/items/126009/availability/1812690938/book/"
+          },
+          {
+            "startsAt": "2026-09-20T17:30",
+            "label": "5:30 PM · Mānele, Lāna'i → Mā'alaea, Maui",
+            "bookUrl": "https://fareharbor.com/go-lanai/items/126010/availability/1812693350/book/"
+          }
+        ]
+      },
+      {
+        "date": "2026-09-21",
+        "slots": [
+          {
+            "startsAt": "2026-09-21T06:30",
+            "label": "6:30 AM · Mā'alaea, Maui → Mānele, Lāna'i",
+            "bookUrl": "https://fareharbor.com/go-lanai/items/126009/availability/1812690208/book/"
+          },
+          {
+            "startsAt": "2026-09-21T08:30",
+            "label": "8:30 AM · Mānele, Lāna'i → Mā'alaea, Maui",
+            "bookUrl": "https://fareharbor.com/go-lanai/items/126010/availability/1812692553/book/"
+          },
+          {
+            "startsAt": "2026-09-21T11:00",
+            "label": "11:00 AM · Mā'alaea, Maui → Mānele, Lāna'i",
+            "bookUrl": "https://fareharbor.com/go-lanai/items/126009/availability/1812690584/book/"
+          },
+          {
+            "startsAt": "2026-09-21T13:00",
+            "label": "1:00 PM · Mānele, Lāna'i → Mā'alaea, Maui",
+            "bookUrl": "https://fareharbor.com/go-lanai/items/126010/availability/1812692905/book/"
+          },
+          {
+            "startsAt": "2026-09-21T15:30",
+            "label": "3:30 PM · Mā'alaea, Maui → Mānele, Lāna'i",
+            "bookUrl": "https://fareharbor.com/go-lanai/items/126009/availability/1812690945/book/"
+          },
+          {
+            "startsAt": "2026-09-21T17:30",
+            "label": "5:30 PM · Mānele, Lāna'i → Mā'alaea, Maui",
+            "bookUrl": "https://fareharbor.com/go-lanai/items/126010/availability/1812693357/book/"
+          }
+        ]
+      },
+      {
+        "date": "2026-09-22",
+        "slots": [
+          {
+            "startsAt": "2026-09-22T06:30",
+            "label": "6:30 AM · Mā'alaea, Maui → Mānele, Lāna'i",
+            "bookUrl": "https://fareharbor.com/go-lanai/items/126009/availability/1812690211/book/"
+          },
+          {
+            "startsAt": "2026-09-22T08:30",
+            "label": "8:30 AM · Mānele, Lāna'i → Mā'alaea, Maui",
+            "bookUrl": "https://fareharbor.com/go-lanai/items/126010/availability/1812692561/book/"
+          },
+          {
+            "startsAt": "2026-09-22T11:00",
+            "label": "11:00 AM · Mā'alaea, Maui → Mānele, Lāna'i",
+            "bookUrl": "https://fareharbor.com/go-lanai/items/126009/availability/1812690592/book/"
+          },
+          {
+            "startsAt": "2026-09-22T13:00",
+            "label": "1:00 PM · Mānele, Lāna'i → Mā'alaea, Maui",
+            "bookUrl": "https://fareharbor.com/go-lanai/items/126010/availability/1812692916/book/"
+          },
+          {
+            "startsAt": "2026-09-22T15:30",
+            "label": "3:30 PM · Mā'alaea, Maui → Mānele, Lāna'i",
+            "bookUrl": "https://fareharbor.com/go-lanai/items/126009/availability/1812690950/book/"
+          },
+          {
+            "startsAt": "2026-09-22T17:30",
+            "label": "5:30 PM · Mānele, Lāna'i → Mā'alaea, Maui",
+            "bookUrl": "https://fareharbor.com/go-lanai/items/126010/availability/1812693364/book/"
+          }
+        ]
+      },
+      {
+        "date": "2026-09-23",
+        "slots": [
+          {
+            "startsAt": "2026-09-23T06:30",
+            "label": "6:30 AM · Mā'alaea, Maui → Mānele, Lāna'i",
+            "bookUrl": "https://fareharbor.com/go-lanai/items/126009/availability/1812690216/book/"
+          },
+          {
+            "startsAt": "2026-09-23T08:30",
+            "label": "8:30 AM · Mānele, Lāna'i → Mā'alaea, Maui",
+            "bookUrl": "https://fareharbor.com/go-lanai/items/126010/availability/1812692570/book/"
+          },
+          {
+            "startsAt": "2026-09-23T11:00",
+            "label": "11:00 AM · Mā'alaea, Maui → Mānele, Lāna'i",
+            "bookUrl": "https://fareharbor.com/go-lanai/items/126009/availability/1812690601/book/"
+          },
+          {
+            "startsAt": "2026-09-23T13:00",
+            "label": "1:00 PM · Mānele, Lāna'i → Mā'alaea, Maui",
+            "bookUrl": "https://fareharbor.com/go-lanai/items/126010/availability/1812692923/book/"
+          },
+          {
+            "startsAt": "2026-09-23T15:30",
+            "label": "3:30 PM · Mā'alaea, Maui → Mānele, Lāna'i",
+            "bookUrl": "https://fareharbor.com/go-lanai/items/126009/availability/1812690956/book/"
+          },
+          {
+            "startsAt": "2026-09-23T17:30",
+            "label": "5:30 PM · Mānele, Lāna'i → Mā'alaea, Maui",
+            "bookUrl": "https://fareharbor.com/go-lanai/items/126010/availability/1812693371/book/"
+          }
+        ]
+      },
+      {
+        "date": "2026-09-24",
+        "slots": [
+          {
+            "startsAt": "2026-09-24T06:30",
+            "label": "6:30 AM · Mā'alaea, Maui → Mānele, Lāna'i",
+            "bookUrl": "https://fareharbor.com/go-lanai/items/126009/availability/1812690220/book/"
+          },
+          {
+            "startsAt": "2026-09-24T08:30",
+            "label": "8:30 AM · Mānele, Lāna'i → Mā'alaea, Maui",
+            "bookUrl": "https://fareharbor.com/go-lanai/items/126010/availability/1812692576/book/"
+          },
+          {
+            "startsAt": "2026-09-24T11:00",
+            "label": "11:00 AM · Mā'alaea, Maui → Mānele, Lāna'i",
+            "bookUrl": "https://fareharbor.com/go-lanai/items/126009/availability/1812690610/book/"
+          },
+          {
+            "startsAt": "2026-09-24T13:00",
+            "label": "1:00 PM · Mānele, Lāna'i → Mā'alaea, Maui",
+            "bookUrl": "https://fareharbor.com/go-lanai/items/126010/availability/1812692930/book/"
+          },
+          {
+            "startsAt": "2026-09-24T15:30",
+            "label": "3:30 PM · Mā'alaea, Maui → Mānele, Lāna'i",
+            "bookUrl": "https://fareharbor.com/go-lanai/items/126009/availability/1812690964/book/"
+          },
+          {
+            "startsAt": "2026-09-24T17:30",
+            "label": "5:30 PM · Mānele, Lāna'i → Mā'alaea, Maui",
+            "bookUrl": "https://fareharbor.com/go-lanai/items/126010/availability/1812693377/book/"
+          }
+        ]
+      },
+      {
+        "date": "2026-09-25",
+        "slots": [
+          {
+            "startsAt": "2026-09-25T06:30",
+            "label": "6:30 AM · Mā'alaea, Maui → Mānele, Lāna'i",
+            "bookUrl": "https://fareharbor.com/go-lanai/items/126009/availability/1812690225/book/"
+          },
+          {
+            "startsAt": "2026-09-25T08:30",
+            "label": "8:30 AM · Mānele, Lāna'i → Mā'alaea, Maui",
+            "bookUrl": "https://fareharbor.com/go-lanai/items/126010/availability/1812692585/book/"
+          },
+          {
+            "startsAt": "2026-09-25T11:00",
+            "label": "11:00 AM · Mā'alaea, Maui → Mānele, Lāna'i",
+            "bookUrl": "https://fareharbor.com/go-lanai/items/126009/availability/1812690614/book/"
+          },
+          {
+            "startsAt": "2026-09-25T13:00",
+            "label": "1:00 PM · Mānele, Lāna'i → Mā'alaea, Maui",
+            "bookUrl": "https://fareharbor.com/go-lanai/items/126010/availability/1812692939/book/"
+          },
+          {
+            "startsAt": "2026-09-25T15:30",
+            "label": "3:30 PM · Mā'alaea, Maui → Mānele, Lāna'i",
+            "bookUrl": "https://fareharbor.com/go-lanai/items/126009/availability/1812690971/book/"
+          },
+          {
+            "startsAt": "2026-09-25T17:30",
+            "label": "5:30 PM · Mānele, Lāna'i → Mā'alaea, Maui",
+            "bookUrl": "https://fareharbor.com/go-lanai/items/126010/availability/1812693384/book/"
+          }
+        ]
+      },
+      {
+        "date": "2026-09-26",
+        "slots": [
+          {
+            "startsAt": "2026-09-26T06:30",
+            "label": "6:30 AM · Mā'alaea, Maui → Mānele, Lāna'i",
+            "bookUrl": "https://fareharbor.com/go-lanai/items/126009/availability/1812690230/book/"
+          },
+          {
+            "startsAt": "2026-09-26T08:30",
+            "label": "8:30 AM · Mānele, Lāna'i → Mā'alaea, Maui",
+            "bookUrl": "https://fareharbor.com/go-lanai/items/126010/availability/1812692593/book/"
+          },
+          {
+            "startsAt": "2026-09-26T11:00",
+            "label": "11:00 AM · Mā'alaea, Maui → Mānele, Lāna'i",
+            "bookUrl": "https://fareharbor.com/go-lanai/items/126009/availability/1812690623/book/"
+          },
+          {
+            "startsAt": "2026-09-26T13:00",
+            "label": "1:00 PM · Mānele, Lāna'i → Mā'alaea, Maui",
+            "bookUrl": "https://fareharbor.com/go-lanai/items/126010/availability/1812692947/book/"
+          },
+          {
+            "startsAt": "2026-09-26T15:30",
+            "label": "3:30 PM · Mā'alaea, Maui → Mānele, Lāna'i",
+            "bookUrl": "https://fareharbor.com/go-lanai/items/126009/availability/1812690977/book/"
+          },
+          {
+            "startsAt": "2026-09-26T17:30",
+            "label": "5:30 PM · Mānele, Lāna'i → Mā'alaea, Maui",
+            "bookUrl": "https://fareharbor.com/go-lanai/items/126010/availability/1812693391/book/"
+          }
+        ]
+      },
+      {
+        "date": "2026-09-27",
+        "slots": [
+          {
+            "startsAt": "2026-09-27T06:30",
+            "label": "6:30 AM · Mā'alaea, Maui → Mānele, Lāna'i",
+            "bookUrl": "https://fareharbor.com/go-lanai/items/126009/availability/1812690237/book/"
+          },
+          {
+            "startsAt": "2026-09-27T08:30",
+            "label": "8:30 AM · Mānele, Lāna'i → Mā'alaea, Maui",
+            "bookUrl": "https://fareharbor.com/go-lanai/items/126010/availability/1812692605/book/"
+          },
+          {
+            "startsAt": "2026-09-27T11:00",
+            "label": "11:00 AM · Mā'alaea, Maui → Mānele, Lāna'i",
+            "bookUrl": "https://fareharbor.com/go-lanai/items/126009/availability/1812690631/book/"
+          },
+          {
+            "startsAt": "2026-09-27T13:00",
+            "label": "1:00 PM · Mānele, Lāna'i → Mā'alaea, Maui",
+            "bookUrl": "https://fareharbor.com/go-lanai/items/126010/availability/1812692955/book/"
+          },
+          {
+            "startsAt": "2026-09-27T15:30",
+            "label": "3:30 PM · Mā'alaea, Maui → Mānele, Lāna'i",
+            "bookUrl": "https://fareharbor.com/go-lanai/items/126009/availability/1812690984/book/"
+          },
+          {
+            "startsAt": "2026-09-27T17:30",
+            "label": "5:30 PM · Mānele, Lāna'i → Mā'alaea, Maui",
+            "bookUrl": "https://fareharbor.com/go-lanai/items/126010/availability/1812693398/book/"
+          }
+        ]
+      },
+      {
+        "date": "2026-09-28",
+        "slots": [
+          {
+            "startsAt": "2026-09-28T06:30",
+            "label": "6:30 AM · Mā'alaea, Maui → Mānele, Lāna'i",
+            "bookUrl": "https://fareharbor.com/go-lanai/items/126009/availability/1812690243/book/"
+          },
+          {
+            "startsAt": "2026-09-28T08:30",
+            "label": "8:30 AM · Mānele, Lāna'i → Mā'alaea, Maui",
+            "bookUrl": "https://fareharbor.com/go-lanai/items/126010/availability/1812692611/book/"
+          },
+          {
+            "startsAt": "2026-09-28T11:00",
+            "label": "11:00 AM · Mā'alaea, Maui → Mānele, Lāna'i",
+            "bookUrl": "https://fareharbor.com/go-lanai/items/126009/availability/1812690639/book/"
+          },
+          {
+            "startsAt": "2026-09-28T13:00",
+            "label": "1:00 PM · Mānele, Lāna'i → Mā'alaea, Maui",
+            "bookUrl": "https://fareharbor.com/go-lanai/items/126010/availability/1812692961/book/"
+          },
+          {
+            "startsAt": "2026-09-28T15:30",
+            "label": "3:30 PM · Mā'alaea, Maui → Mānele, Lāna'i",
+            "bookUrl": "https://fareharbor.com/go-lanai/items/126009/availability/1812690990/book/"
+          },
+          {
+            "startsAt": "2026-09-28T17:30",
+            "label": "5:30 PM · Mānele, Lāna'i → Mā'alaea, Maui",
+            "bookUrl": "https://fareharbor.com/go-lanai/items/126010/availability/1812693404/book/"
+          }
+        ]
+      },
+      {
+        "date": "2026-09-29",
+        "slots": [
+          {
+            "startsAt": "2026-09-29T06:30",
+            "label": "6:30 AM · Mā'alaea, Maui → Mānele, Lāna'i",
+            "bookUrl": "https://fareharbor.com/go-lanai/items/126009/availability/1812690250/book/"
+          },
+          {
+            "startsAt": "2026-09-29T08:30",
+            "label": "8:30 AM · Mānele, Lāna'i → Mā'alaea, Maui",
+            "bookUrl": "https://fareharbor.com/go-lanai/items/126010/availability/1812692619/book/"
+          },
+          {
+            "startsAt": "2026-09-29T11:00",
+            "label": "11:00 AM · Mā'alaea, Maui → Mānele, Lāna'i",
+            "bookUrl": "https://fareharbor.com/go-lanai/items/126009/availability/1812690646/book/"
+          },
+          {
+            "startsAt": "2026-09-29T13:00",
+            "label": "1:00 PM · Mānele, Lāna'i → Mā'alaea, Maui",
+            "bookUrl": "https://fareharbor.com/go-lanai/items/126010/availability/1812692969/book/"
+          },
+          {
+            "startsAt": "2026-09-29T15:30",
+            "label": "3:30 PM · Mā'alaea, Maui → Mānele, Lāna'i",
+            "bookUrl": "https://fareharbor.com/go-lanai/items/126009/availability/1812690999/book/"
+          },
+          {
+            "startsAt": "2026-09-29T17:30",
+            "label": "5:30 PM · Mānele, Lāna'i → Mā'alaea, Maui",
+            "bookUrl": "https://fareharbor.com/go-lanai/items/126010/availability/1812693411/book/"
+          }
+        ]
+      },
+      {
+        "date": "2026-09-30",
+        "slots": [
+          {
+            "startsAt": "2026-09-30T06:30",
+            "label": "6:30 AM · Mā'alaea, Maui → Mānele, Lāna'i",
+            "bookUrl": "https://fareharbor.com/go-lanai/items/126009/availability/1812690253/book/"
+          },
+          {
+            "startsAt": "2026-09-30T08:30",
+            "label": "8:30 AM · Mānele, Lāna'i → Mā'alaea, Maui",
+            "bookUrl": "https://fareharbor.com/go-lanai/items/126010/availability/1812692627/book/"
+          },
+          {
+            "startsAt": "2026-09-30T11:00",
+            "label": "11:00 AM · Mā'alaea, Maui → Mānele, Lāna'i",
+            "bookUrl": "https://fareharbor.com/go-lanai/items/126009/availability/1812690654/book/"
+          },
+          {
+            "startsAt": "2026-09-30T13:00",
+            "label": "1:00 PM · Mānele, Lāna'i → Mā'alaea, Maui",
+            "bookUrl": "https://fareharbor.com/go-lanai/items/126010/availability/1812692975/book/"
+          },
+          {
+            "startsAt": "2026-09-30T15:30",
+            "label": "3:30 PM · Mā'alaea, Maui → Mānele, Lāna'i",
+            "bookUrl": "https://fareharbor.com/go-lanai/items/126009/availability/1812691004/book/"
+          },
+          {
+            "startsAt": "2026-09-30T17:30",
+            "label": "5:30 PM · Mānele, Lāna'i → Mā'alaea, Maui",
+            "bookUrl": "https://fareharbor.com/go-lanai/items/126010/availability/1812693417/book/"
+          }
+        ]
+      },
+      {
+        "date": "2026-10-01",
+        "slots": [
+          {
+            "startsAt": "2026-10-01T06:30",
+            "label": "6:30 AM · Mā'alaea, Maui → Mānele, Lāna'i",
+            "bookUrl": "https://fareharbor.com/go-lanai/items/126009/availability/1812690259/book/"
+          },
+          {
+            "startsAt": "2026-10-01T08:30",
+            "label": "8:30 AM · Mānele, Lāna'i → Mā'alaea, Maui",
+            "bookUrl": "https://fareharbor.com/go-lanai/items/126010/availability/1812692634/book/"
+          },
+          {
+            "startsAt": "2026-10-01T11:00",
+            "label": "11:00 AM · Mā'alaea, Maui → Mānele, Lāna'i",
+            "bookUrl": "https://fareharbor.com/go-lanai/items/126009/availability/1812690660/book/"
+          },
+          {
+            "startsAt": "2026-10-01T13:00",
+            "label": "1:00 PM · Mānele, Lāna'i → Mā'alaea, Maui",
+            "bookUrl": "https://fareharbor.com/go-lanai/items/126010/availability/1812692984/book/"
+          },
+          {
+            "startsAt": "2026-10-01T15:30",
+            "label": "3:30 PM · Mā'alaea, Maui → Mānele, Lāna'i",
+            "bookUrl": "https://fareharbor.com/go-lanai/items/126009/availability/1812691011/book/"
+          },
+          {
+            "startsAt": "2026-10-01T17:30",
+            "label": "5:30 PM · Mānele, Lāna'i → Mā'alaea, Maui",
+            "bookUrl": "https://fareharbor.com/go-lanai/items/126010/availability/1812693424/book/"
+          }
+        ]
+      },
+      {
+        "date": "2026-10-02",
+        "slots": [
+          {
+            "startsAt": "2026-10-02T06:30",
+            "label": "6:30 AM · Mā'alaea, Maui → Mānele, Lāna'i",
+            "bookUrl": "https://fareharbor.com/go-lanai/items/126009/availability/1812690268/book/"
+          },
+          {
+            "startsAt": "2026-10-02T08:30",
+            "label": "8:30 AM · Mānele, Lāna'i → Mā'alaea, Maui",
+            "bookUrl": "https://fareharbor.com/go-lanai/items/126010/availability/1812692643/book/"
+          },
+          {
+            "startsAt": "2026-10-02T11:00",
+            "label": "11:00 AM · Mā'alaea, Maui → Mānele, Lāna'i",
+            "bookUrl": "https://fareharbor.com/go-lanai/items/126009/availability/1812690669/book/"
+          },
+          {
+            "startsAt": "2026-10-02T13:00",
+            "label": "1:00 PM · Mānele, Lāna'i → Mā'alaea, Maui",
+            "bookUrl": "https://fareharbor.com/go-lanai/items/126010/availability/1812692992/book/"
+          },
+          {
+            "startsAt": "2026-10-02T15:30",
+            "label": "3:30 PM · Mā'alaea, Maui → Mānele, Lāna'i",
+            "bookUrl": "https://fareharbor.com/go-lanai/items/126009/availability/1812691018/book/"
+          },
+          {
+            "startsAt": "2026-10-02T17:30",
+            "label": "5:30 PM · Mānele, Lāna'i → Mā'alaea, Maui",
+            "bookUrl": "https://fareharbor.com/go-lanai/items/126010/availability/1812693431/book/"
+          }
+        ]
+      },
+      {
+        "date": "2026-10-03",
+        "slots": [
+          {
+            "startsAt": "2026-10-03T06:30",
+            "label": "6:30 AM · Mā'alaea, Maui → Mānele, Lāna'i",
+            "bookUrl": "https://fareharbor.com/go-lanai/items/126009/availability/1812690273/book/"
+          },
+          {
+            "startsAt": "2026-10-03T08:30",
+            "label": "8:30 AM · Mānele, Lāna'i → Mā'alaea, Maui",
+            "bookUrl": "https://fareharbor.com/go-lanai/items/126010/availability/1812692651/book/"
+          },
+          {
+            "startsAt": "2026-10-03T11:00",
+            "label": "11:00 AM · Mā'alaea, Maui → Mānele, Lāna'i",
+            "bookUrl": "https://fareharbor.com/go-lanai/items/126009/availability/1812690677/book/"
+          },
+          {
+            "startsAt": "2026-10-03T13:00",
+            "label": "1:00 PM · Mānele, Lāna'i → Mā'alaea, Maui",
+            "bookUrl": "https://fareharbor.com/go-lanai/items/126010/availability/1812692998/book/"
+          },
+          {
+            "startsAt": "2026-10-03T15:30",
+            "label": "3:30 PM · Mā'alaea, Maui → Mānele, Lāna'i",
+            "bookUrl": "https://fareharbor.com/go-lanai/items/126009/availability/1812691025/book/"
+          },
+          {
+            "startsAt": "2026-10-03T17:30",
+            "label": "5:30 PM · Mānele, Lāna'i → Mā'alaea, Maui",
+            "bookUrl": "https://fareharbor.com/go-lanai/items/126010/availability/1812693439/book/"
+          }
+        ]
+      }
+    ]
+  }
+}

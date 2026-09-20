@@ -1,0 +1,2112 @@
+{
+  "id": "xola/skypirateparasail-com",
+  "vendor": "xola",
+  "domain": "skypirateparasail.com",
+  "bookingUrl": "https://checkout.xola.com/index.html#buttons/5774627fe017985f408b45d5",
+  "operatorId": "case-xola-skypirateparasail-com",
+  "from": "2026-09-20",
+  "days": 14,
+  "capturedAt": "2026-09-20T04:29:25.757Z",
+  "observed": {
+    "vendor": "xola",
+    "live": true,
+    "updatedAt": "2026-09-20T04:29:25.757Z",
+    "days": [
+      {
+        "date": "2026-09-20",
+        "slots": [
+          {
+            "startsAt": "2026-09-20T09:00",
+            "label": "9:00 AM · Boat Rental: Boat #3 - 4 Hours",
+            "priceCents": 42500,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5760f0e2e017985e438b45a3"
+          },
+          {
+            "startsAt": "2026-09-20T09:00",
+            "label": "9:00 AM · Boat Rental: Boat #4 - 4 Hours",
+            "priceCents": 45000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5760f28c926705346b8b45a0"
+          },
+          {
+            "startsAt": "2026-09-20T09:00",
+            "label": "9:00 AM · Boat Rental: Boat #4 - 2 Hours",
+            "priceCents": 25000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/58d927926864eae9278b45b3"
+          },
+          {
+            "startsAt": "2026-09-20T09:00",
+            "label": "9:00 AM · Boat Rental:  Boat #3 - 2 Hours",
+            "priceCents": 22500,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/58da894c332e7599018b45fd"
+          },
+          {
+            "startsAt": "2026-09-20T09:00",
+            "label": "9:00 AM · Boat Rental:  Boat #5 - 2 Hours",
+            "priceCents": 22500,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5900f67b332e7557548b4581"
+          },
+          {
+            "startsAt": "2026-09-20T09:00",
+            "label": "9:00 AM · Boat Rental:  Boat #5 - 4 Hours",
+            "priceCents": 42500,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5900f9cc332e7556548b458f"
+          },
+          {
+            "startsAt": "2026-09-20T10:00",
+            "label": "10:00 AM · Boat Rental: Boat #3 - 8 Hours",
+            "priceCents": 80000,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5760f1096864ea9c628b45da"
+          },
+          {
+            "startsAt": "2026-09-20T10:00",
+            "label": "10:00 AM · Boat Rental: Boat #4 - 8 Hours",
+            "priceCents": 90000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5760f2b99267052c6b8b459a"
+          },
+          {
+            "startsAt": "2026-09-20T11:30",
+            "label": "11:30 AM · Boat Rental: Boat #4 - 2 Hours",
+            "priceCents": 25000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/58d927926864eae9278b45b3"
+          },
+          {
+            "startsAt": "2026-09-20T11:30",
+            "label": "11:30 AM · Boat Rental:  Boat #3 - 2 Hours",
+            "priceCents": 22500,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/58da894c332e7599018b45fd"
+          },
+          {
+            "startsAt": "2026-09-20T11:30",
+            "label": "11:30 AM · Boat Rental:  Boat #5 - 2 Hours",
+            "priceCents": 22500,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5900f67b332e7557548b4581"
+          },
+          {
+            "startsAt": "2026-09-20T14:00",
+            "label": "2:00 PM · Boat Rental: Boat #3 - 4 Hours",
+            "priceCents": 42500,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5760f0e2e017985e438b45a3"
+          },
+          {
+            "startsAt": "2026-09-20T14:00",
+            "label": "2:00 PM · Boat Rental: Boat #4 - 4 Hours",
+            "priceCents": 45000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5760f28c926705346b8b45a0"
+          },
+          {
+            "startsAt": "2026-09-20T14:00",
+            "label": "2:00 PM · Boat Rental: Boat #4 - 2 Hours",
+            "priceCents": 25000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/58d927926864eae9278b45b3"
+          },
+          {
+            "startsAt": "2026-09-20T14:00",
+            "label": "2:00 PM · Boat Rental:  Boat #3 - 2 Hours",
+            "priceCents": 22500,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/58da894c332e7599018b45fd"
+          },
+          {
+            "startsAt": "2026-09-20T14:00",
+            "label": "2:00 PM · Boat Rental:  Boat #5 - 2 Hours",
+            "priceCents": 22500,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5900f67b332e7557548b4581"
+          },
+          {
+            "startsAt": "2026-09-20T14:00",
+            "label": "2:00 PM · Boat Rental:  Boat #5 - 4 Hours",
+            "priceCents": 42500,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5900f9cc332e7556548b458f"
+          }
+        ]
+      },
+      {
+        "date": "2026-09-21",
+        "slots": [
+          {
+            "startsAt": "2026-09-21T09:00",
+            "label": "9:00 AM · Boat Rental: Boat #3 - 4 Hours",
+            "priceCents": 42500,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5760f0e2e017985e438b45a3"
+          },
+          {
+            "startsAt": "2026-09-21T09:00",
+            "label": "9:00 AM · Boat Rental: Boat #4 - 4 Hours",
+            "priceCents": 45000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5760f28c926705346b8b45a0"
+          },
+          {
+            "startsAt": "2026-09-21T09:00",
+            "label": "9:00 AM · Boat Rental: Boat #4 - 2 Hours",
+            "priceCents": 25000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/58d927926864eae9278b45b3"
+          },
+          {
+            "startsAt": "2026-09-21T09:00",
+            "label": "9:00 AM · Boat Rental:  Boat #3 - 2 Hours",
+            "priceCents": 22500,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/58da894c332e7599018b45fd"
+          },
+          {
+            "startsAt": "2026-09-21T09:00",
+            "label": "9:00 AM · Boat Rental:  Boat #5 - 2 Hours",
+            "priceCents": 22500,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5900f67b332e7557548b4581"
+          },
+          {
+            "startsAt": "2026-09-21T09:00",
+            "label": "9:00 AM · Boat Rental:  Boat #5 - 4 Hours",
+            "priceCents": 42500,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5900f9cc332e7556548b458f"
+          },
+          {
+            "startsAt": "2026-09-21T09:30",
+            "label": "9:30 AM · Parasailing",
+            "priceCents": 9000,
+            "seatsLeft": 12,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5757ce046864eab7528b45d8"
+          },
+          {
+            "startsAt": "2026-09-21T10:00",
+            "label": "10:00 AM · Boat Rental: Boat #3 - 8 Hours",
+            "priceCents": 80000,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5760f1096864ea9c628b45da"
+          },
+          {
+            "startsAt": "2026-09-21T10:00",
+            "label": "10:00 AM · Boat Rental: Boat #4 - 8 Hours",
+            "priceCents": 90000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5760f2b99267052c6b8b459a"
+          },
+          {
+            "startsAt": "2026-09-21T11:00",
+            "label": "11:00 AM · Parasailing",
+            "priceCents": 9000,
+            "seatsLeft": 11,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5757ce046864eab7528b45d8"
+          },
+          {
+            "startsAt": "2026-09-21T11:30",
+            "label": "11:30 AM · Boat Rental: Boat #4 - 2 Hours",
+            "priceCents": 25000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/58d927926864eae9278b45b3"
+          },
+          {
+            "startsAt": "2026-09-21T11:30",
+            "label": "11:30 AM · Boat Rental:  Boat #3 - 2 Hours",
+            "priceCents": 22500,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/58da894c332e7599018b45fd"
+          },
+          {
+            "startsAt": "2026-09-21T11:30",
+            "label": "11:30 AM · Boat Rental:  Boat #5 - 2 Hours",
+            "priceCents": 22500,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5900f67b332e7557548b4581"
+          },
+          {
+            "startsAt": "2026-09-21T13:00",
+            "label": "1:00 PM · Parasailing",
+            "priceCents": 9000,
+            "seatsLeft": 12,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5757ce046864eab7528b45d8"
+          },
+          {
+            "startsAt": "2026-09-21T14:00",
+            "label": "2:00 PM · Boat Rental: Boat #3 - 4 Hours",
+            "priceCents": 42500,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5760f0e2e017985e438b45a3"
+          },
+          {
+            "startsAt": "2026-09-21T14:00",
+            "label": "2:00 PM · Boat Rental: Boat #4 - 4 Hours",
+            "priceCents": 45000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5760f28c926705346b8b45a0"
+          },
+          {
+            "startsAt": "2026-09-21T14:00",
+            "label": "2:00 PM · Boat Rental: Boat #4 - 2 Hours",
+            "priceCents": 25000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/58d927926864eae9278b45b3"
+          },
+          {
+            "startsAt": "2026-09-21T14:00",
+            "label": "2:00 PM · Boat Rental:  Boat #3 - 2 Hours",
+            "priceCents": 22500,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/58da894c332e7599018b45fd"
+          },
+          {
+            "startsAt": "2026-09-21T14:00",
+            "label": "2:00 PM · Boat Rental:  Boat #5 - 2 Hours",
+            "priceCents": 22500,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5900f67b332e7557548b4581"
+          },
+          {
+            "startsAt": "2026-09-21T14:00",
+            "label": "2:00 PM · Boat Rental:  Boat #5 - 4 Hours",
+            "priceCents": 42500,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5900f9cc332e7556548b458f"
+          },
+          {
+            "startsAt": "2026-09-21T14:30",
+            "label": "2:30 PM · Parasailing",
+            "priceCents": 9000,
+            "seatsLeft": 12,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5757ce046864eab7528b45d8"
+          },
+          {
+            "startsAt": "2026-09-21T16:00",
+            "label": "4:00 PM · Parasailing",
+            "priceCents": 9000,
+            "seatsLeft": 12,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5757ce046864eab7528b45d8"
+          }
+        ]
+      },
+      {
+        "date": "2026-09-22",
+        "slots": [
+          {
+            "startsAt": "2026-09-22T09:00",
+            "label": "9:00 AM · Boat Rental: Boat #3 - 4 Hours",
+            "priceCents": 42500,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5760f0e2e017985e438b45a3"
+          },
+          {
+            "startsAt": "2026-09-22T09:00",
+            "label": "9:00 AM · Boat Rental: Boat #4 - 4 Hours",
+            "priceCents": 45000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5760f28c926705346b8b45a0"
+          },
+          {
+            "startsAt": "2026-09-22T09:00",
+            "label": "9:00 AM · Boat Rental: Boat #4 - 2 Hours",
+            "priceCents": 25000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/58d927926864eae9278b45b3"
+          },
+          {
+            "startsAt": "2026-09-22T09:00",
+            "label": "9:00 AM · Boat Rental:  Boat #3 - 2 Hours",
+            "priceCents": 22500,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/58da894c332e7599018b45fd"
+          },
+          {
+            "startsAt": "2026-09-22T09:00",
+            "label": "9:00 AM · Boat Rental:  Boat #5 - 2 Hours",
+            "priceCents": 22500,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5900f67b332e7557548b4581"
+          },
+          {
+            "startsAt": "2026-09-22T09:00",
+            "label": "9:00 AM · Boat Rental:  Boat #5 - 4 Hours",
+            "priceCents": 42500,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5900f9cc332e7556548b458f"
+          },
+          {
+            "startsAt": "2026-09-22T09:30",
+            "label": "9:30 AM · Parasailing",
+            "priceCents": 9000,
+            "seatsLeft": 12,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5757ce046864eab7528b45d8"
+          },
+          {
+            "startsAt": "2026-09-22T10:00",
+            "label": "10:00 AM · Boat Rental: Boat #3 - 8 Hours",
+            "priceCents": 80000,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5760f1096864ea9c628b45da"
+          },
+          {
+            "startsAt": "2026-09-22T10:00",
+            "label": "10:00 AM · Boat Rental: Boat #4 - 8 Hours",
+            "priceCents": 90000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5760f2b99267052c6b8b459a"
+          },
+          {
+            "startsAt": "2026-09-22T11:00",
+            "label": "11:00 AM · Parasailing",
+            "priceCents": 9000,
+            "seatsLeft": 12,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5757ce046864eab7528b45d8"
+          },
+          {
+            "startsAt": "2026-09-22T11:30",
+            "label": "11:30 AM · Boat Rental: Boat #4 - 2 Hours",
+            "priceCents": 25000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/58d927926864eae9278b45b3"
+          },
+          {
+            "startsAt": "2026-09-22T11:30",
+            "label": "11:30 AM · Boat Rental:  Boat #3 - 2 Hours",
+            "priceCents": 22500,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/58da894c332e7599018b45fd"
+          },
+          {
+            "startsAt": "2026-09-22T11:30",
+            "label": "11:30 AM · Boat Rental:  Boat #5 - 2 Hours",
+            "priceCents": 22500,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5900f67b332e7557548b4581"
+          },
+          {
+            "startsAt": "2026-09-22T13:00",
+            "label": "1:00 PM · Parasailing",
+            "priceCents": 9000,
+            "seatsLeft": 12,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5757ce046864eab7528b45d8"
+          },
+          {
+            "startsAt": "2026-09-22T14:00",
+            "label": "2:00 PM · Boat Rental: Boat #3 - 4 Hours",
+            "priceCents": 42500,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5760f0e2e017985e438b45a3"
+          },
+          {
+            "startsAt": "2026-09-22T14:00",
+            "label": "2:00 PM · Boat Rental: Boat #4 - 4 Hours",
+            "priceCents": 45000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5760f28c926705346b8b45a0"
+          },
+          {
+            "startsAt": "2026-09-22T14:00",
+            "label": "2:00 PM · Boat Rental: Boat #4 - 2 Hours",
+            "priceCents": 25000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/58d927926864eae9278b45b3"
+          },
+          {
+            "startsAt": "2026-09-22T14:00",
+            "label": "2:00 PM · Boat Rental:  Boat #3 - 2 Hours",
+            "priceCents": 22500,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/58da894c332e7599018b45fd"
+          },
+          {
+            "startsAt": "2026-09-22T14:00",
+            "label": "2:00 PM · Boat Rental:  Boat #5 - 2 Hours",
+            "priceCents": 22500,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5900f67b332e7557548b4581"
+          },
+          {
+            "startsAt": "2026-09-22T14:00",
+            "label": "2:00 PM · Boat Rental:  Boat #5 - 4 Hours",
+            "priceCents": 42500,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5900f9cc332e7556548b458f"
+          },
+          {
+            "startsAt": "2026-09-22T14:30",
+            "label": "2:30 PM · Parasailing",
+            "priceCents": 9000,
+            "seatsLeft": 12,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5757ce046864eab7528b45d8"
+          },
+          {
+            "startsAt": "2026-09-22T16:00",
+            "label": "4:00 PM · Parasailing",
+            "priceCents": 9000,
+            "seatsLeft": 12,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5757ce046864eab7528b45d8"
+          }
+        ]
+      },
+      {
+        "date": "2026-09-23",
+        "slots": [
+          {
+            "startsAt": "2026-09-23T09:00",
+            "label": "9:00 AM · Boat Rental: Boat #3 - 4 Hours",
+            "priceCents": 42500,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5760f0e2e017985e438b45a3"
+          },
+          {
+            "startsAt": "2026-09-23T09:00",
+            "label": "9:00 AM · Boat Rental: Boat #4 - 4 Hours",
+            "priceCents": 45000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5760f28c926705346b8b45a0"
+          },
+          {
+            "startsAt": "2026-09-23T09:00",
+            "label": "9:00 AM · Boat Rental: Boat #4 - 2 Hours",
+            "priceCents": 25000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/58d927926864eae9278b45b3"
+          },
+          {
+            "startsAt": "2026-09-23T09:00",
+            "label": "9:00 AM · Boat Rental:  Boat #3 - 2 Hours",
+            "priceCents": 22500,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/58da894c332e7599018b45fd"
+          },
+          {
+            "startsAt": "2026-09-23T09:00",
+            "label": "9:00 AM · Boat Rental:  Boat #5 - 2 Hours",
+            "priceCents": 22500,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5900f67b332e7557548b4581"
+          },
+          {
+            "startsAt": "2026-09-23T09:00",
+            "label": "9:00 AM · Boat Rental:  Boat #5 - 4 Hours",
+            "priceCents": 42500,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5900f9cc332e7556548b458f"
+          },
+          {
+            "startsAt": "2026-09-23T09:30",
+            "label": "9:30 AM · Parasailing",
+            "priceCents": 9000,
+            "seatsLeft": 12,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5757ce046864eab7528b45d8"
+          },
+          {
+            "startsAt": "2026-09-23T10:00",
+            "label": "10:00 AM · Boat Rental: Boat #3 - 8 Hours",
+            "priceCents": 80000,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5760f1096864ea9c628b45da"
+          },
+          {
+            "startsAt": "2026-09-23T10:00",
+            "label": "10:00 AM · Boat Rental: Boat #4 - 8 Hours",
+            "priceCents": 90000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5760f2b99267052c6b8b459a"
+          },
+          {
+            "startsAt": "2026-09-23T11:00",
+            "label": "11:00 AM · Parasailing",
+            "priceCents": 9000,
+            "seatsLeft": 12,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5757ce046864eab7528b45d8"
+          },
+          {
+            "startsAt": "2026-09-23T11:30",
+            "label": "11:30 AM · Boat Rental: Boat #4 - 2 Hours",
+            "priceCents": 25000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/58d927926864eae9278b45b3"
+          },
+          {
+            "startsAt": "2026-09-23T11:30",
+            "label": "11:30 AM · Boat Rental:  Boat #3 - 2 Hours",
+            "priceCents": 22500,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/58da894c332e7599018b45fd"
+          },
+          {
+            "startsAt": "2026-09-23T11:30",
+            "label": "11:30 AM · Boat Rental:  Boat #5 - 2 Hours",
+            "priceCents": 22500,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5900f67b332e7557548b4581"
+          },
+          {
+            "startsAt": "2026-09-23T13:00",
+            "label": "1:00 PM · Parasailing",
+            "priceCents": 9000,
+            "seatsLeft": 12,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5757ce046864eab7528b45d8"
+          },
+          {
+            "startsAt": "2026-09-23T14:00",
+            "label": "2:00 PM · Boat Rental: Boat #3 - 4 Hours",
+            "priceCents": 42500,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5760f0e2e017985e438b45a3"
+          },
+          {
+            "startsAt": "2026-09-23T14:00",
+            "label": "2:00 PM · Boat Rental: Boat #4 - 4 Hours",
+            "priceCents": 45000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5760f28c926705346b8b45a0"
+          },
+          {
+            "startsAt": "2026-09-23T14:00",
+            "label": "2:00 PM · Boat Rental: Boat #4 - 2 Hours",
+            "priceCents": 25000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/58d927926864eae9278b45b3"
+          },
+          {
+            "startsAt": "2026-09-23T14:00",
+            "label": "2:00 PM · Boat Rental:  Boat #3 - 2 Hours",
+            "priceCents": 22500,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/58da894c332e7599018b45fd"
+          },
+          {
+            "startsAt": "2026-09-23T14:00",
+            "label": "2:00 PM · Boat Rental:  Boat #5 - 2 Hours",
+            "priceCents": 22500,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5900f67b332e7557548b4581"
+          },
+          {
+            "startsAt": "2026-09-23T14:00",
+            "label": "2:00 PM · Boat Rental:  Boat #5 - 4 Hours",
+            "priceCents": 42500,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5900f9cc332e7556548b458f"
+          },
+          {
+            "startsAt": "2026-09-23T14:30",
+            "label": "2:30 PM · Parasailing",
+            "priceCents": 9000,
+            "seatsLeft": 12,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5757ce046864eab7528b45d8"
+          },
+          {
+            "startsAt": "2026-09-23T16:00",
+            "label": "4:00 PM · Parasailing",
+            "priceCents": 9000,
+            "seatsLeft": 12,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5757ce046864eab7528b45d8"
+          }
+        ]
+      },
+      {
+        "date": "2026-09-24",
+        "slots": [
+          {
+            "startsAt": "2026-09-24T09:00",
+            "label": "9:00 AM · Boat Rental: Boat #3 - 4 Hours",
+            "priceCents": 42500,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5760f0e2e017985e438b45a3"
+          },
+          {
+            "startsAt": "2026-09-24T09:00",
+            "label": "9:00 AM · Boat Rental: Boat #4 - 4 Hours",
+            "priceCents": 45000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5760f28c926705346b8b45a0"
+          },
+          {
+            "startsAt": "2026-09-24T09:00",
+            "label": "9:00 AM · Boat Rental: Boat #4 - 2 Hours",
+            "priceCents": 25000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/58d927926864eae9278b45b3"
+          },
+          {
+            "startsAt": "2026-09-24T09:00",
+            "label": "9:00 AM · Boat Rental:  Boat #3 - 2 Hours",
+            "priceCents": 22500,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/58da894c332e7599018b45fd"
+          },
+          {
+            "startsAt": "2026-09-24T09:00",
+            "label": "9:00 AM · Boat Rental:  Boat #5 - 2 Hours",
+            "priceCents": 22500,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5900f67b332e7557548b4581"
+          },
+          {
+            "startsAt": "2026-09-24T09:00",
+            "label": "9:00 AM · Boat Rental:  Boat #5 - 4 Hours",
+            "priceCents": 42500,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5900f9cc332e7556548b458f"
+          },
+          {
+            "startsAt": "2026-09-24T09:30",
+            "label": "9:30 AM · Parasailing",
+            "priceCents": 9000,
+            "seatsLeft": 12,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5757ce046864eab7528b45d8"
+          },
+          {
+            "startsAt": "2026-09-24T10:00",
+            "label": "10:00 AM · Boat Rental: Boat #3 - 8 Hours",
+            "priceCents": 80000,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5760f1096864ea9c628b45da"
+          },
+          {
+            "startsAt": "2026-09-24T10:00",
+            "label": "10:00 AM · Boat Rental: Boat #4 - 8 Hours",
+            "priceCents": 90000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5760f2b99267052c6b8b459a"
+          },
+          {
+            "startsAt": "2026-09-24T11:00",
+            "label": "11:00 AM · Parasailing",
+            "priceCents": 9000,
+            "seatsLeft": 12,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5757ce046864eab7528b45d8"
+          },
+          {
+            "startsAt": "2026-09-24T11:30",
+            "label": "11:30 AM · Boat Rental: Boat #4 - 2 Hours",
+            "priceCents": 25000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/58d927926864eae9278b45b3"
+          },
+          {
+            "startsAt": "2026-09-24T11:30",
+            "label": "11:30 AM · Boat Rental:  Boat #3 - 2 Hours",
+            "priceCents": 22500,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/58da894c332e7599018b45fd"
+          },
+          {
+            "startsAt": "2026-09-24T11:30",
+            "label": "11:30 AM · Boat Rental:  Boat #5 - 2 Hours",
+            "priceCents": 22500,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5900f67b332e7557548b4581"
+          },
+          {
+            "startsAt": "2026-09-24T13:00",
+            "label": "1:00 PM · Parasailing",
+            "priceCents": 9000,
+            "seatsLeft": 12,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5757ce046864eab7528b45d8"
+          },
+          {
+            "startsAt": "2026-09-24T14:00",
+            "label": "2:00 PM · Boat Rental: Boat #3 - 4 Hours",
+            "priceCents": 42500,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5760f0e2e017985e438b45a3"
+          },
+          {
+            "startsAt": "2026-09-24T14:00",
+            "label": "2:00 PM · Boat Rental: Boat #4 - 4 Hours",
+            "priceCents": 45000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5760f28c926705346b8b45a0"
+          },
+          {
+            "startsAt": "2026-09-24T14:00",
+            "label": "2:00 PM · Boat Rental: Boat #4 - 2 Hours",
+            "priceCents": 25000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/58d927926864eae9278b45b3"
+          },
+          {
+            "startsAt": "2026-09-24T14:00",
+            "label": "2:00 PM · Boat Rental:  Boat #3 - 2 Hours",
+            "priceCents": 22500,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/58da894c332e7599018b45fd"
+          },
+          {
+            "startsAt": "2026-09-24T14:00",
+            "label": "2:00 PM · Boat Rental:  Boat #5 - 2 Hours",
+            "priceCents": 22500,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5900f67b332e7557548b4581"
+          },
+          {
+            "startsAt": "2026-09-24T14:00",
+            "label": "2:00 PM · Boat Rental:  Boat #5 - 4 Hours",
+            "priceCents": 42500,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5900f9cc332e7556548b458f"
+          },
+          {
+            "startsAt": "2026-09-24T14:30",
+            "label": "2:30 PM · Parasailing",
+            "priceCents": 9000,
+            "seatsLeft": 12,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5757ce046864eab7528b45d8"
+          },
+          {
+            "startsAt": "2026-09-24T16:00",
+            "label": "4:00 PM · Parasailing",
+            "priceCents": 9000,
+            "seatsLeft": 12,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5757ce046864eab7528b45d8"
+          }
+        ]
+      },
+      {
+        "date": "2026-09-25",
+        "slots": [
+          {
+            "startsAt": "2026-09-25T09:00",
+            "label": "9:00 AM · Boat Rental: Boat #3 - 4 Hours",
+            "priceCents": 42500,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5760f0e2e017985e438b45a3"
+          },
+          {
+            "startsAt": "2026-09-25T09:00",
+            "label": "9:00 AM · Boat Rental: Boat #4 - 4 Hours",
+            "priceCents": 45000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5760f28c926705346b8b45a0"
+          },
+          {
+            "startsAt": "2026-09-25T09:00",
+            "label": "9:00 AM · Boat Rental: Boat #4 - 2 Hours",
+            "priceCents": 25000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/58d927926864eae9278b45b3"
+          },
+          {
+            "startsAt": "2026-09-25T09:00",
+            "label": "9:00 AM · Boat Rental:  Boat #3 - 2 Hours",
+            "priceCents": 22500,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/58da894c332e7599018b45fd"
+          },
+          {
+            "startsAt": "2026-09-25T09:00",
+            "label": "9:00 AM · Boat Rental:  Boat #5 - 2 Hours",
+            "priceCents": 22500,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5900f67b332e7557548b4581"
+          },
+          {
+            "startsAt": "2026-09-25T09:00",
+            "label": "9:00 AM · Boat Rental:  Boat #5 - 4 Hours",
+            "priceCents": 42500,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5900f9cc332e7556548b458f"
+          },
+          {
+            "startsAt": "2026-09-25T09:30",
+            "label": "9:30 AM · Parasailing",
+            "priceCents": 9000,
+            "seatsLeft": 12,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5757ce046864eab7528b45d8"
+          },
+          {
+            "startsAt": "2026-09-25T10:00",
+            "label": "10:00 AM · Boat Rental: Boat #3 - 8 Hours",
+            "priceCents": 80000,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5760f1096864ea9c628b45da"
+          },
+          {
+            "startsAt": "2026-09-25T10:00",
+            "label": "10:00 AM · Boat Rental: Boat #4 - 8 Hours",
+            "priceCents": 90000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5760f2b99267052c6b8b459a"
+          },
+          {
+            "startsAt": "2026-09-25T11:00",
+            "label": "11:00 AM · Parasailing",
+            "priceCents": 9000,
+            "seatsLeft": 12,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5757ce046864eab7528b45d8"
+          },
+          {
+            "startsAt": "2026-09-25T11:30",
+            "label": "11:30 AM · Boat Rental: Boat #4 - 2 Hours",
+            "priceCents": 25000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/58d927926864eae9278b45b3"
+          },
+          {
+            "startsAt": "2026-09-25T11:30",
+            "label": "11:30 AM · Boat Rental:  Boat #3 - 2 Hours",
+            "priceCents": 22500,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/58da894c332e7599018b45fd"
+          },
+          {
+            "startsAt": "2026-09-25T11:30",
+            "label": "11:30 AM · Boat Rental:  Boat #5 - 2 Hours",
+            "priceCents": 22500,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5900f67b332e7557548b4581"
+          },
+          {
+            "startsAt": "2026-09-25T13:00",
+            "label": "1:00 PM · Parasailing",
+            "priceCents": 9000,
+            "seatsLeft": 12,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5757ce046864eab7528b45d8"
+          },
+          {
+            "startsAt": "2026-09-25T14:00",
+            "label": "2:00 PM · Boat Rental: Boat #3 - 4 Hours",
+            "priceCents": 42500,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5760f0e2e017985e438b45a3"
+          },
+          {
+            "startsAt": "2026-09-25T14:00",
+            "label": "2:00 PM · Boat Rental: Boat #4 - 4 Hours",
+            "priceCents": 45000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5760f28c926705346b8b45a0"
+          },
+          {
+            "startsAt": "2026-09-25T14:00",
+            "label": "2:00 PM · Boat Rental: Boat #4 - 2 Hours",
+            "priceCents": 25000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/58d927926864eae9278b45b3"
+          },
+          {
+            "startsAt": "2026-09-25T14:00",
+            "label": "2:00 PM · Boat Rental:  Boat #3 - 2 Hours",
+            "priceCents": 22500,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/58da894c332e7599018b45fd"
+          },
+          {
+            "startsAt": "2026-09-25T14:00",
+            "label": "2:00 PM · Boat Rental:  Boat #5 - 2 Hours",
+            "priceCents": 22500,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5900f67b332e7557548b4581"
+          },
+          {
+            "startsAt": "2026-09-25T14:00",
+            "label": "2:00 PM · Boat Rental:  Boat #5 - 4 Hours",
+            "priceCents": 42500,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5900f9cc332e7556548b458f"
+          },
+          {
+            "startsAt": "2026-09-25T14:30",
+            "label": "2:30 PM · Parasailing",
+            "priceCents": 9000,
+            "seatsLeft": 12,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5757ce046864eab7528b45d8"
+          },
+          {
+            "startsAt": "2026-09-25T16:00",
+            "label": "4:00 PM · Parasailing",
+            "priceCents": 9000,
+            "seatsLeft": 12,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5757ce046864eab7528b45d8"
+          }
+        ]
+      },
+      {
+        "date": "2026-09-26",
+        "slots": [
+          {
+            "startsAt": "2026-09-26T09:00",
+            "label": "9:00 AM · Boat Rental: Boat #3 - 4 Hours",
+            "priceCents": 42500,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5760f0e2e017985e438b45a3"
+          },
+          {
+            "startsAt": "2026-09-26T09:00",
+            "label": "9:00 AM · Boat Rental: Boat #4 - 4 Hours",
+            "priceCents": 45000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5760f28c926705346b8b45a0"
+          },
+          {
+            "startsAt": "2026-09-26T09:00",
+            "label": "9:00 AM · Boat Rental: Boat #4 - 2 Hours",
+            "priceCents": 25000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/58d927926864eae9278b45b3"
+          },
+          {
+            "startsAt": "2026-09-26T09:00",
+            "label": "9:00 AM · Boat Rental:  Boat #3 - 2 Hours",
+            "priceCents": 22500,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/58da894c332e7599018b45fd"
+          },
+          {
+            "startsAt": "2026-09-26T09:00",
+            "label": "9:00 AM · Boat Rental:  Boat #5 - 2 Hours",
+            "priceCents": 22500,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5900f67b332e7557548b4581"
+          },
+          {
+            "startsAt": "2026-09-26T09:00",
+            "label": "9:00 AM · Boat Rental:  Boat #5 - 4 Hours",
+            "priceCents": 42500,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5900f9cc332e7556548b458f"
+          },
+          {
+            "startsAt": "2026-09-26T10:00",
+            "label": "10:00 AM · Boat Rental: Boat #3 - 8 Hours",
+            "priceCents": 80000,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5760f1096864ea9c628b45da"
+          },
+          {
+            "startsAt": "2026-09-26T10:00",
+            "label": "10:00 AM · Boat Rental: Boat #4 - 8 Hours",
+            "priceCents": 90000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5760f2b99267052c6b8b459a"
+          },
+          {
+            "startsAt": "2026-09-26T11:30",
+            "label": "11:30 AM · Boat Rental: Boat #4 - 2 Hours",
+            "priceCents": 25000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/58d927926864eae9278b45b3"
+          },
+          {
+            "startsAt": "2026-09-26T11:30",
+            "label": "11:30 AM · Boat Rental:  Boat #3 - 2 Hours",
+            "priceCents": 22500,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/58da894c332e7599018b45fd"
+          },
+          {
+            "startsAt": "2026-09-26T11:30",
+            "label": "11:30 AM · Boat Rental:  Boat #5 - 2 Hours",
+            "priceCents": 22500,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5900f67b332e7557548b4581"
+          },
+          {
+            "startsAt": "2026-09-26T13:00",
+            "label": "1:00 PM · Parasailing",
+            "priceCents": 9000,
+            "seatsLeft": 10,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5757ce046864eab7528b45d8"
+          },
+          {
+            "startsAt": "2026-09-26T14:00",
+            "label": "2:00 PM · Boat Rental: Boat #3 - 4 Hours",
+            "priceCents": 42500,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5760f0e2e017985e438b45a3"
+          },
+          {
+            "startsAt": "2026-09-26T14:00",
+            "label": "2:00 PM · Boat Rental: Boat #4 - 4 Hours",
+            "priceCents": 45000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5760f28c926705346b8b45a0"
+          },
+          {
+            "startsAt": "2026-09-26T14:00",
+            "label": "2:00 PM · Boat Rental: Boat #4 - 2 Hours",
+            "priceCents": 25000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/58d927926864eae9278b45b3"
+          },
+          {
+            "startsAt": "2026-09-26T14:00",
+            "label": "2:00 PM · Boat Rental:  Boat #3 - 2 Hours",
+            "priceCents": 22500,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/58da894c332e7599018b45fd"
+          },
+          {
+            "startsAt": "2026-09-26T14:00",
+            "label": "2:00 PM · Boat Rental:  Boat #5 - 2 Hours",
+            "priceCents": 22500,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5900f67b332e7557548b4581"
+          },
+          {
+            "startsAt": "2026-09-26T14:00",
+            "label": "2:00 PM · Boat Rental:  Boat #5 - 4 Hours",
+            "priceCents": 42500,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5900f9cc332e7556548b458f"
+          },
+          {
+            "startsAt": "2026-09-26T14:30",
+            "label": "2:30 PM · Parasailing",
+            "priceCents": 9000,
+            "seatsLeft": 12,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5757ce046864eab7528b45d8"
+          }
+        ]
+      },
+      {
+        "date": "2026-09-27",
+        "slots": [
+          {
+            "startsAt": "2026-09-27T09:00",
+            "label": "9:00 AM · Boat Rental: Boat #3 - 4 Hours",
+            "priceCents": 42500,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5760f0e2e017985e438b45a3"
+          },
+          {
+            "startsAt": "2026-09-27T09:00",
+            "label": "9:00 AM · Boat Rental: Boat #4 - 4 Hours",
+            "priceCents": 45000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5760f28c926705346b8b45a0"
+          },
+          {
+            "startsAt": "2026-09-27T09:00",
+            "label": "9:00 AM · Boat Rental: Boat #4 - 2 Hours",
+            "priceCents": 25000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/58d927926864eae9278b45b3"
+          },
+          {
+            "startsAt": "2026-09-27T09:00",
+            "label": "9:00 AM · Boat Rental:  Boat #3 - 2 Hours",
+            "priceCents": 22500,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/58da894c332e7599018b45fd"
+          },
+          {
+            "startsAt": "2026-09-27T09:00",
+            "label": "9:00 AM · Boat Rental:  Boat #5 - 2 Hours",
+            "priceCents": 22500,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5900f67b332e7557548b4581"
+          },
+          {
+            "startsAt": "2026-09-27T09:00",
+            "label": "9:00 AM · Boat Rental:  Boat #5 - 4 Hours",
+            "priceCents": 42500,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5900f9cc332e7556548b458f"
+          },
+          {
+            "startsAt": "2026-09-27T10:00",
+            "label": "10:00 AM · Boat Rental: Boat #3 - 8 Hours",
+            "priceCents": 80000,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5760f1096864ea9c628b45da"
+          },
+          {
+            "startsAt": "2026-09-27T10:00",
+            "label": "10:00 AM · Boat Rental: Boat #4 - 8 Hours",
+            "priceCents": 90000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5760f2b99267052c6b8b459a"
+          },
+          {
+            "startsAt": "2026-09-27T11:30",
+            "label": "11:30 AM · Boat Rental: Boat #4 - 2 Hours",
+            "priceCents": 25000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/58d927926864eae9278b45b3"
+          },
+          {
+            "startsAt": "2026-09-27T11:30",
+            "label": "11:30 AM · Boat Rental:  Boat #3 - 2 Hours",
+            "priceCents": 22500,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/58da894c332e7599018b45fd"
+          },
+          {
+            "startsAt": "2026-09-27T11:30",
+            "label": "11:30 AM · Boat Rental:  Boat #5 - 2 Hours",
+            "priceCents": 22500,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5900f67b332e7557548b4581"
+          },
+          {
+            "startsAt": "2026-09-27T14:00",
+            "label": "2:00 PM · Boat Rental: Boat #3 - 4 Hours",
+            "priceCents": 42500,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5760f0e2e017985e438b45a3"
+          },
+          {
+            "startsAt": "2026-09-27T14:00",
+            "label": "2:00 PM · Boat Rental: Boat #4 - 4 Hours",
+            "priceCents": 45000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5760f28c926705346b8b45a0"
+          },
+          {
+            "startsAt": "2026-09-27T14:00",
+            "label": "2:00 PM · Boat Rental: Boat #4 - 2 Hours",
+            "priceCents": 25000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/58d927926864eae9278b45b3"
+          },
+          {
+            "startsAt": "2026-09-27T14:00",
+            "label": "2:00 PM · Boat Rental:  Boat #3 - 2 Hours",
+            "priceCents": 22500,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/58da894c332e7599018b45fd"
+          },
+          {
+            "startsAt": "2026-09-27T14:00",
+            "label": "2:00 PM · Boat Rental:  Boat #5 - 2 Hours",
+            "priceCents": 22500,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5900f67b332e7557548b4581"
+          },
+          {
+            "startsAt": "2026-09-27T14:00",
+            "label": "2:00 PM · Boat Rental:  Boat #5 - 4 Hours",
+            "priceCents": 42500,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5900f9cc332e7556548b458f"
+          }
+        ]
+      },
+      {
+        "date": "2026-09-28",
+        "slots": [
+          {
+            "startsAt": "2026-09-28T09:00",
+            "label": "9:00 AM · Boat Rental: Boat #3 - 4 Hours",
+            "priceCents": 42500,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5760f0e2e017985e438b45a3"
+          },
+          {
+            "startsAt": "2026-09-28T09:00",
+            "label": "9:00 AM · Boat Rental: Boat #4 - 4 Hours",
+            "priceCents": 45000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5760f28c926705346b8b45a0"
+          },
+          {
+            "startsAt": "2026-09-28T09:00",
+            "label": "9:00 AM · Boat Rental: Boat #4 - 2 Hours",
+            "priceCents": 25000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/58d927926864eae9278b45b3"
+          },
+          {
+            "startsAt": "2026-09-28T09:00",
+            "label": "9:00 AM · Boat Rental:  Boat #3 - 2 Hours",
+            "priceCents": 22500,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/58da894c332e7599018b45fd"
+          },
+          {
+            "startsAt": "2026-09-28T09:00",
+            "label": "9:00 AM · Boat Rental:  Boat #5 - 2 Hours",
+            "priceCents": 22500,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5900f67b332e7557548b4581"
+          },
+          {
+            "startsAt": "2026-09-28T09:00",
+            "label": "9:00 AM · Boat Rental:  Boat #5 - 4 Hours",
+            "priceCents": 42500,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5900f9cc332e7556548b458f"
+          },
+          {
+            "startsAt": "2026-09-28T09:30",
+            "label": "9:30 AM · Parasailing",
+            "priceCents": 9000,
+            "seatsLeft": 12,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5757ce046864eab7528b45d8"
+          },
+          {
+            "startsAt": "2026-09-28T10:00",
+            "label": "10:00 AM · Boat Rental: Boat #3 - 8 Hours",
+            "priceCents": 80000,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5760f1096864ea9c628b45da"
+          },
+          {
+            "startsAt": "2026-09-28T10:00",
+            "label": "10:00 AM · Boat Rental: Boat #4 - 8 Hours",
+            "priceCents": 90000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5760f2b99267052c6b8b459a"
+          },
+          {
+            "startsAt": "2026-09-28T11:00",
+            "label": "11:00 AM · Parasailing",
+            "priceCents": 9000,
+            "seatsLeft": 12,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5757ce046864eab7528b45d8"
+          },
+          {
+            "startsAt": "2026-09-28T11:30",
+            "label": "11:30 AM · Boat Rental: Boat #4 - 2 Hours",
+            "priceCents": 25000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/58d927926864eae9278b45b3"
+          },
+          {
+            "startsAt": "2026-09-28T11:30",
+            "label": "11:30 AM · Boat Rental:  Boat #3 - 2 Hours",
+            "priceCents": 22500,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/58da894c332e7599018b45fd"
+          },
+          {
+            "startsAt": "2026-09-28T11:30",
+            "label": "11:30 AM · Boat Rental:  Boat #5 - 2 Hours",
+            "priceCents": 22500,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5900f67b332e7557548b4581"
+          },
+          {
+            "startsAt": "2026-09-28T13:00",
+            "label": "1:00 PM · Parasailing",
+            "priceCents": 9000,
+            "seatsLeft": 12,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5757ce046864eab7528b45d8"
+          },
+          {
+            "startsAt": "2026-09-28T14:00",
+            "label": "2:00 PM · Boat Rental: Boat #3 - 4 Hours",
+            "priceCents": 42500,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5760f0e2e017985e438b45a3"
+          },
+          {
+            "startsAt": "2026-09-28T14:00",
+            "label": "2:00 PM · Boat Rental: Boat #4 - 4 Hours",
+            "priceCents": 45000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5760f28c926705346b8b45a0"
+          },
+          {
+            "startsAt": "2026-09-28T14:00",
+            "label": "2:00 PM · Boat Rental: Boat #4 - 2 Hours",
+            "priceCents": 25000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/58d927926864eae9278b45b3"
+          },
+          {
+            "startsAt": "2026-09-28T14:00",
+            "label": "2:00 PM · Boat Rental:  Boat #3 - 2 Hours",
+            "priceCents": 22500,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/58da894c332e7599018b45fd"
+          },
+          {
+            "startsAt": "2026-09-28T14:00",
+            "label": "2:00 PM · Boat Rental:  Boat #5 - 2 Hours",
+            "priceCents": 22500,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5900f67b332e7557548b4581"
+          },
+          {
+            "startsAt": "2026-09-28T14:00",
+            "label": "2:00 PM · Boat Rental:  Boat #5 - 4 Hours",
+            "priceCents": 42500,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5900f9cc332e7556548b458f"
+          },
+          {
+            "startsAt": "2026-09-28T14:30",
+            "label": "2:30 PM · Parasailing",
+            "priceCents": 9000,
+            "seatsLeft": 12,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5757ce046864eab7528b45d8"
+          },
+          {
+            "startsAt": "2026-09-28T16:00",
+            "label": "4:00 PM · Parasailing",
+            "priceCents": 9000,
+            "seatsLeft": 12,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5757ce046864eab7528b45d8"
+          }
+        ]
+      },
+      {
+        "date": "2026-09-29",
+        "slots": [
+          {
+            "startsAt": "2026-09-29T09:00",
+            "label": "9:00 AM · Boat Rental: Boat #3 - 4 Hours",
+            "priceCents": 42500,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5760f0e2e017985e438b45a3"
+          },
+          {
+            "startsAt": "2026-09-29T09:00",
+            "label": "9:00 AM · Boat Rental: Boat #4 - 4 Hours",
+            "priceCents": 45000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5760f28c926705346b8b45a0"
+          },
+          {
+            "startsAt": "2026-09-29T09:00",
+            "label": "9:00 AM · Boat Rental: Boat #4 - 2 Hours",
+            "priceCents": 25000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/58d927926864eae9278b45b3"
+          },
+          {
+            "startsAt": "2026-09-29T09:00",
+            "label": "9:00 AM · Boat Rental:  Boat #3 - 2 Hours",
+            "priceCents": 22500,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/58da894c332e7599018b45fd"
+          },
+          {
+            "startsAt": "2026-09-29T09:00",
+            "label": "9:00 AM · Boat Rental:  Boat #5 - 2 Hours",
+            "priceCents": 22500,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5900f67b332e7557548b4581"
+          },
+          {
+            "startsAt": "2026-09-29T09:00",
+            "label": "9:00 AM · Boat Rental:  Boat #5 - 4 Hours",
+            "priceCents": 42500,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5900f9cc332e7556548b458f"
+          },
+          {
+            "startsAt": "2026-09-29T09:30",
+            "label": "9:30 AM · Parasailing",
+            "priceCents": 9000,
+            "seatsLeft": 12,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5757ce046864eab7528b45d8"
+          },
+          {
+            "startsAt": "2026-09-29T10:00",
+            "label": "10:00 AM · Boat Rental: Boat #3 - 8 Hours",
+            "priceCents": 80000,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5760f1096864ea9c628b45da"
+          },
+          {
+            "startsAt": "2026-09-29T10:00",
+            "label": "10:00 AM · Boat Rental: Boat #4 - 8 Hours",
+            "priceCents": 90000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5760f2b99267052c6b8b459a"
+          },
+          {
+            "startsAt": "2026-09-29T11:00",
+            "label": "11:00 AM · Parasailing",
+            "priceCents": 9000,
+            "seatsLeft": 12,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5757ce046864eab7528b45d8"
+          },
+          {
+            "startsAt": "2026-09-29T11:30",
+            "label": "11:30 AM · Boat Rental: Boat #4 - 2 Hours",
+            "priceCents": 25000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/58d927926864eae9278b45b3"
+          },
+          {
+            "startsAt": "2026-09-29T11:30",
+            "label": "11:30 AM · Boat Rental:  Boat #3 - 2 Hours",
+            "priceCents": 22500,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/58da894c332e7599018b45fd"
+          },
+          {
+            "startsAt": "2026-09-29T11:30",
+            "label": "11:30 AM · Boat Rental:  Boat #5 - 2 Hours",
+            "priceCents": 22500,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5900f67b332e7557548b4581"
+          },
+          {
+            "startsAt": "2026-09-29T13:00",
+            "label": "1:00 PM · Parasailing",
+            "priceCents": 9000,
+            "seatsLeft": 12,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5757ce046864eab7528b45d8"
+          },
+          {
+            "startsAt": "2026-09-29T14:00",
+            "label": "2:00 PM · Boat Rental: Boat #3 - 4 Hours",
+            "priceCents": 42500,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5760f0e2e017985e438b45a3"
+          },
+          {
+            "startsAt": "2026-09-29T14:00",
+            "label": "2:00 PM · Boat Rental: Boat #4 - 4 Hours",
+            "priceCents": 45000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5760f28c926705346b8b45a0"
+          },
+          {
+            "startsAt": "2026-09-29T14:00",
+            "label": "2:00 PM · Boat Rental: Boat #4 - 2 Hours",
+            "priceCents": 25000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/58d927926864eae9278b45b3"
+          },
+          {
+            "startsAt": "2026-09-29T14:00",
+            "label": "2:00 PM · Boat Rental:  Boat #3 - 2 Hours",
+            "priceCents": 22500,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/58da894c332e7599018b45fd"
+          },
+          {
+            "startsAt": "2026-09-29T14:00",
+            "label": "2:00 PM · Boat Rental:  Boat #5 - 2 Hours",
+            "priceCents": 22500,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5900f67b332e7557548b4581"
+          },
+          {
+            "startsAt": "2026-09-29T14:00",
+            "label": "2:00 PM · Boat Rental:  Boat #5 - 4 Hours",
+            "priceCents": 42500,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5900f9cc332e7556548b458f"
+          },
+          {
+            "startsAt": "2026-09-29T14:30",
+            "label": "2:30 PM · Parasailing",
+            "priceCents": 9000,
+            "seatsLeft": 12,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5757ce046864eab7528b45d8"
+          },
+          {
+            "startsAt": "2026-09-29T16:00",
+            "label": "4:00 PM · Parasailing",
+            "priceCents": 9000,
+            "seatsLeft": 12,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5757ce046864eab7528b45d8"
+          }
+        ]
+      },
+      {
+        "date": "2026-09-30",
+        "slots": [
+          {
+            "startsAt": "2026-09-30T09:00",
+            "label": "9:00 AM · Boat Rental: Boat #3 - 4 Hours",
+            "priceCents": 42500,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5760f0e2e017985e438b45a3"
+          },
+          {
+            "startsAt": "2026-09-30T09:00",
+            "label": "9:00 AM · Boat Rental: Boat #4 - 4 Hours",
+            "priceCents": 45000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5760f28c926705346b8b45a0"
+          },
+          {
+            "startsAt": "2026-09-30T09:00",
+            "label": "9:00 AM · Boat Rental: Boat #4 - 2 Hours",
+            "priceCents": 25000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/58d927926864eae9278b45b3"
+          },
+          {
+            "startsAt": "2026-09-30T09:00",
+            "label": "9:00 AM · Boat Rental:  Boat #3 - 2 Hours",
+            "priceCents": 22500,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/58da894c332e7599018b45fd"
+          },
+          {
+            "startsAt": "2026-09-30T09:00",
+            "label": "9:00 AM · Boat Rental:  Boat #5 - 2 Hours",
+            "priceCents": 22500,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5900f67b332e7557548b4581"
+          },
+          {
+            "startsAt": "2026-09-30T09:00",
+            "label": "9:00 AM · Boat Rental:  Boat #5 - 4 Hours",
+            "priceCents": 42500,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5900f9cc332e7556548b458f"
+          },
+          {
+            "startsAt": "2026-09-30T10:00",
+            "label": "10:00 AM · Boat Rental: Boat #3 - 8 Hours",
+            "priceCents": 80000,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5760f1096864ea9c628b45da"
+          },
+          {
+            "startsAt": "2026-09-30T10:00",
+            "label": "10:00 AM · Boat Rental: Boat #4 - 8 Hours",
+            "priceCents": 90000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5760f2b99267052c6b8b459a"
+          },
+          {
+            "startsAt": "2026-09-30T11:00",
+            "label": "11:00 AM · Parasailing",
+            "priceCents": 9000,
+            "seatsLeft": 9,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5757ce046864eab7528b45d8"
+          },
+          {
+            "startsAt": "2026-09-30T11:30",
+            "label": "11:30 AM · Boat Rental: Boat #4 - 2 Hours",
+            "priceCents": 25000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/58d927926864eae9278b45b3"
+          },
+          {
+            "startsAt": "2026-09-30T11:30",
+            "label": "11:30 AM · Boat Rental:  Boat #3 - 2 Hours",
+            "priceCents": 22500,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/58da894c332e7599018b45fd"
+          },
+          {
+            "startsAt": "2026-09-30T11:30",
+            "label": "11:30 AM · Boat Rental:  Boat #5 - 2 Hours",
+            "priceCents": 22500,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5900f67b332e7557548b4581"
+          },
+          {
+            "startsAt": "2026-09-30T13:00",
+            "label": "1:00 PM · Parasailing",
+            "priceCents": 9000,
+            "seatsLeft": 12,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5757ce046864eab7528b45d8"
+          },
+          {
+            "startsAt": "2026-09-30T14:00",
+            "label": "2:00 PM · Boat Rental: Boat #3 - 4 Hours",
+            "priceCents": 42500,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5760f0e2e017985e438b45a3"
+          },
+          {
+            "startsAt": "2026-09-30T14:00",
+            "label": "2:00 PM · Boat Rental: Boat #4 - 4 Hours",
+            "priceCents": 45000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5760f28c926705346b8b45a0"
+          },
+          {
+            "startsAt": "2026-09-30T14:00",
+            "label": "2:00 PM · Boat Rental: Boat #4 - 2 Hours",
+            "priceCents": 25000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/58d927926864eae9278b45b3"
+          },
+          {
+            "startsAt": "2026-09-30T14:00",
+            "label": "2:00 PM · Boat Rental:  Boat #3 - 2 Hours",
+            "priceCents": 22500,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/58da894c332e7599018b45fd"
+          },
+          {
+            "startsAt": "2026-09-30T14:00",
+            "label": "2:00 PM · Boat Rental:  Boat #5 - 2 Hours",
+            "priceCents": 22500,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5900f67b332e7557548b4581"
+          },
+          {
+            "startsAt": "2026-09-30T14:00",
+            "label": "2:00 PM · Boat Rental:  Boat #5 - 4 Hours",
+            "priceCents": 42500,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5900f9cc332e7556548b458f"
+          },
+          {
+            "startsAt": "2026-09-30T14:30",
+            "label": "2:30 PM · Parasailing",
+            "priceCents": 9000,
+            "seatsLeft": 12,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5757ce046864eab7528b45d8"
+          },
+          {
+            "startsAt": "2026-09-30T16:00",
+            "label": "4:00 PM · Parasailing",
+            "priceCents": 9000,
+            "seatsLeft": 12,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5757ce046864eab7528b45d8"
+          }
+        ]
+      },
+      {
+        "date": "2026-10-01",
+        "slots": [
+          {
+            "startsAt": "2026-10-01T09:00",
+            "label": "9:00 AM · Boat Rental: Boat #3 - 4 Hours",
+            "priceCents": 42500,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5760f0e2e017985e438b45a3"
+          },
+          {
+            "startsAt": "2026-10-01T09:00",
+            "label": "9:00 AM · Boat Rental: Boat #4 - 4 Hours",
+            "priceCents": 45000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5760f28c926705346b8b45a0"
+          },
+          {
+            "startsAt": "2026-10-01T09:00",
+            "label": "9:00 AM · Boat Rental: Boat #4 - 2 Hours",
+            "priceCents": 25000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/58d927926864eae9278b45b3"
+          },
+          {
+            "startsAt": "2026-10-01T09:00",
+            "label": "9:00 AM · Boat Rental:  Boat #3 - 2 Hours",
+            "priceCents": 22500,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/58da894c332e7599018b45fd"
+          },
+          {
+            "startsAt": "2026-10-01T09:00",
+            "label": "9:00 AM · Boat Rental:  Boat #5 - 2 Hours",
+            "priceCents": 22500,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5900f67b332e7557548b4581"
+          },
+          {
+            "startsAt": "2026-10-01T09:00",
+            "label": "9:00 AM · Boat Rental:  Boat #5 - 4 Hours",
+            "priceCents": 42500,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5900f9cc332e7556548b458f"
+          },
+          {
+            "startsAt": "2026-10-01T09:30",
+            "label": "9:30 AM · Parasailing",
+            "priceCents": 9000,
+            "seatsLeft": 12,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5757ce046864eab7528b45d8"
+          },
+          {
+            "startsAt": "2026-10-01T10:00",
+            "label": "10:00 AM · Boat Rental: Boat #3 - 8 Hours",
+            "priceCents": 80000,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5760f1096864ea9c628b45da"
+          },
+          {
+            "startsAt": "2026-10-01T10:00",
+            "label": "10:00 AM · Boat Rental: Boat #4 - 8 Hours",
+            "priceCents": 90000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5760f2b99267052c6b8b459a"
+          },
+          {
+            "startsAt": "2026-10-01T11:00",
+            "label": "11:00 AM · Parasailing",
+            "priceCents": 9000,
+            "seatsLeft": 12,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5757ce046864eab7528b45d8"
+          },
+          {
+            "startsAt": "2026-10-01T11:30",
+            "label": "11:30 AM · Boat Rental: Boat #4 - 2 Hours",
+            "priceCents": 25000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/58d927926864eae9278b45b3"
+          },
+          {
+            "startsAt": "2026-10-01T11:30",
+            "label": "11:30 AM · Boat Rental:  Boat #3 - 2 Hours",
+            "priceCents": 22500,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/58da894c332e7599018b45fd"
+          },
+          {
+            "startsAt": "2026-10-01T11:30",
+            "label": "11:30 AM · Boat Rental:  Boat #5 - 2 Hours",
+            "priceCents": 22500,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5900f67b332e7557548b4581"
+          },
+          {
+            "startsAt": "2026-10-01T13:00",
+            "label": "1:00 PM · Parasailing",
+            "priceCents": 9000,
+            "seatsLeft": 12,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5757ce046864eab7528b45d8"
+          },
+          {
+            "startsAt": "2026-10-01T14:00",
+            "label": "2:00 PM · Boat Rental: Boat #3 - 4 Hours",
+            "priceCents": 42500,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5760f0e2e017985e438b45a3"
+          },
+          {
+            "startsAt": "2026-10-01T14:00",
+            "label": "2:00 PM · Boat Rental: Boat #4 - 4 Hours",
+            "priceCents": 45000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5760f28c926705346b8b45a0"
+          },
+          {
+            "startsAt": "2026-10-01T14:00",
+            "label": "2:00 PM · Boat Rental: Boat #4 - 2 Hours",
+            "priceCents": 25000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/58d927926864eae9278b45b3"
+          },
+          {
+            "startsAt": "2026-10-01T14:00",
+            "label": "2:00 PM · Boat Rental:  Boat #3 - 2 Hours",
+            "priceCents": 22500,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/58da894c332e7599018b45fd"
+          },
+          {
+            "startsAt": "2026-10-01T14:00",
+            "label": "2:00 PM · Boat Rental:  Boat #5 - 2 Hours",
+            "priceCents": 22500,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5900f67b332e7557548b4581"
+          },
+          {
+            "startsAt": "2026-10-01T14:00",
+            "label": "2:00 PM · Boat Rental:  Boat #5 - 4 Hours",
+            "priceCents": 42500,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5900f9cc332e7556548b458f"
+          },
+          {
+            "startsAt": "2026-10-01T14:30",
+            "label": "2:30 PM · Parasailing",
+            "priceCents": 9000,
+            "seatsLeft": 12,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5757ce046864eab7528b45d8"
+          }
+        ]
+      },
+      {
+        "date": "2026-10-02",
+        "slots": [
+          {
+            "startsAt": "2026-10-02T09:00",
+            "label": "9:00 AM · Boat Rental: Boat #3 - 4 Hours",
+            "priceCents": 42500,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5760f0e2e017985e438b45a3"
+          },
+          {
+            "startsAt": "2026-10-02T09:00",
+            "label": "9:00 AM · Boat Rental: Boat #4 - 4 Hours",
+            "priceCents": 45000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5760f28c926705346b8b45a0"
+          },
+          {
+            "startsAt": "2026-10-02T09:00",
+            "label": "9:00 AM · Boat Rental: Boat #4 - 2 Hours",
+            "priceCents": 25000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/58d927926864eae9278b45b3"
+          },
+          {
+            "startsAt": "2026-10-02T09:00",
+            "label": "9:00 AM · Boat Rental:  Boat #3 - 2 Hours",
+            "priceCents": 22500,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/58da894c332e7599018b45fd"
+          },
+          {
+            "startsAt": "2026-10-02T09:00",
+            "label": "9:00 AM · Boat Rental:  Boat #5 - 2 Hours",
+            "priceCents": 22500,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5900f67b332e7557548b4581"
+          },
+          {
+            "startsAt": "2026-10-02T09:00",
+            "label": "9:00 AM · Boat Rental:  Boat #5 - 4 Hours",
+            "priceCents": 42500,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5900f9cc332e7556548b458f"
+          },
+          {
+            "startsAt": "2026-10-02T09:30",
+            "label": "9:30 AM · Parasailing",
+            "priceCents": 9000,
+            "seatsLeft": 12,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5757ce046864eab7528b45d8"
+          },
+          {
+            "startsAt": "2026-10-02T10:00",
+            "label": "10:00 AM · Boat Rental: Boat #3 - 8 Hours",
+            "priceCents": 80000,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5760f1096864ea9c628b45da"
+          },
+          {
+            "startsAt": "2026-10-02T10:00",
+            "label": "10:00 AM · Boat Rental: Boat #4 - 8 Hours",
+            "priceCents": 90000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5760f2b99267052c6b8b459a"
+          },
+          {
+            "startsAt": "2026-10-02T11:00",
+            "label": "11:00 AM · Parasailing",
+            "priceCents": 9000,
+            "seatsLeft": 12,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5757ce046864eab7528b45d8"
+          },
+          {
+            "startsAt": "2026-10-02T11:30",
+            "label": "11:30 AM · Boat Rental: Boat #4 - 2 Hours",
+            "priceCents": 25000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/58d927926864eae9278b45b3"
+          },
+          {
+            "startsAt": "2026-10-02T11:30",
+            "label": "11:30 AM · Boat Rental:  Boat #3 - 2 Hours",
+            "priceCents": 22500,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/58da894c332e7599018b45fd"
+          },
+          {
+            "startsAt": "2026-10-02T11:30",
+            "label": "11:30 AM · Boat Rental:  Boat #5 - 2 Hours",
+            "priceCents": 22500,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5900f67b332e7557548b4581"
+          },
+          {
+            "startsAt": "2026-10-02T13:00",
+            "label": "1:00 PM · Parasailing",
+            "priceCents": 9000,
+            "seatsLeft": 12,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5757ce046864eab7528b45d8"
+          },
+          {
+            "startsAt": "2026-10-02T14:00",
+            "label": "2:00 PM · Boat Rental: Boat #3 - 4 Hours",
+            "priceCents": 42500,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5760f0e2e017985e438b45a3"
+          },
+          {
+            "startsAt": "2026-10-02T14:00",
+            "label": "2:00 PM · Boat Rental: Boat #4 - 4 Hours",
+            "priceCents": 45000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5760f28c926705346b8b45a0"
+          },
+          {
+            "startsAt": "2026-10-02T14:00",
+            "label": "2:00 PM · Boat Rental: Boat #4 - 2 Hours",
+            "priceCents": 25000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/58d927926864eae9278b45b3"
+          },
+          {
+            "startsAt": "2026-10-02T14:00",
+            "label": "2:00 PM · Boat Rental:  Boat #3 - 2 Hours",
+            "priceCents": 22500,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/58da894c332e7599018b45fd"
+          },
+          {
+            "startsAt": "2026-10-02T14:00",
+            "label": "2:00 PM · Boat Rental:  Boat #5 - 2 Hours",
+            "priceCents": 22500,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5900f67b332e7557548b4581"
+          },
+          {
+            "startsAt": "2026-10-02T14:00",
+            "label": "2:00 PM · Boat Rental:  Boat #5 - 4 Hours",
+            "priceCents": 42500,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5900f9cc332e7556548b458f"
+          },
+          {
+            "startsAt": "2026-10-02T14:30",
+            "label": "2:30 PM · Parasailing",
+            "priceCents": 9000,
+            "seatsLeft": 12,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5757ce046864eab7528b45d8"
+          }
+        ]
+      },
+      {
+        "date": "2026-10-03",
+        "slots": [
+          {
+            "startsAt": "2026-10-03T09:00",
+            "label": "9:00 AM · Boat Rental: Boat #3 - 4 Hours",
+            "priceCents": 42500,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5760f0e2e017985e438b45a3"
+          },
+          {
+            "startsAt": "2026-10-03T09:00",
+            "label": "9:00 AM · Boat Rental: Boat #4 - 4 Hours",
+            "priceCents": 45000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5760f28c926705346b8b45a0"
+          },
+          {
+            "startsAt": "2026-10-03T09:00",
+            "label": "9:00 AM · Boat Rental: Boat #4 - 2 Hours",
+            "priceCents": 25000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/58d927926864eae9278b45b3"
+          },
+          {
+            "startsAt": "2026-10-03T09:00",
+            "label": "9:00 AM · Boat Rental:  Boat #3 - 2 Hours",
+            "priceCents": 22500,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/58da894c332e7599018b45fd"
+          },
+          {
+            "startsAt": "2026-10-03T09:00",
+            "label": "9:00 AM · Boat Rental:  Boat #5 - 2 Hours",
+            "priceCents": 22500,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5900f67b332e7557548b4581"
+          },
+          {
+            "startsAt": "2026-10-03T09:00",
+            "label": "9:00 AM · Boat Rental:  Boat #5 - 4 Hours",
+            "priceCents": 42500,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5900f9cc332e7556548b458f"
+          },
+          {
+            "startsAt": "2026-10-03T10:00",
+            "label": "10:00 AM · Boat Rental: Boat #3 - 8 Hours",
+            "priceCents": 80000,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5760f1096864ea9c628b45da"
+          },
+          {
+            "startsAt": "2026-10-03T10:00",
+            "label": "10:00 AM · Boat Rental: Boat #4 - 8 Hours",
+            "priceCents": 90000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5760f2b99267052c6b8b459a"
+          },
+          {
+            "startsAt": "2026-10-03T11:30",
+            "label": "11:30 AM · Boat Rental: Boat #4 - 2 Hours",
+            "priceCents": 25000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/58d927926864eae9278b45b3"
+          },
+          {
+            "startsAt": "2026-10-03T11:30",
+            "label": "11:30 AM · Boat Rental:  Boat #3 - 2 Hours",
+            "priceCents": 22500,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/58da894c332e7599018b45fd"
+          },
+          {
+            "startsAt": "2026-10-03T11:30",
+            "label": "11:30 AM · Boat Rental:  Boat #5 - 2 Hours",
+            "priceCents": 22500,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5900f67b332e7557548b4581"
+          },
+          {
+            "startsAt": "2026-10-03T13:00",
+            "label": "1:00 PM · Parasailing",
+            "priceCents": 9000,
+            "seatsLeft": 12,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5757ce046864eab7528b45d8"
+          },
+          {
+            "startsAt": "2026-10-03T14:00",
+            "label": "2:00 PM · Boat Rental: Boat #3 - 4 Hours",
+            "priceCents": 42500,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5760f0e2e017985e438b45a3"
+          },
+          {
+            "startsAt": "2026-10-03T14:00",
+            "label": "2:00 PM · Boat Rental: Boat #4 - 4 Hours",
+            "priceCents": 45000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5760f28c926705346b8b45a0"
+          },
+          {
+            "startsAt": "2026-10-03T14:00",
+            "label": "2:00 PM · Boat Rental: Boat #4 - 2 Hours",
+            "priceCents": 25000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/58d927926864eae9278b45b3"
+          },
+          {
+            "startsAt": "2026-10-03T14:00",
+            "label": "2:00 PM · Boat Rental:  Boat #3 - 2 Hours",
+            "priceCents": 22500,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/58da894c332e7599018b45fd"
+          },
+          {
+            "startsAt": "2026-10-03T14:00",
+            "label": "2:00 PM · Boat Rental:  Boat #5 - 2 Hours",
+            "priceCents": 22500,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5900f67b332e7557548b4581"
+          },
+          {
+            "startsAt": "2026-10-03T14:00",
+            "label": "2:00 PM · Boat Rental:  Boat #5 - 4 Hours",
+            "priceCents": 42500,
+            "seatsLeft": 8,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5900f9cc332e7556548b458f"
+          },
+          {
+            "startsAt": "2026-10-03T14:30",
+            "label": "2:30 PM · Parasailing",
+            "priceCents": 9000,
+            "seatsLeft": 12,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5755fa9c926705ad7d8b4570/experiences/5757ce046864eab7528b45d8"
+          }
+        ]
+      }
+    ],
+    "partial": true,
+    "note": "12 of 14 experiences read"
+  }
+}

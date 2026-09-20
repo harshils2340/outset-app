@@ -10,6 +10,10 @@
   --hdr-top:80px;
   --hdr-search:82px;
   --hdr-cats:78px;
+  /* The concierge row under the search pill. The header is fixed, so its height has to be reserved below it
+     like every other band, or the first rail heading renders half behind it. One row at every width, which is
+     what makes this number true rather than approximately true. */
+  --hdr-ask:50px;
   --ah-grey:#B0B0B0;
   --ah-chip:#F2F2F2;
   background:#fff;
@@ -26,7 +30,10 @@
 /* ---------- header ---------- */
 .ah-header{position:fixed;top:0;left:0;right:0;z-index:40;background:#fff;border-bottom:1px solid transparent;transition:border-color .2s ease;}
 .ah-header.is-scrolled{border-bottom-color:var(--line);}
-.ah-header-space{height:calc(var(--hdr-top) + var(--hdr-search) + var(--hdr-cats));}
+/* The four rows plus the header's own bottom hairline, which is part of its box and so part of what has to be
+   reserved under it. Leaving the border out made the spacer one pixel short of the header from the beginning:
+   invisible while the first thing below was a heading with space above it, and wrong arithmetic regardless. */
+.ah-header-space{height:calc(var(--hdr-top) + var(--hdr-search) + var(--hdr-ask) + var(--hdr-cats) + 1px);}
 .ah-top{height:var(--hdr-top);display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:16px;}
 /* The sides never shrink under their content, so the tabs cannot slide over "List your business". When the row
    runs short, the host link goes first (it is also in the account menu), then the tab labels tighten. */
@@ -454,3 +461,65 @@
 .ah-card-photo.is-playing .ah-card-slide.on .photo{animation:ah-kenburns 3.4s ease-out both;}
 @keyframes ah-kenburns{from{transform:scale(1)}to{transform:scale(1.05)}}
 @media (prefers-reduced-motion: reduce){.ah-card-slide{transition:none}.ah-card-photo.is-playing .ah-card-slide.on .photo{animation:none}}
+
+/*
+  The concierge entry, one line under the search pill.
+
+  Two different questions sit here. The pill finds businesses in the catalog; this one asks what is actually
+  free tonight and what it costs, which the catalog cannot hold. The examples are whole sentences because the
+  first thing anybody asks a box like this is what it will understand, and a sentence answers that faster than
+  any placeholder.
+*/
+.ah-askrow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  /*
+    One row at every width, scrolling sideways rather than wrapping.
+    
+    Wrapping made the header's height depend on how many examples fitted, and the header is fixed with its
+    height reserved by `.ah-header-space` below it. At 1024px the examples wrapped to a second line, the header
+    grew past the space reserved for it, and the first rail heading rendered with its top half behind it.
+  */
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  scrollbar-width: none;
+  height: var(--hdr-ask);
+  padding-top: 10px;
+}
+.ah-askrow::-webkit-scrollbar { display: none; }
+.ah-ask {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--accent-soft);
+  background: var(--accent-tint);
+  color: var(--ink);
+  border-radius: 999px;
+  padding: 8px 15px;
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+.ah-ask:hover { border-color: var(--accent); }
+.ah-ask b { font-weight: 600; color: var(--accent); }
+.ah-ask span { color: var(--ink-soft); }
+.ah-ask svg { width: 15px; height: 15px; color: var(--accent); flex: none; }
+.ah-askex {
+  border: 1px solid var(--line-strong);
+  background: var(--surface);
+  color: var(--ink-soft);
+  border-radius: 999px;
+  padding: 8px 14px;
+  font: inherit;
+  font-size: 13.5px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.ah-askex:hover { border-color: var(--accent-soft); color: var(--ink); }
+
+/* On a phone the examples run past the edge, so they scroll sideways rather than stacking three rows high. */
+/* No room for the explanatory half of the button on a phone; the examples say it better anyway. */
+@media (max-width: 743px) {
+  .ah-ask span { display: none; }
+}

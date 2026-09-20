@@ -1,0 +1,1657 @@
+{
+  "id": "fareharbor/hawaiiglassbottomboats-com",
+  "vendor": "fareharbor",
+  "domain": "hawaiiglassbottomboats.com",
+  "bookingUrl": "https://fareharbor.com/embeds/book/hawaiiglassbottomboats/?full-items=yes",
+  "operatorId": "case-fareharbor-hawaiiglassbottomboats-com",
+  "from": "2026-09-20",
+  "days": 14,
+  "capturedAt": "2026-09-20T04:27:54.144Z",
+  "observed": {
+    "vendor": "fareharbor",
+    "live": true,
+    "updatedAt": "2026-09-20T04:27:54.143Z",
+    "days": [
+      {
+        "date": "2026-09-20",
+        "slots": [
+          {
+            "startsAt": "2026-09-20T08:15",
+            "label": "8:15 AM · Private Charter",
+            "seatsLeft": 1,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/94374/availability/2051863811/book/"
+          },
+          {
+            "startsAt": "2026-09-20T08:45",
+            "label": "8:45 AM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 13,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843551027/book/"
+          },
+          {
+            "startsAt": "2026-09-20T10:00",
+            "label": "10:00 AM · Private Charter",
+            "seatsLeft": 1,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/94374/availability/2051863812/book/"
+          },
+          {
+            "startsAt": "2026-09-20T11:15",
+            "label": "11:15 AM · Private Charter",
+            "seatsLeft": 1,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/94374/availability/2051863813/book/"
+          },
+          {
+            "startsAt": "2026-09-20T11:45",
+            "label": "11:45 AM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 6,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843551029/book/"
+          },
+          {
+            "startsAt": "2026-09-20T13:00",
+            "label": "1:00 PM · Private Charter",
+            "seatsLeft": 1,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/94374/availability/2051863814/book/"
+          },
+          {
+            "startsAt": "2026-09-20T13:30",
+            "label": "1:30 PM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 30,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843551030/book/"
+          },
+          {
+            "startsAt": "2026-09-20T14:15",
+            "label": "2:15 PM · Private Charter",
+            "seatsLeft": 1,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/94374/availability/2051863815/book/"
+          },
+          {
+            "startsAt": "2026-09-20T14:45",
+            "label": "2:45 PM · Private Charter",
+            "seatsLeft": 1,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/94374/availability/2051865649/book/"
+          },
+          {
+            "startsAt": "2026-09-20T14:45",
+            "label": "2:45 PM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 40,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843551031/book/"
+          },
+          {
+            "startsAt": "2026-09-20T15:30",
+            "label": "3:30 PM · Private Charter",
+            "seatsLeft": 1,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/94374/availability/2051863816/book/"
+          },
+          {
+            "startsAt": "2026-09-20T16:00",
+            "label": "4:00 PM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 36,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843551032/book/"
+          },
+          {
+            "startsAt": "2026-09-20T17:00",
+            "label": "5:00 PM · Private Charter",
+            "seatsLeft": 1,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/94374/availability/2051863817/book/"
+          },
+          {
+            "startsAt": "2026-09-20T17:15",
+            "label": "5:15 PM · Sunset Tour",
+            "seatsLeft": 36,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/8994/availability/1843553599/book/"
+          }
+        ]
+      },
+      {
+        "date": "2026-09-21",
+        "slots": [
+          {
+            "startsAt": "2026-09-21T08:45",
+            "label": "8:45 AM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 35,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843551033/book/"
+          },
+          {
+            "startsAt": "2026-09-21T10:30",
+            "label": "10:30 AM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 33,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843551034/book/"
+          },
+          {
+            "startsAt": "2026-09-21T11:45",
+            "label": "11:45 AM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 38,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843551035/book/"
+          },
+          {
+            "startsAt": "2026-09-21T13:30",
+            "label": "1:30 PM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 36,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843551036/book/"
+          },
+          {
+            "startsAt": "2026-09-21T14:15",
+            "label": "2:15 PM · Private Charter",
+            "seatsLeft": 1,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/94374/availability/2051863822/book/"
+          },
+          {
+            "startsAt": "2026-09-21T14:45",
+            "label": "2:45 PM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 38,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843551037/book/"
+          },
+          {
+            "startsAt": "2026-09-21T15:30",
+            "label": "3:30 PM · Private Charter",
+            "seatsLeft": 1,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/94374/availability/2051863823/book/"
+          },
+          {
+            "startsAt": "2026-09-21T16:00",
+            "label": "4:00 PM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 20,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843551038/book/"
+          },
+          {
+            "startsAt": "2026-09-21T17:00",
+            "label": "5:00 PM · Private Charter",
+            "seatsLeft": 1,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/94374/availability/2051863824/book/"
+          },
+          {
+            "startsAt": "2026-09-21T17:15",
+            "label": "5:15 PM · Sunset Tour",
+            "seatsLeft": 35,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/8994/availability/1843553286/book/"
+          }
+        ]
+      },
+      {
+        "date": "2026-09-22",
+        "slots": [
+          {
+            "startsAt": "2026-09-22T08:15",
+            "label": "8:15 AM · Private Charter",
+            "seatsLeft": 1,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/94374/availability/2051863825/book/"
+          },
+          {
+            "startsAt": "2026-09-22T08:15",
+            "label": "8:15 AM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 40,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843544797/book/"
+          },
+          {
+            "startsAt": "2026-09-22T08:45",
+            "label": "8:45 AM · Private Charter",
+            "seatsLeft": 1,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/94374/availability/2051865657/book/"
+          },
+          {
+            "startsAt": "2026-09-22T10:00",
+            "label": "10:00 AM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 27,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843544798/book/"
+          },
+          {
+            "startsAt": "2026-09-22T10:30",
+            "label": "10:30 AM · Private Charter",
+            "seatsLeft": 1,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/94374/availability/2051865658/book/"
+          },
+          {
+            "startsAt": "2026-09-22T11:15",
+            "label": "11:15 AM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 30,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843544799/book/"
+          },
+          {
+            "startsAt": "2026-09-22T11:45",
+            "label": "11:45 AM · Private Charter",
+            "seatsLeft": 1,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/94374/availability/2051865659/book/"
+          },
+          {
+            "startsAt": "2026-09-22T13:00",
+            "label": "1:00 PM · Private Charter",
+            "seatsLeft": 1,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/94374/availability/2051863828/book/"
+          },
+          {
+            "startsAt": "2026-09-22T13:00",
+            "label": "1:00 PM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 40,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843544800/book/"
+          },
+          {
+            "startsAt": "2026-09-22T13:30",
+            "label": "1:30 PM · Private Charter",
+            "seatsLeft": 1,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/94374/availability/2051865660/book/"
+          },
+          {
+            "startsAt": "2026-09-22T14:15",
+            "label": "2:15 PM · Private Charter",
+            "seatsLeft": 1,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/94374/availability/2051863829/book/"
+          },
+          {
+            "startsAt": "2026-09-22T14:15",
+            "label": "2:15 PM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 40,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843544801/book/"
+          },
+          {
+            "startsAt": "2026-09-22T14:45",
+            "label": "2:45 PM · Private Charter",
+            "seatsLeft": 1,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/94374/availability/2051865661/book/"
+          },
+          {
+            "startsAt": "2026-09-22T16:00",
+            "label": "4:00 PM · Private Charter",
+            "seatsLeft": 1,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/94374/availability/2051865662/book/"
+          },
+          {
+            "startsAt": "2026-09-22T17:00",
+            "label": "5:00 PM · Private Charter",
+            "seatsLeft": 1,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/94374/availability/2051863831/book/"
+          },
+          {
+            "startsAt": "2026-09-22T17:00",
+            "label": "5:00 PM · Sunset Tour",
+            "seatsLeft": 40,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/8994/availability/1843553344/book/"
+          }
+        ]
+      },
+      {
+        "date": "2026-09-23",
+        "slots": [
+          {
+            "startsAt": "2026-09-23T08:15",
+            "label": "8:15 AM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 35,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843544803/book/"
+          },
+          {
+            "startsAt": "2026-09-23T08:45",
+            "label": "8:45 AM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 29,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843551045/book/"
+          },
+          {
+            "startsAt": "2026-09-23T10:00",
+            "label": "10:00 AM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 34,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843544804/book/"
+          },
+          {
+            "startsAt": "2026-09-23T10:30",
+            "label": "10:30 AM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 38,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843551046/book/"
+          },
+          {
+            "startsAt": "2026-09-23T11:15",
+            "label": "11:15 AM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 38,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843544805/book/"
+          },
+          {
+            "startsAt": "2026-09-23T11:45",
+            "label": "11:45 AM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 36,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843551047/book/"
+          },
+          {
+            "startsAt": "2026-09-23T13:00",
+            "label": "1:00 PM · Private Charter",
+            "seatsLeft": 1,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/94374/availability/2051863835/book/"
+          },
+          {
+            "startsAt": "2026-09-23T13:00",
+            "label": "1:00 PM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 40,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843544806/book/"
+          },
+          {
+            "startsAt": "2026-09-23T13:30",
+            "label": "1:30 PM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 35,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843551048/book/"
+          },
+          {
+            "startsAt": "2026-09-23T14:15",
+            "label": "2:15 PM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 36,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843544807/book/"
+          },
+          {
+            "startsAt": "2026-09-23T14:45",
+            "label": "2:45 PM · Private Charter",
+            "seatsLeft": 1,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/94374/availability/2051865667/book/"
+          },
+          {
+            "startsAt": "2026-09-23T14:45",
+            "label": "2:45 PM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 40,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843551049/book/"
+          },
+          {
+            "startsAt": "2026-09-23T15:30",
+            "label": "3:30 PM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 26,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843544808/book/"
+          },
+          {
+            "startsAt": "2026-09-23T16:00",
+            "label": "4:00 PM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 38,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843551050/book/"
+          },
+          {
+            "startsAt": "2026-09-23T17:00",
+            "label": "5:00 PM · Sunset Tour",
+            "seatsLeft": 31,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/8994/availability/1843553411/book/"
+          },
+          {
+            "startsAt": "2026-09-23T17:15",
+            "label": "5:15 PM · Sunset Tour",
+            "seatsLeft": 34,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/8994/availability/1843553417/book/"
+          }
+        ]
+      },
+      {
+        "date": "2026-09-24",
+        "slots": [
+          {
+            "startsAt": "2026-09-24T08:15",
+            "label": "8:15 AM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 38,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843544809/book/"
+          },
+          {
+            "startsAt": "2026-09-24T08:45",
+            "label": "8:45 AM · Private Charter",
+            "seatsLeft": 1,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/94374/availability/2051865669/book/"
+          },
+          {
+            "startsAt": "2026-09-24T08:45",
+            "label": "8:45 AM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 40,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843551051/book/"
+          },
+          {
+            "startsAt": "2026-09-24T10:00",
+            "label": "10:00 AM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 31,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843544810/book/"
+          },
+          {
+            "startsAt": "2026-09-24T10:30",
+            "label": "10:30 AM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 38,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843551052/book/"
+          },
+          {
+            "startsAt": "2026-09-24T11:15",
+            "label": "11:15 AM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 37,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843544811/book/"
+          },
+          {
+            "startsAt": "2026-09-24T11:45",
+            "label": "11:45 AM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 34,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843551053/book/"
+          },
+          {
+            "startsAt": "2026-09-24T13:00",
+            "label": "1:00 PM · Private Charter",
+            "seatsLeft": 1,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/94374/availability/2051863842/book/"
+          },
+          {
+            "startsAt": "2026-09-24T13:00",
+            "label": "1:00 PM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 40,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843544812/book/"
+          },
+          {
+            "startsAt": "2026-09-24T13:30",
+            "label": "1:30 PM · Private Charter",
+            "seatsLeft": 1,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/94374/availability/2051865672/book/"
+          },
+          {
+            "startsAt": "2026-09-24T13:30",
+            "label": "1:30 PM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 40,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843551054/book/"
+          },
+          {
+            "startsAt": "2026-09-24T14:15",
+            "label": "2:15 PM · Private Charter",
+            "seatsLeft": 1,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/94374/availability/2051863843/book/"
+          },
+          {
+            "startsAt": "2026-09-24T14:15",
+            "label": "2:15 PM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 40,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843544813/book/"
+          },
+          {
+            "startsAt": "2026-09-24T14:45",
+            "label": "2:45 PM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 38,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843551055/book/"
+          },
+          {
+            "startsAt": "2026-09-24T15:30",
+            "label": "3:30 PM · Private Charter",
+            "seatsLeft": 1,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/94374/availability/2051863844/book/"
+          },
+          {
+            "startsAt": "2026-09-24T15:30",
+            "label": "3:30 PM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 40,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843544814/book/"
+          },
+          {
+            "startsAt": "2026-09-24T16:00",
+            "label": "4:00 PM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 30,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843551056/book/"
+          },
+          {
+            "startsAt": "2026-09-24T17:00",
+            "label": "5:00 PM · Private Charter",
+            "seatsLeft": 1,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/94374/availability/2051863845/book/"
+          },
+          {
+            "startsAt": "2026-09-24T17:00",
+            "label": "5:00 PM · Sunset Tour",
+            "seatsLeft": 40,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/8994/availability/1843553463/book/"
+          },
+          {
+            "startsAt": "2026-09-24T17:15",
+            "label": "5:15 PM · Sunset Tour",
+            "seatsLeft": 38,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/8994/availability/1843553469/book/"
+          }
+        ]
+      },
+      {
+        "date": "2026-09-25",
+        "slots": [
+          {
+            "startsAt": "2026-09-25T08:15",
+            "label": "8:15 AM · Private Charter",
+            "seatsLeft": 1,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/94374/availability/2051863846/book/"
+          },
+          {
+            "startsAt": "2026-09-25T08:15",
+            "label": "8:15 AM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 40,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843544815/book/"
+          },
+          {
+            "startsAt": "2026-09-25T08:45",
+            "label": "8:45 AM · Private Charter",
+            "seatsLeft": 1,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/94374/availability/2051865675/book/"
+          },
+          {
+            "startsAt": "2026-09-25T08:45",
+            "label": "8:45 AM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 40,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843551057/book/"
+          },
+          {
+            "startsAt": "2026-09-25T10:00",
+            "label": "10:00 AM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 32,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843544816/book/"
+          },
+          {
+            "startsAt": "2026-09-25T10:30",
+            "label": "10:30 AM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 28,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843551058/book/"
+          },
+          {
+            "startsAt": "2026-09-25T11:15",
+            "label": "11:15 AM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 35,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843544817/book/"
+          },
+          {
+            "startsAt": "2026-09-25T11:45",
+            "label": "11:45 AM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 37,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843551059/book/"
+          },
+          {
+            "startsAt": "2026-09-25T13:00",
+            "label": "1:00 PM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 29,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843544818/book/"
+          },
+          {
+            "startsAt": "2026-09-25T13:30",
+            "label": "1:30 PM · Private Charter",
+            "seatsLeft": 1,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/94374/availability/2051865678/book/"
+          },
+          {
+            "startsAt": "2026-09-25T13:30",
+            "label": "1:30 PM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 40,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843551060/book/"
+          },
+          {
+            "startsAt": "2026-09-25T14:15",
+            "label": "2:15 PM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 31,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843544819/book/"
+          },
+          {
+            "startsAt": "2026-09-25T14:45",
+            "label": "2:45 PM · Private Charter",
+            "seatsLeft": 1,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/94374/availability/2051865679/book/"
+          },
+          {
+            "startsAt": "2026-09-25T14:45",
+            "label": "2:45 PM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 40,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843551061/book/"
+          },
+          {
+            "startsAt": "2026-09-25T15:30",
+            "label": "3:30 PM · Private Charter",
+            "seatsLeft": 1,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/94374/availability/2051863851/book/"
+          },
+          {
+            "startsAt": "2026-09-25T15:30",
+            "label": "3:30 PM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 40,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843544820/book/"
+          },
+          {
+            "startsAt": "2026-09-25T16:00",
+            "label": "4:00 PM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 35,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843551062/book/"
+          },
+          {
+            "startsAt": "2026-09-25T17:00",
+            "label": "5:00 PM · Private Charter",
+            "seatsLeft": 1,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/94374/availability/2051863852/book/"
+          },
+          {
+            "startsAt": "2026-09-25T17:00",
+            "label": "5:00 PM · Sunset Tour",
+            "seatsLeft": 40,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/8994/availability/1843553515/book/"
+          },
+          {
+            "startsAt": "2026-09-25T17:15",
+            "label": "5:15 PM · Sunset Tour",
+            "seatsLeft": 34,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/8994/availability/1843553521/book/"
+          },
+          {
+            "startsAt": "2026-09-25T19:00",
+            "label": "7:00 PM · Fireworks Tour",
+            "seatsLeft": 29,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/12355/availability/1843568064/book/"
+          },
+          {
+            "startsAt": "2026-09-25T19:15",
+            "label": "7:15 PM · Fireworks Tour",
+            "seatsLeft": 30,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/12355/availability/1843568066/book/"
+          }
+        ]
+      },
+      {
+        "date": "2026-09-26",
+        "slots": [
+          {
+            "startsAt": "2026-09-26T08:15",
+            "label": "8:15 AM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 35,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843544821/book/"
+          },
+          {
+            "startsAt": "2026-09-26T08:45",
+            "label": "8:45 AM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 36,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843551063/book/"
+          },
+          {
+            "startsAt": "2026-09-26T10:00",
+            "label": "10:00 AM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 34,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843544822/book/"
+          },
+          {
+            "startsAt": "2026-09-26T10:30",
+            "label": "10:30 AM · Private Charter",
+            "seatsLeft": 1,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/94374/availability/2051865682/book/"
+          },
+          {
+            "startsAt": "2026-09-26T10:30",
+            "label": "10:30 AM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 40,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843551064/book/"
+          },
+          {
+            "startsAt": "2026-09-26T11:15",
+            "label": "11:15 AM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 38,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843544823/book/"
+          },
+          {
+            "startsAt": "2026-09-26T11:45",
+            "label": "11:45 AM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 38,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843551065/book/"
+          },
+          {
+            "startsAt": "2026-09-26T13:00",
+            "label": "1:00 PM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 38,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843544824/book/"
+          },
+          {
+            "startsAt": "2026-09-26T13:30",
+            "label": "1:30 PM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 35,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843551066/book/"
+          },
+          {
+            "startsAt": "2026-09-26T14:45",
+            "label": "2:45 PM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 36,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843551067/book/"
+          },
+          {
+            "startsAt": "2026-09-26T15:30",
+            "label": "3:30 PM · Private Charter",
+            "seatsLeft": 1,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/94374/availability/2051863858/book/"
+          },
+          {
+            "startsAt": "2026-09-26T15:30",
+            "label": "3:30 PM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 40,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843544826/book/"
+          },
+          {
+            "startsAt": "2026-09-26T16:00",
+            "label": "4:00 PM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 38,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843551068/book/"
+          },
+          {
+            "startsAt": "2026-09-26T17:00",
+            "label": "5:00 PM · Private Charter",
+            "seatsLeft": 1,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/94374/availability/2051863859/book/"
+          },
+          {
+            "startsAt": "2026-09-26T17:00",
+            "label": "5:00 PM · Sunset Tour",
+            "seatsLeft": 40,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/8994/availability/1843553560/book/"
+          },
+          {
+            "startsAt": "2026-09-26T17:15",
+            "label": "5:15 PM · Sunset Tour",
+            "seatsLeft": 40,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/8994/availability/1843553565/book/"
+          }
+        ]
+      },
+      {
+        "date": "2026-09-27",
+        "slots": [
+          {
+            "startsAt": "2026-09-27T08:15",
+            "label": "8:15 AM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 38,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843544827/book/"
+          },
+          {
+            "startsAt": "2026-09-27T08:45",
+            "label": "8:45 AM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 36,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843551069/book/"
+          },
+          {
+            "startsAt": "2026-09-27T10:00",
+            "label": "10:00 AM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 38,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843544828/book/"
+          },
+          {
+            "startsAt": "2026-09-27T10:30",
+            "label": "10:30 AM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 31,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843551070/book/"
+          },
+          {
+            "startsAt": "2026-09-27T11:15",
+            "label": "11:15 AM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 38,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843544829/book/"
+          },
+          {
+            "startsAt": "2026-09-27T11:45",
+            "label": "11:45 AM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 38,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843551071/book/"
+          },
+          {
+            "startsAt": "2026-09-27T13:00",
+            "label": "1:00 PM · Private Charter",
+            "seatsLeft": 1,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/94374/availability/2051863863/book/"
+          },
+          {
+            "startsAt": "2026-09-27T13:00",
+            "label": "1:00 PM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 40,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843544830/book/"
+          },
+          {
+            "startsAt": "2026-09-27T13:30",
+            "label": "1:30 PM · Private Charter",
+            "seatsLeft": 1,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/94374/availability/2051865690/book/"
+          },
+          {
+            "startsAt": "2026-09-27T13:30",
+            "label": "1:30 PM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 40,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843551072/book/"
+          },
+          {
+            "startsAt": "2026-09-27T14:15",
+            "label": "2:15 PM · Private Charter",
+            "seatsLeft": 1,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/94374/availability/2051863864/book/"
+          },
+          {
+            "startsAt": "2026-09-27T14:15",
+            "label": "2:15 PM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 40,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843544831/book/"
+          },
+          {
+            "startsAt": "2026-09-27T14:45",
+            "label": "2:45 PM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 35,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843551073/book/"
+          },
+          {
+            "startsAt": "2026-09-27T15:30",
+            "label": "3:30 PM · Private Charter",
+            "seatsLeft": 1,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/94374/availability/2051863865/book/"
+          },
+          {
+            "startsAt": "2026-09-27T15:30",
+            "label": "3:30 PM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 40,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843544832/book/"
+          },
+          {
+            "startsAt": "2026-09-27T16:00",
+            "label": "4:00 PM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 34,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843551074/book/"
+          },
+          {
+            "startsAt": "2026-09-27T17:00",
+            "label": "5:00 PM · Private Charter",
+            "seatsLeft": 1,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/94374/availability/2051863866/book/"
+          },
+          {
+            "startsAt": "2026-09-27T17:00",
+            "label": "5:00 PM · Sunset Tour",
+            "seatsLeft": 40,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/8994/availability/1843553604/book/"
+          },
+          {
+            "startsAt": "2026-09-27T17:15",
+            "label": "5:15 PM · Sunset Tour",
+            "seatsLeft": 40,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/8994/availability/1843553609/book/"
+          }
+        ]
+      },
+      {
+        "date": "2026-09-28",
+        "slots": [
+          {
+            "startsAt": "2026-09-28T08:15",
+            "label": "8:15 AM · Private Charter",
+            "seatsLeft": 1,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/94374/availability/2051863867/book/"
+          },
+          {
+            "startsAt": "2026-09-28T08:15",
+            "label": "8:15 AM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 40,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843544833/book/"
+          },
+          {
+            "startsAt": "2026-09-28T08:45",
+            "label": "8:45 AM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 34,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843551075/book/"
+          },
+          {
+            "startsAt": "2026-09-28T10:00",
+            "label": "10:00 AM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 12,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843544834/book/"
+          },
+          {
+            "startsAt": "2026-09-28T10:30",
+            "label": "10:30 AM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 38,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843551076/book/"
+          },
+          {
+            "startsAt": "2026-09-28T11:15",
+            "label": "11:15 AM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 38,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843544835/book/"
+          },
+          {
+            "startsAt": "2026-09-28T11:45",
+            "label": "11:45 AM · Private Charter",
+            "seatsLeft": 1,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/94374/availability/2051865695/book/"
+          },
+          {
+            "startsAt": "2026-09-28T11:45",
+            "label": "11:45 AM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 40,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843551077/book/"
+          },
+          {
+            "startsAt": "2026-09-28T13:00",
+            "label": "1:00 PM · Private Charter",
+            "seatsLeft": 1,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/94374/availability/2051863870/book/"
+          },
+          {
+            "startsAt": "2026-09-28T13:00",
+            "label": "1:00 PM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 40,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843544836/book/"
+          },
+          {
+            "startsAt": "2026-09-28T13:30",
+            "label": "1:30 PM · Private Charter",
+            "seatsLeft": 1,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/94374/availability/2051865696/book/"
+          },
+          {
+            "startsAt": "2026-09-28T13:30",
+            "label": "1:30 PM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 40,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843551078/book/"
+          },
+          {
+            "startsAt": "2026-09-28T14:15",
+            "label": "2:15 PM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 38,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843544837/book/"
+          },
+          {
+            "startsAt": "2026-09-28T14:45",
+            "label": "2:45 PM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 39,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843551079/book/"
+          },
+          {
+            "startsAt": "2026-09-28T15:30",
+            "label": "3:30 PM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 28,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843544838/book/"
+          },
+          {
+            "startsAt": "2026-09-28T16:00",
+            "label": "4:00 PM · Private Charter",
+            "seatsLeft": 1,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/94374/availability/2051865698/book/"
+          },
+          {
+            "startsAt": "2026-09-28T16:00",
+            "label": "4:00 PM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 40,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843551080/book/"
+          },
+          {
+            "startsAt": "2026-09-28T17:00",
+            "label": "5:00 PM · Private Charter",
+            "seatsLeft": 1,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/94374/availability/2051863873/book/"
+          },
+          {
+            "startsAt": "2026-09-28T17:00",
+            "label": "5:00 PM · Sunset Tour",
+            "seatsLeft": 40,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/8994/availability/1843553291/book/"
+          },
+          {
+            "startsAt": "2026-09-28T17:15",
+            "label": "5:15 PM · Sunset Tour",
+            "seatsLeft": 40,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/8994/availability/1843553297/book/"
+          }
+        ]
+      },
+      {
+        "date": "2026-09-29",
+        "slots": [
+          {
+            "startsAt": "2026-09-29T08:15",
+            "label": "8:15 AM · Private Charter",
+            "seatsLeft": 1,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/94374/availability/2051863874/book/"
+          },
+          {
+            "startsAt": "2026-09-29T08:15",
+            "label": "8:15 AM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 40,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843544839/book/"
+          },
+          {
+            "startsAt": "2026-09-29T08:45",
+            "label": "8:45 AM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 38,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843551081/book/"
+          },
+          {
+            "startsAt": "2026-09-29T10:00",
+            "label": "10:00 AM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 34,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843544840/book/"
+          },
+          {
+            "startsAt": "2026-09-29T10:30",
+            "label": "10:30 AM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 38,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843551082/book/"
+          },
+          {
+            "startsAt": "2026-09-29T11:15",
+            "label": "11:15 AM · Private Charter",
+            "seatsLeft": 1,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/94374/availability/2051863876/book/"
+          },
+          {
+            "startsAt": "2026-09-29T11:15",
+            "label": "11:15 AM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 40,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843544841/book/"
+          },
+          {
+            "startsAt": "2026-09-29T11:45",
+            "label": "11:45 AM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 38,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843551083/book/"
+          },
+          {
+            "startsAt": "2026-09-29T13:00",
+            "label": "1:00 PM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 38,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843544842/book/"
+          },
+          {
+            "startsAt": "2026-09-29T13:30",
+            "label": "1:30 PM · Private Charter",
+            "seatsLeft": 1,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/94374/availability/2051865702/book/"
+          },
+          {
+            "startsAt": "2026-09-29T13:30",
+            "label": "1:30 PM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 40,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843551084/book/"
+          },
+          {
+            "startsAt": "2026-09-29T14:15",
+            "label": "2:15 PM · Private Charter",
+            "seatsLeft": 1,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/94374/availability/2051863878/book/"
+          },
+          {
+            "startsAt": "2026-09-29T14:15",
+            "label": "2:15 PM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 40,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843544843/book/"
+          },
+          {
+            "startsAt": "2026-09-29T14:45",
+            "label": "2:45 PM · Private Charter",
+            "seatsLeft": 1,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/94374/availability/2051865703/book/"
+          },
+          {
+            "startsAt": "2026-09-29T14:45",
+            "label": "2:45 PM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 40,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843551085/book/"
+          },
+          {
+            "startsAt": "2026-09-29T15:30",
+            "label": "3:30 PM · Private Charter",
+            "seatsLeft": 1,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/94374/availability/2051863879/book/"
+          },
+          {
+            "startsAt": "2026-09-29T15:30",
+            "label": "3:30 PM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 40,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843544844/book/"
+          },
+          {
+            "startsAt": "2026-09-29T16:00",
+            "label": "4:00 PM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 38,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843551086/book/"
+          },
+          {
+            "startsAt": "2026-09-29T17:00",
+            "label": "5:00 PM · Sunset Tour",
+            "seatsLeft": 38,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/8994/availability/1843553358/book/"
+          },
+          {
+            "startsAt": "2026-09-29T17:15",
+            "label": "5:15 PM · Sunset Tour",
+            "seatsLeft": 40,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/8994/availability/1843553365/book/"
+          }
+        ]
+      },
+      {
+        "date": "2026-09-30",
+        "slots": [
+          {
+            "startsAt": "2026-09-30T08:15",
+            "label": "8:15 AM · Private Charter",
+            "seatsLeft": 1,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/94374/availability/2051863881/book/"
+          },
+          {
+            "startsAt": "2026-09-30T08:15",
+            "label": "8:15 AM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 40,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843544845/book/"
+          },
+          {
+            "startsAt": "2026-09-30T08:45",
+            "label": "8:45 AM · Private Charter",
+            "seatsLeft": 1,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/94374/availability/2051865705/book/"
+          },
+          {
+            "startsAt": "2026-09-30T08:45",
+            "label": "8:45 AM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 40,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843551087/book/"
+          },
+          {
+            "startsAt": "2026-09-30T10:00",
+            "label": "10:00 AM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 30,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843544846/book/"
+          },
+          {
+            "startsAt": "2026-09-30T10:30",
+            "label": "10:30 AM · Private Charter",
+            "seatsLeft": 1,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/94374/availability/2051865706/book/"
+          },
+          {
+            "startsAt": "2026-09-30T10:30",
+            "label": "10:30 AM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 40,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843551088/book/"
+          },
+          {
+            "startsAt": "2026-09-30T11:15",
+            "label": "11:15 AM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 38,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843544847/book/"
+          },
+          {
+            "startsAt": "2026-09-30T11:45",
+            "label": "11:45 AM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 34,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843551089/book/"
+          },
+          {
+            "startsAt": "2026-09-30T13:00",
+            "label": "1:00 PM · Private Charter",
+            "seatsLeft": 1,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/94374/availability/2051863884/book/"
+          },
+          {
+            "startsAt": "2026-09-30T13:00",
+            "label": "1:00 PM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 40,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843544848/book/"
+          },
+          {
+            "startsAt": "2026-09-30T13:30",
+            "label": "1:30 PM · Private Charter",
+            "seatsLeft": 1,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/94374/availability/2051865708/book/"
+          },
+          {
+            "startsAt": "2026-09-30T13:30",
+            "label": "1:30 PM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 40,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843551090/book/"
+          },
+          {
+            "startsAt": "2026-09-30T14:15",
+            "label": "2:15 PM · Private Charter",
+            "seatsLeft": 1,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/94374/availability/2051863885/book/"
+          },
+          {
+            "startsAt": "2026-09-30T14:15",
+            "label": "2:15 PM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 40,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843544849/book/"
+          },
+          {
+            "startsAt": "2026-09-30T14:45",
+            "label": "2:45 PM · Private Charter",
+            "seatsLeft": 1,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/94374/availability/2051865709/book/"
+          },
+          {
+            "startsAt": "2026-09-30T14:45",
+            "label": "2:45 PM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 40,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843551091/book/"
+          },
+          {
+            "startsAt": "2026-09-30T15:30",
+            "label": "3:30 PM · Private Charter",
+            "seatsLeft": 1,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/94374/availability/2051863886/book/"
+          },
+          {
+            "startsAt": "2026-09-30T15:30",
+            "label": "3:30 PM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 40,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843544850/book/"
+          },
+          {
+            "startsAt": "2026-09-30T16:00",
+            "label": "4:00 PM · Private Charter",
+            "seatsLeft": 1,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/94374/availability/2051865710/book/"
+          },
+          {
+            "startsAt": "2026-09-30T16:00",
+            "label": "4:00 PM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 40,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843551092/book/"
+          },
+          {
+            "startsAt": "2026-09-30T17:00",
+            "label": "5:00 PM · Sunset Tour",
+            "seatsLeft": 38,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/8994/availability/1843553614/book/"
+          },
+          {
+            "startsAt": "2026-09-30T17:15",
+            "label": "5:15 PM · Sunset Tour",
+            "seatsLeft": 40,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/8994/availability/1843553619/book/"
+          }
+        ]
+      },
+      {
+        "date": "2026-10-01",
+        "slots": [
+          {
+            "startsAt": "2026-10-01T08:15",
+            "label": "8:15 AM · Private Charter",
+            "seatsLeft": 1,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/94374/availability/2051863888/book/"
+          },
+          {
+            "startsAt": "2026-10-01T08:15",
+            "label": "8:15 AM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 40,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843544851/book/"
+          },
+          {
+            "startsAt": "2026-10-01T08:45",
+            "label": "8:45 AM · Private Charter",
+            "seatsLeft": 1,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/94374/availability/2051865711/book/"
+          },
+          {
+            "startsAt": "2026-10-01T08:45",
+            "label": "8:45 AM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 40,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843551093/book/"
+          },
+          {
+            "startsAt": "2026-10-01T10:00",
+            "label": "10:00 AM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 23,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843544852/book/"
+          },
+          {
+            "startsAt": "2026-10-01T10:30",
+            "label": "10:30 AM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 34,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843551094/book/"
+          },
+          {
+            "startsAt": "2026-10-01T11:15",
+            "label": "11:15 AM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 36,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843544853/book/"
+          },
+          {
+            "startsAt": "2026-10-01T11:45",
+            "label": "11:45 AM · Private Charter",
+            "seatsLeft": 1,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/94374/availability/2051865713/book/"
+          },
+          {
+            "startsAt": "2026-10-01T11:45",
+            "label": "11:45 AM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 40,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843551095/book/"
+          },
+          {
+            "startsAt": "2026-10-01T13:00",
+            "label": "1:00 PM · Private Charter",
+            "seatsLeft": 1,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/94374/availability/2051863891/book/"
+          },
+          {
+            "startsAt": "2026-10-01T13:00",
+            "label": "1:00 PM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 40,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843544854/book/"
+          },
+          {
+            "startsAt": "2026-10-01T13:30",
+            "label": "1:30 PM · Private Charter",
+            "seatsLeft": 1,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/94374/availability/2051865714/book/"
+          },
+          {
+            "startsAt": "2026-10-01T13:30",
+            "label": "1:30 PM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 40,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843551096/book/"
+          },
+          {
+            "startsAt": "2026-10-01T14:15",
+            "label": "2:15 PM · Private Charter",
+            "seatsLeft": 1,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/94374/availability/2051863892/book/"
+          },
+          {
+            "startsAt": "2026-10-01T14:15",
+            "label": "2:15 PM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 40,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843544855/book/"
+          },
+          {
+            "startsAt": "2026-10-01T14:45",
+            "label": "2:45 PM · Private Charter",
+            "seatsLeft": 1,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/94374/availability/2051865715/book/"
+          },
+          {
+            "startsAt": "2026-10-01T14:45",
+            "label": "2:45 PM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 40,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843551097/book/"
+          },
+          {
+            "startsAt": "2026-10-01T15:30",
+            "label": "3:30 PM · Private Charter",
+            "seatsLeft": 1,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/94374/availability/2051863893/book/"
+          },
+          {
+            "startsAt": "2026-10-01T15:30",
+            "label": "3:30 PM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 40,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843544856/book/"
+          },
+          {
+            "startsAt": "2026-10-01T16:00",
+            "label": "4:00 PM · Private Charter",
+            "seatsLeft": 1,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/94374/availability/2051865716/book/"
+          },
+          {
+            "startsAt": "2026-10-01T16:00",
+            "label": "4:00 PM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 40,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843551098/book/"
+          },
+          {
+            "startsAt": "2026-10-01T17:00",
+            "label": "5:00 PM · Private Charter",
+            "seatsLeft": 1,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/94374/availability/2051863894/book/"
+          },
+          {
+            "startsAt": "2026-10-01T17:00",
+            "label": "5:00 PM · Sunset Tour",
+            "seatsLeft": 40,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/8994/availability/1843553338/book/"
+          },
+          {
+            "startsAt": "2026-10-01T17:15",
+            "label": "5:15 PM · Sunset Tour",
+            "seatsLeft": 38,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/8994/availability/1843553347/book/"
+          }
+        ]
+      },
+      {
+        "date": "2026-10-02",
+        "slots": [
+          {
+            "startsAt": "2026-10-02T08:15",
+            "label": "8:15 AM · Private Charter",
+            "seatsLeft": 1,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/94374/availability/2051863895/book/"
+          },
+          {
+            "startsAt": "2026-10-02T08:15",
+            "label": "8:15 AM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 40,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843544857/book/"
+          },
+          {
+            "startsAt": "2026-10-02T08:45",
+            "label": "8:45 AM · Private Charter",
+            "seatsLeft": 1,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/94374/availability/2051865717/book/"
+          },
+          {
+            "startsAt": "2026-10-02T08:45",
+            "label": "8:45 AM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 40,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843551099/book/"
+          },
+          {
+            "startsAt": "2026-10-02T10:00",
+            "label": "10:00 AM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 34,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843544858/book/"
+          },
+          {
+            "startsAt": "2026-10-02T10:30",
+            "label": "10:30 AM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 38,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843551100/book/"
+          },
+          {
+            "startsAt": "2026-10-02T11:15",
+            "label": "11:15 AM · Private Charter",
+            "seatsLeft": 1,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/94374/availability/2051863897/book/"
+          },
+          {
+            "startsAt": "2026-10-02T11:15",
+            "label": "11:15 AM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 40,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843544859/book/"
+          },
+          {
+            "startsAt": "2026-10-02T11:45",
+            "label": "11:45 AM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 36,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843551101/book/"
+          },
+          {
+            "startsAt": "2026-10-02T13:00",
+            "label": "1:00 PM · Private Charter",
+            "seatsLeft": 1,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/94374/availability/2051863898/book/"
+          },
+          {
+            "startsAt": "2026-10-02T13:00",
+            "label": "1:00 PM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 40,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843544860/book/"
+          },
+          {
+            "startsAt": "2026-10-02T13:30",
+            "label": "1:30 PM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 38,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843551102/book/"
+          },
+          {
+            "startsAt": "2026-10-02T14:15",
+            "label": "2:15 PM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 35,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843544861/book/"
+          },
+          {
+            "startsAt": "2026-10-02T14:45",
+            "label": "2:45 PM · Private Charter",
+            "seatsLeft": 1,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/94374/availability/2051865721/book/"
+          },
+          {
+            "startsAt": "2026-10-02T14:45",
+            "label": "2:45 PM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 40,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843551103/book/"
+          },
+          {
+            "startsAt": "2026-10-02T15:30",
+            "label": "3:30 PM · Private Charter",
+            "seatsLeft": 1,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/94374/availability/2051863900/book/"
+          },
+          {
+            "startsAt": "2026-10-02T15:30",
+            "label": "3:30 PM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 40,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843544862/book/"
+          },
+          {
+            "startsAt": "2026-10-02T16:00",
+            "label": "4:00 PM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 36,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843551104/book/"
+          },
+          {
+            "startsAt": "2026-10-02T17:00",
+            "label": "5:00 PM · Private Charter",
+            "seatsLeft": 1,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/94374/availability/2051863901/book/"
+          },
+          {
+            "startsAt": "2026-10-02T17:00",
+            "label": "5:00 PM · Sunset Tour",
+            "seatsLeft": 40,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/8994/availability/1843553403/book/"
+          },
+          {
+            "startsAt": "2026-10-02T17:15",
+            "label": "5:15 PM · Sunset Tour",
+            "seatsLeft": 40,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/8994/availability/1843553409/book/"
+          },
+          {
+            "startsAt": "2026-10-02T19:00",
+            "label": "7:00 PM · Fireworks Tour",
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/12355/availability/1843568062/book/"
+          },
+          {
+            "startsAt": "2026-10-02T19:15",
+            "label": "7:15 PM · Fireworks Tour",
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/12355/availability/1843568065/book/"
+          }
+        ]
+      },
+      {
+        "date": "2026-10-03",
+        "slots": [
+          {
+            "startsAt": "2026-10-03T08:15",
+            "label": "8:15 AM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 33,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843544863/book/"
+          },
+          {
+            "startsAt": "2026-10-03T08:45",
+            "label": "8:45 AM · Private Charter",
+            "seatsLeft": 1,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/94374/availability/2051865723/book/"
+          },
+          {
+            "startsAt": "2026-10-03T08:45",
+            "label": "8:45 AM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 40,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843551105/book/"
+          },
+          {
+            "startsAt": "2026-10-03T10:00",
+            "label": "10:00 AM · Private Charter",
+            "seatsLeft": 1,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/94374/availability/2051863903/book/"
+          },
+          {
+            "startsAt": "2026-10-03T10:00",
+            "label": "10:00 AM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 40,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843544864/book/"
+          },
+          {
+            "startsAt": "2026-10-03T10:30",
+            "label": "10:30 AM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 29,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843551106/book/"
+          },
+          {
+            "startsAt": "2026-10-03T11:15",
+            "label": "11:15 AM · Private Charter",
+            "seatsLeft": 1,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/94374/availability/2051863904/book/"
+          },
+          {
+            "startsAt": "2026-10-03T11:15",
+            "label": "11:15 AM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 40,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843544865/book/"
+          },
+          {
+            "startsAt": "2026-10-03T11:45",
+            "label": "11:45 AM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 27,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843551107/book/"
+          },
+          {
+            "startsAt": "2026-10-03T13:00",
+            "label": "1:00 PM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 38,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843544866/book/"
+          },
+          {
+            "startsAt": "2026-10-03T13:30",
+            "label": "1:30 PM · Private Charter",
+            "seatsLeft": 1,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/94374/availability/2051865726/book/"
+          },
+          {
+            "startsAt": "2026-10-03T13:30",
+            "label": "1:30 PM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 40,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843551108/book/"
+          },
+          {
+            "startsAt": "2026-10-03T14:15",
+            "label": "2:15 PM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 36,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843544867/book/"
+          },
+          {
+            "startsAt": "2026-10-03T14:45",
+            "label": "2:45 PM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 36,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843551109/book/"
+          },
+          {
+            "startsAt": "2026-10-03T15:30",
+            "label": "3:30 PM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 30,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843544868/book/"
+          },
+          {
+            "startsAt": "2026-10-03T16:00",
+            "label": "4:00 PM · Private Charter",
+            "seatsLeft": 1,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/94374/availability/2051865728/book/"
+          },
+          {
+            "startsAt": "2026-10-03T16:00",
+            "label": "4:00 PM · Waikiki Glass Bottom Boat Cruise",
+            "seatsLeft": 40,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/72457/availability/1843551110/book/"
+          },
+          {
+            "startsAt": "2026-10-03T17:00",
+            "label": "5:00 PM · Sunset Tour",
+            "seatsLeft": 37,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/8994/availability/1843553461/book/"
+          },
+          {
+            "startsAt": "2026-10-03T17:15",
+            "label": "5:15 PM · Sunset Tour",
+            "seatsLeft": 34,
+            "bookUrl": "https://fareharbor.com/hawaiiglassbottomboats/items/8994/availability/1843553467/book/"
+          }
+        ]
+      }
+    ]
+  }
+}

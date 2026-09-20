@@ -1,0 +1,223 @@
+{
+  "id": "peek/miamiseaplane-com",
+  "vendor": "peek",
+  "domain": "miamiseaplane.com",
+  "bookingUrl": "https://book.peek.com/s/80a7f422-b8ca-4746-9b54-ba19d3c12d9b/7v61J",
+  "operatorId": "case-peek-miamiseaplane-com",
+  "from": "2026-09-20",
+  "days": 14,
+  "capturedAt": "2026-09-20T04:28:56.335Z",
+  "observed": {
+    "vendor": "peek",
+    "live": true,
+    "updatedAt": "2026-09-20T04:28:56.335Z",
+    "days": [
+      {
+        "date": "2026-09-20",
+        "slots": []
+      },
+      {
+        "date": "2026-09-21",
+        "slots": [
+          {
+            "startsAt": "2026-09-21T10:00",
+            "label": "10:00 AM · Miami Skyline Seaplane Tour",
+            "priceCents": 27500,
+            "seatsLeft": 3,
+            "bookUrl": "https://book.peek.com/s/80a7f422-b8ca-4746-9b54-ba19d3c12d9b/7v61J"
+          },
+          {
+            "startsAt": "2026-09-21T10:45",
+            "label": "10:45 AM · Miami Skyline Seaplane Tour",
+            "priceCents": 27500,
+            "seatsLeft": 3,
+            "bookUrl": "https://book.peek.com/s/80a7f422-b8ca-4746-9b54-ba19d3c12d9b/7v61J"
+          },
+          {
+            "startsAt": "2026-09-21T11:00",
+            "label": "11:00 AM · Miami Skyline Seaplane Tour",
+            "priceCents": 27500,
+            "seatsLeft": 2,
+            "bookUrl": "https://book.peek.com/s/80a7f422-b8ca-4746-9b54-ba19d3c12d9b/7v61J"
+          },
+          {
+            "startsAt": "2026-09-21T11:30",
+            "label": "11:30 AM · Miami Skyline Seaplane Tour",
+            "priceCents": 27500,
+            "seatsLeft": 3,
+            "bookUrl": "https://book.peek.com/s/80a7f422-b8ca-4746-9b54-ba19d3c12d9b/7v61J"
+          },
+          {
+            "startsAt": "2026-09-21T12:00",
+            "label": "12:00 PM · Miami Skyline Seaplane Tour",
+            "priceCents": 27500,
+            "seatsLeft": 3,
+            "bookUrl": "https://book.peek.com/s/80a7f422-b8ca-4746-9b54-ba19d3c12d9b/7v61J"
+          },
+          {
+            "startsAt": "2026-09-21T12:45",
+            "label": "12:45 PM · Miami Skyline Seaplane Tour",
+            "priceCents": 27500,
+            "seatsLeft": 3,
+            "bookUrl": "https://book.peek.com/s/80a7f422-b8ca-4746-9b54-ba19d3c12d9b/7v61J"
+          },
+          {
+            "startsAt": "2026-09-21T13:30",
+            "label": "1:30 PM · Miami Skyline Seaplane Tour",
+            "priceCents": 27500,
+            "seatsLeft": 3,
+            "bookUrl": "https://book.peek.com/s/80a7f422-b8ca-4746-9b54-ba19d3c12d9b/7v61J"
+          },
+          {
+            "startsAt": "2026-09-21T14:30",
+            "label": "2:30 PM · Miami Skyline Seaplane Tour",
+            "priceCents": 27500,
+            "seatsLeft": 3,
+            "bookUrl": "https://book.peek.com/s/80a7f422-b8ca-4746-9b54-ba19d3c12d9b/7v61J"
+          },
+          {
+            "startsAt": "2026-09-21T15:15",
+            "label": "3:15 PM · Miami Skyline Seaplane Tour",
+            "priceCents": 27500,
+            "seatsLeft": 3,
+            "bookUrl": "https://book.peek.com/s/80a7f422-b8ca-4746-9b54-ba19d3c12d9b/7v61J"
+          }
+        ]
+      },
+      {
+        "date": "2026-09-22",
+        "slots": [
+          {
+            "startsAt": "2026-09-22T00:00",
+            "label": "Miami Skyline Seaplane Tour",
+            "bookUrl": "https://book.peek.com/s/80a7f422-b8ca-4746-9b54-ba19d3c12d9b/7v61J",
+            "timeUnknown": true
+          }
+        ]
+      },
+      {
+        "date": "2026-09-23",
+        "slots": [
+          {
+            "startsAt": "2026-09-23T00:00",
+            "label": "Miami Skyline Seaplane Tour",
+            "bookUrl": "https://book.peek.com/s/80a7f422-b8ca-4746-9b54-ba19d3c12d9b/7v61J",
+            "timeUnknown": true
+          }
+        ]
+      },
+      {
+        "date": "2026-09-24",
+        "slots": [
+          {
+            "startsAt": "2026-09-24T00:00",
+            "label": "Miami Skyline Seaplane Tour",
+            "bookUrl": "https://book.peek.com/s/80a7f422-b8ca-4746-9b54-ba19d3c12d9b/7v61J",
+            "timeUnknown": true
+          }
+        ]
+      },
+      {
+        "date": "2026-09-25",
+        "slots": [
+          {
+            "startsAt": "2026-09-25T00:00",
+            "label": "Miami Skyline Seaplane Tour",
+            "bookUrl": "https://book.peek.com/s/80a7f422-b8ca-4746-9b54-ba19d3c12d9b/7v61J",
+            "timeUnknown": true
+          }
+        ]
+      },
+      {
+        "date": "2026-09-26",
+        "slots": [
+          {
+            "startsAt": "2026-09-26T00:00",
+            "label": "Miami Skyline Seaplane Tour",
+            "bookUrl": "https://book.peek.com/s/80a7f422-b8ca-4746-9b54-ba19d3c12d9b/7v61J",
+            "timeUnknown": true
+          }
+        ]
+      },
+      {
+        "date": "2026-09-27",
+        "slots": [
+          {
+            "startsAt": "2026-09-27T00:00",
+            "label": "Miami Skyline Seaplane Tour",
+            "bookUrl": "https://book.peek.com/s/80a7f422-b8ca-4746-9b54-ba19d3c12d9b/7v61J",
+            "timeUnknown": true
+          }
+        ]
+      },
+      {
+        "date": "2026-09-28",
+        "slots": [
+          {
+            "startsAt": "2026-09-28T00:00",
+            "label": "Miami Skyline Seaplane Tour",
+            "bookUrl": "https://book.peek.com/s/80a7f422-b8ca-4746-9b54-ba19d3c12d9b/7v61J",
+            "timeUnknown": true
+          }
+        ]
+      },
+      {
+        "date": "2026-09-29",
+        "slots": [
+          {
+            "startsAt": "2026-09-29T00:00",
+            "label": "Miami Skyline Seaplane Tour",
+            "bookUrl": "https://book.peek.com/s/80a7f422-b8ca-4746-9b54-ba19d3c12d9b/7v61J",
+            "timeUnknown": true
+          }
+        ]
+      },
+      {
+        "date": "2026-09-30",
+        "slots": [
+          {
+            "startsAt": "2026-09-30T00:00",
+            "label": "Miami Skyline Seaplane Tour",
+            "bookUrl": "https://book.peek.com/s/80a7f422-b8ca-4746-9b54-ba19d3c12d9b/7v61J",
+            "timeUnknown": true
+          }
+        ]
+      },
+      {
+        "date": "2026-10-01",
+        "slots": [
+          {
+            "startsAt": "2026-10-01T00:00",
+            "label": "Miami Skyline Seaplane Tour",
+            "bookUrl": "https://book.peek.com/s/80a7f422-b8ca-4746-9b54-ba19d3c12d9b/7v61J",
+            "timeUnknown": true
+          }
+        ]
+      },
+      {
+        "date": "2026-10-02",
+        "slots": [
+          {
+            "startsAt": "2026-10-02T00:00",
+            "label": "Miami Skyline Seaplane Tour",
+            "bookUrl": "https://book.peek.com/s/80a7f422-b8ca-4746-9b54-ba19d3c12d9b/7v61J",
+            "timeUnknown": true
+          }
+        ]
+      },
+      {
+        "date": "2026-10-03",
+        "slots": [
+          {
+            "startsAt": "2026-10-03T00:00",
+            "label": "Miami Skyline Seaplane Tour",
+            "bookUrl": "https://book.peek.com/s/80a7f422-b8ca-4746-9b54-ba19d3c12d9b/7v61J",
+            "timeUnknown": true
+          }
+        ]
+      }
+    ],
+    "partial": true,
+    "note": "exact times read for 1 of 13 open dates"
+  }
+}

@@ -528,6 +528,23 @@ a.crow:active{background:var(--surface-2);}
 /* account */
 .acct{padding:0 24px;}
 .acctcard{background:var(--surface-2);border:none;border-radius:var(--r-m);padding:16px;}
+.walletcard{
+  margin-top:16px;background:var(--surface-2);border-radius:var(--r-m);padding:16px;
+}
+.walletcard h3{margin:0 0 6px;font-size:16px;font-weight:650;}
+.walletcard p{margin:0;font-size:14px;line-height:1.45;color:var(--ink-soft);}
+.walletmeta{margin-top:10px !important;font-weight:600;color:var(--ink) !important;}
+.walletrow,.walletlimit{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:14px;font-size:14px;}
+.walletlimit{flex-direction:column;align-items:stretch;}
+.walletlimit input{width:100%;}
+.wallethint{margin-top:8px !important;font-size:13px !important;}
+.walletadd,.walletghost{
+  margin-top:14px;border:0;border-radius:8px;padding:10px 14px;font:inherit;font-weight:600;cursor:pointer;
+}
+.walletadd{background:var(--accent);color:var(--on-accent);width:100%;}
+.walletghost{background:transparent;color:var(--ink-soft);padding:8px 0;}
+.walleterr{margin-top:8px !important;color:var(--few) !important;font-size:13px !important;}
+.walletcard.compact{margin:16px 0 0;}
 .hostcard{
   background:var(--ink);color:var(--surface);border-radius:var(--r-l);padding:20px;margin-top:16px;
   position:relative;overflow:hidden;

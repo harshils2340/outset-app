@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { readFileSync } from "node:fs";
-import { apiOrigin, withApiOrigin } from "../csp";
+import { apiOrigin, withApiOrigin, withApiPreconnect } from "../csp";
 
 /**
  * The site's Content-Security-Policy is a meta tag in index.html, and its connect-src named the production API
@@ -70,5 +70,40 @@ test("only connect-src moves; the other directives are untouched", () => {
   const out = withApiOrigin(INDEX, "http://localhost:8787");
   for (const d of ["script-src", "frame-src", "style-src", "form-action", "default-src"]) {
     assert.deepEqual(sourcesIn(out, d), sourcesIn(INDEX, d), d);
+  }
+});
+
+/**
+ * The API's connection is opened while the page parses, because the first thing the app asks it is /where, and
+ * /where is what decides which city the home opens on. The call itself is a header read and answers in
+ * milliseconds; the handshake in front of it, cold, is three round trips the guest spends looking at the page.
+ */
+test("the shipped page opens the production API's connection before anything asks for it", () => {
+  assert.match(INDEX, /<link rel="preconnect" href="https:\/\/outset-api\.onrender\.com" crossorigin \/>/);
+});
+
+test("the preconnect is anonymous, because every call to the API is", () => {
+  // Nothing in src/lib/api.ts sets `credentials`, so each fetch is cross-origin with the default
+  // `same-origin` and therefore sends none. A preconnect without `crossorigin` warms the credentialled pool
+  // instead, which no call ever uses, and the first fetch pays for the handshake anyway.
+  const tag = INDEX.match(/<link rel="preconnect" href="https:\/\/outset-api[^>]*>/)?.[0] || "";
+  assert.ok(tag.includes("crossorigin"), tag);
+});
+
+test("a build against another API opens that one's connection too", () => {
+  const out = withApiPreconnect(INDEX, "http://localhost:8787/");
+  assert.ok(out.includes('<link rel="preconnect" href="http://localhost:8787" crossorigin />'));
+  // The one and only edit is the added tag, as with connect-src above.
+  assert.equal(out.replace('    <link rel="preconnect" href="http://localhost:8787" crossorigin />\n', ""), INDEX);
+});
+
+test("the production origin is not preconnected twice, and a page with no head is left alone", () => {
+  assert.equal(withApiPreconnect(INDEX, "https://outset-api.onrender.com"), INDEX);
+  assert.equal(withApiPreconnect("<p>no head here</p>", "http://localhost:8787"), "<p>no head here</p>");
+});
+
+test("nothing that is not an http origin is preconnected", () => {
+  for (const bad of ["", "   ", undefined, "not a url", "javascript:alert(1)", "//evil.example"]) {
+    assert.equal(withApiPreconnect(INDEX, bad), INDEX, `${String(bad)} leaves the page alone`);
   }
 });

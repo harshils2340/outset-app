@@ -41,6 +41,14 @@
     <script type="application/ld+json">
       {"@context":"https://schema.org","@type":"WebSite","name":"Outset","url":"https://onoutset.com/","description":"Book local activities across the US and Canada: pick a time, pay, done.","publisher":{"@type":"Organization","name":"Outset","url":"https://onoutset.com/"}}
     </script>
+    <!--
+      The API answers /where, which is what tells the home which city to open on, so its connection is opened
+      while this page is still parsing rather than when the first fetch goes out. crossorigin because every
+      call to it is an anonymous cross-origin fetch; without the attribute the browser warms the wrong pool and
+      opens a second connection anyway. A build pointed at another API gets its own tag added here at build
+      time by the cspApiOrigin plugin in vite.config.ts, beside the connect-src entry it adds for the same host.
+    -->
+    <link rel="preconnect" href="https://outset-api.onrender.com" crossorigin />
     <link rel="preconnect" href="https://wsrv.nl" />
     <link rel="preconnect" href="https://js.stripe.com" />
     <link rel="dns-prefetch" href="https://js.stripe.com" />

@@ -1,5 +1,5 @@
 import { warmCheckout } from "../lib/stripeJs";
-import { guessPlace, rememberPlace, savedPlace } from "../lib/here";
+import { guessPlace, opening, rememberMetro, rememberPlace, sameGuess, type Opening } from "../lib/here";
 import { createContext, useContext, useEffect, useMemo, useReducer, useRef, type ReactNode } from "react";
 import { LISTINGS } from "../data/listings";
 import { ALL_METRO_ID } from "../data/metros";
@@ -21,7 +21,7 @@ import { fmtDate, money, nowStamp } from "../lib/format";
 import { daySlotsOpen, openSeats } from "../lib/inventory";
 import { contactFor, experienceById, fromPrice, initials } from "../lib/catalog";
 import { loadListing, loadRemoteCatalog, onListingEdits } from "../lib/catalogLoad";
-import { confirmPaid, hasApi, submitBooking, warmApi , apiConfig } from "../lib/api";
+import { confirmPaid, hasApi, loadWalletId, submitBooking, warmApi , apiConfig } from "../lib/api";
 import { assistantOn, companyGreeting, companyHandoff, companyReply, companySuggestions } from "../lib/companyAgent";
 import type { Place } from "../lib/places";
 import { priceFor, priceUnclaimed } from "../lib/pricing";
@@ -467,7 +467,39 @@ function atOperatorsPath(): boolean {
   return window.location.pathname === base + "operators" || window.location.pathname === base + "operators/";
 }
 
+/**
+ * True when this load opens the guest home rather than one listing or the operator side. Only then is it worth
+ * a round trip and a second render to refine the place: someone who followed a link to a business came for that
+ * page, and the home behind it can stay on whatever this device already knew.
+ */
+function opensHome(): boolean {
+  return !atOperatorsPath() && !/^#(o|remove|claim)=/i.test(window.location.hash);
+}
+
+/**
+ * The place the home opens on, folded into the state of the very first render.
+ *
+ * `opening()` reads this device only: the place the guest chose, the last answer the API gave, or the browser's
+ * time zone. So there is nothing to wait for and nothing to move afterwards. A point becomes `near`, which is
+ * "within 40 km of here"; a region only names a metro, which is honest about being the whole area.
+ */
+function withPlace(init: AppState, open: Opening): AppState {
+  if (!open.guess) return init;
+  if (open.guess.kind === "point") return { ...init, near: open.guess.place };
+  return { ...init, metroId: open.guess.metroId };
+}
+
 export function AppProvider({ children }: { children: ReactNode }) {
+  /**
+   * Where the guest is, settled before the first render and without touching the network. Declared above the
+   * reducer because the reducer's initialiser reads it: the whole point is that the first paint is already the
+   * right city, so this cannot be a state update that arrives afterwards.
+   */
+  const open = useRef<Opening | null>(null);
+  if (!open.current) open.current = typeof window === "undefined" ? { guess: null, chosen: true, recheck: false } : opening();
+  /** Set once the guest picks a place themselves, so a refinement still in flight cannot overrule them. */
+  const chose = useRef(open.current.chosen);
+
   // A direct load of /operators is the operator side from the first paint, not the guest home for a second.
   const [state, dispatch] = useReducer(reducer, initial, (init) => {
     if (typeof window === "undefined") return init;
@@ -476,21 +508,51 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const c = window.location.hash.match(/^#claim=([a-z0-9-]+)(?:&k=([A-Za-z0-9_.~-]+))?/i);
     if (c) return { ...init, screen: "operator" as const, tab: "account" as const, operatorId: c[1], claimToken: c[2] || null };
     if (atOperatorsPath()) return { ...init, screen: "operator" as const, tab: "account" as const };
+    // Everything from here lands on the guest side, so it opens on the guest's own place, or the last one guessed
+    // for them, from the first frame. This used to be decided after the 22 MB catalog had downloaded, parsed and
+    // merged, which meant a full set of Anywhere rails painted and then rebuilt itself around a city.
+    const base = withPlace(init, open.current!);
     // A listing link (#o=, or #remove= from an outreach email) is that listing from the first paint: the page shows
     // a short "opening" state until the listing's own file lands, never the home page in between.
     const o = window.location.hash.match(/^#(o|remove)=([a-z0-9-]+)/i);
-    if (o) return { ...init, sheet: "request" as const, reqTargetId: o[2], removeId: o[1].toLowerCase() === "remove" ? o[2] : init.removeId };
+    if (o) return { ...base, sheet: "request" as const, reqTargetId: o[2], removeId: o[1].toLowerCase() === "remove" ? o[2] : base.removeId };
     // Back from Stripe: the booking is already on this device, so the confirmation is the first screen too.
     const pd = window.location.hash.match(/^#paid=([A-Z0-9-]+)&o=([a-z0-9-]+)/i);
     if (pd) {
       const code = pd[1].toUpperCase();
       const booking = loadBookings().find((b) => b.code === code);
-      if (booking) return { ...init, screen: "confirm" as const, booking: { ...booking, paid: true }, sheet: null };
+      if (booking) return { ...base, screen: "confirm" as const, booking: { ...booking, paid: true }, sheet: null };
     }
-    return init;
+    if (/^#wallet\b/i.test(window.location.hash)) return { ...base, tab: "account" as const, screen: "account" as const };
+    return base;
   });
   const stateRef = useRef(state);
   stateRef.current = state;
+
+  /**
+   * Check the opening place against the API, in the one case where it is worth doing.
+   *
+   * `opening()` has already drawn the home on the best answer this device held. It asks for another only when
+   * that answer was the browser's time zone, which names a region rather than a city, or when the stored one is
+   * over six hours old and the guest may have travelled. An answer that agrees with what is on screen is
+   * dropped rather than dispatched, so a repeat visit is one render, not two.
+   */
+  useEffect(() => {
+    const start = open.current!;
+    if (!opensHome() || chose.current || !start.recheck) return;
+    let alive = true;
+    void guessPlace().then((g) => {
+      if (!alive || chose.current || !g || sameGuess(g, start.guess)) return;
+      // A guest quick enough to have opened something in the meantime is not interrupted for a guess: the
+      // metro branch of the reducer clears `sheet`, so landing this would shut a listing under their hand.
+      if (stateRef.current.sheet) return;
+      if (g.kind === "point") dispatch({ type: "near", near: g.place });
+      else dispatch({ type: "metro", metroId: g.metroId });
+    });
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   // True once the boot deep-link check has run. Until then the path-sync effect must not rewrite the URL,
   // or the lite catalog shard flipping catalogReady early would erase a #claim= link before it is read.
@@ -577,23 +639,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (r) window.history.replaceState(null, "", window.location.pathname + window.location.search);
       booted.current = true;
 
-      /**
-       * Open on what is near the guest. A place they chose on an earlier visit is theirs and is restored as it
-       * was; otherwise the site guesses one, from the API's read of where the request came from or the browser's
-       * own time zone, and never asks permission to do it. The guess is skipped for someone who arrived on a
-       * listing link, since they came for that page, not for a city.
-       */
-      if (!window.location.hash.startsWith("#o=") && !window.location.hash.startsWith("#claim=")) {
-        const mine = savedPlace();
-        if (mine) dispatch({ type: "near", near: mine });
-        else
-          void guessPlace().then((g) => {
-            // Only if the guest has not picked meanwhile: a slow guess must never move them off their own choice.
-            if (!g || stateRef.current.near || stateRef.current.metroId !== ALL_METRO_ID) return;
-            if (g.kind === "point") dispatch({ type: "near", near: g.place });
-            else dispatch({ type: "metro", metroId: g.metroId });
-          });
-      }
+      // Where the guest is was settled before the first render and refined by its own effect above. It used to
+      // be decided here, inside this `.then()`, which gave it nothing it needed and cost it the whole catalog.
 
       // A listing link pasted while the app is already open should still open that listing.
       window.addEventListener("hashchange", () => {
@@ -731,13 +778,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setQ: (q) => dispatch({ type: "q", q }),
       setMetro: (metroId) => {
         // Picking a city is a decision too, and it clears `near`, so the remembered point goes with it: without
-        // this the next visit would restore the old point and quietly undo the city the guest chose.
+        // this the next visit would restore the old point and quietly undo the city the guest chose. The city
+        // itself is remembered in its place, because storing nothing meant the next visit guessed over it.
+        // Anywhere is stored as itself, because choosing the whole catalog is a choice as much as Denver is.
+        chose.current = true;
         rememberPlace(null);
+        rememberMetro(metroId);
         dispatch({ type: "metro", metroId });
       },
       setNear: (near) => {
         // A place the guest picked is remembered, so the next visit opens where they left off rather than on a guess.
+        // Clearing the point does not clear the city: the reducer leaves `metroId` alone, so that is what the
+        // guest is left looking at and what should come back, whether it is Denver or Anywhere.
+        chose.current = true;
         rememberPlace(near);
+        rememberMetro(near ? null : stateRef.current.metroId);
         dispatch({ type: "near", near });
       },
       openMetro: () => dispatch({ type: "openMetro" }),
@@ -776,6 +831,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         const embedded = !!(await apiConfig()).stripePublishableKey;
         const r = await submitBooking({
           embedded,
+          wallet: loadWalletId() || undefined,
           code, listing: u.id, date: dateKey(DATES[input.dateIdx]), slot: input.slot, qty: input.qty,
           service: picked?.name || u.title, variant: picked?.detail || "", addons: extras.map((a) => a.name), total: p.total || null,
           guest: { name: input.guest?.name || "", phone: input.guest?.phone || "", email: input.guest?.email || "" },
@@ -784,6 +840,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
           const error = r.taken ? (r.error || "That time was just booked") + ". Pick another time." : r.error ? r.error + "." : "Could not send the request. Check your connection and try again.";
           dispatch({ type: "toast", text: error });
           return { ok: false, error, taken: r.taken };
+        }
+        // Otto held the saved card: skip Stripe Checkout and show the ticket.
+        if (r.charged) {
+          dispatch({ type: "confirmUnclaimed", ...input, code, pay: false, paid: true });
+          return { ok: true };
         }
         // Card on file: the listing stays behind the checkout splash and Stripe's hosted page takes over, then
         // sends the guest back to #paid=<code>. No card step after all: the confirmation shows straight away.

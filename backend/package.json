@@ -30,7 +30,12 @@
     "pipeline": "tsx scripts/pipeline.mts",
     "overture": "tsx src/index.ts overture",
     "osm-facts": "tsx src/index.ts osm-facts",
-    "crawl:here": "tsx scripts/crawl-here.mts"
+    "crawl:here": "tsx scripts/crawl-here.mts",
+    "cover-screen": "tsx src/index.ts cover-screen",
+    "avail:capture": "tsx src/index.ts avail-capture",
+    "avail:report": "tsx src/index.ts avail-report",
+    "avail:judge": "tsx src/index.ts avail-judge",
+    "avail:rebaseline": "tsx src/index.ts avail-rebaseline"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.124.0",

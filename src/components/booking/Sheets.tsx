@@ -31,6 +31,7 @@ import {
 import { fmtDate, fmtReviews, fmtTime, money, priceWith, reviewsLine, unitLine } from "../../lib/format";
 import { formatDistance, milesBetween, type GeoPoint } from "../../lib/geo";
 import { addonPrice, hasPrice, priceFor, priceUnclaimed, serviceFeeLabel } from "../../lib/pricing";
+import { ottoCanPay, useWallet } from "../../lib/wallet";
 import { useApp } from "../../state/AppProvider";
 import { SIZES, srcSet, thumb } from "../../lib/images";
 import { embedAutoplay, listingMedia, photoCandidates, probePhotos, type Media } from "../../lib/media";
@@ -414,7 +415,9 @@ function RequestBody({
   // read this since cards were switched on; this is the same read. Off, or unanswered, and nothing changes.
   const [payments, setPayments] = useState(false);
   useEffect(() => { let alive = true; void apiConfig().then((c) => { if (alive) setPayments(c.payments); }); return () => { alive = false; }; }, []);
+  const { wallet } = useWallet();
   const cardNow = payments && !!p.total;
+  const ottoNow = ottoCanPay(wallet, p.total);
   // The public rating and its count appear only beside written reviews we can actually show (see WebListing).
   const reviews = useMemo(() => shownReviews(item.quotes, item.title), [item.quotes, item.title]);
   const score = reviews.length ? publicRating(item) : null;
@@ -591,7 +594,7 @@ function RequestBody({
 
   if (pay && ready && time) {
     // The same three labels the desktop listing uses, so the two surfaces cannot promise different things.
-    const cta = !guestOk ? "Add your name and number" : cardNow ? "Book and pay " + money(p.total!) : instant ? (p.total ? "Confirm and pay " + money(p.total) : "Confirm booking") : "Request to book";
+    const cta = !guestOk ? "Add your name and number" : cardNow ? (ottoNow ? "Book with Otto " : "Book and pay ") + money(p.total!) : instant ? (p.total ? "Confirm and pay " + money(p.total) : "Confirm booking") : "Request to book";
     return (
       <>
         <div className="reqpad airpay" key="pay">
@@ -715,7 +718,7 @@ function RequestBody({
             <section className="airsec">
               <p className="airfine">
                 {cardNow
-                  ? "Secure card payment. Your card is held and only charged once " + item.title + (instant ? " has you booked." : " confirms.")
+                  ? "Secure card payment. " + (ottoNow ? "Otto holds the card on your Profile, within " + money(wallet!.maxDollars) + ". " : "") + "Your card is held and only charged once " + item.title + (instant ? " has you booked." : " confirms.")
                   : instant
                     ? "Confirmed straight away."
                     : "This is a request. " + item.title + (guest.email.trim() ? " confirms by email, and nothing" : " confirms it, and nothing") + " is charged until they do."}{" "}

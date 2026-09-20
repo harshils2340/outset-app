@@ -1,0 +1,32 @@
+{
+  "business": "Escapology Waterloo",
+  "site": "https://www.escapology.com/en/waterloo-canada",
+  "bookingVendor": "resova",
+  "recordedAt": "2026-09-19",
+  "recordedBy": "screenshot of their own booking widget",
+  "city": "Waterloo",
+  "region": "ON",
+  "category": "escape",
+  "queries": [
+    "escape room in waterloo ontario tonight, 4 of us",
+    "escape room near waterloo ontario"
+  ],
+  "availability": {
+    "date": "2026-09-20",
+    "item": "Agatha Christie's Murder On The Orient Express",
+    "times": [
+      "14:50",
+      "16:10",
+      "17:30",
+      "18:50",
+      "20:10"
+    ],
+    "note": "These five are one room's slots. The shop sells thirteen rooms at overlapping times, so a check that ignores the room will call a closer slot in another room a miss when it is a better answer."
+  },
+  "price": {
+    "subtotal": 82.0,
+    "currency": "CAD",
+    "party": null,
+    "note": "Their widget showed 'Booking Subtotal $82.00' for its default party size; the page did not show the per-head split, so it is not recorded as one. Their API reports $37.00 a player pre-tax for this room, and 2 x $37 is $74, so the $8 difference is tax or a fee we have not yet identified. Do not reconcile this by guessing."
+  }
+}

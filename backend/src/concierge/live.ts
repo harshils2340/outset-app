@@ -1,5 +1,7 @@
 import { db } from "../db/client.ts";
 import { fareharborShortname } from "../enrich/widgets.ts";
+import { resovaLive } from "./resova.ts";
+import { isConcessionFare } from "../lib/fares.ts";
 
 /**
  * What a business can actually sell you, right now, read from the booking system it really runs.
@@ -41,19 +43,105 @@ export type Departure = {
 
 export type LiveRead = {
   business: string;
-  vendor: "fareharbor" | "agent" | "none";
+  vendor: "fareharbor" | "resova" | "agent" | "none";
   departures: Departure[];
   /** Said plainly when there is nothing to sell, because "no availability" is an answer, not a failure. */
   note: string | null;
 };
 
+/**
+ * A minute's memory, and one flight per URL.
+ *
+ * Reading a company for the first time is slow — measured on Toronto helicopter tours, the first read took
+ * 7.4 seconds and hit the per-shop deadline with nothing to show, while every read after it came back in
+ * three. On a cold process that is the difference between a guest seeing two live departures and seeing none,
+ * and it made the same query answer differently minute to minute.
+ *
+ * Sixty seconds, because a booking calendar does not meaningfully change inside a minute and the product's
+ * whole claim is that these times are current. The in-flight map matters as much as the cache: three shops
+ * are asked in parallel and a busy evening means several guests asking about the same town at once, so
+ * identical requests share one answer instead of racing each other.
+ */
+/**
+ * Ten minutes, not one.
+ *
+ * Measured 20 September 2026: a cold FareHarbor company costs between half a second and sixteen seconds for
+ * its month calendars alone (Toronto Heli Tours: 16.5s of a 20.7s read, 80% of the total), and a warm one
+ * costs about 250ms. That cost is FareHarbor's, not ours — reversing the order of a sequential and a parallel
+ * fetch showed the second one always fast whichever way round it went, so it is their cache we are paying
+ * for, and we cannot make it faster. We can decline to pay it again every minute.
+ *
+ * At sixty seconds the concierge re-paid it constantly, and a cold read blows the 12s deadline in plan.ts, so
+ * the same question answered with live times or with none depending on whether anyone had asked about that
+ * shop in the last minute. That is the non-determinism: not a race, a cache that expired faster than the
+ * thing it was caching cost to rebuild.
+ *
+ * Ten minutes is what `src/enrich/availability.ts` already uses for the same data on the guest listing page,
+ * so the two surfaces now agree on how stale a booking calendar may be. A calendar can change inside ten
+ * minutes; the guest then clicks through to the operator's own page and finds the slot gone, which is the
+ * same thing that happens if they take nine minutes to decide.
+ */
+const TTL_MS = 10 * 60_000;
+const cache = new Map<string, { at: number; value: unknown }>();
+const inFlight = new Map<string, Promise<unknown>>();
+
+/**
+ * Whether this company has been read recently enough to answer quickly.
+ *
+ * The first read of a FareHarbor company takes several seconds and every read after it takes a fraction of
+ * one, so a single deadline is wrong in both directions: generous enough for the cold case it wastes a
+ * guest's time on the warm one, tight enough for the warm case it drops exactly the read somebody is
+ * watching. A demo is by definition the first question after a quiet period, which is why this only ever
+ * failed in front of an audience.
+ */
+export function feedIsWarm(bookingUrl: string): boolean {
+  const company = bookingUrl.match(/fareharbor\.com\/(?:embeds\/book\/)?([a-z0-9-]+)/i)?.[1]
+    ?? bookingUrl.match(/https?:\/\/([a-z0-9-]+)\.resova\./i)?.[1];
+  if (!company) return false;
+  const now = Date.now();
+  for (const [url, hit] of cache) {
+    if (now - hit.at < TTL_MS && url.includes(company)) return true;
+  }
+  return false;
+}
+
+/**
+ * Forget everything read so far.
+ *
+ * The cache is keyed on the URL and lives as long as the process, which is right in production and wrong in a
+ * test file: two tests asking the same shop about the same day share a URL, so the second one was answered
+ * from the first one's stub and a sold-out day came back with yesterday's departure in it. A new stub is a new
+ * world, so the stub helper clears this.
+ */
+export function clearFeedCache(): void {
+  cache.clear();
+  inFlight.clear();
+}
+
 async function getJson<T>(url: string): Promise<T | null> {
+  const hit = cache.get(url);
+  if (hit && Date.now() - hit.at < TTL_MS) return hit.value as T | null;
+  const running = inFlight.get(url);
+  if (running) return (await running) as T | null;
+
+  const work = (async () => {
+    try {
+      const res = await fetch(url, { headers: { "user-agent": UA, accept: "application/json" }, signal: AbortSignal.timeout(20000) });
+      if (!res.ok) return null;
+      return (await res.json()) as T;
+    } catch {
+      return null;
+    }
+  })();
+  inFlight.set(url, work);
   try {
-    const res = await fetch(url, { headers: { "user-agent": UA, accept: "application/json" }, signal: AbortSignal.timeout(20000) });
-    if (!res.ok) return null;
-    return (await res.json()) as T;
-  } catch {
-    return null;
+    const value = await work;
+    cache.set(url, { at: Date.now(), value });
+    // A demo laptop left running should not grow a map forever.
+    if (cache.size > 400) for (const [k, v] of cache) if (Date.now() - v.at > TTL_MS) cache.delete(k);
+    return value;
+  } finally {
+    inFlight.delete(url);
   }
 }
 
@@ -61,7 +149,8 @@ type FhDay = { formatted_date?: string; availabilities?: FhAvail[] };
 type FhAvail = {
   pk?: number; start_at?: string; is_bookable?: boolean; is_sold_out?: boolean; is_unlisted?: boolean;
   is_bookable_only_by_phone?: boolean; approximate_available_capacity?: number | null; book_url?: string;
-  item?: { pk?: number; name?: string };
+  headline?: string | null; availability_headline?: string | null;
+  item?: { pk?: number; name?: string; uri?: string };
 };
 
 /**
@@ -77,6 +166,23 @@ export function departed(startAt: string | undefined, now: number = Date.now()):
   if (!startAt || !/(?:Z|[+-]\d{2}:?\d{2})$/.test(startAt.trim())) return false;
   const t = Date.parse(startAt);
   return Number.isFinite(t) && t < now;
+}
+
+/**
+ * Which item a departure belongs to, however the company's calendar happens to say it.
+ *
+ * Most of them embed the item inline, with its `pk` and its name. Some send only a reference —
+ * `{"cls":"Item","uri":"/api/v1/companies/parasailtoronto/items/154657/"}` — and our reader keyed on
+ * `item.pk`, so for those companies every single departure was skipped and the shop came back "price on
+ * request" with thirty bookable slots and five real fares sitting behind them. The id is in the URI, and
+ * failing that in the booking link, which carries `/items/<pk>/availability/<pk>/book/`.
+ */
+function itemPkOf(av: FhAvail): number | null {
+  if (typeof av.item?.pk === "number") return av.item.pk;
+  const fromUri = av.item?.uri?.match(/\/items\/(\d+)/)?.[1];
+  const fromBook = av.book_url?.match(/\/items\/(\d+)/)?.[1];
+  const n = Number(fromUri ?? fromBook);
+  return Number.isFinite(n) && n > 0 ? n : null;
 }
 
 /**
@@ -100,9 +206,19 @@ export async function fareharborLive(bookingUrl: string, opts: { from?: Date; da
     months.add(`${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, "0")}/`);
   }
 
+  /**
+   * Both months at once. A fortnight's horizon straddles two of them, each is a megabyte or more, and they
+   * were fetched one after the other: the read waited out the first company-wide calendar before asking for
+   * the second. Nothing in the second depends on the first, so this is the sum of two cold latencies where
+   * it only ever needed to be the larger of them.
+   *
+   * Not the 97% saving a naive before-and-after suggests. Timing a sequential run and then a parallel one
+   * measures FareHarbor's cache warming up, not our concurrency: run parallel first instead and the ordering
+   * reverses. What this actually buys is one month's cold latency, which on a slow company is several seconds.
+   */
   const days: FhDay[] = [];
-  for (const m of months) {
-    const cal = await getJson<{ calendar?: { weeks?: { days?: FhDay[] }[] } }>(base + "calendar/" + m);
+  const cals = await Promise.all(months.map((m) => getJson<{ calendar?: { weeks?: { days?: FhDay[] }[] } }>(base + "calendar/" + m)));
+  for (const cal of cals) {
     for (const w of cal?.calendar?.weeks || []) days.push(...(w.days || []));
   }
   if (!days.length) return { business: sn, vendor: "fareharbor", departures: [], note: "FareHarbor did not answer for this shop." };
@@ -130,7 +246,7 @@ export async function fareharborLive(bookingUrl: string, opts: { from?: Date; da
     for (const av of day.availabilities || []) {
       if (!av.is_bookable || av.is_sold_out || av.is_unlisted || av.is_bookable_only_by_phone) continue;
       if (departed(av.start_at)) continue;
-      const key = date + "|" + (av.item?.pk ?? av.item?.name ?? "");
+      const key = date + "|" + (itemPkOf(av) ?? av.item?.name ?? "");
       if (seen.has(key)) continue;
       seen.add(key);
       picked.push({ av, date });
@@ -141,26 +257,46 @@ export async function fareharborLive(bookingUrl: string, opts: { from?: Date; da
    * four calls a piece, so spending that budget on "Booking" instead of "Heli Tour #1" wastes the only calls
    * we make. Within a name, earliest wins.
    */
-  const named = (d: { av: FhAvail }) => (d.av.item?.name && !/^booking$/i.test(d.av.item.name) ? 0 : 1);
+  const named = (d: { av: FhAvail }) => {
+    const n = d.av.item?.name || d.av.headline;
+    return n && !/^booking$/i.test(n) ? 0 : 1;
+  };
   picked.sort((a, b) => named(a) - named(b) || (a.av.start_at || "").localeCompare(b.av.start_at || ""));
 
   // Price only the first few distinct items: four calls each, and a guest is choosing between kinds of tour.
   const pricedItems = new Set<number>();
+  const itemNames = new Map<number, string>();
   const out: Departure[] = [];
   let sheetPk: number | null = null;
+  let pricedCount = 0;
+
+  /**
+   * The pricing budget counts departures, not distinct items.
+   *
+   * It used to stop after the first departure of each of `maxItems` items, which is right for a shop selling
+   * four different tours and wrong for one selling the same charter on thirty days: Parasail Toronto priced
+   * its first slot and then offered two more with "price on request" beside them, for the identical boat. The
+   * sheet is shared across a company, so every extra departure after the first costs two calls.
+   */
+  const priceBudget = Math.max(maxItems, 8);
 
   for (const { av, date } of picked) {
     if (out.length >= 24) break;
-    const itemPk = av.item?.pk;
-    const wantPrice = itemPk != null && !pricedItems.has(itemPk) && pricedItems.size < maxItems;
+    const itemPk = itemPkOf(av);
+    // A new item always earns a price; after that, spare budget goes on further dates of the ones we know.
+    const wantPrice = itemPk != null && (!pricedItems.has(itemPk) ? pricedItems.size < maxItems : pricedCount < priceBudget);
     let rates: Departure["rates"] = [];
 
     if (wantPrice && av.pk != null) {
       pricedItems.add(itemPk!);
-      const detail = await getJson<{ availability?: { customer_type_rates?: { pk: number; minimum_party_size: number | null; maximum_party_size: number | null; customer_prototype?: { display_name?: string | null; customer_type?: { singular?: string | null } | null } | null }[] } }>(
+      pricedCount += 1;
+      const detail = await getJson<{ availability?: { item?: { name?: string | null } | null; customer_type_rates?: { pk: number; minimum_party_size: number | null; maximum_party_size: number | null; customer_prototype?: { display_name?: string | null; customer_type?: { singular?: string | null } | null } | null }[] } }>(
         base + `items/${itemPk}/availabilities/${av.pk}/`,
       );
       const ctrs = detail?.availability?.customer_type_rates || [];
+      // The calendar gave a reference, not a name; this call already went out, so take the name from it.
+      const named = detail?.availability?.item?.name;
+      if (named && itemPk != null) itemNames.set(itemPk, named);
       if (sheetPk == null) {
         const sheets = await getJson<{ effective_sheets?: { total_sheet?: { pk?: number } } }>(base + `availabilities/${av.pk}/effective-sheets/`);
         sheetPk = sheets?.effective_sheets?.total_sheet?.pk ?? null;
@@ -187,12 +323,11 @@ export async function fareharborLive(bookingUrl: string, opts: { from?: Date; da
      * who said "for 2" is a lie of omission: they cannot buy that, and the number they see is not the number
      * they would pay. Child, senior and student rates are only the headline when nothing else is sold.
      */
-    const CONCESSION = /\b(child|kid|infant|youth|junior|senior|student|toddler|baby)\b/i;
-    const open = rates.filter((r) => !CONCESSION.test(r.label));
+    const open = rates.filter((r) => !isConcessionFare(r.label));
     const pool = open.length ? open : rates;
     const cheapest = pool.length ? pool.reduce((a, b) => (a.price <= b.price ? a : b)) : null;
     out.push({
-      item: av.item?.name || "Booking",
+      item: av.item?.name || (itemPk != null ? itemNames.get(itemPk) : null) || av.headline || av.availability_headline || "Booking",
       date,
       time: (av.start_at || "").slice(11, 16),
       fromPrice: cheapest?.price ?? null,
@@ -226,5 +361,7 @@ export async function liveFor(domain: string, opts: { from?: Date; days?: number
   if (!url) return { business: domain, vendor: "none", departures: [], note: "We hold no booking link for this business; it would go to the phone agent." };
   const fh = await fareharborLive(url, opts);
   if (fh) return fh;
+  const rv = await resovaLive(url, opts);
+  if (rv) return rv;
   return { business: domain, vendor: "agent", departures: [], note: "No feed to read: this one needs the browser agent." };
 }

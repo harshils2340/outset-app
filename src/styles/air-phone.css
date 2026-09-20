@@ -98,6 +98,23 @@
 
 .aircount{margin:0;padding:20px var(--air-gutter) 4px;text-align:center;font-size:14px;font-weight:600;color:var(--ink);}
 .airfeed{display:flex;flex-direction:column;gap:24px;padding:16px var(--air-gutter) 0;}
+/*
+ * A tablet is not a tall phone.
+ *
+ * The guest app is served below 1024px (App.tsx), so an iPad in portrait at 834px got this feed as a single
+ * column and one card filled the entire width: a 780px-wide photo of one boat, and the second listing below
+ * the fold. The column is right on a phone and absurd on anything wider, so from 620px the feed becomes a
+ * grid that fits as many 300px cards as the width allows: two up on an iPad in portrait, three in landscape.
+ * Phones keep the flex column exactly as it was, because nothing under 620px has room for a second card.
+ */
+@media (min-width: 620px) {
+  .airfeed {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    align-items: start;
+    gap: 28px 20px;
+  }
+}
 .airmore{display:flex;justify-content:center;padding:32px var(--air-gutter) 40px;}
 .airend{margin:0;padding:32px var(--air-gutter) 40px;text-align:center;font-size:14px;color:var(--air-grey);}
 

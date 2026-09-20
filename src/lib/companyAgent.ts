@@ -864,6 +864,12 @@ function slotAnswer(ctx: CompanyContext, q: string, prev: ChatState): { text: st
 }
 
 function bookAnswer(ctx: CompanyContext, q: string): { text: string; state: ChatState } {
+  if (/\b(for me|on my behalf|you book|book it for me|can you book)\b/i.test(q)) {
+    return {
+      text: "I can start it. You pay on Stripe, or from the card on your Profile if Otto is on. I never see the card. Pick a time on this page.",
+      state: { topic: "book" },
+    };
+  }
   if (asksAboutOwnBooking(q)) {
     const phone = shopPhone(ctx);
     return {

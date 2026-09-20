@@ -51,7 +51,7 @@ test("the headers the app authenticates with are allowed too", () => {
   assert.ok(m, "routes.ts no longer passes allowHeaders to cors()");
   const headers = m[1].split(",").map((s) => s.trim().replace(/^["']|["']$/g, "").toLowerCase());
   // authHeaders() sends these two, and every write is refused without them.
-  for (const h of ["x-session", "x-claim-token", "content-type"]) {
+  for (const h of ["x-session", "x-claim-token", "content-type", "x-wallet"]) {
     assert.ok(headers.includes(h), `the app sends ${h} and the API's CORS allowHeaders does not list it`);
   }
 });

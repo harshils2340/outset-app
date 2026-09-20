@@ -25,9 +25,9 @@ test("both booking surfaces ask the API whether a card is taken", () => {
 
 test("the phone's button says a card is taken when one is", () => {
   const cta = SHEETS.match(/const cta = [^\n]+/)?.[0] || "";
-  assert.match(cta, /cardNow \? "Book and pay "/, "a priced booking at a shop that takes cards says so");
+  assert.match(cta, /cardNow \? \(ottoNow \? "Book with Otto " : "Book and pay "\)/, "a priced booking at a shop that takes cards says so");
   // And the desktop says the same words, so the two cannot promise different things.
-  assert.match(WEB, /payments && p\.total \? "Book and pay"/);
+  assert.match(WEB, /payments && p\.total \? \(ottoNow \? "Book with Otto" : "Book and pay"\)/);
 });
 
 test("nothing on the phone says a card is not taken when one is", () => {

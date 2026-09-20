@@ -128,6 +128,15 @@ test("making a booking still reads as making one", () => {
   assert.match(ask("can I book online?"), /^Yes\./);
 });
 
+test("Otto can start a booking but never takes a card", () => {
+  const said = ask("can you book it for me?");
+  assert.match(said, /I can start it/);
+  assert.match(said, /never see the card/);
+  assert.match(said, /Stripe/);
+  assert.doesNotMatch(said, /^Yes\./);
+  assert.doesNotMatch(said, /confirmed/i);
+});
+
 test("an entry rule is still an entry rule unless the guest is cancelling", () => {
   // The `rules` reader matches "need to", which "I need to cancel my reservation" also says.
   for (const q of ["do I need to swim?", "do I need a licence?", "must I be 18?", "do I need experience?"]) {

@@ -2,9 +2,9 @@ import { ICONS } from "../../data/icons";
 import { loadGuest } from "../../lib/storage";
 import { useApp } from "../../state/AppProvider";
 import { Markup } from "../Markup";
+import { WalletCard } from "./WalletCard";
 
 const SOON = [
-  { icon: ICONS.ticket, label: "Payments" },
   { icon: ICONS.user, label: "Riders & waivers" },
   { icon: ICONS.pin, label: "Saved areas" },
   { icon: ICONS.chat, label: "Help" },
@@ -37,6 +37,7 @@ export function AccountView() {
             </b>
           </div>
         </div>
+        <WalletCard />
         {/* role="button" and a tab stop with nothing listening for a key press: focus reached this card and
             neither Enter nor Space opened it. */}
         <div
@@ -58,9 +59,8 @@ export function AccountView() {
             List your business <Markup html={ICONS.arrow} />
           </span>
         </div>
-        {/* Four rows that looked like the rest of the app and did nothing at all: a guest pressed Help and the
-            screen did not move. None of them is built. They say so rather than swallowing the press, the way
-            the operator dashboard says so where payments and calendar sync are not built either. */}
+        {/* Rows that looked like the rest of the app and did nothing at all: a guest pressed Help and the
+            screen did not move. None of them is built. They say so rather than swallowing the press. */}
         <div className="menu">
           {SOON.map(({ icon, label }) => (
             <button type="button" key={label} disabled aria-label={label + ", not built yet"}>
@@ -70,7 +70,7 @@ export function AccountView() {
             </button>
           ))}
         </div>
-        <p className="note">Card payments, waivers and saved areas are not built yet. For anything now, message the operator from your trip.</p>
+        <p className="note">Waivers and saved areas are not built yet. The card on this page is the one Otto can hold, within the limit you set.</p>
       </div>
       <div className="spacer" />
     </>

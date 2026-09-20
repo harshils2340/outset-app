@@ -25,7 +25,8 @@ async function call<T>(path: string, body?: Record<string, string | number | und
     signal: AbortSignal.timeout(20000),
   });
   const j = (await res.json()) as T & { error?: { message?: string } };
-  if (!res.ok) throw new Error("stripe: " + (j.error?.message || res.status));
+  const code = j.error?.code || "";
+  if (!res.ok) throw new Error("stripe: " + (code ? code + ": " : "") + (j.error?.message || res.status));
   return j;
 }
 
@@ -144,6 +145,82 @@ export async function releaseIntent(intentId: string): Promise<boolean> {
     return r.status === "succeeded" || r.status === "pending";
   }
   return true;
+}
+
+/** A Stripe Customer the guest's saved card hangs off. One per wallet. */
+export async function createCustomer(o: { email?: string; wallet: string }): Promise<string> {
+  const c = await call<{ id: string }>("customers", {
+    email: o.email || undefined,
+    "metadata[wallet]": o.wallet,
+  });
+  return c.id;
+}
+
+/**
+ * Checkout in setup mode: the guest types the card on Stripe's page, once. Nothing is charged. The
+ * payment method is saved on the customer so Otto can hold it later, off-session, within the guest's cap.
+ */
+export async function createSetupCheckout(o: { customer: string; wallet: string; successUrl: string; cancelUrl: string }): Promise<{ id: string; url: string | null }> {
+  const s = await call<{ id: string; url: string | null }>("checkout/sessions", {
+    mode: "setup",
+    customer: o.customer,
+    success_url: o.successUrl,
+    cancel_url: o.cancelUrl,
+    "payment_method_types[0]": "card",
+    "metadata[wallet]": o.wallet,
+  });
+  return { id: s.id, url: s.url || null };
+}
+
+export async function setupSessionCard(sessionId: string): Promise<{ customer: string | null; paymentMethod: string | null } | null> {
+  const s = await call<{
+    status: string;
+    customer: string | null;
+    setup_intent: string | { payment_method?: string | null } | null;
+  }>("checkout/sessions/" + encodeURIComponent(sessionId) + "?expand[]=setup_intent");
+  if (s.status !== "complete") return null;
+  let pm: string | null = null;
+  const si = s.setup_intent;
+  if (si && typeof si === "object") pm = si.payment_method || null;
+  else if (typeof si === "string") {
+    const got = await call<{ payment_method: string | null }>("setup_intents/" + encodeURIComponent(si));
+    pm = got.payment_method;
+  }
+  return { customer: s.customer || null, paymentMethod: pm };
+}
+
+export async function cardBrandLast4(paymentMethod: string): Promise<{ brand: string; last4: string } | null> {
+  const pm = await call<{ card?: { brand?: string; last4?: string } | null }>("payment_methods/" + encodeURIComponent(paymentMethod));
+  const brand = (pm.card?.brand || "").trim();
+  const last4 = (pm.card?.last4 || "").trim();
+  if (!last4) return null;
+  return { brand: brand || "card", last4 };
+}
+
+/**
+ * Hold the saved card for a booking, the same manual-capture hold Checkout uses. Otto never sees the
+ * number: Stripe already has the payment method from setup. `off_session` is the "on your behalf" bit.
+ */
+export async function chargeSaved(o: { amount: number; currency: string; customer: string; paymentMethod: string; code: string; listing: string }): Promise<{ id: string; status: string }> {
+  const cents = Math.round(o.amount * 100);
+  const r = await call<{ id: string; status: string }>(
+    "payment_intents",
+    {
+      amount: cents,
+      currency: o.currency,
+      customer: o.customer,
+      payment_method: o.paymentMethod,
+      capture_method: "manual",
+      confirm: "true",
+      off_session: "true",
+      description: `Outset ${o.code}`.slice(0, 200),
+      "metadata[code]": o.code,
+      "metadata[listing]": o.listing,
+      "metadata[via]": "wallet",
+    },
+    "pi-wallet-" + o.code,
+  );
+  return { id: r.id, status: r.status };
 }
 
 /** Stripe-Signature check for webhooks (t=...,v1=...). */

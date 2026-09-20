@@ -44,3 +44,25 @@ export function withApiOrigin(html: string, apiUrl: string | undefined): string 
     return next === policy ? whole : open + next + quote;
   });
 }
+
+/**
+ * Opens the connection to the API while the page is still parsing, so the first call does not pay for DNS, TCP
+ * and TLS before it sends a byte.
+ *
+ * The call that matters is `/where`, which is how the home knows what city to open on. It is a header read on
+ * the API's side and answers in milliseconds, but on a cold connection the handshake in front of it is three
+ * round trips to Oregon, and the guest is looking at the page for all of them.
+ *
+ * `crossorigin` is required, not decoration: a preconnect without it warms the credentialled pool, and every
+ * fetch in `src/lib/api.ts` is a plain cross-origin one with the default `credentials: "same-origin"`, so it is
+ * anonymous and would open a second connection anyway. The production origin is already in `index.html`
+ * alongside the one in `connect-src`; this is for a build pointed somewhere else, which is the same case
+ * `withApiOrigin` exists for.
+ */
+export function withApiPreconnect(html: string, apiUrl: string | undefined): string {
+  const origin = apiOrigin(apiUrl);
+  if (!origin || html.includes(`rel="preconnect" href="${origin}"`)) return html;
+  // Indented one step in from the closing tag, so the only difference between the page in the repository and
+  // the page a build emits is the one line. A page with no head is left exactly as it is.
+  return html.replace(/([ \t]*)<\/head>/, (close, pad: string) => `${pad}  <link rel="preconnect" href="${origin}" crossorigin />\n${close}`);
+}

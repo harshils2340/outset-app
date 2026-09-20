@@ -1,0 +1,17 @@
+{
+  "id": "peek/biketheburgh-com",
+  "vendor": "peek",
+  "domain": "biketheburgh.com",
+  "bookingUrl": "https://book.peek.com/s/f78706cc-75dd-442a-8953-dc14c4197fc3/wxBw?gaClientId=1336473286.1495643285",
+  "operatorId": "case-peek-biketheburgh-com",
+  "from": "2026-09-20",
+  "days": 14,
+  "capturedAt": "2026-09-20T04:29:00.795Z",
+  "observed": {
+    "vendor": "peek",
+    "live": false,
+    "updatedAt": "2026-09-20T04:32:55.700Z",
+    "days": [],
+    "note": "program unavailable"
+  }
+}

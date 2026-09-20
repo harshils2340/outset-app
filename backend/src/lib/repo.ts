@@ -180,6 +180,59 @@ export async function getDoc<T>(key: string): Promise<T | null> {
   return rows[0]?.doc ?? null;
 }
 
+/* ---------- guest wallets (saved card + Otto spend cap) ---------- */
+
+export type GuestWalletRow = {
+  id: string;
+  stripe_customer: string | null;
+  payment_method: string | null;
+  brand: string | null;
+  last4: string | null;
+  max_cents: number;
+  otto: boolean;
+  email: string | null;
+  setup_session: string | null;
+};
+
+function walletFrom(r: GuestWalletRow): GuestWalletRow {
+  return {
+    id: r.id,
+    stripe_customer: r.stripe_customer || null,
+    payment_method: r.payment_method || null,
+    brand: r.brand || null,
+    last4: r.last4 || null,
+    max_cents: Number(r.max_cents) || 25000,
+    otto: r.otto !== false,
+    email: r.email || null,
+    setup_session: r.setup_session || null,
+  };
+}
+
+export async function getWallet(id: string): Promise<GuestWalletRow | null> {
+  const rows = await query<GuestWalletRow>("select id, stripe_customer, payment_method, brand, last4, max_cents, otto, email, setup_session from guest_wallets where id = $1", [id]);
+  return rows[0] ? walletFrom(rows[0]) : null;
+}
+
+export async function insertWallet(id: string): Promise<GuestWalletRow> {
+  const rows = await query<GuestWalletRow>(
+    `insert into guest_wallets (id) values ($1)
+     returning id, stripe_customer, payment_method, brand, last4, max_cents, otto, email, setup_session`,
+    [id],
+  );
+  return walletFrom(rows[0]!);
+}
+
+export async function patchWallet(id: string, patch: Partial<Omit<GuestWalletRow, "id">>): Promise<GuestWalletRow | null> {
+  const cur = await getWallet(id);
+  if (!cur) return null;
+  const next: GuestWalletRow = { ...cur, ...patch, id };
+  await query(
+    `update guest_wallets set stripe_customer = $2, payment_method = $3, brand = $4, last4 = $5, max_cents = $6, otto = $7, email = $8, setup_session = $9, updated_at = now() where id = $1`,
+    [id, next.stripe_customer, next.payment_method, next.brand, next.last4, next.max_cents, next.otto, next.email, next.setup_session],
+  );
+  return next;
+}
+
 export async function updateDoc<T>(key: string, initial: T, fn: (cur: T) => T): Promise<T> {
   return withTx(async (c) => {
     const r = await c.query<{ doc: T }>("select doc from documents where key = $1 for update", [key]);

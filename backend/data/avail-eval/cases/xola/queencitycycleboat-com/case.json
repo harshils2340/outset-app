@@ -1,0 +1,174 @@
+{
+  "id": "xola/queencitycycleboat-com",
+  "vendor": "xola",
+  "domain": "queencitycycleboat.com",
+  "bookingUrl": "https://checkout.xola.com/index.html#seller/5ff8c239f5657f0aa32ee4e5?openExternal=true",
+  "operatorId": "case-xola-queencitycycleboat-com",
+  "from": "2026-09-20",
+  "days": 14,
+  "capturedAt": "2026-09-20T04:29:55.943Z",
+  "observed": {
+    "vendor": "xola",
+    "live": true,
+    "updatedAt": "2026-09-20T04:29:55.943Z",
+    "days": [
+      {
+        "date": "2026-09-20",
+        "slots": []
+      },
+      {
+        "date": "2026-09-21",
+        "slots": []
+      },
+      {
+        "date": "2026-09-22",
+        "slots": []
+      },
+      {
+        "date": "2026-09-23",
+        "slots": []
+      },
+      {
+        "date": "2026-09-24",
+        "slots": []
+      },
+      {
+        "date": "2026-09-25",
+        "slots": [
+          {
+            "startsAt": "2026-09-25T11:30",
+            "label": "11:30 AM · Private Cycle Boat Charter",
+            "priceCents": 59900,
+            "seatsLeft": 24,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5ff8c239f5657f0aa32ee4e5/experiences/63989911d8948e1dab46aafa"
+          },
+          {
+            "startsAt": "2026-09-25T11:30",
+            "label": "11:30 AM · Public Cycle Boat Charter",
+            "priceCents": 5900,
+            "seatsLeft": 18,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5ff8c239f5657f0aa32ee4e5/experiences/63989a561c1f1021be2a4eda"
+          },
+          {
+            "startsAt": "2026-09-25T13:30",
+            "label": "1:30 PM · Private Cycle Boat Charter",
+            "priceCents": 59900,
+            "seatsLeft": 24,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5ff8c239f5657f0aa32ee4e5/experiences/63989911d8948e1dab46aafa"
+          },
+          {
+            "startsAt": "2026-09-25T13:30",
+            "label": "1:30 PM · Public Cycle Boat Charter",
+            "priceCents": 5900,
+            "seatsLeft": 18,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5ff8c239f5657f0aa32ee4e5/experiences/63989a561c1f1021be2a4eda"
+          },
+          {
+            "startsAt": "2026-09-25T17:30",
+            "label": "5:30 PM · Private Sunset Charter",
+            "priceCents": 72500,
+            "seatsLeft": 24,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5ff8c239f5657f0aa32ee4e5/experiences/63989a13c7ffdd6073188633"
+          },
+          {
+            "startsAt": "2026-09-25T17:30",
+            "label": "5:30 PM · Public Sunset Charter ",
+            "priceCents": 6500,
+            "seatsLeft": 18,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5ff8c239f5657f0aa32ee4e5/experiences/63989ac19e0c21780e5ffa0d"
+          }
+        ]
+      },
+      {
+        "date": "2026-09-26",
+        "slots": [
+          {
+            "startsAt": "2026-09-26T13:30",
+            "label": "1:30 PM · Private Cycle Boat Charter",
+            "priceCents": 59900,
+            "seatsLeft": 24,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5ff8c239f5657f0aa32ee4e5/experiences/63989911d8948e1dab46aafa"
+          },
+          {
+            "startsAt": "2026-09-26T15:30",
+            "label": "3:30 PM · Private Cycle Boat Charter",
+            "priceCents": 59900,
+            "seatsLeft": 24,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5ff8c239f5657f0aa32ee4e5/experiences/63989911d8948e1dab46aafa"
+          },
+          {
+            "startsAt": "2026-09-26T17:30",
+            "label": "5:30 PM · Private Sunset Charter",
+            "priceCents": 72500,
+            "seatsLeft": 24,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5ff8c239f5657f0aa32ee4e5/experiences/63989a13c7ffdd6073188633"
+          }
+        ]
+      },
+      {
+        "date": "2026-09-27",
+        "slots": [
+          {
+            "startsAt": "2026-09-27T11:30",
+            "label": "11:30 AM · Private Cycle Boat Charter",
+            "priceCents": 59900,
+            "seatsLeft": 24,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5ff8c239f5657f0aa32ee4e5/experiences/63989911d8948e1dab46aafa"
+          },
+          {
+            "startsAt": "2026-09-27T13:30",
+            "label": "1:30 PM · Private Cycle Boat Charter",
+            "priceCents": 59900,
+            "seatsLeft": 24,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5ff8c239f5657f0aa32ee4e5/experiences/63989911d8948e1dab46aafa"
+          },
+          {
+            "startsAt": "2026-09-27T15:30",
+            "label": "3:30 PM · Private Cycle Boat Charter",
+            "priceCents": 59900,
+            "seatsLeft": 24,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5ff8c239f5657f0aa32ee4e5/experiences/63989911d8948e1dab46aafa"
+          },
+          {
+            "startsAt": "2026-09-27T17:30",
+            "label": "5:30 PM · Private Sunset Charter",
+            "priceCents": 72500,
+            "seatsLeft": 24,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5ff8c239f5657f0aa32ee4e5/experiences/63989a13c7ffdd6073188633"
+          },
+          {
+            "startsAt": "2026-09-27T17:30",
+            "label": "5:30 PM · Public Sunset Charter ",
+            "priceCents": 6500,
+            "seatsLeft": 18,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5ff8c239f5657f0aa32ee4e5/experiences/63989ac19e0c21780e5ffa0d"
+          }
+        ]
+      },
+      {
+        "date": "2026-09-28",
+        "slots": []
+      },
+      {
+        "date": "2026-09-29",
+        "slots": []
+      },
+      {
+        "date": "2026-09-30",
+        "slots": []
+      },
+      {
+        "date": "2026-10-01",
+        "slots": []
+      },
+      {
+        "date": "2026-10-02",
+        "slots": []
+      },
+      {
+        "date": "2026-10-03",
+        "slots": []
+      }
+    ]
+  }
+}

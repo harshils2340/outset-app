@@ -29,6 +29,8 @@ import { reviewsForOperator, reviewsPending } from "./enrich/reviews.ts";
 import { installChromeGuard, reapOrphanChrome } from "./scrape/render.ts";
 import { guardLaptopJob } from "./scrape/guard.ts";
 import { measureIdle, MIN_IDLE } from "./scrape/cpu.ts";
+import { capture } from "./eval/availCapture.ts";
+import type { CaseVendor } from "./eval/availCases.ts";
 
 import { db } from "./db/client.ts";
 import { CATEGORIES, METROS } from "./taxonomy/catalog.ts";
@@ -472,6 +474,121 @@ if (cmd === "status") {
       2,
     ),
   );
+  process.exit(0);
+}
+
+/**
+ * Repoint covers that no longer load at a photograph that does.
+ *
+ * About one cover in thirteen is dead at any moment, and the guest app draws a generated illustration in its
+ * place, which is the exact thing browse's cover filter exists to prevent. Most of those listings have other
+ * photographs; they are pointed at the wrong one, not missing one. A crawl, so it obeys the crawl rules and
+ * caps at 40 on this Mac.
+ *
+ *   npm run cover-screen                     40 listings, the laptop cap
+ *   npm run cover-screen -- --limit=60000    the worker's run over the catalog
+ *   npm run cover-screen -- --dry            probe and report, change nothing
+ */
+if (cmd === "cover-screen") {
+  const { screenCovers } = await import("./enrich/coverlive.ts");
+  const arg = (k: string) => process.argv.slice(3).find((a) => a.startsWith("--" + k + "="))?.split("=")[1];
+  const res = await screenCovers({
+    limit: Number(arg("limit") || 40),
+    concurrency: Number(arg("concurrency") || 4),
+    pauseMs: Number(arg("pause") || 400),
+  });
+  console.log(`Checked ${res.checked} covers: ${res.alive} still load, ${res.repointed} repointed at another photo, ${res.cleared} cleared for want of one.`);
+  for (const f of res.fixes.slice(0, 25)) {
+    console.log(`  ${f.domain.padEnd(34)} ${f.now ? "-> photo " + f.tried + " of its gallery" : "no working photo, cover dropped"}`);
+  }
+  if (res.repointed || res.cleared) console.log('Run "npm run sync" to push the change to the app.');
+  process.exit(0);
+}
+
+/**
+ * Record real booking systems answering, into the availability corpus under data/avail-eval/cases.
+ *
+ * This is a crawl and obeys the crawl rules: the single lock, the CPU floor, a hard cap of 40 shops on this
+ * Mac. A corpus over the whole catalog runs on the Render worker, where the cap does not apply.
+ *
+ *   npm run avail:capture                      12 shops of each readable vendor, a fortnight from today
+ *   npm run avail:capture -- --per-vendor=200  the worker's run
+ *   npm run avail:capture -- --vendors=peek --from=2026-10-01 --days=7
+ */
+if (cmd === "avail-capture") {
+  const arg = (k: string) => process.argv.slice(3).find((a) => a.startsWith("--" + k + "="))?.split("=")[1];
+  const today = new Date();
+  const from = arg("from") || `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+  const vendors = (arg("vendors") || "fareharbor,peek,xola").split(",").filter(Boolean) as CaseVendor[];
+  const rows = await capture({
+    perVendor: Number(arg("per-vendor") || 12),
+    vendors,
+    from,
+    days: Number(arg("days") || 14),
+    pauseMs: Number(arg("pause") || 1500),
+  });
+  for (const r of rows) console.log([r.vendor, r.domain, r.error ? "ERROR " + r.error : `${r.live ? "live" : "dead"} days=${r.days} slots=${r.slots} calls=${r.calls}`].join("  "));
+  const live = rows.filter((r) => r.live).length;
+  console.log(`\nCaptured ${rows.length} cases, ${live} of them with something bookable. Score them with "npm run avail:report".`);
+  process.exit(0);
+}
+
+/**
+ * Accept the reader's current answers as the corpus baseline, after a deliberate fix. Replays the existing
+ * recordings; crawls nothing.
+ */
+if (cmd === "avail-rebaseline") {
+  const { rebaseline } = await import("./eval/availReport.ts");
+  console.log(await rebaseline());
+  process.exit(0);
+}
+
+/** Score the corpus: the free rule checks and the independent second read, with no network and no model. */
+if (cmd === "avail-report") {
+  const { report } = await import("./eval/availReport.ts");
+  console.log(await report({ json: process.argv.includes("--json") }));
+  process.exit(0);
+}
+
+/**
+ * Have a model read each recorded feed and say what the answer should have been, independently of our reader.
+ *
+ * The only part of the availability suite that spends money, so it prints a measured estimate from the real
+ * token count and stops there unless --yes is given. An agent must not pass --yes on its own.
+ *
+ *   npm run avail:judge                      what it would cost, and nothing else
+ *   npm run avail:judge -- --yes             submit, wait, and write each case's truth.json
+ *   npm run avail:judge -- --only=fareharbor --model=claude-sonnet-5 --yes
+ */
+if (cmd === "avail-judge") {
+  const { default: Anthropic } = await import("@anthropic-ai/sdk");
+  const { DEFAULT_JUDGE_MODEL, collect, estimate, judgeableCases, plan, submit } = await import("./eval/availJudge.ts");
+  const arg = (k: string) => process.argv.slice(3).find((a) => a.startsWith("--" + k + "="))?.split("=")[1];
+  const model = arg("model") || DEFAULT_JUDGE_MODEL;
+  const cases = judgeableCases(arg("only"));
+  if (!cases.length) {
+    console.error('No cases to judge. Run "npm run avail:capture" first.');
+    process.exit(1);
+  }
+  if (!process.env.ANTHROPIC_API_KEY) {
+    console.error("ANTHROPIC_API_KEY is not set, so nothing can be judged.");
+    process.exit(1);
+  }
+  const client = new Anthropic();
+  const plans = await plan(client, model, cases);
+  const { inputTokens, usd } = estimate(model, plans);
+  console.log(`${plans.length} case(s), ${inputTokens.toLocaleString("en-US")} input tokens on ${model}, through the Batch API at half price.`);
+  console.log(`Worst case cost: $${usd.toFixed(2)} (every answer running to the output cap; the real figure is usually well under).`);
+  if (!process.argv.includes("--yes")) {
+    console.log("\nNothing submitted. Re-run with --yes to spend that.");
+    process.exit(0);
+  }
+  const { batchId } = await submit(client, model, plans);
+  console.log(`Submitted batch ${batchId}. Most finish inside an hour.`);
+  const out = await collect(client, model, batchId, plans, (s) => console.log("  " + s));
+  console.log(`Wrote truth for ${out.written} case(s). Actual spend: $${out.usd.toFixed(2)}.`);
+  for (const f of out.failed) console.log("  no truth written: " + f);
+  console.log('Now run "npm run avail:report" to see accuracy against it.');
   process.exit(0);
 }
 

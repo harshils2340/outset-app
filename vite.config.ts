@@ -1,11 +1,12 @@
 import { defineConfig, loadEnv, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
-import { withApiOrigin } from "./src/lib/csp";
+import { withApiOrigin, withApiPreconnect } from "./src/lib/csp";
 
 /**
  * The CSP in index.html named the production API host and nothing else, so a build pointed anywhere else could
  * not talk to its own API: Chromium refused every fetch and the app took that for "no API today". This puts the
- * origin the build was pointed at into connect-src, in dev and in a build alike. See src/lib/csp.ts.
+ * origin the build was pointed at into connect-src, in dev and in a build alike, and opens the connection to it
+ * early with a preconnect, so the first call the page makes does not pay for a handshake. See src/lib/csp.ts.
  *
  * `loadEnv` rather than `process.env` because it reads the .env files and the inline VITE_ variables the same
  * way the app's own `import.meta.env.VITE_API_URL` is read, so the policy cannot name a different host than the
@@ -17,7 +18,7 @@ function cspApiOrigin(mode: string): Plugin {
     name: "outset-csp-api-origin",
     transformIndexHtml: {
       order: "pre",
-      handler: (html) => withApiOrigin(html, apiUrl),
+      handler: (html) => withApiPreconnect(withApiOrigin(html, apiUrl), apiUrl),
     },
   };
 }

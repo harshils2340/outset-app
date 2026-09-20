@@ -1,0 +1,857 @@
+{
+  "id": "fareharbor/rockymountainstables-com",
+  "vendor": "fareharbor",
+  "domain": "rockymountainstables.com",
+  "bookingUrl": "https://fareharbor.com/embeds/book/rockymountainstables/?full-items=yes&flow=1497994",
+  "operatorId": "case-fareharbor-rockymountainstables-com",
+  "from": "2026-09-20",
+  "days": 14,
+  "capturedAt": "2026-09-20T04:28:12.101Z",
+  "observed": {
+    "vendor": "fareharbor",
+    "live": true,
+    "updatedAt": "2026-09-20T04:28:12.101Z",
+    "days": [
+      {
+        "date": "2026-09-20",
+        "slots": [
+          {
+            "startsAt": "2026-09-20T08:00",
+            "label": "8:00 AM · One Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441326/availability/2002205660/book/"
+          },
+          {
+            "startsAt": "2026-09-20T08:00",
+            "label": "8:00 AM · Two Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441327/availability/2109300960/book/"
+          },
+          {
+            "startsAt": "2026-09-20T09:30",
+            "label": "9:30 AM · One Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441326/availability/2002205665/book/"
+          },
+          {
+            "startsAt": "2026-09-20T10:30",
+            "label": "10:30 AM · Two Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441327/availability/2109300970/book/"
+          },
+          {
+            "startsAt": "2026-09-20T11:00",
+            "label": "11:00 AM · One Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441326/availability/2002205669/book/"
+          },
+          {
+            "startsAt": "2026-09-20T12:30",
+            "label": "12:30 PM · One Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441326/availability/2002205675/book/"
+          },
+          {
+            "startsAt": "2026-09-20T13:00",
+            "label": "1:00 PM · Two Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441327/availability/2109300975/book/"
+          },
+          {
+            "startsAt": "2026-09-20T14:00",
+            "label": "2:00 PM · One Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441326/availability/2002205681/book/"
+          },
+          {
+            "startsAt": "2026-09-20T15:15",
+            "label": "3:15 PM · One Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441326/availability/2002205685/book/"
+          },
+          {
+            "startsAt": "2026-09-20T15:30",
+            "label": "3:30 PM · Two Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441327/availability/2002212584/book/"
+          },
+          {
+            "startsAt": "2026-09-20T16:30",
+            "label": "4:30 PM · One Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441326/availability/2002205695/book/"
+          }
+        ]
+      },
+      {
+        "date": "2026-09-21",
+        "slots": [
+          {
+            "startsAt": "2026-09-21T08:00",
+            "label": "8:00 AM · One Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441326/availability/2002205699/book/"
+          },
+          {
+            "startsAt": "2026-09-21T08:00",
+            "label": "8:00 AM · Two Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441327/availability/2109300983/book/"
+          },
+          {
+            "startsAt": "2026-09-21T09:30",
+            "label": "9:30 AM · One Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441326/availability/2002205705/book/"
+          },
+          {
+            "startsAt": "2026-09-21T10:30",
+            "label": "10:30 AM · Two Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441327/availability/2109300987/book/"
+          },
+          {
+            "startsAt": "2026-09-21T11:00",
+            "label": "11:00 AM · One Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441326/availability/2002205712/book/"
+          },
+          {
+            "startsAt": "2026-09-21T12:30",
+            "label": "12:30 PM · One Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441326/availability/2002205719/book/"
+          },
+          {
+            "startsAt": "2026-09-21T13:00",
+            "label": "1:00 PM · Two Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441327/availability/2109300993/book/"
+          },
+          {
+            "startsAt": "2026-09-21T14:00",
+            "label": "2:00 PM · One Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441326/availability/2002205724/book/"
+          },
+          {
+            "startsAt": "2026-09-21T15:15",
+            "label": "3:15 PM · One Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441326/availability/2002205733/book/"
+          },
+          {
+            "startsAt": "2026-09-21T15:30",
+            "label": "3:30 PM · Two Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441327/availability/2002212610/book/"
+          },
+          {
+            "startsAt": "2026-09-21T16:30",
+            "label": "4:30 PM · One Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441326/availability/2002205743/book/"
+          }
+        ]
+      },
+      {
+        "date": "2026-09-22",
+        "slots": [
+          {
+            "startsAt": "2026-09-22T08:00",
+            "label": "8:00 AM · One Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441326/availability/2002205748/book/"
+          },
+          {
+            "startsAt": "2026-09-22T08:00",
+            "label": "8:00 AM · Two Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441327/availability/2109300998/book/"
+          },
+          {
+            "startsAt": "2026-09-22T09:30",
+            "label": "9:30 AM · One Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441326/availability/2002205755/book/"
+          },
+          {
+            "startsAt": "2026-09-22T10:30",
+            "label": "10:30 AM · Two Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441327/availability/2109301004/book/"
+          },
+          {
+            "startsAt": "2026-09-22T11:00",
+            "label": "11:00 AM · One Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441326/availability/2002205764/book/"
+          },
+          {
+            "startsAt": "2026-09-22T12:30",
+            "label": "12:30 PM · One Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441326/availability/2002205769/book/"
+          },
+          {
+            "startsAt": "2026-09-22T13:00",
+            "label": "1:00 PM · Two Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441327/availability/2109301008/book/"
+          },
+          {
+            "startsAt": "2026-09-22T14:00",
+            "label": "2:00 PM · One Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441326/availability/2002205774/book/"
+          },
+          {
+            "startsAt": "2026-09-22T15:15",
+            "label": "3:15 PM · One Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441326/availability/2002205781/book/"
+          },
+          {
+            "startsAt": "2026-09-22T15:30",
+            "label": "3:30 PM · Two Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441327/availability/2002212636/book/"
+          },
+          {
+            "startsAt": "2026-09-22T16:30",
+            "label": "4:30 PM · One Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441326/availability/2002205793/book/"
+          }
+        ]
+      },
+      {
+        "date": "2026-09-23",
+        "slots": [
+          {
+            "startsAt": "2026-09-23T08:00",
+            "label": "8:00 AM · One Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441326/availability/2002205799/book/"
+          },
+          {
+            "startsAt": "2026-09-23T08:00",
+            "label": "8:00 AM · Two Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441327/availability/2109301011/book/"
+          },
+          {
+            "startsAt": "2026-09-23T09:30",
+            "label": "9:30 AM · One Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441326/availability/2002205809/book/"
+          },
+          {
+            "startsAt": "2026-09-23T10:30",
+            "label": "10:30 AM · Two Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441327/availability/2109301014/book/"
+          },
+          {
+            "startsAt": "2026-09-23T11:00",
+            "label": "11:00 AM · One Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441326/availability/2002205817/book/"
+          },
+          {
+            "startsAt": "2026-09-23T12:30",
+            "label": "12:30 PM · One Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441326/availability/2002205823/book/"
+          },
+          {
+            "startsAt": "2026-09-23T13:00",
+            "label": "1:00 PM · Two Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441327/availability/2109301017/book/"
+          },
+          {
+            "startsAt": "2026-09-23T14:00",
+            "label": "2:00 PM · One Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441326/availability/2002205830/book/"
+          },
+          {
+            "startsAt": "2026-09-23T15:15",
+            "label": "3:15 PM · One Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441326/availability/2002205838/book/"
+          },
+          {
+            "startsAt": "2026-09-23T15:30",
+            "label": "3:30 PM · Two Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441327/availability/2002212660/book/"
+          },
+          {
+            "startsAt": "2026-09-23T16:30",
+            "label": "4:30 PM · One Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441326/availability/2002205850/book/"
+          }
+        ]
+      },
+      {
+        "date": "2026-09-24",
+        "slots": [
+          {
+            "startsAt": "2026-09-24T08:00",
+            "label": "8:00 AM · One Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441326/availability/2002205856/book/"
+          },
+          {
+            "startsAt": "2026-09-24T08:00",
+            "label": "8:00 AM · Two Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441327/availability/2109301020/book/"
+          },
+          {
+            "startsAt": "2026-09-24T09:30",
+            "label": "9:30 AM · One Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441326/availability/2002205864/book/"
+          },
+          {
+            "startsAt": "2026-09-24T10:30",
+            "label": "10:30 AM · Two Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441327/availability/2109301024/book/"
+          },
+          {
+            "startsAt": "2026-09-24T11:00",
+            "label": "11:00 AM · One Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441326/availability/2002205872/book/"
+          },
+          {
+            "startsAt": "2026-09-24T12:30",
+            "label": "12:30 PM · One Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441326/availability/2002205880/book/"
+          },
+          {
+            "startsAt": "2026-09-24T13:00",
+            "label": "1:00 PM · Two Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441327/availability/2109301026/book/"
+          },
+          {
+            "startsAt": "2026-09-24T14:00",
+            "label": "2:00 PM · One Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441326/availability/2002205889/book/"
+          },
+          {
+            "startsAt": "2026-09-24T15:15",
+            "label": "3:15 PM · One Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441326/availability/2002205897/book/"
+          },
+          {
+            "startsAt": "2026-09-24T15:30",
+            "label": "3:30 PM · Two Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441327/availability/2002212686/book/"
+          },
+          {
+            "startsAt": "2026-09-24T16:30",
+            "label": "4:30 PM · One Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441326/availability/2002205907/book/"
+          }
+        ]
+      },
+      {
+        "date": "2026-09-25",
+        "slots": [
+          {
+            "startsAt": "2026-09-25T08:00",
+            "label": "8:00 AM · One Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441326/availability/2002205915/book/"
+          },
+          {
+            "startsAt": "2026-09-25T08:00",
+            "label": "8:00 AM · Two Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441327/availability/2109300703/book/"
+          },
+          {
+            "startsAt": "2026-09-25T09:30",
+            "label": "9:30 AM · One Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441326/availability/2002205922/book/"
+          },
+          {
+            "startsAt": "2026-09-25T10:30",
+            "label": "10:30 AM · Two Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441327/availability/2109300710/book/"
+          },
+          {
+            "startsAt": "2026-09-25T11:00",
+            "label": "11:00 AM · One Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441326/availability/2002205931/book/"
+          },
+          {
+            "startsAt": "2026-09-25T12:30",
+            "label": "12:30 PM · One Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441326/availability/2002205938/book/"
+          },
+          {
+            "startsAt": "2026-09-25T13:00",
+            "label": "1:00 PM · Two Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441327/availability/2109300719/book/"
+          },
+          {
+            "startsAt": "2026-09-25T14:00",
+            "label": "2:00 PM · One Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441326/availability/2002205946/book/"
+          },
+          {
+            "startsAt": "2026-09-25T15:15",
+            "label": "3:15 PM · One Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441326/availability/2002205952/book/"
+          },
+          {
+            "startsAt": "2026-09-25T15:30",
+            "label": "3:30 PM · Two Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441327/availability/2002212710/book/"
+          },
+          {
+            "startsAt": "2026-09-25T16:30",
+            "label": "4:30 PM · One Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441326/availability/2002205960/book/"
+          }
+        ]
+      },
+      {
+        "date": "2026-09-26",
+        "slots": [
+          {
+            "startsAt": "2026-09-26T08:00",
+            "label": "8:00 AM · One Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441326/availability/2002205968/book/"
+          },
+          {
+            "startsAt": "2026-09-26T08:00",
+            "label": "8:00 AM · Two Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441327/availability/2109300726/book/"
+          },
+          {
+            "startsAt": "2026-09-26T09:30",
+            "label": "9:30 AM · One Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441326/availability/2002205975/book/"
+          },
+          {
+            "startsAt": "2026-09-26T10:30",
+            "label": "10:30 AM · Two Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441327/availability/2109300734/book/"
+          },
+          {
+            "startsAt": "2026-09-26T11:00",
+            "label": "11:00 AM · One Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441326/availability/2002205985/book/"
+          },
+          {
+            "startsAt": "2026-09-26T12:30",
+            "label": "12:30 PM · One Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441326/availability/2002205992/book/"
+          },
+          {
+            "startsAt": "2026-09-26T13:00",
+            "label": "1:00 PM · Two Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441327/availability/2109300741/book/"
+          },
+          {
+            "startsAt": "2026-09-26T14:00",
+            "label": "2:00 PM · One Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441326/availability/2002205653/book/"
+          },
+          {
+            "startsAt": "2026-09-26T15:15",
+            "label": "3:15 PM · One Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441326/availability/2002205658/book/"
+          },
+          {
+            "startsAt": "2026-09-26T15:30",
+            "label": "3:30 PM · Two Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441327/availability/2002212729/book/"
+          },
+          {
+            "startsAt": "2026-09-26T16:30",
+            "label": "4:30 PM · One Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441326/availability/2002205661/book/"
+          }
+        ]
+      },
+      {
+        "date": "2026-09-27",
+        "slots": [
+          {
+            "startsAt": "2026-09-27T08:00",
+            "label": "8:00 AM · One Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441326/availability/2002205666/book/"
+          },
+          {
+            "startsAt": "2026-09-27T08:00",
+            "label": "8:00 AM · Two Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441327/availability/2109300747/book/"
+          },
+          {
+            "startsAt": "2026-09-27T09:30",
+            "label": "9:30 AM · One Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441326/availability/2002205672/book/"
+          },
+          {
+            "startsAt": "2026-09-27T10:30",
+            "label": "10:30 AM · Two Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441327/availability/2109300757/book/"
+          },
+          {
+            "startsAt": "2026-09-27T11:00",
+            "label": "11:00 AM · One Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441326/availability/2002205677/book/"
+          },
+          {
+            "startsAt": "2026-09-27T12:30",
+            "label": "12:30 PM · One Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441326/availability/2002205683/book/"
+          },
+          {
+            "startsAt": "2026-09-27T13:00",
+            "label": "1:00 PM · Two Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441327/availability/2109300764/book/"
+          },
+          {
+            "startsAt": "2026-09-27T14:00",
+            "label": "2:00 PM · One Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441326/availability/2002205689/book/"
+          },
+          {
+            "startsAt": "2026-09-27T15:15",
+            "label": "3:15 PM · One Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441326/availability/2002205691/book/"
+          },
+          {
+            "startsAt": "2026-09-27T15:30",
+            "label": "3:30 PM · Two Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441327/availability/2002212746/book/"
+          },
+          {
+            "startsAt": "2026-09-27T16:30",
+            "label": "4:30 PM · One Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441326/availability/2002205700/book/"
+          }
+        ]
+      },
+      {
+        "date": "2026-09-28",
+        "slots": [
+          {
+            "startsAt": "2026-09-28T08:00",
+            "label": "8:00 AM · One Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441326/availability/2002205706/book/"
+          },
+          {
+            "startsAt": "2026-09-28T08:00",
+            "label": "8:00 AM · Two Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441327/availability/2109300772/book/"
+          },
+          {
+            "startsAt": "2026-09-28T09:30",
+            "label": "9:30 AM · One Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441326/availability/2002205714/book/"
+          },
+          {
+            "startsAt": "2026-09-28T10:30",
+            "label": "10:30 AM · Two Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441327/availability/2109300780/book/"
+          },
+          {
+            "startsAt": "2026-09-28T11:00",
+            "label": "11:00 AM · One Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441326/availability/2002205721/book/"
+          },
+          {
+            "startsAt": "2026-09-28T12:30",
+            "label": "12:30 PM · One Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441326/availability/2002205727/book/"
+          },
+          {
+            "startsAt": "2026-09-28T13:00",
+            "label": "1:00 PM · Two Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441327/availability/2109300788/book/"
+          },
+          {
+            "startsAt": "2026-09-28T14:00",
+            "label": "2:00 PM · One Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441326/availability/2002205732/book/"
+          },
+          {
+            "startsAt": "2026-09-28T15:15",
+            "label": "3:15 PM · One Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441326/availability/2002205739/book/"
+          },
+          {
+            "startsAt": "2026-09-28T15:30",
+            "label": "3:30 PM · Two Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441327/availability/2002212463/book/"
+          },
+          {
+            "startsAt": "2026-09-28T16:30",
+            "label": "4:30 PM · One Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441326/availability/2002205746/book/"
+          }
+        ]
+      },
+      {
+        "date": "2026-09-29",
+        "slots": [
+          {
+            "startsAt": "2026-09-29T08:00",
+            "label": "8:00 AM · One Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441326/availability/2002205752/book/"
+          },
+          {
+            "startsAt": "2026-09-29T08:00",
+            "label": "8:00 AM · Two Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441327/availability/2109300795/book/"
+          },
+          {
+            "startsAt": "2026-09-29T09:30",
+            "label": "9:30 AM · One Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441326/availability/2002205761/book/"
+          },
+          {
+            "startsAt": "2026-09-29T10:30",
+            "label": "10:30 AM · Two Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441327/availability/2109300801/book/"
+          },
+          {
+            "startsAt": "2026-09-29T11:00",
+            "label": "11:00 AM · One Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441326/availability/2002205766/book/"
+          },
+          {
+            "startsAt": "2026-09-29T12:30",
+            "label": "12:30 PM · One Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441326/availability/2002205775/book/"
+          },
+          {
+            "startsAt": "2026-09-29T13:00",
+            "label": "1:00 PM · Two Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441327/availability/2109300809/book/"
+          },
+          {
+            "startsAt": "2026-09-29T14:00",
+            "label": "2:00 PM · One Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441326/availability/2002205782/book/"
+          },
+          {
+            "startsAt": "2026-09-29T15:15",
+            "label": "3:15 PM · One Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441326/availability/2002205787/book/"
+          },
+          {
+            "startsAt": "2026-09-29T15:30",
+            "label": "3:30 PM · Two Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441327/availability/2002212493/book/"
+          },
+          {
+            "startsAt": "2026-09-29T16:30",
+            "label": "4:30 PM · One Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441326/availability/2002205796/book/"
+          }
+        ]
+      },
+      {
+        "date": "2026-09-30",
+        "slots": [
+          {
+            "startsAt": "2026-09-30T08:00",
+            "label": "8:00 AM · One Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441326/availability/2002205804/book/"
+          },
+          {
+            "startsAt": "2026-09-30T08:00",
+            "label": "8:00 AM · Two Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441327/availability/2109300816/book/"
+          },
+          {
+            "startsAt": "2026-09-30T09:30",
+            "label": "9:30 AM · One Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441326/availability/2002205813/book/"
+          },
+          {
+            "startsAt": "2026-09-30T10:30",
+            "label": "10:30 AM · Two Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441327/availability/2109300826/book/"
+          },
+          {
+            "startsAt": "2026-09-30T11:00",
+            "label": "11:00 AM · One Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441326/availability/2002205821/book/"
+          },
+          {
+            "startsAt": "2026-09-30T12:30",
+            "label": "12:30 PM · One Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441326/availability/2002205829/book/"
+          },
+          {
+            "startsAt": "2026-09-30T13:00",
+            "label": "1:00 PM · Two Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441327/availability/2109300834/book/"
+          },
+          {
+            "startsAt": "2026-09-30T14:00",
+            "label": "2:00 PM · One Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441326/availability/2002205835/book/"
+          },
+          {
+            "startsAt": "2026-09-30T15:15",
+            "label": "3:15 PM · One Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441326/availability/2002205843/book/"
+          },
+          {
+            "startsAt": "2026-09-30T15:30",
+            "label": "3:30 PM · Two Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441327/availability/2002212521/book/"
+          },
+          {
+            "startsAt": "2026-09-30T16:30",
+            "label": "4:30 PM · One Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441326/availability/2002205852/book/"
+          }
+        ]
+      },
+      {
+        "date": "2026-10-01",
+        "slots": [
+          {
+            "startsAt": "2026-10-01T08:00",
+            "label": "8:00 AM · One Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441326/availability/2002205860/book/"
+          },
+          {
+            "startsAt": "2026-10-01T08:00",
+            "label": "8:00 AM · Two Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441327/availability/2109300841/book/"
+          },
+          {
+            "startsAt": "2026-10-01T09:30",
+            "label": "9:30 AM · One Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441326/availability/2002205868/book/"
+          },
+          {
+            "startsAt": "2026-10-01T10:30",
+            "label": "10:30 AM · Two Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441327/availability/2109300849/book/"
+          },
+          {
+            "startsAt": "2026-10-01T11:00",
+            "label": "11:00 AM · One Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441326/availability/2002205878/book/"
+          },
+          {
+            "startsAt": "2026-10-01T12:30",
+            "label": "12:30 PM · One Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441326/availability/2002205886/book/"
+          },
+          {
+            "startsAt": "2026-10-01T13:00",
+            "label": "1:00 PM · Two Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441327/availability/2109300857/book/"
+          },
+          {
+            "startsAt": "2026-10-01T14:00",
+            "label": "2:00 PM · One Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441326/availability/2002205892/book/"
+          },
+          {
+            "startsAt": "2026-10-01T15:15",
+            "label": "3:15 PM · One Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441326/availability/2002205899/book/"
+          },
+          {
+            "startsAt": "2026-10-01T15:30",
+            "label": "3:30 PM · Two Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441327/availability/2002212549/book/"
+          },
+          {
+            "startsAt": "2026-10-01T16:30",
+            "label": "4:30 PM · One Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441326/availability/2002205908/book/"
+          }
+        ]
+      },
+      {
+        "date": "2026-10-02",
+        "slots": [
+          {
+            "startsAt": "2026-10-02T08:00",
+            "label": "8:00 AM · One Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441326/availability/2002205916/book/"
+          },
+          {
+            "startsAt": "2026-10-02T08:00",
+            "label": "8:00 AM · Two Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441327/availability/2109300863/book/"
+          },
+          {
+            "startsAt": "2026-10-02T09:30",
+            "label": "9:30 AM · One Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441326/availability/2002205923/book/"
+          },
+          {
+            "startsAt": "2026-10-02T10:30",
+            "label": "10:30 AM · Two Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441327/availability/2109300873/book/"
+          },
+          {
+            "startsAt": "2026-10-02T11:00",
+            "label": "11:00 AM · One Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441326/availability/2002205930/book/"
+          },
+          {
+            "startsAt": "2026-10-02T12:30",
+            "label": "12:30 PM · One Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441326/availability/2002205937/book/"
+          },
+          {
+            "startsAt": "2026-10-02T13:00",
+            "label": "1:00 PM · Two Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441327/availability/2109300880/book/"
+          },
+          {
+            "startsAt": "2026-10-02T14:00",
+            "label": "2:00 PM · One Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441326/availability/2002205944/book/"
+          },
+          {
+            "startsAt": "2026-10-02T15:15",
+            "label": "3:15 PM · One Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441326/availability/2002205951/book/"
+          },
+          {
+            "startsAt": "2026-10-02T15:30",
+            "label": "3:30 PM · Two Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441327/availability/2002212578/book/"
+          },
+          {
+            "startsAt": "2026-10-02T16:30",
+            "label": "4:30 PM · One Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441326/availability/2002205961/book/"
+          }
+        ]
+      },
+      {
+        "date": "2026-10-03",
+        "slots": [
+          {
+            "startsAt": "2026-10-03T08:00",
+            "label": "8:00 AM · One Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441326/availability/2002205970/book/"
+          },
+          {
+            "startsAt": "2026-10-03T08:00",
+            "label": "8:00 AM · Two Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441327/availability/2109300887/book/"
+          },
+          {
+            "startsAt": "2026-10-03T09:30",
+            "label": "9:30 AM · One Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441326/availability/2002205978/book/"
+          },
+          {
+            "startsAt": "2026-10-03T10:30",
+            "label": "10:30 AM · Two Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441327/availability/2109300897/book/"
+          },
+          {
+            "startsAt": "2026-10-03T11:00",
+            "label": "11:00 AM · One Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441326/availability/2002205984/book/"
+          },
+          {
+            "startsAt": "2026-10-03T12:30",
+            "label": "12:30 PM · One Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441326/availability/2002205991/book/"
+          },
+          {
+            "startsAt": "2026-10-03T13:00",
+            "label": "1:00 PM · Two Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441327/availability/2109300905/book/"
+          },
+          {
+            "startsAt": "2026-10-03T14:00",
+            "label": "2:00 PM · One Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441326/availability/2002205998/book/"
+          },
+          {
+            "startsAt": "2026-10-03T15:15",
+            "label": "3:15 PM · One Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441326/availability/2002205670/book/"
+          },
+          {
+            "startsAt": "2026-10-03T15:30",
+            "label": "3:30 PM · Two Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441327/availability/2002212603/book/"
+          },
+          {
+            "startsAt": "2026-10-03T16:30",
+            "label": "4:30 PM · One Hour Scenic Trail Ride",
+            "bookUrl": "https://fareharbor.com/rockymountainstables/items/441326/availability/2002205678/book/"
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,2461 @@
+{
+  "id": "xola/rochesterpedaltours-com",
+  "vendor": "xola",
+  "domain": "rochesterpedaltours.com",
+  "bookingUrl": "https://checkout.xola.app/#buttons/5d9e16d28f231e5bce2818b8?cache=1698312150796&openExternal=true",
+  "operatorId": "case-xola-rochesterpedaltours-com",
+  "from": "2026-09-20",
+  "days": 14,
+  "capturedAt": "2026-09-20T04:29:39.911Z",
+  "observed": {
+    "vendor": "xola",
+    "live": true,
+    "updatedAt": "2026-09-20T04:29:39.910Z",
+    "days": [
+      {
+        "date": "2026-09-20",
+        "slots": []
+      },
+      {
+        "date": "2026-09-21",
+        "slots": [
+          {
+            "startsAt": "2026-09-21T11:00",
+            "label": "11:00 AM · 13 Person Bike - Architecture, History and Anything Else Cool Tours",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f1790e3e7c2c4974aa0e"
+          },
+          {
+            "startsAt": "2026-09-21T11:00",
+            "label": "11:00 AM · 13 Person Bike - Bachelorette Party",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f182ac6932407822b1c5"
+          },
+          {
+            "startsAt": "2026-09-21T11:00",
+            "label": "11:00 AM · Syracuse 13 Person Bike",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f19cc3ea954e1d4f185b"
+          },
+          {
+            "startsAt": "2026-09-21T11:00",
+            "label": "11:00 AM · 15 Person Bike - Pedal Pub Crawl",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f2570ace0c3633332202"
+          },
+          {
+            "startsAt": "2026-09-21T11:00",
+            "label": "11:00 AM · 13 Person Bike - Brewery Crawl",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f4bfa8d9ba42fd215dc2"
+          },
+          {
+            "startsAt": "2026-09-21T11:00",
+            "label": "11:00 AM · 15 Person Bike - Architecture, History and Anything Else Cool Tours",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d7a6098f91ab0485b7de0ac"
+          },
+          {
+            "startsAt": "2026-09-21T11:00",
+            "label": "11:00 AM · 15 Person Bike - Bachelorette Party",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d7a60a4b4bae65c887cff65"
+          },
+          {
+            "startsAt": "2026-09-21T11:00",
+            "label": "11:00 AM · 15 Person Bike - Brewery Crawl",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d7a60af5bfc470a664edb7f"
+          },
+          {
+            "startsAt": "2026-09-21T11:00",
+            "label": "11:00 AM · 13 Person Bike - Pedal Pub Crawl",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d7bb1de1b3f122fb06bf0f9"
+          },
+          {
+            "startsAt": "2026-09-21T13:00",
+            "label": "1:00 PM · 13 Person Bike - Architecture, History and Anything Else Cool Tours",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f1790e3e7c2c4974aa0e"
+          },
+          {
+            "startsAt": "2026-09-21T13:00",
+            "label": "1:00 PM · 13 Person Bike - Bachelorette Party",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f182ac6932407822b1c5"
+          },
+          {
+            "startsAt": "2026-09-21T13:00",
+            "label": "1:00 PM · 13 Person Bike - Progressive Dinners",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f18e48b30223df3bf525"
+          },
+          {
+            "startsAt": "2026-09-21T13:00",
+            "label": "1:00 PM · Syracuse 13 Person Bike",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f19cc3ea954e1d4f185b"
+          },
+          {
+            "startsAt": "2026-09-21T13:00",
+            "label": "1:00 PM · 15 Person Bike - Pedal Pub Crawl",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f2570ace0c3633332202"
+          },
+          {
+            "startsAt": "2026-09-21T13:00",
+            "label": "1:00 PM · 13 Person Bike - Brewery Crawl",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f4bfa8d9ba42fd215dc2"
+          },
+          {
+            "startsAt": "2026-09-21T13:00",
+            "label": "1:00 PM · 15 Person Bike - Architecture, History and Anything Else Cool Tours",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d7a6098f91ab0485b7de0ac"
+          },
+          {
+            "startsAt": "2026-09-21T13:00",
+            "label": "1:00 PM · 15 Person Bike - Bachelorette Party",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d7a60a4b4bae65c887cff65"
+          },
+          {
+            "startsAt": "2026-09-21T13:00",
+            "label": "1:00 PM · 15 Person Bike - Brewery Crawl",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d7a60af5bfc470a664edb7f"
+          },
+          {
+            "startsAt": "2026-09-21T13:00",
+            "label": "1:00 PM · 15 Person Bike - Progressive Dinners",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d7a60ba5dd9f538b70778e0"
+          },
+          {
+            "startsAt": "2026-09-21T13:00",
+            "label": "1:00 PM · 13 Person Bike - Pedal Pub Crawl",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d7bb1de1b3f122fb06bf0f9"
+          },
+          {
+            "startsAt": "2026-09-21T15:30",
+            "label": "3:30 PM · 13 Person Bike - Architecture, History and Anything Else Cool Tours",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f1790e3e7c2c4974aa0e"
+          },
+          {
+            "startsAt": "2026-09-21T15:30",
+            "label": "3:30 PM · 13 Person Bike - Bachelorette Party",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f182ac6932407822b1c5"
+          },
+          {
+            "startsAt": "2026-09-21T15:30",
+            "label": "3:30 PM · 13 Person Bike - Progressive Dinners",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f18e48b30223df3bf525"
+          },
+          {
+            "startsAt": "2026-09-21T15:30",
+            "label": "3:30 PM · Syracuse 13 Person Bike",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f19cc3ea954e1d4f185b"
+          },
+          {
+            "startsAt": "2026-09-21T15:30",
+            "label": "3:30 PM · 15 Person Bike - Pedal Pub Crawl",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f2570ace0c3633332202"
+          },
+          {
+            "startsAt": "2026-09-21T15:30",
+            "label": "3:30 PM · 13 Person Bike - Brewery Crawl",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f4bfa8d9ba42fd215dc2"
+          },
+          {
+            "startsAt": "2026-09-21T15:30",
+            "label": "3:30 PM · 15 Person Bike - Architecture, History and Anything Else Cool Tours",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d7a6098f91ab0485b7de0ac"
+          },
+          {
+            "startsAt": "2026-09-21T15:30",
+            "label": "3:30 PM · 15 Person Bike - Bachelorette Party",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d7a60a4b4bae65c887cff65"
+          },
+          {
+            "startsAt": "2026-09-21T15:30",
+            "label": "3:30 PM · 15 Person Bike - Brewery Crawl",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d7a60af5bfc470a664edb7f"
+          },
+          {
+            "startsAt": "2026-09-21T15:30",
+            "label": "3:30 PM · 15 Person Bike - Progressive Dinners",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d7a60ba5dd9f538b70778e0"
+          },
+          {
+            "startsAt": "2026-09-21T15:30",
+            "label": "3:30 PM · 13 Person Bike - Pedal Pub Crawl",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d7bb1de1b3f122fb06bf0f9"
+          },
+          {
+            "startsAt": "2026-09-21T18:00",
+            "label": "6:00 PM · 13 Person Bike - Architecture, History and Anything Else Cool Tours",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f1790e3e7c2c4974aa0e"
+          },
+          {
+            "startsAt": "2026-09-21T18:00",
+            "label": "6:00 PM · 13 Person Bike - Bachelorette Party",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f182ac6932407822b1c5"
+          },
+          {
+            "startsAt": "2026-09-21T18:00",
+            "label": "6:00 PM · 13 Person Bike - Progressive Dinners",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f18e48b30223df3bf525"
+          },
+          {
+            "startsAt": "2026-09-21T18:00",
+            "label": "6:00 PM · Syracuse 13 Person Bike",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f19cc3ea954e1d4f185b"
+          },
+          {
+            "startsAt": "2026-09-21T18:00",
+            "label": "6:00 PM · 15 Person Bike - Pedal Pub Crawl",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f2570ace0c3633332202"
+          },
+          {
+            "startsAt": "2026-09-21T18:00",
+            "label": "6:00 PM · 13 Person Bike - Brewery Crawl",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f4bfa8d9ba42fd215dc2"
+          },
+          {
+            "startsAt": "2026-09-21T18:00",
+            "label": "6:00 PM · 15 Person Bike - Architecture, History and Anything Else Cool Tours",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d7a6098f91ab0485b7de0ac"
+          },
+          {
+            "startsAt": "2026-09-21T18:00",
+            "label": "6:00 PM · 15 Person Bike - Bachelorette Party",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d7a60a4b4bae65c887cff65"
+          },
+          {
+            "startsAt": "2026-09-21T18:00",
+            "label": "6:00 PM · 15 Person Bike - Brewery Crawl",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d7a60af5bfc470a664edb7f"
+          }
+        ]
+      },
+      {
+        "date": "2026-09-22",
+        "slots": [
+          {
+            "startsAt": "2026-09-22T11:00",
+            "label": "11:00 AM · 13 Person Bike - Architecture, History and Anything Else Cool Tours",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f1790e3e7c2c4974aa0e"
+          },
+          {
+            "startsAt": "2026-09-22T11:00",
+            "label": "11:00 AM · 13 Person Bike - Bachelorette Party",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f182ac6932407822b1c5"
+          },
+          {
+            "startsAt": "2026-09-22T11:00",
+            "label": "11:00 AM · Syracuse 13 Person Bike",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f19cc3ea954e1d4f185b"
+          },
+          {
+            "startsAt": "2026-09-22T11:00",
+            "label": "11:00 AM · 15 Person Bike - Pedal Pub Crawl",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f2570ace0c3633332202"
+          },
+          {
+            "startsAt": "2026-09-22T11:00",
+            "label": "11:00 AM · 13 Person Bike - Brewery Crawl",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f4bfa8d9ba42fd215dc2"
+          },
+          {
+            "startsAt": "2026-09-22T11:00",
+            "label": "11:00 AM · 15 Person Bike - Architecture, History and Anything Else Cool Tours",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d7a6098f91ab0485b7de0ac"
+          },
+          {
+            "startsAt": "2026-09-22T11:00",
+            "label": "11:00 AM · 15 Person Bike - Bachelorette Party",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d7a60a4b4bae65c887cff65"
+          },
+          {
+            "startsAt": "2026-09-22T11:00",
+            "label": "11:00 AM · 15 Person Bike - Brewery Crawl",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d7a60af5bfc470a664edb7f"
+          },
+          {
+            "startsAt": "2026-09-22T11:00",
+            "label": "11:00 AM · 13 Person Bike - Pedal Pub Crawl",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d7bb1de1b3f122fb06bf0f9"
+          },
+          {
+            "startsAt": "2026-09-22T13:00",
+            "label": "1:00 PM · 13 Person Bike - Architecture, History and Anything Else Cool Tours",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f1790e3e7c2c4974aa0e"
+          },
+          {
+            "startsAt": "2026-09-22T13:00",
+            "label": "1:00 PM · 13 Person Bike - Bachelorette Party",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f182ac6932407822b1c5"
+          },
+          {
+            "startsAt": "2026-09-22T13:00",
+            "label": "1:00 PM · 13 Person Bike - Progressive Dinners",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f18e48b30223df3bf525"
+          },
+          {
+            "startsAt": "2026-09-22T13:00",
+            "label": "1:00 PM · Syracuse 13 Person Bike",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f19cc3ea954e1d4f185b"
+          },
+          {
+            "startsAt": "2026-09-22T13:00",
+            "label": "1:00 PM · 15 Person Bike - Pedal Pub Crawl",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f2570ace0c3633332202"
+          },
+          {
+            "startsAt": "2026-09-22T13:00",
+            "label": "1:00 PM · 13 Person Bike - Brewery Crawl",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f4bfa8d9ba42fd215dc2"
+          },
+          {
+            "startsAt": "2026-09-22T13:00",
+            "label": "1:00 PM · 15 Person Bike - Architecture, History and Anything Else Cool Tours",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d7a6098f91ab0485b7de0ac"
+          },
+          {
+            "startsAt": "2026-09-22T13:00",
+            "label": "1:00 PM · 15 Person Bike - Bachelorette Party",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d7a60a4b4bae65c887cff65"
+          },
+          {
+            "startsAt": "2026-09-22T13:00",
+            "label": "1:00 PM · 15 Person Bike - Brewery Crawl",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d7a60af5bfc470a664edb7f"
+          },
+          {
+            "startsAt": "2026-09-22T13:00",
+            "label": "1:00 PM · 15 Person Bike - Progressive Dinners",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d7a60ba5dd9f538b70778e0"
+          },
+          {
+            "startsAt": "2026-09-22T13:00",
+            "label": "1:00 PM · 13 Person Bike - Pedal Pub Crawl",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d7bb1de1b3f122fb06bf0f9"
+          },
+          {
+            "startsAt": "2026-09-22T15:30",
+            "label": "3:30 PM · 13 Person Bike - Architecture, History and Anything Else Cool Tours",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f1790e3e7c2c4974aa0e"
+          },
+          {
+            "startsAt": "2026-09-22T15:30",
+            "label": "3:30 PM · 13 Person Bike - Bachelorette Party",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f182ac6932407822b1c5"
+          },
+          {
+            "startsAt": "2026-09-22T15:30",
+            "label": "3:30 PM · 13 Person Bike - Progressive Dinners",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f18e48b30223df3bf525"
+          },
+          {
+            "startsAt": "2026-09-22T15:30",
+            "label": "3:30 PM · Syracuse 13 Person Bike",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f19cc3ea954e1d4f185b"
+          },
+          {
+            "startsAt": "2026-09-22T15:30",
+            "label": "3:30 PM · 15 Person Bike - Pedal Pub Crawl",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f2570ace0c3633332202"
+          },
+          {
+            "startsAt": "2026-09-22T15:30",
+            "label": "3:30 PM · 13 Person Bike - Brewery Crawl",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f4bfa8d9ba42fd215dc2"
+          },
+          {
+            "startsAt": "2026-09-22T15:30",
+            "label": "3:30 PM · 15 Person Bike - Architecture, History and Anything Else Cool Tours",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d7a6098f91ab0485b7de0ac"
+          },
+          {
+            "startsAt": "2026-09-22T15:30",
+            "label": "3:30 PM · 15 Person Bike - Bachelorette Party",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d7a60a4b4bae65c887cff65"
+          },
+          {
+            "startsAt": "2026-09-22T15:30",
+            "label": "3:30 PM · 15 Person Bike - Brewery Crawl",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d7a60af5bfc470a664edb7f"
+          },
+          {
+            "startsAt": "2026-09-22T15:30",
+            "label": "3:30 PM · 15 Person Bike - Progressive Dinners",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d7a60ba5dd9f538b70778e0"
+          },
+          {
+            "startsAt": "2026-09-22T15:30",
+            "label": "3:30 PM · 13 Person Bike - Pedal Pub Crawl",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d7bb1de1b3f122fb06bf0f9"
+          },
+          {
+            "startsAt": "2026-09-22T18:00",
+            "label": "6:00 PM · 13 Person Bike - Architecture, History and Anything Else Cool Tours",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f1790e3e7c2c4974aa0e"
+          },
+          {
+            "startsAt": "2026-09-22T18:00",
+            "label": "6:00 PM · 13 Person Bike - Bachelorette Party",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f182ac6932407822b1c5"
+          },
+          {
+            "startsAt": "2026-09-22T18:00",
+            "label": "6:00 PM · 13 Person Bike - Progressive Dinners",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f18e48b30223df3bf525"
+          },
+          {
+            "startsAt": "2026-09-22T18:00",
+            "label": "6:00 PM · Syracuse 13 Person Bike",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f19cc3ea954e1d4f185b"
+          },
+          {
+            "startsAt": "2026-09-22T18:00",
+            "label": "6:00 PM · 15 Person Bike - Pedal Pub Crawl",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f2570ace0c3633332202"
+          },
+          {
+            "startsAt": "2026-09-22T18:00",
+            "label": "6:00 PM · 13 Person Bike - Brewery Crawl",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f4bfa8d9ba42fd215dc2"
+          },
+          {
+            "startsAt": "2026-09-22T18:00",
+            "label": "6:00 PM · 15 Person Bike - Architecture, History and Anything Else Cool Tours",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d7a6098f91ab0485b7de0ac"
+          },
+          {
+            "startsAt": "2026-09-22T18:00",
+            "label": "6:00 PM · 15 Person Bike - Bachelorette Party",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d7a60a4b4bae65c887cff65"
+          },
+          {
+            "startsAt": "2026-09-22T18:00",
+            "label": "6:00 PM · 15 Person Bike - Brewery Crawl",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d7a60af5bfc470a664edb7f"
+          }
+        ]
+      },
+      {
+        "date": "2026-09-23",
+        "slots": [
+          {
+            "startsAt": "2026-09-23T11:00",
+            "label": "11:00 AM · 13 Person Bike - Architecture, History and Anything Else Cool Tours",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f1790e3e7c2c4974aa0e"
+          },
+          {
+            "startsAt": "2026-09-23T11:00",
+            "label": "11:00 AM · 13 Person Bike - Bachelorette Party",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f182ac6932407822b1c5"
+          },
+          {
+            "startsAt": "2026-09-23T11:00",
+            "label": "11:00 AM · Syracuse 13 Person Bike",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f19cc3ea954e1d4f185b"
+          },
+          {
+            "startsAt": "2026-09-23T11:00",
+            "label": "11:00 AM · 15 Person Bike - Pedal Pub Crawl",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f2570ace0c3633332202"
+          },
+          {
+            "startsAt": "2026-09-23T11:00",
+            "label": "11:00 AM · 13 Person Bike - Brewery Crawl",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f4bfa8d9ba42fd215dc2"
+          },
+          {
+            "startsAt": "2026-09-23T11:00",
+            "label": "11:00 AM · 15 Person Bike - Architecture, History and Anything Else Cool Tours",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d7a6098f91ab0485b7de0ac"
+          },
+          {
+            "startsAt": "2026-09-23T11:00",
+            "label": "11:00 AM · 15 Person Bike - Bachelorette Party",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d7a60a4b4bae65c887cff65"
+          },
+          {
+            "startsAt": "2026-09-23T11:00",
+            "label": "11:00 AM · 15 Person Bike - Brewery Crawl",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d7a60af5bfc470a664edb7f"
+          },
+          {
+            "startsAt": "2026-09-23T11:00",
+            "label": "11:00 AM · 13 Person Bike - Pedal Pub Crawl",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d7bb1de1b3f122fb06bf0f9"
+          },
+          {
+            "startsAt": "2026-09-23T13:00",
+            "label": "1:00 PM · 13 Person Bike - Architecture, History and Anything Else Cool Tours",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f1790e3e7c2c4974aa0e"
+          },
+          {
+            "startsAt": "2026-09-23T13:00",
+            "label": "1:00 PM · 13 Person Bike - Bachelorette Party",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f182ac6932407822b1c5"
+          },
+          {
+            "startsAt": "2026-09-23T13:00",
+            "label": "1:00 PM · 13 Person Bike - Progressive Dinners",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f18e48b30223df3bf525"
+          },
+          {
+            "startsAt": "2026-09-23T13:00",
+            "label": "1:00 PM · Syracuse 13 Person Bike",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f19cc3ea954e1d4f185b"
+          },
+          {
+            "startsAt": "2026-09-23T13:00",
+            "label": "1:00 PM · 15 Person Bike - Pedal Pub Crawl",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f2570ace0c3633332202"
+          },
+          {
+            "startsAt": "2026-09-23T13:00",
+            "label": "1:00 PM · 13 Person Bike - Brewery Crawl",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f4bfa8d9ba42fd215dc2"
+          },
+          {
+            "startsAt": "2026-09-23T13:00",
+            "label": "1:00 PM · 15 Person Bike - Architecture, History and Anything Else Cool Tours",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d7a6098f91ab0485b7de0ac"
+          },
+          {
+            "startsAt": "2026-09-23T13:00",
+            "label": "1:00 PM · 15 Person Bike - Bachelorette Party",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d7a60a4b4bae65c887cff65"
+          },
+          {
+            "startsAt": "2026-09-23T13:00",
+            "label": "1:00 PM · 15 Person Bike - Brewery Crawl",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d7a60af5bfc470a664edb7f"
+          },
+          {
+            "startsAt": "2026-09-23T13:00",
+            "label": "1:00 PM · 15 Person Bike - Progressive Dinners",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d7a60ba5dd9f538b70778e0"
+          },
+          {
+            "startsAt": "2026-09-23T13:00",
+            "label": "1:00 PM · 13 Person Bike - Pedal Pub Crawl",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d7bb1de1b3f122fb06bf0f9"
+          },
+          {
+            "startsAt": "2026-09-23T15:30",
+            "label": "3:30 PM · 13 Person Bike - Architecture, History and Anything Else Cool Tours",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f1790e3e7c2c4974aa0e"
+          },
+          {
+            "startsAt": "2026-09-23T15:30",
+            "label": "3:30 PM · 13 Person Bike - Bachelorette Party",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f182ac6932407822b1c5"
+          },
+          {
+            "startsAt": "2026-09-23T15:30",
+            "label": "3:30 PM · 13 Person Bike - Progressive Dinners",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f18e48b30223df3bf525"
+          },
+          {
+            "startsAt": "2026-09-23T15:30",
+            "label": "3:30 PM · Syracuse 13 Person Bike",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f19cc3ea954e1d4f185b"
+          },
+          {
+            "startsAt": "2026-09-23T15:30",
+            "label": "3:30 PM · 15 Person Bike - Pedal Pub Crawl",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f2570ace0c3633332202"
+          },
+          {
+            "startsAt": "2026-09-23T15:30",
+            "label": "3:30 PM · 13 Person Bike - Brewery Crawl",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f4bfa8d9ba42fd215dc2"
+          },
+          {
+            "startsAt": "2026-09-23T15:30",
+            "label": "3:30 PM · 15 Person Bike - Architecture, History and Anything Else Cool Tours",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d7a6098f91ab0485b7de0ac"
+          },
+          {
+            "startsAt": "2026-09-23T15:30",
+            "label": "3:30 PM · 15 Person Bike - Bachelorette Party",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d7a60a4b4bae65c887cff65"
+          },
+          {
+            "startsAt": "2026-09-23T15:30",
+            "label": "3:30 PM · 15 Person Bike - Brewery Crawl",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d7a60af5bfc470a664edb7f"
+          },
+          {
+            "startsAt": "2026-09-23T15:30",
+            "label": "3:30 PM · 15 Person Bike - Progressive Dinners",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d7a60ba5dd9f538b70778e0"
+          },
+          {
+            "startsAt": "2026-09-23T15:30",
+            "label": "3:30 PM · 13 Person Bike - Pedal Pub Crawl",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d7bb1de1b3f122fb06bf0f9"
+          },
+          {
+            "startsAt": "2026-09-23T18:00",
+            "label": "6:00 PM · 13 Person Bike - Architecture, History and Anything Else Cool Tours",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f1790e3e7c2c4974aa0e"
+          },
+          {
+            "startsAt": "2026-09-23T18:00",
+            "label": "6:00 PM · 13 Person Bike - Bachelorette Party",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f182ac6932407822b1c5"
+          },
+          {
+            "startsAt": "2026-09-23T18:00",
+            "label": "6:00 PM · 13 Person Bike - Progressive Dinners",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f18e48b30223df3bf525"
+          },
+          {
+            "startsAt": "2026-09-23T18:00",
+            "label": "6:00 PM · Syracuse 13 Person Bike",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f19cc3ea954e1d4f185b"
+          },
+          {
+            "startsAt": "2026-09-23T18:00",
+            "label": "6:00 PM · 15 Person Bike - Pedal Pub Crawl",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f2570ace0c3633332202"
+          },
+          {
+            "startsAt": "2026-09-23T18:00",
+            "label": "6:00 PM · 13 Person Bike - Brewery Crawl",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f4bfa8d9ba42fd215dc2"
+          },
+          {
+            "startsAt": "2026-09-23T18:00",
+            "label": "6:00 PM · 15 Person Bike - Architecture, History and Anything Else Cool Tours",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d7a6098f91ab0485b7de0ac"
+          },
+          {
+            "startsAt": "2026-09-23T18:00",
+            "label": "6:00 PM · 15 Person Bike - Bachelorette Party",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d7a60a4b4bae65c887cff65"
+          },
+          {
+            "startsAt": "2026-09-23T18:00",
+            "label": "6:00 PM · 15 Person Bike - Brewery Crawl",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d7a60af5bfc470a664edb7f"
+          }
+        ]
+      },
+      {
+        "date": "2026-09-24",
+        "slots": [
+          {
+            "startsAt": "2026-09-24T11:00",
+            "label": "11:00 AM · 13 Person Bike - Architecture, History and Anything Else Cool Tours",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f1790e3e7c2c4974aa0e"
+          },
+          {
+            "startsAt": "2026-09-24T11:00",
+            "label": "11:00 AM · 13 Person Bike - Bachelorette Party",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f182ac6932407822b1c5"
+          },
+          {
+            "startsAt": "2026-09-24T11:00",
+            "label": "11:00 AM · Syracuse 13 Person Bike",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f19cc3ea954e1d4f185b"
+          },
+          {
+            "startsAt": "2026-09-24T11:00",
+            "label": "11:00 AM · 15 Person Bike - Pedal Pub Crawl",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f2570ace0c3633332202"
+          },
+          {
+            "startsAt": "2026-09-24T11:00",
+            "label": "11:00 AM · 13 Person Bike - Brewery Crawl",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f4bfa8d9ba42fd215dc2"
+          },
+          {
+            "startsAt": "2026-09-24T11:00",
+            "label": "11:00 AM · 15 Person Bike - Architecture, History and Anything Else Cool Tours",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d7a6098f91ab0485b7de0ac"
+          },
+          {
+            "startsAt": "2026-09-24T11:00",
+            "label": "11:00 AM · 15 Person Bike - Bachelorette Party",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d7a60a4b4bae65c887cff65"
+          },
+          {
+            "startsAt": "2026-09-24T11:00",
+            "label": "11:00 AM · 15 Person Bike - Brewery Crawl",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d7a60af5bfc470a664edb7f"
+          },
+          {
+            "startsAt": "2026-09-24T11:00",
+            "label": "11:00 AM · 13 Person Bike - Pedal Pub Crawl",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d7bb1de1b3f122fb06bf0f9"
+          },
+          {
+            "startsAt": "2026-09-24T13:00",
+            "label": "1:00 PM · 13 Person Bike - Architecture, History and Anything Else Cool Tours",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f1790e3e7c2c4974aa0e"
+          },
+          {
+            "startsAt": "2026-09-24T13:00",
+            "label": "1:00 PM · 13 Person Bike - Bachelorette Party",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f182ac6932407822b1c5"
+          },
+          {
+            "startsAt": "2026-09-24T13:00",
+            "label": "1:00 PM · 13 Person Bike - Progressive Dinners",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f18e48b30223df3bf525"
+          },
+          {
+            "startsAt": "2026-09-24T13:00",
+            "label": "1:00 PM · Syracuse 13 Person Bike",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f19cc3ea954e1d4f185b"
+          },
+          {
+            "startsAt": "2026-09-24T13:00",
+            "label": "1:00 PM · 15 Person Bike - Pedal Pub Crawl",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f2570ace0c3633332202"
+          },
+          {
+            "startsAt": "2026-09-24T13:00",
+            "label": "1:00 PM · 13 Person Bike - Brewery Crawl",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f4bfa8d9ba42fd215dc2"
+          },
+          {
+            "startsAt": "2026-09-24T13:00",
+            "label": "1:00 PM · 15 Person Bike - Architecture, History and Anything Else Cool Tours",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d7a6098f91ab0485b7de0ac"
+          },
+          {
+            "startsAt": "2026-09-24T13:00",
+            "label": "1:00 PM · 15 Person Bike - Bachelorette Party",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d7a60a4b4bae65c887cff65"
+          },
+          {
+            "startsAt": "2026-09-24T13:00",
+            "label": "1:00 PM · 15 Person Bike - Brewery Crawl",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d7a60af5bfc470a664edb7f"
+          },
+          {
+            "startsAt": "2026-09-24T13:00",
+            "label": "1:00 PM · 15 Person Bike - Progressive Dinners",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d7a60ba5dd9f538b70778e0"
+          },
+          {
+            "startsAt": "2026-09-24T13:00",
+            "label": "1:00 PM · 13 Person Bike - Pedal Pub Crawl",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d7bb1de1b3f122fb06bf0f9"
+          },
+          {
+            "startsAt": "2026-09-24T14:30",
+            "label": "2:30 PM · 13 Person Bike - Architecture, History and Anything Else Cool Tours",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f1790e3e7c2c4974aa0e"
+          },
+          {
+            "startsAt": "2026-09-24T15:30",
+            "label": "3:30 PM · 13 Person Bike - Architecture, History and Anything Else Cool Tours",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f1790e3e7c2c4974aa0e"
+          },
+          {
+            "startsAt": "2026-09-24T15:30",
+            "label": "3:30 PM · 13 Person Bike - Bachelorette Party",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f182ac6932407822b1c5"
+          },
+          {
+            "startsAt": "2026-09-24T15:30",
+            "label": "3:30 PM · 13 Person Bike - Progressive Dinners",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f18e48b30223df3bf525"
+          },
+          {
+            "startsAt": "2026-09-24T15:30",
+            "label": "3:30 PM · Syracuse 13 Person Bike",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f19cc3ea954e1d4f185b"
+          },
+          {
+            "startsAt": "2026-09-24T15:30",
+            "label": "3:30 PM · 15 Person Bike - Pedal Pub Crawl",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f2570ace0c3633332202"
+          },
+          {
+            "startsAt": "2026-09-24T15:30",
+            "label": "3:30 PM · 13 Person Bike - Brewery Crawl",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f4bfa8d9ba42fd215dc2"
+          },
+          {
+            "startsAt": "2026-09-24T15:30",
+            "label": "3:30 PM · 15 Person Bike - Architecture, History and Anything Else Cool Tours",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d7a6098f91ab0485b7de0ac"
+          },
+          {
+            "startsAt": "2026-09-24T15:30",
+            "label": "3:30 PM · 15 Person Bike - Bachelorette Party",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d7a60a4b4bae65c887cff65"
+          },
+          {
+            "startsAt": "2026-09-24T15:30",
+            "label": "3:30 PM · 15 Person Bike - Brewery Crawl",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d7a60af5bfc470a664edb7f"
+          },
+          {
+            "startsAt": "2026-09-24T15:30",
+            "label": "3:30 PM · 15 Person Bike - Progressive Dinners",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d7a60ba5dd9f538b70778e0"
+          },
+          {
+            "startsAt": "2026-09-24T15:30",
+            "label": "3:30 PM · 13 Person Bike - Pedal Pub Crawl",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d7bb1de1b3f122fb06bf0f9"
+          },
+          {
+            "startsAt": "2026-09-24T18:00",
+            "label": "6:00 PM · 13 Person Bike - Architecture, History and Anything Else Cool Tours",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f1790e3e7c2c4974aa0e"
+          },
+          {
+            "startsAt": "2026-09-24T18:00",
+            "label": "6:00 PM · 13 Person Bike - Bachelorette Party",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f182ac6932407822b1c5"
+          },
+          {
+            "startsAt": "2026-09-24T18:00",
+            "label": "6:00 PM · 13 Person Bike - Progressive Dinners",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f18e48b30223df3bf525"
+          },
+          {
+            "startsAt": "2026-09-24T18:00",
+            "label": "6:00 PM · Syracuse 13 Person Bike",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f19cc3ea954e1d4f185b"
+          },
+          {
+            "startsAt": "2026-09-24T18:00",
+            "label": "6:00 PM · 15 Person Bike - Pedal Pub Crawl",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f2570ace0c3633332202"
+          },
+          {
+            "startsAt": "2026-09-24T18:00",
+            "label": "6:00 PM · 13 Person Bike - Brewery Crawl",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f4bfa8d9ba42fd215dc2"
+          },
+          {
+            "startsAt": "2026-09-24T18:00",
+            "label": "6:00 PM · 15 Person Bike - Architecture, History and Anything Else Cool Tours",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d7a6098f91ab0485b7de0ac"
+          },
+          {
+            "startsAt": "2026-09-24T18:00",
+            "label": "6:00 PM · 15 Person Bike - Bachelorette Party",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d7a60a4b4bae65c887cff65"
+          }
+        ]
+      },
+      {
+        "date": "2026-09-25",
+        "slots": [
+          {
+            "startsAt": "2026-09-25T11:00",
+            "label": "11:00 AM · 13 Person Bike - Architecture, History Weekend",
+            "priceCents": 35000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/61d8a5ad1a5b135bd44121b0"
+          },
+          {
+            "startsAt": "2026-09-25T13:00",
+            "label": "1:00 PM · 13 Person Bike - Architecture, History Weekend",
+            "priceCents": 35000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/61d8a5ad1a5b135bd44121b0"
+          },
+          {
+            "startsAt": "2026-09-25T15:30",
+            "label": "3:30 PM · 13 Person Bike - Architecture, History Weekend",
+            "priceCents": 35000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/61d8a5ad1a5b135bd44121b0"
+          },
+          {
+            "startsAt": "2026-09-25T18:00",
+            "label": "6:00 PM · 13 Person Bike - Architecture, History Weekend",
+            "priceCents": 35000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/61d8a5ad1a5b135bd44121b0"
+          }
+        ]
+      },
+      {
+        "date": "2026-09-26",
+        "slots": [
+          {
+            "startsAt": "2026-09-26T11:00",
+            "label": "11:00 AM · 13 Person Bike - Architecture, History Weekend",
+            "priceCents": 35000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/61d8a5ad1a5b135bd44121b0"
+          },
+          {
+            "startsAt": "2026-09-26T13:00",
+            "label": "1:00 PM · 13 Person Bike - Architecture, History Weekend",
+            "priceCents": 35000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/61d8a5ad1a5b135bd44121b0"
+          },
+          {
+            "startsAt": "2026-09-26T15:30",
+            "label": "3:30 PM · 13 Person Bike - Architecture, History Weekend",
+            "priceCents": 35000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/61d8a5ad1a5b135bd44121b0"
+          },
+          {
+            "startsAt": "2026-09-26T18:00",
+            "label": "6:00 PM · 13 Person Bike - Architecture, History Weekend",
+            "priceCents": 35000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/61d8a5ad1a5b135bd44121b0"
+          }
+        ]
+      },
+      {
+        "date": "2026-09-27",
+        "slots": [
+          {
+            "startsAt": "2026-09-27T12:00",
+            "label": "12:00 PM · 13 Person Bike - Architecture, History Weekend",
+            "priceCents": 35000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/61d8a5ad1a5b135bd44121b0"
+          },
+          {
+            "startsAt": "2026-09-27T14:30",
+            "label": "2:30 PM · 13 Person Bike - Architecture, History Weekend",
+            "priceCents": 35000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/61d8a5ad1a5b135bd44121b0"
+          },
+          {
+            "startsAt": "2026-09-27T17:00",
+            "label": "5:00 PM · 13 Person Bike - Architecture, History Weekend",
+            "priceCents": 35000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/61d8a5ad1a5b135bd44121b0"
+          }
+        ]
+      },
+      {
+        "date": "2026-09-28",
+        "slots": [
+          {
+            "startsAt": "2026-09-28T11:00",
+            "label": "11:00 AM · 13 Person Bike - Architecture, History and Anything Else Cool Tours",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f1790e3e7c2c4974aa0e"
+          },
+          {
+            "startsAt": "2026-09-28T11:00",
+            "label": "11:00 AM · 13 Person Bike - Bachelorette Party",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f182ac6932407822b1c5"
+          },
+          {
+            "startsAt": "2026-09-28T11:00",
+            "label": "11:00 AM · Syracuse 13 Person Bike",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f19cc3ea954e1d4f185b"
+          },
+          {
+            "startsAt": "2026-09-28T11:00",
+            "label": "11:00 AM · 15 Person Bike - Pedal Pub Crawl",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f2570ace0c3633332202"
+          },
+          {
+            "startsAt": "2026-09-28T11:00",
+            "label": "11:00 AM · 13 Person Bike - Brewery Crawl",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f4bfa8d9ba42fd215dc2"
+          },
+          {
+            "startsAt": "2026-09-28T11:00",
+            "label": "11:00 AM · 15 Person Bike - Architecture, History and Anything Else Cool Tours",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d7a6098f91ab0485b7de0ac"
+          },
+          {
+            "startsAt": "2026-09-28T11:00",
+            "label": "11:00 AM · 15 Person Bike - Bachelorette Party",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d7a60a4b4bae65c887cff65"
+          },
+          {
+            "startsAt": "2026-09-28T11:00",
+            "label": "11:00 AM · 15 Person Bike - Brewery Crawl",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d7a60af5bfc470a664edb7f"
+          },
+          {
+            "startsAt": "2026-09-28T11:00",
+            "label": "11:00 AM · 13 Person Bike - Pedal Pub Crawl",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d7bb1de1b3f122fb06bf0f9"
+          },
+          {
+            "startsAt": "2026-09-28T13:00",
+            "label": "1:00 PM · 13 Person Bike - Architecture, History and Anything Else Cool Tours",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f1790e3e7c2c4974aa0e"
+          },
+          {
+            "startsAt": "2026-09-28T13:00",
+            "label": "1:00 PM · 13 Person Bike - Bachelorette Party",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f182ac6932407822b1c5"
+          },
+          {
+            "startsAt": "2026-09-28T13:00",
+            "label": "1:00 PM · 13 Person Bike - Progressive Dinners",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f18e48b30223df3bf525"
+          },
+          {
+            "startsAt": "2026-09-28T13:00",
+            "label": "1:00 PM · Syracuse 13 Person Bike",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f19cc3ea954e1d4f185b"
+          },
+          {
+            "startsAt": "2026-09-28T13:00",
+            "label": "1:00 PM · 15 Person Bike - Pedal Pub Crawl",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f2570ace0c3633332202"
+          },
+          {
+            "startsAt": "2026-09-28T13:00",
+            "label": "1:00 PM · 13 Person Bike - Brewery Crawl",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f4bfa8d9ba42fd215dc2"
+          },
+          {
+            "startsAt": "2026-09-28T13:00",
+            "label": "1:00 PM · 15 Person Bike - Architecture, History and Anything Else Cool Tours",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d7a6098f91ab0485b7de0ac"
+          },
+          {
+            "startsAt": "2026-09-28T13:00",
+            "label": "1:00 PM · 15 Person Bike - Bachelorette Party",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d7a60a4b4bae65c887cff65"
+          },
+          {
+            "startsAt": "2026-09-28T13:00",
+            "label": "1:00 PM · 15 Person Bike - Brewery Crawl",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d7a60af5bfc470a664edb7f"
+          },
+          {
+            "startsAt": "2026-09-28T13:00",
+            "label": "1:00 PM · 15 Person Bike - Progressive Dinners",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d7a60ba5dd9f538b70778e0"
+          },
+          {
+            "startsAt": "2026-09-28T13:00",
+            "label": "1:00 PM · 13 Person Bike - Pedal Pub Crawl",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d7bb1de1b3f122fb06bf0f9"
+          },
+          {
+            "startsAt": "2026-09-28T15:30",
+            "label": "3:30 PM · 13 Person Bike - Architecture, History and Anything Else Cool Tours",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f1790e3e7c2c4974aa0e"
+          },
+          {
+            "startsAt": "2026-09-28T15:30",
+            "label": "3:30 PM · 13 Person Bike - Bachelorette Party",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f182ac6932407822b1c5"
+          },
+          {
+            "startsAt": "2026-09-28T15:30",
+            "label": "3:30 PM · 13 Person Bike - Progressive Dinners",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f18e48b30223df3bf525"
+          },
+          {
+            "startsAt": "2026-09-28T15:30",
+            "label": "3:30 PM · Syracuse 13 Person Bike",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f19cc3ea954e1d4f185b"
+          },
+          {
+            "startsAt": "2026-09-28T15:30",
+            "label": "3:30 PM · 15 Person Bike - Pedal Pub Crawl",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f2570ace0c3633332202"
+          },
+          {
+            "startsAt": "2026-09-28T15:30",
+            "label": "3:30 PM · 13 Person Bike - Brewery Crawl",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f4bfa8d9ba42fd215dc2"
+          },
+          {
+            "startsAt": "2026-09-28T15:30",
+            "label": "3:30 PM · 15 Person Bike - Architecture, History and Anything Else Cool Tours",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d7a6098f91ab0485b7de0ac"
+          },
+          {
+            "startsAt": "2026-09-28T15:30",
+            "label": "3:30 PM · 15 Person Bike - Bachelorette Party",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d7a60a4b4bae65c887cff65"
+          },
+          {
+            "startsAt": "2026-09-28T15:30",
+            "label": "3:30 PM · 15 Person Bike - Brewery Crawl",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d7a60af5bfc470a664edb7f"
+          },
+          {
+            "startsAt": "2026-09-28T15:30",
+            "label": "3:30 PM · 15 Person Bike - Progressive Dinners",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d7a60ba5dd9f538b70778e0"
+          },
+          {
+            "startsAt": "2026-09-28T15:30",
+            "label": "3:30 PM · 13 Person Bike - Pedal Pub Crawl",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d7bb1de1b3f122fb06bf0f9"
+          },
+          {
+            "startsAt": "2026-09-28T18:00",
+            "label": "6:00 PM · 13 Person Bike - Architecture, History and Anything Else Cool Tours",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f1790e3e7c2c4974aa0e"
+          },
+          {
+            "startsAt": "2026-09-28T18:00",
+            "label": "6:00 PM · 13 Person Bike - Bachelorette Party",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f182ac6932407822b1c5"
+          },
+          {
+            "startsAt": "2026-09-28T18:00",
+            "label": "6:00 PM · 13 Person Bike - Progressive Dinners",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f18e48b30223df3bf525"
+          },
+          {
+            "startsAt": "2026-09-28T18:00",
+            "label": "6:00 PM · Syracuse 13 Person Bike",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f19cc3ea954e1d4f185b"
+          },
+          {
+            "startsAt": "2026-09-28T18:00",
+            "label": "6:00 PM · 15 Person Bike - Pedal Pub Crawl",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f2570ace0c3633332202"
+          },
+          {
+            "startsAt": "2026-09-28T18:00",
+            "label": "6:00 PM · 13 Person Bike - Brewery Crawl",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f4bfa8d9ba42fd215dc2"
+          },
+          {
+            "startsAt": "2026-09-28T18:00",
+            "label": "6:00 PM · 15 Person Bike - Architecture, History and Anything Else Cool Tours",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d7a6098f91ab0485b7de0ac"
+          },
+          {
+            "startsAt": "2026-09-28T18:00",
+            "label": "6:00 PM · 15 Person Bike - Bachelorette Party",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d7a60a4b4bae65c887cff65"
+          },
+          {
+            "startsAt": "2026-09-28T18:00",
+            "label": "6:00 PM · 15 Person Bike - Brewery Crawl",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d7a60af5bfc470a664edb7f"
+          }
+        ]
+      },
+      {
+        "date": "2026-09-29",
+        "slots": [
+          {
+            "startsAt": "2026-09-29T11:00",
+            "label": "11:00 AM · 13 Person Bike - Architecture, History and Anything Else Cool Tours",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f1790e3e7c2c4974aa0e"
+          },
+          {
+            "startsAt": "2026-09-29T11:00",
+            "label": "11:00 AM · 13 Person Bike - Bachelorette Party",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f182ac6932407822b1c5"
+          },
+          {
+            "startsAt": "2026-09-29T11:00",
+            "label": "11:00 AM · Syracuse 13 Person Bike",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f19cc3ea954e1d4f185b"
+          },
+          {
+            "startsAt": "2026-09-29T11:00",
+            "label": "11:00 AM · 15 Person Bike - Pedal Pub Crawl",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f2570ace0c3633332202"
+          },
+          {
+            "startsAt": "2026-09-29T11:00",
+            "label": "11:00 AM · 13 Person Bike - Brewery Crawl",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f4bfa8d9ba42fd215dc2"
+          },
+          {
+            "startsAt": "2026-09-29T11:00",
+            "label": "11:00 AM · 15 Person Bike - Architecture, History and Anything Else Cool Tours",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d7a6098f91ab0485b7de0ac"
+          },
+          {
+            "startsAt": "2026-09-29T11:00",
+            "label": "11:00 AM · 15 Person Bike - Bachelorette Party",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d7a60a4b4bae65c887cff65"
+          },
+          {
+            "startsAt": "2026-09-29T11:00",
+            "label": "11:00 AM · 15 Person Bike - Brewery Crawl",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d7a60af5bfc470a664edb7f"
+          },
+          {
+            "startsAt": "2026-09-29T11:00",
+            "label": "11:00 AM · 13 Person Bike - Pedal Pub Crawl",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d7bb1de1b3f122fb06bf0f9"
+          },
+          {
+            "startsAt": "2026-09-29T13:00",
+            "label": "1:00 PM · 13 Person Bike - Architecture, History and Anything Else Cool Tours",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f1790e3e7c2c4974aa0e"
+          },
+          {
+            "startsAt": "2026-09-29T13:00",
+            "label": "1:00 PM · 13 Person Bike - Bachelorette Party",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f182ac6932407822b1c5"
+          },
+          {
+            "startsAt": "2026-09-29T13:00",
+            "label": "1:00 PM · 13 Person Bike - Progressive Dinners",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f18e48b30223df3bf525"
+          },
+          {
+            "startsAt": "2026-09-29T13:00",
+            "label": "1:00 PM · Syracuse 13 Person Bike",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f19cc3ea954e1d4f185b"
+          },
+          {
+            "startsAt": "2026-09-29T13:00",
+            "label": "1:00 PM · 15 Person Bike - Pedal Pub Crawl",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f2570ace0c3633332202"
+          },
+          {
+            "startsAt": "2026-09-29T13:00",
+            "label": "1:00 PM · 13 Person Bike - Brewery Crawl",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f4bfa8d9ba42fd215dc2"
+          },
+          {
+            "startsAt": "2026-09-29T13:00",
+            "label": "1:00 PM · 15 Person Bike - Architecture, History and Anything Else Cool Tours",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d7a6098f91ab0485b7de0ac"
+          },
+          {
+            "startsAt": "2026-09-29T13:00",
+            "label": "1:00 PM · 15 Person Bike - Bachelorette Party",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d7a60a4b4bae65c887cff65"
+          },
+          {
+            "startsAt": "2026-09-29T13:00",
+            "label": "1:00 PM · 15 Person Bike - Brewery Crawl",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d7a60af5bfc470a664edb7f"
+          },
+          {
+            "startsAt": "2026-09-29T13:00",
+            "label": "1:00 PM · 15 Person Bike - Progressive Dinners",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d7a60ba5dd9f538b70778e0"
+          },
+          {
+            "startsAt": "2026-09-29T13:00",
+            "label": "1:00 PM · 13 Person Bike - Pedal Pub Crawl",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d7bb1de1b3f122fb06bf0f9"
+          },
+          {
+            "startsAt": "2026-09-29T15:30",
+            "label": "3:30 PM · 13 Person Bike - Architecture, History and Anything Else Cool Tours",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f1790e3e7c2c4974aa0e"
+          },
+          {
+            "startsAt": "2026-09-29T15:30",
+            "label": "3:30 PM · 13 Person Bike - Bachelorette Party",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f182ac6932407822b1c5"
+          },
+          {
+            "startsAt": "2026-09-29T15:30",
+            "label": "3:30 PM · 13 Person Bike - Progressive Dinners",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f18e48b30223df3bf525"
+          },
+          {
+            "startsAt": "2026-09-29T15:30",
+            "label": "3:30 PM · Syracuse 13 Person Bike",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f19cc3ea954e1d4f185b"
+          },
+          {
+            "startsAt": "2026-09-29T15:30",
+            "label": "3:30 PM · 15 Person Bike - Pedal Pub Crawl",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f2570ace0c3633332202"
+          },
+          {
+            "startsAt": "2026-09-29T15:30",
+            "label": "3:30 PM · 13 Person Bike - Brewery Crawl",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f4bfa8d9ba42fd215dc2"
+          },
+          {
+            "startsAt": "2026-09-29T15:30",
+            "label": "3:30 PM · 15 Person Bike - Architecture, History and Anything Else Cool Tours",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d7a6098f91ab0485b7de0ac"
+          },
+          {
+            "startsAt": "2026-09-29T15:30",
+            "label": "3:30 PM · 15 Person Bike - Bachelorette Party",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d7a60a4b4bae65c887cff65"
+          },
+          {
+            "startsAt": "2026-09-29T15:30",
+            "label": "3:30 PM · 15 Person Bike - Brewery Crawl",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d7a60af5bfc470a664edb7f"
+          },
+          {
+            "startsAt": "2026-09-29T15:30",
+            "label": "3:30 PM · 15 Person Bike - Progressive Dinners",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d7a60ba5dd9f538b70778e0"
+          },
+          {
+            "startsAt": "2026-09-29T15:30",
+            "label": "3:30 PM · 13 Person Bike - Pedal Pub Crawl",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d7bb1de1b3f122fb06bf0f9"
+          },
+          {
+            "startsAt": "2026-09-29T18:00",
+            "label": "6:00 PM · 13 Person Bike - Architecture, History and Anything Else Cool Tours",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f1790e3e7c2c4974aa0e"
+          },
+          {
+            "startsAt": "2026-09-29T18:00",
+            "label": "6:00 PM · 13 Person Bike - Bachelorette Party",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f182ac6932407822b1c5"
+          },
+          {
+            "startsAt": "2026-09-29T18:00",
+            "label": "6:00 PM · 13 Person Bike - Progressive Dinners",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f18e48b30223df3bf525"
+          },
+          {
+            "startsAt": "2026-09-29T18:00",
+            "label": "6:00 PM · Syracuse 13 Person Bike",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f19cc3ea954e1d4f185b"
+          },
+          {
+            "startsAt": "2026-09-29T18:00",
+            "label": "6:00 PM · 15 Person Bike - Pedal Pub Crawl",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f2570ace0c3633332202"
+          },
+          {
+            "startsAt": "2026-09-29T18:00",
+            "label": "6:00 PM · 13 Person Bike - Brewery Crawl",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f4bfa8d9ba42fd215dc2"
+          },
+          {
+            "startsAt": "2026-09-29T18:00",
+            "label": "6:00 PM · 15 Person Bike - Architecture, History and Anything Else Cool Tours",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d7a6098f91ab0485b7de0ac"
+          },
+          {
+            "startsAt": "2026-09-29T18:00",
+            "label": "6:00 PM · 15 Person Bike - Bachelorette Party",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d7a60a4b4bae65c887cff65"
+          },
+          {
+            "startsAt": "2026-09-29T18:00",
+            "label": "6:00 PM · 15 Person Bike - Brewery Crawl",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d7a60af5bfc470a664edb7f"
+          }
+        ]
+      },
+      {
+        "date": "2026-09-30",
+        "slots": [
+          {
+            "startsAt": "2026-09-30T11:00",
+            "label": "11:00 AM · 13 Person Bike - Architecture, History and Anything Else Cool Tours",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f1790e3e7c2c4974aa0e"
+          },
+          {
+            "startsAt": "2026-09-30T11:00",
+            "label": "11:00 AM · 13 Person Bike - Bachelorette Party",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f182ac6932407822b1c5"
+          },
+          {
+            "startsAt": "2026-09-30T11:00",
+            "label": "11:00 AM · Syracuse 13 Person Bike",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f19cc3ea954e1d4f185b"
+          },
+          {
+            "startsAt": "2026-09-30T11:00",
+            "label": "11:00 AM · 15 Person Bike - Pedal Pub Crawl",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f2570ace0c3633332202"
+          },
+          {
+            "startsAt": "2026-09-30T11:00",
+            "label": "11:00 AM · 13 Person Bike - Brewery Crawl",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f4bfa8d9ba42fd215dc2"
+          },
+          {
+            "startsAt": "2026-09-30T11:00",
+            "label": "11:00 AM · 15 Person Bike - Architecture, History and Anything Else Cool Tours",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d7a6098f91ab0485b7de0ac"
+          },
+          {
+            "startsAt": "2026-09-30T11:00",
+            "label": "11:00 AM · 15 Person Bike - Bachelorette Party",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d7a60a4b4bae65c887cff65"
+          },
+          {
+            "startsAt": "2026-09-30T11:00",
+            "label": "11:00 AM · 15 Person Bike - Brewery Crawl",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d7a60af5bfc470a664edb7f"
+          },
+          {
+            "startsAt": "2026-09-30T11:00",
+            "label": "11:00 AM · 13 Person Bike - Pedal Pub Crawl",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d7bb1de1b3f122fb06bf0f9"
+          },
+          {
+            "startsAt": "2026-09-30T13:00",
+            "label": "1:00 PM · 13 Person Bike - Architecture, History and Anything Else Cool Tours",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f1790e3e7c2c4974aa0e"
+          },
+          {
+            "startsAt": "2026-09-30T13:00",
+            "label": "1:00 PM · 13 Person Bike - Bachelorette Party",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f182ac6932407822b1c5"
+          },
+          {
+            "startsAt": "2026-09-30T13:00",
+            "label": "1:00 PM · 13 Person Bike - Progressive Dinners",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f18e48b30223df3bf525"
+          },
+          {
+            "startsAt": "2026-09-30T13:00",
+            "label": "1:00 PM · Syracuse 13 Person Bike",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f19cc3ea954e1d4f185b"
+          },
+          {
+            "startsAt": "2026-09-30T13:00",
+            "label": "1:00 PM · 15 Person Bike - Pedal Pub Crawl",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f2570ace0c3633332202"
+          },
+          {
+            "startsAt": "2026-09-30T13:00",
+            "label": "1:00 PM · 13 Person Bike - Brewery Crawl",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f4bfa8d9ba42fd215dc2"
+          },
+          {
+            "startsAt": "2026-09-30T13:00",
+            "label": "1:00 PM · 15 Person Bike - Architecture, History and Anything Else Cool Tours",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d7a6098f91ab0485b7de0ac"
+          },
+          {
+            "startsAt": "2026-09-30T13:00",
+            "label": "1:00 PM · 15 Person Bike - Bachelorette Party",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d7a60a4b4bae65c887cff65"
+          },
+          {
+            "startsAt": "2026-09-30T13:00",
+            "label": "1:00 PM · 15 Person Bike - Brewery Crawl",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d7a60af5bfc470a664edb7f"
+          },
+          {
+            "startsAt": "2026-09-30T13:00",
+            "label": "1:00 PM · 15 Person Bike - Progressive Dinners",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d7a60ba5dd9f538b70778e0"
+          },
+          {
+            "startsAt": "2026-09-30T13:00",
+            "label": "1:00 PM · 13 Person Bike - Pedal Pub Crawl",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d7bb1de1b3f122fb06bf0f9"
+          },
+          {
+            "startsAt": "2026-09-30T15:30",
+            "label": "3:30 PM · 13 Person Bike - Architecture, History and Anything Else Cool Tours",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f1790e3e7c2c4974aa0e"
+          },
+          {
+            "startsAt": "2026-09-30T15:30",
+            "label": "3:30 PM · 13 Person Bike - Bachelorette Party",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f182ac6932407822b1c5"
+          },
+          {
+            "startsAt": "2026-09-30T15:30",
+            "label": "3:30 PM · 13 Person Bike - Progressive Dinners",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f18e48b30223df3bf525"
+          },
+          {
+            "startsAt": "2026-09-30T15:30",
+            "label": "3:30 PM · Syracuse 13 Person Bike",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f19cc3ea954e1d4f185b"
+          },
+          {
+            "startsAt": "2026-09-30T15:30",
+            "label": "3:30 PM · 15 Person Bike - Pedal Pub Crawl",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f2570ace0c3633332202"
+          },
+          {
+            "startsAt": "2026-09-30T15:30",
+            "label": "3:30 PM · 13 Person Bike - Brewery Crawl",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f4bfa8d9ba42fd215dc2"
+          },
+          {
+            "startsAt": "2026-09-30T15:30",
+            "label": "3:30 PM · 15 Person Bike - Architecture, History and Anything Else Cool Tours",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d7a6098f91ab0485b7de0ac"
+          },
+          {
+            "startsAt": "2026-09-30T15:30",
+            "label": "3:30 PM · 15 Person Bike - Bachelorette Party",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d7a60a4b4bae65c887cff65"
+          },
+          {
+            "startsAt": "2026-09-30T15:30",
+            "label": "3:30 PM · 15 Person Bike - Brewery Crawl",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d7a60af5bfc470a664edb7f"
+          },
+          {
+            "startsAt": "2026-09-30T15:30",
+            "label": "3:30 PM · 15 Person Bike - Progressive Dinners",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d7a60ba5dd9f538b70778e0"
+          },
+          {
+            "startsAt": "2026-09-30T15:30",
+            "label": "3:30 PM · 13 Person Bike - Pedal Pub Crawl",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d7bb1de1b3f122fb06bf0f9"
+          },
+          {
+            "startsAt": "2026-09-30T18:00",
+            "label": "6:00 PM · 13 Person Bike - Architecture, History and Anything Else Cool Tours",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f1790e3e7c2c4974aa0e"
+          },
+          {
+            "startsAt": "2026-09-30T18:00",
+            "label": "6:00 PM · 13 Person Bike - Bachelorette Party",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f182ac6932407822b1c5"
+          },
+          {
+            "startsAt": "2026-09-30T18:00",
+            "label": "6:00 PM · 13 Person Bike - Progressive Dinners",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f18e48b30223df3bf525"
+          },
+          {
+            "startsAt": "2026-09-30T18:00",
+            "label": "6:00 PM · Syracuse 13 Person Bike",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f19cc3ea954e1d4f185b"
+          },
+          {
+            "startsAt": "2026-09-30T18:00",
+            "label": "6:00 PM · 15 Person Bike - Pedal Pub Crawl",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f2570ace0c3633332202"
+          },
+          {
+            "startsAt": "2026-09-30T18:00",
+            "label": "6:00 PM · 13 Person Bike - Brewery Crawl",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f4bfa8d9ba42fd215dc2"
+          },
+          {
+            "startsAt": "2026-09-30T18:00",
+            "label": "6:00 PM · 15 Person Bike - Architecture, History and Anything Else Cool Tours",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d7a6098f91ab0485b7de0ac"
+          },
+          {
+            "startsAt": "2026-09-30T18:00",
+            "label": "6:00 PM · 15 Person Bike - Bachelorette Party",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d7a60a4b4bae65c887cff65"
+          },
+          {
+            "startsAt": "2026-09-30T18:00",
+            "label": "6:00 PM · 15 Person Bike - Brewery Crawl",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d7a60af5bfc470a664edb7f"
+          }
+        ]
+      },
+      {
+        "date": "2026-10-01",
+        "slots": [
+          {
+            "startsAt": "2026-10-01T11:00",
+            "label": "11:00 AM · 13 Person Bike - Architecture, History and Anything Else Cool Tours",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f1790e3e7c2c4974aa0e"
+          },
+          {
+            "startsAt": "2026-10-01T11:00",
+            "label": "11:00 AM · 13 Person Bike - Bachelorette Party",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f182ac6932407822b1c5"
+          },
+          {
+            "startsAt": "2026-10-01T11:00",
+            "label": "11:00 AM · Syracuse 13 Person Bike",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f19cc3ea954e1d4f185b"
+          },
+          {
+            "startsAt": "2026-10-01T11:00",
+            "label": "11:00 AM · 15 Person Bike - Pedal Pub Crawl",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f2570ace0c3633332202"
+          },
+          {
+            "startsAt": "2026-10-01T11:00",
+            "label": "11:00 AM · 13 Person Bike - Brewery Crawl",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f4bfa8d9ba42fd215dc2"
+          },
+          {
+            "startsAt": "2026-10-01T11:00",
+            "label": "11:00 AM · 15 Person Bike - Architecture, History and Anything Else Cool Tours",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d7a6098f91ab0485b7de0ac"
+          },
+          {
+            "startsAt": "2026-10-01T11:00",
+            "label": "11:00 AM · 15 Person Bike - Bachelorette Party",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d7a60a4b4bae65c887cff65"
+          },
+          {
+            "startsAt": "2026-10-01T11:00",
+            "label": "11:00 AM · 15 Person Bike - Brewery Crawl",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d7a60af5bfc470a664edb7f"
+          },
+          {
+            "startsAt": "2026-10-01T11:00",
+            "label": "11:00 AM · 13 Person Bike - Pedal Pub Crawl",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d7bb1de1b3f122fb06bf0f9"
+          },
+          {
+            "startsAt": "2026-10-01T13:00",
+            "label": "1:00 PM · 13 Person Bike - Architecture, History and Anything Else Cool Tours",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f1790e3e7c2c4974aa0e"
+          },
+          {
+            "startsAt": "2026-10-01T13:00",
+            "label": "1:00 PM · 13 Person Bike - Bachelorette Party",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f182ac6932407822b1c5"
+          },
+          {
+            "startsAt": "2026-10-01T13:00",
+            "label": "1:00 PM · 13 Person Bike - Progressive Dinners",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f18e48b30223df3bf525"
+          },
+          {
+            "startsAt": "2026-10-01T13:00",
+            "label": "1:00 PM · Syracuse 13 Person Bike",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f19cc3ea954e1d4f185b"
+          },
+          {
+            "startsAt": "2026-10-01T13:00",
+            "label": "1:00 PM · 15 Person Bike - Pedal Pub Crawl",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f2570ace0c3633332202"
+          },
+          {
+            "startsAt": "2026-10-01T13:00",
+            "label": "1:00 PM · 13 Person Bike - Brewery Crawl",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f4bfa8d9ba42fd215dc2"
+          },
+          {
+            "startsAt": "2026-10-01T13:00",
+            "label": "1:00 PM · 15 Person Bike - Architecture, History and Anything Else Cool Tours",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d7a6098f91ab0485b7de0ac"
+          },
+          {
+            "startsAt": "2026-10-01T13:00",
+            "label": "1:00 PM · 15 Person Bike - Bachelorette Party",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d7a60a4b4bae65c887cff65"
+          },
+          {
+            "startsAt": "2026-10-01T13:00",
+            "label": "1:00 PM · 15 Person Bike - Brewery Crawl",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d7a60af5bfc470a664edb7f"
+          },
+          {
+            "startsAt": "2026-10-01T13:00",
+            "label": "1:00 PM · 15 Person Bike - Progressive Dinners",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d7a60ba5dd9f538b70778e0"
+          },
+          {
+            "startsAt": "2026-10-01T13:00",
+            "label": "1:00 PM · 13 Person Bike - Pedal Pub Crawl",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d7bb1de1b3f122fb06bf0f9"
+          },
+          {
+            "startsAt": "2026-10-01T15:30",
+            "label": "3:30 PM · 13 Person Bike - Architecture, History and Anything Else Cool Tours",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f1790e3e7c2c4974aa0e"
+          },
+          {
+            "startsAt": "2026-10-01T15:30",
+            "label": "3:30 PM · 13 Person Bike - Bachelorette Party",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f182ac6932407822b1c5"
+          },
+          {
+            "startsAt": "2026-10-01T15:30",
+            "label": "3:30 PM · 13 Person Bike - Progressive Dinners",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f18e48b30223df3bf525"
+          },
+          {
+            "startsAt": "2026-10-01T15:30",
+            "label": "3:30 PM · Syracuse 13 Person Bike",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f19cc3ea954e1d4f185b"
+          },
+          {
+            "startsAt": "2026-10-01T15:30",
+            "label": "3:30 PM · 15 Person Bike - Pedal Pub Crawl",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f2570ace0c3633332202"
+          },
+          {
+            "startsAt": "2026-10-01T15:30",
+            "label": "3:30 PM · 13 Person Bike - Brewery Crawl",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f4bfa8d9ba42fd215dc2"
+          },
+          {
+            "startsAt": "2026-10-01T15:30",
+            "label": "3:30 PM · 15 Person Bike - Architecture, History and Anything Else Cool Tours",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d7a6098f91ab0485b7de0ac"
+          },
+          {
+            "startsAt": "2026-10-01T15:30",
+            "label": "3:30 PM · 15 Person Bike - Bachelorette Party",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d7a60a4b4bae65c887cff65"
+          },
+          {
+            "startsAt": "2026-10-01T15:30",
+            "label": "3:30 PM · 15 Person Bike - Brewery Crawl",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d7a60af5bfc470a664edb7f"
+          },
+          {
+            "startsAt": "2026-10-01T15:30",
+            "label": "3:30 PM · 15 Person Bike - Progressive Dinners",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d7a60ba5dd9f538b70778e0"
+          },
+          {
+            "startsAt": "2026-10-01T15:30",
+            "label": "3:30 PM · 13 Person Bike - Pedal Pub Crawl",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d7bb1de1b3f122fb06bf0f9"
+          },
+          {
+            "startsAt": "2026-10-01T18:00",
+            "label": "6:00 PM · 13 Person Bike - Architecture, History and Anything Else Cool Tours",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f1790e3e7c2c4974aa0e"
+          },
+          {
+            "startsAt": "2026-10-01T18:00",
+            "label": "6:00 PM · 13 Person Bike - Bachelorette Party",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f182ac6932407822b1c5"
+          },
+          {
+            "startsAt": "2026-10-01T18:00",
+            "label": "6:00 PM · 13 Person Bike - Progressive Dinners",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f18e48b30223df3bf525"
+          },
+          {
+            "startsAt": "2026-10-01T18:00",
+            "label": "6:00 PM · Syracuse 13 Person Bike",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f19cc3ea954e1d4f185b"
+          },
+          {
+            "startsAt": "2026-10-01T18:00",
+            "label": "6:00 PM · 15 Person Bike - Pedal Pub Crawl",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f2570ace0c3633332202"
+          },
+          {
+            "startsAt": "2026-10-01T18:00",
+            "label": "6:00 PM · 13 Person Bike - Brewery Crawl",
+            "priceCents": 30000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d78f4bfa8d9ba42fd215dc2"
+          },
+          {
+            "startsAt": "2026-10-01T18:00",
+            "label": "6:00 PM · 15 Person Bike - Architecture, History and Anything Else Cool Tours",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d7a6098f91ab0485b7de0ac"
+          },
+          {
+            "startsAt": "2026-10-01T18:00",
+            "label": "6:00 PM · 15 Person Bike - Bachelorette Party",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d7a60a4b4bae65c887cff65"
+          },
+          {
+            "startsAt": "2026-10-01T18:00",
+            "label": "6:00 PM · 15 Person Bike - Brewery Crawl",
+            "priceCents": 30000,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/5d7a60af5bfc470a664edb7f"
+          }
+        ]
+      },
+      {
+        "date": "2026-10-02",
+        "slots": [
+          {
+            "startsAt": "2026-10-02T11:00",
+            "label": "11:00 AM · 13 Person Bike - Architecture, History Weekend",
+            "priceCents": 35000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/61d8a5ad1a5b135bd44121b0"
+          },
+          {
+            "startsAt": "2026-10-02T13:00",
+            "label": "1:00 PM · 13 Person Bike - Architecture, History Weekend",
+            "priceCents": 35000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/61d8a5ad1a5b135bd44121b0"
+          },
+          {
+            "startsAt": "2026-10-02T15:30",
+            "label": "3:30 PM · 13 Person Bike - Architecture, History Weekend",
+            "priceCents": 35000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/61d8a5ad1a5b135bd44121b0"
+          },
+          {
+            "startsAt": "2026-10-02T18:00",
+            "label": "6:00 PM · 13 Person Bike - Architecture, History Weekend",
+            "priceCents": 35000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/61d8a5ad1a5b135bd44121b0"
+          }
+        ]
+      },
+      {
+        "date": "2026-10-03",
+        "slots": [
+          {
+            "startsAt": "2026-10-03T11:00",
+            "label": "11:00 AM · 13 Person Bike - Architecture, History Weekend",
+            "priceCents": 35000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/61d8a5ad1a5b135bd44121b0"
+          },
+          {
+            "startsAt": "2026-10-03T13:00",
+            "label": "1:00 PM · 13 Person Bike - Architecture, History Weekend",
+            "priceCents": 35000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/61d8a5ad1a5b135bd44121b0"
+          },
+          {
+            "startsAt": "2026-10-03T15:30",
+            "label": "3:30 PM · 13 Person Bike - Architecture, History Weekend",
+            "priceCents": 35000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/61d8a5ad1a5b135bd44121b0"
+          },
+          {
+            "startsAt": "2026-10-03T18:00",
+            "label": "6:00 PM · 13 Person Bike - Architecture, History Weekend",
+            "priceCents": 35000,
+            "seatsLeft": 13,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/5d78ee8c2418140e0232c7a3/experiences/61d8a5ad1a5b135bd44121b0"
+          }
+        ]
+      }
+    ],
+    "partial": true,
+    "note": "12 of 23 experiences read"
+  }
+}

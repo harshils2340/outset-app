@@ -1,0 +1,2092 @@
+{
+  "id": "fareharbor/ufospensacolabeach-com",
+  "vendor": "fareharbor",
+  "domain": "ufospensacolabeach.com",
+  "bookingUrl": "https://fareharbor.com/embeds/book/ufospensacolabeach/items/249649/calendar/2023/12/?flow=437712&full-items=yes",
+  "operatorId": "case-fareharbor-ufospensacolabeach-com",
+  "from": "2026-09-20",
+  "days": 14,
+  "capturedAt": "2026-09-20T04:28:20.509Z",
+  "observed": {
+    "vendor": "fareharbor",
+    "live": true,
+    "updatedAt": "2026-09-20T04:28:20.509Z",
+    "days": [
+      {
+        "date": "2026-09-20",
+        "slots": [
+          {
+            "startsAt": "2026-09-20T12:00",
+            "label": "12:00 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153785/book/"
+          },
+          {
+            "startsAt": "2026-09-20T12:15",
+            "label": "12:15 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153789/book/"
+          },
+          {
+            "startsAt": "2026-09-20T12:30",
+            "label": "12:30 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153623/book/"
+          },
+          {
+            "startsAt": "2026-09-20T12:45",
+            "label": "12:45 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153629/book/"
+          },
+          {
+            "startsAt": "2026-09-20T13:00",
+            "label": "1:00 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153635/book/"
+          },
+          {
+            "startsAt": "2026-09-20T13:15",
+            "label": "1:15 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153642/book/"
+          },
+          {
+            "startsAt": "2026-09-20T13:30",
+            "label": "1:30 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153647/book/"
+          },
+          {
+            "startsAt": "2026-09-20T13:45",
+            "label": "1:45 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153652/book/"
+          },
+          {
+            "startsAt": "2026-09-20T14:00",
+            "label": "2:00 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153657/book/"
+          },
+          {
+            "startsAt": "2026-09-20T14:15",
+            "label": "2:15 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153662/book/"
+          },
+          {
+            "startsAt": "2026-09-20T14:30",
+            "label": "2:30 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153666/book/"
+          },
+          {
+            "startsAt": "2026-09-20T14:45",
+            "label": "2:45 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153672/book/"
+          },
+          {
+            "startsAt": "2026-09-20T15:00",
+            "label": "3:00 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153675/book/"
+          },
+          {
+            "startsAt": "2026-09-20T15:15",
+            "label": "3:15 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153681/book/"
+          },
+          {
+            "startsAt": "2026-09-20T15:30",
+            "label": "3:30 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153687/book/"
+          },
+          {
+            "startsAt": "2026-09-20T17:00",
+            "label": "5:00 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153720/book/"
+          },
+          {
+            "startsAt": "2026-09-20T17:15",
+            "label": "5:15 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153723/book/"
+          },
+          {
+            "startsAt": "2026-09-20T17:30",
+            "label": "5:30 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153725/book/"
+          },
+          {
+            "startsAt": "2026-09-20T17:45",
+            "label": "5:45 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153728/book/"
+          },
+          {
+            "startsAt": "2026-09-20T18:00",
+            "label": "6:00 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153733/book/"
+          },
+          {
+            "startsAt": "2026-09-20T18:15",
+            "label": "6:15 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153738/book/"
+          },
+          {
+            "startsAt": "2026-09-20T18:30",
+            "label": "6:30 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153743/book/"
+          },
+          {
+            "startsAt": "2026-09-20T18:45",
+            "label": "6:45 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153749/book/"
+          },
+          {
+            "startsAt": "2026-09-20T19:00",
+            "label": "7:00 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153754/book/"
+          }
+        ]
+      },
+      {
+        "date": "2026-09-21",
+        "slots": [
+          {
+            "startsAt": "2026-09-21T12:00",
+            "label": "12:00 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153760/book/"
+          },
+          {
+            "startsAt": "2026-09-21T12:15",
+            "label": "12:15 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153767/book/"
+          },
+          {
+            "startsAt": "2026-09-21T12:30",
+            "label": "12:30 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153774/book/"
+          },
+          {
+            "startsAt": "2026-09-21T12:45",
+            "label": "12:45 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153780/book/"
+          },
+          {
+            "startsAt": "2026-09-21T13:00",
+            "label": "1:00 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153788/book/"
+          },
+          {
+            "startsAt": "2026-09-21T13:15",
+            "label": "1:15 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153793/book/"
+          },
+          {
+            "startsAt": "2026-09-21T13:30",
+            "label": "1:30 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153797/book/"
+          },
+          {
+            "startsAt": "2026-09-21T13:45",
+            "label": "1:45 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153801/book/"
+          },
+          {
+            "startsAt": "2026-09-21T14:00",
+            "label": "2:00 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153805/book/"
+          },
+          {
+            "startsAt": "2026-09-21T14:15",
+            "label": "2:15 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153810/book/"
+          },
+          {
+            "startsAt": "2026-09-21T14:30",
+            "label": "2:30 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153815/book/"
+          },
+          {
+            "startsAt": "2026-09-21T14:45",
+            "label": "2:45 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153817/book/"
+          },
+          {
+            "startsAt": "2026-09-21T15:00",
+            "label": "3:00 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153823/book/"
+          },
+          {
+            "startsAt": "2026-09-21T15:15",
+            "label": "3:15 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153826/book/"
+          },
+          {
+            "startsAt": "2026-09-21T15:30",
+            "label": "3:30 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153831/book/"
+          },
+          {
+            "startsAt": "2026-09-21T15:45",
+            "label": "3:45 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153835/book/"
+          },
+          {
+            "startsAt": "2026-09-21T16:00",
+            "label": "4:00 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153836/book/"
+          },
+          {
+            "startsAt": "2026-09-21T16:15",
+            "label": "4:15 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153841/book/"
+          },
+          {
+            "startsAt": "2026-09-21T16:30",
+            "label": "4:30 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153844/book/"
+          },
+          {
+            "startsAt": "2026-09-21T16:45",
+            "label": "4:45 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153853/book/"
+          },
+          {
+            "startsAt": "2026-09-21T17:00",
+            "label": "5:00 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153857/book/"
+          },
+          {
+            "startsAt": "2026-09-21T17:15",
+            "label": "5:15 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153863/book/"
+          },
+          {
+            "startsAt": "2026-09-21T17:30",
+            "label": "5:30 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153870/book/"
+          },
+          {
+            "startsAt": "2026-09-21T17:45",
+            "label": "5:45 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153746/book/"
+          },
+          {
+            "startsAt": "2026-09-21T18:00",
+            "label": "6:00 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153752/book/"
+          },
+          {
+            "startsAt": "2026-09-21T18:15",
+            "label": "6:15 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153759/book/"
+          },
+          {
+            "startsAt": "2026-09-21T18:30",
+            "label": "6:30 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153769/book/"
+          },
+          {
+            "startsAt": "2026-09-21T18:45",
+            "label": "6:45 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153776/book/"
+          },
+          {
+            "startsAt": "2026-09-21T19:00",
+            "label": "7:00 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153781/book/"
+          }
+        ]
+      },
+      {
+        "date": "2026-09-22",
+        "slots": [
+          {
+            "startsAt": "2026-09-22T12:00",
+            "label": "12:00 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153787/book/"
+          },
+          {
+            "startsAt": "2026-09-22T12:15",
+            "label": "12:15 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153790/book/"
+          },
+          {
+            "startsAt": "2026-09-22T12:30",
+            "label": "12:30 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153794/book/"
+          },
+          {
+            "startsAt": "2026-09-22T12:45",
+            "label": "12:45 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153798/book/"
+          },
+          {
+            "startsAt": "2026-09-22T13:00",
+            "label": "1:00 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153803/book/"
+          },
+          {
+            "startsAt": "2026-09-22T13:15",
+            "label": "1:15 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153807/book/"
+          },
+          {
+            "startsAt": "2026-09-22T13:30",
+            "label": "1:30 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153812/book/"
+          },
+          {
+            "startsAt": "2026-09-22T13:45",
+            "label": "1:45 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153816/book/"
+          },
+          {
+            "startsAt": "2026-09-22T14:00",
+            "label": "2:00 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153818/book/"
+          },
+          {
+            "startsAt": "2026-09-22T14:15",
+            "label": "2:15 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153822/book/"
+          },
+          {
+            "startsAt": "2026-09-22T14:30",
+            "label": "2:30 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153827/book/"
+          },
+          {
+            "startsAt": "2026-09-22T14:45",
+            "label": "2:45 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153830/book/"
+          },
+          {
+            "startsAt": "2026-09-22T15:00",
+            "label": "3:00 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153834/book/"
+          },
+          {
+            "startsAt": "2026-09-22T15:15",
+            "label": "3:15 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153837/book/"
+          },
+          {
+            "startsAt": "2026-09-22T15:30",
+            "label": "3:30 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153842/book/"
+          },
+          {
+            "startsAt": "2026-09-22T15:45",
+            "label": "3:45 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153847/book/"
+          },
+          {
+            "startsAt": "2026-09-22T16:00",
+            "label": "4:00 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153852/book/"
+          },
+          {
+            "startsAt": "2026-09-22T16:15",
+            "label": "4:15 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153855/book/"
+          },
+          {
+            "startsAt": "2026-09-22T16:30",
+            "label": "4:30 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153861/book/"
+          },
+          {
+            "startsAt": "2026-09-22T16:45",
+            "label": "4:45 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153868/book/"
+          },
+          {
+            "startsAt": "2026-09-22T17:00",
+            "label": "5:00 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153874/book/"
+          },
+          {
+            "startsAt": "2026-09-22T17:15",
+            "label": "5:15 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153879/book/"
+          },
+          {
+            "startsAt": "2026-09-22T17:30",
+            "label": "5:30 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153882/book/"
+          },
+          {
+            "startsAt": "2026-09-22T17:45",
+            "label": "5:45 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153887/book/"
+          },
+          {
+            "startsAt": "2026-09-22T18:00",
+            "label": "6:00 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153891/book/"
+          },
+          {
+            "startsAt": "2026-09-22T18:15",
+            "label": "6:15 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153894/book/"
+          },
+          {
+            "startsAt": "2026-09-22T18:30",
+            "label": "6:30 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153900/book/"
+          },
+          {
+            "startsAt": "2026-09-22T18:45",
+            "label": "6:45 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153902/book/"
+          },
+          {
+            "startsAt": "2026-09-22T19:00",
+            "label": "7:00 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153907/book/"
+          }
+        ]
+      },
+      {
+        "date": "2026-09-23",
+        "slots": [
+          {
+            "startsAt": "2026-09-23T12:00",
+            "label": "12:00 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153911/book/"
+          },
+          {
+            "startsAt": "2026-09-23T12:15",
+            "label": "12:15 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153916/book/"
+          },
+          {
+            "startsAt": "2026-09-23T12:30",
+            "label": "12:30 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153922/book/"
+          },
+          {
+            "startsAt": "2026-09-23T12:45",
+            "label": "12:45 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153927/book/"
+          },
+          {
+            "startsAt": "2026-09-23T13:00",
+            "label": "1:00 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153930/book/"
+          },
+          {
+            "startsAt": "2026-09-23T13:15",
+            "label": "1:15 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153938/book/"
+          },
+          {
+            "startsAt": "2026-09-23T13:30",
+            "label": "1:30 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153941/book/"
+          },
+          {
+            "startsAt": "2026-09-23T13:45",
+            "label": "1:45 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153948/book/"
+          },
+          {
+            "startsAt": "2026-09-23T14:00",
+            "label": "2:00 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153952/book/"
+          },
+          {
+            "startsAt": "2026-09-23T14:15",
+            "label": "2:15 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153959/book/"
+          },
+          {
+            "startsAt": "2026-09-23T14:30",
+            "label": "2:30 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153964/book/"
+          },
+          {
+            "startsAt": "2026-09-23T14:45",
+            "label": "2:45 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153971/book/"
+          },
+          {
+            "startsAt": "2026-09-23T15:00",
+            "label": "3:00 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153980/book/"
+          },
+          {
+            "startsAt": "2026-09-23T15:15",
+            "label": "3:15 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153986/book/"
+          },
+          {
+            "startsAt": "2026-09-23T15:30",
+            "label": "3:30 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153991/book/"
+          },
+          {
+            "startsAt": "2026-09-23T15:45",
+            "label": "3:45 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153732/book/"
+          },
+          {
+            "startsAt": "2026-09-23T16:00",
+            "label": "4:00 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153737/book/"
+          },
+          {
+            "startsAt": "2026-09-23T16:15",
+            "label": "4:15 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153744/book/"
+          },
+          {
+            "startsAt": "2026-09-23T16:30",
+            "label": "4:30 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153748/book/"
+          },
+          {
+            "startsAt": "2026-09-23T16:45",
+            "label": "4:45 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153755/book/"
+          },
+          {
+            "startsAt": "2026-09-23T17:00",
+            "label": "5:00 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153762/book/"
+          },
+          {
+            "startsAt": "2026-09-23T17:15",
+            "label": "5:15 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153768/book/"
+          },
+          {
+            "startsAt": "2026-09-23T17:30",
+            "label": "5:30 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153773/book/"
+          },
+          {
+            "startsAt": "2026-09-23T17:45",
+            "label": "5:45 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153782/book/"
+          },
+          {
+            "startsAt": "2026-09-23T18:00",
+            "label": "6:00 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153786/book/"
+          },
+          {
+            "startsAt": "2026-09-23T18:15",
+            "label": "6:15 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153792/book/"
+          },
+          {
+            "startsAt": "2026-09-23T18:30",
+            "label": "6:30 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153796/book/"
+          },
+          {
+            "startsAt": "2026-09-23T18:45",
+            "label": "6:45 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153800/book/"
+          },
+          {
+            "startsAt": "2026-09-23T19:00",
+            "label": "7:00 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153804/book/"
+          }
+        ]
+      },
+      {
+        "date": "2026-09-24",
+        "slots": [
+          {
+            "startsAt": "2026-09-24T12:00",
+            "label": "12:00 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153808/book/"
+          },
+          {
+            "startsAt": "2026-09-24T12:15",
+            "label": "12:15 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153811/book/"
+          },
+          {
+            "startsAt": "2026-09-24T12:30",
+            "label": "12:30 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153814/book/"
+          },
+          {
+            "startsAt": "2026-09-24T12:45",
+            "label": "12:45 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153820/book/"
+          },
+          {
+            "startsAt": "2026-09-24T13:00",
+            "label": "1:00 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153825/book/"
+          },
+          {
+            "startsAt": "2026-09-24T13:15",
+            "label": "1:15 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153829/book/"
+          },
+          {
+            "startsAt": "2026-09-24T13:30",
+            "label": "1:30 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153832/book/"
+          },
+          {
+            "startsAt": "2026-09-24T13:45",
+            "label": "1:45 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153839/book/"
+          },
+          {
+            "startsAt": "2026-09-24T14:00",
+            "label": "2:00 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153845/book/"
+          },
+          {
+            "startsAt": "2026-09-24T14:15",
+            "label": "2:15 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153851/book/"
+          },
+          {
+            "startsAt": "2026-09-24T14:30",
+            "label": "2:30 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153858/book/"
+          },
+          {
+            "startsAt": "2026-09-24T14:45",
+            "label": "2:45 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153862/book/"
+          },
+          {
+            "startsAt": "2026-09-24T15:00",
+            "label": "3:00 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153867/book/"
+          },
+          {
+            "startsAt": "2026-09-24T15:15",
+            "label": "3:15 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153872/book/"
+          },
+          {
+            "startsAt": "2026-09-24T15:30",
+            "label": "3:30 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153877/book/"
+          },
+          {
+            "startsAt": "2026-09-24T15:45",
+            "label": "3:45 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153881/book/"
+          },
+          {
+            "startsAt": "2026-09-24T16:00",
+            "label": "4:00 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153886/book/"
+          },
+          {
+            "startsAt": "2026-09-24T16:15",
+            "label": "4:15 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153890/book/"
+          },
+          {
+            "startsAt": "2026-09-24T16:30",
+            "label": "4:30 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153896/book/"
+          },
+          {
+            "startsAt": "2026-09-24T16:45",
+            "label": "4:45 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153898/book/"
+          },
+          {
+            "startsAt": "2026-09-24T17:00",
+            "label": "5:00 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153904/book/"
+          },
+          {
+            "startsAt": "2026-09-24T17:15",
+            "label": "5:15 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153909/book/"
+          },
+          {
+            "startsAt": "2026-09-24T17:30",
+            "label": "5:30 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153914/book/"
+          },
+          {
+            "startsAt": "2026-09-24T17:45",
+            "label": "5:45 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153920/book/"
+          },
+          {
+            "startsAt": "2026-09-24T18:00",
+            "label": "6:00 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153926/book/"
+          },
+          {
+            "startsAt": "2026-09-24T18:15",
+            "label": "6:15 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153928/book/"
+          },
+          {
+            "startsAt": "2026-09-24T18:30",
+            "label": "6:30 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153937/book/"
+          },
+          {
+            "startsAt": "2026-09-24T18:45",
+            "label": "6:45 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153942/book/"
+          },
+          {
+            "startsAt": "2026-09-24T19:00",
+            "label": "7:00 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153946/book/"
+          }
+        ]
+      },
+      {
+        "date": "2026-09-25",
+        "slots": [
+          {
+            "startsAt": "2026-09-25T12:00",
+            "label": "12:00 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153954/book/"
+          },
+          {
+            "startsAt": "2026-09-25T12:15",
+            "label": "12:15 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153960/book/"
+          },
+          {
+            "startsAt": "2026-09-25T12:30",
+            "label": "12:30 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153966/book/"
+          },
+          {
+            "startsAt": "2026-09-25T12:45",
+            "label": "12:45 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153973/book/"
+          },
+          {
+            "startsAt": "2026-09-25T13:00",
+            "label": "1:00 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153979/book/"
+          },
+          {
+            "startsAt": "2026-09-25T13:15",
+            "label": "1:15 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153984/book/"
+          },
+          {
+            "startsAt": "2026-09-25T13:30",
+            "label": "1:30 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153990/book/"
+          },
+          {
+            "startsAt": "2026-09-25T13:45",
+            "label": "1:45 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153736/book/"
+          },
+          {
+            "startsAt": "2026-09-25T14:00",
+            "label": "2:00 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153742/book/"
+          },
+          {
+            "startsAt": "2026-09-25T14:15",
+            "label": "2:15 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153750/book/"
+          },
+          {
+            "startsAt": "2026-09-25T14:30",
+            "label": "2:30 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153756/book/"
+          },
+          {
+            "startsAt": "2026-09-25T14:45",
+            "label": "2:45 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153761/book/"
+          },
+          {
+            "startsAt": "2026-09-25T15:00",
+            "label": "3:00 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153770/book/"
+          },
+          {
+            "startsAt": "2026-09-25T15:15",
+            "label": "3:15 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153775/book/"
+          },
+          {
+            "startsAt": "2026-09-25T15:30",
+            "label": "3:30 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153779/book/"
+          },
+          {
+            "startsAt": "2026-09-25T15:45",
+            "label": "3:45 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153784/book/"
+          },
+          {
+            "startsAt": "2026-09-25T16:00",
+            "label": "4:00 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153791/book/"
+          },
+          {
+            "startsAt": "2026-09-25T16:15",
+            "label": "4:15 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153795/book/"
+          },
+          {
+            "startsAt": "2026-09-25T16:30",
+            "label": "4:30 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153799/book/"
+          },
+          {
+            "startsAt": "2026-09-25T16:45",
+            "label": "4:45 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153802/book/"
+          },
+          {
+            "startsAt": "2026-09-25T17:00",
+            "label": "5:00 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153806/book/"
+          },
+          {
+            "startsAt": "2026-09-25T17:15",
+            "label": "5:15 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153809/book/"
+          },
+          {
+            "startsAt": "2026-09-25T17:30",
+            "label": "5:30 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153813/book/"
+          },
+          {
+            "startsAt": "2026-09-25T17:45",
+            "label": "5:45 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153819/book/"
+          },
+          {
+            "startsAt": "2026-09-25T18:00",
+            "label": "6:00 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153821/book/"
+          },
+          {
+            "startsAt": "2026-09-25T18:15",
+            "label": "6:15 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153824/book/"
+          },
+          {
+            "startsAt": "2026-09-25T18:30",
+            "label": "6:30 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153828/book/"
+          },
+          {
+            "startsAt": "2026-09-25T18:45",
+            "label": "6:45 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153833/book/"
+          },
+          {
+            "startsAt": "2026-09-25T19:00",
+            "label": "7:00 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153840/book/"
+          }
+        ]
+      },
+      {
+        "date": "2026-09-26",
+        "slots": [
+          {
+            "startsAt": "2026-09-26T12:00",
+            "label": "12:00 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153846/book/"
+          },
+          {
+            "startsAt": "2026-09-26T12:15",
+            "label": "12:15 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153850/book/"
+          },
+          {
+            "startsAt": "2026-09-26T12:30",
+            "label": "12:30 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153859/book/"
+          },
+          {
+            "startsAt": "2026-09-26T12:45",
+            "label": "12:45 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153864/book/"
+          },
+          {
+            "startsAt": "2026-09-26T13:00",
+            "label": "1:00 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153875/book/"
+          },
+          {
+            "startsAt": "2026-09-26T13:15",
+            "label": "1:15 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153884/book/"
+          },
+          {
+            "startsAt": "2026-09-26T13:30",
+            "label": "1:30 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153895/book/"
+          },
+          {
+            "startsAt": "2026-09-26T13:45",
+            "label": "1:45 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153905/book/"
+          },
+          {
+            "startsAt": "2026-09-26T14:00",
+            "label": "2:00 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153921/book/"
+          },
+          {
+            "startsAt": "2026-09-26T14:15",
+            "label": "2:15 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153955/book/"
+          },
+          {
+            "startsAt": "2026-09-26T14:30",
+            "label": "2:30 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153972/book/"
+          },
+          {
+            "startsAt": "2026-09-26T14:45",
+            "label": "2:45 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153993/book/"
+          },
+          {
+            "startsAt": "2026-09-26T15:00",
+            "label": "3:00 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153999/book/"
+          },
+          {
+            "startsAt": "2026-09-26T15:15",
+            "label": "3:15 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015154004/book/"
+          },
+          {
+            "startsAt": "2026-09-26T15:30",
+            "label": "3:30 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015154009/book/"
+          },
+          {
+            "startsAt": "2026-09-26T15:45",
+            "label": "3:45 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015154015/book/"
+          },
+          {
+            "startsAt": "2026-09-26T16:00",
+            "label": "4:00 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015154021/book/"
+          },
+          {
+            "startsAt": "2026-09-26T16:15",
+            "label": "4:15 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015154028/book/"
+          },
+          {
+            "startsAt": "2026-09-26T16:30",
+            "label": "4:30 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015154034/book/"
+          },
+          {
+            "startsAt": "2026-09-26T16:45",
+            "label": "4:45 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015154040/book/"
+          },
+          {
+            "startsAt": "2026-09-26T17:00",
+            "label": "5:00 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015154047/book/"
+          },
+          {
+            "startsAt": "2026-09-26T17:15",
+            "label": "5:15 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015154053/book/"
+          },
+          {
+            "startsAt": "2026-09-26T17:30",
+            "label": "5:30 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015154058/book/"
+          },
+          {
+            "startsAt": "2026-09-26T17:45",
+            "label": "5:45 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015154065/book/"
+          },
+          {
+            "startsAt": "2026-09-26T18:00",
+            "label": "6:00 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015154070/book/"
+          },
+          {
+            "startsAt": "2026-09-26T18:15",
+            "label": "6:15 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015154075/book/"
+          },
+          {
+            "startsAt": "2026-09-26T18:30",
+            "label": "6:30 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015154084/book/"
+          },
+          {
+            "startsAt": "2026-09-26T18:45",
+            "label": "6:45 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015154091/book/"
+          },
+          {
+            "startsAt": "2026-09-26T19:00",
+            "label": "7:00 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153848/book/"
+          }
+        ]
+      },
+      {
+        "date": "2026-09-27",
+        "slots": [
+          {
+            "startsAt": "2026-09-27T12:00",
+            "label": "12:00 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153856/book/"
+          },
+          {
+            "startsAt": "2026-09-27T12:15",
+            "label": "12:15 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153865/book/"
+          },
+          {
+            "startsAt": "2026-09-27T12:30",
+            "label": "12:30 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153869/book/"
+          },
+          {
+            "startsAt": "2026-09-27T12:45",
+            "label": "12:45 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153873/book/"
+          },
+          {
+            "startsAt": "2026-09-27T13:00",
+            "label": "1:00 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153878/book/"
+          },
+          {
+            "startsAt": "2026-09-27T13:15",
+            "label": "1:15 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153883/book/"
+          },
+          {
+            "startsAt": "2026-09-27T13:30",
+            "label": "1:30 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153888/book/"
+          },
+          {
+            "startsAt": "2026-09-27T13:45",
+            "label": "1:45 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153892/book/"
+          },
+          {
+            "startsAt": "2026-09-27T14:00",
+            "label": "2:00 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153897/book/"
+          },
+          {
+            "startsAt": "2026-09-27T14:15",
+            "label": "2:15 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153901/book/"
+          },
+          {
+            "startsAt": "2026-09-27T14:30",
+            "label": "2:30 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153906/book/"
+          },
+          {
+            "startsAt": "2026-09-27T14:45",
+            "label": "2:45 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153910/book/"
+          },
+          {
+            "startsAt": "2026-09-27T15:00",
+            "label": "3:00 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153915/book/"
+          },
+          {
+            "startsAt": "2026-09-27T15:15",
+            "label": "3:15 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153919/book/"
+          },
+          {
+            "startsAt": "2026-09-27T15:30",
+            "label": "3:30 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153925/book/"
+          },
+          {
+            "startsAt": "2026-09-27T15:45",
+            "label": "3:45 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153932/book/"
+          },
+          {
+            "startsAt": "2026-09-27T16:00",
+            "label": "4:00 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153935/book/"
+          },
+          {
+            "startsAt": "2026-09-27T16:15",
+            "label": "4:15 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153943/book/"
+          },
+          {
+            "startsAt": "2026-09-27T16:30",
+            "label": "4:30 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153950/book/"
+          },
+          {
+            "startsAt": "2026-09-27T16:45",
+            "label": "4:45 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153957/book/"
+          },
+          {
+            "startsAt": "2026-09-27T17:00",
+            "label": "5:00 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153963/book/"
+          },
+          {
+            "startsAt": "2026-09-27T17:15",
+            "label": "5:15 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153969/book/"
+          },
+          {
+            "startsAt": "2026-09-27T17:30",
+            "label": "5:30 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153976/book/"
+          },
+          {
+            "startsAt": "2026-09-27T17:45",
+            "label": "5:45 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153985/book/"
+          },
+          {
+            "startsAt": "2026-09-27T18:00",
+            "label": "6:00 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153992/book/"
+          },
+          {
+            "startsAt": "2026-09-27T18:15",
+            "label": "6:15 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153998/book/"
+          },
+          {
+            "startsAt": "2026-09-27T18:30",
+            "label": "6:30 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015154008/book/"
+          },
+          {
+            "startsAt": "2026-09-27T18:45",
+            "label": "6:45 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015154014/book/"
+          },
+          {
+            "startsAt": "2026-09-27T19:00",
+            "label": "7:00 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015154020/book/"
+          }
+        ]
+      },
+      {
+        "date": "2026-09-28",
+        "slots": [
+          {
+            "startsAt": "2026-09-28T12:00",
+            "label": "12:00 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015154026/book/"
+          },
+          {
+            "startsAt": "2026-09-28T12:15",
+            "label": "12:15 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015154031/book/"
+          },
+          {
+            "startsAt": "2026-09-28T12:30",
+            "label": "12:30 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015154038/book/"
+          },
+          {
+            "startsAt": "2026-09-28T12:45",
+            "label": "12:45 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015154046/book/"
+          },
+          {
+            "startsAt": "2026-09-28T13:00",
+            "label": "1:00 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015154049/book/"
+          },
+          {
+            "startsAt": "2026-09-28T13:15",
+            "label": "1:15 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015154057/book/"
+          },
+          {
+            "startsAt": "2026-09-28T13:30",
+            "label": "1:30 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015154064/book/"
+          },
+          {
+            "startsAt": "2026-09-28T13:45",
+            "label": "1:45 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015154069/book/"
+          },
+          {
+            "startsAt": "2026-09-28T14:00",
+            "label": "2:00 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015154074/book/"
+          },
+          {
+            "startsAt": "2026-09-28T14:15",
+            "label": "2:15 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015154080/book/"
+          },
+          {
+            "startsAt": "2026-09-28T14:30",
+            "label": "2:30 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015154089/book/"
+          },
+          {
+            "startsAt": "2026-09-28T14:45",
+            "label": "2:45 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015154096/book/"
+          },
+          {
+            "startsAt": "2026-09-28T15:00",
+            "label": "3:00 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015154101/book/"
+          },
+          {
+            "startsAt": "2026-09-28T15:15",
+            "label": "3:15 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015154109/book/"
+          },
+          {
+            "startsAt": "2026-09-28T15:30",
+            "label": "3:30 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015154114/book/"
+          },
+          {
+            "startsAt": "2026-09-28T15:45",
+            "label": "3:45 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015154119/book/"
+          },
+          {
+            "startsAt": "2026-09-28T16:00",
+            "label": "4:00 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015154124/book/"
+          },
+          {
+            "startsAt": "2026-09-28T16:15",
+            "label": "4:15 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015154133/book/"
+          },
+          {
+            "startsAt": "2026-09-28T16:30",
+            "label": "4:30 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015154137/book/"
+          },
+          {
+            "startsAt": "2026-09-28T16:45",
+            "label": "4:45 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015154143/book/"
+          },
+          {
+            "startsAt": "2026-09-28T17:00",
+            "label": "5:00 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153838/book/"
+          },
+          {
+            "startsAt": "2026-09-28T17:15",
+            "label": "5:15 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153843/book/"
+          },
+          {
+            "startsAt": "2026-09-28T17:30",
+            "label": "5:30 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153849/book/"
+          },
+          {
+            "startsAt": "2026-09-28T17:45",
+            "label": "5:45 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153854/book/"
+          },
+          {
+            "startsAt": "2026-09-28T18:00",
+            "label": "6:00 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153860/book/"
+          },
+          {
+            "startsAt": "2026-09-28T18:15",
+            "label": "6:15 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153866/book/"
+          },
+          {
+            "startsAt": "2026-09-28T18:30",
+            "label": "6:30 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153871/book/"
+          },
+          {
+            "startsAt": "2026-09-28T18:45",
+            "label": "6:45 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153876/book/"
+          },
+          {
+            "startsAt": "2026-09-28T19:00",
+            "label": "7:00 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153880/book/"
+          }
+        ]
+      },
+      {
+        "date": "2026-09-29",
+        "slots": [
+          {
+            "startsAt": "2026-09-29T12:00",
+            "label": "12:00 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153885/book/"
+          },
+          {
+            "startsAt": "2026-09-29T12:15",
+            "label": "12:15 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153889/book/"
+          },
+          {
+            "startsAt": "2026-09-29T12:30",
+            "label": "12:30 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153893/book/"
+          },
+          {
+            "startsAt": "2026-09-29T12:45",
+            "label": "12:45 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153899/book/"
+          },
+          {
+            "startsAt": "2026-09-29T13:00",
+            "label": "1:00 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153903/book/"
+          },
+          {
+            "startsAt": "2026-09-29T13:15",
+            "label": "1:15 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153908/book/"
+          },
+          {
+            "startsAt": "2026-09-29T13:30",
+            "label": "1:30 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153912/book/"
+          },
+          {
+            "startsAt": "2026-09-29T13:45",
+            "label": "1:45 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153917/book/"
+          },
+          {
+            "startsAt": "2026-09-29T14:00",
+            "label": "2:00 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153923/book/"
+          },
+          {
+            "startsAt": "2026-09-29T14:15",
+            "label": "2:15 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153931/book/"
+          },
+          {
+            "startsAt": "2026-09-29T14:30",
+            "label": "2:30 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153936/book/"
+          },
+          {
+            "startsAt": "2026-09-29T14:45",
+            "label": "2:45 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153944/book/"
+          },
+          {
+            "startsAt": "2026-09-29T15:00",
+            "label": "3:00 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153949/book/"
+          },
+          {
+            "startsAt": "2026-09-29T15:15",
+            "label": "3:15 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153956/book/"
+          },
+          {
+            "startsAt": "2026-09-29T15:30",
+            "label": "3:30 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153961/book/"
+          },
+          {
+            "startsAt": "2026-09-29T15:45",
+            "label": "3:45 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153967/book/"
+          },
+          {
+            "startsAt": "2026-09-29T16:00",
+            "label": "4:00 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153974/book/"
+          },
+          {
+            "startsAt": "2026-09-29T16:15",
+            "label": "4:15 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153977/book/"
+          },
+          {
+            "startsAt": "2026-09-29T16:30",
+            "label": "4:30 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153983/book/"
+          },
+          {
+            "startsAt": "2026-09-29T16:45",
+            "label": "4:45 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153989/book/"
+          },
+          {
+            "startsAt": "2026-09-29T17:00",
+            "label": "5:00 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153996/book/"
+          },
+          {
+            "startsAt": "2026-09-29T17:15",
+            "label": "5:15 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015154002/book/"
+          },
+          {
+            "startsAt": "2026-09-29T17:30",
+            "label": "5:30 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015154007/book/"
+          },
+          {
+            "startsAt": "2026-09-29T17:45",
+            "label": "5:45 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015154012/book/"
+          },
+          {
+            "startsAt": "2026-09-29T18:00",
+            "label": "6:00 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015154019/book/"
+          },
+          {
+            "startsAt": "2026-09-29T18:15",
+            "label": "6:15 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015154025/book/"
+          },
+          {
+            "startsAt": "2026-09-29T18:30",
+            "label": "6:30 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015154032/book/"
+          },
+          {
+            "startsAt": "2026-09-29T18:45",
+            "label": "6:45 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015154037/book/"
+          },
+          {
+            "startsAt": "2026-09-29T19:00",
+            "label": "7:00 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015154042/book/"
+          }
+        ]
+      },
+      {
+        "date": "2026-09-30",
+        "slots": [
+          {
+            "startsAt": "2026-09-30T12:00",
+            "label": "12:00 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015154048/book/"
+          },
+          {
+            "startsAt": "2026-09-30T12:15",
+            "label": "12:15 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015154054/book/"
+          },
+          {
+            "startsAt": "2026-09-30T12:30",
+            "label": "12:30 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015154060/book/"
+          },
+          {
+            "startsAt": "2026-09-30T12:45",
+            "label": "12:45 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015154067/book/"
+          },
+          {
+            "startsAt": "2026-09-30T13:00",
+            "label": "1:00 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015154071/book/"
+          },
+          {
+            "startsAt": "2026-09-30T13:15",
+            "label": "1:15 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015154078/book/"
+          },
+          {
+            "startsAt": "2026-09-30T13:30",
+            "label": "1:30 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015154083/book/"
+          },
+          {
+            "startsAt": "2026-09-30T13:45",
+            "label": "1:45 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015154088/book/"
+          },
+          {
+            "startsAt": "2026-09-30T14:00",
+            "label": "2:00 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015154094/book/"
+          },
+          {
+            "startsAt": "2026-09-30T14:15",
+            "label": "2:15 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015154099/book/"
+          },
+          {
+            "startsAt": "2026-09-30T14:30",
+            "label": "2:30 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015154104/book/"
+          },
+          {
+            "startsAt": "2026-09-30T14:45",
+            "label": "2:45 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015154107/book/"
+          },
+          {
+            "startsAt": "2026-09-30T15:00",
+            "label": "3:00 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153913/book/"
+          },
+          {
+            "startsAt": "2026-09-30T15:15",
+            "label": "3:15 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153918/book/"
+          },
+          {
+            "startsAt": "2026-09-30T15:30",
+            "label": "3:30 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153924/book/"
+          },
+          {
+            "startsAt": "2026-09-30T15:45",
+            "label": "3:45 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153929/book/"
+          },
+          {
+            "startsAt": "2026-09-30T16:00",
+            "label": "4:00 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153934/book/"
+          },
+          {
+            "startsAt": "2026-09-30T16:15",
+            "label": "4:15 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153939/book/"
+          },
+          {
+            "startsAt": "2026-09-30T16:30",
+            "label": "4:30 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153945/book/"
+          },
+          {
+            "startsAt": "2026-09-30T16:45",
+            "label": "4:45 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153951/book/"
+          },
+          {
+            "startsAt": "2026-09-30T17:00",
+            "label": "5:00 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153958/book/"
+          },
+          {
+            "startsAt": "2026-09-30T17:15",
+            "label": "5:15 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153965/book/"
+          },
+          {
+            "startsAt": "2026-09-30T17:30",
+            "label": "5:30 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153970/book/"
+          },
+          {
+            "startsAt": "2026-09-30T17:45",
+            "label": "5:45 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153978/book/"
+          },
+          {
+            "startsAt": "2026-09-30T18:00",
+            "label": "6:00 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153982/book/"
+          },
+          {
+            "startsAt": "2026-09-30T18:15",
+            "label": "6:15 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153988/book/"
+          },
+          {
+            "startsAt": "2026-09-30T18:30",
+            "label": "6:30 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153995/book/"
+          },
+          {
+            "startsAt": "2026-09-30T18:45",
+            "label": "6:45 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015154001/book/"
+          },
+          {
+            "startsAt": "2026-09-30T19:00",
+            "label": "7:00 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015154006/book/"
+          }
+        ]
+      },
+      {
+        "date": "2026-10-01",
+        "slots": [
+          {
+            "startsAt": "2026-10-01T12:00",
+            "label": "12:00 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015154013/book/"
+          },
+          {
+            "startsAt": "2026-10-01T12:15",
+            "label": "12:15 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015154017/book/"
+          },
+          {
+            "startsAt": "2026-10-01T12:30",
+            "label": "12:30 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015154024/book/"
+          },
+          {
+            "startsAt": "2026-10-01T12:45",
+            "label": "12:45 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015154030/book/"
+          },
+          {
+            "startsAt": "2026-10-01T13:00",
+            "label": "1:00 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015154035/book/"
+          },
+          {
+            "startsAt": "2026-10-01T13:15",
+            "label": "1:15 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015154044/book/"
+          },
+          {
+            "startsAt": "2026-10-01T13:30",
+            "label": "1:30 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015154051/book/"
+          },
+          {
+            "startsAt": "2026-10-01T13:45",
+            "label": "1:45 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015154055/book/"
+          },
+          {
+            "startsAt": "2026-10-01T14:00",
+            "label": "2:00 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015154061/book/"
+          },
+          {
+            "startsAt": "2026-10-01T14:15",
+            "label": "2:15 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015154066/book/"
+          },
+          {
+            "startsAt": "2026-10-01T14:30",
+            "label": "2:30 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015154072/book/"
+          },
+          {
+            "startsAt": "2026-10-01T14:45",
+            "label": "2:45 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015154076/book/"
+          },
+          {
+            "startsAt": "2026-10-01T15:00",
+            "label": "3:00 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015154082/book/"
+          },
+          {
+            "startsAt": "2026-10-01T15:15",
+            "label": "3:15 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015154087/book/"
+          },
+          {
+            "startsAt": "2026-10-01T15:30",
+            "label": "3:30 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015154093/book/"
+          },
+          {
+            "startsAt": "2026-10-01T15:45",
+            "label": "3:45 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015154097/book/"
+          },
+          {
+            "startsAt": "2026-10-01T16:00",
+            "label": "4:00 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015154102/book/"
+          },
+          {
+            "startsAt": "2026-10-01T16:15",
+            "label": "4:15 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015154110/book/"
+          },
+          {
+            "startsAt": "2026-10-01T16:30",
+            "label": "4:30 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015154113/book/"
+          },
+          {
+            "startsAt": "2026-10-01T16:45",
+            "label": "4:45 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015154117/book/"
+          },
+          {
+            "startsAt": "2026-10-01T17:00",
+            "label": "5:00 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015154121/book/"
+          },
+          {
+            "startsAt": "2026-10-01T17:15",
+            "label": "5:15 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015154127/book/"
+          },
+          {
+            "startsAt": "2026-10-01T17:30",
+            "label": "5:30 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015154128/book/"
+          },
+          {
+            "startsAt": "2026-10-01T17:45",
+            "label": "5:45 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015154134/book/"
+          },
+          {
+            "startsAt": "2026-10-01T18:00",
+            "label": "6:00 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015154140/book/"
+          },
+          {
+            "startsAt": "2026-10-01T18:15",
+            "label": "6:15 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015154147/book/"
+          },
+          {
+            "startsAt": "2026-10-01T18:30",
+            "label": "6:30 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015154152/book/"
+          },
+          {
+            "startsAt": "2026-10-01T18:45",
+            "label": "6:45 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015154157/book/"
+          },
+          {
+            "startsAt": "2026-10-01T19:00",
+            "label": "7:00 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015154162/book/"
+          }
+        ]
+      },
+      {
+        "date": "2026-10-02",
+        "slots": [
+          {
+            "startsAt": "2026-10-02T12:00",
+            "label": "12:00 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015154167/book/"
+          },
+          {
+            "startsAt": "2026-10-02T12:15",
+            "label": "12:15 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015154171/book/"
+          },
+          {
+            "startsAt": "2026-10-02T12:30",
+            "label": "12:30 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015154176/book/"
+          },
+          {
+            "startsAt": "2026-10-02T12:45",
+            "label": "12:45 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015154185/book/"
+          },
+          {
+            "startsAt": "2026-10-02T13:00",
+            "label": "1:00 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153933/book/"
+          },
+          {
+            "startsAt": "2026-10-02T13:15",
+            "label": "1:15 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153940/book/"
+          },
+          {
+            "startsAt": "2026-10-02T13:30",
+            "label": "1:30 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153947/book/"
+          },
+          {
+            "startsAt": "2026-10-02T13:45",
+            "label": "1:45 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153953/book/"
+          },
+          {
+            "startsAt": "2026-10-02T14:00",
+            "label": "2:00 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153962/book/"
+          },
+          {
+            "startsAt": "2026-10-02T14:15",
+            "label": "2:15 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153968/book/"
+          },
+          {
+            "startsAt": "2026-10-02T14:30",
+            "label": "2:30 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153975/book/"
+          },
+          {
+            "startsAt": "2026-10-02T14:45",
+            "label": "2:45 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153981/book/"
+          },
+          {
+            "startsAt": "2026-10-02T15:00",
+            "label": "3:00 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153987/book/"
+          },
+          {
+            "startsAt": "2026-10-02T15:15",
+            "label": "3:15 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153994/book/"
+          },
+          {
+            "startsAt": "2026-10-02T15:30",
+            "label": "3:30 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015154000/book/"
+          },
+          {
+            "startsAt": "2026-10-02T15:45",
+            "label": "3:45 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015154005/book/"
+          },
+          {
+            "startsAt": "2026-10-02T16:00",
+            "label": "4:00 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015154010/book/"
+          },
+          {
+            "startsAt": "2026-10-02T16:15",
+            "label": "4:15 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015154018/book/"
+          },
+          {
+            "startsAt": "2026-10-02T16:30",
+            "label": "4:30 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015154023/book/"
+          },
+          {
+            "startsAt": "2026-10-02T16:45",
+            "label": "4:45 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015154029/book/"
+          },
+          {
+            "startsAt": "2026-10-02T17:00",
+            "label": "5:00 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015154036/book/"
+          },
+          {
+            "startsAt": "2026-10-02T17:15",
+            "label": "5:15 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015154041/book/"
+          },
+          {
+            "startsAt": "2026-10-02T17:30",
+            "label": "5:30 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015154045/book/"
+          },
+          {
+            "startsAt": "2026-10-02T17:45",
+            "label": "5:45 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015154052/book/"
+          },
+          {
+            "startsAt": "2026-10-02T18:00",
+            "label": "6:00 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015154059/book/"
+          },
+          {
+            "startsAt": "2026-10-02T18:15",
+            "label": "6:15 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015154063/book/"
+          },
+          {
+            "startsAt": "2026-10-02T18:30",
+            "label": "6:30 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015154073/book/"
+          },
+          {
+            "startsAt": "2026-10-02T18:45",
+            "label": "6:45 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015154079/book/"
+          },
+          {
+            "startsAt": "2026-10-02T19:00",
+            "label": "7:00 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015154085/book/"
+          }
+        ]
+      },
+      {
+        "date": "2026-10-03",
+        "slots": [
+          {
+            "startsAt": "2026-10-03T12:00",
+            "label": "12:00 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015154090/book/"
+          },
+          {
+            "startsAt": "2026-10-03T12:15",
+            "label": "12:15 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015154095/book/"
+          },
+          {
+            "startsAt": "2026-10-03T12:30",
+            "label": "12:30 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015154100/book/"
+          },
+          {
+            "startsAt": "2026-10-03T12:45",
+            "label": "12:45 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015154105/book/"
+          },
+          {
+            "startsAt": "2026-10-03T13:00",
+            "label": "1:00 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015154108/book/"
+          },
+          {
+            "startsAt": "2026-10-03T13:15",
+            "label": "1:15 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015154111/book/"
+          },
+          {
+            "startsAt": "2026-10-03T13:30",
+            "label": "1:30 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015154116/book/"
+          },
+          {
+            "startsAt": "2026-10-03T13:45",
+            "label": "1:45 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015154120/book/"
+          },
+          {
+            "startsAt": "2026-10-03T14:00",
+            "label": "2:00 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015154126/book/"
+          },
+          {
+            "startsAt": "2026-10-03T14:15",
+            "label": "2:15 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015154130/book/"
+          },
+          {
+            "startsAt": "2026-10-03T14:30",
+            "label": "2:30 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015154136/book/"
+          },
+          {
+            "startsAt": "2026-10-03T14:45",
+            "label": "2:45 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015154142/book/"
+          },
+          {
+            "startsAt": "2026-10-03T15:00",
+            "label": "3:00 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015154148/book/"
+          },
+          {
+            "startsAt": "2026-10-03T15:15",
+            "label": "3:15 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015154153/book/"
+          },
+          {
+            "startsAt": "2026-10-03T15:30",
+            "label": "3:30 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015154158/book/"
+          },
+          {
+            "startsAt": "2026-10-03T15:45",
+            "label": "3:45 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015154163/book/"
+          },
+          {
+            "startsAt": "2026-10-03T16:00",
+            "label": "4:00 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015154169/book/"
+          },
+          {
+            "startsAt": "2026-10-03T16:15",
+            "label": "4:15 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015154175/book/"
+          },
+          {
+            "startsAt": "2026-10-03T16:30",
+            "label": "4:30 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015154180/book/"
+          },
+          {
+            "startsAt": "2026-10-03T16:45",
+            "label": "4:45 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015154184/book/"
+          },
+          {
+            "startsAt": "2026-10-03T17:00",
+            "label": "5:00 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015154186/book/"
+          },
+          {
+            "startsAt": "2026-10-03T17:15",
+            "label": "5:15 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015154192/book/"
+          },
+          {
+            "startsAt": "2026-10-03T17:30",
+            "label": "5:30 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015154196/book/"
+          },
+          {
+            "startsAt": "2026-10-03T17:45",
+            "label": "5:45 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015154200/book/"
+          },
+          {
+            "startsAt": "2026-10-03T18:00",
+            "label": "6:00 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015154206/book/"
+          },
+          {
+            "startsAt": "2026-10-03T18:15",
+            "label": "6:15 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015153997/book/"
+          },
+          {
+            "startsAt": "2026-10-03T18:30",
+            "label": "6:30 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015154003/book/"
+          },
+          {
+            "startsAt": "2026-10-03T18:45",
+            "label": "6:45 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015154011/book/"
+          },
+          {
+            "startsAt": "2026-10-03T19:00",
+            "label": "7:00 PM · UFO's Mini Golf",
+            "bookUrl": "https://fareharbor.com/ufospensacolabeach/items/249649/availability/2015154016/book/"
+          }
+        ]
+      }
+    ]
+  }
+}

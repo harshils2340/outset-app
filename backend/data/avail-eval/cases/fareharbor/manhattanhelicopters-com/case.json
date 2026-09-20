@@ -1,0 +1,17 @@
+{
+  "id": "fareharbor/manhattanhelicopters-com",
+  "vendor": "fareharbor",
+  "domain": "manhattanhelicopters.com",
+  "bookingUrl": "https://fareharbor.com/embeds/book/helicoptertoursnyc/?full-items=yes&ref=https%3A%2F%2Fmanhattanhelicopters.com&flow=386094",
+  "operatorId": "case-fareharbor-manhattanhelicopters-com",
+  "from": "2026-09-20",
+  "days": 14,
+  "capturedAt": "2026-09-20T04:28:37.155Z",
+  "observed": {
+    "vendor": "fareharbor",
+    "live": false,
+    "updatedAt": "2026-09-20T04:28:37.155Z",
+    "days": [],
+    "note": "calendar unavailable"
+  }
+}

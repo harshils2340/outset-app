@@ -14,6 +14,7 @@ import { IcHeartOnPhoto, IcStar } from "./AirIcons";
 import { toggleSaved, usePrefs } from "./prefs";
 import { AdminSiteLink, liteDealTitle, tidyDuration } from "../web/WebListing";
 import { freeCancelBadge } from "../../lib/cancellation";
+import { reportDeadCover } from "../../lib/deadCovers";
 
 /** "5.0", "4.9", "4.87": Airbnb never shows a bare "5" or a trailing zero past the first decimal. */
 export function fmtRating(r: number): string {
@@ -88,7 +89,9 @@ export function UnclaimedCard({ item }: { item: Unclaimed; compact?: boolean }) 
             ))}
           </div>
         ) : (
-          <Photo src={item.cover} video={item.video} kind={item.art} id={item.id + "c"} alt={item.title} size="wide" />
+          /* The lone cover speaks for the listing here, so a dead one takes the card out of the feed rather
+             than drawing the generated illustration the cover filter exists to prevent. See lib/deadCovers. */
+          <Photo src={item.cover} video={item.video} kind={item.art} id={item.id + "c"} alt={item.title} size="wide" onBroken={() => reportDeadCover(item.id)} />
         )}
         {badge ? <span className="airbadge">{badge}</span> : null}
         <button

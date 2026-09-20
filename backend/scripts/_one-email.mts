@@ -1,0 +1,12 @@
+import "../src/env.ts";
+import { writeFileSync } from "node:fs";
+import { db } from "../src/db/client.ts";
+import { draftCopy, scale } from "../src/outreach/drafts.ts";
+const op = db.prepare(`SELECT * FROM operators o WHERE domain = 'sunsetwatersportskeywest.com'`).get() as any;
+const offerings = (db.prepare("SELECT name, price_cents FROM offerings WHERE operator_id = ? ORDER BY price_cents IS NULL, price_cents LIMIT 6").all(op.id) as any[]).map((o) => o.name + (o.price_cents != null ? " · $" + (o.price_cents / 100).toFixed(0) : ""));
+const keys = new Set((db.prepare("SELECT fact_key FROM facts WHERE operator_id = ? AND fact_key IN ('cover','requirement','policy','cancellation') GROUP BY fact_key").all(op.id) as any[]).map((f) => f.fact_key));
+const { subject, body } = draftCopy(op, scale(), offerings, keys.has("cover"), keys.has("requirement") || keys.has("policy") || keys.has("cancellation"));
+const out = "To: " + op.email + "\nFrom: Outset <onboarding@resend.dev>\nSubject: " + subject + "\n\n" + body + "\n";
+writeFileSync("data/sample-claim-email.txt", out);
+console.log(out);
+process.exit(0);

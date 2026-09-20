@@ -1,0 +1,3511 @@
+{
+  "id": "xola/fly1000islands-ca",
+  "vendor": "xola",
+  "domain": "fly1000islands.ca",
+  "bookingUrl": "https://x2-checkout.xola.app/flows/mvp?button=5899e4b56864ea7a288b4602&view=grid",
+  "operatorId": "case-xola-fly1000islands-ca",
+  "from": "2026-09-20",
+  "days": 14,
+  "capturedAt": "2026-09-20T04:29:51.026Z",
+  "observed": {
+    "vendor": "xola",
+    "live": true,
+    "updatedAt": "2026-09-20T04:29:51.026Z",
+    "days": [
+      {
+        "date": "2026-09-20",
+        "slots": [
+          {
+            "startsAt": "2026-09-20T10:00",
+            "label": "10:00 AM · Ten Minute 1000 Islands Tour",
+            "priceCents": 10900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/58999faae0179885508b4604"
+          },
+          {
+            "startsAt": "2026-09-20T10:00",
+            "label": "10:00 AM · Boldt Castle Tour",
+            "priceCents": 18900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a0be6864eace288b4572"
+          },
+          {
+            "startsAt": "2026-09-20T10:00",
+            "label": "10:00 AM · Two Castle Tour",
+            "priceCents": 27900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a127332e7518718b4593"
+          },
+          {
+            "startsAt": "2026-09-20T10:00",
+            "label": "10:00 AM · Kingston City Tour",
+            "priceCents": 27900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a1d46864eade7f8b4593"
+          },
+          {
+            "startsAt": "2026-09-20T10:00",
+            "label": "10:00 AM · The Works",
+            "priceCents": 52500,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a216332e75db078b4575"
+          },
+          {
+            "startsAt": "2026-09-20T10:30",
+            "label": "10:30 AM · Ten Minute 1000 Islands Tour",
+            "priceCents": 10900,
+            "seatsLeft": 3,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/58999faae0179885508b4604"
+          },
+          {
+            "startsAt": "2026-09-20T10:30",
+            "label": "10:30 AM · Boldt Castle Tour",
+            "priceCents": 18900,
+            "seatsLeft": 4,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a0be6864eace288b4572"
+          },
+          {
+            "startsAt": "2026-09-20T10:30",
+            "label": "10:30 AM · Two Castle Tour",
+            "priceCents": 27900,
+            "seatsLeft": 3,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a127332e7518718b4593"
+          },
+          {
+            "startsAt": "2026-09-20T10:30",
+            "label": "10:30 AM · Kingston City Tour",
+            "priceCents": 27900,
+            "seatsLeft": 3,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a1d46864eade7f8b4593"
+          },
+          {
+            "startsAt": "2026-09-20T10:30",
+            "label": "10:30 AM · The Works",
+            "priceCents": 52500,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a216332e75db078b4575"
+          },
+          {
+            "startsAt": "2026-09-20T11:00",
+            "label": "11:00 AM · Ten Minute 1000 Islands Tour",
+            "priceCents": 10900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/58999faae0179885508b4604"
+          },
+          {
+            "startsAt": "2026-09-20T11:00",
+            "label": "11:00 AM · Boldt Castle Tour",
+            "priceCents": 18900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a0be6864eace288b4572"
+          },
+          {
+            "startsAt": "2026-09-20T11:00",
+            "label": "11:00 AM · Two Castle Tour",
+            "priceCents": 27900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a127332e7518718b4593"
+          },
+          {
+            "startsAt": "2026-09-20T11:00",
+            "label": "11:00 AM · Kingston City Tour",
+            "priceCents": 27900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a1d46864eade7f8b4593"
+          },
+          {
+            "startsAt": "2026-09-20T11:00",
+            "label": "11:00 AM · The Works",
+            "priceCents": 52500,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a216332e75db078b4575"
+          },
+          {
+            "startsAt": "2026-09-20T11:00",
+            "label": "11:00 AM · Thousand Islands Seaway and Cider Tour",
+            "priceCents": 37500,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5ffc64e854f4f33b6b5bce01"
+          },
+          {
+            "startsAt": "2026-09-20T11:00",
+            "label": "11:00 AM · Watertown Charter",
+            "priceCents": 120000,
+            "seatsLeft": 3,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/61715a87eba33e543a29f635"
+          },
+          {
+            "startsAt": "2026-09-20T11:00",
+            "label": "11:00 AM · Ogdensburg Charter",
+            "priceCents": 150000,
+            "seatsLeft": 3,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/61715db48dc5fc2013646d53"
+          },
+          {
+            "startsAt": "2026-09-20T11:30",
+            "label": "11:30 AM · Ten Minute 1000 Islands Tour",
+            "priceCents": 10900,
+            "seatsLeft": 3,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/58999faae0179885508b4604"
+          },
+          {
+            "startsAt": "2026-09-20T11:30",
+            "label": "11:30 AM · Boldt Castle Tour",
+            "priceCents": 18900,
+            "seatsLeft": 3,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a0be6864eace288b4572"
+          },
+          {
+            "startsAt": "2026-09-20T11:30",
+            "label": "11:30 AM · Two Castle Tour",
+            "priceCents": 27900,
+            "seatsLeft": 4,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a127332e7518718b4593"
+          },
+          {
+            "startsAt": "2026-09-20T11:30",
+            "label": "11:30 AM · Kingston City Tour",
+            "priceCents": 27900,
+            "seatsLeft": 3,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a1d46864eade7f8b4593"
+          },
+          {
+            "startsAt": "2026-09-20T11:30",
+            "label": "11:30 AM · The Works",
+            "priceCents": 52500,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a216332e75db078b4575"
+          },
+          {
+            "startsAt": "2026-09-20T11:30",
+            "label": "11:30 AM · Thousand Islands Seaway and Cider Tour",
+            "priceCents": 37500,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5ffc64e854f4f33b6b5bce01"
+          },
+          {
+            "startsAt": "2026-09-20T12:00",
+            "label": "12:00 PM · Ten Minute 1000 Islands Tour",
+            "priceCents": 10900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/58999faae0179885508b4604"
+          },
+          {
+            "startsAt": "2026-09-20T12:00",
+            "label": "12:00 PM · Boldt Castle Tour",
+            "priceCents": 18900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a0be6864eace288b4572"
+          },
+          {
+            "startsAt": "2026-09-20T12:00",
+            "label": "12:00 PM · Two Castle Tour",
+            "priceCents": 27900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a127332e7518718b4593"
+          },
+          {
+            "startsAt": "2026-09-20T12:00",
+            "label": "12:00 PM · Kingston City Tour",
+            "priceCents": 27900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a1d46864eade7f8b4593"
+          },
+          {
+            "startsAt": "2026-09-20T12:00",
+            "label": "12:00 PM · The Works",
+            "priceCents": 52500,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a216332e75db078b4575"
+          },
+          {
+            "startsAt": "2026-09-20T12:00",
+            "label": "12:00 PM · Thousand Islands Seaway and Cider Tour",
+            "priceCents": 37500,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5ffc64e854f4f33b6b5bce01"
+          },
+          {
+            "startsAt": "2026-09-20T12:30",
+            "label": "12:30 PM · Ten Minute 1000 Islands Tour",
+            "priceCents": 10900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/58999faae0179885508b4604"
+          },
+          {
+            "startsAt": "2026-09-20T12:30",
+            "label": "12:30 PM · Boldt Castle Tour",
+            "priceCents": 18900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a0be6864eace288b4572"
+          },
+          {
+            "startsAt": "2026-09-20T12:30",
+            "label": "12:30 PM · Two Castle Tour",
+            "priceCents": 27900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a127332e7518718b4593"
+          },
+          {
+            "startsAt": "2026-09-20T12:30",
+            "label": "12:30 PM · Kingston City Tour",
+            "priceCents": 27900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a1d46864eade7f8b4593"
+          },
+          {
+            "startsAt": "2026-09-20T12:30",
+            "label": "12:30 PM · The Works",
+            "priceCents": 52500,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a216332e75db078b4575"
+          },
+          {
+            "startsAt": "2026-09-20T12:30",
+            "label": "12:30 PM · Thousand Islands Seaway and Cider Tour",
+            "priceCents": 37500,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5ffc64e854f4f33b6b5bce01"
+          },
+          {
+            "startsAt": "2026-09-20T13:00",
+            "label": "1:00 PM · Ten Minute 1000 Islands Tour",
+            "priceCents": 10900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/58999faae0179885508b4604"
+          },
+          {
+            "startsAt": "2026-09-20T13:00",
+            "label": "1:00 PM · Boldt Castle Tour",
+            "priceCents": 18900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a0be6864eace288b4572"
+          },
+          {
+            "startsAt": "2026-09-20T13:00",
+            "label": "1:00 PM · Two Castle Tour",
+            "priceCents": 27900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a127332e7518718b4593"
+          },
+          {
+            "startsAt": "2026-09-20T13:00",
+            "label": "1:00 PM · Kingston City Tour",
+            "priceCents": 27900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a1d46864eade7f8b4593"
+          }
+        ]
+      },
+      {
+        "date": "2026-09-21",
+        "slots": []
+      },
+      {
+        "date": "2026-09-22",
+        "slots": [
+          {
+            "startsAt": "2026-09-22T08:30",
+            "label": "8:30 AM · Heli Fishing",
+            "priceCents": 69500,
+            "seatsLeft": 99999,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/696d020d21aeeef94a045ca8"
+          },
+          {
+            "startsAt": "2026-09-22T10:30",
+            "label": "10:30 AM · Ten Minute 1000 Islands Tour",
+            "priceCents": 10900,
+            "seatsLeft": 4,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/58999faae0179885508b4604"
+          },
+          {
+            "startsAt": "2026-09-22T10:30",
+            "label": "10:30 AM · Boldt Castle Tour",
+            "priceCents": 18900,
+            "seatsLeft": 3,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a0be6864eace288b4572"
+          },
+          {
+            "startsAt": "2026-09-22T10:30",
+            "label": "10:30 AM · Two Castle Tour",
+            "priceCents": 27900,
+            "seatsLeft": 3,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a127332e7518718b4593"
+          },
+          {
+            "startsAt": "2026-09-22T10:30",
+            "label": "10:30 AM · Kingston City Tour",
+            "priceCents": 27900,
+            "seatsLeft": 3,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a1d46864eade7f8b4593"
+          },
+          {
+            "startsAt": "2026-09-22T12:30",
+            "label": "12:30 PM · Ten Minute 1000 Islands Tour",
+            "priceCents": 10900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/58999faae0179885508b4604"
+          },
+          {
+            "startsAt": "2026-09-22T12:30",
+            "label": "12:30 PM · Boldt Castle Tour",
+            "priceCents": 18900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a0be6864eace288b4572"
+          },
+          {
+            "startsAt": "2026-09-22T12:30",
+            "label": "12:30 PM · Two Castle Tour",
+            "priceCents": 27900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a127332e7518718b4593"
+          },
+          {
+            "startsAt": "2026-09-22T12:30",
+            "label": "12:30 PM · Kingston City Tour",
+            "priceCents": 27900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a1d46864eade7f8b4593"
+          }
+        ]
+      },
+      {
+        "date": "2026-09-23",
+        "slots": [
+          {
+            "startsAt": "2026-09-23T08:30",
+            "label": "8:30 AM · Heli Fishing",
+            "priceCents": 69500,
+            "seatsLeft": 99999,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/696d020d21aeeef94a045ca8"
+          },
+          {
+            "startsAt": "2026-09-23T10:00",
+            "label": "10:00 AM · Ten Minute 1000 Islands Tour",
+            "priceCents": 10900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/58999faae0179885508b4604"
+          },
+          {
+            "startsAt": "2026-09-23T10:00",
+            "label": "10:00 AM · Boldt Castle Tour",
+            "priceCents": 18900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a0be6864eace288b4572"
+          },
+          {
+            "startsAt": "2026-09-23T10:00",
+            "label": "10:00 AM · Two Castle Tour",
+            "priceCents": 27900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a127332e7518718b4593"
+          },
+          {
+            "startsAt": "2026-09-23T10:00",
+            "label": "10:00 AM · Kingston City Tour",
+            "priceCents": 27900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a1d46864eade7f8b4593"
+          },
+          {
+            "startsAt": "2026-09-23T10:00",
+            "label": "10:00 AM · The Works",
+            "priceCents": 52500,
+            "seatsLeft": 4,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a216332e75db078b4575"
+          },
+          {
+            "startsAt": "2026-09-23T10:30",
+            "label": "10:30 AM · Ten Minute 1000 Islands Tour",
+            "priceCents": 10900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/58999faae0179885508b4604"
+          },
+          {
+            "startsAt": "2026-09-23T10:30",
+            "label": "10:30 AM · Boldt Castle Tour",
+            "priceCents": 18900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a0be6864eace288b4572"
+          },
+          {
+            "startsAt": "2026-09-23T10:30",
+            "label": "10:30 AM · Two Castle Tour",
+            "priceCents": 27900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a127332e7518718b4593"
+          },
+          {
+            "startsAt": "2026-09-23T10:30",
+            "label": "10:30 AM · Kingston City Tour",
+            "priceCents": 27900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a1d46864eade7f8b4593"
+          },
+          {
+            "startsAt": "2026-09-23T10:30",
+            "label": "10:30 AM · The Works",
+            "priceCents": 52500,
+            "seatsLeft": 3,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a216332e75db078b4575"
+          },
+          {
+            "startsAt": "2026-09-23T11:00",
+            "label": "11:00 AM · Ten Minute 1000 Islands Tour",
+            "priceCents": 10900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/58999faae0179885508b4604"
+          },
+          {
+            "startsAt": "2026-09-23T11:00",
+            "label": "11:00 AM · Boldt Castle Tour",
+            "priceCents": 18900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a0be6864eace288b4572"
+          },
+          {
+            "startsAt": "2026-09-23T11:00",
+            "label": "11:00 AM · Two Castle Tour",
+            "priceCents": 27900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a127332e7518718b4593"
+          },
+          {
+            "startsAt": "2026-09-23T11:00",
+            "label": "11:00 AM · Kingston City Tour",
+            "priceCents": 27900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a1d46864eade7f8b4593"
+          },
+          {
+            "startsAt": "2026-09-23T11:00",
+            "label": "11:00 AM · The Works",
+            "priceCents": 52500,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a216332e75db078b4575"
+          },
+          {
+            "startsAt": "2026-09-23T11:00",
+            "label": "11:00 AM · Watertown Charter",
+            "priceCents": 120000,
+            "seatsLeft": 3,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/61715a87eba33e543a29f635"
+          },
+          {
+            "startsAt": "2026-09-23T11:00",
+            "label": "11:00 AM · Ogdensburg Charter",
+            "priceCents": 150000,
+            "seatsLeft": 3,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/61715db48dc5fc2013646d53"
+          },
+          {
+            "startsAt": "2026-09-23T11:30",
+            "label": "11:30 AM · Ten Minute 1000 Islands Tour",
+            "priceCents": 10900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/58999faae0179885508b4604"
+          },
+          {
+            "startsAt": "2026-09-23T11:30",
+            "label": "11:30 AM · Boldt Castle Tour",
+            "priceCents": 18900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a0be6864eace288b4572"
+          },
+          {
+            "startsAt": "2026-09-23T11:30",
+            "label": "11:30 AM · Two Castle Tour",
+            "priceCents": 27900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a127332e7518718b4593"
+          },
+          {
+            "startsAt": "2026-09-23T11:30",
+            "label": "11:30 AM · Kingston City Tour",
+            "priceCents": 27900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a1d46864eade7f8b4593"
+          },
+          {
+            "startsAt": "2026-09-23T11:30",
+            "label": "11:30 AM · The Works",
+            "priceCents": 52500,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a216332e75db078b4575"
+          },
+          {
+            "startsAt": "2026-09-23T11:30",
+            "label": "11:30 AM · Highlights of 1000 Islands with Helis and Hops",
+            "priceCents": 37500,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/62e80be3fbddce648a2718e2"
+          },
+          {
+            "startsAt": "2026-09-23T12:00",
+            "label": "12:00 PM · Ten Minute 1000 Islands Tour",
+            "priceCents": 10900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/58999faae0179885508b4604"
+          },
+          {
+            "startsAt": "2026-09-23T12:00",
+            "label": "12:00 PM · Boldt Castle Tour",
+            "priceCents": 18900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a0be6864eace288b4572"
+          },
+          {
+            "startsAt": "2026-09-23T12:00",
+            "label": "12:00 PM · Two Castle Tour",
+            "priceCents": 27900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a127332e7518718b4593"
+          },
+          {
+            "startsAt": "2026-09-23T12:00",
+            "label": "12:00 PM · Kingston City Tour",
+            "priceCents": 27900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a1d46864eade7f8b4593"
+          },
+          {
+            "startsAt": "2026-09-23T12:00",
+            "label": "12:00 PM · The Works",
+            "priceCents": 52500,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a216332e75db078b4575"
+          },
+          {
+            "startsAt": "2026-09-23T12:00",
+            "label": "12:00 PM · Highlights of 1000 Islands with Helis and Hops",
+            "priceCents": 37500,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/62e80be3fbddce648a2718e2"
+          },
+          {
+            "startsAt": "2026-09-23T12:30",
+            "label": "12:30 PM · Ten Minute 1000 Islands Tour",
+            "priceCents": 10900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/58999faae0179885508b4604"
+          },
+          {
+            "startsAt": "2026-09-23T12:30",
+            "label": "12:30 PM · Boldt Castle Tour",
+            "priceCents": 18900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a0be6864eace288b4572"
+          },
+          {
+            "startsAt": "2026-09-23T12:30",
+            "label": "12:30 PM · Two Castle Tour",
+            "priceCents": 27900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a127332e7518718b4593"
+          },
+          {
+            "startsAt": "2026-09-23T12:30",
+            "label": "12:30 PM · Kingston City Tour",
+            "priceCents": 27900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a1d46864eade7f8b4593"
+          },
+          {
+            "startsAt": "2026-09-23T12:30",
+            "label": "12:30 PM · The Works",
+            "priceCents": 52500,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a216332e75db078b4575"
+          },
+          {
+            "startsAt": "2026-09-23T12:30",
+            "label": "12:30 PM · Highlights of 1000 Islands with Helis and Hops",
+            "priceCents": 37500,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/62e80be3fbddce648a2718e2"
+          },
+          {
+            "startsAt": "2026-09-23T13:00",
+            "label": "1:00 PM · Ten Minute 1000 Islands Tour",
+            "priceCents": 10900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/58999faae0179885508b4604"
+          },
+          {
+            "startsAt": "2026-09-23T13:00",
+            "label": "1:00 PM · Boldt Castle Tour",
+            "priceCents": 18900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a0be6864eace288b4572"
+          },
+          {
+            "startsAt": "2026-09-23T13:00",
+            "label": "1:00 PM · Two Castle Tour",
+            "priceCents": 27900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a127332e7518718b4593"
+          },
+          {
+            "startsAt": "2026-09-23T13:00",
+            "label": "1:00 PM · Kingston City Tour",
+            "priceCents": 27900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a1d46864eade7f8b4593"
+          }
+        ]
+      },
+      {
+        "date": "2026-09-24",
+        "slots": [
+          {
+            "startsAt": "2026-09-24T08:30",
+            "label": "8:30 AM · Heli Fishing",
+            "priceCents": 69500,
+            "seatsLeft": 99999,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/696d020d21aeeef94a045ca8"
+          },
+          {
+            "startsAt": "2026-09-24T10:00",
+            "label": "10:00 AM · Ten Minute 1000 Islands Tour",
+            "priceCents": 10900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/58999faae0179885508b4604"
+          },
+          {
+            "startsAt": "2026-09-24T10:00",
+            "label": "10:00 AM · Boldt Castle Tour",
+            "priceCents": 18900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a0be6864eace288b4572"
+          },
+          {
+            "startsAt": "2026-09-24T10:00",
+            "label": "10:00 AM · Two Castle Tour",
+            "priceCents": 27900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a127332e7518718b4593"
+          },
+          {
+            "startsAt": "2026-09-24T10:00",
+            "label": "10:00 AM · Kingston City Tour",
+            "priceCents": 27900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a1d46864eade7f8b4593"
+          },
+          {
+            "startsAt": "2026-09-24T10:00",
+            "label": "10:00 AM · The Works",
+            "priceCents": 52500,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a216332e75db078b4575"
+          },
+          {
+            "startsAt": "2026-09-24T10:30",
+            "label": "10:30 AM · Ten Minute 1000 Islands Tour",
+            "priceCents": 10900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/58999faae0179885508b4604"
+          },
+          {
+            "startsAt": "2026-09-24T10:30",
+            "label": "10:30 AM · Boldt Castle Tour",
+            "priceCents": 18900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a0be6864eace288b4572"
+          },
+          {
+            "startsAt": "2026-09-24T10:30",
+            "label": "10:30 AM · Two Castle Tour",
+            "priceCents": 27900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a127332e7518718b4593"
+          },
+          {
+            "startsAt": "2026-09-24T10:30",
+            "label": "10:30 AM · Kingston City Tour",
+            "priceCents": 27900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a1d46864eade7f8b4593"
+          },
+          {
+            "startsAt": "2026-09-24T10:30",
+            "label": "10:30 AM · The Works",
+            "priceCents": 52500,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a216332e75db078b4575"
+          },
+          {
+            "startsAt": "2026-09-24T11:00",
+            "label": "11:00 AM · Ten Minute 1000 Islands Tour",
+            "priceCents": 10900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/58999faae0179885508b4604"
+          },
+          {
+            "startsAt": "2026-09-24T11:00",
+            "label": "11:00 AM · Boldt Castle Tour",
+            "priceCents": 18900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a0be6864eace288b4572"
+          },
+          {
+            "startsAt": "2026-09-24T11:00",
+            "label": "11:00 AM · Two Castle Tour",
+            "priceCents": 27900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a127332e7518718b4593"
+          },
+          {
+            "startsAt": "2026-09-24T11:00",
+            "label": "11:00 AM · Kingston City Tour",
+            "priceCents": 27900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a1d46864eade7f8b4593"
+          },
+          {
+            "startsAt": "2026-09-24T11:00",
+            "label": "11:00 AM · The Works",
+            "priceCents": 52500,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a216332e75db078b4575"
+          },
+          {
+            "startsAt": "2026-09-24T11:00",
+            "label": "11:00 AM · Watertown Charter",
+            "priceCents": 120000,
+            "seatsLeft": 3,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/61715a87eba33e543a29f635"
+          },
+          {
+            "startsAt": "2026-09-24T11:00",
+            "label": "11:00 AM · Ogdensburg Charter",
+            "priceCents": 150000,
+            "seatsLeft": 3,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/61715db48dc5fc2013646d53"
+          },
+          {
+            "startsAt": "2026-09-24T11:30",
+            "label": "11:30 AM · Ten Minute 1000 Islands Tour",
+            "priceCents": 10900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/58999faae0179885508b4604"
+          },
+          {
+            "startsAt": "2026-09-24T11:30",
+            "label": "11:30 AM · Boldt Castle Tour",
+            "priceCents": 18900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a0be6864eace288b4572"
+          },
+          {
+            "startsAt": "2026-09-24T11:30",
+            "label": "11:30 AM · Two Castle Tour",
+            "priceCents": 27900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a127332e7518718b4593"
+          },
+          {
+            "startsAt": "2026-09-24T11:30",
+            "label": "11:30 AM · Kingston City Tour",
+            "priceCents": 27900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a1d46864eade7f8b4593"
+          },
+          {
+            "startsAt": "2026-09-24T11:30",
+            "label": "11:30 AM · The Works",
+            "priceCents": 52500,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a216332e75db078b4575"
+          },
+          {
+            "startsAt": "2026-09-24T11:30",
+            "label": "11:30 AM · Highlights of 1000 Islands with Helis and Hops",
+            "priceCents": 37500,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/62e80be3fbddce648a2718e2"
+          },
+          {
+            "startsAt": "2026-09-24T12:00",
+            "label": "12:00 PM · Ten Minute 1000 Islands Tour",
+            "priceCents": 10900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/58999faae0179885508b4604"
+          },
+          {
+            "startsAt": "2026-09-24T12:00",
+            "label": "12:00 PM · Boldt Castle Tour",
+            "priceCents": 18900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a0be6864eace288b4572"
+          },
+          {
+            "startsAt": "2026-09-24T12:00",
+            "label": "12:00 PM · Two Castle Tour",
+            "priceCents": 27900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a127332e7518718b4593"
+          },
+          {
+            "startsAt": "2026-09-24T12:00",
+            "label": "12:00 PM · Kingston City Tour",
+            "priceCents": 27900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a1d46864eade7f8b4593"
+          },
+          {
+            "startsAt": "2026-09-24T12:00",
+            "label": "12:00 PM · The Works",
+            "priceCents": 52500,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a216332e75db078b4575"
+          },
+          {
+            "startsAt": "2026-09-24T12:00",
+            "label": "12:00 PM · Highlights of 1000 Islands with Helis and Hops",
+            "priceCents": 37500,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/62e80be3fbddce648a2718e2"
+          },
+          {
+            "startsAt": "2026-09-24T12:30",
+            "label": "12:30 PM · Ten Minute 1000 Islands Tour",
+            "priceCents": 10900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/58999faae0179885508b4604"
+          },
+          {
+            "startsAt": "2026-09-24T12:30",
+            "label": "12:30 PM · Boldt Castle Tour",
+            "priceCents": 18900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a0be6864eace288b4572"
+          },
+          {
+            "startsAt": "2026-09-24T12:30",
+            "label": "12:30 PM · Two Castle Tour",
+            "priceCents": 27900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a127332e7518718b4593"
+          },
+          {
+            "startsAt": "2026-09-24T12:30",
+            "label": "12:30 PM · Kingston City Tour",
+            "priceCents": 27900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a1d46864eade7f8b4593"
+          },
+          {
+            "startsAt": "2026-09-24T12:30",
+            "label": "12:30 PM · The Works",
+            "priceCents": 52500,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a216332e75db078b4575"
+          },
+          {
+            "startsAt": "2026-09-24T12:30",
+            "label": "12:30 PM · Highlights of 1000 Islands with Helis and Hops",
+            "priceCents": 37500,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/62e80be3fbddce648a2718e2"
+          },
+          {
+            "startsAt": "2026-09-24T13:00",
+            "label": "1:00 PM · Ten Minute 1000 Islands Tour",
+            "priceCents": 10900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/58999faae0179885508b4604"
+          },
+          {
+            "startsAt": "2026-09-24T13:00",
+            "label": "1:00 PM · Boldt Castle Tour",
+            "priceCents": 18900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a0be6864eace288b4572"
+          },
+          {
+            "startsAt": "2026-09-24T13:00",
+            "label": "1:00 PM · Two Castle Tour",
+            "priceCents": 27900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a127332e7518718b4593"
+          },
+          {
+            "startsAt": "2026-09-24T13:00",
+            "label": "1:00 PM · Kingston City Tour",
+            "priceCents": 27900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a1d46864eade7f8b4593"
+          }
+        ]
+      },
+      {
+        "date": "2026-09-25",
+        "slots": [
+          {
+            "startsAt": "2026-09-25T08:30",
+            "label": "8:30 AM · Heli Fishing",
+            "priceCents": 69500,
+            "seatsLeft": 99999,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/696d020d21aeeef94a045ca8"
+          },
+          {
+            "startsAt": "2026-09-25T10:00",
+            "label": "10:00 AM · Ten Minute 1000 Islands Tour",
+            "priceCents": 10900,
+            "seatsLeft": 1,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/58999faae0179885508b4604"
+          },
+          {
+            "startsAt": "2026-09-25T10:00",
+            "label": "10:00 AM · The Works",
+            "priceCents": 52500,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a216332e75db078b4575"
+          },
+          {
+            "startsAt": "2026-09-25T10:30",
+            "label": "10:30 AM · Ten Minute 1000 Islands Tour",
+            "priceCents": 10900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/58999faae0179885508b4604"
+          },
+          {
+            "startsAt": "2026-09-25T10:30",
+            "label": "10:30 AM · Boldt Castle Tour",
+            "priceCents": 18900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a0be6864eace288b4572"
+          },
+          {
+            "startsAt": "2026-09-25T10:30",
+            "label": "10:30 AM · Two Castle Tour",
+            "priceCents": 27900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a127332e7518718b4593"
+          },
+          {
+            "startsAt": "2026-09-25T10:30",
+            "label": "10:30 AM · Kingston City Tour",
+            "priceCents": 27900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a1d46864eade7f8b4593"
+          },
+          {
+            "startsAt": "2026-09-25T10:30",
+            "label": "10:30 AM · The Works",
+            "priceCents": 52500,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a216332e75db078b4575"
+          },
+          {
+            "startsAt": "2026-09-25T11:00",
+            "label": "11:00 AM · Ten Minute 1000 Islands Tour",
+            "priceCents": 10900,
+            "seatsLeft": 3,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/58999faae0179885508b4604"
+          },
+          {
+            "startsAt": "2026-09-25T11:00",
+            "label": "11:00 AM · Boldt Castle Tour",
+            "priceCents": 18900,
+            "seatsLeft": 3,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a0be6864eace288b4572"
+          },
+          {
+            "startsAt": "2026-09-25T11:00",
+            "label": "11:00 AM · Two Castle Tour",
+            "priceCents": 27900,
+            "seatsLeft": 4,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a127332e7518718b4593"
+          },
+          {
+            "startsAt": "2026-09-25T11:00",
+            "label": "11:00 AM · Kingston City Tour",
+            "priceCents": 27900,
+            "seatsLeft": 3,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a1d46864eade7f8b4593"
+          },
+          {
+            "startsAt": "2026-09-25T11:00",
+            "label": "11:00 AM · The Works",
+            "priceCents": 52500,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a216332e75db078b4575"
+          },
+          {
+            "startsAt": "2026-09-25T11:00",
+            "label": "11:00 AM · Watertown Charter",
+            "priceCents": 120000,
+            "seatsLeft": 3,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/61715a87eba33e543a29f635"
+          },
+          {
+            "startsAt": "2026-09-25T11:00",
+            "label": "11:00 AM · Ogdensburg Charter",
+            "priceCents": 150000,
+            "seatsLeft": 3,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/61715db48dc5fc2013646d53"
+          },
+          {
+            "startsAt": "2026-09-25T11:30",
+            "label": "11:30 AM · Ten Minute 1000 Islands Tour",
+            "priceCents": 10900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/58999faae0179885508b4604"
+          },
+          {
+            "startsAt": "2026-09-25T11:30",
+            "label": "11:30 AM · Boldt Castle Tour",
+            "priceCents": 18900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a0be6864eace288b4572"
+          },
+          {
+            "startsAt": "2026-09-25T11:30",
+            "label": "11:30 AM · Two Castle Tour",
+            "priceCents": 27900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a127332e7518718b4593"
+          },
+          {
+            "startsAt": "2026-09-25T11:30",
+            "label": "11:30 AM · Kingston City Tour",
+            "priceCents": 27900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a1d46864eade7f8b4593"
+          },
+          {
+            "startsAt": "2026-09-25T11:30",
+            "label": "11:30 AM · The Works",
+            "priceCents": 52500,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a216332e75db078b4575"
+          },
+          {
+            "startsAt": "2026-09-25T11:30",
+            "label": "11:30 AM · Highlights of 1000 Islands with Helis and Hops",
+            "priceCents": 37500,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/62e80be3fbddce648a2718e2"
+          },
+          {
+            "startsAt": "2026-09-25T12:00",
+            "label": "12:00 PM · Ten Minute 1000 Islands Tour",
+            "priceCents": 10900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/58999faae0179885508b4604"
+          },
+          {
+            "startsAt": "2026-09-25T12:00",
+            "label": "12:00 PM · Boldt Castle Tour",
+            "priceCents": 18900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a0be6864eace288b4572"
+          },
+          {
+            "startsAt": "2026-09-25T12:00",
+            "label": "12:00 PM · Two Castle Tour",
+            "priceCents": 27900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a127332e7518718b4593"
+          },
+          {
+            "startsAt": "2026-09-25T12:00",
+            "label": "12:00 PM · Kingston City Tour",
+            "priceCents": 27900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a1d46864eade7f8b4593"
+          },
+          {
+            "startsAt": "2026-09-25T12:00",
+            "label": "12:00 PM · The Works",
+            "priceCents": 52500,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a216332e75db078b4575"
+          },
+          {
+            "startsAt": "2026-09-25T12:00",
+            "label": "12:00 PM · Highlights of 1000 Islands with Helis and Hops",
+            "priceCents": 37500,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/62e80be3fbddce648a2718e2"
+          },
+          {
+            "startsAt": "2026-09-25T12:30",
+            "label": "12:30 PM · Ten Minute 1000 Islands Tour",
+            "priceCents": 10900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/58999faae0179885508b4604"
+          },
+          {
+            "startsAt": "2026-09-25T12:30",
+            "label": "12:30 PM · Boldt Castle Tour",
+            "priceCents": 18900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a0be6864eace288b4572"
+          },
+          {
+            "startsAt": "2026-09-25T12:30",
+            "label": "12:30 PM · Two Castle Tour",
+            "priceCents": 27900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a127332e7518718b4593"
+          },
+          {
+            "startsAt": "2026-09-25T12:30",
+            "label": "12:30 PM · Kingston City Tour",
+            "priceCents": 27900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a1d46864eade7f8b4593"
+          },
+          {
+            "startsAt": "2026-09-25T12:30",
+            "label": "12:30 PM · The Works",
+            "priceCents": 52500,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a216332e75db078b4575"
+          },
+          {
+            "startsAt": "2026-09-25T12:30",
+            "label": "12:30 PM · Highlights of 1000 Islands with Helis and Hops",
+            "priceCents": 37500,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/62e80be3fbddce648a2718e2"
+          },
+          {
+            "startsAt": "2026-09-25T13:00",
+            "label": "1:00 PM · Ten Minute 1000 Islands Tour",
+            "priceCents": 10900,
+            "seatsLeft": 3,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/58999faae0179885508b4604"
+          },
+          {
+            "startsAt": "2026-09-25T13:00",
+            "label": "1:00 PM · Boldt Castle Tour",
+            "priceCents": 18900,
+            "seatsLeft": 3,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a0be6864eace288b4572"
+          },
+          {
+            "startsAt": "2026-09-25T13:00",
+            "label": "1:00 PM · Two Castle Tour",
+            "priceCents": 27900,
+            "seatsLeft": 3,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a127332e7518718b4593"
+          },
+          {
+            "startsAt": "2026-09-25T13:00",
+            "label": "1:00 PM · Kingston City Tour",
+            "priceCents": 27900,
+            "seatsLeft": 3,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a1d46864eade7f8b4593"
+          },
+          {
+            "startsAt": "2026-09-25T13:00",
+            "label": "1:00 PM · The Works",
+            "priceCents": 52500,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a216332e75db078b4575"
+          },
+          {
+            "startsAt": "2026-09-25T13:00",
+            "label": "1:00 PM · Highlights of 1000 Islands with Helis and Hops",
+            "priceCents": 37500,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/62e80be3fbddce648a2718e2"
+          },
+          {
+            "startsAt": "2026-09-25T13:30",
+            "label": "1:30 PM · Ten Minute 1000 Islands Tour",
+            "priceCents": 10900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/58999faae0179885508b4604"
+          }
+        ]
+      },
+      {
+        "date": "2026-09-26",
+        "slots": [
+          {
+            "startsAt": "2026-09-26T08:30",
+            "label": "8:30 AM · Heli Fishing",
+            "priceCents": 69500,
+            "seatsLeft": 99999,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/696d020d21aeeef94a045ca8"
+          },
+          {
+            "startsAt": "2026-09-26T10:00",
+            "label": "10:00 AM · Two Castle Tour",
+            "priceCents": 27900,
+            "seatsLeft": 2,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a127332e7518718b4593"
+          },
+          {
+            "startsAt": "2026-09-26T10:00",
+            "label": "10:00 AM · The Works",
+            "priceCents": 52500,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a216332e75db078b4575"
+          },
+          {
+            "startsAt": "2026-09-26T10:30",
+            "label": "10:30 AM · Ten Minute 1000 Islands Tour",
+            "priceCents": 10900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/58999faae0179885508b4604"
+          },
+          {
+            "startsAt": "2026-09-26T10:30",
+            "label": "10:30 AM · Boldt Castle Tour",
+            "priceCents": 18900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a0be6864eace288b4572"
+          },
+          {
+            "startsAt": "2026-09-26T10:30",
+            "label": "10:30 AM · Two Castle Tour",
+            "priceCents": 27900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a127332e7518718b4593"
+          },
+          {
+            "startsAt": "2026-09-26T10:30",
+            "label": "10:30 AM · Kingston City Tour",
+            "priceCents": 27900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a1d46864eade7f8b4593"
+          },
+          {
+            "startsAt": "2026-09-26T10:30",
+            "label": "10:30 AM · The Works",
+            "priceCents": 52500,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a216332e75db078b4575"
+          },
+          {
+            "startsAt": "2026-09-26T11:00",
+            "label": "11:00 AM · Ten Minute 1000 Islands Tour",
+            "priceCents": 10900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/58999faae0179885508b4604"
+          },
+          {
+            "startsAt": "2026-09-26T11:00",
+            "label": "11:00 AM · Boldt Castle Tour",
+            "priceCents": 18900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a0be6864eace288b4572"
+          },
+          {
+            "startsAt": "2026-09-26T11:00",
+            "label": "11:00 AM · Two Castle Tour",
+            "priceCents": 27900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a127332e7518718b4593"
+          },
+          {
+            "startsAt": "2026-09-26T11:00",
+            "label": "11:00 AM · Kingston City Tour",
+            "priceCents": 27900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a1d46864eade7f8b4593"
+          },
+          {
+            "startsAt": "2026-09-26T11:00",
+            "label": "11:00 AM · The Works",
+            "priceCents": 52500,
+            "seatsLeft": 3,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a216332e75db078b4575"
+          },
+          {
+            "startsAt": "2026-09-26T11:00",
+            "label": "11:00 AM · Thousand Islands Seaway and Cider Tour",
+            "priceCents": 37500,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5ffc64e854f4f33b6b5bce01"
+          },
+          {
+            "startsAt": "2026-09-26T11:00",
+            "label": "11:00 AM · Watertown Charter",
+            "priceCents": 120000,
+            "seatsLeft": 3,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/61715a87eba33e543a29f635"
+          },
+          {
+            "startsAt": "2026-09-26T11:00",
+            "label": "11:00 AM · Ogdensburg Charter",
+            "priceCents": 150000,
+            "seatsLeft": 3,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/61715db48dc5fc2013646d53"
+          },
+          {
+            "startsAt": "2026-09-26T11:30",
+            "label": "11:30 AM · Ten Minute 1000 Islands Tour",
+            "priceCents": 10900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/58999faae0179885508b4604"
+          },
+          {
+            "startsAt": "2026-09-26T11:30",
+            "label": "11:30 AM · Boldt Castle Tour",
+            "priceCents": 18900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a0be6864eace288b4572"
+          },
+          {
+            "startsAt": "2026-09-26T11:30",
+            "label": "11:30 AM · Two Castle Tour",
+            "priceCents": 27900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a127332e7518718b4593"
+          },
+          {
+            "startsAt": "2026-09-26T11:30",
+            "label": "11:30 AM · Kingston City Tour",
+            "priceCents": 27900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a1d46864eade7f8b4593"
+          },
+          {
+            "startsAt": "2026-09-26T11:30",
+            "label": "11:30 AM · The Works",
+            "priceCents": 52500,
+            "seatsLeft": 3,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a216332e75db078b4575"
+          },
+          {
+            "startsAt": "2026-09-26T11:30",
+            "label": "11:30 AM · Thousand Islands Seaway and Cider Tour",
+            "priceCents": 37500,
+            "seatsLeft": 3,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5ffc64e854f4f33b6b5bce01"
+          },
+          {
+            "startsAt": "2026-09-26T11:30",
+            "label": "11:30 AM · Highlights of 1000 Islands with Helis and Hops",
+            "priceCents": 37500,
+            "seatsLeft": 4,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/62e80be3fbddce648a2718e2"
+          },
+          {
+            "startsAt": "2026-09-26T12:00",
+            "label": "12:00 PM · Ten Minute 1000 Islands Tour",
+            "priceCents": 10900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/58999faae0179885508b4604"
+          },
+          {
+            "startsAt": "2026-09-26T12:00",
+            "label": "12:00 PM · Boldt Castle Tour",
+            "priceCents": 18900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a0be6864eace288b4572"
+          },
+          {
+            "startsAt": "2026-09-26T12:00",
+            "label": "12:00 PM · Two Castle Tour",
+            "priceCents": 27900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a127332e7518718b4593"
+          },
+          {
+            "startsAt": "2026-09-26T12:00",
+            "label": "12:00 PM · Kingston City Tour",
+            "priceCents": 27900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a1d46864eade7f8b4593"
+          },
+          {
+            "startsAt": "2026-09-26T12:00",
+            "label": "12:00 PM · The Works",
+            "priceCents": 52500,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a216332e75db078b4575"
+          },
+          {
+            "startsAt": "2026-09-26T12:00",
+            "label": "12:00 PM · Thousand Islands Seaway and Cider Tour",
+            "priceCents": 37500,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5ffc64e854f4f33b6b5bce01"
+          },
+          {
+            "startsAt": "2026-09-26T12:00",
+            "label": "12:00 PM · Highlights of 1000 Islands with Helis and Hops",
+            "priceCents": 37500,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/62e80be3fbddce648a2718e2"
+          },
+          {
+            "startsAt": "2026-09-26T12:30",
+            "label": "12:30 PM · Ten Minute 1000 Islands Tour",
+            "priceCents": 10900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/58999faae0179885508b4604"
+          },
+          {
+            "startsAt": "2026-09-26T12:30",
+            "label": "12:30 PM · Boldt Castle Tour",
+            "priceCents": 18900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a0be6864eace288b4572"
+          },
+          {
+            "startsAt": "2026-09-26T12:30",
+            "label": "12:30 PM · Two Castle Tour",
+            "priceCents": 27900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a127332e7518718b4593"
+          },
+          {
+            "startsAt": "2026-09-26T12:30",
+            "label": "12:30 PM · Kingston City Tour",
+            "priceCents": 27900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a1d46864eade7f8b4593"
+          },
+          {
+            "startsAt": "2026-09-26T12:30",
+            "label": "12:30 PM · The Works",
+            "priceCents": 52500,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a216332e75db078b4575"
+          },
+          {
+            "startsAt": "2026-09-26T12:30",
+            "label": "12:30 PM · Thousand Islands Seaway and Cider Tour",
+            "priceCents": 37500,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5ffc64e854f4f33b6b5bce01"
+          },
+          {
+            "startsAt": "2026-09-26T12:30",
+            "label": "12:30 PM · Highlights of 1000 Islands with Helis and Hops",
+            "priceCents": 37500,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/62e80be3fbddce648a2718e2"
+          },
+          {
+            "startsAt": "2026-09-26T13:00",
+            "label": "1:00 PM · Ten Minute 1000 Islands Tour",
+            "priceCents": 10900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/58999faae0179885508b4604"
+          },
+          {
+            "startsAt": "2026-09-26T13:00",
+            "label": "1:00 PM · Boldt Castle Tour",
+            "priceCents": 18900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a0be6864eace288b4572"
+          },
+          {
+            "startsAt": "2026-09-26T13:00",
+            "label": "1:00 PM · Two Castle Tour",
+            "priceCents": 27900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a127332e7518718b4593"
+          }
+        ]
+      },
+      {
+        "date": "2026-09-27",
+        "slots": [
+          {
+            "startsAt": "2026-09-27T08:30",
+            "label": "8:30 AM · Heli Fishing",
+            "priceCents": 69500,
+            "seatsLeft": 99999,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/696d020d21aeeef94a045ca8"
+          },
+          {
+            "startsAt": "2026-09-27T10:00",
+            "label": "10:00 AM · Ten Minute 1000 Islands Tour",
+            "priceCents": 10900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/58999faae0179885508b4604"
+          },
+          {
+            "startsAt": "2026-09-27T10:00",
+            "label": "10:00 AM · Boldt Castle Tour",
+            "priceCents": 18900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a0be6864eace288b4572"
+          },
+          {
+            "startsAt": "2026-09-27T10:00",
+            "label": "10:00 AM · Two Castle Tour",
+            "priceCents": 27900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a127332e7518718b4593"
+          },
+          {
+            "startsAt": "2026-09-27T10:00",
+            "label": "10:00 AM · Kingston City Tour",
+            "priceCents": 27900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a1d46864eade7f8b4593"
+          },
+          {
+            "startsAt": "2026-09-27T10:00",
+            "label": "10:00 AM · The Works",
+            "priceCents": 52500,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a216332e75db078b4575"
+          },
+          {
+            "startsAt": "2026-09-27T10:30",
+            "label": "10:30 AM · Ten Minute 1000 Islands Tour",
+            "priceCents": 10900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/58999faae0179885508b4604"
+          },
+          {
+            "startsAt": "2026-09-27T10:30",
+            "label": "10:30 AM · Boldt Castle Tour",
+            "priceCents": 18900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a0be6864eace288b4572"
+          },
+          {
+            "startsAt": "2026-09-27T10:30",
+            "label": "10:30 AM · Two Castle Tour",
+            "priceCents": 27900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a127332e7518718b4593"
+          },
+          {
+            "startsAt": "2026-09-27T10:30",
+            "label": "10:30 AM · Kingston City Tour",
+            "priceCents": 27900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a1d46864eade7f8b4593"
+          },
+          {
+            "startsAt": "2026-09-27T10:30",
+            "label": "10:30 AM · The Works",
+            "priceCents": 52500,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a216332e75db078b4575"
+          },
+          {
+            "startsAt": "2026-09-27T10:30",
+            "label": "10:30 AM · Maple Syrup Tour",
+            "priceCents": 52500,
+            "seatsLeft": 3,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899b1c1e0179845498b461f"
+          },
+          {
+            "startsAt": "2026-09-27T11:00",
+            "label": "11:00 AM · Ten Minute 1000 Islands Tour",
+            "priceCents": 10900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/58999faae0179885508b4604"
+          },
+          {
+            "startsAt": "2026-09-27T11:00",
+            "label": "11:00 AM · Boldt Castle Tour",
+            "priceCents": 18900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a0be6864eace288b4572"
+          },
+          {
+            "startsAt": "2026-09-27T11:00",
+            "label": "11:00 AM · Two Castle Tour",
+            "priceCents": 27900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a127332e7518718b4593"
+          },
+          {
+            "startsAt": "2026-09-27T11:00",
+            "label": "11:00 AM · Kingston City Tour",
+            "priceCents": 27900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a1d46864eade7f8b4593"
+          },
+          {
+            "startsAt": "2026-09-27T11:00",
+            "label": "11:00 AM · The Works",
+            "priceCents": 52500,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a216332e75db078b4575"
+          },
+          {
+            "startsAt": "2026-09-27T11:00",
+            "label": "11:00 AM · Maple Syrup Tour",
+            "priceCents": 52500,
+            "seatsLeft": 3,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899b1c1e0179845498b461f"
+          },
+          {
+            "startsAt": "2026-09-27T11:00",
+            "label": "11:00 AM · Thousand Islands Seaway and Cider Tour",
+            "priceCents": 37500,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5ffc64e854f4f33b6b5bce01"
+          },
+          {
+            "startsAt": "2026-09-27T11:00",
+            "label": "11:00 AM · Watertown Charter",
+            "priceCents": 120000,
+            "seatsLeft": 3,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/61715a87eba33e543a29f635"
+          },
+          {
+            "startsAt": "2026-09-27T11:00",
+            "label": "11:00 AM · Ogdensburg Charter",
+            "priceCents": 150000,
+            "seatsLeft": 3,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/61715db48dc5fc2013646d53"
+          },
+          {
+            "startsAt": "2026-09-27T11:30",
+            "label": "11:30 AM · Ten Minute 1000 Islands Tour",
+            "priceCents": 10900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/58999faae0179885508b4604"
+          },
+          {
+            "startsAt": "2026-09-27T11:30",
+            "label": "11:30 AM · Boldt Castle Tour",
+            "priceCents": 18900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a0be6864eace288b4572"
+          },
+          {
+            "startsAt": "2026-09-27T11:30",
+            "label": "11:30 AM · Two Castle Tour",
+            "priceCents": 27900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a127332e7518718b4593"
+          },
+          {
+            "startsAt": "2026-09-27T11:30",
+            "label": "11:30 AM · Kingston City Tour",
+            "priceCents": 27900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a1d46864eade7f8b4593"
+          },
+          {
+            "startsAt": "2026-09-27T11:30",
+            "label": "11:30 AM · The Works",
+            "priceCents": 52500,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a216332e75db078b4575"
+          },
+          {
+            "startsAt": "2026-09-27T11:30",
+            "label": "11:30 AM · Maple Syrup Tour",
+            "priceCents": 52500,
+            "seatsLeft": 3,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899b1c1e0179845498b461f"
+          },
+          {
+            "startsAt": "2026-09-27T11:30",
+            "label": "11:30 AM · Thousand Islands Seaway and Cider Tour",
+            "priceCents": 37500,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5ffc64e854f4f33b6b5bce01"
+          },
+          {
+            "startsAt": "2026-09-27T11:30",
+            "label": "11:30 AM · Highlights of 1000 Islands with Helis and Hops",
+            "priceCents": 37500,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/62e80be3fbddce648a2718e2"
+          },
+          {
+            "startsAt": "2026-09-27T12:00",
+            "label": "12:00 PM · Ten Minute 1000 Islands Tour",
+            "priceCents": 10900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/58999faae0179885508b4604"
+          },
+          {
+            "startsAt": "2026-09-27T12:00",
+            "label": "12:00 PM · Boldt Castle Tour",
+            "priceCents": 18900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a0be6864eace288b4572"
+          },
+          {
+            "startsAt": "2026-09-27T12:00",
+            "label": "12:00 PM · Two Castle Tour",
+            "priceCents": 27900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a127332e7518718b4593"
+          },
+          {
+            "startsAt": "2026-09-27T12:00",
+            "label": "12:00 PM · Kingston City Tour",
+            "priceCents": 27900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a1d46864eade7f8b4593"
+          },
+          {
+            "startsAt": "2026-09-27T12:00",
+            "label": "12:00 PM · The Works",
+            "priceCents": 52500,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a216332e75db078b4575"
+          },
+          {
+            "startsAt": "2026-09-27T12:00",
+            "label": "12:00 PM · Maple Syrup Tour",
+            "priceCents": 52500,
+            "seatsLeft": 3,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899b1c1e0179845498b461f"
+          },
+          {
+            "startsAt": "2026-09-27T12:00",
+            "label": "12:00 PM · Thousand Islands Seaway and Cider Tour",
+            "priceCents": 37500,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5ffc64e854f4f33b6b5bce01"
+          },
+          {
+            "startsAt": "2026-09-27T12:00",
+            "label": "12:00 PM · Highlights of 1000 Islands with Helis and Hops",
+            "priceCents": 37500,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/62e80be3fbddce648a2718e2"
+          },
+          {
+            "startsAt": "2026-09-27T12:30",
+            "label": "12:30 PM · Ten Minute 1000 Islands Tour",
+            "priceCents": 10900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/58999faae0179885508b4604"
+          },
+          {
+            "startsAt": "2026-09-27T12:30",
+            "label": "12:30 PM · Boldt Castle Tour",
+            "priceCents": 18900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a0be6864eace288b4572"
+          },
+          {
+            "startsAt": "2026-09-27T12:30",
+            "label": "12:30 PM · Two Castle Tour",
+            "priceCents": 27900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a127332e7518718b4593"
+          }
+        ]
+      },
+      {
+        "date": "2026-09-28",
+        "slots": [
+          {
+            "startsAt": "2026-09-28T08:30",
+            "label": "8:30 AM · Heli Fishing",
+            "priceCents": 69500,
+            "seatsLeft": 99999,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/696d020d21aeeef94a045ca8"
+          },
+          {
+            "startsAt": "2026-09-28T10:00",
+            "label": "10:00 AM · Ten Minute 1000 Islands Tour",
+            "priceCents": 10900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/58999faae0179885508b4604"
+          },
+          {
+            "startsAt": "2026-09-28T10:00",
+            "label": "10:00 AM · Boldt Castle Tour",
+            "priceCents": 18900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a0be6864eace288b4572"
+          },
+          {
+            "startsAt": "2026-09-28T10:00",
+            "label": "10:00 AM · Two Castle Tour",
+            "priceCents": 27900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a127332e7518718b4593"
+          },
+          {
+            "startsAt": "2026-09-28T10:00",
+            "label": "10:00 AM · Kingston City Tour",
+            "priceCents": 27900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a1d46864eade7f8b4593"
+          },
+          {
+            "startsAt": "2026-09-28T10:00",
+            "label": "10:00 AM · The Works",
+            "priceCents": 52500,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a216332e75db078b4575"
+          },
+          {
+            "startsAt": "2026-09-28T10:30",
+            "label": "10:30 AM · Ten Minute 1000 Islands Tour",
+            "priceCents": 10900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/58999faae0179885508b4604"
+          },
+          {
+            "startsAt": "2026-09-28T10:30",
+            "label": "10:30 AM · Boldt Castle Tour",
+            "priceCents": 18900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a0be6864eace288b4572"
+          },
+          {
+            "startsAt": "2026-09-28T10:30",
+            "label": "10:30 AM · Two Castle Tour",
+            "priceCents": 27900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a127332e7518718b4593"
+          },
+          {
+            "startsAt": "2026-09-28T10:30",
+            "label": "10:30 AM · Kingston City Tour",
+            "priceCents": 27900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a1d46864eade7f8b4593"
+          },
+          {
+            "startsAt": "2026-09-28T10:30",
+            "label": "10:30 AM · The Works",
+            "priceCents": 52500,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a216332e75db078b4575"
+          },
+          {
+            "startsAt": "2026-09-28T11:00",
+            "label": "11:00 AM · Ten Minute 1000 Islands Tour",
+            "priceCents": 10900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/58999faae0179885508b4604"
+          },
+          {
+            "startsAt": "2026-09-28T11:00",
+            "label": "11:00 AM · Boldt Castle Tour",
+            "priceCents": 18900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a0be6864eace288b4572"
+          },
+          {
+            "startsAt": "2026-09-28T11:00",
+            "label": "11:00 AM · Two Castle Tour",
+            "priceCents": 27900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a127332e7518718b4593"
+          },
+          {
+            "startsAt": "2026-09-28T11:00",
+            "label": "11:00 AM · Kingston City Tour",
+            "priceCents": 27900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a1d46864eade7f8b4593"
+          },
+          {
+            "startsAt": "2026-09-28T11:00",
+            "label": "11:00 AM · The Works",
+            "priceCents": 52500,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a216332e75db078b4575"
+          },
+          {
+            "startsAt": "2026-09-28T11:00",
+            "label": "11:00 AM · Watertown Charter",
+            "priceCents": 120000,
+            "seatsLeft": 3,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/61715a87eba33e543a29f635"
+          },
+          {
+            "startsAt": "2026-09-28T11:00",
+            "label": "11:00 AM · Ogdensburg Charter",
+            "priceCents": 150000,
+            "seatsLeft": 3,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/61715db48dc5fc2013646d53"
+          },
+          {
+            "startsAt": "2026-09-28T11:30",
+            "label": "11:30 AM · Ten Minute 1000 Islands Tour",
+            "priceCents": 10900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/58999faae0179885508b4604"
+          },
+          {
+            "startsAt": "2026-09-28T11:30",
+            "label": "11:30 AM · Boldt Castle Tour",
+            "priceCents": 18900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a0be6864eace288b4572"
+          },
+          {
+            "startsAt": "2026-09-28T11:30",
+            "label": "11:30 AM · Two Castle Tour",
+            "priceCents": 27900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a127332e7518718b4593"
+          },
+          {
+            "startsAt": "2026-09-28T11:30",
+            "label": "11:30 AM · Kingston City Tour",
+            "priceCents": 27900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a1d46864eade7f8b4593"
+          },
+          {
+            "startsAt": "2026-09-28T11:30",
+            "label": "11:30 AM · The Works",
+            "priceCents": 52500,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a216332e75db078b4575"
+          },
+          {
+            "startsAt": "2026-09-28T12:00",
+            "label": "12:00 PM · The Works",
+            "priceCents": 52500,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a216332e75db078b4575"
+          },
+          {
+            "startsAt": "2026-09-28T12:30",
+            "label": "12:30 PM · Ten Minute 1000 Islands Tour",
+            "priceCents": 10900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/58999faae0179885508b4604"
+          },
+          {
+            "startsAt": "2026-09-28T12:30",
+            "label": "12:30 PM · Boldt Castle Tour",
+            "priceCents": 18900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a0be6864eace288b4572"
+          },
+          {
+            "startsAt": "2026-09-28T12:30",
+            "label": "12:30 PM · Two Castle Tour",
+            "priceCents": 27900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a127332e7518718b4593"
+          },
+          {
+            "startsAt": "2026-09-28T12:30",
+            "label": "12:30 PM · Kingston City Tour",
+            "priceCents": 27900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a1d46864eade7f8b4593"
+          },
+          {
+            "startsAt": "2026-09-28T12:30",
+            "label": "12:30 PM · The Works",
+            "priceCents": 52500,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a216332e75db078b4575"
+          },
+          {
+            "startsAt": "2026-09-28T13:00",
+            "label": "1:00 PM · Ten Minute 1000 Islands Tour",
+            "priceCents": 10900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/58999faae0179885508b4604"
+          },
+          {
+            "startsAt": "2026-09-28T13:00",
+            "label": "1:00 PM · Boldt Castle Tour",
+            "priceCents": 18900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a0be6864eace288b4572"
+          },
+          {
+            "startsAt": "2026-09-28T13:00",
+            "label": "1:00 PM · Two Castle Tour",
+            "priceCents": 27900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a127332e7518718b4593"
+          },
+          {
+            "startsAt": "2026-09-28T13:00",
+            "label": "1:00 PM · Kingston City Tour",
+            "priceCents": 27900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a1d46864eade7f8b4593"
+          },
+          {
+            "startsAt": "2026-09-28T13:00",
+            "label": "1:00 PM · The Works",
+            "priceCents": 52500,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a216332e75db078b4575"
+          },
+          {
+            "startsAt": "2026-09-28T13:30",
+            "label": "1:30 PM · Ten Minute 1000 Islands Tour",
+            "priceCents": 10900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/58999faae0179885508b4604"
+          },
+          {
+            "startsAt": "2026-09-28T13:30",
+            "label": "1:30 PM · Boldt Castle Tour",
+            "priceCents": 18900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a0be6864eace288b4572"
+          },
+          {
+            "startsAt": "2026-09-28T13:30",
+            "label": "1:30 PM · Two Castle Tour",
+            "priceCents": 27900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a127332e7518718b4593"
+          },
+          {
+            "startsAt": "2026-09-28T13:30",
+            "label": "1:30 PM · Kingston City Tour",
+            "priceCents": 27900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a1d46864eade7f8b4593"
+          },
+          {
+            "startsAt": "2026-09-28T14:00",
+            "label": "2:00 PM · Ten Minute 1000 Islands Tour",
+            "priceCents": 10900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/58999faae0179885508b4604"
+          },
+          {
+            "startsAt": "2026-09-28T14:00",
+            "label": "2:00 PM · Boldt Castle Tour",
+            "priceCents": 18900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a0be6864eace288b4572"
+          }
+        ]
+      },
+      {
+        "date": "2026-09-29",
+        "slots": [
+          {
+            "startsAt": "2026-09-29T08:30",
+            "label": "8:30 AM · Heli Fishing",
+            "priceCents": 69500,
+            "seatsLeft": 99999,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/696d020d21aeeef94a045ca8"
+          },
+          {
+            "startsAt": "2026-09-29T10:00",
+            "label": "10:00 AM · Ten Minute 1000 Islands Tour",
+            "priceCents": 10900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/58999faae0179885508b4604"
+          },
+          {
+            "startsAt": "2026-09-29T10:00",
+            "label": "10:00 AM · Boldt Castle Tour",
+            "priceCents": 18900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a0be6864eace288b4572"
+          },
+          {
+            "startsAt": "2026-09-29T10:00",
+            "label": "10:00 AM · Two Castle Tour",
+            "priceCents": 27900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a127332e7518718b4593"
+          },
+          {
+            "startsAt": "2026-09-29T10:00",
+            "label": "10:00 AM · Kingston City Tour",
+            "priceCents": 27900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a1d46864eade7f8b4593"
+          },
+          {
+            "startsAt": "2026-09-29T10:00",
+            "label": "10:00 AM · The Works",
+            "priceCents": 52500,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a216332e75db078b4575"
+          },
+          {
+            "startsAt": "2026-09-29T10:30",
+            "label": "10:30 AM · Ten Minute 1000 Islands Tour",
+            "priceCents": 10900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/58999faae0179885508b4604"
+          },
+          {
+            "startsAt": "2026-09-29T10:30",
+            "label": "10:30 AM · Boldt Castle Tour",
+            "priceCents": 18900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a0be6864eace288b4572"
+          },
+          {
+            "startsAt": "2026-09-29T10:30",
+            "label": "10:30 AM · Two Castle Tour",
+            "priceCents": 27900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a127332e7518718b4593"
+          },
+          {
+            "startsAt": "2026-09-29T10:30",
+            "label": "10:30 AM · Kingston City Tour",
+            "priceCents": 27900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a1d46864eade7f8b4593"
+          },
+          {
+            "startsAt": "2026-09-29T10:30",
+            "label": "10:30 AM · The Works",
+            "priceCents": 52500,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a216332e75db078b4575"
+          },
+          {
+            "startsAt": "2026-09-29T11:00",
+            "label": "11:00 AM · Ten Minute 1000 Islands Tour",
+            "priceCents": 10900,
+            "seatsLeft": 3,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/58999faae0179885508b4604"
+          },
+          {
+            "startsAt": "2026-09-29T11:00",
+            "label": "11:00 AM · Boldt Castle Tour",
+            "priceCents": 18900,
+            "seatsLeft": 3,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a0be6864eace288b4572"
+          },
+          {
+            "startsAt": "2026-09-29T11:00",
+            "label": "11:00 AM · Two Castle Tour",
+            "priceCents": 27900,
+            "seatsLeft": 4,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a127332e7518718b4593"
+          },
+          {
+            "startsAt": "2026-09-29T11:00",
+            "label": "11:00 AM · Kingston City Tour",
+            "priceCents": 27900,
+            "seatsLeft": 3,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a1d46864eade7f8b4593"
+          },
+          {
+            "startsAt": "2026-09-29T11:00",
+            "label": "11:00 AM · The Works",
+            "priceCents": 52500,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a216332e75db078b4575"
+          },
+          {
+            "startsAt": "2026-09-29T11:00",
+            "label": "11:00 AM · Watertown Charter",
+            "priceCents": 120000,
+            "seatsLeft": 3,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/61715a87eba33e543a29f635"
+          },
+          {
+            "startsAt": "2026-09-29T11:00",
+            "label": "11:00 AM · Ogdensburg Charter",
+            "priceCents": 150000,
+            "seatsLeft": 3,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/61715db48dc5fc2013646d53"
+          },
+          {
+            "startsAt": "2026-09-29T11:30",
+            "label": "11:30 AM · Ten Minute 1000 Islands Tour",
+            "priceCents": 10900,
+            "seatsLeft": 4,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/58999faae0179885508b4604"
+          },
+          {
+            "startsAt": "2026-09-29T11:30",
+            "label": "11:30 AM · Boldt Castle Tour",
+            "priceCents": 18900,
+            "seatsLeft": 3,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a0be6864eace288b4572"
+          },
+          {
+            "startsAt": "2026-09-29T11:30",
+            "label": "11:30 AM · Two Castle Tour",
+            "priceCents": 27900,
+            "seatsLeft": 3,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a127332e7518718b4593"
+          },
+          {
+            "startsAt": "2026-09-29T11:30",
+            "label": "11:30 AM · Kingston City Tour",
+            "priceCents": 27900,
+            "seatsLeft": 3,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a1d46864eade7f8b4593"
+          },
+          {
+            "startsAt": "2026-09-29T11:30",
+            "label": "11:30 AM · The Works",
+            "priceCents": 52500,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a216332e75db078b4575"
+          },
+          {
+            "startsAt": "2026-09-29T12:00",
+            "label": "12:00 PM · Ten Minute 1000 Islands Tour",
+            "priceCents": 10900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/58999faae0179885508b4604"
+          },
+          {
+            "startsAt": "2026-09-29T12:00",
+            "label": "12:00 PM · Boldt Castle Tour",
+            "priceCents": 18900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a0be6864eace288b4572"
+          },
+          {
+            "startsAt": "2026-09-29T12:00",
+            "label": "12:00 PM · Two Castle Tour",
+            "priceCents": 27900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a127332e7518718b4593"
+          },
+          {
+            "startsAt": "2026-09-29T12:00",
+            "label": "12:00 PM · Kingston City Tour",
+            "priceCents": 27900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a1d46864eade7f8b4593"
+          },
+          {
+            "startsAt": "2026-09-29T12:00",
+            "label": "12:00 PM · The Works",
+            "priceCents": 52500,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a216332e75db078b4575"
+          },
+          {
+            "startsAt": "2026-09-29T12:30",
+            "label": "12:30 PM · Ten Minute 1000 Islands Tour",
+            "priceCents": 10900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/58999faae0179885508b4604"
+          },
+          {
+            "startsAt": "2026-09-29T12:30",
+            "label": "12:30 PM · Boldt Castle Tour",
+            "priceCents": 18900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a0be6864eace288b4572"
+          },
+          {
+            "startsAt": "2026-09-29T12:30",
+            "label": "12:30 PM · Two Castle Tour",
+            "priceCents": 27900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a127332e7518718b4593"
+          },
+          {
+            "startsAt": "2026-09-29T12:30",
+            "label": "12:30 PM · Kingston City Tour",
+            "priceCents": 27900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a1d46864eade7f8b4593"
+          },
+          {
+            "startsAt": "2026-09-29T12:30",
+            "label": "12:30 PM · The Works",
+            "priceCents": 52500,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a216332e75db078b4575"
+          },
+          {
+            "startsAt": "2026-09-29T13:00",
+            "label": "1:00 PM · Ten Minute 1000 Islands Tour",
+            "priceCents": 10900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/58999faae0179885508b4604"
+          },
+          {
+            "startsAt": "2026-09-29T13:00",
+            "label": "1:00 PM · Boldt Castle Tour",
+            "priceCents": 18900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a0be6864eace288b4572"
+          },
+          {
+            "startsAt": "2026-09-29T13:00",
+            "label": "1:00 PM · Two Castle Tour",
+            "priceCents": 27900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a127332e7518718b4593"
+          },
+          {
+            "startsAt": "2026-09-29T13:00",
+            "label": "1:00 PM · Kingston City Tour",
+            "priceCents": 27900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a1d46864eade7f8b4593"
+          },
+          {
+            "startsAt": "2026-09-29T13:00",
+            "label": "1:00 PM · The Works",
+            "priceCents": 52500,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a216332e75db078b4575"
+          },
+          {
+            "startsAt": "2026-09-29T13:30",
+            "label": "1:30 PM · Ten Minute 1000 Islands Tour",
+            "priceCents": 10900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/58999faae0179885508b4604"
+          },
+          {
+            "startsAt": "2026-09-29T13:30",
+            "label": "1:30 PM · Boldt Castle Tour",
+            "priceCents": 18900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a0be6864eace288b4572"
+          }
+        ]
+      },
+      {
+        "date": "2026-09-30",
+        "slots": [
+          {
+            "startsAt": "2026-09-30T08:30",
+            "label": "8:30 AM · Heli Fishing",
+            "priceCents": 69500,
+            "seatsLeft": 99999,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/696d020d21aeeef94a045ca8"
+          },
+          {
+            "startsAt": "2026-09-30T10:00",
+            "label": "10:00 AM · Ten Minute 1000 Islands Tour",
+            "priceCents": 10900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/58999faae0179885508b4604"
+          },
+          {
+            "startsAt": "2026-09-30T10:00",
+            "label": "10:00 AM · Boldt Castle Tour",
+            "priceCents": 18900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a0be6864eace288b4572"
+          },
+          {
+            "startsAt": "2026-09-30T10:00",
+            "label": "10:00 AM · Two Castle Tour",
+            "priceCents": 27900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a127332e7518718b4593"
+          },
+          {
+            "startsAt": "2026-09-30T10:00",
+            "label": "10:00 AM · Kingston City Tour",
+            "priceCents": 27900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a1d46864eade7f8b4593"
+          },
+          {
+            "startsAt": "2026-09-30T10:00",
+            "label": "10:00 AM · The Works",
+            "priceCents": 52500,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a216332e75db078b4575"
+          },
+          {
+            "startsAt": "2026-09-30T10:30",
+            "label": "10:30 AM · Ten Minute 1000 Islands Tour",
+            "priceCents": 10900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/58999faae0179885508b4604"
+          },
+          {
+            "startsAt": "2026-09-30T10:30",
+            "label": "10:30 AM · Boldt Castle Tour",
+            "priceCents": 18900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a0be6864eace288b4572"
+          },
+          {
+            "startsAt": "2026-09-30T10:30",
+            "label": "10:30 AM · Two Castle Tour",
+            "priceCents": 27900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a127332e7518718b4593"
+          },
+          {
+            "startsAt": "2026-09-30T10:30",
+            "label": "10:30 AM · Kingston City Tour",
+            "priceCents": 27900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a1d46864eade7f8b4593"
+          },
+          {
+            "startsAt": "2026-09-30T10:30",
+            "label": "10:30 AM · The Works",
+            "priceCents": 52500,
+            "seatsLeft": 3,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a216332e75db078b4575"
+          },
+          {
+            "startsAt": "2026-09-30T11:00",
+            "label": "11:00 AM · Ten Minute 1000 Islands Tour",
+            "priceCents": 10900,
+            "seatsLeft": 3,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/58999faae0179885508b4604"
+          },
+          {
+            "startsAt": "2026-09-30T11:00",
+            "label": "11:00 AM · Boldt Castle Tour",
+            "priceCents": 18900,
+            "seatsLeft": 4,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a0be6864eace288b4572"
+          },
+          {
+            "startsAt": "2026-09-30T11:00",
+            "label": "11:00 AM · Two Castle Tour",
+            "priceCents": 27900,
+            "seatsLeft": 3,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a127332e7518718b4593"
+          },
+          {
+            "startsAt": "2026-09-30T11:00",
+            "label": "11:00 AM · Kingston City Tour",
+            "priceCents": 27900,
+            "seatsLeft": 3,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a1d46864eade7f8b4593"
+          },
+          {
+            "startsAt": "2026-09-30T11:00",
+            "label": "11:00 AM · The Works",
+            "priceCents": 52500,
+            "seatsLeft": 4,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a216332e75db078b4575"
+          },
+          {
+            "startsAt": "2026-09-30T11:00",
+            "label": "11:00 AM · Watertown Charter",
+            "priceCents": 120000,
+            "seatsLeft": 3,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/61715a87eba33e543a29f635"
+          },
+          {
+            "startsAt": "2026-09-30T11:00",
+            "label": "11:00 AM · Ogdensburg Charter",
+            "priceCents": 150000,
+            "seatsLeft": 3,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/61715db48dc5fc2013646d53"
+          },
+          {
+            "startsAt": "2026-09-30T11:30",
+            "label": "11:30 AM · Ten Minute 1000 Islands Tour",
+            "priceCents": 10900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/58999faae0179885508b4604"
+          },
+          {
+            "startsAt": "2026-09-30T11:30",
+            "label": "11:30 AM · Boldt Castle Tour",
+            "priceCents": 18900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a0be6864eace288b4572"
+          },
+          {
+            "startsAt": "2026-09-30T11:30",
+            "label": "11:30 AM · Two Castle Tour",
+            "priceCents": 27900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a127332e7518718b4593"
+          },
+          {
+            "startsAt": "2026-09-30T11:30",
+            "label": "11:30 AM · Kingston City Tour",
+            "priceCents": 27900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a1d46864eade7f8b4593"
+          },
+          {
+            "startsAt": "2026-09-30T11:30",
+            "label": "11:30 AM · The Works",
+            "priceCents": 52500,
+            "seatsLeft": 3,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a216332e75db078b4575"
+          },
+          {
+            "startsAt": "2026-09-30T11:30",
+            "label": "11:30 AM · Highlights of 1000 Islands with Helis and Hops",
+            "priceCents": 37500,
+            "seatsLeft": 3,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/62e80be3fbddce648a2718e2"
+          },
+          {
+            "startsAt": "2026-09-30T12:00",
+            "label": "12:00 PM · Ten Minute 1000 Islands Tour",
+            "priceCents": 10900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/58999faae0179885508b4604"
+          },
+          {
+            "startsAt": "2026-09-30T12:00",
+            "label": "12:00 PM · Boldt Castle Tour",
+            "priceCents": 18900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a0be6864eace288b4572"
+          },
+          {
+            "startsAt": "2026-09-30T12:00",
+            "label": "12:00 PM · Two Castle Tour",
+            "priceCents": 27900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a127332e7518718b4593"
+          },
+          {
+            "startsAt": "2026-09-30T12:00",
+            "label": "12:00 PM · Kingston City Tour",
+            "priceCents": 27900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a1d46864eade7f8b4593"
+          },
+          {
+            "startsAt": "2026-09-30T12:00",
+            "label": "12:00 PM · The Works",
+            "priceCents": 52500,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a216332e75db078b4575"
+          },
+          {
+            "startsAt": "2026-09-30T12:00",
+            "label": "12:00 PM · Highlights of 1000 Islands with Helis and Hops",
+            "priceCents": 37500,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/62e80be3fbddce648a2718e2"
+          },
+          {
+            "startsAt": "2026-09-30T12:30",
+            "label": "12:30 PM · Ten Minute 1000 Islands Tour",
+            "priceCents": 10900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/58999faae0179885508b4604"
+          },
+          {
+            "startsAt": "2026-09-30T12:30",
+            "label": "12:30 PM · Boldt Castle Tour",
+            "priceCents": 18900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a0be6864eace288b4572"
+          },
+          {
+            "startsAt": "2026-09-30T12:30",
+            "label": "12:30 PM · Two Castle Tour",
+            "priceCents": 27900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a127332e7518718b4593"
+          },
+          {
+            "startsAt": "2026-09-30T12:30",
+            "label": "12:30 PM · Kingston City Tour",
+            "priceCents": 27900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a1d46864eade7f8b4593"
+          },
+          {
+            "startsAt": "2026-09-30T12:30",
+            "label": "12:30 PM · The Works",
+            "priceCents": 52500,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a216332e75db078b4575"
+          },
+          {
+            "startsAt": "2026-09-30T12:30",
+            "label": "12:30 PM · Highlights of 1000 Islands with Helis and Hops",
+            "priceCents": 37500,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/62e80be3fbddce648a2718e2"
+          },
+          {
+            "startsAt": "2026-09-30T13:00",
+            "label": "1:00 PM · Ten Minute 1000 Islands Tour",
+            "priceCents": 10900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/58999faae0179885508b4604"
+          },
+          {
+            "startsAt": "2026-09-30T13:00",
+            "label": "1:00 PM · Boldt Castle Tour",
+            "priceCents": 18900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a0be6864eace288b4572"
+          },
+          {
+            "startsAt": "2026-09-30T13:00",
+            "label": "1:00 PM · Two Castle Tour",
+            "priceCents": 27900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a127332e7518718b4593"
+          },
+          {
+            "startsAt": "2026-09-30T13:00",
+            "label": "1:00 PM · Kingston City Tour",
+            "priceCents": 27900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a1d46864eade7f8b4593"
+          }
+        ]
+      },
+      {
+        "date": "2026-10-01",
+        "slots": [
+          {
+            "startsAt": "2026-10-01T08:30",
+            "label": "8:30 AM · Heli Fishing",
+            "priceCents": 69500,
+            "seatsLeft": 99999,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/696d020d21aeeef94a045ca8"
+          },
+          {
+            "startsAt": "2026-10-01T10:00",
+            "label": "10:00 AM · Ten Minute 1000 Islands Tour",
+            "priceCents": 10900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/58999faae0179885508b4604"
+          },
+          {
+            "startsAt": "2026-10-01T10:00",
+            "label": "10:00 AM · Boldt Castle Tour",
+            "priceCents": 18900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a0be6864eace288b4572"
+          },
+          {
+            "startsAt": "2026-10-01T10:00",
+            "label": "10:00 AM · Two Castle Tour",
+            "priceCents": 27900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a127332e7518718b4593"
+          },
+          {
+            "startsAt": "2026-10-01T10:00",
+            "label": "10:00 AM · Kingston City Tour",
+            "priceCents": 27900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a1d46864eade7f8b4593"
+          },
+          {
+            "startsAt": "2026-10-01T10:00",
+            "label": "10:00 AM · The Works",
+            "priceCents": 52500,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a216332e75db078b4575"
+          },
+          {
+            "startsAt": "2026-10-01T10:30",
+            "label": "10:30 AM · Ten Minute 1000 Islands Tour",
+            "priceCents": 10900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/58999faae0179885508b4604"
+          },
+          {
+            "startsAt": "2026-10-01T10:30",
+            "label": "10:30 AM · Boldt Castle Tour",
+            "priceCents": 18900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a0be6864eace288b4572"
+          },
+          {
+            "startsAt": "2026-10-01T10:30",
+            "label": "10:30 AM · Two Castle Tour",
+            "priceCents": 27900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a127332e7518718b4593"
+          },
+          {
+            "startsAt": "2026-10-01T10:30",
+            "label": "10:30 AM · Kingston City Tour",
+            "priceCents": 27900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a1d46864eade7f8b4593"
+          },
+          {
+            "startsAt": "2026-10-01T10:30",
+            "label": "10:30 AM · The Works",
+            "priceCents": 52500,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a216332e75db078b4575"
+          },
+          {
+            "startsAt": "2026-10-01T11:00",
+            "label": "11:00 AM · Ten Minute 1000 Islands Tour",
+            "priceCents": 10900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/58999faae0179885508b4604"
+          },
+          {
+            "startsAt": "2026-10-01T11:00",
+            "label": "11:00 AM · Boldt Castle Tour",
+            "priceCents": 18900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a0be6864eace288b4572"
+          },
+          {
+            "startsAt": "2026-10-01T11:00",
+            "label": "11:00 AM · Two Castle Tour",
+            "priceCents": 27900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a127332e7518718b4593"
+          },
+          {
+            "startsAt": "2026-10-01T11:00",
+            "label": "11:00 AM · Kingston City Tour",
+            "priceCents": 27900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a1d46864eade7f8b4593"
+          },
+          {
+            "startsAt": "2026-10-01T11:00",
+            "label": "11:00 AM · The Works",
+            "priceCents": 52500,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a216332e75db078b4575"
+          },
+          {
+            "startsAt": "2026-10-01T11:00",
+            "label": "11:00 AM · Watertown Charter",
+            "priceCents": 120000,
+            "seatsLeft": 3,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/61715a87eba33e543a29f635"
+          },
+          {
+            "startsAt": "2026-10-01T11:00",
+            "label": "11:00 AM · Ogdensburg Charter",
+            "priceCents": 150000,
+            "seatsLeft": 3,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/61715db48dc5fc2013646d53"
+          },
+          {
+            "startsAt": "2026-10-01T11:30",
+            "label": "11:30 AM · Ten Minute 1000 Islands Tour",
+            "priceCents": 10900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/58999faae0179885508b4604"
+          },
+          {
+            "startsAt": "2026-10-01T11:30",
+            "label": "11:30 AM · Boldt Castle Tour",
+            "priceCents": 18900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a0be6864eace288b4572"
+          },
+          {
+            "startsAt": "2026-10-01T11:30",
+            "label": "11:30 AM · Two Castle Tour",
+            "priceCents": 27900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a127332e7518718b4593"
+          },
+          {
+            "startsAt": "2026-10-01T11:30",
+            "label": "11:30 AM · Kingston City Tour",
+            "priceCents": 27900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a1d46864eade7f8b4593"
+          },
+          {
+            "startsAt": "2026-10-01T11:30",
+            "label": "11:30 AM · The Works",
+            "priceCents": 52500,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a216332e75db078b4575"
+          },
+          {
+            "startsAt": "2026-10-01T11:30",
+            "label": "11:30 AM · Highlights of 1000 Islands with Helis and Hops",
+            "priceCents": 37500,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/62e80be3fbddce648a2718e2"
+          },
+          {
+            "startsAt": "2026-10-01T12:00",
+            "label": "12:00 PM · Ten Minute 1000 Islands Tour",
+            "priceCents": 10900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/58999faae0179885508b4604"
+          },
+          {
+            "startsAt": "2026-10-01T12:00",
+            "label": "12:00 PM · Boldt Castle Tour",
+            "priceCents": 18900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a0be6864eace288b4572"
+          },
+          {
+            "startsAt": "2026-10-01T12:00",
+            "label": "12:00 PM · Two Castle Tour",
+            "priceCents": 27900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a127332e7518718b4593"
+          },
+          {
+            "startsAt": "2026-10-01T12:00",
+            "label": "12:00 PM · Kingston City Tour",
+            "priceCents": 27900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a1d46864eade7f8b4593"
+          },
+          {
+            "startsAt": "2026-10-01T12:00",
+            "label": "12:00 PM · The Works",
+            "priceCents": 52500,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a216332e75db078b4575"
+          },
+          {
+            "startsAt": "2026-10-01T12:00",
+            "label": "12:00 PM · Highlights of 1000 Islands with Helis and Hops",
+            "priceCents": 37500,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/62e80be3fbddce648a2718e2"
+          },
+          {
+            "startsAt": "2026-10-01T12:30",
+            "label": "12:30 PM · Ten Minute 1000 Islands Tour",
+            "priceCents": 10900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/58999faae0179885508b4604"
+          },
+          {
+            "startsAt": "2026-10-01T12:30",
+            "label": "12:30 PM · Boldt Castle Tour",
+            "priceCents": 18900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a0be6864eace288b4572"
+          },
+          {
+            "startsAt": "2026-10-01T12:30",
+            "label": "12:30 PM · Two Castle Tour",
+            "priceCents": 27900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a127332e7518718b4593"
+          },
+          {
+            "startsAt": "2026-10-01T12:30",
+            "label": "12:30 PM · Kingston City Tour",
+            "priceCents": 27900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a1d46864eade7f8b4593"
+          },
+          {
+            "startsAt": "2026-10-01T12:30",
+            "label": "12:30 PM · The Works",
+            "priceCents": 52500,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a216332e75db078b4575"
+          },
+          {
+            "startsAt": "2026-10-01T12:30",
+            "label": "12:30 PM · Highlights of 1000 Islands with Helis and Hops",
+            "priceCents": 37500,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/62e80be3fbddce648a2718e2"
+          },
+          {
+            "startsAt": "2026-10-01T13:00",
+            "label": "1:00 PM · Ten Minute 1000 Islands Tour",
+            "priceCents": 10900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/58999faae0179885508b4604"
+          },
+          {
+            "startsAt": "2026-10-01T13:00",
+            "label": "1:00 PM · Boldt Castle Tour",
+            "priceCents": 18900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a0be6864eace288b4572"
+          },
+          {
+            "startsAt": "2026-10-01T13:00",
+            "label": "1:00 PM · Two Castle Tour",
+            "priceCents": 27900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a127332e7518718b4593"
+          },
+          {
+            "startsAt": "2026-10-01T13:00",
+            "label": "1:00 PM · Kingston City Tour",
+            "priceCents": 27900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a1d46864eade7f8b4593"
+          }
+        ]
+      },
+      {
+        "date": "2026-10-02",
+        "slots": [
+          {
+            "startsAt": "2026-10-02T08:30",
+            "label": "8:30 AM · Heli Fishing",
+            "priceCents": 69500,
+            "seatsLeft": 99999,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/696d020d21aeeef94a045ca8"
+          },
+          {
+            "startsAt": "2026-10-02T10:00",
+            "label": "10:00 AM · Ten Minute 1000 Islands Tour",
+            "priceCents": 10900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/58999faae0179885508b4604"
+          },
+          {
+            "startsAt": "2026-10-02T10:00",
+            "label": "10:00 AM · Boldt Castle Tour",
+            "priceCents": 18900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a0be6864eace288b4572"
+          },
+          {
+            "startsAt": "2026-10-02T10:00",
+            "label": "10:00 AM · Two Castle Tour",
+            "priceCents": 27900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a127332e7518718b4593"
+          },
+          {
+            "startsAt": "2026-10-02T10:00",
+            "label": "10:00 AM · Kingston City Tour",
+            "priceCents": 27900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a1d46864eade7f8b4593"
+          },
+          {
+            "startsAt": "2026-10-02T10:00",
+            "label": "10:00 AM · The Works",
+            "priceCents": 52500,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a216332e75db078b4575"
+          },
+          {
+            "startsAt": "2026-10-02T10:30",
+            "label": "10:30 AM · Ten Minute 1000 Islands Tour",
+            "priceCents": 10900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/58999faae0179885508b4604"
+          },
+          {
+            "startsAt": "2026-10-02T10:30",
+            "label": "10:30 AM · Boldt Castle Tour",
+            "priceCents": 18900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a0be6864eace288b4572"
+          },
+          {
+            "startsAt": "2026-10-02T10:30",
+            "label": "10:30 AM · Two Castle Tour",
+            "priceCents": 27900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a127332e7518718b4593"
+          },
+          {
+            "startsAt": "2026-10-02T10:30",
+            "label": "10:30 AM · Kingston City Tour",
+            "priceCents": 27900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a1d46864eade7f8b4593"
+          },
+          {
+            "startsAt": "2026-10-02T10:30",
+            "label": "10:30 AM · The Works",
+            "priceCents": 52500,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a216332e75db078b4575"
+          },
+          {
+            "startsAt": "2026-10-02T10:30",
+            "label": "10:30 AM · Maple Syrup Tour",
+            "priceCents": 52500,
+            "seatsLeft": 3,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899b1c1e0179845498b461f"
+          },
+          {
+            "startsAt": "2026-10-02T11:00",
+            "label": "11:00 AM · Ten Minute 1000 Islands Tour",
+            "priceCents": 10900,
+            "seatsLeft": 3,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/58999faae0179885508b4604"
+          },
+          {
+            "startsAt": "2026-10-02T11:00",
+            "label": "11:00 AM · Boldt Castle Tour",
+            "priceCents": 18900,
+            "seatsLeft": 3,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a0be6864eace288b4572"
+          },
+          {
+            "startsAt": "2026-10-02T11:00",
+            "label": "11:00 AM · Two Castle Tour",
+            "priceCents": 27900,
+            "seatsLeft": 4,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a127332e7518718b4593"
+          },
+          {
+            "startsAt": "2026-10-02T11:00",
+            "label": "11:00 AM · Kingston City Tour",
+            "priceCents": 27900,
+            "seatsLeft": 3,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a1d46864eade7f8b4593"
+          },
+          {
+            "startsAt": "2026-10-02T11:00",
+            "label": "11:00 AM · The Works",
+            "priceCents": 52500,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a216332e75db078b4575"
+          },
+          {
+            "startsAt": "2026-10-02T11:00",
+            "label": "11:00 AM · Maple Syrup Tour",
+            "priceCents": 52500,
+            "seatsLeft": 3,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899b1c1e0179845498b461f"
+          },
+          {
+            "startsAt": "2026-10-02T11:00",
+            "label": "11:00 AM · Watertown Charter",
+            "priceCents": 120000,
+            "seatsLeft": 3,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/61715a87eba33e543a29f635"
+          },
+          {
+            "startsAt": "2026-10-02T11:00",
+            "label": "11:00 AM · Ogdensburg Charter",
+            "priceCents": 150000,
+            "seatsLeft": 3,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/61715db48dc5fc2013646d53"
+          },
+          {
+            "startsAt": "2026-10-02T11:30",
+            "label": "11:30 AM · Ten Minute 1000 Islands Tour",
+            "priceCents": 10900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/58999faae0179885508b4604"
+          },
+          {
+            "startsAt": "2026-10-02T11:30",
+            "label": "11:30 AM · Boldt Castle Tour",
+            "priceCents": 18900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a0be6864eace288b4572"
+          },
+          {
+            "startsAt": "2026-10-02T11:30",
+            "label": "11:30 AM · Two Castle Tour",
+            "priceCents": 27900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a127332e7518718b4593"
+          },
+          {
+            "startsAt": "2026-10-02T11:30",
+            "label": "11:30 AM · Kingston City Tour",
+            "priceCents": 27900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a1d46864eade7f8b4593"
+          },
+          {
+            "startsAt": "2026-10-02T11:30",
+            "label": "11:30 AM · The Works",
+            "priceCents": 52500,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a216332e75db078b4575"
+          },
+          {
+            "startsAt": "2026-10-02T11:30",
+            "label": "11:30 AM · Maple Syrup Tour",
+            "priceCents": 52500,
+            "seatsLeft": 3,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899b1c1e0179845498b461f"
+          },
+          {
+            "startsAt": "2026-10-02T11:30",
+            "label": "11:30 AM · Highlights of 1000 Islands with Helis and Hops",
+            "priceCents": 37500,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/62e80be3fbddce648a2718e2"
+          },
+          {
+            "startsAt": "2026-10-02T12:00",
+            "label": "12:00 PM · Ten Minute 1000 Islands Tour",
+            "priceCents": 10900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/58999faae0179885508b4604"
+          },
+          {
+            "startsAt": "2026-10-02T12:00",
+            "label": "12:00 PM · Boldt Castle Tour",
+            "priceCents": 18900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a0be6864eace288b4572"
+          },
+          {
+            "startsAt": "2026-10-02T12:00",
+            "label": "12:00 PM · Two Castle Tour",
+            "priceCents": 27900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a127332e7518718b4593"
+          },
+          {
+            "startsAt": "2026-10-02T12:00",
+            "label": "12:00 PM · Kingston City Tour",
+            "priceCents": 27900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a1d46864eade7f8b4593"
+          },
+          {
+            "startsAt": "2026-10-02T12:00",
+            "label": "12:00 PM · The Works",
+            "priceCents": 52500,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a216332e75db078b4575"
+          },
+          {
+            "startsAt": "2026-10-02T12:00",
+            "label": "12:00 PM · Maple Syrup Tour",
+            "priceCents": 52500,
+            "seatsLeft": 3,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899b1c1e0179845498b461f"
+          },
+          {
+            "startsAt": "2026-10-02T12:00",
+            "label": "12:00 PM · Highlights of 1000 Islands with Helis and Hops",
+            "priceCents": 37500,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/62e80be3fbddce648a2718e2"
+          },
+          {
+            "startsAt": "2026-10-02T12:30",
+            "label": "12:30 PM · Ten Minute 1000 Islands Tour",
+            "priceCents": 10900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/58999faae0179885508b4604"
+          },
+          {
+            "startsAt": "2026-10-02T12:30",
+            "label": "12:30 PM · Boldt Castle Tour",
+            "priceCents": 18900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a0be6864eace288b4572"
+          },
+          {
+            "startsAt": "2026-10-02T12:30",
+            "label": "12:30 PM · Two Castle Tour",
+            "priceCents": 27900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a127332e7518718b4593"
+          },
+          {
+            "startsAt": "2026-10-02T12:30",
+            "label": "12:30 PM · Kingston City Tour",
+            "priceCents": 27900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a1d46864eade7f8b4593"
+          },
+          {
+            "startsAt": "2026-10-02T12:30",
+            "label": "12:30 PM · The Works",
+            "priceCents": 52500,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a216332e75db078b4575"
+          },
+          {
+            "startsAt": "2026-10-02T12:30",
+            "label": "12:30 PM · Maple Syrup Tour",
+            "priceCents": 52500,
+            "seatsLeft": 3,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899b1c1e0179845498b461f"
+          }
+        ]
+      },
+      {
+        "date": "2026-10-03",
+        "slots": [
+          {
+            "startsAt": "2026-10-03T08:30",
+            "label": "8:30 AM · Heli Fishing",
+            "priceCents": 69500,
+            "seatsLeft": 99999,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/696d020d21aeeef94a045ca8"
+          },
+          {
+            "startsAt": "2026-10-03T10:00",
+            "label": "10:00 AM · Ten Minute 1000 Islands Tour",
+            "priceCents": 10900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/58999faae0179885508b4604"
+          },
+          {
+            "startsAt": "2026-10-03T10:00",
+            "label": "10:00 AM · Boldt Castle Tour",
+            "priceCents": 18900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a0be6864eace288b4572"
+          },
+          {
+            "startsAt": "2026-10-03T10:00",
+            "label": "10:00 AM · Two Castle Tour",
+            "priceCents": 27900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a127332e7518718b4593"
+          },
+          {
+            "startsAt": "2026-10-03T10:00",
+            "label": "10:00 AM · Kingston City Tour",
+            "priceCents": 27900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a1d46864eade7f8b4593"
+          },
+          {
+            "startsAt": "2026-10-03T10:00",
+            "label": "10:00 AM · The Works",
+            "priceCents": 52500,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a216332e75db078b4575"
+          },
+          {
+            "startsAt": "2026-10-03T10:30",
+            "label": "10:30 AM · Ten Minute 1000 Islands Tour",
+            "priceCents": 10900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/58999faae0179885508b4604"
+          },
+          {
+            "startsAt": "2026-10-03T10:30",
+            "label": "10:30 AM · Boldt Castle Tour",
+            "priceCents": 18900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a0be6864eace288b4572"
+          },
+          {
+            "startsAt": "2026-10-03T10:30",
+            "label": "10:30 AM · Two Castle Tour",
+            "priceCents": 27900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a127332e7518718b4593"
+          },
+          {
+            "startsAt": "2026-10-03T10:30",
+            "label": "10:30 AM · Kingston City Tour",
+            "priceCents": 27900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a1d46864eade7f8b4593"
+          },
+          {
+            "startsAt": "2026-10-03T10:30",
+            "label": "10:30 AM · The Works",
+            "priceCents": 52500,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a216332e75db078b4575"
+          },
+          {
+            "startsAt": "2026-10-03T11:00",
+            "label": "11:00 AM · Ten Minute 1000 Islands Tour",
+            "priceCents": 10900,
+            "seatsLeft": 3,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/58999faae0179885508b4604"
+          },
+          {
+            "startsAt": "2026-10-03T11:00",
+            "label": "11:00 AM · Boldt Castle Tour",
+            "priceCents": 18900,
+            "seatsLeft": 4,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a0be6864eace288b4572"
+          },
+          {
+            "startsAt": "2026-10-03T11:00",
+            "label": "11:00 AM · Two Castle Tour",
+            "priceCents": 27900,
+            "seatsLeft": 3,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a127332e7518718b4593"
+          },
+          {
+            "startsAt": "2026-10-03T11:00",
+            "label": "11:00 AM · Kingston City Tour",
+            "priceCents": 27900,
+            "seatsLeft": 3,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a1d46864eade7f8b4593"
+          },
+          {
+            "startsAt": "2026-10-03T11:00",
+            "label": "11:00 AM · Thousand Islands Seaway and Cider Tour",
+            "priceCents": 37500,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5ffc64e854f4f33b6b5bce01"
+          },
+          {
+            "startsAt": "2026-10-03T12:00",
+            "label": "12:00 PM · Ten Minute 1000 Islands Tour",
+            "priceCents": 10900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/58999faae0179885508b4604"
+          },
+          {
+            "startsAt": "2026-10-03T12:00",
+            "label": "12:00 PM · Boldt Castle Tour",
+            "priceCents": 18900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a0be6864eace288b4572"
+          },
+          {
+            "startsAt": "2026-10-03T12:00",
+            "label": "12:00 PM · Two Castle Tour",
+            "priceCents": 27900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a127332e7518718b4593"
+          },
+          {
+            "startsAt": "2026-10-03T12:00",
+            "label": "12:00 PM · Kingston City Tour",
+            "priceCents": 27900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a1d46864eade7f8b4593"
+          },
+          {
+            "startsAt": "2026-10-03T12:00",
+            "label": "12:00 PM · The Works",
+            "priceCents": 52500,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a216332e75db078b4575"
+          },
+          {
+            "startsAt": "2026-10-03T12:00",
+            "label": "12:00 PM · Maple Syrup Tour",
+            "priceCents": 52500,
+            "seatsLeft": 3,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899b1c1e0179845498b461f"
+          },
+          {
+            "startsAt": "2026-10-03T12:00",
+            "label": "12:00 PM · Thousand Islands Seaway and Cider Tour",
+            "priceCents": 37500,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5ffc64e854f4f33b6b5bce01"
+          },
+          {
+            "startsAt": "2026-10-03T12:00",
+            "label": "12:00 PM · Highlights of 1000 Islands with Helis and Hops",
+            "priceCents": 37500,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/62e80be3fbddce648a2718e2"
+          },
+          {
+            "startsAt": "2026-10-03T12:30",
+            "label": "12:30 PM · Ten Minute 1000 Islands Tour",
+            "priceCents": 10900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/58999faae0179885508b4604"
+          },
+          {
+            "startsAt": "2026-10-03T12:30",
+            "label": "12:30 PM · Boldt Castle Tour",
+            "priceCents": 18900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a0be6864eace288b4572"
+          },
+          {
+            "startsAt": "2026-10-03T12:30",
+            "label": "12:30 PM · Two Castle Tour",
+            "priceCents": 27900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a127332e7518718b4593"
+          },
+          {
+            "startsAt": "2026-10-03T12:30",
+            "label": "12:30 PM · Kingston City Tour",
+            "priceCents": 27900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a1d46864eade7f8b4593"
+          },
+          {
+            "startsAt": "2026-10-03T12:30",
+            "label": "12:30 PM · The Works",
+            "priceCents": 52500,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a216332e75db078b4575"
+          },
+          {
+            "startsAt": "2026-10-03T12:30",
+            "label": "12:30 PM · Maple Syrup Tour",
+            "priceCents": 52500,
+            "seatsLeft": 3,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899b1c1e0179845498b461f"
+          },
+          {
+            "startsAt": "2026-10-03T12:30",
+            "label": "12:30 PM · Thousand Islands Seaway and Cider Tour",
+            "priceCents": 37500,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5ffc64e854f4f33b6b5bce01"
+          },
+          {
+            "startsAt": "2026-10-03T12:30",
+            "label": "12:30 PM · Highlights of 1000 Islands with Helis and Hops",
+            "priceCents": 37500,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/62e80be3fbddce648a2718e2"
+          },
+          {
+            "startsAt": "2026-10-03T13:00",
+            "label": "1:00 PM · Ten Minute 1000 Islands Tour",
+            "priceCents": 10900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/58999faae0179885508b4604"
+          },
+          {
+            "startsAt": "2026-10-03T13:00",
+            "label": "1:00 PM · Boldt Castle Tour",
+            "priceCents": 18900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a0be6864eace288b4572"
+          },
+          {
+            "startsAt": "2026-10-03T13:00",
+            "label": "1:00 PM · Two Castle Tour",
+            "priceCents": 27900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a127332e7518718b4593"
+          },
+          {
+            "startsAt": "2026-10-03T13:00",
+            "label": "1:00 PM · Kingston City Tour",
+            "priceCents": 27900,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a1d46864eade7f8b4593"
+          },
+          {
+            "startsAt": "2026-10-03T13:00",
+            "label": "1:00 PM · The Works",
+            "priceCents": 52500,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899a216332e75db078b4575"
+          },
+          {
+            "startsAt": "2026-10-03T13:00",
+            "label": "1:00 PM · Maple Syrup Tour",
+            "priceCents": 52500,
+            "seatsLeft": 3,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5899b1c1e0179845498b461f"
+          },
+          {
+            "startsAt": "2026-10-03T13:00",
+            "label": "1:00 PM · Thousand Islands Seaway and Cider Tour",
+            "priceCents": 37500,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/5ffc64e854f4f33b6b5bce01"
+          },
+          {
+            "startsAt": "2026-10-03T13:00",
+            "label": "1:00 PM · Highlights of 1000 Islands with Helis and Hops",
+            "priceCents": 37500,
+            "seatsLeft": 6,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/58988f7be017987c168b4572/experiences/62e80be3fbddce648a2718e2"
+          }
+        ]
+      }
+    ],
+    "partial": true,
+    "note": "12 of 13 experiences read"
+  }
+}

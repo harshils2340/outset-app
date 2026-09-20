@@ -1,0 +1,253 @@
+{
+  "id": "xola/cattywampus-snorkeling-com",
+  "vendor": "xola",
+  "domain": "cattywampus-snorkeling.com",
+  "bookingUrl": "https://x2-checkout.xola.app/flows/mvp?button=5e4c0d7b99368212cd009e38&xwm=eyJvcmlnaW4iOiJodHRwczovL215LmR1ZGEuY28iLCJjaGFubmVsIjoiVjFlV01VWkhXMnUzT2MzciJ9",
+  "operatorId": "case-xola-cattywampus-snorkeling-com",
+  "from": "2026-09-20",
+  "days": 14,
+  "capturedAt": "2026-09-20T04:29:42.251Z",
+  "observed": {
+    "vendor": "xola",
+    "live": true,
+    "updatedAt": "2026-09-20T04:29:42.251Z",
+    "days": [
+      {
+        "date": "2026-09-20",
+        "slots": []
+      },
+      {
+        "date": "2026-09-21",
+        "slots": [
+          {
+            "startsAt": "2026-09-21T12:00",
+            "label": "12:00 PM · Afternoon Dolphin & Snorkel",
+            "priceCents": 5500,
+            "seatsLeft": 49,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/57100ceae0179878548b45b8/experiences/5710d9a0e017987c118b4570"
+          },
+          {
+            "startsAt": "2026-09-21T16:00",
+            "label": "4:00 PM · Sunset Dolphin & Snorkel",
+            "priceCents": 5500,
+            "seatsLeft": 43,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/57100ceae0179878548b45b8/experiences/5710dd2c926705ae758b45af"
+          }
+        ]
+      },
+      {
+        "date": "2026-09-22",
+        "slots": [
+          {
+            "startsAt": "2026-09-22T12:00",
+            "label": "12:00 PM · Afternoon Dolphin & Snorkel",
+            "priceCents": 5500,
+            "seatsLeft": 49,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/57100ceae0179878548b45b8/experiences/5710d9a0e017987c118b4570"
+          },
+          {
+            "startsAt": "2026-09-22T16:00",
+            "label": "4:00 PM · Sunset Dolphin & Snorkel",
+            "priceCents": 5500,
+            "seatsLeft": 49,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/57100ceae0179878548b45b8/experiences/5710dd2c926705ae758b45af"
+          }
+        ]
+      },
+      {
+        "date": "2026-09-23",
+        "slots": [
+          {
+            "startsAt": "2026-09-23T12:00",
+            "label": "12:00 PM · Afternoon Dolphin & Snorkel",
+            "priceCents": 5500,
+            "seatsLeft": 42,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/57100ceae0179878548b45b8/experiences/5710d9a0e017987c118b4570"
+          },
+          {
+            "startsAt": "2026-09-23T16:00",
+            "label": "4:00 PM · Sunset Dolphin & Snorkel",
+            "priceCents": 5500,
+            "seatsLeft": 47,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/57100ceae0179878548b45b8/experiences/5710dd2c926705ae758b45af"
+          }
+        ]
+      },
+      {
+        "date": "2026-09-24",
+        "slots": [
+          {
+            "startsAt": "2026-09-24T12:00",
+            "label": "12:00 PM · Afternoon Dolphin & Snorkel",
+            "priceCents": 5500,
+            "seatsLeft": 49,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/57100ceae0179878548b45b8/experiences/5710d9a0e017987c118b4570"
+          },
+          {
+            "startsAt": "2026-09-24T16:00",
+            "label": "4:00 PM · Sunset Dolphin & Snorkel",
+            "priceCents": 5500,
+            "seatsLeft": 46,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/57100ceae0179878548b45b8/experiences/5710dd2c926705ae758b45af"
+          }
+        ]
+      },
+      {
+        "date": "2026-09-25",
+        "slots": [
+          {
+            "startsAt": "2026-09-25T12:00",
+            "label": "12:00 PM · Afternoon Dolphin & Snorkel",
+            "priceCents": 5500,
+            "seatsLeft": 49,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/57100ceae0179878548b45b8/experiences/5710d9a0e017987c118b4570"
+          },
+          {
+            "startsAt": "2026-09-25T16:00",
+            "label": "4:00 PM · Sunset Dolphin & Snorkel",
+            "priceCents": 5500,
+            "seatsLeft": 49,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/57100ceae0179878548b45b8/experiences/5710dd2c926705ae758b45af"
+          }
+        ]
+      },
+      {
+        "date": "2026-09-26",
+        "slots": [
+          {
+            "startsAt": "2026-09-26T12:00",
+            "label": "12:00 PM · Afternoon Dolphin & Snorkel",
+            "priceCents": 5500,
+            "seatsLeft": 49,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/57100ceae0179878548b45b8/experiences/5710d9a0e017987c118b4570"
+          },
+          {
+            "startsAt": "2026-09-26T16:00",
+            "label": "4:00 PM · Sunset Dolphin & Snorkel",
+            "priceCents": 5500,
+            "seatsLeft": 39,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/57100ceae0179878548b45b8/experiences/5710dd2c926705ae758b45af"
+          }
+        ]
+      },
+      {
+        "date": "2026-09-27",
+        "slots": []
+      },
+      {
+        "date": "2026-09-28",
+        "slots": [
+          {
+            "startsAt": "2026-09-28T12:00",
+            "label": "12:00 PM · Afternoon Dolphin & Snorkel",
+            "priceCents": 5500,
+            "seatsLeft": 49,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/57100ceae0179878548b45b8/experiences/5710d9a0e017987c118b4570"
+          },
+          {
+            "startsAt": "2026-09-28T16:00",
+            "label": "4:00 PM · Sunset Dolphin & Snorkel",
+            "priceCents": 5500,
+            "seatsLeft": 49,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/57100ceae0179878548b45b8/experiences/5710dd2c926705ae758b45af"
+          }
+        ]
+      },
+      {
+        "date": "2026-09-29",
+        "slots": [
+          {
+            "startsAt": "2026-09-29T12:00",
+            "label": "12:00 PM · Afternoon Dolphin & Snorkel",
+            "priceCents": 5500,
+            "seatsLeft": 47,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/57100ceae0179878548b45b8/experiences/5710d9a0e017987c118b4570"
+          },
+          {
+            "startsAt": "2026-09-29T16:00",
+            "label": "4:00 PM · Sunset Dolphin & Snorkel",
+            "priceCents": 5500,
+            "seatsLeft": 49,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/57100ceae0179878548b45b8/experiences/5710dd2c926705ae758b45af"
+          }
+        ]
+      },
+      {
+        "date": "2026-09-30",
+        "slots": [
+          {
+            "startsAt": "2026-09-30T12:00",
+            "label": "12:00 PM · Afternoon Dolphin & Snorkel",
+            "priceCents": 5500,
+            "seatsLeft": 49,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/57100ceae0179878548b45b8/experiences/5710d9a0e017987c118b4570"
+          },
+          {
+            "startsAt": "2026-09-30T16:00",
+            "label": "4:00 PM · Sunset Dolphin & Snorkel",
+            "priceCents": 5500,
+            "seatsLeft": 47,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/57100ceae0179878548b45b8/experiences/5710dd2c926705ae758b45af"
+          }
+        ]
+      },
+      {
+        "date": "2026-10-01",
+        "slots": [
+          {
+            "startsAt": "2026-10-01T11:30",
+            "label": "11:30 AM · Afternoon Dolphin & Snorkel",
+            "priceCents": 5500,
+            "seatsLeft": 49,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/57100ceae0179878548b45b8/experiences/5710d9a0e017987c118b4570"
+          },
+          {
+            "startsAt": "2026-10-01T15:30",
+            "label": "3:30 PM · Sunset Dolphin & Snorkel",
+            "priceCents": 5500,
+            "seatsLeft": 49,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/57100ceae0179878548b45b8/experiences/5710dd2c926705ae758b45af"
+          }
+        ]
+      },
+      {
+        "date": "2026-10-02",
+        "slots": [
+          {
+            "startsAt": "2026-10-02T11:30",
+            "label": "11:30 AM · Afternoon Dolphin & Snorkel",
+            "priceCents": 5500,
+            "seatsLeft": 49,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/57100ceae0179878548b45b8/experiences/5710d9a0e017987c118b4570"
+          },
+          {
+            "startsAt": "2026-10-02T15:30",
+            "label": "3:30 PM · Sunset Dolphin & Snorkel",
+            "priceCents": 5500,
+            "seatsLeft": 49,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/57100ceae0179878548b45b8/experiences/5710dd2c926705ae758b45af"
+          }
+        ]
+      },
+      {
+        "date": "2026-10-03",
+        "slots": [
+          {
+            "startsAt": "2026-10-03T11:30",
+            "label": "11:30 AM · Afternoon Dolphin & Snorkel",
+            "priceCents": 5500,
+            "seatsLeft": 49,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/57100ceae0179878548b45b8/experiences/5710d9a0e017987c118b4570"
+          },
+          {
+            "startsAt": "2026-10-03T15:30",
+            "label": "3:30 PM · Sunset Dolphin & Snorkel",
+            "priceCents": 5500,
+            "seatsLeft": 49,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/57100ceae0179878548b45b8/experiences/5710dd2c926705ae758b45af"
+          }
+        ]
+      }
+    ]
+  }
+}

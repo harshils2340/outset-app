@@ -1,0 +1,35 @@
+---
+description: Work backward from $100k ARR by 31 Dec 2026. Do not stall on catalog, Viator, or crawls.
+alwaysApply: true
+---
+
+# $100k ARR by 31 Dec 2026
+
+Harshil’s goal is **$100k ARR by 31 December 2026**. That is about **$8,300/month in fees**. Guests pay 5% through $100, 4% through $500, 3% above $500, capped at $25. Operators pay a flat 5% on payouts. Combined take is about 8–10% on mid-ticket water, so December GMV is about **$80k–$110k**. Every product and ops suggestion must serve that date. If a task does not create paid Tampa bookings this month, do not do it.
+
+Work **backward**. Miss a weekly gate, say the date is slipping. Do not pretend catalog size, Instant badges, or partner APIs replace GMV.
+
+## Do this
+
+- Instant Book only for claimed shops. Unclaimed is request-to-book (or no book button). Founder can place the booking by phone until the shop claims.
+- One grid: Tampa jet skis and boats. Hide listings with no real photo or no price.
+- Checkout stays on Outset (Stripe). Do not become a Viator/GetYourGuide reseller “to hit the number.”
+- Read live slots from FareHarbor/Peek/Xola public calendars. Do not invent slots. Do not POST into their systems until a real partner deal exists.
+- After shops take bookings, get them to claim so the founder is not on every call.
+
+## Do not do
+
+- Catalog crawls, Playwright, overnight pipeline on this Mac, or `OUTSET_ALLOW_CRAWL`
+- 8,000-shop email blasts (no `MAIL_POSTAL` anyway)
+- FareHarbor External API / Redeam / OCTO as Q4 “distribution”
+- New cities, new categories, in-page Apple Pay, search rewrites, unless they clearly unblock this week’s bookings
+
+## Weekly gates (from 13 Sep 2026)
+
+- **21 Sep:** Instant off unclaimed. 15 Tampa docks called. Yes list written.
+- **4 Oct:** 5 paid bookings (charge when shop says yes).
+- **1 Nov:** 50 lifetime paid bookings. A few shops claiming or agreeing to Instant.
+- **1 Dec:** about $3k+ month in fees, or say $100k ARR is off-track.
+- **31 Dec:** about $8.3k month in fees.
+
+If asked what to build, pick the smallest change that hits the next gate.

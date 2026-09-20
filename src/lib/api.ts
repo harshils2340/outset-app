@@ -1,4 +1,5 @@
 import type { Unclaimed } from "../data/types";
+import { isHttpsUrlOnHost } from "./urlSafety";
 
 /**
  * The hosted API that makes the product real: sign-in, persistent operator profiles, bookings that reach
@@ -12,6 +13,7 @@ export const hasApi = () => !!API_URL;
 
 const TOKEN_PREFIX = "outset.claimtoken.";
 const SESSION_KEY = "outset.session.v1";
+const WALLET_KEY = "outset.wallet.v1";
 
 function lsGet(k: string): string | null {
   try {
@@ -27,6 +29,15 @@ function lsSet(k: string, v: string | null): void {
   } catch {
     /* ignore */
   }
+}
+
+export function loadWalletId(): string | null {
+  const id = (lsGet(WALLET_KEY) || "").trim().toLowerCase();
+  return /^[a-f0-9]{48}$/.test(id) ? id : null;
+}
+
+export function saveWalletId(id: string | null): void {
+  lsSet(WALLET_KEY, id);
 }
 
 export function rememberClaimToken(id: string, token: string): void {
@@ -407,11 +418,55 @@ export type RemoteBooking = {
  * The guest's request goes to the operator. Resolves the server's status ("new" or "accepted" for instant book).
  * `taken` is true when the API refused because that time filled up while the guest was looking at it.
  */
-export async function submitBooking(b: Omit<RemoteBooking, "status" | "created"> & { embedded?: boolean }): Promise<{ ok: boolean; status?: RemoteBooking["status"]; checkoutUrl?: string; checkoutClientSecret?: string; error?: string; taken?: boolean }> {
-  const r = await call<{ ok: boolean; status: RemoteBooking["status"]; checkoutUrl?: string; checkoutClientSecret?: string }>(`/bookings`, { method: "POST", body: JSON.stringify(b), timeout: 25000 });
+export async function submitBooking(b: Omit<RemoteBooking, "status" | "created"> & { embedded?: boolean; wallet?: string }): Promise<{ ok: boolean; status?: RemoteBooking["status"]; checkoutUrl?: string; checkoutClientSecret?: string; charged?: boolean; error?: string; taken?: boolean }> {
+  const r = await call<{ ok: boolean; status: RemoteBooking["status"]; checkoutUrl?: string; checkoutClientSecret?: string; charged?: boolean }>(`/bookings`, { method: "POST", body: JSON.stringify(b), timeout: 25000, headers: b.wallet ? { "x-wallet": b.wallet } : {} });
   // Every refusal about the time itself, so the page can drop it and reload the picker. "spots left" and "holds
   // N guests" are the API saying the time is there but the party does not fit, which is still a time problem.
-  return { ok: r.ok, status: r.data?.status, checkoutUrl: r.data?.checkoutUrl, checkoutClientSecret: r.data?.checkoutClientSecret, error: r.error, taken: r.status === 409 && /just booked|not open|not enough room|not available|spots? left|holds \d+ guest/i.test(r.error || "") };
+  return { ok: r.ok, status: r.data?.status, checkoutUrl: r.data?.checkoutUrl, checkoutClientSecret: r.data?.checkoutClientSecret, charged: !!r.data?.charged, error: r.error, taken: r.status === 409 && /just booked|not open|not enough room|not available|spots? left|holds \d+ guest/i.test(r.error || "") };
+}
+
+export type GuestWallet = { ready: boolean; brand: string | null; last4: string | null; maxDollars: number; otto: boolean };
+
+function walletHeaders(): Record<string, string> {
+  const id = loadWalletId();
+  return id ? { "x-wallet": id } : {};
+}
+
+export async function createGuestWallet(): Promise<string | null> {
+  const r = await call<{ id: string }>("/wallet", { method: "POST" });
+  if (!r.ok || !r.data?.id) return null;
+  saveWalletId(r.data.id);
+  return r.data.id;
+}
+
+export async function fetchGuestWallet(): Promise<GuestWallet | null> {
+  if (!loadWalletId()) return null;
+  const r = await call<GuestWallet>("/wallet", { headers: walletHeaders() });
+  return r.ok && r.data ? r.data : null;
+}
+
+export async function setupGuestWallet(email?: string): Promise<string | null> {
+  if (!loadWalletId() && !(await createGuestWallet())) return null;
+  const r = await call<{ url: string }>("/wallet/setup", { method: "POST", headers: walletHeaders(), body: JSON.stringify({ email: email || undefined }), timeout: 25000 });
+  return r.ok && r.data?.url && isHttpsUrlOnHost(r.data.url, "checkout.stripe.com") ? r.data.url : null;
+}
+
+export async function readyGuestWallet(): Promise<GuestWallet | null> {
+  if (!loadWalletId()) return null;
+  const r = await call<GuestWallet>("/wallet/ready", { method: "POST", headers: walletHeaders(), timeout: 20000 });
+  return r.ok && r.data ? r.data : null;
+}
+
+export async function patchGuestWallet(patch: { maxDollars?: number; otto?: boolean }): Promise<GuestWallet | null> {
+  if (!loadWalletId()) return null;
+  const r = await call<GuestWallet>("/wallet", { method: "PATCH", headers: walletHeaders(), body: JSON.stringify(patch) });
+  return r.ok && r.data ? r.data : null;
+}
+
+export async function revokeGuestWallet(): Promise<GuestWallet | null> {
+  if (!loadWalletId()) return null;
+  const r = await call<GuestWallet>("/wallet", { method: "DELETE", headers: walletHeaders() });
+  return r.ok && r.data ? r.data : null;
 }
 
 export type OpenSlots = { known: boolean; claimed: boolean; days: { date: string; slots: string[] }[] };

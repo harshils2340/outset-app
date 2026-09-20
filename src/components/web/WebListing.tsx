@@ -21,6 +21,7 @@ import { DAY_SHORT, assistantOn, clock12, dayLabel, todaysDeals } from "../../li
 import { fmtDistance } from "../../lib/geo";
 import { kmBetween, nearestLocation, venueLabel } from "../../lib/places";
 import { addonPrice, hasPrice, priceUnclaimed, serviceFeeLabel } from "../../lib/pricing";
+import { ottoCanPay, useWallet } from "../../lib/wallet";
 import { shownReviews, type ShownReview } from "../../lib/reviews";
 import { listingUrl } from "../../lib/site";
 import { adminWebsite, isAdmin, subscribeAdmin } from "../../lib/admin";
@@ -940,6 +941,7 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
   const guestOk = guest.name.trim().length >= 2 && guest.phone.replace(/\D/g, "").length >= 10;
   const [payments, setPayments] = useState(false);
   useEffect(() => { let alive = true; void apiConfig().then((c) => { if (alive) setPayments(c.payments); }); return () => { alive = false; }; }, []);
+  const { wallet } = useWallet();
   const [gallery, setGallery] = useState<number | null>(null);
   const galleryBox = useRef<HTMLDivElement | null>(null);
   // The rest of the photos, probed once the gallery has been opened. This is the half of the comment above the
@@ -1035,8 +1037,9 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
   // The card form's script and config load now, while the guest reads the price, so "Book and pay" opens it at once.
   useEffect(() => { if (ready && p.total) warmCheckout(); }, [ready, p.total]);
   const instant = !!(item.claimed && item.instant);
-  // Say what pressing it does: a card payment, an instant booking, or a request the operator confirms.
-  const ctaLabel = payments && p.total ? "Book and pay" : instant ? "Book" : "Request to book";
+  // Say what pressing it does: a card payment, Otto holding the saved card, or a request the operator confirms.
+  const ottoNow = ottoCanPay(wallet, p.total);
+  const ctaLabel = payments && p.total ? (ottoNow ? "Book with Otto" : "Book and pay") : instant ? "Book" : "Request to book";
   const day = dates[state.dateIdx];
 
   /* Live departures from the operator's own booking system, when they run one we can read. The card paints

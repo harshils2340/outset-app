@@ -1,0 +1,397 @@
+{
+  "id": "fareharbor/nyharborfishing-com",
+  "vendor": "fareharbor",
+  "domain": "nyharborfishing.com",
+  "bookingUrl": "https://fareharbor.com/embeds/book/nyharborfishing/items/calendar/?ref=https%3A%2F%2Fnyharborfishing.com",
+  "operatorId": "case-fareharbor-nyharborfishing-com",
+  "from": "2026-09-20",
+  "days": 14,
+  "capturedAt": "2026-09-20T04:28:09.207Z",
+  "observed": {
+    "vendor": "fareharbor",
+    "live": true,
+    "updatedAt": "2026-09-20T04:28:09.207Z",
+    "days": [
+      {
+        "date": "2026-09-20",
+        "slots": [
+          {
+            "startsAt": "2026-09-20T13:00",
+            "label": "1:00 PM · NYC Fishing",
+            "bookUrl": "https://fareharbor.com/nyharborfishing/items/715355/availability/2042678306/book/"
+          },
+          {
+            "startsAt": "2026-09-20T14:00",
+            "label": "2:00 PM · NYC Fishing",
+            "bookUrl": "https://fareharbor.com/nyharborfishing/items/715355/availability/2042677022/book/"
+          },
+          {
+            "startsAt": "2026-09-20T16:30",
+            "label": "4:30 PM · NYC Fishing",
+            "bookUrl": "https://fareharbor.com/nyharborfishing/items/715355/availability/2042677908/book/"
+          }
+        ]
+      },
+      {
+        "date": "2026-09-21",
+        "slots": [
+          {
+            "startsAt": "2026-09-21T08:00",
+            "label": "8:00 AM · NYC Fishing",
+            "bookUrl": "https://fareharbor.com/nyharborfishing/items/715355/availability/2042677808/book/"
+          },
+          {
+            "startsAt": "2026-09-21T11:30",
+            "label": "11:30 AM · NYC Fishing",
+            "bookUrl": "https://fareharbor.com/nyharborfishing/items/715355/availability/2042677030/book/"
+          },
+          {
+            "startsAt": "2026-09-21T13:00",
+            "label": "1:00 PM · NYC Fishing",
+            "bookUrl": "https://fareharbor.com/nyharborfishing/items/715355/availability/2042678313/book/"
+          },
+          {
+            "startsAt": "2026-09-21T14:00",
+            "label": "2:00 PM · NYC Fishing",
+            "bookUrl": "https://fareharbor.com/nyharborfishing/items/715355/availability/2042677045/book/"
+          },
+          {
+            "startsAt": "2026-09-21T16:30",
+            "label": "4:30 PM · NYC Fishing",
+            "bookUrl": "https://fareharbor.com/nyharborfishing/items/715355/availability/2042677916/book/"
+          }
+        ]
+      },
+      {
+        "date": "2026-09-22",
+        "slots": [
+          {
+            "startsAt": "2026-09-22T16:30",
+            "label": "4:30 PM · NYC Fishing",
+            "bookUrl": "https://fareharbor.com/nyharborfishing/items/715355/availability/2042677924/book/"
+          }
+        ]
+      },
+      {
+        "date": "2026-09-23",
+        "slots": [
+          {
+            "startsAt": "2026-09-23T08:00",
+            "label": "8:00 AM · NYC Fishing",
+            "bookUrl": "https://fareharbor.com/nyharborfishing/items/715355/availability/2042677821/book/"
+          },
+          {
+            "startsAt": "2026-09-23T11:30",
+            "label": "11:30 AM · NYC Fishing",
+            "bookUrl": "https://fareharbor.com/nyharborfishing/items/715355/availability/2042677068/book/"
+          },
+          {
+            "startsAt": "2026-09-23T13:00",
+            "label": "1:00 PM · NYC Fishing",
+            "bookUrl": "https://fareharbor.com/nyharborfishing/items/715355/availability/2042678326/book/"
+          },
+          {
+            "startsAt": "2026-09-23T14:00",
+            "label": "2:00 PM · NYC Fishing",
+            "bookUrl": "https://fareharbor.com/nyharborfishing/items/715355/availability/2042677078/book/"
+          },
+          {
+            "startsAt": "2026-09-23T16:30",
+            "label": "4:30 PM · NYC Fishing",
+            "bookUrl": "https://fareharbor.com/nyharborfishing/items/715355/availability/2042677929/book/"
+          }
+        ]
+      },
+      {
+        "date": "2026-09-24",
+        "slots": [
+          {
+            "startsAt": "2026-09-24T08:00",
+            "label": "8:00 AM · NYC Fishing",
+            "bookUrl": "https://fareharbor.com/nyharborfishing/items/715355/availability/2042677827/book/"
+          },
+          {
+            "startsAt": "2026-09-24T11:30",
+            "label": "11:30 AM · NYC Fishing",
+            "bookUrl": "https://fareharbor.com/nyharborfishing/items/715355/availability/2042677083/book/"
+          },
+          {
+            "startsAt": "2026-09-24T13:00",
+            "label": "1:00 PM · NYC Fishing",
+            "bookUrl": "https://fareharbor.com/nyharborfishing/items/715355/availability/2042678331/book/"
+          },
+          {
+            "startsAt": "2026-09-24T14:00",
+            "label": "2:00 PM · NYC Fishing",
+            "bookUrl": "https://fareharbor.com/nyharborfishing/items/715355/availability/2042677092/book/"
+          },
+          {
+            "startsAt": "2026-09-24T16:30",
+            "label": "4:30 PM · NYC Fishing",
+            "bookUrl": "https://fareharbor.com/nyharborfishing/items/715355/availability/2042677934/book/"
+          }
+        ]
+      },
+      {
+        "date": "2026-09-25",
+        "slots": [
+          {
+            "startsAt": "2026-09-25T08:00",
+            "label": "8:00 AM · NYC Fishing",
+            "bookUrl": "https://fareharbor.com/nyharborfishing/items/715355/availability/2042677832/book/"
+          },
+          {
+            "startsAt": "2026-09-25T11:30",
+            "label": "11:30 AM · NYC Fishing",
+            "bookUrl": "https://fareharbor.com/nyharborfishing/items/715355/availability/2042677100/book/"
+          },
+          {
+            "startsAt": "2026-09-25T13:00",
+            "label": "1:00 PM · NYC Fishing",
+            "bookUrl": "https://fareharbor.com/nyharborfishing/items/715355/availability/2042678336/book/"
+          },
+          {
+            "startsAt": "2026-09-25T14:00",
+            "label": "2:00 PM · NYC Fishing",
+            "bookUrl": "https://fareharbor.com/nyharborfishing/items/715355/availability/2042677109/book/"
+          },
+          {
+            "startsAt": "2026-09-25T16:30",
+            "label": "4:30 PM · NYC Fishing",
+            "bookUrl": "https://fareharbor.com/nyharborfishing/items/715355/availability/2042677939/book/"
+          }
+        ]
+      },
+      {
+        "date": "2026-09-26",
+        "slots": [
+          {
+            "startsAt": "2026-09-26T08:00",
+            "label": "8:00 AM · NYC Fishing",
+            "bookUrl": "https://fareharbor.com/nyharborfishing/items/715355/availability/2042677839/book/"
+          },
+          {
+            "startsAt": "2026-09-26T11:30",
+            "label": "11:30 AM · NYC Fishing",
+            "bookUrl": "https://fareharbor.com/nyharborfishing/items/715355/availability/2042677116/book/"
+          },
+          {
+            "startsAt": "2026-09-26T13:00",
+            "label": "1:00 PM · NYC Fishing",
+            "bookUrl": "https://fareharbor.com/nyharborfishing/items/715355/availability/2042678341/book/"
+          },
+          {
+            "startsAt": "2026-09-26T14:00",
+            "label": "2:00 PM · NYC Fishing",
+            "bookUrl": "https://fareharbor.com/nyharborfishing/items/715355/availability/2042677122/book/"
+          },
+          {
+            "startsAt": "2026-09-26T16:30",
+            "label": "4:30 PM · NYC Fishing",
+            "bookUrl": "https://fareharbor.com/nyharborfishing/items/715355/availability/2042677943/book/"
+          }
+        ]
+      },
+      {
+        "date": "2026-09-27",
+        "slots": [
+          {
+            "startsAt": "2026-09-27T08:00",
+            "label": "8:00 AM · NYC Fishing",
+            "bookUrl": "https://fareharbor.com/nyharborfishing/items/715355/availability/2042677846/book/"
+          },
+          {
+            "startsAt": "2026-09-27T14:00",
+            "label": "2:00 PM · NYC Fishing",
+            "bookUrl": "https://fareharbor.com/nyharborfishing/items/715355/availability/2042677138/book/"
+          },
+          {
+            "startsAt": "2026-09-27T16:30",
+            "label": "4:30 PM · NYC Fishing",
+            "bookUrl": "https://fareharbor.com/nyharborfishing/items/715355/availability/2042677948/book/"
+          }
+        ]
+      },
+      {
+        "date": "2026-09-28",
+        "slots": [
+          {
+            "startsAt": "2026-09-28T08:00",
+            "label": "8:00 AM · NYC Fishing",
+            "bookUrl": "https://fareharbor.com/nyharborfishing/items/715355/availability/2042677853/book/"
+          },
+          {
+            "startsAt": "2026-09-28T11:30",
+            "label": "11:30 AM · NYC Fishing",
+            "bookUrl": "https://fareharbor.com/nyharborfishing/items/715355/availability/2042677148/book/"
+          },
+          {
+            "startsAt": "2026-09-28T13:00",
+            "label": "1:00 PM · NYC Fishing",
+            "bookUrl": "https://fareharbor.com/nyharborfishing/items/715355/availability/2042678351/book/"
+          },
+          {
+            "startsAt": "2026-09-28T14:00",
+            "label": "2:00 PM · NYC Fishing",
+            "bookUrl": "https://fareharbor.com/nyharborfishing/items/715355/availability/2042677155/book/"
+          },
+          {
+            "startsAt": "2026-09-28T16:30",
+            "label": "4:30 PM · NYC Fishing",
+            "bookUrl": "https://fareharbor.com/nyharborfishing/items/715355/availability/2042677953/book/"
+          }
+        ]
+      },
+      {
+        "date": "2026-09-29",
+        "slots": [
+          {
+            "startsAt": "2026-09-29T08:00",
+            "label": "8:00 AM · NYC Fishing",
+            "bookUrl": "https://fareharbor.com/nyharborfishing/items/715355/availability/2042677862/book/"
+          },
+          {
+            "startsAt": "2026-09-29T11:30",
+            "label": "11:30 AM · NYC Fishing",
+            "bookUrl": "https://fareharbor.com/nyharborfishing/items/715355/availability/2042677162/book/"
+          },
+          {
+            "startsAt": "2026-09-29T13:00",
+            "label": "1:00 PM · NYC Fishing",
+            "bookUrl": "https://fareharbor.com/nyharborfishing/items/715355/availability/2042678356/book/"
+          },
+          {
+            "startsAt": "2026-09-29T14:00",
+            "label": "2:00 PM · NYC Fishing",
+            "bookUrl": "https://fareharbor.com/nyharborfishing/items/715355/availability/2042677168/book/"
+          },
+          {
+            "startsAt": "2026-09-29T16:30",
+            "label": "4:30 PM · NYC Fishing",
+            "bookUrl": "https://fareharbor.com/nyharborfishing/items/715355/availability/2042677957/book/"
+          }
+        ]
+      },
+      {
+        "date": "2026-09-30",
+        "slots": [
+          {
+            "startsAt": "2026-09-30T08:00",
+            "label": "8:00 AM · NYC Fishing",
+            "bookUrl": "https://fareharbor.com/nyharborfishing/items/715355/availability/2042677868/book/"
+          },
+          {
+            "startsAt": "2026-09-30T11:30",
+            "label": "11:30 AM · NYC Fishing",
+            "bookUrl": "https://fareharbor.com/nyharborfishing/items/715355/availability/2042677173/book/"
+          },
+          {
+            "startsAt": "2026-09-30T13:00",
+            "label": "1:00 PM · NYC Fishing",
+            "bookUrl": "https://fareharbor.com/nyharborfishing/items/715355/availability/2042678362/book/"
+          },
+          {
+            "startsAt": "2026-09-30T14:00",
+            "label": "2:00 PM · NYC Fishing",
+            "bookUrl": "https://fareharbor.com/nyharborfishing/items/715355/availability/2042677178/book/"
+          },
+          {
+            "startsAt": "2026-09-30T16:30",
+            "label": "4:30 PM · NYC Fishing",
+            "bookUrl": "https://fareharbor.com/nyharborfishing/items/715355/availability/2042677962/book/"
+          }
+        ]
+      },
+      {
+        "date": "2026-10-01",
+        "slots": [
+          {
+            "startsAt": "2026-10-01T08:00",
+            "label": "8:00 AM · NYC Fishing",
+            "bookUrl": "https://fareharbor.com/nyharborfishing/items/715355/availability/2042677875/book/"
+          },
+          {
+            "startsAt": "2026-10-01T11:30",
+            "label": "11:30 AM · NYC Fishing",
+            "bookUrl": "https://fareharbor.com/nyharborfishing/items/715355/availability/2042677184/book/"
+          },
+          {
+            "startsAt": "2026-10-01T13:00",
+            "label": "1:00 PM · NYC Fishing",
+            "bookUrl": "https://fareharbor.com/nyharborfishing/items/715355/availability/2042678367/book/"
+          },
+          {
+            "startsAt": "2026-10-01T14:00",
+            "label": "2:00 PM · NYC Fishing",
+            "bookUrl": "https://fareharbor.com/nyharborfishing/items/715355/availability/2042677189/book/"
+          },
+          {
+            "startsAt": "2026-10-01T16:30",
+            "label": "4:30 PM · NYC Fishing",
+            "bookUrl": "https://fareharbor.com/nyharborfishing/items/715355/availability/2042677967/book/"
+          }
+        ]
+      },
+      {
+        "date": "2026-10-02",
+        "slots": [
+          {
+            "startsAt": "2026-10-02T08:00",
+            "label": "8:00 AM · NYC Fishing",
+            "bookUrl": "https://fareharbor.com/nyharborfishing/items/715355/availability/2042677881/book/"
+          },
+          {
+            "startsAt": "2026-10-02T11:30",
+            "label": "11:30 AM · NYC Fishing",
+            "bookUrl": "https://fareharbor.com/nyharborfishing/items/715355/availability/2042677193/book/"
+          },
+          {
+            "startsAt": "2026-10-02T13:00",
+            "label": "1:00 PM · NYC Fishing",
+            "bookUrl": "https://fareharbor.com/nyharborfishing/items/715355/availability/2042678372/book/"
+          },
+          {
+            "startsAt": "2026-10-02T14:00",
+            "label": "2:00 PM · NYC Fishing",
+            "bookUrl": "https://fareharbor.com/nyharborfishing/items/715355/availability/2042677200/book/"
+          },
+          {
+            "startsAt": "2026-10-02T16:30",
+            "label": "4:30 PM · NYC Fishing",
+            "bookUrl": "https://fareharbor.com/nyharborfishing/items/715355/availability/2042677972/book/"
+          }
+        ]
+      },
+      {
+        "date": "2026-10-03",
+        "slots": [
+          {
+            "startsAt": "2026-10-03T08:00",
+            "label": "8:00 AM · NYC Fishing",
+            "bookUrl": "https://fareharbor.com/nyharborfishing/items/715355/availability/2042677888/book/"
+          },
+          {
+            "startsAt": "2026-10-03T11:30",
+            "label": "11:30 AM · NYC Fishing",
+            "bookUrl": "https://fareharbor.com/nyharborfishing/items/715355/availability/2042677204/book/"
+          },
+          {
+            "startsAt": "2026-10-03T13:00",
+            "label": "1:00 PM · NYC Fishing",
+            "bookUrl": "https://fareharbor.com/nyharborfishing/items/715355/availability/2042678376/book/"
+          },
+          {
+            "startsAt": "2026-10-03T14:00",
+            "label": "2:00 PM · NYC Fishing",
+            "bookUrl": "https://fareharbor.com/nyharborfishing/items/715355/availability/2042677208/book/"
+          },
+          {
+            "startsAt": "2026-10-03T16:30",
+            "label": "4:30 PM · NYC Fishing",
+            "bookUrl": "https://fareharbor.com/nyharborfishing/items/715355/availability/2042677977/book/"
+          }
+        ]
+      }
+    ]
+  }
+}

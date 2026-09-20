@@ -44,6 +44,11 @@ export const CONCIERGE_PAGE = `<!doctype html>
   .opt small{color:var(--muted);font-size:13px}
   .opt .row{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-top:8px}
   .opt .price{font-weight:700;color:var(--forest);font-size:15px}
+  .chips{display:flex;flex-wrap:wrap;gap:7px;align-self:flex-start;max-width:88%;margin:-2px 0 2px}
+  .chip{border:1px solid var(--sage);background:#fff;color:var(--forest);border-radius:16px;padding:7px 13px;
+        font:inherit;font-size:14px;font-weight:600;cursor:pointer}
+  .chip:hover{background:var(--forest);color:#fff}
+  .note{align-self:flex-start;color:var(--muted);font-size:12.5px;padding:0 4px;max-width:88%}
   .typing{align-self:flex-start;background:#eceee8;border-radius:19px;padding:13px 16px;display:flex;gap:4px}
   .typing i{width:7px;height:7px;background:#9aa295;border-radius:50%;animation:bl 1.1s infinite}
   .typing i:nth-child(2){animation-delay:.15s}.typing i:nth-child(3){animation-delay:.3s}
@@ -79,7 +84,7 @@ export const CONCIERGE_PAGE = `<!doctype html>
     </form>
   </div>
   <div class="stage">
-    <h2>What the agent is doing</h2>
+    <h2>What the agent is doing <a href="/sessions" target="_blank" style="float:right;color:#5d6b57;text-decoration:none;letter-spacing:0">every session &rarr;</a></h2>
     <div class="steps" id="steps"></div>
     <div class="hero"><b id="heroA">Nothing running</b><small id="heroB">Ask something on the phone.</small></div>
   </div>
@@ -94,7 +99,20 @@ function bubble(text, who){ const d=document.createElement('div'); d.className='
 function typing(){ const d=document.createElement('div'); d.className='typing';
   d.innerHTML='<i></i><i></i><i></i>'; log.appendChild(d); log.scrollTop=log.scrollHeight; return d; }
 function step(html){ const d=document.createElement('div'); d.className='step'; d.innerHTML=html;
-  steps.appendChild(d); steps.scrollTop=steps.scrollHeight; }
+  steps.appendChild(d); steps.scrollTop=steps.scrollHeight; return d; }
+function note(text){ const d=document.createElement('div'); d.className='note'; d.textContent=text;
+  log.appendChild(d); log.scrollTop=log.scrollHeight; }
+/** The agent's question, with its answers ready to tap. Tapping sends the sentence it carries. */
+function chips(choices){
+  if(!choices || !choices.length) return;
+  const w=document.createElement('div'); w.className='chips';
+  for(const c of choices){
+    const b=document.createElement('button'); b.className='chip'; b.type='button'; b.textContent=c.label;
+    b.onclick=()=>{ w.remove(); ask(c.text); };
+    w.appendChild(b);
+  }
+  log.appendChild(w); log.scrollTop=log.scrollHeight;
+}
 const money = n => '$'+Number(n).toFixed(2);
 /**
  * Every name on this page came off somebody else's website: the business name as our crawl read it, the town,
@@ -104,11 +122,47 @@ const money = n => '$'+Number(n).toFixed(2);
  */
 const esc = s => String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 
-function offer(o, d){
+/**
+ * The conversation this browser is having. The agent keeps what it has been told against this id, so answering
+ * "waterloo" to "where are you?" continues the question instead of starting a new one.
+ */
+let SESSION = null;
+
+/** Colour by what kind of step it is, so a wall of lines still reads at a glance from across a room. */
+const STEP_COLOUR = { read:'#9fd3ff', carry:'#9fd3ff', catalog:'#7fa86a', ask:'#7fa86a', answer:'#7fa86a',
+  assume:'#e3b341', widen:'#e3b341', loosen:'#e3b341', question:'#f2836b', ambiguous:'#f2836b',
+  skip:'#5d6b57', compare:'#fff' };
+function renderStep(st){
+  const c = STEP_COLOUR[st.kind] || '#e8eee3';
+  step('<span class="d" style="display:inline-block;width:46px;text-align:right">'+st.ms+'ms</span> '+
+       '<span style="color:'+c+';font-weight:600">'+esc(st.kind)+'</span> '+
+       '<span class="v">'+esc(st.text)+'</span>'+
+       (st.detail? ' <span class="d">'+esc(st.detail)+'</span>' : ''));
+}
+
+/** "30 min earlier", so a slot that is not the one they asked for says so on its own face. */
+function offsetLabel(min){
+  if(min==null) return '';
+  if(min===0) return 'exactly when you asked';
+  const a=Math.abs(min), when = min<0 ? 'earlier' : 'later';
+  if(a<60) return a+' min '+when;
+  const h=Math.floor(a/60), m=a%60;
+  return h+(m? 'h '+m+'m' : ' hour'+(h===1?'':'s'))+' '+when;
+}
+
+function offer(o, d, idx){
   const b=document.createElement('button'); b.className='opt'; b.type='button';
   const when = new Date(d.date+'T'+(d.time||'12:00')).toLocaleDateString('en-CA',{weekday:'short',month:'short',day:'numeric'});
+  /**
+   * How far this slot is from the one they asked for, and where the time came from. Both matter: an offer
+   * that has quietly slid four hours is how somebody misses their dinner, and "from their own calendar" is
+   * the claim this whole product rests on, so it is printed rather than implied.
+   */
+  const off = o.offsets && o.offsets[idx] != null ? offsetLabel(o.offsets[idx]) : '';
   b.innerHTML = '<b>'+esc(o.name)+'</b><small>'+esc(d.item)+' &middot; '+esc(when)+' at '+esc(d.time)+
     (o.city? ' &middot; '+esc(o.city) : '')+'</small>'+
+    (off? '<small style="display:block;color:'+(o.offsets[idx]===0?'var(--forest)':'#a4650b')+';font-weight:600">'+off+'</small>' : '')+
+    (o.via? '<small style="display:block;color:var(--muted);font-size:12px">read live from '+esc(o.via)+'</small>' : '')+
     '<div class="row"><span class="price">'+(d.fromPrice!=null?money(d.fromPrice)+(d.taxIncluded?'':' <small style="font-weight:400;color:var(--muted)">+ tax</small>'):'price on request')+
     (d.priceLabel&&d.fromPrice!=null?' <small style="font-weight:400">'+esc(d.priceLabel)+'</small>':'')+'</span>'+
     '<span style="color:var(--blue);font-weight:600;font-size:14px">Book this &rarr;</span></div>';
@@ -117,70 +171,144 @@ function offer(o, d){
 }
 
 function offerService(o){
-  const s = o.services.filter(x=>x.price!=null)[0];
+  /**
+   * The cheapest thing a person can actually buy a seat on. A whole-room price is real but it is not a ticket,
+   * so a per-head line is preferred when the shop publishes one, and when only the room price exists it is
+   * labelled as the room. Printing "$250.00 each" under an escape room, as this did, is a number no guest
+   * would pay and the sort of thing that makes the rest of the screen untrustworthy.
+   */
+  const priced = o.services.filter(x=>x.price!=null);
+  const s = priced.find(x=>x.per!=='group') || priced[0];
   const b=document.createElement('button'); b.className='opt'; b.type='button';
   b.innerHTML = '<b>'+esc(o.name)+'</b><small>'+esc(s.name)+(o.city? ' &middot; '+esc(o.city):'')+
     (o.rating? ' &middot; '+esc(o.rating)+'&#9733;':'')+'</small>'+
     '<div class="row"><span class="price">$'+Number(s.price).toFixed(2)+
-    '<small style="font-weight:400;color:var(--muted)"> '+(s.unit==='each'?'each':'per person')+'</small></span>'+
+    '<small style="font-weight:400;color:var(--muted)"> '+(s.per==='group'?'for the room':'each')+'</small></span>'+
     '<span style="color:var(--muted);font-weight:600;font-size:13px">'+
-    (o.route==='phone'?'we would call them':'check their times')+'</span></div>';
+    (o.route==='phone'?'we would call them':'open their booking page')+'</span></div>';
   b.onclick = () => {
     bubble('Get me a time at '+o.name, 'me');
     const t=typing();
     setTimeout(()=>{ t.remove();
       step('<span class="k">route</span> <span class="v">'+(o.route==='phone'?'no booking system: the phone agent calls '+esc(o.phone):'opening their booking page')+'</span>');
       bubble(o.route==='phone'
-        ? "They don't book online, so I'd ring "+(o.phone||'them')+" and confirm. That's the other half of the system."
-        : "Opening "+o.name+"'s booking page to pick a time. Their system, not ours.", 'them');
+        ? "I couldn't find a booking page for them, so I'd ring "+(o.phone||'them')+" and confirm. That's the other half of the system."
+        : "Opening "+o.name+"'s own booking page to pick a time. Their system, not ours.", 'them');
     }, 1100);
   };
   log.appendChild(b); log.scrollTop=log.scrollHeight;
 }
 
+/**
+ * Hand the guest to the shop's real checkout, and be plain that we cannot pay for them yet.
+ *
+ * This used to print "Booked.", a total marked "paid", and a confirmation number made from
+ * Math.random(). Nothing had happened: no seat was held, no card was charged, and the number
+ * belonged to no booking anywhere. On a screen in front of an audience that is a fabricated record
+ * presented as a real one, and if anybody had written it down they would have turned up at a shop
+ * that had never heard of them.
+ *
+ * What is real is the link. Every live departure carries bookUrl, the operator's own checkout for
+ * that exact slot, so the honest version of this button finishes the journey on their system with
+ * the date, the time and the price we quoted already filled in. That is also the better
+ * demonstration: the whole claim is that we read their calendar, and this is where you see that we
+ * did.
+ */
 function confirmBooking(o, d){
   bubble('Book '+o.name+', '+d.time, 'me');
   const t=typing();
   setTimeout(()=>{
     t.remove();
-    step('<span class="k">book</span> <span class="v">opening '+esc(o.name)+"'s own checkout</span>");
-    step('<span class="k">card</span> <span class="v">single-use virtual card issued for '+(d.fromPrice!=null?money(d.fromPrice):'the quoted total')+'</span>');
-    bubble("Booked.\\n"+o.name+"\\n"+d.item+"\\n"+d.date+" at "+d.time+"\\n"+
-      (d.fromPrice!=null? money(d.fromPrice)+", paid\\n":"")+
-      "Confirmation OUT-"+Math.random().toString(36).slice(2,8).toUpperCase(), 'them');
-    heroA.textContent='Booked at '+o.name;
-    heroB.textContent='They were never asked to sign up for anything.';
-  }, 1400);
+    step('<span class="k">book</span> <span class="v">handing over to '+esc(o.name)+"'s own checkout</span>");
+    step('<span class="k">note</span> <span class="d">we cannot take the payment ourselves yet</span>');
+    const when = new Date(d.date+'T'+(d.time||'12:00')).toLocaleDateString('en-CA',{weekday:'long',month:'long',day:'numeric'});
+    bubble("Here is the slot, on their own booking page:\\n"+
+      o.name+"\\n"+d.item+"\\n"+when+" at "+d.time+
+      (d.fromPrice!=null? "\\n"+money(d.fromPrice)+(d.taxIncluded?"":" + tax")+" a head":"")+
+      "\\n\\nI can't take your money yet, so you finish it there. Nothing is held until you do.", 'them');
+    if(d.bookUrl){
+      const a=document.createElement('a');
+      a.className='opt'; a.href=d.bookUrl; a.target='_blank'; a.rel='noopener noreferrer';
+      a.innerHTML='<b>Open '+esc(o.name)+"'s checkout &rarr;</b><small>"+esc(d.bookUrl.replace(/^https?:\\/\\//,'').slice(0,54))+'</small>';
+      log.appendChild(a); log.scrollTop=log.scrollHeight;
+    }
+    heroA.textContent='Handed to '+o.name;
+    heroB.textContent='Their checkout, their money. We never asked them to sign up for anything.';
+  }, 900);
 }
 
+/**
+ * Ask, and watch it work.
+ *
+ * The steps arrive over the wire as they happen rather than being drawn from the finished answer, so what the
+ * panel shows is the agent's real order and real timings: three shops read at once, one slow, one empty. The
+ * request is a POST, so this is a stream read by hand rather than an EventSource, which can only GET.
+ */
 async function ask(text){
   bubble(text,'me');
   const t = typing();
   steps.innerHTML='';
   step('<span class="d">'+new Date().toLocaleTimeString()+'</span>');
   step('<span class="k">heard</span> <span class="v">"'+esc(text)+'"</span>');
-  heroA.textContent='Working…'; heroB.textContent='Reading the sentence.';
+  heroA.textContent='Working\u2026'; heroB.textContent='Reading the sentence.';
   try{
-    const r = await fetch('/concierge/ask',{method:'POST',headers:{'content-type':'application/json'},
-      body:JSON.stringify({text})});
-    const data = await r.json();
-    t.remove();
-    if(data.error){ bubble(data.error,'them'); return; }
-    const i = data.intent;
-    step('<span class="k">read</span> <span class="v">'+esc(i.categoryLabel||'anything')+' &middot; '+esc(i.city||'anywhere')+
-         ' &middot; '+esc(i.party)+' people &middot; '+esc(i.when)+(i.maxPerPerson?' &middot; under $'+esc(i.maxPerPerson):'')+'</span>');
-    step('<span class="k">catalog</span> <span class="v">'+data.counts.total+' businesses matched</span>');
-    for(const o of data.options.slice(0,4)){
-      const via = o.route==='feed' ? 'read their booking system' : o.route==='agent' ? 'would need the browser agent' : 'would need a phone call';
-      step('<span class="k">ask</span> <span class="biz">'+esc(o.name)+'</span> <span class="d">'+via+'</span>');
+    const r = await fetch('/concierge/stream',{method:'POST',headers:{'content-type':'application/json'},
+      body:JSON.stringify({text, session:SESSION})});
+    if(!r.ok || !r.body){ const j=await r.json().catch(()=>({})); t.remove();
+      bubble(j.error||'Something broke reaching the server.','them'); return; }
+
+    const reader=r.body.getReader(), dec=new TextDecoder();
+    let buf='', data=null, failed=null;
+    for(;;){
+      const {value,done}=await reader.read();
+      if(done) break;
+      buf+=dec.decode(value,{stream:true});
+      // SSE frames are separated by a blank line; a partial frame stays in the buffer for the next chunk.
+      let i;
+      while((i=buf.indexOf('\\n\\n'))>=0){
+        const frame=buf.slice(0,i); buf=buf.slice(i+2);
+        let ev='message', payload='';
+        for(const line of frame.split('\\n')){
+          if(line.startsWith('event:')) ev=line.slice(6).trim();
+          else if(line.startsWith('data:')) payload+=line.slice(5).trim();
+        }
+        if(!payload) continue;
+        let obj; try{ obj=JSON.parse(payload); }catch(e){ continue; }
+        if(ev==='step'){ renderStep(obj); if(obj.kind==='ask') heroB.textContent='Asking '+obj.text+'.'; }
+        else if(ev==='answer') data=obj;
+        else if(ev==='failed') failed=obj;
+      }
     }
+    t.remove();
+    if(failed || !data){ bubble((failed&&failed.error)||'Something broke reaching the server.','them'); return; }
+    SESSION = data.session;
+    render(data);
+  }catch(e){
+    t.remove(); bubble('Something broke reaching the server.','them');
+  }
+}
+
+function render(data){
+    if(data.error){ bubble(data.error,'them'); return; }
     step('<span class="k">done</span> <span class="v">'+data.counts.quoted+' with live times, '+(data.counts.priced||0)+' priced from their own site &middot; '+data.ms+'ms</span>');
 
-    // A question back, when the sentence did not carry enough to search on.
-    if(data.followUp){ bubble(data.followUp,'them');
-      heroA.textContent='Needs one more thing'; heroB.textContent='It asks rather than guessing.'; return; }
-    if(data.loosened){ bubble(data.loosened,'them');
-      step('<span class="k">loosen</span> <span class="v">'+esc(data.loosened)+'</span>'); }
+    /**
+     * A question back, when the sentence did not carry enough to answer well. It arrives with its answers, so
+     * the guest taps rather than guessing what phrasing will be understood, and what they tap is merged into
+     * what they already said instead of starting the conversation again.
+     */
+    if(data.followUp){
+      bubble(data.followUp.question,'them');
+      chips(data.followUp.choices);
+      heroA.textContent='It asked rather than guessed';
+      heroB.textContent=data.followUp.why==='place'
+        ? 'Guessing the wrong town would have looked exactly like an answer.'
+        : 'One question is cheaper than a confident wrong list.';
+      return;
+    }
+    // What it guessed because nobody said it. Said out loud, because a silent guess is indistinguishable from a fact.
+    if(data.assumptions && data.assumptions.length) note('Assuming '+data.assumptions.join(' and ')+'. Say otherwise and I\u2019ll redo it.');
+    if(data.loosened){ bubble(data.loosened,'them'); }
     /**
      * What it costs across everything found. This is the line that answers "why not just use Google": those
      * prices live on a dozen different websites and nobody compares them, because nobody can.
@@ -194,7 +322,11 @@ async function ask(text){
     const priced = data.options.filter(o=>!o.departures.length && o.services.some(s=>s.price!=null));
     if(!quoted.length){
       if(priced.length){
-        bubble("None of these publish live times, but here's what they charge. I'd confirm the slot with them directly:", 'them');
+        /**
+         * Not "they do not publish times". Most of these sell online right now on a page we cannot read yet,
+         * and describing our gap as their absence is a false statement about a real business.
+         */
+        bubble("I can't read these shops' booking systems yet, so I won't pretend to quote you a time. Here's what they charge:", 'them');
         let m=0;
         for(const o of priced){ if(m++>=4) break; offerService(o); }
         heroA.textContent=priced.length+' priced from their own sites';
@@ -206,18 +338,21 @@ async function ask(text){
       return;
     }
     const widened = quoted.some(o=>o.widened);
+    const exact = quoted.some(o=>o.offsets && o.offsets[0]===0);
+    const asked = data.intent && data.intent.atMinute!=null;
     bubble(widened
       ? "Nothing free exactly when you asked, but here's what is:"
-      : "Here's what's actually free:", 'them');
+      : asked && !exact
+        ? "Nothing at exactly that time. These are the closest, nearest first:"
+        : asked && exact
+          ? "That time is free:"
+          : "Here's what's actually free:", 'them');
     // One each first, so four slots show four businesses rather than two of the same shop twice.
     let n=0;
-    for(const o of quoted){ if(n<4 && o.departures[0]){ offer(o,o.departures[0]); n++; } }
-    for(const o of quoted){ if(n<4 && o.departures[1]){ offer(o,o.departures[1]); n++; } }
+    for(const o of quoted){ if(n<4 && o.departures[0]){ offer(o,o.departures[0],0); n++; } }
+    for(const o of quoted){ if(n<4 && o.departures[1]){ offer(o,o.departures[1],1); n++; } }
     heroA.textContent=quoted[0].name;
     heroB.textContent='Live from their own booking system, not our database.';
-  }catch(e){
-    t.remove(); bubble('Something broke reaching the server.','them');
-  }
 }
 
 f.onsubmit = e => { e.preventDefault(); const v=q.value.trim(); if(!v) return; q.value=''; ask(v); };

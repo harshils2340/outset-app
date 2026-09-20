@@ -1,0 +1,168 @@
+{
+  "id": "xola/georgianspirit-life",
+  "vendor": "xola",
+  "domain": "georgianspirit.life",
+  "bookingUrl": "https://x2-checkout.xola.app/flows/mvp?button=661168a11c966d1df6096a15&view=grid",
+  "operatorId": "case-xola-georgianspirit-life",
+  "from": "2026-09-20",
+  "days": 14,
+  "capturedAt": "2026-09-20T04:29:45.000Z",
+  "observed": {
+    "vendor": "xola",
+    "live": true,
+    "updatedAt": "2026-09-20T04:29:45.000Z",
+    "days": [
+      {
+        "date": "2026-09-20",
+        "slots": [
+          {
+            "startsAt": "2026-09-20T14:00",
+            "label": "2:00 PM · 2026 Georgian Spirit Sightseeing Cruise to Honey Harbour & 30 Thousand Islands - 3 Hours",
+            "priceCents": 5495,
+            "seatsLeft": 26,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/6605b7a27354df6a0d04f0f0/experiences/660c5b97e3093f572e09425b"
+          }
+        ]
+      },
+      {
+        "date": "2026-09-21",
+        "slots": [
+          {
+            "startsAt": "2026-09-21T14:00",
+            "label": "2:00 PM · 2026 Georgian Spirit Sightseeing Cruise to Honey Harbour & 30 Thousand Islands - 3 Hours",
+            "priceCents": 5495,
+            "seatsLeft": 44,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/6605b7a27354df6a0d04f0f0/experiences/660c5b97e3093f572e09425b"
+          }
+        ]
+      },
+      {
+        "date": "2026-09-22",
+        "slots": []
+      },
+      {
+        "date": "2026-09-23",
+        "slots": [
+          {
+            "startsAt": "2026-09-23T11:00",
+            "label": "11:00 AM · 2026 Georgian Spirit Cruise - Lunch or Sightseeing - Discovery Harbour Georgian Bay, 11 AM- 1:30 PM ",
+            "priceCents": 5495,
+            "seatsLeft": 46,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/6605b7a27354df6a0d04f0f0/experiences/660c5cc885295040af07938d"
+          },
+          {
+            "startsAt": "2026-09-23T14:00",
+            "label": "2:00 PM · 2026 Georgian Spirit Sightseeing Cruise to Honey Harbour & 30 Thousand Islands - 3 Hours",
+            "priceCents": 5495,
+            "seatsLeft": 44,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/6605b7a27354df6a0d04f0f0/experiences/660c5b97e3093f572e09425b"
+          }
+        ]
+      },
+      {
+        "date": "2026-09-24",
+        "slots": []
+      },
+      {
+        "date": "2026-09-25",
+        "slots": [
+          {
+            "startsAt": "2026-09-25T14:00",
+            "label": "2:00 PM · 2026 Georgian Spirit Sightseeing Cruise to Honey Harbour & 30 Thousand Islands - 3 Hours",
+            "priceCents": 5495,
+            "seatsLeft": 50,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/6605b7a27354df6a0d04f0f0/experiences/660c5b97e3093f572e09425b"
+          },
+          {
+            "startsAt": "2026-09-25T18:00",
+            "label": "6:00 PM · 2026 Georgian Spirit Cruise - Dinner Cruise 6 PM - 9 PM Dinner service or Sightseeing Cruise only",
+            "priceCents": 5495,
+            "seatsLeft": 50,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/6605b7a27354df6a0d04f0f0/experiences/660d61a6bd6d9032280f1307"
+          }
+        ]
+      },
+      {
+        "date": "2026-09-26",
+        "slots": [
+          {
+            "startsAt": "2026-09-26T14:00",
+            "label": "2:00 PM · 2026 Georgian Spirit Sightseeing Cruise to Honey Harbour & 30 Thousand Islands - 3 Hours",
+            "priceCents": 5495,
+            "seatsLeft": 46,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/6605b7a27354df6a0d04f0f0/experiences/660c5b97e3093f572e09425b"
+          }
+        ]
+      },
+      {
+        "date": "2026-09-27",
+        "slots": [
+          {
+            "startsAt": "2026-09-27T14:00",
+            "label": "2:00 PM · 2026 Georgian Spirit Sightseeing Cruise to Honey Harbour & 30 Thousand Islands - 3 Hours",
+            "priceCents": 5495,
+            "seatsLeft": 50,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/6605b7a27354df6a0d04f0f0/experiences/660c5b97e3093f572e09425b"
+          }
+        ]
+      },
+      {
+        "date": "2026-09-28",
+        "slots": [
+          {
+            "startsAt": "2026-09-28T14:00",
+            "label": "2:00 PM · 2026 Georgian Spirit Sightseeing Cruise to Honey Harbour & 30 Thousand Islands - 3 Hours",
+            "priceCents": 5495,
+            "seatsLeft": 43,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/6605b7a27354df6a0d04f0f0/experiences/660c5b97e3093f572e09425b"
+          }
+        ]
+      },
+      {
+        "date": "2026-09-29",
+        "slots": [
+          {
+            "startsAt": "2026-09-29T10:30",
+            "label": "10:30 AM · 2026 Georgian Spirit Cruise - Lunch or Sightseeing - Discovery Harbour Georgian Bay, 11 AM- 1:30 PM ",
+            "priceCents": 5495,
+            "seatsLeft": 15,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/6605b7a27354df6a0d04f0f0/experiences/660c5cc885295040af07938d"
+          }
+        ]
+      },
+      {
+        "date": "2026-09-30",
+        "slots": [
+          {
+            "startsAt": "2026-09-30T11:00",
+            "label": "11:00 AM · 2026 Georgian Spirit Cruise - Lunch or Sightseeing - Discovery Harbour Georgian Bay, 11 AM- 1:30 PM ",
+            "priceCents": 5495,
+            "seatsLeft": 89,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/6605b7a27354df6a0d04f0f0/experiences/660c5cc885295040af07938d"
+          },
+          {
+            "startsAt": "2026-09-30T14:00",
+            "label": "2:00 PM · 2026 Georgian Spirit Sightseeing Cruise to Honey Harbour & 30 Thousand Islands - 3 Hours",
+            "priceCents": 5495,
+            "seatsLeft": 48,
+            "bookUrl": "https://checkout.xola.com/index.html#seller/6605b7a27354df6a0d04f0f0/experiences/660c5b97e3093f572e09425b"
+          }
+        ]
+      },
+      {
+        "date": "2026-10-01",
+        "slots": []
+      },
+      {
+        "date": "2026-10-02",
+        "slots": []
+      },
+      {
+        "date": "2026-10-03",
+        "slots": []
+      }
+    ],
+    "partial": true,
+    "note": "12 of 54 experiences read"
+  }
+}

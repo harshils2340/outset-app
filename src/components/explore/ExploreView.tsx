@@ -12,6 +12,7 @@ import { UnclaimedCard } from "./UnclaimedCard";
 import { applyFilters, browseList, nearFirst, whatLabel } from "./feed";
 import { activeFilterCount, clearFilters, setPrefs, usePrefs } from "./prefs";
 import "../../styles/air-phone.css";
+import { useDeadCovers, withPhotos } from "../../lib/deadCovers";
 
 /** Cards mounted per page of the feed. More arrive as the guest nears the end, the way Airbnb's list does. */
 const PAGE = 18;
@@ -56,7 +57,12 @@ export function ExploreView() {
     () => state.metroId !== ALL_METRO_ID && !catalog.some((u) => u.metroId === state.metroId),
     [catalog, state.metroId],
   );
-  const list = useMemo(() => applyFilters(found ? nearFirst(found.results, near) : browse, prefs.filters), [found, browse, prefs.filters, near]);
+  const listed = useMemo(() => applyFilters(found ? nearFirst(found.results, near) : browse, prefs.filters), [found, browse, prefs.filters, near]);
+  /**
+   * Browse promises a photograph, so a listing whose cover turned out to be dead leaves the feed. Only browse:
+   * a saved listing stays in Wishlists whatever happened to its picture, because the guest put it there.
+   */
+  const list = withPhotos(listed, useDeadCovers());
 
   // A new search, place, category or filter starts the list from the top.
   useEffect(() => {

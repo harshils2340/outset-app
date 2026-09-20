@@ -1,0 +1,28 @@
+{
+  "business": "Adventure Rooms",
+  "site": "https://adventurerooms.ca/booknow/",
+  "bookingVendor": "checkfront",
+  "recordedAt": "2026-09-20",
+  "recordedBy": "screenshot of their own Book Now widget",
+  "city": "Kitchener",
+  "region": "ON",
+  "category": "escape",
+  "queries": [
+    "escape room in kitchener tonight, 2 of us",
+    "escape room near kitchener at 4:30pm"
+  ],
+  "availability": {
+    "date": "2026-09-20",
+    "item": "Sabotage! - 90 Minute Adventure - Standard Game (2-8 Players)",
+    "times": ["11:30", "13:45", "16:00", "18:00", "20:15"],
+    "soldOut": ["22:15"],
+    "note": "Their widget shows start-end pairs; only the start is recorded. 22:15 was shown greyed out, so it is listed as sold out rather than as availability."
+  },
+  "price": {
+    "perPerson": 44.0,
+    "currency": "CAD",
+    "party": 2,
+    "subtotal": 88.0,
+    "note": "The widget showed '2 x $44.00' and a total of $88.00 for Sun Sept 20 2026, so the per-head figure is theirs and not derived."
+  }
+}

@@ -1,9 +1,11 @@
 import { Hono } from "hono";
 import { ID, bodyText, jsonBody, mayEdit, rateLimit } from "./auth.ts";
 import { readJson } from "../lib/store.ts";
-import { getBooking, getProfile, insertBookingChecked, listBookings, updateBooking, updateBookingChecked } from "../lib/repo.ts";
+import { getBooking, getProfile, getWallet, insertBookingChecked, listBookings, updateBooking, updateBookingChecked } from "../lib/repo.ts";
 import type { StoredProfile } from "./profiles.ts";
-import { capture, createCheckout, releaseIntent, reverseTransfer, sessionStatus, stripeEnabled, verifyWebhook } from "../lib/stripe.ts";
+import { capture, chargeSaved, createCheckout, releaseIntent, reverseTransfer, sessionStatus, stripeEnabled, verifyWebhook } from "../lib/stripe.ts";
+import { agentMayCharge, WALLET_ID } from "../payments/wallet.ts";
+import { attachWalletFromSession } from "./wallet.ts";
 import { currencyForArea, priceBooking, releaseDate, splitBooking, type PricedOption, type Split } from "../payments/money.ts";
 import { mailDecision, mailNewBooking } from "./bookingMail.ts";
 import { slotOpen, weekOf, zoneOf } from "./openSlots.ts";
@@ -32,8 +34,8 @@ export type StoredBooking = {
   note?: string;
   /** The operator's price and the guest's service fee behind `total`, worked out from the listing at booking time. */
   pricing?: { subtotal: number; fee: number };
-  /** Stripe: authorized at booking, captured on accept, released on decline. */
-  payment?: { session: string; intent: string | null; state: "authorized" | "captured" | "released" | "unpaid"; currency?: string; charge?: string | null; split?: Split; subtotal?: number };
+  /** Stripe: authorized at booking, captured on accept, released on decline. `session` is "wallet" when Otto held a saved card. */
+  payment?: { session: string; intent: string | null; state: "authorized" | "captured" | "released" | "unpaid"; currency?: string; charge?: string | null; split?: Split; subtotal?: number; agent?: boolean };
   /**
    * The operator's share once the card is captured. "scheduled" waits for the day after the experience and the
    * operator's next pay day; "paid" carries the Stripe transfer; "reversed" means a refund took it back.
@@ -132,7 +134,7 @@ bookings.post("/stripe/webhook", rateLimit(600, 60 * 60 * 1000), async (c) => {
   if (!verifyWebhook(raw, c.req.header("stripe-signature"))) return c.json({ error: "bad signature" }, 400);
   // The signature has already passed, so this is Stripe, but a truncated body would otherwise throw and answer
   // 500, which tells Stripe to retry something that can never parse.
-  let ev: { type: string; data: { object: { id: string; payment_intent?: string | null; metadata?: { code?: string; listing?: string } } } };
+  let ev: { type: string; data: { object: { id: string; mode?: string; payment_intent?: string | null; metadata?: { code?: string; listing?: string; wallet?: string } } } };
   try {
     ev = JSON.parse(raw);
   } catch {
@@ -141,6 +143,11 @@ bookings.post("/stripe/webhook", rateLimit(600, 60 * 60 * 1000), async (c) => {
   }
   if (ev.type !== "checkout.session.completed" && ev.type !== "checkout.session.expired") return c.json({ ok: true });
   const s = ev.data.object;
+  const wallet = String(s.metadata?.wallet || "").toLowerCase();
+  if (ev.type === "checkout.session.completed" && (s.mode === "setup" || WALLET_ID.test(wallet))) {
+    if (WALLET_ID.test(wallet)) await attachWalletFromSession(wallet, s.id).catch((e) => console.error("[stripe] wallet setup " + wallet + ": " + (e as Error).message));
+    return c.json({ ok: true });
+  }
   const code = String(s.metadata?.code || "").toUpperCase();
   const listing = String(s.metadata?.listing || "");
   if (!ID.test(listing) || !/^[A-Z0-9-]{4,16}$/.test(code)) return c.json({ ok: true });
@@ -297,6 +304,34 @@ bookings.post("/bookings", rateLimit(20, 60 * 60 * 1000), async (c) => {
       // Charge in the listing's own dollars. Every charge used to be in STRIPE_CURRENCY (cad), so a $213 tour in
       // Florida billed the guest 213 Canadian dollars.
       const currency = currencyForArea(detail?.area, process.env.STRIPE_CURRENCY || "usd");
+      const walletToken = (c.req.header("x-wallet") || bodyText((b as { wallet?: unknown } | null)?.wallet)).trim().toLowerCase();
+      if (WALLET_ID.test(walletToken)) {
+        const w = await getWallet(walletToken);
+        if (w && w.stripe_customer && agentMayCharge({ otto: w.otto, paymentMethod: w.payment_method, maxCents: w.max_cents }, rec.total!)) {
+          try {
+            const pi = await chargeSaved({ amount: rec.total!, currency, customer: w.stripe_customer, paymentMethod: w.payment_method!, code, listing });
+            if (pi.status === "requires_capture" || pi.status === "succeeded") {
+              rec.status = instant ? "accepted" : "new";
+              rec.payment = { session: "wallet", intent: pi.id, state: "authorized", currency, subtotal: priced!.subtotal, agent: true };
+              const stored = await insertBookingChecked(rec, (list) => slotOpen((profile?.profile as Parameters<typeof slotOpen>[0]) || null, list, date, slot, rec.service, qty, new Date(), zone, week).open);
+              if (stored === "refused") {
+                await releaseIntent(pi.id).catch((e) => console.error(`[bookings] ${code}: release after slot race: ` + (e as Error).message));
+                return c.json({ error: "That time was just booked", code: "slot_taken" }, 409);
+              }
+              if (stored === "duplicate") {
+                await releaseIntent(pi.id).catch((e) => console.error(`[bookings] ${code}: release after duplicate: ` + (e as Error).message));
+                return c.json({ error: "duplicate code" }, 409);
+              }
+              if (instant) await captureBooking(listing, code, pi.id);
+              void notifyNew(rec, profile, detail).catch((e) => console.error(`[bookings] mail for ${code}: ${(e as Error).message}`));
+              return c.json({ ok: true, status: rec.status, code, charged: true });
+            }
+          } catch (e) {
+            // SCA or a declined card: the guest pays this one themselves. The saved card stays for the next booking.
+            console.warn(`[bookings] ${code}: Otto could not hold the saved card: ` + (e as Error).message);
+          }
+        }
+      }
       const co = await createCheckout({
         code, listing, currency, title: clean((profile?.patch as { title?: string } | undefined)?.title, 120) || clean(detail?.title, 120) || listing,
         description: `${rec.service || "Booking"}${rec.variant ? " (" + rec.variant + ")" : ""} · ${fmtWhen(date, slot)} · ${qty} guest${qty === 1 ? "" : "s"}`,

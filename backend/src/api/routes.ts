@@ -28,6 +28,7 @@ import { claims } from "./claims.ts";
 import { unsub } from "./unsub.ts";
 import { webhooks } from "./webhooks.ts";
 import { bookings } from "./bookings.ts";
+import { wallet } from "./wallet.ts";
 import { concierge } from "./concierge.ts";
 import { uploads } from "./uploads.ts";
 import { payouts } from "./payouts.ts";
@@ -46,7 +47,7 @@ const ORIGINS = (process.env.ALLOWED_ORIGINS || "https://onoutset.com,https://ww
 app.use("*", bodyLimit({ maxSize: 2 * 1024 * 1024, onError: (c) => c.json({ error: "too large" }, 413) }));
 // DELETE is on this list because the dashboard's "Release this listing" uses it. A method missing here fails
 // only in a browser, on the preflight, so the route answers every in-process test and none of the real presses.
-app.use("*", cors({ origin: (o) => (ORIGINS.includes(o) ? o : ""), allowHeaders: ["content-type", "x-claim-token", "x-session"], allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"], maxAge: 600 }));
+app.use("*", cors({ origin: (o) => (ORIGINS.includes(o) ? o : ""), allowHeaders: ["content-type", "x-claim-token", "x-session", "x-wallet"], allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"], maxAge: 600 }));
 app.use("*", async (c, next) => {
   await next();
   c.header("x-content-type-options", "nosniff");
@@ -91,6 +92,7 @@ app.route("/", claims);
 app.route("/", unsub);
 app.route("/", webhooks);
 app.route("/", bookings);
+app.route("/", wallet);
 app.route("/", uploads);
 app.route("/", payouts);
 app.route("/", availability);

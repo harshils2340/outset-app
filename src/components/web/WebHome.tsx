@@ -25,6 +25,7 @@ import { AdminSiteLink, liteDealTitle, tidyDuration } from "./WebListing";
 import { freeCancelBadge } from "../../lib/cancellation";
 import { withinDrive, kmToPlace, NEAR_RADIUS_KM, DRIVE_RADIUS_KM } from "../explore/feed";
 import { getPrefs, setPrefs } from "../explore/prefs";
+import { reportDeadCover, useDeadCovers, withPhotos } from "../../lib/deadCovers";
 
 
 /** "1 place", "2,418 places". */
@@ -130,6 +131,13 @@ function whenIdle(run: () => void): void {
   else window.setTimeout(run, 50);
 }
 
+/**
+ * What to put in front of somebody who has never seen a box that answers this. Whole sentences, because the
+ * agent reads a sentence: the activity, the place, the time and the party size all at once. Kept short enough
+ * to fit one line on a laptop.
+ */
+const ASK_EXAMPLES = ["escape room tonight, 4 of us", "helicopter tour in toronto at 4:30pm", "axe throwing under $30 a head"];
+
 /** What a "More kinds" link types into the search: the first alias, so the search names exactly that kind. */
 const kindQuery = (art: ArtKind) => ART_ALIASES[art]?.[0] || art;
 
@@ -188,6 +196,8 @@ function rankForRail(list: Unclaimed[], center?: { lat: number; lon: number } | 
 /** Up to three listings a guest wants side by side. */
 const CompareCtx = createContext<{ ids: string[]; toggle: (id: string) => void }>({ ids: [], toggle: () => {} });
 
+
+
 /** The Where menu's shortlist: the biggest cities a guest would type, not the first twelve metros in the file. */
 const POPULAR_METROS = ["toronto", "nyc", "los-angeles", "chicago", "miami", "tampa", "vancouver", "austin", "denver", "seattle", "las-vegas", "boston", "atlanta", "san-diego", "montreal", "orlando"];
 
@@ -243,11 +253,19 @@ function CompareCheck({ id, title, small }: { id: string; title: string; small?:
 }
 
 /** The card's pill: Top rated beats a deal beats open now, one pill at most, the way Airbnb shows one badge. */
+/**
+ * The one flag on the photo. Strongest claim wins, and only one ever shows.
+ *
+ * Free cancellation joined the list when the line under the title stopped carrying it. A flag belongs in a
+ * flag's slot: it is a property of the deal, not a fact about the trip, and putting it where the duration
+ * goes is what made five cards in a row describe five different things.
+ */
 function cardBadge(u: Unclaimed, open: boolean): string | null {
   if (topRated(u)) return "Top rated";
   // A titled deal gets its own line under the card; the pill stays for a deal with no title.
   if (dealToday(u) && !liteDealTitle(u.deal)) return "Deal today";
   if (open) return "Open now";
+  if (freeCancelBadge(u)) return "Free cancellation";
   return null;
 }
 
@@ -334,15 +352,18 @@ function Card({ u, onOpen, near, rail }: { u: Unclaimed; onOpen: (id: string) =>
     if (n) return (n.label ? n.label + " · " : "") + fmtDistance(n.km, countryOfArea(u.area)) + " away" + extra;
     return u.area + (metro && !u.area.includes(metro.name) ? " · " + metro.name : "") + extra;
   })();
-  const detail = u.dur
-    ? tidyDuration(u.dur)
-    : openSt?.open && openSt.closesAt
-      ? "Open until " + openSt.closesAt
-      : openSt && !openSt.open
-        ? openSt.label
-        : freeCancelBadge(u)
-          ? "Free cancellation"
-          : ART_LABEL[u.art];
+  /**
+   * The line under the town says one kind of thing on every card, so a row of five can be read down.
+   *
+   * It used to be a fallback chain: duration, else the closing time, else the opening time, else free
+   * cancellation, else the kind of activity. Whichever a listing happened to have is what it showed, so a
+   * single rail read "30 min", "Opens today at 8 AM", "Free cancellation", "40 min", "Pontoon" and there was
+   * no column to compare down. Both of the displaced facts already had somewhere better to be: the open state
+   * is the photo's badge, and free cancellation is now a badge too.
+   *
+   * What is left is what the guest is actually buying: how long it lasts, or failing that what it is.
+   */
+  const detail = u.dur ? tidyDuration(u.dur) : ART_LABEL[u.art];
   const step = (d: number) => {
     manual.current = true;
     setPic((i) => (i + d + gallery.length) % gallery.length);
@@ -362,7 +383,16 @@ function Card({ u, onOpen, near, rail }: { u: Unclaimed; onOpen: (id: string) =>
       <AdminSiteLink item={u} variant="icon" />
       <div className={"ah-card-photo" + (playing ? " is-playing" : "")} ref={photoBox}>
         {/* The cover is always the bottom layer; the other photos are stacked above it and fade in when shown. */}
-        <Photo key={gallery[playing ? 0 : pic] || "cover"} src={gallery[playing ? 0 : pic]} video={(playing ? 0 : pic) === 0 ? u.video : undefined} kind={u.art} id={"w" + u.id} alt="" />
+        {/* Only the cover speaks for the listing: a later slide that fails is one bad photo, not a bad record. */}
+        <Photo
+          key={gallery[playing ? 0 : pic] || "cover"}
+          src={gallery[playing ? 0 : pic]}
+          video={(playing ? 0 : pic) === 0 ? u.video : undefined}
+          kind={u.art}
+          id={"w" + u.id}
+          alt=""
+          onBroken={(playing ? 0 : pic) === 0 ? () => reportDeadCover(u.id) : undefined}
+        />
         {playing && gallery.length > 1
           ? gallery.slice(1).map((src, k) => (
               <div key={src} data-i={k + 1} className={"ah-card-slide" + (k + 1 === pic ? " on" : "")} aria-hidden={k + 1 !== pic}>
@@ -460,6 +490,7 @@ function Rail({ title, items, onOpen, near, eager, onShowAll, note }: { title: s
     if (!el) return;
     setEdge({ prev: el.scrollLeft > 4, next: el.scrollLeft + el.clientWidth < el.scrollWidth - 4 });
   };
+  items = withPhotos(items, useDeadCovers());
   useEffect(measure, [live, shown, items.length]);
   const scroll = (dir: number) => {
     setLive(true);
@@ -489,6 +520,7 @@ function Rail({ title, items, onOpen, near, eager, onShowAll, note }: { title: s
 }
 
 function Grid({ items, onOpen, near, resetKey }: { items: Unclaimed[]; onOpen: (id: string) => void; near?: Place | null; resetKey: string }) {
+  items = withPhotos(items, useDeadCovers());
   const [shown, setShown] = useState(GRID_PAGE);
   useEffect(() => setShown(GRID_PAGE), [resetKey]);
   return (
@@ -891,7 +923,7 @@ const remembered: { q: string; whereText: string; artChip: ArtKind | null; who: 
   q: "", whereText: "", artChip: null, ...rememberedParty(), searched: false, sort: "relevance", price: { min: null, max: null },
 };
 
-export function WebHome({ onOpenApp, onOperators }: { onOpenApp: () => void; onOperators: () => void }) {
+export function WebHome({ onOpenApp, onOperators, onAsk }: { onOpenApp: () => void; onOperators: () => void; onAsk: (seed?: string) => void }) {
   const { state, setCat, setMetro, setNear, setDate, openRequest, dates } = useApp();
   // What: the activity, occasion or business. Where: the words typed while looking for a place. The place itself
   // lives in app state (near or metro), so the two boxes never overwrite each other.
@@ -1542,6 +1574,29 @@ export function WebHome({ onOpenApp, onOperators }: { onOpenApp: () => void; onO
           </div>
         ) : null}
 
+        {/*
+          The concierge, one line under the box that searches the catalog.
+
+          Those are two different questions. The pill finds businesses; this answers "is there a seat at seven
+          tonight, and what will it cost me", which no catalog holds, by reading each shop's own booking system
+          while the guest waits. The examples are real sentences rather than a prompt, because the first thing
+          anybody asks a box like this is what it will understand.
+        */}
+        {expanded ? (
+          <div className="ah-askrow ah-gutter">
+            <button type="button" className="ah-ask" onClick={() => onAsk()}>
+              <Markup html={ICONS.spark} />
+              <b>Ask for anything</b>
+              <span>and get times you can actually book</span>
+            </button>
+            {ASK_EXAMPLES.map((ex) => (
+              <button type="button" className="ah-askex" key={ex} onClick={() => onAsk(ex)}>
+                {ex}
+              </button>
+            ))}
+          </div>
+        ) : null}
+
         <div className="ah-catrow ah-gutter">
           <CategoryBar key={world.id} chips={world.chips} selected={kindChip || state.cat} onPick={pickChip} filterCount={filterCount} onFilters={() => setFiltersOpen(true)} />
         </div>
@@ -1702,6 +1757,7 @@ export function WebHome({ onOpenApp, onOperators }: { onOpenApp: () => void; onO
                 <li><button type="button" onClick={onOperators}>List your business</button></li>
                 <li><button type="button" onClick={onOperators}>Claim your listing</button></li>
                 <li><button type="button" onClick={onOperators}>Operator log in</button></li>
+                <li><a href="#safe">You pay, or Otto does</a></li>
               </ul>
             </section>
             <section>
