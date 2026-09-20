@@ -55,6 +55,49 @@ test("the vendor's own link does not outrank the widget further down the page", 
   assert.equal(hit.hostedUrl, "https://kitchenerescape.checkfront.com/reserve/");
 });
 
+test("the concierge reads the same vendor out of a link as the catalog's own reader does", () => {
+  /**
+   * Two vendor tables ship: this one and `src/enrich/vendors.ts`, which the crawl and the live readers use.
+   * Swept over all 1,664 booking links in `public/live-index.json` they disagreed on 28: this table had never
+   * heard of `xola.app`, which is where 27 of the 54 Xola links live, and it read a FareHarbor waiver link as
+   * a shop called "waivers". Each line below is a link we really ship.
+   */
+  for (const [url, vendor, account] of [
+    ["https://x2-checkout.xola.app/flows/mvp?button=5e4c0d7b99368212cd009e38&view=grid", "xola", "5e4c0d7b99368212cd009e38"],
+    ["https://gift.xola.app/#?button=66184802640795aa3a08269e&_=1739201417213", "xola", "66184802640795aa3a08269e"],
+    ["https://checkout.xola.com/index.html#seller/5ff8c239f5657f0aa32ee4e5?openExternal=true", "xola", "5ff8c239f5657f0aa32ee4e5"],
+    ["https://waivers-ui.xola.com/templates/5ffcba6148b605221d974d95/preview?sellerId=5bef3317cf8b9c5f2d8b45aa", "xola", "5bef3317cf8b9c5f2d8b45aa"],
+    ["https://fareharbor.com/waivers?shortname=enrgkayaking&bookingUuid=ecf456fa-6872-445b-b601-9a7337b1e48e", "fareharbor", "enrgkayaking"],
+    ["https://fareharbor.com/embeds/book/lostinalaskaadventures/items/?flow=373906", "fareharbor", "lostinalaskaadventures"],
+    ["https://book.peek.com/s/9a1b2c3d-4e5f/abcdef", "peek", "9a1b2c3d-4e5f"],
+    ["https://kitchenerescape.checkfront.site/reserve/", "checkfront", "kitchenerescape"],
+  ] as const) {
+    const hit = detectVendor(url);
+    assert.equal(hit.vendor, vendor, url);
+    assert.equal(hit.account, account, url);
+  }
+  // A shop on .resova.us is not sent to a .resova.com page that is not theirs.
+  assert.equal(detectVendor("https://bricksescape.resova.us/").hostedUrl, "https://bricksescape.resova.us/");
+});
+
+test("a rule that finds the shop beats one that only saw the vendor's name", () => {
+  /**
+   * The first rule whose name appeared anywhere used to win outright, so a footer link to FareHarbor's privacy
+   * page left a Peek shop with no feed and no hosted page.
+   */
+  const page = [
+    '<a href="https://fareharbor.com/legal/privacy/">Privacy</a>',
+    '<iframe src="https://book.peek.com/s/5f2d79af-0b93/62569e"></iframe>',
+  ].join("\n");
+  const hit = detectVendor(page);
+  assert.equal(hit.vendor, "peek");
+  assert.equal(hit.hostedUrl, "https://book.peek.com/s/5f2d79af-0b93");
+  // With nothing else on the page, FareHarbor is still the honest answer, just without an account.
+  const alone = detectVendor('<a href="https://fareharbor.com/legal/privacy/">Privacy</a>');
+  assert.equal(alone.vendor, "fareharbor");
+  assert.equal(alone.account, null);
+});
+
 test("a page with no booking vendor on it says so", () => {
   const hit = detectVendor("<html><body>Call us to book on 555 0100</body></html>");
   assert.equal(hit.vendor, "unknown");

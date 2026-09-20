@@ -35,22 +35,26 @@ export type VendorHit = {
  */
 const RULES: {
   vendor: VendorId;
+  /** Tried in order; the first that yields an id which is not the vendor's own wins. */
+  account?: RegExp | RegExp[];
   detect: RegExp;
-  account?: RegExp;
-  hosted?: (account: string) => string;
+  /** Given the account and the text it was read from, so a shop on `.resova.us` is not sent to `.resova.com`. */
+  hosted?: (account: string, haystack: string) => string;
   hasFeed?: boolean;
 }[] = [
   {
     vendor: "fareharbor",
     detect: /fareharbor\.com/i,
-    account: /fareharbor\.com\/(?:embeds\/book\/)?([a-z0-9][a-z0-9-]{2,})/i,
+    // A waiver link names the company outright: fareharbor.com/waivers?shortname=enrgkayaking&bookingUuid=...
+    account: [/[?&]shortname=([a-z0-9-]+)/i, /fareharbor\.com\/(?:embeds\/book\/)?([a-z0-9][a-z0-9-]{2,})/i],
     hosted: (a) => `https://fareharbor.com/embeds/book/${a}/`,
     hasFeed: true,
   },
   {
+    // The newer storefront is <account>.checkfront.site; the booking engine is the same either way.
     vendor: "checkfront",
-    detect: /checkfront\.com/i,
-    account: /([a-z0-9][a-z0-9-]{2,})\.checkfront\.com/i,
+    detect: /checkfront\.(?:com|site)/i,
+    account: /([a-z0-9][a-z0-9-]{2,})\.checkfront\.(?:com|site)/i,
     hosted: (a) => `https://${a}.checkfront.com/reserve/`,
   },
   {
@@ -67,15 +71,21 @@ const RULES: {
     hosted: (a) => `https://book.peek.com/s/${a}`,
   },
   {
+    /**
+     * Half of Xola lives on `xola.app`, not `xola.com`: `x2-checkout.xola.app/flows/mvp?button=...` and
+     * `gift.xola.app`. 27 of the 54 Xola booking links we ship are on that host and read as no vendor at all.
+     * The seller is `#seller/<id>` or `sellerId=<id>`; a button embed carries only a button id, which
+     * `readXola` swaps for a seller, so it is marked as one rather than passed off as a seller.
+     */
     vendor: "xola",
-    detect: /xola\.com/i,
-    account: /xola\.com\/(?:api\/)?(?:experiences\/)?([a-f0-9]{16,})/i,
+    detect: /xola\.(?:com|app)/i,
+    account: [/(?:seller\/|[?&]sellerId=)([a-f0-9]{24})\b/i, /(?:buttons?\/|[?&#]button=)([a-f0-9]{24})\b/i],
   },
   {
     vendor: "resova",
     detect: /resova\.(?:com|us|eu)/i,
     account: /([a-z0-9-]{3,})\.resova\.(?:com|us|eu)/i,
-    hosted: (a) => `https://${a}.resova.com/`,
+    hosted: (a, text) => `https://${a}.resova.${text.match(/resova\.(com|us|eu)/i)?.[1].toLowerCase() || "com"}/`,
   },
   {
     vendor: "rezdy",
@@ -111,34 +121,45 @@ const RULES: {
  * on a Checkfront page is `www.checkfront.com`, so the account came back as "www" and the hosted booking page we
  * built for that shop was `https://www.checkfront.com/reserve/`, which is Checkfront's own marketing site.
  */
-const NOT_AN_ACCOUNT = /^(?:www|help|support|blog|docs|api|app|apps|cdn|assets|static|status|secure|info|news|embeds|widgets|book|booking|pages|legal|about|contact|login|signup|partners)$/i;
+const NOT_AN_ACCOUNT = /^(?:www|help|support|blog|docs|api|app|apps|cdn|assets|static|status|secure|info|news|embeds|widgets|book|booking|pages|legal|about|contact|login|signup|partners|waivers|waiver|terms|privacy|gift|checkout|templates|preview|flows|index\.html)$/i;
 
 /**
  * The first id on the page that could be a shop rather than the vendor itself. Taking the first match outright
  * meant one link to the vendor's own site, higher up the page than the widget, decided the account.
  */
-function accountIn(haystack: string, re: RegExp): string | null {
-  const all = new RegExp(re.source, re.flags.includes("g") ? re.flags : re.flags + "g");
-  for (const m of haystack.matchAll(all)) {
-    if (m[1] && !NOT_AN_ACCOUNT.test(m[1])) return m[1];
+function accountIn(haystack: string, res: RegExp | RegExp[]): string | null {
+  for (const re of Array.isArray(res) ? res : [res]) {
+    const all = new RegExp(re.source, re.flags.includes("g") ? re.flags : re.flags + "g");
+    for (const m of haystack.matchAll(all)) {
+      if (m[1] && !NOT_AN_ACCOUNT.test(m[1])) return m[1];
+    }
   }
   return null;
 }
 
-/** Recognise the vendor from any text that came off the shop's page: the HTML, a script src, an iframe src. */
+/**
+ * Recognise the vendor from any text that came off the shop's page: the HTML, a script src, an iframe src.
+ *
+ * A rule that finds the shop's own id beats one that only saw the vendor's name, whatever order they sit in:
+ * a page that links to `fareharbor.com/legal/privacy/` and embeds a Peek widget is a Peek shop, and returning
+ * FareHarbor with no account leaves it with neither a feed to read nor a hosted page to open.
+ */
 export function detectVendor(haystack: string): VendorHit {
+  let fallback: VendorHit | null = null;
   for (const r of RULES) {
     if (!r.detect.test(haystack)) continue;
     const account = r.account ? accountIn(haystack, r.account) : null;
-    return {
+    const hit: VendorHit = {
       vendor: r.vendor,
       account,
-      hostedUrl: account && r.hosted ? r.hosted(account) : null,
+      hostedUrl: account && r.hosted ? r.hosted(account, haystack) : null,
       hasFeed: !!r.hasFeed,
       evidence: (haystack.match(r.detect)?.[0] || r.vendor).slice(0, 60),
     };
+    if (account) return hit;
+    fallback = fallback || hit;
   }
-  return { vendor: "unknown", account: null, hostedUrl: null, hasFeed: false, evidence: "" };
+  return fallback || { vendor: "unknown", account: null, hostedUrl: null, hasFeed: false, evidence: "" };
 }
 
 const UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36";
