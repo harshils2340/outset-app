@@ -199,7 +199,7 @@ function servicesFor(domain: string): { name: string; price: number | null; unit
 }
 
 /** The shortlist: businesses that match, best reviewed first, the ones we can quote times for first of all. */
-export function candidates(intent: Intent, limit = 8): Option[] {
+export function candidates(intent: Intent, limit = 8, radiusKm = 40): Option[] {
   const where: string[] = ["o.origin != 'demo'", "o.name IS NOT NULL"];
   const args: unknown[] = [];
   if (intent.categoryId) {
@@ -215,7 +215,7 @@ export function candidates(intent: Intent, limit = 8): Option[] {
   if (intent.point) {
     const { lat, lon } = intent.point;
     const kx = Math.cos((lat * Math.PI) / 180);
-    const deg = 40 / 111; // 40 km: far enough for the next town, near enough to still be "here"
+    const deg = radiusKm / 111;
     where.push("o.lat IS NOT NULL AND abs(o.lat - ?) < ? AND abs(o.lon - ?) < ?");
     args.push(lat, deg, lon, deg / Math.max(kx, 0.2));
     order = `((o.lat - ${lat}) * (o.lat - ${lat}) + (o.lon - ${lon}) * (o.lon - ${lon}) * ${(kx * kx).toFixed(4)}) ASC, o.review_count DESC NULLS LAST`;
@@ -270,17 +270,78 @@ export function windowFor(when: Intent["when"], now = new Date()): { from: Date;
  * The whole answer: read the sentence, shortlist the catalog, then ask the shops themselves. Only the ones with
  * a feed are asked here, because a browser agent takes half a minute a shop and a guest is waiting.
  */
-export async function plan(text: string, opts: { ask?: number } = {}): Promise<{ intent: Intent; options: Option[] }> {
+export type Answer = {
+  intent: Intent;
+  options: Option[];
+  /** A question to ask back, when the sentence did not carry enough to search on. */
+  followUp: string | null;
+  /** Said out loud when the search had to be loosened: a wider area, or any activity rather than the one named. */
+  loosened: string | null;
+  /** Cheapest and dearest of what was found, because comparing is the thing a search engine cannot do for you. */
+  compare: { cheapest: number; dearest: number; count: number } | null;
+};
+
+/** The lowest price we can quote for an option, live or from its published menu. */
+export function priceOf(o: Option): number | null {
+  const live = o.departures.map((d) => d.fromPrice).filter((n): n is number => n != null);
+  const menu = o.services.map((s) => s.price).filter((n): n is number => n != null);
+  const all = [...live, ...menu];
+  return all.length ? Math.min(...all) : null;
+}
+
+/**
+ * The whole answer, and the ways of not having one.
+ *
+ * A person asking a friend does not get silence when the friend has not understood: they get a question back,
+ * or a near miss offered with an apology. So this either asks for the one thing it is missing, or it loosens
+ * the search until it has something to show and says which rule it broke to get there.
+ */
+export async function plan(text: string, opts: { ask?: number } = {}): Promise<Answer> {
   const intent = readIntent(text);
-  const options = candidates(intent);
+
+  // Not enough to search on. Ask for the one thing that would make it searchable, not a form.
+  if (!intent.categoryId && !intent.city && !intent.region) {
+    return {
+      intent, options: [], compare: null, loosened: null,
+      followUp: "What sort of thing, and roughly where? Something like \u201cescape room in Kitchener\u201d or \u201cboat trip near Toronto\u201d.",
+    };
+  }
+  if (!intent.city && !intent.region) {
+    return { intent, options: [], compare: null, loosened: null, followUp: "Where are you? A town or city is enough." };
+  }
+  if (!intent.categoryId) {
+    // A place with no activity is answerable: show what that place is known for rather than asking.
+  }
+
+  let loosened: string | null = null;
+  let options = candidates(intent);
+
+  // Nothing here: look further out before looking elsewhere, because people will travel for the right thing.
+  if (!options.length && intent.point) {
+    options = candidates(intent, 8, 120);
+    if (options.length) loosened = "Nothing in " + (intent.city || "town") + " itself, so this is a wider search.";
+  }
+  // Still nothing: the activity is what is missing, not the place. Offer what the place does have.
+  if (!options.length && intent.categoryId) {
+    const anywhere: Intent = { ...intent, categoryId: null, categoryLabel: null };
+    options = candidates(anywhere, 8, 60);
+    if (options.length) {
+      loosened = "No " + (intent.categoryLabel || "matches").toLowerCase() + " near " + (intent.city || "you") + ". Here is what else is around.";
+    }
+  }
+  if (!options.length) {
+    return {
+      intent, options: [], compare: null, loosened: null,
+      followUp: "I could not find anything for that. Try a bigger town nearby, or a different activity.",
+    };
+  }
+
   const win = windowFor(intent.when);
   const fits = (d: Departure) => intent.maxPerPerson == null || d.fromPrice == null || d.fromPrice <= intent.maxPerPerson;
 
   /**
-   * The shops are asked at the same time, not one after another. Each one is a handful of round trips to its
-   * booking provider, so asking three in turn took nineteen seconds with the machine idle for most of it, and
-   * a guest waiting nineteen seconds has already decided we are broken. They go to different hosts and we send
-   * a few requests each, so there is nothing rude about doing them together.
+   * The shops are asked at the same time, not one after another. Each is a handful of round trips to its
+   * booking provider, so asking three in turn took nineteen seconds with the machine idle for most of it.
    */
   const feeds = options.filter((o) => o.route === "feed").slice(0, opts.ask ?? 3);
   await Promise.all(
@@ -297,5 +358,9 @@ export async function plan(text: string, opts: { ask?: number } = {}): Promise<{
     }),
   );
 
-  return { intent, options };
+  // What it costs, across everything we found. This is the answer to "why not just use Google".
+  const prices = options.map(priceOf).filter((n): n is number => n != null);
+  const compare = prices.length >= 2 ? { cheapest: Math.min(...prices), dearest: Math.max(...prices), count: prices.length } : null;
+
+  return { intent, options, followUp: null, loosened, compare };
 }

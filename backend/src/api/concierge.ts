@@ -21,18 +21,23 @@ concierge.post("/concierge/ask", async (c) => {
   if (!text) return c.json({ error: "Say what you want to do." }, 400);
   if (text.length > 300) return c.json({ error: "That is a lot to ask for. Try a shorter sentence." }, 400);
   const t0 = Date.now();
-  const { intent, options } = await plan(text, { ask: Math.min(Number(body.ask) || 3, 5) });
-  // Only the ones we can actually quote a time for lead; the rest are still returned, with the route that
-  // would fulfil them, because "we would have to phone them" is a real answer and worth showing.
-  const withTimes = options.filter((o) => o.departures.length);
+  const a = await plan(text, { ask: Math.min(Number(body.ask) || 3, 5) });
+
+  // A question back is a complete answer; there is nothing to rank.
+  if (a.followUp) return c.json({ intent: a.intent, ms: Date.now() - t0, followUp: a.followUp, options: [], counts: { quoted: 0, priced: 0, total: 0 } });
+
+  const withTimes = a.options.filter((o) => o.departures.length);
   // Then the ones we can at least price from their own published menu, then the rest.
-  const withPrices = options.filter((o) => !o.departures.length && o.services.some((s) => s.price != null));
-  const rest = options.filter((o) => !o.departures.length && !o.services.some((s) => s.price != null));
+  const withPrices = a.options.filter((o) => !o.departures.length && o.services.some((s) => s.price != null));
+  const rest = a.options.filter((o) => !o.departures.length && !o.services.some((s) => s.price != null));
   return c.json({
-    intent,
+    intent: a.intent,
     ms: Date.now() - t0,
+    followUp: null,
+    loosened: a.loosened,
+    compare: a.compare,
     options: [...withTimes, ...withPrices, ...rest].slice(0, 6),
-    counts: { quoted: withTimes.length, priced: withPrices.length, total: options.length },
+    counts: { quoted: withTimes.length, priced: withPrices.length, total: a.options.length },
   });
 });
 

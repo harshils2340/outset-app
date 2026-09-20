@@ -169,6 +169,20 @@ async function ask(text){
     }
     step('<span class="k">done</span> <span class="v">'+data.counts.quoted+' with live times, '+(data.counts.priced||0)+' priced from their own site &middot; '+data.ms+'ms</span>');
 
+    // A question back, when the sentence did not carry enough to search on.
+    if(data.followUp){ bubble(data.followUp,'them');
+      heroA.textContent='Needs one more thing'; heroB.textContent='It asks rather than guessing.'; return; }
+    if(data.loosened){ bubble(data.loosened,'them');
+      step('<span class="k">loosen</span> <span class="v">'+data.loosened+'</span>'); }
+    /**
+     * What it costs across everything found. This is the line that answers "why not just use Google": those
+     * prices live on a dozen different websites and nobody compares them, because nobody can.
+     */
+    if(data.compare && data.compare.count >= 2){
+      bubble('Across '+data.compare.count+' places nearby: '+money(data.compare.cheapest)+' to '+money(data.compare.dearest)+' a head.','them');
+      heroA.textContent=money(data.compare.cheapest)+' to '+money(data.compare.dearest);
+      heroB.textContent='Compared across '+data.compare.count+' businesses, each on its own website.';
+    }
     const quoted = data.options.filter(o=>o.departures.length);
     const priced = data.options.filter(o=>!o.departures.length && o.services.some(s=>s.price!=null));
     if(!quoted.length){
