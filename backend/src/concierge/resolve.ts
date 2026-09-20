@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { db } from "../db/client.ts";
 import { detectVendor, type VendorHit } from "./vendors.ts";
+import { isReadable } from "./readable.ts";
 
 /**
  * Finding a shop's booking system at the moment a guest is looking at it.
@@ -37,8 +38,6 @@ export type Resolved = {
   outcome: "found" | "none" | "unreachable" | "cached";
 };
 
-/** The vendors a reader exists for today. */
-const READABLE = /fareharbor|resova|peek\.com|checkfront|xola\.com|rezdy\.com|tripworks\.|book\.squareup\.com|squareup\.com\/appointments|acuityscheduling|\.as\.me|squarespacescheduling/i;
 
 /**
  * Has this shop already been looked at? Written whatever the answer, including "nothing", because the second
@@ -98,7 +97,7 @@ export async function resolveBooking(
     const row = db
       .prepare("SELECT fact_value AS u FROM facts WHERE operator_id = ? AND fact_key = 'booking_url' LIMIT 1")
       .get(op.id) as { u: string } | undefined;
-    return { ...base, vendor: "cached", bookingUrl: row?.u ?? null, readable: !!row && READABLE.test(row.u), outcome: "cached" };
+    return { ...base, vendor: "cached", bookingUrl: row?.u ?? null, readable: isReadable(row?.u), outcome: "cached" };
   }
   if (!op.website) return { ...base, vendor: "none", bookingUrl: null, readable: false, outcome: "none" };
 
@@ -127,7 +126,7 @@ export async function resolveBooking(
      */
     const bookingUrl = hit.hostedUrl ?? url;
     remember(op.id, hit, bookingUrl, url);
-    return { ...base, vendor: hit.vendor, bookingUrl, readable: READABLE.test(bookingUrl), outcome: "found" };
+    return { ...base, vendor: hit.vendor, bookingUrl, readable: isReadable(bookingUrl), outcome: "found" };
   }
 
   // Looked and found nothing, or could not reach them at all. Either way, written down so we do not repeat it.

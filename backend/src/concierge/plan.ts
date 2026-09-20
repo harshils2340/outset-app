@@ -10,6 +10,7 @@ import { rezdyLive } from "./readers/rezdy.ts";
 import { tripworksLive } from "./readers/tripworks.ts";
 import { squareLive } from "./readers/square.ts";
 import { acuityLive } from "./readers/acuity.ts";
+import { isReadable, readerFor, unreadableSql } from "./readable.ts";
 import { Trace } from "./session.ts";
 import { recordDemand } from "./demand.ts";
 import { nextNeed } from "./needs.ts";
@@ -900,7 +901,7 @@ export function candidates(intent: Intent, limit = 8, radiusKm = 40): Option[] {
     .prepare(
       `SELECT o.name, o.domain, o.city, o.region, o.rating, o.review_count, o.category_id, o.phone,
               (SELECT f.fact_value FROM facts f WHERE f.operator_id = o.id AND f.fact_key = 'booking_url'
-                ORDER BY (f.fact_value NOT LIKE '%fareharbor%' AND f.fact_value NOT LIKE '%resova%' AND f.fact_value NOT LIKE '%peek.com%') LIMIT 1) AS booking
+                ORDER BY (${unreadableSql("f.fact_value")}) LIMIT 1) AS booking
          FROM operators o
         WHERE ${where.join(" AND ")}
         /*
@@ -913,7 +914,7 @@ export function candidates(intent: Intent, limit = 8, radiusKm = 40): Option[] {
          * quote, which is what it is good for.
          */
         ORDER BY (booking IS NULL),
-                 (booking NOT LIKE '%fareharbor%' AND booking NOT LIKE '%resova%' AND booking NOT LIKE '%peek.com%' AND booking NOT LIKE '%checkfront%' AND booking NOT LIKE '%xola%' AND booking NOT LIKE '%rezdy%' AND booking NOT LIKE '%tripworks%' AND booking NOT LIKE '%squareup%' AND booking NOT LIKE '%acuity%' AND booking NOT LIKE '%.as.me%'),
+                 (${unreadableSql("booking")}),
                  (NOT EXISTS (SELECT 1 FROM offerings x WHERE x.operator_id = o.id AND x.price_cents IS NOT NULL)),
                  ${order}
         LIMIT ?`,
@@ -937,7 +938,7 @@ export function candidates(intent: Intent, limit = 8, radiusKm = 40): Option[] {
       departures: [],
       services: servicesFor(r.domain, r.category_id),
       // Without a link we can use, this one is a phone call, whatever the crawl thought it had found.
-      route: booking ? (/fareharbor|resova|peek\.com|checkfront|xola\.com|rezdy\.com|tripworks\.|book\.squareup\.com|squareup\.com\/appointments|acuityscheduling|\.as\.me|squarespacescheduling/i.test(booking) ? "feed" : "agent") : r.phone ? "phone" : "agent",
+      route: booking ? (isReadable(booking) ? "feed" : "agent") : r.phone ? "phone" : "agent",
       phone: r.phone,
     };
   });
@@ -1358,7 +1359,7 @@ export async function plan(text: string, opts: { ask?: number; prior?: Intent | 
       if (!o) continue;
       o.bookingUrl = usableBookingUrl(r.bookingUrl, o.domain);
       if (o.bookingUrl) {
-        o.route = /fareharbor|resova|peek\.com|checkfront|xola\.com|rezdy\.com|tripworks\.|book\.squareup\.com|squareup\.com\/appointments|acuityscheduling|\.as\.me|squarespacescheduling/i.test(o.bookingUrl) ? "feed" : "agent";
+        o.route = isReadable(o.bookingUrl) ? "feed" : "agent";
         if (r.outcome === "found") gained += 1;
       }
     }
@@ -1406,31 +1407,40 @@ export async function plan(text: string, opts: { ask?: number; prior?: Intent | 
   await Promise.all(
     feeds.map(async (o) => {
       tr.step("ask", o.name, { who: o.name, detail: "reading their booking system" });
-      /** Whichever feed this shop runs. Both answer in the same shape, so nothing downstream has to care. */
-      const readFeed = (from: Date, days: number) =>
-        /book\.squareup\.com|squareup\.com\/appointments/i.test(o.bookingUrl)
-          ? squareLive(o.bookingUrl, { from, days })
-          : /acuityscheduling|\.as\.me|squarespacescheduling/i.test(o.bookingUrl)
-          ? acuityLive(o.bookingUrl, { from, days })
-          : /tripworks\./i.test(o.bookingUrl)
-          ? tripworksLive(o.bookingUrl, { from, days })
-          : /xola\.com/i.test(o.bookingUrl)
-          ? xolaLive(o.bookingUrl, { from, days })
-          : /rezdy\.com/i.test(o.bookingUrl)
-          ? rezdyLive(o.bookingUrl, { from, days })
-          : /checkfront\.(?:com|site)/i.test(o.bookingUrl)
-          ? checkfrontLive(o.bookingUrl, { date: from })
-          : /peek\.com/i.test(o.bookingUrl)
-          ? peekLive(o.bookingUrl, { from, days })
-          : /resova/i.test(o.bookingUrl)
-          ? resovaLive(o.bookingUrl, { from, days, maxItems: 4 })
-          /**
-           * Six items, not three. Zoom Tours sells four day tours and we priced three of them, so the fourth
-           * came back "price on request" and sat on the screen next to a headline that had no number to
-           * quote. The total sheet is shared across a company's items — 287557 for every one of theirs — so
-           * the first item costs three calls and each one after it costs two.
-           */
-          : fareharborLive(o.bookingUrl, { from, days, maxItems: 6 });
+      /**
+       * Whichever feed this shop runs. They all answer in the same shape, so nothing downstream has to care.
+       *
+       * The vendor is decided by `readerFor`, the same call that decided this shop was a `feed` in the first
+       * place, so a link can never be routed here and then fall through to a reader that does not know it.
+       */
+      const readFeed = (from: Date, days: number) => {
+        switch (readerFor(o.bookingUrl)) {
+          case "square":
+            return squareLive(o.bookingUrl, { from, days });
+          case "acuity":
+            return acuityLive(o.bookingUrl, { from, days });
+          case "tripworks":
+            return tripworksLive(o.bookingUrl, { from, days });
+          case "xola":
+            return xolaLive(o.bookingUrl, { from, days });
+          case "rezdy":
+            return rezdyLive(o.bookingUrl, { from, days });
+          case "checkfront":
+            return checkfrontLive(o.bookingUrl, { date: from });
+          case "peek":
+            return peekLive(o.bookingUrl, { from, days });
+          case "resova":
+            return resovaLive(o.bookingUrl, { from, days, maxItems: 4 });
+          default:
+            /**
+             * Six items, not three. Zoom Tours sells four day tours and we priced three of them, so the
+             * fourth came back "price on request" and sat on the screen next to a headline that had no
+             * number to quote. The total sheet is shared across a company's items, 287557 for every one of
+             * theirs, so the first item costs three calls and each one after it costs two.
+             */
+            return fareharborLive(o.bookingUrl, { from, days, maxItems: 6 });
+        }
+      };
 
       const warm = feedIsWarm(o.bookingUrl);
       if (!warm) tr.step("cold", o.name + ": first read, giving it longer", { who: o.name, detail: (coldDeadline / 1000) + "s instead of " + (warmDeadline / 1000) + "s" });
@@ -1664,7 +1674,7 @@ function namedLike(intent: Intent, limit: number): Option[] {
     .prepare(
       `SELECT o.name, o.domain, o.city, o.region, o.rating, o.review_count, o.category_id, o.phone,
               (SELECT f.fact_value FROM facts f WHERE f.operator_id = o.id AND f.fact_key = 'booking_url'
-                ORDER BY (f.fact_value NOT LIKE '%fareharbor%' AND f.fact_value NOT LIKE '%resova%' AND f.fact_value NOT LIKE '%peek.com%') LIMIT 1) AS booking
+                ORDER BY (${unreadableSql("f.fact_value")}) LIMIT 1) AS booking
          FROM operators o
         WHERE o.origin != 'demo' AND o.name IS NOT NULL AND o.lat IS NOT NULL
           AND abs(o.lat - ?) < ? AND abs(o.lon - ?) < ? AND (${like})
