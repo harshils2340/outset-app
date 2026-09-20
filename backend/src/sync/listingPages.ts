@@ -33,6 +33,10 @@ const SITEMAP_CHUNK = 40_000;
 
 const esc = (s: unknown) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 const money = (n: number) => (Number.isInteger(n) ? "$" + n.toLocaleString("en-US") : "$" + n.toFixed(2));
+// A business's own name or FAQ text, crawled from its site, can contain "</script>": JSON.stringify does not
+// escape "<", so that string would close this tag early and let whatever follows run as HTML. < reads back
+// as the same JSON, so nothing here is lossy.
+const ldJson = (ld: unknown) => JSON.stringify(ld).replace(/</g, "\\u003c");
 
 /**
  * schema.org type, where the activity implies a real one in the vocabulary and it stays a LocalBusiness (so
@@ -212,7 +216,7 @@ function page(item: Item, opts: { landingHref: string | null; kindPageHref: stri
 <title>${esc(title)}</title>
 <meta name="description" content="${esc(description)}">
 <link rel="canonical" href="${canonical}">
-<script type="application/ld+json">${JSON.stringify(ld)}</script>
+<script type="application/ld+json">${ldJson(ld)}</script>
 <style>${CSS}</style></head><body>
 <header><div class="wrap top"><a class="logo" href="${site}">Outset</a></div></header>
 <main class="wrap">

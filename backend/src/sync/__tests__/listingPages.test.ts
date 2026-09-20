@@ -116,6 +116,21 @@ test("JSON-LD carries only real facts: no aggregateRating or offers the listing 
   }
 });
 
+test("a business name with a script-closing sequence cannot break out of the JSON-LD tag", () => {
+  // The title comes off the operator's own site; a hacked one could plant this. JSON.stringify alone would close
+  // the <script> tag early and let the rest of the page parse as HTML.
+  const items: Item[] = [item("o-a", { cover: "https://x/a.jpg", title: '</script><script>alert(1)</script>' } as Partial<Item>)];
+  const r = run(items);
+  try {
+    const html = r.read("o-a.html");
+    assert.doesNotMatch(html, /<script type="application\/ld\+json">[^]*?<\/script><script>alert/);
+    const ld = JSON.parse(html.match(/<script type="application\/ld\+json">(.*?)<\/script>/s)![1]);
+    assert.equal(ld.name, "</script><script>alert(1)</script>");
+  } finally {
+    r.cleanup();
+  }
+});
+
 test("a kind the activity implies gets a more specific schema.org type; a guessed kind never does", () => {
   const items: Item[] = [
     item("o-golf", { art: "golf", cover: "https://x/a.jpg" }),

@@ -115,6 +115,19 @@ test("the Toronto cooking page: title, h1, real count, cards with price and phot
   }
 });
 
+test("a listing title with a script-closing sequence cannot break out of the JSON-LD tag", () => {
+  // itemListElement carries each listing's title straight off the operator's own site; a hacked one could plant
+  // this. JSON.stringify alone would close the <script> tag early and let the rest of the page parse as HTML.
+  const evil = fixture.map((i, n) => (n === 0 ? { ...i, title: '</script><script>alert(1)</script>' } : i));
+  const r = run(evil);
+  try {
+    const html = r.read("cooking-in-toronto.html");
+    assert.doesNotMatch(html, /<script type="application\/ld\+json">[^]*?<\/script><script>alert/);
+  } finally {
+    r.cleanup();
+  }
+});
+
 test("a page with no prices, hours, durations or reviews asks none of those questions", () => {
   const r = run(fixture);
   try {
