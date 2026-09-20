@@ -2198,6 +2198,75 @@ on a metro: it only ever bit a guest who named a town, which is most towns.
   hero, 50 of 64 kinds have no guide, anything needing a real Stripe key, Home's three tabs, the desktop Who
   offering 22 where the phone stops at 8, and no workflow runs `npm test`.
 
+## 20 September 2026, thirty-sixth run (05:00 to 06:00 UTC)
+
+**Checked, and why.** The concierge: `backend/src/concierge/` (the sentence reader, the shortlist, the live
+FareHarbor read, the vendor table), its two routes and the `/go` page. It is the newest surface, it landed
+after the thirty-fifth entry, it is the one a guest types into, and it had no test of any kind. Everything
+tonight's list names (the listing page and booking box, search and browse, claim and sign-in, the dashboard
+pages, empty states, 400px, the booking flow's accessibility) is already down as verified and nothing since
+has touched it, so re-reading it would have bought nothing. The rehearsal was run, because commits since the
+thirty-fifth entry touched `backend/src`, `src/` and the scripts: green at 53 of 53 before any of tonight's
+work, so what follows is the concierge's own, not a regression.
+
+**Found and fixed.**
+
+- **A guest asking what is free tonight was offered this morning, and tomorrow** (`81f310baa`). Two date bugs
+  under a line that reads "here's what's actually free". The window ran a day long, so a one day question
+  accepted tomorrow's departures with nothing saying the date had moved; and nothing dropped a departure that
+  had already left, so at nine in the evening the answer was this morning's ten o'clock. `start_at` carries the
+  shop's own UTC offset, which is what makes that comparison safe from a server in another time zone.
+- **Asking for an escape room in Kitchener, Ontario searched the whole province** (`3fd0b32d1`). A guard
+  written for "skydiving in ontario" (which was finding Ontario, California) skipped the town lookup whenever a
+  region was named, and people write a place the way they write an address. Kitchener was thrown away, the
+  search fell back to all of Ontario by review count, and the answer was Toronto. The town is read either way
+  now and the region says which of the towns of that name was meant, so "vancouver washington" is Vancouver,
+  Washington. Also: on a Sunday, "this weekend" meant next Saturday, six days out.
+- **A business named after a script tag could run it in a guest's browser on `/go`** (`9a2e89574`). The same
+  hole the static pages were carrying this week. The option cards and the agent log are built with innerHTML
+  out of the business name, the town, the trip name and the ticket label, all of which came off somebody else's
+  site. One escaper now, everything through it, and a test that fails on any value from elsewhere left raw.
+- **The concierge printed em dashes at a guest** (`7b6b29b21`), on the one screen `emDash.test.ts` cannot see,
+  because it is served from the backend. Now swept there too.
+- **A powered-by badge was read as the shop's booking account** (`6619974e8`), so the hosted page we built for
+  a Checkfront shop was `https://www.checkfront.com/reserve/`, Checkfront's own site. Same shape for Rezdy,
+  Resova, Setmore, Tripworks and `calendly.com/app`. The account is now the first id on the page that is not
+  one of the vendor's own.
+- **A kayak outfitter's waiver link read as a shop called "waivers"** (`e75538da7`). One of the 1,364 FareHarbor
+  links in `live-index.json` is `fareharbor.com/waivers?shortname=enrgkayaking&...`, and one is
+  `fareharbor.com/legal/privacy/`. We asked FareHarbor about a company called "waivers", got nothing, and a
+  shop with a live calendar read as one with nothing bookable online.
+- **The one public route that calls other people's servers was the one nobody counted** (`c8fd0655c`, typing
+  fixed in `908a771cf`). Every other public route here carries a `rateLimit`; `POST /concierge/ask` fans out
+  into a handful of requests to a shop's booking provider and had none. Sixty an hour now, a hundred and twenty
+  on `/concierge/live/:domain`, and the `ask` count is clamped, because it is handed to `Array.slice` and a
+  negative one reads from the end.
+
+**Swept and clean.** The menu filter that keeps a school rate or a private hire out of a per-head quote. The
+headline price skipping the child fare, a $0 total not quoted as free, and FareHarbor's tax exclusion carried
+through. The shared price sheet, which `widgets.ts` had already established is one per company. A sold out day
+answering "nothing bookable" rather than failing, and a sentence with nothing to search on getting a question
+back. The two widening rules were read, not driven: they need a catalog this machine does not have.
+
+**Green after the fixes.** 53 of 53 rehearsal steps against a local Postgres with TLS and the Chromium on
+disk, 353 backend tests (23 new, in four files, the concierge's first) and 476 app tests, both projects
+type-check clean.
+
+**Needs Harshil.**
+
+- **The party size is read and never used.** The agent log prints "4 people", and nothing filters or prices by
+  it. FareHarbor gives us each rate's minimum and maximum party size and no surface reads them, so a couple can
+  be quoted a rate that needs six of them. Deciding what a party of twelve should do to the shortlist is the
+  same product call the guest app still has open.
+- **The comparison line can mix currencies.** "Across 3 places: $19.99 to $25 a head" is drawn from menu prices
+  that may be CAD and USD side by side, which is a real risk on the Ontario and New York searches that started
+  all this.
+- **None of this can be driven here.** The catalog SQLite is not in a checkout, so tonight's tests run against
+  fixtures: a scratch catalog of a dozen shops and a stubbed vendor. A vendor that has quietly changed its JSON
+  still reads as a shop with nothing open, and nobody finds out.
+- The earlier runs' calls stand: the Peek call budget, the 6 rows publishing a bare `https://fareharbor.com/`,
+  anything needing a real Stripe key, and no workflow runs `npm test`.
+
 ## Coverage
 
 **Verified so far.** Booking validation and odd input on every route that takes it. The money split,
@@ -2443,6 +2512,16 @@ reader driven with payloads shaped the way it answers; two trips leaving at one 
 that draw them; an open date whose times the budget never read; a departure the vendor says is full; and a
 Xola button embed, which is what 45 of the 54 Xola links are.
 
+The concierge, read through and tested for the first time: the sentence reader (what, where, when, how many,
+budget) against a town, a town and its province together, two towns of one name, and a province that is also a
+town; the window each of "tonight", "tomorrow", "this weekend" and "any" asks for, including a Sunday; the
+shortlist's ordering, its per-head menu filter, and the answer it gives when it has nothing to shortlist; the
+live FareHarbor read
+against a stubbed vendor (the day range, a departure that has already left, the headline price against child
+and private rates, a $0 total, a sold out day); the vendor table's account ids against a page that links to the
+vendor as well as embedding it; and the `/go` page's markup, escaping and copy. Both concierge routes: their
+input guards and the per-caller counting every other public route here already had.
+
 **Not yet checked.** Which of two towns of the same name a guest means: "golf springfield" cannot tell, and
 Columbia, Madison, Henderson, Richmond and Portland are the same, which is 69 town searches still opening in
 another state (see this run's Needs Harshil). Whether a city row should be able to see the guest's own price
@@ -2517,7 +2596,16 @@ appear on the guest page, which they deliberately do not. Whether an unsubscribe
 `CLAIM_SECRET` rotation, and whether `GET /mail/unsubscribed` should stay public (see this run's Needs
 Harshil). The outreach send driven against a live API rather than read: a real draft run, a real `--dry`,
 and what the drafts table looks like after a send that was refused. Whether "this takes the page down" in
-the claim email should say what it does, which is a `mailto:` and one business day. The outreach list
+the claim email should say what it does, which is a `mailto:` and one business day. Whether the party a guest
+names should reach the shortlist or the quote at all: it is read and then used for nothing, and FareHarbor's
+own minimum and maximum party sizes per rate are read and drawn by no surface. Whether the comparison line
+should put a CAD price and a USD one in the same range, which it does. Whether `/go` should be reachable by a
+search engine, and whether a demo that charges nothing should say so before the virtual-card step rather than
+after. The three fulfilment routes other than the feed: the hosted page rebuilt from an account id, the browser
+agent on a hand-built form, and the phone, none of which has been driven. Peek, which is 257 links and the next
+feed worth reading. Any live vendor against its real server rather than a stub. Whether a sentence naming two
+regions ("ontario california") should take the first one it recognises, which it does. Whether a budget read
+out of "under 18s" should filter prices, which it does. The outreach list
 script, `scripts/outreach-list.mts`, and the `GET /outreach/drafts` route it reads. Whether Gmail's one-click
 `List-Unsubscribe` headers should be sent after all: the code deliberately leaves them off to stay out of
 Promotions, which is a deliverability bet against a bulk-sender expectation.
