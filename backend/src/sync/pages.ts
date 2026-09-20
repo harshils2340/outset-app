@@ -1,4 +1,4 @@
-import { mkdirSync, readdirSync, unlinkSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, readdirSync, unlinkSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { METROS } from "../taxonomy/catalog.ts";
@@ -507,5 +507,32 @@ ${cities.map((c) => `<h2>${esc(placeName(c.metro))}</h2><div class="links">${c.p
     `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${[publicSite(), `${publicSite()}p/index.html`, ...urls].map((u) => `<url><loc>${u}</loc></url>`).join("")}</urlset>`,
   );
   writeFileSync(join(publicDir, "robots.txt"), `User-agent: *\nAllow: /\nSitemap: ${publicSite()}sitemap.xml\n`);
+  /**
+   * The home page is a single empty div until the bundle runs, so a crawler read six characters of text and found
+   * no link to follow: the city pages below existed but nothing on the site pointed at them. index.html carries a
+   * block of real copy and links that the app replaces on mount, and the links are written here so they can only
+   * ever name pages this run actually produced. Skipped when a caller aimed the run at a directory of its own.
+   */
+  if (!opts.publicDir) {
+    const home = join(publicDir, "..", "index.html");
+    try {
+      const html = readFileSync(home, "utf8");
+      const start = "<!-- seo-links:start -->";
+      const end = "<!-- seo-links:end -->";
+      const a = html.indexOf(start);
+      const b = html.indexOf(end);
+      if (a >= 0 && b > a) {
+        const best = [...metroPages.entries()]
+          .flatMap(([id, pages]) => pages.map((p) => ({ metro: metroById.get(id)!, kind: p.kind, n: p.items.length })))
+          .sort((x, y) => y.n - x.n)
+          .slice(0, 60);
+        const links = best.map((x) => `          <a href="/p/${fileFor(x.kind.art, x.metro.id)}">${esc(x.kind.search)} in ${esc(placeName(x.metro))}</a>`).join("\n");
+        const block = `${start}\n        <nav aria-label="Popular activities by city">\n${links}\n          <a href="/p/index.html">Browse every activity by city</a>\n        </nav>\n        ${end}`;
+        writeFileSync(home, html.slice(0, a) + block + html.slice(b + end.length));
+      }
+    } catch {
+      /* no template to update on this host */
+    }
+  }
   return { pages: urls.length, metroPages: metroCount, kindPages: kindPages.length, urls };
 }

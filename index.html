@@ -27,6 +27,19 @@
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <meta name="theme-color" content="#495940" />
+    <meta name="description" content="Book local activities the way you book a table: pick a time, pay, done. Kayak trips, cooking classes, escape rooms, boat charters and more across the US and Canada." />
+    <meta property="og:site_name" content="Outset" />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://onoutset.com/" />
+    <meta property="og:title" content="Outset · Book the jump. Skip the call." />
+    <meta property="og:description" content="Book local activities the way you book a table: pick a time, pay, done. Kayak trips, cooking classes, escape rooms, boat charters and more across the US and Canada." />
+    <meta property="og:image" content="https://onoutset.com/apple-touch-icon.png" />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="Outset · Book the jump. Skip the call." />
+    <meta name="twitter:description" content="Book local activities the way you book a table: pick a time, pay, done." />
+    <script type="application/ld+json">
+      {"@context":"https://schema.org","@type":"WebSite","name":"Outset","url":"https://onoutset.com/","description":"Book local activities across the US and Canada: pick a time, pay, done.","publisher":{"@type":"Organization","name":"Outset","url":"https://onoutset.com/"}}
+    </script>
     <link rel="preconnect" href="https://wsrv.nl" />
     <link rel="preconnect" href="https://js.stripe.com" />
     <link rel="dns-prefetch" href="https://js.stripe.com" />
@@ -37,9 +50,101 @@
       rel="stylesheet"
       href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&family=Newsreader:opsz,wght@16..72,500;600;650&display=swap"
     />
+    <style>
+      /* The crawlable block below, for the few hundred milliseconds before the bundle replaces it. Styled so it
+         reads as the page arriving rather than as a flash of unstyled text, and gone the moment React mounts. */
+      .boot{max-width:860px;margin:0 auto;padding:56px 20px;font-family:Figtree,system-ui,-apple-system,"Segoe UI",sans-serif;color:#1b1f1b;}
+      .boot h1{margin:0 0 12px;font-size:34px;line-height:1.15;letter-spacing:-.02em;font-weight:700;}
+      .boot p{margin:0 0 18px;font-size:16px;line-height:1.55;color:#4b524b;max-width:62ch;}
+      .boot nav{display:flex;flex-wrap:wrap;gap:8px;}
+      .boot a{display:inline-block;padding:7px 13px;border:1px solid #dfe3dc;border-radius:999px;font-size:13.5px;color:#1b1f1b;text-decoration:none;}
+      @media (prefers-color-scheme:dark){.boot{color:#eef1ec}.boot p{color:#b6bdb4}.boot a{color:#eef1ec;border-color:#39423a}}
+    </style>
   </head>
   <body>
-    <div id="root"></div>
+    <!--
+      What a crawler reads. The app replaces this the moment it mounts, so a guest sees it for the few hundred
+      milliseconds the bundle takes and never again; it says the same thing the rendered home says, in the same
+      words, and every link here is a page that exists. Without it the whole site was six characters of text and
+      no links to follow: nothing to index, and no way to discover the city pages except the sitemap.
+      The list between the markers is written by the landing page generator (backend/src/sync/pages.ts), so it
+      cannot drift from the pages that exist. Edit it there, not here.
+    -->
+    <div id="root">
+      <main class="boot">
+        <h1>Book the jump. Skip the call.</h1>
+        <p>
+          Outset lists local activities across the United States and Canada, with the prices, times and
+          cancellation terms each business publishes: kayak and boat trips, cooking and pottery classes, escape
+          rooms, breweries, museums and more. Pick a time and book, instead of calling and hoping someone answers.
+        </p>
+        <!-- seo-links:start -->
+        <nav aria-label="Popular activities by city">
+          <a href="/p/museum-in-nyc.html">Museums in New York</a>
+          <a href="/p/theatre-in-nyc.html">Live theatre in New York</a>
+          <a href="/p/museum-in-san-francisco.html">Museums in San Francisco, California</a>
+          <a href="/p/museum-in-philadelphia.html">Museums in Philadelphia, Pennsylvania</a>
+          <a href="/p/museum-in-boston.html">Museums in Boston, Massachusetts</a>
+          <a href="/p/museum-in-los-angeles.html">Museums in Los Angeles, California</a>
+          <a href="/p/museum-in-dc.html">Museums in Washington DC</a>
+          <a href="/p/museum-in-chicago.html">Museums in Chicago, Illinois</a>
+          <a href="/p/theatre-in-san-francisco.html">Live theatre in San Francisco, California</a>
+          <a href="/p/museum-in-toronto.html">Museums in Toronto, Ontario</a>
+          <a href="/p/golf-in-detroit.html">Golf courses in Detroit, Michigan</a>
+          <a href="/p/fitness-in-miami.html">Fitness classes in Miami, Florida</a>
+          <a href="/p/tour-in-orlando.html">Guided tours in Orlando, Florida</a>
+          <a href="/p/tour-in-miami.html">Guided tours in Miami, Florida</a>
+          <a href="/p/museum-in-seattle.html">Museums in Seattle, Washington</a>
+          <a href="/p/venue-in-nyc.html">Event venues in New York</a>
+          <a href="/p/museum-in-vancouver.html">Museums in Vancouver, British Columbia</a>
+          <a href="/p/tour-in-tampa.html">Guided tours in Tampa Bay, Florida</a>
+          <a href="/p/theatre-in-los-angeles.html">Live theatre in Los Angeles, California</a>
+          <a href="/p/theatre-in-chicago.html">Live theatre in Chicago, Illinois</a>
+          <a href="/p/museum-in-denver.html">Museums in Denver, Colorado</a>
+          <a href="/p/fishing-in-miami.html">Fishing charters in Miami, Florida</a>
+          <a href="/p/brewery-in-denver.html">Breweries in Denver, Colorado</a>
+          <a href="/p/golf-in-phoenix.html">Golf courses in Phoenix, Arizona</a>
+          <a href="/p/golf-in-boston.html">Golf courses in Boston, Massachusetts</a>
+          <a href="/p/theatre-in-philadelphia.html">Live theatre in Philadelphia, Pennsylvania</a>
+          <a href="/p/golf-in-chicago.html">Golf courses in Chicago, Illinois</a>
+          <a href="/p/theatre-in-boston.html">Live theatre in Boston, Massachusetts</a>
+          <a href="/p/museum-in-portland.html">Museums in Portland, Oregon</a>
+          <a href="/p/fitness-in-tampa.html">Fitness classes in Tampa Bay, Florida</a>
+          <a href="/p/brewery-in-philadelphia.html">Breweries in Philadelphia, Pennsylvania</a>
+          <a href="/p/pottery-in-tampa.html">Pottery classes in Tampa Bay, Florida</a>
+          <a href="/p/museum-in-dallas.html">Museums in Dallas, Texas</a>
+          <a href="/p/museum-in-niagara.html">Museums in Niagara, Ontario</a>
+          <a href="/p/winery-in-monterey.html">Wineries in Monterey, California</a>
+          <a href="/p/theatre-in-dc.html">Live theatre in Washington DC</a>
+          <a href="/p/golf-in-los-angeles.html">Golf courses in Los Angeles, California</a>
+          <a href="/p/theatre-in-vancouver.html">Live theatre in Vancouver, British Columbia</a>
+          <a href="/p/winery-in-kelowna.html">Wineries in Kelowna, British Columbia</a>
+          <a href="/p/fishing-in-tampa.html">Fishing charters in Tampa Bay, Florida</a>
+          <a href="/p/martialarts-in-nyc.html">Martial arts classes in New York</a>
+          <a href="/p/fishing-in-orlando.html">Fishing charters in Orlando, Florida</a>
+          <a href="/p/brewery-in-seattle.html">Breweries in Seattle, Washington</a>
+          <a href="/p/theatre-in-toronto.html">Live theatre in Toronto, Ontario</a>
+          <a href="/p/brewery-in-minneapolis.html">Breweries in Minneapolis, Minnesota</a>
+          <a href="/p/camping-in-philadelphia.html">Campgrounds in Philadelphia, Pennsylvania</a>
+          <a href="/p/museum-in-cape-cod.html">Museums in Cape Cod, Massachusetts</a>
+          <a href="/p/brewery-in-vancouver.html">Breweries in Vancouver, British Columbia</a>
+          <a href="/p/museum-in-atlanta.html">Museums in Atlanta, Georgia</a>
+          <a href="/p/spa-in-vancouver.html">Spas in Vancouver, British Columbia</a>
+          <a href="/p/winery-in-niagara.html">Wineries in Niagara, Ontario</a>
+          <a href="/p/cruise-in-tampa.html">Boat tours in Tampa Bay, Florida</a>
+          <a href="/p/fitness-in-orlando.html">Fitness classes in Orlando, Florida</a>
+          <a href="/p/theatre-in-seattle.html">Live theatre in Seattle, Washington</a>
+          <a href="/p/camping-in-vancouver.html">Campgrounds in Vancouver, British Columbia</a>
+          <a href="/p/brewery-in-nyc.html">Breweries in New York</a>
+          <a href="/p/camping-in-seattle.html">Campgrounds in Seattle, Washington</a>
+          <a href="/p/brewery-in-dc.html">Breweries in Washington DC</a>
+          <a href="/p/spa-in-orlando.html">Spas in Orlando, Florida</a>
+          <a href="/p/venue-in-chicago.html">Event venues in Chicago, Illinois</a>
+          <a href="/p/index.html">Browse every activity by city</a>
+        </nav>
+        <!-- seo-links:end -->
+      </main>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
