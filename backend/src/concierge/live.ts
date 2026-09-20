@@ -22,9 +22,16 @@ export type Departure = {
   /** Local date and time as the operator publishes them, e.g. 2026-09-20 and "12:00". */
   date: string;
   time: string;
-  /** Cheapest way in, and what that ticket is called. Dollars, fees included, as the guest would be charged. */
+  /**
+   * Cheapest way in, and what that ticket is called. FareHarbor's own answer carries the booking fee but not
+   * tax: its pricing payload says `include_taxes: false` outright. Checked against Toronto Heli Tours' real
+   * checkout, which shows $114.30 where the API says $99.51, so quoting the API figure as the price would
+   * under-quote a guest by a sixth. It is shown as a pre-tax price and said to be one.
+   */
   fromPrice: number | null;
   priceLabel: string | null;
+  /** False for FareHarbor: their checkout adds tax on top of this. */
+  taxIncluded: boolean;
   /** Every ticket type on this departure, so a group of four is priced like a group of four. */
   rates: { label: string; price: number; minParty: number | null; maxParty: number | null }[];
   /** The operator's own page for this exact departure. Where the agent, or the guest, finishes the booking. */
@@ -169,6 +176,7 @@ export async function fareharborLive(bookingUrl: string, opts: { from?: Date; da
       time: (av.start_at || "").slice(11, 16),
       fromPrice: cheapest?.price ?? null,
       priceLabel: cheapest?.label ?? null,
+      taxIncluded: false,
       rates,
       bookUrl: av.book_url ? "https://fareharbor.com" + av.book_url : bookingUrl,
       seatsLeft: typeof av.approximate_available_capacity === "number" ? av.approximate_available_capacity : null,

@@ -102,7 +102,7 @@ function offer(o, d){
   const when = new Date(d.date+'T'+(d.time||'12:00')).toLocaleDateString('en-CA',{weekday:'short',month:'short',day:'numeric'});
   b.innerHTML = '<b>'+o.name+'</b><small>'+d.item+' &middot; '+when+' at '+d.time+
     (o.city? ' &middot; '+o.city : '')+'</small>'+
-    '<div class="row"><span class="price">'+(d.fromPrice!=null?money(d.fromPrice):'price on request')+
+    '<div class="row"><span class="price">'+(d.fromPrice!=null?money(d.fromPrice)+(d.taxIncluded?'':' <small style="font-weight:400;color:var(--muted)">+ tax</small>'):'price on request')+
     (d.priceLabel&&d.fromPrice!=null?' <small style="font-weight:400">'+d.priceLabel+'</small>':'')+'</span>'+
     '<span style="color:var(--blue);font-weight:600;font-size:14px">Book this &rarr;</span></div>';
   b.onclick = () => confirmBooking(o, d);
