@@ -2620,6 +2620,75 @@ on disk, run once mid-way and once on the finished tree.
 - The earlier runs' calls stand: `concierge.css`'s dead panel, the readers with no tests of their own, Peek's
   257 links, and anything needing a real Stripe key.
 
+## 20 September 2026, forty-second run (11:00 to 12:15 UTC)
+
+**Checked, and why.** Three commits landed after the forty-first run's log: `23a413637`, `938e37e80` (a
+1,482 line Sonnet 5 commit) and Harshil's own `6d33774042`. The first thing a type-check found was that
+`main` was not red, it was dead: so the run went to that commit, and then to the one area the last run's own
+Coverage still called untested, the readers' price helpers. The rehearsal was run, twice, because those
+commits and four of tonight's five fixes touch `src/` and `backend/src`.
+
+**Found and fixed.**
+
+- **The API could not boot and the guest app could not build** (`3177a856ca`). `938e37e80` imports three
+  modules it never committed: `readers/foreup.ts`, `api/nearby.ts` and `lib/mapsNearby.ts`. None of the three
+  is in any commit, on any branch, in any tree. `api/routes.ts` is the router every route hangs off, so the
+  API threw on import: not one booking, claim, profile or payout, and no deploy from `main` could succeed.
+  `plan.ts` is the concierge, so both routes and both test files died with it, which is the two failing tests
+  that had been on `main` since 11:09 UTC. `vite build` could not resolve `lib/mapsNearby` at all, and
+  `tsc -b` reported 23 errors from it. Each import and its call sites come out, which is what a golf course, a
+  search and a feed did before that commit; nothing is written in their place, because a reader
+  reverse-engineered against a live vendor is not something to invent. The new test walks every relative
+  specifier in every backend file against the disk, which is the check that would have caught all three.
+- **A booking link the crawl found was deleted by the live resolve that failed to find it again**
+  (`65945eaf04`). The same commit added a `DELETE` of all four keys `remember` writes, then wrote
+  `booking_url` back only when a link was in hand. It guarded that for a shop with a prior resolve on file,
+  and that is not the common case: `plan.ts` re-resolves every shop whose route is `agent`, which is exactly a
+  shop whose link came from the crawl, and those have no `booking_resolved` row for the guard to find. One
+  slow site inside a seven second budget and a link a full crawl had found was gone from `plan.ts`'s query
+  (the shop becomes a phone number), from the listing page's slot times and from `live-index.json` at the next
+  sync. `booking_vendor` went with it.
+- **An escape room's own group tiers read as children's tickets** (`4ad51cfd68`). `xola.ts` and `rezdy.ts`
+  each kept a private copy of the age rule, and the copies never had the one guard the shared rule has: a
+  range of people is not a range of ages. Every escape room on both vendors prices by how many are playing, so
+  "2-4 Players" and "5-8 Players" read as child fares, every real tier was excluded, and the headline fell
+  back to the cheapest row on the sheet: a room selling to adults at $30 came back at $20, a child's ticket.
+  Both copies are gone, and the readers have their first tests: the sheet, the towel, the agent-only rate, the
+  whole-boat charter and a start with no seats.
+- **A duration, a clock and an angler count read as a child fare** (`118630bb5a`). The numeric half of
+  `isConcessionFare` had no test and believed every small number was an age. Excluding a fare can only push a
+  headline up, so each misread over-quoted a guest with the shop's second-cheapest row. Over all 212,052
+  shipped menu rows, 206 were misread and 18 listings quoted the wrong price: Anglers Obsession's $550 trip
+  says "1-2 anglers" so it was offered at $600, Chester River Packet's $25 public cruise says "River Tour:
+  1-2:30 pm" so a guest got the $1,600 private charter, Greenwood Lake's $40 "2-hour cruise (6-8 PM)" became a
+  $100 paddle board. Measured both ways over the whole catalog: 276 rows stop being concessions, every one a
+  date, a clock, a duration, a grade or a count, and 2 start, both a dance studio's "for ages 3-12".
+
+**Green after the fixes.** Both projects type-check clean, `vite build` bundles, 609 app tests and 523
+backend tests (14 new), and 53 of 53 rehearsal steps against a local Postgres with TLS and the Chromium on
+disk, run once mid-way and once on the finished tree.
+
+**Needs Harshil.**
+
+- **The three missing files are real work that only their author has.** The ForeUp reader was
+  reverse-engineered against a live vendor and `scripts/concierge-bench.mts` is missing too. Whoever ran that
+  session still has them on disk; they want committing rather than rewriting. Until then golf has no reader.
+- **`fetch-seed.mts` is not wired into anything.** That commit's own headline fix, the empty catalog on
+  `outset-api`, is still live: the script exists, nothing calls it, and `outset-api`'s `buildCommand` is still
+  `npm ci --include=dev`. It needs `&& npx tsx scripts/fetch-seed.mts` on the end, which is one line in
+  `render.yaml` and outside this run's allowed scope. `GITHUB_TOKEN` is already set on that service.
+- **`nearbyTextSearch` bills Google per call and caps nothing.** It is dead code tonight, because the only
+  thing that called it was the missing route, so this is a note for when that route comes back: every
+  uncached query is a $0.035 Text Search request, it writes the ledger but never reads it, and the cache key
+  is the guest's own words plus a two-decimal pin, so a caller who varies the text is billed every time. It
+  wants the free-tier check `requestsThisMonth` already provides, a per-caller limit like every other public
+  route here, and a key check, all of which belong with the route rather than guessed at from here.
+- **Nothing runs a type-check, `npm test` or `vite build` on a push**, for the fifth night running, and
+  tonight it is no longer a tidiness point: it cost four and a half hours of a `main` that could not boot,
+  build or answer a single question, from a commit whose own message describes testing none of it.
+- The earlier runs' calls stand: Peek's 257 links, `concierge.css`'s dead panel, and anything needing a real
+  Stripe key.
+
 ## Coverage
 
 **Verified so far.** The name a guest reads: the business name on all 59,125 shipped listings, against the
@@ -2905,6 +2974,16 @@ the scroll lock, sideways scroll, anything past the edge, every control named, a
 rows, the narrow chips and the history panel as a guest sees them. Every class the overlay renders against
 the stylesheet that dresses it, now a test of its own.
 
+Whether the backend can be imported at all, now a test of its own: every relative specifier in every
+backend source file against the disk, which is how three modules imported by one commit and committed by
+nobody were found. The live booking resolve's own bookkeeping: what a failed re-check does to a link the
+crawl already found, what a found link replaces, what is never re-fetched and what earns one more look.
+Which fare a guest is quoted, over all 212,052 shipped menu rows: the ages a shop writes as numbers against
+the clocks, dates, durations, distances, grades, levels, counts and party sizes that merely look like one,
+and the two vendors that kept their own looser copy of that rule. Xola's ticket sheet end to end against a
+stubbed vendor: the team tiers, a numeric age sheet, an add-on, an agent-only rate, a whole-boat charter and
+a start with no seats.
+
 The newest guest code, `55c696943`, driven rather than read: what a guest who arrives on a shared listing
 link sees when they press "Back to results", and where the home asks the browser for a location at all; the
 listing page's business panel, its one way into the agent and the operator switch above it; the counts
@@ -3019,10 +3098,17 @@ Promotions, which is a deliverability bet against a bulk-sender expectation. Whe
 panel nothing renders should be deleted or a component written for them (see the fortieth run's Needs
 Harshil), and whether the four `--cg-` custom properties they reach for should exist. The five new readers
 against a real vendor server rather than read: Acuity, Rezdy, Square, TripWorks and Xola have never answered
-anything here, so a vendor whose JSON has quietly changed reads as a shop with nothing open. Their pure
-helpers, which have no tests: `priceOfSlot`, `isAgeGatedFare` (a hyphenated party size such as "2-4 players"
-reads as a child fare to it), `rateLabel` and the price sheets behind them. Bookeo's 46 shops, which are a
+anything here, so a vendor whose JSON has quietly changed reads as a shop with nothing open. Rezdy's,
+TripWorks', Peek's and Resova's own `priceOfSlot` and Rezdy's `rateLabel`, which still have no tests: Xola's
+sheet and the shared fare rule now do, and Rezdy speaks HTTP/2 by hand, so stubbing it is the work. Bookeo's 46 shops, which are a
 documented negative from this address and want one `bookeoProbe` run from the Render worker. Whether a Xola
 waiver or gift shell with no button id should be routed as a feed at all: four shipped links are, and the
 reader correctly answers nothing for them. The concierge overlay's booking form, its error states and its
-"copy the conversation" panel, none of which this run reached.
+"copy the conversation" panel, none of which this run reached. Whether the ForeUp reader, `api/nearby.ts`,
+`lib/mapsNearby.ts` and `scripts/concierge-bench.mts` should be recommitted by their author or written again
+from nothing, which is the difference between golf having a reader this week and not (see this run's Needs
+Harshil). Whether `outset-api`'s build should run `fetch-seed.mts` at all, which is the one line between the
+deployed concierge having a catalog and answering every town with "could not find". Whether a live resolve
+should be allowed to overwrite a crawled `booking_url` even when it does find something, rather than only to
+add one. Whether `linksTo`'s three followed links should include a link that leaves the shop's own origin,
+which they deliberately do not.
