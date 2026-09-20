@@ -26,8 +26,7 @@ export type ReaderVendor =
   | "rezdy"
   | "tripworks"
   | "square"
-  | "acuity"
-  | "foreup";
+  | "acuity";
 
 /**
  * Ordered, and the order is load-bearing in one place: Acuity's Squarespace host is
@@ -36,6 +35,13 @@ export type ReaderVendor =
  *
  * Each pattern is the union of the shapes that vendor's own `*Ref` parser accepts, because a link the parser
  * can read and the router will not send it is a shop we could have quoted and did not.
+ *
+ * A vendor belongs here only once `readers/<vendor>.ts` is committed. ForeUp was added to this list, to
+ * `SQL_LIKES`, to `vendors.ts` and to `plan.ts`'s switch on 20 September without the reader file itself ever
+ * reaching the repository, and a dangling `import` is not a missing feature: `plan.ts` would not load at
+ * all, so every concierge question and both of its routes were dead on `main` rather than merely golf being
+ * unread. ForeUp is out of this list until that reader lands, which routes a golf course the way it was
+ * routed before, and `vendors.ts` still knows the embed. `readerRoutes` below is now a test of its own.
  */
 const RULES: [ReaderVendor, RegExp][] = [
   ["square", /book\.squareup\.com|squareup\.com\/appointments|square\.site\/(?:appointments\/)?book\//i],
@@ -48,7 +54,6 @@ const RULES: [ReaderVendor, RegExp][] = [
   ["peek", /peek\.com/i],
   ["resova", /resova/i],
   ["fareharbor", /fareharbor/i],
-  ["foreup", /foreupsoftware\.com/i],
 ];
 
 /**
@@ -100,7 +105,6 @@ const SQL_LIKES = [
   "%squarespacescheduling%",
   "%squarespace-scheduling%",
   "%.as.me%",
-  "%foreupsoftware.com%",
 ];
 
 /** `true` for a link no reader knows, so `ORDER BY unreadableSql(col)` puts the quotable shops first. */

@@ -1,10 +1,9 @@
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { CATS, CATMETA } from "../../data/categories";
-import { ALL_METRO_ID, metroCoords, metroShort } from "../../data/metros";
+import { ALL_METRO_ID, metroShort } from "../../data/metros";
 import { ICONS } from "../../data/icons";
 import { getCatalog, savedListings, stillArriving } from "../../lib/catalog";
 import { dateKey } from "../../lib/dates";
-import { mergeMapsHits, useMapsNearby } from "../../lib/mapsNearby";
 import { searchSuggest, warmSearch, type SearchScope } from "../../lib/search";
 import { useApp } from "../../state/AppProvider";
 import { Markup } from "../Markup";
@@ -57,22 +56,14 @@ export function ExploreView({ onAsk, onCloseAsk, asking }: { onAsk: () => void; 
   const near = state.near;
   const browse = useMemo(() => browseList(catalog, state.cat, state.metroId, near), [catalog, state.metroId, state.cat, near]);
   const found = useMemo(() => (dq ? searchSuggest(catalog, dq, scope) : null), [catalog, dq, scope]);
-  const mapsPin = near && !near.region
-    ? { lat: near.lat, lon: near.lon }
-    : (() => {
-      if (state.metroId === ALL_METRO_ID) return null;
-      const c = metroCoords(state.metroId);
-      return c ? { lat: c.lat, lon: c.lng } : null;
-    })();
-  const mapsHits = useMapsNearby(dq, mapsPin?.lat ?? null, mapsPin?.lon ?? null);
   const cityEmpty = useMemo(
     () => state.metroId !== ALL_METRO_ID && !catalog.some((u) => atMetro(u, state.metroId)),
     [catalog, state.metroId],
   );
   const listed = useMemo(() => {
-    const base = found ? mergeMapsHits(found.results, mapsHits) : browse;
+    const base = found ? found.results : browse;
     return applyFilters(found ? nearFirst(base, near) : base, prefs.filters);
-  }, [found, mapsHits, browse, prefs.filters, near]);
+  }, [found, browse, prefs.filters, near]);
   /**
    * Browse promises a photograph, so a listing whose cover turned out to be dead leaves the feed. Only browse:
    * a saved listing stays in Wishlists whatever happened to its picture, because the guest put it there.

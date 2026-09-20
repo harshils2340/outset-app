@@ -30,7 +30,6 @@ import { webhooks } from "./webhooks.ts";
 import { bookings } from "./bookings.ts";
 import { wallet } from "./wallet.ts";
 import { concierge } from "./concierge.ts";
-import { nearby } from "./nearby.ts";
 import { uploads } from "./uploads.ts";
 import { payouts } from "./payouts.ts";
 import { availability } from "./availability.ts";
@@ -99,7 +98,6 @@ app.route("/", payouts);
 app.route("/", availability);
 app.route("/", openSlotsRoute);
 app.route("/", concierge);
-app.route("/", nearby);
 // Above the blanket admin-key gate on purpose: the internal metrics page signs in with an emailed code and has
 // no key to send, and that gate answers 404 to everything without one. The route does its own check (a session
 // whose email is in ADMIN_EMAILS, or the same x-admin-key for curl) and answers 404 to anyone else.

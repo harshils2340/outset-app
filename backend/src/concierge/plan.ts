@@ -10,7 +10,6 @@ import { rezdyLive } from "./readers/rezdy.ts";
 import { tripworksLive } from "./readers/tripworks.ts";
 import { squareLive } from "./readers/square.ts";
 import { acuityLive } from "./readers/acuity.ts";
-import { foreupLive } from "./readers/foreup.ts";
 import { isReadable, readerFor, unreadableSql } from "./readable.ts";
 import { Trace } from "./session.ts";
 import { recordDemand } from "./demand.ts";
@@ -1456,8 +1455,6 @@ export async function plan(text: string, opts: { ask?: number; prior?: Intent | 
             return peekLive(o.bookingUrl, { from, days });
           case "resova":
             return resovaLive(o.bookingUrl, { from, days, maxItems: 4 });
-          case "foreup":
-            return foreupLive(o.bookingUrl, { from, days });
           default:
             /**
              * Six items, not three. Zoom Tours sells four day tours and we priced three of them, so the

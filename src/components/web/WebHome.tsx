@@ -23,7 +23,6 @@ import { AdminSiteLink, liteDealTitle, tidyDuration } from "./WebListing";
 import { WebConcierge } from "./WebConcierge";
 import { freeCancelBadge } from "../../lib/cancellation";
 import { withinDrive, kmToPlace, awayLine, atMetro, NEAR_RADIUS_KM, DRIVE_RADIUS_KM } from "../explore/feed";
-import { mergeMapsHits, useMapsNearby } from "../../lib/mapsNearby";
 import { getPrefs, setPrefs } from "../explore/prefs";
 import { reportDeadCover, useDeadCovers, withPhotos } from "../../lib/deadCovers";
 
@@ -1110,15 +1109,6 @@ export function WebHome({ onOpenApp, onOperators, onAsk, asking = false, askSeed
   );
   const chipClash = !!(kindChip && namedArts.length && !namedArts.includes(kindChip));
 
-  const mapsPin = useMemo(() => {
-    if (near && !near.region) return { lat: near.lat, lon: near.lon };
-    const id = typedMetro?.metro.id ?? (!near && state.metroId !== ALL_METRO_ID ? state.metroId : null);
-    if (!id) return null;
-    const c = metroCoords(id);
-    return c ? { lat: c.lat, lon: c.lng } : null;
-  }, [near, typedMetro, state.metroId]);
-  const mapsHits = useMapsNearby(qWithoutPlace, mapsPin?.lat ?? null, mapsPin?.lon ?? null);
-
   // Where the guest is looking. The search reads the whole catalog and narrows here, so its index is built once.
   const scope = useMemo<SearchScope>(() => {
     const cat = state.cat;
@@ -1158,7 +1148,7 @@ export function WebHome({ onOpenApp, onOperators, onAsk, asking = false, askSeed
   // directly, so the shop is one keystroke and one click from its own page either way.
   const deadSet = useDeadCovers();
   const pool = useMemo(() => {
-    if (found) return withPhotos(mergeMapsHits(found.results, mapsHits), deadSet);
+    if (found) return withPhotos(found.results, deadSet);
     let base = withPhotos(getCatalog().filter((u) => !!u.cover && chipOk(u)), deadSet);
     if (typedMetro) {
       base = base.filter((u) => atMetro(u, typedMetro.metro.id));
@@ -1171,7 +1161,7 @@ export function WebHome({ onOpenApp, onOperators, onAsk, asking = false, askSeed
     }
     return base;
     // `deadSet` is one module-level Set that is only ever added to, so its size is what changes, not its identity.
-  }, [found, mapsHits, state.metroId, typedMetro, state.catalogVersion, near, kindChip, deadSet, deadSet.size]);
+  }, [found, state.metroId, typedMetro, state.catalogVersion, near, kindChip, deadSet, deadSet.size]);
 
   // A picked point: the rows show only what is truly near; the ring between near and a day trip is one row of its own.
   const nearPoint = !!near && !near.region;
