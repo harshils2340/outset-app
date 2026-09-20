@@ -234,7 +234,7 @@ export function readIntent(text: string, prior?: Intent | null): Intent {
    * treating them as brand new searches throws away everything the guest has already told us.
    */
   const refine: Intent["refine"] =
-    /\b(something else|anything else|other options?|different|others?|more options?|next)\b/.test(t) ? "other"
+    /\b(?:something else|anything else|what else|who else|where else|any ?where else|other (?:options?|places?|ones?)|any other|more options?|show me more|others?|different|next)\b/.test(t) ? "other"
       : /\b(cheaper|less|lower|too (?:expensive|pricey|much)|budget)\b/.test(t) && !/\$/.test(t) ? "cheaper"
         : /\b(re-?check|check again|refresh|try again|anything now|updated?)\b/.test(t) ? "recheck"
           : /\b(earlier|sooner)\b/.test(t) ? "earlier"
@@ -782,8 +782,17 @@ export function candidates(intent: Intent, limit = 8, radiusKm = 40): Option[] {
     args.push(intent.region);
   }
 
-  /** "Show me something else" means something else: what they have already seen is not an answer again. */
-  if (intent.seen?.length) {
+  /**
+   * "Show me something else" means something else — on that turn, and only that turn.
+   *
+   * This excluded everything ever shown, on every subsequent turn, so `seen` grew 8, 13, 17 and the good
+   * shops were banned forever. A guest who asked for escape rooms in Waterloo, then "any other places", then
+   * "times between 3 and 5" got Escapology on the first answer and then never again: by the third turn the
+   * only businesses left were the ones nobody had bothered to show, in Hamilton and Guelph, none of them
+   * priced. The list has to keep accumulating, because a second "something else" must skip the first one's
+   * answers too, but it may only bite when something else is what was actually asked for.
+   */
+  if (intent.refine === "other" && intent.seen?.length) {
     where.push("o.domain NOT IN (" + intent.seen.map(() => "?").join(",") + ")");
     args.push(...intent.seen);
   }
@@ -794,7 +803,19 @@ export function candidates(intent: Intent, limit = 8, radiusKm = 40): Option[] {
               (SELECT f.fact_value FROM facts f WHERE f.operator_id = o.id AND f.fact_key = 'booking_url' LIMIT 1) AS booking
          FROM operators o
         WHERE ${where.join(" AND ")}
-        ORDER BY (booking IS NULL), (booking NOT LIKE '%fareharbor%' AND booking NOT LIKE '%resova%'), ${order}
+        /*
+         * A shop we can say a price for beats one we cannot.
+         *
+         * The order was: has a booking link, has a readable feed, then nearest. Nothing in it knew whether we
+         * could quote a number, so "any other places near Waterloo" answered with five shops and not one
+         * price between them, while priced businesses a few kilometres further out went unmentioned. A guest
+         * cannot do anything with a list of names. Distance still decides between two shops we can both
+         * quote, which is what it is good for.
+         */
+        ORDER BY (booking IS NULL),
+                 (booking NOT LIKE '%fareharbor%' AND booking NOT LIKE '%resova%'),
+                 (NOT EXISTS (SELECT 1 FROM offerings x WHERE x.operator_id = o.id AND x.price_cents IS NOT NULL)),
+                 ${order}
         LIMIT ?`,
     )
     .all(...args, limit) as {
@@ -1007,8 +1028,13 @@ export async function plan(text: string, opts: { ask?: number; prior?: Intent | 
    * So the biggest one wins, it is said out loud, and the alternatives sit beside the answer as `narrow`. The
    * same rule as everywhere else: answer, then let them correct it.
    */
-  const amb = placeAmbiguity(intent);
+  /**
+   * Said once, not on every turn. "Taking Waterloo, Ontario — there is more than one" above all three
+   * answers in a row reads as a stutter, and the guest settled the question by not objecting the first time.
+   */
+  const amb = asked.has("place-note") ? null : placeAmbiguity(intent);
   if (amb && amb.length > 1) {
+    intent.asked = [...asked, "place-note"];
     const [chosen, ...others] = amb;
     tr.step("ambiguous", intent.city + " is " + amb.length + " places; taking " + chosen.region + " and offering the rest",
       { detail: amb.map((r) => r.region + " (" + r.n + ")").join(", ") });

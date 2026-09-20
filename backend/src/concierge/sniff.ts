@@ -52,7 +52,7 @@ export type SniffResult = {
 };
 
 /** Ad, analytics and asset traffic. Every page is full of it and none of it is availability. */
-const NOISE = /google-analytics|googletagmanager|doubleclick|facebook\.net|hotjar|clarity\.ms|segment\.|sentry|intercom|cloudflareinsights|recaptcha|gstatic|fonts\.|youtube\.com|ytimg|vimeo|player\.|jquery|bootstrap|polyfill|gtm\.js|\.(?:png|jpe?g|gif|svg|webp|woff2?|ttf|css|ico|mp4|webm)(?:\?|$)/i;
+const NOISE = /google-analytics|googletagmanager|doubleclick|facebook\.net|hotjar|clarity\.ms|segment\.|sentry|intercom|cloudflareinsights|recaptcha|gstatic|fonts\.|youtube\.com|ytimg|vimeo|player\.|jquery|bootstrap|polyfill|gtm\.js|elfsight|trustpilot|yotpo|judge\.me|reviews?\.io|tawk\.to|crisp\.chat|zendesk|hubspot|mailchimp|klaviyo|parastorage|wixstatic|squarespace-cdn|shopifycdn|cdn\.jsdelivr|unpkg|\.(?:png|jpe?g|gif|svg|webp|woff2?|ttf|css|ico|mp4|webm)(?:\?|$)/i;
 
 /** Words that mean "this request is about when something is free". */
 const AVAIL_WORD = /avail|slot|time|calendar|schedul|session|booking|book|reserv|openings|inventory|events?|tickets?|dates?/i;
@@ -115,6 +115,15 @@ function scoreOf(url: string, body: string, type: string): { score: number; why:
   // A date parameter means the caller asked about a particular day, which is what a calendar does.
   if (/\b(date|day|start|from|month)=/i.test(url)) { score += 2; why.push("takes a date"); }
   if (/\bavailab/i.test(body)) { score += 2; why.push("body says available"); }
+  /**
+   * Reviews, chat and asset widgets are on nearly every page and several of them talk about times and money.
+   * Elfsight's review feed scored an 8 for a helicopter operator on the strength of timestamps in customer
+   * reviews. A payload that is mostly about ratings or reviews is not a calendar, whatever else is in it.
+   */
+  if (/"(?:rating|review|reviewer|testimonial)"/i.test(body) && !/\b(?:availab|timeslot|time_slot|booking)/i.test(body)) {
+    score -= 6;
+    why.push("reads like reviews, not availability");
+  }
   if (body.length > 400) score += 1;
   /**
    * A minified library is not a booking calendar. YouTube's player bundle scored on "10:00 17:15" and two
