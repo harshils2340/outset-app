@@ -154,7 +154,15 @@ export async function fareharborLive(bookingUrl: string, opts: { from?: Date; da
       }
     }
 
-    const cheapest = rates.length ? rates.reduce((a, b) => (a.price <= b.price ? a : b)) : null;
+    /**
+     * The headline price is the cheapest ticket an adult can actually buy. Quoting "$115.54 Child" to someone
+     * who said "for 2" is a lie of omission: they cannot buy that, and the number they see is not the number
+     * they would pay. Child, senior and student rates are only the headline when nothing else is sold.
+     */
+    const CONCESSION = /\b(child|kid|infant|youth|junior|senior|student|toddler|baby)\b/i;
+    const open = rates.filter((r) => !CONCESSION.test(r.label));
+    const pool = open.length ? open : rates;
+    const cheapest = pool.length ? pool.reduce((a, b) => (a.price <= b.price ? a : b)) : null;
     out.push({
       item: av.item?.name || "Booking",
       date,

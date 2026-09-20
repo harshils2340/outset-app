@@ -174,26 +174,28 @@ export async function plan(text: string, opts: { ask?: number } = {}): Promise<{
   const intent = readIntent(text);
   const options = candidates(intent);
   const win = windowFor(intent.when);
-  let asked = 0;
-  for (const o of options) {
-    if (asked >= (opts.ask ?? 3)) break;
-    if (o.route !== "feed") continue;
-    asked += 1;
-    const fits = (d: Departure) => intent.maxPerPerson == null || d.fromPrice == null || d.fromPrice <= intent.maxPerPerson;
-    const live = await fareharborLive(o.bookingUrl, { from: win.from, days: win.days, maxItems: 3 });
-    if (live) o.departures = live.departures.filter(fits);
-    /**
-     * Nothing when they asked is not the same as nothing at all. Shops close their books hours ahead, so at
-     * eleven at night "tomorrow" is often already shut while Tuesday is wide open. Rather than answer "no", ask
-     * again over a fortnight and say plainly that it is a different day.
-     */
-    if (!o.departures.length && win.days < 14) {
-      const wider = await fareharborLive(o.bookingUrl, { from: new Date(), days: 14, maxItems: 3 });
-      if (wider?.departures.length) {
-        o.departures = wider.departures.filter(fits);
-        o.widened = true;
+  const fits = (d: Departure) => intent.maxPerPerson == null || d.fromPrice == null || d.fromPrice <= intent.maxPerPerson;
+
+  /**
+   * The shops are asked at the same time, not one after another. Each one is a handful of round trips to its
+   * booking provider, so asking three in turn took nineteen seconds with the machine idle for most of it, and
+   * a guest waiting nineteen seconds has already decided we are broken. They go to different hosts and we send
+   * a few requests each, so there is nothing rude about doing them together.
+   */
+  const feeds = options.filter((o) => o.route === "feed").slice(0, opts.ask ?? 3);
+  await Promise.all(
+    feeds.map(async (o) => {
+      const live = await fareharborLive(o.bookingUrl, { from: win.from, days: win.days, maxItems: 3 });
+      if (live) o.departures = live.departures.filter(fits);
+      if (!o.departures.length && win.days < 14) {
+        const wider = await fareharborLive(o.bookingUrl, { from: new Date(), days: 14, maxItems: 3 });
+        if (wider?.departures.length) {
+          o.departures = wider.departures.filter(fits);
+          o.widened = true;
+        }
       }
-    }
-  }
+    }),
+  );
+
   return { intent, options };
 }
