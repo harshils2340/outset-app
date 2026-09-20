@@ -971,7 +971,13 @@ function ageAnswer(ctx: CompanyContext, q: string): { text: string; state: ChatS
   return { text: "No minimum age is published. " + sentence(rule.line), state: { topic: "age" } };
 }
 
-const RULE_TOPICS: [RegExp, RegExp, string][] = [
+/**
+ * Each row: how a guest asks it, the lines that answer it, the gap sentence when nothing does, and lines whose
+ * words match but mean something else. A guest asking whether a boat is wheelchair accessible was read "A
+ * perfect end to your day may include dinner at one of the area restaurants that are accessible by boat",
+ * because "accessib" matched and nothing checked which sense of the word it was.
+ */
+const RULE_TOPICS: [RegExp, RegExp, string, RegExp?][] = [
   [/swim/i, /swim/i, "a swimming rule"],
   [/\b(dogs?|pets?|puppy|service animal)\b/i, /\b(dogs?|pets?|service animals?)\b/i, "a pet policy"],
   [/licen[sc]e|permit|boater/i, /licen[sc]e|permit|boater|certif/i, "a licence rule"],
@@ -979,15 +985,16 @@ const RULE_TOPICS: [RegExp, RegExp, string][] = [
   [/weight|lbs|pound/i, /weight|lbs?|pound/i, "a weight limit"],
   [/height|how tall/i, /height|tall|inches|cm\b/i, "a height limit"],
   [/pregnan/i, /pregnan/i, "a pregnancy rule"],
-  [/wheelchair|disab|accessib|mobility/i, /wheelchair|disab|accessib|mobility/i, "an accessibility note"],
+  // "Accessible by boat", "accessible by car" and "accessible from the highway" are about getting there.
+  [/wheelchair|disab|accessib|mobility/i, /wheelchair|disab|accessib|mobility/i, "an accessibility note", /\baccessib\w*\s+(by|from|via)\b/i],
   [/shoes?|socks?|dress code|what to wear/i, /shoes?|socks?|footwear|attire|dress/i, "a dress rule"],
 ];
 
 function rulesAnswer(ctx: CompanyContext, q: string): { text: string; state: ChatState } {
-  for (const [ask, find, missing] of RULE_TOPICS) {
+  for (const [ask, find, missing, otherSense] of RULE_TOPICS) {
     if (!ask.test(q)) continue;
     const qw = words(q).filter((w) => w.length > 3);
-    const lines = corpus(ctx.item).filter((l) => find.test(l));
+    const lines = corpus(ctx.item).filter((l) => find.test(l) && !(otherSense && otherSense.test(l)));
     const scored = lines.map((l) => ({ l, n: qw.filter((w) => words(l).includes(w)).length })).sort((a, b) => b.n - a.n);
     const named = matchOffer(offersOf(ctx), q);
     if (named && scored.length && scored[0].n === 0) {

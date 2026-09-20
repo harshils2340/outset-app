@@ -239,3 +239,15 @@ test("a shop that publishes no hours at all says so, rather than naming a week i
   assert.match(ask("are you open right now?", noHours), /haven't published opening hours/, "the listing changed, so this case needs a new one");
   assert.match(ask("are you open on Christmas?", noHours), /haven't published opening hours/);
 });
+
+/* ---------- which sense of a rule word ---------- */
+
+test("reaching a place by boat is not an accessibility note", () => {
+  // "accessib" matched "restaurants that are accessible by boat", so a guest asking whether the trip is
+  // wheelchair accessible was read a line about where to have dinner.
+  const item = listing("o-1000islandexcursions-com");
+  assert.ok(item.includes.some((l) => /accessible by boat/i.test(l)), "the listing changed, so this case needs a new one");
+  const said = ask("is it wheelchair accessible?", item);
+  assert.doesNotMatch(said, /dinner|restaurant/i);
+  assert.match(said, /haven't published an accessibility note/);
+});
