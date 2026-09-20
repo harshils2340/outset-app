@@ -96,14 +96,21 @@ function typing(){ const d=document.createElement('div'); d.className='typing';
 function step(html){ const d=document.createElement('div'); d.className='step'; d.innerHTML=html;
   steps.appendChild(d); steps.scrollTop=steps.scrollHeight; }
 const money = n => '$'+Number(n).toFixed(2);
+/**
+ * Every name on this page came off somebody else's website: the business name as our crawl read it, the town,
+ * the trip name and the ticket label as the shop's booking system answers them. Concatenating those into
+ * innerHTML lets a business called "<img onerror=...>" close our markup and run its own script in a guest's
+ * browser, which is the hole the static pages were carrying until this week. Text goes through here.
+ */
+const esc = s => String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 
 function offer(o, d){
   const b=document.createElement('button'); b.className='opt'; b.type='button';
   const when = new Date(d.date+'T'+(d.time||'12:00')).toLocaleDateString('en-CA',{weekday:'short',month:'short',day:'numeric'});
-  b.innerHTML = '<b>'+o.name+'</b><small>'+d.item+' &middot; '+when+' at '+d.time+
-    (o.city? ' &middot; '+o.city : '')+'</small>'+
+  b.innerHTML = '<b>'+esc(o.name)+'</b><small>'+esc(d.item)+' &middot; '+esc(when)+' at '+esc(d.time)+
+    (o.city? ' &middot; '+esc(o.city) : '')+'</small>'+
     '<div class="row"><span class="price">'+(d.fromPrice!=null?money(d.fromPrice)+(d.taxIncluded?'':' <small style="font-weight:400;color:var(--muted)">+ tax</small>'):'price on request')+
-    (d.priceLabel&&d.fromPrice!=null?' <small style="font-weight:400">'+d.priceLabel+'</small>':'')+'</span>'+
+    (d.priceLabel&&d.fromPrice!=null?' <small style="font-weight:400">'+esc(d.priceLabel)+'</small>':'')+'</span>'+
     '<span style="color:var(--blue);font-weight:600;font-size:14px">Book this &rarr;</span></div>';
   b.onclick = () => confirmBooking(o, d);
   log.appendChild(b); log.scrollTop=log.scrollHeight;
@@ -112,8 +119,8 @@ function offer(o, d){
 function offerService(o){
   const s = o.services.filter(x=>x.price!=null)[0];
   const b=document.createElement('button'); b.className='opt'; b.type='button';
-  b.innerHTML = '<b>'+o.name+'</b><small>'+s.name+(o.city? ' &middot; '+o.city:'')+
-    (o.rating? ' &middot; '+o.rating+'&#9733;':'')+'</small>'+
+  b.innerHTML = '<b>'+esc(o.name)+'</b><small>'+esc(s.name)+(o.city? ' &middot; '+esc(o.city):'')+
+    (o.rating? ' &middot; '+esc(o.rating)+'&#9733;':'')+'</small>'+
     '<div class="row"><span class="price">$'+Number(s.price).toFixed(2)+
     '<small style="font-weight:400;color:var(--muted)"> '+(s.unit==='each'?'each':'per person')+'</small></span>'+
     '<span style="color:var(--muted);font-weight:600;font-size:13px">'+
@@ -122,7 +129,7 @@ function offerService(o){
     bubble('Get me a time at '+o.name, 'me');
     const t=typing();
     setTimeout(()=>{ t.remove();
-      step('<span class="k">route</span> <span class="v">'+(o.route==='phone'?'no booking system: the phone agent calls '+o.phone:'opening their booking page')+'</span>');
+      step('<span class="k">route</span> <span class="v">'+(o.route==='phone'?'no booking system: the phone agent calls '+esc(o.phone):'opening their booking page')+'</span>');
       bubble(o.route==='phone'
         ? "They don't book online, so I'd ring "+(o.phone||'them')+" and confirm. That's the other half of the system."
         : "Opening "+o.name+"'s booking page to pick a time. Their system, not ours.", 'them');
@@ -136,7 +143,7 @@ function confirmBooking(o, d){
   const t=typing();
   setTimeout(()=>{
     t.remove();
-    step('<span class="k">book</span> <span class="v">opening '+o.name+"'s own checkout</span>");
+    step('<span class="k">book</span> <span class="v">opening '+esc(o.name)+"'s own checkout</span>");
     step('<span class="k">card</span> <span class="v">single-use virtual card issued for '+(d.fromPrice!=null?money(d.fromPrice):'the quoted total')+'</span>');
     bubble("Booked.\\n"+o.name+"\\n"+d.item+"\\n"+d.date+" at "+d.time+"\\n"+
       (d.fromPrice!=null? money(d.fromPrice)+", paid\\n":"")+
@@ -151,7 +158,7 @@ async function ask(text){
   const t = typing();
   steps.innerHTML='';
   step('<span class="d">'+new Date().toLocaleTimeString()+'</span>');
-  step('<span class="k">heard</span> <span class="v">"'+text.replace(/</g,'&lt;')+'"</span>');
+  step('<span class="k">heard</span> <span class="v">"'+esc(text)+'"</span>');
   heroA.textContent='Working…'; heroB.textContent='Reading the sentence.';
   try{
     const r = await fetch('/concierge/ask',{method:'POST',headers:{'content-type':'application/json'},
@@ -160,12 +167,12 @@ async function ask(text){
     t.remove();
     if(data.error){ bubble(data.error,'them'); return; }
     const i = data.intent;
-    step('<span class="k">read</span> <span class="v">'+(i.categoryLabel||'anything')+' &middot; '+(i.city||'anywhere')+
-         ' &middot; '+i.party+' people &middot; '+i.when+(i.maxPerPerson?' &middot; under $'+i.maxPerPerson:'')+'</span>');
+    step('<span class="k">read</span> <span class="v">'+esc(i.categoryLabel||'anything')+' &middot; '+esc(i.city||'anywhere')+
+         ' &middot; '+esc(i.party)+' people &middot; '+esc(i.when)+(i.maxPerPerson?' &middot; under $'+esc(i.maxPerPerson):'')+'</span>');
     step('<span class="k">catalog</span> <span class="v">'+data.counts.total+' businesses matched</span>');
     for(const o of data.options.slice(0,4)){
       const via = o.route==='feed' ? 'read their booking system' : o.route==='agent' ? 'would need the browser agent' : 'would need a phone call';
-      step('<span class="k">ask</span> <span class="biz">'+o.name+'</span> <span class="d">'+via+'</span>');
+      step('<span class="k">ask</span> <span class="biz">'+esc(o.name)+'</span> <span class="d">'+via+'</span>');
     }
     step('<span class="k">done</span> <span class="v">'+data.counts.quoted+' with live times, '+(data.counts.priced||0)+' priced from their own site &middot; '+data.ms+'ms</span>');
 
@@ -173,7 +180,7 @@ async function ask(text){
     if(data.followUp){ bubble(data.followUp,'them');
       heroA.textContent='Needs one more thing'; heroB.textContent='It asks rather than guessing.'; return; }
     if(data.loosened){ bubble(data.loosened,'them');
-      step('<span class="k">loosen</span> <span class="v">'+data.loosened+'</span>'); }
+      step('<span class="k">loosen</span> <span class="v">'+esc(data.loosened)+'</span>'); }
     /**
      * What it costs across everything found. This is the line that answers "why not just use Google": those
      * prices live on a dozen different websites and nobody compares them, because nobody can.
