@@ -85,8 +85,14 @@ export async function fareharborLive(bookingUrl: string, opts: { from?: Date; da
   }
   if (!days.length) return { business: sn, vendor: "fareharbor", departures: [], note: "FareHarbor did not answer for this shop." };
 
-  const firstDay = start.toISOString().slice(0, 10);
-  const lastDay = new Date(start.getTime() + horizon * 86400_000).toISOString().slice(0, 10);
+  /**
+   * Local dates, not UTC. FareHarbor publishes a departure's day in the shop's own calendar, and toISOString()
+   * is four or five hours ahead of Eastern: after eight in the evening it rolls the date forward, so "tomorrow"
+   * quietly became the day after tomorrow and the noon flight a guest was asking about was never offered.
+   */
+  const ymd = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  const firstDay = ymd(start);
+  const lastDay = ymd(new Date(start.getTime() + horizon * 86400_000));
 
   // One entry per item per day: the earliest bookable departure of each.
   const picked: { av: FhAvail; date: string }[] = [];
@@ -102,7 +108,13 @@ export async function fareharborLive(bookingUrl: string, opts: { from?: Date; da
       picked.push({ av, date });
     }
   }
-  picked.sort((a, b) => (a.av.start_at || "").localeCompare(b.av.start_at || ""));
+  /**
+   * Named first. Plenty of shops leave an item called "Booking", which tells a guest nothing, and pricing is
+   * four calls a piece, so spending that budget on "Booking" instead of "Heli Tour #1" wastes the only calls
+   * we make. Within a name, earliest wins.
+   */
+  const named = (d: { av: FhAvail }) => (d.av.item?.name && !/^booking$/i.test(d.av.item.name) ? 0 : 1);
+  picked.sort((a, b) => named(a) - named(b) || (a.av.start_at || "").localeCompare(b.av.start_at || ""));
 
   // Price only the first few distinct items: four calls each, and a guest is choosing between kinds of tour.
   const pricedItems = new Set<number>();
@@ -130,7 +142,8 @@ export async function fareharborLive(bookingUrl: string, opts: { from?: Date; da
           base + `total-sheets/${sheetPk}/pricing/availabilities/${av.pk}/`,
         );
         const byRate = new Map<number, number>();
-        for (const c of pricing?.price_previews?.customer_types || []) if (typeof c.total === "number") byRate.set(c.customer_type_rate, c.total);
+        // A zero total is FareHarbor saying "ask us", not "free". Quoting $0.00 to a guest is worse than quoting nothing.
+        for (const c of pricing?.price_previews?.customer_types || []) if (typeof c.total === "number" && c.total > 0) byRate.set(c.customer_type_rate, c.total);
         rates = ctrs
           .map((c) => {
             const cents = byRate.get(c.pk);
