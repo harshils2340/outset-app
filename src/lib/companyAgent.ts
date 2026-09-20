@@ -646,7 +646,9 @@ function readQuestion(ctx: CompanyContext, q: string, prev: ChatState): Topic[] 
   if ((/(book|reserve|reservation|buy tickets?)/i.test(t) || (/\bsign up\b/i.test(t) && !NOT_A_BOOKING.test(t))) && !hits.includes("slot") && !CANCEL_RE.test(t)) add("book");
 
   if (partySize(t) != null || /(group|party of|birthday|corporate|team|bachelor|how many (people|can)|capacity)/i.test(t)) add("group");
-  if (ageIn(t) != null || /\b(age|kid|kids|child|children|minor|toddler|baby|infant|senior|teen|year old)\b/i.test(t)) add("age");
+  // "How old do you have to be" says neither "age" nor a number, so it was read as a generic entry rule and
+  // answered with whatever the shop's first requirement line happened to be. "How old is the boat" is not one.
+  if (ageIn(t) != null || /\b(age|kid|kids|child|children|minor|toddler|baby|infant|senior|teen|year old)\b/i.test(t) || /\bhow old (do|does|must|should|would)\b/i.test(t)) add("age");
   // Same reason as `book` above: "I need to cancel my reservation" is not a question about who may take part.
   if (/(do i need|need to|have to|must |require|experience|beginner|first.?time|licen[sc]e|certif|swim|weight|height|how tall|pregnan|wheelchair|disab)/i.test(t) && !CANCEL_RE.test(t)) add("rules");
   if (/\b(dogs?|pets?|puppy|service animal)\b/i.test(t)) add("pets");

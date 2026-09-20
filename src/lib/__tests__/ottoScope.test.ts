@@ -251,3 +251,19 @@ test("reaching a place by boat is not an accessibility note", () => {
   assert.doesNotMatch(said, /dinner|restaurant/i);
   assert.match(said, /haven't published an accessibility note/);
 });
+
+test("asking how old you have to be is an age question, not a generic entry rule", () => {
+  // The age reader needed the word "age", "kid" or a number, so "how old do you have to be?" was read as
+  // `rules` and answered with whatever the shop's first requirement happened to be. On Ali'i Ocean Tours that
+  // was a briefing about swimming with mantas.
+  const manta = listing("o-aliioceantours-com");
+  for (const q of ["how old do you have to be?", "how old do I need to be?", "how old must my child be?"]) {
+    const said = ask(q, manta);
+    assert.match(said, /age limit|minimum age|age \d/i, q);
+    assert.doesNotMatch(said, /manta/i, q);
+  }
+  // A shop that publishes one gives the number rather than its first rule and a count of the rest.
+  assert.match(ask("how old do you have to be?", listing("o-captainbobsboatrentals-com")), /minimum age is 21/);
+  // How old the boat is, is not how old the guest has to be.
+  assert.doesNotMatch(ask("how old is the boat?", listing("o-captainbobsboatrentals-com")), /minimum age/);
+});
