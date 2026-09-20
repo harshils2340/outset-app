@@ -3,7 +3,7 @@ import test from "node:test";
 
 import { METROS, metroById, metroLabel, metroShort } from "../../data/metros";
 import type { Opening } from "../here";
-import { ZONE_METRO, ipGuessFitsClock, metroFromTimeZone, openingFeed } from "../here";
+import { ZONE_METRO, ipGuessFitsClock, metroFromTimeZone, openingFeed, shouldLocate } from "../here";
 
 /**
  * The first thing a guest sees is whatever this guesses, and nothing downstream sanity-checks it: the home
@@ -92,4 +92,21 @@ test("the home's opening feed is always one of the three shapes, never nothing",
   // A GPS pin draws at once; a clock city nobody picked waits rather than painting the wrong town.
   assert.deepEqual(openingFeed({ guess: pin, chosen: false, recheck: true }), pin);
   assert.equal(openingFeed({ guess: city, chosen: false, recheck: true }).kind, "wait");
+});
+
+/**
+ * Who gets asked where they are, and when. A guest whose first visit is a shared listing link is not asked on
+ * that page, which is the point, but the home behind it opens in `locating` and something has to end that
+ * wait. Asked of the opening URL alone, nothing ever did: "Back to results" drew two skeleton rails and left
+ * them there for the rest of the visit. Driven in a real Chromium before this was written.
+ */
+test("a listing link does not ask for a location, and the home behind it still does", () => {
+  const listing = { screen: "explore", sheet: "request" };
+  const home = { screen: "explore", sheet: null };
+  assert.equal(shouldLocate(listing, false), false, "a shared listing link must not prompt a stranger");
+  assert.equal(shouldLocate(home, false), true, "the home behind it has to be able to settle a place");
+  // The dashboard is not the guest home, however the owner got there.
+  assert.equal(shouldLocate({ screen: "operator", sheet: null }, false), false);
+  // And once a place is settled, coming back to the home is not a reason to ask again.
+  assert.equal(shouldLocate(home, true), false);
 });

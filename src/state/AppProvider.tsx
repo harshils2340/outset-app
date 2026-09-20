@@ -1,5 +1,5 @@
 import { warmCheckout } from "../lib/stripeJs";
-import { guessPlace, ipGuessFitsClock, metroFromTimeZone, opening, openingFeed, rememberCoords, rememberMetro, rememberPlace, sameGuess, type Opening } from "../lib/here";
+import { guessPlace, ipGuessFitsClock, metroFromTimeZone, opening, openingFeed, rememberCoords, rememberMetro, rememberPlace, sameGuess, shouldLocate, type Opening } from "../lib/here";
 import { createContext, useContext, useEffect, useMemo, useReducer, useRef, type ReactNode } from "react";
 import { LISTINGS } from "../data/listings";
 import { ALL_METRO_ID } from "../data/metros";
@@ -488,15 +488,6 @@ function atOperatorsPath(): boolean {
 }
 
 /**
- * True when this load opens the guest home rather than one listing or the operator side. Only then is it worth
- * a round trip and a second render to refine the place: someone who followed a link to a business came for that
- * page, and the home behind it can stay on whatever this device already knew.
- */
-function opensHome(): boolean {
-  return !atOperatorsPath() && !/^#(o|remove|claim)=/i.test(window.location.hash);
-}
-
-/**
  * The place the home opens on, folded into the state of the very first render.
  *
  * A GPS or typed point is a pin: the rails measure from it. A city the guest picked is their decision. A clock
@@ -561,6 +552,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const stateRef = useRef(state);
   stateRef.current = state;
 
+  /** Is the guest looking at the home? The screen decides, not the URL the visit began on: see `shouldLocate`. */
+  const view = { screen: state.screen as string, sheet: state.sheet as string | null };
+  /**
+   * Once a place has been settled, coming back to the home is not a reason to locate again, or a guest who
+   * picked Anywhere and then opened a listing would find themselves back in their own town.
+   *
+   * It turns true when the browser answers, not when the effect starts: React mounts an effect, tears it down
+   * and mounts it again in development, and a flag set on the way in would let only the torn-down run continue.
+   * That left the home as two skeleton rails, which is the bug this is here to fix.
+   */
+  const placed = useRef(false);
   /**
    * GPS is the pin. A clock city is only the fallback when the browser will not give a fix.
    *
@@ -571,7 +573,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
    */
   useEffect(() => {
     const start = open.current!;
-    if (!opensHome()) return;
+    if (!shouldLocate(view, placed.current)) return;
     const typedTown = start.chosen && start.guess?.kind === "point" && start.guess.place.label !== "Near me";
     if (typedTown) return;
     if (start.chosen && start.guess?.kind === "metro") return;
@@ -596,6 +598,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     };
     void (async () => {
       const pt = await currentLocation();
+      // An answer either way, including a refusal, is this visit's answer.
+      placed.current = true;
       if (!alive) return;
       if (pt) {
         apply(rememberCoords(pt.lat, pt.lon));
@@ -626,7 +630,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return () => {
       alive = false;
     };
-  }, []);
+  }, [view.screen, view.sheet]);
 
   // True once the boot deep-link check has run. Until then the path-sync effect must not rewrite the URL,
   // or the lite catalog shard flipping catalogReady early would erase a #claim= link before it is read.

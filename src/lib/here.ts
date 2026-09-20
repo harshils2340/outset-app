@@ -246,6 +246,21 @@ export function openingFeed(open: Opening): NonNullable<Guess> | { kind: "wait" 
   return { kind: "wait" };
 }
 
+/**
+ * Should the app be asking the browser where the guest is?
+ *
+ * Only once they are looking at the home. A listing link (`#o=`, `#remove=`) opens that one business and a
+ * claim link opens the dashboard, and neither is a reason to put a location prompt in front of a stranger.
+ *
+ * It is a question about the screen, not about the URL the visit started on. Asked of the opening URL alone,
+ * a guest whose first ever visit was a shared listing link never asked and never stopped waiting either: the
+ * feed opens in `locating`, so "Back to results" left the home as two skeleton rails that stayed there.
+ */
+export function shouldLocate(view: { screen: string; sheet: string | null }, alreadyPlaced: boolean): boolean {
+  if (alreadyPlaced) return false;
+  return view.screen !== "operator" && view.sheet !== "request";
+}
+
 export function opening(): Opening {
   const mine = savedPlace();
   if (mine) return { guess: { kind: "point", place: mine }, chosen: true, recheck: false };
