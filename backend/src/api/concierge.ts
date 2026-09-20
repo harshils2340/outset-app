@@ -69,11 +69,26 @@ function outcomeOf(a: Answer): string {
   return a.options.length ? a.options.length + " found, nothing published" : "nothing found";
 }
 
-function read(body: { text?: string; ask?: number; session?: string }): { text: string; ask: number; session: string } | { error: string } {
+type Ask = { text?: string; ask?: number; session?: string; lat?: number; lon?: number };
+
+function read(body: Ask): { text: string; ask: number; session: string; near: { lat: number; lon: number } | null } | { error: string } {
   const text = (body.text || "").trim();
   if (!text) return { error: "Say what you want to do." };
   if (text.length > 300) return { error: "That is a lot to ask for. Try a shorter sentence." };
-  return { text, ask: Math.min(Number(body.ask) || 3, 5), session: String(body.session || "") };
+  /**
+   * Where the browser says they are, when it is willing to say. Optional on purpose: a guest who refuses the
+   * permission still gets a perfectly good answer by naming a town, and this only ever narrows.
+   *
+   * Validated rather than trusted. A malformed pair would be fed straight into the distance arithmetic and
+   * quietly return businesses on the far side of the planet.
+   */
+  const lat = Number(body.lat);
+  const lon = Number(body.lon);
+  const near =
+    Number.isFinite(lat) && Number.isFinite(lon) && Math.abs(lat) <= 90 && Math.abs(lon) <= 180 && (lat !== 0 || lon !== 0)
+      ? { lat, lon }
+      : null;
+  return { text, ask: Math.min(Number(body.ask) || 3, 5), session: String(body.session || ""), near };
 }
 
 /**
@@ -82,12 +97,12 @@ function read(body: { text?: string; ask?: number; session?: string }): { text: 
  * server at FareHarbor. Sixty questions an hour is more than anyone types.
  */
 concierge.post("/concierge/ask", rateLimit(60, 60 * 60 * 1000), async (c) => {
-  const body = (await c.req.json().catch(() => ({}))) as { text?: string; ask?: number; session?: string };
+  const body = (await c.req.json().catch(() => ({}))) as Ask;
   const r = read(body);
   if ("error" in r) return c.json({ error: r.error }, 400);
   const session = getSession(r.session);
   const trace = new Trace();
-  const a = await plan(r.text, { ask: r.ask, prior: session.intent, trace });
+  const a = await plan(r.text, { ask: r.ask, prior: session.intent, trace, near: r.near });
   session.intent = a.intent;
   recordTurn(session, r.text, trace, outcomeOf(a));
   return c.json({ ...payload(a, Date.now() - trace.t0, session.id), steps: trace.steps });
@@ -105,7 +120,7 @@ concierge.post("/concierge/ask", rateLimit(60, 60 * 60 * 1000), async (c) => {
  * reconnects by itself.
  */
 concierge.post("/concierge/stream", rateLimit(60, 60 * 60 * 1000), async (c) => {
-  const body = (await c.req.json().catch(() => ({}))) as { text?: string; ask?: number; session?: string };
+  const body = (await c.req.json().catch(() => ({}))) as Ask;
   const r = read(body);
   if ("error" in r) return c.json({ error: r.error }, 400);
   const session = getSession(r.session);
@@ -119,7 +134,7 @@ concierge.post("/concierge/stream", rateLimit(60, 60 * 60 * 1000), async (c) => 
     });
 
     // The plan runs while the steps drain, so a step reaches the screen at the moment it happens.
-    const work = plan(r.text, { ask: r.ask, prior: session.intent, trace }).then(
+    const work = plan(r.text, { ask: r.ask, prior: session.intent, trace, near: r.near }).then(
       (a) => ({ ok: true as const, a }),
       (e) => ({ ok: false as const, e }),
     );
