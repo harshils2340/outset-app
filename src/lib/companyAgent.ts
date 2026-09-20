@@ -43,7 +43,7 @@ export type Answer = { text: string; chips: string[]; state: ChatState };
 
 type Topic =
   | "greet" | "thanks" | "price" | "priceOf" | "cheapest" | "list" | "duration"
-  | "openNow" | "closeTime" | "dayHours" | "slot" | "book" | "group" | "age"
+  | "openNow" | "closeTime" | "dayHours" | "holidayHours" | "slot" | "book" | "group" | "age"
   | "rules" | "bring" | "included" | "cancel" | "rainPolicy" | "meet" | "deals"
   | "waiver" | "contact" | "describe" | "fee" | "outOfScope" | "unknown"
   | "ack" | "next" | "walkin" | "pets" | "search";
@@ -470,6 +470,14 @@ function namesSomeoneElse(ctx: CompanyContext, q: string): boolean {
  */
 const NOT_A_BOOKING = /\b(newsletter|mailing list|e-?mail list|email updates?|waiver|release form|an account|text alerts?)\b/i;
 
+/**
+ * A holiday or a calendar date. A shop publishes a week, never a calendar, so Otto cannot know whether it
+ * trades on Christmas Day. Asked "are you open on Christmas?" it found no weekday in the question, fell
+ * through to the "open right now" branch and answered "Not yet. They open today at 9 AM".
+ */
+const NAMED_DATE =
+  /\b(christmas(\s+(eve|day))?|xmas|boxing day|new year'?s?(\s+(eve|day))?|thanksgiving|easter(\s+(sunday|monday))?|good friday|victoria day|canada day|independence day|fourth of july|july 4|memorial day|labor day|labour day|halloween|bank holiday|public holiday|stat(utory)? holiday|holidays?)\b|\b(jan(uary)?|feb(ruary)?|mar(ch)?|apr(il)?|jun(e)?|jul(y)?|aug(ust)?|sep(t|tember)?|oct(ober)?|nov(ember)?|dec(ember)?)\.?\s+\d{1,2}\b/i;
+
 /** Undoing a booking rather than making one. Read in two places, so it lives here. */
 const CANCEL_RE = /(cancel|refund|reschedul|no.?show|deposit|money back)/i;
 
@@ -610,7 +618,9 @@ function readQuestion(ctx: CompanyContext, q: string, prev: ChatState): Topic[] 
   const offers = offersOf(ctx);
   const namedOffer = matchOffer(offers, q);
   const askedPrice = /(how much|price|pricing|cost|rate|fee|\$|expensive|charge)/i.test(t);
-  const namesDay = DAY_RE.test(t) || /\b(tomorrow|today|tonight|weekends?)\b/i.test(t);
+  // "Good Friday" and "Easter Monday" carry a weekday word that belongs to the holiday's name, not to this week.
+  const noHoliday = t.replace(new RegExp(NAMED_DATE.source, "gi"), " ");
+  const namesDay = DAY_RE.test(noHoliday) || /\b(tomorrow|today|tonight|weekends?)\b/i.test(noHoliday);
   const namesTime = minutesOfDay(t) != null;
 
   if (/(service fee|booking fee|hidden fee|extra (charge|fee)|fees\b|why.*fee)/i.test(t)) add("fee");
@@ -621,7 +631,8 @@ function readQuestion(ctx: CompanyContext, q: string, prev: ChatState): Topic[] 
   if (/(what do you (offer|have|do|sell)|what('s| is) (on offer|available|there to do)|options|services|packages|menu|what kinds?|what types?|list of)/i.test(t)) add("list");
   if (/(how long|duration|how many (hours|minutes)|how much time)/i.test(t) && !/(ahead|before|in advance|cancel)/i.test(t)) add("duration");
 
-  if (/(what time|when)\D{0,20}\b(close|closing)\b/i.test(t) || /\bclosing time\b/i.test(t)) add("closeTime");
+  if (/\b(open|opening|close|closed|closing|hours)\b/i.test(t) && !namesDay && NAMED_DATE.test(t)) add("holidayHours");
+  else if (/(what time|when)\D{0,20}\b(close|closing)\b/i.test(t) || /\bclosing time\b/i.test(t)) add("closeTime");
   else if (/(what time|when)\D{0,20}\b(open|opening)\b/i.test(t) || /\bopening time\b/i.test(t)) add("closeTime");
   else if (/(open (right )?now|open yet|still open|you open\??$|r u open)/i.test(t) || (/\bopen\b/i.test(t) && !namesDay && !namesTime)) add("openNow");
   else if (/\b(open|close|closed|hours)\b/i.test(t) && namesDay) add("dayHours");
@@ -1179,6 +1190,7 @@ function chipsFor(ctx: CompanyContext, topic: Topic | undefined): string[] {
     case "openNow":
     case "closeTime":
     case "dayHours":
+    case "holidayHours":
     case "slot":
     case "book":
       push(CHIP.sunday, CHIP.price, CHIP.meet, has.offers ? CHIP.list : "");
@@ -1270,6 +1282,13 @@ function answerOne(ctx: CompanyContext, topic: Topic, q: string, prev: ChatState
     case "openNow": return openNowAnswer(ctx);
     case "closeTime": return closeTimeAnswer(ctx, q);
     case "dayHours": return dayHoursAnswer(ctx, q, prev);
+    case "holidayHours": {
+      const open = (weekFor(ctx) || []).find((d) => d && d.close > 0);
+      // A shop that publishes no hours at all has not published a week either, so say that instead.
+      if (!open && !hourLines(ctx.item).length) return { text: noFact(ctx, "opening hours"), state: { topic: "holidayHours" } };
+      const usual = open ? " Their published week runs " + spanLabel(open) + " on the days they list." : " " + nextStep(ctx);
+      return { text: "They publish a normal week, not holiday hours, so I can't say." + usual, state: { topic: "holidayHours" } };
+    }
     case "slot": return slotAnswer(ctx, q, prev);
     case "book": return bookAnswer(ctx, q);
     case "group": return groupAnswer(ctx, q);

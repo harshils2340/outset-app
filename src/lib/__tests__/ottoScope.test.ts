@@ -208,3 +208,34 @@ test("Otto never says a booking is confirmed, whichever word the guest puts in f
   assert.match(ask("are bookings confirmed instantly?"), /^Yes\./);
   assert.doesNotMatch(ask("can I book the sunset cruise?"), /can't look up a booking/);
 });
+
+/* ---------- a holiday is not this week ---------- */
+
+test("a holiday is not answered with today's hours", () => {
+  // No weekday in the question, so the hours chain fell through to "open right now": a guest asking about
+  // Christmas Day was told "Not yet. They open today at 9 AM".
+  for (const q of [
+    "are you open on Christmas?",
+    "are you open on Thanksgiving?",
+    "what time do you close on New Year's Eve?",
+    "are you open December 25?",
+    "are you open on the holidays?",
+    "are you open Good Friday?",
+  ]) {
+    const said = ask(q);
+    assert.match(said, /not holiday hours/, q);
+    assert.doesNotMatch(said, /today/, q);
+  }
+  // A weekday, right now, and a plain closing time all still read as themselves.
+  assert.match(ask("are you open Sunday?"), /Sunday/);
+  assert.match(ask("are you open right now?"), /today at/);
+  assert.match(ask("what time do you close?"), /They close at/);
+  // A holiday package is a thing they sell, not a question about hours.
+  assert.doesNotMatch(ask("do you have holiday packages?"), /holiday hours/);
+});
+
+test("a shop that publishes no hours at all says so, rather than naming a week it has not published", () => {
+  const noHours = listing("o-aliioceantours-com");
+  assert.match(ask("are you open right now?", noHours), /haven't published opening hours/, "the listing changed, so this case needs a new one");
+  assert.match(ask("are you open on Christmas?", noHours), /haven't published opening hours/);
+});
