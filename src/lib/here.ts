@@ -198,9 +198,12 @@ function rememberGuess(g: Guess): void {
   }
 }
 
-/** A GPS fix, stored so the next visit opens on it without waiting for another prompt. */
-export function rememberCoords(lat: number, lon: number): Guess {
-  const g: Guess = { kind: "point", place: { label: "Near me", sub: "Current location", lat, lon } };
+/**
+ * A GPS fix, stored so the next visit opens on it without waiting for another prompt. It is always a point,
+ * so it says so: typed as the nullable `Guess` it made every caller re-check a `null` that cannot happen.
+ */
+export function rememberCoords(lat: number, lon: number): NonNullable<Guess> {
+  const g: NonNullable<Guess> = { kind: "point", place: { label: "Near me", sub: "Current location", lat, lon } };
   rememberGuess(g);
   return g;
 }
@@ -233,7 +236,7 @@ export type Opening = { guess: Guess; chosen: boolean; recheck: boolean };
  * catalog on `metroId === "toronto"` dumps KW shops and downtown Toronto into one bucket with no distance.
  * Wait, then use the GPS pin. The clock city is only the fallback when the browser will not give a fix.
  */
-export function openingFeed(open: Opening): Guess | { kind: "wait" } {
+export function openingFeed(open: Opening): NonNullable<Guess> | { kind: "wait" } {
   if (open.guess?.kind === "point") {
     // A GPS pin or a town they typed. An IP city centroid is not a pin: wait for GPS.
     if (open.chosen || open.guess.place.label === "Near me") return open.guess;
