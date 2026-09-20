@@ -382,7 +382,7 @@ export function OpLogin({ claimId, claimToken, compact, onEnter, onBack }: { cla
       <div className="odlogin-side">
         <button type="button" className="odlogin-brand" onClick={onBack}>
           <Mark size={30} />
-          <b>Outset</b>
+          <b>GoDo</b>
           <span>for operators</span>
         </button>
         <h1>Your bookings, the way they come in.</h1>

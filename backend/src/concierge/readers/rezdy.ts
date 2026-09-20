@@ -226,44 +226,6 @@ type RezdySlot = {
 
 type RezdyAvailability = { availability?: Record<string, Record<string, Record<string, RezdySlot>>> | null; firstDate?: string | null };
 
-
-/**
- * A fare an ordinary adult cannot buy, including the ones spelled as an age rather than a word.
- *
- * `isConcessionFare` knows age *words* — child, youth, senior — and deliberately nothing else. Two vendors in
- * this catalog price by age *number* instead, and the first run of this reader shipped the exact bug the
- * shared rule exists to prevent: Channel Islands Outfitters sells "Adults 18+ $285", "Wise Ones 65+ $275" and
- * "Little Ones 5-17 $255", and the cheapest of those three became the headline on a sea-cave trip for two
- * adults. So two numeric shapes are added on top of the shared rule, both narrow on purpose:
- *
- *   - a hyphenated range that ends at seventeen or below ("5-17", "8-16"), which is a child or youth fare.
- *     Only a hyphen, never the word "to", because "Group from 1 to 2" is a party size and not an age.
- *   - a plus-form of fifty-five or over ("65+"), which is a senior fare. "18+" is an adult fare and must not
- *     be caught, which is the whole reason for the threshold.
- *
- * This belongs in `src/lib/fares.ts` beside the words, so every reader gets it; it is here because that file
- * belongs to another session this hour.
- */
-const AGE_RANGE = /\b(\d{1,2})\s*[-\u2013]\s*(\d{1,2})\b/;
-const AGE_PLUS = /\b(\d{2})\s*\+/;
-
-function isAgeGatedFare(label: string | null | undefined): boolean {
-  if (isConcessionFare(label)) return true;
-  if (!label) return false;
-  /**
-   * And the plural. `CONCESSION` is anchored on word boundaries, so it matches "Senior" and misses
-   * "Seniors" — which is how Georgian Spirit Cruises came back headlined "$51.95 · Seniors" against a $54.95
-   * adult fare on the first run of this reader. The label is retried with English's plural ending removed,
-   * the same trick `inferCategory` uses on a guest's sentence.
-   */
-  if (isConcessionFare(label.replace(/\b(\w+?)s\b/g, "$1"))) return true;
-  const range = AGE_RANGE.exec(label);
-  if (range && Number(range[2]) <= 17) return true;
-  const plus = AGE_PLUS.exec(label);
-  if (plus && Number(plus[1]) >= 55) return true;
-  return false;
-}
-
 /**
  * The name of a price option, without the money glued to the end of it.
  *
@@ -283,7 +245,9 @@ function rateLabel(raw: string | null | undefined): string {
  * Two things are kept out of the headline, both of which we have shipped once:
  *
  *   - concession fares, because "Youth (8-16 Years), $114" is the cheapest row on Mountain Skills Academy's
- *     sheet and an adult cannot buy it.
+ *     sheet and an adult cannot buy it. `isConcessionFare` reads the ages a shop writes as numbers as well
+ *     as the words, and knows that a party size is not an age; this file kept its own looser copy of that
+ *     rule for one night, and the copy read "2-8 Players" as a child fare.
  *   - every `priceOptionType: "GROUP"` option, because a group rate is conditional on the party size and this
  *     reader does not know the party. Two ways it goes wrong, and both are in the catalog: Black Hills Tour
  *     Company's "Group from 1 to 2 ($790.00 total)" is the price of the whole booking, which quoted as a
@@ -309,7 +273,7 @@ function priceOfSlot(slot: RezdySlot): { price: number | null; label: string | n
   }
   const rates = rows.map((r) => r.rate);
   const perHead = rows.filter((r) => !r.group);
-  const open = perHead.filter((r) => !isAgeGatedFare(r.rate.label));
+  const open = perHead.filter((r) => !isConcessionFare(r.rate.label));
   // A child fare is the headline only when nothing else is sold, as everywhere else in the concierge. A shop
   // that sells only by the group has no head price at all, and saying so is better than inventing one.
   const pool = open.length ? open : perHead;

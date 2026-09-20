@@ -499,7 +499,7 @@ export function WebConcierge({ seed, framed, embed, onClose }: { seed?: string; 
                 <Mark size={20} />
               </span>
               <span className="cg-who">
-                <b>Outset</b>
+                <b>GoDo</b>
                 <small>Agent</small>
               </span>
             </>
@@ -808,9 +808,9 @@ function Answered({
   /**
    * A real text thread asks one thing, waits, and only then answers — it does not text you a question and a
    * full price comparison in the same breath. So a turn that still has something worth asking (how many, how
-   * long, when) is just that question, texted the way the next one would be answered: tap a quick reply or
-   * type over it. The results this same search already found are not thrown away, they simply are not this
-   * message; the next turn, once nothing is left to ask, is the one that shows them.
+   * long, when) is just that question. Type the answer. The results this same search already found are not
+   * thrown away, they simply are not this message; the next turn, once nothing is left to ask, is the one
+   * that shows them.
    */
   if (narrow) {
     return (
@@ -836,9 +836,9 @@ function Answered({
   return (
     <div className="cg-answer">
       {answer.loosened ? <div className="cg-b cg-them cg-loosened">{answer.loosened}</div> : null}
-      {line ? <p className="cg-say">{line}</p> : null}
+      {line ? <div className="cg-b cg-them">{line}</div> : null}
       <Read answer={answer} />
-      {missed ? <p className="cg-note">Nothing at that exact time. These are the closest.</p> : null}
+      {missed && !/around /.test(line) ? <p className="cg-note">Nothing at that exact time. These are the closest.</p> : null}
 
       {shops.length ? (
         shops.map((shop) => (

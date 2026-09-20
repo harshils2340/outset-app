@@ -344,7 +344,7 @@ test("a shortlist with no live times is one sentence, not three paragraphs", () 
     counts: { quoted: 0, priced: 3, total: 3 },
     options: [OPT("A", 0, 19.99), OPT("B", 0, 21.99), OPT("C", 0, 25)],
   });
-  assert.equal(headline(answer, []), "3 axe throwing places near Waterloo.");
+  assert.equal(headline(answer, []), "I found 3 axe throwing places near Waterloo.");
 });
 
 test("one place is one place, not 1 places", () => {
@@ -354,25 +354,52 @@ test("one place is one place, not 1 places", () => {
     counts: { quoted: 0, priced: 1, total: 1 },
     options: [OPT("A", 0, 32)],
   });
-  assert.equal(headline(answer, []), "1 escape room place near Guelph.");
+  assert.equal(headline(answer, []), "I found 1 escape room place near Guelph.");
 });
 
-test("live times lead with the times, the shop and the price", () => {
-  const live = { ...OPT("Escapology Waterloo", 2), offsets: [-25, 45] };
-  const answer = ANSWER({ counts: { quoted: 1, priced: 0, total: 1 }, options: [live] });
-  const shown = spreadDepartures([live], 4);
-  assert.equal(headline(answer, shown), "2 times at Escapology Waterloo, from $99.51 + tax.");
+test("live times name the hour they asked for, and count shops not slots", () => {
+  // Frozen on the Saturday before the fixture Monday, so the day-word is Monday rather than "tomorrow".
+  const now = new Date(2026, 8, 19);
+  const a = { ...OPT("A", 1), departures: [DEP({ date: "2026-09-21", time: "14:00" })], offsets: [0] };
+  const b = { ...OPT("B", 1), departures: [DEP({ date: "2026-09-21", time: "14:00" })], offsets: [0] };
+  const answer = ANSWER({
+    intent: { categoryLabel: "Jet ski", city: "Toronto", region: "ON", party: 2, when: "any", atMinute: 14 * 60 },
+    counts: { quoted: 2, priced: 0, total: 2 },
+    options: [a, b],
+  });
+  assert.equal(headline(answer, spreadDepartures([a, b], 4), now), "I found 2 spots at 2pm Monday.");
 });
 
-test("a slot on the hour is not announced separately from the time on the row", () => {
-  const live = { ...OPT("Escapology Waterloo", 2), offsets: [0, 45] };
-  assert.equal(headline(ANSWER({ options: [live] }), spreadDepartures([live], 4)), "2 times at Escapology Waterloo, from $99.51 + tax.");
+test("one shop is a spot, and today is today rather than the weekday", () => {
+  const now = new Date(2026, 8, 20);
+  const live = { ...OPT("Escapology Waterloo", 2), departures: [DEP({ time: "14:00" }), DEP({ time: "14:30" })], offsets: [0, 30] };
+  const answer = ANSWER({
+    intent: { categoryLabel: "Escape room", city: "Waterloo", region: "ON", party: 2, when: "any", atMinute: 14 * 60 },
+    counts: { quoted: 1, priced: 0, total: 1 },
+    options: [live],
+  });
+  assert.equal(headline(answer, spreadDepartures([live], 4), now), "I found a spot at 2pm today.");
+});
+
+test("slots off the hour are around that time, not at it", () => {
+  const now = new Date(2026, 8, 20);
+  const live = { ...OPT("A", 2), offsets: [-90, 45] };
+  const answer = ANSWER({
+    intent: { categoryLabel: "Jet ski", city: "Toronto", region: "ON", party: 2, when: "any", atMinute: 14 * 60 },
+    options: [live],
+  });
+  assert.equal(headline(answer, spreadDepartures([live], 4), now), "I found a spot around 2pm today.");
 });
 
 test("times at more than one shop are counted by shop, not by card", () => {
+  const now = new Date(2026, 8, 20);
   const a = OPT("A", 2);
   const b = OPT("B", 2);
-  assert.match(headline(ANSWER({ options: [a, b] }), spreadDepartures([a, b], 4)), /^4 times across 2 places,/);
+  const answer = ANSWER({
+    intent: { categoryLabel: "Escape room", city: "Kitchener", region: "ON", party: 4, when: "any" },
+    options: [a, b],
+  });
+  assert.equal(headline(answer, spreadDepartures([a, b], 4), now), "I found 2 spots today.");
 });
 
 /* ---------- telling the truth about why there is no time ---------- */
@@ -473,7 +500,7 @@ test("a menu price is never set beside a live one without saying which is which"
     counts: { quoted: 0, priced: 2, total: 5 },
     options: [OPT("A", 0, 20), OPT("B", 0, 39.99)],
   });
-  assert.equal(headline(answer, []), "5 sunset sail places near Toronto.");
+  assert.equal(headline(answer, []), "I found 5 sunset sail places near Toronto.");
 });
 
 test("a live quote says nothing about their own sites, because it did not come from one", () => {

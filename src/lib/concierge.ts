@@ -623,40 +623,84 @@ export function stepLine(s: ConciergeStep): string | null {
   return said.length > STATUS_MAX ? said.slice(0, STATUS_MAX - 1).trimEnd() + "\u2026" : said;
 }
 
+const WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+
+/** "2pm", "2:30pm". The way somebody would say the hour they asked for, not a timestamp. */
+function clockFromMinute(min: number): string {
+  const h = ((Math.floor(min / 60) % 24) + 24) % 24;
+  const m = ((min % 60) + 60) % 60;
+  const ap = h >= 12 ? "pm" : "am";
+  const hh = h % 12 === 0 ? 12 : h % 12;
+  return m ? `${hh}:${String(m).padStart(2, "0")}${ap}` : `${hh}${ap}`;
+}
+
+function clockFromStamp(t: string): string | null {
+  const m = /^(\d{1,2}):([0-5]\d)/.exec(t || "");
+  return m ? clockFromMinute(Number(m[1]) * 60 + Number(m[2])) : null;
+}
+
+/**
+ * The day those slots fall on, said the way a person would: today, tomorrow, tonight, or Monday.
+ *
+ * Split from the vendor's own date key, never `new Date("YYYY-MM-DD")`, so west of Greenwich does not
+ * lose a day. `now` is injected so a test can freeze the wall clock.
+ */
+function dayWord(date: string, when: string | undefined, now: Date): string | null {
+  const day = dateFromKey(date);
+  if (!day) return null;
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const that = new Date(day.getFullYear(), day.getMonth(), day.getDate());
+  const diff = Math.round((that.getTime() - today.getTime()) / 86400000);
+  if (diff === 0) return when === "tonight" ? "tonight" : "today";
+  if (diff === 1) return "tomorrow";
+  return WEEKDAYS[that.getDay()] || null;
+}
+
 /**
  * The one line a helpful person would open with.
  *
- * What was found and where, in one sentence. Prices live on the cards. The hour they asked for is
- * the time on the row.
+ * Live times get a spoken sentence that names the hour they asked for: "I found 2 spots at 2pm Monday."
+ * Prices live on the cards. `now` is the wall clock the day-word is relative to.
  */
-export function headline(answer: ConciergeAnswer, shown: Pick[]): string {
+export function headline(answer: ConciergeAnswer, shown: Pick[], now: Date = new Date()): string {
   const what = (answer.intent?.categoryLabel || "").toLowerCase();
   const where = answer.intent?.city ? " near " + answer.intent.city : "";
 
   if (shown.length) {
-    const shops = new Set(shown.map((p) => p.option.name));
-    const times = plural(shown.length, "time");
-    const at = shops.size === 1 ? ` at ${shown[0].option.name}` : ` across ${plural(shops.size, "place")}`;
-    const price = livePrice(shown);
-    return `${times}${at}${price ? `, from ${money(price.amount)}${price.taxIncluded ? "" : " + tax"}` : ""}.`;
+    const n = new Set(shown.map((p) => p.option.name)).size;
+    const spots = n === 1 ? "a spot" : n + " spots";
+
+    let clock: string | null = null;
+    let around = false;
+    if (answer.intent?.atMinute != null) {
+      clock = clockFromMinute(answer.intent.atMinute);
+      around = !shown.some((p) => p.offset === 0);
+    } else {
+      const times = [...new Set(shown.map((p) => p.departure.time).filter(Boolean))];
+      if (times.length === 1) clock = clockFromStamp(times[0]);
+    }
+
+    const dates = [...new Set(shown.map((p) => p.departure.date))];
+    const askedWhen = answer.intent?.when;
+    const day =
+      dates.length === 1
+        ? dayWord(dates[0], askedWhen, now)
+        : askedWhen === "today" || askedWhen === "tonight" || askedWhen === "tomorrow"
+          ? askedWhen === "tonight" ? "tonight" : askedWhen
+          : null;
+
+    let when = "";
+    if (clock && day) when = ` ${around ? "around" : "at"} ${clock} ${day}`;
+    else if (clock) when = ` ${around ? "around" : "at"} ${clock}`;
+    else if (day === "today" || day === "tonight" || day === "tomorrow") when = ` ${day}`;
+    else if (day) when = ` on ${day}`;
+
+    return `I found ${spots}${when}.`;
   }
 
   const n = answer.counts.total;
   if (!n) return "";
-  return `${plural(n, what ? what + " place" : "place")}${where}.`;
-}
-
-/** The cheapest live ticket on show, and whether that figure already carries tax. */
-function livePrice(shown: Pick[]): { amount: number; taxIncluded: boolean } | null {
-  let best: { amount: number; taxIncluded: boolean } | null = null;
-  for (const p of shown) {
-    const a = p.departure.fromPrice ?? menuPrice(p.option);
-    if (a == null) continue;
-    // A menu figure is a published price rather than a live quote, so it is never claimed to include tax.
-    const taxIncluded = p.departure.fromPrice != null ? p.departure.taxIncluded : false;
-    if (!best || a < best.amount) best = { amount: a, taxIncluded };
-  }
-  return best;
+  return `I found ${plural(n, what ? what + " place" : "place")}${where}.`;
 }
 
 /**

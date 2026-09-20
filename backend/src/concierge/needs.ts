@@ -113,32 +113,20 @@ function durationNeed(intent: Intent): Need {
     return {
       id: "duration",
       question: "How long were you thinking?",
-      choices: [
-        { label: "30 minutes", add: "30 minute" },
-        { label: "An hour", add: "60 minute" },
-        { label: "90 minutes or more", add: "90 minute" },
-      ],
+      choices: [],
     };
   }
   if (c === "fishing" || c === "cruise" || c === "sailing") {
     return {
       id: "duration",
       question: "Half a day or a full one?",
-      choices: [
-        { label: "A couple of hours", add: "2 hour" },
-        { label: "Half day", add: "half day 4 hour" },
-        { label: "Full day", add: "full day 8 hour" },
-      ],
+      choices: [],
     };
   }
   return {
     id: "duration",
     question: "How long do you want the " + thing(intent) + " for?",
-    choices: [
-      { label: "An hour", add: "1 hour" },
-      { label: "Two hours", add: "2 hour" },
-      { label: "Half a day", add: "half day 4 hour" },
-    ],
+    choices: [],
   };
 }
 
@@ -159,30 +147,20 @@ function whenNeed(): Need {
   return {
     id: "when",
     question: "When are you thinking?",
-    choices: [
-      { label: "Tonight", add: "tonight" },
-      { label: "Tomorrow", add: "tomorrow" },
-      { label: "This weekend", add: "this weekend" },
-    ],
+    choices: [],
   };
 }
 
 /**
- * A real clock question, not a day of the week. Each choice's text carries an actual part-of-day word
- * (`plan.ts`'s own reader turns "morning", "afternoon" and "evening" into a clock minute), so tapping one does
- * not just narrow the day — it makes every live time on screen rank itself by distance from that hour, the
- * nearest one called out and the rest marked "+40m", "+1h20m". That live-ranking is the whole demonstration
- * that these are somebody's real calendars and not a list; asking about people first buried it two turns down.
+ * A real clock question, not a day of the week. No buttons: "2pm" and "this afternoon" are both real answers,
+ * and three part-of-day taps cannot stand in for the hour they actually type. The reader in `plan.ts` still
+ * turns whatever they send into a clock minute, and live times still rank against it.
  */
 function timeOfDayNeed(intent: Intent): Need {
   return {
     id: "when",
     question: "What time do you want to " + (intent.categoryId === "fishing" || intent.categoryId === "cruise" || intent.categoryId === "sailing" ? "go out" : "go") + "?",
-    choices: [
-      { label: "Morning", add: "this morning" },
-      { label: "Afternoon", add: "this afternoon" },
-      { label: "Evening", add: "this evening" },
-    ],
+    choices: [],
   };
 }
 
@@ -190,11 +168,7 @@ function budgetNeed(): Need {
   return {
     id: "budget",
     question: "Any budget in mind?",
-    choices: [
-      { label: "Keep it cheap", add: "under $40 a head" },
-      { label: "Mid-range", add: "under $80 a head" },
-      { label: "Doesn't matter", add: "any price" },
-    ],
+    choices: [],
   };
 }
 

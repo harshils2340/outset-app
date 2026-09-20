@@ -90,14 +90,27 @@ export type Resolved = {
 function cached(operatorId: string): { bookingUrl: string | null; gen: number } | null {
   const row = db.prepare("SELECT 1 FROM facts WHERE operator_id = ? AND fact_key = 'booking_resolved' LIMIT 1").get(operatorId);
   if (!row) return null;
-  const url = db.prepare("SELECT fact_value AS u FROM facts WHERE operator_id = ? AND fact_key = 'booking_url' LIMIT 1").get(operatorId) as
-    | { u: string }
-    | undefined;
   const gen = db.prepare("SELECT fact_value AS g FROM facts WHERE operator_id = ? AND fact_key = 'resolve_gen' LIMIT 1").get(operatorId) as
     | { g: string }
     | undefined;
   // A row written before this column existed is generation zero: older than anything `READER_GENERATION` is now.
-  return { bookingUrl: url?.u ?? null, gen: gen ? Number(gen.g) : 0 };
+  return { bookingUrl: bookingUrlOnFile(operatorId), gen: gen ? Number(gen.g) : 0 };
+}
+
+/**
+ * The booking link on file for this shop, whoever put it there.
+ *
+ * Not only a past resolve's: `booking_url` is mostly the crawl's fact, written by `enrich/run.ts`,
+ * `sitescrape.ts` and `widgets.ts` from a full pass over the shop's own site, and it is what `plan.ts`'s own
+ * query, `live.ts`, the listing page's slot times (`enrich/availability.ts`) and the sync that writes
+ * `live-index.json` all read. A live resolve is a seven-second look at up to twelve pages; it is not entitled
+ * to overrule a crawl that found something, and it is certainly not entitled to delete it.
+ */
+function bookingUrlOnFile(operatorId: string): string | null {
+  const url = db.prepare("SELECT fact_value AS u FROM facts WHERE operator_id = ? AND fact_key = 'booking_url' LIMIT 1").get(operatorId) as
+    | { u: string }
+    | undefined;
+  return url?.u ?? null;
 }
 
 function remember(operatorId: string, hit: VendorHit | null, bookingUrl: string | null, source: string): void {
@@ -110,14 +123,33 @@ function remember(operatorId: string, hit: VendorHit | null, bookingUrl: string 
   const ins = db.prepare(
     "INSERT INTO facts (id, operator_id, fact_key, fact_value, source_url, confidence) VALUES (?, ?, ?, ?, ?, ?)",
   );
-  // A re-resolve replaces the old row rather than piling a second one beside it, so the `LIMIT 1` reads above
-  // always see the latest attempt, not whichever of two rows the database happens to return first.
+  /**
+   * A re-resolve replaces the row it is about to write rather than piling a second one beside it, so the
+   * `LIMIT 1` reads above always see the latest attempt and not whichever of two rows the database returns
+   * first. Only the row it is about to write, though, which is the whole of this fix: deleting all four keys
+   * up front and then writing `booking_url` back only when a link was found meant a resolve that found
+   * nothing erased the link the shop already had.
+   *
+   * It is not a rare path. `plan.ts` re-resolves every shop whose route is `agent`, which is exactly a shop
+   * with a crawled booking link that no reader knows, and such a shop has no `booking_resolved` row, so the
+   * non-destructive branch keyed on a prior resolve never covered it. One slow site inside a seven-second
+   * budget, one WAF page, one nav that stopped saying "Book", and a link a full crawl had found was gone:
+   * gone from `plan.ts`'s own query, so the shop became a phone number; gone from the listing page's slot
+   * times; and gone from `live-index.json` at the next sync. The same is true of `booking_vendor`, which
+   * `widgets.ts` writes from the crawl and `enrich/vendors.ts` and `scripts/revendor.mts` read.
+   */
   const del = db.prepare("DELETE FROM facts WHERE operator_id = ? AND fact_key = ?");
-  for (const key of ["booking_resolved", "booking_vendor", "booking_url", "resolve_gen"]) del.run(operatorId, key);
+  for (const key of ["booking_resolved", "resolve_gen"]) del.run(operatorId, key);
   // The marker is written even for a miss, so a shop with no booking system is never fetched twice.
   ins.run(randomUUID(), operatorId, "booking_resolved", hit?.vendor ?? "none", source, "resolve");
-  if (hit && hit.vendor !== "unknown") ins.run(randomUUID(), operatorId, "booking_vendor", hit.vendor, source, "resolve");
-  if (bookingUrl) ins.run(randomUUID(), operatorId, "booking_url", bookingUrl, source, "resolve");
+  if (hit && hit.vendor !== "unknown") {
+    del.run(operatorId, "booking_vendor");
+    ins.run(randomUUID(), operatorId, "booking_vendor", hit.vendor, source, "resolve");
+  }
+  if (bookingUrl) {
+    del.run(operatorId, "booking_url");
+    ins.run(randomUUID(), operatorId, "booking_url", bookingUrl, source, "resolve");
+  }
   ins.run(randomUUID(), operatorId, "resolve_gen", String(READER_GENERATION), source, "resolve");
 }
 
@@ -157,14 +189,17 @@ export async function resolveBooking(
     }
     // A past miss, at an older reader generation than today's: worth one more fetch, below, before giving up.
   }
-  if (!op.website) return { ...base, vendor: "none", bookingUrl: prior?.bookingUrl ?? null, readable: false, outcome: "none" };
+  // Whatever is on file, not only what a past resolve wrote: a shop whose link came from the crawl has no
+  // prior resolve at all, and answering null for it would drop the route it already had from this answer.
+  const onFile = prior ? prior.bookingUrl : bookingUrlOnFile(op.id);
+  if (!op.website) return { ...base, vendor: "none", bookingUrl: onFile, readable: false, outcome: "none" };
 
   const until = Date.now() + (opts.budgetMs ?? 9000);
   let root: string;
   try {
     root = new URL(op.website).origin;
   } catch {
-    return { ...base, vendor: "none", bookingUrl: prior?.bookingUrl ?? null, readable: false, outcome: "unreachable" };
+    return { ...base, vendor: "none", bookingUrl: onFile, readable: false, outcome: "unreachable" };
   }
 
   let reached = false;
@@ -202,11 +237,11 @@ export async function resolveBooking(
    * fetch that timed out, or a page that no longer mentions a vendor, keeps the link it already had; only a
    * shop resolved for the first time is ever written down as having none.
    */
-  remember(op.id, null, prior?.bookingUrl ?? null, op.website);
+  remember(op.id, null, null, op.website);
   return {
     ...base,
     vendor: "none",
-    bookingUrl: prior?.bookingUrl ?? null,
+    bookingUrl: onFile,
     readable: false,
     outcome: reached ? "none" : "unreachable",
   };

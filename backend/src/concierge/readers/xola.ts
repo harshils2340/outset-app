@@ -168,44 +168,6 @@ function slotTime(key: string): string | null {
   return `${p.slice(0, 2)}:${p.slice(2)}`;
 }
 
-
-/**
- * A fare an ordinary adult cannot buy, including the ones spelled as an age rather than a word.
- *
- * `isConcessionFare` knows age *words* — child, youth, senior — and deliberately nothing else. Two vendors in
- * this catalog price by age *number* instead, and the first run of this reader shipped the exact bug the
- * shared rule exists to prevent: Channel Islands Outfitters sells "Adults 18+ $285", "Wise Ones 65+ $275" and
- * "Little Ones 5-17 $255", and the cheapest of those three became the headline on a sea-cave trip for two
- * adults. So two numeric shapes are added on top of the shared rule, both narrow on purpose:
- *
- *   - a hyphenated range that ends at seventeen or below ("5-17", "8-16"), which is a child or youth fare.
- *     Only a hyphen, never the word "to", because "Group from 1 to 2" is a party size and not an age.
- *   - a plus-form of fifty-five or over ("65+"), which is a senior fare. "18+" is an adult fare and must not
- *     be caught, which is the whole reason for the threshold.
- *
- * This belongs in `src/lib/fares.ts` beside the words, so every reader gets it; it is here because that file
- * belongs to another session this hour.
- */
-const AGE_RANGE = /\b(\d{1,2})\s*[-\u2013]\s*(\d{1,2})\b/;
-const AGE_PLUS = /\b(\d{2})\s*\+/;
-
-function isAgeGatedFare(label: string | null | undefined): boolean {
-  if (isConcessionFare(label)) return true;
-  if (!label) return false;
-  /**
-   * And the plural. `CONCESSION` is anchored on word boundaries, so it matches "Senior" and misses
-   * "Seniors" — which is how Georgian Spirit Cruises came back headlined "$51.95 · Seniors" against a $54.95
-   * adult fare on the first run of this reader. The label is retried with English's plural ending removed,
-   * the same trick `inferCategory` uses on a guest's sentence.
-   */
-  if (isConcessionFare(label.replace(/\b(\w+?)s\b/g, "$1"))) return true;
-  const range = AGE_RANGE.exec(label);
-  if (range && Number(range[2]) <= 17) return true;
-  const plus = AGE_PLUS.exec(label);
-  if (plus && Number(plus[1]) >= 55) return true;
-  return false;
-}
-
 /**
  * The tickets on one experience, and the cheapest one an ordinary adult could buy.
  *
@@ -215,8 +177,10 @@ function isAgeGatedFare(label: string | null | undefined): boolean {
  *     in. Quoting one as the price of a boat trip is the Peek "Insured Ticket(s), $2.60" bug.
  *   - `visibility` other than `public` is a rate the shop sells through an agent, not on this page.
  *   - concession fares stay out of the headline, because "Infant, $1.00" is the cheapest row on the Georgian
- *     Spirit sheet every single time and nobody arranging an outing can buy it. See `isAgeGatedFare` above
- *     for why the shared word list is not quite enough on its own.
+ *     Spirit sheet every single time and nobody arranging an outing can buy it. `isConcessionFare` knows the
+ *     age words, the plural of each, and the ages Xola shops write as numbers instead ("Little Ones 5-17"),
+ *     while leaving a party size ("2-8 Players") alone: this file kept its own looser copy of that rule for
+ *     one night, and the copy read every escape room's group tiers as children's tickets.
  *
  * `prices.price.min` is the pre-tax figure. Xola also publishes `priceWithTaxes` and `priceWithTaxesAndFees`
  * beside it — $54.95, $62.09 and $63.74 for the same adult ticket — which is a rare case of a vendor saying
@@ -248,7 +212,7 @@ function ticketsOf(exp: XolaExperience): { price: number | null; label: string |
     return { price: null, label: null, rates };
   }
 
-  const buyable = rates.filter((r) => !isAgeGatedFare(r.label));
+  const buyable = rates.filter((r) => !isConcessionFare(r.label));
   const pool = buyable.length ? buyable : rates;
   const cheapest = pool.length ? pool.reduce((a, b) => (a.price <= b.price ? a : b)) : null;
   // Only when the catalog said nothing at all; `experience.price` is the tile's from-price.

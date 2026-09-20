@@ -1,140 +1,124 @@
 import { strict as assert } from "node:assert";
-import test from "node:test";
+import test, { afterEach } from "node:test";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 /**
- * A shop resolved once, and resolved again as the readers get smarter.
+ * Finding a shop's booking system at the moment a guest asks, without losing the one we already had.
  *
- * adventurerooms.ca is the real case this guards: its `/booknow/` page was crawled before anything extracted
- * a Checkfront embed from it, so it sat forever as `agent` — a booking link we knew about but could not
- * read — even after `vendors.ts` learned to pull `adventureroomscanada.checkfront.com/reserve/` out of exactly
- * that page. `READER_GENERATION` is what lets a past miss get a second look; these tests are what stop a
- * second look from being allowed to make things worse than the first one did.
+ * `plan.ts` sends every shop whose route is `agent` back through here, and an `agent` shop is precisely one
+ * with a booking link a full crawl found and no reader knows. So the interesting case is not the shop with
+ * nothing on file, it is the shop with something on file and a site that will not answer today.
  */
 
 process.env.OUTSET_DB = join(mkdtempSync(join(tmpdir(), "outset-resolve-")), "catalog.db");
 const { db, migrate } = await import("../../db/client.ts");
+const { resolveBooking } = await import("../resolve.ts");
+
 migrate();
 db.prepare("INSERT OR IGNORE INTO categories (id, family, label, icon_key, service_style, search_query) VALUES (?,?,?,?,?,?)")
-  .run("escape", "land", "Escape room", "escape", "slots", "escape room");
-const { resolveBooking } = await import("../resolve.ts");
-const { READER_GENERATION } = await import("../readable.ts");
-
-const originalFetch = globalThis.fetch;
-let responses: Record<string, string | null> = {};
-globalThis.fetch = (async (url: string) => {
-  const body = responses[url];
-  if (body == null) return { ok: false, status: 404, headers: new Headers(), text: async () => "" } as Response;
-  return {
-    ok: true,
-    status: 200,
-    headers: new Headers({ "content-type": "text/html" }),
-    text: async () => body,
-  } as Response;
-}) as typeof fetch;
-test.after(() => {
-  globalThis.fetch = originalFetch;
-});
+  .run("escape", "land", "Escape rooms", "escape", "slots", "escape room");
 
 let n = 0;
-function op(website: string): { id: string; domain: string; website: string } {
+/** One operator, with whatever facts a crawl would already have written for it. */
+function shop(facts: Record<string, string>, website: string | null = "https://shop.example.com"): string {
   const id = "op-" + ++n;
-  const domain = "shop" + n + ".example.com";
   db.prepare(
-    `INSERT INTO operators (id, domain, name, lat, lon, city, region, country, category_id, icon_key, origin, review_count, rating, created_at, updated_at)
-     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-  ).run(id, domain, "Shop " + n, 43.4, -80.5, "Kitchener", "ON", "CA", "escape", "escape", "public_site", 10, 4.5, "now", "now");
-  return { id, domain, website };
+    `INSERT INTO operators (id, domain, name, website, lat, lon, city, region, country, category_id, icon_key, origin, created_at, updated_at)
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+  ).run(id, id + ".example.com", "Test Shop", website, 43.4, -80.5, "Waterloo", "ON", "CA", "escape", "escape", "public_site", "now", "now");
+  let f = 0;
+  for (const [key, value] of Object.entries(facts)) {
+    db.prepare("INSERT INTO facts (id, operator_id, fact_key, fact_value, confidence) VALUES (?,?,?,?,?)")
+      .run(`${id}-f${++f}`, id, key, value, "site");
+  }
+  return id;
 }
 
-test("a page with no vendor embed is remembered as having none", async () => {
-  const o = op("https://plain.example.com/");
-  responses = { "https://plain.example.com/": "<html>just a marketing page</html>" };
-  const r = await resolveBooking(o);
-  assert.equal(r.outcome, "none");
-  assert.equal(r.bookingUrl, null);
+const fact = (id: string, key: string): string | null => {
+  const row = db.prepare("SELECT fact_value AS v FROM facts WHERE operator_id = ? AND fact_key = ? LIMIT 1").get(id, key) as { v: string } | undefined;
+  return row?.v ?? null;
+};
+const factCount = (id: string, key: string): number =>
+  (db.prepare("SELECT COUNT(*) AS c FROM facts WHERE operator_id = ? AND fact_key = ?").get(id, key) as { c: number }).c;
 
-  // Asked again: cached, no second fetch needed (fetch would throw a 404 if it were tried).
-  responses = {};
-  const again = await resolveBooking(o);
-  assert.equal(again.outcome, "cached");
-  assert.equal(again.bookingUrl, null);
+const realFetch = globalThis.fetch;
+afterEach(() => {
+  globalThis.fetch = realFetch;
 });
 
-test("a readable result, once found, is never re-checked", async () => {
-  const o = op("https://readable.example.com/");
-  responses = {
-    "https://readable.example.com/": '<iframe src="https://someshop.checkfront.com/reserve/"></iframe>',
-  };
-  const first = await resolveBooking(o);
-  assert.equal(first.outcome, "found");
-  assert.equal(first.readable, true);
+/** A site that answers nothing at all, which is a timeout, a WAF page and a dead host alike. */
+function stubDeadSite(): void {
+  globalThis.fetch = (async () => {
+    throw new Error("timeout");
+  }) as typeof fetch;
+}
 
-  responses = {}; // a fetch here would 404; the cached path must not attempt one
-  const again = await resolveBooking(o);
-  assert.equal(again.outcome, "cached");
-  assert.equal(again.readable, true);
-  assert.equal(again.bookingUrl, first.bookingUrl);
+/** A site whose homepage embeds a vendor we can read. */
+function stubSite(html: string): void {
+  globalThis.fetch = (async () =>
+    new Response(html, { status: 200, headers: { "content-type": "text/html" } })) as typeof fetch;
+}
+
+test("a resolve that finds nothing keeps the booking link the crawl already found", async () => {
+  /**
+   * The bug. `remember` deleted all four of its keys up front and wrote `booking_url` back only when a link
+   * had been found, so one unreachable site erased a link that took a full crawl to find. It is read by
+   * `plan.ts`'s own query, by `live.ts`, by the listing page's slot times and by the sync that writes
+   * `live-index.json`, so the shop stopped being bookable anywhere at all and was cached that way.
+   */
+  const id = shop({ booking_url: "https://shop.example.com/booknow/", booking_vendor: "bookeo" });
+  stubDeadSite();
+  const out = await resolveBooking({ id, domain: id + ".example.com", website: "https://shop.example.com" });
+
+  assert.equal(fact(id, "booking_url"), "https://shop.example.com/booknow/", "the crawled link survives");
+  assert.equal(fact(id, "booking_vendor"), "bookeo", "and so does the crawled vendor");
+  assert.equal(out.bookingUrl, "https://shop.example.com/booknow/", "and the answer still carries it");
+  assert.equal(out.outcome, "unreachable");
+  // The miss is still written down, so the next guest does not pay for the same twelve fetches.
+  assert.equal(fact(id, "booking_resolved"), "none");
+  assert.equal(factCount(id, "booking_url"), 1, "and never piles a second row beside the first");
 });
 
-test("a past miss gets one more look once the readers are smarter, and keeps its link if that look fails", async () => {
-  const o = op("https://booknow.example.com/booknow/");
-  // First crawl: the homepage carries a link, but its own page is fetched under the wrong assumption
-  // (an older reader generation) and nothing on it is recognised yet.
-  responses = { "https://booknow.example.com/booknow/": "<html>book your escape room</html>" };
-  const first = await resolveBooking(o);
-  assert.equal(first.outcome, "none");
+test("a resolve that finds a link writes it once, replacing what was there", async () => {
+  const id = shop({ booking_url: "https://shop.example.com/booknow/" });
+  stubSite('<html><body><iframe src="https://outsetshop.checkfront.com/reserve/"></iframe></body></html>');
+  const out = await resolveBooking({ id, domain: id + ".example.com", website: "https://shop.example.com" });
 
-  // Manually roll this shop's stamped generation back, the way a real one that predates a reader upgrade would read.
-  db.prepare("UPDATE facts SET fact_value = ? WHERE operator_id = ? AND fact_key = 'resolve_gen'").run(
-    String(READER_GENERATION - 1),
-    o.id,
-  );
-
-  // The readers got smarter, but this fetch fails outright (the shop's site is down for a moment).
-  responses = {};
-  const retryFailed = await resolveBooking(o);
-  assert.equal(retryFailed.outcome, "unreachable");
-  assert.equal(retryFailed.bookingUrl, null, "there was nothing to lose here — the first crawl found no link at all");
-
-  db.prepare("UPDATE facts SET fact_value = ? WHERE operator_id = ? AND fact_key = 'resolve_gen'").run(
-    String(READER_GENERATION - 1),
-    o.id,
-  );
-  // Now the retry actually reaches a page and this time recognises the embed.
-  responses = {
-    "https://booknow.example.com/booknow/": '<iframe src="https://someshop.checkfront.com/reserve/"></iframe>',
-  };
-  const found = await resolveBooking(o);
-  assert.equal(found.outcome, "found");
-  assert.equal(found.readable, true);
+  assert.equal(out.vendor, "checkfront");
+  assert.match(out.bookingUrl ?? "", /checkfront/);
+  assert.equal(factCount(id, "booking_url"), 1, "one row, not two");
+  assert.match(fact(id, "booking_url") ?? "", /checkfront/);
+  assert.equal(out.readable, true);
 });
 
-test("a re-check that fails outright does not erase a booking link a past crawl already found", async () => {
-  const o = op("https://halfknown.example.com/");
-  // First crawl: a link is found, but to a vendor with no reader — the exact `agent` shape.
-  responses = { "https://halfknown.example.com/": '<a href="https://halfknown.example.com/checkout">Book</a>' };
-  const first = await resolveBooking(o);
-  assert.equal(first.outcome, "none", "a plain link with no recognised vendor is not a find");
+test("a shop already resolved to a readable link is never fetched again", async () => {
+  const id = shop({ booking_url: "https://fareharbor.com/embeds/book/someshop/", booking_resolved: "fareharbor", resolve_gen: "1" });
+  let calls = 0;
+  globalThis.fetch = (async () => {
+    calls++;
+    throw new Error("should not be called");
+  }) as typeof fetch;
+  const out = await resolveBooking({ id, domain: id + ".example.com", website: "https://shop.example.com" });
+  assert.equal(calls, 0);
+  assert.equal(out.outcome, "cached");
+  assert.equal(out.readable, true);
+});
 
-  // Simulate the shape resolve.ts actually stores for a found-but-unreadable link: an older generation, and a
-  // bookingUrl already on record, by writing the facts resolveBooking itself would have written for that case.
-  db.prepare("DELETE FROM facts WHERE operator_id = ? AND fact_key IN ('booking_resolved','booking_url','resolve_gen')").run(o.id);
-  db.prepare("INSERT INTO facts (id, operator_id, fact_key, fact_value, confidence) VALUES (?,?,?,?,?)").run(
-    "f-a", o.id, "booking_resolved", "handbuilt", "resolve",
-  );
-  db.prepare("INSERT INTO facts (id, operator_id, fact_key, fact_value, confidence) VALUES (?,?,?,?,?)").run(
-    "f-b", o.id, "booking_url", "https://halfknown.example.com/their-own-booking-page", "resolve",
-  );
-  db.prepare("INSERT INTO facts (id, operator_id, fact_key, fact_value, confidence) VALUES (?,?,?,?,?)").run(
-    "f-c", o.id, "resolve_gen", String(READER_GENERATION - 1), "resolve",
-  );
-
-  // The re-check this generation bump earns them times out / errors on every path tried.
-  responses = {};
-  const retried = await resolveBooking(o);
-  assert.equal(retried.bookingUrl, "https://halfknown.example.com/their-own-booking-page", "a failed re-check must not downgrade a known link to none");
-  assert.equal(retried.readable, false);
+test("a past miss is looked at again once the readers have gotten wider", async () => {
+  // Resolved at generation 1 to a link no reader knew. The rules have moved on since, so it earns one fetch.
+  const id = shop({ booking_url: "https://shop.example.com/booknow/", booking_resolved: "none", resolve_gen: "1" });
+  let calls = 0;
+  globalThis.fetch = (async () => {
+    calls++;
+    return new Response('<html><iframe src="https://outsetshop.checkfront.com/reserve/"></iframe></html>', {
+      status: 200,
+      headers: { "content-type": "text/html" },
+    });
+  }) as typeof fetch;
+  const out = await resolveBooking({ id, domain: id + ".example.com", website: "https://shop.example.com" });
+  assert.ok(calls > 0, "it fetched");
+  assert.equal(out.vendor, "checkfront");
+  assert.match(fact(id, "booking_url") ?? "", /checkfront/);
 });

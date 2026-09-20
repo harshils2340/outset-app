@@ -310,7 +310,7 @@ export function OperatorView({ compact = false }: { compact?: boolean }) {
         <div className="odlogin-side">
           <button type="button" className="odlogin-brand" onClick={back}>
             <Mark size={30} />
-            <b>Outset</b>
+            <b>GoDo</b>
             <span>for operators</span>
           </button>
           <h1>Opening {p.title}</h1>

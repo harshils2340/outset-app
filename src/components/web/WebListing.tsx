@@ -1345,9 +1345,9 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
             <span className="alround"><Markup html={I.chevLeft} /></span>
             <span>Back to results</span>
         </button>
-          <a className="allogo" href="#" onClick={(e) => { e.preventDefault(); onClose(); }} aria-label="Outset home">
+          <a className="allogo" href="#" onClick={(e) => { e.preventDefault(); onClose(); }} aria-label="GoDo home">
             <Mark size={30} />
-            <b>Outset</b>
+            <b>GoDo</b>
           </a>
         </div>
       </header>

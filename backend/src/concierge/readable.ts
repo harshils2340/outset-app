@@ -36,6 +36,12 @@ export type ReaderVendor =
  *
  * Each pattern is the union of the shapes that vendor's own `*Ref` parser accepts, because a link the parser
  * can read and the router will not send it is a shop we could have quoted and did not.
+ *
+ * A vendor belongs here only once `readers/<vendor>.ts` is committed: it was added to this list, to
+ * `SQL_LIKES`, to `vendors.ts` and to `plan.ts`'s switch once before the reader file itself had reached the
+ * repository, and a dangling `import` is not a missing feature — `plan.ts` would not load at all, so every
+ * concierge question and both of its routes were dead on `main` rather than merely golf being unread.
+ * `readerRoutes` below is now a test of its own, walking every relative import against the disk.
  */
 const RULES: [ReaderVendor, RegExp][] = [
   ["square", /book\.squareup\.com|squareup\.com\/appointments|square\.site\/(?:appointments\/)?book\//i],
