@@ -139,6 +139,25 @@ export function saveTruth(id: string, t: AvailTruth): void {
 }
 
 /**
+ * Where our own booking index sits, for the purpose of a recording.
+ *
+ * `availability.ts` builds that URL out of `SITE_URL` when it is imported, which is right on a real host: the
+ * index is served beside the site. It is wrong in a recording. A rehearsal points `SITE_URL` at its own
+ * localhost, as it is told to, and the reader then asked for a key no case holds: the index answered 404, every
+ * shop lost its booking link, and 69 of the corpus's assertions failed on a machine where nothing at all was
+ * broken. All 39 recorded cases key it here, so this is the form both ends agree on, and a case recorded on a
+ * laptop with `SITE_URL` set now replays the same as one recorded without it.
+ */
+export const LIVE_INDEX_KEY_URL = "https://onoutset.com/live-index.json";
+
+const asRecorded = (url: string): string => (/\/live-index\.json(?:[?#]|$)/.test(url) ? LIVE_INDEX_KEY_URL : url);
+
+/** `normalizeKey`, with the one URL whose host is an environment detail rather than part of the recording. */
+export function replayKey(method: string, url: string, body: string | null): string {
+  return normalizeKey(method, asRecorded(url), body);
+}
+
+/**
  * Answer one case's requests from its recording, with the reader running exactly as it did live.
  *
  * Shares `normalizeKey` with the hand made fixtures under src/enrich/__tests__/fixtures so there is one rule
@@ -168,7 +187,7 @@ export async function withCase<T>(exchanges: Exchange[], fn: () => Promise<T>): 
     const url = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
     const method = (init?.method || "GET").toUpperCase();
     const body = typeof init?.body === "string" ? init.body : null;
-    const key = normalizeKey(method, url, body);
+    const key = replayKey(method, url, body);
     asked.push(key);
     const q = queues.get(key);
     if (!q || !q.length) return new Response("{}", { status: 404 });

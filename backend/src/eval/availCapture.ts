@@ -1,9 +1,9 @@
 import { db } from "../db/client.ts";
 import { getAvailability, vendorFor } from "../enrich/availability.ts";
-import { normalizeKey, type Exchange } from "../enrich/__tests__/fixtures/replay.ts";
+import { type Exchange } from "../enrich/__tests__/fixtures/replay.ts";
 import { guardLaptopJob, isLaptop } from "../scrape/guard.ts";
 import { measureIdle, MIN_IDLE } from "../scrape/cpu.ts";
-import { caseId, saveCase, type AvailCase, type CaseVendor } from "./availCases.ts";
+import { caseId, LIVE_INDEX_KEY_URL, replayKey, saveCase, type AvailCase, type CaseVendor } from "./availCases.ts";
 
 /**
  * Record real booking systems answering, so the reader can be replayed against them for ever afterwards.
@@ -91,7 +91,7 @@ async function recordOne(operatorId: string, from: string, days: number): Promis
       const v = res.headers.get(k);
       if (v) headers.push([k, v]);
     }
-    exchanges.push({ key: normalizeKey(method, url, reqBody), url: res.url || url, status: res.status, headers, body });
+    exchanges.push({ key: replayKey(method, url, reqBody), url: res.url || url, status: res.status, headers, body });
     return res;
   }) as typeof fetch;
   try {
@@ -132,8 +132,9 @@ export async function capture(opts: CaptureOpts): Promise<CaptureRow[]> {
          * rather than one index shared by all of them, so a single case still replays on its own.
          */
         exchanges.unshift({
-          key: normalizeKey("GET", (process.env.SITE_URL || "https://onoutset.com/").replace(/\/?$/, "/") + "live-index.json", null),
-          url: (process.env.SITE_URL || "https://onoutset.com/").replace(/\/?$/, "/") + "live-index.json",
+          // Keyed where every case keys it, not at whatever SITE_URL this machine happens to carry.
+          key: replayKey("GET", LIVE_INDEX_KEY_URL, null),
+          url: LIVE_INDEX_KEY_URL,
           status: 200,
           headers: [["content-type", "application/json"]],
           body: JSON.stringify({ urls: { [synthetic]: cand.bookingUrl } }),

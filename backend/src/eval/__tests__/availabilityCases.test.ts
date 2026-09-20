@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { getAvailability } from "../../enrich/availability.ts";
 import { cappedDates, crossRead, runChecks } from "../availChecks.ts";
-import { loadCases, loadExchanges, loadTruth, withCase } from "../availCases.ts";
+import { loadCases, loadExchanges, loadTruth, replayKey, withCase, LIVE_INDEX_KEY_URL } from "../availCases.ts";
 
 /**
  * The availability reader, run against every real booking system in the corpus.
@@ -35,6 +35,21 @@ test("the corpus exists", () => {
     return;
   }
   assert.ok(cases.length > 0);
+});
+
+test("a recording replays the same whatever host this machine calls itself", () => {
+  /*
+   * `availability.ts` builds the booking index's URL out of SITE_URL when it is imported, which is right on a
+   * real host and wrong in a recording. The rehearsal sets SITE_URL to its own localhost, as backend/AGENTS.md
+   * says to, and every case then asked for a key none of them holds: the index answered 404, every shop lost
+   * its booking link, and 69 of the assertions below failed on a machine where nothing was broken. It read as
+   * the reader having regressed, which is the one thing a corpus must never say by accident.
+   */
+  for (const url of ["https://onoutset.com/live-index.json", "http://localhost:5199/live-index.json", "https://staging.onoutset.com/live-index.json"]) {
+    assert.equal(replayKey("GET", url, null), replayKey("GET", LIVE_INDEX_KEY_URL, null), url);
+  }
+  // Only our own index. Somebody else's server keeps its host, or two vendors would answer for each other.
+  assert.notEqual(replayKey("GET", "https://fareharbor.com/api/v1/x/", null), replayKey("GET", LIVE_INDEX_KEY_URL, null));
 });
 
 for (const kase of cases) {
