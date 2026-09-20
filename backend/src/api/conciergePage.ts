@@ -109,6 +109,28 @@ function offer(o, d){
   log.appendChild(b); log.scrollTop=log.scrollHeight;
 }
 
+function offerService(o){
+  const s = o.services.filter(x=>x.price!=null)[0];
+  const b=document.createElement('button'); b.className='opt'; b.type='button';
+  b.innerHTML = '<b>'+o.name+'</b><small>'+s.name+(o.city? ' &middot; '+o.city:'')+
+    (o.rating? ' &middot; '+o.rating+'&#9733;':'')+'</small>'+
+    '<div class="row"><span class="price">$'+Number(s.price).toFixed(2)+
+    '<small style="font-weight:400;color:var(--muted)"> '+(s.unit==='each'?'each':'per person')+'</small></span>'+
+    '<span style="color:var(--muted);font-weight:600;font-size:13px">'+
+    (o.route==='phone'?'we would call them':'check their times')+'</span></div>';
+  b.onclick = () => {
+    bubble('Get me a time at '+o.name, 'me');
+    const t=typing();
+    setTimeout(()=>{ t.remove();
+      step('<span class="k">route</span> <span class="v">'+(o.route==='phone'?'no booking system: the phone agent calls '+o.phone:'opening their booking page')+'</span>');
+      bubble(o.route==='phone'
+        ? "They don't book online, so I'd ring "+(o.phone||'them')+" and confirm. That's the other half of the system."
+        : "Opening "+o.name+"'s booking page to pick a time. Their system, not ours.", 'them');
+    }, 1100);
+  };
+  log.appendChild(b); log.scrollTop=log.scrollHeight;
+}
+
 function confirmBooking(o, d){
   bubble('Book '+o.name+', '+d.time, 'me');
   const t=typing();
@@ -145,12 +167,21 @@ async function ask(text){
       const via = o.route==='feed' ? 'read their booking system' : o.route==='agent' ? 'would need the browser agent' : 'would need a phone call';
       step('<span class="k">ask</span> <span class="biz">'+o.name+'</span> <span class="d">'+via+'</span>');
     }
-    step('<span class="k">done</span> <span class="v">'+data.counts.quoted+' answered with live times in '+data.ms+'ms</span>');
+    step('<span class="k">done</span> <span class="v">'+data.counts.quoted+' with live times, '+(data.counts.priced||0)+' priced from their own site &middot; '+data.ms+'ms</span>');
 
     const quoted = data.options.filter(o=>o.departures.length);
+    const priced = data.options.filter(o=>!o.departures.length && o.services.some(s=>s.price!=null));
     if(!quoted.length){
-      bubble("I found "+data.counts.total+" places but none of them publish live times. I'd have to call them — want me to?", 'them');
-      heroA.textContent='No live times'; heroB.textContent='These shops take bookings by phone.';
+      if(priced.length){
+        bubble("None of these publish live times, but here's what they charge. I'd confirm the slot with them directly:", 'them');
+        let m=0;
+        for(const o of priced){ if(m++>=4) break; offerService(o); }
+        heroA.textContent=priced.length+' priced from their own sites';
+        heroB.textContent='Read off their pages by the crawl; the time needs a call or their booking page.';
+      } else {
+        bubble("I found "+data.counts.total+" places but nothing published — no times, no prices. Those are the ones we'd have to phone.", 'them');
+        heroA.textContent='Nothing published'; heroB.textContent='These shops take bookings by phone only.';
+      }
       return;
     }
     const widened = quoted.some(o=>o.widened);

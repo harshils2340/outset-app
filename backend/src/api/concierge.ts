@@ -25,12 +25,14 @@ concierge.post("/concierge/ask", async (c) => {
   // Only the ones we can actually quote a time for lead; the rest are still returned, with the route that
   // would fulfil them, because "we would have to phone them" is a real answer and worth showing.
   const withTimes = options.filter((o) => o.departures.length);
-  const rest = options.filter((o) => !o.departures.length);
+  // Then the ones we can at least price from their own published menu, then the rest.
+  const withPrices = options.filter((o) => !o.departures.length && o.services.some((s) => s.price != null));
+  const rest = options.filter((o) => !o.departures.length && !o.services.some((s) => s.price != null));
   return c.json({
     intent,
     ms: Date.now() - t0,
-    options: [...withTimes, ...rest].slice(0, 6),
-    counts: { quoted: withTimes.length, total: options.length },
+    options: [...withTimes, ...withPrices, ...rest].slice(0, 6),
+    counts: { quoted: withTimes.length, priced: withPrices.length, total: options.length },
   });
 });
 
