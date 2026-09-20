@@ -1136,11 +1136,19 @@ export function WebHome({ onOpenApp, onOperators, onAsk, asking = false, onClose
   // Browse shows places a guest can act on, and a card is mostly its photo: a grid of scene illustrations
   // reads as a broken page however good the listing behind it is. So browse needs a real photo, not just
   // something to act on, and a listing waits here until the crawl finds one. Searching the business by name
-  // still finds it (that path returns `found.results` untouched) and its own page still opens, which the
-  // claim emails depend on.
+  // still finds it (the What menu lists businesses from `found` itself) and its own page still opens, which
+  // the claim emails depend on.
+  //
+  // A cover that will not load is dropped here rather than in the grid that draws it, or the page counts one
+  // number and shows another: "Escape rooms in Toronto · 22" over 18 cards, with no way to reach the other
+  // four, because every list still held them and only `Grid` and `Rail` knew they were dead. Roughly one
+  // cover in twelve no longer answers (see lib/deadCovers.ts), so this is an ordinary Saturday, not an
+  // outage. Searching a business by name still finds it: the What menu's Businesses rows read `found`
+  // directly, so the shop is one keystroke and one click from its own page either way.
+  const deadSet = useDeadCovers();
   const pool = useMemo(() => {
-    if (found) return found.results;
-    let base = getCatalog().filter((u) => !!u.cover && chipOk(u));
+    if (found) return withPhotos(found.results, deadSet);
+    let base = withPhotos(getCatalog().filter((u) => !!u.cover && chipOk(u)), deadSet);
     if (typedMetro) {
       base = base.filter((u) => u.metroId === typedMetro.metro.id);
     } else if (near) {
@@ -1151,7 +1159,8 @@ export function WebHome({ onOpenApp, onOperators, onAsk, asking = false, onClose
       base = base.filter((u) => u.metroId === state.metroId);
     }
     return base;
-  }, [found, state.metroId, typedMetro, state.catalogVersion, near, kindChip]);
+    // `deadSet` is one module-level Set that is only ever added to, so its size is what changes, not its identity.
+  }, [found, state.metroId, typedMetro, state.catalogVersion, near, kindChip, deadSet, deadSet.size]);
 
   // A picked point: the rows show only what is truly near; the ring between near and a day trip is one row of its own.
   const nearPoint = !!near && !near.region;
