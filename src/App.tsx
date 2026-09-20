@@ -109,13 +109,17 @@ export function App() {
       </Suspense>
     );
   }
-  const { state, closeSheet, openOperator, reqTarget, openRequest, goto } = useApp();
+  const { state, closeSheet, openOperator, reqTarget, openRequest, goto, openAsk, closeAsk } = useApp();
   /**
    * The concierge. An overlay rather than a screen: the guest is mid-thought when they ask, and a thought that
    * ends in a business should leave them on that business's page with the site still behind them. `null` is
    * closed; a string is open, and a non-empty one is asked the moment it opens.
+   *
+   * It lives in the provider, not here, because a listing page opens it too, and this file is the only place
+   * that renders it. Held in both, the listing's `openAsk` set a string nothing read and its button did
+   * nothing at all.
    */
-  const [asking, setAsking] = useState<string | null>(ASKED_FOR);
+  const asking = state.asking;
   /**
    * Whether the phone frame was entered by turning the agent on, so turning it off puts the site back.
    *
@@ -137,7 +141,7 @@ export function App() {
   useEffect(() => {
     const on = () => {
       const seed = ASKED_FOR();
-      if (seed != null) setAsking(seed);
+      if (seed != null) openAsk(seed);
       setSafeDemo(SAFE_DEMO());
       if (WALLET_HASH()) {
         setWeb(false);
@@ -146,7 +150,7 @@ export function App() {
     };
     window.addEventListener("hashchange", on);
     return () => window.removeEventListener("hashchange", on);
-  }, [goto]);
+  }, [goto, openAsk]);
   // Inside the dashboard's live preview frame (?preview=1): read-only, re-renders on every owner edit.
   usePreviewMode();
   // 1024px itself is the desktop site's own floor, not the phone frame's: a window sized to exactly that width
@@ -163,18 +167,26 @@ export function App() {
    * At phone width there is no site to come back to and `web` is already false, so the same control simply
    * opens and closes the agent. That is the point of having one: it means the same thing everywhere.
    */
-  const toggleAsk = (on: boolean, seed = "") => {
+  const toggleAsk = (on: boolean, seed = "") => (on ? openAsk(seed) : closeAsk());
+  /**
+   * The frame follows the agent, whoever opened it. The home's switch is not the only way in: a listing page
+   * has an Ask button too, and a screen that opens the agent should not have to know about the phone frame to
+   * get the same behaviour. A load that arrives on `#ask` is already open on the first render, so the ref
+   * starts where the state does and this leaves the site alone.
+   */
+  const wasAsking = useRef(asking != null);
+  useEffect(() => {
+    const on = asking != null;
+    if (on === wasAsking.current) return;
+    wasAsking.current = on;
     if (on) {
       cameFromWeb.current = web;
-      closeSheet();
       setWeb(false);
-      setAsking(seed);
       return;
     }
-    setAsking(null);
     if (cameFromWeb.current) setWeb(true);
     cameFromWeb.current = false;
-  };
+  }, [asking, web]);
 
   const openApp = () => {
     closeSheet();
