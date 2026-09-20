@@ -2267,9 +2267,66 @@ type-check clean.
 - The earlier runs' calls stand: the Peek call budget, the 6 rows publishing a bare `https://fareharbor.com/`,
   anything needing a real Stripe key, and no workflow runs `npm test`.
 
+## 20 September 2026, thirty-seventh run (06:05 to 07:15 UTC)
+
+**Checked, and why.** The name a guest reads: the business name on all 59,125 shipped listings and the row
+name on all 141,717 shipped options, services and add-ons. It is the biggest text on a card, the hero, the
+page title, the landing pages, the confirmation and Otto's answers, it is what a guest picks in the booking
+box, and neither `cleanTitle` nor the sweep behind it had a test of any kind. Everything tonight's list names
+was already down as verified with nothing since touching it. Also finished the concierge's hosted-page route,
+the one fulfilment route the thirty-sixth run left unread. The rehearsal was run, because these changes reach
+the guest listing and its menu: 53 of 53, green.
+
+**Found and fixed.**
+
+- **Fifty published business names were wrong** (`bf2392d78`). `cleanTitle` was not idempotent: fed its own
+  published answers it changed 50 of them, which is the sync saying it had not finished. 15 ended on a
+  preposition ("Balloon Decor by", "Rock Climb, And", "Learn to"), because the rule that drops a dangling word
+  ran before the 70 character trim and trimming at a word boundary makes a dangling word of its own. 12
+  carried the shop's phone number ("Beverly Hills Day Spa (850) 714-4459"), one of them a licence number and
+  "By appointment only" too. 7 quoted a price we do not otherwise stand behind and which goes stale by itself.
+  15 ended in a listing site's own ellipsis and 4 began with a character that prints as nothing.
+- **262 menu rows offered something the page had and the service did not** (`0e43f7c76`). 67 lead or trail a
+  nav arrow ("< Exhibitions", "Program Punch Card Flyer>>"), which had to be told from the arrow that means
+  less than ("(<17)", "(> 6 Hours)"). 8 carry the shop's phone number. 19 add-ons end in a price list's dot
+  leaders. 18 begin with a zero width space and 9 with a Font Awesome codepoint out of the private use area,
+  which draws as an empty box on anyone else's machine. Add-ons went through none of this: `bookableMenu` read
+  options and services only, and an add-on is picked in the same booking box. This one is read at load time,
+  so it reaches guests without waiting for a sync.
+- **The concierge had never heard of `xola.app`** (`60f66a0ee`). Two vendor tables ship, and swept over all
+  1,664 booking links in `public/live-index.json` they disagreed on 28. 27 Xola links live on `xola.app`, which
+  the concierge read as no vendor at all, and its seller pattern matched none of the real forms either. A
+  FareHarbor waiver link still read as a shop called "waivers" here, the bug the other reader was fixed for
+  yesterday. `checkfront.site` was unknown and a shop on `.resova.us` was sent to a `.resova.com` page that is
+  not theirs. The first rule whose name appeared anywhere won outright, so a footer link to FareHarbor's
+  privacy page left a Peek shop with no feed and no hosted page. The two readers agree on all 1,664 now.
+
+**Swept and clean.** Every shipped title against `catalog.json`, `catalog-lite.json` and the detail file that
+opens from the card: all 59,125 agree, so no card says one thing and its page another. Titles carry no
+private-use glyph, no markup and no HTML entity. The 62 names holding a domain and the 20 holding an "@" are
+the shops' own branding and are left alone.
+
+**Green after the fixes.** 53 of 53 rehearsal steps against a local Postgres with TLS and the Chromium on
+disk, 361 backend tests (8 new) and 481 app tests (5 new), both projects type-check clean.
+
+**Needs Harshil.**
+
+- **The name fix reaches guests only at the next sync.** `cleanTitle` runs in the sync, so the 50 names stay
+  wrong in `public/o` and `catalog.json` until one runs. The menu row fix is read at load time and is already
+  live. `backend/scripts/purge-bad-names.mts` exists and was not run from here.
+- **12 names are still not names**, and no rule can safely say so: "You are being redirected...", "SITE1212",
+  "Home of Key West's famous sandbar trip", "bocaratonobserver.com". They need a legal name on file or a hand.
+- **12 listings carry an emoji in the name** ("🏨 Zip Line Adventure over Tampa Bay" is a marketplace tile's
+  icon; "Topwater Charters 🐟" is plausibly the shop's own). Left alone, because telling those apart is a call.
+- The earlier runs' calls stand: Peek's 257 links and no feed, the 6 rows publishing a bare
+  `https://fareharbor.com/`, anything needing a real Stripe key, and no workflow runs `npm test`.
+
 ## Coverage
 
-**Verified so far.** Booking validation and odd input on every route that takes it. The money split,
+**Verified so far.** The name a guest reads: the business name on all 59,125 shipped listings, against the
+card, the page and the lite record alike, and the row name on all 141,717 shipped options, services and
+add-ons. The concierge's vendor table against the catalog's own, over all 1,664 shipped booking links.
+Booking validation and odd input on every route that takes it. The money split,
 pay-on-site pricing, the service fee tiers. Double booking past capacity, and party size against a time's
 capacity. Payout scheduling, cycles and the payouts tiles. The Stripe Connect button. The booking and decision
 emails. The rehearsal itself, which runs both sides' unit tests and now refuses to run against a server it did
@@ -2601,8 +2658,11 @@ names should reach the shortlist or the quote at all: it is read and then used f
 own minimum and maximum party sizes per rate are read and drawn by no surface. Whether the comparison line
 should put a CAD price and a USD one in the same range, which it does. Whether `/go` should be reachable by a
 search engine, and whether a demo that charges nothing should say so before the virtual-card step rather than
-after. The three fulfilment routes other than the feed: the hosted page rebuilt from an account id, the browser
-agent on a hand-built form, and the phone, none of which has been driven. Peek, which is 257 links and the next
+after. Two of the three fulfilment routes other than the feed: the browser agent on a hand-built form, and the
+phone, neither of which has been driven. The hosted page's account id is now right on every shipped link, but
+the page it builds has still never been opened. Whether the 12 shipped names that are not names at all ("You
+are being redirected...", "SITE1212", "bocaratonobserver.com") should fall back to something, and whether the
+12 carrying an emoji are branding or a marketplace's tile icon. Peek, which is 257 links and the next
 feed worth reading. Any live vendor against its real server rather than a stub. Whether a sentence naming two
 regions ("ontario california") should take the first one it recognises, which it does. Whether a budget read
 out of "under 18s" should filter prices, which it does. The outreach list
