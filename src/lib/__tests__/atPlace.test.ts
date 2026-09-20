@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import type { Place } from "../places";
 import type { Unclaimed } from "../../data/types";
-import { NEAR_RADIUS_KM, atPlace, kmToPlace } from "../../components/explore/feed";
+import { NEAR_RADIUS_KM, atPlace, awayLine, kmToPlace } from "../../components/explore/feed";
 
 /**
  * Whether a listing is at the place the guest picked.
@@ -63,4 +63,18 @@ test("a listing with no pin at all is out of a picked point, and never throws", 
   assert.equal(atPlace(pinless, TORONTO), false);
   assert.equal(kmToPlace(pinless, TORONTO), Infinity);
   assert.equal(atPlace(pinless, region("FL")), true, "but a picked state reads its area, so it is still in Florida");
+});
+
+test("a GPS pin shows how far the shop is, not the metro the catalog filed it under", () => {
+  // Gentle Arts Dojo sits in Waterloo and ships as "Toronto, ON" because there is no KW metro.
+  const waterloo = point(43.4643, -80.5204);
+  const dojo = op({ title: "Gentle Arts Dojo", area: "Toronto, ON", lat: 43.4633, lon: -80.5236 });
+  const line = awayLine(dojo, waterloo);
+  assert.ok(line);
+  assert.equal(/toronto/i.test(line), false, "the metro dump is not the town");
+  assert.match(line, /away$/);
+  assert.ok(kmToPlace(dojo, waterloo) < 1);
+  assert.equal(awayLine(dojo, region("ON")), null, "a whole province has no distance");
+  const chain = awayLine(TRAPPED, TORONTO);
+  assert.ok(chain && chain.startsWith("2273 Dundas Street West"), "a chain venue can still name its street");
 });

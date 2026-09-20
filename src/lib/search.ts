@@ -939,7 +939,10 @@ export function searchSuggest(pool: Unclaimed[], q: string, scope?: SearchScope,
   const scored = sortScored(rank(pool, q, scope));
   const cat = scope?.cat;
   const narrow = !!cat && cat !== "all";
-  const inTab = narrow ? scored.filter((x) => inCat(x.e.u, cat)) : scored;
+  // A named kind is a search, not a browse. Wellness All plus "escape rooms" used to return 0 because the
+  // tab hid indoor listings, then offered "22 in other categories" as the way out. The guest already said
+  // the kind. The tab is for when What is empty.
+  const inTab = narrow && !p.hardArts.length ? scored.filter((x) => inCat(x.e.u, cat)) : scored;
 
   // Activity rows: the kinds the guest named first, then whatever the results actually are.
   const counts = new Map<ArtKind, number>();

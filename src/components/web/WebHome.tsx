@@ -4,7 +4,6 @@ import { CATS, CATMETA, WORLDS, inCat, worldOf, type WorldChip } from "../../dat
 import { ART_LABEL } from "../../data/art";
 import { ICONS } from "../../data/icons";
 import { ALL_METRO_ID, METROS, metroById, metroCoords } from "../../data/metros";
-import { countryOfArea } from "../../data/regions";
 import type { ArtKind, CategoryId, Unclaimed } from "../../data/types";
 import { experienceById, fromPrice, getCatalog, publicRating, topRated } from "../../lib/catalog";
 import { listingFacts } from "../../lib/catalog";
@@ -13,7 +12,6 @@ import { ART_ALIASES, WHAT_INTENTS, describeQuery, metroInQuery, parseIntent, se
 import { loadListing } from "../../lib/catalogLoad";
 import { dealToday } from "../../lib/companyAgent";
 import { itemOpenState } from "../../lib/openNow";
-import { fmtDistance } from "../../lib/geo";
 import { currentLocation, kmBetween, nearestLocation, searchPlaces, type Place } from "../../lib/places";
 import { useApp } from "../../state/AppProvider";
 import { Photo } from "../art/Photo";
@@ -23,7 +21,7 @@ import { useModal } from "../layout/useModal";
 import { Markup } from "../Markup";
 import { AdminSiteLink, liteDealTitle, tidyDuration } from "./WebListing";
 import { freeCancelBadge } from "../../lib/cancellation";
-import { withinDrive, kmToPlace, NEAR_RADIUS_KM, DRIVE_RADIUS_KM } from "../explore/feed";
+import { withinDrive, kmToPlace, awayLine, NEAR_RADIUS_KM, DRIVE_RADIUS_KM } from "../explore/feed";
 import { getPrefs, setPrefs } from "../explore/prefs";
 import { reportDeadCover, useDeadCovers, withPhotos } from "../../lib/deadCovers";
 
@@ -171,23 +169,32 @@ function whatName(q: string): string {
   return "“" + t.charAt(0).toUpperCase() + t.slice(1) + "”";
 }
 
-function rankForRail(list: Unclaimed[], center?: { lat: number; lon: number } | null): Unclaimed[] {
+function rankForRail(list: Unclaimed[], center?: { lat: number; lon: number } | null, nearestFirst = false): Unclaimed[] {
   // In a city, the city itself leads: a Miami row opening on Boca Raton, 70 km up the coast, reads as the wrong
   // place. Listings in the city are lifted and the far edge of the metro area is pushed back, before quality.
+  // A GPS pin is simpler: nearest first, so Waterloo is not sorted by Toronto reviews.
+  const kmOf = (u: Unclaimed) => {
+    if (!center || u.lat == null || u.lon == null) return Infinity;
+    return kmBetween(center, { lat: u.lat, lon: u.lon });
+  };
   const nearness = (u: Unclaimed) => {
     if (!center || u.lat == null || u.lon == null) return 0;
-    const km = kmBetween(center, { lat: u.lat, lon: u.lon });
+    const km = kmOf(u);
     return km <= 25 ? 2 : km <= 50 ? 0.5 : -1.5;
   };
   // A rail is photos. Places without one wait in search results until the crawl or the operator adds a picture.
   return list
     .filter((u) => !!u.cover)
     .sort((a, b) => {
+      if (nearestFirst) {
+        const d = kmOf(a) - kmOf(b);
+        if (d) return d;
+      }
       // "Popular Jet Ski Rentals" must open on jet ski rentals: a listing whose own words never confirm its kind
       // goes after every one that does, however many reviews it has.
       if (!!a.kindUnconfirmed !== !!b.kindUnconfirmed) return a.kindUnconfirmed ? 1 : -1;
-      const pa = (a.cover ? 3 : 0) + (fromPrice(a) != null ? 2 : 0) + Math.min(2, Math.log10((a.reviews || 0) + 1)) + nearness(a);
-      const pb = (b.cover ? 3 : 0) + (fromPrice(b) != null ? 2 : 0) + Math.min(2, Math.log10((b.reviews || 0) + 1)) + nearness(b);
+      const pa = (a.cover ? 3 : 0) + (fromPrice(a) != null ? 2 : 0) + Math.min(2, Math.log10((a.reviews || 0) + 1)) + (nearestFirst ? 0 : nearness(a));
+      const pb = (b.cover ? 3 : 0) + (fromPrice(b) != null ? 2 : 0) + Math.min(2, Math.log10((b.reviews || 0) + 1)) + (nearestFirst ? 0 : nearness(b));
       return pb - pa;
     });
 }
@@ -345,10 +352,9 @@ function Card({ u, onOpen, near, rail }: { u: Unclaimed; onOpen: (id: string) =>
   const priced = from != null ? u.options.find((o) => o.price === from) : undefined;
   const per = (priced?.per || "").replace(/^\//, "").trim();
   const where = (() => {
-    // A distance from the middle of a whole state means nothing to a guest; the town does.
-    const n = near && !near.region ? nearestLocation(u, near) : null;
     const extra = u.locations?.length ? " · " + (u.locations.length + 1) + " locations" : "";
-    if (n) return (n.label ? n.label + " · " : "") + fmtDistance(n.km, countryOfArea(u.area)) + " away" + extra;
+    const away = awayLine(u, near && !near.region ? near : null);
+    if (away) return away + extra;
     return u.area + (metro && !u.area.includes(metro.name) ? " · " + metro.name : "") + extra;
   })();
   /**
@@ -581,7 +587,7 @@ function CompareTable({ items, near, onOpen, onClose, onRemove }: { items: Uncla
             <tbody>
               {row("From", (u) => { const f = fromPrice(u); return f != null ? <b>{money(f)}</b> : <span className="ah-muted">Request to book</span>; })}
               {row("Rating", (u) => { const sc = publicRating(u); return sc ? <span className="ah-cmp-rate"><Markup html={SVG.star} /> {sc.rating.toFixed(1)} <em className="ah-muted">({fmtReviews(sc.reviews)})</em></span> : <span className="ah-muted">No public rating</span>; })}
-              {row("Where", (u) => { const n = near ? nearestLocation(u, near) : null; return n ? (n.label ? n.label + " · " : "") + fmtDistance(n.km, countryOfArea(u.area)) + " away" : u.area; })}
+              {row("Where", (u) => awayLine(u, near && !near.region ? near : null) || u.area)}
               {row("What you'd book", (u) => { const o = firstPriced(u) || u.options[0]; return o ? o.name + (o.detail ? " · " + o.detail : "") : <span className="ah-muted">Contact the business</span>; })}
               {row("Options", (u) => u.options.length ? u.options.length + (u.options.length === 1 ? " option" : " options") : <span className="ah-muted">None listed</span>)}
               {row("Who can go", (u) => { const f = listingFacts(u).who.find((l) => l.posted); return f ? f.text : <span className="ah-muted">Not posted</span>; })}
@@ -1094,21 +1100,38 @@ export function WebHome({ onOpenApp, onOperators, onAsk, asking = false, onClose
     return c ? { lat: c.lat, lon: c.lng } : null;
   }, [activeMetro?.id]);
 
+  // What names a kind. The world chips (Spas, Indoor) are for browsing; they must not empty a search that
+  // already said "escape rooms".
+  const namedArts = useMemo(
+    () => (qWithoutPlace.trim() ? describeQuery(qWithoutPlace).arts : []),
+    [qWithoutPlace],
+  );
+  const chipClash = !!(kindChip && namedArts.length && !namedArts.includes(kindChip));
+
   // Where the guest is looking. The search reads the whole catalog and narrows here, so its index is built once.
   const scope = useMemo<SearchScope>(() => {
     const cat = state.cat;
-    const art = kindChip;
+    const art = chipClash ? null : kindChip;
     if (typedMetro) return { cat, metroId: typedMetro.metro.id, keep: art ? (u: Unclaimed) => u.art === art : undefined };
     if (near) return { cat, keep: (u: Unclaimed) => (!art || u.art === art) && inNear(u, near) };
     if (state.metroId !== ALL_METRO_ID) return { cat, metroId: state.metroId, keep: art ? (u: Unclaimed) => u.art === art : undefined };
     return { cat, keep: art ? (u: Unclaimed) => u.art === art : undefined };
-  }, [typedMetro, near, state.metroId, state.cat, kindChip]);
+  }, [typedMetro, near, state.metroId, state.cat, kindChip, chipClash]);
 
   // One pass feeds the What dropdown and the results behind it, so a keystroke ranks the catalog once.
   const found = useMemo(
     () => (qWithoutPlace.trim() ? searchSuggest(getCatalog(), qWithoutPlace, scope, 6) : null),
     [qWithoutPlace, scope, state.catalogVersion],
   );
+
+  useEffect(() => {
+    if (!namedArts.length || !found?.results.length) return;
+    if (chipClash) setArtChip(null);
+    if (state.cat === "all" && !kindChip) return;
+    if (found.results.some((u) => inCat(u, state.cat))) return;
+    setCat("all");
+    setArtChip(null);
+  }, [namedArts, found, state.cat, kindChip, chipClash, setCat]);
 
   // Browse shows places a guest can act on, and a card is mostly its photo: a grid of scene illustrations
   // reads as a broken page however good the listing behind it is. So browse needs a real photo, not just
@@ -1219,8 +1242,9 @@ export function WebHome({ onOpenApp, onOperators, onAsk, asking = false, onClose
   }, [state.catalogVersion]);
 
   const nearName = (p: Place) => (p.label === "Near me" ? "you" : p.label);
+  const finding = locating || state.locating;
   const placeName = near ? near.label + (near.sub ? ", " + near.sub.split(",")[0] : "") : metro ? metro.name + ", " + metro.region : "";
-  const whereShort = typedMetro ? typedMetro.metro.name : near ? near.label : metro ? metro.name : "Anywhere";
+  const whereShort = finding ? "Finding you…" : typedMetro ? typedMetro.metro.name : near ? near.label : metro ? metro.name : "Anywhere";
   const inWhere = typedMetro ? " in " + typedMetro.metro.name : near ? " near " + nearName(near) : metro ? " in " + metro.name : "";
   /** Where a count applies, for the What menu: "in Miami", "near you", or everywhere. */
   const hereLine = inWhere || " across the US and Canada";
@@ -1312,7 +1336,7 @@ export function WebHome({ onOpenApp, onOperators, onAsk, asking = false, onClose
 
   const whereRows: Row[] = [];
   if (!wt) {
-    whereRows.push({ key: "nearby", head: "Nearby", icon: ICONS.nav, title: locating ? "Finding you…" : "Nearby", sub: "Find what's around you", on: near?.label === "Near me", pick: useMyLocation });
+    whereRows.push({ key: "nearby", head: "Nearby", icon: ICONS.nav, title: finding ? "Finding you…" : "Nearby", sub: "Find what's around you", on: near?.label === "Near me", pick: useMyLocation });
     whereRows.push({ key: "anywhere", head: "Suggested destinations", icon: ICONS.globe, title: "Anywhere", sub: "US and Canada", on: !near && state.metroId === ALL_METRO_ID, pick: () => { setNear(null); setMetro(ALL_METRO_ID); afterPlace(); } });
     for (const id of POPULAR_METROS) {
       const m = METROS.find((x) => x.id === id);
@@ -1446,7 +1470,7 @@ export function WebHome({ onOpenApp, onOperators, onAsk, asking = false, onClose
 
   const filterCount = (effSort !== "relevance" ? 1 : 0) + (priceOn ? 1 : 0);
   const resetFilters = () => { setSort("relevance"); setPrice({ min: null, max: null }); setCat("all"); setArtChip(null); };
-  const showRails = state.catalogReady && (!q.trim() || placeOnly) && !gridMode;
+  const showRails = state.catalogReady && !state.locating && (!q.trim() || placeOnly) && !gridMode;
 
   return (
     <CompareCtx.Provider value={{ ids: compareIds, toggle: toggleCompare }}>
@@ -1555,7 +1579,7 @@ export function WebHome({ onOpenApp, onOperators, onAsk, asking = false, onClose
                         onMouseDown={(e) => e.preventDefault()}
                         onMouseEnter={() => setHit(i)}
                         onClick={r.pick}
-                        disabled={r.key === "nearby" && locating}
+                        disabled={r.key === "nearby" && finding}
                       >
                         <span className="ah-pop-icon">
                           {r.u ? <Photo src={r.u.cover} kind={r.u.art} id={"s" + r.u.id} alt="" size="thumb" /> : <Markup className="ah-ico" html={r.icon || ICONS.pin} />}
@@ -1613,7 +1637,7 @@ export function WebHome({ onOpenApp, onOperators, onAsk, asking = false, onClose
       {seg && compact ? <div className="ah-scrim" onClick={() => setSeg(null)} /> : null}
 
       <main className="ah-main ah-gutter" ref={mainRef} id="ah-main">
-        {!state.catalogReady ? (
+        {!state.catalogReady || state.locating ? (
           <>
             {[0, 1].map((r) => (
               <section className="ah-rail" key={r} aria-hidden="true">
@@ -1631,13 +1655,14 @@ export function WebHome({ onOpenApp, onOperators, onAsk, asking = false, onClose
         ) : null}
 
         {showRails ? rails.map((r, i) => {
-          const items = rankForRail(nearPool.filter((u) => u.art === r.art), activeCenter);
+          const pin = nearPoint && near ? { lat: near.lat, lon: near.lon } : activeCenter;
+          const items = rankForRail(nearPool.filter((u) => u.art === r.art), pin, nearPoint);
           // "near you", not "near Near Me": the place's own name stays out of title case.
           const title = near ? titleCase(r.title) + " near " + nearName(near) : titleCase(activeMetro ? `${r.title} in ${activeMetro.name}` : `Popular ${r.title}`);
           return <Rail key={r.art} title={title} items={items} onOpen={openRequest} near={near} eager={i < 2} onShowAll={() => { setQ(kindQuery(r.art)); window.scrollTo({ top: 0 }); }} />;
         }) : null}
         {showRails && nearPoint && drivePool.length >= 4 ? (
-          <Rail title={"Worth the drive from " + nearName(near!)} note={"Between " + NEAR_RADIUS_KM + " and " + DRIVE_RADIUS_KM + " km away, a day out rather than an afternoon"} items={rankForRail(drivePool.filter((u) => inCat(u, state.cat)), activeCenter)} onOpen={openRequest} near={near} />
+          <Rail title={"Worth the drive from " + nearName(near!)} note={"Between " + NEAR_RADIUS_KM + " and " + DRIVE_RADIUS_KM + " km away, a day out rather than an afternoon"} items={rankForRail(drivePool.filter((u) => inCat(u, state.cat)), near ? { lat: near.lat, lon: near.lon } : activeCenter, true)} onOpen={openRequest} near={near} />
         ) : null}
 
         {showRails && !rails.length && !openNow.length ? (
@@ -1662,7 +1687,7 @@ export function WebHome({ onOpenApp, onOperators, onAsk, asking = false, onClose
           </section>
         ) : null}
 
-        {state.catalogReady && gridList ? (
+        {state.catalogReady && !state.locating && gridList ? (
           <section className="ah-results" aria-labelledby="ah-grid-title">
             <div className="ah-rowhead">
               <div className="ah-rowtitle">
@@ -1688,7 +1713,7 @@ export function WebHome({ onOpenApp, onOperators, onAsk, asking = false, onClose
           </section>
         ) : null}
 
-        {state.catalogReady && searchList ? (
+        {state.catalogReady && !state.locating && searchList ? (
           <section className="ah-results" aria-labelledby="ah-search-title">
             <div className="ah-rowhead">
               <div className="ah-rowtitle">
@@ -1741,7 +1766,7 @@ export function WebHome({ onOpenApp, onOperators, onAsk, asking = false, onClose
           </section>
         ) : null}
 
-        {state.catalogReady && !q.trim() && waiting > 0 ? (
+        {state.catalogReady && !state.locating && !q.trim() && waiting > 0 ? (
           <p className="ah-waiting">
             {waiting.toLocaleString()} more {waiting === 1 ? "place is" : "places are"} listed{inWhere} without a photo yet. They appear here as we gather their photos and prices; search one by name to open it now.
           </p>
@@ -1865,7 +1890,7 @@ export function WebHome({ onOpenApp, onOperators, onAsk, asking = false, onClose
                           className={"ah-pop-row" + (hit === i ? " hit" : "") + (r.on ? " on" : "")}
                           onMouseEnter={() => setHit(i)}
                           onClick={r.pick}
-                          disabled={r.key === "nearby" && locating}
+                          disabled={r.key === "nearby" && finding}
                         >
                           <span className="ah-pop-icon"><Markup className="ah-ico" html={r.icon || ICONS.pin} /></span>
                           <span className="ah-pop-text">

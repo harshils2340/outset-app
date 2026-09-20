@@ -34,7 +34,7 @@ const reset = () => {
 };
 reset();
 
-const { opening, rememberMetro, rememberPlace, sameGuess } = await import("../here");
+const { opening, openingFeed, rememberMetro, rememberPlace, sameGuess } = await import("../here");
 const { ALL_METRO_ID } = await import("../../data/metros");
 
 const GUESS_KEY = "outset.guess.v1";
@@ -74,36 +74,44 @@ test("a city the guest chose comes back on the next visit", () => {
   assert.equal(o.recheck, false);
 });
 
-test("choosing Anywhere is a choice too, and a guess does not undo it", () => {
+test("choosing Anywhere is this visit, not a lock on the whole catalog", () => {
   reset();
   rememberMetro(ALL_METRO_ID);
   const o = zoned("America/Toronto", opening);
-  assert.equal(o.guess, null, "Anywhere is the whole catalog, which is no place at all");
-  assert.equal(o.chosen, true);
-  assert.equal(o.recheck, false);
+  assert.deepEqual(o.guess, { kind: "metro", metroId: "toronto" }, "the clock still opens the home");
+  assert.equal(o.chosen, false, "so GPS can still sharpen it");
+  assert.equal(o.recheck, true);
 });
 
 test("a guess from this morning opens the home with no fetch and no second render", () => {
   reset();
-  storeGuess({ kind: "point", place: { label: "Tampa", sub: "FL", lat: 27.95, lon: -82.46 } }, 2 * HOUR);
+  storeGuess({ kind: "point", place: { label: "Toronto", sub: "ON", lat: 43.65, lon: -79.38 } }, 2 * HOUR);
   const o = zoned("America/Toronto", opening);
   assert.equal(o.guess?.kind, "point");
   assert.equal(o.chosen, false, "a guess, so an arriving refinement may still replace it");
   assert.equal(o.recheck, false, "but nothing is asked: the answer here is hours old, not days");
 });
 
-test("a guess from yesterday is still shown at once, and checked in the background", () => {
+test("a guess from yesterday is still shown at once when the clock agrees", () => {
   reset();
-  storeGuess({ kind: "metro", metroId: "tampa" }, 20 * HOUR);
+  storeGuess({ kind: "metro", metroId: "toronto" }, 20 * HOUR);
   const o = zoned("America/Toronto", opening);
-  assert.deepEqual(o.guess, { kind: "metro", metroId: "tampa" }, "the page never waits to show something");
-  assert.equal(o.recheck, true, "the guest may have flown somewhere since");
+  assert.deepEqual(o.guess, { kind: "metro", metroId: "toronto" }, "the page never waits to show something");
+  assert.equal(o.recheck, true, "the guest may have moved within the region");
 });
 
 test("a guess from last summer is not shown at all", () => {
   reset();
   storeGuess({ kind: "metro", metroId: "tampa" }, 90 * 24 * HOUR);
   assert.deepEqual(zoned("America/Toronto", opening).guess, { kind: "metro", metroId: "toronto" }, "the clock is a better answer than a stale address");
+});
+
+test("yesterday's city is not shown when the clock names a different one", () => {
+  reset();
+  storeGuess({ kind: "metro", metroId: "tampa" }, 20 * HOUR);
+  const o = zoned("America/Toronto", opening);
+  assert.deepEqual(o.guess, { kind: "metro", metroId: "toronto" }, "Florida does not paint, then jump to Ontario");
+  assert.equal(o.recheck, true);
 });
 
 test("a stored guess naming a metro that is not a metro is refused", () => {
@@ -142,6 +150,26 @@ test("a recheck that agrees changes nothing, so a repeat visit is one render", (
   assert.equal(sameGuess(null, tampa), false);
 });
 
+test("a clock metro does not feed the home; GPS does", () => {
+  // America/Toronto is Waterloo as much as Toronto. Drawing the toronto metro as "here" was the Near me gap.
+  reset();
+  const clock = zoned("America/Toronto", opening);
+  assert.equal(clock.chosen, false);
+  assert.deepEqual(openingFeed(clock), { kind: "wait" });
+  reset();
+  rememberMetro("denver");
+  const mine = zoned("America/Toronto", opening);
+  assert.deepEqual(openingFeed(mine), { kind: "metro", metroId: "denver" });
+  reset();
+  rememberPlace({ label: "Near me", sub: "Current location", lat: 43.464, lon: -80.52 });
+  const pin = zoned("America/Toronto", opening);
+  assert.equal(openingFeed(pin).kind, "point");
+  reset();
+  storeGuess({ kind: "point", place: { label: "Toronto", sub: "ON", lat: 43.65, lon: -79.38 } }, 2 * HOUR);
+  const ip = zoned("America/Toronto", opening);
+  assert.deepEqual(openingFeed(ip), { kind: "wait" }, "an IP city is not a GPS pin");
+});
+
 test("the home decides where it is before the catalog lands, not after", () => {
   // The bug this file exists for, pinned where it happened. `guessPlace` and `opening` must not be reachable
   // from inside the catalog download's `.then()`: nothing about knowing the guest's city needs a catalog, and
@@ -153,4 +181,5 @@ test("the home decides where it is before the catalog lands, not after", () => {
   assert.ok(seeded > 0 && seeded < load, "opening() is read for the first render, above the catalog load");
   const asked = src.indexOf("guessPlace()");
   assert.ok(asked > 0 && asked < load, "and the refinement is its own effect, not a step of the download");
+  assert.ok(src.includes("openingFeed("), "a clock metro waits for GPS instead of painting as the feed");
 });

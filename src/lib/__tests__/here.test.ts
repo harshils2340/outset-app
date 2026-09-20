@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { METROS, metroById, metroLabel, metroShort } from "../../data/metros";
-import { ZONE_METRO, metroFromTimeZone } from "../here";
+import { ZONE_METRO, ipGuessFitsClock, metroFromTimeZone } from "../here";
 
 /**
  * The first thing a guest sees is whatever this guesses, and nothing downstream sanity-checks it: the home
@@ -53,4 +53,13 @@ test("a clock the browser will not name is not an error", () => {
   } finally {
     Intl.DateTimeFormat = real;
   }
+});
+
+test("an IP city in another country is not treated as the guest moving", () => {
+  const ashburn = { kind: "point" as const, place: { label: "Ashburn", sub: "VA", lat: 39.04, lon: -77.49 } };
+  assert.equal(ipGuessFitsClock(ashburn, "toronto"), false);
+  assert.equal(ipGuessFitsClock({ kind: "metro", metroId: "nyc" }, "toronto"), false);
+  assert.equal(ipGuessFitsClock({ kind: "metro", metroId: "toronto" }, "toronto"), true);
+  assert.equal(ipGuessFitsClock({ kind: "point", place: { label: "Toronto", sub: "ON", lat: 43.65, lon: -79.38 } }, "toronto"), true);
+  assert.equal(ipGuessFitsClock(ashburn, null), true, "no clock means the IP is the only answer");
 });

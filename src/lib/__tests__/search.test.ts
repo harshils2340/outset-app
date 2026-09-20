@@ -80,14 +80,16 @@ function checkWaysOut(q: string, scope: SearchScope) {
   return found;
 }
 
-test("a kind the category tab hides is not offered as a way out of that tab", () => {
-  // Skydiving exists, five times, but not in the Water tab. Offering "Skydive, 2" there opened another empty page.
-  const scope: SearchScope = { metroId: ALL_METRO_ID, cat: "water" as CategoryId };
-  const found = checkWaysOut("skydiving", scope);
-  assert.equal(found.activities.length, 0);
-  assert.equal(found.elsewhere.length, 0);
-  // The tab is the only thing in the way, and that is what the "in other categories" way out is for.
-  assert.equal(found.otherCats, 5);
+test("a named kind is not hidden by the category tab the guest happens to be on", () => {
+  // Wellness All used to empty "escape rooms" because those listings sit in Indoor, then offered
+  // "22 in other categories" as the way out. The guest already named the kind.
+  const water = searchSuggest(CATALOG, "skydiving", { metroId: ALL_METRO_ID, cat: "water" as CategoryId });
+  assert.equal(water.results.length, 5);
+  assert.ok(water.results.every((u) => u.art === "skydive"));
+
+  const wellness = searchSuggest(CATALOG, "escape rooms", { metroId: "tampa", cat: "wellness" as CategoryId });
+  assert.equal(wellness.results.length, 1);
+  assert.equal(wellness.results[0].title, "Tampa Escape Rooms");
 });
 
 test("a city with none of what the guest asked for is not offered", () => {

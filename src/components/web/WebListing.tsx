@@ -17,7 +17,7 @@ import { freeCancelBadge } from "../../lib/cancellation";
 import { bookableStart, clockIn, hourLines, itemOpenState, itemWeek, zoneFor } from "../../lib/openNow";
 import { displayHours } from "../../lib/hoursText";
 import { noStartTimesNote, startTimesOn } from "../../lib/startTimes";
-import { DAY_SHORT, assistantOn, clock12, dayLabel, todaysDeals } from "../../lib/companyAgent";
+import { DAY_SHORT, clock12, dayLabel, todaysDeals } from "../../lib/companyAgent";
 import { fmtDistance } from "../../lib/geo";
 import { kmBetween, nearestLocation, venueLabel } from "../../lib/places";
 import { addonPrice, hasPrice, priceUnclaimed, serviceFeeLabel } from "../../lib/pricing";
@@ -33,7 +33,6 @@ import { useApp } from "../../state/AppProvider";
 import { Photo } from "../art/Photo";
 import { Mark } from "../layout/Mark";
 import { useModal } from "../layout/useModal";
-import { WebAssistant } from "./WebAssistant";
 import { Markup } from "../Markup";
 
 /**
@@ -444,7 +443,7 @@ function Card({ u, onOpen }: { u: Unclaimed; onOpen: (id: string) => void }) {
         <span className="alcardtop">
           <b title={u.title}>{u.title}</b>
           {score ? <span className="alcardrate"><Markup html={I.star} /> {score.rating.toFixed(1)}</span> : null}
-        </span>
+            </span>
         <small>{u.area}</small>
         {u.dur ? <small>{tidyDuration(u.dur)}</small> : freeCancelBadge(u) ? <small>Free cancellation</small> : null}
         <span className="alcardprice">{from != null ? <>From <b>{money(from)}</b></> : "Request to book"}</span>
@@ -872,7 +871,7 @@ function DayTimePicker({ dates, dateIdx, onPickDate, chipsFor, time, onPickTime,
 type KnowCol = { key: string; title: string; icon: string; lines: string[]; extra?: ReactNode };
 
 export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose: () => void; onOpen: (id: string) => void }) {
-  const { state, dates, confirmUnclaimed, setDate, openOperator } = useApp();
+  const { state, dates, confirmUnclaimed, setDate, openOperator, openAsk } = useApp();
   const metro = metroById(item.metroId);
   // The public rating and its count appear only beside written reviews we can actually show. A number with
   // nothing behind it reads as a promise of reviews, and the site does not make promises.
@@ -1156,7 +1155,10 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
   if (age) keyFacts.push("Ages " + age + "+");
   if (item.season && item.season.length <= 32) keyFacts.push(item.season);
   if (item.locations?.length) keyFacts.push(item.locations.length + 1 + " locations");
-  if (near) keyFacts.push(fmtDistance(near.km, countryOfArea(item.area)) + " from " + state.near!.label);
+  if (near) {
+    const from = state.near!.label === "Near me" ? " away" : " from " + state.near!.label;
+    keyFacts.push(fmtDistance(near.km, countryOfArea(item.area)) + from);
+  }
 
   // Three highlight rows, Airbnb's "Self check-in / Great location / Free cancellation", from what the listing has.
   const rows: { icon: string; title: string; text: string }[] = [];
@@ -1342,7 +1344,7 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
           <button type="button" className="alback" onClick={onClose} aria-label="Back to results">
             <span className="alround"><Markup html={I.chevLeft} /></span>
             <span>Back to results</span>
-          </button>
+        </button>
           <a className="allogo" href="#" onClick={(e) => { e.preventDefault(); onClose(); }} aria-label="Outset home">
             <Mark size={30} />
             <b>Outset</b>
@@ -1371,7 +1373,7 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
         {state.removeId === item.id ? (
           <div className="alnotice">
             <span>
-              <b>Is this your business and you'd rather not be listed?</b>
+            <b>Is this your business and you'd rather not be listed?</b>
               <small>We take listings down within one business day. Send one line from a company email and it's gone.</small>
             </span>
             <a className="aloutline" href={"mailto:harshils2340@gmail.com?subject=" + encodeURIComponent("Remove listing: " + item.title + " (" + item.id + ")") + "&body=" + encodeURIComponent("Please remove " + item.title + " from Outset.\n\nListing: " + listingUrl(item.id) + "\n")}>Request removal</a>
@@ -1382,7 +1384,7 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
           <div className="altitlewrap">
             <h1 className="altitle">{item.title}</h1>
             <AdminSiteLink item={{ src: item.src, contact: contact || item.contact }} />
-          </div>
+        </div>
           <div className="alactions">
             <button type="button" className="altextbtn" onClick={() => void share()}>
               <Markup html={I.share} /> <span>Share</span>
@@ -1391,7 +1393,7 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
               <Markup html={saved ? I.heartOn : I.heart} /> <span>{saved ? "Saved" : "Save"}</span>
             </button>
           </div>
-        </div>
+          </div>
 
         {media.length ? (
           <div className={"alphotos n" + Math.min(media.length, 5)} ref={heroRef}>
@@ -1399,15 +1401,15 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
               <button type="button" className={"alphoto " + (i === 0 ? "main" : "p" + (i - 1))} key={m.src} onClick={() => setGallery(i)} aria-label={i === 0 ? "Open photos" : "Open photo " + (i + 1)}>
                 <HeroTile m={m} item={item} i={i} onBroken={() => drop(m.src)} />
                 {i === 0 && m.kind !== "photo" ? <span className="alplaytag"><Markup html={PLAY} /> Video</span> : null}
-              </button>
+          </button>
             ))}
             {media.length > 1 ? (
               <button type="button" className="alshowall" onClick={() => setGallery(0)}>
                 <Markup html={I.grid} />
                 <span>{hasVideo ? "Show video and " + (media.length - 1) + (media.length === 2 ? " photo" : " photos") : "Show all photos"}</span>
-              </button>
-            ) : null}
-          </div>
+            </button>
+          ) : null}
+        </div>
         ) : null}
 
         {gallery != null && media[gallery] ? (
@@ -1454,7 +1456,7 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
                 <p className="alrateline">
                   <Markup html={I.star} /> <b>{score.rating.toFixed(1)}</b> · <button type="button" className="alunder" onClick={() => jump("al-reviews")}>{reviewsLine(score.reviews)}</button>
                 </p>
-              ) : null}
+            ) : null}
             </section>
 
             {topRatedHere ? (
@@ -1485,17 +1487,17 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
                     booking reaches them, which reads the same either way, so no listing looks second class. */}
                 <small>{instant ? "Instant confirmation" : visit ? "Tickets are sold by the business" : "Requests go straight to the business"}</small>
               </span>
-            </section>
+              </section>
 
             {highlightRows.length ? (
               <section className="alsec alhigh">
                 {highlightRows.map((r) => (
                   <div className="alhighrow" key={r.title}>
                     <Markup html={r.icon} />
-                    <span>
+                <span>
                       <b>{r.title}</b>
                       <small>{r.text}</small>
-                    </span>
+                </span>
                   </div>
                 ))}
               </section>
@@ -1512,13 +1514,13 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
                       <ul>{highlights.map((h) => <li key={h}>{tidyLine(h)}</li>)}</ul>
                     </>
                   )}
-                </div>
+                    </div>
                 {descOver || (blurb && highlights.length) ? <MoreLink onClick={() => setModal("desc")}>Show more</MoreLink> : null}
                 {guide ? (
                   <p className="aldescguide">
                     <MoreLink onClick={() => setModal("guide")}>What {KIND[item.art] || "this"} is actually like</MoreLink>
                   </p>
-                ) : null}
+              ) : null}
               </section>
             ) : guide ? (
               <section className="alsec aldesc">
@@ -1577,13 +1579,13 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
                                 ) : moreSvc.includes(key) && svc.variants.some((v) => v.moreOptions) ? (
                                   <button type="button" className="almoreopts" aria-expanded="true" onClick={() => setMoreSvc((c) => c.filter((k) => k !== key))}>
                                     Fewer options
-                                  </button>
-                                ) : null}
+                          </button>
+                        ) : null}
                               </>
                             );
                           })()}
-                        </div>
                       </div>
+                    </div>
                     );
                   })}
                 </div>
@@ -1620,15 +1622,15 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
 
             {allIncluded.length ? (
               <section className="alsec" id="al-included">
-                <h2>What's included</h2>
+                    <h2>What's included</h2>
                 <div className="alamen">
                   {allIncluded.slice(0, 10).map(({ t, no, strike }) => (
                     <div className={"alamenrow" + (no ? " no" : "") + (no && !strike ? " sentence" : "")} key={(no ? "n" : "y") + t}>
                       <span className="alamenicon"><Markup html={amenityIcon(t)} /></span>
                       <span>{no && strike ? <span className="vh">Not included: </span> : null}{t}</span>
-                    </div>
+                  </div>
                   ))}
-                </div>
+                  </div>
                 {allIncluded.length > 10 ? (
                   <button type="button" className="aloutline" onClick={() => setModal("included")}>Show all {allIncluded.length} items</button>
                 ) : null}
@@ -1654,7 +1656,7 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
                               {d.code ? <span className="aldealcode">Code: <b>{d.code}</b></span> : null}
                               {d.when ? <small>{d.when}</small> : null}
                             </span>
-                          ) : null}
+              ) : null}
                           {d.date ? (
                             <span className="aldealdays"><i className={"hit" + (on ? " today" : "")}>{d.date}</i></span>
                           ) : (
@@ -1669,7 +1671,7 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
                     );
                   })}
                 </ul>
-              </section>
+            </section>
             ) : null}
 
             {!visit ? (
@@ -1696,7 +1698,7 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
                 <div className="alreservehead">
                   <span className="alprice"><b>Plan your visit</b></span>
                   {score ? <span className="alreserverate"><Markup html={I.star} /> {score.rating.toFixed(1)} · <u>{reviewsLine(score.reviews)}</u></span> : null}
-                </div>
+                    </div>
                 <div className="albox">
                   <div className="alboxcell static">
                     <small>Hours</small>
@@ -1707,8 +1709,8 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
                     ) : (
                       <span className="alboxval muted">Call the business for hours.</span>
                     )}
-                  </div>
                 </div>
+                  </div>
                 {ticketHref ? (
                   <a className="alprimary" href={ticketHref} target="_blank" rel="noreferrer">Get tickets</a>
                 ) : callHref ? (
@@ -1755,8 +1757,8 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
                               <div className="aloptchips" role="group" aria-label="Filter options">
                                 {[{ id: "all", label: "All" }, ...(optGroups.length > 1 && optGroups.length <= 5 ? optGroups.filter((g) => g.name !== "Other options").map((g) => ({ id: "g:" + g.name, label: g.name })) : []), ...(optKinds(optGroups).length > 1 ? optKinds(optGroups).map((k) => ({ id: "k:" + k, label: k })) : [])].map((c) => (
                                   <button type="button" key={c.id} className="aloptchip" aria-pressed={optFilter === c.id} onClick={() => setOptFilter(c.id)}>{c.label}</button>
-                                ))}
-                              </div>
+                      ))}
+                  </div>
                             ) : null}
                             {optGroups
                               .filter((g) => !optFilter.startsWith("g:") || "g:" + g.name === optFilter)
@@ -1778,10 +1780,10 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
                                   </div>
                                 );
                               })}
-                          </div>
-                        ) : null}
+                </div>
+              ) : null}
                       </div>
-                    ) : null}
+                ) : null}
                     <div className="alboxrow">
                       <button type="button" className={"alboxcell" + (pickerOpen ? " active" : "")} onClick={() => setPickerOpen((v) => !v)} aria-expanded={pickerOpen}>
                         <small>Date</small>
@@ -1828,7 +1830,7 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
                         <button type="button" className="aldark" onClick={() => setPickerOpen(false)}>Close</button>
                       </div>
                     </div>
-                  ) : null}
+            ) : null}
                 </div>
 
                 <div className="albox alform">
@@ -1853,7 +1855,7 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
 
                 <button type="button" ref={reserveRef} className="alprimary" onClick={pressReserve} aria-disabled={!ready || sending} aria-busy={sending}>
                   {sending ? "Sending…" : ready ? ctaLabel + (p.total ? " · " + money(p.total) : "") : time == null ? "Pick a time" : "Add your name and number"}
-                </button>
+                      </button>
                 {bookError ? <p className="alfine center albookerror" role="alert">{bookError}</p> : null}
                 {payments && p.total ? (
                   <p className="alfine center">Secure card payment. Your card is held and only charged once the booking is confirmed.</p>
@@ -1870,7 +1872,7 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
                     {extras.map((a) => <div className="alline" key={a.name}><u>{a.name}</u><span>{money(addonPrice(a))}</span></div>)}
                     {p.fee ? <div className="alline"><u>{serviceFeeLabel(p)}</u><span>{money(p.fee)}</span></div> : null}
                     <div className="alline total"><span>Total</span><span>{p.total ? money(p.total) : "Pay on site"}</span></div>
-                  </div>
+                </div>
                 ) : (
                   <div className="allines">
                     {extras.map((a) => <div className="alline" key={a.name}><u>{a.name}</u><span>{money(addonPrice(a))}</span></div>)}
@@ -1886,38 +1888,38 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
           </aside>
         </div>
 
-        {(item.ytVideos && item.ytVideos.length) || item.tiktok ? (
+            {(item.ytVideos && item.ytVideos.length) || item.tiktok ? (
           <section className="alwide">
-            <h2>See it in action</h2>
+                <h2>See it in action</h2>
             <p className="alsecsub">Videos from {possessive(item.title)} own channels.</p>
-            {item.ytVideos && item.ytVideos.length ? (
+                {item.ytVideos && item.ytVideos.length ? (
               <div className={"alvideos" + (item.ytVideos.length === 1 ? " one" : "")}>
-                {item.ytVideos.slice(0, 2).map((v) => (
+                    {item.ytVideos.slice(0, 2).map((v) => (
                   <div className="alvideo" key={v.id}>
-                    <iframe
-                      src={"https://www.youtube-nocookie.com/embed/" + v.id + "?rel=0&modestbranding=1"}
-                      title={v.title}
-                      loading="lazy"
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                      allowFullScreen
-                    />
-                    <small>{v.title}</small>
+                        <iframe
+                          src={"https://www.youtube-nocookie.com/embed/" + v.id + "?rel=0&modestbranding=1"}
+                          title={v.title}
+                          loading="lazy"
+                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                          allowFullScreen
+                        />
+                        <small>{v.title}</small>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-            ) : null}
-            {item.tiktok ? (
+                ) : null}
+                {item.tiktok ? (
               <div className="altiktok">
-                <blockquote className="tiktok-embed" cite={"https://www.tiktok.com/@" + item.tiktok} data-unique-id={item.tiktok} data-embed-type="creator" style={{ maxWidth: 780, minWidth: 288 }}>
-                  <section>
-                    <a target="_blank" rel="noreferrer" href={"https://www.tiktok.com/@" + item.tiktok}>@{item.tiktok} on TikTok</a>
-                  </section>
-                </blockquote>
-                <TikTokScript />
-              </div>
+                    <blockquote className="tiktok-embed" cite={"https://www.tiktok.com/@" + item.tiktok} data-unique-id={item.tiktok} data-embed-type="creator" style={{ maxWidth: 780, minWidth: 288 }}>
+                      <section>
+                        <a target="_blank" rel="noreferrer" href={"https://www.tiktok.com/@" + item.tiktok}>@{item.tiktok} on TikTok</a>
+                      </section>
+                    </blockquote>
+                    <TikTokScript />
+                  </div>
+                ) : null}
+              </section>
             ) : null}
-          </section>
-        ) : null}
 
         {score || reviews.length ? (
           <section className="alwide" id="al-reviews">
@@ -1927,10 +1929,10 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
                   <span className="allaurel big"><Markup html={I.laurelL} /></span>
                   <b>{score!.rating.toFixed(1)}</b>
                   <span className="allaurel big flip"><Markup html={I.laurelL} /></span>
-                </span>
+                    </span>
                 <b className="alfavbigtitle">Top rated</b>
                 <p>One of the most loved {typeName.toLowerCase()} listings on Outset, based on {reviewsLine(score!.reviews, "public")}</p>
-              </div>
+                  </div>
             ) : score ? (
               <h2 className="alreviewshead"><Markup html={I.star} /> {score.rating.toFixed(1)} · {reviewsLine(score.reviews)}</h2>
             ) : (
@@ -1940,12 +1942,12 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
               <>
                 <div className="alreviewgrid">
                   {reviews.map((r) => <ReviewCard key={r.key} r={r} />)}
-                </div>
+                  </div>
                 <p className="alsecsub">Reviews the operator publishes on their own site.</p>
               </>
+                ) : null}
+              </section>
             ) : null}
-          </section>
-        ) : null}
 
         <section className="alwide" id="al-location">
           <h2>Where you'll be</h2>
@@ -1971,16 +1973,16 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
                 <div className="alwhererow">
                   <Markup html={I.clock} />
                   <span><b>Hours</b>{hours.map((h) => <small key={h}>{h}</small>)}</span>
-                </div>
+              </div>
               ) : null}
               {checkin ? (
                 <div className="alwhererow">
                   <Markup html={I.door} />
                   <span><b>When you arrive</b><small>{checkin}</small></span>
                 </div>
-              ) : null}
-            </div>
-          </div>
+                ) : null}
+                </div>
+                </div>
           {item.locations?.length ? (
             <div className="alvenues">
               <h3>{item.locations.length + 1} locations{state.near ? ", nearest to " + state.near.label + " first" : ""}</h3>
@@ -2005,9 +2007,9 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
                       </a>
                     );
                   })}
-              </div>
+                </div>
             </div>
-          ) : null}
+                ) : null}
         </section>
 
         <section className="alwide" id="al-business">
@@ -2040,22 +2042,11 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
               </ul>
             </div>
             <div className="albizright">
-              {/* The operator's Assistant switch. Off means this shop answers guests itself, so the panel goes
-                  and the phone number, which used to sit under it as a second option, becomes the first one. */}
-              {assistantOn(item) ? (
-                <>
-                  <h3>Questions before you book?</h3>
-                  <p className="alsecsub">Otto answers from {possessive(item.title)} own information, and passes on anything it cannot.</p>
-                  <div className="alotto">
-                    <WebAssistant item={item} />
-                  </div>
-                </>
-              ) : (
-                <>
-                  <h3>Questions before you book?</h3>
-                  <p className="alsecsub">{item.title} answers these themselves. {callHref ? "Give them a call, or send" : "Send"} a booking request on this page and it reaches them directly.</p>
-                </>
-              )}
+              <h3>Questions before you book?</h3>
+              <p className="alsecsub">Ask Outset reads {possessive(item.title)} own published information, and can check live availability while you wait.</p>
+              <button type="button" className="aloutline" onClick={() => openAsk("What should I know about " + item.title + " before booking?")}>
+                Ask Outset about {item.title}
+                </button>
               {callHref ? <a className="aloutline" href={callHref}>Call the business</a> : null}
               {/* On every listing, claimed or not, and worded for an owner rather than about the page's status:
                   "Claim this listing" only appeared on unclaimed ones, which told a guest which shops had not
@@ -2063,9 +2054,9 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
               <p className="alclaim">
                 <Markup html={I.shield} />
                 <span>Work here? <button type="button" className="alunder strong" onClick={() => openOperator(item.id)}>Manage this listing</button> to answer guests and take bookings directly.</span>
-              </p>
-            </div>
-          </div>
+                </p>
+              </div>
+        </div>
         </section>
 
         {knowCols.length ? (

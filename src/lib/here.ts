@@ -24,7 +24,7 @@ import { API_URL } from "./api";
 
 /** The point the guest picked themselves. */
 const KEY = "outset.place.v1";
-/** The city, or Anywhere, the guest picked themselves. A choice too, and it used to be forgotten on reload. */
+/** The city the guest picked themselves. Anywhere is not stored: it is this visit, not the next. */
 const METRO_KEY = "outset.metro.v1";
 /** The last answer the API gave, so a repeat visit opens on it without waiting for a round trip. */
 const GUESS_KEY = "outset.guess.v1";
@@ -71,7 +71,7 @@ export function rememberPlace(p: Place | null): void {
 function savedMetro(): string | null {
   try {
     const id = localStorage.getItem(METRO_KEY);
-    return id && (id === ALL_METRO_ID || metroById(id)) ? id : null;
+    return id && id !== ALL_METRO_ID && metroById(id) ? id : null;
   } catch {
     return null;
   }
@@ -79,15 +79,17 @@ function savedMetro(): string | null {
 
 export function rememberMetro(id: string | null): void {
   try {
-    if (id) localStorage.setItem(METRO_KEY, id);
-    else localStorage.removeItem(METRO_KEY);
+    // Anywhere is this visit, not a lock. Storing it meant the next load painted the whole US and Canada
+    // instead of the guest's own town, which is the flicker this file exists to stop.
+    if (!id || id === ALL_METRO_ID) localStorage.removeItem(METRO_KEY);
+    else localStorage.setItem(METRO_KEY, id);
   } catch {
     /* private mode */
   }
 }
 
 /** The metro whose centre is nearest a point, within `maxKm`. */
-function nearestMetro(lat: number, lon: number, maxKm = 240): { id: string; km: number } | null {
+export function nearestMetro(lat: number, lon: number, maxKm = 240): { id: string; km: number } | null {
   let best: { id: string; km: number } | null = null;
   for (const m of METROS) {
     const c = metroCoords(m.id);
@@ -150,7 +152,8 @@ export function metroFromTimeZone(): string | null {
  * The two guesses are not equally sharp, and pretending otherwise would hurt. A point good to the city can carry
  * "near you", which means within 40 km. A time zone only names a region: America/Toronto covers Waterloo and
  * Barrie as well, and drawing a 40 km circle on Toronto's centre would hide a guest in Waterloo from everything
- * around them. So a coarse guess picks the metro instead, which is the whole area and honestly labelled.
+ * around them. So a coarse guess names the metro, and the home waits for GPS rather than painting that metro as
+ * if it were here. GPS, once it answers, is the pin the cards measure from.
  */
 export type Guess = { kind: "point"; place: Place } | { kind: "metro"; metroId: string } | null;
 
@@ -195,6 +198,24 @@ function rememberGuess(g: Guess): void {
   }
 }
 
+/** A GPS fix, stored so the next visit opens on it without waiting for another prompt. */
+export function rememberCoords(lat: number, lon: number): Guess {
+  const g: Guess = { kind: "point", place: { label: "Near me", sub: "Current location", lat, lon } };
+  rememberGuess(g);
+  return g;
+}
+
+/**
+ * An IP city that is not the clock's city is a datacenter, not the guest. Keep the clock rather than
+ * jumping Toronto to Virginia between the first paint and the /where round trip.
+ */
+export function ipGuessFitsClock(g: Guess, zoneMetro: string | null): boolean {
+  if (!g || !zoneMetro) return true;
+  if (g.kind === "metro") return g.metroId === zoneMetro;
+  const near = nearestMetro(g.place.lat, g.place.lon, 400);
+  return !near || near.id === zoneMetro;
+}
+
 /**
  * Where the home opens, decided before the first render and without touching the network.
  *
@@ -204,15 +225,42 @@ function rememberGuess(g: Guess): void {
  */
 export type Opening = { guess: Guess; chosen: boolean; recheck: boolean };
 
+/**
+ * What the home is allowed to show before GPS answers.
+ *
+ * A stored or typed point is already a pin, so the rails can draw. A city the guest picked themselves is their
+ * decision. A clock or IP metro is not: America/Toronto is Waterloo as much as it is Toronto, and filtering the
+ * catalog on `metroId === "toronto"` dumps KW shops and downtown Toronto into one bucket with no distance.
+ * Wait, then use the GPS pin. The clock city is only the fallback when the browser will not give a fix.
+ */
+export function openingFeed(open: Opening): Guess | { kind: "wait" } {
+  if (open.guess?.kind === "point") {
+    // A GPS pin or a town they typed. An IP city centroid is not a pin: wait for GPS.
+    if (open.chosen || open.guess.place.label === "Near me") return open.guess;
+    return { kind: "wait" };
+  }
+  if (open.guess?.kind === "metro" && open.chosen) return open.guess;
+  return { kind: "wait" };
+}
+
 export function opening(): Opening {
   const mine = savedPlace();
   if (mine) return { guess: { kind: "point", place: mine }, chosen: true, recheck: false };
   const metroId = savedMetro();
-  if (metroId) return { guess: metroId === ALL_METRO_ID ? null : { kind: "metro", metroId }, chosen: true, recheck: false };
-  const stored = storedGuess();
-  if (stored) return { guess: stored.guess, chosen: false, recheck: stored.age > RECHECK_MS };
+  if (metroId) return { guess: { kind: "metro", metroId }, chosen: true, recheck: false };
   const zone = metroFromTimeZone();
-  return { guess: zone ? { kind: "metro", metroId: zone } : null, chosen: false, recheck: true };
+  const zoneGuess: Guess = zone ? { kind: "metro", metroId: zone } : null;
+  const stored = storedGuess();
+  if (stored) {
+    const stale = stored.age > RECHECK_MS;
+    // An IP city that is not the clock's city is last week's trip or a datacenter. Show the clock until GPS
+    // confirms they are still there, rather than painting Florida and then jumping.
+    if (zone && !ipGuessFitsClock(stored.guess, zone)) {
+      return { guess: zoneGuess, chosen: false, recheck: true };
+    }
+    return { guess: stored.guess, chosen: false, recheck: stale };
+  }
+  return { guess: zoneGuess, chosen: false, recheck: true };
 }
 
 /**

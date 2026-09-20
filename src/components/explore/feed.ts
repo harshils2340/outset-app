@@ -1,9 +1,10 @@
 import { inCat } from "../../data/categories";
 import { ALL_METRO_ID } from "../../data/metros";
-import { regionOfArea } from "../../data/regions";
+import { countryOfArea, regionOfArea } from "../../data/regions";
 import type { CategoryId, Unclaimed } from "../../data/types";
 import { fromPrice } from "../../lib/catalog";
 import { dealToday } from "../../lib/companyAgent";
+import { fmtDistance } from "../../lib/geo";
 import { WHAT_INTENTS, describeQuery, searchSuggest } from "../../lib/search";
 import { nearestLocation, type Place } from "../../lib/places";
 import { passesFilters, type FeedFilters } from "./prefs";
@@ -40,6 +41,20 @@ export function withinDrive(u: Unclaimed, near: Place): boolean {
 /** How far the guest is from this listing's nearest venue. Infinity when it has no pin at all. */
 export function kmToPlace(u: Unclaimed, near: Place): number {
   return nearestLocation(u, near)?.km ?? Infinity;
+}
+
+/**
+ * The place line on a card when the guest has a pin: how far it is, not the metro the catalog filed it under.
+ *
+ * Listings in Waterloo ship as "Toronto, ON" because the grid has no KW metro. Printing that city next to a
+ * GPS distance is how "Near me" looked like downtown Toronto. A chain's other venue can still name its town.
+ */
+export function awayLine(u: Unclaimed, near: Place | null): string | null {
+  if (!near || near.region) return null;
+  const n = nearestLocation(u, near);
+  if (!n) return null;
+  const town = n.alt && n.label ? n.label : "";
+  return (town ? town + " · " : "") + fmtDistance(n.km, countryOfArea(u.area)) + " away";
 }
 
 /** Nearest first, but only for a picked point: a distance from the middle of a whole state is not an order. */

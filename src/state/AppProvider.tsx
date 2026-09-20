@@ -1,5 +1,5 @@
 import { warmCheckout } from "../lib/stripeJs";
-import { guessPlace, opening, rememberMetro, rememberPlace, sameGuess, type Opening } from "../lib/here";
+import { guessPlace, ipGuessFitsClock, metroFromTimeZone, opening, openingFeed, rememberCoords, rememberMetro, rememberPlace, sameGuess, type Opening } from "../lib/here";
 import { createContext, useContext, useEffect, useMemo, useReducer, useRef, type ReactNode } from "react";
 import { LISTINGS } from "../data/listings";
 import { ALL_METRO_ID } from "../data/metros";
@@ -23,7 +23,7 @@ import { contactFor, experienceById, fromPrice, initials } from "../lib/catalog"
 import { loadListing, loadRemoteCatalog, onListingEdits } from "../lib/catalogLoad";
 import { confirmPaid, hasApi, loadWalletId, submitBooking, warmApi , apiConfig } from "../lib/api";
 import { assistantOn, companyGreeting, companyHandoff, companyReply, companySuggestions } from "../lib/companyAgent";
-import type { Place } from "../lib/places";
+import { currentLocation, type Place } from "../lib/places";
 import { priceFor, priceUnclaimed } from "../lib/pricing";
 import { applyStoredProfiles } from "../lib/operator";
 import { loadBookings, loadChats, saveBookings, saveChats } from "../lib/storage";
@@ -50,6 +50,12 @@ export type AppState = {
   metroId: string;
   /** Place picked in the Where box. Distances on cards and listing pages are measured from here. */
   near: Place | null;
+  /**
+   * True while the home is waiting on GPS. A clock metro is not a pin, so the rails stay as skeletons rather
+   * than painting Toronto for a guest standing in Waterloo. False once a fix lands, or once the browser refuses
+   * and the clock city is used as the fallback.
+   */
+  locating: boolean;
   dateIdx: number;
   listingId: string | null;
   slot: string | null;
@@ -72,6 +78,12 @@ export type AppState = {
   removeId: string | null;
   sheet: SheetId;
   toast: string | null;
+  /**
+   * Ask Outset, the one agent surface in the product. `null` is closed; a string is open, and a non-empty one
+   * is asked the moment it opens. Held here rather than as local state in `App.tsx` so any screen (a listing,
+   * the booking sheet) can open the same overlay instead of building its own chat.
+   */
+  asking: string | null;
 };
 
 type Action =
@@ -84,6 +96,7 @@ type Action =
   | { type: "q"; q: string }
   | { type: "metro"; metroId: string }
   | { type: "near"; near: Place | null }
+  | { type: "located" }
   | { type: "openMetro" }
   | { type: "date"; dateIdx: number }
   | { type: "openListing"; id: string }
@@ -118,11 +131,12 @@ type Action =
   | { type: "back" }
   | { type: "openChat"; id: string }
   | { type: "openOperator"; id?: string; token?: string }
-  | { type: "ensureThread"; id: string }
   | { type: "removeRequest"; id: string | null }
   | { type: "paidReturn"; code: string }
   | { type: "sendChat"; text: string }
-  | { type: "toastOff" };
+  | { type: "toastOff" }
+  | { type: "openAsk"; seed: string }
+  | { type: "closeAsk" };
 
 function listingById(id: string | null): Listing | null {
   if (!id) return null;
@@ -188,9 +202,11 @@ function reducer(state: AppState, action: Action): AppState {
     case "q":
       return { ...state, q: action.q };
     case "metro":
-      return { ...state, metroId: action.metroId, near: null, sheet: null };
+      return { ...state, metroId: action.metroId, near: null, locating: false, sheet: null };
     case "near":
-      return { ...state, near: action.near, metroId: action.near ? ALL_METRO_ID : state.metroId };
+      return { ...state, near: action.near, metroId: action.near ? ALL_METRO_ID : state.metroId, locating: false };
+    case "located":
+      return { ...state, locating: false };
     case "openMetro":
       return { ...state, sheet: "metro" };
     case "date":
@@ -319,15 +335,6 @@ function reducer(state: AppState, action: Action): AppState {
       const paid = { ...booking, paid: true };
       return { ...state, booking: paid, bookings: state.bookings.map((b) => (b.code === action.code ? paid : b)), sheet: null, screen: "confirm", toast: "Payment received - " + action.code };
     }
-    case "ensureThread": {
-      const company = experienceById(action.id);
-      if (!company) return state;
-      if (state.chats[company.id]) return state.threadId === company.id ? state : { ...state, threadId: company.id };
-      // A shop that switched the assistant off gets no new thread opened in its name.
-      if (!assistantOn(company)) return state;
-      const hello: ChatMessage = { who: "them", t: companyGreeting({ item: company, contact: contactFor(company) }), at: "now" };
-      return { ...state, threadId: company.id, chats: { ...state.chats, [company.id]: [hello] } };
-    }
     case "openOperator":
       return { ...state, tab: "account", screen: "operator", sheet: null, reqTargetId: null, operatorId: action.id ?? state.operatorId, claimToken: action.token ?? (action.id ? null : state.claimToken) };
     case "openChat": {
@@ -340,8 +347,9 @@ function reducer(state: AppState, action: Action): AppState {
       }
       const company = experienceById(action.id);
       if (!company) return state;
-      // Same rule as ensureThread: an assistant the shop switched off does not greet a new guest. A thread
-      // opened while it was on still opens, so nobody loses a conversation they were already having.
+      // An assistant the shop switched off does not greet a new guest. A thread opened while it was on still
+      // opens, so nobody loses a conversation they were already having; nothing guest-facing starts a new one
+      // any more (Ask Outset is the one agent surface), but a returning guest's old thread still reads back.
       if (!assistantOn(company) && !state.chats[company.id]) return state;
       const hello: ChatMessage = { who: "them", t: companyGreeting({ item: company, contact: contactFor(company) }), at: "now" };
       const chats = state.chats[company.id] ? state.chats : { ...state.chats, [company.id]: [hello] };
@@ -385,6 +393,12 @@ function reducer(state: AppState, action: Action): AppState {
       return { ...state, toast: action.text };
     case "toastOff":
       return { ...state, toast: null };
+    // Whatever else was open (a listing sheet, filters) closes with it: the agent is the one thing on screen
+    // while it is up, never a panel over another panel.
+    case "openAsk":
+      return { ...state, asking: action.seed, sheet: null };
+    case "closeAsk":
+      return { ...state, asking: null };
     default:
       return state;
   }
@@ -401,6 +415,7 @@ const initial: AppState = {
   q: "",
   metroId: ALL_METRO_ID,
   near: null,
+  locating: false,
   dateIdx: 0,
   listingId: null,
   slot: null,
@@ -418,6 +433,7 @@ const initial: AppState = {
   removeId: null,
   sheet: null,
   toast: null,
+  asking: null,
 };
 
 type Api = {
@@ -453,11 +469,13 @@ type Api = {
   cancelCheckout: () => void;
   openChat: (id: string) => void;
   openOperator: (id?: string) => void;
-  ensureThread: (id: string) => void;
   sendChat: (text: string) => void;
   goto: (tab: TabId) => void;
   /** Re-render catalog lists after an operator saves edits. */
   touchCatalog: () => void;
+  /** Open Ask Outset, the one agent surface in the product, seeded with a question when one is already known. */
+  openAsk: (seed?: string) => void;
+  closeAsk: () => void;
 };
 
 const Ctx = createContext<Api | null>(null);
@@ -481,14 +499,14 @@ function opensHome(): boolean {
 /**
  * The place the home opens on, folded into the state of the very first render.
  *
- * `opening()` reads this device only: the place the guest chose, the last answer the API gave, or the browser's
- * time zone. So there is nothing to wait for and nothing to move afterwards. A point becomes `near`, which is
- * "within 40 km of here"; a region only names a metro, which is honest about being the whole area.
+ * A GPS or typed point is a pin: the rails measure from it. A city the guest picked is their decision. A clock
+ * metro is not either of those, so the feed waits (`locating`) rather than drawing Toronto for Waterloo.
  */
 function withPlace(init: AppState, open: Opening): AppState {
-  if (!open.guess) return init;
-  if (open.guess.kind === "point") return { ...init, near: open.guess.place };
-  return { ...init, metroId: open.guess.metroId };
+  const feed = openingFeed(open);
+  if (feed.kind === "wait") return { ...init, locating: true };
+  if (feed.kind === "point") return { ...init, near: feed.place, locating: false };
+  return { ...init, metroId: feed.metroId, locating: false };
 }
 
 export function AppProvider({ children }: { children: ReactNode }) {
@@ -526,31 +544,85 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (booking) return { ...base, screen: "confirm" as const, booking: { ...booking, paid: true }, sheet: null };
     }
     if (/^#wallet\b/i.test(window.location.hash)) return { ...base, tab: "account" as const, screen: "account" as const };
+    // `#ask` opens Ask Outset on load, so the answer to "what is actually free tonight" survives a refresh,
+    // can be sent to somebody as a link, and can sit behind a QR code.
+    const ask = window.location.hash.match(/^#ask(?:=(.*))?$/i);
+    if (ask) {
+      let seed = "";
+      try {
+        seed = decodeURIComponent(ask[1] || "");
+      } catch {
+        seed = "";
+      }
+      return { ...base, asking: seed };
+    }
     return base;
   });
   const stateRef = useRef(state);
   stateRef.current = state;
 
   /**
-   * Check the opening place against the API, in the one case where it is worth doing.
+   * GPS is the pin. A clock city is only the fallback when the browser will not give a fix.
    *
-   * `opening()` has already drawn the home on the best answer this device held. It asks for another only when
-   * that answer was the browser's time zone, which names a region rather than a city, or when the stored one is
-   * over six hours old and the guest may have travelled. An answer that agrees with what is on screen is
-   * dropped rather than dispatched, so a repeat visit is one render, not two.
+   * First paint used to draw the timezone metro so the rails were "local" in one frame. America/Toronto is
+   * Waterloo as much as it is Toronto, so that frame was downtown listings for a guest standing in KW. The
+   * home now waits, then measures every card from the GPS point. `/where` is still an IP address and only
+   * lands when it agrees with the clock.
    */
   useEffect(() => {
     const start = open.current!;
-    if (!opensHome() || chose.current || !start.recheck) return;
+    if (!opensHome()) return;
+    const typedTown = start.chosen && start.guess?.kind === "point" && start.guess.place.label !== "Near me";
+    if (typedTown) return;
+    if (start.chosen && start.guess?.kind === "metro") return;
     let alive = true;
-    void guessPlace().then((g) => {
-      if (!alive || chose.current || !g || sameGuess(g, start.guess)) return;
-      // A guest quick enough to have opened something in the meantime is not interrupted for a guess: the
-      // metro branch of the reducer clears `sheet`, so landing this would shut a listing under their hand.
-      if (stateRef.current.sheet) return;
-      if (g.kind === "point") dispatch({ type: "near", near: g.place });
-      else dispatch({ type: "metro", metroId: g.metroId });
-    });
+    const apply = (g: NonNullable<typeof start.guess>) => {
+      if (!alive || stateRef.current.sheet) return;
+      if (chose.current) {
+        const n = stateRef.current.near;
+        if (n && n.label !== "Near me") return;
+        if (!n && stateRef.current.metroId !== ALL_METRO_ID) return;
+      }
+      if (g.kind === "point") {
+        if (sameGuess(g, start.guess)) {
+          if (stateRef.current.locating) dispatch({ type: "located" });
+          return;
+        }
+        dispatch({ type: "near", near: g.place });
+      } else {
+        if (sameGuess(g, start.guess) && !stateRef.current.locating) return;
+        dispatch({ type: "metro", metroId: g.metroId });
+      }
+    };
+    void (async () => {
+      const pt = await currentLocation();
+      if (!alive) return;
+      if (pt) {
+        apply(rememberCoords(pt.lat, pt.lon));
+        return;
+      }
+      // No fix. A clock city is the fallback, labelled as that city, not a 40 km circle on an IP centroid.
+      const zone = metroFromTimeZone();
+      if (start.guess?.kind === "metro") {
+        apply(start.guess);
+        return;
+      }
+      if (zone) {
+        dispatch({ type: "metro", metroId: zone });
+        return;
+      }
+      if (!start.recheck) {
+        dispatch({ type: "located" });
+        return;
+      }
+      const g = await guessPlace();
+      if (!alive) return;
+      if (!g || !ipGuessFitsClock(g, metroFromTimeZone())) {
+        dispatch({ type: "located" });
+        return;
+      }
+      apply(g);
+    })();
     return () => {
       alive = false;
     };
@@ -782,7 +854,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
         // Picking a city is a decision too, and it clears `near`, so the remembered point goes with it: without
         // this the next visit would restore the old point and quietly undo the city the guest chose. The city
         // itself is remembered in its place, because storing nothing meant the next visit guessed over it.
-        // Anywhere is stored as itself, because choosing the whole catalog is a choice as much as Denver is.
         chose.current = true;
         rememberPlace(null);
         rememberMetro(metroId);
@@ -875,10 +946,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
         dispatch({ type: "openOperator", id });
         loadListing(id ?? null).then((changed) => changed && dispatch({ type: "catalogLoaded", added: 1 }));
       },
-      ensureThread: (id) => dispatch({ type: "ensureThread", id }),
       sendChat: (text) => dispatch({ type: "sendChat", text }),
       goto: (tab) => dispatch({ type: "goto", tab }),
       touchCatalog: () => dispatch({ type: "catalogTouched" }),
+      openAsk: (seed) => dispatch({ type: "openAsk", seed: seed || "" }),
+      closeAsk: () => dispatch({ type: "closeAsk" }),
     }),
     [state, listing, thread, reqTarget],
   );

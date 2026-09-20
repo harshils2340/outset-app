@@ -95,7 +95,7 @@ export function ExploreView({ onAsk, asking }: { onAsk: () => void; asking: bool
     return () => io.disconnect();
   }, [list, limit]);
 
-  const place = state.near ? state.near.label : state.metroId === ALL_METRO_ID ? "" : metroShort(state.metroId);
+  const place = state.locating ? "Finding you…" : state.near ? (state.near.label === "Near me" ? "Near you" : state.near.label) : state.metroId === ALL_METRO_ID ? "" : metroShort(state.metroId);
   const whenDate = prefs.when ? dates.find((d) => dateKey(d) === prefs.when) : undefined;
   const whenLabel = whenDate ? whenDate.toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "Any week";
   const whoLabel = prefs.who ? prefs.who + (prefs.who === 1 ? " guest" : " guests") : "Add guests";
@@ -115,6 +115,49 @@ export function ExploreView({ onAsk, asking }: { onAsk: () => void; asking: bool
   };
 
   if (prefs.view === "wishlists") return <Wishlists saved={prefs.saved} complete={state.catalogComplete} />;
+
+  if (!state.catalogReady || state.locating) {
+    return (
+      <div className="airexplore">
+        <header className="airhead">
+          <div className="airpillrow">
+            <button type="button" className="airpill" onClick={openSearch} aria-label="Search">
+              <IcSearch size={18} className="airpillico" />
+              <span className="airpilltext">
+                <b>{pillTitle}</b>
+                <small>{pillSub}</small>
+              </span>
+            </button>
+            <button type="button" className={"airask" + (asking ? " on" : "")} onClick={onAsk} aria-pressed={asking} aria-label="Ask Outset for anything">
+              <Markup html={ICONS.spark} />
+            </button>
+            <button type="button" className="airfilter" onClick={openFilters} aria-label="Filters">
+              <IcFilters size={16} />
+            </button>
+          </div>
+          <nav className="aircats" aria-label="Categories">
+            {CATS.map((c) => (
+              <button key={c.id} type="button" className="aircat" aria-pressed={state.cat === c.id} onClick={() => setCat(c.id)}>
+                <Markup html={ICONS[c.icon]} />
+                <span>{c.name}</span>
+              </button>
+            ))}
+          </nav>
+        </header>
+        <div className="airfeed" aria-hidden="true">
+          {Array.from({ length: 4 }, (_, i) => (
+            <div className="aircard" key={i}>
+              <div className="aircardphoto skel" />
+              <div className="aircardbody">
+                <span className="skel skelline" />
+                <span className="skel skelline short" />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   const emptyTitle = cityEmpty ? "Nothing in this city yet" : q ? "No exact matches" : filterCount ? "No exact matches" : meta.emptyTitle;
   const waysOut = !!found && (!!found.family || found.places.length > 0 || found.elsewhere.length > 0 || found.activities.length > 0 || found.otherCats > 0);

@@ -1,17 +1,15 @@
 import { useRef, useState, type KeyboardEvent } from "react";
 import { metroById } from "../../data/metros";
 import { ART_LABEL } from "../../data/art";
-import { countryOfArea } from "../../data/regions";
 import type { Unclaimed } from "../../data/types";
 import { cardPlace, fromPrice, perPerson, publicRating, topRated } from "../../lib/catalog";
 import { dealToday } from "../../lib/companyAgent";
 import { money } from "../../lib/format";
-import { fmtDistance } from "../../lib/geo";
-import { nearestLocation } from "../../lib/places";
 import { useApp } from "../../state/AppProvider";
 import { Photo } from "../art/Photo";
 import { IcHeartOnPhoto, IcStar } from "./AirIcons";
 import { toggleSaved, usePrefs } from "./prefs";
+import { awayLine } from "./feed";
 import { AdminSiteLink, liteDealTitle, tidyDuration } from "../web/WebListing";
 import { freeCancelBadge } from "../../lib/cancellation";
 import { reportDeadCover } from "../../lib/deadCovers";
@@ -48,9 +46,7 @@ export function UnclaimedCard({ item }: { item: Unclaimed; compact?: boolean }) 
   const isSaved = saved.includes(item.id);
 
   const place = cardPlace(item.area, metro?.name);
-  // A distance from the middle of a whole state means nothing to a guest, so a picked state shows none. A
-  // picked point measures to the nearest of a chain's venues, the way the desktop card does.
-  const km = state.near && !state.near.region ? nearestLocation(item, state.near)?.km ?? null : null;
+  const away = awayLine(item, state.near);
   const detail = [kind, item.dur ? tidyDuration(item.dur) : null, freeCancelBadge(item) ? "Free cancellation" : null].filter(Boolean).join(" · ");
   const unit = item.options.find((o) => o.price === from);
   const per = from != null && (!unit || perPerson(unit)) ? " / person" : "";
@@ -127,8 +123,7 @@ export function UnclaimedCard({ item }: { item: Unclaimed; compact?: boolean }) 
           ) : null}
         </div>
         <p className="aircardline">
-          {place}
-          {km != null ? " · " + fmtDistance(km, countryOfArea(item.area)) + " away" : ""}
+          {away || place}
         </p>
         {detail ? <p className="aircardline">{detail}</p> : null}
         {dealTitle ? (
