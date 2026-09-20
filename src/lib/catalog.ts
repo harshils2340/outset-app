@@ -88,7 +88,14 @@ export function getCatalog(): Unclaimed[] {
   return catalog;
 }
 
-function domainOf(src: string): string {
+/**
+ * The operator's host, as every record and every contact row is keyed by it: no scheme, no `www.`, no path.
+ *
+ * Exported because the concierge answers with a domain and nothing else to identify a business by, so
+ * `concierge.ts` has to normalise the two sides the same way this file does to find the listing. A second copy
+ * of these two replaces is a second place for "www." to survive.
+ */
+export function domainOf(src: string): string {
   return src.replace(/^https?:\/\//i, "").replace(/^www\./i, "").split("/")[0].toLowerCase();
 }
 
