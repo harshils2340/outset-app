@@ -377,7 +377,16 @@ export function WebConcierge({ seed, framed, onClose }: { seed?: string; framed?
     session.current = null;
     convo.current = null;
     placeGiven.current = false;
-    asked.current = null;
+    /*
+     * The shared link's question stays asked, the way reopening a past conversation leaves it asked.
+     *
+     * Clearing it re-armed the opening effect, which re-runs whenever `ask` is rebuilt, and `ask` is rebuilt
+     * whenever the guest's place changes. `AppProvider` refines that place from the network after the first
+     * render, and its "do not interrupt a guest mid-thought" guard only covers a sheet, which this overlay
+     * deliberately is not. So a guest who opened an `#ask=` link, pressed New and started typing could have
+     * the link's own question re-ask itself into their fresh thread a second later.
+     */
+    asked.current = seed ?? null;
     setEntries([{ kind: "them", text: OPENER, id: 0 }]);
     setSteps([]);
     setBusy(false);
