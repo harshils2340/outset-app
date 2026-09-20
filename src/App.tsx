@@ -149,8 +149,16 @@ export function App() {
   /**
    * Opening the agent switches to the phone frame the same way "Open the phone app" does, rather than
    * opening the embedded panel on the wide site. It is a real iPhone message thread it is standing in for,
-   * and the embedded panel — a chat box docked into a browser-width page — never looked like one; the phone
+   * and the embedded panel, a chat box docked into a browser-width page, never looked like one; the phone
    * frame, with its own status bar and rounded screen, does.
+   *
+   * This looks like the thing `6d33774042` deliberately removed ("opening Ask used to drop the guest into the
+   * phone frame and leave a dim overlay on the listings when they came back"), and it is not the same
+   * mechanism: that one flipped `web` back to `true` again on close, through a `useEffect` racing a ref
+   * against the render it was meant to guard, which is what left the stale overlay behind. This one is a
+   * one-way door. Closing the agent calls only `closeAsk()`; `web` stays `false`, the same as clicking "Open
+   * the phone app" leaves it, and getting back to the wide site is the same explicit "Back to the site"
+   * button either way. Verified against a live click-through with no leftover overlay before changing this.
    */
   const toggleAsk = (on: boolean, seed = "") => {
     if (!on) {

@@ -86,7 +86,7 @@ services:
       - key: STRIPE_WEBHOOK_SECRET
         sync: false
       - key: MAIL_FROM
-        value: Outset <onboarding@resend.dev>
+        value: GoDo <onboarding@resend.dev>
       # Every booking request is emailed here with the shop's phone. Unclaimed shops are told by nobody else.
       - key: BOOKING_ALERT_EMAIL
         sync: false

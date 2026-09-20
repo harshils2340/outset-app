@@ -452,7 +452,7 @@ export function OperatorView({ compact = false }: { compact?: boolean }) {
                 <span>
                   <b>Sign in again to publish your changes</b>
                   <small>
-                    Outset has signed this device out, so your edits are saved here and are not reaching your listing
+                    GoDo has signed this device out, so your edits are saved here and are not reaching your listing
                     or your guests, and new booking requests are not coming through either. Sign in with the email on
                     your listing and everything on this device goes up with your next edit.
                   </small>

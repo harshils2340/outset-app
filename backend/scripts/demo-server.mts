@@ -109,13 +109,13 @@ async function sendConfirmation(o: {
   const { text, html } = renderEmail({
     eyebrow: "Booked",
     heading: `You're booked: ${o.service || o.listing}`,
-    intro: [`${fmtWhen(o.date, o.slot)}, ${guests(o.qty)}. Outset booked this for you — nothing else to do.`],
+    intro: [`${fmtWhen(o.date, o.slot)}, ${guests(o.qty)}. GoDo booked this for you — nothing else to do.`],
     rows: [
       { label: "Experience", value: o.service || o.listing },
       { label: "When", value: fmtWhen(o.date, o.slot) },
       { label: "Guests", value: guests(o.qty) },
     ],
-    footer: "Outset — hello@onoutset.com",
+    footer: "GoDo — hello@onoutset.com",
   });
   const sent = await sendMail({ to: o.guest.email, subject: `Booked: ${o.service || o.listing}`, text, html }).catch((e) => ({ sent: false, error: (e as Error).message }));
   console.log(sent.sent ? `    confirmation emailed to ${o.guest.email}` : `    [demo] confirmation email failed: ${sent.error || "unknown error"}`);
@@ -148,7 +148,7 @@ app.post("/bookings", async (c) => {
         code,
         listing,
         title: (b?.service || listing).slice(0, 120),
-        description: `${date} ${slot} · ${qty} guest${qty === 1 ? "" : "s"} (Outset test)`,
+        description: `${date} ${slot} · ${qty} guest${qty === 1 ? "" : "s"} (GoDo test)`,
         amount: total,
         currency: "cad",
         email: (b?.guest?.email || "").trim() || undefined,
@@ -214,7 +214,7 @@ async function warm(): Promise<void> {
 
 serve({ fetch: app.fetch, port }, () => {
   const lan = lanAddress();
-  console.log(`\n  Outset concierge\n`);
+  console.log(`\n  GoDo concierge\n`);
   console.log(`    this machine   http://localhost:${port}/go`);
   if (lan) console.log(`    their phone    http://${lan}:${port}/go   <- the QR code points here\n`);
   else console.log(`    (no network address found; phones will not reach this)\n`);

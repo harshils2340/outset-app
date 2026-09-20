@@ -144,7 +144,7 @@ function Dashboard({ m }: { m: AdminMetrics }) {
         <Tile label="Claims" value={<Figure v={m.claims.claimedInRange} />} values={claimValues} color="var(--ad-2)" sub={m.claims.claimed == null ? "total claimed not tracked yet" : `${m.claims.claimed.toLocaleString("en-US")} claimed in total`} />
         <Tile label="Bookings" value={<Figure v={m.bookings.inRange} />} values={bookValues} color="var(--ad-3)" sub={m.bookings.total == null ? "lifetime total not tracked yet" : `${m.bookings.total.toLocaleString("en-US")} since the beginning`} />
         <Tile label="Gross taken" value={<Money v={m.money.gross} />} values={moneyValues} color="var(--ad-4)" sub="payments actually captured" />
-        <Tile label="Outset's fee" value={<Money v={m.money.fee} />} values={m.money.byDay.map((d) => d.fee)} color="var(--ad-1)" sub="our cut of that gross" />
+        <Tile label="GoDo's fee" value={<Money v={m.money.fee} />} values={m.money.byDay.map((d) => d.fee)} color="var(--ad-1)" sub="our cut of that gross" />
       </div>
 
       <Section id="ad-outreach" title="Outreach" blurb="Emails sent to operators, and what came back. Bounces and unsubscribes are the cost of sending; a rising bounce line means the address list is going stale.">
@@ -235,7 +235,7 @@ function Dashboard({ m }: { m: AdminMetrics }) {
         <TimeChart
           title="Gross and fee per day"
           points={moneyDays}
-          series={[{ label: "Operator net", color: "var(--ad-2)" }, { label: "Outset fee", color: "var(--ad-4)" }]}
+          series={[{ label: "Operator net", color: "var(--ad-2)" }, { label: "GoDo fee", color: "var(--ad-4)" }]}
           kind="bars"
           height={220}
           fmt={(n) => money(Math.round(n * 100) / 100)}
@@ -243,7 +243,7 @@ function Dashboard({ m }: { m: AdminMetrics }) {
         />
         <dl className="adfacts">
           <div><dt>Gross captured</dt><dd><Money v={m.money.gross} /></dd></div>
-          <div><dt>Outset's fee</dt><dd><Money v={m.money.fee} /> {m.money.gross && m.money.fee != null && m.money.gross > 0 ? <em>{((m.money.fee / m.money.gross) * 100).toFixed(1)}% of gross</em> : null}</dd></div>
+          <div><dt>GoDo's fee</dt><dd><Money v={m.money.fee} /> {m.money.gross && m.money.fee != null && m.money.gross > 0 ? <em>{((m.money.fee / m.money.gross) * 100).toFixed(1)}% of gross</em> : null}</dd></div>
           <div><dt>Operator net</dt><dd><Money v={m.money.operatorNet} /></dd></div>
           <div><dt>Held, not captured</dt><dd><Money v={m.money.authorized} /> <em>authorised on a card</em></dd></div>
           <div><dt>Refunded</dt><dd><Money v={m.money.refunded} /></dd></div>
@@ -257,7 +257,7 @@ function Dashboard({ m }: { m: AdminMetrics }) {
         id="ad-costs"
         tone="cost"
         title="What this costs"
-        blurb={`Money out, in ${(m.costs.currency || "usd").toUpperCase()}. Nothing here belongs in the Money section above and the two are never added together: one is what guests paid, this is what Outset paid to go and find the businesses they booked. The two figures that matter are underneath.`}
+        blurb={`Money out, in ${(m.costs.currency || "usd").toUpperCase()}. Nothing here belongs in the Money section above and the two are never added together: one is what guests paid, this is what GoDo paid to go and find the businesses they booked. The two figures that matter are underneath.`}
       >
         <div className="adcosthero">
           <CostTile
@@ -364,7 +364,7 @@ export function AdminView() {
   }, [days]);
 
   useEffect(() => {
-    document.title = "Outset metrics";
+    document.title = "GoDo metrics";
     document.body.classList.add("adbody");
     return () => document.body.classList.remove("adbody");
   }, []);

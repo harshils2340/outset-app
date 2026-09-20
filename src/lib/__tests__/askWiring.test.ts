@@ -30,8 +30,17 @@ test("the file that renders the overlay reads the state the provider keeps", () 
   assert.match(HOME, /\bah-modes\b/, "Browse and Ask share one toggle on the desktop header");
   assert.match(APP, /asking=\{askOnSite\}/, "desktop Ask is a home-page mode, not a second tree");
   assert.match(APP, /<WebConcierge\b/, "the phone frame still renders the agent");
-  assert.doesNotMatch(APP, /cameFromWeb/, "Ask must not jump the desktop site into the phone frame");
-  assert.doesNotMatch(APP, /setWeb\(false\);\s*\n\s*openAsk|openAsk\([^)]*\);\s*\n\s*setWeb\(false\)/, "Ask must not call setWeb(false)");
+  /**
+   * Opening the agent onto the real phone frame ("Open the phone app"'s own view) is deliberate again as of
+   * this file's own session: a laptop-width chat box docked into the page does not read as the real iPhone
+   * thread it is standing in for. What stays banned is the specific mechanism that made that buggy the first
+   * time, a `useEffect` racing a `cameFromWeb` ref to flip `web` back to `true` again once the agent closed,
+   * which is what left a dim overlay on the listings behind it. This is a one-way door instead: `web` only
+   * ever goes to `false` when opening, closing the agent calls nothing but `closeAsk()`, and getting back to
+   * the wide site is the same explicit "Back to the site" button "Open the phone app" already used.
+   */
+  assert.doesNotMatch(APP, /cameFromWeb/, "the old ref-and-effect mechanism must not come back");
+  assert.doesNotMatch(APP, /closeAsk\(\);[^}]*setWeb\(true\)|setWeb\(true\)[^}]*closeAsk\(\)/, "closing the agent must not restore the wide site by itself: that bidirectional flip is what left the stale overlay behind");
   assert.doesNotMatch(
     APP,
     /useState<[^>]*>\(\s*ASKED_FOR|setAsking\s*\(/,

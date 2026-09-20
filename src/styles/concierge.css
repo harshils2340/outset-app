@@ -356,9 +356,10 @@
 .cg-slots { margin-top: 8px; display: flex; flex-direction: column; gap: 10px; }
 /*
   One line for what it is and what it costs, said once, then its times underneath as a row of taps. This
-  replaced a full price/seats/Book block repeated per departure — six hourly slots at the same rate read as
+  replaced a full price/seats/Book block repeated per departure: six hourly slots at the same rate read as
   six near-identical rows, which is a wall of text on a phone with nothing new to read after the first one.
 */
+.cg-slotgroup { min-width: 0; }
 .cg-slotgroup-head { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
 .cg-item {
   flex: 1 1 auto; min-width: 0; color: var(--ink-soft); font-size: 12.5px; font-weight: 600;

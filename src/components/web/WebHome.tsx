@@ -1814,7 +1814,7 @@ export function WebHome({ onOpenApp, onOperators, onAsk, asking = false, askSeed
               <h3>Support</h3>
               <ul>
                 <li><a href={"mailto:" + HELP_EMAIL}>Help Centre</a></li>
-                <li><a href={"mailto:" + HELP_EMAIL + "?subject=" + encodeURIComponent("A listing on Outset")}>Report a listing concern</a></li>
+                <li><a href={"mailto:" + HELP_EMAIL + "?subject=" + encodeURIComponent("A listing on GoDo")}>Report a listing concern</a></li>
                 <li><button type="button" onClick={onOpenApp}>Open the phone app</button></li>
               </ul>
             </section>

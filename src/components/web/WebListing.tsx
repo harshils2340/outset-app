@@ -1376,7 +1376,7 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
             <b>Is this your business and you'd rather not be listed?</b>
               <small>We take listings down within one business day. Send one line from a company email and it's gone.</small>
             </span>
-            <a className="aloutline" href={"mailto:harshils2340@gmail.com?subject=" + encodeURIComponent("Remove listing: " + item.title + " (" + item.id + ")") + "&body=" + encodeURIComponent("Please remove " + item.title + " from Outset.\n\nListing: " + listingUrl(item.id) + "\n")}>Request removal</a>
+            <a className="aloutline" href={"mailto:harshils2340@gmail.com?subject=" + encodeURIComponent("Remove listing: " + item.title + " (" + item.id + ")") + "&body=" + encodeURIComponent("Please remove " + item.title + " from GoDo.\n\nListing: " + listingUrl(item.id) + "\n")}>Request removal</a>
           </div>
         ) : null}
 
@@ -1466,7 +1466,7 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
                   <b>Top<br />rated</b>
                   <span className="allaurel flip"><Markup html={I.laurelL} /></span>
                 </span>
-                <span className="alfavtext">One of the highest-rated {typeName.toLowerCase()} listings on Outset, from public reviews</span>
+                <span className="alfavtext">One of the highest-rated {typeName.toLowerCase()} listings on GoDo, from public reviews</span>
                 <span className="alfavnum">
                   <b>{score!.rating.toFixed(1)}</b>
                   <span className="alfavstars" aria-hidden="true">{[0, 1, 2, 3, 4].map((i) => <Markup key={i} html={I.star} />)}</span>
@@ -1931,7 +1931,7 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
                   <span className="allaurel big flip"><Markup html={I.laurelL} /></span>
                     </span>
                 <b className="alfavbigtitle">Top rated</b>
-                <p>One of the most loved {typeName.toLowerCase()} listings on Outset, based on {reviewsLine(score!.reviews, "public")}</p>
+                <p>One of the most loved {typeName.toLowerCase()} listings on GoDo, based on {reviewsLine(score!.reviews, "public")}</p>
                   </div>
             ) : score ? (
               <h2 className="alreviewshead"><Markup html={I.star} /> {score.rating.toFixed(1)} · {reviewsLine(score.reviews)}</h2>
@@ -2049,9 +2049,9 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
                   an Ask Outset button, and offered the shop's own information back to a guest either way. */}
               {assistantOn(item) ? (
                 <>
-                  <p className="alsecsub">Ask Outset reads {possessive(item.title)} own published information, and can check live availability while you wait.</p>
+                  <p className="alsecsub">Ask GoDo reads {possessive(item.title)} own published information, and can check live availability while you wait.</p>
                   <button type="button" className="aloutline" onClick={() => openAsk("What should I know about " + item.title + " before booking?")}>
-                    Ask Outset about {item.title}
+                    Ask GoDo about {item.title}
                 </button>
                 </>
               ) : (

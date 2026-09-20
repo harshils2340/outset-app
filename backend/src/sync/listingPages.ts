@@ -185,8 +185,8 @@ function page(item: Item, opts: { landingHref: string | null; kindPageHref: stri
   const rating = typeof item.rating === "number" ? item.rating : null;
   const reviews = typeof item.reviews === "number" ? item.reviews : null;
   const kind = KINDS.find((k) => k.art === item.art);
-  const title = `${item.title}${area ? " in " + area : ""} · Outset`;
-  const description = (blurb || `${item.title}, ${area || "a real local business"} on Outset.`).slice(0, 300);
+  const title = `${item.title}${area ? " in " + area : ""} · GoDo`;
+  const description = (blurb || `${item.title}, ${area || "a real local business"} on GoDo.`).slice(0, 300);
   const ld = jsonLd(item, canonical, photos, menu);
 
   const photosHtml = photos.length
@@ -205,7 +205,7 @@ function page(item: Item, opts: { landingHref: string | null; kindPageHref: stri
   const faqHtml = faq.length ? `<h2>Questions</h2><div class="faq">${faq.map((f) => `<h3>${esc(f.q)}</h3><p>${esc(f.a)}</p>`).join("")}</div>` : "";
   const ratingHtml = rating != null ? `<p class="rating">★ ${rating.toFixed(1)}${reviews ? ` (${reviews.toLocaleString("en-US")} reviews)` : ""}</p>` : "";
   const links = [
-    `<a href="${hashUrl}">Open on Outset</a>`,
+    `<a href="${hashUrl}">Open on GoDo</a>`,
     opts.landingHref ? `<a href="${opts.landingHref}">${esc(kind ? kind.search : "More like this")}${area ? " near " + esc(area.split(",")[0]) : ""}</a>` : "",
     `<a href="${site}p/index.html">Browse every activity by city</a>`,
   ]
@@ -218,15 +218,15 @@ function page(item: Item, opts: { landingHref: string | null; kindPageHref: stri
 <link rel="canonical" href="${canonical}">
 <script type="application/ld+json">${ldJson(ld)}</script>
 <style>${CSS}</style></head><body>
-<header><div class="wrap top"><a class="logo" href="${site}">Outset</a></div></header>
+<header><div class="wrap top"><a class="logo" href="${site}">GoDo</a></div></header>
 <main class="wrap">
-<nav class="crumbs"><a href="${site}">Outset</a><span>›</span><a href="${site}p/index.html">By activity and city</a>${kind && opts.kindPageHref ? `<span>›</span><a href="${opts.kindPageHref}">${esc(kind.search)}</a>` : ""}</nav>
+<nav class="crumbs"><a href="${site}">GoDo</a><span>›</span><a href="${site}p/index.html">By activity and city</a>${kind && opts.kindPageHref ? `<span>›</span><a href="${opts.kindPageHref}">${esc(kind.search)}</a>` : ""}</nav>
 <h1>${esc(item.title)}</h1>
 ${area ? `<p class="area">${esc(area)}</p>` : ""}
 ${ratingHtml}
 ${blurb ? `<p class="blurb">${esc(blurb)}</p>` : ""}
 ${factsHtml}
-<a class="cta" href="${hashUrl}">Request a time on Outset</a>
+<a class="cta" href="${hashUrl}">Request a time on GoDo</a>
 ${photosHtml}
 ${menuHtml}
 ${hoursHtml}
@@ -235,7 +235,7 @@ ${requirementsHtml}
 ${faqHtml}
 <div class="links">${links}</div>
 </main>
-<footer><div class="wrap">Outset · Book the jump. Skip the call.</div></footer>
+<footer><div class="wrap">GoDo · Book the jump. Skip the call.</div></footer>
 </body></html>`;
 }
 

@@ -202,7 +202,7 @@ auth.post("/auth/request-code", rateLimit(20, 60 * 60 * 1000), async (c) => {
     codes.set(email, { hash: codeHash(email, code), exp: Date.now() + 10 * 60 * 1000, tries: 0 });
     void sendMail({
       to: email,
-      subject: "Your Outset sign-in code: " + code,
+      subject: "Your GoDo sign-in code: " + code,
       ...renderEmail({
         eyebrow: "Sign in",
         heading: `Your code is ${code}`,

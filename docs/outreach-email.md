@@ -34,7 +34,7 @@ Plain text and HTML, same words. Merge fields in braces.
 
 Hi,
 
-I'm Harshil. I run Outset, a site where people book local activities the way they book a table on OpenTable: pick a
+I'm Harshil. I run GoDo, a site where people book local activities the way they book a table on OpenTable: pick a
 time, pay, done. No calling around.
 
 I built a page for {Business name} from your website. It has your {N} services with prices, your photos, your hours
@@ -42,10 +42,10 @@ and your cancellation policy. I didn't make anything up. Have a look:
 
 {listing link}
 
-There are about 59,000 activity businesses on Outset across the US and Canada, from Florida to British Columbia, and
+There are about 59,000 activity businesses on GoDo across the US and Canada, from Florida to British Columbia, and
 guests find them by city and activity.
 
-What it costs: nothing to be listed. When a booking comes through Outset, we keep 5% of it. No booking, no fee.
+What it costs: nothing to be listed. When a booking comes through GoDo, we keep 5% of it. No booking, no fee.
 If you already use {FareHarbor}, keep it. This sits alongside it.
 
 If this is your business, this link opens your page so you can fix anything and switch bookings on. It's meant for
@@ -58,7 +58,7 @@ If I've got the wrong business, this takes the page down:
 {remove link}
 
 Harshil
-Outset, {postal address}
+GoDo, {postal address}
 
 If you'd rather not hear from me: {unsubscribe link}
 

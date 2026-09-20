@@ -74,7 +74,7 @@ test("canonical, title, blurb, menu with prices, hours and requirements come onl
   try {
     const html = r.read("o-a.html");
     assert.match(html, /<link rel="canonical" href="https:\/\/onoutset\.com\/l\/o-a\.html">/);
-    assert.match(html, /<title>Pasta Night in Toronto, ON · Outset<\/title>/);
+    assert.match(html, /<title>Pasta Night in Toronto, ON · GoDo<\/title>/);
     assert.match(html, /Hands-on Italian cooking in a home kitchen\./);
     assert.match(html, /<span>Pasta class<small>3 hours<\/small><\/span><span>\$95<\/span>/);
     assert.match(html, /Tue-Sat 10am-6pm/);

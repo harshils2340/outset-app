@@ -1271,7 +1271,7 @@ export function companyHandoff(ctx: CompanyContext): string {
 
 /* ---------- the engine ---------- */
 
-const FEE_LINE = "Outset adds a service fee at checkout: 5% up to $100, 4% from $100 to $500, 3% above $500, capped at $25.";
+const FEE_LINE = "GoDo adds a service fee at checkout: 5% up to $100, 4% from $100 to $500, 3% above $500, capped at $25.";
 
 function answerOne(ctx: CompanyContext, topic: Topic, q: string, prev: ChatState): { text: string; state: ChatState } {
   switch (topic) {

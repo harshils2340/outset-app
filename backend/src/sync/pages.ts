@@ -312,7 +312,7 @@ export function buildFaq(kind: Kind, metro: Place | null, items: Item[]): Faq[] 
   faq.push({
     q: `How many ${plural} are there in ${city}?`,
     a:
-      `Outset lists ${n} ${n === 1 ? singular(plural) : plural} ${metro ? "around " + metro.name : "across the US and Canada"}` +
+      `GoDo lists ${n} ${n === 1 ? singular(plural) : plural} ${metro ? "around " + metro.name : "across the US and Canada"}` +
       (metro && towns.length > 1 ? `, including places in ${list(towns)}` : "") +
       `. ${withPhotos ? `${withPhotos} of them have photos.` : "Photos are added as each operator's site is read."}`,
   });
@@ -354,13 +354,13 @@ export function buildFaq(kind: Kind, metro: Place | null, items: Item[]): Faq[] 
   if (hours) {
     faq.push({
       q: `Do the listings show opening hours?`,
-      a: `${hours} of the ${n} show hours copied from the operator's website. The rest do not publish them on Outset yet.`,
+      a: `${hours} of the ${n} show hours copied from the operator's website. The rest do not publish them on GoDo yet.`,
     });
   }
 
   faq.push({
     q: "Where does this information come from?",
-    a: "From each operator's own website and public listings, one source per fact. Operators can claim their page on Outset and correct anything.",
+    a: "From each operator's own website and public listings, one source per fact. Operators can claim their page on GoDo and correct anything.",
   });
   return faq;
 }
@@ -424,7 +424,7 @@ function page(kind: Kind, metro: Place | null, items: Item[], nearby: Neighbour[
   ];
   const many = items.length === 1 ? singular(kind.plural) : kind.plural;
   const description =
-    `${items.length} ${many} ${metro ? "around " + placeName(metro) : "across the US and Canada"} on Outset` +
+    `${items.length} ${many} ${metro ? "around " + placeName(metro) : "across the US and Canada"} on GoDo` +
     (minPrice != null ? `, from ${money(minPrice)}` : "") +
     `. ${withPhotos ? "Photos, menus and prices" : "Menus and prices"} from each operator's own website. Pick a listing and request a time.`;
   const lede =
@@ -432,14 +432,14 @@ function page(kind: Kind, metro: Place | null, items: Item[], nearby: Neighbour[
     (priced.length ? `, ${priced.length} with prices from the operator's own site${minPrice != null ? " (from " + esc(money(minPrice)) + ")" : ""}` : "") +
     `. Open a listing to see its menu, then request a time. No phone tag.`;
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>${esc(title)} · Outset</title>
+<title>${esc(title)} · GoDo</title>
 <meta name="description" content="${esc(description)}">
 <link rel="canonical" href="${canonical}">
 <script type="application/ld+json">${ldJson(ld)}</script>
 <style>${CSS}</style></head><body>
-<header><div class="wrap top"><a class="logo" href="${publicSite()}">Outset</a><a class="cta" href="${publicSite()}">Open Outset</a></div></header>
+<header><div class="wrap top"><a class="logo" href="${publicSite()}">GoDo</a><a class="cta" href="${publicSite()}">Open GoDo</a></div></header>
 <main class="wrap">
-<nav class="crumbs"><a href="${publicSite()}">Outset</a><span>›</span><a href="index.html">By activity and city</a>${metro ? `<span>›</span><a href="${fileFor(kind.art, null)}">${esc(kind.search)}</a>${extra.upLink ? `<span>›</span><a href="${extra.upLink.file}">${esc(extra.upLink.label)}</a>` : ""}<span>›</span>${esc(metro.name)}` : `<span>›</span>${esc(kind.search)}`}</nav>
+<nav class="crumbs"><a href="${publicSite()}">GoDo</a><span>›</span><a href="index.html">By activity and city</a>${metro ? `<span>›</span><a href="${fileFor(kind.art, null)}">${esc(kind.search)}</a>${extra.upLink ? `<span>›</span><a href="${extra.upLink.file}">${esc(extra.upLink.label)}</a>` : ""}<span>›</span>${esc(metro.name)}` : `<span>›</span>${esc(kind.search)}`}</nav>
 <h1>${esc(title)}</h1>
 <p class="lede">${lede}</p>
 <div class="grid">${cards}</div>
@@ -449,7 +449,7 @@ ${extra.subPlaces && extra.subPlaces.length ? `<h2>${esc(extra.subHeading || "")
 ${nearby.length ? `<h2>${esc(kind.search)} ${metro ? "near " + esc(metro.name) : "by city"}</h2><div class="links">${nearby.map(pill).join("")}</div>` : ""}
 ${otherKinds.length ? `<h2>Other things to do${metro ? " in " + esc(metro.name) : ""}</h2><div class="links">${otherKinds.map(pill).join("")}</div>` : ""}
 </main>
-<footer><div class="wrap">Outset · Book the jump. Skip the call.</div></footer>
+<footer><div class="wrap">GoDo · Book the jump. Skip the call.</div></footer>
 </body></html>`;
 }
 
@@ -642,12 +642,12 @@ export function writeLandingPages(items: Item[], opts: { publicDir?: string } = 
   const cities = [...metroPages.entries()]
     .map(([id, pages]) => ({ metro: metroById.get(id)!, pages: pages.sort((a, b) => b.items.length - a.items.length) }))
     .sort((a, b) => a.metro.name.localeCompare(b.metro.name));
-  const index = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Things to do by activity and city · Outset</title>
-<meta name="description" content="Every activity Outset lists, by city: ${kindPages.length} kinds of thing to do across ${cities.length} cities in the US and Canada.">
-<link rel="canonical" href="${publicSite()}p/index.html"><style>${CSS}</style></head><body><header><div class="wrap top"><a class="logo" href="${publicSite()}">Outset</a><a class="cta" href="${publicSite()}">Open Outset</a></div></header><main class="wrap"><h1>Things to do by activity and city</h1>
+  const index = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Things to do by activity and city · GoDo</title>
+<meta name="description" content="Every activity GoDo lists, by city: ${kindPages.length} kinds of thing to do across ${cities.length} cities in the US and Canada.">
+<link rel="canonical" href="${publicSite()}p/index.html"><style>${CSS}</style></head><body><header><div class="wrap top"><a class="logo" href="${publicSite()}">GoDo</a><a class="cta" href="${publicSite()}">Open GoDo</a></div></header><main class="wrap"><h1>Things to do by activity and city</h1>
 <h2>Everywhere</h2><div class="links">${kindPages.map((k) => `<a href="${fileFor(k.art, null)}">${esc(k.search)}<small>${(byKind.get(k.art) || []).length}</small></a>`).join("")}</div>
 ${cities.map((c) => `<h2>${esc(placeName(c.metro))}</h2><div class="links">${c.pages.map((p) => `<a href="${fileFor(p.kind.art, c.metro.id)}">${esc(p.kind.search)}<small>${p.items.length}</small></a>`).join("")}</div>`).join("\n")}
-</main><footer><div class="wrap">Outset · Book the jump. Skip the call.</div></footer></body></html>`;
+</main><footer><div class="wrap">GoDo · Book the jump. Skip the call.</div></footer></body></html>`;
   writeFileSync(join(dir, "index.html"), index);
   /**
    * A sitemap can hold at most 50,000 URLs. This one alone never gets close, but the listing pages

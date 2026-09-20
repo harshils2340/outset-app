@@ -497,7 +497,7 @@ export function OpLogin({ claimId, claimToken, compact, onEnter, onBack }: { cla
             ) : (
               <button type="button" className="cta odwide" disabled={!name.trim() || !EMAIL.test(email.trim())} onClick={() => { setMode("claim"); setStep("code"); setErr(null); }}>Send verification code</button>
             )}
-            <p className="odfine">By continuing you confirm you're authorised to manage this business on Outset.</p>
+            <p className="odfine">By continuing you confirm you're authorised to manage this business on GoDo.</p>
           </>
         ) : null}
 

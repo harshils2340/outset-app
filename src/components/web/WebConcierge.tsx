@@ -427,7 +427,7 @@ export function WebConcierge({ seed, framed, embed, onClose }: { seed?: string; 
     const id = listingForOption(o);
     const slot = slotOf(d.time);
     if (!id || !slot || !/^\d{4}-\d{2}-\d{2}$/.test(d.date)) {
-      add({ kind: "them", text: "I could not hold that time on Outset. Pick another one." });
+      add({ kind: "them", text: "I could not hold that time on GoDo. Pick another one." });
       return;
     }
     const dateIdx = Math.max(0, DATES.findIndex((day) => dateKey(day) === d.date));
@@ -553,7 +553,7 @@ export function WebConcierge({ seed, framed, embed, onClose }: { seed?: string; 
               <p className="cg-note" key={e.id}>{e.text}</p>
             ) : (
               <div className={"cg-b cg-" + e.kind} key={e.id}>
-                <span className="cg-sr">{e.kind === "me" ? "You: " : "Outset: "}</span>
+                <span className="cg-sr">{e.kind === "me" ? "You: " : "GoDo: "}</span>
                 {e.text}
               </div>
             ),
@@ -806,7 +806,7 @@ function Answered({
   const unread = priced.length ? priced : rest;
 
   /**
-   * A real text thread asks one thing, waits, and only then answers — it does not text you a question and a
+   * A real text thread asks one thing, waits, and only then answers: it does not text you a question and a
    * full price comparison in the same breath. So a turn that still has something worth asking (how many, how
    * long, when) is just that question. Type the answer. The results this same search already found are not
    * thrown away, they simply are not this message; the next turn, once nothing is left to ask, is the one

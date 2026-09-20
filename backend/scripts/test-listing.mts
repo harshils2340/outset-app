@@ -81,7 +81,7 @@ const fact = db.prepare("INSERT INTO facts (id, operator_id, fact_key, fact_valu
 const f = (k: string, v: string) => fact.run(randomUUID(), OPERATOR_ID, k, v, SITE);
 f("cover", photos[0]);
 for (const p of photos) f("photo", p);
-f("description", "A relaxed sunset sail and a snorkel trip off Clearwater Beach, with a private charter for small groups. Shah and Shah Services is Outset's own test listing: it is not a real business, and a booking here is a test of the site, not a trip.");
+f("description", "A relaxed sunset sail and a snorkel trip off Clearwater Beach, with a private charter for small groups. Shah and Shah Services is GoDo's own test listing: it is not a real business, and a booking here is a test of the site, not a trip.");
 f("hours_text", "Mon-Sun 9:00 AM - 7:00 PM");
 f("cancellation", "Free cancellation up to 24 hours before your start time.");
 f("includes", "Life jackets");
@@ -94,7 +94,7 @@ f("service_desc", JSON.stringify({ name: "Sunset sail", desc: "A two-hour sail t
 f("service_desc", JSON.stringify({ name: "Snorkel trip", desc: "Three hours on the reef with gear included. Test service." }));
 f("service_desc", JSON.stringify({ name: "Private charter", desc: "The whole boat for up to six guests. Test service." }));
 // parseFaqs in sync/contacts.ts reads "Q: ... ? A: ..." text, not JSON: a JSON blob here produced no FAQ at all.
-f("faq", "Q: Is this a real business? A: No. Shah and Shah Services is a test listing Outset uses to check claiming, booking and payouts end to end.");
+f("faq", "Q: Is this a real business? A: No. Shah and Shah Services is a test listing GoDo uses to check claiming, booking and payouts end to end.");
 f("promo", JSON.stringify({ text: "Half-price snorkel trips every Tuesday. Test deal.", days: [2] }));
 db.exec("COMMIT");
 

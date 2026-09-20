@@ -92,7 +92,7 @@ export function OpHome() {
 
       {!p.published ? (
         <div className="odbanner warn">
-          <b>Your listing is hidden.</b> Guests can't find you on Outset right now.
+          <b>Your listing is hidden.</b> Guests can't find you on GoDo right now.
           <button type="button" className="odlink" onClick={() => set({ published: true })}>Publish it</button>
         </div>
       ) : !p.accepting ? (

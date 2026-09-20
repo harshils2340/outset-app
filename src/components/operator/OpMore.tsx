@@ -112,7 +112,7 @@ export function OpPayouts() {
           <div><b>{cents(ledger.nextAmount || 0, ledger.currency)}</b><small>Next payout · {longDay(ledger.nextPayoutOn!)}</small></div>
           <div><b>{cents(ledger.upcoming || 0, ledger.currency)}</b><small>Scheduled for later pay days</small></div>
           <div><b>{cents(ledger.paidTotal || 0, ledger.currency)}</b><small>Paid out to date</small></div>
-          <div><b>{Math.round(FEE * 100)}%</b><small>Outset fee per booking</small></div>
+          <div><b>{Math.round(FEE * 100)}%</b><small>GoDo fee per booking</small></div>
           {/* A shop paid in more than one currency gets a tile per extra currency; the API never adds them into one number. */}
           {(ledger.totals || []).slice(1).map((t) => (
             <div key={t.currency}>
@@ -127,16 +127,16 @@ export function OpPayouts() {
           <div><b>{money(toCents(pending))}</b><small>Completed this week, after fees</small></div>
           <div><b>{money(toCents(earned))}</b><small>Earned to date, after fees</small></div>
           <div><b>{money(upcomingLocal)}</b><small>Confirmed, not yet completed, after fees</small></div>
-          <div><b>{Math.round(FEE * 100)}%</b><small>Outset fee per booking</small></div>
+          <div><b>{Math.round(FEE * 100)}%</b><small>GoDo fee per booking</small></div>
         </div>
       )}
       {/* Card payments are switched on per API, and this paragraph used to say guests pay by card whatever the
           answer was, three lines above a card saying "guests pay you on site". An operator reading it had been
           told their money was coming on a pay day that does not exist yet. */}
       {status && !status.available ? (
-        <p className="odmuted">Card payments are not switched on yet, so guests pay you on the day and nothing is paid out through Outset. The figures above are what your bookings come to, less the {Math.round(FEE * 100)}% Outset keeps of your price, which is the same number your booking emails give.</p>
+        <p className="odmuted">Card payments are not switched on yet, so guests pay you on the day and nothing is paid out through GoDo. The figures above are what your bookings come to, less the {Math.round(FEE * 100)}% GoDo keeps of your price, which is the same number your booking emails give.</p>
       ) : (
-        <p className="odmuted">Guests pay by card when they book. An accepted booking is paid on your next pay day after the experience date, then Stripe sends it to your bank, usually within 1 to 2 business days. Outset keeps {Math.round(FEE * 100)}% of your price; the guest's service fee is separate.</p>
+        <p className="odmuted">Guests pay by card when they book. An accepted booking is paid on your next pay day after the experience date, then Stripe sends it to your bank, usually within 1 to 2 business days. GoDo keeps {Math.round(FEE * 100)}% of your price; the guest's service fee is separate.</p>
       )}
 
       <div className="odcols">

@@ -112,7 +112,7 @@ const CONVO = (turns: Turn[]): Conversation => ({ id: "abc123", startedAt: turns
 
 test("a whole conversation carries its session id, so it can be matched to the agent's own trace", () => {
   const text = transcript(CONVO([TURN(), TURN({ q: "anything cheaper" })]));
-  assert.match(text, /^Outset concierge · .* · session abc123$/m);
+  assert.match(text, /^GoDo concierge · .* · session abc123$/m);
   assert.equal(text.match(/^> /gm)?.length, 2);
 });
 

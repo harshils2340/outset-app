@@ -810,7 +810,7 @@ function RequestBody({
               <span>We take listings down within one business day. Send one line from a company email and it's gone.</span>
               <a
                 className="airdark"
-                href={"mailto:harshils2340@gmail.com?subject=" + encodeURIComponent("Remove listing: " + item.title + " (" + item.id + ")") + "&body=" + encodeURIComponent("Please remove " + item.title + " from Outset.\n\nListing: " + listingUrl(item.id) + "\n")}
+                href={"mailto:harshils2340@gmail.com?subject=" + encodeURIComponent("Remove listing: " + item.title + " (" + item.id + ")") + "&body=" + encodeURIComponent("Please remove " + item.title + " from GoDo.\n\nListing: " + listingUrl(item.id) + "\n")}
               >
                 Request removal
               </a>
@@ -1132,12 +1132,12 @@ function RequestBody({
               {callOpen && callHref ? (
                 <div className="callpick">
                   <button type="button" className="airaccent" onClick={() => onAsk()}>
-                    Ask Outset instead
+                    Ask GoDo instead
                   </button>
                   <a className="airghost" href={callHref} onClick={(e) => e.stopPropagation()}>
                     Call a person at the shop
                   </a>
-                  <p className="reqhint">Outset answers by chat for now. Voice is coming.</p>
+                  <p className="reqhint">GoDo answers by chat for now. Voice is coming.</p>
                 </div>
               ) : null}
               {hours.length ? (
@@ -1167,7 +1167,7 @@ function RequestBody({
                   <Markup html={ICONS.spark} />
                 </span>
                 <span>
-                  <b>Ask Outset</b>
+                  <b>Ask GoDo</b>
                   <small>Reads {possessive(item.title)} published info, and live availability, 24/7</small>
                 </span>
               </div>
@@ -1181,7 +1181,7 @@ function RequestBody({
                 </div>
               ) : null}
               <button type="button" className="airghost wide" onClick={() => onAsk()}>
-                Message Outset
+                Message GoDo
               </button>
             </div>
           </section>
