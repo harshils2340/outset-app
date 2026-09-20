@@ -5,6 +5,7 @@ import { isConcessionFare } from "../lib/fares.ts";
 import { resovaLive } from "./resova.ts";
 import { Trace } from "./session.ts";
 import { recordDemand } from "./demand.ts";
+import { nextNeed } from "./needs.ts";
 
 /**
  * One sentence in, real bookable options out.
@@ -233,6 +234,13 @@ export function readIntent(text: string, prior?: Intent | null): Intent {
    * "anything cheaper", "show me something else", "check again" are all refinements of the same request, and
    * treating them as brand new searches throws away everything the guest has already told us.
    */
+  /**
+   * "Instead" is a correction, not a refinement. "Actually I want axe throwing instead" must throw the escape
+   * rooms away rather than search for escape rooms that are also axe throwing, and it must keep the town, the
+   * party and the evening, which are all still true.
+   */
+  const instead = /\b(instead|actually|rather|scratch that|forget|no wait|change of plan)\b/.test(t);
+
   const refine: Intent["refine"] =
     /\b(?:something else|anything else|what else|who else|where else|any ?where else|other (?:options?|places?|ones?)|any other|more options?|show me more|others?|different|next)\b/.test(t) ? "other"
       : /\b(cheaper|less|lower|too (?:expensive|pricey|much)|budget)\b/.test(t) && !/\$/.test(t) ? "cheaper"
@@ -407,8 +415,8 @@ export function readIntent(text: string, prior?: Intent | null): Intent {
 
   const merged: Intent = {
     text,
-    categoryId: categoryId ?? prior?.categoryId ?? null,
-    categoryLabel: categoryId ? categoryLabel : (prior?.categoryLabel ?? null),
+    categoryId: categoryId ?? (instead && genre ? null : prior?.categoryId ?? null),
+    categoryLabel: categoryId ? categoryLabel : (instead && genre ? null : prior?.categoryLabel ?? null),
     city: saidPlace ? city : (prior?.city ?? null),
     region: saidPlace ? region : (prior?.region ?? null),
     point: saidPlace ? point : (prior?.point ?? null),
@@ -422,7 +430,7 @@ export function readIntent(text: string, prior?: Intent | null): Intent {
     refine,
     lastCheapest: prior?.lastCheapest ?? null,
     asked: [...new Set([...(prior?.asked || []), ...(noBudget ? ["budget"] : [])])],
-    seen: prior?.seen ? [...prior.seen] : [],
+    seen: categoryId && prior?.categoryId && categoryId !== prior.categoryId ? [] : prior?.seen ? [...prior.seen] : [],
     places: saidPlace ? placeRows.filter((r) => r.city.toLowerCase() === bestName) : prior?.places,
   };
 
@@ -507,6 +515,14 @@ function servicesFor(domain: string, categoryId?: string | null): Option["servic
        */
       const n = (r as { name: string }).name.toLowerCase();
       if (/school|student|corporate|team building|fundraiser|group of \d|\d{2,}\s*(?:students|people|guests)|gift (?:card|certificate)|voucher|membership|season pass|party package|waiver|deposit/.test(n)) return false;
+      /**
+       * Merchandise, fuel and paperwork are not the activity. A go-kart track sells headsocks at $4, a
+       * charter sells a fishing log at $18 and a heliport sells avgas by the litre, and because the cheapest
+       * line wins the headline those were the numbers on the screen: "Go-karting near you, from $4".
+       */
+      if (/\b(headsock|balaclava|sock|t-?shirt|hoodie|cap|hat|mug|sticker|keyring|key ?chain|poster|book|notebook|log ?book|dvd|photo ?print|magnet|patch|pin|towel|water bottle|snack|drink|soda|beer|merch|souvenir|fuel|avgas|petrol|diesel|parking|locker|insurance|damage waiver|glove|helmet rental|shoe rental|sock rental)\b/.test(n)) return false;
+      /** Slips, berths, memberships and storage are a year of something, not an afternoon out. */
+      if (/\b(annual|monthly|yearly|season|slip|berth|mooring|storage|dock (?:rental|fee)|per (?:month|year))\b/.test(n)) return false;
       // A line that is a sentence, or a nav label, is not a service.
       if (n.length > 60 || /^check out|^see |^click |^more |^other /.test(n)) return false;
       /**
@@ -1002,6 +1018,23 @@ export async function plan(text: string, opts: { ask?: number; prior?: Intent | 
   let loosened: string | null = null;
 
   /**
+   * The one thing worth asking about THIS activity, offered beside the answer.
+   *
+   * A jet ski turns on how long and an escape room turns on how many, so one list of questions cannot serve
+   * both: `needs.ts` holds what each activity actually depends on. It is offered, never gated, and asked once.
+   */
+  const need = intent.categoryId ? nextNeed(intent) : null;
+  if (need) {
+    intent.asked = [...asked, "need:" + need.id];
+    tr.step("need", "a " + (intent.categoryLabel || "").toLowerCase() + " turns on " + need.id, { detail: "offered beside the answer, not in front of it" });
+    narrow = {
+      question: need.question,
+      why: need.id,
+      choices: need.choices.map((c) => ({ label: c.label, text: text + " " + c.add })),
+    };
+  }
+
+  /**
    * The genres worth offering, built now and attached to the answer at the end rather than returned instead
    * of one. Nothing here stops the search.
    */
@@ -1009,7 +1042,7 @@ export async function plan(text: string, opts: { ask?: number; prior?: Intent | 
     const genres = genresNear(intent.point, intent.region, 40, intent.cover);
     if (genres.length >= 2) {
       tr.step("narrow", "no activity named; answering broadly and offering " + genres.length + " ways to narrow", { detail: "a question costs a turn, a shortlist they can push back on costs none" });
-      narrow = {
+      narrow = narrow ?? {
         question: "Want me to narrow it?",
         why: "genre",
         choices: genres.slice(0, 4).map((g) => ({ label: g.label, text: text + ", " + g.label.toLowerCase() })),
