@@ -16,7 +16,7 @@ import { join } from "node:path";
 process.env.OUTSET_DB = join(mkdtempSync(join(tmpdir(), "outset-concierge-")), "catalog.db");
 const { db, migrate } = await import("../../db/client.ts");
 const { inferCategory } = await import("../../taxonomy/catalog.ts");
-const { readIntent, candidates, windowFor, priceOf } = await import("../plan.ts");
+const { readIntent, candidates, windowFor, priceOf, headlineForParty } = await import("../plan.ts");
 const { nextNeed } = await import("../needs.ts");
 
 const ESCAPE = inferCategory("escape room");
@@ -205,4 +205,49 @@ test("the weekend a guest is standing in is this one", () => {
   assert.equal(windowFor("tonight", sunday).days, 1);
   assert.equal(windowFor("tomorrow", sunday).from.getDate(), new Date(sunday.getTime() + 86400_000).getDate());
   assert.equal(windowFor("any", sunday).days, 14);
+});
+
+/**
+ * Which of a departure's rates a party of this size is quoted.
+ *
+ * Every reader picks a headline out of its own price sheet and then this picks again, once the party is
+ * known, which is the only place that knows it. Picking again is right and it is also how a rule a reader
+ * enforces gets quietly undone: each of the three exclusions below was live on a card for a while.
+ */
+test("the headline is a fare this party could actually walk up and buy", () => {
+  const dep = (rates: { label: string; price: number; minParty?: number | null; maxParty?: number | null; group?: boolean }[], fromPrice: number | null = null, priceLabel: string | null = null) => ({
+    item: "Tour", date: "2026-09-22", time: "10:00", fromPrice, priceLabel, taxIncluded: false,
+    rates: rates.map((r) => ({ minParty: null, maxParty: null, ...r })),
+    bookUrl: "https://example.com", seatsLeft: null,
+  });
+
+  // Parasail Toronto: the cheapest rate on the sheet seats sixteen people and two of them turned up.
+  const parasail = dep([{ label: "Group Rate | 16-24 People", price: 90.1, minParty: 16, maxParty: 24 }, { label: "Single Rider", price: 129 }], 90.1, "Group Rate | 16-24 People");
+  assert.equal(headlineForParty(parasail, 2).fromPrice, 129);
+  assert.equal(headlineForParty(parasail, 20).fromPrice, 90.1, "and twenty of them can buy it, so they are quoted it");
+
+  // A team offsite for ten adults, quoted "$20.14 · Infant" on the card and again in the comparison line.
+  const heli = dep([{ label: "Infant", price: 20.14 }, { label: "Adult", price: 99.51 }]);
+  assert.equal(headlineForParty(heli, 10).fromPrice, 99.51);
+  assert.equal(headlineForParty(heli, 10).priceLabel, "Adult");
+
+  // A kids' session really does sell nothing else, and an honest child fare beats no price at all.
+  const kids = dep([{ label: "Child (5-12)", price: 22 }]);
+  assert.equal(headlineForParty(kids, 3).fromPrice, 22);
+
+  /**
+   * Rezdy's group options. "Group from 1 to 2 ($790.00 total)" is the price of the whole bus and it admits a
+   * party of two on every party test there is, so nothing but the reader's own mark keeps it off the card.
+   */
+  const bus = dep([{ label: "Group from 1 to 2", price: 790, minParty: 1, maxParty: 2, group: true }]);
+  assert.equal(headlineForParty(bus, 2).fromPrice, null, "a whole-booking total is not a head price at any party size");
+  assert.equal(headlineForParty(bus, 2).rates.length, 1, "and it stays on the sheet where a guest can read it");
+
+  const islands = dep([{ label: "Adult", price: 285 }, { label: "Group from 10 to 28", price: 240, minParty: 10, maxParty: 28, group: true }], 285, "Adult");
+  assert.equal(headlineForParty(islands, 12).fromPrice, 285, "over-quoting is the safe way to be wrong about a group rate");
+
+  // Nothing fits, so the reader's own answer stands: an empty pool is not new information.
+  const none = dep([{ label: "Charter", price: 600, minParty: 8 }], 600, "Charter");
+  assert.equal(headlineForParty(none, 2).fromPrice, 600);
+  assert.equal(headlineForParty(dep([]), 2).fromPrice, null);
 });

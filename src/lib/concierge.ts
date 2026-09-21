@@ -41,7 +41,8 @@ export type ConciergeDeparture = {
   fromPrice: number | null;
   priceLabel: string | null;
   taxIncluded: boolean;
-  rates: { label: string; price: number; minParty: number | null; maxParty: number | null }[];
+  /** `group` marks a rate sold to a party rather than to a head, which is never the headline. See `live.ts`. */
+  rates: { label: string; price: number; minParty: number | null; maxParty: number | null; group?: boolean }[];
   bookUrl: string;
   seatsLeft: number | null;
 };

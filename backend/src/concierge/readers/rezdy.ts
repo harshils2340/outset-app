@@ -235,7 +235,7 @@ type RezdyAvailability = { availability?: Record<string, Record<string, Record<s
  * all. The parenthetical has to come off before `isConcessionFare` is asked, or "Youth (8-16 Years)" and
  * "Adult" both read as unlabelled and a teenager's fare becomes the headline on a mountaineering course.
  */
-function rateLabel(raw: string | null | undefined): string {
+export function rateLabel(raw: string | null | undefined): string {
   const name = (raw || "").replace(/\s*\([^()]*\$[^()]*\)\s*$/, "").trim();
   return name || "Ticket";
 }
@@ -257,29 +257,35 @@ function rateLabel(raw: string | null | undefined): string {
  *     $45 against the $285 adult fare. The times are still offered and the rates still carry every real
  *     figure with its real label and its own `minParty`; the headline just is not one of them.
  */
-function priceOfSlot(slot: RezdySlot): { price: number | null; label: string | null; rates: Departure["rates"] } {
-  const rows: { rate: Departure["rates"][number]; group: boolean }[] = [];
+export function priceOfSlot(slot: RezdySlot): { price: number | null; label: string | null; rates: Departure["rates"] } {
+  const rates: Departure["rates"] = [];
   for (const p of slot.price || []) {
     const price = num(p.price);
     if (price == null) continue;
-    rows.push({
-      rate: {
-        label: rateLabel(p.priceLabel),
-        price,
-        minParty: typeof p.minQuantity === "number" && p.minQuantity > 0 ? p.minQuantity : null,
-        maxParty: typeof p.maxQuantity === "number" && p.maxQuantity > 0 ? p.maxQuantity : null,
-      },
+    rates.push({
+      label: rateLabel(p.priceLabel),
+      price,
+      minParty: typeof p.minQuantity === "number" && p.minQuantity > 0 ? p.minQuantity : null,
+      maxParty: typeof p.maxQuantity === "number" && p.maxQuantity > 0 ? p.maxQuantity : null,
+      /**
+       * Said out loud on the rate itself, not kept as a local the way it used to be.
+       *
+       * A local meant the exclusion below lasted exactly as long as this function. `plan.ts` re-picks a
+       * headline out of `rates` once it knows the party, and with nothing on the rate to warn it, it saw
+       * "Group from 1 to 2" admit a party of two and put the $790 whole-booking total back as a head price,
+       * which is the bug this function was written to stop. A rule one module enforces and the next one
+       * undoes is not a rule.
+       */
       group: p.priceOptionType === "GROUP",
     });
   }
-  const rates = rows.map((r) => r.rate);
-  const perHead = rows.filter((r) => !r.group);
-  const open = perHead.filter((r) => !isConcessionFare(r.rate.label));
+  const perHead = rates.filter((r) => !r.group);
+  const open = perHead.filter((r) => !isConcessionFare(r.label));
   // A child fare is the headline only when nothing else is sold, as everywhere else in the concierge. A shop
   // that sells only by the group has no head price at all, and saying so is better than inventing one.
   const pool = open.length ? open : perHead;
   if (!pool.length) return { price: null, label: null, rates };
-  const cheapest = pool.reduce((a, b) => (a.rate.price <= b.rate.price ? a : b)).rate;
+  const cheapest = pool.reduce((a, b) => (a.price <= b.price ? a : b));
   // "Ticket" is this file's own word for a rate Rezdy gave no name to; it is not worth printing on a card.
   return { price: cheapest.price, label: cheapest.label === "Ticket" ? null : cheapest.label, rates };
 }

@@ -1085,6 +1085,45 @@ export function priceOf(o: Option): number | null {
 }
 
 /**
+ * The headline price must be one this party can actually buy.
+ *
+ * Parasail Toronto's cheapest rate is "Group Rate | 16-24 People" at $90.10, and it was being quoted to a
+ * party of two, who cannot book it. Every rate carries its own party limits, so the cheapest is chosen from
+ * the rates that admit this many people. It is the same mistake as quoting a child fare to two adults: the
+ * number is real and they still cannot pay it.
+ *
+ * Three kinds of rate are kept out of the headline, and each of them has reached a guest once:
+ *
+ *   - one this party does not fit, which is what the function is for.
+ *   - a concession. `live.ts` already excludes child, infant and senior fares when it picks a headline, and
+ *     re-picking here by party limits alone quietly undid that: a team offsite for ten adults was quoted
+ *     "$20.14 + tax · Infant", on the card and again in the comparison line above it. An age limit is not a
+ *     party limit, so the party filter cannot see it. It corrupts the budget too, in the opposite direction
+ *     to the over-budget bug: a $20.14 infant fare slips under a $50 cap that the adult fare on the same
+ *     departure would fail, so the shop is kept as affordable on a ticket nobody in the party can buy.
+ *   - a rate the reader marked `group`, because its figure may be the whole booking rather than one seat.
+ *     Rezdy publishes Black Hills Tour Company's "Group from 1 to 2 ($790.00 total)" with a minimum of one
+ *     and a maximum of two, so it admits a party of two on every party test there is, and $790 a head for a
+ *     bus tour is the "$32 to $250 a head" bug with a live price behind it. The reader excludes them and
+ *     this used to put them straight back.
+ *
+ * It only ever re-picks: a departure whose rates say nothing this party can buy keeps whatever the reader
+ * chose, because the reader knows its own vendor and an empty pool is not new information.
+ */
+export function headlineForParty(d: Departure, party: number): Departure {
+  if (!d.rates.length) return d;
+  const fitsParty = (r: Departure["rates"][number]) =>
+    !r.group && (r.minParty == null || party >= r.minParty) && (r.maxParty == null || party <= r.maxParty);
+  const buyable = d.rates.filter((r) => fitsParty(r) && !isConcessionFare(r.label));
+  // Only when a concession is genuinely all this departure sells, which is a real thing for kids' sessions.
+  const pool = buyable.length ? buyable : d.rates.filter(fitsParty);
+  if (!pool.length) return d;
+  const cheapest = pool.reduce((a, b) => (a.price <= b.price ? a : b));
+  if (cheapest.price === d.fromPrice && cheapest.label === d.priceLabel) return d;
+  return { ...d, fromPrice: cheapest.price, priceLabel: cheapest.label };
+}
+
+/**
  * The whole answer, and the ways of not having one.
  *
  * A person asking a friend does not get silence when the friend has not understood: they get a question back,
@@ -1349,36 +1388,8 @@ export async function plan(text: string, opts: { ask?: number; prior?: Intent | 
    * are dropped — but only while priced ones survive, because an honest "price on request" beats an empty
    * screen when it is all there is.
    */
-  /**
-   * The headline price must be one this party can actually buy.
-   *
-   * Parasail Toronto's cheapest rate is "Group Rate | 16-24 People" at $90.10, and it was being quoted to a
-   * party of two, who cannot book it. Every rate carries its own party limits, so the cheapest is chosen from
-   * the rates that admit this many people. It is the same mistake as quoting a child fare to two adults: the
-   * number is real and they still cannot pay it.
-   */
-  const forParty = (d: Departure): Departure => {
-    if (!d.rates.length) return d;
-    const fitsParty = (r: Departure["rates"][number]) =>
-      (r.minParty == null || intent.party >= r.minParty) && (r.maxParty == null || intent.party <= r.maxParty);
-    /**
-     * And not a concession. `live.ts` already excludes child, infant and senior fares when it picks a
-     * headline, and re-picking here by party limits alone quietly undid that: a team offsite for ten adults
-     * was quoted "$20.14 + tax · Infant", on the card and again in the comparison line above it. An age
-     * limit is not a party limit, so the party filter cannot see it.
-     *
-     * It corrupts the budget too, in the opposite direction to the over-budget bug: a $20.14 infant fare
-     * slips under a $50 cap that the adult fare on the same departure would fail, so the shop is kept as
-     * affordable on a ticket nobody in the party can buy.
-     */
-    const buyable = d.rates.filter((r) => fitsParty(r) && !isConcessionFare(r.label));
-    // Only when a concession is genuinely all this departure sells, which is a real thing for kids' sessions.
-    const pool = buyable.length ? buyable : d.rates.filter(fitsParty);
-    if (!pool.length) return d;
-    const cheapest = pool.reduce((a, b) => (a.price <= b.price ? a : b));
-    if (cheapest.price === d.fromPrice && cheapest.label === d.priceLabel) return d;
-    return { ...d, fromPrice: cheapest.price, priceLabel: cheapest.label };
-  };
+  /** The headline this many people can actually buy. See `headlineForParty`. */
+  const forParty = (d: Departure): Departure => headlineForParty(d, intent.party);
 
   /**
    * What this shop's departures look like once a budget is in play.

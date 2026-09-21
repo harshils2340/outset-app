@@ -36,8 +36,17 @@ export type Departure = {
   priceLabel: string | null;
   /** False for FareHarbor: their checkout adds tax on top of this. */
   taxIncluded: boolean;
-  /** Every ticket type on this departure, so a group of four is priced like a group of four. */
-  rates: { label: string; price: number; minParty: number | null; maxParty: number | null }[];
+  /**
+   * Every ticket type on this departure, so a group of four is priced like a group of four.
+   *
+   * `group` marks a rate sold to a party rather than to a head, and it exists because a vendor can publish
+   * the two in one list with nothing to tell them apart: Rezdy's `GROUP` options are Black Hills Tour
+   * Company's "Group from 1 to 2 ($790.00 total)", which is the price of the whole booking, and Channel
+   * Islands Outfitters' "Group from 10 to 28 ($240)", which is a real head price. A reader that cannot tell
+   * which it is holding says so here, the rate stays in the list where a guest can read it, and no surface
+   * heads a shortlist with one.
+   */
+  rates: { label: string; price: number; minParty: number | null; maxParty: number | null; group?: boolean }[];
   /** The operator's own page for this exact departure. Where the agent, or the guest, finishes the booking. */
   bookUrl: string;
   seatsLeft: number | null;
