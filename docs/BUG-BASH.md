@@ -2949,6 +2949,70 @@ and `src/lib`. 575 backend tests, 622 app tests, both type checks clean (`-p tsc
   `minWidth` living on the element rather than in `operator.css`, and five category accents under the AA
   floor.
 
+## 21 September 2026, forty-seventh run (09:00 to 10:05 UTC)
+
+**Checked, and why.** Nothing landed after the forty-sixth run's log and that entry says the rehearsal was
+green, so it was skipped at the start and the time went into the hunt; it was run twice at the end instead,
+because these commits touch `backend/src`. Type checks and both suites first, clean at 575 backend and 622
+app. Coverage named Peek's and Resova's readers as the last two with no test of any kind, and the
+forty-sixth run called Peek, at 257 links, "the next thing worth a night". Reading them for the price sheet
+turned up something one floor up instead: the window.
+
+**Found and fixed.**
+
+- **A guest asking about tonight was offered tomorrow morning, by every reader but FareHarbor** (`9d57bac1b`).
+  `windowFor` answers "tonight", "today" and "tomorrow" with one day, and a window of one day is that day.
+  `fareharborLive` counts its last day that way and its own comment says why; the eight readers written
+  after it never got the fix. Peek, Xola, Rezdy and Acuity asked for `addDays(start, days)`, Resova looped
+  `i <= horizon`, TripWorks fetched `getInDateRange/<start>/<start + days>`. It is worse in the readers than
+  it was in FareHarbor, because each stops at the first day with something free: a shop sold out tonight did
+  not come back empty, it came back with tomorrow, so `plan.ts` never widened, never set `widened`, and the
+  answer never said the date had moved. Where one activity had tonight and another had tomorrow the card
+  drew no date at all, because `WebConcierge` prints its day line only when every time on the card shares
+  one: the guest saw "7:00 PM" and "9:00 AM" side by side and could tap either. The rule is `lastDayOf` in
+  `shopday.ts` now. A vendor asked for a range is still asked a day wide, because nothing here can prove
+  whether Peek, Xola or TripWorks read their end date as inclusive and asking short would cost a guest the
+  last evening of their own window; the days used are filtered to the window, where being exact is free.
+- **Square was asked about tomorrow from the hour the guest asked** (`062bc0c4d`). Square is the one vendor
+  asked in instants, and an instant window is wrong at both ends. It ran `horizon * 86400_000` forward from
+  the question, which is the day-too-far above, and it began at `start`, which `windowFor` builds as "now,
+  plus a day": a guest asking at eight in the evening about tomorrow had Square asked about tomorrow from
+  eight in the evening, so a spa with a free ten o'clock came back with an empty diary. That reads exactly
+  like a shop that is fully booked. The window is a pair of calendar days on the shop's own clock now, asked
+  a day wider at each end and kept to the window by date, because a zone is up to fourteen hours off this
+  machine's. `windowStart` still never opens in the past, which Square rejects outright.
+- **A shop shut tonight was offered on a day up to a fortnight away** (`19d907fb4`). The Checkfront driver
+  took no window at all: it walks forward to whatever day an item next runs, which answers "when could we
+  come" and not "escape room tonight". `plan.ts` already had the window and passed only its first day, so it
+  passes `days` now. Both fourteen-day questions inside the driver stay fourteen days, because neither is
+  what a guest is offered: the range query is how the next open day is found, and the control date a
+  fortnight out is what proves the account answers per date rather than publishing an opening-hours grid.
+
+**Checked and sound.** ForeUp alone among the readers already counted its days right. Resova's slot price
+beating the item's teaser, which is half of it; the concession rule on Resova, Peek and Checkfront; a hidden
+pricing category, a blocked slot and a sold-out one; `peekRef`, `resovaAccount` and `squareRef` against every
+link shape in the catalog. FareHarbor is unchanged and was the reference throughout.
+
+**Green after the fixes.** 53 rehearsal steps, 0 failed, run twice. 599 backend tests (up from 575), 622 app
+tests, both type checks clean (`-p tsconfig.app.json` for the app).
+
+**Needs Harshil.**
+
+- **Peek's and Resova's price sheets have tests now, but no live vendor does.** This address cannot reach
+  `book.peek.com` or `fareharbor.com` at all: the egress proxy refuses the CONNECT outright. Every reader is
+  still tested against a payload shaped by hand, so a vendor that has quietly changed its JSON reads here as
+  a shop with nothing open and nothing would say so.
+- **`GET /concierge/live/:domain` is a public route that lies about seven vendors.** `liveFor` still tries
+  only FareHarbor and Resova while `plan.ts` reads nine, so a Peek shop is told "no feed to read" there and
+  quoted live in the agent; `bookingUrlFor` beside it carries a fifth copy of the vendor list naming three
+  vendors, which is the exact duplication `readable.ts` exists to prevent and already has `unreadableSql`
+  for. No surface calls the route today, which is why it was left rather than fixed blind.
+- **Rezdy's window fix is the one here with no end-to-end test.** Cloudflare blocks `fetch` on every
+  `*.rezdy.com` subdomain, so that reader speaks HTTP/2 by hand; `lastDayOf` is tested directly instead.
+- **Last night's three are still unchanged:** the "All requests" link parked off screen on a phone, the
+  Bookings `minWidth` living on the element rather than in `operator.css`, and five category accents under
+  the AA floor.
+
 ## Coverage
 
 **Verified so far.** The name a guest reads: the business name on all 59,125 shipped listings, against the
@@ -3291,10 +3355,20 @@ a departure, a hidden ticket type, a slot with no price, and the customer type's
 money and is not. That the word every reader uses for a fare with no name is spelled in one place and
 reaches no card.
 
-**Not yet checked.** Peek's and Resova's own `priceOfSlot`, which are the last two price helpers with no test:
-both were read closely on 21 September and Peek's JSON:API payload is a large stub to build, and Peek is 257
-links. Rezdy's reader end to end, which needs a hand-rolled HTTP/2 session because Cloudflare blocks `fetch`
-on every `*.rezdy.com` subdomain; its two price helpers are tested directly instead. Whether the concierge's
+The window every reader turns a guest's "tonight" into, against `windowFor`'s own day counts: Peek, Resova,
+Square and Checkfront driven end to end against a stubbed vendor for the day kept, the day refused and the
+wider window still reaching the days inside it, Xola's and TripWorks' suites carrying the same case, ForeUp
+read and already right, and `lastDayOf` tested on its own for the two readers that cannot be driven here.
+Peek and Resova end to end besides: `peekRef` and `resovaAccount` over every link shape the catalog holds,
+the fare that heads a card and the concession that may not, Resova's slot price beating the item's teaser,
+and a hidden pricing category, a blocked slot and a sold-out one. Checkfront's day fares and `squareRef`.
+
+**Not yet checked.** Rezdy's reader end to end, which needs a hand-rolled HTTP/2 session because Cloudflare
+blocks `fetch` on every `*.rezdy.com` subdomain; its price helpers and its window rule are tested directly
+instead. Whether `GET /concierge/live/:domain` should read the other seven vendors, and whether
+`bookingUrlFor` beside it should use `unreadableSql` rather than its own copy of a three-vendor list: the
+route is public, no surface calls it, and it answers a Peek shop "no feed to read" while the agent quotes it
+live. Whether the concierge's
 watch window should have a browser door of its own: with
 `ADMIN_KEY` set it now answers a browser 404 and only curl gets in, and the metrics page's emailed-code
 sign-in is the pattern it lacks. The concierge overlay against a
@@ -3402,9 +3476,8 @@ Promotions, which is a deliverability bet against a bulk-sender expectation. Whe
 panel nothing renders should be deleted or a component written for them (see the fortieth run's Needs
 Harshil), and whether the four `--cg-` custom properties they reach for should exist. The five new readers
 against a real vendor server rather than read: Acuity, Rezdy, Square, TripWorks and Xola have never answered
-anything here, so a vendor whose JSON has quietly changed reads as a shop with nothing open. Peek's and
-Resova's own `priceOfSlot`, which still have no tests: Xola's sheet, the shared fare rule, Rezdy's helpers
-and TripWorks' reader now do. Bookeo's 46 shops, which are a
+anything here, so a vendor whose JSON has quietly changed reads as a shop with nothing open, and the egress
+proxy here refuses the CONNECT to every one of them outright. Bookeo's 46 shops, which are a
 documented negative from this address and want one `bookeoProbe` run from the Render worker. Whether a Xola
 waiver or gift shell with no button id should be routed as a feed at all: four shipped links are, and the
 reader correctly answers nothing for them. Whether the accents `CAT_COLOR` gives each category should be darkened to clear the AA
