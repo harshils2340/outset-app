@@ -2813,6 +2813,72 @@ clean (backend TS5097 only). The rehearsal was run because these commits touch `
 - **Five of the ten category accents are still under the AA floor**, unchanged from last night: `src/data`
   and `src/styles` are both outside these runs. One step darker in the same hue clears it.
 
+## 21 September 2026, forty-fifth run (07:00 to 07:40 UTC)
+
+**Checked, and why.** Nothing landed after the forty-fourth run's log and that entry says the rehearsal was
+green, so it was skipped at the start and the time went into the hunt instead. Type checks and both unit
+suites first, clean at 543 backend and 622 app. (A fresh container has no root `node_modules`: without
+`npm install` at the top level, eight app test files cannot find React and it reads like a regression rather
+than a missing install.) Coverage names the newest code as the least read, and the nine booking-system readers
+are the newest of all, so this run put to them the question their own AGENTS.md puts at the top of its trap
+list: what day do they think it is?
+
+**Found and fixed.**
+
+- **Every evening, "escape room tonight" asked every shop about tomorrow** (`93cb6caf4`). Each reader turns
+  the guest's window into calendar dates with `d.getFullYear()` and friends, under a comment saying local
+  dates are used rather than `toISOString()` because UTC rolls the evening into tomorrow. That comment is
+  true on a laptop in Toronto and false on the host this runs on: `render.yaml` sets no TZ for `outset-api`,
+  so the container's clock is UTC and "local" is UTC to the letter, which this container confirms. From eight
+  in the evening Eastern, five in the afternoon Pacific, the first day of every window was already the shop's
+  tomorrow: the 9pm slot a room still had free was never asked for, and "tomorrow" fetched the day after.
+  `src/lib/zone.ts` carries this same story for the claimed side, where it cost every North American shop the
+  back half of its day; the shops we read never got the same treatment. They have it now. `shopday.ts` reads
+  the window's instant on the shop's own calendar and walks it with `addDays`, which also fixes a fortnight
+  stepping over a date the night a zone springs forward. The zone is the vendor's own where it publishes one
+  and the catalog's through `zoneForArea` otherwise, so FareHarbor (1,371 of the 1,664 shipped links), Resova
+  and Checkfront have one for the first time; a shop we know no zone for keeps exactly its old behaviour.
+  Resova's and Checkfront's "has this slot already started" checks were comparing a shop's wall clock against
+  the host's, and now read the shop's. FareHarbor's month set is walked from the window rather than a day at
+  a time, which also fixes a 40 day horizon fetching the first and last month and not the middle one.
+- **A concierge session id was eight characters of `Math.random`** (`225b5ae14`). `getSession` hands back the
+  session an id names and the next answer is shaped by that session's accumulated intent, so the id is a
+  bearer token for somebody's conversation: where they are, how many of them, what they are after. V8's
+  generator is a seeded PRNG whose state can be recovered from its own output, and this route hands the
+  caller one output per question asked. It is also not reliably eight characters, and an id too short for
+  `getSession`'s own shape check is a guest's thread silently starting over. Sixteen hex characters from
+  `randomBytes` now, still lowercase alphanumeric, so an id already in a browser's history keeps working.
+  Adopting an unknown id stays, deliberately: reopening a thread from the history panel sends an id the agent
+  forgot two hours ago and expects to carry on under it.
+- **A golfer was told their tee times came from "their foreup calendar"** (`f7ddc900a`). The line under a
+  shop's live times is the one whose whole job is to say the times are the shop's own. It was a chain naming
+  eight vendors and ending in `"their " + live.vendor`, so the ninth reader printed its own lowercase id at a
+  guest. A table now, with a test over every vendor a reader exists for.
+
+**Checked and sound.** The guest listing page does drop a departure that has already left, on the shop's own
+clock, through `bookableStart` in `openNow.ts`, on the live path and the published one alike and on both the
+desktop card and the phone sheet, so the availability route not filtering costs nothing; that route's window
+comes from the browser's own calendar, not the host's. `api/nearby.ts` and `lib/mapsNearby.ts`, committed
+yesterday and never read since: a Maps stub listing's bare-host `src` is the convention all 59,126 shipped
+operators already use, its overlay is in memory only, and the route refuses a bad pin, a short query and a
+missing Places key. `agentLive` and `replayLive` have the same host-clock assumption and no caller anywhere,
+so nothing was changed there.
+
+**Green after the fixes.** 53 rehearsal steps, 0 failed, run because these commits touch `backend/src`. 556
+backend tests, 622 app tests, both type checks clean (`-p tsconfig.app.json` for the app, since the root
+config still checks nothing).
+
+**Needs Harshil.**
+
+- **`outset-api` has no TZ and should probably keep it that way.** Every reader now carries the shop's own
+  zone, so setting `TZ=America/Toronto` on that service would only move which shops are wrong. The two places
+  that still read the host clock, `concierge/agent.ts` and `concierge/replay.ts`, are called by nothing.
+- **`GET /concierge/live/:domain` reads two vendors while the concierge reads nine.** `liveFor` still tries
+  only FareHarbor and Resova, so a Peek or Xola shop answers "no feed to read" there while the same shop is
+  quoted live in the agent. No guest surface calls it today, which is why it is a question rather than a fix.
+- **Last night's three are unchanged:** the "All requests" link parked off screen on a phone, the Bookings
+  `minWidth` living on the element rather than in `operator.css`, and five category accents under the AA floor.
+
 ## Coverage
 
 **Verified so far.** The name a guest reads: the business name on all 59,125 shipped listings, against the
@@ -3135,10 +3201,19 @@ swept over every source file: what a guest reads, against the `outset.` storage 
 that are deliberately left as they were. Which reply a bare number is an answer to, over the clock question a
 rental leads with and the headcount question every other activity does.
 
+What day it is where the shop is, read across every booking-system reader rather than sampled: the window a
+guest names against the host's own clock, which on the API host is UTC, over all nine readers; the month set
+a horizon straddles; a fortnight walked across the night a zone springs forward; and the two readers whose
+"has this slot already started" check was comparing a shop's wall clock against the host's. Which zone each
+reader has to work with: the vendor's own where it publishes one, the catalog's through `zoneForArea`
+otherwise. The concierge session id, which is a bearer token for a guest's conversation: how it is drawn, the
+shape it is drawn in, and which ids `getSession` will and will not adopt. What a guest is told the live times
+came from, over every vendor a reader exists for. That a departure which has already left is dropped before
+the guest listing page's picker draws it, on the live path and the published one, on both surfaces.
+
 **Not yet checked.** Whether the concierge's watch window should have a browser door of its own: with
 `ADMIN_KEY` set it now answers a browser 404 and only curl gets in, and the metrics page's emailed-code
-sign-in is the pattern it lacks. Whether a concierge session id should be eight characters of `Math.random`
-rather than `randomBytes`, since `getSession` adopts any id a caller sends. The concierge overlay against a
+sign-in is the pattern it lacks. The concierge overlay against a
 live API: nothing here could give it one, so its answers, its chips, its history panel and its "Also nearby"
 rows have been read and unit tested but never seen full of real shops. The wallet against a real Stripe key,
 which is the same wall as everything else on that list. Whether the in-app concierge should be reachable at
@@ -3250,11 +3325,15 @@ documented negative from this address and want one `bookeoProbe` run from the Re
 waiver or gift shell with no button id should be routed as a feed at all: four shipped links are, and the
 reader correctly answers nothing for them. Whether the accents `CAT_COLOR` gives each category should be darkened to clear the AA
 floor they are printed at (see the forty-third run's Needs Harshil), and whether an option the concierge
-finds but the catalog has never held should be bookable at all rather than refused in words. Whether the ForeUp reader, `api/nearby.ts`,
-`lib/mapsNearby.ts` and `scripts/concierge-bench.mts` should be recommitted by their author or written again
-from nothing, which is the difference between golf having a reader this week and not (see this run's Needs
-Harshil). Whether `outset-api`'s build should run `fetch-seed.mts` at all, which is the one line between the
+finds but the catalog has never held should be bookable at all rather than refused in words. The ForeUp reader, `api/nearby.ts` and `lib/mapsNearby.ts` are committed and read now, but
+none of the three has answered anything real: ForeUp has never been asked a live course, `/nearby` needs a
+Google Places key nothing here has, and `scripts/concierge-bench.mts` has never been run from this address. Whether `outset-api`'s build should run `fetch-seed.mts` at all, which is the one line between the
 deployed concierge having a catalog and answering every town with "could not find". Whether a live resolve
 should be allowed to overwrite a crawled `booking_url` even when it does find something, rather than only to
 add one. Whether `linksTo`'s three followed links should include a link that leaves the shop's own origin,
-which they deliberately do not.
+which they deliberately do not. Whether `GET /concierge/live/:domain` should read the other seven
+vendors: `liveFor` still tries only FareHarbor and Resova while `plan.ts` reads nine, so a Peek shop answers
+"no feed to read" there and is quoted live in the agent. Whether the browser-agent and replay drivers
+(`concierge/agent.ts`, `concierge/replay.ts`) should carry the shop's clock like every reader now does, given
+that nothing calls either of them. Whether the weekend a guest means should be worked out on their own clock
+rather than the host's, which is the last thing in `windowFor` reading a day of the week from the server.
