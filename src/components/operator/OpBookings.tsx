@@ -113,7 +113,12 @@ export function OpBookings() {
         {list.map((b, i) => {
           const newDay = i === 0 || list[i - 1].date !== b.date;
           return (
-            <div key={b.id}>
+            // A grid item's `min-width` is `auto`, so this wrapper refuses to be narrower than the widest
+            // booking row inside it, and `.odbklist`'s one `auto` column grows to fit. On a phone that made
+            // the whole page 392px wide inside a 332px screen, and `.screen` clips: a guest's price, the
+            // Needs answer badge and the right side of Accept were simply cut off, on the one page an
+            // operator lives in. The row already knows how to shorten itself, so let it.
+            <div key={b.id} style={{ minWidth: 0 }}>
               {newDay ? <p className="odday">{relDay(b.date)}</p> : null}
               <BookingRow b={b} actions={filter === "new"} />
             </div>
