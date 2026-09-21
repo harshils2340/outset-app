@@ -2754,6 +2754,65 @@ clean (backend TS5097 only).
   search found, the payload keeps six and the thread draws four, with no way to reach the rest. A test
   asserts the current wording, so this is a copy decision rather than a bug to quietly reverse.
 
+## 21 September 2026, forty-fourth run (06:00 to 06:40 UTC)
+
+**Checked, and why.** No commit landed after the forty-third run's log and that entry says the rehearsal was
+green, so it was skipped at the start and the time went into the hunt instead. The type checks and both unit
+suites were run first and were green (619 app, 534 backend). Coverage names the operator dashboard beyond
+Bookings as read and unit tested but never clicked, so that is where this run went: every page driven in a
+real Chromium at 1280px, 400px and 360px, then Calendar, Services and Availability actually clicked, then the
+whole dashboard again as a brand new claimed shop with nothing in it. Then the claim link itself, which is
+the gate that hands out a session for an operator's shop and had no test of any kind.
+
+**Found and fixed.**
+
+- **On a phone the Bookings page was drawn wider than the screen, and the right of it was cut off**
+  (`36a9cc53d`). `.odbklist` is a grid with one `auto` column and each day's rows sit in a wrapper that is a
+  grid item. A grid item's `min-width` is `auto`, so that wrapper refused to be narrower than the widest
+  booking row, 392px, and the column grew to fit it. The dashboard is 332px wide on a 360px phone and 372px
+  on a 400px one, and `.screen` clips what runs past it: the guest's price, the Needs answer badge and the
+  right side of the Accept button were simply gone, with a gutter down the left and none down the right, on
+  the one page an operator lives in. Nothing scrolled and nothing warned. The row already ellipsises its own
+  lines once it is allowed to shrink, so the wrapper is given the floor of 0 it was missing. Measured at 360,
+  375, 390 and 400px, clipped at all four before and at none after.
+- **A claim link with anything tacked on the end was still read as the token it starts with** (`b42f5fd7d`).
+  `verifyClaimToken` split the token and destructured the first three fields, so
+  `v2.<expiry>.<signature>.anything` verified and the trailing data went without a word. Nothing could be
+  forged that way, because the signature still had to be one we wrote over that listing id and that expiry,
+  but the credential that opens an operator's dashboard, their prices and every booking a guest has made
+  should not be parsed loosely. The whole gate now has a test: one listing's link used on another, an expired
+  link reading as expired, a forgery reading as a forgery, an edited expiry buying nothing, the legacy static
+  links still landing, and `CLAIM_LINK_DAYS` falling back to 30.
+
+**Checked and sound.** All nine dashboard pages at 1280, 400 and 360px draw nothing past the edge and name
+every control, Bookings included once the fix was in, and the phone reaches the five pages behind More.
+Calendar: an empty slot blocks and reopens, a day name takes the day off and gives it back, and the past is
+refused. Availability: opening at 11:30 PM moves the closing time rather than leaving a day that never
+closes, a late close is offered as "next day", and a day switched off reads as closed. Services: Add puts a
+row on the menu, an option with no price is marked unpriced, and a price of zero is counted as no price by
+the row, the header, the menu counter and both checklists. A brand new claimed shop with nothing filled in
+opens all nine pages with no error, every empty state reads properly, and both setup checklists count
+themselves right (Home 3 of 8, Listing 3 of 6, each matching the items actually listed under it).
+
+**Green after the fixes.** 53 rehearsal steps, 0 failed. 543 backend tests, 622 app tests, both type checks
+clean (backend TS5097 only). The rehearsal was run because these commits touch `backend/src` and `src/`.
+
+**Needs Harshil.**
+
+- **The Home tab strip on a phone hides a control where nobody will find it.** `.ohtabs` is
+  `overflow-x: auto` in compact, and the "All requests" / "Calendar" link sits at `margin-left: auto`, which
+  in a scrolling strip parks it 137px past the end: at 400px it is off screen, at 360px so is half of the
+  "Next 7 days" tab, with no scroll hint either time. The bottom tab bar already has Bookings and Calendar,
+  so the link is duplication on a phone and could simply not render there, which is one line in `OpHome.tsx`.
+  Left alone because it removes something from a screen rather than fixing something broken, and that is
+  your call.
+- **Tonight's Bookings fix is an inline style, not a stylesheet rule.** `src/styles` is outside what these
+  runs may change, so the floor went on the element as `style={{ minWidth: 0 }}`. The tidier home for it is
+  `.odbklist{grid-template-columns:minmax(0,1fr)}` in `operator.css`, which fixes it just as completely;
+  either is enough, and `bookingsWidth.test.ts` accepts both and fails if both go.
+- **Five of the ten category accents are still under the AA floor**, unchanged from last night: `src/data`
+  and `src/styles` are both outside these runs. One step darker in the same hue clears it.
+
 ## Coverage
 
 **Verified so far.** The name a guest reads: the business name on all 59,125 shipped listings, against the
@@ -2781,6 +2840,15 @@ in the app prints an em dash, now a test of its own. What a guest actually gets 
 ranked, over the whole shipped catalog: every kind against every metro and against the 90 busiest towns that
 are not one, a glued spelling both ways round, a place name whose halves are two words, a town that is not a
 metro, and every activity, elsewhere and city row pressed against the page it opens.
+
+Every dashboard page driven in a real Chromium at 1280px, 400px and 360px, for sideways scroll, anything
+past the edge and a control with no name, including the five a phone keeps behind More. Calendar, Services
+and Availability clicked rather than read: a slot blocked and reopened, a day taken off and given back, a
+service added, an option left unpriced and an option priced at zero, an opening time pushed past the closing
+one, and a day switched off. A brand new claimed shop with nothing filled in, over all nine pages, with both
+setup checklists counted against the items listed under them. The claim link itself, which decides who gets a
+session for a shop: one listing's link on another, an expired link, an edited expiry, a forged signature, a
+token with trailing data, the legacy static tokens, and CLAIM_LINK_DAYS.
 
 Dashboard Calendar end to end: blocking a slot and a day, both reaching the guest picker and both reversible,
 plus what a day off does to the bookings already on it. Services end to end: adding, hiding, deleting, deleting
@@ -3160,12 +3228,13 @@ are being redirected...", "SITE1212", "bocaratonobserver.com") should fall back 
 feed worth reading. What the home should say when every cover on it is dead: today it draws a header, the
 category chips, a footer and nothing between them, because the kind list is not empty so the "Nothing here
 yet" state never fires (see this run's Needs Harshil). Whether the `waiting` line should count a listing
-whose cover died as one of the "places listed without a photo yet", which it does not. The rest of the
-operator dashboard beyond Bookings driven in a browser: Calendar, Services, Availability, Settings and the
-setup checklist counting itself, which are read and unit tested but never clicked. The claim and sign-in
-flows against a wrong address, an expired link, a link claimed twice and five wrong codes, beyond what the
-rehearsal's happy path walks. A metro with one listing and a category with none, as browse rather than as
-search. Any live vendor against its real server rather than a stub. Whether a sentence naming two
+whose cover died as one of the "places listed without a photo yet", which it does not. Whether the "All requests"
+link on Home should render on a phone at all, where the scrolling tab strip parks it out of sight (see the
+forty-fourth run's Needs Harshil). Whether the operator whose sign-in code is refused six times should be
+offered a fresh code on that screen: the only way on is the Back link, and a sixth request inside the hour is
+answered "ok" and sends nothing, on purpose, so the address cannot be probed. Whether an operator should be
+able to price an option at zero and mean free: every surface reads a zero as no price and quotes "Pay on
+site". Any live vendor against its real server rather than a stub. Whether a sentence naming two
 regions ("ontario california") should take the first one it recognises, which it does. Whether a budget read
 out of "under 18s" should filter prices, which it does. The outreach list
 script, `scripts/outreach-list.mts`, and the `GET /outreach/drafts` route it reads. Whether Gmail's one-click
