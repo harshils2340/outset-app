@@ -1,4 +1,5 @@
 import type { Departure, LiveRead } from "../live.ts";
+import { addDays, zonedYmd } from "../shopday.ts";
 import { isConcessionFare } from "../../lib/fares.ts";
 
 /**
@@ -221,7 +222,7 @@ function ticketsOf(exp: XolaExperience): { price: number | null; label: string |
 
 export async function xolaLive(
   bookingUrl: string,
-  opts: { from?: Date; days?: number; maxItems?: number } = {},
+  opts: { from?: Date; days?: number; maxItems?: number; tz?: string | null } = {},
 ): Promise<LiveRead | null> {
   const ref = xolaRef(bookingUrl);
   if (!ref) return null;
@@ -253,7 +254,8 @@ export async function xolaLive(
     api<{ data?: XolaExperience[] }>(`/experiences?seller=${sellerId}`),
   ]);
   const name = seller?.name || sellerId;
-  const timezone = seller?.timezoneName || null;
+  // The seller record names the shop's own zone. The catalog's, from `plan.ts`, stands in when it does not.
+  const timezone = seller?.timezoneName || opts.tz || null;
 
   const published = (list?.data || []).filter((e) => e.id && e.status === "published" && e.visible !== false);
   const chosen = only.length ? published.filter((e) => only.includes(e.id!)) : published;
@@ -265,8 +267,8 @@ export async function xolaLive(
   const horizon = Math.min(opts.days ?? 7, 14);
   const maxItems = opts.maxItems ?? 4;
   const today = nowWhereTheyAre(timezone);
-  const startDate = ymd(start);
-  const endDate = ymd(new Date(start.getTime() + horizon * 86400_000));
+  const startDate = zonedYmd(start, timezone);
+  const endDate = addDays(startDate, horizon);
 
   const out: Departure[] = [];
   await Promise.all(

@@ -1,6 +1,7 @@
 import test, { afterEach } from "node:test";
 import assert from "node:assert/strict";
 import { xolaRef, xolaLive } from "../xola.ts";
+import { ymdLocal } from "../../shopday.ts";
 
 /**
  * The ticket sheet a Xola shop publishes, and which row of it a guest is quoted.
@@ -138,4 +139,46 @@ test("a start with no seats left is not offered", async () => {
   }) as typeof fetch;
   const read = await xolaLive(LINK);
   assert.deepEqual(read?.departures.map((d) => d.time), ["17:00"]);
+});
+
+/**
+ * Which day the window asks for, which until now was whichever day it was on the machine doing the asking.
+ * The API host runs in UTC, so a guest in Toronto asking at half past nine in the evening had every shop
+ * asked about tomorrow. Xola names the shop's zone itself; the catalog's `tz` is the fallback for a seller
+ * record that does not.
+ */
+test("the window is the shop's own calendar day, not the host's", async () => {
+  // 21:30 on the 21st in Toronto. On a UTC host this instant is already the 22nd.
+  const evening = new Date("2026-09-22T01:30:00Z");
+  const asked: string[] = [];
+  const stub = (timezoneName: string | null) => {
+    globalThis.fetch = (async (url: string | URL) => {
+      const u = String(url);
+      const json = (body: unknown) => new Response(JSON.stringify(body), { status: 200 });
+      if (u.includes(`/buttons/${BUTTON}`)) return json({ seller: { id: SELLER }, items: [{ experience: { id: "e1" } }] });
+      if (u.includes(`/sellers/${SELLER}`)) return json({ name: "conTRAPtions Escape Rooms", timezoneName });
+      if (u.includes("/experiences?seller=")) {
+        return json({ data: [{ id: "e1", name: "The Vault", status: "published", visible: true, priceType: "person", catalog: { items: [] } }] });
+      }
+      if (u.includes("/availability")) {
+        asked.push(u.slice(u.indexOf("/availability")));
+        return json({});
+      }
+      return new Response("not found", { status: 404 });
+    }) as typeof fetch;
+  };
+
+  stub("America/Toronto");
+  await xolaLive(LINK, { from: evening, days: 1 });
+  assert.match(asked[0], /start=2026-09-21&end=2026-09-22/, "the shop's evening, not the host's tomorrow");
+
+  asked.length = 0;
+  stub(null);
+  await xolaLive(LINK, { from: evening, days: 1, tz: "America/Vancouver" });
+  assert.match(asked[0], /start=2026-09-21&end=2026-09-22/, "no zone on the seller record, so the catalog's stands in");
+
+  asked.length = 0;
+  stub(null);
+  await xolaLive(LINK, { from: evening, days: 1 });
+  assert.match(asked[0], new RegExp(`start=${ymdLocal(evening)}&`), "a shop we know nothing about keeps the old behaviour");
 });

@@ -1,4 +1,5 @@
 import type { Departure, LiveRead } from "../live.ts";
+import { addDays, zonedYmd } from "../shopday.ts";
 import { isConcessionFare } from "../../lib/fares.ts";
 
 /**
@@ -408,7 +409,7 @@ async function timesOf(ownerId: number, type: AcuityType, calendar: string, from
 
 export async function acuityLive(
   bookingUrl: string,
-  opts: { from?: Date; days?: number; maxItems?: number } = {},
+  opts: { from?: Date; days?: number; maxItems?: number; tz?: string | null } = {},
 ): Promise<LiveRead | null> {
   const ref = acuityRef(bookingUrl);
   if (!ref) return null;
@@ -469,8 +470,11 @@ export async function acuityLive(
   const start = opts.from ?? new Date();
   const horizon = Math.min(opts.days ?? 7, 14);
   const maxItems = opts.maxItems ?? 6;
-  const today = nowWhereTheyAre(shop.timezone);
-  const from = ymd(start);
+  // BUSINESS names the shop's own zone. The catalog's, from `plan.ts`, stands in when it does not.
+  const timezone = shop.timezone || opts.tz || null;
+  const today = nowWhereTheyAre(timezone);
+  const from = zonedYmd(start, timezone);
+  const last = addDays(from, horizon);
 
   /**
    * One row per distinct start, cheapest service on it.
@@ -501,7 +505,7 @@ export async function acuityLive(
          * the hour, and against the shop's own clock, because these times are the shop's own clock.
          */
         if (date === today.date && Number(time.slice(0, 2)) * 60 + Number(time.slice(3)) <= today.minutes) continue;
-        if (date > ymd(new Date(start.getTime() + horizon * 86400_000))) continue;
+        if (date > last) continue;
 
         /**
          * A shop that hides prices on its own widget is not quoted one. `hidePrice` is the operator's own

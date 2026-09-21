@@ -387,7 +387,7 @@ async function availability(
 
 export async function squareLive(
   bookingUrl: string,
-  opts: { from?: Date; days?: number; maxItems?: number } = {},
+  opts: { from?: Date; days?: number; maxItems?: number; tz?: string | null } = {},
 ): Promise<LiveRead | null> {
   const ref = squareRef(bookingUrl);
   if (!ref) return null;
@@ -476,7 +476,8 @@ export async function squareLive(
   const start = opts.from ?? new Date();
   const horizon = Math.min(opts.days ?? 7, 14);
   const maxItems = opts.maxItems ?? 6;
-  const { at, today, minutes } = clock(shop.timezone);
+  // Square's location record names the shop's own zone. The catalog's, from `plan.ts`, stands in when it does not.
+  const { at, today, minutes } = clock(shop.timezone || opts.tz || null);
   /**
    * From now, not from midnight. Square rejects a `start_at` in the past outright, so asking for "today"
    * after breakfast is an error rather than a short day — and a window that begins at this instant is also

@@ -1,4 +1,5 @@
 import type { Departure, LiveRead } from "../live.ts";
+import { addDays, zonedYmd } from "../shopday.ts";
 import { isConcessionFare } from "../../lib/fares.ts";
 
 /**
@@ -279,7 +280,7 @@ function priceOfSlot(slot: Timeslot): { price: number | null; label: string | nu
 
 export async function tripworksLive(
   bookingUrl: string,
-  opts: { from?: Date; days?: number; maxItems?: number } = {},
+  opts: { from?: Date; days?: number; maxItems?: number; tz?: string | null } = {},
 ): Promise<LiveRead | null> {
   const slug = tripworksAccount(bookingUrl);
   if (!slug) return null;
@@ -291,6 +292,11 @@ export async function tripworksLive(
   const horizon = Math.min(opts.days ?? 7, 14);
   const maxItems = opts.maxItems ?? 4;
   const only = experienceOf(bookingUrl);
+  /**
+   * The window in the shop's own calendar. The account's zone is the one the range endpoint is keyed by; an
+   * experience in another zone is still read on its own clock further down.
+   */
+  const startDate = zonedYmd(start, shop.timezone || opts.tz || null);
 
   /**
    * One call for the whole shop and a window of days, in two windows: the next two days first, and the rest
@@ -306,7 +312,7 @@ export async function tripworksLive(
   const fetchRange = async (fromDay: number, toDay: number): Promise<RangeDoc | null> =>
     api<RangeDoc>(
       slug,
-      `/api/experiences/getInDateRange/${ymd(new Date(start.getTime() + fromDay * 86400_000))}/${ymd(new Date(start.getTime() + toDay * 86400_000))}`,
+      `/api/experiences/getInDateRange/${addDays(startDate, fromDay)}/${addDays(startDate, toDay)}`,
       { isAuthenticated: false, showTimeslots: true, showPrices: true },
       20000,
     );
@@ -347,7 +353,7 @@ export async function tripworksLive(
          * saying nothing, because they would click through to a form that books them nothing.
          */
         if (NOT_A_DEPARTURE.test(meta?.name || "")) continue;
-        const timezone = meta?.timezone || shop.timezone;
+        const timezone = meta?.timezone || shop.timezone || opts.tz || null;
         const today = nowWhereTheyAre(timezone);
         if (date < today.date) continue;
 

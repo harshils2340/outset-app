@@ -1,5 +1,6 @@
 import http2 from "node:http2";
 import type { Departure, LiveRead } from "../live.ts";
+import { addDays, zonedYmd } from "../shopday.ts";
 import { isConcessionFare } from "../../lib/fares.ts";
 
 /**
@@ -285,7 +286,7 @@ function priceOfSlot(slot: RezdySlot): { price: number | null; label: string | n
 
 export async function rezdyLive(
   bookingUrl: string,
-  opts: { from?: Date; days?: number; maxItems?: number } = {},
+  opts: { from?: Date; days?: number; maxItems?: number; tz?: string | null } = {},
 ): Promise<LiveRead | null> {
   const ref = rezdyRef(bookingUrl);
   if (!ref) return null;
@@ -313,9 +314,11 @@ export async function rezdyLive(
   const start = opts.from ?? new Date();
   const horizon = Math.min(opts.days ?? 7, 14);
   const maxItems = opts.maxItems ?? 4;
-  const today = nowWhereTheyAre(shop.timezone);
-  const startDate = ymd(start);
-  const lastDate = ymd(new Date(start.getTime() + horizon * 86400_000));
+  // The bootstrap JSON names the shop's own zone. The catalog's, from `plan.ts`, stands in when it does not.
+  const timezone = shop.timezone || opts.tz || null;
+  const today = nowWhereTheyAre(timezone);
+  const startDate = zonedYmd(start, timezone);
+  const lastDate = addDays(startDate, horizon);
 
   const out: Departure[] = [];
   /**

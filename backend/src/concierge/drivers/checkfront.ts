@@ -2,6 +2,7 @@ import type { Browser } from "playwright";
 import type { Departure, LiveRead } from "../live.ts";
 import { isConcessionFare, openFarePrice } from "../../lib/fares.ts";
 import { checkfrontRef } from "../../enrich/vendors/checkfront.ts";
+import { addDays, zonedNow, zonedYmd } from "../shopday.ts";
 
 /**
  * Checkfront, read from the endpoint its own booking form reads.
@@ -39,15 +40,9 @@ import { checkfrontRef } from "../../enrich/vendors/checkfront.ts";
 
 const UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36";
 
-const ymd = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 /** Checkfront keys its own date maps as `20260922`, with no separators. */
 const compact = (iso: string) => iso.replace(/-/g, "");
 const fromCompact = (k: string) => `${k.slice(0, 4)}-${k.slice(4, 6)}-${k.slice(6, 8)}`;
-const addDays = (iso: string, n: number) => {
-  const d = new Date(`${iso}T12:00:00`);
-  d.setDate(d.getDate() + n);
-  return ymd(d);
-};
 
 /**
  * The newer storefront is `<account>.checkfront.site`, but the booking engine, and every endpoint below, is
@@ -211,6 +206,8 @@ export async function checkfrontLive(
     /** Accepted so a caller holding a shared browser can pass one, and deliberately unused: this needs no browser. */
     browser?: Browser;
     date?: Date;
+    /** The shop's own zone, from the catalog, because the date below is a calendar day where the shop is. */
+    tz?: string | null;
     budgetMs?: number;
   } = {},
 ): Promise<LiveRead | null> {
@@ -218,7 +215,9 @@ export async function checkfrontLive(
   if (!account) return null;
   const until = Date.now() + (opts.budgetMs ?? 20000);
   const left = () => Math.min(15000, Math.max(0, until - Date.now()));
-  const wanted = ymd(opts.date ?? new Date());
+  const wanted = zonedYmd(opts.date ?? new Date(), opts.tz);
+  /** The shop's own clock, for the one question it answers: has this slot already started? */
+  const now = zonedNow(opts.tz);
   /**
    * Keyed by date and time, keeping the cheapest, because a shop with eight pontoons free at eleven has one
    * eleven o'clock to offer a guest, not eight. The answer a guest wants is which times this business can
@@ -345,7 +344,7 @@ export async function checkfrontLive(
           const fromPrice = openFarePrice(detail.fares, (f) => f.price, fareText);
           const unit = detail.priceUnit ? ` ${detail.priceUnit}` : "";
           // A slot that already started today is not availability: Checkfront returns the whole day whatever the hour.
-          const nowMin = detail.date === ymd(new Date()) ? new Date().getHours() * 60 + new Date().getMinutes() : -1;
+          const nowMin = detail.date === now.date ? now.minutes : -1;
           for (const s of detail.slots) {
             if (Number(s.time.slice(0, 2)) * 60 + Number(s.time.slice(3)) <= nowMin) continue;
             const at = `${detail.date} ${s.time}`;

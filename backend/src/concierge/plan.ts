@@ -12,6 +12,7 @@ import { squareLive } from "./readers/square.ts";
 import { acuityLive } from "./readers/acuity.ts";
 import { foreupLive } from "./readers/foreup.ts";
 import { isReadable, readerFor, unreadableSql } from "./readable.ts";
+import { zoneForArea } from "../lib/zone.ts";
 import { Trace } from "./session.ts";
 import { recordDemand } from "./demand.ts";
 import { awaitingClock, nextNeed } from "./needs.ts";
@@ -1480,26 +1481,33 @@ export async function plan(text: string, opts: { ask?: number; prior?: Intent | 
        * The vendor is decided by `readerFor`, the same call that decided this shop was a `feed` in the first
        * place, so a link can never be routed here and then fall through to a reader that does not know it.
        */
+      /**
+       * What day it is where this shop is. Every reader turns the window into calendar dates, and the API
+       * host runs in UTC (`render.yaml` sets no TZ), so a window built from this machine's clock put an
+       * Ontario shop on tomorrow's date from eight in the evening, which is exactly when somebody asks about
+       * tonight. A vendor that publishes its own zone still wins; this is the answer for the ones that do not.
+       */
+      const tz = zoneForArea([o.city, o.region].filter(Boolean).join(", "));
       const readFeed = (from: Date, days: number) => {
         switch (readerFor(o.bookingUrl)) {
           case "square":
-            return squareLive(o.bookingUrl, { from, days });
+            return squareLive(o.bookingUrl, { from, days, tz });
           case "acuity":
-            return acuityLive(o.bookingUrl, { from, days });
+            return acuityLive(o.bookingUrl, { from, days, tz });
           case "tripworks":
-            return tripworksLive(o.bookingUrl, { from, days });
+            return tripworksLive(o.bookingUrl, { from, days, tz });
           case "xola":
-            return xolaLive(o.bookingUrl, { from, days });
+            return xolaLive(o.bookingUrl, { from, days, tz });
           case "rezdy":
-            return rezdyLive(o.bookingUrl, { from, days });
+            return rezdyLive(o.bookingUrl, { from, days, tz });
           case "checkfront":
-            return checkfrontLive(o.bookingUrl, { date: from });
+            return checkfrontLive(o.bookingUrl, { date: from, tz });
           case "peek":
-            return peekLive(o.bookingUrl, { from, days });
+            return peekLive(o.bookingUrl, { from, days, tz });
           case "resova":
-            return resovaLive(o.bookingUrl, { from, days, maxItems: 4 });
+            return resovaLive(o.bookingUrl, { from, days, tz, maxItems: 4 });
           case "foreup":
-            return foreupLive(o.bookingUrl, { from, days });
+            return foreupLive(o.bookingUrl, { from, days, tz });
           default:
             /**
              * Six items, not three. Zoom Tours sells four day tours and we priced three of them, so the
@@ -1507,7 +1515,7 @@ export async function plan(text: string, opts: { ask?: number; prior?: Intent | 
              * number to quote. The total sheet is shared across a company's items, 287557 for every one of
              * theirs, so the first item costs three calls and each one after it costs two.
              */
-            return fareharborLive(o.bookingUrl, { from, days, maxItems: 6 });
+            return fareharborLive(o.bookingUrl, { from, days, tz, maxItems: 6 });
         }
       };
 

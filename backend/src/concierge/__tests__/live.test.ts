@@ -154,3 +154,40 @@ test("a link that names no shop is not asked about", async () => {
   assert.equal(await fareharborLive("https://fareharbor.com/legal/privacy/"), null);
   assert.equal(calls.length, 0, "no company to ask about, so nothing should have been fetched");
 });
+
+/**
+ * Which day the window asks for. FareHarbor keys every day by the shop's own calendar, and this reader built
+ * its window from `d.getFullYear()` under a comment about not using UTC. The API host has no TZ set, so that
+ * comment described a fix that only ever worked on a laptop in Eastern: from eight in the evening, the first
+ * day asked for was already tomorrow, and the shop's remaining evening was never looked at. The zone now
+ * comes from the catalog, through `plan.ts`.
+ */
+test("the window is the shop's own calendar day, not the host's", async () => {
+  // 21:00 on the 21st in Toronto. On a UTC host this instant is already the 22nd.
+  const evening = new Date("2026-09-22T01:00:00Z");
+  const tonight = "2026-09-21";
+  const stub = () =>
+    stubFareharbor([
+      { date: tonight, avs: [avail(1, 10, "Sunset flight", tonight + "T22:30:00-04:00")] },
+      { date: "2026-09-22", avs: [avail(2, 11, "Romantic Jewel", "2026-09-22T19:00:00-04:00")] },
+    ]);
+
+  stub();
+  const shopClock = await fareharborLive(SHOP, { from: evening, days: 1, tz: "America/Toronto", maxItems: 1 });
+  assert.deepEqual(shopClock?.departures.map((d) => d.item), ["Sunset flight"], "their evening, still bookable, still theirs");
+
+  stub();
+  const hostClock = await fareharborLive(SHOP, { from: evening, days: 1, maxItems: 1 });
+  assert.deepEqual(
+    hostClock?.departures.map((d) => d.date),
+    hostClock?.departures.length ? [ymd(evening)] : [],
+    "with no zone for the shop, the window is this machine's day, as it always was",
+  );
+});
+
+test("a horizon that straddles three months asks for all three", async () => {
+  const { calls } = stubFareharbor([]);
+  await fareharborLive(SHOP, { from: new Date("2026-01-20T12:00:00Z"), days: 45, tz: "UTC", maxItems: 1 });
+  const months = calls.filter((u) => u.includes("/calendar/")).map((u) => u.slice(u.indexOf("/calendar/")));
+  assert.deepEqual(months.sort(), ["/calendar/2026/01/", "/calendar/2026/02/", "/calendar/2026/03/"]);
+});

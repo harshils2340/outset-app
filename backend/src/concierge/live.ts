@@ -2,6 +2,8 @@ import { db } from "../db/client.ts";
 import { fareharborShortname } from "../enrich/widgets.ts";
 import { resovaLive } from "./resova.ts";
 import { isConcessionFare } from "../lib/fares.ts";
+import { addDays, zonedYmd } from "./shopday.ts";
+import { zoneForArea } from "../lib/zone.ts";
 
 /**
  * What a business can actually sell you, right now, read from the booking system it really runs.
@@ -191,7 +193,7 @@ function itemPkOf(av: FhAvail): number | null {
  * the first few departures of each distinct item are priced: a guest is choosing between "Heli Tour #1" and
  * "Romantic Jewel", not between forty identical noon slots.
  */
-export async function fareharborLive(bookingUrl: string, opts: { from?: Date; days?: number; maxItems?: number } = {}): Promise<LiveRead | null> {
+export async function fareharborLive(bookingUrl: string, opts: { from?: Date; days?: number; maxItems?: number; tz?: string | null } = {}): Promise<LiveRead | null> {
   const sn = fareharborShortname(bookingUrl);
   if (!sn) return null;
   const base = "https://fareharbor.com/api/v1/companies/" + encodeURIComponent(sn) + "/";
@@ -199,11 +201,24 @@ export async function fareharborLive(bookingUrl: string, opts: { from?: Date; da
   const horizon = opts.days ?? 14;
   const maxItems = opts.maxItems ?? 4;
 
+  /**
+   * The window on the shop's own calendar, not this machine's. FareHarbor keys every day by the shop's date,
+   * and the API host has no TZ set, so "local" here is UTC: from eight in the evening Eastern the first day
+   * asked for was already tomorrow, which is the hour a guest is most likely to be asking about tonight. The
+   * zone comes from the catalog through `plan.ts`; without one this is the old behaviour.
+   */
+  const firstDay = zonedYmd(start, opts.tz);
+  /**
+   * A day's horizon is that day, not that day and the next one. "escape room tonight" asks for one day, and
+   * counting the last day from the first one rather than past it was offering tomorrow evening under a line
+   * that says "here is what's actually free", with nothing saying the date had moved.
+   */
+  const lastDay = addDays(firstDay, Math.max(horizon - 1, 0));
+
   // The calendar is published a month at a time, so a fortnight's horizon can straddle two of them.
   const months = new Set<string>();
-  for (let i = 0; i < Math.max(horizon, 1); i += 1) {
-    const d = new Date(start.getTime() + i * 86400_000);
-    months.add(`${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, "0")}/`);
+  for (let m = firstDay.slice(0, 7); m <= lastDay.slice(0, 7); m = addDays(m + "-01", 32).slice(0, 7)) {
+    months.add(`${m.slice(0, 4)}/${m.slice(5, 7)}/`);
   }
 
   /**
@@ -223,20 +238,6 @@ export async function fareharborLive(bookingUrl: string, opts: { from?: Date; da
     for (const w of cal?.calendar?.weeks || []) days.push(...(w.days || []));
   }
   if (!days.length) return { business: sn, vendor: "fareharbor", departures: [], note: "FareHarbor did not answer for this shop." };
-
-  /**
-   * Local dates, not UTC. FareHarbor publishes a departure's day in the shop's own calendar, and toISOString()
-   * is four or five hours ahead of Eastern: after eight in the evening it rolls the date forward, so "tomorrow"
-   * quietly became the day after tomorrow and the noon flight a guest was asking about was never offered.
-   */
-  const ymd = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-  /**
-   * A day's horizon is that day, not that day and the next one. "escape room tonight" asks for one day, and
-   * counting the last day from the first one rather than past it was offering tomorrow evening under a line
-   * that says "here is what's actually free", with nothing saying the date had moved.
-   */
-  const firstDay = ymd(start);
-  const lastDay = ymd(new Date(start.getTime() + Math.max(horizon - 1, 0) * 86400_000));
 
   // One entry per item per day: the earliest bookable departure of each.
   const picked: { av: FhAvail; date: string }[] = [];
@@ -367,13 +368,23 @@ export function bookingUrlFor(domain: string): string | null {
   return row?.u || null;
 }
 
+/** What day it is where this operator is, for the readers, which key their windows by the shop's own calendar. */
+function zoneOf(domain: string): string | null {
+  const row = db.prepare("SELECT city, region, lat, lon FROM operators WHERE domain = ? LIMIT 1").get(domain) as
+    | { city: string | null; region: string | null; lat: number | null; lon: number | null }
+    | undefined;
+  if (!row) return null;
+  return zoneForArea([row.city, row.region].filter(Boolean).join(", "), row.lat, row.lon);
+}
+
 /** Live availability for one operator, by whichever route its booking system allows. */
 export async function liveFor(domain: string, opts: { from?: Date; days?: number } = {}): Promise<LiveRead> {
   const url = bookingUrlFor(domain);
   if (!url) return { business: domain, vendor: "none", departures: [], note: "We hold no booking link for this business; it would go to the phone agent." };
-  const fh = await fareharborLive(url, opts);
+  const tz = zoneOf(domain);
+  const fh = await fareharborLive(url, { ...opts, tz });
   if (fh) return fh;
-  const rv = await resovaLive(url, opts);
+  const rv = await resovaLive(url, { ...opts, tz });
   if (rv) return rv;
   return { business: domain, vendor: "agent", departures: [], note: "No feed to read: this one needs the browser agent." };
 }

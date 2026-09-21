@@ -1,5 +1,6 @@
 import type { Departure, LiveRead } from "./live.ts";
 import { isConcessionFare } from "../lib/fares.ts";
+import { addDays, zonedYmd } from "./shopday.ts";
 
 /**
  * Live availability from Peek, the way Peek's own booking page gets it.
@@ -318,7 +319,7 @@ type AvailTime = {
 
 export async function peekLive(
   bookingUrl: string,
-  opts: { from?: Date; days?: number; maxItems?: number } = {},
+  opts: { from?: Date; days?: number; maxItems?: number; tz?: string | null } = {},
 ): Promise<LiveRead | null> {
   const ref = peekRef(bookingUrl);
   if (!ref) return null;
@@ -326,7 +327,9 @@ export async function peekLive(
   const program = await api<Doc>(ref, `/programs/${encodeURIComponent(ref.code)}`);
   if (!program) return { business: ref.code, vendor: VENDOR, departures: [], note: "Peek did not answer for this shop." };
 
-  const { activities, timezone, business, giftCardOnly } = activitiesOf(program);
+  const { activities, timezone: peekZone, business, giftCardOnly } = activitiesOf(program);
+  // The partner record names the shop's own zone. The catalog's, from `plan.ts`, stands in when it does not.
+  const timezone = peekZone || opts.tz || null;
   const name = business || ref.code;
   if (!activities.length) {
     return {
@@ -343,8 +346,8 @@ export async function peekLive(
   const horizon = Math.min(opts.days ?? 7, 14);
   const maxItems = opts.maxItems ?? 4;
   const today = nowWhereTheyAre(timezone);
-  const startDate = ymd(start);
-  const endDate = ymd(new Date(start.getTime() + horizon * 86400_000));
+  const startDate = zonedYmd(start, timezone);
+  const endDate = addDays(startDate, horizon);
 
   const out: Departure[] = [];
   await Promise.all(
