@@ -4,8 +4,10 @@ import {
   compareLine,
   headline,
   headlineService,
+  guestWords,
   listingForOption,
   listingIdFor,
+  missingFrom,
   menuPrice,
   noTimesLine,
   refinements,
@@ -667,4 +669,38 @@ test("a chain in Waterloo is not booked as the Tampa shop that shares the domain
   });
   assert.notEqual(id, "u-escgy");
   assert.equal(experienceById(id)?.area, "Waterloo, ON");
+});
+
+/* ---------- the one place the thread takes a booking ---------- */
+
+test("Book never does nothing: a half-typed name or number is said out loud", () => {
+  /**
+   * The form's own button used to return silently when the name was one letter or the number three digits,
+   * which is exactly what a half-finished form holds, and the browser's `required` catches neither because
+   * both fields have something in them. A guest pressed the only button on the screen and the screen did not
+   * move. Every way of being short of the API's own rule now has a sentence.
+   */
+  assert.equal(missingFrom({ name: "Alex Guest", phone: "416 555 0134" }), "");
+  assert.equal(missingFrom({ name: "A", phone: "416" }), "I need a name and a mobile number before I can hold that time.");
+  assert.equal(missingFrom({ name: "A", phone: "416 555 0134" }), "What name should I put it under?");
+  assert.equal(missingFrom({ name: "Alex Guest", phone: "416" }), "I need a mobile number the shop can reach you on.");
+  assert.equal(missingFrom({ name: "  ", phone: "  " }), "I need a name and a mobile number before I can hold that time.");
+  // The API's own floor, so a form this accepts is never refused on the other side.
+  assert.equal(missingFrom({ name: "Jo", phone: "5550123" }), "");
+  assert.equal(missingFrom({ name: "Jo", phone: "555012" }), "I need a mobile number the shop can reach you on.");
+  // Punctuation is not a digit, and a written-out number still counts as one.
+  assert.equal(missingFrom({ name: "Jo", phone: "(555) 012-3" }), "");
+});
+
+test("the agent never speaks the API's own error codes", () => {
+  /**
+   * The routes answer in two registers, and both were printed in the thread exactly as they arrived, over the
+   * agent's name: a guest who mistyped their address was answered "GoDo: bad email."
+   */
+  assert.equal(guestWords("That time was just booked. Pick another time."), "That time was just booked. Pick another time.");
+  assert.equal(guestWords("This listing is hidden right now."), "This listing is hidden right now.");
+  assert.equal(guestWords("The payment form could not be started. Please try again in a moment."), "The payment form could not be started. Please try again in a moment.");
+  for (const code of ["bad email.", "no such listing.", "duplicate code.", "bad guest count.", "slot_taken", "not here.", "", undefined]) {
+    assert.equal(guestWords(code), "That time could not be booked. Check the details and try again.", JSON.stringify(code) + " reached a guest");
+  }
 });

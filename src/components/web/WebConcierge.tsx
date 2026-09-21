@@ -7,6 +7,8 @@ import {
   conciergeReady,
   headline,
   listingForOption,
+  missingFrom,
+  guestWords,
   refinements,
   stepLine,
   understood,
@@ -116,6 +118,14 @@ export function WebConcierge({ seed, framed, embed, onClose }: { seed?: string; 
    */
   const [manual, setManual] = useState("");
   const [pending, setPending] = useState<{ option: ConciergeOption; departure: ConciergeDeparture; party: number } | null>(null);
+  /**
+   * What is still missing from the two fields the shop needs, said out loud.
+   *
+   * Book used to return silently on a name of one letter or a number of three digits, which are exactly what
+   * a half-finished form holds: the guest pressed the one button on the screen and the screen did not move.
+   * The browser's own `required` does not catch either of them, because both fields have something in them.
+   */
+  const [needMore, setNeedMore] = useState("");
   const [guestForm, setGuestForm] = useState(() => {
     const g = loadGuest();
     return { name: g.name || "", phone: g.phone || "", email: g.email || "" };
@@ -131,6 +141,8 @@ export function WebConcierge({ seed, framed, embed, onClose }: { seed?: string; 
   const inputRef = useRef<HTMLInputElement>(null);
   const box = useRef<HTMLDivElement>(null);
   const inputId = useId();
+  /** The booking form's own fields, named for a screen reader the same way the compose field is. */
+  const guestId = useId();
   /**
    * How long the question in flight has been running, in tenths of a second.
    *
@@ -430,6 +442,19 @@ export function WebConcierge({ seed, framed, embed, onClose }: { seed?: string; 
       add({ kind: "them", text: "I could not hold that time on GoDo. Pick another one." });
       return;
     }
+    /**
+     * A shop the catalog has never held is a minted stub (`cg-...`), and the API has no listing file for one,
+     * so `POST /bookings` answers 404 "no such listing" and that is what the guest was reading, in the
+     * agent's own voice, after typing their name and number. The refusal is right: a booking stored against a
+     * listing that does not exist alerts the founder to phone a shop that was never there. What was wrong is
+     * asking for the details first and then saying it in a programmer's words, so it is said here, before.
+     */
+    if (id.startsWith("cg-")) {
+      setPending(null);
+      setNeedMore("");
+      add({ kind: "them", text: "I can't hold that time: " + o.name + " isn't set up to take bookings on GoDo yet. What they publish is on their page." });
+      return;
+    }
     const dateIdx = Math.max(0, DATES.findIndex((day) => dateKey(day) === d.date));
     setBooking(true);
     const r = await confirmUnclaimed({
@@ -445,7 +470,7 @@ export function WebConcierge({ seed, framed, embed, onClose }: { seed?: string; 
     });
     setBooking(false);
     if (!r.ok) {
-      add({ kind: "them", text: r.error || "That time could not be booked. Try another." });
+      add({ kind: "them", text: guestWords(r.error) });
       return;
     }
     setPending(null);
@@ -461,9 +486,10 @@ export function WebConcierge({ seed, framed, embed, onClose }: { seed?: string; 
   const book = (o: ConciergeOption, d: ConciergeDeparture, party: number) => {
     const g = { ...guestForm, ...loadGuest() };
     const name = (g.name || guestForm.name).trim();
-    const phone = (g.phone || guestForm.phone).replace(/\D/g, "");
-    if (name.length < 2 || phone.length < 7) {
-      setGuestForm({ name: g.name || guestForm.name, phone: g.phone || guestForm.phone, email: g.email || guestForm.email });
+    const held = { name: g.name || guestForm.name, phone: g.phone || guestForm.phone, email: g.email || guestForm.email };
+    if (missingFrom(held)) {
+      setGuestForm(held);
+      setNeedMore("");
       setPending({ option: o, departure: d, party });
       add({ kind: "them", text: "Name and mobile, then I will book that time." });
       return;
@@ -564,18 +590,27 @@ export function WebConcierge({ seed, framed, embed, onClose }: { seed?: string; 
               className="cg-guest"
               onSubmit={(e) => {
                 e.preventDefault();
-                const name = guestForm.name.trim();
-                const phone = guestForm.phone.trim();
-                if (name.length < 2 || phone.replace(/\D/g, "").length < 7) return;
+                // Never a press that does nothing: a half-typed name or number is said out loud instead.
+                const missing = missingFrom(guestForm);
+                if (missing) {
+                  setNeedMore(missing);
+                  return;
+                }
+                setNeedMore("");
                 rememberGuest(guestForm);
                 const hold = pending;
                 void sendBook(hold.option, hold.departure, hold.party, guestForm);
               }}
             >
               <p className="cg-note">{pending.option.name}, {whenLine(pending.departure)}</p>
-              <input value={guestForm.name} onChange={(e) => setGuestForm({ ...guestForm, name: e.target.value })} placeholder="Your name" autoComplete="name" required />
-              <input value={guestForm.phone} onChange={(e) => setGuestForm({ ...guestForm, phone: e.target.value })} placeholder="Mobile" autoComplete="tel" required />
-              <input value={guestForm.email} onChange={(e) => setGuestForm({ ...guestForm, email: e.target.value })} placeholder="Email" autoComplete="email" />
+              <label htmlFor={guestId + "-name"} className="cg-sr">Your name</label>
+              <input id={guestId + "-name"} value={guestForm.name} onChange={(e) => { setNeedMore(""); setGuestForm({ ...guestForm, name: e.target.value }); }} placeholder="Your name" autoComplete="name" required />
+              <label htmlFor={guestId + "-phone"} className="cg-sr">Mobile number</label>
+              {/* `inputMode` so a phone offers its keypad, the same as every other guest field in the app. */}
+              <input id={guestId + "-phone"} value={guestForm.phone} onChange={(e) => { setNeedMore(""); setGuestForm({ ...guestForm, phone: e.target.value }); }} placeholder="Mobile" inputMode="tel" autoComplete="tel" required />
+              <label htmlFor={guestId + "-email"} className="cg-sr">Email, if you want a confirmation</label>
+              <input id={guestId + "-email"} value={guestForm.email} onChange={(e) => setGuestForm({ ...guestForm, email: e.target.value })} placeholder="Email" inputMode="email" autoComplete="email" />
+              {needMore ? <p className="cg-note" role="alert">{needMore}</p> : null}
               <button type="submit" disabled={booking}>{booking ? "Booking…" : "Book"}</button>
             </form>
           ) : null}
