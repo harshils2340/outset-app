@@ -14,7 +14,7 @@ import { foreupLive } from "./readers/foreup.ts";
 import { isReadable, readerFor, unreadableSql } from "./readable.ts";
 import { Trace } from "./session.ts";
 import { recordDemand } from "./demand.ts";
-import { nextNeed } from "./needs.ts";
+import { awaitingClock, nextNeed } from "./needs.ts";
 import { resolveMany } from "./resolve.ts";
 
 /**
@@ -150,6 +150,11 @@ export function readIntent(text: string, prior?: Intent | null, device?: { lat: 
    * a party of two, which is the difference between an answer and a family turning up to a room booked for a
    * couple. Three digits, not two, because "20 people" was fine and "120 people" silently became twelve.
    */
+  /**
+   * The hour question is out, so a bare number is that hour and not a headcount. See `awaitingClock`.
+   */
+  const clockPending = awaitingClock(prior);
+
   const N = "(\\d{1,3}|" + Object.keys(NUM_WORDS).join("|") + ")";
   const num = (w: string | undefined) => (w == null ? 0 : Number(w) || NUM_WORDS[w] || 0);
   let party = 2;
@@ -164,8 +169,9 @@ export function readIntent(text: string, prior?: Intent | null, device?: { lat: 
     (heads ? ([""] as unknown as RegExpMatchArray) : null) ||
     // A reply that is nothing but a number ("2", "5") is a headcount and nothing else: the one place a bare
     // digit is read as an answer rather than ignored, because it is asked for as its own whole message, the
-    // way "How many of you?" gets no preset buttons to tap and expects exactly this back.
-    t.trim().match(/^(\d{1,3})$/);
+    // way "How many of you?" gets no preset buttons to tap and expects exactly this back. Unless the question
+    // on the table is the hour, in which case the same digit is the hour and is read below instead.
+    (clockPending ? null : t.trim().match(/^(\d{1,3})$/));
   if (heads > 1) party = heads;
   else if (m && m[1]) party = num(m[1]) || 2;
   else if (/\b(me and my|my partner and i|just us two|date night)\b/.test(t)) party = 2;
@@ -231,7 +237,10 @@ export function readIntent(text: string, prior?: Intent | null, device?: { lat: 
     t.match(/\b(?:at|around|by|from)\s+(\d{1,2})\s*(am|pm)\b/) ||
     t.match(/\b(\d{1,2})\s*(am|pm)\b/) ||
     // "at 7" with no am or pm. Only after "at" or "around": "for 4" is a party and "$40" is money.
-    t.match(/\b(?:at|around)\s+(\d{1,2})\b(?!\s*(?:of us|people|persons|adults|guests|players|pax))/);
+    t.match(/\b(?:at|around)\s+(\d{1,2})\b(?!\s*(?:of us|people|persons|adults|guests|players|pax))/) ||
+    // A reply that is nothing but a number, to the question "what time do you want to go?". "2" is two
+    // o'clock there, the same as "230" is half past, and the rule below turns both into an afternoon.
+    (clockPending ? t.trim().match(/^(\d{1,4})$/) : null);
   /**
    * A part of the day is a time too. "Something tomorrow evening" was read as "tomorrow, any time", and then
    * the answer said so out loud — "assuming any time in the next fortnight" — to somebody who had just

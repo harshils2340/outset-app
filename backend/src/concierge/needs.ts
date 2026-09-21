@@ -172,6 +172,24 @@ function budgetNeed(): Need {
   };
 }
 
+/**
+ * True while "What time do you want to go?" is the question on the table.
+ *
+ * A rental leads with the clock, and a guest answering that question types the hour and nothing else: "2".
+ * A bare number is also the one shape `readIntent` reads as a headcount, so the answer to the time question
+ * was filed as a party of two, the hour was thrown away, and the question was never put again because it had
+ * already been asked once. A guest who said two o'clock got times ranked around nothing at all.
+ *
+ * It stands only until the next question goes out. Once the party question has been asked, a bare number is
+ * a headcount again, which is what it means for every activity that leads with "How many of you?".
+ */
+export function awaitingClock(intent: Pick<Intent, "categoryId" | "atMinute" | "asked"> | null | undefined): boolean {
+  if (!intent?.categoryId || !RENTAL_CATS.has(intent.categoryId)) return false;
+  if (intent.atMinute != null) return false;
+  const asked = new Set(intent.asked || []);
+  return asked.has("need:when") && !asked.has("need:party");
+}
+
 /** Has the guest already settled this, one way or another? */
 export function known(intent: Intent, id: NeedId): boolean {
   if (id === "party") return !!intent.partyStated;

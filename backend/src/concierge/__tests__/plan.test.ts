@@ -17,9 +17,11 @@ process.env.OUTSET_DB = join(mkdtempSync(join(tmpdir(), "outset-concierge-")), "
 const { db, migrate } = await import("../../db/client.ts");
 const { inferCategory } = await import("../../taxonomy/catalog.ts");
 const { readIntent, candidates, windowFor, priceOf } = await import("../plan.ts");
+const { nextNeed } = await import("../needs.ts");
 
 const ESCAPE = inferCategory("escape room");
 const BOAT = inferCategory("boat tour");
+const JETSKI = inferCategory("jet ski rental");
 
 migrate();
 for (const c of [ESCAPE, BOAT]) {
@@ -143,6 +145,46 @@ test("a shop whose calendar we can read is offered before one we cannot", () => 
   assert.equal(list[0].name, "Cambridge Escape");
   assert.equal(list[0].route, "feed");
   assert.equal(list[1].route, "agent");
+});
+
+test("a bare number is the hour when the hour is what was asked, and the headcount when it is not", () => {
+  /**
+   * "What time do you want to go?" gets "2" back, because that is how a person answers a question about the
+   * time. That bare digit was read as a party of two: the hour was thrown away, the question was never put
+   * again (it had been asked once), and the guest who said two o'clock got live times ranked around nothing.
+   * The same digit after "How many of you?" is still a headcount, which is the case that made the rule.
+   */
+  db.prepare("INSERT OR IGNORE INTO categories (id, family, label, icon_key, service_style, search_query) VALUES (?,?,?,?,?,?)")
+    .run(JETSKI.id, "water", JETSKI.label, "jetski", "slots", JETSKI.label);
+  for (const name of ["Harbourfront Jet Ski", "Lakeshore Jet Ski", "Bluffers Jet Ski"]) {
+    shop({ name, city: "Toronto", region: "ON", lat: 43.64, lon: -79.38, category: JETSKI.id, reviews: 80 });
+  }
+
+  const first = readIntent("jet ski rental in toronto tomorrow");
+  assert.equal(first.categoryId, JETSKI.id);
+  assert.equal(first.atMinute, null);
+  const ask = nextNeed(first);
+  assert.equal(ask?.id, "when", "a rental leads with the clock");
+  first.asked = [...(first.asked || []), "need:" + ask!.id];
+
+  const hour = readIntent("2", first);
+  assert.equal(hour.atMinute, 14 * 60, "two o'clock, the same as 2pm would have given");
+  assert.equal(hour.partyStated, false, "nobody counted heads, so the party is still ours to ask about");
+  assert.equal(nextNeed(hour)?.id, "party", "and it is asked next, rather than the hour being asked twice");
+  assert.equal(readIntent("230", first).atMinute, 14 * 60 + 30, "half past, written the way a person types it");
+
+  // The party question is out now, so the same digit means what it has always meant.
+  const counted = readIntent("2", { ...hour, asked: [...(hour.asked || []), "need:party"] });
+  assert.equal(counted.party, 2);
+  assert.equal(counted.partyStated, true);
+  assert.equal(counted.atMinute, 14 * 60, "and the hour they already gave survives it");
+
+  // An activity that leads with "How many of you?" never reads a bare number as a clock time.
+  const room = readIntent("escape room in kitchener ontario");
+  assert.equal(nextNeed(room)?.id, "party");
+  const four = readIntent("4", { ...room, asked: ["need:party"] });
+  assert.equal(four.party, 4);
+  assert.equal(four.atMinute, null);
 });
 
 test("the weekend a guest is standing in is this one", () => {
