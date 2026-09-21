@@ -2689,6 +2689,71 @@ disk, run once mid-way and once on the finished tree.
 - The earlier runs' calls stand: Peek's 257 links, `concierge.css`'s dead panel, and anything needing a real
   Stripe key.
 
+## 21 September 2026, forty-third run (05:00 to 06:15 UTC)
+
+**Checked, and why.** Four commits landed after the forty-second run's log, and two of them are the newest
+guest-facing code in the repo: `21c52d1fa`, which rewrote Agent Mode into a text thread (the overlay, its
+stylesheet, the needs questions and the sentence reader), and `2331c11de`, the Outset to GoDo rename. Both
+touch `src/` and `backend/src`, so the rehearsal was run, twice, rather than skipped. The rename was swept
+first and is clean: nothing user-facing still says Outset, and the `outset.` storage keys are deliberately
+left alone, since renaming them signs every guest and operator out. Then the run went where Coverage says
+nothing has been: the agent's own booking form, its error and empty states and its copy panel, driven in a
+real Chromium at 400px and at 1280px against a stubbed shortlist, plus the sentence reader's new rule that a
+bare number is a headcount.
+
+**Found and fixed.**
+
+- **A guest who answered "what time do you want to go?" with "2" was booked as a party of two**
+  (`3d84a4da5`). A rental leads with the clock question, and the one shape a person answers it with is the
+  hour and nothing else. That bare digit is also the one shape `readIntent` reads as a headcount, so the
+  hour was thrown away, `partyStated` went true, and the question was never put again because it had already
+  been asked once: live times came back ranked around nothing, and the screen read "2 people" back as what
+  it had understood. A bare number is now the hour while the hour is the question on the table, and a
+  headcount everywhere else, including the moment the party question goes out. "230" is half past two.
+- **The agent asked for a name and a mobile, then said "GoDo: no such listing"** (`0d5fd7232`). A shop the
+  catalog has never held gets a minted `cg-` id from `listingForOption`, the API has no listing file for one,
+  and `POST /bookings` answers 404 "no such listing". That string was printed in the thread in the agent's
+  own voice, after the guest had typed their details. The refusal is right, so it is now made first and in
+  words, and the form closes rather than sitting there waiting to fail again. Every other refusal goes
+  through `guestWords`, because those routes answer in two registers and "bad email." was reaching a guest
+  as a sentence the agent said.
+- **Book was a press that did nothing** (same commit). The form returned silently on a name of one letter or
+  a number of three digits, which is exactly what a half-finished form holds and exactly what the browser's
+  own `required` does not catch, because both fields have something in them. `missingFrom` says which of the
+  two is short, in the API's own numbers, so a form this accepts is never refused on the other side. The
+  three fields also had no label but their placeholder and no `inputMode`, so a phone offered a QWERTY
+  keyboard for a phone number: they are the only guest fields in the app that were.
+
+**Checked and sound.** At 400px and 1280px the thread, the working card, the shortlist, the booking form and
+the history panel draw nothing past the edge and scroll nothing sideways, and every control is named. The
+API unreachable says "I could not reach the shops just now"; a slow API has a Stop that stops it and puts
+the send button back; nothing found says so in a sentence; a shortlist with no live times draws the
+published prices and a real `tel:` link for the one shop that books by phone; copy takes the whole
+conversation. The listing a live shop opens renders from a stub with no overflow at either width.
+
+**Green after the fixes.** 53 rehearsal steps, 0 failed. 534 backend tests, 619 app tests, both type checks
+clean (backend TS5097 only).
+
+**Needs Harshil.**
+
+- **Five of the ten new category accents are under the AA floor for text.** `CAT_COLOR` (`src/data/categories.ts`,
+  `21c52d1fa`) colours the selected category's own label, 12px semibold on white, on both the desktop strip
+  and the phone's: air `#2F80ED` is 3.87:1, water `#0891B2` 3.68, outdoor `#16A34A` 3.30, food `#EA580C` 3.56,
+  wellness `#8B7FD8` 3.43, against the 4.5:1 floor `AGENTS.md` sets out (it is the same 3.3:1 that kept sage
+  off buttons). One step darker clears it in the same hue: `#2563EB`, `#0E7490`, `#15803D`, `#C2410C`,
+  `#6D5FC7`. Left alone because `src/data` and `src/styles` are outside what this run may change.
+- **An option the concierge finds but the catalog has never held cannot be booked at all.** Tonight's fix
+  makes that honest rather than cryptic, but the two intentions still collide: `listingForOption` mints a
+  stub "so a live shop we have never ingested still finishes on GoDo", and the API refuses a booking for a
+  listing with no file, which is the fix from the first of these runs. One of the two has to give.
+- **The API's own error codes reach a guest on the other surfaces too.** `confirmUnclaimed` dispatches
+  `r.error + "."` as a toast, so the phone sheet and the desktop listing can still show "bad email." That is
+  one line in `AppProvider`, and it was left alone tonight rather than changed under every booking surface at
+  once.
+- **A shortlist with no live times says "I found 8 places" over four cards.** `counts.total` is what the
+  search found, the payload keeps six and the thread draws four, with no way to reach the rest. A test
+  asserts the current wording, so this is a copy decision rather than a bug to quietly reverse.
+
 ## Coverage
 
 **Verified so far.** The name a guest reads: the business name on all 59,125 shipped listings, against the
@@ -2991,6 +3056,17 @@ printed over browse and over search against the cards actually drawn under them,
 the no-match search state and its way out; and the guest listing at 400px over eight listing shapes, from
 twelve options to none priced at all.
 
+The Agent Mode rewrite of 20 September, driven rather than read: the thread, the working card and its clock,
+a question asked on its own, the shortlist, the history panel and the booking form, at 400px and at 1280px,
+for sideways scroll, anything past the edge and a control with no name; the API unreachable, an API too slow
+and the Stop that ends it, a search that finds nothing, a shortlist with no live times and its one shop that
+books by phone, and the page a live shop we have never ingested opens. The form that thread takes a booking
+in: what a half-typed name or number does to the Book button, which of the API's refusals the agent may say
+out loud, and what happens to a booking for a shop the catalog has never held. The Outset to GoDo rename
+swept over every source file: what a guest reads, against the `outset.` storage keys and the bot user agents
+that are deliberately left as they were. Which reply a bare number is an answer to, over the clock question a
+rental leads with and the headcount question every other activity does.
+
 **Not yet checked.** Whether the concierge's watch window should have a browser door of its own: with
 `ADMIN_KEY` set it now answers a browser 404 and only curl gets in, and the metrics page's emailed-code
 sign-in is the pattern it lacks. Whether a concierge session id should be eight characters of `Math.random`
@@ -3103,8 +3179,9 @@ TripWorks', Peek's and Resova's own `priceOfSlot` and Rezdy's `rateLabel`, which
 sheet and the shared fare rule now do, and Rezdy speaks HTTP/2 by hand, so stubbing it is the work. Bookeo's 46 shops, which are a
 documented negative from this address and want one `bookeoProbe` run from the Render worker. Whether a Xola
 waiver or gift shell with no button id should be routed as a feed at all: four shipped links are, and the
-reader correctly answers nothing for them. The concierge overlay's booking form, its error states and its
-"copy the conversation" panel, none of which this run reached. Whether the ForeUp reader, `api/nearby.ts`,
+reader correctly answers nothing for them. Whether the accents `CAT_COLOR` gives each category should be darkened to clear the AA
+floor they are printed at (see the forty-third run's Needs Harshil), and whether an option the concierge
+finds but the catalog has never held should be bookable at all rather than refused in words. Whether the ForeUp reader, `api/nearby.ts`,
 `lib/mapsNearby.ts` and `scripts/concierge-bench.mts` should be recommitted by their author or written again
 from nothing, which is the difference between golf having a reader this week and not (see this run's Needs
 Harshil). Whether `outset-api`'s build should run `fetch-seed.mts` at all, which is the one line between the
