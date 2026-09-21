@@ -189,3 +189,24 @@ test("the window is the shop's own calendar day, not the host's", async () => {
   await xolaLive(LINK, { from: evening, days: 1 });
   assert.match(asked[0], new RegExp(`start=${ymdLocal(evening)}&`), "a shop we know nothing about keeps the old behaviour");
 });
+
+/**
+ * The day a guest asked about, and not the day after it.
+ *
+ * `fareharborLive` learned this first and the readers written after it did not: the calendar was asked for
+ * `addDays(start, days)` and then every day it answered with was used. A shop sold out tonight answered
+ * "tonight" with tomorrow morning, and because the read was not empty `plan.ts` never widened and never said
+ * the date had moved. See `lastDayOf` in `shopday.ts`.
+ */
+test("a one-day window is answered with that one day, not with tomorrow as well", async () => {
+  stubXola({ name: "The Vault", items: [{ name: "Player", unitType: "demographic", prices: { price: { min: 30 } } }] });
+  const read = await xolaLive(LINK, { from: new Date(), days: 1 });
+  assert.deepEqual(read?.departures.map((d) => d.date), [], "the stub's only day is tomorrow, which is outside a one-day window");
+  assert.match(read?.note ?? "", /Nothing bookable online/);
+});
+
+test("a week's window still reaches the days inside it", async () => {
+  stubXola({ name: "The Vault", items: [{ name: "Player", unitType: "demographic", prices: { price: { min: 30 } } }] });
+  const read = await xolaLive(LINK, { from: new Date(), days: 7 });
+  assert.deepEqual(read?.departures.map((d) => `${d.date} ${d.time}`), [`${tomorrow()} 14:00`]);
+});

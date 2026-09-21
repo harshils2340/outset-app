@@ -1,5 +1,5 @@
 import { UNNAMED_RATE, type Departure, type LiveRead } from "../live.ts";
-import { addDays, zonedYmd } from "../shopday.ts";
+import { addDays, lastDayOf, zonedYmd } from "../shopday.ts";
 import { isConcessionFare } from "../../lib/fares.ts";
 
 /**
@@ -323,8 +323,14 @@ export async function tripworksLive(
       20000,
     );
 
+  /**
+   * Day offsets, so a window of `n` days is offsets 0 to `n - 1`. Asking `fetchRange(0, near)` counted the
+   * last day past the first rather than from it, so "tonight" fetched today and tomorrow and answered with
+   * whichever came first. See `lastDayOf` in `shopday.ts`.
+   */
+  const lastDate = lastDayOf(startDate, horizon);
   const near = Math.min(horizon, 2);
-  const first = await fetchRange(0, near);
+  const first = await fetchRange(0, near - 1);
   if (!first?.dates) {
     return { business: shop.business, vendor: VENDOR, departures: [], note: "TripWorks did not answer for this shop." };
   }
@@ -336,7 +342,8 @@ export async function tripworksLive(
 
   /** One window of days, walked in date order: the payload's key order is not a promise and "tonight" must beat "Friday". */
   const collect = (dates: Record<string, DayEntry[]>) => {
-    for (const date of Object.keys(dates).filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(d)).sort()) {
+    // The window the guest asked about, whatever the range endpoint chose to answer with. See `lastDayOf`.
+    for (const date of Object.keys(dates).filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(d) && d <= lastDate).sort()) {
       for (const entry of dates[date] || []) {
         const id = entry.experience_id;
         if (typeof id !== "number") continue;
@@ -425,7 +432,8 @@ export async function tripworksLive(
 
   collect(first.dates);
   if (!out.length && horizon > near) {
-    const rest = await fetchRange(near + 1, horizon);
+    // From the day after the near window, not the day after that: `near` days are offsets 0 to `near - 1`.
+    const rest = await fetchRange(near, horizon - 1);
     if (rest?.dates) collect(rest.dates);
   }
 

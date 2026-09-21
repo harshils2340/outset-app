@@ -1,5 +1,5 @@
 import type { Departure, LiveRead } from "../live.ts";
-import { addDays, zonedYmd } from "../shopday.ts";
+import { addDays, lastDayOf, zonedYmd } from "../shopday.ts";
 import { isConcessionFare } from "../../lib/fares.ts";
 
 /**
@@ -474,7 +474,8 @@ export async function acuityLive(
   const timezone = shop.timezone || opts.tz || null;
   const today = nowWhereTheyAre(timezone);
   const from = zonedYmd(start, timezone);
-  const last = addDays(from, horizon);
+  // The last day the guest actually asked about, not the day after it. See `lastDayOf`.
+  const last = lastDayOf(from, horizon);
 
   /**
    * One row per distinct start, cheapest service on it.

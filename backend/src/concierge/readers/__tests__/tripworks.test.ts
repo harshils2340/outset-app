@@ -149,3 +149,24 @@ test("the account and the shop are read out of every shape of link the catalog h
   assert.equal(tripworksAccount("https://build.tripworks.com/app.js"), null);
   assert.equal(tripworksAccount("https://example.com/book"), null);
 });
+
+/**
+ * The day a guest asked about, and not the day after it.
+ *
+ * The range endpoint was asked `getInDateRange/<start>/<start + days>`, which is a day more than it was
+ * given, and `collect` then walked every day it answered with and stopped at the first with something free.
+ * A shop sold out tonight answered "tonight" with tomorrow morning, and because the read was not empty
+ * `plan.ts` never widened and never said the date had moved. See `lastDayOf` in `shopday.ts`.
+ */
+test("a one-day window is answered with that one day, not with tomorrow as well", async () => {
+  const slug = stubTripworks({ name: "Shared Helicopter Tour", slots: [{ min_price: 24900, types: [{ name: "Shared" }] }] });
+  const live = await tripworksLive(`https://${slug}.tripworks.com/widgets/tripBuilder`, { from: new Date(), days: 1 });
+  assert.deepEqual(live?.departures, [], "the stub's only day is tomorrow, which is outside a one-day window");
+  assert.match(live?.note ?? "", /Nothing bookable online/);
+});
+
+test("a week's window still reaches the days inside it", async () => {
+  const slug = stubTripworks({ name: "Shared Helicopter Tour", slots: [{ min_price: 24900, types: [{ name: "Shared" }] }] });
+  const live = await tripworksLive(`https://${slug}.tripworks.com/widgets/tripBuilder`, { from: new Date(), days: 7 });
+  assert.deepEqual(live?.departures.map((d) => d.date), [TOMORROW]);
+});

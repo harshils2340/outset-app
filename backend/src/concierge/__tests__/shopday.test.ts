@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { addDays, ymdLocal, zonedNow, zonedYmd } from "../shopday.ts";
+import { addDays, lastDayOf, ymdLocal, zonedNow, zonedYmd } from "../shopday.ts";
 
 /**
  * The day a guest means, where the shop is.
@@ -58,4 +58,20 @@ test("a window walks the calendar, not 86,400,000 milliseconds at a time", () =>
   assert.equal(addDays("2028-02-28", 1), "2028-02-29");
   assert.equal(addDays("2026-02-28", 1), "2026-03-01");
   assert.equal(addDays("not a date", 1), "not a date");
+});
+
+/**
+ * A day's window is that day. `fareharborLive` counts its last day this way and said why in its own comment;
+ * the eight readers written after it counted one day past the first instead, so "tonight" reached tomorrow.
+ */
+test("a window of n days ends on its nth day, not the one after it", () => {
+  assert.equal(lastDayOf("2026-09-21", 1), "2026-09-21");
+  assert.equal(lastDayOf("2026-09-21", 2), "2026-09-22");
+  assert.equal(lastDayOf("2026-09-21", 14), "2026-10-04");
+  // A window of nothing is still the day it starts on, rather than the day before it.
+  assert.equal(lastDayOf("2026-09-21", 0), "2026-09-21");
+  assert.equal(lastDayOf("2026-09-21", -3), "2026-09-21");
+  // Month ends and leap days are the calendar's business, not arithmetic's.
+  assert.equal(lastDayOf("2026-09-30", 2), "2026-10-01");
+  assert.equal(lastDayOf("2028-02-28", 2), "2028-02-29");
 });

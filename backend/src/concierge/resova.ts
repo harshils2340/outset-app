@@ -177,7 +177,8 @@ export async function resovaLive(
   const out: Departure[] = [];
   await Promise.all(
     items.slice(0, maxItems).map(async (item) => {
-      for (let i = 0; i <= horizon; i += 1) {
+      // `i < horizon`, not `i <= horizon`: a one-day window is that day. See `lastDayOf` in `shopday.ts`.
+      for (let i = 0; i < horizon; i += 1) {
         const date = addDays(startDate, i);
         const day = await api<{ times?: ResovaSlot[] }>(s, `/availability/times/${item.id}?date=${date}`);
         const slots = (day?.times || []).filter((t) => t.available === true && !t.resource_blocked);

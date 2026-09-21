@@ -1,6 +1,6 @@
 import { UNNAMED_RATE, type Departure, type LiveRead } from "./live.ts";
 import { isConcessionFare } from "../lib/fares.ts";
-import { addDays, zonedYmd } from "./shopday.ts";
+import { addDays, lastDayOf, zonedYmd } from "./shopday.ts";
 
 /**
  * Live availability from Peek, the way Peek's own booking page gets it.
@@ -348,7 +348,14 @@ export async function peekLive(
   const maxItems = opts.maxItems ?? 4;
   const today = nowWhereTheyAre(timezone);
   const startDate = zonedYmd(start, timezone);
-  const endDate = addDays(startDate, horizon);
+  /** The last day the guest actually asked about. See `lastDayOf`. */
+  const lastDate = lastDayOf(startDate, horizon);
+  /**
+   * Asked a day wider than it is used, deliberately. Nothing here can prove whether Peek reads `end-date` as
+   * inclusive, and asking one day short would cost a guest the last evening of their own window, which is the
+   * expensive way to be wrong. The days are filtered to the window below, where it is free to be exact.
+   */
+  const endDate = addDays(lastDate, 1);
 
   const out: Departure[] = [];
   await Promise.all(
@@ -381,7 +388,15 @@ export async function peekLive(
          * `call_to_book` for the rest of the season — and every slot under it comes back `sold_out`. Asking
          * for those days is five wasted requests per activity and cannot produce a departure.
          */
-        .filter((d) => d.status !== "unavailable" && d.status !== "sold_out" && d.status !== "call_to_book" && d.date >= today.date)
+        .filter(
+          (d) =>
+            d.status !== "unavailable" &&
+            d.status !== "sold_out" &&
+            d.status !== "call_to_book" &&
+            d.date >= today.date &&
+            // The window the guest asked about, and not the day after it. See `lastDayOf`.
+            d.date <= lastDate,
+        )
         .sort((a, b) => a.date.localeCompare(b.date));
 
       // At most five days asked for per activity: the first one with something free ends it, and a shop

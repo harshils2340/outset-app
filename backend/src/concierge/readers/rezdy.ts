@@ -1,6 +1,6 @@
 import http2 from "node:http2";
 import { UNNAMED_RATE, type Departure, type LiveRead } from "../live.ts";
-import { addDays, zonedYmd } from "../shopday.ts";
+import { addDays, lastDayOf, zonedYmd } from "../shopday.ts";
 import { isConcessionFare } from "../../lib/fares.ts";
 
 /**
@@ -324,7 +324,8 @@ export async function rezdyLive(
   const timezone = shop.timezone || opts.tz || null;
   const today = nowWhereTheyAre(timezone);
   const startDate = zonedYmd(start, timezone);
-  const lastDate = addDays(startDate, horizon);
+  // The last day the guest actually asked about, not the day after it. See `lastDayOf`.
+  const lastDate = lastDayOf(startDate, horizon);
 
   const out: Departure[] = [];
   /**

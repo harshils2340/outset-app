@@ -1,5 +1,5 @@
 import { UNNAMED_RATE, type Departure, type LiveRead } from "../live.ts";
-import { addDays, zonedYmd } from "../shopday.ts";
+import { addDays, lastDayOf, zonedYmd } from "../shopday.ts";
 import { isConcessionFare } from "../../lib/fares.ts";
 
 /**
@@ -273,7 +273,14 @@ export async function xolaLive(
   const maxItems = opts.maxItems ?? 4;
   const today = nowWhereTheyAre(timezone);
   const startDate = zonedYmd(start, timezone);
-  const endDate = addDays(startDate, horizon);
+  /** The last day the guest actually asked about. See `lastDayOf`. */
+  const lastDate = lastDayOf(startDate, horizon);
+  /**
+   * Asked a day wider than it is used. Nothing here can prove whether Xola reads `end` as inclusive, and
+   * asking a day short would cost a guest the last evening of their own window; the days are filtered to the
+   * window below, where it is free to be exact.
+   */
+  const endDate = addDays(lastDate, 1);
 
   const out: Departure[] = [];
   await Promise.all(
@@ -290,7 +297,8 @@ export async function xolaLive(
       const { price, label, rates } = ticketsOf(exp);
 
       const days = Object.keys(cal)
-        .filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(d) && d >= today.date)
+        // The window the guest asked about, and not the day after it. See `lastDayOf`.
+        .filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(d) && d >= today.date && d <= lastDate)
         .sort();
 
       for (const date of days) {

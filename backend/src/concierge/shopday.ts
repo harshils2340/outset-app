@@ -72,3 +72,22 @@ export function addDays(date: string, n: number): string {
   const t = new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]) + n));
   return `${t.getUTCFullYear()}-${String(t.getUTCMonth() + 1).padStart(2, "0")}-${String(t.getUTCDate()).padStart(2, "0")}`;
 }
+
+/**
+ * The last calendar day of a window that starts on `startDate` and runs for `days` days.
+ *
+ * A day's window is that day, not that day and the next one. `fareharborLive` learned this first and says so
+ * in its own comment: counting the last day from the first one rather than past it was offering tomorrow
+ * evening under a line that says "here is what's actually free", with nothing saying the date had moved. The
+ * fix never reached the eight readers written after it, every one of which asked for `addDays(start, days)`
+ * and then used whatever came back.
+ *
+ * It is worse in the readers than it was in FareHarbor, because they stop at the first day with something
+ * free. A shop sold out tonight answered "tonight" with tomorrow morning, and `plan.ts` could not widen and
+ * say the date had moved because the read was not empty. Where one activity had tonight and another had
+ * tomorrow, the card drew no date at all: `WebConcierge` prints its day line only when every time on the
+ * card shares one, so the guest saw "7:00 PM" and "9:00 AM" side by side and could tap either.
+ */
+export function lastDayOf(startDate: string, days: number): string {
+  return addDays(startDate, Math.max(days - 1, 0));
+}
