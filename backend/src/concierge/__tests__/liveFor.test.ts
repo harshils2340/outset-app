@@ -1,6 +1,6 @@
 import { strict as assert } from "node:assert";
 import test, { afterEach } from "node:test";
-import { mkdtempSync } from "node:fs";
+import { mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -108,6 +108,20 @@ test("a link no reader knows is still the browser agent's", async () => {
 
   assert.equal(r.vendor, "agent");
   assert.equal(r.note, "No feed to read: this one needs the browser agent.");
+});
+
+test("every vendor the router knows has a reader to call and a name a guest can read", async () => {
+  const { READER_VENDORS } = await import("../readable.ts");
+  const { vendorName } = await import("../plan.ts");
+  const dispatch = readFileSync(new URL("../readFeed.ts", import.meta.url), "utf8");
+
+  for (const vendor of READER_VENDORS) {
+    // The bug this whole file is about: a vendor in the list with nothing dispatching to its reader.
+    assert.ok(dispatch.includes(`case "${vendor}":`), vendor + " has no branch in readFeed");
+    const name = vendorName(vendor);
+    assert.notEqual(name, vendor, vendor + " has no written name, so a guest reads it in lower case");
+    assert.equal(name.toLowerCase(), vendor, vendor + " is named as something else entirely");
+  }
 });
 
 test("a shop with no booking link on file says so rather than guessing", async () => {

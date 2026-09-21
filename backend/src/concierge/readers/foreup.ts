@@ -35,7 +35,7 @@ const UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (
  * the same convention `rezdy.ts` and `bookeo.ts` use, so a caller sees the right value before `live.ts`'s
  * union is widened.
  */
-const VENDOR = "foreup" as LiveRead["vendor"];
+const VENDOR = "foreup";
 
 export type ForeUpRef = {
   courseId: string;

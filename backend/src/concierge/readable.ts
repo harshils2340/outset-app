@@ -67,6 +67,16 @@ const RULES: [ReaderVendor, RegExp][] = [
  */
 export const READER_GENERATION = 3;
 
+/**
+ * Every vendor a reader exists for, in the order the rules are tried.
+ *
+ * Exported so the three things that have to keep step with this list can be checked against it rather than
+ * against each other: the dispatch in `readFeed.ts`, which is what actually calls the reader, and the name a
+ * guest reads in "their Peek calendar". A vendor added here and forgotten in either is a shop we can read
+ * and do not, or one whose booking system is named to a guest in lower case.
+ */
+export const READER_VENDORS: ReaderVendor[] = RULES.map(([vendor]) => vendor);
+
 /** The reader for this booking link, or null when no reader knows it. */
 export function readerFor(url: string | null | undefined): ReaderVendor | null {
   if (!url) return null;

@@ -39,7 +39,7 @@ const API = "https://xola.com/api";
  * does not make because another session owns that file; until it lands the name is asserted here rather than
  * a neighbouring vendor's being borrowed, so the value a caller sees is already the right one.
  */
-const VENDOR = "xola" as LiveRead["vendor"];
+const VENDOR = "xola";
 
 export type XolaRef = {
   /** The button in the link, when it has one. A button names both a seller and the subset of its experiences. */

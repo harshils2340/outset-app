@@ -67,7 +67,13 @@ export type Departure = {
 
 export type LiveRead = {
   business: string;
-  vendor: "fareharbor" | "resova" | "peek" | "checkfront" | "xola" | "rezdy" | "acuity" | "tripworks" | "bookeo" | "square" | "replay" | "agent" | "none";
+  /**
+   * Who answered. Every reader named one of these through `as LiveRead["vendor"]`, which is an assertion
+   * rather than a check: "foreup" was never a member of this union and the cast said nothing, so a reader
+   * spelling its own name wrong would have reached the guest as "their forup calendar". The casts are gone
+   * and the type is the list.
+   */
+  vendor: "fareharbor" | "resova" | "peek" | "checkfront" | "xola" | "rezdy" | "acuity" | "tripworks" | "foreup" | "bookeo" | "square" | "replay" | "agent" | "none";
   departures: Departure[];
   /** Said plainly when there is nothing to sell, because "no availability" is an answer, not a failure. */
   note: string | null;

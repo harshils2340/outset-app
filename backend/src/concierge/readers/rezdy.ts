@@ -46,7 +46,7 @@ const UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (
  * deliberately does not make because another session owns that file; until it lands the name is asserted
  * here rather than a neighbouring vendor's being borrowed, so the value a caller sees is already the right one.
  */
-const VENDOR = "rezdy" as LiveRead["vendor"];
+const VENDOR = "rezdy";
 
 type Reply = { status: number; body: string };
 

@@ -43,7 +43,7 @@ const API = "https://book.peek.com/services/api";
  * because another session is working in there; until it lands, the name is asserted here rather than a
  * neighbouring vendor's being borrowed, so the value a caller sees is already the right one.
  */
-const VENDOR = "peek" as LiveRead["vendor"];
+const VENDOR = "peek";
 
 export type PeekRef = {
   /** The shop's public widget key, and the value of the `authorization: Key` header. */

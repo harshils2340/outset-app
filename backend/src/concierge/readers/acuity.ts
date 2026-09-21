@@ -65,7 +65,7 @@ const UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (
  * rather than a neighbouring vendor's being borrowed, exactly as `peek.ts` does, so the value a caller sees is
  * already the right one.
  */
-const VENDOR = "acuity" as LiveRead["vendor"];
+const VENDOR = "acuity";
 
 export type AcuityRef = {
   /** The page to read the shop out of, already absolute. */

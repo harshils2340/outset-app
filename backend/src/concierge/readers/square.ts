@@ -61,7 +61,7 @@ const AVAILABILITY = "https://app.squareup.com/appointments/api/buyer/availabili
  * rather than a neighbouring vendor's being borrowed, exactly as `peek.ts` does, so the value a caller sees is
  * already the right one.
  */
-const VENDOR = "square" as LiveRead["vendor"];
+const VENDOR = "square";
 
 export type SquareRef =
   /** A booking widget we can ask directly. */
