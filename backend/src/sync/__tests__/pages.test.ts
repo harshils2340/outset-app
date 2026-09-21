@@ -371,3 +371,75 @@ test("the guide heading agrees with its own subject, for all 64 kinds", () => {
     if (/(?:ing|ball|golf|tag)$/i.test(k.search)) assert.equal(verb, "is", `"${k.search}" reads as singular but the heading would say "${verb}"`);
   }
 });
+
+/**
+ * A page that found more than MAX_CARDS listings drew 24 cards and said nothing about it, while every other
+ * number on the page kept counting the whole place. The JSON-LD was the version of that a machine reads:
+ * `numberOfItems` was the full count and `itemListElement` held 24, so "Museums in the US and Canada"
+ * published a list declaring 6,902 entries and then handed a crawler 24 of them. 313 of the 3,004 pages a
+ * sync writes today carried that contradiction, and a guest who counted the cards found the h1 was a lie.
+ *
+ * The h1, the lede and the FAQ keep the real total: that is a fact about the place. The list says what the
+ * list holds, and the page now says out loud that it is showing a sample and where the rest are.
+ */
+test("a page with more listings than it can draw counts its own list honestly and says so", () => {
+  const many: Item[] = Array.from({ length: 30 }, (_, n) =>
+    item("cooking", "toronto", n + 1, { area: "Toronto, ON", cover: `https://x/${n}.jpg`, from: 50 + n }),
+  );
+  const r = run(many);
+  try {
+    const html = r.read("cooking-in-toronto.html");
+    assert.equal((html.match(/<a class="card"/g) || []).length, 24);
+    // The list element and its own count agree, and both count the cards rather than the place.
+    assert.match(html, /"numberOfItems":24/);
+    const ld = JSON.parse(html.match(/<script type="application\/ld\+json">(.*?)<\/script>/s)![1].replace(/\\u003c/g, "<"));
+    assert.equal(ld[0].itemListElement.length, 24);
+    assert.equal(ld[0].numberOfItems, ld[0].itemListElement.length);
+    // The place still has 30, and the page still says so where that is the honest number.
+    assert.match(html, /30 cooking classes around Toronto/);
+    assert.match(html, /GoDo lists 30 cooking classes around Toronto/);
+    // And the gap between the two is named on the page rather than left for the guest to find.
+    assert.match(html, /Showing 24 of 30/);
+  } finally {
+    r.cleanup();
+  }
+});
+
+test("a page that draws every listing it found claims no sample and says nothing about a rest", () => {
+  const r = run(fixture);
+  try {
+    const html = r.read("cooking-in-toronto.html");
+    assert.match(html, /"numberOfItems":3/);
+    assert.doesNotMatch(html, /class="more"/);
+    assert.doesNotMatch(html, /Showing \d+ of/);
+  } finally {
+    r.cleanup();
+  }
+});
+
+/**
+ * "1638 of the 6902 operators publish prices on their own site. Starting prices run from $5 to $5,000."
+ * `money` has grouped its thousands since it was written and nothing else on the page did, so the two
+ * conventions sat in one sentence. Every count a person reads goes through `num` now.
+ */
+test("a count a person reads is grouped the way the prices beside it already were", () => {
+  const many: Item[] = Array.from({ length: 1200 }, (_, n) =>
+    item("cooking", "toronto", n + 1, { area: "Toronto, ON", cover: `https://x/${n}.jpg`, from: 50 }),
+  );
+  const r = run(many);
+  try {
+    const html = r.read("cooking-in-toronto.html");
+    assert.match(html, /1,200 cooking classes around Toronto/);
+    assert.match(html, /GoDo lists 1,200 cooking classes/);
+    assert.match(html, /1,200 of them have photos/);
+    assert.match(html, /1,200 of the 1,200 operators publish prices/);
+    assert.match(html, /Showing 24 of 1,200/);
+    // The meta description a search result prints is the same sentence and counts the same way.
+    assert.match(html, /<meta name="description" content="1,200 cooking classes around Toronto/);
+    // No ungrouped copy of the number survives in the prose. The listing ids carry a bare "1200" and are not
+    // prose, so the check is aimed at the sentences rather than the whole file.
+    for (const prose of html.match(/<p class="(?:lede|more)">[^<]*/g) || []) assert.doesNotMatch(prose, /\d{4,}/);
+  } finally {
+    r.cleanup();
+  }
+});

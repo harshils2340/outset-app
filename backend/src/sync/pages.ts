@@ -175,6 +175,12 @@ const esc = (s: unknown) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g,
 // as the same JSON, so nothing here is lossy.
 const ldJson = (ld: unknown) => JSON.stringify(ld).replace(/</g, "\\u003c");
 const money = (n: number) => (Number.isInteger(n) ? "$" + n.toLocaleString("en-US") : "$" + n.toFixed(2));
+/**
+ * A count a person reads, not a bare integer. `money` has always grouped its thousands, so the museums page
+ * printed "1638 of the 6902 operators publish prices" and then "from $5 to $5,000" in the same breath, which
+ * is two different conventions in one sentence. Every count on these pages goes through here.
+ */
+export const num = (n: number) => n.toLocaleString("en-US");
 const list = (xs: string[]) => (xs.length <= 1 ? xs.join("") : xs.slice(0, -1).join(", ") + " and " + xs[xs.length - 1]);
 const lower = (s: string) => s.charAt(0).toLowerCase() + s.slice(1);
 
@@ -280,6 +286,7 @@ header{border-bottom:1px solid #ebebeb}.top{display:flex;justify-content:space-b
 .logo{font-weight:700;font-size:20px;color:#495940;text-decoration:none}.cta{background:#495940;color:#fff;text-decoration:none;border-radius:999px;padding:10px 16px;font-weight:600;font-size:14px}
 .crumbs{margin:22px 0 0;font-size:13px;color:#717171}.crumbs a{text-decoration:none}.crumbs span{margin:0 6px}
 h1{font-size:34px;letter-spacing:-.02em;margin:10px 0 8px}.lede{font-size:17px;color:#555;margin:0 0 24px;max-width:70ch}
+.more{font-size:14.5px;color:#555;margin:16px 0 0;max-width:70ch}.more a{color:#495940;font-weight:600}
 h2{font-size:20px;margin:36px 0 10px}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:22px 16px}
 .card{text-decoration:none;display:block}.art{aspect-ratio:1/1;border-radius:16px;overflow:hidden;background:#f3f3f3}.art img{width:100%;height:100%;object-fit:cover;display:block}
@@ -312,9 +319,9 @@ export function buildFaq(kind: Kind, metro: Place | null, items: Item[]): Faq[] 
   faq.push({
     q: `How many ${plural} are there in ${city}?`,
     a:
-      `GoDo lists ${n} ${n === 1 ? singular(plural) : plural} ${metro ? "around " + metro.name : "across the US and Canada"}` +
+      `GoDo lists ${num(n)} ${n === 1 ? singular(plural) : plural} ${metro ? "around " + metro.name : "across the US and Canada"}` +
       (metro && towns.length > 1 ? `, including places in ${list(towns)}` : "") +
-      `. ${withPhotos ? `${withPhotos} of them have photos.` : "Photos are added as each operator's site is read."}`,
+      `. ${withPhotos ? `${num(withPhotos)} of them have photos.` : "Photos are added as each operator's site is read."}`,
   });
 
   const priced = items.map(priceOf).filter((p): p is number => p != null);
@@ -324,7 +331,7 @@ export function buildFaq(kind: Kind, metro: Place | null, items: Item[]): Faq[] 
     faq.push({
       q: `How much do ${plural} cost in ${city}?`,
       a:
-        `${priced.length} of the ${n} operators publish prices on their own site. ` +
+        `${num(priced.length)} of the ${num(n)} operators publish prices on their own site. ` +
         (min === max ? `Their starting price is ${money(min)}.` : `Starting prices run from ${money(min)} to ${money(max)}.`) +
         ` The full menu is on each listing.`,
     });
@@ -354,7 +361,7 @@ export function buildFaq(kind: Kind, metro: Place | null, items: Item[]): Faq[] 
   if (hours) {
     faq.push({
       q: `Do the listings show opening hours?`,
-      a: `${hours} of the ${n} show hours copied from the operator's website. The rest do not publish them on GoDo yet.`,
+      a: `${num(hours)} of the ${num(n)} show hours copied from the operator's website. The rest do not publish them on GoDo yet.`,
     });
   }
 
@@ -383,8 +390,13 @@ function page(kind: Kind, metro: Place | null, items: Item[], nearby: Neighbour[
   const minPrice = priced.length ? Math.min(...priced) : null;
   const withPhotos = items.filter((i) => i.cover).length;
   const faq = buildFaq(kind, metro, items);
-  const cards = items
-    .slice(0, MAX_CARDS)
+  /**
+   * The listings this page actually draws. `items` is everything the kind has in this place, which is what the
+   * h1, the lede and the FAQ count and are right to count; the grid and the JSON-LD show the first MAX_CARDS of
+   * them and have to say so rather than borrow the larger number.
+   */
+  const listed = items.slice(0, MAX_CARDS);
+  const cards = listed
     .map((i) => {
       const from = priceOf(i);
       const menu = (i.services || [])
@@ -407,14 +419,21 @@ function page(kind: Kind, metro: Place | null, items: Item[], nearby: Neighbour[
 </a>`;
     })
     .join("\n");
-  const pill = (n: Neighbour) => `<a href="${n.file}">${esc(n.label)}<small>${n.count}</small></a>`;
+  const pill = (n: Neighbour) => `<a href="${n.file}">${esc(n.label)}<small>${num(n.count)}</small></a>`;
   const ld = [
     {
       "@context": "https://schema.org",
       "@type": "ItemList",
       name: title,
-      numberOfItems: items.length,
-      itemListElement: items.slice(0, MAX_CARDS).map((i, n) => ({ "@type": "ListItem", position: n + 1, name: i.title, url: `${publicSite()}#o=${i.id}` })),
+      /**
+       * What this list holds, not what the place holds. The grid stops at MAX_CARDS and `itemListElement` with
+       * it, while `numberOfItems` was still the whole count: the museums page told a crawler its list had 6,902
+       * entries and then handed it 24. 313 of the 3,004 pages published that contradiction, which is the one
+       * thing a structured-data check is for. The h1, the lede and the FAQ keep the real total, because that is
+       * a fact about the place and not a claim about this list.
+       */
+      numberOfItems: listed.length,
+      itemListElement: listed.map((i, n) => ({ "@type": "ListItem", position: n + 1, name: i.title, url: `${publicSite()}#o=${i.id}` })),
     },
     {
       "@context": "https://schema.org",
@@ -424,13 +443,25 @@ function page(kind: Kind, metro: Place | null, items: Item[], nearby: Neighbour[
   ];
   const many = items.length === 1 ? singular(kind.plural) : kind.plural;
   const description =
-    `${items.length} ${many} ${metro ? "around " + placeName(metro) : "across the US and Canada"} on GoDo` +
+    `${num(items.length)} ${many} ${metro ? "around " + placeName(metro) : "across the US and Canada"} on GoDo` +
     (minPrice != null ? `, from ${money(minPrice)}` : "") +
     `. ${withPhotos ? "Photos, menus and prices" : "Menus and prices"} from each operator's own website. Pick a listing and request a time.`;
   const lede =
-    `${items.length} ${esc(many)} ${metro ? "around " + esc(metro.name) : "across the US and Canada"}` +
-    (priced.length ? `, ${priced.length} with prices from the operator's own site${minPrice != null ? " (from " + esc(money(minPrice)) + ")" : ""}` : "") +
+    `${num(items.length)} ${esc(many)} ${metro ? "around " + esc(metro.name) : "across the US and Canada"}` +
+    (priced.length ? `, ${num(priced.length)} with prices from the operator's own site${minPrice != null ? " (from " + esc(money(minPrice)) + ")" : ""}` : "") +
     `. Open a listing to see its menu, then request a time. No phone tag.`;
+  /**
+   * What happens when the grid runs out before the count does. The lede says 6,902 museums, the grid draws 24,
+   * and until now the page said nothing at all about the gap and offered no way to the rest: a guest counted
+   * the cards and concluded the number was a lie. The pills underneath already break the place down by city,
+   * so the way on is named rather than implied.
+   */
+  const byCity = (extra.subPlaces && extra.subPlaces.length) || nearby.length;
+  const more =
+    items.length > listed.length
+      ? `<p class="more">Showing ${num(listed.length)} of ${num(items.length)}, the ones with a photo and a price first. ` +
+        `<a href="${publicSite()}">Open GoDo</a> for the rest${byCity ? ", or pick a city below" : ""}.</p>`
+      : "";
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${esc(title)} · GoDo</title>
 <meta name="description" content="${esc(description)}">
@@ -443,6 +474,7 @@ function page(kind: Kind, metro: Place | null, items: Item[], nearby: Neighbour[
 <h1>${esc(title)}</h1>
 <p class="lede">${lede}</p>
 <div class="grid">${cards}</div>
+${more}
 ${guide ? `<section class="guide"><h2>What ${esc(lower(kind.search))} ${/s$/.test(kind.search) ? "are" : "is"} actually like</h2><p>${esc(guide.hook)}</p><ol>${guide.steps.map((s) => `<li>${esc(s)}</li>`).join("")}</ol><p><b>Bring:</b> ${esc(guide.bring.join(", "))}. <b>Good for:</b> ${esc(guide.goodFor)}</p></section>` : ""}
 <section class="faq"><h2>Questions</h2>${faq.map((f) => `<h3>${esc(f.q)}</h3><p>${esc(f.a)}</p>`).join("")}</section>
 ${extra.subPlaces && extra.subPlaces.length ? `<h2>${esc(extra.subHeading || "")}</h2><div class="links">${extra.subPlaces.map(pill).join("")}</div>` : ""}
@@ -642,11 +674,12 @@ export function writeLandingPages(items: Item[], opts: { publicDir?: string } = 
   const cities = [...metroPages.entries()]
     .map(([id, pages]) => ({ metro: metroById.get(id)!, pages: pages.sort((a, b) => b.items.length - a.items.length) }))
     .sort((a, b) => a.metro.name.localeCompare(b.metro.name));
+  const indexDescription = `Every activity GoDo lists, by city: ${num(kindPages.length)} kinds of thing to do across ${num(cities.length)} cities in the US and Canada.`;
   const index = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Things to do by activity and city · GoDo</title>
-<meta name="description" content="Every activity GoDo lists, by city: ${kindPages.length} kinds of thing to do across ${cities.length} cities in the US and Canada.">
+<meta name="description" content="${esc(indexDescription)}">
 <link rel="canonical" href="${publicSite()}p/index.html"><style>${CSS}</style></head><body><header><div class="wrap top"><a class="logo" href="${publicSite()}">GoDo</a><a class="cta" href="${publicSite()}">Open GoDo</a></div></header><main class="wrap"><h1>Things to do by activity and city</h1>
-<h2>Everywhere</h2><div class="links">${kindPages.map((k) => `<a href="${fileFor(k.art, null)}">${esc(k.search)}<small>${(byKind.get(k.art) || []).length}</small></a>`).join("")}</div>
-${cities.map((c) => `<h2>${esc(placeName(c.metro))}</h2><div class="links">${c.pages.map((p) => `<a href="${fileFor(p.kind.art, c.metro.id)}">${esc(p.kind.search)}<small>${p.items.length}</small></a>`).join("")}</div>`).join("\n")}
+<h2>Everywhere</h2><div class="links">${kindPages.map((k) => `<a href="${fileFor(k.art, null)}">${esc(k.search)}<small>${num((byKind.get(k.art) || []).length)}</small></a>`).join("")}</div>
+${cities.map((c) => `<h2>${esc(placeName(c.metro))}</h2><div class="links">${c.pages.map((p) => `<a href="${fileFor(p.kind.art, c.metro.id)}">${esc(p.kind.search)}<small>${num(p.items.length)}</small></a>`).join("")}</div>`).join("\n")}
 </main><footer><div class="wrap">GoDo · Book the jump. Skip the call.</div></footer></body></html>`;
   writeFileSync(join(dir, "index.html"), index);
   /**
