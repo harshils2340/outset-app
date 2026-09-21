@@ -2879,6 +2879,76 @@ config still checks nothing).
 - **Last night's three are unchanged:** the "All requests" link parked off screen on a phone, the Bookings
   `minWidth` living on the element rather than in `operator.css`, and five category accents under the AA floor.
 
+## 21 September 2026, forty-sixth run (08:00 to 08:35 UTC)
+
+**Checked, and why.** Nothing landed after the forty-fifth run's log and that entry says the rehearsal was
+green, so it was skipped at the start and the time went into the hunt. Type checks and both unit suites
+first, clean at 556 backend and 622 app. (A fresh container has no `node_modules` on either side; without
+both installs, eight app test files cannot find React and it reads like a regression.) Coverage named the
+readers' own price helpers as the last untested thing in the newest code: Rezdy's `priceOfSlot` and
+`rateLabel`, Peek's, Resova's and TripWorks', with only Xola's tested. That is the one number and the one
+word printed under a shop's name, so this run read all of them, and then read what happens to that number
+after the reader hands it over.
+
+**Found and fixed.**
+
+- **A whale watch quoted the child's fare with the word Adult beside it** (`f87eab63f`). TripWorks publishes
+  one price per slot, `min_price`, which is the cheapest ticket on sale at that time, plus the customer types
+  the shop sells. `priceOfSlot` named the price when exactly one non-concession type was left standing after
+  the child and senior fares were filtered out, which on an ordinary Adult and Child sheet is one type: the
+  slot was quoted at the child's $48 under the name "Adult", against a real adult fare of $58. Its own
+  comment says the name is only safe when the shop sells exactly one visible kind of ticket, so it counts
+  every visible type now. A concession fare under an adult's name is worse than an unlabelled one, because
+  nothing on the card tells the guest to look again. The reader had no test of any kind and has eight now.
+- **A bus tour's $790 whole-booking total was quoted to two people as the price of a seat** (`94caf382c`).
+  Rezdy publishes group rates in the same list as per-head fares with nothing to tell them apart, so
+  `priceOfSlot` keeps every `priceOptionType: "GROUP"` option out of the headline. It kept that decision in a
+  local, and `plan.ts` picks a headline again out of `rates` once it knows the party, which is the only place
+  that knows it. Black Hills Tour Company's "Group from 1 to 2 ($790.00 total)" has a minimum of one and a
+  maximum of two, so it admits a party of two on every party test there is, and the $790 went back on the
+  card and into the comparison line above it. A rule one module enforces and the next one undoes is not a
+  rule: the mark rides on the rate now, the rate stays on the sheet where a guest can read it, and `forParty`
+  became `headlineForParty` at module scope so it can be tested at all.
+- **A dolphin cruise was quoted at $15 for a ticket Peek never named** (`65ccf7ce4`). Nine places in the
+  concierge independently called a nameless fare "Ticket", and two rules ride on that word: it is not worth
+  printing on a card, and a row nobody named cannot be shown not to be a child fare, so it must never
+  outrank a named one. `tripworks.ts` calls the second one the rule everywhere else in this codebase and
+  `peek.ts` applies it, heading a cruise with its named "Adult" at $26 rather than an unnamed $15 row.
+  `headlineForParty` picked purely on price, so it put the $15 back with our own placeholder printed as its
+  name. The word is a constant in `live.ts` now with both rules beside it, and every reader spells it there.
+- **A whole-boat Xola charter was quoted to four people as $599 each** (`5c1bc2cb1`). Same defect as Rezdy's,
+  one vendor over: `ticketsOf` refuses to head a card with `priceType: "outing"`, and a charter carries no
+  party limits to fail, so every party fit it and the re-pick put the boat back as a seat. Two more things
+  reached a card the same way, both found while fixing it. A reader's own `priceLabel` says where a number
+  came from rather than what the ticket is called, so checkfront's "on their booking page" and the browser
+  agent's "from their booking page" matched no rate label and were thrown away to relabel a price that had
+  not moved; the re-pick leaves a departure alone now when it lands on the reader's own number. And Resova,
+  Peek, Xola and FareHarbor could all put the placeholder itself in `priceLabel`, so a card read
+  "$41 · Ticket".
+
+**Checked and sound.** Rezdy's `rateLabel` against every label shape Rezdy publishes, including the
+single-rate product whose whole name is its price and the "2-8 Players" its old looser age rule misread.
+Every reader's `num`: a zero is not a price on any of them, and Rezdy alone reads a quantity of zero as no
+limit rather than a rate nobody fits. Resova's slot price beating the item's teaser, and Peek's per-ticket
+rows beating the slot's sum of every ticket type: both still right, both now the reason their readers can be
+trusted where the surfaces disagreed with them.
+
+**Green after the fixes.** 53 rehearsal steps, 0 failed, run twice because these commits touch `backend/src`
+and `src/lib`. 575 backend tests, 622 app tests, both type checks clean (`-p tsconfig.app.json` for the app).
+
+**Needs Harshil.**
+
+- **Peek's and Resova's price sheets still have no test of their own.** Both were read closely this run and
+  the bug the reading found is fixed, but Peek's JSON:API payload (program, configuration, activity, ticket,
+  availability-dates, availability-times) is a large stub to build and it was not built tonight. Peek is 257
+  links, the biggest vendor after FareHarbor, so it is the next thing worth a night.
+- **Rezdy's helpers are tested directly rather than through `rezdyLive`.** Cloudflare blocks `fetch` on every
+  `*.rezdy.com` subdomain, so that reader speaks HTTP/2 by hand and there is no `globalThis.fetch` to stand
+  in front of. A hand-rolled HTTP/2 session would be a hundred lines of fake to reach two pure functions.
+- **Last night's three are unchanged:** the "All requests" link parked off screen on a phone, the Bookings
+  `minWidth` living on the element rather than in `operator.css`, and five category accents under the AA
+  floor.
+
 ## Coverage
 
 **Verified so far.** The name a guest reads: the business name on all 59,125 shipped listings, against the
@@ -3211,7 +3281,21 @@ shape it is drawn in, and which ids `getSession` will and will not adopt. What a
 came from, over every vendor a reader exists for. That a departure which has already left is dropped before
 the guest listing page's picker draws it, on the live path and the published one, on both surfaces.
 
-**Not yet checked.** Whether the concierge's watch window should have a browser door of its own: with
+The price a guest is quoted, after the reader has picked it: `headlineForParty` in `plan.ts` over every
+fare a party cannot buy, which is a rate this many people do not fit, a concession, a whole-booking total
+and a row nobody named. Rezdy's price sheet, whose helpers had none: every label shape Rezdy publishes, a
+party size read as an age, a rate priced at nothing, a quantity of zero, a group rate beside an adult fare,
+and a shop that sells only by the group. TripWorks end to end against a stubbed vendor: the one-ticket shop
+that may be named and the Adult and Child sheet that may not, a concession-only slot, a waitlist that is not
+a departure, a hidden ticket type, a slot with no price, and the customer type's own price, which looks like
+money and is not. That the word every reader uses for a fare with no name is spelled in one place and
+reaches no card.
+
+**Not yet checked.** Peek's and Resova's own `priceOfSlot`, which are the last two price helpers with no test:
+both were read closely on 21 September and Peek's JSON:API payload is a large stub to build, and Peek is 257
+links. Rezdy's reader end to end, which needs a hand-rolled HTTP/2 session because Cloudflare blocks `fetch`
+on every `*.rezdy.com` subdomain; its two price helpers are tested directly instead. Whether the concierge's
+watch window should have a browser door of its own: with
 `ADMIN_KEY` set it now answers a browser 404 and only curl gets in, and the metrics page's emailed-code
 sign-in is the pattern it lacks. The concierge overlay against a
 live API: nothing here could give it one, so its answers, its chips, its history panel and its "Also nearby"
@@ -3318,9 +3402,9 @@ Promotions, which is a deliverability bet against a bulk-sender expectation. Whe
 panel nothing renders should be deleted or a component written for them (see the fortieth run's Needs
 Harshil), and whether the four `--cg-` custom properties they reach for should exist. The five new readers
 against a real vendor server rather than read: Acuity, Rezdy, Square, TripWorks and Xola have never answered
-anything here, so a vendor whose JSON has quietly changed reads as a shop with nothing open. Rezdy's,
-TripWorks', Peek's and Resova's own `priceOfSlot` and Rezdy's `rateLabel`, which still have no tests: Xola's
-sheet and the shared fare rule now do, and Rezdy speaks HTTP/2 by hand, so stubbing it is the work. Bookeo's 46 shops, which are a
+anything here, so a vendor whose JSON has quietly changed reads as a shop with nothing open. Peek's and
+Resova's own `priceOfSlot`, which still have no tests: Xola's sheet, the shared fare rule, Rezdy's helpers
+and TripWorks' reader now do. Bookeo's 46 shops, which are a
 documented negative from this address and want one `bookeoProbe` run from the Render worker. Whether a Xola
 waiver or gift shell with no button id should be routed as a feed at all: four shipped links are, and the
 reader correctly answers nothing for them. Whether the accents `CAT_COLOR` gives each category should be darkened to clear the AA
