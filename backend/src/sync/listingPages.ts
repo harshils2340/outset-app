@@ -39,6 +39,27 @@ const money = (n: number) => (Number.isInteger(n) ? "$" + n.toLocaleString("en-U
 const ldJson = (ld: unknown) => JSON.stringify(ld).replace(/</g, "\\u003c");
 
 /**
+ * An operator's blurb, cut where a sentence or a word ends rather than at whatever character the count landed
+ * on. `slice(0, 300)` cut 3,049 of the 11,545 pages mid-word: "The guide shares favorite fishing spot",
+ * "Inferno Hot Pilates, Vi". That was already the meta description a search result prints, and it is now the
+ * og:description a link preview shows a friend, which is where a sentence stopping in the middle of a word
+ * reads as something broken rather than something trimmed.
+ *
+ * A sentence end in the last third of the allowance wins, because it is a real ending and needs no mark. Past
+ * that, the last word boundary, with an ellipsis to say the text goes on. Anything already short enough is
+ * left exactly as the operator wrote it.
+ */
+export function clip(text: string, max: number): string {
+  const s = text.trim();
+  if (s.length <= max) return s;
+  const head = s.slice(0, max);
+  const sentence = Math.max(head.lastIndexOf(". "), head.lastIndexOf("! "), head.lastIndexOf("? "));
+  if (sentence >= Math.floor(max * 0.66)) return head.slice(0, sentence + 1);
+  const word = head.lastIndexOf(" ");
+  return (word > 0 ? head.slice(0, word) : head).replace(/[,;:\s]+$/, "") + "…";
+}
+
+/**
  * schema.org type, where the activity implies a real one in the vocabulary and it stays a LocalBusiness (so
  * address, geo, telephone and aggregateRating all still apply). Everything else, including any kind whose own
  * text never confirmed it (`kindUnconfirmed`), stays the generic `LocalBusiness`: a specific type is itself a
@@ -186,7 +207,7 @@ function page(item: Item, opts: { landingHref: string | null; kindPageHref: stri
   const reviews = typeof item.reviews === "number" ? item.reviews : null;
   const kind = KINDS.find((k) => k.art === item.art);
   const title = `${item.title}${area ? " in " + area : ""} · GoDo`;
-  const description = (blurb || `${item.title}, ${area || "a real local business"} on GoDo.`).slice(0, 300);
+  const description = clip(blurb || `${item.title}, ${area || "a real local business"} on GoDo.`, 300);
   const ld = jsonLd(item, canonical, photos, menu);
 
   const photosHtml = photos.length
