@@ -476,3 +476,50 @@ test("a count a person reads is grouped the way the prices beside it already wer
     r.cleanup();
   }
 });
+
+/**
+ * A page nothing links to.
+ *
+ * A town page is reached from its metro page's "by city" pills, from a sibling town that ranks it in its
+ * nearest twelve, or from another kind in the same town. A town whose metro never qualified for that kind,
+ * with no sibling near enough and nothing else to do in it, was reached by none of the three: 389 of the
+ * 3,004 pages a sync writes had no link into them from anywhere on the site, and a crawler met them in
+ * sitemap-pages.xml alone. Museums lost 127 pages that way and fishing 38.
+ *
+ * The invariant is the one the generator's own header claims in the other direction ("every internal link
+ * points at a page that was written in the same run"), read back the other way: every page written in the run
+ * is reached from p/index.html by following links.
+ */
+test("every page a run writes can be reached from p/index.html by following links", () => {
+  const lone = (n: number) => item("bike", null, n, { area: "Springdale, UT", cover: `https://x/s${n}.jpg`, from: 40 });
+  const r = run([...fixture, lone(1), lone(2), lone(3)]);
+  try {
+    // The lone town really does get a page of its own, or this test proves nothing.
+    assert.ok(r.files.some((f) => /^bike-in-springdale/.test(f)), `no Springdale page among ${r.files.join(", ")}`);
+    const seen = new Set(["index.html"]);
+    for (const queue = ["index.html"]; queue.length; ) {
+      const html = r.read(queue.shift()!);
+      for (const m of html.matchAll(/href="([a-z0-9-]+\.html)"/g)) {
+        if (r.files.includes(m[1]) && !seen.has(m[1])) { seen.add(m[1]); queue.push(m[1]); }
+      }
+    }
+    assert.deepEqual(r.files.filter((f) => !seen.has(f)), [], "pages written with no link into them from anywhere");
+  } finally {
+    r.cleanup();
+  }
+});
+
+test("the all-metros page lists every place its kind has a page for, towns as well as metros", () => {
+  const lone = (n: number) => item("cooking", null, n, { area: "Springdale, UT", cover: `https://x/s${n}.jpg`, from: 40 });
+  const r = run([...fixture, lone(1), lone(2), lone(3)]);
+  try {
+    const anywhere = r.read("cooking-in-anywhere.html");
+    assert.match(anywhere, /<h2>Cooking classes by city<\/h2>/);
+    // Both metros that qualified, and the town that belongs to none of them.
+    assert.match(anywhere, /href="cooking-in-toronto\.html"/);
+    assert.match(anywhere, /href="cooking-in-niagara\.html"/);
+    assert.match(anywhere, /href="cooking-in-springdale-ut\.html"/);
+  } finally {
+    r.cleanup();
+  }
+});

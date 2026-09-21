@@ -644,10 +644,23 @@ export function writeLandingPages(items: Item[], opts: { publicDir?: string } = 
     const all = (byKind.get(kind.art) || []).slice().sort(rank);
     const metros = metrosOfKind.get(kind.art) || [];
     const cities = citiesOfKind.get(kind.art) || [];
-    const byCity = metros
-      .slice()
-      .sort((a, b) => b.items.length - a.items.length)
-      .map((m) => ({ file: fileFor(kind.art, m.metro.id), label: placeName(m.metro), count: m.items.length }));
+    /**
+     * Every place this kind has a page for, metro and town alike, under this page's own "by city" heading.
+     *
+     * The heading always said "by city" and the list held only the 47 metros, which left a town page reachable
+     * only from a sibling town that happened to rank it in its nearest twelve. 389 of the 3,004 pages a sync
+     * writes had no link into them from anywhere on the site: a crawler met them in sitemap-pages.xml and
+     * nowhere else, which is how Google decides a page is an afterthought. `bike-in-springdale-ut.html` is one,
+     * and it links out to two pages that never link back. Museums lost 127 pages that way, fishing 38.
+     *
+     * The all-metros page is the right hub for them: p/index.html already links to it for every kind, so this
+     * makes every page in the set two hops from the index. Ordered by how many listings each place has, so the
+     * metros still lead.
+     */
+    const byCity = [
+      ...metros.map((m) => ({ file: fileFor(kind.art, m.metro.id), label: placeName(m.metro), count: m.items.length })),
+      ...cities.map((c) => ({ file: fileFor(kind.art, c.cityId), label: placeName(c.place), count: c.items.length })),
+    ].sort((a, b) => b.count - a.count || a.label.localeCompare(b.label));
     const otherKindsAnywhere = kindPages
       .filter((k) => k.art !== kind.art)
       .map((k) => ({ file: fileFor(k.art, null), label: k.search, count: (byKind.get(k.art) || []).length }));
