@@ -268,8 +268,14 @@ function priceOfSlot(slot: Timeslot): { price: number | null; label: string | nu
    * Named only when the shop sells exactly one visible kind of ticket, because then the name is not a guess:
    * a helicopter that sells "Shared" and nothing else is a shared seat at this price. Two or more and the
    * headline would have to claim which of them `min_price` belongs to, and it does not say.
+   *
+   * Counted over every visible type, not only the adult ones. Counting the adult ones was the same sentence
+   * to read and a worse thing to do: a whale watch selling "Adult" and "Child" leaves one name standing once
+   * the child fare is filtered out, so the slot was quoted at `min_price` — which is the child's $48 —
+   * labelled "Adult", against a real adult fare of $58. A concession fare under an adult's name is worse
+   * than an unlabelled one, because nothing on the card tells the guest to look again.
    */
-  const label = open.length === 1 ? open[0] : null;
+  const label = visible.length === 1 && open.length === 1 ? open[0] : null;
   const rates: Departure["rates"] = price == null ? [] : [{ label: label || "Ticket", price, minParty: null, maxParty: null }];
   /** Every ticket on sale at this time is a waitlist or a "call to book": the slot exists, the seat does not. */
   const bookable = !visible.length || !visible.every((n) => NOT_A_DEPARTURE.test(n));
