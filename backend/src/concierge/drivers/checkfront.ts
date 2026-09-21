@@ -2,7 +2,7 @@ import type { Browser } from "playwright";
 import { UNNAMED_RATE, type Departure, type LiveRead } from "../live.ts";
 import { isConcessionFare, openFarePrice } from "../../lib/fares.ts";
 import { checkfrontRef } from "../../enrich/vendors/checkfront.ts";
-import { addDays, zonedNow, zonedYmd } from "../shopday.ts";
+import { addDays, lastDayOf, zonedNow, zonedYmd } from "../shopday.ts";
 
 /**
  * Checkfront, read from the endpoint its own booking form reads.
@@ -206,6 +206,16 @@ export async function checkfrontLive(
     /** Accepted so a caller holding a shared browser can pass one, and deliberately unused: this needs no browser. */
     browser?: Browser;
     date?: Date;
+    /**
+     * How many days from `date` the guest actually asked about, as every other reader takes it.
+     *
+     * This driver used to take no window at all. It walks forward to whatever day each item next runs and
+     * answers with that, so "escape room tonight" at a shop that is shut tonight came back with a departure
+     * up to a fortnight away, drawn under a live badge with nothing saying the date had moved: the read was
+     * not empty, so `plan.ts` never took its widening branch. Fourteen is the old behaviour, for any caller
+     * that still has no window to give.
+     */
+    days?: number;
     /** The shop's own zone, from the catalog, because the date below is a calendar day where the shop is. */
     tz?: string | null;
     budgetMs?: number;
@@ -216,6 +226,12 @@ export async function checkfrontLive(
   const until = Date.now() + (opts.budgetMs ?? 20000);
   const left = () => Math.min(15000, Math.max(0, until - Date.now()));
   const wanted = zonedYmd(opts.date ?? new Date(), opts.tz);
+  /**
+   * The last day a departure may fall on. The fortnight query below and the control date that proves this
+   * account answers per date both stay at fourteen days whatever this is: they are how the shop is read, not
+   * what the guest is offered.
+   */
+  const lastDay = lastDayOf(wanted, Math.min(Math.max(opts.days ?? 14, 1), 14));
   /** The shop's own clock, for the one question it answers: has this slot already started? */
   const now = zonedNow(opts.tz);
   /**
@@ -241,7 +257,7 @@ export async function checkfrontLive(
     let day = wanted;
     const listed = await inventory(account, day, left());
     let ids = listed.ids;
-    if (!ids.length && listed.nextDate && listed.nextDate <= addDays(wanted, 14) && Date.now() < until) {
+    if (!ids.length && listed.nextDate && listed.nextDate <= lastDay && Date.now() < until) {
       day = listed.nextDate;
       ids = (await inventory(account, day, left())).ids;
     }
@@ -297,7 +313,8 @@ export async function checkfrontLive(
         if (new Set(Object.keys(fortnight).map(shape)).size >= 2) proven = true;
 
         const open = Object.keys(fortnight)
-          .filter((k) => AVAILABLE.test(String(fortnight[k]?.status ?? "")) && fromCompact(k) >= wanted)
+          // Inside the window the guest asked about, not merely somewhere in the fortnight we asked the shop for.
+          .filter((k) => AVAILABLE.test(String(fortnight[k]?.status ?? "")) && fromCompact(k) >= wanted && fromCompact(k) <= lastDay)
           .sort();
         if (!open.length) continue;
         const on = open[0];

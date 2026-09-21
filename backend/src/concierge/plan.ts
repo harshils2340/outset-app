@@ -1544,7 +1544,7 @@ export async function plan(text: string, opts: { ask?: number; prior?: Intent | 
           case "rezdy":
             return rezdyLive(o.bookingUrl, { from, days, tz });
           case "checkfront":
-            return checkfrontLive(o.bookingUrl, { date: from, tz });
+            return checkfrontLive(o.bookingUrl, { date: from, days, tz });
           case "peek":
             return peekLive(o.bookingUrl, { from, days, tz });
           case "resova":
