@@ -3013,6 +3013,69 @@ tests, both type checks clean (`-p tsconfig.app.json` for the app).
   Bookings `minWidth` living on the element rather than in `operator.css`, and five category accents under
   the AA floor.
 
+## 21 September 2026, forty-eighth run (10:00 to 11:05 UTC)
+
+**Checked, and why.** Every area the brief lists as priority territory is already down as verified, so the
+hunt went to the Coverage list's own open items. Four of them name one thing: the programmatic pages, the
+3,004 under `/p/` and the 11,545 under `/l/`, which are the only part of the product a customer meets before
+the app loads and which no run has ever driven. Nothing had landed since the forty-seventh run's log and that
+entry says the rehearsal was green, so it was skipped at the start; both type checks and both suites first,
+clean at 599 backend and 622 app. It was run twice at the end instead, because every commit here touches
+`backend/src`.
+
+**Found and fixed.**
+
+- **A page declaring 6,902 listings handed a crawler 24 of them** (`325f38d1b`). The grid stops at MAX_CARDS
+  and `itemListElement` stops with it; `numberOfItems` was still the whole count. "Museums in the US and
+  Canada" published an ItemList saying it held 6,902 entries and then listed 24, and 313 of the 3,004 pages
+  carried that contradiction. The human version had no answer at all: the lede said 6,902, the page drew 24
+  cards, and nothing said why or where the rest were. The list counts what the list holds now, the h1 and the
+  FAQ keep the real total because that is a fact about the place, and a line under the grid names the gap and
+  the two ways on. Counts in the prose are grouped too, so "1638 of the 6902 operators" and "from $5 to
+  $5,000" stop being two conventions in one sentence.
+- **All 14,549 pages built for sharing previewed as a bare URL** (`250a827c0`). Not one `og:` or `twitter:`
+  tag between them, so a listing pasted into iMessage, WhatsApp, Slack or a Discord channel previewed as
+  onoutset.com and nothing else: no business name, no photo, no line about it. The app's own `index.html` has
+  carried the tags since it was written, so the generated pages were the only ones without. One `socialCard`
+  serves all three page shapes, with the page's own lead photo through the wsrv.nl proxy at the 1200x630 every
+  scraper crops to, the app icon and the small card where there is no photo to stand behind, and always the
+  canonical url rather than the hash route.
+- **389 pages had no link into them from anywhere on the site** (`cce9905ca`). A town page is reached from its
+  metro page's pills, a sibling town that ranks it in its nearest twelve, or another kind in the same town. A
+  town whose metro never qualified for that kind, with no sibling near enough and nothing else to do in it,
+  was reached by none of them: a crawler met `bike-in-springdale-ut.html` in the sitemap and nowhere else.
+  Museums lost 127 pages that way, fishing 38. The all-metros page's heading always said "by city" and the
+  list under it held only the 47 metros; it holds the towns too now, which puts every page two hops from
+  `p/index.html`. The generator's header claims every internal link points at a page written in the same run,
+  and the new test reads that back the other way.
+- **3,049 listing descriptions were cut in the middle of a word** (`4614a3eef`). `slice(0, 300)` on the
+  operator's blurb: "The guide shares favorite fishing spot", "Inferno Hot Pilates, Vi". Already what a search
+  result printed, and the fix above makes it what a friend sees in a link preview. `clip` takes a sentence end
+  in the last third of the allowance and otherwise the last whole word with an ellipsis.
+
+**Checked and sound.** Every internal link on all 3,004 pages points at a page the same run wrote, and all
+3,004 are in `sitemap-pages.xml`. No duplicate titles, no description over 183 characters, no unparseable
+JSON-LD on any of the 11,545 listing pages, no rating published without a review count behind it, no page
+without an h1. The canonical tags and the localhost guard behind `publicSite`.
+
+**Green after the fixes.** 53 rehearsal steps, 0 failed, run twice. 607 backend tests (up from 599), 622 app
+tests, both type checks clean (`-p tsconfig.app.json` for the app).
+
+**Needs Harshil.**
+
+- **263 listing page titles run past 70 characters**, which is where Google starts truncating, because the
+  title is the business's own name plus its town. Cutting a name is worse than a long title, so nothing was
+  changed, but it may be worth dropping the town from the longest ones.
+- **The pages still have no `og:image` of their own design.** A page with no usable cover falls back to
+  `apple-touch-icon.png`, which is a 180px square icon and will render as a small card. One 1200x630 brand
+  image in `public/` would fix every such page at once.
+- **The all-metros page for museums is now 66 KB** (from 39 KB) because it carries 308 town pills, and the
+  whole set is 52.1 MB (from 47.9 MB). That is the price of the orphan fix. If it matters, the alternative is
+  paging those pills rather than dropping them.
+- **Last night's four are still unchanged:** the "All requests" link parked off screen on a phone, the
+  Bookings `minWidth` living on the element rather than in `operator.css`, five category accents under the AA
+  floor, and no live vendor has ever answered anything from this address.
+
 ## Coverage
 
 **Verified so far.** The name a guest reads: the business name on all 59,125 shipped listings, against the
@@ -3363,6 +3426,15 @@ Peek and Resova end to end besides: `peekRef` and `resovaAccount` over every lin
 the fare that heads a card and the concession that may not, Resova's slot price beating the item's teaser,
 and a hidden pricing category, a blocked slot and a sold-out one. Checkfront's day fares and `squareRef`.
 
+
+The programmatic pages, driven for the first time: all 3,004 landing pages under `/p/` and all 11,545 listing
+pages under `/l/`, generated from the shipped catalog and read rather than sampled. What each page claims
+about how many listings it holds, in its h1, its lede, its meta description, its FAQ, its pills and its
+JSON-LD, against the cards it actually draws. Every internal link against the pages the same run wrote, and
+the reverse: every page written against the links into it, walked from `p/index.html`. Every page against the
+sitemap. Duplicate titles, description length, and whether the JSON-LD on a listing page parses, publishes a
+rating with no reviews behind it, or omits an h1. What a shared link previews as, on all three page shapes.
+
 **Not yet checked.** Rezdy's reader end to end, which needs a hand-rolled HTTP/2 session because Cloudflare
 blocks `fetch` on every `*.rezdy.com` subdomain; its price helpers and its window rule are tested directly
 instead. Whether `GET /concierge/live/:domain` should read the other seven vendors, and whether
@@ -3391,11 +3463,11 @@ changed its JSON reads as a shop with nothing open and nobody knows. Whether the
 `https://fareharbor.com/` should be in `live-index.json` at all. Whether a vendor that answers with nothing
 open across the whole window should leave the page showing our guessed nine, eleven and one, which it does.
 Whether the vendor's own `bookUrl` for a departure should ever be offered to a guest: every reader carries
-one and no surface draws it. Whether the landing pages should say they are showing 24 of the 35 they counted, which
-is what a page with more than 24 listings does today, and whether a kind's all-metros page needs paging at
-all. Whether the 50 kinds with no guide should have one written (see this run's Needs Harshil), and whether
-the JSON-LD `numberOfItems` should say 35 when only 24 `itemListElement` entries follow it. Whether a page should carry an `og:` card at all,
-since a shared link currently previews as nothing. Whether the 160 pages the next sync deletes should be
+one and no surface draws it. Whether a kind's all-metros page needs paging for its town pills, which
+now number 308 on the museums page and put it at 66 KB. Whether the 50 kinds with no guide should have one
+written (see the forty-seventh run's Needs Harshil). Whether the `og:image` fallback should be something
+better than the 180px app icon, and whether the 263 listing page titles past 70 characters should drop their
+town (see this run's Needs Harshil). Whether the 160 pages the next sync deletes should be
 kept with honest counts instead (see this run's Needs Harshil). Which town the 64 listings whose street names one town and whose city names another are
 actually in, as a supply question. Whether the 108 archive rows that carried a real admission tier should keep that price
 under a name a re-crawl reads properly, and whether "Buy Tickets" (338 rows) and "Schedule a tour" (123)
