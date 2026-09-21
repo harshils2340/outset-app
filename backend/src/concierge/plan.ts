@@ -1,17 +1,9 @@
 import { db } from "../db/client.ts";
 import { CATEGORIES, METROS, inferCategory } from "../taxonomy/catalog.ts";
-import { fareharborLive, feedIsWarm, UNNAMED_RATE, type Departure } from "./live.ts";
+import { feedIsWarm, UNNAMED_RATE, type Departure } from "./live.ts";
 import { isConcessionFare } from "../lib/fares.ts";
-import { resovaLive } from "./resova.ts";
-import { peekLive } from "./peek.ts";
-import { checkfrontLive } from "./drivers/checkfront.ts";
-import { xolaLive } from "./readers/xola.ts";
-import { rezdyLive } from "./readers/rezdy.ts";
-import { tripworksLive } from "./readers/tripworks.ts";
-import { squareLive } from "./readers/square.ts";
-import { acuityLive } from "./readers/acuity.ts";
-import { foreupLive } from "./readers/foreup.ts";
-import { isReadable, readerFor, unreadableSql } from "./readable.ts";
+import { readFeed } from "./readFeed.ts";
+import { isReadable, unreadableSql } from "./readable.ts";
 import { zoneForArea } from "../lib/zone.ts";
 import { Trace } from "./session.ts";
 import { recordDemand } from "./demand.ts";
@@ -1531,44 +1523,15 @@ export async function plan(text: string, opts: { ask?: number; prior?: Intent | 
        * tonight. A vendor that publishes its own zone still wins; this is the answer for the ones that do not.
        */
       const tz = zoneForArea([o.city, o.region].filter(Boolean).join(", "));
-      const readFeed = (from: Date, days: number) => {
-        switch (readerFor(o.bookingUrl)) {
-          case "square":
-            return squareLive(o.bookingUrl, { from, days, tz });
-          case "acuity":
-            return acuityLive(o.bookingUrl, { from, days, tz });
-          case "tripworks":
-            return tripworksLive(o.bookingUrl, { from, days, tz });
-          case "xola":
-            return xolaLive(o.bookingUrl, { from, days, tz });
-          case "rezdy":
-            return rezdyLive(o.bookingUrl, { from, days, tz });
-          case "checkfront":
-            return checkfrontLive(o.bookingUrl, { date: from, days, tz });
-          case "peek":
-            return peekLive(o.bookingUrl, { from, days, tz });
-          case "resova":
-            return resovaLive(o.bookingUrl, { from, days, tz, maxItems: 4 });
-          case "foreup":
-            return foreupLive(o.bookingUrl, { from, days, tz });
-          default:
-            /**
-             * Six items, not three. Zoom Tours sells four day tours and we priced three of them, so the
-             * fourth came back "price on request" and sat on the screen next to a headline that had no
-             * number to quote. The total sheet is shared across a company's items, 287557 for every one of
-             * theirs, so the first item costs three calls and each one after it costs two.
-             */
-            return fareharborLive(o.bookingUrl, { from, days, tz, maxItems: 6 });
-        }
-      };
+      const ask = (from: Date, days: number) => readFeed(o.bookingUrl, { from, days, tz });
 
       const warm = feedIsWarm(o.bookingUrl);
       if (!warm) tr.step("cold", o.name + ": first read, giving it longer", { who: o.name, detail: (coldDeadline / 1000) + "s instead of " + (warmDeadline / 1000) + "s" });
-      const live = await inTime(readFeed(win.from, win.days), o.name, warm);
+      const live = await inTime(ask(win.from, win.days), o.name, warm);
       if (live) o.departures = withinBudget(live.departures.map(forParty));
       if (!o.departures.length && win.days < 14) {
         tr.step("widen", o.name + ": nothing " + intent.when + ", looking a fortnight out", { who: o.name });
-        const wider = await inTime(readFeed(new Date(), 14), o.name, true);
+        const wider = await inTime(ask(new Date(), 14), o.name, true);
         if (wider?.departures.length) {
           o.departures = withinBudget(wider.departures.map(forParty));
           o.widened = true;

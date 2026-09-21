@@ -1,9 +1,10 @@
 import { db } from "../db/client.ts";
 import { fareharborShortname } from "../enrich/widgets.ts";
-import { resovaLive } from "./resova.ts";
 import { isConcessionFare } from "../lib/fares.ts";
 import { addDays, zonedYmd } from "./shopday.ts";
 import { zoneForArea } from "../lib/zone.ts";
+import { readerFor } from "./readable.ts";
+import { readFeed } from "./readFeed.ts";
 
 /**
  * What a business can actually sell you, right now, read from the booking system it really runs.
@@ -373,21 +374,29 @@ export async function fareharborLive(bookingUrl: string, opts: { from?: Date; da
 
 /** The booking link we hold for an operator, by domain. */
 export function bookingUrlFor(domain: string): string | null {
-  const row = db
-    /**
-     * The READABLE link wins, not whichever row came first.
-     *
-     * `LIMIT 1` with no ORDER BY is answered from `idx_facts_op_key` in rowid order, so a shop holding both
-     * its own hand-built page and a FareHarbor one we later found is answered from the older, unreadable row
-     * and its live calendar is never opened. Thirty-eight operators are in exactly that state today.
-     */
-    .prepare(
-      `SELECT f.fact_value AS u FROM facts f JOIN operators o ON o.id = f.operator_id
-        WHERE o.domain = ? AND f.fact_key = 'booking_url'
-        ORDER BY (f.fact_value NOT LIKE '%fareharbor%' AND f.fact_value NOT LIKE '%resova%' AND f.fact_value NOT LIKE '%peek.com%') LIMIT 1`,
-    )
-    .get(domain) as { u: string } | undefined;
-  return row?.u || null;
+  /**
+   * The READABLE link wins, not whichever row came first.
+   *
+   * `LIMIT 1` with no ORDER BY is answered from `idx_facts_op_key` in rowid order, so a shop holding both
+   * its own hand-built page and a FareHarbor one we later found is answered from the older, unreadable row
+   * and its live calendar is never opened. Thirty-eight operators are in exactly that state today.
+   *
+   * "Readable" was then a list of three vendors written out here by hand, against the readers' ten: the
+   * fourth copy of exactly the list `readable.ts` was written to abolish, so a shop holding a Xola, Rezdy,
+   * Acuity, Square, TripWorks, Checkfront or ForeUp link beside its own page still got the page.
+   *
+   * The pick is `readerFor`, in JavaScript, rather than `unreadableSql`, because the two are not quite the
+   * same question and only one of them is the one that matters. SQL has to sort rows it cannot run a regex
+   * over, so its patterns are deliberately loose: `%checkfront%` matches a shop whose own domain carries the
+   * word, `%xola.%` matches any host under that name. A link that only looks readable would then beat a
+   * FareHarbor one and the shop would read as having no feed. Here the rows are already in hand, so the
+   * question asked is the one that decides the answer: which of these will `readFeed` actually read?
+   */
+  const rows = db
+    .prepare(`SELECT f.fact_value AS u FROM facts f JOIN operators o ON o.id = f.operator_id WHERE o.domain = ? AND f.fact_key = 'booking_url'`)
+    .all(domain) as { u: string }[];
+  const urls = rows.map((r) => r.u).filter(Boolean);
+  return urls.find((u) => readerFor(u) != null) || urls[0] || null;
 }
 
 /** What day it is where this operator is, for the readers, which key their windows by the shop's own calendar. */
@@ -399,14 +408,19 @@ function zoneOf(domain: string): string | null {
   return zoneForArea([row.city, row.region].filter(Boolean).join(", "), row.lat, row.lon);
 }
 
-/** Live availability for one operator, by whichever route its booking system allows. */
+/**
+ * Live availability for one operator, by whichever route its booking system allows.
+ *
+ * Every reader the concierge has, not the two this function was written with. It tried FareHarbor, then
+ * Resova, then gave up, so a Peek, Xola, Rezdy, Acuity, Square, TripWorks, Checkfront or ForeUp shop was
+ * told "no feed to read: this one needs the browser agent" here while `plan.ts` quoted its real departures
+ * from the same link. The dispatch is `readFeed`, which both callers now share.
+ */
 export async function liveFor(domain: string, opts: { from?: Date; days?: number } = {}): Promise<LiveRead> {
   const url = bookingUrlFor(domain);
   if (!url) return { business: domain, vendor: "none", departures: [], note: "We hold no booking link for this business; it would go to the phone agent." };
   const tz = zoneOf(domain);
-  const fh = await fareharborLive(url, { ...opts, tz });
-  if (fh) return fh;
-  const rv = await resovaLive(url, { ...opts, tz });
-  if (rv) return rv;
+  const live = await readFeed(url, { from: opts.from || new Date(), days: opts.days ?? 14, tz });
+  if (live) return live;
   return { business: domain, vendor: "agent", departures: [], note: "No feed to read: this one needs the browser agent." };
 }
