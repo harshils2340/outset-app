@@ -267,6 +267,38 @@ export function cardImage(url: string): { src: string; srcSet?: string } | null 
   };
 }
 
+/**
+ * The card a link gets when somebody shares one of these pages.
+ *
+ * Every page here and every listing page under /l/ shipped without a single `og:` tag, so a link pasted into
+ * iMessage, WhatsApp, Slack, Facebook or a Discord channel previewed as the bare URL: no name, no photo, no
+ * line of description. These are the two page shapes that exist to be shared, and the app's own index.html
+ * has carried the tags since it was written, so the generated pages were the odd ones out.
+ *
+ * `photo` is the page's own lead cover where it has one, through the same wsrv.nl proxy the cards use, at
+ * 1200x630 because that is the size every one of those scrapers crops to. A page with no photo it can stand
+ * behind falls back to the app icon, exactly as index.html does, and drops to the small `summary` card rather
+ * than claiming a large image it has not got.
+ */
+export function socialCard(o: { title: string; description: string; url: string; photo?: string | null }): string {
+  const proxied = o.photo && /^https?:\/\//i.test(o.photo) && !PROXY_SKIP.test(o.photo)
+    ? "https://wsrv.nl/?url=" + encodeURIComponent(o.photo.replace(/^https?:\/\//i, "")) + "&w=1200&h=630&fit=cover&output=jpg&q=78&il&n=-1"
+    : null;
+  const image = proxied || `${publicSite()}apple-touch-icon.png`;
+  return [
+    `<meta property="og:site_name" content="GoDo">`,
+    `<meta property="og:type" content="website">`,
+    `<meta property="og:url" content="${esc(o.url)}">`,
+    `<meta property="og:title" content="${esc(o.title)}">`,
+    `<meta property="og:description" content="${esc(o.description)}">`,
+    `<meta property="og:image" content="${esc(image)}">`,
+    `<meta name="twitter:card" content="${proxied ? "summary_large_image" : "summary"}">`,
+    `<meta name="twitter:title" content="${esc(o.title)}">`,
+    `<meta name="twitter:description" content="${esc(o.description)}">`,
+    `<meta name="twitter:image" content="${esc(image)}">`,
+  ].join("\n");
+}
+
 function kmBetween(a: { lat: number; lon: number }, b: { lat: number; lon: number }): number {
   const d = Math.PI / 180;
   const h = Math.sin(((b.lat - a.lat) * d) / 2) ** 2 + Math.cos(a.lat * d) * Math.cos(b.lat * d) * Math.sin(((b.lon - a.lon) * d) / 2) ** 2;
@@ -466,6 +498,7 @@ function page(kind: Kind, metro: Place | null, items: Item[], nearby: Neighbour[
 <title>${esc(title)} · GoDo</title>
 <meta name="description" content="${esc(description)}">
 <link rel="canonical" href="${canonical}">
+${socialCard({ title: `${title} · GoDo`, description, url: canonical, photo: listed.find((i) => i.cover)?.cover })}
 <script type="application/ld+json">${ldJson(ld)}</script>
 <style>${CSS}</style></head><body>
 <header><div class="wrap top"><a class="logo" href="${publicSite()}">GoDo</a><a class="cta" href="${publicSite()}">Open GoDo</a></div></header>
@@ -677,7 +710,9 @@ export function writeLandingPages(items: Item[], opts: { publicDir?: string } = 
   const indexDescription = `Every activity GoDo lists, by city: ${num(kindPages.length)} kinds of thing to do across ${num(cities.length)} cities in the US and Canada.`;
   const index = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Things to do by activity and city · GoDo</title>
 <meta name="description" content="${esc(indexDescription)}">
-<link rel="canonical" href="${publicSite()}p/index.html"><style>${CSS}</style></head><body><header><div class="wrap top"><a class="logo" href="${publicSite()}">GoDo</a><a class="cta" href="${publicSite()}">Open GoDo</a></div></header><main class="wrap"><h1>Things to do by activity and city</h1>
+<link rel="canonical" href="${publicSite()}p/index.html">
+${socialCard({ title: "Things to do by activity and city · GoDo", description: indexDescription, url: `${publicSite()}p/index.html` })}
+<style>${CSS}</style></head><body><header><div class="wrap top"><a class="logo" href="${publicSite()}">GoDo</a><a class="cta" href="${publicSite()}">Open GoDo</a></div></header><main class="wrap"><h1>Things to do by activity and city</h1>
 <h2>Everywhere</h2><div class="links">${kindPages.map((k) => `<a href="${fileFor(k.art, null)}">${esc(k.search)}<small>${num((byKind.get(k.art) || []).length)}</small></a>`).join("")}</div>
 ${cities.map((c) => `<h2>${esc(placeName(c.metro))}</h2><div class="links">${c.pages.map((p) => `<a href="${fileFor(p.kind.art, c.metro.id)}">${esc(p.kind.search)}<small>${num(p.items.length)}</small></a>`).join("")}</div>`).join("\n")}
 </main><footer><div class="wrap">GoDo · Book the jump. Skip the call.</div></footer></body></html>`;

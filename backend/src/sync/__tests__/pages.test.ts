@@ -418,6 +418,39 @@ test("a page that draws every listing it found claims no sample and says nothing
 });
 
 /**
+ * Every one of the 3,004 landing pages and 11,545 listing pages shipped without a single `og:` tag, so a link
+ * to one pasted into iMessage, WhatsApp, Slack or a Discord channel previewed as the bare URL: no name, no
+ * photo, no description. These are the two page shapes that exist to be shared, and the app's own index.html
+ * has carried the tags since it was written, so the generated pages were the only ones without them.
+ */
+test("every landing page carries a social card, with its own lead photo where it has one", () => {
+  const r = run(fixture);
+  try {
+    for (const f of r.files) {
+      const html = r.read(f);
+      assert.match(html, /<meta property="og:title" content="[^"]+">/, `${f} has no og:title`);
+      assert.match(html, /<meta property="og:description" content="[^"]+">/, `${f} has no og:description`);
+      assert.match(html, /<meta property="og:image" content="[^"]+">/, `${f} has no og:image`);
+      assert.match(html, /<meta property="og:url" content="https?:[^"]+">/, `${f} has no og:url`);
+      assert.match(html, /<meta name="twitter:card" content="summary(_large_image)?">/, `${f} has no twitter card`);
+    }
+    // A page whose lead listing has a cover offers that photo, proxied to the 1200x630 every scraper crops to,
+    // and claims the large card. The title is the page's own, not the site's.
+    const toronto = r.read("cooking-in-toronto.html");
+    assert.match(toronto, /og:image" content="https:\/\/wsrv\.nl\/\?url=[^"]*&amp;w=1200&amp;h=630/);
+    assert.match(toronto, /twitter:card" content="summary_large_image"/);
+    assert.match(toronto, /og:title" content="Cooking classes in Toronto, Ontario · GoDo"/);
+    // A page with no photo at all falls back to the app icon and drops to the small card rather than
+    // promising a large image it has not got.
+    const nowhere = r.read("kayak-in-anywhere.html");
+    assert.match(nowhere, /og:image" content="[^"]*apple-touch-icon\.png"/);
+    assert.match(nowhere, /twitter:card" content="summary"/);
+  } finally {
+    r.cleanup();
+  }
+});
+
+/**
  * "1638 of the 6902 operators publish prices on their own site. Starting prices run from $5 to $5,000."
  * `money` has grouped its thousands since it was written and nothing else on the page did, so the two
  * conventions sat in one sentence. Every count a person reads goes through `num` now.

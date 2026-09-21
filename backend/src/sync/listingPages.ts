@@ -3,7 +3,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { METROS } from "../taxonomy/catalog.ts";
 import { REGION_NAME, countryOfArea, regionOfArea } from "../../../src/data/regions.ts";
-import { KINDS, cardPhoto, fileFor, placeName, priceOf, publicSite, type Item, type Kind } from "./pages.ts";
+import { KINDS, cardPhoto, fileFor, placeName, priceOf, publicSite, socialCard, type Item, type Kind } from "./pages.ts";
 
 /**
  * One static page per listing, /l/<id>.html: the business's own name, area, blurb, menu, hours, policies, FAQ
@@ -216,6 +216,7 @@ function page(item: Item, opts: { landingHref: string | null; kindPageHref: stri
 <title>${esc(title)}</title>
 <meta name="description" content="${esc(description)}">
 <link rel="canonical" href="${canonical}">
+${socialCard({ title, description, url: canonical, photo: photos[0] })}
 <script type="application/ld+json">${ldJson(ld)}</script>
 <style>${CSS}</style></head><body>
 <header><div class="wrap top"><a class="logo" href="${site}">GoDo</a></div></header>
