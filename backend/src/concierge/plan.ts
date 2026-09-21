@@ -1004,6 +1004,22 @@ export function candidates(intent: Intent, limit = 8, radiusKm = 40): Option[] {
   });
 }
 
+/**
+ * What a guest is told the times came from, which is the one line on a card whose whole job is to say they
+ * are the shop's own. The chain this replaces named eight vendors and ended in `"their " + vendor`, so the
+ * ninth reader to land, whose id is the lowercase word `foreup`, told a golfer we had read "their foreup
+ * calendar". A table, so the tenth is a line here rather than a lowercase brand on the screen.
+ */
+const VENDOR_NAME: Record<string, string> = {
+  fareharbor: "FareHarbor", resova: "Resova", peek: "Peek", checkfront: "Checkfront", xola: "Xola",
+  rezdy: "Rezdy", tripworks: "TripWorks", square: "Square", acuity: "Acuity", foreup: "ForeUp", bookeo: "Bookeo",
+};
+
+/** The vendor as a guest should read it, or as the reader named it when nobody has written it down. */
+export function vendorName(vendor: string): string {
+  return VENDOR_NAME[vendor] || vendor;
+}
+
 /** The date a guest means. "tonight" is today; "weekend" is the next Saturday. */
 export function windowFor(when: Intent["when"], now = new Date()): { from: Date; days: number } {
   if (when === "tomorrow") return { from: new Date(now.getTime() + 86400_000), days: 1 };
@@ -1531,7 +1547,7 @@ export async function plan(text: string, opts: { ask?: number; prior?: Intent | 
           o.widened = true;
         }
       }
-      if (live) o.via = live.vendor === "fareharbor" ? "their FareHarbor calendar" : live.vendor === "resova" ? "their Resova calendar" : live.vendor === "peek" ? "their Peek calendar" : live.vendor === "checkfront" ? "their Checkfront calendar" : live.vendor === "xola" ? "their Xola calendar" : live.vendor === "rezdy" ? "their Rezdy calendar" : live.vendor === "tripworks" ? "their TripWorks calendar" : live.vendor === "square" ? "their Square calendar" : live.vendor === "acuity" ? "their Acuity calendar" : "their " + live.vendor + " calendar";
+      if (live) o.via = "their " + vendorName(live.vendor) + " calendar";
 
       /**
        * Nearest the time they asked for, not earliest in the day.
