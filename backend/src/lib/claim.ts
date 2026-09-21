@@ -73,7 +73,13 @@ export function verifyClaimToken(catalogId: string, token: string): ClaimCheck {
   if (!t || t.length > 200) return { ok: false, reason: "malformed" };
 
   if (t.startsWith(V2)) {
-    const [, expPart, sig] = t.split(".");
+    // Exactly three fields. `const [, expPart, sig] = t.split(".")` reads the first three and throws the rest
+    // away, so "v2.<expiry>.<signature>.anything" was accepted as the token it starts with. Nothing could be
+    // forged that way, since the signature still had to be ours, but a parser that quietly ignores trailing
+    // data on the one credential that opens an operator's dashboard should not: a token is a token or it is not.
+    const parts = t.split(".");
+    if (parts.length !== 3) return { ok: false, reason: "malformed" };
+    const [, expPart, sig] = parts;
     if (!expPart || !sig) return { ok: false, reason: "malformed" };
     const exp = parseInt(expPart, 36);
     if (!Number.isFinite(exp)) return { ok: false, reason: "malformed" };
