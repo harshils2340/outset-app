@@ -1,4 +1,4 @@
-import type { Departure, LiveRead } from "./live.ts";
+import { UNNAMED_RATE, type Departure, type LiveRead } from "./live.ts";
 import { addDays, zonedNow, zonedYmd } from "./shopday.ts";
 import { isConcessionFare } from "../lib/fares.ts";
 
@@ -129,7 +129,7 @@ const num = (v: unknown): number | null => {
 function priceOfSlot(slot: ResovaSlot, item: ResovaItem): { price: number | null; label: string | null; rates: Departure["rates"] } {
   const cats = (slot.occupancy?.pricing_categories || []).filter((c) => !c.hide && num(c.single_price) != null);
   const rates: Departure["rates"] = cats.map((c) => ({
-    label: c.name || "Ticket",
+    label: c.name || UNNAMED_RATE,
     price: num(c.single_price)!,
     minParty: c.min_quantity ?? null,
     maxParty: c.max_quantity ?? null,

@@ -1,5 +1,5 @@
 import http2 from "node:http2";
-import type { Departure, LiveRead } from "../live.ts";
+import { UNNAMED_RATE, type Departure, type LiveRead } from "../live.ts";
 import { addDays, zonedYmd } from "../shopday.ts";
 import { isConcessionFare } from "../../lib/fares.ts";
 
@@ -237,7 +237,7 @@ type RezdyAvailability = { availability?: Record<string, Record<string, Record<s
  */
 export function rateLabel(raw: string | null | undefined): string {
   const name = (raw || "").replace(/\s*\([^()]*\$[^()]*\)\s*$/, "").trim();
-  return name || "Ticket";
+  return name || UNNAMED_RATE;
 }
 
 /**
@@ -286,8 +286,8 @@ export function priceOfSlot(slot: RezdySlot): { price: number | null; label: str
   const pool = open.length ? open : perHead;
   if (!pool.length) return { price: null, label: null, rates };
   const cheapest = pool.reduce((a, b) => (a.price <= b.price ? a : b));
-  // "Ticket" is this file's own word for a rate Rezdy gave no name to; it is not worth printing on a card.
-  return { price: cheapest.price, label: cheapest.label === "Ticket" ? null : cheapest.label, rates };
+  // A placeholder is not a name, and it is not worth printing on a card. See `UNNAMED_RATE`.
+  return { price: cheapest.price, label: cheapest.label === UNNAMED_RATE ? null : cheapest.label, rates };
 }
 
 export async function rezdyLive(

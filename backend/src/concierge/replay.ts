@@ -1,5 +1,5 @@
 import { db } from "../db/client.ts";
-import type { Departure, LiveRead } from "./live.ts";
+import { UNNAMED_RATE, type Departure, type LiveRead } from "./live.ts";
 import { isConcessionFare } from "../lib/fares.ts";
 
 /**
@@ -237,7 +237,7 @@ export async function replayLive(
         priceLabel: f.price != null ? "from their booking page" : null,
         /** Unknown, so assumed excluded: under-quoting a guest is the failure that matters. */
         taxIncluded: false,
-        rates: f.price != null ? [{ label: f.label || "Ticket", price: f.price, minParty: null, maxParty: null }] : [],
+        rates: f.price != null ? [{ label: f.label || UNNAMED_RATE, price: f.price, minParty: null, maxParty: null }] : [],
         bookUrl: ep.pageUrl,
         seatsLeft: null,
       });

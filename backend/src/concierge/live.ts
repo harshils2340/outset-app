@@ -20,6 +20,18 @@ import { zoneForArea } from "../lib/zone.ts";
 
 const UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36";
 
+/**
+ * What a reader calls a rate its vendor gave no name to.
+ *
+ * Every reader needs one, because `rates[].label` is a string and a fare with no name is still a real fare.
+ * It is a placeholder rather than a name, and that matters twice. It is not worth printing on a card, which
+ * `rezdy.ts` already refused to do with its own copy of the word. And a row nobody named cannot be proved
+ * not to be a child fare, so it never outranks a named one when a headline is picked: `peek.ts` says the
+ * difference is quoting a dolphin cruise at $26 or at $15 for a ticket an adult cannot buy. Both rules only
+ * hold if every reader spells it the same way, so it is spelled here.
+ */
+export const UNNAMED_RATE = "Ticket";
+
 export type Departure = {
   /** What the shop calls it: "Heli Tour #1", "Romantic Jewel". */
   item: string;
@@ -322,7 +334,7 @@ export async function fareharborLive(bookingUrl: string, opts: { from?: Date; da
         rates = ctrs
           .map((c) => {
             const cents = byRate.get(c.pk);
-            const label = c.customer_prototype?.display_name || c.customer_prototype?.customer_type?.singular || "Ticket";
+            const label = c.customer_prototype?.display_name || c.customer_prototype?.customer_type?.singular || UNNAMED_RATE;
             return cents == null ? null : { label, price: Math.round(cents) / 100, minParty: c.minimum_party_size, maxParty: c.maximum_party_size };
           })
           .filter(Boolean) as Departure["rates"];

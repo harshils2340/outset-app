@@ -246,6 +246,20 @@ test("the headline is a fare this party could actually walk up and buy", () => {
   const islands = dep([{ label: "Adult", price: 285 }, { label: "Group from 10 to 28", price: 240, minParty: 10, maxParty: 28, group: true }], 285, "Adult");
   assert.equal(headlineForParty(islands, 12).fromPrice, 285, "over-quoting is the safe way to be wrong about a group rate");
 
+  /**
+   * Peek's dolphin cruise: a named "Adult" at $26 beside a $15 row Peek gave no ticket record for. `peek.ts`
+   * heads the card with the $26 because a row nobody named cannot be shown not to be a child fare, and this
+   * used to put the $15 back with Peek's own placeholder printed as its name.
+   */
+  const dolphin = dep([{ label: "Adult", price: 26 }, { label: "Ticket", price: 15 }], 26, "Adult");
+  assert.equal(headlineForParty(dolphin, 2).fromPrice, 26);
+  assert.equal(headlineForParty(dolphin, 2).priceLabel, "Adult");
+
+  // When nobody named anything, the price is still real and the placeholder is still not a name.
+  const unnamed = dep([{ label: "Ticket", price: 41 }], 41, null);
+  assert.equal(headlineForParty(unnamed, 2).fromPrice, 41);
+  assert.equal(headlineForParty(unnamed, 2).priceLabel, null, "a card reading \"$41 · Ticket\" is our own word reaching a guest");
+
   // Nothing fits, so the reader's own answer stands: an empty pool is not new information.
   const none = dep([{ label: "Charter", price: 600, minParty: 8 }], 600, "Charter");
   assert.equal(headlineForParty(none, 2).fromPrice, 600);

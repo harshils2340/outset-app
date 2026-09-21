@@ -1,5 +1,5 @@
 import type { Browser } from "playwright";
-import type { Departure, LiveRead } from "../live.ts";
+import { UNNAMED_RATE, type Departure, type LiveRead } from "../live.ts";
 import { isConcessionFare, openFarePrice } from "../../lib/fares.ts";
 import { checkfrontRef } from "../../enrich/vendors/checkfront.ts";
 import { addDays, zonedNow, zonedYmd } from "../shopday.ts";
@@ -174,8 +174,8 @@ function dayRead(item: any, key: string): DayRead | null {
     const named = String((def && typeof def === "object" && def.lbl) || "").replace(/[_-]+/g, " ").trim();
     const range = String(item?.rate?.event?.[0]?.[param]?.range ?? "").match(/^(\d+)\s*-\s*(\d+)$/);
     fares.push({
-      // "Ticket" rather than "privatebookings": an unlabelled fare has no name fit to show anyone.
-      label: named ? named.slice(0, 60) : "Ticket",
+      // The placeholder rather than "privatebookings": an unlabelled fare has no name fit to show anyone.
+      label: named ? named.slice(0, 60) : UNNAMED_RATE,
       fareKey: param.replace(/([a-z])(\d)/gi, "$1 $2").replace(/(\d)([a-z])/gi, "$1 $2"),
       price,
       minParty: range ? Number(range[1]) : null,

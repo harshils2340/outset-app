@@ -1,4 +1,4 @@
-import type { Departure, LiveRead } from "../live.ts";
+import { UNNAMED_RATE, type Departure, type LiveRead } from "../live.ts";
 import { addDays, zonedYmd } from "../shopday.ts";
 import { isConcessionFare } from "../../lib/fares.ts";
 
@@ -195,7 +195,7 @@ function ticketsOf(exp: XolaExperience): { price: number | null; label: string |
     if (item.visibility && item.visibility !== "public") continue;
     const price = num(item.prices?.price?.min);
     if (price == null) continue;
-    rates.push({ label: item.name || "Ticket", price, minParty: null, maxParty: null });
+    rates.push({ label: item.name || UNNAMED_RATE, price, minParty: null, maxParty: null });
   }
 
   /**

@@ -1,4 +1,4 @@
-import type { Departure, LiveRead } from "../live.ts";
+import { UNNAMED_RATE, type Departure, type LiveRead } from "../live.ts";
 import { addDays, zonedYmd } from "../shopday.ts";
 import { isConcessionFare } from "../../lib/fares.ts";
 
@@ -276,7 +276,7 @@ function priceOfSlot(slot: Timeslot): { price: number | null; label: string | nu
    * than an unlabelled one, because nothing on the card tells the guest to look again.
    */
   const label = visible.length === 1 && open.length === 1 ? open[0] : null;
-  const rates: Departure["rates"] = price == null ? [] : [{ label: label || "Ticket", price, minParty: null, maxParty: null }];
+  const rates: Departure["rates"] = price == null ? [] : [{ label: label || UNNAMED_RATE, price, minParty: null, maxParty: null }];
   /** Every ticket on sale at this time is a waitlist or a "call to book": the slot exists, the seat does not. */
   const bookable = !visible.length || !visible.every((n) => NOT_A_DEPARTURE.test(n));
   // Every visible ticket is a concession: real, but not something to head a shortlist with.

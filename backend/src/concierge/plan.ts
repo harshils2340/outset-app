@@ -1,6 +1,6 @@
 import { db } from "../db/client.ts";
 import { CATEGORIES, METROS, inferCategory } from "../taxonomy/catalog.ts";
-import { fareharborLive, feedIsWarm, type Departure } from "./live.ts";
+import { fareharborLive, feedIsWarm, UNNAMED_RATE, type Departure } from "./live.ts";
 import { isConcessionFare } from "../lib/fares.ts";
 import { resovaLive } from "./resova.ts";
 import { peekLive } from "./peek.ts";
@@ -1118,9 +1118,20 @@ export function headlineForParty(d: Departure, party: number): Departure {
   // Only when a concession is genuinely all this departure sells, which is a real thing for kids' sessions.
   const pool = buyable.length ? buyable : d.rates.filter(fitsParty);
   if (!pool.length) return d;
-  const cheapest = pool.reduce((a, b) => (a.price <= b.price ? a : b));
-  if (cheapest.price === d.fromPrice && cheapest.label === d.priceLabel) return d;
-  return { ...d, fromPrice: cheapest.price, priceLabel: cheapest.label };
+  /**
+   * And a row nobody named never outranks a named one, which `tripworks.ts` calls the rule everywhere else
+   * in this codebase and this was the one place breaking it. Peek publishes a dolphin cruise as a named
+   * "Adult" at $26 beside a $15 row it gives no ticket record for; `peek.ts` heads the card with the $26 for
+   * exactly that reason and picking the cheapest here put the $15 back, under Peek's own placeholder as a
+   * name. An unnamed row cannot be shown not to be a child fare, and over-quoting is the safe way to be
+   * wrong about one.
+   */
+  const named = pool.filter((r) => r.label !== UNNAMED_RATE);
+  const cheapest = (named.length ? named : pool).reduce((a, b) => (a.price <= b.price ? a : b));
+  // A placeholder is not a name, and a card saying "$41 · Ticket" is the placeholder reaching a guest.
+  const label = cheapest.label === UNNAMED_RATE ? null : cheapest.label;
+  if (cheapest.price === d.fromPrice && label === d.priceLabel) return d;
+  return { ...d, fromPrice: cheapest.price, priceLabel: label };
 }
 
 /**

@@ -1,4 +1,4 @@
-import type { Departure, LiveRead } from "./live.ts";
+import { UNNAMED_RATE, type Departure, type LiveRead } from "./live.ts";
 import { isConcessionFare } from "../lib/fares.ts";
 import { addDays, zonedYmd } from "./shopday.ts";
 
@@ -290,11 +290,11 @@ function priceOfSlot(prices: PeekPrice[], tickets: TicketMap, minParty: number |
     const ticket = p.resource_option_id ? tickets.get(p.resource_option_id) : undefined;
     const price = amount ?? ticket?.price ?? null;
     if (price == null) continue;
-    rates.push({ label: ticket?.name || "Ticket", price, minParty, maxParty: null });
+    rates.push({ label: ticket?.name || UNNAMED_RATE, price, minParty, maxParty: null });
   }
   const buyable = rates.filter((r) => !isConcessionFare(r.label));
   const pool = buyable.length ? buyable : rates;
-  const named = pool.filter((r) => r.label !== "Ticket");
+  const named = pool.filter((r) => r.label !== UNNAMED_RATE);
   const headline = (named.length ? named : pool).reduce<Departure["rates"][number] | null>(
     (a, b) => (a && a.price <= b.price ? a : b),
     null,
