@@ -554,23 +554,41 @@ async function xola(ref: string, dates: string[]): Promise<Availability> {
  */
 export function bookingUrlFor(operatorId: string): string | null {
   try {
-    const byId = db.prepare("SELECT fact_value FROM facts WHERE operator_id = ? AND fact_key = 'booking_url' LIMIT 1").get(operatorId) as { fact_value?: string } | undefined;
-    if (byId?.fact_value) return byId.fact_value;
+    const byId = db.prepare("SELECT fact_value FROM facts WHERE operator_id = ? AND fact_key = 'booking_url'").all(operatorId) as { fact_value?: string }[];
+    const mine = pickReadable(byId);
+    if (mine) return mine;
     if (!operatorId.startsWith("o-")) return null;
     // "o-example-com" was built as slug(domain); match it back without scanning every row in JS.
-    const row = db
+    const rows = db
       .prepare(
         `SELECT f.fact_value AS fact_value FROM operators o
            JOIN facts f ON f.operator_id = o.id AND f.fact_key = 'booking_url'
-          WHERE 'o-' || replace(replace(lower(o.domain), '.', '-'), '/', '-') = ?
-          LIMIT 1`,
+          WHERE 'o-' || replace(replace(lower(o.domain), '.', '-'), '/', '-') = ?`,
       )
-      .get(operatorId) as { fact_value?: string } | undefined;
-    return row?.fact_value || null;
+      .all(operatorId) as { fact_value?: string }[];
+    return pickReadable(rows);
   } catch {
     // The API host carries no crawl database; the published index below answers there.
     return null;
   }
+}
+
+/**
+ * Of the booking links on file for one shop, the one this module can actually read.
+ *
+ * Both queries above used to take `LIMIT 1` with no ORDER BY, which SQLite answers from `idx_facts_op_key`
+ * in rowid order: a shop holding its own hand-built booking page from an early crawl and a FareHarbor link
+ * found later was answered with the hand-built page, `vendorFor` returned null, and the listing page fell
+ * back to our generic nine, eleven and one for a shop whose real calendar was one call away. `live.ts` found
+ * thirty-eight operators in exactly that state and fixed its own copy of the query; this one, which is what
+ * `GET /availability/:operatorId` and therefore the guest's listing page reads, kept the bug.
+ *
+ * Readable here means readable by this file, which is FareHarbor, Peek and Xola. Ordering by the concierge's
+ * wider list would promote a Rezdy link over a FareHarbor one and lose the live times altogether.
+ */
+function pickReadable(rows: { fact_value?: string }[]): string | null {
+  const urls = rows.map((r) => r.fact_value).filter((u): u is string => !!u);
+  return urls.find((u) => vendorFor(u) != null) || urls[0] || null;
 }
 
 /**
