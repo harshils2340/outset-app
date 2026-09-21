@@ -3076,6 +3076,67 @@ tests, both type checks clean (`-p tsconfig.app.json` for the app).
   Bookings `minWidth` living on the element rather than in `operator.css`, five category accents under the AA
   floor, and no live vendor has ever answered anything from this address.
 
+## 21 September 2026, forty-ninth run (11:00 to 11:40 UTC)
+
+**Checked, and why.** Every area the brief names is already down as verified, so the hunt went to the Coverage
+list's own open items and picked the one that is a defect rather than a question: `GET /concierge/live/:domain`
+reading two vendors where the concierge reads ten. That opened into a theme worth following, which is which
+booking link we read for a shop and which reader we are then willing to point at it. Nothing had landed since
+the forty-eighth run's log and that entry says the rehearsal was green, so both type checks and both suites
+came first (clean at 607 backend and 622 app) and the rehearsal was run once at the end, because every commit
+here touches `backend/src`.
+
+**Found and fixed.**
+
+- **Seven of our nine readers could not be reached from the route that reads one shop** (`74d56dc7b`).
+  `liveFor` tried FareHarbor, then Resova, then gave up, so a Peek, Xola, Rezdy, Acuity, Square, TripWorks,
+  Checkfront or ForeUp shop was told "no feed to read: this one needs the browser agent" while `plan.ts`
+  quoted its real departures from the same link. The dispatch that knows all ten lived in a closure inside
+  `plan.ts`; it is `readFeed.ts` now and both callers share it. `bookingUrlFor` beside it was the other half:
+  it ordered a shop's links by a hand-written list of three vendors, the fourth copy of exactly the list
+  `readable.ts` exists to abolish, so a shop holding a Xola link and its own hand-built page got the page. It
+  asks `readerFor` now, in JavaScript rather than SQL, because `%checkfront%` also matches a shop whose own
+  domain carries the word and a link that only looks readable would beat a FareHarbor one.
+- **A shop that published its own booking page before we found its calendar showed a guest guessed times**
+  (`42afb8dce`). Both queries behind `GET /availability/:operatorId`, which is where the listing page gets
+  real departures, took `LIMIT 1` with no ORDER BY. SQLite answers that in rowid order, so the older
+  hand-built page won, `vendorFor` returned null, and the page fell back to our generic nine, eleven and one
+  for a shop whose calendar was one call away. `live.ts` counted thirty-eight operators in that state and
+  fixed its own copy of the query; this copy, the one a guest meets, kept the bug.
+- **Every reader named its own vendor through a cast** (`e30dd9232`). `const VENDOR = "foreup" as
+  LiveRead["vendor"]` is an assertion, not a check, and "foreup" was never a member of that union. A reader
+  that misspelled itself would have compiled and reached a guest as "their forup calendar". The union carries
+  it now, the eight casts are gone, and a test walks `READER_VENDORS`: every vendor the router can return has
+  a branch in `readFeed` to call and a written name.
+
+**Checked and sound.** The reader list, the SQL twin of it and `vendors.ts`'s detection are otherwise in
+step. `live-index.json` ships 1,664 links and every one is FareHarbor (1,371), Peek (239) or Xola (54), which
+is the set `availability.ts` can read, so the published index and the route agree.
+
+**Green after the fixes.** 616 backend tests (up from 607), 622 app tests, both type checks clean, 53
+rehearsal steps, 0 failed.
+
+**Needs Harshil.**
+
+- **The listing page can only ever show live times for three vendors, while the agent reads ten.** Both
+  `live-index.json` and `enrich/availability.ts` stop at FareHarbor, Peek and Xola, and that file has its own
+  readers rather than the concierge's. So a Resova, Rezdy, Acuity, Square, TripWorks, Checkfront or ForeUp
+  shop is quoted live in Agent Mode and shows guessed nine, eleven and one on its own page. Wiring the
+  concierge's readers into that route is a piece of work, not a bug fix, so nothing was changed.
+- **A vendor that answers with nothing open still leaves the guessed times up**, which was already on the
+  list. Worth sharpening: the data can tell the two cases apart. A day the vendor covered with no slots at
+  all is a day the shop is closed; a day carrying only a `timeUnknown` marker is Peek's call budget, not a
+  closure. Treating the first as closed is safe and would need the three surfaces to take a three-state
+  answer from `liveChipsByDate`.
+- **`feedIsWarm` knows only FareHarbor and Resova company names**, so the other eight vendors are always read
+  as cold and get the 12 second deadline rather than 5. That costs latency, never correctness.
+- **`outset-api` still builds with no catalog**, confirmed in `render.yaml`: no `fetch-seed.mts`, so the
+  deployed concierge answers every town with "could not find". `render.yaml` is outside the files these runs
+  may change.
+- **Last night's four are still unchanged:** the "All requests" link parked off screen on a phone, the
+  Bookings `minWidth` on the element rather than in `operator.css`, five category accents under the AA floor,
+  and no live vendor has ever answered anything from this address.
+
 ## Coverage
 
 **Verified so far.** The name a guest reads: the business name on all 59,125 shipped listings, against the
@@ -3435,12 +3496,17 @@ the reverse: every page written against the links into it, walked from `p/index.
 sitemap. Duplicate titles, description length, and whether the JSON-LD on a listing page parses, publishes a
 rating with no reviews behind it, or omits an h1. What a shared link previews as, on all three page shapes.
 
+Which booking link we read for a shop, and which reader we then point at it, on both routes that ask:
+`liveFor` behind `GET /concierge/live/:domain` against all ten readers rather than two, `bookingUrlFor` on
+both sides against a shop holding its own hand-built page beside a vendor's, in either rowid order, and
+against a link that only looks like a vendor's, and the same `LIMIT 1` with no ORDER BY behind
+`GET /availability/:operatorId`, which is the one a guest's listing page meets. That every vendor the router
+can name has a reader to call and a written name, now a test of its own, and that no reader asserts its own
+vendor into the type that lists them.
+
 **Not yet checked.** Rezdy's reader end to end, which needs a hand-rolled HTTP/2 session because Cloudflare
 blocks `fetch` on every `*.rezdy.com` subdomain; its price helpers and its window rule are tested directly
-instead. Whether `GET /concierge/live/:domain` should read the other seven vendors, and whether
-`bookingUrlFor` beside it should use `unreadableSql` rather than its own copy of a three-vendor list: the
-route is public, no surface calls it, and it answers a Peek shop "no feed to read" while the agent quotes it
-live. Whether the concierge's
+instead. Whether the concierge's
 watch window should have a browser door of its own: with
 `ADMIN_KEY` set it now answers a browser 404 and only curl gets in, and the metrics page's emailed-code
 sign-in is the pattern it lacks. The concierge overlay against a
@@ -3560,9 +3626,16 @@ Google Places key nothing here has, and `scripts/concierge-bench.mts` has never 
 deployed concierge having a catalog and answering every town with "could not find". Whether a live resolve
 should be allowed to overwrite a crawled `booking_url` even when it does find something, rather than only to
 add one. Whether `linksTo`'s three followed links should include a link that leaves the shop's own origin,
-which they deliberately do not. Whether `GET /concierge/live/:domain` should read the other seven
-vendors: `liveFor` still tries only FareHarbor and Resova while `plan.ts` reads nine, so a Peek shop answers
-"no feed to read" there and is quoted live in the agent. Whether the browser-agent and replay drivers
+which they deliberately do not. Whether the browser-agent and replay drivers
 (`concierge/agent.ts`, `concierge/replay.ts`) should carry the shop's clock like every reader now does, given
 that nothing calls either of them. Whether the weekend a guest means should be worked out on their own clock
 rather than the host's, which is the last thing in `windowFor` reading a day of the week from the server.
+Whether the guest's own listing page should read the seven vendors only the agent reads: `live-index.json`
+and `enrich/availability.ts` both stop at FareHarbor, Peek and Xola, and that file keeps its own readers
+rather than the concierge's, so a Resova, Rezdy, Acuity, Square, TripWorks, Checkfront or ForeUp shop is
+quoted live in Agent Mode and shows guessed times on its own page (see this run's Needs Harshil). Whether
+`feedIsWarm` should know the other eight vendors' company names: it reads FareHarbor and Resova only, so
+every other shop is always treated as a first read and given the 12 second deadline rather than 5, which
+costs latency and never correctness. Whether a day the vendor covered and answered with nothing at all
+should be shown as closed rather than left holding our guessed nine, eleven and one, now that the marker
+row already separates that case from Peek's unread dates (see this run's Needs Harshil).
