@@ -1,3 +1,4 @@
+import { randomBytes } from "node:crypto";
 import type { Intent } from "./plan.ts";
 
 /**
@@ -65,8 +66,20 @@ function sweep() {
   }
 }
 
+/**
+ * A session id is a bearer token, so it is drawn the way every other one here is.
+ *
+ * `getSession` hands back the session an id names, and the answer it goes on to give is shaped by that
+ * session's accumulated intent, so an id somebody else can arrive at is somebody else's conversation. It was
+ * eight characters of `Math.random().toString(36)`, which is neither unguessable nor reliably eight
+ * characters: V8's generator is a seeded PRNG whose state can be recovered from its own output, and this
+ * route hands the caller one output per question asked. A value whose base 36 form is short leaves fewer
+ * characters than that, and a session id that then fails the shape check below is a guest's thread silently
+ * starting over. Sixteen hex characters is 64 bits from the platform's CSPRNG, and lowercase alphanumeric,
+ * so an id already in a browser's history keeps working.
+ */
 export function newId(): string {
-  return Math.random().toString(36).slice(2, 10);
+  return randomBytes(8).toString("hex");
 }
 
 export function getSession(id: string | undefined | null): Session {
