@@ -139,7 +139,9 @@ function priceOfSlot(slot: ResovaSlot, item: ResovaItem): { price: number | null
   const cheapest = pool.length ? pool.reduce((a, b) => (a.price <= b.price ? a : b)) : null;
   // Only when the slot said nothing at all; the item's from-price is a teaser, not a ticket.
   const fallback = num(item.from?.price) ?? num(item.single_price);
-  return { price: cheapest?.price ?? fallback, label: cheapest?.label ?? null, rates };
+  // A placeholder is not a name and is not worth printing on a card. See `UNNAMED_RATE`.
+  const label = cheapest && cheapest.label !== UNNAMED_RATE ? cheapest.label : null;
+  return { price: cheapest?.price ?? fallback, label, rates };
 }
 
 export async function resovaLive(

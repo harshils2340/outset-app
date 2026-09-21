@@ -354,7 +354,8 @@ export async function fareharborLive(bookingUrl: string, opts: { from?: Date; da
       date,
       time: (av.start_at || "").slice(11, 16),
       fromPrice: cheapest?.price ?? null,
-      priceLabel: cheapest?.label ?? null,
+      // A placeholder is not a name and is not worth printing on a card. See `UNNAMED_RATE`.
+      priceLabel: cheapest && cheapest.label !== UNNAMED_RATE ? cheapest.label : null,
       taxIncluded: false,
       rates,
       bookUrl: av.book_url ? "https://fareharbor.com" + av.book_url : bookingUrl,

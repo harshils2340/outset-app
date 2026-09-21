@@ -209,7 +209,10 @@ function ticketsOf(exp: XolaExperience): { price: number | null; label: string |
    */
   if (exp.priceType !== "person") {
     const group = num(exp.price);
-    if (group != null && !rates.length) rates.push({ label: `${exp.name || "Charter"} (whole booking)`, price: group, minParty: null, maxParty: null });
+    // Marked `group` on the rate, not only kept out of the headline here: `plan.ts` picks a headline again
+    // out of `rates` once it knows the party, and a charter with no party limits on it fits every party
+    // there is, so the $599 boat went straight back on the card as the price of a seat.
+    if (group != null && !rates.length) rates.push({ label: `${exp.name || "Charter"} (whole booking)`, price: group, minParty: null, maxParty: null, group: true });
     return { price: null, label: null, rates };
   }
 
@@ -217,7 +220,9 @@ function ticketsOf(exp: XolaExperience): { price: number | null; label: string |
   const pool = buyable.length ? buyable : rates;
   const cheapest = pool.length ? pool.reduce((a, b) => (a.price <= b.price ? a : b)) : null;
   // Only when the catalog said nothing at all; `experience.price` is the tile's from-price.
-  return { price: cheapest?.price ?? num(exp.price), label: cheapest?.label ?? null, rates };
+  // A placeholder is not a name and is not worth printing on a card. See `UNNAMED_RATE`.
+  const label = cheapest && cheapest.label !== UNNAMED_RATE ? cheapest.label : null;
+  return { price: cheapest?.price ?? num(exp.price), label, rates };
 }
 
 export async function xolaLive(

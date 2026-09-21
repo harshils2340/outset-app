@@ -1128,10 +1128,15 @@ export function headlineForParty(d: Departure, party: number): Departure {
    */
   const named = pool.filter((r) => r.label !== UNNAMED_RATE);
   const cheapest = (named.length ? named : pool).reduce((a, b) => (a.price <= b.price ? a : b));
-  // A placeholder is not a name, and a card saying "$41 · Ticket" is the placeholder reaching a guest.
-  const label = cheapest.label === UNNAMED_RATE ? null : cheapest.label;
-  if (cheapest.price === d.fromPrice && label === d.priceLabel) return d;
-  return { ...d, fromPrice: cheapest.price, priceLabel: label };
+  /**
+   * The reader's own label stands whenever this lands on the reader's own number, because a reader says more
+   * about its rate than a rate does. Checkfront's is "on their booking page · per person" and the agent's is
+   * "from their booking page", neither of which is any rate's `label`, and comparing the two strings threw
+   * both away to relabel a price that had not moved.
+   */
+  if (cheapest.price === d.fromPrice) return d;
+  // A placeholder is not a name, and a card reading "$41 · Ticket" is our own word reaching a guest.
+  return { ...d, fromPrice: cheapest.price, priceLabel: cheapest.label === UNNAMED_RATE ? null : cheapest.label };
 }
 
 /**

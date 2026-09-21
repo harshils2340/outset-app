@@ -120,7 +120,14 @@ test("a whole-boat charter has no head price, and says so rather than guessing o
   const read = await xolaLive(LINK);
   assert.equal(read?.departures[0].fromPrice, null);
   assert.equal(read?.departures[0].priceLabel, null);
-  assert.deepEqual(read?.departures[0].rates, [{ label: "Private Cycle Boat Charter (whole booking)", price: 599, minParty: null, maxParty: null }]);
+  /**
+   * Marked, not merely left out of the headline. `plan.ts` picks a headline again out of `rates` once it
+   * knows the party, and a charter carries no party limits to fail, so without the mark the boat went back
+   * on the card as the price of a seat.
+   */
+  assert.deepEqual(read?.departures[0].rates, [
+    { label: "Private Cycle Boat Charter (whole booking)", price: 599, minParty: null, maxParty: null, group: true },
+  ]);
 });
 
 test("a start with no seats left is not offered", async () => {

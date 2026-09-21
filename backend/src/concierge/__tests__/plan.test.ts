@@ -265,3 +265,24 @@ test("the headline is a fare this party could actually walk up and buy", () => {
   assert.equal(headlineForParty(none, 2).fromPrice, 600);
   assert.equal(headlineForParty(dep([]), 2).fromPrice, null);
 });
+
+/**
+ * The readers' own words, which are not any rate's label.
+ *
+ * `headlineForParty` compared its chosen rate's label against the departure's, and a reader whose
+ * `priceLabel` says where the price came from rather than what the ticket is called never matches: the
+ * checkfront driver's "on their booking page" and the browser agent's "from their booking page" were both
+ * thrown away and replaced with a rate label, for a price that had not moved.
+ */
+test("a reader's own price label survives a re-pick that changes nothing", () => {
+  const dep = {
+    item: "Escape Room", date: "2026-09-22", time: "19:00", fromPrice: 38, priceLabel: "on their booking page · per person",
+    taxIncluded: false, rates: [{ label: "Ticket", price: 38, minParty: null, maxParty: null }],
+    bookUrl: "https://example.com", seatsLeft: null,
+  };
+  assert.equal(headlineForParty(dep, 2).priceLabel, "on their booking page · per person");
+
+  // A Xola charter is the whole boat, and is marked as one, so it never becomes a head price either.
+  const charter = { ...dep, fromPrice: null, priceLabel: null, rates: [{ label: "Private Cycle Boat Charter (whole booking)", price: 599, minParty: null, maxParty: null, group: true }] };
+  assert.equal(headlineForParty(charter, 4).fromPrice, null);
+});

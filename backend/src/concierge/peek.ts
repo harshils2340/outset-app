@@ -299,7 +299,8 @@ function priceOfSlot(prices: PeekPrice[], tickets: TicketMap, minParty: number |
     (a, b) => (a && a.price <= b.price ? a : b),
     null,
   );
-  return { price: headline?.price ?? null, label: headline?.label ?? null, rates };
+  // A placeholder is not a name and is not worth printing on a card. See `UNNAMED_RATE`.
+  return { price: headline?.price ?? null, label: headline && headline.label !== UNNAMED_RATE ? headline.label : null, rates };
 }
 
 type AvailDate = { id?: string; attributes?: { date?: string; "availability-status"?: string; "num-start-times"?: number } };
