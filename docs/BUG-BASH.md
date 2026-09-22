@@ -3423,6 +3423,68 @@ after its open, so a wrapped night reads as a day the site says nothing about ra
   with no catalog, the "All requests" link parked off screen on a phone, five category accents under the AA
   floor, and no live vendor having answered anything from this address.
 
+## 22 September 2026, fifty-fourth run (09:15 to 11:05 UTC)
+
+**Chosen, and why.** Two commits landed after the fifty-third run's entry, `feda5a21` and `c3ac54f9`, and both
+touch `src/`, so the brief's rule (b) applies and the rehearsal was run, on `main` first (53 passed, 0 failed,
+so `main` was green before this run touched anything) and again at the end. `feda5a21` rewrote the first load
+of a claim link a few hours ago, which makes claiming the one area Coverage calls verified that a commit has
+since changed, and it is the least covered path in the repo by construction: the rehearsal enters the
+dashboard through the test bypass, so a real `#claim=<id>&k=<token>` link has never been opened in a browser
+here. So this run went there, and then at the question that commit raises for every other link we mail: what
+else changes when a link is merely opened. A v2 link minted with the rehearsal's own `CLAIM_SECRET` was driven
+in Chromium against the rehearsal's API and site, 18 checks over three scenarios, kept in the scratchpad
+rather than the repo.
+
+**Found and fixed.**
+
+- **A claim link's token left the address bar before the owner had claimed anything** (`cd995fa2`). The confirm
+  screen that now stands between a claim link and a recorded claim went up with the token already stripped
+  out of the URL: `tick()` cleaned the hash the moment the token checked out, which is one screen too early
+  now that nothing is recorded until a person clicks. Driven in a browser: an owner who reloads that screen,
+  or comes back to a tab the phone discarded, lands on the "Your bookings, the way they come in" pitch for a
+  listing nobody has claimed, with the one-click way in gone from their own address bar and only the email to
+  go back to. `AppProvider` already says the claim hash "should survive a refresh until the claim is done",
+  which is now what happens: one `cleanClaimHash()` runs after the claim is recorded, on the click and on a
+  return visit through the link alike. The same screen drew its card from `picked`, which waits on a catalog
+  version bump rather than on the record the confirm is about, so it could ask an owner to hand over a
+  business it did not name; it draws `pendingClaim.u` now.
+- **Opening the unsubscribe link took the shop off the list, before anybody asked** (`170fdc84`). The same
+  mistake as the claim link, one link away in the same email: `GET /unsubscribe` recorded the unsubscribe and
+  then said "You are unsubscribed", so anything that opens that URL takes the address off the list, a
+  link-safety scanner and a recipient clicking to see what the link says alike. The cost is quieter than a
+  claimed listing and worse: the shop lands on the suppression list, no outreach reaches it again, and
+  neither side ever learns why. The GET asks now, names the address, and carries one button; `POST` is
+  untouched, so Gmail one-click and the site's own page keep working, and one click still takes an address
+  off, which is what CAN-SPAM and CASL ask for. The address is escaped into the page, because the token
+  carries it as base64 and a crafted link decodes to whatever it likes.
+
+**Checked and sound.** Every other link our mail puts in front of a scanner: the booking and decision emails
+carry only listing URLs, the claim email's other link is the dashboard, `#remove=` in the outreach email only
+opens a screen (`removeId`, nothing written), and `#paid=` is Stripe's own return and never emailed. Sign-in
+is a typed code, not a magic link. The confirm screen itself, driven: a load claims nothing and does not open
+the dashboard, the click records the claim with the owner off the link and links that address for sign-in,
+"Not my business" leaves with the hash cleared and nothing claimed, and a forwarded link opened on a second
+device with a different address still asks, still lets that person in, records them in `alsoClaimedBy`, and
+warns them in the dashboard that somebody claimed it first. `POST /claims/:id/exchange` records no claim, so
+the scanner that walked in tonight got a session and nothing else.
+
+**Green after the fixes.** 666 app tests (up from 662), 625 backend (up from 621), all three type checks clean
+(`-p .` at the root still checks nothing, `-p tsconfig.app.json` is the one that checks the app), and the
+rehearsal at 53 of 53 both times.
+
+**Needs Harshil.**
+
+- **`public/unsubscribe.html` is still the half of this that a shop actually meets.** `unsubPageUrl` puts
+  `https://onoutset.com/unsubscribe.html?t=...` in every outreach email, and that page POSTs the API on load
+  with no click at all, so a gateway that renders JavaScript, or a recipient who opens the link to read it,
+  is opted out silently and permanently. The fix is the shape the API now has: draw a button, POST on click,
+  three lines in that file. It was left alone because `public/` is outside the paths this run may change.
+- **Last night's five still stand:** the listing page reading three of the ten vendors, `outset-api` building
+  with no catalog, the "All requests" link parked off screen on a phone, five category accents under the AA
+  floor, and no live vendor having answered anything from this address. The fifty-third run's two cancellation
+  questions stand too.
+
 ## Coverage
 
 **Verified so far.** The name a guest reads: the business name on all 59,125 shipped listings, against the
@@ -3816,6 +3878,13 @@ whose clock cannot be parsed, a price of nothing, and two trips sharing a start.
 that calendar for, guest and operator alike. Which day Otto names a departure on, against the ten days the
 booking window covers.
 
+A real claim link opened in a browser, which the rehearsal cannot do at all because it enters through the test
+bypass: what a first load records (nothing), what the confirm screen names, what a reload of that screen leaves
+the owner with, what the click records and links for sign-in, where the token in the address bar goes and when,
+"Not my business", and a forwarded link opened on a second device with another address on it. Every link our own
+mail puts in front of a link-safety scanner, against what each one changes when it is only opened: the claim
+link, the unsubscribe link, `#remove=`, `#paid=`, and the listing and dashboard URLs.
+
 **Not yet checked.** Rezdy's reader end to end, which needs a hand-rolled HTTP/2 session because Cloudflare
 blocks `fetch` on every `*.rezdy.com` subdomain; its price helpers and its window rule are tested directly
 instead. Whether the concierge's
@@ -3952,4 +4021,8 @@ index carries no link at all for those seven shops (see that run's Needs Harshil
 `liveTimes.ts` should reach Otto on its own rather than by whoever writes it remembering to look (see the
 fifty-second run's Needs Harshil). Whether a fresh checkout should install the root `node_modules` the app
 suite needs, or the rehearsal check for them, since without them eight test files are red for no reason (see
-that run's Needs Harshil).
+that run's Needs Harshil). Whether `public/unsubscribe.html` should keep POSTing the API on load: it is the
+unsubscribe link every outreach email carries and the last page load in our mail that changes something by
+itself, and it sits outside the paths an overnight run may change (see the fifty-fourth run's Needs Harshil).
+The claim screen's own bad and expired states as a browser draws them, rather than at the token level where
+they are covered.
