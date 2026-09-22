@@ -434,6 +434,19 @@ function liveSlots(ctx: CompanyContext): Slot[] {
   return out;
 }
 
+/**
+ * The vendor answered for the whole window and named nothing bookable in it. That is a fact about the shop,
+ * not a gap in what we know, and it is not the same as having no feed to read: Otto used to fall through to
+ * the published hours here and say "Open Monday 9 AM to 5 PM, pick a time on this page" beside a picker that
+ * correctly offers nothing on any date. A partial read speaks for no one: it stopped short of the catalog.
+ */
+function liveWindowEmpty(ctx: CompanyContext): number {
+  const a = ctx.live;
+  if (!a?.live || a.partial) return 0;
+  const days = (a.days || []).length;
+  return days && !liveSlots(ctx).length ? days : 0;
+}
+
 function slotLine(s: Slot): string {
   const day = new Date(s.date + "T12:00:00");
   const name = Number.isNaN(day.getTime()) ? "" : DAY_NAMES[day.getDay()] + " ";
@@ -937,6 +950,14 @@ function slotAnswer(ctx: CompanyContext, q: string, prev: ChatState): { text: st
   const all = liveSlots(ctx);
   if (all.length) return { text: "Nothing then. Next open time is " + slotLine(all[0]) + ".", state: { topic: "slot", day: day ?? undefined } };
 
+  const shut = liveWindowEmpty(ctx);
+  if (shut) {
+    return {
+      text: "Their booking calendar has nothing open in the next " + shut + " days. " + ctx.item.title + " can tell you when that changes.",
+      state: { topic: "slot", day: day ?? undefined },
+    };
+  }
+
   const week = weekFor(ctx);
   if (week && day != null) {
     const span = week[day];
@@ -973,6 +994,8 @@ function bookAnswer(ctx: CompanyContext, q: string): { text: string; state: Chat
   }
   const slots = liveSlots(ctx);
   if (slots.length) return { text: "Yes. Next open time is " + slotLine(slots[0]) + ". Book it on this page.", state: { topic: "book" } };
+  const shut = liveWindowEmpty(ctx);
+  if (shut) return { text: "Not in the next " + shut + " days: their booking calendar has nothing open in it. " + ctx.item.title + " can tell you when that changes.", state: { topic: "book" } };
   return { text: "Yes. Pick a service and time on this page and " + ctx.item.title + " confirms it.", state: { topic: "book" } };
 }
 
@@ -1365,6 +1388,10 @@ function answerOne(ctx: CompanyContext, topic: Topic, q: string, prev: ChatState
     case "next": {
       const slots = liveSlots(ctx);
       if (slots.length) return { text: "Next open time is " + slotLine(slots[0]) + ".", state: { topic: "slot" } };
+      // "I can't see their live times" is untrue of a calendar we read and found empty, and the opening hour
+      // it then reads out is an invitation to a day the shop is not selling.
+      const shut = liveWindowEmpty(ctx);
+      if (shut) return { text: "Nothing in the next " + shut + " days: that is their own booking calendar, and it has no open time in it.", state: { topic: "slot" } };
       const week = weekFor(ctx);
       const clock = clockIn(zoneFor(ctx.item));
       const next = nextOpenDay(week, clock.day);
