@@ -173,11 +173,6 @@ export function App() {
   };
   const askOnSite = web && asking != null && state.screen !== "operator" && !(state.screen === "confirm" && state.booking);
 
-  const openApp = () => {
-    closeSheet();
-    goto("explore");
-    setWeb(false);
-  };
   if (web) {
     return (
       <>
@@ -199,7 +194,6 @@ export function App() {
           </div>
         ) : state.screen !== "operator" ? (
           <WebHome
-            onOpenApp={openApp}
             onOperators={() => openOperator()}
             onAsk={(seed) => toggleAsk(true, seed)}
             asking={askOnSite}

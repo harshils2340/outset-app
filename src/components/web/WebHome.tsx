@@ -689,7 +689,7 @@ function Calendar({ dates, idx, onPick }: { dates: Date[]; idx: number; onPick: 
   );
 }
 
-function UserMenu({ onOperators, onOpenApp }: { onOperators: () => void; onOpenApp: () => void }) {
+function UserMenu({ onOperators }: { onOperators: () => void }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const btn = useRef<HTMLButtonElement>(null);
@@ -728,7 +728,6 @@ function UserMenu({ onOperators, onOpenApp }: { onOperators: () => void; onOpenA
           </button>
           <hr />
           <button type="button" role="menuitem" onClick={go(onOperators)}>For operators</button>
-          <button type="button" role="menuitem" onClick={go(onOpenApp)}>Open the phone app</button>
           <hr />
           <button type="button" role="menuitem" onClick={go(onOperators)}>Operator log in or sign up</button>
         </div>
@@ -934,7 +933,7 @@ const remembered: { q: string; whereText: string; artChip: ArtKind | null; who: 
   q: "", whereText: "", artChip: null, ...rememberedParty(), searched: false, sort: "relevance", price: { min: null, max: null },
 };
 
-export function WebHome({ onOpenApp, onOperators, onAsk, asking = false, askSeed = "", onCloseAsk }: { onOpenApp: () => void; onOperators: () => void; onAsk: (seed?: string) => void; asking?: boolean; askSeed?: string; onCloseAsk?: () => void }) {
+export function WebHome({ onOperators, onAsk, asking = false, askSeed = "", onCloseAsk }: { onOperators: () => void; onAsk: (seed?: string) => void; asking?: boolean; askSeed?: string; onCloseAsk?: () => void }) {
   const { state, setCat, setMetro, setNear, setDate, openRequest, dates } = useApp();
   // What: the activity, occasion or business. Where: the words typed while looking for a place. The place itself
   // lives in app state (near or metro), so the two boxes never overwrite each other.
@@ -1564,7 +1563,7 @@ export function WebHome({ onOpenApp, onOperators, onAsk, asking = false, askSeed
           <div className="ah-right">
             {asking ? null : modeSwitch}
             <button type="button" className="ah-host" onClick={onOperators}>List your business</button>
-            <UserMenu onOperators={onOperators} onOpenApp={onOpenApp} />
+            <UserMenu onOperators={onOperators} />
           </div>
         </div>
 
@@ -1820,7 +1819,6 @@ export function WebHome({ onOpenApp, onOperators, onAsk, asking = false, askSeed
               <ul>
                 <li><a href={"mailto:" + HELP_EMAIL}>Help Centre</a></li>
                 <li><a href={"mailto:" + HELP_EMAIL + "?subject=" + encodeURIComponent("A listing on Outset")}>Report a listing concern</a></li>
-                <li><button type="button" onClick={onOpenApp}>Open the phone app</button></li>
               </ul>
             </section>
             <section>
