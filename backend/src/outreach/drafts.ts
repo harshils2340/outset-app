@@ -168,14 +168,20 @@ export function draftCopy(op: Op, sc: ReturnType<typeof scale>, f: PageFacts, em
   ];
   // Everything below is the footer: quiet, small, last. What has to be there for law and trust (who is
   // sending this, how to opt out, the fine print), never the thing the eye is asked to land on first.
-  // "Outset" set in bold instead of a logo image: an image is a bulk-mail signal on top of the tracking
-  // pixels and List-Unsubscribe headers this sender already avoids, so the wordmark carries the branding
-  // without adding one.
-  const footerLines: string[] = ["", "Outset"];
-  const footerParas: string[] = ['<p style="margin-top:24px;padding-top:12px;border-top:1px solid #e3e3e3;font-size:13px;color:#666"><b style="color:#222">Outset</b>'];
+  // A small mark (the same one at onoutset.com/apple-touch-icon.png, 28px here) plus the wordmark and a
+  // one-line tagline, then the legal line, each on its own line: the earlier version ran the wordmark and
+  // "Terms" together with no break between them, which is exactly the kind of thing to catch before this
+  // goes out at any volume.
+  const TAGLINE = "Pick a time. Pay. Done.";
+  const footerLines: string[] = ["", "Outset — " + TAGLINE];
+  const footerParas: string[] = [
+    '<p style="margin-top:24px;padding-top:16px;border-top:1px solid #e3e3e3;font-size:13px;color:#666">' +
+      '<img src="' + SITE + 'apple-touch-icon.png" width="28" height="28" alt="Outset" style="border-radius:8px;vertical-align:middle;margin-right:8px">' +
+      '<b style="color:#222;font-size:14px">Outset</b> <span style="color:#888">— ' + esc(TAGLINE) + "</span><br>",
+  ];
   if (to) {
     const stop = unsubPageUrl(to);
-    footerLines.push(TERMS, PRIVACY, "If you'd rather not get emails like this: " + stop);
+    footerLines.push("", TERMS, PRIVACY, "If you'd rather not get emails like this: " + stop);
     footerParas.push(link(TERMS, "Terms") + " &nbsp;·&nbsp; " + link(PRIVACY, "Privacy") + " &nbsp;·&nbsp; " + link(stop, "Unsubscribe"));
     const postal = mailPostal();
     if (postal) {
@@ -183,7 +189,7 @@ export function draftCopy(op: Op, sc: ReturnType<typeof scale>, f: PageFacts, em
       footerParas.push("<br>" + esc(postal));
     }
   } else {
-    footerLines.push(TERMS, PRIVACY);
+    footerLines.push("", TERMS, PRIVACY);
     footerParas.push(link(TERMS, "Terms") + " &nbsp;·&nbsp; " + link(PRIVACY, "Privacy"));
   }
   footerParas[footerParas.length - 1] += "</p>";

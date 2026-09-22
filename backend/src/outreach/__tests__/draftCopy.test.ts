@@ -79,9 +79,15 @@ test("the claim link comes before the footer, and the footer carries the brandin
   const unsubAt = c.body.indexOf("/unsubscribe.html?t=");
   assert.ok(claimAt > 0 && claimAt < termsAt, "claim link comes before the legal footer");
   assert.ok(termsAt < unsubAt, "terms comes before unsubscribe, both in the footer");
-  assert.ok(c.body.trim().endsWith("Outset") || c.body.includes("\nOutset\n") || c.body.split("\n").includes("Outset"), "the Outset wordmark closes the footer");
-  assert.ok(c.html.includes("<b style=\"color:#222\">Outset</b>"), "the html footer carries the Outset wordmark, not a logo image");
-  assert.ok(!/<img/i.test(c.html), "no image anywhere in the html: an image is its own bulk-mail signal");
+  assert.ok(c.body.includes("Outset — Pick a time. Pay. Done."), "the wordmark and tagline are their own line in the plain text");
+  assert.ok(c.html.includes("<b style=\"color:#222;font-size:14px\">Outset</b>"), "the html footer carries the Outset wordmark");
+  assert.ok(c.html.includes("Pick a time. Pay. Done."), "the html footer carries the tagline");
+  // The wordmark and "Terms" used to be concatenated with no space or break between them ("OutsetTerms").
+  assert.ok(!/Outset<\/b>\s*<a/.test(c.html) && !c.html.includes(">Outset</b><a"), "the wordmark is never glued directly to the terms link");
+  const img = /<img[^>]*>/.exec(c.html);
+  assert.ok(img, "the html footer carries the actual logo image, not just the text wordmark");
+  assert.ok(img![0].includes('alt="Outset"'), "the logo image has alt text");
+  assert.ok(img![0].includes('width="28"') && img![0].includes('height="28"'), "the logo is a small mark, not a banner");
 });
 
 test("the mail still carries the claim link, the take-it-down link and a way to stop", () => {
