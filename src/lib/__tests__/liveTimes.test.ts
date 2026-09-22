@@ -158,6 +158,15 @@ test("a read that covered only part of the shop does not speak for the whole for
   assert.equal(liveEmptyNote(read, "2026-09-20"), "No departures on this date. Pick another day.", "two of five activities asked cannot close the shop");
 });
 
+test("a date with no start times is not read out as sold when the shop simply has nothing on", () => {
+  const here = dirname(fileURLToPath(import.meta.url));
+  const src = readFileSync(join(here, "../../components/booking/SlotCalendar.tsx"), "utf8");
+  // Now that a vendor's empty answer stands, a shop with an empty fortnight has every date of it disabled,
+  // and a screen reader was calling all fourteen "booked out".
+  assert.ok(!src.includes("booked out"), "a date with nothing on it has not necessarily sold out");
+  assert.ok(src.includes("nothing open"), "the grid still says why a date cannot be picked");
+});
+
 test("both pickers call a time short of seats by the same number", () => {
   assert.equal(fewSeats(4), true);
   assert.equal(fewSeats(5), false);

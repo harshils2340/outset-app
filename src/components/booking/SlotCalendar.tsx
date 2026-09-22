@@ -98,6 +98,9 @@ export function SlotCalendar({
             const idx = bookable.get(k);
             const open = idx !== undefined;
             const meta = open && dayMeta ? dayMeta(d) : null;
+            // A date with no start time is as often a day the shop simply has nothing on as one whose seats
+            // have gone, so the label below says nothing is open rather than that it sold: a shop with an
+            // empty fortnight would otherwise have every date of it read out to a screen reader as sold.
             const full = !!meta?.full;
             return (
               <button
@@ -106,7 +109,7 @@ export function SlotCalendar({
                 className={"slotcalday" + (k === selectedKey ? " on" : "") + (k === todayKey ? " today" : "") + (full ? " full" : "")}
                 disabled={!open || full}
                 aria-pressed={k === selectedKey}
-                aria-label={open && meta?.open !== undefined ? d.getDate() + ", " + (full ? "booked out" : meta.open + " open") : undefined}
+                aria-label={open && meta?.open !== undefined ? d.getDate() + ", " + (full ? "nothing open" : meta.open + " open") : undefined}
                 onClick={() => open && !full && onPickDate(idx)}
               >
                 {d.getDate()}
