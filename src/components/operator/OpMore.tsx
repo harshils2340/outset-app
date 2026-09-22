@@ -308,6 +308,10 @@ export function OpSettings() {
       <section className="odcard">
         <div className="odcardhead"><h3>Account</h3></div>
         <div className="odrow">
+          <span className="meta"><b>Need help?</b><small>Something not working, or not sure what a field means? Write to us, we answer by hand.</small></span>
+          <a className="odghost" href={"mailto:hello@onoutset.com?subject=" + encodeURIComponent("Question about " + (p.title || "my listing"))}><Markup html={OD_ICONS.mail} /> Email us</a>
+        </div>
+        <div className="odrow">
           <span className="meta"><b>Log out</b><small>{hasApi() ? "Your listing and bookings stay saved to your account. Sign back in with your email." : "Your edits stay on this device."}</small></span>
           <button type="button" className="odghost" onClick={logout}><Markup html={OD_ICONS.logout} /> Log out</button>
         </div>

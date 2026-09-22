@@ -285,6 +285,15 @@ export function OpSidebar({
                 <Markup html={OD_ICONS.external} />
                 <span>View my listing</span>
               </button>
+              <a
+                className="odmenuitem plain"
+                role="menuitem"
+                href={"mailto:hello@onoutset.com?subject=" + encodeURIComponent("Question about " + (p.title || "my listing"))}
+                onClick={close}
+              >
+                <Markup html={OD_ICONS.mail} />
+                <span>Need help? Email us</span>
+              </a>
               <div className="odmenusep" />
               <button
                 type="button"
