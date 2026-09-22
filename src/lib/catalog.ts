@@ -9,6 +9,7 @@ import { addressOf, streetOf } from "./address";
 import { ownWords } from "./ownWords";
 import { dialPhone, displayPhone } from "./phone";
 import { isPublicHttpUrl } from "./urlSafety";
+import { stripMarkdown } from "./markdown";
 
 /** The crawler's own `src` field, always meant to be the operator's domain, as an https URL, or "" when it is
  *  not a safe one to link to. A leading "//" is refused outright rather than resolved: prepending "https://"
@@ -476,12 +477,14 @@ export type ListingFacts = {
 };
 
 function guestLine(raw: string): string {
-  const cleaned = raw
+  // The markdown comes out first, so the fallback below is the line's own words and never the syntax again.
+  const plain = stripMarkdown(raw);
+  const cleaned = plain
     .replace(/\s*[-–—,]\s*we'?ll (ask|confirm|get)[^.]*\.?/gi, "")
     .replace(/\s+/g, " ")
     .trim()
     .replace(/[.,;]+$/g, "");
-  if (!cleaned) return raw.trim();
+  if (!cleaned) return plain.trim();
   return /[.!?]$/.test(cleaned) ? cleaned : cleaned + ".";
 }
 
@@ -516,7 +519,7 @@ export function listingFacts(item: Unclaimed): ListingFacts {
 
   if (item.extraNote) {
     // Policy notes arrive as several sentences joined with " · ". Each one gets its own bullet.
-    const bits = item.extraNote.split(/\s+·\s+/).map((b) => b.trim()).filter(Boolean);
+    const bits = item.extraNote.split(/\s+·\s+/).map((b) => stripMarkdown(b.trim())).filter(Boolean);
     const leftovers: string[] = [];
     for (const bit of bits) {
       const kind = classify(bit);
@@ -621,7 +624,7 @@ function deShout(text: string): string {
 }
 
 export function plainWords(text: string): string {
-  let out = decodeEntities(text);
+  let out = stripMarkdown(decodeEntities(text));
   for (const [re, word] of GLOSSARY) out = out.replace(re, word);
   return deShout(out).replace(/\s+/g, " ").trim();
 }

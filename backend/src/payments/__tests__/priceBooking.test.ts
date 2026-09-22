@@ -112,3 +112,42 @@ test("a scraped unit naming a thing is charged once, and an unknown one still fa
   const unknown = [{ name: "Adult ticket", detail: "Standard", price: 20, per: "/wristband" }];
   assert.equal(priceBooking(unknown, [], "Adult ticket", "Standard", 3, [])?.subtotal, 60);
 });
+
+/**
+ * Extras are found by the name the guest's page sent, matched on letters and digits alone, so two of them
+ * whose names differ only in punctuation are one name here. 18 shipped listings carry such a pair: an art
+ * museum charges $5 for a photo scan under 200 DPI and $15 for one over it, and a pool charges $35 for one
+ * extra lifeguard on one row and $70 on another. The first row won whichever the guest had ticked, so a guest
+ * shown $35 was charged $70. The total their page showed says which they meant, the same way it says which
+ * tier, and the choice is still only ever among the prices that listing publishes for that name.
+ */
+
+const SCAN = [{ name: "Photo scan", detail: "Standard", price: 20 }];
+const DPI = [
+  { name: "Digital photo scan < 200 DPI", detail: "", price: 5 },
+  { name: "Digital photo scan > 200 DPI", detail: "", price: 15 },
+];
+
+test("the extra a guest was shown is the extra they are charged for", () => {
+  // 20 + 15 = 35, plus the $2 service fee.
+  const hi = priceBooking(SCAN, DPI, "Photo scan", "Standard", 1, ["Digital photo scan > 200 DPI"], 35 + serviceFee(35));
+  assert.equal(hi?.subtotal, 35);
+  // 20 + 5 = 25, and the same name matches the first row, which is the one they picked.
+  const lo = priceBooking(SCAN, DPI, "Photo scan", "Standard", 1, ["Digital photo scan < 200 DPI"], 25 + serviceFee(25));
+  assert.equal(lo?.subtotal, 25);
+});
+
+test("with no total to go on the first row carrying the name still wins, so old clients are unchanged", () => {
+  assert.equal(priceBooking(SCAN, DPI, "Photo scan", "Standard", 1, ["Digital photo scan > 200 DPI"])?.subtotal, 25);
+});
+
+test("a total that matches no combination charges the first row, never nothing", () => {
+  assert.equal(priceBooking(SCAN, DPI, "Photo scan", "Standard", 1, ["Digital photo scan > 200 DPI"], 999)?.subtotal, 25);
+});
+
+test("an unnamed extra is still no charge, and a tier and an extra are resolved together", () => {
+  assert.equal(priceBooking(SCAN, DPI, "Photo scan", "Standard", 1, ["Gift wrap"])?.subtotal, 20);
+  // Two tiers sharing a label and two extras sharing a name: 19 for the adult plus 15 for the big scan.
+  const both = priceBooking(TIERS, DPI, "Sunset sail", "2 hours", 1, ["Digital photo scan > 200 DPI"], 34 + serviceFee(34));
+  assert.equal(both?.subtotal, 34);
+});

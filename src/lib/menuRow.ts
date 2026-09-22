@@ -67,10 +67,23 @@ const INVISIBLE = /[​-‏‪-‮⁠﻿-]/g;
  */
 const ROW_PHONE = /\s*(?:\+?1[\s.-])?(?:\(\d{3}\)\s*|\d{3}[\s.-])\d{3}[\s.-]\d{4}(?!\d)/g;
 
+/**
+ * A bracket the price was taken out of. An add-on is read off the page as "<words> $<price>", so a shop that
+ * printed the money inside brackets leaves the opening one behind: "Digital photo package ($249)" is stored as
+ * "Digital photo package (" and "S'mores kit (additional $5)" as "S'mores kit (additional". 120 shipped rows
+ * end on one, and it is the row's real name in front of it.
+ *
+ * The bracket goes with at most one short word behind it, and only when nothing closes it, so a row that
+ * brackets something of its own keeps it ("Four (4) 50-minute Private Pilates Lessons").
+ */
+const OPEN_TAIL = /\s*[([{]\s*[A-Za-z]{0,12}\s*$/;
+const unclosed = (s: string) => (s.match(/[([{]/g) || []).length > (s.match(/[)\]}]/g) || []).length;
+const closeOpenBracket = (s: string) => (unclosed(s) ? s.replace(OPEN_TAIL, "").trim() : s);
+
 /** A row name as a guest should read it, with a half-cut sentence's trailing word taken off. */
 export function tidyRowName(raw: string): string {
   const name = raw.replace(INVISIBLE, "").trim();
-  let cut = name
+  let cut = closeOpenBracket(name)
     .replace(ROW_PHONE, " ")
     .replace(NAV_ARROW_HEAD, "")
     .replace(NAV_ARROW_TAIL, "")
@@ -99,15 +112,46 @@ export function bookableRow(name: string, price: number | null | undefined): boo
   return true;
 }
 
+/**
+ * The front of a sentence the price was cut out of, which is what an add-on row is when it is not one.
+ *
+ * Add-ons are not read off a menu the way services are. The crawl keeps any line on the shop's own page that
+ * ends in money and splits it at the dollar sign, so every sentence about a charge becomes a row a guest can
+ * tick: "Gazebo sites are an additional $5" stores as "Gazebo sites are an additional", "Lost or damaged bikes
+ * will incur a cost of $1,000" as "Lost or damaged bikes will incur a cost of", and "This internship includes a
+ * stipend of $3,000" the same way. 358 of the 3,825 shipped add-ons, one in eight, are one of those, and the
+ * booking box drew each as a tickbox beside its own price: a guest could add "Lost or damaged bikes will incur
+ * a cost of" to their bill for $1,000.
+ *
+ * A row that stops on the word before the money is not the name of a thing, and there is nothing honest to
+ * rename it to (its front half is a penalty, an order minimum or a job advert as often as an extra), so it is
+ * dropped, the same as the archive rows above. Only add-ons are read this way: a service row's own trailing
+ * word is handled by `DANGLING_WORD`, which keeps the row, and there are 3 of these among 76,279 options.
+ *
+ * "Session A", "Package A" and "Dock A" are labels, not a cut article, so a capital A only counts in a
+ * sentence long enough to be one and never straight after "&" ("Live Guided House Tour w/ Q & A").
+ */
+const CUT_TAIL = /(?:^|[\s*•·–\-([{])(?:additional|are|is|was|were|of|to|and|or|be|each|with|per|at|from|for|by|than|into)$/i;
+const CUT_ARTICLE = /\s(?:a|an|the)$/;
+
+export function bookableAddon(name: string): boolean {
+  const n = closeOpenBracket((name || "").replace(INVISIBLE, "").trim());
+  if (n.length < 2) return false;
+  if (CUT_TAIL.test(n) || CUT_ARTICLE.test(n)) return false;
+  const words = n.split(/\s+/);
+  const last = words[words.length - 1];
+  return !(words.length >= 5 && /^(?:A|An|The)$/.test(last) && words[words.length - 2] !== "&");
+}
+
 type Row = { name: string; price: number | null };
 type Tier = { price: number | null; optionIdx: number };
 type Grouped = { name: string; variants: Tier[] };
 
 /**
- * One listing's menu as a guest should see it: rows that are not services dropped, half-cut names tidied, and
- * every `optionIdx` re-pointed at the option it named before. `options` and `services` are one fact held in two
- * lists (see `hydrateItem`), so filtering either on its own would leave a tier pointing at the wrong trip or
- * past the end of the list.
+ * One listing's menu as a guest should see it: rows that are not services dropped, add-ons that are a sentence
+ * about money rather than a thing dropped with them, half-cut names tidied, and every `optionIdx` re-pointed at
+ * the option it named before. `options` and `services` are one fact held in two lists (see `hydrateItem`), so
+ * filtering either on its own would leave a tier pointing at the wrong trip or past the end of the list.
  */
 export function bookableMenu<T extends { options?: Row[]; services?: Grouped[]; addons?: { name: string }[] }>(item: T): T {
   const options = item.options || [];
@@ -117,9 +161,10 @@ export function bookableMenu<T extends { options?: Row[]; services?: Grouped[]; 
   const addons = item.addons || [];
   const keep: number[] = [];
   for (let i = 0; i < options.length; i++) if (bookableRow(options[i].name, options[i].price)) keep.push(i);
+  const keptAddons = addons.filter((a) => bookableAddon(a.name));
   const renamed = (rows: { name: string }[]) => rows.some((r) => tidyRowName(r.name) !== r.name);
   // Most of the catalog is already clean, and this runs over every record the app loads, so leave those alone.
-  if (keep.length === options.length && !renamed(options) && !renamed(services) && !renamed(addons)) return item;
+  if (keep.length === options.length && keptAddons.length === addons.length && !renamed(options) && !renamed(services) && !renamed(addons)) return item;
 
   const moved = new Map(keep.map((from, to) => [from, to]));
   const nextOptions = keep.map((i) => ({ ...options[i], name: tidyRowName(options[i].name) }));
@@ -132,6 +177,6 @@ export function bookableMenu<T extends { options?: Row[]; services?: Grouped[]; 
     ...item,
     options: nextOptions,
     ...(item.services ? { services: nextServices } : {}),
-    ...(item.addons ? { addons: addons.map((a) => ({ ...a, name: tidyRowName(a.name) })) } : {}),
+    ...(item.addons ? { addons: keptAddons.map((a) => ({ ...a, name: tidyRowName(a.name) })) } : {}),
   };
 }

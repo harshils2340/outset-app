@@ -3423,6 +3423,209 @@ after its open, so a wrapped night reads as a day the site says nothing about ra
   with no catalog, the "All requests" link parked off screen on a phone, five category accents under the AA
   floor, and no live vendor having answered anything from this address.
 
+## 22 September 2026, fifty-fourth run (09:15 to 11:05 UTC)
+
+**Chosen, and why.** Two commits landed after the fifty-third run's entry, `feda5a21` and `c3ac54f9`, and both
+touch `src/`, so the brief's rule (b) applies and the rehearsal was run, on `main` first (53 passed, 0 failed,
+so `main` was green before this run touched anything) and again at the end. `feda5a21` rewrote the first load
+of a claim link a few hours ago, which makes claiming the one area Coverage calls verified that a commit has
+since changed, and it is the least covered path in the repo by construction: the rehearsal enters the
+dashboard through the test bypass, so a real `#claim=<id>&k=<token>` link has never been opened in a browser
+here. So this run went there, and then at the question that commit raises for every other link we mail: what
+else changes when a link is merely opened. A v2 link minted with the rehearsal's own `CLAIM_SECRET` was driven
+in Chromium against the rehearsal's API and site, 18 checks over three scenarios, kept in the scratchpad
+rather than the repo.
+
+**Found and fixed.**
+
+- **A claim link's token left the address bar before the owner had claimed anything** (`cd995fa2`). The confirm
+  screen that now stands between a claim link and a recorded claim went up with the token already stripped
+  out of the URL: `tick()` cleaned the hash the moment the token checked out, which is one screen too early
+  now that nothing is recorded until a person clicks. Driven in a browser: an owner who reloads that screen,
+  or comes back to a tab the phone discarded, lands on the "Your bookings, the way they come in" pitch for a
+  listing nobody has claimed, with the one-click way in gone from their own address bar and only the email to
+  go back to. `AppProvider` already says the claim hash "should survive a refresh until the claim is done",
+  which is now what happens: one `cleanClaimHash()` runs after the claim is recorded, on the click and on a
+  return visit through the link alike. The same screen drew its card from `picked`, which waits on a catalog
+  version bump rather than on the record the confirm is about, so it could ask an owner to hand over a
+  business it did not name; it draws `pendingClaim.u` now.
+- **Opening the unsubscribe link took the shop off the list, before anybody asked** (`170fdc84`). The same
+  mistake as the claim link, one link away in the same email: `GET /unsubscribe` recorded the unsubscribe and
+  then said "You are unsubscribed", so anything that opens that URL takes the address off the list, a
+  link-safety scanner and a recipient clicking to see what the link says alike. The cost is quieter than a
+  claimed listing and worse: the shop lands on the suppression list, no outreach reaches it again, and
+  neither side ever learns why. The GET asks now, names the address, and carries one button; `POST` is
+  untouched, so Gmail one-click and the site's own page keep working, and one click still takes an address
+  off, which is what CAN-SPAM and CASL ask for. The address is escaped into the page, because the token
+  carries it as base64 and a crafted link decodes to whatever it likes.
+
+**Checked and sound.** Every other link our mail puts in front of a scanner: the booking and decision emails
+carry only listing URLs, the claim email's other link is the dashboard, `#remove=` in the outreach email only
+opens a screen (`removeId`, nothing written), and `#paid=` is Stripe's own return and never emailed. Sign-in
+is a typed code, not a magic link. The confirm screen itself, driven: a load claims nothing and does not open
+the dashboard, the click records the claim with the owner off the link and links that address for sign-in,
+"Not my business" leaves with the hash cleared and nothing claimed, and a forwarded link opened on a second
+device with a different address still asks, still lets that person in, records them in `alsoClaimedBy`, and
+warns them in the dashboard that somebody claimed it first. `POST /claims/:id/exchange` records no claim, so
+the scanner that walked in tonight got a session and nothing else.
+
+**Green after the fixes.** 666 app tests (up from 662), 625 backend (up from 621), all three type checks clean
+(`-p .` at the root still checks nothing, `-p tsconfig.app.json` is the one that checks the app), and the
+rehearsal at 53 of 53 both times.
+
+**Needs Harshil.**
+
+- **`public/unsubscribe.html` is still the half of this that a shop actually meets.** `unsubPageUrl` puts
+  `https://onoutset.com/unsubscribe.html?t=...` in every outreach email, and that page POSTs the API on load
+  with no click at all, so a gateway that renders JavaScript, or a recipient who opens the link to read it,
+  is opted out silently and permanently. The fix is the shape the API now has: draw a button, POST on click,
+  three lines in that file. It was left alone because `public/` is outside the paths this run may change.
+- **Last night's five still stand:** the listing page reading three of the ten vendors, `outset-api` building
+  with no catalog, the "All requests" link parked off screen on a phone, five category accents under the AA
+  floor, and no live vendor having answered anything from this address. The fifty-third run's two cancellation
+  questions stand too.
+
+## 22 September 2026, fifty-fifth run (10:15 to 11:50 UTC)
+
+**Chosen, and why.** No commit landed after the fifty-fourth run's entry, and that entry reports the
+rehearsal green at 53 of 53, so neither of the brief's two reasons to re-run it applied and it was skipped at
+the start; the type checks and both unit suites were run instead, clean at 666 app and 625 backend. Every area
+the brief lists is already under Coverage, so rather than re-read one, this run went looking for a guest-facing
+fact no sweep had ever touched. Counting what the 59,125 shipped detail files actually carry found four:
+`ytVideos`, `videoEmbed`, `waiverUrl` and `season`. The first two turned out sound. The season did not, and
+pulling on it led to two larger faults in how a shop's own prose reaches a guest at all.
+
+**Found and fixed.**
+
+- **A seasonal shop's season vanished from its desktop page and became a heading on a phone** (`1b2b12a6`).
+  The desktop put it in the grey run of facts under the subtitle and dropped anything over 32 characters, so
+  491 of the 1,144 shops that publish a season said nothing about it there: a guest can pick a January date on
+  a charter whose own site reads "May 16 - October 31" and never be told. The phone sheet had the opposite
+  fault and printed whatever it was given as the bold title of a key-fact row, so the same shops turned a
+  228-character paragraph into a heading with "Season" in small grey type under it. Both now read one rule
+  (`seasonFact`): a short phrase is a fact and sits where a fact goes, which is 161 more shops than the old cap
+  allowed, and a sentence is printed as the sentence it is, under a label.
+
+- **Markdown a shop wrote reached the guest as markdown** (`2f487403`), on the listing page, the phone sheet
+  and the booking confirmation alike. Nothing between the crawl and the page took the syntax back out, so 54
+  lines across the catalog shipped with it in: Big M Marina offered "FAQs [Read our full list of FAQs
+  here.](https://www.rental.bigmmarina.com/faqs)", Disney's Boat Rentals gave its check-in address as "Check in
+  Location## [2200 Lakeshore Blvd, Lakeport CA, 95453](https://share.google/...)", and Holoholo Charters' whole
+  arrival note read "Connect with Holoholo Charters [![TikTok](https://". `stripMarkdown` is the rule and both
+  funnels crawled prose passes through call it. A link keeps its words, an image none, a heading marker goes,
+  and so does a bracket the 400-character cut left open. A closed bracket is untouched: 20 lines use one for a
+  conversion ("-15F [-26C]"), and a hash that numbers a slip is not a heading. 54 lines before, 0 after.
+
+- **A shop's own prose was cut mid-word on every budget but the landing pages'** (`b1d15869`). 762 listings
+  ship an extraNote cut at 700 characters inside a word ("...another trip of equal or greater valu"), 65 a
+  cancellation policy cut at 400, 4 an FAQ answer, 3 an arrival note. That line is the last bullet of "Who can
+  go" or "Safety and waiver", and the arrival note is on the confirmation. `listingPages.ts` already owned the
+  right rule, written when `slice(0, 300)` cut 3,049 landing pages the same way; it moves to `lib/clip.ts` and
+  now serves every budget. Its missing guard was a third bug: three places hand-rolled the cut as
+  `slice(0, n).replace(/\s+\S*$/, "")` and ran the replace unconditionally, so every vendor description
+  shorter than its budget lost its last word. Dogpatch Paddle publishes "Beginner, Youth, Performance, and Dog
+  Friendly Rentals" and we shipped it without "Rentals". The Peek test had frozen that output as the
+  expectation, so it is corrected with the reason beside it.
+
+**Checked and sound.** Videos a guest is shown: no shipped listing carries a `ytVideos` entry at all, and all
+1,148 `videoEmbed` URLs are proper `youtube.com/embed/` or `player.vimeo.com/video/` addresses, so nothing
+renders as a refused frame today. Every one of the 1,844 waiver links is an absolute public http URL that
+`safeHttpUrl` accepts.
+
+**Green after the fixes.** 680 app tests (up from 666), 631 backend (up from 625), all three type checks
+clean, and the rehearsal run at the end at 53 of 53, against a local Postgres and the Chromium on disk.
+
+**Needs Harshil.**
+
+- **766 of the truncations are waiting on a sync, not a crawl.** The extraNote and FAQ cuts are assembled at
+  sync time, so `npm run sync` puts those listings right with no crawling at all. The 65 cancellation and 3
+  arrival cuts are baked into stored facts and only a re-enrich of those shops clears them.
+- **35 waiver links open a homepage, not a waiver.** A guest is told "Opens the operator's waiver form" and 7
+  of them land on a waiver vendor's own marketing site (`smartwaiver.com`, `gymwaiver.com`, `waiversign.com`),
+  1 on a different business altogether (Buffalo Waterfront's points at `longboardsbeach.com`), and the rest on
+  the shop's own front page with no anchor. `contacts.ts` already refuses a bare SmartWaiver `/w/`, so the
+  precedent is there, but telling a shop's own waiver portal from its homepage is a supply judgement, not a
+  rule I could write honestly. Worth a look at the list.
+- **Two latent inconsistencies, 0 listings today.** Otto says "the link on this page lets you sign before you
+  arrive" and the phone's key facts say "Sign the waiver online" on `waiverUrl` being set, while the link
+  itself is gated on `safeHttpUrl`, so a shop with an unusable one would be promised a link the page does not
+  draw. And `isSafeEmbedUrl` checks an embed's host but not its path, so a `youtube.com/watch?v=` URL would go
+  into an iframe YouTube refuses to render.
+- **Last night's stand:** `public/unsubscribe.html` still POSTs on load, the listing page still reads three of
+  the ten vendors, `outset-api` still builds with no catalog, the "All requests" link is still parked off
+  screen on a phone, five category accents are still under the AA floor, and no live vendor has answered
+  anything from this address.
+
+## 22 September 2026, fifty-sixth run (11:10 to 11:50 UTC)
+
+**Chosen, and why.** No commit landed after the fifty-fifth run's entry and that entry reports the rehearsal
+green at 53 of 53, so neither of the brief's two reasons to re-run it up front applied and it was skipped at
+the start. The container was a fresh checkout with no `node_modules` on either side, which is the fifty-second
+run's standing Needs Harshil: both installs first, then the type checks and both suites, clean at 680 app and
+631 backend. Every area the brief lists is under Coverage already, so this run counted the shipped catalog for
+a guest-facing field no sweep had driven and found one: `addons`, which is the tickbox column of the booking
+box and the one menu list read out of a shop's prose rather than off its menu. Pulling on it led into the
+money path twice.
+
+**Found and fixed.**
+
+- **The add-ons box offered a guest half a sentence with a price beside it** (`02cdfc65`). Add-ons are not read
+  off a menu the way services are: the crawl keeps any line on the shop's own page that ends in money and
+  splits it at the dollar sign, so every sentence about a charge became a row a guest could tick and be billed
+  for. 365 of the 3,825 shipped add-ons, one in eight, across 431 listings: "Lost or damaged bikes will incur a
+  cost of" at $1,000, "This internship includes a stipend of" at $3,000, "Get Delivery with orders of" at $50
+  where the $50 is an order minimum and not a price, "5 Holbrook, Tips were reported at an average of" at $100.
+  There is nothing honest to rename those to, because the half in front of the money is a penalty, a minimum or
+  a job advert as often as an extra, so `bookableAddon` drops them the way the archive rows beside it are
+  dropped. Only add-ons are read out of whole sentences, so only add-ons are dropped for it: a service row's own
+  trailing word is still trimmed and the row kept, which is what the 93 shops with "Tickets are" on their menu
+  need, and the rule takes 3 rows out of 76,279 options. 120 more rows were a real name wearing the bracket its
+  price came out of ("Digital photo package (", "S'mores kit (additional"); those keep their name.
+
+- **A booking was priced from the file behind the menu, not the menu** (`0827fda4`). The app runs `bookableMenu`
+  over every record it loads and that rule renames a row as well as dropping one, while the booking route read
+  the crawled file raw. `priceBooking` matches the name the guest sent, so a renamed row matched nothing, and
+  with more than one priced row on the listing there is no single price to fall back on: the booking was stored
+  with no price and no card was charged. A $5,700 private charter at o-napaliriders-com, a $780 pontoon at
+  o-boatelmers-com and a $275 boat tour at o-customboattoursandrentals-com, each filed under the shop's own
+  phone number in the file and without it on the page, and the 38 extras the bracket fix above would have
+  joined to them. Both sides call the one function now.
+
+- **Two extras sharing a name were charged at the first one's price** (`484ea4a3`). Names are matched on letters
+  and digits alone, so "Digital photo scan < 200 DPI" at $5 and "> 200 DPI" at $15 are one name to the server,
+  and a pool's extra lifeguard is $35 on one row and $70 on another. 18 shipped listings carry such a pair, and
+  a guest shown $35 was charged $70. This is the fault two service tiers sharing a label already had, fixed the
+  same way: the guest's own total says which they meant, so the sums the listing's published prices allow are
+  tried against it and the tier and the extras are resolved together. With no total, or one that matches no
+  combination, the first row is charged exactly as before.
+
+**Checked and sound.** Markup left in the words a guest reads, swept again over every prose field now that the
+fifty-fifth run's `stripMarkdown` ships: 96 lines carry a bold marker, 254 a blockquote and 145 a rule, all of
+them inside a service description, and 10 rows carry an HTML entity in their name. Every one reaches the page
+through `plainWords` or `tidyLine`, which decode and strip, so none of it is drawn. The 24 review authors
+stored as `<strong>Gerald E.` are already refused by `shownReviews`. Running add-on names through `plainWords`
+as well was measured and dropped: it would change 14 of 3,460 and make several worse ("Jet Ski" to "Jet ski").
+
+**Green after the fixes.** 686 app tests (up from 680), 640 backend (up from 631), all three type checks clean,
+and the rehearsal run at the end at 53 of 53 against a local Postgres 16 cluster and the Chromium on disk.
+
+**Needs Harshil.**
+
+- **A shop's "from" price can be its cheapest anything.** `from` is the minimum over every priced option, so
+  the Detroit Zoo's card reads "From $2" for a stingray touch, Country Club Lanes reads "From $3" for shoe
+  rental, and Bell Harbor Marina reads "From $2.15", which is a moorage rate per foot of boat. Big Choice
+  Brewery's whole menu is food, so it advertises a $2.99 side salad. Whether a card's headline should be the
+  cheapest bookable experience rather than the cheapest row is a product call, not a rule I could write.
+- **8 or 9 shipped prices are a discount read as a price.** HopFusion Ale Works offers "Monday-Thursday Happy
+  Hour" at $2 off a pour and we sell it at $2; Cow Key Marina and Key West Boat Rentals sell a six hour
+  do-it-all package at $20 because the page said "$20 OFF When You Book Direct"; Heliflights sells a private
+  helicopter tour at $65 off. Telling a discount from a price needs the page the number came off, which only a
+  re-crawl has.
+- **Last night's stand:** `public/unsubscribe.html` still POSTs on load, the listing page still reads three of
+  the ten vendors, `outset-api` still builds with no catalog, the "All requests" link is still parked off
+  screen on a phone, five category accents are still under the AA floor, and no live vendor has answered
+  anything from this address.
+
 ## Coverage
 
 **Verified so far.** The name a guest reads: the business name on all 59,125 shipped listings, against the
@@ -3816,6 +4019,31 @@ whose clock cannot be parsed, a price of nothing, and two trips sharing a start.
 that calendar for, guest and operator alike. Which day Otto names a departure on, against the ten days the
 booking window covers.
 
+A real claim link opened in a browser, which the rehearsal cannot do at all because it enters through the test
+bypass: what a first load records (nothing), what the confirm screen names, what a reload of that screen leaves
+the owner with, what the click records and links for sign-in, where the token in the address bar goes and when,
+"Not my business", and a forwarded link opened on a second device with another address on it. Every link our own
+mail puts in front of a link-safety scanner, against what each one changes when it is only opened: the claim
+link, the unsubscribe link, `#remove=`, `#paid=`, and the listing and dashboard URLs.
+
+The four guest-facing facts no sweep had touched, found by counting what the 59,125 shipped detail files
+actually carry. The season a shop publishes, over all 1,144 that publish one, on both surfaces that print it:
+which are a phrase and which a sentence, and what each surface did with the 491 that are neither short nor
+silent. The videos: all 1,148 `videoEmbed` addresses against the hosts and the paths an iframe will render,
+and `ytVideos`, which no shipped listing carries. The waiver link, over all 1,844 that carry one: the scheme,
+the host, the path, and which of them open a form rather than a homepage. Markdown in the words a guest
+reads, over every prose field in the catalog and through both funnels that carry it to a page: a link, an
+image, a heading marker, a bracket the crawl's cut left open, and the closed brackets that are conversions
+rather than links. Every character budget a shop's prose is cut to, on both sides: which cuts land mid-word,
+which are assembled at sync time and which are baked into a stored fact, and the unguarded word-boundary
+trim that was eating the last word of every description shorter than its budget.
+
+The add-ons a guest can tick, over all 3,825 shipped: which of them are a thing and which are the front of a
+sentence the price was cut out of, the bracket a price was printed inside, and every name held against the
+menu the server prices from. That the menu the booking box offers and the menu `priceBooking` charges from are
+one menu, on every priced row of all 59,125 listings and on every extra beside them, and that two extras
+sharing a name are told apart by the guest's own total the way two tiers already were.
+
 **Not yet checked.** Rezdy's reader end to end, which needs a hand-rolled HTTP/2 session because Cloudflare
 blocks `fetch` on every `*.rezdy.com` subdomain; its price helpers and its window rule are tested directly
 instead. Whether the concierge's
@@ -3952,4 +4180,20 @@ index carries no link at all for those seven shops (see that run's Needs Harshil
 `liveTimes.ts` should reach Otto on its own rather than by whoever writes it remembering to look (see the
 fifty-second run's Needs Harshil). Whether a fresh checkout should install the root `node_modules` the app
 suite needs, or the rehearsal check for them, since without them eight test files are red for no reason (see
-that run's Needs Harshil).
+that run's Needs Harshil). Whether `public/unsubscribe.html` should keep POSTing the API on load: it is the
+unsubscribe link every outreach email carries and the last page load in our mail that changes something by
+itself, and it sits outside the paths an overnight run may change (see the fifty-fourth run's Needs Harshil).
+The claim screen's own bad and expired states as a browser draws them, rather than at the token level where
+they are covered. Which of the 35 waiver links that
+open a homepage rather than a form are a shop's own waiver portal and which are a vendor's marketing site,
+which is a supply judgement rather than a rule (see this run's Needs Harshil). Whether the surfaces that
+promise a waiver link should read the same gate the link itself reads, and whether an embed URL's path should
+be checked as well as its host: both are latent, 0 shipped listings today. Whether the 766 listings whose
+prose a sync would now cut properly should have that sync run before anything else on this list. Whether a
+card's "from" price should be the cheapest bookable experience rather than the cheapest row of any kind: the
+Detroit Zoo advertises $2 for a stingray touch, a bowling alley $3 for shoe rental and a marina $2.15, which
+is a rate per foot of boat (see this run's Needs Harshil). Whether a number the page stated as a discount
+should ever be a price: 8 shipped rows sell a happy hour at "$2 off" and a six hour package at "$20 OFF when
+you book direct" (see this run's Needs Harshil). Whether the sync should keep an add-on whose name is a
+penalty or an order minimum rather than an extra, which the drop rule now takes with the cut sentences it was
+written for.
