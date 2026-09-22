@@ -3347,6 +3347,82 @@ steps with 0 failed on both runs.
   with no catalog, the "All requests" link parked off screen on a phone, five category accents under the AA
   floor, and no live vendor having answered anything from this address.
 
+## 22 September 2026, fifty-third run (08:15 to 09:35 UTC)
+
+**Chosen, and why.** Every area the brief names is down as verified, so the hunt went to Coverage's open
+list and took the item there shaped like a defect a customer feels rather than a question: which clause on a
+policy owns the number the Free cancellation badge prints. Five commits had landed since the fifty-second
+run's entry and all of them touch `src/`, so the brief's rule (b) applies and the rehearsal was run too. It
+turned out to be red on `main` already, which is the first thing below. A sixth, the claim-outreach email
+rewrite, arrived mid-run and this work is rebased on it, with both suites and the rehearsal run again after. The fifty-second run's note about
+`node_modules` is confirmed: a fresh checkout has none at either level, and `npm install` at the root as well
+as in `backend/` is the first thing a run has to do.
+
+**Found and fixed.**
+
+- **The rehearsal read a hidden listing's phone booking box off the desktop page** (`784ab5b1`, `97fcf17c`).
+  `main` has been red since `4d9cd321` removed "Open the phone app" from the desktop user menu last night.
+  Step (c2b) reached the phone frame by clicking that button, and with the button gone the click found
+  nothing and the flow stayed on the wide site. The step went on passing anyway: the desktop page also says
+  "This listing is hidden right now" and has no `.airreserve` button on it at all, so both halves of the
+  check were satisfied by the wrong page. Only (z), which collects every control a helper reached for and did
+  not find, noticed. A narrow window is how a phone reaches the frame now, and because `web` is decided once
+  at mount the size is set before the page loads, from the home rather than the listing's own hash: the step
+  before it is already on `#o=<id>`, and navigating to the same URL is a same-document navigation that never
+  remounts the app. The frame itself is asserted now, so a step that never leaves the wide site says so.
+- **A listing's Free cancellation badge printed the window the shop charges in full at** (`e0bce814`). The
+  badge is a promise about money, and its number was the first "N hours" or "N days" anywhere in the policy,
+  whichever clause it sat in and whichever side of that clause's line it was on. 141 of the 1,303 shipped
+  badges took it from a clause that was not the promise, and the damaging direction is the common one:
+  o-archangelcharters-com advertised 24 hours off "Charters cancelled within 24 hours will result in a
+  forfeited deposit" while its refund needs 48, o-bigtexboatrentals-com advertised 9 days off a $100 fee line
+  while its full refund needs 15, and o-blazenh-com read its window off a $15 late-cancellation penalty. The
+  promise owns the number now, and inside its sentence the one before it wins, because that is how a shop
+  writes a rate card. Where no promise names one, the first window a guest could actually cancel in does, one
+  claim at a time, so o-boatnaples-com's "you will be notified 2 hours prior to departure, with a full
+  refund" is read as the captain telling the guest rather than a window to cancel in. A window sold with a
+  protection plan is not the free one. Weeks and months are read now, as are "15+ Days" and "3 or more days".
+  `freeCancelBadge` also re-reads the text rather than trusting the stored `fc`, which its own comment
+  already claimed it did: it only ever reached the fresh reading for the 22 listings carrying no `fc`, so
+  every later fix to this rule stopped at the catalog and waited on a sync to reach a guest. Over the whole
+  shipped catalog no badge appears or disappears, 58 gain a window they did not have, 79 change the number,
+  and 50 fall back to a bare "Free cancellation" rather than state one the policy does not support. Twenty
+  eight changed listings were read by hand against their own policy text before this was committed.
+- **A listing's own page promised a cancellation window its app page does not** (`5e2205b4`). The 11,545
+  static pages under `/l/` print their cancellation line straight off the stored `fc` and never went through
+  the badge rule at all, so one of them advertises free cancellation the app strips outright, and after the
+  fix above they would have disagreed with the app on 171 of the 1,237 pages that take their line from `fc`.
+  The page reads the same rule now and falls back to the shop's own policy text where there is no promise.
+
+**Checked and sound.** Every other reader of `fc`: the feed card, the listing page, the booking sheet, the
+venue row and the "Free cancellation" filter all go through `freeCancelBadge`, and a claimed shop's own typed
+policy goes through the same `freeCancel`, so one rule now decides the badge everywhere. Otto answers a
+cancellation question from the shop's own policy line first and only falls back to `fc` when there is no text
+to read, which is right. An unclaimed shop open past midnight: `statedDay` refuses a day whose close is not
+after its open, so a wrapped night reads as a day the site says nothing about rather than a closed one, and
+`startTimesOn` caps the tail at midnight on purpose.
+
+**Green after the fixes.** 662 app tests (up from 655), 621 backend (up from 619, one of them the outreach rewrite's own), both type checks clean
+(`-p .` at the root still checks nothing, `-p tsconfig.app.json` is the one that checks the app), and
+53 rehearsal steps with 0 failed.
+
+**Needs Harshil.**
+
+- **The badge's existence is a separate rule from its window, and it is looser.** o-hottubboats-com publishes
+  "Cancelations within 48 hours forfeit deposit and full charge applies Operator may cancel within 2 hours of
+  rental for bad weather with full refund" and carries the badge: the only refund named is the operator's own
+  weather call, but `onlyOperatorCancels` needs an "if" or a "due to" in front of it and this shop states it
+  flat. Teaching it to read "Operator may cancel" was tried and reverted here: it drops three badges that are
+  real (o-broadmoor-com's "48-hour cancellation policy for full refund", o-sailsurfadventure-com's "We offer
+  free cancellation within 48 hours of booking", o-windroseoutdoor-com's "we require at least 24 hours
+  notice") for the one it fixes. Worth a night of its own rather than a guess.
+- **"We have a 24 hour cancellation policy" reads as the shop's own call.** `THEIRS` matches `we` within 20
+  characters of `cancel`, which o-charlestonsupsafaris-com's own sentence satisfies, so its window is dropped
+  rather than printed. That regex is load-bearing for `onlyOperatorCancels` and was left alone.
+- **Last night's five still stand:** the listing page reading three of the ten vendors, `outset-api` building
+  with no catalog, the "All requests" link parked off screen on a phone, five category accents under the AA
+  floor, and no live vendor having answered anything from this address.
+
 ## Coverage
 
 **Verified so far.** The name a guest reads: the business name on all 59,125 shipped listings, against the
@@ -3417,6 +3493,14 @@ list. What a claimed shop advertises once it empties, unprices or reprices its o
 rails, the price filter, the price sort and in Otto's answers. The live guest preview beside the editor
 (`OpPreview`), end to end: live edits without a reload, the read-only lock, click-to-edit jumping the editor to
 the right page, and both device sizes. A claimed listing with an empty menu seen from the guest side.
+
+The window the Free cancellation badge promises, over all 1,303 shipped badges: which clause on the policy
+owns the number, which side of that clause's line it sits on, a rate card written as one sentence, a window
+sold with a protection plan, the shop's own weather call and the clock it runs on, and "15+ Days", "3 or more
+days", weeks and months. That the badge a guest reads is re-read from the policy rather than taken from the
+`fc` the sync wrote, and that the static `/l/` page and the app now name the same window for the same shop.
+That every surface drawing the badge, the filter included, and a claimed shop's own typed policy all go
+through one rule.
 
 Otto's scope, both gates driven rather than read, over 400 shipped listings and every answer diffed against
 the old one: what a guest asks this shop in words that also name somebody else's business (a notice period
@@ -3780,9 +3864,11 @@ folding and `variantNote`, which an earlier run read but did not drive in a brow
 output; only the rules behind them are read so far. Whether a GIF should stand in for a video at
 all: 215 still lead a hero, and the rule that would clear them takes real photographs with them (see the
 thirtieth run's Needs Harshil). Whether a fold should keep the largest spelling of a photograph rather than the first: it is the first on
-181 of the 1,251 folds, and the first is what the card already loaded. Which clause on a policy owns the number the Free
-cancellation badge prints, on the 28 listings where the first number in the text is not the one beside the
-refund promise (see this run's Needs Harshil). Whether the listing page should print a rating with no
+181 of the 1,251 folds, and the first is what the card already loaded. Whether a shop that states its own
+cancellation flat rather than as a condition ("Operator may cancel within 2 hours of rental for bad weather
+with full refund") should carry the badge at all, which is the existence rule rather than the window, and
+whether "we have a 24 hour cancellation policy" should read as the shop's own call (see the fifty-third run's
+Needs Harshil for both). Whether the listing page should print a rating with no
 written reviews under it: 6,513 rated listings show one on their card, their confirmation and the compare
 table and none on the page those open, and 1,699 of those clear the Top rated bar with no laurel to show for
 it. The two listings that put the review's headline in the author slot, so a card is signed "Excellent trip".
