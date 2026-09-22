@@ -351,7 +351,11 @@ async function flow(ctx) {
      A narrow window is how a phone reaches the frame now, and `web` is decided once at mount, so the size is
      set before the page is loaded and put back afterwards. */
   await ctx.send("Emulation.setDeviceMetricsOverride", { width: 420, height: 900, deviceScaleFactor: 1, mobile: true });
-  await goto(`${BASE}/#o=${ID}`);
+  // The home, not the listing's own hash: the step above is already on `#o=<id>`, and navigating to the same
+  // URL is a same-document navigation, so the app would never remount and would stay on the wide site.
+  await goto(`${BASE}/`);
+  await until(() => !!document.querySelector("#screen"), 15000);
+  await js((id) => { window.location.hash = "#o=" + id; return "opened the listing"; }, ID);
   await until(() => !!document.querySelector("#screen .airlisting, #screen .reqpad"), 15000);
   await sleep(2000);
   // The frame itself, so that a step which never left the wide site says so rather than reading the desktop page.
