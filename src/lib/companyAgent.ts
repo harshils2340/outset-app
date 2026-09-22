@@ -5,7 +5,8 @@ import { callablePhone } from "./phone";
 import { withoutNoticeWindows } from "./duration";
 import { money } from "./format";
 import { faqText, groupCap, minAge } from "./listingDerive";
-import { clockIn, hourLines, itemWeek, openStateAt, zoneFor, type Week } from "./openNow";
+import { liveRead } from "./liveTimes";
+import { bookableStart, clockIn, hourLines, itemWeek, openStateAt, zoneFor, type Week } from "./openNow";
 import { venueLabel } from "./places";
 import { hasPrice } from "./pricing";
 
@@ -423,14 +424,33 @@ function nextOpenDay(week: Week | null, from: number): { day: number; span: { op
 
 /* ---------- live availability ---------- */
 
-type Slot = { when: string; price?: number; seats?: number; date: string };
+type Slot = { when: string; price?: number; seats?: number; date: string; time: string };
 
+/**
+ * The departures Otto may name, read by the same rules the picker on the same page reads them by.
+ *
+ * `liveRead` is that reader, and Otto used to have its own twelve lines instead. Everything the pickers drop
+ * before a guest sees a chip was reaching Otto's answers: a departure the vendor says has no seats left, a row
+ * whose clock we could not read at all, a price of nothing quoted as "$0", and two trips at one start read out
+ * as two start times when a booking here carries a time and a service, never a vendor departure id.
+ *
+ * `bookableStart` is the other half, and the half a guest notices. The window opens on today, and today's
+ * departures come back whether or not they have left: both pickers cut off everything under an hour out, on
+ * the shop's own clock, which is why nothing is offered for this morning at eight in the evening. Otto had no
+ * clock at all, so it answered "Yes. Next open time is Sunday 9:00 AM" for a boat that sailed eleven hours
+ * ago, beside a picker correctly showing the day as done. Rule 4: never invent an open slot.
+ */
 function liveSlots(ctx: CompanyContext): Slot[] {
-  const days = ctx.live?.live ? ctx.live.days || [] : [];
+  const read = liveRead(ctx.live);
+  if (!read.live) return [];
+  const stillOpen = bookableStart(ctx.item);
   const out: Slot[] = [];
-  // A row marked timeUnknown only says the date is open: its midnight is a placeholder, not a departure, so
-  // Otto would have read out "Monday Sunset Cruise" as a start time. Rule 4: never invent an open slot.
-  for (const d of days) for (const s of d.slots || []) if (!s.timeUnknown) out.push({ when: s.label, date: d.date, price: s.priceCents != null ? s.priceCents / 100 : undefined, seats: s.seatsLeft });
+  for (const [date, chips] of read.chips) {
+    for (const c of chips) if (stillOpen(date, c.time)) out.push({ when: c.label, time: c.time, date, price: c.price, seats: c.seatsLeft });
+  }
+  // The dates arrive in window order and the chips in clock order, but the next open time is too important to
+  // rest on that: "10:00" sorts before "9:00" the moment anything here sorts on a label.
+  out.sort((a, b) => (a.date === b.date ? a.time.localeCompare(b.time) : a.date.localeCompare(b.date)));
   return out;
 }
 
@@ -446,12 +466,17 @@ function liveSlots(ctx: CompanyContext): Slot[] {
  * telling a guest a shop taking bookings on this very page has nothing open, next to a picker offering that
  * shop's own times. Otto cannot see those times, so it says nothing about the window and answers from the
  * published hours, which is what it always did for a claimed shop.
+ *
+ * This asks the calendar, not `liveSlots`, because those are two different questions. A shop whose last
+ * departure of today has left still has a calendar with something in it, and calling that a shut fortnight
+ * would be a worse answer than the one it replaced. A date the vendor says is open and whose clock times we
+ * never read speaks for nobody either, which is the rule `liveEmptyNote` already keeps for the picker.
  */
 function liveWindowEmpty(ctx: CompanyContext): number {
-  const a = ctx.live;
-  if (!a?.live || a.partial || ctx.item.claimed) return 0;
-  const days = (a.days || []).length;
-  return days && !liveSlots(ctx).length ? days : 0;
+  const read = liveRead(ctx.live);
+  if (!read.live || read.partial || read.unread.size || ctx.item.claimed) return 0;
+  const window = read.closed.size + read.chips.size;
+  return window && !read.chips.size ? window : 0;
 }
 
 /**
