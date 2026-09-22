@@ -10,7 +10,7 @@ import { currencyForArea, priceBooking, releaseDate, splitBooking, type PricedOp
 import { mailDecision, mailNewBooking } from "./bookingMail.ts";
 import { slotOpen, weekOf, zoneOf } from "./openSlots.ts";
 import { fmtWhen } from "../lib/emailTemplate.ts";
-import { bookableRow } from "../../../src/lib/menuRow.ts";
+import { bookableMenu } from "../../../src/lib/menuRow.ts";
 
 /**
  * Bookings, one row each in Postgres. A guest's request is written here, the operator gets an email, and the
@@ -280,8 +280,16 @@ bookings.post("/bookings", rateLimit(20, 60 * 60 * 1000), async (c) => {
   // "Past Exhibitions" came priced: $5 at o-anchoragemuseum-org, $3,000 at o-aahmsnj-org. The app stopped
   // offering them (`src/lib/menuRow.ts`), and the server prices from the same menu, so a request naming one
   // now has no price rather than that one. A shop's own published menu is their own words and is untouched.
-  const menu = own("options") ? asList(patch.options) : asList(detail?.options).filter((o) => bookableRow(o.name, o.price));
-  const extras = own("addons") ? asList(patch.addons) : asList(detail?.addons);
+  //
+  // The whole of that rule, not half of it: the app runs `bookableMenu` over every record it loads, which
+  // renames a row as well as dropping it, and `priceBooking` matches the name the guest sent against this
+  // menu. Reading the file raw here meant a row the app had renamed matched nothing, so the booking was
+  // stored with no price and no card was charged: a $5,700 private charter at o-napaliriders-com, a $780
+  // pontoon at o-boatelmers-com and a $275 boat tour at o-customboattoursandrentals-com, each of them named
+  // after the shop's own phone number until the app took it off. Both sides read one rule now.
+  const crawled = bookableMenu({ options: asList(detail?.options), addons: asList(detail?.addons) });
+  const menu = own("options") ? asList(patch.options) : crawled.options;
+  const extras = own("addons") ? asList(patch.addons) : crawled.addons;
   const priced = menu.length ? priceBooking(menu, extras, rec.service, rec.variant, qty, rec.addons, rec.total) : null;
   if (priced && rec.total != null && Math.abs(priced.total - rec.total) > 0.5) console.warn(`[bookings] ${code}: browser total ${rec.total}, listing price ${priced.total}; charging the listing price`);
   // Once the listing has been read, its own menu is the only source of a price. This used to apply only when the
