@@ -3360,7 +3360,7 @@ as in `backend/` is the first thing a run has to do.
 
 **Found and fixed.**
 
-- **The rehearsal read a hidden listing's phone booking box off the desktop page** (`784ab5b1`, `97fcf17c`).
+- **The rehearsal read a hidden listing's phone booking box off the desktop page** (`2fd042b1`, `03a9e39e`).
   `main` has been red since `4d9cd321` removed "Open the phone app" from the desktop user menu last night.
   Step (c2b) reached the phone frame by clicking that button, and with the button gone the click found
   nothing and the flow stayed on the wide site. The step went on passing anyway: the desktop page also says
@@ -3370,7 +3370,7 @@ as in `backend/` is the first thing a run has to do.
   at mount the size is set before the page loads, from the home rather than the listing's own hash: the step
   before it is already on `#o=<id>`, and navigating to the same URL is a same-document navigation that never
   remounts the app. The frame itself is asserted now, so a step that never leaves the wide site says so.
-- **A listing's Free cancellation badge printed the window the shop charges in full at** (`e0bce814`). The
+- **A listing's Free cancellation badge printed the window the shop charges in full at** (`13e206ec`). The
   badge is a promise about money, and its number was the first "N hours" or "N days" anywhere in the policy,
   whichever clause it sat in and whichever side of that clause's line it was on. 141 of the 1,303 shipped
   badges took it from a clause that was not the promise, and the damaging direction is the common one:
@@ -3388,7 +3388,7 @@ as in `backend/` is the first thing a run has to do.
   shipped catalog no badge appears or disappears, 58 gain a window they did not have, 79 change the number,
   and 50 fall back to a bare "Free cancellation" rather than state one the policy does not support. Twenty
   eight changed listings were read by hand against their own policy text before this was committed.
-- **A listing's own page promised a cancellation window its app page does not** (`5e2205b4`). The 11,545
+- **A listing's own page promised a cancellation window its app page does not** (`d314c3cb`). The 11,545
   static pages under `/l/` print their cancellation line straight off the stored `fc` and never went through
   the badge rule at all, so one of them advertises free cancellation the app strips outright, and after the
   fix above they would have disagreed with the app on 171 of the 1,237 pages that take their line from `fc`.
