@@ -3485,6 +3485,77 @@ rehearsal at 53 of 53 both times.
   floor, and no live vendor having answered anything from this address. The fifty-third run's two cancellation
   questions stand too.
 
+## 22 September 2026, fifty-fifth run (10:15 to 11:50 UTC)
+
+**Chosen, and why.** No commit landed after the fifty-fourth run's entry, and that entry reports the
+rehearsal green at 53 of 53, so neither of the brief's two reasons to re-run it applied and it was skipped at
+the start; the type checks and both unit suites were run instead, clean at 666 app and 625 backend. Every area
+the brief lists is already under Coverage, so rather than re-read one, this run went looking for a guest-facing
+fact no sweep had ever touched. Counting what the 59,125 shipped detail files actually carry found four:
+`ytVideos`, `videoEmbed`, `waiverUrl` and `season`. The first two turned out sound. The season did not, and
+pulling on it led to two larger faults in how a shop's own prose reaches a guest at all.
+
+**Found and fixed.**
+
+- **A seasonal shop's season vanished from its desktop page and became a heading on a phone** (`1b2b12a6`).
+  The desktop put it in the grey run of facts under the subtitle and dropped anything over 32 characters, so
+  491 of the 1,144 shops that publish a season said nothing about it there: a guest can pick a January date on
+  a charter whose own site reads "May 16 - October 31" and never be told. The phone sheet had the opposite
+  fault and printed whatever it was given as the bold title of a key-fact row, so the same shops turned a
+  228-character paragraph into a heading with "Season" in small grey type under it. Both now read one rule
+  (`seasonFact`): a short phrase is a fact and sits where a fact goes, which is 161 more shops than the old cap
+  allowed, and a sentence is printed as the sentence it is, under a label.
+
+- **Markdown a shop wrote reached the guest as markdown** (`2f487403`), on the listing page, the phone sheet
+  and the booking confirmation alike. Nothing between the crawl and the page took the syntax back out, so 54
+  lines across the catalog shipped with it in: Big M Marina offered "FAQs [Read our full list of FAQs
+  here.](https://www.rental.bigmmarina.com/faqs)", Disney's Boat Rentals gave its check-in address as "Check in
+  Location## [2200 Lakeshore Blvd, Lakeport CA, 95453](https://share.google/...)", and Holoholo Charters' whole
+  arrival note read "Connect with Holoholo Charters [![TikTok](https://". `stripMarkdown` is the rule and both
+  funnels crawled prose passes through call it. A link keeps its words, an image none, a heading marker goes,
+  and so does a bracket the 400-character cut left open. A closed bracket is untouched: 20 lines use one for a
+  conversion ("-15F [-26C]"), and a hash that numbers a slip is not a heading. 54 lines before, 0 after.
+
+- **A shop's own prose was cut mid-word on every budget but the landing pages'** (`b1d15869`). 762 listings
+  ship an extraNote cut at 700 characters inside a word ("...another trip of equal or greater valu"), 65 a
+  cancellation policy cut at 400, 4 an FAQ answer, 3 an arrival note. That line is the last bullet of "Who can
+  go" or "Safety and waiver", and the arrival note is on the confirmation. `listingPages.ts` already owned the
+  right rule, written when `slice(0, 300)` cut 3,049 landing pages the same way; it moves to `lib/clip.ts` and
+  now serves every budget. Its missing guard was a third bug: three places hand-rolled the cut as
+  `slice(0, n).replace(/\s+\S*$/, "")` and ran the replace unconditionally, so every vendor description
+  shorter than its budget lost its last word. Dogpatch Paddle publishes "Beginner, Youth, Performance, and Dog
+  Friendly Rentals" and we shipped it without "Rentals". The Peek test had frozen that output as the
+  expectation, so it is corrected with the reason beside it.
+
+**Checked and sound.** Videos a guest is shown: no shipped listing carries a `ytVideos` entry at all, and all
+1,148 `videoEmbed` URLs are proper `youtube.com/embed/` or `player.vimeo.com/video/` addresses, so nothing
+renders as a refused frame today. Every one of the 1,844 waiver links is an absolute public http URL that
+`safeHttpUrl` accepts.
+
+**Green after the fixes.** 680 app tests (up from 666), 631 backend (up from 625), all three type checks
+clean, and the rehearsal run at the end at 53 of 53, against a local Postgres and the Chromium on disk.
+
+**Needs Harshil.**
+
+- **766 of the truncations are waiting on a sync, not a crawl.** The extraNote and FAQ cuts are assembled at
+  sync time, so `npm run sync` puts those listings right with no crawling at all. The 65 cancellation and 3
+  arrival cuts are baked into stored facts and only a re-enrich of those shops clears them.
+- **35 waiver links open a homepage, not a waiver.** A guest is told "Opens the operator's waiver form" and 7
+  of them land on a waiver vendor's own marketing site (`smartwaiver.com`, `gymwaiver.com`, `waiversign.com`),
+  1 on a different business altogether (Buffalo Waterfront's points at `longboardsbeach.com`), and the rest on
+  the shop's own front page with no anchor. `contacts.ts` already refuses a bare SmartWaiver `/w/`, so the
+  precedent is there, but telling a shop's own waiver portal from its homepage is a supply judgement, not a
+  rule I could write honestly. Worth a look at the list.
+- **Two latent inconsistencies, 0 listings today.** Otto says "the link on this page lets you sign before you
+  arrive" and the phone's key facts say "Sign the waiver online" on `waiverUrl` being set, while the link
+  itself is gated on `safeHttpUrl`, so a shop with an unusable one would be promised a link the page does not
+  draw. And `isSafeEmbedUrl` checks an embed's host but not its path, so a `youtube.com/watch?v=` URL would go
+  into an iframe YouTube refuses to render.
+- **Last night's stand:** `public/unsubscribe.html` still POSTs on load, the listing page still reads three of
+  the ten vendors, `outset-api` still builds with no catalog, the "All requests" link is still parked off
+  screen on a phone, five category accents are still under the AA floor, and no live vendor has answered
+  anything from this address.
+
 ## Coverage
 
 **Verified so far.** The name a guest reads: the business name on all 59,125 shipped listings, against the
@@ -3885,6 +3956,18 @@ the owner with, what the click records and links for sign-in, where the token in
 mail puts in front of a link-safety scanner, against what each one changes when it is only opened: the claim
 link, the unsubscribe link, `#remove=`, `#paid=`, and the listing and dashboard URLs.
 
+The four guest-facing facts no sweep had touched, found by counting what the 59,125 shipped detail files
+actually carry. The season a shop publishes, over all 1,144 that publish one, on both surfaces that print it:
+which are a phrase and which a sentence, and what each surface did with the 491 that are neither short nor
+silent. The videos: all 1,148 `videoEmbed` addresses against the hosts and the paths an iframe will render,
+and `ytVideos`, which no shipped listing carries. The waiver link, over all 1,844 that carry one: the scheme,
+the host, the path, and which of them open a form rather than a homepage. Markdown in the words a guest
+reads, over every prose field in the catalog and through both funnels that carry it to a page: a link, an
+image, a heading marker, a bracket the crawl's cut left open, and the closed brackets that are conversions
+rather than links. Every character budget a shop's prose is cut to, on both sides: which cuts land mid-word,
+which are assembled at sync time and which are baked into a stored fact, and the unguarded word-boundary
+trim that was eating the last word of every description shorter than its budget.
+
 **Not yet checked.** Rezdy's reader end to end, which needs a hand-rolled HTTP/2 session because Cloudflare
 blocks `fetch` on every `*.rezdy.com` subdomain; its price helpers and its window rule are tested directly
 instead. Whether the concierge's
@@ -4025,4 +4108,9 @@ that run's Needs Harshil). Whether `public/unsubscribe.html` should keep POSTing
 unsubscribe link every outreach email carries and the last page load in our mail that changes something by
 itself, and it sits outside the paths an overnight run may change (see the fifty-fourth run's Needs Harshil).
 The claim screen's own bad and expired states as a browser draws them, rather than at the token level where
-they are covered.
+they are covered. Which of the 35 waiver links that
+open a homepage rather than a form are a shop's own waiver portal and which are a vendor's marketing site,
+which is a supply judgement rather than a rule (see this run's Needs Harshil). Whether the surfaces that
+promise a waiver link should read the same gate the link itself reads, and whether an embed URL's path should
+be checked as well as its host: both are latent, 0 shipped listings today. Whether the 766 listings whose
+prose a sync would now cut properly should have that sync run before anything else on this list.
