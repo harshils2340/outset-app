@@ -86,7 +86,7 @@ services:
       - key: STRIPE_WEBHOOK_SECRET
         sync: false
       - key: MAIL_FROM
-        value: GoDo <onboarding@resend.dev>
+        value: Harshil <hello@onoutset.com>
       # Every booking request is emailed here with the shop's phone. Unclaimed shops are told by nobody else.
       - key: BOOKING_ALERT_EMAIL
         sync: false
@@ -162,6 +162,23 @@ services:
         sync: false
       - key: DB_SEED_URL
         sync: false
+      # The outreach job runs here, not on outset-api, because the draft queue is this worker's own SQLite disk.
+      # Paste the same values already set on outset-api. Any one missing keeps sendOutreach's guards refusing to
+      # send (backend/src/outreach/guards.ts), which is the point: no key here, no mail from here.
+      - key: RESEND_API_KEY
+        sync: false
+      - key: CLAIM_SECRET
+        sync: false
+      - key: DATABASE_URL
+        sync: false
+      - key: MAIL_POSTAL
+        sync: false
+      - key: MAIL_FROM
+        value: Harshil <hello@onoutset.com>
+      - key: MAIL_REPLY_TO
+        value: hello@onoutset.com
+      - key: SITE_URL
+        value: https://onoutset.com/
       # The nightly `spend` job posts what discovery and extraction have cost to POST /admin/spend on the API,
       # because those ledgers and the extract_spend table live on this worker's disk and the deployed API cannot
       # read them. Without either of these the job prints one line and exits 0; the metrics page then shows

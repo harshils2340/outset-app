@@ -106,6 +106,14 @@ const JOBS: Job[] = [
    * thousand this job cannot bill more than about $32 however long it runs.
    */
   { name: "search", timeoutMs: 6 * HOUR, args: ["src/index.ts", "search", "--concurrency=4", "--budget=32000"], needsRepo: true, needsKey: "SEARCHAPI_KEYS", spends: true, note: "Google Maps listings for every category in every city; paid, capped, cached" },
+  /**
+   * Claim outreach. The draft queue and the suppression check both live on this worker (outreach_drafts in
+   * this disk's SQLite, the bounce/complaint list in Postgres), so this is the only place that can send it.
+   * `needsKey` skips the job outright with no RESEND_API_KEY; sendOutreach's own guards (CLAIM_SECRET,
+   * MAIL_FROM, MAIL_POSTAL, the suppression list) still run on top and refuse to send until every one is
+   * real, so adding this job is inert until all of them are set here, not just on outset-api.
+   */
+  { name: "outreach", at: "09:00", timeoutMs: 20 * MIN, args: ["scripts/outreach-ramp.mts"], needsRepo: true, needsKey: "RESEND_API_KEY", note: "claim outreach, weekdays only, the day-1..5 warm-up ramp from docs/outreach-email.md (50, 100, 200, 400, then 500 a day)" },
 ];
 
 type JobState = { lastStart?: string; lastEnd?: string; lastResult?: string; lastExitCode?: number | null; lastSeconds?: number; lastDay?: string; lastLine?: string };
