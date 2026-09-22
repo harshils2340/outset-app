@@ -64,6 +64,7 @@ export async function sendOutreach(opts: {
       to: opts.to,
       subject: copy.subject,
       text: copy.body,
+      html: copy.html,
       replyTo: process.env.MAIL_REPLY_TO || undefined,
       commercial: true,
     });
@@ -102,7 +103,7 @@ export async function sendOutreach(opts: {
       out.sent++;
       continue;
     }
-    const res = await sendMail({ to, subject: copy.subject, text: copy.body, replyTo: process.env.MAIL_REPLY_TO || undefined, commercial: true });
+    const res = await sendMail({ to, subject: copy.subject, text: copy.body, html: copy.html, replyTo: process.env.MAIL_REPLY_TO || undefined, commercial: true });
     if (res.sent) {
       const at = nowIso();
       db.prepare("UPDATE outreach_drafts SET status = 'sent', subject = ?, body = ?, created_at = ? WHERE id = ?").run(copy.subject, copy.body, at, r.id);

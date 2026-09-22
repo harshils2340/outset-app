@@ -13,6 +13,7 @@ backend/data/*.db-shm
 backend/data/batches/
 backend/data/claim-secret.txt
 backend/data/outreach-list.csv
+backend/data/outreach-list-good.csv
 backend/data/florida-call-list.csv
 backend/data/pagecache/
 backend/data/osm/

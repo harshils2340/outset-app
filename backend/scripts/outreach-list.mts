@@ -45,12 +45,16 @@ for (const o of ops) {
   const good = o.has_cover === 1 && Number(o.photos) >= 3 && Number(o.priced_lines) >= 1 && (reviews >= 5 || Number(o.written_reviews) >= 1);
   const score = (o.has_cover as number) * 3 + Math.min(Number(o.priced_lines), 5) + (Number(o.widget_lines) > 0 ? 3 : 0) + Math.min(Number(o.photos), 6) / 2 + (reviews >= 5 ? 2 : 0) + (Number(o.written_reviews) > 0 ? 2 : 0) + (o.has_cancellation as number) + (o.has_hours as number);
   const slug = "o-" + String(o.domain).toLowerCase().replace(/^www\./, "").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 48);
-  out.push({ ...o, booking_software: vendor || "", booking_software_name: vendorLabel(vendor) || "", vendor_line: vendorLine(vendor, Number(o.widget_lines) > 0) || "", quality: good ? "good" : "", listing_url: "https://onoutset.com/#o=" + slug, score: Math.round(score * 10) / 10 });
+  out.push({ ...o, booking_software: vendor || "", booking_software_name: vendorLabel(vendor) || "", vendor_line: vendorLine(vendor, Number(o.widget_lines) > 0) || "", quality: good ? "good" : "", listing_url: "https://onoutset.com/listing/" + slug, score: Math.round(score * 10) / 10 });
 }
 out.sort((a, b) => (b.quality === "good" ? 1 : 0) - (a.quality === "good" ? 1 : 0) || Number(b.score) - Number(a.score) || (Number(b.review_count) || 0) - (Number(a.review_count) || 0));
 const cols = ["quality","score","name","email","booking_software","booking_software_name","vendor_line","priced_services","priced_lines","widget_lines","photos","has_cover","review_count","rating","written_reviews","has_cancellation","has_hours","city","region","country","family","category_id","phone","website","domain","listing_url","id"];
 const esc = (v: unknown) => { const s = v == null ? "" : String(v); return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
 writeFileSync(new URL("../data/outreach-list.csv", import.meta.url), [cols.join(","), ...out.map((r) => cols.map((c) => esc(r[c])).join(","))].join("\n") + "\n");
 const good = out.filter((r) => r.quality === "good");
+// The outreach-ready subset alone: a cover, three or more photos, a priced menu, and reviews. Everything in
+// it has a working listing link, a real phone or email, and its own true "keep your setup" line when a
+// booking vendor was detected.
+writeFileSync(new URL("../data/outreach-list-good.csv", import.meta.url), [cols.join(","), ...good.map((r) => cols.map((c) => esc(r[c])).join(","))].join("\n") + "\n");
 const counts = new Map<string, number>(); for (const r of good) counts.set(String(r.booking_software) || "(none found)", (counts.get(String(r.booking_software) || "(none found)") || 0) + 1);
 console.log(JSON.stringify({ rows: out.length, good: good.length, vendorNewlyDetected: detected, goodByVendor: [...counts].sort((a, b) => b[1] - a[1]).slice(0, 14) }, null, 1));
