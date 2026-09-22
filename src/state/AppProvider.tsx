@@ -21,7 +21,7 @@ import { fmtDate, money, nowStamp } from "../lib/format";
 import { daySlotsOpen, openSeats } from "../lib/inventory";
 import { contactFor, experienceById, fromPrice, initials } from "../lib/catalog";
 import { loadListing, loadRemoteCatalog, onListingEdits } from "../lib/catalogLoad";
-import { confirmPaid, hasApi, loadWalletId, submitBooking, warmApi , apiConfig } from "../lib/api";
+import { availabilityNow, confirmPaid, fetchAvailability, hasApi, loadWalletId, submitBooking, warmApi , apiConfig, type LiveAvailability } from "../lib/api";
 import { assistantOn, companyGreeting, companyHandoff, companyReply, companySuggestions } from "../lib/companyAgent";
 import { currentLocation, type Place } from "../lib/places";
 import { priceFor, priceUnclaimed } from "../lib/pricing";
@@ -173,8 +173,23 @@ function threadFor(id: string | null): ChatThread | null {
     name: u.title,
     initials: initials(u.title),
     line: u.area + (from != null ? " · from " + money(from) : "") + " · Answers only from published info",
-    suggestions: companySuggestions({ item: u, contact: contactFor(u) }),
+    suggestions: companySuggestions(companyCtx(u)),
   };
+}
+
+/**
+ * What Otto answers from, for one catalog shop.
+ *
+ * `live` is the shop's own booking calendar, and nothing used to fill it in: all three places that built one
+ * of these passed the item and the contact record and stopped, so the assistant was blind to the very feed the
+ * booking box beside it had already read. A guest asking "anything Saturday?" at a shop whose calendar we can
+ * read got its published hours back, and at a shop whose calendar we read and found empty Otto said "pick a
+ * time on this page" beside a picker correctly offering nothing on any date. `availabilityNow` is the answer
+ * the page has already fetched, so this costs nothing and cannot invent a slot: with no answer yet Otto says
+ * exactly what it said before.
+ */
+function companyCtx(u: Unclaimed): { item: Unclaimed; contact: ReturnType<typeof contactFor>; live: LiveAvailability | null } {
+  return { item: u, contact: contactFor(u), live: availabilityNow(u.id) };
 }
 
 function greeting(l: Listing): ChatMessage {
@@ -354,7 +369,7 @@ function reducer(state: AppState, action: Action): AppState {
       // opens, so nobody loses a conversation they were already having; nothing guest-facing starts a new one
       // any more (Ask Outset is the one agent surface), but a returning guest's old thread still reads back.
       if (!assistantOn(company) && !state.chats[company.id]) return state;
-      const hello: ChatMessage = { who: "them", t: companyGreeting({ item: company, contact: contactFor(company) }), at: "now" };
+      const hello: ChatMessage = { who: "them", t: companyGreeting(companyCtx(company)), at: "now" };
       const chats = state.chats[company.id] ? state.chats : { ...state.chats, [company.id]: [hello] };
       return { ...state, threadId: company.id, chats, sheet: null, reqTargetId: null, screen: "chat" };
     }
@@ -364,7 +379,7 @@ function reducer(state: AppState, action: Action): AppState {
         const at = nowStamp();
         const prev = (state.chats[company.id] || []).slice();
         prev.push({ who: "me", t: action.text, at });
-        const ctx = { item: company, contact: contactFor(company) };
+        const ctx = companyCtx(company);
         // Switched off since this thread opened: Otto stops answering and says who does, rather than carrying
         // on quoting a shop that asked it to stop.
         prev.push({ who: "them", t: assistantOn(company) ? companyReply(ctx, action.text) : companyHandoff(ctx), at });
@@ -842,6 +857,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const t = window.setTimeout(() => dispatch({ type: "toastOff" }), 2600);
     return () => window.clearTimeout(t);
   }, [state.toast]);
+
+  /**
+   * Ask the shop's own booking system what is free, while the guest is reading Otto's greeting.
+   *
+   * Otto answers out of the reducer, synchronously, so it cannot fetch anything itself: `companyCtx` reads
+   * whatever answer has already arrived. On a listing page the booking box has asked for this exact window and
+   * the answer is already in hand, but a chat opened from the Inbox has no booking box behind it, so nothing
+   * had ever asked and the assistant was blind to the calendar on every one of those threads. Asked for the
+   * window the pickers use, so the two share one request and one answer.
+   */
+  useEffect(() => {
+    if (state.screen !== "chat") return;
+    const u = experienceById(state.threadId);
+    if (!u) return;
+    void fetchAvailability(u.id, dateKey(DATES[0]), DATES.length).catch(() => {});
+  }, [state.screen, state.threadId]);
 
   const listing = listingById(state.listingId);
   const thread = threadFor(state.threadId);
