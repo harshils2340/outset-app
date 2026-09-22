@@ -161,13 +161,39 @@ export function priceBooking(options: PricedOption[], addons: PricedOption[], se
   // The dashboard's price box took whatever was typed, so a stray minus on "Beer package" (-20) came off the
   // guest's bill, and enough of them drove the booking negative: subtotal -400, fee -0, and an operator email
   // reading "you receive -$380". Zero and null already meant "no charge"; a negative means the same now.
-  const add = addonNames.map((n) => addons.find((a) => key(a.name) === key(n))?.price ?? 0).filter((n) => n > 0).reduce((a, b) => a + b, 0);
-  const fits = (x: PricedOption) => {
+  //
+  // Two extras can share a name the same way two tiers share a label: names are matched on letters and digits
+  // alone, so "Digital photo scan < 200 DPI" at $5 and "> 200 DPI" at $15 are one name here, and the first row
+  // won whichever the guest ticked. 18 shipped listings carry such a pair, and a lifeguard at o-cumming-
+  // aquaticcenter-com cost $70 when the guest picked the $35 one. The guest's own total says which extra they
+  // meant as surely as it says which tier, so the sums the listing's own prices allow are tried against it.
+  const priceSets = addonNames.map((n) => {
+    const matched = addons.filter((a) => key(a.name) === key(n));
+    const prices = [...new Set(matched.map((a) => (a.price != null && a.price > 0 ? a.price : 0)))];
+    return prices.length ? prices : [0];
+  });
+  // The first sum is what this always charged: every extra at the first row carrying its name.
+  const sums = priceSets.reduce<number[]>((acc, set) => acc.flatMap((s) => set.map((p) => s + p)).slice(0, 32), [0]);
+  const fits = (x: PricedOption, a: number) => {
     if (hintTotal == null || x.price == null) return false;
-    const sub = Math.round(((perPerson(x) ? x.price * qty : x.price) + add) * 100) / 100;
+    const sub = Math.round(((perPerson(x) ? x.price * qty : x.price) + a) * 100) / 100;
     return Math.abs(sub + serviceFee(sub) - hintTotal) < 0.5;
   };
-  const o = (labelled.length > 1 ? labelled.find(fits) : undefined) || labelled[0] || (!variant ? inService[0] : undefined) || (priced.length === 1 ? priced[0] : undefined);
+  const first = labelled[0] || (!variant ? inService[0] : undefined) || (priced.length === 1 ? priced[0] : undefined);
+  let chosen: PricedOption | undefined;
+  let add = sums[0];
+  if (hintTotal != null && (labelled.length > 1 || sums.length > 1)) {
+    const tiers = labelled.length > 1 ? labelled : first ? [first] : [];
+    for (const a of sums) {
+      const hit = tiers.find((x) => fits(x, a));
+      if (hit) {
+        chosen = hit;
+        add = a;
+        break;
+      }
+    }
+  }
+  const o = chosen || first;
   if (!o || o.price == null || !(o.price > 0)) return null;
   const base = perPerson(o) ? o.price * qty : o.price;
   const subtotal = Math.round((base + add) * 100) / 100;
