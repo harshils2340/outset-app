@@ -4,7 +4,20 @@ export function startOfToday(): Date {
   return d;
 }
 
-export function makeDates(count = 10): Date[] {
+/**
+ * How many days the booking window covers, and so how many days of a shop's own calendar anything on a
+ * listing asks its booking system for.
+ *
+ * One number, because two surfaces asking for different windows answer differently out of the same code. The
+ * operator's test chat asked for the `fetchAvailability` default of 14 while every guest surface asked for
+ * this, so a shop with nothing in the next ten days but a departure on the twelfth had Otto telling the
+ * operator its next opening and telling their guest the calendar was empty, on a page whose whole promise is
+ * that the test chat runs what guests get. Differing windows also miss the shared request cache, which is
+ * keyed by window, so the same answer was fetched twice.
+ */
+export const BOOKING_WINDOW_DAYS = 10;
+
+export function makeDates(count = BOOKING_WINDOW_DAYS): Date[] {
   const today = startOfToday();
   return Array.from({ length: count }, (_, i) => {
     const d = new Date(today);

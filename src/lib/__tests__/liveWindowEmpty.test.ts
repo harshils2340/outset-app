@@ -16,8 +16,19 @@ import type { Unclaimed } from "../../data/types";
 
 const HOURS = ["Monday: 9:00 AM - 5:00 PM", "Tuesday: 9:00 AM - 5:00 PM", "Wednesday: 9:00 AM - 5:00 PM", "Thursday: 9:00 AM - 5:00 PM", "Friday: 9:00 AM - 5:00 PM", "Saturday: 9:00 AM - 5:00 PM", "Sunday: 9:00 AM - 5:00 PM"];
 
+/**
+ * Dates counted off today rather than written down. Otto reads the calendar through the same `bookableStart`
+ * the pickers do, so a departure named by a fixed date stops being in the future one morning and takes the
+ * test with it, which is exactly how the concierge's window test went red on its own.
+ */
+function dayAt(offset: number): string {
+  const d = new Date();
+  d.setDate(d.getDate() + offset);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
 const dates = (n: number): LiveAvailability["days"] =>
-  Array.from({ length: n }, (_, i) => ({ date: "2026-10-" + String(i + 1).padStart(2, "0"), slots: [] }));
+  Array.from({ length: n }, (_, i) => ({ date: dayAt(i + 1), slots: [] }));
 
 const ctx = (live: LiveAvailability | null, extra: Partial<Unclaimed> = {}): CompanyContext => ({
   item: {
@@ -69,7 +80,7 @@ test("an empty vendor calendar does not close a claimed shop that is taking book
 
 test("a claimed shop's real departures still reach a guest, the way they reach the picker", () => {
   const c = ctx(
-    { vendor: "fareharbor", live: true, days: [{ date: "2026-10-01", slots: [{ startsAt: "2026-10-01T14:00", label: "2:00 PM · Flight", bookUrl: "x" }] }] },
+    { vendor: "fareharbor", live: true, days: [{ date: dayAt(3), slots: [{ startsAt: dayAt(3) + "T14:00", label: "2:00 PM · Flight", bookUrl: "x" }] }] },
     { claimed: true },
   );
   assert.match(companyAnswer(c, "when's the next opening?").text, /2:00 PM/);
@@ -79,7 +90,7 @@ test("a shop with a real departure is untouched by any of this", () => {
   const c = ctx({
     vendor: "xola",
     live: true,
-    days: [{ date: "2026-10-01", slots: [{ startsAt: "2026-10-01T14:00", label: "2:00 PM · Flight", bookUrl: "x" }] }, ...dates(3)],
+    days: [...dates(4), { date: dayAt(5), slots: [{ startsAt: dayAt(5) + "T14:00", label: "2:00 PM · Flight", bookUrl: "x" }] }],
   });
   assert.match(companyAnswer(c, "when's the next opening?").text, /2:00 PM/);
 });

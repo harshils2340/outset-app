@@ -38,12 +38,23 @@ const ctx = (live: LiveAvailability | null): CompanyContext => ({
   live,
 });
 
+/**
+ * A date this many days out, rather than one written down. Otto now reads the calendar through the same
+ * `bookableStart` the pickers do, so a departure named by a fixed date stops being in the future one morning
+ * and takes the test with it.
+ */
+function dayAt(offset: number): string {
+  const d = new Date();
+  d.setDate(d.getDate() + offset);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
 const withTimes: LiveAvailability = {
   vendor: "fareharbor",
   live: true,
   days: [
-    { date: "2026-10-01", slots: [] },
-    { date: "2026-10-02", slots: [{ startsAt: "2026-10-02T14:00", label: "2:00 PM · Parasail Flight", bookUrl: "x", seatsLeft: 3 }] },
+    { date: dayAt(2), slots: [] },
+    { date: dayAt(3), slots: [{ startsAt: dayAt(3) + "T14:00", label: "2:00 PM · Parasail Flight", bookUrl: "x", seatsLeft: 3 }] },
   ],
 };
 
@@ -67,6 +78,15 @@ test("the three surfaces that ask Otto a question fill in the calendar it answer
   // The operator's test chat promises, in its own comment, to run "the same code guests get".
   assert.match(op, /fetchAvailability\(/, "the operator's test chat reads the same calendar");
   assert.match(op, /contact: contactFor\(u\), live\b/, "and passes it to Otto");
+  /**
+   * The same window, too. It asked for `fetchAvailability`'s wider default of 14 days while every guest
+   * surface asked for ten, so a shop with nothing in the next ten days and a departure on the twelfth had
+   * Otto naming that opening to the operator and telling their guest the calendar was empty, on the one page
+   * whose promise is that the two agree. One exported number now, read by everything that asks.
+   */
+  assert.match(op, /BOOKING_WINDOW_DAYS/, "the operator's test chat asks for the guest's window");
+  assert.match(app, /makeDates\(BOOKING_WINDOW_DAYS\)/, "and the guest's window is that same number");
+  for (const src of [app, op]) assert.ok(!/fetchAvailability\(\s*u\.id\s*\)/.test(src), "nobody falls back to the wider default");
 });
 
 test("a departure the calendar names is what Otto answers with, and the chip is offered", () => {

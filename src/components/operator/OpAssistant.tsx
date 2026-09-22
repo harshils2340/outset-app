@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { fetchAvailability, type LiveAvailability } from "../../lib/api";
 import { contactFor, listingFacts } from "../../lib/catalog";
+import { BOOKING_WINDOW_DAYS, dateKey, startOfToday } from "../../lib/dates";
 import { displayHours } from "../../lib/hoursText";
 import { ASSISTANT_NAME, companyGreeting, companyReply, companySuggestions } from "../../lib/companyAgent";
 import { fmtTime, money } from "../../lib/format";
@@ -25,7 +26,9 @@ export function OpAssistant() {
   useEffect(() => {
     let alive = true;
     setLive(null);
-    void fetchAvailability(u.id).then((a) => { if (alive) setLive(a); }).catch(() => {});
+    // The guest's own window, not `fetchAvailability`'s wider default: a different window is a different
+    // answer, and it also misses the request cache the listing page has already filled.
+    void fetchAvailability(u.id, dateKey(startOfToday()), BOOKING_WINDOW_DAYS).then((a) => { if (alive) setLive(a); }).catch(() => {});
     return () => { alive = false; };
   }, [u.id]);
   const ctx = useMemo(() => ({ item: u, contact: contactFor(u), live }), [u, live]);
