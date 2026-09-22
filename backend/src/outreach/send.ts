@@ -49,12 +49,18 @@ export async function sendOutreach(opts: {
       console.error("sample not sent: " + opts.to + " is on the unsubscribe list");
       return out;
     }
+    // Same eligibility and ordering as the real batch below, so a --to= sample shows the email an owner
+    // would actually get, in the actual order they'd actually get it - not a test-only shortcut. This used
+    // to always prefer a cajunencounters.com match, a testing convenience from earlier tonight that stopped
+    // being honest the moment this became "what is the real first send."
     const op = db
       .prepare(
         `SELECT o.* FROM operators o
-         LEFT JOIN outreach_drafts d ON d.operator_id = o.id
-         WHERE o.origin NOT IN ('demo', 'test') AND o.email LIKE '%@%'
-         ORDER BY CASE WHEN o.domain LIKE '%cajun%' THEN 0 ELSE 1 END, o.review_count DESC NULLS LAST
+         WHERE o.origin NOT IN ('demo', 'test') AND o.email LIKE '%@%' AND o.claim_status = 'unclaimed'
+           AND (o.category_id IS NULL OR o.category_id NOT IN ('museum','themepark','waterpark','aquarium','zoo'))
+           AND o.domain NOT LIKE '%.org' AND o.domain NOT LIKE '%.gov' AND o.domain NOT LIKE '%.edu'
+           AND (o.review_count IS NULL OR o.review_count <= 20000)
+         ORDER BY o.review_count DESC NULLS LAST
          LIMIT 1`,
       )
       .get() as OpRow | undefined;
@@ -75,7 +81,18 @@ export async function sendOutreach(opts: {
   let sql = `SELECT d.id, d.to_email, o.domain, o.name, o.email, o.city, o.region, o.metro_id, o.website, o.completeness, o.origin, o.calendar_vendor
        FROM outreach_drafts d JOIN operators o ON o.id = d.operator_id
        WHERE d.status = 'draft' AND d.to_email IS NOT NULL AND d.to_email LIKE '%@%' AND o.claim_status = 'unclaimed'
-         AND NOT EXISTS (SELECT 1 FROM outreach_drafts s WHERE s.to_email = d.to_email AND s.status = 'sent')`;
+         AND NOT EXISTS (SELECT 1 FROM outreach_drafts s WHERE s.to_email = d.to_email AND s.status = 'sent')
+         -- Museums, theme parks, waterparks, aquariums and zoos are large, professionally-run institutions,
+         -- not the small local operators this pitch is written for; category_id still missed real ones filed
+         -- under an ordinary-looking category (the Gateway Arch under "cruise", the Museum of Flight under
+         -- "heli"), so .org/.gov/.edu is the next cut - a for-profit local activity business is essentially
+         -- always a .com. The review_count cap is a backstop for everything that still slips through: a real
+         -- business can plausibly reach the high five figures, but ordering by review_count DESC with no cap
+         -- put Disney Springs, the 9/11 Memorial and Kennedy Space Center at the top of a real run tonight
+         -- (22 September 2026).
+         AND (o.category_id IS NULL OR o.category_id NOT IN ('museum','themepark','waterpark','aquarium','zoo'))
+         AND o.domain NOT LIKE '%.org' AND o.domain NOT LIKE '%.gov' AND o.domain NOT LIKE '%.edu'
+         AND (o.review_count IS NULL OR o.review_count <= 20000)`;
   const args: (string | number)[] = [];
   if (opts.metro) {
     sql += " AND o.metro_id = ?";

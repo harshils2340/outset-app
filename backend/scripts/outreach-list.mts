@@ -27,7 +27,22 @@ const ops = db.prepare(`
     (case when exists (select 1 from facts f where f.operator_id=o.id and f.fact_key in ('hours_text','hours')) then 1 else 0 end) as has_hours
   from operators o
   where o.origin not in ('demo','test') and o.email like '%@%' and o.website is not null and o.country in ('US','CA')
-    and lower(trim(o.email)) not in (select email from mail_unsub)`).all() as Row[];
+    and lower(trim(o.email)) not in (select email from mail_unsub)
+    -- Museums, theme parks, waterparks, aquariums and zoos are large, professionally-run institutions, not
+    -- the small local operators this pitch is written for (free 5%-commission listing, cold email to a
+    -- generic inbox): checked 22 September 2026, this exact ordering put Disney Springs, the 9/11 Memorial,
+    -- MoMA, Busch Gardens and Kennedy Space Center at the very top, by category_id, 41+17+7+5+2 of them.
+    and (o.category_id is null or o.category_id not in ('museum','themepark','waterpark','aquarium','zoo'))
+    -- category_id alone still missed real institutions filed under an ordinary-looking one: the Gateway
+    -- Arch under "cruise" for its dinner boat, Biltmore under "garden", the Museum of Flight under "heli".
+    -- .org/.gov/.edu is the next cheap, high-signal cut: a for-profit local activity business is essentially
+    -- always a .com, and every one of those three institutions is exactly one of the other three.
+    and o.domain not like '%.org' and o.domain not like '%.gov' and o.domain not like '%.edu'
+    -- A backstop, not the primary filter: a real small operator (a busy charter, a well-known tour company)
+    -- can genuinely reach the high five figures, but above this the catalog is either an institution the
+    -- filters above missed or a scrape that matched the wrong business's review count, like the "cruise"-
+    -- categorized listing that came in at 115,429 reviews for a four-tour swamp company.
+    and (o.review_count is null or o.review_count <= 20000)`).all() as Row[];
 const urlFacts = db.prepare("select operator_id, fact_key, fact_value from facts where fact_key in ('booking_url','online_booking','booking_software','booking_vendor','widget_url')").all() as { operator_id: string; fact_key: string; fact_value: string }[];
 const byOp = new Map<string, string[]>();
 for (const f of urlFacts) { const a = byOp.get(f.operator_id) || []; a.push(f.fact_value); byOp.set(f.operator_id, a); }
