@@ -11,16 +11,14 @@ I started Outset because local activity businesses lose customers when booking r
 
 How it works for Sunset Watersports Key West:
 
-No cost to list: it's free. We only take 5% when a booking actually happens.
-
-Keep your setup: You already use FareHarbor, so keep it. Outset reads your FareHarbor calendar, so guests only see times you actually have open. Nothing changes on your site; this is another door to the same shop.
-
-Weather protection: if you cancel for weather, just decline the booking in your dashboard. The guest is refunded in full automatically, you don't have to do anything, and we don't take a fee on it.
+• No cost to list: it's free. We only take 5% when a booking actually happens.
+• Keep your setup: You already use FareHarbor, so keep it. Outset reads your FareHarbor calendar, so guests only see times you actually have open. Nothing changes on your site; this is another door to the same shop.
+• Weather protection: if you cancel for weather, just decline the booking in your dashboard. The guest is refunded in full automatically, you don't have to do anything, and we don't take a fee on it.
 
 Our terms and privacy policy, so you know who you are dealing with: https://onoutset.com/terms.html and https://onoutset.com/privacy.html.
 
 If you own Sunset Watersports Key West, you can claim your page and turn bookings on here. It's meant for the owner, so please don't forward it:
-https://onoutset.com/#claim=o-sunsetwatersportskeywest-com&k=v2.mvjaj87n.pWPY5RpekeeL9Dqbz4KE-y&o=eyJuIjoiIiwiZSI6ImluZm9Ac3Vuc2V0d2F0ZXJzcG9ydHMuY29tIiwicCI6IiJ9
+https://onoutset.com/#claim=o-sunsetwatersportskeywest-com&k=v2.mvjayc51.UR9OExrj9K1XRPNks4EOBV&o=eyJuIjoiIiwiZSI6ImluZm9Ac3Vuc2V0d2F0ZXJzcG9ydHMuY29tIiwicCI6IiJ9
 
 Got the wrong business? Take the page down instantly:
 https://onoutset.com/#remove=o-sunsetwatersportskeywest-com

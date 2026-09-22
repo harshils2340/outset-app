@@ -130,25 +130,29 @@ export function draftCopy(op: Op, sc: ReturnType<typeof scale>, f: PageFacts, em
   // A page with nothing on it is still worth showing, but it cannot be sold as one that has their things on it.
   const thin = built.length ? null : "Your site gave me very little to put on the page, so it's thin for now. Nothing on it is invented, and the claim link below lets you fill in the rest.";
   const howHead = "How it works for " + op.name + ":";
-  const cost = "No cost to list: it's free. We only take 5% when a booking actually happens.";
-  const setup = "Keep your setup: " + (vendor || "Outset can just sit alongside your website. Every booking reaches you directly by email.");
   /**
    * The two questions an owner asks before they will take an online booking: what happens when the weather kills
    * the day, and who these people are legally. Both are answered here rather than left for them to go looking for.
    * The weather sentence describes what the code already does: an operator decline refunds the card in full
    * (`refundBooking` in src/api/bookings.ts), or releases the hold when nothing was captured.
    */
-  const weather = "Weather protection: if you cancel for weather, just decline the booking in your dashboard. The guest is refunded in full automatically, you don't have to do anything, and we don't take a fee on it.";
+  const bullets: { label: string; text: string }[] = [
+    { label: "No cost to list", text: "it's free. We only take 5% when a booking actually happens." },
+    { label: "Keep your setup", text: vendor || "Outset can just sit alongside your website. Every booking reaches you directly by email." },
+    { label: "Weather protection", text: "if you cancel for weather, just decline the booking in your dashboard. The guest is refunded in full automatically, you don't have to do anything, and we don't take a fee on it." },
+  ];
   const legal = "Our terms and privacy policy, so you know who you are dealing with: " + TERMS + " and " + PRIVACY + ".";
-  const lines = ["Hi,", "", who, listing, "", why, thin, "", howHead, "", cost, "", setup, "", weather, "", legal, ""].filter((l) => l !== null) as string[];
+  const lines = [
+    "Hi,", "", who, listing, "", why, thin, "", howHead, "",
+    ...bullets.map((b) => "• " + b.label + ": " + b.text),
+    "", legal, "",
+  ].filter((l) => l !== null) as string[];
   const paras = [
     "<p>Hi,</p>",
     "<p>" + esc(who) + "<br>" + link(listing, listing) + "</p>",
     "<p>" + esc(why) + (thin ? "<br>" + esc(thin) : "") + "</p>",
     "<p><b>" + esc(howHead) + "</b></p>",
-    "<p>" + esc(cost) + "</p>",
-    "<p>" + esc(setup) + "</p>",
-    "<p>" + esc(weather) + "</p>",
+    "<ul>" + bullets.map((b) => "<li><b>" + esc(b.label) + ":</b> " + esc(b.text) + "</li>").join("") + "</ul>",
     "<p>Our " + link(TERMS, "terms") + " and " + link(PRIVACY, "privacy policy") + ", so you know who you are dealing with.</p>",
   ];
   lines.push(
