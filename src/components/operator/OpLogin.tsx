@@ -46,6 +46,22 @@ function openBypassLink(link: string): void {
  */
 const consumedLinks = new Set<string>();
 
+/**
+ * Take the claim token (and the owner details that ride with it) out of the address bar. `#claim=<id>` stays,
+ * so a refresh reopens this business rather than the demo.
+ *
+ * Only ever called once the claim has actually been recorded, and that wait is the point. Stripping it while
+ * the confirm screen was still up left an owner who reloaded that screen, or came back to a tab the phone had
+ * discarded, looking at the sign-in form for a listing nobody had claimed yet, with the one-click way in gone
+ * from their own address bar and only the email to go back to.
+ */
+function cleanClaimHash(): void {
+  const h = window.location.hash;
+  if (!/[&#](k|o)=/.test(h)) return;
+  const id = h.match(/^#claim=([a-z0-9-]+)/i);
+  window.history.replaceState(null, "", window.location.pathname + window.location.search + (id ? "#claim=" + id[1] : ""));
+}
+
 async function sha256Hex(text: string): Promise<string> {
   const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
   return Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, "0")).join("");
@@ -112,10 +128,6 @@ export function OpLogin({ claimId, claimToken, compact, onEnter, onBack }: { cla
         rememberClaimToken(apiId, claimToken);
         consumedLinks.add(claimToken);
         const fromLink = ownerFromHash(window.location.hash);
-        // The token is a bearer secret and has done its job: take it (and the owner details) out of the address
-        // bar so a reload, a bookmark or a shared URL does not carry it. `#claim=<id>` stays so a refresh reopens
-        // this business rather than the demo.
-        if (/[&#](k|o)=/.test(window.location.hash)) window.history.replaceState(null, "", window.location.pathname + window.location.search + "#claim=" + claimId);
         // This device has been through this claim before (its own saved profile), so it is a real return
         // visit, not the first load of the link: enter directly, the same as any other reload, and still
         // record the claim so a second claimer opening this same link from a different device is heard.
@@ -123,6 +135,7 @@ export function OpLogin({ claimId, claimToken, compact, onEnter, onBack }: { cla
         if (existing) {
           if (isApi) await claimRemote(apiId, claimToken, fromLink || undefined);
           if (!alive) return;
+          cleanClaimHash();
           onEnter(existing);
           return;
         }
@@ -153,6 +166,8 @@ export function OpLogin({ claimId, claimToken, compact, onEnter, onBack }: { cla
     // second person opening a forwarded link for a listing that was already set up was never recorded at
     // all, and neither the server nor the real owner ever heard about it.
     if (isApi) await claimRemote(apiId, token, fromLink || undefined);
+    // Recorded, so the token has done its job and can leave the address bar.
+    cleanClaimHash();
     // Another device may already hold this operator's edits.
     const remote = await fetchRemoteProfile(apiId);
     const saved = remote?.profile as OperatorProfile | undefined;
@@ -381,16 +396,17 @@ export function OpLogin({ claimId, claimToken, compact, onEnter, onBack }: { cla
   const noWay = !!rule && !rule.hasEmail && !rule.domains.length;
   const canRequest = !!name.trim() && EMAIL.test(email.trim()) && !sending && !noWay;
 
-  const head = picked ? (
+  const claimHead = (u: Unclaimed) => (
     <div className="odclaimhead">
-      <span className="odthumb big"><Photo src={picked.cover} kind={picked.art} id={"c" + picked.id} alt="" /></span>
+      <span className="odthumb big"><Photo src={u.cover} kind={u.art} id={"c" + u.id} alt="" /></span>
       <span className="meta">
         <small>Claiming</small>
-        <b>{picked.title}</b>
-        <small>{picked.area}</small>
+        <b>{u.title}</b>
+        <small>{u.area}</small>
       </span>
     </div>
-  ) : null;
+  );
+  const head = picked ? claimHead(picked) : null;
 
   // A claim link goes straight to the dashboard. Until the listing and any saved profile land there is nothing
   // to show but the brand, so the claim form never flashes in between. A bad or expired link falls through
@@ -410,7 +426,9 @@ export function OpLogin({ claimId, claimToken, compact, onEnter, onBack }: { cla
   if (linkState === "confirm" && pendingClaim) {
     return (
       <div className={"odsplash" + (compact ? " compact" : "")}>
-        {head}
+        {/* The record the claim is about, not `picked`: that one waits on a catalog version bump, and a screen
+            asking an owner to hand over a business has to name the business every time it is drawn. */}
+        {claimHead(pendingClaim.u)}
         <b>This is your business?</b>
         <small>Opening your dashboard claims this listing and turns it over to you.</small>
         <button type="button" className="cta odwide" disabled={confirming} onClick={() => void proceedClaim()}>{confirming ? "Opening…" : "Yes, open my dashboard"}</button>
