@@ -163,13 +163,19 @@ test("a link that names no shop is not asked about", async () => {
  * comes from the catalog, through `plan.ts`.
  */
 test("the window is the shop's own calendar day, not the host's", async () => {
-  // 21:00 on the 21st in Toronto. On a UTC host this instant is already the 22nd.
-  const evening = new Date("2026-09-22T01:00:00Z");
-  const tonight = "2026-09-21";
+  /**
+   * 21:00 in Toronto, on an evening a few days out. On a UTC host that instant is already the next date, which
+   * is the whole point of the test, so the two dates are worked out from a UTC midnight rather than written
+   * down: a departure named by a fixed date has left by the next night, `departed` reads the real clock, and
+   * this test went red on its own the morning after it was written.
+   */
+  const utcDay = new Date(Date.now() + 3 * 86400_000).toISOString().slice(0, 10);
+  const evening = new Date(utcDay + "T01:00:00Z");
+  const tonight = new Date(evening.getTime() - 86400_000).toISOString().slice(0, 10);
   const stub = () =>
     stubFareharbor([
       { date: tonight, avs: [avail(1, 10, "Sunset flight", tonight + "T22:30:00-04:00")] },
-      { date: "2026-09-22", avs: [avail(2, 11, "Romantic Jewel", "2026-09-22T19:00:00-04:00")] },
+      { date: utcDay, avs: [avail(2, 11, "Romantic Jewel", utcDay + "T19:00:00-04:00")] },
     ]);
 
   stub();
