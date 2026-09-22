@@ -1,6 +1,6 @@
 import type { OperatorContact, Unclaimed } from "../data/types";
 import type { LiveAvailability } from "./api";
-import { addressLine, plainWords } from "./catalog";
+import { addressLine, bookingPaused, plainWords } from "./catalog";
 import { callablePhone } from "./phone";
 import { withoutNoticeWindows } from "./duration";
 import { money } from "./format";
@@ -452,6 +452,27 @@ function liveWindowEmpty(ctx: CompanyContext): number {
   if (!a?.live || a.partial || ctx.item.claimed) return 0;
   const days = (a.days || []).length;
   return days && !liveSlots(ctx).length ? days : 0;
+}
+
+/**
+ * The shop switched bookings off, or took its page down, in its own dashboard.
+ *
+ * `bookingPaused` is the rule both pickers already read, and it is why a paused listing shows "Not taking
+ * bookings right now" where its Reserve button was. Otto read neither flag, so beside that panel it answered
+ * "Yes. Pick a service and time on this page and they confirm it", which is the one thing on the page that is
+ * not true. Now that it can see a calendar it would have gone further and named a real departure to book.
+ *
+ * The times are still true, and the shop may well still be selling them on their own site: what is false is
+ * "on this page". So the answer says that and hands the guest the shop, which is the only way through.
+ */
+function pausedLine(ctx: CompanyContext): string | null {
+  if (!bookingPaused(ctx.item)) return null;
+  const who = ctx.item.title;
+  const phone = shopPhone(ctx);
+  const head = ctx.item.offline
+    ? who + " has taken this page down for the moment, so nothing can be booked here."
+    : who + " has paused new bookings on this page.";
+  return head + " " + (phone ? "Call " + phone + "." : who + " can still take a booking themselves.");
 }
 
 function slotLine(s: Slot): string {
@@ -946,6 +967,9 @@ function dayHoursAnswer(ctx: CompanyContext, q: string, prev: ChatState): { text
 }
 
 function slotAnswer(ctx: CompanyContext, q: string, prev: ChatState): { text: string; state: ChatState } {
+  // Every answer below ends in "pick that time on this page", which a paused listing has no way to honour.
+  const paused = pausedLine(ctx);
+  if (paused) return { text: paused, state: { topic: "slot" } };
   const clock = clockIn(zoneFor(ctx.item));
   const day = dayIn(q, clock.day) ?? prev.day ?? null;
   const at = minutesOfDay(q);
@@ -986,16 +1010,20 @@ function slotAnswer(ctx: CompanyContext, q: string, prev: ChatState): { text: st
 }
 
 function bookAnswer(ctx: CompanyContext, q: string): { text: string; state: ChatState } {
-  if (/\b(for me|on my behalf|you book|book it for me|can you book)\b/i.test(q)) {
-    return {
-      text: "I can start it. You pay on Stripe, or from the card on your Profile if Otto is on. I never see the card. Pick a time on this page.",
-      state: { topic: "book" },
-    };
-  }
+  // A booking they already have is not affected by the shop pausing new ones, so it is answered first. The two
+  // tests are disjoint: this one needs "my booking" and a word like confirmed or status, never "can you book".
   if (asksAboutOwnBooking(q)) {
     const phone = shopPhone(ctx);
     return {
       text: "I can't look up a booking you already have. " + (phone ? "Call " + phone + "." : ctx.item.title + " can check it for you."),
+      state: { topic: "book" },
+    };
+  }
+  const paused = pausedLine(ctx);
+  if (paused) return { text: paused, state: { topic: "book" } };
+  if (/\b(for me|on my behalf|you book|book it for me|can you book)\b/i.test(q)) {
+    return {
+      text: "I can start it. You pay on Stripe, or from the card on your Profile if Otto is on. I never see the card. Pick a time on this page.",
       state: { topic: "book" },
     };
   }
@@ -1393,6 +1421,9 @@ function answerOne(ctx: CompanyContext, topic: Topic, q: string, prev: ChatState
     case "describe": return describeAnswer(ctx, q);
     case "ack": return { text: "Anything else? I can check prices, hours or what to bring.", state: prev };
     case "next": {
+      // Naming a departure a guest cannot take from here is a tease, so a paused listing says so instead.
+      const paused = pausedLine(ctx);
+      if (paused) return { text: paused, state: { topic: "slot" } };
       const slots = liveSlots(ctx);
       if (slots.length) return { text: "Next open time is " + slotLine(slots[0]) + ".", state: { topic: "slot" } };
       // "I can't see their live times" is untrue of a calendar we read and found empty, and the opening hour
