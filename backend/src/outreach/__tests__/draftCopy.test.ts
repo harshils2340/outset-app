@@ -15,13 +15,13 @@ const op = {
 };
 const empty: PageFacts = { priced: [], services: 0, photos: false, hours: false, rules: false, menuFromWidget: false };
 const body = (f: Partial<PageFacts>) => draftCopy(op, {} as never, { ...empty, ...f }, "info@seabreezejetski.com").body;
-const intro = (f: Partial<PageFacts>) => body(f).split("\n").find((l) => l.startsWith("I am Harshil")) as string;
-const thin = (f: Partial<PageFacts>) => body(f).split("\n").find((l) => l.startsWith("Your site gave me"));
+const intro = (f: Partial<PageFacts>) => body(f).split("\n").find((l) => l.startsWith("I'm Harshil")) as string;
+const thin = (f: Partial<PageFacts>) => body(f).split("\n").find((l) => l.startsWith("Your site didn't give me"));
 
 test("the page's things are listed, and only the ones it has", () => {
   assert.equal(
     intro({ priced: ["1 Hour", "2 Hour"], services: 2, photos: true, hours: true, rules: true }),
-    "I am Harshil, the founder of Outset and a Computer Engineering student at Waterloo. I built an instant-booking page for Sea Breeze Jet Ski Rentals using services, your photos, your hours and your cancellation policy:",
+    "I'm Harshil. I run Outset, and I put together a booking page for Sea Breeze Jet Ski Rentals using services, your photos, your hours and your cancellation policy.",
   );
 });
 
@@ -34,29 +34,54 @@ test("a shop that publishes no hours is not told its hours are on the page", () 
 /** No count and no "with prices" claim, priced or not: a scrape can miscount, and a wrong number is the kind
  * of specific, checkable claim that makes an owner stop trusting the rest of the email. */
 test("services never carries a count or a price claim", () => {
-  assert.ok(intro({ services: 3 }).includes("using services:"));
-  assert.ok(intro({ services: 1 }).includes("using services:"));
-  assert.ok(intro({ priced: ["Half day"], services: 4 }).includes("using services:"));
+  assert.ok(intro({ services: 3 }).includes("using services."));
+  assert.ok(intro({ services: 1 }).includes("using services."));
+  assert.ok(intro({ priced: ["Half day"], services: 4 }).includes("using services."));
   assert.ok(!/\d/.test(intro({ priced: ["Half day", "Full day"], services: 4 })), "no digit anywhere in the sentence");
 });
 
 /** One thing used to read "using  and your hours:", because the list always had a last item to add. */
 test("a page with one thing on it reads as a sentence", () => {
-  assert.ok(intro({ photos: true }).includes("using your photos:"), intro({ photos: true }));
+  assert.ok(intro({ photos: true }).includes("using your photos."), intro({ photos: true }));
   assert.ok(!intro({ photos: true }).includes("  "), "no gap where the missing items were");
 });
 
 test("a page with nothing on it says so rather than claiming things", () => {
   const s = thin({});
-  assert.ok(s?.includes("gave me very little"), s);
-  assert.ok(!intro({}).includes("using your"), intro({}));
+  assert.ok(s?.includes("didn't give me much"), s);
+  assert.equal(intro({}), "I'm Harshil. I run Outset.");
+  assert.ok(!intro({}).includes("using"), intro({}));
   assert.ok(s?.includes("Nothing on it is invented"), s);
 });
 
 test("the plain text and the html say the same sentence", () => {
   const c = draftCopy(op, {} as never, { ...empty, photos: true, hours: true }, "info@seabreezejetski.com");
-  assert.ok(c.html.includes("using your photos and your hours:"));
-  assert.ok(c.body.includes("using your photos and your hours:"));
+  assert.ok(c.html.includes("using your photos and your hours."));
+  assert.ok(c.body.includes("using your photos and your hours."));
+});
+
+/** Common Gmail/spam-filter trigger words and patterns: none of them belong in this email. */
+test("the email avoids common spam-filter trigger words and patterns", () => {
+  const c = draftCopy(op, {} as never, { ...empty, photos: true, hours: true, rules: true, priced: ["Half day"], services: 2 }, "info@seabreezejetski.com");
+  for (const bad of ["free", "guarantee", "act now", "click here", "100%", "risk-free", "no obligation", "$$$"]) {
+    assert.ok(!c.body.toLowerCase().includes(bad), `body contains a spam trigger word: "${bad}"`);
+  }
+  assert.ok(!/!/.test(c.body), "no exclamation marks");
+  assert.ok(!/\b[A-Z]{4,}\b/.test(c.body), "no shouty all-caps word");
+});
+
+/** The claim link is the first thing after the intro, and the legal/opt-out footer is last and visually
+ * separate, so an owner's eye lands on the one thing that matters before the fine print. */
+test("the claim link comes before the footer, and the footer carries the branding", () => {
+  const c = draftCopy(op, {} as never, { ...empty, photos: true }, "info@seabreezejetski.com");
+  const claimAt = c.body.indexOf("#claim=");
+  const termsAt = c.body.indexOf("terms.html");
+  const unsubAt = c.body.indexOf("/unsubscribe.html?t=");
+  assert.ok(claimAt > 0 && claimAt < termsAt, "claim link comes before the legal footer");
+  assert.ok(termsAt < unsubAt, "terms comes before unsubscribe, both in the footer");
+  assert.ok(c.body.trim().endsWith("Outset") || c.body.includes("\nOutset\n") || c.body.split("\n").includes("Outset"), "the Outset wordmark closes the footer");
+  assert.ok(c.html.includes("<b style=\"color:#222\">Outset</b>"), "the html footer carries the Outset wordmark, not a logo image");
+  assert.ok(!/<img/i.test(c.html), "no image anywhere in the html: an image is its own bulk-mail signal");
 });
 
 test("the mail still carries the claim link, the take-it-down link and a way to stop", () => {

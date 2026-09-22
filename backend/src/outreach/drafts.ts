@@ -125,63 +125,70 @@ export function draftCopy(op: Op, sc: ReturnType<typeof scale>, f: PageFacts, em
   // is the kind of thing an owner notices and stops trusting the whole email over. "Services" always holds.
   const menu = f.priced.length || f.services ? "services" : null;
   const built = [menu, f.photos ? "your photos" : null, f.hours ? "your hours" : null, f.rules ? "your cancellation policy" : null].filter(Boolean) as string[];
-  const who = "I am Harshil, the founder of Outset and a Computer Engineering student at Waterloo. I built an instant-booking page for " + op.name + " using " + (built.length ? andList(built) : "what your site publishes") + ":";
-  const why = "I started Outset because local activity businesses lose customers when booking requires phone calls or slow forms. We give guests a fast, instant checkout: pick a time, pay, done.";
+  // The lead. No bio, no "instant-booking" jargon: what it is, in one plain sentence, then straight to the
+  // one thing worth their click. Claiming goes first, on purpose: an owner who is going to act at all decides
+  // that in the first two lines, and everything below (the how-it-works, the legal footer) is there to answer
+  // a question they have after that, not before it.
+  const who = "I'm Harshil. I run Outset" + (built.length ? ", and I put together a booking page for " + op.name + " using " + andList(built) : "") + ".";
   // A page with nothing on it is still worth showing, but it cannot be sold as one that has their things on it.
-  const thin = built.length ? null : "Your site gave me very little to put on the page, so it's thin for now. Nothing on it is invented, and the claim link below lets you fill in the rest.";
+  const thin = built.length ? null : "Your site didn't give me much to put on the page yet, so it's thin for now. Nothing on it is invented, and the claim link below lets you fill in the rest.";
+  const cta = "This opens it, so you can look it over and turn bookings on. It's meant for the owner, so please don't forward it:";
+  const seeIt = "Or just see the page first:";
   const howHead = "How it works for " + op.name + ":";
   /**
    * The two questions an owner asks before they will take an online booking: what happens when the weather kills
    * the day, and who these people are legally. Both are answered here rather than left for them to go looking for.
    * The weather sentence describes what the code already does: an operator decline refunds the card in full
    * (`refundBooking` in src/api/bookings.ts), or releases the hold when nothing was captured.
+   *
+   * Wording here is checked against common spam-filter trigger phrases on purpose: no "free", "guarantee",
+   * "100%", "act now", "click here", "$$$", exclamation marks or ALL CAPS anywhere in this email.
    */
   const bullets: { label: string; text: string }[] = [
-    { label: "No cost to list", text: "it's free. We only take 5% when a booking actually happens." },
+    { label: "No cost to list", text: "we only take 5% when a booking actually happens. Nothing if it doesn't." },
     { label: "Keep your setup", text: vendor || "Outset can just sit alongside your website. Every booking reaches you directly by email." },
-    { label: "Weather protection", text: "if you cancel for weather, just decline the booking in your dashboard. The guest is refunded in full automatically, you don't have to do anything, and we don't take a fee on it." },
+    { label: "Weather protection", text: "decline a booking for weather in your dashboard and the guest is refunded in full, automatically. You don't do anything, and we don't take a fee on it." },
   ];
-  const legal = "Our terms and privacy policy, so you know who you are dealing with: " + TERMS + " and " + PRIVACY + ".";
   const lines = [
-    "Hi,", "", who, listing, "", why, thin, "", howHead, "",
+    "Hi,", "", who, "", cta, claim, "", seeIt, listing, "", thin, "", howHead, "",
     ...bullets.map((b) => "• " + b.label + ": " + b.text),
-    "", legal, "",
+    "",
+    "Got the wrong business? Take the page down instantly:", remove,
+    "", "Best,", "Harshil",
   ].filter((l) => l !== null) as string[];
   const paras = [
     "<p>Hi,</p>",
-    "<p>" + esc(who) + "<br>" + link(listing, listing) + "</p>",
-    "<p>" + esc(why) + (thin ? "<br>" + esc(thin) : "") + "</p>",
+    "<p>" + esc(who) + "</p>",
+    "<p>" + esc(cta) + "<br>" + link(claim, "Open the dashboard for " + op.name) + "</p>",
+    "<p>" + esc(seeIt) + " " + link(listing, "See the page") + (thin ? "<br>" + esc(thin) : "") + "</p>",
     "<p><b>" + esc(howHead) + "</b></p>",
     "<ul>" + bullets.map((b) => "<li><b>" + esc(b.label) + ":</b> " + esc(b.text) + "</li>").join("") + "</ul>",
-    "<p>Our " + link(TERMS, "terms") + " and " + link(PRIVACY, "privacy policy") + ", so you know who you are dealing with.</p>",
-  ];
-  lines.push(
-    "If you own " + op.name + ", you can claim your page and turn bookings on here. It's meant for the owner, so please don't forward it:",
-    claim,
-    "",
-    "Got the wrong business? Take the page down instantly:",
-    remove,
-    "",
-    "Best,",
-    "",
-    "Harshil Shah",
-    "Founder, Outset",
-  );
-  paras.push(
-    "<p>If you own " + esc(op.name) + ", " + link(claim, "you can claim your page and turn bookings on here") + ". It's meant for the owner, so please don't forward it.</p>",
     "<p>Got the wrong business? " + link(remove, "Take the page down instantly") + ".</p>",
-    "<p>Best,<br>Harshil Shah<br>Founder, Outset</p>",
-  );
+    "<p>Best,<br>Harshil</p>",
+  ];
+  // Everything below is the footer: quiet, small, last. What has to be there for law and trust (who is
+  // sending this, how to opt out, the fine print), never the thing the eye is asked to land on first.
+  // "Outset" set in bold instead of a logo image: an image is a bulk-mail signal on top of the tracking
+  // pixels and List-Unsubscribe headers this sender already avoids, so the wordmark carries the branding
+  // without adding one.
+  const footerLines: string[] = ["", "Outset"];
+  const footerParas: string[] = ['<p style="margin-top:24px;padding-top:12px;border-top:1px solid #e3e3e3;font-size:13px;color:#666"><b style="color:#222">Outset</b>'];
   if (to) {
     const stop = unsubPageUrl(to);
-    lines.push("", "If you'd rather not get emails like this: " + stop);
-    paras.push("<p>If you'd rather not get emails like this, " + link(stop, "you can unsubscribe") + ".</p>");
+    footerLines.push(TERMS, PRIVACY, "If you'd rather not get emails like this: " + stop);
+    footerParas.push(link(TERMS, "Terms") + " &nbsp;·&nbsp; " + link(PRIVACY, "Privacy") + " &nbsp;·&nbsp; " + link(stop, "Unsubscribe"));
     const postal = mailPostal();
     if (postal) {
-      lines.push("", postal);
-      paras.push("<p>" + esc(postal) + "</p>");
+      footerLines.push(postal);
+      footerParas.push("<br>" + esc(postal));
     }
+  } else {
+    footerLines.push(TERMS, PRIVACY);
+    footerParas.push(link(TERMS, "Terms") + " &nbsp;·&nbsp; " + link(PRIVACY, "Privacy"));
   }
+  footerParas[footerParas.length - 1] += "</p>";
+  lines.push(...footerLines);
+  paras.push(footerParas.join(""));
   return {
     subject,
     body: lines.join("\n"),
