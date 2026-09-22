@@ -15,61 +15,52 @@ const op = {
 };
 const empty: PageFacts = { priced: [], services: 0, photos: false, hours: false, rules: false, menuFromWidget: false };
 const body = (f: Partial<PageFacts>) => draftCopy(op, {} as never, { ...empty, ...f }, "info@seabreezejetski.com").body;
-const intro = (f: Partial<PageFacts>) => body(f).split("\n").find((l) => l.startsWith("Outset is a booking site")) as string;
-const thin = (f: Partial<PageFacts>) => body(f).split("\n").find((l) => l.startsWith("Your site didn't give me"));
-// The credibility number changes as the real catalog grows, so tests match its shape, never a literal count.
-const CRED = "Outset is a booking site for local activities — about ([\\d,]+) businesses across the US and Canada are already listed\\. ";
+const who = (f: Partial<PageFacts>) => body(f).split("\n").find((l) => l.startsWith("I'm Harshil")) as string;
+const built2 = (f: Partial<PageFacts>) => body(f).split("\n").find((l) => l.startsWith("I put together a page")) as string;
+const thin = (f: Partial<PageFacts>) => body(f).split("\n").find((l) => l.startsWith("It's thin for now"));
 
-test("the credibility line carries a real, plausible number, never invented", () => {
-  const m = new RegExp("^" + CRED).exec(intro({}));
-  assert.ok(m, intro({}));
-  const n = Number(m![1].replace(/,/g, ""));
-  assert.ok(Number.isFinite(n) && n >= 1000, `credibility number should be a real catalog-sized count, got ${m![1]}`);
+test("the lead says what Outset is before naming this operator", () => {
+  assert.equal(who({}), "I'm Harshil. I run Outset, an instant-booking marketplace where guests find and book local activities across the US and Canada.");
 });
 
 test("the page's things are listed, and only the ones it has", () => {
-  assert.match(
-    intro({ priced: ["1 Hour", "2 Hour"], services: 2, photos: true, hours: true, rules: true }),
-    new RegExp("^" + CRED + "I'm Harshil, and I put together a booking page for Sea Breeze Jet Ski Rentals using services, your photos, your hours and your cancellation policy\\.$"),
+  assert.equal(
+    built2({ priced: ["1 Hour", "2 Hour"], services: 2, photos: true, hours: true, rules: true }),
+    "I put together a page for Sea Breeze Jet Ski Rentals using services, your photos, your hours and your cancellation policy:",
   );
 });
 
 test("a shop that publishes no hours is not told its hours are on the page", () => {
-  const s = intro({ priced: ["1 Hour", "2 Hour"], services: 2, photos: true });
+  const s = built2({ priced: ["1 Hour", "2 Hour"], services: 2, photos: true });
   assert.ok(!s.includes("hours"), s);
   assert.ok(s.includes("using services and your photos"), s);
 });
 
-/** No count and no "with prices" claim about THIS operator's own menu, priced or not: a scrape can miscount,
- * and a wrong number about their own business is the kind of specific, checkable claim that makes an owner
- * stop trusting the rest of the email. The credibility clause's catalog-wide count is a different, real,
- * independently-verifiable number and is exempted from this check on purpose. */
+/** No count and no "with prices" claim, priced or not: a scrape can miscount or miss a price, and a wrong
+ * specific number is the kind of thing an owner notices and stops trusting the whole email over. */
 test("services never carries a count or a price claim", () => {
-  assert.ok(intro({ services: 3 }).includes("using services."));
-  assert.ok(intro({ services: 1 }).includes("using services."));
-  assert.ok(intro({ priced: ["Half day"], services: 4 }).includes("using services."));
-  const afterCredibility = intro({ priced: ["Half day", "Full day"], services: 4 }).replace(new RegExp("^" + CRED), "");
-  assert.ok(!/\d/.test(afterCredibility), "no digit anywhere past the credibility clause: " + afterCredibility);
+  assert.ok(built2({ services: 3 }).includes("using services:"));
+  assert.ok(built2({ services: 1 }).includes("using services:"));
+  assert.ok(built2({ priced: ["Half day"], services: 4 }).includes("using services:"));
+  assert.ok(!/\d/.test(built2({ priced: ["Half day", "Full day"], services: 4 })), "no digit anywhere in the sentence");
 });
 
 /** One thing used to read "using  and your hours:", because the list always had a last item to add. */
 test("a page with one thing on it reads as a sentence", () => {
-  assert.ok(intro({ photos: true }).includes("using your photos."), intro({ photos: true }));
-  assert.ok(!intro({ photos: true }).includes("  "), "no gap where the missing items were");
+  assert.ok(built2({ photos: true }).includes("using your photos:"), built2({ photos: true }));
+  assert.ok(!built2({ photos: true }).includes("  "), "no gap where the missing items were");
 });
 
 test("a page with nothing on it says so rather than claiming things", () => {
   const s = thin({});
-  assert.ok(s?.includes("didn't give me much"), s);
-  assert.match(intro({}), new RegExp("^" + CRED + "I'm Harshil, and I built Sea Breeze Jet Ski Rentals a page\\.$"));
-  assert.ok(!intro({}).includes("using"), intro({}));
   assert.ok(s?.includes("Nothing on it is invented"), s);
+  assert.equal(built2({}), "I put together a page for Sea Breeze Jet Ski Rentals, though your site didn't give me much to work with yet:");
 });
 
 test("the plain text and the html say the same sentence", () => {
   const c = draftCopy(op, {} as never, { ...empty, photos: true, hours: true }, "info@seabreezejetski.com");
-  assert.ok(c.html.includes("using your photos and your hours."));
-  assert.ok(c.body.includes("using your photos and your hours."));
+  assert.ok(c.html.includes("using your photos and your hours:"));
+  assert.ok(c.body.includes("using your photos and your hours:"));
 });
 
 /** Common Gmail/spam-filter trigger words and patterns: none of them belong in this email. */
@@ -82,13 +73,15 @@ test("the email avoids common spam-filter trigger words and patterns", () => {
   assert.ok(!/\b[A-Z]{4,}\b/.test(c.body), "no shouty all-caps word");
 });
 
-/** The claim link is the first thing after the intro, and the legal/opt-out footer is last and visually
- * separate, so an owner's eye lands on the one thing that matters before the fine print. */
-test("the claim link comes before the footer, and the footer carries the branding", () => {
+/** The listing preview comes right after the intro (show before asking for the click), the claim link comes
+ * after that (the action once they've looked), and the legal/opt-out footer is last and visually separate. */
+test("the preview comes before the claim link, both before the footer, and the footer carries the branding", () => {
   const c = draftCopy(op, {} as never, { ...empty, photos: true }, "info@seabreezejetski.com");
+  const listingAt = c.body.indexOf("https://onoutset.com/listing/");
   const claimAt = c.body.indexOf("#claim=");
   const termsAt = c.body.indexOf("terms.html");
   const unsubAt = c.body.indexOf("/unsubscribe.html?t=");
+  assert.ok(listingAt > 0 && listingAt < claimAt, "the listing preview comes before the claim link");
   assert.ok(claimAt > 0 && claimAt < termsAt, "claim link comes before the legal footer");
   assert.ok(termsAt < unsubAt, "terms comes before unsubscribe, both in the footer");
   assert.ok(c.body.includes("Outset — Instant booking for local activities."), "the wordmark and tagline are their own line in the plain text");
