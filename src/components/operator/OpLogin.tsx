@@ -69,7 +69,16 @@ export function OpLogin({ claimId, claimToken, compact, onEnter, onBack }: { cla
   const [phone, setPhone] = useState("");
   const [code, setCode] = useState("");
   const [err, setErr] = useState<string | null>(null);
-  const [linkState, setLinkState] = useState<"idle" | "checking" | "bad" | "expired">(claimToken && claimId && !consumedLinks.has(claimToken) ? "checking" : "idle");
+  const [linkState, setLinkState] = useState<"idle" | "checking" | "confirm" | "bad" | "expired">(claimToken && claimId && !consumedLinks.has(claimToken) ? "checking" : "idle");
+  /**
+   * What a first-time claim link needs once its token has checked out, held until a person clicks through.
+   * A mail client's own link-safety scanner (Outlook Safe Links, Gmail's, a corporate gateway's) opens every
+   * URL in an incoming email to check it before the recipient ever reads it, the same way a headless test
+   * would. If loading this page recorded the claim by itself, that scan claims the listing, not the owner:
+   * verified on 22 September 2026, when exactly that happened to a real listing from a real test load.
+   */
+  const [pendingClaim, setPendingClaim] = useState<{ u: Unclaimed; apiId: string; claimToken: string; fromLink: { name: string; email: string; phone: string } | null } | null>(null);
+  const [confirming, setConfirming] = useState(false);
   // The splash sits on one line for up to a minute while the catalog and the listing's file arrive.
   const [slow, setSlow] = useState(false);
   const isApi = hasApi();
@@ -107,33 +116,20 @@ export function OpLogin({ claimId, claimToken, compact, onEnter, onBack }: { cla
         // bar so a reload, a bookmark or a shared URL does not carry it. `#claim=<id>` stays so a refresh reopens
         // this business rather than the demo.
         if (/[&#](k|o)=/.test(window.location.hash)) window.history.replaceState(null, "", window.location.pathname + window.location.search + "#claim=" + claimId);
-        // Record the claim before anything else. It used to happen only when a profile was being created,
-        // so a second person opening a forwarded link for a listing that was already set up was never
-        // recorded at all, and neither the server nor the real owner ever heard about it.
-        if (isApi) await claimRemote(apiId, claimToken, fromLink || undefined);
-        if (!alive) return;
+        // This device has been through this claim before (its own saved profile), so it is a real return
+        // visit, not the first load of the link: enter directly, the same as any other reload, and still
+        // record the claim so a second claimer opening this same link from a different device is heard.
         const existing = loadProfile(apiId) || loadProfile(u.id);
-        if (existing) { onEnter(existing); return; }
-        // Another device may already hold this operator's edits.
-        const remote = await fetchRemoteProfile(apiId);
-        if (!alive) return;
-        const saved = remote?.profile as OperatorProfile | undefined;
-        if (saved && saved.v === 1 && (saved.id === apiId || saved.id === u.id)) { saveProfile(saved); onEnter(saved); return; }
-        // The address this link was sent to wins over the one already on file. Taking the stored one instead
-        // meant a second claimer simply re-sent the first owner's address, so the server could never tell
-        // that somebody else had walked in through a forwarded email.
-        const p = defaultProfile(u, {
-          name: fromLink?.name || remote?.owner?.name || "",
-          email: fromLink?.email || remote?.owner?.email || contactFor(u)?.email || "",
-          phone: fromLink?.phone || remote?.owner?.phone || "",
-        });
-        p.id = apiId;
-        if (!isApi) p.bookings = sampleBookings(p);
-        saveProfile(p);
-        // Only when the link carried no address: the claim above already sent one if it had.
-        if (!fromLink) await claimRemote(apiId, claimToken, { name: p.ownerName, email: p.ownerEmail, phone: p.ownerPhone });
-        if (!alive) return;
-        onEnter(p);
+        if (existing) {
+          if (isApi) await claimRemote(apiId, claimToken, fromLink || undefined);
+          if (!alive) return;
+          onEnter(existing);
+          return;
+        }
+        // First load of this link on this device: wait for a person to click through (see pendingClaim above)
+        // rather than recording the claim just because the page loaded.
+        setPendingClaim({ u, apiId, claimToken, fromLink });
+        setLinkState("confirm");
         return;
       }
       // The catalog and the detail file can take a while on a slow connection; keep checking for a full minute.
@@ -148,6 +144,38 @@ export function OpLogin({ claimId, claimToken, compact, onEnter, onBack }: { cla
     tick();
     return () => { alive = false; };
   }, [claimToken, claimId]);
+  /** The click that finishes a first-time claim link: everything `tick()` used to do by itself once the token checked out. */
+  const proceedClaim = async () => {
+    if (!pendingClaim) return;
+    const { u, apiId, claimToken: token, fromLink } = pendingClaim;
+    setConfirming(true);
+    // Record the claim before anything else. It used to happen only when a profile was being created, so a
+    // second person opening a forwarded link for a listing that was already set up was never recorded at
+    // all, and neither the server nor the real owner ever heard about it.
+    if (isApi) await claimRemote(apiId, token, fromLink || undefined);
+    // Another device may already hold this operator's edits.
+    const remote = await fetchRemoteProfile(apiId);
+    const saved = remote?.profile as OperatorProfile | undefined;
+    if (saved && saved.v === 1 && (saved.id === apiId || saved.id === u.id)) {
+      saveProfile(saved);
+      onEnter(saved);
+      return;
+    }
+    // The address this link was sent to wins over the one already on file. Taking the stored one instead
+    // meant a second claimer simply re-sent the first owner's address, so the server could never tell that
+    // somebody else had walked in through a forwarded email.
+    const p = defaultProfile(u, {
+      name: fromLink?.name || remote?.owner?.name || "",
+      email: fromLink?.email || remote?.owner?.email || contactFor(u)?.email || "",
+      phone: fromLink?.phone || remote?.owner?.phone || "",
+    });
+    p.id = apiId;
+    if (!isApi) p.bookings = sampleBookings(p);
+    saveProfile(p);
+    // Only when the link carried no address: the claim above already sent one if it had.
+    if (!fromLink) await claimRemote(apiId, token, { name: p.ownerName, email: p.ownerEmail, phone: p.ownerPhone });
+    onEnter(p);
+  };
   const mine = useMemo(() => Array.from(new Set(claimedIds())).map((id) => ({ id, p: loadProfile(id), u: experienceById(id) })).filter((x) => x.p && x.u && !(x.p.ownerEmail === "owner@example.com" && x.p.ownerName === "Demo owner")), [app.catalogVersion]);
   /* Each row needs the catalog record behind the claim, and the catalog is fetched after the first paint. Until
      it lands none of them resolve, so an owner who reloaded the dashboard was shown the claim screen with no
@@ -373,6 +401,20 @@ export function OpLogin({ claimId, claimToken, compact, onEnter, onBack }: { cla
         <Mark size={44} />
         <b>Opening your dashboard…</b>
         <small>{slow ? "Still loading your listing. This can take a moment on a slow connection." : picked ? picked.title : "One moment"}</small>
+      </div>
+    );
+  }
+
+  // A real click, not the page load: an email app's own link-safety scanner opens this exact URL before a
+  // person ever reads the email, and a page that claimed on load would hand the listing to that scanner.
+  if (linkState === "confirm" && pendingClaim) {
+    return (
+      <div className={"odsplash" + (compact ? " compact" : "")}>
+        {head}
+        <b>This is your business?</b>
+        <small>Opening your dashboard claims this listing and turns it over to you.</small>
+        <button type="button" className="cta odwide" disabled={confirming} onClick={() => void proceedClaim()}>{confirming ? "Opening…" : "Yes, open my dashboard"}</button>
+        <button type="button" className="odlink" onClick={onBack}>Not my business</button>
       </div>
     );
   }
