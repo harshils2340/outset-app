@@ -382,7 +382,7 @@ export function OpLogin({ claimId, claimToken, compact, onEnter, onBack }: { cla
       <div className="odlogin-side">
         <button type="button" className="odlogin-brand" onClick={onBack}>
           <Mark size={30} />
-          <b>GoDo</b>
+          <b>Outset</b>
           <span>for operators</span>
         </button>
         <h1>Your bookings, the way they come in.</h1>
@@ -497,7 +497,7 @@ export function OpLogin({ claimId, claimToken, compact, onEnter, onBack }: { cla
             ) : (
               <button type="button" className="cta odwide" disabled={!name.trim() || !EMAIL.test(email.trim())} onClick={() => { setMode("claim"); setStep("code"); setErr(null); }}>Send verification code</button>
             )}
-            <p className="odfine">By continuing you confirm you're authorised to manage this business on GoDo.</p>
+            <p className="odfine">By continuing you confirm you're authorised to manage this business on Outset.</p>
           </>
         ) : null}
 

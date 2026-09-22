@@ -47,9 +47,9 @@ export function vendorLine(id: string | null | undefined, menuFromWidget: boolea
   if (!name || !id) return null;
   // Only claim the prices came from their widget when this operator's menu really did (offerings with confidence 'widget').
   const priced = menuFromWidget && MENU_READ.has(id) ? " The prices on your page came straight from your " + name + " listings, so they match." : "";
-  if (LIVE_CALENDAR.has(id)) return "You already use " + name + ", so keep it. GoDo reads your " + name + " calendar, so guests only see times you actually have open." + priced + " Nothing changes on your site; this is another door to the same shop.";
+  if (LIVE_CALENDAR.has(id)) return "You already use " + name + ", so keep it. Outset reads your " + name + " calendar, so guests only see times you actually have open." + priced + " Nothing changes on your site; this is another door to the same shop.";
   if (priced) return "You already use " + name + ", so keep it." + priced + " Nothing changes on your site; this is another door to the same shop, and each booking reaches you by email.";
-  return "If you already use " + name + " for bookings, keep it. GoDo doesn't replace it; it's another place guests find you, and each booking reaches you by email.";
+  return "If you already use " + name + " for bookings, keep it. Outset doesn't replace it; it's another place guests find you, and each booking reaches you by email.";
 }
 
 /** Real numbers for the credibility line, read once per draft run. */
@@ -127,13 +127,13 @@ export function draftCopy(op: Op, sc: ReturnType<typeof scale>, f: PageFacts, em
       ? "your " + f.services + (f.services === 1 ? " service" : " services")
       : null;
   const built = [menu, f.photos ? "your photos" : null, f.hours ? "your hours" : null, f.rules ? "your cancellation policy" : null].filter(Boolean) as string[];
-  const who = "I'm Harshil. I run GoDo, a site where people book local activities the way they book a table on OpenTable: pick a time, pay, done. No calling around.";
+  const who = "I'm Harshil. I run Outset, a site where people book local activities the way they book a table on OpenTable: pick a time, pay, done. No calling around.";
   // A page with nothing on it is still worth showing, but it cannot be sold as one that has their things on it.
   const intro = built.length
     ? "I built a page for " + op.name + " from your website. It has " + andList(built) + ". I didn't make anything up. Have a look:"
     : "I built a page for " + op.name + " from your website, but your site gave me very little to put on it, so the page is thin. Nothing on it is invented, and the link below lets you fill in the rest. Have a look:";
-  const scale = "There are about " + listed + " activity businesses on GoDo across the US and Canada, from Florida to British Columbia, and guests find them by city and activity.";
-  const money = "What it costs: nothing to be listed. When a booking comes through GoDo, we keep 5% of it. No booking, no fee." + (vendor ? " " + vendor : "");
+  const scale = "There are about " + listed + " activity businesses on Outset across the US and Canada, from Florida to British Columbia, and guests find them by city and activity.";
+  const money = "What it costs: nothing to be listed. When a booking comes through Outset, we keep 5% of it. No booking, no fee." + (vendor ? " " + vendor : "");
   /**
    * The two questions an owner asks before they will take an online booking: what happens when the weather kills
    * the day, and who these people are legally. Both are answered here rather than left for them to go looking for.
@@ -160,12 +160,12 @@ export function draftCopy(op: Op, sc: ReturnType<typeof scale>, f: PageFacts, em
     remove,
     "",
     "Harshil",
-    "GoDo",
+    "Outset",
   );
   paras.push(
     "<p>If this is your business, " + link(claim, "this link opens your page") + " so you can fix anything and switch bookings on. It's meant for the owner, so please don't forward it.</p>",
     "<p>If I've got the wrong business, " + link(remove, "this takes the page down") + ".</p>",
-    "<p>Harshil<br>GoDo</p>",
+    "<p>Harshil<br>Outset</p>",
   );
   if (to) {
     const stop = unsubPageUrl(to);

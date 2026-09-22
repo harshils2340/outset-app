@@ -66,9 +66,9 @@ export function WebConfirm({ booking, onDone, onOpen }: { booking: Booking; onDo
             <span className="alround"><Markup html={'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m14.5 5.5-6.5 6.5 6.5 6.5"/></svg>'} /></span>
             <span>Back to the listing</span>
           </button>
-          <a className="allogo" href="#" onClick={(e) => { e.preventDefault(); onDone(); }} aria-label="GoDo home">
+          <a className="allogo" href="#" onClick={(e) => { e.preventDefault(); onDone(); }} aria-label="Outset home">
             <Mark size={30} />
-            <b>GoDo</b>
+            <b>Outset</b>
           </a>
         </div>
       </header>

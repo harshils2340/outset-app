@@ -113,7 +113,7 @@ const JOBS: Job[] = [
    * MAIL_FROM, MAIL_POSTAL, the suppression list) still run on top and refuse to send until every one is
    * real, so adding this job is inert until all of them are set here, not just on outset-api.
    */
-  { name: "outreach", at: "09:00", timeoutMs: 20 * MIN, args: ["scripts/outreach-ramp.mts"], needsRepo: true, needsKey: "RESEND_API_KEY", note: "claim outreach, weekdays only, the day-1..5 warm-up ramp from docs/outreach-email.md (50, 100, 200, 400, then 500 a day)" },
+  { name: "outreach", at: "09:00", timeoutMs: 20 * MIN, args: ["scripts/outreach-ramp.mts"], needsRepo: true, needsKey: "RESEND_API_KEY", note: "claim outreach, weekdays only, the warm-up ramp from docs/outreach-email.md (20, 40, 70, then holds at 100/day, Gmail's practical ceiling for a personal account mailing strangers)" },
 ];
 
 type JobState = { lastStart?: string; lastEnd?: string; lastResult?: string; lastExitCode?: number | null; lastSeconds?: number; lastDay?: string; lastLine?: string };

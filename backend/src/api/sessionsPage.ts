@@ -15,7 +15,7 @@ export const SESSIONS_PAGE = `<!doctype html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>GoDo · what the agent did</title>
+<title>Outset · what the agent did</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -92,7 +92,7 @@ let current = null;
  * fixing the agent — because "it gave me a weird answer" is not something anybody can act on and this is.
  */
 function transcript(s){
-  const out = ["GoDo concierge session " + s.id, new Date(s.at).toLocaleString(), ""];
+  const out = ["Outset concierge session " + s.id, new Date(s.at).toLocaleString(), ""];
   for (const t of s.turns) {
     out.push("You: " + t.text);
     out.push("  -> " + (t.outcome || "(no outcome recorded)") + "   [" + t.ms + "ms]");

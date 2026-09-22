@@ -128,7 +128,7 @@ export function OpSidebar({
     <aside className="odside">
       <button type="button" className="odbrand" onClick={onBrand}>
         <Mark size={28} />
-        <b>GoDo</b>
+        <b>Outset</b>
         <span>for operators</span>
       </button>
 

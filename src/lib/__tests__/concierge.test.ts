@@ -695,7 +695,7 @@ test("Book never does nothing: a half-typed name or number is said out loud", ()
 test("the agent never speaks the API's own error codes", () => {
   /**
    * The routes answer in two registers, and both were printed in the thread exactly as they arrived, over the
-   * agent's name: a guest who mistyped their address was answered "GoDo: bad email."
+   * agent's name: a guest who mistyped their address was answered "Outset: bad email."
    */
   assert.equal(guestWords("That time was just booked. Pick another time."), "That time was just booked. Pick another time.");
   assert.equal(guestWords("This listing is hidden right now."), "This listing is hidden right now.");

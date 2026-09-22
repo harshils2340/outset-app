@@ -520,7 +520,7 @@ export function missingFrom(guest: { name: string; phone: string }): string {
  * The booking routes answer in two registers. "That time was just booked" and "This listing is hidden right
  * now" are sentences written for the person reading them; "bad email", "duplicate code" and "no such listing"
  * are codes written for whoever is reading the log. Both were printed in the thread exactly as they arrived
- * and over the agent's name, so a guest who mistyped their address was answered "GoDo: bad email." A sentence
+ * and over the agent's name, so a guest who mistyped their address was answered "Outset: bad email." A sentence
  * starts with a capital and has a space in it; anything else is ours to say properly.
  */
 export function guestWords(error: string | undefined | null): string {

@@ -197,7 +197,7 @@ export function turnText(t: Turn): string {
 /** A whole conversation as plain text, with a header saying when and against which agent session. */
 export function transcript(c: Conversation): string {
   const when = new Date(c.startedAt).toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" });
-  return [`GoDo concierge · ${when} · session ${c.id}`, "", ...c.turns.map(turnText)].join("\n");
+  return [`Outset concierge · ${when} · session ${c.id}`, "", ...c.turns.map(turnText)].join("\n");
 }
 
 /**

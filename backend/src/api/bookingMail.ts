@@ -109,7 +109,7 @@ function operatorLines(rec: StoredBooking, ctx: BookingContext): EmailLine[] | u
   if (!m) return undefined;
   return [
     { label: "Your price", amount: fmtMoney(m.subtotal, ctx.currency) },
-    { label: `GoDo fee (${Math.round(OPERATOR_FEE_RATE * 100)}%)`, amount: "-" + fmtMoney(m.subtotal - m.net, ctx.currency) },
+    { label: `Outset fee (${Math.round(OPERATOR_FEE_RATE * 100)}%)`, amount: "-" + fmtMoney(m.subtotal - m.net, ctx.currency) },
     { label: "You receive", amount: fmtMoney(m.net, ctx.currency), total: true },
   ];
 }

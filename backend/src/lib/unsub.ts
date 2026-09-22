@@ -151,7 +151,7 @@ export function withOutreachFooter(body: string, email: string): string {
   const page = unsubPageUrl(email);
   if (body.includes("/unsubscribe")) return body;
   const postal = mailPostal();
-  const lines = [body.replace(/\s+$/, ""), "", "Don't want emails from GoDo? Unsubscribe here and we will stop:", page];
+  const lines = [body.replace(/\s+$/, ""), "", "Don't want emails from Outset? Unsubscribe here and we will stop:", page];
   if (postal) lines.push("", postal);
   return lines.join("\n");
 }

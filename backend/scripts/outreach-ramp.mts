@@ -4,8 +4,18 @@ import { dirname, join } from "node:path";
 import { sendOutreach } from "../src/outreach/send.ts";
 
 /**
- * One call a day from the pipeline scheduler, weekdays only: the warm-up ramp docs/outreach-email.md lays out
- * for a new sending domain (50, 100, 200, 400, then 500 a day), so day one is never a full batch.
+ * One call a day from the pipeline scheduler, weekdays only: a warm-up ramp so day one is never a full batch.
+ *
+ * Outreach is marked `commercial` in sendMail, which routes it through Gmail SMTP rather than Resend (see
+ * mail.ts: a personal account reads as a person, not a brand blast, and Gmail keeps it out of Promotions).
+ * That is also why the ceiling here is 100/day, not the 500 docs/outreach-email.md was written around: 500 is
+ * Google's figure for normal use of the account, but cold email to people who have never written back is
+ * exactly the pattern Gmail's abuse detection is built to catch, and it throttles well before 500. The
+ * failure mode is not "goes to spam", it is Google rate-limiting or suspending the sending account itself,
+ * which here is a real personal inbox, not a disposable one. Going past 100/day for real needs either a
+ * Google Workspace account on the real domain (2,000/day, better reputation than a personal account sending
+ * bulk mail) or splitting volume across more than one real mailbox, both of which are Harshil's call, not
+ * something to ramp into automatically.
  *
  * sendOutreach's own guards (backend/src/outreach/guards.ts) refuse to send at all until CLAIM_SECRET,
  * MAIL_FROM, MAIL_POSTAL and the suppression list are real, so scheduling this before those are set on
@@ -15,7 +25,7 @@ import { sendOutreach } from "../src/outreach/send.ts";
 const TZ = process.env.PIPELINE_TZ || "America/Toronto";
 const DATA_DIR = dirname(process.env.OUTSET_DB_PATH || "/var/data/outset.db");
 const STATE_PATH = join(DATA_DIR, "outreach-ramp.json");
-const RAMP = [50, 100, 200, 400, 500];
+const RAMP = [20, 40, 70, 100];
 
 type State = { firstDay: string; ranDays: string[] };
 
