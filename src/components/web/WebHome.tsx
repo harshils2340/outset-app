@@ -1518,9 +1518,9 @@ export function WebHome({ onOpenApp, onOperators, onAsk, asking = false, askSeed
     <div className={"web ah" + (compareIds.length ? " has-cmpbar" : "") + (asking ? " has-ask" : "")}>
       <header className={"ah-header" + (scrolled ? " is-scrolled" : "") + (expanded ? " is-expanded" : " is-compact")}>
         <div className="ah-top ah-gutter">
-          <a className="ah-logo" href="./" aria-label="GoDo home" onClick={(e) => { e.preventDefault(); onCloseAsk?.(); setCat("all"); setArtChip(null); setQ(""); setSearched(false); setSort("relevance"); setPrice({ min: null, max: null }); window.scrollTo({ top: 0 }); }}>
+          <a className="ah-logo" href="./" aria-label="Outset home" onClick={(e) => { e.preventDefault(); onCloseAsk?.(); setCat("all"); setArtChip(null); setQ(""); setSearched(false); setSort("relevance"); setPrice({ min: null, max: null }); window.scrollTo({ top: 0 }); }}>
             <Mark size={32} />
-            <b>GoDo</b>
+            <b>Outset</b>
           </a>
           {asking ? (
             modeSwitch
@@ -1814,7 +1814,7 @@ export function WebHome({ onOpenApp, onOperators, onAsk, asking = false, askSeed
               <h3>Support</h3>
               <ul>
                 <li><a href={"mailto:" + HELP_EMAIL}>Help Centre</a></li>
-                <li><a href={"mailto:" + HELP_EMAIL + "?subject=" + encodeURIComponent("A listing on GoDo")}>Report a listing concern</a></li>
+                <li><a href={"mailto:" + HELP_EMAIL + "?subject=" + encodeURIComponent("A listing on Outset")}>Report a listing concern</a></li>
                 <li><button type="button" onClick={onOpenApp}>Open the phone app</button></li>
               </ul>
             </section>
@@ -1828,7 +1828,7 @@ export function WebHome({ onOpenApp, onOperators, onAsk, asking = false, askSeed
               </ul>
             </section>
             <section>
-              <h3>GoDo</h3>
+              <h3>Outset</h3>
               <ul>
                 <li><button type="button" onClick={() => { resetFilters(); setQ(""); window.scrollTo({ top: 0 }); }}>Browse every category</button></li>
                 <li><button type="button" onClick={() => { window.scrollTo({ top: 0 }); openSeg("where"); window.setTimeout(() => whereInput.current?.focus(), 50); }}>Search a city</button></li>
@@ -1838,7 +1838,7 @@ export function WebHome({ onOpenApp, onOperators, onAsk, asking = false, askSeed
           </div>
           <div className="ah-footbar">
             <span>
-              © {new Date().getFullYear()} GoDo<span aria-hidden="true"> · </span>Book the jump. Skip the call.
+              © {new Date().getFullYear()} Outset<span aria-hidden="true"> · </span>Book the jump. Skip the call.
             </span>
             <span className="ah-footbar-right">
               <span>English (US)</span>

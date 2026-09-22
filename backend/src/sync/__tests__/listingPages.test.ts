@@ -74,7 +74,7 @@ test("canonical, title, blurb, menu with prices, hours and requirements come onl
   try {
     const html = r.read("o-a.html");
     assert.match(html, /<link rel="canonical" href="https:\/\/onoutset\.com\/l\/o-a\.html">/);
-    assert.match(html, /<title>Pasta Night in Toronto, ON · GoDo<\/title>/);
+    assert.match(html, /<title>Pasta Night in Toronto, ON · Outset<\/title>/);
     assert.match(html, /Hands-on Italian cooking in a home kitchen\./);
     assert.match(html, /<span>Pasta class<small>3 hours<\/small><\/span><span>\$95<\/span>/);
     assert.match(html, /Tue-Sat 10am-6pm/);
@@ -259,7 +259,7 @@ test("a listing page carries a social card built from the listing's own name and
   ]);
   try {
     const html = r.read("o-a.html");
-    assert.match(html, /<meta property="og:title" content="o-a in Toronto, ON · GoDo">/);
+    assert.match(html, /<meta property="og:title" content="o-a in Toronto, ON · Outset">/);
     assert.match(html, /<meta property="og:description" content="Hand-rolled pasta in a real kitchen\.">/);
     assert.match(html, /<meta property="og:url" content="[^"]*\/l\/o-a\.html">/);
     assert.match(html, /<meta property="og:image" content="https:\/\/wsrv\.nl\/\?url=x%2Fa\.jpg&amp;w=1200&amp;h=630/);

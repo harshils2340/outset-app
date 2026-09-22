@@ -265,7 +265,7 @@ export function OpListing() {
 
       <div className="odrow odpublish">
         <span className="meta">
-          <b>{p.published ? "Your listing is live on GoDo" : "Your listing is hidden"}</b>
+          <b>{p.published ? "Your listing is live on Outset" : "Your listing is hidden"}</b>
           {/* Hidden is not gone: the record keeps its own link, so a guest with a bookmark or an old email
               still opens the page and reads that it is down. Saying "nobody can see you" left an owner to
               find that out from a guest. */}

@@ -88,7 +88,7 @@ test("the Toronto cooking page: title, h1, real count, cards with price and phot
   const r = run(fixture);
   try {
     const html = r.read("cooking-in-toronto.html");
-    assert.match(html, /<title>Cooking classes in Toronto, Ontario · GoDo<\/title>/);
+    assert.match(html, /<title>Cooking classes in Toronto, Ontario · Outset<\/title>/);
     assert.match(html, /<h1>Cooking classes in Toronto, Ontario<\/h1>/);
     assert.match(html, /3 cooking classes around Toronto, 3 with prices/);
     assert.match(html, /<link rel="canonical" href="https:\/\/onoutset\.com\/p\/cooking-in-toronto\.html">/);
@@ -98,7 +98,7 @@ test("the Toronto cooking page: title, h1, real count, cards with price and phot
     // A card whose listing has a cover photo links to that listing's own static page (listingPages.ts), not the hash route.
     assert.match(html, /href="https:\/\/onoutset\.com\/l\/o-cooking-toronto-1\.html"/);
     // FAQ built from the listings' own facts.
-    assert.match(html, /GoDo lists 3 cooking classes around Toronto, including places in Toronto and Mississauga\. 2 of them have photos\./);
+    assert.match(html, /Outset lists 3 cooking classes around Toronto, including places in Toronto and Mississauga\. 2 of them have photos\./);
     assert.match(html, /3 of the 3 operators publish prices on their own site\. Starting prices run from \$60 to \$140\./);
     assert.match(html, /Listed durations include 2 hours and 3 hours/);
     assert.match(html, /cooking 1 \(4\.8 stars, 120 reviews\) and cooking 2 \(40 reviews\)/);
@@ -136,7 +136,7 @@ test("a page with no prices, hours, durations or reviews asks none of those ques
     assert.doesNotMatch(html, /How long do/);
     assert.doesNotMatch(html, /most reviews/);
     assert.doesNotMatch(html, /opening hours/);
-    assert.match(html, /GoDo lists 3 cooking classes around Niagara\. Photos are added/);
+    assert.match(html, /Outset lists 3 cooking classes around Niagara\. Photos are added/);
     const faq = buildFaq(KINDS.find((k) => k.art === "cooking")!, metro("niagara"), fixture.filter((i) => i.metroId === "niagara"));
     assert.deepEqual(faq.map((f) => f.q), ["How many cooking classes are there in Niagara?", "Where does this information come from?"]);
   } finally {
@@ -225,7 +225,7 @@ test("a listing with nothing on it is left off a page, out of its counts, and ca
     assert.deepEqual(r.files, ["cooking-in-anywhere.html", "cooking-in-toronto.html", "index.html"]);
     const html = r.read("cooking-in-toronto.html");
     assert.match(html, /3 cooking classes around Toronto, 3 with prices/);
-    assert.match(html, /GoDo lists 3 cooking classes around Toronto\./);
+    assert.match(html, /Outset lists 3 cooking classes around Toronto\./);
     assert.match(html, /"numberOfItems":3/);
     assert.doesNotMatch(html, /o-cooking-toronto-4/);
     assert.doesNotMatch(html, /cooking-in-niagara\.html/);
@@ -270,7 +270,7 @@ test("a card photo is proxied, so an operator's http image still appears on an h
 
 /**
  * A page that found exactly one of something said "1 cooking classes" in its title tag and its lede, and
- * "GoDo lists 1 cooking classe" in the FAQ a search engine reads as an answer, because the singular was a
+ * "Outset lists 1 cooking classe" in the FAQ a search engine reads as an answer, because the singular was a
  * stripped trailing s. Every kind's own noun has to survive it, including the eleven that name a pair.
  */
 test("a page with one listing names one of it, for every kind", () => {
@@ -318,7 +318,7 @@ test("a kind we only guessed is not published as a fact, counted, or allowed to 
     const html = r.read("escape-in-tampa.html");
     assert.match(html, /<h1>Escape rooms in Tampa Bay, Florida<\/h1>/);
     assert.match(html, /3 escape rooms around Tampa Bay/);
-    assert.match(html, /GoDo lists 3 escape rooms around Tampa Bay/);
+    assert.match(html, /Outset lists 3 escape rooms around Tampa Bay/);
     assert.match(html, /"numberOfItems":3/);
     assert.doesNotMatch(html, /Anna Maria/);
     // The guessed listing is not a town of Tampa Bay's either, since it is not on the page.
@@ -397,7 +397,7 @@ test("a page with more listings than it can draw counts its own list honestly an
     assert.equal(ld[0].numberOfItems, ld[0].itemListElement.length);
     // The place still has 30, and the page still says so where that is the honest number.
     assert.match(html, /30 cooking classes around Toronto/);
-    assert.match(html, /GoDo lists 30 cooking classes around Toronto/);
+    assert.match(html, /Outset lists 30 cooking classes around Toronto/);
     // And the gap between the two is named on the page rather than left for the guest to find.
     assert.match(html, /Showing 24 of 30/);
   } finally {
@@ -439,7 +439,7 @@ test("every landing page carries a social card, with its own lead photo where it
     const toronto = r.read("cooking-in-toronto.html");
     assert.match(toronto, /og:image" content="https:\/\/wsrv\.nl\/\?url=[^"]*&amp;w=1200&amp;h=630/);
     assert.match(toronto, /twitter:card" content="summary_large_image"/);
-    assert.match(toronto, /og:title" content="Cooking classes in Toronto, Ontario · GoDo"/);
+    assert.match(toronto, /og:title" content="Cooking classes in Toronto, Ontario · Outset"/);
     // A page with no photo at all falls back to the app icon and drops to the small card rather than
     // promising a large image it has not got.
     const nowhere = r.read("kayak-in-anywhere.html");
@@ -463,7 +463,7 @@ test("a count a person reads is grouped the way the prices beside it already wer
   try {
     const html = r.read("cooking-in-toronto.html");
     assert.match(html, /1,200 cooking classes around Toronto/);
-    assert.match(html, /GoDo lists 1,200 cooking classes/);
+    assert.match(html, /Outset lists 1,200 cooking classes/);
     assert.match(html, /1,200 of them have photos/);
     assert.match(html, /1,200 of the 1,200 operators publish prices/);
     assert.match(html, /Showing 24 of 1,200/);

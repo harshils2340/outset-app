@@ -10,7 +10,7 @@ export function Pitch() {
     <div className="pitch">
       <div className="wordmark">
         <Mark size={32} />
-        <b>GoDo</b>
+        <b>Outset</b>
       </div>
       <h1>
         Book the jump. <em>Skip the call.</em>

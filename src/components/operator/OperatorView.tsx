@@ -310,7 +310,7 @@ export function OperatorView({ compact = false }: { compact?: boolean }) {
         <div className="odlogin-side">
           <button type="button" className="odlogin-brand" onClick={back}>
             <Mark size={30} />
-            <b>GoDo</b>
+            <b>Outset</b>
             <span>for operators</span>
           </button>
           <h1>Opening {p.title}</h1>
@@ -452,7 +452,7 @@ export function OperatorView({ compact = false }: { compact?: boolean }) {
                 <span>
                   <b>Sign in again to publish your changes</b>
                   <small>
-                    GoDo has signed this device out, so your edits are saved here and are not reaching your listing
+                    Outset has signed this device out, so your edits are saved here and are not reaching your listing
                     or your guests, and new booking requests are not coming through either. Sign in with the email on
                     your listing and everything on this device goes up with your next edit.
                   </small>

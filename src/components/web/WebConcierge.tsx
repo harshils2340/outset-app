@@ -439,7 +439,7 @@ export function WebConcierge({ seed, framed, embed, onClose }: { seed?: string; 
     const id = listingForOption(o);
     const slot = slotOf(d.time);
     if (!id || !slot || !/^\d{4}-\d{2}-\d{2}$/.test(d.date)) {
-      add({ kind: "them", text: "I could not hold that time on GoDo. Pick another one." });
+      add({ kind: "them", text: "I could not hold that time on Outset. Pick another one." });
       return;
     }
     /**
@@ -452,7 +452,7 @@ export function WebConcierge({ seed, framed, embed, onClose }: { seed?: string; 
     if (id.startsWith("cg-")) {
       setPending(null);
       setNeedMore("");
-      add({ kind: "them", text: "I can't hold that time: " + o.name + " isn't set up to take bookings on GoDo yet. What they publish is on their page." });
+      add({ kind: "them", text: "I can't hold that time: " + o.name + " isn't set up to take bookings on Outset yet. What they publish is on their page." });
       return;
     }
     const dateIdx = Math.max(0, DATES.findIndex((day) => dateKey(day) === d.date));
@@ -525,7 +525,7 @@ export function WebConcierge({ seed, framed, embed, onClose }: { seed?: string; 
                 <Mark size={20} />
               </span>
               <span className="cg-who">
-                <b>GoDo</b>
+                <b>Outset</b>
                 <small>Agent</small>
               </span>
             </>
@@ -579,7 +579,7 @@ export function WebConcierge({ seed, framed, embed, onClose }: { seed?: string; 
               <p className="cg-note" key={e.id}>{e.text}</p>
             ) : (
               <div className={"cg-b cg-" + e.kind} key={e.id}>
-                <span className="cg-sr">{e.kind === "me" ? "You: " : "GoDo: "}</span>
+                <span className="cg-sr">{e.kind === "me" ? "You: " : "Outset: "}</span>
                 {e.text}
               </div>
             ),

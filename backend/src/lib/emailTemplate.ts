@@ -106,7 +106,7 @@ function textOf(e: EmailInput): string {
   }
   if (e.cta) out.push(`${e.cta.label}: ${e.cta.url}`, "");
   for (const p of e.after || []) out.push(p, "");
-  out.push(e.footer || `GoDo, ${SITE}. Questions: ${SUPPORT}`);
+  out.push(e.footer || `Outset, ${SITE}. Questions: ${SUPPORT}`);
   return out.join("\n").replace(/\n{3,}/g, "\n\n").trim() + "\n";
 }
 
@@ -132,12 +132,12 @@ function htmlOf(e: EmailInput): string {
     ? `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:4px 0 22px;"><tr><td style="background:${FOREST};border-radius:10px;"><a href="${esc(e.cta.url)}" style="display:inline-block;padding:13px 22px;font-size:15px;font-weight:600;line-height:20px;color:#ffffff;text-decoration:none;">${esc(e.cta.label)}</a></td></tr></table>`
     : "";
   const after = (e.after || []).map((s) => p(s, `font-size:14px;line-height:22px;color:${SOFT};`)).join("");
-  const footer = esc(e.footer || `GoDo · ${SITE.replace(/^https?:\/\//, "").replace(/\/$/, "")} · Questions: ${SUPPORT}`);
+  const footer = esc(e.footer || `Outset · ${SITE.replace(/^https?:\/\//, "").replace(/\/$/, "")} · Questions: ${SUPPORT}`);
   return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>${esc(e.heading)}</title></head>
 <body style="margin:0;padding:0;background:${BG};">
 <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="background:${BG};padding:28px 12px;"><tr><td align="center">
 <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="max-width:560px;background:#ffffff;border-radius:14px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">
-<tr><td style="padding:26px 28px 0;"><a href="${esc(SITE)}" style="text-decoration:none;font-size:18px;font-weight:800;letter-spacing:-0.01em;color:${FOREST};">GoDo</a></td></tr>
+<tr><td style="padding:26px 28px 0;"><a href="${esc(SITE)}" style="text-decoration:none;font-size:18px;font-weight:800;letter-spacing:-0.01em;color:${FOREST};">Outset</a></td></tr>
 <tr><td style="padding:22px 28px 8px;">
 ${e.eyebrow ? `<p style="margin:0 0 6px;font-size:12px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:${SOFT};">${esc(e.eyebrow)}</p>` : ""}
 <h1 style="margin:0 0 14px;font-size:24px;line-height:30px;font-weight:700;color:${INK};">${esc(e.heading)}</h1>

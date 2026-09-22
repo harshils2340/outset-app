@@ -441,7 +441,7 @@ function liveSlots(ctx: CompanyContext): Slot[] {
  * correctly offers nothing on any date. A partial read speaks for no one: it stopped short of the catalog.
  *
  * A claimed shop is the one exception, and it is the same exception `liveWins` makes for both pickers: what a
- * claimed shop sells on GoDo is its own hours minus what is booked, and the catalog may still hold a booking
+ * claimed shop sells on Outset is its own hours minus what is booked, and the catalog may still hold a booking
  * link of theirs from before they claimed. An empty fortnight on that stale calendar would have had Otto
  * telling a guest a shop taking bookings on this very page has nothing open, next to a picker offering that
  * shop's own times. Otto cannot see those times, so it says nothing about the window and answers from the
@@ -1378,7 +1378,7 @@ export function companyHandoff(ctx: CompanyContext): string {
 
 /* ---------- the engine ---------- */
 
-const FEE_LINE = "GoDo adds a service fee at checkout: 5% up to $100, 4% from $100 to $500, 3% above $500, capped at $25.";
+const FEE_LINE = "Outset adds a service fee at checkout: 5% up to $100, 4% from $100 to $500, 3% above $500, capped at $25.";
 
 function answerOne(ctx: CompanyContext, topic: Topic, q: string, prev: ChatState): { text: string; state: ChatState } {
   switch (topic) {

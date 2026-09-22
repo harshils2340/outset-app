@@ -16,7 +16,7 @@ function page(title: string, msg: string): string {
 </head>
 <body>
 <p>${msg}</p>
-<p><a href="https://onoutset.com/">GoDo</a></p>
+<p><a href="https://onoutset.com/">Outset</a></p>
 </body>
 </html>`;
 }

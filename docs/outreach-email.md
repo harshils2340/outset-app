@@ -34,7 +34,7 @@ Plain text and HTML, same words. Merge fields in braces.
 
 Hi,
 
-I'm Harshil. I run GoDo, a site where people book local activities the way they book a table on OpenTable: pick a
+I'm Harshil. I run Outset, a site where people book local activities the way they book a table on OpenTable: pick a
 time, pay, done. No calling around.
 
 I built a page for {Business name} from your website. It has your {N} services with prices, your photos, your hours
@@ -42,10 +42,10 @@ and your cancellation policy. I didn't make anything up. Have a look:
 
 {listing link}
 
-There are about 59,000 activity businesses on GoDo across the US and Canada, from Florida to British Columbia, and
+There are about 59,000 activity businesses on Outset across the US and Canada, from Florida to British Columbia, and
 guests find them by city and activity.
 
-What it costs: nothing to be listed. When a booking comes through GoDo, we keep 5% of it. No booking, no fee.
+What it costs: nothing to be listed. When a booking comes through Outset, we keep 5% of it. No booking, no fee.
 If you already use {FareHarbor}, keep it. This sits alongside it.
 
 If this is your business, this link opens your page so you can fix anything and switch bookings on. It's meant for
@@ -58,7 +58,7 @@ If I've got the wrong business, this takes the page down:
 {remove link}
 
 Harshil
-GoDo, {postal address}
+Outset, {postal address}
 
 If you'd rather not hear from me: {unsubscribe link}
 
@@ -90,11 +90,21 @@ What is still missing before the first send:
 1. `MAIL_POSTAL`: a real mailing address (a PO box is fine). The sender refuses to run without it, and CAN-SPAM and
    CASL both require it. Set it on the Render API service and in `backend/.env`.
 2. DMARC is `p=none`. Fine for now; move to `p=quarantine` after two clean weeks so spoofed mail gets filtered.
-3. Warm up. A new domain sending 5,000 messages on day one gets throttled or blocked. Send 50 on day one, 100 on
-   day two, 200, 400, then hold at 500 a day. The sender's `--limit` flag does this.
+3. Warm up, and hold well under Gmail's own ceiling. Outreach is sent as `commercial`, which routes through Gmail
+   SMTP, not Resend (see `mail.ts`): a personal account reads as a person, not a brand blast, which is what keeps
+   it out of Promotions. But Gmail's abuse detection throttles an account sending unsolicited mail to strangers
+   well before its nominal 500/day figure for normal use; treat 100/day as the real ceiling for a personal
+   account, not 500. `backend/scripts/outreach-ramp.mts` ramps 20/40/70 and holds at 100. Going higher for real
+   needs a Google Workspace account on the real domain (2,000/day, better reputation than a personal account
+   sending bulk mail) or splitting volume across more than one real mailbox, not pushing one personal inbox past
+   what Google considers normal.
 4. Spread sends across the day, not one burst, and send on weekday mornings in the recipient's time zone.
-5. Watch bounces and complaints in the Resend dashboard daily. Over 2% bounces or 0.1% complaints: stop, fix the
-   list, resume. Bounced addresses come off the list automatically.
+5. **Bounces and complaints do not reach the suppression list for this path.** The Resend webhook
+   (`POST /webhooks/resend`) only sees mail that actually goes through Resend, which outreach does not: Gmail
+   reports a hard bounce as a delivery-failure email back to the sending inbox, and nothing here reads that
+   inbox. Until something does, a scraped address that bounces gets mailed again next run, and a rising bounce
+   rate is exactly what gets a personal Gmail account rate-limited. Check the sending inbox for bounce
+   notifications by hand for now, and run `outreach unsub --email=` on anything that bounced.
 6. Reply from the same address. Replies and "not spam" clicks are the strongest signal a domain gets.
 7. Keep the copy plain: no images, one or two links to your own domain, no link shorteners, no ALL CAPS, no "$$$".
 
