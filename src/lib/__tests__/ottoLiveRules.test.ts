@@ -134,6 +134,34 @@ test("a departure priced at nothing is named without a price", () => {
 });
 
 /**
+ * Which day Otto says a departure is on. The booking window is ten days, so a weekday name on its own is the
+ * same sentence for tonight and for a departure a week away, and the nearer reading is the one a guest acts
+ * on: asked on a Tuesday, "Next open time is Tuesday 11:30 PM" sent them to the wrong one.
+ */
+test("a departure is named on a day a guest cannot read two ways", () => {
+  const named = (offset: number, at: string): string => {
+    const d = dayAt(offset);
+    return companyAnswer(ctx(feed([{ date: d, slots: [slot(d, at)] }])), "when's the next opening?").text;
+  };
+  // Today's example has to be a start the shop's own clock has not passed, whatever hour this suite runs at.
+  const ahead = clockIn(zoneFor(item())).minutes + 150;
+  if (ahead < 24 * 60) {
+    const t = String(Math.floor(ahead / 60)).padStart(2, "0") + ":00";
+    assert.match(named(0, t), new RegExp("today " + t), named(0, t));
+  }
+  assert.match(named(1, "10:00"), /tomorrow 10:00/, named(1, "10:00"));
+  // Inside the coming week a weekday says which day on its own, and carries no date.
+  const soon = named(3, "10:00");
+  assert.match(soon, /(Sun|Mon|Tues|Wednes|Thurs|Fri|Satur)day 10:00/, soon);
+  assert.ok(!/January|February|March|April|May|June|July|August|September|October|November|December/.test(soon), soon);
+  // A week out and further, the weekday alone is this week's day by any ordinary reading, so it names its date.
+  for (const off of [7, 9]) {
+    const far = named(off, "10:00");
+    assert.match(far, /, (January|February|March|April|May|June|July|August|September|October|November|December) \d{1,2} 10:00/, off + " days out: " + far);
+  }
+});
+
+/**
  * Dates the vendor says are open and whose clock times the call budget never reached. An empty date there is
  * only empty as far as we looked, so nothing may call the shop shut, which is the rule `liveEmptyNote` keeps
  * for the picker. Peek marks such an answer partial as well, and did the work here on its own; this is the
