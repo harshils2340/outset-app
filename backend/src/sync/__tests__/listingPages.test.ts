@@ -4,7 +4,7 @@ import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "n
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { writeLandingPages, type Item } from "../pages.ts";
-import { writeListingPages } from "../listingPages.ts";
+import { clip, writeListingPages } from "../listingPages.ts";
 
 /**
  * A listing that earns a page: a photo plus something a guest acts on, which is what the generator requires. A
@@ -241,5 +241,73 @@ test("a stale extra sitemap chunk from a bigger previous run is removed", () => 
     assert.deepEqual(readdirSync(dir).filter((f) => /^sitemap-listings-\d+\.xml$/.test(f)), ["sitemap-listings-1.xml"]);
   } finally {
     rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+/**
+ * A listing page is the link a guest actually sends a friend, and all 11,545 of them shipped without an `og:`
+ * tag, so the send previewed as a bare onoutset.com URL: no business name, no photo, no line about it. The
+ * card is built from the listing's own facts, the same ones the page prints, and its lead photo goes through
+ * the same proxy the page's own images do.
+ */
+test("a listing page carries a social card built from the listing's own name and lead photo", () => {
+  const r = run([
+    item("o-a", { cover: "https://x/a.jpg", blurb: "Hand-rolled pasta in a real kitchen." } as Partial<Item>),
+    // A .gif cover is one the proxy is told to leave alone, so the card falls back to the app icon rather
+    // than pointing a scraper at an animation it will not crop.
+    item("o-g", { cover: "https://x/g.gif" } as Partial<Item>),
+  ]);
+  try {
+    const html = r.read("o-a.html");
+    assert.match(html, /<meta property="og:title" content="o-a in Toronto, ON · GoDo">/);
+    assert.match(html, /<meta property="og:description" content="Hand-rolled pasta in a real kitchen\.">/);
+    assert.match(html, /<meta property="og:url" content="[^"]*\/l\/o-a\.html">/);
+    assert.match(html, /<meta property="og:image" content="https:\/\/wsrv\.nl\/\?url=x%2Fa\.jpg&amp;w=1200&amp;h=630/);
+    assert.match(html, /<meta name="twitter:card" content="summary_large_image">/);
+    // The og:url is the canonical one, never the hash route a crawler cannot read.
+    assert.doesNotMatch(html, /<meta property="og:url" content="[^"]*#o=/);
+
+    const gif = r.read("o-g.html");
+    assert.match(gif, /<meta property="og:image" content="[^"]*apple-touch-icon\.png">/);
+    assert.match(gif, /<meta name="twitter:card" content="summary">/);
+  } finally {
+    r.cleanup();
+  }
+});
+
+/**
+ * `slice(0, 300)` cut 3,049 of the 11,545 listing descriptions mid-word: "The guide shares favorite fishing
+ * spot", "Inferno Hot Pilates, Vi". That is the meta description a search result prints and, since the social
+ * card landed, the og:description a friend sees in a link preview, where a word stopping halfway reads as
+ * broken rather than trimmed.
+ */
+test("a blurb too long for a description is cut at a sentence or a word, never mid-word", () => {
+  // A sentence ends well inside the allowance, so it is the cut and needs no mark.
+  const sentences = "A first sentence about the boat. ".repeat(9) + "And a tenth that runs past the end of the allowance entirely.";
+  assert.ok(sentences.length > 300);
+  assert.equal(clip(sentences, 300).slice(-32), "A first sentence about the boat.");
+  assert.ok(!clip(sentences, 300).endsWith("…"));
+
+  // No sentence end late enough, so the last whole word wins and says it goes on.
+  const oneLong = "Fishing " + "word ".repeat(200);
+  const cut = clip(oneLong, 300);
+  assert.ok(cut.length <= 300, `${cut.length} chars`);
+  assert.ok(cut.endsWith("…"));
+  assert.ok(!/\bwor…$/.test(cut), "cut in the middle of a word");
+  // A trailing comma or colon does not survive in front of the ellipsis.
+  assert.equal(clip("a".repeat(295) + ", gamma", 300), "a".repeat(295) + "…");
+
+  // Anything that fits is the operator's own text, untouched.
+  assert.equal(clip("  Short and whole.  ", 300), "Short and whole.");
+
+  const r = run([item("o-a", { cover: "https://x/a.jpg", blurb: "Hand-rolled " + "pasta ".repeat(80) } as Partial<Item>)]);
+  try {
+    const d = r.read("o-a.html").match(/<meta name="description" content="([^"]*)"/)![1];
+    assert.ok(d.endsWith("…"), d.slice(-30));
+    assert.doesNotMatch(d, /pas…$/);
+    // The page and its social card carry the same sentence.
+    assert.ok(r.read("o-a.html").includes(`<meta property="og:description" content="${d}">`));
+  } finally {
+    r.cleanup();
   }
 });

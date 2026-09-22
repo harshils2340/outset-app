@@ -154,3 +154,46 @@ test("a link that names no shop is not asked about", async () => {
   assert.equal(await fareharborLive("https://fareharbor.com/legal/privacy/"), null);
   assert.equal(calls.length, 0, "no company to ask about, so nothing should have been fetched");
 });
+
+/**
+ * Which day the window asks for. FareHarbor keys every day by the shop's own calendar, and this reader built
+ * its window from `d.getFullYear()` under a comment about not using UTC. The API host has no TZ set, so that
+ * comment described a fix that only ever worked on a laptop in Eastern: from eight in the evening, the first
+ * day asked for was already tomorrow, and the shop's remaining evening was never looked at. The zone now
+ * comes from the catalog, through `plan.ts`.
+ */
+test("the window is the shop's own calendar day, not the host's", async () => {
+  /**
+   * 21:00 in Toronto, on an evening a few days out. On a UTC host that instant is already the next date, which
+   * is the whole point of the test, so the two dates are worked out from a UTC midnight rather than written
+   * down: a departure named by a fixed date has left by the next night, `departed` reads the real clock, and
+   * this test went red on its own the morning after it was written.
+   */
+  const utcDay = new Date(Date.now() + 3 * 86400_000).toISOString().slice(0, 10);
+  const evening = new Date(utcDay + "T01:00:00Z");
+  const tonight = new Date(evening.getTime() - 86400_000).toISOString().slice(0, 10);
+  const stub = () =>
+    stubFareharbor([
+      { date: tonight, avs: [avail(1, 10, "Sunset flight", tonight + "T22:30:00-04:00")] },
+      { date: utcDay, avs: [avail(2, 11, "Romantic Jewel", utcDay + "T19:00:00-04:00")] },
+    ]);
+
+  stub();
+  const shopClock = await fareharborLive(SHOP, { from: evening, days: 1, tz: "America/Toronto", maxItems: 1 });
+  assert.deepEqual(shopClock?.departures.map((d) => d.item), ["Sunset flight"], "their evening, still bookable, still theirs");
+
+  stub();
+  const hostClock = await fareharborLive(SHOP, { from: evening, days: 1, maxItems: 1 });
+  assert.deepEqual(
+    hostClock?.departures.map((d) => d.date),
+    hostClock?.departures.length ? [ymd(evening)] : [],
+    "with no zone for the shop, the window is this machine's day, as it always was",
+  );
+});
+
+test("a horizon that straddles three months asks for all three", async () => {
+  const { calls } = stubFareharbor([]);
+  await fareharborLive(SHOP, { from: new Date("2026-01-20T12:00:00Z"), days: 45, tz: "UTC", maxItems: 1 });
+  const months = calls.filter((u) => u.includes("/calendar/")).map((u) => u.slice(u.indexOf("/calendar/")));
+  assert.deepEqual(months.sort(), ["/calendar/2026/01/", "/calendar/2026/02/", "/calendar/2026/03/"]);
+});

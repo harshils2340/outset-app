@@ -26,7 +26,7 @@ import { shownReviews, type ShownReview } from "../../lib/reviews";
 import { listingUrl } from "../../lib/site";
 import { adminWebsite, isAdmin, subscribeAdmin } from "../../lib/admin";
 import { dateKey, startOfToday } from "../../lib/dates";
-import { fewSeats, liveChipsByDate, type TimeChip } from "../../lib/liveTimes";
+import { fewSeats, liveEmptyNote, liveRead, liveWins, type TimeChip } from "../../lib/liveTimes";
 import { safeHttpUrl } from "../../lib/urlSafety";
 import { startingParty } from "../explore/prefs";
 import { useApp } from "../../state/AppProvider";
@@ -1051,8 +1051,10 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
     void fetchAvailability(item.id, dateKey(dates[0]), dates.length).then((a) => { if (alive) setAvail(a); }).catch(() => {});
     return () => { alive = false; };
   }, [item.id]);
-  const liveDays = useMemo(() => liveChipsByDate(avail), [avail]);
-  const live = liveDays.size > 0;
+  const read = useMemo(() => liveRead(avail), [avail]);
+  const liveDays = read.chips;
+  // Whether they have a departure worth telling the guest about, which is what the highlight row is for.
+  const liveTimes = liveDays.size > 0;
 
   /* What is actually still open on Outset: the claimed shop's own hours minus every time already booked. Loaded
      from the API, reloaded after a booking, and re-keyed on the picked service because capacity is per service,
@@ -1071,6 +1073,24 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
       alive = false;
     };
   }, [item.id, picked?.name, qty, openTick]);
+  /**
+   * Whether the vendor's answer is what the picker draws, which is the only thing that says whether the
+   * published times may stand in for it.
+   *
+   * A shop with nothing open for a fortnight has answered: drawing our nine, eleven and one over that
+   * invented three departures a day for a calendar that is empty, and a guest could book one. An empty answer
+   * therefore stands, with one exception: a claimed shop sells its own slots here, so a third party calendar
+   * we happen to hold a link to does not get to close a shop that is taking bookings on Outset. A vendor
+   * answering with real times still wins, as it always has.
+   */
+  const ownSlots = useMemo(
+    // Only a claimed shop has slots of its own: for an unclaimed listing this route answers with the same
+    // fixed times the page would have guessed anyway, and reading those as the shop's own would hand every
+    // unclaimed shop its nine, eleven and one straight back.
+    () => !!item.claimed && !!openMap && [...openMap.values()].some((v) => v.length > 0),
+    [item.claimed, openMap],
+  );
+  const live = liveWins(read, ownSlots);
 
   // Today only shows start times at least an hour out. Nobody can book a 7 AM slot at 8:30. "Today" and "an
   // hour out" are both read on the shop's clock, because the times themselves are its wall clock times.
@@ -1092,7 +1112,7 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
   // An empty picker says why it is empty. A day the shop publishes as closed is not "no more start times
   // today", least of all under a date five days out.
   const emptyNote = live
-    ? "No departures on this date. Pick another day."
+    ? liveEmptyNote(read, dateKey(day))
     : noStartTimesNote(week ? week[day.getDay()] ?? null : null, day.toLocaleDateString("en-US", { weekday: "long" }));
   useEffect(() => { if (time && !openSlots.includes(time)) setTime(null); }, [openSlots, time]);
   // Land the guest on a day that actually has departures rather than an empty one.
@@ -1166,7 +1186,7 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
     const d = dealsNow[0];
     rows.push({ icon: I.tag, title: "Deal today", text: dealShown(d).title + (d.code ? ", code " + d.code : "") + (d.end ? ", until " + clock12(d.end) : d.start ? ", from " + clock12(d.start) : "") });
   }
-  if (live) rows.push({ icon: I.calendar, title: "Live times from their calendar", text: "Start times come straight from " + possessive(item.title) + " own booking system." });
+  if (liveTimes) rows.push({ icon: I.calendar, title: "Live times from their calendar", text: "Start times come straight from " + possessive(item.title) + " own booking system." });
   // Open status is the header line under the subtitle now, so it is not repeated as a highlight row.
   if (cancel) rows.push({ icon: I.calendar, title: cancel, text: "Plans change. Their published policy lets you cancel for a full refund." });
   if (instant) rows.push({ icon: I.bolt, title: "Instant confirmation", text: "Your spot is confirmed the moment you book." });

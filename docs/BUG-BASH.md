@@ -2689,6 +2689,603 @@ disk, run once mid-way and once on the finished tree.
 - The earlier runs' calls stand: Peek's 257 links, `concierge.css`'s dead panel, and anything needing a real
   Stripe key.
 
+## 21 September 2026, forty-third run (05:00 to 06:15 UTC)
+
+**Checked, and why.** Four commits landed after the forty-second run's log, and two of them are the newest
+guest-facing code in the repo: `21c52d1fa`, which rewrote Agent Mode into a text thread (the overlay, its
+stylesheet, the needs questions and the sentence reader), and `2331c11de`, the Outset to GoDo rename. Both
+touch `src/` and `backend/src`, so the rehearsal was run, twice, rather than skipped. The rename was swept
+first and is clean: nothing user-facing still says Outset, and the `outset.` storage keys are deliberately
+left alone, since renaming them signs every guest and operator out. Then the run went where Coverage says
+nothing has been: the agent's own booking form, its error and empty states and its copy panel, driven in a
+real Chromium at 400px and at 1280px against a stubbed shortlist, plus the sentence reader's new rule that a
+bare number is a headcount.
+
+**Found and fixed.**
+
+- **A guest who answered "what time do you want to go?" with "2" was booked as a party of two**
+  (`3d84a4da5`). A rental leads with the clock question, and the one shape a person answers it with is the
+  hour and nothing else. That bare digit is also the one shape `readIntent` reads as a headcount, so the
+  hour was thrown away, `partyStated` went true, and the question was never put again because it had already
+  been asked once: live times came back ranked around nothing, and the screen read "2 people" back as what
+  it had understood. A bare number is now the hour while the hour is the question on the table, and a
+  headcount everywhere else, including the moment the party question goes out. "230" is half past two.
+- **The agent asked for a name and a mobile, then said "GoDo: no such listing"** (`0d5fd7232`). A shop the
+  catalog has never held gets a minted `cg-` id from `listingForOption`, the API has no listing file for one,
+  and `POST /bookings` answers 404 "no such listing". That string was printed in the thread in the agent's
+  own voice, after the guest had typed their details. The refusal is right, so it is now made first and in
+  words, and the form closes rather than sitting there waiting to fail again. Every other refusal goes
+  through `guestWords`, because those routes answer in two registers and "bad email." was reaching a guest
+  as a sentence the agent said.
+- **Book was a press that did nothing** (same commit). The form returned silently on a name of one letter or
+  a number of three digits, which is exactly what a half-finished form holds and exactly what the browser's
+  own `required` does not catch, because both fields have something in them. `missingFrom` says which of the
+  two is short, in the API's own numbers, so a form this accepts is never refused on the other side. The
+  three fields also had no label but their placeholder and no `inputMode`, so a phone offered a QWERTY
+  keyboard for a phone number: they are the only guest fields in the app that were.
+
+**Checked and sound.** At 400px and 1280px the thread, the working card, the shortlist, the booking form and
+the history panel draw nothing past the edge and scroll nothing sideways, and every control is named. The
+API unreachable says "I could not reach the shops just now"; a slow API has a Stop that stops it and puts
+the send button back; nothing found says so in a sentence; a shortlist with no live times draws the
+published prices and a real `tel:` link for the one shop that books by phone; copy takes the whole
+conversation. The listing a live shop opens renders from a stub with no overflow at either width.
+
+**Green after the fixes.** 53 rehearsal steps, 0 failed. 534 backend tests, 619 app tests, both type checks
+clean (backend TS5097 only).
+
+**Needs Harshil.**
+
+- **Five of the ten new category accents are under the AA floor for text.** `CAT_COLOR` (`src/data/categories.ts`,
+  `21c52d1fa`) colours the selected category's own label, 12px semibold on white, on both the desktop strip
+  and the phone's: air `#2F80ED` is 3.87:1, water `#0891B2` 3.68, outdoor `#16A34A` 3.30, food `#EA580C` 3.56,
+  wellness `#8B7FD8` 3.43, against the 4.5:1 floor `AGENTS.md` sets out (it is the same 3.3:1 that kept sage
+  off buttons). One step darker clears it in the same hue: `#2563EB`, `#0E7490`, `#15803D`, `#C2410C`,
+  `#6D5FC7`. Left alone because `src/data` and `src/styles` are outside what this run may change.
+- **An option the concierge finds but the catalog has never held cannot be booked at all.** Tonight's fix
+  makes that honest rather than cryptic, but the two intentions still collide: `listingForOption` mints a
+  stub "so a live shop we have never ingested still finishes on GoDo", and the API refuses a booking for a
+  listing with no file, which is the fix from the first of these runs. One of the two has to give.
+- **The API's own error codes reach a guest on the other surfaces too.** `confirmUnclaimed` dispatches
+  `r.error + "."` as a toast, so the phone sheet and the desktop listing can still show "bad email." That is
+  one line in `AppProvider`, and it was left alone tonight rather than changed under every booking surface at
+  once.
+- **A shortlist with no live times says "I found 8 places" over four cards.** `counts.total` is what the
+  search found, the payload keeps six and the thread draws four, with no way to reach the rest. A test
+  asserts the current wording, so this is a copy decision rather than a bug to quietly reverse.
+
+## 21 September 2026, forty-fourth run (06:00 to 06:40 UTC)
+
+**Checked, and why.** No commit landed after the forty-third run's log and that entry says the rehearsal was
+green, so it was skipped at the start and the time went into the hunt instead. The type checks and both unit
+suites were run first and were green (619 app, 534 backend). Coverage names the operator dashboard beyond
+Bookings as read and unit tested but never clicked, so that is where this run went: every page driven in a
+real Chromium at 1280px, 400px and 360px, then Calendar, Services and Availability actually clicked, then the
+whole dashboard again as a brand new claimed shop with nothing in it. Then the claim link itself, which is
+the gate that hands out a session for an operator's shop and had no test of any kind.
+
+**Found and fixed.**
+
+- **On a phone the Bookings page was drawn wider than the screen, and the right of it was cut off**
+  (`36a9cc53d`). `.odbklist` is a grid with one `auto` column and each day's rows sit in a wrapper that is a
+  grid item. A grid item's `min-width` is `auto`, so that wrapper refused to be narrower than the widest
+  booking row, 392px, and the column grew to fit it. The dashboard is 332px wide on a 360px phone and 372px
+  on a 400px one, and `.screen` clips what runs past it: the guest's price, the Needs answer badge and the
+  right side of the Accept button were simply gone, with a gutter down the left and none down the right, on
+  the one page an operator lives in. Nothing scrolled and nothing warned. The row already ellipsises its own
+  lines once it is allowed to shrink, so the wrapper is given the floor of 0 it was missing. Measured at 360,
+  375, 390 and 400px, clipped at all four before and at none after.
+- **A claim link with anything tacked on the end was still read as the token it starts with** (`b42f5fd7d`).
+  `verifyClaimToken` split the token and destructured the first three fields, so
+  `v2.<expiry>.<signature>.anything` verified and the trailing data went without a word. Nothing could be
+  forged that way, because the signature still had to be one we wrote over that listing id and that expiry,
+  but the credential that opens an operator's dashboard, their prices and every booking a guest has made
+  should not be parsed loosely. The whole gate now has a test: one listing's link used on another, an expired
+  link reading as expired, a forgery reading as a forgery, an edited expiry buying nothing, the legacy static
+  links still landing, and `CLAIM_LINK_DAYS` falling back to 30.
+
+**Checked and sound.** All nine dashboard pages at 1280, 400 and 360px draw nothing past the edge and name
+every control, Bookings included once the fix was in, and the phone reaches the five pages behind More.
+Calendar: an empty slot blocks and reopens, a day name takes the day off and gives it back, and the past is
+refused. Availability: opening at 11:30 PM moves the closing time rather than leaving a day that never
+closes, a late close is offered as "next day", and a day switched off reads as closed. Services: Add puts a
+row on the menu, an option with no price is marked unpriced, and a price of zero is counted as no price by
+the row, the header, the menu counter and both checklists. A brand new claimed shop with nothing filled in
+opens all nine pages with no error, every empty state reads properly, and both setup checklists count
+themselves right (Home 3 of 8, Listing 3 of 6, each matching the items actually listed under it).
+
+**Green after the fixes.** 53 rehearsal steps, 0 failed. 543 backend tests, 622 app tests, both type checks
+clean (backend TS5097 only). The rehearsal was run because these commits touch `backend/src` and `src/`.
+
+**Needs Harshil.**
+
+- **The Home tab strip on a phone hides a control where nobody will find it.** `.ohtabs` is
+  `overflow-x: auto` in compact, and the "All requests" / "Calendar" link sits at `margin-left: auto`, which
+  in a scrolling strip parks it 137px past the end: at 400px it is off screen, at 360px so is half of the
+  "Next 7 days" tab, with no scroll hint either time. The bottom tab bar already has Bookings and Calendar,
+  so the link is duplication on a phone and could simply not render there, which is one line in `OpHome.tsx`.
+  Left alone because it removes something from a screen rather than fixing something broken, and that is
+  your call.
+- **Tonight's Bookings fix is an inline style, not a stylesheet rule.** `src/styles` is outside what these
+  runs may change, so the floor went on the element as `style={{ minWidth: 0 }}`. The tidier home for it is
+  `.odbklist{grid-template-columns:minmax(0,1fr)}` in `operator.css`, which fixes it just as completely;
+  either is enough, and `bookingsWidth.test.ts` accepts both and fails if both go.
+- **Five of the ten category accents are still under the AA floor**, unchanged from last night: `src/data`
+  and `src/styles` are both outside these runs. One step darker in the same hue clears it.
+
+## 21 September 2026, forty-fifth run (07:00 to 07:40 UTC)
+
+**Checked, and why.** Nothing landed after the forty-fourth run's log and that entry says the rehearsal was
+green, so it was skipped at the start and the time went into the hunt instead. Type checks and both unit
+suites first, clean at 543 backend and 622 app. (A fresh container has no root `node_modules`: without
+`npm install` at the top level, eight app test files cannot find React and it reads like a regression rather
+than a missing install.) Coverage names the newest code as the least read, and the nine booking-system readers
+are the newest of all, so this run put to them the question their own AGENTS.md puts at the top of its trap
+list: what day do they think it is?
+
+**Found and fixed.**
+
+- **Every evening, "escape room tonight" asked every shop about tomorrow** (`93cb6caf4`). Each reader turns
+  the guest's window into calendar dates with `d.getFullYear()` and friends, under a comment saying local
+  dates are used rather than `toISOString()` because UTC rolls the evening into tomorrow. That comment is
+  true on a laptop in Toronto and false on the host this runs on: `render.yaml` sets no TZ for `outset-api`,
+  so the container's clock is UTC and "local" is UTC to the letter, which this container confirms. From eight
+  in the evening Eastern, five in the afternoon Pacific, the first day of every window was already the shop's
+  tomorrow: the 9pm slot a room still had free was never asked for, and "tomorrow" fetched the day after.
+  `src/lib/zone.ts` carries this same story for the claimed side, where it cost every North American shop the
+  back half of its day; the shops we read never got the same treatment. They have it now. `shopday.ts` reads
+  the window's instant on the shop's own calendar and walks it with `addDays`, which also fixes a fortnight
+  stepping over a date the night a zone springs forward. The zone is the vendor's own where it publishes one
+  and the catalog's through `zoneForArea` otherwise, so FareHarbor (1,371 of the 1,664 shipped links), Resova
+  and Checkfront have one for the first time; a shop we know no zone for keeps exactly its old behaviour.
+  Resova's and Checkfront's "has this slot already started" checks were comparing a shop's wall clock against
+  the host's, and now read the shop's. FareHarbor's month set is walked from the window rather than a day at
+  a time, which also fixes a 40 day horizon fetching the first and last month and not the middle one.
+- **A concierge session id was eight characters of `Math.random`** (`225b5ae14`). `getSession` hands back the
+  session an id names and the next answer is shaped by that session's accumulated intent, so the id is a
+  bearer token for somebody's conversation: where they are, how many of them, what they are after. V8's
+  generator is a seeded PRNG whose state can be recovered from its own output, and this route hands the
+  caller one output per question asked. It is also not reliably eight characters, and an id too short for
+  `getSession`'s own shape check is a guest's thread silently starting over. Sixteen hex characters from
+  `randomBytes` now, still lowercase alphanumeric, so an id already in a browser's history keeps working.
+  Adopting an unknown id stays, deliberately: reopening a thread from the history panel sends an id the agent
+  forgot two hours ago and expects to carry on under it.
+- **A golfer was told their tee times came from "their foreup calendar"** (`f7ddc900a`). The line under a
+  shop's live times is the one whose whole job is to say the times are the shop's own. It was a chain naming
+  eight vendors and ending in `"their " + live.vendor`, so the ninth reader printed its own lowercase id at a
+  guest. A table now, with a test over every vendor a reader exists for.
+
+**Checked and sound.** The guest listing page does drop a departure that has already left, on the shop's own
+clock, through `bookableStart` in `openNow.ts`, on the live path and the published one alike and on both the
+desktop card and the phone sheet, so the availability route not filtering costs nothing; that route's window
+comes from the browser's own calendar, not the host's. `api/nearby.ts` and `lib/mapsNearby.ts`, committed
+yesterday and never read since: a Maps stub listing's bare-host `src` is the convention all 59,126 shipped
+operators already use, its overlay is in memory only, and the route refuses a bad pin, a short query and a
+missing Places key. `agentLive` and `replayLive` have the same host-clock assumption and no caller anywhere,
+so nothing was changed there.
+
+**Green after the fixes.** 53 rehearsal steps, 0 failed, run because these commits touch `backend/src`. 556
+backend tests, 622 app tests, both type checks clean (`-p tsconfig.app.json` for the app, since the root
+config still checks nothing).
+
+**Needs Harshil.**
+
+- **`outset-api` has no TZ and should probably keep it that way.** Every reader now carries the shop's own
+  zone, so setting `TZ=America/Toronto` on that service would only move which shops are wrong. The two places
+  that still read the host clock, `concierge/agent.ts` and `concierge/replay.ts`, are called by nothing.
+- **`GET /concierge/live/:domain` reads two vendors while the concierge reads nine.** `liveFor` still tries
+  only FareHarbor and Resova, so a Peek or Xola shop answers "no feed to read" there while the same shop is
+  quoted live in the agent. No guest surface calls it today, which is why it is a question rather than a fix.
+- **Last night's three are unchanged:** the "All requests" link parked off screen on a phone, the Bookings
+  `minWidth` living on the element rather than in `operator.css`, and five category accents under the AA floor.
+
+## 21 September 2026, forty-sixth run (08:00 to 08:35 UTC)
+
+**Checked, and why.** Nothing landed after the forty-fifth run's log and that entry says the rehearsal was
+green, so it was skipped at the start and the time went into the hunt. Type checks and both unit suites
+first, clean at 556 backend and 622 app. (A fresh container has no `node_modules` on either side; without
+both installs, eight app test files cannot find React and it reads like a regression.) Coverage named the
+readers' own price helpers as the last untested thing in the newest code: Rezdy's `priceOfSlot` and
+`rateLabel`, Peek's, Resova's and TripWorks', with only Xola's tested. That is the one number and the one
+word printed under a shop's name, so this run read all of them, and then read what happens to that number
+after the reader hands it over.
+
+**Found and fixed.**
+
+- **A whale watch quoted the child's fare with the word Adult beside it** (`f87eab63f`). TripWorks publishes
+  one price per slot, `min_price`, which is the cheapest ticket on sale at that time, plus the customer types
+  the shop sells. `priceOfSlot` named the price when exactly one non-concession type was left standing after
+  the child and senior fares were filtered out, which on an ordinary Adult and Child sheet is one type: the
+  slot was quoted at the child's $48 under the name "Adult", against a real adult fare of $58. Its own
+  comment says the name is only safe when the shop sells exactly one visible kind of ticket, so it counts
+  every visible type now. A concession fare under an adult's name is worse than an unlabelled one, because
+  nothing on the card tells the guest to look again. The reader had no test of any kind and has eight now.
+- **A bus tour's $790 whole-booking total was quoted to two people as the price of a seat** (`94caf382c`).
+  Rezdy publishes group rates in the same list as per-head fares with nothing to tell them apart, so
+  `priceOfSlot` keeps every `priceOptionType: "GROUP"` option out of the headline. It kept that decision in a
+  local, and `plan.ts` picks a headline again out of `rates` once it knows the party, which is the only place
+  that knows it. Black Hills Tour Company's "Group from 1 to 2 ($790.00 total)" has a minimum of one and a
+  maximum of two, so it admits a party of two on every party test there is, and the $790 went back on the
+  card and into the comparison line above it. A rule one module enforces and the next one undoes is not a
+  rule: the mark rides on the rate now, the rate stays on the sheet where a guest can read it, and `forParty`
+  became `headlineForParty` at module scope so it can be tested at all.
+- **A dolphin cruise was quoted at $15 for a ticket Peek never named** (`65ccf7ce4`). Nine places in the
+  concierge independently called a nameless fare "Ticket", and two rules ride on that word: it is not worth
+  printing on a card, and a row nobody named cannot be shown not to be a child fare, so it must never
+  outrank a named one. `tripworks.ts` calls the second one the rule everywhere else in this codebase and
+  `peek.ts` applies it, heading a cruise with its named "Adult" at $26 rather than an unnamed $15 row.
+  `headlineForParty` picked purely on price, so it put the $15 back with our own placeholder printed as its
+  name. The word is a constant in `live.ts` now with both rules beside it, and every reader spells it there.
+- **A whole-boat Xola charter was quoted to four people as $599 each** (`5c1bc2cb1`). Same defect as Rezdy's,
+  one vendor over: `ticketsOf` refuses to head a card with `priceType: "outing"`, and a charter carries no
+  party limits to fail, so every party fit it and the re-pick put the boat back as a seat. Two more things
+  reached a card the same way, both found while fixing it. A reader's own `priceLabel` says where a number
+  came from rather than what the ticket is called, so checkfront's "on their booking page" and the browser
+  agent's "from their booking page" matched no rate label and were thrown away to relabel a price that had
+  not moved; the re-pick leaves a departure alone now when it lands on the reader's own number. And Resova,
+  Peek, Xola and FareHarbor could all put the placeholder itself in `priceLabel`, so a card read
+  "$41 · Ticket".
+
+**Checked and sound.** Rezdy's `rateLabel` against every label shape Rezdy publishes, including the
+single-rate product whose whole name is its price and the "2-8 Players" its old looser age rule misread.
+Every reader's `num`: a zero is not a price on any of them, and Rezdy alone reads a quantity of zero as no
+limit rather than a rate nobody fits. Resova's slot price beating the item's teaser, and Peek's per-ticket
+rows beating the slot's sum of every ticket type: both still right, both now the reason their readers can be
+trusted where the surfaces disagreed with them.
+
+**Green after the fixes.** 53 rehearsal steps, 0 failed, run twice because these commits touch `backend/src`
+and `src/lib`. 575 backend tests, 622 app tests, both type checks clean (`-p tsconfig.app.json` for the app).
+
+**Needs Harshil.**
+
+- **Peek's and Resova's price sheets still have no test of their own.** Both were read closely this run and
+  the bug the reading found is fixed, but Peek's JSON:API payload (program, configuration, activity, ticket,
+  availability-dates, availability-times) is a large stub to build and it was not built tonight. Peek is 257
+  links, the biggest vendor after FareHarbor, so it is the next thing worth a night.
+- **Rezdy's helpers are tested directly rather than through `rezdyLive`.** Cloudflare blocks `fetch` on every
+  `*.rezdy.com` subdomain, so that reader speaks HTTP/2 by hand and there is no `globalThis.fetch` to stand
+  in front of. A hand-rolled HTTP/2 session would be a hundred lines of fake to reach two pure functions.
+- **Last night's three are unchanged:** the "All requests" link parked off screen on a phone, the Bookings
+  `minWidth` living on the element rather than in `operator.css`, and five category accents under the AA
+  floor.
+
+## 21 September 2026, forty-seventh run (09:00 to 10:05 UTC)
+
+**Checked, and why.** Nothing landed after the forty-sixth run's log and that entry says the rehearsal was
+green, so it was skipped at the start and the time went into the hunt; it was run twice at the end instead,
+because these commits touch `backend/src`. Type checks and both suites first, clean at 575 backend and 622
+app. Coverage named Peek's and Resova's readers as the last two with no test of any kind, and the
+forty-sixth run called Peek, at 257 links, "the next thing worth a night". Reading them for the price sheet
+turned up something one floor up instead: the window.
+
+**Found and fixed.**
+
+- **A guest asking about tonight was offered tomorrow morning, by every reader but FareHarbor** (`9d57bac1b`).
+  `windowFor` answers "tonight", "today" and "tomorrow" with one day, and a window of one day is that day.
+  `fareharborLive` counts its last day that way and its own comment says why; the eight readers written
+  after it never got the fix. Peek, Xola, Rezdy and Acuity asked for `addDays(start, days)`, Resova looped
+  `i <= horizon`, TripWorks fetched `getInDateRange/<start>/<start + days>`. It is worse in the readers than
+  it was in FareHarbor, because each stops at the first day with something free: a shop sold out tonight did
+  not come back empty, it came back with tomorrow, so `plan.ts` never widened, never set `widened`, and the
+  answer never said the date had moved. Where one activity had tonight and another had tomorrow the card
+  drew no date at all, because `WebConcierge` prints its day line only when every time on the card shares
+  one: the guest saw "7:00 PM" and "9:00 AM" side by side and could tap either. The rule is `lastDayOf` in
+  `shopday.ts` now. A vendor asked for a range is still asked a day wide, because nothing here can prove
+  whether Peek, Xola or TripWorks read their end date as inclusive and asking short would cost a guest the
+  last evening of their own window; the days used are filtered to the window, where being exact is free.
+- **Square was asked about tomorrow from the hour the guest asked** (`062bc0c4d`). Square is the one vendor
+  asked in instants, and an instant window is wrong at both ends. It ran `horizon * 86400_000` forward from
+  the question, which is the day-too-far above, and it began at `start`, which `windowFor` builds as "now,
+  plus a day": a guest asking at eight in the evening about tomorrow had Square asked about tomorrow from
+  eight in the evening, so a spa with a free ten o'clock came back with an empty diary. That reads exactly
+  like a shop that is fully booked. The window is a pair of calendar days on the shop's own clock now, asked
+  a day wider at each end and kept to the window by date, because a zone is up to fourteen hours off this
+  machine's. `windowStart` still never opens in the past, which Square rejects outright.
+- **A shop shut tonight was offered on a day up to a fortnight away** (`19d907fb4`). The Checkfront driver
+  took no window at all: it walks forward to whatever day an item next runs, which answers "when could we
+  come" and not "escape room tonight". `plan.ts` already had the window and passed only its first day, so it
+  passes `days` now. Both fourteen-day questions inside the driver stay fourteen days, because neither is
+  what a guest is offered: the range query is how the next open day is found, and the control date a
+  fortnight out is what proves the account answers per date rather than publishing an opening-hours grid.
+
+**Checked and sound.** ForeUp alone among the readers already counted its days right. Resova's slot price
+beating the item's teaser, which is half of it; the concession rule on Resova, Peek and Checkfront; a hidden
+pricing category, a blocked slot and a sold-out one; `peekRef`, `resovaAccount` and `squareRef` against every
+link shape in the catalog. FareHarbor is unchanged and was the reference throughout.
+
+**Green after the fixes.** 53 rehearsal steps, 0 failed, run twice. 599 backend tests (up from 575), 622 app
+tests, both type checks clean (`-p tsconfig.app.json` for the app).
+
+**Needs Harshil.**
+
+- **Peek's and Resova's price sheets have tests now, but no live vendor does.** This address cannot reach
+  `book.peek.com` or `fareharbor.com` at all: the egress proxy refuses the CONNECT outright. Every reader is
+  still tested against a payload shaped by hand, so a vendor that has quietly changed its JSON reads here as
+  a shop with nothing open and nothing would say so.
+- **`GET /concierge/live/:domain` is a public route that lies about seven vendors.** `liveFor` still tries
+  only FareHarbor and Resova while `plan.ts` reads nine, so a Peek shop is told "no feed to read" there and
+  quoted live in the agent; `bookingUrlFor` beside it carries a fifth copy of the vendor list naming three
+  vendors, which is the exact duplication `readable.ts` exists to prevent and already has `unreadableSql`
+  for. No surface calls the route today, which is why it was left rather than fixed blind.
+- **Rezdy's window fix is the one here with no end-to-end test.** Cloudflare blocks `fetch` on every
+  `*.rezdy.com` subdomain, so that reader speaks HTTP/2 by hand; `lastDayOf` is tested directly instead.
+- **Last night's three are still unchanged:** the "All requests" link parked off screen on a phone, the
+  Bookings `minWidth` living on the element rather than in `operator.css`, and five category accents under
+  the AA floor.
+
+## 21 September 2026, forty-eighth run (10:00 to 11:05 UTC)
+
+**Checked, and why.** Every area the brief lists as priority territory is already down as verified, so the
+hunt went to the Coverage list's own open items. Four of them name one thing: the programmatic pages, the
+3,004 under `/p/` and the 11,545 under `/l/`, which are the only part of the product a customer meets before
+the app loads and which no run has ever driven. Nothing had landed since the forty-seventh run's log and that
+entry says the rehearsal was green, so it was skipped at the start; both type checks and both suites first,
+clean at 599 backend and 622 app. It was run twice at the end instead, because every commit here touches
+`backend/src`.
+
+**Found and fixed.**
+
+- **A page declaring 6,902 listings handed a crawler 24 of them** (`325f38d1b`). The grid stops at MAX_CARDS
+  and `itemListElement` stops with it; `numberOfItems` was still the whole count. "Museums in the US and
+  Canada" published an ItemList saying it held 6,902 entries and then listed 24, and 313 of the 3,004 pages
+  carried that contradiction. The human version had no answer at all: the lede said 6,902, the page drew 24
+  cards, and nothing said why or where the rest were. The list counts what the list holds now, the h1 and the
+  FAQ keep the real total because that is a fact about the place, and a line under the grid names the gap and
+  the two ways on. Counts in the prose are grouped too, so "1638 of the 6902 operators" and "from $5 to
+  $5,000" stop being two conventions in one sentence.
+- **All 14,549 pages built for sharing previewed as a bare URL** (`250a827c0`). Not one `og:` or `twitter:`
+  tag between them, so a listing pasted into iMessage, WhatsApp, Slack or a Discord channel previewed as
+  onoutset.com and nothing else: no business name, no photo, no line about it. The app's own `index.html` has
+  carried the tags since it was written, so the generated pages were the only ones without. One `socialCard`
+  serves all three page shapes, with the page's own lead photo through the wsrv.nl proxy at the 1200x630 every
+  scraper crops to, the app icon and the small card where there is no photo to stand behind, and always the
+  canonical url rather than the hash route.
+- **389 pages had no link into them from anywhere on the site** (`cce9905ca`). A town page is reached from its
+  metro page's pills, a sibling town that ranks it in its nearest twelve, or another kind in the same town. A
+  town whose metro never qualified for that kind, with no sibling near enough and nothing else to do in it,
+  was reached by none of them: a crawler met `bike-in-springdale-ut.html` in the sitemap and nowhere else.
+  Museums lost 127 pages that way, fishing 38. The all-metros page's heading always said "by city" and the
+  list under it held only the 47 metros; it holds the towns too now, which puts every page two hops from
+  `p/index.html`. The generator's header claims every internal link points at a page written in the same run,
+  and the new test reads that back the other way.
+- **3,049 listing descriptions were cut in the middle of a word** (`4614a3eef`). `slice(0, 300)` on the
+  operator's blurb: "The guide shares favorite fishing spot", "Inferno Hot Pilates, Vi". Already what a search
+  result printed, and the fix above makes it what a friend sees in a link preview. `clip` takes a sentence end
+  in the last third of the allowance and otherwise the last whole word with an ellipsis.
+
+**Checked and sound.** Every internal link on all 3,004 pages points at a page the same run wrote, and all
+3,004 are in `sitemap-pages.xml`. No duplicate titles, no description over 183 characters, no unparseable
+JSON-LD on any of the 11,545 listing pages, no rating published without a review count behind it, no page
+without an h1. The canonical tags and the localhost guard behind `publicSite`.
+
+**Green after the fixes.** 53 rehearsal steps, 0 failed, run twice. 607 backend tests (up from 599), 622 app
+tests, both type checks clean (`-p tsconfig.app.json` for the app).
+
+**Needs Harshil.**
+
+- **263 listing page titles run past 70 characters**, which is where Google starts truncating, because the
+  title is the business's own name plus its town. Cutting a name is worse than a long title, so nothing was
+  changed, but it may be worth dropping the town from the longest ones.
+- **The pages still have no `og:image` of their own design.** A page with no usable cover falls back to
+  `apple-touch-icon.png`, which is a 180px square icon and will render as a small card. One 1200x630 brand
+  image in `public/` would fix every such page at once.
+- **The all-metros page for museums is now 66 KB** (from 39 KB) because it carries 308 town pills, and the
+  whole set is 52.1 MB (from 47.9 MB). That is the price of the orphan fix. If it matters, the alternative is
+  paging those pills rather than dropping them.
+- **Last night's four are still unchanged:** the "All requests" link parked off screen on a phone, the
+  Bookings `minWidth` living on the element rather than in `operator.css`, five category accents under the AA
+  floor, and no live vendor has ever answered anything from this address.
+
+## 21 September 2026, forty-ninth run (11:00 to 11:40 UTC)
+
+**Checked, and why.** Every area the brief names is already down as verified, so the hunt went to the Coverage
+list's own open items and picked the one that is a defect rather than a question: `GET /concierge/live/:domain`
+reading two vendors where the concierge reads ten. That opened into a theme worth following, which is which
+booking link we read for a shop and which reader we are then willing to point at it. Nothing had landed since
+the forty-eighth run's log and that entry says the rehearsal was green, so both type checks and both suites
+came first (clean at 607 backend and 622 app) and the rehearsal was run once at the end, because every commit
+here touches `backend/src`.
+
+**Found and fixed.**
+
+- **Seven of our nine readers could not be reached from the route that reads one shop** (`74d56dc7b`).
+  `liveFor` tried FareHarbor, then Resova, then gave up, so a Peek, Xola, Rezdy, Acuity, Square, TripWorks,
+  Checkfront or ForeUp shop was told "no feed to read: this one needs the browser agent" while `plan.ts`
+  quoted its real departures from the same link. The dispatch that knows all ten lived in a closure inside
+  `plan.ts`; it is `readFeed.ts` now and both callers share it. `bookingUrlFor` beside it was the other half:
+  it ordered a shop's links by a hand-written list of three vendors, the fourth copy of exactly the list
+  `readable.ts` exists to abolish, so a shop holding a Xola link and its own hand-built page got the page. It
+  asks `readerFor` now, in JavaScript rather than SQL, because `%checkfront%` also matches a shop whose own
+  domain carries the word and a link that only looks readable would beat a FareHarbor one.
+- **A shop that published its own booking page before we found its calendar showed a guest guessed times**
+  (`42afb8dce`). Both queries behind `GET /availability/:operatorId`, which is where the listing page gets
+  real departures, took `LIMIT 1` with no ORDER BY. SQLite answers that in rowid order, so the older
+  hand-built page won, `vendorFor` returned null, and the page fell back to our generic nine, eleven and one
+  for a shop whose calendar was one call away. `live.ts` counted thirty-eight operators in that state and
+  fixed its own copy of the query; this copy, the one a guest meets, kept the bug.
+- **Every reader named its own vendor through a cast** (`e30dd9232`). `const VENDOR = "foreup" as
+  LiveRead["vendor"]` is an assertion, not a check, and "foreup" was never a member of that union. A reader
+  that misspelled itself would have compiled and reached a guest as "their forup calendar". The union carries
+  it now, the eight casts are gone, and a test walks `READER_VENDORS`: every vendor the router can return has
+  a branch in `readFeed` to call and a written name.
+
+**Checked and sound.** The reader list, the SQL twin of it and `vendors.ts`'s detection are otherwise in
+step. `live-index.json` ships 1,664 links and every one is FareHarbor (1,371), Peek (239) or Xola (54), which
+is the set `availability.ts` can read, so the published index and the route agree.
+
+**Green after the fixes.** 616 backend tests (up from 607), 622 app tests, both type checks clean, 53
+rehearsal steps, 0 failed.
+
+**Needs Harshil.**
+
+- **The listing page can only ever show live times for three vendors, while the agent reads ten.** Both
+  `live-index.json` and `enrich/availability.ts` stop at FareHarbor, Peek and Xola, and that file has its own
+  readers rather than the concierge's. So a Resova, Rezdy, Acuity, Square, TripWorks, Checkfront or ForeUp
+  shop is quoted live in Agent Mode and shows guessed nine, eleven and one on its own page. Wiring the
+  concierge's readers into that route is a piece of work, not a bug fix, so nothing was changed.
+- **A vendor that answers with nothing open still leaves the guessed times up**, which was already on the
+  list. Worth sharpening: the data can tell the two cases apart. A day the vendor covered with no slots at
+  all is a day the shop is closed; a day carrying only a `timeUnknown` marker is Peek's call budget, not a
+  closure. Treating the first as closed is safe and would need the three surfaces to take a three-state
+  answer from `liveChipsByDate`.
+- **`feedIsWarm` knows only FareHarbor and Resova company names**, so the other eight vendors are always read
+  as cold and get the 12 second deadline rather than 5. That costs latency, never correctness.
+- **`outset-api` still builds with no catalog**, confirmed in `render.yaml`: no `fetch-seed.mts`, so the
+  deployed concierge answers every town with "could not find". `render.yaml` is outside the files these runs
+  may change.
+- **Last night's four are still unchanged:** the "All requests" link parked off screen on a phone, the
+  Bookings `minWidth` on the element rather than in `operator.css`, five category accents under the AA floor,
+  and no live vendor has ever answered anything from this address.
+
+## 22 September 2026, fiftieth run (04:40 to 06:00 UTC)
+
+**Chosen, and why.** The brief's own areas are all down as verified, so the hunt took the highest thing on
+Coverage's open list that is a defect and not a question: a vendor that answers with nothing open leaving the
+listing page showing our guessed nine, eleven and one. That is the worst thing on the page, because a guest
+can book one of those times at a shop that is not open. Nothing but a docs commit had landed since the
+forty-ninth run's log, and that entry says the rehearsal was green, so the rehearsal was skipped at the start
+and run at the end instead, once after each commit that changed something it drives. Type checks and both
+suites came first, and the backend suite was already red.
+
+**Found and fixed.**
+
+- **The backend suite was red on a clean checkout, and nothing was wrong** (`fa4f9f20d`). The window test in
+  `concierge/__tests__/live.test.ts` named 21:00 on 2026-09-21 in Toronto and a departure at 22:30 that
+  night. `departed()` reads the real clock, so from 22 September that departure had left, the reader correctly
+  dropped it, and the suite reported a bug that was not there: 615 of 616. The dates come off a UTC midnight
+  three days out now, which keeps what the test is for without naming a day.
+- **A shop with nothing open for a fortnight was painted over with our own nine, eleven and one**
+  (`63714168e`). `GET /availability` answers for every date in the window and has always said which of three
+  things a date is: times we read, a date the vendor covered and named nothing bookable on, or an open date
+  whose clock times the call budget never reached. The pickers read only the first, so "no times on any date"
+  reached them as "no live feed" and both drew the published times over a calendar they had successfully
+  read. A guest could book a nine o'clock at a shop whose own system says it runs nothing that fortnight.
+  `live` now means the vendor answered, and an empty picker says which of the three cases it is. Two answers
+  that looked complete and were not now say they are partial, since an empty window has become a statement
+  about the shop: a Peek read that reached two of a shop's five activities, and a FareHarbor fortnight
+  straddling two months with one of them answering.
+- **Otto read out published hours beside a calendar it had read and found empty** (`c08eb9b2f`). Beside a
+  picker correctly offering nothing it said "Open Monday 9 AM to 5 PM, pick a time on this page", and to
+  "when's the next opening" it said "I can't see their live times, but they open today at 9 AM" about a
+  calendar it had just read. All three answers say what the calendar says now, and a partial read still says
+  nothing.
+- **Otto answered its own chip with the wrong question, and another with none** (`271f55c4b`). "When's the
+  next opening?" is one of the chips it offers, and the hours rule claimed it, reading "when ... opening":
+  tapping it came back "They haven't published opening hours" at a shop with two o'clock free that
+  afternoon. "Any other rules?", also its own chip, said none of the words the entry-rules rule looks for, so
+  it came back "I'm not sure what you mean". And a bare "what are your hours?" had nowhere to land at all,
+  because every hours rule wants a day, a time or the word open: the plainest hours question there is got the
+  same "I'm not sure what you mean. I can answer prices, hours, what's included ...", which names the thing it
+  just failed. It reads out the published week now, days that share a span said once. The test walks the chips
+  themselves and the chips each answer hands back, on a full shop and a bare one, which is how the second was
+  found.
+- **A shop with nothing open had all fourteen dates read out to a screen reader as sold** (`46d84c79d`).
+  The phone calendar labelled a date with no start time "booked out", which was fair when only a sold-out day
+  could be empty. It says nothing is open, which is true of a shut day and a sold one alike.
+- **And the fix above, left alone, would have closed a claimed shop** (`0b0f9d374`). Both halves of this were
+  found by reading the change back rather than by a test, and the second is worth writing down. An empty
+  answer standing meant it stood over a claimed shop's own slots too, and the catalog may still hold a
+  booking link from before that shop claimed: an empty fortnight on that stale calendar would have emptied
+  the picker of a shop taking bookings here, and the operator would have watched their own listing offer
+  nothing. The first guard written for that read "has the API given us slots?", which is wrong, because
+  `GET /bookings/open` answers for an unclaimed listing too, with the same fixed times the page would
+  otherwise guess: it would have handed every unclaimed shop its nine, eleven and one straight back and
+  quietly undone the whole night. Both pickers read `claimed` first now, and the test reads that out of their
+  source, because this rule is only as good as where its flag comes from.
+
+**Checked and sound.** `feedIsWarm` knowing only two vendors, which Coverage has carried for two runs as a
+latency cost, is not one: only FareHarbor's reads go through the cache in `live.ts`, so the other nine readers
+are genuinely cold on every call and the 12 second deadline is the right one for them. Its Resova branch is
+dead, though, for the opposite reason (see Needs Harshil). A vendor that cannot be reached at all still
+answers `live: false` on every path in `enrich/availability.ts`, which is what makes the fix above safe: an
+outage keeps the published times, and only a calendar we actually read can empty a picker.
+
+**Green after the fixes.** 618 backend tests (up from 616, one of which was failing), 637 app tests (up from
+622), both type checks clean, and 53 rehearsal steps with 0 failed on each of the four runs.
+
+**Needs Harshil.**
+
+- **A shop whose calendar we read and find empty now shows a guest nothing, on every date.** That is right,
+  and it is a change in how the 1,664 listings whose calendar we can read look on a quiet week. The line reads
+  "Nothing open in the next 14 days on their booking system." If you would rather it offered their own
+  booking link at that point, that is a design call, not a bug.
+- **`feedIsWarm`'s Resova branch never fires.** It reads the account name out of a Resova link and then looks
+  for it in the cache in `live.ts`, which only FareHarbor writes to. Resova does keep its session, so a second
+  read of the same account really is warm and gets the cold deadline anyway. One line, and it wants the
+  session map to say so rather than the response cache.
+- **Last night's five still stand:** the listing page reading only three of the ten vendors, `outset-api`
+  building with no catalog, the "All requests" link parked off screen on a phone, five category accents under
+  the AA floor, and no live vendor having answered anything from this address.
+
+## 22 September 2026, fifty-first run (06:15 to 06:50 UTC)
+
+**Chosen, and why.** Every area the brief names is down as verified, so the hunt went to the top of Coverage's
+open list: the listing page reading three of the ten vendors the agent reads. That turned out not to be a fix
+(see Needs Harshil), so the run went at the least-read code in the repo instead, which is last night's own five
+commits, four hours old. Nothing but a docs commit had landed since the fiftieth run's log, and that entry says
+the rehearsal was green, so the type checks and both suites came first (clean, 618 and 637) and the rehearsal was
+run twice at the end rather than once at the start. It found that the work the fiftieth run did on Otto could
+never run at all.
+
+**Found and fixed.**
+
+- **Otto never saw the booking calendar the page beside it had already read** (`3ebaca9a`).
+  `CompanyContext.live` is the whole of what the assistant knows about live availability: `liveSlots` reads it,
+  the "When's the next opening?" chip is only offered when it holds a departure, and a window the vendor covered
+  and named nothing in is the one thing that stops Otto reading opening hours out over a shut calendar. Nothing
+  ever filled it in. All three places that build a context passed the item and the contact record and stopped,
+  so every one of those rules was dead code in the product, the two the fiftieth run landed included. A guest
+  asking "anything Saturday?" at a shop whose booking system the box on the same page had already read was
+  answered out of the published week. The comment above `fetchAvailability` has said for weeks that "the booking
+  box, the phone sheet and the assistant" all ask for the same dates; two of them did. Otto answers
+  synchronously out of the reducer, so `availabilityNow` is the answer that has already arrived, keyed by
+  listing and expiring on the same five minutes. The operator's own test chat gets it too, since that page
+  promises in its own comment to run the same code guests get.
+- **And it would then have closed a claimed shop that is taking bookings here** (`140de0d6`). The exception
+  `liveWins` makes for both pickers: a claimed shop sells its own hours on GoDo minus what is booked, and the
+  catalog may still hold a booking link of theirs from before they claimed. Asked "can I book?" at such a shop
+  Otto would have said "not in the next 14 days: their booking calendar has nothing open in it" while the picker
+  two inches away offered that shop's own two o'clock.
+- **Otto told a guest to book on a page whose owner had switched bookings off** (`6c263518`).
+  `bookingPaused` is the rule both pickers read, and it is why a paused listing shows "Not taking bookings right
+  now" where its Reserve button was. Otto read neither flag it is made of, so beside that panel it answered
+  "Yes. Pick a service and time on this page and they confirm it", and a listing the owner had taken down said
+  the same. Three answers were telling a guest to pick a time here. The times are still true and the shop may
+  still be selling them itself, so what the answer corrects is "on this page", in the words the page uses, with
+  the shop's phone number.
+- **Every Resova shop was read as cold, however recently it had been read** (`16dcafa4`). Last night's open
+  item. `feedIsWarm` read the account out of the link and then looked for it in the response cache in `live.ts`,
+  which `getJson` there writes and therefore FareHarbor alone: the branch could never fire, and `plan.ts` gave
+  every Resova read the twelve second deadline. What actually makes the second read quick is the shop's own
+  Angular shell, kept for the life of the process in `resova.ts`, so that is what is asked.
+
+**Checked and sound.** Otto's day names and day-of-week filters are built from noon local, so a live date cannot
+slide a day. `slotLine` prints a seat count only when it is real. The remaining "Outset" strings in `src/` are
+all comments: every name a guest or an operator reads says GoDo.
+
+**Green after the fixes.** 647 app tests (up from 637), 619 backend (up from 618), both type checks clean, and
+53 rehearsal steps with 0 failed on both runs.
+
+**Needs Harshil.**
+
+- **The listing page reading ten vendors is not a dispatch change, and wiring the concierge's readers in as they
+  stand would be worse than the guessed times.** Worth writing down properly, because it has been on the list
+  three nights as "a piece of work". Every one of those readers is shaped for a shortlist, not a calendar: they
+  stop at the first day with something free (`xolaLive`, `resovaLive`, `squareLive`, `foreupLive` say so in their
+  own comments), take at most six starts on it, and ask at most four to six of the shop's items. Answers like
+  that dropped into `GET /availability`, where an empty date now means the shop is shut, would show a guest one
+  open day and thirteen "nothing open in the next 14 days" at a shop open every day. The work is a whole-window
+  mode in each reader. The second half is small and separate: `live-index.json` publishes only FareHarbor, Peek
+  and Xola links, so on the API host, which has no facts table, the other seven shops have no booking link to
+  read at all, and that filter should be `readable.ts`'s own list rather than a fourth hand-written copy.
+- **`liveSlots` has no seats guard where the pickers have one.** `liveTimes.ts` drops a departure with no seats
+  left and calls it "the belt on the braces"; Otto now reads the same payload and has no such line. All three
+  readers in `enrich/availability.ts` already refuse to emit a zero, so nothing is wrong today, and two surfaces
+  reading one payload by different rules is the kind of thing that stops being true quietly.
+- **Last night's five still stand:** the listing page reading three of the ten vendors (above), `outset-api`
+  building with no catalog, the "All requests" link parked off screen on a phone, five category accents under
+  the AA floor, and no live vendor having answered anything from this address.
+
 ## Coverage
 
 **Verified so far.** The name a guest reads: the business name on all 59,125 shipped listings, against the
@@ -2703,7 +3300,10 @@ a shop open past midnight. The week a shop starts on, read from its own publishe
 claimed shop shows a guest. The booking box price lines, including a service with no price. Phone width at
 400px on the guest listing, the booking flow, every dashboard page, and the Trips, Inbox, chat and Profile
 tabs. Accessibility on the booking flow and on the assistant chat: focus order, input labels, disabled buttons.
-Colour contrast on the accent. The API unreachable and the API slow. The Availability page and the setup
+Colour contrast on the accent. What Otto actually has in hand when it answers: that all three surfaces which
+ask it a question fill in the shop's own booking calendar, that a claimed shop's empty vendor window does not
+close it, and that a listing whose owner paused bookings or took it down is never told to a guest as bookable
+here. The API unreachable and the API slow. The Availability page and the setup
 checklist counting itself. Search and browse: a query matching nothing, a metro with one listing, a category
 with none, paging, an unpublished or paused listing staying out of the lists, and every way out of an empty
 search. Claim and sign-in: an address that does not match the business, an expired link, an edited expiry, one
@@ -2716,6 +3316,15 @@ in the app prints an em dash, now a test of its own. What a guest actually gets 
 ranked, over the whole shipped catalog: every kind against every metro and against the 90 busiest towns that
 are not one, a glued spelling both ways round, a place name whose halves are two words, a town that is not a
 metro, and every activity, elsewhere and city row pressed against the page it opens.
+
+Every dashboard page driven in a real Chromium at 1280px, 400px and 360px, for sideways scroll, anything
+past the edge and a control with no name, including the five a phone keeps behind More. Calendar, Services
+and Availability clicked rather than read: a slot blocked and reopened, a day taken off and given back, a
+service added, an option left unpriced and an option priced at zero, an opening time pushed past the closing
+one, and a day switched off. A brand new claimed shop with nothing filled in, over all nine pages, with both
+setup checklists counted against the items listed under them. The claim link itself, which decides who gets a
+session for a shop: one listing's link on another, an expired link, an edited expiry, a forged signature, a
+token with trailing data, the legacy static tokens, and CLAIM_LINK_DAYS.
 
 Dashboard Calendar end to end: blocking a slot and a day, both reaching the guest picker and both reversible,
 plus what a day off does to the bookings already on it. Services end to end: adding, hiding, deleting, deleting
@@ -2991,10 +3600,77 @@ printed over browse and over search against the cards actually drawn under them,
 the no-match search state and its way out; and the guest listing at 400px over eight listing shapes, from
 twelve options to none priced at all.
 
-**Not yet checked.** Whether the concierge's watch window should have a browser door of its own: with
+The Agent Mode rewrite of 20 September, driven rather than read: the thread, the working card and its clock,
+a question asked on its own, the shortlist, the history panel and the booking form, at 400px and at 1280px,
+for sideways scroll, anything past the edge and a control with no name; the API unreachable, an API too slow
+and the Stop that ends it, a search that finds nothing, a shortlist with no live times and its one shop that
+books by phone, and the page a live shop we have never ingested opens. The form that thread takes a booking
+in: what a half-typed name or number does to the Book button, which of the API's refusals the agent may say
+out loud, and what happens to a booking for a shop the catalog has never held. The Outset to GoDo rename
+swept over every source file: what a guest reads, against the `outset.` storage keys and the bot user agents
+that are deliberately left as they were. Which reply a bare number is an answer to, over the clock question a
+rental leads with and the headcount question every other activity does.
+
+What day it is where the shop is, read across every booking-system reader rather than sampled: the window a
+guest names against the host's own clock, which on the API host is UTC, over all nine readers; the month set
+a horizon straddles; a fortnight walked across the night a zone springs forward; and the two readers whose
+"has this slot already started" check was comparing a shop's wall clock against the host's. Which zone each
+reader has to work with: the vendor's own where it publishes one, the catalog's through `zoneForArea`
+otherwise. The concierge session id, which is a bearer token for a guest's conversation: how it is drawn, the
+shape it is drawn in, and which ids `getSession` will and will not adopt. What a guest is told the live times
+came from, over every vendor a reader exists for. That a departure which has already left is dropped before
+the guest listing page's picker draws it, on the live path and the published one, on both surfaces.
+
+The price a guest is quoted, after the reader has picked it: `headlineForParty` in `plan.ts` over every
+fare a party cannot buy, which is a rate this many people do not fit, a concession, a whole-booking total
+and a row nobody named. Rezdy's price sheet, whose helpers had none: every label shape Rezdy publishes, a
+party size read as an age, a rate priced at nothing, a quantity of zero, a group rate beside an adult fare,
+and a shop that sells only by the group. TripWorks end to end against a stubbed vendor: the one-ticket shop
+that may be named and the Adult and Child sheet that may not, a concession-only slot, a waitlist that is not
+a departure, a hidden ticket type, a slot with no price, and the customer type's own price, which looks like
+money and is not. That the word every reader uses for a fare with no name is spelled in one place and
+reaches no card.
+
+The window every reader turns a guest's "tonight" into, against `windowFor`'s own day counts: Peek, Resova,
+Square and Checkfront driven end to end against a stubbed vendor for the day kept, the day refused and the
+wider window still reaching the days inside it, Xola's and TripWorks' suites carrying the same case, ForeUp
+read and already right, and `lastDayOf` tested on its own for the two readers that cannot be driven here.
+Peek and Resova end to end besides: `peekRef` and `resovaAccount` over every link shape the catalog holds,
+the fare that heads a card and the concession that may not, Resova's slot price beating the item's teaser,
+and a hidden pricing category, a blocked slot and a sold-out one. Checkfront's day fares and `squareRef`.
+
+
+The programmatic pages, driven for the first time: all 3,004 landing pages under `/p/` and all 11,545 listing
+pages under `/l/`, generated from the shipped catalog and read rather than sampled. What each page claims
+about how many listings it holds, in its h1, its lede, its meta description, its FAQ, its pills and its
+JSON-LD, against the cards it actually draws. Every internal link against the pages the same run wrote, and
+the reverse: every page written against the links into it, walked from `p/index.html`. Every page against the
+sitemap. Duplicate titles, description length, and whether the JSON-LD on a listing page parses, publishes a
+rating with no reviews behind it, or omits an h1. What a shared link previews as, on all three page shapes.
+
+Which booking link we read for a shop, and which reader we then point at it, on both routes that ask:
+`liveFor` behind `GET /concierge/live/:domain` against all ten readers rather than two, `bookingUrlFor` on
+both sides against a shop holding its own hand-built page beside a vendor's, in either rowid order, and
+against a link that only looks like a vendor's, and the same `LIMIT 1` with no ORDER BY behind
+`GET /availability/:operatorId`, which is the one a guest's listing page meets. That every vendor the router
+can name has a reader to call and a written name, now a test of its own, and that no reader asserts its own
+vendor into the type that lists them.
+
+What a picker and the assistant do with an answer from a shop's own booking system that names nothing: a whole
+window empty, one date covered and empty, one date open with its times unread, a date the answer never
+mentioned, a read that stopped short of the shop's catalog or of a month of its window, and a vendor that
+could not be reached at all, which with a claimed shop's own slots is one of the two cases that may still be
+replaced by what we hold ourselves. Every suggestion chip the assistant offers, and every chip its answers
+hand back, walked on a full shop and a bare one against being unable to answer its own question. The published
+week as one line. Whether the test suites are honest about the clock: a test that named a date and read the
+real one went red on its own the morning after it was written.
+
+**Not yet checked.** Rezdy's reader end to end, which needs a hand-rolled HTTP/2 session because Cloudflare
+blocks `fetch` on every `*.rezdy.com` subdomain; its price helpers and its window rule are tested directly
+instead. Whether the concierge's
+watch window should have a browser door of its own: with
 `ADMIN_KEY` set it now answers a browser 404 and only curl gets in, and the metrics page's emailed-code
-sign-in is the pattern it lacks. Whether a concierge session id should be eight characters of `Math.random`
-rather than `randomBytes`, since `getSession` adopts any id a caller sends. The concierge overlay against a
+sign-in is the pattern it lacks. The concierge overlay against a
 live API: nothing here could give it one, so its answers, its chips, its history panel and its "Also nearby"
 rows have been read and unit tested but never seen full of real shops. The wallet against a real Stripe key,
 which is the same wall as everything else on that list. Whether the in-app concierge should be reachable at
@@ -3011,14 +3687,12 @@ is the one thing the thirty-third run left open behind a fix (see its Needs Hars
 now show the two dates we timed rather than eight, six of which were a midnight the shop never sells. Any
 live vendor against its real server rather than a payload shaped by hand, so a vendor that has quietly
 changed its JSON reads as a shop with nothing open and nobody knows. Whether the six rows publishing a bare
-`https://fareharbor.com/` should be in `live-index.json` at all. Whether a vendor that answers with nothing
-open across the whole window should leave the page showing our guessed nine, eleven and one, which it does.
-Whether the vendor's own `bookUrl` for a departure should ever be offered to a guest: every reader carries
-one and no surface draws it. Whether the landing pages should say they are showing 24 of the 35 they counted, which
-is what a page with more than 24 listings does today, and whether a kind's all-metros page needs paging at
-all. Whether the 50 kinds with no guide should have one written (see this run's Needs Harshil), and whether
-the JSON-LD `numberOfItems` should say 35 when only 24 `itemListElement` entries follow it. Whether a page should carry an `og:` card at all,
-since a shared link currently previews as nothing. Whether the 160 pages the next sync deletes should be
+`https://fareharbor.com/` should be in `live-index.json` at all. Whether the vendor's own `bookUrl` for a
+departure should ever be offered to a guest: every reader carries one and no surface draws it. Whether a
+kind's all-metros page needs paging for its town pills, which now number 308 on the museums page and put it
+at 66 KB. Whether the 50 kinds with no guide should have one written (see the forty-seventh run's Needs
+Harshil). Whether the `og:image` fallback should be something better than the 180px app icon, and whether the
+263 listing page titles past 70 characters should drop their town (see this run's Needs Harshil). Whether the 160 pages the next sync deletes should be
 kept with honest counts instead (see this run's Needs Harshil). Which town the 64 listings whose street names one town and whose city names another are
 actually in, as a supply question. Whether the 108 archive rows that carried a real admission tier should keep that price
 under a name a re-crawl reads properly, and whether "Buy Tickets" (338 rows) and "Schedule a tour" (123)
@@ -3084,12 +3758,13 @@ are being redirected...", "SITE1212", "bocaratonobserver.com") should fall back 
 feed worth reading. What the home should say when every cover on it is dead: today it draws a header, the
 category chips, a footer and nothing between them, because the kind list is not empty so the "Nothing here
 yet" state never fires (see this run's Needs Harshil). Whether the `waiting` line should count a listing
-whose cover died as one of the "places listed without a photo yet", which it does not. The rest of the
-operator dashboard beyond Bookings driven in a browser: Calendar, Services, Availability, Settings and the
-setup checklist counting itself, which are read and unit tested but never clicked. The claim and sign-in
-flows against a wrong address, an expired link, a link claimed twice and five wrong codes, beyond what the
-rehearsal's happy path walks. A metro with one listing and a category with none, as browse rather than as
-search. Any live vendor against its real server rather than a stub. Whether a sentence naming two
+whose cover died as one of the "places listed without a photo yet", which it does not. Whether the "All requests"
+link on Home should render on a phone at all, where the scrolling tab strip parks it out of sight (see the
+forty-fourth run's Needs Harshil). Whether the operator whose sign-in code is refused six times should be
+offered a fresh code on that screen: the only way on is the Back link, and a sixth request inside the hour is
+answered "ok" and sends nothing, on purpose, so the address cannot be probed. Whether an operator should be
+able to price an option at zero and mean free: every surface reads a zero as no price and quotes "Pay on
+site". Any live vendor against its real server rather than a stub. Whether a sentence naming two
 regions ("ontario california") should take the first one it recognises, which it does. Whether a budget read
 out of "under 18s" should filter prices, which it does. The outreach list
 script, `scripts/outreach-list.mts`, and the `GET /outreach/drafts` route it reads. Whether Gmail's one-click
@@ -3098,17 +3773,27 @@ Promotions, which is a deliverability bet against a bulk-sender expectation. Whe
 panel nothing renders should be deleted or a component written for them (see the fortieth run's Needs
 Harshil), and whether the four `--cg-` custom properties they reach for should exist. The five new readers
 against a real vendor server rather than read: Acuity, Rezdy, Square, TripWorks and Xola have never answered
-anything here, so a vendor whose JSON has quietly changed reads as a shop with nothing open. Rezdy's,
-TripWorks', Peek's and Resova's own `priceOfSlot` and Rezdy's `rateLabel`, which still have no tests: Xola's
-sheet and the shared fare rule now do, and Rezdy speaks HTTP/2 by hand, so stubbing it is the work. Bookeo's 46 shops, which are a
+anything here, so a vendor whose JSON has quietly changed reads as a shop with nothing open, and the egress
+proxy here refuses the CONNECT to every one of them outright. Bookeo's 46 shops, which are a
 documented negative from this address and want one `bookeoProbe` run from the Render worker. Whether a Xola
 waiver or gift shell with no button id should be routed as a feed at all: four shipped links are, and the
-reader correctly answers nothing for them. The concierge overlay's booking form, its error states and its
-"copy the conversation" panel, none of which this run reached. Whether the ForeUp reader, `api/nearby.ts`,
-`lib/mapsNearby.ts` and `scripts/concierge-bench.mts` should be recommitted by their author or written again
-from nothing, which is the difference between golf having a reader this week and not (see this run's Needs
-Harshil). Whether `outset-api`'s build should run `fetch-seed.mts` at all, which is the one line between the
+reader correctly answers nothing for them. Whether the accents `CAT_COLOR` gives each category should be darkened to clear the AA
+floor they are printed at (see the forty-third run's Needs Harshil), and whether an option the concierge
+finds but the catalog has never held should be bookable at all rather than refused in words. The ForeUp reader, `api/nearby.ts` and `lib/mapsNearby.ts` are committed and read now, but
+none of the three has answered anything real: ForeUp has never been asked a live course, `/nearby` needs a
+Google Places key nothing here has, and `scripts/concierge-bench.mts` has never been run from this address. Whether `outset-api`'s build should run `fetch-seed.mts` at all, which is the one line between the
 deployed concierge having a catalog and answering every town with "could not find". Whether a live resolve
 should be allowed to overwrite a crawled `booking_url` even when it does find something, rather than only to
 add one. Whether `linksTo`'s three followed links should include a link that leaves the shop's own origin,
-which they deliberately do not.
+which they deliberately do not. Whether the browser-agent and replay drivers
+(`concierge/agent.ts`, `concierge/replay.ts`) should carry the shop's clock like every reader now does, given
+that nothing calls either of them. Whether the weekend a guest means should be worked out on their own clock
+rather than the host's, which is the last thing in `windowFor` reading a day of the week from the server.
+Whether the guest's own listing page should read the seven vendors only the agent reads: `live-index.json`
+and `enrich/availability.ts` both stop at FareHarbor, Peek and Xola, and that file keeps its own readers
+rather than the concierge's, so a Resova, Rezdy, Acuity, Square, TripWorks, Checkfront or ForeUp shop is
+quoted live in Agent Mode and shows guessed times on its own page. The fifty-first run read those readers and
+found this to be two pieces of work rather than a dispatch: every one of them stops at the first free day and
+asks four to six of a shop's items, so their answers cannot fill a fortnight's calendar, and the published
+index carries no link at all for those seven shops (see that run's Needs Harshil). Whether `liveSlots` should
+drop a departure with no seats left, the way both pickers do.

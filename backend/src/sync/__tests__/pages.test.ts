@@ -371,3 +371,155 @@ test("the guide heading agrees with its own subject, for all 64 kinds", () => {
     if (/(?:ing|ball|golf|tag)$/i.test(k.search)) assert.equal(verb, "is", `"${k.search}" reads as singular but the heading would say "${verb}"`);
   }
 });
+
+/**
+ * A page that found more than MAX_CARDS listings drew 24 cards and said nothing about it, while every other
+ * number on the page kept counting the whole place. The JSON-LD was the version of that a machine reads:
+ * `numberOfItems` was the full count and `itemListElement` held 24, so "Museums in the US and Canada"
+ * published a list declaring 6,902 entries and then handed a crawler 24 of them. 313 of the 3,004 pages a
+ * sync writes today carried that contradiction, and a guest who counted the cards found the h1 was a lie.
+ *
+ * The h1, the lede and the FAQ keep the real total: that is a fact about the place. The list says what the
+ * list holds, and the page now says out loud that it is showing a sample and where the rest are.
+ */
+test("a page with more listings than it can draw counts its own list honestly and says so", () => {
+  const many: Item[] = Array.from({ length: 30 }, (_, n) =>
+    item("cooking", "toronto", n + 1, { area: "Toronto, ON", cover: `https://x/${n}.jpg`, from: 50 + n }),
+  );
+  const r = run(many);
+  try {
+    const html = r.read("cooking-in-toronto.html");
+    assert.equal((html.match(/<a class="card"/g) || []).length, 24);
+    // The list element and its own count agree, and both count the cards rather than the place.
+    assert.match(html, /"numberOfItems":24/);
+    const ld = JSON.parse(html.match(/<script type="application\/ld\+json">(.*?)<\/script>/s)![1].replace(/\\u003c/g, "<"));
+    assert.equal(ld[0].itemListElement.length, 24);
+    assert.equal(ld[0].numberOfItems, ld[0].itemListElement.length);
+    // The place still has 30, and the page still says so where that is the honest number.
+    assert.match(html, /30 cooking classes around Toronto/);
+    assert.match(html, /GoDo lists 30 cooking classes around Toronto/);
+    // And the gap between the two is named on the page rather than left for the guest to find.
+    assert.match(html, /Showing 24 of 30/);
+  } finally {
+    r.cleanup();
+  }
+});
+
+test("a page that draws every listing it found claims no sample and says nothing about a rest", () => {
+  const r = run(fixture);
+  try {
+    const html = r.read("cooking-in-toronto.html");
+    assert.match(html, /"numberOfItems":3/);
+    assert.doesNotMatch(html, /class="more"/);
+    assert.doesNotMatch(html, /Showing \d+ of/);
+  } finally {
+    r.cleanup();
+  }
+});
+
+/**
+ * Every one of the 3,004 landing pages and 11,545 listing pages shipped without a single `og:` tag, so a link
+ * to one pasted into iMessage, WhatsApp, Slack or a Discord channel previewed as the bare URL: no name, no
+ * photo, no description. These are the two page shapes that exist to be shared, and the app's own index.html
+ * has carried the tags since it was written, so the generated pages were the only ones without them.
+ */
+test("every landing page carries a social card, with its own lead photo where it has one", () => {
+  const r = run(fixture);
+  try {
+    for (const f of r.files) {
+      const html = r.read(f);
+      assert.match(html, /<meta property="og:title" content="[^"]+">/, `${f} has no og:title`);
+      assert.match(html, /<meta property="og:description" content="[^"]+">/, `${f} has no og:description`);
+      assert.match(html, /<meta property="og:image" content="[^"]+">/, `${f} has no og:image`);
+      assert.match(html, /<meta property="og:url" content="https?:[^"]+">/, `${f} has no og:url`);
+      assert.match(html, /<meta name="twitter:card" content="summary(_large_image)?">/, `${f} has no twitter card`);
+    }
+    // A page whose lead listing has a cover offers that photo, proxied to the 1200x630 every scraper crops to,
+    // and claims the large card. The title is the page's own, not the site's.
+    const toronto = r.read("cooking-in-toronto.html");
+    assert.match(toronto, /og:image" content="https:\/\/wsrv\.nl\/\?url=[^"]*&amp;w=1200&amp;h=630/);
+    assert.match(toronto, /twitter:card" content="summary_large_image"/);
+    assert.match(toronto, /og:title" content="Cooking classes in Toronto, Ontario · GoDo"/);
+    // A page with no photo at all falls back to the app icon and drops to the small card rather than
+    // promising a large image it has not got.
+    const nowhere = r.read("kayak-in-anywhere.html");
+    assert.match(nowhere, /og:image" content="[^"]*apple-touch-icon\.png"/);
+    assert.match(nowhere, /twitter:card" content="summary"/);
+  } finally {
+    r.cleanup();
+  }
+});
+
+/**
+ * "1638 of the 6902 operators publish prices on their own site. Starting prices run from $5 to $5,000."
+ * `money` has grouped its thousands since it was written and nothing else on the page did, so the two
+ * conventions sat in one sentence. Every count a person reads goes through `num` now.
+ */
+test("a count a person reads is grouped the way the prices beside it already were", () => {
+  const many: Item[] = Array.from({ length: 1200 }, (_, n) =>
+    item("cooking", "toronto", n + 1, { area: "Toronto, ON", cover: `https://x/${n}.jpg`, from: 50 }),
+  );
+  const r = run(many);
+  try {
+    const html = r.read("cooking-in-toronto.html");
+    assert.match(html, /1,200 cooking classes around Toronto/);
+    assert.match(html, /GoDo lists 1,200 cooking classes/);
+    assert.match(html, /1,200 of them have photos/);
+    assert.match(html, /1,200 of the 1,200 operators publish prices/);
+    assert.match(html, /Showing 24 of 1,200/);
+    // The meta description a search result prints is the same sentence and counts the same way.
+    assert.match(html, /<meta name="description" content="1,200 cooking classes around Toronto/);
+    // No ungrouped copy of the number survives in the prose. The listing ids carry a bare "1200" and are not
+    // prose, so the check is aimed at the sentences rather than the whole file.
+    for (const prose of html.match(/<p class="(?:lede|more)">[^<]*/g) || []) assert.doesNotMatch(prose, /\d{4,}/);
+  } finally {
+    r.cleanup();
+  }
+});
+
+/**
+ * A page nothing links to.
+ *
+ * A town page is reached from its metro page's "by city" pills, from a sibling town that ranks it in its
+ * nearest twelve, or from another kind in the same town. A town whose metro never qualified for that kind,
+ * with no sibling near enough and nothing else to do in it, was reached by none of the three: 389 of the
+ * 3,004 pages a sync writes had no link into them from anywhere on the site, and a crawler met them in
+ * sitemap-pages.xml alone. Museums lost 127 pages that way and fishing 38.
+ *
+ * The invariant is the one the generator's own header claims in the other direction ("every internal link
+ * points at a page that was written in the same run"), read back the other way: every page written in the run
+ * is reached from p/index.html by following links.
+ */
+test("every page a run writes can be reached from p/index.html by following links", () => {
+  const lone = (n: number) => item("bike", null, n, { area: "Springdale, UT", cover: `https://x/s${n}.jpg`, from: 40 });
+  const r = run([...fixture, lone(1), lone(2), lone(3)]);
+  try {
+    // The lone town really does get a page of its own, or this test proves nothing.
+    assert.ok(r.files.some((f) => /^bike-in-springdale/.test(f)), `no Springdale page among ${r.files.join(", ")}`);
+    const seen = new Set(["index.html"]);
+    for (const queue = ["index.html"]; queue.length; ) {
+      const html = r.read(queue.shift()!);
+      for (const m of html.matchAll(/href="([a-z0-9-]+\.html)"/g)) {
+        if (r.files.includes(m[1]) && !seen.has(m[1])) { seen.add(m[1]); queue.push(m[1]); }
+      }
+    }
+    assert.deepEqual(r.files.filter((f) => !seen.has(f)), [], "pages written with no link into them from anywhere");
+  } finally {
+    r.cleanup();
+  }
+});
+
+test("the all-metros page lists every place its kind has a page for, towns as well as metros", () => {
+  const lone = (n: number) => item("cooking", null, n, { area: "Springdale, UT", cover: `https://x/s${n}.jpg`, from: 40 });
+  const r = run([...fixture, lone(1), lone(2), lone(3)]);
+  try {
+    const anywhere = r.read("cooking-in-anywhere.html");
+    assert.match(anywhere, /<h2>Cooking classes by city<\/h2>/);
+    // Both metros that qualified, and the town that belongs to none of them.
+    assert.match(anywhere, /href="cooking-in-toronto\.html"/);
+    assert.match(anywhere, /href="cooking-in-niagara\.html"/);
+    assert.match(anywhere, /href="cooking-in-springdale-ut\.html"/);
+  } finally {
+    r.cleanup();
+  }
+});

@@ -561,8 +561,32 @@ export async function fetchAvailability(id: string, from?: string, days = 14): P
   availCache.set(key, { at: Date.now(), value });
   // A failed lookup must not be pinned for five minutes; only a real answer is worth keeping.
   void value.catch(() => availCache.delete(key));
+  void value.then((a) => {
+    availNow.set(id, { at: Date.now(), value: a });
+    if (availNow.size > 40) for (const [k, v] of availNow) if (Date.now() - v.at > AVAIL_TTL_MS) availNow.delete(k);
+  }, () => {});
   if (availCache.size > 40) for (const [k, v] of availCache) if (Date.now() - v.at > AVAIL_TTL_MS) availCache.delete(k);
   return value;
+}
+
+/**
+ * The answer that has already arrived for a listing, for a caller that cannot await one.
+ *
+ * Otto is that caller. It answers synchronously, out of a reducer, so it cannot fetch anything itself, and the
+ * `live` field on its context was never filled in by anything: the assistant read a shop's published hours
+ * beside a picker drawing that shop's real departures, and its "When's the next opening?" chip was never even
+ * offered, because the chip is only offered when there are live slots to name. The booking box on the same
+ * listing has already asked for exactly this window, so the answer is usually here for free.
+ *
+ * Keyed by listing, not by window, because every surface on a listing asks for the same one, and expiring with
+ * the same five minutes as the promise cache above: a stale calendar is worse than none, since an empty one
+ * now means the shop has nothing on.
+ */
+const availNow = new Map<string, { at: number; value: LiveAvailability }>();
+
+export function availabilityNow(id: string): LiveAvailability | null {
+  const hit = availNow.get(id);
+  return hit && Date.now() - hit.at < AVAIL_TTL_MS ? hit.value : null;
 }
 
 /* ---------- photo uploads ---------- */

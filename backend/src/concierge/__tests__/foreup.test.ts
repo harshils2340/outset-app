@@ -1,8 +1,8 @@
 import { strict as assert } from "node:assert";
 import test from "node:test";
 import { foreupRef } from "../readers/foreup.ts";
-import { readerFor, isReadable } from "../readable.ts";
-import { usableBookingUrl } from "../plan.ts";
+import { readerFor, isReadable, type ReaderVendor } from "../readable.ts";
+import { usableBookingUrl, vendorName } from "../plan.ts";
 
 /**
  * Four places had to agree that ForeUp is readable, and `readable.ts`'s own header names this exact failure
@@ -24,4 +24,18 @@ test("readerFor and usableBookingUrl agree that ForeUp is a booking host, not so
   assert.equal(isReadable(url), true);
   // The second argument is the shop's own domain; foreupsoftware.com must clear as a vendor regardless of it.
   assert.equal(usableBookingUrl(url, "beekmangolf.com"), url, "a known booking vendor must survive usableBookingUrl unchanged");
+});
+
+test("every vendor with a reader is named to a guest the way its own brand spells it", () => {
+  // "Read from their foreup calendar just now" is what the card said, on the one line that claims these
+  // times are the shop's own.
+  const vendors: ReaderVendor[] = ["fareharbor", "resova", "peek", "checkfront", "xola", "rezdy", "tripworks", "square", "acuity", "foreup"];
+  for (const v of vendors) {
+    const name = vendorName(v);
+    assert.notEqual(name, v.toLowerCase(), v + " is printed as typed in the code");
+    assert.match(name, /^[A-Z]/, v);
+  }
+  assert.equal(vendorName("foreup"), "ForeUp");
+  // A reader that lands before anybody writes its name down still says something, rather than nothing.
+  assert.equal(vendorName("newvendor"), "newvendor");
 });

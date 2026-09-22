@@ -1,6 +1,6 @@
 import type { OperatorContact, Unclaimed } from "../data/types";
 import type { LiveAvailability } from "./api";
-import { addressLine, plainWords } from "./catalog";
+import { addressLine, bookingPaused, plainWords } from "./catalog";
 import { callablePhone } from "./phone";
 import { withoutNoticeWindows } from "./duration";
 import { money } from "./format";
@@ -379,6 +379,38 @@ function clockLabel(m: number): string {
 
 const spanLabel = (s: { open: number; close: number }) => clockLabel(s.open) + " to " + clockLabel(s.close);
 
+/**
+ * The published week in one line, consecutive days that share a span said once: "Monday to Friday 9 AM to
+ * 5 PM, Saturday 10 AM to 4 PM, Sunday closed."
+ *
+ * "What are your hours?" is the plainest hours question a guest can ask and the one Otto had no branch for.
+ * Every rule in the hours block wants a day ("open Sunday?"), a time ("what time do you open?") or the word
+ * open, so a bare "hours?" fell past all of them to "I'm not sure what you mean. I can answer prices, hours,
+ * what's included, rules or where to meet", which names the thing it has just failed to answer.
+ *
+ * Monday first, because that is how a shop writes its own week, and a day the shop does not mention is said
+ * to be unlisted rather than quietly left out: an absence reads as closed.
+ */
+function weekHoursLine(week: Week): string {
+  const order = [1, 2, 3, 4, 5, 6, 0];
+  const label = (d: Week[number]) => (!d ? "not listed" : d.close === 0 ? "closed" : spanLabel(d));
+  const runs: { from: number; to: number; text: string }[] = [];
+  order.forEach((d, i) => {
+    const text = label(week[d]);
+    const last = runs[runs.length - 1];
+    if (last && last.text === text && order[i - 1] === last.to) last.to = d;
+    else runs.push({ from: d, to: d, text });
+  });
+  const name = (r: { from: number; to: number }) => {
+    if (r.from === r.to) return DAY_NAMES[r.from];
+    const span = order.slice(order.indexOf(r.from), order.indexOf(r.to) + 1);
+    return span.length === 2 ? DAY_NAMES[r.from] + " and " + DAY_NAMES[r.to] : DAY_NAMES[r.from] + " to " + DAY_NAMES[r.to];
+  };
+  // One span all week needs no day names at all.
+  if (runs.length === 1) return runs[0].text === "closed" ? "They are closed every day they list." : "Every day, " + runs[0].text + ".";
+  return runs.map((r) => name(r) + " " + r.text).join(", ") + ".";
+}
+
 function nextOpenDay(week: Week | null, from: number): { day: number; span: { open: number; close: number } } | null {
   if (!week) return null;
   for (let i = 1; i <= 7; i += 1) {
@@ -400,6 +432,47 @@ function liveSlots(ctx: CompanyContext): Slot[] {
   // Otto would have read out "Monday Sunset Cruise" as a start time. Rule 4: never invent an open slot.
   for (const d of days) for (const s of d.slots || []) if (!s.timeUnknown) out.push({ when: s.label, date: d.date, price: s.priceCents != null ? s.priceCents / 100 : undefined, seats: s.seatsLeft });
   return out;
+}
+
+/**
+ * The vendor answered for the whole window and named nothing bookable in it. That is a fact about the shop,
+ * not a gap in what we know, and it is not the same as having no feed to read: Otto used to fall through to
+ * the published hours here and say "Open Monday 9 AM to 5 PM, pick a time on this page" beside a picker that
+ * correctly offers nothing on any date. A partial read speaks for no one: it stopped short of the catalog.
+ *
+ * A claimed shop is the one exception, and it is the same exception `liveWins` makes for both pickers: what a
+ * claimed shop sells on GoDo is its own hours minus what is booked, and the catalog may still hold a booking
+ * link of theirs from before they claimed. An empty fortnight on that stale calendar would have had Otto
+ * telling a guest a shop taking bookings on this very page has nothing open, next to a picker offering that
+ * shop's own times. Otto cannot see those times, so it says nothing about the window and answers from the
+ * published hours, which is what it always did for a claimed shop.
+ */
+function liveWindowEmpty(ctx: CompanyContext): number {
+  const a = ctx.live;
+  if (!a?.live || a.partial || ctx.item.claimed) return 0;
+  const days = (a.days || []).length;
+  return days && !liveSlots(ctx).length ? days : 0;
+}
+
+/**
+ * The shop switched bookings off, or took its page down, in its own dashboard.
+ *
+ * `bookingPaused` is the rule both pickers already read, and it is why a paused listing shows "Not taking
+ * bookings right now" where its Reserve button was. Otto read neither flag, so beside that panel it answered
+ * "Yes. Pick a service and time on this page and they confirm it", which is the one thing on the page that is
+ * not true. Now that it can see a calendar it would have gone further and named a real departure to book.
+ *
+ * The times are still true, and the shop may well still be selling them on their own site: what is false is
+ * "on this page". So the answer says that and hands the guest the shop, which is the only way through.
+ */
+function pausedLine(ctx: CompanyContext): string | null {
+  if (!bookingPaused(ctx.item)) return null;
+  const who = ctx.item.title;
+  const phone = shopPhone(ctx);
+  const head = ctx.item.offline
+    ? who + " has taken this page down for the moment, so nothing can be booked here."
+    : who + " has paused new bookings on this page.";
+  return head + " " + (phone ? "Call " + phone + "." : who + " can still take a booking themselves.");
 }
 
 function slotLine(s: Slot): string {
@@ -631,15 +704,25 @@ function readQuestion(ctx: CompanyContext, q: string, prev: ChatState): Topic[] 
   if (/(what do you (offer|have|do|sell)|what('s| is) (on offer|available|there to do)|options|services|packages|menu|what kinds?|what types?|list of)/i.test(t)) add("list");
   if (/(how long|duration|how many (hours|minutes)|how much time)/i.test(t) && !/(ahead|before|in advance|cancel)/i.test(t)) add("duration");
 
+  /**
+   * "When's the next opening?" asks for a departure, not a time of day, and it is one of the chips Otto itself
+   * offers. The hours branch below reads it as "when ... opening" and answered with the shop's published
+   * opening hours, so tapping Otto's own suggestion came back "They haven't published opening hours" at a
+   * shop whose calendar had two o'clock free. One pattern, read here and again by `next` further down.
+   */
+  const asksNext = /((next|nearest) (one|slot|time|departure|opening|available|trip|tour|sail)|when'?s the next|earliest|soonest)/i.test(t);
+
   if (/\b(open|opening|close|closed|closing|hours)\b/i.test(t) && !namesDay && NAMED_DATE.test(t)) add("holidayHours");
   else if (/(what time|when)\D{0,20}\b(close|closing)\b/i.test(t) || /\bclosing time\b/i.test(t)) add("closeTime");
-  else if (/(what time|when)\D{0,20}\b(open|opening)\b/i.test(t) || /\bopening time\b/i.test(t)) add("closeTime");
+  else if (!asksNext && (/(what time|when)\D{0,20}\b(open|opening)\b/i.test(t) || /\bopening time\b/i.test(t))) add("closeTime");
   else if (/(open (right )?now|open yet|still open|you open\??$|r u open)/i.test(t) || (/\bopen\b/i.test(t) && !namesDay && !namesTime)) add("openNow");
   else if (/\b(open|close|closed|hours)\b/i.test(t) && namesDay) add("dayHours");
+  // A bare "hours?", "what are your hours" or "opening hours": no day, no time, no "open" to catch it above.
+  else if (/\bhours?\b/i.test(t) && !namesTime) add("dayHours");
 
   const blocksSlot = /(deal|promo|special|discount|happy hour)/i.test(t) || hits.some((h) => ["dayHours", "closeTime", "openNow", "price", "priceOf", "cheapest"].includes(h));
   if (/(can i|can we|could i|do you have|any(thing)?\b|is there|availab|slot|spot|space|come by|come in|drop in|get in)/i.test(t) && (namesDay || namesTime) && !blocksSlot) add("slot");
-  if (/((next|nearest) (one|slot|time|departure|opening|available|trip|tour|sail)|when'?s the next|earliest|soonest)/i.test(t)) add("next");
+  if (asksNext) add("next");
   if (/(walk.?ins?|without (a )?(booking|reservation|appointment)|need (a )?(reservation|appointment)|book ahead|how far ahead|ahead of time|in advance)/i.test(t)) add("walkin");
   // "How do I cancel my booking" is a cancellation question that happens to say "booking". Leave it to `cancel`,
   // which reads the shop's own refund policy, rather than answering "Yes, pick a service and time on this page".
@@ -650,7 +733,9 @@ function readQuestion(ctx: CompanyContext, q: string, prev: ChatState): Topic[] 
   // answered with whatever the shop's first requirement line happened to be. "How old is the boat" is not one.
   if (ageIn(t) != null || /\b(age|kid|kids|child|children|minor|toddler|baby|infant|senior|teen|year old)\b/i.test(t) || /\bhow old (do|does|must|should|would)\b/i.test(t)) add("age");
   // Same reason as `book` above: "I need to cancel my reservation" is not a question about who may take part.
-  if (/(do i need|need to|have to|must |require|experience|beginner|first.?time|licen[sc]e|certif|swim|weight|height|how tall|pregnan|wheelchair|disab)/i.test(t) && !CANCEL_RE.test(t)) add("rules");
+  // "Any other rules?" is one of Otto's own chips and said none of these words, so tapping it came back "I'm
+  // not sure what you mean". A question that simply says rules, requirements or restrictions is this one.
+  if ((/(do i need|need to|have to|must |require|experience|beginner|first.?time|licen[sc]e|certif|swim|weight|height|how tall|pregnan|wheelchair|disab)/i.test(t) || /\b(rules?|requirements?|restrictions?)\b/i.test(t)) && !CANCEL_RE.test(t)) add("rules");
   if (/\b(dogs?|pets?|puppy|service animal)\b/i.test(t)) add("pets");
   if (/(what (should|do) (i|we) bring|bring|wear|what to wear|dress code)/i.test(t) && !/\bbring (my|our|a|the) (kid|child|son|daughter|dogs?|pets?|\d)/i.test(t)) add("bring");
   if (/(include|included|come with|provided|supplied|gear|equipment|what do (i|we) get|life ?jackets?|on ?board|bathroom|restroom|wifi|food|drinks?|alcohol|\bbar\b|byob)/i.test(t)) add("included");
@@ -858,10 +943,15 @@ function dayHoursAnswer(ctx: CompanyContext, q: string, prev: ChatState): { text
     if (sat && sun && fmt(sat) === fmt(sun)) return { text: sat.close === 0 ? "No, closed on weekends." : "Yes, weekends " + spanLabel(sat) + ".", state: { topic: "dayHours", day: 6 } };
     return { text: "Saturday " + fmt(sat) + ", Sunday " + fmt(sun) + ".", state: { topic: "dayHours", day: 6 } };
   }
-  const day = dayIn(q, clock.day) ?? prev.day ?? clock.day;
+  const named = dayIn(q, clock.day);
+  const day = named ?? prev.day ?? clock.day;
   if (!week) {
     if (hourLines(ctx.item).length) return { text: hoursAsWritten(ctx.item) as string, state: { topic: "dayHours" } };
     return { text: noFact(ctx, "opening hours"), state: { topic: "dayHours" } };
+  }
+  // "What are your hours?" names no day, so it is the whole week being asked for, not today's line.
+  if (named == null && prev.day == null && !/\b(today|tonight|now)\b/i.test(q)) {
+    return { text: weekHoursLine(week), state: { topic: "dayHours" } };
   }
   const span = week[day];
   const name = /\b(today|tonight)\b/i.test(q) ? "today" : DAY_NAMES[day];
@@ -877,6 +967,9 @@ function dayHoursAnswer(ctx: CompanyContext, q: string, prev: ChatState): { text
 }
 
 function slotAnswer(ctx: CompanyContext, q: string, prev: ChatState): { text: string; state: ChatState } {
+  // Every answer below ends in "pick that time on this page", which a paused listing has no way to honour.
+  const paused = pausedLine(ctx);
+  if (paused) return { text: paused, state: { topic: "slot" } };
   const clock = clockIn(zoneFor(ctx.item));
   const day = dayIn(q, clock.day) ?? prev.day ?? null;
   const at = minutesOfDay(q);
@@ -887,6 +980,14 @@ function slotAnswer(ctx: CompanyContext, q: string, prev: ChatState): { text: st
   }
   const all = liveSlots(ctx);
   if (all.length) return { text: "Nothing then. Next open time is " + slotLine(all[0]) + ".", state: { topic: "slot", day: day ?? undefined } };
+
+  const shut = liveWindowEmpty(ctx);
+  if (shut) {
+    return {
+      text: "Their booking calendar has nothing open in the next " + shut + " days. " + ctx.item.title + " can tell you when that changes.",
+      state: { topic: "slot", day: day ?? undefined },
+    };
+  }
 
   const week = weekFor(ctx);
   if (week && day != null) {
@@ -909,12 +1010,8 @@ function slotAnswer(ctx: CompanyContext, q: string, prev: ChatState): { text: st
 }
 
 function bookAnswer(ctx: CompanyContext, q: string): { text: string; state: ChatState } {
-  if (/\b(for me|on my behalf|you book|book it for me|can you book)\b/i.test(q)) {
-    return {
-      text: "I can start it. You pay on Stripe, or from the card on your Profile if Otto is on. I never see the card. Pick a time on this page.",
-      state: { topic: "book" },
-    };
-  }
+  // A booking they already have is not affected by the shop pausing new ones, so it is answered first. The two
+  // tests are disjoint: this one needs "my booking" and a word like confirmed or status, never "can you book".
   if (asksAboutOwnBooking(q)) {
     const phone = shopPhone(ctx);
     return {
@@ -922,8 +1019,18 @@ function bookAnswer(ctx: CompanyContext, q: string): { text: string; state: Chat
       state: { topic: "book" },
     };
   }
+  const paused = pausedLine(ctx);
+  if (paused) return { text: paused, state: { topic: "book" } };
+  if (/\b(for me|on my behalf|you book|book it for me|can you book)\b/i.test(q)) {
+    return {
+      text: "I can start it. You pay on Stripe, or from the card on your Profile if Otto is on. I never see the card. Pick a time on this page.",
+      state: { topic: "book" },
+    };
+  }
   const slots = liveSlots(ctx);
   if (slots.length) return { text: "Yes. Next open time is " + slotLine(slots[0]) + ". Book it on this page.", state: { topic: "book" } };
+  const shut = liveWindowEmpty(ctx);
+  if (shut) return { text: "Not in the next " + shut + " days: their booking calendar has nothing open in it. " + ctx.item.title + " can tell you when that changes.", state: { topic: "book" } };
   return { text: "Yes. Pick a service and time on this page and " + ctx.item.title + " confirms it.", state: { topic: "book" } };
 }
 
@@ -1314,8 +1421,15 @@ function answerOne(ctx: CompanyContext, topic: Topic, q: string, prev: ChatState
     case "describe": return describeAnswer(ctx, q);
     case "ack": return { text: "Anything else? I can check prices, hours or what to bring.", state: prev };
     case "next": {
+      // Naming a departure a guest cannot take from here is a tease, so a paused listing says so instead.
+      const paused = pausedLine(ctx);
+      if (paused) return { text: paused, state: { topic: "slot" } };
       const slots = liveSlots(ctx);
       if (slots.length) return { text: "Next open time is " + slotLine(slots[0]) + ".", state: { topic: "slot" } };
+      // "I can't see their live times" is untrue of a calendar we read and found empty, and the opening hour
+      // it then reads out is an invitation to a day the shop is not selling.
+      const shut = liveWindowEmpty(ctx);
+      if (shut) return { text: "Nothing in the next " + shut + " days: that is their own booking calendar, and it has no open time in it.", state: { topic: "slot" } };
       const week = weekFor(ctx);
       const clock = clockIn(zoneFor(ctx.item));
       const next = nextOpenDay(week, clock.day);

@@ -1,4 +1,5 @@
-import type { Departure, LiveRead } from "../live.ts";
+import { UNNAMED_RATE, type Departure, type LiveRead } from "../live.ts";
+import { addDays, lastDayOf, zonedYmd } from "../shopday.ts";
 import { isConcessionFare } from "../../lib/fares.ts";
 
 /**
@@ -41,7 +42,7 @@ const UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (
  * the name is asserted here rather than a neighbouring vendor's being borrowed, so the value a caller sees is
  * already the right one.
  */
-const VENDOR = "tripworks" as LiveRead["vendor"];
+const VENDOR = "tripworks";
 
 /**
  * The shop out of any TripWorks URL we hold.
@@ -267,9 +268,15 @@ function priceOfSlot(slot: Timeslot): { price: number | null; label: string | nu
    * Named only when the shop sells exactly one visible kind of ticket, because then the name is not a guess:
    * a helicopter that sells "Shared" and nothing else is a shared seat at this price. Two or more and the
    * headline would have to claim which of them `min_price` belongs to, and it does not say.
+   *
+   * Counted over every visible type, not only the adult ones. Counting the adult ones was the same sentence
+   * to read and a worse thing to do: a whale watch selling "Adult" and "Child" leaves one name standing once
+   * the child fare is filtered out, so the slot was quoted at `min_price` — which is the child's $48 —
+   * labelled "Adult", against a real adult fare of $58. A concession fare under an adult's name is worse
+   * than an unlabelled one, because nothing on the card tells the guest to look again.
    */
-  const label = open.length === 1 ? open[0] : null;
-  const rates: Departure["rates"] = price == null ? [] : [{ label: label || "Ticket", price, minParty: null, maxParty: null }];
+  const label = visible.length === 1 && open.length === 1 ? open[0] : null;
+  const rates: Departure["rates"] = price == null ? [] : [{ label: label || UNNAMED_RATE, price, minParty: null, maxParty: null }];
   /** Every ticket on sale at this time is a waitlist or a "call to book": the slot exists, the seat does not. */
   const bookable = !visible.length || !visible.every((n) => NOT_A_DEPARTURE.test(n));
   // Every visible ticket is a concession: real, but not something to head a shortlist with.
@@ -279,7 +286,7 @@ function priceOfSlot(slot: Timeslot): { price: number | null; label: string | nu
 
 export async function tripworksLive(
   bookingUrl: string,
-  opts: { from?: Date; days?: number; maxItems?: number } = {},
+  opts: { from?: Date; days?: number; maxItems?: number; tz?: string | null } = {},
 ): Promise<LiveRead | null> {
   const slug = tripworksAccount(bookingUrl);
   if (!slug) return null;
@@ -291,6 +298,11 @@ export async function tripworksLive(
   const horizon = Math.min(opts.days ?? 7, 14);
   const maxItems = opts.maxItems ?? 4;
   const only = experienceOf(bookingUrl);
+  /**
+   * The window in the shop's own calendar. The account's zone is the one the range endpoint is keyed by; an
+   * experience in another zone is still read on its own clock further down.
+   */
+  const startDate = zonedYmd(start, shop.timezone || opts.tz || null);
 
   /**
    * One call for the whole shop and a window of days, in two windows: the next two days first, and the rest
@@ -306,13 +318,19 @@ export async function tripworksLive(
   const fetchRange = async (fromDay: number, toDay: number): Promise<RangeDoc | null> =>
     api<RangeDoc>(
       slug,
-      `/api/experiences/getInDateRange/${ymd(new Date(start.getTime() + fromDay * 86400_000))}/${ymd(new Date(start.getTime() + toDay * 86400_000))}`,
+      `/api/experiences/getInDateRange/${addDays(startDate, fromDay)}/${addDays(startDate, toDay)}`,
       { isAuthenticated: false, showTimeslots: true, showPrices: true },
       20000,
     );
 
+  /**
+   * Day offsets, so a window of `n` days is offsets 0 to `n - 1`. Asking `fetchRange(0, near)` counted the
+   * last day past the first rather than from it, so "tonight" fetched today and tomorrow and answered with
+   * whichever came first. See `lastDayOf` in `shopday.ts`.
+   */
+  const lastDate = lastDayOf(startDate, horizon);
   const near = Math.min(horizon, 2);
-  const first = await fetchRange(0, near);
+  const first = await fetchRange(0, near - 1);
   if (!first?.dates) {
     return { business: shop.business, vendor: VENDOR, departures: [], note: "TripWorks did not answer for this shop." };
   }
@@ -324,7 +342,8 @@ export async function tripworksLive(
 
   /** One window of days, walked in date order: the payload's key order is not a promise and "tonight" must beat "Friday". */
   const collect = (dates: Record<string, DayEntry[]>) => {
-    for (const date of Object.keys(dates).filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(d)).sort()) {
+    // The window the guest asked about, whatever the range endpoint chose to answer with. See `lastDayOf`.
+    for (const date of Object.keys(dates).filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(d) && d <= lastDate).sort()) {
       for (const entry of dates[date] || []) {
         const id = entry.experience_id;
         if (typeof id !== "number") continue;
@@ -347,7 +366,7 @@ export async function tripworksLive(
          * saying nothing, because they would click through to a form that books them nothing.
          */
         if (NOT_A_DEPARTURE.test(meta?.name || "")) continue;
-        const timezone = meta?.timezone || shop.timezone;
+        const timezone = meta?.timezone || shop.timezone || opts.tz || null;
         const today = nowWhereTheyAre(timezone);
         if (date < today.date) continue;
 
@@ -413,7 +432,8 @@ export async function tripworksLive(
 
   collect(first.dates);
   if (!out.length && horizon > near) {
-    const rest = await fetchRange(near + 1, horizon);
+    // From the day after the near window, not the day after that: `near` days are offsets 0 to `near - 1`.
+    const rest = await fetchRange(near, horizon - 1);
     if (rest?.dates) collect(rest.dates);
   }
 

@@ -17,9 +17,18 @@ import { fmtTime } from "./format";
  *    and states no time. The pickers read its "T00:00" as a real departure and offered midnight, which the
  *    shop never sells and the guest could book.
  *
- * So: one chip per start time, and a departure whose clock time we never read is not a start time at all.
- * A booking on Outset carries a time and a service, never a vendor departure id, so collapsing a shared time
- * into one chip says exactly what we can promise.
+ * 3. The answer used to come back as start times alone, so a date the vendor covered and answered nothing for
+ *    was indistinguishable from a date it never mentioned. Both pickers read "no times anywhere" as "no live
+ *    feed" and fell back to our published nine, eleven and one, which is how a shop with an empty fortnight
+ *    came to show a guest three departures a day it does not sell. The API has always said which case it is:
+ *    every date in the window comes back, an empty `slots` means the vendor covered that date and named
+ *    nothing bookable, and a lone `timeUnknown` row means the date is open and the call budget never reached
+ *    its clock times. So the reader answers all three states, and the guessed times are only for a vendor
+ *    that did not answer at all.
+ *
+ * So: one chip per start time, a departure whose clock time we never read is not a start time at all, and an
+ * empty answer is an answer. A booking on Outset carries a time and a service, never a vendor departure id,
+ * so collapsing a shared time into one chip says exactly what we can promise.
  */
 
 export type TimeChip = {
@@ -53,23 +62,61 @@ export function clockOf(startsAt: string): string | null {
 }
 
 /**
- * Start-time chips per date key, from one `GET /availability` answer. Empty when the vendor did not answer,
- * so the caller keeps whatever it was showing.
+ * What one `GET /availability` answer says, date by date.
+ *
+ * `live` is the only thing that decides whether a picker may guess: false means no API, an unsupported
+ * booking system, or a vendor that did not answer, and the caller keeps showing whatever it had. True means
+ * these dates are the shop's own calendar, and a date with no chips has no chips because the shop has nothing
+ * there, not because we failed to look.
  */
+export type LiveRead = {
+  live: boolean;
+  /**
+   * The vendor answered, but the call budget stopped us short of their whole catalog or window. An empty date
+   * is then only empty as far as we looked, so nothing may say the shop has nothing on.
+   */
+  partial: boolean;
+  /** Start-time chips per date key, for the dates whose clock times we actually read. */
+  chips: Map<string, TimeChip[]>;
+  /** Dates the vendor covered and named nothing bookable on: shut, or sold out. */
+  closed: Set<string>;
+  /** Dates the vendor says are open and whose times we never read. Peek's call budget, mostly. */
+  unread: Set<string>;
+};
+
+/** Chips only, for a caller that has no use for the empty dates. */
 export function liveChipsByDate(avail: LiveAvailability | null | undefined): Map<string, TimeChip[]> {
+  return liveRead(avail).chips;
+}
+
+export function liveRead(avail: LiveAvailability | null | undefined): LiveRead {
   const out = new Map<string, TimeChip[]>();
-  if (!avail?.live) return out;
+  const closed = new Set<string>();
+  const unread = new Set<string>();
+  if (!avail?.live) return { live: false, partial: false, chips: out, closed, unread };
   for (const day of avail.days || []) {
     if (!day?.date) continue;
+    /**
+     * Why a date ended up empty. A marker row, or a row whose clock we could not read at all, means the shop
+     * has something on and we do not know when; no rows, or none with a seat left, means it has nothing.
+     */
+    let lost = false;
     const byTime = new Map<string, { label: string; count: number; price?: number; seats?: number; seatsEverywhere: boolean }>();
     for (const s of day.slots || []) {
       // A row that only marks the date as open states no time, so it is not a time a guest may pick.
-      if (s.timeUnknown) continue;
+      if (s.timeUnknown) {
+        lost = true;
+        continue;
+      }
       // A departure the vendor says has no seats left is not offered at all. The three readers already drop
       // them, so this is the belt on the braces rather than a case seen in the wild.
       if (typeof s.seatsLeft === "number" && s.seatsLeft <= 0) continue;
       const time = clockOf(s.startsAt);
-      if (!time) continue;
+      if (!time) {
+        // A departure we cannot put a clock on is a vendor shape we do not understand, not a closed shop.
+        lost = true;
+        continue;
+      }
       const price = s.priceCents != null && s.priceCents > 0 ? s.priceCents / 100 : undefined;
       const seats = typeof s.seatsLeft === "number" ? s.seatsLeft : undefined;
       const had = byTime.get(time);
@@ -99,6 +146,46 @@ export function liveChipsByDate(avail: LiveAvailability | null | undefined): Map
     }
     chips.sort((a, b) => a.time.localeCompare(b.time));
     if (chips.length) out.set(day.date, chips);
+    else if (lost) unread.add(day.date);
+    else closed.add(day.date);
   }
-  return out;
+  return { live: true, partial: !!avail.partial, chips: out, closed, unread };
+}
+
+/**
+ * Whether the vendor's answer is what a picker draws, which is the only thing that says whether our own
+ * published times may stand in for it.
+ *
+ * An empty answer stands: a shop with nothing open for a fortnight has answered, and drawing nine, eleven and
+ * one over that invents three departures a day for a calendar that is empty. The one exception is a claimed
+ * shop that has slots of its own, which is what `sellsItsOwn` has to mean: an operator sets their hours, slot
+ * length, notice, days off and blocked slots in the dashboard, and the catalog may still hold a booking link
+ * of theirs from before they claimed, so an empty fortnight on that stale calendar must not empty the picker
+ * of a shop taking bookings here.
+ *
+ * `GET /bookings/open` on its own does not say that: for an unclaimed listing it answers with the same fixed
+ * times the guest page always showed, minus the hours its own site says it is shut for. Passing that through
+ * as "slots of its own" would hand every unclaimed shop back its guessed nine, eleven and one and undo the
+ * whole point of this. The caller has to have read `claimed`.
+ */
+export function liveWins(read: LiveRead, sellsItsOwn: boolean): boolean {
+  return read.live && (read.chips.size > 0 || !sellsItsOwn);
+}
+
+/**
+ * The line under a picker with nothing in it, when the times are the vendor's own. "No departures on this
+ * date" is only true of a date they covered: on a date whose times we never read it tells a guest the shop is
+ * shut when its calendar says the opposite, and on a shop with an empty window it sends them through a
+ * fortnight of dates one at a time to find out there is nothing behind any of them.
+ */
+export function liveEmptyNote(read: LiveRead, date: string): string {
+  if (read.unread.has(date) || (!read.closed.has(date) && !read.chips.has(date))) {
+    return "Their booking system has not listed times for this date. Pick another day.";
+  }
+  const window = read.closed.size + read.unread.size + read.chips.size;
+  // Only a read that covered the shop's whole catalog may speak for the shop's whole fortnight.
+  if (!read.chips.size && !read.unread.size && !read.partial && window > 1) {
+    return "Nothing open in the next " + window + " days on their booking system.";
+  }
+  return "No departures on this date. Pick another day.";
 }

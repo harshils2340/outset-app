@@ -41,7 +41,8 @@ export type ConciergeDeparture = {
   fromPrice: number | null;
   priceLabel: string | null;
   taxIncluded: boolean;
-  rates: { label: string; price: number; minParty: number | null; maxParty: number | null }[];
+  /** `group` marks a rate sold to a party rather than to a head, which is never the headline. See `live.ts`. */
+  rates: { label: string; price: number; minParty: number | null; maxParty: number | null; group?: boolean }[];
   bookUrl: string;
   seatsLeft: number | null;
 };
@@ -494,6 +495,38 @@ export function offsetLine(min: number): string {
 export function offsetOf(o: ConciergeOption, index: number): number | null {
   const n = o.offsets?.[index];
   return typeof n === "number" ? n : null;
+}
+
+/**
+ * What the shop still needs before a time can be held, in the words a person would use, or nothing at all.
+ *
+ * One rule, read in both places that ask for it: the Book button in the agent's own form, and a time pressed
+ * with nothing saved on the device. Two copies of "two letters and seven digits" is how one of them ends up
+ * refusing what the other took. The numbers are the API's own (`POST /bookings`), so a form that passes here
+ * is not refused there.
+ */
+export function missingFrom(guest: { name: string; phone: string }): string {
+  const named = guest.name.trim().length >= 2;
+  const reachable = guest.phone.replace(/\D/g, "").length >= 7;
+  if (named && reachable) return "";
+  if (!named && !reachable) return "I need a name and a mobile number before I can hold that time.";
+  if (!named) return "What name should I put it under?";
+  return "I need a mobile number the shop can reach you on.";
+}
+
+/**
+ * An API refusal the agent can say out loud, or a line of its own instead.
+ *
+ * The booking routes answer in two registers. "That time was just booked" and "This listing is hidden right
+ * now" are sentences written for the person reading them; "bad email", "duplicate code" and "no such listing"
+ * are codes written for whoever is reading the log. Both were printed in the thread exactly as they arrived
+ * and over the agent's name, so a guest who mistyped their address was answered "GoDo: bad email." A sentence
+ * starts with a capital and has a space in it; anything else is ours to say properly.
+ */
+export function guestWords(error: string | undefined | null): string {
+  const said = (error || "").trim();
+  if (said && /^[A-Z]/.test(said) && /\s/.test(said)) return said;
+  return "That time could not be booked. Check the details and try again.";
 }
 
 /** "$99.51 + tax", or "Price on request". One sentence, so no surface quotes a pre-tax number as the price. */

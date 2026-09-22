@@ -1,5 +1,6 @@
 import type { Departure, LiveRead } from "../live.ts";
 import { isConcessionFare } from "../../lib/fares.ts";
+import { lastDayOf } from "../shopday.ts";
 
 /**
  * Live availability from Square Appointments, the way Square's own booking page gets it.
@@ -60,7 +61,7 @@ const AVAILABILITY = "https://app.squareup.com/appointments/api/buyer/availabili
  * rather than a neighbouring vendor's being borrowed, exactly as `peek.ts` does, so the value a caller sees is
  * already the right one.
  */
-const VENDOR = "square" as LiveRead["vendor"];
+const VENDOR = "square";
 
 export type SquareRef =
   /** A booking widget we can ask directly. */
@@ -387,7 +388,7 @@ async function availability(
 
 export async function squareLive(
   bookingUrl: string,
-  opts: { from?: Date; days?: number; maxItems?: number } = {},
+  opts: { from?: Date; days?: number; maxItems?: number; tz?: string | null } = {},
 ): Promise<LiveRead | null> {
   const ref = squareRef(bookingUrl);
   if (!ref) return null;
@@ -476,14 +477,32 @@ export async function squareLive(
   const start = opts.from ?? new Date();
   const horizon = Math.min(opts.days ?? 7, 14);
   const maxItems = opts.maxItems ?? 6;
-  const { at, today, minutes } = clock(shop.timezone);
+  // Square's location record names the shop's own zone. The catalog's, from `plan.ts`, stands in when it does not.
+  const { at, today, minutes } = clock(shop.timezone || opts.tz || null);
   /**
    * From now, not from midnight. Square rejects a `start_at` in the past outright, so asking for "today"
-   * after breakfast is an error rather than a short day — and a window that begins at this instant is also
-   * exactly the filter a guest wants.
+   * after breakfast is an error rather than a short day.
    */
-  const windowStart = new Date(Math.max(start.getTime(), Date.now()));
-  const windowEnd = new Date(windowStart.getTime() + horizon * 86400_000);
+  const from = new Date(Math.max(start.getTime(), Date.now()));
+  /**
+   * The window as a pair of calendar days on the shop's own clock, which is what the guest asked for and what
+   * every other reader works in. Square is the one vendor asked in instants, and an instant window is not a
+   * day window in either direction. Running `horizon * 86400_000` forward from the question put a one-day
+   * "tonight" through to tomorrow evening, so a shop sold out tonight answered with tomorrow morning and
+   * `plan.ts` could not widen and say the date had moved. Running it forward from `start` did the matching
+   * damage at the front: "tomorrow" asked at eight in the evening began tomorrow at eight in the evening, so
+   * the whole of tomorrow's daytime was never asked about at all.
+   */
+  const windowFirstDay = at(from).date;
+  const windowLastDay = lastDayOf(windowFirstDay, horizon);
+  /**
+   * Asked a day wider at each end, and kept to the window by date below. A zone is up to fourteen hours off
+   * this machine's, so a day either side is what it takes to be sure the shop's own first and last days are
+   * covered whichever side of the date line they sit. Over-asking costs part of one payload; under-asking
+   * costs a guest the morning or the evening of the day they asked about.
+   */
+  const windowStart = new Date(Math.max(from.getTime() - 86400_000, Date.now()));
+  const windowEnd = new Date(from.getTime() + (horizon + 1) * 86400_000);
 
   /**
    * One row per distinct start, cheapest variation on it.
@@ -516,7 +535,9 @@ export async function squareLive(
          * nothing: a vendor that rounds a window down to the day would otherwise offer a guest nine in the
          * morning at eight in the evening.
          */
-        if (date < today || (date === today && Number(time.slice(0, 2)) * 60 + Number(time.slice(3)) <= minutes)) continue;
+        // The window the guest asked about, on the shop's own calendar. See `windowFirstDay` above.
+        if (date < windowFirstDay || date > windowLastDay) continue;
+        if (date === today && Number(time.slice(0, 2)) * 60 + Number(time.slice(3)) <= minutes) continue;
 
         const deposit = isDownPayment(`${service.name} ${variation.name ?? ""}`);
         const price = variation.priceCents != null && !deposit ? variation.priceCents / 100 : null;

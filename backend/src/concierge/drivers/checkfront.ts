@@ -1,7 +1,8 @@
 import type { Browser } from "playwright";
-import type { Departure, LiveRead } from "../live.ts";
+import { UNNAMED_RATE, type Departure, type LiveRead } from "../live.ts";
 import { isConcessionFare, openFarePrice } from "../../lib/fares.ts";
 import { checkfrontRef } from "../../enrich/vendors/checkfront.ts";
+import { addDays, lastDayOf, zonedNow, zonedYmd } from "../shopday.ts";
 
 /**
  * Checkfront, read from the endpoint its own booking form reads.
@@ -39,15 +40,9 @@ import { checkfrontRef } from "../../enrich/vendors/checkfront.ts";
 
 const UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36";
 
-const ymd = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 /** Checkfront keys its own date maps as `20260922`, with no separators. */
 const compact = (iso: string) => iso.replace(/-/g, "");
 const fromCompact = (k: string) => `${k.slice(0, 4)}-${k.slice(4, 6)}-${k.slice(6, 8)}`;
-const addDays = (iso: string, n: number) => {
-  const d = new Date(`${iso}T12:00:00`);
-  d.setDate(d.getDate() + n);
-  return ymd(d);
-};
 
 /**
  * The newer storefront is `<account>.checkfront.site`, but the booking engine, and every endpoint below, is
@@ -179,8 +174,8 @@ function dayRead(item: any, key: string): DayRead | null {
     const named = String((def && typeof def === "object" && def.lbl) || "").replace(/[_-]+/g, " ").trim();
     const range = String(item?.rate?.event?.[0]?.[param]?.range ?? "").match(/^(\d+)\s*-\s*(\d+)$/);
     fares.push({
-      // "Ticket" rather than "privatebookings": an unlabelled fare has no name fit to show anyone.
-      label: named ? named.slice(0, 60) : "Ticket",
+      // The placeholder rather than "privatebookings": an unlabelled fare has no name fit to show anyone.
+      label: named ? named.slice(0, 60) : UNNAMED_RATE,
       fareKey: param.replace(/([a-z])(\d)/gi, "$1 $2").replace(/(\d)([a-z])/gi, "$1 $2"),
       price,
       minParty: range ? Number(range[1]) : null,
@@ -211,6 +206,18 @@ export async function checkfrontLive(
     /** Accepted so a caller holding a shared browser can pass one, and deliberately unused: this needs no browser. */
     browser?: Browser;
     date?: Date;
+    /**
+     * How many days from `date` the guest actually asked about, as every other reader takes it.
+     *
+     * This driver used to take no window at all. It walks forward to whatever day each item next runs and
+     * answers with that, so "escape room tonight" at a shop that is shut tonight came back with a departure
+     * up to a fortnight away, drawn under a live badge with nothing saying the date had moved: the read was
+     * not empty, so `plan.ts` never took its widening branch. Fourteen is the old behaviour, for any caller
+     * that still has no window to give.
+     */
+    days?: number;
+    /** The shop's own zone, from the catalog, because the date below is a calendar day where the shop is. */
+    tz?: string | null;
     budgetMs?: number;
   } = {},
 ): Promise<LiveRead | null> {
@@ -218,7 +225,15 @@ export async function checkfrontLive(
   if (!account) return null;
   const until = Date.now() + (opts.budgetMs ?? 20000);
   const left = () => Math.min(15000, Math.max(0, until - Date.now()));
-  const wanted = ymd(opts.date ?? new Date());
+  const wanted = zonedYmd(opts.date ?? new Date(), opts.tz);
+  /**
+   * The last day a departure may fall on. The fortnight query below and the control date that proves this
+   * account answers per date both stay at fourteen days whatever this is: they are how the shop is read, not
+   * what the guest is offered.
+   */
+  const lastDay = lastDayOf(wanted, Math.min(Math.max(opts.days ?? 14, 1), 14));
+  /** The shop's own clock, for the one question it answers: has this slot already started? */
+  const now = zonedNow(opts.tz);
   /**
    * Keyed by date and time, keeping the cheapest, because a shop with eight pontoons free at eleven has one
    * eleven o'clock to offer a guest, not eight. The answer a guest wants is which times this business can
@@ -242,7 +257,7 @@ export async function checkfrontLive(
     let day = wanted;
     const listed = await inventory(account, day, left());
     let ids = listed.ids;
-    if (!ids.length && listed.nextDate && listed.nextDate <= addDays(wanted, 14) && Date.now() < until) {
+    if (!ids.length && listed.nextDate && listed.nextDate <= lastDay && Date.now() < until) {
       day = listed.nextDate;
       ids = (await inventory(account, day, left())).ids;
     }
@@ -298,7 +313,8 @@ export async function checkfrontLive(
         if (new Set(Object.keys(fortnight).map(shape)).size >= 2) proven = true;
 
         const open = Object.keys(fortnight)
-          .filter((k) => AVAILABLE.test(String(fortnight[k]?.status ?? "")) && fromCompact(k) >= wanted)
+          // Inside the window the guest asked about, not merely somewhere in the fortnight we asked the shop for.
+          .filter((k) => AVAILABLE.test(String(fortnight[k]?.status ?? "")) && fromCompact(k) >= wanted && fromCompact(k) <= lastDay)
           .sort();
         if (!open.length) continue;
         const on = open[0];
@@ -345,7 +361,7 @@ export async function checkfrontLive(
           const fromPrice = openFarePrice(detail.fares, (f) => f.price, fareText);
           const unit = detail.priceUnit ? ` ${detail.priceUnit}` : "";
           // A slot that already started today is not availability: Checkfront returns the whole day whatever the hour.
-          const nowMin = detail.date === ymd(new Date()) ? new Date().getHours() * 60 + new Date().getMinutes() : -1;
+          const nowMin = detail.date === now.date ? now.minutes : -1;
           for (const s of detail.slots) {
             if (Number(s.time.slice(0, 2)) * 60 + Number(s.time.slice(3)) <= nowMin) continue;
             const at = `${detail.date} ${s.time}`;

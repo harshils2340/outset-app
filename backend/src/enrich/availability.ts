@@ -296,6 +296,12 @@ async function fareharbor(shortname: string, dates: string[]): Promise<Availabil
     if (jobs.length < covered) partial = { partial: true, note: `${jobs.length} of ${covered} item-months read` };
   }
   if (!reached) return dead("fareharbor", "calendar unavailable");
+  /**
+   * A fortnight can straddle two months, and one of the two can fail on its own. Every date in the month we
+   * never read then comes back empty, which reads as a shop with nothing on rather than a month we did not
+   * see, so an answer missing a month says it is partial.
+   */
+  if (!partial.partial && reached < months.length) partial = { partial: true, note: `${reached} of ${months.length} months read` };
   for (const list of byDate.values()) list.sort((x, y) => x.startsAt.localeCompare(y.startsAt));
   return shape("fareharbor", byDate, dates, partial);
 }
@@ -385,11 +391,18 @@ async function peek(refKey: string, code: string, dates: string[]): Promise<Avai
   const bookUrl = `https://book.peek.com/s/${refKey}/${code}`;
   const open: { date: string; activity: { id: string; name: string } }[] = [];
   let reached = false;
+  /**
+   * How many of the shop's activities we got as far as asking about. A caller reading "no open dates" as "the
+   * shop is shut for a fortnight" would be wrong if the budget stopped us after the first two of its five
+   * activities, so an answer that did not cover them all says so.
+   */
+  let asked = 0;
 
   // Open dates, per activity, merged. One call each while the budget lasts.
   for (const act of activities) {
     if (b.left <= 1 && open.length) break;
     if (b.left <= 0) break;
+    asked += 1;
     const url = `${api}availability-dates?activity-id=${encodeURIComponent(act.id)}&start-date=${from}&end-date=${to}&use-legacy-api=false`;
     const res = await b.get<PeekDates>(url, h);
     if (!res?.data) continue;
@@ -465,7 +478,18 @@ async function peek(refKey: string, code: string, dates: string[]): Promise<Avai
     list.push({ startsAt: slot.date + "T00:00", label: slot.activity.name || "Available", bookUrl, timeUnknown: true });
   }
   for (const list of byDate.values()) list.sort((x, y) => x.startsAt.localeCompare(y.startsAt));
-  return shape("peek", byDate, dates, timed < open.length ? { partial: true, note: `exact times read for ${timed} of ${open.length} open dates` } : {});
+  /**
+   * Either shortfall makes the answer partial. The dates one is the one a guest feels, so it keeps the note it
+   * has always had; the activities one only needs saying when it is the only thing missing, which is the case
+   * that used to come back looking complete: every activity we reached had nothing open, so the window read as
+   * a shop shut for a fortnight when its other activities were never asked.
+   */
+  const short = timed < open.length
+    ? `exact times read for ${timed} of ${open.length} open dates`
+    : asked < activities.length
+      ? `${asked} of ${activities.length} activities asked`
+      : null;
+  return shape("peek", byDate, dates, short ? { partial: true, note: short } : {});
 }
 
 /* ---------- Xola ----------
@@ -554,23 +578,41 @@ async function xola(ref: string, dates: string[]): Promise<Availability> {
  */
 export function bookingUrlFor(operatorId: string): string | null {
   try {
-    const byId = db.prepare("SELECT fact_value FROM facts WHERE operator_id = ? AND fact_key = 'booking_url' LIMIT 1").get(operatorId) as { fact_value?: string } | undefined;
-    if (byId?.fact_value) return byId.fact_value;
+    const byId = db.prepare("SELECT fact_value FROM facts WHERE operator_id = ? AND fact_key = 'booking_url'").all(operatorId) as { fact_value?: string }[];
+    const mine = pickReadable(byId);
+    if (mine) return mine;
     if (!operatorId.startsWith("o-")) return null;
     // "o-example-com" was built as slug(domain); match it back without scanning every row in JS.
-    const row = db
+    const rows = db
       .prepare(
         `SELECT f.fact_value AS fact_value FROM operators o
            JOIN facts f ON f.operator_id = o.id AND f.fact_key = 'booking_url'
-          WHERE 'o-' || replace(replace(lower(o.domain), '.', '-'), '/', '-') = ?
-          LIMIT 1`,
+          WHERE 'o-' || replace(replace(lower(o.domain), '.', '-'), '/', '-') = ?`,
       )
-      .get(operatorId) as { fact_value?: string } | undefined;
-    return row?.fact_value || null;
+      .all(operatorId) as { fact_value?: string }[];
+    return pickReadable(rows);
   } catch {
     // The API host carries no crawl database; the published index below answers there.
     return null;
   }
+}
+
+/**
+ * Of the booking links on file for one shop, the one this module can actually read.
+ *
+ * Both queries above used to take `LIMIT 1` with no ORDER BY, which SQLite answers from `idx_facts_op_key`
+ * in rowid order: a shop holding its own hand-built booking page from an early crawl and a FareHarbor link
+ * found later was answered with the hand-built page, `vendorFor` returned null, and the listing page fell
+ * back to our generic nine, eleven and one for a shop whose real calendar was one call away. `live.ts` found
+ * thirty-eight operators in exactly that state and fixed its own copy of the query; this one, which is what
+ * `GET /availability/:operatorId` and therefore the guest's listing page reads, kept the bug.
+ *
+ * Readable here means readable by this file, which is FareHarbor, Peek and Xola. Ordering by the concierge's
+ * wider list would promote a Rezdy link over a FareHarbor one and lose the live times altogether.
+ */
+function pickReadable(rows: { fact_value?: string }[]): string | null {
+  const urls = rows.map((r) => r.fact_value).filter((u): u is string => !!u);
+  return urls.find((u) => vendorFor(u) != null) || urls[0] || null;
 }
 
 /**

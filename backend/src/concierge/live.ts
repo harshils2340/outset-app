@@ -1,7 +1,11 @@
 import { db } from "../db/client.ts";
 import { fareharborShortname } from "../enrich/widgets.ts";
-import { resovaLive } from "./resova.ts";
 import { isConcessionFare } from "../lib/fares.ts";
+import { addDays, zonedYmd } from "./shopday.ts";
+import { zoneForArea } from "../lib/zone.ts";
+import { readerFor } from "./readable.ts";
+import { readFeed } from "./readFeed.ts";
+import { resovaWarm } from "./resova.ts";
 
 /**
  * What a business can actually sell you, right now, read from the booking system it really runs.
@@ -17,6 +21,18 @@ import { isConcessionFare } from "../lib/fares.ts";
  */
 
 const UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36";
+
+/**
+ * What a reader calls a rate its vendor gave no name to.
+ *
+ * Every reader needs one, because `rates[].label` is a string and a fare with no name is still a real fare.
+ * It is a placeholder rather than a name, and that matters twice. It is not worth printing on a card, which
+ * `rezdy.ts` already refused to do with its own copy of the word. And a row nobody named cannot be proved
+ * not to be a child fare, so it never outranks a named one when a headline is picked: `peek.ts` says the
+ * difference is quoting a dolphin cruise at $26 or at $15 for a ticket an adult cannot buy. Both rules only
+ * hold if every reader spells it the same way, so it is spelled here.
+ */
+export const UNNAMED_RATE = "Ticket";
 
 export type Departure = {
   /** What the shop calls it: "Heli Tour #1", "Romantic Jewel". */
@@ -34,8 +50,17 @@ export type Departure = {
   priceLabel: string | null;
   /** False for FareHarbor: their checkout adds tax on top of this. */
   taxIncluded: boolean;
-  /** Every ticket type on this departure, so a group of four is priced like a group of four. */
-  rates: { label: string; price: number; minParty: number | null; maxParty: number | null }[];
+  /**
+   * Every ticket type on this departure, so a group of four is priced like a group of four.
+   *
+   * `group` marks a rate sold to a party rather than to a head, and it exists because a vendor can publish
+   * the two in one list with nothing to tell them apart: Rezdy's `GROUP` options are Black Hills Tour
+   * Company's "Group from 1 to 2 ($790.00 total)", which is the price of the whole booking, and Channel
+   * Islands Outfitters' "Group from 10 to 28 ($240)", which is a real head price. A reader that cannot tell
+   * which it is holding says so here, the rate stays in the list where a guest can read it, and no surface
+   * heads a shortlist with one.
+   */
+  rates: { label: string; price: number; minParty: number | null; maxParty: number | null; group?: boolean }[];
   /** The operator's own page for this exact departure. Where the agent, or the guest, finishes the booking. */
   bookUrl: string;
   seatsLeft: number | null;
@@ -43,7 +68,13 @@ export type Departure = {
 
 export type LiveRead = {
   business: string;
-  vendor: "fareharbor" | "resova" | "peek" | "checkfront" | "xola" | "rezdy" | "acuity" | "tripworks" | "bookeo" | "square" | "replay" | "agent" | "none";
+  /**
+   * Who answered. Every reader named one of these through `as LiveRead["vendor"]`, which is an assertion
+   * rather than a check: "foreup" was never a member of this union and the cast said nothing, so a reader
+   * spelling its own name wrong would have reached the guest as "their forup calendar". The casts are gone
+   * and the type is the list.
+   */
+  vendor: "fareharbor" | "resova" | "peek" | "checkfront" | "xola" | "rezdy" | "acuity" | "tripworks" | "foreup" | "bookeo" | "square" | "replay" | "agent" | "none";
   departures: Departure[];
   /** Said plainly when there is nothing to sell, because "no availability" is an answer, not a failure. */
   note: string | null;
@@ -95,8 +126,19 @@ const inFlight = new Map<string, Promise<unknown>>();
  * failed in front of an audience.
  */
 export function feedIsWarm(bookingUrl: string): boolean {
-  const company = bookingUrl.match(/fareharbor\.com\/(?:embeds\/book\/)?([a-z0-9-]+)/i)?.[1]
-    ?? bookingUrl.match(/https?:\/\/([a-z0-9-]+)\.resova\./i)?.[1];
+  /**
+   * Resova keeps its own warmth, and this is the only reader besides FareHarbor that has any.
+   *
+   * It used to read the account out of the link and then look for it in the cache below, which is written by
+   * `getJson` in this file and therefore by FareHarbor alone: the branch could never fire, and a Resova shop
+   * read a minute ago was still given the cold deadline. What makes the second read quick is the shop's own
+   * booking page, cached for the life of the process in `resova.ts`, so that is what is asked.
+   *
+   * The other eight readers have no cache of any kind, so they are genuinely cold on every call and the long
+   * deadline is the right one for them.
+   */
+  if (/resova/i.test(bookingUrl)) return resovaWarm(bookingUrl);
+  const company = bookingUrl.match(/fareharbor\.com\/(?:embeds\/book\/)?([a-z0-9-]+)/i)?.[1];
   if (!company) return false;
   const now = Date.now();
   for (const [url, hit] of cache) {
@@ -191,7 +233,7 @@ function itemPkOf(av: FhAvail): number | null {
  * the first few departures of each distinct item are priced: a guest is choosing between "Heli Tour #1" and
  * "Romantic Jewel", not between forty identical noon slots.
  */
-export async function fareharborLive(bookingUrl: string, opts: { from?: Date; days?: number; maxItems?: number } = {}): Promise<LiveRead | null> {
+export async function fareharborLive(bookingUrl: string, opts: { from?: Date; days?: number; maxItems?: number; tz?: string | null } = {}): Promise<LiveRead | null> {
   const sn = fareharborShortname(bookingUrl);
   if (!sn) return null;
   const base = "https://fareharbor.com/api/v1/companies/" + encodeURIComponent(sn) + "/";
@@ -199,11 +241,24 @@ export async function fareharborLive(bookingUrl: string, opts: { from?: Date; da
   const horizon = opts.days ?? 14;
   const maxItems = opts.maxItems ?? 4;
 
+  /**
+   * The window on the shop's own calendar, not this machine's. FareHarbor keys every day by the shop's date,
+   * and the API host has no TZ set, so "local" here is UTC: from eight in the evening Eastern the first day
+   * asked for was already tomorrow, which is the hour a guest is most likely to be asking about tonight. The
+   * zone comes from the catalog through `plan.ts`; without one this is the old behaviour.
+   */
+  const firstDay = zonedYmd(start, opts.tz);
+  /**
+   * A day's horizon is that day, not that day and the next one. "escape room tonight" asks for one day, and
+   * counting the last day from the first one rather than past it was offering tomorrow evening under a line
+   * that says "here is what's actually free", with nothing saying the date had moved.
+   */
+  const lastDay = addDays(firstDay, Math.max(horizon - 1, 0));
+
   // The calendar is published a month at a time, so a fortnight's horizon can straddle two of them.
   const months = new Set<string>();
-  for (let i = 0; i < Math.max(horizon, 1); i += 1) {
-    const d = new Date(start.getTime() + i * 86400_000);
-    months.add(`${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, "0")}/`);
+  for (let m = firstDay.slice(0, 7); m <= lastDay.slice(0, 7); m = addDays(m + "-01", 32).slice(0, 7)) {
+    months.add(`${m.slice(0, 4)}/${m.slice(5, 7)}/`);
   }
 
   /**
@@ -223,20 +278,6 @@ export async function fareharborLive(bookingUrl: string, opts: { from?: Date; da
     for (const w of cal?.calendar?.weeks || []) days.push(...(w.days || []));
   }
   if (!days.length) return { business: sn, vendor: "fareharbor", departures: [], note: "FareHarbor did not answer for this shop." };
-
-  /**
-   * Local dates, not UTC. FareHarbor publishes a departure's day in the shop's own calendar, and toISOString()
-   * is four or five hours ahead of Eastern: after eight in the evening it rolls the date forward, so "tomorrow"
-   * quietly became the day after tomorrow and the noon flight a guest was asking about was never offered.
-   */
-  const ymd = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-  /**
-   * A day's horizon is that day, not that day and the next one. "escape room tonight" asks for one day, and
-   * counting the last day from the first one rather than past it was offering tomorrow evening under a line
-   * that says "here is what's actually free", with nothing saying the date had moved.
-   */
-  const firstDay = ymd(start);
-  const lastDay = ymd(new Date(start.getTime() + Math.max(horizon - 1, 0) * 86400_000));
 
   // One entry per item per day: the earliest bookable departure of each.
   const picked: { av: FhAvail; date: string }[] = [];
@@ -312,7 +353,7 @@ export async function fareharborLive(bookingUrl: string, opts: { from?: Date; da
         rates = ctrs
           .map((c) => {
             const cents = byRate.get(c.pk);
-            const label = c.customer_prototype?.display_name || c.customer_prototype?.customer_type?.singular || "Ticket";
+            const label = c.customer_prototype?.display_name || c.customer_prototype?.customer_type?.singular || UNNAMED_RATE;
             return cents == null ? null : { label, price: Math.round(cents) / 100, minParty: c.minimum_party_size, maxParty: c.maximum_party_size };
           })
           .filter(Boolean) as Departure["rates"];
@@ -332,7 +373,8 @@ export async function fareharborLive(bookingUrl: string, opts: { from?: Date; da
       date,
       time: (av.start_at || "").slice(11, 16),
       fromPrice: cheapest?.price ?? null,
-      priceLabel: cheapest?.label ?? null,
+      // A placeholder is not a name and is not worth printing on a card. See `UNNAMED_RATE`.
+      priceLabel: cheapest && cheapest.label !== UNNAMED_RATE ? cheapest.label : null,
       taxIncluded: false,
       rates,
       bookUrl: av.book_url ? "https://fareharbor.com" + av.book_url : bookingUrl,
@@ -350,30 +392,53 @@ export async function fareharborLive(bookingUrl: string, opts: { from?: Date; da
 
 /** The booking link we hold for an operator, by domain. */
 export function bookingUrlFor(domain: string): string | null {
-  const row = db
-    /**
-     * The READABLE link wins, not whichever row came first.
-     *
-     * `LIMIT 1` with no ORDER BY is answered from `idx_facts_op_key` in rowid order, so a shop holding both
-     * its own hand-built page and a FareHarbor one we later found is answered from the older, unreadable row
-     * and its live calendar is never opened. Thirty-eight operators are in exactly that state today.
-     */
-    .prepare(
-      `SELECT f.fact_value AS u FROM facts f JOIN operators o ON o.id = f.operator_id
-        WHERE o.domain = ? AND f.fact_key = 'booking_url'
-        ORDER BY (f.fact_value NOT LIKE '%fareharbor%' AND f.fact_value NOT LIKE '%resova%' AND f.fact_value NOT LIKE '%peek.com%') LIMIT 1`,
-    )
-    .get(domain) as { u: string } | undefined;
-  return row?.u || null;
+  /**
+   * The READABLE link wins, not whichever row came first.
+   *
+   * `LIMIT 1` with no ORDER BY is answered from `idx_facts_op_key` in rowid order, so a shop holding both
+   * its own hand-built page and a FareHarbor one we later found is answered from the older, unreadable row
+   * and its live calendar is never opened. Thirty-eight operators are in exactly that state today.
+   *
+   * "Readable" was then a list of three vendors written out here by hand, against the readers' ten: the
+   * fourth copy of exactly the list `readable.ts` was written to abolish, so a shop holding a Xola, Rezdy,
+   * Acuity, Square, TripWorks, Checkfront or ForeUp link beside its own page still got the page.
+   *
+   * The pick is `readerFor`, in JavaScript, rather than `unreadableSql`, because the two are not quite the
+   * same question and only one of them is the one that matters. SQL has to sort rows it cannot run a regex
+   * over, so its patterns are deliberately loose: `%checkfront%` matches a shop whose own domain carries the
+   * word, `%xola.%` matches any host under that name. A link that only looks readable would then beat a
+   * FareHarbor one and the shop would read as having no feed. Here the rows are already in hand, so the
+   * question asked is the one that decides the answer: which of these will `readFeed` actually read?
+   */
+  const rows = db
+    .prepare(`SELECT f.fact_value AS u FROM facts f JOIN operators o ON o.id = f.operator_id WHERE o.domain = ? AND f.fact_key = 'booking_url'`)
+    .all(domain) as { u: string }[];
+  const urls = rows.map((r) => r.u).filter(Boolean);
+  return urls.find((u) => readerFor(u) != null) || urls[0] || null;
 }
 
-/** Live availability for one operator, by whichever route its booking system allows. */
+/** What day it is where this operator is, for the readers, which key their windows by the shop's own calendar. */
+function zoneOf(domain: string): string | null {
+  const row = db.prepare("SELECT city, region, lat, lon FROM operators WHERE domain = ? LIMIT 1").get(domain) as
+    | { city: string | null; region: string | null; lat: number | null; lon: number | null }
+    | undefined;
+  if (!row) return null;
+  return zoneForArea([row.city, row.region].filter(Boolean).join(", "), row.lat, row.lon);
+}
+
+/**
+ * Live availability for one operator, by whichever route its booking system allows.
+ *
+ * Every reader the concierge has, not the two this function was written with. It tried FareHarbor, then
+ * Resova, then gave up, so a Peek, Xola, Rezdy, Acuity, Square, TripWorks, Checkfront or ForeUp shop was
+ * told "no feed to read: this one needs the browser agent" here while `plan.ts` quoted its real departures
+ * from the same link. The dispatch is `readFeed`, which both callers now share.
+ */
 export async function liveFor(domain: string, opts: { from?: Date; days?: number } = {}): Promise<LiveRead> {
   const url = bookingUrlFor(domain);
   if (!url) return { business: domain, vendor: "none", departures: [], note: "We hold no booking link for this business; it would go to the phone agent." };
-  const fh = await fareharborLive(url, opts);
-  if (fh) return fh;
-  const rv = await resovaLive(url, opts);
-  if (rv) return rv;
+  const tz = zoneOf(domain);
+  const live = await readFeed(url, { from: opts.from || new Date(), days: opts.days ?? 14, tz });
+  if (live) return live;
   return { business: domain, vendor: "agent", departures: [], note: "No feed to read: this one needs the browser agent." };
 }

@@ -1,4 +1,5 @@
-import type { Departure, LiveRead } from "./live.ts";
+import { UNNAMED_RATE, type Departure, type LiveRead } from "./live.ts";
+import { addDays, zonedNow, zonedYmd } from "./shopday.ts";
 import { isConcessionFare } from "../lib/fares.ts";
 
 /**
@@ -39,6 +40,24 @@ type Session = { base: string; token: string };
  * is stable, and a demo asking twice about the same shop should not fetch their homepage twice.
  */
 const SESSIONS = new Map<string, Session | null>();
+
+/**
+ * Whether this account's booking page has already been read, and so whether a read of it will be quick.
+ *
+ * The slow half of a Resova read is the shell above: one fetch of the shop's homepage for two globals. It is
+ * kept for the life of the process, failures included, so a second question about the same account skips it
+ * either way. `feedIsWarm` used to look for the account in `live.ts`'s response cache, which only FareHarbor
+ * ever writes to, so every Resova read was given the cold deadline however many times it had been read.
+ */
+export function resovaWarm(url: string): boolean {
+  const account = resovaAccount(url);
+  return !!account && SESSIONS.has(account);
+}
+
+/** Forget every account's page, so one test's shop is not read as another's. */
+export function clearResovaSessions(): void {
+  SESSIONS.clear();
+}
 
 async function session(account: string): Promise<Session | null> {
   const cached = SESSIONS.get(account);
@@ -112,9 +131,6 @@ const num = (v: unknown): number | null => {
   return Number.isFinite(n) && n > 0 ? n : null;
 };
 
-/** Local dates, never UTC: `toISOString()` is five hours ahead of Eastern and rolls "tonight" into tomorrow. */
-const ymd = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-
 /**
  * What one seat in this slot really costs.
  *
@@ -131,7 +147,7 @@ const ymd = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart
 function priceOfSlot(slot: ResovaSlot, item: ResovaItem): { price: number | null; label: string | null; rates: Departure["rates"] } {
   const cats = (slot.occupancy?.pricing_categories || []).filter((c) => !c.hide && num(c.single_price) != null);
   const rates: Departure["rates"] = cats.map((c) => ({
-    label: c.name || "Ticket",
+    label: c.name || UNNAMED_RATE,
     price: num(c.single_price)!,
     minParty: c.min_quantity ?? null,
     maxParty: c.max_quantity ?? null,
@@ -141,12 +157,14 @@ function priceOfSlot(slot: ResovaSlot, item: ResovaItem): { price: number | null
   const cheapest = pool.length ? pool.reduce((a, b) => (a.price <= b.price ? a : b)) : null;
   // Only when the slot said nothing at all; the item's from-price is a teaser, not a ticket.
   const fallback = num(item.from?.price) ?? num(item.single_price);
-  return { price: cheapest?.price ?? fallback, label: cheapest?.label ?? null, rates };
+  // A placeholder is not a name and is not worth printing on a card. See `UNNAMED_RATE`.
+  const label = cheapest && cheapest.label !== UNNAMED_RATE ? cheapest.label : null;
+  return { price: cheapest?.price ?? fallback, label, rates };
 }
 
 export async function resovaLive(
   bookingUrl: string,
-  opts: { from?: Date; days?: number; maxItems?: number } = {},
+  opts: { from?: Date; days?: number; maxItems?: number; tz?: string | null } = {},
 ): Promise<LiveRead | null> {
   const account = resovaAccount(bookingUrl);
   if (!account) return null;
@@ -160,6 +178,13 @@ export async function resovaLive(
   const start = opts.from ?? new Date();
   const horizon = Math.min(opts.days ?? 7, 14);
   const maxItems = opts.maxItems ?? 4;
+  /**
+   * Resova publishes no zone of its own anywhere we can read, so the shop's own comes from the catalog, via
+   * `plan.ts`. Without one both the window and the clock below fall back to this machine's, which on the API
+   * host is UTC: a shop in Ontario was asked about tomorrow from eight in the evening.
+   */
+  const today = zonedNow(opts.tz);
+  const startDate = zonedYmd(start, opts.tz);
 
   /**
    * Availability is one call per room per day, so the calls multiply fast: thirteen rooms over a fortnight is
@@ -170,8 +195,9 @@ export async function resovaLive(
   const out: Departure[] = [];
   await Promise.all(
     items.slice(0, maxItems).map(async (item) => {
-      for (let i = 0; i <= horizon; i += 1) {
-        const date = ymd(new Date(start.getTime() + i * 86400_000));
+      // `i < horizon`, not `i <= horizon`: a one-day window is that day. See `lastDayOf` in `shopday.ts`.
+      for (let i = 0; i < horizon; i += 1) {
+        const date = addDays(startDate, i);
         const day = await api<{ times?: ResovaSlot[] }>(s, `/availability/times/${item.id}?date=${date}`);
         const slots = (day?.times || []).filter((t) => t.available === true && !t.resource_blocked);
         // A day with nothing free is an ordinary answer, not a failure. Try the next one.
@@ -187,10 +213,7 @@ export async function resovaLive(
            * day whatever the hour, so a guest asking at eight in the evening was being offered noon. Only
            * today needs the check, and only against the wall clock, because these times are local.
            */
-          if (date === ymd(new Date())) {
-            const now = new Date();
-            if (Number(time.slice(0, 2)) * 60 + Number(time.slice(3)) <= now.getHours() * 60 + now.getMinutes()) continue;
-          }
+          if (date === today.date && Number(time.slice(0, 2)) * 60 + Number(time.slice(3)) <= today.minutes) continue;
           const { price, label, rates } = priceOfSlot(slot, item);
           out.push({
             item: item.name || "Booking",

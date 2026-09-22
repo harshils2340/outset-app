@@ -1,20 +1,13 @@
 import { db } from "../db/client.ts";
 import { CATEGORIES, METROS, inferCategory } from "../taxonomy/catalog.ts";
-import { fareharborLive, feedIsWarm, type Departure } from "./live.ts";
+import { feedIsWarm, UNNAMED_RATE, type Departure } from "./live.ts";
 import { isConcessionFare } from "../lib/fares.ts";
-import { resovaLive } from "./resova.ts";
-import { peekLive } from "./peek.ts";
-import { checkfrontLive } from "./drivers/checkfront.ts";
-import { xolaLive } from "./readers/xola.ts";
-import { rezdyLive } from "./readers/rezdy.ts";
-import { tripworksLive } from "./readers/tripworks.ts";
-import { squareLive } from "./readers/square.ts";
-import { acuityLive } from "./readers/acuity.ts";
-import { foreupLive } from "./readers/foreup.ts";
-import { isReadable, readerFor, unreadableSql } from "./readable.ts";
+import { readFeed } from "./readFeed.ts";
+import { isReadable, unreadableSql } from "./readable.ts";
+import { zoneForArea } from "../lib/zone.ts";
 import { Trace } from "./session.ts";
 import { recordDemand } from "./demand.ts";
-import { nextNeed } from "./needs.ts";
+import { awaitingClock, nextNeed } from "./needs.ts";
 import { resolveMany } from "./resolve.ts";
 
 /**
@@ -150,6 +143,11 @@ export function readIntent(text: string, prior?: Intent | null, device?: { lat: 
    * a party of two, which is the difference between an answer and a family turning up to a room booked for a
    * couple. Three digits, not two, because "20 people" was fine and "120 people" silently became twelve.
    */
+  /**
+   * The hour question is out, so a bare number is that hour and not a headcount. See `awaitingClock`.
+   */
+  const clockPending = awaitingClock(prior);
+
   const N = "(\\d{1,3}|" + Object.keys(NUM_WORDS).join("|") + ")";
   const num = (w: string | undefined) => (w == null ? 0 : Number(w) || NUM_WORDS[w] || 0);
   let party = 2;
@@ -164,8 +162,9 @@ export function readIntent(text: string, prior?: Intent | null, device?: { lat: 
     (heads ? ([""] as unknown as RegExpMatchArray) : null) ||
     // A reply that is nothing but a number ("2", "5") is a headcount and nothing else: the one place a bare
     // digit is read as an answer rather than ignored, because it is asked for as its own whole message, the
-    // way "How many of you?" gets no preset buttons to tap and expects exactly this back.
-    t.trim().match(/^(\d{1,3})$/);
+    // way "How many of you?" gets no preset buttons to tap and expects exactly this back. Unless the question
+    // on the table is the hour, in which case the same digit is the hour and is read below instead.
+    (clockPending ? null : t.trim().match(/^(\d{1,3})$/));
   if (heads > 1) party = heads;
   else if (m && m[1]) party = num(m[1]) || 2;
   else if (/\b(me and my|my partner and i|just us two|date night)\b/.test(t)) party = 2;
@@ -231,7 +230,10 @@ export function readIntent(text: string, prior?: Intent | null, device?: { lat: 
     t.match(/\b(?:at|around|by|from)\s+(\d{1,2})\s*(am|pm)\b/) ||
     t.match(/\b(\d{1,2})\s*(am|pm)\b/) ||
     // "at 7" with no am or pm. Only after "at" or "around": "for 4" is a party and "$40" is money.
-    t.match(/\b(?:at|around)\s+(\d{1,2})\b(?!\s*(?:of us|people|persons|adults|guests|players|pax))/);
+    t.match(/\b(?:at|around)\s+(\d{1,2})\b(?!\s*(?:of us|people|persons|adults|guests|players|pax))/) ||
+    // A reply that is nothing but a number, to the question "what time do you want to go?". "2" is two
+    // o'clock there, the same as "230" is half past, and the rule below turns both into an afternoon.
+    (clockPending ? t.trim().match(/^(\d{1,4})$/) : null);
   /**
    * A part of the day is a time too. "Something tomorrow evening" was read as "tomorrow, any time", and then
    * the answer said so out loud — "assuming any time in the next fortnight" — to somebody who had just
@@ -994,6 +996,22 @@ export function candidates(intent: Intent, limit = 8, radiusKm = 40): Option[] {
   });
 }
 
+/**
+ * What a guest is told the times came from, which is the one line on a card whose whole job is to say they
+ * are the shop's own. The chain this replaces named eight vendors and ended in `"their " + vendor`, so the
+ * ninth reader to land, whose id is the lowercase word `foreup`, told a golfer we had read "their foreup
+ * calendar". A table, so the tenth is a line here rather than a lowercase brand on the screen.
+ */
+const VENDOR_NAME: Record<string, string> = {
+  fareharbor: "FareHarbor", resova: "Resova", peek: "Peek", checkfront: "Checkfront", xola: "Xola",
+  rezdy: "Rezdy", tripworks: "TripWorks", square: "Square", acuity: "Acuity", foreup: "ForeUp", bookeo: "Bookeo",
+};
+
+/** The vendor as a guest should read it, or as the reader named it when nobody has written it down. */
+export function vendorName(vendor: string): string {
+  return VENDOR_NAME[vendor] || vendor;
+}
+
 /** The date a guest means. "tonight" is today; "weekend" is the next Saturday. */
 export function windowFor(when: Intent["when"], now = new Date()): { from: Date; days: number } {
   if (when === "tomorrow") return { from: new Date(now.getTime() + 86400_000), days: 1 };
@@ -1056,6 +1074,61 @@ export function priceOf(o: Option): number | null {
   const menu = o.services.filter((s) => s.per === "person").map((s) => s.price).filter((n): n is number => n != null);
   const all = [...live, ...menu];
   return all.length ? Math.min(...all) : null;
+}
+
+/**
+ * The headline price must be one this party can actually buy.
+ *
+ * Parasail Toronto's cheapest rate is "Group Rate | 16-24 People" at $90.10, and it was being quoted to a
+ * party of two, who cannot book it. Every rate carries its own party limits, so the cheapest is chosen from
+ * the rates that admit this many people. It is the same mistake as quoting a child fare to two adults: the
+ * number is real and they still cannot pay it.
+ *
+ * Three kinds of rate are kept out of the headline, and each of them has reached a guest once:
+ *
+ *   - one this party does not fit, which is what the function is for.
+ *   - a concession. `live.ts` already excludes child, infant and senior fares when it picks a headline, and
+ *     re-picking here by party limits alone quietly undid that: a team offsite for ten adults was quoted
+ *     "$20.14 + tax · Infant", on the card and again in the comparison line above it. An age limit is not a
+ *     party limit, so the party filter cannot see it. It corrupts the budget too, in the opposite direction
+ *     to the over-budget bug: a $20.14 infant fare slips under a $50 cap that the adult fare on the same
+ *     departure would fail, so the shop is kept as affordable on a ticket nobody in the party can buy.
+ *   - a rate the reader marked `group`, because its figure may be the whole booking rather than one seat.
+ *     Rezdy publishes Black Hills Tour Company's "Group from 1 to 2 ($790.00 total)" with a minimum of one
+ *     and a maximum of two, so it admits a party of two on every party test there is, and $790 a head for a
+ *     bus tour is the "$32 to $250 a head" bug with a live price behind it. The reader excludes them and
+ *     this used to put them straight back.
+ *
+ * It only ever re-picks: a departure whose rates say nothing this party can buy keeps whatever the reader
+ * chose, because the reader knows its own vendor and an empty pool is not new information.
+ */
+export function headlineForParty(d: Departure, party: number): Departure {
+  if (!d.rates.length) return d;
+  const fitsParty = (r: Departure["rates"][number]) =>
+    !r.group && (r.minParty == null || party >= r.minParty) && (r.maxParty == null || party <= r.maxParty);
+  const buyable = d.rates.filter((r) => fitsParty(r) && !isConcessionFare(r.label));
+  // Only when a concession is genuinely all this departure sells, which is a real thing for kids' sessions.
+  const pool = buyable.length ? buyable : d.rates.filter(fitsParty);
+  if (!pool.length) return d;
+  /**
+   * And a row nobody named never outranks a named one, which `tripworks.ts` calls the rule everywhere else
+   * in this codebase and this was the one place breaking it. Peek publishes a dolphin cruise as a named
+   * "Adult" at $26 beside a $15 row it gives no ticket record for; `peek.ts` heads the card with the $26 for
+   * exactly that reason and picking the cheapest here put the $15 back, under Peek's own placeholder as a
+   * name. An unnamed row cannot be shown not to be a child fare, and over-quoting is the safe way to be
+   * wrong about one.
+   */
+  const named = pool.filter((r) => r.label !== UNNAMED_RATE);
+  const cheapest = (named.length ? named : pool).reduce((a, b) => (a.price <= b.price ? a : b));
+  /**
+   * The reader's own label stands whenever this lands on the reader's own number, because a reader says more
+   * about its rate than a rate does. Checkfront's is "on their booking page · per person" and the agent's is
+   * "from their booking page", neither of which is any rate's `label`, and comparing the two strings threw
+   * both away to relabel a price that had not moved.
+   */
+  if (cheapest.price === d.fromPrice) return d;
+  // A placeholder is not a name, and a card reading "$41 · Ticket" is our own word reaching a guest.
+  return { ...d, fromPrice: cheapest.price, priceLabel: cheapest.label === UNNAMED_RATE ? null : cheapest.label };
 }
 
 /**
@@ -1323,36 +1396,8 @@ export async function plan(text: string, opts: { ask?: number; prior?: Intent | 
    * are dropped — but only while priced ones survive, because an honest "price on request" beats an empty
    * screen when it is all there is.
    */
-  /**
-   * The headline price must be one this party can actually buy.
-   *
-   * Parasail Toronto's cheapest rate is "Group Rate | 16-24 People" at $90.10, and it was being quoted to a
-   * party of two, who cannot book it. Every rate carries its own party limits, so the cheapest is chosen from
-   * the rates that admit this many people. It is the same mistake as quoting a child fare to two adults: the
-   * number is real and they still cannot pay it.
-   */
-  const forParty = (d: Departure): Departure => {
-    if (!d.rates.length) return d;
-    const fitsParty = (r: Departure["rates"][number]) =>
-      (r.minParty == null || intent.party >= r.minParty) && (r.maxParty == null || intent.party <= r.maxParty);
-    /**
-     * And not a concession. `live.ts` already excludes child, infant and senior fares when it picks a
-     * headline, and re-picking here by party limits alone quietly undid that: a team offsite for ten adults
-     * was quoted "$20.14 + tax · Infant", on the card and again in the comparison line above it. An age
-     * limit is not a party limit, so the party filter cannot see it.
-     *
-     * It corrupts the budget too, in the opposite direction to the over-budget bug: a $20.14 infant fare
-     * slips under a $50 cap that the adult fare on the same departure would fail, so the shop is kept as
-     * affordable on a ticket nobody in the party can buy.
-     */
-    const buyable = d.rates.filter((r) => fitsParty(r) && !isConcessionFare(r.label));
-    // Only when a concession is genuinely all this departure sells, which is a real thing for kids' sessions.
-    const pool = buyable.length ? buyable : d.rates.filter(fitsParty);
-    if (!pool.length) return d;
-    const cheapest = pool.reduce((a, b) => (a.price <= b.price ? a : b));
-    if (cheapest.price === d.fromPrice && cheapest.label === d.priceLabel) return d;
-    return { ...d, fromPrice: cheapest.price, priceLabel: cheapest.label };
-  };
+  /** The headline this many people can actually buy. See `headlineForParty`. */
+  const forParty = (d: Departure): Departure => headlineForParty(d, intent.party);
 
   /**
    * What this shop's departures look like once a budget is in play.
@@ -1471,50 +1516,28 @@ export async function plan(text: string, opts: { ask?: number; prior?: Intent | 
        * The vendor is decided by `readerFor`, the same call that decided this shop was a `feed` in the first
        * place, so a link can never be routed here and then fall through to a reader that does not know it.
        */
-      const readFeed = (from: Date, days: number) => {
-        switch (readerFor(o.bookingUrl)) {
-          case "square":
-            return squareLive(o.bookingUrl, { from, days });
-          case "acuity":
-            return acuityLive(o.bookingUrl, { from, days });
-          case "tripworks":
-            return tripworksLive(o.bookingUrl, { from, days });
-          case "xola":
-            return xolaLive(o.bookingUrl, { from, days });
-          case "rezdy":
-            return rezdyLive(o.bookingUrl, { from, days });
-          case "checkfront":
-            return checkfrontLive(o.bookingUrl, { date: from });
-          case "peek":
-            return peekLive(o.bookingUrl, { from, days });
-          case "resova":
-            return resovaLive(o.bookingUrl, { from, days, maxItems: 4 });
-          case "foreup":
-            return foreupLive(o.bookingUrl, { from, days });
-          default:
-            /**
-             * Six items, not three. Zoom Tours sells four day tours and we priced three of them, so the
-             * fourth came back "price on request" and sat on the screen next to a headline that had no
-             * number to quote. The total sheet is shared across a company's items, 287557 for every one of
-             * theirs, so the first item costs three calls and each one after it costs two.
-             */
-            return fareharborLive(o.bookingUrl, { from, days, maxItems: 6 });
-        }
-      };
+      /**
+       * What day it is where this shop is. Every reader turns the window into calendar dates, and the API
+       * host runs in UTC (`render.yaml` sets no TZ), so a window built from this machine's clock put an
+       * Ontario shop on tomorrow's date from eight in the evening, which is exactly when somebody asks about
+       * tonight. A vendor that publishes its own zone still wins; this is the answer for the ones that do not.
+       */
+      const tz = zoneForArea([o.city, o.region].filter(Boolean).join(", "));
+      const ask = (from: Date, days: number) => readFeed(o.bookingUrl, { from, days, tz });
 
       const warm = feedIsWarm(o.bookingUrl);
       if (!warm) tr.step("cold", o.name + ": first read, giving it longer", { who: o.name, detail: (coldDeadline / 1000) + "s instead of " + (warmDeadline / 1000) + "s" });
-      const live = await inTime(readFeed(win.from, win.days), o.name, warm);
+      const live = await inTime(ask(win.from, win.days), o.name, warm);
       if (live) o.departures = withinBudget(live.departures.map(forParty));
       if (!o.departures.length && win.days < 14) {
         tr.step("widen", o.name + ": nothing " + intent.when + ", looking a fortnight out", { who: o.name });
-        const wider = await inTime(readFeed(new Date(), 14), o.name, true);
+        const wider = await inTime(ask(new Date(), 14), o.name, true);
         if (wider?.departures.length) {
           o.departures = withinBudget(wider.departures.map(forParty));
           o.widened = true;
         }
       }
-      if (live) o.via = live.vendor === "fareharbor" ? "their FareHarbor calendar" : live.vendor === "resova" ? "their Resova calendar" : live.vendor === "peek" ? "their Peek calendar" : live.vendor === "checkfront" ? "their Checkfront calendar" : live.vendor === "xola" ? "their Xola calendar" : live.vendor === "rezdy" ? "their Rezdy calendar" : live.vendor === "tripworks" ? "their TripWorks calendar" : live.vendor === "square" ? "their Square calendar" : live.vendor === "acuity" ? "their Acuity calendar" : "their " + live.vendor + " calendar";
+      if (live) o.via = "their " + vendorName(live.vendor) + " calendar";
 
       /**
        * Nearest the time they asked for, not earliest in the day.

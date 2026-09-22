@@ -64,7 +64,7 @@ const UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (
  * the name is asserted here rather than a neighbouring vendor's being borrowed, so the value a caller sees is
  * already the right one.
  */
-const VENDOR = "bookeo" as LiveRead["vendor"];
+const VENDOR = "bookeo";
 
 /** Their block page, verbatim enough to recognise and specific enough not to match a real booking page. */
 const BLOCKED = /unauthorized IP address|linked to past fraud activity/i;

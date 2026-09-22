@@ -16,10 +16,12 @@ import { join } from "node:path";
 process.env.OUTSET_DB = join(mkdtempSync(join(tmpdir(), "outset-concierge-")), "catalog.db");
 const { db, migrate } = await import("../../db/client.ts");
 const { inferCategory } = await import("../../taxonomy/catalog.ts");
-const { readIntent, candidates, windowFor, priceOf } = await import("../plan.ts");
+const { readIntent, candidates, windowFor, priceOf, headlineForParty } = await import("../plan.ts");
+const { nextNeed } = await import("../needs.ts");
 
 const ESCAPE = inferCategory("escape room");
 const BOAT = inferCategory("boat tour");
+const JETSKI = inferCategory("jet ski rental");
 
 migrate();
 for (const c of [ESCAPE, BOAT]) {
@@ -145,6 +147,46 @@ test("a shop whose calendar we can read is offered before one we cannot", () => 
   assert.equal(list[1].route, "agent");
 });
 
+test("a bare number is the hour when the hour is what was asked, and the headcount when it is not", () => {
+  /**
+   * "What time do you want to go?" gets "2" back, because that is how a person answers a question about the
+   * time. That bare digit was read as a party of two: the hour was thrown away, the question was never put
+   * again (it had been asked once), and the guest who said two o'clock got live times ranked around nothing.
+   * The same digit after "How many of you?" is still a headcount, which is the case that made the rule.
+   */
+  db.prepare("INSERT OR IGNORE INTO categories (id, family, label, icon_key, service_style, search_query) VALUES (?,?,?,?,?,?)")
+    .run(JETSKI.id, "water", JETSKI.label, "jetski", "slots", JETSKI.label);
+  for (const name of ["Harbourfront Jet Ski", "Lakeshore Jet Ski", "Bluffers Jet Ski"]) {
+    shop({ name, city: "Toronto", region: "ON", lat: 43.64, lon: -79.38, category: JETSKI.id, reviews: 80 });
+  }
+
+  const first = readIntent("jet ski rental in toronto tomorrow");
+  assert.equal(first.categoryId, JETSKI.id);
+  assert.equal(first.atMinute, null);
+  const ask = nextNeed(first);
+  assert.equal(ask?.id, "when", "a rental leads with the clock");
+  first.asked = [...(first.asked || []), "need:" + ask!.id];
+
+  const hour = readIntent("2", first);
+  assert.equal(hour.atMinute, 14 * 60, "two o'clock, the same as 2pm would have given");
+  assert.equal(hour.partyStated, false, "nobody counted heads, so the party is still ours to ask about");
+  assert.equal(nextNeed(hour)?.id, "party", "and it is asked next, rather than the hour being asked twice");
+  assert.equal(readIntent("230", first).atMinute, 14 * 60 + 30, "half past, written the way a person types it");
+
+  // The party question is out now, so the same digit means what it has always meant.
+  const counted = readIntent("2", { ...hour, asked: [...(hour.asked || []), "need:party"] });
+  assert.equal(counted.party, 2);
+  assert.equal(counted.partyStated, true);
+  assert.equal(counted.atMinute, 14 * 60, "and the hour they already gave survives it");
+
+  // An activity that leads with "How many of you?" never reads a bare number as a clock time.
+  const room = readIntent("escape room in kitchener ontario");
+  assert.equal(nextNeed(room)?.id, "party");
+  const four = readIntent("4", { ...room, asked: ["need:party"] });
+  assert.equal(four.party, 4);
+  assert.equal(four.atMinute, null);
+});
+
 test("the weekend a guest is standing in is this one", () => {
   const sunday = new Date("2026-09-20T09:00:00");
   while (sunday.getDay() !== 0) sunday.setDate(sunday.getDate() + 1);
@@ -163,4 +205,84 @@ test("the weekend a guest is standing in is this one", () => {
   assert.equal(windowFor("tonight", sunday).days, 1);
   assert.equal(windowFor("tomorrow", sunday).from.getDate(), new Date(sunday.getTime() + 86400_000).getDate());
   assert.equal(windowFor("any", sunday).days, 14);
+});
+
+/**
+ * Which of a departure's rates a party of this size is quoted.
+ *
+ * Every reader picks a headline out of its own price sheet and then this picks again, once the party is
+ * known, which is the only place that knows it. Picking again is right and it is also how a rule a reader
+ * enforces gets quietly undone: each of the three exclusions below was live on a card for a while.
+ */
+test("the headline is a fare this party could actually walk up and buy", () => {
+  const dep = (rates: { label: string; price: number; minParty?: number | null; maxParty?: number | null; group?: boolean }[], fromPrice: number | null = null, priceLabel: string | null = null) => ({
+    item: "Tour", date: "2026-09-22", time: "10:00", fromPrice, priceLabel, taxIncluded: false,
+    rates: rates.map((r) => ({ minParty: null, maxParty: null, ...r })),
+    bookUrl: "https://example.com", seatsLeft: null,
+  });
+
+  // Parasail Toronto: the cheapest rate on the sheet seats sixteen people and two of them turned up.
+  const parasail = dep([{ label: "Group Rate | 16-24 People", price: 90.1, minParty: 16, maxParty: 24 }, { label: "Single Rider", price: 129 }], 90.1, "Group Rate | 16-24 People");
+  assert.equal(headlineForParty(parasail, 2).fromPrice, 129);
+  assert.equal(headlineForParty(parasail, 20).fromPrice, 90.1, "and twenty of them can buy it, so they are quoted it");
+
+  // A team offsite for ten adults, quoted "$20.14 · Infant" on the card and again in the comparison line.
+  const heli = dep([{ label: "Infant", price: 20.14 }, { label: "Adult", price: 99.51 }]);
+  assert.equal(headlineForParty(heli, 10).fromPrice, 99.51);
+  assert.equal(headlineForParty(heli, 10).priceLabel, "Adult");
+
+  // A kids' session really does sell nothing else, and an honest child fare beats no price at all.
+  const kids = dep([{ label: "Child (5-12)", price: 22 }]);
+  assert.equal(headlineForParty(kids, 3).fromPrice, 22);
+
+  /**
+   * Rezdy's group options. "Group from 1 to 2 ($790.00 total)" is the price of the whole bus and it admits a
+   * party of two on every party test there is, so nothing but the reader's own mark keeps it off the card.
+   */
+  const bus = dep([{ label: "Group from 1 to 2", price: 790, minParty: 1, maxParty: 2, group: true }]);
+  assert.equal(headlineForParty(bus, 2).fromPrice, null, "a whole-booking total is not a head price at any party size");
+  assert.equal(headlineForParty(bus, 2).rates.length, 1, "and it stays on the sheet where a guest can read it");
+
+  const islands = dep([{ label: "Adult", price: 285 }, { label: "Group from 10 to 28", price: 240, minParty: 10, maxParty: 28, group: true }], 285, "Adult");
+  assert.equal(headlineForParty(islands, 12).fromPrice, 285, "over-quoting is the safe way to be wrong about a group rate");
+
+  /**
+   * Peek's dolphin cruise: a named "Adult" at $26 beside a $15 row Peek gave no ticket record for. `peek.ts`
+   * heads the card with the $26 because a row nobody named cannot be shown not to be a child fare, and this
+   * used to put the $15 back with Peek's own placeholder printed as its name.
+   */
+  const dolphin = dep([{ label: "Adult", price: 26 }, { label: "Ticket", price: 15 }], 26, "Adult");
+  assert.equal(headlineForParty(dolphin, 2).fromPrice, 26);
+  assert.equal(headlineForParty(dolphin, 2).priceLabel, "Adult");
+
+  // When nobody named anything, the price is still real and the placeholder is still not a name.
+  const unnamed = dep([{ label: "Ticket", price: 41 }], 41, null);
+  assert.equal(headlineForParty(unnamed, 2).fromPrice, 41);
+  assert.equal(headlineForParty(unnamed, 2).priceLabel, null, "a card reading \"$41 · Ticket\" is our own word reaching a guest");
+
+  // Nothing fits, so the reader's own answer stands: an empty pool is not new information.
+  const none = dep([{ label: "Charter", price: 600, minParty: 8 }], 600, "Charter");
+  assert.equal(headlineForParty(none, 2).fromPrice, 600);
+  assert.equal(headlineForParty(dep([]), 2).fromPrice, null);
+});
+
+/**
+ * The readers' own words, which are not any rate's label.
+ *
+ * `headlineForParty` compared its chosen rate's label against the departure's, and a reader whose
+ * `priceLabel` says where the price came from rather than what the ticket is called never matches: the
+ * checkfront driver's "on their booking page" and the browser agent's "from their booking page" were both
+ * thrown away and replaced with a rate label, for a price that had not moved.
+ */
+test("a reader's own price label survives a re-pick that changes nothing", () => {
+  const dep = {
+    item: "Escape Room", date: "2026-09-22", time: "19:00", fromPrice: 38, priceLabel: "on their booking page · per person",
+    taxIncluded: false, rates: [{ label: "Ticket", price: 38, minParty: null, maxParty: null }],
+    bookUrl: "https://example.com", seatsLeft: null,
+  };
+  assert.equal(headlineForParty(dep, 2).priceLabel, "on their booking page · per person");
+
+  // A Xola charter is the whole boat, and is marked as one, so it never becomes a head price either.
+  const charter = { ...dep, fromPrice: null, priceLabel: null, rates: [{ label: "Private Cycle Boat Charter (whole booking)", price: 599, minParty: null, maxParty: null, group: true }] };
+  assert.equal(headlineForParty(charter, 4).fromPrice, null);
 });

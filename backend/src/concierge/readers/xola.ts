@@ -1,4 +1,5 @@
-import type { Departure, LiveRead } from "../live.ts";
+import { UNNAMED_RATE, type Departure, type LiveRead } from "../live.ts";
+import { addDays, lastDayOf, zonedYmd } from "../shopday.ts";
 import { isConcessionFare } from "../../lib/fares.ts";
 
 /**
@@ -38,7 +39,7 @@ const API = "https://xola.com/api";
  * does not make because another session owns that file; until it lands the name is asserted here rather than
  * a neighbouring vendor's being borrowed, so the value a caller sees is already the right one.
  */
-const VENDOR = "xola" as LiveRead["vendor"];
+const VENDOR = "xola";
 
 export type XolaRef = {
   /** The button in the link, when it has one. A button names both a seller and the subset of its experiences. */
@@ -194,7 +195,7 @@ function ticketsOf(exp: XolaExperience): { price: number | null; label: string |
     if (item.visibility && item.visibility !== "public") continue;
     const price = num(item.prices?.price?.min);
     if (price == null) continue;
-    rates.push({ label: item.name || "Ticket", price, minParty: null, maxParty: null });
+    rates.push({ label: item.name || UNNAMED_RATE, price, minParty: null, maxParty: null });
   }
 
   /**
@@ -208,7 +209,10 @@ function ticketsOf(exp: XolaExperience): { price: number | null; label: string |
    */
   if (exp.priceType !== "person") {
     const group = num(exp.price);
-    if (group != null && !rates.length) rates.push({ label: `${exp.name || "Charter"} (whole booking)`, price: group, minParty: null, maxParty: null });
+    // Marked `group` on the rate, not only kept out of the headline here: `plan.ts` picks a headline again
+    // out of `rates` once it knows the party, and a charter with no party limits on it fits every party
+    // there is, so the $599 boat went straight back on the card as the price of a seat.
+    if (group != null && !rates.length) rates.push({ label: `${exp.name || "Charter"} (whole booking)`, price: group, minParty: null, maxParty: null, group: true });
     return { price: null, label: null, rates };
   }
 
@@ -216,12 +220,14 @@ function ticketsOf(exp: XolaExperience): { price: number | null; label: string |
   const pool = buyable.length ? buyable : rates;
   const cheapest = pool.length ? pool.reduce((a, b) => (a.price <= b.price ? a : b)) : null;
   // Only when the catalog said nothing at all; `experience.price` is the tile's from-price.
-  return { price: cheapest?.price ?? num(exp.price), label: cheapest?.label ?? null, rates };
+  // A placeholder is not a name and is not worth printing on a card. See `UNNAMED_RATE`.
+  const label = cheapest && cheapest.label !== UNNAMED_RATE ? cheapest.label : null;
+  return { price: cheapest?.price ?? num(exp.price), label, rates };
 }
 
 export async function xolaLive(
   bookingUrl: string,
-  opts: { from?: Date; days?: number; maxItems?: number } = {},
+  opts: { from?: Date; days?: number; maxItems?: number; tz?: string | null } = {},
 ): Promise<LiveRead | null> {
   const ref = xolaRef(bookingUrl);
   if (!ref) return null;
@@ -253,7 +259,8 @@ export async function xolaLive(
     api<{ data?: XolaExperience[] }>(`/experiences?seller=${sellerId}`),
   ]);
   const name = seller?.name || sellerId;
-  const timezone = seller?.timezoneName || null;
+  // The seller record names the shop's own zone. The catalog's, from `plan.ts`, stands in when it does not.
+  const timezone = seller?.timezoneName || opts.tz || null;
 
   const published = (list?.data || []).filter((e) => e.id && e.status === "published" && e.visible !== false);
   const chosen = only.length ? published.filter((e) => only.includes(e.id!)) : published;
@@ -265,8 +272,15 @@ export async function xolaLive(
   const horizon = Math.min(opts.days ?? 7, 14);
   const maxItems = opts.maxItems ?? 4;
   const today = nowWhereTheyAre(timezone);
-  const startDate = ymd(start);
-  const endDate = ymd(new Date(start.getTime() + horizon * 86400_000));
+  const startDate = zonedYmd(start, timezone);
+  /** The last day the guest actually asked about. See `lastDayOf`. */
+  const lastDate = lastDayOf(startDate, horizon);
+  /**
+   * Asked a day wider than it is used. Nothing here can prove whether Xola reads `end` as inclusive, and
+   * asking a day short would cost a guest the last evening of their own window; the days are filtered to the
+   * window below, where it is free to be exact.
+   */
+  const endDate = addDays(lastDate, 1);
 
   const out: Departure[] = [];
   await Promise.all(
@@ -283,7 +297,8 @@ export async function xolaLive(
       const { price, label, rates } = ticketsOf(exp);
 
       const days = Object.keys(cal)
-        .filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(d) && d >= today.date)
+        // The window the guest asked about, and not the day after it. See `lastDayOf`.
+        .filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(d) && d >= today.date && d <= lastDate)
         .sort();
 
       for (const date of days) {

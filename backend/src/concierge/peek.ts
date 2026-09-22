@@ -1,5 +1,6 @@
-import type { Departure, LiveRead } from "./live.ts";
+import { UNNAMED_RATE, type Departure, type LiveRead } from "./live.ts";
 import { isConcessionFare } from "../lib/fares.ts";
+import { addDays, lastDayOf, zonedYmd } from "./shopday.ts";
 
 /**
  * Live availability from Peek, the way Peek's own booking page gets it.
@@ -42,7 +43,7 @@ const API = "https://book.peek.com/services/api";
  * because another session is working in there; until it lands, the name is asserted here rather than a
  * neighbouring vendor's being borrowed, so the value a caller sees is already the right one.
  */
-const VENDOR = "peek" as LiveRead["vendor"];
+const VENDOR = "peek";
 
 export type PeekRef = {
   /** The shop's public widget key, and the value of the `authorization: Key` header. */
@@ -289,16 +290,17 @@ function priceOfSlot(prices: PeekPrice[], tickets: TicketMap, minParty: number |
     const ticket = p.resource_option_id ? tickets.get(p.resource_option_id) : undefined;
     const price = amount ?? ticket?.price ?? null;
     if (price == null) continue;
-    rates.push({ label: ticket?.name || "Ticket", price, minParty, maxParty: null });
+    rates.push({ label: ticket?.name || UNNAMED_RATE, price, minParty, maxParty: null });
   }
   const buyable = rates.filter((r) => !isConcessionFare(r.label));
   const pool = buyable.length ? buyable : rates;
-  const named = pool.filter((r) => r.label !== "Ticket");
+  const named = pool.filter((r) => r.label !== UNNAMED_RATE);
   const headline = (named.length ? named : pool).reduce<Departure["rates"][number] | null>(
     (a, b) => (a && a.price <= b.price ? a : b),
     null,
   );
-  return { price: headline?.price ?? null, label: headline?.label ?? null, rates };
+  // A placeholder is not a name and is not worth printing on a card. See `UNNAMED_RATE`.
+  return { price: headline?.price ?? null, label: headline && headline.label !== UNNAMED_RATE ? headline.label : null, rates };
 }
 
 type AvailDate = { id?: string; attributes?: { date?: string; "availability-status"?: string; "num-start-times"?: number } };
@@ -318,7 +320,7 @@ type AvailTime = {
 
 export async function peekLive(
   bookingUrl: string,
-  opts: { from?: Date; days?: number; maxItems?: number } = {},
+  opts: { from?: Date; days?: number; maxItems?: number; tz?: string | null } = {},
 ): Promise<LiveRead | null> {
   const ref = peekRef(bookingUrl);
   if (!ref) return null;
@@ -326,7 +328,9 @@ export async function peekLive(
   const program = await api<Doc>(ref, `/programs/${encodeURIComponent(ref.code)}`);
   if (!program) return { business: ref.code, vendor: VENDOR, departures: [], note: "Peek did not answer for this shop." };
 
-  const { activities, timezone, business, giftCardOnly } = activitiesOf(program);
+  const { activities, timezone: peekZone, business, giftCardOnly } = activitiesOf(program);
+  // The partner record names the shop's own zone. The catalog's, from `plan.ts`, stands in when it does not.
+  const timezone = peekZone || opts.tz || null;
   const name = business || ref.code;
   if (!activities.length) {
     return {
@@ -343,8 +347,15 @@ export async function peekLive(
   const horizon = Math.min(opts.days ?? 7, 14);
   const maxItems = opts.maxItems ?? 4;
   const today = nowWhereTheyAre(timezone);
-  const startDate = ymd(start);
-  const endDate = ymd(new Date(start.getTime() + horizon * 86400_000));
+  const startDate = zonedYmd(start, timezone);
+  /** The last day the guest actually asked about. See `lastDayOf`. */
+  const lastDate = lastDayOf(startDate, horizon);
+  /**
+   * Asked a day wider than it is used, deliberately. Nothing here can prove whether Peek reads `end-date` as
+   * inclusive, and asking one day short would cost a guest the last evening of their own window, which is the
+   * expensive way to be wrong. The days are filtered to the window below, where it is free to be exact.
+   */
+  const endDate = addDays(lastDate, 1);
 
   const out: Departure[] = [];
   await Promise.all(
@@ -377,7 +388,15 @@ export async function peekLive(
          * `call_to_book` for the rest of the season — and every slot under it comes back `sold_out`. Asking
          * for those days is five wasted requests per activity and cannot produce a departure.
          */
-        .filter((d) => d.status !== "unavailable" && d.status !== "sold_out" && d.status !== "call_to_book" && d.date >= today.date)
+        .filter(
+          (d) =>
+            d.status !== "unavailable" &&
+            d.status !== "sold_out" &&
+            d.status !== "call_to_book" &&
+            d.date >= today.date &&
+            // The window the guest asked about, and not the day after it. See `lastDayOf`.
+            d.date <= lastDate,
+        )
         .sort((a, b) => a.date.localeCompare(b.date));
 
       // At most five days asked for per activity: the first one with something free ends it, and a shop

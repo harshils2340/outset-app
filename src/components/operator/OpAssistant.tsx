@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { fetchAvailability, type LiveAvailability } from "../../lib/api";
 import { contactFor, listingFacts } from "../../lib/catalog";
 import { displayHours } from "../../lib/hoursText";
 import { ASSISTANT_NAME, companyGreeting, companyReply, companySuggestions } from "../../lib/companyAgent";
@@ -13,7 +14,21 @@ import { OD_ICONS, useOp } from "./opContext";
  */
 export function OpAssistant() {
   const { p, u, set, go } = useOp();
-  const ctx = useMemo(() => ({ item: u, contact: contactFor(u) }), [u]);
+  /**
+   * The same booking calendar a guest's page reads, because this page's whole promise is that the test chat
+   * "runs the same code guests get". It did not: nothing filled in the context's `live`, so an operator asking
+   * "when's your next opening?" here was answered out of their published hours while the listing page beside it
+   * quoted their booking system's real departures. With no API, or on a shop we hold no booking link for, this
+   * stays null and every answer is what it was before.
+   */
+  const [live, setLive] = useState<LiveAvailability | null>(null);
+  useEffect(() => {
+    let alive = true;
+    setLive(null);
+    void fetchAvailability(u.id).then((a) => { if (alive) setLive(a); }).catch(() => {});
+    return () => { alive = false; };
+  }, [u.id]);
+  const ctx = useMemo(() => ({ item: u, contact: contactFor(u), live }), [u, live]);
   const [msgs, setMsgs] = useState<{ who: "me" | "them"; t: string }[]>(() => [{ who: "them", t: companyGreeting(ctx) }]);
   const [text, setText] = useState("");
   const facts = useMemo(() => listingFacts(u), [u]);

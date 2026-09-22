@@ -1,4 +1,5 @@
 import type { Departure, LiveRead } from "../live.ts";
+import { addDays, zonedYmd } from "../shopday.ts";
 
 /**
  * Live tee times from ForeUp, a golf-only vendor the catalog had never read.
@@ -34,7 +35,7 @@ const UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (
  * the same convention `rezdy.ts` and `bookeo.ts` use, so a caller sees the right value before `live.ts`'s
  * union is widened.
  */
-const VENDOR = "foreup" as LiveRead["vendor"];
+const VENDOR = "foreup";
 
 export type ForeUpRef = {
   courseId: string;
@@ -108,8 +109,8 @@ function courseInfo(html: string, wantedScheduleId: string | null): CourseInfo |
   return { apiKey, scheduleId, holes: holesHere, courseName, timezone };
 }
 
-/** Local dates, never UTC: `toISOString()` runs hours ahead of any US or Canadian course's own clock. */
-const mdy = (d: Date) => `${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}-${d.getFullYear()}`;
+/** The date ForeUp asks for, MM-DD-YYYY, off the course's own calendar day. */
+const mdy = (date: string) => `${date.slice(5, 7)}-${date.slice(8, 10)}-${date.slice(0, 4)}`;
 const ymd = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 
 function nowWhereTheyAre(timezone: string | null): { date: string; minutes: number } {
@@ -144,7 +145,7 @@ type ForeUpSlot = {
 
 export async function foreupLive(
   bookingUrl: string,
-  opts: { from?: Date; days?: number; maxItems?: number } = {},
+  opts: { from?: Date; days?: number; maxItems?: number; tz?: string | null } = {},
 ): Promise<LiveRead | null> {
   const ref = foreupRef(bookingUrl);
   if (!ref) return null;
@@ -160,7 +161,10 @@ export async function foreupLive(
   const start = opts.from ?? new Date();
   const horizonDays = Math.min(opts.days ?? 7, 5); // one request per day tried; five is plenty for "the next day or two with something free"
   const maxItems = opts.maxItems ?? horizonDays;
-  const today = nowWhereTheyAre(info.timezone);
+  // The booking page names the course's own zone. The catalog's, from `plan.ts`, stands in when it does not.
+  const timezone = info.timezone || opts.tz || null;
+  const today = nowWhereTheyAre(timezone);
+  const startDate = zonedYmd(start, timezone);
   const holes = info.holes;
   /**
    * A foursome, the shape a tee time is actually booked in most often, and wide enough that `available_spots`
@@ -171,8 +175,8 @@ export async function foreupLive(
 
   const out: Departure[] = [];
   for (let i = 0; i < maxItems; i++) {
-    const day = new Date(start.getTime() + i * 86400_000);
-    const dateParam = mdy(day);
+    const date = addDays(startDate, i);
+    const dateParam = mdy(date);
     const url =
       `https://foreupsoftware.com/index.php/api/booking/times?time=all&date=${dateParam}&holes=${holes}` +
       `&players=${players}&schedule_id=${info.scheduleId}&schedule_ids%5B%5D=${info.scheduleId}&api_key=${encodeURIComponent(info.apiKey)}`;
@@ -186,7 +190,6 @@ export async function foreupLive(
     }
     if (!Array.isArray(slots) || !slots.length) continue;
 
-    const date = ymd(day);
     for (const s of slots) {
       const time = (s.time || "").slice(11, 16);
       if (!/^\d{2}:\d{2}$/.test(time)) continue;

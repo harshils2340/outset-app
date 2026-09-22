@@ -1,5 +1,5 @@
 import { chromium, type Browser, type Frame, type Page, type Route } from "playwright";
-import type { Departure, LiveRead } from "./live.ts";
+import { UNNAMED_RATE, type Departure, type LiveRead } from "./live.ts";
 import { isConcessionFare } from "../lib/fares.ts";
 import { vendorOf } from "./vendors.ts";
 
@@ -379,7 +379,7 @@ export async function agentLive(bookingUrl: string, opts: AgentOptions = {}): Pr
             priceLabel: r.price != null ? "on their booking page" : null,
             /** Unknown, so assumed excluded: under-quoting is the failure that matters. */
             taxIncluded: false,
-            rates: r.price != null ? [{ label: r.label || "Ticket", price: r.price, minParty: null, maxParty: null }] : [],
+            rates: r.price != null ? [{ label: r.label || UNNAMED_RATE, price: r.price, minParty: null, maxParty: null }] : [],
             bookUrl: v?.hostedUrl ?? bookingUrl,
             seatsLeft: null,
           });
