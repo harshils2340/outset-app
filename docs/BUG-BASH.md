@@ -3556,6 +3556,76 @@ clean, and the rehearsal run at the end at 53 of 53, against a local Postgres an
   screen on a phone, five category accents are still under the AA floor, and no live vendor has answered
   anything from this address.
 
+## 22 September 2026, fifty-sixth run (11:10 to 11:50 UTC)
+
+**Chosen, and why.** No commit landed after the fifty-fifth run's entry and that entry reports the rehearsal
+green at 53 of 53, so neither of the brief's two reasons to re-run it up front applied and it was skipped at
+the start. The container was a fresh checkout with no `node_modules` on either side, which is the fifty-second
+run's standing Needs Harshil: both installs first, then the type checks and both suites, clean at 680 app and
+631 backend. Every area the brief lists is under Coverage already, so this run counted the shipped catalog for
+a guest-facing field no sweep had driven and found one: `addons`, which is the tickbox column of the booking
+box and the one menu list read out of a shop's prose rather than off its menu. Pulling on it led into the
+money path twice.
+
+**Found and fixed.**
+
+- **The add-ons box offered a guest half a sentence with a price beside it** (`02cdfc65`). Add-ons are not read
+  off a menu the way services are: the crawl keeps any line on the shop's own page that ends in money and
+  splits it at the dollar sign, so every sentence about a charge became a row a guest could tick and be billed
+  for. 365 of the 3,825 shipped add-ons, one in eight, across 431 listings: "Lost or damaged bikes will incur a
+  cost of" at $1,000, "This internship includes a stipend of" at $3,000, "Get Delivery with orders of" at $50
+  where the $50 is an order minimum and not a price, "5 Holbrook, Tips were reported at an average of" at $100.
+  There is nothing honest to rename those to, because the half in front of the money is a penalty, a minimum or
+  a job advert as often as an extra, so `bookableAddon` drops them the way the archive rows beside it are
+  dropped. Only add-ons are read out of whole sentences, so only add-ons are dropped for it: a service row's own
+  trailing word is still trimmed and the row kept, which is what the 93 shops with "Tickets are" on their menu
+  need, and the rule takes 3 rows out of 76,279 options. 120 more rows were a real name wearing the bracket its
+  price came out of ("Digital photo package (", "S'mores kit (additional"); those keep their name.
+
+- **A booking was priced from the file behind the menu, not the menu** (`0827fda4`). The app runs `bookableMenu`
+  over every record it loads and that rule renames a row as well as dropping one, while the booking route read
+  the crawled file raw. `priceBooking` matches the name the guest sent, so a renamed row matched nothing, and
+  with more than one priced row on the listing there is no single price to fall back on: the booking was stored
+  with no price and no card was charged. A $5,700 private charter at o-napaliriders-com, a $780 pontoon at
+  o-boatelmers-com and a $275 boat tour at o-customboattoursandrentals-com, each filed under the shop's own
+  phone number in the file and without it on the page, and the 38 extras the bracket fix above would have
+  joined to them. Both sides call the one function now.
+
+- **Two extras sharing a name were charged at the first one's price** (`484ea4a3`). Names are matched on letters
+  and digits alone, so "Digital photo scan < 200 DPI" at $5 and "> 200 DPI" at $15 are one name to the server,
+  and a pool's extra lifeguard is $35 on one row and $70 on another. 18 shipped listings carry such a pair, and
+  a guest shown $35 was charged $70. This is the fault two service tiers sharing a label already had, fixed the
+  same way: the guest's own total says which they meant, so the sums the listing's published prices allow are
+  tried against it and the tier and the extras are resolved together. With no total, or one that matches no
+  combination, the first row is charged exactly as before.
+
+**Checked and sound.** Markup left in the words a guest reads, swept again over every prose field now that the
+fifty-fifth run's `stripMarkdown` ships: 96 lines carry a bold marker, 254 a blockquote and 145 a rule, all of
+them inside a service description, and 10 rows carry an HTML entity in their name. Every one reaches the page
+through `plainWords` or `tidyLine`, which decode and strip, so none of it is drawn. The 24 review authors
+stored as `<strong>Gerald E.` are already refused by `shownReviews`. Running add-on names through `plainWords`
+as well was measured and dropped: it would change 14 of 3,460 and make several worse ("Jet Ski" to "Jet ski").
+
+**Green after the fixes.** 686 app tests (up from 680), 640 backend (up from 631), all three type checks clean,
+and the rehearsal run at the end at 53 of 53 against a local Postgres 16 cluster and the Chromium on disk.
+
+**Needs Harshil.**
+
+- **A shop's "from" price can be its cheapest anything.** `from` is the minimum over every priced option, so
+  the Detroit Zoo's card reads "From $2" for a stingray touch, Country Club Lanes reads "From $3" for shoe
+  rental, and Bell Harbor Marina reads "From $2.15", which is a moorage rate per foot of boat. Big Choice
+  Brewery's whole menu is food, so it advertises a $2.99 side salad. Whether a card's headline should be the
+  cheapest bookable experience rather than the cheapest row is a product call, not a rule I could write.
+- **8 or 9 shipped prices are a discount read as a price.** HopFusion Ale Works offers "Monday-Thursday Happy
+  Hour" at $2 off a pour and we sell it at $2; Cow Key Marina and Key West Boat Rentals sell a six hour
+  do-it-all package at $20 because the page said "$20 OFF When You Book Direct"; Heliflights sells a private
+  helicopter tour at $65 off. Telling a discount from a price needs the page the number came off, which only a
+  re-crawl has.
+- **Last night's stand:** `public/unsubscribe.html` still POSTs on load, the listing page still reads three of
+  the ten vendors, `outset-api` still builds with no catalog, the "All requests" link is still parked off
+  screen on a phone, five category accents are still under the AA floor, and no live vendor has answered
+  anything from this address.
+
 ## Coverage
 
 **Verified so far.** The name a guest reads: the business name on all 59,125 shipped listings, against the
@@ -3968,6 +4038,12 @@ rather than links. Every character budget a shop's prose is cut to, on both side
 which are assembled at sync time and which are baked into a stored fact, and the unguarded word-boundary
 trim that was eating the last word of every description shorter than its budget.
 
+The add-ons a guest can tick, over all 3,825 shipped: which of them are a thing and which are the front of a
+sentence the price was cut out of, the bracket a price was printed inside, and every name held against the
+menu the server prices from. That the menu the booking box offers and the menu `priceBooking` charges from are
+one menu, on every priced row of all 59,125 listings and on every extra beside them, and that two extras
+sharing a name are told apart by the guest's own total the way two tiers already were.
+
 **Not yet checked.** Rezdy's reader end to end, which needs a hand-rolled HTTP/2 session because Cloudflare
 blocks `fetch` on every `*.rezdy.com` subdomain; its price helpers and its window rule are tested directly
 instead. Whether the concierge's
@@ -4113,4 +4189,11 @@ open a homepage rather than a form are a shop's own waiver portal and which are 
 which is a supply judgement rather than a rule (see this run's Needs Harshil). Whether the surfaces that
 promise a waiver link should read the same gate the link itself reads, and whether an embed URL's path should
 be checked as well as its host: both are latent, 0 shipped listings today. Whether the 766 listings whose
-prose a sync would now cut properly should have that sync run before anything else on this list.
+prose a sync would now cut properly should have that sync run before anything else on this list. Whether a
+card's "from" price should be the cheapest bookable experience rather than the cheapest row of any kind: the
+Detroit Zoo advertises $2 for a stingray touch, a bowling alley $3 for shoe rental and a marina $2.15, which
+is a rate per foot of boat (see this run's Needs Harshil). Whether a number the page stated as a discount
+should ever be a price: 8 shipped rows sell a happy hour at "$2 off" and a six hour package at "$20 OFF when
+you book direct" (see this run's Needs Harshil). Whether the sync should keep an add-on whose name is a
+penalty or an order minimum rather than an extra, which the drop rule now takes with the cut sentences it was
+written for.
