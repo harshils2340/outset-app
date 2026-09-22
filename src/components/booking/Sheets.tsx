@@ -71,6 +71,7 @@ import { SlotCalendar } from "./SlotCalendar";
 import { SearchSheet } from "../explore/SearchSheet";
 import { AdminSiteLink, ExplainLine, ReviewCard, TYPE_NAME, arrivalNote, bookableServices, dealShown, isStandardOnly, optionLength, splitVariants, variantNote, tidyDuration, possessive, splitIncluded, tidyAddress, tidyCancel, tidyLength, tidyLine, tidyName } from "../web/WebListing";
 import { shownReviews } from "../../lib/reviews";
+import { seasonFact } from "../../lib/season";
 
 /** Only the starting point for the party picker before a service is chosen; the operator's own limit wins. */
 const QTY_MAX = 8;
@@ -541,7 +542,9 @@ function RequestBody({
   if (age) rows.push({ icon: ICONS.user, title: "Ages " + age + "+", sub: "Minimum age" });
   const cap = groupCap(item.groupInfo);
   if (cap != null) rows.push({ icon: ICONS.user, title: "Up to " + cap + " guests", sub: "Group size" });
-  if (item.season) rows.push({ icon: ICONS.compass, title: item.season, sub: "Season" });
+  const season = seasonFact(item.season);
+  if (season.chip) rows.push({ icon: ICONS.compass, title: season.chip, sub: "Season" });
+  else if (season.note) rows.push({ icon: ICONS.compass, title: "Season", sub: season.note });
   if (item.waiverUrl) rows.push({ icon: ICONS.ticket, title: "Sign the waiver online", sub: "Saves time at check-in" });
   const hours = displayHours(hourLines(item).length ? hourLines(item) : contact?.hours || []);
   const videos = (item.ytVideos || []).slice(0, 2);

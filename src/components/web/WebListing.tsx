@@ -24,6 +24,7 @@ import { addonPrice, hasPrice, priceUnclaimed, serviceFeeLabel } from "../../lib
 import { ottoActive, useWallet } from "../../lib/wallet";
 import { AGENT_MODE_LIVE } from "../../lib/concierge";
 import { shownReviews, type ShownReview } from "../../lib/reviews";
+import { seasonFact, seasonNoteLine } from "../../lib/season";
 import { listingUrl } from "../../lib/site";
 import { adminWebsite, isAdmin, subscribeAdmin } from "../../lib/admin";
 import { dateKey, startOfToday } from "../../lib/dates";
@@ -1174,7 +1175,8 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
   const keyFacts: string[] = [];
   if (groupCap) keyFacts.push("Up to " + groupCap + " guests");
   if (age) keyFacts.push("Ages " + age + "+");
-  if (item.season && item.season.length <= 32) keyFacts.push(item.season);
+  const season = seasonFact(item.season);
+  if (season.chip) keyFacts.push(season.chip);
   if (item.locations?.length) keyFacts.push(item.locations.length + 1 + " locations");
   if (near) {
     const from = state.near!.label === "Near me" ? " away" : " from " + state.near!.label;
@@ -1473,6 +1475,7 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
               <h2>{typeName} in {placeName(item.area)}</h2>
               {openNow ? <p className={"alstatus " + (openNow.open ? (openNow.soon ? "soon" : "open") : "closed")}>{openNow.line}</p> : null}
               {keyFacts.length ? <p className="alfacts">{keyFacts.join(" · ")}</p> : null}
+              {!season.chip && season.note ? <p className="alfacts">{seasonNoteLine(season.note)}</p> : null}
               {!topRatedHere && score ? (
                 <p className="alrateline">
                   <Markup html={I.star} /> <b>{score.rating.toFixed(1)}</b> · <button type="button" className="alunder" onClick={() => jump("al-reviews")}>{reviewsLine(score.reviews)}</button>
