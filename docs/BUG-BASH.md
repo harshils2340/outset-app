@@ -3217,6 +3217,75 @@ outage keeps the published times, and only a calendar we actually read can empty
   building with no catalog, the "All requests" link parked off screen on a phone, five category accents under
   the AA floor, and no live vendor having answered anything from this address.
 
+## 22 September 2026, fifty-first run (06:15 to 06:50 UTC)
+
+**Chosen, and why.** Every area the brief names is down as verified, so the hunt went to the top of Coverage's
+open list: the listing page reading three of the ten vendors the agent reads. That turned out not to be a fix
+(see Needs Harshil), so the run went at the least-read code in the repo instead, which is last night's own five
+commits, four hours old. Nothing but a docs commit had landed since the fiftieth run's log, and that entry says
+the rehearsal was green, so the type checks and both suites came first (clean, 618 and 637) and the rehearsal was
+run twice at the end rather than once at the start. It found that the work the fiftieth run did on Otto could
+never run at all.
+
+**Found and fixed.**
+
+- **Otto never saw the booking calendar the page beside it had already read** (`3ebaca9a`).
+  `CompanyContext.live` is the whole of what the assistant knows about live availability: `liveSlots` reads it,
+  the "When's the next opening?" chip is only offered when it holds a departure, and a window the vendor covered
+  and named nothing in is the one thing that stops Otto reading opening hours out over a shut calendar. Nothing
+  ever filled it in. All three places that build a context passed the item and the contact record and stopped,
+  so every one of those rules was dead code in the product, the two the fiftieth run landed included. A guest
+  asking "anything Saturday?" at a shop whose booking system the box on the same page had already read was
+  answered out of the published week. The comment above `fetchAvailability` has said for weeks that "the booking
+  box, the phone sheet and the assistant" all ask for the same dates; two of them did. Otto answers
+  synchronously out of the reducer, so `availabilityNow` is the answer that has already arrived, keyed by
+  listing and expiring on the same five minutes. The operator's own test chat gets it too, since that page
+  promises in its own comment to run the same code guests get.
+- **And it would then have closed a claimed shop that is taking bookings here** (`140de0d6`). The exception
+  `liveWins` makes for both pickers: a claimed shop sells its own hours on GoDo minus what is booked, and the
+  catalog may still hold a booking link of theirs from before they claimed. Asked "can I book?" at such a shop
+  Otto would have said "not in the next 14 days: their booking calendar has nothing open in it" while the picker
+  two inches away offered that shop's own two o'clock.
+- **Otto told a guest to book on a page whose owner had switched bookings off** (`6c263518`).
+  `bookingPaused` is the rule both pickers read, and it is why a paused listing shows "Not taking bookings right
+  now" where its Reserve button was. Otto read neither flag it is made of, so beside that panel it answered
+  "Yes. Pick a service and time on this page and they confirm it", and a listing the owner had taken down said
+  the same. Three answers were telling a guest to pick a time here. The times are still true and the shop may
+  still be selling them itself, so what the answer corrects is "on this page", in the words the page uses, with
+  the shop's phone number.
+- **Every Resova shop was read as cold, however recently it had been read** (`16dcafa4`). Last night's open
+  item. `feedIsWarm` read the account out of the link and then looked for it in the response cache in `live.ts`,
+  which `getJson` there writes and therefore FareHarbor alone: the branch could never fire, and `plan.ts` gave
+  every Resova read the twelve second deadline. What actually makes the second read quick is the shop's own
+  Angular shell, kept for the life of the process in `resova.ts`, so that is what is asked.
+
+**Checked and sound.** Otto's day names and day-of-week filters are built from noon local, so a live date cannot
+slide a day. `slotLine` prints a seat count only when it is real. The remaining "Outset" strings in `src/` are
+all comments: every name a guest or an operator reads says GoDo.
+
+**Green after the fixes.** 647 app tests (up from 637), 619 backend (up from 618), both type checks clean, and
+53 rehearsal steps with 0 failed on both runs.
+
+**Needs Harshil.**
+
+- **The listing page reading ten vendors is not a dispatch change, and wiring the concierge's readers in as they
+  stand would be worse than the guessed times.** Worth writing down properly, because it has been on the list
+  three nights as "a piece of work". Every one of those readers is shaped for a shortlist, not a calendar: they
+  stop at the first day with something free (`xolaLive`, `resovaLive`, `squareLive`, `foreupLive` say so in their
+  own comments), take at most six starts on it, and ask at most four to six of the shop's items. Answers like
+  that dropped into `GET /availability`, where an empty date now means the shop is shut, would show a guest one
+  open day and thirteen "nothing open in the next 14 days" at a shop open every day. The work is a whole-window
+  mode in each reader. The second half is small and separate: `live-index.json` publishes only FareHarbor, Peek
+  and Xola links, so on the API host, which has no facts table, the other seven shops have no booking link to
+  read at all, and that filter should be `readable.ts`'s own list rather than a fourth hand-written copy.
+- **`liveSlots` has no seats guard where the pickers have one.** `liveTimes.ts` drops a departure with no seats
+  left and calls it "the belt on the braces"; Otto now reads the same payload and has no such line. All three
+  readers in `enrich/availability.ts` already refuse to emit a zero, so nothing is wrong today, and two surfaces
+  reading one payload by different rules is the kind of thing that stops being true quietly.
+- **Last night's five still stand:** the listing page reading three of the ten vendors (above), `outset-api`
+  building with no catalog, the "All requests" link parked off screen on a phone, five category accents under
+  the AA floor, and no live vendor having answered anything from this address.
+
 ## Coverage
 
 **Verified so far.** The name a guest reads: the business name on all 59,125 shipped listings, against the
@@ -3231,7 +3300,10 @@ a shop open past midnight. The week a shop starts on, read from its own publishe
 claimed shop shows a guest. The booking box price lines, including a service with no price. Phone width at
 400px on the guest listing, the booking flow, every dashboard page, and the Trips, Inbox, chat and Profile
 tabs. Accessibility on the booking flow and on the assistant chat: focus order, input labels, disabled buttons.
-Colour contrast on the accent. The API unreachable and the API slow. The Availability page and the setup
+Colour contrast on the accent. What Otto actually has in hand when it answers: that all three surfaces which
+ask it a question fill in the shop's own booking calendar, that a claimed shop's empty vendor window does not
+close it, and that a listing whose owner paused bookings or took it down is never told to a guest as bookable
+here. The API unreachable and the API slow. The Availability page and the setup
 checklist counting itself. Search and browse: a query matching nothing, a metro with one listing, a category
 with none, paging, an unpublished or paused listing staying out of the lists, and every way out of an empty
 search. Claim and sign-in: an address that does not match the business, an expired link, an edited expiry, one
@@ -3720,6 +3792,8 @@ rather than the host's, which is the last thing in `windowFor` reading a day of 
 Whether the guest's own listing page should read the seven vendors only the agent reads: `live-index.json`
 and `enrich/availability.ts` both stop at FareHarbor, Peek and Xola, and that file keeps its own readers
 rather than the concierge's, so a Resova, Rezdy, Acuity, Square, TripWorks, Checkfront or ForeUp shop is
-quoted live in Agent Mode and shows guessed times on its own page (see the forty-ninth run's Needs Harshil).
-Whether `feedIsWarm`'s Resova branch should read the session map rather than a response cache Resova never
-writes to, so a second read of one account is recognised as warm (see the fiftieth run's Needs Harshil).
+quoted live in Agent Mode and shows guessed times on its own page. The fifty-first run read those readers and
+found this to be two pieces of work rather than a dispatch: every one of them stops at the first free day and
+asks four to six of a shop's items, so their answers cannot fill a fortnight's calendar, and the published
+index carries no link at all for those seven shops (see that run's Needs Harshil). Whether `liveSlots` should
+drop a departure with no seats left, the way both pickers do.
