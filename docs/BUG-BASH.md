@@ -3286,6 +3286,67 @@ all comments: every name a guest or an operator reads says GoDo.
   building with no catalog, the "All requests" link parked off screen on a phone, five category accents under
   the AA floor, and no live vendor having answered anything from this address.
 
+## 22 September 2026, fifty-second run (07:10 to 08:30 UTC)
+
+**Chosen, and why.** Every area the brief names is down as verified, so the hunt went to the top of
+Coverage's open list, which was the one item there shaped like a defect rather than a question: `liveSlots`
+having no seats guard where both pickers have one. That turned out to be the smallest of four rules Otto was
+missing, and pulling the thread found the one a guest actually feels. Nothing but the fifty-first run's own
+log had landed since that entry, and it reports a green rehearsal, so the type checks and both suites came
+first and the rehearsal was run at the end instead, twice, once after each batch of commits that touches code
+it drives.
+
+**Found and fixed.**
+
+- **Otto offered a guest this morning's departure at eight in the evening** (`e5b351da`). `liveSlots` read the
+  same `GET /availability` answer the booking box beside it reads, by its own twelve lines rather than through
+  `liveTimes.ts`, which is the one reader both pickers use. Four of that reader's rules were missing. The clock
+  is the one that shows: the window opens on today and today's departures come back whether or not they have
+  left, which is why both pickers put `bookableStart` over the top and cut off everything under an hour out on
+  the shop's own clock. Otto had no clock at all, so it answered "Next open time is Sunday 9:00 AM" for a boat
+  that sailed eleven hours ago, printed beside a picker correctly showing the day as done. It also offered a
+  departure the vendor says is sold out, read out a row whose clock we could not parse as though it were a
+  start time, and quoted a price of nothing as "$0". `liveWindowEmpty` and the "When's the next opening?" chip
+  both key off the same list, so a shop whose last departure of the window had already left read to Otto as
+  open for business. That one asks the calendar now rather than the filtered list, because a day that is over
+  is not a shut fortnight, and it stays quiet on a window of dates the vendor calls open and whose times the
+  call budget never reached, which is the rule `liveEmptyNote` already keeps for the picker.
+- **The operator's test chat asked their booking system for a different window than their guests did**
+  (`0263fbed`). The Assistant page's whole promise, in its own comment, is that the test chat "runs the same
+  code guests get". It took `fetchAvailability`'s wider 14 day default while every guest surface asks for the
+  ten days the booking window covers, so a shop with nothing in the next ten days and a departure on the
+  twelfth had Otto naming that opening to the operator testing it and telling their guest the calendar was
+  empty. Two windows also miss the shared request cache, which is keyed by window, so the same answer was
+  fetched twice. One exported `BOOKING_WINDOW_DAYS` now, read by both, and the wiring test asks for it.
+- **Otto answered "Tuesday" both for tonight and for a departure a week away** (`aef4da4e`). `slotLine` named a
+  departure by its weekday and nothing else, and the window is ten days, so on a Tuesday the same six words
+  were the answer for an eleven o'clock tonight and for one on Tuesday week. Today and tomorrow have their own
+  names now, the next five days keep the bare weekday, which says which day on its own, and anything from a
+  week out carries its date.
+
+**Checked and sound.** The phone sheet's and the desktop card's own live branches both apply `bookableStart`
+per date, so neither picker had the fault Otto had. `enrich/availability.ts` refuses to emit a zero seat count
+or a zero price on all three readers, so two of the four rules above were belt on braces rather than live
+today; the clock and the day name were not. Peek marks any answer partial when the budget leaves a date
+untimed, which is what had been masking the unread case.
+
+**Green after the fixes.** 655 app tests (up from 647), 619 backend, both type checks clean, and 53 rehearsal
+steps with 0 failed on both runs.
+
+**Needs Harshil.**
+
+- **A fresh checkout of this repo has no root `node_modules`, and the app suite is red without it.** Eight test
+  files fail with "Cannot find package 'react'" until `npm install` is run at the root as well as in `backend/`.
+  Nothing is wrong with the code, but a run that takes the first red as a finding loses its night to it, and
+  the rehearsal installs nothing itself. Worth a line in the brief or a check in the rehearsal.
+- **Otto and the pickers now agree, and nothing makes them stay that way.** Three of tonight's four rules were
+  invisible because `liveTimes.ts` was the only reader that knew them. The test added tonight compares Otto's
+  answer against the picker's own first chip, which catches a drift in one direction; the other direction, a
+  new rule landing in `liveTimes.ts`, is still on whoever writes it.
+- **Last night's five still stand:** the listing page reading three of the ten vendors, `outset-api` building
+  with no catalog, the "All requests" link parked off screen on a phone, five category accents under the AA
+  floor, and no live vendor having answered anything from this address.
+
 ## Coverage
 
 **Verified so far.** The name a guest reads: the business name on all 59,125 shipped listings, against the
@@ -3665,6 +3726,12 @@ hand back, walked on a full shop and a bare one against being unable to answer i
 week as one line. Whether the test suites are honest about the clock: a test that named a date and read the
 real one went red on its own the morning after it was written.
 
+Every rule the pickers read a shop's own booking calendar by, against the rules Otto read the same payload
+by: a departure that has already left or falls inside the hour's notice, one the vendor says is sold out, one
+whose clock cannot be parsed, a price of nothing, and two trips sharing a start. The window each surface asks
+that calendar for, guest and operator alike. Which day Otto names a departure on, against the ten days the
+booking window covers.
+
 **Not yet checked.** Rezdy's reader end to end, which needs a hand-rolled HTTP/2 session because Cloudflare
 blocks `fetch` on every `*.rezdy.com` subdomain; its price helpers and its window rule are tested directly
 instead. Whether the concierge's
@@ -3795,5 +3862,8 @@ rather than the concierge's, so a Resova, Rezdy, Acuity, Square, TripWorks, Chec
 quoted live in Agent Mode and shows guessed times on its own page. The fifty-first run read those readers and
 found this to be two pieces of work rather than a dispatch: every one of them stops at the first free day and
 asks four to six of a shop's items, so their answers cannot fill a fortnight's calendar, and the published
-index carries no link at all for those seven shops (see that run's Needs Harshil). Whether `liveSlots` should
-drop a departure with no seats left, the way both pickers do.
+index carries no link at all for those seven shops (see that run's Needs Harshil). Whether a rule landing in
+`liveTimes.ts` should reach Otto on its own rather than by whoever writes it remembering to look (see the
+fifty-second run's Needs Harshil). Whether a fresh checkout should install the root `node_modules` the app
+suite needs, or the rehearsal check for them, since without them eight test files are red for no reason (see
+that run's Needs Harshil).

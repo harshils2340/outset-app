@@ -16,7 +16,7 @@ import type {
   Unclaimed,
 } from "../data/types";
 import { agentReply } from "../lib/agent";
-import { dateKey, makeDates } from "../lib/dates";
+import { BOOKING_WINDOW_DAYS, dateKey, makeDates } from "../lib/dates";
 import { fmtDate, money, nowStamp } from "../lib/format";
 import { daySlotsOpen, openSeats } from "../lib/inventory";
 import { contactFor, experienceById, fromPrice, initials } from "../lib/catalog";
@@ -30,7 +30,7 @@ import { loadBookings, loadChats, saveBookings, saveChats } from "../lib/storage
 import { isHttpsUrlOnHost } from "../lib/urlSafety";
 import { AGENT_MODE_LIVE } from "../lib/concierge";
 
-export const DATES = makeDates(10);
+export const DATES = makeDates(BOOKING_WINDOW_DAYS);
 
 export type AppState = {
   hydrated: boolean;
