@@ -3137,6 +3137,86 @@ rehearsal steps, 0 failed.
   Bookings `minWidth` on the element rather than in `operator.css`, five category accents under the AA floor,
   and no live vendor has ever answered anything from this address.
 
+## 22 September 2026, fiftieth run (04:40 to 06:00 UTC)
+
+**Chosen, and why.** The brief's own areas are all down as verified, so the hunt took the highest thing on
+Coverage's open list that is a defect and not a question: a vendor that answers with nothing open leaving the
+listing page showing our guessed nine, eleven and one. That is the worst thing on the page, because a guest
+can book one of those times at a shop that is not open. Nothing but a docs commit had landed since the
+forty-ninth run's log, and that entry says the rehearsal was green, so the rehearsal was skipped at the start
+and run at the end instead, once after each commit that changed something it drives. Type checks and both
+suites came first, and the backend suite was already red.
+
+**Found and fixed.**
+
+- **The backend suite was red on a clean checkout, and nothing was wrong** (`fa4f9f20d`). The window test in
+  `concierge/__tests__/live.test.ts` named 21:00 on 2026-09-21 in Toronto and a departure at 22:30 that
+  night. `departed()` reads the real clock, so from 22 September that departure had left, the reader correctly
+  dropped it, and the suite reported a bug that was not there: 615 of 616. The dates come off a UTC midnight
+  three days out now, which keeps what the test is for without naming a day.
+- **A shop with nothing open for a fortnight was painted over with our own nine, eleven and one**
+  (`63714168e`). `GET /availability` answers for every date in the window and has always said which of three
+  things a date is: times we read, a date the vendor covered and named nothing bookable on, or an open date
+  whose clock times the call budget never reached. The pickers read only the first, so "no times on any date"
+  reached them as "no live feed" and both drew the published times over a calendar they had successfully
+  read. A guest could book a nine o'clock at a shop whose own system says it runs nothing that fortnight.
+  `live` now means the vendor answered, and an empty picker says which of the three cases it is. Two answers
+  that looked complete and were not now say they are partial, since an empty window has become a statement
+  about the shop: a Peek read that reached two of a shop's five activities, and a FareHarbor fortnight
+  straddling two months with one of them answering.
+- **Otto read out published hours beside a calendar it had read and found empty** (`c08eb9b2f`). Beside a
+  picker correctly offering nothing it said "Open Monday 9 AM to 5 PM, pick a time on this page", and to
+  "when's the next opening" it said "I can't see their live times, but they open today at 9 AM" about a
+  calendar it had just read. All three answers say what the calendar says now, and a partial read still says
+  nothing.
+- **Otto answered its own chip with the wrong question, and another with none** (`271f55c4b`). "When's the
+  next opening?" is one of the chips it offers, and the hours rule claimed it, reading "when ... opening":
+  tapping it came back "They haven't published opening hours" at a shop with two o'clock free that
+  afternoon. "Any other rules?", also its own chip, said none of the words the entry-rules rule looks for, so
+  it came back "I'm not sure what you mean". And a bare "what are your hours?" had nowhere to land at all,
+  because every hours rule wants a day, a time or the word open: the plainest hours question there is got the
+  same "I'm not sure what you mean. I can answer prices, hours, what's included ...", which names the thing it
+  just failed. It reads out the published week now, days that share a span said once. The test walks the chips
+  themselves and the chips each answer hands back, on a full shop and a bare one, which is how the second was
+  found.
+- **A shop with nothing open had all fourteen dates read out to a screen reader as sold** (`46d84c79d`).
+  The phone calendar labelled a date with no start time "booked out", which was fair when only a sold-out day
+  could be empty. It says nothing is open, which is true of a shut day and a sold one alike.
+- **And the fix above, left alone, would have closed a claimed shop** (`0b0f9d374`). Both halves of this were
+  found by reading the change back rather than by a test, and the second is worth writing down. An empty
+  answer standing meant it stood over a claimed shop's own slots too, and the catalog may still hold a
+  booking link from before that shop claimed: an empty fortnight on that stale calendar would have emptied
+  the picker of a shop taking bookings here, and the operator would have watched their own listing offer
+  nothing. The first guard written for that read "has the API given us slots?", which is wrong, because
+  `GET /bookings/open` answers for an unclaimed listing too, with the same fixed times the page would
+  otherwise guess: it would have handed every unclaimed shop its nine, eleven and one straight back and
+  quietly undone the whole night. Both pickers read `claimed` first now, and the test reads that out of their
+  source, because this rule is only as good as where its flag comes from.
+
+**Checked and sound.** `feedIsWarm` knowing only two vendors, which Coverage has carried for two runs as a
+latency cost, is not one: only FareHarbor's reads go through the cache in `live.ts`, so the other nine readers
+are genuinely cold on every call and the 12 second deadline is the right one for them. Its Resova branch is
+dead, though, for the opposite reason (see Needs Harshil). A vendor that cannot be reached at all still
+answers `live: false` on every path in `enrich/availability.ts`, which is what makes the fix above safe: an
+outage keeps the published times, and only a calendar we actually read can empty a picker.
+
+**Green after the fixes.** 618 backend tests (up from 616, one of which was failing), 637 app tests (up from
+622), both type checks clean, and 53 rehearsal steps with 0 failed on each of the four runs.
+
+**Needs Harshil.**
+
+- **A shop whose calendar we read and find empty now shows a guest nothing, on every date.** That is right,
+  and it is a change in how the 1,664 listings whose calendar we can read look on a quiet week. The line reads
+  "Nothing open in the next 14 days on their booking system." If you would rather it offered their own
+  booking link at that point, that is a design call, not a bug.
+- **`feedIsWarm`'s Resova branch never fires.** It reads the account name out of a Resova link and then looks
+  for it in the cache in `live.ts`, which only FareHarbor writes to. Resova does keep its session, so a second
+  read of the same account really is warm and gets the cold deadline anyway. One line, and it wants the
+  session map to say so rather than the response cache.
+- **Last night's five still stand:** the listing page reading only three of the ten vendors, `outset-api`
+  building with no catalog, the "All requests" link parked off screen on a phone, five category accents under
+  the AA floor, and no live vendor having answered anything from this address.
+
 ## Coverage
 
 **Verified so far.** The name a guest reads: the business name on all 59,125 shipped listings, against the
@@ -3504,6 +3584,15 @@ against a link that only looks like a vendor's, and the same `LIMIT 1` with no O
 can name has a reader to call and a written name, now a test of its own, and that no reader asserts its own
 vendor into the type that lists them.
 
+What a picker and the assistant do with an answer from a shop's own booking system that names nothing: a whole
+window empty, one date covered and empty, one date open with its times unread, a date the answer never
+mentioned, a read that stopped short of the shop's catalog or of a month of its window, and a vendor that
+could not be reached at all, which with a claimed shop's own slots is one of the two cases that may still be
+replaced by what we hold ourselves. Every suggestion chip the assistant offers, and every chip its answers
+hand back, walked on a full shop and a bare one against being unable to answer its own question. The published
+week as one line. Whether the test suites are honest about the clock: a test that named a date and read the
+real one went red on its own the morning after it was written.
+
 **Not yet checked.** Rezdy's reader end to end, which needs a hand-rolled HTTP/2 session because Cloudflare
 blocks `fetch` on every `*.rezdy.com` subdomain; its price helpers and its window rule are tested directly
 instead. Whether the concierge's
@@ -3526,14 +3615,12 @@ is the one thing the thirty-third run left open behind a fix (see its Needs Hars
 now show the two dates we timed rather than eight, six of which were a midnight the shop never sells. Any
 live vendor against its real server rather than a payload shaped by hand, so a vendor that has quietly
 changed its JSON reads as a shop with nothing open and nobody knows. Whether the six rows publishing a bare
-`https://fareharbor.com/` should be in `live-index.json` at all. Whether a vendor that answers with nothing
-open across the whole window should leave the page showing our guessed nine, eleven and one, which it does.
-Whether the vendor's own `bookUrl` for a departure should ever be offered to a guest: every reader carries
-one and no surface draws it. Whether a kind's all-metros page needs paging for its town pills, which
-now number 308 on the museums page and put it at 66 KB. Whether the 50 kinds with no guide should have one
-written (see the forty-seventh run's Needs Harshil). Whether the `og:image` fallback should be something
-better than the 180px app icon, and whether the 263 listing page titles past 70 characters should drop their
-town (see this run's Needs Harshil). Whether the 160 pages the next sync deletes should be
+`https://fareharbor.com/` should be in `live-index.json` at all. Whether the vendor's own `bookUrl` for a
+departure should ever be offered to a guest: every reader carries one and no surface draws it. Whether a
+kind's all-metros page needs paging for its town pills, which now number 308 on the museums page and put it
+at 66 KB. Whether the 50 kinds with no guide should have one written (see the forty-seventh run's Needs
+Harshil). Whether the `og:image` fallback should be something better than the 180px app icon, and whether the
+263 listing page titles past 70 characters should drop their town (see this run's Needs Harshil). Whether the 160 pages the next sync deletes should be
 kept with honest counts instead (see this run's Needs Harshil). Which town the 64 listings whose street names one town and whose city names another are
 actually in, as a supply question. Whether the 108 archive rows that carried a real admission tier should keep that price
 under a name a re-crawl reads properly, and whether "Buy Tickets" (338 rows) and "Schedule a tour" (123)
@@ -3633,9 +3720,6 @@ rather than the host's, which is the last thing in `windowFor` reading a day of 
 Whether the guest's own listing page should read the seven vendors only the agent reads: `live-index.json`
 and `enrich/availability.ts` both stop at FareHarbor, Peek and Xola, and that file keeps its own readers
 rather than the concierge's, so a Resova, Rezdy, Acuity, Square, TripWorks, Checkfront or ForeUp shop is
-quoted live in Agent Mode and shows guessed times on its own page (see this run's Needs Harshil). Whether
-`feedIsWarm` should know the other eight vendors' company names: it reads FareHarbor and Resova only, so
-every other shop is always treated as a first read and given the 12 second deadline rather than 5, which
-costs latency and never correctness. Whether a day the vendor covered and answered with nothing at all
-should be shown as closed rather than left holding our guessed nine, eleven and one, now that the marker
-row already separates that case from Peek's unread dates (see this run's Needs Harshil).
+quoted live in Agent Mode and shows guessed times on its own page (see the forty-ninth run's Needs Harshil).
+Whether `feedIsWarm`'s Resova branch should read the session map rather than a response cache Resova never
+writes to, so a second read of one account is recognised as warm (see the fiftieth run's Needs Harshil).
