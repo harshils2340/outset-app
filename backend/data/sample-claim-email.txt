@@ -1,20 +1,35 @@
-To: (operator inbox)
-From: Harshil <harshils2340@gmail.com>
-Subject: A page for Cajun Encounters Tour Company
+To: info@sunsetwatersports.com
+From: Harshil <hello@onoutset.com>
+Subject: Created a booking page for Sunset Watersports Key West
 
 Hi,
 
-I'm Harshil. I built Outset, think of it like OpenTable, but for tours and activities instead of dinner. People pick a time and book instead of calling and hoping someone picks up.
+I am Harshil, the founder of Outset and a Computer Engineering student at Waterloo. I built an instant-booking page for Sunset Watersports Key West using services and your photos:
+https://onoutset.com/listing/o-sunsetwatersportskeywest-com
 
-I already made a page for Cajun Encounters Tour Company from your website so people in Slidell can book you there. It's only what you already have online, I didn't invent prices or hours.
-See the page: https://onoutset.com/#o=o-cajunencounters-com
+I started Outset because local activity businesses lose customers when booking requires phone calls or slow forms. We give guests a fast, instant checkout: pick a time, pay, done.
 
-It's free for you. We take a small fee from the guest when they pay.
+How it works for Sunset Watersports Key West:
 
-If this is actually your shop, you can open the page from this link. Please don't forward it, it's meant for the owner:
-https://onoutset.com/#claim=o-cajunencounters-com&k=<token>
+No cost to list: it's free. We only take 5% when a booking actually happens.
 
-If I have the wrong business, you can take the page down here:
-https://onoutset.com/#remove=o-cajunencounters-com
+Keep your setup: You already use FareHarbor, so keep it. Outset reads your FareHarbor calendar, so guests only see times you actually have open. Nothing changes on your site; this is another door to the same shop.
 
-Harshil
+Weather protection: if you cancel for weather, just decline the booking in your dashboard. The guest is refunded in full automatically, you don't have to do anything, and we don't take a fee on it.
+
+Our terms and privacy policy, so you know who you are dealing with: https://onoutset.com/terms.html and https://onoutset.com/privacy.html.
+
+If you own Sunset Watersports Key West, you can claim your page and turn bookings on here. It's meant for the owner, so please don't forward it:
+https://onoutset.com/#claim=o-sunsetwatersportskeywest-com&k=v2.mvjaj87n.pWPY5RpekeeL9Dqbz4KE-y&o=eyJuIjoiIiwiZSI6ImluZm9Ac3Vuc2V0d2F0ZXJzcG9ydHMuY29tIiwicCI6IiJ9
+
+Got the wrong business? Take the page down instantly:
+https://onoutset.com/#remove=o-sunsetwatersportskeywest-com
+
+Best,
+
+Harshil Shah
+Founder, Outset
+
+If you'd rather not get emails like this: https://onoutset.com/unsubscribe.html?t=aW5mb0BzdW5zZXR3YXRlcnNwb3J0cy5jb20.qe5xn3hbqCpyMs33wcWaKT
+
+Outset, 339 King St N, Waterloo, ON N2J 0C5, Canada

@@ -1,6 +1,3 @@
-import { readFileSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
 import { randomUUID } from "node:crypto";
 import { VENDORS } from "../enrich/vendors.ts";
 import { db, nowIso } from "../db/client.ts";
@@ -107,65 +104,69 @@ export function draftCopy(op: Op, sc: ReturnType<typeof scale>, f: PageFacts, em
   const TERMS = SITE + "terms.html";
   const PRIVACY = SITE + "privacy.html";
   const id = catalogId(op.domain);
-  const listing = SITE + "#o=" + id;
+  const listing = SITE + "listing/" + id;
   /**
    * The claim link carries the address we are writing to, the way the self-serve link carries what the owner
    * typed. Without it the claimed profile has no owner email, so "email me a sign-in code" answers politely
    * and sends nothing, and the operator never gets told about a booking. It is the same address already in
    * the To line, so it reveals nothing the recipient does not have.
+   *
+   * This is already an onoutset.com link, not the Render API host (outset-api.onrender.com serves only the
+   * API; nothing here ever points at it). It is long because the token is signed and expiring (see "Claim
+   * links expire" in backend/AGENTS.md) - shortening it to a clean /claim/<slug> path is real work (a
+   * server-side redirect that still carries the signed token), not a copy change, so it's not done here.
    */
   const owner = to ? "&o=" + Buffer.from(JSON.stringify({ n: "", e: to, p: "" })).toString("base64url") : "";
   const claim = SITE + "#claim=" + id + "&k=" + claimTokenV2(id) + owner;
   const remove = SITE + "#remove=" + id;
   const vendor = vendorLine(op.calendar_vendor, f.menuFromWidget);
-  const subject = "A page for " + op.name;
-  // The catalog size guests browse today: read from the published catalog when this process has it, else the last known count.
-  const listed = publishedCount();
-  const menu = f.priced.length
-    ? "your " + f.priced.length + (f.priced.length === 1 ? " service" : " services") + " with prices"
-    : f.services
-      ? "your " + f.services + (f.services === 1 ? " service" : " services")
-      : null;
+  const subject = "Created a booking page for " + op.name;
+  // No count and no "with prices" claim: a scrape can miscount or miss a price, and a wrong specific number
+  // is the kind of thing an owner notices and stops trusting the whole email over. "Services" always holds.
+  const menu = f.priced.length || f.services ? "services" : null;
   const built = [menu, f.photos ? "your photos" : null, f.hours ? "your hours" : null, f.rules ? "your cancellation policy" : null].filter(Boolean) as string[];
-  const who = "I'm Harshil. I run Outset, a site where people book local activities the way they book a table on OpenTable: pick a time, pay, done. No calling around.";
+  const who = "I am Harshil, the founder of Outset and a Computer Engineering student at Waterloo. I built an instant-booking page for " + op.name + " using " + (built.length ? andList(built) : "what your site publishes") + ":";
+  const why = "I started Outset because local activity businesses lose customers when booking requires phone calls or slow forms. We give guests a fast, instant checkout: pick a time, pay, done.";
   // A page with nothing on it is still worth showing, but it cannot be sold as one that has their things on it.
-  const intro = built.length
-    ? "I built a page for " + op.name + " from your website. It has " + andList(built) + ". I didn't make anything up. Have a look:"
-    : "I built a page for " + op.name + " from your website, but your site gave me very little to put on it, so the page is thin. Nothing on it is invented, and the link below lets you fill in the rest. Have a look:";
-  const scale = "There are about " + listed + " activity businesses on Outset across the US and Canada, from Florida to British Columbia, and guests find them by city and activity.";
-  const money = "What it costs: nothing to be listed. When a booking comes through Outset, we keep 5% of it. No booking, no fee." + (vendor ? " " + vendor : "");
+  const thin = built.length ? null : "Your site gave me very little to put on the page, so it's thin for now. Nothing on it is invented, and the claim link below lets you fill in the rest.";
+  const howHead = "How it works for " + op.name + ":";
+  const cost = "No cost to list: it's free. We only take 5% when a booking actually happens.";
+  const setup = "Keep your setup: " + (vendor || "Outset can just sit alongside your website. Every booking reaches you directly by email.");
   /**
    * The two questions an owner asks before they will take an online booking: what happens when the weather kills
    * the day, and who these people are legally. Both are answered here rather than left for them to go looking for.
    * The weather sentence describes what the code already does: an operator decline refunds the card in full
    * (`refundBooking` in src/api/bookings.ts), or releases the hold when nothing was captured.
    */
-  const weather = "Weather: if you call a day off, you decline the booking in your dashboard and the guest is refunded in full, automatically, to the card they paid with. Nothing for you to process, no fee to them, and we take no commission on a day that did not run.";
+  const weather = "Weather protection: if you cancel for weather, just decline the booking in your dashboard. The guest is refunded in full automatically, you don't have to do anything, and we don't take a fee on it.";
   const legal = "Our terms and privacy policy, so you know who you are dealing with: " + TERMS + " and " + PRIVACY + ".";
-  const lines = ["Hi,", "", who, "", intro, listing, "", scale, "", money, "", weather, "", legal, ""];
+  const lines = ["Hi,", "", who, listing, "", why, thin, "", howHead, "", cost, "", setup, "", weather, "", legal, ""].filter((l) => l !== null) as string[];
   const paras = [
     "<p>Hi,</p>",
-    "<p>" + esc(who) + "</p>",
-    "<p>" + esc(intro) + "<br>" + link(listing, listing) + "</p>",
-    "<p>" + esc(scale) + "</p>",
-    "<p>" + esc(money) + "</p>",
+    "<p>" + esc(who) + "<br>" + link(listing, listing) + "</p>",
+    "<p>" + esc(why) + (thin ? "<br>" + esc(thin) : "") + "</p>",
+    "<p><b>" + esc(howHead) + "</b></p>",
+    "<p>" + esc(cost) + "</p>",
+    "<p>" + esc(setup) + "</p>",
     "<p>" + esc(weather) + "</p>",
     "<p>Our " + link(TERMS, "terms") + " and " + link(PRIVACY, "privacy policy") + ", so you know who you are dealing with.</p>",
   ];
   lines.push(
-    "If this is your business, this link opens your page so you can fix anything and switch bookings on. It's meant for the owner, so please don't forward it:",
+    "If you own " + op.name + ", you can claim your page and turn bookings on here. It's meant for the owner, so please don't forward it:",
     claim,
     "",
-    "If I've got the wrong business, this takes the page down:",
+    "Got the wrong business? Take the page down instantly:",
     remove,
     "",
-    "Harshil",
-    "Outset",
+    "Best,",
+    "",
+    "Harshil Shah",
+    "Founder, Outset",
   );
   paras.push(
-    "<p>If this is your business, " + link(claim, "this link opens your page") + " so you can fix anything and switch bookings on. It's meant for the owner, so please don't forward it.</p>",
-    "<p>If I've got the wrong business, " + link(remove, "this takes the page down") + ".</p>",
-    "<p>Harshil<br>Outset</p>",
+    "<p>If you own " + esc(op.name) + ", " + link(claim, "you can claim your page and turn bookings on here") + ". It's meant for the owner, so please don't forward it.</p>",
+    "<p>Got the wrong business? " + link(remove, "Take the page down instantly") + ".</p>",
+    "<p>Best,<br>Harshil Shah<br>Founder, Outset</p>",
   );
   if (to) {
     const stop = unsubPageUrl(to);
@@ -182,28 +183,6 @@ export function draftCopy(op: Op, sc: ReturnType<typeof scale>, f: PageFacts, em
     body: lines.join("\n"),
     html: '<div style="font-family:system-ui,sans-serif;font-size:15px;line-height:1.55;color:#222">' + paras.join("") + "</div>",
   };
-}
-
-/**
- * How many listings the site publishes: the browse catalog's count, rounded down to the nearest thousand,
- * with "59,000" as the floor if the file is missing. Read once per process: catalog.json is 23 MB, and this
- * sits inside the copy, which a draft run writes once per operator.
- */
-let listedOnce: string | null = null;
-function publishedCount(): string {
-  if (listedOnce) return listedOnce;
-  return (listedOnce = readPublishedCount());
-}
-
-function readPublishedCount(): string {
-  try {
-    const raw = readFileSync(join(dirname(fileURLToPath(import.meta.url)), "../../../public/catalog.json"), "utf8");
-    const n = (JSON.parse(raw) as { operators?: unknown[] }).operators?.length || 0;
-    if (n >= 1000) return (Math.floor(n / 1000) * 1000).toLocaleString("en-US");
-  } catch {
-    /* no catalog on this host */
-  }
-  return "59,000";
 }
 
 /**
