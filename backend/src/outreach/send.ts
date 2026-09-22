@@ -134,7 +134,12 @@ export async function sendOutreach(opts: {
       console.error(to + ": " + res.error);
       if (/no mail key/.test(res.error || "")) break;
     }
-    await new Promise((x) => setTimeout(x, 600));
+    // A real person sending individual emails does not fire one every 600ms: that cadence is itself a bulk-
+    // mail signal, on top of everything else this file already avoids (no tracking pixel, no List-Unsubscribe
+    // header, Gmail SMTP over Resend for exactly this reason). 90 to 300 seconds, randomized so the gaps
+    // themselves don't look automated, spreads a 20-email first day over roughly half an hour to an hour and
+    // a half - long enough to see an early reply land before the rest of the batch goes out.
+    await new Promise((x) => setTimeout(x, 90_000 + Math.random() * 210_000));
   }
   return out;
 }
