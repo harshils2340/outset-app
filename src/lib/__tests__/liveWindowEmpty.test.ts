@@ -19,11 +19,11 @@ const HOURS = ["Monday: 9:00 AM - 5:00 PM", "Tuesday: 9:00 AM - 5:00 PM", "Wedne
 const dates = (n: number): LiveAvailability["days"] =>
   Array.from({ length: n }, (_, i) => ({ date: "2026-10-" + String(i + 1).padStart(2, "0"), slots: [] }));
 
-const ctx = (live: LiveAvailability | null): CompanyContext => ({
+const ctx = (live: LiveAvailability | null, extra: Partial<Unclaimed> = {}): CompanyContext => ({
   item: {
     id: "u-x", title: "Gulf Coast Parasail", cat: "water", art: "jetski", area: "Clearwater Beach, FL",
     metroId: "tampa", src: "example.com", options: [{ name: "Flight", price: 85 }], specs: [], includes: [],
-    hoursText: HOURS,
+    hoursText: HOURS, ...extra,
   } as unknown as Unclaimed,
   contact: null,
   live,
@@ -48,6 +48,31 @@ test("a read that stopped short of the shop's catalog speaks for nothing", () =>
 test("with no feed at all Otto says so, exactly as before", () => {
   const text = companyAnswer(ctx(null), "when's the next opening?").text;
   assert.match(text, /can't see their live times/);
+});
+
+/**
+ * The exception `liveWins` already makes for both pickers, which Otto has to make too now that it can see a
+ * calendar at all. A claimed shop sells its own hours here minus what is booked, and the catalog may still hold
+ * a booking link of theirs from before they claimed: an empty fortnight on that stale calendar would have had
+ * Otto telling a guest a shop taking bookings on this very page has nothing open, standing beside a picker
+ * offering that shop's own times. Otto cannot see those times, so it says nothing about the window.
+ */
+test("an empty vendor calendar does not close a claimed shop that is taking bookings here", () => {
+  const empty = { vendor: "fareharbor" as const, live: true, days: dates(14) };
+  for (const q of ["do you have anything Saturday at 10am?", "when's the next opening?", "can I book?"]) {
+    assert.match(companyAnswer(ctx(empty), q).text, /next 14 days/, "unclaimed: " + q);
+    const claimed = companyAnswer(ctx(empty, { claimed: true }), q).text;
+    assert.ok(!/next 14 days/.test(claimed), "claimed: " + q + " -> " + claimed);
+  }
+  assert.match(companyAnswer(ctx(empty, { claimed: true }), "can I book?").text, /Pick a service and time on this page/);
+});
+
+test("a claimed shop's real departures still reach a guest, the way they reach the picker", () => {
+  const c = ctx(
+    { vendor: "fareharbor", live: true, days: [{ date: "2026-10-01", slots: [{ startsAt: "2026-10-01T14:00", label: "2:00 PM · Flight", bookUrl: "x" }] }] },
+    { claimed: true },
+  );
+  assert.match(companyAnswer(c, "when's the next opening?").text, /2:00 PM/);
 });
 
 test("a shop with a real departure is untouched by any of this", () => {

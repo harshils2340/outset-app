@@ -439,10 +439,17 @@ function liveSlots(ctx: CompanyContext): Slot[] {
  * not a gap in what we know, and it is not the same as having no feed to read: Otto used to fall through to
  * the published hours here and say "Open Monday 9 AM to 5 PM, pick a time on this page" beside a picker that
  * correctly offers nothing on any date. A partial read speaks for no one: it stopped short of the catalog.
+ *
+ * A claimed shop is the one exception, and it is the same exception `liveWins` makes for both pickers: what a
+ * claimed shop sells on GoDo is its own hours minus what is booked, and the catalog may still hold a booking
+ * link of theirs from before they claimed. An empty fortnight on that stale calendar would have had Otto
+ * telling a guest a shop taking bookings on this very page has nothing open, next to a picker offering that
+ * shop's own times. Otto cannot see those times, so it says nothing about the window and answers from the
+ * published hours, which is what it always did for a claimed shop.
  */
 function liveWindowEmpty(ctx: CompanyContext): number {
   const a = ctx.live;
-  if (!a?.live || a.partial) return 0;
+  if (!a?.live || a.partial || ctx.item.claimed) return 0;
   const days = (a.days || []).length;
   return days && !liveSlots(ctx).length ? days : 0;
 }
