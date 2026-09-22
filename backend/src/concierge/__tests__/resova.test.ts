@@ -1,6 +1,7 @@
 import test, { afterEach } from "node:test";
 import assert from "node:assert/strict";
-import { resovaAccount, resovaLive } from "../resova.ts";
+import { clearResovaSessions, resovaAccount, resovaLive, resovaWarm } from "../resova.ts";
+import { feedIsWarm } from "../live.ts";
 import { addDays, ymdLocal } from "../shopday.ts";
 
 /**
@@ -154,4 +155,24 @@ test("a hidden category is not a price, and a sold-out or blocked slot is not av
   const read = await resovaLive(url, { from: new Date(), days: 1 });
   assert.deepEqual(read?.departures.map((d) => d.time), ["23:30"]);
   assert.equal(read?.departures[0]?.fromPrice, 37);
+});
+
+/**
+ * Whether a second read of the same shop is given the short deadline.
+ *
+ * `plan.ts` allows a first read of a shop twelve seconds and a read it expects to be quick rather less, and
+ * asks `feedIsWarm` which this is. Its Resova branch read the account out of the link and then looked for it
+ * in `live.ts`'s response cache, which only FareHarbor writes to, so the branch could never fire and every
+ * Resova shop was given the cold deadline however recently it had been read. What makes the second read quick
+ * is the shop's own booking page, kept for the life of the process here.
+ */
+test("a Resova account already read is known to be warm, and one never read is not", async () => {
+  clearResovaSessions();
+  const url = stubResova({ rooms: [{ id: 7, name: "Who Stole Mona", days: { [TODAY]: [{ time: LATE }] } }] });
+  assert.equal(feedIsWarm(url), false, "nothing has been read yet");
+  assert.equal(resovaWarm(url), false);
+  await resovaLive(url, { from: new Date(), days: 1 });
+  assert.equal(feedIsWarm(url), true, "the shop's page is in hand, so the next read is quick");
+  assert.equal(feedIsWarm("https://someoneelse.resova.us/"), false, "one account's page is not another's");
+  assert.equal(feedIsWarm("https://fareharbor.com/embeds/book/neverread/"), false, "and FareHarbor keeps its own answer");
 });

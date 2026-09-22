@@ -5,6 +5,7 @@ import { addDays, zonedYmd } from "./shopday.ts";
 import { zoneForArea } from "../lib/zone.ts";
 import { readerFor } from "./readable.ts";
 import { readFeed } from "./readFeed.ts";
+import { resovaWarm } from "./resova.ts";
 
 /**
  * What a business can actually sell you, right now, read from the booking system it really runs.
@@ -125,8 +126,19 @@ const inFlight = new Map<string, Promise<unknown>>();
  * failed in front of an audience.
  */
 export function feedIsWarm(bookingUrl: string): boolean {
-  const company = bookingUrl.match(/fareharbor\.com\/(?:embeds\/book\/)?([a-z0-9-]+)/i)?.[1]
-    ?? bookingUrl.match(/https?:\/\/([a-z0-9-]+)\.resova\./i)?.[1];
+  /**
+   * Resova keeps its own warmth, and this is the only reader besides FareHarbor that has any.
+   *
+   * It used to read the account out of the link and then look for it in the cache below, which is written by
+   * `getJson` in this file and therefore by FareHarbor alone: the branch could never fire, and a Resova shop
+   * read a minute ago was still given the cold deadline. What makes the second read quick is the shop's own
+   * booking page, cached for the life of the process in `resova.ts`, so that is what is asked.
+   *
+   * The other eight readers have no cache of any kind, so they are genuinely cold on every call and the long
+   * deadline is the right one for them.
+   */
+  if (/resova/i.test(bookingUrl)) return resovaWarm(bookingUrl);
+  const company = bookingUrl.match(/fareharbor\.com\/(?:embeds\/book\/)?([a-z0-9-]+)/i)?.[1];
   if (!company) return false;
   const now = Date.now();
   for (const [url, hit] of cache) {

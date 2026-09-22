@@ -41,6 +41,24 @@ type Session = { base: string; token: string };
  */
 const SESSIONS = new Map<string, Session | null>();
 
+/**
+ * Whether this account's booking page has already been read, and so whether a read of it will be quick.
+ *
+ * The slow half of a Resova read is the shell above: one fetch of the shop's homepage for two globals. It is
+ * kept for the life of the process, failures included, so a second question about the same account skips it
+ * either way. `feedIsWarm` used to look for the account in `live.ts`'s response cache, which only FareHarbor
+ * ever writes to, so every Resova read was given the cold deadline however many times it had been read.
+ */
+export function resovaWarm(url: string): boolean {
+  const account = resovaAccount(url);
+  return !!account && SESSIONS.has(account);
+}
+
+/** Forget every account's page, so one test's shop is not read as another's. */
+export function clearResovaSessions(): void {
+  SESSIONS.clear();
+}
+
 async function session(account: string): Promise<Session | null> {
   const cached = SESSIONS.get(account);
   if (cached !== undefined) return cached;
