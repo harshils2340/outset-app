@@ -311,3 +311,37 @@ test("a blurb too long for a description is cut at a sentence or a word, never m
     r.cleanup();
   }
 });
+
+/**
+ * The cancellation line on a listing page. It used to print the stored `fc` verbatim, which is the badge the
+ * sync wrote with an older reading of the same policy. 171 of the 1,237 pages taking their line from it named
+ * a different window than the app named for the same shop, and one advertised free cancellation on a page the
+ * app refuses to badge at all. Both read `freeCancelBadge` now.
+ */
+test("the cancellation line is the badge the app draws, not the one the file stores", () => {
+  const items: Item[] = [
+    // o-archangelcharters-com's shape: the stored badge took its number from the forfeit line.
+    item("o-a", {
+      cover: "https://x/a.jpg",
+      fc: "Free cancellation up to 24 hours before",
+      cancellation: "Charters cancelled within 24 hours will result in a forfeited deposit. Customers will receive a full refund or credit with 48 hours notice of cancellation.",
+    } as Partial<Item>),
+    // A shop that only refunds a day it calls off itself: no badge, so the policy text itself is printed.
+    item("o-b", {
+      cover: "https://x/b.jpg",
+      fc: "Free cancellation up to 48 hours before",
+      cancellation: "All sales are final. Full refund in case of operator cancellation due to weather.",
+    } as Partial<Item>),
+  ];
+  const r = run(items);
+  try {
+    const a = r.read("o-a.html");
+    assert.ok(a.includes("Free cancellation up to 48 hours before"), "page kept the stored window");
+    assert.ok(!a.includes("up to 24 hours before"), "page still names the forfeit line's window");
+    const b = r.read("o-b.html");
+    assert.ok(!b.includes("Free cancellation"), "page advertises a promise the app strips");
+    assert.ok(b.includes("All sales are final."), "page dropped the policy text with the badge");
+  } finally {
+    r.cleanup();
+  }
+});

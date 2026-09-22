@@ -341,25 +341,29 @@ async function flow(ctx) {
   await sleep(2500);
   const stillOpens = (await has("This listing is hidden right now")) && !(await has("Pick a time"));
   await shot("c3-guest-while-unpublished");
-  /* The same listing in the phone frame, which is what a phone opens and what "Open the phone app" reaches on
-     a desktop. It is a different screen with its own booking box, and it read neither switch, so a hidden shop
-     was offered with a full picker and a Request button, and the guest only found out after choosing a
-     service, a date, a time and a party and typing their name, mobile and email. */
+  /* The same listing in the phone frame, which is what a phone opens. It is a different screen with its own
+     booking box, and it read neither switch, so a hidden shop was offered with a full picker and a Request
+     button, and the guest only found out after choosing a service, a date, a time and a party and typing
+     their name, mobile and email.
+     The frame used to be reached by clicking "Open the phone app" in the desktop user menu. That button was
+     removed on 22 September 2026, and the click then found nothing: the flow stayed on the wide site, where
+     there is no `.airreserve` to offer a booking at all, so this step went on passing against the wrong page.
+     A narrow window is how a phone reaches the frame now, and `web` is decided once at mount, so the size is
+     set before the page is loaded and put back afterwards. */
+  await ctx.send("Emulation.setDeviceMetricsOverride", { width: 420, height: 900, deviceScaleFactor: 1, mobile: true });
+  // The home, not the listing's own hash: the step above is already on `#o=<id>`, and navigating to the same
+  // URL is a same-document navigation, so the app would never remount and would stay on the wide site.
   await goto(`${BASE}/`);
-  await until(() => !!document.querySelector(".web"), 15000);
-  await js(() => {
-    const b = [...document.querySelectorAll("button")].find((x) => (x.textContent || "").trim() === "Open the phone app");
-    if (!b) return "MISSING open the phone app";
-    b.click();
-    return "opened the phone frame";
-  });
-  await sleep(1200);
+  await until(() => !!document.querySelector("#screen"), 15000);
   await js((id) => { window.location.hash = "#o=" + id; return "opened the listing"; }, ID);
   await until(() => !!document.querySelector("#screen .airlisting, #screen .reqpad"), 15000);
   await sleep(2000);
+  // The frame itself, so that a step which never left the wide site says so rather than reading the desktop page.
+  await js(() => (document.querySelector("#screen .airlisting, #screen .reqpad") ? "the phone frame is open on the listing" : "MISSING the phone frame's own listing screen"));
   const phoneSaysHidden = await has("This listing is hidden right now");
   const phoneOffersBooking = await js(() => [...document.querySelectorAll(".airreserve button")].some((b) => /^(Reserve|Request)$/.test((b.textContent || "").trim())));
   await shot("c3b-phone-while-unpublished");
+  await ctx.send("Emulation.setDeviceMetricsOverride", { width: Number(process.env.W || 1440), height: Number(process.env.H || 900), deviceScaleFactor: 1, mobile: false });
   await goto(`${BASE}/operators`);
   await until(() => !!document.querySelector(".od .odbody"), 15000);
   await openDashboardPage("Listing");

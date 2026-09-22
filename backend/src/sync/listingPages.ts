@@ -1,6 +1,7 @@
 import { mkdirSync, readdirSync, unlinkSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { freeCancelBadge } from "../../../src/lib/cancellation.ts";
 import { METROS } from "../taxonomy/catalog.ts";
 import { REGION_NAME, countryOfArea, regionOfArea } from "../../../src/data/regions.ts";
 import { KINDS, cardPhoto, fileFor, placeName, priceOf, publicSite, socialCard, type Item, type Kind } from "./pages.ts";
@@ -198,7 +199,10 @@ function page(item: Item, opts: { landingHref: string | null; kindPageHref: stri
   const menu = menuRows(item);
   const contact = (item as { contact?: Contact }).contact;
   const hours = ((item as { hoursText?: string[] }).hoursText?.length ? (item as { hoursText?: string[] }).hoursText : contact?.hours) || [];
-  const cancellation = (item as { fc?: string; cancellation?: string }).fc || (item as { cancellation?: string }).cancellation || "";
+  // Through the badge rule every guest surface reads, not off the stored `fc`. Read raw, 171 of these pages
+  // named a different window than the app did for the same shop, and one advertised free cancellation the app
+  // strips because the shop only refunds a day it calls off itself.
+  const cancellation = freeCancelBadge(item as { fc?: string; cancellation?: string; policies?: string[] }) || (item as { cancellation?: string }).cancellation || "";
   const includes = ((item as { includes?: string[] }).includes || []).slice(0, MAX_LIST_ITEMS);
   const requirements = (((item as { requirements?: string[] }).requirements?.length ? (item as { requirements?: string[] }).requirements : (item as { specs?: string[] }).specs) || []).slice(0, MAX_LIST_ITEMS);
   const faq = ((item as { faq?: { q: string; a: string }[] }).faq || []).slice(0, MAX_FAQ);
