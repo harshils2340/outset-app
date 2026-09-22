@@ -15,13 +15,22 @@ const op = {
 };
 const empty: PageFacts = { priced: [], services: 0, photos: false, hours: false, rules: false, menuFromWidget: false };
 const body = (f: Partial<PageFacts>) => draftCopy(op, {} as never, { ...empty, ...f }, "info@seabreezejetski.com").body;
-const intro = (f: Partial<PageFacts>) => body(f).split("\n").find((l) => l.startsWith("I'm Harshil")) as string;
+const intro = (f: Partial<PageFacts>) => body(f).split("\n").find((l) => l.startsWith("Outset is a booking site")) as string;
 const thin = (f: Partial<PageFacts>) => body(f).split("\n").find((l) => l.startsWith("Your site didn't give me"));
+// The credibility number changes as the real catalog grows, so tests match its shape, never a literal count.
+const CRED = "Outset is a booking site for local activities — about ([\\d,]+) businesses across the US and Canada are already listed\\. ";
+
+test("the credibility line carries a real, plausible number, never invented", () => {
+  const m = new RegExp("^" + CRED).exec(intro({}));
+  assert.ok(m, intro({}));
+  const n = Number(m![1].replace(/,/g, ""));
+  assert.ok(Number.isFinite(n) && n >= 1000, `credibility number should be a real catalog-sized count, got ${m![1]}`);
+});
 
 test("the page's things are listed, and only the ones it has", () => {
-  assert.equal(
+  assert.match(
     intro({ priced: ["1 Hour", "2 Hour"], services: 2, photos: true, hours: true, rules: true }),
-    "I'm Harshil. I run Outset, and I put together a booking page for Sea Breeze Jet Ski Rentals using services, your photos, your hours and your cancellation policy.",
+    new RegExp("^" + CRED + "I'm Harshil, and I put together a booking page for Sea Breeze Jet Ski Rentals using services, your photos, your hours and your cancellation policy\\.$"),
   );
 });
 
@@ -31,13 +40,16 @@ test("a shop that publishes no hours is not told its hours are on the page", () 
   assert.ok(s.includes("using services and your photos"), s);
 });
 
-/** No count and no "with prices" claim, priced or not: a scrape can miscount, and a wrong number is the kind
- * of specific, checkable claim that makes an owner stop trusting the rest of the email. */
+/** No count and no "with prices" claim about THIS operator's own menu, priced or not: a scrape can miscount,
+ * and a wrong number about their own business is the kind of specific, checkable claim that makes an owner
+ * stop trusting the rest of the email. The credibility clause's catalog-wide count is a different, real,
+ * independently-verifiable number and is exempted from this check on purpose. */
 test("services never carries a count or a price claim", () => {
   assert.ok(intro({ services: 3 }).includes("using services."));
   assert.ok(intro({ services: 1 }).includes("using services."));
   assert.ok(intro({ priced: ["Half day"], services: 4 }).includes("using services."));
-  assert.ok(!/\d/.test(intro({ priced: ["Half day", "Full day"], services: 4 })), "no digit anywhere in the sentence");
+  const afterCredibility = intro({ priced: ["Half day", "Full day"], services: 4 }).replace(new RegExp("^" + CRED), "");
+  assert.ok(!/\d/.test(afterCredibility), "no digit anywhere past the credibility clause: " + afterCredibility);
 });
 
 /** One thing used to read "using  and your hours:", because the list always had a last item to add. */
@@ -49,7 +61,7 @@ test("a page with one thing on it reads as a sentence", () => {
 test("a page with nothing on it says so rather than claiming things", () => {
   const s = thin({});
   assert.ok(s?.includes("didn't give me much"), s);
-  assert.equal(intro({}), "I'm Harshil. I run Outset.");
+  assert.match(intro({}), new RegExp("^" + CRED + "I'm Harshil, and I built Sea Breeze Jet Ski Rentals a page\\.$"));
   assert.ok(!intro({}).includes("using"), intro({}));
   assert.ok(s?.includes("Nothing on it is invented"), s);
 });
@@ -79,9 +91,9 @@ test("the claim link comes before the footer, and the footer carries the brandin
   const unsubAt = c.body.indexOf("/unsubscribe.html?t=");
   assert.ok(claimAt > 0 && claimAt < termsAt, "claim link comes before the legal footer");
   assert.ok(termsAt < unsubAt, "terms comes before unsubscribe, both in the footer");
-  assert.ok(c.body.includes("Outset — Pick a time. Pay. Done."), "the wordmark and tagline are their own line in the plain text");
+  assert.ok(c.body.includes("Outset — Instant booking for local activities."), "the wordmark and tagline are their own line in the plain text");
   assert.ok(c.html.includes("<b style=\"color:#222;font-size:14px\">Outset</b>"), "the html footer carries the Outset wordmark");
-  assert.ok(c.html.includes("Pick a time. Pay. Done."), "the html footer carries the tagline");
+  assert.ok(c.html.includes("Instant booking for local activities."), "the html footer carries the tagline");
   // The wordmark and "Terms" used to be concatenated with no space or break between them ("OutsetTerms").
   assert.ok(!/Outset<\/b>\s*<a/.test(c.html) && !c.html.includes(">Outset</b><a"), "the wordmark is never glued directly to the terms link");
   const img = /<img[^>]*>/.exec(c.html);

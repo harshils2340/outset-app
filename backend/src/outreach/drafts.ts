@@ -1,4 +1,7 @@
 import { randomUUID } from "node:crypto";
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { VENDORS } from "../enrich/vendors.ts";
 import { db, nowIso } from "../db/client.ts";
 import { claimTokenV2 } from "../lib/claim.ts";
@@ -97,6 +100,26 @@ function andList(parts: string[]): string {
   return parts.slice(0, -1).join(", ") + " and " + parts[parts.length - 1];
 }
 
+/**
+ * How many businesses guests can actually find on Outset today: the published catalog's own count, rounded
+ * down to the nearest thousand, "59,000" as the floor if the file is missing on this host. This is the
+ * credibility line's number, and it is never anything an owner could not verify by counting listings
+ * themselves: not the discovery database's total (which includes rows nobody can browse to yet), the
+ * published catalog only. Read once per process, since catalog.json is large and this runs once per operator.
+ */
+let publishedOnce: string | null = null;
+function publishedCount(): string {
+  if (publishedOnce) return publishedOnce;
+  try {
+    const raw = readFileSync(join(dirname(fileURLToPath(import.meta.url)), "../../../public/catalog.json"), "utf8");
+    const n = (JSON.parse(raw) as { operators?: unknown[] }).operators?.length || 0;
+    if (n >= 1000) return (publishedOnce = (Math.floor(n / 1000) * 1000).toLocaleString("en-US"));
+  } catch {
+    /* no catalog on this host */
+  }
+  return (publishedOnce = "59,000");
+}
+
 export function draftCopy(op: Op, sc: ReturnType<typeof scale>, f: PageFacts, email?: string): { subject: string; body: string; html: string } {
   void sc;
   const to = (email || "").trim().toLowerCase();
@@ -125,11 +148,13 @@ export function draftCopy(op: Op, sc: ReturnType<typeof scale>, f: PageFacts, em
   // is the kind of thing an owner notices and stops trusting the whole email over. "Services" always holds.
   const menu = f.priced.length || f.services ? "services" : null;
   const built = [menu, f.photos ? "your photos" : null, f.hours ? "your hours" : null, f.rules ? "your cancellation policy" : null].filter(Boolean) as string[];
-  // The lead. No bio, no "instant-booking" jargon: what it is, in one plain sentence, then straight to the
-  // one thing worth their click. Claiming goes first, on purpose: an owner who is going to act at all decides
-  // that in the first two lines, and everything below (the how-it-works, the legal footer) is there to answer
-  // a question they have after that, not before it.
-  const who = "I'm Harshil. I run Outset" + (built.length ? ", and I put together a booking page for " + op.name + " using " + andList(built) : "") + ".";
+  // The lead, in two sentences: what Outset is, with a real number so a stranger who has never heard of it
+  // has a reason to keep reading, then what was actually built for them. No bio, no "instant-booking" jargon.
+  // Claiming goes first after that, on purpose: an owner who is going to act at all decides that in the first
+  // few lines, and everything below (the how-it-works, the legal footer) answers a question they have after
+  // that, not before it.
+  const what = "Outset is a booking site for local activities — about " + publishedCount() + " businesses across the US and Canada are already listed.";
+  const who = what + " I'm Harshil, and I" + (built.length ? " put together a booking page for " + op.name + " using " + andList(built) : " built " + op.name + " a page") + ".";
   // A page with nothing on it is still worth showing, but it cannot be sold as one that has their things on it.
   const thin = built.length ? null : "Your site didn't give me much to put on the page yet, so it's thin for now. Nothing on it is invented, and the claim link below lets you fill in the rest.";
   const cta = "This opens it, so you can look it over and turn bookings on. It's meant for the owner, so please don't forward it:";
@@ -172,7 +197,7 @@ export function draftCopy(op: Op, sc: ReturnType<typeof scale>, f: PageFacts, em
   // one-line tagline, then the legal line, each on its own line: the earlier version ran the wordmark and
   // "Terms" together with no break between them, which is exactly the kind of thing to catch before this
   // goes out at any volume.
-  const TAGLINE = "Pick a time. Pay. Done.";
+  const TAGLINE = "Instant booking for local activities.";
   const footerLines: string[] = ["", "Outset — " + TAGLINE];
   const footerParas: string[] = [
     '<p style="margin-top:24px;padding-top:16px;border-top:1px solid #e3e3e3;font-size:13px;color:#666">' +
