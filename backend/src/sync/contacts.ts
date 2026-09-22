@@ -22,7 +22,7 @@ import { STANDARD, isEventSchedule, plainLabel, plainName, plainServices, type R
 import { consolidateDeals } from "./dealText.ts";
 import { buildLiteShard, type LiteRow } from "./liteShard.ts";
 import { durationFrom } from "../../../src/lib/duration.ts";
-import { onlyOperatorCancels } from "../../../src/lib/cancellation.ts";
+import { cancelWindow, onlyOperatorCancels, windowLabel } from "../../../src/lib/cancellation.ts";
 import { bookableRow, tidyRowName } from "../../../src/lib/menuRow.ts";
 import { ownWords } from "../../../src/lib/ownWords.ts";
 import { dialPhone } from "../../../src/lib/phone.ts";
@@ -746,11 +746,11 @@ function freeCancel(text: string, corpus?: string): string | null {
   if (!text || !/full refund|free cancellation|100% refund|fully refundable/i.test(text)) return null;
   if (/non-?refundable|no refunds?\b/i.test(text) && !/full refund/i.test(text)) return null;
   if (onlyOperatorCancels(corpus || text)) return null;
-  const m = text.match(/(\d+)\s*(hours?|hrs?|days?)/i);
-  if (!m) return "Free cancellation";
-  const n = Number(m[1]);
-  const unit = /day/i.test(m[2]) ? (n === 1 ? "day" : "days") : n === 1 ? "hour" : "hours";
-  return "Free cancellation up to " + n + " " + unit + " before";
+  // The number comes from the clause that makes the promise, not from wherever the first one happens to sit.
+  // This used to read its own, which is how "Cancellations within 48 hours of the reservation are
+  // non-refundable" ended up printed on a card as the window a guest cancels free in.
+  const w = cancelWindow(text);
+  return w ? "Free cancellation up to " + windowLabel(w) + " before" : "Free cancellation";
 }
 
 /* ---------- audit-driven filters (9 Sept 2026 data QA) ---------- */

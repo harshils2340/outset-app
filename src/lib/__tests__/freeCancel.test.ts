@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { readFileSync, readdirSync } from "node:fs";
 
-import { freeCancel, freeCancelBadge, onlyOperatorCancels } from "../cancellation";
+import { cancelWindow, freeCancel, freeCancelBadge, onlyOperatorCancels } from "../cancellation";
 import { passesFilters } from "../../components/explore/prefs";
 import type { Unclaimed } from "../../data/types";
 
@@ -87,6 +87,98 @@ test("a claimed shop is judged on the policy it typed", () => {
   // publishedPatch reads the operator's own cancellation line and nothing else.
   assert.equal(freeCancel("Full refund if we cancel for weather."), null);
   assert.equal(freeCancel("Cancel any time up to 24 hours before for a full refund."), "Free cancellation up to 24 hours before");
+});
+
+/* ---------- which clause owns the number ---------- */
+
+/**
+ * The badge prints a window, and a window is a promise about money. It used to be the first number anywhere
+ * in the policy text, whichever clause it sat in and whichever side of that clause's line it was on, so 141
+ * of the 1,303 shipped badges advertised a number the shop never offered: often the one it charges in full
+ * at. Every case below is a real listing in `public/o` and names the one it came from.
+ */
+
+test("the number comes from the clause that promises the refund, not from a no-refund line", () => {
+  // o-baysidejetskirentals-com: the 48 hours is the window that is NOT refundable.
+  assert.equal(
+    freeCancel("Cancellations within 48 hours of the reservation are non-refundable. Customers will receive a full refund or credit with 24 hours notice of cancellation."),
+    "Free cancellation up to 24 hours before",
+  );
+  // o-archangelcharters-com: promised at 30 hours a refund the shop only gives at 48.
+  assert.equal(
+    freeCancel("Charters cancelled within 24 hours will result in a forfeited deposit. Customers will receive a full refund or credit with 48 hours notice of cancellation."),
+    "Free cancellation up to 48 hours before",
+  );
+  // o-blazenh-com: read its window off a $15 late-cancellation penalty. No clause promises one, so none is printed.
+  assert.equal(
+    freeCancel("Late class cancellations and no-shows within 3 hours incur $15 penalty No cancellations or refunds for workshops or trainings within 48 hours of event Monhegan retreat cancellations before April 21, 2027 get full refund minus deposit"),
+    "Free cancellation",
+  );
+});
+
+test("a rate card's promise owns the number to its left", () => {
+  // o-baywatchtourscorpus-com, written as one line: the 6 hrs that follows "Full refund" is the half-refund window.
+  assert.deepEqual(
+    cancelWindow("Cancellations 24 hrs or more before departure time - Full refund Cancellations 6 hrs to 23 hrs before departure time - 50% refund"),
+    { n: 24, unit: "hour" },
+  );
+  // o-boatpartyfortlauderdale-com: 13 days is the 50% line.
+  assert.deepEqual(cancelWindow("14 days prior to charter 100 % full refund 13 days to 7 days prior to charter 50% refund."), { n: 14, unit: "day" });
+});
+
+test("the shop's own weather call never lends the badge its clock", () => {
+  // o-boatnaples-com: the 2 hours is how long before departure the captain tells you, not a window to cancel in.
+  assert.equal(
+    freeCancel("Cancellation policy: Refunds 48 hours prior to departure. If the Captain cancels due to weather, you will be notified 2 hours prior to departure, with a full refund, or option to reschedule."),
+    "Free cancellation up to 48 hours before",
+  );
+  // o-hhiboatcharters-com: the captain calls the weather "up to an hour prior"; the guest's window is 72 hours.
+  assert.equal(
+    freeCancel("WEATHER Your captain will make the call on weather and cancelling/rescheduling your tour up to an hour prior to your tour. If we cannot reschedule you, we will provide a full refund of any fare that you have paid. Guests that have not purchased trip insurance will have up to 72 hours to cancel their reservation for no fee."),
+    "Free cancellation up to 72 hours before",
+  );
+});
+
+test("a window the guest has to buy is not the free one", () => {
+  // o-hudsonmarina-net asks everyone else for 72 hours and sells the 12 hour window with a protection plan.
+  assert.equal(
+    freeCancel("Customers must give 72 hour notice of cancellation to receive a refund. Customers will receive a full refund with purchase of cancelation protection plan with atleast 12 hours notice of cancellation."),
+    "Free cancellation up to 72 hours before",
+  );
+});
+
+test("the window is read however the shop writes the number", () => {
+  // o-bigtexboatrentals-com ("15+ Days"), o-captainstewys-com ("3 or more days"), o-japowersportsfl-com, whose
+  // promise word is what the clause splitter breaks on.
+  assert.deepEqual(cancelWindow("Cancellations 15+ Days Before Trip - Cancel via email. You will receive a full refund."), { n: 15, unit: "day" });
+  assert.deepEqual(cancelWindow("You will receive a full refund with 3 or more days notice from the Trip Depart Date."), { n: 3, unit: "day" });
+  assert.deepEqual(cancelWindow("You may cancel a booking 3 days or more out for a FULL Refund."), { n: 3, unit: "day" });
+  // Weeks and months used to be no window at all, so o-captainjoehughes-com printed a bare badge or the wrong day count.
+  assert.equal(freeCancel("Charters cancelled two weeks prior to the date will be issued a full refund."), "Free cancellation up to 2 weeks before");
+  assert.equal(freeCancel("Customers may cancel at least 1 month prior to their arrival date to receive a full refund."), "Free cancellation up to 1 month before");
+});
+
+test("a notice period written as 'within' is still the guest's side", () => {
+  // o-boatrentalseekers-com and o-carolinaboatrentalswb-com both write their notice period this way.
+  assert.equal(freeCancel("If you cancel your reservation within 12 hours in advance, you will receive a full refund."), "Free cancellation up to 12 hours before");
+  assert.equal(freeCancel("Cancel within 48 hours for full refund; same day cancellation allowed for weather-related issues"), "Free cancellation up to 48 hours before");
+  // But not when the same breath takes the money: o-inshorepursuitcharters-com and o-capehelitours-com.
+  assert.equal(cancelWindow("Cancel within 14 days - $100 charge Cancel within 7 days - 50% refund"), null);
+  assert.equal(cancelWindow("Cancel less than 24 hours before tour: reschedule once free, no refund"), null);
+});
+
+test("the badge a guest reads is re-read from the policy, not taken from the file", () => {
+  // `fc` is written by the sync, which read this same text with the older rule. Until this was fixed the fresh
+  // reading was only ever reached for the 22 shipped listings that carry no `fc` at all, so every later fix to
+  // the rule stopped at the catalog and waited on a sync to reach a guest.
+  const item = {
+    fc: "Free cancellation up to 48 hours before",
+    cancellation: "Cancellations within 48 hours of the reservation are non-refundable. Customers will receive a full refund or credit with 24 hours notice of cancellation.",
+  };
+  assert.equal(freeCancelBadge(item), "Free cancellation up to 24 hours before");
+  // A listing whose own text does not carry the promise keeps what the sync published: o-hornbyislandsailing-com
+  // says "without fee" rather than "full refund", and its badge is read off lines the file does not hold.
+  assert.equal(freeCancelBadge({ fc: "Free cancellation up to 48 hours before", cancellation: "Cancellations up to 48 hours before trip without fee" }), "Free cancellation up to 48 hours before");
 });
 
 /* ---------- the whole shipped catalog ---------- */
