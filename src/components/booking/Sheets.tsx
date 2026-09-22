@@ -44,7 +44,7 @@ import { noStartTimesNote, startTimesOn } from "../../lib/startTimes";
 import { itemOpenState } from "../../lib/openNow";
 import { apiConfig, fetchAvailability, fetchOpenSlots, hasApi, type LiveAvailability } from "../../lib/api";
 import { dateKey } from "../../lib/dates";
-import { fewSeats, liveChipsByDate, type TimeChip } from "../../lib/liveTimes";
+import { fewSeats, liveEmptyNote, liveRead, type TimeChip } from "../../lib/liveTimes";
 import { safeHttpUrl } from "../../lib/urlSafety";
 import { searchSuggest } from "../../lib/search";
 import { listingUrl } from "../../lib/site";
@@ -451,8 +451,12 @@ function RequestBody({
       alive = false;
     };
   }, [item.id]);
-  const liveDays = useMemo(() => liveChipsByDate(avail), [avail]);
-  const live = liveDays.size > 0;
+  const read = useMemo(() => liveRead(avail), [avail]);
+  const liveDays = read.chips;
+  /* Whether the vendor answered at all, which is the only thing that says whether the published times may
+     stand in. A shop with an empty fortnight did answer, and drawing our nine, eleven and one over it sold
+     departures it does not run. */
+  const live = read.live;
   /* What is still open on Outset: the claimed shop's hours minus every time already booked, for a party this
      size. Capacity is per service and per time, so a time with one seat left is not open to two guests. */
   const [openMap, setOpenMap] = useState<Map<string, string[]> | null>(null);
@@ -1058,7 +1062,7 @@ function RequestBody({
               slots={chips.map((c) => c.time)}
               time={time}
               onPickTime={setTime}
-              emptyNote={live ? "No departures on this date. Pick another day." : noStartTimesNote(week ? week[day.getDay()] ?? null : null, day.toLocaleDateString("en-US", { weekday: "long" }))}
+              emptyNote={live ? liveEmptyNote(read, dateKey(day)) : noStartTimesNote(week ? week[day.getDay()] ?? null : null, day.toLocaleDateString("en-US", { weekday: "long" }))}
               dayMeta={live ? (d) => {
                 // The dot counts the departures the picker would really offer, so today cannot read as open in
                 // the grid and empty under it once its last start time has gone.

@@ -26,7 +26,7 @@ import { shownReviews, type ShownReview } from "../../lib/reviews";
 import { listingUrl } from "../../lib/site";
 import { adminWebsite, isAdmin, subscribeAdmin } from "../../lib/admin";
 import { dateKey, startOfToday } from "../../lib/dates";
-import { fewSeats, liveChipsByDate, type TimeChip } from "../../lib/liveTimes";
+import { fewSeats, liveEmptyNote, liveRead, type TimeChip } from "../../lib/liveTimes";
 import { safeHttpUrl } from "../../lib/urlSafety";
 import { startingParty } from "../explore/prefs";
 import { useApp } from "../../state/AppProvider";
@@ -1051,8 +1051,14 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
     void fetchAvailability(item.id, dateKey(dates[0]), dates.length).then((a) => { if (alive) setAvail(a); }).catch(() => {});
     return () => { alive = false; };
   }, [item.id]);
-  const liveDays = useMemo(() => liveChipsByDate(avail), [avail]);
-  const live = liveDays.size > 0;
+  const read = useMemo(() => liveRead(avail), [avail]);
+  const liveDays = read.chips;
+  /* Whether the vendor answered, which is the only thing that says whether we may fall back to the published
+     times. A shop with nothing open for a fortnight answered: showing it our nine, eleven and one instead
+     invented three departures a day for a calendar that is empty. */
+  const live = read.live;
+  // Whether they have a departure worth telling the guest about, which is what the highlight row is for.
+  const liveTimes = liveDays.size > 0;
 
   /* What is actually still open on Outset: the claimed shop's own hours minus every time already booked. Loaded
      from the API, reloaded after a booking, and re-keyed on the picked service because capacity is per service,
@@ -1092,7 +1098,7 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
   // An empty picker says why it is empty. A day the shop publishes as closed is not "no more start times
   // today", least of all under a date five days out.
   const emptyNote = live
-    ? "No departures on this date. Pick another day."
+    ? liveEmptyNote(read, dateKey(day))
     : noStartTimesNote(week ? week[day.getDay()] ?? null : null, day.toLocaleDateString("en-US", { weekday: "long" }));
   useEffect(() => { if (time && !openSlots.includes(time)) setTime(null); }, [openSlots, time]);
   // Land the guest on a day that actually has departures rather than an empty one.
@@ -1166,7 +1172,7 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
     const d = dealsNow[0];
     rows.push({ icon: I.tag, title: "Deal today", text: dealShown(d).title + (d.code ? ", code " + d.code : "") + (d.end ? ", until " + clock12(d.end) : d.start ? ", from " + clock12(d.start) : "") });
   }
-  if (live) rows.push({ icon: I.calendar, title: "Live times from their calendar", text: "Start times come straight from " + possessive(item.title) + " own booking system." });
+  if (liveTimes) rows.push({ icon: I.calendar, title: "Live times from their calendar", text: "Start times come straight from " + possessive(item.title) + " own booking system." });
   // Open status is the header line under the subtitle now, so it is not repeated as a highlight row.
   if (cancel) rows.push({ icon: I.calendar, title: cancel, text: "Plans change. Their published policy lets you cancel for a full refund." });
   if (instant) rows.push({ icon: I.bolt, title: "Instant confirmation", text: "Your spot is confirmed the moment you book." });

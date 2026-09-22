@@ -46,6 +46,8 @@ const INDEX = {
     "o-other-vendor-test": "https://www.rezdy.com/booking?w=123",
     "o-xola-button-test": "https://xola.com/button/6a7b8c9d0e1f2a3b4c5d6e7f",
     "o-xola-nobutton-test": "https://xola.com/button/1112223334445556667778a9",
+    "o-peek-unasked-test": "https://book.peek.com/s/3641f444-46fc-54ad-c772-7d8e4d06e0fb/MS3Kn",
+    "o-fh-onemonth-test": "https://fareharbor.com/embeds/book/onemonth/?full-items=yes",
   },
 };
 
@@ -182,4 +184,56 @@ test("a Xola button whose seller cannot be read answers dead rather than guessin
   assert.equal(r.live, false);
   assert.equal(r.vendor, "xola");
   assert.deepEqual(r.days, []);
+});
+
+/**
+ * An empty window is a statement about the shop, so it may only be made about a shop we actually finished
+ * reading. Both of these came back looking complete: every date empty, `partial` unset, which the booking box
+ * and the assistant now read as "nothing open here". One had two of its three activities never asked, the
+ * other had half its window in a month whose calendar never answered.
+ */
+test("a Peek shop whose other activities were never asked does not answer as a shut shop", async () => {
+  const dates = ["2026-09-20", "2026-09-21", "2026-09-22"];
+  const r = await withVendor(
+    (url) => {
+      if (url.includes("live-index.json")) return INDEX;
+      if (url.includes("/programs/"))
+        return {
+          data: { id: "p1" },
+          included: [
+            { type: "activity", id: "a1", attributes: { name: "Kayak" } },
+            { type: "activity", id: "a2", attributes: { name: "Paddleboard" } },
+            { type: "activity", id: "a3", attributes: { name: "Sunset Cruise" } },
+          ],
+        };
+      // Nothing open on the activities the budget reached, and a3 is never asked at all.
+      if (url.includes("availability-dates")) return { data: [] };
+      return undefined;
+    },
+    () => getAvailability("o-peek-unasked-test", dates[0], dates.length),
+  );
+
+  assert.equal(r.live, true);
+  assert.equal(r.vendor, "peek");
+  assert.deepEqual(r.days.map((d) => d.slots.length), [0, 0, 0]);
+  assert.equal(r.partial, true, "two of three activities asked is not an answer for the shop");
+  assert.match(r.note || "", /of 3 activities asked/);
+});
+
+test("a fortnight that straddles two months is partial when only one of them answered", async () => {
+  const r = await withVendor(
+    (url) => {
+      if (url.includes("live-index.json")) return INDEX;
+      if (url.endsWith("/items/")) return { items: [{ pk: 1, name: "Sunset Sail" }] };
+      if (url.includes("/calendar/2026/09/")) return { calendar: { weeks: [{ days: [{ at: "2026-09-28", availabilities: [] }] }] } };
+      // October's calendar never answers, so every October date is empty because we did not look.
+      return undefined;
+    },
+    () => getAvailability("o-fh-onemonth-test", "2026-09-28", 7),
+  );
+
+  assert.equal(r.live, true);
+  assert.equal(r.vendor, "fareharbor");
+  assert.equal(r.partial, true);
+  assert.match(r.note || "", /1 of 2 months read/);
 });

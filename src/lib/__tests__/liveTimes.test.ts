@@ -4,7 +4,7 @@ import { dirname, join } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 import type { LiveAvailability } from "../api";
-import { clockOf, fewSeats, liveChipsByDate } from "../liveTimes";
+import { clockOf, fewSeats, liveChipsByDate, liveEmptyNote, liveRead } from "../liveTimes";
 
 /**
  * The start times a guest picks from when the shop runs FareHarbor, Peek or Xola.
@@ -112,6 +112,52 @@ test("chips come back in clock order however the vendor listed them", () => {
   assert.deepEqual(chips.map((c) => c.time), ["07:05", "12:00", "17:30"]);
 });
 
+/**
+ * A vendor that answered is an answer, whatever it said. Both pickers used to read "no times on any date" as
+ * "no live feed" and draw the published nine, eleven and one over it, so a shop whose calendar is empty for a
+ * fortnight offered a guest three departures a day that it does not run, and let them book one.
+ */
+test("a shop with an empty fortnight has answered, and is not painted over with our own times", () => {
+  const read = liveRead(live([day("2026-09-20", []), day("2026-09-21", [])]));
+  assert.equal(read.live, true, "the vendor answered; nothing here may be guessed");
+  assert.equal(read.chips.size, 0);
+  assert.deepEqual([...read.closed], ["2026-09-20", "2026-09-21"]);
+  assert.equal(read.unread.size, 0);
+  // And the guest is told once, rather than walking a fortnight of dates to find out.
+  assert.equal(liveEmptyNote(read, "2026-09-20"), "Nothing open in the next 2 days on their booking system.");
+});
+
+test("no feed at all still leaves the caller free to show its own times", () => {
+  const read = liveRead({ vendor: null, live: false, days: [] });
+  assert.equal(read.live, false);
+  assert.equal(read.closed.size, 0, "a vendor that did not answer has not closed anything");
+  assert.equal(liveRead(null).live, false);
+  assert.equal(liveChipsByDate(null).size, 0);
+});
+
+test("a date the vendor says is open is never called shut because we ran out of calls", () => {
+  const read = liveRead(
+    live([
+      day("2026-09-20", [{ startsAt: "2026-09-20T17:30", label: "5:30 PM · Sunset Cruise", bookUrl: "x" }]),
+      day("2026-09-21", [{ startsAt: "2026-09-21T00:00", label: "Sunset Cruise", bookUrl: "x", timeUnknown: true }]),
+      day("2026-09-22", []),
+    ]),
+  );
+  assert.deepEqual([...read.unread], ["2026-09-21"]);
+  assert.deepEqual([...read.closed], ["2026-09-22"]);
+  assert.equal(liveEmptyNote(read, "2026-09-21"), "Their booking system has not listed times for this date. Pick another day.");
+  assert.equal(liveEmptyNote(read, "2026-09-22"), "No departures on this date. Pick another day.");
+  // A date the answer never mentioned is not a closed date either.
+  assert.equal(liveEmptyNote(read, "2026-10-30"), "Their booking system has not listed times for this date. Pick another day.");
+});
+
+test("a read that covered only part of the shop does not speak for the whole fortnight", () => {
+  const partial: LiveAvailability = { vendor: "peek", live: true, partial: true, days: [{ date: "2026-09-20", slots: [] }, { date: "2026-09-21", slots: [] }] };
+  const read = liveRead(partial);
+  assert.equal(read.partial, true);
+  assert.equal(liveEmptyNote(read, "2026-09-20"), "No departures on this date. Pick another day.", "two of five activities asked cannot close the shop");
+});
+
 test("both pickers call a time short of seats by the same number", () => {
   assert.equal(fewSeats(4), true);
   assert.equal(fewSeats(5), false);
@@ -121,7 +167,7 @@ test("both pickers call a time short of seats by the same number", () => {
   for (const rel of ["../../components/web/WebListing.tsx", "../../components/booking/Sheets.tsx"]) {
     const src = readFileSync(join(here, rel), "utf8");
     assert.ok(src.includes("fewSeats("), rel + " reads the shared rule");
-    assert.ok(src.includes("liveChipsByDate("), rel + " builds its live chips from the shared reader");
+    assert.ok(src.includes("liveRead("), rel + " builds its live chips from the shared reader");
     assert.ok(!/seatsLeft\s*<=\s*\d/.test(src), rel + " must not carry a threshold of its own");
   }
 });
