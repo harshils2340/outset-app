@@ -3298,7 +3298,7 @@ it drives.
 
 **Found and fixed.**
 
-- **Otto offered a guest this morning's departure at eight in the evening** (`b2a5ab24`). `liveSlots` read the
+- **Otto offered a guest this morning's departure at eight in the evening** (`e5b351da`). `liveSlots` read the
   same `GET /availability` answer the booking box beside it reads, by its own twelve lines rather than through
   `liveTimes.ts`, which is the one reader both pickers use. Four of that reader's rules were missing. The clock
   is the one that shows: the window opens on today and today's departures come back whether or not they have
@@ -3312,13 +3312,13 @@ it drives.
   is not a shut fortnight, and it stays quiet on a window of dates the vendor calls open and whose times the
   call budget never reached, which is the rule `liveEmptyNote` already keeps for the picker.
 - **The operator's test chat asked their booking system for a different window than their guests did**
-  (`7335fca3`). The Assistant page's whole promise, in its own comment, is that the test chat "runs the same
+  (`0263fbed`). The Assistant page's whole promise, in its own comment, is that the test chat "runs the same
   code guests get". It took `fetchAvailability`'s wider 14 day default while every guest surface asks for the
   ten days the booking window covers, so a shop with nothing in the next ten days and a departure on the
   twelfth had Otto naming that opening to the operator testing it and telling their guest the calendar was
   empty. Two windows also miss the shared request cache, which is keyed by window, so the same answer was
   fetched twice. One exported `BOOKING_WINDOW_DAYS` now, read by both, and the wiring test asks for it.
-- **Otto answered "Tuesday" both for tonight and for a departure a week away** (`e1f933da`). `slotLine` named a
+- **Otto answered "Tuesday" both for tonight and for a departure a week away** (`aef4da4e`). `slotLine` named a
   departure by its weekday and nothing else, and the window is ten days, so on a Tuesday the same six words
   were the answer for an eleven o'clock tonight and for one on Tuesday week. Today and tomorrow have their own
   names now, the next five days keep the bare weekday, which says which day on its own, and anything from a
