@@ -24,7 +24,7 @@ import { consolidateDeals } from "./dealText.ts";
 import { buildLiteShard, type LiteRow } from "./liteShard.ts";
 import { durationFrom } from "../../../src/lib/duration.ts";
 import { cancelWindow, onlyOperatorCancels, windowLabel } from "../../../src/lib/cancellation.ts";
-import { bookableRow, tidyRowName } from "../../../src/lib/menuRow.ts";
+import { bookableAddon, bookableRow, tidyRowName } from "../../../src/lib/menuRow.ts";
 import { ownWords } from "../../../src/lib/ownWords.ts";
 import { dialPhone } from "../../../src/lib/phone.ts";
 import { contactEmail } from "../../../src/lib/email.ts";
@@ -634,8 +634,12 @@ export function toCatalogItem(r: CatalogRow): Record<string, unknown> {
         return m ? { name: m[1].trim().replace(/\s+(for|at|only|just|from|is)$/i, ""), detail: "", price: Number(m[2]) } : null;
       })
       .filter((a): a is { name: string; detail: string; price: number } => !!a)
-      // "An additional $35" is a fee sentence, not something a guest adds to a cart.
+      // "An additional $35" is a fee sentence, not something a guest adds to a cart. The same test the app runs
+      // on every record it loads (`bookableAddon`) catches the rest of them, which is the sentence that opens
+      // with real words and stops on the one before the money: "Gazebo sites are an additional".
       .filter((a) => a.name.length >= 3 && !/^(an?|the|plus|extra|additional|only|just|from|starting|starts|add|adds|is|are|and|or|for)\b/i.test(a.name) && !/\b(fee|surcharge|deposit|tax|gratuity|tip|per person|per hour)\b/i.test(a.name))
+      .filter((a) => bookableAddon(a.name))
+      .map((a) => ({ ...a, name: tidyRowName(a.name) }))
       .slice(0, 6),
     // The honest gap line. Once the widget or crawl gave real rules and policies, say those instead of "not copied yet".
     // "Exact prices not stated" was written by an extraction that never saw the pricing page; once a menu line has a price, that gap is stale.

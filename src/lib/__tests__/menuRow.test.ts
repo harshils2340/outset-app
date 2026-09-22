@@ -13,7 +13,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { readFileSync, readdirSync } from "node:fs";
 
-import { bookableMenu, bookableRow, tidyRowName } from "../menuRow";
+import { bookableAddon, bookableMenu, bookableRow, tidyRowName } from "../menuRow";
 
 const dir = new URL("../../../public/o/", import.meta.url);
 type Detail = { id: string; options?: { name: string; price: number | null }[]; services?: { name: string; variants: { label: string; price: number | null; optionIdx: number }[] }[] };
@@ -186,6 +186,99 @@ test("every tier on every shipped menu still points at its own option", () => {
     }
   }
   assert.deepEqual(offenders.slice(0, 10), []);
+});
+
+/* ---------- add-ons, which are read off any line with money at the end of it ---------- */
+
+test("a sentence about a charge is not a thing a guest can tick", () => {
+  // Every one of these is a shipped add-on, name and price as the booking box drew them.
+  for (const name of [
+    "Gazebo sites are an additional", // o-033b649-netsolhost-com, $5
+    "Lost or damaged bikes will incur a cost of", // o-albertasportshalloffame-ca, $1,000
+    "This internship includes a stipend of", // o-bdmuseum-org, $3,000
+    "Get Delivery with orders of", // o-a1abeachrentals-com, $50, which is an order minimum and not a price
+    "Prices include first 1-3 persons, extras are", // o-actionfishingmyrtlebeach-com, $50
+    "5 Holbrook, Tips were reported at an average of", // o-abhmuseum-org, $100
+    "Deposits will be returned minus a", // $15
+    "Multiple camp days are subject to", // $55
+    "every additional person after that it would be", // $50
+    "PRIVATE TOUR UPGRADE! Additional", // $50
+    "Bring your lunch, or add on the", // $5
+    "Service Description *Additional", // $25
+    "+ taxes and", // $50
+    "(additional", // $100, and nothing else at all
+    "Submit Your Monthly Photos For A Chance To Win A", // $50
+    "All rates are subject to taxes. A", // $50
+  ]) {
+    assert.equal(bookableAddon(name), false, name);
+  }
+});
+
+test("an add-on that names a thing stays, however it is punctuated", () => {
+  for (const name of [
+    "Digital photo package (", // the price was inside the bracket
+    "S'mores kit (additional",
+    "Four (4) 50-minute Private Pilates Lessons (",
+    "Nitrox upgrade (",
+    "Guided tours of the Becuna (a",
+    "Live Guided House Tour w/ Q & A", // a capital A after "&" is the name, not a cut article
+    "Session A",
+    "Wetsuit Drying Station",
+    "Rates are for each night - Extra person charge",
+    "Handcam Video",
+  ]) {
+    assert.equal(bookableAddon(name), true, name);
+  }
+});
+
+test("the bracket the price was taken out of comes off the name", () => {
+  assert.equal(tidyRowName("Digital photo package ("), "Digital photo package");
+  assert.equal(tidyRowName("S'mores kit (additional"), "S'mores kit");
+  assert.equal(tidyRowName("Prime Rib Au Jus (Additional"), "Prime Rib Au Jus");
+  assert.equal(tidyRowName("INCLUDES GAS! (was"), "INCLUDES GAS!");
+  assert.equal(tidyRowName("Astrid Klein: Trager, New Photoworks ["), "Astrid Klein: Trager, New Photoworks");
+  // A bracket that closes is the row's own and stays, and so does one that is not at the end.
+  assert.equal(tidyRowName("Four (4) 50-minute Private Pilates Lessons ("), "Four (4) 50-minute Private Pilates Lessons");
+  assert.equal(tidyRowName("All Day LaDue Boat & Equipment Rental (> 6 Hours)"), "All Day LaDue Boat & Equipment Rental (> 6 Hours)");
+  assert.equal(tidyRowName("Golf Weekday Juniors (<17) and Seniors (50+) Resident"), "Golf Weekday Juniors (<17) and Seniors (50+) Resident");
+});
+
+test("a service row's own trailing word is still only trimmed, never dropped", () => {
+  // 93 shops put "Tickets are" and "Admission is" on their menu and the row in front of it is the service.
+  // Only add-ons are read out of whole sentences, so only add-ons are dropped for it.
+  for (const name of ["Tickets are", "Admission is", "Boxing For"]) {
+    assert.equal(bookableRow(name, 20), true, name);
+    assert.ok(tidyRowName(name).length >= 2, name);
+  }
+});
+
+test("no shipped add-on hands a guest half a sentence with a price beside it", () => {
+  // Read the way the booking box reads it: bookableMenu is what every record the app loads goes through.
+  const bad: string[] = [];
+  let addons = 0;
+  for (const j of details() as (Detail & { addons?: { name: string; price: number | null }[] })[]) {
+    for (const a of bookableMenu(j).addons || []) {
+      addons++;
+      if (!bookableAddon(a.name) || /[\s([{]$/.test(a.name)) bad.push(j.id + ": " + JSON.stringify(a.name));
+    }
+  }
+  assert.ok(addons > 3000, "expected the shipped add-ons, read " + addons);
+  assert.deepEqual(bad.slice(0, 10), [], bad.length + " add-ons still read as a cut sentence, first: " + bad[0]);
+});
+
+test("the add-ons this takes off the shipped catalog are the ones it was written for", () => {
+  let dropped = 0;
+  let total = 0;
+  for (const j of details() as (Detail & { addons?: { name: string; price: number | null }[] })[]) {
+    for (const a of j.addons || []) {
+      total++;
+      if (!bookableAddon(a.name)) dropped++;
+    }
+  }
+  // 365 of 3,825 the day this was written. The count falls as the sync stops writing them, so the ceiling is
+  // what this guards: the rule must take the cut sentences and never start eating a real add-on list.
+  assert.ok(dropped >= 300 && dropped < 500, "expected the cut sentences, dropped " + dropped + " of " + total);
+  assert.ok(total - dropped > 3000, "the rule is eating real add-ons, kept " + (total - dropped));
 });
 
 test("the rows this takes off the shipped catalog are the ones it was written for", () => {
