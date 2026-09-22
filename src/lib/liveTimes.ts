@@ -153,6 +153,26 @@ export function liveRead(avail: LiveAvailability | null | undefined): LiveRead {
 }
 
 /**
+ * Whether the vendor's answer is what a picker draws, which is the only thing that says whether our own
+ * published times may stand in for it.
+ *
+ * An empty answer stands: a shop with nothing open for a fortnight has answered, and drawing nine, eleven and
+ * one over that invents three departures a day for a calendar that is empty. The one exception is a claimed
+ * shop that has slots of its own, which is what `sellsItsOwn` has to mean: an operator sets their hours, slot
+ * length, notice, days off and blocked slots in the dashboard, and the catalog may still hold a booking link
+ * of theirs from before they claimed, so an empty fortnight on that stale calendar must not empty the picker
+ * of a shop taking bookings here.
+ *
+ * `GET /bookings/open` on its own does not say that: for an unclaimed listing it answers with the same fixed
+ * times the guest page always showed, minus the hours its own site says it is shut for. Passing that through
+ * as "slots of its own" would hand every unclaimed shop back its guessed nine, eleven and one and undo the
+ * whole point of this. The caller has to have read `claimed`.
+ */
+export function liveWins(read: LiveRead, sellsItsOwn: boolean): boolean {
+  return read.live && (read.chips.size > 0 || !sellsItsOwn);
+}
+
+/**
  * The line under a picker with nothing in it, when the times are the vendor's own. "No departures on this
  * date" is only true of a date they covered: on a date whose times we never read it tells a guest the shop is
  * shut when its calendar says the opposite, and on a shop with an empty window it sends them through a

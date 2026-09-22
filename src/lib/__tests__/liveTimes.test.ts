@@ -4,7 +4,7 @@ import { dirname, join } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 import type { LiveAvailability } from "../api";
-import { clockOf, fewSeats, liveChipsByDate, liveEmptyNote, liveRead } from "../liveTimes";
+import { clockOf, fewSeats, liveChipsByDate, liveEmptyNote, liveRead, liveWins } from "../liveTimes";
 
 /**
  * The start times a guest picks from when the shop runs FareHarbor, Peek or Xola.
@@ -156,6 +156,36 @@ test("a read that covered only part of the shop does not speak for the whole for
   const read = liveRead(partial);
   assert.equal(read.partial, true);
   assert.equal(liveEmptyNote(read, "2026-09-20"), "No departures on this date. Pick another day.", "two of five activities asked cannot close the shop");
+});
+
+/**
+ * A claimed shop sells its own slots here, and the catalog may still hold a booking link of theirs from
+ * before they claimed. Now that an empty vendor answer stands, that stale link would have closed a shop that
+ * is taking bookings on Outset, which is the one place this rule must not reach.
+ */
+test("a claimed shop's own slots are not closed by an empty answer from a calendar we merely hold a link to", () => {
+  const empty = liveRead(live([day("2026-09-20", []), day("2026-09-21", [])]));
+  assert.equal(liveWins(empty, false), true, "no slots of its own, so the vendor's empty answer stands");
+  assert.equal(liveWins(empty, true), false, "what it sells on Outset is not closed by a third party");
+
+  const timed = liveRead(live([day("2026-09-20", [{ startsAt: "2026-09-20T09:00", label: "9:00 AM", bookUrl: "x" }])]));
+  assert.equal(liveWins(timed, true), true, "a vendor with real times wins either way, as it always has");
+
+  const dead = liveRead({ vendor: null, live: false, days: [] });
+  assert.equal(liveWins(dead, false), false, "a vendor that did not answer never wins");
+
+  /**
+   * And what the second argument may be read from. `GET /bookings/open` answers for an unclaimed listing too,
+   * with the same fixed times the page would otherwise guess, so a picker that passed that straight through
+   * would hand every unclaimed shop its nine, eleven and one back and undo the rule above. Both pickers read
+   * `claimed` first.
+   */
+  for (const rel of ["../../components/web/WebListing.tsx", "../../components/booking/Sheets.tsx"]) {
+    const src = readFileSync(join(dirname(fileURLToPath(import.meta.url)), rel), "utf8");
+    const call = /const ownSlots = useMemo\(([\s\S]*?)\);\n/.exec(src);
+    assert.ok(call, rel + " works out whether the shop sells its own slots");
+    assert.match(call[1], /item\.claimed/, rel + " may only call an unclaimed listing's fixed times ours, not the shop's");
+  }
 });
 
 test("a date with no start times is not read out as sold when the shop simply has nothing on", () => {

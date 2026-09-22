@@ -26,7 +26,7 @@ import { shownReviews, type ShownReview } from "../../lib/reviews";
 import { listingUrl } from "../../lib/site";
 import { adminWebsite, isAdmin, subscribeAdmin } from "../../lib/admin";
 import { dateKey, startOfToday } from "../../lib/dates";
-import { fewSeats, liveEmptyNote, liveRead, type TimeChip } from "../../lib/liveTimes";
+import { fewSeats, liveEmptyNote, liveRead, liveWins, type TimeChip } from "../../lib/liveTimes";
 import { safeHttpUrl } from "../../lib/urlSafety";
 import { startingParty } from "../explore/prefs";
 import { useApp } from "../../state/AppProvider";
@@ -1053,10 +1053,6 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
   }, [item.id]);
   const read = useMemo(() => liveRead(avail), [avail]);
   const liveDays = read.chips;
-  /* Whether the vendor answered, which is the only thing that says whether we may fall back to the published
-     times. A shop with nothing open for a fortnight answered: showing it our nine, eleven and one instead
-     invented three departures a day for a calendar that is empty. */
-  const live = read.live;
   // Whether they have a departure worth telling the guest about, which is what the highlight row is for.
   const liveTimes = liveDays.size > 0;
 
@@ -1077,6 +1073,24 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
       alive = false;
     };
   }, [item.id, picked?.name, qty, openTick]);
+  /**
+   * Whether the vendor's answer is what the picker draws, which is the only thing that says whether the
+   * published times may stand in for it.
+   *
+   * A shop with nothing open for a fortnight has answered: drawing our nine, eleven and one over that
+   * invented three departures a day for a calendar that is empty, and a guest could book one. An empty answer
+   * therefore stands, with one exception: a claimed shop sells its own slots here, so a third party calendar
+   * we happen to hold a link to does not get to close a shop that is taking bookings on Outset. A vendor
+   * answering with real times still wins, as it always has.
+   */
+  const ownSlots = useMemo(
+    // Only a claimed shop has slots of its own: for an unclaimed listing this route answers with the same
+    // fixed times the page would have guessed anyway, and reading those as the shop's own would hand every
+    // unclaimed shop its nine, eleven and one straight back.
+    () => !!item.claimed && !!openMap && [...openMap.values()].some((v) => v.length > 0),
+    [item.claimed, openMap],
+  );
+  const live = liveWins(read, ownSlots);
 
   // Today only shows start times at least an hour out. Nobody can book a 7 AM slot at 8:30. "Today" and "an
   // hour out" are both read on the shop's clock, because the times themselves are its wall clock times.
