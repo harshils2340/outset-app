@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { db, nowIso } from "../db/client.ts";
 import { safeFetch } from "../lib/safeFetch.ts";
+import { clip } from "../lib/clip.ts";
 import { normalizePhone } from "../scrape/run.ts";
 import { withDeadline } from "../scrape/fetch.ts";
 import { spawnWorkers } from "../scrape/cpu.ts";
@@ -244,7 +245,7 @@ export async function readFareharbor(shortname: string): Promise<WidgetResult | 
     if (!item || !item.name || item.is_archived || item.is_unlisted || item.is_private) continue;
     const headline = plain(item.headline);
     const descLong = plain(item.description_text || item.description);
-    const desc = [plain(item.short_description) || descLong.slice(0, 600).replace(/\s+\S*$/, ""), headline ? headline.replace(/\s*\|\s*/g, " · ") : ""].filter(Boolean).join(" ").slice(0, 700);
+    const desc = clip([plain(item.short_description) || clip(descLong, 600), headline ? headline.replace(/\s*\|\s*/g, " · ") : ""].filter(Boolean).join(" "), 700);
     const photos = (item.images || []).map((i) => i.image_cdn_url).filter(Boolean);
     if (item.image_cdn_url && !photos.includes(item.image_cdn_url)) photos.unshift(item.image_cdn_url);
     const duration = durationOf(headline, descLong);
@@ -296,9 +297,9 @@ export async function readFareharbor(shortname: string): Promise<WidgetResult | 
       cover: c.image_background_cdn_url || null,
       videoEmbed: yt ? "https://www.youtube.com/embed/" + yt[1] : null,
       waiverUrl: c.smartwaiver_url || null,
-      cancellation: plain(c.cancellation_notes).slice(0, 400) || null,
-      checkin: plain(c.booking_notes).slice(0, 400) || null,
-      faq: plain(c.faq).slice(0, 1200) || null,
+      cancellation: clip(plain(c.cancellation_notes), 400) || null,
+      checkin: clip(plain(c.booking_notes), 400) || null,
+      faq: clip(plain(c.faq), 1200) || null,
     },
     requirements: [...req].slice(0, 10),
     policies: [...pol].slice(0, 10),
@@ -388,7 +389,7 @@ export async function readXola(ref: string): Promise<WidgetResult | null> {
     if (!currency && e.currency) currency = e.currency;
     const name = String(e.name).trim();
     const photos = [...new Set([e.photo?.src, ...(e.medias || []).filter((m) => m.type === "photo").map((m) => m.src)].filter((s): s is string => !!s).map((s) => (s.startsWith("http") ? s : "https://xola.com" + s)))].slice(0, 6);
-    const desc = plain(e.excerpt) || plain(e.desc).slice(0, 700).replace(/\s+\S*$/, "");
+    const desc = plain(e.excerpt) || clip(plain(e.desc), 700);
     const durationText = xolaMinutes(e.duration || e.eventDuration);
     const url = "https://checkout.xola.com/index.html#seller/" + seller + "/experiences/" + e.id;
     const demoLabel = new Map<string, string>();
@@ -616,7 +617,7 @@ export async function readPeek(key: string, code: string): Promise<WidgetResult 
       const unit = rental && !perPersonTicket ? "/" + (/(boat|pontoon|tritoon)/i.test(name + " " + ticketNames.join(" ")) ? "boat" : /(jet ?ski|waverunner|sea-?doo)/i.test(name + " " + ticketNames.join(" ")) ? "jet ski" : /kayak|paddle|sup\b/i.test(name) ? "each" : "rental") : unitOf(ticketNames.join(" "), name);
       const durationText = peekMinutes(a["duration-min-minutes"], a["duration-max-minutes"]);
       const noImg = (t: unknown) => (typeof t === "string" ? t.replace(/!\[[^\]]*\]\([^)]*\)/g, " ") : t);
-      const desc = plain(noImg(a["description-short"])) || plain(noImg(a.description)).slice(0, 700).replace(/\s+\S*$/, "");
+      const desc = plain(noImg(a["description-short"])) || clip(plain(noImg(a.description)), 700);
       const image = typeof a.image === "string" ? a.image : tile?.image || null;
       const priced = mine.filter((t) => Number.isFinite(Number(t["source-price-gross"])) && Number(t["source-price-gross"]) > 0);
       // Tickets with a blank catalog price (rentals by the hour, date-priced seats) get their price from the availability feed, one ticket at a time.

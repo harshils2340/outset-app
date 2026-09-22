@@ -7,6 +7,7 @@ import { writeLandingPages } from "./pages.ts";
 import { writeListingPages } from "./listingPages.ts";
 import { encodeWeek, isTradingHoursLine } from "./hours.ts";
 import { claimKeyHash } from "../lib/claim.ts";
+import { clip } from "../lib/clip.ts";
 import { crawledPhotoStats, crawledPhotosFor } from "./photoSidecar.ts";
 import { crawledStructureFor, crawledStructureStats, crawledHoursFor } from "./structureSidecar.ts";
 import { cleanImageUrl } from "../enrich/srcset.ts";
@@ -676,7 +677,7 @@ export function toCatalogItem(r: CatalogRow): Record<string, unknown> {
     lon: r.lon ?? undefined,
     locations: extraLocations(r.id),
     tags: uniq([...pick("google_category"), ...pick("service"), ...offerings.map((o) => o.name)].map((t) => collapseRepeats(fixShouting(t)))).filter((t) => !NOT_A_SERVICE.test(t) && !NAV_LABEL.test(t)).slice(0, 12),
-    extraNote: [...pick("extra").slice(0, 1), ...pick("policy"), ...pick("checkin"), ...pick("meeting_point"), ...pick("season")].filter((l) => !SILENT.test(l)).join(" · ").slice(0, 700) || undefined,
+    extraNote: clip([...pick("extra").slice(0, 1), ...pick("policy"), ...pick("checkin"), ...pick("meeting_point"), ...pick("season")].filter((l) => !SILENT.test(l)).join(" · "), 700) || undefined,
     // Viator-shaped sections. Each only appears when the site said it.
     highlights: collapseRules(uniq(pick("spec").map((s) => tidyDashes(cleanLine(s)))).filter(isTidyLine).filter((l) => !/^what to bring\b|you are required to bring/i.test(l))).slice(0, 8),
     requirements: collapseRules(uniq(pick("requirement").map(cleanLine)).filter(isTidyLine)).slice(0, 10),
@@ -1213,7 +1214,7 @@ function dedupeSentences(t: string, onDrop: (s: string) => void): string {
 
 /** Log entries are 80 characters, the length that fits a terminal line. CLEANUP_CLIP widens them while tuning. */
 const CLIP = Number(process.env.CLEANUP_CLIP || 80);
-function clip(t: string): string {
+function logClip(t: string): string {
   return t.replace(/\s+/g, " ").trim().slice(0, CLIP);
 }
 
@@ -1234,9 +1235,9 @@ function tidyItem(item: Record<string, unknown>, id: string): Record<string, unk
   const calm = calmWords(texts, String(item.title || ""));
   const fix = (field: string, v: string, para: boolean): string => {
     const shouted = deshout(v, calm);
-    if (shouted !== v && cleanupLog) cleanupLog.shouted.push({ id, field, before: clip(v), after: clip(shouted) });
+    if (shouted !== v && cleanupLog) cleanupLog.shouted.push({ id, field, before: logClip(v), after: logClip(shouted) });
     if (!para) return shouted;
-    return dedupeSentences(shouted, (s) => cleanupLog?.deduped.push({ id, field, text: clip(s) }));
+    return dedupeSentences(shouted, (s) => cleanupLog?.deduped.push({ id, field, text: logClip(s) }));
   };
   for (const k of PARA_FIELDS) if (typeof item[k] === "string") item[k] = fix(k, item[k] as string, true) || undefined;
   for (const k of LIST_FIELDS) {
@@ -1248,7 +1249,7 @@ function tidyItem(item: Record<string, unknown>, id: string): Record<string, unk
       .filter((l) => {
         const key = sentenceKey(l);
         if (key && seen.has(key)) {
-          cleanupLog?.deduped.push({ id, field: k, text: clip(l) });
+          cleanupLog?.deduped.push({ id, field: k, text: logClip(l) });
           return false;
         }
         if (key) seen.add(key);
@@ -1859,7 +1860,7 @@ export function decodeEntities(raw: string): string {
 
 /** Markdown, image tags and widget leftovers out; one clean sentence in. */
 function cleanLine(raw: string): string {
-  return raw
+  const out = raw
     .replace(/!\[[^\]]*\]\([^)]*\)/g, " ")
     .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
     .replace(/[#*_>`]+/g, " ")
@@ -1870,8 +1871,8 @@ function cleanLine(raw: string): string {
     .replace(/^[\s:;,.\-–—|]+/, "")
     .replace(/\s*-{2,}\s*/g, " - ")
     .replace(/\s+/g, " ")
-    .trim()
-    .slice(0, 240);
+    .trim();
+  return clip(out, 240);
 }
 
 /**
@@ -1935,7 +1936,7 @@ function parseFaqs(raw: string): { q: string; a: string }[] {
     const next = a.search(/[.!]\s+[A-Z][^.!?]{8,120}\?/);
     if (next > 20) a = a.slice(0, next + 1);
     if (q.length < 8 || a.length < 12) continue;
-    out.push({ q, a: a.slice(0, 500) });
+    out.push({ q, a: clip(a, 500) });
   }
   return out;
 }

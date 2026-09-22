@@ -39,26 +39,10 @@ const money = (n: number) => (Number.isInteger(n) ? "$" + n.toLocaleString("en-U
 // as the same JSON, so nothing here is lossy.
 const ldJson = (ld: unknown) => JSON.stringify(ld).replace(/</g, "\\u003c");
 
-/**
- * An operator's blurb, cut where a sentence or a word ends rather than at whatever character the count landed
- * on. `slice(0, 300)` cut 3,049 of the 11,545 pages mid-word: "The guide shares favorite fishing spot",
- * "Inferno Hot Pilates, Vi". That was already the meta description a search result prints, and it is now the
- * og:description a link preview shows a friend, which is where a sentence stopping in the middle of a word
- * reads as something broken rather than something trimmed.
- *
- * A sentence end in the last third of the allowance wins, because it is a real ending and needs no mark. Past
- * that, the last word boundary, with an ellipsis to say the text goes on. Anything already short enough is
- * left exactly as the operator wrote it.
- */
-export function clip(text: string, max: number): string {
-  const s = text.trim();
-  if (s.length <= max) return s;
-  const head = s.slice(0, max);
-  const sentence = Math.max(head.lastIndexOf(". "), head.lastIndexOf("! "), head.lastIndexOf("? "));
-  if (sentence >= Math.floor(max * 0.66)) return head.slice(0, sentence + 1);
-  const word = head.lastIndexOf(" ");
-  return (word > 0 ? head.slice(0, word) : head).replace(/[,;:\s]+$/, "") + "…";
-}
+// The blurb cut this file used to own now serves every budget a guest's prose is cut to; see lib/clip.ts.
+import { clip } from "../lib/clip.ts";
+export { clip };
+
 
 /**
  * schema.org type, where the activity implies a real one in the vocabulary and it stays a LocalBusiness (so

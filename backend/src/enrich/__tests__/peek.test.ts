@@ -40,7 +40,9 @@ test("Peek: Dogpatch Paddle reads hourly rentals from the availability feed and 
   assert.equal(sup.unit, "/hr");
   assert.equal(sup.duration, "2 hours to 5 hours");
   assert.equal(sup.url, "https://book.peek.com/s/2530f333-35eb-43fc-b661-6c7d3c95dfea/LR2Jm");
-  assert.equal(sup.desc, "Beginner, Youth, Performance, and Dog Friendly");
+  // The shop wrote "...and Dog Friendly Rentals". The old cut ran `slice(0, 700).replace(/\s+\S*$/, "")`
+  // unconditionally, so every description shorter than the budget lost its last word; this one lost "Rentals".
+  assert.equal(sup.desc, "Beginner, Youth, Performance, and Dog Friendly Rentals");
   assert.equal(sup.photo, "https://www.filepicker.io/api/file/iPEHu6waTyKlv1X8r9rv");
   assert.equal(row("SUP Rentals", "Small Adult/Youth SUP").price, 32.5);
   assert.equal(row("SUP Rentals", "Child SUP (7+)").price, 20);
