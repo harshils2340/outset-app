@@ -13,6 +13,7 @@ import { applyFilters, atMetro, browseList, nearFirst, whatLabel } from "./feed"
 import { activeFilterCount, clearFilters, setPrefs, usePrefs } from "./prefs";
 import "../../styles/air-phone.css";
 import { useDeadCovers, withPhotos } from "../../lib/deadCovers";
+import { AGENT_MODE_LIVE } from "../../lib/concierge";
 
 /** Cards mounted per page of the feed. More arrive as the guest nears the end, the way Airbnb's list does. */
 const PAGE = 18;
@@ -134,9 +135,11 @@ export function ExploreView({ onAsk, onCloseAsk, asking }: { onAsk: () => void; 
                 <small>{pillSub}</small>
               </span>
             </button>
-            <button type="button" className={"airask" + (asking ? " on" : "")} onClick={() => (asking ? onCloseAsk?.() : onAsk())} aria-pressed={asking} aria-label={asking ? "Back to browse" : "Ask"}>
-              <Markup html={ICONS.spark} />
-            </button>
+            {AGENT_MODE_LIVE ? (
+              <button type="button" className={"airask" + (asking ? " on" : "")} onClick={() => (asking ? onCloseAsk?.() : onAsk())} aria-pressed={asking} aria-label={asking ? "Back to browse" : "Ask"}>
+                <Markup html={ICONS.spark} />
+              </button>
+            ) : null}
             <button type="button" className="airfilter" onClick={openFilters} aria-label="Filters">
               <IcFilters size={16} />
             </button>
@@ -194,9 +197,11 @@ export function ExploreView({ onAsk, onCloseAsk, asking }: { onAsk: () => void; 
             wide site, which matters because a judge scanning a QR code and the laptop on stage are looking at
             the same product.
           */}
-          <button type="button" className={"airask" + (asking ? " on" : "")} onClick={() => (asking ? onCloseAsk?.() : onAsk())} aria-pressed={asking} aria-label={asking ? "Back to browse" : "Ask"}>
-            <Markup html={ICONS.spark} />
-          </button>
+          {AGENT_MODE_LIVE ? (
+            <button type="button" className={"airask" + (asking ? " on" : "")} onClick={() => (asking ? onCloseAsk?.() : onAsk())} aria-pressed={asking} aria-label={asking ? "Back to browse" : "Ask"}>
+              <Markup html={ICONS.spark} />
+            </button>
+          ) : null}
           <button type="button" className={"airfilter" + (filterCount ? " on" : "")} onClick={openFilters} aria-label="Filters">
             <IcFilters size={16} />
             {filterCount ? <span className="airfiltercount">{filterCount}</span> : null}

@@ -21,7 +21,8 @@ import { DAY_SHORT, assistantOn, clock12, dayLabel, todaysDeals } from "../../li
 import { fmtDistance } from "../../lib/geo";
 import { kmBetween, nearestLocation, venueLabel } from "../../lib/places";
 import { addonPrice, hasPrice, priceUnclaimed, serviceFeeLabel } from "../../lib/pricing";
-import { ottoCanPay, useWallet } from "../../lib/wallet";
+import { ottoActive, useWallet } from "../../lib/wallet";
+import { AGENT_MODE_LIVE } from "../../lib/concierge";
 import { shownReviews, type ShownReview } from "../../lib/reviews";
 import { listingUrl } from "../../lib/site";
 import { adminWebsite, isAdmin, subscribeAdmin } from "../../lib/admin";
@@ -1037,7 +1038,7 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
   useEffect(() => { if (ready && p.total) warmCheckout(); }, [ready, p.total]);
   const instant = !!(item.claimed && item.instant);
   // Say what pressing it does: a card payment, Otto holding the saved card, or a request the operator confirms.
-  const ottoNow = ottoCanPay(wallet, p.total);
+  const ottoNow = ottoActive(wallet, p.total);
   const ctaLabel = payments && p.total ? (ottoNow ? "Book with Otto" : "Book and pay") : instant ? "Book" : "Request to book";
   const day = dates[state.dateIdx];
 
@@ -2067,7 +2068,7 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
                   and the phone number, which sits under it as a second option, becomes the first one. The phone
                   listing has honoured this switch all along; the desktop one stopped when its Otto panel became
                   an Ask Outset button, and offered the shop's own information back to a guest either way. */}
-              {assistantOn(item) ? (
+              {AGENT_MODE_LIVE && assistantOn(item) ? (
                 <>
                   <p className="alsecsub">Ask Outset reads {possessive(item.title)} own published information, and can check live availability while you wait.</p>
                   <button type="button" className="aloutline" onClick={() => openAsk("What should I know about " + item.title + " before booking?")}>

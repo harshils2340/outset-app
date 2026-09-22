@@ -6,6 +6,12 @@ import { domainOf, experienceById, getCatalog, rememberOverlay } from "./catalog
 import { dateFromKey } from "./dates";
 import { fmtDate, fmtTime, money, plural } from "./format";
 
+// Agent Mode (this file, WebConcierge, the Browse/Agent toggle, every "Ask Outset" entry point) was built for
+// the hackathon demo above and isn't part of the live product yet. `import.meta.env.DEV` compiles to `false`
+// in a production build, so every entry point disappears from what a visitor downloads while it stays usable
+// in a local dev build. The code underneath stays put.
+export const AGENT_MODE_LIVE = !!import.meta.env?.DEV;
+
 /**
  * The concierge, from inside the guest app.
  *

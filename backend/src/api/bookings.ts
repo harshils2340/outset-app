@@ -4,7 +4,7 @@ import { readJson } from "../lib/store.ts";
 import { getBooking, getProfile, getWallet, insertBookingChecked, listBookings, updateBooking, updateBookingChecked } from "../lib/repo.ts";
 import type { StoredProfile } from "./profiles.ts";
 import { capture, chargeSaved, createCheckout, releaseIntent, reverseTransfer, sessionStatus, stripeEnabled, verifyWebhook } from "../lib/stripe.ts";
-import { agentMayCharge, WALLET_ID } from "../payments/wallet.ts";
+import { agentMayCharge, OTTO_LIVE, WALLET_ID } from "../payments/wallet.ts";
 import { attachWalletFromSession } from "./wallet.ts";
 import { currencyForArea, priceBooking, releaseDate, splitBooking, type PricedOption, type Split } from "../payments/money.ts";
 import { mailDecision, mailNewBooking } from "./bookingMail.ts";
@@ -307,7 +307,7 @@ bookings.post("/bookings", rateLimit(20, 60 * 60 * 1000), async (c) => {
       const walletToken = (c.req.header("x-wallet") || bodyText((b as { wallet?: unknown } | null)?.wallet)).trim().toLowerCase();
       if (WALLET_ID.test(walletToken)) {
         const w = await getWallet(walletToken);
-        if (w && w.stripe_customer && agentMayCharge({ otto: w.otto, paymentMethod: w.payment_method, maxCents: w.max_cents }, rec.total!)) {
+        if (w && w.stripe_customer && OTTO_LIVE && agentMayCharge({ otto: w.otto, paymentMethod: w.payment_method, maxCents: w.max_cents }, rec.total!)) {
           try {
             const pi = await chargeSaved({ amount: rec.total!, currency, customer: w.stripe_customer, paymentMethod: w.payment_method!, code, listing });
             if (pi.status === "requires_capture" || pi.status === "succeeded") {

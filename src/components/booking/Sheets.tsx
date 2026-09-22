@@ -31,7 +31,8 @@ import {
 import { fmtDate, fmtReviews, fmtTime, money, priceWith, reviewsLine, unitLine } from "../../lib/format";
 import { formatDistance, milesBetween, type GeoPoint } from "../../lib/geo";
 import { addonPrice, hasPrice, priceFor, priceUnclaimed, serviceFeeLabel } from "../../lib/pricing";
-import { ottoCanPay, useWallet } from "../../lib/wallet";
+import { ottoActive, useWallet } from "../../lib/wallet";
+import { AGENT_MODE_LIVE } from "../../lib/concierge";
 import { useApp } from "../../state/AppProvider";
 import { SIZES, srcSet, thumb } from "../../lib/images";
 import { embedAutoplay, listingMedia, photoCandidates, probePhotos, type Media } from "../../lib/media";
@@ -414,7 +415,7 @@ function RequestBody({
   useEffect(() => { let alive = true; void apiConfig().then((c) => { if (alive) setPayments(c.payments); }); return () => { alive = false; }; }, []);
   const { wallet } = useWallet();
   const cardNow = payments && !!p.total;
-  const ottoNow = ottoCanPay(wallet, p.total);
+  const ottoNow = ottoActive(wallet, p.total);
   // The public rating and its count appear only beside written reviews we can actually show (see WebListing).
   const reviews = useMemo(() => shownReviews(item.quotes, item.title), [item.quotes, item.title]);
   const score = reviews.length ? publicRating(item) : null;
@@ -1145,13 +1146,17 @@ function RequestBody({
               ) : null}
               {callOpen && callHref ? (
                 <div className="callpick">
-                  <button type="button" className="airaccent" onClick={() => onAsk()}>
-                    Ask Outset instead
-                  </button>
+                  {AGENT_MODE_LIVE ? (
+                    <>
+                      <button type="button" className="airaccent" onClick={() => onAsk()}>
+                        Ask Outset instead
+                      </button>
+                      <p className="reqhint">Outset answers by chat for now. Voice is coming.</p>
+                    </>
+                  ) : null}
                   <a className="airghost" href={callHref} onClick={(e) => e.stopPropagation()}>
                     Call a person at the shop
                   </a>
-                  <p className="reqhint">Outset answers by chat for now. Voice is coming.</p>
                 </div>
               ) : null}
               {hours.length ? (
@@ -1174,31 +1179,33 @@ function RequestBody({
             ) : null}
           </Section>
 
-          <section className="airsec">
-            <div className="airotto">
-              <div className="airottohead">
-                <span className="airottomark">
-                  <Markup html={ICONS.spark} />
-                </span>
-                <span>
-                  <b>Ask Outset</b>
-                  <small>Reads {possessive(item.title)} published info, and live availability, 24/7</small>
-                </span>
-              </div>
-              {suggestions.length ? (
-                <div className="airottochips">
-                  {suggestions.map((s) => (
-                    <button key={s} type="button" onClick={() => onAsk(s)}>
-                      {s}
-                    </button>
-                  ))}
+          {AGENT_MODE_LIVE ? (
+            <section className="airsec">
+              <div className="airotto">
+                <div className="airottohead">
+                  <span className="airottomark">
+                    <Markup html={ICONS.spark} />
+                  </span>
+                  <span>
+                    <b>Ask Outset</b>
+                    <small>Reads {possessive(item.title)} published info, and live availability, 24/7</small>
+                  </span>
                 </div>
-              ) : null}
-              <button type="button" className="airghost wide" onClick={() => onAsk()}>
-                Message Outset
-              </button>
-            </div>
-          </section>
+                {suggestions.length ? (
+                  <div className="airottochips">
+                    {suggestions.map((s) => (
+                      <button key={s} type="button" onClick={() => onAsk(s)}>
+                        {s}
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
+                <button type="button" className="airghost wide" onClick={() => onAsk()}>
+                  Message Outset
+                </button>
+              </div>
+            </section>
+          ) : null}
 
           {score || reviews.length ? (
             <Section title={score ? "★ " + fmtRating(score.rating) + " · " + reviewsLine(score.reviews) : "What guests say"}>

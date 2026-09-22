@@ -3,6 +3,12 @@
  * limits the guest set on their Profile, enforced here before any PaymentIntent is created.
  */
 
+// Otto's autonomous-pay feature isn't ready for guests yet, so no booking may auto-charge a saved card in
+// production right now, whatever an individual wallet's own `otto`/`paymentMethod` fields say. The call site
+// (backend/src/api/bookings.ts) checks this before agentMayCharge; agentMayCharge itself stays the plain
+// eligibility rule so it keeps being testable on its own.
+export const OTTO_LIVE = false;
+
 export const WALLET_DEFAULT_CENTS = 25_000;
 export const WALLET_MIN_CENTS = 2_000;
 export const WALLET_MAX_CENTS = 200_000;

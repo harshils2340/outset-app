@@ -5,6 +5,7 @@ import { WebListing } from "./components/web/WebListing";
 import { WebConfirm } from "./components/web/WebConfirm";
 import { WebConcierge } from "./components/web/WebConcierge";
 import { SafeBookDemo } from "./components/web/SafeBookDemo";
+import { OTTO_LIVE } from "./lib/wallet";
 import { StatusBar } from "./components/layout/StatusBar";
 import { TabBar } from "./components/layout/TabBar";
 import { Toast } from "./components/layout/Toast";
@@ -75,7 +76,7 @@ function CheckoutSplash() {
 }
 
 function SAFE_DEMO(): boolean {
-  if (typeof window === "undefined") return false;
+  if (!OTTO_LIVE || typeof window === "undefined") return false;
   return /^#safe\b/i.test(window.location.hash);
 }
 

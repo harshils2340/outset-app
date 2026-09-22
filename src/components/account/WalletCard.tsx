@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { loadGuest } from "../../lib/storage";
-import { addCardOnStripe, finishCardSetup, removeSavedCard, setOttoOn, setWalletLimit, useWallet } from "../../lib/wallet";
+import { OTTO_LIVE, addCardOnStripe, finishCardSetup, removeSavedCard, setOttoOn, setWalletLimit, useWallet } from "../../lib/wallet";
 import { hasApi } from "../../lib/api";
 import { money } from "../../lib/format";
 
@@ -9,6 +9,7 @@ import { money } from "../../lib/format";
  * saved card. Otto never sees the number: Stripe already has it.
  */
 export function WalletCard({ compact }: { compact?: boolean }) {
+  if (!OTTO_LIVE) return null;
   const { wallet, loading, refresh } = useWallet();
   const [busy, setBusy] = useState("");
   const [err, setErr] = useState("");

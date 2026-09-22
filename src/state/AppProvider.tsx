@@ -28,6 +28,7 @@ import { priceFor, priceUnclaimed } from "../lib/pricing";
 import { applyStoredProfiles } from "../lib/operator";
 import { loadBookings, loadChats, saveBookings, saveChats } from "../lib/storage";
 import { isHttpsUrlOnHost } from "../lib/urlSafety";
+import { AGENT_MODE_LIVE } from "../lib/concierge";
 
 export const DATES = makeDates(10);
 
@@ -555,7 +556,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (/^#wallet\b/i.test(window.location.hash)) return { ...base, tab: "account" as const, screen: "account" as const };
     // `#ask` opens Ask Outset on load, so the answer to "what is actually free tonight" survives a refresh,
     // can be sent to somebody as a link, and can sit behind a QR code.
-    const ask = window.location.hash.match(/^#ask(?:=(.*))?$/i);
+    const ask = AGENT_MODE_LIVE ? window.location.hash.match(/^#ask(?:=(.*))?$/i) : null;
     if (ask) {
       let seed = "";
       try {
@@ -992,7 +993,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       sendChat: (text) => dispatch({ type: "sendChat", text }),
       goto: (tab) => dispatch({ type: "goto", tab }),
       touchCatalog: () => dispatch({ type: "catalogTouched" }),
-      openAsk: (seed) => dispatch({ type: "openAsk", seed: seed || "" }),
+      openAsk: (seed) => { if (AGENT_MODE_LIVE) dispatch({ type: "openAsk", seed: seed || "" }); },
       closeAsk: () => dispatch({ type: "closeAsk" }),
     }),
     [state, listing, thread, reqTarget],

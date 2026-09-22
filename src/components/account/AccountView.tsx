@@ -1,5 +1,6 @@
 import { ICONS } from "../../data/icons";
 import { loadGuest } from "../../lib/storage";
+import { OTTO_LIVE } from "../../lib/wallet";
 import { useApp } from "../../state/AppProvider";
 import { Markup } from "../Markup";
 import { WalletCard } from "./WalletCard";
@@ -70,7 +71,7 @@ export function AccountView() {
             </button>
           ))}
         </div>
-        <p className="note">Waivers and saved areas are not built yet. The card on this page is the one Otto can hold, within the limit you set.</p>
+        <p className="note">Waivers and saved areas are not built yet.{OTTO_LIVE ? " The card on this page is the one Otto can hold, within the limit you set." : ""}</p>
       </div>
       <div className="spacer" />
     </>

@@ -27,6 +27,8 @@ import { withinDrive, kmToPlace, awayLine, atMetro, NEAR_RADIUS_KM, DRIVE_RADIUS
 import { mergeMapsHits, useMapsNearby } from "../../lib/mapsNearby";
 import { getPrefs, setPrefs } from "../explore/prefs";
 import { reportDeadCover, useDeadCovers, withPhotos } from "../../lib/deadCovers";
+import { OTTO_LIVE } from "../../lib/wallet";
+import { AGENT_MODE_LIVE } from "../../lib/concierge";
 
 
 /** "1 place", "2,418 places". */
@@ -1502,7 +1504,10 @@ export function WebHome({ onOpenApp, onOperators, onAsk, asking = false, askSeed
   const filterCount = (effSort !== "relevance" ? 1 : 0) + (priceOn ? 1 : 0);
   const resetFilters = () => { setSort("relevance"); setPrice({ min: null, max: null }); setCat("all"); setArtChip(null); };
   const showRails = state.catalogReady && !state.locating && (!q.trim() || placeOnly) && !gridMode;
-  const modeSwitch = (
+  // Agent Mode was built for the hackathon demo (see src/lib/concierge.ts). AGENT_MODE_LIVE keeps it out of
+  // the live site: modeSwitch is the one place this component offers a way into it, so nulling it here is
+  // enough to drop the toggle everywhere it's read below.
+  const modeSwitch = !AGENT_MODE_LIVE ? null : (
     <div className="ah-modes" role="tablist" aria-label="Browse or Agent Mode">
       <button type="button" role="tab" aria-selected={!asking} className={!asking ? "on" : ""} onClick={() => onCloseAsk?.()}>
         Browse
@@ -1824,7 +1829,7 @@ export function WebHome({ onOpenApp, onOperators, onAsk, asking = false, askSeed
                 <li><button type="button" onClick={onOperators}>List your business</button></li>
                 <li><button type="button" onClick={onOperators}>Claim your listing</button></li>
                 <li><button type="button" onClick={onOperators}>Operator log in</button></li>
-                <li><a href="#safe">You pay, or Otto does</a></li>
+                {OTTO_LIVE ? <li><a href="#safe">You pay, or Otto does</a></li> : null}
               </ul>
             </section>
             <section>

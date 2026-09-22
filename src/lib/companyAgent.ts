@@ -8,6 +8,7 @@ import { faqText, groupCap, minAge } from "./listingDerive";
 import { clockIn, hourLines, itemWeek, openStateAt, zoneFor, type Week } from "./openNow";
 import { venueLabel } from "./places";
 import { hasPrice } from "./pricing";
+import { OTTO_LIVE } from "./wallet";
 
 /**
  * Otto: the 24/7 assistant on a catalog listing.
@@ -1023,7 +1024,9 @@ function bookAnswer(ctx: CompanyContext, q: string): { text: string; state: Chat
   if (paused) return { text: paused, state: { topic: "book" } };
   if (/\b(for me|on my behalf|you book|book it for me|can you book)\b/i.test(q)) {
     return {
-      text: "I can start it. You pay on Stripe, or from the card on your Profile if Otto is on. I never see the card. Pick a time on this page.",
+      text: OTTO_LIVE
+        ? "I can start it. You pay on Stripe, or from the card on your Profile if Otto is on. I never see the card. Pick a time on this page."
+        : "I can start it. You pay on Stripe. I never see the card. Pick a time on this page.",
       state: { topic: "book" },
     };
   }
