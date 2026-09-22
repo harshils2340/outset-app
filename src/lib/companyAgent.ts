@@ -379,6 +379,38 @@ function clockLabel(m: number): string {
 
 const spanLabel = (s: { open: number; close: number }) => clockLabel(s.open) + " to " + clockLabel(s.close);
 
+/**
+ * The published week in one line, consecutive days that share a span said once: "Monday to Friday 9 AM to
+ * 5 PM, Saturday 10 AM to 4 PM, Sunday closed."
+ *
+ * "What are your hours?" is the plainest hours question a guest can ask and the one Otto had no branch for.
+ * Every rule in the hours block wants a day ("open Sunday?"), a time ("what time do you open?") or the word
+ * open, so a bare "hours?" fell past all of them to "I'm not sure what you mean. I can answer prices, hours,
+ * what's included, rules or where to meet", which names the thing it has just failed to answer.
+ *
+ * Monday first, because that is how a shop writes its own week, and a day the shop does not mention is said
+ * to be unlisted rather than quietly left out: an absence reads as closed.
+ */
+function weekHoursLine(week: Week): string {
+  const order = [1, 2, 3, 4, 5, 6, 0];
+  const label = (d: Week[number]) => (!d ? "not listed" : d.close === 0 ? "closed" : spanLabel(d));
+  const runs: { from: number; to: number; text: string }[] = [];
+  order.forEach((d, i) => {
+    const text = label(week[d]);
+    const last = runs[runs.length - 1];
+    if (last && last.text === text && order[i - 1] === last.to) last.to = d;
+    else runs.push({ from: d, to: d, text });
+  });
+  const name = (r: { from: number; to: number }) => {
+    if (r.from === r.to) return DAY_NAMES[r.from];
+    const span = order.slice(order.indexOf(r.from), order.indexOf(r.to) + 1);
+    return span.length === 2 ? DAY_NAMES[r.from] + " and " + DAY_NAMES[r.to] : DAY_NAMES[r.from] + " to " + DAY_NAMES[r.to];
+  };
+  // One span all week needs no day names at all.
+  if (runs.length === 1) return runs[0].text === "closed" ? "They are closed every day they list." : "Every day, " + runs[0].text + ".";
+  return runs.map((r) => name(r) + " " + r.text).join(", ") + ".";
+}
+
 function nextOpenDay(week: Week | null, from: number): { day: number; span: { open: number; close: number } } | null {
   if (!week) return null;
   for (let i = 1; i <= 7; i += 1) {
@@ -631,15 +663,25 @@ function readQuestion(ctx: CompanyContext, q: string, prev: ChatState): Topic[] 
   if (/(what do you (offer|have|do|sell)|what('s| is) (on offer|available|there to do)|options|services|packages|menu|what kinds?|what types?|list of)/i.test(t)) add("list");
   if (/(how long|duration|how many (hours|minutes)|how much time)/i.test(t) && !/(ahead|before|in advance|cancel)/i.test(t)) add("duration");
 
+  /**
+   * "When's the next opening?" asks for a departure, not a time of day, and it is one of the chips Otto itself
+   * offers. The hours branch below reads it as "when ... opening" and answered with the shop's published
+   * opening hours, so tapping Otto's own suggestion came back "They haven't published opening hours" at a
+   * shop whose calendar had two o'clock free. One pattern, read here and again by `next` further down.
+   */
+  const asksNext = /((next|nearest) (one|slot|time|departure|opening|available|trip|tour|sail)|when'?s the next|earliest|soonest)/i.test(t);
+
   if (/\b(open|opening|close|closed|closing|hours)\b/i.test(t) && !namesDay && NAMED_DATE.test(t)) add("holidayHours");
   else if (/(what time|when)\D{0,20}\b(close|closing)\b/i.test(t) || /\bclosing time\b/i.test(t)) add("closeTime");
-  else if (/(what time|when)\D{0,20}\b(open|opening)\b/i.test(t) || /\bopening time\b/i.test(t)) add("closeTime");
+  else if (!asksNext && (/(what time|when)\D{0,20}\b(open|opening)\b/i.test(t) || /\bopening time\b/i.test(t))) add("closeTime");
   else if (/(open (right )?now|open yet|still open|you open\??$|r u open)/i.test(t) || (/\bopen\b/i.test(t) && !namesDay && !namesTime)) add("openNow");
   else if (/\b(open|close|closed|hours)\b/i.test(t) && namesDay) add("dayHours");
+  // A bare "hours?", "what are your hours" or "opening hours": no day, no time, no "open" to catch it above.
+  else if (/\bhours?\b/i.test(t) && !namesTime) add("dayHours");
 
   const blocksSlot = /(deal|promo|special|discount|happy hour)/i.test(t) || hits.some((h) => ["dayHours", "closeTime", "openNow", "price", "priceOf", "cheapest"].includes(h));
   if (/(can i|can we|could i|do you have|any(thing)?\b|is there|availab|slot|spot|space|come by|come in|drop in|get in)/i.test(t) && (namesDay || namesTime) && !blocksSlot) add("slot");
-  if (/((next|nearest) (one|slot|time|departure|opening|available|trip|tour|sail)|when'?s the next|earliest|soonest)/i.test(t)) add("next");
+  if (asksNext) add("next");
   if (/(walk.?ins?|without (a )?(booking|reservation|appointment)|need (a )?(reservation|appointment)|book ahead|how far ahead|ahead of time|in advance)/i.test(t)) add("walkin");
   // "How do I cancel my booking" is a cancellation question that happens to say "booking". Leave it to `cancel`,
   // which reads the shop's own refund policy, rather than answering "Yes, pick a service and time on this page".
@@ -650,7 +692,9 @@ function readQuestion(ctx: CompanyContext, q: string, prev: ChatState): Topic[] 
   // answered with whatever the shop's first requirement line happened to be. "How old is the boat" is not one.
   if (ageIn(t) != null || /\b(age|kid|kids|child|children|minor|toddler|baby|infant|senior|teen|year old)\b/i.test(t) || /\bhow old (do|does|must|should|would)\b/i.test(t)) add("age");
   // Same reason as `book` above: "I need to cancel my reservation" is not a question about who may take part.
-  if (/(do i need|need to|have to|must |require|experience|beginner|first.?time|licen[sc]e|certif|swim|weight|height|how tall|pregnan|wheelchair|disab)/i.test(t) && !CANCEL_RE.test(t)) add("rules");
+  // "Any other rules?" is one of Otto's own chips and said none of these words, so tapping it came back "I'm
+  // not sure what you mean". A question that simply says rules, requirements or restrictions is this one.
+  if ((/(do i need|need to|have to|must |require|experience|beginner|first.?time|licen[sc]e|certif|swim|weight|height|how tall|pregnan|wheelchair|disab)/i.test(t) || /\b(rules?|requirements?|restrictions?)\b/i.test(t)) && !CANCEL_RE.test(t)) add("rules");
   if (/\b(dogs?|pets?|puppy|service animal)\b/i.test(t)) add("pets");
   if (/(what (should|do) (i|we) bring|bring|wear|what to wear|dress code)/i.test(t) && !/\bbring (my|our|a|the) (kid|child|son|daughter|dogs?|pets?|\d)/i.test(t)) add("bring");
   if (/(include|included|come with|provided|supplied|gear|equipment|what do (i|we) get|life ?jackets?|on ?board|bathroom|restroom|wifi|food|drinks?|alcohol|\bbar\b|byob)/i.test(t)) add("included");
@@ -858,10 +902,15 @@ function dayHoursAnswer(ctx: CompanyContext, q: string, prev: ChatState): { text
     if (sat && sun && fmt(sat) === fmt(sun)) return { text: sat.close === 0 ? "No, closed on weekends." : "Yes, weekends " + spanLabel(sat) + ".", state: { topic: "dayHours", day: 6 } };
     return { text: "Saturday " + fmt(sat) + ", Sunday " + fmt(sun) + ".", state: { topic: "dayHours", day: 6 } };
   }
-  const day = dayIn(q, clock.day) ?? prev.day ?? clock.day;
+  const named = dayIn(q, clock.day);
+  const day = named ?? prev.day ?? clock.day;
   if (!week) {
     if (hourLines(ctx.item).length) return { text: hoursAsWritten(ctx.item) as string, state: { topic: "dayHours" } };
     return { text: noFact(ctx, "opening hours"), state: { topic: "dayHours" } };
+  }
+  // "What are your hours?" names no day, so it is the whole week being asked for, not today's line.
+  if (named == null && prev.day == null && !/\b(today|tonight|now)\b/i.test(q)) {
+    return { text: weekHoursLine(week), state: { topic: "dayHours" } };
   }
   const span = week[day];
   const name = /\b(today|tonight)\b/i.test(q) ? "today" : DAY_NAMES[day];
