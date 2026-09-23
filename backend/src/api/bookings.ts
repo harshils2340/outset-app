@@ -218,12 +218,11 @@ bookings.post("/bookings", rateLimit(20, 60 * 60 * 1000), async (c) => {
   if (!/^[A-Z0-9-]{4,16}$/.test(code)) return c.json({ error: "bad code" }, 400);
   if (guest.name.length < 2 || guest.phone.replace(/\D/g, "").length < 7) return c.json({ error: "name and mobile are required" }, 400);
   if (guest.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(guest.email)) return c.json({ error: "bad email" }, 400);
-  const profile = await getProfile<StoredProfile>(listing);
   // The listing's own file: its menu and prices, and the proof that the listing exists at all. Before this,
   // a booking for any invented id was accepted, stored a row and alerted the founder to call a shop that was
   // never there. A store hiccup must not turn a real listing into a missing one, so only a clean read that
-  // finds nothing refuses.
-  type Detail = { title?: string; area?: string; options?: PricedOption[]; addons?: PricedOption[] };
+  // finds nothing refuses. Read before the profile so a partner's product is refused without touching Postgres.
+  type Detail = { title?: string; area?: string; options?: PricedOption[]; addons?: PricedOption[]; affiliate?: { label?: string } };
   let detail: Detail | null = null;
   let listingKnown = true;
   try {
@@ -232,6 +231,13 @@ bookings.post("/bookings", rateLimit(20, 60 * 60 * 1000), async (c) => {
     listingKnown = false;
     console.error(`[bookings] could not read the listing file for ${listing}: ${(e as Error).message}`);
   }
+  // A partner's product (Viator and the like) is shown under licence and booked on the partner's site: the
+  // calendar, the price and the money are all theirs. No page of ours offers a time for one, but this route is
+  // what decides, and a booking taken here could never be filled: nobody to email, no slot to hold, and a
+  // founder alert to ring a business that never sold it.
+  const partner = detail?.affiliate;
+  if (partner) return c.json({ error: "This experience is booked on " + (partner.label || "the partner's site") + ", not on Outset" }, 409);
+  const profile = await getProfile<StoredProfile>(listing);
   if (listingKnown && !detail && !profile) return c.json({ error: "no such listing" }, 404);
   // The dashboard's Published and Accepting switches. The guest page hides the booking box for both, but the
   // page is not the only client, and before this a paused shop's API still took the booking and emailed them.
