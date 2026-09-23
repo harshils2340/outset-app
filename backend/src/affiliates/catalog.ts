@@ -144,6 +144,7 @@ export function toAffiliateItem(r: AffiliateRow): Record<string, unknown> {
     options: [],
     includes: [...(detail.includes || []), ...excludes],
     requirements: detail.requirements?.length ? detail.requirements : undefined,
+    policies: detail.notes?.length ? detail.notes : undefined,
     cancellation: detail.cancellation || undefined,
     gap: "",
     blurb: r.description || undefined,

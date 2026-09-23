@@ -332,22 +332,71 @@ export type DetailFields = {
   /** What the product says it leaves out, in the partner's own words. */
   excludes: string[];
   requirements: string[];
+  /** The rest of the `additionalInfo` bag: true of the booking, not of the guest. */
+  notes: string[];
   cancellation: string | null;
   groupSize: number | null;
   privateTour: boolean;
 };
+
+/**
+ * Which of a partner's `additionalInfo` lines says who may take part.
+ *
+ * Viator heads this bag "Additional info" and puts everything in it: the accessibility and fitness facts it
+ * generates from a fixed list of types, and whatever else the operator typed. Our page has no such column, so
+ * every line went under "Who can go", where 2,302 of the 6,492 shipped partner listings head at least one
+ * line that is nothing of the kind: how to download a tour app, what to bring, that the tour runs in all
+ * weather, and on 6 listings the operator's own marketing ("More ways to save: choose a single tour, a nearby
+ * bundle, or access to 200+ tours"). 6,221 lines in all. A line about the booking rather than about the guest
+ * belongs under Policies, which is where the page already files the rest of what a shop publishes.
+ *
+ * A line stays under "Who can go" when it names a person's age, body, health, or how they get about, what
+ * party sizes the operator takes, or what a guest has to carry. Everything else moves. The rule reads the
+ * line rather than its `type`, because the free-text half of the bag carries real age rules ("Minimum
+ * drinking age is 21 years") and one of the enumerated types carries none ("Operates in all weather
+ * conditions", 208 listings).
+ */
+const WHO_CAN_GO = new RegExp(
+  [
+    // Who it is, and is not, for.
+    "not (?:recommended|suitable|appropriate) for", "suitable for", "designed for", "can(?:not)? participate", "may not participate",
+    "must be accompanied", "accompanied by an? (?:adult|parent|guardian)",
+    // Age, in every way a partner writes it.
+    "\\bages?\\b", "\\baged\\b", "\\bminors?\\b", "\\badults?\\b", "\\bchild(?:ren)?\\b", "\\bkids?\\b", "\\binfants?\\b",
+    "\\btoddlers?\\b", "\\bseniors?\\b", "\\belderly\\b", "\\byears? (?:old|or older|or younger|and (?:up|older|over)|of age)\\b",
+    "\\bunder (?:the age of )?\\d", "\\bover the age of \\d", "\\bmust be \\d", "\\b\\d{1,2}\\s*\\+",
+    // Body and health.
+    "pregnan", "\\bheart\\b", "cardiovascular", "back problem", "spinal", "\\bsurger", "medical condition",
+    "\\bmobility\\b", "disabilit", "physical fitness", "fitness level", "\\bweigh", "\\bheight\\b", "\\btall\\b",
+    // Getting there and taking part.
+    "wheelchair", "accessib", "service animals?", "guide dogs?", "strollers?", "\\bprams?\\b",
+    "must be able", "able to (?:walk|swim|stand|climb)", "\\bswim\\b",
+    // How many may come, and what they must carry.
+    "per booking", "at least \\d+ (?:people|persons?|travel|guest|particip|player)",
+    "(?:minimum|maximum) of \\d+ (?:people|persons?|travel|guest|particip|player)", "(?:minimum|maximum) (?:party|group) size",
+    "(?:photo )?id required", "valid (?:government[- ]issued )?(?:photo )?(?:id|identification|licen|passport)",
+    "(?:travel(?:l)?ers?|guests?|participants?|riders?|passengers?|players?) (?:must|should|need to|are required)",
+  ].join("|"),
+  "i",
+);
+
+/** Whether an `additionalInfo` line states a rule about the guest rather than about the booking. */
+export function isWhoCanGo(line: string): boolean {
+  return WHO_CAN_GO.test(line);
+}
 
 /** What the detail adds to a listing: a full photo set, the whole description, inclusions, requirements, the policy. */
 export function detailFields(d: ViatorDetailSections): DetailFields {
   const line = (x: { typeDescription?: string; otherDescription?: string }) => (x.otherDescription || (x.typeDescription && x.typeDescription !== "Other" ? x.typeDescription : "") || "").trim();
   const includes = (d.inclusions || []).map(line).filter(Boolean).slice(0, 12);
   const excludes = (d.exclusions || []).map(line).filter(Boolean).slice(0, 12);
-  const requirements = (d.additionalInfo || [])
+  const info = (d.additionalInfo || [])
     .map((a) => (a.description || "").trim())
-    .filter((s) => s && !/^(confirmation will be received|most travelers can participate|public transportation)/i.test(s))
-    .slice(0, 12);
+    .filter((s) => s && !/^(confirmation will be received|most travelers can participate|public transportation)/i.test(s));
+  const requirements = info.filter(isWhoCanGo).slice(0, 12);
+  const notes = info.filter((s) => !isWhoCanGo(s)).slice(0, 12);
   const cancellation = (d.cancellationPolicy?.description || "").trim() || null;
-  return { includes, excludes, requirements, cancellation, groupSize: d.itinerary?.maxTravelersInSharedTour ?? null, privateTour: !!d.itinerary?.privateTour };
+  return { includes, excludes, requirements, notes, cancellation, groupSize: d.itinerary?.maxTravelersInSharedTour ?? null, privateTour: !!d.itinerary?.privateTour };
 }
 
 /**

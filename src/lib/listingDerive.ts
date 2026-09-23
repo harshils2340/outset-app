@@ -29,12 +29,20 @@ export { freeCancel } from "./cancellation";
  */
 const WAIVER_LINE = /\bwaivers?\b|\bliabilit|\brelease form|\bsign(ed|ing)? (a |the |our |your )?(waiver|release|form)|\bcheck-?in\b/i;
 const CANCEL_LINE = /\bcancel\w*|\brefund\w*|\breschedul\w*|\bno[- ]?shows?\b/i;
+/**
+ * Both surfaces print a waiver line in "Safety and waiver" only while it is short enough to read as a bullet.
+ * A longer one was passed over here as well, on the assumption that column had it, so it was shown nowhere: no
+ * shipped listing wrote one that long, and the first that would is a partner's ("Participant Waiver & Release
+ * of Liability and Terms & Conditions. By purchasing ticket(s) and/or by participating on a tour...", 29 lines
+ * across the Viator feed). It falls through to the columns below instead of off the page.
+ */
+const SAFETY_MAX = 160;
 
 export function splitPolicies(lines: string[]): { cancel: string[]; other: string[] } {
   const cancel: string[] = [];
   const other: string[] = [];
   for (const line of lines) {
-    if (WAIVER_LINE.test(line)) continue;
+    if (WAIVER_LINE.test(line) && line.length <= SAFETY_MAX) continue;
     (CANCEL_LINE.test(line) ? cancel : other).push(line);
   }
   return { cancel, other };

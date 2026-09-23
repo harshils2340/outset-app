@@ -124,3 +124,28 @@ test("every bring line the catalog ships keeps the letters the shop typed", () =
   }
   assert.ok(repaired > 100, "bring lines the old rule mangled: " + repaired);
 });
+
+/**
+ * A waiver line the "Safety and waiver" column will not print. That column takes a line only while it reads as
+ * a bullet (160 characters), and this rule passed over every waiver line whatever its length, so a longer one
+ * was shown in no column at all. No shipped operator wrote one that long; the Viator feed's own waiver text is
+ * the first ("Participant Waiver & Release of Liability and Terms & Conditions. By purchasing ticket(s)...").
+ */
+test("a waiver line too long for the safety column is printed under the policies rather than dropped", () => {
+  const long =
+    "Participant Waiver & Release of Liability and Terms & Conditions. By purchasing ticket(s) and/or by participating on a tour you affirm that you and every member of your party have read and accept them in full."; // a-viator-100569p1
+  assert.ok(long.length > 160);
+  assert.deepEqual(splitPolicies([long]).other, [long]);
+  assert.deepEqual(splitPolicies(["A signed waiver is required before boarding"]).other, [], "a short one is still the safety column's");
+});
+
+test("no shipped listing loses a policy line to that rule", () => {
+  const lost: string[] = [];
+  for (const d of details()) {
+    const kept = new Set([...splitPolicies(d.policies || []).cancel, ...splitPolicies(d.policies || []).other]);
+    for (const l of d.policies || []) {
+      if (!kept.has(l) && l.length > 160) lost.push(d.id + ": " + l.slice(0, 60));
+    }
+  }
+  assert.deepEqual(lost.slice(0, 5), [], lost.length + " policy lines are shown in no column");
+});

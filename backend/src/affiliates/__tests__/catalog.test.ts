@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { kindFor, notIncludedLine, toAffiliateItem, type AffiliateRow } from "../catalog.ts";
-import { bestImages, bookingUrl, detailFields, durationText, metroDestinations, type ViatorProduct } from "../viator.ts";
+import { bestImages, bookingUrl, detailFields, durationText, isWhoCanGo, metroDestinations, type ViatorProduct } from "../viator.ts";
 
 const row: AffiliateRow = {
   id: "a-viator-5010syd",
@@ -86,15 +86,56 @@ test("each metro gets the nearest city destination, and a metro with none is ski
 
 /* ---------- what the detail pass makes of a product's own sections ---------- */
 
-test("the detail keeps what a product says it leaves out", () => {
+/**
+ * Every line below is a real one from a shipped `public/o/a-viator-*.json`, named by the listing it came from.
+ * The first group is what Viator generates from its own fixed list of types; the second is what the operator
+ * typed into the same bag, which is where the "Who can go" column filled up with tour apps and dress codes.
+ */
+test("a partner's additional info is sorted into who may come and what is true of the booking", () => {
+  const who = [
+    "Wheelchair accessible", // a-viator-100118p1
+    "Infants are required to sit on an adult's lap", // a-viator-100118p4
+    "Not recommended for travelers with poor cardiovascular health", // a-viator-102020p105
+    "Travelers should have at least a moderate level of physical fitness", // a-viator-100118p1
+    "A minimum of 2 people per booking is required", // a-viator-100118p1
+    "Minimum drinking age is 21 years", // a-viator-11593p10
+    "No minimum age required", // a-viator-128704p1
+    "Children must be accompanied by an adult", // a-viator-100118p1
+    "Games are recommended for ages 13 and up. Younger players are allowed, but some of the game content may be too difficult for them", // a-viator-175552p6
+    "Please provide weights for all passengers when booking", // a-viator-3657p1
+  ];
+  for (const line of who) assert.ok(isWhoCanGo(line), `who can go: ${line}`);
+
+  const notWho = [
+    "Operates in all weather conditions, please dress appropriately", // a-viator-100118p1, 208 listings
+    "Download in advance: Download the Tour Guide app by Action and tour while connected to Wi-Fi or a strong cellular signal.", // a-viator-102020p105
+    "More ways to save: Choose a single tour, a nearby bundle, or access to 200+ tours.", // a-viator-102020p135
+    "Works offline: Once downloaded, the tour works using GPS without Wi-Fi or cellular service.", // a-viator-102020p141
+    "Dress code is smart casual", // a-viator-15064p2
+    "What to Bring: Comfortable shoes and clothes, sun hat, sunglasses, sunscreen, cash, and drinks for hydration.", // a-viator-3643p10
+    "Itineraries may change due to unforeseen issues such as flight arrival and departure times and road and weather conditions.", // a-viator-40048p36
+  ];
+  for (const line of notWho) assert.ok(!isWhoCanGo(line), `not who can go: ${line}`);
+});
+
+test("the detail keeps what a product excludes, and files its notes apart from its rules about the guest", () => {
   const fields = detailFields({
     inclusions: [{ typeDescription: "Local guide" }, { typeDescription: "Other", otherDescription: "Hotel pickup" }],
     exclusions: [{ typeDescription: "Gratuities" }, { typeDescription: "Other", otherDescription: "Lunch is not included" }],
+    additionalInfo: [
+      { type: "WHEELCHAIR_ACCESSIBLE", description: "Wheelchair accessible" },
+      { type: "OPERATES_ALL_WEATHER", description: "Operates in all weather conditions, please dress appropriately" },
+      { type: "OTHER", description: "Minimum drinking age is 21 years" },
+      { type: "OTHER", description: "Dress code is smart casual" },
+      { type: "CONFIRMATION", description: "Confirmation will be received at time of booking" },
+    ],
     cancellationPolicy: { description: "For a full refund, cancel at least 24 hours before the scheduled departure time." },
     itinerary: { privateTour: true, maxTravelersInSharedTour: 12 },
   });
   assert.deepEqual(fields.includes, ["Local guide", "Hotel pickup"]);
   assert.deepEqual(fields.excludes, ["Gratuities", "Lunch is not included"]);
+  assert.deepEqual(fields.requirements, ["Wheelchair accessible", "Minimum drinking age is 21 years"]);
+  assert.deepEqual(fields.notes, ["Operates in all weather conditions, please dress appropriately", "Dress code is smart casual"]);
   assert.equal(fields.groupSize, 12);
   assert.equal(fields.privateTour, true);
 });
@@ -114,25 +155,31 @@ test("a listing publishes the product's own sections, not the copy an older deta
       detail: {
         inclusions: [{ typeDescription: "Local guide" }],
         exclusions: [{ typeDescription: "Gratuities" }],
-        additionalInfo: [{ type: "WHEELCHAIR_ACCESSIBLE", description: "Wheelchair accessible" }],
+        additionalInfo: [
+          { type: "WHEELCHAIR_ACCESSIBLE", description: "Wheelchair accessible" },
+          { type: "OTHER", description: "Dress code is smart casual" },
+        ],
         cancellationPolicy: { description: "Cancel at least 24 hours before for a full refund." },
-        // What the pass of 23 September wrote: no exclusions at all, because nothing read them.
-        fields: { includes: ["Local guide"], requirements: ["Wheelchair accessible"], cancellation: "Cancel at least 24 hours before for a full refund." },
+        // What the pass of 23 September wrote: every line of the bag under requirements, and no exclusions at all.
+        fields: { includes: ["Local guide"], requirements: ["Wheelchair accessible", "Dress code is smart casual"], cancellation: "Cancel at least 24 hours before for a full refund." },
       },
     }),
   });
   assert.deepEqual(item.includes, ["Local guide", "Gratuities (not included)"]);
   assert.deepEqual(item.requirements, ["Wheelchair accessible"]);
+  assert.deepEqual(item.policies, ["Dress code is smart casual"]);
 });
 
 test("a row whose detail is only the older copy still publishes it", () => {
   const item = toAffiliateItem({ ...row, raw: JSON.stringify({ detail: { fields: { includes: ["Local guide"], requirements: ["Wheelchair accessible"], cancellation: null } } }) });
   assert.deepEqual(item.includes, ["Local guide"]);
   assert.deepEqual(item.requirements, ["Wheelchair accessible"]);
+  assert.equal(item.policies, undefined);
 });
 
 test("a row with no detail at all is still a listing", () => {
   const item = toAffiliateItem({ ...row, raw: null });
   assert.deepEqual(item.includes, []);
   assert.equal(item.requirements, undefined);
+  assert.equal(item.policies, undefined);
 });
