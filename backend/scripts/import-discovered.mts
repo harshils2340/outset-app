@@ -42,22 +42,27 @@ import { METROS, categoryById, nearestMetro, type MetroDef } from "../src/taxono
  *   options: --dir=data/discovered  --source=chains,osm,web,places  (--sources= and --dry still accepted)
  */
 
-export type FileSource = "chains" | "osm" | "web" | "places";
-const SOURCE_ORDER: FileSource[] = ["chains", "osm", "web", "places"];
+export type FileSource = "chains" | "osm" | "web" | "places" | "directory";
+const SOURCE_ORDER: FileSource[] = ["chains", "osm", "web", "places", "directory"];
 
 /** What a candidate file is, read from its name. */
 export type FileMeta = {
   file: string;
   /** Which job wrote it; also the --source filter value. */
   source: FileSource;
-  /** "florida" or "places": the discovery job, used in the source citation. */
-  job: "florida" | "places";
+  /** "florida", "places" or "directory": the discovery job, used in the source citation. */
+  job: "florida" | "places" | "directory";
   /** The metro the queries ran from, for places-<metro>.json. */
   metro: MetroDef | null;
 };
 
-/** Any candidate a file can hold. Florida files carry the plain Candidate; Places files add country and rating. */
-export type AnyCandidate = Omit<Candidate, "region"> & Partial<Pick<PlaceCandidate, "country" | "rating" | "reviewCount" | "placeId" | "query">> & { region: string | null };
+/**
+ * Any candidate a file can hold. Florida files carry the plain Candidate; Places files add country and rating;
+ * directory files (scripts/discover-directories.mts) name the marketplace they came from and, like a search
+ * result, must carry the operator's own website: a name and a town read off a marketplace is a lead, not a
+ * listing, and those wait in the -needs-website file instead.
+ */
+export type AnyCandidate = Omit<Candidate, "region" | "source"> & Partial<Pick<PlaceCandidate, "country" | "rating" | "reviewCount" | "placeId" | "query">> & { region: string | null; source: Candidate["source"] | "directory"; directory?: string };
 
 /** The operator row a candidate becomes. Region and country are the candidate's; metro is nearest within 160 km. */
 export type MappedRow = {
@@ -80,6 +85,8 @@ export function parseFileName(file: string): FileMeta | null {
     const metro = METROS.find((m) => m.id === pl[1]) || null;
     return { file, source: "places", job: "places", metro };
   }
+  // directory-<source>.json only: the -needs-website and -summary files beside it are not candidate files.
+  if (/^directory-[a-z0-9-]+\.json$/.test(name) && !/-(needs-website|summary)\.json$/.test(name)) return { file, source: "directory", job: "directory", metro: null };
   return null;
 }
 
@@ -242,18 +249,18 @@ export function mapCandidate(c: AnyCandidate, meta: FileMeta): { row: MappedRow 
   if (!c.sourceUrl) return { reject: "no source url" };
   const host = hostOf(c.website);
   if (c.website && !host) return { reject: "bad website url" };
-  if (c.source === "web" && !host) return { reject: "website required" };
+  if ((c.source === "web" || c.source === "directory") && !host) return { reject: "website required" };
   if (host && isAggregatorHost(host)) return { reject: "aggregator, directory or social host" };
   const metro = metroFor(c, meta);
   const lat = c.lat ?? null;
   const lon = c.lon ?? null;
-  const origin = meta.job === "places" ? "places" : ORIGIN[c.source];
+  const origin = meta.job === "places" ? "places" : c.source === "directory" ? "directory" : ORIGIN[c.source];
   return {
     row: {
       domain: c.domain, name: c.name.trim().slice(0, 120), website: c.website || null, phone: c.phone || null, street: c.street || null,
       postal: c.postal || null, metro_id: metro?.id || null, city: c.city || null, region: c.region.trim().toUpperCase(),
       country: countryOf(c, metro), family: cat.family, category_id: cat.id, icon_key: cat.iconKey, origin, lat, lon,
-      osm_ref: osmRefOf(c), source_url: c.sourceUrl, extractor: `discover-${meta.job}:${c.source}`, note: c.activity || null,
+      osm_ref: osmRefOf(c), source_url: c.sourceUrl, extractor: `discover-${meta.job}:${c.directory || c.source}`, note: c.activity || null,
     },
   };
 }

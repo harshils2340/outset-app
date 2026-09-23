@@ -59,6 +59,16 @@ published). Needs `VIATOR_API_KEY` in `backend/.env` (free: viator.com partner a
 affiliate row is never an operator: no claim link, no outreach, no Instant Book, no request, no Otto. Tiqets,
 Headout and Klook follow the same shape when their keys exist.
 
+`npx tsx scripts/discover-directories.mts --source=<id>` reads a slice of a directory-style marketplace (Captain
+Experiences, CourseHorse; registry in `src/discover/directories.ts`) for the businesses on it: name, town, street
+when the page has one, and the operator's own website only when the page links it. That is all that is read; a
+marketplace's photos, descriptions and prices are its own and its terms forbid reusing them. Sources that answer a
+polite bot with a Cloudflare challenge (Supreme Golf, ClassBento, ClassPass) or a 403 (FishingBooker) are not in
+the registry and must not be added with a workaround. Dry by default, `--write` appends to
+`data/discovered/directory-<id>.json` (rows with a website, which `import-discovered.mts` inserts) and
+`directory-<id>-needs-website.json` (leads for a website lookup, never inserted as listings). One host, one request
+at a time, at most 200 pages a run, so a slice is fine on the laptop; a whole directory is a job for the worker.
+
 `npm run search` is Google Maps discovery (`src/discover/searchapi.ts`): one query per city and Google phrasing,
 every result a real listed business with its name, address, phone, website, rating and review count. It is the only
 source that reaches businesses OpenStreetMap has never heard of, which is most of them: Silverdale Gun Club in West
