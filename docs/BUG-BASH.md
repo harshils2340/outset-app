@@ -3846,6 +3846,71 @@ with SSL and the Chromium on disk.
   screen on a phone, five category accents are still under the AA floor, and no live vendor or partner API has
   answered anything from this address.
 
+## 23 September 2026, sixtieth run (08:15 to 09:15 UTC)
+
+**Chosen, and why.** One commit landed after the last entry, `449ee4536`, and it touches
+`backend/src/discover` and nothing a guest reads. Both installs, both type checks and both suites first; the
+rehearsal with them, because that commit is inside `backend/src` and the rule for running it says so. It came
+back 53 of 53, so nothing was re-verified on its account and the rest of the run went hunting. Every area this
+run's brief lists is already on the Verified list below, so the new ground was picked a different way: the
+seam between the lite record the phone paints from and rules written for a full one. A lite row carries no
+menu, no policies, no hours and no contact, and the sweep asked which rules answer anyway rather than staying
+quiet.
+
+**Found and fixed.**
+
+- **A $1,000 event space priced per group read "From $1,000 / person" on the card a guest taps**
+  (`9cb6e8139`). The phone feed card and the phone booking sheet printed "/ person" beside a from price
+  whenever they had no option to read the unit off, and every lite record ships `options: []`, which is every
+  card in that feed. So 2,509 of the 10,217 priced listings in the shipped catalog advertised a unit their own
+  menu contradicts: o-2flyus-com's $450 balloon ride priced per hour, o-2lagooncharters-com's $450 trip priced
+  per trip, o-1000islandswatertours-com's $175 private boat tour priced per hour, o-2226studio-com's $1,000
+  event space priced per group. `perPerson` defaults to per person when an option's own words say nothing,
+  which is the right default for an option in hand and no default at all for having none. Both phone surfaces
+  now print a unit only when the option that set the price is there to say so, which is what both desktop
+  surfaces already did.
+
+- **A Viator tour was told to ring itself about its own cancellation terms** (`3fc792b55`). The phone booking
+  sheet knows a partner's product is booked elsewhere where it matters, in the dates section, the reserve bar
+  and Otto's gate. Three other places still drew one as a shop of ours, on all 1,873 partner rows, none of
+  which states a requirement, a policy or a cancellation line: "Hosted by Fraser Valley Social Wine Tasting
+  Private Tour", which names a tour as its own host; "Who can go" and "Waiver and check-in" both reading
+  "Contact the business to check", on a sheet that draws no contact block for a partner row; and, under the
+  "Free cancellation" badge the same screen carries from the partner's own flag, "Contact Fraser Valley Social
+  Wine Tasting Private Tour for their cancellation terms before you book". The host line is a shop's alone
+  now, a Things to know row with nothing of ours to say is not drawn, the section stays out when none of them
+  has anything, and the cancellation row points at the partner. The desktop listing page builds no Things to
+  know columns at all for one of these, so this is the phone agreeing with it.
+
+**Checked and sound.** The card's other reads off a lite row: the Free cancellation badge, which finds no
+policy text and falls to the `fc` the sync wrote, as designed; the compact week behind "open now"; the compact
+deal; the rating, the distance and the thin flag. All 1,873 partner rows for a cover, an area carrying its
+region, a from price and a duration that starts with a number: none missing, none malformed, and the 33 titles
+past 70 characters are the partner's own product names. Every partner row ships exactly one photo, which is
+the shape 13,315 ordinary listings ship too. The claimed and instant flags, which no shipped row carries at
+all. `money` against the fractional partner prices (`$467.50`, never `$467.5`). The concierge's own "per
+person" default, which is deliberate and set by each vendor reader rather than assumed.
+
+**Green after the fixes.** 713 app tests (up from 706) and 697 backend. The app type check is clean, the
+backend clean but for TS5097. The rehearsal is 53 of 53 against a local Postgres 16 cluster on 5433 with SSL
+and the Chromium on disk, run before the hunt and again after both fixes.
+
+**Needs Harshil.**
+
+- **The phone card now prints no unit where it used to print one, on the 7,708 priced listings whose cheapest
+  option really is per person.** Being silent is honest and is what both desktop surfaces do, but the card
+  could say it again if the lite shard carried the unit: `buildLiteShard`'s row already works out the cheapest
+  price, so one boolean beside it would do. The rule that decides it, `perPerson`, lives in
+  `src/lib/catalog.ts` and the sync has no copy, and writing a second one is the twin-rule mistake this repo
+  has been bitten by before. Moving it to a module both sides import is your call, and it only reaches a guest
+  after a sync.
+- **Last night's stand:** the nth-weekday rule is still read as every such weekday on 8 shops, a season in
+  front of a rule still widens the picker on 2, a partner's price is still quoted in the partner's currency
+  and printed as dollars, `public/unsubscribe.html` still POSTs on load, the listing page still reads three of
+  the ten vendors, `outset-api` still builds with no catalog, the "All requests" link is still parked off
+  screen on a phone, five category accents are still under the AA floor, the sync still does not say which
+  10,927 listings it dropped, and no live vendor or partner API has answered anything from this address.
+
 ## Coverage
 
 The catalog is 48,198 listings as of the 23 September sync, 1,873 of them Viator partner rows. Counts below
@@ -4286,6 +4351,14 @@ markdown, a URL, an email, a cut bracket and a place that only says it varies. T
 glues to the sentence under it, over every guest-visible line in the catalog, including the sentences that
 only looked like one.
 
+What the phone claims off a lite record, which is what its feed and its rails paint from: the unit beside a
+from price, over all 10,217 priced listings and the 2,509 whose cheapest option is not per person; the Free
+cancellation badge with no policy text to read; the compact week, the compact deal, the rating, the distance
+and the thin flag. Everything the phone booking sheet says about a partner's product that is not ours to say,
+over all 1,873 partner rows: the host line, the three Things to know rows, and the cancellation line under the
+partner's own badge. Those rows' own shape besides: the cover, the area and its region, the from price, the
+duration, the photo count and the title length.
+
 **Not yet checked.** Whether a partner's price should be printed in the currency its API quoted it in: both pulls ask for CAD in Canadian metros, store it, and the catalog record drops it (see this run's Needs Harshil). Whether the phone booking sheet's "Ask Outset" panel should honour the operator's Assistant switch the way the desktop page does; it is behind `AGENT_MODE_LIVE`, so no guest meets it today. Whether a partner product should be in the "near you" rails at all, given that its pin is the city's. Any partner API against its real server: no key exists here, so every affiliate row in this sweep was shaped by hand. Rezdy's reader end to end, which needs a hand-rolled HTTP/2 session because Cloudflare
 blocks `fetch` on every `*.rezdy.com` subdomain; its price helpers and its window rule are tested directly
 instead. Whether the concierge's
@@ -4443,4 +4516,8 @@ sync published 10,927 fewer than the last one and the only thing that noticed wa
 run's Needs Harshil). Whether an arrival note that names no fact at all should be printed: 66 are still
 shown, most of them worth keeping, a handful of them a slogan or a tax ID (see this run's Needs Harshil).
 The Viator detail pass's inclusions, requirements and cancellation text, which are code today and in no
-shipped partner row yet.
+shipped partner row yet. Whether the lite shard should carry the unit a price is sold in, so a phone card can
+say "/ person" again where it is true rather than staying silent on all 10,217 priced rows (see the sixtieth
+run's Needs Harshil). What else the lite record is asked for and answers by assumption rather than by
+silence: the unit was the one this run swept, and the same seam runs through every rule a card, a rail or a
+search result reads before the detail file lands.
