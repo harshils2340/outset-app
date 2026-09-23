@@ -2238,6 +2238,8 @@ export function compactDeal(promos: { text: string; title?: string; days: number
 }
 
 import { affiliateCatalogItems } from "../affiliates/catalog.ts";
+import { isReadable, readableSql } from "../concierge/readable.ts";
+import { vendorFor as listingReader } from "../enrich/availability.ts";
 
 /** Write public/catalog.json: every real operator plus its contact facts. The app fetches it at startup. */
 export function syncCatalogToApp(): { path: string; count: number } {
@@ -2323,12 +2325,19 @@ export function syncCatalogToApp(): { path: string; count: number } {
   writeFileSync(join(appDataDir, "../../public/catalog-lite.json"), JSON.stringify({ generatedAt: new Date().toISOString(), operators: lite, contacts: {} }));
   // Live times need each vendor-backed listing's booking link, and the API host has no facts table: the link is
   // published here, keyed by catalog id, for the API to read (bookingUrlFor in enrich/availability.ts). These are
-  // FareHarbor, Peek and Xola pages, public by nature; the guest page itself still never shows them.
+  // vendor booking pages, public by nature; the guest page itself still never shows them.
+  //
+  // Which links count is the concierge's own list (`readableSql`), not a hand-written one. Until 23 September 2026
+  // this named FareHarbor, Peek and Xola while the readers knew ten vendors, so a Resova or Checkfront shop had a
+  // reader and no published link, and its listing page showed no live times in production. When a shop holds
+  // several links the one a reader can actually parse wins, in JavaScript, because the SQL patterns are loose.
   const published = new Set((operators as { id: string }[]).map((o) => o.id));
   const liveUrls: Record<string, string> = {};
-  for (const row of db.prepare("SELECT o.domain AS domain, f.fact_value AS url FROM operators o JOIN facts f ON f.operator_id = o.id AND f.fact_key = 'booking_url' WHERE f.fact_value LIKE '%fareharbor.com/%' OR f.fact_value LIKE '%peek.com/s/%' OR f.fact_value LIKE '%xola.%'").all() as { domain: string; url: string }[]) {
+  for (const row of db.prepare(`SELECT o.domain AS domain, f.fact_value AS url FROM operators o JOIN facts f ON f.operator_id = o.id AND f.fact_key = 'booking_url' WHERE ${readableSql("f.fact_value")}`).all() as { domain: string; url: string }[]) {
     const id = "o-" + slug(row.domain);
-    if (published.has(id) && !liveUrls[id]) liveUrls[id] = row.url;
+    if (!published.has(id) || !isReadable(row.url)) continue;
+    // FareHarbor, Peek and Xola have the listing page's own richer reader; keep one of those over a concierge-only link.
+    if (!liveUrls[id] || (!listingReader(liveUrls[id]) && listingReader(row.url))) liveUrls[id] = row.url;
   }
   writeFileSync(join(appDataDir, "../../public/live-index.json"), JSON.stringify({ generatedAt: new Date().toISOString(), urls: liveUrls }));
   console.log("Wrote live booking links for " + Object.keys(liveUrls).length + " listings to public/live-index.json");

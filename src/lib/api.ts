@@ -531,7 +531,7 @@ export async function decideBooking(listing: string, code: string, status: Remot
  */
 export type AvailabilitySlot = { startsAt: string; label: string; priceCents?: number; seatsLeft?: number; bookUrl: string; timeUnknown?: true };
 export type AvailabilityDay = { date: string; slots: AvailabilitySlot[] };
-export type LiveAvailability = { vendor: "fareharbor" | "peek" | "xola" | null; live: boolean; updatedAt?: string; days: AvailabilityDay[]; partial?: boolean; note?: string };
+export type LiveAvailability = { vendor: string | null; live: boolean; updatedAt?: string; days: AvailabilityDay[]; partial?: boolean; note?: string };
 
 /**
  * The operator's real open dates and times, read from their own booking system (FareHarbor, Peek, Xola).

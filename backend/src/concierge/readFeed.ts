@@ -8,6 +8,8 @@ import { tripworksLive } from "./readers/tripworks.ts";
 import { squareLive } from "./readers/square.ts";
 import { acuityLive } from "./readers/acuity.ts";
 import { foreupLive } from "./readers/foreup.ts";
+import { areservationLive } from "./readers/areservation.ts";
+import { fishingReservationsLive } from "./readers/fishingreservations.ts";
 import { readerFor } from "./readable.ts";
 
 /**
@@ -44,6 +46,10 @@ export function readFeed(bookingUrl: string, opts: { from: Date; days: number; t
       return resovaLive(bookingUrl, { from, days, tz, maxItems: 4 });
     case "foreup":
       return foreupLive(bookingUrl, { from, days, tz });
+    case "areservation":
+      return areservationLive(bookingUrl, { from, days, tz });
+    case "fishingreservations":
+      return fishingReservationsLive(bookingUrl, { from, days, tz });
     case "fareharbor":
       /**
        * Six items, not three. Zoom Tours sells four day tours and we priced three of them, so the fourth

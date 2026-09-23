@@ -15,7 +15,7 @@
 export type VendorId =
   | "fareharbor" | "peek" | "xola" | "checkfront" | "bookeo" | "resova" | "rezdy"
   | "acuity" | "square" | "setmore" | "calendly" | "mindbody" | "tripworks" | "bookwhen"
-  | "eventbrite" | "wix" | "foreup" | "unknown";
+  | "eventbrite" | "wix" | "foreup" | "areservation" | "fishingreservations" | "unknown";
 
 export type VendorHit = {
   vendor: VendorId;
@@ -49,6 +49,23 @@ const RULES: {
     detect: /foreupsoftware\.com/i,
     account: /foreupsoftware\.com\/index\.php\/booking\/(\d+(?:\/\d+)?)/i,
     hosted: (a) => `https://foreupsoftware.com/index.php/booking/${a}`,
+    hasFeed: true,
+  },
+  {
+    // Indexic's booking links: link.areservation.com/event/<company>[/<event>], or /eventCalendar/<company>.
+    // The company slug is the account, and it can carry a dot ("shorelinewatersports.com").
+    vendor: "areservation",
+    detect: /areservation\.com|indexic\.net/i,
+    account: /areservation\.com\/(?:event|eventCalendar|catalog)\/([a-z0-9][a-z0-9._-]{1,80})/i,
+    hosted: (a) => `https://link.areservation.com/eventCalendar/${a}`,
+    hasFeed: true,
+  },
+  {
+    // The sportfishing landings' system: <landing>.fishingreservations.net/sales/, a server-rendered schedule.
+    vendor: "fishingreservations",
+    detect: /fishingreservations\.(?:net|com)/i,
+    account: /([a-z0-9][a-z0-9-]{0,60})\.fishingreservations\.(?:net|com)/i,
+    hosted: (a, text) => `https://${a}.fishingreservations.${text.match(/fishingreservations\.(net|com)/i)?.[1].toLowerCase() || "net"}/sales/`,
     hasFeed: true,
   },
   {

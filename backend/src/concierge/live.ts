@@ -74,7 +74,9 @@ export type LiveRead = {
    * spelling its own name wrong would have reached the guest as "their forup calendar". The casts are gone
    * and the type is the list.
    */
-  vendor: "fareharbor" | "resova" | "peek" | "checkfront" | "xola" | "rezdy" | "acuity" | "tripworks" | "foreup" | "bookeo" | "square" | "replay" | "agent" | "none";
+  vendor:
+    | "fareharbor" | "resova" | "peek" | "checkfront" | "xola" | "rezdy" | "acuity" | "tripworks" | "foreup" | "bookeo" | "square"
+    | "areservation" | "fishingreservations" | "replay" | "agent" | "none";
   departures: Departure[];
   /** Said plainly when there is nothing to sell, because "no availability" is an answer, not a failure. */
   note: string | null;

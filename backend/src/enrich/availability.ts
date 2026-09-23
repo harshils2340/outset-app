@@ -2,6 +2,9 @@ import { db } from "../db/client.ts";
 import { fareharborShortname, peekRef, xolaSeller } from "./widgets.ts";
 import { safeFetch } from "../lib/safeFetch.ts";
 import { openFarePrice } from "../lib/fares.ts";
+import { readFeed } from "../concierge/readFeed.ts";
+import { readerFor, type ReaderVendor } from "../concierge/readable.ts";
+import type { LiveRead } from "../concierge/live.ts";
 
 /**
  * Real open dates and times, read live from the operator's own booking system.
@@ -44,7 +47,8 @@ export type Slot = {
 };
 export type AvailabilityDay = { date: string; slots: Slot[] };
 export type Availability = {
-  vendor: "fareharbor" | "peek" | "xola" | null;
+  /** This file's own three readers, or whichever concierge reader answered for every other vendor. */
+  vendor: "fareharbor" | "peek" | "xola" | ReaderVendor | null;
   live: boolean;
   updatedAt: string;
   days: AvailabilityDay[];
@@ -607,12 +611,39 @@ export function bookingUrlFor(operatorId: string): string | null {
  * thirty-eight operators in exactly that state and fixed its own copy of the query; this one, which is what
  * `GET /availability/:operatorId` and therefore the guest's listing page reads, kept the bug.
  *
- * Readable here means readable by this file, which is FareHarbor, Peek and Xola. Ordering by the concierge's
- * wider list would promote a Rezdy link over a FareHarbor one and lose the live times altogether.
+ * This file's own three readers come first, because they read a whole window rather than the first day with
+ * something on it. Then any link a concierge reader knows, because since 23 September 2026 `getAvailability`
+ * hands those to `readFeed`; before that a shop holding a Rezdy link and its own page was answered with the
+ * page, and a shop holding only the Rezdy link was answered "unsupported booking system".
  */
 function pickReadable(rows: { fact_value?: string }[]): string | null {
   const urls = rows.map((r) => r.fact_value).filter((u): u is string => !!u);
-  return urls.find((u) => vendorFor(u) != null) || urls[0] || null;
+  return urls.find((u) => vendorFor(u) != null) || urls.find((u) => readerFor(u) != null) || urls[0] || null;
+}
+
+/**
+ * A concierge read in this file's shape, so the listing page's picker draws Resova, Checkfront, Rezdy,
+ * TripWorks, Square, Acuity, ForeUp, aReservation and FishingReservations times with the same code it draws
+ * FareHarbor's.
+ *
+ * Every concierge reader stops at the first day an activity has something free, because a guest there is
+ * choosing between shops rather than dates. On a listing page a date with no chips reads as "nothing on", so
+ * the answer is marked partial: `liveTimes.ts` then treats an empty date as unread rather than shut.
+ */
+function fromConcierge(live: LiveRead, dates: string[], vendor: ReaderVendor): Availability {
+  const byDate = emptyDays(dates);
+  for (const d of live.departures) {
+    const day = byDate.get(d.date);
+    if (!day) continue;
+    day.push({
+      startsAt: `${d.date}T${d.time}`,
+      label: labelOf(d.time, d.item),
+      ...(d.fromPrice != null && d.fromPrice > 0 ? { priceCents: Math.round(d.fromPrice * 100) } : {}),
+      ...(typeof d.seatsLeft === "number" ? { seatsLeft: d.seatsLeft } : {}),
+      bookUrl: d.bookUrl,
+    });
+  }
+  return shape(vendor, byDate, dates, { partial: true, note: live.note ?? "first open day per activity" });
 }
 
 /**
@@ -676,15 +707,21 @@ export async function getAvailability(operatorId: string, fromISO: string, days:
     const bookingUrl = bookingUrlFor(operatorId) || (await publishedBookingUrl(operatorId));
     if (!bookingUrl) return dead(null, "no booking url");
     const vendor = vendorFor(bookingUrl);
-    if (!vendor) return dead(null, "unsupported booking system");
-
     const dates = windowDates(from, span);
     let result: Availability;
     if (vendor === "fareharbor") result = await fareharbor(fareharborShortname(bookingUrl)!, dates);
     else if (vendor === "peek") {
       const ref = peekRef(bookingUrl)!;
       result = await peek(ref.key, ref.code, dates);
-    } else result = await xola(xolaSeller(bookingUrl)!, dates);
+    } else if (vendor === "xola") result = await xola(xolaSeller(bookingUrl)!, dates);
+    else if (readerFor(bookingUrl)) {
+      const reader = readerFor(bookingUrl)!;
+      // The window starts on the requested date at that date's own midnight, as a local instant, never UTC.
+      const live = await readFeed(bookingUrl, { from: new Date(from + "T00:00:00"), days: span });
+      // Null is the reader saying the link is not a shop it can parse (`www.rezdy.com`), which is "unsupported".
+      if (!live) return dead(null, "unsupported booking system");
+      result = live.departures.length ? fromConcierge(live, dates, reader) : dead(reader, live.note ?? "vendor did not answer");
+    } else return dead(null, "unsupported booking system");
 
     // Only cache an answer worth keeping; a failure should be retried on the next look, not pinned for 10 minutes.
     if (result.live) cacheSet(cache, key, result);

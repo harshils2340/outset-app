@@ -1005,6 +1005,7 @@ export function candidates(intent: Intent, limit = 8, radiusKm = 40): Option[] {
 const VENDOR_NAME: Record<string, string> = {
   fareharbor: "FareHarbor", resova: "Resova", peek: "Peek", checkfront: "Checkfront", xola: "Xola",
   rezdy: "Rezdy", tripworks: "TripWorks", square: "Square", acuity: "Acuity", foreup: "ForeUp", bookeo: "Bookeo",
+  areservation: "aReservation", fishingreservations: "FishingReservations",
 };
 
 /** The vendor as a guest should read it, or as the reader named it when nobody has written it down. */

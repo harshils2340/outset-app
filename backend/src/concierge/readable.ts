@@ -27,7 +27,9 @@ export type ReaderVendor =
   | "tripworks"
   | "square"
   | "acuity"
-  | "foreup";
+  | "foreup"
+  | "areservation"
+  | "fishingreservations";
 
 /**
  * Ordered, and the order is load-bearing in one place: Acuity's Squarespace host is
@@ -55,6 +57,10 @@ const RULES: [ReaderVendor, RegExp][] = [
   ["resova", /resova/i],
   ["fareharbor", /fareharbor/i],
   ["foreup", /foreupsoftware\.com/i],
+  // `/event/<company>[/<event>]` and `/eventCalendar/<company>`; `/catalog/...?justGiftCards` is a voucher store.
+  ["areservation", /areservation\.com\/(?:event|eventCalendar)\//i],
+  // A landing's own subdomain; `www.` is the vendor's site, which no reader can turn into trips.
+  ["fishingreservations", /\/\/(?!www\.)[a-z0-9-]+\.fishingreservations\.(?:net|com)\//i],
 ];
 
 /**
@@ -65,7 +71,7 @@ const RULES: [ReaderVendor, RegExp][] = [
  * shop already found readable is never re-checked — only a past miss is worth another look — so bump this by
  * one whenever `RULES` or `SQL_LIKES` above, or `vendors.ts`'s detection, gets wider.
  */
-export const READER_GENERATION = 3;
+export const READER_GENERATION = 4;
 
 /**
  * Every vendor a reader exists for, in the order the rules are tried.
@@ -117,9 +123,26 @@ const SQL_LIKES = [
   "%squarespace-scheduling%",
   "%.as.me%",
   "%foreupsoftware.com%",
+  "%areservation.com/event%",
+  "%.fishingreservations.net/%",
+  "%.fishingreservations.com/%",
 ];
 
 /** `true` for a link no reader knows, so `ORDER BY unreadableSql(col)` puts the quotable shops first. */
 export function unreadableSql(col: string): string {
   return SQL_LIKES.map((p) => `${col} NOT LIKE '${p}'`).join(" AND ");
+}
+
+/**
+ * `true` for a link some reader knows: the same list, the other way up.
+ *
+ * `npm run sync` picks which booking links to publish in `public/live-index.json` with this, and until it did
+ * it named three vendors by hand (FareHarbor, Peek, Xola) while the readers knew ten. The API host has no
+ * crawl database and reads its booking links from that file alone, so a Resova, Checkfront, Rezdy, TripWorks,
+ * Square, Acuity or ForeUp shop, readable in every test here, had no live times on its own listing page in
+ * production: the link the reader needed was never published. A vendor added to `SQL_LIKES` is published by
+ * the next sync with no other change.
+ */
+export function readableSql(col: string): string {
+  return SQL_LIKES.map((p) => `${col} LIKE '${p}'`).join(" OR ");
 }

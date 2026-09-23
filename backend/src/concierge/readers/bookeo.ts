@@ -108,10 +108,23 @@ export function bookeoRef(url: string): BookeoRef | null {
   return { account: null, slug, page: slug ? `https://bookeo.com/${slug}` : url };
 }
 
+/**
+ * Re-run 23 September 2026 from the laptop, one request: `bookeo.com/stlouisescape` now answers `200` with a
+ * 2KB page, so the IP gate above has lifted for this address. The page is not the calendar. It is Bookeo's
+ * reCAPTCHA interstitial ("We need to verify you're not a robot", `axiom_startRecaptchaMonitoring()`), the
+ * customer UI bundle behind it draws the calendar only once the challenge is passed, and a challenge is a
+ * line this codebase does not cross. So the finding moves from "blocked" to "challenged", the probe says
+ * which, and there is still no reader: nothing about their availability calls has been seen from here.
+ */
+const CHALLENGED = /verify you'?re not a robot|RecaptchaMonitoring|g-recaptcha/i;
+
 export type BookeoProbe = {
   page: string;
-  /** `blocked` — their IP gate. `refused` — no answer at all. `served` — a real page, which is the interesting one. */
-  kind: "blocked" | "refused" | "served";
+  /**
+   * `blocked`: their IP gate. `challenged`: a reCAPTCHA interstitial in place of the page. `refused`: no
+   * answer at all. `served`: a real page, which is the interesting one.
+   */
+  kind: "blocked" | "challenged" | "refused" | "served";
   status: number | null;
   bytes: number;
   /** The first of whatever came back, so a session on a clean address can see the shape without re-fetching. */
@@ -139,7 +152,7 @@ export async function bookeoProbe(bookingUrl: string, timeoutMs = 12000): Promis
       signal: AbortSignal.timeout(timeoutMs),
     });
     const body = await res.text();
-    const kind = BLOCKED.test(body) ? "blocked" : res.ok ? "served" : "refused";
+    const kind = BLOCKED.test(body) ? "blocked" : CHALLENGED.test(body) ? "challenged" : res.ok ? "served" : "refused";
     return { page: ref.page, kind, status: res.status, bytes: body.length, sample: body.slice(0, 1500) };
   } catch {
     return { page: ref.page, kind: "refused", status: null, bytes: 0, sample: "" };
@@ -167,7 +180,9 @@ export async function bookeoLive(
   const note =
     probe?.kind === "blocked"
       ? "Bookeo refuses this address outright — every one of their hosts answers with an IP block page rather than the shop's calendar — so their times cannot be read from here. The shop does sell online."
-      : probe?.kind === "served"
+      : probe?.kind === "challenged"
+        ? "Bookeo puts a reCAPTCHA in front of this shop's booking page, so their times cannot be read without passing a challenge, which we do not do. The shop does sell online."
+        : probe?.kind === "served"
         ? "Bookeo served this shop's booking page, so it is readable from this address; there is no reader for the page's shape yet."
         : "Bookeo did not answer for this shop.";
 

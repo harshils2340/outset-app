@@ -7,6 +7,8 @@ import { squareRef } from "../readers/square.ts";
 import { rezdyRef } from "../readers/rezdy.ts";
 import { acuityRef } from "../readers/acuity.ts";
 import { tripworksAccount } from "../readers/tripworks.ts";
+import { areservationRef } from "../readers/areservation.ts";
+import { fishingReservationsRef } from "../readers/fishingreservations.ts";
 
 /**
  * A link a reader can read, and the router would not send it.
@@ -34,6 +36,8 @@ test("every shipped booking link a reader's own parser accepts is routed to that
       (rezdyRef(url) && "rezdy") ||
       (acuityRef(url) && "acuity") ||
       (tripworksAccount(url) && "tripworks") ||
+      (areservationRef(url) && "areservation") ||
+      (fishingReservationsRef(url) && "fishingreservations") ||
       null;
     if (!parsed) continue;
     if (readerFor(url) !== parsed) stranded.push(url);
@@ -81,9 +85,27 @@ test("a shop with no booking system at all is not readable", () => {
   assert.equal(isReadable("https://bookeo.com/stlouisescape"), false, "Bookeo has no reader; see readers/bookeo.ts");
 });
 
+test("aReservation's event links are readable and its gift-card store is not", () => {
+  assert.equal(readerFor("https://link.areservation.com/event/daytonaparasail/Parasailing-16"), "areservation");
+  assert.equal(readerFor("https://link.areservation.com/event/chelanparasail"), "areservation");
+  assert.equal(readerFor("https://link.areservation.com/eventCalendar/floridacoastalboatrentals"), "areservation");
+  assert.equal(readerFor("https://link.areservation.com/event/ranalli?Groupid=632"), "areservation");
+  // A voucher has no time of day.
+  assert.equal(readerFor("https://link.areservation.com/catalog/truetours/?justGiftCards=true"), null);
+});
+
+test("every landing on FishingReservations is readable, whichever path its schedule sits on", () => {
+  assert.equal(readerFor("https://longbeach.fishingreservations.net/sales/"), "fishingreservations");
+  assert.equal(readerFor("https://fishermanslanding.fishingreservations.net/resos/"), "fishingreservations");
+  assert.equal(readerFor("https://morrobaylanding.fishingreservations.net/cruises/"), "fishingreservations");
+  assert.equal(readerFor("https://hmb.fishingreservations.net/sales?boat_filter[]=230"), "fishingreservations");
+  assert.equal(readerFor("https://redondo.fishingreservations.com/sales/"), "fishingreservations");
+  assert.equal(readerFor("https://www.fishingreservations.net/"), null, "the vendor's own site is not a landing");
+});
+
 test("the SQL twin of the list names every vendor the regexes do", () => {
   const sql = unreadableSql("booking");
-  for (const vendor of ["fareharbor", "resova", "peek.com", "checkfront", "xola.", "rezdy.com", "tripworks.", "square.site/%book/", "acuityscheduling"]) {
+  for (const vendor of ["fareharbor", "resova", "peek.com", "checkfront", "xola.", "rezdy.com", "tripworks.", "square.site/%book/", "acuityscheduling", "areservation.com/event", ".fishingreservations.net/"]) {
     assert.ok(sql.includes(`booking NOT LIKE '%${vendor}%'`), vendor + " is missing from the ordering");
   }
   // It is pasted into a query, so it must not carry a quote of its own.

@@ -153,6 +153,30 @@ Measured, on 20 September 2026, the ground is this:
 | Xola, Square, Bookeo, Rezdy, TripWorks, Checkfront, Eventbrite, Acuity, Roller, Calendly, Setmore, Mindbody, Zaui | 315 | a reader each |
 | the shop's own page | 9,016 | see below |
 
+Re-measured 23 September 2026 against `operators.calendar_vendor` joined to `booking_url` facts, operators
+rather than links, with what `readerFor` can parse today:
+
+| vendor | operators | reader | notes |
+| --- | --- | --- | --- |
+| FareHarbor | 1,850 | yes | 1,458 parse; the rest are waiver, gift and privacy links filed as booking links |
+| Peek | 324 | yes | 243 parse |
+| Square | 154 | yes | 28 parse: most links are storefronts, not Appointments |
+| Bookeo | 118 | **no** | the IP gate of 20 September has lifted; the page is now a reCAPTCHA interstitial. A challenge, so no |
+| Xola | 90 | yes | |
+| Checkfront | 56 | yes | |
+| Rezdy | 55 | yes | |
+| Acuity | 45 | yes | |
+| Burble (skydiving) | 39 | **no** | `bookings.burblesoft.com/robots.txt` is `Disallow: /`; honoured, as `enrich/vendors/burble.ts` already does |
+| Tock | 36 | **no** | Cloudflare managed challenge on every dynamic path (`enrich/vendors/tock.ts`) |
+| VallyPro | 31 | **no** | `services.vallypro.com` is open but the trip list needs a bearer; only 3 links carry a trip id |
+| aReservation (Indexic) | 27 | **yes, new** | `readers/areservation.ts`: the widget's own JSON at `linkapi.areservation.com` |
+| FishingReservations | 24 | **yes, new** | `readers/fishingreservations.ts`: one server-rendered schedule page |
+| Starboard Suite | 20 | no, and next | robots allows `/$`, `/e/` and `/sitemaps/`: the home calendar lists every departure of the month with seats left, and each `/e/<slug>` page carries a schema.org Event with `startDate` and `offers[]`. A reader is a day, inside robots, with no API |
+| TripWorks | 14 | yes | |
+| Resova | 20 | yes | |
+| ForeUp | 21 | yes | |
+| WaveRez, Stellar IMS, Singenuity, RecreoGo, BoatClubApp, Dizio, Flybook | 9 to 18 each | no | untested |
+
 **The 9,016 are not all hand-built.** `booking_url` is classified by pattern-matching the URL string, and a
 shop whose booking link is `theirdomain.com/book` very often embeds a vendor on that page. A sample of 36 of
 them, fetched for real: 31 answered, and **8 of those (26%) carry a known vendor's widget in the HTML** —
@@ -231,8 +255,18 @@ brand, on the Kitchener row. That is the chain problem below, and the tolerance 
   Escapology runs Resova at all 25 of its locations.
 - `plan.ts` — the sentence reader and the shortlist. What, where, when, how many, budget. Then the catalog,
   then the shops themselves.
-- `vendors.ts` — sixteen booking vendors: how to recognise each, how to pull the shop's account id out of the
+- `vendors.ts`: eighteen booking vendors: how to recognise each, how to pull the shop's account id out of the
   embed, and how to rebuild the vendor's hosted booking page from it.
+- `readers/areservation.ts`: Indexic's aReservation, the Florida parasail and jet ski shops. Company, event,
+  `Dates` for the window, `DateTimes` for the first open day, asked with one ticket so `totalTicketAmount`
+  is the slot's own head price. Dates go in as `yyyy-MM-dd`; the compact form answers an empty list and a
+  SQL overflow.
+- `readers/fishingreservations.ts`: the sportfishing landings. One fetch of the schedule page, a
+  server-rendered table; seats are written as `&#52;` and decoded, "Sold Out" is words, and a charter row
+  is the whole boat and is filed as a group rate.
+- `readable.ts` is also what `npm run sync` publishes `public/live-index.json` from (`readableSql`), and
+  `enrich/availability.ts` hands every vendor it has no reader of its own for to `readFeed`, so a vendor
+  added to `RULES` and `SQL_LIKES` reaches the guest listing page at the next sync with no other change.
 - `../api/concierge.ts` — the two routes, and `/go`, the page.
 - `../api/conciergePage.ts` — the page itself, one string, no build step.
 - `../../scripts/demo-server.mts` — runs the concierge alone. The real API will not boot without Postgres,
@@ -299,6 +333,16 @@ brand, on the Kitchener row. That is the chain problem below, and the tolerance 
   words: it has never heard of "skydiving". The sentence is tried as typed and with English's endings removed,
   and a jet ski answer is only believed when the sentence says jet ski.
 - **Ask the shops in parallel.** Three in turn took nineteen seconds with the machine idle throughout.
+- **The sync published three vendors' links while the readers knew ten.** `live-index.json` was written from
+  a hand list (`fareharbor`, `peek.com/s/`, `xola.`), and the API host reads its booking links from that file
+  alone, so a Resova or Checkfront shop had a reader in every test here and no live times on its own listing
+  page in production. `readableSql` in `readable.ts` is the one list now; do not write another.
+- **A concierge read on a listing page is partial by construction.** Every reader stops at the first day an
+  activity has something free, and a listing page draws an empty date as "nothing on". `fromConcierge` in
+  `enrich/availability.ts` marks those answers `partial` so `liveTimes.ts` treats an empty date as unread.
+- **Ask aReservation for one ticket, not two.** `totalTicketAmount` is the total for the `clientTicketList`
+  sent; `8020!2` answers 158 for a $79 flight, and dividing back is a guess once `rateAdjustmentPercent` is
+  in play. `8020!1` is the slot's own head price.
 
 ## What it does when it cannot answer
 
@@ -332,4 +376,8 @@ is the answer to why a guest would use this instead of a search engine.
   `max_quantity` (Batman takes 2-4, Mansion Murder 2-6), and a party of six is still offered the four-player
   room. The numbers are already on every `Departure.rates` entry; nothing filters on them yet.
 - Bookeo blocks headless browsers outright; its widget never loads. Its account id is readable from the embed
-  (`widget.js?a=...`) and its hosted page is the route to try, not the iframe.
+  (`widget.js?a=...`) and its hosted page is the route to try, not the iframe. On 23 September 2026 the IP
+  gate was gone and the hosted page was a reCAPTCHA interstitial instead (`readers/bookeo.ts`,
+  `kind: "challenged"`). Still no reader, and a challenge is not something to work around.
+- Starboard Suite (20 shops) is the next reader: see the vendor table above. Its `/online-booking/` paths
+  are robots-disallowed, but the home calendar and the `/e/` event pages are allowed and carry everything.
