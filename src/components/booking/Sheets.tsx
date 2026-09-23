@@ -903,15 +903,18 @@ function RequestBody({
             </div>
           ) : null}
 
-          <section className="airsec airhost">
-            <span className="airavatar">{item.affiliate ? item.affiliate.label.charAt(0) : item.title.replace(/^the\s+/i, "").charAt(0).toUpperCase()}</span>
-            <span>
-              {/* A partner's product is a tour or a ticket, not a host: it is sold on the partner's site and run
-                  by a tour operator there. */}
-              <b>{item.affiliate ? "Sold on " + item.affiliate.label : "Hosted by " + item.title}</b>
-              <small>{[kind, item.area].join(" · ")}</small>
-            </span>
-          </section>
+          {/* A partner's product is a tour or a ticket, not a shop of ours: its title is a product, so "Hosted by
+              <product name>" named a tour as its own host. Who runs it is the partner's fact to state on the page
+              it books on, and the desktop listing draws no host line for one either. */}
+          {partnerLabel ? null : (
+            <section className="airsec airhost">
+              <span className="airavatar">{item.title.replace(/^the\s+/i, "").charAt(0).toUpperCase()}</span>
+              <span>
+                <b>Hosted by {item.title}</b>
+                <small>{[kind, item.area].join(" · ")}</small>
+              </span>
+            </section>
+          )}
 
           {rows.length ? (
             <section className="airsec">
