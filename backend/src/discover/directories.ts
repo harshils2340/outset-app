@@ -234,9 +234,11 @@ export async function runDirectory(src: DirectorySource, opts: { max?: number; s
     out.listed = from.length;
     log(`${src.id}: ${from.length} pages in the sitemap lead to businesses, reading ${max} from #${opts.skip || 0}`);
     const found = new Set<string>();
+    let hopped = 0;
     for (const url of from.slice(opts.skip || 0, (opts.skip || 0) + max)) {
       const page = await getPage(url, gap);
       out.fetched++;
+      if (++hopped % 25 === 0) log(`${src.id}: ${hopped}/${max} index pages read, ${found.size} businesses named so far`);
       if (isBlockedPage(page)) {
         out.blocked = true;
         out.failed.push(url + " (blocked: " + page.finalUrl + ")");
