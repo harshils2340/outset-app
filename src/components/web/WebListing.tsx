@@ -1195,8 +1195,12 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
   if (liveTimes) rows.push({ icon: I.calendar, title: "Live times from their calendar", text: "Start times come straight from " + possessive(item.title) + " own booking system." });
   // Open status is the header line under the subtitle now, so it is not repeated as a highlight row.
   if (cancel) rows.push({ icon: I.calendar, title: cancel, text: "Plans change. Their published policy lets you cancel for a full refund." });
-  if (affiliate) rows.push({ icon: I.ticket, title: "Booked on " + affiliate.label, text: "You pick a date and pay on " + affiliate.label + ". Outset earns a commission if you book there." });
-  else if (instant) rows.push({ icon: I.bolt, title: "Instant confirmation", text: "Your spot is confirmed the moment you book." });
+  // A partner product carries the "book on <partner>" line and its commission disclosure in the reserve box
+  // only, so the body reads like any Outset listing: photos, description, what's included, who can go. Repeating
+  // the partner's name in an info row here made the page feel like a partner's page rather than ours.
+  if (affiliate) {
+    // no booking row in the body; the reserve box states how it books and the commission
+  } else if (instant) rows.push({ icon: I.bolt, title: "Instant confirmation", text: "Your spot is confirmed the moment you book." });
   else if (!visit) rows.push({ icon: I.message, title: "Request to book", text: "The business confirms by email. Nothing is charged until they do." });
   else if (ticketHref) rows.push({ icon: I.ticket, title: "Tickets from the business", text: "Entry is sold on " + possessive(item.title) + " own site, at their prices." });
   if (item.meetingPoint) rows.push({ icon: I.door, title: "Meeting point", text: tidyLine(item.meetingPoint) });
