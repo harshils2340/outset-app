@@ -4069,6 +4069,78 @@ disk, run once on the finished tree because `src/lib/catalog.ts` is on every lis
   category accents are still under the AA floor, Viator's `additionalInfo` is still filed under "Who can go",
   its `exclusions` are still dropped, and no live vendor or partner API has answered anything from this address.
 
+## 23 September 2026, sixty-third run (11:20 to 12:30 UTC)
+
+**Chosen, and why.** Nothing has landed since the last entry but the entry itself, so the rehearsal's 53 of 53
+still stood and the baseline was installs, both type checks and both suites instead. Every area this run's
+brief lists is already on the Verified list, so the hour went to the Not yet checked list, and to the two
+lines on it that are a partner's own words reaching a guest wrong rather than a question: the `exclusions` the
+detail pass fetches and the catalog drops, and the `additionalInfo` bag filed whole under "Who can go". 6,492
+listings, 13% of the catalog, and the one surface where the text a guest reads is somebody else's.
+
+**Found and fixed.**
+
+- **A tour that does not feed you said so to Viator and not to a guest** (`a83c213a5`). `detailViator` has
+  fetched each product's `exclusions` since the first pass and stored them under `raw.detail`, and
+  `toAffiliateItem` read the inclusions sitting beside them and dropped the rest. So all 6,492 partner listings
+  tell a guest what the price buys and none of them what it does not: the gratuity, the lunch, the park entrance
+  fee and the hotel pickup that are theirs to pay are on the page they book on and nowhere on ours. Both
+  surfaces already split a "not included" line out of `includes` and strike it through, the way Airbnb draws an
+  amenity a place does not have, and 230 shipped lines are drawn that way today off a partner's own wording, so
+  an exclusion needs no field and no component: it publishes as "Gratuities (not included)". `toAffiliateItem`
+  now reads the product's own sections rather than `raw.detail.fields`, the copy the pass left beside them, so
+  a rule put right there reaches a guest on the next sync instead of waiting for a fresh pass over an API this
+  address has no key for.
+
+- **"Who can go: download the Tour Guide app over Wi-Fi", on 2,302 partner listings** (`0f6d1a428`). Viator
+  heads one bag "Additional info" and puts everything in it: the accessibility, fitness and health facts it
+  generates from a fixed list of types, and whatever else the operator typed. All of it was published as
+  `requirements`, which the page prints under "Who can go", so a guest asking who may come was answered with the
+  app to download, the dress code, the devices supported, what to bring, that the tour runs in all weather (208
+  listings) and, on 6, the marketing: "More ways to save: choose a single tour, a nearby bundle, or access to
+  200+ tours". 6,221 lines. They go to Policies, where the page already files the rest of what a shop publishes.
+  The rule reads the line rather than its `type`, because the free-text half of the bag carries real rules about
+  the guest ("Minimum drinking age is 21 years") and one of the enumerated types carries none. Behind it,
+  `splitPolicies` passed over every waiver line on the assumption the "Safety and waiver" column had it, and
+  that column takes a line only while it reads as a bullet: no shipped operator writes one longer, so nothing
+  was lost until 29 of the lines moved here turned out to be a partner's full waiver and terms paragraph, which
+  would have been shown in no column at all.
+
+**Checked and sound.** All 33,502 `additionalInfo` lines on the 6,492 shipped partner listings, read against
+the heading they are printed under. Every string in every partner detail file for markup, entities, a decoding
+fault, a bare URL and an email address (27 URL lines and 12 email lines, all now under Policies rather than
+"Who can go"). That the crawled `requirements` of an operator listing are not this bag and must not be sorted
+by this rule: 7,343 of them would move, and "Must be 18 years or older", "No experience needed" and "All skill
+levels welcome" are among them.
+
+**Green after the fixes.** 739 app tests (up from 736) and 715 backend (up from 709). Both type checks clean
+but for TS5097. The rehearsal 53 of 53 against a local Postgres 16 cluster on 5433 with SSL and the Chromium on
+disk, run on the finished tree because `src/lib/listingDerive.ts` is on every listing page's render path.
+
+**Needs Harshil.**
+
+- **88 businesses are in the catalog twice, once as ours and once as a partner's product.** 171 Viator products
+  name an operator listing in their own metro: Busch Gardens Tampa, the Florida Aquarium, Space Center Houston,
+  World of Coca-Cola, Chicago Architecture Center, Monterey Bay Whale Watch, Key West Food Tours. A guest
+  searching for one sees two cards, with two covers and two prices, one of which books here and one on Viator.
+  The duplicate rules we already run (shared photo, map pin, name) all stop at the operator table. Which side
+  should win is your call and it is not obvious: ours is claimable and earns nothing, theirs is bookable today
+  and pays commission.
+- **5,157 en and em dashes are printed to guests on 2,179 listings**, outside the hours lines where a dash is a
+  range and belongs. `tidyDashes` states the rule ("a menu's own em or en dash never survives to a guest") and
+  is called on two fields of a crawled listing, `specs` and `highlights`; the blurb (2,009), the service
+  descriptions (748), the option names and details (444), the review quotes (255), the inclusions (237) and 62
+  titles keep theirs, and no partner line goes through the rule at all. Applying it everywhere is a bigger call
+  than it looks: it turns "Pacific Northwest Bundle - 4 Self-Guided Tours" into a comma, and an hours line into
+  nonsense, so the fields have to be named one at a time.
+- **Last night's stand:** the nth-weekday rule is still read as every such weekday on 8 shops, a partner's price
+  is still quoted in its own currency and printed as dollars (1,618 Canadian partner rows, all asked for in CAD
+  and all printed "$"), the lite shard still carries no unit, `public/unsubscribe.html` still POSTs on load, the
+  listing page still reads three of the ten vendors, `outset-api` still builds with no catalog, the "All
+  requests" link is still parked off screen on a phone, five category accents are still under the AA floor,
+  Viator's `additionalInfo` bag is still one bag we split by reading it rather than by its own types, and no
+  live vendor or partner API has answered anything from this address.
+
 ## Coverage
 
 The catalog is 48,198 listings as of the 23 September sync, 1,873 of them Viator partner rows. Counts below
@@ -4152,7 +4224,10 @@ The window the Free cancellation badge promises, over all 1,303 shipped badges: 
 owns the number, which side of that clause's line it sits on, a rate card written as one sentence, a window
 sold with a protection plan, the shop's own weather call and the clock it runs on, and "15+ Days", "3 or more
 days", weeks and months. That the badge a guest reads is re-read from the policy rather than taken from the
-`fc` the sync wrote, and that the static `/l/` page and the app now name the same window for the same shop. What a card says a
+`fc` the sync wrote, and that the static `/l/` page and the app now name the same window for the same shop. What a partner's own product sections say to a guest, over all 33,502 `additionalInfo` lines and every
+string in the 6,492 shipped partner detail files: which of them states a rule about the guest and which about
+the booking, what a product says its price leaves out, and every bare URL, email address, tag and decoding
+fault in the text a partner supplies. What a card says a
 listing costs, at the row that sets it: the cheapest priced row of all 10,217 listings that have one, every
 row in the catalog whose words mention a deposit, a retainer or a booking fee, and all 99 rows whose own name
 states a dollar figure, each held against the price the row holds. Every string in every shipped detail file
@@ -4536,11 +4611,14 @@ a software version, a group size, a distance, a booking window, a course load, a
 **Not yet checked.** Whether a row that names its own length should
 be believed over the length shown beside it, or neither should be: 114 rows disagree, and the junk half is the
 label on some shops and the name on others (see the sixty-second run's Needs Harshil). Whether Fin & Fly's one
-surviving priced row is a deposit like its five siblings, which only a re-crawl settles. The Viator `additionalInfo` bag, which is what fills a partner row's "Who can go" column: it carries
-"Operates in all weather conditions", "Wheelchair accessible" and, on 73 rows, instructions for booking on
-TripAdvisor, all under a heading of ours that does not fit them (see this run's Needs Harshil). Whether a
-partner's `exclusions` should be published beside its inclusions: the detail pass reads them and the listing
-drops them, so a guest never sees what a tour leaves out (see this run's Needs Harshil). A minimum age that is
+surviving priced row is a deposit like its five siblings, which only a re-crawl settles. Whether the same business should be in the catalog twice, once as ours and once as a partner's
+product: 171 Viator products name an operator listing in their own metro, across 88 businesses, and the
+duplicate rules we run all stop at the operator table (see the sixty-third run's Needs Harshil). Whether the
+en and em dashes a shop and a partner write should survive to a guest: the rule says no and is called on two
+fields of a crawled listing, leaving 5,157 on 2,179 listings, and the fields have to be named one at a time
+because an hours line reads a dash as a range (see that run's Needs Harshil). Whether a partner's
+`additionalInfo` should be split by its own `type` rather than by reading the line, which is what the
+sixty-third run could check against the shipped catalog and the types are not. A minimum age that is
 an age but somebody else's: the accompanying adult, the fishing licence, the age that may sign its own waiver,
 about 30 listings and a judgement rather than a rule (see this run's Needs Harshil). Whether a bare URL or an
 email address should be printed inside a "Who can go" bullet, which 25 partner lines carry. Whether a partner's price should be printed in the currency its API quoted it in: both pulls ask for CAD in Canadian metros, store it, and the catalog record drops it (see this run's Needs Harshil). Whether the phone booking sheet's "Ask Outset" panel should honour the operator's Assistant switch the way the desktop page does; it is behind `AGENT_MODE_LIVE`, so no guest meets it today. Whether a partner product should be in the "near you" rails at all, given that its pin is the city's. Any partner API against its real server: no key exists here, so every affiliate row in this sweep was shaped by hand. Rezdy's reader end to end, which needs a hand-rolled HTTP/2 session because Cloudflare
