@@ -64,7 +64,10 @@ Experiences, CourseHorse; registry in `src/discover/directories.ts`) for the bus
 when the page has one, and the operator's own website only when the page links it. That is all that is read; a
 marketplace's photos, descriptions and prices are its own and its terms forbid reusing them. Sources that answer a
 polite bot with a Cloudflare challenge (Supreme Golf, ClassBento, ClassPass) or a 403 (FishingBooker) are not in
-the registry and must not be added with a workaround. Dry by default, `--write` appends to
+the registry and must not be added with a workaround. A source that starts answering a run with a rate-limit
+page (Captain Experiences did, at the default pace) ends that run on the spot: the page is never cached or
+parsed, the run reports itself blocked, and the source gets a longer `gapMs` and a smaller `max`, not a retry
+loop. Dry by default, `--write` appends to
 `data/discovered/directory-<id>.json` (rows with a website, which `import-discovered.mts` inserts) and
 `directory-<id>-needs-website.json` (leads for a website lookup, never inserted as listings). One host, one request
 at a time, at most 200 pages a run, so a slice is fine on the laptop; a whole directory is a job for the worker.
