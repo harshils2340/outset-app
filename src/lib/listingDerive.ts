@@ -92,3 +92,24 @@ export function durationLabel(item: Unclaimed): string | null {
 export function faqText(text: string): string {
   return String(text || "").replace(/^\s*[QA]\s*[.:)\]]\s+/i, "").trim();
 }
+
+/**
+ * A page heading the crawl swept up with the sentence under it: "Cancellations Cancellation requests received
+ * at least 48 hours before...". The heading names what follows, so the second word repeats the first, either
+ * word for word ("Gas Gas is not included") or as its plural ("Cancellations Cancellation").
+ *
+ * The plural allowance needs a real word behind it. Stripping a trailing s from "As" leaves "a", which matched
+ * every sentence that opens "As a", so six shipped lines lost their first word and read as something else:
+ * "A reminder, it is customary to tip your crew" and "A boat rental business, cancellations can be very
+ * costly" were both the shop stating a fact, not a heading.
+ */
+export function unglueHeading(text: string): string {
+  const lead = text.match(/^([A-Za-z]+)\s+([A-Za-z]+)\b/);
+  if (!lead) return text;
+  const [, first, second] = lead;
+  const same =
+    first.length >= 3 &&
+    (first.toLowerCase() === second.toLowerCase() ||
+      (first.length >= 4 && first.toLowerCase().replace(/s$/, "") === second.toLowerCase().replace(/s$/, "")));
+  return same ? text.slice(first.length).trim() : text;
+}

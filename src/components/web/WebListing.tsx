@@ -12,7 +12,7 @@ import { addressLine, bookingPaused, contactFor, fmtPhone, fromPrice, getCatalog
 import { DAYS, fmtDate, fmtReviews, fmtTime, money, priceWith, reviewsLine } from "../../lib/format";
 import { srcSet, thumb } from "../../lib/images";
 import { embedAutoplay, isGif, listingMedia, photoCandidates, probePhotos, type Media } from "../../lib/media";
-import { bringLine, cleanDesc, durationLabel, faqText, groupCap as readGroupCap, minAge, splitPolicies } from "../../lib/listingDerive";
+import { bringLine, cleanDesc, durationLabel, faqText, groupCap as readGroupCap, minAge, splitPolicies, unglueHeading } from "../../lib/listingDerive";
 import { freeCancelBadge } from "../../lib/cancellation";
 import { bookableStart, clockIn, hourLines, itemOpenState, itemWeek, zoneFor } from "../../lib/openNow";
 import { displayHours } from "../../lib/hoursText";
@@ -175,8 +175,7 @@ export function tidyLine(text: string): string {
     t = t.toLowerCase().replace(/(^|[.!?]\s+)([a-z])/g, (_m, p: string, c: string) => p + c.toUpperCase()).replace(/\b(am|pm|atv|utv|vip|faq|id|usa|fl)\b/g, (w) => w.toUpperCase());
   }
   // "Cancellations Cancellation requests received..." carries the page heading glued to the sentence.
-  const lead = t.match(/^([A-Za-z]+)\s+([A-Za-z]+)\b/);
-  if (lead && lead[1].toLowerCase().replace(/s$/, "") === lead[2].toLowerCase().replace(/s$/, "")) t = t.slice(lead[1].length).trim();
+  t = unglueHeading(t);
   return t ? t.charAt(0).toUpperCase() + t.slice(1) : t;
 }
 
