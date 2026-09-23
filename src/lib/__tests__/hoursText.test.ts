@@ -81,6 +81,23 @@ test("the punctuation the crawl swept up in front of the hours is not part of th
 
 test("a heading is not an hour, a happy hour is not a trading hour, and one line is printed once", () => {
   assert.deepEqual(displayHours(["Hours of Operation: Mon - Fri8:00 am - 5:00 pm"]), ["Mon - Fri 8:00 am - 5:00 pm"]);
+  // 38 shipped lines open on a heading word that names nothing, straight into the days or the clock.
+  assert.deepEqual(displayHours(["Schedule Mon: 9:00 AM - 3:00 PM"]), ["Mon: 9:00 AM - 3:00 PM"]);
+  assert.deepEqual(displayHours(["Open Hours Mon-Thu 8am-5pm"]), ["Mon-Thu 8am-5pm"]);
+  assert.deepEqual(displayHours(["Store Hours Mon Closed"]), ["Mon Closed"]);
+  assert.deepEqual(displayHours(["REGULAR HOURS: 8:30 am - 4:30 pm"]), ["8:30 am - 4:30 pm"]);
+  assert.deepEqual(displayHours(["Time: 5:00pm - 7:30pm"]), ["5:00pm - 7:30pm"]);
+  assert.deepEqual(displayHours(["Hours:Monday - Friday - 9AM - 6PM"]), ["Monday - Friday - 9AM - 6PM"]);
+  // A calendar emoji in front of the heading is what kept the heading on o-3palmszoo-org's line, and its
+  // Monday was then printed twice, once with the heading and once without.
+  assert.deepEqual(displayHours(["\u{1F5D3}\u{FE0F} Schedule Mon: 9:00 AM - 3:00 PM", "Mon: 9:00 AM - 3:00 PM"]), ["Mon: 9:00 AM - 3:00 PM"]);
+  // And punctuation the other side of it: the crawl stored this line as "of operation? The course is open".
+  assert.deepEqual(displayHours(["of operation? The course is open 6:00 AM - 11:00 PM"]), ["The course is open 6:00 AM - 11:00 PM"]);
+  // Whose hours they are is a fact, and a heading followed by a sentence is the sentence's own first words.
+  assert.deepEqual(displayHours(["Office hours 12-7 pm"]), ["Office hours 12-7 pm"]);
+  assert.deepEqual(displayHours(["Park Hours 3:00pm - 10:00pm during event days"]), ["Park Hours 3:00pm - 10:00pm during event days"]);
+  assert.deepEqual(displayHours(["open hours on Wednesdays and Saturdays from 1 PM to 4:30 PM"]), ["open hours on Wednesdays and Saturdays from 1 PM to 4:30 PM"]);
+  assert.deepEqual(displayHours(["Opening Friday 10:00 am"]), ["Opening Friday 10:00 am"]);
   assert.deepEqual(displayHours(["Happy Hour Wednesday-Friday 12-6 PM"]), []);
   assert.deepEqual(displayHours(["Daily 9am-5pm", "Daily 9am-5pm"]), ["Daily 9am-5pm"]);
   assert.equal(displayHours([""]).length, 0);

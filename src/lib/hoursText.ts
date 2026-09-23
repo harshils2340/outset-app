@@ -12,8 +12,9 @@
  * Case is left alone. A shop that shouts its hours is still stating its hours, the same way a shouted review
  * is still a review.
  *
- * Nothing here imports anything, so `backend/src/sync/listingPages.ts` can read the same rule for the static
- * `/l/` page as the app reads for the listing it opens.
+ * A fourth surface, the static `/l/<id>.html` page a search engine indexes, printed the published lines with no
+ * tidying at all until it was pointed here. Nothing in this module imports anything, which is what lets
+ * `backend/src/sync/listingPages.ts` read the same rule the app reads.
  */
 
 /**
@@ -163,9 +164,22 @@ function osmLines(line: string): string[] | null {
 export function tidyHours(text: string): string {
   return text
     .replace(INVISIBLE, "")
-    .replace(/^\s*(?:hours\s+)?of\s+operations?:?\s*/i, "")
-    .replace(/^hours:?\s+/i, "")
     // Whatever the crawl swept up in front of the first word: a bullet, a stray bracket, an ampersand, an emoji.
+    // Before the headings, not after: a calendar emoji in front of "Schedule Mon: 9:00 AM" is what kept that
+    // heading on the line, and o-3palmszoo-org then printed its Monday twice, once with the heading and once
+    // without.
+    .replace(/^[^\p{L}\p{N}]+/u, "")
+    .replace(/^\s*(?:hours\s+)?of\s+operations?:?\s*/i, "")
+    // A heading in front of the days that names nothing, on 38 shipped lines: "Schedule Mon: 9:00 AM - 3:00 PM",
+    // "Open Hours Mon-Thu 8am-5pm", "Store Hours Mon Closed", "Time: 5:00pm - 7:30pm". A shop's own "Office
+    // hours" and "Park hours" do name something and stay, because the office and the park are not the same door
+    // as the boats, and "Opening Friday 10:00 am" is a sentence about opening rather than a heading.
+    // Only when the days or the clock come straight after it: "open hours on Wednesdays and Saturdays from 1 PM"
+    // is the shop's own sentence, and taking its first two words off leaves it starting on "on".
+    .replace(/^(?:schedule|(?:open(?:ing)?|business|store|regular|operating)\s+hours|hours)\s*:?\s*(?=(?:\d|mon|tue|wed|thu|fri|sat|sun|daily|every ?day|weekday|weekend|closed|jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\w*\b)/i, "")
+    .replace(/^times?\s*:\s*(?=[\p{L}\p{N}])/iu, "")
+    // And again after them, because a heading can be followed by punctuation as well as preceded by it: the
+    // crawl stored o-alhambragolf-com's line as "of operation? The course is open 6:00 AM - 11:00 PM".
     .replace(/^[^\p{L}\p{N}]+/u, "")
     .replace(/["“”]/g, "")
     .replace(/([A-Za-z])(\d)/g, "$1 $2")
