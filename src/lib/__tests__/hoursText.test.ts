@@ -23,6 +23,41 @@ test("OpenStreetMap's own syntax is read out in words", () => {
   assert.deepEqual(displayHours(["Fr,Sa 12:00-19:00; Su 12:00-16:00"]), ["Fri, Sat 12:00 PM - 7:00 PM", "Sun 12:00 PM - 4:00 PM"]);
 });
 
+/**
+ * The three shapes of rule the reader used to give up on, so the day codes and the 24 hour clock went to a guest
+ * as written: a span with one end the syntax names rather than clocks, a span the shop said more after, and a
+ * rule that opens with the months or the date it applies to. 36 listings between them, and one of those, an
+ * Apr-Dec sculpture garden, had its whole week dropped rather than printed.
+ */
+test("a rule that says more than a plain span is still read out in words", () => {
+  assert.deepEqual(displayHours(["Mo-Su 07:00-sunset"]), ["Mon-Sun 7:00 AM - sunset"]);
+  assert.deepEqual(displayHours(["Mo-Su sunrise-22:00"]), ["Mon-Sun sunrise - 10:00 PM"]);
+  assert.deepEqual(displayHours(["Mo-Su sunrise-sunset"]), ["Mon-Sun sunrise - sunset"]);
+  assert.deepEqual(displayHours(["Su 13:30-16:00 \"or by appointment\""]), ["Sun 1:30 PM - 4:00 PM or by appointment"]);
+  // Two spans in one rule, and the syntax's own comma in front of the shop's words, are the syntax's, not theirs.
+  assert.deepEqual(displayHours(["Mo-Fr 10:00-17:00,17:00-19:00 \"by appointment\""]), ["Mon-Fri 10:00 AM - 5:00 PM, 5:00 PM - 7:00 PM by appointment"]);
+  assert.deepEqual(displayHours(["Tu 09:00-15:00, \"by appointment\""]), ["Tue 9:00 AM - 3:00 PM by appointment"]);
+});
+
+test("the months a rule applies to are the shop's season, not the syntax's keyword", () => {
+  assert.deepEqual(displayHours(["May-Oct Mo-Sa 09:00-16:00; Nov-Apr Mo,We 10:00-15:00"]), [
+    "May-Oct Mon-Sat 9:00 AM - 4:00 PM",
+    "Nov-Apr Mon, Wed 10:00 AM - 3:00 PM",
+  ]);
+  assert.deepEqual(displayHours(["Apr-Dec Mo-Sa 09:00-17:00, Su 11:00-16:00; Jan-Mar \"by appointment only\""]), [
+    "Apr-Dec Mon-Sat 9:00 AM - 5:00 PM",
+    "Sun 11:00 AM - 4:00 PM",
+    "Jan-Mar by appointment only",
+  ]);
+  assert.deepEqual(displayHours(["Sa-Su 11:00-17:00; Jan-Feb off; Dec off"]), ["Sat-Sun 11:00 AM - 5:00 PM", "Jan-Feb Closed", "Dec Closed"]);
+  assert.deepEqual(displayHours(["Fr-Sa 12:00-18:00; Dec 25 off"]), ["Fri-Sat 12:00 PM - 6:00 PM", "Dec 25 Closed"]);
+  // One date range written around another is not one rule, so it stays the clause that is dropped whole.
+  assert.deepEqual(displayHours(["May Mo[-1] -2 days-Sep Mo[1] Sa,Su 09:00-18:30 || Sa,Su 09:00-18:30 \"by appointment\"; PH Off"]), [
+    "Sat, Sun 9:00 AM - 6:30 PM by appointment",
+    "Public holidays Closed",
+  ]);
+});
+
 test("a sentence that happens to start with a day code is left as the shop wrote it", () => {
   assert.deepEqual(displayHours(["We work daily from 10 am to 9 pm"]), ["We work daily from 10 am to 9 pm"]);
   assert.deepEqual(displayHours(["Sat - Sun 9:00 AM - 5:00 PM"]), ["Sat - Sun 9:00 AM - 5:00 PM"]);

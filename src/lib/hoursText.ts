@@ -39,7 +39,28 @@ export function isTradingHoursLine(line: string): boolean {
 const DAY_CODE: Record<string, string> = { Mo: "Mon", Tu: "Tue", We: "Wed", Th: "Thu", Fr: "Fri", Sa: "Sat", Su: "Sun", PH: "Public holidays" };
 const DAY_SPEC = "(?:Mo|Tu|We|Th|Fr|Sa|Su|PH)(?:\\s*-\\s*(?:Mo|Tu|We|Th|Fr|Sa|Su))?";
 const OSM_CLAUSE = new RegExp("^(" + DAY_SPEC + "(?:\\s*,\\s*" + DAY_SPEC + ")*)(?![A-Za-z])\\s*(.*)$");
-const OSM_SPAN = /^(\d{1,2}):(\d{2})\s*-\s*(\d{1,2}):(\d{2})$/;
+/**
+ * The span a rule opens with, and whatever the shop said after it.
+ *
+ * Reading only a rest that is exactly a clock span left 22 listings printing the syntax at a guest: the golf
+ * courses and driving ranges open "Mo-Su 07:00-sunset", where one end of the span is a time no clock shows, and
+ * the galleries and libraries open "Su 13:30-16:00 or by appointment", where the shop said more after the span.
+ * Neither was read, so neither had its day codes or its 24 hour clock turned into words. The span has to sit at
+ * the front of the rest for this to be a rule at all: "We are open 09:00-17:00 daily" is a sentence that happens
+ * to start with a day code, and it stays the shop's own line.
+ */
+const OSM_CLOCK = "(?:\\d{1,2}:\\d{2}|sunrise|sunset|dawn|dusk)";
+const OSM_SPAN = new RegExp("^(" + OSM_CLOCK + ")\\s*-\\s*(" + OSM_CLOCK + ")(?![\\d:])", "i");
+/** One rule can carry more than one span, separated by a comma: "Mo-Fr 10:00-17:00,17:00-19:00". */
+const OSM_SPAN_MORE = new RegExp("^\\s*,\\s*(" + OSM_CLOCK + ")\\s*-\\s*(" + OSM_CLOCK + ")(?![\\d:])", "i");
+/**
+ * The months or the date a rule applies to, which the syntax writes in front of the days: "May-Oct Mo-Sa
+ * 09:00-16:00", "Jan off", "Dec 25 off". Peeled off first and put back in front of the words, so a museum's
+ * summer week and a mead hall's Christmas Day read as the shop's own season rather than as the syntax's own
+ * keyword ("Jan off", "Nov-Mar closed", "May-Oct Mo-Sa 09:00-16:00" all went to a guest as written).
+ */
+const MONTH = "(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)";
+const OSM_WHEN = new RegExp("^(" + MONTH + "(?:\\s+\\d{1,2})?(?:\\s*-\\s*" + MONTH + "(?:\\s+\\d{1,2})?)?)\\s*:?\\s+(?=\\S)", "i");
 /** A day name the crawl ran onto the end of the time before it, with no space in between. */
 const GLUED_DAY = /(\d(?:\s?[ap]\.?m\.?)?)(Mon|Tues|Tue|Wednes|Wed|Thurs|Thur|Thu|Fri|Satur|Sat|Sun)(day)?\b/g;
 /** Zero-width joiners, spaces and marks, a byte order mark, and the control characters a bad decode leaves. */
@@ -50,10 +71,45 @@ function hour12(h: number, m: string): string {
   return ((hh % 12) || 12) + ":" + m + " " + (hh >= 12 ? "PM" : "AM");
 }
 
+/** One end of a span: a 24 hour clock read out, or one of the syntax's own variable times left as a word. */
+function clockWord(t: string): string {
+  const m = /^(\d{1,2}):(\d{2})$/.exec(t);
+  return m ? hour12(Number(m[1]), m[2]) : t.toLowerCase();
+}
+
+/** The spans a rule opens with, in words, and whatever the shop wrote after them. Null when it opens with none. */
+function spanRun(rest: string): { said: string; tail: string } | null {
+  const first = OSM_SPAN.exec(rest);
+  if (!first) return null;
+  const said = [clockWord(first[1]) + " - " + clockWord(first[2])];
+  let tail = rest.slice(first[0].length);
+  for (let more = OSM_SPAN_MORE.exec(tail); more; more = OSM_SPAN_MORE.exec(tail)) {
+    said.push(clockWord(more[1]) + " - " + clockWord(more[2]));
+    tail = tail.slice(more[0].length);
+  }
+  // A comma or semicolon left in front of the shop's own words is the syntax's separator, not their punctuation.
+  return { said: said.join(", "), tail: tail.replace(/^\s*[,;]\s*/, "").trim() };
+}
+
 /**
- * One OpenStreetMap rule per line, in words. Only a line whose every clause opens with day codes and whose
- * rest is a 24 hour span, "off" or a quoted note: "We work daily from 10 am to 9 pm" opens with a day code
- * and is a sentence, so it is left exactly as the shop wrote it.
+ * The months or the date a rule applies to, taken off the front so the days behind it can be read. Peeled only
+ * when one rule is left: "May Mo[-1] -2 days-Sep Mo[1] Sa,Su 09:00-18:30" is one date range written around
+ * another, and it stays the whole clause the day-code guard below drops rather than half of one.
+ */
+function peelSeason(clause: string): { season: string; rest: string } {
+  const when = OSM_WHEN.exec(clause);
+  if (!when) return { season: "", rest: clause };
+  const left = clause.slice(when[0].length);
+  const m = OSM_CLAUSE.exec(left);
+  if (m && /\b(?:Mo|Tu|We|Th|Fr|Sa|Su|PH)\b/.test(m[2])) return { season: "", rest: clause };
+  return { season: when[1] + " ", rest: left };
+}
+
+/**
+ * One OpenStreetMap rule per line, in words. A clause may open with the months it applies to, then its day
+ * codes, then a span, "off", or a note, and it may say more of the shop's own words after the span: what a
+ * clause may not do is open with a sentence, so "We work daily from 10 am to 9 pm" opens with a day code, is a
+ * sentence, and is left exactly as the shop wrote it.
  */
 function osmLines(line: string): string[] | null {
   if (!/\b(?:Mo|Tu|We|Th|Fr|Sa|Su|PH)\b/.test(line)) return null;
@@ -69,7 +125,8 @@ function osmLines(line: string): string[] | null {
   let skipped = 0;
   // "Mo-Su || by appointment": the days are stated in one clause and what happens on them in the next.
   let pending = "";
-  for (const clause of clauses) {
+  for (const whole of clauses) {
+    const { season, rest: clause } = peelSeason(whole);
     const m = OSM_CLAUSE.exec(clause);
     const days = m ? m[1].split(/\s*,\s*/).map((d) => d.split(/\s*-\s*/).map((x) => DAY_CODE[x] || x).join("-")).join(", ") : pending;
     const rest = (m ? m[2] : clause).trim().replace(/^["'‘“]+|["'’”]+$/g, "").trim();
@@ -78,10 +135,12 @@ function osmLines(line: string): string[] | null {
       continue;
     }
     pending = "";
-    const span = OSM_SPAN.exec(rest);
-    const prefix = days ? days + " " : "";
-    if (span) {
-      out.push(prefix + hour12(Number(span[1]), span[2]) + " - " + hour12(Number(span[3]), span[4]));
+    const span = spanRun(rest);
+    const prefix = season + (days ? days + " " : "");
+    // A day code left in the tail would be a second rule this clause never separated, which is not a shape the
+    // syntax writes and not one to print half read.
+    if (span && !/\b(?:Mo|Tu|We|Th|Fr|Sa|Su|PH)\b/.test(span.tail)) {
+      out.push(prefix + span.said + (span.tail ? " " + span.tail : ""));
       rules += 1;
     } else if (/^(off|closed)$/i.test(rest)) {
       out.push(prefix + "Closed");
@@ -90,7 +149,7 @@ function osmLines(line: string): string[] | null {
       out.push(prefix + rest);
     } else if (!/\b(?:Mo|Tu|We|Th|Fr|Sa|Su|PH)\b/.test(rest)) {
       // A note on the end of the rules with no days of its own: "|| by appointment".
-      out.push(rest);
+      out.push(prefix + rest);
     } else skipped += 1;
   }
   // A clause the syntax does not cover ("May Mo[-1] - Oct Mo[2]") is dropped, the way the week parser drops
