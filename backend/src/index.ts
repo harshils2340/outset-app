@@ -18,6 +18,8 @@ import { placesCommand } from "./discover/places.ts";
 import { sendOutreach } from "./outreach/send.ts";
 import { detailViator, pullViator, refreshViator } from "./affiliates/viator.ts";
 import { pullTiqets } from "./affiliates/tiqets.ts";
+import { pullGetYourGuide } from "./affiliates/getyourguide.ts";
+import { pullKlook } from "./affiliates/klook.ts";
 import { recordUnsub } from "./lib/unsub.ts";
 import { ownersCsv, ownersPending } from "./enrich/owners.ts";
 import { readPendingStructures, readSiteStructure } from "./enrich/structure.ts";
@@ -639,6 +641,37 @@ if (cmd === "tiqets") {
   const metros = process.argv.find((a) => a.startsWith("--metros="))?.split("=")[1]?.split(",").map((s) => s.trim()).filter(Boolean);
   const r = await pullTiqets({ metros, perMetro: per, write });
   console.log(`Tiqets: ${r.matched} of ${r.metros} metros matched a city, ${r.products} products${write ? ", " + r.written + " stored" : " (dry run, nothing stored; add --write)"}.` + (r.skipped.length ? " Skipped: " + r.skipped.join(", ") : ""));
+  process.exit(0);
+}
+
+/**
+ * GetYourGuide affiliate feed, same shape as viator: dry by default, --write to store, --metros=, --per-metro=.
+ * One coordinates search per metro. Needs GYG_API_KEY and GYG_PARTNER_ID in backend/.env (token from a
+ * GetYourGuide Partner Manager, partner.getyourguide.com).
+ */
+if (cmd === "getyourguide") {
+  ingestAll();
+  const write = process.argv.includes("--write");
+  const per = Number(process.argv.find((a) => a.startsWith("--per-metro="))?.split("=")[1] || 40);
+  const metros = process.argv.find((a) => a.startsWith("--metros="))?.split("=")[1]?.split(",").map((s) => s.trim()).filter(Boolean);
+  const r = await pullGetYourGuide({ metros, perMetro: per, write });
+  console.log(`GetYourGuide: ${r.matched} of ${r.metros} metros had tours nearby, ${r.products} products${write ? ", " + r.written + " stored" : " (dry run, nothing stored; add --write)"}.` + (r.skipped.length ? " Skipped: " + r.skipped.join(", ") : ""));
+  process.exit(0);
+}
+
+/**
+ * Klook affiliate feed, same shape as tiqets: dry by default, --write to store, --metros=, --per-metro=.
+ * Needs KLOOK_API_KEY and KLOOK_API_BASE (from the affiliate team, affiliate@klook.com; no public doc yet)
+ * plus KLOOK_AID and KLOOK_WID from affiliate.klook.com so the links earn commission. See affiliates/klook.ts
+ * for which parts of the client are verified against a document and which wait for one.
+ */
+if (cmd === "klook") {
+  ingestAll();
+  const write = process.argv.includes("--write");
+  const per = Number(process.argv.find((a) => a.startsWith("--per-metro="))?.split("=")[1] || 40);
+  const metros = process.argv.find((a) => a.startsWith("--metros="))?.split("=")[1]?.split(",").map((s) => s.trim()).filter(Boolean);
+  const r = await pullKlook({ metros, perMetro: per, write });
+  console.log(`Klook: ${r.matched} of ${r.metros} metros matched a city, ${r.products} activities${write ? ", " + r.written + " stored" : " (dry run, nothing stored; add --write)"}.` + (r.skipped.length ? " Skipped: " + r.skipped.join(", ") : ""));
   process.exit(0);
 }
 

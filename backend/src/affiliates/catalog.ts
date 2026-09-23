@@ -14,7 +14,7 @@ import { MAX_AGE_HOURS } from "./viator.ts";
 
 export type AffiliateRow = {
   id: string;
-  source: "viator" | "tiqets" | "headout" | "klook";
+  source: "viator" | "tiqets" | "headout" | "klook" | "getyourguide";
   product_code: string;
   title: string;
   description: string | null;
@@ -35,8 +35,8 @@ export type AffiliateRow = {
   fetched_at: string;
 };
 
-const LABEL: Record<AffiliateRow["source"], string> = { viator: "Viator", tiqets: "Tiqets", headout: "Headout", klook: "Klook" };
-const SRC: Record<AffiliateRow["source"], string> = { viator: "viator.com", tiqets: "tiqets.com", headout: "headout.com", klook: "klook.com" };
+const LABEL: Record<AffiliateRow["source"], string> = { viator: "Viator", tiqets: "Tiqets", headout: "Headout", klook: "Klook", getyourguide: "GetYourGuide" };
+const SRC: Record<AffiliateRow["source"], string> = { viator: "viator.com", tiqets: "tiqets.com", headout: "headout.com", klook: "klook.com", getyourguide: "getyourguide.com" };
 
 /**
  * Which rail and which scene a partner product belongs on, read from its title. First match wins, so the
@@ -47,7 +47,8 @@ const KINDS: [RegExp, string, string][] = [
   [/\b(museum|gallery|exhibit)/i, "culture", "museum"],
   [/\b(zoo|safari park|wildlife park)/i, "outdoor", "zoo"],
   [/\baquarium/i, "indoor", "aquarium"],
-  [/\b(theme park|amusement|universal studios|disney|six flags|legoland)/i, "play", "themepark"],
+  // Parks named without the words: Busch Gardens would otherwise file under gardens on the word alone.
+  [/\b(theme park|amusement|universal studios|disney|six flags|legoland|busch gardens|seaworld|sea world|cedar point|knott'?s|hersheypark|dollywood|canada'?s wonderland|la ronde)/i, "play", "themepark"],
   [/\bwater ?park/i, "play", "waterpark"],
   [/\b(broadway|theat(re|er)|musical|cirque|comedy show|concert|live show|magic show)/i, "culture", "theatre"],
   [/\b(whale|dolphin|cruise|catamaran|sailing|sail\b|yacht|boat tour|boat trip|ferry|gondola)/i, "water", "cruise"],

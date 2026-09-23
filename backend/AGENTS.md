@@ -58,8 +58,15 @@ photos, descriptions and prices; nothing reads viator.com's pages. Dry by defaul
 published). Needs `VIATOR_API_KEY` in `backend/.env` (free: viator.com partner account, Tools, Affiliate API). An
 affiliate row is never an operator: no claim link, no outreach, no Instant Book, no request, no Otto.
 `npx tsx src/index.ts tiqets` is the same feed from the Tiqets Distributor API (`src/affiliates/tiqets.ts`, needs
-`TIQETS_API_KEY`, cities matched to metros by name and country); Headout and Klook follow the same shape when their
-keys exist.
+`TIQETS_API_KEY`, cities matched to metros by name and country); Headout follows the same shape when its key exists.
+`npx tsx src/index.ts klook` is the Klook feed (`src/affiliates/klook.ts`, needs `KLOOK_API_KEY` and `KLOOK_API_BASE` from
+the affiliate team, plus `KLOOK_AID` and `KLOOK_WID` from affiliate.klook.com for the tracked link). Klook publishes no
+affiliate content API document (its only public spec is the OCTO supplier one), so the endpoint paths and product
+fields in that file are marked unverified and are corrected against the document that comes with the key.
+`npx tsx src/index.ts getyourguide` is the GetYourGuide feed (`src/affiliates/getyourguide.ts`, needs `GYG_API_KEY` and
+`GYG_PARTNER_ID`): one `coordinates[]` search around each metro's centre, a tour filed under the nearest metro to its
+own pin; built from the public OpenAPI spec at github.com/getyourguide/partner-api-spec, and the header comment lists
+what that spec leaves unverified (the radius unit, whether `url` always carries `partner_id`).
 
 Directory leads with no website go through two lookups. `npx tsx scripts/resolve-known.mts --source=<id>` is free:
 it matches a lead against the operators we already hold by town and name (both ways, so "Milton Art Center" is not

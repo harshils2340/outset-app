@@ -263,7 +263,7 @@ export type Unclaimed = {
    * earns a commission and the guest is told so. Never claimable, never Instant Book, never a request: every
    * booking surface links out to `url`, which already carries our partner attribution, with rel="sponsored".
    */
-  affiliate?: { source: "viator" | "tiqets" | "headout" | "klook"; label: string; url: string };
+  affiliate?: { source: "viator" | "tiqets" | "headout" | "klook" | "getyourguide"; label: string; url: string };
 };
 
 export type Category = {

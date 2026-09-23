@@ -43,6 +43,7 @@ test("the kind is read from the title, specific before generic, tour when nothin
   assert.deepEqual(kindFor("Whale Watching Cruise"), { cat: "water", art: "cruise" });
   assert.deepEqual(kindFor("The Met Museum Skip-the-Line Ticket"), { cat: "culture", art: "museum" });
   assert.deepEqual(kindFor("Hot Air Balloon Ride at Sunrise"), { cat: "air", art: "balloon" });
+  assert.deepEqual(kindFor("Busch Gardens Tampa Bay Ticket"), { cat: "play", art: "themepark" }, "a park named without the words is not a garden");
   assert.deepEqual(kindFor("Small-Group Food Tour of the Mission"), { cat: "food", art: "tour" });
   assert.deepEqual(kindFor("Half-Day City Highlights"), { cat: "culture", art: "tour" });
 });
