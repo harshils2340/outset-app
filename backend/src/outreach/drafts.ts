@@ -1,7 +1,9 @@
 import { randomUUID } from "node:crypto";
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { VENDORS } from "../enrich/vendors.ts";
 import { db, nowIso } from "../db/client.ts";
-import { claimTokenV2 } from "../lib/claim.ts";
 import { mailPostal, unsubPageUrl } from "../lib/unsub.ts";
 import { tidyHours } from "../sync/contacts.ts";
 import { outreachAddress } from "./address.ts";
@@ -97,6 +99,36 @@ function andList(parts: string[]): string {
   return parts.slice(0, -1).join(", ") + " and " + parts[parts.length - 1];
 }
 
+/**
+ * How many listings the site publishes: the browse catalog's count, rounded down to the nearest thousand,
+ * with "50,000" as the floor if the file is missing. Read once per process: catalog.json is large, and this
+ * sits inside the copy, which a draft run writes once per operator.
+ */
+let listedOnce: string | null = null;
+function publishedCount(): string {
+  if (listedOnce) return listedOnce;
+  return (listedOnce = readPublishedCount());
+}
+
+function readPublishedCount(): string {
+  try {
+    const raw = readFileSync(join(dirname(fileURLToPath(import.meta.url)), "../../../public/catalog.json"), "utf8");
+    const n = (JSON.parse(raw) as { operators?: unknown[] }).operators?.length || 0;
+    if (n >= 1000) return (Math.floor(n / 1000) * 1000).toLocaleString("en-US");
+  } catch {
+    /* no catalog on this host */
+  }
+  return "50,000";
+}
+
+/**
+ * Ask first, build after. Changed 23 September 2026 from "I already built your page, claim it or take it
+ * down": a real operator (Capt. Dave's Dolphin & Whale Watching Safari) wrote back after asking for her
+ * listing removed to say the actual problem wasn't being found, it was that a page selling her specific
+ * trips existed before she ever agreed to any of it. This version never says a page exists. It offers to
+ * build one, on request, and links a different real listing to try editing (never the recipient's own
+ * business) so they can see how it works before anything about them is public anywhere.
+ */
 export function draftCopy(op: Op, sc: ReturnType<typeof scale>, f: PageFacts, email?: string): { subject: string; body: string; html: string } {
   void sc;
   const to = (email || "").trim().toLowerCase();
@@ -104,69 +136,41 @@ export function draftCopy(op: Op, sc: ReturnType<typeof scale>, f: PageFacts, em
   const TERMS = SITE + "terms.html";
   const PRIVACY = SITE + "privacy.html";
   const id = catalogId(op.domain);
-  const listing = SITE + "listing/" + id;
-  /**
-   * The claim link carries the address we are writing to, the way the self-serve link carries what the owner
-   * typed. Without it the claimed profile has no owner email, so "email me a sign-in code" answers politely
-   * and sends nothing, and the operator never gets told about a booking. It is the same address already in
-   * the To line, so it reveals nothing the recipient does not have.
-   *
-   * This is already an onoutset.com link, not the Render API host (outset-api.onrender.com serves only the
-   * API; nothing here ever points at it). It is long because the token is signed and expiring (see "Claim
-   * links expire" in backend/AGENTS.md) - shortening it to a clean /claim/<slug> path is real work (a
-   * server-side redirect that still carries the signed token), not a copy change, so it's not done here.
-   */
-  const owner = to ? "&o=" + Buffer.from(JSON.stringify({ n: "", e: to, p: "" })).toString("base64url") : "";
-  const claim = SITE + "#claim=" + id + "&k=" + claimTokenV2(id) + owner;
+  // Discovery still writes a record for every business it finds, same as it always did; this email just never
+  // links or names it. A recipient who goes looking (or already has a page from before this changed) still
+  // gets an instant, obvious way out, which backend/src/outreach/AGENTS.md requires regardless.
   const remove = SITE + "#remove=" + id;
   const vendor = vendorLine(op.calendar_vendor, f.menuFromWidget);
-  const subject = "Created a booking page for " + op.name;
+  const subject = "Can I build " + op.name + " a free booking page?";
   // No count and no "with prices" claim: a scrape can miscount or miss a price, and a wrong specific number
   // is the kind of thing an owner notices and stops trusting the whole email over. "Services" always holds.
   const menu = f.priced.length || f.services ? "services" : null;
   const built = [menu, f.photos ? "your photos" : null, f.hours ? "your hours" : null, f.rules ? "your cancellation policy" : null].filter(Boolean) as string[];
-  // The lead, in two sentences: what Outset is, then what was actually built for them. No bio, no
-  // "instant-booking-page" jargon. The page comes right after, before the claim link: show it before asking
-  // for the click. An owner decides whether to trust any of this in the first few lines, off what the page
-  // actually looks like, not off a sentence describing it, and the claim CTA is there to answer "I like this,
-  // now what" once they've already looked, not before.
-  const who = "I'm Harshil. I run Outset, an instant-booking marketplace where guests find and book local activities across the US and Canada.";
-  const built2 = built.length
-    ? "I put together a page for " + op.name + " using " + andList(built) + ":"
-    : "I put together a page for " + op.name + ", but your site didn't give me much to work with:";
-  // A page with nothing on it is still worth showing, but it cannot be sold as one that has their things on it.
-  const thin = built.length ? null : "None of the info is made up, and you can adjust services, update prices, or change anything else whenever you want right from your dashboard.";
-  const cta = "Once you've had a look, this opens the dashboard so you can fix anything and turn bookings on. It's meant for the owner, so please don't forward it:";
-  const howHead = "How it works for " + op.name + ":";
-  /**
-   * The two questions an owner asks before they will take an online booking: what happens when the weather kills
-   * the day, and who these people are legally. Both are answered here rather than left for them to go looking for.
-   * The weather sentence describes what the code already does: an operator decline refunds the card in full
-   * (`refundBooking` in src/api/bookings.ts), or releases the hold when nothing was captured.
-   *
-   * Wording here is checked against common spam-filter trigger phrases on purpose: no "free", "guarantee",
-   * "100%", "act now", "click here", "$$$", exclamation marks or ALL CAPS anywhere in this email.
-   */
-  const bullets: { label: string; text: string }[] = [
-    { label: "No cost to list", text: "we only take 5% when a booking actually happens. Nothing if it doesn't." },
-    { label: "Keep your setup", text: vendor || "Outset can just sit alongside your website. Every booking reaches you directly by email." },
-    { label: "Weather protection", text: "decline a booking for weather in your dashboard and the guest is refunded in full, automatically. You don't do anything, and we don't take a fee on it." },
-  ];
+  const who = "I'm Harshil, the founder of Outset, an instant-booking marketplace for local activities across the US and Canada.";
+  const browse = "Take a look: " + SITE;
+  const offer = built.length
+    ? "We can build " + op.name + " a complete page using " + andList(built) + ", all set up and ready to go, for free. We just need your OK to do it."
+    : "We can build " + op.name + " a complete page, all set up and ready to go, for free. We just need your OK to do it.";
+  const trySample = "Want to see how easy it is first? Here's a sample listing you can click around and edit yourself, so you can see exactly how simple it is to set up:";
+  const demoUrl = SITE + "operators#demo";
+  const scaleLine = "You'd be joining about " + publishedCount() + " other real local businesses already on Outset across the US and Canada, and more join every week.";
+  const cta = "Just reply \"yes\" and I'll have it built and sent to you today.";
+  const removeLine = "Already have a page on Outset you didn't ask for, or just don't want to be found here at all? This takes it down instantly:";
   const lines = [
-    "Hi,", "", who, "", built2, listing, thin, "", cta, claim, "", howHead, "",
-    ...bullets.map((b) => "• " + b.label + ": " + b.text),
-    "",
-    "Got the wrong business? Take the page down instantly:", remove,
-    "", "Best,", "Harshil",
+    "Hi,", "", who, browse, "",
+    offer, vendor ? vendor : null, "",
+    trySample, demoUrl, "",
+    scaleLine, cta, "",
+    removeLine, remove, "",
+    "Best,", "Harshil",
   ].filter((l) => l !== null) as string[];
   const paras = [
     "<p>Hi,</p>",
-    "<p>" + esc(who) + "</p>",
-    "<p>" + esc(built2) + "<br>" + link(listing, "See the page for " + op.name) + (thin ? "<br>" + esc(thin) : "") + "</p>",
-    "<p>" + esc(cta) + "<br>" + link(claim, "Open the dashboard for " + op.name) + "</p>",
-    "<p><b>" + esc(howHead) + "</b></p>",
-    "<ul>" + bullets.map((b) => "<li><b>" + esc(b.label) + ":</b> " + esc(b.text) + "</li>").join("") + "</ul>",
-    "<p>Got the wrong business? " + link(remove, "Take the page down instantly") + ".</p>",
+    "<p>" + esc(who) + "<br>" + link(SITE, "Take a look") + "</p>",
+    "<p>" + esc(offer) + (vendor ? " " + esc(vendor) : "") + "</p>",
+    "<p>" + esc(trySample) + "<br>" + link(demoUrl, "See a sample listing") + "</p>",
+    "<p>" + esc(scaleLine) + "<br>" + esc(cta) + "</p>",
+    "<p>" + esc(removeLine) + " " + link(remove, "take it down") + ".</p>",
     "<p>Best,<br>Harshil</p>",
   ];
   // Everything below is the footer: quiet, small, last. What has to be there for law and trust (who is
@@ -176,11 +180,11 @@ export function draftCopy(op: Op, sc: ReturnType<typeof scale>, f: PageFacts, em
   // "Terms" together with no break between them, which is exactly the kind of thing to catch before this
   // goes out at any volume.
   const TAGLINE = "Instant booking for local activities.";
-  const footerLines: string[] = ["", "Outset — " + TAGLINE];
+  const footerLines: string[] = ["", "Outset. " + TAGLINE];
   const footerParas: string[] = [
     '<p style="margin-top:24px;padding-top:16px;border-top:1px solid #e3e3e3;font-size:13px;color:#666">' +
       '<img src="' + SITE + 'apple-touch-icon.png" width="28" height="28" alt="Outset" style="border-radius:8px;vertical-align:middle;margin-right:8px">' +
-      '<b style="color:#222;font-size:14px">Outset</b> <span style="color:#888">— ' + esc(TAGLINE) + "</span><br>",
+      '<b style="color:#222;font-size:14px">Outset.</b> <span style="color:#555">' + esc(TAGLINE) + "</span><br>",
   ];
   if (to) {
     const stop = unsubPageUrl(to);

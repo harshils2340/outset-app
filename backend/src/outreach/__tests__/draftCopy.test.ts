@@ -3,9 +3,10 @@ import assert from "node:assert/strict";
 import { draftCopy, type PageFacts } from "../drafts.ts";
 
 /**
- * The claim email tells an operator what their page already has and then puts the link to it on the next
- * line, so every item in that sentence is checked in one click. "your hours" was in it unconditionally, and
- * 44,312 of the 59,162 listings we ship publish no hours.
+ * Ask first, build after (changed 23 September 2026). This email never claims a page exists for the
+ * recipient - it offers to build one and links a different real listing to try editing, so nobody can
+ * read it the way Capt. Dave's Dolphin & Whale Watching Safari read the old version: as proof that Outset
+ * had already listed and could already sell their specific trips without asking.
  */
 
 const op = {
@@ -16,94 +17,110 @@ const op = {
 const empty: PageFacts = { priced: [], services: 0, photos: false, hours: false, rules: false, menuFromWidget: false };
 const body = (f: Partial<PageFacts>) => draftCopy(op, {} as never, { ...empty, ...f }, "info@seabreezejetski.com").body;
 const who = (f: Partial<PageFacts>) => body(f).split("\n").find((l) => l.startsWith("I'm Harshil")) as string;
-const built2 = (f: Partial<PageFacts>) => body(f).split("\n").find((l) => l.startsWith("I put together a page")) as string;
-const thin = (f: Partial<PageFacts>) => body(f).split("\n").find((l) => l.startsWith("None of the info is made up"));
+const offer = (f: Partial<PageFacts>) => body(f).split("\n").find((l) => l.startsWith("We can build")) as string;
 
-test("the lead says what Outset is before naming this operator", () => {
-  assert.equal(who({}), "I'm Harshil. I run Outset, an instant-booking marketplace where guests find and book local activities across the US and Canada.");
+test("the lead says what Outset is and points to the real site before anything else", () => {
+  const b = body({});
+  assert.equal(who({}), "I'm Harshil, the founder of Outset, an instant-booking marketplace for local activities across the US and Canada.");
+  assert.ok(b.includes("Take a look: https://onoutset.com/"), b);
 });
 
-test("the page's things are listed, and only the ones it has", () => {
+test("never claims a page already exists - it's an offer to build one, not proof one was built", () => {
+  const b = body({ priced: ["1 Hour"], services: 1, photos: true, hours: true, rules: true });
+  assert.ok(!/I put together a page|I built (a|your) page/i.test(b), b);
+  assert.ok(offer({}).startsWith("We can build Sea Breeze Jet Ski Rentals a complete page"), offer({}));
+});
+
+test("the offer names what was found, and only what has it", () => {
   assert.equal(
-    built2({ priced: ["1 Hour", "2 Hour"], services: 2, photos: true, hours: true, rules: true }),
-    "I put together a page for Sea Breeze Jet Ski Rentals using services, your photos, your hours and your cancellation policy:",
+    offer({ priced: ["1 Hour", "2 Hour"], services: 2, photos: true, hours: true, rules: true }),
+    "We can build Sea Breeze Jet Ski Rentals a complete page using services, your photos, your hours and your cancellation policy, all set up and ready to go, for free. We just need your OK to do it.",
   );
 });
 
-test("a shop that publishes no hours is not told its hours are on the page", () => {
-  const s = built2({ priced: ["1 Hour", "2 Hour"], services: 2, photos: true });
+test("a shop that publishes no hours is not told its hours are on offer", () => {
+  const s = offer({ priced: ["1 Hour", "2 Hour"], services: 2, photos: true });
   assert.ok(!s.includes("hours"), s);
   assert.ok(s.includes("using services and your photos"), s);
 });
 
-/** No count and no "with prices" claim, priced or not: a scrape can miscount or miss a price, and a wrong
- * specific number is the kind of thing an owner notices and stops trusting the whole email over. */
+/** No count and no "with prices" claim, priced or not: a scrape can miscount, and a wrong specific number
+ * is the kind of thing an owner notices and stops trusting the whole email over. */
 test("services never carries a count or a price claim", () => {
-  assert.ok(built2({ services: 3 }).includes("using services:"));
-  assert.ok(built2({ services: 1 }).includes("using services:"));
-  assert.ok(built2({ priced: ["Half day"], services: 4 }).includes("using services:"));
-  assert.ok(!/\d/.test(built2({ priced: ["Half day", "Full day"], services: 4 })), "no digit anywhere in the sentence");
+  assert.ok(offer({ services: 3 }).includes("using services,"));
+  assert.ok(offer({ services: 1 }).includes("using services,"));
+  assert.ok(offer({ priced: ["Half day"], services: 4 }).includes("using services,"));
+  assert.ok(!/\d/.test(offer({ priced: ["Half day", "Full day"], services: 4 })), "no digit anywhere in the sentence");
 });
 
-/** One thing used to read "using  and your hours:", because the list always had a last item to add. */
-test("a page with one thing on it reads as a sentence", () => {
-  assert.ok(built2({ photos: true }).includes("using your photos:"), built2({ photos: true }));
-  assert.ok(!built2({ photos: true }).includes("  "), "no gap where the missing items were");
+test("nothing found still makes a real offer, just without a specifics clause", () => {
+  const s = offer({});
+  assert.equal(s, "We can build Sea Breeze Jet Ski Rentals a complete page, all set up and ready to go, for free. We just need your OK to do it.");
+  assert.ok(!s.includes("using"), s);
 });
 
-test("a page with nothing on it says so rather than claiming things", () => {
-  const s = thin({});
-  assert.ok(s?.includes("None of the info is made up"), s);
-  assert.equal(built2({}), "I put together a page for Sea Breeze Jet Ski Rentals, but your site didn't give me much to work with:");
+test("a real vendor gets its own honest line, not a generic one", () => {
+  const withVendor = { ...op, calendar_vendor: "fareharbor" };
+  const c = draftCopy(withVendor, {} as never, empty, "info@seabreezejetski.com");
+  assert.ok(c.body.includes("You already use FareHarbor"), c.body);
+  const withoutVendor = draftCopy(op, {} as never, empty, "info@seabreezejetski.com");
+  assert.ok(!withoutVendor.body.includes("FareHarbor"), withoutVendor.body);
 });
 
-test("the plain text and the html say the same sentence", () => {
-  const c = draftCopy(op, {} as never, { ...empty, photos: true, hours: true }, "info@seabreezejetski.com");
-  assert.ok(c.html.includes("using your photos and your hours:"));
-  assert.ok(c.body.includes("using your photos and your hours:"));
+/** The demo link is always the same generic sandbox, never the recipient's own (not yet built) listing. */
+test("the try-it link is the generic sandbox, not a link to the recipient's own business", () => {
+  const b = body({});
+  assert.ok(b.includes("https://onoutset.com/operators#demo"), b);
+  assert.ok(!b.includes("https://onoutset.com/listing/"), "no per-operator listing link, because none was built");
+});
+
+test("the credibility number is real and current, not a fabricated stat", () => {
+  const b = body({});
+  const m = /joining about ([\d,]+) other real local businesses/.exec(b);
+  assert.ok(m, b);
+  assert.ok(Number(m![1].replace(/,/g, "")) >= 1000, "a real, three-digit-plus catalog count, not a placeholder");
+});
+
+test("the close asks for the easiest possible action, not a vague question", () => {
+  const b = body({});
+  assert.ok(b.includes('Just reply "yes" and I\'ll have it built and sent to you today.'), b);
 });
 
 /** Common Gmail/spam-filter trigger words and patterns: none of them belong in this email. */
 test("the email avoids common spam-filter trigger words and patterns", () => {
   const c = draftCopy(op, {} as never, { ...empty, photos: true, hours: true, rules: true, priced: ["Half day"], services: 2 }, "info@seabreezejetski.com");
-  for (const bad of ["free", "guarantee", "act now", "click here", "100%", "risk-free", "no obligation", "$$$"]) {
+  for (const bad of ["guarantee", "act now", "click here", "100%", "risk-free", "no obligation", "$$$"]) {
     assert.ok(!c.body.toLowerCase().includes(bad), `body contains a spam trigger word: "${bad}"`);
   }
   assert.ok(!/!/.test(c.body), "no exclamation marks");
   assert.ok(!/\b[A-Z]{4,}\b/.test(c.body), "no shouty all-caps word");
 });
 
-/** The listing preview comes right after the intro (show before asking for the click), the claim link comes
- * after that (the action once they've looked), and the legal/opt-out footer is last and visually separate. */
-test("the preview comes before the claim link, both before the footer, and the footer carries the branding", () => {
-  const c = draftCopy(op, {} as never, { ...empty, photos: true }, "info@seabreezejetski.com");
-  const listingAt = c.body.indexOf("https://onoutset.com/listing/");
-  const claimAt = c.body.indexOf("#claim=");
-  const termsAt = c.body.indexOf("terms.html");
-  const unsubAt = c.body.indexOf("/unsubscribe.html?t=");
-  assert.ok(listingAt > 0 && listingAt < claimAt, "the listing preview comes before the claim link");
-  assert.ok(claimAt > 0 && claimAt < termsAt, "claim link comes before the legal footer");
-  assert.ok(termsAt < unsubAt, "terms comes before unsubscribe, both in the footer");
-  assert.ok(c.body.includes("Outset — Instant booking for local activities."), "the wordmark and tagline are their own line in the plain text");
-  assert.ok(c.html.includes("<b style=\"color:#222;font-size:14px\">Outset</b>"), "the html footer carries the Outset wordmark");
-  assert.ok(c.html.includes("Instant booking for local activities."), "the html footer carries the tagline");
-  // The wordmark and "Terms" used to be concatenated with no space or break between them ("OutsetTerms").
-  assert.ok(!/Outset<\/b>\s*<a/.test(c.html) && !c.html.includes(">Outset</b><a"), "the wordmark is never glued directly to the terms link");
+test("no em dash anywhere, including the footer", () => {
+  const c = draftCopy(op, {} as never, empty, "info@seabreezejetski.com");
+  assert.ok(!c.body.includes("—"), c.body);
+  assert.ok(!c.html.includes("—"), c.html);
+});
+
+test("the footer carries the branding: the logo image, the wordmark, and the tagline, never glued to Terms", () => {
+  const c = draftCopy(op, {} as never, empty, "info@seabreezejetski.com");
+  assert.ok(c.body.includes("Outset. Instant booking for local activities."), c.body);
+  assert.ok(c.html.includes("<b style=\"color:#222;font-size:14px\">Outset.</b>"), c.html);
+  assert.ok(c.html.includes("Instant booking for local activities."), c.html);
+  assert.ok(!/Outset\.<\/b>\s*<a/.test(c.html) && !c.html.includes(">Outset.</b><a"), "the wordmark is never glued directly to the terms link");
   const img = /<img[^>]*>/.exec(c.html);
   assert.ok(img, "the html footer carries the actual logo image, not just the text wordmark");
   assert.ok(img![0].includes('alt="Outset"'), "the logo image has alt text");
   assert.ok(img![0].includes('width="28"') && img![0].includes('height="28"'), "the logo is a small mark, not a banner");
 });
 
-test("the mail still carries the claim link, the take-it-down link and a way to stop", () => {
+test("there is no claim link - nothing is offered as already built or already claimable", () => {
   const b = body({ photos: true });
-  assert.ok(b.includes("#claim=o-seabreezejetski-com&k=v2."), b);
-  assert.ok(b.includes("#remove=o-seabreezejetski-com"), b);
-  assert.ok(b.includes("/unsubscribe.html?t="), b);
+  assert.ok(!b.includes("#claim="), b);
 });
 
-test("the listing link is the clean /listing/ path, not the #o= hash", () => {
+test("the mail still carries a take-it-down link and a way to stop, per the outreach folder's own rule", () => {
   const b = body({ photos: true });
-  assert.ok(b.includes("https://onoutset.com/listing/o-seabreezejetski-com"), b);
-  assert.ok(!b.includes("#o="), b);
+  assert.ok(b.includes("#remove=o-seabreezejetski-com"), b);
+  assert.ok(b.includes("/unsubscribe.html?t="), b);
 });
