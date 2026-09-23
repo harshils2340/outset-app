@@ -27,11 +27,15 @@ export type DirectorySource = {
   kind: string;
   /** Finer activity word for reporting. */
   activity?: string;
-  /** Business pages enumerated by sitemap... */
-  sitemaps?: string[];
-  /** ...or found by following links from index pages: `follow` pages are crawled (two levels), `leaf` pages are businesses. */
-  crawl?: { start: string[]; follow: RegExp; leaf: RegExp };
-  /** Only sitemap entries matching this are business pages. */
+  /** Where the pages are enumerated. */
+  sitemaps: string[];
+  /**
+   * When the sitemap lists something other than business pages (CourseHorse lists classes, not schools), the
+   * entries matching `from` are read for the JSON-LD Organization whose url matches `match`, and those pages are
+   * the businesses. Many entries lead to the same business; each is read once.
+   */
+  hop?: { from: RegExp };
+  /** Only pages matching this are business pages. */
   match: RegExp;
   /** For a sitemap index, only child sitemaps matching this are followed. */
   childMatch?: RegExp;
@@ -80,20 +84,30 @@ export const DIRECTORIES: DirectorySource[] = [
     id: "coursehorse",
     kind: "cooking",
     activity: "class",
-    crawl: {
-      start: COURSEHORSE_CITIES.map((c) => `https://coursehorse.com/${c}/schools`),
-      follow: /^https:\/\/coursehorse\.com\/[a-z-]+\/schools\/[a-z-]+\/?$/,
-      leaf: /^https:\/\/coursehorse\.com\/[a-z-]+\/schools\/[a-z-]+\/[a-z0-9-]+\/?$/,
-    },
+    sitemaps: COURSEHORSE_CITIES.map((c) => `https://coursehorse.com/${c}-sitemap.xml`),
+    // Only classes in the activity categories are worth a hop: their school is in the same category.
+    hop: { from: /^https:\/\/coursehorse\.com\/[a-z-]+\/classes\/(cooking|art|dance|fitness|acting)\/.+\/[a-z0-9-]+$/ },
     match: /^https:\/\/coursehorse\.com\/[a-z-]+\/schools\/[a-z-]+\/[a-z0-9-]+\/?$/,
     kindFromUrl: (url) => {
       const cat = url.match(/\/schools\/([a-z-]+)\//)?.[1] || "";
       return COURSEHORSE_KIND[cat] || null;
     },
     max: 40,
-    verified: "2026-09-22: /<city>/schools/<category>/<school> carries Organization plus Place JSON-LD with the school's street address and an aggregate rating; no website on the page",
+    verified: "2026-09-22: /<city>/schools is a redirect to /classes and links no schools; a class page's Organization JSON-LD carries the school's /schools/ url, and that page carries Place JSON-LD with the street address and an aggregate rating; no website on either",
   },
 ];
+
+/** The JSON-LD Organization urls on a page that match `match`: the businesses a class or event page belongs to. */
+export function organizationLinks(html: string, match: RegExp): string[] {
+  const out = new Set<string>();
+  for (const n of jsonLdNodes(html)) {
+    const type = [n["@type"]].flat().map(String).join(" ");
+    if (!/Organization|LocalBusiness/.test(type)) continue;
+    const u = typeof n.url === "string" ? n.url.replace(/\/$/, "") : "";
+    if (u && match.test(u)) out.add(u);
+  }
+  return [...out];
+}
 
 const US_REGION = /^(A[KLRZ]|C[AOT]|D[CE]|FL|GA|HI|I[ADLN]|K[SY]|LA|M[ADEINOST]|N[CDEHJMVY]|O[HKR]|PA|RI|S[CD]|T[NX]|UT|V[AT]|W[AIVY])$/i;
 const CA_REGION = /^(AB|BC|MB|NB|NL|NS|NT|NU|ON|PE|QC|SK|YT)$/i;
@@ -122,12 +136,16 @@ const INFRA_HOST = /(^|\.)(typekit\.net|fonts\.googleapis\.com|gstatic\.com|goog
  * one link was a font host, and a wrong website is worse than none, since every fact on the listing would
  * then be read off a stranger's site.
  */
+const ASSET = /\.(css|js|mjs|woff2?|ttf|otf|eot|png|jpe?g|webp|gif|svg|ico|xml|json|pdf|mp4|webm)(\?|#|$)/i;
+
 export function ownWebsite(html: string, pageUrl: string, nodes = jsonLdNodes(html)): string | null {
   const here = hostOf(pageUrl);
   const ok = (u: string | null | undefined): string | null => {
+    // A protocol-relative or bare-path href is the page's own asset, never another business's site.
+    if (!u || !/^https?:\/\/[^/]/i.test(u) || ASSET.test(u)) return null;
     const h = hostOf(u);
-    if (!u || !h || !here || h === here || h.endsWith("." + here) || DROP_HOSTS.test(h) || INFRA_HOST.test(h)) return null;
-    return /^https?:\/\//i.test(u) ? u : "https://" + u;
+    if (!h || !here || h === here || h.endsWith("." + here) || DROP_HOSTS.test(h) || INFRA_HOST.test(h)) return null;
+    return u;
   };
   for (const n of nodes) {
     for (const v of [n.url, ...[n.sameAs].flat()]) {
@@ -135,8 +153,15 @@ export function ownWebsite(html: string, pageUrl: string, nodes = jsonLdNodes(ht
       if (w) return w;
     }
   }
-  const labelled = html.match(/href=["']([^"']+)["'][^>]*>(?:[^<]|<(?!\/a>))*?\b(website|visit (our|their) site|official site)\b/i)?.[1];
-  return ok(labelled);
+  // Only an <a> whose own text calls it the website. Not a <link> tag, and not a href that happens to sit
+  // somewhere before the word "website" in the page: on a real school page that was a font file.
+  for (const m of html.matchAll(/<a\b[^>]*\bhref=["']([^"']+)["'][^>]*>([^<]{0,160})<\/a>/gi)) {
+    if (/\b(website|visit (our|their) (web)?site|official site)\b/i.test(m[2])) {
+      const w = ok(decode(m[1]));
+      if (w) return w;
+    }
+  }
+  return null;
 }
 
 export function toCandidate(src: DirectorySource, raw: RawPlace, pageUrl: string, website: string | null): DirectoryCandidate | null {
@@ -185,31 +210,33 @@ export async function runDirectory(src: DirectorySource, opts: { max?: number; s
   const max = Math.min(opts.max ?? src.max, 200);
   const out: DirectoryRun = { source: src.id, listed: 0, fetched: 0, parsed: 0, withWebsite: 0, outsideMarket: 0, candidates: [], failed: [] };
   const locs: string[] = [];
-  for (const sm of src.sitemaps || []) locs.push(...(await sitemapLocs(sm, src.childMatch)));
-  if (src.crawl) {
-    // Index pages, two levels deep: a city's school index lists categories, a category lists schools.
-    const seen = new Set<string>();
-    let frontier = [...src.crawl.start];
-    for (let depth = 0; depth < 2 && frontier.length; depth++) {
-      const next: string[] = [];
-      for (const url of frontier) {
-        if (seen.has(url)) continue;
-        seen.add(url);
-        const page = await getPage(url);
-        if (page.status !== 200) continue;
-        for (const l of linksFrom(page.html, url, /^https?:\/\//)) {
-          const clean = l.replace(/\/$/, "");
-          if (src.crawl.leaf.test(clean)) locs.push(clean);
-          else if (src.crawl.follow.test(clean) && !seen.has(clean)) next.push(clean);
-        }
+  for (const sm of src.sitemaps) locs.push(...(await sitemapLocs(sm, src.childMatch)));
+  let pages: string[];
+  if (src.hop) {
+    // The sitemap lists classes; each class page names its school. `max` and `skip` count class pages read,
+    // so successive runs walk the sitemap, and a school named by several classes is read once.
+    const from = [...new Set(locs.map((l) => l.replace(/\/$/, "")))].filter((l) => src.hop!.from.test(l)).sort();
+    out.listed = from.length;
+    log(`${src.id}: ${from.length} pages in the sitemap lead to businesses, reading ${max} from #${opts.skip || 0}`);
+    const found = new Set<string>();
+    for (const url of from.slice(opts.skip || 0, (opts.skip || 0) + max)) {
+      const page = await getPage(url);
+      out.fetched++;
+      if (page.status !== 200 || !page.html) {
+        out.failed.push(url + " (" + page.status + ")");
+        continue;
       }
-      frontier = next;
+      for (const b of organizationLinks(page.html, src.match)) found.add(b);
     }
+    pages = [...found].sort();
+    log(`${src.id}: ${pages.length} distinct businesses named by those pages`);
+  } else {
+    pages = [...new Set(locs)].filter((l) => src.match.test(l)).sort();
+    out.listed = pages.length;
+    log(`${src.id}: ${pages.length} business pages in the sitemap, reading ${max} from #${opts.skip || 0}`);
+    pages = pages.slice(opts.skip || 0, (opts.skip || 0) + max);
   }
-  const pages = [...new Set(locs)].filter((l) => src.match.test(l)).sort();
-  out.listed = pages.length;
-  log(`${src.id}: ${pages.length} business pages in the sitemap, reading ${max} from #${opts.skip || 0}`);
-  for (const url of pages.slice(opts.skip || 0, (opts.skip || 0) + max)) {
+  for (const url of pages) {
     const page = await getPage(url);
     out.fetched++;
     if (page.status !== 200 || !page.html) {
