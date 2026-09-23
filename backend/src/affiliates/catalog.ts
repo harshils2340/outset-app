@@ -31,6 +31,7 @@ export type AffiliateRow = {
   tags: string;
   booking_url: string;
   flags: string;
+  raw?: string | null;
   fetched_at: string;
 };
 
@@ -104,6 +105,14 @@ export function toAffiliateItem(r: AffiliateRow): Record<string, unknown> {
   const flags = parseList(r.flags);
   const { cat, art } = kindFor(r.title);
   const fc = flags.includes("FREE_CANCELLATION") ? "Free cancellation" : undefined;
+  // The detail pass (viator.ts detailViator) leaves what the summary lacks under raw.detail.fields.
+  const detail = ((): { includes?: string[]; requirements?: string[]; cancellation?: string | null } => {
+    try {
+      return (JSON.parse(r.raw || "{}") as { detail?: { fields?: { includes?: string[]; requirements?: string[]; cancellation?: string | null } } }).detail?.fields || {};
+    } catch {
+      return {};
+    }
+  })();
   return {
     id: r.id,
     title: r.title,
@@ -118,7 +127,9 @@ export function toAffiliateItem(r: AffiliateRow): Record<string, unknown> {
     lon: r.lon ?? undefined,
     specs: [],
     options: [],
-    includes: [],
+    includes: detail.includes || [],
+    requirements: detail.requirements?.length ? detail.requirements : undefined,
+    cancellation: detail.cancellation || undefined,
     gap: "",
     blurb: r.description || undefined,
     cover: images[0],
@@ -138,7 +149,7 @@ export function affiliateCatalogItems(): Record<string, unknown>[] {
   const rows = db
     .prepare(
       `SELECT id, source, product_code, title, description, images, from_cents, currency, rating, review_count, duration,
-              destination_name, metro_id, lat, lon, tags, booking_url, flags, fetched_at
+              destination_name, metro_id, lat, lon, tags, booking_url, flags, raw, fetched_at
          FROM affiliate_products WHERE fetched_at >= ? AND metro_id IS NOT NULL
          ORDER BY review_count DESC NULLS LAST, rating DESC NULLS LAST`,
     )

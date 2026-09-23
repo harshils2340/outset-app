@@ -234,11 +234,16 @@ export function upsertProduct(source: string, p: ViatorProduct, dest: ViatorDest
        destination_id, destination_name, metro_id, lat, lon, tags, booking_url, flags, raw, fetched_at)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(source, product_code) DO UPDATE SET
-       title = excluded.title, description = excluded.description, images = excluded.images, from_cents = excluded.from_cents,
+       title = excluded.title, from_cents = excluded.from_cents,
        currency = excluded.currency, rating = excluded.rating, review_count = excluded.review_count, duration = excluded.duration,
        destination_id = excluded.destination_id, destination_name = excluded.destination_name, metro_id = excluded.metro_id,
        lat = excluded.lat, lon = excluded.lon, tags = excluded.tags, booking_url = excluded.booking_url, flags = excluded.flags,
-       raw = excluded.raw, fetched_at = excluded.fetched_at`,
+       fetched_at = excluded.fetched_at,
+       -- A search summary carries one photo and a cut description; the detail pass (detailViator) holds the
+       -- full set. A refresh from the summary keeps whichever is richer, and keeps raw.detail with it.
+       images = CASE WHEN json_array_length(excluded.images) >= json_array_length(images) THEN excluded.images ELSE images END,
+       description = CASE WHEN length(coalesce(excluded.description, '')) >= length(coalesce(description, '')) THEN excluded.description ELSE description END,
+       raw = CASE WHEN json_extract(raw, '$.detail') IS NOT NULL THEN json_set(excluded.raw, '$.detail', json(json_extract(raw, '$.detail'))) ELSE excluded.raw END`,
   ).run(
     "a-" + source + "-" + p.productCode.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
     source,
@@ -308,6 +313,81 @@ export async function pullViator(opts: { metros?: string[]; perMetro: number; wr
     console.log(`  ${m.id}: ${dest.name} (#${dest.destinationId}), ${kept} products${opts.write ? " stored" : ""}`);
   }
   if (opts.write) db.prepare("INSERT INTO affiliate_sync (source, last_full_at) VALUES ('viator', ?) ON CONFLICT(source) DO UPDATE SET last_full_at = excluded.last_full_at").run(nowIso());
+  return out;
+}
+
+/** The parts of /products/{code} a listing shows beyond the search summary. */
+export type ViatorProductDetail = ViatorProduct & {
+  inclusions?: { typeDescription?: string; otherDescription?: string }[];
+  exclusions?: { typeDescription?: string; otherDescription?: string }[];
+  additionalInfo?: { type?: string; description?: string }[];
+  cancellationPolicy?: { type?: string; description?: string; cancelIfBadWeather?: boolean };
+  itinerary?: { privateTour?: boolean; maxTravelersInSharedTour?: number };
+};
+
+/** What the detail adds to a listing: a full photo set, the whole description, inclusions, requirements, the policy. */
+export function detailFields(d: ViatorProductDetail): { includes: string[]; requirements: string[]; cancellation: string | null; groupSize: number | null; privateTour: boolean } {
+  const line = (x: { typeDescription?: string; otherDescription?: string }) => (x.otherDescription || (x.typeDescription && x.typeDescription !== "Other" ? x.typeDescription : "") || "").trim();
+  const includes = (d.inclusions || []).map(line).filter(Boolean).slice(0, 12);
+  const requirements = (d.additionalInfo || [])
+    .map((a) => (a.description || "").trim())
+    .filter((s) => s && !/^(confirmation will be received|most travelers can participate|public transportation)/i.test(s))
+    .slice(0, 12);
+  const cancellation = (d.cancellationPolicy?.description || "").trim() || null;
+  return { includes, requirements, cancellation, groupSize: d.itinerary?.maxTravelersInSharedTour ?? null, privateTour: !!d.itinerary?.privateTour };
+}
+
+/**
+ * One /products/{code} call per stored row (single product data is on Basic Access) for what the search
+ * summary lacks: every photo instead of one, the whole description, what is included, who it is not for and
+ * the cancellation text. Price, rating and review count stay from the search, which is where Viator states
+ * them. The detail lands in `raw.detail`, the columns it improves are updated, and `fetched_at` moves, since
+ * this content was fetched now. `onlyMissing` skips rows that already hold a detail, so a daily run is cheap.
+ */
+export async function detailViator(opts: { write: boolean; max?: number; onlyMissing?: boolean }): Promise<{ rows: number; fetched: number; updated: number; failed: number }> {
+  const out = { rows: 0, fetched: 0, updated: 0, failed: 0 };
+  if (!viatorConfigured()) {
+    console.log("VIATOR_API_KEY is not set, so nothing is fetched.");
+    return out;
+  }
+  const rows = db.prepare("SELECT id, product_code, images, description, raw FROM affiliate_products WHERE source = 'viator' ORDER BY review_count DESC NULLS LAST").all() as { id: string; product_code: string; images: string; description: string | null; raw: string | null }[];
+  out.rows = rows.length;
+  const update = db.prepare("UPDATE affiliate_products SET images = ?, description = ?, raw = ?, fetched_at = ? WHERE id = ?");
+  for (const r of rows) {
+    if (opts.max != null && out.fetched >= opts.max) break;
+    let raw: Record<string, unknown> = {};
+    try {
+      raw = r.raw ? (JSON.parse(r.raw) as Record<string, unknown>) : {};
+    } catch {
+      raw = {};
+    }
+    if (opts.onlyMissing !== false && raw.detail) continue;
+    let d: ViatorProductDetail;
+    try {
+      d = await product(r.product_code);
+      out.fetched++;
+    } catch (e) {
+      out.failed++;
+      console.log(`  ${r.product_code}: ${String((e as Error).message).slice(0, 120)}`);
+      continue;
+    }
+    const held = ((): string[] => {
+      try {
+        return JSON.parse(r.images) as string[];
+      } catch {
+        return [];
+      }
+    })();
+    const images = bestImages(d);
+    const description = (d.description || "").trim();
+    const fields = detailFields(d);
+    const next = { ...raw, detail: { inclusions: d.inclusions || [], exclusions: d.exclusions || [], additionalInfo: d.additionalInfo || [], cancellationPolicy: d.cancellationPolicy || null, itinerary: d.itinerary ? { privateTour: d.itinerary.privateTour, maxTravelersInSharedTour: d.itinerary.maxTravelersInSharedTour } : null, fields } };
+    if (opts.write) {
+      update.run(JSON.stringify(images.length >= held.length ? images : held), description.length >= (r.description || "").length ? description || null : r.description, JSON.stringify(next), nowIso(), r.id);
+    }
+    out.updated++;
+    if (out.fetched % 100 === 0) console.log(`  ${out.fetched} details fetched, ${out.updated} rows ${opts.write ? "updated" : "would update"}`);
+  }
   return out;
 }
 

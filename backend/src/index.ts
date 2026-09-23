@@ -16,7 +16,7 @@ import { discoverWeb } from "./discover/websearch.ts";
 import { discoverAi } from "./discover/aisearch.ts";
 import { placesCommand } from "./discover/places.ts";
 import { sendOutreach } from "./outreach/send.ts";
-import { pullViator, refreshViator } from "./affiliates/viator.ts";
+import { detailViator, pullViator, refreshViator } from "./affiliates/viator.ts";
 import { pullTiqets } from "./affiliates/tiqets.ts";
 import { recordUnsub } from "./lib/unsub.ts";
 import { ownersCsv, ownersPending } from "./enrich/owners.ts";
@@ -600,6 +600,9 @@ if (cmd === "avail-judge") {
  *   npx tsx src/index.ts viator --write --per-metro=60   store them
  *   npx tsx src/index.ts viator --metros=tampa,miami --write
  *   npx tsx src/index.ts viator --refresh --write        pull what changed since last time (run daily)
+ *   npx tsx src/index.ts viator --detail --write         one /products/{code} call per stored row that has no
+ *                                                        detail yet: every photo, the full description,
+ *                                                        inclusions, requirements, cancellation (--max=N, --all)
  * Needs VIATOR_API_KEY in backend/.env. A handful of API calls per metro, not a crawl: nothing here fetches a page.
  */
 if (cmd === "viator") {
@@ -607,6 +610,12 @@ if (cmd === "viator") {
   // database (a new worker disk) a pull would otherwise fail its first insert on the foreign key.
   ingestAll();
   const write = process.argv.includes("--write");
+  if (process.argv.includes("--detail")) {
+    const max = process.argv.find((a) => a.startsWith("--max="))?.split("=")[1];
+    const r = await detailViator({ write, max: max ? Number(max) : undefined, onlyMissing: !process.argv.includes("--all") });
+    console.log(`Viator detail: ${r.rows} rows held, ${r.fetched} fetched, ${r.updated} ${write ? "updated" : "would update"}, ${r.failed} failed.`);
+    process.exit(0);
+  }
   if (process.argv.includes("--refresh")) {
     const r = await refreshViator({ write });
     console.log(`Viator refresh: ${r.seen} changed products seen, ${r.updated} of ours ${write ? "updated" : "would update"}.`);

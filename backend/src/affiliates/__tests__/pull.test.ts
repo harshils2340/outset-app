@@ -22,7 +22,7 @@ migrate();
 // the same before a pull, so a fresh database behaves the same here as on a new worker disk.
 const { ingestAll } = await import("../../ingest/load.ts");
 ingestAll();
-const { pullViator, refreshViator, MAX_AGE_HOURS } = await import("../viator.ts");
+const { pullViator, refreshViator, detailViator, MAX_AGE_HOURS } = await import("../viator.ts");
 const { affiliateCatalogItems } = await import("../catalog.ts");
 
 const calls: string[] = [];
@@ -59,6 +59,23 @@ globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) =>
     if (body.filtering.destination === "10") return json({ products: [product("T1", "Tampa Bay Dolphin Cruise"), product("T2", "Airport Shuttle to Clearwater"), product("T3", "Skydive Tampa Tandem Jump")], totalCount: 3 });
     if (body.filtering.destination === "12") return json({ products: [product("M1", "Miami Beach Jet Ski Rental", { productUrl: "http://insecure.example/x" })], totalCount: 1 });
     return json({ products: [], totalCount: 0 });
+  }
+  const one = url.match(/\/products\/([A-Z0-9]+)$/);
+  if (one) {
+    return json({
+      ...product(one[1], "Tampa Bay Dolphin Cruise"),
+      description: "A fine time on the water, and a long one: two hours past the skyway with a naturalist aboard.",
+      images: [
+        { variants: [{ url: "https://media.tacdn.com/" + one[1] + "-720.jpg", width: 720 }] },
+        { variants: [{ url: "https://media.tacdn.com/" + one[1] + "-b-720.jpg", width: 720 }] },
+        { variants: [{ url: "https://media.tacdn.com/" + one[1] + "-c-720.jpg", width: 720 }] },
+      ],
+      pricing: undefined,
+      inclusions: [{ typeDescription: "Other", otherDescription: "Bottled water" }, { typeDescription: "Professional guide" }],
+      additionalInfo: [{ type: "X", description: "Confirmation will be received at time of booking" }, { type: "NO_BACK_PROBLEMS", description: "Not recommended for travelers with spinal injuries" }],
+      cancellationPolicy: { type: "STANDARD", description: "For a full refund, cancel at least 24 hours before the scheduled departure time." },
+      itinerary: { privateTour: false, maxTravelersInSharedTour: 12 },
+    });
   }
   if (url.includes("/products/modified-since")) {
     if (basicAccess) return new Response('{"code":"FORBIDDEN","message":"This endpoint is not available at your access level"}', { status: 403 });
@@ -130,6 +147,34 @@ test("on a Basic Access key, where modified-since is 403, a refresh is the searc
   } finally {
     basicAccess = false;
   }
+});
+
+test("the detail pass adds every photo, the full text, inclusions, requirements and the policy, and a refresh keeps them", async () => {
+  calls.length = 0;
+  const r = await detailViator({ write: true });
+  assert.ok(r.fetched >= 1 && r.updated === r.fetched, JSON.stringify(r));
+  const items = affiliateCatalogItems();
+  const t1 = items.find((i) => i.id === "a-viator-t1") as Record<string, unknown>;
+  assert.equal((t1.photos as string[]).length, 3, "the detail's photos replace the summary's one");
+  assert.match(String(t1.blurb), /naturalist aboard/, "the longer description wins");
+  assert.deepEqual(t1.includes, ["Bottled water", "Professional guide"]);
+  assert.deepEqual(t1.requirements, ["Not recommended for travelers with spinal injuries"], "boilerplate lines are not requirements");
+  assert.match(String(t1.cancellation), /cancel at least 24 hours/);
+  assert.equal(t1.from, 89, "the price stays from the search, where Viator states it");
+  // A second run fetches nothing: every row holds its detail.
+  calls.length = 0;
+  const again = await detailViator({ write: true });
+  assert.equal(again.fetched, 0);
+  // A refresh through the search summary (one photo, cut text) keeps the richer detail.
+  basicAccess = true;
+  try {
+    await refreshViator({ write: true });
+  } finally {
+    basicAccess = false;
+  }
+  const after = affiliateCatalogItems().find((i) => i.id === "a-viator-t1") as Record<string, unknown>;
+  assert.equal((after.photos as string[]).length, 3, "a refresh from the summary must not throw the photo set away");
+  assert.deepEqual(after.includes, ["Bottled water", "Professional guide"], "nor the inclusions");
 });
 
 test("a dry pull calls the API and stores nothing", async () => {
