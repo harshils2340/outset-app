@@ -581,6 +581,69 @@ const GLOSSARY: [RegExp, string][] = [
   [/\bIFR\b/g, "instrument-rated"], [/\bUSCG\b/g, "Coast Guard"], [/\bPFDs?\b/g, "life jacket"], [/\bBYOB\b/g, "bring your own drinks"],
 ];
 
+/**
+ * The 27 characters Windows-1252 puts where UTF-8 has none, back to the byte they came from. A page served as
+ * 1252 and read as UTF-8 turns an em dash into "\u00e2\u20ac\u201d" and a curly apostrophe into "\u00e2\u20ac\u2122"; run through the same
+ * mistake twice, "\u2019" becomes "\u00c3\u00a2\u00e2\u201a\u00ac\u00e2\u201e\u00a2". Both are in the shipped catalog.
+ */
+const WIN1252_BYTE = new Map<number, number>([
+  [0x20ac, 0x80], [0x201a, 0x82], [0x0192, 0x83], [0x201e, 0x84], [0x2026, 0x85], [0x2020, 0x86], [0x2021, 0x87],
+  [0x02c6, 0x88], [0x2030, 0x89], [0x0160, 0x8a], [0x2039, 0x8b], [0x0152, 0x8c], [0x017d, 0x8e], [0x2018, 0x91],
+  [0x2019, 0x92], [0x201c, 0x93], [0x201d, 0x94], [0x2022, 0x95], [0x2013, 0x96], [0x2014, 0x97], [0x02dc, 0x98],
+  [0x2122, 0x99], [0x0161, 0x9a], [0x203a, 0x9b], [0x0153, 0x9c], [0x017e, 0x9e], [0x0178, 0x9f],
+]);
+const byteOf = (cp: number): number | null => (cp <= 0xff ? cp : (WIN1252_BYTE.get(cp) ?? null));
+/** The lead byte of a UTF-8 sequence, read as 1252: every run of mojibake starts with one of these. */
+const MOJI_LEAD = /[\u00c2-\u00c3\u00e2\u00e3]/;
+const UTF8 = typeof TextDecoder === "undefined" ? null : new TextDecoder("utf-8", { fatal: true });
+
+/**
+ * "salmon species\u00e2\u20ac\u201dChinook" is an em dash, "we\u00c3\u00a2\u00e2\u201a\u00ac\u00e2\u201e\u00a2ll be back" an apostrophe. Repaired a run at a time, so a
+ * line that also carries a character 1252 never had (an emoji, a Chinese name) keeps it instead of stopping the
+ * repair. A run is only replaced when it decodes as valid UTF-8, which is what tells mojibake apart from a
+ * French or Portuguese word that genuinely starts "\u00c3": "\u00c3\u00a9" alone is not valid UTF-8 and stays as it is.
+ */
+export function undoMojibake(text: string): string {
+  if (!UTF8 || !MOJI_LEAD.test(text)) return text;
+  let out = text;
+  // Twice-mangled text needs two passes, and a third proves the second was the last.
+  for (let pass = 0; pass < 3; pass++) {
+    let changed = false;
+    out = out.replace(/[^\u0000-\u007f]+/gu, (run) => {
+      if (!MOJI_LEAD.test(run)) return run;
+      const bytes: number[] = [];
+      for (const ch of run) {
+        const b = byteOf(ch.codePointAt(0)!);
+        if (b == null) return run;
+        bytes.push(b);
+      }
+      try {
+        const decoded = UTF8.decode(new Uint8Array(bytes));
+        if (decoded === run || decoded.includes("\ufffd")) return run;
+        changed = true;
+        return decoded;
+      } catch {
+        return run;
+      }
+    });
+    if (!changed) break;
+  }
+  return out;
+}
+
+/**
+ * U+FFFD is the decoder saying a byte was lost, and it is never something to show a guest. Between two letters
+ * it was an apostrophe ("O\ufffdBrien"), between two numbers a dash ("7 \ufffd 12 tables"); anywhere else the
+ * character goes.
+ */
+function fixLostBytes(text: string): string {
+  if (!text.includes("\ufffd")) return text;
+  return text
+    .replace(/(\p{L})\ufffd(\p{L})/gu, "$1\u2019$2")
+    .replace(/(\d)\s*\ufffd\s*(\d)/gu, "$1 - $2")
+    .replace(/\s*\ufffd\s*/gu, " ");
+}
+
 const ENT: Record<string, string> = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", nbsp: " ", rsquo: "\u2019", lsquo: "\u2018", ldquo: "\u201c", rdquo: "\u201d", ndash: "\u2013", mdash: "\u2014", hellip: "\u2026" };
 /** Older detail files still carry "&amp;" and "&#039;" from site markup. */
 export function decodeEntities(text: string): string {
@@ -638,7 +701,8 @@ function deShout(text: string): string {
 
 export function plainWords(text: string): string {
   // Tags after the entities, so a `&lt;br&gt;` that decoded into one goes the same way an unescaped one does.
-  let out = stripMarkdown(stripTags(decodeEntities(text)));
+  // The decoding faults come first: a line has to be the characters the shop wrote before anything reads it.
+  let out = stripMarkdown(stripTags(decodeEntities(fixLostBytes(undoMojibake(text)))));
   for (const [re, word] of GLOSSARY) out = out.replace(re, word);
   return deShout(out).replace(/\s+/g, " ").trim();
 }
