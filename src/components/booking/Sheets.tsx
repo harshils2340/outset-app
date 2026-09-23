@@ -523,6 +523,16 @@ function RequestBody({
   const otherPolicies = policies.other;
   // A cancellation term stated as a policy line rather than in `cancellation` is still their cancellation term.
   const cancelPolicies = policies.cancel.filter((l) => !item.cancellation || !tidyLine(item.cancellation).toLowerCase().includes(tidyLine(l).toLowerCase()));
+  /**
+   * A partner's product is booked on their site, and the rules, the waiver and the terms are stated there. This
+   * sheet has no contact block for one and no business behind it, so "Contact the business to check" sent a
+   * guest nowhere, and "Contact <title> for their cancellation terms" named a tour as though it were a shop,
+   * under a "Free cancellation" badge on the same screen. The desktop page builds no Things to know columns at
+   * all for one of these; the phone drew three. A row with nothing of our own to say now stays out, and so does
+   * the section when none of them has anything.
+   */
+  const partnerLabel = item.affiliate?.label || null;
+  const knowsAnything = !!(requirements.length || item.bring?.length || item.groupInfo?.length || waiverLines.length || item.waiverUrl || item.cancellation || item.policies?.length);
   const cancelRaw = freeCancelBadge(item);
   const cancel = cancelRaw ? tidyCancel(cancelRaw) : null;
   const age = minAge(requirements);
@@ -893,13 +903,18 @@ function RequestBody({
             </div>
           ) : null}
 
-          <section className="airsec airhost">
-            <span className="airavatar">{item.title.replace(/^the\s+/i, "").charAt(0).toUpperCase()}</span>
-            <span>
-              <b>Hosted by {item.title}</b>
-              <small>{[kind, item.area].join(" · ")}</small>
-            </span>
-          </section>
+          {/* A partner row's title is a product, not a business, so "Hosted by Fraser Valley Social Wine Tasting
+              Private Tour" named a tour as its own host. Who runs it is the partner's fact to state, on the page
+              this books on; the desktop listing draws no host line for one either. */}
+          {partnerLabel ? null : (
+            <section className="airsec airhost">
+              <span className="airavatar">{item.title.replace(/^the\s+/i, "").charAt(0).toUpperCase()}</span>
+              <span>
+                <b>Hosted by {item.title}</b>
+                <small>{[kind, item.area].join(" · ")}</small>
+              </span>
+            </section>
+          )}
 
           {rows.length ? (
             <section className="airsec">
@@ -1276,11 +1291,14 @@ function RequestBody({
             </Section>
           ) : null}
 
+          {!partnerLabel || knowsAnything ? (
           <Section title="Things to know">
             <div className="airknows">
+              {!partnerLabel || requirements.length ? (
               <KnowRow icon={ICONS.user} title="Who can go" summary={requirements[0] ? tidyLine(requirements[0]) : "Contact the business to check"}>
                 {requirements.length ? <Bullets items={requirements} /> : <FactList lines={facts.who.filter((l) => l.posted)} />}
               </KnowRow>
+              ) : null}
               {item.bring?.length ? (
                 <KnowRow icon={ICONS.ticket} title="What to bring" summary={plainWords(item.bring.slice(0, 3).join(", "))}>
                   <Bullets items={item.bring} />
@@ -1291,6 +1309,7 @@ function RequestBody({
                   <Bullets items={item.groupInfo} />
                 </KnowRow>
               ) : null}
+              {!partnerLabel || waiverLines.length || item.waiverUrl ? (
               <KnowRow icon={ICONS.check} title="Waiver and check-in" summary={waiverLines[0] ? tidyLine(waiverLines[0]) : item.waiverUrl ? "Sign online before you arrive" : "Contact the business to check"}>
                 {waiverLines.length ? <Bullets items={waiverLines} /> : <FactList lines={facts.waiver.filter((l) => l.posted && l.text.length <= 160)} />}
                 {safeHttpUrl(item.waiverUrl) ? (
@@ -1303,14 +1322,26 @@ function RequestBody({
                   </a>
                 ) : null}
               </KnowRow>
+              ) : null}
               <KnowRow
                 icon={ICONS.clock}
                 title={otherPolicies.length ? "Policies" : "Cancellation policy"}
-                summary={cancel || (item.cancellation ? tidyLine(item.cancellation) : cancelPolicies[0] ? tidyLine(cancelPolicies[0]) : "Contact the business for cancellation terms")}
+                summary={
+                  cancel ||
+                  (item.cancellation
+                    ? tidyLine(item.cancellation)
+                    : cancelPolicies[0]
+                      ? tidyLine(cancelPolicies[0])
+                      : partnerLabel
+                        ? "Stated on " + partnerLabel
+                        : "Contact the business for cancellation terms")
+                }
               >
                 {item.cancellation ? (
                   <p className="reqpolicy">{tidyLine(item.cancellation)}</p>
-                ) : cancelPolicies.length ? null : (
+                ) : cancelPolicies.length ? null : partnerLabel ? (
+                  <p className="reqpolicy gap">{partnerLabel} states the cancellation terms on the page this books on.</p>
+                ) : (
                   <p className="reqpolicy gap">Contact {item.title} for their cancellation terms before you book.</p>
                 )}
                 {cancelPolicies.length ? <Bullets items={cancelPolicies} /> : null}
@@ -1319,6 +1350,7 @@ function RequestBody({
               </KnowRow>
             </div>
           </Section>
+          ) : null}
 
           {item.faq?.length ? (
             <Section title="Frequently asked questions">
