@@ -1,6 +1,5 @@
 import { Hono } from "hono";
 import { ID, rateLimit } from "./auth.ts";
-import { db } from "../db/client.ts";
 import { getAvailability } from "../enrich/availability.ts";
 
 /**
@@ -12,67 +11,94 @@ import { getAvailability } from "../enrich/availability.ts";
  * `GET /voice/:operatorId/availability` for what is actually open. This is what makes the agent book instead of
  * only taking a message, and it reuses the same live-availability readers the listing page already uses.
  *
- * Read-only and public, like the availability route: no auth, a per-IP limit, and it states an honest gap
- * ("not published") rather than guessing. It never books or charges; the booking link is handed back for the
- * platform to send, or for a later step to complete, so nothing on a call moves money on its own.
+ * Both sources are the site's own published files, not SQLite: the API host has no operators table (it serves
+ * Postgres and the static catalog), so the facts come from the same `o/<id>.json` a listing page reads, fetched
+ * over HTTP and cached, exactly as availability already reads live-index.json. Read-only and public, like the
+ * availability route: no auth, a per-IP limit, and an honest gap ("not published") rather than a guess. It never
+ * books or charges; the booking link is handed back for a later step, so nothing on a call moves money on its own.
  */
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 const MAX_DAYS = 30;
+const SITE = (process.env.SITE_URL || "https://onoutset.com/").replace(/\/?$/, "/");
+const CACHE_TTL_MS = 10 * 60 * 1000;
 
 export const voice = new Hono();
 
-type OpRow = {
+type Listing = {
   id: string;
-  name: string;
-  city: string | null;
-  region: string | null;
-  country: string | null;
-  website: string | null;
-  phone: string | null;
-  hours: string | null;
-  booking_mode: string | null;
+  title?: string;
+  area?: string;
+  blurb?: string;
+  from?: number;
+  dur?: string;
+  options?: { name: string; detail?: string | null; price?: number | null }[];
+  services?: { name: string; variants?: { label?: string; price?: number | null }[] }[];
+  includes?: string[];
+  requirements?: string[];
+  policies?: string[];
+  cancellation?: string;
+  hoursText?: string[];
+  fc?: string;
+  affiliate?: { label: string; url: string } | null;
+  contact?: { phone?: string; website?: string; hours?: string[] } | null;
 };
-type Offering = { name: string; detail: string | null; duration: string | null; price_cents: number | null; price_unit: string | null; currency: string | null };
-type Fact = { fact_key: string; fact_value: string };
 
-const money = (cents: number | null, unit: string | null, currency: string | null): string | null => {
-  if (cents == null) return null;
-  const cur = currency && currency.toUpperCase() !== "USD" ? currency.toUpperCase() + " " : "$";
-  return cur + (cents / 100).toLocaleString("en-US", { maximumFractionDigits: 2 }) + (unit ? " " + unit : "");
-};
+const cache = new Map<string, { at: number; value: Listing | null }>();
 
-voice.get("/voice/:operatorId", rateLimit(120, 60 * 60 * 1000), (c) => {
+/** The published listing record, the same `o/<id>.json` a listing page reads, fetched over HTTP and cached. */
+async function listing(id: string): Promise<Listing | null> {
+  const hit = cache.get(id);
+  if (hit && Date.now() - hit.at < CACHE_TTL_MS) return hit.value;
+  let value: Listing | null = null;
+  try {
+    const res = await fetch(`${SITE}o/${encodeURIComponent(id)}.json`, { signal: AbortSignal.timeout(8000), headers: { accept: "application/json" } });
+    if (res.ok) value = (await res.json()) as Listing;
+  } catch {
+    value = null;
+  }
+  cache.set(id, { at: Date.now(), value });
+  return value;
+}
+
+const money = (n: number | null | undefined): string | null => (typeof n === "number" ? "$" + n.toLocaleString("en-US", { maximumFractionDigits: 2 }) : null);
+
+/** The bookable lines a guest picks from: plain options, or the first priced variant of each service. */
+function offersOf(l: Listing): { name: string; detail: string | null; price: string | null }[] {
+  if (l.options?.length) return l.options.map((o) => ({ name: o.name, detail: o.detail || null, price: money(o.price) }));
+  if (l.services?.length) return l.services.map((s) => ({ name: s.name, detail: (s.variants?.[0]?.label && s.variants[0].label !== "Standard" ? s.variants[0].label : null) || null, price: money(s.variants?.[0]?.price) }));
+  return [];
+}
+
+voice.get("/voice/:operatorId", rateLimit(120, 60 * 60 * 1000), async (c) => {
   const id = String(c.req.param("operatorId") ?? "");
   if (!ID.test(id)) return c.json({ error: "bad id" }, 400);
-  const op = db.prepare("SELECT id, name, city, region, country, website, phone, hours, booking_mode FROM operators WHERE id = ?").get(id) as OpRow | undefined;
-  if (!op) return c.json({ error: "not found" }, 404);
+  const l = await listing(id);
+  if (!l || !l.title) return c.json({ error: "not found" }, 404);
 
-  const offerings = db.prepare("SELECT name, detail, duration, price_cents, price_unit, currency FROM offerings WHERE operator_id = ? ORDER BY price_cents IS NULL, price_cents").all(id) as Offering[];
-  const facts = db.prepare("SELECT fact_key, fact_value FROM facts WHERE operator_id = ?").all(id) as Fact[];
-  const factOf = (key: string): string | null => facts.find((f) => f.fact_key === key)?.fact_value ?? null;
-  const factsAll = (key: string): string[] => facts.filter((f) => f.fact_key === key).map((f) => f.fact_value).filter(Boolean);
-  const bookingUrl = factOf("booking_url") || op.website;
-  const policies = factsAll("policy");
-
-  // Only what an operator has actually published. A missing field is said as missing so the agent offers to have
-  // a person confirm, exactly as the on-page assistant does, rather than inventing an answer on a live call.
+  // Only what is published on the listing. A missing field is said as missing so the agent offers to have a
+  // person confirm, exactly as the on-page assistant does, rather than inventing an answer on a live call.
+  const hours = l.hoursText?.length ? l.hoursText : l.contact?.hours || [];
   return c.json({
     business: {
-      id: op.id,
-      name: op.name,
-      where: [op.city, op.region].filter(Boolean).join(", ") || null,
-      offers: offerings.map((o) => ({ name: o.name, detail: o.detail || null, duration: o.duration || null, price: money(o.price_cents, o.price_unit, o.currency) })),
-      hours: op.hours || null,
-      about: factOf("description") || factOf("site_desc") || factOf("one_line"),
-      includes: factsAll("includes").slice(0, 12),
-      requirements: factsAll("requirement").slice(0, 12),
-      policies: policies.length ? policies.slice(0, 8) : null,
-      phone: op.phone || null,
-      bookingUrl: bookingUrl || null,
-      instantBook: op.booking_mode === "instant",
+      id: l.id,
+      name: l.title,
+      where: l.area || null,
+      about: l.blurb || null,
+      offers: offersOf(l),
+      fromPrice: money(l.from),
+      duration: l.dur || null,
+      hours: hours.length ? hours : null,
+      includes: (l.includes || []).slice(0, 12),
+      requirements: (l.requirements || []).slice(0, 12),
+      policies: (l.policies || []).length ? (l.policies || []).slice(0, 8) : null,
+      cancellation: l.cancellation || null,
+      freeCancellation: !!l.fc,
+      phone: l.contact?.phone || null,
+      // Where a booking is completed: the partner's page for an affiliate product, otherwise the Outset listing.
+      bookingUrl: l.affiliate?.url || `${SITE}#o=${encodeURIComponent(l.id)}`,
+      bookedElsewhere: l.affiliate ? l.affiliate.label : null,
     },
-    // The rules the platform's system prompt should hold the agent to, returned so the two stay in sync.
     speak: {
       onlyPublishedFacts: true,
       whenUnknown: "Say you will have someone from the business confirm, and take a name and number. Never guess a price, a time, an age rule or availability.",
@@ -90,12 +116,10 @@ voice.get("/voice/:operatorId/availability", rateLimit(120, 60 * 60 * 1000), asy
   const days = Math.min(Math.max(Number(c.req.query("days")) || 14, 1), MAX_DAYS);
 
   const av = await getAvailability(id, from, days);
-  // A speakable line for the agent, not the internal reason ("no booking url"): when the calendar is not
-  // connected, the agent should offer to have a person confirm the time and take a callback, never guess.
+  // A speakable line for the agent, not the internal reason: when the calendar is not connected, the agent
+  // should offer to have a person confirm the time and take a callback, never guess.
   if (!av.live) return c.json({ live: false, note: "This business's calendar is not connected, so a person confirms the time. Offer to take a name and number.", days: [] });
 
-  // Compact and speakable: the open days, and each day's start times with price and seats where the vendor gives
-  // them. The full booking URL rides along so the platform can text it or a later step can complete the booking.
   const openDays = av.days
     .filter((d) => d.slots.length)
     .map((d) => ({
@@ -103,7 +127,7 @@ voice.get("/voice/:operatorId/availability", rateLimit(120, 60 * 60 * 1000), asy
       times: d.slots.slice(0, 12).map((s) => ({
         at: s.startsAt.slice(11),
         label: s.label,
-        price: typeof s.priceCents === "number" ? money(s.priceCents) : null,
+        price: typeof s.priceCents === "number" ? "$" + (s.priceCents / 100).toLocaleString("en-US", { maximumFractionDigits: 2 }) : null,
         seatsLeft: typeof s.seatsLeft === "number" ? s.seatsLeft : null,
         bookUrl: s.bookUrl,
       })),
