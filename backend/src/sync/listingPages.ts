@@ -205,6 +205,10 @@ function page(item: Item, opts: { landingHref: string | null; kindPageHref: stri
   const title = `${item.title}${area ? " in " + area : ""} · Outset`;
   const description = clip(blurb || `${item.title}, ${area || "a real local business"} on Outset.`, 300);
   const ld = jsonLd(item, canonical, photos, menu);
+  // The partner licence (Viator's reads "you must not index any Viator unique content") means this page exists
+  // for the app and for a shared link, never for a search engine: noindex here, and writeListingPages keeps it
+  // out of the sitemap. The photos, title and description on it are the partner's.
+  const partner = !!(item as { affiliate?: unknown }).affiliate;
 
   const photosHtml = photos.length
     ? `<div class="photos">${photos.map((p) => `<img src="${esc(cardPhoto(p, 480))}" alt="${esc(item.title)}" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">`).join("")}</div>`
@@ -232,7 +236,7 @@ function page(item: Item, opts: { landingHref: string | null; kindPageHref: stri
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${esc(title)}</title>
 <meta name="description" content="${esc(description)}">
-<link rel="canonical" href="${canonical}">
+${partner ? '<meta name="robots" content="noindex">\n' : ""}<link rel="canonical" href="${canonical}">
 ${socialCard({ title, description, url: canonical, photo: photos[0] })}
 <script type="application/ld+json">${ldJson(ld)}</script>
 <style>${CSS}</style></head><body>
@@ -310,7 +314,8 @@ export function writeListingPages(items: Item[], landingPages: { existingPages: 
     const html = page(item, { landingHref, kindPageHref });
     const file = `${item.id}.html`;
     writeFileSync(join(dir, file), html);
-    urls.push(`${publicSite()}l/${file}`);
+    // A partner page is noindex (see page()), so it is not offered to search engines here either.
+    if (!(item as { affiliate?: unknown }).affiliate) urls.push(`${publicSite()}l/${file}`);
     totalBytes += Buffer.byteLength(html, "utf8");
   }
 

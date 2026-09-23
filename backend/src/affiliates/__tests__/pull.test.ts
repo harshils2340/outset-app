@@ -26,7 +26,8 @@ const { pullViator, refreshViator, MAX_AGE_HOURS } = await import("../viator.ts"
 const { affiliateCatalogItems } = await import("../catalog.ts");
 
 const calls: string[] = [];
-const product = (code: string, title: string, extra: Record<string, unknown> = {}) => ({
+let basicAccess = false;
+const product =(code: string, title: string, extra: Record<string, unknown> = {}) => ({
   productCode: code,
   title,
   description: "A fine time on the water.",
@@ -60,6 +61,7 @@ globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) =>
     return json({ products: [], totalCount: 0 });
   }
   if (url.includes("/products/modified-since")) {
+    if (basicAccess) return new Response('{"code":"FORBIDDEN","message":"This endpoint is not available at your access level"}', { status: 403 });
     return json({ products: [product("T1", "Tampa Bay Dolphin Cruise (New Boat)", { pricing: { summary: { fromPrice: 99 }, currency: "USD" } }), product("ZZ", "Somewhere Else Entirely")], nextCursor: null });
   }
   return new Response("not found", { status: 404 });
@@ -112,6 +114,22 @@ test("a refresh updates only the products we hold and records where it stopped",
   const sync = db.prepare("SELECT last_refresh_at, last_full_at FROM affiliate_sync WHERE source = 'viator'").get() as { last_refresh_at: string; last_full_at: string };
   assert.ok(sync.last_refresh_at && sync.last_full_at);
   assert.ok(calls.some((c) => c.includes("/products/modified-since")));
+});
+
+test("on a Basic Access key, where modified-since is 403, a refresh is the search again for what we hold", async () => {
+  basicAccess = true;
+  calls.length = 0;
+  try {
+    const r = await refreshViator({ write: true });
+    assert.equal(r.seen, 3, "two Tampa experiences and one Miami, the shuttle dropped");
+    assert.ok(calls.some((c) => c.includes("/products/modified-since")), "it tried the bulk endpoint first");
+    assert.ok(calls.some((c) => c.endsWith("/products/search")), "and fell back to search");
+    const t1 = db.prepare("SELECT title, fetched_at FROM affiliate_products WHERE id = 'a-viator-t1'").get() as { title: string; fetched_at: string };
+    assert.equal(t1.title, "Tampa Bay Dolphin Cruise", "the search answer is the current one");
+    assert.ok(Date.now() - Date.parse(t1.fetched_at) < 60_000, "the row is fresh again");
+  } finally {
+    basicAccess = false;
+  }
 });
 
 test("a dry pull calls the API and stores nothing", async () => {

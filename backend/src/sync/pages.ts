@@ -543,7 +543,10 @@ export function writeLandingPages(items: Item[], opts: { publicDir?: string } = 
   // Group once: kind -> every listing, and kind -> metro -> listings. A listing browse would not show, and a
   // listing whose kind we only guessed, are dropped before anything is grouped, counted or used to decide a
   // page exists. A page states its kind as fact in the title, the count and the JSON-LD; a guess cannot go there.
-  const listable = items.filter((i) => !i.thin && !i.kindUnconfirmed);
+  // A partner's product (Viator and the like) is not on these pages either: the licence says its content must
+  // not be indexed, and a city page is written to be. Partner listings live in the app and on their own noindex
+  // page, reached from the app, never from a page a search engine reads.
+  const listable = items.filter((i) => !i.thin && !i.kindUnconfirmed && !(i as { affiliate?: unknown }).affiliate);
 
   const byKind = new Map<string, Item[]>();
   const byKindMetro = new Map<string, Map<string, Item[]>>();

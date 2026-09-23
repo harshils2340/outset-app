@@ -278,7 +278,19 @@ export async function refreshViator(opts: { write: boolean }): Promise<{ seen: n
   if (!held.size) return out;
   let cursor = (db.prepare("SELECT cursor FROM affiliate_sync WHERE source = 'viator'").get() as { cursor: string | null } | undefined)?.cursor || null;
   for (let i = 0; i < 400; i++) {
-    const page = await modifiedSince(cursor);
+    let page: { products: ViatorProduct[]; nextCursor: string | null };
+    try {
+      page = await modifiedSince(cursor);
+    } catch (e) {
+      // /products/modified-since is a bulk endpoint, and bulk is Full Access. A Basic Access key (the default
+      // every affiliate gets on day one) answers it 403, so the refresh is the pull again: one search per
+      // metro, as many rows as we hold there, which is the same content the licence wants kept fresh.
+      if (!/-> (401|403|404) /.test(String((e as Error).message))) throw e;
+      const perMetro = Math.max(1, ...[...held.values()].reduce((m, h) => m.set(h.metro_id, (m.get(h.metro_id) || 0) + 1), new Map<string, number>()).values());
+      console.log(`  modified-since is not on this key (Basic Access); refreshing by search, ${perMetro} per metro.`);
+      const pulled = await pullViator({ perMetro, write: opts.write });
+      return { seen: pulled.products, updated: opts.write ? pulled.written : pulled.products };
+    }
     out.seen += page.products.length;
     for (const p of page.products) {
       const h = held.get(p.productCode);

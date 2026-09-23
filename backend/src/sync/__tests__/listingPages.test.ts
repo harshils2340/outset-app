@@ -361,6 +361,11 @@ test("a partner product gets a page that books on the partner's site, with the c
     assert.ok(html.includes("Outset earns a commission"), "the disclosure is on the page");
     assert.ok(!html.includes("Request a time on Outset"), "never offered as a request");
     assert.ok(html.includes("https://www.viator.com/tours/Tampa/x/d123-T1?pid=P1&amp;mcid=42383&amp;medium=api"), "the partner-attributed link, escaped");
+    // The licence: "you must not index any Viator unique content". The page is noindex, it is in no sitemap,
+    // and the city page (which is indexed) does not carry the product either.
+    assert.ok(html.includes('<meta name="robots" content="noindex">'), "a partner page is noindex");
+    assert.ok(!r.listing.urls.some((u) => u.includes("a-viator-t1")), "and is offered to no sitemap");
+    assert.ok(!readdirSync(join(r.dir, "p")).some((f) => readFileSync(join(r.dir, "p", f), "utf8").includes("a-viator-t1")), "and is on no city page");
   } finally {
     r.cleanup();
   }
