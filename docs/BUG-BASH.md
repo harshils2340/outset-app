@@ -3994,6 +3994,81 @@ surface reaches a fallback. 34 rows state no duration and print none.
   sync still does not say which listings it dropped, and no live vendor or partner API has answered anything
   from this address.
 
+## 23 September 2026, sixty-second run (10:15 to 11:40 UTC)
+
+**Chosen, and why.** Nothing has landed since the last entry but the entry itself, so the rehearsal's 53 of 53
+still stood and re-running it to watch it pass would have bought nothing. Installs, both type checks and both
+suites as the baseline instead, and the hour went to the one line on the Not yet checked list that is money in
+front of a guest: the from price on a card, and what the cheapest row on a menu actually is. Every area this
+run's brief lists as needing a first look is already on the Verified list, so the frontier is here.
+
+**Found and fixed.**
+
+- **A $950 deep sea charter read "$200" because that is what its deposit was** (`980c5496c`). 27 shipped rows
+  publish a deposit as the price of the experience, and since a deposit is a fraction of the price, each one is
+  also the cheapest row on its menu and so the from price on the card, the rail and the search result. Fin &
+  Fly's five charters read $150 and $200 under names stating $300 to $1300, with "Deposit (up to 6 passengers)"
+  beneath them. Skydive Chelan's tandem read $70 against a detail that shouts "NOT A TOTAL PAYMENT. A Tandem
+  Skydive is $289 per person". Phoenix Skydive's read $9.95, its booking fee. All nine of Jersey Nutz's trips
+  say "Deposit" in their own names. `implausiblePrice` already drops a number the site cannot have meant, but
+  only the implausible ones: $200 on a $950 charter is perfectly plausible and simply is not the price, so the
+  rule now reads the row's own words. The word alone proves nothing (a keg comes "with a refundable deposit", a
+  jet ski advertises "no deposit required"), so it has to head the detail or name the row; a hold against
+  damage and a row calling itself a fee keep their price. 28 rows that mention one keep theirs.
+
+- **"4-Hour Sailfishing: $700" was published at $850, both numbers on one line** (`7c6aba2a4`). 15 rows name
+  their own price and are sold at another, so the line answers itself twice: "Two Races (Adult Kart) $56" at
+  $399, "Fort Myers- Whole Day Pass - $199" at $3, which was also that card's from price. `withoutEchoedPrice`
+  strips a trailing figure that agrees, which is why only the disagreeing ones are still on a name: 59 of the 99
+  rows carrying a figure agree. The name is the truthful half almost every time and is still not taken, because
+  "$20,000 Maui JIM Grand Prix" is prize money and believing it would advertise a show jumping class at twenty
+  thousand dollars. The number goes and the page says "Price on request". A figure that is the face value of
+  something included keeps its row: "$10 Arcade Card" inside a $25.99 pass, "Value Card $200 Credit" at $160.
+
+- **A fishing guide's own description read "salmon speciesâ€"Chinook"** (`91944306b`). Open since the
+  twenty-first run. Four listings print a Windows-1252 byte read as UTF-8: Last Cast Guiding in a service
+  description, Reel Deal on two review cards ("weÃ¢â‚¬â„¢ll be back in October", the same fault twice over), and
+  two where the byte is already gone and a U+FFFD sits in its place, so a tag reads "O?Brien Pontoon Slide" and
+  an option label "7 ? 12". `plainWords` decoded entities and never this. It repairs a run at a time, so a line
+  that also carries an emoji or a Chinese name keeps it, and only replaces a run whose bytes are valid UTF-8,
+  which is what tells mojibake from a word that is simply French. A lost byte between two letters was an
+  apostrophe and between two numbers a dash; anywhere else it goes.
+
+**Checked and sound.** The cheapest priced row of all 10,217 listings that have one, read against the row that
+sets it. Every menu row in the shipped catalog that says "deposit", "retainer" or "booking fee" anywhere in its
+name or detail, 55 of them, each one read to decide which half the number belongs to. All 99 rows whose name
+states a dollar figure, against the price the row holds. Every string in every shipped detail file for a
+decoding fault, through the funnel that carries it to a guest.
+
+**Green after the fixes.** 736 app tests (up from 731) and 709 backend (up from 697). Both type checks clean but
+for TS5097. The rehearsal 53 of 53 against a local Postgres 16 cluster on 5433 with SSL and the Chromium on
+disk, run once on the finished tree because `src/lib/catalog.ts` is on every listing page's render path.
+
+**Needs Harshil.**
+
+- **114 rows name one length and show another.** "Private 2-Hour Sail" is shown as 30 minutes, "1-Hour Lea
+  Island Excursion" as 5, "8-Hour Charter - Bimini Girl" as 2 hours, "30-Minute Sunset Ride" as 24. Every one of
+  Elevated Wake Co.'s nine charters, named 1 to 6 hours, shows 1.5. This one is not fixable the way the price
+  was, because the trap runs both ways: the label is junk at Milwaukee Kayak ("2-Hour Rental" shown as "5 to 10
+  minutes", which is a walk from the car park), and the name is junk at Wet-n-Wild ("Pontoon Rentals - Departing
+  3 Minutes from Crab Island", genuinely an 8 hour rental). Believing either half is wrong somewhere, and
+  dropping the length off 114 rows to be safe is a bigger call than an overnight run should make. A list of all
+  114 is one scan away whenever you want it.
+- **The from price is still the cheapest row of any kind, and some of those rows are fees.** The deposits are
+  gone, so what is left is a golf club advertising from $2 because that is its pull cart fee, a kart track from
+  $2 for tire disposal, a marina from $2.15 which is a rate per foot of boat, and a bowling alley from $3 for
+  shoe rental. This is the item already on your list (the Detroit Zoo's $2 stingray touch); the fee rows are the
+  part of it that is clearly not a judgement, if you want a first cut.
+- **Fin & Fly's sixth row still reads $200.** Its five charters all said "Deposit" and have given up their
+  number. "Sea Burial/Ash Scattering $600" says nothing about a deposit, so it keeps the $200 its siblings
+  proved was one, and it is now that shop's from price. One shop, and only a re-crawl settles it.
+- **Last night's stand:** the nth-weekday rule is still read as every such weekday on 8 shops, a partner's price
+  is still quoted in its own currency and printed as dollars, the lite shard still carries no unit,
+  `public/unsubscribe.html` still POSTs on load, the listing page still reads three of the ten vendors,
+  `outset-api` still builds with no catalog, the "All requests" link is still parked off screen on a phone, five
+  category accents are still under the AA floor, Viator's `additionalInfo` is still filed under "Who can go",
+  its `exclusions` are still dropped, and no live vendor or partner API has answered anything from this address.
+
 ## Coverage
 
 The catalog is 48,198 listings as of the 23 September sync, 1,873 of them Viator partner rows. Counts below
@@ -4077,7 +4152,11 @@ The window the Free cancellation badge promises, over all 1,303 shipped badges: 
 owns the number, which side of that clause's line it sits on, a rate card written as one sentence, a window
 sold with a protection plan, the shop's own weather call and the clock it runs on, and "15+ Days", "3 or more
 days", weeks and months. That the badge a guest reads is re-read from the policy rather than taken from the
-`fc` the sync wrote, and that the static `/l/` page and the app now name the same window for the same shop.
+`fc` the sync wrote, and that the static `/l/` page and the app now name the same window for the same shop. What a card says a
+listing costs, at the row that sets it: the cheapest priced row of all 10,217 listings that have one, every
+row in the catalog whose words mention a deposit, a retainer or a booking fee, and all 99 rows whose own name
+states a dollar figure, each held against the price the row holds. Every string in every shipped detail file
+for a Windows-1252 decoding fault, through the funnel that carries it to a guest.
 That every surface drawing the badge, the filter included, and a claimed shop's own typed policy all go
 through one rule.
 
@@ -4454,7 +4533,10 @@ bullet rather than an emphasis. The author slot on all 4,774 review cards the sh
 minimum age read off a number that counts something else, over all 11,554 listings that state a requirement:
 a software version, a group size, a distance, a booking window, a course load, a tax line and a decimal's tail.
 
-**Not yet checked.** The Viator `additionalInfo` bag, which is what fills a partner row's "Who can go" column: it carries
+**Not yet checked.** Whether a row that names its own length should
+be believed over the length shown beside it, or neither should be: 114 rows disagree, and the junk half is the
+label on some shops and the name on others (see the sixty-second run's Needs Harshil). Whether Fin & Fly's one
+surviving priced row is a deposit like its five siblings, which only a re-crawl settles. The Viator `additionalInfo` bag, which is what fills a partner row's "Who can go" column: it carries
 "Operates in all weather conditions", "Wheelchair accessible" and, on 73 rows, instructions for booking on
 TripAdvisor, all under a heading of ours that does not fit them (see this run's Needs Harshil). Whether a
 partner's `exclusions` should be published beside its inclusions: the detail pass reads them and the listing
