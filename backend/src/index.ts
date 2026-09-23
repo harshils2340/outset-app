@@ -602,6 +602,9 @@ if (cmd === "avail-judge") {
  * Needs VIATOR_API_KEY in backend/.env. A handful of API calls per metro, not a crawl: nothing here fetches a page.
  */
 if (cmd === "viator") {
+  // affiliate_products.metro_id references the metros table, which ingest fills from the taxonomy: on a fresh
+  // database (a new worker disk) a pull would otherwise fail its first insert on the foreign key.
+  ingestAll();
   const write = process.argv.includes("--write");
   if (process.argv.includes("--refresh")) {
     const r = await refreshViator({ write });

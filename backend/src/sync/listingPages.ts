@@ -282,8 +282,10 @@ export function writeListingPages(items: Item[], landingPages: { existingPages: 
   const eligible = items.filter((i) => {
     if (typeof i.cover !== "string" || !i.cover || (i as { unlisted?: boolean }).unlisted) return false;
     const priced = (i.options || []).some((o) => typeof o?.price === "number" && o.price > 0);
+    // A partner product has no menu of its own; its from-price and its booking link are the thing a guest acts on.
+    const partnerPriced = !!(i as { affiliate?: unknown }).affiliate && typeof (i as { from?: unknown }).from === "number";
     const reviews = Number((i as { reviews?: unknown }).reviews) || 0;
-    return priced || reviews >= 5;
+    return priced || partnerPriced || reviews >= 5;
   });
 
   const urls: string[] = [];

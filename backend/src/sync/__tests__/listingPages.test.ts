@@ -345,3 +345,23 @@ test("the cancellation line is the badge the app draws, not the one the file sto
     r.cleanup();
   }
 });
+
+test("a partner product gets a page that books on the partner's site, with the commission said and the link marked sponsored", () => {
+  const items: Item[] = [
+    item("a-viator-t1", {
+      cover: "https://media.tacdn.com/t1.jpg", options: [], from: 89, reviews: 3, art: "cruise", area: "Tampa, FL", metroId: "tampa",
+      affiliate: { source: "viator", label: "Viator", url: "https://www.viator.com/tours/Tampa/x/d123-T1?pid=P1&mcid=42383&medium=api" },
+    } as Partial<Item>),
+  ];
+  const r = run(items);
+  try {
+    assert.deepEqual(r.files, ["a-viator-t1.html"], "a from-price is something to act on, even with three reviews");
+    const html = r.read("a-viator-t1.html");
+    assert.ok(html.includes('rel="sponsored noopener noreferrer">Book on Viator</a>'), html.slice(0, 400));
+    assert.ok(html.includes("Outset earns a commission"), "the disclosure is on the page");
+    assert.ok(!html.includes("Request a time on Outset"), "never offered as a request");
+    assert.ok(html.includes("https://www.viator.com/tours/Tampa/x/d123-T1?pid=P1&amp;mcid=42383&amp;medium=api"), "the partner-attributed link, escaped");
+  } finally {
+    r.cleanup();
+  }
+});
