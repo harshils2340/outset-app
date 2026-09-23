@@ -1,0 +1,53 @@
+[
+ {
+  "name": "Chicagoland Skydiving Center (CSC)",
+  "website": null,
+  "domain": "skydivingsource:chicagoland-skydiving-center-csc",
+  "street": "1207 West Gurler Road",
+  "city": "Rochelle",
+  "region": "IL",
+  "postal": "61068",
+  "lat": 41.893001,
+  "lon": -89.07829,
+  "phone": "+18155613663",
+  "kind": "skydive",
+  "source": "directory",
+  "directory": "skydivingsource",
+  "sourceUrl": "https://skydivingsource.com/locations/chicagoland-skydiving-center-csc/",
+  "activity": "dropzone"
+ },
+ {
+  "name": "DC Skydiving Center",
+  "website": null,
+  "domain": "skydivingsource:dc-skydiving-center",
+  "street": "9272 Green Meadows Rd",
+  "city": "Warrenton",
+  "region": "VA",
+  "postal": "20187",
+  "lat": 38.65532,
+  "lon": -77.78638,
+  "phone": "+12025090799",
+  "kind": "skydive",
+  "source": "directory",
+  "directory": "skydivingsource",
+  "sourceUrl": "https://skydivingsource.com/locations/dc-skydiving-center/",
+  "activity": "dropzone"
+ },
+ {
+  "name": "Desert Skydiving Center",
+  "website": null,
+  "domain": "skydivingsource:desert-skydiving-center",
+  "street": "3000 S Palo Verde Road",
+  "city": "Buckeye",
+  "region": "AZ",
+  "postal": "85326",
+  "lat": 33.420417,
+  "lon": -112.686181,
+  "phone": "+16236910440",
+  "kind": "skydive",
+  "source": "directory",
+  "directory": "skydivingsource",
+  "sourceUrl": "https://skydivingsource.com/locations/desert-skydiving-center/",
+  "activity": "dropzone"
+ }
+]
