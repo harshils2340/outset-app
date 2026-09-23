@@ -126,8 +126,11 @@ function jsonLd(item: Item, canonical: string, photos: string[], menu: { name: s
           addressCountry: countryOfArea(String(item.area || "")),
         }
       : undefined;
-  const lat = typeof item.lat === "number" ? item.lat : undefined;
-  const lon = typeof item.lon === "number" ? item.lon : undefined;
+  // A partner's product is filed at the centre of the destination its API named, one coordinate for every
+  // product in that city, so publishing it as this listing's own geo states a location nobody checked.
+  const partner = !!(item as { affiliate?: unknown }).affiliate;
+  const lat = !partner && typeof item.lat === "number" ? item.lat : undefined;
+  const lon = !partner && typeof item.lon === "number" ? item.lon : undefined;
   const priced = menu.filter((m) => m.price != null);
   const currency = countryOfArea(String(item.area || "")) === "CA" ? "CAD" : "USD";
   const ld: Record<string, unknown> = {

@@ -64,6 +64,10 @@ export function kmToPlace(u: Unclaimed, near: Place): number {
  */
 export function awayLine(u: Unclaimed, near: Place | null): string | null {
   if (!near || near.region) return null;
+  // A partner's product carries the coordinate its API gave for the whole destination, the same one for every
+  // product in that city, so a distance from it would be a precision nobody has. The city it is filed under is
+  // what we actually know, and that is what the line falls back to.
+  if (u.affiliate) return null;
   const n = nearestLocation(u, near);
   if (!n) return null;
   const town = n.alt && n.label ? n.label : "";

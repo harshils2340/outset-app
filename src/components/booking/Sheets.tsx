@@ -429,7 +429,9 @@ function RequestBody({
   const here = useGuestPoint();
   const dest = mapsQuery(item, contact);
   const place = tidyAddress(placeLabel(item, contact));
-  const pin = item.lat != null && item.lon != null ? { lat: item.lat, lng: item.lon } : null;
+  // No pin for a partner's product: the coordinate on the record is the centre of the destination its API
+  // filed it under, one point for every product in that city, so "2 miles away" would be made up.
+  const pin = !item.affiliate && item.lat != null && item.lon != null ? { lat: item.lat, lng: item.lon } : null;
   const miles = here && pin ? milesBetween(here, pin) : null;
   const dist = miles != null && miles <= 150 && metro ? formatDistance(miles, metro.country) + " away" : null;
   const addressRaw = contact ? addressLine(contact) : null;

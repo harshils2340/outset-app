@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import type { Unclaimed } from "../../data/types";
+import { awayLine } from "../../components/explore/feed";
 import { experienceById, getCatalog, mergeCatalog, partnerBookLine } from "../catalog";
 import { assistantOn } from "../companyAgent";
 import { searchByName, searchSuggest } from "../search";
@@ -69,6 +70,16 @@ test("a card with no price from the partner says where it books, not that it can
   const u = experienceById("a-viator-t1")!;
   assert.equal(partnerBookLine(u), "Book on Viator");
   assert.equal(partnerBookLine({ ...u, affiliate: undefined }), null, "every other listing keeps its own wording");
+});
+
+test("a partner product never tells a guest how far away it is", () => {
+  // Viator files every product in a destination at that destination's centre, Tiqets at the metro's, so the
+  // coordinate on the record is one point for a whole city. The card falls back to the city it is filed under.
+  const u = experienceById("a-viator-t1")!;
+  const nearby = { label: "Ybor City", sub: "Tampa, FL", lat: 27.96, lon: -82.44 };
+  assert.equal(awayLine(u, nearby), null);
+  const own = { ...u, affiliate: undefined };
+  assert.match(String(awayLine(own, nearby)), /away$/, "an operator's own pin is a real one and still counts");
 });
 
 test("the claim screen's business search never offers a partner product", () => {

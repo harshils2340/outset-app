@@ -365,3 +365,22 @@ test("a partner product gets a page that books on the partner's site, with the c
     r.cleanup();
   }
 });
+
+test("a partner product publishes no geo point of its own", () => {
+  // Its lat and lon are the centre of the destination the partner's API filed it under, the same pair for
+  // every product in that city, so structured data must not state them as this listing's own location.
+  const items: Item[] = [
+    item("a-viator-t2", {
+      cover: "https://media.tacdn.com/t2.jpg", options: [], from: 120, art: "cruise", area: "Tampa, FL", metroId: "tampa", lat: 27.9506, lon: -82.4572,
+      affiliate: { source: "viator", label: "Viator", url: "https://www.viator.com/tours/Tampa/y/d123-T2?pid=P1" },
+    } as Partial<Item>),
+    item("o-realshop-com", { cover: "https://realshop.com/a.jpg", options: [{ name: "Tour", price: 60 }], art: "cruise", area: "Tampa, FL", metroId: "tampa", lat: 27.9, lon: -82.5 } as Partial<Item>),
+  ];
+  const r = run(items);
+  try {
+    assert.ok(!r.read("a-viator-t2.html").includes("GeoCoordinates"), "no pin for a partner's product");
+    assert.ok(r.read("o-realshop-com.html").includes("GeoCoordinates"), "an operator's own pin is unchanged");
+  } finally {
+    r.cleanup();
+  }
+});
