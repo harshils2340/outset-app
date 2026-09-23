@@ -46,6 +46,16 @@ test("a partner product merges in with its affiliate link intact and is not mark
   assert.ok(getCatalog().some((x) => x.id === "a-viator-t1"), "in the catalog every rail and search reads");
 });
 
+test("every partner product merges in, not only the first: they all share the partner's domain", () => {
+  // The merge keeps one listing per business website. 1,873 Viator products all say src "viator.com", and on
+  // 23 September 2026 the live site showed exactly one of them in its rails, the rest shut out by that rule.
+  const second: Unclaimed = { ...lite, id: "a-viator-t2", title: "Skydive Tampa Tandem Jump", art: "skydive", cat: "air", affiliate: { ...lite.affiliate!, url: "https://www.viator.com/tours/Tampa/x/d123-T2?pid=P1" } };
+  const third: Unclaimed = { ...lite, id: "a-viator-t3", title: "Ybor City Food Tour", art: "tour", cat: "food", metroId: "tampa" };
+  mergeCatalog([lite, second, third], {});
+  for (const id of ["a-viator-t1", "a-viator-t2", "a-viator-t3"]) assert.ok(getCatalog().some((x) => x.id === id), id + " is in the catalog");
+  assert.equal(experienceById("a-viator-t2")!.affiliate!.url, second.affiliate!.url);
+});
+
 test("a partner product is found by search like any other listing", () => {
   const hit = JSON.stringify(searchSuggest(getCatalog(), "Tampa Bay Dolphin Cruise"));
   assert.ok(hit.includes("a-viator-t1"), hit.slice(0, 300));

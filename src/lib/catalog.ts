@@ -132,9 +132,12 @@ export function mergeCatalog(items: Unclaimed[], extraContacts: Record<string, O
   for (const raw of items) {
     const it = asPublished(raw);
     const d = domainOf(it.src);
-    if (seenId.has(it.id) || (d && !d.startsWith("osm-") && seenDomain.has(d))) continue;
+    // The domain rule is one listing per business website. A partner's products all name the partner's site
+    // (src "viator.com"), so on that rule the first Viator product would have shut out the other 1,872: found
+    // on the live site on 23 September 2026, one card in 49 metros. Partner products are distinct by id only.
+    if (seenId.has(it.id) || (d && !it.affiliate && !d.startsWith("osm-") && seenDomain.has(d))) continue;
     seenId.add(it.id);
-    if (d) seenDomain.add(d);
+    if (d && !it.affiliate) seenDomain.add(d);
     // A listing already fetched in full (a shared link opened it before the catalog came) keeps its photos and
     // menu; the catalog's slim copy of the same record must not take its place.
     const cur = had.get(it.id);
@@ -152,6 +155,7 @@ export function mergeCatalog(items: Unclaimed[], extraContacts: Record<string, O
   const remoteByDomain = new Map<string, Unclaimed>();
   for (const raw of items) {
     const it = asPublished(raw);
+    if (it.affiliate) continue; // a partner's product is nobody's crawl of a seed's site
     const d = domainOf(it.src);
     if (d) remoteByDomain.set(d, it);
   }

@@ -2093,6 +2093,8 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
                     Ask Outset about {item.title}
                 </button>
                 </>
+              ) : affiliate ? (
+                <p className="alsecsub">Dates, prices, questions and payment are all on {affiliate.label}. Outset earns a commission if you book there, at no extra cost to you.</p>
               ) : (
                 <p className="alsecsub">{item.title} answers these themselves. {callHref ? "Give them a call, or send" : "Send"} a booking request on this page and it reaches them directly.</p>
               )}
