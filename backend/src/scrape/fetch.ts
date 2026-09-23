@@ -30,13 +30,31 @@ type Cached = { status: number; html: string; finalUrl: string };
 
 const cachePath = (url: string) => join(CACHE_DIR, createHash("sha256").update(url).digest("hex").slice(0, 2), createHash("sha256").update(url).digest("hex").slice(2) + ".gz");
 
+/**
+ * A response that is the site telling us to stop rather than the page we asked for: a redirect to a
+ * rate-limit or challenge page, a 429/403/503, or a challenge body behind a 200. Never cached, and a cached
+ * copy from before this check is ignored: on 22 September 2026 two hundred Captain Experiences pages came
+ * back as a 200 that redirected to /rate-limit, were cached as good pages, and every later read of those
+ * URLs was served the throttle page from disk.
+ */
+export function looksBlocked(p: { status: number; html: string; finalUrl: string }): boolean {
+  if (/\/(rate-?limit|challenge|blocked|captcha|access-?denied)\b/i.test(p.finalUrl)) return true;
+  if (p.status === 429 || p.status === 403 || p.status === 503) return true;
+  return /just a moment|cf-chl|challenge-platform|captcha|rate limit exceeded|too many requests/i.test(p.html.slice(0, 20000));
+}
+
 function readCache(url: string): Cached | null {
   if (CACHE_OFF) return null;
   try {
     const p = cachePath(url);
     const st = statSync(p);
     if (Date.now() - st.mtimeMs > CACHE_DAYS * 86400_000) return null;
-    return JSON.parse(gunzipSync(readFileSync(p)).toString("utf8")) as Cached;
+    const hit = JSON.parse(gunzipSync(readFileSync(p)).toString("utf8")) as Cached;
+    if (looksBlocked(hit)) {
+      rmSync(p, { force: true });
+      return null;
+    }
+    return hit;
   } catch {
     return null;
   }
@@ -187,7 +205,7 @@ export async function fetchHtml(url: string): Promise<{ status: number; html: st
     const html = await res.text();
     const out = { status: res.status, html, finalUrl: res.url };
     // Only a page that actually arrived. A 500 or a block is worth retrying on the next pass, not remembering.
-    if (res.status >= 200 && res.status < 400 && html) writeCache(url, out);
+    if (res.status >= 200 && res.status < 400 && html && !looksBlocked(out)) writeCache(url, out);
     return out;
   });
 }

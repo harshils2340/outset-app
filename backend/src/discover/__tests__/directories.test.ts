@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { DIRECTORIES, organizationLinks, ownWebsite, parseDirectoryPage, regionCode } from "../directories.ts";
+import { DIRECTORIES, isBlockedPage, organizationLinks, ownWebsite, parseDirectoryPage, regionCode } from "../directories.ts";
 import { categoryById } from "../../taxonomy/catalog.ts";
 
 const captain = DIRECTORIES.find((d) => d.id === "captainexperiences")!;
@@ -74,4 +74,11 @@ test("every registry kind is a real category, so the importer never rejects a wh
     assert.ok(categoryById(d.kind), `${d.id}: kind ${d.kind}`);
     if (d.id === "coursehorse") for (const k of ["cooking", "pottery", "dance", "fitness", "theatre"]) assert.ok(categoryById(k), k);
   }
+});
+
+test("a rate-limit redirect or a challenge body is the site saying stop, whatever the status code", () => {
+  assert.ok(isBlockedPage({ status: 200, html: "<html>...</html>", finalUrl: "https://captainexperiences.com/rate-limit?redirect_to=https%3A%2F%2Fcaptainexperiences.com%2Fguides%2Fx" }));
+  assert.ok(isBlockedPage({ status: 200, html: "<title>Just a moment...</title>", finalUrl: "https://classbento.com/x" }));
+  assert.ok(isBlockedPage({ status: 429, html: "", finalUrl: "https://x.com/y" }));
+  assert.ok(!isBlockedPage({ status: 200, html: "<html><h1>10 Point Charters</h1></html>", finalUrl: "https://captainexperiences.com/guides/10-point-charters" }));
 });

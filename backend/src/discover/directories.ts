@@ -1,5 +1,6 @@
+import { looksBlocked } from "../scrape/fetch.ts";
 import { DROP_HOSTS } from "./braveapi.ts";
-import { decode, hostOf, jsonLdNodes, linksFrom, parsePlaces, phoneE164, sitemapLocs, type RawPlace } from "./chains.ts";
+import { decode, hostOf, jsonLdNodes, parsePlaces, phoneE164, sitemapLocs, type RawPlace } from "./chains.ts";
 import { getPage } from "./polite.ts";
 
 /**
@@ -43,9 +44,19 @@ export type DirectorySource = {
   kindFromUrl?: (url: string) => string | null;
   /** Pages per run at most: a directory is read a slice at a time, never whole in one go. */
   max: number;
+  /** Pause between two requests to this host, when the site has shown it wants more than polite.ts's default. */
+  gapMs?: number;
   /** What a human saw on the live site when this entry was written. */
   verified: string;
 };
+
+/**
+ * A page that is the site telling us to stop: a redirect to a rate-limit or challenge page, or a challenge
+ * body behind a 200. It is not a business page, it must not be parsed, and the run must end there rather
+ * than keep asking. That answer is the site's policy on being read by a bot, and the registry honours it.
+ * The rule itself lives beside the page cache (scrape/fetch.ts), which refuses to store such a page.
+ */
+export const isBlockedPage = looksBlocked;
 
 export type DirectoryCandidate = {
   name: string;
@@ -77,8 +88,11 @@ export const DIRECTORIES: DirectorySource[] = [
     activity: "fishing guide",
     sitemaps: ["https://captainexperiences.com/sitemaps/sitemap_guides.xml"],
     match: /^https:\/\/captainexperiences\.com\/guides\/[a-z0-9-]+$/,
-    max: 40,
-    verified: "2026-09-22: /guides/<slug> carries LocalBusiness JSON-LD with the guide's name and town; no website or phone on the page",
+    max: 60,
+    // 2026-09-22: two hundred pages at the default pace tripped their limiter (a 200 that redirects to
+    // /rate-limit). Slower and smaller from here; a run stops at the first such page.
+    gapMs: 8000,
+    verified: "2026-09-22: /guides/<slug> carries LocalBusiness JSON-LD with the guide's name and town; no website or phone on the page; rate-limits a bot at the default pace",
   },
   {
     id: "coursehorse",
@@ -199,7 +213,7 @@ export function parseDirectoryPage(src: DirectorySource, html: string, pageUrl: 
   return toCandidate(src, raw, pageUrl, ownWebsite(html, pageUrl));
 }
 
-export type DirectoryRun = { source: string; listed: number; fetched: number; parsed: number; withWebsite: number; outsideMarket: number; candidates: DirectoryCandidate[]; failed: string[] };
+export type DirectoryRun = { source: string; listed: number; fetched: number; parsed: number; withWebsite: number; outsideMarket: number; candidates: DirectoryCandidate[]; failed: string[]; /** The run ended early because the site answered with a rate-limit or challenge page. */ blocked: boolean };
 
 /**
  * Read up to `max` business pages from one directory, starting after `skip` (so successive runs walk the
@@ -208,7 +222,8 @@ export type DirectoryRun = { source: string; listed: number; fetched: number; pa
 export async function runDirectory(src: DirectorySource, opts: { max?: number; skip?: number; log?: (m: string) => void } = {}): Promise<DirectoryRun> {
   const log = opts.log || (() => {});
   const max = Math.min(opts.max ?? src.max, 200);
-  const out: DirectoryRun = { source: src.id, listed: 0, fetched: 0, parsed: 0, withWebsite: 0, outsideMarket: 0, candidates: [], failed: [] };
+  const out: DirectoryRun = { source: src.id, listed: 0, fetched: 0, parsed: 0, withWebsite: 0, outsideMarket: 0, candidates: [], failed: [], blocked: false };
+  const gap = src.gapMs ?? 1500;
   const locs: string[] = [];
   for (const sm of src.sitemaps) locs.push(...(await sitemapLocs(sm, src.childMatch)));
   let pages: string[];
@@ -220,8 +235,14 @@ export async function runDirectory(src: DirectorySource, opts: { max?: number; s
     log(`${src.id}: ${from.length} pages in the sitemap lead to businesses, reading ${max} from #${opts.skip || 0}`);
     const found = new Set<string>();
     for (const url of from.slice(opts.skip || 0, (opts.skip || 0) + max)) {
-      const page = await getPage(url);
+      const page = await getPage(url, gap);
       out.fetched++;
+      if (isBlockedPage(page)) {
+        out.blocked = true;
+        out.failed.push(url + " (blocked: " + page.finalUrl + ")");
+        log(`${src.id}: the site answered with a rate-limit or challenge page; stopping here`);
+        break;
+      }
       if (page.status !== 200 || !page.html) {
         out.failed.push(url + " (" + page.status + ")");
         continue;
@@ -236,11 +257,23 @@ export async function runDirectory(src: DirectorySource, opts: { max?: number; s
     log(`${src.id}: ${pages.length} business pages in the sitemap, reading ${max} from #${opts.skip || 0}`);
     pages = pages.slice(opts.skip || 0, (opts.skip || 0) + max);
   }
+  let n = 0;
   for (const url of pages) {
-    const page = await getPage(url);
+    if (out.blocked) break;
+    const started = Date.now();
+    const page = await getPage(url, gap);
     out.fetched++;
+    n++;
+    if (n % 25 === 0 || Date.now() - started > 20000) log(`${src.id}: ${n}/${pages.length} pages, last took ${Math.round((Date.now() - started) / 1000)}s`);
+    if (isBlockedPage(page)) {
+      out.blocked = true;
+      out.failed.push(url + " (blocked: " + page.finalUrl + ")");
+      log(`${src.id}: the site answered with a rate-limit or challenge page; stopping here`);
+      break;
+    }
     if (page.status !== 200 || !page.html) {
       out.failed.push(url + " (" + page.status + ")");
+      log(`${src.id}: failed ${url} (${page.status})`);
       continue;
     }
     const c = parseDirectoryPage(src, page.html, url);
