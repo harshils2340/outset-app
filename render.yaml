@@ -23,6 +23,21 @@ services:
       - key: VITE_API_URL
         value: https://outset-api.onrender.com
     routes:
+      # Clean URLs for the standalone marketing and legal pages: without these the catch-all below sends /otto,
+      # /about and the rest to the SPA, which shows the guest home instead of the page. A real static file is
+      # still served directly, so /otto.html keeps working too; these just make the extensionless URL resolve.
+      - type: rewrite
+        source: /otto
+        destination: /otto.html
+      - type: rewrite
+        source: /about
+        destination: /about.html
+      - type: rewrite
+        source: /terms
+        destination: /terms.html
+      - type: rewrite
+        source: /privacy
+        destination: /privacy.html
       - type: rewrite
         source: /*
         destination: /index.html
