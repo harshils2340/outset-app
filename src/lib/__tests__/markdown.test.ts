@@ -83,6 +83,8 @@ test("no shipped listing hands a guest markdown any more", () => {
     if (item.checkin && MD.test(plainWords(item.checkin))) bad.push(item.id + " checkin: " + plainWords(item.checkin).slice(0, 90));
     if (item.blurb && MD.test(plainWords(item.blurb))) bad.push(item.id + " blurb: " + plainWords(item.blurb).slice(0, 90));
   }
-  assert.ok(n > 50000, "expected the shipped catalog, swept " + n);
+  // 59,126 before the publish gate of 18 September 2026 ("a listing reaches guests once we have read something
+  // off its own site"); 48,199 operators plus 1,873 partner products after the first sync through it.
+  assert.ok(n > 40000, "expected the shipped catalog, swept " + n);
   assert.deepEqual(bad, [], bad.length + " lines still carry markdown, first: " + bad[0]);
 });

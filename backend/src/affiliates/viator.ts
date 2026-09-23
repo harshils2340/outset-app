@@ -1,3 +1,6 @@
+import { existsSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { db, nowIso } from "../db/client.ts";
 import { METROS, nearestMetro } from "../taxonomy/catalog.ts";
 
@@ -56,28 +59,73 @@ export type ViatorProduct = {
   tags?: number[];
 };
 
+/**
+ * Viator meters a Basic Access key tightly: the second call of a run answered 429 on the real key. A 429 is
+ * waited out (Retry-After when sent, else 2, 4, 8... seconds, six tries) and every call is at least
+ * MIN_GAP_MS after the last, so a pull paces itself instead of failing on the first throttle.
+ */
+const MIN_GAP_MS = 600;
+let lastCallAt = 0;
+
 async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
   const key = KEY();
   if (!key) throw new Error("VIATOR_API_KEY is not set");
-  const res = await fetch(BASE() + path, {
-    ...init,
-    headers: {
-      "exp-api-key": key,
-      Accept: "application/json;version=2.0",
-      "Accept-Language": "en-US",
-      "Content-Type": "application/json",
-      ...(init.headers || {}),
-    },
-    signal: AbortSignal.timeout(25000),
-  });
-  if (!res.ok) throw new Error(`viator ${path} -> ${res.status} ${(await res.text()).slice(0, 300)}`);
-  return (await res.json()) as T;
+  for (let attempt = 0; ; attempt++) {
+    const wait = lastCallAt + MIN_GAP_MS - Date.now();
+    if (wait > 0) await pause(wait);
+    lastCallAt = Date.now();
+    const res = await fetch(BASE() + path, {
+      ...init,
+      headers: {
+        "exp-api-key": key,
+        Accept: "application/json;version=2.0",
+        "Accept-Language": "en-US",
+        "Content-Type": "application/json",
+        ...(init.headers || {}),
+      },
+      signal: AbortSignal.timeout(25000),
+    });
+    if (res.status === 429 && attempt < 6) {
+      const after = Number(res.headers.get("retry-after")) || 0;
+      const ms = after > 0 ? after * 1000 : 2000 * 2 ** attempt;
+      console.log(`  viator ${path}: 429, waiting ${Math.round(ms / 1000)}s`);
+      await res.text();
+      await pause(ms);
+      continue;
+    }
+    if (!res.ok) throw new Error(`viator ${path} -> ${res.status} ${(await res.text()).slice(0, 300)}`);
+    return (await res.json()) as T;
+  }
 }
 
-/** Every Viator destination (about 3,500 rows, one call). */
+const DESTINATIONS_CACHE_HOURS = 24 * 7;
+
+/**
+ * Every Viator destination (about 3,500 rows). Cities do not move, so the answer is kept on disk for a week
+ * (data/viator-destinations.json) and a run spends its rate budget on product searches instead.
+ */
 export async function destinations(): Promise<ViatorDestination[]> {
+  // Beside the database it feeds, so a test's throwaway database gets a throwaway cache, never the real one.
+  const dbFile = process.env.OUTSET_DB || process.env.OUTSET_DB_PATH;
+  const file = join(dbFile ? dirname(dbFile) : join(dirname(fileURLToPath(import.meta.url)), "../../data"), "viator-destinations.json");
+  try {
+    if (existsSync(file) && Date.now() - statSync(file).mtimeMs < DESTINATIONS_CACHE_HOURS * 3600_000) {
+      const cached = JSON.parse(readFileSync(file, "utf8")) as ViatorDestination[];
+      if (Array.isArray(cached) && cached.length) return cached;
+    }
+  } catch {
+    // unreadable cache: ask again
+  }
   const r = await call<{ destinations?: ViatorDestination[] }>("/destinations");
-  return r.destinations || [];
+  const list = r.destinations || [];
+  if (list.length) {
+    try {
+      writeFileSync(file, JSON.stringify(list));
+    } catch {
+      // a read-only disk still gets the answer
+    }
+  }
+  return list;
 }
 
 /**

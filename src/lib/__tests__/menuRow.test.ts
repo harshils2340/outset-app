@@ -275,9 +275,10 @@ test("the add-ons this takes off the shipped catalog are the ones it was written
       if (!bookableAddon(a.name)) dropped++;
     }
   }
-  // 365 of 3,825 the day this was written. The count falls as the sync stops writing them, so the ceiling is
-  // what this guards: the rule must take the cut sentences and never start eating a real add-on list.
-  assert.ok(dropped >= 300 && dropped < 500, "expected the cut sentences, dropped " + dropped + " of " + total);
+  // 365 of 3,825 the day this was written; 0 of 3,444 once the sync of 23 September 2026 stopped writing them.
+  // The ceiling is what this guards: the rule must never start eating a real add-on list. The fixtures above
+  // are what prove it still takes the cut sentences.
+  assert.ok(dropped < 500, "the rule is taking too much of the shipped add-ons, dropped " + dropped + " of " + total);
   assert.ok(total - dropped > 3000, "the rule is eating real add-ons, kept " + (total - dropped));
 });
 

@@ -6,3 +6,4 @@ dist
 data/searchapi
 data/overture
 *.tsbuildinfo
+data/viator-destinations.json
