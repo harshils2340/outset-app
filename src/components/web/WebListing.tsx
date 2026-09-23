@@ -1218,7 +1218,14 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
   }
   // The rest of what a shop publishes ("No outside food", "$20 fuel surcharge") is not a cancellation term, so the
   // column says so in its heading instead of filing them all under one.
-  const policyLines = [...(cancelLines.length ? cancelLines : ["Contact the business for cancellation terms before you book."]), ...otherPolicies];
+  //
+  // A partner's product is booked on their site and there is no business here to ring, which is the same reason
+  // the phone sheet points at the partner instead. This page built no Things to know at all for one until the
+  // 23 September detail pass gave 6,492 partner rows their requirements and their terms; every one of those
+  // states a cancellation policy, so the fallback is not reached today, and it is the partner's to state when a
+  // feed without that field (Tiqets, Klook, GetYourGuide) lands one that does not.
+  const noCancelLine = affiliate ? affiliate.label + " states the cancellation terms on the page this books on." : "Contact the business for cancellation terms before you book.";
+  const policyLines = [...(cancelLines.length ? cancelLines : [noCancelLine]), ...otherPolicies];
   const knowCols: KnowCol[] = [];
   if (rules.length) knowCols.push({ key: "rules", title: "Who can go", icon: I.group, lines: rules });
   if (safety.length) knowCols.push({ key: "safety", title: "Safety and waiver", icon: I.shield, lines: safety });

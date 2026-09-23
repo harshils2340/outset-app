@@ -11,9 +11,10 @@
  * - "Contact Fraser Valley Social Wine Tasting Private Tour for their cancellation terms before you book",
  *   printed under the "Free cancellation" badge the same screen carries from the partner's own flag.
  *
- * All 1,873 partner rows in the shipped catalog hit all four: none of them carries requirements, policies or a
- * cancellation line today. The desktop listing page builds no Things to know columns at all for one of these
- * (`knowCols` stays empty), so this is the phone agreeing with it.
+ * All 1,873 partner rows shipped at the time hit all four: none of them carried requirements, policies or a
+ * cancellation line, so the desktop listing page built no Things to know columns for one of these either, and
+ * this was the phone agreeing with it. The 23 September detail pass gave 6,492 rows the partner's own text, so
+ * both surfaces now draw the section, and the guards are what keep our contact wording out of it.
  */
 import assert from "node:assert/strict";
 import test from "node:test";
@@ -46,13 +47,20 @@ test("the cancellation row points at the partner rather than at a business nobod
   assert.match(SHEETS, /Contact \{item\.title\} for their cancellation terms before you book\./);
 });
 
-test("every partner row in the shipped catalog is one of the rows this was wrong about", () => {
+/**
+ * All 1,873 partner rows shipped when this was written stated none of Things to know, so every one of them hit
+ * all four paths above. The 23 September detail pass changed that: 6,492 rows now carry the partner's own
+ * requirements, inclusions and cancellation text, so the section is drawn and the guards are what keep the
+ * contact wording out of it. The two surfaces are held to the same line either way.
+ */
+test("no shipped partner row is told to ring itself about anything", () => {
   const dir = new URL("../../../public/o/", import.meta.url);
   let partners = 0;
-  let bare = 0;
+  let stating = 0;
+  const contactable: string[] = [];
   for (const f of readdirSync(dir)) {
     if (!f.endsWith(".json")) continue;
-    let item: { affiliate?: unknown; requirements?: string[]; policies?: string[]; cancellation?: string; waiverUrl?: string; bring?: string[]; groupInfo?: string[] };
+    let item: { id?: string; affiliate?: unknown; requirements?: string[]; policies?: string[]; cancellation?: string; waiverUrl?: string; bring?: string[]; groupInfo?: string[] };
     try {
       item = JSON.parse(readFileSync(new URL(f, dir), "utf8"));
     } catch {
@@ -60,8 +68,20 @@ test("every partner row in the shipped catalog is one of the rows this was wrong
     }
     if (!item.affiliate) continue;
     partners++;
-    if (!item.requirements?.length && !item.policies?.length && !item.cancellation && !item.waiverUrl && !item.bring?.length && !item.groupInfo?.length) bare++;
+    // `knowsAnything` on the sheet, and what decides whether the desktop page builds a column at all.
+    const states = !!(item.requirements?.length || item.policies?.length || item.cancellation || item.waiverUrl || item.bring?.length || item.groupInfo?.length);
+    if (states) stating++;
+    // The three rows a guest could be sent to ring a product name from. Each is drawn only when the partner
+    // states the thing it is about, so a row with nothing behind it is a row that should not be there.
+    if (!states) continue;
+    if (!item.requirements?.length && !item.cancellation && !item.policies?.length) contactable.push(item.id || f);
   }
   assert.ok(partners > 1000, "partner rows shipped: " + partners);
-  assert.equal(bare, partners, "every one of them states none of Things to know, so every one drew the three contact rows");
+  assert.equal(stating, partners, partners - stating + " partner rows state none of Things to know, so the section stays out for them");
+  assert.deepEqual(contactable.slice(0, 10), [], contactable.length + " partner rows draw Things to know with nothing of the partner's own in it");
+});
+
+test("the desktop page names the partner where it would otherwise name a business to contact", () => {
+  assert.match(WEB, /const noCancelLine = affiliate \? affiliate\.label \+ " states the cancellation terms on the page this books on\." : "Contact the business for cancellation terms before you book\.";/);
+  assert.match(WEB, /cancelLines\.length \? cancelLines : \[noCancelLine\]/);
 });
