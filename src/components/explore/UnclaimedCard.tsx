@@ -48,8 +48,13 @@ export function UnclaimedCard({ item }: { item: Unclaimed; compact?: boolean }) 
   const place = cardPlace(item.area, metro?.name);
   const away = awayLine(item, state.near);
   const detail = [kind, item.dur ? tidyDuration(item.dur) : null, freeCancelBadge(item) ? "Free cancellation" : null].filter(Boolean).join(" · ");
+  // Only the option that sets the price can say what the price is per. A lite record carries no options at all,
+  // which is every card in this feed, so assuming "per person" printed it over a $1,000 event space priced per
+  // group, a $450 balloon ride priced per hour and a $700 charter priced per trip: 2,509 of the 10,217 priced
+  // listings in the shipped catalog. With no option in hand the price stands on its own, the way both desktop
+  // surfaces already print it.
   const unit = item.options.find((o) => o.price === from);
-  const per = from != null && (!unit || perPerson(unit)) ? " / person" : "";
+  const per = unit && perPerson(unit) ? " / person" : "";
   // A deal with its own title reads as a line under the price ("Half-price Tuesdays"); only an untitled one keeps the badge.
   const dealTitle = liteDealTitle(item.deal);
   // An operator who switched their listing off keeps the record, so the wishlist is the one place a card for it

@@ -554,8 +554,11 @@ function RequestBody({
   const blurb = item.blurb ? cleanDesc(item.blurb).replace(/\s+(Book|Learn more|Read more|Reserve)\.?$/i, "") : "";
   const longBlurb = blurb.length > 260;
   const from = fromPrice(item);
+  // Same rule as the feed card: the option that sets the price is the only thing that says what it is per. The
+  // sheet opens on the lite record and fetches the detail file beside it, so until that lands there are no
+  // options to read and the price stands on its own rather than claiming a unit nobody published.
   const fromUnit = item.options.find((o) => o.price === from);
-  const fromPer = from != null && (!fromUnit || perPerson(fromUnit)) ? " / person" : "";
+  const fromPer = fromUnit && perPerson(fromUnit) ? " / person" : "";
   const suggestions = useMemo(() => companySuggestions({ item, contact }).slice(0, 4), [item.id]);
   const subtitle = [kind + " in " + item.area, metro && !item.area.includes(metro.name) && !item.area.includes(",") ? metro.name : null].filter(Boolean).join(", ");
 
