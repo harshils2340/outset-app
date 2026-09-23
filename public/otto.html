@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Otto · The AI that answers the phone at your marina</title>
-  <meta name="description" content="Otto is an AI phone agent for marinas and boat and jet ski rentals. It answers every call in a real, natural voice, looks up bookings, cancels and reschedules, and books new rentals, so your dock staff never has to stop.">
+  <meta name="description" content="Otto is an AI phone agent for marinas and boat and jet ski rentals. It answers every call in a real, natural voice, looks up bookings, cancels and reschedules rentals, and books new ones.">
   <link rel="canonical" href="https://onoutset.com/otto.html">
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <link rel="apple-touch-icon" href="/apple-touch-icon.png">
@@ -33,6 +33,8 @@
     .wrap { max-width: 40rem; margin: 0 auto; padding: 0 1.25rem; }
     .btn { display: inline-flex; align-items: center; gap: .5rem; background: var(--forest); color: #fff; text-decoration: none; font-weight: 700; padding: .85rem 1.5rem; border-radius: 999px; font-size: 1rem; border: none; cursor: pointer; transition: transform .12s ease, background .12s ease; }
     .btn:hover { transform: translateY(-1px); background: var(--forest-deep); }
+    .btn.ghost { background: transparent; color: var(--forest); border: 1.5px solid var(--line); }
+    .btn.ghost:hover { border-color: var(--forest); }
 
     header.nav { border-bottom: 1px solid var(--line); }
     .nav .wrap { display: flex; align-items: center; justify-content: space-between; height: 60px; max-width: 46rem; }
@@ -40,33 +42,56 @@
     .brand .dot { width: 25px; height: 25px; border-radius: 8px; background: linear-gradient(140deg, var(--forest), var(--sage)); display: grid; place-items: center; color: #fff; font-weight: 900; font-size: .9rem; }
     .brand small { font-weight: 600; color: var(--ink-soft); font-size: .82rem; }
 
-    .hero { padding: clamp(2.75rem, 6vw, 4rem) 0 1.5rem; text-align: center; }
+    .hero { padding: clamp(2.5rem, 6vw, 3.5rem) 0 1.5rem; text-align: center; }
     .pill { display: inline-flex; align-items: center; gap: .5rem; background: var(--sage-soft); color: var(--forest); font-weight: 700; font-size: .8rem; padding: .4rem .85rem; border-radius: 999px; }
+    .pdot { width: 7px; height: 7px; border-radius: 50%; background: var(--forest); }
     h1 { font-family: Newsreader, Georgia, serif; font-weight: 600; font-size: clamp(2.1rem, 6vw, 3.1rem); line-height: 1.08; letter-spacing: -.015em; margin: 1.1rem 0 .9rem; }
     h1 em { font-style: italic; color: var(--forest); }
-    .lede { font-size: 1.15rem; color: var(--ink-soft); margin: 0 auto 1.6rem; max-width: 33rem; }
+    .lede { font-size: 1.15rem; color: var(--ink-soft); margin: 0 auto 1.5rem; max-width: 33rem; }
 
-    /* call card */
     .call { background: var(--card); border: 1px solid var(--line); border-radius: 22px; box-shadow: var(--shadow); overflow: hidden; margin: 0 auto; max-width: 34rem; text-align: left; }
     .call .bar { display: flex; align-items: center; justify-content: space-between; padding: .95rem 1.1rem; background: var(--forest); color: #fff; }
     .call .bar .who { display: flex; align-items: center; gap: .6rem; }
     .call .bar .ava { width: 34px; height: 34px; border-radius: 50%; background: rgba(255,255,255,.18); display: grid; place-items: center; font-weight: 800; }
     .call .bar b { font-size: .95rem; display: block; line-height: 1.15; }
     .call .bar small { font-size: .78rem; opacity: .82; }
-    .call .bar .meta { font-size: .78rem; opacity: .9; display: inline-flex; align-items: center; gap: .45rem; font-variant-numeric: tabular-nums; }
-    .wave { display: inline-flex; align-items: flex-end; gap: 2px; height: 14px; }
-    .wave i { width: 2.5px; background: #fff; border-radius: 2px; animation: w 1s ease-in-out infinite; }
-    .wave i:nth-child(1){height:5px;animation-delay:0s} .wave i:nth-child(2){height:11px;animation-delay:.15s} .wave i:nth-child(3){height:7px;animation-delay:.3s} .wave i:nth-child(4){height:13px;animation-delay:.45s} .wave i:nth-child(5){height:6px;animation-delay:.6s}
-    @keyframes w { 0%,100%{transform:scaleY(.5)} 50%{transform:scaleY(1)} }
-    .thread { padding: 1.1rem; }
-    .turn { margin-bottom: .8rem; }
+    .call .bar .meta { font-size: .78rem; opacity: .95; display: inline-flex; align-items: center; gap: .45rem; font-variant-numeric: tabular-nums; }
+    .wave { display: inline-flex; align-items: flex-end; gap: 2px; height: 14px; opacity: .35; transition: opacity .2s; }
+    .wave.on { opacity: 1; }
+    .wave i { width: 2.5px; background: #fff; border-radius: 2px; height: 4px; }
+    .wave.on i { animation: w .9s ease-in-out infinite; }
+    .wave i:nth-child(1){animation-delay:0s} .wave i:nth-child(2){animation-delay:.15s} .wave i:nth-child(3){animation-delay:.3s} .wave i:nth-child(4){animation-delay:.45s} .wave i:nth-child(5){animation-delay:.6s}
+    @keyframes w { 0%,100%{height:4px} 50%{height:13px} }
+
+    .thread { padding: 1.1rem; min-height: 220px; }
+    .turn { margin-bottom: .8rem; opacity: 0; transform: translateY(6px); animation: rise .32s ease forwards; }
+    @keyframes rise { to { opacity: 1; transform: none; } }
     .turn .lbl { font-size: .68rem; letter-spacing: .05em; text-transform: uppercase; font-weight: 800; color: var(--ink-soft); margin: 0 0 .25rem .2rem; }
-    .turn .say { display: inline-block; padding: .65rem .9rem; border-radius: 15px; font-size: .96rem; max-width: 88%; word-wrap: break-word; overflow-wrap: anywhere; }
+    .turn .say { display: inline-block; padding: .65rem .9rem; border-radius: 15px; font-size: .96rem; max-width: 88%; overflow-wrap: anywhere; }
     .turn.caller .say { background: var(--paper-2); border: 1px solid var(--line); border-bottom-left-radius: 5px; }
     .turn.otto { text-align: right; }
     .turn.otto .lbl { margin: 0 .2rem .25rem 0; }
     .turn.otto .say { background: var(--forest); color: #fff; text-align: left; border-bottom-right-radius: 5px; }
-    .done { display: flex; align-items: center; gap: .55rem; background: var(--sage-soft); color: var(--forest); border-radius: 12px; padding: .6rem .85rem; font-weight: 700; font-size: .9rem; margin-top: .3rem; }
+    .checking { text-align: right; margin-bottom: .8rem; }
+    .checking span { display: inline-flex; align-items: center; gap: .5rem; background: var(--sage-soft); color: var(--forest); font-weight: 700; font-size: .85rem; padding: .5rem .8rem; border-radius: 13px; }
+    .dots i { display: inline-block; width: 5px; height: 5px; border-radius: 50%; background: var(--forest); margin-left: 2px; animation: blink 1.2s infinite; }
+    .dots i:nth-child(2){animation-delay:.2s} .dots i:nth-child(3){animation-delay:.4s}
+    @keyframes blink { 0%,100%{opacity:.25} 50%{opacity:1} }
+    .done { display: flex; align-items: center; gap: .55rem; background: var(--sage-soft); color: var(--forest); border-radius: 12px; padding: .6rem .85rem; font-weight: 700; font-size: .9rem; margin-top: .3rem; opacity: 0; animation: rise .4s ease forwards; }
+
+    .controls { display: flex; gap: .5rem; justify-content: center; padding: .9rem 1.1rem 1.1rem; border-top: 1px solid var(--line); }
+    .controls button { font-family: inherit; font-weight: 700; font-size: .88rem; border-radius: 999px; padding: .5rem 1rem; cursor: pointer; border: 1.5px solid var(--line); background: transparent; color: var(--ink); display: inline-flex; align-items: center; gap: .4rem; }
+    .controls button:hover { border-color: var(--forest); color: var(--forest); }
+    .tri { width: 0; height: 0; border-left: 8px solid currentColor; border-top: 5px solid transparent; border-bottom: 5px solid transparent; }
+
+    /* integrations */
+    .integrations { padding: 3rem 0 1rem; text-align: center; }
+    .integrations .eyebrow { color: var(--sage); font-weight: 800; font-size: .78rem; letter-spacing: .1em; text-transform: uppercase; margin: 0 0 .55rem; }
+    .integrations h2 { font-size: clamp(1.4rem, 3.4vw, 1.9rem); letter-spacing: -.02em; margin: 0 auto .7rem; max-width: 24ch; line-height: 1.15; }
+    .integrations p { color: var(--ink-soft); max-width: 34rem; margin: 0 auto 1.6rem; font-size: 1.02rem; }
+    .chips { display: flex; flex-wrap: wrap; gap: .55rem; justify-content: center; max-width: 33rem; margin: 0 auto; }
+    .chips span { border: 1px solid var(--line); background: var(--card); border-radius: 10px; padding: .5rem .85rem; font-weight: 600; font-size: .9rem; color: var(--ink); }
+    .chips span.more { color: var(--ink-soft); background: transparent; }
 
     .cta-row { display: flex; gap: .7rem; justify-content: center; flex-wrap: wrap; margin: 1.75rem 0 .6rem; }
     .cta-note { font-size: .87rem; color: var(--ink-soft); }
@@ -81,6 +106,7 @@
     footer a:hover { color: var(--ink); }
     footer .links { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; margin-bottom: .6rem; }
     address { font-style: normal; }
+    @media (prefers-reduced-motion: reduce) { .turn, .done { animation: none; opacity: 1; transform: none; } .wave.on i { animation: none; } }
   </style>
 </head>
 <body>
@@ -93,27 +119,20 @@
 
   <div class="hero">
     <div class="wrap">
-      <span class="pill">🎧 For marinas &amp; boat and jet ski rentals</span>
+      <span class="pill"><span class="pdot"></span> For marinas, boat &amp; jet ski rentals</span>
       <h1>Otto answers the phone at your <em>marina</em>.</h1>
       <p class="lede">A real, natural voice, not a robot. Otto picks up every call, looks up bookings, cancels and
         reschedules rentals, and books new ones, so your dock never has to stop to answer the phone.</p>
 
-      <div class="call" aria-label="A real call Otto handles">
+      <div class="call">
         <div class="bar">
           <div class="who"><span class="ava">O</span><span><b>Otto</b><small>Answering for Bayside Marina</small></span></div>
-          <span class="meta"><span class="wave"><i></i><i></i><i></i><i></i><i></i></span> live · 0:52</span>
+          <span class="meta"><span class="wave" id="wave"><i></i><i></i><i></i><i></i><i></i></span> <span id="status">live</span> · <span id="timer">0:00</span></span>
         </div>
-        <div class="thread">
-          <div class="turn otto"><p class="lbl">Otto</p><span class="say">Thanks for calling Bayside Marina, this is Otto. What can I do for you?</span></div>
-          <div class="turn caller"><p class="lbl">Caller</p><span class="say">Hey, I've got a couple jet skis booked for four o'clock today. Something came up, can I cancel?</span></div>
-          <div class="turn otto"><p class="lbl">Otto</p><span class="say">No problem, let me pull it up. Okay, I've got two waverunners at 4 PM under Marcus, that's you? Quick heads up, it's inside 24 hours, so that time is non-refundable on the marina's policy. But I can move it to another day for free instead, if that's easier.</span></div>
-          <div class="turn caller"><p class="lbl">Caller</p><span class="say">Oh, yeah, that's better. Can I do tomorrow morning?</span></div>
-          <div class="turn otto"><p class="lbl">Otto</p><span class="say">Let me check. Tomorrow I've got two skis open at 9 AM or 11 AM. Which one works?</span></div>
-          <div class="turn caller"><p class="lbl">Caller</p><span class="say">Nine's perfect.</span></div>
-          <div class="turn otto"><p class="lbl">Otto</p><span class="say">Done, you're moved to 9 AM tomorrow, no charge. I'll text the new confirmation to this number. Anything else?</span></div>
-          <div class="turn caller"><p class="lbl">Caller</p><span class="say">Nope, that's it. Thanks!</span></div>
-          <div class="turn otto"><p class="lbl">Otto</p><span class="say">You got it, see you tomorrow.</span></div>
-          <div class="done"><span>✓</span> Rebooked · 2 waverunners · tomorrow 9:00 AM · confirmation texted</div>
+        <div class="thread" id="thread"></div>
+        <div class="controls">
+          <button id="replay" type="button">Replay call</button>
+          <button id="sound" type="button"><span class="tri"></span> Play with voice</button>
         </div>
       </div>
 
@@ -121,6 +140,19 @@
         <a class="btn" href="mailto:hello@onoutset.com?subject=Otto%20for%20our%20marina&body=Hi%2C%20we%20run%20___%20and%20want%20Otto%20to%20answer%20our%20phone.%20Our%20booking%20system%20is%20___.">Get early access</a>
       </div>
       <p class="cta-note">Set up in a day · no long contract · talk to a person, not a form</p>
+    </div>
+  </div>
+
+  <div class="integrations">
+    <div class="wrap">
+      <p class="eyebrow">Works with what you already run</p>
+      <h2>It reads your real calendar. No switching systems.</h2>
+      <p>Otto connects to the booking software you use today, sees what is actually open, and books into the same
+        calendar. Nothing to migrate, nothing new to learn.</p>
+      <div class="chips">
+        <span>FareHarbor</span><span>Peek</span><span>Xola</span><span>Checkfront</span><span>Rezdy</span>
+        <span>Square</span><span>Acuity</span><span class="more">+ more</span>
+      </div>
     </div>
   </div>
 
@@ -145,5 +177,134 @@
       <address>Outset, 339 King St N, Waterloo, ON N2J 0C5, Canada</address>
     </div>
   </footer>
+
+  <script>
+    (function () {
+      // The demo call, hardcoded. `check` is the "looking it up" state Otto shows before an answer that needed
+      // the calendar or the booking, which is what makes the demo read as really working. `pause` is the beat
+      // after the line before the next turn. A real deployment runs this same flow against the live calendar.
+      var turns = [
+        { who: "otto", text: "Thanks for calling Bayside Marina, this is Otto. What can I do for you?", pause: 700 },
+        { who: "caller", text: "Hey, I've got a couple jet skis booked for four o'clock today. Something came up, can I cancel?", pause: 500 },
+        { who: "otto", check: "Pulling up your booking", checkMs: 1400, text: "No problem, let me pull it up. Okay, I've got two waverunners at 4 PM under Marcus, that's you? Quick heads up, it's inside 24 hours, so that time is non-refundable on the marina's policy. But I can move it to another day for free instead, if that's easier.", pause: 700 },
+        { who: "caller", text: "Oh, yeah, that's better. Can I do tomorrow morning?", pause: 500 },
+        { who: "otto", check: "Checking tomorrow's calendar", checkMs: 1500, text: "Let me check. Tomorrow I've got two skis open at 9 AM or 11 AM. Which one works?", pause: 600 },
+        { who: "caller", text: "Nine's perfect.", pause: 450 },
+        { who: "otto", check: "Moving your booking", checkMs: 1300, text: "Done, you're moved to 9 AM tomorrow, no charge. I'll text the new confirmation to this number. Anything else?", pause: 650 },
+        { who: "caller", text: "Nope, that's it. Thanks!", pause: 450 },
+        { who: "otto", text: "You got it, see you tomorrow.", pause: 500 }
+      ];
+      var doneText = "Rebooked · 2 waverunners · tomorrow 9:00 AM · confirmation texted";
+
+      var thread = document.getElementById("thread");
+      var wave = document.getElementById("wave");
+      var statusEl = document.getElementById("status");
+      var timerEl = document.getElementById("timer");
+      var replayBtn = document.getElementById("replay");
+      var soundBtn = document.getElementById("sound");
+
+      var timers = [];
+      var timerInt = null;
+      var seconds = 0;
+      var reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+      function clearAll() {
+        timers.forEach(clearTimeout); timers = [];
+        if (timerInt) { clearInterval(timerInt); timerInt = null; }
+        try { window.speechSynthesis && window.speechSynthesis.cancel(); } catch (e) {}
+        thread.innerHTML = "";
+        seconds = 0; timerEl.textContent = "0:00";
+        wave.classList.remove("on");
+      }
+      function fmt(s) { return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0"); }
+      function at(ms, fn) { timers.push(setTimeout(fn, ms)); }
+      function addTurn(t) {
+        var d = document.createElement("div");
+        d.className = "turn " + t.who;
+        d.innerHTML = '<p class="lbl">' + (t.who === "otto" ? "Otto" : "Caller") + '</p><span class="say"></span>';
+        d.querySelector(".say").textContent = t.text;
+        thread.appendChild(d);
+      }
+      function addChecking(label) {
+        var d = document.createElement("div");
+        d.className = "checking"; d.id = "checking";
+        d.innerHTML = '<span>' + label + '<span class="dots"><i></i><i></i><i></i></span></span>';
+        thread.appendChild(d);
+        return d;
+      }
+      function speak(t, voice) {
+        if (!window.speechSynthesis) return;
+        var u = new SpeechSynthesisUtterance(t.text);
+        u.rate = 1.02; u.pitch = t.who === "otto" ? 1 : 0.95;
+        if (voice) u.voice = voice;
+        window.speechSynthesis.speak(u);
+      }
+      function pickVoice() {
+        if (!window.speechSynthesis) return null;
+        var vs = window.speechSynthesis.getVoices() || [];
+        // Prefer a natural en-US voice where the browser has one.
+        var pref = vs.filter(function (v) { return /en(-|_)US/i.test(v.lang); });
+        return (pref.find(function (v) { return /samantha|jenny|aria|natural|google us/i.test(v.name); }) || pref[0] || vs[0] || null);
+      }
+
+      function play(withVoice) {
+        clearAll();
+        var voice = withVoice ? pickVoice() : null;
+        statusEl.textContent = "live";
+        timerInt = setInterval(function () { seconds++; timerEl.textContent = fmt(seconds); }, 1000);
+        var t = 0;
+        turns.forEach(function (turn) {
+          if (turn.check && !reduce) {
+            at(t, function () { wave.classList.remove("on"); addChecking(turn.check); });
+            t += turn.checkMs;
+            at(t, function () { var c = document.getElementById("checking"); if (c) c.remove(); });
+          }
+          at(t, function () {
+            addTurn(turn);
+            if (turn.who === "otto") wave.classList.add("on"); else wave.classList.remove("on");
+            if (withVoice) speak(turn, voice);
+            thread.scrollTop = thread.scrollHeight;
+          });
+          // Roughly how long the line takes to say, so voice and captions stay together.
+          var dwell = reduce ? 350 : Math.max(turn.pause, Math.min(5200, turn.text.length * 45));
+          t += dwell;
+        });
+        at(t, function () {
+          wave.classList.remove("on");
+          statusEl.textContent = "ended";
+          if (timerInt) { clearInterval(timerInt); timerInt = null; }
+          var d = document.createElement("div");
+          d.className = "done"; d.innerHTML = "<span>✓</span> " + doneText;
+          thread.appendChild(d);
+          thread.scrollTop = thread.scrollHeight;
+        });
+      }
+
+      replayBtn.addEventListener("click", function () { play(false); });
+      soundBtn.addEventListener("click", function () {
+        // A user gesture is required before a browser will speak; that is what this button is.
+        if (window.speechSynthesis && window.speechSynthesis.getVoices().length === 0) {
+          window.speechSynthesis.onvoiceschanged = function () { play(true); window.speechSynthesis.onvoiceschanged = null; };
+          window.speechSynthesis.getVoices();
+          setTimeout(function () { play(true); }, 250);
+        } else { play(true); }
+      });
+
+      // Autoplay silent on load. If the whole thing is off (no JS), the static fallback below is what shows.
+      play(false);
+    })();
+  </script>
+  <noscript>
+    <style>.controls{display:none}</style>
+    <div class="wrap"><div class="call"><div class="thread">
+      <div class="turn otto" style="opacity:1"><p class="lbl">Otto</p><span class="say">Thanks for calling Bayside Marina, this is Otto. What can I do for you?</span></div>
+      <div class="turn caller" style="opacity:1"><p class="lbl">Caller</p><span class="say">I've got a couple jet skis booked for 4 today, something came up, can I cancel?</span></div>
+      <div class="turn otto" style="opacity:1"><p class="lbl">Otto</p><span class="say">Two waverunners at 4 PM under Marcus. That's inside 24 hours, so it's non-refundable on the marina's policy, but I can move it to another day for free.</span></div>
+      <div class="turn caller" style="opacity:1"><p class="lbl">Caller</p><span class="say">Can I do tomorrow morning?</span></div>
+      <div class="turn otto" style="opacity:1"><p class="lbl">Otto</p><span class="say">Tomorrow I've got 9 AM or 11 AM open for two skis. Which works?</span></div>
+      <div class="turn caller" style="opacity:1"><p class="lbl">Caller</p><span class="say">Nine's perfect.</span></div>
+      <div class="turn otto" style="opacity:1"><p class="lbl">Otto</p><span class="say">Done, moved to 9 AM tomorrow, no charge. I'll text the confirmation. Anything else?</span></div>
+    </div></div></div>
+  </noscript>
 </body>
 </html>
