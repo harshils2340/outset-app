@@ -9,7 +9,7 @@ import { addressOf, streetOf } from "./address";
 import { ownWords } from "./ownWords";
 import { dialPhone, displayPhone } from "./phone";
 import { isPublicHttpUrl } from "./urlSafety";
-import { stripMarkdown } from "./markdown";
+import { stripMarkdown, stripTags } from "./markdown";
 
 /** The crawler's own `src` field, always meant to be the operator's domain, as an https URL, or "" when it is
  *  not a safe one to link to. A leading "//" is refused outright rather than resolved: prepending "https://"
@@ -637,7 +637,8 @@ function deShout(text: string): string {
 }
 
 export function plainWords(text: string): string {
-  let out = stripMarkdown(decodeEntities(text));
+  // Tags after the entities, so a `&lt;br&gt;` that decoded into one goes the same way an unescaped one does.
+  let out = stripMarkdown(stripTags(decodeEntities(text)));
   for (const [re, word] of GLOSSARY) out = out.replace(re, word);
   return deShout(out).replace(/\s+/g, " ").trim();
 }

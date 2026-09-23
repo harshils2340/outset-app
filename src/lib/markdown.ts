@@ -1,5 +1,5 @@
 /**
- * Markdown left in the words a guest reads.
+ * Markdown, and HTML, left in the words a guest reads.
  *
  * The enrichment pass keeps a page's text as the page wrote it, and a fair number of operators write their
  * arrival notes, policies and FAQ answers in markdown. Nothing between the crawl and the listing page took the
@@ -39,4 +39,42 @@ export function stripMarkdown(text: string): string {
   // A heading marker glued to a word ("Location##") keeps the word; one standing alone leaves a single space.
   out = out.replace(HEADING, (_m, before: string) => (before && !/\s/.test(before) ? before : " "));
   return out.replace(DANGLING, "").replace(/\s{2,}/g, " ").trim();
+}
+
+/**
+ * An HTML tag in the same words. Nothing here renders markup, so a tag reaches a guest as its own characters.
+ *
+ * Viator writes a cancellation policy as one paragraph with `<br>` between its refund tiers, so 60 shipped
+ * partner listings read "you will receive a full refund.<br>If you cancel between 2 and 6 day(s)" on the
+ * listing page, in the phone sheet and out of Otto's mouth. Six more listings carry what an operator's own
+ * editor left in a service description: a Word paste's `<p class="MsoNormal">`, a WordPress date template, and
+ * a pair of TinyMCE bookmark spans that are the whole of one camp's "In Program" description.
+ *
+ * A tag needs a letter after the bracket, so the arithmetic a shop writes is left alone: "under 5' <6 ft" and
+ * "hulls <2 years old" are not markup. A tag that ends a line becomes a space and one inside a word becomes
+ * nothing, which is the difference between "a full refund.<br>If you cancel" and "BOTOX<sup>®</sup>": eleven
+ * review cards were signed "<strong>Gerald E." and would otherwise be signed " Gerald E.".
+ */
+const TAG = /<\/?([a-z][a-z0-9]*)(?:\s[^<>]*)?\/?>/gi;
+/** The tags that are a line of their own, or the end of one. Everything else marks up words inside a line. */
+const BLOCK = /^(?:br|p|div|li|ul|ol|dl|dd|dt|tr|td|th|table|thead|tbody|h[1-6]|section|article|aside|header|footer|blockquote|hr|pre)$/i;
+/**
+ * A tag the crawl lost the `>` from. Both ends of a line, and nothing in between, because the words that
+ * follow an opening one are the line itself: six blurbs open "<p History of Aeolian Hall The Early Years" and
+ * "<div Our campground has everything you need", and taking the bracket to the end of the string would leave a
+ * shop with no description at all. So the front gives up the tag name alone, and the back only a remnant whose
+ * words are attributes: one campground's service description ends "in <a href="%6$s"".
+ */
+const OPEN_TAG = /^<\/?[a-z][a-z0-9]*(?=\s|$)/i;
+const DANGLING_TAG = /\s*<\/?[a-z][a-z0-9]*(?:\s+[a-z][a-z0-9-]*=(?:"[^"<>]*"?|'[^'<>]*'?|[^\s<>]+)){0,6}\s*$/i;
+
+export function stripTags(text: string): string {
+  if (!text || !text.includes("<")) return text;
+  return text
+    .replace(TAG, (_m, name: string) => (BLOCK.test(name) ? " " : ""))
+    .replace(OPEN_TAG, "")
+    .replace(DANGLING_TAG, "")
+    .replace(/\s+([,.;:!?])/g, "$1")
+    .replace(/\s{2,}/g, " ")
+    .trim();
 }
