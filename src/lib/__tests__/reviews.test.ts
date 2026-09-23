@@ -133,3 +133,23 @@ test("the whole shipped catalog reads clean", () => {
     }
   }
 });
+
+test("a name the site wrapped in markup is still that guest's name", () => {
+  // o-jet-express-com stores "<strong>Gerald E.", o-montereybaywhalewatch-com "<strong>Cati N.</strong>".
+  // A bracket anywhere in the slot used to end the name, so 25 cards across 5 listings went unsigned.
+  const quote = { text: "A really lovely afternoon out with the two of them on the boat." };
+  assert.equal(shownReviews([{ ...quote, author: "<strong>Gerald E." }], "Shop")[0].name, "Gerald E.");
+  assert.equal(shownReviews([{ ...quote, author: "<em>Mandela</em>" }], "Shop")[0].name, "Mandela");
+  assert.equal(shownReviews([{ ...quote, author: "<strong>Gerald E." }], "Shop")[0].initial, "G");
+  // What is still a link or a label once the markup is out is nobody's name, as before.
+  assert.equal(shownReviews([{ ...quote, author: "<a href=\"https://instagram.com/x\">https://instagram.com/x</a>" }], "Shop")[0].name, null);
+  assert.equal(shownReviews([{ ...quote, author: "<strong>Name *</strong>" }], "Shop")[0].name, null);
+});
+
+test("no shipped listing signs a review with markup", () => {
+  for (const id of ["o-jet-express-com", "o-montereybaywhalewatch-com", "o-newenglandecoadventures-com", "o-waterwayscruises-com", "o-ufoparasail-com"]) {
+    const shown = read(id);
+    for (const r of shown) assert.doesNotMatch(r.name || "", /[<>]/, id);
+    assert.ok(shown.some((r) => r.name), id + " signs none of its reviews");
+  }
+});

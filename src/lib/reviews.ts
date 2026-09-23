@@ -12,6 +12,8 @@
  * test; `WebListing.tsx` imports CSS, which no test can load.
  */
 
+import { stripTags } from "./markdown";
+
 export type ShownReview = { key: string; name: string | null; initial: string | null; when: string | null; source: string | null; stars: number | null; text: string };
 
 const MONTH_NAMES = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
@@ -68,7 +70,13 @@ export function shownReviews(quotes: { author?: string; rating?: number; text: s
     if (text.toLowerCase().startsWith(business.toLowerCase() + " is ")) continue;
     seen.add(key);
     // A trailing "*" is the comment form's required-field mark ("Name *"), not part of anyone's name.
-    let author = q.author && !/[<>]/.test(q.author) ? decodeText(q.author).replace(/^name:\s*/i, "").replace(LABEL_TAIL, "").replace(/[\s/|,:;\-–*]+$/, "").trim() : "";
+    //
+    // The markup a site wrapped the name in is not part of it either. A bracket anywhere in the slot used to
+    // end it, and the crawl keeps whatever tag sat around the name, so 25 cards across 6 listings went
+    // unsigned: "<strong>Gerald E." on Jet Express, "<em>Mandela" on Waterways Cruises. What is still
+    // bracketed once the markup is out is a URL or a label rather than a person, and that still ends it.
+    const named = q.author ? stripTags(decodeText(q.author)) : "";
+    let author = named && !/[<>]/.test(named) ? named.replace(/^name:\s*/i, "").replace(LABEL_TAIL, "").replace(/[\s/|,:;\-–*]+$/, "").trim() : "";
     let source = author ? sourceOf(author) : null;
     if (source && author.split(/\s+/).length <= 3 && NOT_A_NAME.test(author.replace(/\breviews?\b/i, "").trim() || author)) author = "";
     if (author && (NOT_A_NAME.test(author) || NOT_A_PERSON.test(author) || author.split(/\s+/).length > 3 || author.toLowerCase() === business.toLowerCase() || business.toLowerCase().includes(author.toLowerCase()) || /\b(guides?|adventure|tours?|experience|service|inc|llc|ltd)\b/i.test(author))) author = "";
