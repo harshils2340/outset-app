@@ -53,7 +53,7 @@ const paras = [
 const body = lines.join("\n");
 const html = '<div style="font-family:system-ui,sans-serif;font-size:15px;line-height:1.55;color:#222">' + paras.join("") + "</div>";
 
-const r = await sendMail({ to, subject: "Want a free Outset page for " + name + "? Your call.", text: body, html, replyTo: process.env.MAIL_REPLY_TO, commercial: true });
+const r = await sendMail({ to, subject: "Can I build " + name + " a free booking page?", text: body, html, replyTo: process.env.MAIL_REPLY_TO, commercial: true });
 console.log(r.sent ? "sent " + r.id : "failed: " + r.error);
 console.log("\n---plain text---\n" + body);
 process.exit(0);
