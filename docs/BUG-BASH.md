@@ -3776,7 +3776,80 @@ the Chromium on disk, re-run after every fix that landed behind it.
   category accents are still under the AA floor, and no live vendor or partner API has answered anything from
   this address.
 
+## 23 September 2026, fifty-ninth run (07:15 to 08:35 UTC)
+
+**Chosen, and why.** Four commits landed after the last entry, one of them the first catalog sync since the
+18 September publish gate, so the catalog a guest reads is a different one: 48,198 listings where there were
+59,125, with 1,873 Viator partner rows inside that. Both installs first, then the type checks and both
+suites, which is how the red test below turned up. For new ground the open list had nothing on the words a
+shop writes for the day itself, so this run took the fields nobody had counted: the arrival note, the meeting
+point and the sentences the page glues together around them. The rehearsal was run because the new commits
+touch `backend/src` and `src/`, and again at the end after every fix.
+
+**Found and fixed.**
+
+- **106 shops said where to meet and how early to be there, and the guest was shown nothing** (`f0bea80c8`).
+  A shop's check-in note is the only arrival line Outset ever shows, on the listing page, the phone booking
+  sheet, the confirmation and in Otto's answer to "what time is check-in". The rule that kept a sign-off out
+  of it tested the front of the whole note, so a note opening with a greeting was dropped entire: "Meeting
+  location: Pier 39, Gate I", "please arrive at the dock 45 minutes prior to sailing time", "We meet under the
+  white tent behind the GoldBelt Tram building" and 103 more went unread. The same rule printed 19 notes that
+  were only courtesy, because its list was short and "thank\b" never matched "Thanks": "When you arrive" read
+  "We're looking forward to seeing you!", "YOU'RE ALL SET!", "Like us on Facebook!" and "Check out our
+  website!". The courtesy now goes sentence by sentence and only when that sentence says nothing else, so
+  anything naming a time, a place, a waiver or a person to call keeps it. 546 notes are shown where 459 were,
+  108 of them shorter. `8dac445ed` adds the other end of it: what was left of one note was "Capt.", the front
+  of a name the crawl cut, and one word is not an arrival note.
+
+- **Six lines lost their first word and read as a different sentence** (`b7c500fcf`). `tidyLine` takes a page
+  heading off the sentence the crawl glued it to, which is what makes "Cancellations Cancellation requests
+  received at least 48 hours before" readable. It compared the two words with a trailing s off both, and "As"
+  with its s off is "a", so every line opening "As a" was cut: "A reminder, it is customary to tip your crew",
+  "A boat rental business, cancellations can be very costly", "A reminder, your booking includes one hour on
+  the boat at dock in Port Dalhousie". They print on the policy, cancellation and included columns of both
+  guest surfaces. The plural allowance now needs a word of at least four letters behind it. The rule moved to
+  `listingDerive.ts` as `unglueHeading`, where a sweep over the catalog can hold it.
+
+- **The only red test on main, and it failed the rehearsal with it** (`c284dee69`). The sweep holding every
+  priced row against the price the server charges guarded itself with "listings > 50000", the catalog's size
+  the day it was written. The publish gate took the catalog to 48,198 and the sweep went red although its own
+  finding was still green. It now asserts what it means: every .json in `public/o` was read, and the catalog
+  is at real scale.
+
+**Checked and sound.** All 3,189 shipped meeting points, through `tidyLine` on both surfaces: no markdown, no
+URL, no email, no cut bracket, and the 37 that say the place varies say so in the shop's own words. The
+1,873 partner rows against the `Unclaimed` shape: every field they leave out is optional, so no surface reads
+a missing key. Every guest-visible line the heading rule fires on, before and after, over the whole catalog.
+
+**Green after the fixes.** 705 app tests (up from 696) and 681 backend, which is 681 of 681 where it was 680
+of 681. Three more commits landed upstream while this run was working, so the tree that was pushed reads 694
+backend tests; both suites, both type checks and the rehearsal were re-run on it. The app type check is clean,
+the backend clean but for TS5097, and the rehearsal is at 53 of 53 against a local Postgres 16 cluster on 5433
+with SSL and the Chromium on disk.
+
+**Needs Harshil.**
+
+- **The sync published 10,927 fewer listings than the last one and nothing says which.** 59,125 went to
+  48,198 under the publish gate ("listings nothing was ever read from are off"). That is your own call and the
+  covers went up with it, but it is a tenth of the catalog leaving in one commit, and the only thing that
+  noticed was a test floor. A line in the sync's own output naming the count it dropped, and why, would make
+  the next one legible.
+- **66 arrival notes still say nothing a guest would act on.** Most are real things a shop says at booking
+  time (what payment is taken, what is included, what to wear) and are worth keeping. A handful are not:
+  o-egmontadventurecentre-com's whole note is "Tax ID 135320711", o-adventuresbythesea-com's is "Your
+  Adventure Starts Here!", o-bricktownwatertaxi-com's is "Looking for a dinner recommendation?". Telling a
+  slogan from a fact is a supply judgement rather than a rule, and each of these is one shop.
+- **Last night's stand:** the nth-weekday rule is still read as every such weekday on 8 shops, a season in
+  front of a rule still widens the picker on 2, a partner's price is still quoted in the partner's currency
+  and printed as dollars, `public/unsubscribe.html` still POSTs on load, the listing page still reads three of
+  the ten vendors, `outset-api` still builds with no catalog, the "All requests" link is still parked off
+  screen on a phone, five category accents are still under the AA floor, and no live vendor or partner API has
+  answered anything from this address.
+
 ## Coverage
+
+The catalog is 48,198 listings as of the 23 September sync, 1,873 of them Viator partner rows. Counts below
+that name 59,125 were taken before that sync and were whole at the time.
 
 **Verified so far.** The name a guest reads: the business name on all 59,125 shipped listings, against the
 card, the page and the lite record alike, and the row name on all 141,717 shipped options, services and
@@ -4205,6 +4278,14 @@ generated `/l/` page and its structured data, Otto's two gates, the claim screen
 listing page's own claim line, and `POST /bookings`, which is the route that decides whether Outset can be
 made to take a booking for one.
 
+What a shop says about arriving, over all 644 shipped check-in notes and on the four surfaces that print
+one, the listing page, the phone booking sheet, the booking confirmation and Otto's answer to "what time is
+check-in": a greeting in front of the facts, a sign-off after them, a note that is courtesy and nothing else,
+and a note the crawl cut to a single word. All 3,189 shipped meeting points through the same tidying, for
+markdown, a URL, an email, a cut bracket and a place that only says it varies. The page heading the crawl
+glues to the sentence under it, over every guest-visible line in the catalog, including the sentences that
+only looked like one.
+
 **Not yet checked.** Whether a partner's price should be printed in the currency its API quoted it in: both pulls ask for CAD in Canadian metros, store it, and the catalog record drops it (see this run's Needs Harshil). Whether the phone booking sheet's "Ask Outset" panel should honour the operator's Assistant switch the way the desktop page does; it is behind `AGENT_MODE_LIVE`, so no guest meets it today. Whether a partner product should be in the "near you" rails at all, given that its pin is the city's. Any partner API against its real server: no key exists here, so every affiliate row in this sweep was shaped by hand. Rezdy's reader end to end, which needs a hand-rolled HTTP/2 session because Cloudflare
 blocks `fetch` on every `*.rezdy.com` subdomain; its price helpers and its window rule are tested directly
 instead. Whether the concierge's
@@ -4357,4 +4438,9 @@ today, which is this run's Needs Harshil and the one item here that is a defect 
 whether a season written in front of a rule should reach the week parsers as well as the page. Whether an
 unclaimed shop open past midnight should sell its small hours on the next date, the way a claimed one does, on
 the 481 that state one, and whether a shop that genuinely trades around the clock can say so at all, given
-that a clock face reading midnight to midnight is now refused on every surface.
+that a clock face reading midnight to midnight is now refused on every surface. Which listings the publish gate dropped and why: the 23 September
+sync published 10,927 fewer than the last one and the only thing that noticed was a test floor (see this
+run's Needs Harshil). Whether an arrival note that names no fact at all should be printed: 66 are still
+shown, most of them worth keeping, a handful of them a slogan or a tax ID (see this run's Needs Harshil).
+The Viator detail pass's inclusions, requirements and cancellation text, which are code today and in no
+shipped partner row yet.
