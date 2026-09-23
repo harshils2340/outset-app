@@ -1413,6 +1413,10 @@ export function companyGreeting(ctx: CompanyContext): string {
  * the switch was wired up. Only an explicit false turns it off, so a patch that predates the key reads as on.
  */
 export function assistantOn(item: Unclaimed): boolean {
+  // Never for a partner's product. The sync sets `assistant: false` on those rows, but only in the detail
+  // file: the lite record the cards and the first paint of a page read carries no such key, so the rule has
+  // to be the one field every record keeps. The partner's own page has the answers, on the partner's terms.
+  if (item.affiliate) return false;
   return item.assistant !== false;
 }
 

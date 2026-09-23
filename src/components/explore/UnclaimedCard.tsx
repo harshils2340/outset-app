@@ -2,7 +2,7 @@ import { useRef, useState, type KeyboardEvent } from "react";
 import { metroById } from "../../data/metros";
 import { ART_LABEL } from "../../data/art";
 import type { Unclaimed } from "../../data/types";
-import { cardPlace, fromPrice, perPerson, publicRating, topRated } from "../../lib/catalog";
+import { cardPlace, fromPrice, partnerBookLine, perPerson, publicRating, topRated } from "../../lib/catalog";
 import { dealToday } from "../../lib/companyAgent";
 import { money } from "../../lib/format";
 import { useApp } from "../../state/AppProvider";
@@ -54,7 +54,10 @@ export function UnclaimedCard({ item }: { item: Unclaimed; compact?: boolean }) 
   const dealTitle = liteDealTitle(item.deal);
   // An operator who switched their listing off keeps the record, so the wishlist is the one place a card for it
   // still turns up. It used to read "Instant Book" with a price, and opening it said the page was taken down.
-  const badge = item.offline ? "Not bookable" : guestFav ? "Guest favourite" : deal && !dealTitle ? "Deal today" : instant ? "Instant Book" : null;
+  // A partner's product says where it books before anything else, the way the desktop card does: a guest
+  // should know that before the tap, not on the sheet it opens.
+  const partner = partnerBookLine(item);
+  const badge = partner ? partner : item.offline ? "Not bookable" : guestFav ? "Guest favourite" : deal && !dealTitle ? "Deal today" : instant ? "Instant Book" : null;
 
   const open = () => openRequest(item.id);
   const onKey = (e: KeyboardEvent<HTMLDivElement>) => {
@@ -134,7 +137,7 @@ export function UnclaimedCard({ item }: { item: Unclaimed; compact?: boolean }) 
         ) : null}
         <p className="aircardprice">
           {from == null ? (
-            <span>{item.offline ? "Not taking bookings" : instant ? "Instant Book" : "Request to book"}</span>
+            <span>{partner ? partner : item.offline ? "Not taking bookings" : instant ? "Instant Book" : "Request to book"}</span>
           ) : (
             <>
               <span className="from">From </span>

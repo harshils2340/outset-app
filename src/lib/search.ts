@@ -1257,6 +1257,9 @@ export function searchByName(pool: Unclaimed[], q: string, limit = 8): Unclaimed
   const buckets = new Map<number, Entry[]>();
   let count = 0;
   const add = (e: Entry, s: number) => {
+    // A partner's product is not a business anyone can claim here: it is shown under licence and booked on the
+    // partner's site. Offering it on the claim screen ends in "we have no email on file for this business".
+    if (e.u.affiliate) return;
     const b = buckets.get(s);
     if (b) b.push(e);
     else buckets.set(s, [e]);

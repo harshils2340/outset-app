@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import type { Unclaimed } from "../../data/types";
-import { experienceById, getCatalog, mergeCatalog } from "../catalog";
+import { experienceById, getCatalog, mergeCatalog, partnerBookLine } from "../catalog";
 import { assistantOn } from "../companyAgent";
-import { searchSuggest } from "../search";
+import { searchByName, searchSuggest } from "../search";
 
 /**
  * A partner product arrives as an ordinary lite catalog record plus `affiliate`. Everything downstream (the
@@ -55,4 +55,26 @@ test("a partner product is never claimed, never instant, and Otto does not answe
   assert.ok(!u.claimed);
   assert.ok(!u.instant);
   assert.equal(assistantOn(u), false, "the partner's page has the answers, on the partner's terms");
+});
+
+test("Otto stays off for a partner product the lite record never marked", () => {
+  // `assistant` is written into the detail file and not into catalog.json, so the record the cards and a
+  // page's first paint hold has no such key. The affiliate field is the one that always travels.
+  const { assistant: _off, ...noFlag } = lite;
+  assert.equal(assistantOn(noFlag as Unclaimed), false);
+  assert.equal(assistantOn({ ...noFlag, affiliate: undefined } as Unclaimed), true, "an ordinary listing is unchanged");
+});
+
+test("a card with no price from the partner says where it books, not that it can be requested", () => {
+  const u = experienceById("a-viator-t1")!;
+  assert.equal(partnerBookLine(u), "Book on Viator");
+  assert.equal(partnerBookLine({ ...u, affiliate: undefined }), null, "every other listing keeps its own wording");
+});
+
+test("the claim screen's business search never offers a partner product", () => {
+  // searchByName is the operator picker: what an owner types their business name into. A partner's product is
+  // nobody's to claim, and picking one ends in "we have no email on file for this business".
+  const pool = [...getCatalog()];
+  assert.ok(pool.some((u) => u.id === "a-viator-t1"), "it is in the catalog a guest searches");
+  assert.deepEqual(searchByName(pool, "Tampa Bay Dolphin Cruise").map((u) => u.id).filter((id) => id === "a-viator-t1"), []);
 });

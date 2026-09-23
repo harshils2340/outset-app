@@ -5,7 +5,7 @@ import { ART_LABEL } from "../../data/art";
 import { ICONS } from "../../data/icons";
 import { ALL_METRO_ID, METROS, metroById, metroCoords } from "../../data/metros";
 import type { ArtKind, CategoryId, Unclaimed } from "../../data/types";
-import { experienceById, fromPrice, getCatalog, publicRating, topRated } from "../../lib/catalog";
+import { experienceById, fromPrice, getCatalog, partnerBookLine, publicRating, topRated } from "../../lib/catalog";
 import { listingFacts } from "../../lib/catalog";
 import { fmtDate, fmtReviews, money, titleCase } from "../../lib/format";
 import { ART_ALIASES, WHAT_INTENTS, describeQuery, metroInQuery, parseIntent, searchMetros, searchRegions, searchSuggest, stripPlaceWords, warmSearch, type SearchScope } from "../../lib/search";
@@ -441,7 +441,7 @@ function Card({ u, onOpen, near, rail }: { u: Unclaimed; onOpen: (id: string) =>
         <div className="ah-card-sub">{detail}</div>
         <div className="ah-card-price">
           {from == null ? (
-            <span>Request to book</span>
+            <span>{partnerBookLine(u) || "Request to book"}</span>
           ) : per && per !== "each" ? (
             <><b>{money(from)}</b> / {per}</>
           ) : (
@@ -592,10 +592,12 @@ function CompareTable({ items, near, onOpen, onClose, onRemove }: { items: Uncla
               </tr>
             </thead>
             <tbody>
-              {row("From", (u) => { const f = fromPrice(u); return f != null ? <b>{money(f)}</b> : <span className="ah-muted">Request to book</span>; })}
+              {row("From", (u) => { const f = fromPrice(u); return f != null ? <b>{money(f)}</b> : <span className="ah-muted">{partnerBookLine(u) || "Request to book"}</span>; })}
               {row("Rating", (u) => { const sc = publicRating(u); return sc ? <span className="ah-cmp-rate"><Markup html={SVG.star} /> {sc.rating.toFixed(1)} <em className="ah-muted">({fmtReviews(sc.reviews)})</em></span> : <span className="ah-muted">No public rating</span>; })}
               {row("Where", (u) => awayLine(u, near && !near.region ? near : null) || u.area)}
-              {row("What you'd book", (u) => { const o = firstPriced(u) || u.options[0]; return o ? o.name + (o.detail ? " · " + o.detail : "") : <span className="ah-muted">Contact the business</span>; })}
+              {/* A partner's product has no menu of ours to compare: the row says where it books instead of
+                  sending a guest to ring a business that never took the booking. */}
+              {row("What you'd book", (u) => { const o = firstPriced(u) || u.options[0]; return o ? o.name + (o.detail ? " · " + o.detail : "") : <span className="ah-muted">{partnerBookLine(u) || "Contact the business"}</span>; })}
               {row("Options", (u) => u.options.length ? u.options.length + (u.options.length === 1 ? " option" : " options") : <span className="ah-muted">None listed</span>)}
               {row("Who can go", (u) => { const f = listingFacts(u).who.find((l) => l.posted); return f ? f.text : <span className="ah-muted">Not posted</span>; })}
               {row("Included", (u) => u.includes.length ? u.includes.slice(0, 3).join(", ") : <span className="ah-muted">Not posted</span>)}

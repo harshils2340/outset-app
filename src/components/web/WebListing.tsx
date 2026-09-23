@@ -8,7 +8,7 @@ import { metroById } from "../../data/metros";
 import { countryOfArea, countryOfRegion, regionOfArea } from "../../data/regions";
 import { SLOT_TIMES } from "../../data/slots";
 import type { Unclaimed } from "../../data/types";
-import { addressLine, bookingPaused, contactFor, fmtPhone, fromPrice, getCatalog, guestCapFor, listingFacts, mapsHref, maxGuestsFor, perPerson, plainWords, publicRating, telHref, topRated as isTopRated } from "../../lib/catalog";
+import { addressLine, bookingPaused, contactFor, fmtPhone, fromPrice, getCatalog, guestCapFor, listingFacts, mapsHref, maxGuestsFor, partnerBookLine, perPerson, plainWords, publicRating, telHref, topRated as isTopRated } from "../../lib/catalog";
 import { DAYS, fmtDate, fmtReviews, fmtTime, money, priceWith, reviewsLine } from "../../lib/format";
 import { srcSet, thumb } from "../../lib/images";
 import { embedAutoplay, isGif, listingMedia, photoCandidates, probePhotos, type Media } from "../../lib/media";
@@ -448,7 +448,7 @@ function Card({ u, onOpen }: { u: Unclaimed; onOpen: (id: string) => void }) {
             </span>
         <small>{u.area}</small>
         {u.dur ? <small>{tidyDuration(u.dur)}</small> : freeCancelBadge(u) ? <small>Free cancellation</small> : null}
-        <span className="alcardprice">{from != null ? <>From <b>{money(from)}</b></> : "Request to book"}</span>
+        <span className="alcardprice">{from != null ? <>From <b>{money(from)}</b></> : partnerBookLine(u) || "Request to book"}</span>
       </div>
     </button>
   );
@@ -2100,10 +2100,15 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
               {/* On every listing, claimed or not, and worded for an owner rather than about the page's status:
                   "Claim this listing" only appeared on unclaimed ones, which told a guest which shops had not
                   signed up. An owner who is already signed in lands in their dashboard from the same link. */}
+              {/* Not on a partner's product: there is nothing here for an owner to manage. The page is the
+                  partner's listing under licence, the booking is theirs, and the claim screen would send an
+                  owner round a loop that ends in "we have no email on file for this business". */}
+              {affiliate ? null : (
               <p className="alclaim">
                 <Markup html={I.shield} />
                 <span>Work here? <button type="button" className="alunder strong" onClick={() => openOperator(item.id)}>Manage this listing</button> to answer guests and take bookings directly.</span>
                 </p>
+              )}
               </div>
         </div>
         </section>

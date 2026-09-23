@@ -250,6 +250,15 @@ export function fromPrice(item: Unclaimed): number | null {
   return Math.min(...priced);
 }
 
+/**
+ * What a card says where a price would go, for a partner's product. It books on the partner's site, so the
+ * usual "Request to book" would promise a request Outset never takes and nobody at the other end to answer it.
+ * Null for every other listing, which keeps the wording its own surface already uses.
+ */
+export function partnerBookLine(item: Unclaimed): string | null {
+  return item.affiliate ? "Book on " + item.affiliate.label : null;
+}
+
 /** Swap a lite record for its full detail record. Overrides and publish state stay as they were. */
 export function hydrateItem(raw: Unclaimed, targetId?: string): void {
   // The detail file is where a listing's menu and its description really live, so this is the read that decides
