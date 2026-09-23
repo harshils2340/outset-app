@@ -1063,7 +1063,13 @@ function RequestBody({
             </Section>
           ) : null}
 
-          {paused ? (
+          {item.affiliate ? (
+            // A partner's product: the date and time are picked on their site. Drawing our own start times here
+            // would be inventing availability for a calendar we never read.
+            <Section title="Dates and times" innerRef={dateRef}>
+              <p className="reqpolicy">Pick your date and time on {item.affiliate.label}, where this is booked. Outset earns a commission if you book there, at no extra cost to you.</p>
+            </Section>
+          ) : paused ? (
             <Section title={pausedHead} innerRef={dateRef}>
               <p className="reqpolicy">{pausedWhy}</p>
             </Section>
