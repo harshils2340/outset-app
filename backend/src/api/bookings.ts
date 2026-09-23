@@ -312,7 +312,13 @@ bookings.post("/bookings", rateLimit(20, 60 * 60 * 1000), async (c) => {
   // `pay` used to come off the request body, so anyone could post "pay": false and get a confirmed booking with
   // no card: a free trip, the operator emailed "they pay you on the day", and the time consumed. Nothing in the
   // app ever sent it. Whether a card is taken is now decided here alone, from the listing's own price.
-  const payNow = stripeEnabled() && !!priced && priced.total >= 1;
+  //
+  // `!!profile` (a real claimed row exists) was missing here: an unclaimed listing could hold a guest's card
+  // for a trip the operator never agreed to sell through Outset at all, or even knows exists here. Found 23
+  // September 2026 from a real operator's complaint - she'd never claimed, never heard of Outset, and a guest
+  // could still have been charged for her tours. "Keep unclaimed profiles request-only" in backend/AGENTS.md
+  // was already the stated rule; this just makes the code match it.
+  const payNow = !!profile && stripeEnabled() && !!priced && priced.total >= 1;
   if (payNow) {
     try {
       // Charge in the listing's own dollars. Every charge used to be in STRIPE_CURRENCY (cad), so a $213 tour in
