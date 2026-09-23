@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { DIRECTORIES, isBlockedPage, organizationLinks, ownWebsite, parseDirectoryPage, regionCode } from "../directories.ts";
+import { DIRECTORIES, isBlockedPage, organizationLinks, ownWebsite, parseDirectoryPage, regionCode, regionNearPin } from "../directories.ts";
 import { categoryById } from "../../taxonomy/catalog.ts";
 
 const captain = DIRECTORIES.find((d) => d.id === "captainexperiences")!;
@@ -74,6 +74,89 @@ test("every registry kind is a real category, so the importer never rejects a wh
     assert.ok(categoryById(d.kind), `${d.id}: kind ${d.kind}`);
     if (d.id === "coursehorse") for (const k of ["cooking", "pottery", "dance", "fitness", "theatre"]) assert.ok(categoryById(k), k);
   }
+});
+
+const dropzonefinder = DIRECTORIES.find((d) => d.id === "dropzonefinder")!;
+const skydivingsource = DIRECTORIES.find((d) => d.id === "skydivingsource")!;
+
+// dropzonefinder.com/dropzones/united-states/atlanta-skydiving-center, 2026-09-23, cut to the relevant markup. The
+// dropzone's JSON-LD sits HTML-escaped in a meta content attribute; the script blocks describe the directory itself.
+const dropzonePage = `<html><head><meta name="application/ld+json" content="[{&quot;@context&quot;:&quot;https://schema.org&quot;,&quot;@type&quot;:[&quot;SportsActivityLocation&quot;,&quot;LocalBusiness&quot;],&quot;name&quot;:&quot;Atlanta Skydiving Center&quot;,&quot;description&quot;:&quot;See our website at www.ascskydiving.com for detailed directions.&quot;,&quot;address&quot;:{&quot;@type&quot;:&quot;PostalAddress&quot;,&quot;addressCountry&quot;:&quot;United States&quot;},&quot;geo&quot;:{&quot;@type&quot;:&quot;GeoCoordinates&quot;,&quot;latitude&quot;:34.0186944,&quot;longitude&quot;:-85.1464722},&quot;telephone&quot;:&quot;678.747.1014&quot;,&quot;email&quot;:null,&quot;url&quot;:&quot;https://dropzonefinder.com/dropzones/united-states/atlanta-skydiving-center&quot;,&quot;sameAs&quot;:[&quot;https://ascskydiving.com&quot;],&quot;priceRange&quot;:&quot;$$&quot;}]"/>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"Organization","name":"DropzoneFinder","url":"https://dropzonefinder.com","sameAs":[]}</script></head>
+<body><h1>Atlanta Skydiving Center</h1><a href="tel:678.747.1014">678.747.1014</a><a href="https://ascskydiving.com" target="_blank" rel="noopener noreferrer">Visit the website</a>
+<a href="https://apps.apple.com/app/skydive-compass/id6751343815">App Store</a><p>Tandem jumps from 195 USD</p></body></html>`;
+
+test("a DropzoneFinder page is read from the JSON-LD the site escaped into a meta tag: name, phone, pin, own site", () => {
+  const c = parseDirectoryPage(dropzonefinder, dropzonePage, "https://dropzonefinder.com/dropzones/united-states/atlanta-skydiving-center");
+  assert.ok(c);
+  assert.equal(c!.name, "Atlanta Skydiving Center");
+  assert.equal(c!.website, "https://ascskydiving.com", "sameAs in the dropzone's own block, not the App Store link");
+  assert.equal(c!.domain, "ascskydiving.com");
+  assert.equal(c!.phone, "+16787471014");
+  assert.equal(c!.lat, 34.0186944);
+  assert.equal(c!.city, null, "the page names no town, and none is invented");
+  assert.equal(c!.region, "GA", "the state comes off the pin: Atlanta is the nearest grid city and the next agrees");
+  assert.equal(c!.kind, "skydive");
+  assert.equal(c!.directory, "dropzonefinder");
+});
+
+test("a DropzoneFinder page with no dropzone block is not a business, and a border pin gets no state", () => {
+  const hub = `<html><head><script type="application/ld+json">{"@type":"Organization","name":"DropzoneFinder","url":"https://dropzonefinder.com"}</script></head><body><h1>Skydiving in Canada</h1><a href="https://apps.apple.com/x">app</a></body></html>`;
+  assert.equal(parseDirectoryPage(dropzonefinder, hub, "https://dropzonefinder.com/dropzones/canada"), null);
+  assert.equal(regionNearPin(42.78, -71.08), null, "Haverhill: Portsmouth NH and Boston MA are both about 45 km off, so no state is guessed");
+  assert.equal(regionNearPin(49.555, -96.685), "MB", "Steinbach: Winnipeg alone is in range");
+  assert.equal(regionNearPin(39.27, -103.67), "CO", "Limon: Colorado Springs, then Denver, both Colorado");
+  assert.equal(regionNearPin(0, 0), null);
+  assert.ok(dropzonefinder.match.test("https://dropzonefinder.com/dropzones/canada/adventure-skydiving"));
+  assert.ok(!dropzonefinder.match.test("https://dropzonefinder.com/dropzones/canada/cities/toronto"), "a city hub is not a dropzone");
+  assert.ok(!dropzonefinder.match.test("https://dropzonefinder.com/dropzones/australia/skydive-cairns"), "outside the market");
+});
+
+// skydivingsource.com/locations/des-moines-skydivers/, 2026-09-23, cut to the relevant markup. Microdata carries the
+// address; the website is text under "Website:", not a link.
+const sourcePage = `<html><head><script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":"3","item":{"@id":"https://skydivingsource.com/locations/des-moines-skydivers/","name":"Des Moines Skydivers"}}]}]}</script></head>
+<body><article class="post-161 dropzones type-dropzones status-publish hentry state-iowa country-usa continent-north-america">
+<div itemscope itemtype="http://schema.org/LocalBusiness"><meta itemprop="name" content="Des Moines Skydivers">
+<span itemprop="address" itemscope="" itemtype="http://schema.org/PostalAddress"><meta itemprop="streetAddress"
+                      content="1563 IA-14 "><meta itemprop="addressLocality"
+                      content="Knoxville"><meta itemprop="addressRegion" content="Iowa"><meta itemprop="postalCode" content="50138"><meta itemprop="addressCountry"
+                      content="USA"></span>
+<span itemprop="geo" itemscope="" itemtype="http://schema.org/GeoCoordinates"><meta itemprop="latitude"
+                      content="41.298"><meta itemprop="longitude"
+                      content="-93.113"></span><meta itemprop="telephone" content="(515) 243-1711"></div>
+<h2>Contact Info</h2><p><strong><i class="fa fa-phone"></i> Phone:</strong><br>(515) 243-1711</p>
+<p><strong><i class="fa fa-globe"></i> Website:</strong><br>www.dmskydivers.com</p>
+<p><strong>Email:</strong><br>info@desmoinesskydivers.com</p><p>Tandem: $290</p></article>
+<a href="https://twitter.com/SkydivingSource">Twitter</a></body></html>`;
+
+test("a Skydiving Source page is read from its microdata, and the text under 'Website:' is the dropzone's own site", () => {
+  const c = parseDirectoryPage(skydivingsource, sourcePage, "https://skydivingsource.com/locations/des-moines-skydivers/");
+  assert.ok(c);
+  assert.equal(c!.name, "Des Moines Skydivers");
+  assert.equal(c!.street, "1563 IA-14");
+  assert.equal(c!.city, "Knoxville");
+  assert.equal(c!.region, "IA");
+  assert.equal(c!.postal, "50138");
+  assert.equal(c!.phone, "+15152431711");
+  assert.equal(c!.website, "https://www.dmskydivers.com");
+  assert.equal(c!.domain, "dmskydivers.com");
+  assert.equal(c!.kind, "skydive");
+  assert.equal(c!.directory, "skydivingsource");
+});
+
+test("a Skydiving Source page outside the market, or with no dropzone microdata, is not a lead", () => {
+  const abroad = sourcePage.replace("country-usa", "country-australia").replace('content="Iowa"', 'content="Victoria"');
+  const c = parseDirectoryPage(skydivingsource, abroad, "https://skydivingsource.com/locations/skydive-x/");
+  assert.ok(c);
+  assert.equal(c!.region, null, "a state name from another country never reads as a US or Canadian code");
+  const article = `<html><body><article class="post-1 type-post"><h1>How Much Does Skydiving Cost?</h1><p><strong>Website:</strong><br>www.example.com</p></article></body></html>`;
+  assert.equal(parseDirectoryPage(skydivingsource, article, "https://skydivingsource.com/locations/how-much/"), null);
+  const noSite = sourcePage.replace("www.dmskydivers.com", "N/A");
+  assert.equal(parseDirectoryPage(skydivingsource, noSite, "https://skydivingsource.com/locations/des-moines-skydivers/")!.website, null);
+  const social = sourcePage.replace("www.dmskydivers.com", "https://www.facebook.com/dmskydivers");
+  assert.equal(parseDirectoryPage(skydivingsource, social, "https://skydivingsource.com/locations/des-moines-skydivers/")!.website, null, "a social page is not a website");
+  assert.ok(skydivingsource.childMatch!.test("https://skydivingsource.com/dropzones-sitemap3.xml"));
+  assert.ok(!skydivingsource.childMatch!.test("https://skydivingsource.com/post-sitemap.xml"), "articles are not dropzones");
 });
 
 test("a rate-limit redirect or a challenge body is the site saying stop, whatever the status code", () => {

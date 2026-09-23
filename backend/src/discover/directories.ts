@@ -1,6 +1,7 @@
 import { looksBlocked } from "../scrape/fetch.ts";
 import { DROP_HOSTS } from "./braveapi.ts";
 import { decode, hostOf, jsonLdNodes, parsePlaces, phoneE164, sitemapLocs, type RawPlace } from "./chains.ts";
+import { CITIES } from "./cities.ts";
 import { getPage } from "./polite.ts";
 
 /**
@@ -42,6 +43,12 @@ export type DirectorySource = {
   childMatch?: RegExp;
   /** The category a page's URL places it in; null means the page is not an activity we list (a coding bootcamp). */
   kindFromUrl?: (url: string) => string | null;
+  /**
+   * A reader for a site whose pages parsePlaces and ownWebsite cannot read as they are (JSON-LD escaped into a
+   * meta tag, a website written as text instead of a link): the place and the operator's own site, or a null
+   * place for a page that is not a business. Only name, town, region, street, phone, pin and website, ever.
+   */
+  read?: (html: string, pageUrl: string) => DirectoryRead;
   /** Pages per run at most: a directory is read a slice at a time, never whole in one go. */
   max: number;
   /** Pause between two requests to this host, when the site has shown it wants more than polite.ts's default. */
@@ -108,6 +115,31 @@ export const DIRECTORIES: DirectorySource[] = [
     },
     max: 40,
     verified: "2026-09-22: /<city>/schools is a redirect to /classes and links no schools; a class page's Organization JSON-LD carries the school's /schools/ url, and that page carries Place JSON-LD with the street address and an aggregate rating; no website on either",
+  },
+  {
+    id: "dropzonefinder",
+    kind: "skydive",
+    activity: "dropzone",
+    sitemaps: ["https://dropzonefinder.com/sitemap.xml"],
+    // The sitemap is worldwide (1,765 pages); only the two countries we list, and not the /cities/ hub pages.
+    match: /^https:\/\/dropzonefinder\.com\/dropzones\/(united-states|canada)\/[a-z0-9-]+$/,
+    read: readDropzonefinder,
+    max: 60,
+    gapMs: 4000,
+    verified: "2026-09-23: robots.txt allows /dropzones; 368 US and Canada pages in the sitemap; the dropzone's LocalBusiness JSON-LD is HTML-escaped into a <meta name=\"application/ld+json\"> tag with name, phone, pin, country and the operator's site in sameAs, and the page links it again as 'Visit the website'; no town, state or street anywhere on the page, so the state comes off the pin (regionNearPin) and the town stays a gap; a six-page dry slice read all six, four with a website, and kept two: the other four are rural or border Canada where the pin cannot name a province safely",
+  },
+  {
+    id: "skydivingsource",
+    kind: "skydive",
+    activity: "dropzone",
+    sitemaps: ["https://skydivingsource.com/sitemap_index.xml"],
+    // A WordPress index: posts, pages and five dropzones-sitemapN.xml files, about 1,000 dropzones worldwide.
+    childMatch: /\/dropzones-sitemap\d+\.xml$/,
+    match: /^https:\/\/skydivingsource\.com\/locations\/[a-z0-9-]+\/?$/,
+    read: readSkydivingSource,
+    max: 60,
+    gapMs: 4000,
+    verified: "2026-09-23: robots.txt disallows only /wp-admin/; /locations/<slug>/ carries LocalBusiness microdata (name, street, town, state, postcode, phone, pin) and the country as a class on the article; the JSON-LD is a breadcrumb only; the website is plain text under 'Website:', not a link; 862 locations worldwide in the sitemap, so much of a slice is outside the US and Canada (the first sorted page is a Paris dropzone); two US pages read with street, town, state, phone and website",
   },
 ];
 
@@ -207,6 +239,10 @@ export function toCandidate(src: DirectorySource, raw: RawPlace, pageUrl: string
 
 /** One business page: the first place its structured data describes, with its own website when the page has one. */
 export function parseDirectoryPage(src: DirectorySource, html: string, pageUrl: string): DirectoryCandidate | null {
+  if (src.read) {
+    const r = src.read(html, pageUrl);
+    return r.raw ? toCandidate(src, r.raw, pageUrl, r.website) : null;
+  }
   const places = parsePlaces(html, pageUrl);
   const raw = places.find((p) => p.name) || places[0];
   if (!raw) return null;
@@ -289,4 +325,101 @@ export async function runDirectory(src: DirectorySource, opts: { max?: number; s
     out.candidates.push(c);
   }
   return out;
+}
+
+/** What a source's own reader hands back: the place (null when the page is not a business) and the operator's own site. */
+export type DirectoryRead = { raw: RawPlace | null; website: string | null };
+
+/**
+ * The region of the city-grid entry nearest a pin, for a directory that pins a business but names no state.
+ * Null when a grid city of another region is nearly as close (within 1.4x the nearest's distance): a pin
+ * between Boston and Portsmouth could be either state, and a wrong state on a listing is worse than a dropped
+ * lead. A dropzone 76 km from Atlanta with Chattanooga 116 km off is Georgia. The operator's own site settles
+ * the address at the contact crawl.
+ */
+export function regionNearPin(lat: number, lon: number, maxKm = 130): string | null {
+  const near = CITIES.map((c) => {
+    const dLat = ((c.lat - lat) * Math.PI) / 180;
+    const dLon = ((c.lon - lon) * Math.PI) / 180;
+    const a = Math.sin(dLat / 2) ** 2 + Math.cos((lat * Math.PI) / 180) * Math.cos((c.lat * Math.PI) / 180) * Math.sin(dLon / 2) ** 2;
+    return { region: c.region, km: 2 * 6371 * Math.asin(Math.sqrt(a)) };
+  })
+    .filter((c) => c.km <= maxKm)
+    .sort((a, b) => a.km - b.km);
+  if (!near.length) return null;
+  const rival = near.find((c) => c.region !== near[0].region);
+  if (rival && rival.km < near[0].km * 1.4) return null;
+  return near[0].region;
+}
+
+/** The first parseable object in an HTML-escaped JSON blob (a JSON-LD block written into a meta content attribute). */
+function escapedJsonNodes(escaped: string): Record<string, unknown>[] {
+  try {
+    return [JSON.parse(decode(escaped))].flat().filter((n): n is Record<string, unknown> => !!n && typeof n === "object");
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * DropzoneFinder writes the dropzone's LocalBusiness JSON-LD HTML-escaped into a <meta name="application/ld+json"
+ * content="..."> tag instead of a script, so jsonLdNodes never sees it. That block carries the name, phone, pin,
+ * country and the operator's site in sameAs; the page names no town, state or street. The state is read off the
+ * pin with regionNearPin and the town stays an honest gap. Nothing else on the page (aircraft, prices, weather,
+ * ratings) is read.
+ */
+export function readDropzonefinder(html: string, pageUrl: string): DirectoryRead {
+  const m = html.match(/<meta\s+name=["']application\/ld\+json["']\s+content="([^"]*)"/i);
+  const nodes = m ? escapedJsonNodes(m[1]) : [];
+  const biz = nodes.find((n) => /LocalBusiness|SportsActivityLocation/.test([n["@type"]].flat().map(String).join(" ")));
+  if (!biz || typeof biz.name !== "string" || !biz.name.trim()) return { raw: null, website: null };
+  const geo = (biz.geo && typeof biz.geo === "object" ? biz.geo : {}) as Record<string, unknown>;
+  const lat = Number(geo.latitude);
+  const lon = Number(geo.longitude);
+  const pinned = Number.isFinite(lat) && Number.isFinite(lon) && lat !== 0 && lon !== 0;
+  return {
+    raw: {
+      name: biz.name,
+      phone: typeof biz.telephone === "string" ? biz.telephone : null,
+      lat: pinned ? lat : null,
+      lon: pinned ? lon : null,
+      region: pinned ? regionNearPin(lat, lon) : null,
+      url: pageUrl,
+    },
+    website: ownWebsite(html, pageUrl, nodes),
+  };
+}
+
+/**
+ * Skydiving Source carries the dropzone as LocalBusiness microdata (name, street, town, state, postcode, phone,
+ * pin), the country as a class on the article, and the website as plain text under "Website:", not a link. The
+ * text goes through ownWebsite's host rules as if it were a link, so the directory's own host, a social page or
+ * "N/A" is never taken as a site.
+ */
+export function readSkydivingSource(html: string, pageUrl: string): DirectoryRead {
+  const prop = (k: string): string | null => {
+    const v = html.match(new RegExp(`<meta\\s+itemprop=["']${k}["'][^>]*\\bcontent=["']([^"']*)["']`, "i"))?.[1];
+    return v ? decode(v) || null : null;
+  };
+  const name = prop("name");
+  if (!name) return { raw: null, website: null };
+  const country = html.match(/\bcountry-([a-z-]+)\b/)?.[1] || null;
+  const inMarket = !country || country === "usa" || country === "canada";
+  const w = html.match(/Website:<\/strong>\s*(?:<br\s*\/?>)?\s*(?:<a\b[^>]*href=["']([^"']+)["'][^>]*>)?([^<]*)/i);
+  const text = decode(w?.[1] || w?.[2] || "").replace(/\s.*$/, "");
+  const site = /^(https?:\/\/)?[a-z0-9-]+(\.[a-z0-9-]+)+(\/\S*)?$/i.test(text) ? (/^https?:\/\//i.test(text) ? text : "https://" + text) : null;
+  return {
+    raw: {
+      name,
+      street: prop("streetAddress"),
+      city: prop("addressLocality"),
+      region: inMarket ? prop("addressRegion") : null,
+      postal: prop("postalCode"),
+      lat: prop("latitude"),
+      lon: prop("longitude"),
+      phone: prop("telephone"),
+      url: pageUrl,
+    },
+    website: site ? ownWebsite(`<a href="${site}">Website</a>`, pageUrl) : null,
+  };
 }
