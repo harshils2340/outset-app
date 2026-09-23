@@ -236,7 +236,14 @@ ${area ? `<p class="area">${esc(area)}</p>` : ""}
 ${ratingHtml}
 ${blurb ? `<p class="blurb">${esc(blurb)}</p>` : ""}
 ${factsHtml}
-<a class="cta" href="${hashUrl}">Request a time on Outset</a>
+${(() => {
+    // A partner's product books on the partner's site, on our attributed link, and the page says so: the FTC's
+    // endorsement guides ask for the disclosure, and rel="sponsored" is what search engines ask of paid links.
+    const aff = (item as { affiliate?: { label: string; url: string } }).affiliate;
+    return aff
+      ? `<a class="cta" href="${esc(aff.url)}" rel="sponsored noopener noreferrer">Book on ${esc(aff.label)}</a><p class="blurb">Dates, prices and payment are on ${esc(aff.label)}. Outset earns a commission if you book there, at no extra cost to you.</p>`
+      : `<a class="cta" href="${hashUrl}">Request a time on Outset</a>`;
+  })()}
 ${photosHtml}
 ${menuHtml}
 ${hoursHtml}

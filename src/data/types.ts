@@ -258,6 +258,12 @@ export type Unclaimed = {
   deal?: string;
   /** Contact facts shipped inside the detail file. */
   contact?: OperatorContact;
+  /**
+   * A partner's product, shown under licence and booked on their site (Viator, Tiqets, Headout, Klook). Outset
+   * earns a commission and the guest is told so. Never claimable, never Instant Book, never a request: every
+   * booking surface links out to `url`, which already carries our partner attribution, with rel="sponsored".
+   */
+  affiliate?: { source: "viator" | "tiqets" | "headout" | "klook"; label: string; url: string };
 };
 
 export type Category = {

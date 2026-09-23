@@ -1014,6 +1014,8 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
   // Attractions sell entry, not a slot. With no menu to book, the card becomes hours plus a tickets link.
   const VISIT_ARTS = new Set(["zoo", "aquarium", "themepark", "waterpark", "museum", "garden", "theatre", "arcade", "icerink", "trampoline", "bowling", "minigolf", "billiards", "camping", "sauna", "swim", "tennis", "discgolf", "venue", "brewery", "winery", "distillery"]);
   const visit = !needService && VISIT_ARTS.has(item.art);
+  // A partner's product (Viator and the like): shown under licence, booked on their site, never here.
+  const affiliate = item.affiliate || null;
   // The business's own site, crawled or operator-set: never trust it as a scheme without checking first.
   const ticketHref = safeHttpUrl(contact?.website || item.src);
   // The week this shop publishes, read once: the visit panel, the start times and the empty picker's line all
@@ -1192,7 +1194,8 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
   if (liveTimes) rows.push({ icon: I.calendar, title: "Live times from their calendar", text: "Start times come straight from " + possessive(item.title) + " own booking system." });
   // Open status is the header line under the subtitle now, so it is not repeated as a highlight row.
   if (cancel) rows.push({ icon: I.calendar, title: cancel, text: "Plans change. Their published policy lets you cancel for a full refund." });
-  if (instant) rows.push({ icon: I.bolt, title: "Instant confirmation", text: "Your spot is confirmed the moment you book." });
+  if (affiliate) rows.push({ icon: I.ticket, title: "Booked on " + affiliate.label, text: "You pick a date and pay on " + affiliate.label + ". Outset earns a commission if you book there." });
+  else if (instant) rows.push({ icon: I.bolt, title: "Instant confirmation", text: "Your spot is confirmed the moment you book." });
   else if (!visit) rows.push({ icon: I.message, title: "Request to book", text: "The business confirms by email. Nothing is charged until they do." });
   else if (ticketHref) rows.push({ icon: I.ticket, title: "Tickets from the business", text: "Entry is sold on " + possessive(item.title) + " own site, at their prices." });
   if (item.meetingPoint) rows.push({ icon: I.door, title: "Meeting point", text: tidyLine(item.meetingPoint) });
@@ -1509,7 +1512,7 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
                 <b>Run by {item.title}</b>
                 {/* Whether a shop has claimed its page is ours to know, not the guest's: this line describes how a
                     booking reaches them, which reads the same either way, so no listing looks second class. */}
-                <small>{instant ? "Instant confirmation" : visit ? "Tickets are sold by the business" : "Requests go straight to the business"}</small>
+                <small>{affiliate ? "Booked on " + affiliate.label : instant ? "Instant confirmation" : visit ? "Tickets are sold by the business" : "Requests go straight to the business"}</small>
               </span>
               </section>
 
@@ -1698,7 +1701,7 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
             </section>
             ) : null}
 
-            {!visit ? (
+            {!visit && !affiliate ? (
               <section className="alsec" id="al-dates">
                 <h2>{day.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}</h2>
                 <p className="alsecsub">
@@ -1716,7 +1719,19 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
           </div>
 
           <aside className="alaside">
-            {visit ? (
+            {affiliate ? (
+              // A partner's product. The whole booking, dates and payment included, happens on their site, on a
+              // link that carries our partner id. The commission is said out loud: the FTC's endorsement guides
+              // require the disclosure, and a guest who finds out later trusts the rest of the page less.
+              <div className="alreserve">
+                <div className="alreservehead">
+                  <span className="alprice">{item.from != null ? <>From <b>{money(item.from)}</b></> : <b>Book on {affiliate.label}</b>}</span>
+                  {score ? <span className="alreserverate"><Markup html={I.star} /> {score.rating.toFixed(1)} · <u>{reviewsLine(score.reviews)}</u></span> : null}
+                </div>
+                <a className="alprimary" href={affiliate.url} target="_blank" rel="sponsored noopener noreferrer">Book on {affiliate.label}</a>
+                <p className="alfine">Dates, prices and payment are on {affiliate.label}. Outset earns a commission if you book there, at no extra cost to you.</p>
+              </div>
+            ) : visit ? (
               // A place you walk into: a zoo, a museum, a show. Hours and the door, not a time slot.
               <div className="alreserve">
                 <div className="alreservehead">
@@ -2062,7 +2077,7 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
               <ul className="albizfacts">
                 <li><Markup html={I.pin} /> <span>{placeName(item.area)}</span></li>
                 {duration ? <li><Markup html={I.clock} /> <span>{duration}</span></li> : null}
-                {instant ? <li><Markup html={I.bolt} /> <span>Instant confirmation</span></li> : visit ? <li><Markup html={I.ticket} /> <span>Tickets on their own site</span></li> : <li><Markup html={I.message} /> <span>Confirms requests by email</span></li>}
+                {affiliate ? <li><Markup html={I.ticket} /> <span>Booked on {affiliate.label}</span></li> : instant ? <li><Markup html={I.bolt} /> <span>Instant confirmation</span></li> : visit ? <li><Markup html={I.ticket} /> <span>Tickets on their own site</span></li> : <li><Markup html={I.message} /> <span>Confirms requests by email</span></li>}
               </ul>
             </div>
             <div className="albizright">

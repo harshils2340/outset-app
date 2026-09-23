@@ -1352,7 +1352,18 @@ function RequestBody({
       </div>
 
       <div className="airreserve">
-        {paused ? (
+        {item.affiliate ? (
+          // A partner's product: dates, prices and payment are on their site, on our partner-attributed link.
+          <>
+            <span className="airreserveprice">
+              <span className="big">{from != null ? <>From <b>{money(from)}</b></> : <b>Book on {item.affiliate.label}</b>}</span>
+              <span className="why">Booked on {item.affiliate.label}. Outset earns a commission.</span>
+            </span>
+            <a className="airaccent" href={item.affiliate.url} target="_blank" rel="sponsored noopener noreferrer">
+              Book on {item.affiliate.label}
+            </a>
+          </>
+        ) : paused ? (
           <>
             <span className="airreserveprice">
               <span className="big">

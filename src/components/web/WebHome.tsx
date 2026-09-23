@@ -272,6 +272,8 @@ function CompareCheck({ id, title, small }: { id: string; title: string; small?:
  * goes is what made five cards in a row describe five different things.
  */
 function cardBadge(u: Unclaimed, open: boolean): string | null {
+  // A partner's product says where it books before anything else: a guest should know that before the click.
+  if (u.affiliate) return "Book on " + u.affiliate.label;
   if (topRated(u)) return "Top rated";
   // A titled deal gets its own line under the card; the pill stays for a deal with no title.
   if (dealToday(u) && !liteDealTitle(u.deal)) return "Deal today";

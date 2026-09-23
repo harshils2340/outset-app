@@ -2178,9 +2178,16 @@ export function compactDeal(promos: { text: string; title?: string; days: number
   return p.days.join(",") + "|" + (label || (p.title || p.text).slice(0, 48));
 }
 
+import { affiliateCatalogItems } from "../affiliates/catalog.ts";
+
 /** Write public/catalog.json: every real operator plus its contact facts. The app fetches it at startup. */
 export function syncCatalogToApp(): { path: string; count: number } {
   const full = buildCatalogItems();
+  // Partner products (Viator and the like) ride along as listings that link out to book. They join after the
+  // operator filters and the duplicate pass, since none of that applies to them: they are not operators.
+  const affiliates = affiliateCatalogItems();
+  if (affiliates.length) console.log(`${affiliates.length} affiliate listings from partner APIs, fresh inside ${48} hours.`);
+  full.push(...affiliates);
   const contactByDomain: Record<string, OperatorContact> = {};
   for (const c of allContacts()) contactByDomain[c.domain] = c;
 
@@ -2208,8 +2215,10 @@ export function syncCatalogToApp(): { path: string; count: number } {
       rating: item.rating, reviews: item.reviews, lat: item.lat, lon: item.lon, cover: item.cover, video: item.video,
       locations: item.locations,
       tags: ((item.tags as string[]) || []).slice(0, 6),
-      from: priced.length ? Math.min(...priced) : undefined,
+      // A partner product has no menu of its own; its from-price is the one its API quoted.
+      from: priced.length ? Math.min(...priced) : ((item.from as number | undefined) ?? undefined),
       dur: item.dur, fc: item.fc, kindUnconfirmed: item.kindUnconfirmed,
+      affiliate: item.affiliate,
       // First day-specific deal, compact ("2|Half-price Tuesdays"), so cards can badge "Deal today" without the detail file.
       // The consolidated title, not a raw fragment, so the card and the listing's Deals section say the same thing.
       deal: compactDeal((item.promos as { text: string; title?: string; days: number[] }[] | undefined) || []),

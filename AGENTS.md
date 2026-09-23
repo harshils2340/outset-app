@@ -15,6 +15,16 @@ The product promise:
 
 This is "DoorDash for experiences" in the sense that guests pick a slot and pay. It is not a lead-gen directory.
 
+One deliberate exception, decided 22 September 2026: tickets, attractions and events (museums, shows, city
+tours, theme parks) are shown as **affiliate listings** and booked on the partner's site (Viator first; Tiqets,
+Headout, Klook next). Outset is not in the ticketing business directly; it earns a commission and says so on
+the page. The partner's API licenses the photos, descriptions and prices we display; we never scrape a
+marketplace's pages for content, and we never show a partner's product as claimable, Instant Book or
+request-to-book. See `backend/src/affiliates/` and the `affiliate` field on a listing. The activity operators
+that are Outset's own supply (jet skis, skydives, fishing, classes) stay on the model above: page from their own
+site, claim, book direct. Marketplaces are at most a discovery source for finding those operators, never a
+source of their content.
+
 ## Hard product rules
 
 - Instant-book listings (`src/data/listings.ts`) stay empty until a real operator claims. Do not refill with invented shops.

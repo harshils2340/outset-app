@@ -166,3 +166,42 @@ CREATE INDEX IF NOT EXISTS idx_locations_operator ON locations(operator_id);
 
 CREATE INDEX IF NOT EXISTS idx_sources_op ON sources(operator_id, extractor);
 CREATE INDEX IF NOT EXISTS idx_facts_op_key ON facts(operator_id, fact_key);
+
+-- Affiliate inventory: products a partner API licenses us to display (photos, descriptions, prices) in return
+-- for sending the booking to them. Never an operator: no claim link, no outreach, no Instant Book, no slots.
+-- Every row is what the API returned, verbatim, with the partner-attributed booking URL it gave us, and
+-- `fetched_at` so the sync can honour the licence's content TTL (Viator: under 24 hours) and drop stale rows.
+CREATE TABLE IF NOT EXISTS affiliate_products (
+  id TEXT PRIMARY KEY,                 -- "a-<source>-<product code>", the catalog id
+  source TEXT NOT NULL,                -- 'viator' | 'tiqets' | 'headout' | 'klook'
+  product_code TEXT NOT NULL,
+  title TEXT NOT NULL,
+  description TEXT,
+  images TEXT NOT NULL DEFAULT '[]',   -- JSON array of CDN URLs, largest usable variant first
+  from_cents INTEGER,
+  currency TEXT,
+  rating REAL,
+  review_count INTEGER,
+  duration TEXT,
+  destination_id TEXT,
+  destination_name TEXT,
+  metro_id TEXT REFERENCES metros(id),
+  lat REAL,
+  lon REAL,
+  tags TEXT NOT NULL DEFAULT '[]',     -- JSON array of the partner's tag/category labels
+  booking_url TEXT NOT NULL,           -- the partner-attributed link the guest books on
+  flags TEXT NOT NULL DEFAULT '[]',    -- JSON: FREE_CANCELLATION, LIKELY_TO_SELL_OUT, ...
+  raw TEXT,                            -- the API's own record, for fields the columns do not carry
+  fetched_at TEXT NOT NULL,
+  UNIQUE (source, product_code)
+);
+CREATE INDEX IF NOT EXISTS idx_affiliate_metro ON affiliate_products(metro_id);
+CREATE INDEX IF NOT EXISTS idx_affiliate_source ON affiliate_products(source, fetched_at);
+
+-- One row per source: where the last incremental pull left off, so a refresh asks only for what changed.
+CREATE TABLE IF NOT EXISTS affiliate_sync (
+  source TEXT PRIMARY KEY,
+  cursor TEXT,
+  last_full_at TEXT,
+  last_refresh_at TEXT
+);

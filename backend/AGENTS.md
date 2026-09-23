@@ -50,6 +50,15 @@ On macOS, one crawl at a time. `src/scrape/cpu.ts` keeps at least 10% CPU idle: 
 
 Florida discovery runs on the Render pipeline worker (`npx tsx scripts/discover-florida-ci.mts` from that clone), never on the Mac and never on GitHub Actions: GitHub disabled Actions for the account on 16 September 2026 over the crawl workflows, and only the e2e CI run may live under `.github/workflows`. `scripts/discover-florida-ci.mts` opens no database and writes `data/discovered/florida-{chains,osm,web}.json`: every Florida location of the brands in `src/discover/chains.ts` (franchise location pages, store-locator JSON, sitemaps), OpenStreetMap businesses named for what they do (`src/discover/osmnames.ts`, one Overpass request), and the Brave Search API (`src/discover/braveapi.ts`, only when the `BRAVE_SEARCH_API_KEY` secret is set). Outside CI the script refuses anything bigger than three chains. `npx tsx scripts/import-discovered.mts --dry` shows what is new, by kind and city; it is a dry run by default and inserts with `--write` only candidates that are not already an operator (domain, website, OSM element, phone, name and city, same name or same brand nearby).
 
+`npx tsx src/index.ts viator` is the Viator affiliate feed (`src/affiliates/`): a few Partner API calls per metro
+for the best-rated products, stored in `affiliate_products` and published by `npm run sync` as listings that link
+out to book on Viator, with our partner id on the link and the commission said on the page. The API licenses the
+photos, descriptions and prices; nothing reads viator.com's pages. Dry by default, `--write` to store,
+`--refresh --write` daily so no row is older than the licence's 24 hour content TTL (rows past 48 hours are not
+published). Needs `VIATOR_API_KEY` in `backend/.env` (free: viator.com partner account, Tools, Affiliate API). An
+affiliate row is never an operator: no claim link, no outreach, no Instant Book, no request, no Otto. Tiqets,
+Headout and Klook follow the same shape when their keys exist.
+
 `npm run search` is Google Maps discovery (`src/discover/searchapi.ts`): one query per city and Google phrasing,
 every result a real listed business with its name, address, phone, website, rating and review count. It is the only
 source that reaches businesses OpenStreetMap has never heard of, which is most of them: Silverdale Gun Club in West

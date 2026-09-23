@@ -16,6 +16,7 @@ import { discoverWeb } from "./discover/websearch.ts";
 import { discoverAi } from "./discover/aisearch.ts";
 import { placesCommand } from "./discover/places.ts";
 import { sendOutreach } from "./outreach/send.ts";
+import { pullViator, refreshViator } from "./affiliates/viator.ts";
 import { recordUnsub } from "./lib/unsub.ts";
 import { ownersCsv, ownersPending } from "./enrich/owners.ts";
 import { readPendingStructures, readSiteStructure } from "./enrich/structure.ts";
@@ -589,6 +590,28 @@ if (cmd === "avail-judge") {
   console.log(`Wrote truth for ${out.written} case(s). Actual spend: $${out.usd.toFixed(2)}.`);
   for (const f of out.failed) console.log("  no truth written: " + f);
   console.log('Now run "npm run avail:report" to see accuracy against it.');
+  process.exit(0);
+}
+
+/**
+ * Viator affiliate feed. Dry by default: prints what each metro would get and stores nothing.
+ *   npx tsx src/index.ts viator                          every metro, 40 best-rated products each, dry
+ *   npx tsx src/index.ts viator --write --per-metro=60   store them
+ *   npx tsx src/index.ts viator --metros=tampa,miami --write
+ *   npx tsx src/index.ts viator --refresh --write        pull what changed since last time (run daily)
+ * Needs VIATOR_API_KEY in backend/.env. A handful of API calls per metro, not a crawl: nothing here fetches a page.
+ */
+if (cmd === "viator") {
+  const write = process.argv.includes("--write");
+  if (process.argv.includes("--refresh")) {
+    const r = await refreshViator({ write });
+    console.log(`Viator refresh: ${r.seen} changed products seen, ${r.updated} of ours ${write ? "updated" : "would update"}.`);
+    process.exit(0);
+  }
+  const per = Number(process.argv.find((a) => a.startsWith("--per-metro="))?.split("=")[1] || 40);
+  const metros = process.argv.find((a) => a.startsWith("--metros="))?.split("=")[1]?.split(",").map((s) => s.trim()).filter(Boolean);
+  const r = await pullViator({ metros, perMetro: per, write });
+  console.log(`Viator: ${r.matched} of ${r.metros} metros matched a destination, ${r.products} products${write ? ", " + r.written + " stored" : " (dry run, nothing stored; add --write)"}.` + (r.skipped.length ? " Skipped: " + r.skipped.join(", ") : ""));
   process.exit(0);
 }
 
