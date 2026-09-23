@@ -24,8 +24,8 @@ const demoUrl = SITE + "operators#demo";
 // The real number, not a guess: about 52,000 businesses already on the catalog. No claimed-operator count,
 // no revenue lift, no booking total - none of those are real yet, and a fabricated one already went out
 // once tonight (Capt. Dave's "over 15,000 bookings"). This is the only stat that's actually true right now.
-const scale = "You'd be joining about 52,000 other real local businesses already on Outset.";
-const cta = "If that sounds good, I can make it for you.";
+const scale = "You'd be joining about 52,000 other real local businesses already on Outset across the US and Canada, and more join every week.";
+const cta = "Just reply \"yes\" and I'll have it built and sent to you today.";
 const stop = unsubPageUrl(to);
 const postal = mailPostal();
 
