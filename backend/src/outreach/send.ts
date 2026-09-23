@@ -60,6 +60,10 @@ export async function sendOutreach(opts: {
            AND (o.category_id IS NULL OR o.category_id NOT IN ('museum','themepark','waterpark','aquarium','zoo'))
            AND o.domain NOT LIKE '%.org' AND o.domain NOT LIKE '%.gov' AND o.domain NOT LIKE '%.edu'
            AND (o.review_count IS NULL OR o.review_count <= 20000)
+           AND EXISTS (SELECT 1 FROM facts f WHERE f.operator_id = o.id AND f.fact_key = 'cover')
+           AND (SELECT COUNT(*) FROM facts f WHERE f.operator_id = o.id AND f.fact_key = 'photo') >= 3
+           AND (SELECT COUNT(*) FROM offerings f WHERE f.operator_id = o.id AND f.price_cents IS NOT NULL) >= 1
+           AND (o.review_count >= 5 OR (SELECT COUNT(*) FROM facts f WHERE f.operator_id = o.id AND f.fact_key = 'review') >= 1)
          ORDER BY o.review_count DESC NULLS LAST
          LIMIT 1`,
       )
@@ -92,7 +96,16 @@ export async function sendOutreach(opts: {
          -- (22 September 2026).
          AND (o.category_id IS NULL OR o.category_id NOT IN ('museum','themepark','waterpark','aquarium','zoo'))
          AND o.domain NOT LIKE '%.org' AND o.domain NOT LIKE '%.gov' AND o.domain NOT LIKE '%.edu'
-         AND (o.review_count IS NULL OR o.review_count <= 20000)`;
+         AND (o.review_count IS NULL OR o.review_count <= 20000)
+         -- The same "good" bar outreach-list.mts already scores by: a cover photo, 3 or more photos, at
+         -- least one priced service, and real reviews. Andretti Indoor Karting sailed through every filter
+         -- above (a real small operator, a sane review count) and still went out with no photos at all,
+         -- because none of them checked for that. This is the fix: if the page has nothing to show, the
+         -- pitch has nothing to prove itself with, and it doesn't go out until enrichment gives it one.
+         AND EXISTS (SELECT 1 FROM facts f WHERE f.operator_id = o.id AND f.fact_key = 'cover')
+         AND (SELECT COUNT(*) FROM facts f WHERE f.operator_id = o.id AND f.fact_key = 'photo') >= 3
+         AND (SELECT COUNT(*) FROM offerings f WHERE f.operator_id = o.id AND f.price_cents IS NOT NULL) >= 1
+         AND (o.review_count >= 5 OR (SELECT COUNT(*) FROM facts f WHERE f.operator_id = o.id AND f.fact_key = 'review') >= 1)`;
   const args: (string | number)[] = [];
   if (opts.metro) {
     sql += " AND o.metro_id = ?";
