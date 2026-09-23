@@ -470,6 +470,11 @@
   font-size:14px;line-height:18px;color:var(--ink-soft);
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;
 }
+/* A line a guest must be able to read in full, the partner commission disclosure: two rows, never an ellipsis. */
+.airreserveprice .why.wrap{
+  white-space:normal;text-overflow:clip;font-size:13px;line-height:16px;
+  display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2;
+}
 .airreserve .airaccent{flex:none;min-width:128px;}
 
 /* ---------- checkout ---------- */

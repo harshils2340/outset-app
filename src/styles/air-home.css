@@ -414,6 +414,13 @@
 .ah-footbar{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px 24px;padding:24px 0;border-top:1px solid var(--line-strong);font-size:14px;line-height:18px;}
 .ah-footbar-right{display:flex;align-items:center;flex-wrap:wrap;gap:8px 24px;}
 .ah-footbar-right > span:nth-child(-n+2){font-weight:600;}
+.ah-legal{display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px 24px;padding:0 0 24px;font-size:13px;line-height:18px;color:var(--ink-soft);}
+.ah-legal-links{display:flex;flex-wrap:wrap;gap:6px 18px;}
+.ah-legal-links a{color:var(--ink-soft);text-decoration:none;}
+.ah-legal-links a:hover{text-decoration:underline;color:var(--ink);}
+.ah-legal-addr{font-style:normal;}
+.ah-footer.compact{margin-top:64px;}
+.ah-footer.compact .ah-footbar{border-top:0;padding-top:32px;}
 .ah-footbar-right > span:last-child{color:var(--ink-soft);}
 @media (max-width:743px){.ah-footcols{grid-template-columns:1fr;}}
 

@@ -71,7 +71,10 @@ export function awayLine(u: Unclaimed, near: Place | null): string | null {
   const n = nearestLocation(u, near);
   if (!n) return null;
   const town = n.alt && n.label ? n.label : "";
-  return (town ? town + " · " : "") + fmtDistance(n.km, countryOfArea(u.area)) + " away";
+  // fmtDistance says "Nearby" for anything under a few hundred metres, and "Nearby away" is what every card in
+  // downtown Tampa read. Only a number takes "away".
+  const dist = fmtDistance(n.km, countryOfArea(u.area));
+  return (town ? town + " · " : "") + (/\d/.test(dist) ? dist + " away" : dist);
 }
 
 /** Nearest first, but only for a picked point: a distance from the middle of a whole state is not an order. */

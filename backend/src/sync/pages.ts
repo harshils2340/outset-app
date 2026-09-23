@@ -52,6 +52,46 @@ export function publicSite(): string {
   return set.endsWith("/") ? set : set + "/";
 }
 
+/**
+ * Which listings get a static page of their own under /l/ (written by listingPages.ts).
+ *
+ * A photo is the floor, but not the bar. Thirty-eight thousand pages built from what other businesses publish,
+ * each adding little beyond a photo and an address, is the shape Google's scaled-content policy was written
+ * for, and a penalty would fall on the city pages too, which are the ones worth ranking. A page earns its place
+ * when we can show something a guest acts on: a price, or enough public reviews to be worth comparing. The rest
+ * keep their place inside the app and are reached from the city pages, they simply do not get a page to index.
+ *
+ * This is the one rule, shared with the city pages, so a card links to /l/<id>.html only when that file exists.
+ * Until it was shared the city page linked every listing with a cover there, and a guest who clicked a shop
+ * with no price and few reviews landed on a 404 ("Morton Museum of Cooke County" on the Gainesville page).
+ * Widen it by lowering this, which is one number, once the indexed pages are earning their keep.
+ */
+export function hasListingPage(i: Item): boolean {
+  if (typeof i.cover !== "string" || !i.cover || (i as { unlisted?: boolean }).unlisted) return false;
+  const priced = (i.options || []).some((o) => typeof o?.price === "number" && o.price > 0);
+  // A partner product has no menu of its own; its from-price and its booking link are the thing a guest acts on.
+  const partnerPriced = !!(i as { affiliate?: unknown }).affiliate && typeof (i as { from?: unknown }).from === "number";
+  const reviews = Number((i as { reviews?: unknown }).reviews) || 0;
+  return priced || partnerPriced || reviews >= 5;
+}
+
+/** The support address and the postal address, the same on every static page and in the app footer. */
+export const HELP_EMAIL = "hello@onoutset.com";
+export const POSTAL_ADDRESS = "Outset, 339 King St N, Waterloo, ON N2J 0C5, Canada";
+
+/**
+ * The footer every static page ends on. A crawler and a guest both arrive on these pages cold, so each one
+ * carries the same legal basics as the app: About, Terms, Privacy, the support address and the postal address.
+ */
+export function pageFooter(): string {
+  const site = publicSite();
+  return (
+    `<footer><div class="wrap"><p>Outset · Book the jump. Skip the call.</p>` +
+    `<p class="legal"><a href="${site}about.html">About Outset</a> · <a href="${site}terms.html">Terms</a> · <a href="${site}privacy.html">Privacy</a> · <a href="mailto:${HELP_EMAIL}">${HELP_EMAIL}</a></p>` +
+    `<p class="legal">${POSTAL_ADDRESS}</p></div></footer>`
+  );
+}
+
 export const MIN_METRO_LISTINGS = 3;
 const MAX_CARDS = 24;
 const MAX_NEARBY = 12;
@@ -335,7 +375,7 @@ h2{font-size:20px;margin:36px 0 10px}
 .guide{margin:44px 0;padding:24px;border:1px solid #ebebeb;border-radius:18px;background:#fafafa}.guide h2{margin:0 0 6px;font-size:20px}.guide ol{margin:10px 0 0 18px;padding:0;color:#444;line-height:1.5}
 .faq{margin:10px 0 24px}.faq h3{font-size:16px;margin:16px 0 4px}.faq p{margin:0;color:#444;line-height:1.5}
 .links{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 24px}.links a{border:1px solid #ddd;border-radius:999px;padding:7px 12px;font-size:13px;text-decoration:none;color:#222}.links a small{color:#717171;margin-left:4px}
-footer{border-top:1px solid #ebebeb;padding:20px 0 40px;color:#717171;font-size:13px;margin-top:24px}
+footer{border-top:1px solid #ebebeb;padding:20px 0 40px;color:#717171;font-size:13px;margin-top:24px}footer p{margin:0 0 6px}footer .legal a{color:inherit}
 `;
 
 type Faq = { q: string; a: string };
@@ -447,10 +487,10 @@ function page(kind: Kind, metro: Place | null, items: Item[], nearby: Neighbour[
         })
         .join("");
       const photo = i.cover ? cardImage(i.cover) : null;
-      // A listing with a cover photo gets its own static page (listingPages.ts, /l/<id>.html): send the crawler
-      // there instead of straight to the hash route, so it reaches the listing's full facts in one hop from here.
-      // A listing with no cover has no listing page (see listingPages.ts scope), so its card keeps the old link.
-      const cardHref = i.cover ? `${publicSite()}l/${esc(i.id)}.html` : `${publicSite()}#o=${esc(i.id)}`;
+      // A listing that earns its own static page (hasListingPage, /l/<id>.html) sends the crawler there instead
+      // of straight to the hash route, so it reaches the listing's full facts in one hop from here. Every other
+      // listing opens in the app, where it has always lived.
+      const cardHref = hasListingPage(i) ? `${publicSite()}l/${esc(i.id)}.html` : `${publicSite()}#o=${esc(i.id)}`;
       return `<a class="card" href="${cardHref}">
   <div class="art">${photo ? `<img src="${esc(photo.src)}"${photo.srcSet ? ` srcset="${esc(photo.srcSet)}" sizes="${CARD_SIZES}"` : ""} alt="${esc(i.title)}" width="560" height="560" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">` : ""}</div>
   <b>${esc(i.title)}</b><small>${esc(i.area)}</small>
@@ -522,7 +562,7 @@ ${extra.subPlaces && extra.subPlaces.length ? `<h2>${esc(extra.subHeading || "")
 ${nearby.length ? `<h2>${esc(kind.search)} ${metro ? "near " + esc(metro.name) : "by city"}</h2><div class="links">${nearby.map(pill).join("")}</div>` : ""}
 ${otherKinds.length ? `<h2>Other things to do${metro ? " in " + esc(metro.name) : ""}</h2><div class="links">${otherKinds.map(pill).join("")}</div>` : ""}
 </main>
-<footer><div class="wrap">Outset · Book the jump. Skip the call.</div></footer>
+${pageFooter()}
 </body></html>`;
 }
 
@@ -739,7 +779,7 @@ ${socialCard({ title: "Things to do by activity and city · Outset", description
 <style>${CSS}</style></head><body><header><div class="wrap top"><a class="logo" href="${publicSite()}">Outset</a><a class="cta" href="${publicSite()}">Open Outset</a></div></header><main class="wrap"><h1>Things to do by activity and city</h1>
 <h2>Everywhere</h2><div class="links">${kindPages.map((k) => `<a href="${fileFor(k.art, null)}">${esc(k.search)}<small>${num((byKind.get(k.art) || []).length)}</small></a>`).join("")}</div>
 ${cities.map((c) => `<h2>${esc(placeName(c.metro))}</h2><div class="links">${c.pages.map((p) => `<a href="${fileFor(p.kind.art, c.metro.id)}">${esc(p.kind.search)}<small>${num(p.items.length)}</small></a>`).join("")}</div>`).join("\n")}
-</main><footer><div class="wrap">Outset · Book the jump. Skip the call.</div></footer></body></html>`;
+</main>${pageFooter()}</body></html>`;
   writeFileSync(join(dir, "index.html"), index);
   /**
    * A sitemap can hold at most 50,000 URLs. This one alone never gets close, but the listing pages

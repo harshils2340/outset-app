@@ -4,22 +4,35 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Privacy Policy · Outset</title>
-  <meta name="description" content="What Outset collects, why, who it is shared with, and how to have it deleted.">
+  <meta name="description" content="What Outset holds about guests and businesses, who it is shared with, and how to have it corrected or removed.">
+  <link rel="canonical" href="https://onoutset.com/privacy.html">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&display=swap">
   <style>
-    :root { color-scheme: light dark; --ink: #111; --paper: #fff; --accent: #495940; --grey: #5b5b5b; }
-    @media (prefers-color-scheme: dark) { :root { --ink: #ececec; --paper: #141414; --accent: #9fb58a; --grey: #a5a5a5; } }
-    body { font-family: Inter, system-ui, sans-serif; max-width: 42rem; margin: 0 auto; padding: 3rem 1.25rem 5rem; color: var(--ink); background: var(--paper); line-height: 1.6; }
+    :root { color-scheme: light dark; --ink: #111; --paper: #fff; --accent: #495940; --grey: #5b5b5b; --line: #e6e6e6; }
+    @media (prefers-color-scheme: dark) { :root { --ink: #ececec; --paper: #141414; --accent: #9fb58a; --grey: #a5a5a5; --line: #2a2a2a; } }
+    body { font-family: Figtree, system-ui, -apple-system, "Segoe UI", sans-serif; max-width: 42rem; margin: 0 auto; padding: 1.25rem 1.25rem 4rem; color: var(--ink); background: var(--paper); line-height: 1.6; }
     a { color: var(--accent); }
+    nav { display: flex; justify-content: space-between; align-items: center; gap: 1rem; padding: .5rem 0 2rem; }
+    nav .mark { font-weight: 700; font-size: 1.15rem; color: var(--accent); text-decoration: none; }
+    nav .links { display: flex; gap: 1rem; font-size: .9rem; }
+    nav .links a { color: var(--grey); text-decoration: none; }
+    nav .links a[aria-current] { color: var(--ink); font-weight: 600; }
     h1 { font-size: 1.75rem; margin: 0 0 .25rem; letter-spacing: -.01em; }
     h2 { font-size: 1.05rem; margin: 2rem 0 .5rem; }
     p, li { font-size: .95rem; }
     .sub { color: var(--grey); margin: 0 0 2rem; font-size: .9rem; }
-    footer { margin-top: 3rem; font-size: .85rem; color: var(--grey); }
+    dl { margin: 0; } dt { font-weight: 600; margin-top: 1rem; } dd { margin: .15rem 0 0; }
+    address { font-style: normal; }
+    footer { margin-top: 3rem; padding-top: 1.25rem; border-top: 1px solid var(--line); font-size: .85rem; color: var(--grey); }
+    footer p { margin: .25rem 0; }
   </style>
 </head>
 <body>
+  <nav><a class="mark" href="https://onoutset.com/">Outset</a><span class="links"><a href="/about.html">About</a><a href="/terms.html">Terms</a><a href="/privacy.html" aria-current="page">Privacy</a></span></nav>
   <h1>Privacy Policy</h1>
-  <p class="sub">Last updated 18 September 2026. Outset, onoutset.com.</p>
+  <p class="sub">Last updated 23 September 2026. Outset, 339 King St N, Waterloo, ON N2J 0C5, Canada.</p>
 
   <h2>What we hold about a guest</h2>
   <p>When you book, we keep the name, email and phone number you type, what you booked, when, for how many people, and
@@ -35,6 +48,11 @@
   <p>A business you book with sees your name, contact details and booking. Our payments run through Stripe and our email
     through Resend; both see what they need to do that job and nothing else. We do not sell personal information, and
     we do not share it with advertisers.</p>
+
+  <h2>Partner listings</h2>
+  <p>A listing booked on a partner's site (Viator, for example) takes you to that partner when you press its booking
+    button. The link carries Outset's partner id so the partner can credit the referral; it carries nothing about you.
+    What you type on the partner's site is governed by the partner's own privacy policy.</p>
 
   <h2>Email</h2>
   <p>We write to business owners about the page we built for their shop. Every one of those emails carries a one-click
@@ -58,7 +76,9 @@
     first. We answer within 30 days.</p>
 
   <footer>
-    <a href="https://onoutset.com/">Outset</a> · <a href="/terms.html">Terms of Service</a>
+    <p><a href="https://onoutset.com/">Outset</a> · <a href="/about.html">About</a> · <a href="/terms.html">Terms of Service</a> · <a href="/privacy.html">Privacy Policy</a></p>
+    <p><a href="mailto:hello@onoutset.com">hello@onoutset.com</a></p>
+    <address>Outset, 339 King St N, Waterloo, ON N2J 0C5, Canada</address>
   </footer>
 </body>
 </html>

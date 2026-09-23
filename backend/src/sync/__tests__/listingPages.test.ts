@@ -23,6 +23,37 @@ function run(items: Item[]) {
   return { dir, landing, listing, files, read, cleanup: () => rmSync(dir, { recursive: true, force: true }) };
 }
 
+/**
+ * The Gainesville museums page linked "Morton Museum of Cooke County" to /l/o-mortonmuseum-org.html, and that
+ * file was never written: the city page linked every listing with a cover, the listing generator required a
+ * price or reviews as well. One rule now decides both, so a card link to /l/ always lands on a page.
+ */
+test("a city page links to /l/ only for a listing that actually gets a page, and every page carries the legal footer", () => {
+  const items: Item[] = [
+    item("o-priced", { cover: "https://x/a.jpg" }),
+    item("o-photo-only", { cover: "https://x/d.jpg", options: [] }),
+    item("o-reviewed", { cover: "https://x/e.jpg", options: [], reviews: 40 } as Partial<Item>),
+  ];
+  const r = run(items);
+  try {
+    const city = readFileSync(join(r.dir, "p", "cooking-in-toronto.html"), "utf8");
+    assert.match(city, /href="https:\/\/onoutset\.com\/l\/o-priced\.html"/);
+    assert.match(city, /href="https:\/\/onoutset\.com\/l\/o-reviewed\.html"/);
+    assert.match(city, /href="https:\/\/onoutset\.com\/#o=o-photo-only"/);
+    assert.doesNotMatch(city, /l\/o-photo-only\.html/);
+    for (const l of [...city.matchAll(/href="https:\/\/onoutset\.com\/l\/([^"]+)"/g)].map((m) => m[1])) assert.ok(r.files.includes(l), `${l} linked but not written`);
+    for (const html of [city, r.read("o-priced.html")]) {
+      assert.match(html, /href="https:\/\/onoutset\.com\/terms\.html"/);
+      assert.match(html, /href="https:\/\/onoutset\.com\/privacy\.html"/);
+      assert.match(html, /href="https:\/\/onoutset\.com\/about\.html"/);
+      assert.match(html, /hello@onoutset\.com/);
+      assert.match(html, /339 King St N, Waterloo, ON N2J 0C5, Canada/);
+    }
+  } finally {
+    r.cleanup();
+  }
+});
+
 test("a page needs a photo and something to act on; unlisted never gets one", () => {
   const items: Item[] = [
     item("o-a", { cover: "https://x/a.jpg" }),

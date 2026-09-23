@@ -29,6 +29,8 @@ import { getPrefs, setPrefs } from "../explore/prefs";
 import { reportDeadCover, useDeadCovers, withPhotos } from "../../lib/deadCovers";
 import { OTTO_LIVE } from "../../lib/wallet";
 import { AGENT_MODE_LIVE } from "../../lib/concierge";
+import { HELP_EMAIL } from "../../lib/site";
+import { LegalRow } from "./SiteFooter";
 
 
 /** "1 place", "2,418 places". */
@@ -125,7 +127,6 @@ const RAIL_KINDS: { art: ArtKind; title: string }[] = [
 const HOME_RAILS = 14;
 /** Cards in a grid before "Show more". Divisible by 2, 3, 4, 5 and 6 so every column count ends on a full row. */
 const GRID_PAGE = 60;
-const HELP_EMAIL = "hello@onoutset.com";
 
 /** Idle time if the browser offers it, the next tick if it does not. */
 function whenIdle(run: () => void): void {
@@ -1839,6 +1840,9 @@ export function WebHome({ onOperators, onAsk, asking = false, askSeed = "", onCl
               <ul>
                 <li><button type="button" onClick={() => { resetFilters(); setQ(""); window.scrollTo({ top: 0 }); }}>Browse every category</button></li>
                 <li><button type="button" onClick={() => { window.scrollTo({ top: 0 }); openSeg("where"); window.setTimeout(() => whereInput.current?.focus(), 50); }}>Search a city</button></li>
+                <li><a href="about.html">About Outset</a></li>
+                <li><a href="terms.html">Terms of Service</a></li>
+                <li><a href="privacy.html">Privacy Policy</a></li>
                 <li><a href="sitemap.xml">Sitemap</a></li>
               </ul>
             </section>
@@ -1853,6 +1857,7 @@ export function WebHome({ onOperators, onAsk, asking = false, askSeed = "", onCl
               <span>{getCatalog().length.toLocaleString()} operators across the US and Canada</span>
             </span>
           </div>
+          <LegalRow />
         </div>
       </footer>
       </>

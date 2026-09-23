@@ -903,18 +903,15 @@ function RequestBody({
             </div>
           ) : null}
 
-          {/* A partner row's title is a product, not a business, so "Hosted by Fraser Valley Social Wine Tasting
-              Private Tour" named a tour as its own host. Who runs it is the partner's fact to state, on the page
-              this books on; the desktop listing draws no host line for one either. */}
-          {partnerLabel ? null : (
-            <section className="airsec airhost">
-              <span className="airavatar">{item.title.replace(/^the\s+/i, "").charAt(0).toUpperCase()}</span>
-              <span>
-                <b>Hosted by {item.title}</b>
-                <small>{[kind, item.area].join(" · ")}</small>
-              </span>
-            </section>
-          )}
+          <section className="airsec airhost">
+            <span className="airavatar">{item.affiliate ? item.affiliate.label.charAt(0) : item.title.replace(/^the\s+/i, "").charAt(0).toUpperCase()}</span>
+            <span>
+              {/* A partner's product is a tour or a ticket, not a host: it is sold on the partner's site and run
+                  by a tour operator there. */}
+              <b>{item.affiliate ? "Sold on " + item.affiliate.label : "Hosted by " + item.title}</b>
+              <small>{[kind, item.area].join(" · ")}</small>
+            </span>
+          </section>
 
           {rows.length ? (
             <section className="airsec">
@@ -1400,7 +1397,9 @@ function RequestBody({
           <>
             <span className="airreserveprice">
               <span className="big">{from != null ? <>From <b>{money(from)}</b></> : <b>Book on {item.affiliate.label}</b>}</span>
-              <span className="why">Booked on {item.affiliate.label}. Outset earns a commission.</span>
+              {/* The disclosure has to be read in full: this line wraps to two rows instead of ending in an ellipsis
+                  at 390px, which cut it to "Booked on Viator. Outs…". */}
+              <span className="why wrap">Booked on {item.affiliate.label}. Outset earns a commission.</span>
             </span>
             <a className="airaccent" href={item.affiliate.url} target="_blank" rel="sponsored noopener noreferrer">
               Book on {item.affiliate.label}

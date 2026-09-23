@@ -36,6 +36,7 @@ import { Photo } from "../art/Photo";
 import { Mark } from "../layout/Mark";
 import { useModal } from "../layout/useModal";
 import { Markup } from "../Markup";
+import { SiteFooterCompact } from "./SiteFooter";
 
 /**
  * Desktop listing page, laid out as an Airbnb listing: title row with Share and Save, the 1 + 4 photo grid, a 58/33
@@ -1514,12 +1515,14 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
             ) : null}
 
             <section className={"alsec alhost" + (topRatedHere ? " tight" : "")}>
-              <span className="alavatar" aria-hidden="true">{initial}</span>
+              <span className="alavatar" aria-hidden="true">{affiliate ? affiliate.label.charAt(0) : initial}</span>
               <span>
-                <b>Run by {item.title}</b>
+                {/* A partner's product is a tour or a ticket, not a business: "Run by <product name>" told a
+                    guest the product ran itself. The partner sells it, and a tour operator on the partner runs it. */}
+                <b>{affiliate ? "Sold on " + affiliate.label : "Run by " + item.title}</b>
                 {/* Whether a shop has claimed its page is ours to know, not the guest's: this line describes how a
                     booking reaches them, which reads the same either way, so no listing looks second class. */}
-                <small>{affiliate ? "Booked on " + affiliate.label : instant ? "Instant confirmation" : visit ? "Tickets are sold by the business" : "Requests go straight to the business"}</small>
+                <small>{affiliate ? "Run by a tour operator on " + affiliate.label + ". You pick a date and pay there." : instant ? "Instant confirmation" : visit ? "Tickets are sold by the business" : "Requests go straight to the business"}</small>
               </span>
               </section>
 
@@ -2168,6 +2171,8 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
           </section>
         ) : null}
       </div>
+
+      <SiteFooterCompact />
 
       {flash ? <div className="alflash" role="status">{flash}</div> : null}
 

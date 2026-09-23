@@ -5,7 +5,7 @@ import { freeCancelBadge } from "../../../src/lib/cancellation.ts";
 import { displayHours } from "../../../src/lib/hoursText.ts";
 import { METROS } from "../taxonomy/catalog.ts";
 import { REGION_NAME, countryOfArea, regionOfArea } from "../../../src/data/regions.ts";
-import { KINDS, cardPhoto, fileFor, placeName, priceOf, publicSite, socialCard, type Item, type Kind } from "./pages.ts";
+import { KINDS, cardPhoto, fileFor, hasListingPage, pageFooter, placeName, priceOf, publicSite, socialCard, type Item, type Kind } from "./pages.ts";
 
 /**
  * One static page per listing, /l/<id>.html: the business's own name, area, blurb, menu, hours, policies, FAQ
@@ -175,7 +175,7 @@ const CSS =
   `ul.plain{margin:0;padding:0 0 0 18px;font-size:14.5px;line-height:1.6;color:#333}` +
   `.faq h3{font-size:15.5px;margin:16px 0 4px}.faq p{margin:0;color:#444;line-height:1.5;font-size:14.5px}` +
   `.links{display:flex;flex-wrap:wrap;gap:8px;margin:16px 0}.links a{border:1px solid #ddd;border-radius:999px;padding:7px 12px;font-size:13px;text-decoration:none;color:#222}` +
-  `footer{border-top:1px solid #ebebeb;padding:20px 0 40px;color:#717171;font-size:13px;margin-top:24px}`;
+  `footer{border-top:1px solid #ebebeb;padding:20px 0 40px;color:#717171;font-size:13px;margin-top:24px}footer p{margin:0 0 6px}footer .legal a{color:inherit}`;
 
 function page(item: Item, opts: { landingHref: string | null; kindPageHref: string | null }): string {
   const site = publicSite();
@@ -264,7 +264,7 @@ ${requirementsHtml}
 ${faqHtml}
 <div class="links">${links}</div>
 </main>
-<footer><div class="wrap">Outset · Book the jump. Skip the call.</div></footer>
+${pageFooter()}
 </body></html>`;
 }
 
@@ -281,24 +281,8 @@ export function writeListingPages(items: Item[], landingPages: { existingPages: 
   mkdirSync(dir, { recursive: true });
   for (const f of readdirSync(dir)) if (f.endsWith(".html")) unlinkSync(join(dir, f));
 
-  /**
-   * Which listings get a page of their own.
-   *
-   * A photo is the floor, but not the bar. Thirty-eight thousand pages built from what other businesses publish,
-   * each adding little beyond a photo and an address, is the shape Google's scaled-content policy was written
-   * for, and a penalty would fall on the city pages too, which are the ones worth ranking. A page earns its place
-   * when we can show something a guest acts on: a price, or enough public reviews to be worth comparing. The rest
-   * keep their place inside the app and are reached from the city pages, they simply do not get a page to index.
-   * Widen it by lowering this, which is one number, once the indexed pages are earning their keep.
-   */
-  const eligible = items.filter((i) => {
-    if (typeof i.cover !== "string" || !i.cover || (i as { unlisted?: boolean }).unlisted) return false;
-    const priced = (i.options || []).some((o) => typeof o?.price === "number" && o.price > 0);
-    // A partner product has no menu of its own; its from-price and its booking link are the thing a guest acts on.
-    const partnerPriced = !!(i as { affiliate?: unknown }).affiliate && typeof (i as { from?: unknown }).from === "number";
-    const reviews = Number((i as { reviews?: unknown }).reviews) || 0;
-    return priced || partnerPriced || reviews >= 5;
-  });
+  // One rule for a page to exist, shared with the city pages that link here: see hasListingPage in pages.ts.
+  const eligible = items.filter(hasListingPage);
 
   const urls: string[] = [];
   let totalBytes = 0;
