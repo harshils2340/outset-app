@@ -93,7 +93,24 @@
     .controls { display: flex; gap: .5rem; justify-content: center; padding: .9rem 1.1rem 1.1rem; border-top: 1px solid var(--line); }
     .controls button { font-family: inherit; font-weight: 700; font-size: .88rem; border-radius: 999px; padding: .5rem 1rem; cursor: pointer; border: 1.5px solid var(--line); background: transparent; color: var(--ink); display: inline-flex; align-items: center; gap: .4rem; }
     .controls button:hover { border-color: var(--forest); color: var(--forest); }
-    .tri { width: 0; height: 0; border-left: 8px solid currentColor; border-top: 5px solid transparent; border-bottom: 5px solid transparent; }
+    .tri { width: 0; height: 0; border-left: 8px solid currentColor; border-top: 5px solid transparent; border-bottom: 5px solid transparent; margin-left: 2px; }
+
+    /* synced audio player */
+    .player { display: flex; align-items: center; gap: .75rem; padding: .85rem 1.1rem 1.1rem; border-top: 1px solid var(--line); }
+    .playbtn { flex: none; width: 42px; height: 42px; border-radius: 50%; background: var(--forest); color: #fff; border: none; display: grid; place-items: center; cursor: pointer; transition: background .12s, transform .12s; }
+    .playbtn:hover { background: var(--forest-deep); transform: scale(1.04); }
+    .playbtn.playing .tri { display: none; }
+    .playbtn .ic-pause { display: none; align-items: center; gap: 4px; }
+    .playbtn.playing .ic-pause { display: inline-flex; }
+    .ic-pause i { width: 3.5px; height: 14px; background: #fff; border-radius: 1px; display: block; }
+    .scrub { flex: 1; height: 6px; background: var(--line); border-radius: 3px; cursor: pointer; position: relative; }
+    .scrubfill { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: var(--forest); border-radius: 3px; }
+    .scrubfill::after { content: ""; position: absolute; right: -5px; top: 50%; transform: translateY(-50%); width: 12px; height: 12px; border-radius: 50%; background: var(--forest); box-shadow: 0 1px 3px rgba(0,0,0,.25); }
+    .dur { font-size: .8rem; color: var(--ink-soft); font-variant-numeric: tabular-nums; min-width: 3.2rem; text-align: right; }
+    .thread.audio .turn { opacity: 1; transform: none; animation: none; cursor: pointer; transition: opacity .25s; }
+    .thread.audio.playing .turn { opacity: .42; }
+    .thread.audio.playing .turn.active { opacity: 1; }
+    .thread.audio .turn.active .say { box-shadow: 0 0 0 2px var(--sage); }
 
     section { padding: clamp(2.75rem, 6vw, 4.5rem) 0; }
     .eyebrow { color: var(--sage); font-weight: 800; font-size: .78rem; letter-spacing: .1em; text-transform: uppercase; margin: 0 0 .6rem; text-align: center; }
@@ -153,12 +170,18 @@
       <p class="cta-note">Set up in a day · no long contract · talk to a person, not a form</p>
 
       <div class="call" id="call">
+        <audio id="audio" preload="metadata" src="/otto-call.mp3"></audio>
         <div class="bar">
           <div class="who"><span class="ava">O</span><span><b>Otto</b><small>Answering for Bayside Marina</small></span></div>
-          <span class="meta"><span class="wave" id="wave"><i></i><i></i><i></i><i></i><i></i></span> <span id="status">live</span> · <span id="timer">0:00</span></span>
+          <span class="meta"><span class="wave" id="wave"><i></i><i></i><i></i><i></i><i></i></span> <span id="status">call</span> · <span id="timer">0:00</span></span>
         </div>
         <div class="thread" id="thread"></div>
-        <div class="controls">
+        <div class="player" id="player" hidden>
+          <button class="playbtn" id="play" type="button" aria-label="Play the call"><span class="tri"></span><span class="ic-pause"><i></i><i></i></span></button>
+          <div class="scrub" id="scrub"><div class="scrubfill" id="scrubfill"></div></div>
+          <span class="dur" id="dur">0:00</span>
+        </div>
+        <div class="controls" id="controls">
           <button id="replay" type="button">Replay call</button>
           <button id="sound" type="button"><span class="tri"></span> Play with voice</button>
         </div>
@@ -248,54 +271,98 @@
       var doneText = "Rebooked · 2 waverunners · tomorrow 9:00 AM · confirmation texted";
       var thread = document.getElementById("thread"), wave = document.getElementById("wave"),
           statusEl = document.getElementById("status"), timerEl = document.getElementById("timer"),
-          replayBtn = document.getElementById("replay"), soundBtn = document.getElementById("sound");
-      var timers = [], timerInt = null, seconds = 0;
+          replayBtn = document.getElementById("replay"), soundBtn = document.getElementById("sound"),
+          controls = document.getElementById("controls"), audio = document.getElementById("audio"),
+          player = document.getElementById("player"), playBtn = document.getElementById("play"),
+          scrub = document.getElementById("scrub"), scrubFill = document.getElementById("scrubfill"),
+          durEl = document.getElementById("dur");
       var reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-      function clearAll() {
-        timers.forEach(clearTimeout); timers = [];
-        if (timerInt) { clearInterval(timerInt); timerInt = null; }
-        try { window.speechSynthesis && window.speechSynthesis.cancel(); } catch (e) {}
-        thread.innerHTML = ""; seconds = 0; timerEl.textContent = "0:00"; wave.classList.remove("on");
+      function fmt(s) { s = Math.max(0, Math.floor(s || 0)); return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0"); }
+
+      /* ---- Mode A: a real recording is present. Synced transcript player. ---- */
+      var started = false;
+      function startAudioMode() {
+        if (started) return; started = true;
+        controls.hidden = true; player.hidden = false;
+        thread.className = "thread audio";
+        thread.innerHTML = "";
+        var els = turns.map(function (t, i) {
+          var d = document.createElement("div"); d.className = "turn " + t.who; d.dataset.i = i;
+          d.innerHTML = '<p class="lbl">' + (t.who === "otto" ? "Otto" : "Caller") + '</p><span class="say"></span>';
+          d.querySelector(".say").textContent = t.text;
+          d.addEventListener("click", function () { audio.currentTime = starts[i] + 0.02; audio.play(); });
+          thread.appendChild(d); return d;
+        });
+        // Per-line start times, weighted by how long each line is, spread across the file's real length. No
+        // hand-tuned timestamps: it fits whatever recording is dropped in. A caption feels right slightly early,
+        // so each line is nudged a touch before its share.
+        var starts = [], total = 0, dur = audio.duration || 40;
+        var lens = turns.map(function (t) { return t.text.length + 12; });
+        var sum = lens.reduce(function (a, b) { return a + b; }, 0);
+        for (var i = 0; i < turns.length; i++) { starts.push(Math.max(0, (total / sum) * dur - 0.15)); total += lens[i]; }
+        durEl.textContent = fmt(dur);
+
+        var doneShown = false, activeEl = null;
+        function setActive(i) {
+          var el = i == null ? null : els[i];
+          if (el === activeEl) return;
+          if (activeEl) activeEl.classList.remove("active");
+          activeEl = el;
+          if (el) { el.classList.add("active"); el.scrollIntoView({ block: "nearest", behavior: reduce ? "auto" : "smooth" }); }
+        }
+        audio.addEventListener("timeupdate", function () {
+          var ct = audio.currentTime, idx = 0;
+          for (var i = 0; i < starts.length; i++) { if (starts[i] <= ct) idx = i; }
+          setActive(idx);
+          scrubFill.style.width = (audio.duration ? (ct / audio.duration) * 100 : 0) + "%";
+          timerEl.textContent = fmt(ct);
+        });
+        audio.addEventListener("play", function () { playBtn.classList.add("playing"); wave.classList.add("on"); thread.classList.add("playing"); statusEl.textContent = "live"; });
+        audio.addEventListener("pause", function () { playBtn.classList.remove("playing"); wave.classList.remove("on"); });
+        audio.addEventListener("ended", function () {
+          playBtn.classList.remove("playing"); wave.classList.remove("on"); thread.classList.remove("playing");
+          statusEl.textContent = "ended"; setActive(null);
+          if (!doneShown) { doneShown = true; var d = document.createElement("div"); d.className = "done"; d.innerHTML = "<span>✓</span> " + doneText; thread.appendChild(d); d.scrollIntoView({ block: "nearest" }); }
+        });
+        playBtn.addEventListener("click", function () { if (audio.paused) audio.play(); else audio.pause(); });
+        scrub.addEventListener("click", function (e) { var r = scrub.getBoundingClientRect(); audio.currentTime = ((e.clientX - r.left) / r.width) * (audio.duration || 0); });
       }
-      function fmt(s) { return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0"); }
+      audio.addEventListener("loadedmetadata", function () { if (audio.duration && isFinite(audio.duration)) startAudioMode(); });
+      audio.addEventListener("error", startFallback);
+
+      /* ---- Mode B: no recording yet. The animated demo with the browser's own voice. ---- */
+      var timers = [], timerInt = null, seconds = 0, fbInit = false;
       function at(ms, fn) { timers.push(setTimeout(fn, ms)); }
-      function addTurn(t) {
-        var d = document.createElement("div"); d.className = "turn " + t.who;
-        d.innerHTML = '<p class="lbl">' + (t.who === "otto" ? "Otto" : "Caller") + '</p><span class="say"></span>';
-        d.querySelector(".say").textContent = t.text; thread.appendChild(d);
-      }
-      function addChecking(label) {
-        var d = document.createElement("div"); d.className = "checking"; d.id = "checking";
-        d.innerHTML = '<span>' + label + '<span class="dots"><i></i><i></i><i></i></span></span>'; thread.appendChild(d); return d;
-      }
+      function addTurn(t) { var d = document.createElement("div"); d.className = "turn " + t.who; d.innerHTML = '<p class="lbl">' + (t.who === "otto" ? "Otto" : "Caller") + '</p><span class="say"></span>'; d.querySelector(".say").textContent = t.text; thread.appendChild(d); }
+      function addChecking(label) { var d = document.createElement("div"); d.className = "checking"; d.id = "checking"; d.innerHTML = '<span>' + label + '<span class="dots"><i></i><i></i><i></i></span></span>'; thread.appendChild(d); }
       function speak(t, voice) { if (!window.speechSynthesis) return; var u = new SpeechSynthesisUtterance(t.text); u.rate = 1.02; u.pitch = t.who === "otto" ? 1 : 0.95; if (voice) u.voice = voice; window.speechSynthesis.speak(u); }
       function pickVoice() { if (!window.speechSynthesis) return null; var vs = window.speechSynthesis.getVoices() || []; var pref = vs.filter(function (v) { return /en(-|_)US/i.test(v.lang); }); return (pref.find(function (v) { return /samantha|jenny|aria|natural|google us/i.test(v.name); }) || pref[0] || vs[0] || null); }
-      function play(withVoice) {
-        clearAll(); var voice = withVoice ? pickVoice() : null; statusEl.textContent = "live";
+      function playAnim(withVoice) {
+        timers.forEach(clearTimeout); timers = []; if (timerInt) { clearInterval(timerInt); timerInt = null; }
+        try { window.speechSynthesis && window.speechSynthesis.cancel(); } catch (e) {}
+        thread.innerHTML = ""; seconds = 0; timerEl.textContent = "0:00"; wave.classList.remove("on"); statusEl.textContent = "live";
+        var voice = withVoice ? pickVoice() : null;
         timerInt = setInterval(function () { seconds++; timerEl.textContent = fmt(seconds); }, 1000);
         var t = 0;
         turns.forEach(function (turn) {
-          if (turn.check && !reduce) {
-            at(t, function () { wave.classList.remove("on"); addChecking(turn.check); });
-            t += turn.checkMs;
-            at(t, function () { var c = document.getElementById("checking"); if (c) c.remove(); });
-          }
+          if (turn.check && !reduce) { at(t, function () { wave.classList.remove("on"); addChecking(turn.check); }); t += turn.checkMs; at(t, function () { var c = document.getElementById("checking"); if (c) c.remove(); }); }
           at(t, function () { addTurn(turn); if (turn.who === "otto") wave.classList.add("on"); else wave.classList.remove("on"); if (withVoice) speak(turn, voice); thread.scrollTop = thread.scrollHeight; });
-          var dwell = reduce ? 350 : Math.max(turn.pause, Math.min(5200, turn.text.length * 45)); t += dwell;
+          t += reduce ? 350 : Math.max(turn.pause, Math.min(5200, turn.text.length * 45));
         });
-        at(t, function () {
-          wave.classList.remove("on"); statusEl.textContent = "ended"; if (timerInt) { clearInterval(timerInt); timerInt = null; }
-          var d = document.createElement("div"); d.className = "done"; d.innerHTML = "<span>✓</span> " + doneText; thread.appendChild(d); thread.scrollTop = thread.scrollHeight;
-        });
+        at(t, function () { wave.classList.remove("on"); statusEl.textContent = "ended"; if (timerInt) { clearInterval(timerInt); timerInt = null; } var d = document.createElement("div"); d.className = "done"; d.innerHTML = "<span>✓</span> " + doneText; thread.appendChild(d); thread.scrollTop = thread.scrollHeight; });
       }
-      replayBtn.addEventListener("click", function () { play(false); });
-      soundBtn.addEventListener("click", function () {
-        if (window.speechSynthesis && window.speechSynthesis.getVoices().length === 0) {
-          window.speechSynthesis.onvoiceschanged = function () { play(true); window.speechSynthesis.onvoiceschanged = null; };
-          window.speechSynthesis.getVoices(); setTimeout(function () { play(true); }, 250);
-        } else { play(true); }
-      });
-      play(false);
+      function startFallback() {
+        if (started || fbInit) return; fbInit = true;
+        player.hidden = true; controls.hidden = false;
+        replayBtn.addEventListener("click", function () { playAnim(false); });
+        soundBtn.addEventListener("click", function () {
+          if (window.speechSynthesis && window.speechSynthesis.getVoices().length === 0) { window.speechSynthesis.onvoiceschanged = function () { playAnim(true); window.speechSynthesis.onvoiceschanged = null; }; window.speechSynthesis.getVoices(); setTimeout(function () { playAnim(true); }, 250); }
+          else { playAnim(true); }
+        });
+        playAnim(false);
+      }
+      // If the recording never loads in a few seconds, fall back to the animated demo.
+      setTimeout(function () { if (!started) startFallback(); }, 4000);
     })();
   </script>
   <noscript>
