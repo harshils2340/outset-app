@@ -523,3 +523,23 @@ test("the all-metros page lists every place its kind has a page for, towns as we
     r.cleanup();
   }
 });
+
+test("the hours count is the listings that show an hour line, not the ones that carry a placeholder", () => {
+  const items: Item[] = [
+    // A real week, on the lines alone: the count has to read them the way the page that prints them reads them.
+    item("escape", "toronto", 11, { hoursText: ["Mo-Fr 10:00-18:00"] }),
+    // 157 shipped listings publish nothing but the site builder's midnight-to-midnight placeholder, and show none.
+    item("escape", "toronto", 12, { hoursText: ["Mon-Sun 12:00 AM - 11:59 PM"] }),
+    // A campground whose only line is its quiet hours shows none either.
+    item("escape", "toronto", 13, { hoursText: ["Quiet hours are from 11:00pm - 8:00am"] }),
+    // The compact week on a lite record still counts, since the lines themselves were left behind.
+    item("escape", "toronto", 14, { hrs: [null, [600, 1200], null, null, null, null, null] }),
+  ];
+  const r = run(items);
+  try {
+    const html = r.read("escape-in-toronto.html");
+    assert.match(html, /2 of the 4 show hours copied from the operator's website/);
+  } finally {
+    r.cleanup();
+  }
+});

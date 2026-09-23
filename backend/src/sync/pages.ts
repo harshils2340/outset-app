@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import { METROS } from "../taxonomy/catalog.ts";
 import { GUIDES } from "../../../src/data/guides.ts";
 import { REGION_NAME, regionOfArea } from "../../../src/data/regions.ts";
+import { displayHours } from "../../../src/lib/hoursText.ts";
 
 /**
  * Programmatic landing pages: one static page per activity and metro, "Escape rooms in Toronto, Ontario", plus
@@ -215,7 +216,14 @@ export function priceOf(i: Item): number | null {
   return prices.length ? Math.min(...prices) : null;
 }
 
-const hasHours = (i: Item) => (Array.isArray(i.hrs) && i.hrs.some((h) => h != null)) || !!(i.hoursText && i.hoursText.length);
+/**
+ * Whether this listing shows a guest an hour line, asked the way the page that shows it asks: 157 listings
+ * publish nothing but a site builder's midnight-to-midnight placeholder, which `displayHours` refuses, so the
+ * FAQ was counting them under "show hours copied from the operator's website" while they show none. A compact
+ * week on its own still counts: the lite record carries it when the lines themselves were left behind.
+ */
+const hasHours = (i: Item) =>
+  (Array.isArray(i.hrs) && i.hrs.some((h) => h != null)) || displayHours(i.hoursText || []).length > 0;
 
 /** "Toronto, Ontario", "Tampa Bay, Florida", and "Washington DC" when the name already says where it is. Takes
  * a metro or a city Place: both carry the same `name`/`region` shape. */
