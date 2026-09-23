@@ -3911,6 +3911,89 @@ and the Chromium on disk, run before the hunt and again after both fixes.
   screen on a phone, five category accents are still under the AA floor, the sync still does not say which
   10,927 listings it dropped, and no live vendor or partner API has answered anything from this address.
 
+## 23 September 2026, sixty-first run (09:20 to 11:05 UTC)
+
+**Chosen, and why.** Two commits landed after the last entry. `38d4067c8` is discovery output only. `932782d90`
+is the night's real change: the Viator detail pass finished and the pull went from 40 to 160 products per metro,
+so the catalog went from 1,873 partner rows to 6,492 and every one of them now ships the partner's own
+requirements, inclusions and cancellation text. That is the one line on the Not yet checked list that stopped
+being hypothetical while we slept, so it is where this run went: the words those 6,492 rows put in front of a
+guest, and the rules that were written when a partner row carried none of them. Installs, both type checks
+and both suites first; the rehearsal because `src/` moved, run once as a baseline and once on the finished
+tree.
+
+**Found and fixed.**
+
+- **A phone's iOS version was printed as "Ages 15+" on 22 self-guided tours** (`822bd2fad`). `minAge` reads an
+  age word beside a number first and falls back to a bare "N+", because that is how a shop most often writes
+  the rule ("Adults only 18+"). The fallback took the first "N+" anywhere in the line, whatever it counted, and
+  three surfaces print what it returns. So 55 shipped listings advertised an age nobody published: "Supported
+  devices: iPhone with iOS 15+" on 22 tours, "Additional Cost For Groups Of 7+ Passengers" on 19 charters,
+  "Groups of 4+ may be split into multiple helicopters" on 5 flights, "cannot walk 3+ miles" on a walking tour,
+  a reschedule window of "15+ days" on a boat rental, "USTA rating 3.5+" on a tennis club. The number has to be
+  counting years now. Four more listings move onto an age their shop really published.
+
+- **A guest read "you will receive a full refund.\<br\>If you cancel" on 60 partner listings** (`e6e967dcd`).
+  `plainWords` is the one funnel every crawled and partner line goes through, and it took markdown out but not
+  markup. Viator writes a refund policy as one paragraph with breaks between its tiers, so the tag arrived as
+  its own characters on the desktop page, in the phone sheet and out of Otto's mouth. Six operators' service
+  descriptions carried their own editor's leftovers with it: a Word paste, a WordPress date template, and two
+  TinyMCE bookmark spans that were the whole of one camp's "In Program" description. 99 strings read
+  differently and none loses a word.
+
+- **A street art tour opened its description "\*\*SPRING-SUMMER-FALL\*\*"** (`fd6fc509e`). The same funnel left
+  the bold marker in. 253 lines across 149 listings carry a run of asterisks, markdown's or the shop's own
+  decoration, and neither is words. A single asterisk stays: it is a bullet as often as an emphasis.
+
+- **Twenty-five review cards went unsigned because the site bolded the name** (`21d3657d5`). The author slot
+  ends at the first angle bracket, which is right for an Instagram link and a comment form's label and wrong
+  for `<strong>Gerald E.`. The markup comes out first now, through the same rule, and the bracket test still
+  runs on what is left.
+
+- **A Viator tour with no stated terms would have been told to ring itself, on the desktop page**
+  (`f8b6101ca`). Last night's fix taught the phone sheet that a partner has no business to ring; the desktop
+  page needed none, because a partner row stated nothing at all. Now it states requirements, so the page builds
+  its Things to know columns, and it was one field short of the same bug: with requirements and no cancellation
+  its column reads "Contact the business for cancellation terms before you book". No shipped row reaches it
+  today and Tiqets, Klook and GetYourGuide are the feeds that will. The column names the partner instead. The
+  sweep in `partnerSheet.test.ts` asserted the old data fact and has been red on `main` since the detail pass
+  landed; it asserts the standing rule now.
+
+**Checked and sound.** The shape of all 6,492 partner rows: cover, area and its region, from price, metro, pin,
+rating, review count, the partner id on every link, and that none is claimed, instant or assistant-on. Their
+photo sets, which went from one photo each to eight for 4,402 of them: no duplicate, no size-variant twin, the
+cover first every time, every URL HTTPS and on one host the CSP already allows. The `includes` split, which
+already strikes a partner's "not included" line. Their cancellation, which every one of them states, so neither
+surface reaches a fallback. 34 rows state no duration and print none.
+
+**Green after the fixes.** 731 app tests (up from 713, and one that was red on `main` is green) and 697 backend.
+`tsc -b` clean, the backend clean but for TS5097. The rehearsal 53 of 53 against a local Postgres 16 cluster on
+5433 with SSL and the Chromium on disk.
+
+**Needs Harshil.**
+
+- **Viator files everything under "Who can go".** `additionalInfo` is the partner's mixed bag, so the column
+  headed "Who can go" carries "Operates in all weather conditions", "Wheelchair accessible" and, on 73 rows,
+  instructions for booking on TripAdvisor. It is the partner's own honest text under a heading of ours that
+  does not fit it. A second column, or a different heading for a partner row, is your call.
+- **A partner's "what is not included" is read and then dropped.** `detailFields` in
+  `backend/src/affiliates/viator.ts` publishes `inclusions` and stores `exclusions` in the raw detail without
+  ever putting them on a listing, so a guest sees what a tour includes and never what it leaves out, which on
+  these products is usually gratuities, parking and hotel pickup. `splitIncluded` already draws a "not
+  included" line struck through, so it is one field and a sync, but how much of a partner's text we reproduce
+  under the licence is yours rather than mine.
+- **A shop's minimum age is still read off whichever line names one first.** This run took out the numbers that
+  were never ages. The ones that are an age but somebody else's remain: "Children must be accompanied by an
+  adult (18+)" on a family fun centre, "Fishing license required for anglers 16+", "16+ can sign own waiver" on
+  a shop whose floor is 14. Roughly 30 listings, and telling them apart is a judgement rather than a rule.
+- **Last night's stand:** the nth-weekday rule is still read as every such weekday on 8 shops, a season in
+  front of a rule still widens the picker on 2, a partner's price is still quoted in the partner's currency and
+  printed as dollars, the lite shard still carries no unit, `public/unsubscribe.html` still POSTs on load, the
+  listing page still reads three of the ten vendors, `outset-api` still builds with no catalog, the "All
+  requests" link is still parked off screen on a phone, five category accents are still under the AA floor, the
+  sync still does not say which listings it dropped, and no live vendor or partner API has answered anything
+  from this address.
+
 ## Coverage
 
 The catalog is 48,198 listings as of the 23 September sync, 1,873 of them Viator partner rows. Counts below
@@ -4359,7 +4442,26 @@ over all 1,873 partner rows: the host line, the three Things to know rows, and t
 partner's own badge. Those rows' own shape besides: the cover, the area and its region, the from price, the
 duration, the photo count and the title length.
 
-**Not yet checked.** Whether a partner's price should be printed in the currency its API quoted it in: both pulls ask for CAD in Canadian metros, store it, and the catalog record drops it (see this run's Needs Harshil). Whether the phone booking sheet's "Ask Outset" panel should honour the operator's Assistant switch the way the desktop page does; it is behind `AGENT_MODE_LIVE`, so no guest meets it today. Whether a partner product should be in the "near you" rails at all, given that its pin is the city's. Any partner API against its real server: no key exists here, so every affiliate row in this sweep was shaped by hand. Rezdy's reader end to end, which needs a hand-rolled HTTP/2 session because Cloudflare
+What the 6,492 Viator partner rows put in front of a guest, now that the detail pass ships the partner's own
+requirements, inclusions and cancellation text on every one: their shape (cover, area carrying its region,
+from price, metro, pin, rating, review count, the partner id on every link, and that none is claimed, instant
+or assistant-on), their photo sets, which went from one each to eight on 4,402 of them, for a duplicate, a
+size-variant twin, the cover's place, the scheme and the host against the CSP, the `includes` split, and every
+place either surface would otherwise tell a guest to ring a product. Markup in the words a guest reads, over
+every prose field in the catalog and on the four surfaces that print one: a tag, a tag the crawl's cut left
+open, an editor's leftovers in a service description, the bold marker, and the single asterisk that is a
+bullet rather than an emphasis. The author slot on all 4,774 review cards the shipped catalog can draw. A
+minimum age read off a number that counts something else, over all 11,554 listings that state a requirement:
+a software version, a group size, a distance, a booking window, a course load, a tax line and a decimal's tail.
+
+**Not yet checked.** The Viator `additionalInfo` bag, which is what fills a partner row's "Who can go" column: it carries
+"Operates in all weather conditions", "Wheelchair accessible" and, on 73 rows, instructions for booking on
+TripAdvisor, all under a heading of ours that does not fit them (see this run's Needs Harshil). Whether a
+partner's `exclusions` should be published beside its inclusions: the detail pass reads them and the listing
+drops them, so a guest never sees what a tour leaves out (see this run's Needs Harshil). A minimum age that is
+an age but somebody else's: the accompanying adult, the fishing licence, the age that may sign its own waiver,
+about 30 listings and a judgement rather than a rule (see this run's Needs Harshil). Whether a bare URL or an
+email address should be printed inside a "Who can go" bullet, which 25 partner lines carry. Whether a partner's price should be printed in the currency its API quoted it in: both pulls ask for CAD in Canadian metros, store it, and the catalog record drops it (see this run's Needs Harshil). Whether the phone booking sheet's "Ask Outset" panel should honour the operator's Assistant switch the way the desktop page does; it is behind `AGENT_MODE_LIVE`, so no guest meets it today. Whether a partner product should be in the "near you" rails at all, given that its pin is the city's. Any partner API against its real server: no key exists here, so every affiliate row in this sweep was shaped by hand. Rezdy's reader end to end, which needs a hand-rolled HTTP/2 session because Cloudflare
 blocks `fetch` on every `*.rezdy.com` subdomain; its price helpers and its window rule are tested directly
 instead. Whether the concierge's
 watch window should have a browser door of its own: with
@@ -4515,8 +4617,7 @@ that a clock face reading midnight to midnight is now refused on every surface. 
 sync published 10,927 fewer than the last one and the only thing that noticed was a test floor (see this
 run's Needs Harshil). Whether an arrival note that names no fact at all should be printed: 66 are still
 shown, most of them worth keeping, a handful of them a slogan or a tax ID (see this run's Needs Harshil).
-The Viator detail pass's inclusions, requirements and cancellation text, which are code today and in no
-shipped partner row yet. Whether the lite shard should carry the unit a price is sold in, so a phone card can
+Whether the lite shard should carry the unit a price is sold in, so a phone card can
 say "/ person" again where it is true rather than staying silent on all 10,217 priced rows (see the sixtieth
 run's Needs Harshil). What else the lite record is asked for and answers by assumption rather than by
 silence: the unit was the one this run swept, and the same seam runs through every rule a card, a rail or a
