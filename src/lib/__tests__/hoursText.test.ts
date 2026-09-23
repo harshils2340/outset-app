@@ -56,6 +56,26 @@ test("a shop that shouts its hours still states its hours", () => {
 });
 
 /**
+ * The same rule `coversWholeDay` applies in openNow.ts, on the surface that prints the hours rather than the one
+ * that answers "open now". 166 shipped listings publish a site builder's placeholder span, and every one of them
+ * showed nothing at all in the open-or-closed line while this block said they never shut.
+ */
+test("a span covering the whole day is a site builder's placeholder, not hours", () => {
+  assert.deepEqual(displayHours(["Mon-Sun 12:00 AM - 11:59 PM"]), []);
+  assert.deepEqual(displayHours(["Mo-Su 00:00-24:00"]), []);
+  assert.deepEqual(displayHours(["Mo-Fr 00:00-23:59"]), []);
+  // One placeholder day does not take the days beside it that the owner really did set.
+  assert.deepEqual(displayHours(["Mon 12:00 AM - 12:00 AM", "Tue 9:00 AM - 5:00 PM"]), ["Tue 9:00 AM - 5:00 PM"]);
+  // A shop saying it round the clock in words has stated something, so it keeps its line.
+  assert.deepEqual(displayHours(["Mon - Sun: 24 Hours"]), ["Mon - Sun: 24 Hours"]);
+  assert.deepEqual(displayHours(["Open 24/7"]), ["Open 24/7"]);
+  // A real span that only touches midnight at one end is a real span.
+  assert.deepEqual(displayHours(["Daily 12:00 AM - 8:00 AM"]), ["Daily 12:00 AM - 8:00 AM"]);
+  assert.deepEqual(displayHours(["Mon 11:00 AM - 12:00 AM"]), ["Mon 11:00 AM - 12:00 AM"]);
+  assert.deepEqual(displayHours(["Sun 12:00 PM - 11:59 PM"]), ["Sun 12:00 PM - 11:59 PM"]);
+});
+
+/**
  * Over every listing that ships: nothing a guest reads under Hours may carry the syntax, the marks or the
  * invisible characters the crawl brought with it, and what is printed must still be the week the rest of the
  * page reads.

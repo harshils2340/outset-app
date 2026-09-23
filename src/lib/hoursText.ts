@@ -93,6 +93,19 @@ export function tidyHours(text: string): string {
     .trim();
 }
 
+/**
+ * A span that covers the whole day is not opening hours. "12:00 AM - 11:59 PM" and "12:00 AM - 12:00 AM" are
+ * what a site builder writes into the markup when the owner never set any, and `coversWholeDay` in openNow.ts
+ * refuses to read one as hours for exactly that reason, so the open-or-closed line says nothing at all for the
+ * 166 operators in the shipped catalog that publish one. This block said the opposite on the same screen: 182
+ * lines across those same 166 listings, helicopter tours and jet ski rentals reading "Mon-Sun 12:00 AM - 11:59
+ * PM", a closing time none of them ever stated. Same rule, same answer, so the day keeps its honest gap.
+ *
+ * A shop that says "24 Hours" or "Open 24/7" in words is stating something and keeps its line: what is refused
+ * is a clock face that stands for nothing.
+ */
+const WHOLE_DAY = /(?:^|[^\d:])(?:12:00\s*AM|0?0:00)\s*(?:-|–|—|to)\s*(?:12:00\s*AM|11:59\s*PM|24:00|23:59|0?0:00)(?![\d:])/i;
+
 /** The published hour lines as a guest should read them. One line in can be two out when it names two days. */
 export function displayHours(lines: string[]): string[] {
   const out: string[] = [];
@@ -105,7 +118,7 @@ export function displayHours(lines: string[]): string[] {
     const plain = raw.replace(GLUED_DAY, "$1\n$2$3").split(/\n|\s*\|\|\s*/);
     for (const part of osm || plain) {
       const line = tidyHours(part);
-      if (line && !out.includes(line)) out.push(line);
+      if (line && !WHOLE_DAY.test(line) && !out.includes(line)) out.push(line);
     }
   }
   return out;
