@@ -12,7 +12,7 @@ import { addressLine, bookingPaused, contactFor, fmtPhone, fromPrice, getCatalog
 import { DAYS, fmtDate, fmtReviews, fmtTime, money, priceWith, reviewsLine } from "../../lib/format";
 import { srcSet, thumb } from "../../lib/images";
 import { embedAutoplay, isGif, listingMedia, photoCandidates, probePhotos, type Media } from "../../lib/media";
-import { bringLine, cleanDesc, durationLabel, faqText, groupCap as readGroupCap, minAge, splitPolicies, unglueHeading } from "../../lib/listingDerive";
+import { arrivalWords, bringLine, cleanDesc, durationLabel, faqText, groupCap as readGroupCap, minAge, splitPolicies, unglueHeading } from "../../lib/listingDerive";
 import { freeCancelBadge } from "../../lib/cancellation";
 import { bookableStart, clockIn, hourLines, itemOpenState, itemWeek, zoneFor } from "../../lib/openNow";
 import { displayHours } from "../../lib/hoursText";
@@ -180,12 +180,13 @@ export function tidyLine(text: string): string {
 }
 
 /**
- * What the operator says about arriving, or "" when they say nothing. A sign-off like "See you soon!" is not
- * arrival information. This is the only arrival line a guest is ever shown: Outset has no rule of its own.
+ * What the operator says about arriving, or "" when they say nothing. A greeting or a sign-off is not arrival
+ * information, so `arrivalWords` takes those sentences out. This is the only arrival line a guest is ever
+ * shown: Outset has no rule of its own.
  */
 export function arrivalNote(item: { checkin?: string }): string {
-  if (!item.checkin || /^(see you|thank|welcome|we look forward|have fun|enjoy)\b/i.test(item.checkin.trim())) return "";
-  return tidyLine(item.checkin);
+  const words = arrivalWords(item.checkin || "");
+  return words ? tidyLine(words) : "";
 }
 
 const TITLE_SMALL = new Set(["a", "an", "and", "at", "by", "for", "in", "of", "on", "or", "the", "to", "with", "per", "vs"]);

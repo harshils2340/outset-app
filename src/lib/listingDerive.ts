@@ -113,3 +113,49 @@ export function unglueHeading(text: string): string {
       (first.length >= 4 && first.toLowerCase().replace(/s$/, "") === second.toLowerCase().replace(/s$/, "")));
   return same ? text.slice(first.length).trim() : text;
 }
+
+/**
+ * A greeting and a sign-off are courtesy, not arrival information, and a shop's arrival note is full of both.
+ * The words that are left are what a guest needs on the day: the dock, the parking, how early to be there.
+ *
+ * The rule used to be a prefix test over the whole note, so a note that opened "Thank you for booking with
+ * us" was dropped entire. 110 of the 644 shipped notes open that way, and with them went "Meeting location:
+ * Pier 39, Gate I", "arrive at the dock 45 minutes prior to sailing time", and "We meet under the white tent
+ * behind the GoldBelt Tram building". A guest was shown nothing at all where the shop had said the most.
+ *
+ * So the courtesy goes sentence by sentence and only when that sentence says nothing else: a date, a time, a
+ * place, a waiver or anything else in `ARRIVAL_FACT` keeps it, and so does a sentence too long to be only a
+ * greeting. What is left of a note that was all courtesy is nothing, which is what a guest should be shown.
+ */
+const PLEASANTRY = new RegExp(
+  "^(?:" +
+    [
+      "see you",
+      "thanks?(?: you)?",
+      "welcome",
+      "have fun",
+      "enjoy",
+      "we(?:'re|’re| are)? ?(?:so |very |really )?(?:looking forward|look forward|excited|stoked|can(?:'|’)?t wait|cannot wait|appreciate)",
+      "you(?:'re|’re| are) all set",
+      "like us on",
+      "follow us",
+      "check out our",
+      "connect with",
+    ].join("|") +
+    ")\\b",
+  "i",
+);
+
+/** Anything a guest would act on. A sentence carrying one of these is kept however politely it opens. */
+const ARRIVAL_FACT =
+  /\d|\barriv|\bcheck[ -]?in\b|\bmeet\b|\bmeeting\b|\bpark(?:ing)?\b|\bdock\b|\bmarina\b|\bpier\b|\bramp\b|\bgate\b|\baddress\b|\blocat|\bbring\b|\bwear\b|\bwaiver|\bearly\b|\bprior\b|\blate\b|\bdepart|\bcall\b|\btext\b|\bsign\b/i;
+
+/** The shop's own arrival note with the courtesy taken out, or "" when courtesy was all of it. */
+export function arrivalWords(checkin: string): string {
+  const kept = String(checkin || "")
+    .split(/(?<=[.!?])\s+/)
+    .filter((s) => !(s.length <= 160 && PLEASANTRY.test(s.trim()) && !ARRIVAL_FACT.test(s)))
+    .join(" ")
+    .trim();
+  return /[a-z]{3}/i.test(kept) ? kept : "";
+}

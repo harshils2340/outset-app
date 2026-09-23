@@ -4,7 +4,7 @@ import { addressLine, bookingPaused, plainWords } from "./catalog";
 import { callablePhone } from "./phone";
 import { withoutNoticeWindows } from "./duration";
 import { money } from "./format";
-import { faqText, groupCap, minAge } from "./listingDerive";
+import { arrivalWords, faqText, groupCap, minAge } from "./listingDerive";
 import { liveRead } from "./liveTimes";
 import { bookableStart, clockIn, dayKeyIn, hourLines, itemWeek, openStateAt, zoneFor, type Week } from "./openNow";
 import { venueLabel } from "./places";
@@ -1223,7 +1223,10 @@ function meetAnswer(ctx: CompanyContext, q: string): { text: string; state: Chat
     if (line) return { text: sentence(line), state: { topic: "meet" } };
     return { text: "Parking isn't in what they publish. " + nextStep(ctx), state: { topic: "meet" } };
   }
-  if (/check.?in/i.test(q) && ctx.item.checkin) return { text: sentence(clip(ctx.item.checkin, 150)), state: { topic: "meet" } };
+  // The same arrival words the listing page prints: a note that is only "We're looking forward to seeing you!"
+  // is no answer to "what time is check-in", and a greeting in front of the real answer eats the 150 characters.
+  const arrival = arrivalWords(ctx.item.checkin || "");
+  if (/check.?in/i.test(q) && arrival) return { text: sentence(clip(arrival, 150)), state: { topic: "meet" } };
   if (ctx.item.meetingPoint) {
     const mp = clip(ctx.item.meetingPoint, 120).replace(/^at\s+/i, "");
     return { text: /^(check|meet|arrive|go to|report|head)/i.test(mp) ? sentence(upper1(mp)) : "Meet at " + lower1(mp) + ".", state: { topic: "meet" } };
