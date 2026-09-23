@@ -1,6 +1,6 @@
 import { db } from "../db/client.ts";
 import { METROS } from "../taxonomy/catalog.ts";
-import { MAX_AGE_HOURS } from "./viator.ts";
+import { MAX_AGE_HOURS, detailFields, type DetailFields, type ViatorDetailSections } from "./viator.ts";
 
 /**
  * Affiliate rows as catalog listings. Same shape every other listing has (so cards, search, rails, the listing
@@ -100,20 +100,34 @@ function parseList(json: string): string[] {
   }
 }
 
+/**
+ * A partner's exclusion in the words the listing page already reads. Both surfaces split `includes` on
+ * "not included" and draw what they find struck through, the way Airbnb draws a missing amenity, so an
+ * exclusion needs no field and no component of its own.
+ */
+export function notIncludedLine(text: string): string {
+  return /\bnot included\b|\bexcluded\b|\bnot provided\b|\bdoes(?: not|n[’']t) include\b/i.test(text) ? text : text.replace(/[.\s]+$/, "") + " (not included)";
+}
+
 export function toAffiliateItem(r: AffiliateRow): Record<string, unknown> {
   const metro = METROS.find((m) => m.id === r.metro_id);
   const images = parseList(r.images);
   const flags = parseList(r.flags);
   const { cat, art } = kindFor(r.title);
   const fc = flags.includes("FREE_CANCELLATION") ? "Free cancellation" : undefined;
-  // The detail pass (viator.ts detailViator) leaves what the summary lacks under raw.detail.fields.
-  const detail = ((): { includes?: string[]; requirements?: string[]; cancellation?: string | null } => {
+  // The detail pass (viator.ts detailViator) leaves the product's own sections under raw.detail, and a copy of
+  // what it made of them under raw.detail.fields. The sections are read here rather than that copy, so a rule
+  // put right in detailFields reaches a guest on the next sync instead of waiting for a fresh pass over the API.
+  const detail = ((): Partial<DetailFields> => {
     try {
-      return (JSON.parse(r.raw || "{}") as { detail?: { fields?: { includes?: string[]; requirements?: string[]; cancellation?: string | null } } }).detail?.fields || {};
+      const d = (JSON.parse(r.raw || "{}") as { detail?: ViatorDetailSections & { fields?: Partial<DetailFields> } }).detail;
+      if (!d) return {};
+      return d.inclusions || d.exclusions || d.additionalInfo || d.cancellationPolicy ? detailFields(d) : d.fields || {};
     } catch {
       return {};
     }
   })();
+  const excludes = (detail.excludes || []).map(notIncludedLine);
   return {
     id: r.id,
     title: r.title,
@@ -128,7 +142,7 @@ export function toAffiliateItem(r: AffiliateRow): Record<string, unknown> {
     lon: r.lon ?? undefined,
     specs: [],
     options: [],
-    includes: detail.includes || [],
+    includes: [...(detail.includes || []), ...excludes],
     requirements: detail.requirements?.length ? detail.requirements : undefined,
     cancellation: detail.cancellation || undefined,
     gap: "",

@@ -317,7 +317,7 @@ export async function pullViator(opts: { metros?: string[]; perMetro: number; wr
 }
 
 /** The parts of /products/{code} a listing shows beyond the search summary. */
-export type ViatorProductDetail = ViatorProduct & {
+export type ViatorDetailSections = {
   inclusions?: { typeDescription?: string; otherDescription?: string }[];
   exclusions?: { typeDescription?: string; otherDescription?: string }[];
   additionalInfo?: { type?: string; description?: string }[];
@@ -325,16 +325,29 @@ export type ViatorProductDetail = ViatorProduct & {
   itinerary?: { privateTour?: boolean; maxTravelersInSharedTour?: number };
 };
 
+export type ViatorProductDetail = ViatorProduct & ViatorDetailSections;
+
+export type DetailFields = {
+  includes: string[];
+  /** What the product says it leaves out, in the partner's own words. */
+  excludes: string[];
+  requirements: string[];
+  cancellation: string | null;
+  groupSize: number | null;
+  privateTour: boolean;
+};
+
 /** What the detail adds to a listing: a full photo set, the whole description, inclusions, requirements, the policy. */
-export function detailFields(d: ViatorProductDetail): { includes: string[]; requirements: string[]; cancellation: string | null; groupSize: number | null; privateTour: boolean } {
+export function detailFields(d: ViatorDetailSections): DetailFields {
   const line = (x: { typeDescription?: string; otherDescription?: string }) => (x.otherDescription || (x.typeDescription && x.typeDescription !== "Other" ? x.typeDescription : "") || "").trim();
   const includes = (d.inclusions || []).map(line).filter(Boolean).slice(0, 12);
+  const excludes = (d.exclusions || []).map(line).filter(Boolean).slice(0, 12);
   const requirements = (d.additionalInfo || [])
     .map((a) => (a.description || "").trim())
     .filter((s) => s && !/^(confirmation will be received|most travelers can participate|public transportation)/i.test(s))
     .slice(0, 12);
   const cancellation = (d.cancellationPolicy?.description || "").trim() || null;
-  return { includes, requirements, cancellation, groupSize: d.itinerary?.maxTravelersInSharedTour ?? null, privateTour: !!d.itinerary?.privateTour };
+  return { includes, excludes, requirements, cancellation, groupSize: d.itinerary?.maxTravelersInSharedTour ?? null, privateTour: !!d.itinerary?.privateTour };
 }
 
 /**

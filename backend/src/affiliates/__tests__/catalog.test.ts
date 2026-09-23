@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { kindFor, toAffiliateItem, type AffiliateRow } from "../catalog.ts";
-import { bestImages, bookingUrl, durationText, metroDestinations, type ViatorProduct } from "../viator.ts";
+import { kindFor, notIncludedLine, toAffiliateItem, type AffiliateRow } from "../catalog.ts";
+import { bestImages, bookingUrl, detailFields, durationText, metroDestinations, type ViatorProduct } from "../viator.ts";
 
 const row: AffiliateRow = {
   id: "a-viator-5010syd",
@@ -82,4 +82,57 @@ test("each metro gets the nearest city destination, and a metro with none is ski
   ]);
   assert.equal(map.get("tampa")?.destinationId, 1, "the closest city, not the state that shares its centre");
   assert.equal(map.get("miami"), undefined, "no destination within 40 km of Miami in this list");
+});
+
+/* ---------- what the detail pass makes of a product's own sections ---------- */
+
+test("the detail keeps what a product says it leaves out", () => {
+  const fields = detailFields({
+    inclusions: [{ typeDescription: "Local guide" }, { typeDescription: "Other", otherDescription: "Hotel pickup" }],
+    exclusions: [{ typeDescription: "Gratuities" }, { typeDescription: "Other", otherDescription: "Lunch is not included" }],
+    cancellationPolicy: { description: "For a full refund, cancel at least 24 hours before the scheduled departure time." },
+    itinerary: { privateTour: true, maxTravelersInSharedTour: 12 },
+  });
+  assert.deepEqual(fields.includes, ["Local guide", "Hotel pickup"]);
+  assert.deepEqual(fields.excludes, ["Gratuities", "Lunch is not included"]);
+  assert.equal(fields.groupSize, 12);
+  assert.equal(fields.privateTour, true);
+});
+
+test("an exclusion reaches a guest in the words both listing surfaces already strike through", () => {
+  assert.equal(notIncludedLine("Gratuities"), "Gratuities (not included)");
+  assert.equal(notIncludedLine("Hotel pickup and drop-off."), "Hotel pickup and drop-off (not included)");
+  // A partner that says it in its own sentence keeps the sentence: "Lunch is not included (not included)" reads twice.
+  assert.equal(notIncludedLine("Lunch is not included"), "Lunch is not included");
+  assert.equal(notIncludedLine("Food and drinks are not provided"), "Food and drinks are not provided");
+});
+
+test("a listing publishes the product's own sections, not the copy an older detail pass left behind", () => {
+  const item = toAffiliateItem({
+    ...row,
+    raw: JSON.stringify({
+      detail: {
+        inclusions: [{ typeDescription: "Local guide" }],
+        exclusions: [{ typeDescription: "Gratuities" }],
+        additionalInfo: [{ type: "WHEELCHAIR_ACCESSIBLE", description: "Wheelchair accessible" }],
+        cancellationPolicy: { description: "Cancel at least 24 hours before for a full refund." },
+        // What the pass of 23 September wrote: no exclusions at all, because nothing read them.
+        fields: { includes: ["Local guide"], requirements: ["Wheelchair accessible"], cancellation: "Cancel at least 24 hours before for a full refund." },
+      },
+    }),
+  });
+  assert.deepEqual(item.includes, ["Local guide", "Gratuities (not included)"]);
+  assert.deepEqual(item.requirements, ["Wheelchair accessible"]);
+});
+
+test("a row whose detail is only the older copy still publishes it", () => {
+  const item = toAffiliateItem({ ...row, raw: JSON.stringify({ detail: { fields: { includes: ["Local guide"], requirements: ["Wheelchair accessible"], cancellation: null } } }) });
+  assert.deepEqual(item.includes, ["Local guide"]);
+  assert.deepEqual(item.requirements, ["Wheelchair accessible"]);
+});
+
+test("a row with no detail at all is still a listing", () => {
+  const item = toAffiliateItem({ ...row, raw: null });
+  assert.deepEqual(item.includes, []);
+  assert.equal(item.requirements, undefined);
 });

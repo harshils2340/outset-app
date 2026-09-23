@@ -85,3 +85,21 @@ test("the desktop page names the partner where it would otherwise name a busines
   assert.match(WEB, /const noCancelLine = affiliate \? affiliate\.label \+ " states the cancellation terms on the page this books on\." : "Contact the business for cancellation terms before you book\.";/);
   assert.match(WEB, /cancelLines\.length \? cancelLines : \[noCancelLine\]/);
 });
+
+/**
+ * What a partner says its price leaves out. The Viator detail pass fetched `exclusions` from the first day and
+ * the catalog record dropped them, so a guest read a tour's inclusions and never that lunch, gratuities or the
+ * park entrance fee are theirs to pay. The sync now publishes each one as "<thing> (not included)", which is
+ * the shape both surfaces already split out of `includes` and draw struck through, the way Airbnb draws an
+ * amenity a place does not have. This is the contract between the two projects, so it is pinned on both sides:
+ * `notIncludedLine` in backend/src/affiliates/catalog.ts writes it, and the rule below reads it.
+ */
+test("an exclusion the sync publishes is struck through, not read as something included", () => {
+  const m = WEB.match(/const NOT_INCLUDED = (\/.+?\/)[a-z]*;/);
+  assert.ok(m, "the page still keeps one rule for a line that says something is not included");
+  const notIncluded = new RegExp(m![1].slice(1, -1), "i");
+  for (const line of ["Gratuities (not included)", "Hotel pickup and drop-off (not included)", "Lunch is not included"]) {
+    assert.ok(notIncluded.test(line), line);
+  }
+  assert.ok(!notIncluded.test("Local guide"), "and an inclusion stays an inclusion");
+});
