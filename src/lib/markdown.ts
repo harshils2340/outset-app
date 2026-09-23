@@ -32,13 +32,25 @@ const HEADING = /(^|\s|\S)#{1,6}(?=\s|$)/g;
  */
 const DANGLING = /\s*\[[^\]]*$/;
 
+/**
+ * A run of two or more asterisks: markdown's bold, or the decoration a shop writes for the same reason. 123
+ * shipped lines carry one, and both readings are syntax rather than words, so a guest read "**SPRING-SUMMER-FALL**
+ * Enjoy a cool drink", "Complimentary **local** pick up" and "** PLEASE NOTE THAT THIS TOUR IS VERY WEATHER
+ * DEPENDENT**". It leaves a space, because a run is as often between two words as around one: a market stall
+ * writes "...IN PIONEER SQUARE******SPACE SIZES VARY***" and the two words are not one.
+ *
+ * A single asterisk is left alone. It is a bullet as often as an emphasis ("Included: * FREE PARKING LOT * 50
+ * black Chiavari chairs"), and taking it out of that line runs the items together.
+ */
+const BOLD = /\*{2,}/g;
+
 /** The words of a crawled line, with any markdown syntax taken back out. */
 export function stripMarkdown(text: string): string {
-  if (!text || !/[[\]#]/.test(text)) return text;
-  let out = text.replace(IMAGE, " ").replace(LINK, "$1");
+  if (!text || !/[[\]#*]/.test(text)) return text;
+  let out = text.replace(IMAGE, " ").replace(LINK, "$1").replace(BOLD, " ");
   // A heading marker glued to a word ("Location##") keeps the word; one standing alone leaves a single space.
   out = out.replace(HEADING, (_m, before: string) => (before && !/\s/.test(before) ? before : " "));
-  return out.replace(DANGLING, "").replace(/\s{2,}/g, " ").trim();
+  return out.replace(DANGLING, "").replace(/\s+([,.;:!?])/g, "$1").replace(/\s{2,}/g, " ").trim();
 }
 
 /**

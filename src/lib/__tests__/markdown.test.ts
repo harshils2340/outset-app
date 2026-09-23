@@ -88,3 +88,38 @@ test("no shipped listing hands a guest markdown any more", () => {
   assert.ok(n > 40000, "expected the shipped catalog, swept " + n);
   assert.deepEqual(bad, [], bad.length + " lines still carry markdown, first: " + bad[0]);
 });
+
+test("a run of asterisks is emphasis or decoration, and neither is words", () => {
+  // a-viator-120411p3 opens its description with one, a-viator-169395p4 puts one around a single word.
+  assert.equal(stripMarkdown("**SPRING-SUMMER-FALL**\n\nEnjoy a cool drink"), "SPRING-SUMMER-FALL Enjoy a cool drink");
+  assert.equal(stripMarkdown("Complimentary **local** pick up"), "Complimentary local pick up");
+  assert.equal(stripMarkdown("** PLEASE NOTE THAT THIS TOUR IS VERY WEATHER DEPENDENT**"), "PLEASE NOTE THAT THIS TOUR IS VERY WEATHER DEPENDENT");
+  // o-210studioseattle-com runs two of its own headings together with six asterisks between the words.
+  assert.equal(stripMarkdown("***IN PIONEER SQUARE******SPACE SIZES VARY***"), "IN PIONEER SQUARE SPACE SIZES VARY");
+});
+
+test("a single asterisk is a bullet as often as an emphasis, so it stays", () => {
+  // o-bellevuewilmington-com lists its inclusions with one. Taking it out runs the items together.
+  const list = "Included: * FREE PARKING LOT * 50 black Chiavari chairs * 9 six-foot tables";
+  assert.equal(stripMarkdown(list), list);
+  assert.equal(stripMarkdown("Hurricane Sundeck DC *Premium Exclusive* Call"), "Hurricane Sundeck DC *Premium Exclusive* Call"); // o-boatelmers-com
+});
+
+test("no shipped listing hands a guest a bold marker", () => {
+  const dir = new URL("../../../public/o/", import.meta.url);
+  const bad: string[] = [];
+  const walk = (id: string, v: unknown) => {
+    if (typeof v === "string") {
+      if (v.includes("**") && plainWords(v).includes("**")) bad.push(id + ": " + plainWords(v).slice(0, 90));
+      return;
+    }
+    if (Array.isArray(v)) return void v.forEach((x) => walk(id, x));
+    if (v && typeof v === "object") for (const k of Object.keys(v)) walk(id, (v as Record<string, unknown>)[k]);
+  };
+  for (const f of readdirSync(dir)) {
+    if (!f.endsWith(".json")) continue;
+    const item = JSON.parse(readFileSync(new URL(f, dir), "utf8"));
+    walk(item.id, item);
+  }
+  assert.deepEqual(bad.slice(0, 10), [], bad.length + " lines still carry one");
+});
