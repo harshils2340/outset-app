@@ -3626,6 +3626,66 @@ and the rehearsal run at the end at 53 of 53 against a local Postgres 16 cluster
   screen on a phone, five category accents are still under the AA floor, and no live vendor has answered
   anything from this address.
 
+## 23 September 2026, fifty-seventh run (05:15 to 06:40 UTC)
+
+**Chosen, and why.** Every area the brief names is down as verified, but nine commits landed after the
+fifty-sixth run's entry and they carry a whole new kind of listing a guest can see: affiliate products, the
+partner rows from Viator and Tiqets that are shown under licence and booked on the partner's site. Nothing
+had swept them, and they arrive in the catalog wearing an ordinary listing's clothes, so this run read every
+guest and operator surface that meets one. The container was a fresh checkout: both installs first, then the
+type checks and both suites, clean at 689 app and 674 backend. The rehearsal was run at the end rather than
+the start, because those commits touch `backend/src` and `src/`, which is the brief's second reason to run it.
+
+**Found and fixed.**
+
+- **A partner's product was offered as a request, and as a business to claim** (`c0f65001`). The card and
+  reserve card added with the feature know about partners; five other surfaces did not. The phone card badged
+  a Viator product "Guest favourite" or nothing, and with no from-price said "Request to book", a request
+  nobody ever receives; the desktop card, the compare table's From row and the listing page's nearby cards
+  said the same, and the compare table told a guest to "Contact the business" that never took the booking.
+  The listing page offered "Work here? Manage this listing" on a partner's product, and the claim screen's own
+  business search found partner products, so an owner could pick one and walk into "we have no email on file
+  for this business". Otto is now off from the one field that always travels: the sync writes
+  `assistant: false` into the detail file only, so a card, a rail and a page's first paint held a record with
+  no such key and read the assistant as on.
+
+- **The API took a booking for a partner's product** (`c7dd2fc3`). Affiliate listings are published into
+  `public/o` with every other listing, so `POST /bookings` read one as an ordinary shop: an id in a link, or
+  any client that is not our page, stored a booking row for a Viator product and sent the founder a "call the
+  shop" alert for a business that never sold it, with nobody to email, no slot to hold and no price on the
+  record. It answers 409 and says where the experience is booked. The listing file is read before the profile
+  now, so the refusal lands without touching Postgres, which is what lets the new test drive the real route
+  with no database.
+
+- **A guest was told how far away a partner's product is** (`6ed5c90b`). Viator files every product at the
+  centre of the destination it named and Tiqets at the metro's, so the coordinate on a partner row is one
+  point shared by every product in that city. The two cards and the phone sheet printed "2 miles away" off it
+  for a dock that could be twenty, and the generated `/l/` page published it as the listing's own
+  GeoCoordinates. The distance lines fall back to the city the product is filed under; the page publishes no
+  geo; the rails still rank by it, where city grain is all a rank needs.
+
+**Checked and sound.** The partner rows themselves: `assistant: false`, empty options, no claim key, an id
+that starts `a-` so no operator path matches it, and outreach reading the operators table, which they are not
+in. The link on every surface carries `rel="sponsored noopener noreferrer"` and the commission is said beside
+it. The booking box draws no start times for one, and the picker, the pay step and the Otto panel are all
+behind a time nothing can set.
+
+**Green after the fixes.** 693 app tests (up from 689), 677 backend (up from 674), both type checks clean, and
+the rehearsal at 53 of 53 against a local Postgres 16 cluster and the Chromium on disk.
+
+**Needs Harshil.**
+
+- **A partner's price is quoted in the partner's currency and printed as dollars.** Both pulls ask for CAD in
+  Canadian metros and store the currency, and `toAffiliateItem` drops it, so a Toronto product priced at
+  CAD 120 reads "From $120" on a card that sits beside US prices. The same blending the comparison line
+  already does, but here it is a number we quote against a partner page that will show something else.
+- **A partner's rating shows with no written reviews under it**, which is the standing question for rated
+  listings generally, and every partner row is rated.
+- **Last night's stand:** `public/unsubscribe.html` still POSTs on load, the listing page still reads three of
+  the ten vendors, `outset-api` still builds with no catalog, the "All requests" link is still parked off
+  screen on a phone, five category accents are still under the AA floor, and no live vendor or partner API has
+  answered anything from this address: every affiliate check here ran against rows shaped by hand.
+
 ## Coverage
 
 **Verified so far.** The name a guest reads: the business name on all 59,125 shipped listings, against the
@@ -4044,7 +4104,13 @@ menu the server prices from. That the menu the booking box offers and the menu `
 one menu, on every priced row of all 59,125 listings and on every extra beside them, and that two extras
 sharing a name are told apart by the guest's own total the way two tiers already were.
 
-**Not yet checked.** Rezdy's reader end to end, which needs a hand-rolled HTTP/2 session because Cloudflare
+Affiliate listings, the partner products from Viator and Tiqets, on every surface that meets one: the phone
+and desktop cards, the compare table, the listing page and its nearby cards, the phone booking sheet, the
+generated `/l/` page and its structured data, Otto's two gates, the claim screen's business search and the
+listing page's own claim line, and `POST /bookings`, which is the route that decides whether Outset can be
+made to take a booking for one.
+
+**Not yet checked.** Whether a partner's price should be printed in the currency its API quoted it in: both pulls ask for CAD in Canadian metros, store it, and the catalog record drops it (see this run's Needs Harshil). Whether the phone booking sheet's "Ask Outset" panel should honour the operator's Assistant switch the way the desktop page does; it is behind `AGENT_MODE_LIVE`, so no guest meets it today. Whether a partner product should be in the "near you" rails at all, given that its pin is the city's. Any partner API against its real server: no key exists here, so every affiliate row in this sweep was shaped by hand. Rezdy's reader end to end, which needs a hand-rolled HTTP/2 session because Cloudflare
 blocks `fetch` on every `*.rezdy.com` subdomain; its price helpers and its window rule are tested directly
 instead. Whether the concierge's
 watch window should have a browser door of its own: with
