@@ -1,1 +1,36 @@
-[]
+[
+ {
+  "name": "Southern Thunder Cooking School of BBQ",
+  "website": "http://www.southernthunderbbq.com/",
+  "domain": "southernthunderbbq.com",
+  "street": "1473 Joyner Ave SE",
+  "city": "Marietta",
+  "region": "GA",
+  "postal": "30060",
+  "lat": 33.9173,
+  "lon": -84.5448,
+  "phone": "+17065107045",
+  "kind": "cooking",
+  "source": "directory",
+  "directory": "coursehorse",
+  "sourceUrl": "https://coursehorse.com/atlanta/schools/cooking/southern-thunder-bbq",
+  "activity": "class"
+ },
+ {
+  "name": "Art School 99",
+  "website": "https://www.artschool99somerville.com/",
+  "domain": "artschool99somerville.com",
+  "street": "86 Joy St #37, 2nd Fl",
+  "city": "Somerville",
+  "region": "MA",
+  "postal": "02143",
+  "lat": 42.3788,
+  "lon": -71.0866,
+  "phone": "+16512459710",
+  "kind": "pottery",
+  "source": "directory",
+  "directory": "coursehorse",
+  "sourceUrl": "https://coursehorse.com/boston/schools/art/art-school-99",
+  "activity": "class"
+ }
+]

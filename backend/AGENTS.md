@@ -56,8 +56,15 @@ out to book on Viator, with our partner id on the link and the commission said o
 photos, descriptions and prices; nothing reads viator.com's pages. Dry by default, `--write` to store,
 `--refresh --write` daily so no row is older than the licence's 24 hour content TTL (rows past 48 hours are not
 published). Needs `VIATOR_API_KEY` in `backend/.env` (free: viator.com partner account, Tools, Affiliate API). An
-affiliate row is never an operator: no claim link, no outreach, no Instant Book, no request, no Otto. Tiqets,
-Headout and Klook follow the same shape when their keys exist.
+affiliate row is never an operator: no claim link, no outreach, no Instant Book, no request, no Otto.
+`npx tsx src/index.ts tiqets` is the same feed from the Tiqets Distributor API (`src/affiliates/tiqets.ts`, needs
+`TIQETS_API_KEY`, cities matched to metros by name and country); Headout and Klook follow the same shape when their
+keys exist.
+
+Directory leads with no website go through two lookups. `npx tsx scripts/resolve-known.mts --source=<id>` is free:
+it matches a lead against the operators we already hold by town and name (both ways, so "Milton Art Center" is not
+"Milton Art Museum") and takes that row's website. `scripts/resolve-websites.mts` is the paid one (one Google Maps
+query per lead, priced before it runs) for whatever the free pass left.
 
 `npx tsx scripts/discover-directories.mts --source=<id>` reads a slice of a directory-style marketplace (Captain
 Experiences, CourseHorse; registry in `src/discover/directories.ts`) for the businesses on it: name, town, street

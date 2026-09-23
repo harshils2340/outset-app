@@ -17,6 +17,7 @@ import { discoverAi } from "./discover/aisearch.ts";
 import { placesCommand } from "./discover/places.ts";
 import { sendOutreach } from "./outreach/send.ts";
 import { pullViator, refreshViator } from "./affiliates/viator.ts";
+import { pullTiqets } from "./affiliates/tiqets.ts";
 import { recordUnsub } from "./lib/unsub.ts";
 import { ownersCsv, ownersPending } from "./enrich/owners.ts";
 import { readPendingStructures, readSiteStructure } from "./enrich/structure.ts";
@@ -615,6 +616,20 @@ if (cmd === "viator") {
   const metros = process.argv.find((a) => a.startsWith("--metros="))?.split("=")[1]?.split(",").map((s) => s.trim()).filter(Boolean);
   const r = await pullViator({ metros, perMetro: per, write });
   console.log(`Viator: ${r.matched} of ${r.metros} metros matched a destination, ${r.products} products${write ? ", " + r.written + " stored" : " (dry run, nothing stored; add --write)"}.` + (r.skipped.length ? " Skipped: " + r.skipped.join(", ") : ""));
+  process.exit(0);
+}
+
+/**
+ * Tiqets affiliate feed, same shape as viator: dry by default, --write to store, --metros=, --per-metro=.
+ * Needs TIQETS_API_KEY in backend/.env (free, partner portal -> Tools -> API tokens).
+ */
+if (cmd === "tiqets") {
+  ingestAll();
+  const write = process.argv.includes("--write");
+  const per = Number(process.argv.find((a) => a.startsWith("--per-metro="))?.split("=")[1] || 40);
+  const metros = process.argv.find((a) => a.startsWith("--metros="))?.split("=")[1]?.split(",").map((s) => s.trim()).filter(Boolean);
+  const r = await pullTiqets({ metros, perMetro: per, write });
+  console.log(`Tiqets: ${r.matched} of ${r.metros} metros matched a city, ${r.products} products${write ? ", " + r.written + " stored" : " (dry run, nothing stored; add --write)"}.` + (r.skipped.length ? " Skipped: " + r.skipped.join(", ") : ""));
   process.exit(0);
 }
 

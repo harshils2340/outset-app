@@ -68,23 +68,6 @@
   "activity": "class"
  },
  {
-  "name": "Southern Thunder Cooking School of BBQ",
-  "website": null,
-  "domain": "coursehorse:southern-thunder-bbq",
-  "street": "1473 Joyner Ave SE",
-  "city": "Marietta",
-  "region": "GA",
-  "postal": "30060",
-  "lat": 33.9173,
-  "lon": -84.5448,
-  "phone": null,
-  "kind": "cooking",
-  "source": "directory",
-  "directory": "coursehorse",
-  "sourceUrl": "https://coursehorse.com/atlanta/schools/cooking/southern-thunder-bbq",
-  "activity": "class"
- },
- {
   "name": "American School of Flower Design",
   "website": null,
   "domain": "coursehorse:american-school-of-flower-design",
@@ -99,23 +82,6 @@
   "source": "directory",
   "directory": "coursehorse",
   "sourceUrl": "https://coursehorse.com/boston/schools/art/american-school-of-flower-design",
-  "activity": "class"
- },
- {
-  "name": "Art School 99",
-  "website": null,
-  "domain": "coursehorse:art-school-99",
-  "street": "86 Joy St #37, 2nd Fl",
-  "city": "Somerville",
-  "region": "MA",
-  "postal": "02143",
-  "lat": 42.3788,
-  "lon": -71.0866,
-  "phone": null,
-  "kind": "pottery",
-  "source": "directory",
-  "directory": "coursehorse",
-  "sourceUrl": "https://coursehorse.com/boston/schools/art/art-school-99",
   "activity": "class"
  },
  {

@@ -228,7 +228,9 @@ test("a holiday is not answered with today's hours", () => {
   }
   // A weekday, right now, and a plain closing time all still read as themselves.
   assert.match(ask("are you open Sunday?"), /Sunday/);
-  assert.match(ask("are you open right now?"), /today at/);
+  // The answer depends on the clock this runs at: open now until a closing time, closed now and opening
+  // tomorrow, or not yet open with today's opening time. All three name a real time; none say "holiday".
+  assert.match(ask("are you open right now?"), /open now until|closed now|today at/);
   assert.match(ask("what time do you close?"), /They close at/);
   // A holiday package is a thing they sell, not a question about hours.
   assert.doesNotMatch(ask("do you have holiday packages?"), /holiday hours/);
