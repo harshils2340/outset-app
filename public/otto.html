@@ -61,11 +61,11 @@
     .thread { padding: 1.1rem; }
     .turn { margin-bottom: .8rem; }
     .turn .lbl { font-size: .68rem; letter-spacing: .05em; text-transform: uppercase; font-weight: 800; color: var(--ink-soft); margin: 0 0 .25rem .2rem; }
-    .turn .say { padding: .65rem .9rem; border-radius: 15px; font-size: .96rem; max-width: 90%; }
+    .turn .say { display: inline-block; padding: .65rem .9rem; border-radius: 15px; font-size: .96rem; max-width: 88%; word-wrap: break-word; overflow-wrap: anywhere; }
     .turn.caller .say { background: var(--paper-2); border: 1px solid var(--line); border-bottom-left-radius: 5px; }
     .turn.otto { text-align: right; }
     .turn.otto .lbl { margin: 0 .2rem .25rem 0; }
-    .turn.otto .say { background: var(--forest); color: #fff; display: inline-block; text-align: left; border-bottom-right-radius: 5px; }
+    .turn.otto .say { background: var(--forest); color: #fff; text-align: left; border-bottom-right-radius: 5px; }
     .done { display: flex; align-items: center; gap: .55rem; background: var(--sage-soft); color: var(--forest); border-radius: 12px; padding: .6rem .85rem; font-weight: 700; font-size: .9rem; margin-top: .3rem; }
 
     .cta-row { display: flex; gap: .7rem; justify-content: center; flex-wrap: wrap; margin: 1.75rem 0 .6rem; }
