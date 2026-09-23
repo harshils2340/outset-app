@@ -3,323 +3,146 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Otto by Outset · The AI phone agent that books for you</title>
-  <meta name="description" content="Otto answers every call to your local activity business, checks your real calendar, answers the questions people ask, and books them in. Never lose a booking to a missed call again.">
+  <title>Otto · The AI that answers the phone at your marina</title>
+  <meta name="description" content="Otto is an AI phone agent for marinas and boat and jet ski rentals. It answers every call in a real, natural voice, looks up bookings, cancels and reschedules, and books new rentals, so your dock staff never has to stop.">
   <link rel="canonical" href="https://onoutset.com/otto.html">
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <link rel="apple-touch-icon" href="/apple-touch-icon.png">
-  <meta property="og:title" content="Otto by Outset · The AI phone agent that books for you">
-  <meta property="og:description" content="Answers every call, checks your real availability, and books the customer, while you run the business.">
+  <meta property="og:title" content="Otto · The AI that answers the phone at your marina">
+  <meta property="og:description" content="Answers every call in a natural voice, cancels and reschedules rentals, and books new ones. Built for marinas and boat and jet ski rentals.">
   <meta property="og:url" content="https://onoutset.com/otto.html">
   <meta property="og:type" content="website">
   <meta property="og:image" content="https://onoutset.com/apple-touch-icon.png">
   <meta name="theme-color" content="#495940">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800;900&family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800;900&family=Newsreader:opsz,wght@6..72,500;6..72,600&display=swap">
   <style>
     :root {
       color-scheme: light dark;
       --ink: #14170f; --ink-soft: #55604a; --paper: #ffffff; --paper-2: #f6f8f2;
       --forest: #495940; --forest-deep: #37432f; --sage: #7f956a; --sage-soft: #e8eee0;
-      --ochre: #d2924a; --line: #e4e8dc; --card: #ffffff; --shadow: 0 1px 2px rgba(20,30,10,.05), 0 12px 32px rgba(20,30,10,.07);
-      --radius: 18px;
+      --line: #e4e8dc; --card: #ffffff; --shadow: 0 1px 2px rgba(20,30,10,.05), 0 18px 44px rgba(20,30,10,.09);
     }
     @media (prefers-color-scheme: dark) {
-      :root { --ink: #eef1e8; --ink-soft: #a7b39a; --paper: #10130d; --paper-2: #151a11; --forest: #a9c090; --forest-deep: #cadbb4; --sage: #8ba473; --sage-soft: #1d2416; --line: #262d1d; --card: #161a12; --shadow: 0 1px 2px rgba(0,0,0,.3), 0 16px 40px rgba(0,0,0,.35); }
+      :root { --ink: #eef1e8; --ink-soft: #a7b39a; --paper: #10130d; --paper-2: #151a11; --forest: #a9c090; --forest-deep: #cadbb4; --sage: #8ba473; --sage-soft: #1d2416; --line: #262d1d; --card: #161a12; --shadow: 0 1px 2px rgba(0,0,0,.3), 0 18px 44px rgba(0,0,0,.4); }
     }
     * { box-sizing: border-box; }
     html { scroll-behavior: smooth; }
     body { margin: 0; font-family: Figtree, system-ui, -apple-system, "Segoe UI", sans-serif; color: var(--ink); background: var(--paper); line-height: 1.55; -webkit-font-smoothing: antialiased; }
-    a { color: inherit; }
-    .wrap { max-width: 68rem; margin: 0 auto; padding: 0 1.25rem; }
-    .btn { display: inline-flex; align-items: center; gap: .5rem; background: var(--forest); color: #fff; text-decoration: none; font-weight: 700; padding: .85rem 1.5rem; border-radius: 999px; font-size: 1rem; border: none; cursor: pointer; transition: transform .12s ease, background .12s ease; white-space: nowrap; }
+    .wrap { max-width: 40rem; margin: 0 auto; padding: 0 1.25rem; }
+    .btn { display: inline-flex; align-items: center; gap: .5rem; background: var(--forest); color: #fff; text-decoration: none; font-weight: 700; padding: .85rem 1.5rem; border-radius: 999px; font-size: 1rem; border: none; cursor: pointer; transition: transform .12s ease, background .12s ease; }
     .btn:hover { transform: translateY(-1px); background: var(--forest-deep); }
-    .btn.ghost { background: transparent; color: var(--forest); border: 1.5px solid var(--line); }
-    .btn.ghost:hover { border-color: var(--forest); background: transparent; }
-    .btn.sm { padding: .6rem 1.1rem; font-size: .92rem; }
 
-    /* header */
-    header.nav { position: sticky; top: 0; z-index: 20; background: color-mix(in srgb, var(--paper) 86%, transparent); backdrop-filter: saturate(1.4) blur(10px); border-bottom: 1px solid var(--line); }
-    .nav .wrap { display: flex; align-items: center; justify-content: space-between; height: 62px; }
-    .brand { display: flex; align-items: center; gap: .55rem; text-decoration: none; font-weight: 900; font-size: 1.2rem; letter-spacing: -.02em; color: var(--ink); }
-    .brand .dot { width: 26px; height: 26px; border-radius: 8px; background: linear-gradient(140deg, var(--forest), var(--sage)); display: grid; place-items: center; color: #fff; font-weight: 900; font-size: .95rem; }
-    .brand small { font-weight: 600; color: var(--ink-soft); font-size: .82rem; margin-left: .1rem; }
-    .nav .right { display: flex; align-items: center; gap: 1rem; }
-    .nav .right a.txt { text-decoration: none; color: var(--ink-soft); font-weight: 600; font-size: .92rem; }
-    @media (max-width: 640px) { .nav .right a.txt { display: none; } }
+    header.nav { border-bottom: 1px solid var(--line); }
+    .nav .wrap { display: flex; align-items: center; justify-content: space-between; height: 60px; max-width: 46rem; }
+    .brand { display: flex; align-items: center; gap: .55rem; text-decoration: none; font-weight: 900; font-size: 1.15rem; letter-spacing: -.02em; color: var(--ink); }
+    .brand .dot { width: 25px; height: 25px; border-radius: 8px; background: linear-gradient(140deg, var(--forest), var(--sage)); display: grid; place-items: center; color: #fff; font-weight: 900; font-size: .9rem; }
+    .brand small { font-weight: 600; color: var(--ink-soft); font-size: .82rem; }
 
-    /* hero */
-    .hero { padding: clamp(3rem, 7vw, 5.5rem) 0 clamp(2.5rem, 5vw, 4rem); background: radial-gradient(120% 90% at 85% -10%, var(--sage-soft), transparent 60%); }
-    .hero .grid { display: grid; grid-template-columns: 1.05fr .95fr; gap: 3rem; align-items: center; }
-    @media (max-width: 900px) { .hero .grid { grid-template-columns: 1fr; gap: 2.5rem; } }
-    .pill { display: inline-flex; align-items: center; gap: .5rem; background: var(--sage-soft); color: var(--forest); font-weight: 700; font-size: .8rem; padding: .4rem .8rem; border-radius: 999px; letter-spacing: .01em; }
-    .pill .live { width: 8px; height: 8px; border-radius: 50%; background: #2fae5f; box-shadow: 0 0 0 0 rgba(47,174,95,.6); animation: pulse 2s infinite; }
-    @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(47,174,95,.5); } 70% { box-shadow: 0 0 0 8px rgba(47,174,95,0); } 100% { box-shadow: 0 0 0 0 rgba(47,174,95,0); } }
-    h1 { font-family: Newsreader, Georgia, serif; font-weight: 600; font-size: clamp(2.4rem, 5.4vw, 3.7rem); line-height: 1.05; letter-spacing: -.015em; margin: 1.1rem 0 1rem; }
+    .hero { padding: clamp(2.75rem, 6vw, 4rem) 0 1.5rem; text-align: center; }
+    .pill { display: inline-flex; align-items: center; gap: .5rem; background: var(--sage-soft); color: var(--forest); font-weight: 700; font-size: .8rem; padding: .4rem .85rem; border-radius: 999px; }
+    h1 { font-family: Newsreader, Georgia, serif; font-weight: 600; font-size: clamp(2.1rem, 6vw, 3.1rem); line-height: 1.08; letter-spacing: -.015em; margin: 1.1rem 0 .9rem; }
     h1 em { font-style: italic; color: var(--forest); }
-    .lede { font-size: 1.2rem; color: var(--ink-soft); max-width: 34rem; margin: 0 0 1.75rem; }
-    .cta-row { display: flex; flex-wrap: wrap; gap: .75rem; align-items: center; }
-    .cta-note { font-size: .88rem; color: var(--ink-soft); margin: 1rem 0 0; display: flex; gap: 1.1rem; flex-wrap: wrap; }
-    .cta-note span { display: inline-flex; align-items: center; gap: .4rem; }
-    .check { color: var(--sage); font-weight: 800; }
+    .lede { font-size: 1.15rem; color: var(--ink-soft); margin: 0 auto 1.6rem; max-width: 33rem; }
 
-    /* phone mock */
-    .callcard { background: var(--card); border: 1px solid var(--line); border-radius: 24px; box-shadow: var(--shadow); padding: 1.1rem 1.1rem 1.3rem; }
-    .callcard .top { display: flex; align-items: center; justify-content: space-between; padding: .2rem .4rem .9rem; border-bottom: 1px solid var(--line); margin-bottom: .9rem; }
-    .callcard .who { display: flex; align-items: center; gap: .6rem; }
-    .callcard .ava { width: 38px; height: 38px; border-radius: 50%; background: linear-gradient(140deg, var(--forest), var(--sage)); color: #fff; display: grid; place-items: center; font-weight: 800; }
-    .callcard .who b { display: block; font-size: .95rem; }
-    .callcard .who small { color: var(--ink-soft); font-size: .8rem; }
-    .callcard .timer { font-size: .8rem; color: var(--ink-soft); font-variant-numeric: tabular-nums; display: inline-flex; align-items: center; gap: .4rem; }
-    .bubble { max-width: 82%; padding: .6rem .85rem; border-radius: 16px; font-size: .93rem; margin-bottom: .55rem; }
-    .bubble.caller { background: var(--paper-2); border: 1px solid var(--line); border-bottom-left-radius: 5px; }
-    .bubble.otto { background: var(--forest); color: #fff; margin-left: auto; border-bottom-right-radius: 5px; }
-    .bubble .tag { display: block; font-size: .68rem; letter-spacing: .04em; text-transform: uppercase; opacity: .6; margin-bottom: .15rem; font-weight: 700; }
-    .booked { margin-top: .5rem; display: flex; align-items: center; gap: .6rem; background: var(--sage-soft); color: var(--forest); border-radius: 12px; padding: .6rem .8rem; font-weight: 700; font-size: .9rem; }
+    /* call card */
+    .call { background: var(--card); border: 1px solid var(--line); border-radius: 22px; box-shadow: var(--shadow); overflow: hidden; margin: 0 auto; max-width: 34rem; text-align: left; }
+    .call .bar { display: flex; align-items: center; justify-content: space-between; padding: .95rem 1.1rem; background: var(--forest); color: #fff; }
+    .call .bar .who { display: flex; align-items: center; gap: .6rem; }
+    .call .bar .ava { width: 34px; height: 34px; border-radius: 50%; background: rgba(255,255,255,.18); display: grid; place-items: center; font-weight: 800; }
+    .call .bar b { font-size: .95rem; display: block; line-height: 1.15; }
+    .call .bar small { font-size: .78rem; opacity: .82; }
+    .call .bar .meta { font-size: .78rem; opacity: .9; display: inline-flex; align-items: center; gap: .45rem; font-variant-numeric: tabular-nums; }
+    .wave { display: inline-flex; align-items: flex-end; gap: 2px; height: 14px; }
+    .wave i { width: 2.5px; background: #fff; border-radius: 2px; animation: w 1s ease-in-out infinite; }
+    .wave i:nth-child(1){height:5px;animation-delay:0s} .wave i:nth-child(2){height:11px;animation-delay:.15s} .wave i:nth-child(3){height:7px;animation-delay:.3s} .wave i:nth-child(4){height:13px;animation-delay:.45s} .wave i:nth-child(5){height:6px;animation-delay:.6s}
+    @keyframes w { 0%,100%{transform:scaleY(.5)} 50%{transform:scaleY(1)} }
+    .thread { padding: 1.1rem; }
+    .turn { margin-bottom: .8rem; }
+    .turn .lbl { font-size: .68rem; letter-spacing: .05em; text-transform: uppercase; font-weight: 800; color: var(--ink-soft); margin: 0 0 .25rem .2rem; }
+    .turn .say { padding: .65rem .9rem; border-radius: 15px; font-size: .96rem; max-width: 90%; }
+    .turn.caller .say { background: var(--paper-2); border: 1px solid var(--line); border-bottom-left-radius: 5px; }
+    .turn.otto { text-align: right; }
+    .turn.otto .lbl { margin: 0 .2rem .25rem 0; }
+    .turn.otto .say { background: var(--forest); color: #fff; display: inline-block; text-align: left; border-bottom-right-radius: 5px; }
+    .done { display: flex; align-items: center; gap: .55rem; background: var(--sage-soft); color: var(--forest); border-radius: 12px; padding: .6rem .85rem; font-weight: 700; font-size: .9rem; margin-top: .3rem; }
 
-    /* trust strip */
-    .trust { border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); background: var(--paper-2); }
-    .trust .wrap { display: flex; flex-wrap: wrap; gap: 1rem 2.2rem; justify-content: space-between; padding: 1.1rem 1.25rem; }
-    .trust div { display: flex; align-items: center; gap: .55rem; font-weight: 600; font-size: .93rem; color: var(--ink); }
-    .trust .ic { color: var(--sage); }
+    .cta-row { display: flex; gap: .7rem; justify-content: center; flex-wrap: wrap; margin: 1.75rem 0 .6rem; }
+    .cta-note { font-size: .87rem; color: var(--ink-soft); }
 
-    section { padding: clamp(3rem, 6vw, 5rem) 0; }
-    .eyebrow { color: var(--sage); font-weight: 800; font-size: .8rem; letter-spacing: .09em; text-transform: uppercase; margin: 0 0 .6rem; }
-    h2 { font-size: clamp(1.7rem, 3.6vw, 2.4rem); line-height: 1.12; letter-spacing: -.02em; margin: 0 0 1rem; max-width: 24ch; }
-    .section-lede { color: var(--ink-soft); font-size: 1.1rem; max-width: 46ch; margin: 0 0 2.25rem; }
+    .does { padding: 2.5rem 0 1rem; }
+    .does ul { list-style: none; padding: 0; margin: 0 auto; max-width: 30rem; display: grid; gap: .7rem; }
+    .does li { display: flex; gap: .7rem; align-items: flex-start; font-size: 1.02rem; }
+    .does .c { flex: none; width: 26px; height: 26px; border-radius: 8px; background: var(--forest); color: #fff; display: grid; place-items: center; font-weight: 800; font-size: .85rem; }
 
-    .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.25rem; }
-    @media (max-width: 820px) { .steps { grid-template-columns: 1fr; } }
-    .step { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 1.5rem; box-shadow: var(--shadow); }
-    .step .n { width: 34px; height: 34px; border-radius: 10px; background: var(--sage-soft); color: var(--forest); font-weight: 800; display: grid; place-items: center; margin-bottom: .9rem; }
-    .step h3 { margin: 0 0 .35rem; font-size: 1.15rem; }
-    .step p { margin: 0; color: var(--ink-soft); font-size: .96rem; }
-
-    .split { display: grid; grid-template-columns: 1fr 1fr; gap: 3rem; align-items: center; }
-    @media (max-width: 900px) { .split { grid-template-columns: 1fr; gap: 2rem; } }
-    .feat { list-style: none; padding: 0; margin: 1.5rem 0 0; display: grid; gap: 1rem; }
-    .feat li { display: flex; gap: .8rem; }
-    .feat .fi { flex: none; width: 30px; height: 30px; border-radius: 9px; background: var(--forest); color: #fff; display: grid; place-items: center; font-weight: 800; font-size: .9rem; }
-    .feat b { display: block; }
-    .feat span { color: var(--ink-soft); font-size: .95rem; }
-
-    .compare { background: var(--paper-2); border: 1px solid var(--line); border-radius: var(--radius); padding: 1.5rem; }
-    .compare .row { display: grid; grid-template-columns: 1fr auto; gap: 1rem; padding: .7rem 0; border-bottom: 1px solid var(--line); align-items: center; font-size: .96rem; }
-    .compare .row:last-child { border-bottom: none; }
-    .compare .yes { color: var(--sage); font-weight: 800; }
-    .compare .no { color: var(--ink-soft); opacity: .7; }
-    .compare h4 { margin: 0 0 .4rem; font-size: .82rem; text-transform: uppercase; letter-spacing: .05em; color: var(--ink-soft); }
-
-    .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: .6rem 1.5rem; margin: 1.5rem 0 0; padding: 0; list-style: none; }
-    @media (max-width: 560px) { .grid2 { grid-template-columns: 1fr; } }
-    .grid2 li { padding-left: 1.6rem; position: relative; color: var(--ink); }
-    .grid2 li::before { content: "→"; position: absolute; left: 0; color: var(--sage); font-weight: 800; }
-
-    .founder { background: linear-gradient(160deg, var(--forest), var(--forest-deep)); color: #fff; border-radius: 24px; padding: clamp(1.75rem, 4vw, 2.75rem); display: grid; grid-template-columns: auto 1fr; gap: 1.5rem; align-items: center; }
-    @media (max-width: 640px) { .founder { grid-template-columns: 1fr; } }
-    .founder .mug { width: 64px; height: 64px; border-radius: 50%; background: rgba(255,255,255,.16); display: grid; place-items: center; font-weight: 900; font-size: 1.5rem; }
-    .founder p { margin: 0 0 .6rem; font-size: 1.15rem; font-family: Newsreader, Georgia, serif; line-height: 1.4; }
-    .founder .sig { font-size: .92rem; opacity: .85; font-family: Figtree, sans-serif; }
-
-    .faq { max-width: 46rem; }
-    details { border-bottom: 1px solid var(--line); padding: 1.05rem 0; }
-    summary { font-weight: 700; cursor: pointer; list-style: none; display: flex; justify-content: space-between; gap: 1rem; font-size: 1.05rem; }
-    summary::-webkit-details-marker { display: none; }
-    summary::after { content: "+"; color: var(--sage); font-weight: 800; font-size: 1.3rem; line-height: 1; }
-    details[open] summary::after { content: "–"; }
-    details p { margin: .7rem 0 0; color: var(--ink-soft); }
-
-    .cta-band { text-align: center; background: var(--paper-2); border-top: 1px solid var(--line); }
-    .cta-band h2 { margin: 0 auto 1rem; }
-    .cta-band .section-lede { margin: 0 auto 1.75rem; }
-
-    footer { border-top: 1px solid var(--line); padding: 2.5rem 0; color: var(--ink-soft); font-size: .88rem; }
-    footer .wrap { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 1rem; }
+    footer { border-top: 1px solid var(--line); margin-top: 2.5rem; padding: 2rem 0; text-align: center; color: var(--ink-soft); font-size: .86rem; }
     footer a { color: var(--ink-soft); text-decoration: none; }
     footer a:hover { color: var(--ink); }
-    footer .links { display: flex; gap: 1.1rem; flex-wrap: wrap; }
-    address { font-style: normal; margin-top: .4rem; }
+    footer .links { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; margin-bottom: .6rem; }
+    address { font-style: normal; }
   </style>
 </head>
 <body>
   <header class="nav">
     <div class="wrap">
       <a class="brand" href="https://onoutset.com/"><span class="dot">O</span> Outset <small>· Otto</small></a>
-      <div class="right">
-        <a class="txt" href="#how">How it works</a>
-        <a class="txt" href="#faq">FAQ</a>
-        <a class="btn sm" href="mailto:hello@onoutset.com?subject=Otto%20early%20access">Get early access</a>
-      </div>
+      <a class="btn" style="padding:.55rem 1.05rem;font-size:.9rem" href="mailto:hello@onoutset.com?subject=Otto%20for%20our%20marina">Get early access</a>
     </div>
   </header>
 
   <div class="hero">
-    <div class="wrap grid">
-      <div>
-        <span class="pill"><span class="live"></span> Now onboarding first operators</span>
-        <h1>Your phone rings. <em>Otto books it.</em></h1>
-        <p class="lede">Otto is an AI phone agent for local activity businesses. It answers every call, knows your real
-          prices and calendar, and books the customer in, while you are on the water, on the range, or with a guest.</p>
-        <div class="cta-row">
-          <a class="btn" href="mailto:hello@onoutset.com?subject=Otto%20early%20access&body=Hi%20Harshil%2C%20I%20run%20___%20and%20want%20Otto%20to%20answer%20our%20phone.%20Our%20booking%20system%20is%20___.">Get early access</a>
-          <a class="btn ghost" href="mailto:hello@onoutset.com?subject=Otto%20demo">Book a 10-min demo</a>
+    <div class="wrap">
+      <span class="pill">🎧 For marinas &amp; boat and jet ski rentals</span>
+      <h1>Otto answers the phone at your <em>marina</em>.</h1>
+      <p class="lede">A real, natural voice, not a robot. Otto picks up every call, looks up bookings, cancels and
+        reschedules rentals, and books new ones, so your dock never has to stop to answer the phone.</p>
+
+      <div class="call" aria-label="A real call Otto handles">
+        <div class="bar">
+          <div class="who"><span class="ava">O</span><span><b>Otto</b><small>Answering for Bayside Marina</small></span></div>
+          <span class="meta"><span class="wave"><i></i><i></i><i></i><i></i><i></i></span> live · 0:52</span>
         </div>
-        <p class="cta-note">
-          <span><i class="check">✓</i> Set up in a day</span>
-          <span><i class="check">✓</i> No long contract</span>
-          <span><i class="check">✓</i> Talk to a person, not a form</span>
-        </p>
+        <div class="thread">
+          <div class="turn otto"><p class="lbl">Otto</p><span class="say">Thanks for calling Bayside Marina, this is Otto. What can I do for you?</span></div>
+          <div class="turn caller"><p class="lbl">Caller</p><span class="say">Hey, I've got a couple jet skis booked for four o'clock today. Something came up, can I cancel?</span></div>
+          <div class="turn otto"><p class="lbl">Otto</p><span class="say">No problem, let me pull it up. Okay, I've got two waverunners at 4 PM under Marcus, that's you? Quick heads up, it's inside 24 hours, so that time is non-refundable on the marina's policy. But I can move it to another day for free instead, if that's easier.</span></div>
+          <div class="turn caller"><p class="lbl">Caller</p><span class="say">Oh, yeah, that's better. Can I do tomorrow morning?</span></div>
+          <div class="turn otto"><p class="lbl">Otto</p><span class="say">Let me check. Tomorrow I've got two skis open at 9 AM or 11 AM. Which one works?</span></div>
+          <div class="turn caller"><p class="lbl">Caller</p><span class="say">Nine's perfect.</span></div>
+          <div class="turn otto"><p class="lbl">Otto</p><span class="say">Done, you're moved to 9 AM tomorrow, no charge. I'll text the new confirmation to this number. Anything else?</span></div>
+          <div class="turn caller"><p class="lbl">Caller</p><span class="say">Nope, that's it. Thanks!</span></div>
+          <div class="turn otto"><p class="lbl">Otto</p><span class="say">You got it, see you tomorrow.</span></div>
+          <div class="done"><span>✓</span> Rebooked · 2 waverunners · tomorrow 9:00 AM · confirmation texted</div>
+        </div>
       </div>
 
-      <div class="callcard" aria-label="Example of a call Otto handles">
-        <div class="top">
-          <div class="who">
-            <span class="ava">O</span>
-            <span class="wh"><b>Otto</b><small>Answering for Clearwater Charters</small></span>
-          </div>
-          <span class="timer"><span class="live" style="background:#2fae5f"></span> 0:41</span>
-        </div>
-        <div class="bubble caller"><span class="tag">Caller</span>Hey, do you have anything Saturday morning for four people?</div>
-        <div class="bubble otto"><span class="tag">Otto</span>We do. The half-day inshore trip has a 7 AM opening Saturday, up to 4 guests, 600 dollars. Want me to book it?</div>
-        <div class="bubble caller"><span class="tag">Caller</span>Yeah let's do it.</div>
-        <div class="bubble otto"><span class="tag">Otto</span>Booked. I'll text the confirmation and what to bring to this number. Anything else?</div>
-        <div class="booked"><span>✓</span> Booking confirmed · Sat 7:00 AM · 4 guests</div>
+      <div class="cta-row">
+        <a class="btn" href="mailto:hello@onoutset.com?subject=Otto%20for%20our%20marina&body=Hi%2C%20we%20run%20___%20and%20want%20Otto%20to%20answer%20our%20phone.%20Our%20booking%20system%20is%20___.">Get early access</a>
       </div>
+      <p class="cta-note">Set up in a day · no long contract · talk to a person, not a form</p>
     </div>
   </div>
 
-  <div class="trust">
+  <div class="does">
     <div class="wrap">
-      <div><span class="ic">✓</span> Answers only from your own facts</div>
-      <div><span class="ic">✓</span> Reads your real booking calendar</div>
-      <div><span class="ic">✓</span> Payments secured by Stripe</div>
-      <div><span class="ic">✓</span> Every call summarized to you</div>
-    </div>
-  </div>
-
-  <section id="problem">
-    <div class="wrap">
-      <p class="eyebrow">The problem</p>
-      <h2>Every missed call is a booking that went to someone else.</h2>
-      <p class="section-lede">You are running the activity you sell, so you cannot pick up. Voicemail loses the customer,
-        and a booking form loses the ones who want to talk to a human. Otto is that human, on the first ring, every time.</p>
-    </div>
-  </section>
-
-  <section id="how" style="background:var(--paper-2);border-top:1px solid var(--line);border-bottom:1px solid var(--line)">
-    <div class="wrap">
-      <p class="eyebrow">How it works</p>
-      <h2>Live in a day. Nothing changes about how you work.</h2>
-      <div class="steps">
-        <div class="step"><div class="n">1</div><h3>Point your calls at Otto</h3><p>Forward your line, or give out a new number. Setup takes a day and we do it with you.</p></div>
-        <div class="step"><div class="n">2</div><h3>Otto learns your business</h3><p>Your prices, hours, age rules, what you offer, and your real calendar. It answers from your own facts and never makes anything up.</p></div>
-        <div class="step"><div class="n">3</div><h3>Otto answers and books</h3><p>It picks up any hour, answers what the caller asks, checks what is actually free, and books them. You get the booking and a summary.</p></div>
-      </div>
-    </div>
-  </section>
-
-  <section id="why">
-    <div class="wrap split">
-      <div>
-        <p class="eyebrow">Why Otto</p>
-        <h2>Most AI receptionists take a message. Otto takes the booking.</h2>
-        <p class="section-lede">Otto is wired into the booking calendar you already use, so it knows what is open today and
-          can close the reservation on the call, not just promise a callback.</p>
-        <ul class="feat">
-          <li><span class="fi">✓</span><span><b>Knows your real availability</b><span>It reads your live calendar, not a guess, so it never books a slot you do not have.</span></span></li>
-          <li><span class="fi">✓</span><span><b>Answers honestly</b><span>Only from what you have published. If it does not know, it takes a name and number for you, never invents an answer.</span></span></li>
-          <li><span class="fi">✓</span><span><b>Works every hour</b><span>Nights, weekends, and while you are mid-trip. The calls you used to lose become bookings.</span></span></li>
-        </ul>
-      </div>
-      <div class="compare">
-        <h4>Otto vs a plain AI receptionist</h4>
-        <div class="row"><span>Answers the phone 24/7</span><span class="yes">Both</span></div>
-        <div class="row"><span>Knows your real prices and hours</span><span class="yes">Otto ✓</span></div>
-        <div class="row"><span>Checks your live calendar</span><span class="yes">Otto ✓</span></div>
-        <div class="row"><span>Books the customer on the call</span><span class="yes">Otto ✓</span></div>
-        <div class="row"><span>Just takes a message</span><span class="no">The others</span></div>
-      </div>
-    </div>
-  </section>
-
-  <section id="for" style="background:var(--paper-2);border-top:1px solid var(--line);border-bottom:1px solid var(--line)">
-    <div class="wrap">
-      <p class="eyebrow">Who it is for</p>
-      <h2>Built for the businesses whose phone rings before people book.</h2>
-      <ul class="grid2">
-        <li>Jet ski and boat rentals</li>
-        <li>Fishing charters</li>
-        <li>Skydiving and air tours</li>
-        <li>Escape rooms and axe throwing</li>
-        <li>Karting and paintball</li>
-        <li>Climbing gyms and studios</li>
-        <li>Cooking and pottery classes</li>
-        <li>Spas, ranges, and tours</li>
+      <ul>
+        <li><span class="c">✓</span><span>Answers every call in a natural, human voice, day or night</span></li>
+        <li><span class="c">✓</span><span>Looks up a booking, cancels or reschedules it, and reads the real policy</span></li>
+        <li><span class="c">✓</span><span>Checks your real availability and books new rentals on the call</span></li>
+        <li><span class="c">✓</span><span>Texts the confirmation and sends you a summary of every call</span></li>
       </ul>
     </div>
-  </section>
-
-  <section>
-    <div class="wrap">
-      <div class="founder">
-        <span class="mug">H</span>
-        <div>
-          <p>"I built Outset because local operators lose real money to a phone they cannot always answer. Otto is the
-            fix I wanted to give them: a real assistant that knows their business and books for them. We set up every
-            operator by hand right now, so you get me on the phone, not a ticket."</p>
-          <span class="sig">Harshil, founder of Outset · Waterloo, Ontario</span>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <section id="pricing" style="background:var(--paper-2);border-top:1px solid var(--line);border-bottom:1px solid var(--line)">
-    <div class="wrap">
-      <p class="eyebrow">Pricing</p>
-      <h2>Simple monthly pricing. It pays for one missed booking.</h2>
-      <p class="section-lede">One price per location, no long contract, cancel anytime. Exact pricing is set with the first
-        operators we onboard, and early access is limited while we set each one up by hand. Tell us what you run and we
-        will get you live.</p>
-      <a class="btn" href="mailto:hello@onoutset.com?subject=Otto%20early%20access">Get early access</a>
-    </div>
-  </section>
-
-  <section id="faq">
-    <div class="wrap faq">
-      <p class="eyebrow">Questions</p>
-      <h2>What operators ask us first.</h2>
-      <details open><summary>Does it really book, or just take a message?</summary><p>It books. Otto reads your live booking calendar, offers the times that are actually open, and confirms the reservation on the call. When something is outside what you have published, it takes a name and number for you instead of guessing.</p></details>
-      <details><summary>What booking systems does it work with?</summary><p>Otto reads the major booking calendars operators already use, and we are adding more. If yours is not connected yet, Otto still answers every call from your published prices, hours and policies, and takes the booking details for you to confirm. Tell us your system and we will check.</p></details>
-      <details><summary>Will it make something up?</summary><p>No. Otto answers only from the facts you have published: your prices, hours, age rules and policies. If it does not know, it says so and takes a message. It also declines weather, directions and anything not about your business, and offers to pass the caller to a person.</p></details>
-      <details><summary>How long does setup take?</summary><p>About a day. You forward your calls or use a new number, we load your business, and you test it. We do it with you, by hand.</p></details>
-      <details><summary>What does it cost?</summary><p>A simple monthly price per location, no long contract. It pays for itself the first time it catches a booking you would have missed. We finalise pricing with our first operators.</p></details>
-    </div>
-  </section>
-
-  <section class="cta-band">
-    <div class="wrap">
-      <h2>Stop losing the calls you cannot answer.</h2>
-      <p class="section-lede">Get Otto answering your phone this week. Tell us what you run and we will set you up by hand.</p>
-      <div class="cta-row" style="justify-content:center">
-        <a class="btn" href="mailto:hello@onoutset.com?subject=Otto%20early%20access">Get early access</a>
-        <a class="btn ghost" href="mailto:hello@onoutset.com?subject=Otto%20demo">Book a 10-min demo</a>
-      </div>
-    </div>
-  </section>
+  </div>
 
   <footer>
     <div class="wrap">
-      <div>
-        <a class="brand" href="https://onoutset.com/" style="font-size:1.05rem"><span class="dot" style="width:22px;height:22px;font-size:.8rem">O</span> Outset</a>
-        <address>Outset, 339 King St N, Waterloo, ON N2J 0C5, Canada<br><a href="mailto:hello@onoutset.com">hello@onoutset.com</a></address>
-      </div>
       <div class="links">
-        <a href="https://onoutset.com/">Marketplace</a>
+        <a href="https://onoutset.com/">Outset</a>
         <a href="/about.html">About</a>
-        <a href="/terms.html">Terms</a>
-        <a href="/privacy.html">Privacy</a>
+        <a href="mailto:hello@onoutset.com">hello@onoutset.com</a>
       </div>
+      <address>Outset, 339 King St N, Waterloo, ON N2J 0C5, Canada</address>
     </div>
   </footer>
 </body>
