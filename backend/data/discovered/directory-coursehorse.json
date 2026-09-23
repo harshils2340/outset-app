@@ -32,5 +32,22 @@
   "directory": "coursehorse",
   "sourceUrl": "https://coursehorse.com/boston/schools/art/art-school-99",
   "activity": "class"
+ },
+ {
+  "name": "Evanston Art Center",
+  "website": "https://www.evanstonartcenter.org/",
+  "domain": "evanstonartcenter.org",
+  "street": "2603 Sheridan Rd",
+  "city": "Evanston",
+  "region": "IL",
+  "postal": "60201",
+  "lat": 42.0641,
+  "lon": -87.6766,
+  "phone": null,
+  "kind": "pottery",
+  "source": "directory",
+  "directory": "coursehorse",
+  "sourceUrl": "https://coursehorse.com/chicago/schools/art/evanston-art-center1",
+  "activity": "class"
  }
 ]
