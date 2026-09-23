@@ -157,5 +157,7 @@ export function arrivalWords(checkin: string): string {
     .filter((s) => !(s.length <= 160 && PLEASANTRY.test(s.trim()) && !ARRIVAL_FACT.test(s)))
     .join(" ")
     .trim();
-  return /[a-z]{3}/i.test(kept) ? kept : "";
+  // What is left of o-fishnorthmyrtlebeach-com's note is "Capt.", the front of a name the crawl cut. One word
+  // is not an arrival note, and a guest is better shown nothing than shown that.
+  return kept.split(/\s+/).filter((w) => /[a-z]{2}/i.test(w)).length >= 2 ? kept : "";
 }

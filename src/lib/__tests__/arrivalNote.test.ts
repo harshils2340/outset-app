@@ -62,6 +62,7 @@ test("a note that is only courtesy is no arrival note", () => {
     "Connect with Holoholo Charters", // o-holoholocharters-com
     "We appreciate you for choosing Sail San Diego! We look forward to having you as our guest!", // o-sailsandiego-com
     "See you soon!", // o-spraywatersports-com
+    "Thank you for choosing Go Fish Inshore Charters! We're looking forward to seeing you! Capt.", // o-fishnorthmyrtlebeach-com
   ]) {
     assert.equal(arrivalWords(only), "", only);
   }
