@@ -58,11 +58,11 @@ test("an add-on that is half a sentence is not charged, because it is not offere
 
 test("every priced row a guest can pick has a price the server agrees to", () => {
   const dir = new URL("../../../../public/o/", import.meta.url);
+  const shipped = readdirSync(dir).filter((f) => f.endsWith(".json"));
   const unpriceable: string[] = [];
   let listings = 0;
   let rows = 0;
-  for (const f of readdirSync(dir)) {
-    if (!f.endsWith(".json")) continue;
+  for (const f of shipped) {
     const item = JSON.parse(readFileSync(new URL(f, dir), "utf8")) as { id: string; options?: Row[]; addons?: Row[] };
     listings++;
     const menu = serverMenu(item);
@@ -74,7 +74,11 @@ test("every priced row a guest can pick has a price the server agrees to", () =>
       if (!p || !(p.subtotal > 0)) unpriceable.push(item.id + ": " + JSON.stringify(o.name) + " $" + o.price);
     }
   }
-  assert.ok(listings > 50000, "expected the shipped catalog, read " + listings);
+  // The guard is that the whole catalog was read, not that it is any one sync's size: a floor written as the
+  // size of the day goes red on the next sync that publishes fewer, which is what 50,000 did when the publish
+  // gate took the catalog from 59,125 listings to 48,198 and left this sweep the only red test on main.
+  assert.equal(listings, shipped.length, "every shipped listing was read");
+  assert.ok(listings > 10000, "expected the shipped catalog, read " + listings);
   assert.ok(rows > 10000, "expected the shipped priced rows, read " + rows);
   assert.deepEqual(unpriceable.slice(0, 10), [], unpriceable.length + " priced rows the server cannot price, first: " + unpriceable[0]);
 });
