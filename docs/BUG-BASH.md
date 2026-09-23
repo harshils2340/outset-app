@@ -3686,6 +3686,96 @@ the rehearsal at 53 of 53 against a local Postgres 16 cluster and the Chromium o
   screen on a phone, five category accents are still under the AA floor, and no live vendor or partner API has
   answered anything from this address: every affiliate check here ran against rows shaped by hand.
 
+## 23 September 2026, fifty-eighth run (06:20 to 07:50 UTC)
+
+**Chosen, and why.** Every area the brief names is verified and nothing has landed since the last entry except
+that entry, so this run went to the open list, where several separate items sat on one surface: the Hours block a
+guest reads on an unclaimed listing. That is the brief's first area and it is what almost the whole catalog is,
+since 14,810 shipped listings publish hours and 59,061 of them are unclaimed. The container was a fresh
+checkout, so both installs first: 693 app and 677 backend green, both type checks clean, which matches the last
+entry, so the rehearsal was not run to start with. It was run at the end instead, because this run changed code
+it covers, and re-run after each fix that landed behind it.
+
+**Found and fixed.**
+
+- **166 listings advertised a site builder's placeholder as round-the-clock hours** (`65ba7de2`).
+  `coversWholeDay` in `openNow.ts` already refuses to read "12:00 AM - 11:59 PM" and "12:00 AM - 12:00 AM" as
+  opening hours, because that is what a page's markup carries when the owner never set any, so the open-or-closed
+  line says nothing at all for all 166 operators that publish one. The Hours block on the same screen said the
+  opposite: 182 lines, helicopter tours and jet ski rentals reading "Mon-Sun 12:00 AM - 11:59 PM", a closing time
+  none of them ever stated. Same rule now, so the day keeps its honest gap. A shop that says "24 Hours" in words
+  keeps its line, and a real span that only touches midnight at one end is still a real span.
+
+- **The static `/l/` page printed the hour lines exactly as the crawl stored them** (`13ae08be`). 893 of the
+  12,901 pages with an Hours block named something different from the app page they link to, 41 of them in
+  OpenStreetMap's own syntax (`Su off; Mo "by appointment"; Tu-Fr 09:00-16:30`), the rest with the quote marks,
+  the zero-width spaces, the "Hours of Operation" headings and the days the crawl ran onto the end of the time
+  before them. It is the page a search engine indexes and a shared link opens first. It reads `displayHours` now,
+  the way it already reads `freeCancelBadge`; `isTradingHoursLine` moved into `hoursText.ts`, which imports
+  nothing, so the sync can reach it, and `openNow` re-exports it so no caller changed.
+
+- **Three shapes of OpenStreetMap rule were never read into words at all** (`4865c97d`). A rule was only read
+  when its rest was exactly a 24 hour span, so 36 listings got the syntax as written: a span the syntax names one
+  end of rather than clocks ("Mo-Su 07:00-sunset", the golf courses and driving ranges), a span the shop said
+  more after ("Su 13:30-16:00 or by appointment", the galleries and libraries), and a rule opening with the
+  months or the date it applies to ("May-Oct Mo-Sa 09:00-16:00", "Jan off", "Dec 25 off"). Syntax leaking to a
+  guest goes from 44 lines across 36 listings to 6 across 6. A season is now the shop's own fact rather than
+  dropped: o-casteelsculptures-com publishes "Apr-Dec Mo-Sa 09:00-17:00" and its whole week was being thrown
+  away, and o-osm-way-686716941's winter closure now reads "Nov 01-Feb 28 Sun-Mon Closed". Every one of the
+  14,810 listings with published hours was diffed before and after: no line and no block was lost.
+
+- **38 lines still wore the heading the crawl swept up with them** (`0276728d`). "Schedule Mon: 9:00 AM - 3:00
+  PM", "Open Hours Mon-Thu 8am-5pm", "Store Hours Mon Closed", "Time: 5:00pm - 7:30pm". The strip already there
+  wanted the word "Hours" and a space after it, so it missed every one of them, "Hours:Monday - Friday" included.
+  50 listings read better, and three stop printing the same week twice, because the heading was the only thing
+  telling the duplicate apart. The punctuation strip runs on both sides of the headings now: a calendar emoji in
+  front of "Schedule Mon" is what kept o-3palmszoo-org's heading on the line, and o-alhambragolf-com's is stored
+  as "of operation? The course is open 6:00 AM - 11:00 PM", where the question mark is only reachable once the
+  heading in front of it is gone. Whose hours they are is a fact, so "Office hours" and "Park Hours" stay: the
+  office and the park are not the same door as the boats.
+
+- **A landing page promised a search engine hours that 157 listings do not show** (`e0e51277`). The FAQ answers
+  "Do the listings show opening hours?" with a count, and the count asked only whether a listing carried an
+  hoursText line at all, not whether anything is printed from it. It asks the same rule the page that prints
+  them asks now. A compact week on its own still counts, since a lite record carries one when the lines
+  themselves were left behind.
+
+**Checked and sound.** The em dash 10 shops write into their own hours, o-angryinchbrewing-com between each day
+and the time beside it, is their punctuation and is left alone. The 121 listings writing a bare 24 hour range in
+their own words ("FRI 12:00 - 6:00") are their own sentences, not the syntax. The 33 lines that look like an address or a link under Hours are all a
+shop's own dated event ("Open October 3 @ 9:00 am - 2:00 pm"). The whole-catalog test that already holds the
+printed lines against the week parser stays green, so what a guest reads and what the page books from still come
+from one set of rules.
+
+**Green after the fixes.** 696 app tests (up from 693), 679 backend (up from 677), the app type check clean and
+the backend clean but for TS5097, and the rehearsal at 53 of 53 against a local Postgres 16 cluster on 5433 and
+the Chromium on disk, re-run after every fix that landed behind it.
+
+**Needs Harshil.**
+
+- **An nth-weekday rule is read as every such weekday, which invents availability.** `Mo[1] 18:30-21:30` means
+  the first Monday of the month, and both week parsers drop the `[1]` silently. 10 listings publish such a rule
+  and 8 of them get a week wider than the shop: o-darkwhitegallery-com is shown open every Monday,
+  o-ephist-org every Sunday and all year although it publishes "Jan off; Feb off", o-osm-way-1065345294 every
+  Saturday rather than the second and fourth, o-woodburn-delaware-gov every Saturday rather than the first, and
+  o-clarksvilleboats-com every weekend rather than late May to early September. They are small museums, a
+  historical society, a gallery and a boat rental, so it is 8 shops rather than a wave, but the guest is shown
+  "Open now" and offered start times on a day the door is locked, and the operator can only decline. Honouring
+  the rule needs a date-indexed week, which `Week` and `StatedDay` cannot express, and dropping it instead is
+  worse: the picker then falls back to six fixed times every day of the year. 6 of the 10 also still print the
+  raw `[1]` to a guest, which is the only syntax left leaking anywhere. This is the one thing on the open list
+  that is a bug rather than a question, and it needs your call on which way.
+- **A season the page now states is wider than the times the picker offers.** The Hours block reads
+  "Apr-Dec Mon-Sat 9:00 AM - 5:00 PM" for o-casteelsculptures-com, and the week parsers still drop the month
+  prefix, so the picker offers the generous default it offers any shop with unknown hours, 7 AM included. 2
+  listings. Teaching the week parsers the prefix is the mirror of this run's fix and is strictly less invention
+  than the default in both seasons, but it is the same seasonal question as above.
+- **Last night's stand:** a partner's price is still quoted in the partner's currency and printed as dollars,
+  `public/unsubscribe.html` still POSTs on load, the listing page still reads three of the ten vendors,
+  `outset-api` still builds with no catalog, the "All requests" link is still parked off screen on a phone, five
+  category accents are still under the AA floor, and no live vendor or partner API has answered anything from
+  this address.
+
 ## Coverage
 
 **Verified so far.** The name a guest reads: the business name on all 59,125 shipped listings, against the
@@ -3697,7 +3787,12 @@ capacity. Payout scheduling, cycles and the payouts tiles. The Stripe Connect bu
 emails. The rehearsal itself, which runs both sides' unit tests and now refuses to run against a server it did
 not start. Start times from a claimed shop's hours: odd hours, days off, blocked slots, the notice, the window,
 a shop open past midnight. The week a shop starts on, read from its own published hours, and the hours a
-claimed shop shows a guest. The booking box price lines, including a service with no price. Phone width at
+claimed shop shows a guest. The Hours block an unclaimed shop shows a guest, over all 14,810 listings that
+publish one and on all four surfaces that print it, the static `/l/` page included: every shape of
+OpenStreetMap rule those lines carry, the site builder's whole-day placeholder that the open-or-closed line
+already refuses, a season or a date written in front of a rule, two spans in one rule, the syntax's own
+keywords and separators, and the shop's own words kept where they are theirs, every line diffed before and
+after over the whole catalog. The booking box price lines, including a service with no price. Phone width at
 400px on the guest listing, the booking flow, every dashboard page, and the Trips, Inbox, chat and Profile
 tabs. Accessibility on the booking flow and on the assistant chat: focus order, input labels, disabled buttons.
 Colour contrast on the accent. What Otto actually has in hand when it answers: that all three surfaces which
@@ -4151,8 +4246,7 @@ supply question, since it is Otto's best source and the dashboard's starting poi
 it returns and the deploy that makes the file exist. The mouse drag path of reordering: the keyboard and touch
 paths are driven in a browser, the HTML5 drag events are not. A rehearsal check that reads a claimed listing's
 rendered page and not only the API's JSON. A CI job that runs `npm test` on either side. Whether a claimed shop
-with an empty menu should pause its own listing. Whether a shop that genuinely trades around the clock can say
-so at all. Whether the Where box should index the towns our own catalog already names. Whether Arizona's
+with an empty menu should pause its own listing. Whether the Where box should index the towns our own catalog already names. Whether Arizona's
 Navajo Nation should keep daylight saving. The 4,736 listings whose area carries no town, as a supply gap. The "More options"
 folding and `variantNote`, which an earlier run read but did not drive in a browser. Deals and promos on a listing driven in a browser, and the promo crawl's
 output; only the rules behind them are read so far. Whether a GIF should stand in for a video at
@@ -4174,8 +4268,7 @@ should count players, persons, participants and anglers and read number words: 3
 group size they currently do not and 32 would change theirs, 9 of them downwards (see this run's Needs
 Harshil). Whether a minimum age over 21 should be printable at all, for boat and car
 rental floors. Whether the 505 listings stating a group size of 20 or more should widen the picker past 20, towards the 60
-the API already takes. Whether an unclaimed shop open past midnight should sell its small hours on the next
-date, the way a claimed one does, on the 481 that state one. Whether a shop whose week states only closed days, 18 of them, should be
+the API already takes. Whether a shop whose week states only closed days, 18 of them, should be
 bookable at all on the days it says nothing about. Whether a mixed policy column should read "Policies" or split
 into a fourth column, which needs `src/styles`. Whether the rehearsal should open a listing that carries
 policies, so the "Things to know" headings are checked in a browser and not only by their source. Whether
@@ -4183,11 +4276,8 @@ policies, so the "Things to know" headings are checked in a browser and not only
 without waiting for a sync. Whether the 51 kinds of waves two and three should have a scene of their own, on
 the 18,056 listings with no cover that draw the generic one instead. Whether `inferCategory` should read a
 bare "charter" as fishing, and whether its last resort should still be jet ski. What a card, a rail and a
-search result look like for a kind with no scene and no photo, driven in a browser rather than counted. Whether the 6 listings publishing an nth-weekday or month rule ("Su[2] 13:00-15:30; Jan off; Feb off",
-"May Mo[-1] - Oct Mo[2]") should have those rules read out to a guest, or the line dropped: they print as
-written today. Whether the 12 operators whose published address is at free mail and stored wrong need a way
-in before the next sync rewrites `claim-index.json`. Whether the sync should drop an hours line that is only
-a heading ("Schedule Mon: 9:00 AM - 3:00 PM"). Whether a claimed shop's own email and website should ever
+search result look like for a kind with no scene and no photo, driven in a browser rather than counted. Whether the 12 operators whose published address is at free mail and stored wrong need a way
+in before the next sync rewrites `claim-index.json`. Whether a claimed shop's own email and website should ever
 appear on the guest page, which they deliberately do not. Whether an unsubscribe token should outlive a
 `CLAIM_SECRET` rotation, and whether `GET /mail/unsubscribed` should stay public (see this run's Needs
 Harshil). The outreach send driven against a live API rather than read: a real draft run, a real `--dry`,
@@ -4262,4 +4352,9 @@ is a rate per foot of boat (see this run's Needs Harshil). Whether a number the 
 should ever be a price: 8 shipped rows sell a happy hour at "$2 off" and a six hour package at "$20 OFF when
 you book direct" (see this run's Needs Harshil). Whether the sync should keep an add-on whose name is a
 penalty or an order minimum rather than an extra, which the drop rule now takes with the cut sentences it was
-written for.
+written for. Whether an nth-weekday rule should be honoured, dropped or left as the weekly rule it is read as
+today, which is this run's Needs Harshil and the one item here that is a defect rather than a question, and
+whether a season written in front of a rule should reach the week parsers as well as the page. Whether an
+unclaimed shop open past midnight should sell its small hours on the next date, the way a claimed one does, on
+the 481 that state one, and whether a shop that genuinely trades around the clock can say so at all, given
+that a clock face reading midnight to midnight is now refused on every surface.
