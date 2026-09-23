@@ -1,5 +1,10 @@
 import type { Unclaimed } from "../data/types";
 import { contactFor } from "./catalog";
+// The rule for whether a published line is opening hours at all lives with the rest of the hour-line reading,
+// in a module with no imports of its own, so the backend's static pages can read it too.
+import { isTradingHoursLine } from "./hoursText";
+
+export { isTradingHoursLine };
 
 /**
  * "Open now" from the operator's own published hours. Reads lines like "Mon-Fri 9am-5pm", "Daily 10:00 AM to 6:00 PM",
@@ -46,26 +51,6 @@ function genericDays(line: string): number[] | null {
 }
 
 const TIME_RE = /(\d{1,2})(?::(\d{2}))?\s*(am|pm|a\.m\.|p\.m\.)?\s*(?:-|–|—|to|until|till)\s*(\d{1,2})(?::(\d{2}))?\s*(am|pm|a\.m\.|p\.m\.)?/i;
-
-/**
- * A line can carry days and a time range and still not be when the door is open. Two subjects turn up in the
- * shipped catalog and both read backwards.
- *
- * A campground's quiet hours: "Quiet hours are from 11:00pm - 8:00am" is the only hours line 37 of them
- * publish, so every one of those said "Closed, opens 11 PM" at lunchtime and "Open now, closes 8 AM" at two
- * in the morning, and Otto answered "their hours say: quiet hours are from 11:00pm - 8:00am" when a guest
- * asked whether they were open. The hours a campground states are the hours nobody may make a noise.
- *
- * A bar's happy hour: "Happy Hour Wednesday-Friday 12-6 PM" came after the same site's real "Wed 12:00 PM -
- * 10:00 PM", and the later line wins, so the brewery shut four hours early three days a week. One shop's only
- * hours line was "Happy Hour is Sunday 2:00-5:00PM, Mon-Fri 3:00-6:00PM", which read as opening at 2 AM.
- */
-const NOT_TRADING_HOURS = /\b(?:quiet|happy)\s*hours?\b/i;
-
-/** Whether a published line is about when the shop is open, rather than about quiet hours or happy hour. */
-export function isTradingHoursLine(line: string): boolean {
-  return !NOT_TRADING_HOURS.test(line);
-}
 
 /** The hour lines an item publishes that are actually opening hours. */
 export function hourLines(item: Unclaimed): string[] {

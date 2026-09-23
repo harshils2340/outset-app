@@ -2,6 +2,7 @@ import { mkdirSync, readdirSync, unlinkSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { freeCancelBadge } from "../../../src/lib/cancellation.ts";
+import { displayHours } from "../../../src/lib/hoursText.ts";
 import { METROS } from "../taxonomy/catalog.ts";
 import { REGION_NAME, countryOfArea, regionOfArea } from "../../../src/data/regions.ts";
 import { KINDS, cardPhoto, fileFor, placeName, priceOf, publicSite, socialCard, type Item, type Kind } from "./pages.ts";
@@ -185,7 +186,11 @@ function page(item: Item, opts: { landingHref: string | null; kindPageHref: stri
   const photos = photosOf(item);
   const menu = menuRows(item);
   const contact = (item as { contact?: Contact }).contact;
-  const hours = ((item as { hoursText?: string[] }).hoursText?.length ? (item as { hoursText?: string[] }).hoursText : contact?.hours) || [];
+  // Through the same rule the app's listing reads, not the raw published lines. Read raw, 893 of these pages
+  // printed an hour line the app prints differently, 41 of them in OpenStreetMap's own syntax ("Su off; Mo
+  // \"by appointment\"; Tu-Fr 09:00-16:30"), and the rest with the quote marks, the zero width spaces, the
+  // headings and the days glued onto the time before them that `displayHours` exists to take off.
+  const hours = displayHours(((item as { hoursText?: string[] }).hoursText?.length ? (item as { hoursText?: string[] }).hoursText : contact?.hours) || []);
   // Through the badge rule every guest surface reads, not off the stored `fc`. Read raw, 171 of these pages
   // named a different window than the app did for the same shop, and one advertised free cancellation the app
   // strips because the shop only refunds a day it calls off itself.

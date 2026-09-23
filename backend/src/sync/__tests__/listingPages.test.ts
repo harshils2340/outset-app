@@ -384,3 +384,28 @@ test("a partner product publishes no geo point of its own", () => {
     r.cleanup();
   }
 });
+
+test("the hours block is the lines the app prints, not the raw published ones", () => {
+  const items: Item[] = [
+    // o-acuitymaasc-com's shape: OpenStreetMap's own syntax, which 41 of these pages published as written.
+    item("o-a", { cover: "https://x/a.jpg", hoursText: ['Su off; Mo "by appointment"; Tu-Fr 09:00-16:30'] } as Partial<Item>),
+    // The site builder's placeholder, which the open-or-closed line already refuses to read as hours.
+    item("o-b", { cover: "https://x/b.jpg", hoursText: ["Mon-Sun 12:00 AM - 11:59 PM"] } as Partial<Item>),
+    // A campground whose only hours line is its quiet hours: those are not when the door is open.
+    item("o-c", { cover: "https://x/c.jpg", hoursText: ["Quiet hours are from 11:00pm - 8:00am"] } as Partial<Item>),
+  ];
+  const r = run(items);
+  try {
+    const a = r.read("o-a.html");
+    assert.ok(a.includes("<li>Sun Closed</li>"), "page said a closed day in words");
+    assert.ok(a.includes("<li>Tue-Fri 9:00 AM - 4:30 PM</li>"), "page read the day codes and the 24 hour clock");
+    assert.ok(!a.includes("Tu-Fr"), "page still prints OpenStreetMap day codes");
+    assert.ok(!a.includes("&quot;"), "page still prints the syntax's quote marks");
+    const b = r.read("o-b.html");
+    assert.ok(!b.includes("<h2>Hours</h2>"), "page still advertises the placeholder as round-the-clock hours");
+    const c = r.read("o-c.html");
+    assert.ok(!c.includes("<h2>Hours</h2>"), "page read quiet hours as opening hours");
+  } finally {
+    r.cleanup();
+  }
+});

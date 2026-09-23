@@ -1,5 +1,3 @@
-import { isTradingHoursLine } from "./openNow";
-
 /**
  * The hour lines a guest reads, from whatever the shop's site published.
  *
@@ -13,7 +11,30 @@ import { isTradingHoursLine } from "./openNow";
  *
  * Case is left alone. A shop that shouts its hours is still stating its hours, the same way a shouted review
  * is still a review.
+ *
+ * Nothing here imports anything, so `backend/src/sync/listingPages.ts` can read the same rule for the static
+ * `/l/` page as the app reads for the listing it opens.
  */
+
+/**
+ * A line can carry days and a time range and still not be when the door is open. Two subjects turn up in the
+ * shipped catalog and both read backwards.
+ *
+ * A campground's quiet hours: "Quiet hours are from 11:00pm - 8:00am" is the only hours line 37 of them
+ * publish, so every one of those said "Closed, opens 11 PM" at lunchtime and "Open now, closes 8 AM" at two
+ * in the morning, and Otto answered "their hours say: quiet hours are from 11:00pm - 8:00am" when a guest
+ * asked whether they were open. The hours a campground states are the hours nobody may make a noise.
+ *
+ * A bar's happy hour: "Happy Hour Wednesday-Friday 12-6 PM" came after the same site's real "Wed 12:00 PM -
+ * 10:00 PM", and the later line wins, so the brewery shut four hours early three days a week. One shop's only
+ * hours line was "Happy Hour is Sunday 2:00-5:00PM, Mon-Fri 3:00-6:00PM", which read as opening at 2 AM.
+ */
+const NOT_TRADING_HOURS = /\b(?:quiet|happy)\s*hours?\b/i;
+
+/** Whether a published line is about when the shop is open, rather than about quiet hours or happy hour. */
+export function isTradingHoursLine(line: string): boolean {
+  return !NOT_TRADING_HOURS.test(line);
+}
 
 const DAY_CODE: Record<string, string> = { Mo: "Mon", Tu: "Tue", We: "Wed", Th: "Thu", Fr: "Fri", Sa: "Sat", Su: "Sun", PH: "Public holidays" };
 const DAY_SPEC = "(?:Mo|Tu|We|Th|Fr|Sa|Su|PH)(?:\\s*-\\s*(?:Mo|Tu|We|Th|Fr|Sa|Su))?";
