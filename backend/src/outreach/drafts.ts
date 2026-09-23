@@ -133,9 +133,9 @@ export function draftCopy(op: Op, sc: ReturnType<typeof scale>, f: PageFacts, em
   const who = "I'm Harshil. I run Outset, an instant-booking marketplace where guests find and book local activities across the US and Canada.";
   const built2 = built.length
     ? "I put together a page for " + op.name + " using " + andList(built) + ":"
-    : "I put together a page for " + op.name + ", though your site didn't give me much to work with yet:";
+    : "I put together a page for " + op.name + ", but your site didn't give me much to work with:";
   // A page with nothing on it is still worth showing, but it cannot be sold as one that has their things on it.
-  const thin = built.length ? null : "It's thin for now. Nothing on it is invented, and the claim link below lets you fill in the rest.";
+  const thin = built.length ? null : "It's missing your services and prices for now. Nothing here is made up — you can add them yourself in a couple of minutes.";
   const cta = "Once you've had a look, this opens the dashboard so you can fix anything and turn bookings on. It's meant for the owner, so please don't forward it:";
   const howHead = "How it works for " + op.name + ":";
   /**
