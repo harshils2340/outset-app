@@ -79,6 +79,16 @@ export function OpLogin({ claimId, claimToken, compact, onEnter, onBack }: { cla
       setStep("details");
     }
   }, [preset]);
+  /**
+   * `#demo` opens the sandbox dashboard directly, with no click needed, so an outreach email can link straight
+   * to "try editing a listing" without a claim link at all. Only when there is no claim in progress: a claim
+   * link and #demo in the same hash never happens today, but a real claim always wins if it ever does.
+   */
+  useEffect(() => {
+    if (claimId || !/^#demo\b/i.test(window.location.hash)) return;
+    const p = demoProfile();
+    if (p) onEnter(p);
+  }, [claimId]);
   const [q, setQ] = useState("");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
