@@ -1060,6 +1060,33 @@ const CHEAP_BY_DESIGN = /\badmission\b|\bday pass\b|\bkids?\b|\bchild(?:ren)?\b|
 const BOOKED_LINE = /\b(tours?|charters?|rentals?|trips?|cruises?|flights?|lessons?|sails?|excursions?|dives?|safaris?)\b/i;
 
 /**
+ * The number is part payment, not the price: the row's own words say so. "Deposit (up to 6 passengers)" against a
+ * $950 half day, "Booking fee only" against a tandem skydive, "Non-Refundable Deposit. NOT A TOTAL PAYMENT."
+ * A deposit is only ever a fraction of the price, so publishing it is a promise the shop never made, and it is the
+ * cheapest row on those menus, so it becomes the from price on the card as well.
+ *
+ * Only where the row declares it. The word turns up all over a menu as a condition on a real price ("kegs with a
+ * refundable deposit", "50% deposit required", "no deposit required"), and those numbers are honest, so the word
+ * has to head the detail or name the row, not merely appear in it.
+ */
+const PART_PAYMENT =
+  /^(?:a |an |the |your |one )?(?:\d{1,3}\s?% )?(?:non-?refundable |refundable |initial |required |each (?:person |player |guest )?|per (?:person|player|guest) )*(?:deposits?|retainers?|booking fees?)\b/i;
+/** A hold against the thing itself, not part of the price of doing it. "Damage Deposit $100" tells a guest the truth. */
+const HELD_AGAINST_DAMAGE =
+  /\b(?:damage|security|cleaning|clean-?up|key|equipment|breakage)\b[^.]{0,20}?\b(?:deposits?|holds?)\b|\b(?:deposits?|holds?)\b[^.]{0,20}?\b(?:damage|security|cleaning|clean-?up|breakage)\b/i;
+/** A row that calls itself a fee is priced as one: "Facility Rental Fees and Deposits", "Room Clean-up Fee (Deposit)". */
+const NAMED_FEE = /\bfees?\b/i;
+const DEPOSIT_WORD = /\b(?:deposits?|retainers?)\b/i;
+
+export function depositNotPrice(name: string, detail: string | null): string | null {
+  if (NAMED_FEE.test(name)) return null;
+  if (HELD_AGAINST_DAMAGE.test(name + " " + (detail || ""))) return null;
+  if (PART_PAYMENT.test((detail || "").trim())) return "its detail calls the number a deposit";
+  if (DEPOSIT_WORD.test(name)) return "its name calls the number a deposit";
+  return null;
+}
+
+/**
  * A price the site cannot have meant. "5 Hour Half Day Fishing Trip $10" and "44 Hour Full Moon Fishing Trip $4"
  * are the deposit, or digits the parser lifted out of the name. Half a day on the water is not four dollars, so the
  * number is dropped and the page says "Price on request" rather than telling a guest something false.
@@ -1067,6 +1094,9 @@ const BOOKED_LINE = /\b(tours?|charters?|rentals?|trips?|cruises?|flights?|lesso
 function implausiblePrice(o: { name: string; detail: string | null; duration: string | null; price_cents: number | null }): string | null {
   if (o.price_cents == null || o.price_cents <= 0) return null;
   const text = o.name + " " + (o.detail || "");
+  // Before the cheap-by-design list: "Deposit per Player" is a deposit however it is worded.
+  const deposit = depositNotPrice(o.name, o.detail);
+  if (deposit) return deposit;
   if (CHEAP_BY_DESIGN.test(text)) return null;
   const dollars = o.price_cents / 100;
   const mins = minutesOf(o.duration || "") ?? minutesOf(o.name);
