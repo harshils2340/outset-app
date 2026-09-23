@@ -73,8 +73,9 @@ it matches a lead against the operators we already hold by town and name (both w
 "Milton Art Museum") and takes that row's website. `scripts/resolve-websites.mts` is the paid one (one Google Maps
 query per lead, priced before it runs) for whatever the free pass left.
 
-`npx tsx scripts/discover-directories.mts --source=<id>` reads a slice of a directory-style marketplace (Captain
-Experiences, CourseHorse; registry in `src/discover/directories.ts`) for the businesses on it: name, town, street
+`npx tsx scripts/discover-directories.mts --source=<id>` reads a slice of a directory-style site (Captain
+Experiences, CourseHorse, DropzoneFinder, SkydivingSource, indoorclimbing.com, the WATL axe-throwing list; registry in
+`src/discover/directories.ts`) for the businesses on it: name, town, street
 when the page has one, and the operator's own website only when the page links it. That is all that is read; a
 marketplace's photos, descriptions and prices are its own and its terms forbid reusing them. Sources that answer a
 polite bot with a Cloudflare challenge (Supreme Golf, ClassBento, ClassPass) or a 403 (FishingBooker) are not in

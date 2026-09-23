@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { DIRECTORIES, isBlockedPage, organizationLinks, ownWebsite, parseDirectoryPage, regionCode, regionNearPin } from "../directories.ts";
+import { DIRECTORIES, isBlockedPage, organizationLinks, ownWebsite, parseDirectoryPage, parseDirectoryPageAll, regionCode, regionNearPin } from "../directories.ts";
 import { categoryById } from "../../taxonomy/catalog.ts";
 
 const captain = DIRECTORIES.find((d) => d.id === "captainexperiences")!;
@@ -164,4 +164,116 @@ test("a rate-limit redirect or a challenge body is the site saying stop, whateve
   assert.ok(isBlockedPage({ status: 200, html: "<title>Just a moment...</title>", finalUrl: "https://classbento.com/x" }));
   assert.ok(isBlockedPage({ status: 429, html: "", finalUrl: "https://x.com/y" }));
   assert.ok(!isBlockedPage({ status: 200, html: "<html><h1>10 Point Charters</h1></html>", finalUrl: "https://captainexperiences.com/guides/10-point-charters" }));
+});
+
+const indoorclimbing = DIRECTORIES.find((d) => d.id === "indoorclimbing")!;
+const watl = DIRECTORIES.find((d) => d.id === "watl")!;
+
+// indoorclimbing.com/florida.html, 2026-09-23, cut to three gyms. No structured data: a <p> per gym, the town in
+// the <div class="city"> above it, the site as a nofollow link whose text is the name.
+const climbingPage = `<html><body><div id="content"><h1>Florida</h1><h2>Climbing Gyms</h2>
+<div class="city">Atlantic Beach</div>
+<p><b>Beaches Rock Gym - Atlantic Beach</b><br>
+14 W. 3rd Street, Atlantic Beach, FL<br>
+904-222-0707<br>
+<a rel='nofollow' target='_blank' href='https://www.beachesrockgym.com/'>Beaches Rock Gym - Atlantic Beach</a><br>
+<span class='rt'></span> Open-air bouldering gym. All ages welcome.</p>
+<div class="city">Orlando</div>
+<p><b>Blue Swan Boulders</b><br>
+400 Pittman St, Orlando, FL 32801<br>
+(407) 601-0752<br>
+<a rel='nofollow' target='_blank' href='https://blueswanboulders.com/'>Blue Swan Boulders</a><br>
+<span class='rt'></span> A 15,000-sq/ft bouldering gym.</p>
+
+<p><b>Central Rock</b><br>
+1766 W Sand Lake Rd, Orlando, Florida<br>
+407-601-0399<br>
+<a rel='nofollow' target='_blank' href='https://www.facebook.com/centralrock'>Central Rock</a><br>
+<span class='rt'></span> Bouldering with a yoga studio.</p>
+</div></body></html>`;
+
+test("an indoorclimbing.com state page yields every gym on it: name, street, town, state, phone and own site", () => {
+  const cs = parseDirectoryPageAll(indoorclimbing, climbingPage, "https://www.indoorclimbing.com/florida.html");
+  assert.equal(cs.length, 3);
+  assert.equal(cs[0].name, "Beaches Rock Gym - Atlantic Beach");
+  assert.equal(cs[0].street, "14 W. 3rd Street");
+  assert.equal(cs[0].city, "Atlantic Beach");
+  assert.equal(cs[0].region, "FL");
+  assert.equal(cs[0].postal, null);
+  assert.equal(cs[0].phone, "+19042220707");
+  assert.equal(cs[0].website, "https://www.beachesrockgym.com/");
+  assert.equal(cs[0].domain, "beachesrockgym.com");
+  assert.equal(cs[0].kind, "climbing");
+  assert.equal(cs[0].directory, "indoorclimbing");
+  assert.equal(cs[1].city, "Orlando", "the town is the heading the paragraph sits under");
+  assert.equal(cs[1].postal, "32801");
+  assert.equal(cs[2].region, "FL", "the state written out in full still agrees with the page");
+  assert.equal(cs[2].website, null, "a Facebook page is not the gym's website");
+  assert.equal(cs[2].domain, "indoorclimbing:central-rock", "keyed by name, not by the shared page");
+});
+
+test("an indoorclimbing.com page only places a gym when the address line agrees with the page's state, and only market pages match", () => {
+  const ontario = `<div class="city">Aurora</div><p><b>Reach Indoor Climbing</b><br>
+212 Earl Stewart Dr, Aurora, ON L4G 6V7, Canada<br>
++19057508500<br>
+<a rel='nofollow' target='_blank' href='https://reachindoorclimbing.ca/'>Reach Indoor Climbing</a><br></p>
+<p><b>Somewhere Else</b><br>
+1 Main St, Springfield, IL 62701<br>
+217-555-0100<br>
+<a rel='nofollow' target='_blank' href='https://example.org/'>Somewhere Else</a><br></p>`;
+  const cs = parseDirectoryPageAll(indoorclimbing, ontario, "https://www.indoorclimbing.com/ontario.html");
+  assert.equal(cs.length, 2);
+  assert.equal(cs[0].region, "ON");
+  assert.equal(cs[0].postal, "L4G 6V7");
+  assert.equal(cs[0].street, "212 Earl Stewart Dr");
+  assert.equal(cs[1].region, null, "an Illinois address on the Ontario page is a gap, not Ontario");
+  assert.ok(indoorclimbing.match.test("https://www.indoorclimbing.com/britishcolumbia.html"));
+  assert.ok(!indoorclimbing.match.test("https://www.indoorclimbing.com/england.html"), "outside the market");
+  assert.ok(!indoorclimbing.match.test("https://www.indoorclimbing.com/climbing_gear.html"), "an article, not a gym list");
+  assert.ok(!indoorclimbing.match.test("https://www.indoorclimbing.com/worldgyms.html"), "the world hub repeats the state pages");
+});
+
+// worldaxethrowingleague.com/affiliates/, 2026-09-23, cut to three cards. The whole list is one page; a card is
+// the name, a region with its country, and the venue's site as the card link. One card has no link.
+const watlPage = `<html><body><ul class="wm-grid">
+<li class="wm-card" data-name="abilene axe company" data-city="texas" data-country="united states" data-id="15028">
+  <a class="wm-card__inner" href="https://abileneaxeco.com" target="_blank" rel="noopener">
+    <div class="wm-card__logo"><img src="https://worldaxethrowingleague.com/wp-content/uploads/2023/06/logo-150x150.png" alt="Abilene Axe Company"></div>
+    <h3 class="wm-card__name">Abilene Axe Company</h3>
+    <p class="wm-card__loc"><span class="wm-card__loc-region">Texas</span><span class="wm-card__loc-country">, United States</span></p>
+    <span class="wm-card__link">Visit website</span>
+  </a>
+</li>
+<li class="wm-card" data-name="axes &#038; antics goshen" data-city="indiana" data-country="united states" data-id="19943">
+  <div class="wm-card__inner"><h3 class="wm-card__name">Axes &#038; Antics Goshen</h3>
+    <p class="wm-card__loc"><span class="wm-card__loc-region">Indiana</span><span class="wm-card__loc-country">, United States</span></p></div>
+</li>
+<li class="wm-card" data-name="reeast room" data-city="tokyo" data-country="japan" data-id="17001">
+  <a class="wm-card__inner" href="https://reeast.jp/" target="_blank" rel="noopener"><h3 class="wm-card__name">REEAST ROOM</h3>
+    <p class="wm-card__loc"><span class="wm-card__loc-region">Tokyo</span><span class="wm-card__loc-country">, Japan</span></p></a>
+</li>
+<li class="wm-card" data-name="far shot" data-city="ontario" data-country="canada" data-id="17002">
+  <a class="wm-card__inner" href="https://www.farshot.ca/" target="_blank" rel="noopener"><h3 class="wm-card__name">Far Shot Recreation</h3>
+    <p class="wm-card__loc"><span class="wm-card__loc-region">Ontario</span><span class="wm-card__loc-country">, Canada</span></p></a>
+</li></ul></body></html>`;
+
+test("the WATL affiliates page yields every venue card: name, state or province, own site; no town is invented", () => {
+  const cs = parseDirectoryPageAll(watl, watlPage, "https://worldaxethrowingleague.com/affiliates/");
+  assert.equal(cs.length, 4);
+  assert.equal(cs[0].name, "Abilene Axe Company");
+  assert.equal(cs[0].region, "TX");
+  assert.equal(cs[0].city, null, "the page names no town");
+  assert.equal(cs[0].website, "https://abileneaxeco.com");
+  assert.equal(cs[0].domain, "abileneaxeco.com");
+  assert.equal(cs[0].kind, "axe");
+  assert.equal(cs[0].directory, "watl");
+  assert.equal(cs[1].name, "Axes & Antics Goshen");
+  assert.equal(cs[1].website, null);
+  assert.equal(cs[1].domain, "watl:axes-antics-goshen", "no link on the card, so the name is the key");
+  assert.equal(cs[1].region, "IN");
+  assert.equal(cs[2].region, null, "Japan is outside the market, whatever the card says");
+  assert.equal(cs[3].region, "ON");
+  assert.equal(cs[3].website, "https://www.farshot.ca/");
+  assert.ok(watl.match.test("https://worldaxethrowingleague.com/affiliates/"));
+  assert.ok(!watl.match.test("https://worldaxethrowingleague.com/community-venues/"));
 });

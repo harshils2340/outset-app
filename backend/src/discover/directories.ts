@@ -30,7 +30,9 @@ export type DirectorySource = {
   /** Finer activity word for reporting. */
   activity?: string;
   /** Where the pages are enumerated. */
-  sitemaps: string[];
+  sitemaps?: string[];
+  /** A fixed list of pages instead of a sitemap, for a directory that is one long page (the WATL affiliates list). */
+  pages?: string[];
   /**
    * When the sitemap lists something other than business pages (CourseHorse lists classes, not schools), the
    * entries matching `from` are read for the JSON-LD Organization whose url matches `match`, and those pages are
@@ -49,6 +51,12 @@ export type DirectorySource = {
    * place for a page that is not a business. Only name, town, region, street, phone, pin and website, ever.
    */
   read?: (html: string, pageUrl: string) => DirectoryRead;
+  /**
+   * A reader for a directory that lists many businesses on one page (a state page of climbing gyms, one
+   * league page of every affiliated venue): every business on the page, under the same rule as `read`.
+   * A business with no website is keyed by its name, since the page's own key would be shared by all of them.
+   */
+  readMany?: (html: string, pageUrl: string) => DirectoryRead[];
   /** Pages per run at most: a directory is read a slice at a time, never whole in one go. */
   max: number;
   /** Pause between two requests to this host, when the site has shown it wants more than polite.ts's default. */
@@ -141,6 +149,32 @@ export const DIRECTORIES: DirectorySource[] = [
     gapMs: 4000,
     verified: "2026-09-23: robots.txt disallows only /wp-admin/; /locations/<slug>/ carries LocalBusiness microdata (name, street, town, state, postcode, phone, pin) and the country as a class on the article; the JSON-LD is a breadcrumb only; the website is plain text under 'Website:', not a link; 862 locations worldwide in the sitemap, so much of a slice is outside the US and Canada (the first sorted page is a Paris dropzone); two US pages read with street, town, state, phone and website",
   },
+  {
+    id: "indoorclimbing",
+    kind: "climbing",
+    activity: "climbing gym",
+    sitemaps: ["https://www.indoorclimbing.com/sitemap.xml"],
+    // One page per state or province, every gym in it. The sitemap is worldwide plus gear and technique
+    // articles, so only the sixty-odd US and Canada pages are business pages. Written out because the slug
+    // table lives below the registry and a regex built from it here would run before it exists.
+    match: /^https:\/\/www\.indoorclimbing\.com\/(alabama|alaska|arizona|arkansas|california|colorado|connecticut|delaware|florida|georgia|hawaii|idaho|illinois|indiana|iowa|kansas|kentucky|louisiana|maine|maryland|massachusetts|michigan|minnesota|mississippi|missouri|montana|nebraska|nevada|newhampshire|newjersey|newmexico|newyork|northcarolina|northdakota|ohio|oklahoma|oregon|pennsylvania|rhodeisland|southcarolina|southdakota|tennessee|texas|utah|vermont|virginia|washington|westvirginia|wisconsin|wyoming|alberta|britishcolumbia|manitoba|newbrunswick|newfoundland|novascotia|ontario|quebec|saskatchewan|yukon)\.html$/,
+    readMany: readIndoorclimbing,
+    max: 60,
+    gapMs: 4000,
+    verified: "2026-09-23: robots.txt disallows only /update/, /csv/ and /search/; no terms page beyond a liability notice; /<state>.html lists every gym as a <p>: name in <b>, one address line (street, town, state or province, sometimes a postcode and 'Canada'), a phone line, and the gym's own site as a rel=nofollow link whose text is the name; a <div class=\"city\"> heads each town; no JSON-LD or microdata; Florida read 17 gyms and Ontario read the same shape with Canadian postcodes",
+  },
+  {
+    id: "watl",
+    kind: "axe",
+    activity: "axe throwing venue",
+    // The whole affiliate list is one page; there is no per-venue page and no sitemap entry for venues.
+    pages: ["https://worldaxethrowingleague.com/affiliates/"],
+    match: /^https:\/\/worldaxethrowingleague\.com\/affiliates\/$/,
+    readMany: readWatlAffiliates,
+    max: 60,
+    gapMs: 4000,
+    verified: "2026-09-23: no robots.txt (404) and no terms-of-use page, only a privacy policy and tournament terms; /affiliates/ carries 220 <li class=\"wm-card\"> venues, 182 US and 19 Canada, each with the name, a state or province (data-city holds the region, not a town) and the venue's own site as the card link ('Visit website'); three cards have no link; no street, town or phone anywhere on the page; no JSON-LD",
+  },
 ];
 
 /** The JSON-LD Organization urls on a page that match `match`: the businesses a class or event page belongs to. */
@@ -217,7 +251,9 @@ export function toCandidate(src: DirectorySource, raw: RawPlace, pageUrl: string
   if (!kind) return null;
   const region = regionCode(raw.region);
   const host = hostOf(website);
-  const domain = host || src.id + ":" + (new URL(pageUrl).pathname.split("/").filter(Boolean).pop() || name.toLowerCase().replace(/[^a-z0-9]+/g, "-"));
+  // On a page that lists many businesses the page's own slug would be one key for all of them, so the name is the key.
+  const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  const domain = host || src.id + ":" + ((src.readMany ? null : new URL(pageUrl).pathname.split("/").filter(Boolean).pop()) || slug);
   return {
     name: name.slice(0, 120),
     website: host ? website : null,
@@ -249,6 +285,20 @@ export function parseDirectoryPage(src: DirectorySource, html: string, pageUrl: 
   return toCandidate(src, raw, pageUrl, ownWebsite(html, pageUrl));
 }
 
+/** Every business on one page: all of them for a readMany source, else the one parseDirectoryPage finds. */
+export function parseDirectoryPageAll(src: DirectorySource, html: string, pageUrl: string): DirectoryCandidate[] {
+  if (!src.readMany) {
+    const c = parseDirectoryPage(src, html, pageUrl);
+    return c ? [c] : [];
+  }
+  const out: DirectoryCandidate[] = [];
+  for (const r of src.readMany(html, pageUrl)) {
+    const c = r.raw ? toCandidate(src, r.raw, pageUrl, r.website) : null;
+    if (c) out.push(c);
+  }
+  return out;
+}
+
 export type DirectoryRun = { source: string; listed: number; fetched: number; parsed: number; withWebsite: number; outsideMarket: number; candidates: DirectoryCandidate[]; failed: string[]; /** The run ended early because the site answered with a rate-limit or challenge page. */ blocked: boolean };
 
 /**
@@ -260,8 +310,8 @@ export async function runDirectory(src: DirectorySource, opts: { max?: number; s
   const max = Math.min(opts.max ?? src.max, 200);
   const out: DirectoryRun = { source: src.id, listed: 0, fetched: 0, parsed: 0, withWebsite: 0, outsideMarket: 0, candidates: [], failed: [], blocked: false };
   const gap = src.gapMs ?? 1500;
-  const locs: string[] = [];
-  for (const sm of src.sitemaps) locs.push(...(await sitemapLocs(sm, src.childMatch)));
+  const locs: string[] = [...(src.pages || [])];
+  for (const sm of src.sitemaps || []) locs.push(...(await sitemapLocs(sm, src.childMatch)));
   let pages: string[];
   if (src.hop) {
     // The sitemap lists classes; each class page names its school. `max` and `skip` count class pages read,
@@ -314,15 +364,15 @@ export async function runDirectory(src: DirectorySource, opts: { max?: number; s
       log(`${src.id}: failed ${url} (${page.status})`);
       continue;
     }
-    const c = parseDirectoryPage(src, page.html, url);
-    if (!c) continue;
-    out.parsed++;
-    if (!c.region) {
-      out.outsideMarket++;
-      continue;
+    for (const c of parseDirectoryPageAll(src, page.html, url)) {
+      out.parsed++;
+      if (!c.region) {
+        out.outsideMarket++;
+        continue;
+      }
+      if (c.website) out.withWebsite++;
+      out.candidates.push(c);
     }
-    if (c.website) out.withWebsite++;
-    out.candidates.push(c);
   }
   return out;
 }
@@ -422,4 +472,85 @@ export function readSkydivingSource(html: string, pageUrl: string): DirectoryRea
     },
     website: site ? ownWebsite(`<a href="${site}">Website</a>`, pageUrl) : null,
   };
+}
+
+/** indoorclimbing.com page slug -> region code: STATE_NAMES without spaces, plus the two the table lacks. */
+const INDOORCLIMBING_REGION: Record<string, string> = Object.fromEntries([
+  ...Object.entries(STATE_NAMES).map(([name, code]) => [name.replace(/\s+/g, ""), code]),
+  ["newfoundland", "NL"],
+  ["yukon", "YT"],
+]);
+
+/** Whether an address line names this region, as a code or its full name, so a page's slug is not trusted blindly. */
+function lineNamesRegion(line: string, code: string): boolean {
+  if (new RegExp(`(^|[\\s,])${code}(?=$|[\\s,])`).test(line)) return true;
+  const name = Object.entries(STATE_NAMES).find(([, c]) => c === code)?.[0];
+  return !!name && new RegExp(`\\b${name}\\b`, "i").test(line);
+}
+
+/**
+ * indoorclimbing.com lists every gym in a state on one page, as a <p> per gym: the name in <b>, then one line
+ * of address, then a phone line, then the gym's own site as a link whose text is the name again, then a blurb
+ * (not read). The town is the <div class="city"> the paragraph sits under. The region comes from the page slug
+ * and is kept only when the address line agrees (as a code or a name), so a page that lists somewhere else
+ * under a shared name, or a misfiled gym, is a gap rather than a wrong state.
+ */
+export function readIndoorclimbing(html: string, pageUrl: string): DirectoryRead[] {
+  const slug = pageUrl.match(/\/([a-z]+)\.html$/)?.[1] || "";
+  const region = INDOORCLIMBING_REGION[slug] || null;
+  const out: DirectoryRead[] = [];
+  let city: string | null = null;
+  for (const m of html.matchAll(/<div class="city">([^<]*)<\/div>|<p><b>([^<]+)<\/b><br>\s*([^<]*?)<br>\s*([^<]*?)<br>\s*(?:<a\b[^>]*href=['"]([^'"]+)['"][^>]*>)?/gi)) {
+    if (m[1] !== undefined) {
+      city = decode(m[1]).trim() || null;
+      continue;
+    }
+    const name = decode(m[2]).trim();
+    if (!name) continue;
+    const site = m[5] ? decode(m[5]) : null;
+    // The site also lists campus walls a guest cannot walk into (a university rec center's wall is for its
+    // students). A .edu site, or a name that says university or college, is left out rather than listed.
+    if (/\.edu(\/|$)/i.test(site || "") || /\b(university|college|campus recreation)\b/i.test(name)) continue;
+    const line = decode(m[3]).replace(/\s+/g, " ").trim();
+    const parts = line.replace(/,?\s*(Canada|USA|United States)\s*$/i, "").split(/\s*,\s*/);
+    const street = parts.length > 1 && /^\d/.test(parts[0]) ? parts[0] : null;
+    const postal = line.match(/\b(\d{5}(?:-\d{4})?|[A-Z]\d[A-Z] ?\d[A-Z]\d)\b/)?.[1] || null;
+    const phone = decode(m[4]).trim();
+    out.push({
+      raw: {
+        name,
+        street,
+        city,
+        region: region && lineNamesRegion(line, region) ? region : null,
+        postal,
+        phone: /\d{3}/.test(phone) ? phone : null,
+        url: pageUrl,
+      },
+      website: site ? ownWebsite(`<a href="${site}">Website</a>`, pageUrl) : null,
+    });
+  }
+  return out;
+}
+
+/**
+ * The World Axe Throwing League lists every affiliated venue on one page as a card: the name, a state or
+ * province with its country, and the venue's own site as the card's link. No town, street or phone is on
+ * the page (data-city holds the region), so those stay gaps. Venues outside the US and Canada get no region
+ * and are dropped by the run.
+ */
+export function readWatlAffiliates(html: string, pageUrl: string): DirectoryRead[] {
+  const out: DirectoryRead[] = [];
+  for (const card of html.matchAll(/<li class="wm-card"[\s\S]*?<\/li>/gi)) {
+    const c = card[0];
+    const name = decode(c.match(/class="wm-card__name">([^<]*)</)?.[1] || "").trim();
+    if (!name) continue;
+    const country = decode(c.match(/data-country="([^"]*)"/)?.[1] || "").toLowerCase();
+    const region = /^(united states|canada)$/.test(country) ? decode(c.match(/wm-card__loc-region">([^<]*)</)?.[1] || "") : null;
+    const href = c.match(/class="wm-card__inner"\s+href="([^"]+)"/)?.[1];
+    out.push({
+      raw: { name, region, url: pageUrl },
+      website: href ? ownWebsite(`<a href="${decode(href)}">Website</a>`, pageUrl) : null,
+    });
+  }
+  return out;
 }
