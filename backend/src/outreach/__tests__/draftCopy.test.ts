@@ -17,7 +17,7 @@ const empty: PageFacts = { priced: [], services: 0, photos: false, hours: false,
 const body = (f: Partial<PageFacts>) => draftCopy(op, {} as never, { ...empty, ...f }, "info@seabreezejetski.com").body;
 const who = (f: Partial<PageFacts>) => body(f).split("\n").find((l) => l.startsWith("I'm Harshil")) as string;
 const built2 = (f: Partial<PageFacts>) => body(f).split("\n").find((l) => l.startsWith("I put together a page")) as string;
-const thin = (f: Partial<PageFacts>) => body(f).split("\n").find((l) => l.startsWith("It's missing your services"));
+const thin = (f: Partial<PageFacts>) => body(f).split("\n").find((l) => l.startsWith("None of the info is made up"));
 
 test("the lead says what Outset is before naming this operator", () => {
   assert.equal(who({}), "I'm Harshil. I run Outset, an instant-booking marketplace where guests find and book local activities across the US and Canada.");
@@ -53,7 +53,7 @@ test("a page with one thing on it reads as a sentence", () => {
 
 test("a page with nothing on it says so rather than claiming things", () => {
   const s = thin({});
-  assert.ok(s?.includes("Nothing here is made up"), s);
+  assert.ok(s?.includes("None of the info is made up"), s);
   assert.equal(built2({}), "I put together a page for Sea Breeze Jet Ski Rentals, but your site didn't give me much to work with:");
 });
 

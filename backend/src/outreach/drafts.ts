@@ -135,7 +135,7 @@ export function draftCopy(op: Op, sc: ReturnType<typeof scale>, f: PageFacts, em
     ? "I put together a page for " + op.name + " using " + andList(built) + ":"
     : "I put together a page for " + op.name + ", but your site didn't give me much to work with:";
   // A page with nothing on it is still worth showing, but it cannot be sold as one that has their things on it.
-  const thin = built.length ? null : "It's missing your services and prices for now. Nothing here is made up — you can add them yourself in a couple of minutes.";
+  const thin = built.length ? null : "None of the info is made up, and you can adjust services, update prices, or change anything else whenever you want right from your dashboard.";
   const cta = "Once you've had a look, this opens the dashboard so you can fix anything and turn bookings on. It's meant for the owner, so please don't forward it:";
   const howHead = "How it works for " + op.name + ":";
   /**
@@ -153,7 +153,7 @@ export function draftCopy(op: Op, sc: ReturnType<typeof scale>, f: PageFacts, em
     { label: "Weather protection", text: "decline a booking for weather in your dashboard and the guest is refunded in full, automatically. You don't do anything, and we don't take a fee on it." },
   ];
   const lines = [
-    "Hi,", "", who, "", built2, listing, "", thin, "", cta, claim, "", howHead, "",
+    "Hi,", "", who, "", built2, listing, thin, "", cta, claim, "", howHead, "",
     ...bullets.map((b) => "• " + b.label + ": " + b.text),
     "",
     "Got the wrong business? Take the page down instantly:", remove,
