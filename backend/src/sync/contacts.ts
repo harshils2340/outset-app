@@ -1087,6 +1087,32 @@ export function depositNotPrice(name: string, detail: string | null): string | n
 }
 
 /**
+ * A figure in a row's name that is the face value of something the row includes rather than what the row costs:
+ * "$10 Arcade Card", "Value Card $200 Credit", "Lift or Loose - $50 Pool". Those disagree with the price on
+ * purpose.
+ */
+const BUNDLED_VALUE = /\b(?:credits?|cards?|vouchers?|gift|bonus|cash|pools?|chips?|tokens?|arcade|points?|included|value)\b/i;
+
+/**
+ * The row names its own price and we hold a different one, so one of the two is wrong and nothing on the page
+ * says which. "4-Hour Sailfishing: $700" was published at $850, "Two Races (Adult Kart) $56" at $399, and
+ * "Fort Myers- Whole Day Pass - $199" at $3, each printing both numbers on one line.
+ *
+ * The name is usually the right one, and it is still not taken: "$20,000 Maui JIM Grand Prix" is prize money, so
+ * believing the name would advertise a show jumping class at twenty thousand dollars. Dropping the number is
+ * right in every one of these, which is the house rule anyway: keep the honest gap rather than guess.
+ */
+export function contradictedPrice(name: string, price_cents: number): string | null {
+  if (BUNDLED_VALUE.test(name)) return null;
+  const found = name.match(/\$\s*\d[\d,]*(?:\.\d\d)?/g);
+  if (!found) return null;
+  const dollars = price_cents / 100;
+  const stated = found.map((s) => Number(s.replace(/[$,\s]/g, ""))).filter((v) => v > 0);
+  if (!stated.length || stated.some((v) => Math.abs(v - dollars) <= 0.01)) return null;
+  return "its name states $" + stated.join(" and $") + ", the row holds $" + dollars;
+}
+
+/**
  * A price the site cannot have meant. "5 Hour Half Day Fishing Trip $10" and "44 Hour Full Moon Fishing Trip $4"
  * are the deposit, or digits the parser lifted out of the name. Half a day on the water is not four dollars, so the
  * number is dropped and the page says "Price on request" rather than telling a guest something false.
@@ -1097,6 +1123,9 @@ function implausiblePrice(o: { name: string; detail: string | null; duration: st
   // Before the cheap-by-design list: "Deposit per Player" is a deposit however it is worded.
   const deposit = depositNotPrice(o.name, o.detail);
   if (deposit) return deposit;
+  // Also before it: "Fort Myers- Whole Day Pass - $199" at $3 is a day pass, so the cheap-by-design list lets it by.
+  const contradiction = contradictedPrice(o.name, o.price_cents);
+  if (contradiction) return contradiction;
   if (CHEAP_BY_DESIGN.test(text)) return null;
   const dollars = o.price_cents / 100;
   const mins = minutesOf(o.duration || "") ?? minutesOf(o.name);
