@@ -1577,7 +1577,7 @@ export function WebHome({ onOperators, onAsk, asking = false, askSeed = "", onCl
           )}
           <div className="ah-right">
             {asking ? null : modeSwitch}
-            <a className="ah-host" href="/otto">AI front desk</a>
+            <a className="ah-host" href="/otto">Otto</a>
             <button type="button" className="ah-host" onClick={onOperators}>List your business</button>
             <UserMenu onOperators={onOperators} />
           </div>
