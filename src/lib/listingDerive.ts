@@ -58,11 +58,30 @@ export function bringLine(text: string): string {
   return "Bring " + (/^[A-Z][a-z]/.test(text) ? text.charAt(0).toLowerCase() + text.slice(1) : text);
 }
 
-/** Minimum age from lines like "Must be 18+", "Minimum age 8", "ages 6 and up". */
+/**
+ * Minimum age from lines like "Must be 18+", "Minimum age 8", "ages 6 and up".
+ *
+ * A shop that has written the words "minimum age" has already said the number is a floor, so it needs nothing
+ * after it. One regex asked every cue for the same trailing "+", "years" or "or older", and 86 listings that
+ * state the rule in plain English printed no age at all: "Minimum age 8", "Minimum age 10 for paintball, 7 for
+ * SplatMaster", "Minimum age 16 to enter without adult supervision". The looser cues keep their suffix, because
+ * a bare "ages 6" or "must be 4" is as often a band or a boat as it is a rule.
+ *
+ * That cue runs only after the others have read the whole list and found nothing, so it adds an age where
+ * there was none and never changes one. Reading it in the same pass moved 16 listings to a different number,
+ * because this returns the first line that yields an age rather than the lowest, and on a shop that sells more
+ * than one thing the two are not the same: Peak Experiences would have gone from the 5 its birthday climbers
+ * must be to the 13 its belayers must be.
+ */
 export function minAge(lines: string[]): number | null {
   for (const l of lines) {
     const worded = l.match(/\b(?:min(?:imum)? age(?: is|:)?|must be(?: at least)?|ages?|riders? must be)\s*(\d{1,2})\s*(?:\+|and (?:up|over|older)|years|yrs|or older)/i);
     const n = worded ? Number(worded[1]) : barePlusAge(l);
+    if (n != null && n >= 2 && n <= 21) return n;
+  }
+  for (const l of lines) {
+    const stated = l.match(/\bmin(?:imum)?\.?\s*age(?:\s+is|\s*:|\s+of)?\s*(\d{1,2})\b/i);
+    const n = stated ? Number(stated[1]) : null;
     if (n != null && n >= 2 && n <= 21) return n;
   }
   return null;

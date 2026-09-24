@@ -44,7 +44,9 @@ test("a group size is not a minimum age", () => {
 test("a distance, a booking window, a course load and a tax line are not minimum ages", () => {
   // The last one publishes an age of its own, on another line, and that is the one the page prints now.
   const cases: [string, RegExp, number | null][] = [
-    ["a-viator-31018p2", /cannot walk 3\+ miles/i, null], // a walking tour read as "Ages 3+"
+    // A walking tour read as "Ages 3+". The product states one of its own on the line above, hyphenated
+    // ("minimum age is 8-years old"), and that is the one the page prints now.
+    ["a-viator-31018p2", /cannot walk 3\+ miles/i, 8],
     ["o-bigtexboatrentals-com", /made 15\+ days before your trip/i, null], // a reschedule window
     ["o-capital-adventuresunbound-com", /3\+ nights in 7 days/i, null],
     ["o-rentchicagoboats-com", /2\+ years boating experience/i, null],
