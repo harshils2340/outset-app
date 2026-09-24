@@ -101,3 +101,20 @@ test("the confirm screen names the business it is about to hand over", () => {
     "the confirm screen draws its card from `picked`, so it can ask an owner to hand over a business it does not name",
   );
 });
+
+/**
+ * A link that did not open the dashboard. Three of the four states below leave the owner on the claim form and
+ * tell them to ask for a fresh link, which means typing their name and the exact address on their website
+ * again, from a screen that already holds all three in its own URL.
+ */
+test("a claim link that failed hands its own owner details to the form", () => {
+  const start = src.indexOf("useEffect(() => {\n    if (!claimToken) return;");
+  assert.ok(start > -1, "nothing reads the owner details off a claim link that did not open the dashboard");
+  const block = src.slice(start, src.indexOf("}, [claimToken]);", start));
+  assert.ok(/ownerFromHash\(window\.location\.hash\)/.test(block), "the prefill no longer reads the link's own payload");
+  // Bounded there, not here: a hand-edited hash must not seed a 3,000-character name or an address the API
+  // could never accept.
+  for (const set of ["setName", "setEmail", "setPhone"]) {
+    assert.ok(new RegExp(set + "\\(\\(v\\) => v \\|\\| o\\.").test(block), set + " overwrites what the owner has already typed");
+  }
+});

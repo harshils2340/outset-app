@@ -96,6 +96,24 @@ export function OpLogin({ claimId, claimToken, compact, onEnter, onBack }: { cla
   const [code, setCode] = useState("");
   const [err, setErr] = useState<string | null>(null);
   /**
+   * A claim link that does not open the dashboard drops the owner on the form below, and every message there
+   * tells them to ask for a fresh link. The link they just clicked already carries the name, work email and
+   * mobile they typed the first time, so read those back instead of making them find them again: the address
+   * is the one the API will accept, which is the field they are most likely to get wrong on a second go.
+   *
+   * `ownerFromHash` bounds and validates the payload, the API still checks the address against the business's
+   * own website, and the hash is only ever a URL this person already holds. Runs once: a keystroke must not be
+   * overwritten, and the hash keeps `&o=` until the claim is actually recorded.
+   */
+  useEffect(() => {
+    if (!claimToken) return;
+    const o = ownerFromHash(window.location.hash);
+    if (!o) return;
+    setName((v) => v || o.name);
+    setEmail((v) => v || o.email);
+    setPhone((v) => v || o.phone);
+  }, [claimToken]);
+  /**
    * "bad" is the API reading the token and refusing it. "offline" is the API never answering at all, which is
    * a timeout, a dead connection, the rate limiter or a fault on its side: the link is very likely fine and
    * the token is still in the address bar, so a reload retries it. Calling that one bad told owners with a
