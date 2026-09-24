@@ -4328,6 +4328,66 @@ and the Chromium on disk.
 - A fresh checkout still has no root `node_modules`, which the fifty-second run raised: eight guest test files
   are red for want of react until `npm install` is run at the root as well as in `backend`. Still true this run.
 
+## 24 September 2026, sixty-seventh run (08:14 to 08:50 UTC)
+
+**Chosen, and why.** Every area the brief names is on the Verified list and the last entry says the rehearsal
+was green, so the frontier had to be found. `listingFacts` in `src/lib/catalog.ts` turned out to be one: it
+writes the "Who can go" and "Safety and waiver" columns on the listing page, the phone booking sheet, the
+compare table and the dashboard's "What Otto knows" panel, and no sweep had ever run it over the catalog.
+Pulling that thread led to the other field nobody had read end to end, `gap`, which is the one thing a claim
+prefills straight onto an operator's own published page.
+
+**Found and fixed.**
+
+- **A child fare was printed as a rule about who can go** (`19dd9335`). The gate that pulls a menu row into
+  the column asked only for a word, "child", "junior" or "kids", which every price tier on a family menu
+  carries. So 1,501 rows across 908 shipped listings were printed as the shop's own eligibility rule: "Kids
+  Karate.", "Admission: Children.", "Tickets: Child.", "Rental Fleet: Child Seat.", "Junior Explorers: 35
+  hours.". The compare table's "Who can go" row and the dashboard panel read this column whatever else a shop
+  publishes, and the compare table led with a tier's name on 513 listings; the listing page and the phone sheet
+  fall back to it when the crawl found no requirements list, 516 of them, and led with a tier's name on 449. A
+  row now has to state an age, a height or an adult's company, and a number counting holes, hours, classes, a
+  school grade, a year, a head count or dollars is not an age. Nothing new is printed: the 496 listings left
+  with nothing fall back to the honest gap line the column already says.
+- **Our own note about a missing fact was published as the shop's policy** (`39763726`). `gap` carries two
+  different things: usually a shop's cancellation prose the crawl had nowhere else to put, sometimes the
+  crawl's note about what the site never carried, and sometimes one of our fallback lines. The claim prefill's
+  guard knew five wordings while the notes use a dozen, so the day an owner claimed, 1,052 of them landed in
+  their published policy list for a guest to read: "No pricing information for food or drinks", "Duration of
+  charters", "Age minimum not explicitly stated", "Prices for services", "Ask the operator about
+  cancellations". One shape reads both ways and only one, "X are not given", and the auxiliary plus the shop
+  addressing a guest tells the note from the policy, because a note never speaks to anybody. Diffed over all
+  46,324 operator listings: 1,052 stop being prefilled, not one that was already dropped comes back.
+
+**Swept and clean.** The two columns over all 46,324 shipped operator listings, 14,754 posted lines: after the
+first fix only 19 are two words or fewer and every one is a real fact ("Ages 6+", "Kids welcome", "Waiver
+required"); 17 name nothing about age or size and 10 of those are passenger capacity, which belongs there.
+Two genuine questions are printed as facts ("Is a deposit required to hold a reservation?"), and 321 lines
+are printed under both headings at once, which the code does on purpose for a line that is both.
+
+**Verification.** Both type checks clean. Backend `npm test` 750 pass, 0 fail, 2 skipped. The guest suite 765
+pass, 0 fail, up 9 on the two new files, which include three whole-catalog assertions. The rehearsal was run,
+because both commits touch `src/lib` and step (k2) drives the prefill this run changed: green end to end, 53
+of 53, against a local Postgres on 5433 with SSL on and the Chromium on disk.
+
+**Needs Harshil.**
+
+- Seven shipped lines reach "Who can go" because `WHO_RE` reads "$50+tax", "$40+tax", "$300+taxes", "$65+GST"
+  and "35+mph" as an age of 50, 40, 300, 65 and 35. All seven shops publish a requirements list, so only the
+  compare table and the Otto panel show them. `minAge` already has the rule that tells those apart
+  (`barePlusAge`); the reason this run left them is that moving a cancellation fee out of "Who can go" moves it
+  into `about`, which is the highlights fallback, and two of the seven have no highlights of their own, so the
+  fee would become a bullet selling the trip instead. Which of the two wrong places it belongs in is a call.
+- 321 listings print the same sentence under "Who can go" and under "Safety and waiver", because `classify`
+  returns "both" for a line naming an age and a licence at once ("Must be at least 18yrs of age to rent
+  w/Boaters license"). The two headings sit next to each other, so a guest reads it twice. Deliberate in the
+  code, sloppy on the page.
+- `o-oselkamarina-com` and `o-rjswatercraftrentals-com` print an FAQ question as a safety rule: "Is there a
+  security deposit that I'm required to pay?" and "Is a deposit required to hold a reservation?". `faqText`
+  already strips a Q label, but nothing refuses a line that is a question rather than an answer.
+- A fresh checkout still has no `node_modules` at the root or in `backend`, which the fifty-second run raised:
+  this run had to run `npm install` twice before anything could type-check. Still true.
+
 ## Coverage
 
 The catalog is 48,198 listings as of the 23 September sync, 1,873 of them Viator partner rows. Counts below
@@ -4820,6 +4880,15 @@ each extra on its own and all of them together, over the 1,652 listings carrying
 said "price on request". Which day a live-departures window opens on when the caller names none, on all three
 routes that turn a window into calendar dates.
 
+The two columns a guest reads under "Who can go" and "Safety and waiver", over all 46,324 shipped operator
+listings and the 14,754 lines they post: which menu rows reach the first of them, against the age, height and
+accompaniment rules that make a row a rule rather than a price tier, and against the numbers beside a person
+word that count holes, hours, classes, a school grade, a year, a head count or dollars; the two-word lines, the
+lines naming nothing about who, the questions printed as facts and the lines printed under both headings. The
+`gap` field on every one of those listings, read as what it is, two fields in one: which of them is the shop's
+own policy prose and which is our note about a fact the site never published, against the policy list a claim
+prefills and publishes on the operator's own page.
+
 **Not yet checked.** Whether a Free cancellation badge should ever promise a shorter
 notice than a line in the same shop's own policy denies: 13 of the 7,104 shipped badges do, four of them a shop
 contradicting itself where a previous run deliberately chose the promise, and the rest a per-service window
@@ -5010,4 +5079,4 @@ quiet for a listing its owner has hidden or paused, given that its times are the
 and not ours (see the sixty-fourth run's Needs Harshil). Whether a partner's product may have a phone agent
 after all, which is the one thing that run changed on a rule rather than on a defect. Whether the `/voice`
 routes should be public at all, or carry a key the voice platform could hold: today a per-IP limit is the
-whole door.
+whole door. Whether a cancellation fee read as an age ($50+tax, 35+mph, 7 shipped lines) should move out of "Who can go" when the only other bucket is the highlights fallback (see the sixty-seventh run's Needs Harshil). Whether a line naming both an age and a licence should be printed under "Who can go" and "Safety and waiver" at once, which 321 listings do. Whether an FAQ question should ever be printed as a safety rule, which 2 are. Whether the "Who can go" column should cap a line's length the way the waiver column caps it at 160, given the 80 lines over 220 characters it prints today. Whether the `gap` field should be two fields rather than one, so a shop's policy prose and our own note about a missing fact stop having to be told apart by their wording.
