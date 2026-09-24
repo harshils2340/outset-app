@@ -1507,7 +1507,16 @@ export function WebHome({ onOperators, onAsk, asking = false, askSeed = "", onCl
 
   const filterCount = (effSort !== "relevance" ? 1 : 0) + (priceOn ? 1 : 0);
   const resetFilters = () => { setSort("relevance"); setPrice({ min: null, max: null }); setCat("all"); setArtChip(null); };
-  const showRails = state.catalogReady && !state.locating && (!q.trim() || placeOnly) && !gridMode;
+  /**
+   * A precise point (GPS, or a typed address) waits for the whole catalog, not just the lite shard. The lite
+   * shard is a ~2,200-row scale model of the browsable catalog, sampled per metro with no idea where in that
+   * metro any one guest actually stands, so `nearPool`'s tight radius filter around a real point routinely
+   * turns up an almost entirely different six cards once the full catalog's much larger candidate pool is
+   * searched: verified live, off Toronto's own centroid, six cards on first paint and zero of them still
+   * there a few seconds later. A metro-wide browse does not have this problem (the lite shard's own fix
+   * already keeps its category mix stable), so only a real point pays the extra wait.
+   */
+  const showRails = state.catalogReady && !state.locating && (!nearPoint || state.catalogComplete) && (!q.trim() || placeOnly) && !gridMode;
   // Agent Mode was built for the hackathon demo (see src/lib/concierge.ts). AGENT_MODE_LIVE keeps it out of
   // the live site: modeSwitch is the one place this component offers a way into it, so nulling it here is
   // enough to drop the toggle everywhere it's read below.
