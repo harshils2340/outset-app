@@ -286,3 +286,12 @@ test("a reader's own price label survives a re-pick that changes nothing", () =>
   const charter = { ...dep, fromPrice: null, priceLabel: null, rates: [{ label: "Private Cycle Boat Charter (whole booking)", price: 599, minParty: null, maxParty: null, group: true }] };
   assert.equal(headlineForParty(charter, 4).fromPrice, null);
 });
+
+test("date night is a genre, not a question: the shortlist is date kinds and the party is two", () => {
+  const it = readIntent("date night in toronto");
+  assert.equal(it.genre, "date");
+  assert.equal(it.party, 2);
+  assert.equal(readIntent("something romantic for our anniversary").genre, "date");
+  // "update" is not a date.
+  assert.notEqual(readIntent("any update on escape rooms tonight").genre, "date");
+});

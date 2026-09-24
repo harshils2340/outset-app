@@ -762,12 +762,16 @@ export const GENRES: { id: string; label: string; categories: string[] }[] = [
   { id: "food", label: "Food and drink", categories: ["brewery", "winery", "distillery", "cooking"] },
   { id: "calm", label: "Something calmer", categories: ["spa", "sauna", "yoga", "pottery", "garden", "museum", "theatre", "aquarium", "zoo", "dance", "tour"] },
   { id: "outdoors", label: "Outdoors", categories: ["horse", "ski", "snowmobile", "camping", "themepark", "zoo"] },
+  // "date night in toronto" is most of what a couple types. Ordered by how much of a date each kind is; day
+  // trips (tours) are left out on purpose, since a city's most-reviewed tours are nine-hour excursions.
+  { id: "date", label: "A date", categories: ["cooking", "winery", "pottery", "theatre", "spa", "sauna", "escape", "cruise", "dance", "axe", "minigolf", "icerink", "bowling", "karaoke", "billiards", "brewery", "distillery"] },
 ];
 
 const GENRE_BY_ID = new Map(GENRES.map((g) => [g.id, g]));
 
 /** A genre named outright, so "something on the water near Toronto" does not have to be asked about. */
 function readGenre(t: string): string | null {
+  if (/\bdate night|date idea|a date\b|\bromantic|couples?\b|\banniversary\b|\bvalentine/.test(t)) return "date";
   if (/\bon the water|water ?sports?|boating\b/.test(t)) return "water";
   if (/\bin the air|flying|aerial\b/.test(t)) return "air";
   if (/\bpuzzle|brain|games?\b/.test(t)) return "puzzles";
