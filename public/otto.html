@@ -113,7 +113,6 @@
     .act span small { display: block; color: var(--ink-soft); font-size: .82rem; margin-top: .05rem; }
     .act .t { margin-left: auto; padding-left: .6rem; color: var(--ink-soft); font-size: .8rem; font-variant-numeric: tabular-nums; }
     .lane.caller .av img { object-fit: cover; }
-    .scrub { padding: 10px 0; background: none; height: auto; }
     .scrub .rail { height: 6px; background: rgba(255,255,255,.16); border-radius: 3px; position: relative; }
     .scrub .rail .scrubfill { border-radius: 3px; }
     .scrub .tip { position: absolute; bottom: 100%; transform: translate(-50%, -6px); background: #fff; color: var(--ink); font-size: .74rem; font-weight: 600; padding: .2rem .45rem; border-radius: 6px; pointer-events: none; opacity: 0; transition: opacity .12s; white-space: nowrap; }
@@ -130,7 +129,8 @@
     .ic-pause { display: none; gap: 5px; }
     .playbtn.playing .ic-pause { display: inline-flex; }
     .ic-pause i { width: 4.5px; height: 17px; background: currentColor; border-radius: 2px; display: block; }
-    .scrub { flex: 1; height: 6px; background: rgba(255,255,255,.14); border-radius: 3px; cursor: pointer; position: relative; touch-action: none; }
+    /* The slider box itself is unpainted: only the rail shows, so there is no lighter rectangle around it. */
+    .scrub { flex: 1; padding: 10px 0; cursor: pointer; position: relative; touch-action: none; }
     .scrubfill { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: #fff; border-radius: 3px; }
     .scrubfill::after { content: ""; position: absolute; right: -6px; top: 50%; transform: translateY(-50%); width: 13px; height: 13px; border-radius: 50%; background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,.4); opacity: 0; transition: opacity .2s; }
     .call.on .scrubfill::after { opacity: 1; }
@@ -163,12 +163,21 @@
     .who li { display: flex; align-items: center; gap: .7rem; padding: .85rem 1rem; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-m); font-weight: 500; font-size: .95rem; }
     .who li .ic { width: 16px; height: 16px; color: var(--accent); }
 
-    .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
-    @media (max-width: 860px) { .steps { grid-template-columns: 1fr; } }
-    .step { background: var(--ground); border: 1px solid var(--line); border-radius: var(--r-l); padding: 1.5rem; }
-    .step .n { display: inline-grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; background: var(--accent); color: #fff; font-weight: 700; font-size: .9rem; margin-bottom: .9rem; }
-    .step h3 { margin: 0 0 .35rem; font-size: 1.08rem; font-weight: 600; }
-    .step p { margin: 0; color: var(--ink-soft); font-size: .96rem; }
+    /* Three numbered steps on one line, so they read as a sequence rather than three loose tiles. */
+    .steps { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.25rem; }
+    .step { position: relative; display: flex; flex-direction: column; }
+    .step .mark { position: relative; height: 32px; margin-bottom: 1rem; }
+    .step .mark::after { content: ""; position: absolute; top: 50%; left: 44px; right: -1.25rem; height: 2px; background: var(--line-strong); transform: translateY(-50%); }
+    .step:last-child .mark::after { display: none; }
+    .step .n { position: relative; z-index: 1; display: inline-grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; background: var(--accent); color: #fff; font-weight: 700; font-size: .9rem; box-shadow: 0 0 0 4px var(--ground); }
+    .step .card { flex: 1; box-shadow: 0 1px 2px rgba(0,0,0,.03), 0 10px 24px -16px rgba(0,0,0,.14); }
+    .step .card .icw { margin-bottom: 1.1rem; }
+    @media (max-width: 860px) {
+      .steps { grid-template-columns: 1fr; gap: 1rem; }
+      .step { flex-direction: row; gap: 1rem; }
+      .step .mark { height: auto; margin: 0; width: 32px; flex: none; }
+      .step .mark::after { left: 50%; right: auto; top: 44px; bottom: -1rem; width: 2px; height: auto; transform: translateX(-50%); }
+    }
 
     .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; }
     @media (max-width: 760px) { .stats { grid-template-columns: repeat(2, 1fr); } }
@@ -230,6 +239,7 @@
     <symbol id="i-restart" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></g></symbol>
     <symbol id="i-mail" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M3 8l9 6 9-6"/></g></symbol>
     <symbol id="i-check" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" d="M5 12.5l4.5 4.5L19 7"/></symbol>
+    <symbol id="i-facts" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="2.5"/><path d="M8 8h8M8 12h8M8 16h5"/></g></symbol>
     <symbol id="i-anchor" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="2.2"/><path d="M12 7.2V21M5 12H2c0 5 4.5 9 10 9s10-4 10-9h-3M8 12h8"/></g></symbol>
     <symbol id="i-jetski" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 16h13l4-3-2-3h-6l-3 3H4z"/><path d="M11 10l3-4h2"/><path d="M2 20c2-1.5 4-1.5 6 0s4 1.5 6 0 4-1.5 6 0"/></g></symbol>
     <symbol id="i-pontoon" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 14h18l-2 4H5z"/><path d="M6 14v-3h12v3M9 11V8h6v3"/><path d="M2 21c2-1.5 4-1.5 6 0s4 1.5 6 0 4-1.5 6 0"/></g></symbol>
@@ -355,11 +365,21 @@
     <div class="wrap">
       <p class="eyebrow">How it works</p>
       <h2>Live in a day. Nothing changes about how you work.</h2>
-      <div class="steps">
-        <div class="step"><span class="n">1</span><h3>Point your calls at Outset</h3><p>Forward your existing number, or hand out a new one. We set it up with you, by hand.</p></div>
-        <div class="step"><span class="n">2</span><h3>It learns your business</h3><p>Your prices, hours, age rules, policies and your real calendar. It answers only from your own facts and never makes anything up.</p></div>
-        <div class="step"><span class="n">3</span><h3>It answers and books</h3><p>Every call and text, handled end to end, with a summary sent to you after each one.</p></div>
-      </div>
+      <p class="sub">You keep your number, your calendar and your booking system. The front desk plugs into them.</p>
+      <ol class="steps">
+        <li class="step">
+          <div class="mark"><span class="n">1</span></div>
+          <div class="card"><div class="icw"><svg class="ic"><use href="#i-phone"/></svg></div><h3>Point your calls at Outset</h3><p>Forward your existing number, or hand out a new one. We set it up with you, by hand.</p></div>
+        </li>
+        <li class="step">
+          <div class="mark"><span class="n">2</span></div>
+          <div class="card"><div class="icw"><svg class="ic"><use href="#i-facts"/></svg></div><h3>It learns your business</h3><p>Your prices, hours, age rules, policies and your real calendar. It answers only from your own facts and never makes anything up.</p></div>
+        </li>
+        <li class="step">
+          <div class="mark"><span class="n">3</span></div>
+          <div class="card"><div class="icw"><svg class="ic"><use href="#i-cal"/></svg></div><h3>It answers and books</h3><p>Every call and text, handled end to end, with a summary sent to you after each one.</p></div>
+        </li>
+      </ol>
     </div>
   </section>
 
