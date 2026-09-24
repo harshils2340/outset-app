@@ -3,6 +3,9 @@ import { ID, rateLimit } from "./auth.ts";
 import { getAvailability, type Availability } from "../enrich/availability.ts";
 import { zonedNow } from "../concierge/shopday.ts";
 import { zoneForArea } from "../lib/zone.ts";
+import { getProfile } from "../lib/repo.ts";
+import { pgConfigured } from "../db/pg.ts";
+import type { StoredProfile } from "./profiles.ts";
 
 /**
  * The phone agent's data endpoints ("Otto on the phone").
@@ -111,6 +114,38 @@ function fromPriceOf(l: Listing): number | null {
  * would be read out on a call with none of that, so the route refuses for the same reason and in the same
  * words the booking route already refuses one.
  */
+/**
+ * The operator's own edits, over the nightly file.
+ *
+ * `o/<id>.json` is written by the nightly sync. A claimed shop's live facts are its dashboard patch, which is
+ * what `GET /profiles/:id` hands the listing page so a price or an hours change shows a guest at once. This
+ * route read the nightly file alone, and the shops Otto is sold to are exactly the claimed ones: an operator
+ * who put their prices up in the morning had their own phone agent quoting yesterday's all day, along with
+ * yesterday's menu, hours, policies, cancellation line and even the business name.
+ *
+ * The two switches come with it. The booking API refuses a booking for a listing whose owner has it hidden or
+ * has paused bookings, so a caller sent to that link is turned away at the end of it.
+ */
+export function applyEdits(l: Listing, rec: StoredProfile | null): { listing: Listing; takingBookings: boolean } {
+  if (!rec) return { listing: l, takingBookings: true };
+  // An array is an object, and a patch stored as one would spread as numbered keys over the whole record.
+  const patch = rec.patch && typeof rec.patch === "object" && !Array.isArray(rec.patch) ? (rec.patch as Partial<Listing> & { accepting?: boolean }) : null;
+  const accepting = patch?.accepting ?? (rec.profile as { accepting?: boolean } | null)?.accepting;
+  return { listing: patch ? { ...l, ...patch } : l, takingBookings: rec.published !== false && accepting !== false };
+}
+
+async function withOperatorEdits(l: Listing): Promise<{ listing: Listing; takingBookings: boolean }> {
+  // An unclaimed shop has no row, and a host with no store has no rows at all: the nightly file is stale
+  // rather than wrong, so a live call is never failed over this, the agent just speaks from the file.
+  if (!pgConfigured()) return { listing: l, takingBookings: true };
+  try {
+    return applyEdits(l, await getProfile<StoredProfile>(l.id));
+  } catch (e) {
+    console.error(`[voice] could not read the profile for ${l.id}: ${(e as Error).message}`);
+    return { listing: l, takingBookings: true };
+  }
+}
+
 function partnerRefusal(l: Listing): string | null {
   return l.affiliate ? "This experience is booked on " + (l.affiliate.label || "the partner's site") + ", not on Outset, so it has no Outset phone agent" : null;
 }
@@ -122,28 +157,33 @@ voice.get("/voice/:operatorId", rateLimit(120, 60 * 60 * 1000), async (c) => {
   if (!l || !l.title) return c.json({ error: "not found" }, 404);
   const no = partnerRefusal(l);
   if (no) return c.json({ error: no }, 409);
+  const { listing: shop, takingBookings } = await withOperatorEdits(l);
 
   // Only what is published on the listing. A missing field is said as missing so the agent offers to have a
   // person confirm, exactly as the on-page assistant does, rather than inventing an answer on a live call.
-  const hours = l.hoursText?.length ? l.hoursText : l.contact?.hours || [];
+  const hours = shop.hoursText?.length ? shop.hoursText : shop.contact?.hours || [];
   return c.json({
     business: {
-      id: l.id,
-      name: l.title,
-      where: l.area || null,
-      about: l.blurb || null,
-      offers: offersOf(l),
-      fromPrice: money(fromPriceOf(l)),
-      duration: l.dur || null,
+      id: shop.id,
+      name: shop.title,
+      where: shop.area || null,
+      about: shop.blurb || null,
+      offers: offersOf(shop),
+      fromPrice: money(fromPriceOf(shop)),
+      duration: shop.dur || null,
       hours: hours.length ? hours : null,
-      includes: (l.includes || []).slice(0, 12),
-      requirements: (l.requirements || []).slice(0, 12),
-      policies: (l.policies || []).length ? (l.policies || []).slice(0, 8) : null,
-      cancellation: l.cancellation || null,
-      freeCancellation: !!l.fc,
-      phone: l.contact?.phone || null,
-      // Where a booking is completed. Only ever our own listing: a partner's product never reaches here.
-      bookingUrl: `${SITE}#o=${encodeURIComponent(l.id)}`,
+      includes: (shop.includes || []).slice(0, 12),
+      requirements: (shop.requirements || []).slice(0, 12),
+      policies: (shop.policies || []).length ? (shop.policies || []).slice(0, 8) : null,
+      cancellation: shop.cancellation || null,
+      freeCancellation: !!shop.fc,
+      phone: shop.contact?.phone || null,
+      // Where a booking is completed. Only ever our own listing: a partner's product never reaches here. Null
+      // while the owner has the listing hidden or has paused bookings, because the booking API refuses both,
+      // so a caller sent to that link is turned away at the end of it.
+      takingBookings,
+      bookingUrl: takingBookings ? `${SITE}#o=${encodeURIComponent(shop.id)}` : null,
+      bookingNote: takingBookings ? null : "This business is not taking bookings through Outset right now. Take a name and number instead of sending the caller to a booking page.",
     },
     speak: {
       onlyPublishedFacts: true,

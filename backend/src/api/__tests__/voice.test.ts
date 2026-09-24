@@ -8,8 +8,9 @@ import assert from "node:assert/strict";
  */
 
 process.env.SITE_URL = "https://onoutset.com/";
-const { voice, speakableDays } = await import("../voice.ts");
+const { voice, speakableDays, applyEdits } = await import("../voice.ts");
 import type { Availability } from "../../enrich/availability.ts";
+import type { StoredProfile } from "../profiles.ts";
 
 const reel = {
   id: "o-reeltime-com",
@@ -93,6 +94,35 @@ test("the from price is the cheapest line on the menu, and a zero is no price ra
   const { business } = (await res.json()) as { business: { fromPrice: string | null; offers: { name: string; price: string | null }[] } };
   assert.equal(business.fromPrice, "$250", "the cheapest priced line, not the first one and not nothing");
   assert.deepEqual(business.offers.map((o) => o.price), [null, "$400", "$250"], "a zero is a price we could not read");
+});
+
+/**
+ * o/<id>.json is written by the nightly sync, and the shops Otto is sold to are the claimed ones, whose live
+ * facts are their dashboard patch. An operator who put prices up in the morning had their own phone agent
+ * quoting yesterday's all day.
+ */
+const profile = (patch: Record<string, unknown>, extra: Partial<StoredProfile> = {}): StoredProfile =>
+  ({ id: "o-reeltime-com", claimedAt: "", updatedAt: "", owner: { name: "", email: "", phone: "" }, published: true, profile: null, patch, ...extra }) as StoredProfile;
+
+test("the operator's own edits win over the nightly file", () => {
+  const { listing: shop, takingBookings } = applyEdits(reel, profile({ title: "Reel Time Fishing Co", options: [{ name: "Half day inshore", price: 700 }], cancellation: "" }));
+  assert.equal(shop.title, "Reel Time Fishing Co");
+  assert.equal(shop.options?.[0].price, 700, "the price the operator typed this morning, not last night's");
+  assert.equal(shop.cancellation, "", "a cleared field is published as empty, and reads as no line rather than the old one");
+  assert.equal(shop.hoursText?.[0], "Mon-Sat 6am-6pm", "a field the operator never touched keeps the published one");
+  assert.equal(takingBookings, true);
+  // No row at all is an unclaimed shop, which is the nightly file and nothing else.
+  assert.deepEqual(applyEdits(reel, null), { listing: reel, takingBookings: true });
+});
+
+test("a hidden or paused listing is not a booking link", async () => {
+  assert.equal(applyEdits(reel, profile({}, { published: false })).takingBookings, false, "the Published switch off");
+  assert.equal(applyEdits(reel, profile({ accepting: false })).takingBookings, false, "the Accepting switch off");
+  const res = await voice.request("http://localhost/voice/o-reeltime-com");
+  const { business } = (await res.json()) as { business: { takingBookings: boolean; bookingUrl: string | null; bookingNote: string | null } };
+  assert.equal(business.takingBookings, true, "an unclaimed shop with no row is unchanged");
+  assert.equal(business.bookingUrl, "https://onoutset.com/#o=o-reeltime-com");
+  assert.equal(business.bookingNote, null);
 });
 
 test("a partner's product has no phone agent, on either route", async () => {
