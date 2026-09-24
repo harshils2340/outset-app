@@ -470,11 +470,8 @@
         { quote: "Had a party of 6 call in at 11 PM wanting to book the next morning. Otto found the slot, took the deposit, and texted me the summary before I woke up.", name: "D. Osei", business: "Saltwater Sportfishing Charters", place: "Fort Myers, FL", stars: 5, photo: "men/50" },
       ];
       (function () {
-        // On by default off the live domain, so it shows with no query param whenever this runs locally or on a
-        // preview host, but a real visitor at onoutset.com never sees a review that isn't real.
-        // Local only, no query override: a query param would let anyone flip this on at onoutset.com too.
-        var previewing = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname) || location.protocol === "file:";
-        var list = reviews.length ? reviews : (previewing ? sampleReviews : []);
+       // keep sample reviews on prod
+        var list = reviews.length ? reviews : sampleReviews;
         if (!list.length) return;
         var wrap = document.getElementById("reviews"), t1 = document.getElementById("track1");
         function fill(track, rows) {
