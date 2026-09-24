@@ -4256,6 +4256,78 @@ run editing the tree while it ran, and a clean re-run is the 53 above.
 - The `notIncluded` key the `/voice` route now returns is new in that payload's shape, and nothing here has
   ever spoken to Vapi or Retell, so the shape a platform actually wants is still unproven.
 
+## 24 September 2026, sixty-sixth run (07:17 to 09:05 UTC)
+
+**Chosen, and why.** Every area the brief names is on the Verified list, and the last entry says the rehearsal
+was green, so the frontier had to be found rather than picked. Two places were worth looking: the newest code
+in the tree, which is the least swept code by definition, and the money path from the guest's own page to the
+server that charges it, which the Coverage list had checked a unit and a row name at a time but never end to
+end as one number. The rehearsal was run, because both commits below touch `src/lib` and `backend/src`.
+
+**Found and fixed.**
+
+- **A plural "do not include" was ticked as included** (`c5ac096c`). `splitIncluded` read `does not include`
+  and missed `do not include`, which is how a shop writes it whenever the subject is plural, and the subject of
+  that sentence is usually a price or a pass: "Listed rental rates do not include gas, tax, and delivery",
+  "Prices do not include customary 18-20% gratuity for the mate", "Our Fireworks Cruises do not include
+  dolphin-watching", "All Boat Rental totals and Jets Ski Rental totals do not include Fuel". 16 lines across
+  13 shipped listings, printed under the green tick on the listing page, read out by Otto and handed to the
+  phone agent as things the price covers.
+- **The exclusions heading rode the bullet** (same commit). The heading rule had the whole positive half of a
+  shop's own page and only the bare words "Not included:" of the negative half, so a shop that writes the
+  heading out in full had it printed as part of the fact: "What is not included: Gratuities are not included in
+  the ticket price" and "Excluded: Lunch (Free time provided at Niagara Falls...)", 3 lines on 2 listings.
+- **An exclusion could be swallowed whole** (same commit). Stripping a heading can leave a bullet reading word
+  for word like another one, once as a promise and once as an exclusion, and the dedupe took the first it saw:
+  the exclusion reached neither column and the promise stood. Latent, 0 shipped listings write their list that
+  way today, but the heading fix above makes more lines collapse onto one key, so the rule that an exclusion
+  wins had to stop depending on which half the shop labelled. Diffed over all 12,396 shipped listings that
+  publish an includes list: 15 change, 14 of them a line moving from the tick to the cross with the shop's own
+  words intact. The `/l/` pages are written by the sync, so those reach a guest on the next one.
+- **The live-departures window opened on the host's UTC day** (`415cb28c`). `GET /availability/:operatorId`
+  defaulted `from` to `new Date().toISOString()`, and `render.yaml` sets no TZ for `outset-api`, so from eight
+  in the evening Eastern a caller that named no date was answered about tomorrow and the rest of tonight was
+  never asked of the vendor. This is the last of the three routes that turn a window into calendar dates to
+  carry the fix: `/voice/:id/availability` took it in the sixty-fourth run and `openSlots` has read the shop's
+  zone all along. Latent rather than live: every surface in the app passes `from` off the guest's own clock.
+
+**Swept and clean.** Three sweeps found nothing, which is worth as much as a fix here. What the guest's page
+quotes against what the server charges, over all 19,117 operator listings with a bookable menu: every priced
+row, at a party of one and of three, sent the way `AppProvider` sends it and priced the way `POST /bookings`
+prices it, 83,574 quotes, every one identical and every one priceable. The same with extras, over the 1,652
+listings that carry both a priced menu and add-ons: each extra on its own and all of them together, 7,732
+checks, no disagreement. And the other way round, over all 34,492 unpriced rows a guest can pick: not one is
+priced by the server after the page said "price on request", so nobody is charged for a row they were told had
+no price.
+
+**Verification.** Both type checks clean. Backend `npm test` 750 pass, 0 fail, 2 skipped. The guest suite 756
+pass, 0 fail, up 3 on the new checks, which include two whole-catalog assertions: that no shipped listing ticks
+a line its own words deny, and that no heading is printed as a fact in either column. The rehearsal green end to end, 53 of 53, against a local Postgres on 5433 with SSL on
+and the Chromium on disk.
+
+**Needs Harshil.**
+
+- One of the 16 plural lines is a shop talking about somebody else's boats: o-soundboundcharters-com's
+  "Everything needed for fishing is supplied on all trips, including Sand Worms, something other local charter
+  boats don't include" now reads under "Not included", with its own words unstruck, so a guest still reads it
+  correctly. That is the same trade-off the singular form has always made, and the listing says the same thing
+  in another line anyway, but a rule that could tell whose boats they are would keep it where it was.
+- 13 of the 7,104 shipped Free cancellation badges promise a shorter notice than a line in the same shop's own
+  policy denies. Three are the check being wrong (o-kingfisherfleet-com's 48 hours is about when you *book*,
+  o-sunsweptsailing-com's 14 days about a charter already rescheduled). Four are the shop contradicting itself,
+  where a previous run deliberately chose the promise over the denial (o-baysidejetskirentals-com is the
+  listing that fix was written for, and o-keywestschooners-com says 48 hours in `cancellation` and 7 days in
+  `policies`). The rest are per-service windows flattened into one badge: o-bluekingdomtours-com is 48 hours on
+  a half day, a week on a full day and a fortnight on a private tour, and the badge names the shortest, so a
+  guest booking the private tour reads a promise the shop will not keep. Whether the badge should take the
+  strictest window, or say which service it belongs to, is a rule call, not a defect.
+- Five more lines on five listings state a cost the price does not cover in words `COSTS_EXTRA` does not name:
+  "Guided staff optional extra charge for private events", "Entry to petting zoo and feeding activities (feed
+  extra cost)", "Cost of your meal is extra". Each is half an inclusion and half not, so none reads as a clean
+  fix; they are the smallest remaining edge of that rule.
+- A fresh checkout still has no root `node_modules`, which the fifty-second run raised: eight guest test files
+  are red for want of react until `npm install` is run at the root as well as in `backend`. Still true this run.
+
 ## Coverage
 
 The catalog is 48,198 listings as of the 23 September sync, 1,873 of them Viator partner rows. Counts below
@@ -4735,9 +4807,26 @@ every surface that reads it: the desktop listing page, the phone booking sheet, 
 the `/voice` phone-agent payload. A line whose own label says "Not included", a thing the shop sells beside the
 trip ("(extra fee)", "available for purchase", "for an additional fee"), a line that states an inclusion and a
 thing for sale at once, "at no extra charge", the section's own heading riding the first bullet, and a listing
-that publishes the same thing in both halves of its own list.
+that publishes the same thing in both halves of its own list. A negative marker
+whose subject is plural ("Prices do not include gas"), the exclusions half of a shop's own section heading
+("What is not included:", "Excluded:"), and the same words arriving twice, once as a promise and once as an
+exclusion, whichever half carries the label.
 
-**Not yet checked.** Whether a row that names its own length should
+What the guest's page quotes against what the server charges, run over the whole shipped catalog rather than
+read: every priced row of all 19,117 operator listings with a bookable menu, at a party of one and of three,
+sent the way `AppProvider` sends it and priced the way `POST /bookings` prices it (83,574 quotes); the same with
+each extra on its own and all of them together, over the 1,652 listings carrying both a priced menu and add-ons
+(7,732 checks); and all 34,492 unpriced rows a guest can pick, none of which the server prices after the page
+said "price on request". Which day a live-departures window opens on when the caller names none, on all three
+routes that turn a window into calendar dates.
+
+**Not yet checked.** Whether a Free cancellation badge should ever promise a shorter
+notice than a line in the same shop's own policy denies: 13 of the 7,104 shipped badges do, four of them a shop
+contradicting itself where a previous run deliberately chose the promise, and the rest a per-service window
+flattened into one badge (see the sixty-sixth run's Needs Harshil). Whether a "do not include" whose subject is
+somebody else's business should stay an inclusion, which is one line of the 16 that moved. The five lines
+stating a cost in words `COSTS_EXTRA` does not name ("optional extra charge", "(feed extra cost)", "is extra"),
+each half an inclusion and half not. Whether a row that names its own length should
 be believed over the length shown beside it, or neither should be: 114 rows disagree, and the junk half is the
 label on some shops and the name on others (see the sixty-second run's Needs Harshil). Whether Fin & Fly's one
 surviving priced row is a deposit like its five siblings, which only a re-crawl settles. Whether the same business should be in the catalog twice, once as ours and once as a partner's
