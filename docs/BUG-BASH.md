@@ -4194,6 +4194,68 @@ fail. The rehearsal green end to end, 53 of 53, against a local Postgres on 5433
 - Nothing here has ever spoken to a voice platform. Both endpoints have been read and unit tested; no Vapi or
   Retell agent has called either, so the shape the platform actually wants is still unproven.
 
+## 24 September 2026, sixty-fifth run (06:20 to 07:40 UTC)
+
+**Chosen, and why.** The last entry says the rehearsal was green and no commit since it touched `backend/src`,
+`src/` or the scripts, so the brief's own condition said skip it and hunt; it was run once at the end instead,
+because the change below alters what a listing page prints. Every area the brief names is on the Verified list,
+so the frontier was found by counting what the 52,816 shipped detail files actually carry and looking for a
+guest-facing field no sweep had touched. `includes` was the biggest: 12,396 listings publish one, and the
+Coverage list had only ever checked the split on the 6,492 Viator rows, never the 5,905 operator ones.
+
+**Found and fixed.** One rule, `splitIncluded`, wrong in four ways, on four surfaces that each read the field
+their own way. What a guest is told the price covers is money, so all of it is money.
+
+- **The static `/l/` page printed every exclusion under the heading "What's included"** (`613f8b1a`), on 5,263
+  shipped pages: "Gratuities", "Lunch", "Hotel pickup and drop-off", "Alcoholic drinks (not included)" all
+  offered as things the ticket buys, on the page a shared link opens. The hours block and the cancellation badge
+  on that page already go through the app's own rules, with a count each of how many pages disagreed before;
+  this was the last section still printed raw.
+- **Otto read them out too** (`598a70cc`). `includedAnswer` read the field straight: "Included: bottled water,
+  gratuities (not included) and 2 more". Same 5,263 listings, and this is the surface an operator pays for.
+- **The phone agent was handed them** (`97df9cc4`). `GET /voice/:id` passed `shop.includes` raw, so a voice
+  platform read a shop's exclusions out as inclusions, and on a call there is no second column to read instead.
+  The exclusions now go over under their own key, so an agent can say what a guest pays for separately.
+- **The rule itself ticked four kinds of line as included** (`cebbba95`). It stripped the "Not included:" label
+  off the front and then looked for it, so 2 listings ticked a gratuity and a captain's tip. It read a thing the
+  shop sells beside the trip as a thing the trip comes with: 86 lines on 81 listings ticked "Golf clubs rental
+  (extra fee)", "Snacks and drinks available for purchase", "Fish cleaning service available for additional
+  fee". It let the section's own heading ride the first bullet on 42 lines across 27 listings, so a page read
+  "What's included" and then "What's Included: Guests will enjoy a grand buffet dinner". And 14 listings publish
+  the same thing in both halves of their own list ("Admission fees" and "Admission fees (not included)"), so a
+  page promised and denied it in one breath; the exclusion wins now. A line that states an inclusion as well as
+  a thing for sale ("Your first drink is included, with additional drinks available for purchase") stays an
+  inclusion, and "at no extra charge" is still an inclusion. The demoted lines keep the shop's own words
+  unstruck: striking "Full bar with light snacks" would say the bar is missing, which is not the claim.
+
+`tidyLine` and `splitIncluded` moved to `src/lib/listingDerive.ts`, which is where the text rules both listing
+surfaces share already live and, being outside the component, is what let the static page and the phone agent
+read the same rule and a test load it. Both are re-exported from `WebListing`, so every call site is untouched.
+`partnerSheet.test.ts` was scraping the regex out of the component's source; it reads the function now.
+
+One deliberate non-change: `knowFrom` still prefills the dashboard's "What's included" editor with the raw
+lines. An operator should see everything their own site published and edit it, and what they save is split
+again on the way to a guest.
+
+**Verification.** Both type checks clean. Backend `npm test` 746 pass, 0 fail, 2 skipped. The guest suite 753
+pass, 0 fail, up 11 on the new checks. The rehearsal green end to end, 53 of 53, against a local Postgres on 5433 (with SSL on, which
+it requires) and the Chromium on disk. A first run of it reported the backend type check red; that was this
+run editing the tree while it ran, and a clean re-run is the 53 above.
+
+**Needs Harshil.**
+
+- 67 lines on 62 operator listings moved out of "What's included" because the shop wrote "available for
+  purchase" or "(extra fee)". A handful are half-and-half in a way no rule settles: "Yoga mat available for
+  purchase or loan" (the loan may be free), "Includes Cocktail, beer, and wine options are available for
+  purchase onboard" (a glued heading in front of an exclusion). They read honestly under "Not included" but a
+  re-crawl would read them better.
+- A bare "Gratuities" or "Lunch" with no marker at all still reads as included, because nothing on the line
+  says otherwise. On Viator rows the sync writes "<thing> (not included)" for the partner's `exclusions` array,
+  so those are safe; a shop that writes a bare word under its own "Not included" heading on a page we flattened
+  is not, and only a re-crawl that keeps the heading can tell.
+- The `notIncluded` key the `/voice` route now returns is new in that payload's shape, and nothing here has
+  ever spoken to Vapi or Retell, so the shape a platform actually wants is still unproven.
+
 ## Coverage
 
 The catalog is 48,198 listings as of the 23 September sync, 1,873 of them Viator partner rows. Counts below
@@ -4668,6 +4730,13 @@ facts come from for a claimed shop as against the nightly file, the two dashboar
 handed to a caller, the from price against all 46,324 operator listings, a zero on every price the route
 prints, a partner's product on both routes, and a network failure cached as a missing business.
 
+What a guest is told the price covers, over all 12,396 shipped listings that publish an `includes` list and on
+every surface that reads it: the desktop listing page, the phone booking sheet, the static `/l/` page, Otto and
+the `/voice` phone-agent payload. A line whose own label says "Not included", a thing the shop sells beside the
+trip ("(extra fee)", "available for purchase", "for an additional fee"), a line that states an inclusion and a
+thing for sale at once, "at no extra charge", the section's own heading riding the first bullet, and a listing
+that publishes the same thing in both halves of its own list.
+
 **Not yet checked.** Whether a row that names its own length should
 be believed over the length shown beside it, or neither should be: 114 rows disagree, and the junk half is the
 label on some shops and the name on others (see the sixty-second run's Needs Harshil). Whether Fin & Fly's one
@@ -4681,7 +4750,11 @@ because an hours line reads a dash as a range (see that run's Needs Harshil). Wh
 sixty-third run could check against the shipped catalog and the types are not. A minimum age that is
 an age but somebody else's: the accompanying adult, the fishing licence, the age that may sign its own waiver,
 about 30 listings and a judgement rather than a rule (see this run's Needs Harshil). Whether a bare URL or an
-email address should be printed inside a "Who can go" bullet, which 25 partner lines carry. Whether a partner's price should be printed in the currency its API quoted it in: both pulls ask for CAD in Canadian metros, store it, and the catalog record drops it (see this run's Needs Harshil). Whether the phone booking sheet's "Ask Outset" panel should honour the operator's Assistant switch the way the desktop page does; it is behind `AGENT_MODE_LIVE`, so no guest meets it today. Whether a partner product should be in the "near you" rails at all, given that its pin is the city's. Any partner API against its real server: no key exists here, so every affiliate row in this sweep was shaped by hand. Rezdy's reader end to end, which needs a hand-rolled HTTP/2 session because Cloudflare
+email address should be printed inside a "Who can go" bullet, which 25 partner lines carry. Whether a bare
+"Gratuities" or "Lunch", with no marker on the line at all, is an inclusion or an exclusion a flattened page
+lost the heading of, which only a re-crawl that keeps the heading settles (see the sixty-fifth run's Needs
+Harshil). What the other guest-facing lists a sweep has not counted carry: `specs` (7,435 listings, which only
+Otto and search read), `bring` (3,203) and `highlights` (6,456). Whether a partner's price should be printed in the currency its API quoted it in: both pulls ask for CAD in Canadian metros, store it, and the catalog record drops it (see this run's Needs Harshil). Whether the phone booking sheet's "Ask Outset" panel should honour the operator's Assistant switch the way the desktop page does; it is behind `AGENT_MODE_LIVE`, so no guest meets it today. Whether a partner product should be in the "near you" rails at all, given that its pin is the city's. Any partner API against its real server: no key exists here, so every affiliate row in this sweep was shaped by hand. Rezdy's reader end to end, which needs a hand-rolled HTTP/2 session because Cloudflare
 blocks `fetch` on every `*.rezdy.com` subdomain; its price helpers and its window rule are tested directly
 instead. Whether the concierge's
 watch window should have a browser door of its own: with
