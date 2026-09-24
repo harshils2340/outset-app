@@ -481,3 +481,58 @@ test("what's included on the page is the split the app reads, not the raw publis
     r.cleanup();
   }
 });
+
+/**
+ * "Requirements" is a heading about the guest: what they must be, bring or sign. 2,369 shipped listings state
+ * no requirements at all, and this page filled the section with their `specs` instead, which is where the
+ * crawl puts a shop's selling lines. So a winery's page headed "Beautiful gardens with bicycles hidden
+ * throughout the property" as a requirement, and a brewery's "Located in downtown Anoka, MN".
+ *
+ * The app has never done that: `listingFacts` sorts a spec line by what it says, a rule about the guest under
+ * "Who can go" and the rest as the listing's highlights. Reading the same split moves 5,439 lines out of the
+ * section and keeps the 807 that are real rules, and gives 6,511 listings a Highlights section this page did
+ * not have at all, the 6,456 that publish their own included.
+ */
+test("requirements on the page are the rules the app reads, and a shop's selling lines lead as highlights", () => {
+  const items: Item[] = [
+    item("o-a", {
+      cover: "https://x/a.jpg",
+      specs: ["Beautiful gardens with bicycles hidden throughout the property", "Located in downtown Anoka, MN", "Minimum age 18"],
+    } as Partial<Item>),
+    // A shop that states its own requirements keeps them, and its own highlights lead.
+    item("o-b", {
+      cover: "https://x/b.jpg",
+      requirements: ["Closed-toe shoes required"],
+      highlights: ["Award-winning beers such as Treachery and Soleil"],
+      specs: ["Located in downtown Anoka, MN"],
+    } as Partial<Item>),
+    // Nothing published either way: no empty heading over either list.
+    item("o-c", { cover: "https://x/c.jpg" }),
+  ];
+  const r = run(items);
+  try {
+    const a = r.read("o-a.html");
+    const reqs = a.slice(a.indexOf("<h2>Requirements</h2>"));
+    assert.ok(a.includes("<h2>Requirements</h2>"), "the one real rule lost its section");
+    assert.ok(reqs.includes("Minimum age 18"), "page dropped the only rule the shop stated");
+    assert.ok(!reqs.includes("Beautiful gardens"), "page still heads a selling line as a requirement");
+    assert.ok(!reqs.includes("downtown Anoka"), "page still heads a location line as a requirement");
+    const hi = a.slice(a.indexOf("<h2>Highlights</h2>"), a.indexOf("<h2>Requirements</h2>"));
+    assert.ok(a.includes("<h2>Highlights</h2>"), "the selling lines went nowhere");
+    assert.ok(hi.includes("Beautiful gardens with bicycles hidden throughout the property"), "highlights lost a line");
+    assert.ok(hi.includes("Located in downtown Anoka, MN"), "highlights lost a line");
+    // A line already printed as a rule is not repeated as a selling point, the same guard the app uses.
+    assert.ok(!hi.includes("Minimum age 18"), "a rule was printed twice");
+
+    const b = r.read("o-b.html");
+    assert.ok(b.slice(b.indexOf("<h2>Requirements</h2>")).includes("Closed-toe shoes required"), "a stated requirement was replaced");
+    assert.ok(b.slice(b.indexOf("<h2>Highlights</h2>"), b.indexOf("<h2>Requirements</h2>")).includes("Treachery"), "a published highlight was replaced");
+    assert.ok(!b.includes("downtown Anoka"), "specs won over what the shop itself stated");
+
+    const c = r.read("o-c.html");
+    assert.ok(!c.includes("<h2>Requirements</h2>"), "page headed an empty requirements list");
+    assert.ok(!c.includes("<h2>Highlights</h2>"), "page headed an empty highlights list");
+  } finally {
+    r.cleanup();
+  }
+});

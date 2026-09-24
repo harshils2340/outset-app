@@ -3,7 +3,9 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { freeCancelBadge } from "../../../src/lib/cancellation.ts";
 import { displayHours } from "../../../src/lib/hoursText.ts";
-import { splitIncluded } from "../../../src/lib/listingDerive.ts";
+import { splitIncluded, tidyLine } from "../../../src/lib/listingDerive.ts";
+import { listingFacts } from "../../../src/lib/catalog.ts";
+import type { Unclaimed } from "../../../src/data/types.ts";
 import { METROS } from "../taxonomy/catalog.ts";
 import { REGION_NAME, countryOfArea, regionOfArea } from "../../../src/data/regions.ts";
 import { KINDS, cardPhoto, fileFor, hasListingPage, pageFooter, placeName, priceOf, publicSite, socialCard, type Item, type Kind } from "./pages.ts";
@@ -33,6 +35,19 @@ const MAX_MENU_ROWS = 12;
 const MAX_LIST_ITEMS = 6;
 const MAX_FAQ = 6;
 const SITEMAP_CHUNK = 40_000;
+
+/**
+ * `listingFacts` reads a full catalog record and walks `specs`, `extraNote`, `gap` and `options`. A page item
+ * carries whichever of those the sync wrote, so the missing ones are filled with the empty value rather than
+ * left undefined: `gap` in particular is split, and an absent one would throw mid-build.
+ */
+function unclaimedShape(item: unknown): Unclaimed {
+  const raw = item as Partial<Unclaimed>;
+  return { ...raw, specs: raw.specs || [], options: raw.options || [], gap: raw.gap || "" } as Unclaimed;
+}
+
+/** The app's own comparison for "this line is already printed above": letters and digits, nothing else. */
+const factKey = (t: string) => t.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
 
 const esc = (s: unknown) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 const money = (n: number) => (Number.isInteger(n) ? "$" + n.toLocaleString("en-US") : "$" + n.toFixed(2));
@@ -202,7 +217,23 @@ function page(item: Item, opts: { landingHref: string | null; kindPageHref: stri
   const included = splitIncluded((item as { includes?: string[] }).includes || []);
   const includes = included.yes.slice(0, MAX_LIST_ITEMS);
   const notIncluded = included.no.slice(0, MAX_LIST_ITEMS);
-  const requirements = (((item as { requirements?: string[] }).requirements?.length ? (item as { requirements?: string[] }).requirements : (item as { specs?: string[] }).specs) || []).slice(0, MAX_LIST_ITEMS);
+  // Through the same split both app surfaces read, not the raw `specs`. Read raw, 2,369 of these pages headed
+  // a shop's own selling lines "Requirements": "Beautiful gardens with bicycles hidden throughout the
+  // property", "Award-winning beers such as Treachery and Soleil", "Located in downtown Anoka, MN". The app has
+  // never done that, because `listingFacts` sorts a spec line by what it says: a rule about the guest goes
+  // under "Who can go" and everything else leads the listing as a highlight. This page printed the first six
+  // of the list whatever they were, and had no highlights section at all to put the rest in, so the 6,456
+  // listings that publish their own highlights showed none of them here either.
+  const facts = listingFacts(unclaimedShape(item));
+  const stated = (item as { requirements?: string[] }).requirements || [];
+  const requirements = (stated.length ? stated : facts.who.filter((l) => l.posted).map((l) => l.text)).slice(0, MAX_LIST_ITEMS);
+  // The same guard the app uses: a line already printed as a rule is not repeated as a selling point.
+  const reqKeys = new Set(requirements.map(factKey));
+  const published = (item as { highlights?: string[] }).highlights || [];
+  const highlights = (published.length ? published : facts.about)
+    .filter((h) => !reqKeys.has(factKey(h)))
+    .slice(0, MAX_LIST_ITEMS)
+    .map(tidyLine);
   const faq = ((item as { faq?: { q: string; a: string }[] }).faq || []).slice(0, MAX_FAQ);
   const dur = (item as { dur?: string }).dur || "";
   const rating = typeof item.rating === "number" ? item.rating : null;
@@ -231,6 +262,7 @@ function page(item: Item, opts: { landingHref: string | null; kindPageHref: stri
     (includes.length ? `<h2>What's included</h2><ul class="plain">${includes.map((l) => `<li>${esc(l)}</li>`).join("")}</ul>` : "") +
     (notIncluded.length ? `<h2>Not included</h2><ul class="plain">${notIncluded.map((n) => `<li>${esc(n.text)}</li>`).join("")}</ul>` : "");
   const requirementsHtml = requirements.length ? `<h2>Requirements</h2><ul class="plain">${requirements.map((l) => `<li>${esc(l)}</li>`).join("")}</ul>` : "";
+  const highlightsHtml = highlights.length ? `<h2>Highlights</h2><ul class="plain">${highlights.map((l) => `<li>${esc(l)}</li>`).join("")}</ul>` : "";
   const faqHtml = faq.length ? `<h2>Questions</h2><div class="faq">${faq.map((f) => `<h3>${esc(f.q)}</h3><p>${esc(f.a)}</p>`).join("")}</div>` : "";
   const ratingHtml = rating != null ? `<p class="rating">★ ${rating.toFixed(1)}${reviews ? ` (${reviews.toLocaleString("en-US")} reviews)` : ""}</p>` : "";
   const links = [
@@ -265,6 +297,7 @@ ${(() => {
       : `<a class="cta" href="${hashUrl}">Request a time on Outset</a>`;
   })()}
 ${photosHtml}
+${highlightsHtml}
 ${menuHtml}
 ${hoursHtml}
 ${includesHtml}
