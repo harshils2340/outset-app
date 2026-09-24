@@ -8,7 +8,8 @@ import assert from "node:assert/strict";
  */
 
 process.env.SITE_URL = "https://onoutset.com/";
-const { voice } = await import("../voice.ts");
+const { voice, speakableDays } = await import("../voice.ts");
+import type { Availability } from "../../enrich/availability.ts";
 
 const reel = {
   id: "o-reeltime-com",
@@ -64,6 +65,45 @@ test("an unknown operator is a 404, and a bad id a 400", async () => {
   assert.equal((await voice.request("http://localhost/voice/o-does-not-exist")).status, 404);
   assert.equal((await voice.request("http://localhost/voice/BAD ID")).status, 400);
   assert.equal((await voice.request("http://localhost/voice/o-reeltime-com/availability?from=nope")).status, 400);
+});
+
+/**
+ * What the agent may say out loud. The page drops four kinds of row before a guest sees a chip, and the phone
+ * has to drop the same four: a marker row that only says the date is open, a sold-out departure, a price of
+ * nothing, and a departure that has already left where the shop is.
+ */
+const avail = (days: Availability["days"]): Availability => ({ vendor: "fareharbor", live: true, updatedAt: "", days });
+
+test("a timeUnknown marker row is never offered as a start time", () => {
+  const av = avail([
+    { date: "2026-10-02", slots: [{ startsAt: "2026-10-02T00:00", label: "Available", bookUrl: "x", timeUnknown: true }] },
+    { date: "2026-10-03", slots: [{ startsAt: "2026-10-03T09:30", label: "Morning reef trip", bookUrl: "y" }] },
+  ]);
+  const days = speakableDays(av, "America/New_York", new Date("2026-10-01T15:00:00Z"));
+  assert.deepEqual(days.map((d) => d.date), ["2026-10-03"], "the date we could not time states no time, so it is not a date the agent offers");
+  assert.equal(days[0].times[0].at, "09:30");
+});
+
+test("a departure that has already left is dropped, on the shop's clock and not the host's", () => {
+  const av = avail([{ date: "2026-10-01", slots: [
+    { startsAt: "2026-10-01T09:00", label: "Morning", bookUrl: "a" },
+    { startsAt: "2026-10-01T20:00", label: "Sunset", bookUrl: "b" },
+  ] }]);
+  // 01:00 UTC on the 2nd is still six in the evening on the 1st in Los Angeles, so tonight's eight o'clock
+  // is still for sale and this morning's nine is not.
+  const days = speakableDays(av, "America/Los_Angeles", new Date("2026-10-02T01:00:00Z"));
+  assert.deepEqual(days, [{ date: "2026-10-01", times: [{ at: "20:00", label: "Sunset", price: null, seatsLeft: null, bookUrl: "b" }] }]);
+  // The same answer read on the host's UTC clock: the day is over, so nothing is offered.
+  assert.deepEqual(speakableDays(av, null, new Date("2026-10-02T01:00:00Z")), []);
+});
+
+test("a sold-out departure is not offered, and a price of nothing is no price rather than free", () => {
+  const av = avail([{ date: "2026-10-03", slots: [
+    { startsAt: "2026-10-03T10:00", label: "Full", bookUrl: "a", seatsLeft: 0 },
+    { startsAt: "2026-10-03T14:00", label: "Two left", bookUrl: "b", seatsLeft: 2, priceCents: 0 },
+  ] }]);
+  const days = speakableDays(av, "America/New_York", new Date("2026-10-01T15:00:00Z"));
+  assert.deepEqual(days[0].times, [{ at: "14:00", label: "Two left", price: null, seatsLeft: 2, bookUrl: "b" }]);
 });
 
 test.after(() => {

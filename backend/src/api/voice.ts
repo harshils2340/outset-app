@@ -1,6 +1,8 @@
 import { Hono } from "hono";
 import { ID, rateLimit } from "./auth.ts";
-import { getAvailability } from "../enrich/availability.ts";
+import { getAvailability, type Availability } from "../enrich/availability.ts";
+import { zonedNow } from "../concierge/shopday.ts";
+import { zoneForArea } from "../lib/zone.ts";
 
 /**
  * The phone agent's data endpoints ("Otto on the phone").
@@ -40,25 +42,37 @@ type Listing = {
   cancellation?: string;
   hoursText?: string[];
   fc?: string;
+  lat?: number | null;
+  lon?: number | null;
   affiliate?: { label: string; url: string } | null;
   contact?: { phone?: string; website?: string; hours?: string[] } | null;
 };
 
 const cache = new Map<string, { at: number; value: Listing | null }>();
 
-/** The published listing record, the same `o/<id>.json` a listing page reads, fetched over HTTP and cached. */
+/**
+ * The published listing record, the same `o/<id>.json` a listing page reads, fetched over HTTP and cached.
+ *
+ * Only an answer is cached. A 404 is the site saying there is no such listing and is worth remembering; a
+ * timeout, a reset or a 502 is the site saying nothing at all, and caching that as "not found" took one blip
+ * and turned it into ten minutes of the phone agent telling callers it has never heard of the business.
+ */
 async function listing(id: string): Promise<Listing | null> {
   const hit = cache.get(id);
   if (hit && Date.now() - hit.at < CACHE_TTL_MS) return hit.value;
-  let value: Listing | null = null;
   try {
     const res = await fetch(`${SITE}o/${encodeURIComponent(id)}.json`, { signal: AbortSignal.timeout(8000), headers: { accept: "application/json" } });
-    if (res.ok) value = (await res.json()) as Listing;
+    if (res.ok) {
+      const value = (await res.json()) as Listing;
+      cache.set(id, { at: Date.now(), value });
+      return value;
+    }
+    if (res.status >= 500) return null;
   } catch {
-    value = null;
+    return null;
   }
-  cache.set(id, { at: Date.now(), value });
-  return value;
+  cache.set(id, { at: Date.now(), value: null });
+  return null;
 }
 
 const money = (n: number | null | undefined): string | null => (typeof n === "number" ? "$" + n.toLocaleString("en-US", { maximumFractionDigits: 2 }) : null);
@@ -107,12 +121,55 @@ voice.get("/voice/:operatorId", rateLimit(120, 60 * 60 * 1000), async (c) => {
   });
 });
 
+/**
+ * The departures a voice agent may read out, on the shop's own clock.
+ *
+ * `src/lib/liveTimes.ts` drops four kinds of row before a guest ever sees a chip on the page, and the phone
+ * agent has to drop the same four or it says out loud what the page refuses to print:
+ *
+ *  - a `timeUnknown` marker row, which exists only to say the date is open. Its `startsAt` carries a midnight
+ *    that means nothing, so passing it through had the agent offering a caller a trip at 00:00.
+ *  - a departure the vendor says has no seats left.
+ *  - a price of nothing, which is a vendor that stated no price, not a free trip.
+ *  - a departure that has already left. The page asks this on the shop's clock; this route asked it on
+ *    nobody's, defaulting `from` to the host's UTC date, so from early evening Eastern it skipped the rest of
+ *    tonight entirely and every morning it offered departures that sailed hours ago.
+ */
+export function speakableDays(av: Availability, zone: string | null, now: Date = new Date()): { date: string; times: { at: string; label: string; price: string | null; seatsLeft: number | null; bookUrl: string }[] }[] {
+  const here = zonedNow(zone, now);
+  const out: { date: string; times: { at: string; label: string; price: string | null; seatsLeft: number | null; bookUrl: string }[] }[] = [];
+  for (const d of av.days || []) {
+    if (!d?.date || d.date < here.date) continue;
+    const times = [];
+    for (const s of d.slots || []) {
+      if (s.timeUnknown) continue;
+      if (typeof s.seatsLeft === "number" && s.seatsLeft <= 0) continue;
+      const clock = /T(\d{2}):(\d{2})/.exec(s.startsAt || "");
+      if (!clock) continue;
+      if (d.date === here.date && Number(clock[1]) * 60 + Number(clock[2]) <= here.minutes) continue;
+      times.push({
+        at: `${clock[1]}:${clock[2]}`,
+        label: s.label,
+        price: typeof s.priceCents === "number" && s.priceCents > 0 ? "$" + (s.priceCents / 100).toLocaleString("en-US", { maximumFractionDigits: 2 }) : null,
+        seatsLeft: typeof s.seatsLeft === "number" ? s.seatsLeft : null,
+        bookUrl: s.bookUrl,
+      });
+      if (times.length === 12) break;
+    }
+    if (times.length) out.push({ date: d.date, times });
+  }
+  return out;
+}
+
 voice.get("/voice/:operatorId/availability", rateLimit(120, 60 * 60 * 1000), async (c) => {
   const id = String(c.req.param("operatorId") ?? "");
   if (!ID.test(id)) return c.json({ error: "bad id" }, 400);
   const fromRaw = String(c.req.query("from") ?? "").trim();
   if (fromRaw && (!DATE.test(fromRaw) || Number.isNaN(Date.parse(fromRaw + "T00:00:00Z")))) return c.json({ error: "from must be YYYY-MM-DD" }, 400);
-  const from = fromRaw || new Date().toISOString().slice(0, 10);
+  // The shop's own zone, from the same published record the facts route reads, so "today" is today there.
+  const l = await listing(id);
+  const zone = zoneForArea(l?.area, l?.lat, l?.lon);
+  const from = fromRaw || zonedNow(zone).date;
   const days = Math.min(Math.max(Number(c.req.query("days")) || 14, 1), MAX_DAYS);
 
   const av = await getAvailability(id, from, days);
@@ -120,18 +177,7 @@ voice.get("/voice/:operatorId/availability", rateLimit(120, 60 * 60 * 1000), asy
   // should offer to have a person confirm the time and take a callback, never guess.
   if (!av.live) return c.json({ live: false, note: "This business's calendar is not connected, so a person confirms the time. Offer to take a name and number.", days: [] });
 
-  const openDays = av.days
-    .filter((d) => d.slots.length)
-    .map((d) => ({
-      date: d.date,
-      times: d.slots.slice(0, 12).map((s) => ({
-        at: s.startsAt.slice(11),
-        label: s.label,
-        price: typeof s.priceCents === "number" ? "$" + (s.priceCents / 100).toLocaleString("en-US", { maximumFractionDigits: 2 }) : null,
-        seatsLeft: typeof s.seatsLeft === "number" ? s.seatsLeft : null,
-        bookUrl: s.bookUrl,
-      })),
-    }));
+  const openDays = speakableDays(av, zone);
 
   return c.json({ live: true, vendor: av.vendor, from, days: openDays, partial: av.partial || false, note: openDays.length ? null : "Nothing is open in this window; offer another date or take a callback." });
 });
