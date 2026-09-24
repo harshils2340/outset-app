@@ -4,376 +4,449 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Otto · The AI that answers the phone at your marina</title>
-  <meta name="description" content="Otto is an AI phone agent for marinas and boat and jet ski rentals. It answers every call in a real, natural voice, looks up bookings, cancels and reschedules rentals, and books new ones.">
+  <meta name="description" content="Otto is an AI phone agent for marinas and boat and jet ski rentals. It answers every call in a real, natural voice, looks up bookings, cancels and reschedules, and books new rentals into the calendar you already use.">
   <link rel="canonical" href="https://onoutset.com/otto">
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <link rel="apple-touch-icon" href="/apple-touch-icon.png">
   <meta property="og:title" content="Otto · The AI that answers the phone at your marina">
-  <meta property="og:description" content="Answers every call in a natural voice, cancels and reschedules rentals, and books new ones. Built for marinas and boat and jet ski rentals.">
+  <meta property="og:description" content="Hear a real call: Otto cancels a jet ski booking, checks tomorrow's calendar and rebooks it, in a natural voice.">
   <meta property="og:url" content="https://onoutset.com/otto">
   <meta property="og:type" content="website">
   <meta property="og:image" content="https://onoutset.com/apple-touch-icon.png">
   <meta name="theme-color" content="#495940">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800;900&family=Newsreader:opsz,wght@6..72,500;6..72,600&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&display=swap">
   <style>
     :root {
-      color-scheme: light dark;
-      --ink: #14170f; --ink-soft: #55604a; --paper: #fbfcf9; --paper-2: #f2f5ec;
-      --forest: #495940; --forest-deep: #37432f; --sage: #7f956a; --sage-soft: #e8eee0;
-      --line: #e4e8dc; --card: #ffffff; --shadow: 0 1px 2px rgba(20,30,10,.04), 0 20px 50px rgba(20,30,10,.09);
-    }
-    @media (prefers-color-scheme: dark) {
-      :root { --ink: #eef1e8; --ink-soft: #a7b39a; --paper: #0d100a; --paper-2: #141810; --forest: #a9c090; --forest-deep: #cadbb4; --sage: #8ba473; --sage-soft: #1d2416; --line: #262d1d; --card: #14180f; --shadow: 0 1px 2px rgba(0,0,0,.3), 0 22px 50px rgba(0,0,0,.45); }
+      color-scheme: light;
+      --ink: #161a12; --ink-2: #4c5744; --ink-3: #7a8570;
+      --paper: #ffffff; --mint: #eef3e8; --mint-2: #e3eadb; --line: #e6eadf;
+      --forest: #495940; --forest-2: #3a4733; --sage: #7f956a; --sage-2: #a9bd95;
+      --board: #1b2417; --board-2: #253120;
+      --r: 24px; --r-sm: 14px;
+      --shadow: 0 1px 2px rgba(22,26,18,.04), 0 24px 60px rgba(22,26,18,.10);
     }
     * { box-sizing: border-box; }
     html { scroll-behavior: smooth; }
-    body {
-      margin: 0; font-family: Figtree, system-ui, -apple-system, "Segoe UI", sans-serif; color: var(--ink);
-      background: var(--paper); line-height: 1.55; -webkit-font-smoothing: antialiased;
-      background-image:
-        radial-gradient(60% 45% at 85% 0%, color-mix(in srgb, var(--sage) 22%, transparent), transparent 70%),
-        radial-gradient(50% 40% at 5% 12%, color-mix(in srgb, var(--forest) 14%, transparent), transparent 70%);
-      background-repeat: no-repeat;
-    }
-    .wrap { max-width: 62rem; margin: 0 auto; padding: 0 1.25rem; }
-    .narrow { max-width: 40rem; margin: 0 auto; }
-    .btn { display: inline-flex; align-items: center; gap: .5rem; background: var(--forest); color: #fff; text-decoration: none; font-weight: 700; padding: .9rem 1.6rem; border-radius: 999px; font-size: 1rem; border: none; cursor: pointer; transition: transform .12s ease, background .12s ease; }
-    .btn:hover { transform: translateY(-1px); background: var(--forest-deep); }
-    .btn.ghost { background: rgba(255,255,255,.6); color: var(--forest); border: 1.5px solid var(--line); }
-    @media (prefers-color-scheme: dark){ .btn.ghost { background: rgba(255,255,255,.04); } }
-    .btn.ghost:hover { border-color: var(--forest); }
+    body { margin: 0; font-family: Figtree, system-ui, -apple-system, "Segoe UI", sans-serif; color: var(--ink); background: var(--paper); line-height: 1.55; -webkit-font-smoothing: antialiased; }
+    a { color: inherit; text-decoration: none; }
+    .wrap { max-width: 72rem; margin: 0 auto; padding: 0 1.5rem; }
+    .btn { display: inline-flex; align-items: center; justify-content: center; gap: .5rem; background: var(--forest); color: #fff; font-weight: 600; padding: .95rem 1.5rem; border-radius: 999px; font-size: .98rem; border: none; cursor: pointer; transition: transform .14s ease, background .14s ease, box-shadow .14s ease; box-shadow: 0 6px 18px rgba(73,89,64,.22); }
+    .btn:hover { transform: translateY(-1px); background: var(--forest-2); }
+    .btn.soft { background: var(--mint); color: var(--forest); box-shadow: none; border: 1px solid var(--mint-2); }
+    .btn.soft:hover { background: var(--mint-2); }
+    .btn.sm { padding: .7rem 1.2rem; font-size: .92rem; }
 
-    header.nav { position: sticky; top: 0; z-index: 20; backdrop-filter: saturate(1.4) blur(12px); background: color-mix(in srgb, var(--paper) 80%, transparent); border-bottom: 1px solid var(--line); }
-    .nav .wrap { display: flex; align-items: center; justify-content: space-between; height: 62px; }
-    .brand { display: flex; align-items: center; gap: .55rem; text-decoration: none; font-weight: 900; font-size: 1.2rem; letter-spacing: -.02em; color: var(--ink); }
-    .brand .dot { width: 26px; height: 26px; border-radius: 8px; background: linear-gradient(140deg, var(--forest), var(--sage)); display: grid; place-items: center; color: #fff; font-weight: 900; font-size: .95rem; }
-    .brand small { font-weight: 600; color: var(--ink-soft); font-size: .82rem; }
+    /* nav */
+    .nav { position: sticky; top: 0; z-index: 30; background: rgba(255,255,255,.82); backdrop-filter: saturate(1.5) blur(14px); border-bottom: 1px solid transparent; transition: border-color .2s; }
+    .nav.scrolled { border-color: var(--line); }
+    .nav .wrap { display: flex; align-items: center; justify-content: space-between; height: 72px; }
+    .brand { display: flex; align-items: center; gap: .55rem; font-weight: 700; font-size: 1.1rem; letter-spacing: -.01em; }
+    .brand .mark { width: 28px; height: 28px; border-radius: 9px; background: var(--forest); color: #fff; display: grid; place-items: center; font-weight: 700; font-size: .9rem; }
+    .brand small { font-weight: 500; color: var(--ink-3); }
+    .nav .links { display: flex; align-items: center; gap: 1.6rem; font-size: .93rem; color: var(--ink-2); }
+    .nav .links a:hover { color: var(--ink); }
+    @media (max-width: 760px) { .nav .links a.txt { display: none; } }
 
-    .hero { padding: clamp(3rem, 7vw, 5rem) 0 1.5rem; text-align: center; }
-    .pill { display: inline-flex; align-items: center; gap: .5rem; background: var(--card); border: 1px solid var(--line); color: var(--forest); font-weight: 700; font-size: .8rem; padding: .42rem .9rem; border-radius: 999px; box-shadow: var(--shadow); }
-    .pdot { width: 7px; height: 7px; border-radius: 50%; background: #2fae5f; box-shadow: 0 0 0 0 rgba(47,174,95,.5); animation: pulse 2.2s infinite; }
-    @keyframes pulse { 0%{box-shadow:0 0 0 0 rgba(47,174,95,.5)} 70%{box-shadow:0 0 0 7px rgba(47,174,95,0)} 100%{box-shadow:0 0 0 0 rgba(47,174,95,0)} }
-    h1 { font-family: Newsreader, Georgia, serif; font-weight: 600; font-size: clamp(2.3rem, 6.2vw, 3.6rem); line-height: 1.06; letter-spacing: -.015em; margin: 1.2rem auto .9rem; max-width: 16ch; }
-    h1 em { font-style: italic; color: var(--forest); }
-    .lede { font-size: 1.18rem; color: var(--ink-soft); margin: 0 auto 1.6rem; max-width: 36rem; }
-    .cta-row { display: flex; gap: .7rem; justify-content: center; flex-wrap: wrap; }
-    .cta-note { font-size: .87rem; color: var(--ink-soft); margin: 1rem 0 0; }
+    /* hero */
+    .hero { padding: clamp(2.5rem, 6vw, 5rem) 0 clamp(2rem, 4vw, 3.5rem); }
+    .hero .grid { display: grid; grid-template-columns: 1fr 1.05fr; gap: clamp(2rem, 5vw, 4.5rem); align-items: center; }
+    @media (max-width: 960px) { .hero .grid { grid-template-columns: 1fr; } }
+    .pill { display: inline-flex; align-items: center; gap: .5rem; background: var(--mint); color: var(--forest); border: 1px solid var(--mint-2); font-weight: 600; font-size: .86rem; padding: .45rem .9rem; border-radius: 999px; }
+    .pill i { width: 7px; height: 7px; border-radius: 50%; background: #34b46a; box-shadow: 0 0 0 0 rgba(52,180,106,.45); animation: pulse 2.4s infinite; }
+    @keyframes pulse { 0%{box-shadow:0 0 0 0 rgba(52,180,106,.45)} 70%{box-shadow:0 0 0 8px rgba(52,180,106,0)} 100%{box-shadow:0 0 0 0 rgba(52,180,106,0)} }
+    h1 { font-weight: 500; font-size: clamp(2.5rem, 5.6vw, 4rem); line-height: 1.04; letter-spacing: -.035em; margin: 1.25rem 0 1.1rem; max-width: 12ch; }
+    h1 span { color: var(--forest); }
+    .lede { font-size: 1.15rem; color: var(--ink-2); max-width: 34rem; margin: 0 0 1.75rem; }
+    .cta-row { display: flex; gap: .7rem; flex-wrap: wrap; }
+    .proof { display: flex; gap: 1.2rem; flex-wrap: wrap; margin: 1.5rem 0 0; font-size: .9rem; color: var(--ink-3); }
+    .proof span::before { content: "✓"; color: var(--sage); font-weight: 700; margin-right: .4rem; }
 
-    /* call */
-    .call { background: var(--card); border: 1px solid var(--line); border-radius: 24px; box-shadow: var(--shadow); overflow: hidden; margin: 2.25rem auto 0; max-width: 34rem; text-align: left; }
-    .call .bar { display: flex; align-items: center; justify-content: space-between; padding: .95rem 1.1rem; background: var(--forest); color: #fff; }
-    .call .bar .who { display: flex; align-items: center; gap: .6rem; }
-    .call .bar .ava { width: 34px; height: 34px; border-radius: 50%; background: rgba(255,255,255,.18); display: grid; place-items: center; font-weight: 800; }
-    .call .bar b { font-size: .95rem; display: block; line-height: 1.15; }
-    .call .bar small { font-size: .78rem; opacity: .82; }
-    .call .bar .meta { font-size: .78rem; opacity: .95; display: inline-flex; align-items: center; gap: .45rem; font-variant-numeric: tabular-nums; }
-    .wave { display: inline-flex; align-items: flex-end; gap: 2px; height: 14px; opacity: .35; transition: opacity .2s; }
-    .wave.on { opacity: 1; }
-    .wave i { width: 2.5px; background: #fff; border-radius: 2px; height: 4px; }
-    .wave.on i { animation: w .9s ease-in-out infinite; }
-    .wave i:nth-child(1){animation-delay:0s} .wave i:nth-child(2){animation-delay:.15s} .wave i:nth-child(3){animation-delay:.3s} .wave i:nth-child(4){animation-delay:.45s} .wave i:nth-child(5){animation-delay:.6s}
-    @keyframes w { 0%,100%{height:4px} 50%{height:13px} }
-    .thread { padding: 1.1rem; min-height: 230px; }
-    .turn { margin-bottom: .8rem; opacity: 0; transform: translateY(6px); animation: rise .32s ease forwards; }
-    @keyframes rise { to { opacity: 1; transform: none; } }
-    .turn .lbl { font-size: .68rem; letter-spacing: .05em; text-transform: uppercase; font-weight: 800; color: var(--ink-soft); margin: 0 0 .25rem .2rem; }
-    .turn .say { display: inline-block; padding: .65rem .9rem; border-radius: 15px; font-size: .96rem; max-width: 88%; overflow-wrap: anywhere; }
-    .turn.caller .say { background: var(--paper-2); border: 1px solid var(--line); border-bottom-left-radius: 5px; }
-    .turn.otto { text-align: right; }
-    .turn.otto .lbl { margin: 0 .2rem .25rem 0; }
-    .turn.otto .say { background: var(--forest); color: #fff; text-align: left; border-bottom-right-radius: 5px; }
-    .checking { text-align: right; margin-bottom: .8rem; }
-    .checking span { display: inline-flex; align-items: center; gap: .5rem; background: var(--sage-soft); color: var(--forest); font-weight: 700; font-size: .85rem; padding: .5rem .8rem; border-radius: 13px; }
-    .dots i { display: inline-block; width: 5px; height: 5px; border-radius: 50%; background: var(--forest); margin-left: 2px; animation: blink 1.2s infinite; }
-    .dots i:nth-child(2){animation-delay:.2s} .dots i:nth-child(3){animation-delay:.4s}
-    @keyframes blink { 0%,100%{opacity:.25} 50%{opacity:1} }
-    .done { display: flex; align-items: center; gap: .55rem; background: var(--sage-soft); color: var(--forest); border-radius: 12px; padding: .6rem .85rem; font-weight: 700; font-size: .9rem; margin-top: .3rem; opacity: 0; animation: rise .4s ease forwards; }
-    .controls { display: flex; gap: .5rem; justify-content: center; padding: .9rem 1.1rem 1.1rem; border-top: 1px solid var(--line); }
-    .controls button { font-family: inherit; font-weight: 700; font-size: .88rem; border-radius: 999px; padding: .5rem 1rem; cursor: pointer; border: 1.5px solid var(--line); background: transparent; color: var(--ink); display: inline-flex; align-items: center; gap: .4rem; }
-    .controls button:hover { border-color: var(--forest); color: var(--forest); }
-    .tri { width: 0; height: 0; border-left: 8px solid currentColor; border-top: 5px solid transparent; border-bottom: 5px solid transparent; margin-left: 2px; }
-
-    /* synced audio player */
-    .player { display: flex; align-items: center; gap: .75rem; padding: .85rem 1.1rem 1.1rem; border-top: 1px solid var(--line); }
-    .playbtn { flex: none; width: 42px; height: 42px; border-radius: 50%; background: var(--forest); color: #fff; border: none; display: grid; place-items: center; cursor: pointer; transition: background .12s, transform .12s; }
-    .playbtn:hover { background: var(--forest-deep); transform: scale(1.04); }
+    /* the board */
+    .board { position: relative; background: radial-gradient(90% 70% at 80% 0%, var(--board-2), var(--board) 65%); border-radius: 28px; padding: 1.4rem; box-shadow: var(--shadow); color: #fff; overflow: hidden; min-height: 460px; display: flex; flex-direction: column; justify-content: space-between; }
+    .board::before { content: ""; position: absolute; inset: 0; background: radial-gradient(60% 40% at 50% 60%, rgba(127,149,106,.22), transparent 70%); pointer-events: none; }
+    .board .top { display: flex; align-items: center; justify-content: space-between; position: relative; z-index: 2; }
+    .board .who { display: flex; align-items: center; gap: .65rem; }
+    .board .ava { width: 38px; height: 38px; border-radius: 50%; background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.18); display: grid; place-items: center; font-weight: 700; }
+    .board .who b { display: block; font-size: .95rem; line-height: 1.15; }
+    .board .who small { font-size: .8rem; opacity: .7; }
+    .live { display: inline-flex; align-items: center; gap: .45rem; font-size: .8rem; opacity: .85; font-variant-numeric: tabular-nums; }
+    .live i { width: 7px; height: 7px; border-radius: 50%; background: #34b46a; }
+    .live.off i { background: rgba(255,255,255,.35); }
+    canvas#viz { width: 100%; height: 200px; display: block; position: relative; z-index: 1; }
+    .board .bottom { position: relative; z-index: 2; display: flex; align-items: center; gap: .85rem; }
+    .playbtn { flex: none; width: 52px; height: 52px; border-radius: 50%; background: #fff; color: var(--forest); border: none; display: grid; place-items: center; cursor: pointer; transition: transform .14s; box-shadow: 0 8px 22px rgba(0,0,0,.25); }
+    .playbtn:hover { transform: scale(1.05); }
+    .tri { width: 0; height: 0; border-left: 14px solid currentColor; border-top: 9px solid transparent; border-bottom: 9px solid transparent; margin-left: 4px; }
     .playbtn.playing .tri { display: none; }
-    .playbtn .ic-pause { display: none; align-items: center; gap: 4px; }
+    .ic-pause { display: none; gap: 5px; }
     .playbtn.playing .ic-pause { display: inline-flex; }
-    .ic-pause i { width: 3.5px; height: 14px; background: #fff; border-radius: 1px; display: block; }
-    .scrub { flex: 1; height: 6px; background: var(--line); border-radius: 3px; cursor: pointer; position: relative; }
-    .scrubfill { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: var(--forest); border-radius: 3px; }
-    .scrubfill::after { content: ""; position: absolute; right: -5px; top: 50%; transform: translateY(-50%); width: 12px; height: 12px; border-radius: 50%; background: var(--forest); box-shadow: 0 1px 3px rgba(0,0,0,.25); }
-    .dur { font-size: .8rem; color: var(--ink-soft); font-variant-numeric: tabular-nums; min-width: 3.2rem; text-align: right; }
-    .thread.audio .turn { opacity: 1; transform: none; animation: none; cursor: pointer; transition: opacity .25s; }
-    .thread.audio.playing .turn { opacity: .42; }
-    .thread.audio.playing .turn.active { opacity: 1; }
-    .thread.audio .turn.active .say { box-shadow: 0 0 0 2px var(--sage); }
+    .ic-pause i { width: 5px; height: 18px; background: currentColor; border-radius: 2px; display: block; }
+    .scrub { flex: 1; height: 6px; background: rgba(255,255,255,.14); border-radius: 3px; cursor: pointer; position: relative; }
+    .scrubfill { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: #fff; border-radius: 3px; }
+    .time { font-size: .82rem; opacity: .8; font-variant-numeric: tabular-nums; min-width: 6.4rem; text-align: right; }
+    /* flyout chips, the frosted-glass pattern */
+    .chip { position: absolute; z-index: 3; background: rgba(255,255,255,.10); border: 1px solid rgba(255,255,255,.18); backdrop-filter: blur(14px) saturate(1.4); -webkit-backdrop-filter: blur(14px) saturate(1.4); border-radius: 14px; padding: .6rem .8rem; box-shadow: 0 8px 24px rgba(0,0,0,.22); font-size: .8rem; line-height: 1.25; transition: opacity .35s ease, transform .35s ease; }
+    .chip small { display: block; opacity: .7; font-size: .7rem; margin-bottom: .15rem; }
+    .chip b { font-weight: 600; font-size: .86rem; }
+    .chip.hide { opacity: 0; transform: translateY(6px); pointer-events: none; }
+    .chip.a { top: 84px; left: 1.4rem; }
+    .chip.b { top: 84px; right: 1.4rem; }
+    .chip.c { bottom: 92px; left: 1.4rem; }
+    .chip.d { bottom: 92px; right: 1.4rem; }
+    @media (max-width: 520px) { .chip.b, .chip.c { display: none; } }
 
-    section { padding: clamp(2.75rem, 6vw, 4.5rem) 0; }
-    .eyebrow { color: var(--sage); font-weight: 800; font-size: .78rem; letter-spacing: .1em; text-transform: uppercase; margin: 0 0 .6rem; text-align: center; }
-    h2 { font-size: clamp(1.6rem, 3.6vw, 2.3rem); line-height: 1.14; letter-spacing: -.02em; margin: 0 auto 1rem; max-width: 22ch; text-align: center; }
-    .sub { color: var(--ink-soft); font-size: 1.08rem; text-align: center; max-width: 40rem; margin: 0 auto 2rem; }
+    /* transcript */
+    .transcript { margin-top: 1.2rem; background: var(--paper); border: 1px solid var(--line); border-radius: var(--r); padding: .6rem; box-shadow: var(--shadow); }
+    .thread { max-height: 300px; overflow-y: auto; padding: .6rem; scroll-behavior: smooth; }
+    .turn { margin-bottom: .6rem; cursor: pointer; opacity: 1; transition: opacity .25s; display: flex; }
+    .turn.otto { justify-content: flex-end; }
+    .turn .say { max-width: 84%; padding: .6rem .85rem; border-radius: 15px; font-size: .95rem; }
+    .turn.caller .say { background: var(--mint); border-bottom-left-radius: 5px; }
+    .turn.otto .say { background: var(--forest); color: #fff; border-bottom-right-radius: 5px; }
+    .turn .say small { display: block; font-size: .68rem; letter-spacing: .05em; text-transform: uppercase; font-weight: 700; opacity: .65; margin-bottom: .15rem; }
+    .thread.playing .turn { opacity: .38; }
+    .thread.playing .turn.active { opacity: 1; }
+    .turn.active .say { box-shadow: 0 0 0 2px var(--sage-2); }
+    .done { display: flex; align-items: center; gap: .55rem; background: var(--mint); color: var(--forest); border-radius: 12px; padding: .6rem .85rem; font-weight: 600; font-size: .9rem; margin: .2rem .6rem .4rem; }
 
-    .cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
-    @media (max-width: 800px) { .cards { grid-template-columns: 1fr; } }
-    .cardx { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 1.5rem; box-shadow: var(--shadow); }
-    .cardx .ic { width: 34px; height: 34px; border-radius: 10px; background: var(--sage-soft); color: var(--forest); display: grid; place-items: center; font-weight: 800; margin-bottom: .8rem; }
-    .cardx h3 { margin: 0 0 .3rem; font-size: 1.1rem; }
-    .cardx p { margin: 0; color: var(--ink-soft); font-size: .95rem; }
+    /* sections */
+    section { padding: clamp(3rem, 7vw, 5.5rem) 0; }
+    .eyebrow { color: var(--sage); font-weight: 700; font-size: .8rem; letter-spacing: .08em; text-transform: uppercase; margin: 0 0 .7rem; }
+    h2 { font-weight: 500; font-size: clamp(1.8rem, 3.6vw, 2.5rem); line-height: 1.12; letter-spacing: -.03em; margin: 0 0 .9rem; max-width: 20ch; }
+    .sub { color: var(--ink-2); font-size: 1.08rem; max-width: 36rem; margin: 0 0 2.25rem; }
+    .center { text-align: center; }
+    .center h2, .center .sub { margin-left: auto; margin-right: auto; }
 
-    .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-top: 1.5rem; }
-    @media (max-width: 640px) { .stats { grid-template-columns: 1fr; } }
-    .stat { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 1.4rem; text-align: center; box-shadow: var(--shadow); }
-    .stat b { display: block; font-family: Newsreader, Georgia, serif; font-size: 2rem; color: var(--forest); line-height: 1; margin-bottom: .35rem; }
-    .stat span { color: var(--ink-soft); font-size: .92rem; }
+    .logos { border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); padding: 1.4rem 0; }
+    .logos .wrap { display: flex; align-items: center; gap: 1.2rem 2.2rem; flex-wrap: wrap; justify-content: center; color: var(--ink-3); font-size: .9rem; }
+    .logos b { color: var(--ink-2); font-weight: 600; font-size: .98rem; }
+    .logos .lbl { width: 100%; text-align: center; font-size: .78rem; letter-spacing: .08em; text-transform: uppercase; }
 
-    .chips { display: flex; flex-wrap: wrap; gap: .55rem; justify-content: center; max-width: 34rem; margin: 0 auto; }
-    .chips span { border: 1px solid var(--line); background: var(--card); border-radius: 10px; padding: .5rem .85rem; font-weight: 600; font-size: .9rem; color: var(--ink); }
-    .chips span.more { color: var(--ink-soft); background: transparent; }
+    .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.25rem; }
+    @media (max-width: 860px) { .steps { grid-template-columns: 1fr; } }
+    .step { background: var(--mint); border-radius: var(--r); padding: 1.75rem; min-height: 230px; display: flex; flex-direction: column; justify-content: space-between; }
+    .step .n { font-weight: 500; font-size: 2.4rem; color: var(--forest); letter-spacing: -.03em; line-height: 1; }
+    .step h3 { margin: 1rem 0 .35rem; font-size: 1.15rem; font-weight: 600; }
+    .step p { margin: 0; color: var(--ink-2); font-size: .97rem; }
 
-    .band { text-align: center; }
-    .band .inner { background: linear-gradient(160deg, var(--forest), var(--forest-deep)); color: #fff; border-radius: 26px; padding: clamp(2rem, 5vw, 3.25rem); box-shadow: var(--shadow); }
-    .band h2 { color: #fff; margin-bottom: .6rem; }
-    .band p { color: rgba(255,255,255,.85); max-width: 34rem; margin: 0 auto 1.6rem; }
-    .band .btn { background: #fff; color: var(--forest); }
-    .band .btn:hover { background: #eef2e8; }
+    .who { display: grid; grid-template-columns: 1.1fr 1fr; gap: 3rem; align-items: center; }
+    @media (max-width: 900px) { .who { grid-template-columns: 1fr; } }
+    .who ul { list-style: none; padding: 0; margin: 0; display: grid; gap: .6rem; }
+    .who li { display: flex; align-items: center; gap: .75rem; padding: .9rem 1rem; border: 1px solid var(--line); border-radius: var(--r-sm); font-weight: 500; }
+    .who li i { width: 30px; height: 30px; border-radius: 9px; background: var(--mint); color: var(--forest); display: grid; place-items: center; font-weight: 700; font-style: normal; flex: none; }
 
-    footer { border-top: 1px solid var(--line); padding: 2.25rem 0; text-align: center; color: var(--ink-soft); font-size: .88rem; }
-    footer a { color: var(--ink-soft); text-decoration: none; }
+    .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; border-top: 1px solid var(--line); padding-top: 2rem; }
+    @media (max-width: 760px) { .stats { grid-template-columns: repeat(2, 1fr); } }
+    .stat b { display: block; font-weight: 500; font-size: 2.2rem; letter-spacing: -.03em; color: var(--forest); line-height: 1; margin-bottom: .4rem; }
+    .stat span { color: var(--ink-2); font-size: .92rem; }
+
+    .faq { display: grid; grid-template-columns: 1fr 1fr; gap: 3rem; align-items: start; }
+    @media (max-width: 900px) { .faq { grid-template-columns: 1fr; } }
+    details { border-top: 1px solid var(--line); padding: 1rem 0; }
+    details:last-child { border-bottom: 1px solid var(--line); }
+    summary { list-style: none; cursor: pointer; font-weight: 600; display: flex; justify-content: space-between; gap: 1rem; }
+    summary::-webkit-details-marker { display: none; }
+    summary::after { content: "+"; color: var(--sage); font-weight: 600; }
+    details[open] summary::after { content: "–"; }
+    details p { margin: .6rem 0 0; color: var(--ink-2); font-size: .97rem; }
+    .askcard { background: var(--mint); border-radius: var(--r); padding: 1.75rem; }
+    .askcard h3 { margin: 0 0 .4rem; font-size: 1.25rem; font-weight: 600; }
+    .askcard p { margin: 0 0 1.1rem; color: var(--ink-2); }
+
+    .final { text-align: center; }
+    .final .box { background: var(--board); color: #fff; border-radius: 28px; padding: clamp(2.5rem, 6vw, 4rem) 1.5rem; }
+    .final h2 { color: #fff; margin-left: auto; margin-right: auto; }
+    .final p { color: rgba(255,255,255,.75); max-width: 34rem; margin: 0 auto 1.6rem; }
+    .final .btn { background: #fff; color: var(--forest); box-shadow: none; }
+    .final .btn:hover { background: var(--mint); }
+
+    footer { padding: 3rem 0 2rem; color: var(--ink-3); font-size: .9rem; }
+    footer .cols { display: grid; grid-template-columns: 1.4fr 1fr 1fr; gap: 2rem; border-top: 1px solid var(--line); padding-top: 2rem; }
+    @media (max-width: 700px) { footer .cols { grid-template-columns: 1fr; } }
+    footer h4 { margin: 0 0 .6rem; font-size: .85rem; color: var(--ink); }
+    footer ul { list-style: none; padding: 0; margin: 0; display: grid; gap: .35rem; }
     footer a:hover { color: var(--ink); }
-    footer .links { display: flex; gap: 1.1rem; justify-content: center; flex-wrap: wrap; margin-bottom: .6rem; }
+    footer .copy { margin-top: 2rem; font-size: .82rem; }
     address { font-style: normal; }
-    @media (prefers-reduced-motion: reduce) { .turn, .done { animation: none; opacity: 1; transform: none; } .wave.on i, .pdot { animation: none; } }
+    @media (prefers-reduced-motion: reduce) { .pill i { animation: none; } }
   </style>
 </head>
 <body>
-  <header class="nav">
+  <header class="nav" id="nav">
     <div class="wrap">
-      <a class="brand" href="https://onoutset.com/"><span class="dot">O</span> Outset <small>· Otto</small></a>
-      <a class="btn" style="padding:.55rem 1.1rem;font-size:.9rem" href="https://cal.com/outset" target="_blank" rel="noopener">Book a call</a>
+      <a class="brand" href="https://onoutset.com/"><span class="mark">O</span> Outset <small>· Otto</small></a>
+      <nav class="links">
+        <a class="txt" href="#how">How it works</a>
+        <a class="txt" href="#who">For who</a>
+        <a class="txt" href="#faq">FAQ</a>
+        <a class="btn sm" href="https://cal.com/outset" target="_blank" rel="noopener">Book a call</a>
+      </nav>
     </div>
   </header>
 
   <div class="hero">
-    <div class="wrap">
-      <span class="pill"><span class="pdot"></span> For marinas, boat &amp; jet ski rentals</span>
-      <h1>Otto answers the phone at your <em>marina</em>.</h1>
-      <p class="lede">A real, natural voice, not a robot. Otto picks up every call, looks up bookings, cancels and
-        reschedules rentals, and books new ones, so your dock never has to stop to answer the phone.</p>
-      <div class="cta-row">
-        <a class="btn" href="https://cal.com/outset" target="_blank" rel="noopener">Book a 15-min call</a>
-        <a class="btn ghost" href="#call">Hear a real call</a>
+    <div class="wrap grid">
+      <div>
+        <span class="pill"><i></i> For marinas &amp; watersports rentals</span>
+        <h1>The phone agent that <span>actually books.</span></h1>
+        <p class="lede">Otto answers every call at your marina in a real, natural voice. It looks up the booking,
+          reads your real policy, checks the calendar you already use, and rebooks the customer, while your crew
+          stays on the dock.</p>
+        <div class="cta-row">
+          <a class="btn" href="https://cal.com/outset" target="_blank" rel="noopener">Book a 15-min call</a>
+          <button class="btn soft" id="hear" type="button">Hear the real call</button>
+        </div>
+        <p class="proof"><span>Live in a day</span><span>No long contract</span><span>Set up by a person</span></p>
       </div>
-      <p class="cta-note">Set up in a day · no long contract · talk to a person, not a form</p>
 
-      <div class="call" id="call">
-        <audio id="audio" preload="metadata" src="/otto-call.mp3"></audio>
-        <div class="bar">
-          <div class="who"><span class="ava">O</span><span><b>Otto</b><small>Answering for Bayside Marina</small></span></div>
-          <span class="meta"><span class="wave" id="wave"><i></i><i></i><i></i><i></i><i></i></span> <span id="status">call</span> · <span id="timer">0:00</span></span>
+      <div>
+        <div class="board" id="board">
+          <div class="top">
+            <div class="who"><span class="ava">O</span><span><b>Otto</b><small>Answering for Bayside Marina</small></span></div>
+            <span class="live off" id="live"><i></i><span id="livetxt">Ready</span></span>
+          </div>
+          <canvas id="viz" aria-label="Audio waveform of the call"></canvas>
+          <div class="bottom">
+            <button class="playbtn" id="play" type="button" aria-label="Play the call"><span class="tri"></span><span class="ic-pause"><i></i><i></i></span></button>
+            <div class="scrub" id="scrub"><div class="scrubfill" id="scrubfill"></div></div>
+            <span class="time"><span id="cur">0:00</span> / <span id="dur">0:43</span></span>
+          </div>
+          <div class="chip a" id="chipA"><small>Caller</small><b id="chipAtext">Ready when you are</b></div>
+          <div class="chip b" id="chipB"><small>Otto is doing</small><b id="chipBtext">Waiting for a call</b></div>
+          <div class="chip c"><small>Booking system</small><b>FareHarbor · live calendar</b></div>
+          <div class="chip d hide" id="chipD"><small>Result</small><b id="chipDtext">Rebooked · 9:00 AM</b></div>
+          <audio id="audio" preload="metadata" src="/otto-call.mp3"></audio>
         </div>
-        <div class="thread" id="thread"></div>
-        <div class="player" id="player" hidden>
-          <button class="playbtn" id="play" type="button" aria-label="Play the call"><span class="tri"></span><span class="ic-pause"><i></i><i></i></span></button>
-          <div class="scrub" id="scrub"><div class="scrubfill" id="scrubfill"></div></div>
-          <span class="dur" id="dur">0:00</span>
-        </div>
-        <div class="controls" id="controls">
-          <button id="replay" type="button">Replay call</button>
-          <button id="sound" type="button"><span class="tri"></span> Play with voice</button>
+        <div class="transcript">
+          <div class="thread" id="thread"></div>
         </div>
       </div>
     </div>
   </div>
 
-  <section>
+  <div class="logos">
     <div class="wrap">
-      <p class="eyebrow">What Otto does</p>
-      <h2>Every call answered. Every booking handled.</h2>
-      <p class="sub">Your team is on the dock, not by the phone. Otto is the front desk that never steps away, and it
-        actually completes the booking instead of just taking a message.</p>
-      <div class="cards">
-        <div class="cardx"><div class="ic">✓</div><h3>Answers in a human voice</h3><p>Picks up on the first ring, day or night, and sounds like a real person, because losing a call is losing a booking.</p></div>
-        <div class="cardx"><div class="ic">✓</div><h3>Cancels &amp; reschedules</h3><p>Looks up the booking, reads your real cancellation policy, and moves or cancels it, no back-and-forth for you.</p></div>
-        <div class="cardx"><div class="ic">✓</div><h3>Books new rentals</h3><p>Checks what is actually open on your calendar and takes the reservation right there on the call.</p></div>
+      <span class="lbl">Reads the booking systems you already run</span>
+      <b>FareHarbor</b><b>Peek</b><b>Xola</b><b>Checkfront</b><b>Rezdy</b><b>Square</b><b>Acuity</b><span>+ more</span>
+    </div>
+  </div>
+
+  <section id="how">
+    <div class="wrap">
+      <p class="eyebrow">How it works</p>
+      <h2>Live in a day. Nothing changes about how you work.</h2>
+      <p class="sub">Forward your line or take a new number. Otto learns your business from what you already publish, connects to your calendar, and starts answering.</p>
+      <div class="steps">
+        <div class="step"><span class="n">1</span><div><h3>Point your calls at Otto</h3><p>Forward your existing number, or hand out a new one. We set it up with you, by hand, in a day.</p></div></div>
+        <div class="step"><span class="n">2</span><div><h3>Otto learns your business</h3><p>Your prices, hours, age rules, policies and your real calendar. It answers only from your own facts and never makes anything up.</p></div></div>
+        <div class="step"><span class="n">3</span><div><h3>Otto answers and books</h3><p>First ring, any hour. It looks up bookings, cancels or reschedules them, and books new rentals into the same calendar.</p></div></div>
       </div>
     </div>
   </section>
 
-  <section style="background:var(--paper-2);border-top:1px solid var(--line);border-bottom:1px solid var(--line)">
-    <div class="wrap">
-      <p class="eyebrow">Works with what you already run</p>
-      <h2>It reads your real calendar. No switching systems.</h2>
-      <p class="sub">Otto connects to the booking software you use today, sees what is open, and books into the same
-        calendar. Nothing to migrate, nothing new to learn.</p>
-      <div class="chips">
-        <span>FareHarbor</span><span>Peek</span><span>Xola</span><span>Checkfront</span><span>Rezdy</span>
-        <span>Square</span><span>Acuity</span><span class="more">+ more</span>
+  <section id="who" style="background:var(--mint)">
+    <div class="wrap who">
+      <div>
+        <p class="eyebrow">Who it's for</p>
+        <h2>Built for the dock, not the desk.</h2>
+        <p class="sub" style="margin-bottom:0">If your phone rings while you're fuelling a boat, fitting a life jacket or walking a customer down the ramp, Otto is for you. It handles the calls you can't, and it books them.</p>
       </div>
+      <ul>
+        <li><i>✓</i> Marinas and boat rentals</li>
+        <li><i>✓</i> Jet ski and waverunner rentals</li>
+        <li><i>✓</i> Pontoon and charter operators</li>
+        <li><i>✓</i> Kayak, paddleboard and watersports</li>
+        <li><i>✓</i> Fishing charters and guides</li>
+      </ul>
     </div>
   </section>
 
   <section>
     <div class="wrap">
       <p class="eyebrow">Built by Outset</p>
-      <h2>From the team behind a marketplace of local activities.</h2>
-      <p class="sub">Otto is built by Outset, a booking platform for local experiences across the United States and
-        Canada. It runs on the same live-availability engine that powers the marketplace, so it is not a chatbot
-        bolted onto your phone, it is real booking infrastructure.</p>
+      <h2>Real booking infrastructure, not a chatbot on your phone line.</h2>
+      <p class="sub">Otto is built by Outset, a booking platform for local activities across the United States and Canada. It runs on the same live-availability engine that powers the marketplace.</p>
       <div class="stats">
         <div class="stat"><b>50,000+</b><span>local activity businesses in the Outset catalog</span></div>
-        <div class="stat"><b>US &amp; Canada</b><span>metros covered coast to coast</span></div>
+        <div class="stat"><b>US &amp; CA</b><span>coast to coast, every major metro</span></div>
         <div class="stat"><b>24/7</b><span>every call answered, nights and weekends</span></div>
+        <div class="stat"><b>1 day</b><span>from first call with us to Otto answering yours</span></div>
       </div>
     </div>
   </section>
 
-  <section class="band">
+  <section id="faq" style="background:var(--mint)">
+    <div class="wrap faq">
+      <div>
+        <p class="eyebrow">Questions</p>
+        <h2>What operators ask first.</h2>
+        <details open><summary>Does it actually book, or just take a message?</summary><p>It books. Otto reads your live calendar, offers times that are really open, and confirms the reservation on the call. Anything outside what you've published, it takes a name and number instead of guessing.</p></details>
+        <details><summary>Will it make something up?</summary><p>No. Otto answers only from your published prices, hours, age rules and policies. If it doesn't know, it says so and takes a message. It also declines weather, directions and anything not about your business.</p></details>
+        <details><summary>What booking systems does it work with?</summary><p>The major ones operators already use, FareHarbor, Peek, Xola, Checkfront, Rezdy, Square, Acuity, and more. Not connected yet? Otto still answers every call from your published facts and takes the booking details for you.</p></details>
+        <details><summary>How long does setup take?</summary><p>About a day. You forward your calls or use a new number, we load your business, you test it. We do it with you.</p></details>
+        <details><summary>What does it cost?</summary><p>A simple monthly price per location, no long contract, cancel anytime. It pays for itself the first time it catches a booking you'd have missed. Pricing is set with our first operators.</p></details>
+      </div>
+      <div class="askcard">
+        <h3>Still have questions?</h3>
+        <p>Talk to a person, not a form. Book a 15-minute call and we'll walk you through how Otto would answer your phone.</p>
+        <a class="btn" href="https://cal.com/outset" target="_blank" rel="noopener">Book a 15-min call</a>
+        <p style="margin:1rem 0 0;font-size:.9rem">or email <a href="mailto:hello@onoutset.com" style="color:var(--forest);font-weight:600">hello@onoutset.com</a></p>
+      </div>
+    </div>
+  </section>
+
+  <section class="final">
     <div class="wrap">
-      <div class="inner">
+      <div class="box">
         <h2>Stop losing the calls you can't answer.</h2>
-        <p>Get Otto answering your marina's phone this week. Book a 15-minute call and we'll set you up by hand.</p>
-        <div class="cta-row">
-          <a class="btn" href="https://cal.com/outset" target="_blank" rel="noopener">Book a 15-min call</a>
-        </div>
+        <p>Get Otto answering your marina's phone this week.</p>
+        <a class="btn" href="https://cal.com/outset" target="_blank" rel="noopener">Book a 15-min call</a>
       </div>
     </div>
   </section>
 
   <footer>
     <div class="wrap">
-      <div class="links">
-        <a href="https://onoutset.com/">Outset</a>
-        <a href="https://cal.com/outset" target="_blank" rel="noopener">Book a call</a>
-        <a href="/about.html">About</a>
-        <a href="mailto:hello@onoutset.com">hello@onoutset.com</a>
+      <div class="cols">
+        <div>
+          <a class="brand" href="https://onoutset.com/"><span class="mark">O</span> Outset</a>
+          <p style="margin:.7rem 0 0;max-width:22rem">Otto answers the phone at marinas and watersports rentals, and books the customer.</p>
+          <address style="margin-top:.6rem">339 King St N, Waterloo, ON N2J 0C5, Canada</address>
+        </div>
+        <div><h4>Explore</h4><ul><li><a href="#how">How it works</a></li><li><a href="#who">For who</a></li><li><a href="#faq">FAQ</a></li><li><a href="https://onoutset.com/">Outset marketplace</a></li></ul></div>
+        <div><h4>Company</h4><ul><li><a href="https://cal.com/outset" target="_blank" rel="noopener">Book a call</a></li><li><a href="mailto:hello@onoutset.com">hello@onoutset.com</a></li><li><a href="/about.html">About</a></li><li><a href="/privacy.html">Privacy</a></li></ul></div>
       </div>
-      <address>Outset, 339 King St N, Waterloo, ON N2J 0C5, Canada</address>
+      <p class="copy">© 2026 Outset. All rights reserved.</p>
     </div>
   </footer>
 
   <script>
     (function () {
+      var nav = document.getElementById("nav");
+      addEventListener("scroll", function () { nav.classList.toggle("scrolled", scrollY > 8); }, { passive: true });
+
       var turns = [
-        { who: "otto", text: "Thanks for calling Bayside Marina, this is Otto. What can I do for you?", pause: 700 },
-        { who: "caller", text: "Hey, I've got a couple jet skis booked for four o'clock today. Something came up, can I cancel?", pause: 500 },
-        { who: "otto", check: "Pulling up your booking", checkMs: 1400, text: "No problem, let me pull it up. Okay, I've got two waverunners at 4 PM under Marcus, that's you? Quick heads up, it's inside 24 hours, so that time is non-refundable on the marina's policy. But I can move it to another day for free instead, if that's easier.", pause: 700 },
-        { who: "caller", text: "Oh, yeah, that's better. Can I do tomorrow morning?", pause: 500 },
-        { who: "otto", check: "Checking tomorrow's calendar", checkMs: 1500, text: "Let me check. Tomorrow I've got two skis open at 9 AM or 11 AM. Which one works?", pause: 600 },
-        { who: "caller", text: "Nine's perfect.", pause: 450 },
-        { who: "otto", check: "Moving your booking", checkMs: 1300, text: "Done, you're moved to 9 AM tomorrow, no charge. I'll text the new confirmation to this number. Anything else?", pause: 650 },
-        { who: "caller", text: "Nope, that's it. Thanks!", pause: 450 },
-        { who: "otto", text: "You got it, see you tomorrow.", pause: 500 }
+        { who: "otto",   text: "Thanks for calling Bayside Marina, this is Otto. What can I do for you?", doing: "Answering" },
+        { who: "caller", text: "Hey, I've got a couple jet skis booked for four o'clock today. Something came up, can I cancel?", doing: "Listening" },
+        { who: "otto",   text: "No problem, let me pull it up. Okay, I've got two waverunners at 4 PM under Marcus, that's you? Quick heads up, it's inside 24 hours, so that time is non-refundable on the marina's policy. But I can move it to another day for free instead, if that's easier.", doing: "Pulling up the booking · reading the policy" },
+        { who: "caller", text: "Oh, yeah, that's better. Can I do tomorrow morning?", doing: "Listening" },
+        { who: "otto",   text: "Let me check. Tomorrow I've got two skis open at 9 AM or 11 AM. Which one works?", doing: "Checking tomorrow's calendar" },
+        { who: "caller", text: "Nine's perfect.", doing: "Listening" },
+        { who: "otto",   text: "Done, you're moved to 9 AM tomorrow, no charge. I'll text the new confirmation to this number. Anything else?", doing: "Moving the booking · texting confirmation" },
+        { who: "caller", text: "Nope, that's it. Thanks!", doing: "Listening" },
+        { who: "otto",   text: "You got it, see you tomorrow.", doing: "Wrapping up" }
       ];
-      var doneText = "Rebooked · 2 waverunners · tomorrow 9:00 AM · confirmation texted";
-      var thread = document.getElementById("thread"), wave = document.getElementById("wave"),
-          statusEl = document.getElementById("status"), timerEl = document.getElementById("timer"),
-          replayBtn = document.getElementById("replay"), soundBtn = document.getElementById("sound"),
-          controls = document.getElementById("controls"), audio = document.getElementById("audio"),
-          player = document.getElementById("player"), playBtn = document.getElementById("play"),
-          scrub = document.getElementById("scrub"), scrubFill = document.getElementById("scrubfill"),
-          durEl = document.getElementById("dur");
-      var reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      var callerChip = ["Calling in", "Wants to cancel 4 PM", "Hearing the policy", "Asks for tomorrow", "Hearing the options", "Picks 9 AM", "Getting confirmation", "All set", "Hangs up happy"];
+
+      var audio = document.getElementById("audio"), play = document.getElementById("play"), hear = document.getElementById("hear"),
+          scrub = document.getElementById("scrub"), fill = document.getElementById("scrubfill"), cur = document.getElementById("cur"),
+          durEl = document.getElementById("dur"), live = document.getElementById("live"), liveTxt = document.getElementById("livetxt"),
+          thread = document.getElementById("thread"), chipA = document.getElementById("chipAtext"), chipB = document.getElementById("chipBtext"),
+          chipD = document.getElementById("chipD"), chipDtext = document.getElementById("chipDtext"), canvas = document.getElementById("viz");
+      var reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
       function fmt(s) { s = Math.max(0, Math.floor(s || 0)); return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0"); }
 
-      /* ---- Mode A: a real recording is present. Synced transcript player. ---- */
-      var started = false;
-      function startAudioMode() {
-        if (started) return; started = true;
-        controls.hidden = true; player.hidden = false;
-        thread.className = "thread audio";
-        thread.innerHTML = "";
-        var els = turns.map(function (t, i) {
-          var d = document.createElement("div"); d.className = "turn " + t.who; d.dataset.i = i;
-          d.innerHTML = '<p class="lbl">' + (t.who === "otto" ? "Otto" : "Caller") + '</p><span class="say"></span>';
-          d.querySelector(".say").textContent = t.text;
-          d.addEventListener("click", function () { audio.currentTime = starts[i] + 0.02; audio.play(); });
-          thread.appendChild(d); return d;
-        });
-        // Per-line start times, weighted by how long each line is, spread across the file's real length. No
-        // hand-tuned timestamps: it fits whatever recording is dropped in. A caption feels right slightly early,
-        // so each line is nudged a touch before its share.
-        var starts = [], total = 0, dur = audio.duration || 40;
-        var lens = turns.map(function (t) { return t.text.length + 12; });
-        var sum = lens.reduce(function (a, b) { return a + b; }, 0);
-        for (var i = 0; i < turns.length; i++) { starts.push(Math.max(0, (total / sum) * dur - 0.15)); total += lens[i]; }
+      /* transcript */
+      var els = turns.map(function (t, i) {
+        var d = document.createElement("div"); d.className = "turn " + t.who; d.dataset.i = i;
+        d.innerHTML = '<div class="say"><small>' + (t.who === "otto" ? "Otto" : "Caller") + '</small><span></span></div>';
+        d.querySelector("span").textContent = t.text;
+        d.addEventListener("click", function () { if (starts.length) { audio.currentTime = starts[i] + 0.02; audio.play(); } });
+        thread.appendChild(d); return d;
+      });
+      var starts = [], activeEl = null, doneShown = false;
+      function computeStarts() {
+        var dur = audio.duration && isFinite(audio.duration) ? audio.duration : 43;
+        var lens = turns.map(function (t) { return t.text.length + 14; }), sum = lens.reduce(function (a, b) { return a + b; }, 0), acc = 0;
+        starts = lens.map(function (l) { var s = Math.max(0, (acc / sum) * dur - 0.12); acc += l; return s; });
         durEl.textContent = fmt(dur);
-
-        var doneShown = false, activeEl = null;
-        function setActive(i) {
-          var el = i == null ? null : els[i];
-          if (el === activeEl) return;
-          if (activeEl) activeEl.classList.remove("active");
-          activeEl = el;
-          if (el) { el.classList.add("active"); el.scrollIntoView({ block: "nearest", behavior: reduce ? "auto" : "smooth" }); }
+      }
+      function setActive(i) {
+        var el = i == null ? null : els[i];
+        if (el === activeEl) return;
+        if (activeEl) activeEl.classList.remove("active");
+        activeEl = el;
+        if (el) {
+          el.classList.add("active");
+          el.scrollIntoView({ block: "nearest", behavior: reduce ? "auto" : "smooth" });
+          chipA.textContent = callerChip[i]; chipB.textContent = turns[i].doing;
         }
-        audio.addEventListener("timeupdate", function () {
-          var ct = audio.currentTime, idx = 0;
-          for (var i = 0; i < starts.length; i++) { if (starts[i] <= ct) idx = i; }
-          setActive(idx);
-          scrubFill.style.width = (audio.duration ? (ct / audio.duration) * 100 : 0) + "%";
-          timerEl.textContent = fmt(ct);
-        });
-        audio.addEventListener("play", function () { playBtn.classList.add("playing"); wave.classList.add("on"); thread.classList.add("playing"); statusEl.textContent = "live"; });
-        audio.addEventListener("pause", function () { playBtn.classList.remove("playing"); wave.classList.remove("on"); });
-        audio.addEventListener("ended", function () {
-          playBtn.classList.remove("playing"); wave.classList.remove("on"); thread.classList.remove("playing");
-          statusEl.textContent = "ended"; setActive(null);
-          if (!doneShown) { doneShown = true; var d = document.createElement("div"); d.className = "done"; d.innerHTML = "<span>✓</span> " + doneText; thread.appendChild(d); d.scrollIntoView({ block: "nearest" }); }
-        });
-        playBtn.addEventListener("click", function () { if (audio.paused) audio.play(); else audio.pause(); });
-        scrub.addEventListener("click", function (e) { var r = scrub.getBoundingClientRect(); audio.currentTime = ((e.clientX - r.left) / r.width) * (audio.duration || 0); });
       }
-      audio.addEventListener("loadedmetadata", function () { if (audio.duration && isFinite(audio.duration)) startAudioMode(); });
-      audio.addEventListener("error", startFallback);
 
-      /* ---- Mode B: no recording yet. The animated demo with the browser's own voice. ---- */
-      var timers = [], timerInt = null, seconds = 0, fbInit = false;
-      function at(ms, fn) { timers.push(setTimeout(fn, ms)); }
-      function addTurn(t) { var d = document.createElement("div"); d.className = "turn " + t.who; d.innerHTML = '<p class="lbl">' + (t.who === "otto" ? "Otto" : "Caller") + '</p><span class="say"></span>'; d.querySelector(".say").textContent = t.text; thread.appendChild(d); }
-      function addChecking(label) { var d = document.createElement("div"); d.className = "checking"; d.id = "checking"; d.innerHTML = '<span>' + label + '<span class="dots"><i></i><i></i><i></i></span></span>'; thread.appendChild(d); }
-      function speak(t, voice) { if (!window.speechSynthesis) return; var u = new SpeechSynthesisUtterance(t.text); u.rate = 1.02; u.pitch = t.who === "otto" ? 1 : 0.95; if (voice) u.voice = voice; window.speechSynthesis.speak(u); }
-      function pickVoice() { if (!window.speechSynthesis) return null; var vs = window.speechSynthesis.getVoices() || []; var pref = vs.filter(function (v) { return /en(-|_)US/i.test(v.lang); }); return (pref.find(function (v) { return /samantha|jenny|aria|natural|google us/i.test(v.name); }) || pref[0] || vs[0] || null); }
-      function playAnim(withVoice) {
-        timers.forEach(clearTimeout); timers = []; if (timerInt) { clearInterval(timerInt); timerInt = null; }
-        try { window.speechSynthesis && window.speechSynthesis.cancel(); } catch (e) {}
-        thread.innerHTML = ""; seconds = 0; timerEl.textContent = "0:00"; wave.classList.remove("on"); statusEl.textContent = "live";
-        var voice = withVoice ? pickVoice() : null;
-        timerInt = setInterval(function () { seconds++; timerEl.textContent = fmt(seconds); }, 1000);
-        var t = 0;
-        turns.forEach(function (turn) {
-          if (turn.check && !reduce) { at(t, function () { wave.classList.remove("on"); addChecking(turn.check); }); t += turn.checkMs; at(t, function () { var c = document.getElementById("checking"); if (c) c.remove(); }); }
-          at(t, function () { addTurn(turn); if (turn.who === "otto") wave.classList.add("on"); else wave.classList.remove("on"); if (withVoice) speak(turn, voice); thread.scrollTop = thread.scrollHeight; });
-          t += reduce ? 350 : Math.max(turn.pause, Math.min(5200, turn.text.length * 45));
-        });
-        at(t, function () { wave.classList.remove("on"); statusEl.textContent = "ended"; if (timerInt) { clearInterval(timerInt); timerInt = null; } var d = document.createElement("div"); d.className = "done"; d.innerHTML = "<span>✓</span> " + doneText; thread.appendChild(d); thread.scrollTop = thread.scrollHeight; });
+      /* audio-reactive visualizer, with the reference's sine idle when nothing is playing */
+      var ctx2d = canvas.getContext("2d"), actx = null, analyser = null, freq = null;
+      var BARS = 46, BW = 4, GAP = 4, MINH = 4, MAXH = 74, FADE = .7, SMOOTH = .2;
+      var heights = [], phases = [], tRef = 0, last = performance.now(), size = { w: 0, h: 0, dpr: 1 };
+      function resize() {
+        var r = canvas.getBoundingClientRect(), dpr = Math.min(devicePixelRatio || 1, 2);
+        canvas.width = Math.max(1, Math.floor(r.width * dpr)); canvas.height = Math.max(1, Math.floor(r.height * dpr));
+        size = { w: r.width, h: r.height, dpr: dpr };
+        if (!heights.length) { for (var i = 0; i < BARS; i++) { heights.push(MINH); phases.push(Math.random() * Math.PI * 2); } }
       }
-      function startFallback() {
-        if (started || fbInit) return; fbInit = true;
-        player.hidden = true; controls.hidden = false;
-        replayBtn.addEventListener("click", function () { playAnim(false); });
-        soundBtn.addEventListener("click", function () {
-          if (window.speechSynthesis && window.speechSynthesis.getVoices().length === 0) { window.speechSynthesis.onvoiceschanged = function () { playAnim(true); window.speechSynthesis.onvoiceschanged = null; }; window.speechSynthesis.getVoices(); setTimeout(function () { playAnim(true); }, 250); }
-          else { playAnim(true); }
-        });
-        playAnim(false);
+      resize(); new ResizeObserver(resize).observe(canvas);
+      function clamp(v, a, b) { return Math.min(b, Math.max(a, v)); }
+      function ensureAnalyser() {
+        if (actx) { if (actx.state === "suspended") actx.resume(); return; }
+        try {
+          actx = new (window.AudioContext || window.webkitAudioContext)();
+          var src = actx.createMediaElementSource(audio); analyser = actx.createAnalyser(); analyser.fftSize = 256; analyser.smoothingTimeConstant = .75;
+          src.connect(analyser); analyser.connect(actx.destination); freq = new Uint8Array(analyser.frequencyBinCount);
+        } catch (e) { actx = null; analyser = null; }
       }
-      // If the recording never loads in a few seconds, fall back to the animated demo.
-      setTimeout(function () { if (!started) startFallback(); }, 4000);
+      function draw(now) {
+        var w = size.w, h = size.h, dpr = size.dpr; if (w <= 0 || h <= 0) { requestAnimationFrame(draw); return; }
+        var dt = Math.min(40, now - last); last = now; var dtF = dt / (1000 / 60); tRef += dt / 1000;
+        var t = tRef * 2.2, cy = h / 2, playing = !audio.paused && !audio.ended;
+        if (analyser && playing) analyser.getByteFrequencyData(freq);
+        ctx2d.setTransform(dpr, 0, 0, dpr, 0, 0); ctx2d.clearRect(0, 0, w, h);
+        var spacing = BW + GAP, total = BARS * BW + (BARS - 1) * GAP, x0 = (w - total) / 2;
+        var alpha = 1 - Math.pow(1 - SMOOTH, dtF);
+        ctx2d.globalAlpha = .95; ctx2d.shadowColor = "rgba(169,189,149,.9)"; ctx2d.shadowBlur = 8;
+        for (var i = 0; i < BARS; i++) {
+          var n = i / (BARS - 1), dist = Math.abs(n - .5) * 2, env = 1 - Math.pow(dist, 1.6) * FADE, target;
+          if (analyser && playing) {
+            // Voice energy lives in the low bins; map the middle bars to them so the shape follows the speech.
+            var bin = Math.floor(2 + dist * 26); var v = freq[bin] / 255; v = Math.pow(v, 1.35);
+            target = MINH + v * env * (MAXH - MINH) * 1.15;
+          } else {
+            var p = phases[i], w1 = Math.sin(t * 1.1 + n * 7.5 + p * .3), w2 = Math.sin(t * 2.2 - n * 13 + p) * .5 + .5,
+                w3 = Math.sin(t * 3.7 + p * 1.4 + n * 19) * .5 + .5, w4 = Math.sin(t * 6.1 + p * 2.1 + n * 31) * .5 + .5;
+            var energy = clamp(w1 * .28 + w2 * .35 + w3 * .22 + w4 * .15, 0, 1) * (reduce ? .5 : .55);
+            target = MINH + energy * env * (MAXH - MINH);
+          }
+          var next = heights[i] + (target - heights[i]) * alpha; heights[i] = next;
+          var x = x0 + i * spacing, top = cy - next, th = next * 2, rad = Math.min(BW / 2, next / 2);
+          var g = ctx2d.createLinearGradient(0, top, 0, top + th);
+          g.addColorStop(0, "#ffffff"); g.addColorStop(.45, "#a9bd95"); g.addColorStop(.55, "#a9bd95"); g.addColorStop(1, "#ffffff");
+          ctx2d.fillStyle = g; ctx2d.beginPath(); ctx2d.roundRect(x, top, BW, th, rad); ctx2d.fill();
+        }
+        ctx2d.shadowBlur = 0;
+        requestAnimationFrame(draw);
+      }
+      requestAnimationFrame(draw);
+
+      /* playback */
+      function togglePlay() { ensureAnalyser(); if (audio.paused) audio.play(); else audio.pause(); }
+      play.addEventListener("click", togglePlay);
+      hear.addEventListener("click", function () { document.getElementById("board").scrollIntoView({ block: "center", behavior: "smooth" }); ensureAnalyser(); audio.currentTime = 0; audio.play(); });
+      scrub.addEventListener("click", function (e) { var r = scrub.getBoundingClientRect(); audio.currentTime = ((e.clientX - r.left) / r.width) * (audio.duration || 0); });
+      audio.addEventListener("loadedmetadata", computeStarts);
+      if (audio.readyState >= 1) computeStarts(); else computeStarts();
+      audio.addEventListener("play", function () { play.classList.add("playing"); live.classList.remove("off"); liveTxt.textContent = "Live"; thread.classList.add("playing"); chipD.classList.add("hide"); });
+      audio.addEventListener("pause", function () { play.classList.remove("playing"); liveTxt.textContent = "Paused"; });
+      audio.addEventListener("timeupdate", function () {
+        var ct = audio.currentTime, idx = 0; for (var i = 0; i < starts.length; i++) if (starts[i] <= ct) idx = i;
+        setActive(idx); fill.style.width = (audio.duration ? (ct / audio.duration) * 100 : 0) + "%"; cur.textContent = fmt(ct);
+      });
+      audio.addEventListener("ended", function () {
+        play.classList.remove("playing"); live.classList.add("off"); liveTxt.textContent = "Call ended"; thread.classList.remove("playing"); setActive(null);
+        chipA.textContent = "Hangs up happy"; chipB.textContent = "Booking moved, confirmation sent"; chipD.classList.remove("hide");
+        if (!doneShown) { doneShown = true; var d = document.createElement("div"); d.className = "done"; d.innerHTML = "<span>✓</span> Rebooked · 2 waverunners · tomorrow 9:00 AM · confirmation texted"; thread.appendChild(d); d.scrollIntoView({ block: "nearest" }); }
+      });
+      audio.addEventListener("error", function () { liveTxt.textContent = "Recording unavailable"; play.disabled = true; });
     })();
   </script>
-  <noscript>
-    <style>.controls{display:none}</style>
-    <div class="wrap"><div class="call" style="margin-top:0"><div class="thread">
-      <div class="turn otto" style="opacity:1"><p class="lbl">Otto</p><span class="say">Thanks for calling Bayside Marina, this is Otto. What can I do for you?</span></div>
-      <div class="turn caller" style="opacity:1"><p class="lbl">Caller</p><span class="say">I've got a couple jet skis booked for 4 today, something came up, can I cancel?</span></div>
-      <div class="turn otto" style="opacity:1"><p class="lbl">Otto</p><span class="say">Two waverunners at 4 PM under Marcus. That's inside 24 hours, so it's non-refundable on the marina's policy, but I can move it to another day for free.</span></div>
-      <div class="turn caller" style="opacity:1"><p class="lbl">Caller</p><span class="say">Can I do tomorrow morning?</span></div>
-      <div class="turn otto" style="opacity:1"><p class="lbl">Otto</p><span class="say">Tomorrow I've got 9 AM or 11 AM open for two skis. Done, moved to 9 AM, no charge, confirmation texted.</span></div>
-    </div></div></div>
-  </noscript>
 </body>
 </html>
