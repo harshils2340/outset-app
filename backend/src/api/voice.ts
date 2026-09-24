@@ -6,6 +6,7 @@ import { zoneForArea } from "../lib/zone.ts";
 import { getProfile } from "../lib/repo.ts";
 import { pgConfigured } from "../db/pg.ts";
 import type { StoredProfile } from "./profiles.ts";
+import { splitIncluded } from "../../../src/lib/listingDerive.ts";
 
 /**
  * The phone agent's data endpoints ("Otto on the phone").
@@ -162,6 +163,7 @@ voice.get("/voice/:operatorId", rateLimit(120, 60 * 60 * 1000), async (c) => {
   // Only what is published on the listing. A missing field is said as missing so the agent offers to have a
   // person confirm, exactly as the on-page assistant does, rather than inventing an answer on a live call.
   const hours = shop.hoursText?.length ? shop.hoursText : shop.contact?.hours || [];
+  const included = splitIncluded(shop.includes || []);
   return c.json({
     business: {
       id: shop.id,
@@ -172,7 +174,11 @@ voice.get("/voice/:operatorId", rateLimit(120, 60 * 60 * 1000), async (c) => {
       fromPrice: money(fromPriceOf(shop)),
       duration: shop.dur || null,
       hours: hours.length ? hours : null,
-      includes: (shop.includes || []).slice(0, 12),
+      // Through the split every other surface draws. Read raw, a voice agent read the shop's own exclusions out
+      // as things the price covers: 5,263 shipped listings publish one here ("Gratuities", "Lunch (not
+      // included)", "Snacks available for purchase"), and on a call there is no second column to read instead.
+      includes: included.yes.slice(0, 12),
+      notIncluded: included.no.length ? included.no.map((n) => n.text).slice(0, 12) : null,
       requirements: (shop.requirements || []).slice(0, 12),
       policies: (shop.policies || []).length ? (shop.policies || []).slice(0, 8) : null,
       cancellation: shop.cancellation || null,

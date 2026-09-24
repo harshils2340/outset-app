@@ -45,12 +45,22 @@ const partner = {
   affiliate: { source: "viator", label: "Viator", url: "https://www.viator.com/tours/x?pid=P00321495" },
 };
 
+/** A shop whose published `includes` carries its own exclusions, which 5,263 shipped listings do. */
+const mixedShop = {
+  id: "o-mixed-com",
+  title: "Harbour Sunset Cruises",
+  area: "Tampa, FL",
+  options: [{ name: "Sunset sail", price: 85 }],
+  includes: ["Bottled water", "Gratuities (not included)", "Lunch (not included)", "Snacks and drinks available for purchase"],
+};
+
 const realFetch = globalThis.fetch;
 globalThis.fetch = (async (input: string | URL | Request) => {
   const url = String(input instanceof Request ? input.url : input);
   if (url === "https://onoutset.com/o/o-reeltime-com.json") return new Response(JSON.stringify(reel), { status: 200, headers: { "content-type": "application/json" } });
   if (url === "https://onoutset.com/o/a-viator-100118p1.json") return new Response(JSON.stringify(partner), { status: 200, headers: { "content-type": "application/json" } });
   if (url === "https://onoutset.com/o/o-menu-only-com.json") return new Response(JSON.stringify(menuOnly), { status: 200, headers: { "content-type": "application/json" } });
+  if (url === "https://onoutset.com/o/o-mixed-com.json") return new Response(JSON.stringify(mixedShop), { status: 200, headers: { "content-type": "application/json" } });
   // Everything else (the live-index availability reads for a non-vendor operator) is a miss, so availability is not live.
   return new Response("not found", { status: 404 });
 }) as typeof fetch;
@@ -176,4 +186,21 @@ test("a sold-out departure is not offered, and a price of nothing is no price ra
 
 test.after(() => {
   globalThis.fetch = realFetch;
+});
+
+/**
+ * The last field on this route still handed over raw. A shop publishes its exclusions in the same `includes`
+ * array as its inclusions, so a voice agent read "Gratuities (not included)" and "Lunch (not included)" out as
+ * things the price covers, and on a call there is no second column for a caller to read instead.
+ */
+test("a shop's own exclusions are not read out as things the price covers", async () => {
+  const res = await voice.request("http://localhost/voice/o-mixed-com");
+  assert.equal(res.status, 200);
+  const b = (await res.json()).business as { includes: string[]; notIncluded: string[] | null };
+  assert.deepEqual(b.includes, ["Bottled water"]);
+  assert.deepEqual(b.notIncluded, ["Gratuities", "Lunch", "Snacks and drinks available for purchase"]);
+  // A shop that publishes no exclusion says nothing rather than an empty list.
+  const clean = (await (await voice.request("http://localhost/voice/o-reeltime-com")).json()).business as { includes: string[]; notIncluded: string[] | null };
+  assert.deepEqual(clean.includes, ["Rods, reels and bait", "Fishing license"]);
+  assert.equal(clean.notIncluded, null);
 });
