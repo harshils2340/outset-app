@@ -768,6 +768,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
     saveChats(state.chats);
   }, [state.chats, state.hydrated]);
 
+  /**
+   * Wake the API as the operator side opens, whichever way they arrived: a claim link, a direct /operators load,
+   * or "For operators" from the home.
+   *
+   * Nothing on that side works without the API. A claim link is traded for a session, a sign-in code is mailed,
+   * and each of those is usually the first request this host has had in a while, because it sleeps when idle.
+   * The guest booking sheet has warmed it since 16 September for that reason and the operator screen never did,
+   * so an owner's very first press paid the whole cold start against a 12 to 25 second timeout, and a timeout
+   * on either call reads as a refusal. `warmApi` costs nothing twice: it holds itself to one call per five
+   * minutes and throws its own failure away.
+   */
+  useEffect(() => {
+    if (state.screen === "operator") warmApi();
+  }, [state.screen]);
+
   // The open listing lives in the address bar as #o=<id>, so refresh, back and share land on the same listing.
   useEffect(() => {
     if (!booted.current || state.screen === "operator") return;

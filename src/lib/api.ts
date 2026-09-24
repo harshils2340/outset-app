@@ -341,7 +341,10 @@ export async function testUnclaim(id: string, email: string): Promise<{ ok: bool
 /* ---------- sign-in by email code ---------- */
 
 export async function requestSignInCode(email: string): Promise<{ ok: boolean; error?: string }> {
-  const r = await call(`/auth/request-code`, { method: "POST", body: JSON.stringify({ email }) });
+  // Long enough for a cold host, like the claim-link request beside it: this one sends mail too, and a timeout
+  // here leaves the screen saying the code could not be sent while the code lands in the owner's inbox anyway,
+  // with no code step in front of them to type it on.
+  const r = await call(`/auth/request-code`, { method: "POST", body: JSON.stringify({ email }), timeout: 25000 });
   return { ok: r.ok, error: r.error };
 }
 
