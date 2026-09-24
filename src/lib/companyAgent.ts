@@ -4,7 +4,7 @@ import { addressLine, bookingPaused, plainWords } from "./catalog";
 import { callablePhone } from "./phone";
 import { withoutNoticeWindows } from "./duration";
 import { money } from "./format";
-import { arrivalWords, faqText, groupCap, minAge } from "./listingDerive";
+import { arrivalWords, faqText, groupCap, minAge, splitIncluded } from "./listingDerive";
 import { liveRead } from "./liveTimes";
 import { bookableStart, clockIn, dayKeyIn, hourLines, itemWeek, openStateAt, zoneFor, type Week } from "./openNow";
 import { venueLabel } from "./places";
@@ -1191,7 +1191,13 @@ function includedAnswer(ctx: CompanyContext, q = ""): { text: string; state: Cha
     if (line) return { text: sentence(upper1(line)), state: { topic: "included" } };
     return { text: "They don't mention " + specific[0].toLowerCase() + " in what they publish. " + nextStep(ctx), state: { topic: "included" } };
   }
-  if (ctx.item.includes.length) return { text: factList(ctx.item.includes, "Included: "), state: { topic: "included" } };
+  // Through the split both listing surfaces draw, not the raw field. Read raw, Otto read a shop's own
+  // exclusions out as things a guest gets: 5,263 shipped listings publish one in `includes` ("Gratuities",
+  // "Lunch (not included)", "Snacks available for purchase"), and this is the surface an operator pays for.
+  const split = splitIncluded(ctx.item.includes);
+  if (split.yes.length) return { text: factList(split.yes, "Included: "), state: { topic: "included" } };
+  // A shop whose every published line is an exclusion has still answered the question.
+  if (split.no.length) return { text: factList(split.no.map((n) => n.text), "Not included: "), state: { topic: "included" } };
   const line = findLine(ctx.item, /\b(included?|provided|supplied)\b/i);
   if (line) return { text: sentence(line), state: { topic: "included" } };
   return { text: noFact(ctx, "what's included"), state: { topic: "included" } };

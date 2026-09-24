@@ -20,6 +20,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { readFileSync, readdirSync } from "node:fs";
 
+import { companyReply } from "../companyAgent";
+import type { Unclaimed } from "../../data/types";
 import { splitIncluded } from "../listingDerive";
 
 const yes = (lines: string[]) => splitIncluded(lines).yes;
@@ -156,4 +158,37 @@ test("a page does not promise what the same list excludes", () => {
     split.no.map((n) => n.text),
     ["Gratuities", "Admission fees"],
   );
+});
+
+/* ---------- the third surface: Otto ---------- */
+
+/**
+ * Otto is sold to claimed operators and answers "what's included?" off the same field. It read that field raw,
+ * so it read a shop's own exclusions out as things a guest gets: "Included: gratuities, hotel pickup and
+ * drop-off (not included) and lunch". It reads the split now, like the page and the sheet.
+ */
+test("Otto does not read a shop's exclusions out as things included", () => {
+  const item = {
+    id: "o-test",
+    title: "Test Charters",
+    cat: "boating",
+    art: "boat",
+    area: "Tampa, FL",
+    metroId: "tampa",
+    src: "test.com",
+    specs: [],
+    options: [],
+    gap: "",
+    includes: ["Bottled water", "Gratuities (not included)", "Lunch (not included)", "Snacks available for purchase"],
+  } as unknown as Unclaimed;
+  const answer = companyReply({ item, contact: null }, "what's included?");
+  assert.match(answer, /Bottled water|bottled water/);
+  assert.doesNotMatch(answer, /Gratuities|gratuities/, `Otto offered an exclusion as included: ${answer}`);
+  assert.doesNotMatch(answer, /Lunch|lunch/, `Otto offered an exclusion as included: ${answer}`);
+  assert.doesNotMatch(answer, /for purchase/, `Otto offered what the shop sells separately as included: ${answer}`);
+
+  // A shop whose every published line is an exclusion has still answered the question.
+  const allOut = { ...item, includes: ["Gratuities (not included)", "Lunch (not included)"] } as Unclaimed;
+  const second = companyReply({ item: allOut, contact: null }, "what's included?");
+  assert.match(second, /Not included/i, `Otto said nothing where the shop said something: ${second}`);
 });
