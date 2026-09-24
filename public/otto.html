@@ -193,15 +193,6 @@
     .stat b { display: block; font-weight: 600; font-size: 2rem; letter-spacing: -.03em; color: var(--accent); line-height: 1; margin-bottom: .35rem; }
     .stat span { color: var(--ink-soft); font-size: .9rem; }
 
-    .trustbar { padding: 1.75rem 0 .5rem; }
-    .trustbar .lbl { text-align: center; font-size: .78rem; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-soft); font-weight: 600; margin-bottom: 1.1rem; }
-    .trustbar .row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
-    @media (max-width: 760px) { .trustbar .row { grid-template-columns: 1fr; } }
-    .trustbar .t { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-l); padding: 1.1rem 1.2rem; }
-    .trustbar .t b { display: block; font-size: .95rem; margin-bottom: .3rem; }
-    .trustbar .t span { color: var(--ink-soft); font-size: .88rem; line-height: 1.5; }
-    .trustbar .t a { color: var(--accent); font-weight: 600; }
-
     .reviews { padding: 1.5rem 0 .5rem; overflow: hidden; }
     .reviews .lbl { text-align: center; font-size: .78rem; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-soft); font-weight: 600; margin-bottom: 1.5rem; }
     .reviews .rows { display: flex; flex-direction: column; gap: .9rem; -webkit-mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent); mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent); }
@@ -343,20 +334,6 @@
     <p class="lbl">What operators say</p>
     <div class="rows">
       <div class="track" id="track1"></div>
-    </div>
-  </div>
-
-  <!-- No customer quotes here yet on purpose: Otto has no real reviews to show, and a fabricated one is
-       illegal under the FTC rule and costs the sale the moment a prospect checks a name. This is real
-       instead of a quote: three things that are true today, no names, no photos, nothing invented. -->
-  <div class="trustbar">
-    <div class="wrap">
-      <p class="lbl">Why this is worth fifteen minutes</p>
-      <div class="row">
-        <div class="t"><b>Reads your real calendar</b><span>FareHarbor, Peek, Xola and more. It sees what's actually open, not a guess.</span></div>
-        <div class="t"><b>Every call above is real</b><span>Not a script read for the demo. <a href="#call">Play it again.</a></span></div>
-        <div class="t"><b>You watch it work first</b><span>Nothing is billed until it's taken real calls on your line and you're happy with it.</span></div>
-      </div>
     </div>
   </div>
 
