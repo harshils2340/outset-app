@@ -51,13 +51,16 @@ test("a waiver line stays in the waiver column and nowhere else", () => {
 });
 
 test("no line the catalog ships lands in two columns, and none is lost", () => {
-  const waiverLine = /\bwaivers?\b|\bliabilit|\brelease form|\bsign(ed|ing)? (a |the |our |your )?(waiver|release|form)|\bcheck-?in\b/i;
+  // The rule both surfaces really use, length cap and all: "Safety and waiver" prints a waiver line only while
+  // it is short enough to read as a bullet, and a longer one falls through to the columns below rather than off
+  // the page. Counting waivers here by the words alone made the 29 long partner lines look like two columns.
+  const waiverLine = (l: string) => /\bwaivers?\b|\bliabilit|\brelease form|\bsign(ed|ing)? (a |the |our |your )?(waiver|release|form)|\bcheck-?in\b/i.test(l) && l.length <= 160;
   let lines = 0;
   for (const d of details()) {
     const pol = d.policies || [];
     if (!pol.length) continue;
     const { cancel, other } = splitPolicies(pol);
-    const waiver = pol.filter((l) => waiverLine.test(l));
+    const waiver = pol.filter(waiverLine);
     lines += pol.length;
     assert.equal(cancel.length + other.length + waiver.length, pol.length, d.id + " prints every policy line once");
     for (const l of cancel) assert.ok(!other.includes(l) && !waiver.includes(l), d.id + " files " + l + " once");
