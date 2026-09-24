@@ -4533,6 +4533,73 @@ Chromium on disk.
 - A fresh checkout still has no `node_modules` at the root or in `backend`. Raised by the fifty-second run and
   every run since; this one ran `npm install` twice before anything could type-check.
 
+## 24 September 2026, seventieth run (11:19 to 12:45 UTC)
+
+**Chosen, and why.** The Coverage list has "the claim screen's own bad and expired states as a browser draws
+them" as the one thing in the claim and sign-in flow never checked: every other part of it is covered at the
+token level, and the rehearsal cannot reach the screen at all because it enters through the test bypass. That is
+the first screen a real operator ever meets, so it went first. Reading the states before driving them found the
+actual defect, which is not how the two known states look but a third one nobody had separated from them.
+
+**Found and fixed.**
+
+- **A claim link the API never answered for was called a bad link** (`70131cfa`). `exchangeClaimToken` told the
+  screen only "not ok" and "expired", so a request that timed out, a dead connection, the per-IP rate limiter
+  (30 an hour on that route, with its own 429 body the screen threw away) and a 502 from in front of the API all
+  came back as the same thing as a forged token. The owner read "That claim link didn't check out. Ask for a
+  fresh one below, or sign in with your email." about a link that was perfectly good, and the fresh one it
+  offered needs the same API that had just gone quiet. One helper now says whether the API ever judged what was
+  sent (`apiDidNotAnswer`: status 0, 408, 429 and 5xx), and the screen has a third line that says the link is
+  fine and a reload will do, which is true, because the token is still in the address bar until a claim is
+  recorded. The same helper fixes the worse version of it on `/auth/verify`: an operator who typed the right
+  code while the API was unreachable was told "That code does not match.", and the API burns a code after six
+  tries, so being sent back to retype a correct one costs the code. Both sign-in screens, the operator's and the
+  private metrics page's, now say the code is still good.
+- **A failed claim link threw away everything it knew about the owner** (`b138dd1d`). All three failure lines
+  end in "ask for a fresh one below", and the form below was empty: name, work email and mobile typed again from
+  memory, with the address being the field the API will refuse if it is not the one on the business's own site.
+  The link in the address bar already carries all three (`&o=`), bounded and validated by `ownerFromHash`, and
+  the good path has always read them. The failed paths read them too now, so "ask for a fresh one" is one press.
+- **The operator side never woke the API it cannot work without** (`ca803b22`). The API host sleeps when idle,
+  which is why `warmApi` exists and why the guest booking sheet has called it since 16 September. Nothing on the
+  operator side did, so an owner following a claim link from their inbox made the exchange the wake-up request,
+  against a 15 second timeout, and "Email me a sign-in code" was a 12 second one on a route that sends mail: a
+  timeout there leaves the screen saying the code could not be sent while the code lands in the inbox anyway,
+  with no code step in front of them to type it on. One effect on the operator screen warms it whichever way
+  they arrived, and `requestSignInCode` now waits as long as the claim-link request beside it.
+
+**Swept and clean.** The claim screen's three link failures driven in a real Chromium against the local API and
+a real minted v2 token, at 1280px and 400px: a forged signature, a correctly signed token a day out of date, the
+exchange aborted the way a dead connection aborts it, a 502, and a 429 carrying the limiter's own body. Each
+state says its own line and none of them says another's; the token stays in the address bar on the two that a
+reload would fix; the prefilled form carries the name, address and mobile off the link; nothing scrolls sideways
+and nothing sits past the edge at 400px. Every caller in the app that prints a verdict on a failed call was read
+for the same fault; the other seven already had a sentence for an API they could not reach.
+
+**Verification.** Both type checks clean (TS5097 aside). Backend `npm test` 751 pass, 0 fail, 2 skipped,
+unchanged. The guest suite 799 pass, 0 fail, up 7 on two new files and one extended. The rehearsal was run rather
+than skipped: the sixty-ninth entry had it green and nothing since had touched what it drives, but every fix
+here lands in `src/lib`, `src/state` or `src/components`, which it does drive. 55 of 55 against a local Postgres
+on 5433 with SSL on and the Chromium on disk. It also carries a new step (n) that mints the two claim-link
+states an owner actually meets and checks each is told apart from the other, so the coverage this run's browser
+drive bought does not leave with the scratch directory. The first version of that step failed honestly and was
+worth having: a browser that has claimed the listing before opens the dashboard from its own storage and never
+draws the claim screen at all, which is exactly the case the step must not be.
+
+**Needs Harshil.**
+
+- `proceedClaim` throws away what `claimRemote` answers. If the API fails on that one call, the click still
+  cleans the token out of the address bar, still saves a local profile and still opens the dashboard, so the
+  server never heard about the claim and the link is gone from the URL. The window is small (the exchange
+  succeeded seconds earlier) and the device keeps a way back in, but it is the one place left where a silent API
+  costs something rather than only saying the wrong thing.
+- A claim link that fails now prefills the form from its own `&o=` payload. That payload is not signed. It is
+  bounded and the API still checks the address against the business's own website, and it is a URL the person
+  already holds, so nothing is revealed and nothing can be claimed with it. Flagged because it is the first time
+  anything on that screen is filled in from the hash rather than from the catalog.
+- A fresh checkout still has no `node_modules` at the root or in `backend`. Raised by the fifty-second run and
+  every run since; this one ran `npm install` twice before anything could type-check.
+
 ## Coverage
 
 The catalog is 48,198 listings as of the 23 September sync, 1,873 of them Viator partner rows. Counts below
@@ -5054,6 +5121,15 @@ age word or a bare "N+", against the column that decides who can go and the floo
 Every `includes` line in the catalog that says "bring your own", split by whether it marks itself as not
 included.
 
+The claim screen's own failure states, driven in a real Chromium against the local API and a real minted v2
+token rather than read at the token level: a forged signature, a correctly signed token a day out of date, the
+exchange aborted the way a dead connection aborts it, a 502 from in front of the API and the rate limiter's own
+429, at 1280px and 400px. The line each one prints, the line it must not print, whether the token is left in the
+address bar for the reload that would fix it, the form it lands the owner on, sideways scroll and anything past
+the edge. Two of those five are a rehearsal step of their own now, step (n), minted from the harness's own claim
+secret. Every call in the app that prints a verdict on a failure, against the ones whose failure was only a call
+that never got an answer.
+
 **Not yet checked.** Whether a Free cancellation badge should ever promise a shorter
 notice than a line in the same shop's own policy denies: 13 of the 7,104 shipped badges do, four of them a shop
 contradicting itself where a previous run deliberately chose the promise, and the rest a per-service window
@@ -5216,8 +5292,15 @@ suite needs, or the rehearsal check for them, since without them eight test file
 that run's Needs Harshil). Whether `public/unsubscribe.html` should keep POSTing the API on load: it is the
 unsubscribe link every outreach email carries and the last page load in our mail that changes something by
 itself, and it sits outside the paths an overnight run may change (see the fifty-fourth run's Needs Harshil).
-The claim screen's own bad and expired states as a browser draws them, rather than at the token level where
-they are covered. Which of the 35 waiver links that
+What `proceedClaim` does when the one call that records a claim fails: the click cleans the token out of the
+address bar, saves a local profile and opens the dashboard whatever the API answered, so the server never hears
+about the claim (see the seventieth run's Needs Harshil). The three `role="tablist"` groups in the app as a
+screen reader meets them: the operator Home's carries no label, a fourth child that is not a tab and three
+panels with no `role="tabpanel"` or `aria-controls` between them, and the Browse and Agent pair has neither
+arrow keys nor a panel, where the category bar beside them has the label, the roving tab index and the arrow
+keys already. The TikTok creator embed on the guest listing page, which 0 shipped listings carry and which the
+page's own Content-Security-Policy would block twice over if one ever did, on the script and on the frame. The
+`instagram` handle on 4,980 shipped listings, which the sync writes, a claim borrows and no surface prints. Which of the 35 waiver links that
 open a homepage rather than a form are a shop's own waiver portal and which are a vendor's marketing site,
 which is a supply judgement rather than a rule (see this run's Needs Harshil). Whether the surfaces that
 promise a waiver link should read the same gate the link itself reads, and whether an embed URL's path should
