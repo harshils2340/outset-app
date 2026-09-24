@@ -733,6 +733,7 @@ function UserMenu({ onOperators }: { onOperators: () => void }) {
           </button>
           <hr />
           <button type="button" role="menuitem" onClick={go(onOperators)}>For operators</button>
+          <a role="menuitem" href="/otto" onClick={() => setOpen(false)}>AI front desk for your phone</a>
           <hr />
           <button type="button" role="menuitem" onClick={go(onOperators)}>Operator log in or sign up</button>
         </div>
@@ -1576,6 +1577,7 @@ export function WebHome({ onOperators, onAsk, asking = false, askSeed = "", onCl
           )}
           <div className="ah-right">
             {asking ? null : modeSwitch}
+            <a className="ah-host" href="/otto">AI front desk</a>
             <button type="button" className="ah-host" onClick={onOperators}>List your business</button>
             <UserMenu onOperators={onOperators} />
           </div>

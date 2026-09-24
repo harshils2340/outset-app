@@ -116,7 +116,6 @@
     .act .ico { width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center; flex: none; }
     .act .ico.cal { background: var(--accent-tint); }
     .act .ico.cal img { width: 18px; height: 18px; display: block; }
-    .act .ico.txt { background: #E4F0F8; color: var(--open); }
     .act .ico.mail { background: #F5EFE4; color: #B5722E; }
     .act .ico .ic { width: 17px; height: 17px; }
     .act b { font-weight: 600; }
@@ -520,18 +519,17 @@
          length-weighted estimate rather than show wrong cues. */
       var CUE_DUR = 43.5, LEAD = 0.06;
       /* What Otto does behind the call, revealed at the moment it does it. The calendar actions carry the real
-         FareHarbor mark, the sample marina's system; the text and the email use plain icons rather than a vendor
-         mark, since no partner is implied there. */
+         FareHarbor mark, the sample marina's system; the email uses a plain icon rather than a vendor mark, since
+         no partner is implied there. The summary email goes out as the caller says that's it, so it is on screen
+         while the call is still going rather than after the recording has already stopped. */
       var CAL = '<span class="ico cal"><img src="https://www.google.com/s2/favicons?domain=fareharbor.com&sz=64" alt=""></span>';
-      var TXT = '<span class="ico txt"><svg class="ic"><use href="#i-msg"/></svg></span>';
       var MAIL = '<span class="ico mail"><svg class="ic"><use href="#i-mail"/></svg></span>';
       var HOLD = 4.6;
       var ACTS = [
         { at: 11.7, html: CAL + '<span><b>Booking found</b><small>2 jet skis · today 4:00 PM · Marcus</small></span>' },
         { at: 28.2, html: CAL + '<span><b>Calendar checked</b><small>Tomorrow: 9 AM and 11 AM open</small></span>' },
         { at: 34.9, html: CAL + '<span><b>Booking moved</b><small>Tomorrow 9:00 AM · no charge</small></span>' },
-        { at: 38.0, html: TXT + '<span><b>Text sent</b><small>Confirmation to Marcus</small></span>' },
-        { at: 43.3, html: MAIL + '<span><b>Email sent</b><small>Call summary to Bayside Marina</small></span>' }
+        { at: 41.0, html: MAIL + '<span><b>Email sent</b><small>Call summary to Bayside Marina</small></span>' }
       ];
       var actions = document.getElementById("actions"), actEls = ACTS.map(function (a) {
         var d = document.createElement("div"); d.className = "act"; d.innerHTML = a.html + '<span class="t">' + fmt(a.at) + '</span>'; actions.appendChild(d); return d;

@@ -76,6 +76,7 @@
   .ah-modes button{min-width:64px;padding:0 12px;font-size:13px;}
 }
 .ah-host{height:40px;padding:0 12px;border-radius:20px;font-size:14px;font-weight:500;color:var(--ink);white-space:nowrap;}
+a.ah-host{display:inline-flex;align-items:center;text-decoration:none;}
 .ah-host:hover{background:var(--surface-2);}
 .ah-usermenu{position:relative;}
 .ah-userbtn{display:flex;align-items:center;gap:12px;height:42px;padding:5px 5px 5px 12px;border:1px solid var(--line-strong);border-radius:21px;background:#fff;color:var(--ink);transition:box-shadow .2s ease;}
