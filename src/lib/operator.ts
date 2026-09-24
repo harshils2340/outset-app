@@ -548,6 +548,51 @@ export function minutesIn(text: string | null | undefined): number {
   return mins > 0 && mins <= 24 * 60 ? Math.round(mins) : 0;
 }
 
+/**
+ * `gap` carries two different things. Usually it is the shop's own cancellation or policy prose, which the
+ * crawl had nowhere else to put and which belongs in a claimed listing's policy list. Sometimes it is the
+ * crawl's own note about what the shop's site never published ("No pricing information for food or drinks",
+ * "Duration of charters", "Age minimum not explicitly stated", "Prices for services"), or one of our own
+ * fallback lines when even that is missing. Those are not the shop talking, and the guard here caught five
+ * wordings while the notes use a dozen, so on the day an owner claimed their listing 1,051 of them were
+ * prefilled as a policy and published on their own page for a guest to read.
+ *
+ * The one shape that reads both ways is "X are not given": a note writes "Exact prices not given", a shop
+ * writes "Refunds are not given for illness". The auxiliary plus the shop addressing a guest tells them
+ * apart, and it is the only place a guard is needed, because a note never speaks to anybody.
+ */
+const GAP_NOT_FOUND =
+  /\bnot\s+(?:(?:[a-z]+ly|always|often|usually)\s+){0,2}(?:stated|specified|listed|detailed|mentioned|posted|copied|given|provided|published|broken out|available|indicated|disclosed|shown|noted|described|found|documented|defined)\b/gi;
+const GAP_AUX_BEFORE = /\b(?:is|are|was|were|be|been|will)\s+$/i;
+const GAP_NONE_FOUND = /^\s*no(?:ne)?\b[^.!]{0,70}\b(?:stated|specified|listed|described|offered|published|documented|detailed|mentioned)\b/i;
+const GAP_NONE_OF =
+  /^\s*no(?:ne)?\b[^.!]{0,80}\b(?:pricing|prices?|rates?|costs?|fees?|durations?|ages?|hours?|offerings?|details?|descriptions?|information|info|itinerar\w+|capacity|group size|address|phone|email|weight|requirements?|amenities)\b/i;
+const GAP_MISSING =
+  /\b(?:unknown|unclear|unspecified)\b|\bdetails? (?:are )?missing\b|\bnon indiqué|\bwe'?ll ask\b|\bwe will ask\b|\bask when you request\b|^ask the operator about cancellations\b/i;
+const GAP_FACT =
+  /\b(?:pricing|prices?|rates?|costs?|fees?|durations?|lengths?|ages?|hours?|offerings?|details?|descriptions?|information|info|itinerar\w+|capacity|group size|address|location|contact|menu|weight|requirements?|amenities|experiences?|tours?|polic(?:y|ies))\b/i;
+/** Anything a sentence carries that a bare label of a missing fact never does. */
+const GAP_PROSE = /https?:\/\/|\b(?:is|are|was|were|will|can|could|may|must|do|does|have|has|please|we|you|your|our|unless|subject)\b/i;
+const GAP_TO_A_GUEST = /\b(?:you|your|we|our|us|please)\b/i;
+/** A shop's own "No ..." rule speaks to a guest or binds one; a note only reports what a page did not carry. */
+const GAP_A_RULE = /\b(?:you|your|we|our|us|please|unless|subject|must|required|allowed|permitted|prohibited)\b/i;
+
+/** Whether a `gap` line is our own note about a fact the shop never published, rather than the shop's words. */
+export function gapIsNote(gap: string | null | undefined): boolean {
+  const g = String(gap || "").replace(/\s+/g, " ").trim();
+  if (!g) return false;
+  if (GAP_MISSING.test(g)) return true;
+  GAP_NOT_FOUND.lastIndex = 0;
+  let m: RegExpExecArray | null;
+  while ((m = GAP_NOT_FOUND.exec(g))) {
+    if (GAP_AUX_BEFORE.test(g.slice(0, m.index)) && GAP_TO_A_GUEST.test(g)) continue;
+    return true;
+  }
+  const first = g.split(/[.!]/)[0];
+  if (!GAP_A_RULE.test(first) && (GAP_NONE_FOUND.test(first) || GAP_NONE_OF.test(first))) return true;
+  return g.length <= 90 && !/[.!]/.test(g) && !GAP_PROSE.test(g) && GAP_FACT.test(g);
+}
+
 function unitOf(per?: string | null): string {
   const p = (per || "").replace(/^\//, "").trim().toLowerCase();
   if (!p || p === "each") return "person";
@@ -586,7 +631,7 @@ export function defaultProfile(u: Unclaimed, owner: { name: string; email: strin
     photos: (u.photos || []).slice(),
     // The published cancellation line has its own field below; the same sentence is not also an "other policy",
     // or the card shows it twice and the operator edits one copy while the other stays.
-    policy: [...(u.policies || []), ...(u.gap && !/not stated|not published|unknown|not copied|we'?ll ask|we will ask|ask when you request/i.test(u.gap) ? [u.gap] : [])].filter((l, i, a) => a.indexOf(l) === i && l !== u.cancellation).slice(0, 8),
+    policy: [...(u.policies || []), ...(u.gap && !gapIsNote(u.gap) ? [u.gap] : [])].filter((l, i, a) => a.indexOf(l) === i && l !== u.cancellation).slice(0, 8),
     ...knowFrom(u),
     services: servicesFrom(u),
     addons: (u.addons || []).map((a) => ({ id: uid("a"), name: a.name, detail: a.detail || "", price: a.price })),
