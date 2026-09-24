@@ -3,9 +3,10 @@ import test from "node:test";
 import { readFileSync } from "node:fs";
 
 /**
- * Whether a guest's card is taken is decided by the API alone, from the listing's own price: `payNow` in
- * `backend/src/api/bookings.ts` is `stripeEnabled() && priced && total >= 1`, and it has never asked the
- * browser. A request is no exception, because the card is held at booking and captured when the shop accepts.
+ * Whether a guest's card is taken is decided by the API alone, from the listing's own price and whether the
+ * shop has claimed: `payNow` in `backend/src/api/bookings.ts` is `profile && stripeEnabled() && priced &&
+ * total >= 1`, and it has never asked the browser. A request is no exception, because the card is held at
+ * booking and captured when the shop accepts.
  *
  * The desktop listing has read `/config` and said so since cards were switched on. The phone's review-and-pay
  * screen did not read it at all, so on a priced listing at a shop that takes cards it said "This is a request.
@@ -42,8 +43,10 @@ test("nothing on the phone says a card is not taken when one is", () => {
 
 test("the one thing the guest is charged is the listing's price, decided by the API", () => {
   const api = readFileSync(new URL("../../../backend/src/api/bookings.ts", import.meta.url), "utf8");
-  assert.match(api, /const payNow = stripeEnabled\(\) && !!priced && priced\.total >= 1;/);
+  // `!!profile` is the claim gate, added 23 September 2026: a shop that has never claimed is request-only, so
+  // no guest's card is held for a trip its owner never agreed to sell here.
+  assert.match(api, /const payNow = !!profile && stripeEnabled\(\) && !!priced && priced\.total >= 1;/);
   // No branch on instantBook: a request takes a card too, which is what the phone copy now says.
-  const line = api.slice(api.indexOf("const payNow"), api.indexOf("const payNow") + 120);
+  const line = api.slice(api.indexOf("const payNow"), api.indexOf("const payNow") + 130);
   assert.ok(!/instant/i.test(line), "a request takes a card as much as an instant booking does");
 });
