@@ -483,6 +483,7 @@
       function frame(nowT) {
         var dt = Math.min(40, nowT - last); last = nowT; var dtF = dt / 16.67; tRef += dt / 1000;
         var playing = !audio.paused && !audio.ended; if (analyser && playing) analyser.getByteFrequencyData(freq);
+        if (playing) syncNow();
         var who = active >= 0 ? turns[active].who : null;
         lOtto.draw(tRef * 2.2, playing && who === "otto", dtF);
         lCaller.draw(tRef * 2.2 + 1.7, playing && who === "caller", dtF);
@@ -498,10 +499,17 @@
       audio.addEventListener("loadedmetadata", computeStarts); computeStarts();
       audio.addEventListener("play", function () { play.classList.add("playing"); call.classList.add("on"); st.textContent = "Live"; doneWrap.innerHTML = ""; doneShown = false; });
       audio.addEventListener("pause", function () { play.classList.remove("playing"); st.textContent = "Paused"; });
-      audio.addEventListener("timeupdate", function () {
+      /* The caption is checked against the audio clock every frame, not on timeupdate (which fires only about
+         four times a second and can leave a boundary up to a quarter-second late). timeupdate stays for seeks. */
+      var lastSec = -1;
+      function syncNow() {
         var ct = audio.currentTime, idx = 0; for (var i = 0; i < starts.length; i++) if (starts[i] <= ct) idx = i;
-        setActive(idx); var pct = (audio.duration ? (ct / audio.duration) * 100 : 0) + "%"; fill.style.width = pct; document.getElementById("topfill").style.width = pct; cur.textContent = fmt(ct);
-      });
+        setActive(idx);
+        var pct = (audio.duration ? (ct / audio.duration) * 100 : 0) + "%"; fill.style.width = pct; document.getElementById("topfill").style.width = pct;
+        var sec = Math.floor(ct); if (sec !== lastSec) { lastSec = sec; cur.textContent = fmt(ct); }
+      }
+      audio.addEventListener("timeupdate", syncNow);
+      audio.addEventListener("seeked", syncNow);
       audio.addEventListener("ended", function () {
         play.classList.remove("playing"); call.classList.remove("on"); st.textContent = "Call ended";
         laneOtto.classList.remove("speaking"); laneCaller.classList.remove("speaking"); sOtto.textContent = "AI front desk"; sCaller.textContent = "Caller";
