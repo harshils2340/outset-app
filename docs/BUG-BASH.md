@@ -4141,6 +4141,59 @@ disk, run on the finished tree because `src/lib/listingDerive.ts` is on every li
   Viator's `additionalInfo` bag is still one bag we split by reading it rather than by its own types, and no
   live vendor or partner API has answered anything from this address.
 
+## 24 September 2026, sixty-fourth run (05:15 to 06:45 UTC)
+
+**Chosen, and why.** Every area this run's brief names as needing a first look is already on the Verified
+list, so the frontier was the newest code in the repo: the two `/voice` endpoints Harshil added on the 23rd
+(`30404c95`, `2d41887e`), which are Otto on the phone and which no run has ever read. The rehearsal was run,
+and run again at the end, because commits since the last entry touched `backend/src` and `src/`, which is the
+brief's own condition; the first run turned out to be the thing that found two of the six bugs below.
+
+**Found and fixed.**
+
+- **The phone agent offered departures the page refuses to print** (`b2198094`). `src/lib/liveTimes.ts` drops
+  four kinds of row before a guest sees a chip; `/voice/:id/availability` handed a voice platform all four. A
+  `timeUnknown` marker row exists only to say a date is open and carries a midnight that means nothing, so a
+  caller was offered a trip at 00:00. A departure the vendor says is full was offered. A `priceCents` of 0 was
+  read out as "$0". And the clock was nobody's: `from` defaulted to the host's UTC date, so from early evening
+  Eastern the route skipped the rest of tonight and every morning it offered boats that had already sailed.
+  The zone now comes off the shop's own area and pin, as `src/lib/zone.ts` did for the claimed side.
+- **A claimed shop's own edits never reached its phone agent** (`22b7806e`). The route read `o/<id>.json`, which
+  the nightly sync writes. A claimed shop's live facts are its dashboard patch, which is what `GET /profiles/:id`
+  gives the listing page so a price change reaches a guest at once. Otto is sold to claimed operators, so the
+  one kind of shop this got wrong was the only kind that has it: prices put up in the morning were quoted at
+  yesterday's all day, along with the menu, hours, policies, cancellation line and business name. The two
+  switches came with it, so a hidden or paused listing no longer hands a caller a link the booking API refuses.
+- **"What do you charge?" was answered with nothing, on all 46,324 operator listings** (`00c10cf2`). `fromPrice`
+  read the record's own `from`, and `from` is written on partner rows only: not one operator listing in the
+  shipped catalog carries it, 10,209 of which publish a priced menu. It is now the cheapest priced line, the
+  way `fromPrice` in `src/lib/catalog.ts` works one out for a card, with the same rule that a zero is a price
+  nobody read rather than a free trip.
+- **A partner's product had a phone agent** (`1947ec59`). `backend/AGENTS.md` says an affiliate row gets no
+  Otto, and 6,492 shipped listings are partner rows. Both routes served one: Viator's licensed names, prices
+  and descriptions read out on a call, off the page that carries the licence and says the commission, for a
+  product with no operator of ours behind it. Both now refuse with 409 in the words the booking route already
+  uses for one.
+- **Two guest tests have been red in the rehearsal since yesterday afternoon** (`bce70c1f`, `3f4dc521`).
+  `cardNotice` pins the exact `payNow` line, and that line grew its `!!profile` claim gate in `97835360`
+  without the test moving with it. `policyLines` counted a waiver line by its words while both surfaces also
+  require it to be short enough for a bullet, so the 29 long partner waiver lines were counted twice. The
+  shipped pages are right in both cases; the checks were not.
+
+**Verification.** Both type checks clean. Backend `npm test` 744 pass, 0 fail. The guest suite 742 pass, 0
+fail. The rehearsal green end to end, 53 of 53, against a local Postgres on 5433 and the Chromium on disk.
+
+**Needs Harshil.**
+
+- The partner refusal above is a rule call, not a defect: `voice.ts` had a deliberate `bookedElsewhere` branch,
+  so if the intent was that a Viator row may have a phone agent after all, revert `1947ec59` and the rule in
+  `backend/AGENTS.md` wants the exception written into it.
+- `/voice/:id/availability` still answers for a paused or hidden listing, on purpose: those times come from the
+  shop's own FareHarbor or Peek and carry the vendor's own book link, so pausing an Outset listing does not
+  mean the shop stopped selling. Say if Otto should go quiet there too.
+- Nothing here has ever spoken to a voice platform. Both endpoints have been read and unit tested; no Vapi or
+  Retell agent has called either, so the shape the platform actually wants is still unproven.
+
 ## Coverage
 
 The catalog is 48,198 listings as of the 23 September sync, 1,873 of them Viator partner rows. Counts below
@@ -4608,6 +4661,13 @@ bullet rather than an emphasis. The author slot on all 4,774 review cards the sh
 minimum age read off a number that counts something else, over all 11,554 listings that state a requirement:
 a software version, a group size, a distance, a booking window, a course load, a tax line and a decimal's tail.
 
+Otto on the phone, both `/voice` endpoints read end to end: which departures a voice agent may read out
+against the four rules `liveTimes.ts` already keeps for the page (a marker row with no time, a sold-out
+departure, a price of nothing, and one that has already left), the clock that question is asked on, where the
+facts come from for a claimed shop as against the nightly file, the two dashboard switches against the link
+handed to a caller, the from price against all 46,324 operator listings, a zero on every price the route
+prints, a partner's product on both routes, and a network failure cached as a missing business.
+
 **Not yet checked.** Whether a row that names its own length should
 be believed over the length shown beside it, or neither should be: 114 rows disagree, and the junk half is the
 label on some shops and the name on others (see the sixty-second run's Needs Harshil). Whether Fin & Fly's one
@@ -4781,4 +4841,11 @@ Whether the lite shard should carry the unit a price is sold in, so a phone card
 say "/ person" again where it is true rather than staying silent on all 10,217 priced rows (see the sixtieth
 run's Needs Harshil). What else the lite record is asked for and answers by assumption rather than by
 silence: the unit was the one this run swept, and the same seam runs through every rule a card, a rail or a
-search result reads before the detail file lands.
+search result reads before the detail file lands. The shape a voice platform (Vapi, Retell) actually wants
+back from the two `/voice` endpoints, since neither has ever been called by one, and whether the agent should
+be handed the vendor's own per-departure `bookUrl` to read out. Whether `/voice/:id/availability` should go
+quiet for a listing its owner has hidden or paused, given that its times are the shop's own vendor calendar
+and not ours (see the sixty-fourth run's Needs Harshil). Whether a partner's product may have a phone agent
+after all, which is the one thing that run changed on a rule rather than on a defect. Whether the `/voice`
+routes should be public at all, or carry a key the voice platform could hold: today a per-IP limit is the
+whole door.
