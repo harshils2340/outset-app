@@ -445,3 +445,39 @@ test("the hours block is the lines the app prints, not the raw published ones", 
     r.cleanup();
   }
 });
+
+/**
+ * The "What's included" block was the last section on this page still printed from the raw published lines,
+ * and 5,263 shipped pages put the shop's own "not included" items under that heading: "Gratuities", "Lunch",
+ * "Hotel pickup and drop-off" and "Alcoholic drinks (not included)" were all offered as things the price covers,
+ * on the page a shared link opens. It goes through `splitIncluded` now, the rule both app surfaces read.
+ */
+test("what's included on the page is the split the app reads, not the raw published lines", () => {
+  const items: Item[] = [
+    item("o-a", {
+      cover: "https://x/a.jpg",
+      includes: ["Bottled water", "Gratuities", "Hotel pickup and drop-off (not included)", "Snacks and drinks available for purchase", "Not included: Fuel"],
+    } as Partial<Item>),
+    item("o-b", { cover: "https://x/b.jpg", includes: ["Gratuities (not included)"] } as Partial<Item>),
+  ];
+  const r = run(items);
+  try {
+    const a = r.read("o-a.html");
+    const included = a.slice(a.indexOf("<h2>What's included</h2>"), a.indexOf("<h2>Not included</h2>"));
+    assert.ok(included.includes("<li>Bottled water</li>"), "page dropped a real inclusion");
+    assert.ok(!included.includes("Hotel pickup"), "page still lists a not-included item as included");
+    assert.ok(!included.includes("available for purchase"), "page still lists what the shop sells separately as included");
+    assert.ok(!included.includes("Fuel"), "page still reads a line's own Not included label as an inclusion");
+    assert.ok(a.includes("<h2>Not included</h2>"), "page never named the other column");
+    const no = a.slice(a.indexOf("<h2>Not included</h2>"));
+    for (const missing of ["Hotel pickup and drop-off", "Snacks and drinks available for purchase", "Fuel"]) {
+      assert.ok(no.includes(missing), `Not included column lost "${missing}"`);
+    }
+    // A shop whose every line is an exclusion gets no "What's included" heading over an empty list.
+    const b = r.read("o-b.html");
+    assert.ok(!b.includes("<h2>What's included</h2>"), "page headed an empty included list");
+    assert.ok(b.includes("<h2>Not included</h2>"), "page dropped the only lines the shop published");
+  } finally {
+    r.cleanup();
+  }
+});

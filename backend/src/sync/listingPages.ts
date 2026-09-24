@@ -3,6 +3,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { freeCancelBadge } from "../../../src/lib/cancellation.ts";
 import { displayHours } from "../../../src/lib/hoursText.ts";
+import { splitIncluded } from "../../../src/lib/listingDerive.ts";
 import { METROS } from "../taxonomy/catalog.ts";
 import { REGION_NAME, countryOfArea, regionOfArea } from "../../../src/data/regions.ts";
 import { KINDS, cardPhoto, fileFor, hasListingPage, pageFooter, placeName, priceOf, publicSite, socialCard, type Item, type Kind } from "./pages.ts";
@@ -195,7 +196,12 @@ function page(item: Item, opts: { landingHref: string | null; kindPageHref: stri
   // named a different window than the app did for the same shop, and one advertised free cancellation the app
   // strips because the shop only refunds a day it calls off itself.
   const cancellation = freeCancelBadge(item as { fc?: string; cancellation?: string; policies?: string[] }) || (item as { cancellation?: string }).cancellation || "";
-  const includes = ((item as { includes?: string[] }).includes || []).slice(0, MAX_LIST_ITEMS);
+  // Through the same rule the app's listing reads, not the raw published lines. Read raw, 5,263 of these pages
+  // printed the shop's own "not included" lines under the heading "What's included": "Gratuities", "Lunch",
+  // "Hotel pickup and drop-off" and "Alcoholic drinks" were all offered to a guest as things the price covers.
+  const included = splitIncluded((item as { includes?: string[] }).includes || []);
+  const includes = included.yes.slice(0, MAX_LIST_ITEMS);
+  const notIncluded = included.no.slice(0, MAX_LIST_ITEMS);
   const requirements = (((item as { requirements?: string[] }).requirements?.length ? (item as { requirements?: string[] }).requirements : (item as { specs?: string[] }).specs) || []).slice(0, MAX_LIST_ITEMS);
   const faq = ((item as { faq?: { q: string; a: string }[] }).faq || []).slice(0, MAX_FAQ);
   const dur = (item as { dur?: string }).dur || "";
@@ -221,7 +227,9 @@ function page(item: Item, opts: { landingHref: string | null; kindPageHref: stri
   const factLine = [dur ? `<b>Duration:</b> ${esc(dur)}` : "", cancellation ? `<b>Cancellation:</b> ${esc(cancellation)}` : ""].filter(Boolean).join(" &nbsp; ");
   const factsHtml = factLine ? `<p class="blurb">${factLine}</p>` : "";
   const hoursHtml = hours.length ? `<h2>Hours</h2><ul class="plain">${hours.map((h) => `<li>${esc(h)}</li>`).join("")}</ul>` : "";
-  const includesHtml = includes.length ? `<h2>What's included</h2><ul class="plain">${includes.map((l) => `<li>${esc(l)}</li>`).join("")}</ul>` : "";
+  const includesHtml =
+    (includes.length ? `<h2>What's included</h2><ul class="plain">${includes.map((l) => `<li>${esc(l)}</li>`).join("")}</ul>` : "") +
+    (notIncluded.length ? `<h2>Not included</h2><ul class="plain">${notIncluded.map((n) => `<li>${esc(n.text)}</li>`).join("")}</ul>` : "");
   const requirementsHtml = requirements.length ? `<h2>Requirements</h2><ul class="plain">${requirements.map((l) => `<li>${esc(l)}</li>`).join("")}</ul>` : "";
   const faqHtml = faq.length ? `<h2>Questions</h2><div class="faq">${faq.map((f) => `<h3>${esc(f.q)}</h3><p>${esc(f.a)}</p>`).join("")}</div>` : "";
   const ratingHtml = rating != null ? `<p class="rating">★ ${rating.toFixed(1)}${reviews ? ` (${reviews.toLocaleString("en-US")} reviews)` : ""}</p>` : "";
