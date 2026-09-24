@@ -170,6 +170,15 @@
     footer a:hover { color: var(--ink); }
     footer .copy { margin-top: 2rem; font-size: .82rem; }
     address { font-style: normal; }
+
+    /* floating review banner: renders only when `reviews` has real entries */
+    .revbar { position: fixed; left: 1.25rem; bottom: 1.25rem; z-index: 40; max-width: 24rem; background: rgba(255,255,255,.92); backdrop-filter: blur(14px) saturate(1.4); -webkit-backdrop-filter: blur(14px) saturate(1.4); border: 1px solid var(--line); border-radius: 18px; padding: .9rem 2.4rem .9rem 1rem; box-shadow: 0 12px 36px rgba(22,26,18,.16); font-size: .9rem; line-height: 1.4; transform: translateY(12px); opacity: 0; transition: opacity .4s ease, transform .4s ease; }
+    .revbar.on { opacity: 1; transform: none; }
+    .revbar .stars { color: #d2924a; letter-spacing: .06em; font-size: .85rem; margin-bottom: .2rem; }
+    .revbar q { quotes: "\201C" "\201D"; color: var(--ink); }
+    .revbar .by { display: block; margin-top: .3rem; color: var(--ink-3); font-size: .82rem; }
+    .revbar .x { position: absolute; top: .55rem; right: .6rem; width: 26px; height: 26px; border-radius: 50%; border: none; background: var(--mint); color: var(--forest); cursor: pointer; font-size: 1rem; line-height: 1; }
+    @media (max-width: 560px) { .revbar { left: .75rem; right: .75rem; max-width: none; } }
     @media (prefers-reduced-motion: reduce) { .pill i { animation: none; } }
   </style>
 </head>
@@ -322,8 +331,23 @@
     </div>
   </footer>
 
+  <aside class="revbar" id="revbar" hidden aria-live="polite"><div class="stars">★★★★★</div><q id="revq"></q><span class="by" id="revby"></span><button class="x" id="revx" type="button" aria-label="Dismiss">×</button></aside>
+
   <script>
     (function () {
+
+      /* Real reviews only. Each entry: { quote, name, business, place }. Fabricated testimonials are illegal
+         under the FTC fake-reviews rule and would cost the sale the first time a prospect looked a name up, so
+         this list stays empty until a real operator says something real. Empty list, no banner. */
+      var reviews = [];
+      (function () {
+        var bar = document.getElementById("revbar"); if (!reviews.length || !bar) return;
+        var q = document.getElementById("revq"), by = document.getElementById("revby"), i = 0, timer = null;
+        function show(k) { var r = reviews[k]; q.textContent = r.quote; by.textContent = r.name + ", " + r.business + (r.place ? " · " + r.place : ""); }
+        show(0); bar.hidden = false; requestAnimationFrame(function () { bar.classList.add("on"); });
+        if (reviews.length > 1) timer = setInterval(function () { bar.classList.remove("on"); setTimeout(function () { i = (i + 1) % reviews.length; show(i); bar.classList.add("on"); }, 420); }, 7000);
+        document.getElementById("revx").addEventListener("click", function () { bar.classList.remove("on"); if (timer) clearInterval(timer); setTimeout(function () { bar.hidden = true; }, 400); });
+      })();
       var nav = document.getElementById("nav");
       addEventListener("scroll", function () { nav.classList.toggle("scrolled", scrollY > 8); }, { passive: true });
 
