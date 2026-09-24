@@ -14,7 +14,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { readFileSync, readdirSync } from "node:fs";
 
-import { bringLine, splitPolicies } from "../listingDerive";
+import { bringLine, splitPolicies, statesOwnAction } from "../listingDerive";
 
 const dir = new URL("../../../public/o/", import.meta.url);
 type Detail = { id: string; policies?: string[]; bring?: string[]; cancellation?: string };
@@ -100,7 +100,6 @@ test("neither surface heads other policies as a cancellation policy", () => {
 
 test("an acronym keeps its capitals when the page says to bring it", () => {
   assert.equal(bringLine("ID for age verification"), "Bring ID for age verification"); // o-averybrewing-com
-  assert.equal(bringLine("BYOB allowed with reservation for events"), "Bring BYOB allowed with reservation for events"); // o-agawambowl-com
   assert.equal(bringLine("US Coast Guard approved life vest if bringing own"), "Bring US Coast Guard approved life vest if bringing own"); // o-adventureisland-com
   assert.equal(bringLine("SPF apparel and hat"), "Bring SPF apparel and hat"); // o-biloxideepsea-com
 });
@@ -111,12 +110,54 @@ test("ordinary prose still reads as one sentence", () => {
   assert.equal(bringLine("your own fishing poles"), "Bring your own fishing poles");
 });
 
+/* A line that carries its own verb keeps the shop's own words: the label would read twice, or say the opposite. */
+
+test("a line that already says to bring it does not say it twice", () => {
+  assert.equal(bringLine("Bring your own fishing poles"), "Bring your own fishing poles"); // o-321boat-com
+  assert.equal(bringLine("Guests may bring their own alcohol"), "Guests may bring their own alcohol"); // o-adkexcursions-com
+  assert.equal(bringLine("Guests bring their own food and drinks for grill"), "Guests bring their own food and drinks for grill"); // o-aquaholic-org
+  assert.equal(bringLine("BYOB allowed with reservation for events"), "BYOB allowed with reservation for events"); // o-agawambowl-com
+});
+
+test("a shop's prohibition is never printed as a thing to bring", () => {
+  assert.equal(bringLine("No outside food or alcohol"), "No outside food or alcohol"); // o-5thcompanybrewing-com
+  assert.equal(bringLine("No special equipment needed"), "No special equipment needed"); // o-bigputts-net
+  assert.equal(bringLine("Do not wear perfume, cologne, or strong smelling substances"), "Do not wear perfume, cologne, or strong smelling substances"); // o-axon-movement-com
+  // "Non-slip" is not the word "no": the shoes are still a thing to bring.
+  assert.equal(bringLine("Non-slip shoes"), "Bring non-slip shoes"); // o-a-bayfishing-com
+});
+
+test("an instruction the shop already gave keeps its own verb", () => {
+  assert.equal(bringLine("Dress in layers for early morning temperatures"), "Dress in layers for early morning temperatures");
+  assert.equal(bringLine("Wear weather-appropriate clothing"), "Wear weather-appropriate clothing");
+  assert.equal(bringLine("Arrive 15 minutes early"), "Arrive 15 minutes early");
+  // The hyphenated noun is not the verb.
+  assert.equal(bringLine("Store-bought cake allowed for birthday parties"), "Store-bought cake allowed for birthday parties"); // rated, not told
+});
+
+test("a line that rates its own subject is left to read as it stands", () => {
+  assert.equal(bringLine("Closed-toe shoes recommended"), "Closed-toe shoes recommended");
+  assert.equal(bringLine("Proper attire required; shoes and shirts must be worn at all times"), "Proper attire required; shoes and shirts must be worn at all times");
+  // The participle sits in a later clause, so it rates something else: the cooler is still a thing to bring.
+  assert.equal(bringLine("Cooler with ice; alcohol permitted"), "Bring cooler with ice; alcohol permitted");
+  assert.equal(bringLine("Mandatory green anti-slip trampoline socks (sold on-site)"), "Bring mandatory green anti-slip trampoline socks (sold on-site)"); // o-airriderz-com
+});
+
 test("every bring line the catalog ships keeps the letters the shop typed", () => {
   let repaired = 0;
+  let kept = 0;
+  const listings = new Set<string>();
   for (const d of details()) {
     for (const b of d.bring || []) {
       const line = bringLine(b);
-      assert.ok(line.startsWith("Bring "), d.id);
+      if (!line.startsWith("Bring ") || statesOwnAction(b)) {
+        // Left alone: the shop's own words, with only the first letter raised.
+        assert.equal(line, b.charAt(0).toUpperCase() + b.slice(1), d.id + " keeps " + b);
+        assert.ok(statesOwnAction(b), d.id + " should carry its own verb: " + b);
+        kept++;
+        listings.add(d.id);
+        continue;
+      }
       const rest = line.slice("Bring ".length);
       const before = b.charAt(0).toLowerCase() + b.slice(1); // what the page printed before
       if (rest !== before) {
@@ -125,7 +166,24 @@ test("every bring line the catalog ships keeps the letters the shop typed", () =
       }
     }
   }
-  assert.ok(repaired > 100, "bring lines the old rule mangled: " + repaired);
+  // Was over 100 before the lines that carry their own verb stopped being labelled at all: most of the BYOB
+  // ones were counted here, and they are now left alone whole rather than only kept from being lower-cased.
+  assert.ok(repaired > 80, "bring lines the old rule mangled: " + repaired);
+  assert.ok(kept > 1400, "bring lines that read on their own: " + kept);
+  assert.ok(listings.size > 1100, "listings that had at least one: " + listings.size);
+});
+
+test("no bring line the catalog ships is printed as the opposite of what the shop wrote", () => {
+  const inverted: string[] = [];
+  for (const d of details()) {
+    for (const b of d.bring || []) {
+      const line = bringLine(b);
+      // "Bring no outside food", "Bring bring your own poles", "Bring dress in layers": the label in front of
+      // a verb of the line's own. Nothing the catalog ships may reach a guest reading that way.
+      if (/^Bring\s+(?:no\b|not\b|nothing\b|never\b|do not\b|don[’']?t\b|bring\b|byob\b|dress\b|wear\b|arrive\b)/i.test(line)) inverted.push(d.id + ": " + line);
+    }
+  }
+  assert.deepEqual(inverted, []);
 });
 
 /**

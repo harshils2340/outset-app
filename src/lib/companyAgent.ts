@@ -4,7 +4,7 @@ import { addressLine, bookingPaused, plainWords } from "./catalog";
 import { callablePhone } from "./phone";
 import { withoutNoticeWindows } from "./duration";
 import { money } from "./format";
-import { arrivalWords, faqText, groupCap, minAge, splitIncluded } from "./listingDerive";
+import { arrivalWords, faqText, groupCap, minAge, splitIncluded, statesOwnAction } from "./listingDerive";
 import { liveRead } from "./liveTimes";
 import { bookableStart, clockIn, dayKeyIn, hourLines, itemWeek, openStateAt, zoneFor, type Week } from "./openNow";
 import { venueLabel } from "./places";
@@ -1175,7 +1175,22 @@ function rulesAnswer(ctx: CompanyContext, q: string): { text: string; state: Cha
 
 function bringAnswer(ctx: CompanyContext): { text: string; state: ChatState } {
   const bring = ctx.item.bring || [];
-  if (bring.length) return { text: factList(bring, "Bring "), state: { topic: "bring" } };
+  if (bring.length) {
+    // "Bring " leads the list, so a line that carries its own verb cannot sit under it: Otto read out "Bring
+    // bring your own fishing poles" and, worse, "Bring no outside food or alcohol", which is the opposite of
+    // the shop's rule. Those are the shop's own sentences and are read out as they are, after the list of
+    // things, or on their own when the list is all the shop published. Same rule as the listing page's column.
+    const things = bring.filter((l) => !statesOwnAction(l));
+    const said = bring.filter((l) => statesOwnAction(l));
+    const parts: string[] = [];
+    const led = things.length ? factList(things, "Bring ") : "";
+    if (led) parts.push(led);
+    for (const line of said.slice(0, led ? 1 : 2)) {
+      const next = sentence(upper1(clip(line, 90)));
+      if (next && parts.join(" ").length + next.length <= 200) parts.push(next);
+    }
+    if (parts.length) return { text: parts.join(" "), state: { topic: "bring" } };
+  }
   const line = findLine(ctx.item, /\b(bring|socks|towel|sunscreen|closed.toe)\b/i);
   if (line) return { text: sentence(line), state: { topic: "bring" } };
   return { text: noFact(ctx, "a what-to-bring list"), state: { topic: "bring" } };

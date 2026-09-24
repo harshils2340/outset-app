@@ -50,11 +50,51 @@ export function splitPolicies(lines: string[]): { cancel: string[]; other: strin
 }
 
 /**
+ * "Bring " is a label for a thing, so it belongs only in front of a line that names one. A shop's own
+ * what-to-bring list is not all things: a third of it is the shop telling a guest what to do, what it will let
+ * them carry in, or what they may not. In front of one of those the label reads twice, turns a rule into an
+ * errand, or says the opposite of what the shop wrote. 1,469 lines on 1,179 shipped listings printed one of:
+ *
+ * - "Bring bring your own fishing poles", "Bring guests may bring their own alcohol", "Bring BYOB allowed".
+ * - "Bring no outside food or alcohol", "Bring no special equipment needed", "Bring do not wear perfume": the
+ *   flat opposite of the shop's rule, on 104 lines.
+ * - "Bring dress in layers", "Bring wear closed-toe shoes", "Bring arrive 15 minutes early": an instruction
+ *   the shop already gave, with a second verb stuck on the front.
+ * - "Bring sunglasses recommended", "Bring closed-toe shoes required", "Bring personal chairs allowed inside":
+ *   the line rates its own subject, so the label leaves it ungrammatical.
+ *
+ * A line that carries its own verb keeps the shop's own words and its own capital. The "Who can go" column
+ * already prints full sentences beside these (a shop's requirements and its group rules), so nothing about it
+ * needs the label to read.
+ */
+/** The shop says a guest may, or should, bring it: an imperative, a subject that carries the verb, or BYOB. */
+const OFFERS_TO_BRING =
+  /^(?:bring|byob?)\b|^(?:guests?|parents?|children|kids|visitors?|players?|participants?|customers?|clients?|members?|families|everyone|anyone|you|we)\b[^,;:(]{0,40}?\bbring\b|\bBYOB\b/i;
+/** The shop says not to: the one class where the label states the opposite of the fact. */
+const FORBIDS = /^(?:no|not|none|nothing|never|do not|don[’']?t|avoid)\b/i;
+/** The shop is telling a guest what to do. Every verb here was read off the shipped lines that open with it. */
+const TELLS =
+  /^(?:arrive|wear|dress|pack|leave|keep|check|remove|apply|use|come|see|expect|consider|prepare|plan|sign|purchase|allow|store(?!-)|download|show|present|park|meet|ensure|remember|note)\b/i;
+/**
+ * The line rates its own subject: "Binoculars recommended", "Proper attire required". The participle has to
+ * reach back to the subject rather than sit in a later clause, so nothing before it may be punctuation:
+ * "Cooler with ice; alcohol permitted" is still a cooler to bring.
+ */
+const RATES_ITSELF =
+  /^[^,;:(]{2,60}?\s(?:is |are |must be |may be )?(?:recommended|required|allowed|permitted|encouraged|prohibited|welcome|suggested|mandatory)\b/i;
+
+/** Whether a what-to-bring line carries its own verb, and so reads on its own without the "Bring " label. */
+export function statesOwnAction(text: string): boolean {
+  return OFFERS_TO_BRING.test(text) || FORBIDS.test(text) || TELLS.test(text) || RATES_ITSELF.test(text);
+}
+
+/**
  * One "what to bring" line as the "Who can go" column reads it. The first letter is only lowered when the word is
  * ordinary prose: "ID for check-in" was printed as "Bring iD for check-in" on 170 lines across 140 listings, and
  * "BYOB allowed" as "Bring bYOB allowed". This is the rule Otto's own bring answer already used.
  */
 export function bringLine(text: string): string {
+  if (statesOwnAction(text)) return text ? text.charAt(0).toUpperCase() + text.slice(1) : text;
   return "Bring " + (/^[A-Z][a-z]/.test(text) ? text.charAt(0).toLowerCase() + text.slice(1) : text);
 }
 
