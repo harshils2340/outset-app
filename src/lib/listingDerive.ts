@@ -1,5 +1,6 @@
 import type { Unclaimed } from "../data/types";
 import { plainWords } from "./catalog";
+import { barePlusAge } from "./ages";
 import { durationFrom } from "./duration";
 
 /**
@@ -57,40 +58,12 @@ export function bringLine(text: string): string {
   return "Bring " + (/^[A-Z][a-z]/.test(text) ? text.charAt(0).toLowerCase() + text.slice(1) : text);
 }
 
-/**
- * A bare "21+" with no age word beside it, which is how a shop most often writes the rule ("Adults only 18+",
- * "This experience is 21+"). Those same two characters also count people, miles, nights, course units, a
- * phone's software version and a tennis rating, and the fallback below read every one of them as somebody's
- * age: 55 shipped listings printed "Ages N+" off a line that names no age at all. "Supported devices: iPhone
- * with iOS 15+" put "Ages 15+" on 22 self-guided tours, "Additional Cost For Groups Of 7+ Passengers" put
- * "Ages 7+" on 19 charters, "Groups of 4+ may be split into multiple helicopters" put "Ages 4+" on 5 flights,
- * and "Not recommended for travelers who cannot walk 3+ miles" put "Ages 3+" on a walking tour.
- *
- * So the number has to be counting years. It is not when the words right after it say what it counts, and it
- * is not when the words in front of it do. A decimal's tail is not a number of its own either: "USTA rating
- * 3.5+" was read as an age of 5. "N+ years" stays an age unless the years are of experience rather than of
- * life, which is the one phrase that uses the same word for something else.
- */
-const PLUS_COUNTS = /^\s*(?:tax|people|persons?|passengers?|players?|guests?|pax|travell?ers?|paddlers?|anglers?|miles?|mi|km|kms|kilomet(?:er|re)s?|feet|ft|foot|inch(?:es)?|lbs?|pounds?|kg|%|units?|credits?|nights?|days?|weeks?|months?|hours?|hrs?|min(?:ute)?s?|years?\s+(?:of\s+)?(?:experience|training|boating|riding|teaching))\b/i;
-const PLUS_COUNTED = /(?:groups?|part(?:y|ies)|teams?|planning)\s+(?:of|for)\s*$|\b(?:ios|android|version|level|rating|grade|size)\s*$/i;
-
 /** Minimum age from lines like "Must be 18+", "Minimum age 8", "ages 6 and up". */
 export function minAge(lines: string[]): number | null {
   for (const l of lines) {
     const worded = l.match(/\b(?:min(?:imum)? age(?: is|:)?|must be(?: at least)?|ages?|riders? must be)\s*(\d{1,2})\s*(?:\+|and (?:up|over|older)|years|yrs|or older)/i);
     const n = worded ? Number(worded[1]) : barePlusAge(l);
     if (n != null && n >= 2 && n <= 21) return n;
-  }
-  return null;
-}
-
-/** The first "N+" in a line that is counting years rather than anything else. */
-function barePlusAge(line: string): number | null {
-  for (const m of line.matchAll(/(?<![\d.])(\d{1,2})\s*\+/g)) {
-    const after = line.slice(m.index + m[0].length);
-    const before = line.slice(0, m.index);
-    if (PLUS_COUNTS.test(after) || PLUS_COUNTED.test(before)) continue;
-    return Number(m[1]);
   }
   return null;
 }

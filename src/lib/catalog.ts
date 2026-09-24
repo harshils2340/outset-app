@@ -3,6 +3,7 @@ import { UNCLAIMED } from "../data/unclaimed";
 import type { OperatorContact, Unclaimed, UnclaimedOption } from "../data/types";
 import { regionOfArea } from "../data/regions";
 import type { GeoPoint } from "./geo";
+import { statesAPlusAge } from "./ages";
 import { groupCap } from "./groupSize";
 import { bookableMenu } from "./menuRow";
 import { addressOf, streetOf } from "./address";
@@ -475,8 +476,17 @@ export function placeLabel(item: Unclaimed, c: OperatorContact | null): string {
   return item.area;
 }
 
+/**
+ * The words that make a published line a rule about who can go. The bare "N+" a shop writes instead of an age
+ * word is not one of them: it used to sit in this alternation as `\d+\+`, and the group's own trailing `\b`
+ * made it read the wrong lines and only the wrong ones. "21+" and "18+" end at a space or a full stop, where
+ * there is no word boundary after the "+", so no bare age rule ever reached the column; a number glued to a
+ * word did, and glued to a word it is a fee or a speed: "$50+tax", "$40+tax", "$300+taxes", "$65+GST" and
+ * "35+mph" were all seven lines it carried. `statesAPlusAge` reads the number the way `minAge` already does,
+ * and asks the line to say whose age it is.
+ */
 const WHO_RE =
-  /\b(ages?|years old|\d+\+|junior|child(?:ren)?|kids?|adult required|adult & junior|minors?|weight|\blbs?\b|\bkg\b|passenger capacity)\b/i;
+  /\b(ages?|years old|junior|child(?:ren)?|kids?|adult required|adult & junior|minors?|weight|\blbs?\b|\bkg\b|passenger capacity)\b/i;
 const WAIVER_RE =
   /\b(waiver|liabilit|deposit|license|closed-toe|shoes required|no alcohol|helmets?|non-refundable|forfeit)\b/i;
 
@@ -508,7 +518,7 @@ function pushUnique(list: FactLine[], text: string, posted: boolean) {
 }
 
 function classify(line: string): "who" | "waiver" | "both" | "about" {
-  const who = WHO_RE.test(line);
+  const who = WHO_RE.test(line) || statesAPlusAge(line);
   const waiver = WAIVER_RE.test(line);
   if (who && waiver) return "both";
   if (who) return "who";
