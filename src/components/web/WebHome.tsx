@@ -1832,6 +1832,9 @@ export function WebHome({ onOperators, onAsk, asking = false, askSeed = "", onCl
                 <li><button type="button" onClick={onOperators}>List your business</button></li>
                 <li><button type="button" onClick={onOperators}>Claim your listing</button></li>
                 <li><button type="button" onClick={onOperators}>Operator log in</button></li>
+                {/* The other half of Outset: the AI front desk sold to operators, on its own page. Both sites link
+                    each other, this from the marketplace, and the Outset mark on that page back here. */}
+                <li><a href="/otto">Otto: AI front desk for your phone</a></li>
                 {OTTO_LIVE ? <li><a href="#safe">You pay, or Otto does</a></li> : null}
               </ul>
             </section>
