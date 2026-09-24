@@ -23,8 +23,26 @@ function cspApiOrigin(mode: string): Plugin {
   };
 }
 
+/**
+ * The clean URLs production has. render.yaml rewrites /otto, /about, /terms and /privacy to their .html files
+ * ahead of the SPA catch-all; without the same rule here, /otto on the dev server fell through to the app and
+ * showed the guest home, so every local check of the Otto page had to be typed as /otto.html.
+ */
+const CLEAN_URLS: Record<string, string> = { "/otto": "/otto.html", "/about": "/about.html", "/terms": "/terms.html", "/privacy": "/privacy.html" };
+function cleanUrls(): Plugin {
+  const rewrite = (server: { middlewares: { use: (fn: (req: { url?: string }, res: unknown, next: () => void) => void) => void } }) => {
+    server.middlewares.use((req, _res, next) => {
+      const path = (req.url || "").split("?")[0].replace(/\/$/, "") || "/";
+      const target = CLEAN_URLS[path];
+      if (target) req.url = target + ((req.url || "").includes("?") ? "?" + (req.url || "").split("?")[1] : "");
+      next();
+    });
+  };
+  return { name: "outset-clean-urls", configureServer: rewrite, configurePreviewServer: rewrite };
+}
+
 export default defineConfig(({ mode }) => ({
-  plugins: [react(), cspApiOrigin(mode)],
+  plugins: [react(), cspApiOrigin(mode), cleanUrls()],
   server: {
     // Vite's default host resolves to the IPv6 loopback on this machine, so a browser that reaches
     // localhost over IPv4 got connection refused. Pin the IPv4 loopback, which is what browsers here try.
