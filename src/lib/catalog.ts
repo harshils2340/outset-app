@@ -563,6 +563,20 @@ function statesAnAgeRule(blob: string): boolean {
   return false;
 }
 
+/**
+ * "Kealakekua Bay Kayak and Snorkel Tour: minimum 6 guests per booking." is the sentence our own vendor
+ * readers write for a booking system's party floor, one for every item on the shop's menu. It is a rule about
+ * the booking, not a thing a guest will do, and `about` has exactly one reader: the highlights a listing leads
+ * with when the shop publishes none of its own. So 733 of these on 261 listings were printed as the trip's
+ * selling bullets, under "Highlights" on the listing page and a ticked "What you'll do" on the phone booking
+ * sheet. Fun St. Pete led with seven of them at once, each naming a different hotel and the same floor of two.
+ * All 261 already state that floor in their requirements, which is where a guest reads the rules, so keeping
+ * it out of the bullets loses no fact. A line that says anything else as well is the shop's own words and
+ * stays: "Up to 4 passengers per flight, minimum 2 people per booking" is a group size worth reading.
+ */
+const BOOKING_MINIMUM =
+  /^(?:.*:\s*)?minimum\s+\d+\s+(?:guests?|people|persons?|players?|passengers?|participants?|paddlers?|anglers?)\s+per\s+booking\.?$/i;
+
 /** Split published specs, notes and gaps into experience / who / waiver. Never invents rules. */
 export function listingFacts(item: Unclaimed): ListingFacts {
   const about: string[] = [];
@@ -574,7 +588,7 @@ export function listingFacts(item: Unclaimed): ListingFacts {
     const kind = classify(s);
     if (kind === "who" || kind === "both") pushUnique(who, guestLine(s), true);
     if (kind === "waiver" || kind === "both") pushUnique(waiver, guestLine(s), true);
-    if (kind === "about") about.push(s);
+    if (kind === "about" && !BOOKING_MINIMUM.test(s.trim())) about.push(s);
   }
 
   if (item.extraNote) {
