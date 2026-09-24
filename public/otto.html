@@ -61,41 +61,52 @@
     .proof .ic { width: 15px; height: 15px; color: var(--accent); }
 
     /* call screen */
-    .call { background: var(--bezel); color: #fff; border-radius: var(--r-xl); box-shadow: 0 24px 60px rgba(0,0,0,.28); overflow: hidden; }
-    .call .head { display: flex; align-items: center; justify-content: space-between; padding: .95rem 1.2rem; border-bottom: 1px solid rgba(255,255,255,.08); font-size: .85rem; }
-    .call .head b { font-weight: 600; }
-    .call .head .st { display: inline-flex; align-items: center; gap: .45rem; color: rgba(255,255,255,.7); font-variant-numeric: tabular-nums; }
-    .call .head .st i { width: 7px; height: 7px; border-radius: 50%; background: rgba(255,255,255,.3); }
-    .call.on .head .st i { background: #34b46a; }
-    .lane { display: grid; grid-template-columns: 148px 1fr; align-items: center; gap: 1rem; padding: .85rem 1.2rem; border-bottom: 1px solid rgba(255,255,255,.06); transition: background .25s; }
-    .lane.speaking { background: rgba(255,255,255,.045); }
-    .lane .id { display: flex; align-items: center; gap: .65rem; min-width: 0; }
-    .lane .av { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; flex: none; border: 2px solid transparent; transition: border-color .25s, box-shadow .25s; }
+    .call { position: relative; background: var(--bezel); color: #fff; border-radius: var(--r-xl); box-shadow: 0 30px 70px rgba(0,0,0,.30), 0 2px 6px rgba(0,0,0,.18); overflow: hidden; }
+    .call .topfill { position: absolute; top: 0; left: 0; height: 3px; width: 0; background: var(--accent-soft); z-index: 5; transition: width .2s linear; }
+    .call .top { display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.25rem .85rem; font-size: .88rem; }
+    .call .top b { font-weight: 600; letter-spacing: -.01em; }
+    .call .top small { display: block; font-size: .76rem; color: rgba(255,255,255,.5); margin-top: .1rem; }
+    .pillst { display: inline-flex; align-items: center; gap: .45rem; padding: .35rem .7rem; border-radius: 999px; background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.1); font-size: .78rem; color: rgba(255,255,255,.75); }
+    .pillst i { width: 7px; height: 7px; border-radius: 50%; background: rgba(255,255,255,.35); }
+    .call.on .pillst { color: #b8e6c6; border-color: rgba(52,180,106,.35); background: rgba(52,180,106,.12); }
+    .call.on .pillst i { background: #34b46a; box-shadow: 0 0 0 0 rgba(52,180,106,.5); animation: pulse 2s infinite; }
+    @keyframes pulse { 0%{box-shadow:0 0 0 0 rgba(52,180,106,.5)} 70%{box-shadow:0 0 0 7px rgba(52,180,106,0)} 100%{box-shadow:0 0 0 0 rgba(52,180,106,0)} }
+    .screen { margin: 0 .9rem; background: linear-gradient(180deg, #262626, #202020); border: 1px solid rgba(255,255,255,.07); border-radius: 18px; overflow: hidden; }
+    .lane { display: grid; grid-template-columns: 158px 1fr; align-items: center; gap: 1rem; padding: .95rem 1.1rem; border-bottom: 1px solid rgba(255,255,255,.06); transition: background .3s; }
+    .lane.speaking { background: rgba(127,149,106,.10); }
+    .lane .id { display: flex; align-items: center; gap: .7rem; min-width: 0; }
+    .lane .av { width: 42px; height: 42px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; flex: none; position: relative; transition: box-shadow .3s; overflow: hidden; }
+    .lane .av img { width: 100%; height: 100%; display: block; }
     .lane.otto .av { background: var(--accent); }
-    .lane.caller .av { background: #3a3a3a; }
-    .lane.speaking .av { border-color: #fff; box-shadow: 0 0 0 4px rgba(255,255,255,.12); }
-    .lane .nm b { display: block; font-size: .92rem; font-weight: 600; line-height: 1.1; }
-    .lane .nm small { font-size: .74rem; color: rgba(255,255,255,.55); }
-    .lane.speaking .nm small { color: #8fd0a8; }
-    .lane canvas { width: 100%; height: 54px; display: block; }
-    @media (max-width: 520px) { .lane { grid-template-columns: 112px 1fr; } .lane .nm small { display: none; } }
-    .live { padding: 1rem 1.2rem .6rem; min-height: 132px; }
-    .live .now { font-size: 1.02rem; line-height: 1.45; color: #fff; min-height: 3.2em; }
-    .live .now .who { display: inline-block; font-size: .7rem; letter-spacing: .06em; text-transform: uppercase; font-weight: 700; padding: .15rem .45rem; border-radius: 6px; margin-right: .5rem; vertical-align: 2px; }
-    .live .now .who.otto { background: var(--accent); }
-    .live .now .who.caller { background: #3a3a3a; }
-    .live .prev { margin-top: .55rem; font-size: .86rem; color: rgba(255,255,255,.45); line-height: 1.4; max-height: 2.8em; overflow: hidden; }
-    .live .done { display: inline-flex; align-items: center; gap: .5rem; margin-top: .6rem; background: rgba(52,180,106,.16); color: #8fd0a8; border: 1px solid rgba(52,180,106,.35); border-radius: 10px; padding: .45rem .7rem; font-size: .86rem; font-weight: 600; }
-    .ctrl { display: flex; align-items: center; gap: .85rem; padding: .7rem 1.2rem 1.1rem; }
-    .playbtn { flex: none; width: 48px; height: 48px; border-radius: 50%; background: #fff; color: var(--ink); border: none; display: grid; place-items: center; cursor: pointer; transition: transform .14s; }
+    .lane.caller .av { background: #4a4a4a; font-size: 1rem; }
+    .lane.speaking .av { box-shadow: 0 0 0 3px var(--bezel), 0 0 0 5px var(--accent-soft); }
+    .lane .nm b { display: block; font-size: .94rem; font-weight: 600; line-height: 1.15; }
+    .lane .nm small { display: inline-flex; align-items: center; gap: .35rem; font-size: .74rem; color: rgba(255,255,255,.5); margin-top: .15rem; }
+    .lane.speaking .nm small { color: #b8e6c6; }
+    .lane.speaking .nm small::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: #34b46a; }
+    .lane canvas { width: 100%; height: 56px; display: block; }
+    @media (max-width: 520px) { .lane { grid-template-columns: 120px 1fr; } .lane .nm small { display: none; } }
+    .caption { padding: 1rem 1.1rem 1.05rem; min-height: 122px; }
+    .caption .prev { font-size: .84rem; color: rgba(255,255,255,.38); line-height: 1.4; min-height: 1.4em; margin-bottom: .45rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .caption .now { font-size: 1.04rem; line-height: 1.45; color: #fff; }
+    .caption .now.idle { color: rgba(255,255,255,.55); }
+    .caption .who { display: inline-block; font-size: .68rem; letter-spacing: .06em; text-transform: uppercase; font-weight: 700; padding: .18rem .5rem; border-radius: 6px; margin-right: .55rem; vertical-align: 2px; }
+    .caption .who.otto { background: var(--accent); }
+    .caption .who.caller { background: #4a4a4a; }
+    .caption .done { display: inline-flex; align-items: center; gap: .5rem; margin-top: .65rem; background: rgba(52,180,106,.14); color: #b8e6c6; border: 1px solid rgba(52,180,106,.35); border-radius: 10px; padding: .45rem .75rem; font-size: .86rem; font-weight: 600; }
+    .bar { display: flex; align-items: center; gap: .9rem; padding: .95rem 1.25rem 1.15rem; }
+    .playbtn { flex: none; width: 50px; height: 50px; border-radius: 50%; background: #fff; color: var(--ink); border: none; display: grid; place-items: center; cursor: pointer; transition: transform .14s, box-shadow .14s; box-shadow: 0 6px 18px rgba(0,0,0,.35); }
     .playbtn:hover { transform: scale(1.05); }
     .tri { width: 0; height: 0; border-left: 13px solid currentColor; border-top: 8px solid transparent; border-bottom: 8px solid transparent; margin-left: 4px; }
     .playbtn.playing .tri { display: none; }
     .ic-pause { display: none; gap: 5px; }
     .playbtn.playing .ic-pause { display: inline-flex; }
     .ic-pause i { width: 4.5px; height: 17px; background: currentColor; border-radius: 2px; display: block; }
-    .scrub { flex: 1; height: 6px; background: rgba(255,255,255,.16); border-radius: 3px; cursor: pointer; position: relative; }
+    .scrub { flex: 1; height: 6px; background: rgba(255,255,255,.14); border-radius: 3px; cursor: pointer; position: relative; }
     .scrubfill { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: #fff; border-radius: 3px; }
+    .scrubfill::after { content: ""; position: absolute; right: -6px; top: 50%; transform: translateY(-50%); width: 13px; height: 13px; border-radius: 50%; background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,.4); opacity: 0; transition: opacity .2s; }
+    .call.on .scrubfill::after { opacity: 1; }
+    .time { font-size: .82rem; color: rgba(255,255,255,.7); font-variant-numeric: tabular-nums; min-width: 6.4rem; text-align: right; }
 
     section { padding: clamp(3rem, 6.5vw, 5rem) 0; }
     .eyebrow { color: var(--accent-soft); font-weight: 700; font-size: .78rem; letter-spacing: .08em; text-transform: uppercase; margin: 0 0 .6rem; }
@@ -217,23 +228,30 @@
       </div>
 
       <div class="call" id="call">
-        <div class="head"><b>Sample call · Bayside Marina</b><span class="st"><i></i><span id="st">Ready</span> · <span id="cur">0:00</span> / <span id="dur">0:43</span></span></div>
-        <div class="lane otto" id="laneOtto">
-          <div class="id"><span class="av">O</span><span class="nm"><b>Otto</b><small id="sOtto">AI front desk</small></span></div>
-          <canvas id="vizOtto" aria-label="Otto's voice"></canvas>
+        <div class="topfill" id="topfill"></div>
+        <div class="top">
+          <div><b>Sample call</b><small>Bayside Marina · jet ski rental</small></div>
+          <span class="pillst"><i></i><span id="st">Ready</span></span>
         </div>
-        <div class="lane caller" id="laneCaller">
-          <div class="id"><span class="av">M</span><span class="nm"><b>Marcus</b><small id="sCaller">Caller</small></span></div>
-          <canvas id="vizCaller" aria-label="The caller's voice"></canvas>
+        <div class="screen">
+          <div class="lane otto" id="laneOtto">
+            <div class="id"><span class="av"><img src="/favicon.svg" alt=""></span><span class="nm"><b>Otto</b><small id="sOtto">AI front desk</small></span></div>
+            <canvas id="vizOtto" aria-label="Otto's voice"></canvas>
+          </div>
+          <div class="lane caller" id="laneCaller">
+            <div class="id"><span class="av">M</span><span class="nm"><b>Marcus</b><small id="sCaller">Caller</small></span></div>
+            <canvas id="vizCaller" aria-label="The caller's voice"></canvas>
+          </div>
+          <div class="caption">
+            <div class="prev" id="prev">The transcript follows along as it plays.</div>
+            <div class="now idle" id="now">Press play to hear Otto take a real booking call.</div>
+            <div id="doneWrap"></div>
+          </div>
         </div>
-        <div class="live">
-          <div class="now" id="now"><span class="who otto">Otto</span>Press play to hear the call.</div>
-          <div class="prev" id="prev"></div>
-          <div id="doneWrap"></div>
-        </div>
-        <div class="ctrl">
+        <div class="bar">
           <button class="playbtn" id="play" type="button" aria-label="Play the call"><span class="tri"></span><span class="ic-pause"><i></i><i></i></span></button>
           <div class="scrub" id="scrub"><div class="scrubfill" id="scrubfill"></div></div>
+          <span class="time"><span id="cur">0:00</span> / <span id="dur">0:43</span></span>
         </div>
         <audio id="audio" preload="metadata" src="/otto-call.mp3"></audio>
       </div>
@@ -403,17 +421,24 @@
       function fmt(s) { s = Math.max(0, Math.floor(s || 0)); return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0"); }
 
       /* line timing, weighted by length across the file's real duration */
+      /* Cue points measured from the recording itself (the silence between speaker turns), so the caption flips
+         exactly when the voice changes. If the file is ever replaced by one of a different length, fall back to a
+         length-weighted estimate rather than show wrong cues. */
+      var CUES = [0, 4.15, 8.95, 24.80, 27.05, 31.55, 32.80, 39.10, 41.65], CUE_DUR = 42.8;
       var starts = [], active = -1, doneShown = false;
       function computeStarts() {
-        var dur = audio.duration && isFinite(audio.duration) ? audio.duration : 43;
-        var lens = turns.map(function (t) { return t.text.length + 14; }), sum = lens.reduce(function (a, b) { return a + b; }, 0), acc = 0;
-        starts = lens.map(function (l) { var s = Math.max(0, (acc / sum) * dur - 0.12); acc += l; return s; });
+        var dur = audio.duration && isFinite(audio.duration) ? audio.duration : CUE_DUR;
+        if (Math.abs(dur - CUE_DUR) < 1.5) { starts = CUES.map(function (c) { return Math.max(0, c - 0.1); }); }
+        else {
+          var lens = turns.map(function (t) { return t.text.length + 14; }), sum = lens.reduce(function (a, b) { return a + b; }, 0), acc = 0;
+          starts = lens.map(function (l) { var s = Math.max(0, (acc / sum) * dur - 0.12); acc += l; return s; });
+        }
         durEl.textContent = fmt(dur);
       }
       function setActive(i) {
         if (i === active) return; active = i;
         var t = turns[i];
-        now.innerHTML = '<span class="who ' + t.who + '">' + (t.who === "otto" ? "Otto" : "Marcus") + '</span>';
+        now.classList.remove("idle"); now.innerHTML = '<span class="who ' + t.who + '">' + (t.who === "otto" ? "Otto" : "Marcus") + '</span>';
         now.appendChild(document.createTextNode(t.text));
         prev.textContent = i > 0 ? turns[i - 1].text : "";
         laneOtto.classList.toggle("speaking", t.who === "otto"); laneCaller.classList.toggle("speaking", t.who === "caller");
@@ -431,7 +456,7 @@
         } catch (e) { actx = null; analyser = null; }
       }
       function Lane(canvas, colorA, colorB) {
-        var ctx = canvas.getContext("2d"), N = 40, BW = 3, GAP = 4, MINH = 2, MAXH = 24, size = { w: 0, h: 0, d: 1 }, hs = [], ph = [];
+        var ctx = canvas.getContext("2d"), N = 40, BW = 3, GAP = 4, MINH = 3, MAXH = 26, size = { w: 0, h: 0, d: 1 }, hs = [], ph = [];
         for (var i = 0; i < N; i++) { hs.push(MINH); ph.push(Math.random() * 6.28); }
         function resize() { var r = canvas.getBoundingClientRect(), d = Math.min(devicePixelRatio || 1, 2); canvas.width = Math.max(1, r.width * d | 0); canvas.height = Math.max(1, r.height * d | 0); size = { w: r.width, h: r.height, d: d }; }
         resize(); new ResizeObserver(resize).observe(canvas);
@@ -442,11 +467,11 @@
           for (var i = 0; i < N; i++) {
             var n = i / (N - 1), dist = Math.abs(n - .5) * 2, env = 1 - Math.pow(dist, 1.5) * .6, target;
             if (live && freq) { var bin = Math.floor(2 + dist * 24), v = Math.pow(freq[bin] / 255, 1.3); target = MINH + v * env * MAXH * 1.15; }
-            else { var p = ph[i]; var e = (Math.sin(t * 1.1 + n * 7.5 + p * .3) * .28 + (Math.sin(t * 2.2 - n * 13 + p) * .5 + .5) * .35 + (Math.sin(t * 3.7 + p * 1.4 + n * 19) * .5 + .5) * .22) * .12; target = MINH + Math.max(0, e) * env * MAXH; }
+            else { var p = ph[i]; var e = (Math.sin(t * 1.1 + n * 7.5 + p * .3) * .28 + (Math.sin(t * 2.2 - n * 13 + p) * .5 + .5) * .35 + (Math.sin(t * 3.7 + p * 1.4 + n * 19) * .5 + .5) * .22) * (live ? .55 : .24); target = MINH + Math.max(0, e) * env * MAXH; }
             hs[i] += (target - hs[i]) * a;
             var x = x0 + i * (BW + GAP), hh = hs[i], g = ctx.createLinearGradient(0, cy - hh, 0, cy + hh);
             g.addColorStop(0, colorA); g.addColorStop(.5, colorB); g.addColorStop(1, colorA);
-            ctx.fillStyle = g; ctx.globalAlpha = live ? 1 : .35; ctx.beginPath(); ctx.roundRect(x, cy - hh, BW, hh * 2, BW / 2); ctx.fill();
+            ctx.fillStyle = g; ctx.globalAlpha = live ? 1 : .5; ctx.beginPath(); ctx.roundRect(x, cy - hh, BW, hh * 2, BW / 2); ctx.fill();
           }
           ctx.globalAlpha = 1;
         };
@@ -474,7 +499,7 @@
       audio.addEventListener("pause", function () { play.classList.remove("playing"); st.textContent = "Paused"; });
       audio.addEventListener("timeupdate", function () {
         var ct = audio.currentTime, idx = 0; for (var i = 0; i < starts.length; i++) if (starts[i] <= ct) idx = i;
-        setActive(idx); fill.style.width = (audio.duration ? (ct / audio.duration) * 100 : 0) + "%"; cur.textContent = fmt(ct);
+        setActive(idx); var pct = (audio.duration ? (ct / audio.duration) * 100 : 0) + "%"; fill.style.width = pct; document.getElementById("topfill").style.width = pct; cur.textContent = fmt(ct);
       });
       audio.addEventListener("ended", function () {
         play.classList.remove("playing"); call.classList.remove("on"); st.textContent = "Call ended";
