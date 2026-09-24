@@ -93,6 +93,62 @@ test("the section's own heading does not ride the first bullet", () => {
   assert.deepEqual(splitIncluded(["What's included:"]), { yes: [], no: [] });
 });
 
+/**
+ * The subject of "do not include" is plural about as often as it is singular, and only `does not include` was
+ * read: 16 lines across 13 shipped listings were ticked under the green "What's included" while saying the
+ * opposite. Every line here is a real one.
+ */
+test("a plural do not include is still not included", () => {
+  assert.deepEqual(no(["Listed rental rates do not include gas, tax, and delivery."]), ["Listed rental rates do not include gas, tax, and delivery."]); // o-playnorthwatersports-com
+  assert.deepEqual(no(["Prices do not include customary 18-20% gratuity for the mate."]), ["Prices do not include customary 18-20% gratuity for the mate."]); // o-sunbeamfleet-com
+  assert.deepEqual(no(["Prices are subject to change and don't include taxes/fees."]), ["Prices are subject to change and don't include taxes/fees."]); // o-fletcherscove-com
+  assert.deepEqual(no(["Our Fireworks Cruises do not include dolphin-watching."]), ["Our Fireworks Cruises do not include dolphin-watching."]); // o-southernstardolphincruise-com
+  assert.deepEqual(no(["Season Passes do not include dry bags or lock rentals."]), ["Season Passes do not include dry bags or lock rentals."]); // o-boatinginboston-com
+  // A shop saying what the price does cover is untouched by the same words.
+  assert.deepEqual(yes(["These tours include a Driver, Fuel and a Towable to enjoy on Lake Tahoe."]), [
+    "These tours include a Driver, Fuel and a Towable to enjoy on Lake Tahoe.",
+  ]); // o-tahoesports-com
+});
+
+/**
+ * The heading rule had the positive half of a shop's own page and only the bare words "Not included:" of the
+ * negative half, so a shop that writes the heading out in full had it printed as part of the fact.
+ */
+test("the exclusions heading does not ride the bullet either", () => {
+  assert.deepEqual(no(["What is not included: Gratuities are not included in the ticket price."]), [
+    "Gratuities are not included in the ticket price.",
+  ]); // o-charlestonharbortours-com
+  assert.deepEqual(no(["Excluded: Lunch (Free time provided at Niagara Falls/Skylon area for a meal of your choice)"]), [
+    "Lunch (Free time provided at Niagara Falls/Skylon area for a meal of your choice)",
+  ]); // a-viator-13859p27
+  assert.deepEqual(no(["Not Included: Gratuity for your guide"]), ["Gratuity for your guide"]);
+  assert.deepEqual(no(["Exclusions: Hotel pickup"]), ["Hotel pickup"]);
+  // The heading alone is not a bullet, on either side.
+  assert.deepEqual(splitIncluded(["What's not included:"]), { yes: [], no: [] });
+});
+
+/**
+ * Stripping a heading can leave two bullets reading word for word the same, one a promise and one an exclusion,
+ * which is the case the dedupe used to swallow: the first line seen won and the exclusion never reached either
+ * column. No shipped listing writes its list that way today; the rule that an exclusion wins does not depend
+ * on which half the shop labelled.
+ */
+test("an exclusion wins even when the label is on the front", () => {
+  const split = splitIncluded(["Gratuities", "Not included: Gratuities"]);
+  assert.deepEqual(split.yes, []);
+  assert.deepEqual(
+    split.no.map((n) => n.text),
+    ["Gratuities"],
+  );
+  // The other way round, and with a real inclusion beside it.
+  const back = splitIncluded(["Bottled water", "What's not included: Lunch", "Lunch"]);
+  assert.deepEqual(back.yes, ["Bottled water"]);
+  assert.deepEqual(
+    back.no.map((n) => n.text),
+    ["Lunch"],
+  );
+});
+
 test("what the split already got right is unchanged", () => {
   assert.deepEqual(no(["Fuel (not included)"]), ["Fuel"]);
   assert.deepEqual(no(["Gratuity is not included in the ticket price"]), ["Gratuity is not included in the ticket price"]);
@@ -118,7 +174,9 @@ function details(): Detail[] {
   return out;
 }
 
-const HEADING = /^(?:not included|what(?:'|’)?s? (?:is )?included|what is included|included|includes|inclusions?|package includes)\s*:/i;
+const HEADING = /^(?:not included|what(?:'|’)?s? (?:is )?not included|what is not included|what(?:'|’)?s? (?:is )?included|what is included|included|includes|inclusions?|excludes?|exclusions?|excluded|package includes)\s*:/i;
+/** The shop's own words saying the price does not cover this, whatever the subject of the sentence. */
+const SAYS_NOT = /\bnot included\b|\bexcluded\b|\bnot provided\b|\bdo(?:es)?(?: not|n[’']?t) include\b/i;
 const COSTS_EXTRA = /\b(?:at|for)\s+(?:an?\s+)?(?:extra|additional)\s+(?:cost|charge|fee|price)\b|\(\s*(?:extra|additional)\s+(?:cost|charge|fee)\s*\)|\bavailable for purchase\b|\bfor purchase\b|\bcosts? extra\b/i;
 const ALSO_INCLUDED = /\bincluded\b|\bincludes\b|\bprovided\b|\bsupplied\b|\bcomplimentary\b|\bfree of charge\b|\bat no (?:extra|additional)\b/i;
 
@@ -127,14 +185,20 @@ test("no shipped listing ticks its own exclusions as included", () => {
   assert.ok(rows.length > 9000, `only ${rows.length} detail files with includes: the catalog did not load`);
   const headings: string[] = [];
   const extras: string[] = [];
+  const denied: string[] = [];
   for (const row of rows) {
-    for (const line of splitIncluded(row.includes!).yes) {
+    const split = splitIncluded(row.includes!);
+    for (const line of split.yes) {
       if (HEADING.test(line)) headings.push(`${row.id}: ${line}`);
       if (COSTS_EXTRA.test(line) && !ALSO_INCLUDED.test(line)) extras.push(`${row.id}: ${line}`);
+      if (SAYS_NOT.test(line)) denied.push(`${row.id}: ${line}`);
     }
+    // A heading belongs to neither column: the exclusions half printed it as part of the fact.
+    for (const n of split.no) if (HEADING.test(n.text)) headings.push(`${row.id}: ${n.text}`);
   }
   assert.deepEqual(headings, [], `the section heading is still on the bullet:\n${headings.slice(0, 8).join("\n")}`);
   assert.deepEqual(extras, [], `still ticked as included though the shop charges for it:\n${extras.slice(0, 8).join("\n")}`);
+  assert.deepEqual(denied, [], `ticked as included though the shop's own line says it is not:\n${denied.slice(0, 8).join("\n")}`);
 });
 
 test("the split never loses a line the shop published", () => {

@@ -182,9 +182,20 @@ export function tidyLine(text: string): string {
  * - A line that says it is included as well as for sale ("Your first drink is included, with additional drinks
  *   available for purchase") is the shop stating both, so it stays where it is.
  */
-const NOT_INCLUDED = /\bnot included\b|\bexcluded\b|\bnot provided\b|\bdoes(?: not|n[’']t) include\b/i;
+/**
+ * The subject of that sentence is as often plural as singular, and only the singular was read: "Listed rental
+ * rates do not include gas, tax, and delivery" and "Prices do not include customary 18-20% gratuity for the
+ * mate" were both ticked under the green "What's included", on 16 lines across 13 shipped listings.
+ */
+const NOT_INCLUDED = /\bnot included\b|\bexcluded\b|\bnot provided\b|\bdo(?:es)?(?: not|n[’']?t) include\b/i;
 /** The section's own heading, swept up in front of the first bullet: "What's Included: Guests will enjoy...". */
-const INCLUDED_HEADING = /^(?:not included|what(?:'|’)?s? (?:is )?included|what is included|included|includes|inclusions?|package includes)\s*:\s*/i;
+const INCLUDED_HEADING = /^(?:what(?:'|’)?s? (?:is )?included|what is included|included|includes|inclusions?|package includes)\s*:\s*/i;
+/**
+ * The other half of that heading, which only ever matched as the bare words "Not included:". A shop writes the
+ * heading out on its own page, so "What is not included: Gratuities are not included in the ticket price" and
+ * "Excluded: Lunch" were printed under "Not included" with the heading still on the front of the fact.
+ */
+const EXCLUDED_HEADING = /^(?:what(?:'|’)?s? (?:is )?not included|what is not included|not included|excludes?|exclusions?|excluded|do(?:es)?(?: not|n[’']?t) include)\s*:\s*/i;
 /** The shop sells this beside the trip: it is not in the price a guest pays here. */
 const COSTS_EXTRA = /\b(?:at|for)\s+(?:an?\s+)?(?:extra|additional)\s+(?:cost|charge|fee|price)\b|\(\s*(?:extra|additional)\s+(?:cost|charge|fee)\s*\)|\bavailable for purchase\b|\bfor purchase\b|\bcosts? extra\b|\bat (?:your|guests?'?)\s+own (?:expense|cost)\b/i;
 /** The same line also states something the price does cover, so it is not ours to move. */
@@ -192,18 +203,29 @@ const ALSO_INCLUDED = /\bincluded\b|\bincludes\b|\bprovided\b|\bsupplied\b|\bcom
 export function splitIncluded(lines: string[]): { yes: string[]; no: { text: string; strike: boolean }[] } {
   const yes: string[] = [];
   const no: { text: string; strike: boolean }[] = [];
-  const seen = new Set<string>();
+  const seen = new Map<string, "yes" | "no">();
   for (const raw of lines) {
     const tidied = tidyLine(raw);
-    const labelled = INCLUDED_HEADING.test(tidied) && /^not included/i.test(tidied);
-    const line = tidied.replace(INCLUDED_HEADING, "").replace(/^./, (c) => c.toUpperCase());
-    const key = line.toLowerCase();
-    if (!line || seen.has(key)) continue;
-    seen.add(key);
+    const labelled = EXCLUDED_HEADING.test(tidied);
+    const line = tidied.replace(labelled ? EXCLUDED_HEADING : INCLUDED_HEADING, "").replace(/^./, (c) => c.toUpperCase());
+    if (!line) continue;
     if (/\bbring your own\b/i.test(line)) continue;
-    if (!labelled && !NOT_INCLUDED.test(line)) {
-      if (COSTS_EXTRA.test(line) && !ALSO_INCLUDED.test(line)) no.push({ text: line, strike: false });
-      else yes.push(line);
+    const marked = labelled || NOT_INCLUDED.test(line);
+    const sold = !marked && COSTS_EXTRA.test(line) && !ALSO_INCLUDED.test(line);
+    const side = marked || sold ? "no" : "yes";
+    // Stripping the heading can leave a line reading exactly like another bullet, so the same words arrive
+    // twice, once as a promise and once as an exclusion. An exclusion still wins, the way it does below for a
+    // shop that writes "Admission fees" and "Admission fees (not included)" in the same list.
+    const key = line.toLowerCase();
+    const was = seen.get(key);
+    if (was === side || was === "no") continue;
+    seen.set(key, side);
+    if (side === "yes") {
+      yes.push(line);
+      continue;
+    }
+    if (sold) {
+      no.push({ text: line, strike: false });
       continue;
     }
     const short = line.replace(/\s*[-–:(,]*\s*(?:is |are )?(?:not included|excluded|not provided)\)?\.?\s*$/i, "").trim();
