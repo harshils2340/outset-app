@@ -404,7 +404,9 @@
       var turns = [
         { who: "otto",   text: "Thanks for calling Bayside Marina, this is Otto. What can I do for you?" },
         { who: "caller", text: "Hey, I've got a couple jet skis booked for four o'clock today. Something came up, can I cancel?" },
-        { who: "otto",   text: "No problem, let me pull it up. Okay, I've got two waverunners at 4 PM under Marcus, that's you? Quick heads up, it's inside 24 hours, so that time is non-refundable on the marina's policy. But I can move it to another day for free instead, if that's easier." },
+        { who: "otto",   text: "No problem, let me pull it up. Okay, I've got two waverunners at 4 PM under Marcus, that's you?" },
+        { who: "caller", text: "Yeah, that's me." },
+        { who: "otto",   text: "Quick heads up, it's inside 24 hours, so that time is non-refundable on the marina's policy. But I can move it to another day for free instead, if that's easier." },
         { who: "caller", text: "Oh, yeah, that's better. Can I do tomorrow morning?" },
         { who: "otto",   text: "Let me check. Tomorrow I've got two skis open at 9 AM or 11 AM. Which one works?" },
         { who: "caller", text: "Nine's perfect." },
@@ -425,7 +427,7 @@
       /* Cue points measured from the recording itself (the silence between speaker turns), so the caption flips
          exactly when the voice changes. If the file is ever replaced by one of a different length, fall back to a
          length-weighted estimate rather than show wrong cues. */
-      var CUES = [0, 4.15, 8.95, 24.80, 27.05, 31.55, 32.80, 39.10, 41.65], CUE_DUR = 42.8;
+      var CUES = [0, 4.15, 8.95, 16.10, 16.90, 24.80, 27.05, 31.55, 32.80, 39.10, 41.65], CUE_DUR = 42.8;
       var starts = [], active = -1, doneShown = false;
       function computeStarts() {
         var dur = audio.duration && isFinite(audio.duration) ? audio.duration : CUE_DUR;
