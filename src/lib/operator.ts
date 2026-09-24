@@ -1,6 +1,6 @@
 import type { Booking, CategoryId, OperatorContact, Unclaimed, UnclaimedOption, UnclaimedService } from "../data/types";
 import { forgetClaim, saveRemoteProfile, type RemoteBooking } from "./api";
-import { addressLine, contactFor, experienceById, getCatalog, setOperatorOverride, siteUrl } from "./catalog";
+import { addressLine, contactFor, experienceById, rememberOverlay, setOperatorOverride, siteUrl } from "./catalog";
 import { callablePhone } from "./phone";
 import { contactEmail } from "./email";
 import { dateKey, startOfToday } from "./dates";
@@ -1068,19 +1068,44 @@ function pushToCatalog(p: OperatorProfile, remote = true): void {
 
 /* ---------- misc helpers for the screens ---------- */
 
-export function pickDemoOperator(): Unclaimed | null {
-  const all = getCatalog();
-  const scored = all
-    .filter((u) => u.services && u.services.length >= 2 && u.cover && u.options.length > 0 && u.options.every((o) => o.price != null))
-    .map((u) => ({ u, s: ((u.photos?.length || 0) > 3 ? 2 : 0) + (u.metroId === "tampa" ? 3 : 0) + Math.min(4, u.services?.length || 0) + Math.min(3, Math.log10((u.reviews || 0) + 1)) }))
-    .sort((a, b) => b.s - a.s);
-  return scored[0]?.u || all[0] || null;
+/**
+ * A made-up business for the sandbox dashboard, not a real operator. `demoProfile` used to hand out whichever
+ * real, unclaimed listing scored highest, which meant every outreach recipient and every visitor who clicked
+ * "See the demo dashboard" was shown one specific real company's actual name, address and photos as an
+ * editable toy. Found 24 September 2026 from Harshil's own reaction to seeing it. This id is never a real
+ * catalog id, so it never collides with, and never locally overrides, an actual listing.
+ */
+const DEMO_OPERATOR: Unclaimed = {
+  id: "demo-sandbox",
+  title: "Example Kayak Co.",
+  cat: "water",
+  art: "kayak",
+  area: "Sample Bay, FL",
+  metroId: "tampa",
+  src: "example.com",
+  specs: ["2 hour guided tour", "All gear included"],
+  options: [{ name: "Guided tour", detail: "2 hours, all gear included", price: 65, per: "person", perGuest: true }],
+  includes: ["Kayak and paddle", "Life jacket", "Guide"],
+  gap: "",
+  blurb: "This is a sample listing so you can see how the dashboard works. Nothing here is a real business.",
+  services: [
+    { name: "Guided tour", desc: "A 2 hour paddle with a guide.", variants: [{ label: "Per person", price: 65, per: "person", optionIdx: 0 }] },
+    { name: "Sunset tour", desc: "Same route, timed for sunset.", variants: [{ label: "Per person", price: 75, per: "person", optionIdx: 0 }] },
+  ],
+  photos: [],
+};
+// Not added to the catalog list, so it never shows in search, browse or any guest rail. `experienceById`
+// still needs to resolve it, the way it resolves a Maps hit that isn't in the catalog yet, so the dashboard's
+// own `u` lookup (cover, area, the live preview) works for the demo the same as it does for a real claim.
+rememberOverlay(DEMO_OPERATOR);
+
+export function pickDemoOperator(): Unclaimed {
+  return DEMO_OPERATOR;
 }
 
-/** The dashboard a visitor sees before claiming: a real, well-filled operator with sample bookings. Reused if it already exists. */
+/** The dashboard a visitor sees before claiming: a made-up sample business with sample bookings, never a real operator's listing. Reused if it already exists. */
 export function demoProfile(): OperatorProfile | null {
   const u = pickDemoOperator();
-  if (!u) return null;
   const existing = loadProfile(u.id);
   if (existing) return existing;
   const p = defaultProfile(u, { name: "Demo owner", email: "owner@example.com", phone: "" });

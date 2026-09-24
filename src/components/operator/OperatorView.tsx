@@ -41,7 +41,13 @@ export function OperatorView({ compact = false }: { compact?: boolean }) {
   const [p, setP] = useState<OperatorProfile | null>(() => (session ? loadProfile(session) : null));
   const [wantLogin, setWantLogin] = useState(false);
   // Stripe sends the operator back to /operators#payouts after onboarding; that page, not Home, is where they left.
-  const [page, setPage] = useState<OpPage>(() => (typeof window !== "undefined" && window.location.hash === "#payouts" ? "payouts" : "home"));
+  // #demo opens straight on Listing so a visitor sees the editable sample right away, not an empty Home tab.
+  const [page, setPage] = useState<OpPage>(() => {
+    if (typeof window === "undefined") return "home";
+    if (window.location.hash === "#payouts") return "payouts";
+    if (/^#demo\b/i.test(window.location.hash)) return "listing";
+    return "home";
+  });
   const [openedId, setOpenedId] = useState<string | null>(null);
   const [toastText, setToastText] = useState<string | null>(null);
   // Shown once, on the way in, when the server said this listing already had a different owner.
