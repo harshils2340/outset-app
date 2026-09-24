@@ -77,7 +77,8 @@ export const ART_ALIASES: Record<ArtKind, string[]> = {
   ],
   kayak: [
     "kayak", "kayaking", "kayaks", "kayak rental", "kayak rentals", "kayak tour", "kayak tours", "kayaking tour", "canoe", "canoeing",
-    "canoe rental", "paddle", "paddling", "paddleboard", "paddle board", "paddleboarding", "paddle boarding", "sup", "stand up paddle",
+    // "paddle" alone is not here on purpose: it reached "Paddle Pub" (a pedal bar boat) for a guest asking for paddleboards.
+    "canoe rental", "paddling", "paddleboard", "paddle board", "paddleboarding", "paddle boarding", "sup", "stand up paddle",
     "stand up paddleboard", "sup rental", "paddleboard rental", "paddle board rental", "rowing", "rowboat", "row boat", "pedal boat",
     "paddle boat", "swan boat", "clear kayak", "bioluminescent kayak", "bioluminescence", "mangrove tour", "tandem kayak", "sea kayaking",
     "river kayaking", "kyak", "kayack", "kayac", "kayaking near me",

@@ -620,6 +620,8 @@ type ParsedQuery = {
   softArts: ArtKind[];
   arts: ArtKind[];
   metro: Metro | null;
+  /** The words the guest spent naming the place, so "miami" in "jet ski miami" is not part of a business name. */
+  placeWords: Set<string>;
   cheap: boolean;
 };
 
@@ -652,6 +654,7 @@ function parseQuery(q: string): ParsedQuery {
     softArts,
     arts,
     metro: metroInQuery(q)?.metro ?? null,
+    placeWords: new Set(metroInQuery(q)?.words ?? []),
     cheap: /\b(cheap|budget|affordable|inexpensive)\b/i.test(q),
   };
   return parsedCache;
@@ -774,7 +777,13 @@ function nameScore(e: Entry, p: ParsedQuery): number {
   if (e.title.startsWith(p.norm + " ") || e.stem.startsWith(p.stem + " ")) return 150;
   if ((" " + e.title + " ").includes(" " + p.norm + " ") || (" " + e.stem + " ").includes(" " + p.stem + " ")) return 110;
   if (e.compact.startsWith(p.compact)) return 100;
-  if (p.all.length > 1 && p.all.every((t) => e.words.some((w) => w.startsWith(t)))) return 60;
+  /**
+   * Every typed word starts a word of the name. Only when at least one of them is neither the activity nor the
+   * place: "jet ski miami" is a jet ski search in Miami, not the name of a business, and reading it as one put
+   * four Viator yacht charters titled "Miami Yacht ... with 2 Jet Skis" above thirty-nine jet ski rentals in
+   * Miami whose names happen not to say the city.
+   */
+  if (p.all.length > 1 && p.all.some((t) => !p.aliasWords.has(t) && !p.placeWords.has(t)) && p.all.every((t) => e.words.some((w) => w.startsWith(t)))) return 60;
   if (p.compact.length >= 5 && e.compact.includes(p.compact)) return 45;
   return 0;
 }
@@ -812,14 +821,17 @@ function eveningFit(e: Entry, tonight: boolean, today: Map<string | null, number
     e.week = itemWeek(e.u);
     e.eve = e.week ? (e.week.some(openPastSix) ? 1 : 0) : 2;
   }
-  if (e.eve === 2) return DAYTIME_KINDS.has(e.art) ? -6 : EVENING_KINDS.has(e.art) ? 4 : 0;
+  // The kind's nature holds whatever the hours say: a jet ski dock open till nine is a fair answer to "tonight"
+  // (its hours cancel the daytime prior, so it sits level), not a better one than the arcade open till midnight.
+  const nature = DAYTIME_KINDS.has(e.art) ? -6 : EVENING_KINDS.has(e.art) ? 4 : 0;
+  if (e.eve === 2) return nature;
   if (tonight && e.week) {
     const zone = zoneFor(e.u);
     let day = today.get(zone);
     if (day === undefined) today.set(zone, (day = clockIn(zone).day));
-    return openPastSix(e.week[day]) ? 6 : -10;
+    return nature + (openPastSix(e.week[day]) ? 6 : -10);
   }
-  return e.eve ? 4 : -8;
+  return nature + (e.eve ? 4 : -8);
 }
 
 /** Where the guest is looking. The index is always the whole catalog, so scoping happens here. */
