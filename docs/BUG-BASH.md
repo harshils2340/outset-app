@@ -4456,6 +4456,83 @@ SSL on and the Chromium on disk.
 - A fresh checkout still has no `node_modules` at the root or in `backend`. Raised by the fifty-second run and
   every run since; this one ran `npm install` twice before anything could type-check.
 
+## 24 September 2026, sixty-ninth run (10:14 to 10:50 UTC)
+
+**Chosen, and why.** The sixty-eighth run left one sentence on the Not yet checked list naming the guest-facing
+lists nobody had ever counted: `specs`, `bring` and `highlights`. It swept the highlights. This run took the
+other two, and `bring` first, because it is the one list an app surface reformats before printing rather than
+passing through.
+
+**Found and fixed.**
+
+- **A shop's "No outside food" was printed as a thing to bring** (`12ac61b4`). "Bring " is a label for a thing,
+  and a third of what shops publish under what-to-bring is not one: it is the shop telling a guest what to do,
+  what it will let them carry in, or what they may not. 1,469 lines on 1,179 shipped listings carried the label
+  in front of a line with its own verb, on the listing page's "Who can go" column and in Otto's own bring
+  answer alike: "Bring bring your own fishing poles", "Bring guests may bring their own alcohol", "Bring dress
+  in layers", "Bring arrive 15 minutes early", "Bring sunglasses recommended". 104 of them said the flat
+  opposite of the shop's rule: "Bring no outside food or alcohol", "Bring no special equipment needed", "Bring
+  do not wear perfume". One rule now, read by both surfaces: a line carrying its own verb keeps the shop's own
+  words, and the column already prints full sentences beside these, so nothing there needs the label to read.
+- **A shop's own selling lines were headed "Requirements" on its /l/ page** (`7e95fcf1`). The static page
+  filled that section with `specs` whenever a shop stated no requirements, and `specs` is where the crawl puts
+  what a shop says about itself. So 2,369 shipped pages headed "Beautiful gardens with bicycles hidden
+  throughout the property", "Award-winning beers such as Treachery and Soleil" and "Located in downtown Anoka,
+  MN" as things a guest must do. The app has never done that: `listingFacts` sorts a spec line by what it says.
+  Reading the same split moves 5,439 lines out of the section and keeps the 807 that are real rules, and the
+  page gains a Highlights section it never had at all, so the 6,456 listings publishing their own show them
+  here too: 6,511 pages, 14,397 lines.
+- **"Must be 21 or older" never reached "Who can go"** (`8b9221b4`). The column asks a line for an age word or
+  a bare "N+", and a shop's most ordinary way of stating a floor has neither. 282 lines on 245 shipped listings
+  were filed as a thing the trip is and sold as a highlight: "Must be 21 or older to consume alcohol", "Go Kart
+  driver must be 18 or older", "Participants must be 12 years or older for Intro Lesson". On 63 of those it is
+  the only rule the shop posted, so the column said "Age, weight and kid rules are not posted on their site" on
+  the same page that led with the rule as a reason to come. `minAge` has read this cue all along, so it sits in
+  `ages.ts` beside the bare "N+" rule now, where both readers share it. A length, a lead time and a party size
+  written the same way still state no age, because what follows the number has to say it counts years.
+- **A shop's "Lunch (bring your own) (not included)" was shown in neither column** (`c90e6835`). "Bring your
+  own" is no inclusion, and the rule dropped the whole line for saying it, taking 36 shipped lines that say in
+  the same breath that the shop does not supply the thing: lunch, bottled water, sunscreen, a child seat. A
+  line that marks itself keeps its place under "Not included". An unmarked one is still a thing to bring rather
+  than a term of the price, so it stays out. 37 lines on 37 listings return, none on the included side.
+
+**Swept and clean.** All 6,575 `bring` lines on the 3,203 listings that publish one, classified by hand and
+then diffed line by line through the new rule: 1,469 change, 5,106 keep the label, and none of the ones kept
+opens with a verb, a prohibition or a second "bring". The 267 distinct spec lines the new age cue moves, every
+one held against the cue whole: not one states anything but an age. The 5,439 lines leaving the /l/ page's
+Requirements section, and the 807 that stay. All 88 `includes` lines in the catalog that say "bring your own",
+split by whether they mark themselves.
+
+**Verification.** Both type checks clean (TS5097 aside). Backend `npm test` 751 pass, 0 fail, 2 skipped, up 1
+on a new whole-page assertion. The guest suite 792 pass, 0 fail, up 15 on two new files and three extended
+ones, which include four whole-catalog assertions. The rehearsal was run, because all four fixes touch `src/lib` or
+`backend/src` and steps (d), (k2), (k5) and (k8) drive the listing facts they change. It failed the first time,
+on a test this run wrote: the catalog sweep behind the age rule resolved `public/o` off `process.cwd()`, which
+is the repo root when `npm test` runs it and the rehearsal's own temp directory when the rehearsal does
+(`f36ae410`). Green end to end after that, 53 of 53, against a local Postgres on 5433 with SSL on and the
+Chromium on disk.
+
+**Needs Harshil.**
+
+- The other 52 `includes` lines that say "bring your own" without marking themselves are two different things
+  wearing one phrase, and neither is safe to read by rule. Some name something the price does cover before the
+  clause ("Cooler so that you can bring your own drinks", "Water refills (BRING YOUR OWN water bottle)", and
+  one whole sentence listing all the tackle a charter supplies), so dropping them loses a real inclusion. Some
+  are the shop saying it supplies nothing ("NO live guide or rental equipment provided, please bring your own
+  smartphone and headphones"), which no rule here reads as an exclusion because it never writes "not included".
+  Both stay dropped for now.
+- 68 bring lines still take the label although they mention bringing, and nearly all of them read correctly for
+  it: the word sits in a subordinate clause ("Bring US Coast Guard approved life vest if bringing own", "Bring
+  clean blanket if bringing a dog in trailer"). Six do not, and they open with an adverbial before the verb
+  ("For wedding lessons, bring wedding shoes closer to the event"). Widening the rule to reach those pulls the
+  other 62 with it.
+- A line stating an age over 21 now reaches "Who can go" and is printed there in the shop's own words, but
+  `minAge` still caps at 21, so a boat rental's floor of 25 and a senior league's 50 are read by the column and
+  not by the "Ages N+" line above it. That is the same open question the sixty-eighth run raised about the cap,
+  now with the column on the other side of it.
+- A fresh checkout still has no `node_modules` at the root or in `backend`. Raised by the fifty-second run and
+  every run since; this one ran `npm install` twice before anything could type-check.
+
 ## Coverage
 
 The catalog is 48,198 listings as of the 23 September sync, 1,873 of them Viator partner rows. Counts below
@@ -4966,6 +5043,17 @@ tax, the speed and the tennis rating that only look like one, the group, the pur
 shop's own stock that size something else, and the person a real rule names in front of the number. Every way
 a shop states a minimum age in plain words, against the floor its page, its phone sheet and Otto then print.
 
+
+Every "what to bring" line the catalog publishes, all 6,575 of them on 3,203 listings, through the one rule
+the listing page's "Who can go" column and Otto's own bring answer now share: which lines are things and which
+carry a verb of their own, a shop's prohibition, its instruction, its permission and the lines that rate
+themselves, every line diffed before and after. What the static /l/ page heads "Requirements", over the 2,369
+listings that state none of their own, against the split both app surfaces read, and the Highlights section
+that page now carries. Every way a shop states an age floor as a sentence about the guest rather than as an
+age word or a bare "N+", against the column that decides who can go and the floor the page prints above it.
+Every `includes` line in the catalog that says "bring your own", split by whether it marks itself as not
+included.
+
 **Not yet checked.** Whether a Free cancellation badge should ever promise a shorter
 notice than a line in the same shop's own policy denies: 13 of the 7,104 shipped badges do, four of them a shop
 contradicting itself where a previous run deliberately chose the promise, and the rest a per-service window
@@ -4988,8 +5076,13 @@ about 30 listings and a judgement rather than a rule (see this run's Needs Harsh
 email address should be printed inside a "Who can go" bullet, which 25 partner lines carry. Whether a bare
 "Gratuities" or "Lunch", with no marker on the line at all, is an inclusion or an exclusion a flattened page
 lost the heading of, which only a re-crawl that keeps the heading settles (see the sixty-fifth run's Needs
-Harshil). What the other guest-facing lists a sweep has not counted carry: `specs` (7,435 listings, which only
-Otto and search read), `bring` (3,203) and `highlights` (6,456). Whether a partner's price should be printed in the currency its API quoted it in: both pulls ask for CAD in Canadian metros, store it, and the catalog record drops it (see this run's Needs Harshil). Whether the phone booking sheet's "Ask Outset" panel should honour the operator's Assistant switch the way the desktop page does; it is behind `AGENT_MODE_LIVE`, so no guest meets it today. Whether a partner product should be in the "near you" rails at all, given that its pin is the city's. Any partner API against its real server: no key exists here, so every affiliate row in this sweep was shaped by hand. Rezdy's reader end to end, which needs a hand-rolled HTTP/2 session because Cloudflare
+Harshil). What `specs` carries into the two readers that still take it raw: the blob Otto matches a guest's
+question against and the word index search builds, neither of which reads the split every printed surface now
+does. The 52 `includes` lines that say "bring your own" and mark themselves neither way, which are a real
+inclusion on one side and a shop supplying nothing on the other (see this run's Needs Harshil). The six bring
+lines that open with an adverbial before the verb ("For wedding lessons, bring wedding shoes closer to the
+event"), which no rule reaches without taking 62 correct ones with it. Whether a line stating an age over 21
+should reach the "Ages N+" floor now that it reaches the column (see this run's Needs Harshil). Whether a partner's price should be printed in the currency its API quoted it in: both pulls ask for CAD in Canadian metros, store it, and the catalog record drops it (see this run's Needs Harshil). Whether the phone booking sheet's "Ask Outset" panel should honour the operator's Assistant switch the way the desktop page does; it is behind `AGENT_MODE_LIVE`, so no guest meets it today. Whether a partner product should be in the "near you" rails at all, given that its pin is the city's. Any partner API against its real server: no key exists here, so every affiliate row in this sweep was shaped by hand. Rezdy's reader end to end, which needs a hand-rolled HTTP/2 session because Cloudflare
 blocks `fetch` on every `*.rezdy.com` subdomain; its price helpers and its window rule are tested directly
 instead. Whether the concierge's
 watch window should have a browser door of its own: with
