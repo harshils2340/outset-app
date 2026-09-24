@@ -241,8 +241,14 @@ export function splitIncluded(lines: string[]): { yes: string[]; no: { text: str
     const labelled = EXCLUDED_HEADING.test(tidied);
     const line = tidied.replace(labelled ? EXCLUDED_HEADING : INCLUDED_HEADING, "").replace(/^./, (c) => c.toUpperCase());
     if (!line) continue;
-    if (/\bbring your own\b/i.test(line)) continue;
     const marked = labelled || NOT_INCLUDED.test(line);
+    // A guest bringing their own is not a thing the price covers, so a line about it is no inclusion. It was
+    // dropped off the page outright, though, which took 36 shipped lines that say in the same breath that the
+    // shop does not supply it: "Lunch (bring your own) (not included)", "Bottled water (we recommend to bring
+    // your own) (not included)", "Headphones for the Digital Tour Guide App narration (please bring your own)
+    // (not included)". A guest was told nothing at all about lunch. A line that marks itself keeps its place
+    // under "Not included", which is exactly what it says.
+    if (!marked && /\bbring your own\b/i.test(line)) continue;
     const sold = !marked && COSTS_EXTRA.test(line) && !ALSO_INCLUDED.test(line);
     const side = marked || sold ? "no" : "yes";
     // Stripping the heading can leave a line reading exactly like another bullet, so the same words arrive

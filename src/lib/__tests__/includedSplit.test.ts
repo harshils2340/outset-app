@@ -256,3 +256,25 @@ test("Otto does not read a shop's exclusions out as things included", () => {
   const second = companyReply({ item: allOut, contact: null }, "what's included?");
   assert.match(second, /Not included/i, `Otto said nothing where the shop said something: ${second}`);
 });
+
+/**
+ * "Bring your own" is no inclusion, and the whole line was dropped off the page for saying it. 36 shipped
+ * lines say in the same breath that the shop does not supply it, and those were shown nowhere at all:
+ * "Lunch (bring your own) (not included)", "Bottled water (we recommend to bring your own) (not included)",
+ * "If you have a kid under 7 years old, please bring your own child seat. We will not provide one (not
+ * included)". A guest was told nothing about lunch, water or the child seat.
+ */
+test("a line that says bring your own and says it is not included keeps its place under Not included", () => {
+  const split = splitIncluded([
+    "Bottled water",
+    "Lunch (bring your own) (not included)",
+    "Please bring your own sunscreen (not included)",
+    "Bring your own drinks and snacks onboard",
+  ]);
+  assert.deepEqual(split.yes, ["Bottled water"], "a bring-your-own line was ticked as included");
+  const no = split.no.map((n) => n.text);
+  assert.ok(no.some((t) => /^Lunch/.test(t)), "the shop's own exclusion is still shown nowhere: " + no.join(" | "));
+  assert.ok(no.some((t) => /sunscreen/i.test(t)), "the shop's own exclusion is still shown nowhere: " + no.join(" | "));
+  // Unmarked, it is a thing to bring rather than a term of the price, and the page has a list for those.
+  assert.ok(!no.some((t) => /drinks and snacks/i.test(t)), "an unmarked bring-your-own line became a term of the price");
+});
