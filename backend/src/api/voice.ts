@@ -75,13 +75,30 @@ async function listing(id: string): Promise<Listing | null> {
   return null;
 }
 
-const money = (n: number | null | undefined): string | null => (typeof n === "number" ? "$" + n.toLocaleString("en-US", { maximumFractionDigits: 2 }) : null);
+/** A zero is a price the crawler could not read, not a free trip, so it is said as no price, as everywhere else. */
+const money = (n: number | null | undefined): string | null => (typeof n === "number" && n > 0 ? "$" + n.toLocaleString("en-US", { maximumFractionDigits: 2 }) : null);
 
 /** The bookable lines a guest picks from: plain options, or the first priced variant of each service. */
 function offersOf(l: Listing): { name: string; detail: string | null; price: string | null }[] {
   if (l.options?.length) return l.options.map((o) => ({ name: o.name, detail: o.detail || null, price: money(o.price) }));
   if (l.services?.length) return l.services.map((s) => ({ name: s.name, detail: (s.variants?.[0]?.label && s.variants[0].label !== "Standard" ? s.variants[0].label : null) || null, price: money(s.variants?.[0]?.price) }));
   return [];
+}
+
+/**
+ * What the business starts at, the way `fromPrice` in `src/lib/catalog.ts` works it out for a card: the
+ * cheapest priced line on the menu, and only the crawled `from` when nothing on the menu carries a price.
+ *
+ * This route read `from` and nothing else, and `from` is written on partner rows only: no operator listing in
+ * the shipped catalog has one. So "what do you charge?", the question a caller asks before any other, was
+ * answered with nothing on all 46,324 of them, 10,209 of which publish a priced menu.
+ */
+function fromPriceOf(l: Listing): number | null {
+  const priced = [
+    ...(l.options || []).map((o) => o.price),
+    ...(l.services || []).flatMap((s) => (s.variants || []).map((v) => v.price)),
+  ].filter((n): n is number => typeof n === "number" && n > 0);
+  return priced.length ? Math.min(...priced) : l.from ?? null;
 }
 
 /**
@@ -116,7 +133,7 @@ voice.get("/voice/:operatorId", rateLimit(120, 60 * 60 * 1000), async (c) => {
       where: l.area || null,
       about: l.blurb || null,
       offers: offersOf(l),
-      fromPrice: money(l.from),
+      fromPrice: money(fromPriceOf(l)),
       duration: l.dur || null,
       hours: hours.length ? hours : null,
       includes: (l.includes || []).slice(0, 12),

@@ -27,6 +27,14 @@ const reel = {
   contact: { phone: "+17275551212", website: "https://reeltime.com" },
 };
 
+/** A shipped operator record's real shape: a priced menu and no `from` of its own. */
+const menuOnly = {
+  id: "o-menu-only-com",
+  title: "Gulf Coast Parasail",
+  area: "Clearwater Beach, FL",
+  options: [{ name: "Ride along", price: 0 }, { name: "Single flight", price: 400 }, { name: "Tandem flight", price: 250 }],
+};
+
 /** A partner's product: shown under licence, booked on the partner's site, with no operator of ours behind it. */
 const partner = {
   id: "a-viator-100118p1",
@@ -41,6 +49,7 @@ globalThis.fetch = (async (input: string | URL | Request) => {
   const url = String(input instanceof Request ? input.url : input);
   if (url === "https://onoutset.com/o/o-reeltime-com.json") return new Response(JSON.stringify(reel), { status: 200, headers: { "content-type": "application/json" } });
   if (url === "https://onoutset.com/o/a-viator-100118p1.json") return new Response(JSON.stringify(partner), { status: 200, headers: { "content-type": "application/json" } });
+  if (url === "https://onoutset.com/o/o-menu-only-com.json") return new Response(JSON.stringify(menuOnly), { status: 200, headers: { "content-type": "application/json" } });
   // Everything else (the live-index availability reads for a non-vendor operator) is a miss, so availability is not live.
   return new Response("not found", { status: 404 });
 }) as typeof fetch;
@@ -75,6 +84,15 @@ test("an unknown operator is a 404, and a bad id a 400", async () => {
   assert.equal((await voice.request("http://localhost/voice/o-does-not-exist")).status, 404);
   assert.equal((await voice.request("http://localhost/voice/BAD ID")).status, 400);
   assert.equal((await voice.request("http://localhost/voice/o-reeltime-com/availability?from=nope")).status, 400);
+});
+
+test("the from price is the cheapest line on the menu, and a zero is no price rather than free", async () => {
+  // No operator listing in the shipped catalog carries a crawled `from`: that field is written on partner rows
+  // only. So the price a caller asks for first has to come off the menu, exactly as a card works it out.
+  const res = await voice.request("http://localhost/voice/o-menu-only-com");
+  const { business } = (await res.json()) as { business: { fromPrice: string | null; offers: { name: string; price: string | null }[] } };
+  assert.equal(business.fromPrice, "$250", "the cheapest priced line, not the first one and not nothing");
+  assert.deepEqual(business.offers.map((o) => o.price), [null, "$400", "$250"], "a zero is a price we could not read");
 });
 
 test("a partner's product has no phone agent, on either route", async () => {
