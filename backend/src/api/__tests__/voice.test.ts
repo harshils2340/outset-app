@@ -27,10 +27,20 @@ const reel = {
   contact: { phone: "+17275551212", website: "https://reeltime.com" },
 };
 
+/** A partner's product: shown under licence, booked on the partner's site, with no operator of ours behind it. */
+const partner = {
+  id: "a-viator-100118p1",
+  title: "Unforgettable Whistler Full-Day Private Tour",
+  area: "Vancouver, BC",
+  options: [{ name: "Private tour", price: 799 }],
+  affiliate: { source: "viator", label: "Viator", url: "https://www.viator.com/tours/x?pid=P00321495" },
+};
+
 const realFetch = globalThis.fetch;
 globalThis.fetch = (async (input: string | URL | Request) => {
   const url = String(input instanceof Request ? input.url : input);
   if (url === "https://onoutset.com/o/o-reeltime-com.json") return new Response(JSON.stringify(reel), { status: 200, headers: { "content-type": "application/json" } });
+  if (url === "https://onoutset.com/o/a-viator-100118p1.json") return new Response(JSON.stringify(partner), { status: 200, headers: { "content-type": "application/json" } });
   // Everything else (the live-index availability reads for a non-vendor operator) is a miss, so availability is not live.
   return new Response("not found", { status: 404 });
 }) as typeof fetch;
@@ -65,6 +75,16 @@ test("an unknown operator is a 404, and a bad id a 400", async () => {
   assert.equal((await voice.request("http://localhost/voice/o-does-not-exist")).status, 404);
   assert.equal((await voice.request("http://localhost/voice/BAD ID")).status, 400);
   assert.equal((await voice.request("http://localhost/voice/o-reeltime-com/availability?from=nope")).status, 400);
+});
+
+test("a partner's product has no phone agent, on either route", async () => {
+  // backend/AGENTS.md: an affiliate row is never an operator, and gets no Otto. Its facts and calendar are the
+  // partner's, licensed for the page that says so, and there is no operator behind it to answer a call.
+  const facts = await voice.request("http://localhost/voice/a-viator-100118p1");
+  assert.equal(facts.status, 409);
+  assert.match(((await facts.json()) as { error: string }).error, /booked on Viator/);
+  const av = await voice.request("http://localhost/voice/a-viator-100118p1/availability");
+  assert.equal(av.status, 409);
 });
 
 /**

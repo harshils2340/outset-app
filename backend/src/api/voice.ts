@@ -84,11 +84,27 @@ function offersOf(l: Listing): { name: string; detail: string | null; price: str
   return [];
 }
 
+/**
+ * A partner's product is not a business with a phone.
+ *
+ * `backend/AGENTS.md`: "An affiliate row is never an operator: no claim link, no outreach, no Instant Book,
+ * no request, no Otto." Otto is sold to an operator to answer that operator's own calls, and a Viator row is
+ * a product listed under licence with no operator behind it on our side: its photos, descriptions, prices and
+ * calendar are the partner's, shown on a page that says so and books on their site. Served here, those facts
+ * would be read out on a call with none of that, so the route refuses for the same reason and in the same
+ * words the booking route already refuses one.
+ */
+function partnerRefusal(l: Listing): string | null {
+  return l.affiliate ? "This experience is booked on " + (l.affiliate.label || "the partner's site") + ", not on Outset, so it has no Outset phone agent" : null;
+}
+
 voice.get("/voice/:operatorId", rateLimit(120, 60 * 60 * 1000), async (c) => {
   const id = String(c.req.param("operatorId") ?? "");
   if (!ID.test(id)) return c.json({ error: "bad id" }, 400);
   const l = await listing(id);
   if (!l || !l.title) return c.json({ error: "not found" }, 404);
+  const no = partnerRefusal(l);
+  if (no) return c.json({ error: no }, 409);
 
   // Only what is published on the listing. A missing field is said as missing so the agent offers to have a
   // person confirm, exactly as the on-page assistant does, rather than inventing an answer on a live call.
@@ -109,9 +125,8 @@ voice.get("/voice/:operatorId", rateLimit(120, 60 * 60 * 1000), async (c) => {
       cancellation: l.cancellation || null,
       freeCancellation: !!l.fc,
       phone: l.contact?.phone || null,
-      // Where a booking is completed: the partner's page for an affiliate product, otherwise the Outset listing.
-      bookingUrl: l.affiliate?.url || `${SITE}#o=${encodeURIComponent(l.id)}`,
-      bookedElsewhere: l.affiliate ? l.affiliate.label : null,
+      // Where a booking is completed. Only ever our own listing: a partner's product never reaches here.
+      bookingUrl: `${SITE}#o=${encodeURIComponent(l.id)}`,
     },
     speak: {
       onlyPublishedFacts: true,
@@ -168,6 +183,8 @@ voice.get("/voice/:operatorId/availability", rateLimit(120, 60 * 60 * 1000), asy
   if (fromRaw && (!DATE.test(fromRaw) || Number.isNaN(Date.parse(fromRaw + "T00:00:00Z")))) return c.json({ error: "from must be YYYY-MM-DD" }, 400);
   // The shop's own zone, from the same published record the facts route reads, so "today" is today there.
   const l = await listing(id);
+  const no = l ? partnerRefusal(l) : null;
+  if (no) return c.json({ error: no }, 409);
   const zone = zoneForArea(l?.area, l?.lat, l?.lon);
   const from = fromRaw || zonedNow(zone).date;
   const days = Math.min(Math.max(Number(c.req.query("days")) || 14, 1), MAX_DAYS);
