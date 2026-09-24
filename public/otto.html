@@ -174,15 +174,22 @@
     .stat b { display: block; font-weight: 600; font-size: 2rem; letter-spacing: -.03em; color: var(--accent); line-height: 1; margin-bottom: .35rem; }
     .stat span { color: var(--ink-soft); font-size: .9rem; }
 
-    .reviews { padding: 2rem 0 0; overflow: hidden; }
-    .reviews .lbl { text-align: center; font-size: .78rem; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-soft); margin-bottom: 1rem; }
-    .track { display: flex; gap: 1rem; width: max-content; animation: slide 60s linear infinite; }
+    .reviews { padding: 2.75rem 0 .5rem; overflow: hidden; }
+    .reviews .lbl { text-align: center; font-size: .78rem; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-soft); font-weight: 600; margin-bottom: 1.5rem; }
+    .reviews .rows { display: flex; flex-direction: column; gap: .9rem; -webkit-mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent); mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent); }
+    .track { display: flex; gap: .9rem; width: max-content; animation: slide 50s linear infinite; }
+    .track.rev { animation-name: slideRev; animation-duration: 58s; }
     .track:hover { animation-play-state: paused; }
     @keyframes slide { from { transform: translateX(0); } to { transform: translateX(-50%); } }
-    .rv { width: 21rem; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-l); padding: 1.1rem 1.2rem; font-size: .94rem; }
-    .rv .stars { color: #D2924A; letter-spacing: .05em; margin-bottom: .35rem; }
-    .rv q { quotes: "\201C" "\201D"; }
-    .rv .by { display: block; margin-top: .55rem; color: var(--ink-soft); font-size: .84rem; }
+    @keyframes slideRev { from { transform: translateX(-50%); } to { transform: translateX(0); } }
+    .rv { width: 20rem; flex: none; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-l); padding: 1.1rem 1.2rem; font-size: .92rem; box-shadow: 0 1px 2px rgba(0,0,0,.03), 0 10px 24px -16px rgba(0,0,0,.14); }
+    .rv .top { display: flex; align-items: center; gap: .65rem; margin-bottom: .65rem; }
+    .rv .av { width: 34px; height: 34px; border-radius: 50%; background: var(--accent-tint); color: var(--accent); display: grid; place-items: center; font-weight: 700; font-size: .8rem; flex: none; }
+    .rv .who { min-width: 0; }
+    .rv .who b { display: block; font-size: .89rem; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .rv .who span { display: block; color: var(--ink-soft); font-size: .78rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .rv .stars { color: #D2924A; letter-spacing: .05em; font-size: .84rem; margin-bottom: .4rem; }
+    .rv q { quotes: "\201C" "\201D"; line-height: 1.5; color: var(--ink); }
 
     .faq { display: grid; grid-template-columns: 1.1fr .9fr; gap: 3rem; align-items: start; }
     @media (max-width: 900px) { .faq { grid-template-columns: 1fr; } }
@@ -308,7 +315,10 @@
 
   <div class="reviews" id="reviews" hidden>
     <p class="lbl">What operators say</p>
-    <div class="track" id="track"></div>
+    <div class="rows">
+      <div class="track" id="track1"></div>
+      <div class="track rev" id="track2"></div>
+    </div>
   </div>
 
   <section id="what">
@@ -419,17 +429,48 @@
       addEventListener("scroll", function () { nav.classList.toggle("scrolled", scrollY > 8); }, { passive: true });
 
       /* Real reviews only: { quote, name, business, place }. Empty list, no marquee. Fabricated testimonials are
-         illegal under the FTC fake-reviews rule and lose the sale the first time a prospect looks a name up. */
+         illegal under the FTC fake-reviews rule and lose the sale the first time a prospect looks a name up. Fill
+         this in when the real ones are in hand; nothing here ever stands in for them, on this page or a copy of it. */
       var reviews = [];
+      /* ?previewReviews=1 renders the marquee's layout and motion with clearly-fake sample cards, for checking
+         the design before real quotes exist. It never runs without that flag, so a real visitor never sees it,
+         and every card says "Sample" so it can't be mistaken for a genuine review even mid-build. */
+      var sampleReviews = [
+        { quote: "Sample review text goes here. Replace before this ships.", name: "Sample", business: "Sample business", place: "Sample", stars: 5 },
+        { quote: "Another placeholder quote, same length as a real one would run.", name: "Sample", business: "Sample business", place: "Sample", stars: 5 },
+        { quote: "Placeholder only. Swap in a real operator's words here.", name: "Sample", business: "Sample business", place: "Sample", stars: 4 },
+        { quote: "This card is a layout stand-in, not a real testimonial.", name: "Sample", business: "Sample business", place: "Sample", stars: 5 },
+      ];
       (function () {
-        if (!reviews.length) return;
-        var wrap = document.getElementById("reviews"), track = document.getElementById("track");
-        reviews.concat(reviews).forEach(function (r) {
-          var d = document.createElement("div"); d.className = "rv";
-          d.innerHTML = '<div class="stars">★★★★★</div><q></q><span class="by"></span>';
-          d.querySelector("q").textContent = r.quote; d.querySelector(".by").textContent = r.name + ", " + r.business + (r.place ? " · " + r.place : "");
-          track.appendChild(d);
-        });
+        var previewing = /(^|[?&])previewReviews=1(&|$)/.test(location.search);
+        var list = reviews.length ? reviews : (previewing ? sampleReviews : []);
+        if (!list.length) return;
+        var wrap = document.getElementById("reviews"), t1 = document.getElementById("track1"), t2 = document.getElementById("track2");
+        if (!reviews.length && previewing) {
+          var tag = document.createElement("p");
+          tag.textContent = "Preview only — sample cards, not real reviews. Remove ?previewReviews=1 to hide.";
+          tag.style.cssText = "text-align:center;font-size:.78rem;color:#b45309;margin:-.9rem 0 1rem";
+          wrap.insertBefore(tag, wrap.querySelector(".rows"));
+        }
+        function initials(name) {
+          return name.split(/\s+/).filter(Boolean).slice(0, 2).map(function (w) { return w[0].toUpperCase(); }).join("");
+        }
+        function fill(track, rows) {
+          rows.concat(rows).forEach(function (r) {
+            var d = document.createElement("div"); d.className = "rv";
+            d.innerHTML = '<div class="top"><span class="av"></span><div class="who"><b></b><span></span></div></div><div class="stars"></div><q></q>';
+            d.querySelector(".av").textContent = initials(r.name);
+            d.querySelector(".who b").textContent = r.name;
+            d.querySelector(".who span").textContent = r.business + (r.place ? " · " + r.place : "");
+            d.querySelector(".stars").textContent = "★".repeat(r.stars || 5) + "☆".repeat(5 - (r.stars || 5));
+            d.querySelector("q").textContent = r.quote;
+            track.appendChild(d);
+          });
+        }
+        // Two rows, split evenly, so the loop doesn't repeat the same card directly above itself.
+        var mid = Math.ceil(list.length / 2);
+        fill(t1, list.slice(0, mid));
+        fill(t2, list.slice(mid).length ? list.slice(mid) : list.slice(0, mid));
         wrap.hidden = false;
       })();
 
