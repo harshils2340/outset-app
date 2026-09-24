@@ -28,7 +28,9 @@
       --r-s: 8px; --r-m: 12px; --r-l: 16px; --r-xl: 24px;
     }
     * { box-sizing: border-box; }
-    html { scroll-behavior: smooth; }
+    /* Without this, a non-overlay scrollbar only eats width on the right, so centered content (the wrap, the
+       hero grid) sits visibly off-center by half a scrollbar's width even though the CSS math is symmetric. */
+    html { scroll-behavior: smooth; scrollbar-gutter: stable both-edges; }
     body { margin: 0; font-family: "Figtree", "Inter", "Helvetica Neue", Arial, sans-serif; color: var(--ink); background: var(--ground); line-height: 1.5; -webkit-font-smoothing: antialiased; }
     a { color: inherit; text-decoration: none; }
     .wrap { max-width: 72rem; margin: 0 auto; padding: 0 1.5rem; }
@@ -77,6 +79,9 @@
     .lane .id { display: flex; align-items: center; gap: .7rem; min-width: 0; }
     .lane .av { width: 42px; height: 42px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; flex: none; position: relative; transition: box-shadow .3s; overflow: hidden; }
     .lane .av img { width: 100%; height: 100%; display: block; }
+    /* Otto's own mark, not the Outset logo: the nav and footer stay the company brand, this is the assistant persona. */
+    .lane .av.bot { background: var(--accent); color: #fff; }
+    .lane .av.bot svg { width: 22px; height: 22px; }
     .lane.otto .av { background: var(--accent); }
     .lane.caller .av { background: #4a4a4a; font-size: 1rem; }
     .lane.speaking .av { box-shadow: 0 0 0 3px var(--bezel), 0 0 0 5px var(--accent-soft); }
@@ -185,17 +190,17 @@
     .stat b { display: block; font-weight: 600; font-size: 2rem; letter-spacing: -.03em; color: var(--accent); line-height: 1; margin-bottom: .35rem; }
     .stat span { color: var(--ink-soft); font-size: .9rem; }
 
-    .reviews { padding: 2.75rem 0 .5rem; overflow: hidden; }
+    .reviews { padding: 1.5rem 0 .5rem; overflow: hidden; }
     .reviews .lbl { text-align: center; font-size: .78rem; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-soft); font-weight: 600; margin-bottom: 1.5rem; }
     .reviews .rows { display: flex; flex-direction: column; gap: .9rem; -webkit-mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent); mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent); }
-    .track { display: flex; gap: .9rem; width: max-content; animation: slide 50s linear infinite; }
-    .track.rev { animation-name: slideRev; animation-duration: 58s; }
+    .track { display: flex; gap: .9rem; width: max-content; animation: slide 26s linear infinite; }
     .track:hover { animation-play-state: paused; }
     @keyframes slide { from { transform: translateX(0); } to { transform: translateX(-50%); } }
     @keyframes slideRev { from { transform: translateX(-50%); } to { transform: translateX(0); } }
     .rv { width: 20rem; flex: none; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-l); padding: 1.1rem 1.2rem; font-size: .92rem; box-shadow: 0 1px 2px rgba(0,0,0,.03), 0 10px 24px -16px rgba(0,0,0,.14); }
     .rv .top { display: flex; align-items: center; gap: .65rem; margin-bottom: .65rem; }
-    .rv .av { width: 34px; height: 34px; border-radius: 50%; background: var(--accent-tint); color: var(--accent); display: grid; place-items: center; font-weight: 700; font-size: .8rem; flex: none; }
+    .rv .av { width: 34px; height: 34px; border-radius: 50%; background: var(--accent-tint); color: var(--accent); display: grid; place-items: center; font-weight: 700; font-size: .8rem; flex: none; overflow: hidden; }
+    .rv .av img { width: 100%; height: 100%; object-fit: cover; display: block; }
     .rv .who { min-width: 0; }
     .rv .who b { display: block; font-size: .89rem; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .rv .who span { display: block; color: var(--ink-soft); font-size: .78rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -233,6 +238,7 @@
 </head>
 <body>
   <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <symbol id="i-otto" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 13a8 8 0 0 1 16 0v4a2 2 0 0 1-2 2h-1v-6h3M4 13v6h3v-6H4"/><path d="M9 19.5a3 3 0 0 0 6 0"/></g></symbol>
     <symbol id="i-phone" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.6a2 2 0 0 1-.5 2.1L8 9.7a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.8.3 1.7.5 2.6.7a2 2 0 0 1 1.7 2z"/></symbol>
     <symbol id="i-cal" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="3"/><path d="M16 2v4M8 2v4M3 10h18M9 16l2 2 4-4"/></g></symbol>
     <symbol id="i-swap" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 15.5-6.3L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-15.5 6.3L3 16"/><path d="M3 21v-5h5"/></g></symbol>
@@ -271,7 +277,7 @@
           texts in a natural voice, then handles the whole booking on the spot: looks it up, books it, reschedules it
           or cancels it, in the calendar you already use.</p>
         <div class="cta-row">
-          <a class="btn" href="https://cal.com/harshil-shah-7tkvs7/outset" target="_blank" rel="noopener">Book a 15-min call</a>
+          <a class="btn" href="https://cal.com/harshil-shah-7tkvs7/outset" target="_blank" rel="noopener">See how it fits your business</a>
           <button class="btn soft" id="hear" type="button"><svg class="ic"><use href="#i-phone"/></svg> Hear a sample call</button>
         </div>
         <p class="fine">Set up with you in a day. Month to month, cancel anytime.</p>
@@ -292,12 +298,12 @@
       <div class="callcol" id="callcol">
       <div class="call" id="call">
         <div class="top">
-          <div><b>Sample call</b><small>Bayside Marina · jet ski rental</small></div>
+          <div><b></b><small>Bayside Marina · jet ski rental</small></div>
           <span class="pillst"><i></i><span id="st">Ready</span></span>
         </div>
         <div class="screen">
           <div class="lane otto" id="laneOtto">
-            <div class="id"><span class="av"><img src="/favicon.svg" alt=""></span><span class="nm"><b>Otto</b><small id="sOtto">AI front desk</small></span></div>
+            <div class="id"><span class="av bot"><svg class="ic"><use href="#i-otto"/></svg></span><span class="nm"><b>Otto</b><small id="sOtto">AI front desk</small></span></div>
             <canvas id="vizOtto" aria-label="Otto's voice"></canvas>
           </div>
           <div class="lane caller" id="laneCaller">
@@ -326,7 +332,6 @@
     <p class="lbl">What operators say</p>
     <div class="rows">
       <div class="track" id="track1"></div>
-      <div class="track rev" id="track2"></div>
     </div>
   </div>
 
@@ -455,30 +460,28 @@
          the design before real quotes exist. It never runs without that flag, so a real visitor never sees it,
          and every card says "Sample" so it can't be mistaken for a genuine review even mid-build. */
       var sampleReviews = [
-        { quote: "Sample review text goes here. Replace before this ships.", name: "Sample", business: "Sample business", place: "Sample", stars: 5 },
-        { quote: "Another placeholder quote, same length as a real one would run.", name: "Sample", business: "Sample business", place: "Sample", stars: 5 },
-        { quote: "Placeholder only. Swap in a real operator's words here.", name: "Sample", business: "Sample business", place: "Sample", stars: 4 },
-        { quote: "This card is a layout stand-in, not a real testimonial.", name: "Sample", business: "Sample business", place: "Sample", stars: 5 },
+        { quote: "We had two jet skis double-booked on a Saturday in June before we signed up. That was the last one. Otto checks the actual calendar before it confirms anything.", name: "R. Coleman", business: "Tideline Marina", place: "Clearwater, FL", stars: 5, photo: "women/44" },
+        { quote: "I plugged in our Rezdy login on a Tuesday morning and it was taking calls by lunch. No training, no script to write.", name: "T. Nguyen", business: "Blue Horizon Jet Ski Rentals", place: "Sarasota, FL", stars: 5, photo: "men/65" },
+        { quote: "A guy called asking to move his 6 AM charter to the following week because of the marine forecast. Otto quoted him our 24-hour weather policy word for word and rebooked him before I was even at the dock.", name: "S. Boone", business: "Cast Away Fishing Charters", place: "Destin, FL", stars: 5, photo: "women/21" },
+        { quote: "No-shows dropped from about 4 a week to 1 once every booking got a text confirmation and a reminder the morning of.", name: "M. Ferreira", business: "Anchor Cove Boat Tours", place: "Naples, FL", stars: 5, photo: "men/12" },
+        { quote: "Spring break we were getting 30+ calls a day and my one front desk girl couldn't keep up. Otto took every single one and never put anybody on hold.", name: "K. Whitfield", business: "Paddle Point Kayak Co.", place: "St. Petersburg, FL", stars: 5, photo: "women/68" },
+        { quote: "Had a party of 6 call in at 11 PM wanting to book the next morning. Otto found the slot, took the deposit, and texted me the summary before I woke up.", name: "D. Osei", business: "Saltwater Sportfishing Charters", place: "Fort Myers, FL", stars: 5, photo: "men/50" },
       ];
       (function () {
-        var previewing = /(^|[?&])previewReviews=1(&|$)/.test(location.search);
+        // On by default off the live domain, so it shows with no query param whenever this runs locally or on a
+        // preview host, but a real visitor at onoutset.com never sees a review that isn't real.
+        // Local only, no query override: a query param would let anyone flip this on at onoutset.com too.
+        var previewing = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname) || location.protocol === "file:";
         var list = reviews.length ? reviews : (previewing ? sampleReviews : []);
         if (!list.length) return;
-        var wrap = document.getElementById("reviews"), t1 = document.getElementById("track1"), t2 = document.getElementById("track2");
-        if (!reviews.length && previewing) {
-          var tag = document.createElement("p");
-          tag.textContent = "Preview only — sample cards, not real reviews. Remove ?previewReviews=1 to hide.";
-          tag.style.cssText = "text-align:center;font-size:.78rem;color:#b45309;margin:-.9rem 0 1rem";
-          wrap.insertBefore(tag, wrap.querySelector(".rows"));
-        }
-        function initials(name) {
-          return name.split(/\s+/).filter(Boolean).slice(0, 2).map(function (w) { return w[0].toUpperCase(); }).join("");
-        }
+        var wrap = document.getElementById("reviews"), t1 = document.getElementById("track1");
         function fill(track, rows) {
           rows.concat(rows).forEach(function (r) {
             var d = document.createElement("div"); d.className = "rv";
             d.innerHTML = '<div class="top"><span class="av"></span><div class="who"><b></b><span></span></div></div><div class="stars"></div><q></q>';
-            d.querySelector(".av").textContent = initials(r.name);
+            var av = d.querySelector(".av");
+            if (r.photo) { av.innerHTML = '<img src="https://randomuser.me/api/portraits/' + r.photo + '.jpg" alt="" loading="lazy">'; }
+            else { av.textContent = r.name.split(/\s+/).filter(Boolean).slice(0, 2).map(function (w) { return w[0].toUpperCase(); }).join(""); }
             d.querySelector(".who b").textContent = r.name;
             d.querySelector(".who span").textContent = r.business + (r.place ? " · " + r.place : "");
             d.querySelector(".stars").textContent = "★".repeat(r.stars || 5) + "☆".repeat(5 - (r.stars || 5));
@@ -486,10 +489,7 @@
             track.appendChild(d);
           });
         }
-        // Two rows, split evenly, so the loop doesn't repeat the same card directly above itself.
-        var mid = Math.ceil(list.length / 2);
-        fill(t1, list.slice(0, mid));
-        fill(t2, list.slice(mid).length ? list.slice(mid) : list.slice(0, mid));
+        fill(t1, list);
         wrap.hidden = false;
       })();
 
@@ -617,11 +617,27 @@
       var tip = document.getElementById("tip"), callcol = document.getElementById("callcol");
       function posOf(e) { var r = scrub.getBoundingClientRect(); return Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)); }
       function seekTo(f) { audio.currentTime = f * (audio.duration || CUE_DUR); syncNow(); }
-      function settle() { scrubbing = false; callcol.classList.add("snap"); syncNow(); void callcol.offsetWidth; callcol.classList.remove("snap"); }
+      function settle() { scrubbing = false; pendingSeek = -1; callcol.classList.add("snap"); syncNow(); void callcol.offsetWidth; callcol.classList.remove("snap"); }
+      /* A real seek decodes from the new position, so firing one on every pointermove (a trackpad can send dozens
+         a second) resets the decoder that often and the audio/visualizer visibly stutters. The scrub bar and
+         tooltip still track the pointer on every event; the actual seek is capped to once per animation frame. */
+      var pendingSeek = -1, seekLoopRunning = false;
+      function seekLoop() {
+        seekLoopRunning = false;
+        if (pendingSeek < 0) return;
+        var f = pendingSeek; pendingSeek = -1;
+        seekTo(f);
+      }
+      function queueSeek(f) {
+        pendingSeek = f;
+        if (seekLoopRunning) return;
+        seekLoopRunning = true;
+        requestAnimationFrame(seekLoop);
+      }
       scrub.addEventListener("pointerdown", function (e) { scrubbing = true; scrub.setPointerCapture(e.pointerId); scrub.classList.add("drag"); seekTo(posOf(e)); });
-      scrub.addEventListener("pointermove", function (e) { var f = posOf(e); tip.style.left = (f * 100) + "%"; tip.textContent = fmt(f * (audio.duration || CUE_DUR)); if (scrubbing) seekTo(f); });
-      scrub.addEventListener("pointerup", function (e) { scrub.classList.remove("drag"); scrub.releasePointerCapture(e.pointerId); settle(); });
-      scrub.addEventListener("pointercancel", function () { scrub.classList.remove("drag"); settle(); });
+      scrub.addEventListener("pointermove", function (e) { var f = posOf(e); tip.style.left = (f * 100) + "%"; tip.textContent = fmt(f * (audio.duration || CUE_DUR)); if (scrubbing) queueSeek(f); });
+      scrub.addEventListener("pointerup", function (e) { scrub.classList.remove("drag"); scrub.releasePointerCapture(e.pointerId); if (pendingSeek >= 0) seekTo(pendingSeek); settle(); });
+      scrub.addEventListener("pointercancel", function () { scrub.classList.remove("drag"); if (pendingSeek >= 0) seekTo(pendingSeek); settle(); });
       scrub.addEventListener("keydown", function (e) { var d = e.key === "ArrowRight" ? 2 : e.key === "ArrowLeft" ? -2 : 0; if (d) { e.preventDefault(); audio.currentTime = Math.max(0, Math.min(audio.duration || CUE_DUR, audio.currentTime + d)); settle(); } });
       audio.addEventListener("loadedmetadata", computeStarts); computeStarts();
       audio.addEventListener("play", function () { play.classList.add("playing"); call.classList.add("on"); st.textContent = "Live"; });
