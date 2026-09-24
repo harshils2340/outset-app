@@ -516,6 +516,53 @@ function classify(line: string): "who" | "waiver" | "both" | "about" {
   return "about";
 }
 
+/**
+ * A menu row belongs under "Who can go" only when its own words state a rule: an age, a height, or an adult's
+ * company. Asking for the word alone ("child", "junior", "kids") matched every price tier on a family menu, so
+ * 1,465 rows across the shipped catalog were printed as the shop's eligibility rule: "Kids Karate.",
+ * "Admission: Children.", "Tickets: Child.", "Rental Fleet: Child Seat.", "Junior Explorers: 35 hours.". On 906
+ * listings one of those was the only posted line in the column, and it headed it, so the listing page, the phone
+ * booking sheet, the compare table's "Who can go" row and the dashboard's "What Otto knows" panel all told a
+ * guest a price tier's name as a rule about who may come. Dropping them leaves the column's honest gap, which
+ * is what the page already says for a shop that posts no rule.
+ */
+const KID_ROW = /\b(child(?:ren)?|junior|kids?|ages?\s*\d|adult required|adult & junior)/i;
+/** "Ages 3+", "aged 2 to 16", and the long way round a shop writes the same thing, "under the age of 5". */
+const AGE_CUED = /\b(?:ages?|aged|yrs?|years?)\b\s*(?:of\s+)?[^a-z0-9]{0,3}\d/i;
+const AGE_BOUND =
+  /\b(?:under|over|younger than|older than|below|above)\s*\d{1,2}\b|\b\d{1,2}\s*(?:&|and|or)\s*(?:under|younger|older|over|up|above|below)\b|\b\d{1,2}\s*(?:\+|and up)\b/i;
+const HEIGHT_RULE = /\b\d{2,3}\s*(?:"|''|″|in\.|inch(?:es)?\b|cm\b)|\bmin(?:imum)?\.?\s*height\b/i;
+const ACCOMPANIED = /\badults?\s+(?:required|must|supervision)|must be accompanied|accompanied by (?:an? )?(?:adult|parent|guardian)|adult & junior/i;
+/**
+ * "Children (6-12)", "Child 4 to 12", "Adults 13+": the person word with its number behind it. One word may
+ * sit between, because a shop names the ticket as well as who buys it: "Child admission (3-10)".
+ */
+const WHO_THEN_NUMBER = /\b(?:child(?:ren)?|kids?|junior|youth|adults?|teens?|infants?|toddlers?|seniors?|students?)\b(?:\s+[a-z]+)?[^a-z0-9]{0,3}(?:ages?\s*)?(\d[\d.,]*)/gi;
+/**
+ * The same shape counting something that is not years: a duration ("Trips For Kids 3.5 hours", "Small children
+ * 4-hour private charter"), a round of golf ("Junior 18-hole"), a school grade ("children 5th-8th grade") or
+ * more people ("2 adults + 3 children"). A currency sign in front is a fare, not an age: "$45 per child".
+ */
+const NOT_AN_AGE_AFTER =
+  /^(?:st|nd|rd|th|[:/]\d|\s*%|\s*[-–]?\s*(?:hour|hr|minute|min|day|night|week|month|session|class(?:es)?|lesson|course|hole|lap|mile|km|foot|feet|ft|round|trip|game|ticket|pass|credit|person|people|guest|player|passenger|seat|adult|child(?:ren)?|kid)s?\b)/i;
+/** A fare, or a head count the row is counting up: "$45 per child", "2 adults and 2 small children". */
+const FARE_BEFORE = /(?:[$£€]|\b(?:up to|for|max|maximum|min|minimum|and|or|plus|with|seats?|holds|fits|sleeps))\s*$/i;
+
+function statesAnAgeRule(blob: string): boolean {
+  if (AGE_CUED.test(blob) || AGE_BOUND.test(blob) || HEIGHT_RULE.test(blob) || ACCOMPANIED.test(blob)) return true;
+  WHO_THEN_NUMBER.lastIndex = 0;
+  let m: RegExpExecArray | null;
+  while ((m = WHO_THEN_NUMBER.exec(blob))) {
+    const before = blob.slice(0, m.index + m[0].length - m[1].length);
+    // Nobody is 2026 or 650, so a year and a weight limit are not the age this row is naming.
+    if (!(Number(m[1].replace(/,/g, "")) <= 100)) continue;
+    if (FARE_BEFORE.test(before)) continue;
+    if (NOT_AN_AGE_AFTER.test(blob.slice(m.index + m[0].length))) continue;
+    return true;
+  }
+  return false;
+}
+
 /** Split published specs, notes and gaps into experience / who / waiver. Never invents rules. */
 export function listingFacts(item: Unclaimed): ListingFacts {
   const about: string[] = [];
@@ -558,7 +605,7 @@ export function listingFacts(item: Unclaimed): ListingFacts {
 
   for (const o of item.options) {
     const blob = (o.name + " " + o.detail).trim();
-    if (!/\b(child(?:ren)?|junior|kids?|ages?\s*\d|adult required|adult & junior)/i.test(blob)) continue;
+    if (!KID_ROW.test(blob) || !statesAnAgeRule(blob)) continue;
     const text = guestLine(o.detail ? o.name + ": " + o.detail : o.name);
     pushUnique(who, text, true);
   }
