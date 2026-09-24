@@ -390,6 +390,8 @@ console.log("\n6. Claim, edit, book, accept and decline, in a headless browser")
     E2E_MAIL_DIR: mailDir,
     E2E_OUT: flowOut,
     E2E_STRIPE: testKey ? "1" : "",
+    // So step (n) can mint the two claim-link states an owner meets, which the bypass entry never draws.
+    E2E_CLAIM_SECRET: CLAIM_SECRET,
   };
   const flowFile = join(here, "e2e-local-flow.mjs");
   const useDriver = existsSync(DRIVER);

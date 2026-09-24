@@ -15,6 +15,7 @@
  * Results are written as JSON to E2E_OUT; e2e-local.mts prints the pass or fail lines from it.
  */
 
+import { createHmac } from "node:crypto";
 import { existsSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
@@ -30,6 +31,8 @@ const NEW_TITLE = TITLE + " (edited by the harness)";
 const NEW_ABOUT = "Edited by the local end-to-end harness. This sentence exists to prove an operator edit reaches the guest page.";
 const NEW_SERVICE = "Harness kayak tour";
 const NEW_PRICE = 42;
+/** The local API's claim secret, so the harness can mint the two link states an owner actually meets. */
+const CLAIM_SECRET = process.env.E2E_CLAIM_SECRET || "";
 
 const results = [];
 /** Controls the harness reached for and did not find. See the note on `js` below. */
@@ -892,6 +895,46 @@ async function flow(ctx) {
     toldThem && afterStale === beforeStale && afterStale !== STALE_TITLE,
     `notice shown:${toldThem} title at the API before:${beforeStale} after:${afterStale}`,
   );
+
+  /* ================= (n) a claim link the API will not open =================
+     Every step above enters the dashboard through the test bypass, so the screen every real operator meets
+     first, a claim link being checked, was never drawn here at all. Two of its states are the ones an owner
+     actually hits, and each has its own line: a token the API reads and refuses, and a correctly signed token
+     that is out of date, which offers a fresh link instead of a dead end. Neither may be shown as the other.
+
+     A third state, the API never answering, cannot be driven from here (it needs the call intercepted), and
+     is covered by src/lib/__tests__/apiSilent.test.ts. */
+  if (!CLAIM_SECRET) {
+    record("(n) a refused claim link is told apart from an expired one", "warn", "no E2E_CLAIM_SECRET, so no token can be minted");
+  } else {
+    const v2 = (exp) => "v2." + exp.toString(36) + "." + createHmac("sha256", CLAIM_SECRET).update(ID + "|" + exp).digest("base64url").slice(0, 22);
+    const cases = [
+      ["a forged token", "v2." + (Date.now() + 86400000).toString(36) + ".aaaaaaaaaaaaaaaaaaaaaa", "didn't check out", "has expired"],
+      ["an out-of-date token", v2(Date.now() - 86400000), "has expired", "didn't check out"],
+    ];
+    // A device that has claimed this listing before opens the dashboard straight from its own storage, and the
+    // claim screen never renders at all. The states below belong to an owner arriving for the first time, so
+    // clear what every step above put here. Last in the flow, so nothing after this needs it.
+    await goto(`${BASE}/operators`);
+    await js(() => {
+      localStorage.clear();
+      return "cleared";
+    });
+    for (const [what, token, want, never] of cases) {
+      // A hash-only navigation does not reload, and the claim hash is read once at boot: go through a blank
+      // page so each link is a real first load, the way it is from an inbox.
+      await goto("about:blank");
+      await goto(`${BASE}/operators#claim=${ID}&k=${token}`);
+      const shown = await until(() => !!document.querySelector(".odlogin .oderr"), 25000);
+      const said = await text();
+      await shot("n-claim-" + want.replace(/\W+/g, "-"));
+      record(
+        `(n) ${what} says "${want}" and nothing else`,
+        !!shown && said.includes(want) && !said.includes(never),
+        shown ? (await js(() => (document.querySelector(".odlogin .oderr") || {}).textContent || "MISSING .oderr")) : "no message appeared in 25s",
+      );
+    }
+  }
 
   // The steps above only mean anything if the harness found what it clicked and typed into.
   const realMisses = missed.filter((m) => !EXPECTED_MISSES.some((e) => m.startsWith(e)));
