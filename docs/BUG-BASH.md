@@ -4388,6 +4388,74 @@ of 53, against a local Postgres on 5433 with SSL on and the Chromium on disk.
 - A fresh checkout still has no `node_modules` at the root or in `backend`, which the fifty-second run raised:
   this run had to run `npm install` twice before anything could type-check. Still true.
 
+## 24 September 2026, sixty-eighth run (09:05 to 09:45 UTC)
+
+**Chosen, and why.** Every area the brief names is on the Verified list, so the frontier had to be found
+again. `listingFacts().about` was one: it has exactly one reader, the highlights a listing leads with when the
+shop publishes none of its own, and no sweep had ever counted what lands there. Pulling that thread ran
+straight into `WHO_RE`, the other half of the same function, and from there into `minAge`, which reads the
+floor those lines state.
+
+**Found and fixed.**
+
+- **A booking system's party floor was sold as the thing a guest would do** (`6785ff43`). Our own vendor
+  readers write one "<item>: minimum N guests per booking." for every row on a shop's menu, and 739 of them on
+  261 listings were printed as the trip's selling bullets, under "Highlights" on the desktop page and a ticked
+  "What you'll do" on the phone booking sheet. Fun St. Pete led with seven at once, each naming a different
+  hotel and the same floor of two. All 261 already state that floor in their requirements, so 195 listings now
+  show no highlights section rather than one made entirely of booking minimums, and nothing is lost. A line
+  that says anything else as well stays: "Up to 4 passengers per flight, minimum 2 people per booking" is a
+  group size worth reading.
+- **"Who can go" read a fee as an age and never read an age at all** (`6a4ff47a`). The column asked for
+  `\d+\+` inside a `\b(...)\b`, and the group's own trailing boundary made that alternative read the wrong
+  lines and only the wrong ones: "21+" and "18+" end at a space or a full stop, where there is no word
+  boundary after the "+", so no bare age rule ever reached the column, while a number glued to a word did, and
+  glued to a word it is a fee or a speed. Those were all seven lines it carried, the ones the sixty-seventh
+  run left open: "$50+tax", "$40+tax", "$300+taxes", "$65+GST", "35+mph". `statesAPlusAge` now reads the
+  number the way `minAge` already does and asks the line to say whose age it is, so a group, a purchase or a
+  count of the shop's own stock is not one. 276 real age rules on 230 listings reach the column for the first
+  time ("18+ with valid photo ID required to drive", "Guests must be 21+ to consume alcohol"), the eight wrong
+  lines leave it, and none of the eight lands in the highlights, which is what that run worried about.
+- **A shop writing "Minimum age 8" got no age on its page** (`53a73523`). One regex asked every cue for the
+  same trailing "+", "years" or "or older", including the one cue that needs none. So 86 listings that state
+  the rule in plain English printed nothing on the listing page, the phone sheet or in Otto: "Minimum age 8",
+  "Minimum age 16 to enter without adult supervision", "Level 3 minimum age is 19". A hyphen hid one too, so a
+  Viator product reading "minimum age is 8-years old" printed nothing either. The cue runs as a second pass,
+  after the looser ones have read the whole list, so it adds an age where there was none and changes none.
+
+**Swept and clean.** The 14,341 highlight lines the 6,456 listings that publish their own carry: not one holds
+a per-booking minimum, a price, a cancellation term, a URL, an email address, a phone number or a question, so
+the defect was the fallback's alone. The `about` column over all 46,324 operator listings before and after:
+739 lines dropped, every one a booking minimum, none kept that matched. The "Who can go" column over the same
+catalog, diffed line by line: 276 gained, 8 lost. `minAge` over every shipped listing: 86 gained, 0 lost, and
+one listing whose number is unchanged.
+
+**Verification.** Both type checks clean (TS5097 aside). Backend `npm test` 750 pass, 0 fail, 2 skipped,
+unchanged. The guest suite 777 pass, 0 fail, up 9 on three new files, which include four whole-catalog
+assertions. The rehearsal was run, because all three commits touch `src/lib` and steps (d), (k2) and (k5)
+drive the listing facts this run changed: green end to end, 53 of 53, against a local Postgres on 5433 with
+SSL on and the Chromium on disk.
+
+**Needs Harshil.**
+
+- `minAge` returns the first line that yields an age rather than the lowest, and on a shop that sells more than
+  one thing the two are not the same. Reading the new cue in the same pass moved 16 listings to a different
+  number, 9 of them better and 4 worse: Peak Experiences would have gone from the 5 its birthday climbers must
+  be to the 13 its belayers must be, Karting Orford from the 2 that may ride a double kart to the 7 that may
+  drive one. The second pass sidesteps it, but a listing page's "Ages N+" is a floor and taking the lowest
+  stated age would settle all four. That is a sweep of its own, over the 1,399 listings that print one.
+- 12 listings still keep an age rule out of "Who can go" because no person sits in front of the number:
+  "Adults only, 18+", "Valid 21+ ID required for alcohol shipment delivery", "After 8PM, 21+ only", "Jet Ski
+  Rentals: 18+ with a Valid Driver's License". Widening the rule to read a colon or a comma as a clause
+  opening pulls in "Discounts for groups: 8+ tickets $1 off each" with them, so it wants the counted-noun list
+  finished rather than the opener loosened.
+- The 183 lines still in the highlights fallback, on 140 listings, are almost all group size and capacity
+  ("Boat holds 11 passengers", "Maximum capacity 125 players", "Groups of 500 or more require special
+  approval"). They are true and they are the shop's own words, but they are not what the trip is, and
+  "What you'll do" is where the phone prints them.
+- A fresh checkout still has no `node_modules` at the root or in `backend`. Raised by the fifty-second run and
+  every run since; this one ran `npm install` twice before anything could type-check.
+
 ## Coverage
 
 The catalog is 48,198 listings as of the 23 September sync, 1,873 of them Viator partner rows. Counts below
@@ -4889,6 +4957,15 @@ lines naming nothing about who, the questions printed as facts and the lines pri
 own policy prose and which is our note about a fact the site never published, against the policy list a claim
 prefills and publishes on the operator's own page.
 
+The highlights a listing leads with, over the whole shipped catalog and on both surfaces that draw them: the
+14,341 lines the 6,456 listings publishing their own carry, against a per-booking minimum, a price, a
+cancellation term, a URL, an email address, a phone number and a question; and the fallback the other 39,727
+fall back to, which is `listingFacts().about` and had never been counted. The bare "N+" a shop writes instead
+of an age word, on every line of every shipped listing and through both readers that meet one: the fee, the
+tax, the speed and the tennis rating that only look like one, the group, the purchase and the count of a
+shop's own stock that size something else, and the person a real rule names in front of the number. Every way
+a shop states a minimum age in plain words, against the floor its page, its phone sheet and Otto then print.
+
 **Not yet checked.** Whether a Free cancellation badge should ever promise a shorter
 notice than a line in the same shop's own policy denies: 13 of the 7,104 shipped badges do, four of them a shop
 contradicting itself where a previous run deliberately chose the promise, and the rest a per-service window
@@ -5079,4 +5156,4 @@ quiet for a listing its owner has hidden or paused, given that its times are the
 and not ours (see the sixty-fourth run's Needs Harshil). Whether a partner's product may have a phone agent
 after all, which is the one thing that run changed on a rule rather than on a defect. Whether the `/voice`
 routes should be public at all, or carry a key the voice platform could hold: today a per-IP limit is the
-whole door. Whether a cancellation fee read as an age ($50+tax, 35+mph, 7 shipped lines) should move out of "Who can go" when the only other bucket is the highlights fallback (see the sixty-seventh run's Needs Harshil). Whether a line naming both an age and a licence should be printed under "Who can go" and "Safety and waiver" at once, which 321 listings do. Whether an FAQ question should ever be printed as a safety rule, which 2 are. Whether the "Who can go" column should cap a line's length the way the waiver column caps it at 160, given the 80 lines over 220 characters it prints today. Whether the `gap` field should be two fields rather than one, so a shop's policy prose and our own note about a missing fact stop having to be told apart by their wording.
+whole door. Whether `minAge` should take the lowest age a listing states rather than the first line that yields one: 16 listings read differently either way, 9 of them better and 4 worse (see this run's Needs Harshil). The 12 listings whose age rule still sits outside "Who can go" because no person sits in front of the number ("Adults only, 18+", "After 8PM, 21+ only"), which wants the counted-noun list finished rather than the clause opener loosened. Whether the 183 group-size and capacity lines still in the highlights fallback, on 140 listings, are what a phone should print under "What you'll do". Whether a line naming both an age and a licence should be printed under "Who can go" and "Safety and waiver" at once, which 321 listings do. Whether an FAQ question should ever be printed as a safety rule, which 2 are. Whether the "Who can go" column should cap a line's length the way the waiver column caps it at 160, given the 80 lines over 220 characters it prints today. Whether the `gap` field should be two fields rather than one, so a shop's policy prose and our own note about a missing fact stop having to be told apart by their wording.
