@@ -3,13 +3,13 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Otto · The AI that answers the phone at your marina</title>
-  <meta name="description" content="Otto is an AI phone agent for marinas and boat and jet ski rentals. It answers every call in a real, natural voice, looks up bookings, cancels and reschedules, and books new rentals into the calendar you already use.">
+  <title>Outset · Every call answered. Every booking handled.</title>
+  <meta name="description" content="The AI front desk built for marinas, boat and jet ski rentals, charters and watersports. It answers your calls and texts in a natural voice and handles the whole booking, in the calendar you already use.">
   <link rel="canonical" href="https://onoutset.com/otto">
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <link rel="apple-touch-icon" href="/apple-touch-icon.png">
-  <meta property="og:title" content="Otto · The AI that answers the phone at your marina">
-  <meta property="og:description" content="Hear Otto take a call: it cancels a jet ski booking, checks tomorrow's calendar and rebooks it, in a natural voice.">
+  <meta property="og:title" content="Outset · Every call answered. Every booking handled.">
+  <meta property="og:description" content="Hear a sample call: a jet ski booking looked up, the policy read, and the rental rebooked, in a natural voice.">
   <meta property="og:url" content="https://onoutset.com/otto">
   <meta property="og:type" content="website">
   <meta property="og:image" content="https://onoutset.com/apple-touch-icon.png">
@@ -18,177 +18,179 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&display=swap">
   <style>
+    /* Outset theme tokens, from src/styles/app.css */
     :root {
       color-scheme: light;
-      --ink: #161a12; --ink-2: #4c5744; --ink-3: #7a8570;
-      --paper: #ffffff; --mint: #eef3e8; --mint-2: #e3eadb; --line: #e6eadf;
-      --forest: #495940; --forest-2: #3a4733; --sage: #7f956a; --sage-2: #a9bd95;
-      --board: #1b2417; --board-2: #253120;
-      --r: 24px; --r-sm: 14px;
-      --shadow: 0 1px 2px rgba(22,26,18,.04), 0 24px 60px rgba(22,26,18,.10);
+      --ground: #EFECE8; --surface: #FFFFFF; --surface-2: #F7F7F7; --surface-3: #EBEBEB;
+      --ink: #222222; --ink-soft: #6A6A6A; --line: #EBEBEB; --line-strong: #DDDDDD;
+      --accent: #495940; --accent-press: #3A4733; --accent-soft: #7F956A; --accent-tint: #E8EDE4; --on-accent: #FFFFFF;
+      --open: #0E6FA8; --bezel: #1A1A1A;
+      --r-s: 8px; --r-m: 12px; --r-l: 16px; --r-xl: 24px;
     }
     * { box-sizing: border-box; }
     html { scroll-behavior: smooth; }
-    body { margin: 0; font-family: Figtree, system-ui, -apple-system, "Segoe UI", sans-serif; color: var(--ink); background: var(--paper); line-height: 1.55; -webkit-font-smoothing: antialiased; }
+    body { margin: 0; font-family: "Figtree", "Inter", "Helvetica Neue", Arial, sans-serif; color: var(--ink); background: var(--ground); line-height: 1.5; -webkit-font-smoothing: antialiased; }
     a { color: inherit; text-decoration: none; }
     .wrap { max-width: 72rem; margin: 0 auto; padding: 0 1.5rem; }
-    .btn { display: inline-flex; align-items: center; justify-content: center; gap: .5rem; background: var(--forest); color: #fff; font-weight: 600; padding: .95rem 1.5rem; border-radius: 999px; font-size: .98rem; border: none; cursor: pointer; transition: transform .14s ease, background .14s ease, box-shadow .14s ease; box-shadow: 0 6px 18px rgba(73,89,64,.22); }
-    .btn:hover { transform: translateY(-1px); background: var(--forest-2); }
-    .btn.soft { background: var(--mint); color: var(--forest); box-shadow: none; border: 1px solid var(--mint-2); }
-    .btn.soft:hover { background: var(--mint-2); }
-    .btn.sm { padding: .7rem 1.2rem; font-size: .92rem; }
+    .btn { display: inline-flex; align-items: center; justify-content: center; gap: .5rem; background: var(--accent); color: var(--on-accent); font-weight: 600; padding: .9rem 1.45rem; border-radius: 999px; font-size: .97rem; border: none; cursor: pointer; transition: background .14s, transform .14s; }
+    .btn:hover { background: var(--accent-press); transform: translateY(-1px); }
+    .btn.soft { background: var(--surface); color: var(--ink); border: 1px solid var(--line-strong); }
+    .btn.soft:hover { background: var(--surface-2); }
+    .btn.sm { padding: .65rem 1.15rem; font-size: .9rem; }
+    .ic { width: 18px; height: 18px; flex: none; }
 
-    /* nav */
-    .nav { position: sticky; top: 0; z-index: 30; background: rgba(255,255,255,.82); backdrop-filter: saturate(1.5) blur(14px); border-bottom: 1px solid transparent; transition: border-color .2s; }
-    .nav.scrolled { border-color: var(--line); }
-    .nav .wrap { display: flex; align-items: center; justify-content: space-between; height: 72px; }
-    .brand { display: flex; align-items: center; gap: .55rem; font-weight: 700; font-size: 1.1rem; letter-spacing: -.01em; }
-    .brand .mark { width: 28px; height: 28px; border-radius: 9px; background: var(--forest); color: #fff; display: grid; place-items: center; font-weight: 700; font-size: .9rem; }
-    .brand small { font-weight: 500; color: var(--ink-3); }
-    .nav .links { display: flex; align-items: center; gap: 1.6rem; font-size: .93rem; color: var(--ink-2); }
+    .nav { position: sticky; top: 0; z-index: 30; background: rgba(239,236,232,.86); backdrop-filter: saturate(1.4) blur(14px); border-bottom: 1px solid transparent; transition: border-color .2s; }
+    .nav.scrolled { border-color: var(--line-strong); }
+    .nav .wrap { display: flex; align-items: center; justify-content: space-between; height: 68px; }
+    .brand { display: flex; align-items: center; gap: .6rem; font-weight: 700; font-size: 1.12rem; letter-spacing: -.01em; }
+    .brand img { width: 30px; height: 30px; border-radius: 9px; display: block; }
+    .nav .links { display: flex; align-items: center; gap: 1.5rem; font-size: .93rem; color: var(--ink-soft); }
     .nav .links a:hover { color: var(--ink); }
     @media (max-width: 760px) { .nav .links a.txt { display: none; } }
 
-    /* hero */
-    .hero { padding: clamp(2.5rem, 6vw, 5rem) 0 clamp(2rem, 4vw, 3.5rem); }
-    .hero .grid { display: grid; grid-template-columns: 1fr 1.05fr; gap: clamp(2rem, 5vw, 4.5rem); align-items: center; }
-    @media (max-width: 960px) { .hero .grid { grid-template-columns: 1fr; } }
-    .pill { display: inline-flex; align-items: center; gap: .5rem; background: var(--mint); color: var(--forest); border: 1px solid var(--mint-2); font-weight: 600; font-size: .86rem; padding: .45rem .9rem; border-radius: 999px; }
-    .pill i { width: 7px; height: 7px; border-radius: 50%; background: #34b46a; box-shadow: 0 0 0 0 rgba(52,180,106,.45); animation: pulse 2.4s infinite; }
-    @keyframes pulse { 0%{box-shadow:0 0 0 0 rgba(52,180,106,.45)} 70%{box-shadow:0 0 0 8px rgba(52,180,106,0)} 100%{box-shadow:0 0 0 0 rgba(52,180,106,0)} }
-    h1 { font-weight: 500; font-size: clamp(2.5rem, 5.6vw, 4rem); line-height: 1.04; letter-spacing: -.035em; margin: 1.25rem 0 1.1rem; max-width: 12ch; }
-    h1 span { color: var(--forest); }
-    .lede { font-size: 1.15rem; color: var(--ink-2); max-width: 34rem; margin: 0 0 1.75rem; }
-    .cta-row { display: flex; gap: .7rem; flex-wrap: wrap; }
-    .proof { display: flex; gap: 1.2rem; flex-wrap: wrap; margin: 1.5rem 0 0; font-size: .9rem; color: var(--ink-3); }
-    .proof span::before { content: "✓"; color: var(--sage); font-weight: 700; margin-right: .4rem; }
+    .hero { padding: clamp(2.5rem, 6vw, 4.5rem) 0 clamp(2rem, 4vw, 3rem); }
+    .hero .grid { display: grid; grid-template-columns: .9fr 1.1fr; gap: clamp(2rem, 4.5vw, 4rem); align-items: center; }
+    @media (max-width: 980px) { .hero .grid { grid-template-columns: 1fr; } }
+    .niche { font-weight: 600; color: var(--accent); font-size: .95rem; margin: 0 0 .8rem; }
+    h1 { font-weight: 600; font-size: clamp(2.3rem, 5vw, 3.6rem); line-height: 1.06; letter-spacing: -.035em; margin: 0 0 1rem; }
+    h1 span { color: var(--accent); }
+    .lede { font-size: 1.12rem; color: var(--ink-soft); max-width: 32rem; margin: 0 0 1.6rem; }
+    .cta-row { display: flex; gap: .65rem; flex-wrap: wrap; }
+    .proof { display: flex; gap: 1.1rem; flex-wrap: wrap; margin: 1.4rem 0 0; font-size: .9rem; color: var(--ink-soft); }
+    .proof span { display: inline-flex; align-items: center; gap: .4rem; }
+    .proof .ic { width: 15px; height: 15px; color: var(--accent); }
 
-    /* the board */
-    .board { position: relative; background: radial-gradient(90% 70% at 80% 0%, var(--board-2), var(--board) 65%); border-radius: 28px; padding: 1.4rem; box-shadow: var(--shadow); color: #fff; overflow: hidden; min-height: 460px; display: flex; flex-direction: column; justify-content: space-between; }
-    .board::before { content: ""; position: absolute; inset: 0; background: radial-gradient(60% 40% at 50% 60%, rgba(127,149,106,.22), transparent 70%); pointer-events: none; }
-    .board .top { display: flex; align-items: center; justify-content: space-between; position: relative; z-index: 2; }
-    .board .who { display: flex; align-items: center; gap: .65rem; }
-    .board .ava { width: 38px; height: 38px; border-radius: 50%; background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.18); display: grid; place-items: center; font-weight: 700; }
-    .board .who b { display: block; font-size: .95rem; line-height: 1.15; }
-    .board .who small { font-size: .8rem; opacity: .7; }
-    .live { display: inline-flex; align-items: center; gap: .45rem; font-size: .8rem; opacity: .85; font-variant-numeric: tabular-nums; }
-    .live i { width: 7px; height: 7px; border-radius: 50%; background: #34b46a; }
-    .live.off i { background: rgba(255,255,255,.35); }
-    canvas#viz { width: 100%; height: 200px; display: block; position: relative; z-index: 1; }
-    .board .bottom { position: relative; z-index: 2; display: flex; align-items: center; gap: .85rem; }
-    .playbtn { flex: none; width: 52px; height: 52px; border-radius: 50%; background: #fff; color: var(--forest); border: none; display: grid; place-items: center; cursor: pointer; transition: transform .14s; box-shadow: 0 8px 22px rgba(0,0,0,.25); }
+    /* call screen */
+    .call { background: var(--bezel); color: #fff; border-radius: var(--r-xl); box-shadow: 0 24px 60px rgba(0,0,0,.28); overflow: hidden; }
+    .call .head { display: flex; align-items: center; justify-content: space-between; padding: .95rem 1.2rem; border-bottom: 1px solid rgba(255,255,255,.08); font-size: .85rem; }
+    .call .head b { font-weight: 600; }
+    .call .head .st { display: inline-flex; align-items: center; gap: .45rem; color: rgba(255,255,255,.7); font-variant-numeric: tabular-nums; }
+    .call .head .st i { width: 7px; height: 7px; border-radius: 50%; background: rgba(255,255,255,.3); }
+    .call.on .head .st i { background: #34b46a; }
+    .lane { display: grid; grid-template-columns: 148px 1fr; align-items: center; gap: 1rem; padding: .85rem 1.2rem; border-bottom: 1px solid rgba(255,255,255,.06); transition: background .25s; }
+    .lane.speaking { background: rgba(255,255,255,.045); }
+    .lane .id { display: flex; align-items: center; gap: .65rem; min-width: 0; }
+    .lane .av { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; flex: none; border: 2px solid transparent; transition: border-color .25s, box-shadow .25s; }
+    .lane.otto .av { background: var(--accent); }
+    .lane.caller .av { background: #3a3a3a; }
+    .lane.speaking .av { border-color: #fff; box-shadow: 0 0 0 4px rgba(255,255,255,.12); }
+    .lane .nm b { display: block; font-size: .92rem; font-weight: 600; line-height: 1.1; }
+    .lane .nm small { font-size: .74rem; color: rgba(255,255,255,.55); }
+    .lane.speaking .nm small { color: #8fd0a8; }
+    .lane canvas { width: 100%; height: 54px; display: block; }
+    @media (max-width: 520px) { .lane { grid-template-columns: 112px 1fr; } .lane .nm small { display: none; } }
+    .live { padding: 1rem 1.2rem .6rem; min-height: 132px; }
+    .live .now { font-size: 1.02rem; line-height: 1.45; color: #fff; min-height: 3.2em; }
+    .live .now .who { display: inline-block; font-size: .7rem; letter-spacing: .06em; text-transform: uppercase; font-weight: 700; padding: .15rem .45rem; border-radius: 6px; margin-right: .5rem; vertical-align: 2px; }
+    .live .now .who.otto { background: var(--accent); }
+    .live .now .who.caller { background: #3a3a3a; }
+    .live .prev { margin-top: .55rem; font-size: .86rem; color: rgba(255,255,255,.45); line-height: 1.4; max-height: 2.8em; overflow: hidden; }
+    .live .done { display: inline-flex; align-items: center; gap: .5rem; margin-top: .6rem; background: rgba(52,180,106,.16); color: #8fd0a8; border: 1px solid rgba(52,180,106,.35); border-radius: 10px; padding: .45rem .7rem; font-size: .86rem; font-weight: 600; }
+    .ctrl { display: flex; align-items: center; gap: .85rem; padding: .7rem 1.2rem 1.1rem; }
+    .playbtn { flex: none; width: 48px; height: 48px; border-radius: 50%; background: #fff; color: var(--ink); border: none; display: grid; place-items: center; cursor: pointer; transition: transform .14s; }
     .playbtn:hover { transform: scale(1.05); }
-    .tri { width: 0; height: 0; border-left: 14px solid currentColor; border-top: 9px solid transparent; border-bottom: 9px solid transparent; margin-left: 4px; }
+    .tri { width: 0; height: 0; border-left: 13px solid currentColor; border-top: 8px solid transparent; border-bottom: 8px solid transparent; margin-left: 4px; }
     .playbtn.playing .tri { display: none; }
     .ic-pause { display: none; gap: 5px; }
     .playbtn.playing .ic-pause { display: inline-flex; }
-    .ic-pause i { width: 5px; height: 18px; background: currentColor; border-radius: 2px; display: block; }
-    .scrub { flex: 1; height: 6px; background: rgba(255,255,255,.14); border-radius: 3px; cursor: pointer; position: relative; }
+    .ic-pause i { width: 4.5px; height: 17px; background: currentColor; border-radius: 2px; display: block; }
+    .scrub { flex: 1; height: 6px; background: rgba(255,255,255,.16); border-radius: 3px; cursor: pointer; position: relative; }
     .scrubfill { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: #fff; border-radius: 3px; }
-    .time { font-size: .82rem; opacity: .8; font-variant-numeric: tabular-nums; min-width: 6.4rem; text-align: right; }
-    /* flyout chips, the frosted-glass pattern */
-    .chip { position: absolute; z-index: 3; background: rgba(255,255,255,.10); border: 1px solid rgba(255,255,255,.18); backdrop-filter: blur(14px) saturate(1.4); -webkit-backdrop-filter: blur(14px) saturate(1.4); border-radius: 14px; padding: .6rem .8rem; box-shadow: 0 8px 24px rgba(0,0,0,.22); font-size: .8rem; line-height: 1.25; transition: opacity .35s ease, transform .35s ease; }
-    .chip small { display: block; opacity: .7; font-size: .7rem; margin-bottom: .15rem; }
-    .chip b { font-weight: 600; font-size: .86rem; }
-    .chip.hide { opacity: 0; transform: translateY(6px); pointer-events: none; }
-    .chip.a { top: 84px; left: 1.4rem; }
-    .chip.b { top: 84px; right: 1.4rem; }
-    .chip.c { bottom: 92px; left: 1.4rem; }
-    .chip.d { bottom: 92px; right: 1.4rem; }
-    @media (max-width: 520px) { .chip.b, .chip.c { display: none; } }
 
-    /* transcript */
-    .transcript { margin-top: 1.2rem; background: var(--paper); border: 1px solid var(--line); border-radius: var(--r); padding: .6rem; box-shadow: var(--shadow); }
-    .thread { max-height: 300px; overflow-y: auto; padding: .6rem; scroll-behavior: smooth; }
-    .turn { margin-bottom: .6rem; cursor: pointer; opacity: 1; transition: opacity .25s; display: flex; }
-    .turn.otto { justify-content: flex-end; }
-    .turn .say { max-width: 84%; padding: .6rem .85rem; border-radius: 15px; font-size: .95rem; }
-    .turn.caller .say { background: var(--mint); border-bottom-left-radius: 5px; }
-    .turn.otto .say { background: var(--forest); color: #fff; border-bottom-right-radius: 5px; }
-    .turn .say small { display: block; font-size: .68rem; letter-spacing: .05em; text-transform: uppercase; font-weight: 700; opacity: .65; margin-bottom: .15rem; }
-    .thread.playing .turn { opacity: .38; }
-    .thread.playing .turn.active { opacity: 1; }
-    .turn.active .say { box-shadow: 0 0 0 2px var(--sage-2); }
-    .done { display: flex; align-items: center; gap: .55rem; background: var(--mint); color: var(--forest); border-radius: 12px; padding: .6rem .85rem; font-weight: 600; font-size: .9rem; margin: .2rem .6rem .4rem; }
+    section { padding: clamp(3rem, 6.5vw, 5rem) 0; }
+    .eyebrow { color: var(--accent-soft); font-weight: 700; font-size: .78rem; letter-spacing: .08em; text-transform: uppercase; margin: 0 0 .6rem; }
+    h2 { font-weight: 600; font-size: clamp(1.7rem, 3.4vw, 2.3rem); line-height: 1.12; letter-spacing: -.03em; margin: 0 0 .8rem; max-width: 22ch; }
+    .sub { color: var(--ink-soft); font-size: 1.05rem; max-width: 36rem; margin: 0 0 2rem; }
 
-    /* sections */
-    section { padding: clamp(3rem, 7vw, 5.5rem) 0; }
-    .eyebrow { color: var(--sage); font-weight: 700; font-size: .8rem; letter-spacing: .08em; text-transform: uppercase; margin: 0 0 .7rem; }
-    h2 { font-weight: 500; font-size: clamp(1.8rem, 3.6vw, 2.5rem); line-height: 1.12; letter-spacing: -.03em; margin: 0 0 .9rem; max-width: 20ch; }
-    .sub { color: var(--ink-2); font-size: 1.08rem; max-width: 36rem; margin: 0 0 2.25rem; }
-    .center { text-align: center; }
-    .center h2, .center .sub { margin-left: auto; margin-right: auto; }
+    .logos { background: var(--surface); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); padding: 1.5rem 0; }
+    .logos .wrap { display: flex; flex-direction: column; align-items: center; gap: 1rem; }
+    .logos .lbl { font-size: .78rem; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-soft); }
+    .logos .row { display: flex; flex-wrap: wrap; justify-content: center; gap: .6rem 1rem; }
+    .logos .v { display: inline-flex; align-items: center; gap: .55rem; padding: .5rem .85rem .5rem .55rem; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); font-weight: 600; font-size: .9rem; }
+    .logos .v img { width: 22px; height: 22px; border-radius: 6px; display: block; }
 
-    .logos { border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); padding: 1.4rem 0; }
-    .logos .wrap { display: flex; align-items: center; gap: 1.2rem 2.2rem; flex-wrap: wrap; justify-content: center; color: var(--ink-3); font-size: .9rem; }
-    .logos b { color: var(--ink-2); font-weight: 600; font-size: .98rem; }
-    .logos .lbl { width: 100%; text-align: center; font-size: .78rem; letter-spacing: .08em; text-transform: uppercase; }
+    .cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
+    @media (max-width: 860px) { .cards { grid-template-columns: 1fr; } }
+    .card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-l); padding: 1.5rem; }
+    .card .icw { width: 40px; height: 40px; border-radius: 12px; background: var(--accent-tint); color: var(--accent); display: grid; place-items: center; margin-bottom: 1rem; }
+    .card .icw .ic { width: 20px; height: 20px; }
+    .card h3 { margin: 0 0 .35rem; font-size: 1.1rem; font-weight: 600; }
+    .card p { margin: 0; color: var(--ink-soft); font-size: .96rem; }
 
-    .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.25rem; }
+    .who { display: grid; grid-template-columns: 1fr 1.1fr; gap: 3rem; align-items: center; }
+    @media (max-width: 900px) { .who { grid-template-columns: 1fr; gap: 1.5rem; } }
+    .who ul { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: 1fr 1fr; gap: .6rem; }
+    @media (max-width: 560px) { .who ul { grid-template-columns: 1fr; } }
+    .who li { display: flex; align-items: center; gap: .7rem; padding: .85rem 1rem; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-m); font-weight: 500; font-size: .95rem; }
+    .who li .ic { width: 16px; height: 16px; color: var(--accent); }
+
+    .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
     @media (max-width: 860px) { .steps { grid-template-columns: 1fr; } }
-    .step { background: var(--mint); border-radius: var(--r); padding: 1.75rem; min-height: 230px; display: flex; flex-direction: column; justify-content: space-between; }
-    .step .n { font-weight: 500; font-size: 2.4rem; color: var(--forest); letter-spacing: -.03em; line-height: 1; }
-    .step h3 { margin: 1rem 0 .35rem; font-size: 1.15rem; font-weight: 600; }
-    .step p { margin: 0; color: var(--ink-2); font-size: .97rem; }
+    .step { background: var(--ground); border: 1px solid var(--line); border-radius: var(--r-l); padding: 1.5rem; }
+    .step .n { display: inline-grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; background: var(--accent); color: #fff; font-weight: 700; font-size: .9rem; margin-bottom: .9rem; }
+    .step h3 { margin: 0 0 .35rem; font-size: 1.08rem; font-weight: 600; }
+    .step p { margin: 0; color: var(--ink-soft); font-size: .96rem; }
 
-    .who { display: grid; grid-template-columns: 1.1fr 1fr; gap: 3rem; align-items: center; }
-    @media (max-width: 900px) { .who { grid-template-columns: 1fr; } }
-    .who ul { list-style: none; padding: 0; margin: 0; display: grid; gap: .6rem; }
-    .who li { display: flex; align-items: center; gap: .75rem; padding: .9rem 1rem; border: 1px solid var(--line); border-radius: var(--r-sm); font-weight: 500; }
-    .who li i { width: 30px; height: 30px; border-radius: 9px; background: var(--mint); color: var(--forest); display: grid; place-items: center; font-weight: 700; font-style: normal; flex: none; }
-
-    .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; border-top: 1px solid var(--line); padding-top: 2rem; }
+    .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; }
     @media (max-width: 760px) { .stats { grid-template-columns: repeat(2, 1fr); } }
-    .stat b { display: block; font-weight: 500; font-size: 2.2rem; letter-spacing: -.03em; color: var(--forest); line-height: 1; margin-bottom: .4rem; }
-    .stat span { color: var(--ink-2); font-size: .92rem; }
+    .stat { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-l); padding: 1.3rem; }
+    .stat b { display: block; font-weight: 600; font-size: 2rem; letter-spacing: -.03em; color: var(--accent); line-height: 1; margin-bottom: .35rem; }
+    .stat span { color: var(--ink-soft); font-size: .9rem; }
 
-    .faq { display: grid; grid-template-columns: 1fr 1fr; gap: 3rem; align-items: start; }
+    .reviews { padding: 2rem 0 0; overflow: hidden; }
+    .reviews .lbl { text-align: center; font-size: .78rem; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-soft); margin-bottom: 1rem; }
+    .track { display: flex; gap: 1rem; width: max-content; animation: slide 60s linear infinite; }
+    .track:hover { animation-play-state: paused; }
+    @keyframes slide { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+    .rv { width: 21rem; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-l); padding: 1.1rem 1.2rem; font-size: .94rem; }
+    .rv .stars { color: #D2924A; letter-spacing: .05em; margin-bottom: .35rem; }
+    .rv q { quotes: "\201C" "\201D"; }
+    .rv .by { display: block; margin-top: .55rem; color: var(--ink-soft); font-size: .84rem; }
+
+    .faq { display: grid; grid-template-columns: 1.1fr .9fr; gap: 3rem; align-items: start; }
     @media (max-width: 900px) { .faq { grid-template-columns: 1fr; } }
-    details { border-top: 1px solid var(--line); padding: 1rem 0; }
-    details:last-child { border-bottom: 1px solid var(--line); }
+    details { border-top: 1px solid var(--line-strong); padding: .95rem 0; }
+    details:last-of-type { border-bottom: 1px solid var(--line-strong); }
     summary { list-style: none; cursor: pointer; font-weight: 600; display: flex; justify-content: space-between; gap: 1rem; }
     summary::-webkit-details-marker { display: none; }
-    summary::after { content: "+"; color: var(--sage); font-weight: 600; }
+    summary::after { content: "+"; color: var(--accent-soft); font-weight: 600; }
     details[open] summary::after { content: "–"; }
-    details p { margin: .6rem 0 0; color: var(--ink-2); font-size: .97rem; }
-    .askcard { background: var(--mint); border-radius: var(--r); padding: 1.75rem; }
-    .askcard h3 { margin: 0 0 .4rem; font-size: 1.25rem; font-weight: 600; }
-    .askcard p { margin: 0 0 1.1rem; color: var(--ink-2); }
+    details p { margin: .55rem 0 0; color: var(--ink-soft); font-size: .96rem; }
+    .askcard { background: var(--ground); border: 1px solid var(--line); border-radius: var(--r-l); padding: 1.6rem; }
+    .askcard h3 { margin: 0 0 .35rem; font-size: 1.2rem; font-weight: 600; }
+    .askcard p { margin: 0 0 1rem; color: var(--ink-soft); }
 
-    .final { text-align: center; }
-    .final .box { background: var(--board); color: #fff; border-radius: 28px; padding: clamp(2.5rem, 6vw, 4rem) 1.5rem; }
-    .final h2 { color: #fff; margin-left: auto; margin-right: auto; }
-    .final p { color: rgba(255,255,255,.75); max-width: 34rem; margin: 0 auto 1.6rem; }
-    .final .btn { background: #fff; color: var(--forest); box-shadow: none; }
-    .final .btn:hover { background: var(--mint); }
+    .final .box { background: var(--accent); color: #fff; border-radius: var(--r-xl); padding: clamp(2.25rem, 5vw, 3.5rem) 1.5rem; text-align: center; }
+    .final h2 { color: #fff; margin: 0 auto .5rem; }
+    .final p { color: rgba(255,255,255,.8); max-width: 32rem; margin: 0 auto 1.4rem; }
+    .final .btn { background: #fff; color: var(--ink); }
+    .final .btn:hover { background: var(--surface-2); }
 
-    footer { padding: 3rem 0 2rem; color: var(--ink-3); font-size: .9rem; }
-    footer .cols { display: grid; grid-template-columns: 1.4fr 1fr 1fr; gap: 2rem; border-top: 1px solid var(--line); padding-top: 2rem; }
+    footer { padding: 2.5rem 0 2rem; color: var(--ink-soft); font-size: .9rem; }
+    footer .cols { display: grid; grid-template-columns: 1.4fr 1fr 1fr; gap: 2rem; border-top: 1px solid var(--line-strong); padding-top: 2rem; }
     @media (max-width: 700px) { footer .cols { grid-template-columns: 1fr; } }
-    footer h4 { margin: 0 0 .6rem; font-size: .85rem; color: var(--ink); }
-    footer ul { list-style: none; padding: 0; margin: 0; display: grid; gap: .35rem; }
+    footer h4 { margin: 0 0 .55rem; font-size: .85rem; color: var(--ink); }
+    footer ul { list-style: none; padding: 0; margin: 0; display: grid; gap: .3rem; }
     footer a:hover { color: var(--ink); }
-    footer .copy { margin-top: 2rem; font-size: .82rem; }
+    footer .copy { margin-top: 1.8rem; font-size: .82rem; }
     address { font-style: normal; }
-
-    /* floating review banner: renders only when `reviews` has real entries */
-    .revbar { position: fixed; left: 1.25rem; bottom: 1.25rem; z-index: 40; max-width: 24rem; background: rgba(255,255,255,.92); backdrop-filter: blur(14px) saturate(1.4); -webkit-backdrop-filter: blur(14px) saturate(1.4); border: 1px solid var(--line); border-radius: 18px; padding: .9rem 2.4rem .9rem 1rem; box-shadow: 0 12px 36px rgba(22,26,18,.16); font-size: .9rem; line-height: 1.4; transform: translateY(12px); opacity: 0; transition: opacity .4s ease, transform .4s ease; }
-    .revbar.on { opacity: 1; transform: none; }
-    .revbar .stars { color: #d2924a; letter-spacing: .06em; font-size: .85rem; margin-bottom: .2rem; }
-    .revbar q { quotes: "\201C" "\201D"; color: var(--ink); }
-    .revbar .by { display: block; margin-top: .3rem; color: var(--ink-3); font-size: .82rem; }
-    .revbar .x { position: absolute; top: .55rem; right: .6rem; width: 26px; height: 26px; border-radius: 50%; border: none; background: var(--mint); color: var(--forest); cursor: pointer; font-size: 1rem; line-height: 1; }
-    @media (max-width: 560px) { .revbar { left: .75rem; right: .75rem; max-width: none; } }
-    @media (prefers-reduced-motion: reduce) { .pill i { animation: none; } }
   </style>
 </head>
 <body>
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <symbol id="i-phone" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.6a2 2 0 0 1-.5 2.1L8 9.7a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.8.3 1.7.5 2.6.7a2 2 0 0 1 1.7 2z"/></symbol>
+    <symbol id="i-cal" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="3"/><path d="M16 2v4M8 2v4M3 10h18M9 16l2 2 4-4"/></g></symbol>
+    <symbol id="i-swap" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 15.5-6.3L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-15.5 6.3L3 16"/><path d="M3 21v-5h5"/></g></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" d="M5 12.5l4.5 4.5L19 7"/></symbol>
+    <symbol id="i-wave" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" d="M2 12c2-3 4-3 6 0s4 3 6 0 4-3 6 0M2 17c2-3 4-3 6 0s4 3 6 0 4-3 6 0M2 7c2-3 4-3 6 0s4 3 6 0 4-3 6 0"/></symbol>
+  </svg>
+
   <header class="nav" id="nav">
     <div class="wrap">
-      <a class="brand" href="https://onoutset.com/"><span class="mark">O</span> Outset <small>· Otto</small></a>
+      <a class="brand" href="https://onoutset.com/"><img src="/favicon.svg" alt=""> Outset</a>
       <nav class="links">
+        <a class="txt" href="#who">Who it's for</a>
         <a class="txt" href="#how">How it works</a>
-        <a class="txt" href="#who">For who</a>
         <a class="txt" href="#faq">FAQ</a>
         <a class="btn sm" href="https://cal.com/harshil-shah-7tkvs7/outset" target="_blank" rel="noopener">Book a call</a>
       </nav>
@@ -198,39 +200,42 @@
   <div class="hero">
     <div class="wrap grid">
       <div>
-        <span class="pill"><i></i> For marinas &amp; watersports rentals</span>
-        <h1>The phone agent that <span>actually books.</span></h1>
-        <p class="lede">Otto answers every call at your marina in a real, natural voice. It looks up the booking,
-          reads your real policy, checks your calendar, and rebooks the customer, while your crew
-          stays on the dock.</p>
+        <p class="niche">The AI front desk for marinas, rentals and watersports</p>
+        <h1>Every call answered. <span>Every booking handled.</span></h1>
+        <p class="lede">Built for marinas, boat and jet ski rentals, charters and watersports. It answers your calls and
+          texts in a natural voice, then handles the whole booking on the spot: looks it up, books it, reschedules it
+          or cancels it, in the calendar you already use.</p>
         <div class="cta-row">
           <a class="btn" href="https://cal.com/harshil-shah-7tkvs7/outset" target="_blank" rel="noopener">Book a 15-min call</a>
-          <button class="btn soft" id="hear" type="button">Hear Otto take a call</button>
+          <button class="btn soft" id="hear" type="button"><svg class="ic"><use href="#i-phone"/></svg> Hear a sample call</button>
         </div>
-        <p class="proof"><span>Live in a day</span><span>No long contract</span><span>Set up by a person</span></p>
+        <p class="proof">
+          <span><svg class="ic"><use href="#i-check"/></svg> Live in a day</span>
+          <span><svg class="ic"><use href="#i-check"/></svg> No long contract</span>
+          <span><svg class="ic"><use href="#i-check"/></svg> Set up by a person</span>
+        </p>
       </div>
 
-      <div>
-        <div class="board" id="board">
-          <div class="top">
-            <div class="who"><span class="ava">O</span><span><b>Otto</b><small>Answering for Bayside Marina</small></span></div>
-            <span class="live off" id="live"><i></i><span id="livetxt">Sample call</span></span>
-          </div>
-          <canvas id="viz" aria-label="Audio waveform of the call"></canvas>
-          <div class="bottom">
-            <button class="playbtn" id="play" type="button" aria-label="Play the call"><span class="tri"></span><span class="ic-pause"><i></i><i></i></span></button>
-            <div class="scrub" id="scrub"><div class="scrubfill" id="scrubfill"></div></div>
-            <span class="time"><span id="cur">0:00</span> / <span id="dur">0:43</span></span>
-          </div>
-          <div class="chip a" id="chipA"><small>Caller</small><b id="chipAtext">Ready when you are</b></div>
-          <div class="chip b" id="chipB"><small>Otto is doing</small><b id="chipBtext">Waiting for a call</b></div>
-          <div class="chip c"><small>Booking system</small><b>FareHarbor · live calendar</b></div>
-          <div class="chip d hide" id="chipD"><small>Result</small><b id="chipDtext">Rebooked · 9:00 AM</b></div>
-          <audio id="audio" preload="metadata" src="/otto-call.mp3"></audio>
+      <div class="call" id="call">
+        <div class="head"><b>Sample call · Bayside Marina</b><span class="st"><i></i><span id="st">Ready</span> · <span id="cur">0:00</span> / <span id="dur">0:43</span></span></div>
+        <div class="lane otto" id="laneOtto">
+          <div class="id"><span class="av">O</span><span class="nm"><b>Otto</b><small id="sOtto">AI front desk</small></span></div>
+          <canvas id="vizOtto" aria-label="Otto's voice"></canvas>
         </div>
-        <div class="transcript">
-          <div class="thread" id="thread"></div>
+        <div class="lane caller" id="laneCaller">
+          <div class="id"><span class="av">M</span><span class="nm"><b>Marcus</b><small id="sCaller">Caller</small></span></div>
+          <canvas id="vizCaller" aria-label="The caller's voice"></canvas>
         </div>
+        <div class="live">
+          <div class="now" id="now"><span class="who otto">Otto</span>Press play to hear the call.</div>
+          <div class="prev" id="prev"></div>
+          <div id="doneWrap"></div>
+        </div>
+        <div class="ctrl">
+          <button class="playbtn" id="play" type="button" aria-label="Play the call"><span class="tri"></span><span class="ic-pause"><i></i><i></i></span></button>
+          <div class="scrub" id="scrub"><div class="scrubfill" id="scrubfill"></div></div>
+        </div>
+        <audio id="audio" preload="metadata" src="/otto-call.mp3"></audio>
       </div>
     </div>
   </div>
@@ -238,70 +243,96 @@
   <div class="logos">
     <div class="wrap">
       <span class="lbl">Works with your booking system</span>
-      <b>FareHarbor</b><b>Peek</b><b>Xola</b><b>Checkfront</b><b>Rezdy</b><b>Square</b><b>Acuity</b><span>+ more</span>
+      <div class="row">
+        <span class="v"><img src="https://www.google.com/s2/favicons?domain=fareharbor.com&sz=64" alt="" loading="lazy">FareHarbor</span>
+        <span class="v"><img src="https://www.google.com/s2/favicons?domain=peek.com&sz=64" alt="" loading="lazy">Peek</span>
+        <span class="v"><img src="https://www.google.com/s2/favicons?domain=xola.com&sz=64" alt="" loading="lazy">Xola</span>
+        <span class="v"><img src="https://www.google.com/s2/favicons?domain=checkfront.com&sz=64" alt="" loading="lazy">Checkfront</span>
+        <span class="v"><img src="https://www.google.com/s2/favicons?domain=rezdy.com&sz=64" alt="" loading="lazy">Rezdy</span>
+        <span class="v"><img src="https://www.google.com/s2/favicons?domain=squareup.com&sz=64" alt="" loading="lazy">Square</span>
+        <span class="v"><img src="https://www.google.com/s2/favicons?domain=acuityscheduling.com&sz=64" alt="" loading="lazy">Acuity</span>
+      </div>
     </div>
   </div>
+
+  <div class="reviews" id="reviews" hidden>
+    <p class="lbl">What operators say</p>
+    <div class="track" id="track"></div>
+  </div>
+
+  <section id="what">
+    <div class="wrap">
+      <p class="eyebrow">What it handles</p>
+      <h2>The whole front desk, not just the pickup.</h2>
+      <p class="sub">Most phone bots take a message. This one owns the booking, start to finish, in a voice that sounds like a person.</p>
+      <div class="cards">
+        <div class="card"><div class="icw"><svg class="ic"><use href="#i-phone"/></svg></div><h3>Answers calls and texts</h3><p>First ring, any hour, in a natural voice. The calls you used to miss while you were on the dock become bookings.</p></div>
+        <div class="card"><div class="icw"><svg class="ic"><use href="#i-swap"/></svg></div><h3>Changes and cancels</h3><p>Looks up the booking, reads your real cancellation policy, and moves or cancels it without a callback.</p></div>
+        <div class="card"><div class="icw"><svg class="ic"><use href="#i-cal"/></svg></div><h3>Books what's open</h3><p>Checks your live calendar and takes the reservation on the call, into the same system you run today.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="who" style="background:var(--surface);border-top:1px solid var(--line);border-bottom:1px solid var(--line)">
+    <div class="wrap who">
+      <div>
+        <p class="eyebrow">Built for the water</p>
+        <h2>Made for businesses where the phone rings while you're busy on the water.</h2>
+        <p class="sub" style="margin-bottom:0">Not a generic receptionist. It knows how rentals, charters and time slots work: party sizes, weather policies, deposits, half-day versus full-day, and the calendar behind all of it.</p>
+      </div>
+      <ul>
+        <li><svg class="ic"><use href="#i-wave"/></svg> Marinas and boat rentals</li>
+        <li><svg class="ic"><use href="#i-wave"/></svg> Jet ski and waverunner rentals</li>
+        <li><svg class="ic"><use href="#i-wave"/></svg> Pontoon and charter operators</li>
+        <li><svg class="ic"><use href="#i-wave"/></svg> Fishing charters and guides</li>
+        <li><svg class="ic"><use href="#i-wave"/></svg> Kayak, paddleboard and surf</li>
+        <li><svg class="ic"><use href="#i-wave"/></svg> Parasailing, tubing and tours</li>
+      </ul>
+    </div>
+  </section>
 
   <section id="how">
     <div class="wrap">
       <p class="eyebrow">How it works</p>
       <h2>Live in a day. Nothing changes about how you work.</h2>
-      <p class="sub">Forward your line or take a new number. Otto learns your business from what you already publish, connects to your calendar, and starts answering.</p>
       <div class="steps">
-        <div class="step"><span class="n">1</span><div><h3>Point your calls at Otto</h3><p>Forward your existing number, or hand out a new one. We set it up with you, by hand, in a day.</p></div></div>
-        <div class="step"><span class="n">2</span><div><h3>Otto learns your business</h3><p>Your prices, hours, age rules, policies and your real calendar. It answers only from your own facts and never makes anything up.</p></div></div>
-        <div class="step"><span class="n">3</span><div><h3>Otto answers and books</h3><p>First ring, any hour. It looks up bookings, cancels or reschedules them, and books new rentals into your calendar.</p></div></div>
+        <div class="step"><span class="n">1</span><h3>Point your calls at Outset</h3><p>Forward your existing number, or hand out a new one. We set it up with you, by hand.</p></div>
+        <div class="step"><span class="n">2</span><h3>It learns your business</h3><p>Your prices, hours, age rules, policies and your real calendar. It answers only from your own facts and never makes anything up.</p></div>
+        <div class="step"><span class="n">3</span><h3>It answers and books</h3><p>Every call and text, handled end to end, with a summary sent to you after each one.</p></div>
       </div>
     </div>
   </section>
 
-  <section id="who" style="background:var(--mint)">
-    <div class="wrap who">
-      <div>
-        <p class="eyebrow">Who it's for</p>
-        <h2>Built for the dock, not the desk.</h2>
-        <p class="sub" style="margin-bottom:0">If your phone rings while you're fuelling a boat, fitting a life jacket or walking a customer down the ramp, Otto is for you. It handles the calls you can't, and it books them.</p>
-      </div>
-      <ul>
-        <li><i>✓</i> Marinas and boat rentals</li>
-        <li><i>✓</i> Jet ski and waverunner rentals</li>
-        <li><i>✓</i> Pontoon and charter operators</li>
-        <li><i>✓</i> Kayak, paddleboard and watersports</li>
-        <li><i>✓</i> Fishing charters and guides</li>
-      </ul>
-    </div>
-  </section>
-
-  <section>
+  <section style="background:var(--surface);border-top:1px solid var(--line);border-bottom:1px solid var(--line)">
     <div class="wrap">
-      <p class="eyebrow">Built by Outset</p>
-      <h2>Built on the booking engine behind Outset.</h2>
-      <p class="sub">Otto is built by Outset, a booking platform for local activities across the United States and Canada. It runs on the same live-availability engine that powers the marketplace.</p>
+      <p class="eyebrow">Built on real booking infrastructure</p>
+      <h2>From the team behind the Outset marketplace.</h2>
+      <p class="sub">The same live-availability engine that powers Outset's booking platform for local activities across the United States and Canada.</p>
       <div class="stats">
         <div class="stat"><b>50,000+</b><span>local activity businesses in the Outset catalog</span></div>
         <div class="stat"><b>US &amp; CA</b><span>coast to coast, every major metro</span></div>
         <div class="stat"><b>24/7</b><span>every call answered, nights and weekends</span></div>
-        <div class="stat"><b>1 day</b><span>from first call with us to Otto answering yours</span></div>
+        <div class="stat"><b>1 day</b><span>from our first call to it answering yours</span></div>
       </div>
     </div>
   </section>
 
-  <section id="faq" style="background:var(--mint)">
+  <section id="faq">
     <div class="wrap faq">
       <div>
         <p class="eyebrow">Questions</p>
         <h2>What operators ask first.</h2>
-        <details open><summary>Does it actually book, or just take a message?</summary><p>It books. Otto reads your live calendar, offers times that are really open, and confirms the reservation on the call. Anything outside what you've published, it takes a name and number instead of guessing.</p></details>
-        <details><summary>Will it make something up?</summary><p>No. Otto answers only from your published prices, hours, age rules and policies. If it doesn't know, it says so and takes a message. It also declines weather, directions and anything not about your business.</p></details>
-        <details><summary>What booking systems does it work with?</summary><p>The major ones operators already use, FareHarbor, Peek, Xola, Checkfront, Rezdy, Square, Acuity, and more. Not connected yet? Otto still answers every call from your published facts and takes the booking details for you.</p></details>
+        <details open><summary>Does it actually book, or just take a message?</summary><p>It books. It reads your live calendar, offers times that are really open, and confirms the reservation on the call. Anything outside what you've published, it takes a name and number instead of guessing.</p></details>
+        <details><summary>Will it make something up?</summary><p>No. It answers only from your published prices, hours, age rules and policies. If it doesn't know, it says so and takes a message. It also declines weather, directions and anything not about your business.</p></details>
+        <details><summary>What booking systems does it work with?</summary><p>The ones operators already use: FareHarbor, Peek, Xola, Checkfront, Rezdy, Square, Acuity and more. Not connected yet? It still answers every call from your published facts and takes the booking details for you.</p></details>
         <details><summary>How long does setup take?</summary><p>About a day. You forward your calls or use a new number, we load your business, you test it. We do it with you.</p></details>
-        <details><summary>What does it cost?</summary><p>A simple monthly price per location, no long contract, cancel anytime. It pays for itself the first time it catches a booking you'd have missed. Pricing is set with our first operators.</p></details>
+        <details><summary>What does it cost?</summary><p>A simple monthly price per location, no long contract, cancel anytime. It pays for itself the first time it catches a booking you'd have missed.</p></details>
       </div>
       <div class="askcard">
         <h3>Still have questions?</h3>
-        <p>Talk to a person, not a form. Book a 15-minute call and we'll walk you through how Otto would answer your phone.</p>
+        <p>Talk to a person, not a form. Book a 15-minute call and we'll walk through how it would answer your phone.</p>
         <a class="btn" href="https://cal.com/harshil-shah-7tkvs7/outset" target="_blank" rel="noopener">Book a 15-min call</a>
-        <p style="margin:1rem 0 0;font-size:.9rem">or email <a href="mailto:hello@onoutset.com" style="color:var(--forest);font-weight:600">hello@onoutset.com</a></p>
+        <p style="margin:.9rem 0 0;font-size:.9rem">or email <a href="mailto:hello@onoutset.com" style="color:var(--accent);font-weight:600">hello@onoutset.com</a></p>
       </div>
     </div>
   </section>
@@ -310,7 +341,7 @@
     <div class="wrap">
       <div class="box">
         <h2>Stop losing the calls you can't answer.</h2>
-        <p>Get Otto answering your marina's phone this week.</p>
+        <p>Get Outset answering your marina's phone this week.</p>
         <a class="btn" href="https://cal.com/harshil-shah-7tkvs7/outset" target="_blank" rel="noopener">Book a 15-min call</a>
       </div>
     </div>
@@ -320,67 +351,59 @@
     <div class="wrap">
       <div class="cols">
         <div>
-          <a class="brand" href="https://onoutset.com/"><span class="mark">O</span> Outset</a>
-          <p style="margin:.7rem 0 0;max-width:22rem">Otto answers the phone at marinas and watersports rentals, and books the customer.</p>
-          <address style="margin-top:.6rem">339 King St N, Waterloo, ON N2J 0C5, Canada</address>
+          <a class="brand" href="https://onoutset.com/"><img src="/favicon.svg" alt=""> Outset</a>
+          <p style="margin:.7rem 0 0;max-width:22rem">Every call answered. Every booking handled.</p>
+          <address style="margin-top:.5rem">339 King St N, Waterloo, ON N2J 0C5, Canada</address>
         </div>
-        <div><h4>Explore</h4><ul><li><a href="#how">How it works</a></li><li><a href="#who">For who</a></li><li><a href="#faq">FAQ</a></li><li><a href="https://onoutset.com/">Outset marketplace</a></li></ul></div>
-        <div><h4>Company</h4><ul><li><a href="https://cal.com/harshil-shah-7tkvs7/outset" target="_blank" rel="noopener">Book a call</a></li><li><a href="mailto:hello@onoutset.com">hello@onoutset.com</a></li><li><a href="/about.html">About</a></li><li><a href="/privacy.html">Privacy</a></li></ul></div>
+        <div><h4>Explore</h4><ul><li><a href="#what">What it handles</a></li><li><a href="#who">Who it's for</a></li><li><a href="#how">How it works</a></li><li><a href="#faq">FAQ</a></li></ul></div>
+        <div><h4>Company</h4><ul><li><a href="https://cal.com/harshil-shah-7tkvs7/outset" target="_blank" rel="noopener">Book a call</a></li><li><a href="mailto:hello@onoutset.com">hello@onoutset.com</a></li><li><a href="https://onoutset.com/">Outset marketplace</a></li><li><a href="/privacy.html">Privacy</a></li></ul></div>
       </div>
       <p class="copy">© 2026 Outset. All rights reserved.</p>
     </div>
   </footer>
 
-  <aside class="revbar" id="revbar" hidden aria-live="polite"><div class="stars">★★★★★</div><q id="revq"></q><span class="by" id="revby"></span><button class="x" id="revx" type="button" aria-label="Dismiss">×</button></aside>
-
   <script>
     (function () {
-
-      /* Real reviews only. Each entry: { quote, name, business, place }. Fabricated testimonials are illegal
-         under the FTC fake-reviews rule and would cost the sale the first time a prospect looked a name up, so
-         this list stays empty until a real operator says something real. Empty list, no banner. */
-      var reviews = [];
-      (function () {
-        var bar = document.getElementById("revbar"); if (!reviews.length || !bar) return;
-        var q = document.getElementById("revq"), by = document.getElementById("revby"), i = 0, timer = null;
-        function show(k) { var r = reviews[k]; q.textContent = r.quote; by.textContent = r.name + ", " + r.business + (r.place ? " · " + r.place : ""); }
-        show(0); bar.hidden = false; requestAnimationFrame(function () { bar.classList.add("on"); });
-        if (reviews.length > 1) timer = setInterval(function () { bar.classList.remove("on"); setTimeout(function () { i = (i + 1) % reviews.length; show(i); bar.classList.add("on"); }, 420); }, 7000);
-        document.getElementById("revx").addEventListener("click", function () { bar.classList.remove("on"); if (timer) clearInterval(timer); setTimeout(function () { bar.hidden = true; }, 400); });
-      })();
       var nav = document.getElementById("nav");
       addEventListener("scroll", function () { nav.classList.toggle("scrolled", scrollY > 8); }, { passive: true });
 
+      /* Real reviews only: { quote, name, business, place }. Empty list, no marquee. Fabricated testimonials are
+         illegal under the FTC fake-reviews rule and lose the sale the first time a prospect looks a name up. */
+      var reviews = [];
+      (function () {
+        if (!reviews.length) return;
+        var wrap = document.getElementById("reviews"), track = document.getElementById("track");
+        reviews.concat(reviews).forEach(function (r) {
+          var d = document.createElement("div"); d.className = "rv";
+          d.innerHTML = '<div class="stars">★★★★★</div><q></q><span class="by"></span>';
+          d.querySelector("q").textContent = r.quote; d.querySelector(".by").textContent = r.name + ", " + r.business + (r.place ? " · " + r.place : "");
+          track.appendChild(d);
+        });
+        wrap.hidden = false;
+      })();
+
       var turns = [
-        { who: "otto",   text: "Thanks for calling Bayside Marina, this is Otto. What can I do for you?", doing: "Answering" },
-        { who: "caller", text: "Hey, I've got a couple jet skis booked for four o'clock today. Something came up, can I cancel?", doing: "Listening" },
-        { who: "otto",   text: "No problem, let me pull it up. Okay, I've got two waverunners at 4 PM under Marcus, that's you? Quick heads up, it's inside 24 hours, so that time is non-refundable on the marina's policy. But I can move it to another day for free instead, if that's easier.", doing: "Pulling up the booking · reading the policy" },
-        { who: "caller", text: "Oh, yeah, that's better. Can I do tomorrow morning?", doing: "Listening" },
-        { who: "otto",   text: "Let me check. Tomorrow I've got two skis open at 9 AM or 11 AM. Which one works?", doing: "Checking tomorrow's calendar" },
-        { who: "caller", text: "Nine's perfect.", doing: "Listening" },
-        { who: "otto",   text: "Done, you're moved to 9 AM tomorrow, no charge. I'll text the new confirmation to this number. Anything else?", doing: "Moving the booking · texting confirmation" },
-        { who: "caller", text: "Nope, that's it. Thanks!", doing: "Listening" },
-        { who: "otto",   text: "You got it, see you tomorrow.", doing: "Wrapping up" }
+        { who: "otto",   text: "Thanks for calling Bayside Marina, this is Otto. What can I do for you?" },
+        { who: "caller", text: "Hey, I've got a couple jet skis booked for four o'clock today. Something came up, can I cancel?" },
+        { who: "otto",   text: "No problem, let me pull it up. Okay, I've got two waverunners at 4 PM under Marcus, that's you? Quick heads up, it's inside 24 hours, so that time is non-refundable on the marina's policy. But I can move it to another day for free instead, if that's easier." },
+        { who: "caller", text: "Oh, yeah, that's better. Can I do tomorrow morning?" },
+        { who: "otto",   text: "Let me check. Tomorrow I've got two skis open at 9 AM or 11 AM. Which one works?" },
+        { who: "caller", text: "Nine's perfect." },
+        { who: "otto",   text: "Done, you're moved to 9 AM tomorrow, no charge. I'll text the new confirmation to this number. Anything else?" },
+        { who: "caller", text: "Nope, that's it. Thanks!" },
+        { who: "otto",   text: "You got it, see you tomorrow." }
       ];
-      var callerChip = ["Calling in", "Wants to cancel 4 PM", "Hearing the policy", "Asks for tomorrow", "Hearing the options", "Picks 9 AM", "Getting confirmation", "All set", "Hangs up happy"];
 
       var audio = document.getElementById("audio"), play = document.getElementById("play"), hear = document.getElementById("hear"),
           scrub = document.getElementById("scrub"), fill = document.getElementById("scrubfill"), cur = document.getElementById("cur"),
-          durEl = document.getElementById("dur"), live = document.getElementById("live"), liveTxt = document.getElementById("livetxt"),
-          thread = document.getElementById("thread"), chipA = document.getElementById("chipAtext"), chipB = document.getElementById("chipBtext"),
-          chipD = document.getElementById("chipD"), chipDtext = document.getElementById("chipDtext"), canvas = document.getElementById("viz");
-      var reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+          durEl = document.getElementById("dur"), st = document.getElementById("st"), call = document.getElementById("call"),
+          now = document.getElementById("now"), prev = document.getElementById("prev"), doneWrap = document.getElementById("doneWrap"),
+          laneOtto = document.getElementById("laneOtto"), laneCaller = document.getElementById("laneCaller"),
+          sOtto = document.getElementById("sOtto"), sCaller = document.getElementById("sCaller");
       function fmt(s) { s = Math.max(0, Math.floor(s || 0)); return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0"); }
 
-      /* transcript */
-      var els = turns.map(function (t, i) {
-        var d = document.createElement("div"); d.className = "turn " + t.who; d.dataset.i = i;
-        d.innerHTML = '<div class="say"><small>' + (t.who === "otto" ? "Otto" : "Caller") + '</small><span></span></div>';
-        d.querySelector("span").textContent = t.text;
-        d.addEventListener("click", function () { if (starts.length) { audio.currentTime = starts[i] + 0.02; audio.play(); } });
-        thread.appendChild(d); return d;
-      });
-      var starts = [], activeEl = null, doneShown = false;
+      /* line timing, weighted by length across the file's real duration */
+      var starts = [], active = -1, doneShown = false;
       function computeStarts() {
         var dur = audio.duration && isFinite(audio.duration) ? audio.duration : 43;
         var lens = turns.map(function (t) { return t.text.length + 14; }), sum = lens.reduce(function (a, b) { return a + b; }, 0), acc = 0;
@@ -388,88 +411,77 @@
         durEl.textContent = fmt(dur);
       }
       function setActive(i) {
-        var el = i == null ? null : els[i];
-        if (el === activeEl) return;
-        if (activeEl) activeEl.classList.remove("active");
-        activeEl = el;
-        if (el) {
-          el.classList.add("active");
-          el.scrollIntoView({ block: "nearest", behavior: reduce ? "auto" : "smooth" });
-          chipA.textContent = callerChip[i]; chipB.textContent = turns[i].doing;
-        }
+        if (i === active) return; active = i;
+        var t = turns[i];
+        now.innerHTML = '<span class="who ' + t.who + '">' + (t.who === "otto" ? "Otto" : "Marcus") + '</span>';
+        now.appendChild(document.createTextNode(t.text));
+        prev.textContent = i > 0 ? turns[i - 1].text : "";
+        laneOtto.classList.toggle("speaking", t.who === "otto"); laneCaller.classList.toggle("speaking", t.who === "caller");
+        sOtto.textContent = t.who === "otto" ? "Speaking" : "AI front desk"; sCaller.textContent = t.who === "caller" ? "Speaking" : "Caller";
       }
 
-      /* audio-reactive visualizer, with the reference's sine idle when nothing is playing */
-      var ctx2d = canvas.getContext("2d"), actx = null, analyser = null, freq = null;
-      var BARS = 46, BW = 4, GAP = 4, MINH = 4, MAXH = 74, FADE = .7, SMOOTH = .2;
-      var heights = [], phases = [], tRef = 0, last = performance.now(), size = { w: 0, h: 0, dpr: 1 };
-      function resize() {
-        var r = canvas.getBoundingClientRect(), dpr = Math.min(devicePixelRatio || 1, 2);
-        canvas.width = Math.max(1, Math.floor(r.width * dpr)); canvas.height = Math.max(1, Math.floor(r.height * dpr));
-        size = { w: r.width, h: r.height, dpr: dpr };
-        if (!heights.length) { for (var i = 0; i < BARS; i++) { heights.push(MINH); phases.push(Math.random() * Math.PI * 2); } }
-      }
-      resize(); new ResizeObserver(resize).observe(canvas);
-      function clamp(v, a, b) { return Math.min(b, Math.max(a, v)); }
+      /* two lanes, one per speaker: the one talking reacts to the real audio, the other rests */
+      var actx = null, analyser = null, freq = null;
       function ensureAnalyser() {
         if (actx) { if (actx.state === "suspended") actx.resume(); return; }
         try {
           actx = new (window.AudioContext || window.webkitAudioContext)();
-          var src = actx.createMediaElementSource(audio); analyser = actx.createAnalyser(); analyser.fftSize = 256; analyser.smoothingTimeConstant = .75;
+          var src = actx.createMediaElementSource(audio); analyser = actx.createAnalyser(); analyser.fftSize = 256; analyser.smoothingTimeConstant = .72;
           src.connect(analyser); analyser.connect(actx.destination); freq = new Uint8Array(analyser.frequencyBinCount);
         } catch (e) { actx = null; analyser = null; }
       }
-      function draw(now) {
-        var w = size.w, h = size.h, dpr = size.dpr; if (w <= 0 || h <= 0) { requestAnimationFrame(draw); return; }
-        var dt = Math.min(40, now - last); last = now; var dtF = dt / (1000 / 60); tRef += dt / 1000;
-        var t = tRef * 2.2, cy = h / 2, playing = !audio.paused && !audio.ended;
-        if (analyser && playing) analyser.getByteFrequencyData(freq);
-        ctx2d.setTransform(dpr, 0, 0, dpr, 0, 0); ctx2d.clearRect(0, 0, w, h);
-        var spacing = BW + GAP, total = BARS * BW + (BARS - 1) * GAP, x0 = (w - total) / 2;
-        var alpha = 1 - Math.pow(1 - SMOOTH, dtF);
-        ctx2d.globalAlpha = .95; ctx2d.shadowColor = "rgba(169,189,149,.9)"; ctx2d.shadowBlur = 8;
-        for (var i = 0; i < BARS; i++) {
-          var n = i / (BARS - 1), dist = Math.abs(n - .5) * 2, env = 1 - Math.pow(dist, 1.6) * FADE, target;
-          if (analyser && playing) {
-            // Voice energy lives in the low bins; map the middle bars to them so the shape follows the speech.
-            var bin = Math.floor(2 + dist * 26); var v = freq[bin] / 255; v = Math.pow(v, 1.35);
-            target = MINH + v * env * (MAXH - MINH) * 1.15;
-          } else {
-            var p = phases[i], w1 = Math.sin(t * 1.1 + n * 7.5 + p * .3), w2 = Math.sin(t * 2.2 - n * 13 + p) * .5 + .5,
-                w3 = Math.sin(t * 3.7 + p * 1.4 + n * 19) * .5 + .5, w4 = Math.sin(t * 6.1 + p * 2.1 + n * 31) * .5 + .5;
-            var energy = clamp(w1 * .28 + w2 * .35 + w3 * .22 + w4 * .15, 0, 1) * (reduce ? .5 : .55);
-            target = MINH + energy * env * (MAXH - MINH);
+      function Lane(canvas, colorA, colorB) {
+        var ctx = canvas.getContext("2d"), N = 40, BW = 3, GAP = 4, MINH = 2, MAXH = 24, size = { w: 0, h: 0, d: 1 }, hs = [], ph = [];
+        for (var i = 0; i < N; i++) { hs.push(MINH); ph.push(Math.random() * 6.28); }
+        function resize() { var r = canvas.getBoundingClientRect(), d = Math.min(devicePixelRatio || 1, 2); canvas.width = Math.max(1, r.width * d | 0); canvas.height = Math.max(1, r.height * d | 0); size = { w: r.width, h: r.height, d: d }; }
+        resize(); new ResizeObserver(resize).observe(canvas);
+        this.draw = function (t, live, dtF) {
+          var w = size.w, h = size.h, d = size.d; if (!w || !h) return;
+          ctx.setTransform(d, 0, 0, d, 0, 0); ctx.clearRect(0, 0, w, h);
+          var total = N * BW + (N - 1) * GAP, x0 = (w - total) / 2, cy = h / 2, a = 1 - Math.pow(.78, dtF);
+          for (var i = 0; i < N; i++) {
+            var n = i / (N - 1), dist = Math.abs(n - .5) * 2, env = 1 - Math.pow(dist, 1.5) * .6, target;
+            if (live && freq) { var bin = Math.floor(2 + dist * 24), v = Math.pow(freq[bin] / 255, 1.3); target = MINH + v * env * MAXH * 1.15; }
+            else { var p = ph[i]; var e = (Math.sin(t * 1.1 + n * 7.5 + p * .3) * .28 + (Math.sin(t * 2.2 - n * 13 + p) * .5 + .5) * .35 + (Math.sin(t * 3.7 + p * 1.4 + n * 19) * .5 + .5) * .22) * .12; target = MINH + Math.max(0, e) * env * MAXH; }
+            hs[i] += (target - hs[i]) * a;
+            var x = x0 + i * (BW + GAP), hh = hs[i], g = ctx.createLinearGradient(0, cy - hh, 0, cy + hh);
+            g.addColorStop(0, colorA); g.addColorStop(.5, colorB); g.addColorStop(1, colorA);
+            ctx.fillStyle = g; ctx.globalAlpha = live ? 1 : .35; ctx.beginPath(); ctx.roundRect(x, cy - hh, BW, hh * 2, BW / 2); ctx.fill();
           }
-          var next = heights[i] + (target - heights[i]) * alpha; heights[i] = next;
-          var x = x0 + i * spacing, top = cy - next, th = next * 2, rad = Math.min(BW / 2, next / 2);
-          var g = ctx2d.createLinearGradient(0, top, 0, top + th);
-          g.addColorStop(0, "#ffffff"); g.addColorStop(.45, "#a9bd95"); g.addColorStop(.55, "#a9bd95"); g.addColorStop(1, "#ffffff");
-          ctx2d.fillStyle = g; ctx2d.beginPath(); ctx2d.roundRect(x, top, BW, th, rad); ctx2d.fill();
-        }
-        ctx2d.shadowBlur = 0;
-        requestAnimationFrame(draw);
+          ctx.globalAlpha = 1;
+        };
       }
-      requestAnimationFrame(draw);
+      var lOtto = new Lane(document.getElementById("vizOtto"), "#ffffff", "#a9bd95");
+      var lCaller = new Lane(document.getElementById("vizCaller"), "#ffffff", "#bfbfbf");
+      var tRef = 0, last = performance.now();
+      function frame(nowT) {
+        var dt = Math.min(40, nowT - last); last = nowT; var dtF = dt / 16.67; tRef += dt / 1000;
+        var playing = !audio.paused && !audio.ended; if (analyser && playing) analyser.getByteFrequencyData(freq);
+        var who = active >= 0 ? turns[active].who : null;
+        lOtto.draw(tRef * 2.2, playing && who === "otto", dtF);
+        lCaller.draw(tRef * 2.2 + 1.7, playing && who === "caller", dtF);
+        requestAnimationFrame(frame);
+      }
+      requestAnimationFrame(frame);
 
       /* playback */
       function togglePlay() { ensureAnalyser(); if (audio.paused) audio.play(); else audio.pause(); }
       play.addEventListener("click", togglePlay);
-      hear.addEventListener("click", function () { document.getElementById("board").scrollIntoView({ block: "center", behavior: "smooth" }); ensureAnalyser(); audio.currentTime = 0; audio.play(); });
+      hear.addEventListener("click", function () { call.scrollIntoView({ block: "center", behavior: "smooth" }); ensureAnalyser(); audio.currentTime = 0; audio.play(); });
       scrub.addEventListener("click", function (e) { var r = scrub.getBoundingClientRect(); audio.currentTime = ((e.clientX - r.left) / r.width) * (audio.duration || 0); });
-      audio.addEventListener("loadedmetadata", computeStarts);
-      if (audio.readyState >= 1) computeStarts(); else computeStarts();
-      audio.addEventListener("play", function () { play.classList.add("playing"); live.classList.remove("off"); liveTxt.textContent = "Live"; thread.classList.add("playing"); chipD.classList.add("hide"); });
-      audio.addEventListener("pause", function () { play.classList.remove("playing"); liveTxt.textContent = "Paused"; });
+      audio.addEventListener("loadedmetadata", computeStarts); computeStarts();
+      audio.addEventListener("play", function () { play.classList.add("playing"); call.classList.add("on"); st.textContent = "Live"; doneWrap.innerHTML = ""; doneShown = false; });
+      audio.addEventListener("pause", function () { play.classList.remove("playing"); st.textContent = "Paused"; });
       audio.addEventListener("timeupdate", function () {
         var ct = audio.currentTime, idx = 0; for (var i = 0; i < starts.length; i++) if (starts[i] <= ct) idx = i;
         setActive(idx); fill.style.width = (audio.duration ? (ct / audio.duration) * 100 : 0) + "%"; cur.textContent = fmt(ct);
       });
       audio.addEventListener("ended", function () {
-        play.classList.remove("playing"); live.classList.add("off"); liveTxt.textContent = "Call ended"; thread.classList.remove("playing"); setActive(null);
-        chipA.textContent = "Hangs up happy"; chipB.textContent = "Booking moved, confirmation sent"; chipD.classList.remove("hide");
-        if (!doneShown) { doneShown = true; var d = document.createElement("div"); d.className = "done"; d.innerHTML = "<span>✓</span> Rebooked · 2 waverunners · tomorrow 9:00 AM · confirmation texted"; thread.appendChild(d); d.scrollIntoView({ block: "nearest" }); }
+        play.classList.remove("playing"); call.classList.remove("on"); st.textContent = "Call ended";
+        laneOtto.classList.remove("speaking"); laneCaller.classList.remove("speaking"); sOtto.textContent = "AI front desk"; sCaller.textContent = "Caller";
+        if (!doneShown) { doneShown = true; doneWrap.innerHTML = '<div class="done"><svg class="ic" style="width:16px;height:16px"><use href="#i-check"/></svg> Rebooked · 2 waverunners · tomorrow 9:00 AM · confirmation texted</div>'; }
       });
-      audio.addEventListener("error", function () { liveTxt.textContent = "Recording unavailable"; play.disabled = true; });
+      audio.addEventListener("error", function () { st.textContent = "Recording unavailable"; play.disabled = true; });
     })();
   </script>
 </body>
