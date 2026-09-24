@@ -20,6 +20,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { readFileSync, readdirSync } from "node:fs";
 
+import { splitIncluded } from "../listingDerive";
+
 const read = (rel: string) => readFileSync(new URL(rel, import.meta.url), "utf8");
 const SHEETS = read("../../components/booking/Sheets.tsx");
 const WEB = read("../../components/web/WebListing.tsx");
@@ -95,11 +97,13 @@ test("the desktop page names the partner where it would otherwise name a busines
  * `notIncludedLine` in backend/src/affiliates/catalog.ts writes it, and the rule below reads it.
  */
 test("an exclusion the sync publishes is struck through, not read as something included", () => {
-  const m = WEB.match(/const NOT_INCLUDED = (\/.+?\/)[a-z]*;/);
-  assert.ok(m, "the page still keeps one rule for a line that says something is not included");
-  const notIncluded = new RegExp(m![1].slice(1, -1), "i");
   for (const line of ["Gratuities (not included)", "Hotel pickup and drop-off (not included)", "Lunch is not included"]) {
-    assert.ok(notIncluded.test(line), line);
+    const split = splitIncluded([line]);
+    assert.deepEqual(split.yes, [], `read as included: ${line}`);
+    assert.equal(split.no.length, 1, line);
   }
-  assert.ok(!notIncluded.test("Local guide"), "and an inclusion stays an inclusion");
+  assert.deepEqual(splitIncluded(["Local guide"]).yes, ["Local guide"], "and an inclusion stays an inclusion");
+  // Both surfaces read the one rule, which now lives where a test can load it.
+  assert.match(WEB, /export \{ splitIncluded, tidyLine \};/);
+  assert.match(SHEETS, /splitIncluded/);
 });

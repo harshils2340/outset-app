@@ -8,11 +8,11 @@ import { metroById } from "../../data/metros";
 import { countryOfArea, countryOfRegion, regionOfArea } from "../../data/regions";
 import { SLOT_TIMES } from "../../data/slots";
 import type { Unclaimed } from "../../data/types";
-import { addressLine, bookingPaused, contactFor, fmtPhone, fromPrice, getCatalog, guestCapFor, listingFacts, mapsHref, maxGuestsFor, partnerBookLine, perPerson, plainWords, publicRating, telHref, topRated as isTopRated } from "../../lib/catalog";
+import { addressLine, bookingPaused, contactFor, fmtPhone, fromPrice, getCatalog, guestCapFor, listingFacts, mapsHref, maxGuestsFor, partnerBookLine, perPerson, publicRating, telHref, topRated as isTopRated } from "../../lib/catalog";
 import { DAYS, fmtDate, fmtReviews, fmtTime, money, priceWith, reviewsLine } from "../../lib/format";
 import { srcSet, thumb } from "../../lib/images";
 import { embedAutoplay, isGif, listingMedia, photoCandidates, probePhotos, type Media } from "../../lib/media";
-import { arrivalWords, bringLine, cleanDesc, durationLabel, faqText, groupCap as readGroupCap, minAge, splitPolicies, unglueHeading } from "../../lib/listingDerive";
+import { arrivalWords, bringLine, cleanDesc, durationLabel, groupCap as readGroupCap, minAge, splitIncluded, splitPolicies, tidyLine } from "../../lib/listingDerive";
 import { freeCancelBadge } from "../../lib/cancellation";
 import { bookableStart, clockIn, hourLines, itemOpenState, itemWeek, zoneFor } from "../../lib/openNow";
 import { displayHours } from "../../lib/hoursText";
@@ -162,23 +162,9 @@ export function possessive(name: string): string {
   return /s$/i.test(name.trim()) ? name.trim() + "’" : name.trim() + "’s";
 }
 
-/** Space before punctuation, "( x )", doubled spaces, a leading bullet, list number or Q&A label: the crawl's leftovers. */
-export function tidyLine(text: string): string {
-  let t = plainWords(faqText(text))
-    .replace(/^\s*(?:[•·*\-–—:;,|>]+|\d{1,2}\s*[-.)]\s+)\s*/, "")
-    .replace(/\s+([,.;:!?)])/g, "$1")
-    .replace(/\(\s+/g, "(")
-    .replace(/\s{2,}/g, " ")
-    .trim();
-  // A line still set in capitals reads as shouting: sentence case it, keeping short acronyms.
-  const letters = t.replace(/[^A-Za-z]/g, "");
-  if (letters.length >= 12 && letters.replace(/[^A-Z]/g, "").length / letters.length > 0.7) {
-    t = t.toLowerCase().replace(/(^|[.!?]\s+)([a-z])/g, (_m, p: string, c: string) => p + c.toUpperCase()).replace(/\b(am|pm|atv|utv|vip|faq|id|usa|fl)\b/g, (w) => w.toUpperCase());
-  }
-  // "Cancellations Cancellation requests received..." carries the page heading glued to the sentence.
-  t = unglueHeading(t);
-  return t ? t.charAt(0).toUpperCase() + t.slice(1) : t;
-}
+// `tidyLine` and `splitIncluded` are text rules the phone sheet reads too, so they live in `lib/listingDerive`
+// where a test can load them without the stylesheet this file imports. Re-exported here for the call sites.
+export { splitIncluded, tidyLine };
 
 /**
  * What the operator says about arriving, or "" when they say nothing. A greeting or a sign-off is not arrival
@@ -341,33 +327,6 @@ export function tidyAddress(text: string): string {
 /** "Free cancellation up to 48 hours before" ends on a preposition; say before what. */
 export function tidyCancel(text: string): string {
   return text.replace(/\bbefore\.?$/i, "before your start time");
-}
-
-/**
- * What's included, split the way a guest reads it. A short "Fuel (not included)" is struck through as Airbnb does
- * with a missing amenity; a whole sentence ("Gratuity is not included in the ticket price") keeps its own words,
- * because cutting "not included" out of the middle turns it into the opposite claim.
- */
-const NOT_INCLUDED = /\bnot included\b|\bexcluded\b|\bnot provided\b|\bdoes(?: not|n[’']t) include\b/i;
-export function splitIncluded(lines: string[]): { yes: string[]; no: { text: string; strike: boolean }[] } {
-  const yes: string[] = [];
-  const no: { text: string; strike: boolean }[] = [];
-  const seen = new Set<string>();
-  for (const raw of lines) {
-    const line = tidyLine(raw).replace(/^not included:\s*/i, "").replace(/^./, (c) => c.toUpperCase());
-    const key = line.toLowerCase();
-    if (!line || seen.has(key)) continue;
-    seen.add(key);
-    if (/\bbring your own\b/i.test(line)) continue;
-    if (!NOT_INCLUDED.test(line)) { yes.push(line); continue; }
-    const short = line.replace(/\s*[-–:(,]*\s*(?:is |are )?(?:not included|excluded|not provided)\)?\.?\s*$/i, "").trim();
-    const clean = short !== line && !!short && short.split(/\s+/).length <= 4 && !/[:;]/.test(short) && !/\b(?:in|also|are|is|the|of|and|a|to|that|for|with)$/i.test(short);
-    if (clean && !NOT_INCLUDED.test(short)) no.push({ text: short.charAt(0).toUpperCase() + short.slice(1), strike: true });
-    else no.push({ text: line, strike: false });
-  }
-  // "Gratuity" struck through beside "Gratuity is not included in the ticket price" says the same thing twice.
-  const out = no.filter((n) => !n.strike || !no.some((m) => !m.strike && m.text.toLowerCase().startsWith(n.text.toLowerCase() + " ")));
-  return { yes, no: out };
 }
 
 /* ---------- reviews ---------- */
