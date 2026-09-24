@@ -233,3 +233,58 @@ test("Waterloo, Kitchener and KW are their own metro, not Toronto", () => {
   assert.equal(metroInQuery("karate kitchener")?.metro.id, "waterloo");
   assert.equal(metroInQuery("escape room kw")?.metro.id, "waterloo");
 });
+
+/**
+ * An occasion is ranked the way the guest meant it.
+ *
+ * "date night" in Toronto opened on a page of nine-hour Niagara Falls day tours: the tour kind sat second in the
+ * occasion's list and the tours' review counts, thousands each, outweighed every cooking class and pottery
+ * studio in the city. A guest reading it from the other side of the screen saw a search that did not know what
+ * a date was.
+ */
+const week = (open: number, close: number): [number, number][] => Array.from({ length: 7 }, () => [open * 60, close * 60]);
+const OCCASION: Unclaimed[] = [
+  op({ title: "Date Night Cooking Classes", cat: "classes", art: "cooking", metroId: "toronto", rating: 4.9, reviews: 13 }),
+  op({ title: "Harbour Sunset Sail", cat: "water", art: "cruise", metroId: "toronto", rating: 4.9, reviews: 2100, from: 89, dur: "3 hours", hrs: week(10, 22) }),
+  op({ title: "Niagara Falls Day Tour from Toronto", cat: "culture", art: "tour", metroId: "toronto", rating: 4.8, reviews: 3069, from: 99, dur: "9.5 hours", hrs: week(7, 19), affiliate: { source: "viator", label: "Viator", url: "https://www.viator.com/x" } }),
+  op({ title: "Kensington Food Walk", cat: "culture", art: "tour", metroId: "toronto", rating: 4.9, reviews: 860, from: 109, dur: "2.5 hours", affiliate: { source: "viator", label: "Viator", url: "https://www.viator.com/y" } }),
+  op({ title: "Old Town Walking Tour", cat: "culture", art: "tour", metroId: "toronto", rating: 4.8, reviews: 420, from: 40, dur: "3 hours" }),
+  op({ title: "Lakeshore Jet Ski Dock", cat: "water", art: "jetski", metroId: "toronto", rating: 4.9, reviews: 1400, from: 120, hrs: week(9, 17) }),
+  op({ title: "Queen West Karaoke Rooms", cat: "indoor", art: "karaoke", metroId: "toronto", rating: 4.6, reviews: 300, from: 30, hrs: week(17, 26) }),
+  op({ title: "Crystal Grand Event Centre", cat: "venue", art: "venue", metroId: "toronto" }),
+  op({ title: "Harmony Event Centre", cat: "venue", art: "venue", metroId: "toronto" }),
+  op({ title: "Skydive Toronto", cat: "air", art: "skydive", metroId: "toronto", rating: 4.8, reviews: 2700, from: 300 }),
+];
+const dateNight = (q: string) => searchListings(OCCASION, q, { metroId: "toronto" }).map((u) => u.title);
+
+test("date night puts the place named for it first, ahead of a boat with two thousand reviews", () => {
+  const got = dateNight("date night");
+  assert.equal(got[0], "Date Night Cooking Classes");
+  assert.ok(got.indexOf("Harbour Sunset Sail") < got.indexOf("Old Town Walking Tour"), "a cruise is more of a date than a walking tour");
+});
+
+test("a nine-hour day tour is not a night out, however many reviews it has", () => {
+  const got = dateNight("date night");
+  assert.equal(got[got.length - 1], "Niagara Falls Day Tour from Toronto", got.join(" | "));
+  const tonight = dateNight("things to do tonight");
+  assert.ok(tonight.indexOf("Niagara Falls Day Tour from Toronto") > tonight.indexOf("Queen West Karaoke Rooms"), tonight.join(" | "));
+});
+
+test("tonight reads the published hours: a dock that closes at five drops below rooms open till two", () => {
+  const got = dateNight("things to do tonight");
+  assert.ok(got.indexOf("Queen West Karaoke Rooms") < got.indexOf("Lakeshore Jet Ski Dock"), got.join(" | "));
+  // No hours published: the kind decides. Skydiving is a daytime thing, karaoke is the evening's own.
+  assert.ok(got.indexOf("Queen West Karaoke Rooms") < got.indexOf("Skydive Toronto"), got.join(" | "));
+});
+
+test("a partner's product ranks behind Outset's own operator of the same kind and fit", () => {
+  const got = dateNight("date night");
+  assert.ok(got.indexOf("Old Town Walking Tour") < got.indexOf("Kensington Food Walk"), got.join(" | "));
+});
+
+test("a romantic evening is not an event centre", () => {
+  // "evening" used to stem to "even", and "event" starts with "even", so every banquet hall answered.
+  const got = dateNight("romantic evening");
+  assert.ok(!got.includes("Crystal Grand Event Centre") && !got.includes("Harmony Event Centre"), got.join(" | "));
+  assert.equal(got[0], "Date Night Cooking Classes");
+});

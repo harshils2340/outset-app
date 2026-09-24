@@ -5,6 +5,7 @@ import { CA_REGIONS, REGION_NAME, regionOfArea } from "../data/regions";
 import { ART_ALIASES, INTENT_PHRASES } from "../data/synonyms";
 import type { ArtKind, CategoryId, Unclaimed } from "../data/types";
 import { milesBetween } from "./geo";
+import { clockIn, itemWeek, zoneFor, type Week } from "./openNow";
 
 /**
  * Guest search for Explore and the desktop home.
@@ -41,7 +42,15 @@ function tokens(q: string): string[] {
  * The endings English adds to the same activity word. Not a real stemmer: it only has to land kayak / kayaks /
  * kayaking and winery / wineries on one key. Prefix matching in `relate` covers the rest (skydiv, skydive, skydiving).
  */
+/**
+ * Words that end in -ing without being a verb's -ing form. Stripping it turned "evening" into "even", and
+ * "event" starts with "even", so a guest asking for a romantic evening was shown banquet halls and convention
+ * centres: every "Event Centre" in the city answered the word.
+ */
+const NO_STEM = new Set(["evening", "morning", "wedding", "building", "clothing", "thing", "something", "anything", "nothing", "everything", "king", "ring", "spring", "string", "wing", "swing", "during", "ceiling", "pudding", "sibling", "darling"]);
+
 function stem(w: string): string {
+  if (NO_STEM.has(w)) return w;
   if (w.length > 4 && w.endsWith("ies")) return w.slice(0, -3) + "y";
   if (w.length > 4 && w.endsWith("es") && /(s|x|z|ch|sh)$/.test(w.slice(0, -2))) return w.slice(0, -2);
   if (w.length > 3 && w.endsWith("s") && !w.endsWith("ss") && !w.endsWith("us")) return w.slice(0, -1);
@@ -154,7 +163,26 @@ type Entry = {
   /** Lazily answered: published rules allow a young child, published text mentions groups. */
   kid: 0 | 1 | -1;
   grp: 0 | 1 | -1;
+  /** The published length is a day trip (five hours or more): not an answer to "tonight". */
+  long: boolean;
+  /** Lazily read published hours: 1 open past six on some day, 0 never, 2 hours unknown, -1 not yet asked. */
+  eve: 0 | 1 | 2 | -1;
+  week: Week | null;
 };
+
+/** Six in the evening, in minutes: a place that closes before this is not open for a night out. */
+const EVENING = 18 * 60;
+
+/**
+ * Whether the published length is a day trip. "9 hours" and "2 days" are; "1.5 hours to 3 hours" is not, read
+ * from its shorter end, since a tour that can run one hour is bookable in an evening.
+ */
+function isDayTrip(dur: string | undefined): boolean {
+  if (!dur) return false;
+  const m = dur.match(/(\d+(?:\.\d+)?)\s*(hours?|hrs?|days?)\b/i);
+  if (!m) return false;
+  return /day/i.test(m[2]) || Number(m[1]) >= 5;
+}
 
 type Word = { w: string; s: string; post: number[] };
 
@@ -216,10 +244,25 @@ function startingPrice(u: Unclaimed): number | null {
   return priced.length ? Math.min(...priced) : u.from ?? null;
 }
 
-/** Rating and photo weight, read off the record rather than out of the hot loop. */
+/**
+ * Rating and photo weight, read off the record rather than out of the hot loop.
+ *
+ * A partner's product carries the review count of a global marketplace, thousands where a local shop has
+ * dozens, and that count alone put Viator's day tours above every operator in the city. Partner listings keep
+ * half the ceiling, so a well-reviewed product still counts for something without outweighing being the right
+ * kind of place.
+ */
 function qualOf(u: Unclaimed): number {
-  return u.rating && u.reviews ? Math.min(6, Math.log10(u.reviews + 1) * 2) : 0;
+  const q = u.rating && u.reviews ? Math.min(6, Math.log10(u.reviews + 1) * 2) : 0;
+  return u.affiliate ? Math.min(3, q) : q;
 }
+
+/**
+ * Outset's own operators come before a partner's products of the same fit. A guest books the operator here and
+ * now; a partner product sends them off to book elsewhere, so it is the fallback when the catalog has nothing
+ * of its own, not the headline.
+ */
+const AFFILIATE_BEHIND = 6;
 
 function foldEntry(idx: Index, u: Unclaimed, i: number): void {
   const title = norm(u.title);
@@ -238,6 +281,9 @@ function foldEntry(idx: Index, u: Unclaimed, i: number): void {
     qual: qualOf(u),
     kid: -1,
     grp: -1,
+    long: isDayTrip(u.dur),
+    eve: -1,
+    week: null,
   });
 
   // One posting per word per listing, carrying every field the word showed up in.
@@ -306,9 +352,12 @@ function repoint(idx: Index, pool: Unclaimed[]): void {
     e.u = u;
     e.from = startingPrice(u);
     e.qual = qualOf(u);
-    // Both are answered from published text the operator can edit, so they are asked again rather than kept.
+    // All of these are answered from published text the operator can edit, so they are asked again rather than kept.
     e.kid = -1;
     e.grp = -1;
+    e.long = isDayTrip(u.dur);
+    e.eve = -1;
+    e.week = null;
     const title = norm(u.title);
     if (title !== e.title) {
       e.title = title;
@@ -474,8 +523,21 @@ export type Intent = {
   maxPrice: number | null;
   kids: boolean;
   group: boolean;
+  /** The guest is going out in the evening: "date night", "tonight", "after work". Day trips and places closed by six are not it. */
+  evening: boolean;
+  /** Specifically this evening, so the hours that count are today's. */
+  tonight: boolean;
   words: string[];
+  /**
+   * The occasion as the guest phrased it ("date night", "couples", "team building"): a listing that says the same
+   * words of itself, in its name or its menu, is the first answer. Single short words ("date", "hen") are left
+   * out, since a business rarely names itself after one and many contain it by accident.
+   */
+  phrases: string[];
 };
+
+const EVENING_RE = /\b(tonight|night|nights|evening|evenings|after work|after hours|late night|nightlife|night out)\b/g;
+const TONIGHT_RE = /\b(tonight|today|right now)\b/;
 
 /** The whole query tokens that a regex match touches. "rainy" is stripped when the intent matched "rain". */
 function wholeWords(lq: string, index: number, length: number): { words: string[]; start: number; end: number } {
@@ -487,7 +549,12 @@ function wholeWords(lq: string, index: number, length: number): { words: string[
 
 export function parseIntent(q: string): Intent {
   const lq = " " + q.toLowerCase().replace(/[^a-z0-9$]+/g, " ") + " ";
-  const out: Intent = { label: null, arts: [], maxPrice: null, kids: false, group: false, words: [] };
+  const out: Intent = { label: null, arts: [], maxPrice: null, kids: false, group: false, evening: false, tonight: false, words: [], phrases: [] };
+  for (const m of lq.matchAll(EVENING_RE)) {
+    out.evening = true;
+    out.words.push(...wholeWords(lq, m.index ?? 0, m[0].length).words);
+  }
+  if (out.evening && TONIGHT_RE.test(lq)) out.tonight = true;
   const price = lq.match(/(?:under|below|less than|max|up to|<)\s*\$?\s*(\d{2,4})\b/) || lq.match(/\$\s*(\d{2,4})\b/);
   if (price) {
     out.maxPrice = Number(price[1]);
@@ -510,6 +577,8 @@ export function parseIntent(q: string): Intent {
       if (claimed.some((c) => c.start <= w.start && w.end <= c.end)) continue;
       fired = true;
       out.words.push(...w.words);
+      const phrase = w.words.join(" ");
+      if ((w.words.length > 1 || phrase.length >= 6) && !out.phrases.includes(phrase)) out.phrases.push(phrase);
     }
     if (!fired) continue;
     if (!out.label) out.label = it.label;
@@ -530,7 +599,7 @@ export function kidFriendly(u: Unclaimed): boolean {
   return !["skydive", "paintball", "axe"].includes(u.art);
 }
 
-const FILLER = new Set(["rental", "rentals", "rent", "near", "me", "in", "the", "a", "an", "and", "for", "with", "best", "cheap", "tour", "tours", "ideas", "idea", "stuff", "things", "to", "do", "of", "on", "at", "good", "great", "top", "nearby", "around", "here", "my", "our", "we", "i", "some", "any", "night", "day", "tonight", "today", "now", "this", "weekend", "open", "place", "places", "spot", "spots", "options", "local", "close", "closest", "nearest", "budget", "affordable", "inexpensive", "something", "somewhere", "anything", "anywhere", "want", "looking", "find", "go", "get", "book"]);
+const FILLER = new Set(["rental", "rentals", "rent", "near", "me", "in", "the", "a", "an", "and", "for", "with", "best", "cheap", "tour", "tours", "ideas", "idea", "stuff", "things", "to", "do", "of", "on", "at", "good", "great", "top", "nearby", "around", "here", "my", "our", "we", "i", "some", "any", "night", "nights", "day", "tonight", "today", "tomorrow", "now", "this", "weekend", "evening", "evenings", "morning", "afternoon", "late", "nightlife", "open", "place", "places", "spot", "spots", "options", "local", "close", "closest", "nearest", "budget", "affordable", "inexpensive", "something", "somewhere", "anything", "anywhere", "want", "looking", "find", "go", "get", "book"]);
 
 
 /** Everything about the query that does not depend on the listing, parsed once and reused across the catalog. */
@@ -720,6 +789,39 @@ function groupOk(e: Entry): boolean {
   return e.grp === 1;
 }
 
+const openPastSix = (d: Week[number]) => !!d && d.close > 0 && d.close >= EVENING;
+
+/**
+ * What a kind is when its hours are not published. Skydiving, helicopters, jet skis, fishing and zoos are
+ * daytime by nature, so they do not lead "things to do tonight" on review count alone; theatres, karaoke,
+ * bowling and breweries are the evening's own. Published hours override both: a jet ski dock open till nine
+ * keeps its place.
+ */
+const DAYTIME_KINDS = new Set<ArtKind>(["skydive", "heli", "balloon", "parasail", "jetski", "kayak", "paddleboard", "pontoon", "fishing", "zoo", "garden", "zipline", "golf", "discgolf", "horse", "rafting", "surf", "scuba", "camping", "tennis", "gliding", "paragliding", "waterpark", "themepark", "aquarium", "museum", "bike", "snowmobile", "ski", "sailing"]);
+const EVENING_KINDS = new Set<ArtKind>(["theatre", "karaoke", "bowling", "billiards", "arcade", "escape", "axe", "brewery", "winery", "distillery", "cooking", "minigolf", "icerink", "dance", "sauna", "spa", "cruise", "lasertag", "rage"]);
+
+/**
+ * How a listing fits an evening out, from its own published hours. Open past six on some day is a fit; hours
+ * that never reach six are not (a jet ski dock that closes at five is no answer to "tonight"); no published hours
+ * is neither. For "tonight" the day that counts is today where the operator stands, so a place closed Mondays
+ * drops on a Monday. `today` caches the weekday per time zone across one ranking pass, because working it out
+ * costs a date formatter per call and a query touches hundreds of listings.
+ */
+function eveningFit(e: Entry, tonight: boolean, today: Map<string | null, number>): number {
+  if (e.eve === -1) {
+    e.week = itemWeek(e.u);
+    e.eve = e.week ? (e.week.some(openPastSix) ? 1 : 0) : 2;
+  }
+  if (e.eve === 2) return DAYTIME_KINDS.has(e.art) ? -6 : EVENING_KINDS.has(e.art) ? 4 : 0;
+  if (tonight && e.week) {
+    const zone = zoneFor(e.u);
+    let day = today.get(zone);
+    if (day === undefined) today.set(zone, (day = clockIn(zone).day));
+    return openPastSix(e.week[day]) ? 6 : -10;
+  }
+  return e.eve ? 4 : -8;
+}
+
 /** Where the guest is looking. The index is always the whole catalog, so scoping happens here. */
 export type SearchScope = {
   /** A metro id, or "all" / undefined for everywhere. */
@@ -749,21 +851,55 @@ function rank(pool: Unclaimed[], q: string, scope?: SearchScope): Scored[] {
   const out: Scored[] = [];
   const wantsCheap = p.cheap;
   const maxPrice = p.intent.maxPrice;
+  const today = new Map<string | null, number>();
+  /**
+   * What the guest's evening and the partner rule take off a listing, in both passes below. A nine-hour day
+   * trip is not a night out however many reviews it has, and a place whose hours end at five is not either.
+   */
+  const occasion = (e: Entry): number => {
+    let s = 0;
+    if (p.intent.evening) {
+      if (e.long) s -= 14;
+      s += eveningFit(e, p.intent.tonight, today);
+    }
+    if (e.u.affiliate) s -= AFFILIATE_BEHIND;
+    return s;
+  };
 
   // A guest who only described an occasion ("date night", "rainy day with kids") is browsing, not searching.
   if (!p.all.length) {
     const ids = p.arts.length ? p.arts.flatMap((a) => idx.byArt.get(a) || []) : null;
+    const phrases = p.intent.phrases.map((ph) => " " + ph + " ");
+    /**
+     * A listing that names the occasion itself. "Date Night Cooking Classes" is the first answer to "date
+     * night" in its city, ahead of every boat with more reviews; a class that lists a "couples" session is
+     * next. The name counts for more than the menu, as everywhere else in the ranking.
+     */
+    const saysSo = (e: Entry): number => {
+      if (!phrases.length) return 0;
+      const title = " " + e.title + " ";
+      if (phrases.some((ph) => title.includes(ph))) return 30;
+      const menu = " " + norm([...(e.u.tags || []), ...e.u.options.map((o) => o.name)].join(" ")) + " ";
+      return phrases.some((ph) => menu.includes(ph)) ? 15 : 0;
+    };
     const scan = (i: number) => {
       const e = idx.entries[i];
       if (!inScope(e.u, scope)) return;
       if (maxPrice != null && (e.from == null || e.from > maxPrice)) return;
       if (p.intent.kids && !kidOk(e)) return;
-      let s = p.arts.length ? 30 + (p.arts.length - p.arts.indexOf(e.art)) : 20;
+      /**
+       * The kind order is the occasion's own ranking (a cooking class is more of a date than a cruise, a cruise
+       * more than a helicopter), so it counts two points a step. Reviews count once: at one and a half, a boat
+       * with two thousand reviews outranked every cooking class and pottery studio in the city for "date night".
+       */
+      let s = p.arts.length ? 30 + 2 * (p.arts.length - p.arts.indexOf(e.art)) : 20;
+      s += saysSo(e);
       if (e.u.cover) s += 4;
-      s += e.qual * 1.5 + (e.u.rating ? (e.u.rating - 4) * 4 : 0);
+      s += e.qual + (e.u.rating ? (e.u.rating - 4) * 4 : 0);
       if (e.from != null) s += 3;
       if (wantsCheap && e.from != null) s += e.from <= 40 ? 6 : e.from <= 75 ? 3 : 0;
       if (p.intent.group && groupOk(e)) s += 4;
+      s += occasion(e);
       out.push({ e, s });
     };
     if (ids) for (const i of ids) scan(i);
@@ -855,6 +991,7 @@ function rank(pool: Unclaimed[], q: string, scope?: SearchScope): Scored[] {
     if (p.arts.length && s < 24) return;
     s += e.qual + (e.u.cover ? 2 : 0) + (e.from != null ? 1 : 0);
     if (wantsCheap && e.from != null) s += e.from <= 40 ? 6 : e.from <= 75 ? 3 : 0;
+    s += occasion(e);
     if (s > 0) out.push({ e, s });
   };
 
