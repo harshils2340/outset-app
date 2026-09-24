@@ -55,7 +55,10 @@ export function draftOttoCopy(op: OttoOp, email?: string): { subject: string; bo
   const TERMS = SITE + "terms.html";
   const PRIVACY = SITE + "privacy.html";
   const subject = "Who answers " + op.name + "'s phone after you close?";
-  const who = "I'm Harshil. I built Otto, an AI phone assistant for local activity operators like " + op.name + " that answers calls when you're busy or closed, takes bookings, and emails you a summary.";
+  // "AI phone assistant" read too passive to Harshil (24 September 2026): he wants it sound like it gets
+  // things done, not like it just takes a message. "AI front desk" is also the exact term otto.html's own
+  // hero already uses, so the email and the page it links to now say the same thing.
+  const who = "I'm Harshil. I built Otto, the AI front desk for local activity operators like " + op.name + ": it answers calls when you're busy or closed, books the guest in, and emails you a summary.";
   const hear = "Before anything else, give this 43-second recording a listen to hear how it handles a real caller:";
   const staff = "Most operators use it so staff can stay focused on guests in person, while catching calls after hours that used to go to voicemail.";
   const vendor = vendorLine(op.calendar_vendor);
