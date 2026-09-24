@@ -108,6 +108,19 @@ export function onOperatorAuthLost(fn: ((id: string) => void) | null): void {
 export function authLost(status: number): boolean {
   return status === 401 || status === 403;
 }
+
+/**
+ * Did the API ever judge what was sent, or did the call simply never get an answer?
+ *
+ * Status 0 is everything `call` catches: no API configured, a dead connection, a request that timed out.
+ * 408 is a timeout the server itself noticed, 429 is the rate limiter counting the caller rather than reading
+ * their token, and a 5xx is the API falling over. None of those says a claim link is forged or a sign-in code
+ * is wrong, so a screen whose failure line is "that did not check out" has to tell the two apart. Every one
+ * of them is worth a retry; a 400 and a 401 are not.
+ */
+export function apiDidNotAnswer(status: number): boolean {
+  return status === 0 || status === 408 || status === 429 || status >= 500;
+}
 const noteStatus = (id: string, status: number) => {
   if (authLost(status)) onAuthLost?.(id);
 };
@@ -289,14 +302,16 @@ export const isExpiringClaimToken = (token: string) => token.startsWith("v2.");
  * the static claimKey in the catalog cannot check it and the API has to. Returns "expired" separately so
  * the screen can offer a fresh link rather than calling a perfectly genuine link a bad one.
  */
-export async function exchangeClaimToken(id: string, token: string): Promise<{ ok: boolean; expired?: boolean; error?: string }> {
+export async function exchangeClaimToken(id: string, token: string): Promise<{ ok: boolean; expired?: boolean; unanswered?: boolean; error?: string }> {
   const r = await call<{ ok: boolean; session: string; exp: number }>(`/claims/${encodeURIComponent(id)}/exchange`, { method: "POST", body: JSON.stringify({ token }), timeout: 15000 });
   if (r.ok && r.data?.session) {
     const prior = loadApiSession();
     saveApiSession({ token: r.data.session, ids: Array.from(new Set([...(prior?.ids || []), id])), email: prior?.email || "", exp: r.data.exp });
     return { ok: true };
   }
-  return { ok: false, expired: r.status === 410, error: r.error };
+  // `unanswered` is the difference between a link the API read and refused and a link it never read at all.
+  // Only the first of those is the owner's problem, and only the second is worth reloading.
+  return { ok: false, expired: r.status === 410, unanswered: apiDidNotAnswer(r.status), error: r.error };
 }
 
 /**
@@ -330,7 +345,7 @@ export async function requestSignInCode(email: string): Promise<{ ok: boolean; e
   return { ok: r.ok, error: r.error };
 }
 
-export async function verifySignInCode(email: string, code: string): Promise<{ ok: boolean; ids: string[]; error?: string }> {
+export async function verifySignInCode(email: string, code: string): Promise<{ ok: boolean; ids: string[]; unanswered?: boolean; error?: string }> {
   // Send the session this device already holds. A claim link only ever goes to the address on that business's
   // own website, so an owner of two shops holds one address per shop: without this, signing in with either one
   // came back scoped to that address's listings alone and dropped the other shop, which stayed in the
@@ -338,7 +353,7 @@ export async function verifySignInCode(email: string, code: string): Promise<{ o
   // from it, so this cannot widen a session beyond what the device already had.
   const prior = loadApiSession();
   const r = await call<{ session: string; ids: string[]; exp: number }>(`/auth/verify`, { method: "POST", headers: prior ? { "x-session": prior.token } : {}, body: JSON.stringify({ email, code }) });
-  if (!r.ok || !r.data) return { ok: false, ids: [], error: r.error };
+  if (!r.ok || !r.data) return { ok: false, ids: [], unanswered: apiDidNotAnswer(r.status), error: r.error };
   saveApiSession({ token: r.data.session, ids: r.data.ids, email, exp: r.data.exp });
   return { ok: true, ids: r.data.ids };
 }

@@ -95,7 +95,13 @@ export function OpLogin({ claimId, claimToken, compact, onEnter, onBack }: { cla
   const [phone, setPhone] = useState("");
   const [code, setCode] = useState("");
   const [err, setErr] = useState<string | null>(null);
-  const [linkState, setLinkState] = useState<"idle" | "checking" | "confirm" | "bad" | "expired">(claimToken && claimId && !consumedLinks.has(claimToken) ? "checking" : "idle");
+  /**
+   * "bad" is the API reading the token and refusing it. "offline" is the API never answering at all, which is
+   * a timeout, a dead connection, the rate limiter or a fault on its side: the link is very likely fine and
+   * the token is still in the address bar, so a reload retries it. Calling that one bad told owners with a
+   * perfectly good link to ask for a fresh one, which needs the same API.
+   */
+  const [linkState, setLinkState] = useState<"idle" | "checking" | "confirm" | "bad" | "expired" | "offline">(claimToken && claimId && !consumedLinks.has(claimToken) ? "checking" : "idle");
   /**
    * What a first-time claim link needs once its token has checked out, held until a person clicks through.
    * A mail client's own link-safety scanner (Outlook Safe Links, Gmail's, a corporate gateway's) opens every
@@ -129,7 +135,7 @@ export function OpLogin({ claimId, claimToken, compact, onEnter, onBack }: { cla
           const r = await exchangeClaimToken(apiId, claimToken);
           if (!alive) return;
           ok = r.ok;
-          if (!ok) { setLinkState(r.expired ? "expired" : "bad"); return; }
+          if (!ok) { setLinkState(r.expired ? "expired" : r.unanswered ? "offline" : "bad"); return; }
         } else {
           ok = (await sha256Hex(claimToken)) === u.claimKey;
           if (!alive) return;
@@ -315,7 +321,9 @@ export function OpLogin({ claimId, claimToken, compact, onEnter, onBack }: { cla
   const finishSignIn = async () => {
     setErr(null);
     const r = await verifySignInCode(signinEmail, code);
-    if (!r.ok) { setErr(r.error || "That code does not match."); return; }
+    // An API that never answered has not read the code, so it is still good for the rest of its ten minutes.
+    // Calling it wrong sent owners back to retype a correct code, and the API counts six tries and then burns it.
+    if (!r.ok) { setErr(r.error || (r.unanswered ? "We couldn't reach Outset to check that code. Check your connection and try again: your code is still good." : "That code does not match.")); return; }
     if (!r.ids.length) { setErr("No listing is linked to that email yet. Use the claim link from your email."); return; }
     // Every listing this email owns gets a local copy, from the API when this device has none. The business
     // switcher only lists what is stored here, so pulling just the first one left an owner of two shops with no
@@ -473,7 +481,7 @@ export function OpLogin({ claimId, claimToken, compact, onEnter, onBack }: { cla
             <p className="odmuted">Search by name. If we already built your listing, you'll claim it in under a minute.</p>
             {claimId && !preset && app.catalogComplete ? (
               <p className="oderr">We couldn't find the business named in that link. Search for it by name below, or write to {SUPPORT}.</p>
-            ) : claimId && !preset && linkState === "bad" ? (
+            ) : claimId && !preset && (linkState === "bad" || linkState === "offline") ? (
               /* The link check waits a full minute for the catalog and the listing's own file, then gives up. If
                  the listing never arrived, the link is not what went wrong and a fresh one will not help: the
                  owner landed here on a bare "Find your business" screen with nothing said at all. */
@@ -543,6 +551,7 @@ export function OpLogin({ claimId, claimToken, compact, onEnter, onBack }: { cla
             {head}
             {linkState === "bad" ? <p className="oderr">That claim link didn't check out. Ask for a fresh one below, or sign in with your email.</p> : null}
             {linkState === "expired" ? <p className="oderr">That claim link has expired. Links stay good for a while so an old forwarded email cannot open your dashboard. Ask for a fresh one below, it arrives in a moment.</p> : null}
+            {linkState === "offline" ? <p className="oderr">We couldn't reach Outset to check that link, so there is nothing wrong with it. Check your connection and reload this page, or open the link from your email again.</p> : null}
             <h2>Who's the owner?</h2>
             <p className="odmuted">We'll send booking alerts here. Nothing goes out until you confirm.</p>
             <label className="odfield"><span>Your name</span><input maxLength={120} value={name} onChange={(e) => setName(e.target.value)} placeholder="Full name" /></label>

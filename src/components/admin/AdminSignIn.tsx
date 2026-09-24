@@ -33,7 +33,9 @@ export function AdminSignIn({ onDone }: { onDone: (email: string) => void }) {
     // an empty list as a failure; this one must not.
     const r = await verifySignInCode(email.trim(), code.trim());
     setBusy(false);
-    if (!r.ok) { setErr(r.error || "That code does not match."); return; }
+    // Same rule the operator screen keeps: an API that never answered has not read the code, so the code is
+    // still good and the thing to do is try again rather than ask for another one.
+    if (!r.ok) { setErr(r.error || (r.unanswered ? "We couldn't reach Outset to check that code. Check your connection and try again: your code is still good." : "That code does not match.")); return; }
     onDone(email.trim().toLowerCase());
   };
 
