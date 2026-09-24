@@ -1,7 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import fs from "node:fs";
-import path from "node:path";
+import { readdirSync, readFileSync } from "node:fs";
 import { statesAPlusAge, statesAWordedAge } from "../ages";
 import { listingFacts } from "../catalog";
 import type { Unclaimed } from "../../data/types";
@@ -53,12 +52,13 @@ test("a length, a lead time and a party size stated the same way are not an age"
 });
 
 test("the rule reads the shipped catalog and nothing it moves is anything but an age", () => {
-  const dir = path.join(process.cwd(), "public/o");
+  // Resolved off this file, never off the working directory: the rehearsal runs these tests from its own.
+  const dir = new URL("../../../public/o/", import.meta.url);
   const shape = /\bmust be(?: at least)?\s*\d{1,2}\s*(?:\+|and (?:up|over|older)|years?(?: old| of age)?|yrs|or (?:older|over|above))/i;
   let moved = 0;
   const listings = new Set<string>();
-  for (const f of fs.readdirSync(dir)) {
-    const d = JSON.parse(fs.readFileSync(path.join(dir, f), "utf8")) as { id: string; specs?: string[] };
+  for (const f of readdirSync(dir)) {
+    const d = JSON.parse(readFileSync(new URL(f, dir), "utf8")) as { id: string; specs?: string[] };
     for (const line of d.specs || []) {
       if (!statesAWordedAge(line) || statesAPlusAge(line)) continue;
       // Every line the new cue alone moves has to carry the cue whole: the number, and the words after it
