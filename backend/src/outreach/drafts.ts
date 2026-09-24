@@ -264,8 +264,10 @@ export function generateOutreachDrafts(): number {
   const sc = scale();
   let n = 0;
   db.exec("PRAGMA busy_timeout = 120000");
-  db.prepare("DELETE FROM outreach_drafts WHERE status = 'draft'").run();
-  const ins = db.prepare("INSERT INTO outreach_drafts (id, operator_id, to_email, subject, body, status, created_at) VALUES (?, ?, ?, ?, ?, 'draft', ?)");
+  // Scoped to this campaign's own rows: the Otto pitch (kind = 'otto') shares this table and must survive a
+  // listing-draft regeneration untouched, the same way a listing draft must survive an Otto regeneration.
+  db.prepare("DELETE FROM outreach_drafts WHERE status = 'draft' AND kind = 'listing'").run();
+  const ins = db.prepare("INSERT INTO outreach_drafts (id, operator_id, to_email, subject, body, status, created_at, kind) VALUES (?, ?, ?, ?, ?, 'draft', ?, 'listing')");
   // One transaction: the write lock is held for seconds, not minutes, while crawls share the database.
   db.exec("BEGIN IMMEDIATE");
   for (const op of ops) {

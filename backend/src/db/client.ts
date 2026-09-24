@@ -27,6 +27,10 @@ export function migrate(): void {
   for (const [col, type] of [["street","TEXT"],["postal","TEXT"],["hours","TEXT"],["lat","REAL"],["lon","REAL"],["osm_ref","TEXT"]]) {
     if (!cols.has(col)) db.exec(`ALTER TABLE operators ADD COLUMN ${col} ${type}`);
   }
+  const draftCols = new Set(
+    (db.prepare("PRAGMA table_info(outreach_drafts)").all() as { name: string }[]).map((c) => c.name),
+  );
+  if (!draftCols.has("kind")) db.exec("ALTER TABLE outreach_drafts ADD COLUMN kind TEXT NOT NULL DEFAULT 'listing'");
 }
 
 export function nowIso(): string {

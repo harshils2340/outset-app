@@ -84,8 +84,8 @@ export async function sendOutreach(opts: {
   if (!opts.dry && blockers.length) return out;
   let sql = `SELECT d.id, d.to_email, o.domain, o.name, o.email, o.city, o.region, o.metro_id, o.website, o.completeness, o.origin, o.calendar_vendor
        FROM outreach_drafts d JOIN operators o ON o.id = d.operator_id
-       WHERE d.status = 'draft' AND d.to_email IS NOT NULL AND d.to_email LIKE '%@%' AND o.claim_status = 'unclaimed'
-         AND NOT EXISTS (SELECT 1 FROM outreach_drafts s WHERE s.to_email = d.to_email AND s.status = 'sent')
+       WHERE d.status = 'draft' AND d.kind = 'listing' AND d.to_email IS NOT NULL AND d.to_email LIKE '%@%' AND o.claim_status = 'unclaimed'
+         AND NOT EXISTS (SELECT 1 FROM outreach_drafts s WHERE s.to_email = d.to_email AND s.status = 'sent' AND s.kind = 'listing')
          -- Museums, theme parks, waterparks, aquariums and zoos are large, professionally-run institutions,
          -- not the small local operators this pitch is written for; category_id still missed real ones filed
          -- under an ordinary-looking category (the Gateway Arch under "cruise", the Museum of Flight under

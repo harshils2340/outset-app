@@ -109,7 +109,11 @@ CREATE TABLE IF NOT EXISTS outreach_drafts (
   subject TEXT NOT NULL,
   body TEXT NOT NULL,
   status TEXT NOT NULL DEFAULT 'draft',
-  created_at TEXT NOT NULL
+  created_at TEXT NOT NULL,
+  -- 'listing' (the claim-your-free-page pitch) or 'otto' (the AI phone line pitch): two different offers
+  -- sharing one table and one Gmail sending identity, so every dedup and generation query must scope by
+  -- this column or the two campaigns silently starve or suppress each other.
+  kind TEXT NOT NULL DEFAULT 'listing'
 );
 
 CREATE TABLE IF NOT EXISTS mail_unsub (
