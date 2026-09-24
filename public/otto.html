@@ -101,6 +101,8 @@
     .activity { display: flex; flex-direction: column; gap: .5rem; height: 132px; overflow: hidden; }
     .act { display: flex; align-items: center; gap: .7rem; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-m); padding: .6rem .8rem; font-size: .88rem; color: var(--ink); box-shadow: 0 1px 2px rgba(0,0,0,.04), 0 8px 20px rgba(0,0,0,.06); opacity: 0; transform: translateY(6px); max-height: 0; padding-top: 0; padding-bottom: 0; margin-top: -.5rem; border-width: 0; overflow: hidden; transition: opacity .35s ease, transform .35s ease, max-height .35s ease, padding .35s ease, margin .35s ease; }
     .act.in { opacity: 1; transform: none; max-height: 72px; padding: .6rem .8rem; margin-top: 0; border-width: 1px; }
+    /* After a seek the lanes and the activity stack take the new position in one step: nothing slides in or out. */
+    .callcol.snap .lane, .callcol.snap .lane .av, .callcol.snap .act { transition: none; }
     .act .ico { width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center; flex: none; }
     .act .ico.cal { background: var(--accent-tint); }
     .act .ico.cal img { width: 18px; height: 18px; display: block; }
@@ -128,7 +130,7 @@
     .ic-pause { display: none; gap: 5px; }
     .playbtn.playing .ic-pause { display: inline-flex; }
     .ic-pause i { width: 4.5px; height: 17px; background: currentColor; border-radius: 2px; display: block; }
-    .scrub { flex: 1; height: 6px; background: rgba(255,255,255,.14); border-radius: 3px; cursor: pointer; position: relative; }
+    .scrub { flex: 1; height: 6px; background: rgba(255,255,255,.14); border-radius: 3px; cursor: pointer; position: relative; touch-action: none; }
     .scrubfill { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: #fff; border-radius: 3px; }
     .scrubfill::after { content: ""; position: absolute; right: -6px; top: 50%; transform: translateY(-50%); width: 13px; height: 13px; border-radius: 50%; background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,.4); opacity: 0; transition: opacity .2s; }
     .call.on .scrubfill::after { opacity: 1; }
@@ -139,12 +141,12 @@
     h2 { font-weight: 600; font-size: clamp(1.7rem, 3.4vw, 2.3rem); line-height: 1.12; letter-spacing: -.03em; margin: 0 0 .8rem; max-width: 22ch; }
     .sub { color: var(--ink-soft); font-size: 1.05rem; max-width: 36rem; margin: 0 0 2rem; }
 
-    .logos { background: var(--surface); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); padding: 1.5rem 0; }
-    .logos .wrap { display: flex; flex-direction: column; align-items: center; gap: 1rem; }
-    .logos .lbl { font-size: .78rem; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-soft); }
-    .logos .row { display: flex; flex-wrap: wrap; justify-content: center; gap: .6rem 1rem; }
-    .logos .v { display: inline-flex; align-items: center; gap: .55rem; padding: .5rem .85rem .5rem .55rem; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); font-weight: 600; font-size: .9rem; }
-    .logos .v img { width: 22px; height: 22px; border-radius: 6px; display: block; }
+    /* The booking systems sit in the hero under the buttons, so the first screen shows the calendar it plugs into. */
+    .logos { margin-top: 1.75rem; display: flex; flex-direction: column; align-items: flex-start; gap: .7rem; }
+    .logos .lbl { font-size: .74rem; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-soft); font-weight: 600; }
+    .logos .row { display: flex; flex-wrap: nowrap; gap: .5rem; }
+    .logos .v { display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; flex: none; border: 1px solid var(--line); border-radius: 50%; background: var(--surface); }
+    .logos .v img { width: 18px; height: 18px; border-radius: 4px; display: block; }
 
     .cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
     @media (max-width: 860px) { .cards { grid-template-columns: 1fr; } }
@@ -263,9 +265,21 @@
           <button class="btn soft" id="hear" type="button"><svg class="ic"><use href="#i-phone"/></svg> Hear a sample call</button>
         </div>
         <p class="fine">Set up with you in a day. Month to month, cancel anytime.</p>
+        <div class="logos">
+          <span class="lbl">Works with your booking system</span>
+          <div class="row">
+            <span class="v" title="FareHarbor"><img src="https://www.google.com/s2/favicons?domain=fareharbor.com&sz=64" alt="FareHarbor"></span>
+            <span class="v" title="Peek"><img src="https://www.google.com/s2/favicons?domain=peek.com&sz=64" alt="Peek"></span>
+            <span class="v" title="Xola"><img src="https://www.google.com/s2/favicons?domain=xola.com&sz=64" alt="Xola"></span>
+            <span class="v" title="Checkfront"><img src="https://www.google.com/s2/favicons?domain=checkfront.com&sz=64" alt="Checkfront"></span>
+            <span class="v" title="Rezdy"><img src="https://www.google.com/s2/favicons?domain=rezdy.com&sz=64" alt="Rezdy"></span>
+            <span class="v" title="Square"><img src="https://www.google.com/s2/favicons?domain=squareup.com&sz=64" alt="Square"></span>
+            <span class="v" title="Acuity"><img src="https://www.google.com/s2/favicons?domain=acuityscheduling.com&sz=64" alt="Acuity"></span>
+          </div>
+        </div>
       </div>
 
-      <div class="callcol">
+      <div class="callcol" id="callcol">
       <div class="call" id="call">
         <div class="top">
           <div><b>Sample call</b><small>Bayside Marina · jet ski rental</small></div>
@@ -294,21 +308,6 @@
         <audio id="audio" preload="metadata" src="/otto-call.mp3"></audio>
       </div>
       <div class="activity" id="actions" aria-live="polite"></div>
-      </div>
-    </div>
-  </div>
-
-  <div class="logos">
-    <div class="wrap">
-      <span class="lbl">Works with your booking system</span>
-      <div class="row">
-        <span class="v"><img src="https://www.google.com/s2/favicons?domain=fareharbor.com&sz=64" alt="" loading="lazy">FareHarbor</span>
-        <span class="v"><img src="https://www.google.com/s2/favicons?domain=peek.com&sz=64" alt="" loading="lazy">Peek</span>
-        <span class="v"><img src="https://www.google.com/s2/favicons?domain=xola.com&sz=64" alt="" loading="lazy">Xola</span>
-        <span class="v"><img src="https://www.google.com/s2/favicons?domain=checkfront.com&sz=64" alt="" loading="lazy">Checkfront</span>
-        <span class="v"><img src="https://www.google.com/s2/favicons?domain=rezdy.com&sz=64" alt="" loading="lazy">Rezdy</span>
-        <span class="v"><img src="https://www.google.com/s2/favicons?domain=squareup.com&sz=64" alt="" loading="lazy">Square</span>
-        <span class="v"><img src="https://www.google.com/s2/favicons?domain=acuityscheduling.com&sz=64" alt="" loading="lazy">Acuity</span>
       </div>
     </div>
   </div>
@@ -514,20 +513,26 @@
       });
       /* A toast appears the moment Otto does the thing, stays a few seconds, then fades out. */
       function showActs(ct) { for (var k = 0; k < ACTS.length; k++) { var a = ACTS[k].at; actEls[k].classList.toggle("in", ct + 0.02 >= a && ct < a + HOLD); } }
-      var starts = [], active = -1, doneShown = false, spans = [];
+      var starts = [], active = -1, spans = [], laneWho = null, scrubbing = false;
       function computeStarts() {
         var dur = audio.duration && isFinite(audio.duration) ? audio.duration : CUE_DUR;
         starts = turns.map(function (t) { return Math.max(0, t.words[0][0] - 0.08); });
         durEl.textContent = fmt(dur);
       }
+      /* The caption: the turn on screen and its words. */
       function setActive(i) {
         if (i === active) return; active = i;
         var t = turns[i];
         now.classList.remove("idle"); now.innerHTML = '<span class="who ' + t.who + '">' + (t.who === "otto" ? "Otto" : "Marcus") + '</span>';
         spans = t.words.map(function (x) { var el = document.createElement("span"); el.className = "wd"; el.dataset.s = x[0]; el.dataset.e = x[1]; el.textContent = x[2] + " "; now.appendChild(el); return el; });
         prev.textContent = i > 0 ? turns[i - 1].text : "";
-        laneOtto.classList.toggle("speaking", t.who === "otto"); laneCaller.classList.toggle("speaking", t.who === "caller");
-        sOtto.textContent = t.who === "otto" ? "Speaking" : "AI front desk"; sCaller.textContent = t.who === "caller" ? "Speaking" : "Caller";
+      }
+      /* The lanes: who is lit as speaking. Kept apart from the caption so a scrub can move the transcript through
+         every turn without the lanes flashing on and off behind it. */
+      function setLanes(who) {
+        if (who === laneWho) return; laneWho = who;
+        laneOtto.classList.toggle("speaking", who === "otto"); laneCaller.classList.toggle("speaking", who === "caller");
+        sOtto.textContent = who === "otto" ? "Speaking" : "AI front desk"; sCaller.textContent = who === "caller" ? "Speaking" : "Caller";
       }
       /* Each word fills across its own spoken duration, a touch ahead of the voice so it never trails. */
       function lightWords(ct) {
@@ -575,9 +580,8 @@
         var dt = Math.min(40, nowT - last); last = nowT; var dtF = dt / 16.67; tRef += dt / 1000;
         var playing = !audio.paused && !audio.ended; if (analyser && playing) analyser.getByteFrequencyData(freq);
         if (playing) syncNow();
-        var who = active >= 0 ? turns[active].who : null;
-        lOtto.draw(tRef * 2.2, playing && who === "otto", dtF);
-        lCaller.draw(tRef * 2.2 + 1.7, playing && who === "caller", dtF);
+        lOtto.draw(tRef * 2.2, playing && laneWho === "otto", dtF);
+        lCaller.draw(tRef * 2.2 + 1.7, playing && laneWho === "caller", dtF);
         requestAnimationFrame(frame);
       }
       requestAnimationFrame(frame);
@@ -585,17 +589,20 @@
       /* playback */
       function togglePlay() { ensureAnalyser(); if (audio.paused) audio.play(); else audio.pause(); }
       play.addEventListener("click", togglePlay);
-      document.getElementById("restart").addEventListener("click", function () { ensureAnalyser(); active = -1; audio.currentTime = 0; showActs(0); audio.play(); });
-      hear.addEventListener("click", function () { call.scrollIntoView({ block: "center", behavior: "smooth" }); ensureAnalyser(); audio.currentTime = 0; audio.play(); });
-      /* Scrubbing: press anywhere and drag, the position follows the pointer live; a tooltip shows the time. */
-      var tip = document.getElementById("tip");
+      document.getElementById("restart").addEventListener("click", function () { ensureAnalyser(); audio.currentTime = 0; settle(); audio.play(); });
+      hear.addEventListener("click", function () { call.scrollIntoView({ block: "center", behavior: "smooth" }); ensureAnalyser(); audio.currentTime = 0; settle(); audio.play(); });
+      /* Scrubbing: press anywhere and drag, the position follows the pointer live; a tooltip shows the time. While
+         the pointer is down only the transcript moves. The lanes and the activity stack wait, then take the final
+         position in one step when it lifts, so dragging across the call never flashes them on and off. */
+      var tip = document.getElementById("tip"), callcol = document.getElementById("callcol");
       function posOf(e) { var r = scrub.getBoundingClientRect(); return Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)); }
       function seekTo(f) { audio.currentTime = f * (audio.duration || CUE_DUR); syncNow(); }
-      scrub.addEventListener("pointerdown", function (e) { scrub.setPointerCapture(e.pointerId); scrub.classList.add("drag"); seekTo(posOf(e)); });
-      scrub.addEventListener("pointermove", function (e) { var f = posOf(e); tip.style.left = (f * 100) + "%"; tip.textContent = fmt(f * (audio.duration || CUE_DUR)); if (scrub.classList.contains("drag")) seekTo(f); });
-      scrub.addEventListener("pointerup", function (e) { scrub.classList.remove("drag"); scrub.releasePointerCapture(e.pointerId); });
-      scrub.addEventListener("pointercancel", function () { scrub.classList.remove("drag"); });
-      scrub.addEventListener("keydown", function (e) { var d = e.key === "ArrowRight" ? 2 : e.key === "ArrowLeft" ? -2 : 0; if (d) { e.preventDefault(); audio.currentTime = Math.max(0, Math.min(audio.duration || CUE_DUR, audio.currentTime + d)); syncNow(); } });
+      function settle() { scrubbing = false; callcol.classList.add("snap"); syncNow(); void callcol.offsetWidth; callcol.classList.remove("snap"); }
+      scrub.addEventListener("pointerdown", function (e) { scrubbing = true; scrub.setPointerCapture(e.pointerId); scrub.classList.add("drag"); seekTo(posOf(e)); });
+      scrub.addEventListener("pointermove", function (e) { var f = posOf(e); tip.style.left = (f * 100) + "%"; tip.textContent = fmt(f * (audio.duration || CUE_DUR)); if (scrubbing) seekTo(f); });
+      scrub.addEventListener("pointerup", function (e) { scrub.classList.remove("drag"); scrub.releasePointerCapture(e.pointerId); settle(); });
+      scrub.addEventListener("pointercancel", function () { scrub.classList.remove("drag"); settle(); });
+      scrub.addEventListener("keydown", function (e) { var d = e.key === "ArrowRight" ? 2 : e.key === "ArrowLeft" ? -2 : 0; if (d) { e.preventDefault(); audio.currentTime = Math.max(0, Math.min(audio.duration || CUE_DUR, audio.currentTime + d)); settle(); } });
       audio.addEventListener("loadedmetadata", computeStarts); computeStarts();
       audio.addEventListener("play", function () { play.classList.add("playing"); call.classList.add("on"); st.textContent = "Live"; });
       audio.addEventListener("pause", function () { play.classList.remove("playing"); st.textContent = "Paused"; });
@@ -604,16 +611,16 @@
       var lastSec = -1;
       function syncNow() {
         var ct = audio.currentTime, idx = 0; for (var i = 0; i < starts.length; i++) if (starts[i] <= ct) idx = i;
-        setActive(idx); lightWords(ct); showActs(ct);
+        setActive(idx); lightWords(ct);
+        if (!scrubbing) { setLanes(turns[idx].who); showActs(ct); }
         var pct = (audio.duration ? (ct / audio.duration) * 100 : 0) + "%"; fill.style.width = pct; scrub.setAttribute("aria-valuenow", Math.round(ct));
         var sec = Math.floor(ct); if (sec !== lastSec) { lastSec = sec; cur.textContent = fmt(ct); }
       }
       audio.addEventListener("timeupdate", syncNow);
-      audio.addEventListener("seeked", syncNow);
+      audio.addEventListener("seeked", function () { syncNow(); if (audio.paused && !audio.ended && st.textContent === "Call ended") st.textContent = "Paused"; });
       audio.addEventListener("ended", function () {
         play.classList.remove("playing"); call.classList.remove("on"); st.textContent = "Call ended";
-        laneOtto.classList.remove("speaking"); laneCaller.classList.remove("speaking"); sOtto.textContent = "AI front desk"; sCaller.textContent = "Caller";
-        showActs(CUE_DUR);
+        setLanes(null); showActs(CUE_DUR);
       });
       audio.addEventListener("error", function () { st.textContent = "Recording unavailable"; play.disabled = true; });
     })();
