@@ -79,3 +79,26 @@ export function statesAPlusAge(line: string): boolean {
   const n = barePlusAge(line);
   return n != null && n >= 2 && n <= 21 && PLUS_AGE.test(line);
 }
+
+/**
+ * The other way a shop states a floor without ever writing the word "age": "Must be 21 or older to consume
+ * alcohol", "Go Kart driver must be 18 or older", "Participants must be 12 years or older for Intro Lesson".
+ *
+ * "Who can go" asks a line for an age word or a bare "N+", and this shape has neither, so the rule was filed
+ * as a thing the trip is and printed as a selling highlight. `minAge` has read the same cue all along, which
+ * is how a listing could print "Ages 18+" in its key facts while its "Who can go" column said the shop had
+ * posted no age rule at all.
+ *
+ * The number has to be counting years: what follows it says so, the way it does for a bare "N+". A boat that
+ * "must be 20 feet or longer" and a booking that "must be 48 hours or more in advance" state no age, and
+ * neither says "years", "or older" or "and up". No ceiling on the number here, unlike `minAge`: a boat
+ * rental's floor of 25 and a senior league's 50 are rules about who can go whether or not a page should print
+ * them as "Ages N+".
+ */
+const MUST_BE_AGE =
+  /\b(?:must be|has to be|have to be|needs? to be)(?: at least)?\s*(\d{1,2})\s*(?:\+|and (?:up|over|older)|years?(?: old| of age)?|yrs|or (?:older|over|above))/i;
+
+/** Whether a published line states an age as a sentence about the guest rather than as an age word or "N+". */
+export function statesAWordedAge(line: string): boolean {
+  return MUST_BE_AGE.test(line);
+}

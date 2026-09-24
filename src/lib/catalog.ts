@@ -3,7 +3,7 @@ import { UNCLAIMED } from "../data/unclaimed";
 import type { OperatorContact, Unclaimed, UnclaimedOption } from "../data/types";
 import { regionOfArea } from "../data/regions";
 import type { GeoPoint } from "./geo";
-import { statesAPlusAge } from "./ages";
+import { statesAPlusAge, statesAWordedAge } from "./ages";
 import { groupCap } from "./groupSize";
 import { bookableMenu } from "./menuRow";
 import { addressOf, streetOf } from "./address";
@@ -518,7 +518,7 @@ function pushUnique(list: FactLine[], text: string, posted: boolean) {
 }
 
 function classify(line: string): "who" | "waiver" | "both" | "about" {
-  const who = WHO_RE.test(line) || statesAPlusAge(line);
+  const who = WHO_RE.test(line) || statesAPlusAge(line) || statesAWordedAge(line);
   const waiver = WAIVER_RE.test(line);
   if (who && waiver) return "both";
   if (who) return "who";
