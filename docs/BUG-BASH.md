@@ -4847,6 +4847,92 @@ code before their fix, where 2 of 6 and 2 of 6 checks fail.
   every run since; this one ran `npm install` in both before anything could type-check.
 - Still open from the seventy-second run: the confirm screen's failure line has not been seen at 400px.
 
+## 25 September 2026, seventy-fifth run (09:15 to 09:50 UTC)
+
+**Chosen, and why.** Every area in this run's brief is on the Verified list. What is not on it is the newest
+code in the repo: the Otto (AI phone line) outreach campaign, landed on 24 September between 19:20 and 20:18,
+after the run that read outreach end to end. It is a commercial email that goes out unattended at 9:30 every
+weekday from the Mac's launchd, from Harshil's own personal Gmail, to about 4,700 businesses that never asked
+for it, and no run had read a line of it. That account's reputation is the whole channel, so the hour went
+there rather than to the rehearsal, which does not touch outreach at all.
+
+**Found and fixed.** Four, all in `backend/src/outreach`.
+
+- **The two pitches could mail the same owner in the same week from the same mailbox** (`5f346759`). Each send
+  query refused an address its own campaign had mailed and could not see the other's sends at all.
+  `ottoDrafts.ts` says in its own header that "the two must never be sent to the same address inside the same
+  week"; nothing enforced it. **2,038 operators in the shipped catalog clear both campaigns' filters, 68% of
+  everything the listing pitch can send to**, and both queues order by how well established a shop is, so the
+  overlap sits at the top of both. `spacing.ts` now owns the rule and both queries build their clause from it:
+  a campaign's own send bars an address for good, any other campaign's bars it for a week, counted over any
+  kind so a third pitch needs no change here.
+- **The Otto pitch carried no take-it-down link** (`bce9efdb`). `backend/src/outreach/AGENTS.md` asks for a
+  one-click remove line and a working unsubscribe link on every send. The listing pitch has carried both since
+  it started; Otto carried only the unsubscribe. Every operator it targets already has an unclaimed page in
+  the catalog and the mail names Outset without naming that page, so an owner who read "I built Otto ... for
+  operators like yours", went looking and found a page about their business had no way off it that did not
+  start with a reply. Same line, same link, after the sign-off. The persuasive copy is untouched.
+- **A dry run retired the addresses it was only meant to preview** (`45bfb19d`). `outreach-send --dry` marked
+  a suppressed address 'unsubscribed' and a domain whose DNS did not answer 'failed', from a run that mailed
+  nobody. Two previews in a row gave different answers, which is how it was found: the second saw an empty
+  queue. It matters because `outreach-ramp.mts` never regenerates the draft queue, so a row a preview retired
+  is out of the campaign until somebody runs `npm run outreach` by hand, and DNS not answering is the one
+  thing `deliverable.ts` is careful not to hold against an address. The rule is `skipMark` in `guards.ts` now,
+  called by both sends, and the regex for addresses nobody reads moved there too so the two cannot drift.
+- **"Who answers Capt Andy's's phone after you close?"** (`6499e216`). One shop of the 4,728 targets, and the
+  only one: a name that is already possessive no longer grows a second apostrophe.
+
+**Swept and clean.**
+
+- `dayStartIso` and the shared daily ceiling: the campaign's day really does start at local midnight in
+  `PIPELINE_TZ`, both ramps read `sentToday()` across both campaigns before adding volume, and the order
+  `outreach-daily.sh` runs them in does not matter. 15/20/25/30 plus 10/15/20/20 stays under the combined 50.
+- Both send paths stamp `created_at` at the moment the mail went out, which is what `sentToday()` counts, so
+  the ceiling is read off send times and not draft times.
+- The Otto batch never sends twice inside a run, never to a suppressed address, and regenerates its copy at
+  send time so a stale draft body cannot go out. A failed send is retried on the next generation.
+- Every one of the 4,728 targets' names through the subject line: no control character anywhere, so no header
+  injection; 4 emoji, 4 that are a domain rather than a name, 1 all-caps initialism.
+- The cool-off starves neither campaign: 4,692 operators are eligible for Otto against 2,993 for the listing
+  pitch, and the bar lifts after a week.
+
+**Verification.** The rehearsal was run rather than skipped, because the commits touch `backend/src`: 57 of 57
+against a local Postgres 16 on 5433 with TLS on and the Chromium on disk. Both type checks clean (TS5097
+aside). Backend `npm test` 776 pass, 0 fail, 2 skipped, up 13 on two new files and four new cases in
+`guards.test.ts`. Every new test was run against the code before its fix: the old per-kind clause offers an
+address the other campaign mailed three days ago, and three dry runs in a row against a local SQLite used to
+give three different answers and now give one. The guest suite is unchanged; nothing under `src/` was touched.
+
+**Needs Harshil.**
+
+- **The Otto email tells a business something the product does not do yet.** "Since you use FareHarbor, Otto
+  plugs right into it. Bookings drop straight into your calendar as if you took the call yourself." Both
+  `/voice` endpoints are read-only by design ("It never books or charges", `api/voice.ts`), and `/AGENTS.md`
+  says syncing with an operator's own booking software is deferred on purpose. `vendorLine`'s own docstring
+  says it "never claims to read or write their calendar ... it says the honest, more limited thing". The Otto
+  page makes the same claim and hedges it in its FAQ, so this reads as a deliberate pre-launch position rather
+  than a slip, and approved copy is not an overnight run's to rewrite. It is the easiest sentence in the email
+  for an owner to test, and it only goes to shops that use the vendor it names.
+- The subject is over 78 characters on 201 of the 4,728 targets, and what gets cut is the hook: "Who answers "
+  is 12 characters before the name starts, so on a phone almost every one of them loses "phone after you
+  close?". Fronting the question is a copy call.
+- "Gulf Jet Skis'" is the correct possessive and "Gulf Jet Skis's" is what goes out, on 2,261 of the targets.
+  A typo on one shop was worth fixing on its own; this is a style call on half the list.
+- `outreach-ramp.mts` never regenerates the draft queue, while `otto-ramp.mts` does, so the daily listing job
+  only ever mails what was queued the last time someone ran `npm run outreach`: a newly enriched operator
+  never enters it. Generating drafts for every unclaimed operator holds a write lock for longer than the Otto
+  set does, which is presumably why, but the queue then needs refreshing on some schedule.
+- `pipeline.mts`'s outreach step still describes the old 20/40/70/100 ramp and declares
+  `needsKey: "RESEND_API_KEY"`, while outreach sends over Gmail SMTP.
+- Both ramps record a day as run even when the combined ceiling left no headroom, so a rung can advance on a
+  day nothing went out. Latent today: the listing ramp tops out at 30 of the 50.
+- `deliverable.ts` treats `ESERVFAIL` as "this domain does not exist", which is fail-closed (an address is
+  dropped, never wrongly mailed) but is the opposite of what the module says it does with a resolver that
+  cannot answer.
+- A fresh checkout still has no `node_modules` at the root or in `backend`. Raised by the fifty-second run and
+  every run since; this one ran `npm install` in both before anything could type-check.
+- Still open from the seventy-second run: the confirm screen's failure line has not been seen at 400px.
+
 ## Coverage
 
 The catalog is 48,198 listings as of the 23 September sync, 1,873 of them Viator partner rows. Counts below
@@ -5417,7 +5503,28 @@ one with a start hour and the clock each is read on. 142 listing pages opened in
 and 100 at random, at both widths, for sideways scroll, anything past the edge, console errors and
 exceptions. The "More like this" rail against the whole shipped catalog, for a business offered twice.
 
-**Not yet checked.** Whether a Free cancellation badge should ever promise a shorter
+The Otto (AI phone line) outreach campaign, read end to end for the first time, which is the newest code in
+the repo and the only one that mails a real business unattended: its copy against the outreach folder's own
+rules (the take-it-down link, the unsubscribe link, no claim link, no em dash, a business name that cannot
+reach the html as markup, a draft with no address); every one of the 4,728 targets' names through the subject
+line, for a control character, an emoji, a domain standing in for a name and a doubled possessive; the shared
+daily ceiling and the clock it counts on, `dayStartIso` against `PIPELINE_TZ`, both ramps reading `sentToday()`
+across both campaigns, and the rungs against the combined 50; which send time the ceiling is read off; the
+dedup between the two campaigns, over the 2,038 operators that clear both sets of filters; and the dry run,
+driven three times in a row against a local SQLite for what it writes back.
+
+**Not yet checked.** Whether the Otto email may tell a shop "Bookings drop straight into your calendar" when
+both `/voice` endpoints are read-only and syncing with an operator's own booking software is deferred on
+purpose, which is this run's first Needs Harshil. Whether the Otto subject should be shortened or the question
+fronted, since 201 of 4,728 run past 78 characters and a phone cuts the hook off almost all of them. Whether a
+name ending in a plural s should take the correct "Gulf Jet Skis'", which is 2,261 of the targets. Whether
+`outreach-ramp.mts` should regenerate the draft queue the way `otto-ramp.mts` does, since today the daily
+listing job only ever mails what was queued the last time somebody ran `npm run outreach`. Whether a ramp
+should record a day as run when the combined ceiling left it no headroom, which advances a rung on a day
+nothing went out. Whether `ESERVFAIL` should read as "this domain does not exist", which is fail-closed and the
+opposite of what `deliverable.ts` says it does with a resolver that cannot answer. Whether `pipeline.mts`'s
+outreach step should still describe a 20/40/70/100 ramp and declare it needs `RESEND_API_KEY` when outreach
+sends over Gmail SMTP. Whether a Free cancellation badge should ever promise a shorter
 notice than a line in the same shop's own policy denies: 13 of the 7,104 shipped badges do, four of them a shop
 contradicting itself where a previous run deliberately chose the promise, and the rest a per-service window
 flattened into one badge (see the sixty-sixth run's Needs Harshil). Whether a "do not include" whose subject is
