@@ -7,6 +7,19 @@
     cp backend/ops/com.outset.outreach-daily.plist ~/Library/LaunchAgents/
     launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.outset.outreach-daily.plist
   Remove with `launchctl bootout gui/$(id -u)/com.outset.outreach-daily`.
+
+  One more step, or nothing ever sends: macOS keeps background jobs out of ~/Documents until the program
+  launchd runs is allowed in. The first scheduled run (25 September 2026, 09:48, fired on wake) ended with
+  "/bin/zsh: can't open input file: .../outreach-daily.sh" and exit 127, although the file is there and
+  executable, because /bin/zsh had no Documents access. Grant it once: System Settings > Privacy & Security
+  > Full Disk Access > "+" > press Cmd-Shift-G, type /bin/zsh, Open, switch it on. macOS judges every
+  program on its own, not the job as a whole: with only zsh allowed, the run got as far as npx and node died
+  with "EPERM: process.cwd failed" (25 September 2026, 15:19). So add node the same way, by its real path,
+  e.g. /Users/harsh/.nvm/versions/node/v25.6.0/bin/node (whatever `ls ~/.nvm/versions/node` shows newest;
+  the runner picks that one), and again after every nvm upgrade, since the grant is tied to that binary.
+  Then check the last run with `launchctl print gui/$(id -u)/com.outset.outreach-daily | grep "last exit"`
+  (0 is good, 127 is zsh refused) and read backend/data/logs/launchd-outreach.log and the day's
+  backend/data/logs/outreach-<date>.log. A day this fails is silent: no mail, no error anywhere else.
 -->
 <plist version="1.0">
 <dict>

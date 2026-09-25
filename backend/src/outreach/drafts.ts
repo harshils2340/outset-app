@@ -8,6 +8,14 @@ import { mailPostal, unsubPageUrl } from "../lib/unsub.ts";
 import { tidyHours } from "../sync/contacts.ts";
 import { outreachAddress } from "./address.ts";
 
+/**
+ * Harshil's own booking page, given by him on 25 September 2026 with the overlay parameter included: cal.com
+ * then shows the visitor their own calendar alongside his open slots, so they can pick a time without
+ * switching tabs. Both campaigns (this listing-claim email and ottoDrafts.ts) link it, so every "love to
+ * chat" lands in the same calendar.
+ */
+export const CALL_LINK = "https://cal.com/harshil-shah-7tkvs7/outset?overlayCalendar=true";
+
 type Op = {
   id: string;
   domain: string;
@@ -155,12 +163,16 @@ export function draftCopy(op: Op, sc: ReturnType<typeof scale>, f: PageFacts, em
   const demoUrl = SITE + "operators#demo";
   const scaleLine = "You'd be joining about " + publishedCount() + " other real local businesses already on Outset across the US and Canada, and more join every week.";
   const cta = "Just reply \"yes\" and I'll have it built and sent to you today.";
+  // The owner who would rather talk it through than reply "yes" (added 25 September 2026 at Harshil's request).
+  const chatLead = "Or if you'd rather see how it would be set up for your business first, ";
+  const chatLink = "I'd love to chat";
   const removeLine = "Already have a page on Outset you didn't ask for, or just don't want to be found here at all? This takes it down instantly:";
   const lines = [
     "Hi,", "", who, browse, "",
     offer, vendor ? vendor : null, "",
     trySample, demoUrl, "",
     scaleLine, cta, "",
+    chatLead + chatLink + ":", CALL_LINK, "",
     removeLine, remove, "",
     "Best,", "Harshil",
   ].filter((l) => l !== null) as string[];
@@ -170,6 +182,7 @@ export function draftCopy(op: Op, sc: ReturnType<typeof scale>, f: PageFacts, em
     "<p>" + esc(offer) + (vendor ? " " + esc(vendor) : "") + "</p>",
     "<p>" + esc(trySample) + "<br>" + link(demoUrl, "See a sample listing") + "</p>",
     "<p>" + esc(scaleLine) + "<br>" + esc(cta) + "</p>",
+    "<p>" + esc(chatLead) + link(CALL_LINK, chatLink) + ".</p>",
     "<p>" + esc(removeLine) + " " + link(remove, "take it down") + ".</p>",
     "<p>Best,<br>Harshil</p>",
   ];

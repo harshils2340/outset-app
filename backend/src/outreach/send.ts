@@ -84,45 +84,7 @@ export async function sendOutreach(opts: {
     return out;
   }
   if (!opts.dry && blockers.length) return out;
-  let sql = `SELECT d.id, d.to_email, o.domain, o.name, o.email, o.city, o.region, o.metro_id, o.website, o.completeness, o.origin, o.calendar_vendor
-       FROM outreach_drafts d JOIN operators o ON o.id = d.operator_id
-       WHERE d.status = 'draft' AND d.kind = 'listing' AND d.to_email IS NOT NULL AND d.to_email LIKE '%@%' AND o.claim_status = 'unclaimed'
-         -- This campaign's own sends bar the address for good; the Otto pitch's bar it for a week. See
-         -- spacing.ts: both campaigns go out from one personal Gmail and 2,038 operators are eligible for both.
-         AND ${noRecentSendSql("listing")}
-         -- Museums, theme parks, waterparks, aquariums and zoos are large, professionally-run institutions,
-         -- not the small local operators this pitch is written for; category_id still missed real ones filed
-         -- under an ordinary-looking category (the Gateway Arch under "cruise", the Museum of Flight under
-         -- "heli"), so .org/.gov/.edu is the next cut - a for-profit local activity business is essentially
-         -- always a .com. The review_count cap is a backstop for everything that still slips through: a real
-         -- business can plausibly reach the high five figures, but ordering by review_count DESC with no cap
-         -- put Disney Springs, the 9/11 Memorial and Kennedy Space Center at the top of a real run tonight
-         -- (22 September 2026).
-         AND (o.category_id IS NULL OR o.category_id NOT IN ('museum','themepark','waterpark','aquarium','zoo'))
-         AND o.domain NOT LIKE '%.org' AND o.domain NOT LIKE '%.gov' AND o.domain NOT LIKE '%.edu'
-         AND (o.review_count IS NULL OR o.review_count <= 20000)
-         -- The same "good" bar outreach-list.mts already scores by: a cover photo, 3 or more photos, at
-         -- least one priced service, and real reviews. Andretti Indoor Karting sailed through every filter
-         -- above (a real small operator, a sane review count) and still went out with no photos at all,
-         -- because none of them checked for that. This is the fix: if the page has nothing to show, the
-         -- pitch has nothing to prove itself with, and it doesn't go out until enrichment gives it one.
-         AND EXISTS (SELECT 1 FROM facts f WHERE f.operator_id = o.id AND f.fact_key = 'cover')
-         AND (SELECT COUNT(*) FROM facts f WHERE f.operator_id = o.id AND f.fact_key = 'photo') >= 3
-         AND (SELECT COUNT(*) FROM offerings f WHERE f.operator_id = o.id AND f.price_cents IS NOT NULL) >= 1
-         AND (o.review_count >= 5 OR (SELECT COUNT(*) FROM facts f WHERE f.operator_id = o.id AND f.fact_key = 'review') >= 1)`;
-  // The cool-off start is the only parameter in the fixed half of the statement, so it is bound first.
-  const args: (string | number)[] = [cooloffStart()];
-  if (opts.metro) {
-    sql += " AND o.metro_id = ?";
-    args.push(opts.metro);
-  }
-  if (opts.country) {
-    sql += " AND o.country = ?";
-    args.push(opts.country);
-  }
-  sql += " ORDER BY o.review_count DESC NULLS LAST LIMIT ?";
-  args.push(opts.limit);
-  const rows = db.prepare(sql).all(...args) as (OpRow & { id: string; to_email: string })[];
+  const rows = listingQueue(opts.limit, { metro: opts.metro, country: opts.country });
   const seen = new Set<string>();
   for (const r of rows) {
     const to = r.to_email.trim().toLowerCase();
@@ -172,4 +134,54 @@ export async function sendOutreach(opts: {
     await new Promise((x) => setTimeout(x, 90_000 + Math.random() * 210_000));
   }
   return out;
+}
+
+/**
+ * The next `limit` listing drafts in send order: the shared definition of "who gets this next", used by the
+ * send loop above and by scripts/outreach-handoff.mts, so a hand-sent slice and the daily send never
+ * disagree about who is in the queue. Already-sent and handed-off addresses are excluded here, not later.
+ */
+export function listingQueue(limit: number, opts: { metro?: string; country?: string }): (OpRow & { id: string; to_email: string; phone: string | null })[] {
+  let sql = `SELECT d.id, d.to_email, o.domain, o.phone, o.name, o.email, o.city, o.region, o.metro_id, o.website, o.completeness, o.origin, o.calendar_vendor
+       FROM outreach_drafts d JOIN operators o ON o.id = d.operator_id
+       WHERE d.status = 'draft' AND d.kind = 'listing' AND d.to_email IS NOT NULL AND d.to_email LIKE '%@%' AND o.claim_status = 'unclaimed'
+         -- This campaign's own sends bar the address for good; the Otto pitch's bar it for a week. See
+         -- spacing.ts: both campaigns go out from one personal Gmail and 2,038 operators are eligible for both.
+         AND ${noRecentSendSql("listing")}
+         -- 'handoff' (scripts/outreach-handoff.mts): exported for someone else to mail by hand, any kind, so
+         -- neither campaign mails that address from here and the two pitches never land in the same week.
+         AND NOT EXISTS (SELECT 1 FROM outreach_drafts h WHERE h.to_email = d.to_email AND h.status = 'handoff')
+         -- Museums, theme parks, waterparks, aquariums and zoos are large, professionally-run institutions,
+         -- not the small local operators this pitch is written for; category_id still missed real ones filed
+         -- under an ordinary-looking category (the Gateway Arch under "cruise", the Museum of Flight under
+         -- "heli"), so .org/.gov/.edu is the next cut - a for-profit local activity business is essentially
+         -- always a .com. The review_count cap is a backstop for everything that still slips through: a real
+         -- business can plausibly reach the high five figures, but ordering by review_count DESC with no cap
+         -- put Disney Springs, the 9/11 Memorial and Kennedy Space Center at the top of a real run tonight
+         -- (22 September 2026).
+         AND (o.category_id IS NULL OR o.category_id NOT IN ('museum','themepark','waterpark','aquarium','zoo'))
+         AND o.domain NOT LIKE '%.org' AND o.domain NOT LIKE '%.gov' AND o.domain NOT LIKE '%.edu'
+         AND (o.review_count IS NULL OR o.review_count <= 20000)
+         -- The same "good" bar outreach-list.mts already scores by: a cover photo, 3 or more photos, at
+         -- least one priced service, and real reviews. Andretti Indoor Karting sailed through every filter
+         -- above (a real small operator, a sane review count) and still went out with no photos at all,
+         -- because none of them checked for that. This is the fix: if the page has nothing to show, the
+         -- pitch has nothing to prove itself with, and it doesn't go out until enrichment gives it one.
+         AND EXISTS (SELECT 1 FROM facts f WHERE f.operator_id = o.id AND f.fact_key = 'cover')
+         AND (SELECT COUNT(*) FROM facts f WHERE f.operator_id = o.id AND f.fact_key = 'photo') >= 3
+         AND (SELECT COUNT(*) FROM offerings f WHERE f.operator_id = o.id AND f.price_cents IS NOT NULL) >= 1
+         AND (o.review_count >= 5 OR (SELECT COUNT(*) FROM facts f WHERE f.operator_id = o.id AND f.fact_key = 'review') >= 1)`;
+  // The cool-off start is the only parameter in the fixed half of the statement, so it is bound first.
+  const args: (string | number)[] = [cooloffStart()];
+  if (opts.metro) {
+    sql += " AND o.metro_id = ?";
+    args.push(opts.metro);
+  }
+  if (opts.country) {
+    sql += " AND o.country = ?";
+    args.push(opts.country);
+  }
+  sql += " ORDER BY o.review_count DESC NULLS LAST LIMIT ?";
+  args.push(limit);
+  return db.prepare(sql).all(...args) as (OpRow & { id: string; to_email: string; phone: string | null })[];
 }

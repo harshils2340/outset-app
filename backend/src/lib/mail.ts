@@ -35,6 +35,8 @@ export async function sendMail(msg: {
   html?: string;
   replyTo?: string;
   commercial?: boolean;
+  /** Files to attach (a CSV export to the founder, for instance). Never used on guest or operator mail. */
+  attachments?: MailAttachment[];
 }): Promise<{ sent: boolean; id?: string; error?: string }> {
   const to = sanitizeHeaderText(msg.to);
   if (!BARE_EMAIL.test(to)) return { sent: false, error: "bad address" };
@@ -47,9 +49,11 @@ export async function sendMail(msg: {
   return sendResend(to, clean);
 }
 
+export type MailAttachment = { filename: string; content: Buffer | string; contentType?: string };
+
 async function sendSmtp(
   to: string,
-  msg: { subject: string; text: string; html?: string; replyTo?: string },
+  msg: { subject: string; text: string; html?: string; replyTo?: string; attachments?: MailAttachment[] },
 ): Promise<{ sent: boolean; id?: string; error?: string }> {
   try {
     const transport = nodemailer.createTransport({
@@ -64,6 +68,7 @@ async function sendSmtp(
       subject: msg.subject,
       text: msg.text,
       ...(msg.html ? { html: msg.html } : {}),
+      ...(msg.attachments?.length ? { attachments: msg.attachments } : {}),
       replyTo: msg.replyTo || process.env.MAIL_REPLY_TO || "hello@onoutset.com",
     });
     return { sent: true, id: String(info.messageId || "smtp") };
@@ -74,7 +79,7 @@ async function sendSmtp(
 
 async function sendResend(
   to: string,
-  msg: { subject: string; text: string; html?: string; replyTo?: string; commercial?: boolean },
+  msg: { subject: string; text: string; html?: string; replyTo?: string; commercial?: boolean; attachments?: MailAttachment[] },
 ): Promise<{ sent: boolean; id?: string; error?: string }> {
   if (!process.env.RESEND_API_KEY) {
     // The subject of a sign-in mail is the code itself and the body of a claim mail is a working claim link, so
@@ -97,6 +102,9 @@ async function sendResend(
         text: msg.text,
         html: msg.html,
         reply_to: msg.replyTo,
+        ...(msg.attachments?.length
+          ? { attachments: msg.attachments.map((a) => ({ filename: a.filename, content: Buffer.from(a.content).toString("base64"), content_type: a.contentType })) }
+          : {}),
       }),
       signal: AbortSignal.timeout(15000),
     });

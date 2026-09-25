@@ -62,14 +62,7 @@ export async function sendOttoOutreach(opts: {
     return out;
   }
   if (!opts.dry && blockers.length) return out;
-  const sql = `SELECT d.id, d.to_email, o.id AS opid, o.domain, o.name, o.email, o.phone, o.city, o.region, o.calendar_vendor
-       FROM outreach_drafts d JOIN operators o ON o.id = d.operator_id
-       WHERE d.status = 'draft' AND d.kind = 'otto' AND d.to_email IS NOT NULL AND d.to_email LIKE '%@%' AND o.claim_status = 'unclaimed'
-         -- This campaign's own sends bar the address for good; the listing pitch's bar it for a week. See
-         -- spacing.ts: both campaigns go out from one personal Gmail and 2,038 operators are eligible for both.
-         AND ${noRecentSendSql("otto")}
-       ORDER BY o.completeness DESC NULLS LAST LIMIT ?`;
-  const rows = db.prepare(sql).all(cooloffStart(), opts.limit) as (OttoOp & { id: string; opid: string; to_email: string })[];
+  const rows = ottoQueue(opts.limit);
   const seen = new Set<string>();
   for (const r of rows) {
     const to = r.to_email.trim().toLowerCase();
@@ -136,4 +129,24 @@ export function sentToday(): number {
     .prepare("SELECT COUNT(*) AS n FROM outreach_drafts WHERE status = 'sent' AND created_at >= ?")
     .get(dayStartIso()) as { n: number };
   return row.n;
+}
+
+/**
+ * The next `limit` Otto drafts in send order: the shared definition of "who gets this next", used by the
+ * ramp's send loop above and by scripts/outreach-handoff.mts, so a hand-sent slice and the daily send never
+ * disagree about who is in the queue. Already-sent and handed-off addresses are excluded here, not later.
+ */
+export function ottoQueue(limit: number): (OttoOp & { id: string; opid: string; to_email: string; website: string | null })[] {
+  const sql = `SELECT d.id, d.to_email, o.id AS opid, o.domain, o.website, o.name, o.email, o.phone, o.city, o.region, o.calendar_vendor
+       FROM outreach_drafts d JOIN operators o ON o.id = d.operator_id
+       WHERE d.status = 'draft' AND d.kind = 'otto' AND d.to_email IS NOT NULL AND d.to_email LIKE '%@%' AND o.claim_status = 'unclaimed'
+         -- This campaign's own sends bar the address for good; the listing pitch's bar it for a week. See
+         -- spacing.ts: both campaigns go out from one personal Gmail and 2,038 operators are eligible for both.
+         AND ${noRecentSendSql("otto")}
+         -- 'handoff' (scripts/outreach-handoff.mts): exported for someone else to mail by hand, any kind, so
+         -- neither campaign mails that address from here and the two pitches never land in the same week.
+         AND NOT EXISTS (SELECT 1 FROM outreach_drafts h WHERE h.to_email = d.to_email AND h.status = 'handoff')
+       ORDER BY o.completeness DESC NULLS LAST LIMIT ?`;
+  // The cool-off start is the first bound parameter, in the order the clauses appear in the statement.
+  return db.prepare(sql).all(cooloffStart(), limit) as (OttoOp & { id: string; opid: string; to_email: string; website: string | null })[];
 }

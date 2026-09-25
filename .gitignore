@@ -34,3 +34,5 @@ public/robots.txt
 
 # The IP-to-metro table the API answers /where from: 24 MB, rebuilt from DB-IP City Lite at every API deploy (backend/scripts/build-ip-metros.mts).
 backend/data/geo/
+# Outreach handoff CSVs (scripts/outreach-handoff.mts): operator contact lists, never committed.
+backend/data/exports/

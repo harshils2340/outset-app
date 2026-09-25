@@ -124,3 +124,16 @@ test("the mail still carries a take-it-down link and a way to stop, per the outr
   assert.ok(b.includes("#remove=o-seabreezejetski-com"), b);
   assert.ok(b.includes("/unsubscribe.html?t="), b);
 });
+
+/** Added 25 September 2026: the owner who would rather talk it through than reply "yes" gets Harshil's
+ * calendar as a plain link in the text and a hyperlink in the html, once, and never at the expense of the
+ * reply-"yes" close, which stays the easiest action. */
+test("the mail carries Harshil's call link as a 'love to chat' hyperlink, once", () => {
+  const c = draftCopy(op, {} as never, empty, "info@seabreezejetski.com");
+  const cal = "https://cal.com/harshil-shah-7tkvs7/outset?overlayCalendar=true";
+  assert.ok(c.body.includes("I'd love to chat:\n" + cal), c.body);
+  assert.ok(c.html.includes('<a href="' + cal + '">I\'d love to chat</a>'), c.html);
+  assert.equal(c.body.split(cal).length - 1, 1, "the call link appears exactly once in the text");
+  assert.equal(c.html.split(cal).length - 1, 1, "the call link appears exactly once in the html");
+  assert.ok(c.body.indexOf('Just reply "yes"') < c.body.indexOf(cal), "the reply-yes close still comes first");
+});

@@ -5,7 +5,8 @@ import { sendOttoOutreach, sentToday } from "../src/outreach/sendOtto.ts";
 import { generateOttoDrafts } from "../src/outreach/ottoDrafts.ts";
 
 /**
- * The Otto (AI phone line) campaign's own daily ramp, run alongside outreach-ramp.mts, not instead of it.
+ * The Otto (AI phone line) campaign's own daily ramp. It ran alongside outreach-ramp.mts until 25 September
+ * 2026, when Harshil paused the listing campaign to put the whole daily budget into Otto (outreach-daily.sh).
  *
  * Otto is a bigger ask than the listing pitch (a trial of something that answers real customer calls, not
  * just a free page), it has no track record yet, and both campaigns send through the same Gmail identity
@@ -18,9 +19,13 @@ import { generateOttoDrafts } from "../src/outreach/ottoDrafts.ts";
 const TZ = process.env.PIPELINE_TZ || "America/Toronto";
 const DATA_DIR = dirname(process.env.OUTSET_DB_PATH || "/var/data/outset.db");
 const STATE_PATH = join(DATA_DIR, "outreach-otto-ramp.json");
-// Otto's share of the one personal Gmail account: 20 a day at the top, beside the listing ramp's 30, for a
-// combined 50 that a personal account sending cold mail can sustain. See outreach-ramp.mts for the reasoning.
-const RAMP = [10, 15, 20, 20];
+// Otto is the only campaign for now (Harshil, 25 September 2026: "just do all otto emails for now"), so it
+// takes the whole 50 a day that a personal Gmail account sending cold mail can sustain, instead of a 20 share
+// beside the listing ramp's 30 (see outreach-ramp.mts for that reasoning). The mailbox had already sent 84
+// listing mails over two days plus Otto's first 10 before this, so the climb from 25 to 50 over three runs
+// is well inside what it has done; COMBINED_CEILING still counts any listing sends, so resuming that ramp
+// later cannot push the mailbox past 50 in a day.
+const RAMP = [10, 25, 35, 50];
 const COMBINED_CEILING = 50;
 
 type State = { firstDay: string; ranDays: string[] };

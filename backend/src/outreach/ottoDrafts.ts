@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { catalogId, vendorLabel } from "./drafts.ts";
+import { CALL_LINK, catalogId, vendorLabel } from "./drafts.ts";
 import { mailPostal, unsubPageUrl } from "../lib/unsub.ts";
 import { outreachAddress } from "./address.ts";
 import { db, nowIso } from "../db/client.ts";
@@ -54,15 +54,17 @@ function vendorLine(id: string | null): string {
 
 /**
  * Approved by Harshil verbatim on 24 September 2026, personalized by business name (the opening line and the
- * subject) and by booking vendor (vendorLine, generic when none is on file). The footer (the take-it-down
- * line, unsubscribe, terms, postal address) is not part of what he approved or edited; it stays because
- * backend/src/outreach/AGENTS.md requires it on every send regardless of what the persuasive copy says.
+ * subject) and by booking vendor (vendorLine, generic when none is on file). On 25 September 2026 he asked for
+ * one more line: his Cal.com link as a hyperlink, for the owner who would rather see it set up for their own
+ * business than reply, "love to chat". The footer (the take-it-down line, unsubscribe, terms, postal address)
+ * is not part of what he approved or edited; it stays because backend/src/outreach/AGENTS.md requires it on
+ * every send regardless of what the persuasive copy says.
  */
 export function draftOttoCopy(op: OttoOp, email?: string): { subject: string; body: string; html: string } {
   const to = (email || "").trim().toLowerCase();
   const SITE = "https://onoutset.com/";
   const OTTO = SITE + "otto";
-  const CAL = "https://cal.com/harshil-shah-7tkvs7/outset";
+  const CAL = CALL_LINK;
   const TERMS = SITE + "terms.html";
   const PRIVACY = SITE + "privacy.html";
   const subject = "Who answers " + possessive(op.name) + " phone after you close?";
@@ -74,7 +76,13 @@ export function draftOttoCopy(op: OttoOp, email?: string): { subject: string; bo
   const staff = "Most operators use it so staff can stay focused on guests in person, while catching calls after hours that used to go to voicemail.";
   const vendor = vendorLine(op.calendar_vendor);
   const guarantee = "I can set it up with you in a day, free until it proves its value on your real line.";
-  const cta = "Give the demo a quick listen, and if it's not a fit, even a one-line reply on why helps a lot.";
+  // One close, three doors (25 September 2026): listen, book a call, or say why not. "I'd love to chat" is
+  // the hyperlink in the html; the text part, which no mail app shows when html is present, carries the URL
+  // on its own line because plain text has no other way to hold a link.
+  const listen = "Give the demo a quick listen.";
+  const chatLead = "If this could be helpful, or you'd like to see how it would be set up for your business, ";
+  const chatLink = "I'd love to chat";
+  const fallback = "And if it's not a fit, even a one-line reply on why helps a lot.";
   // Every operator this pitch goes to already has an unclaimed page in the Outset catalog, and this email
   // names Outset without naming that page, so the way off it has to be in here: the outreach folder's own
   // rule is a one-click remove line on every send, and the listing pitch has carried one since it started.
@@ -87,7 +95,7 @@ export function draftOttoCopy(op: OttoOp, email?: string): { subject: string; bo
     hear, "", OTTO, "",
     staff, "", vendor, "",
     guarantee, "",
-    cta, "",
+    listen + " " + chatLead + chatLink + ":", CAL, fallback, "",
     "Best,", "", "Harshil",
     "", removeLine, remove,
   ].filter((l) => l !== null) as string[];
@@ -98,7 +106,7 @@ export function draftOttoCopy(op: OttoOp, email?: string): { subject: string; bo
     "<p>" + esc(staff) + "</p>",
     "<p>" + esc(vendor) + "</p>",
     "<p>" + esc(guarantee) + "</p>",
-    "<p>" + esc(cta) + "</p>",
+    "<p>" + esc(listen + " " + chatLead) + link(CAL, chatLink) + ". " + esc(fallback) + "</p>",
     "<p>Best,<br>Harshil</p>",
     '<p style="font-size:13px;color:#666">' + esc(removeLine) + " " + link(remove, "take it down") + ".</p>",
   ];

@@ -137,6 +137,10 @@ CREATE INDEX IF NOT EXISTS idx_operators_name_city_lower ON operators(lower(name
 CREATE INDEX IF NOT EXISTS idx_operators_osm_ref ON operators(osm_ref);
 CREATE INDEX IF NOT EXISTS idx_gaps_op ON gaps(operator_id);
 CREATE INDEX IF NOT EXISTS idx_outreach_drafts_op ON outreach_drafts(operator_id);
+-- Both send queues (send.ts, sendOtto.ts) dedupe by correlated NOT EXISTS on to_email (already sent, handed
+-- off). Without this index that is a full scan per candidate row, and the daily ramp's queue query took over
+-- two minutes against 20,000 drafts (25 September 2026); with it the same query is instant.
+CREATE INDEX IF NOT EXISTS idx_outreach_drafts_to_email ON outreach_drafts(to_email, status);
 CREATE INDEX IF NOT EXISTS idx_offerings_op ON offerings(operator_id);
 CREATE INDEX IF NOT EXISTS idx_facts_op ON facts(operator_id);
 
