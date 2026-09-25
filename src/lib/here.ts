@@ -1,6 +1,8 @@
 import { ALL_METRO_ID, METROS, metroById, metroCoords } from "../data/metros";
+import type { Unclaimed } from "../data/types";
 import type { Place } from "./places";
 import { API_URL } from "./api";
+import { clockIn, zoneFor } from "./openNow";
 
 /**
  * Roughly where the guest is, worked out without asking them anything.
@@ -212,11 +214,41 @@ export function rememberCoords(lat: number, lon: number): NonNullable<Guess> {
  * An IP city that is not the clock's city is a datacenter, not the guest. Keep the clock rather than
  * jumping Toronto to Virginia between the first paint and the /where round trip.
  */
-export function ipGuessFitsClock(g: Guess, zoneMetro: string | null): boolean {
+/**
+ * Whether the API's placement of the guest's address is believable next to the browser's clock.
+ *
+ * The clock is the one thing an IP database cannot fake: a guest whose browser keeps Toronto time is not in
+ * Denver, and a guest keeping Canadian time on an American address is on a VPN or a carrier gateway. So an
+ * IP metro fits when it is in the clock metro's country and keeps the same clock as the browser. That is
+ * what lets Miami and Boston open on themselves rather than New York (all three keep Eastern time), and
+ * Waterloo on itself rather than Toronto, while a New York address under a Toronto clock is still refused.
+ */
+export function ipGuessFitsClock(g: Guess, zoneMetro: string | null, browserZone?: string): boolean {
   if (!g || !zoneMetro) return true;
-  if (g.kind === "metro") return g.metroId === zoneMetro;
-  const near = nearestMetro(g.place.lat, g.place.lon, 400);
-  return !near || near.id === zoneMetro;
+  const clock = metroById(zoneMetro);
+  if (!clock) return true;
+  const id = g.kind === "metro" ? g.metroId : nearestMetro(g.place.lat, g.place.lon, 400)?.id;
+  if (!id) return true;
+  if (id === zoneMetro) return true;
+  const m = metroById(id);
+  const at = metroCoords(id);
+  if (!m || !at) return false;
+  if (m.country !== clock.country) return false;
+  const zone = zoneFor({ area: m.name + ", " + m.region, lat: at.lat, lon: at.lng } as Unclaimed);
+  const browser = browserZone || (typeof Intl !== "undefined" ? Intl.DateTimeFormat().resolvedOptions().timeZone : "");
+  if (!zone || !browser) return true;
+  return utcOffset(zone) === utcOffset(browser);
+}
+
+/** Minutes ahead of UTC in a zone right now, from the same clock reading the rest of the app uses. */
+function utcOffset(zone: string): number {
+  const u = clockIn("UTC");
+  const l = clockIn(zone);
+  let d = l.minutes - u.minutes;
+  const dd = (l.day - u.day + 7) % 7;
+  if (dd === 1) d += 1440;
+  else if (dd === 6) d -= 1440;
+  return d;
 }
 
 /**
@@ -298,7 +330,14 @@ export async function guessPlace(): Promise<Guess> {
   try {
     const res = await fetch(`${API_URL}/where`, { signal: AbortSignal.timeout(4000) });
     if (res.ok) {
-      const w = (await res.json()) as { lat?: number; lon?: number; city?: string; region?: string };
+      const w = (await res.json()) as { lat?: number; lon?: number; city?: string; region?: string; metroId?: string | null };
+      // The API's own placement is one of our metros (lib/ipMetro.ts on the backend): the home opens on that
+      // city's rails, which is the answer a guest wants, rather than a 40 km circle drawn on the metro's centre.
+      if (w.metroId && metroById(w.metroId)) {
+        const g: Guess = { kind: "metro", metroId: w.metroId };
+        rememberGuess(g);
+        return g;
+      }
       if (typeof w.lat === "number" && typeof w.lon === "number") {
         // A named city is a point worth standing on; coordinates without one only place a metro.
         const g: Guess = w.city

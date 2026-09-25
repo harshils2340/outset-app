@@ -110,3 +110,16 @@ test("a listing link does not ask for a location, and the home behind it still d
   // And once a place is settled, coming back to the home is not a reason to ask again.
   assert.equal(shouldLocate(home, true), false);
 });
+
+/**
+ * The API now places an address on one of our metros (backend lib/ipMetro.ts). The clock check must let a
+ * metro that keeps the same time as the browser through, or every East-coast guest still opens on New York.
+ */
+test("an IP metro that keeps the browser's clock, in the clock's country, is believed", () => {
+  assert.equal(ipGuessFitsClock({ kind: "metro", metroId: "miami" }, "nyc", "America/New_York"), true, "Miami keeps Eastern time");
+  assert.equal(ipGuessFitsClock({ kind: "metro", metroId: "boston" }, "nyc", "America/New_York"), true);
+  assert.equal(ipGuessFitsClock({ kind: "metro", metroId: "waterloo" }, "toronto", "America/Toronto"), true, "Waterloo keeps Toronto time");
+  assert.equal(ipGuessFitsClock({ kind: "metro", metroId: "denver" }, "nyc", "America/New_York"), false, "Denver does not");
+  assert.equal(ipGuessFitsClock({ kind: "metro", metroId: "vancouver" }, "toronto", "America/Toronto"), false);
+  assert.equal(ipGuessFitsClock({ kind: "metro", metroId: "nyc" }, "toronto", "America/Toronto"), false, "another country is a VPN or a gateway");
+});

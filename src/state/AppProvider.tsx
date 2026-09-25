@@ -624,9 +624,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
         apply(rememberCoords(pt.lat, pt.lon));
         return;
       }
-      // No fix. A clock city is the fallback, labelled as that city, not a 40 km circle on an IP centroid.
+      /**
+       * No fix. The API's placement of the caller's address comes next, and the clock city after it.
+       *
+       * The clock used to win outright, because the API's answer was a 40 km circle on an IP centroid when it
+       * answered at all, and on Render it never did (the city headers it read are not sent there). It now
+       * places the address on one of our metros (backend lib/ipMetro.ts), which is the difference between a
+       * guest in Miami opening on Miami and opening on New York because both share a time zone. The clock
+       * still has the last word on plausibility: an IP placed in a zone the clock contradicts is a VPN or a
+       * carrier gateway, and then the clock city stands.
+       */
       const zone = metroFromTimeZone();
       const clock = start.guess;
+      const stored = clock && !start.recheck ? clock : null;
+      const g = stored ?? (await guessPlace());
+      if (!alive) return;
+      if (g && ipGuessFitsClock(g, zone)) {
+        apply(g);
+        return;
+      }
       if (clock?.kind === "metro") {
         apply(clock);
         return;
@@ -635,17 +651,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         dispatch({ type: "metro", metroId: zone });
         return;
       }
-      if (!start.recheck) {
-        dispatch({ type: "located" });
-        return;
-      }
-      const g = await guessPlace();
-      if (!alive) return;
-      if (!g || !ipGuessFitsClock(g, metroFromTimeZone())) {
-        dispatch({ type: "located" });
-        return;
-      }
-      apply(g);
+      dispatch({ type: "located" });
     })();
     return () => {
       alive = false;
