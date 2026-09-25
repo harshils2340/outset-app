@@ -1,4 +1,7 @@
 import "./env.ts";
+import { spawn } from "node:child_process";
+import { existsSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { serve } from "@hono/node-server";
 import { app } from "./api/routes.ts";
 import { migratePg, pgConfigured } from "./db/pg.ts";
@@ -38,3 +41,16 @@ void import("./ingest/load.ts")
     m.ingestAll();
   })
   .catch((e) => console.error("[serve] seed skipped: " + (e as Error).message));
+
+/**
+ * The IP-to-metro table /where answers from is built by the deploy (render.yaml, geo:build). When a deploy did
+ * not build it, because the service's build command was not updated or DB-IP was unreachable, it is built here
+ * instead, in a separate process so a fetch that hangs or a parse that fails cannot touch the API. /where
+ * answers without a city until the file lands and then picks it up on its own (lib/ipMetro.ts).
+ */
+const geoTable = fileURLToPath(new URL("../data/geo/ip-metros.bin", import.meta.url));
+if (!existsSync(geoTable)) {
+  const child = spawn(process.execPath, ["--import", "tsx", fileURLToPath(new URL("../scripts/build-ip-metros.mts", import.meta.url))], { stdio: "inherit", detached: false });
+  child.on("exit", (code) => console.log("[serve] geo table build exited " + code));
+  child.on("error", (e) => console.error("[serve] geo table build could not start: " + e.message));
+}

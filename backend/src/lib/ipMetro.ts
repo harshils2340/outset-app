@@ -136,11 +136,22 @@ export function decode(buf: Buffer): Table {
   return { metros, v4, v6 };
 }
 
-let loaded: Table | null | undefined;
+export const TABLE_MAGIC = "IPM1";
 
-/** The table shipped with the API, read once. Null when the file is absent, in which case `/where` has no city to offer. */
+let loaded: Table | null = null;
+let lastTry = 0;
+const RETRY_MS = 30_000;
+
+/**
+ * The table built for this deploy, read once it exists. While it is absent (the build is still fetching the
+ * DB-IP file at boot, or could not) this answers null and looks again every half minute, so `/where` starts
+ * placing visitors the moment the file lands without a restart.
+ */
 export function ipTable(path: string): Table | null {
-  if (loaded !== undefined) return loaded;
+  if (loaded) return loaded;
+  const now = Date.now();
+  if (now - lastTry < RETRY_MS) return null;
+  lastTry = now;
   try {
     loaded = decode(readFileSync(path));
   } catch {
