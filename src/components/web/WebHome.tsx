@@ -1863,7 +1863,9 @@ export function WebHome({ onOperators, onAsk, asking = false, askSeed = "", onCl
           </div>
           <div className="ah-footbar">
             <span>
-              © {new Date().getFullYear()} Outset<span aria-hidden="true"> · </span>Book the jump. Skip the call.
+              © {new Date().getFullYear()} Outset<span aria-hidden="true"> · </span>Book the jump. Skip the call.<span aria-hidden="true"> · </span>
+              {/* Required by the CC BY 4.0 licence of the database the API places visitors with (backend/src/lib/ipMetro.ts). */}
+              <a href="https://db-ip.com" target="_blank" rel="noopener">IP geolocation by DB-IP</a>
             </span>
             <span className="ah-footbar-right">
               <span>English (US)</span>

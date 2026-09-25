@@ -72,7 +72,10 @@ services:
     name: outset-api
     runtime: node
     rootDir: backend
-    buildCommand: npm ci --include=dev
+    # geo:build fetches this month's free DB-IP City Lite file and builds the IP-to-metro table /where answers
+    # from (backend/scripts/build-ip-metros.mts). It never fails the build: without the file, /where answers
+    # without a city and the home falls back to the browser's time zone.
+    buildCommand: npm ci --include=dev && npm run geo:build
     startCommand: npm start
     plan: free
     healthCheckPath: /health

@@ -23,7 +23,9 @@ migrate();
 import { cors } from "hono/cors";
 import { bodyLimit } from "hono/body-limit";
 import { profiles } from "./profiles.ts";
-import { auth } from "./auth.ts";
+import { auth, clientIp } from "./auth.ts";
+import { fileURLToPath } from "node:url";
+import { ipTable, lookup } from "../lib/ipMetro.ts";
 import { claims } from "./claims.ts";
 import { unsub } from "./unsub.ts";
 import { webhooks } from "./webhooks.ts";
@@ -64,27 +66,46 @@ app.use("*", async (c, next) => {
   // A booking carries a name, a phone number and an email, so never let a browser try this over plain HTTP.
   c.header("strict-transport-security", "max-age=31536000");
 });
-// The publishable key is public by design: Stripe.js needs it to mount the embedded checkout form in the page.
 /**
- * Roughly where the caller is, so the home can open on what is near them without asking for permission first.
- * Cloudflare sits in front of this API and tags each request with the address it resolved; a browser prompt is
- * a worse first impression than a city that is approximately right, and the guest can type any other place.
- * Everything here is a header Cloudflare already sends, nothing is stored, and a caller it cannot place gets nulls.
+ * Where the caller is, for the home's first paint, so it can open on what is near them without asking for
+ * permission first: a browser prompt is a worse first impression than a city that is approximately right, and
+ * the guest can type any other place. Nothing is stored, and a caller that cannot be placed gets nulls.
+ *
+ * Cloudflare's city headers are read when they arrive, but on Render they never do: the edge in front of this
+ * API forwards the country and nothing finer, so for a year the answer here was a country and the home fell
+ * back to the browser's time zone, which put everyone on America/New_York in New York. The caller's address is
+ * now looked up in a table built from the free DB-IP City Lite database (lib/ipMetro.ts), which places it on
+ * the nearest of our metros when it is within reach of one. The metro's own centre and name come back as the
+ * point, which is what the home wants: rails for the city the guest is actually in.
  */
+const IP_TABLE = fileURLToPath(new URL("../../data/geo/ip-metros.bin", import.meta.url));
 app.get("/where", (c) => {
   const h = (k: string) => (c.req.header(k) || "").trim();
   const num = (v: string) => { const n = Number(v); return Number.isFinite(n) && n !== 0 ? n : null; };
-  const lat = num(h("cf-iplatitude"));
-  const lon = num(h("cf-iplongitude"));
-  const city = h("cf-ipcity") || null;
-  const region = h("cf-region-code") || null;
+  let lat = num(h("cf-iplatitude"));
+  let lon = num(h("cf-iplongitude"));
+  let city = h("cf-ipcity") || null;
+  let region = h("cf-region-code") || null;
+  let metroId: string | null = null;
   const country = (h("cf-ipcountry") || "").toUpperCase() || null;
+  if (lat == null || lon == null || !city) {
+    const table = ipTable(IP_TABLE);
+    const id = table ? lookup(table, clientIp(c)) : null;
+    const m = id ? METROS.find((x) => x.id === id) : undefined;
+    if (m) {
+      metroId = m.id;
+      lat = m.lat;
+      lon = m.lon;
+      city = m.name;
+      region = m.region;
+    }
+  }
   // Ten minutes in the guest's own browser, and nowhere else. This body is read off the caller's IP address,
   // so it differs for every guest and varies by nothing a cache can key on. `public` invited Cloudflare, which
   // already fronts this API, and any proxy between it and the guest, to hand one guest's city to the next: a
   // whole city's worth of visitors opening the home on wherever the first of them happened to be.
   c.header("cache-control", "private, max-age=600");
-  return c.json({ lat, lon, city, region, country: country === "T1" || country === "XX" ? null : country });
+  return c.json({ lat, lon, city, region, metroId, country: country === "T1" || country === "XX" ? null : country });
 });
 
 app.get("/config", (c) => c.json({ payments: stripeEnabled(), mail: !!process.env.RESEND_API_KEY, stripePublishableKey: stripeEnabled() ? (process.env.STRIPE_PUBLISHABLE_KEY || "").trim() || null : null }));
