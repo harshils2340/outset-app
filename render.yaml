@@ -72,10 +72,13 @@ services:
     name: outset-api
     runtime: node
     rootDir: backend
-    # geo:build fetches this month's free DB-IP City Lite file and builds the IP-to-metro table /where answers
-    # from (backend/scripts/build-ip-metros.mts). It never fails the build: without the file, /where answers
-    # without a city and the home falls back to the browser's time zone.
-    buildCommand: npm ci --include=dev && npm run geo:build
+    # fetch-seed pulls the catalog seed the API serves from; it was set on the live service in the dashboard and
+    # this file had drifted from it. geo:build fetches this month's free DB-IP City Lite file and builds the
+    # IP-to-metro table /where answers from (backend/scripts/build-ip-metros.mts). Neither fails the build:
+    # without the geo file, /where answers without a city and the home falls back to the browser's time zone.
+    # Render does not re-read this file for an existing service: a change here also has to be applied to the
+    # service itself (dashboard, or PATCH /v1/services/<id> with the same buildCommand).
+    buildCommand: npm ci --include=dev && npx tsx scripts/fetch-seed.mts && npm run geo:build
     startCommand: npm start
     plan: free
     healthCheckPath: /health
