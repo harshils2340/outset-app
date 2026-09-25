@@ -25,6 +25,17 @@ function esc(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
+/**
+ * A business name in the possessive, for the subject line. A name that is already possessive keeps its own
+ * apostrophe rather than growing a second one: "Capt Andy's" is the whole name of a real shipped operator, and
+ * "Who answers Capt Andy's's phone after you close?" is the sort of subject that tells an owner at a glance
+ * that nobody wrote this. A name ending in a plural s ("Gulf Jet Skis") keeps its added apostrophe s: the
+ * correct form drops the s, but that is 2,261 of the 4,728 targets and a copy call rather than a typo.
+ */
+export function possessive(name: string): string {
+  return /['’]s$/i.test(name) ? name : name + "'s";
+}
+
 function link(href: string, label: string): string {
   return "<a href=\"" + esc(href) + "\">" + esc(label) + "</a>";
 }
@@ -54,7 +65,7 @@ export function draftOttoCopy(op: OttoOp, email?: string): { subject: string; bo
   const CAL = "https://cal.com/harshil-shah-7tkvs7/outset";
   const TERMS = SITE + "terms.html";
   const PRIVACY = SITE + "privacy.html";
-  const subject = "Who answers " + op.name + "'s phone after you close?";
+  const subject = "Who answers " + possessive(op.name) + " phone after you close?";
   // "AI phone assistant" read too passive to Harshil (24 September 2026): he wants it sound like it gets
   // things done, not like it just takes a message. "AI front desk" is also the exact term otto.html's own
   // hero already uses, so the email and the page it links to now say the same thing.

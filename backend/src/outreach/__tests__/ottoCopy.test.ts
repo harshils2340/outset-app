@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { draftOttoCopy, type OttoOp } from "../ottoDrafts.ts";
+import { draftOttoCopy, possessive, type OttoOp } from "../ottoDrafts.ts";
 
 /**
  * The Otto pitch had no test of its own. It is a commercial email that goes out unattended at 9:30 every
@@ -45,6 +45,18 @@ test("the subject and the opening line name the business", () => {
   const c = draftOttoCopy(op, TO);
   assert.ok(c.subject.includes("Sea Breeze Jet Ski"), c.subject);
   assert.ok(c.body.includes("Sea Breeze Jet Ski"), c.body);
+});
+
+test("a name that is already possessive does not grow a second apostrophe", () => {
+  assert.equal(possessive("Sea Breeze Jet Ski"), "Sea Breeze Jet Ski's");
+  assert.equal(possessive("Capt Andy's"), "Capt Andy's");
+  assert.equal(possessive("Shaod’s"), "Shaod’s");
+  // A name ending in a plural s is left as it was on purpose. "Gulf Jet Skis'" is the correct form, but it
+  // would change the subject of 2,261 of the 4,728 shipped targets, which is a copy call for Harshil; the
+  // doubled apostrophe is the typo, and that is one shop.
+  assert.equal(possessive("Gulf Jet Skis"), "Gulf Jet Skis's");
+  const c = draftOttoCopy({ ...op, name: "Capt Andy's" }, TO);
+  assert.equal(c.subject, "Who answers Capt Andy's phone after you close?");
 });
 
 test("a business name with markup in it cannot reach the html as markup", () => {
