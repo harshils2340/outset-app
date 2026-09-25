@@ -110,6 +110,18 @@ test("signing in by code stops at the same place", () => {
   assert.ok(at < body.indexOf("saveProfile("), "the profile is saved before the read is known to be real");
 });
 
+test("the test bypass's way in reads what is stored before it builds anything", () => {
+  // TEST BYPASS: `test-enter` is the door Harshil's own address walks the operator side through, and it is
+  // the claim link's click-through minus the link. It never read the API at all, so entering a listing that
+  // was already set up on another device saved a blank dashboard over it.
+  const body = arrow(login, "const enterForTest = async () => {");
+  const at = body.indexOf("const remote = await fetchRemoteProfileResult(id)");
+  assert.ok(at > -1, "the test way in builds a dashboard without asking what is stored");
+  assert.match(body.slice(at), /if \(remote\.unanswered\)/, "a read that got no answer is treated as a listing with no profile");
+  assert.ok(at < body.indexOf("defaultProfile("), "the crawled record wins over what is stored");
+  assert.ok(at < body.lastIndexOf("saveProfile("), "a profile is saved before the read is known to be real");
+});
+
 test("a retry after a signed-in load failed does not send the spent code back", () => {
   // The API deletes a code the moment it accepts it, and the session is already saved on this device, so
   // re-verifying answers "code expired, request a new one" to an owner who is in fact signed in.

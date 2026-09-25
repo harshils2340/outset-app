@@ -312,13 +312,21 @@ export function OpLogin({ claimId, claimToken, compact, onEnter, onBack }: { cla
     setTestMsg(null);
     const id = claimTarget || picked.id;
     const r = await testEnter(id, email.trim());
-    setEntering(false);
     if (!r.ok) {
+      setEntering(false);
       setTestMsg(r.error === "the API would not allow that" ? "The API refused. Check OUTSET_TEST_CLAIM_EMAILS names this address." : r.error || "Could not enter.");
       return;
     }
     const existing = loadProfile(id);
-    if (existing) { onEnter(existing); return; }
+    if (existing) { setEntering(false); onEnter(existing); return; }
+    // This door is the one a claim link's click-through is, minus the link, so it needs the same care: the
+    // listing may already be set up from another device, and a blank profile built from the crawled record
+    // and saved here is what the next app load pushes to the API, over the real one.
+    const remote = await fetchRemoteProfileResult(id);
+    setEntering(false);
+    if (remote.unanswered) { setTestMsg("The API let you in but did not answer for this listing's settings. Press the button again rather than opening an empty dashboard over what is stored."); return; }
+    const saved = remote.profile?.profile as OperatorProfile | undefined;
+    if (saved && saved.v === 1) { saveProfile(saved); onEnter(saved); return; }
     const full = experienceById(id) || picked;
     const p = defaultProfile(full, { name: name.trim() || "Test owner", email: email.trim(), phone: phone.trim() });
     saveProfile(p);
