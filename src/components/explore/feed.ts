@@ -57,18 +57,30 @@ export function kmToPlace(u: Unclaimed, near: Place): number {
 }
 
 /**
+ * The point a distance to this listing may honestly be measured from, or null when there is none.
+ *
+ * Two cases have no honest answer. A picked state or province is one pin in the middle of it, not a place the
+ * guest is standing, which is also why nothing is ordered by it. And a partner's product carries the
+ * coordinate its API gave for the whole destination, one point shared by all 160 products filed under that
+ * city, so a distance from it would be a precision nobody has.
+ *
+ * The cards have refused both since they learned to print a distance. The listing page those cards open has
+ * to refuse the same two, or it answers "143 miles from Florida" beside a card that said nothing at all.
+ */
+export function measurableFrom(u: Unclaimed, near: Place | null): Place | null {
+  return !near || near.region || u.affiliate ? null : near;
+}
+
+/**
  * The place line on a card when the guest has a pin: how far it is, not the metro the catalog filed it under.
  *
  * Listings in Waterloo ship as "Toronto, ON" because the grid has no KW metro. Printing that city next to a
  * GPS distance is how "Near me" looked like downtown Toronto. A chain's other venue can still name its town.
  */
 export function awayLine(u: Unclaimed, near: Place | null): string | null {
-  if (!near || near.region) return null;
-  // A partner's product carries the coordinate its API gave for the whole destination, the same one for every
-  // product in that city, so a distance from it would be a precision nobody has. The city it is filed under is
-  // what we actually know, and that is what the line falls back to.
-  if (u.affiliate) return null;
-  const n = nearestLocation(u, near);
+  const from = measurableFrom(u, near);
+  if (!from) return null;
+  const n = nearestLocation(u, from);
   if (!n) return null;
   const town = n.alt && n.label ? n.label : "";
   // fmtDistance says "Nearby" for anything under a few hundred metres, and "Nearby away" is what every card in

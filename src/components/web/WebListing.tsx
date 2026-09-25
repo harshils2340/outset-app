@@ -8,6 +8,7 @@ import { metroById } from "../../data/metros";
 import { countryOfArea, countryOfRegion, regionOfArea } from "../../data/regions";
 import { SLOT_TIMES } from "../../data/slots";
 import type { Unclaimed } from "../../data/types";
+import { measurableFrom } from "../explore/feed";
 import { streetOf } from "../../lib/address";
 import { addressLine, bookingPaused, contactFor, fmtPhone, fromPrice, getCatalog, guestCapFor, listingFacts, mapsHref, maxGuestsFor, partnerBookLine, perPerson, publicRating, telHref, topRated as isTopRated, venueMapsQuery } from "../../lib/catalog";
 import { DAYS, fmtDate, fmtReviews, fmtTime, money, priceWith, reviewsLine } from "../../lib/format";
@@ -1151,7 +1152,11 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
   // The same bar the cards use, and beside it this page's own rule: a rating is printed only where
   // there are written reviews to read under it, which is what `score` already carries.
   const topRatedHere = !!score && isTopRated(item);
-  const near = state.near ? nearestLocation(item, state.near) : null;
+  // The same rule the cards read: a picked state is a pin in the middle of it and a partner's product shares
+  // one pin with every other product in its city, so neither carries a distance. The page used to print
+  // "143 miles from Florida" and "2 miles away" from those, beside cards that said nothing at all.
+  const nearPoint = measurableFrom(item, state.near);
+  const near = nearPoint ? nearestLocation(item, nearPoint) : null;
   const typeName = TYPE_NAME[item.art] || "Experience";
   const initial = (item.title.replace(/^the\s+/i, "").match(/[A-Za-z]/) || [item.title.slice(0, 1)])[0].toUpperCase();
   const bookableCount = bookableServices(item.services).length || item.options.filter((o) => o.price != null || o.name).length;
@@ -1169,7 +1174,7 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
   if (season.chip) keyFacts.push(season.chip);
   if (item.locations?.length) keyFacts.push(item.locations.length + 1 + " locations");
   if (near) {
-    const from = state.near!.label === "Near me" ? " away" : " from " + state.near!.label;
+    const from = nearPoint!.label === "Near me" ? " away" : " from " + nearPoint!.label;
     keyFacts.push(fmtDistance(near.km, countryOfArea(item.area)) + from);
   }
 
@@ -2024,10 +2029,10 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
                 </div>
           {item.locations?.length ? (
             <div className="alvenues">
-              <h3>{item.locations.length + 1} locations{state.near ? ", nearest to " + state.near.label + " first" : ""}</h3>
+              <h3>{item.locations.length + 1} locations{nearPoint ? ", nearest to " + nearPoint.label + " first" : ""}</h3>
               <div className="alvenuegrid">
                 {[{ city: item.area, region: regionOfArea(item.area), lat: item.lat, lon: item.lon, street: (address && hasStreet ? address : undefined), primary: true }, ...item.locations.map((l) => ({ ...l, region: l.region || regionOfArea(item.area), city: venueLabel({ city: l.city, region: l.region }), primary: false }))]
-                  .map((v) => ({ ...v, km: state.near && v.lat != null && v.lon != null ? kmBetween(state.near, { lat: v.lat, lon: v.lon }) : null }))
+                  .map((v) => ({ ...v, km: nearPoint && v.lat != null && v.lon != null ? kmBetween(nearPoint, { lat: v.lat, lon: v.lon }) : null }))
                   .sort((a, b) => (a.km ?? Infinity) - (b.km ?? Infinity))
                   .slice(0, 24)
                   .map((v, i) => {
