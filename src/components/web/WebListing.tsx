@@ -8,7 +8,8 @@ import { metroById } from "../../data/metros";
 import { countryOfArea, countryOfRegion, regionOfArea } from "../../data/regions";
 import { SLOT_TIMES } from "../../data/slots";
 import type { Unclaimed } from "../../data/types";
-import { addressLine, bookingPaused, contactFor, fmtPhone, fromPrice, getCatalog, guestCapFor, listingFacts, mapsHref, maxGuestsFor, partnerBookLine, perPerson, publicRating, telHref, topRated as isTopRated } from "../../lib/catalog";
+import { streetOf } from "../../lib/address";
+import { addressLine, bookingPaused, contactFor, fmtPhone, fromPrice, getCatalog, guestCapFor, listingFacts, mapsHref, maxGuestsFor, partnerBookLine, perPerson, publicRating, telHref, topRated as isTopRated, venueMapsQuery } from "../../lib/catalog";
 import { DAYS, fmtDate, fmtReviews, fmtTime, money, priceWith, reviewsLine } from "../../lib/format";
 import { srcSet, thumb } from "../../lib/images";
 import { embedAutoplay, isGif, listingMedia, photoCandidates, probePhotos, type Media } from "../../lib/media";
@@ -836,6 +837,8 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
   const callHref = contact?.phone ? telHref(contact.phone) : null;
   const addressRaw = contact ? addressLine(contact) : null;
   const address = addressRaw ? tidyAddress(addressRaw) : null;
+  // Whether that line names a road or is only the town again, which decides what a venue row searches Maps for.
+  const hasStreet = !!(contact && streetOf(contact));
   const facts = listingFacts(item);
   // The operator's own guide (edited on the dashboard) replaces the steps, bring list and "good for" of the
   // kind's default; the default's time and nerves lines stay. With no default for the kind, theirs stands alone.
@@ -2023,7 +2026,7 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
             <div className="alvenues">
               <h3>{item.locations.length + 1} locations{state.near ? ", nearest to " + state.near.label + " first" : ""}</h3>
               <div className="alvenuegrid">
-                {[{ city: item.area, region: regionOfArea(item.area), lat: item.lat, lon: item.lon, street: address || undefined, primary: true }, ...item.locations.map((l) => ({ ...l, region: l.region || regionOfArea(item.area), city: venueLabel({ city: l.city, region: l.region }), primary: false }))]
+                {[{ city: item.area, region: regionOfArea(item.area), lat: item.lat, lon: item.lon, street: (address && hasStreet ? address : undefined), primary: true }, ...item.locations.map((l) => ({ ...l, region: l.region || regionOfArea(item.area), city: venueLabel({ city: l.city, region: l.region }), primary: false }))]
                   .map((v) => ({ ...v, km: state.near && v.lat != null && v.lon != null ? kmBetween(state.near, { lat: v.lat, lon: v.lon }) : null }))
                   .sort((a, b) => (a.km ?? Infinity) - (b.km ?? Infinity))
                   .slice(0, 24)
@@ -2035,7 +2038,7 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
                     // A chain can straddle the border, so each venue is measured in its own country's units and
                     // falls back to the listing's when the crawl never read its province or state.
                     const line = [v.street && v.street !== title ? v.street : v.primary ? "Main location" : "", v.km != null ? fmtDistance(v.km, countryOfRegion(v.region)) + " away" : ""].filter(Boolean).join(" · ");
-                    const query = [v.street, v.city].filter(Boolean).join(", ") || v.lat + "," + v.lon;
+                    const query = venueMapsQuery(v, item.title);
                     return (
                       <a key={i} className="alvenue" href={"https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(query)} target="_blank" rel="noreferrer">
                         <b>{title}</b>

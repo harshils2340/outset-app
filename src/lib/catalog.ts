@@ -442,9 +442,45 @@ export function cardPlace(area: string, metroName: string | undefined): string {
   return a.includes(",") ? a : a + ", " + metroName;
 }
 
+/**
+ * What "Open in Maps" searches for.
+ *
+ * An address with a street on it finds the door, so it is used whole. When the shop published no street, all
+ * `addressLine` has left is a town, or a bare state code, and searching Maps for that opens the middle of a
+ * place with the business named nowhere in the query: 5,018 shipped listings, 1,210 of them a two-letter code,
+ * so "Get directions" from 1515 Lincoln Gallery's page went to Oklahoma. The phone sheet's own query
+ * (`mapsQuery`) has always kept the name in that case; this is the desktop listing page and the desktop
+ * confirmation catching up, and it is the same string the pages already use when there is no contact at all.
+ */
+export function mapsSearchQuery(c: OperatorContact, fallbackName: string): string {
+  const line = addressLine(c);
+  if (streetOf(c) && line) return line;
+  return fallbackName.trim() || line || "";
+}
+
 export function mapsHref(c: OperatorContact, fallbackName: string): string {
-  const q = addressLine(c) || fallbackName;
-  return "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(q);
+  return "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(mapsSearchQuery(c, fallbackName));
+}
+
+/**
+ * The Maps search behind one row of a chain's "other locations" grid.
+ *
+ * Same rule, one row down. A venue with a street is searched by it. A venue with a town but no street keeps the
+ * chain's name in front of that town, so the row opens that branch rather than a search for "Arlington". A
+ * venue the crawl found as a bare pin, with no town to put a name beside, is still searched by its coordinates,
+ * which is what that pin is for, and a row with nothing at all no longer searches for "null,null".
+ */
+export function venueMapsQuery(
+  v: { street?: string | null; city?: string | null; lat?: number | null; lon?: number | null },
+  chainName: string,
+): string {
+  const street = (v.street || "").trim();
+  const city = (v.city || "").trim();
+  const name = chainName.trim();
+  if (street) return city && !street.includes(city) ? street + ", " + city : street;
+  if (name && city) return name + ", " + city;
+  if (v.lat != null && v.lon != null) return v.lat + "," + v.lon;
+  return city || name;
 }
 
 export function mapsQuery(item: Unclaimed, c: OperatorContact | null): string {
