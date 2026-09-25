@@ -9,7 +9,7 @@ import { Mark } from "../layout/Mark";
 import { Markup } from "../Markup";
 import { useApp } from "../../state/AppProvider";
 import { OD_ICONS } from "./opContext";
-import { claimRemote, exchangeClaimToken, fetchClaimRule, fetchRemoteProfile, hasApi, isExpiringClaimToken, ownerFromHash, rememberClaimToken, requestClaimLink, requestSignInCode, testClaimActive, testEnter, testUnclaim, verifySignInCode, type ClaimRule } from "../../lib/api";
+import { claimRemote, exchangeClaimToken, fetchClaimRule, fetchRemoteProfileResult, hasApi, isExpiringClaimToken, ownerFromHash, rememberClaimToken, requestClaimLink, requestSignInCode, testClaimActive, testEnter, testUnclaim, verifySignInCode, type ClaimRule } from "../../lib/api";
 import { isPublicHttpUrl } from "../../lib/urlSafety";
 
 /**
@@ -196,15 +196,38 @@ export function OpLogin({ claimId, claimToken, compact, onEnter, onBack }: { cla
     if (!pendingClaim) return;
     const { u, apiId, claimToken: token, fromLink } = pendingClaim;
     setConfirming(true);
+    setErr(null);
     // Record the claim before anything else. It used to happen only when a profile was being created, so a
     // second person opening a forwarded link for a listing that was already set up was never recorded at
     // all, and neither the server nor the real owner ever heard about it.
-    if (isApi) await claimRemote(apiId, token, fromLink || undefined);
-    // Recorded, so the token has done its job and can leave the address bar.
+    //
+    // What the server answers is the click's verdict, not a detail. Throwing it away meant a claim the API
+    // never heard still cleaned the token out of the address bar, saved a local profile and opened the
+    // dashboard: the listing stayed unclaimed, the owner's address was never linked, so "email me a sign-in
+    // code" had nothing to send to, and the one-click way back in was gone from their own URL.
+    if (isApi) {
+      const claim = await claimRemote(apiId, token, fromLink || undefined);
+      if (!claim.ok) {
+        setConfirming(false);
+        setErr(claim.unanswered
+          ? "We couldn't reach Outset to record your claim, so nothing is wrong with your link. Check your connection and press the button again."
+          : "Outset wouldn't accept that claim link. Ask for a fresh one below, or sign in with your email.");
+        if (!claim.unanswered) setLinkState("bad");
+        return;
+      }
+    }
+    // Another device may already hold this operator's edits. An API that never answered is not a shop with
+    // nothing in it: building a blank profile here would save it over the real one and push it up on the
+    // next load, which is every price, photo and opening hour the owner had already published.
+    const remote = await fetchRemoteProfileResult(apiId);
+    if (remote.unanswered) {
+      setConfirming(false);
+      setErr("Your claim is recorded, but we couldn't reach Outset to load this listing's settings. Check your connection and press the button again, so we don't open an empty dashboard over what you already have.");
+      return;
+    }
+    // Recorded, and we know what is on file, so the token has done its job and can leave the address bar.
     cleanClaimHash();
-    // Another device may already hold this operator's edits.
-    const remote = await fetchRemoteProfile(apiId);
-    const saved = remote?.profile as OperatorProfile | undefined;
+    const saved = remote.profile?.profile as OperatorProfile | undefined;
     if (saved && saved.v === 1 && (saved.id === apiId || saved.id === u.id)) {
       saveProfile(saved);
       onEnter(saved);
@@ -214,9 +237,9 @@ export function OpLogin({ claimId, claimToken, compact, onEnter, onBack }: { cla
     // meant a second claimer simply re-sent the first owner's address, so the server could never tell that
     // somebody else had walked in through a forwarded email.
     const p = defaultProfile(u, {
-      name: fromLink?.name || remote?.owner?.name || "",
-      email: fromLink?.email || remote?.owner?.email || contactFor(u)?.email || "",
-      phone: fromLink?.phone || remote?.owner?.phone || "",
+      name: fromLink?.name || remote.profile?.owner?.name || "",
+      email: fromLink?.email || remote.profile?.owner?.email || contactFor(u)?.email || "",
+      phone: fromLink?.phone || remote.profile?.owner?.phone || "",
     });
     p.id = apiId;
     if (!isApi) p.bookings = sampleBookings(p);
@@ -233,6 +256,8 @@ export function OpLogin({ claimId, claimToken, compact, onEnter, onBack }: { cla
   const demoCode = useMemo(() => String(100000 + Math.floor(Math.random() * 900000)), []);
   const [sending, setSending] = useState(false);
   const [signinEmail, setSigninEmail] = useState("");
+  /** The listings a spent sign-in code already bought, so a retry on this screen never sends that code again. */
+  const [verifiedIds, setVerifiedIds] = useState<string[] | null>(null);
   const [mode, setMode] = useState<"claim" | "signin">("claim");
   const [sentOk, setSentOk] = useState(true);
 
@@ -330,40 +355,60 @@ export function OpLogin({ claimId, claimToken, compact, onEnter, onBack }: { cla
   const startSignIn = async () => {
     setSending(true);
     setErr(null);
+    // A fresh code is a fresh sign-in: whatever the last one bought is no longer what this screen is about.
+    setVerifiedIds(null);
     const r = await requestSignInCode(signinEmail);
     setSending(false);
     if (!r.ok) { setErr(r.error || "Could not send a code. Try again."); return; }
     setStep("code");
   };
 
-  const finishSignIn = async () => {
-    setErr(null);
-    const r = await verifySignInCode(signinEmail, code);
-    // An API that never answered has not read the code, so it is still good for the rest of its ten minutes.
-    // Calling it wrong sent owners back to retype a correct code, and the API counts six tries and then burns it.
-    if (!r.ok) { setErr(r.error || (r.unanswered ? "We couldn't reach Outset to check that code. Check your connection and try again: your code is still good." : "That code does not match.")); return; }
-    if (!r.ids.length) { setErr("No listing is linked to that email yet. Use the claim link from your email."); return; }
-    // Every listing this email owns gets a local copy, from the API when this device has none. The business
-    // switcher only lists what is stored here, so pulling just the first one left an owner of two shops with no
-    // way to reach the second on a new phone. The first one opens.
+  /**
+   * Every listing this email owns gets a local copy, from the API when this device has none. The business
+   * switcher only lists what is stored here, so pulling just the first one left an owner of two shops with no
+   * way to reach the second on a new phone. The first one opens.
+   */
+  const enterWithIds = async (ids: string[]) => {
     let first: OperatorProfile | null = null;
-    for (const id of r.ids) {
+    let silent = false;
+    for (const id of ids) {
       let p = loadProfile(id);
       if (!p) {
-        const remote = await fetchRemoteProfile(id);
-        const saved = remote?.profile as OperatorProfile | undefined;
+        const remote = await fetchRemoteProfileResult(id);
+        // The API answering the code and then not answering this is a shop whose settings we could not read,
+        // never a shop with no settings. Filling one in from the crawled record would save a blank dashboard
+        // here and push it over the real one on the next app load, taking the owner's menu, hours, photos and
+        // prices with it. Leave this listing alone and say so.
+        if (remote.unanswered) { silent = true; continue; }
+        const saved = remote.profile?.profile as OperatorProfile | undefined;
         if (saved && saved.v === 1) p = saved;
         else {
           const u = experienceById(id);
           if (!u) continue;
-          p = defaultProfile(u, { name: remote?.owner?.name || "", email: signinEmail.trim().toLowerCase(), phone: remote?.owner?.phone || "" });
+          p = defaultProfile(u, { name: remote.profile?.owner?.name || "", email: signinEmail.trim().toLowerCase(), phone: remote.profile?.owner?.phone || "" });
         }
         saveProfile(p);
       }
       first = first || p;
     }
-    if (!first) { setErr("That listing is not loaded yet. Try again in a moment."); return; }
+    // The code is spent either way, so the retry below is this step again and not the code again.
+    if (!first) { setErr(silent ? "You're signed in, but we couldn't reach Outset to load your listing. Check your connection and press the button again." : "That listing is not loaded yet. Try again in a moment."); return; }
     onEnter(first);
+  };
+
+  const finishSignIn = async () => {
+    setErr(null);
+    // A code the API accepted is gone from its side, and the session it handed back is already saved on this
+    // device. Pressing the button again after a listing failed to load must therefore retry the load, not the
+    // code: sending a spent code back answers "code expired, request a new one" and strands a signed-in owner.
+    if (verifiedIds) { await enterWithIds(verifiedIds); return; }
+    const r = await verifySignInCode(signinEmail, code);
+    // An API that never answered has not read the code, so it is still good for the rest of its ten minutes.
+    // Calling it wrong sent owners back to retype a correct code, and the API counts six tries and then burns it.
+    if (!r.ok) { setErr(r.error || (r.unanswered ? "We couldn't reach Outset to check that code. Check your connection and try again: your code is still good." : "That code does not match.")); return; }
+    if (!r.ids.length) { setErr("No listing is linked to that email yet. Use the claim link from your email."); return; }
+    setVerifiedIds(r.ids);
+    await enterWithIds(r.ids);
   };
 
   /** New claim: the API emails the signed link, but only to an address it can tie to this business. */
@@ -467,7 +512,10 @@ export function OpLogin({ claimId, claimToken, compact, onEnter, onBack }: { cla
         {claimHead(pendingClaim.u)}
         <b>This is your business?</b>
         <small>Opening your dashboard claims this listing and turns it over to you.</small>
-        <button type="button" className="cta odwide" disabled={confirming} onClick={() => void proceedClaim()}>{confirming ? "Opening…" : "Yes, open my dashboard"}</button>
+        {/* The click can fail: a claim the API never recorded, or settings it never sent back. Both are worth
+            pressing again, so the verdict belongs on this screen rather than behind an opened dashboard. */}
+        {err ? <p className="oderr" role="alert">{err}</p> : null}
+        <button type="button" className="cta odwide" disabled={confirming} onClick={() => void proceedClaim()}>{confirming ? "Opening…" : err ? "Try again" : "Yes, open my dashboard"}</button>
         <button type="button" className="odlink" onClick={onBack}>Not my business</button>
       </div>
     );
@@ -554,7 +602,7 @@ export function OpLogin({ claimId, claimToken, compact, onEnter, onBack }: { cla
             ) : null}
 
             <div className="odor"><span>already claimed?</span></div>
-            <label className="odfield"><span>Sign in with the email on your listing</span><input type="email" maxLength={200} value={signinEmail} onChange={(e) => { setSigninEmail(e.target.value); if (mode === "signin") setErr(null); }} placeholder="you@business.com" onKeyDown={(e) => e.key === "Enter" && isApi && !sending && EMAIL.test(signinEmail.trim()) && (setMode("signin"), void startSignIn())} /></label>
+            <label className="odfield"><span>Sign in with the email on your listing</span><input type="email" maxLength={200} value={signinEmail} onChange={(e) => { setSigninEmail(e.target.value); setVerifiedIds(null); if (mode === "signin") setErr(null); }} placeholder="you@business.com" onKeyDown={(e) => e.key === "Enter" && isApi && !sending && EMAIL.test(signinEmail.trim()) && (setMode("signin"), void startSignIn())} /></label>
             {err && mode === "signin" ? <p className="oderr">{err}</p> : null}
             <button type="button" className="cta odwide" disabled={!EMAIL.test(signinEmail.trim()) || sending || !isApi} onClick={() => { setMode("signin"); void startSignIn(); }}>{sending ? "Sending…" : "Email me a sign-in code"}</button>
             {!isApi ? <p className="odfine">Sign-in codes switch on once the API is connected.</p> : null}

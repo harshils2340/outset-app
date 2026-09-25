@@ -146,20 +146,41 @@ async function call<T>(path: string, init: RequestInit & { timeout?: number } = 
 
 export type RemoteProfile = { id: string; published: boolean; patch: Partial<Unclaimed>; updatedAt: string; profile?: unknown; owner?: { name: string; email: string; phone: string }; session?: string; alreadyClaimed?: string; claimedAt?: string };
 
-/** The operator's saved state from the API (with auth) or the static site (guest view). */
-export async function fetchRemoteProfile(id: string): Promise<RemoteProfile | null> {
+/**
+ * The operator's saved state, and whether the API ever answered the question.
+ *
+ * "No profile" and "nobody answered" used to come back as the same `null`, and the two screens that build a
+ * dashboard from scratch (the claim link's click-through, and signing in by code on a new device) read that
+ * `null` as a shop that has never been set up. A six second timeout against a sleeping API was therefore
+ * enough to hand a working operator a blank dashboard, save it over their device's copy, and push it to the
+ * API on the next load, which overwrites the menu, hours, photos and prices they had already published.
+ * `unanswered` is how those screens now stop instead of guessing.
+ */
+export type RemoteProfileResult = { profile: RemoteProfile | null; unanswered: boolean };
+
+export async function fetchRemoteProfileResult(id: string): Promise<RemoteProfileResult> {
+  let unanswered = false;
   if (API_URL) {
     const r = await call<RemoteProfile>(`/profiles/${encodeURIComponent(id)}`, { headers: authHeaders(id), timeout: 6000 });
-    if (r.ok) return r.data;
-    if (r.status === 404) return null;
+    if (r.ok) return { profile: r.data, unanswered: false };
+    // Only the API can say this listing has no profile. Anything else it did not answer stays unanswered,
+    // even though the static file below is tried next: that file is the guest view, and it is missing for
+    // every listing on a host that serves the catalog alone.
+    if (r.status === 404) return { profile: null, unanswered: false };
+    unanswered = apiDidNotAnswer(r.status);
   }
   try {
     const res = await fetch(`${import.meta.env.BASE_URL}profiles/${encodeURIComponent(id)}.json`, { cache: "no-cache", signal: AbortSignal.timeout(6000) });
-    if (!res.ok) return null;
-    return (await res.json()) as RemoteProfile;
+    if (res.ok) return { profile: (await res.json()) as RemoteProfile, unanswered: false };
   } catch {
-    return null;
+    /* the static copy did not answer either, so the verdict is still the API's */
   }
+  return { profile: null, unanswered };
+}
+
+/** The operator's saved state from the API (with auth) or the static site (guest view). */
+export async function fetchRemoteProfile(id: string): Promise<RemoteProfile | null> {
+  return (await fetchRemoteProfileResult(id)).profile;
 }
 
 /** Records the claim on the server and stores the session it hands back. */
@@ -175,7 +196,11 @@ export function takeClaimNotice(): { email: string; at?: string } | null {
   return n;
 }
 
-export async function claimRemote(id: string, token: string, owner?: { name: string; email: string; phone: string }): Promise<boolean> {
+/**
+ * Records the claim. `unanswered` separates an API that never read the request from one that refused it:
+ * the first is worth pressing again with the same link, the second needs a fresh link.
+ */
+export async function claimRemote(id: string, token: string, owner?: { name: string; email: string; phone: string }): Promise<{ ok: boolean; unanswered: boolean }> {
   // Send the session too. An expiring link is exchanged for one first, and the raw v2 token on its own is
   // not something the server can check here, so a claim posted with only the token came back 403 and the
   // owner's address was never recorded, which is what sign-in codes and booking alerts run on.
@@ -185,7 +210,7 @@ export async function claimRemote(id: string, token: string, owner?: { name: str
     saveApiSession({ token: r.data.session, ids: Array.from(new Set([...(prior?.ids || []), id])), email: owner?.email || prior?.email || "", exp: Date.now() + 29 * 86400000 });
   }
   if (r.ok && r.data?.alreadyClaimed) claimNotice = { email: r.data.alreadyClaimed, at: r.data.claimedAt };
-  return r.ok;
+  return { ok: r.ok, unanswered: apiDidNotAnswer(r.status) };
 }
 
 // One slot per listing, not one for the whole module. An owner of two shops who edits both inside the same
