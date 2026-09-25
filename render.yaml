@@ -38,6 +38,11 @@ services:
       - type: rewrite
         source: /privacy
         destination: /privacy.html
+      # /go was the concierge's own page and then a door to the site's agent overlay; it is retired. The
+      # catch-all below would otherwise show the home under that URL as if it were a page of its own.
+      - type: redirect
+        source: /go
+        destination: /
       - type: rewrite
         source: /*
         destination: /index.html

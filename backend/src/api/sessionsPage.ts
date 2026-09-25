@@ -75,7 +75,7 @@ export const SESSIONS_PAGE = `<!doctype html>
     <div class="bar2"><button class="copy" id="copyAll" style="flex:1">Copy this conversation</button></div>
   </div>
   <div class="main" id="main">
-    <div class="empty">Nothing yet. Open <code>/go</code> and ask for something &mdash; every step the agent takes lands here, with how long it took.</div>
+    <div class="empty">Nothing yet. Open the site's Agent mode and ask for something &mdash; every step the agent takes lands here, with how long it took.</div>
   </div>
 <script>
 const list=document.getElementById('list'), main=document.getElementById('main');

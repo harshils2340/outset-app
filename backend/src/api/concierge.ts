@@ -36,14 +36,12 @@ function mayWatch(c: Context): boolean {
   return isAdminRequest(c);
 }
 
-/**
- * `/go` used to serve its own hand-rolled copy of the concierge: a second implementation of the same screen,
- * written once and then never touched again while the real one, the overlay `WebConcierge.tsx` opens on the
- * site, kept moving. It drifted on every axis that matters: stale opening copy, and options rendered one row
- * per departure instead of grouped by shop, so the same two businesses printed four times over. There is one
- * agent UI now, and this is a door to it rather than a second one.
+/*
+ * `/go` is gone from the API. It first served a hand-rolled copy of the concierge, then a redirect to the
+ * site's agent overlay; Harshil asked for the URL to go away on 24 September 2026. The agent is reached from
+ * the site's own header (Browse / Agent), and `npx tsx scripts/demo-server.mts` still serves `/go` locally
+ * for working on the concierge without the site.
  */
-concierge.get("/go", (c) => c.redirect(SITE + "#ask="));
 
 /** Every conversation the agent has had since this process started, step by step. Internal: see below. */
 concierge.get("/sessions", rateLimit(120, 60 * 60 * 1000), (c) => {
