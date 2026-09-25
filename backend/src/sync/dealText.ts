@@ -10,6 +10,8 @@
  * discount, a day or a code the operator did not state.
  */
 
+import { runsInMonth } from "../../../src/lib/dealSeason.ts";
+
 export type RawPromo = { text: string; days: number[]; start?: string; end?: string };
 export type Deal = { title: string; detail: string; days: number[]; code?: string; start?: string; end?: string; date?: string };
 
@@ -344,7 +346,8 @@ const sameDays = (a: number[], b: number[]) => a.join() === b.join();
 
 /**
  * At most `max` deals from one operator's promo fragments. `now` decides whether a dated holiday note is still ahead;
- * a holiday with no date, or a date already past, is dropped.
+ * a holiday with no date, or a date already past, is dropped. An offer whose own words name the months it runs in
+ * is dropped the same way outside them, so "during the months of July and August" is not a September deal.
  */
 export function consolidateDeals(promos: RawPromo[], now = new Date(), max = 3): Deal[] {
   const pieces = promos.map(readPiece).filter((p): p is Piece => !!p);
@@ -368,6 +371,9 @@ export function consolidateDeals(promos: RawPromo[], now = new Date(), max = 3):
   for (const g of groups) {
     const offersIn = g.filter((p) => p.benefit);
     const lead = [...offersIn].sort((a, b) => detailScore(b, undefined) - detailScore(a, undefined))[0];
+    // An offer that dates itself runs when it says it runs. Read off the pieces that carry the benefit, so a
+    // terms line that happens to name a month cannot retire the offer it was joined to.
+    if (!runsInMonth(offersIn.map((p) => p.text), now.getMonth())) continue;
     const code = g.map((p) => p.code).find(Boolean);
     let date: string | undefined;
     if (lead.holiday) {

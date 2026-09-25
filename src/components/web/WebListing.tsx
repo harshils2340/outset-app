@@ -18,7 +18,7 @@ import { pickSimilar } from "../../lib/similar";
 import { bookableStart, clockIn, hourLines, itemOpenState, itemWeek, zoneFor } from "../../lib/openNow";
 import { displayHours } from "../../lib/hoursText";
 import { noStartTimesNote, startTimesOn } from "../../lib/startTimes";
-import { DAY_SHORT, assistantOn, clock12, dayLabel, todaysDeals } from "../../lib/companyAgent";
+import { DAY_SHORT, assistantOn, clock12, currentDeals, dayLabel, todaysDeals } from "../../lib/companyAgent";
 import { fmtDistance } from "../../lib/geo";
 import { kmBetween, nearestLocation, venueLabel } from "../../lib/places";
 import { addonPrice, hasPrice, priceUnclaimed, serviceFeeLabel } from "../../lib/pricing";
@@ -1149,7 +1149,9 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
   const duration = durationRaw ? tidyDuration(durationRaw) : null;
   const openNow = itemOpenState(item);
   const dealsNow = todaysDeals(item);
-  const today = item.promos?.length ? clockIn(zoneFor(item)).day : -1;
+  // Offers whose own words have not dated them past today's month, which is what the Deals section draws.
+  const deals = currentDeals(item);
+  const today = deals.length ? clockIn(zoneFor(item)).day : -1;
   const groupCap = readGroupCap(item.groupInfo);
   const hours = displayHours(hourLines(item).length ? hourLines(item) : contact?.hours || []);
   // The same bar the cards use, and beside it this page's own rule: a rating is printed only where
@@ -1669,12 +1671,12 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
               </section>
             ) : null}
 
-            {item.promos?.length ? (
+            {deals.length ? (
               <section className="alsec" id="deals">
                 <h2>Deals</h2>
                 <p className="alsecsub">From {possessive(item.title)} own site. Days are in their local time.</p>
                 <ul className="aldeals">
-                  {item.promos.map((pr, prIdx) => {
+                  {deals.map((pr, prIdx) => {
                     const on = dealsNow.includes(pr);
                     const d = dealShown(pr);
                     return (

@@ -38,7 +38,7 @@ import { SIZES, srcSet, thumb } from "../../lib/images";
 import { embedAutoplay, listingMedia, photoCandidates, probePhotos, type Media } from "../../lib/media";
 import { cleanDesc, durationLabel, groupCap, minAge, splitPolicies } from "../../lib/listingDerive";
 import { freeCancelBadge } from "../../lib/cancellation";
-import { DAY_SHORT, clock12, companySuggestions, dayLabel, todaysDeals } from "../../lib/companyAgent";
+import { DAY_SHORT, clock12, companySuggestions, currentDeals, dayLabel, todaysDeals } from "../../lib/companyAgent";
 import { bookableStart, clockIn, hourLines, itemWeek, zoneFor } from "../../lib/openNow";
 import { displayHours } from "../../lib/hoursText";
 import { noStartTimesNote, startTimesOn } from "../../lib/startTimes";
@@ -540,7 +540,9 @@ function RequestBody({
   const duration = durationRaw ? tidyDuration(durationRaw) : null;
   const openNow = itemOpenState(item);
   const dealsNow = todaysDeals(item);
-  const today = item.promos?.length ? clockIn(zoneFor(item)).day : -1;
+  // Offers whose own words have not dated them past today's month, which is what the Deals list draws.
+  const deals = currentDeals(item);
+  const today = deals.length ? clockIn(zoneFor(item)).day : -1;
   /* Airbnb's highlight rows: an icon, a bold line, a grey line. Only facts this operator actually published. */
   const rows: { icon: string; title: string; sub: string; tone?: "open" | "soon" | "closed" }[] = [];
   // The same status line the desktop header shows, so the two do not word it differently: "Closes at 5 PM"
@@ -1248,10 +1250,10 @@ function RequestBody({
             </Section>
           ) : null}
 
-          {item.promos?.length ? (
+          {deals.length ? (
             <Section title="Deals">
               <ul className="reqdeals">
-                {item.promos.map((pr, prIdx) => {
+                {deals.map((pr, prIdx) => {
                   const onToday = dealsNow.includes(pr);
                   const d = dealShown(pr);
                   return (

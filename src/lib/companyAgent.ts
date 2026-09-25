@@ -1,6 +1,7 @@
 import type { OperatorContact, Unclaimed } from "../data/types";
 import type { LiveAvailability } from "./api";
 import { addressLine, bookingPaused, plainWords } from "./catalog";
+import { runsInMonth } from "./dealSeason";
 import { callablePhone } from "./phone";
 import { withoutNoticeWindows } from "./duration";
 import { money } from "./format";
@@ -326,6 +327,26 @@ export function promoOn(p: Promo, clock: { day: number; minutes: number }): bool
   return true;
 }
 
+/** The month at the operator's own clock, 0 for January, so a deal's stated months are read on their calendar. */
+function monthIn(zone: string | undefined, now: Date): number {
+  try {
+    return Number(now.toLocaleDateString("en-US", { month: "numeric", ...(zone ? { timeZone: zone } : {}) })) - 1;
+  } catch {
+    return now.getMonth();
+  }
+}
+
+/**
+ * The deals a shop still runs, with any whose own words name months it has gone past left out: "every Monday
+ * Morning ... during the months of July and August" is not an offer in September. The sync drops those too, so
+ * this is what stops a listing published before the window closed from advertising it until the next sync.
+ */
+export function currentDeals(item: Unclaimed, now = new Date()): Promo[] {
+  if (!item.promos?.length) return [];
+  const month = monthIn(zoneFor(item), now);
+  return item.promos.filter((p) => runsInMonth([p.detail, p.text, p.title], month));
+}
+
 /** The deals running right now in the operator's own time zone. Nothing when the site published none. */
 export function todaysDeals(item: Unclaimed, now = new Date()): Promo[] {
   if (!item.promos?.length) return [];
@@ -338,7 +359,7 @@ export function todaysDeals(item: Unclaimed, now = new Date()): Promo[] {
   } catch {
     dateToday = now.toLocaleDateString("en-US", { month: "long", day: "numeric" });
   }
-  return item.promos.filter((p) => (p.date ? p.date.replace(/,\s*\d{4}$/, "") === dateToday && promoOn({ ...p, days: [] }, clock) : promoOn(p, clock)));
+  return currentDeals(item, now).filter((p) => (p.date ? p.date.replace(/,\s*\d{4}$/, "") === dateToday && promoOn({ ...p, days: [] }, clock) : promoOn(p, clock)));
 }
 
 /** Lite records carry the first deal as "3,5|Glow nights $25". True when that deal names today in the operator's zone. */
@@ -1265,7 +1286,7 @@ function dealWords(p: Promo): string {
 }
 
 function dealsAnswer(ctx: CompanyContext): { text: string; state: ChatState } {
-  const promos = (ctx.item.promos || []).filter((p) => /[a-z]{3}/.test(p.text));
+  const promos = currentDeals(ctx.item).filter((p) => /[a-z]{3}/.test(p.text));
   if (!promos.length) return { text: "No deals published right now. The price on this page is what you pay.", state: { topic: "deals" } };
   const rank = (p: Promo) => (/\$\d/.test(p.text) ? 2 : 0) + (p.text.length >= 30 ? 1 : 0);
   const priced = (list: Promo[]) => [...list].sort((a, b) => rank(b) - rank(a) || a.days.length - b.days.length);
@@ -1356,7 +1377,7 @@ function chipsFor(ctx: CompanyContext, topic: Topic | undefined): string[] {
     included: item.includes.length > 0,
     bring: !!item.bring?.length,
     rules: !!item.requirements?.length,
-    deals: !!item.promos?.length,
+    deals: !!currentDeals(item).length,
     waiver: !!item.waiverUrl,
     offers: offersOf(ctx).length > 0,
     live: liveSlots(ctx).length > 0,
@@ -1417,7 +1438,7 @@ export function companySuggestions(ctx: CompanyContext): string[] {
   if (item.includes.length) out.push(CHIP.included);
   else if (offersOf(ctx).length) out.push(CHIP.list);
   if (weekFor(ctx) || hourLines(item).length) out.push(CHIP.open);
-  if (item.promos?.length) out.push(CHIP.deals);
+  if (currentDeals(item).length) out.push(CHIP.deals);
   if (item.cancellation || item.policies?.length || item.fc) out.push(CHIP.cancel);
   if (item.requirements?.length) out.push(CHIP.age);
   if (item.bring?.length) out.push(CHIP.bring);
