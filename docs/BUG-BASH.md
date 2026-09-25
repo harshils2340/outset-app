@@ -4933,6 +4933,78 @@ give three different answers and now give one. The guest suite is unchanged; not
   every run since; this one ran `npm install` in both before anything could type-check.
 - Still open from the seventy-second run: the confirm screen's failure line has not been seen at 400px.
 
+## 25 September 2026, seventy-sixth run (10:14 to 10:45 UTC)
+
+**Chosen, and why.** Every area in this run's brief is on the Verified list and nothing has landed since the
+last entry, so the rehearsal was skipped: the seventy-fifth run left it green at 57 of 57, and no commit since
+has touched `backend/src`, `src/` or the scripts. The hour went to the one line on Not yet checked that names a
+guest-facing surface rather than a question: deals and promos on a listing, where only the rules had been read
+and nothing had been swept or driven. 36 listings publish 47 deals; a deal is the second thing on the page
+after the price, and a wrong one is a discount a guest turns up expecting and does not get.
+
+**Found and fixed.** Four.
+
+- **An offer that dates itself was published all year** (`3dbf6be1`). `consolidateDeals` already drops a
+  holiday whose date has passed and reads nothing else about when an offer runs, so a shop's own window went
+  straight through. On 25 September the catalog was advertising "$5 off regular priced tickets every Monday
+  Morning ... during the months of July and August" and "50% off bay cruises every Monday this summer".
+  `src/lib/deals.ts` is the one rule now: a month range wrapping past December, a list a sentence names as its
+  window, and a season an offer claims for itself ("this summer", "all winter"). A season used as a name
+  ("Summer Splash"), the ordinary word "may" and a deadline to book by are left alone. The sync reads it when
+  it publishes and the three app surfaces read it again when they draw, so a listing already shipped stops
+  advertising a closed window without waiting for a sync. Over the 47 shipped deals it drops 2 and keeps 45,
+  the "this fall" offer among them.
+- **A deal whose hours run past midnight could never be on** (`ae305c7a`). `promoOn` read the window as two
+  clock times inside one day, so a Friday happy hour from 9 PM to 1 AM was off at ten in the evening and off at
+  half past midnight. Read now the way a shop open past midnight already is. Latent: no shipped deal runs such
+  a window, but the crawl reads "happy hour" and a time range.
+- **A card shortened a deal badge the sync had published whole** (`48279e29`). The sync cuts the compact badge
+  on a whole word at 48 characters; `liteDealTitle` cut again at 40, a cap the sync does not use, and added an
+  ellipsis for it. 3 of the 12 shipped badges sit in that band and none had been cut: "$25 off your rental on
+  Mondays and Tuesdays" was drawn as "$25 off your rental on Mondays...", losing a day the shop offers. The
+  side that knows now says so: `compactDeal` marks what it cut, the card draws what it is given. The function
+  moved to `src/lib/deals.ts`, where the app suite can reach it; it was a pure string function living in a
+  component and had never had a test.
+- **The Deals section was the one place an em dash reached a guest** (`a7186b2d`). `tidyDashes` has run over
+  specs and highlights since the sweep that wrote it; deals never went through it, so 9 of the 47 deals on 7
+  listings print the shop's own long dash. Wiring it in turned up the second half: a day of the week and a
+  clock time were not read as ranges, so "Rentals Sunday - Wednesday" would have been published as two
+  sentences, and the Seattle Aquarium already ships "Open daily 9:30am, 6pm, 365 days a year", which was a
+  range. Both halves land together.
+
+**Swept and clean.** All 47 shipped deals, title against day list: every one agrees, including the six written
+as a range and the two written as weekdays or weekends. The promo crawl's day reader is looser than the sync's
+(`daysIn` takes a bare "sun"), but the crawl's day list is never read: `readPiece` re-derives days from the
+sentence, which is why "watch the sun sink off O'ahu" is an every-day deal and not a Sunday one. Every promo
+code against the deal it is printed on: one orphan, below. The Deals section driven in a real Chromium at
+1440px and 400px over six listings, including the three-deal and the now-empty cases: no sideways scroll,
+nothing past the edge, no console error of the app's own, and the two dated offers gone from the page.
+
+**Verification.** Both type checks clean (TS5097 aside). Backend `npm test` 789 pass, 0 fail, 2 skipped, up 3
+on one new file and three new cases in `tidyDashes.test.ts`. App `npm test` 855 pass, 0 fail, up 5 on two new
+files. Every new test was run against the code before its fix. A fresh checkout still has no `node_modules` on
+either side; this run installed both before anything could type-check.
+
+**Needs Harshil.**
+
+- **Two listings contradict themselves in their own deals.** Uinta Recreation publishes "15% off tours, Monday
+  to Thursday" and "20% off tours, Monday to Thursday" side by side, from two of its own pages; Paddle Tap
+  publishes "40% off on Sundays" beside "40% off" every day. Both are the shop's own words on the shop's own
+  site, so this is a supply call, not a rule: pick the better-evidenced one, or show both.
+- **A promo code sits on an offer whose sentence never names one.** VIP Lake Travis's "4th hour free on boat
+  rentals" carries "Code: SUMMER26", picked up from another fragment on the same days. Plausible and possibly
+  right, so it was left alone.
+- **A deal a guest cannot actually have.** Duffy Boats' "50% off your rental on Tuesdays" needs "a valid work
+  ID, badge, or proof of employment". The detail says so and the title does not.
+- **Whether a cash discount is a deal at all.** Skydive Tecumseh's "3% cash discount on weekends" is the shop
+  saying its card price is higher, and its days come from a clause about which slots are bookable.
+- **A second tier is read and dropped.** "30% off Monday-Thursday rentals, 15% Friday, Saturday" publishes the
+  30% and never the 15%, on both of Uinta's deals.
+- **What the shipped files still carry.** The dash fix and the badge's cut mark are written by the sync, so
+  the 9 dashes and the 12 badges clear on the next one. A badge already shipped that really was cut keeps its
+  words and loses only its ellipsis until then.
+- Still open from the seventy-second run: the confirm screen's failure line has not been seen at 400px.
+
 ## Coverage
 
 The catalog is 48,198 listings as of the 23 September sync, 1,873 of them Viator partner rows. Counts below
@@ -5026,6 +5098,14 @@ states a dollar figure, each held against the price the row holds. Every string 
 for a Windows-1252 decoding fault, through the funnel that carries it to a guest.
 That every surface drawing the badge, the filter included, and a claimed shop's own typed policy all go
 through one rule.
+
+Deals and promos on a listing: all 47 deals the 36 shipped listings publish, each title against its own day
+list and each code against the sentence it is printed on; whether an offer states the months or the season it
+runs in, over every shipped deal and through both the sync that publishes one and the three app surfaces that
+draw one; a deal's clock window, including one that ends before it starts; the compact badge a card draws
+before the detail file lands, on all 12 that ship one, against the cut the sync actually makes; the long
+dashes a shop's own sentence carries into the section; and the section itself driven in a real Chromium at
+1440px and 400px, for sideways scroll, anything past the edge and the empty case.
 
 Otto's scope, both gates driven rather than read, over 400 shipped listings and every answer diffed against
 the old one: what a guest asks this shop in words that also name somebody else's business (a notice period
@@ -5593,8 +5673,9 @@ paths are driven in a browser, the HTML5 drag events are not. A rehearsal check 
 rendered page and not only the API's JSON. A CI job that runs `npm test` on either side. Whether a claimed shop
 with an empty menu should pause its own listing. Whether the Where box should index the towns our own catalog already names. Whether Arizona's
 Navajo Nation should keep daylight saving. The 4,736 listings whose area carries no town, as a supply gap. The "More options"
-folding and `variantNote`, which an earlier run read but did not drive in a browser. Deals and promos on a listing driven in a browser, and the promo crawl's
-output; only the rules behind them are read so far. Whether a GIF should stand in for a video at
+folding and `variantNote`, which an earlier run read but did not drive in a browser. The promo crawl's own output, `backend/src/enrich/promos.ts`, which is read but has
+never been run over a real page from here: there is no local database, so every deal checked so far is one the
+last sync already published. Whether a GIF should stand in for a video at
 all: 215 still lead a hero, and the rule that would clear them takes real photographs with them (see the
 thirtieth run's Needs Harshil). Whether a fold should keep the largest spelling of a photograph rather than the first: it is the first on
 181 of the 1,251 folds, and the first is what the card already loaded. Whether a shop that states its own
