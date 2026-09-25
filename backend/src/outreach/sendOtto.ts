@@ -5,6 +5,7 @@ import { catalogId } from "./drafts.ts";
 import { recordSend } from "../lib/outreachLog.ts";
 import { emailHash, loadSuppression, mailPostal, unsubPageUrl } from "../lib/unsub.ts";
 import { outreachBlockers } from "./guards.ts";
+import { isDeliverable } from "./deliverable.ts";
 
 /**
  * Sends the drafted Otto (AI phone line) pitch. Mirrors send.ts's sendOutreach exactly, scoped to
@@ -75,6 +76,13 @@ export async function sendOttoOutreach(opts: {
       continue;
     }
     seen.add(to);
+    // A domain that takes no mail is left out of the batch rather than sent to and bounced: see deliverable.ts.
+    if (!(await isDeliverable(to))) {
+      db.prepare("UPDATE outreach_drafts SET status = 'failed' WHERE id = ?").run(r.id);
+      out.skipped++;
+      console.log("skipped " + to + ": domain takes no mail");
+      continue;
+    }
     const op: OttoOp = { id: r.opid, domain: r.domain, name: r.name, email: r.email, phone: r.phone, city: r.city, region: r.region, calendar_vendor: r.calendar_vendor };
     const copy = draftOttoCopy(op, to);
     if (opts.dry) {
@@ -100,12 +108,25 @@ export async function sendOttoOutreach(opts: {
   return out;
 }
 
-/** How many commercial emails (either campaign) this Gmail identity has already sent today, in UTC. Both
- * ramp scripts read this before adding their own volume, so the combined total from one mailbox stays under
- * the safe ceiling even though the two campaigns run independently. */
+/**
+ * The instant the campaign's day began, as the UTC ISO string `created_at` is stored in. The day is the
+ * campaign's own (PIPELINE_TZ, Toronto by default), not UTC: counted by UTC the day rolled over at 8 PM
+ * Toronto time, so an evening run saw a fresh ceiling and could add a whole second batch to a day that had
+ * already had one.
+ */
+export function dayStartIso(tz = process.env.PIPELINE_TZ || "America/Toronto", now = new Date()): string {
+  const wall = new Date(now.toLocaleString("en-US", { timeZone: tz }));
+  const midnight = new Date(wall);
+  midnight.setHours(0, 0, 0, 0);
+  return new Date(midnight.getTime() + (now.getTime() - wall.getTime())).toISOString();
+}
+
+/** How many commercial emails (either campaign) this Gmail identity has already sent today, on the campaign's
+ * own clock. Both ramp scripts read this before adding their own volume, so the combined total from one
+ * mailbox stays under the safe ceiling even though the two campaigns run independently. */
 export function sentToday(): number {
   const row = db
-    .prepare("SELECT COUNT(*) AS n FROM outreach_drafts WHERE status = 'sent' AND date(created_at) = date('now')")
-    .get() as { n: number };
+    .prepare("SELECT COUNT(*) AS n FROM outreach_drafts WHERE status = 'sent' AND created_at >= ?")
+    .get(dayStartIso()) as { n: number };
   return row.n;
 }

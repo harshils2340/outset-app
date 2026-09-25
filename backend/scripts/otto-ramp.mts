@@ -18,8 +18,10 @@ import { generateOttoDrafts } from "../src/outreach/ottoDrafts.ts";
 const TZ = process.env.PIPELINE_TZ || "America/Toronto";
 const DATA_DIR = dirname(process.env.OUTSET_DB_PATH || "/var/data/outset.db");
 const STATE_PATH = join(DATA_DIR, "outreach-otto-ramp.json");
-const RAMP = [10, 15, 25, 35];
-const COMBINED_CEILING = 100;
+// Otto's share of the one personal Gmail account: 20 a day at the top, beside the listing ramp's 30, for a
+// combined 50 that a personal account sending cold mail can sustain. See outreach-ramp.mts for the reasoning.
+const RAMP = [10, 15, 20, 20];
+const COMBINED_CEILING = 50;
 
 type State = { firstDay: string; ranDays: string[] };
 

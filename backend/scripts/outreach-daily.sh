@@ -1,8 +1,9 @@
 #!/bin/zsh
 # Both outreach ramps, once a day, from the Mac's launchd (backend/ops/com.outset.outreach-daily.plist).
 #
-# The listing-claim campaign (outreach-ramp.mts, 20/40/70/100) and the Otto campaign (otto-ramp.mts,
-# 10/15/25/35) send through one Gmail identity and share a 100/day ceiling; each ramp reads what the other
+# The listing-claim campaign (outreach-ramp.mts, 15/20/25/30) and the Otto campaign (otto-ramp.mts,
+# 10/15/20/20) send through one personal Gmail identity and share a 50/day ceiling, the rate a personal
+# account can send cold mail at without Gmail reading it as bulk; each ramp reads what the other
 # already sent today, so the order here does not matter. Both refuse to run twice on one day and skip
 # weekends, so a missed launch that fires late in the day is safe. Everything they need (mail identity,
 # claim secret, suppression list) comes from backend/.env; a missing value makes them print why and send

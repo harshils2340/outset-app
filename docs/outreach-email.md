@@ -93,8 +93,11 @@ What is still missing before the first send:
 3. Warm up, and hold well under Gmail's own ceiling. Outreach is sent as `commercial`, which routes through Gmail
    SMTP, not Resend (see `mail.ts`): a personal account reads as a person, not a brand blast, which is what keeps
    it out of Promotions. But Gmail's abuse detection throttles an account sending unsolicited mail to strangers
-   well before its nominal 500/day figure for normal use; treat 100/day as the real ceiling for a personal
-   account, not 500. `backend/scripts/outreach-ramp.mts` ramps 20/40/70 and holds at 100. Going higher for real
+   well before its nominal 500/day figure for normal use; treat about 50/day, paced like a person, as the safe
+   rate for a personal account, not 500. `backend/scripts/outreach-ramp.mts` ramps 15/20/25 and holds at 30,
+   `otto-ramp.mts` ramps 10/15/20 and holds at 20, and both read the other's sends so the combined day never
+   passes 50. Every address is checked for a mail exchanger before it is sent to (`deliverable.ts`), so a lapsed
+   domain never becomes a bounce against the account. Going higher for real
    needs a Google Workspace account on the real domain (2,000/day, better reputation than a personal account
    sending bulk mail) or splitting volume across more than one real mailbox, not pushing one personal inbox past
    what Google considers normal.

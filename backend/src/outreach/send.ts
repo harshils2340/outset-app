@@ -4,6 +4,7 @@ import { catalogId, composeOutreach } from "./drafts.ts";
 import { recordSend } from "../lib/outreachLog.ts";
 import { emailHash, loadSuppression, mailPostal, unsubPageUrl } from "../lib/unsub.ts";
 import { outreachBlockers } from "./guards.ts";
+import { isDeliverable } from "./deliverable.ts";
 
 type OpRow = {
   id: string;
@@ -127,6 +128,13 @@ export async function sendOutreach(opts: {
       continue;
     }
     seen.add(to);
+    // A domain that takes no mail is left out of the batch rather than sent to and bounced: see deliverable.ts.
+    if (!(await isDeliverable(to))) {
+      db.prepare("UPDATE outreach_drafts SET status = 'failed' WHERE id = ?").run(r.id);
+      out.skipped++;
+      console.log("skipped " + to + ": domain takes no mail");
+      continue;
+    }
     const copy = composeOutreach(r, to);
     if (opts.dry) {
       console.log("would send to " + to + ": " + copy.subject);

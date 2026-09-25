@@ -26,7 +26,14 @@ import { sentToday } from "../src/outreach/sendOtto.ts";
 const TZ = process.env.PIPELINE_TZ || "America/Toronto";
 const DATA_DIR = dirname(process.env.OUTSET_DB_PATH || "/var/data/outset.db");
 const STATE_PATH = join(DATA_DIR, "outreach-ramp.json");
-const RAMP = [20, 40, 70, 100];
+/**
+ * The listing campaign's share of one personal Gmail account. Cold mail from a personal account that stays
+ * around 50 a day, paced like a person, keeps the account's reputation; the two days this ran at 40 and 84
+ * were the aggressive end of that, so the rungs step down and hold at 30, with the Otto ramp taking 20.
+ * More than this, safely, is a Google Workspace mailbox on the real domain or a second mailbox: Harshil's
+ * call, and a number to raise here once one exists, not something to creep up on.
+ */
+const RAMP = [15, 20, 25, 30];
 
 type State = { firstDay: string; ranDays: string[] };
 
@@ -70,7 +77,7 @@ const rampLimit = RAMP[Math.min(day, RAMP.length) - 1];
 // The Otto campaign (otto-ramp.mts) sends through this same Gmail identity and can run before or after this
 // job on any given day. sentToday() counts sends from either campaign, so whichever ramp runs second always
 // sees what the first one already used and never pushes the mailbox's combined total past 100/day.
-const COMBINED_CEILING = 100;
+const COMBINED_CEILING = 50;
 const limit = Math.max(0, Math.min(rampLimit, COMBINED_CEILING - sentToday()));
 
 console.log(`outreach-ramp: day ${day} of the ramp (first run ${state.firstDay}), ramp says ${rampLimit}, sending up to ${limit}`);
