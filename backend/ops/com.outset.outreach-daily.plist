@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Runs backend/scripts/outreach-daily.sh at 9:30 on weekdays, Mac local time. A launch missed while the laptop
+  was asleep fires as soon as it wakes; a day the laptop was off is simply skipped, which the ramps treat as
+  a weekend (the next run is the next rung, nothing is doubled up). Install once:
+    cp backend/ops/com.outset.outreach-daily.plist ~/Library/LaunchAgents/
+    launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.outset.outreach-daily.plist
+  Remove with `launchctl bootout gui/$(id -u)/com.outset.outreach-daily`.
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.outset.outreach-daily</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/zsh</string>
+    <string>/Users/harsh/Documents/outset-app/backend/scripts/outreach-daily.sh</string>
+  </array>
+  <key>StartCalendarInterval</key>
+  <array>
+    <dict><key>Weekday</key><integer>1</integer><key>Hour</key><integer>9</integer><key>Minute</key><integer>30</integer></dict>
+    <dict><key>Weekday</key><integer>2</integer><key>Hour</key><integer>9</integer><key>Minute</key><integer>30</integer></dict>
+    <dict><key>Weekday</key><integer>3</integer><key>Hour</key><integer>9</integer><key>Minute</key><integer>30</integer></dict>
+    <dict><key>Weekday</key><integer>4</integer><key>Hour</key><integer>9</integer><key>Minute</key><integer>30</integer></dict>
+    <dict><key>Weekday</key><integer>5</integer><key>Hour</key><integer>9</integer><key>Minute</key><integer>30</integer></dict>
+  </array>
+  <key>StandardOutPath</key>
+  <string>/Users/harsh/Documents/outset-app/backend/data/logs/launchd-outreach.log</string>
+  <key>StandardErrorPath</key>
+  <string>/Users/harsh/Documents/outset-app/backend/data/logs/launchd-outreach.log</string>
+</dict>
+</plist>
