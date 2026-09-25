@@ -53,6 +53,22 @@ export function OpHome() {
     setTab(t);
     setTouched(true);
   };
+  // A tab strip is one stop on the way through the page, then the arrow keys walk it, which is what a screen
+  // reader announces the moment it reads "tab list" and is the one thing these three never did. Same model as
+  // the guest home's category bar: focus moves, Enter or Space picks.
+  const onTabKey = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    const keys = ["ArrowLeft", "ArrowRight", "Home", "End"];
+    if (!keys.includes(e.key)) return;
+    e.preventDefault();
+    const tabs = Array.from(e.currentTarget.querySelectorAll<HTMLButtonElement>("[role=tab]"));
+    const at = tabs.indexOf(document.activeElement as HTMLButtonElement);
+    const next = e.key === "Home" ? 0 : e.key === "End" ? tabs.length - 1 : (at + (e.key === "ArrowRight" ? 1 : -1) + tabs.length) % tabs.length;
+    tabs[next]?.focus();
+  };
+
+  // The panel under the strip only needs a tab stop of its own when what it holds has none: a list of bookings
+  // carries its own buttons, an empty state is a sentence a keyboard would otherwise never land on.
+  const panelEmpty = tab === "action" ? !fresh.length : tab === "today" ? !today.length : !upcoming.length;
 
   const line = fresh.length
     ? `${fresh.length} ${fresh.length === 1 ? "request is" : "requests are"} waiting for your answer.`
@@ -103,14 +119,14 @@ export function OpHome() {
       ) : null}
 
       <section className="odcard ohfeed">
-        <div className="ohtabs" role="tablist">
-          <button type="button" role="tab" aria-selected={tab === "action"} className={"ohtab" + (tab === "action" ? " on" : "") + (fresh.length ? " hot" : "")} onClick={() => pick("action")}>
+        <div className="ohtabs" role="tablist" aria-label="Your bookings" onKeyDown={onTabKey}>
+          <button type="button" role="tab" id="ohtab-action" aria-selected={tab === "action"} aria-controls="ohfeed-panel" tabIndex={tab === "action" ? 0 : -1} className={"ohtab" + (tab === "action" ? " on" : "") + (fresh.length ? " hot" : "")} onClick={() => pick("action")}>
             Needs action{fresh.length ? <i>{fresh.length}</i> : null}
           </button>
-          <button type="button" role="tab" aria-selected={tab === "today"} className={"ohtab" + (tab === "today" ? " on" : "")} onClick={() => pick("today")}>
+          <button type="button" role="tab" id="ohtab-today" aria-selected={tab === "today"} aria-controls="ohfeed-panel" tabIndex={tab === "today" ? 0 : -1} className={"ohtab" + (tab === "today" ? " on" : "")} onClick={() => pick("today")}>
             Today{today.length ? <i>{today.length}</i> : null}
           </button>
-          <button type="button" role="tab" aria-selected={tab === "upcoming"} className={"ohtab" + (tab === "upcoming" ? " on" : "")} onClick={() => pick("upcoming")}>
+          <button type="button" role="tab" id="ohtab-upcoming" aria-selected={tab === "upcoming"} aria-controls="ohfeed-panel" tabIndex={tab === "upcoming" ? 0 : -1} className={"ohtab" + (tab === "upcoming" ? " on" : "")} onClick={() => pick("upcoming")}>
             Next 7 days{upcoming.length ? <i>{upcoming.length}</i> : null}
           </button>
           <button type="button" className="odlink" onClick={() => go(tab === "action" ? "bookings" : "calendar")}>
@@ -118,6 +134,10 @@ export function OpHome() {
           </button>
         </div>
 
+        {/* One panel, whichever tab is showing: the strip said `role="tab"` and controlled nothing, so a screen
+            reader had no way from a tab to the list under it. Empty states carry no control of their own, so
+            only those take a tab stop of their own. */}
+        <div id="ohfeed-panel" role="tabpanel" aria-labelledby={"ohtab-" + tab} tabIndex={panelEmpty ? 0 : undefined}>
         {tab === "action" ? (
           fresh.length ? (
             <div className="ohlist">
@@ -156,6 +176,7 @@ export function OpHome() {
             <p className="ohempty"><Markup html={OD_ICONS.calendar} />{emptyWeek}</p>
           )
         ) : null}
+        </div>
       </section>
 
       {weekTotal || monthTotal ? (

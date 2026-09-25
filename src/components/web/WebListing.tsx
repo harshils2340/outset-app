@@ -959,13 +959,54 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
   const [optOpen, setOptOpen] = useState(false);
   const [optFilter, setOptFilter] = useState<string>("all");
   const optRef = useRef<HTMLDivElement | null>(null);
+  const optBtnRef = useRef<HTMLButtonElement | null>(null);
+  // The rows the chips leave, worked out once: the list draws from it, and the one tab stop a listbox is meant
+  // to have has to be a row that is actually on screen.
+  const optShown = useMemo(() => optGroups
+    .filter((g) => !optFilter.startsWith("g:") || "g:" + g.name === optFilter)
+    .map((g) => ({ name: g.name, rows: g.rows.filter((r) => !optFilter.startsWith("k:") || "k:" + r.kind === optFilter) }))
+    .filter((g) => g.rows.length), [optGroups, optFilter]);
+  const optRows = optShown.flatMap((g) => g.rows);
+  const optTabRow = optRows.some((r) => r.idx === optionIdx) ? optionIdx : optRows[0]?.idx ?? null;
+  // Closing the picker unmounts it, and whatever was focused inside it goes too: a guest who picked a service
+  // with the keyboard was dropped on the body and had to tab the whole page again to reach the date. Hand focus
+  // back to the button that opened it, which is where a picker is supposed to leave you.
+  const closeOpt = (back: boolean) => {
+    setOptOpen(false);
+    if (back) optBtnRef.current?.focus();
+  };
+  // It says `role="listbox"`, which is a promise about the arrow keys: a screen reader switches to forms mode on
+  // entering one and hands every arrow press to the page, so ignoring them left the list unusable to the
+  // people most likely to be in it. Up, Down, Home and End walk the rows; Enter and Space already pick one.
+  const onOptKey = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (!["ArrowDown", "ArrowUp", "Home", "End"].includes(e.key)) return;
+    e.preventDefault();
+    const rows = Array.from(e.currentTarget.querySelectorAll<HTMLButtonElement>(".aloptrow"));
+    if (!rows.length) return;
+    const at = rows.indexOf(document.activeElement as HTMLButtonElement);
+    const next = e.key === "Home" ? 0
+      : e.key === "End" ? rows.length - 1
+        : e.key === "ArrowDown" ? Math.min(rows.length - 1, at + 1) : Math.max(0, (at < 0 ? 1 : at) - 1);
+    rows[next]?.focus();
+    rows[next]?.scrollIntoView({ block: "nearest" });
+  };
+  const onOptBtnKey = (e: React.KeyboardEvent<HTMLButtonElement>) => {
+    if (optOpen || (e.key !== "ArrowDown" && e.key !== "ArrowUp")) return;
+    e.preventDefault();
+    setOptOpen(true);
+  };
   useEffect(() => {
     if (!optOpen) return;
     const onDown = (e: MouseEvent) => { if (optRef.current && !optRef.current.contains(e.target as Node)) setOptOpen(false); };
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") { e.stopPropagation(); setOptOpen(false); } };
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") { e.stopPropagation(); closeOpt(!!optRef.current?.contains(document.activeElement)); } };
     document.addEventListener("mousedown", onDown);
     window.addEventListener("keydown", onKey, true);
     optRef.current?.querySelector(".aloptpop")?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    // Focus goes where the guest is: a button carrying `aria-haspopup="listbox"` is expected to move focus into
+    // the list it opens, and the row already picked is the one to land on. Mouse users see nothing, since the
+    // row's own ring is `:focus-visible`.
+    const rows = Array.from(optRef.current?.querySelectorAll<HTMLButtonElement>(".aloptrow") || []);
+    (rows.find((r) => r.getAttribute("aria-selected") === "true") || rows[0])?.focus({ preventScroll: true });
     return () => { document.removeEventListener("mousedown", onDown); window.removeEventListener("keydown", onKey, true); };
   }, [optOpen]);
   const extras = addonIdx.map((i) => (item.addons || [])[i]).filter(Boolean);
@@ -1756,7 +1797,7 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
                   <div className="albox">
                     {needService && item.options.length > 1 ? (
                       <div className="alboxcell full sel alopt" ref={optRef}>
-                        <button type="button" className="aloptbtn" onClick={() => setOptOpen((v) => !v)} aria-haspopup="listbox" aria-expanded={optOpen}>
+                        <button type="button" ref={optBtnRef} className="aloptbtn" onClick={() => setOptOpen((v) => !v)} onKeyDown={onOptBtnKey} aria-haspopup="listbox" aria-expanded={optOpen} aria-controls={optOpen ? "alopt-list" : undefined}>
                           <small>{optGroups.length > 1 ? "Experience" : "Option"}</small>
                           <span className="alboxval">
                             {pickedRow ? (optGroups.length > 1 && pickedGroup!.name !== "Other options" && pickedGroup!.name !== pickedRow.label ? pickedGroup!.name + " · " : "") + pickedRow.label : "Choose one"}
@@ -1764,36 +1805,35 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
                           <Markup className="alselchev" html={I.chevDown} />
                         </button>
                         {optOpen ? (
-                          <div className="aloptpop" role="listbox" aria-label="What you're booking">
+                          <div className="aloptpop">
                             {optGroups.length > 1 || optKinds(optGroups).length > 1 ? (
                               <div className="aloptchips" role="group" aria-label="Filter options">
                                 {[{ id: "all", label: "All" }, ...(optGroups.length > 1 && optGroups.length <= 5 ? optGroups.filter((g) => g.name !== "Other options").map((g) => ({ id: "g:" + g.name, label: g.name })) : []), ...(optKinds(optGroups).length > 1 ? optKinds(optGroups).map((k) => ({ id: "k:" + k, label: k })) : [])].map((c) => (
                                   <button type="button" key={c.id} className="aloptchip" aria-pressed={optFilter === c.id} onClick={() => setOptFilter(c.id)}>{c.label}</button>
-                      ))}
-                  </div>
+                                ))}
+                              </div>
                             ) : null}
-                            {optGroups
-                              .filter((g) => !optFilter.startsWith("g:") || "g:" + g.name === optFilter)
-                              .map((g) => {
-                                const rows = g.rows.filter((r) => !optFilter.startsWith("k:") || "k:" + r.kind === optFilter);
-                                if (!rows.length) return null;
-                                return (
-                                  <div className="aloptgroup" key={g.name}>
-                                    {optGroups.length > 1 ? <div className="aloptghead">{g.name}</div> : null}
-                                    {rows.map((r) => (
-                                      <button type="button" role="option" key={r.idx} aria-selected={r.idx === optionIdx} className="aloptrow" onClick={() => { setOptionIdx(r.idx); setOptOpen(false); }}>
-                                        <span className="aloptmain">
-                                          <span>{r.label}</span>
-                                          {r.sub ? <small>{r.sub}</small> : null}
-                                        </span>
-                                        {hasPrice(r.price) ? <b>{priceWith(r.price, r.per)}</b> : <em className="alask">Price on request</em>}
-                                      </button>
-                                    ))}
-                                  </div>
-                                );
-                              })}
-                </div>
-              ) : null}
+                            {/* The chips are buttons and sit inside the popup because they stick to the top of it
+                                as it scrolls, so the list itself is the element that says `role="listbox"`: an
+                                option a listbox does not own is an option a screen reader need not count. */}
+                            <div id="alopt-list" role="listbox" aria-label="What you're booking" onKeyDown={onOptKey}>
+                              {optShown.map((g) => (
+                                <div className="aloptgroup" key={g.name} role={optGroups.length > 1 ? "group" : undefined} aria-label={optGroups.length > 1 ? g.name : undefined}>
+                                  {optGroups.length > 1 ? <div className="aloptghead">{g.name}</div> : null}
+                                  {g.rows.map((r) => (
+                                    <button type="button" role="option" key={r.idx} aria-selected={r.idx === optionIdx} tabIndex={r.idx === optTabRow ? 0 : -1} className="aloptrow" onClick={() => { setOptionIdx(r.idx); closeOpt(true); }}>
+                                      <span className="aloptmain">
+                                        <span>{r.label}</span>
+                                        {r.sub ? <small>{r.sub}</small> : null}
+                                      </span>
+                                      {hasPrice(r.price) ? <b>{priceWith(r.price, r.per)}</b> : <em className="alask">Price on request</em>}
+                                    </button>
+                                  ))}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        ) : null}
                       </div>
                 ) : null}
                     <div className="alboxrow">

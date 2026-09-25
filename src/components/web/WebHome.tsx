@@ -1521,12 +1521,23 @@ export function WebHome({ onOperators, onAsk, asking = false, askSeed = "", onCl
   // Agent Mode was built for the hackathon demo (see src/lib/concierge.ts). AGENT_MODE_LIVE keeps it out of
   // the live site: modeSwitch is the one place this component offers a way into it, so nulling it here is
   // enough to drop the toggle everywhere it's read below.
+  // Same arrow keys the category bar above already gives its own tabs: a tab strip that announces itself as one
+  // and then ignores the arrows is a dead end for anyone not using a mouse.
+  const onModeKey = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    const keys = ["ArrowLeft", "ArrowRight", "Home", "End"];
+    if (!keys.includes(e.key)) return;
+    e.preventDefault();
+    const tabs = Array.from(e.currentTarget.querySelectorAll<HTMLButtonElement>("[role=tab]"));
+    const at = tabs.indexOf(document.activeElement as HTMLButtonElement);
+    const next = e.key === "Home" ? 0 : e.key === "End" ? tabs.length - 1 : (at + (e.key === "ArrowRight" ? 1 : -1) + tabs.length) % tabs.length;
+    tabs[next]?.focus();
+  };
   const modeSwitch = !AGENT_MODE_LIVE ? null : (
-    <div className="ah-modes" role="tablist" aria-label="Browse or Agent Mode">
-      <button type="button" role="tab" aria-selected={!asking} className={!asking ? "on" : ""} onClick={() => onCloseAsk?.()}>
+    <div className="ah-modes" role="tablist" aria-label="Browse or Agent Mode" onKeyDown={onModeKey}>
+      <button type="button" role="tab" aria-selected={!asking} tabIndex={asking ? -1 : 0} className={!asking ? "on" : ""} onClick={() => onCloseAsk?.()}>
         Browse
       </button>
-      <button type="button" role="tab" aria-selected={asking} className={asking ? "on" : ""} onClick={() => onAsk()}>
+      <button type="button" role="tab" aria-selected={asking} tabIndex={asking ? 0 : -1} className={asking ? "on" : ""} onClick={() => onAsk()}>
         Agent
       </button>
     </div>
