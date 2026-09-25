@@ -5,6 +5,7 @@ import { recordSend } from "../lib/outreachLog.ts";
 import { emailHash, loadSuppression, mailPostal, unsubPageUrl } from "../lib/unsub.ts";
 import { outreachBlockers } from "./guards.ts";
 import { isDeliverable } from "./deliverable.ts";
+import { cooloffStart, noRecentSendSql } from "./spacing.ts";
 
 type OpRow = {
   id: string;
@@ -86,7 +87,9 @@ export async function sendOutreach(opts: {
   let sql = `SELECT d.id, d.to_email, o.domain, o.name, o.email, o.city, o.region, o.metro_id, o.website, o.completeness, o.origin, o.calendar_vendor
        FROM outreach_drafts d JOIN operators o ON o.id = d.operator_id
        WHERE d.status = 'draft' AND d.kind = 'listing' AND d.to_email IS NOT NULL AND d.to_email LIKE '%@%' AND o.claim_status = 'unclaimed'
-         AND NOT EXISTS (SELECT 1 FROM outreach_drafts s WHERE s.to_email = d.to_email AND s.status = 'sent' AND s.kind = 'listing')
+         -- This campaign's own sends bar the address for good; the Otto pitch's bar it for a week. See
+         -- spacing.ts: both campaigns go out from one personal Gmail and 2,038 operators are eligible for both.
+         AND ${noRecentSendSql("listing")}
          -- Museums, theme parks, waterparks, aquariums and zoos are large, professionally-run institutions,
          -- not the small local operators this pitch is written for; category_id still missed real ones filed
          -- under an ordinary-looking category (the Gateway Arch under "cruise", the Museum of Flight under
@@ -107,7 +110,8 @@ export async function sendOutreach(opts: {
          AND (SELECT COUNT(*) FROM facts f WHERE f.operator_id = o.id AND f.fact_key = 'photo') >= 3
          AND (SELECT COUNT(*) FROM offerings f WHERE f.operator_id = o.id AND f.price_cents IS NOT NULL) >= 1
          AND (o.review_count >= 5 OR (SELECT COUNT(*) FROM facts f WHERE f.operator_id = o.id AND f.fact_key = 'review') >= 1)`;
-  const args: (string | number)[] = [];
+  // The cool-off start is the only parameter in the fixed half of the statement, so it is bound first.
+  const args: (string | number)[] = [cooloffStart()];
   if (opts.metro) {
     sql += " AND o.metro_id = ?";
     args.push(opts.metro);

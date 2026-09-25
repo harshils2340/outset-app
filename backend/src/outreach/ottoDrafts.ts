@@ -7,8 +7,8 @@ import { db, nowIso } from "../db/client.ts";
 /**
  * The pitch for Otto, the AI phone front desk (public/otto.html), not the "claim your free listing" email in
  * drafts.ts. Different product, different offer, so it stays a separate draft function rather than a branch
- * inside draftCopy: the two must never be sent to the same address inside the same week, and keeping them
- * apart makes that easy to enforce at send time instead of by reading a diff.
+ * inside draftCopy: the two must never be sent to the same address inside the same week, which is enforced
+ * at send time by the clause both send queries share (spacing.ts).
  */
 export type OttoOp = {
   id: string;
