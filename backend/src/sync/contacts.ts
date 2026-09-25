@@ -28,6 +28,7 @@ import { bookableAddon, bookableRow, tidyRowName } from "../../../src/lib/menuRo
 import { ownWords } from "../../../src/lib/ownWords.ts";
 import { dialPhone } from "../../../src/lib/phone.ts";
 import { contactEmail } from "../../../src/lib/email.ts";
+import { kidRuleText, kidVerdict } from "../../../src/lib/kidRule.ts";
 import { postalOf, streetOf } from "../../../src/lib/address.ts";
 import { REGION_NAME } from "../../../src/data/regions.ts";
 
@@ -2283,6 +2284,13 @@ export function syncCatalogToApp(): { path: string; count: number } {
       // First day-specific deal, compact ("2|Half-price Tuesdays"), so cards can badge "Deal today" without the detail file.
       // The consolidated title, not a raw fragment, so the card and the listing's Deals section say the same thing.
       deal: compactDeal((item.promos as { text: string; title?: string; days: number[] }[] | undefined) || []),
+      // Search's kids filter promises "only places whose published rules allow younger kids", and it reads
+      // `specs`, `gap` and `extraNote`, all three of which are emptied below. So the verdict is taken here,
+      // off the full record, or left absent when the shop's own site never says.
+      kid:
+        kidVerdict(
+          kidRuleText(item as { specs?: string[]; gap?: string; extraNote?: string; tags?: string[] }),
+        ) ?? undefined,
       // Compact week from the published hours, so the home page can say "open now" without a detail file.
       hrs: (() => {
         const own = (item.hoursText as string[] | undefined) || [];

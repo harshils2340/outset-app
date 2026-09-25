@@ -5,6 +5,7 @@ import { CA_REGIONS, REGION_NAME, regionOfArea } from "../data/regions";
 import { ART_ALIASES, INTENT_PHRASES } from "../data/synonyms";
 import type { ArtKind, CategoryId, Unclaimed } from "../data/types";
 import { milesBetween } from "./geo";
+import { kidRuleText, kidVerdict } from "./kidRule";
 import { clockIn, itemWeek, zoneFor, type Week } from "./openNow";
 
 /**
@@ -591,12 +592,19 @@ export function parseIntent(q: string): Intent {
   return out;
 }
 
-/** Listings that a young child could join, judged only from what the operator published. */
+/**
+ * Listings that a young child could join, judged only from what the operator published.
+ *
+ * The record's own words come first, so a claimed operator's edit is read the moment they save it. Then the
+ * `kid` flag the sync carried onto the lite record, which is the same rule run over the full one: search runs
+ * on the browse catalog, and `specs`, `gap` and `extraNote` are all empty there, so without the flag the
+ * three lines below could only ever reach the last one. That silence was offering 524 shipped listings to a
+ * guest who typed "with kids" although their own site says 18+, 21+ or adults only, under a panel that
+ * promises "Only places whose published rules allow younger kids", and leaving 28 out that welcome children.
+ * A shop that says nothing at all is still judged by its kind, which is the only thing left to judge it by.
+ */
 export function kidFriendly(u: Unclaimed): boolean {
-  const text = [...u.specs, u.gap, u.extraNote || "", ...(u.tags || [])].join(" ").toLowerCase();
-  if (/\b(18\+|18 and (up|over|older)|adults? only|21\+|must be 18|minimum age(:| is)? ?(1[2-9]|2\d))/.test(text)) return false;
-  if (/\bages? ?(\d|[1-9]) ?(\+|and up|to|-)/.test(text) || /kid|child|family|all ages/.test(text)) return true;
-  return !["skydive", "paintball", "axe"].includes(u.art);
+  return kidVerdict(kidRuleText(u)) ?? u.kid ?? !["skydive", "paintball", "axe"].includes(u.art);
 }
 
 const FILLER = new Set(["rental", "rentals", "rent", "near", "me", "in", "the", "a", "an", "and", "for", "with", "best", "cheap", "tour", "tours", "ideas", "idea", "stuff", "things", "to", "do", "of", "on", "at", "good", "great", "top", "nearby", "around", "here", "my", "our", "we", "i", "some", "any", "night", "nights", "day", "tonight", "today", "tomorrow", "now", "this", "weekend", "evening", "evenings", "morning", "afternoon", "late", "nightlife", "open", "place", "places", "spot", "spots", "options", "local", "close", "closest", "nearest", "budget", "affordable", "inexpensive", "something", "somewhere", "anything", "anywhere", "want", "looking", "find", "go", "get", "book"]);

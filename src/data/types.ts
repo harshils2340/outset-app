@@ -256,6 +256,12 @@ export type Unclaimed = {
   promos?: { text: string; days: number[]; start?: string; end?: string; title?: string; detail?: string; code?: string; date?: string }[];
   /** Compact first deal on lite records: "2|Half-price Tuesdays" (day list, then the deal title), for the card badge. */
   deal?: string;
+  /**
+   * What the listing's own published rules say about young children, carried on lite records because the
+   * three fields that state it (`specs`, `gap`, `extraNote`) are emptied out of the browse catalog. Absent
+   * means their site does not say. See src/lib/kidRule.ts.
+   */
+  kid?: boolean;
   /** Contact facts shipped inside the detail file. */
   contact?: OperatorContact;
   /**
