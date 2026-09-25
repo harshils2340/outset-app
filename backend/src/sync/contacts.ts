@@ -724,7 +724,15 @@ export function toCatalogItem(r: CatalogRow): Record<string, unknown> {
           .filter((p): p is { text: string; days: number[]; start?: string; end?: string } => !!p && p.text.length <= 160)
           .filter((p, i, a) => a.findIndex((x) => x.text.toLowerCase() === p.text.toLowerCase()) === i),
       );
-      return deals.length ? deals.map((d) => ({ text: d.detail || d.title, ...d })) : undefined;
+      // A deal is the shop's own sentence, so it carries the shop's own dashes. Through the same rule every
+      // other crawled line goes through, or the Deals section is where an em dash reaches a guest.
+      return deals.length
+        ? deals.map((d) => {
+            const title = tidyDashes(d.title);
+            const detail = d.detail ? tidyDashes(d.detail) : "";
+            return { ...d, title, detail, text: detail || title };
+          })
+        : undefined;
     })(),
   };
   return tidyItem(item, r.domain);
@@ -1940,15 +1948,23 @@ function cleanLine(raw: string): string {
 }
 
 /**
- * A menu's own em or en dash never survives to a guest. A number or month on each side ("2–15 years",
- * "May–October") is a range and reads as "to"; anything else was punctuation and reads as a comma, the
- * substitute AGENTS.md names for an em dash.
+ * A menu's own em or en dash never survives to a guest. A number, a month, a day of the week or a clock time on
+ * each side ("2–15 years", "May–October", "Sunday–Wednesday", "9:30am–6pm") is a range and reads as "to";
+ * anything else was punctuation and reads as a comma, the substitute AGENTS.md names for an em dash.
+ *
+ * A day and a clock time were missed at first, and both fall through to the punctuation rule: "Open daily
+ * 9:30am–6pm" was published as "Open daily 9:30am, 6pm", and "Rentals Sunday–Wednesday" would have become
+ * "Rentals Sunday. Wednesday.", which is what kept this off a shop's deals until now.
  */
 const MONTH = "jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|june?|july?|aug(?:ust)?|sept?(?:ember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?";
+const DAY = "sun(?:day)?|mon(?:day)?|tue(?:s|sday)?|wed(?:nes(?:day)?)?|thur?s?(?:day)?|fri(?:day)?|sat(?:ur(?:day)?)?";
+const CLOCK = "\\d{1,2}(?::\\d{2})?\\s*(?:am|pm|a\\.m\\.|p\\.m\\.)";
 export function tidyDashes(raw: string): string {
   return raw
     .replace(/(\d)\s*[–—]\s*(?=\d)/g, "$1 to ")
+    .replace(new RegExp("(" + CLOCK + ")\\s*[\\u2013\\u2014]\\s*(?=" + CLOCK + ")", "gi"), "$1 to ")
     .replace(new RegExp("\\b(" + MONTH + ")\\.?\\s*[\\u2013\\u2014]\\s*(?=[A-Za-z])", "gi"), "$1 to ")
+    .replace(new RegExp("\\b(" + DAY + ")\\.?\\s*[\\u2013\\u2014]\\s*(?=(?:" + DAY + ")\\b)", "gi"), "$1 to ")
     // What is left joined two clauses, not a range: a capital letter after it was its own sentence, else a comma.
     .replace(/\s*[–—]\s*(\S)/g, (_m, next: string) => (/[A-Z]/.test(next) ? ". " : ", ") + next)
     .replace(/\s+/g, " ")
