@@ -5005,6 +5005,72 @@ either side; this run installed both before anything could type-check.
   words and loses only its ellipsis until then.
 - Still open from the seventy-second run: the confirm screen's failure line has not been seen at 400px.
 
+## 25 September 2026, seventy-seventh run (11:21 to 12:05 UTC)
+
+**Chosen, and why.** Every area in this run's brief is on the Verified list, so the hour went to the one
+guest-facing line on Not yet checked that nobody had swept: where a listing says the guest has to go. The
+"Where you'll be" card, the "Get directions" row and the chain venue grid are the last thing a guest reads
+before they set off, and a wrong one costs them the afternoon. The rehearsal was run rather than skipped,
+because the commits touch `src/`, and running it is what turned up the third fix.
+
+**Found and fixed.** Three.
+
+- **"Open in Maps" sent 5,018 listings' guests to the middle of a town** (`ebf50643`). `mapsHref` searched for
+  whatever `addressLine` returned, and on 5,018 shipped listings that line is only the town again, or a bare
+  state code, because `streetOf` refuses what the crawl stored (a house number with no road, the town repeated,
+  a phone number). 1,210 of them searched two letters: "Open in Maps" on 1515 Lincoln Gallery's page opened
+  Oklahoma, with the gallery named nowhere in the query. The phone sheet's own query has kept the business name
+  in that case since it was written, so the desktop listing page and the desktop confirmation now build the
+  same string, which is also the one both pages already used when there was no contact record at all. The
+  chain venue grid takes the same rule one row down, in `venueMapsQuery`: a street is searched by itself, a
+  town with no street keeps the chain's name in front of it, a bare pin is still searched by its coordinates,
+  and a row with neither no longer searches for "null,null".
+- **The listing page measured a distance from a state's middle and from a partner's shared pin**
+  (`b8d574d0`). The cards have refused both since they learned to print a distance: a picked state or province
+  is one pin in the middle of it, and a partner's product carries the coordinate its API gave for the whole
+  destination. The desktop listing page measured from `state.near` whatever it was, so the page a card opened
+  read "143 miles from Florida" under a card that printed no distance at all, and "2 miles away" on any of the
+  6,492 Viator listings, which between them hold 49 distinct pins, 160 products to a pin. The rule is
+  `measurableFrom` in `components/explore/feed.ts` now and both surfaces read it, so they cannot drift again.
+- **The guest app had not built from main since 10:37 UTC** (`44b43484`). `npm run build` starts with
+  `tsc -b`, and two errors landed behind the one command that does not see them: an import of `liteDealTitle`
+  left behind when `compactDeal` moved to `src/lib/deals.ts`, and `zoneFor`'s null reaching `monthIn`, whose
+  parameter took `string | undefined`. Neither shows in `tsc --noEmit -p .`: the root `tsconfig.json` is
+  `"files": []` plus two references, so that command compiles nothing at all and answers clean whatever is
+  broken. The rehearsal's own type check is what caught it, three hours after the seventy-sixth run reported
+  both type checks clean. The unit suite now runs `tsc -b` itself, so the next one costs a second, not a deploy.
+
+**Swept and clean.** Every one of the 52,816 shipped detail files through `streetOf` and `addressOf`: 46,324
+carry a contact record, 41,306 of those a street the page can print, and none of the 5,018 without one is left
+with an empty query. The 3,189 listings that publish a meeting point, against what the two surfaces print and
+link: both name the meeting point in bold and the address under it, and both link the address, so they agree.
+The 464 venue rows on the 180 chain listings: 1 has a town and no street, 19 are a bare pin, none is empty. The
+6,492 partner rows, all of which carry a coordinate and share 49 of them. `awayLine`, `nearestLocation`,
+`mapsDirHref` and the phone sheet's directions row are unchanged and were already right.
+
+**Verification.** The rehearsal was run, twice: 56 of 57 before the type fix and 57 of 57 after, against a
+local Postgres 16 on 5433 with TLS on and the Chromium on disk. `tsc -b` clean on the guest app and the backend
+type check clean. Backend `npm test` 789 pass, 0 fail, 2 skipped, unchanged: nothing under `backend/` was
+touched. App `npm test` 868 pass, 0 fail, up 12 on three new files. Every new test was run against the code
+before its fix: the old `mapsHref` answers "OK" and "St. Petersburg, FL" where the new one names the shop, the
+old venue query answers "Arlington" and "undefined,undefined", the pre-fix `WebListing.tsx` fails the coupling
+guard on both lines it used to measure from, and the type guard fails when either error is put back.
+
+**Needs Harshil.**
+
+- **`npx tsc --noEmit -p .` on the guest app checks nothing.** It is in this run's own brief and in every
+  previous run's verification line, and it has always been vacuous: the root `tsconfig.json` has no files of
+  its own. `npm run typecheck` and `tsc -b` are the real ones. The brief should say so, or the root config
+  should carry the app's files.
+- **Wheel Fun Rentals says "40 locations" and draws 24.** The grid is capped at 24 and the heading counts the
+  whole list. One listing today, so it was left alone rather than changed on a guess about which number is
+  the honest one to print.
+- **A meeting point that names a different street from the address is not what the Maps link opens.** 3,189
+  listings publish a meeting point and a handful of them name several ("Fishing and dive charters depart from
+  Bayview Harbor or Light House Marina ... depending on the trip"). The address is printed under it either
+  way, so nothing is hidden, but which one a guest should be driven to is a product call.
+- Still open from the seventy-second run: the confirm screen's failure line has not been seen at 400px.
+
 ## Coverage
 
 The catalog is 48,198 listings as of the 23 September sync, 1,873 of them Viator partner rows. Counts below
@@ -5593,6 +5659,16 @@ across both campaigns, and the rungs against the combined 50; which send time th
 dedup between the two campaigns, over the 2,038 operators that clear both sets of filters; and the dry run,
 driven three times in a row against a local SQLite for what it writes back.
 
+Where a listing tells a guest to go, on all three surfaces that say it: every one of the 52,816 shipped detail
+files through `streetOf` and `addressOf`, and what the Maps link searches for on each of the 46,324 that carry
+a contact record, including the 5,018 with no street the page can print and the 1,210 whose whole address is a
+two-letter state code; the 3,189 meeting points, against what the desktop card and the phone directions row
+each print and each link; and the 464 venue rows on the 180 chain listings, for a row with a town and no
+street, a bare pin, and a row with neither. Which pin a distance may be measured from, now one rule both the
+cards and the listing page read: a picked state or province, and the 6,492 partner rows that share 49
+coordinates between them. That `tsc -b`, and not `tsc --noEmit -p .`, is what type-checks the guest app, now a
+test of its own in the unit suite.
+
 **Not yet checked.** Whether the Otto email may tell a shop "Bookings drop straight into your calendar" when
 both `/voice` endpoints are read-only and syncing with an operator's own booking software is deferred on
 purpose, which is this run's first Needs Harshil. Whether the Otto subject should be shortened or the question
@@ -5813,4 +5889,10 @@ record at all (see the seventy-third run's Needs Harshil). Whether the word inde
 deleted or the sync should carry a few of a shop's own words into the lite record for it to read. Whether a
 guest whose address does not fit their clock should re-ask `/where` on every visit, which they do. Every other
 field the lite record drops, against the readers that meet one: age and party rules were the two this run
-swept, and the same seam runs through every rule read before a detail file lands.
+swept, and the same seam runs through every rule read before a detail file lands. Whether the root
+`tsconfig.json` should carry the app's files, so that `tsc --noEmit -p .` stops answering clean for a project
+it compiles nothing of (see this run's Needs Harshil). Which of a chain's locations the "40 locations" heading
+should count when the grid draws 24, on the one listing that has more. Which of the several places a meeting
+point names the Maps link should open, on the shops that name more than one. Whether a listing whose only
+stated place is a two-letter state code should print that code under the heading "Address" at all, which all
+1,210 of them do.
