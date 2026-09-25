@@ -4600,6 +4600,57 @@ draws the claim screen at all, which is exactly the case the step must not be.
 - A fresh checkout still has no `node_modules` at the root or in `backend`. Raised by the fifty-second run and
   every run since; this one ran `npm install` twice before anything could type-check.
 
+## 25 September 2026, seventy-first run (04:50 to 05:50 UTC)
+
+**Chosen, and why.** Everything on this run's brief was already on the Verified list except one line: the
+`role="tablist"` groups as a screen reader meets them, which is the accessibility item the brief asks for and
+the only entry on the Not yet checked list that is a defect rather than a question. Reading the app's other
+ARIA widgets first found a bigger one beside it, on the guest side and on the control that decides what a
+guest is buying, so both went in one sweep.
+
+**Found and fixed.**
+
+- **The booking box's service picker promised a keyboard it did not have** (`5446a897`). It said
+  `role="listbox"`, which a screen reader answers by leaving browse mode and passing every arrow press to the
+  page, so Up and Down did nothing at all inside it. It cost every keyboard guest, not only those on a screen
+  reader: picking a row unmounted the popup and the focused row with it, so focus fell to the body and a guest
+  who had tabbed into the picker had to tab from the top of the page again to reach the date. The element
+  carrying the role was the whole popup, so its sticky filter chips were being offered as list options. Now the
+  list itself carries the role and owns options and nothing else; it answers Up, Down, Home and End; it has one
+  tab stop, the row already picked, or the first row still on screen when a chip filter has hidden that row;
+  opening it lands on the picked row, and Escape or a pick hands focus back to the button that opened it.
+- **The dashboard Home's tab strip named nothing and controlled nothing** (`5446a897`). `role="tablist"` with
+  no label, no arrow keys, and no `role="tabpanel"` under it, so nothing tied "Today" to the list it draws. It
+  has the label, roving tab stops and the same arrow keys the guest home's category bar already had, and one
+  panel that whichever tab is open names, taking a tab stop of its own only when what it holds has none. The
+  Browse and Agent pair behind `AGENT_MODE_LIVE` got the same keys.
+
+**Swept and clean.** Every `role="tablist"`, `role="tab"`, `role="listbox"` and `role="option"` in
+`src/components`, read and then held to the keys its role promises, now a test of its own that fails on all six
+counts against the old code. The desktop home's What and Where boxes were already a proper combobox, with
+`aria-activedescendant`, their own key handler and a named popup, and the phone sheet's tier buttons are
+ordinary pressed buttons rather than a list. Both widgets driven in a real Chromium at 1280px and 400px:
+opened from the keyboard, walked, filtered to a chip that hides the picked row, picked, escaped, and the focus
+followed each time. The popup's and the feed card's geometry measured before and after at both widths, and the
+popup screenshotted at both: identical to the pixel, which is what a semantics change should be.
+
+**Verification.** Both type checks clean (TS5097 aside). Backend `npm test` 760 pass, 0 fail, 2 skipped. The
+guest suite 811 pass, 0 fail, up 6 on the new file. The rehearsal was run rather than skipped, because this
+run's change lands in `src/components`, which it drives: 55 of 55 against a local Postgres on 5433 with SSL on
+and the Chromium on disk.
+
+**Needs Harshil.**
+
+- The "All requests" link is still a fourth child of the Home tab strip's `role="tablist"`, where only tabs
+  belong. The arrow keys skip it and it keeps its own tab stop, so nothing is unreachable, but a screen reader
+  counts it inside a list of three tabs. Taking it out of that element means moving it in the layout, which is
+  `src/styles`, outside what an overnight run may change.
+- The picker now moves focus into the list when it opens, which is what a button carrying
+  `aria-haspopup="listbox"` is expected to do. A mouse user sees nothing, because the row's ring is
+  `:focus-visible`, but it is the first time that popup takes focus off the button at all.
+- A fresh checkout still has no `node_modules` at the root or in `backend`. Raised by the fifty-second run and
+  every run since; this one ran `npm install` twice before anything could type-check.
+
 ## Coverage
 
 The catalog is 48,198 listings as of the 23 September sync, 1,873 of them Viator partner rows. Counts below
@@ -5121,6 +5172,13 @@ age word or a bare "N+", against the column that decides who can go and the floo
 Every `includes` line in the catalog that says "bring your own", split by whether it marks itself as not
 included.
 
+Every ARIA widget in `src/components` against the keyboard its own role promises: every `role="tablist"`,
+`role="tab"`, `role="listbox"` and `role="option"` in the app, and the desktop home's What and Where
+comboboxes beside them. The guest booking box's service picker and the dashboard Home's tab strip driven in a
+real Chromium at 1280px and 400px, keyboard only: opened, walked by the arrow keys, Home and End, filtered to
+a chip that hides the picked row, picked, escaped, and where focus lands on each of those. Which element in a
+popup carries the role, against what it then owns. The geometry of both, before and after.
+
 The claim screen's own failure states, driven in a real Chromium against the local API and a real minted v2
 token rather than read at the token level: a forged signature, a correctly signed token a day out of date, the
 exchange aborted the way a dead connection aborts it, a 502 from in front of the API and the rate limiter's own
@@ -5294,11 +5352,10 @@ unsubscribe link every outreach email carries and the last page load in our mail
 itself, and it sits outside the paths an overnight run may change (see the fifty-fourth run's Needs Harshil).
 What `proceedClaim` does when the one call that records a claim fails: the click cleans the token out of the
 address bar, saves a local profile and opens the dashboard whatever the API answered, so the server never hears
-about the claim (see the seventieth run's Needs Harshil). The three `role="tablist"` groups in the app as a
-screen reader meets them: the operator Home's carries no label, a fourth child that is not a tab and three
-panels with no `role="tabpanel"` or `aria-controls` between them, and the Browse and Agent pair has neither
-arrow keys nor a panel, where the category bar beside them has the label, the roving tab index and the arrow
-keys already. The TikTok creator embed on the guest listing page, which 0 shipped listings carry and which the
+about the claim (see the seventieth run's Needs Harshil). Whether the "All requests" link should sit inside
+the dashboard Home's tab strip at all: it is a fourth child of a `role="tablist"` that is not a tab, and
+taking it out of that element needs `src/styles`, which an overnight run may not touch (see the seventy-first
+run's Needs Harshil). The TikTok creator embed on the guest listing page, which 0 shipped listings carry and which the
 page's own Content-Security-Policy would block twice over if one ever did, on the script and on the frame. The
 `instagram` handle on 4,980 shipped listings, which the sync writes, a claim borrows and no surface prints. Which of the 35 waiver links that
 open a homepage rather than a form are a shop's own waiver portal and which are a vendor's marketing site,
