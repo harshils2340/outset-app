@@ -14,6 +14,7 @@ import { srcSet, thumb } from "../../lib/images";
 import { embedAutoplay, isGif, listingMedia, photoCandidates, probePhotos, type Media } from "../../lib/media";
 import { arrivalWords, bringLine, cleanDesc, durationLabel, groupCap as readGroupCap, minAge, splitIncluded, splitPolicies, tidyLine } from "../../lib/listingDerive";
 import { freeCancelBadge } from "../../lib/cancellation";
+import { pickSimilar } from "../../lib/similar";
 import { bookableStart, clockIn, hourLines, itemOpenState, itemWeek, zoneFor } from "../../lib/openNow";
 import { displayHours } from "../../lib/hoursText";
 import { noStartTimesNote, startTimesOn } from "../../lib/startTimes";
@@ -1129,17 +1130,7 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
 
   // Recomputed when the catalog grows: a shared link opens the listing from its own file before the catalog
   // arrives, and a rail built then held whatever few listings were loaded, from anywhere in the country.
-  const { similar, similarNear } = useMemo(() => {
-    const all = getCatalog().filter((u) => u.id !== item.id && u.art === item.art);
-    const near = all.filter((u) => u.metroId && u.metroId === item.metroId);
-    // Same metro first, then the same state or province, then anywhere. Nobody in Washington DC wants San Jose.
-    const region = regionOfArea(item.area);
-    const sameRegion = region ? all.filter((u) => regionOfArea(u.area) === region) : [];
-    const pool = near.length >= 4 ? near : sameRegion.length >= 4 ? sameRegion : near.length ? [...near, ...sameRegion] : all;
-    const picks = pool.sort((a, b) => (b.cover ? 1 : 0) - (a.cover ? 1 : 0) || (b.reviews || 0) - (a.reviews || 0)).slice(0, 10);
-    // "Near Tampa Bay" is only true when the picks are there, not when the fallback reached across the country.
-    return { similar: picks, similarNear: picks.length > 0 && picks.every((u) => u.metroId === item.metroId) };
-  }, [item.id, state.catalogVersion]);
+  const { similar, similarNear } = useMemo(() => pickSimilar(item, getCatalog()), [item.id, state.catalogVersion]);
 
   /* ---------- derived, never invented ---------- */
   const requirements = item.requirements?.length ? item.requirements : facts.who.filter((l) => l.posted).map((l) => l.text);
