@@ -4715,6 +4715,78 @@ dashboard, token gone, a profile saved) and takes step (z) with it.
 - A fresh checkout still has no `node_modules` at the root or in `backend`. Raised by the fifty-second run and
   every run since; this one ran `npm install` twice before anything could type-check.
 
+## 25 September 2026, seventy-third run (07:18 to 07:50 UTC)
+
+**Chosen, and why.** Every area in this run's brief is on the Verified list, and what is left on Not yet checked
+is mostly a judgement for Harshil rather than a defect. One item on it names live code: what `specs` carries
+into the two readers that still take it raw, the blob Otto matches a question against and the word index search
+builds. Following it found something worse than the item described, so the hour went there and then to the
+newest code in the repo, last night's IP-to-metro placement, which no run has touched.
+
+**Found and fixed.**
+
+- **The kids filter read a rule the browse catalog does not carry** (`b0f4928a`). Typing "with kids", "family
+  friendly", "toddler" or "teens" puts a hard filter on the home under a panel that promises "Only places whose
+  published rules allow younger kids": a listing it rejects is not shown at all. `kidFriendly` read `specs`,
+  `gap` and `extraNote`, and search runs on the browse catalog, where the sync empties all three so the file
+  stays small. So the only line of the rule that could ever fire was its last one, the shop's kind. 3,098 of
+  the 46,723 browsable listings publish words that settle the question and none of them reached the filter:
+  **524 were offered to a guest filtering for children although their own site says 18+, 21+ or adults only**
+  (breweries, 21-and-over bar nights, jet ski rentals that will not hand a ski to a minor; 297 of them in the
+  very kinds that query prefers), and 28 that welcome children were dropped for being a skydive or an axe shop.
+  The rule moved to `src/lib/kidRule.ts` with a third answer, null for "their site does not say"; the sync runs
+  it over the full record and carries the verdict as `kid`; the reader takes the record's own words first, so a
+  claimed operator's edit is read the moment they save it. `c3ce39f1` pins the coupling from the backend side.
+- **The home could be left saying "Finding you" with nothing able to stop it** (`ae1ee421`). `state.locating`
+  blanks the whole home, two skeleton rails on the phone and the same on the desktop, and one effect ever turns
+  it off: `placed` is set the moment the browser answers about location and `shouldLocate` refuses every run
+  after that. `apply` rightly declines to move the ground under a guest who has a sheet open, and returned
+  without a word. So a first-time guest who tapped the search pill on the skeleton while the location prompt was
+  still up, then closed the sheet without picking a city, had the answer land against an open sheet and got no
+  home at all until they reloaded. Every decline settles now. The clock-city fallback beside it dispatched a
+  bare `metro`, which the reducer answers by clearing `sheet`, so it was closing that sheet under them; it goes
+  through `apply` like every other answer.
+
+**Swept and clean.**
+
+- Otto's raw `specs` was a false alarm, and worth recording as one: `clip()` in `companyAgent.ts` already runs
+  `plainWords`, so every line Otto quotes is markdown-stripped, tag-stripped, glossary-expanded and
+  mojibake-repaired. 2,635 of the 190,286 lines in its corpus read differently raw (2,490 of them jargon the
+  page expands, 117 a heading marker), and no answer reaches a guest without `clip`: every call site was read.
+  What is left raw is the matching, which is relevance rather than output. The word index beside it is the same
+  story from the other end: `for (const s of u.specs) put(s, F_TEXT)` indexes nothing at all on a shipped
+  record, and the option and service loops next to it are covered by `tags`.
+- The IP-to-metro table driven for the first time. `build-ip-metros.mts` against a hand-built DB-IP CSV: two
+  metros, three adjacent ranges that must merge into one, a row out of address order, a place 120 km from any
+  metro, a non-US/CA row, a city name with a comma inside its quotes, and an IPv6 block. 6 of 9 rows kept,
+  merged to 3 v4 and 1 v6, and the table read back through `decode` and `lookup` answers every boundary, both
+  refusals and the `::ffff:` unwrapping correctly. `zoneFor` over all 50 metros, because `ipGuessFitsClock`
+  refuses an IP metro whose zone it cannot read: all 50 answer one. The built table lives under
+  `backend/data/geo`, which is gitignored; it was deleted again.
+- Every other reader that meets a lite record: `fromPrice`, `startingPrice`, `publicRating`, `dealToday` and
+  `freeCancelBadge` all already fall back to a field the lite record carries. `listingFacts` and `maxGuestsFor`
+  only ever see hydrated records, the compare table included, which loads every detail file before it draws.
+
+**Verification.** The rehearsal was run rather than skipped: the fix lands in `src/state/AppProvider.tsx`, which
+it drives. 57 of 57 against a local Postgres on 5433 with SSL on and the Chromium on disk. Both type checks
+clean (TS5097 aside). Backend `npm test` 763 pass, 0 fail, 2 skipped, up 3. The guest suite 830 pass, 0 fail, up
+10 on two new files. The new locate guard was run against the code before the fix, where three of its four
+checks fail.
+
+**Needs Harshil.**
+
+- The `kid` flag reaches a guest only after the next `npm run sync`. Until that runs the 524 stay in the kids
+  filter, because there is nothing in today's `catalog.json` to read.
+- `groupOk` in `src/lib/search.ts` is blind the same way: it reads `specs`, which is empty, plus `tags`, and
+  `groupInfo`, where a shop's party rules actually live, is not on a lite record at all. It is a +4 ranking
+  nudge rather than a filter, so nothing on screen is wrong, and a second compact flag is a product call.
+- A guest whose address does not fit their clock (a VPN, a carrier gateway) re-asks `/where` on every visit:
+  `opening()` forces `recheck: true` and `guessPlace` refreshes the stored timestamp, so the guess never ages
+  out. One extra request a visit, never a wrong answer.
+- Still open from the seventy-second run: the confirm screen's failure line has not been seen at 400px.
+- A fresh checkout still has no `node_modules` at the root or in `backend`. Raised by the fifty-second run and
+  every run since; this one ran `npm install` in both before anything could type-check.
+
 ## Coverage
 
 The catalog is 48,198 listings as of the 23 September sync, 1,873 of them Viator partner rows. Counts below
@@ -5260,6 +5332,22 @@ real Chromium against the local API and a real minted v2 token, now the rehearsa
 is left, whether the token stays in the address bar, whether anything was written to the device, and that
 pressing again once the API answers opens the stored profile rather than one built from the crawled record.
 
+What every reader that meets a lite record does when the field it reads is one the browse catalog empties, read
+over the whole shipped catalog rather than sampled: `kidFriendly` behind the home's "with kids" filter, against
+all 3,098 browsable listings whose own words settle whether a child may come and the 524 the filter was
+offering in spite of them; and `fromPrice`, `startingPrice`, `publicRating`, `dealToday` and `freeCancelBadge`
+beside it, each already falling back to a field the lite record carries. What `specs` carries into the two
+readers that still take it raw: Otto's corpus, whose every quoting point already runs `plainWords` (all 190,286
+lines counted, all call sites read), and the word index, which indexes nothing at all from that field on a
+shipped record.
+
+The IP-to-metro placement behind `GET /where`, driven for the first time: `build-ip-metros.mts` against a CSV
+holding a merge, a row out of address order, a place out of reach of every metro, a foreign row, a quoted city
+name with a comma in it and an IPv6 block, and the table it writes read back through `decode` and `lookup` at
+every boundary; `zoneFor` over all 50 metros, which is what `ipGuessFitsClock` needs to refuse a VPN. That the
+home's locate run always ends with the home no longer locating, whatever it decides to do with the answer, now
+a guard of its own.
+
 **Not yet checked.** Whether a Free cancellation badge should ever promise a shorter
 notice than a line in the same shop's own policy denies: 13 of the 7,104 shipped badges do, four of them a shop
 contradicting itself where a previous run deliberately chose the promise, and the rest a per-service window
@@ -5282,9 +5370,7 @@ about 30 listings and a judgement rather than a rule (see this run's Needs Harsh
 email address should be printed inside a "Who can go" bullet, which 25 partner lines carry. Whether a bare
 "Gratuities" or "Lunch", with no marker on the line at all, is an inclusion or an exclusion a flattened page
 lost the heading of, which only a re-crawl that keeps the heading settles (see the sixty-fifth run's Needs
-Harshil). What `specs` carries into the two readers that still take it raw: the blob Otto matches a guest's
-question against and the word index search builds, neither of which reads the split every printed surface now
-does. The 52 `includes` lines that say "bring your own" and mark themselves neither way, which are a real
+Harshil). The 52 `includes` lines that say "bring your own" and mark themselves neither way, which are a real
 inclusion on one side and a shop supplying nothing on the other (see this run's Needs Harshil). The six bring
 lines that open with an adverbial before the verb ("For wedding lessons, bring wedding shoes closer to the
 event"), which no rule reaches without taking 62 correct ones with it. Whether a line stating an age over 21
@@ -5461,4 +5547,11 @@ quiet for a listing its owner has hidden or paused, given that its times are the
 and not ours (see the sixty-fourth run's Needs Harshil). Whether a partner's product may have a phone agent
 after all, which is the one thing that run changed on a rule rather than on a defect. Whether the `/voice`
 routes should be public at all, or carry a key the voice platform could hold: today a per-IP limit is the
-whole door. Whether `minAge` should take the lowest age a listing states rather than the first line that yields one: 16 listings read differently either way, 9 of them better and 4 worse (see this run's Needs Harshil). The 12 listings whose age rule still sits outside "Who can go" because no person sits in front of the number ("Adults only, 18+", "After 8PM, 21+ only"), which wants the counted-noun list finished rather than the clause opener loosened. Whether the 183 group-size and capacity lines still in the highlights fallback, on 140 listings, are what a phone should print under "What you'll do". Whether a line naming both an age and a licence should be printed under "Who can go" and "Safety and waiver" at once, which 321 listings do. Whether an FAQ question should ever be printed as a safety rule, which 2 are. Whether the "Who can go" column should cap a line's length the way the waiver column caps it at 160, given the 80 lines over 220 characters it prints today. Whether the `gap` field should be two fields rather than one, so a shop's policy prose and our own note about a missing fact stop having to be told apart by their wording.
+whole door. Whether `minAge` should take the lowest age a listing states rather than the first line that yields one: 16 listings read differently either way, 9 of them better and 4 worse (see this run's Needs Harshil). The 12 listings whose age rule still sits outside "Who can go" because no person sits in front of the number ("Adults only, 18+", "After 8PM, 21+ only"), which wants the counted-noun list finished rather than the clause opener loosened. Whether the 183 group-size and capacity lines still in the highlights fallback, on 140 listings, are what a phone should print under "What you'll do". Whether a line naming both an age and a licence should be printed under "Who can go" and "Safety and waiver" at once, which 321 listings do. Whether an FAQ question should ever be printed as a safety rule, which 2 are. Whether the "Who can go" column should cap a line's length the way the waiver column caps it at 160, given the 80 lines over 220 characters it prints today. Whether the `gap` field should be two fields rather than one, so a shop's policy prose and our own note about a missing fact stop having to be told apart by their wording. Whether the browse
+catalog should carry a compact flag for the party rules a shop states, the way it now carries one for its age
+rules: `groupOk` reads `specs`, which is empty there, and `groupInfo`, where those rules live, is not on a lite
+record at all (see the seventy-third run's Needs Harshil). Whether the word index's `specs` line should be
+deleted or the sync should carry a few of a shop's own words into the lite record for it to read. Whether a
+guest whose address does not fit their clock should re-ask `/where` on every visit, which they do. Every other
+field the lite record drops, against the readers that meet one: age and party rules were the two this run
+swept, and the same seam runs through every rule read before a detail file lands.
