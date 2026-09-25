@@ -2224,18 +2224,26 @@ export function buildCatalogItems(where?: (r: CatalogRow) => boolean): Record<st
 /**
  * A card's compact deal badge ("2|Half-price Tuesdays"): the first day-specific promo, its title cut on a word so
  * a card never shows "rentals on Sund", and never left ending on a connector a card cannot finish ("Monday to").
+ *
+ * A title this cut ends on "…", and one that fitted whole does not, because the side that knows whether anything
+ * was dropped is this one. The card used to decide for itself by length, from a cap that did not match the one
+ * here, so "$25 off your rental on Mondays and Tuesdays" was published whole and drawn as "$25 off your rental
+ * on Mondays…", which loses a day the shop is offering.
  */
 export function compactDeal(promos: { text: string; title?: string; days: number[] }[]): string | undefined {
   const p = promos.find((x) => x.days.length);
   if (!p) return undefined;
-  const words = (p.title || p.text || "").split(/\s+/);
+  const full = (p.title || p.text || "").trim();
   let label = "";
-  for (const w of words) {
+  for (const w of full.split(/\s+/)) {
     if ((label + " " + w).trim().length > 48) break;
     label = (label + " " + w).trim();
   }
-  label = label.replace(/(?:\s+(?:and|or|to|on|at|in|of|for|with|the|a|an|from|by|&))+$/i, "").replace(/,\s*$/, "");
-  return p.days.join(",") + "|" + (label || (p.title || p.text).slice(0, 48));
+  // A first word longer than the cap leaves nothing, so fall back to a hard cut of the same length.
+  let cut = label !== full;
+  if (!label) label = full.slice(0, 48);
+  if (cut) label = label.replace(/(?:\s+(?:and|or|to|on|at|in|of|for|with|the|a|an|from|by|&))+$/i, "").replace(/,\s*$/, "") + "…";
+  return p.days.join(",") + "|" + label;
 }
 
 import { affiliateCatalogItems } from "../affiliates/catalog.ts";

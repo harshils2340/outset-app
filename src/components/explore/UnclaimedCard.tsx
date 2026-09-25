@@ -10,7 +10,8 @@ import { Photo } from "../art/Photo";
 import { IcHeartOnPhoto, IcStar } from "./AirIcons";
 import { toggleSaved, usePrefs } from "./prefs";
 import { awayLine } from "./feed";
-import { AdminSiteLink, liteDealTitle, tidyDuration } from "../web/WebListing";
+import { AdminSiteLink, tidyDuration } from "../web/WebListing";
+import { liteDealTitle } from "../../lib/deals";
 import { freeCancelBadge } from "../../lib/cancellation";
 import { reportDeadCover } from "../../lib/deadCovers";
 

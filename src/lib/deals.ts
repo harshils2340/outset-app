@@ -1,4 +1,6 @@
 /**
+ * The rules a deal is read by, shared by the sync that publishes one and the app surfaces that draw one.
+ *
  * The months an offer says it runs in.
  *
  * The promo crawl keeps the shop's own sentence, and plenty of those sentences date themselves: "$5 off regular
@@ -78,3 +80,15 @@ export function runsInMonth(texts: (string | undefined)[], month: number): boole
   const stated = texts.map((t) => monthsStated(t || "")).filter((m): m is number[] => !!m);
   return !stated.length || stated.some((m) => m.includes(month));
 }
+
+/**
+ * The deal title a lite record carries after its day list ("2|Half-price Tuesdays"). The sync cuts it on a whole
+ * word and marks what it cut with "…", so there is nothing to shorten here. Cutting again by length guessed at a
+ * cap the sync does not use and shortened three of the twelve shipped badges that had arrived whole, one of them
+ * from "$25 off your rental on Mondays and Tuesdays" to "$25 off your rental on Mondays…".
+ */
+export function liteDealTitle(deal?: string): string | null {
+  if (!deal || !deal.includes("|")) return null;
+  return deal.slice(deal.indexOf("|") + 1).trim() || null;
+}
+

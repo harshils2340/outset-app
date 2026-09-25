@@ -1,7 +1,7 @@
 import type { OperatorContact, Unclaimed } from "../data/types";
 import type { LiveAvailability } from "./api";
 import { addressLine, bookingPaused, plainWords } from "./catalog";
-import { runsInMonth } from "./dealSeason";
+import { runsInMonth } from "./deals";
 import { callablePhone } from "./phone";
 import { withoutNoticeWindows } from "./duration";
 import { money } from "./format";

@@ -19,6 +19,7 @@ import { bookableStart, clockIn, hourLines, itemOpenState, itemWeek, zoneFor } f
 import { displayHours } from "../../lib/hoursText";
 import { noStartTimesNote, startTimesOn } from "../../lib/startTimes";
 import { DAY_SHORT, assistantOn, clock12, currentDeals, dayLabel, todaysDeals } from "../../lib/companyAgent";
+import { liteDealTitle } from "../../lib/deals";
 import { fmtDistance } from "../../lib/geo";
 import { kmBetween, nearestLocation, venueLabel } from "../../lib/places";
 import { addonPrice, hasPrice, priceUnclaimed, serviceFeeLabel } from "../../lib/pricing";
@@ -285,16 +286,6 @@ export function dealShown(p: { text: string; days: number[]; start?: string; end
   const detail = detailRaw && detailRaw.toLowerCase() !== title.toLowerCase() ? detailRaw : "";
   const when = p.start || p.end ? (p.start ? clock12(p.start) : "Opening") + " to " + (p.end ? clock12(p.end) : "close") : null;
   return { title, detail, code: p.code || null, when, date: p.date || null, days: p.date ? [] : p.days };
-}
-
-/** The deal title a lite record carries after its day list ("2|Half-price Tuesdays"). A title the sync cut mid-word ends on "…". */
-export function liteDealTitle(deal?: string): string | null {
-  if (!deal || !deal.includes("|")) return null;
-  let t = deal.slice(deal.indexOf("|") + 1).trim();
-  if (!t) return null;
-  // Lite titles are capped at 40 characters; a word cut there loses its tail rather than showing "on Sund".
-  if (t.length >= 40) t = t.replace(/[\s,;:]+\S*$/, "").replace(/[\s,;:]+(?:on|and|to|the|a|of|for|with)$/i, "") + "…";
-  return t;
 }
 
 /** A variant label that is only a length: "1.5 hour" reads "1.5 hours", "1 hours" reads "1 hour". */

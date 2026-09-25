@@ -10,7 +10,7 @@
  * discount, a day or a code the operator did not state.
  */
 
-import { runsInMonth } from "../../../src/lib/dealSeason.ts";
+import { runsInMonth } from "../../../src/lib/deals.ts";
 
 export type RawPromo = { text: string; days: number[]; start?: string; end?: string };
 export type Deal = { title: string; detail: string; days: number[]; code?: string; start?: string; end?: string; date?: string };

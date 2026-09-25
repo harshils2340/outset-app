@@ -1,6 +1,6 @@
 import { strict as assert } from "node:assert";
 import { test } from "node:test";
-import { monthsStated, runsInMonth } from "../dealSeason.ts";
+import { monthsStated, runsInMonth } from "../deals.ts";
 import { currentDeals, todaysDeals } from "../companyAgent.ts";
 import type { Unclaimed } from "../../data/types.ts";
 
