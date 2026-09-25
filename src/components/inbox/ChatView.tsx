@@ -50,8 +50,8 @@ export function ChatView() {
             );
           }
           return (
-            <div className={"bub " + (m.who === "me" ? "me" : "them")} key={i}>
-              {m.t}
+            <div className={"bub " + (m.who === "me" ? "me" : "them") + (m.pending ? " wait" : "")} key={i}>
+              {m.pending ? "Checking what " + thread.name + " has published…" : m.t}
             </div>
           );
         })}

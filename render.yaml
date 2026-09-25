@@ -107,6 +107,11 @@ services:
         sync: false
       - key: RESEND_API_KEY
         sync: false
+      # Otto's grounded fallback (POST /otto/ask, backend/src/lib/cohere.ts). Unset means the assistant answers
+      # from its rules alone. COHERE_DAILY_CAP and COHERE_RPM cap the calls; the defaults (30 a day, 15 a minute)
+      # fit a trial key, which allows 1,000 calls a month.
+      - key: COHERE_API_KEY
+        sync: false
       - key: STRIPE_SECRET_KEY
         sync: false
       - key: STRIPE_WEBHOOK_SECRET

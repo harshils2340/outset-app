@@ -66,7 +66,7 @@ test("the three surfaces that ask Otto a question fill in the calendar it answer
    */
   assert.match(app, /function companyCtx\([^)]*\)/, "AppProvider builds one context for Otto");
   assert.match(app, /live: availabilityNow\(/, "and fills in the shop's own calendar");
-  for (const call of ["companySuggestions(companyCtx(", "companyGreeting(companyCtx(", "companyReply(ctx,"]) {
+  for (const call of ["companySuggestions(companyCtx(", "companyGreeting(companyCtx(", "companyAnswer(ctx,"]) {
     assert.ok(app.includes(call), "AppProvider: " + call + " reads the shared context");
   }
   // A chat opened from the Inbox has no booking box behind it, so something has to ask.

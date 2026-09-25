@@ -755,3 +755,7 @@
 .odfaq input:focus,.odfaq textarea:focus{border-color:var(--ink);outline:none;}
 .odfaq .odiconbtn{grid-area:x;align-self:center;}
 .odvh{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;}
+
+/* A test-chat bubble waiting on the grounded fallback (OpAssistant). */
+.odmsg.wait{opacity:.6;animation:odwait 1.1s ease-in-out infinite alternate;}
+@keyframes odwait{from{opacity:.45}to{opacity:.85}}

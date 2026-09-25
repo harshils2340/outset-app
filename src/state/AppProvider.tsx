@@ -23,7 +23,8 @@ import { contactFor, experienceById, fromPrice, initials } from "../lib/catalog"
 import { loadListing, loadRemoteCatalog, onListingEdits } from "../lib/catalogLoad";
 import { hashOpensAnotherListing, listingInHash } from "../lib/hashRoute";
 import { availabilityNow, confirmPaid, fetchAvailability, hasApi, loadWalletId, submitBooking, warmApi , apiConfig, type LiveAvailability } from "../lib/api";
-import { assistantOn, companyGreeting, companyHandoff, companyReply, companySuggestions } from "../lib/companyAgent";
+import { assistantOn, companyAnswer, companyGreeting, companyHandoff, companySuggestions } from "../lib/companyAgent";
+import { askOttoModel } from "../lib/ottoModel";
 import { currentLocation, type Place } from "../lib/places";
 import { priceFor, priceUnclaimed } from "../lib/pricing";
 import { applyStoredProfiles } from "../lib/operator";
@@ -140,6 +141,7 @@ type Action =
   | { type: "removeRequest"; id: string | null }
   | { type: "paidReturn"; code: string }
   | { type: "sendChat"; text: string }
+  | { type: "chatSettled"; id: string; index: number; text: string }
   | { type: "toastOff" }
   | { type: "openAsk"; seed: string }
   | { type: "closeAsk" };
@@ -375,6 +377,14 @@ function reducer(state: AppState, action: Action): AppState {
       const chats = state.chats[company.id] ? state.chats : { ...state.chats, [company.id]: [hello] };
       return { ...state, threadId: company.id, chats, sheet: null, reqTargetId: null, screen: "chat" };
     }
+    case "chatSettled": {
+      const msgs = state.chats[action.id];
+      const m = msgs?.[action.index];
+      if (!m || !m.pending) return state;
+      const next = msgs.slice();
+      next[action.index] = { who: m.who, t: action.text, at: m.at };
+      return { ...state, chats: { ...state.chats, [action.id]: next } };
+    }
     case "sendChat": {
       const company = experienceById(state.threadId);
       if (company) {
@@ -384,7 +394,10 @@ function reducer(state: AppState, action: Action): AppState {
         const ctx = companyCtx(company);
         // Switched off since this thread opened: Otto stops answering and says who does, rather than carrying
         // on quoting a shop that asked it to stop.
-        prev.push({ who: "them", t: assistantOn(company) ? companyReply(ctx, action.text) : companyHandoff(ctx), at });
+        const answer = assistantOn(company) ? companyAnswer(ctx, action.text) : null;
+        // A gap line ("They haven't published that") is provisional: an effect asks the grounded model, which
+        // reads the same published facts, and settles the bubble with its answer or with this line.
+        prev.push({ who: "them", t: answer ? answer.text : companyHandoff(ctx), at, ...(answer?.gap ? { pending: true } : {}) });
         return { ...state, chats: { ...state.chats, [company.id]: prev } };
       }
       const listing = listingById(state.threadId);
@@ -792,6 +805,28 @@ export function AppProvider({ children }: { children: ReactNode }) {
     saveBookings(state.bookings);
   }, [state.bookings, state.hydrated]);
 
+  /**
+   * The grounded fallback behind Otto's rules. `sendChat` leaves a bubble `pending` when the rules answered with
+   * a gap line; this asks the model, which reads the same published facts, and settles the bubble with its
+   * answer or with the rules' line. One ask per bubble, whatever re-renders in between.
+   */
+  const asking = useRef(new Set<string>());
+  useEffect(() => {
+    for (const [id, msgs] of Object.entries(state.chats)) {
+      msgs.forEach((m, i) => {
+        if (!m.pending || m.who !== "them") return;
+        const key = id + ":" + i;
+        if (asking.current.has(key)) return;
+        asking.current.add(key);
+        const settle = (text: string) => dispatch({ type: "chatSettled", id, index: i, text });
+        const company = experienceById(id);
+        const question = msgs[i - 1]?.who === "me" ? msgs[i - 1].t : "";
+        if (!company || !question) return settle(m.t);
+        const history = msgs.slice(Math.max(0, i - 7), i - 1).filter((x) => x.who === "me" || x.who === "them").map((x) => ({ who: x.who as "me" | "them", t: x.t }));
+        askOttoModel(companyCtx(company), question, history).then((t) => settle(t || m.t), () => settle(m.t));
+      });
+    }
+  }, [state.chats]);
   useEffect(() => {
     if (!state.hydrated) return;
     saveChats(state.chats);

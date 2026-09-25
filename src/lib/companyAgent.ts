@@ -42,7 +42,13 @@ export type ChatState = {
   day?: number;
 };
 
-export type Answer = { text: string; chips: string[]; state: ChatState };
+export type Answer = {
+  text: string;
+  chips: string[];
+  state: ChatState;
+  /** The rules had no fact for this and answered with a gap line; the grounded model may do better (src/lib/ottoModel.ts). */
+  gap?: boolean;
+};
 
 type Topic =
   | "greet" | "thanks" | "price" | "priceOf" | "cheapest" | "list" | "duration"
@@ -1603,10 +1609,67 @@ export function companyAnswer(ctx: CompanyContext, question: string, prev: ChatS
     }
     else if (b && b !== a) text = a + " " + (first.state.family && b.startsWith(first.state.family + " ") ? "It " + b.slice(first.state.family.length + 1) : b);
   }
-  return { text: upper1(text), chips: chipsFor(ctx, first.state.topic || topics[0]), state: { ...prev, ...first.state } };
+  return { text: upper1(text), chips: chipsFor(ctx, first.state.topic || topics[0]), state: { ...prev, ...first.state }, gap: GAP_LINE.test(upper1(text)) };
 }
 
 /** Text-only answer, for callers that keep no conversation state. */
 export function companyReply(ctx: CompanyContext, question: string): string {
   return companyAnswer(ctx, question).text;
+}
+
+/* ---------- the published facts, as documents ---------- */
+
+export type Fact = { id: string; title: string; text: string };
+
+/** The rules' own "no fact here" lines. Only these are worth a round trip to the grounded model. */
+const GAP_LINE = /^(They haven't published |They don't say|I'm not sure what you mean|Ask me about prices|Parking isn't in what they publish|They're in .* but no street address is published)/;
+
+const FACT_MAX = 1400;
+const factText = (lines: (string | null | undefined)[]) => lines.map((l) => (l || "").trim()).filter(Boolean).join(" ").slice(0, FACT_MAX);
+
+/**
+ * The listing's published facts as short titled documents, for the grounded fallback (`src/lib/ottoModel.ts`,
+ * `POST /otto/ask`). One document per subject, so a citation names what it was read from: the same offers,
+ * hours, live times, rules and FAQ the rule answers quote, and nothing the guest cannot see on the page. The
+ * shop's email and website stay out, as they do on the page; the phone is in, as `contactAnswer` gives it.
+ */
+export function companyFacts(ctx: CompanyContext): Fact[] {
+  const { item } = ctx;
+  const out: Fact[] = [];
+  const add = (id: string, title: string, lines: (string | null | undefined)[]) => {
+    const text = factText(lines);
+    if (text) out.push({ id, title, text });
+  };
+  add("about", "About " + item.title, [item.title + " is in " + item.area + ".", item.blurb, ...(item.highlights || []), ...(item.specs || [])]);
+  const offers = offersOf(ctx);
+  add("prices", "Prices and options", offers.map((o) => offerLabel(o) + ": " + (hasPrice(o.price) ? priceOf(o) : "price not published") + (o.minutes ? ", " + fmtDur(o.minutes) : "") + "."));
+  const hours = hourLines(item);
+  add("hours", "Opening hours", [...(hours.length ? hours : ctx.contact?.hours || []), item.season ? "Season: " + item.season + "." : null]);
+  const paused = pausedLine(ctx);
+  if (paused) add("booking", "Booking on this page", [paused]);
+  else {
+    const slots = liveSlots(ctx).slice(0, 12);
+    if (slots.length) add("open-times", "Open times on their booking calendar", ["Open times: " + slots.map((s) => slotLine(ctx, s)).join("; ") + "."]);
+    else {
+      const shut = liveWindowEmpty(ctx);
+      if (shut) add("open-times", "Open times on their booking calendar", ["Their own booking calendar shows no open time in the next " + shut + " days."]);
+    }
+  }
+  add("included", "What is included", (item.includes || []).map(sentence));
+  add("rules", "Requirements and rules", [...(item.requirements || []), ...(item.policies || []), ...(item.groupInfo || [])].map(sentence));
+  add("bring", "What to bring", (item.bring || []).map(sentence));
+  add("meet", "Where to go", [
+    item.meetingPoint ? "Meeting point: " + sentence(item.meetingPoint) : null,
+    item.checkin ? "Check-in: " + sentence(item.checkin) : null,
+    ctx.contact && addressLine(ctx.contact) ? "Address: " + addressLine(ctx.contact) + "." : null,
+  ]);
+  add("cancel", "Cancellation", [item.cancellation ? sentence(item.cancellation) : null]);
+  if (!item.policies?.length) add("extra", "Also published", [item.extraNote]);
+  add("deals", "Current deals", currentDeals(item).map(dealWords).map(sentence));
+  add("waiver", "Waiver", [item.waiverUrl ? "A waiver must be signed before taking part. It is online at " + item.waiverUrl : null]);
+  (item.faq || []).slice(0, 12).forEach((f, i) => add("faq-" + i, "FAQ: " + f.q, [f.a]));
+  const phone = shopPhone(ctx);
+  add("contact", "Contact", [phone ? "Phone: " + phone + "." : "No phone number is published.", "A booking request on this page reaches them directly."]);
+  add("fee", "Outset service fee", [FEE_LINE]);
+  return out;
 }

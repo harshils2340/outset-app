@@ -28,12 +28,12 @@ test("one read however many callers", () => {
 });
 
 test("the safe default switches nothing on", () => {
-  assert.deepEqual(NO_CONFIG, { payments: false, mail: false, stripePublishableKey: null });
+  assert.deepEqual(NO_CONFIG, { payments: false, mail: false, stripePublishableKey: null, otto: false });
 });
 
 test("a real answer is read defensively, because it is JSON off the network", () => {
-  assert.deepEqual(normalizeConfig({ payments: true, mail: true, stripePublishableKey: "pk_live_x" }), { payments: true, mail: true, stripePublishableKey: "pk_live_x" });
+  assert.deepEqual(normalizeConfig({ payments: true, mail: true, stripePublishableKey: "pk_live_x", otto: true }), { payments: true, mail: true, stripePublishableKey: "pk_live_x", otto: true });
   // Payments on with no publishable key set is the hosted page, not an embedded form drawn with an empty key.
-  assert.deepEqual(normalizeConfig({ payments: true, mail: false, stripePublishableKey: "" }), { payments: true, mail: false, stripePublishableKey: null });
-  assert.deepEqual(normalizeConfig({} as never), { payments: false, mail: false, stripePublishableKey: null });
+  assert.deepEqual(normalizeConfig({ payments: true, mail: false, stripePublishableKey: "" }), { payments: true, mail: false, stripePublishableKey: null, otto: false });
+  assert.deepEqual(normalizeConfig({} as never), { payments: false, mail: false, stripePublishableKey: null, otto: false });
 });

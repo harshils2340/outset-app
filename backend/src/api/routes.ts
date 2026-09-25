@@ -32,6 +32,8 @@ import { webhooks } from "./webhooks.ts";
 import { bookings } from "./bookings.ts";
 import { wallet } from "./wallet.ts";
 import { concierge } from "./concierge.ts";
+import { otto } from "./otto.ts";
+import { cohereOn } from "../lib/cohere.ts";
 import { nearby } from "./nearby.ts";
 import { uploads } from "./uploads.ts";
 import { payouts } from "./payouts.ts";
@@ -108,7 +110,7 @@ app.get("/where", (c) => {
   return c.json({ lat, lon, city, region, metroId, country: country === "T1" || country === "XX" ? null : country });
 });
 
-app.get("/config", (c) => c.json({ payments: stripeEnabled(), mail: !!process.env.RESEND_API_KEY, stripePublishableKey: stripeEnabled() ? (process.env.STRIPE_PUBLISHABLE_KEY || "").trim() || null : null }));
+app.get("/config", (c) => c.json({ payments: stripeEnabled(), mail: !!process.env.RESEND_API_KEY, stripePublishableKey: stripeEnabled() ? (process.env.STRIPE_PUBLISHABLE_KEY || "").trim() || null : null, otto: cohereOn() }));
 app.route("/", auth);
 app.route("/", profiles);
 app.route("/", claims);
@@ -122,6 +124,7 @@ app.route("/", availability);
 app.route("/", voice);
 app.route("/", openSlotsRoute);
 app.route("/", concierge);
+app.route("/", otto);
 app.route("/", nearby);
 // Above the blanket admin-key gate on purpose: the internal metrics page signs in with an emailed code and has
 // no key to send, and that gate answers 404 to everything without one. The route does its own check (a session

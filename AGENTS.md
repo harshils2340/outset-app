@@ -30,7 +30,7 @@ source of their content.
 - Instant-book listings (`src/data/listings.ts`) stay empty until a real operator claims. Do not refill with invented shops.
 - Unclaimed businesses (`src/data/unclaimed.ts`) were pulled from each company's own site. If a fact is missing, keep the honest gap. Do not guess.
 - The operator agent (`src/lib/agent.ts`) must not invent a price, policy, or open slot. If it does not know, it says it will have the owner confirm.
-- The company assistant (`src/lib/companyAgent.ts`) answers only from that operator's published facts and synced contact record. It refuses weather, directions, comparisons, reviews, and anything about other businesses, and hands off to a person at the shop. Keep the refusal list when adding intents.
+- The company assistant (`src/lib/companyAgent.ts`) answers only from that operator's published facts and synced contact record. It refuses weather, directions, comparisons, reviews, and anything about other businesses, and hands off to a person at the shop. Keep the refusal list when adding intents. When its rules have no fact ("They haven't published that"), the same question and the same published facts go to Cohere in grounded mode (`src/lib/ottoModel.ts`, `POST /otto/ask`, `backend/src/lib/cohere.ts`): only sentences with a citation survive, any number not in the facts drops the sentence, and a refused question never goes there. No `COHERE_API_KEY` means rules only. `npm run otto:eval` checks it on a random sample of real listings.
 - Supply must be at real-world scale. Hand-typed operator lists are seeds, not the catalog. Grow the catalog with discovery (`backend/src/discover/`), never by inventing entries.
 - Bookings persist on-device (`src/lib/storage.ts`) and, through the API, in Postgres (`backend/src/lib/repo.ts`) together with claimed profiles. The supply catalog lives in `backend/` SQLite. Do not invent live slots in the backend.
 - Guest catalog is real operators across US and Canada metros, shown as Instant Book. Tampa is the densest verified batch. The backend metro grid is the same 47-city list.
@@ -75,7 +75,7 @@ Everything the operator edits is one `OperatorProfile` in `src/lib/operator.ts`,
 | Unclaimed operators | `src/data/unclaimed.ts` plus `src/data/unclaimedNational.ts` |
 | Operator contact facts (phone, email, address, hours, site) | Generated `src/data/contacts.ts`. Run `npm run backend:sync` after a scrape. Never hand-edit. |
 | Full operator catalog (thousands, from OpenStreetMap plus scrapes) | Generated `public/catalog.json`, fetched at startup and merged in `src/lib/catalog.ts`. `npm run backend:discover` then `npm run backend:sync`. |
-| 24/7 company assistant (chat for catalog operators) | `src/lib/companyAgent.ts`. Published facts only. No outside knowledge. |
+| 24/7 company assistant (chat for catalog operators) | `src/lib/companyAgent.ts`. Published facts only. No outside knowledge. Grounded fallback for the long tail: `src/lib/ottoModel.ts` and `backend/src/lib/cohere.ts`. |
 | Metros | `src/data/metros.ts` (keep in sync with `backend/src/taxonomy/catalog.ts`) |
 | Categories and explore headers | `src/data/categories.ts` |
 | Slot times | `src/data/slots.ts` |

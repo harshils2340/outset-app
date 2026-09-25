@@ -21,7 +21,8 @@
     "backend:structure": "npm run structure --prefix backend",
     "backend:social": "npm run social --prefix backend",
     "backend:photos": "npm run photos --prefix backend",
-    "search:eval": "node --import ./backend/node_modules/tsx/dist/loader.mjs scripts/search-eval.mts"
+    "search:eval": "node --import ./backend/node_modules/tsx/dist/loader.mjs scripts/search-eval.mts",
+    "otto:eval": "node --import ./backend/node_modules/tsx/dist/loader.mjs scripts/otto-eval.mts"
   },
   "dependencies": {
     "@neon/config": "^1.5.0",

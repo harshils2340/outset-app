@@ -402,12 +402,12 @@ export function warmApi(): void {
 
 /* ---------- config ---------- */
 
-export type ApiConfig = { payments: boolean; mail: boolean; stripePublishableKey?: string | null };
+export type ApiConfig = { payments: boolean; mail: boolean; stripePublishableKey?: string | null; /** Otto may ask a grounded model when its rules have no answer. */ otto?: boolean };
 /** What a page assumes while it has no answer: nothing is switched on. Never remembered as one. */
-export const NO_CONFIG: ApiConfig = { payments: false, mail: false, stripePublishableKey: null };
+export const NO_CONFIG: ApiConfig = { payments: false, mail: false, stripePublishableKey: null, otto: false };
 /** An answer worth remembering, read defensively: this is JSON from the network. */
 export function normalizeConfig(data: ApiConfig): ApiConfig {
-  return { payments: !!data.payments, mail: !!data.mail, stripePublishableKey: data.stripePublishableKey || null };
+  return { payments: !!data.payments, mail: !!data.mail, stripePublishableKey: data.stripePublishableKey || null, otto: !!data.otto };
 }
 let configCache: ApiConfig | null = null;
 let configInFlight: Promise<ApiConfig> | null = null;
