@@ -4,7 +4,7 @@ import { draftOttoCopy, type OttoOp } from "./ottoDrafts.ts";
 import { catalogId } from "./drafts.ts";
 import { recordSend } from "../lib/outreachLog.ts";
 import { emailHash, loadSuppression, mailPostal, unsubPageUrl } from "../lib/unsub.ts";
-import { outreachBlockers } from "./guards.ts";
+import { outreachBlockers, skipMark, UNREADABLE_ADDRESS, type SkipReason } from "./guards.ts";
 import { isDeliverable } from "./deliverable.ts";
 import { cooloffStart, noRecentSendSql } from "./spacing.ts";
 
@@ -73,16 +73,20 @@ export async function sendOttoOutreach(opts: {
   const seen = new Set<string>();
   for (const r of rows) {
     const to = r.to_email.trim().toLowerCase();
-    if (seen.has(to) || /noreply|no-reply|donotreply|example\.com|sentry|wixpress|godaddy/.test(to) || blocked.has(emailHash(to))) {
-      if (blocked.has(emailHash(to))) db.prepare("UPDATE outreach_drafts SET status = 'unsubscribed' WHERE id = ?").run(r.id);
+    // Same rule as the listing send, from the same place: a dry run leaves the queue as it found it.
+    const mark = (reason: SkipReason) => {
+      const status = skipMark(reason, opts.dry);
+      if (status) db.prepare("UPDATE outreach_drafts SET status = ? WHERE id = ?").run(status, r.id);
       out.skipped++;
+    };
+    if (seen.has(to) || UNREADABLE_ADDRESS.test(to) || blocked.has(emailHash(to))) {
+      mark(blocked.has(emailHash(to)) ? "unsubscribed" : seen.has(to) ? "in-batch" : "unreadable");
       continue;
     }
     seen.add(to);
     // A domain that takes no mail is left out of the batch rather than sent to and bounced: see deliverable.ts.
     if (!(await isDeliverable(to))) {
-      db.prepare("UPDATE outreach_drafts SET status = 'failed' WHERE id = ?").run(r.id);
-      out.skipped++;
+      mark("undeliverable");
       console.log("skipped " + to + ": domain takes no mail");
       continue;
     }

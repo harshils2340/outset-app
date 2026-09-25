@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { outreachBlockers, publicHttpsLink, type OutreachChecks } from "../guards.ts";
+import { outreachBlockers, publicHttpsLink, skipMark, UNREADABLE_ADDRESS, type OutreachChecks } from "../guards.ts";
 
 /**
  * Outreach is a commercial email to a business that never asked for one, so every one of these is a legal
@@ -73,4 +73,35 @@ test("a link is only a link if a stranger can open it", () => {
   for (const url of ["", "not a url", "http://onoutset.com/x", "https://localhost/x", "https://localhost:5173/x", "https://outset.local/x", "https://192.168.1.4/x", "https://[::1]/x", "https://outset/x"]) {
     assert.equal(publicHttpsLink(url), false, url);
   }
+});
+
+/**
+ * A dry run is how a batch is read before it goes out, so it must leave the draft queue exactly as it found
+ * it. It used to mark rows on the way past: an address on the suppression list became 'unsubscribed' and a
+ * domain whose DNS did not answer became 'failed', from a preview that sent nothing. The daily listing ramp
+ * never regenerates the queue, so a row a preview marked was out of the campaign until somebody ran
+ * `npm run outreach` by hand.
+ */
+test("a dry run writes nothing back to the queue, whatever the reason it passed a row over", () => {
+  for (const reason of ["in-batch", "unreadable", "unsubscribed", "undeliverable"] as const) {
+    assert.equal(skipMark(reason, true), null, reason + " must not be written back on a dry run");
+  }
+});
+
+test("a real run still retires an address that unsubscribed and a domain that takes no mail", () => {
+  assert.equal(skipMark("unsubscribed", false), "unsubscribed");
+  // A dead domain has to leave the queue or it takes one of the day's places every day for ever.
+  assert.equal(skipMark("undeliverable", false), "failed");
+});
+
+test("a row passed over for something that is not about the row itself is left as a draft", () => {
+  assert.equal(skipMark("in-batch", false), null, "the same address twice in one batch is not a bad address");
+  assert.equal(skipMark("unreadable", false), null);
+});
+
+test("the addresses nobody reads are one list, so the two campaigns cannot drift", () => {
+  for (const a of ["noreply@shop.com", "no-reply@shop.com", "donotreply@shop.com", "owner@example.com", "x@sentry.io", "a@wixpress.com", "b@godaddy.com"]) {
+    assert.ok(UNREADABLE_ADDRESS.test(a), a);
+  }
+  assert.ok(!UNREADABLE_ADDRESS.test("info@seabreezejetski.com"));
 });
