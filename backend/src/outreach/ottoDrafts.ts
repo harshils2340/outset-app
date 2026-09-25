@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { vendorLabel } from "./drafts.ts";
+import { catalogId, vendorLabel } from "./drafts.ts";
 import { mailPostal, unsubPageUrl } from "../lib/unsub.ts";
 import { outreachAddress } from "./address.ts";
 import { db, nowIso } from "../db/client.ts";
@@ -43,9 +43,9 @@ function vendorLine(id: string | null): string {
 
 /**
  * Approved by Harshil verbatim on 24 September 2026, personalized by business name (the opening line and the
- * subject) and by booking vendor (vendorLine, generic when none is on file). The footer (unsubscribe, terms,
- * postal address) is not part of what he approved or edited; it stays because backend/src/outreach/AGENTS.md
- * requires it on every send regardless of what the persuasive copy says.
+ * subject) and by booking vendor (vendorLine, generic when none is on file). The footer (the take-it-down
+ * line, unsubscribe, terms, postal address) is not part of what he approved or edited; it stays because
+ * backend/src/outreach/AGENTS.md requires it on every send regardless of what the persuasive copy says.
  */
 export function draftOttoCopy(op: OttoOp, email?: string): { subject: string; body: string; html: string } {
   const to = (email || "").trim().toLowerCase();
@@ -64,6 +64,13 @@ export function draftOttoCopy(op: OttoOp, email?: string): { subject: string; bo
   const vendor = vendorLine(op.calendar_vendor);
   const guarantee = "I can set it up with you in a day, free until it proves its value on your real line.";
   const cta = "Give the demo a quick listen, and if it's not a fit, even a one-line reply on why helps a lot.";
+  // Every operator this pitch goes to already has an unclaimed page in the Outset catalog, and this email
+  // names Outset without naming that page, so the way off it has to be in here: the outreach folder's own
+  // rule is a one-click remove line on every send, and the listing pitch has carried one since it started.
+  // Without it an owner who reads "I built Otto ... for operators like yours" and goes looking has no way out
+  // that does not start with a reply.
+  const remove = SITE + "#remove=" + catalogId(op.domain);
+  const removeLine = "Already have a page on Outset you didn't ask for, or just don't want to be found here at all? This takes it down instantly:";
   const lines = [
     "Hi,", "", who, "",
     hear, "", OTTO, "",
@@ -71,6 +78,7 @@ export function draftOttoCopy(op: OttoOp, email?: string): { subject: string; bo
     guarantee, "",
     cta, "",
     "Best,", "", "Harshil",
+    "", removeLine, remove,
   ].filter((l) => l !== null) as string[];
   const paras = [
     "<p>Hi,</p>",
@@ -81,6 +89,7 @@ export function draftOttoCopy(op: OttoOp, email?: string): { subject: string; bo
     "<p>" + esc(guarantee) + "</p>",
     "<p>" + esc(cta) + "</p>",
     "<p>Best,<br>Harshil</p>",
+    '<p style="font-size:13px;color:#666">' + esc(removeLine) + " " + link(remove, "take it down") + ".</p>",
   ];
   const TAGLINE = "Instant booking for local activities.";
   const footerLines: string[] = ["", "Outset. " + TAGLINE];
