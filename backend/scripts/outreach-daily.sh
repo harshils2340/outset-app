@@ -12,7 +12,10 @@
 # from here and would mail the same operators again.
 set -u
 cd "$(dirname "$0")/.." || exit 1
-export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:$PATH"
+# launchd starts with a bare PATH and no shell profile, and node here is installed through nvm, so put the
+# newest nvm node first; homebrew and the system paths follow for anyone whose node lives there instead.
+nvm_node="$(ls -d "$HOME"/.nvm/versions/node/*/bin 2>/dev/null | sort -V | tail -1)"
+export PATH="${nvm_node:+$nvm_node:}/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:$PATH"
 export OUTSET_DB_PATH="$PWD/data/outset.db"
 export PIPELINE_TZ="${PIPELINE_TZ:-America/Toronto}"
 mkdir -p data/logs
