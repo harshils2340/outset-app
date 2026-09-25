@@ -21,6 +21,7 @@ import { fmtDate, money, nowStamp } from "../lib/format";
 import { daySlotsOpen, openSeats } from "../lib/inventory";
 import { contactFor, experienceById, fromPrice, initials } from "../lib/catalog";
 import { loadListing, loadRemoteCatalog, onListingEdits } from "../lib/catalogLoad";
+import { hashOpensAnotherListing, listingInHash } from "../lib/hashRoute";
 import { availabilityNow, confirmPaid, fetchAvailability, hasApi, loadWalletId, submitBooking, warmApi , apiConfig, type LiveAvailability } from "../lib/api";
 import { assistantOn, companyGreeting, companyHandoff, companyReply, companySuggestions } from "../lib/companyAgent";
 import { currentLocation, type Place } from "../lib/places";
@@ -765,13 +766,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
       // Where the guest is was settled before the first render and refined by its own effect above. It used to
       // be decided here, inside this `.then()`, which gave it nothing it needed and cost it the whole catalog.
 
-      // A listing link pasted while the app is already open should still open that listing.
-      window.addEventListener("hashchange", () => {
-        const h = window.location.hash.match(/^#o=([a-z0-9-]+)/i);
-        if (!h || !experienceById(h[1])) return;
-        if (stateRef.current.sheet === "request" && stateRef.current.reqTargetId === h[1] && stateRef.current.screen !== "confirm") return;
-        dispatch({ type: "openRequest", id: h[1] });
-        loadListing(h[1]).then((changed) => changed && dispatch({ type: "catalogLoaded", added: 1 }));
+      // A listing link pasted while the app is already open should still open that listing. The id comes off
+      // the event's own new URL rather than off `window.location`, because `hashchange` runs after every other
+      // handler for the same navigation and one of those (the address-bar effect below) can have rewritten
+      // the bar by then.
+      window.addEventListener("hashchange", (e: HashChangeEvent) => {
+        const id = listingInHash(e.newURL || window.location.hash);
+        if (!id || !experienceById(id)) return;
+        if (stateRef.current.sheet === "request" && stateRef.current.reqTargetId === id && stateRef.current.screen !== "confirm") return;
+        dispatch({ type: "openRequest", id });
+        loadListing(id).then((changed) => changed && dispatch({ type: "catalogLoaded", added: 1 }));
       });
     }).catch(() => {
       // A stored profile that will not parse used to take the whole boot down with it: the catalog had landed
@@ -869,6 +873,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const onPop = () => {
       if (overlayRef.current) {
+        // Chrome queues `popstate` before `hashchange` for a fragment navigation, so a shared #o= link opened
+        // in a tab that already has a listing or a chat open arrives here first and looks exactly like back.
+        // Closing the sheet on it also strips the hash (the address-bar effect above), so the `hashchange`
+        // that followed found nothing and a guest who asked for a listing landed on the home with an empty
+        // address bar. Back lands on no hash or on this same listing; another listing is a link.
+        if (hashOpensAnotherListing(window.location.hash, stateRef.current.reqTargetId, (id) => !!experienceById(id))) return;
         pushedOverlay.current = false;
         if (state.screen === "chat") dispatch({ type: "back" });
         else dispatch({ type: "closeSheet" });
