@@ -3,10 +3,7 @@ import { test } from "node:test";
 import { promoOn } from "../companyAgent.ts";
 
 /**
- * A deal's own clock window.
- */
-/**
- * The other half of a deal's clock: a window that ends before it starts. Nothing in the shipped catalog runs
+ * A deal's own clock window, the half that ends before it starts. Nothing in the shipped catalog runs
  * one today, but the crawl reads "happy hour" and a time range, so the first bar or late-night lane that
  * publishes one would have had a deal that could never be on.
  */
