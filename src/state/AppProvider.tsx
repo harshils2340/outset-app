@@ -597,12 +597,29 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (typedTown) return;
     if (start.chosen && start.guess?.kind === "metro") return;
     let alive = true;
+    /**
+     * The home stops saying "Finding you" as soon as this run has an answer, even when it will not act on it.
+     *
+     * `locating` blanks the whole home: two skeleton rails on the phone, the same on the desktop, and only a
+     * dispatch ever turns it off. This run is the only thing that dispatches, and it gets one go: `placed` is
+     * set the moment the browser answers, and `shouldLocate` refuses every later run. So a decline that
+     * returned without dispatching left the guest looking at skeletons until they reloaded. A first-time guest
+     * who opened the search sheet while the location prompt was still up, then closed it without picking a
+     * city, met exactly that: the sheet is open when the answer lands, `apply` declines to move the ground
+     * under them, and nothing is left to turn the skeletons off.
+     */
+    const settle = () => {
+      if (stateRef.current.locating) dispatch({ type: "located" });
+    };
     const apply = (g: NonNullable<typeof start.guess>) => {
-      if (!alive || stateRef.current.sheet) return;
+      if (!alive) return;
+      // A sheet is the guest's own business, and the reducer's `metro` would close it under them. Declining to
+      // move is right; declining to say the search is over is not.
+      if (stateRef.current.sheet) return settle();
       if (chose.current) {
         const n = stateRef.current.near;
-        if (n && n.label !== "Near me") return;
-        if (!n && stateRef.current.metroId !== ALL_METRO_ID) return;
+        if (n && n.label !== "Near me") return settle();
+        if (!n && stateRef.current.metroId !== ALL_METRO_ID) return settle();
       }
       if (g.kind === "point") {
         if (sameGuess(g, start.guess)) {
@@ -648,7 +665,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
         return;
       }
       if (zone) {
-        dispatch({ type: "metro", metroId: zone });
+        // Through `apply`, like every other answer: a bare dispatch here closed whatever sheet the guest had
+        // open, because the reducer's `metro` clears it.
+        apply({ kind: "metro", metroId: zone });
         return;
       }
       dispatch({ type: "located" });
