@@ -4651,6 +4651,70 @@ and the Chromium on disk.
 - A fresh checkout still has no `node_modules` at the root or in `backend`. Raised by the fifty-second run and
   every run since; this one ran `npm install` twice before anything could type-check.
 
+## 25 September 2026, seventy-second run (06:22 to 07:30 UTC)
+
+**Chosen, and why.** Everything in this run's brief is on the Verified list except the claim and sign-in flow's
+one open defect, which the seventieth run raised and left for Harshil: `proceedClaim` throws away what
+`claimRemote` answers. Reading it before changing it found a second fault underneath, on the same two lines,
+which is worse than the one that was flagged, so the hour went there rather than to a new area.
+
+**Found and fixed.**
+
+- **A quiet API was read as a shop with nothing in it, and a blank dashboard was saved over the real one**
+  (`1f3ddb5f`). `fetchRemoteProfile` answered `null` both for a listing that has no profile and for a call
+  nobody answered, and the two screens that build a dashboard from scratch read that `null` the first way. A six
+  second timeout against a sleeping API, a 502 in front of it, or the per-IP limiter was therefore enough to
+  hand a working operator a dashboard built from the crawled record, `saveProfile` it over this device's copy,
+  and push it to the API on the next app load, because `applyStoredProfiles()` sends every claimed listing it
+  finds there. That is the menu, prices, photos, hours, policies, blocked slots, days off, notice and window the
+  owner had already published, gone, and the only sign of it is a dashboard that looks like the day they
+  claimed. Two doors reach it: an owner following their claim link on a new phone, and an owner signing in by
+  code on one. `fetchRemoteProfileResult` now says whether the API ever answered (only its own 404 settles the
+  question; a missing static guest copy does not, because that file is absent for every listing on a host that
+  serves the catalog alone), and both doors stop and say so rather than guessing.
+- **A claim the server never heard still opened the dashboard and dropped the link** (`1f3ddb5f`). The
+  seventieth run's item. The click cleaned the token out of the address bar, saved a profile and entered
+  whatever the API answered, so the listing stayed unclaimed on the server, the owner's address was never linked
+  to it, "email me a sign-in code" had nothing to send to, and the one-click way back in was gone from their own
+  URL. `claimRemote` now separates a refusal from silence, the click reads it, and the confirm screen says which
+  of the two happened and leaves the link where it is.
+- **A sign-in retry sent a spent code back** (`1f3ddb5f`). The API deletes a code the moment it accepts one, and
+  the session it hands back is already saved, so pressing the button again after a listing failed to load
+  answered "code expired, request a new one" to an owner who was in fact signed in. The listings that code
+  bought are held, and the retry repeats the load.
+- **The test bypass's way in never asked what was stored** (`73d22181`). TEST BYPASS: `test-enter` is the same
+  click minus the link, and it is the door Harshil's own address walks the operator side through. It built a
+  dashboard from the crawled record without reading the API at all, so entering a shop set up on another device
+  hit the same overwrite. It now reads first and stops when the API does not answer. A listing with nothing
+  stored still starts from its published things-to-know lines, which the rehearsal's own step (k2) checks.
+
+**Swept and clean.** Every place in the app that builds an `OperatorProfile` from scratch, read for the same
+fault: five call sites, three of them behind an API read and now all three guarded, one the demo sandbox and one
+the no-API demo code path, neither of which can reach a real listing. `catalogLoad`'s late profile fetch stays
+on the old plain name, because a patch that did not arrive is a page that draws the crawled record, which is
+correct.
+
+**Verification.** Both type checks clean (TS5097 aside). Backend `npm test` 760 pass, 0 fail, 2 skipped,
+unchanged. The guest suite 820 pass, 0 fail, up 9 on one new file. The rehearsal was run rather than skipped,
+three times: the fixes land in `src/lib` and `src/components`, which it drives. 57 of 57 against a local
+Postgres on 5433 with SSL on and the Chromium on disk, up two on a new step (n2) that mints a valid v2 link,
+reaches the confirm screen, replaces `window.fetch` in the page so only the click's own two calls fail, and
+checks the owner is left on the link with the token still in the address bar and nothing written to the device,
+then restores it and checks that pressing again records the claim and opens the profile the flow published
+earlier. Run once against the code before the fix, where that step fails on every count it makes (in the
+dashboard, token gone, a profile saved) and takes step (z) with it.
+
+**Needs Harshil.**
+
+- The confirm screen now prints a failure line. It reuses `.oderr` inside an `.odsplash`, which already wraps a
+  sentence of its own, but the rehearsal drives the browser at 1440px and the width is hard-coded there, so the
+  new line has not been seen at 400px. Nothing in `src/styles` was touched.
+- `test-enter` still hands out a session for any listing an allowlisted address names, and now reads that
+  listing's stored profile onto the device. That is what makes it useful and what makes it the one route that
+  must never be switched on anywhere real.
+- A fresh checkout still has no `node_modules` at the root or in `backend`. Raised by the fifty-second run and
+  every run since; this one ran `npm install` twice before anything could type-check.
+
 ## Coverage
 
 The catalog is 48,198 listings as of the 23 September sync, 1,873 of them Viator partner rows. Counts below
@@ -5188,6 +5252,14 @@ the edge. Two of those five are a rehearsal step of their own now, step (n), min
 secret. Every call in the app that prints a verdict on a failure, against the ones whose failure was only a call
 that never got an answer.
 
+Every door that builds an operator dashboard from scratch, against an API that stops answering part way: the
+claim link's click-through, signing in by email code on a device that holds nothing, and the test bypass's
+`test-enter`. What each one does with a claim the server never recorded, with a profile read that got no
+answer, and with a code the API has already spent. The two calls the click makes, failed one at a time in a
+real Chromium against the local API and a real minted v2 token, now the rehearsal's step (n2): where the owner
+is left, whether the token stays in the address bar, whether anything was written to the device, and that
+pressing again once the API answers opens the stored profile rather than one built from the crawled record.
+
 **Not yet checked.** Whether a Free cancellation badge should ever promise a shorter
 notice than a line in the same shop's own policy denies: 13 of the 7,104 shipped badges do, four of them a shop
 contradicting itself where a previous run deliberately chose the promise, and the rest a per-service window
@@ -5350,9 +5422,9 @@ suite needs, or the rehearsal check for them, since without them eight test file
 that run's Needs Harshil). Whether `public/unsubscribe.html` should keep POSTing the API on load: it is the
 unsubscribe link every outreach email carries and the last page load in our mail that changes something by
 itself, and it sits outside the paths an overnight run may change (see the fifty-fourth run's Needs Harshil).
-What `proceedClaim` does when the one call that records a claim fails: the click cleans the token out of the
-address bar, saves a local profile and opens the dashboard whatever the API answered, so the server never hears
-about the claim (see the seventieth run's Needs Harshil). Whether the "All requests" link should sit inside
+Whether the confirm screen's new failure line
+wraps properly at 400px: it reuses `.oderr` inside an `.odsplash` that already wraps a sentence of its own, and
+it was driven in a browser at 1440px only (see the seventy-second run). Whether the "All requests" link should sit inside
 the dashboard Home's tab strip at all: it is a fourth child of a `role="tablist"` that is not a tab, and
 taking it out of that element needs `src/styles`, which an overnight run may not touch (see the seventy-first
 run's Needs Harshil). The TikTok creator embed on the guest listing page, which 0 shipped listings carry and which the
