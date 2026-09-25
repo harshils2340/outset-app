@@ -321,9 +321,17 @@ const toMin = (hhmm: string) => {
 
 /** Whether a promo applies at the operator's local clock: right day (empty days = every day), inside its window. */
 export function promoOn(p: Promo, clock: { day: number; minutes: number }): boolean {
-  if (p.days.length && !p.days.includes(clock.day)) return false;
-  if (p.start && clock.minutes < toMin(p.start)) return false;
-  if (p.end && clock.minutes >= toMin(p.end)) return false;
+  const start = p.start ? toMin(p.start) : null;
+  const end = p.end ? toMin(p.end) : null;
+  // A window ending at or before it starts runs past midnight, the way a shop open past midnight does: a
+  // Friday happy hour from 9 PM to 1 AM is still on at half past midnight, and it is still the Friday deal.
+  const wraps = start !== null && end !== null && end <= start;
+  const small = wraps && clock.minutes < end;
+  const day = small ? (clock.day + 6) % 7 : clock.day;
+  if (p.days.length && !p.days.includes(day)) return false;
+  if (wraps) return small || clock.minutes >= start;
+  if (start !== null && clock.minutes < start) return false;
+  if (end !== null && clock.minutes >= end) return false;
   return true;
 }
 
