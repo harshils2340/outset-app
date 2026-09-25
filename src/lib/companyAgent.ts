@@ -336,7 +336,7 @@ export function promoOn(p: Promo, clock: { day: number; minutes: number }): bool
 }
 
 /** The month at the operator's own clock, 0 for January, so a deal's stated months are read on their calendar. */
-function monthIn(zone: string | undefined, now: Date): number {
+function monthIn(zone: string | null | undefined, now: Date): number {
   try {
     return Number(now.toLocaleDateString("en-US", { month: "numeric", ...(zone ? { timeZone: zone } : {}) })) - 1;
   } catch {

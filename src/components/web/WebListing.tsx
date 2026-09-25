@@ -21,7 +21,6 @@ import { bookableStart, clockIn, hourLines, itemOpenState, itemWeek, zoneFor } f
 import { displayHours } from "../../lib/hoursText";
 import { noStartTimesNote, startTimesOn } from "../../lib/startTimes";
 import { DAY_SHORT, assistantOn, clock12, currentDeals, dayLabel, todaysDeals } from "../../lib/companyAgent";
-import { liteDealTitle } from "../../lib/deals";
 import { fmtDistance } from "../../lib/geo";
 import { kmBetween, nearestLocation, venueLabel } from "../../lib/places";
 import { addonPrice, hasPrice, priceUnclaimed, serviceFeeLabel } from "../../lib/pricing";
