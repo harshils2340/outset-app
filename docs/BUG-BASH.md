@@ -4787,6 +4787,66 @@ checks fail.
 - A fresh checkout still has no `node_modules` at the root or in `backend`. Raised by the fifty-second run and
   every run since; this one ran `npm install` in both before anything could type-check.
 
+## 25 September 2026, seventy-fourth run (08:00 to 09:05 UTC)
+
+**Chosen, and why.** Every area in this run's brief is on the Verified list except three lines about the guest
+listing page, so the hour went there and was driven in a real Chromium rather than read: the "More options"
+fold and `variantNote`, the Deals section, and what a listing page does when a second listing link arrives.
+The last of those found two bugs, both on the page a guest spends all their time on.
+
+**Found and fixed.**
+
+- **A second listing link dumped the guest on the home with an empty address bar** (`398c91b7e`). Chrome
+  queues `popstate` BEFORE `hashchange` for a fragment navigation, so a shared `#o=` link opened in a tab that
+  already had a listing or a chat open reached the back-button handler first. That handler closed the sheet,
+  closing the sheet made the address-bar effect strip the hash, and the `hashchange` a millisecond later read
+  an empty hash and did nothing at all. Every listing carries a Share button and every outreach email carries
+  that link. Pressing back between two listings did the same: it did not go back to the previous listing, it
+  went to the home. Which listing the hash names is the whole difference, since back lands either on no hash
+  or on the app's own second entry for the same listing, so `onPop` asks `hashOpensAnotherListing` before it
+  closes anything and `hashchange` now reads the event's own `newURL`. Driven both ways in Chromium: a link
+  between three listings, back between two, and backing out of a listing opened from the home, which still
+  closes the sheet and keeps the guest on the site.
+- **"More like this" offered the same business as two of its cards** (`a044edebc`). The rail picks from the
+  same metro and the same state or province, and a shop in this metro is nearly always in this region too.
+  When neither pool had four in it the rail merged both without deduping. **483 shipped listings drew a repeat
+  and on 253 of them at least half the rail was repeats**: Blitz Paintball in Dacono, Colorado, offered
+  Loveland Laser Tag as both of its two suggestions. React warned about the repeated key on every one, which
+  is how it was found. The rule moved to `src/lib/similar.ts` with the merge deduped.
+
+**Swept and clean.**
+
+- The tier picker's labels over all 61,620 shipped services: two shown rows reading the same words (1, on a
+  test listing), a shown row printing nothing (0), and two tiers in one service sharing an `optionIdx`, which
+  is the React key that row is drawn with (0).
+- The "More options" fold driven at 1440px and 400px: the tail opens and closes, the picked tier stays
+  visible while folded, `aria-expanded` follows, and "Fewer options" appears only once the fold is open.
+- The Deals section driven on four shops that publish one, including a code, a start hour and a date-specific
+  deal. The day strip, the "Today" badge and the `Deal today` row all read the shop's own clock, and a deal
+  whose hours have not started today is correctly not badged. `dealShown` does not print a title and its
+  identical detail twice.
+- 142 listing pages opened in Chromium, 42 chosen for their shape (affiliate, no cover, no services, no
+  price, one option, many services, promos, FAQ, long title, video, policies, add-ons, a folded menu) at both
+  1440px and 400px, and 100 at random: no sideways scroll, nothing past the right edge, no console error and
+  no exception on any of them once the duplicate key was fixed.
+
+**Verification.** The rehearsal was run rather than skipped: both fixes land in `src/`, which it drives. 57 of
+57 against a local Postgres 16 on 5433 with TLS on and the Chromium on disk. Both type checks clean (TS5097
+aside). Backend `npm test` 763 pass, 0 fail, 2 skipped, unchanged, and nothing under `backend/src` was
+touched. The guest suite 842 pass, 0 fail, up 12 on two new files, and both new files were run against the
+code before their fix, where 2 of 6 and 2 of 6 checks fail.
+
+**Needs Harshil.**
+
+- On 7 listings the cheapest tier is folded behind "More options", so the card promises a price the page does
+  not show until the guest clicks: Alcatraz Tours' card says from $119 and its page opens at $249. All seven
+  are per-person rates that fall as the group grows, so the card is honest and the fold is hiding the bottom
+  of the ladder. Whether the fold should keep the cheapest row is a product call.
+- Both fixes are in app code, so they reach a guest on the next deploy. Neither needs a sync.
+- A fresh checkout still has no `node_modules` at the root or in `backend`. Raised by the fifty-second run and
+  every run since; this one ran `npm install` in both before anything could type-check.
+- Still open from the seventy-second run: the confirm screen's failure line has not been seen at 400px.
+
 ## Coverage
 
 The catalog is 48,198 listings as of the 23 September sync, 1,873 of them Viator partner rows. Counts below
@@ -5348,6 +5408,15 @@ every boundary; `zoneFor` over all 50 metros, which is what `ipGuessFitsClock` n
 home's locate run always ends with the home no longer locating, whatever it decides to do with the answer, now
 a guard of its own.
 
+What the address bar does to an open listing, driven in Chromium rather than read: a shared `#o=` link
+arriving while a listing or a chat is open, back between two listings, back out of a listing opened from the
+home, and closing one with its own control instead. The tier picker over all 61,620 shipped services, for two
+shown rows reading the same words, a row printing nothing and two tiers sharing the React key they are drawn
+with. The "More options" fold and the Deals section driven at 1440px and 400px, including a deal with a code,
+one with a start hour and the clock each is read on. 142 listing pages opened in a real browser, 42 by shape
+and 100 at random, at both widths, for sideways scroll, anything past the edge, console errors and
+exceptions. The "More like this" rail against the whole shipped catalog, for a business offered twice.
+
 **Not yet checked.** Whether a Free cancellation badge should ever promise a shorter
 notice than a line in the same shop's own policy denies: 13 of the 7,104 shipped badges do, four of them a shop
 contradicting itself where a previous run deliberately chose the promise, and the rest a per-service window
@@ -5529,7 +5598,9 @@ you book direct" (see this run's Needs Harshil). Whether the sync should keep an
 penalty or an order minimum rather than an extra, which the drop rule now takes with the cut sentences it was
 written for. Whether an nth-weekday rule should be honoured, dropped or left as the weekly rule it is read as
 today, which is this run's Needs Harshil and the one item here that is a defect rather than a question, and
-whether a season written in front of a rule should reach the week parsers as well as the page. Whether an
+whether a season written in front of a rule should reach the week parsers as well as the page. Whether the "More options" fold should keep a service's cheapest tier visible, since the card's
+"from" price can be a row the page opens folded: 7 listings, all of them per-person rates that fall as
+the group grows (see the seventy-fourth run's Needs Harshil). Whether an
 unclaimed shop open past midnight should sell its small hours on the next date, the way a claimed one does, on
 the 481 that state one, and whether a shop that genuinely trades around the clock can say so at all, given
 that a clock face reading midnight to midnight is now refused on every surface. Which listings the publish gate dropped and why: the 23 September
