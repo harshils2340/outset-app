@@ -902,8 +902,9 @@ async function flow(ctx) {
      actually hits, and each has its own line: a token the API reads and refuses, and a correctly signed token
      that is out of date, which offers a fresh link instead of a dead end. Neither may be shown as the other.
 
-     A third state, the API never answering, cannot be driven from here (it needs the call intercepted), and
-     is covered by src/lib/__tests__/apiSilent.test.ts. */
+     A third state, the API never answering while the link is being checked, is covered by
+     src/lib/__tests__/apiSilent.test.ts. The fourth, the API going quiet after a good link has already checked
+     out, is driven below in (n2), because what it used to cost was not a wrong sentence. */
   if (!CLAIM_SECRET) {
     record("(n) a refused claim link is told apart from an expired one", "warn", "no E2E_CLAIM_SECRET, so no token can be minted");
   } else {
@@ -934,6 +935,77 @@ async function flow(ctx) {
         shown ? (await js(() => (document.querySelector(".odlogin .oderr") || {}).textContent || "MISSING .oderr")) : "no message appeared in 25s",
       );
     }
+
+    /* ================= (n2) a good link, and an API that goes quiet on the click =================
+       The link checks out, the confirm screen goes up, and the owner presses the button while the API is
+       having a bad minute. That click used to take the claim's answer, throw it away, drop the token out of
+       the address bar, build a dashboard out of the crawled record and open it. The listing stayed unclaimed
+       on the server, the owner's address was never linked to it, so a sign-in code had nowhere to go, and the
+       blank profile it saved is what the next app load pushes to the API, over everything this flow has
+       already published on this listing.
+
+       Driven by replacing window.fetch in the page after the link has checked out, so only the click's own
+       calls fail. Restoring it and pressing again is the other half: the owner must be able to finish. */
+    await goto("about:blank");
+    await goto(`${BASE}/operators#claim=${ID}&k=${v2(Date.now() + 30 * 86400000)}`);
+    const atConfirm = await until(() => (document.body.innerText || "").includes("This is your business?"), 25000);
+    const titleAtApi = (await remoteProfile())?.patch?.title;
+    await js(() => {
+      const real = window.fetch.bind(window);
+      window.__realFetch = real;
+      window.fetch = (input, init) => {
+        const url = typeof input === "string" ? input : (input && input.url) || "";
+        const method = ((init && init.method) || "GET").toUpperCase();
+        // The two calls the click makes: recording the claim, and reading what is stored for this listing.
+        if (method === "POST" && /\/claims\/[^/?#]+$/.test(url)) return Promise.reject(new TypeError("Failed to fetch"));
+        if (method === "GET" && /\/profiles\/[^/?#]+$/.test(url)) return Promise.reject(new TypeError("Failed to fetch"));
+        return real(input, init);
+      };
+      return "api silenced";
+    });
+    await clickIn(".odsplash .cta");
+    const said = await until(() => !!document.querySelector(".odsplash .oderr"), 20000);
+    const stillThere = await js(() => JSON.stringify({
+      onConfirm: (document.body.innerText || "").includes("This is your business?"),
+      inDashboard: !!document.querySelector(".od .odbody"),
+      tokenInUrl: location.hash.includes("&k="),
+      saved: Object.keys(localStorage).filter((k) => k.startsWith("outset.operator.profile")).length,
+      line: (document.querySelector(".odsplash .oderr") || {}).textContent || "",
+    }));
+    const state = JSON.parse(stillThere);
+    await shot("n2-claim-api-quiet");
+    record(
+      "(n2) a claim the API never recorded keeps the owner on the link, not in an empty dashboard",
+      !!atConfirm && !!said && state.onConfirm && !state.inDashboard && state.tokenInUrl && state.saved === 0 && !/didn't check out|has expired/.test(state.line),
+      `confirm screen:${atConfirm} ${stillThere}`,
+    );
+
+    // The other half: the API comes back, the same button finishes the job, and what opens is the profile
+    // this flow published earlier, not a dashboard built from the crawled record.
+    await js(() => {
+      if (!window.__realFetch) return "MISSING __realFetch";
+      window.fetch = window.__realFetch;
+      return "api restored";
+    });
+    await clickIn(".odsplash .cta");
+    const opened = await until(() => !!document.querySelector(".od .odbody"), 25000);
+    const after = await js(() => {
+      const keys = Object.keys(localStorage).filter((k) => k.startsWith("outset.operator.profile"));
+      let title = "";
+      try {
+        title = (JSON.parse(localStorage.getItem(keys[0]) || "{}") || {}).title || "";
+      } catch {
+        title = "unreadable";
+      }
+      return JSON.stringify({ tokenInUrl: location.hash.includes("&k="), profiles: keys.length, title });
+    });
+    const back = JSON.parse(after);
+    await shot("n2-claim-retry-opens");
+    record(
+      "(n2) pressing again once the API answers records the claim and opens what was stored",
+      !!opened && !back.tokenInUrl && !!titleAtApi && back.title === titleAtApi,
+      `opened:${opened} stored title:${JSON.stringify(titleAtApi)} ${after}`,
+    );
   }
 
   // The steps above only mean anything if the harness found what it clicked and typed into.
