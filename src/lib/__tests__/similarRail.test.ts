@@ -84,3 +84,34 @@ test("the catalog it was handed is left as it was", () => {
   pickSimilar(me, catalog);
   assert.deepEqual(catalog.map((u) => u.id), order);
 });
+
+/**
+ * A town that sits in no metro is not a shop with no neighbours. 1,260 shipped listings have an empty
+ * `metroId`, so the both-pools branch, which asked for a neighbour in this metro before it would run, was
+ * unreachable for them and the rail fell through to the whole catalog: Countdown Games in Lexington, KY drew
+ * escape rooms in Texas while Emerge in La Grange, KY sat in the pool unread.
+ */
+test("a shop in no metro is offered its own state before the rest of the country", () => {
+  const me = op({ metroId: "", area: "Lexington, KY" });
+  const inState = op({ metroId: "", area: "La Grange, KY" });
+  const farAway = [op({ metroId: "tampa", area: "Tampa, FL", reviews: 900, cover: "https://example.com/a.jpg" }), op({ metroId: "austin", area: "Austin, TX", reviews: 800, cover: "https://example.com/b.jpg" })];
+  const { similar, similarNear } = pickSimilar(me, [me, inState, ...farAway]);
+  assert.deepEqual(similar.map((u) => u.id), [inState.id], "one shop in Kentucky beats two better-reviewed ones two thousand miles off");
+  assert.equal(similarNear, false, "and a state is not a metro, so the heading does not say near");
+});
+
+test("one or two in the state, with none in the metro, is still the state and not the country", () => {
+  const me = op({ metroId: "denver", area: "Dacono, CO" });
+  const inState = [op({ metroId: "", area: "Pueblo, CO" }), op({ metroId: "", area: "Durango, CO" })];
+  const elsewhere = op({ metroId: "tampa", area: "Tampa, FL", reviews: 900 });
+  const { similar } = pickSimilar(me, [me, ...inState, elsewhere]);
+  assert.deepEqual(similar.map((u) => u.id).sort(), inState.map((u) => u.id).sort());
+});
+
+test("a shop with no neighbour in its metro or its state still reaches the whole catalog", () => {
+  const me = op({ metroId: "", area: "Bethany Beach, DE" });
+  const faraway = op({ metroId: "tampa", area: "Tampa, FL" });
+  const { similar, similarNear } = pickSimilar(me, [me, faraway]);
+  assert.deepEqual(similar.map((u) => u.id), [faraway.id]);
+  assert.equal(similarNear, false);
+});
