@@ -5523,6 +5523,88 @@ anyway.
   still not been seen at 400px.
 
 
+## 26 September 2026, eighty-fourth run (11:25 to 11:45 UTC)
+
+**Chosen, and why.** The last entry says the rehearsal was green and the only commits since are its own, so it
+was not re-run to watch it pass; it was run once at the end, because all five fixes touch `src/lib` and four
+touch `backend/src`. Every line on tonight's brief is on the Verified list, so the hunt went to the one item
+the last run left as its own next step: the static `/l/` page's other fields, held one by one against the
+app's rule for the same shop. That sweep turned up a sixth defect in the app itself, which was fixed first.
+
+**Found and fixed.** Five defects, five commits.
+
+- **1,035 listings had their own description taken apart on both guest surfaces** (`0a40e832`). `cleanDesc`
+  strips the words a shop's page uses on a button, and it matched the bare word anywhere, so it cut 1,300 texts
+  and only 41 of those cuts were a button. Every one of the eight words is also ordinary English: "we will learn
+  more about chocolate varietals" read "we will about chocolate varietals", "our experienced guides select the
+  best breweries in town" read "our experienced guides the best breweries in town", "transportation from select
+  Strip hotels" read "transportation from Strip hotels", and "So what are you waiting for? BOOK NOW!" read "So
+  what are you waiting for? !". "Select" alone was 538 of the 1,475 cuts and not one of them was a button. A
+  leftover button is text no sentence runs through: it opens a segment and nothing follows it but the end of the
+  copy or the next separator, and the separator it sat behind goes with it. 41 cuts remain, every one read
+  through, and 1,259 texts get their words back. The desktop listing page and the phone sheet both read this.
+- **The static listing page described a shop in words the app does not use for it** (`d9f99590`). The blurb and
+  the FAQ were the last fields on the page still printed from the raw record. 977 pages described a shop
+  differently from the app: jargon left short ("USCG licensed captain", "Venue is BYOB for guests 21+", "twin
+  550 HP Detroit Diesel engines"), the space the crawl left in front of a comma, and the button swept up with
+  the last sentence. 9 of the 72 shipped FAQ entries printed a shouting question ("HOW MUCH TIME WILL I HAVE?"),
+  the Q&A page's own "A." label in front of the answer, or the bullet the crawl took with it. Both go through
+  the rules the app reads, `cleanDesc` and `tidyLine`, and the meta description a shared link and a search
+  engine read comes off the same cleaned blurb.
+- **716 listing pages showed the same photograph two to four times** (`f2b155b3`). The grid deduplicated on the
+  exact URL. A site links one photograph under both schemes, with and without `www.`, and at whatever size its
+  CDN was asked for, and the crawl keeps every spelling: Acadian Boat Tours filled six tiles with four
+  pictures, and a Savannah ghost tour showed its cemetery photo twice and its contact photo twice. The hero and
+  the lightbox have folded on the file a URL reaches since `photoCandidates` landed, and the page reads that
+  rule now, so six tiles are six photographs and the JSON-LD names each one once. `samePicture` and
+  `photoCandidates` moved to `src/lib/samePhoto.ts` so the sync can read them: `media.ts` reaches the photo
+  proxy, and that reaches `import.meta.env`, which is Vite's and not the backend's.
+- **982 pages told a guest a shop had "1 reviews"** (`1116b557`). The star line was the page's own reading of
+  the record. It goes through `publicRating` and `reviewsLine` now, the gate and the wording every other
+  surface reads, and the JSON-LD's own copy of the gate was folded into the same call so a guest and a search
+  engine are never told two things.
+- **109 priced rows quoted "$10094.12"** (`5f23513f`). Both static page generators carried their own `money`,
+  and both grouped a whole dollar's thousands and left a price with cents ungrouped, so Anchor Rides quoted
+  $10094.12 and Alaska Photo Treks $1024.85 where every screen in the app says $10,094.12 and $1,024.85. They
+  read `src/lib/format.ts` now.
+
+**Swept and clean.** Every blurb and service description in the catalog, 57,668 texts, through the old label
+rule and the new one, each of the 41 remaining cuts read in context and now held by a test. All 72 shipped FAQ
+entries and all 26,701 blurbs against what the app prints for the same shop. Every shipped listing's photo list
+through both folds, counted before and after. All 16,843 listings that publish a rating, against
+`publicRating`: none ships a rating with no reviews, so that half of the fix is latent and the "1 reviews" half
+is 982 pages. Every priced option and service tier in the catalog through both `money` rules. Five real shipped
+listings rendered through the fixed generator and read: the tiles, the star line, the blurb, the FAQ and the
+prices are all the app's now.
+
+**Verification.** App `npm test` 920 pass, 0 fail. Backend `npm test` 845 pass, 0 fail, 2
+skipped. `tsc -b` clean on the app, `tsc --noEmit -p .` clean at the root and still compiling nothing, the
+backend type check clean but for TS5097. The full rehearsal was run at the end: 57 of 57, 0 failed, against a local
+Postgres 16 on 5433 with TLS on and the Chromium on disk, no Stripe, mail or GitHub key. A fresh checkout again had no `node_modules` on
+either side and no Postgres cluster, so both installs and a TLS-enabled Postgres 16 on 5433 were built first,
+which is the fifty-second run's Needs Harshil still standing.
+
+**Needs Harshil.**
+
+- **`plainWords` is not idempotent, on 114 shipped blurbs.** It expands a shop's jargon, and run twice it
+  expands its own expansion: "Four-wheeler (ATV)" becomes "Four-wheeler (Four-wheeler (ATV))", "Side-by-side
+  (UTV)" grows the same way, and "Accelerated Freefall (AFF)" becomes "Accelerated Freefall (Accelerated
+  Freefall (learn to skydive))". Nothing in the product applies it twice today, so nothing ships doubled, and
+  every path was read. It is a trap laid for the next person who caches a cleaned string.
+- **Three guest surfaces spell a shop's state three ways.** The desktop listing page says "Clearwater Beach,
+  Florida", the phone sheet and every card say "Clearwater Beach, FL", and the static page and its title say
+  "FL". Which is right is a product call. `WebListing.tsx` also keeps its own byte-identical copy of the
+  `REGION_NAME` table rather than importing it, which is the kind of duplicate that only disagrees later.
+- **Otto quotes the blurb without the page's last two cleanups.** Its own `clip` runs `plainWords` but not the
+  space-before-punctuation fix or the button rule, so the hero says "visit Oahu." and Otto says "visit Oahu. ",
+  and "included.The local tour guide" reads "included .The local tour guide". A handful of listings, and the
+  same string on the same page.
+- Still open from the seventy-eighth run: local `main` sits on `c3a9bfd0`, five "Otto page" commits that
+  `origin/main` was force-updated away from. Tonight's work is on `origin/main`; that stale ref was left alone
+  again. The desktop site still has no way to say anything in passing, and the confirm screen's failure line
+  has still not been seen at 400px.
+
+
 ## Coverage
 
 The catalog is 48,198 listings as of the 23 September sync, 1,873 of them Viator partner rows. Counts below
@@ -6155,6 +6237,12 @@ page, the phone sheet, Otto and the static `/l/` page alike. The two modules tha
 and the DOM: `sanitizeSvg`, whose own quoting let a handler out of a single-quoted value, and `urlSafety` at
 both of its call sites.
 
+What a shop's own description and its questions say, over every blurb and service description in the catalog
+(57,668 texts) and all 72 shipped FAQ entries: the words a page uses on a button held against the same words
+inside a shop's sentence, on both guest surfaces and on the static `/l/` page; and the page's blurb, FAQ,
+photo grid, star line and prices with cents each held against the app's own rule for the same shop, over every
+listing that ships one.
+
 **Not yet checked.** Anything in the grounded fallback that needs a real Cohere key: no key exists here, so every answer checked tonight was a payload shaped by hand, and what the live model actually writes, what its citation offsets index into when it answers in more than one content part, and whether `citation_options` FAST cites densely enough for `keepCited` to keep a good answer are all unread. `npm run otto:eval` for the same reason. Whether a price the model reformats should be dropped: a shop publishing "$85" and a model writing "$85.00" loses the sentence (see this run's Needs Harshil). Whether the grounded answer should reach the static `/l/` page and the phone sheet, which do not call it. A real Otto send or a real hand-send: the draft run, the queue, the dry run and the handoff export are all driven now, but nothing has left a mailbox from here, and `outreach-daily.sh` is launchd on the Mac and cannot be. Whether `state.ranDays` and `state.sentDays` growing without bound in `outreach-otto-ramp.json`, and being written only after a send loop that can run four hours, is worth changing, given that `sentToday` is what actually holds the ceiling. Whether the Otto email may tell a shop "Bookings drop straight into your calendar" when
 both `/voice` endpoints are read-only and syncing with an operator's own booking software is deferred on
 purpose, which is this run's first Needs Harshil. Whether the Otto subject should be shortened or the question
@@ -6403,5 +6491,13 @@ record. Whether a listing whose cover is known dead should be allowed to lead th
 the sort reads the field and not the `deadCovers` store. Whether a length that is not a whole number of days
 should read "3 days 20 hours" rather than "3.8 days", on the two shipped rows that are not (92 hours and 54
 hours). How many catalog areas name a town in the wrong state, which the rail fix surfaced as "Philadelphia,
-DE" and nothing has counted. Which of the static `/l/` page's other fields still disagree with the app's own
-rule for the same shop: the length was the second found this way in three runs, and nobody has swept the rest.
+DE" and nothing has counted. Whether `plainWords` should be idempotent: run twice it expands its own
+expansion on 114 shipped blurbs ("Four-wheeler (Four-wheeler (ATV))"), nothing in the product applies it
+twice today, and it is a trap for whoever next caches a cleaned string (see the eighty-fourth run's Needs
+Harshil). Which of the three ways a guest is told a shop's state is the right one: the desktop listing page
+spells it out, the phone sheet, the cards and the static page print the code, and `WebListing.tsx` carries its
+own byte-identical copy of the `REGION_NAME` table. Whether Otto's own `clip` should read the two cleanups
+`cleanDesc` makes that it does not, so the hero and the chat under it stop printing one sentence two ways. The
+static `/l/` page's remaining fields, now that the blurb, the FAQ, the photos, the star line, the prices, the
+menu, the hours, the length, the cancellation, what is included and the requirements have each been held
+against the app: what is left is the title, the area line and the crumb labels.
