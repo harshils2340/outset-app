@@ -58,3 +58,33 @@ test("closing that sheet is what takes the dead link out of the address bar", ()
     "the address-bar effect is no longer keyed on the sheet, so closing it may not clear the hash",
   );
 });
+
+/**
+ * The same link, in the operator's mail. A claim link outlives its listing too, and the claim screen has
+ * always had the right words for it ("We couldn't find the business named in that link"): they sat behind a
+ * full minute of "Opening your dashboard…", because the link check polls for the listing 120 times at half a
+ * second and had no way to tell "still arriving" from "not coming".
+ */
+const login = readFileSync(new URL("../../components/operator/OpLogin.tsx", import.meta.url), "utf8");
+
+test("the claim link stops waiting once the catalog is in and the listing is not in it", () => {
+  assert.ok(
+    /if \(completeRef\.current && !experienceById\(claimId\)\) \{ setLinkState\("bad"\); return; \}/.test(login),
+    "the claim link check no longer gives up when the catalog is complete without the listing",
+  );
+  // A ref, not the render's value: `tick` is a timer chain and would otherwise hold the value it started with.
+  assert.ok(/completeRef\.current = app\.catalogComplete;/.test(login), "the completeness flag went stale again");
+});
+
+test("a listing still on its way keeps its full minute", () => {
+  // Only an absent listing gives up: one in the catalog whose detail file (and so `claimKey`) has not landed
+  // is still arriving, and cutting that short would call a good link bad on a slow connection.
+  assert.ok(/tries < 120\) setTimeout\(tick, 500\)/.test(login), "the patient path for a listing that is arriving is gone");
+});
+
+test("the screen the owner falls through to names the business, not the link", () => {
+  assert.ok(
+    /We couldn't find the business named in that link/.test(login),
+    "the message an owner meets when their listing has been dropped has changed",
+  );
+});

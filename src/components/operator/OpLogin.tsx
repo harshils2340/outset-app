@@ -1,4 +1,4 @@
-import { useDeferredValue, useEffect, useMemo, useState } from "react";
+import { useDeferredValue, useEffect, useMemo, useState, useRef } from "react";
 import type { Unclaimed } from "../../data/types";
 import { contactFor, experienceById, fromPrice, getCatalog } from "../../lib/catalog";
 import { money } from "../../lib/format";
@@ -133,6 +133,11 @@ export function OpLogin({ claimId, claimToken, compact, onEnter, onBack }: { cla
   const [slow, setSlow] = useState(false);
   const isApi = hasApi();
 
+  // Read inside `tick`, which is a timer chain rather than a render, so it needs the latest value not the
+  // one captured when the chain started.
+  const completeRef = useRef(app.catalogComplete);
+  completeRef.current = app.catalogComplete;
+
   // A signed claim link opens the dashboard directly. The listing file carries a hash of the emailed token;
   // the detail file can arrive a moment after the page, so keep checking for a few seconds.
   useEffect(() => {
@@ -184,6 +189,13 @@ export function OpLogin({ claimId, claimToken, compact, onEnter, onBack }: { cla
       // splash says it is still going once it is past the usual wait.
       tries += 1;
       if (!alive) return;
+      // The whole catalog is in and this listing is not in it, so no further waiting can produce it: every
+      // sync drops listings, and the claim links already mailed keep pointing at them. The form below has
+      // said the right thing about that all along ("We couldn't find the business named in that link"), and
+      // it was sitting behind a full minute of "Opening your dashboard…" for an owner who had done nothing
+      // wrong. A listing that is in the catalog but has no `claimKey` yet is still on its way: only an
+      // absent listing gives up here.
+      if (completeRef.current && !experienceById(claimId)) { setLinkState("bad"); return; }
       if (tries === 20) setSlow(true);
       if (tries < 120) setTimeout(tick, 500);
       else setLinkState("bad");
