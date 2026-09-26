@@ -104,3 +104,33 @@ test("every scene the catalog can pick keeps its shapes and its gradient id", ()
     assert.ok(out.includes("fill=\"url(#gabc123)\""), kind);
   }
 });
+
+/**
+ * The sanitizer writes every value back inside double quotes, whichever quote it arrived in. A value that
+ * carries a double quote of its own therefore closed the attribute early, and what followed was read by the
+ * browser as further attributes: the allowlist and the `on*` check had both already run, on a string that was
+ * no longer a value by the time it reached the DOM.
+ */
+test("a single-quoted value cannot smuggle a handler out of its own quotes", () => {
+  const out = sanitizeSvg(`<svg><path d='M0 0" onload="alert(1)'/></svg>`);
+  assert.ok(!out.includes('onload="'), out);
+  assert.ok(out.includes("&quot;"), "the quote is kept as text, not as the end of the attribute");
+});
+
+test("a single-quoted value cannot smuggle a style out of its own quotes", () => {
+  const out = sanitizeSvg(`<svg><rect id='a" style="position:fixed;top:0;width:100vw;height:100vh'/></svg>`);
+  assert.ok(!out.includes('style="'), out);
+});
+
+test("a value cannot close its own tag", () => {
+  const out = sanitizeSvg(`<svg><rect width='1><script>alert(1)</script'/></svg>`);
+  assert.ok(!/<script/i.test(out), out);
+});
+
+test("escaping leaves every shipped icon and scene exactly as it was", () => {
+  const kinds = ["skydive", "heli", "jetski", "kart", "paintball", "escape", "generic"];
+  for (const raw of [...everyIcon(), ...kinds.map((k) => sceneInner(k, "abc-123"))]) {
+    const out = sanitizeSvg(raw);
+    assert.ok(!/&quot;|&lt;|&gt;/.test(out), "no static art carries a quote or a bracket in a value: " + raw.slice(0, 60));
+  }
+});

@@ -32,6 +32,15 @@ const UNSAFE_URL_PREFIX = /^\s*(javascript|data|vbscript):/i;
 const TAG_RE = /<(\/?)([a-zA-Z][\w:-]*)((?:"[^"]*"|'[^']*'|[^"'>])*)>/g;
 const ATTR_RE = /([a-zA-Z_:][\w:-]*)\s*=\s*("([^"]*)"|'([^']*)')/g;
 
+/**
+ * Every value is written back out inside double quotes, whichever quote it arrived in, so a double quote in
+ * the value would close the attribute early and everything after it would be read by the browser as more
+ * attributes: `<path d='M0 0" onload="alert(1)'/>` came back out as a path with a live onload, past the
+ * allowlist and past the `on*` check, because by then it was no longer part of any value. Angle brackets go
+ * the same way, so a value cannot close the tag either.
+ */
+const escapeAttr = (v: string) => v.replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
 export function sanitizeSvg(html: string): string {
   const source = html
     .replace(/<!--[\s\S]*?-->/g, "")
@@ -76,12 +85,12 @@ export function sanitizeSvg(html: string): string {
       const value = am[3] !== undefined ? am[3] : am[4] ?? "";
       if (attrName.startsWith("on")) continue;
       if (attrName === "style") {
-        if (SAFE_STYLE_VALUE.test(value.trim())) attrsOut += ` style="${value}"`;
+        if (SAFE_STYLE_VALUE.test(value.trim())) attrsOut += ` style="${escapeAttr(value)}"`;
         continue;
       }
       if (!ALLOWED_ATTRS.has(attrName)) continue;
       if (UNSAFE_URL_PREFIX.test(value.trim())) continue;
-      attrsOut += ` ${attrName}="${value}"`;
+      attrsOut += ` ${attrName}="${escapeAttr(value)}"`;
     }
     out += `<${name}${attrsOut}${selfClosed ? " /" : ""}>`;
   }
