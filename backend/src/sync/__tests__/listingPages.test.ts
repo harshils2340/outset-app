@@ -582,3 +582,37 @@ test("a listing whose only priced row was a membership keeps the browse record's
     r.cleanup();
   }
 });
+
+/**
+ * The blurb and the FAQ were the last fields on this page still printed from the raw stored record. The app
+ * reads a blurb through `cleanDesc` on both surfaces and a question and its answer through `tidyLine`, so 977
+ * of these pages described a shop in words the app does not use for it, and 9 of the 72 shipped FAQ entries
+ * printed a shouting question or the Q&A page's own "A." label the app had already taken off.
+ */
+test("the blurb and the FAQ on the page are the words the app prints, not the raw stored ones", () => {
+  const items: Item[] = [
+    item("o-a", {
+      cover: "https://x/a.jpg",
+      blurb: "Fully staffed by USCG licensed captain and crew . Tandem jumps, solo dives, breathtaking views. Book now!",
+      faq: [
+        { q: "HOW MUCH TIME WILL I HAVE?", a: "A. You will have one hour to complete the room." },
+        { q: "Do you sail in bad weather?", a: "- We reschedule when the wind is up." },
+      ],
+    } as Partial<Item>),
+  ];
+  const r = run(items);
+  try {
+    const a = r.read("o-a.html");
+    assert.ok(a.includes("Fully staffed by Coast Guard licensed captain and crew."), "blurb still short of the app's own words");
+    assert.ok(!a.includes("USCG"), "page still prints the jargon the app spells out");
+    assert.ok(!a.includes("crew ."), "page still prints the space the crawl left in front of a full stop");
+    assert.ok(!/Book now/i.test(a), "page still prints the button swept up with the last sentence");
+    assert.ok(a.includes("<h3>How much time will i have?</h3>"), "page still prints a shouting question");
+    assert.ok(a.includes("<p>You will have one hour to complete the room.</p>"), "page still prints the Q&A page's own label");
+    assert.ok(a.includes("<p>We reschedule when the wind is up.</p>"), "page still prints the bullet swept up with the answer");
+    // The description a search engine and a shared link read comes off the same cleaned blurb.
+    assert.ok(a.includes('content="Fully staffed by Coast Guard licensed captain'), "meta description still built from the raw blurb");
+  } finally {
+    r.cleanup();
+  }
+});

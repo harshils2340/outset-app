@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 import { freeCancelBadge } from "../../../src/lib/cancellation.ts";
 import { sayLength } from "../../../src/lib/duration.ts";
 import { displayHours } from "../../../src/lib/hoursText.ts";
-import { splitIncluded, tidyLine } from "../../../src/lib/listingDerive.ts";
+import { cleanDesc, splitIncluded, tidyLine } from "../../../src/lib/listingDerive.ts";
 import { listingFacts } from "../../../src/lib/catalog.ts";
 import type { Unclaimed } from "../../../src/data/types.ts";
 import { METROS } from "../taxonomy/catalog.ts";
@@ -198,7 +198,11 @@ function page(item: Item, opts: { landingHref: string | null; kindPageHref: stri
   const site = publicSite();
   const canonical = `${site}l/${item.id}.html`;
   const hashUrl = `${site}#o=${esc(item.id)}`;
-  const blurb = typeof item.blurb === "string" ? item.blurb : "";
+  // Through the same two steps both app surfaces read a blurb through, not the raw stored prose. Read raw, 977
+  // of these pages printed a description the app prints differently for the same shop: the shop's own jargon
+  // left short ("USCG licensed captain", "Venue is BYOB", "twin 550 HP engines"), the space the crawl left in
+  // front of a comma or a full stop, and the button label swept up with the last sentence.
+  const blurb = typeof item.blurb === "string" && item.blurb ? cleanDesc(item.blurb).replace(/\s+(Book|Learn more|Read more|Reserve)\.?$/i, "") : "";
   const area = String(item.area || "");
   const photos = photosOf(item);
   const menu = menuRows(item);
@@ -235,7 +239,12 @@ function page(item: Item, opts: { landingHref: string | null; kindPageHref: stri
     .filter((h) => !reqKeys.has(factKey(h)))
     .slice(0, MAX_LIST_ITEMS)
     .map(tidyLine);
-  const faq = ((item as { faq?: { q: string; a: string }[] }).faq || []).slice(0, MAX_FAQ);
+  // Through the same rule both app surfaces read a question and its answer through. Read raw, 9 of the 72
+  // shipped entries printed differently here: a question still shouting ("HOW MUCH TIME WILL I HAVE?"), the
+  // Q&A page's own "A." label in front of the answer, and the bullet or dash the crawl swept up with it.
+  const faq = ((item as { faq?: { q: string; a: string }[] }).faq || [])
+    .slice(0, MAX_FAQ)
+    .map((f) => ({ q: tidyLine(String(f.q || "")), a: tidyLine(String(f.a || "")) }));
   // The same rule the app's cards and sheets read, so the page a search engine lands on and the page the
   // app draws never state one shop's length two ways.
   const durRaw = (item as { dur?: string }).dur || "";
