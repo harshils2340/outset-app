@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { writeLandingPages, type Item } from "../pages.ts";
+import { bookablePages, priceOf, writeLandingPages, type Item } from "../pages.ts";
 import { clip, writeListingPages } from "../listingPages.ts";
 
 /**
@@ -532,6 +532,52 @@ test("requirements on the page are the rules the app reads, and a shop's selling
     const c = r.read("o-c.html");
     assert.ok(!c.includes("<h2>Requirements</h2>"), "page headed an empty requirements list");
     assert.ok(!c.includes("<h2>Highlights</h2>"), "page headed an empty highlights list");
+  } finally {
+    r.cleanup();
+  }
+});
+
+/**
+ * The static pages are built from the committed files straight, so they never ran the app's own menu rule: the
+ * page a search engine and a shared link open kept offering rows the app had stopped offering, and quoted their
+ * prices. 283 shipped listings listed one.
+ */
+test("a page offers only what the app offers, and prices it the same way", () => {
+  const items: Item[] = [
+    item("o-museum", {
+      cover: "https://x/a.jpg",
+      options: [
+        { name: "Memberships", detail: "Individual", price: 10 },
+        { name: "Past Exhibitions", detail: "", price: 12 },
+        { name: "Guided Tour", detail: "", price: 30 },
+      ],
+      // What an earlier sync wrote off rows this page no longer carries.
+      from: 10,
+    } as Partial<Item>),
+  ];
+  const r = run(items);
+  try {
+    const html = r.read("o-museum.html");
+    assert.doesNotMatch(html, /Memberships/, "a year of the place is not a row a guest books");
+    assert.doesNotMatch(html, /Past Exhibitions/, "an archive is not a row a guest books");
+    assert.match(html, /Guided Tour/);
+    // The menu's own cheapest, not the browse record's stale `from`.
+    assert.match(html, /\$30/);
+    assert.doesNotMatch(html, /\$10\b/);
+    // The same number a city card prints, which reads priceOf off the same record.
+    assert.equal(priceOf(bookablePages(items)[0]), 30);
+  } finally {
+    r.cleanup();
+  }
+});
+
+test("a listing whose only priced row was a membership keeps the browse record's price off the page", () => {
+  // o-goulbournmuseum-ca ships one option, "Memberships" at $10, and an empty service list.
+  const r = run([item("o-only", { cover: "https://x/b.jpg", options: [{ name: "Memberships", detail: "", price: 10 }], reviews: 40, from: 10 } as Partial<Item>)]);
+  try {
+    const html = r.read("o-only.html");
+    assert.doesNotMatch(html, /Memberships/);
+    assert.doesNotMatch(html, /\$10\b/, "with nothing bookable priced, the page states no price rather than the membership's");
   } finally {
     r.cleanup();
   }

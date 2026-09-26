@@ -8,7 +8,7 @@ import { listingFacts } from "../../../src/lib/catalog.ts";
 import type { Unclaimed } from "../../../src/data/types.ts";
 import { METROS } from "../taxonomy/catalog.ts";
 import { REGION_NAME, countryOfArea, regionOfArea } from "../../../src/data/regions.ts";
-import { KINDS, cardPhoto, fileFor, hasListingPage, pageFooter, placeName, priceOf, publicSite, socialCard, type Item, type Kind } from "./pages.ts";
+import { KINDS, bookablePages, cardPhoto, fileFor, hasListingPage, pageFooter, placeName, priceOf, publicSite, socialCard, type Item, type Kind } from "./pages.ts";
 
 /**
  * One static page per listing, /l/<id>.html: the business's own name, area, blurb, menu, hours, policies, FAQ
@@ -316,7 +316,9 @@ export type ListingPagesResult = { pages: number; totalBytes: number; avgBytes: 
  * reliable way to know whether "<art> in <metro>" actually got a page, since a metro under MIN_METRO_LISTINGS or
  * an all-guessed kind gets none. Call writeLandingPages first and pass its result straight through.
  */
-export function writeListingPages(items: Item[], landingPages: { existingPages: Set<string> }, opts: { publicDir?: string } = {}): ListingPagesResult {
+export function writeListingPages(rawItems: Item[], landingPages: { existingPages: Set<string> }, opts: { publicDir?: string } = {}): ListingPagesResult {
+  // Same menu the app shows and the city pages quote: see bookablePages in pages.ts.
+  const items = bookablePages(rawItems);
   const publicDir = opts.publicDir || defaultPublicDir;
   const dir = join(publicDir, "l");
   mkdirSync(dir, { recursive: true });

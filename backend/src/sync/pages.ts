@@ -5,6 +5,7 @@ import { METROS } from "../taxonomy/catalog.ts";
 import { GUIDES } from "../../../src/data/guides.ts";
 import { REGION_NAME, regionOfArea } from "../../../src/data/regions.ts";
 import { displayHours } from "../../../src/lib/hoursText.ts";
+import { bookableMenu } from "../../../src/lib/menuRow.ts";
 
 /**
  * Programmatic landing pages: one static page per activity and metro, "Escape rooms in Toronto, Ontario", plus
@@ -248,12 +249,37 @@ export function singular(plural: string): string {
 
 /** The lowest price the operator publishes, from whichever shape the item arrived in. */
 export function priceOf(i: Item): number | null {
-  const prices = [
-    ...(i.options || []).map((o) => o.price),
-    ...(i.services || []).flatMap((s) => s.variants.map((v) => v.price)),
-    i.from,
-  ].filter((n): n is number => typeof n === "number" && n > 0);
-  return prices.length ? Math.min(...prices) : null;
+  // The shop's own menu is the whole truth about its prices when it has one, which is the rule `fromPrice` reads
+  // in the app (`src/lib/catalog.ts`): the browse record's `from` fills the gap when nothing on the menu is
+  // priced, and never undercuts a menu that is. Mixed into one minimum it did undercut it, because `from` was
+  // computed by an earlier sync off rows the menu no longer carries: 23 pages would have quoted a membership
+  // price the listing itself had stopped offering.
+  const menu = [...(i.options || []).map((o) => o.price), ...(i.services || []).flatMap((s) => s.variants.map((v) => v.price))].filter(
+    (n): n is number => typeof n === "number" && n > 0,
+  );
+  if (menu.length) return Math.min(...menu);
+  return typeof i.from === "number" && i.from > 0 ? i.from : null;
+}
+
+/**
+ * Every listing, with the rows a guest cannot book taken off it, which is what these pages are built from.
+ *
+ * `bookableMenu` is the one rule for a menu row: an archive ("Past Exhibitions"), an unpriced FAQ heading and a
+ * year of the place ("Memberships") are none of them a slot, and the app runs it over every record it loads. The
+ * static pages read the committed files straight and ran it over nothing, so the page a search engine and a
+ * shared link open kept offering what the app had stopped offering, and `priceOf` quoted those rows. 283 pages
+ * listed one.
+ *
+ * `Item` says less about a service tier than the files carry (it leaves out the `optionIdx` every variant has),
+ * so the shape is stated here for the one call rather than loosened for every reader of `Item`.
+ */
+type MenuShape = {
+  options?: { name: string; price: number | null }[];
+  services?: { name: string; variants: { price: number | null; optionIdx: number }[] }[];
+  addons?: { name: string }[];
+};
+export function bookablePages(items: Item[]): Item[] {
+  return items.map((i) => bookableMenu(i as Item & MenuShape) as Item);
 }
 
 /**
@@ -574,7 +600,8 @@ ${pageFooter()}
  */
 export type LandingPagesResult = { pages: number; metroPages: number; cityPages: number; kindPages: number; urls: string[]; existingPages: Set<string> };
 
-export function writeLandingPages(items: Item[], opts: { publicDir?: string } = {}): LandingPagesResult {
+export function writeLandingPages(rawItems: Item[], opts: { publicDir?: string } = {}): LandingPagesResult {
+  const items = bookablePages(rawItems);
   const publicDir = opts.publicDir || defaultPublicDir;
   const dir = join(publicDir, "p");
   mkdirSync(dir, { recursive: true });
