@@ -5138,6 +5138,78 @@ fix: the old splitter answers "50 per person." and "com/waiver.", the old `daySt
   should ask for `npm run typecheck`. The confirm screen's failure line has still not been seen at 400px.
 
 
+## 26 September 2026, seventy-ninth run (06:15 to 06:50 UTC)
+
+**Chosen, and why.** The one line on Not yet checked that names code which mails a real business unattended:
+"The Otto outreach ramp end to end: `otto-ramp.mts`, `outreach-handoff.mts` and `outreach-daily.sh` are
+read, but no draft run, dry run or hand-send has been driven from here", and beside it the outreach list
+script. Everything the brief names is Verified, nothing has landed since the seventy-eighth entry, and an
+email that goes out wrong is the thing an operator cannot unsee. So the hour went to driving the outreach
+path rather than reading it: a local SQLite seeded with nine operators, `generateOttoDrafts`, both queues,
+a dry run, the handoff export and `outreach-list.mts`, all with every key empty.
+
+**Found and fixed.** Five defects across four commits.
+
+- **Every listing email the ramp sends lost the sentence that personalises it** (`0c8ea149`). A queue row
+  joins two tables and so holds two ids. `ottoQueue` names the operator's `o.id AS opid` and uses it;
+  `listingQueue` selected only `d.id`, and `sendOutreach` handed the whole row to `composeOutreach`, which
+  reads a page's facts by `op.id`. So every send looked up an operator that does not exist. An owner with a
+  cover, four photos, two FareHarbor-priced trips and a cancellation policy on file was offered "a complete
+  page, all set up and ready to go" instead of "a complete page using services, your photos and your
+  cancellation policy", and the line saying the prices came from their own FareHarbor listings was dropped.
+  Nothing showed it: the draft stored in SQLite is written from the operator and still carried the good copy,
+  `--dry` prints only the subject, and the `--to=` sample branch fetches `SELECT o.*`, so a sample to
+  yourself read correctly while the batch did not.
+- **The handoff export ran with none of the pre-send checks** (`e757df1e`). It writes a CSV of composed
+  emails for a person to send by hand and marks each row so the ramps skip it. Driven here with no
+  `DATABASE_URL` and no `CLAIM_SECRET` it exported three targets, marked all three and would have mailed the
+  file, while the suppression list could not be read at all, every unsubscribe link was signed with a secret
+  this machine had just invented, and the footer carried no postal address. It printed none of it. Both send
+  paths refuse in exactly that state.
+- **The outreach list's suppression clause was backwards** (`1e777e91`). `lower(trim(o.email)) not in
+  (select email from mail_unsub)`: that table stores a hash and has no `email` column, and SQLite resolves
+  the name against the outer query instead of failing, so the subquery became `select o.email`. Empty it
+  suppressed nobody; with one row in it, it kept an operator only when its stored address was not already
+  lower-cased and trimmed, so the list emptied of nearly everyone. It reads the hashes now.
+- **Every `listing_url` in that list was dead** (`1e777e91`). It pointed at
+  `https://onoutset.com/listing/<slug>`, a path this site has never served, built by a second hand-rolled
+  slug that differed from `catalogId` besides. It is `/#o=<catalog id>` now.
+- **A day the ramp sent nothing climbed a rung** (`c5beca30`). Both ramps recorded the day at the end and
+  counted those days as the rung, so a day with no headroom left under the combined 50, or an empty queue,
+  stepped the ramp up for mail that never went out: a first ever run that came to nothing put the next
+  weekday on 25 having sent not one email. The two scripts were line-for-line copies of the same state
+  handling, so it moved to `src/outreach/ramp.ts` to be tested. `ranDays` still answers "has this already
+  run today"; `sentDays` answers the rung, and an existing state file keeps its place.
+
+**Swept and clean.** `generateOttoDrafts` over nine seeded operators against the four exclusions it claims: a
+government-run marina by name, a shop with no phone, a business filed outside `family = 'water'`, and a role
+inbox scraped off somebody else's domain (a river walk listing a Legoland address), all four correctly out,
+and two operators sharing one inbox correctly one draft. The dry run leaves every row as it found it.
+`dayStartIso` on a Toronto midnight, `GET /outreach/drafts` against the admin gate above it (closed, and the
+Host-header hole already fixed), and the weekend exit on both ramps.
+
+**Verification.** Backend `npm test` 829 pass, 0 fail, 2 skipped, up 16. App `npm test` 871 pass, 0 fail.
+`tsc -b` and `tsc --noEmit -p .` clean on the guest app, the backend type check clean but for TS5097. The
+full rehearsal was run, because the four commits touch `backend/src` and `backend/scripts`: 57 of 57 against
+a local Postgres 16 on 5433 with TLS on and the Chromium on disk, no Stripe, mail or GitHub key. Every fix
+was driven against the code before it: the old send path writes the generic sentence where the stored draft
+writes the specific one, the old handoff exports and marks three rows in silence, and one row in
+`mail_unsub` drops an operator whose address is stored tidily.
+
+**Needs Harshil.**
+
+- **The listing campaign has been sending the weaker email all along.** It is paused since 25 September, so
+  nothing has gone out wrong since the fix, but every listing mail before that said "a complete page"
+  where it meant to name the shop's own photos and prices. Worth knowing before judging that campaign's
+  reply rate.
+- **Anyone already handed off may have had a dead unsubscribe link.** If a handoff CSV was ever exported
+  from a machine without `CLAIM_SECRET`, the unsubscribe link in those bodies cannot be verified by the API
+  and the footer had no postal address. `backend/data/exports/` on that machine says whether one was.
+- Still open from the seventy-eighth run: local `main` sits on `c3a9bfd0`, five "Otto page" commits that
+  `origin/main` was force-updated away from. Tonight's work is on `origin/main`; that stale ref was left
+  alone again. The confirm screen's failure line has still not been seen at 400px.
+
+
 ## Coverage
 
 The catalog is 48,198 listings as of the 23 September sync, 1,873 of them Viator partner rows. Counts below
@@ -5741,7 +5813,12 @@ cards and the listing page read: a picked state or province, and the 6,492 partn
 coordinates between them. That `tsc -b`, and not `tsc --noEmit -p .`, is what type-checks the guest app, now a
 test of its own in the unit suite.
 
-**Not yet checked.** Anything in the grounded fallback that needs a real Cohere key: no key exists here, so every answer checked tonight was a payload shaped by hand, and what the live model actually writes, what its citation offsets index into when it answers in more than one content part, and whether `citation_options` FAST cites densely enough for `keepCited` to keep a good answer are all unread. `npm run otto:eval` for the same reason. Whether a price the model reformats should be dropped: a shop publishing "$85" and a model writing "$85.00" loses the sentence (see this run's Needs Harshil). Whether the grounded answer should reach the static `/l/` page and the phone sheet, which do not call it. The Otto outreach ramp end to end: `otto-ramp.mts`, `outreach-handoff.mts` and `outreach-daily.sh` are read, and the day boundary is now swept, but no draft run, dry run or hand-send has been driven from here. Whether `state.ranDays` growing without bound in `outreach-otto-ramp.json`, and being written only after a send loop that can run four hours, is worth changing, given that `sentToday` is what actually holds the ceiling. Whether the Otto email may tell a shop "Bookings drop straight into your calendar" when
+The outreach path driven rather than read, on the code that mails a business that never asked: the Otto
+draft run against every exclusion it claims, both send queues and which id each row carries, the dry run's
+writes, the handoff export and the marks it leaves, both ramps' rung arithmetic and their weekend exit, the
+outreach list script, and `GET /outreach/drafts` against the admin gate above it.
+
+**Not yet checked.** Anything in the grounded fallback that needs a real Cohere key: no key exists here, so every answer checked tonight was a payload shaped by hand, and what the live model actually writes, what its citation offsets index into when it answers in more than one content part, and whether `citation_options` FAST cites densely enough for `keepCited` to keep a good answer are all unread. `npm run otto:eval` for the same reason. Whether a price the model reformats should be dropped: a shop publishing "$85" and a model writing "$85.00" loses the sentence (see this run's Needs Harshil). Whether the grounded answer should reach the static `/l/` page and the phone sheet, which do not call it. A real Otto send or a real hand-send: the draft run, the queue, the dry run and the handoff export are all driven now, but nothing has left a mailbox from here, and `outreach-daily.sh` is launchd on the Mac and cannot be. Whether `state.ranDays` and `state.sentDays` growing without bound in `outreach-otto-ramp.json`, and being written only after a send loop that can run four hours, is worth changing, given that `sentToday` is what actually holds the ceiling. Whether the Otto email may tell a shop "Bookings drop straight into your calendar" when
 both `/voice` endpoints are read-only and syncing with an operator's own booking software is deferred on
 purpose, which is this run's first Needs Harshil. Whether the Otto subject should be shortened or the question
 fronted, since 201 of 4,728 run past 78 characters and a phone cuts the hook off almost all of them. Whether a
@@ -5854,8 +5931,8 @@ search result look like for a kind with no scene and no photo, driven in a brows
 in before the next sync rewrites `claim-index.json`. Whether a claimed shop's own email and website should ever
 appear on the guest page, which they deliberately do not. Whether an unsubscribe token should outlive a
 `CLAIM_SECRET` rotation, and whether `GET /mail/unsubscribed` should stay public (see this run's Needs
-Harshil). The outreach send driven against a live API rather than read: a real draft run, a real `--dry`,
-and what the drafts table looks like after a send that was refused. Whether "this takes the page down" in
+Harshil). The outreach send against a live API rather than a local SQLite, and what the
+drafts table looks like after a send that was actually refused by a mail server. Whether "this takes the page down" in
 the claim email should say what it does, which is a `mailto:` and one business day. Whether the party a guest
 names should reach the shortlist or the quote at all: it is read and then used for nothing, and FareHarbor's
 own minimum and maximum party sizes per rate are read and drawn by no surface. Whether the comparison line
@@ -5877,8 +5954,9 @@ answered "ok" and sends nothing, on purpose, so the address cannot be probed. Wh
 able to price an option at zero and mean free: every surface reads a zero as no price and quotes "Pay on
 site". Any live vendor against its real server rather than a stub. Whether a sentence naming two
 regions ("ontario california") should take the first one it recognises, which it does. Whether a budget read
-out of "under 18s" should filter prices, which it does. The outreach list
-script, `scripts/outreach-list.mts`, and the `GET /outreach/drafts` route it reads. Whether Gmail's one-click
+out of "under 18s" should filter prices, which it does. Whether the outreach list's
+`quality = good` bar and its score are the right order to mail in, which is a supply judgement rather than a
+rule. Whether Gmail's one-click
 `List-Unsubscribe` headers should be sent after all: the code deliberately leaves them off to stay out of
 Promotions, which is a deliverability bet against a bulk-sender expectation. Whether `concierge.css`'s 330 lines for a
 panel nothing renders should be deleted or a component written for them (see the fortieth run's Needs
