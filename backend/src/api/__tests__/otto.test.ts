@@ -84,3 +84,18 @@ test("without a key the route says it is off, and the page keeps the rules' line
     process.env.COHERE_API_KEY = key;
   }
 });
+
+test("the same words after a different conversation are a different question", async () => {
+  resetOttoForTests();
+  calls = 0;
+  const follow = { ...good, question: "and for kids?" };
+  const first = await ask({ ...follow, history: [{ who: "me", t: "how much is the sunset sail" }, { who: "them", t: "From $34 per person." }] });
+  assert.equal(first.status, 200);
+  const second = await ask({ ...follow, history: [{ who: "me", t: "how much is the snorkel trip" }, { who: "them", t: "From $60 per person." }] });
+  assert.equal(second.status, 200);
+  assert.equal(calls, 2, "the second guest was not handed the first one's answer");
+  // The same conversation asking again is still one call.
+  const again = await ask({ ...follow, history: [{ who: "me", t: "how much is the snorkel trip" }, { who: "them", t: "From $60 per person." }] });
+  assert.equal(again.status, 200);
+  assert.equal(calls, 2, "the same conversation is still answered from the cache");
+});

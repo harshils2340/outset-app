@@ -72,10 +72,18 @@ function readBody(raw: unknown): Body | string {
   return { id, shop, question, facts, history };
 }
 
+/**
+ * What makes two asks the same ask. The listing, the question, the facts behind it, and the turns in front
+ * of it: the last few turns go to the model with the question, so a question that leans on them ("and for
+ * kids?", "is that per person?") has a different answer in a different conversation. Keyed without them,
+ * the second guest to ask "and for kids?" on a listing got the first guest's answer, about whichever trip
+ * the first guest had been asking after.
+ */
 function cacheKey(b: Body): string {
   const h = createHash("sha1");
   h.update(b.id + "\n" + b.question.toLowerCase().replace(/\s+/g, " ") + "\n");
   for (const f of b.facts) h.update(f.id + "|" + f.text + "\n");
+  for (const t of b.history) h.update(t.who + "|" + t.t + "\n");
   return h.digest("hex");
 }
 
