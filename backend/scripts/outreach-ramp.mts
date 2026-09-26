@@ -3,6 +3,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { sendOutreach } from "../src/outreach/send.ts";
 import { sentToday } from "../src/outreach/sendOtto.ts";
+import { recordRun, rungFor, type RampState } from "../src/outreach/ramp.ts";
 
 /**
  * One call a day from the pipeline scheduler, weekdays only: a warm-up ramp so day one is never a full batch.
@@ -35,7 +36,6 @@ const STATE_PATH = join(DATA_DIR, "outreach-ramp.json");
  */
 const RAMP = [15, 20, 25, 30];
 
-type State = { firstDay: string; ranDays: string[] };
 
 function todayIn(tz: string): { key: string; weekday: number } {
   const parts = new Intl.DateTimeFormat("en-US", { timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit", weekday: "short" }).formatToParts(new Date());
@@ -44,15 +44,15 @@ function todayIn(tz: string): { key: string; weekday: number } {
   return { key: `${get("year")}-${get("month")}-${get("day")}`, weekday };
 }
 
-function loadState(): State {
+function loadState(): RampState {
   try {
-    return existsSync(STATE_PATH) ? (JSON.parse(readFileSync(STATE_PATH, "utf8")) as State) : { firstDay: "", ranDays: [] };
+    return existsSync(STATE_PATH) ? (JSON.parse(readFileSync(STATE_PATH, "utf8")) as RampState) : { firstDay: "", ranDays: [] };
   } catch {
     return { firstDay: "", ranDays: [] };
   }
 }
 
-function saveState(s: State): void {
+function saveState(s: RampState): void {
   mkdirSync(DATA_DIR, { recursive: true });
   writeFileSync(STATE_PATH, JSON.stringify(s, null, 2));
 }
@@ -68,21 +68,19 @@ if (state.ranDays.includes(today)) {
   console.log(`outreach-ramp: already ran today (${today})`);
   process.exit(0);
 }
-if (!state.firstDay) state.firstDay = today;
 
-// The rung on the ramp is how many weekdays this job has actually run on, not the calendar date, so a weekend
-// or a worker outage never skips a rung: day 1 the first time this ever runs, day 2 the next weekday it runs.
-const day = state.ranDays.length + 1;
-const rampLimit = RAMP[Math.min(day, RAMP.length) - 1];
+// The rung is how many weekdays this job has actually sent on, not the calendar date and not the launches:
+// a weekend, an outage or a day with no headroom left under the ceiling never moves it. See ramp.ts.
+const { day, limit: rampLimit } = rungFor(state, RAMP);
 // The Otto campaign (otto-ramp.mts) sends through this same Gmail identity and can run before or after this
 // job on any given day. sentToday() counts sends from either campaign, so whichever ramp runs second always
 // sees what the first one already used and never pushes the mailbox's combined total past 100/day.
 const COMBINED_CEILING = 50;
 const limit = Math.max(0, Math.min(rampLimit, COMBINED_CEILING - sentToday()));
 
-console.log(`outreach-ramp: day ${day} of the ramp (first run ${state.firstDay}), ramp says ${rampLimit}, sending up to ${limit}`);
+console.log(`outreach-ramp: day ${day} of the ramp (first run ${state.firstDay || today}), ramp says ${rampLimit}, sending up to ${limit}`);
 const result = await sendOutreach({ limit, dry: false });
 console.log(`outreach-ramp: ${JSON.stringify(result)}`);
 
-state.ranDays.push(today);
-saveState(state);
+// The day is recorded either way, so a second launch today does nothing; the rung only moves on mail sent.
+saveState(recordRun(state, today, result.sent));
