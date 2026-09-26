@@ -101,8 +101,13 @@ export async function recordUnsub(email: string, reason: SuppressReason = "unsub
  */
 export type Suppression = { hashes: Set<string>; fromDb: boolean; fromApi: boolean; error?: string };
 
-/** Hashes on this machine plus Postgres when this process can reach it. Does not call the API. */
-export async function localSuppression(): Promise<Suppression> {
+/**
+ * The hashes this machine itself recorded, and nothing else. The list stores a hash and never the address,
+ * so it can only be read this way: a query comparing an address column against `mail_unsub` is comparing it
+ * against a table that has no address column, and SQLite resolves that name against the outer query instead
+ * of failing. Never throws; a database with no such table is an empty list.
+ */
+export function recordedLocally(): Set<string> {
   const hashes = new Set<string>();
   try {
     db.exec("CREATE TABLE IF NOT EXISTS mail_unsub (email_hash TEXT PRIMARY KEY, at TEXT NOT NULL)");
@@ -110,6 +115,12 @@ export async function localSuppression(): Promise<Suppression> {
   } catch {
     /* no local table */
   }
+  return hashes;
+}
+
+/** Hashes on this machine plus Postgres when this process can reach it. Does not call the API. */
+export async function localSuppression(): Promise<Suppression> {
+  const hashes = recordedLocally();
   if (!pgConfigured()) return { hashes, fromDb: false, fromApi: false, error: "DATABASE_URL is not set" };
   try {
     const file = await getDoc<UnsubFile>(FILE);

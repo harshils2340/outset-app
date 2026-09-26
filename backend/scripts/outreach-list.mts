@@ -12,7 +12,18 @@ import "../src/env.ts";
 import { writeFileSync } from "node:fs";
 import { db } from "../src/db/client.ts";
 import { detectVendor } from "../src/enrich/vendors.ts";
-import { vendorLabel, vendorLine } from "../src/outreach/drafts.ts";
+import { catalogId, vendorLabel, vendorLine } from "../src/outreach/drafts.ts";
+import { emailHash, recordedLocally } from "../src/lib/unsub.ts";
+
+/**
+ * The suppression list stores a hash of an address and never the address, so it cannot be joined to in SQL.
+ * This used to read `lower(trim(o.email)) not in (select email from mail_unsub)`: mail_unsub has no `email`
+ * column, so SQLite resolved that name against the outer query, the subquery became `select o.email` once
+ * per suppressed row, and the clause read "keep this operator only if its stored address is not already
+ * lower-cased and trimmed". Empty it let everyone through and suppressed nobody; with one row in it, it
+ * dropped every operator whose address was stored tidily, which is nearly all of them.
+ */
+const suppressed = recordedLocally();
 
 type Row = Record<string, string | number | null>;
 const ops = db.prepare(`
@@ -27,7 +38,6 @@ const ops = db.prepare(`
     (case when exists (select 1 from facts f where f.operator_id=o.id and f.fact_key in ('hours_text','hours')) then 1 else 0 end) as has_hours
   from operators o
   where o.origin not in ('demo','test') and o.email like '%@%' and o.website is not null and o.country in ('US','CA')
-    and lower(trim(o.email)) not in (select email from mail_unsub)
     -- Museums, theme parks, waterparks, aquariums and zoos are large, professionally-run institutions, not
     -- the small local operators this pitch is written for (free 5%-commission listing, cold email to a
     -- generic inbox): checked 22 September 2026, this exact ordering put Disney Springs, the 9/11 Memorial,
@@ -50,6 +60,7 @@ const KNOWN = new Set(["fareharbor","peek","xola","bookeo","checkfront","rezdy",
 let detected = 0;
 const out: Row[] = [];
 for (const o of ops) {
+  if (suppressed.has(emailHash(String(o.email)))) continue;
   let vendor = String(o.calendar_vendor || "");
   const vals = byOp.get(String(o.id)) || [];
   if (!vendor) {
@@ -59,8 +70,7 @@ for (const o of ops) {
   const reviews = Number(o.review_count) || 0;
   const good = o.has_cover === 1 && Number(o.photos) >= 3 && Number(o.priced_lines) >= 1 && (reviews >= 5 || Number(o.written_reviews) >= 1);
   const score = (o.has_cover as number) * 3 + Math.min(Number(o.priced_lines), 5) + (Number(o.widget_lines) > 0 ? 3 : 0) + Math.min(Number(o.photos), 6) / 2 + (reviews >= 5 ? 2 : 0) + (Number(o.written_reviews) > 0 ? 2 : 0) + (o.has_cancellation as number) + (o.has_hours as number);
-  const slug = "o-" + String(o.domain).toLowerCase().replace(/^www\./, "").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 48);
-  out.push({ ...o, booking_software: vendor || "", booking_software_name: vendorLabel(vendor) || "", vendor_line: vendorLine(vendor, Number(o.widget_lines) > 0) || "", quality: good ? "good" : "", listing_url: "https://onoutset.com/listing/" + slug, score: Math.round(score * 10) / 10 });
+  out.push({ ...o, booking_software: vendor || "", booking_software_name: vendorLabel(vendor) || "", vendor_line: vendorLine(vendor, Number(o.widget_lines) > 0) || "", quality: good ? "good" : "", listing_url: "https://onoutset.com/#o=" + catalogId(String(o.domain)), score: Math.round(score * 10) / 10 });
 }
 out.sort((a, b) => (b.quality === "good" ? 1 : 0) - (a.quality === "good" ? 1 : 0) || Number(b.score) - Number(a.score) || (Number(b.review_count) || 0) - (Number(a.review_count) || 0));
 const cols = ["quality","score","name","email","booking_software","booking_software_name","vendor_line","priced_services","priced_lines","widget_lines","photos","has_cover","review_count","rating","written_reviews","has_cancellation","has_hours","city","region","country","family","category_id","phone","website","domain","listing_url","id"];
