@@ -10,6 +10,8 @@ import { draftOttoCopy } from "../src/outreach/ottoDrafts.ts";
 import { composeOutreach } from "../src/outreach/drafts.ts";
 import { listingQueue, operatorOf, type ListingRow } from "../src/outreach/send.ts";
 import { ottoQueue } from "../src/outreach/sendOtto.ts";
+import { outreachBlockers } from "../src/outreach/guards.ts";
+import { mailPostal } from "../src/lib/unsub.ts";
 
 /**
  * Hands a slice of an outreach queue to a person who will send it by hand from their own mailbox, so the
@@ -20,6 +22,8 @@ import { ottoQueue } from "../src/outreach/sendOtto.ts";
  *   npx tsx scripts/outreach-handoff.mts --kind=listing --limit=100 --dry
  *
  * What it does, in order:
+ *   0. Runs the same pre-send checks the daily ramps run (guards.ts) and refuses outright if any of them
+ *      stands, because a row in this file is a real email to a real business, sent by hand.
  *   1. Takes the next rows the ramp itself would send (same query, same order, same skips: unsubscribed,
  *      junk addresses, domains with no mail).
  *   2. Composes each mail fresh, so the CSV carries today's copy with the footer every send needs
@@ -41,6 +45,23 @@ if (kind !== "otto" && kind !== "listing") throw new Error("--kind must be otto 
 
 const suppression = await loadSuppression();
 const blocked = suppression.hashes;
+// The same five checks the two send paths run, for the same reason: this file is mail. A row exported here
+// is copied into somebody's mailbox and sent by hand, so a suppression list nobody could read, an
+// unsubscribe link signed with a secret the API has never seen, or a footer with no postal address reaches a
+// real business exactly as it would through sendOutreach. A dry run prints them and carries on, because
+// printing is the point of a dry run; anything that writes the file, marks the queue or mails the CSV stops.
+const blockers = outreachBlockers({
+  claimSecret: process.env.CLAIM_SECRET || "",
+  mailFrom: process.env.MAIL_FROM || "",
+  postal: mailPostal(),
+  unsubUrl: unsubPageUrl("owner@example.com"),
+  suppression,
+});
+for (const b of blockers) console.error("outreach handoff: " + b);
+if (!dry && blockers.length) {
+  console.error("handoff: nothing exported, nothing marked, nothing emailed. Fix the above, or pass --dry to see the batch anyway.");
+  process.exit(1);
+}
 // Over-fetch: some rows drop out (unsubscribed since drafting, dead domains), and the file should still be full.
 const rows = kind === "otto" ? ottoQueue(limit * 2) : listingQueue(limit * 2, {});
 

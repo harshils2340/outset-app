@@ -1,9 +1,10 @@
 import { strict as assert } from "node:assert";
 import test from "node:test";
 import { randomUUID } from "node:crypto";
-import { mkdtempSync } from "node:fs";
+import { mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 /**
  * Which id a send queue row carries, and which one the copy is written from.
@@ -87,4 +88,20 @@ test("the otto queue names the operator's id the same way", () => {
   assert.ok(r);
   assert.equal(r.opid, operatorId);
   assert.notEqual(r.id, operatorId);
+});
+
+/**
+ * The handoff export is mail: a row in that CSV is copied into somebody's mailbox and sent by hand to a real
+ * business. It ran with none of the checks both send paths run, so an unreadable suppression list, an
+ * unsubscribe link signed with a secret the API has never seen, or a footer with no postal address exported,
+ * marked the queue and emailed the file without a word. Asserted against the source because the guard is
+ * about the order the script does things in, which is only true of the script.
+ */
+test("the handoff export runs the same pre-send checks and refuses", () => {
+  const src = readFileSync(join(dirname(fileURLToPath(import.meta.url)), "../../../scripts/outreach-handoff.mts"), "utf8");
+  assert.match(src, /outreachBlockers\(\{/);
+  assert.match(src, /if \(!dry && blockers\.length\)/);
+  // Before the queue is read, the file is written, the rows are marked or the CSV is mailed.
+  assert.ok(src.indexOf("blockers.length") < src.indexOf("listingQueue("), "the checks run before any row is read");
+  assert.ok(src.indexOf("blockers.length") < src.indexOf("writeFileSync(file"), "the checks run before the file is written");
 });
