@@ -35,6 +35,33 @@ export const FAQ_ROW =
   /^(?:what|why|how|who|where|when|which)\s+(?:is|are|was|were|do|does|did|can|could|will|would|should|much|many|long|high|deep|far|big|old|tall|fast)\b.*\?$|^(?:do|does|did|is|are|was|were|can|could|will|would|should|am)\s+(?:i|we|you|they|it|he|she|there|all|any|my|your|our|pets|kids|children|the)\b.*\?$/i;
 
 /**
+ * A year of a place, not a slot at it: "Memberships", "Season Passes", "2026 Outdoor Season Memberships",
+ * "Gift Cards". A guest cannot turn up at two o'clock on Saturday for an annual membership, and an operator
+ * cannot accept a party of four for one, so it is not a row the booking box may offer and not a price a card
+ * may quote.
+ *
+ * The sync already said so about services (`contacts.ts` drops the same words from the menu it publishes) and
+ * said nothing about options, which is where a booking box with no services to show gets its rows: 285 shipped
+ * listings offer one, 220 of them a row named plainly "Memberships", and on 74 it is the only row they have, so
+ * the sheet preselects it and asks for a date. 102 price their card from one, and the page those cards open
+ * lists no such service at all: Goulbourn Museum says "From $10" for an individual annual membership and
+ * Air Classics Museum of Aviation "From $15", while both menus are empty.
+ *
+ * A row that names a single visit as well keeps its place, because that visit's price is the shop's own and
+ * real: "Admission & Memberships" at o-cityofrevelstoke-com is $5 for a teen and $8 for an adult in the pool,
+ * "Memberships & Court Time" at o-rivertrailstennis-net is $49 for a weekday court, and "Open Studio Time &
+ * Memberships" at o-theglassbarboston-com is a $35 session. 18 rows are kept this way and 527 dropped.
+ */
+export const STANDING_ROW = /\b(?:memberships?|season\s+passe?s?|gift\s+cards?|gift\s+certificates?)\b/i;
+/** A single visit, which a guest does book, so a row naming one as well as a membership stays. */
+const SINGLE_VISIT = /\b(?:admissions?|entry|tickets?|day\s+passe?s?|guest\s+passe?s?|drop.?ins?|court\s+time|open\s+studio|studio\s+time|single\s+session)\b/i;
+
+export function standingRow(name: string): boolean {
+  const n = (name || "").trim();
+  return STANDING_ROW.test(n) && !SINGLE_VISIT.test(n);
+}
+
+/**
  * The tail of a sentence the crawl cut in half: "Tickets are", "Admission is", "Boxing For". The word is dropped
  * and the row kept, because the thing in front of it is the service and its price is the shop's own. "Drop In"
  * and "Session A" are not on the list, so they are untouched.
@@ -99,15 +126,16 @@ export function tidyRowName(raw: string): string {
 }
 
 /**
- * Whether this row names something a guest can book. An archive never does. A question does only when the shop
- * priced it: at o-escapegameknoxville-net every tier under "What is an escape room?" is a real room at a real
- * price ("4 people, $30"), and dropping those would take the shop's whole menu with them, while an unpriced
- * question offers nothing at all.
+ * Whether this row names something a guest can book. An archive never does, and neither does a year of the
+ * place. A question does only when the shop priced it: at o-escapegameknoxville-net every tier under "What is
+ * an escape room?" is a real room at a real price ("4 people, $30"), and dropping those would take the shop's
+ * whole menu with them, while an unpriced question offers nothing at all.
  */
 export function bookableRow(name: string, price: number | null | undefined): boolean {
   const n = (name || "").trim();
   if (!n) return false;
   if (ARCHIVE_ROW.test(n)) return false;
+  if (standingRow(n)) return false;
   if (FAQ_ROW.test(n) && (price == null || price <= 0)) return false;
   return true;
 }

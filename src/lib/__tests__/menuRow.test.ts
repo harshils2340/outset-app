@@ -13,7 +13,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { readFileSync, readdirSync } from "node:fs";
 
-import { bookableAddon, bookableMenu, bookableRow, tidyRowName } from "../menuRow";
+import { bookableAddon, bookableMenu, bookableRow, standingRow, tidyRowName } from "../menuRow";
 
 const dir = new URL("../../../public/o/", import.meta.url);
 type Detail = { id: string; options?: { name: string; price: number | null }[]; services?: { name: string; variants: { label: string; price: number | null; optionIdx: number }[] }[] };
@@ -34,6 +34,76 @@ test("a service that only sounds like one is left alone", () => {
   for (const name of ["Past Life Regression", "Archery Lesson", "Past Times Carriage Ride", "Sunset Cruise", "Pastry Class"]) {
     assert.equal(bookableRow(name, 150), true, name);
   }
+});
+
+/* ---------- a year of the place ---------- */
+
+test("a membership, a season pass or a gift card is not a slot a guest books", () => {
+  // o-goulbournmuseum-ca ships one option, "Memberships" at $10, so the sheet preselects it and asks for a
+  // date; o-airclassicsmuseum-org the same at $15. 220 shipped rows are named plainly "Memberships".
+  for (const name of [
+    "Memberships",
+    "Membership",
+    "New Memberships",
+    "Annual Memberships",
+    "Monthly Memberships",
+    "2026 Outdoor Season Memberships",
+    "Museum Memberships",
+    "Year Memberships: Residents",
+    "Memberships (billed every 4 weeks)",
+    "Season Passes",
+    "SUP and Kayak Season Passes",
+    "Gift Cards",
+    "Gift Certificate",
+  ]) {
+    assert.equal(standingRow(name), true, name);
+    assert.equal(bookableRow(name, 10), false, name);
+    assert.equal(bookableRow(name, null), false, name + ", unpriced");
+  }
+});
+
+test("a row that names a single visit as well keeps its place, because that price is real", () => {
+  // o-cityofrevelstoke-com prices a teen swim at $5 and an adult at $8 under "Admission & Memberships";
+  // o-rivertrailstennis-net a weekday court at $49 under "Memberships & Court Time"; o-theglassbarboston-com
+  // a $35 session under "Open Studio Time & Memberships".
+  for (const name of ["Admission & Memberships", "Memberships & Court Time", "Day Passes & Memberships", "Open Studio Time & Memberships", "Memberships & Guest Passes", "Adult Ticket Season Passes"]) {
+    assert.equal(standingRow(name), false, name);
+    assert.equal(bookableRow(name, 49), true, name);
+  }
+});
+
+test("a service that merely has a member rate is a service", () => {
+  for (const name of ["Members Only Paddle", "Non-member Round of Golf", "Remembrance Day Tour", "Season Opener Regatta", "Day Pass"]) {
+    assert.equal(standingRow(name), false, name);
+    assert.equal(bookableRow(name, 25), true, name);
+  }
+});
+
+test("no shipped listing offers a year of the place as the thing to book", () => {
+  // Read the way the booking box reads it: with no service to show, the sheet lists `options` straight.
+  const bad: string[] = [];
+  for (const j of details()) {
+    for (const o of bookableMenu(j).options || []) if (standingRow(o.name)) bad.push(j.id + ": " + JSON.stringify(o.name));
+    for (const s of bookableMenu(j).services || []) if (standingRow(s.name)) bad.push(j.id + " service: " + JSON.stringify(s.name));
+  }
+  assert.deepEqual(bad.slice(0, 10), [], bad.length + " rows still offer one, first: " + bad[0]);
+});
+
+test("the shipped from-price never comes off a membership again", () => {
+  // `fromPrice` is the cheapest priced option, and on 102 listings that was an annual membership while the
+  // page's own service list was empty: the card said "From $10" for a year at Goulbourn Museum.
+  let quoted = 0;
+  let fixed = 0;
+  for (const j of details()) {
+    const raw = (j.options || []).filter((o) => o.price != null && o.price > 0);
+    if (!raw.length) continue;
+    const cheapest = raw.reduce((a, b) => (a.price! <= b.price! ? a : b));
+    if (standingRow(cheapest.name)) fixed++;
+    const kept = (bookableMenu(j).options || []).filter((o) => o.price != null && o.price > 0);
+    if (kept.length && standingRow(kept.reduce((a, b) => (a.price! <= b.price! ? a : b)).name)) quoted++;
+  }
+  assert.equal(quoted, 0, quoted + " listings still price their card from a membership");
+  assert.ok(fixed > 50, "expected the shipped listings this was written for, found " + fixed);
 });
 
 /* ---------- the page's own questions ---------- */
@@ -300,8 +370,9 @@ test("the rows this takes off the shipped catalog are the ones it was written fo
     }
   }
   // The counts fall as the crawl and the sync clean the menus at source, so the ceiling is what this guards: the
-  // filter must take the archive rows and the FAQ headings, and never start eating a real menu.
-  assert.ok(dropped < 460, "the filter is taking too much of the shipped menus, got " + dropped);
-  assert.ok(listings < 1000, "the filter is reaching too many listings, got " + listings);
+  // filter must take the archive rows, the FAQ headings and the memberships, and never start eating a real menu.
+  // 527 of the 545 standing rows are what the membership rule added to it, across 285 listings.
+  assert.ok(dropped < 1000, "the filter is taking too much of the shipped menus, got " + dropped);
+  assert.ok(listings < 1500, "the filter is reaching too many listings, got " + listings);
   assert.ok(priced <= dropped, "more priced rows dropped than rows, got " + priced + " of " + dropped);
 });

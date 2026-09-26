@@ -24,7 +24,7 @@ import { consolidateDeals } from "./dealText.ts";
 import { buildLiteShard, type LiteRow } from "./liteShard.ts";
 import { durationFrom } from "../../../src/lib/duration.ts";
 import { cancelWindow, onlyOperatorCancels, windowLabel } from "../../../src/lib/cancellation.ts";
-import { bookableAddon, bookableRow, tidyRowName } from "../../../src/lib/menuRow.ts";
+import { bookableAddon, bookableRow, standingRow, tidyRowName } from "../../../src/lib/menuRow.ts";
 import { ownWords } from "../../../src/lib/ownWords.ts";
 import { dialPhone } from "../../../src/lib/phone.ts";
 import { contactEmail } from "../../../src/lib/email.ts";
@@ -625,7 +625,10 @@ export function toCatalogItem(r: CatalogRow): Record<string, unknown> {
         }
         g.variants = kept;
       }
-      return plain.filter((g) => !/gift ?cards?|gift certificate|deposit|membership|season pass/i.test(g.name)).slice(0, 14);
+      // A membership or a season pass is not a service, and `bookableRow` above now says so for options too, so
+      // the two lists agree: a row that names a single visit as well ("Admission & Memberships") is a service
+      // here as well as a row in the booking box, where before it was neither on this list nor priced honestly.
+      return plain.filter((g) => !/deposit/i.test(g.name) && !standingRow(g.name)).slice(0, 14);
     })(),
     // "Private Ride for Two: up to 1 guests per booking" is a group cap, and "What to Bring: ..." belongs under bring.
     includes: uniq(pick("includes").map(cleanLine)).filter(isTidyLine).filter((l) => !/gift ?card|gift certificate|will be provided upon|directions will|upon purchas|up to \d+ guests? per booking|minimum \d+ guests? per booking|^what to bring\b/i.test(l)).slice(0, 10),
