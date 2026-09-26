@@ -5440,6 +5440,89 @@ were built first, which is the fifty-second run's Needs Harshil still standing.
   still not been seen at 400px.
 
 
+## 26 September 2026, eighty-third run (10:14 to 11:25 UTC)
+
+**Chosen, and why.** The last entry says the rehearsal was green and the only commits since are its own, so it
+was not re-run to watch it pass; it was run once at the end, against the changes. Every line on tonight's brief
+is already on the Verified list, so the hunt went to the two guest-facing modules Coverage has never named at
+all, `similar.ts` and `sanitizeSvg.ts`, and then to the one fact on a listing page that no run has ever held
+against the catalog: how long the thing takes.
+
+**Found and fixed.** Three defects, three commits.
+
+- **1,260 listings were offered "More like this" from across the country while their own state sat unread**
+  (`92a286f5`). The rail picks the same metro, then the same state, then both pools together, and reaches for
+  the whole catalog only for a shop with no neighbour anywhere. The both-pools branch asked for a neighbour in
+  this metro before it would run, so a shop whose town is in no metro at all, and 1,260 are, skipped its state
+  and drew the continent: Countdown Games in Lexington, Kentucky was answered with escape rooms in Texas and
+  Florida while Emerge, an hour up the road in La Grange, sat in the pool unread, and Bethany Surf Shop in
+  Delaware got Santa Barbara and Lihue. 1,260 rails change; 476 shops genuinely have no neighbour in their metro
+  or their state and still reach the whole catalog, which is what that last resort is for. `similarNear` went the
+  same way: a shop with no metro has no metro to be near, and neither have its neighbours, so the plain equality
+  read "near" as true for all 1,260; only the caller's own lookup of a metro that is not there kept the heading
+  honest.
+- **The SVG sanitizer let an event handler through when the attribute was single-quoted** (`a1b8345b`). It
+  writes every value back inside double quotes, whichever quote it arrived in, so a value carrying a double
+  quote of its own closed the attribute early and what followed reached the browser as further attributes:
+  `<path d='M0 0" onload="alert(1)'/>` came out as a path with a live onload, and `<rect id='a" style="..."'/>`
+  as a full-screen overlay. The allowlist and the `on*` check had both already run, on a string that was no
+  longer a value. The module exists precisely so that a future call site handing a crawled or operator-set field
+  to `dangerouslySetInnerHTML` cannot run code, and that is the one thing it let through. Latent today, since
+  every call site passes a static icon or scene: no shipped art carries a quote or a bracket in a value, which a
+  test now holds.
+- **218 listings counted days out in hours under their own titles** (`6fb79e1a`). A partner's API states every
+  length in minutes and plenty of what it sells runs for days, but the row that stores one is written in hours.
+  "4 Days Canadian Rockies Fall or Spring Tour" said "96 hours". The Atlanta, Tampa Bay, Houston and Dallas
+  CityPASS all said "216 hours". "Toronto & Niagara Falls 2 Days Tour" said "48 hours". An e-bike a guest may
+  keep for a month said "24 hours to 744 hours", and one rental said "24 hours to 8760 hours", which is a year.
+  The rule is `sayLength` in `src/lib/duration.ts`, now holding both the minute rule the cards already read and
+  the day rule; every guest surface was already funnelled through `tidyDuration`, so the shipped files are right
+  without waiting for a sync. Otto reads it now, and so does the static `/l/` page, which printed the stored
+  string raw and would otherwise have disagreed with the app about the same shop. `viator.ts` writes days at the
+  source, the way GetYourGuide's reader already does.
+
+**Swept and clean.** Every one of the 52,816 catalog rows through the rail's own pool rule, counted before and
+after. All 11,535 shipped `dur` values against the sync's current rule: the 5,077 an operator's own menu wrote
+match it exactly and none of them moves, and every mismatch is a partner row. All 52,815 detail files for a
+length that still states a day or more in hours: none. Both `urlSafety.ts` call sites and every one of
+`sanitizeSvg`'s, read through: the URL guard is sound on the shapes that matter (`//evil.com`, a bracketed IPv6
+loopback, a host that merely ends in the Stripe one).
+
+**Verification.** App `npm test` 915 pass, 0 fail, up 6. Backend `npm test` 841 pass, 0 fail, 2 skipped, up 1.
+`tsc -b` clean on the app, `tsc --noEmit -p .` clean at the root and still compiling nothing, the backend type
+check clean but for TS5097. The full rehearsal was run at the end because all three fixes touch `src/` and two
+touch `backend/src`: 57 of 57, 0 failed, against a local Postgres 16 on 5433 with TLS on and the Chromium on
+disk, no Stripe, mail or GitHub key. A fresh checkout again had no `node_modules` on either side and no Postgres cluster, so
+both installs and a TLS-enabled Postgres 16 on 5433 were built first, which is the fifty-second run's Needs
+Harshil still standing. Neither fix was re-driven in a browser: one only re-populates an existing rail of at
+most ten cards, and the other only shortens a string already in place, and the rehearsal opens the listing page
+anyway.
+
+**Needs Harshil.**
+
+- **A "More like this" rail is not actually ordered by nearest.** Its own doc says nearest first; the sort is
+  by "has a photo", then review count, over whichever pool was chosen. Inside a metro that is close enough. Over
+  a whole state, with the pool fix now sending 1,260 shops there, it means a Lexington guest can be offered
+  Louisville before La Grange. Distance is on the record (`lat`, `lon`); whether the rail should use it is a
+  product call, not a rule.
+- **A listing whose cover is known dead can still lead the rail.** `deadCovers` drops those from every list
+  that promises photographs, but the rail is not one: it tolerates scene art by design. It still sorts a
+  known-dead cover ahead of a live photo, because the sort reads the field, not the store.
+- **A non-whole-day length reads "3.8 days".** Two shipped rows are not a whole number of days, 92 hours and
+  54 hours. "3.8 days" is honest and consistent with "1.5 hours"; "3 days 20 hours" would be plainer. Two rows
+  is not enough to decide on.
+- **The catalog has areas that name a town in the wrong state.** The rail fix surfaced "Philadelphia, DE" as
+  the one surf shop Delaware has to offer. That is a discovery or geocoding slip, not a rail one, and nothing
+  tonight counted how many there are.
+- **The static `/l/` page and the app agreed on the menu and the price, and not on the length.** Until tonight
+  the page printed `dur` raw, so it said "60 min" where the app said "1 hour". That gap is closed, but it is the
+  second field found this way in three runs, and nobody has swept the page's other fields against the app's.
+- Still open from the seventy-eighth run: local `main` sits on `c3a9bfd0`, five "Otto page" commits that
+  `origin/main` was force-updated away from. Tonight's work is on `origin/main`; that stale ref was left alone
+  again. The desktop site still has no way to say anything in passing, and the confirm screen's failure line has
+  still not been seen at 400px.
+
+
 ## Coverage
 
 The catalog is 48,198 listings as of the 23 September sync, 1,873 of them Viator partner rows. Counts below
@@ -6063,6 +6146,15 @@ draft run against every exclusion it claims, both send queues and which id each 
 writes, the handoff export and the marks it leaves, both ramps' rung arithmetic and their weekend exit, the
 outreach list script, and `GET /outreach/drafts` against the admin gate above it.
 
+Which shops a listing's "More like this" rail draws from, over all 52,816 catalog rows: the pool each of them
+lands in, the 1,260 whose town is in no metro and so skipped their own state for the country, the 476 that
+genuinely have no neighbour either way, and what the rail's own "near" heading may claim. How long a listing
+says it runs, over all 11,535 shipped `dur` values and all 52,815 detail files: every operator-written length
+against the sync's current rule, and every partner length that counted days out in hours, on the card, the
+page, the phone sheet, Otto and the static `/l/` page alike. The two modules that stand between crawled text
+and the DOM: `sanitizeSvg`, whose own quoting let a handler out of a single-quoted value, and `urlSafety` at
+both of its call sites.
+
 **Not yet checked.** Anything in the grounded fallback that needs a real Cohere key: no key exists here, so every answer checked tonight was a payload shaped by hand, and what the live model actually writes, what its citation offsets index into when it answers in more than one content part, and whether `citation_options` FAST cites densely enough for `keepCited` to keep a good answer are all unread. `npm run otto:eval` for the same reason. Whether a price the model reformats should be dropped: a shop publishing "$85" and a model writing "$85.00" loses the sentence (see this run's Needs Harshil). Whether the grounded answer should reach the static `/l/` page and the phone sheet, which do not call it. A real Otto send or a real hand-send: the draft run, the queue, the dry run and the handoff export are all driven now, but nothing has left a mailbox from here, and `outreach-daily.sh` is launchd on the Mac and cannot be. Whether `state.ranDays` and `state.sentDays` growing without bound in `outreach-otto-ramp.json`, and being written only after a send loop that can run four hours, is worth changing, given that `sentToday` is what actually holds the ceiling. Whether the Otto email may tell a shop "Bookings drop straight into your calendar" when
 both `/voice` endpoints are read-only and syncing with an operator's own booking software is deferred on
 purpose, which is this run's first Needs Harshil. Whether the Otto subject should be shortened or the question
@@ -6304,4 +6396,12 @@ Acadia Bike on a child seat, with the day rentals behind "More options" (see the
 Harshil). The 123 rows that stay unreachable because they would read exactly as a tier already shown, among them
 two "Spa package, 2 hours 30 minutes" rows at $258 and $360 that the shop plainly sells as two things and named
 as one. A sync run against a real database, which is what carries `mergeTiers` and closes those four "from"
-prices.
+prices. Whether the "More like this" rail should be
+ordered by distance, which its own doc claims and its sort does not do: with the pool fix sending 1,260 shops
+to a whole state, a Lexington guest can be offered Louisville before La Grange, and `lat`/`lon` are on the
+record. Whether a listing whose cover is known dead should be allowed to lead that rail, which it can, because
+the sort reads the field and not the `deadCovers` store. Whether a length that is not a whole number of days
+should read "3 days 20 hours" rather than "3.8 days", on the two shipped rows that are not (92 hours and 54
+hours). How many catalog areas name a town in the wrong state, which the rail fix surfaced as "Philadelphia,
+DE" and nothing has counted. Which of the static `/l/` page's other fields still disagree with the app's own
+rule for the same shop: the length was the second found this way in three runs, and nobody has swept the rest.
