@@ -19,7 +19,7 @@ import { quotesFromFacts } from "./quotes.ts";
 import { METROS, familyForArt, nearestMetro } from "../taxonomy/catalog.ts";
 import { rankForCover } from "../enrich/photorelevance.ts";
 import { existsSync, readFileSync as readFileSyncFs } from "node:fs";
-import { STANDARD, isEventSchedule, plainLabel, plainName, plainServices, type RawService } from "./plainServices.ts";
+import { STANDARD, isEventSchedule, mergeTiers, plainLabel, plainName, plainServices, type RawService } from "./plainServices.ts";
 import { consolidateDeals } from "./dealText.ts";
 import { buildLiteShard, type LiteRow } from "./liteShard.ts";
 import { durationFrom } from "../../../src/lib/duration.ts";
@@ -440,6 +440,14 @@ export function toCatalogItem(r: CatalogRow): Record<string, unknown> {
     const k = plainName(o.name, art).toLowerCase();
     return unitByService.has(k) ? unitByService.get(k) : o.price_unit && o.price_unit.startsWith("/") ? o.price_unit : undefined;
   };
+  /**
+   * The sub-line the booking picker prints under a row's name: the row's own detail ("Adult", "Single Rider",
+   * "Two Hour Rental"), with the duration standing in only when the row states no detail. Duration first
+   * collapsed five jet ski tiers into one "1 to 3 hours" row. A service tier reads the same line (`mergeTiers`),
+   * so the picker's sub-line and the tier label can never disagree.
+   */
+  const rowDetail = (o: { name: string; detail: string | null; duration: string | null; price_cents: number | null }) =>
+    plainLabel(silent(o.detail) || silent(o.duration) || "", { service: tidyRowName(plainName(o.name, art)), kind: art, price: o.price_cents == null ? null : o.price_cents / 100 }) || "";
   const { optionIdxOf, menuRowOf } = bookableOptions(menu, art);
   // The family is the tab a guest browses under (`inCat` in src/data/categories.ts), and the kind is the chip
   // inside it, so the two have to agree. Following discovery's family unless `reconcileArt` moved the kind left
@@ -518,18 +526,12 @@ export function toCatalogItem(r: CatalogRow): Record<string, unknown> {
     // picker's sub-line and a service's tier label never disagree. A membership or a gift card is not an experience
     // a guest books a slot for, and the services list below already knows that; this row feeds a card's "from"
     // price too, so a $10 membership tier was quoting a charter's price as a season pass, not a trip out.
-    options: menu.filter((_o, idx) => optionIdxOf.has(idx)).map((o) => {
-      const name = tidyRowName(plainName(o.name, art));
-      const price = o.price_cents == null ? null : o.price_cents / 100;
-      return {
-        name,
-        // The label a guest picks is the row's own detail ("Adult", "Single Rider", "Two Hour Rental"); the duration
-        // only stands in when there is none. Duration first collapsed five jet ski tiers into one "1 to 3 hours" row.
-        detail: plainLabel(silent(o.detail) || silent(o.duration) || "", { service: name, kind: art, price }) || "",
-        price,
-        per: perOf(o),
-      };
-    }),
+    options: menu.filter((_o, idx) => optionIdxOf.has(idx)).map((o) => ({
+      name: tidyRowName(plainName(o.name, art)),
+      detail: rowDetail(o),
+      price: o.price_cents == null ? null : o.price_cents / 100,
+      per: perOf(o),
+    })),
     services: (() => {
       const descs = new Map<string, string>();
       for (const raw of pick("service_desc")) {
@@ -600,31 +602,12 @@ export function toCatalogItem(r: CatalogRow): Record<string, unknown> {
       }
       // Plain labels, jargon explained, long size or count runs folded (plainServices.ts). Tiers that were event timetables are gone.
       const plain = plainServices([...groups.values()].map(({ pages: _p, ...g }) => g), art);
-      // Plain labels fold "2.5 hrs" and "2.5 hours" into one wording, so twins can only be seen now: the same tier at
-      // the same price (or one unpriced) is one line, and the same tier at two prices keeps each raw name in front.
-      for (const g of plain) {
-        const kept: typeof g.variants = [];
-        for (const v of g.variants) {
-          const twin = kept.find((k) => k.label.toLowerCase() === v.label.toLowerCase());
-          if (!twin) {
-            kept.push(v);
-            continue;
-          }
-          if (twin.price == null || v.price == null || twin.price === v.price) {
-            if (twin.price == null && v.price != null) Object.assign(twin, { price: v.price, per: v.per, optionIdx: v.optionIdx });
-            continue;
-          }
-          const rawT = menu[menuRowOf[twin.optionIdx]]?.name || "";
-          const rawV = menu[menuRowOf[v.optionIdx]]?.name || "";
-          if (rawT && rawV && rawT.toLowerCase() !== rawV.toLowerCase()) {
-            if (!twin.label.toLowerCase().startsWith(rawT.toLowerCase())) twin.label = rawT + " · " + twin.label;
-            kept.push({ ...v, label: rawV + " · " + v.label });
-          } else if (v.price < twin.price) {
-            Object.assign(twin, { price: v.price, per: v.per, optionIdx: v.optionIdx });
-          }
-        }
-        g.variants = kept;
-      }
+      // Twins merged, and no tier a guest could book thrown away with them (`mergeTiers`).
+      const rowOf = (optionIdx: number) => {
+        const o = menu[menuRowOf[optionIdx]];
+        return { name: o?.name || "", detail: o ? rowDetail(o) : "" };
+      };
+      for (const g of plain) g.variants = mergeTiers(g.variants, rowOf);
       // A membership or a season pass is not a service, and `bookableRow` above now says so for options too, so
       // the two lists agree: a row that names a single visit as well ("Admission & Memberships") is a service
       // here as well as a row in the booking box, where before it was neither on this list nor priced honestly.

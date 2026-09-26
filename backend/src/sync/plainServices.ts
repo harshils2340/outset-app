@@ -479,3 +479,74 @@ export function plainService(svc: RawService, kind: string): PlainService | null
 export function plainServices(services: RawService[], kind: string): PlainService[] {
   return services.map((s) => plainService(s, kind)).filter((s): s is PlainService => !!s);
 }
+
+/** The menu row a tier came from, as the booking box reads it: the row's own name, and the sub-line printed under it. */
+export type TierRow = { name: string; detail: string };
+
+/**
+ * The tiers of one service with the twins merged, and nothing a guest could book thrown away.
+ *
+ * Plain labels fold "2.5 hrs" and "2.5 hours" into one wording, so twins can only be seen once the labels are
+ * plain: the same tier at the same price, or one of them unpriced, is one line. The same tier at two prices is
+ * two things the shop sells, and it is the words around the label that tell them apart. The row's own name comes
+ * first, which is how "4 Hr Charter" and "4 Hr Fishing Trip" stay two lines under one service.
+ *
+ * Where the rows share a name as well, the sub-line each row states is what is left, and it was not read: the
+ * cheapest tier was kept and the rest dropped, leaving their option rows with nothing pointing at them. A tier is
+ * labelled with the row's duration where the row states one, so a shop whose pages state a single duration for a
+ * whole rate card ("10 hours", "1 to 8 hours", "48 hours") gave every row of a service the same label and lost all
+ * but one of them: 1st Class Charter Boat Rental shipped "Sea Doo Jet Ski Rental, 10 hours, $150" as its only
+ * tier, while its own menu holds the one through eight hour rentals at $150 to $1,200. 1,442 priced rows on 305
+ * shipped listings were one of these, and `wholeServices` in `src/lib/menuRow.ts` is the same rule, read on load,
+ * for the detail files already shipped.
+ *
+ * The sub-lines have to tell every row of the family apart for this to be worth printing: six one-hour massages
+ * at o-arayathaimassage-com publish nothing but a price between them, and six lines reading "1 hour" would be
+ * worse than one, so those still merge to the cheapest.
+ */
+export function mergeTiers(variants: PlainVariant[], rowOf: (optionIdx: number) => TierRow): PlainVariant[] {
+  const kept: PlainVariant[] = [];
+  for (const v of tellTiersApart(variants, rowOf)) {
+    const twin = kept.find((k) => k.label.toLowerCase() === v.label.toLowerCase());
+    if (!twin) {
+      kept.push({ ...v });
+      continue;
+    }
+    if (twin.price == null || v.price == null || twin.price === v.price) {
+      if (twin.price == null && v.price != null) Object.assign(twin, { price: v.price, per: v.per, optionIdx: v.optionIdx });
+      continue;
+    }
+    const rawT = rowOf(twin.optionIdx).name;
+    const rawV = rowOf(v.optionIdx).name;
+    if (rawT && rawV && rawT.toLowerCase() !== rawV.toLowerCase()) {
+      if (!twin.label.toLowerCase().startsWith(rawT.toLowerCase())) twin.label = rawT + " · " + twin.label;
+      kept.push({ ...v, label: rawV + " · " + v.label });
+      continue;
+    }
+    if (v.price < twin.price) Object.assign(twin, { price: v.price, per: v.per, optionIdx: v.optionIdx });
+  }
+  return kept;
+}
+
+/**
+ * A family of tiers that read as one line and are not one, relabelled from each row's own sub-line. Returns the
+ * variants untouched unless every row of such a family states a sub-line and no two of them state the same.
+ */
+function tellTiersApart(variants: PlainVariant[], rowOf: (optionIdx: number) => TierRow): PlainVariant[] {
+  const families = new Map<string, PlainVariant[]>();
+  for (const v of variants) {
+    const key = v.label.toLowerCase() + "|" + rowOf(v.optionIdx).name.toLowerCase();
+    families.set(key, [...(families.get(key) || []), v]);
+  }
+  const relabel = new Map<PlainVariant, string>();
+  for (const fam of families.values()) {
+    if (fam.length < 2) continue;
+    // Two rows at one price, or one of them unpriced, are the twins this was always about: one line is right.
+    const prices = fam.map((v) => v.price);
+    if (prices.some((p) => p == null) || new Set(prices).size !== fam.length) continue;
+    const details = fam.map((v) => rowOf(v.optionIdx).detail.trim());
+    if (details.some((d) => !d) || new Set(details.map((d) => d.toLowerCase())).size !== fam.length) continue;
+    fam.forEach((v, i) => relabel.set(v, details[i]));
+  }
+  return relabel.size ? variants.map((v) => (relabel.has(v) ? { ...v, label: relabel.get(v)! } : v)) : variants;
+}
