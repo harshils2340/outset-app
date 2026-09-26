@@ -29,3 +29,15 @@ test("the campaign's day starts at local midnight, not UTC midnight", () => {
   const morning = new Date("2026-09-25T13:30:00Z");
   assert.equal(dayStartIso("America/Toronto", morning), "2026-09-25T04:00:00.000Z");
 });
+
+test("the day boundary is right on the two days a year the clocks move", () => {
+  // Spring forward: 8 March 2026 begins at 05:00 UTC, because Toronto was still on EST at midnight.
+  assert.equal(dayStartIso("America/Toronto", new Date("2026-03-08T12:17:00Z")), "2026-03-08T05:00:00.000Z");
+  assert.equal(dayStartIso("America/Toronto", new Date("2026-03-09T03:17:00Z")), "2026-03-08T05:00:00.000Z");
+  // Fall back: 1 November 2026 begins at 04:00 UTC, still on EDT. Taking the offset as it reads at midday
+  // put this at 05:00, so the mails sent in Toronto's first hour were not counted against the day's ceiling.
+  assert.equal(dayStartIso("America/Toronto", new Date("2026-11-01T12:17:00Z")), "2026-11-01T04:00:00.000Z");
+  assert.equal(dayStartIso("America/Toronto", new Date("2026-11-01T23:17:00Z")), "2026-11-01T04:00:00.000Z");
+  // And a zone on a half hour offset, which the same arithmetic also has to survive.
+  assert.equal(dayStartIso("America/St_Johns", new Date("2026-06-15T15:00:00Z")), "2026-06-15T02:30:00.000Z");
+});

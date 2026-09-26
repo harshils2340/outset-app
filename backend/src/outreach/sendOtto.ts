@@ -1,5 +1,6 @@
 import { db, nowIso } from "../db/client.ts";
 import { sendMail } from "../lib/mail.ts";
+import { instantOf, todayIn } from "../lib/zone.ts";
 import { draftOttoCopy, type OttoOp } from "./ottoDrafts.ts";
 import { catalogId } from "./drafts.ts";
 import { recordSend } from "../lib/outreachLog.ts";
@@ -113,12 +114,15 @@ export async function sendOttoOutreach(opts: {
  * campaign's own (PIPELINE_TZ, Toronto by default), not UTC: counted by UTC the day rolled over at 8 PM
  * Toronto time, so an evening run saw a fresh ceiling and could add a whole second batch to a day that had
  * already had one.
+ *
+ * Read through `zone.ts`, which the shop clocks already use, rather than by subtracting the offset this
+ * instant happens to have: on the two days a year the offset changes, midnight is not that many hours back.
+ * Measured against every day of 2026, the offset arithmetic put the boundary an hour out on 8 March and on
+ * 1 November, and the November hour is the one that costs something: sends made in Toronto's first hour fell
+ * outside the count, so `sentToday` read low and the ramp could add that many over the ceiling.
  */
 export function dayStartIso(tz = process.env.PIPELINE_TZ || "America/Toronto", now = new Date()): string {
-  const wall = new Date(now.toLocaleString("en-US", { timeZone: tz }));
-  const midnight = new Date(wall);
-  midnight.setHours(0, 0, 0, 0);
-  return new Date(midnight.getTime() + (now.getTime() - wall.getTime())).toISOString();
+  return new Date(instantOf(todayIn(tz, now), "00:00", tz)).toISOString();
 }
 
 /** How many commercial emails (either campaign) this Gmail identity has already sent today, on the campaign's
