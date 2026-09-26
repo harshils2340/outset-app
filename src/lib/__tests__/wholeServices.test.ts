@@ -15,6 +15,7 @@ import test from "node:test";
 import { readFileSync, readdirSync } from "node:fs";
 
 import { bookableMenu, wholeServices } from "../menuRow";
+import { defaultProfile } from "../operator";
 
 const dir = new URL("../../../public/o/", import.meta.url);
 type Tier = { label?: string; price: number | null; optionIdx: number; moreOptions?: true };
@@ -118,6 +119,22 @@ test("a spare row belongs to the service that names it, not to the one beside it
 test("a listing with no service list keeps its options as they are", () => {
   const item = { options: [{ name: "Tickets", price: 12, detail: "Adult" }] };
   assert.equal(wholeServices(item), item);
+});
+
+/* ---------- the operator side reads the same menu ---------- */
+
+test("an owner claiming their shop is handed their whole rate card, not its cheapest line", () => {
+  // The dashboard's Services editor is seeded from the listing's own tiers (`servicesFrom`), so a shop whose
+  // tiers the sync dropped opened on a menu with its rate card missing, and the owner's first job would have
+  // been to type it back in.
+  const owner = { name: "Owner", email: "owner@example.com", phone: "5550100" };
+  const item = bookableMenu(read("o-1stclasscharterboatrental-com")) as Detail;
+  const svc = defaultProfile(item as never, owner).services.find((s) => s.name === "Sea Doo Jet Ski Rental");
+  assert.ok(svc, "the claimed profile lost the service");
+  assert.deepEqual(
+    svc.variants.map((v) => v.label + " $" + v.price),
+    ["One hour rental $150", "Two hour rental $300", "Three hour rental $450", "Four hour rental $600", "Five hour rental $750", "Six hour rental $900", "Seven hour rental $1050", "Eight hour rental $1200"],
+  );
 });
 
 /* ---------- held to the shipped catalog ---------- */
