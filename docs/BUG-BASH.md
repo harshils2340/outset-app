@@ -5366,12 +5366,90 @@ fifty-second run's Needs Harshil still standing.
   has still not been seen at 400px.
 
 
+## 26 September 2026, eighty-second run (09:14 to 09:50 UTC)
+
+**Chosen, and why.** The last entry says the rehearsal was green and nothing has landed since, so it was skipped
+until there was something to rehearse. The hunt went to the one line on the brief's own list that Coverage has
+never claimed: "an option whose label collides with another", inside the guest listing page and booking box. The
+booking box's price lines are verified; what its service picker actually offers has never been swept. So the
+sweep read every option row and every service tier of all 52,815 shipped detail files and asked which rows a
+guest can reach.
+
+**Found and fixed.** One defect, three commits. Label collisions themselves are clean: no shipped listing has two
+services of one name, and one test listing has two variants of one label. What the sweep found instead is the
+rows nobody can reach at all.
+
+- **1,442 priced rows on 305 listings are a service the shop sells that no tier on the page points at**
+  (`1bd49309`, `04e26d70`). `options` and `services` are two views of one menu and the sync builds the second from
+  the first: a tier is labelled with the crawled row's duration where the row states one, then tiers that read as
+  the same line are merged. A shop whose pages state one duration for a whole rate card gives every row of a
+  service the same label, so the merge kept the cheapest and dropped the rest, and the service picker is the only
+  picker a listing with services shows. 1st Class Charter Boat Rental offered "Sea Doo Jet Ski Rental, 10 hours,
+  $150" and nothing else, while its own page lists the one through eight hour rentals at $150 to $1,200, and $150
+  buys one hour: the page both hid seven bookable rentals and quoted the cheapest against a length that was not
+  its own. AAA Jet Ski offered "1 to 8 hours, $125" for a service whose name lists four lengths. Each row carries
+  the sub-line the booking picker prints under it, so the fix is read on load (`wholeServices` in
+  `src/lib/menuRow.ts`) and the 305 shipped listings are right without waiting for a sync: the row becomes a tier
+  of the service that names it, folded behind "More options" so no page opens on more lines than before, and the
+  tiers of a service that regained one are relabelled from their own rows. The sync learned the same rule
+  (`mergeTiers`), and `rowDetail` is now one rule for the picker's sub-line and the tier label, so the two lists
+  cannot disagree again.
+- **An owner claiming one of those shops was handed a menu with their rate card missing** (`4b957417`). The
+  dashboard's Services editor is seeded from the listing's own tiers, so 1st Class Charter would have opened on
+  one line, "10 hours, $150", and the owner's first job would have been to type the other seven back in. The same
+  load-time rule fixes it and a test holds it there.
+
+**Swept and clean.** Every option row and service tier of all 52,815 detail files, for a name or a label that
+collides with another: 0 listings carry two services of one name, and the one listing carrying two variants of
+one label is a test shop. The four listings whose card quotes a "from" price off a row their own service list
+does not show, re-measured and confirmed as exactly the four the eighty-first entry names, closing at the next
+sync and no others. 43 tiers on 31 listings that state a length their row's own sub-line contradicts, every one
+of them honest: a 6-hour combo charter made of 3 hours of striped bass and 3 of sea bass, a 2-day kiteboarding
+package with 6 hours of water time, a lodge's "7 nights / 6 days". Six one-hour massages at
+o-arayathaimassage-com that publish nothing but a price between them, left as one line on purpose. Both fixes
+driven in a real Chromium at 1280px and 400px: the desktop page and the phone sheet each show one tier and
+"More options (7)", expand to all eight at $150 to $1,200, and book the tier that was picked, with no sideways
+scroll at either width and the same 38 elements reaching past a 400px edge as on an untouched listing.
+
+**Verification.** App `npm test` 902 pass, 0 fail, up 9. Backend `npm test` 840 pass, 0 fail, 2 skipped, up 9.
+`tsc -b` clean on the app, `tsc --noEmit -p .` clean at the root and still compiling nothing, the backend type
+check clean but for TS5097. The full rehearsal was run because both fixes touch `src/` and `backend/src`: 57 of
+57 against a local Postgres 16 on 5433 with TLS on and the Chromium on disk, no Stripe, mail or GitHub key. A
+fresh checkout has no `node_modules` on either side and no Postgres cluster, so both installs and the cluster
+were built first, which is the fifty-second run's Needs Harshil still standing.
+
+**Needs Harshil.**
+
+- **The tier a service opens on is still its cheapest row, not its headline.** With the rate cards back, 1st
+  Class Charter opens on "One hour rental, $150" and its eight hour day sits behind "More options", and Acadia
+  Bike opens on "Child Seats, $11" with the half and full day rentals folded under it. That is the seventy-fourth
+  entry's item, now on 244 more listings: which row a folded service should open on is a supply judgement, and
+  the fold was left exactly as it was so no page opens on more lines than it did before.
+- **123 rows stay unreachable on purpose, and one family of them may deserve better.** A row that would read
+  exactly as a tier already on the service is left alone, because two lines of the same words at two prices tell
+  a guest nothing. Six one-hour massages at o-arayathaimassage-com are the clear case. Two "Spa package, 2 hours
+  30 minutes" rows at $258 and $360 are the unclear one: the shop plainly sells two things and published nothing
+  to name them apart, so either the crawl lost a word or the page did.
+- **The next sync is what carries the second half.** `mergeTiers` stops the sync dropping these rows, and there
+  is no local database here to run one against, so the fix is held by its own tests and by the load-time rule
+  standing in for it on every shipped file. It also closes the four "from" prices the eighty-first entry left
+  open.
+- Still open from the seventy-eighth run: local `main` sits on `c3a9bfd0`, five "Otto page" commits that
+  `origin/main` was force-updated away from. Tonight's work is on `origin/main`; that stale ref was left alone
+  again. The desktop site still has no way to say anything in passing, and the confirm screen's failure line has
+  still not been seen at 400px.
+
+
 ## Coverage
 
 The catalog is 48,198 listings as of the 23 September sync, 1,873 of them Viator partner rows. Counts below
 that name 59,125 were taken before that sync and were whole at the time.
 
-**Verified so far.** What a card's "from" price is actually a price for, over the cheapest priced row of all
+**Verified so far.** Which rows of a shop's menu the booking box can actually offer, over every option row and
+every service tier of all 52,815 shipped detail files: a service name or a tier label that collides with
+another, a tier stating a length its own row contradicts, and the rows no tier points at, with the 1,442 a
+shop sells put back on the service that names them, on the guest page, the phone sheet and the dashboard's
+Services editor alike. What a card's "from" price is actually a price for, over the cheapest priced row of all
 10,208 shipped listings that have one: a membership, a season pass and a gift card are refused everywhere now,
 and the static pages read the same menu rule and the same price rule the app reads, checked over all 52,816.
 The name a guest reads: the business name on all 59,125 shipped listings, against the
@@ -6220,4 +6298,10 @@ guests. Whether the address bar should be rewritten to the catalog's own spellin
 listing opens now, and the shouted hash stays in the bar. Whether a charter deposit is the booking, which is
 what decides the 19 deposit rows the sync drops from a service list and keeps in the options (see the
 eighty-first run's Needs Harshil). Whether `fromPrice` should quote a row the page's own service list does not
-show at all, which four listings do until the next sync runs.
+show at all, which four listings do until the next sync runs. Which row a folded service should open on, now that
+244 more listings have one: the cheapest is what shows, so 1st Class Charter opens on a one hour rental and
+Acadia Bike on a child seat, with the day rentals behind "More options" (see the eighty-second run's Needs
+Harshil). The 123 rows that stay unreachable because they would read exactly as a tier already shown, among them
+two "Spa package, 2 hours 30 minutes" rows at $258 and $360 that the shop plainly sells as two things and named
+as one. A sync run against a real database, which is what carries `mergeTiers` and closes those four "from"
+prices.
