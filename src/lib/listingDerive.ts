@@ -8,10 +8,33 @@ import { durationFrom } from "./duration";
  * operator's own site states and returns null when it says nothing. Nothing here invents a fact.
  */
 
+/**
+ * The words a shop's own page uses for a call to action, which the crawl sweeps up with the copy beside them.
+ * Every one of them is also an ordinary English word a shop writes inside a sentence, so a bare word match took
+ * the shop's own prose apart on 1,035 listings: "we will learn more about chocolate varietals" became "we will
+ * about chocolate varietals", "our experienced guides select the best breweries" became "our experienced guides
+ * the best breweries", and "So what are you waiting for? BOOK NOW!" became "So what are you waiting for? !".
+ * "Select" alone accounted for 538 of the 1,475 cuts and not one of them was a button.
+ *
+ * A leftover button is text no sentence runs through: it opens a segment (the start of the copy, the end of the
+ * sentence before it, or a separator the crawl left between rows) and nothing follows it but the end of the copy
+ * or the next separator. A label with a word after it is the shop talking, and is left alone.
+ */
+const CTA = "SELECT|BOOK NOW|BOOK ONLINE|RESERVE NOW|LEARN MORE|READ MORE|CLICK HERE|ADD TO CART|BUY NOW";
+const SEP = "\\u2022\\u00b7|>\\u2014\\u2013-";
+const BUTTON_LABEL = new RegExp(
+  // After the start of the copy or the end of a sentence: the label and the separator that followed it both go.
+  `(^|[.!?\\u2026])\\s*(?:${CTA})\\b[\\s.!\\u2026]*(?:$|[\\u2022\\u00b7|>]\\s*)` +
+  // After a separator: that separator goes with the label, so the row before it does not end on a dangling mark,
+  // and the separator that starts the next row is left where it is.
+  `|\\s*[${SEP}]\\s*(?:${CTA})\\b[\\s.!\\u2026]*(?=$|[\\u2022\\u00b7|>])`,
+  "gi",
+);
+
 /** Service copy straight from the operator's page, minus the button labels that get scraped along with it. */
 export function cleanDesc(raw: string): string {
   return plainWords(raw)
-    .replace(/\b(SELECT|BOOK NOW|BOOK ONLINE|RESERVE NOW|LEARN MORE|READ MORE|CLICK HERE|ADD TO CART|BUY NOW)\b\.?/gi, "")
+    .replace(BUTTON_LABEL, (_m, lead: string | undefined) => (lead ? lead + " " : " "))
     .replace(/\s+/g, " ")
     .replace(/\s+([.,;:])/g, "$1")
     .trim();
