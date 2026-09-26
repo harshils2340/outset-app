@@ -9,12 +9,22 @@
  * back-button handler first and, left alone, reads as the guest pressing back.
  */
 
+/**
+ * A listing id as the catalog spells it. Every one of the 52,815 shipped ids is lower case, and every regex
+ * that reads one out of the hash is case-insensitive, so a link whose id has been shouted somewhere along the
+ * way names a real listing and used to resolve to nothing: the app dropped it in silence, and now that it says
+ * something when a listing cannot be found it would say the wrong thing.
+ */
+export function listingId(raw: string): string {
+  return raw.toLowerCase();
+}
+
 /** The listing a hash names, or null. Accepts a bare hash ("#o=x") or a whole URL. */
 export function listingInHash(hashOrUrl: string): string | null {
   const at = hashOrUrl.indexOf("#");
   const hash = at === -1 ? "" : hashOrUrl.slice(at);
   const m = /^#o=([a-z0-9-]+)/i.exec(hash);
-  return m ? m[1] : null;
+  return m ? listingId(m[1]) : null;
 }
 
 /**

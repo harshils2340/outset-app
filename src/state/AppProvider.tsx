@@ -21,7 +21,7 @@ import { fmtDate, money, nowStamp } from "../lib/format";
 import { daySlotsOpen, openSeats } from "../lib/inventory";
 import { contactFor, experienceById, fromPrice, initials } from "../lib/catalog";
 import { loadListing, loadRemoteCatalog, onListingEdits } from "../lib/catalogLoad";
-import { hashOpensAnotherListing, listingInHash } from "../lib/hashRoute";
+import { hashOpensAnotherListing, listingId, listingInHash } from "../lib/hashRoute";
 import { availabilityNow, confirmPaid, fetchAvailability, hasApi, loadWalletId, submitBooking, warmApi , apiConfig, type LiveAvailability } from "../lib/api";
 import { assistantOn, companyAnswer, companyGreeting, companyHandoff, companySuggestions } from "../lib/companyAgent";
 import { askOttoModel } from "../lib/ottoModel";
@@ -551,7 +551,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     // A claim link names the business in the hash. Seed it now so the operator screen mounts with it on the first
     // render, instead of falling back to the demo dashboard and switching a second later.
     const c = window.location.hash.match(/^#claim=([a-z0-9-]+)(?:&k=([A-Za-z0-9_.~-]+))?/i);
-    if (c) return { ...init, screen: "operator" as const, tab: "account" as const, operatorId: c[1], claimToken: c[2] || null };
+    if (c) return { ...init, screen: "operator" as const, tab: "account" as const, operatorId: listingId(c[1]), claimToken: c[2] || null };
     if (atOperatorsPath()) return { ...init, screen: "operator" as const, tab: "account" as const };
     // Everything from here lands on the guest side, so it opens on the guest's own place, or the last one guessed
     // for them, from the first frame. This used to be decided after the 22 MB catalog had downloaded, parsed and
@@ -560,7 +560,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     // A listing link (#o=, or #remove= from an outreach email) is that listing from the first paint: the page shows
     // a short "opening" state until the listing's own file lands, never the home page in between.
     const o = window.location.hash.match(/^#(o|remove)=([a-z0-9-]+)/i);
-    if (o) return { ...base, sheet: "request" as const, reqTargetId: o[2], removeId: o[1].toLowerCase() === "remove" ? o[2] : base.removeId };
+    if (o) return { ...base, sheet: "request" as const, reqTargetId: listingId(o[2]), removeId: o[1].toLowerCase() === "remove" ? listingId(o[2]) : base.removeId };
     // Back from Stripe: the booking is already on this device, so the confirmation is the first screen too.
     const pd = window.location.hash.match(/^#paid=([A-Z0-9-]+)&o=([a-z0-9-]+)/i);
     if (pd) {
@@ -723,17 +723,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
     // The operator side is decided from the path and hash alone, before any catalog arrives, so an emailed
     // claim link opens the dashboard on the first paint and never gets rewritten to the guest home.
     const early = window.location.hash.match(/^#claim=([a-z0-9-]+)(?:&k=([A-Za-z0-9_.~-]+))?/i);
-    if (early) dispatch({ type: "openOperator", id: early[1], token: early[2] || undefined });
+    if (early) dispatch({ type: "openOperator", id: listingId(early[1]), token: early[2] || undefined });
     else if (atOperatorsPath()) dispatch({ type: "openOperator" });
     // A shared listing link needs that listing's own file and nothing else, so it is opened before the catalog
     // is asked for. This used to sit inside the .then() below, which meant a guest on mobile data waited out
     // the whole 5 MB catalog to see a 3 kB listing.
-    const deep = window.location.hash.match(/^#(?:o|remove)=([a-z0-9-]+)/i);
+    const deepMatch = window.location.hash.match(/^#(?:o|remove)=([a-z0-9-]+)/i);
+    const deep = deepMatch ? listingId(deepMatch[1]) : null;
     const deepOpened = deep
-      ? loadListing(deep[1]).then((ok) => {
+      ? loadListing(deep).then((ok) => {
           if (!alive || !ok) return false;
           dispatch({ type: "catalogLoaded", added: 1 });
-          dispatch({ type: "openRequest", id: deep[1] });
+          dispatch({ type: "openRequest", id: deep });
           return true;
         })
       : Promise.resolve(false);
@@ -742,9 +743,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const paid = window.location.hash.match(/^#paid=([A-Z0-9-]+)&o=([a-z0-9-]+)/i);
     if (paid) {
       const code = paid[1].toUpperCase();
-      void loadListing(paid[2]).then((changed) => alive && changed && dispatch({ type: "catalogLoaded", added: 1 }));
+      void loadListing(listingId(paid[2])).then((changed) => alive && changed && dispatch({ type: "catalogLoaded", added: 1 }));
       dispatch({ type: "paidReturn", code });
-      void confirmPaid(paid[2], code).then((r) => { if (alive && r.paid) dispatch({ type: "paidReturn", code }); });
+      void confirmPaid(listingId(paid[2]), code).then((r) => { if (alive && r.paid) dispatch({ type: "paidReturn", code }); });
       window.history.replaceState(null, "", window.location.pathname + window.location.search);
     }
     loadRemoteCatalog((n, complete) => {
@@ -756,22 +757,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const edited = applyStoredProfiles();
       dispatch({ type: "catalogLoaded", added: added + edited, complete: true });
       // Deep link: #o=<operator id> opens that listing directly.
-      const m = window.location.hash.match(/^#o=([a-z0-9-]+)/i);
-      if (m && experienceById(m[1]) && stateRef.current.reqTargetId !== m[1]) {
-        dispatch({ type: "openRequest", id: m[1] });
-        loadListing(m[1]).then((changed) => changed && dispatch({ type: "catalogLoaded", added: 1 }));
+      const mRaw = window.location.hash.match(/^#o=([a-z0-9-]+)/i);
+      const m = mRaw ? listingId(mRaw[1]) : null;
+      if (m && experienceById(m) && stateRef.current.reqTargetId !== m) {
+        dispatch({ type: "openRequest", id: m });
+        loadListing(m).then((changed) => changed && dispatch({ type: "catalogLoaded", added: 1 }));
       }
       const r = window.location.hash.match(/^#remove=([a-z0-9-]+)/i);
-      const target = r ? experienceById(r[1]) : null;
+      const target = r ? experienceById(listingId(r[1])) : null;
       if (r && target) {
         dispatch({ type: "removeRequest", id: target.id });
         dispatch({ type: "openRequest", id: target.id });
         loadListing(target.id).then((changed) => changed && dispatch({ type: "catalogLoaded", added: 1 }));
       }
       const c = window.location.hash.match(/^#claim=([a-z0-9-]+)(?:&k=([A-Za-z0-9_.~-]+))?/i);
-      if (c && experienceById(c[1])) {
+      if (c && experienceById(listingId(c[1]))) {
         // Already on the operator screen from the early check; now the record exists, fetch its details.
-        loadListing(c[1]).then((changed) => changed && dispatch({ type: "catalogLoaded", added: 1 }));
+        loadListing(listingId(c[1])).then((changed) => changed && dispatch({ type: "catalogLoaded", added: 1 }));
       }
       /**
        * A link to a listing the catalog no longer holds, which is a link that used to work: every sync drops
@@ -787,10 +789,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
        * The deep load is waited on rather than only `experienceById`, because the listing's own file and the
        * catalog are fetched side by side and either can land first: a listing on its way is not a listing gone.
        */
-      if (deep && !experienceById(deep[1])) {
+      if (deep && !experienceById(deep)) {
         void deepOpened.then((opened) => {
-          if (!alive || opened || experienceById(deep[1])) return;
-          if (stateRef.current.sheet === "request" && stateRef.current.reqTargetId === deep[1]) dispatch({ type: "closeSheet" });
+          if (!alive || opened || experienceById(deep)) return;
+          if (stateRef.current.sheet === "request" && stateRef.current.reqTargetId === deep) dispatch({ type: "closeSheet" });
           dispatch({ type: "toast", text: "That listing is no longer on Outset." });
         });
       }

@@ -15,12 +15,14 @@ import test from "node:test";
 
 const provider = readFileSync(new URL("../../state/AppProvider.tsx", import.meta.url), "utf8");
 const app = readFileSync(new URL("../../App.tsx", import.meta.url), "utf8");
+/** The boot's "this listing is not coming" branch, however the id it reads is spelled. */
+const GONE_BLOCK = /if \(deep && !experienceById\([^)]*\)\) \{([\s\S]*?)\n      \}/;
 
 test("the sheet a listing link opens from the hash is still opened that way", () => {
   // The reason the close below has to exist. If a link stops opening the sheet before the catalog lands,
   // this test is the place to notice that the rest of this file is now about nothing.
   assert.ok(
-    /sheet: "request" as const, reqTargetId: o\[2\]/.test(provider),
+    /sheet: "request" as const, reqTargetId: \w+\(?o\[2\]\)?/.test(provider),
     "a listing link no longer opens the request sheet from the hash",
   );
 });
@@ -33,7 +35,7 @@ test("the splash over that sheet stops once the catalog is in, so nothing else c
 });
 
 test("a listing that is nowhere closes its own sheet and says so", () => {
-  const m = /if \(deep && !experienceById\(deep\[1\]\)\) \{([\s\S]*?)\n      \}/.exec(provider);
+  const m = GONE_BLOCK.exec(provider);
   assert.ok(m, "the boot no longer checks whether a deep-linked listing exists");
   const body = m![1];
   assert.ok(/dispatch\(\{ type: "closeSheet" \}\)/.test(body), "the stuck request sheet is not closed again");
@@ -44,10 +46,9 @@ test("a listing that is nowhere closes its own sheet and says so", () => {
 test("a listing still on its way is not called gone", () => {
   // The listing's own file and the catalog are fetched side by side and either can land first, so the
   // decision waits on the deep load rather than reading `experienceById` the moment the catalog is complete.
-  const m = /if \(deep && !experienceById\(deep\[1\]\)\) \{([\s\S]*?)\n      \}/.exec(provider);
-  const body = m![1];
+  const body = GONE_BLOCK.exec(provider)![1];
   assert.ok(/deepOpened\.then\(/.test(body), "the gone check no longer waits for the listing's own file");
-  assert.ok(/opened \|\| experienceById\(deep\[1\]\)/.test(body), "a listing that landed in the meantime is not re-checked");
+  assert.ok(/opened \|\| experienceById\(/.test(body), "a listing that landed in the meantime is not re-checked");
 });
 
 test("closing that sheet is what takes the dead link out of the address bar", () => {
