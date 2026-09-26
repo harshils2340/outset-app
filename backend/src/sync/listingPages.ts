@@ -5,7 +5,8 @@ import { freeCancelBadge } from "../../../src/lib/cancellation.ts";
 import { sayLength } from "../../../src/lib/duration.ts";
 import { displayHours } from "../../../src/lib/hoursText.ts";
 import { cleanDesc, splitIncluded, tidyLine } from "../../../src/lib/listingDerive.ts";
-import { listingFacts } from "../../../src/lib/catalog.ts";
+import { listingFacts, publicRating } from "../../../src/lib/catalog.ts";
+import { reviewsLine } from "../../../src/lib/format.ts";
 import { photoCandidates } from "../../../src/lib/samePhoto.ts";
 import type { Unclaimed } from "../../../src/data/types.ts";
 import { METROS } from "../taxonomy/catalog.ts";
@@ -164,8 +165,10 @@ function jsonLd(item: Item, canonical: string, photos: string[], menu: { name: s
     ...(lat != null && lon != null ? { geo: { "@type": "GeoCoordinates", latitude: lat, longitude: lon } } : {}),
     ...(contact?.phone ? { telephone: contact.phone } : {}),
   };
-  if (typeof item.rating === "number" && typeof item.reviews === "number" && item.reviews > 0) {
-    ld.aggregateRating = { "@type": "AggregateRating", ratingValue: item.rating, reviewCount: item.reviews };
+  // The same gate the line above the fold reads, so a search engine and a guest are never told two things.
+  const score = publicRating(unclaimedShape(item));
+  if (score) {
+    ld.aggregateRating = { "@type": "AggregateRating", ratingValue: score.rating, reviewCount: score.reviews };
   }
   if (priced.length) {
     ld.offers = priced.slice(0, 10).map((m) => ({
@@ -252,8 +255,9 @@ function page(item: Item, opts: { landingHref: string | null; kindPageHref: stri
   // app draws never state one shop's length two ways.
   const durRaw = (item as { dur?: string }).dur || "";
   const dur = durRaw ? sayLength(durRaw) : "";
-  const rating = typeof item.rating === "number" ? item.rating : null;
-  const reviews = typeof item.reviews === "number" ? item.reviews : null;
+  // Through the gate the cards, the hero and the phone sheet all read: a rating nobody has reviewed is not a
+  // score, and the JSON-LD on this very page already refused to publish one.
+  const score = publicRating(unclaimedShape(item));
   const kind = KINDS.find((k) => k.art === item.art);
   const title = `${item.title}${area ? " in " + area : ""} · Outset`;
   const description = clip(blurb || `${item.title}, ${area || "a real local business"} on Outset.`, 300);
@@ -280,7 +284,8 @@ function page(item: Item, opts: { landingHref: string | null; kindPageHref: stri
   const requirementsHtml = requirements.length ? `<h2>Requirements</h2><ul class="plain">${requirements.map((l) => `<li>${esc(l)}</li>`).join("")}</ul>` : "";
   const highlightsHtml = highlights.length ? `<h2>Highlights</h2><ul class="plain">${highlights.map((l) => `<li>${esc(l)}</li>`).join("")}</ul>` : "";
   const faqHtml = faq.length ? `<h2>Questions</h2><div class="faq">${faq.map((f) => `<h3>${esc(f.q)}</h3><p>${esc(f.a)}</p>`).join("")}</div>` : "";
-  const ratingHtml = rating != null ? `<p class="rating">★ ${rating.toFixed(1)}${reviews ? ` (${reviews.toLocaleString("en-US")} reviews)` : ""}</p>` : "";
+  // "1 reviews" on 982 shipped pages: every other surface counts the word with the number through `reviewsLine`.
+  const ratingHtml = score ? `<p class="rating">★ ${score.rating.toFixed(1)} (${esc(reviewsLine(score.reviews))})</p>` : "";
   const links = [
     `<a href="${hashUrl}">Open on Outset</a>`,
     opts.landingHref ? `<a href="${opts.landingHref}">${esc(kind ? kind.search : "More like this")}${area ? " near " + esc(area.split(",")[0]) : ""}</a>` : "",

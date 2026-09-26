@@ -655,3 +655,26 @@ test("the photo grid shows one tile per photograph, not one per spelling of its 
     r.cleanup();
   }
 });
+
+/**
+ * The star line was this page's own reading of the record rather than the app's. 982 shipped pages told a guest
+ * a shop had "1 reviews", the line `reviewsLine` exists to stop, and a rating with nothing behind it would have
+ * been printed above the fold while the JSON-LD on the same page refused to publish it.
+ */
+test("the star line is the score the app shows, counted in the app's own words", () => {
+  const items: Item[] = [
+    item("o-a", { cover: "https://x/a.jpg", rating: 4.9, reviews: 1 } as Partial<Item>),
+    item("o-b", { cover: "https://x/b.jpg", rating: 4.7, reviews: 2431 } as Partial<Item>),
+    item("o-c", { cover: "https://x/c.jpg", rating: 5, reviews: 0 } as Partial<Item>),
+  ];
+  const r = run(items);
+  try {
+    assert.ok(r.read("o-a.html").includes("★ 4.9 (1 review)"), "page still says a shop has 1 reviews");
+    assert.ok(r.read("o-b.html").includes("★ 4.7 (2,431 reviews)"), "page lost the thousands separator or the word");
+    const c = r.read("o-c.html");
+    assert.ok(!c.includes('class="rating"'), "page printed a rating nobody has reviewed");
+    assert.ok(!c.includes("aggregateRating"), "JSON-LD published a rating nobody has reviewed");
+  } finally {
+    r.cleanup();
+  }
+});
