@@ -5291,12 +5291,90 @@ claim link was still saying "Opening your dashboard..." at eight seconds.
   again. The confirm screen's failure line has still not been seen at 400px.
 
 
+## 26 September 2026, eighty-first run (07:55 to 08:55 UTC)
+
+**Chosen, and why.** Nothing has landed since the eightieth entry, so every area the brief names is still
+Verified and the hunt went to Coverage's open list. The line it started from is the one that shows before a
+guest clicks anything: the "from" price on a card. Two items on that list name it (a marina quoting $2.15,
+which is a rate per foot, and a zoo quoting $2 for a stingray touch), so the sweep read the cheapest priced
+row of all 10,208 shipped listings that have one and asked what each of those rows actually is.
+
+**Found and fixed.** Two defects, two commits, both of them a price quoted off a row a guest cannot book.
+
+- **285 listings offered a year of the place as the thing to book, and 102 priced their card from it**
+  (`146b65d3`). The sync already refuses a membership, a season pass and a gift card as a service, and said
+  nothing about `options`, which is where the booking box gets its rows when a listing has no services to
+  show. 220 shipped rows are named plainly "Memberships"; on 74 listings it is the only row there is, so the
+  sheet preselects it and asks for a date and a party. Goulbourn Museum would take a Saturday booking for two
+  on an individual annual membership, and its card said "From $10" while the page it opens listed no such
+  service at all. The rule lives with the other menu rules now (`bookableRow`), so every record the app loads
+  is right without waiting for a sync and the next sync stops writing them. A row that names a single visit as
+  well keeps its place, because that price is the shop's own and real: 18 rows, among them a $5 teen swim at
+  Revelstoke, a $49 weekday court at River Trails and a $35 studio session at The Glass Bar. The sync's own
+  service filter reads the same rule now, so the two lists agree in both directions rather than one.
+- **The static pages never ran the app's menu rule at all** (`a578b609`). `build-pages.mts` reads
+  `public/catalog.json` and `public/o` straight and hands them to the page writers, so the page a search engine
+  and a shared link open kept offering what the app had stopped offering. It shipped clean only because the
+  last sync had already cleaned the archive rows out of the data; the fix above would have put 283 pages back
+  out of step on the next deploy. `priceOf` also mixed the browse record's `from` into one minimum with the
+  menu, so a `from` an earlier sync computed off rows the menu no longer carries could undercut it: 23 pages
+  would have quoted a membership price the listing had stopped offering. It is the fallback now, the rule
+  `fromPrice` reads in the app, and the two agree on all 52,816. 51 listings lose their page, every one a shop
+  whose only priced row was a membership and which has under five reviews, so by the generator's own rule there
+  was nothing left on it for a guest to act on.
+
+**Swept and clean.** The cheapest priced row of every listing that has one, by name, for what it is: gear
+rental, a fee, merch, food and drink, a moorage rate per foot and a stated discount all turn up, all of them
+already on your list from earlier runs, and all left alone. That no service tier anywhere
+points at a row this dropped (0 of 141,717), so the re-pointing `bookableMenu` does was never exercised by it.
+That the page and the app quote the same number on all 52,816 listings, before and after. Both fixes driven in
+a real Chromium at 1280px and 400px against the code before them: the old build shows Goulbourn Museum's
+"$10 Memberships" row and "From $10", the new one shows the honest page it has always had underneath ("Tickets
+are sold by the business. Prices and times on their side"), with no sideways scroll either way, and Revelstoke
+unchanged at both widths.
+
+**Verification.** App `npm test` 893 pass, 0 fail, up 5. Backend `npm test` 831 pass, 0 fail, 2 skipped, up 2.
+`tsc -b` clean on the app, `tsc --noEmit -p .` clean at the root and still compiling nothing, the backend type
+check clean but for TS5097. The full rehearsal was run because both commits touch `src/` and `backend/src`:
+57 of 57 against a local Postgres 16 on 5433 with TLS on and the Chromium on disk, no Stripe, mail or GitHub
+key. A fresh checkout has no `node_modules` on either side, so both were installed first, which is the
+fifty-second run's Needs Harshil still standing.
+
+**Needs Harshil.**
+
+- **Four listings quote a price their own menu does not show, until the next sync.** Revelstoke, River Trails,
+  The Glass Bar and o-wmwellnesscenter-com are the four whose "Admission & Memberships" style row this run
+  chose to keep: their card and page quote it, and their service list does not carry it because the old sync
+  filter dropped the group. The sync fix lands that row on the menu, so the next sync closes it. Nothing to do
+  but run one.
+- **The cheapest row of any kind is still what a card quotes.** The sweep re-met the four families the
+  forty-fourth and fifty-seventh runs already put on your list and left every one of them alone, because each
+  is a supply judgement rather than a rule: gear and fees ("Shoe Rental" $3, "Pull Cart Fee" $2, "Tire
+  Disposal" $2, "Tee Time Reservation Fee" $4.95), merch ("Retail Items" $3, "Souvenirs - Home Decor" $3.99, a
+  $12 keychain at LAA Art Collective), a brewery's food and drink menu ("Side Salad" $2.99, "Shots" $4.50,
+  "Snacks & Things" $4.75), and a marina's rate per foot ("Guest Moorage" $2.15, "Transient Docking" $4).
+  Memberships were the one family in that sweep that the sync had already ruled on, which is why this run could
+  act on them without asking: it applied a decision you had already taken to the list it had never reached.
+- **A charter deposit is the one the rule could not call.** 19 option rows name a deposit, and the sync drops
+  every one of them from the service list while leaving it in the options: "Spring Seabass Open Boat Deposit"
+  and nine more at Jersey Nutz are how that shop sells its trips, while "Damage Deposit" and "Room Clean-up
+  Fee (Deposit)" are not. Deciding which is a supply call, so `bookableRow` was left saying nothing about
+  deposits and the two lists still disagree on those 19.
+- Still open from the seventy-eighth run: local `main` sits on `c3a9bfd0`, five "Otto page" commits that
+  `origin/main` was force-updated away from. Tonight's work is on `origin/main`; that stale ref was left alone
+  again. The desktop site still has no way to say anything in passing, and the confirm screen's failure line
+  has still not been seen at 400px.
+
+
 ## Coverage
 
 The catalog is 48,198 listings as of the 23 September sync, 1,873 of them Viator partner rows. Counts below
 that name 59,125 were taken before that sync and were whole at the time.
 
-**Verified so far.** The name a guest reads: the business name on all 59,125 shipped listings, against the
+**Verified so far.** What a card's "from" price is actually a price for, over the cheapest priced row of all
+10,208 shipped listings that have one: a membership, a season pass and a gift card are refused everywhere now,
+and the static pages read the same menu rule and the same price rule the app reads, checked over all 52,816.
+The name a guest reads: the business name on all 59,125 shipped listings, against the
 card, the page and the lite record alike, and the row name on all 141,717 shipped options, services and
 add-ons. The concierge's vendor table against the catalog's own, over all 1,664 shipped booking links.
 Booking validation and odd input on every route that takes it. The money split,
@@ -6139,4 +6217,7 @@ stated place is a two-letter state code should print that code under the heading
 line a dead listing link now shows reaches the phone and not the desktop (see the eightieth run's Needs
 Harshil). Whether the operator dashboard's own browser tab should be titled for the shop rather than for
 guests. Whether the address bar should be rewritten to the catalog's own spelling of an id a link shouted: the
-listing opens now, and the shouted hash stays in the bar.
+listing opens now, and the shouted hash stays in the bar. Whether a charter deposit is the booking, which is
+what decides the 19 deposit rows the sync drops from a service list and keeps in the options (see the
+eighty-first run's Needs Harshil). Whether `fromPrice` should quote a row the page's own service list does not
+show at all, which four listings do until the next sync runs.
