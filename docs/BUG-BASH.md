@@ -5210,6 +5210,87 @@ writes the specific one, the old handoff exports and marks three rows in silence
   alone again. The confirm screen's failure line has still not been seen at 400px.
 
 
+## 26 September 2026, eightieth run (07:14 to 08:35 UTC)
+
+**Chosen, and why.** Nothing has landed since the seventy-ninth entry, so every area the brief names is still
+Verified and the hunt went to Coverage's open list. The line it started from was the browser's own controls on
+the guest app, which nothing in 6,000 lines of this file has ever driven: the tab, the bookmark, the history
+entry, Back and Forward, and the four hashes our own links carry (`#o=`, `#remove=`, `#claim=`, `#paid=`). A
+link is the only thing a guest or an operator ever holds on to, and 26 September is the day a store asked to be
+taken down, so the shape of a link outliving its listing was worth an hour on its own.
+
+**Found and fixed.** Four defects, four commits, all of them a link doing the wrong thing.
+
+- **No page in the app ever had a title** (`e01d36da`). `document.title` is set in exactly one place in the
+  whole app, the admin metrics screen, so every listing a guest opened read "Book things to do near you ·
+  Outset", the title `index.html` ships. Four listings open were four identical tabs, a bookmarked shop was
+  filed under the home page's name, and the history entry for a listing named no business at all. A hash route
+  fires no page load either, so nothing told a screen reader the page had changed. The static `/l/` page for
+  the same shop has always been titled by the business, so one listing had two names depending on who fetched
+  it. The title now follows the same state the address bar follows, in the static page's own format, and a test
+  pins the two formats together so they cannot drift apart again.
+- **A link to a listing the catalog no longer holds left the guest on a stuck, blank screen** (`6e8fa944`).
+  The app opens the request sheet straight from the hash, before any catalog, so a link paints the listing
+  rather than the home, and `ListingSplash` covers the gap until the catalog is in. Nothing ever closed that
+  sheet again when the listing turned out not to exist: the splash stops at `catalogComplete` and leaves an
+  open listing screen with no listing on it and the home showing through, the dead `#o=` still in the address
+  bar for every refresh and bookmark after it, and not a word said. Every sync drops listings (the 23
+  September one published 10,927 fewer) and a business can ask to be taken down, while the bookmarks, shared
+  links and the listing links in our own outreach mail keep pointing at them. The sheet now closes once the
+  catalog is in and the listing's own file has also failed to produce it, which clears the hash through the
+  effect that already owns the address bar, and the guest is told the listing is no longer on Outset. The
+  decision waits on the listing's own fetch rather than reading the catalog the moment it completes, because
+  the two are fetched side by side and either can land first.
+- **A claim link for a dropped listing made the owner wait a minute to be told** (`50ccdec5`). The link check
+  polls for the listing 120 times at half a second, because the catalog and the detail file can be slow. It
+  had no way to tell "still arriving" from "not coming", so an owner whose listing a sync had dropped since
+  the mail went out watched "Opening your dashboard..." for a full minute before falling through to the form
+  that has always had the right words for it. The catalog being complete without the listing in it is that
+  difference: 2.8 seconds now, with "We couldn't find the business named in that link". A listing that is in
+  the catalog but whose detail file has not landed keeps its full minute.
+- **A listing link whose id had been shouted opened nothing** (`a5578b12`). Every regex that reads an id out
+  of the hash is case-insensitive and all 52,815 shipped ids are lower case, so `#o=O-ALCATRAZTOURSF-COM`
+  names a real listing and resolved to nothing. Harmless while it was silent; with the fix above in place the
+  app would have told that guest their listing was gone while it sat in the catalog. Every id off the hash
+  goes through one function now, and a test holds the catalog to the lower case that makes it safe.
+
+**Swept and clean.** Markup left in the words a guest reads: every string in all 52,815 shipped detail files
+against HTML tags and markdown, then every field that carries any traced to the function that prints it.
+Twenty-one field-and-fault pairs turn up in the data (229 service descriptions with a bold run, 60 partner
+cancellation policies with a `<br>`, 24 review authors signed `<strong>`, an hours line opening `**`) and every
+one of them goes through `tidyLine`, `plainWords`, `stripTags` or `tidyHours` before a guest sees it. The
+"More options" fold driven again at 1280px and 400px on both surfaces, this time for its button rather than
+its rows: the count, `aria-expanded`, the flip to "Fewer options", focus staying where it was pressed, and no
+sideways scroll either way. That no shipped service folds every tier away, re-measured: 61,614 services with
+variants, 186 with a fold, 0 fully folded. Back, Forward and a refresh across the home and a listing. `#remove=`
+on both widths, which does open the removal panel on a phone.
+
+**Verification.** App `npm test` 888 pass, 0 fail, up 17. Backend `npm test` 829 pass, 0 fail, 2 skipped,
+unchanged. `tsc -b` clean on the app, the backend type check clean but for TS5097, `tsc --noEmit -p .` clean and
+still compiling nothing. The full rehearsal was run because all four commits touch `src/`: 57 of 57
+against a local Postgres 16 on 5433 with TLS on and the Chromium on disk, no Stripe, mail or GitHub key. It
+earned its keep on the first pass: three of the tests written for the second fix pinned the exact source text
+of lines the fourth fix then rewrote, and the rehearsal is what said so. They pin the intent now, and the run
+above is the clean one after that. Every fix was driven against the code before it in a real Chromium: the old
+build leaves `#o=o-sandboxvr-com` in the address bar with the home showing through at both widths, and the old
+claim link was still saying "Opening your dashboard..." at eight seconds.
+
+**Needs Harshil.**
+
+- **The desktop site has no way to say anything in passing.** `<Toast />` is rendered only inside a
+  non-request sheet, and `.toast` is `position:absolute` tuned for the phone frame, so a toast dropped into the
+  desktop tree would land at the bottom of the document rather than the viewport. The new "That listing is no
+  longer on Outset" line therefore reaches the phone and not the desktop, where the guest gets a clean home
+  and no words. Giving the desktop a notice needs `src/styles`, which an overnight run may not touch.
+- **The dashboard's own tab is still titled for guests.** The title fix covers the listing a guest opens,
+  because that is what gets shared and bookmarked. An operator with the dashboard open all day still reads
+  "Book things to do near you · Outset", and naming their shop there means reaching the signed-in profile from
+  the provider.
+- Still open from the seventy-eighth run: local `main` sits on `c3a9bfd0`, five "Otto page" commits that
+  `origin/main` was force-updated away from. Tonight's work is on `origin/main`; that stale ref was left alone
+  again. The confirm screen's failure line has still not been seen at 400px.
+
+
 ## Coverage
 
 The catalog is 48,198 listings as of the 23 September sync, 1,873 of them Viator partner rows. Counts below
@@ -5631,6 +5712,14 @@ whose clock cannot be parsed, a price of nothing, and two trips sharing a start.
 that calendar for, guest and operator alike. Which day Otto names a departure on, against the ten days the
 booking window covers.
 
+The browser's own controls on the guest app, driven for the first time: the tab title, the bookmark and the
+history entry, Back, Forward and a refresh across the home and a listing, and all four hashes our own links
+carry (`#o=`, `#remove=`, `#claim=`, `#paid=`) against a live listing and against one the catalog no longer
+holds, at 1280px and 400px. Markup left in the words a guest reads, over every string in all 52,815 shipped
+detail files: every field carrying an HTML tag or markdown syntax, against the function that prints it. The
+"More options" fold as a control rather than a list: its count, `aria-expanded`, the flip to "Fewer options"
+and where focus lands, on both surfaces.
+
 A real claim link opened in a browser, which the rehearsal cannot do at all because it enters through the test
 bypass: what a first load records (nothing), what the confirm screen names, what a reload of that screen leaves
 the owner with, what the click records and links for sign-in, where the token in the address bar goes and when,
@@ -6045,4 +6134,9 @@ it compiles nothing of (see this run's Needs Harshil). Which of a chain's locati
 should count when the grid draws 24, on the one listing that has more. Which of the several places a meeting
 point names the Maps link should open, on the shops that name more than one. Whether a listing whose only
 stated place is a two-letter state code should print that code under the heading "Address" at all, which all
-1,210 of them do.
+1,210 of them do. Whether the desktop site should be able to say anything in passing at all:
+`<Toast />` is rendered only inside a non-request sheet and `.toast` is positioned for the phone frame, so the
+line a dead listing link now shows reaches the phone and not the desktop (see the eightieth run's Needs
+Harshil). Whether the operator dashboard's own browser tab should be titled for the shop rather than for
+guests. Whether the address bar should be rewritten to the catalog's own spelling of an id a link shouted: the
+listing opens now, and the shouted hash stays in the bar.
