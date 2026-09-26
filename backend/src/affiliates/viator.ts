@@ -3,6 +3,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { db, nowIso } from "../db/client.ts";
 import { METROS, nearestMetro } from "../taxonomy/catalog.ts";
+import { sayLength } from "../../../src/lib/duration.ts";
 
 /**
  * Viator affiliate feed: products the Viator Partner API licenses us to display (photos, descriptions,
@@ -200,10 +201,24 @@ export function bestImages(p: ViatorProduct, max = 8): string[] {
   return out;
 }
 
+/**
+ * How long the product runs, in the words a person would use. The API states every length in minutes, and a
+ * partner sells plenty that run for days: a nine day CityPASS came back as 12,960 minutes and was written
+ * "216 hours", a two day Niagara Falls tour "48 hours", and an e-bike rental "24 hours to 744 hours", which
+ * is a month. GetYourGuide's own reader already says days because its API names the unit; this one has to
+ * work the unit out, so a day or more is said in days, as `sayLength` says it on every guest surface.
+ */
 export function durationText(p: ViatorProduct): string | null {
   const d = p.duration;
   if (!d) return null;
-  const say = (m: number) => (m >= 60 && m % 60 === 0 ? m / 60 + (m === 60 ? " hour" : " hours") : m >= 60 ? (m / 60).toFixed(1).replace(/\.0$/, "") + " hours" : m + " minutes");
+  const say = (m: number) =>
+    m >= 1440
+      ? sayLength(Math.round((m / 60) * 10) / 10 + " hours")
+      : m >= 60 && m % 60 === 0
+        ? m / 60 + (m === 60 ? " hour" : " hours")
+        : m >= 60
+          ? (m / 60).toFixed(1).replace(/\.0$/, "") + " hours"
+          : m + " minutes";
   if (d.fixedDurationInMinutes) return say(d.fixedDurationInMinutes);
   if (d.variableDurationFromMinutes && d.variableDurationToMinutes) return say(d.variableDurationFromMinutes) + " to " + say(d.variableDurationToMinutes);
   return null;

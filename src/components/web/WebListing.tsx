@@ -15,6 +15,7 @@ import { DAYS, fmtDate, fmtReviews, fmtTime, money, priceWith, reviewsLine } fro
 import { srcSet, thumb } from "../../lib/images";
 import { embedAutoplay, isGif, listingMedia, photoCandidates, probePhotos, type Media } from "../../lib/media";
 import { arrivalWords, bringLine, cleanDesc, durationLabel, groupCap as readGroupCap, minAge, splitIncluded, splitPolicies, tidyLine } from "../../lib/listingDerive";
+import { sayLength } from "../../lib/duration";
 import { freeCancelBadge } from "../../lib/cancellation";
 import { pickSimilar } from "../../lib/similar";
 import { bookableStart, clockIn, hourLines, itemOpenState, itemWeek, zoneFor } from "../../lib/openNow";
@@ -300,17 +301,12 @@ function lengthWords(text: string): string {
   });
 }
 
-/** "60 min" reads "1 hour" and "90 min" "1.5 hours", so cards side by side state lengths the same way. */
-export function tidyDuration(text: string): string {
-  const t = text.trim();
-  const m = t.match(/^(\d+)\s*(?:m|mins?|minutes?)\.?$/i);
-  if (m) {
-    const n = Number(m[1]);
-    if (n >= 60 && n % 30 === 0) return n / 60 + (n === 60 ? " hour" : " hours");
-    return n + " min";
-  }
-  return t.replace(/^1 hours$/i, "1 hour").replace(/^(\d+(?:\.\d+)?)\s*hrs?$/i, (_x, n: string) => n + (Number(n) === 1 ? " hour" : " hours"));
-}
+/**
+ * "60 min" reads "1 hour" and "90 min" "1.5 hours", so cards side by side state lengths the same way, and a
+ * span of a day or more is said in days. The rule itself is `src/lib/duration.ts`, which Otto and the static
+ * `/l/` page read too; this file imports CSS, so nothing in it can be held to the catalog in a test.
+ */
+export const tidyDuration = sayLength;
 
 /** "84457 Overseas Hwy, Islamorada, FL, 33036" loses the comma before the ZIP. */
 export function tidyAddress(text: string): string {

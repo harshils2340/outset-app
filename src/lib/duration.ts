@@ -57,3 +57,32 @@ export function durationFrom(texts: string[]): string | null {
   }
   return null;
 }
+
+/**
+ * A length as a person would say it out loud, read once so a card, a listing page, a phone sheet, Otto and
+ * the static `/l/` page all say the same thing about the same shop.
+ *
+ * Two shapes get rewritten. "60 min" is an hour and "90 min" an hour and a half, so cards side by side state
+ * lengths the same way. And a span of a day or more is said in days: a partner's API gives a multi-day
+ * product its length in minutes and the row that stores it was written in hours, so 218 shipped listings
+ * told a guest a two day tour of Niagara Falls runs "48 hours", a nine day CityPASS "216 hours", and an
+ * e-bike a guest may keep for a month "24 hours to 744 hours". One says "24 hours to 8760 hours", which is
+ * a year. Nothing under a day is touched, and no number is invented: a span that is not a whole number of
+ * days keeps one decimal, the way "1.5 hours" already does.
+ */
+export function sayLength(text: string): string {
+  const t = String(text || "").trim();
+  const asMin = t.match(/^(\d+)\s*(?:m|mins?|minutes?)\.?$/i);
+  if (asMin) {
+    const n = Number(asMin[1]);
+    if (n >= 60 && n % 30 === 0) return n / 60 + (n === 60 ? " hour" : " hours");
+    return n + " min";
+  }
+  const hours = t.replace(/^1 hours$/i, "1 hour").replace(/^(\d+(?:\.\d+)?)\s*hrs?$/i, (_x, n: string) => n + (Number(n) === 1 ? " hour" : " hours"));
+  return hours.replace(/\b(\d+(?:\.\d+)?)\s*hours?\b/gi, (whole, raw: string) => {
+    const n = Number(raw);
+    if (!Number.isFinite(n) || n < 24) return whole;
+    const d = Math.round((n / 24) * 10) / 10;
+    return d + (d === 1 ? " day" : " days");
+  });
+}

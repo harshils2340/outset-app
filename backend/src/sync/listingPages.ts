@@ -2,6 +2,7 @@ import { mkdirSync, readdirSync, unlinkSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { freeCancelBadge } from "../../../src/lib/cancellation.ts";
+import { sayLength } from "../../../src/lib/duration.ts";
 import { displayHours } from "../../../src/lib/hoursText.ts";
 import { splitIncluded, tidyLine } from "../../../src/lib/listingDerive.ts";
 import { listingFacts } from "../../../src/lib/catalog.ts";
@@ -235,7 +236,10 @@ function page(item: Item, opts: { landingHref: string | null; kindPageHref: stri
     .slice(0, MAX_LIST_ITEMS)
     .map(tidyLine);
   const faq = ((item as { faq?: { q: string; a: string }[] }).faq || []).slice(0, MAX_FAQ);
-  const dur = (item as { dur?: string }).dur || "";
+  // The same rule the app's cards and sheets read, so the page a search engine lands on and the page the
+  // app draws never state one shop's length two ways.
+  const durRaw = (item as { dur?: string }).dur || "";
+  const dur = durRaw ? sayLength(durRaw) : "";
   const rating = typeof item.rating === "number" ? item.rating : null;
   const reviews = typeof item.reviews === "number" ? item.reviews : null;
   const kind = KINDS.find((k) => k.art === item.art);

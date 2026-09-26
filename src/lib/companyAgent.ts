@@ -3,7 +3,7 @@ import type { LiveAvailability } from "./api";
 import { addressLine, bookingPaused, plainWords } from "./catalog";
 import { runsInMonth } from "./deals";
 import { callablePhone } from "./phone";
-import { withoutNoticeWindows } from "./duration";
+import { sayLength, withoutNoticeWindows } from "./duration";
 import { money } from "./format";
 import { arrivalWords, faqText, groupCap, minAge, splitIncluded, statesOwnAction } from "./listingDerive";
 import { liveRead } from "./liveTimes";
@@ -953,7 +953,7 @@ function durationAnswer(ctx: CompanyContext, q: string, prev: ChatState): { text
     const mins = spread(all);
     return { text: mins.length === 1 ? "About " + fmtDur(mins[0]) + "." : range(mins) + ", depending which you pick.", state: { topic: "duration" } };
   }
-  if (ctx.item.dur) return { text: "About " + plainWords(ctx.item.dur) + ".", state: { topic: "duration" } };
+  if (ctx.item.dur) return { text: "About " + plainWords(sayLength(ctx.item.dur)) + ".", state: { topic: "duration" } };
   const line = corpus(ctx.item).find((l) => /\b\d+(\.\d+)?\s*(hours?|minutes?|mins?)\b/i.test(l) && !/cancel|refund|advance|before|prior|notice|arrive|early|late/i.test(l));
   if (line) return { text: sentence(clip(line)), state: { topic: "duration" } };
   return { text: noFact(ctx, "how long it runs"), state: { topic: "duration" } };

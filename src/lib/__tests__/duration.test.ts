@@ -3,7 +3,7 @@ import test from "node:test";
 import { readFileSync, readdirSync } from "node:fs";
 
 import { companyReply } from "../companyAgent";
-import { durationFrom, isNoticeWindow, withoutNoticeWindows } from "../duration";
+import { durationFrom, isNoticeWindow, sayLength, withoutNoticeWindows } from "../duration";
 import { durationLabel } from "../listingDerive";
 import { minutesIn } from "../operator";
 import type { Unclaimed } from "../../data/types";
@@ -119,6 +119,72 @@ test("no shipped listing lets a claimed shop replace a good duration with a wind
     const n = Number(d.match(/([\d.]+)\s*\D*$/)?.[1] ?? 0);
     const tooLong = /min/.test(d) ? n > 600 : /day/.test(d) ? n > 7 : n > 14;
     if (tooLong || menuLines(j).some((l) => isNoticeWindow(l) && durationFrom([l]))) offenders.push(j.id + ": " + j.dur + " -> " + d);
+  }
+  assert.deepEqual(offenders.slice(0, 10), []);
+});
+
+/* ---------- a day is said in days ---------- */
+
+/**
+ * A partner's API states every length in minutes and the row that stores one is written in hours, so a
+ * product that runs for days reached a guest counted in hours: 218 shipped listings say a two day tour takes
+ * "48 hours" and a nine day CityPASS "216 hours". One e-bike rental says "24 hours to 744 hours" and one
+ * says "24 hours to 8760 hours", which is a year. Every guest surface reads `sayLength`, so the shipped
+ * files are right without waiting for a sync, and `viator.ts` now writes days at the source.
+ */
+test("a span of a day or more is said in days, and nothing shorter moves", () => {
+  assert.equal(sayLength("24 hours"), "1 day");
+  assert.equal(sayLength("48 hours"), "2 days");
+  assert.equal(sayLength("216 hours"), "9 days");
+  assert.equal(sayLength("24 hours to 744 hours"), "1 day to 31 days");
+  assert.equal(sayLength("1 hour to 24 hours"), "1 hour to 1 day");
+  assert.equal(sayLength("92 hours"), "3.8 days", "a span that is not whole days keeps one decimal, as 1.5 hours does");
+  assert.equal(sayLength("14.5 hours"), "14.5 hours", "under a day is left exactly as the shop wrote it");
+  assert.equal(sayLength("2 hours"), "2 hours");
+  assert.equal(sayLength("2 days"), "2 days");
+});
+
+test("the minute rule the cards already read is still the same rule", () => {
+  assert.equal(sayLength("60 min"), "1 hour");
+  assert.equal(sayLength("90 min"), "1.5 hours");
+  assert.equal(sayLength("45 min"), "45 min");
+  assert.equal(sayLength("1 hours"), "1 hour");
+  assert.equal(sayLength("3 hrs"), "3 hours");
+});
+
+test("a shipped tour whose own title says four days no longer says ninety six hours", () => {
+  const j = listing("a-viator-100492p14");
+  assert.match(j.title, /4 Days/i, "the product changed, so this case needs a new listing");
+  assert.equal(j.dur, "96 hours");
+  assert.equal(sayLength(j.dur as string), "4 days");
+});
+
+test("Otto answers how long it runs in days too", () => {
+  assert.match(ask("a-viator-100492p14"), /\b4 days\b/);
+  assert.doesNotMatch(ask("a-viator-100492p14"), /96 hours/);
+});
+
+test("no shipped listing tells a guest a length counted in days' worth of hours", () => {
+  // 218 before this rule, from "24 hours" up to "24 hours to 8760 hours".
+  const offenders: string[] = [];
+  for (const f of readdirSync(dir)) {
+    const j = JSON.parse(readFileSync(new URL(f, dir), "utf8")) as Unclaimed;
+    if (!j.dur) continue;
+    const shown = sayLength(j.dur);
+    if ([...shown.matchAll(/(\d+(?:\.\d+)?)\s*hours?/gi)].some((m) => Number(m[1]) >= 24)) offenders.push(j.id + ": " + j.dur + " -> " + shown);
+  }
+  assert.deepEqual(offenders.slice(0, 10), []);
+});
+
+test("the rule leaves every operator-written length alone", () => {
+  // The defect is a partner's minutes written back as hours. A shop's own menu says "2 hours" or "90 min",
+  // and the only change those may see is the minute rule the cards have always applied.
+  const offenders: string[] = [];
+  for (const f of readdirSync(dir)) {
+    const j = JSON.parse(readFileSync(new URL(f, dir), "utf8")) as Unclaimed;
+    if (!j.dur || j.affiliate) continue;
+    const shown = sayLength(j.dur);
+    if (shown !== j.dur && !/\bmin\b|minutes?|hrs?\b|^1 hours$/i.test(j.dur)) offenders.push(j.id + ": " + j.dur + " -> " + shown);
   }
   assert.deepEqual(offenders.slice(0, 10), []);
 });

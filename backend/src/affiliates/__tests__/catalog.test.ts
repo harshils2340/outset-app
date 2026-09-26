@@ -67,6 +67,21 @@ test("duration reads like a person wrote it", () => {
   assert.equal(durationText({ productCode: "X" }), null);
 });
 
+/**
+ * The API states every length in minutes and plenty of the products run for days. Written back in hours, a
+ * four day Canadian Rockies tour reached a guest as "96 hours", a nine day CityPASS as "216 hours", and an
+ * e-bike rental as "24 hours to 744 hours", which is a month: 218 shipped listings said one of those.
+ */
+test("a product that runs for days is counted in days, not in hours", () => {
+  assert.equal(durationText({ productCode: "X", duration: { fixedDurationInMinutes: 1440 } }), "1 day");
+  assert.equal(durationText({ productCode: "X", duration: { fixedDurationInMinutes: 2880 } }), "2 days");
+  assert.equal(durationText({ productCode: "X", duration: { fixedDurationInMinutes: 12960 } }), "9 days");
+  assert.equal(durationText({ productCode: "X", duration: { fixedDurationInMinutes: 44640 } }), "31 days");
+  assert.equal(durationText({ productCode: "X", duration: { fixedDurationInMinutes: 5520 } }), "3.8 days");
+  assert.equal(durationText({ productCode: "X", duration: { variableDurationFromMinutes: 1440, variableDurationToMinutes: 44640 } }), "1 day to 31 days");
+  assert.equal(durationText({ productCode: "X", duration: { fixedDurationInMinutes: 870 } }), "14.5 hours", "under a day is untouched");
+});
+
 test("the booking link is the API's own, and never a non-https one", () => {
   assert.equal(bookingUrl({ productCode: "X", productUrl: "https://www.viator.com/tours/x?pid=P1" }), "https://www.viator.com/tours/x?pid=P1");
   assert.equal(bookingUrl({ productCode: "X", productUrl: "http://www.viator.com/tours/x" }), null);
