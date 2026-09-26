@@ -729,13 +729,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
     // is asked for. This used to sit inside the .then() below, which meant a guest on mobile data waited out
     // the whole 5 MB catalog to see a 3 kB listing.
     const deep = window.location.hash.match(/^#(?:o|remove)=([a-z0-9-]+)/i);
-    if (deep) {
-      void loadListing(deep[1]).then((ok) => {
-        if (!alive || !ok) return;
-        dispatch({ type: "catalogLoaded", added: 1 });
-        dispatch({ type: "openRequest", id: deep[1] });
-      });
-    }
+    const deepOpened = deep
+      ? loadListing(deep[1]).then((ok) => {
+          if (!alive || !ok) return false;
+          dispatch({ type: "catalogLoaded", added: 1 });
+          dispatch({ type: "openRequest", id: deep[1] });
+          return true;
+        })
+      : Promise.resolve(false);
     // Back from Stripe: the confirmation is already up (see the initial state). Fetch its listing, confirm the
     // payment with the API, and drop the hash so a reload lands on the home page.
     const paid = window.location.hash.match(/^#paid=([A-Z0-9-]+)&o=([a-z0-9-]+)/i);
@@ -771,6 +772,27 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (c && experienceById(c[1])) {
         // Already on the operator screen from the early check; now the record exists, fetch its details.
         loadListing(c[1]).then((changed) => changed && dispatch({ type: "catalogLoaded", added: 1 }));
+      }
+      /**
+       * A link to a listing the catalog no longer holds, which is a link that used to work: every sync drops
+       * listings, and a business can ask to be taken down (Sandbox VR did, on 26 September). A bookmark, a
+       * shared link and the listing link in our own outreach mail all outlive the listing.
+       *
+       * The app opens the request sheet straight from the hash, before any catalog, so a link paints the
+       * listing rather than the home first, and `ListingSplash` covers the gap until the catalog is in. When
+       * the listing turned out not to exist, nothing ever closed that sheet again: the splash stops at
+       * `catalogComplete` and leaves an open listing screen with no listing on it, the home showing through,
+       * the dead #o= still in the address bar for every refresh and bookmark after it, and no word said.
+       *
+       * The deep load is waited on rather than only `experienceById`, because the listing's own file and the
+       * catalog are fetched side by side and either can land first: a listing on its way is not a listing gone.
+       */
+      if (deep && !experienceById(deep[1])) {
+        void deepOpened.then((opened) => {
+          if (!alive || opened || experienceById(deep[1])) return;
+          if (stateRef.current.sheet === "request" && stateRef.current.reqTargetId === deep[1]) dispatch({ type: "closeSheet" });
+          dispatch({ type: "toast", text: "That listing is no longer on Outset." });
+        });
       }
       // Consume a listing or remove link so a reload lands on the home page. A claim link keeps its hash:
       // the operator screen reads it and the URL should survive a refresh until the claim is done.
