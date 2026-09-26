@@ -6,7 +6,7 @@ import { sayLength } from "../../../src/lib/duration.ts";
 import { displayHours } from "../../../src/lib/hoursText.ts";
 import { cleanDesc, splitIncluded, tidyLine } from "../../../src/lib/listingDerive.ts";
 import { listingFacts, publicRating } from "../../../src/lib/catalog.ts";
-import { reviewsLine } from "../../../src/lib/format.ts";
+import { money, reviewsLine } from "../../../src/lib/format.ts";
 import { photoCandidates } from "../../../src/lib/samePhoto.ts";
 import type { Unclaimed } from "../../../src/data/types.ts";
 import { METROS } from "../taxonomy/catalog.ts";
@@ -53,7 +53,6 @@ function unclaimedShape(item: unknown): Unclaimed {
 const factKey = (t: string) => t.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
 
 const esc = (s: unknown) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-const money = (n: number) => (Number.isInteger(n) ? "$" + n.toLocaleString("en-US") : "$" + n.toFixed(2));
 // A business's own name or FAQ text, crawled from its site, can contain "</script>": JSON.stringify does not
 // escape "<", so that string would close this tag early and let whatever follows run as HTML. < reads back
 // as the same JSON, so nothing here is lossy.

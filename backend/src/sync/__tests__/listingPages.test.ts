@@ -678,3 +678,24 @@ test("the star line is the score the app shows, counted in the app's own words",
     r.cleanup();
   }
 });
+
+/**
+ * Both page generators carried their own `money`, and both grouped a whole dollar's thousands and left a price
+ * with cents ungrouped: 109 shipped rows quoted "$10094.12" where every screen in the app says "$10,094.12".
+ * They read the app's rule now.
+ */
+test("a price with cents is grouped the way every screen in the app groups it", () => {
+  const items: Item[] = [
+    item("o-a", { cover: "https://x/a.jpg", options: [{ name: "Charter", detail: "", price: 10094.12 }, { name: "Half day", detail: "", price: 1024.85 }, { name: "Hour", detail: "", price: 2500 }] } as Partial<Item>),
+  ];
+  const r = run(items);
+  try {
+    const a = r.read("o-a.html");
+    assert.ok(a.includes("$10,094.12"), "page still quotes a price with cents ungrouped");
+    assert.ok(a.includes("$1,024.85"));
+    assert.ok(a.includes("$2,500"), "a whole dollar price lost its grouping or grew cents");
+    assert.ok(!a.includes("$10094"), "the ungrouped spelling is still on the page");
+  } finally {
+    r.cleanup();
+  }
+});

@@ -5,6 +5,7 @@ import { METROS } from "../taxonomy/catalog.ts";
 import { GUIDES } from "../../../src/data/guides.ts";
 import { REGION_NAME, regionOfArea } from "../../../src/data/regions.ts";
 import { displayHours } from "../../../src/lib/hoursText.ts";
+import { money } from "../../../src/lib/format.ts";
 import { bookableMenu } from "../../../src/lib/menuRow.ts";
 
 /**
@@ -216,9 +217,10 @@ const esc = (s: unknown) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g,
 // escape "<", so that string would close this tag early and let whatever follows run as HTML. < reads back
 // as the same JSON, so nothing here is lossy.
 const ldJson = (ld: unknown) => JSON.stringify(ld).replace(/</g, "\\u003c");
-const money = (n: number) => (Number.isInteger(n) ? "$" + n.toLocaleString("en-US") : "$" + n.toFixed(2));
+// The app's own rule, not a second copy of it: both copies here grouped a whole dollar's thousands and not a
+// price with cents, so 109 shipped rows quoted "$10094.12" where every screen in the app says "$10,094.12".
 /**
- * A count a person reads, not a bare integer. `money` has always grouped its thousands, so the museums page
+ * A count a person reads, not a bare integer. `money` groups its thousands, so the museums page
  * printed "1638 of the 6902 operators publish prices" and then "from $5 to $5,000" in the same breath, which
  * is two different conventions in one sentence. Every count on these pages goes through here.
  */
