@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { CALL_LINK, catalogId, vendorLabel } from "./drafts.ts";
 import { mailPostal, unsubPageUrl } from "../lib/unsub.ts";
-import { outreachAddress } from "./address.ts";
+import { bestAddress, greeting } from "./owner.ts";
 import { db, nowIso } from "../db/client.ts";
 
 /**
@@ -62,6 +62,8 @@ function vendorLine(id: string | null): string {
  */
 export function draftOttoCopy(op: OttoOp, email?: string): { subject: string; body: string; html: string } {
   const to = (email || "").trim().toLowerCase();
+  // "Hi Ron," only when the mailbox is Ron's by the site's own word (owner.ts); "Hi," otherwise.
+  const hi = to ? greeting(op, to) : "Hi,";
   const SITE = "https://onoutset.com/";
   const OTTO = SITE + "otto";
   const CAL = CALL_LINK;
@@ -72,7 +74,7 @@ export function draftOttoCopy(op: OttoOp, email?: string): { subject: string; bo
   // things done, not like it just takes a message. "AI front desk" is also the exact term otto.html's own
   // hero already uses, so the email and the page it links to now say the same thing.
   const who = "I'm Harshil. I built Otto, the AI front desk for local activity operators like " + op.name + ": it answers calls when you're busy or closed, books the guest in, and emails you a summary.";
-  const hear = "Before anything else, give this 43-second recording a listen to hear how it handles a real caller:";
+  const hear = "Before anything else, give this 42-second recording a listen to hear how it handles a real caller:";
   const staff = "Most operators use it so staff can stay focused on guests in person, while catching calls after hours that used to go to voicemail.";
   const vendor = vendorLine(op.calendar_vendor);
   const guarantee = "I can set it up with you in a day, free until it proves its value on your real line.";
@@ -91,7 +93,7 @@ export function draftOttoCopy(op: OttoOp, email?: string): { subject: string; bo
   const remove = SITE + "#remove=" + catalogId(op.domain);
   const removeLine = "Already have a page on Outset you didn't ask for, or just don't want to be found here at all? This takes it down instantly:";
   const lines = [
-    "Hi,", "", who, "",
+    hi, "", who, "",
     hear, "", OTTO, "",
     staff, "", vendor, "",
     guarantee, "",
@@ -100,9 +102,9 @@ export function draftOttoCopy(op: OttoOp, email?: string): { subject: string; bo
     "", removeLine, remove,
   ].filter((l) => l !== null) as string[];
   const paras = [
-    "<p>Hi,</p>",
+    "<p>" + esc(hi) + "</p>",
     "<p>" + esc(who) + "</p>",
-    "<p>" + esc(hear) + "<br>" + link(OTTO, "Hear the 43-second recording") + "</p>",
+    "<p>" + esc(hear) + "<br>" + link(OTTO, "Hear the 42-second recording") + "</p>",
     "<p>" + esc(staff) + "</p>",
     "<p>" + esc(vendor) + "</p>",
     "<p>" + esc(guarantee) + "</p>",
@@ -159,7 +161,7 @@ export function generateOttoDrafts(): number {
            AND domain NOT LIKE '%.gov' AND domain NOT LIKE '%.org' AND domain NOT LIKE '%.edu'`,
       )
       .all() as (OttoOp & { origin: string; claim_status: string })[]
-  ).filter((op) => outreachAddress(op));
+  ).filter((op) => bestAddress(op));
   let n = 0;
   db.exec("PRAGMA busy_timeout = 120000");
   // Scoped to 'otto': a listing-draft regeneration must never wipe these, and this must never wipe listing rows.
@@ -167,7 +169,7 @@ export function generateOttoDrafts(): number {
   const ins = db.prepare("INSERT INTO outreach_drafts (id, operator_id, to_email, subject, body, status, created_at, kind) VALUES (?, ?, ?, ?, ?, 'draft', ?, 'otto')");
   db.exec("BEGIN IMMEDIATE");
   for (const op of ops) {
-    const to = outreachAddress(op);
+    const to = bestAddress(op);
     if (!to) continue;
     const { subject, body } = draftOttoCopy(op, to);
     ins.run(randomUUID(), op.id, to, subject, body, nowIso());

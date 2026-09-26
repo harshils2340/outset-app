@@ -15,7 +15,7 @@ test("the recording link and the call link are both in the mail, each exactly on
   assert.equal(c.body.split(otto).length - 1, 1, c.body);
   assert.equal(c.body.split(CALL_LINK).length - 1, 1, c.body);
   assert.equal(c.html.split(CALL_LINK).length - 1, 1, c.html);
-  assert.ok(c.html.includes('<a href="' + otto + '">Hear the 43-second recording</a>'), c.html);
+  assert.ok(c.html.includes('<a href="' + otto + '">Hear the 42-second recording</a>'), c.html);
 });
 
 /** Added 25 September 2026 at Harshil's request: the "love to chat" line is a hyperlink to his Cal.com
@@ -44,4 +44,10 @@ test("no em dash, no exclamation mark, no shouty word, and the footer still carr
   assert.ok(!/!/.test(c.body), "no exclamation marks");
   assert.ok(!/\b[A-Z]{4,}\b/.test(c.body), "no shouty all-caps word");
   assert.ok(c.body.includes("/unsubscribe.html?t="), c.body);
+});
+
+test("an operator the site names no owner for is greeted plainly, never with a guessed name", () => {
+  const c = copy();
+  assert.ok(c.body.startsWith("Hi,\n"), c.body.slice(0, 40));
+  assert.ok(c.html.startsWith('<div style="font-family:system-ui,sans-serif;font-size:15px;line-height:1.55;color:#222"><p>Hi,</p>'), c.html.slice(0, 120));
 });

@@ -24,6 +24,8 @@ export PATH="${nvm_node:+$nvm_node:}/opt/homebrew/bin:/usr/local/bin:/usr/bin:/b
 export OUTSET_DB_PATH="$PWD/data/outset.db"
 export PIPELINE_TZ="${PIPELINE_TZ:-America/Toronto}"
 mkdir -p data/logs
+# Which node launchd ran, because that binary needs its own Full Disk Access grant (see the plist).
+echo "node: $(command -v node)" >> "data/logs/launchd-outreach.log"
 log="data/logs/outreach-$(date +%Y-%m-%d).log"
 {
   # Listing-claim ramp paused 25 September 2026 (Harshil: "just do all otto emails for now"); Otto takes the
