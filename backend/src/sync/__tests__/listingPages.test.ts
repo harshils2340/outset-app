@@ -616,3 +616,42 @@ test("the blurb and the FAQ on the page are the words the app prints, not the ra
     r.cleanup();
   }
 });
+
+/**
+ * The photo grid deduplicated by the exact URL, so one photograph linked under two schemes, two hostnames or
+ * two CDN sizes filled two of the six tiles and was named twice in the JSON-LD. 716 shipped pages repeated a
+ * picture that way. The hero and the lightbox have folded on the file a URL reaches since `photoCandidates`
+ * landed; this page now reads the same rule, so the six tiles are six photographs.
+ */
+test("the photo grid shows one tile per photograph, not one per spelling of its URL", () => {
+  const items: Item[] = [
+    item("o-a", {
+      cover: "https://shop.com/wp-content/uploads/boat.jpg?w=700&h=700&zoom=2",
+      photos: [
+        "http://www.shop.com/wp-content/uploads/boat.jpg",
+        "https://shop.com/wp-content/uploads/boat.jpg?w=1600&zoom=2",
+        "https://shop.com/wp-content/uploads/dock.jpg?w=1600",
+        // The query is the picture on a host that passes the file through it, so these stay two tiles.
+        "https://cdn.shop.com/_next/image?url=one.jpg",
+        "https://cdn.shop.com/_next/image?url=two.jpg",
+      ],
+    } as Partial<Item>),
+  ];
+  const r = run(items);
+  try {
+    const a = r.read("o-a.html");
+    const tiles = a.match(/<img src="[^"]*"/g) || [];
+    assert.equal(tiles.length, 4, "grid still repeats a photograph");
+    // The tiles print through the photo proxy, so the spelling each one kept is read out of the JSON-LD,
+    // which carries the listing's own URLs.
+    assert.ok(a.includes("boat.jpg%3Fw%3D700%26h%3D700"), "the cover's own spelling is no longer the one kept");
+    assert.ok(!a.includes("w%3D1600%26zoom"), "a second size of the cover still gets its own tile");
+    assert.ok(!/img src="[^"]*www\.shop\.com/.test(a), "the same file under www still gets its own tile");
+    assert.ok(a.includes("dock.jpg"), "a different photograph was folded away");
+    assert.ok(a.includes("url%3Done.jpg") && a.includes("url%3Dtwo.jpg"), "two files named in the query were folded into one");
+    const ld = JSON.parse(a.slice(a.indexOf('<script type="application/ld+json">') + 35, a.indexOf("</script>")));
+    assert.equal((ld.image as string[]).length, 4, "JSON-LD still names a photograph more than once");
+  } finally {
+    r.cleanup();
+  }
+});

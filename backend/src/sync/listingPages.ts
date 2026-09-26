@@ -6,6 +6,7 @@ import { sayLength } from "../../../src/lib/duration.ts";
 import { displayHours } from "../../../src/lib/hoursText.ts";
 import { cleanDesc, splitIncluded, tidyLine } from "../../../src/lib/listingDerive.ts";
 import { listingFacts } from "../../../src/lib/catalog.ts";
+import { photoCandidates } from "../../../src/lib/samePhoto.ts";
 import type { Unclaimed } from "../../../src/data/types.ts";
 import { METROS } from "../taxonomy/catalog.ts";
 import { REGION_NAME, countryOfArea, regionOfArea } from "../../../src/data/regions.ts";
@@ -98,19 +99,21 @@ function schemaType(item: Item): string {
 
 type Contact = { domain?: string; phone?: string; street?: string; city?: string; region?: string; postal?: string; hours?: string[] } | undefined;
 
-/** Every photo this page may show: the cover first, then the gallery, deduplicated, capped at MAX_PHOTOS. */
+/**
+ * Every photo this page may show: the cover first, then the gallery, folded to one tile per photograph and
+ * capped at MAX_PHOTOS.
+ *
+ * Folding is `photoCandidates`, the rule the hero and the lightbox already read, not a match on the exact URL.
+ * A site links one photograph under both schemes, with and without `www.`, and at whatever size its resizing
+ * CDN was asked for, and the crawl keeps every spelling it saw: matching on the string left 716 of these pages
+ * printing the same picture two to four times inside a six tile grid, and naming it that many times over in
+ * the JSON-LD a search engine reads. The scheme filter runs first, so the spelling a tile keeps is one a
+ * browser can actually fetch.
+ */
 function photosOf(item: Item): string[] {
-  const cover = typeof item.cover === "string" ? item.cover : null;
-  const gallery = ((item as { photos?: unknown[] }).photos || []).filter((p): p is string => typeof p === "string");
-  const seen = new Set<string>();
-  const out: string[] = [];
-  for (const url of [cover, ...gallery]) {
-    if (!url || !/^https?:\/\//i.test(url) || seen.has(url)) continue;
-    seen.add(url);
-    out.push(url);
-    if (out.length >= MAX_PHOTOS) break;
-  }
-  return out;
+  const cover = typeof item.cover === "string" && /^https?:\/\//i.test(item.cover) ? item.cover : undefined;
+  const gallery = ((item as { photos?: unknown[] }).photos || []).filter((p): p is string => typeof p === "string" && /^https?:\/\//i.test(p));
+  return photoCandidates({ cover, photos: gallery }).slice(0, MAX_PHOTOS);
 }
 
 /** One menu row per bookable line: services with variants first (the richer read), falling back to plain options. */
