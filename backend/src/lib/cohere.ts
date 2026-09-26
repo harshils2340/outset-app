@@ -94,18 +94,34 @@ export function plain(text: string): string {
 
 type Sentence = { text: string; start: number; end: number };
 
-/** Sentences with their offsets in the original text, so citation spans can be matched against them. */
+/**
+ * Sentences with their offsets in the original text, so citation spans can be matched against them.
+ *
+ * A stop only ends a sentence when a space or the end of the text follows it, so a price ($34.50), a domain
+ * (example.com/waiver) and a decimal keep the sentence they sit in whole. An abbreviation's own stop (9 a.m.,
+ * U.S.) is followed by a space, so a stop closing a one-letter piece of one is passed over as well.
+ */
 export function sentencesOf(text: string): Sentence[] {
   const out: Sentence[] = [];
-  const re = /[^.!?]+(?:[.!?]+(?=\s|$)|$)/g;
-  for (const m of text.matchAll(re)) {
-    const raw = m[0];
+  const push = (from: number, to: number) => {
+    const raw = text.slice(from, to);
     const lead = raw.length - raw.trimStart().length;
     const t = raw.trim();
-    if (!t) continue;
-    const start = (m.index ?? 0) + lead;
-    out.push({ text: t, start, end: start + t.length });
+    if (t) out.push({ text: t, start: from + lead, end: from + lead + t.length });
+  };
+  let from = 0;
+  for (let i = 0; i < text.length; i++) {
+    if (!".!?".includes(text[i])) continue;
+    let end = i;
+    while (end + 1 < text.length && ".!?".includes(text[end + 1])) end++;
+    i = end;
+    const after = text[end + 1];
+    if (after !== undefined && !/\s/.test(after)) continue;
+    if (text[end] === "." && /[A-Za-z]/.test(text[end - 1] || "") && text[end - 2] === ".") continue;
+    push(from, end + 1);
+    from = end + 1;
   }
+  push(from, text.length);
   return out;
 }
 

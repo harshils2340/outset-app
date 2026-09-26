@@ -107,3 +107,43 @@ test("a refusal from Cohere is an error the route can read, never an answer", as
     delete process.env.COHERE_API_KEY;
   }
 });
+
+/**
+ * A stop inside a word is not the end of a sentence.
+ *
+ * The splitter used to read one, and it did not merely mis-count: the text in front of the stop was thrown
+ * away with it. "Adults are $34.50 per person." reached the guest as "50 per person.", and a waiver answer
+ * as "com/waiver.", because `keepCited` joins the sentences the splitter hands it and those were the only
+ * ones it saw. Prices with cents and a shop's own domain are both everywhere in the facts, and the prompt
+ * asks the model to quote them exactly, so this was the ordinary case rather than an odd one.
+ */
+test("a price with cents, a domain and an abbreviation keep their sentence whole", () => {
+  const cases: [string, string[]][] = [
+    ["Adults are $34.50 per person.", ["Adults are $34.50 per person."]],
+    ["You need to sign a waiver at example.com/waiver.", ["You need to sign a waiver at example.com/waiver."]],
+    ["Doors open at 9 a.m. and close at 5 p.m.", ["Doors open at 9 a.m. and close at 5 p.m."]],
+    ["No. It is $34.50, and $12.00 for kids. Anything else?", ["No.", "It is $34.50, and $12.00 for kids.", "Anything else?"]],
+  ];
+  for (const [text, want] of cases) {
+    const s = sentencesOf(text);
+    assert.deepEqual(s.map((x) => x.text), want, text);
+    for (const x of s) assert.equal(text.slice(x.start, x.end), x.text, text);
+  }
+});
+
+test("a cited answer quoting a price with cents reaches the guest whole", () => {
+  const cents: Fact[] = [{ id: "prices", title: "Prices", text: "Escape room, 60 minutes. $34.50 per person plus tax." }];
+  const text = "Adults are $34.50 per person plus tax.";
+  const r = keepCited(text, [{ start: 0, end: text.length, sources: [{ id: "prices" }] }], cents, "how much is it");
+  assert.equal(r.text, text);
+  assert.equal(r.dropped, 0);
+  assert.deepEqual(r.cited, ["prices"]);
+});
+
+test("an uncited sentence sitting behind a decimal is still dropped", () => {
+  const cents: Fact[] = [{ id: "prices", title: "Prices", text: "$34.50 per person." }];
+  const text = "It is $34.50 per person. Most rooms nearby charge about the same.";
+  const r = keepCited(text, [{ start: 0, end: 24, sources: [{ id: "prices" }] }], cents);
+  assert.equal(r.text, "It is $34.50 per person.");
+  assert.equal(r.dropped, 1);
+});
