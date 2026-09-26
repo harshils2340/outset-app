@@ -26,6 +26,7 @@ import { availabilityNow, confirmPaid, fetchAvailability, hasApi, loadWalletId, 
 import { assistantOn, companyAnswer, companyGreeting, companyHandoff, companySuggestions } from "../lib/companyAgent";
 import { askOttoModel } from "../lib/ottoModel";
 import { currentLocation, type Place } from "../lib/places";
+import { pageTitle } from "../lib/site";
 import { priceFor, priceUnclaimed } from "../lib/pricing";
 import { applyStoredProfiles } from "../lib/operator";
 import { loadBookings, loadChats, saveBookings, saveChats } from "../lib/storage";
@@ -872,6 +873,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // spot when it closes. Without this the listing appeared scrolled to wherever the guest had been on the home page.
   // Keyed on the transition, not the mount, so React's development double-run of effects cannot undo it.
   const listingOpen = state.sheet === "request" && !!state.reqTargetId;
+
+  // The tab, the bookmark, the history entry and a screen reader name the listing the address bar already
+  // names. Keyed on the same state as the hash above, and on the catalog version because a link opened cold
+  // arrives before the listing it names does.
+  useEffect(() => {
+    document.title = pageTitle(listingOpen ? experienceById(state.reqTargetId) : null);
+  }, [listingOpen, state.reqTargetId, state.catalogVersion]);
+
   const listingWasOpen = useRef(listingOpen);
   const homeScrollY = useRef(0);
   useEffect(() => {
