@@ -5071,6 +5071,73 @@ guard on both lines it used to measure from, and the type guard fails when eithe
   way, so nothing is hidden, but which one a guest should be driven to is a product call.
 - Still open from the seventy-second run: the confirm screen's failure line has not been seen at 400px.
 
+## 26 September 2026, seventy-eighth run (05:14 to 06:05 UTC)
+
+**Chosen, and why.** Every area this run's brief names is on the Verified list, but five commits have landed
+since the seventy-seventh entry and two of them are new code no run has read: the Cohere grounded fallback
+behind Otto (`c7aec11e`, 03:44 UTC) and the Otto outreach ramp (`c132d2d1`). The fallback is the first thing
+in this product that writes a sentence to a guest rather than quoting one, and the ramp is the thing that
+mails real shop owners, so the hour went to those two. The rehearsal was run rather than skipped, because
+those commits touch `backend/src`, `src/` and the scripts.
+
+**Found and fixed.** Four.
+
+- **A grounded answer lost every word in front of a decimal price or a domain** (`9520f9b7`). `sentencesOf`
+  splits the model's text so `keepCited` can check each sentence for a citation, and `keepCited` joins the
+  sentences it keeps into the answer a guest reads. Its regex could not match a run containing a full stop,
+  so on "Adults are $34.50 per person." it matched nothing until it had walked past the stop, and the answer
+  that reached the guest was "50 per person." A waiver answer came out as "com/waiver.", and "9 a.m." as
+  "m." Prices with cents and the shop's own domain are both everywhere in the facts, and rule 2 of the prompt
+  tells the model to quote them exactly, so this was the ordinary case. The splitter now walks the text and
+  ends a sentence only where a stop is followed by a space or the end, stepping over the stop that closes an
+  abbreviation.
+- **The app suite was red on a Saturday** (`5f498f55`). `ottoChips.test.ts` pinned "what time do you open?"
+  to 9 AM, and that question is answered with today's own span; the fixture opens at 10 on Saturday and not
+  at all on Sunday. 870 of 871 at 05:20 this morning, and nothing to do with the product. The dayless
+  question is asserted as a shape now, and three questions naming a day pin the hours themselves.
+- **The outreach day began an hour out on the two days the clocks move** (`a0599fc0`). `dayStartIso` took
+  the offset as the gap between Toronto's wall clock and the instant, which is not what it is on a changeover
+  day. Against every day of 2026 at five times each it was wrong on 8 March and 1 November. November is the
+  one that costs: any mail sent in Toronto's first hour fell outside the window `sentToday` counts, so the
+  ramp read low and could put that many over the 50 a day the one Gmail identity is held to. It goes through
+  `todayIn` and `instantOf` in `lib/zone.ts` now, which the shop clocks already use.
+- **A cached Otto answer could belong to somebody else's conversation** (`4b899c21`). `POST /otto/ask` keyed
+  its cache on the listing, the question and the facts. The last six turns also go to the model, so a guest
+  asking "and for kids?" after the sunset sail and a guest asking the same three words after the snorkel trip
+  hashed to one key, and the second was handed the first one's answer.
+
+**Swept and clean.** `companyFacts` over all 52,815 shipped detail files, against the four caps
+`POST /otto/ask` rejects a body for: none exceeds 40 facts, 1,500 characters in a fact or 24,000 in total
+(worst is 5,759, `o-orcaspirit-com`, and the client clips each fact at 1,400 of its own), and it threw on
+none of them, so no shop silently loses the fallback to a 400. The refusal gate, which AGENTS.md makes a hard
+rule: a refusal returns from `companyAnswer` before `gap` is set and `GAP_LINE` cannot match its wording, so a
+forecast, another business, a drive or a review never reaches Cohere, and `assistantOn` being false (a partner
+product, a shop that switched Otto off) leaves no pending bubble for the fallback to settle. `dayStartIso`
+over 1,825 instants after the fix, all right.
+
+**Verification.** The rehearsal was run twice, 57 of 57 both times, against a local Postgres 16 on 5433 with
+TLS on and the Chromium on disk, with no Stripe, mail or GitHub key. `tsc -b` clean on the guest app, the
+backend type check clean. Backend `npm test` 813 pass, 0 fail, 2 skipped, up 5. App `npm test` 871 pass,
+0 fail, where the same suite was 870 and 1 this morning. Every new test was run against the code before its
+fix: the old splitter answers "50 per person." and "com/waiver.", the old `dayStartIso` puts 1 November at
+05:00 UTC, and the old cache key hands the second conversation the first one's answer.
+
+**Needs Harshil.**
+
+- **`chipsFor` reads `item.includes.length` with no `?.`**, where all eight of its siblings use one. All
+  52,815 shipped detail files carry the field, so nothing reaches it today and it was left alone rather than
+  changed on spec; a hand-built listing or a record assembled without it would throw inside Otto's chat.
+- **A price the model reformats is dropped in silence.** The number check requires every digit run of a
+  sentence to be in the facts, so a shop publishing "$85" and a model writing "$85.00" loses the sentence.
+  It fails the safe way, to the rules' own line, but it fails on the exact question the fallback exists for.
+- **This container's `main` was stale against a force-updated remote.** Local `main` sat on `c3a9bfd0`, five
+  "Otto page" commits that are not an ancestor of `origin/main`; the fetch reported the remote branch forced
+  back to `c5fac65c`. Tonight's work was committed on the detached HEAD and pushed to `origin/main`, and the
+  stale ref was left exactly as it was rather than moved. Worth a look if any of those five was wanted.
+- Still open from the seventy-seventh run: `npx tsc --noEmit -p .` at the root compiles nothing, so the brief
+  should ask for `npm run typecheck`. The confirm screen's failure line has still not been seen at 400px.
+
+
 ## Coverage
 
 The catalog is 48,198 listings as of the 23 September sync, 1,873 of them Viator partner rows. Counts below
@@ -5196,6 +5263,11 @@ booking sheet, the "Open right now near you" rail and Otto then say. A phone num
 year glued into an hours line. The three unusual ways a shop writes a time. An unmarked opening hour against a
 marked closing one. That the two hour parsers, which are twins by design, agree on every operator. That a
 compact week already baked into `catalog.json` that no clock could show is not believed.
+
+Otto's grounded fallback, over the code that landed on 26 September: the sentence splitter and the number
+check between the model and the guest, the route's four body caps measured against `companyFacts` on all
+52,815 shipped detail files, its answer cache, and the gate that keeps a refused question away from the
+model. The outreach campaign's day boundary, over every day of 2026 at five times each.
 
 Which clock a shop's hours are read on, run over the whole shipped catalog rather than read: `zoneFor` and its
 API twin `zoneForArea` against all 59,091 operators, every split-state nudge in both directions, and that the
@@ -5669,7 +5741,7 @@ cards and the listing page read: a picked state or province, and the 6,492 partn
 coordinates between them. That `tsc -b`, and not `tsc --noEmit -p .`, is what type-checks the guest app, now a
 test of its own in the unit suite.
 
-**Not yet checked.** Whether the Otto email may tell a shop "Bookings drop straight into your calendar" when
+**Not yet checked.** Anything in the grounded fallback that needs a real Cohere key: no key exists here, so every answer checked tonight was a payload shaped by hand, and what the live model actually writes, what its citation offsets index into when it answers in more than one content part, and whether `citation_options` FAST cites densely enough for `keepCited` to keep a good answer are all unread. `npm run otto:eval` for the same reason. Whether a price the model reformats should be dropped: a shop publishing "$85" and a model writing "$85.00" loses the sentence (see this run's Needs Harshil). Whether the grounded answer should reach the static `/l/` page and the phone sheet, which do not call it. The Otto outreach ramp end to end: `otto-ramp.mts`, `outreach-handoff.mts` and `outreach-daily.sh` are read, and the day boundary is now swept, but no draft run, dry run or hand-send has been driven from here. Whether `state.ranDays` growing without bound in `outreach-otto-ramp.json`, and being written only after a send loop that can run four hours, is worth changing, given that `sentToday` is what actually holds the ceiling. Whether the Otto email may tell a shop "Bookings drop straight into your calendar" when
 both `/voice` endpoints are read-only and syncing with an operator's own booking software is deferred on
 purpose, which is this run's first Needs Harshil. Whether the Otto subject should be shortened or the question
 fronted, since 201 of 4,728 run past 78 characters and a phone cuts the hook off almost all of them. Whether a
