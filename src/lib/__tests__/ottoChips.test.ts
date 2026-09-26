@@ -90,9 +90,15 @@ test("the chips each answer hands back are answered, on a full shop and a bare o
 test("the next opening is the next departure, not the hour they unlock the door", () => {
   assert.match(companyAnswer(ctx, "When's the next opening?").text, /2:00 PM/);
   assert.match(companyAnswer(ctx, "what's the earliest you have?").text, /2:00 PM/);
-  // The hours questions that were right before still are.
-  assert.match(companyAnswer(ctx, "what time do you open?").text, /9 AM/);
-  assert.match(companyAnswer(ctx, "when do you close?").text, /5 PM/);
+  // The hours questions that were right before still are. A question with no day in it is answered with
+  // today's own span, so it is asserted as a shape: pinning 9 AM made this file fail every Saturday, when
+  // the fixture opens at 10, and every Sunday, when it does not open at all.
+  assert.match(companyAnswer(ctx, "what time do you open?").text, /^They open at \d{1,2}(:\d\d)? (AM|PM) today\.$|^They're closed today\./);
+  assert.match(companyAnswer(ctx, "when do you close?").text, /^They close at \d{1,2}(:\d\d)? (AM|PM) today\.$|^They're closed today\./);
+  // A day named in the question is the same on any day the suite runs, so those pin the hours themselves.
+  assert.equal(companyAnswer(ctx, "what time do you open on tuesday?").text, "They open at 9 AM Tuesday.");
+  assert.equal(companyAnswer(ctx, "when do you close on tuesday?").text, "They close at 5 PM Tuesday.");
+  assert.equal(companyAnswer(ctx, "what time do you open on saturday?").text, "They open at 10 AM Saturday.");
 });
 
 test("a plain hours question is answered with the published week", () => {
