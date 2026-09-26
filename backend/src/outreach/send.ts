@@ -7,7 +7,7 @@ import { outreachBlockers, skipMark, UNREADABLE_ADDRESS, type SkipReason } from 
 import { isDeliverable } from "./deliverable.ts";
 import { cooloffStart, noRecentSendSql } from "./spacing.ts";
 
-type OpRow = {
+export type OpRow = {
   id: string;
   domain: string;
   name: string;
@@ -20,6 +20,9 @@ type OpRow = {
   origin: string;
   calendar_vendor: string | null;
 };
+
+/** A row of the listing send queue: the draft's own id and address, plus the operator it is for. */
+export type ListingRow = Omit<OpRow, "id"> & { id: string; opid: string; to_email: string; phone: string | null };
 
 /**
  * Sends the drafted claim emails. Caps per run, never sends twice to one address, skips anyone who
@@ -106,7 +109,7 @@ export async function sendOutreach(opts: {
       console.log("skipped " + to + ": domain takes no mail");
       continue;
     }
-    const copy = composeOutreach(r, to);
+    const copy = composeOutreach(operatorOf(r), to);
     if (opts.dry) {
       console.log("would send to " + to + ": " + copy.subject);
       out.sent++;
@@ -141,8 +144,10 @@ export async function sendOutreach(opts: {
  * send loop above and by scripts/outreach-handoff.mts, so a hand-sent slice and the daily send never
  * disagree about who is in the queue. Already-sent and handed-off addresses are excluded here, not later.
  */
-export function listingQueue(limit: number, opts: { metro?: string; country?: string }): (OpRow & { id: string; to_email: string; phone: string | null })[] {
-  let sql = `SELECT d.id, d.to_email, o.domain, o.phone, o.name, o.email, o.city, o.region, o.metro_id, o.website, o.completeness, o.origin, o.calendar_vendor
+export function listingQueue(limit: number, opts: { metro?: string; country?: string }): ListingRow[] {
+  // `d.id` is the draft row, `o.id AS opid` the operator it is for. Both are needed and they are not the
+  // same id: the draft id marks the row sent, the operator id is what the copy reads a page's facts by.
+  let sql = `SELECT d.id, d.to_email, o.id AS opid, o.domain, o.phone, o.name, o.email, o.city, o.region, o.metro_id, o.website, o.completeness, o.origin, o.calendar_vendor
        FROM outreach_drafts d JOIN operators o ON o.id = d.operator_id
        WHERE d.status = 'draft' AND d.kind = 'listing' AND d.to_email IS NOT NULL AND d.to_email LIKE '%@%' AND o.claim_status = 'unclaimed'
          -- This campaign's own sends bar the address for good; the Otto pitch's bar it for a week. See
@@ -183,5 +188,16 @@ export function listingQueue(limit: number, opts: { metro?: string; country?: st
   }
   sql += " ORDER BY o.review_count DESC NULLS LAST LIMIT ?";
   args.push(limit);
-  return db.prepare(sql).all(...args) as (OpRow & { id: string; to_email: string; phone: string | null })[];
+  return db.prepare(sql).all(...args) as ListingRow[];
+}
+
+/**
+ * The operator row the copy is written from, rebuilt out of a queue row. `Op.id` is the operator's own id,
+ * which is what `pageFacts` reads a page's photos, prices, hours and policy by; a queue row's `id` is the
+ * draft. Passing the row straight through looked up the facts of an operator that does not exist, so every
+ * listing email sent by the ramp lost the sentence naming what we would build the page from, while the
+ * draft stored in SQLite (written from the operator itself) still carried it.
+ */
+export function operatorOf(r: ListingRow): OpRow {
+  return { ...r, id: r.opid };
 }

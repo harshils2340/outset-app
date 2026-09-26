@@ -8,7 +8,7 @@ import { emailHash, loadSuppression, unsubPageUrl } from "../src/lib/unsub.ts";
 import { isDeliverable } from "../src/outreach/deliverable.ts";
 import { draftOttoCopy } from "../src/outreach/ottoDrafts.ts";
 import { composeOutreach } from "../src/outreach/drafts.ts";
-import { listingQueue } from "../src/outreach/send.ts";
+import { listingQueue, operatorOf, type ListingRow } from "../src/outreach/send.ts";
 import { ottoQueue } from "../src/outreach/sendOtto.ts";
 
 /**
@@ -60,7 +60,8 @@ for (const r of rows) {
     dead++;
     continue;
   }
-  const copy = kind === "otto" ? draftOttoCopy(r, email) : composeOutreach(r as Parameters<typeof composeOutreach>[0], email);
+  // A listing row carries the draft's id and the operator's separately; the copy is written from the operator.
+  const copy = kind === "otto" ? draftOttoCopy(r, email) : composeOutreach(operatorOf(r as ListingRow), email);
   out.push({
     business: r.name,
     website: r.website || "https://" + r.domain + "/",
