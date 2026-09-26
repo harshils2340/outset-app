@@ -171,8 +171,8 @@ export function bookableAddon(name: string): boolean {
   return !(words.length >= 5 && /^(?:A|An|The)$/.test(last) && words[words.length - 2] !== "&");
 }
 
-type Row = { name: string; price: number | null };
-type Tier = { price: number | null; optionIdx: number };
+type Row = { name: string; price: number | null; detail?: string; per?: string };
+type Tier = { price: number | null; optionIdx: number; label?: string; per?: string; moreOptions?: true };
 type Grouped = { name: string; variants: Tier[] };
 
 /**
@@ -180,6 +180,8 @@ type Grouped = { name: string; variants: Tier[] };
  * about money rather than a thing dropped with them, half-cut names tidied, and every `optionIdx` re-pointed at
  * the option it named before. `options` and `services` are one fact held in two lists (see `hydrateItem`), so
  * filtering either on its own would leave a tier pointing at the wrong trip or past the end of the list.
+ *
+ * Last, a tier the sync dropped goes back on the service that names it: see `wholeServices` below.
  */
 export function bookableMenu<T extends { options?: Row[]; services?: Grouped[]; addons?: { name: string }[] }>(item: T): T {
   const options = item.options || [];
@@ -192,7 +194,7 @@ export function bookableMenu<T extends { options?: Row[]; services?: Grouped[]; 
   const keptAddons = addons.filter((a) => bookableAddon(a.name));
   const renamed = (rows: { name: string }[]) => rows.some((r) => tidyRowName(r.name) !== r.name);
   // Most of the catalog is already clean, and this runs over every record the app loads, so leave those alone.
-  if (keep.length === options.length && keptAddons.length === addons.length && !renamed(options) && !renamed(services) && !renamed(addons)) return item;
+  if (keep.length === options.length && keptAddons.length === addons.length && !renamed(options) && !renamed(services) && !renamed(addons)) return wholeServices(item);
 
   const moved = new Map(keep.map((from, to) => [from, to]));
   const nextOptions = keep.map((i) => ({ ...options[i], name: tidyRowName(options[i].name) }));
@@ -201,10 +203,70 @@ export function bookableMenu<T extends { options?: Row[]; services?: Grouped[]; 
     // A service whose every tier named an archive goes with them; the picker builds its rows from the tiers.
     .filter((s) => s.variants.length > 0 && bookableRow(s.name, s.variants.find((v) => v.price != null && v.price > 0)?.price ?? null));
 
-  return {
+  return wholeServices({
     ...item,
     options: nextOptions,
     ...(item.services ? { services: nextServices } : {}),
     ...(item.addons ? { addons: keptAddons.map((a) => ({ ...a, name: tidyRowName(a.name) })) } : {}),
-  };
+  });
+}
+
+/**
+ * A tier the sync dropped, put back on the service that names it.
+ *
+ * `options` and `services` are two views of one menu and the sync builds the second from the first: it labels each
+ * tier with the row's own duration where the row states one, then merges the tiers that read as the same line. A
+ * shop whose pages state one duration for the whole rate card gives every row of a service the same label, so the
+ * merge kept the cheapest and dropped the rest. The rows stay in `options`, where nothing points at them, so the
+ * booking box offers one tier of a service the shop sells several of, and that tier quotes the cheapest price
+ * against a length that is not its own: 1st Class Charter Boat Rental offers "Sea Doo Jet Ski Rental, 10 hours,
+ * $150" and nothing else, while its own menu holds the two, three, four, five, six, seven and eight hour rentals
+ * at $300 to $1,200, and $150 buys one hour. 1,442 priced rows on 305 shipped listings are one of these.
+ *
+ * Each row carries its own sub-line, the one the booking picker prints under the name, so the page can be put
+ * right here rather than waiting for a sync: a row the service names and no tier points at becomes a tier of it,
+ * folded behind "More options" so the page opens on the lines it opened on before, and the tiers of a service that
+ * regained one are relabelled from their own rows, so the whole service reads off one source rather than two.
+ *
+ * Nothing is invented and nothing is guessed. A row whose sub-line the sync refused (an event timetable, a loading
+ * spinner) has none to show and stays where it is, and a row that would read exactly as a tier already on the
+ * service is left alone too, because two lines of the same words at two prices tell a guest nothing: 123 rows,
+ * among them five one-hour massages at o-arayathaimassage-com whose only published difference is the price.
+ */
+export function wholeServices<T extends { options?: Row[]; services?: Grouped[] }>(item: T): T {
+  const options = item.options || [];
+  const services = item.services;
+  if (!services?.length || !options.length) return item;
+  const pointed = new Set<number>();
+  for (const s of services) for (const v of s.variants) pointed.add(v.optionIdx);
+  const detailOf = (i: number) => (options[i]?.detail || "").trim();
+  const spare = new Map<string, number[]>();
+  options.forEach((o, i) => {
+    if (pointed.has(i) || !detailOf(i)) return;
+    const key = o.name.trim().toLowerCase();
+    spare.set(key, [...(spare.get(key) || []), i]);
+  });
+  if (!spare.size) return item;
+
+  let touched = false;
+  const nextServices = services.map((s) => {
+    const back = spare.get(s.name.trim().toLowerCase());
+    if (!back?.length) return s;
+    const labelled = s.variants.map((v) => {
+      const detail = detailOf(v.optionIdx);
+      return detail && detail.toLowerCase() !== (v.label || "").toLowerCase() ? { ...v, label: detail } : v;
+    });
+    const reads = new Set(labelled.map((v) => (v.label || "").trim().toLowerCase()));
+    const added: Tier[] = [];
+    for (const i of back) {
+      const label = detailOf(i);
+      if (reads.has(label.toLowerCase())) continue;
+      reads.add(label.toLowerCase());
+      added.push({ label, price: options[i].price, ...(options[i].per ? { per: options[i].per } : {}), optionIdx: i, moreOptions: true });
+    }
+    if (!added.length && labelled.every((v, k) => v === s.variants[k])) return s;
+    touched = true;
+    return { ...s, variants: [...labelled, ...added] as Tier[] };
+  });
+  return touched ? { ...item, services: nextServices } : item;
 }
