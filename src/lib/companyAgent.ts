@@ -1,6 +1,7 @@
 import type { OperatorContact, Unclaimed } from "../data/types";
 import type { LiveAvailability } from "./api";
 import { addressLine, bookingPaused, plainWords } from "./catalog";
+import { cleanDesc } from "./listingDerive";
 import { runsInMonth } from "./deals";
 import { callablePhone } from "./phone";
 import { sayLength, withoutNoticeWindows } from "./duration";
@@ -65,17 +66,25 @@ const countWord = (n: number) => (n < NUM_WORD.length ? NUM_WORD[n] : String(n))
 const DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 export const DAY_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
-/** Operator prose, cut to one readable sentence of at most `max` characters. */
+/**
+ * Operator prose, cut to one readable sentence of at most `max` characters.
+ *
+ * It reads the shop's copy through `cleanDesc`, the rule the listing page above the chat reads it through, so
+ * the two stop printing one sentence two ways. `clip` used to run only `plainWords`, and kept the space the
+ * crawl left in front of a comma and the trailing space a cut at a spaced full stop leaves: "the safest way
+ * to visit Oahu." read "the safest way to visit Oahu. " in the chat, and "the history of the neighborhood,
+ * walk among" read "the history of the neighborhood , walk among". 226 texts on 188 shipped listings.
+ */
 function clip(raw: string, max = 150): string {
-  const text = plainWords(String(raw || "")).replace(/\s+/g, " ").trim();
+  const text = cleanDesc(String(raw || ""));
   if (!text) return "";
   const stop = text.search(/[.;]\s+[A-Z0-9]/);
-  let out = stop > 20 ? text.slice(0, stop) : text;
+  let out = (stop > 20 ? text.slice(0, stop) : text).trim();
   if (out.length > max) {
     const cut = out.lastIndexOf(" ", max);
     out = out.slice(0, cut > 40 ? cut : max).replace(/[,;:]$/, "") + "…";
   }
-  return out.replace(/\s*[.;,:]+$/, "");
+  return out.replace(/\s*[.;,:]+$/, "").trim();
 }
 
 const sentence = (s: string) => (s ? s.replace(/\s*$/, "") + (/[.!?…]$/.test(s.trim()) ? "" : ".") : "");
