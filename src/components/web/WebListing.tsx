@@ -14,7 +14,7 @@ import { addressLine, bookingPaused, contactFor, fmtPhone, fromPrice, getCatalog
 import { DAYS, fmtDate, fmtReviews, fmtTime, money, priceWith, reviewsLine } from "../../lib/format";
 import { srcSet, thumb } from "../../lib/images";
 import { embedAutoplay, isGif, listingMedia, photoCandidates, probePhotos, type Media } from "../../lib/media";
-import { arrivalWords, bringLine, cleanDesc, durationLabel, groupCap as readGroupCap, minAge, placeName, splitIncluded, splitPolicies, tidyLine } from "../../lib/listingDerive";
+import { arrivalWords, bringLine, cleanDesc, durationLabel, groupCap as readGroupCap, minAge, notAlreadyShown, placeName, splitIncluded, splitPolicies, tidyLine } from "../../lib/listingDerive";
 import { sayLength } from "../../lib/duration";
 import { freeCancelBadge } from "../../lib/cancellation";
 import { reportDeadCover, useDeadCovers } from "../../lib/deadCovers";
@@ -1189,7 +1189,9 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
   const highlightRows = rows.slice(0, 3);
 
   // Things to know, Airbnb's three columns. A column with nothing stated stays out.
-  const rules = [...requirements, ...(item.bring || []).map(bringLine), ...(item.groupInfo || [])];
+  // The waiver column below is filled from the same shop's policy lines, and a shop that states one sentence
+  // both as a requirement and as a policy had it printed in both: see notAlreadyShown.
+  const rules = [...notAlreadyShown(requirements, waiverLines), ...(item.bring || []).map(bringLine), ...(item.groupInfo || [])];
   const safety = [...(age ? ["Minimum age " + age] : []), ...waiverLines];
   if (item.waiverUrl && !safety.some((l) => /waiver/i.test(l))) safety.push("Waiver to sign before you arrive");
   // The short free-cancellation line and the full policy are often the same sentence, one with a period and one

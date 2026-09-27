@@ -36,7 +36,7 @@ import { AGENT_MODE_LIVE } from "../../lib/concierge";
 import { useApp } from "../../state/AppProvider";
 import { SIZES, srcSet, thumb } from "../../lib/images";
 import { embedAutoplay, listingMedia, photoCandidates, probePhotos, type Media } from "../../lib/media";
-import { cleanDesc, durationLabel, groupCap, meetPlace, minAge, placeName, splitPolicies } from "../../lib/listingDerive";
+import { cleanDesc, durationLabel, groupCap, meetPlace, minAge, notAlreadyShown, placeName, splitPolicies } from "../../lib/listingDerive";
 import { freeCancelBadge } from "../../lib/cancellation";
 import { DAY_SHORT, clock12, companySuggestions, currentDeals, dayLabel, todaysDeals } from "../../lib/companyAgent";
 import { bookableStart, clockIn, hourLines, itemWeek, zoneFor } from "../../lib/openNow";
@@ -522,6 +522,10 @@ function RequestBody({
   const reqKeys = new Set(requirements.map((r) => r.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim()));
   const highlights = (item.highlights?.length ? item.highlights : facts.about.slice(0, 6)).filter((h) => !reqKeys.has(h.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim()));
   const waiverLines = (item.policies?.filter((l) => /\bwaivers?\b|\bliabilit|\brelease form|\bsign(ed|ing)? (a |the |our |your )?(waiver|release|form)|\bcheck-?in\b/i.test(l)) || facts.waiver.filter((l) => l.posted).map((l) => l.text)).filter((l) => l.length <= 160);
+  // What "Who can go" prints, which is not every requirement: a sentence the waiver row below is already
+  // printing is that row's, and a shop that publishes one line as both had it read twice on one screen. The
+  // requirements list itself is left whole, because the age rule and the highlight guard are read off it.
+  const whoCanGo = notAlreadyShown(requirements, waiverLines);
   const policies = splitPolicies(item.policies || []);
   const otherPolicies = policies.other;
   // A cancellation term stated as a policy line rather than in `cancellation` is still their cancellation term.
@@ -1299,9 +1303,9 @@ function RequestBody({
           {!partnerLabel || knowsAnything ? (
           <Section title="Things to know">
             <div className="airknows">
-              {!partnerLabel || requirements.length ? (
-              <KnowRow icon={ICONS.user} title="Who can go" summary={requirements[0] ? tidyLine(requirements[0]) : "Contact the business to check"}>
-                {requirements.length ? <Bullets items={requirements} /> : <FactList lines={facts.who.filter((l) => l.posted)} />}
+              {(!partnerLabel && !requirements.length) || whoCanGo.length ? (
+              <KnowRow icon={ICONS.user} title="Who can go" summary={whoCanGo[0] ? tidyLine(whoCanGo[0]) : "Contact the business to check"}>
+                {whoCanGo.length ? <Bullets items={whoCanGo} /> : <FactList lines={facts.who.filter((l) => l.posted)} />}
               </KnowRow>
               ) : null}
               {item.bring?.length ? (

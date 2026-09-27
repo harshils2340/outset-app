@@ -74,6 +74,28 @@ export function splitPolicies(lines: string[]): { cancel: string[]; other: strin
 }
 
 /**
+ * The lines of one "Things to know" column, minus whatever a column already filled is printing.
+ *
+ * `splitPolicies` above has kept a waiver rule out of the policy columns since it was written, on the stated
+ * grounds that a line is never printed in two columns at once. "Who can go" is filled from `requirements`,
+ * which is a field of its own rather than a slice of `policies`, so that rule never reached it: a shop that
+ * publishes the same sentence as a requirement and as a policy had it read twice, under two headings, on one
+ * page. Shaka Wasaga publishes exactly one requirement, "Waivers must be signed 24 hours prior to boarding",
+ * and both surfaces printed it under "Who can go" and again under "Safety and waiver", the second time as that
+ * column's only line.
+ *
+ * The waiver column is the one that owns a waiver rule, so it keeps the line and this drops it from the other.
+ * Compared the way every other column here compares a line: letters and digits, nothing else.
+ */
+const columnKey = (t: string) => t.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+
+export function notAlreadyShown(lines: string[], shown: string[]): string[] {
+  if (!shown.length) return lines;
+  const seen = new Set(shown.map(columnKey));
+  return lines.filter((l) => !seen.has(columnKey(l)));
+}
+
+/**
  * "Bring " is a label for a thing, so it belongs only in front of a line that names one. A shop's own
  * what-to-bring list is not all things: a third of it is the shop telling a guest what to do, what it will let
  * them carry in, or what they may not. In front of one of those the label reads twice, turns a rule into an
