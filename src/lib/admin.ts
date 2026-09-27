@@ -71,8 +71,17 @@ export function subscribeAdmin(fn: () => void): () => void {
   };
 }
 
-/** The operator's website as an https URL, or null for map pins and anything that is not a web domain. */
-export function adminWebsite(item: { src?: string | null; contact?: { domain?: string | null; website?: string | null } | null }): string | null {
+/**
+ * The operator's website as an https URL, or null for map pins, partner products and anything that is not a
+ * web domain.
+ *
+ * A partner's product has no operator site: its `src` is the marketplace it came from, so the chip that
+ * promises "open the operator's website" opened viator.com's own front door on all 6,492 shipped partner
+ * rows, on the feed card, the home card, the listing page and the phone sheet alike. The product's own page
+ * is already on the listing as the partner CTA, which is the link worth following.
+ */
+export function adminWebsite(item: { src?: string | null; affiliate?: { source: string } | null; contact?: { domain?: string | null; website?: string | null } | null }): string | null {
+  if (item.affiliate) return null;
   const raw = (item.contact?.website || item.contact?.domain || item.src || "").trim();
   if (!raw) return null;
   let host = raw;

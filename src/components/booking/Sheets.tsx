@@ -861,7 +861,7 @@ function RequestBody({
 
           <div className="airtitle">
             <h1>{item.title}</h1>
-            <AdminSiteLink item={{ src: item.src, contact: contact || item.contact }} className="airadminsite" />
+            <AdminSiteLink item={{ src: item.src, affiliate: item.affiliate, contact: contact || item.contact }} className="airadminsite" />
             <p>{subtitle}</p>
             {duration || age ? <p className="soft">{[duration, age ? "Ages " + age + "+" : null].filter(Boolean).join(" · ")}</p> : null}
           </div>

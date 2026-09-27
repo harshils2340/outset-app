@@ -196,7 +196,7 @@ export function useAdmin(): boolean {
  * The operator's website, for Harshil comparing a listing with the real site. Renders nothing unless admin is on, so a
  * guest never sees it. A click opens the site in a new tab and never reaches the card or listing underneath.
  */
-export function AdminSiteLink({ item, variant = "text", className = "" }: { item: Pick<Unclaimed, "src" | "contact">; variant?: "text" | "icon"; className?: string }) {
+export function AdminSiteLink({ item, variant = "text", className = "" }: { item: Pick<Unclaimed, "src" | "contact" | "affiliate">; variant?: "text" | "icon"; className?: string }) {
   const admin = useAdmin();
   const href = admin ? adminWebsite(item) : null;
   if (!href) return null;
@@ -1404,7 +1404,7 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
         <div className="altitlerow" ref={media.length ? undefined : heroRef}>
           <div className="altitlewrap">
             <h1 className="altitle">{item.title}</h1>
-            <AdminSiteLink item={{ src: item.src, contact: contact || item.contact }} />
+            <AdminSiteLink item={{ src: item.src, affiliate: item.affiliate, contact: contact || item.contact }} />
         </div>
           <div className="alactions">
             <button type="button" className="altextbtn" onClick={() => void share()}>
