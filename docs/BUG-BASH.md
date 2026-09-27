@@ -5814,6 +5814,80 @@ on 5433 and the Chromium on disk, with no Stripe, mail or GitHub key. A fresh ch
   site still has no way to say anything in passing, the confirm screen's failure line has still not been seen
   at 400px, and `plainWords` is still not idempotent.
 
+## 27 September 2026, eighty-eighth run (08:15 to 09:05 UTC)
+
+**Chosen, and why.** The only commit since the last entry is that entry, which reports the rehearsal green, so
+it was not run at the start; it was run at the end, because this run touched `src/lib`,
+`src/components` and `backend/src`. It ran twice: the first run was red on one test, the half-written one that
+had just caught "They're at OH.", and the second was green. Every area on tonight's brief is on the Verified list, so the hunt went to
+the one line on the open list that names unfinished work rather than a question: the static `/l/` page's last
+three fields, the title, the area line and the crumb labels, held against the app. That led straight into the
+fallout of last night's own fix, which is where the run stayed.
+
+**Found and fixed.**
+
+- **"Washington, Washington, DC"** (`8beef886`). DC is the one row of the table that spells a state code out
+  whose full name carries its own code, and 118 listings ship the ordinary spelling "Washington, DC". So
+  expanding the code appended the name to a town that was already it, on the listing heading, the Where
+  subtitle, the pin line, the pay sheet's subtitle and its "Meet at" sentence, and the confirm screen's
+  "Getting there" row. The 160 that ship "Washington DC, DC" were guarded, because that town ends on the code
+  itself; this one does not. A town the table's own name already starts with now leaves the line alone.
+  Nothing else in the table carries a comma or a code, so "Washington, WA" still reads "Washington,
+  Washington".
+- **The static page and the browser tab kept the code** (`7282070a`). 15,552 of the 15,556 shipped `/l/` pages
+  named their shop's place differently than the app page a guest opens next, "Chicago, IL" against "Chicago,
+  Illinois", and the ones whose town was never read headed their page "MD". The tab title, which is also the
+  bookmark, the history entry and the headline of a shared link, came off the same raw field on both surfaces.
+  Both read the area line through `placeName` now, and the two titles stay byte-identical, which the backend
+  test checks by building a page and comparing its `<title>` to `pageTitle` itself rather than to a copy of its
+  format.
+- **"Fishing charters near Branson" opened every charter in North America** (`16936a1e`). The "more like this"
+  link named the listing's own town whatever page it pointed at, and on 6,711 of the 15,556 pages that page was
+  the all-metros one. A link says what the page it opens says now, through the same `pageTitle` that writes that
+  page's heading; a metro page keeps the town, and a listing whose area names no town gets the metro's name
+  rather than "near MD".
+- **"They're at OH."** (`f72b62de`). 1,200 shipped listings publish a state or province and nothing else, and 9
+  a state and a postcode, and `addressOf` made a line out of it. So the Where card on both listing surfaces read
+  "Address: OH", the confirmation's "Getting there" row read "OH" over "Get directions", and Otto answered
+  "where are you?" with "They're at OH." An address needs a street or a town now; with neither the line is left
+  out and every surface falls back to what it already falls back to for the 6,492 listings with no contact at
+  all, the area line with its state spelled out. The 45,113 real addresses are untouched.
+- **The four places left that named a state by its code** (`8a7af483`). Three of them sit on a screen last
+  night's fix had already changed, so one screen named the same shop two ways: the desktop Where card's own
+  line under a subtitle saying "Maryland", the phone sheet's twin of that row and its "Hosted by" line, and the
+  confirmation's summary card two sections under its own "Getting there" row. The fourth is Otto, which
+  answered "They're in MD, but no street address is published" and filed "AerOhio Skydiving is in OH." as the
+  fact its grounded answers are built from, so the model was handed the code to quote as well.
+
+**Swept and clean.** The `/l/` page's title against the app's `pageTitle` over all 15,556 shipped pages that
+earn one, before and after: 0 disagree. The area line and the "more like this" label on 1,556 pages built by
+the real generator: 0 area lines wrong, 0 labels promising a town the page does not have, 0 naming a bare code.
+`placeName` over all 52,816 shipped area lines for a repeated place: 118 before, 0 after. Every contact record
+in the catalog through `addressOf`: exactly the 1,210 lines dropped, all of them a state with no street and no
+town, 45,113 kept. The `/l/` crumb trail, read and left as it is.
+
+**Verification.** App `npm test` 949 pass, 0 fail, up from 944. Backend `npm test` 863 pass, 0 fail, 2 skipped,
+unchanged. `tsc -b` clean on the app, `tsc --noEmit -p .` clean at the root and still compiling nothing, the
+backend type check clean but for TS5097. The rehearsal 57 of 57 against a local TLS Postgres 16 on 5433 and the
+Chromium on disk, with no Stripe, mail or GitHub key. A fresh checkout again had no `node_modules` on either
+side and no Postgres cluster.
+
+**Needs Harshil.**
+
+- **None of the 1,210 dropped address lines, or last night's 1,260 area lines, reach the site until a sync
+  runs.** The rules are fixed in the app, which reads the shipped detail file, so those pages are right as soon
+  as this deploys; the area lines themselves are written by `npm run backend:sync`, which still has not run.
+- **A row labelled "Address" now carries an area line on 7,702 listings.** It always did on the 6,492 with no
+  contact; the 1,210 join them rather than printing a state code. "Address: Ohio" is honest about the place and
+  not about the heading, and renaming that label needs a design call.
+- **The 9 listings whose only stated place is a state and a postcode lose the postcode.** "NC, 28801" was not
+  an address a guest could go to, but the postcode did say roughly where. It is still on the contact record and
+  in the JSON-LD.
+- Still open from the seventy-eighth run: local `main` sits on a stale `c3a9bfd0`, diverged from `origin/main`
+  by 50 commits either side, so this run committed on a detached HEAD and pushed with an explicit refspec. The
+  desktop site still has no way to say anything in passing, the confirm screen's failure line has still not
+  been seen at 400px, and `plainWords` is still not idempotent.
+
 ## Coverage
 
 The catalog is 48,198 listings as of the 23 September sync, 1,873 of them Viator partner rows. Counts below
@@ -5917,7 +5991,13 @@ through one rule.
 
 Every area line in the shipped catalog against the metro table and the listing's own pin: which of
 them name a town borrowed from a metro across a state line, which name a real town that merely shares a
-metro's name, and how each of the three surfaces that spell a state out reads one that names no town at all.
+metro's name, and how each of the three surfaces that spell a state out reads one that names no town at all. The
+static `/l/` page's title against the app's own `pageTitle`, over all 15,556 pages that earn one, and its area
+line and "more like this" label over 1,556 pages built by the real generator. Every place line a guest reads, on
+the listing page, the phone sheet, the pay sheet, the confirm screen, the static page, the tab title and in
+Otto's answers, against the one reader they now share, with `placeName` run over all 52,816 shipped area lines
+for a repeated place. Every contact record in the catalog through `addressOf`, for a line that is not an address
+anyone can go to.
 
 Deals and promos on a listing: all 47 deals the 36 shipped listings publish, each title against its own day
 list and each code against the sentence it is printed on; whether an offer states the months or the season it
@@ -6690,9 +6770,11 @@ swept, and the same seam runs through every rule read before a detail file lands
 `tsconfig.json` should carry the app's files, so that `tsc --noEmit -p .` stops answering clean for a project
 it compiles nothing of (see this run's Needs Harshil). Which of a chain's locations the "40 locations" heading
 should count when the grid draws 24, on the one listing that has more. Which of the several places a meeting
-point names the Maps link should open, on the shops that name more than one. Whether a listing whose only
-stated place is a two-letter state code should print that code under the heading "Address" at all, which all
-1,210 of them do. Whether the desktop site should be able to say anything in passing at all:
+point names the Maps link should open, on the shops that name more than one. Whether a row labelled
+"Address" should carry an area line at all: the 1,210 listings whose only stated place was a state code no
+longer print one, so they join the 6,492 with no contact in falling back to the area, and 7,702 listings now
+head "Ohio" with the word Address. Whether the 9 whose only stated place is a state and a postcode should print
+the postcode somewhere, having lost it from that line. Whether the desktop site should be able to say anything in passing at all:
 `<Toast />` is rendered only inside a non-request sheet and `.toast` is positioned for the phone frame, so the
 line a dead listing link now shows reaches the phone and not the desktop (see the eightieth run's Needs
 Harshil). Whether the operator dashboard's own browser tab should be titled for the shop rather than for
@@ -6711,12 +6793,12 @@ should read "3 days 20 hours" rather than "3.8 days", on the two shipped rows th
 hours). Whether `plainWords` should be idempotent: run twice it expands its own
 expansion on 114 shipped blurbs ("Four-wheeler (Four-wheeler (ATV))"), nothing in the product applies it
 twice today, and it is a trap for whoever next caches a cleaned string (see the eighty-fourth run's Needs
-Harshil). Whether the phone cards and the static `/l/` page should spell a state out the way the listing page,
-the pay sheet and the confirm screen now do, on the 2,943 listings whose area line names no town at all (see
-the eighty-seventh run's Needs Harshil). The
-static `/l/` page's remaining fields, now that the blurb, the FAQ, the photos, the star line, the prices, the
-menu, the hours, the length, the cancellation, what is included and the requirements have each been held
-against the app: what is left is the title, the area line and the crumb labels. Every relative
+Harshil). Whether the phone and rail cards should spell a state out the way every full surface now does, on the 2,943
+listings whose area line names no town at all: they are the one guest surface left on the code, deliberately,
+because a card has no room for "Maryland" (see the eighty-seventh run's Needs Harshil). Whether the operator's
+own dashboard lists should spell one out, which they also do not. Whether the `/l/` page's crumb trail should step through the city page it links to further down: it stops at the
+national activity page on all 15,556 pages and 8,569 of them have a metro page of their own, which is read and
+left as it is rather than decided. Whether that trail should carry a `BreadcrumbList`, which no static page does. Every relative
 import in the backend against the files on disk, which is now a test. How the chat words an answer around a
 shop's own string, over every listing in the catalog: the article on an offer name, the case of a meeting point,
 an hour line and a list item, the full stop after text that already ended, the town taken out of a service name,
