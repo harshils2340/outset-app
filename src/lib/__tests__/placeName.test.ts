@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { placeName } from "../listingDerive";
+import { meetPlace, placeName } from "../listingDerive";
 
 test("a coded state is spelled out beside the town", () => {
   assert.equal(placeName("Clearwater Beach, FL"), "Clearwater Beach, Florida");
@@ -30,4 +30,15 @@ test("a place the table does not know is printed as the shop's own page states i
   assert.equal(placeName("ZZ"), "ZZ");
   assert.equal(placeName("Somewhere, ZZ"), "Somewhere, ZZ");
   assert.equal(placeName(""), "");
+});
+
+test("the pay sheet names a meeting place only when the area line holds a town", () => {
+  assert.equal(meetPlace("Clearwater Beach, FL"), "Clearwater Beach, Florida");
+  assert.equal(meetPlace("Washington DC, DC"), "Washington DC");
+  // A state is not a meeting point, so the sheet leaves the sentence out rather than saying "Meet at MD."
+  assert.equal(meetPlace("MD"), "");
+  assert.equal(meetPlace("ON"), "");
+  assert.equal(meetPlace(""), "");
+  // Not a state code, so it is a place the shop's own page named.
+  assert.equal(meetPlace("Mt, NJ"), "Mt, New Jersey");
 });

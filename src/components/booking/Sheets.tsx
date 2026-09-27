@@ -36,7 +36,7 @@ import { AGENT_MODE_LIVE } from "../../lib/concierge";
 import { useApp } from "../../state/AppProvider";
 import { SIZES, srcSet, thumb } from "../../lib/images";
 import { embedAutoplay, listingMedia, photoCandidates, probePhotos, type Media } from "../../lib/media";
-import { cleanDesc, durationLabel, groupCap, minAge, splitPolicies } from "../../lib/listingDerive";
+import { cleanDesc, durationLabel, groupCap, meetPlace, minAge, placeName, splitPolicies } from "../../lib/listingDerive";
 import { freeCancelBadge } from "../../lib/cancellation";
 import { DAY_SHORT, clock12, companySuggestions, currentDeals, dayLabel, todaysDeals } from "../../lib/companyAgent";
 import { bookableStart, clockIn, hourLines, itemWeek, zoneFor } from "../../lib/openNow";
@@ -572,7 +572,7 @@ function RequestBody({
   const fromUnit = item.options.find((o) => o.price === from);
   const fromPer = fromUnit && perPerson(fromUnit) ? " / person" : "";
   const suggestions = useMemo(() => companySuggestions({ item, contact }).slice(0, 4), [item.id]);
-  const subtitle = [kind + " in " + item.area, metro && !item.area.includes(metro.name) && !item.area.includes(",") ? metro.name : null].filter(Boolean).join(", ");
+  const subtitle = [kind + " in " + placeName(item.area), metro && !item.area.includes(metro.name) && !item.area.includes(",") ? metro.name : null].filter(Boolean).join(", ");
 
   const share = async () => {
     const url = listingUrl(item.id);
@@ -753,8 +753,8 @@ function RequestBody({
                   ? "Secure card payment. " + (ottoNow ? "Otto holds the card on your Profile, within " + money(wallet!.maxDollars) + ". " : "") + "Your card is held and only charged once " + item.title + (instant ? " has you booked." : " confirms.")
                   : instant
                     ? "Confirmed straight away."
-                    : "This is a request. " + item.title + (guest.email.trim() ? " confirms by email, and nothing" : " confirms it, and nothing") + " is charged until they do."}{" "}
-                Meet at {item.area}.
+                    : "This is a request. " + item.title + (guest.email.trim() ? " confirms by email, and nothing" : " confirms it, and nothing") + " is charged until they do."}
+                {meetPlace(item.area) ? " Meet at " + meetPlace(item.area) + "." : ""}
               </p>
             </section>
           </div>

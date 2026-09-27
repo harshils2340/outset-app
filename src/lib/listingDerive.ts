@@ -377,3 +377,17 @@ export function placeName(area: string): string {
   if (new RegExp("(^|[\\s,])" + code + "$", "i").test(town)) return town;
   return town + ", " + REGION_NAME[code];
 }
+
+/**
+ * The place a sentence can tell a guest to meet at, or "" when the area line names none.
+ *
+ * The review-and-pay sheet closes with "Meet at {area}.", which is the last thing a guest reads before they
+ * pay. 2,943 listings publish a state code on its own because their town was never read, so that sentence
+ * said "Meet at MD." and "Meet at ON.". A state is not a meeting point, and the shop's own address is on the
+ * listing page above, so the sentence is left out rather than filled with the widest place we hold.
+ */
+export function meetPlace(area: string): string {
+  const a = String(area || "").trim();
+  if (/^[A-Za-z]{2}$/.test(a) && REGION_NAME[a.toUpperCase()]) return "";
+  return placeName(a);
+}
