@@ -138,10 +138,45 @@ test("a span of a day or more is said in days, and nothing shorter moves", () =>
   assert.equal(sayLength("216 hours"), "9 days");
   assert.equal(sayLength("24 hours to 744 hours"), "1 day to 31 days");
   assert.equal(sayLength("1 hour to 24 hours"), "1 hour to 1 day");
-  assert.equal(sayLength("92 hours"), "3.8 days", "a span that is not whole days keeps one decimal, as 1.5 hours does");
+  assert.equal(sayLength("92 hours"), "3 days 20 hours", "a span that is not whole days says the hours left over");
   assert.equal(sayLength("14.5 hours"), "14.5 hours", "under a day is left exactly as the shop wrote it");
   assert.equal(sayLength("2 hours"), "2 hours");
   assert.equal(sayLength("2 days"), "2 days");
+});
+
+/**
+ * "3.8 days" is not a length anybody books, and a tenth of a day is four hours out either way. Three shipped
+ * partner products land between whole days: a-viator-122229p9 at 92 hours, a-viator-130654p28 at 54 and
+ * a-viator-325485p9 at "1 hour to 90 hours". They now say the hours that are left rather than a decimal.
+ */
+test("a span between whole days says the hours left over, not a tenth of a day", () => {
+  assert.equal(sayLength("92 hours"), "3 days 20 hours");
+  assert.equal(sayLength("54 hours"), "2 days 6 hours");
+  assert.equal(sayLength("1 hour to 90 hours"), "1 hour to 3 days 18 hours");
+  assert.equal(sayLength("25 hours"), "1 day 1 hour", "one hour over is an hour, not hours");
+  assert.equal(sayLength("47.9 hours"), "2 days", "a remainder that rounds to a full day carries, never 1 day 24 hours");
+});
+
+/**
+ * The minute branch returned before the day rule could see it, so a product whose length arrives as a day or
+ * more of minutes said "48 hours" where the same product written in hours said "2 days". No shipped row is
+ * that long today: the partner reader divides by 60 first. It is one rule now either way.
+ */
+test("a day's worth of minutes is said in days, like the same length written in hours", () => {
+  assert.equal(sayLength("1440 min"), "1 day");
+  assert.equal(sayLength("2880 min"), "2 days");
+  assert.equal(sayLength("2880 min"), sayLength("48 hours"));
+});
+
+test("no shipped listing prints a length as a fraction of a day", () => {
+  const offenders: string[] = [];
+  for (const f of readdirSync(dir)) {
+    const j = JSON.parse(readFileSync(new URL(f, dir), "utf8")) as Unclaimed;
+    if (!j.dur) continue;
+    const shown = sayLength(j.dur);
+    if (/\d+\.\d+\s*days?\b/i.test(shown)) offenders.push(j.id + ": " + j.dur + " -> " + shown);
+  }
+  assert.deepEqual(offenders.slice(0, 10), []);
 });
 
 test("the minute rule the cards already read is still the same rule", () => {
