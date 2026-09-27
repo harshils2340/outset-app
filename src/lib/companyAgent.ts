@@ -282,7 +282,9 @@ function familyOfOffer(offers: Offer[], hit: Offer): { name: string; offers: Off
 function askedThing(q: string): string | null {
   const m = q.toLowerCase().split(/\band\b|,/)[0].trim().match(/\b(?:for|is|are|of)\s+(?:the|a|an|your|one)?\s*([a-z][a-z' -]{2,40}?)\s*\??$/);
   if (!m) return null;
-  const thing = m[1].trim();
+  // A determiner the capture swallowed is not part of the thing's name: "info for this tour" asks about a
+  // tour, and "They don't list a this tour" is a sentence no shop's assistant should ever say.
+  const thing = m[1].trim().replace(/^(?:this|that|these|those|the|a|an|your|our|their)\s+/, "");
   if (!words(thing).length || /^(it|that|this|them|us|me|one|two|people|person|kids?|adults?|group|everyone|a group|each|entry|admission)$/.test(thing)) return null;
   return thing;
 }
@@ -1338,6 +1340,14 @@ function contactAnswer(ctx: CompanyContext): { text: string; state: ChatState } 
   return { text: "They haven't published a phone number. A booking request on this page reaches them directly.", state: { topic: "contact" } };
 }
 
+/**
+ * Words that name the listing itself rather than a row on its menu. A guest on a walking tour's page asking
+ * "tell me about this tour" is asking about the shop, and was told "They don't list a this tour. Want to see
+ * what they do offer?", because the question reached the branch for a thing the shop does not sell. A named
+ * offer is matched before this, so a shop that really does sell a row called "tour" still answers with it.
+ */
+const WHOLE_THING = /^(tours?|trips?|experiences?|activit(y|ies)|adventures?|excursions?|outings?|business|compan(y|ies)|shop|place|spot|venue|outfit|operation|thing)$/i;
+
 function describeAnswer(ctx: CompanyContext, q: string): { text: string; state: ChatState } {
   const hit = matchOffer(offersOf(ctx), q);
   if (hit) {
@@ -1347,7 +1357,7 @@ function describeAnswer(ctx: CompanyContext, q: string): { text: string; state: 
     return { text: offerLabel(hit) + "." + (price || dur), state: { topic: "describe", family: hit.family, offer: hit.name } };
   }
   const thing = askedThing(q.replace(/tell me about|what about|how about/i, "info for").replace(/^and\s+/i, ""));
-  if (thing) {
+  if (thing && !WHOLE_THING.test(thing)) {
     const name = /\sone$/.test(thing) ? thing.replace(/\s+one$/, "") + " option" : thing;
     return { text: "They don't list " + (/^[aeiou]/.test(name) ? "an " : "a ") + name + ". Want to see what they do offer?", state: { topic: "describe" } };
   }
