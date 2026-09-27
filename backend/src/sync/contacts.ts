@@ -8,6 +8,7 @@ import { writeListingPages } from "./listingPages.ts";
 import { encodeWeek, isTradingHoursLine } from "./hours.ts";
 import { claimKeyHash } from "../lib/claim.ts";
 import { clip } from "../lib/clip.ts";
+import { dropPlaceholderPins } from "./placeholderPins.ts";
 import { crawledPhotoStats, crawledPhotosFor } from "./photoSidecar.ts";
 import { crawledStructureFor, crawledStructureStats, crawledHoursFor } from "./structureSidecar.ts";
 import { cleanImageUrl } from "../enrich/srcset.ts";
@@ -2220,6 +2221,7 @@ export function buildCatalogItems(where?: (r: CatalogRow) => boolean): Record<st
   const pinDupes = full.filter((i) => String(i.id).startsWith("o-osm-") && !i.claimed && siteKeys.has(titleKey(String(i.title)) + "|" + (i.metroId || i.area)));
   for (const d of pinDupes) full.splice(full.indexOf(d), 1);
   console.log("Left out " + dead.size + " map-only rows with nothing a guest can use and " + pinDupes.length + " map pins that duplicate a site row.");
+  dropPlaceholderPins(full as Record<string, unknown>[]);
   return dropDuplicateOperators(full as Record<string, unknown>[]);
 }
 
