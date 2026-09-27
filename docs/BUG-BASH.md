@@ -5749,6 +5749,71 @@ standing.
   still has no way to say anything in passing, the confirm screen's failure line has still not been seen at
   400px, `plainWords` is still not idempotent, and the three spellings of a shop's state are still three.
 
+## 27 September 2026, eighty-seventh run (07:15 to 08:35 UTC)
+
+**Chosen, and why.** No commit had landed since the last entry, which reports the rehearsal green, so it was
+not run at the start; it was run at the end, because this run touched `backend/src`, `src/lib` and
+`src/components`. Every area on tonight's brief is on the Verified list, so the hunt went to the one line on
+the open list that names a defect nobody had counted: the rail fix surfaced "Philadelphia, DE", and how many
+area lines name a town in the wrong state was unknown.
+
+**Found and fixed.**
+
+- **1,260 listings print a town in a state it is not in** (`d447d9a2`). Discovery fills a listing's town from
+  OpenStreetMap's `addr:city`, and where there is none it borrows the name of the nearest metro within 160 km.
+  The state beside it comes from somewhere else entirely, `addr:state` or the state whose Overpass query
+  returned the row, and the two were never checked against each other. So a shop in Bethesda ships as
+  "Washington DC, MD", one in Sussex County as "New York, NJ", a paintball field in Ontario as "Detroit, ON".
+  255 rows around the capital, 158 around New York, 134 around Boston, 53 spellings in all. The town is the
+  invented half and the state is a fact, so the town goes: those rows now publish the state code on its own,
+  which is the shape 1,683 listings whose town was never read already ship in and which `regionOfArea`, the
+  clock, the currency and the state pages have always read. A real town that shares a metro's name keeps it,
+  because the pin has to sit inside the 160 km the borrow could have happened in: Portland, Maine is 4,000 km
+  from the Portland metro, and it, Charleston, West Virginia, Waterloo, Iowa, Vancouver, Washington and 195
+  more are left alone. A claimed listing is never touched. No listing's region changes, no area line is
+  emptied, none of the 1,260 sits on a domain another listing shares, and 737 keep a metroId, so search still
+  reaches them by place. `osm.ts` stops writing the pair at all.
+- **"Kayak rental in MD"** (`4bac47bc`). The desktop listing page spells a coded state out in the section
+  heading, the Where card and the pin line, but only for an area shaped "Town, XX". The listings that publish
+  a bare code, 1,683 before this run and 2,943 after it, got the code raw. They now read "Maryland". 160
+  listings ship as "Washington DC, DC", which spelled out as "Washington DC, Washington, DC"; a town that
+  already names its own state is not given it twice. `placeName` moved to `lib/listingDerive` so a test can
+  load it without the page's stylesheet, and it reads `REGION_NAME` rather than the byte-identical copy
+  `WebListing.tsx` carried, which takes the three spellings of a shop's state down to two.
+- **"Meet at MD."** (`b414957c`). The review-and-pay sheet closes on that sentence, which is the last line a
+  guest reads before paying, and for those 2,943 listings it named a whole state. A state is not a meeting
+  point and the shop's own address is on the listing above, so the sentence is left out rather than filled
+  with the widest place we hold. The same sheet's subtitle and the confirmation screen's "Getting there" row,
+  which falls back to the area when the shop published no street, now spell the state out too.
+
+**Swept and clean.** Every area line in the shipped catalog, 51,065 of them that carry a region code, against
+the metro table and each listing's own pin. The 198 rows that share a metro's name from far away, read one by
+one. `placeName` and `meetPlace` over all 52,816 shipped area lines, before and after: 0 emptied, 0 left
+naming a state the area line did not already name.
+
+**Verification.** Backend `npm test` 860 pass, 0 fail, 2 skipped, up from 854. App `npm test` 944 pass, 0
+fail, up from 939. `tsc -b` clean on the app, `tsc --noEmit -p .` clean at the root and still compiling
+nothing, the backend type check clean but for TS5097. The rehearsal 57 of 57 against a local TLS Postgres 16
+on 5433 and the Chromium on disk, with no Stripe, mail or GitHub key. A fresh checkout again had no
+`node_modules` on either side and no Postgres cluster.
+
+**Needs Harshil.**
+
+- **None of this reaches the site until a sync runs.** The 1,260 area lines are fixed in the pass that writes
+  the catalog, not in the database, so they keep shipping wrong until `npm run backend:sync` runs. The same
+  sync carries `mergeTiers` and the four open "from" prices from the eighty-second run.
+- **104 of the 1,260 lose a phrase that was arguably true.** Lake Tahoe straddles California and Nevada and
+  Niagara straddles Ontario and New York, so "Lake Tahoe, NV" and "Niagara, NY" read as real places even
+  though we invented them. They become "NV" and "NY" like the rest, because a rule that kept them would be
+  guesswork. The sample bears the general case out: "Niagara, NY" was on a golf course in Amherst.
+- **The phone cards and the static `/l/` page still print the bare code.** Only the desktop listing page, the
+  pay sheet and the confirm screen spell a state out, and the group they leave coded is now 2,943 rather than
+  1,683. Whether a card that tight should say "Maryland" is a design call.
+- Still open from the seventy-eighth run: local `main` sits on a stale `c3a9bfd0`, 50 commits either side of
+  `origin/main`, so this run committed on a detached HEAD and pushed with an explicit refspec. The desktop
+  site still has no way to say anything in passing, the confirm screen's failure line has still not been seen
+  at 400px, and `plainWords` is still not idempotent.
+
 ## Coverage
 
 The catalog is 48,198 listings as of the 23 September sync, 1,873 of them Viator partner rows. Counts below
@@ -5849,6 +5914,10 @@ states a dollar figure, each held against the price the row holds. Every string 
 for a Windows-1252 decoding fault, through the funnel that carries it to a guest.
 That every surface drawing the badge, the filter included, and a claimed shop's own typed policy all go
 through one rule.
+
+Every area line in the shipped catalog against the metro table and the listing's own pin: which of
+them name a town borrowed from a metro across a state line, which name a real town that merely shares a
+metro's name, and how each of the three surfaces that spell a state out reads one that names no town at all.
 
 Deals and promos on a listing: all 47 deals the 36 shipped listings publish, each title against its own day
 list and each code against the sentence it is printed on; whether an offer states the months or the season it
@@ -6639,13 +6708,12 @@ two "Spa package, 2 hours 30 minutes" rows at $258 and $360 that the shop plainl
 as one. A sync run against a real database, which is what carries `mergeTiers` and closes those four "from"
 prices. Whether a length that is not a whole number of days
 should read "3 days 20 hours" rather than "3.8 days", on the two shipped rows that are not (92 hours and 54
-hours). How many catalog areas name a town in the wrong state, which the rail fix surfaced as "Philadelphia,
-DE" and nothing has counted. Whether `plainWords` should be idempotent: run twice it expands its own
+hours). Whether `plainWords` should be idempotent: run twice it expands its own
 expansion on 114 shipped blurbs ("Four-wheeler (Four-wheeler (ATV))"), nothing in the product applies it
 twice today, and it is a trap for whoever next caches a cleaned string (see the eighty-fourth run's Needs
-Harshil). Which of the three ways a guest is told a shop's state is the right one: the desktop listing page
-spells it out, the phone sheet, the cards and the static page print the code, and `WebListing.tsx` carries its
-own byte-identical copy of the `REGION_NAME` table. The
+Harshil). Whether the phone cards and the static `/l/` page should spell a state out the way the listing page,
+the pay sheet and the confirm screen now do, on the 2,943 listings whose area line names no town at all (see
+the eighty-seventh run's Needs Harshil). The
 static `/l/` page's remaining fields, now that the blurb, the FAQ, the photos, the star line, the prices, the
 menu, the hours, the length, the cancellation, what is included and the requirements have each been held
 against the app: what is left is the title, the area line and the crumb labels. Every relative
@@ -6660,4 +6728,7 @@ wrong on their own rather than by rule: Festiva Sailing Vacations pinned in the 
 Try Scuba Diving pinned in Honolulu, both with a plausible story behind them. What Hamilton, Ontario should
 show once its 17 New Zealand partner rows stop publishing and Viator has no destination inside 200 km of it.
 Whether a placeholder pin used inside one state can be told from a genuine shared address at all, which the
-rule deliberately does not try to do.
+rule deliberately does not try to do. Whether a metro whose name straddles a border, Lake Tahoe and
+Niagara being the two, should be allowed to keep that name beside the other side's state code, which the
+borrowed-town rule deliberately does not try to decide. How many listings carry a town borrowed from the
+metro they sit inside, where the state agrees and nothing can tell the borrow from a read address.
