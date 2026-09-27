@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { CALL_LINK, catalogId, vendorLabel } from "./drafts.ts";
 import { mailPostal, unsubPageUrl } from "../lib/unsub.ts";
-import { bestAddress, greeting } from "./owner.ts";
+import { outreachAddress } from "./address.ts";
 import { db, nowIso } from "../db/client.ts";
 
 /**
@@ -62,8 +62,9 @@ function vendorLine(id: string | null): string {
  */
 export function draftOttoCopy(op: OttoOp, email?: string): { subject: string; body: string; html: string } {
   const to = (email || "").trim().toLowerCase();
-  // "Hi Ron," only when the mailbox is Ron's by the site's own word (owner.ts); "Hi," otherwise.
-  const hi = to ? greeting(op, to) : "Hi,";
+  // Always "Hi,". Greeting an owner by their first name needs the name the shop's own site states, which no
+  // record reaching this function carries, and a guessed first name is the one mistake an owner cannot miss.
+  const hi = "Hi,";
   const SITE = "https://onoutset.com/";
   const OTTO = SITE + "otto";
   const CAL = CALL_LINK;
@@ -161,7 +162,7 @@ export function generateOttoDrafts(): number {
            AND domain NOT LIKE '%.gov' AND domain NOT LIKE '%.org' AND domain NOT LIKE '%.edu'`,
       )
       .all() as (OttoOp & { origin: string; claim_status: string })[]
-  ).filter((op) => bestAddress(op));
+  ).filter((op) => outreachAddress(op));
   let n = 0;
   db.exec("PRAGMA busy_timeout = 120000");
   // Scoped to 'otto': a listing-draft regeneration must never wipe these, and this must never wipe listing rows.
@@ -169,7 +170,7 @@ export function generateOttoDrafts(): number {
   const ins = db.prepare("INSERT INTO outreach_drafts (id, operator_id, to_email, subject, body, status, created_at, kind) VALUES (?, ?, ?, ?, ?, 'draft', ?, 'otto')");
   db.exec("BEGIN IMMEDIATE");
   for (const op of ops) {
-    const to = bestAddress(op);
+    const to = outreachAddress(op);
     if (!to) continue;
     const { subject, body } = draftOttoCopy(op, to);
     ins.run(randomUUID(), op.id, to, subject, body, nowIso());
