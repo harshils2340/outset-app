@@ -5605,6 +5605,80 @@ which is the fifty-second run's Needs Harshil still standing.
   has still not been seen at 400px.
 
 
+## 27 September 2026, eighty-fifth run (05:15 to 06:05 UTC)
+
+**Chosen, and why.** The last log entry says the rehearsal was green, but three commits have landed on
+`origin/main` since it, two of them in `backend/src` and `backend/scripts`, so it was run: once at the start,
+on the fixed build, and once at the end. The hunt did not start from tonight's brief, because every area on it
+is already on the Verified list. It started from the last commit on main, the security sweep, which reported
+that HEAD would not compile. That was true, and fixing it took the first commit. The rest of the night went to
+the one item the eighty-fourth run left as its own next step, Otto's `clip` against the page's `cleanDesc`,
+and then to a sweep of 300 real listings through 30 ordinary guest questions, reading the answers for the kind
+of wording that reads as a machine talking.
+
+**Found and fixed.** Five defects, five commits.
+
+- **HEAD had not compiled since yesterday afternoon** (`2d320798`). `6c72c9e8` pointed
+  `backend/src/outreach/ottoDrafts.ts` at `./owner.ts` for `bestAddress` and `greeting`, and that file was
+  never committed: the backend type check failed with TS2307 and five outreach tests failed with it. The call
+  sites go back to `outreachAddress` in `./address.ts`, the reader that ships, and the greeting back to a plain
+  "Hi,". The test added with it walks every `.ts` and `.mts` file under `backend/src` and `backend/scripts` and
+  holds each relative import to a file on disk, in 53ms with no database. `npm test` cannot catch this class on
+  its own, because a test only loads the modules it imports.
+- **Otto quoted a shop in the crawl's words, not the page's** (`061956a6`). The listing page reads a shop's
+  copy through `cleanDesc`; `clip` read it through `plainWords` alone, so one sentence was printed two ways on
+  one screen: the hero said "the history of the neighborhood, walk among" and the chat said "the history of the
+  neighborhood , walk among", and a Houston boat ride's rate card read "Adult : $40" in the chat and "Adult:
+  $40" above it. 226 texts on 188 listings, over blurbs, service copy, policies, arrival notes, the FAQ and the
+  hour lines. The trailing space the same gap left never reached a guest: `sentence()` strips it.
+- **"They don't list a this tour"** (`cac75495`). On a walking tour's own page. The describe branch for a thing
+  the shop does not sell caught a question about the shop itself, so "the tour", "this trip", "this place",
+  "your business", "the company" and "this activity" all landed there, and `askedThing` printed the determiner
+  its own capture had swallowed. A word naming the whole listing now falls through to the shop's own blurb; a
+  named offer is still matched first, and a charter a tour company does not sell is still refused.
+- **183 listings put two articles on a price, 2,557 lowercased the name of a place** (`08683255`). "From $95
+  for the The Nature Conservancy Community Golf Days", "The Our Classes (Standard) at $85": an article went in
+  front of every offer name and 2,179 rows on 798 listings already open with one. "Meet at owl's Creek Boat
+  Launch", "Meet at lake Trail Taproom", "Their hours say: mon-Sun 12:00 AM": the first letter of a meeting
+  point and of an hour line was lowered to sit mid-sentence, and both are almost always names. Only a
+  determiner is lowered now, so "Meet at the Marina on Terrace Drive" still reads as one sentence.
+- **182 listings offered "Our Charter Boat in , NH"** (`fabf5e43`, `ed7dfd60`). `familyOf` takes the shop's
+  town out of a service name so two towns' variants group as one thing, and took the town and nothing else:
+  "Rentals in , Georgia", "RV Park Serving , Ohio", "Helicopter Tours in", "Legends of", "Pickleball at", and
+  where several removals met, "Jet ski Rental - , , , and". The town now goes with the word that introduced it
+  and the region that followed it. The same commit pair stops a full stop being printed after text that already
+  ended: 192 listings read "Included: lots of fun!!!.", "studio entry on Levels…." and "30 minutes after
+  sunset….". And a list item that is a name keeps its capital: "Included: Special Treat", not "special Treat".
+
+**Swept and clean.** Every relative import in the backend, 661 of them, against the files on disk: one was
+missing and one apparent second was generated code inside a string. Every blurb, service description, policy,
+arrival note, FAQ answer and hour line in the catalog through the old `clip` and the new one, 226 differences
+read. Every offer name in the catalog, 137,887 rows, for a determiner or a possessive opener. Every listing's
+price, cheapest-option, meeting-point, hours and services answers, all 52,815, before and after each fix, with
+the 182 that changed read one by one. 300 listings through 30 ordinary guest questions, twice.
+
+**Verification.** App `npm test` 933 pass, 0 fail. Backend `npm test` 847 pass, 0 fail, 2 skipped, up from
+845 failing 5 at HEAD. `tsc -b` clean on the app, `tsc --noEmit -p .` clean at the root and still compiling
+nothing, the backend type check clean but for TS5097. The rehearsal ran twice, 57 of 57 both times, against a
+local TLS-enabled Postgres 16 on 5433 and the Chromium on disk, with no Stripe, mail or GitHub key. A fresh
+checkout again had no `node_modules` on either side and no Postgres cluster, so both installs and the cluster
+were built first, which is the fifty-second run's Needs Harshil still standing.
+
+**Needs Harshil.**
+
+- **Your `owner.ts` is only on your Mac.** `6c72c9e8` is the working half of a change whose other half never
+  left your machine, and it broke main for about sixteen hours. If you still want "Hi Ron," in the Otto pitch,
+  commit `backend/src/outreach/owner.ts`; I did not write one, because the first name of an owner is a fact the
+  shop's own site states and nothing reaching `draftOttoCopy` carries it, and a guessed first name is the one
+  mistake an owner reading a cold email cannot miss. `bestAddress` also reads like it is meant to prefer an
+  owner's personal inbox over `info@`, which is a product call, not a rename.
+- **Nothing runs `tsc` before a push.** The security sweep caught this break, a day late, by running the type
+  check by hand. Tonight's import test closes the one shape that broke, not the class: a real pre-push check,
+  or the type check in CI, is what stops the next one.
+- Still open from the seventy-eighth run: local `main` sits on a stale `c3a9bfd0`. The desktop site still has
+  no way to say anything in passing, and the confirm screen's failure line has still not been seen at 400px.
+  `plainWords` is still not idempotent, and the three spellings of a shop's state are still three.
+
 ## Coverage
 
 The catalog is 48,198 listings as of the 23 September sync, 1,873 of them Viator partner rows. Counts below
@@ -6496,8 +6570,12 @@ expansion on 114 shipped blurbs ("Four-wheeler (Four-wheeler (ATV))"), nothing i
 twice today, and it is a trap for whoever next caches a cleaned string (see the eighty-fourth run's Needs
 Harshil). Which of the three ways a guest is told a shop's state is the right one: the desktop listing page
 spells it out, the phone sheet, the cards and the static page print the code, and `WebListing.tsx` carries its
-own byte-identical copy of the `REGION_NAME` table. Whether Otto's own `clip` should read the two cleanups
-`cleanDesc` makes that it does not, so the hero and the chat under it stop printing one sentence two ways. The
+own byte-identical copy of the `REGION_NAME` table. The
 static `/l/` page's remaining fields, now that the blurb, the FAQ, the photos, the star line, the prices, the
 menu, the hours, the length, the cancellation, what is included and the requirements have each been held
-against the app: what is left is the title, the area line and the crumb labels.
+against the app: what is left is the title, the area line and the crumb labels. Every relative
+import in the backend against the files on disk, which is now a test. How the chat words an answer around a
+shop's own string, over every listing in the catalog: the article on an offer name, the case of a meeting point,
+an hour line and a list item, the full stop after text that already ended, the town taken out of a service name,
+and what a question about the listing as a whole is answered with. Otto's `clip` against the page's `cleanDesc`,
+over every blurb, service description, policy, arrival note, FAQ answer and hour line in the catalog.
