@@ -756,3 +756,34 @@ test("the page title is the title the app gives the same listing", () => {
     r.cleanup();
   }
 });
+
+/**
+ * The "more like this" link used to read "<kind> near <the listing's own town>" whatever page it opened, and on
+ * 6,711 of the 15,556 shipped pages that page was the all-metros one: "Fishing charters near Branson" opened
+ * every fishing charter in the US and Canada. A link says what the page it opens says.
+ */
+test("the more-like-this link names the page it actually opens", () => {
+  // Three cooking listings in Toronto clear MIN_METRO_LISTINGS, so that metro page exists; the lone Halifax one
+  // has no metro page of its own and falls back to the all-metros page.
+  const items: Item[] = [
+    item("o-t1", { cover: "https://x/a.jpg" }),
+    item("o-t2", { cover: "https://x/b.jpg" }),
+    item("o-t3", { cover: "https://x/c.jpg" }),
+    item("o-hfx", { cover: "https://x/d.jpg", area: "Halifax, NS", metroId: "halifax" } as Partial<Item>),
+    item("o-bare", { cover: "https://x/e.jpg", area: "ON", metroId: "toronto" } as Partial<Item>),
+  ];
+  const r = run(items);
+  try {
+    const t1 = r.read("o-t1.html");
+    assert.ok(t1.includes(">Cooking classes near Toronto<"), "a metro page link lost the town it is near");
+    assert.ok(t1.includes("cooking-in-toronto.html"), "the metro page link went somewhere else");
+    const hfx = r.read("o-hfx.html");
+    assert.ok(hfx.includes("cooking-in-anywhere.html"), "the fallback link went somewhere else");
+    assert.ok(hfx.includes(">Cooking classes in the US and Canada<"), "the all-metros page is still offered as a town");
+    assert.ok(!hfx.includes("near Halifax"), "the all-metros page still promises the listing's own town");
+    // No town to be near: the metro's own name, never the bare code.
+    assert.ok(r.read("o-bare.html").includes(">Cooking classes near Toronto, Ontario<"), "a listing with no town offered a code as a place");
+  } finally {
+    r.cleanup();
+  }
+});
