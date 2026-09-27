@@ -5956,6 +5956,73 @@ gate. A fresh checkout again had no `node_modules` on either side and no Postgre
   desktop site still has no way to say anything in passing, `plainWords` is still not idempotent, and the 1,210
   dropped address lines still wait on a sync.
 
+## 27 September 2026, ninetieth run (10:20 to 11:00 UTC)
+
+**Chosen, and why.** The only commit since the last entry is that entry, which reports the rehearsal green, so
+the rehearsal was skipped at the start and run at the end, because this run changed `src/lib`,
+`src/components` and `backend/src/lib`. Every area on tonight's brief is on the Verified list. The hunt went
+to the one guest surface the browser-controls sweep named and then did not open: the founder view behind
+`#admin`, which is the fifth hash our own addresses carry and the only one of the five nobody has driven. Two
+things on the open list were swept beside it, both about a number a guest reads.
+
+**Found and fixed.**
+
+- **A length between whole days read as a decimal** (`750f6f59`). `sayLength` says a span of a day or more in
+  days, and a span that was not a whole number of them kept one decimal, so three shipped partner products
+  told a guest a trip runs "3.8 days" and "2.3 days", and one said "1 hour to 3.8 days". A tenth of a day is
+  nearly two and a half hours, and nobody books 3.8 of anything. They now say the hours that are left:
+  "3 days 20 hours", "2 days 6 hours". A remainder that rounds up to a full day carries into the day count, so
+  there is no "3 days 24 hours". The same commit closes a hole beside it: the minute branch returned before
+  the day rule could see it, so a length arriving as a day or more of minutes said "48 hours" where the same
+  product written in hours said "2 days". No shipped row is that long today, because the partner reader
+  divides by 60 first, but it is one rule now either way. All five surfaces read this one function.
+- **Puerto Rico was a place the app could name and neither clock knew** (`6ef4404e`). `REGION_NAME` spells out
+  65 codes; the two `REGION_TZ` tables, the guest app's and the API's, carried 64. So a San Juan area line
+  named a region the clocks did not have, `zoneFor` fell through to longitude and handed the shop
+  `America/Halifax`, which keeps daylight saving where Puerto Rico does not: right in January, an hour out
+  from March to November, on "Open now", the "Open right now near you" rail, which start times are still far
+  enough out to book, and Otto. 0 listings ship there today, so this is the next one kept honest rather than a
+  live fault. Both tables now carry `PR: "America/Puerto_Rico"`, and both suites carry the guard that every
+  region the app can name is on a clock. `CA_REGIONS` is untouched, so a PR listing is still priced in USD.
+- **The founder view offered a marketplace front door as an operator's website** (`381f25b2`). `#admin` draws
+  a dashed "Website" chip on the feed card, the home card, the listing page and the phone booking sheet, and
+  its whole promise is the operator's own site, for holding a listing against the real thing. A partner's
+  product has no such site: its `src` is the marketplace, so all 6,492 shipped Viator rows offered
+  `https://viator.com/`, the front door, on four surfaces. `adminWebsite` now answers nothing for an affiliate
+  row; the product's own page is already on the listing as the partner CTA.
+
+**Swept and clean.** The `#admin` toggle driven in a real Chromium at 1280px, 400px and 360px, a fresh browser
+profile per case: a guest with no flag sees no chip anywhere; the token turns the view on from the home and
+from a listing link alike, and is stripped from the address bar in both, leaving `#o=<id>` intact and the
+listing open; a reload keeps it on rather than flipping it back; a second `#admin` turns it off. Every chip
+drawn at those widths is an `https` link with a name, `target="_blank"` and `rel="noopener noreferrer"`, none
+sits past the viewport edge on a phone, no page scrolls sideways and no page threw. `adminWebsite` over all
+52,816 catalog rows and all 52,815 detail files: 48,764 links, 4,052 map pins correctly refused, no host that
+is an address, a punycode name or anything but a domain, and the card and the page agree on every one. Every
+shipped `dur` value through `sayLength`, 426 distinct: nothing now prints a fraction of a day, and every
+operator-written length is still left exactly as the shop wrote it. `/sessions`, the watch window over the
+agent's shoulder and the one hand-built HTML page in the backend nobody had read: every guest-typed string it
+prints goes through its escaper into element content, and the two attributes it builds by hand carry only
+server-minted ids and a fixed step kind, so there is nothing a guest can type that reaches an attribute.
+
+**Verification.** App `npm test` 968 pass, 0 fail, up from 959. Backend `npm test` 865 pass, 0 fail, 2 skipped,
+up from 863. `tsc -b` clean on the app, `tsc --noEmit -p .` clean at the root and still compiling nothing, the
+backend type check clean but for TS5097. The rehearsal 57 of 57 against a local TLS Postgres 16 on 5433 and
+the Chromium on disk, with no Stripe, mail or GitHub key. One shipped source guard pinned the old decimal and
+moved with the rule it pins: `backend/src/affiliates/__tests__/catalog.test.ts` (`d7242fab`). A fresh checkout
+again had no `node_modules` on either side and no Postgres cluster.
+
+**Needs Harshil.**
+
+- **The founder chip on a partner card now draws nothing, and the product page is a click away on the
+  listing.** Drawing the partner's own product URL there instead would put the useful link back on the card,
+  where there is otherwise no way to reach it. That is a product call about a founder-only surface, so it is
+  left as the honest blank.
+- Still open from the seventy-eighth run: local `main` sits on a stale `c3a9bfd0`, diverged from `origin/main`,
+  so this run committed on a detached HEAD and pushed with an explicit refspec. The desktop site still has no
+  way to say anything in passing, `plainWords` is still not idempotent, and the 1,210 dropped address lines
+  still wait on a sync.
+
 ## Coverage
 
 The catalog is 48,198 listings as of the 23 September sync, 1,873 of them Viator partner rows. Counts below
@@ -6625,6 +6692,16 @@ decides which metro a product belongs to, over all 6,492 shipped affiliate rows 
 the lead card is, how many cards draw an illustration instead of a photograph, and whether a cover already
 known not to load still counts as one.
 
+The founder view behind `#admin`, which is the fifth hash our own addresses carry and the one the
+browser-controls sweep left unopened: the toggle driven in a real Chromium at three widths from a fresh
+profile, on the home and on a listing link, for what it turns on, what it strips from the address bar, what a
+reload and a second token do, and that a guest with no flag meets nothing; every chip it draws as a link, for
+its name, its scheme, its target, its rel and the viewport edge; and `adminWebsite` over all 52,816 catalog
+rows and all 52,815 detail files, card against page. `/sessions`, the watch window over the agent's shoulder,
+for what a guest's own typed sentence reaches when that page prints it. Every shipped `dur` value through
+`sayLength`, for a length printed as a fraction of a day and for a day's worth of minutes. `REGION_NAME`
+against both `REGION_TZ` tables, so every region the app can name is on a clock on both sides.
+
 **Not yet checked.** Anything in the grounded fallback that needs a real Cohere key: no key exists here, so every answer checked tonight was a payload shaped by hand, and what the live model actually writes, what its citation offsets index into when it answers in more than one content part, and whether `citation_options` FAST cites densely enough for `keepCited` to keep a good answer are all unread. `npm run otto:eval` for the same reason. Whether a price the model reformats should be dropped: a shop publishing "$85" and a model writing "$85.00" loses the sentence (see this run's Needs Harshil). Whether the grounded answer should reach the static `/l/` page and the phone sheet, which do not call it. A real Otto send or a real hand-send: the draft run, the queue, the dry run and the handoff export are all driven now, but nothing has left a mailbox from here, and `outreach-daily.sh` is launchd on the Mac and cannot be. Whether `state.ranDays` and `state.sentDays` growing without bound in `outreach-otto-ramp.json`, and being written only after a send loop that can run four hours, is worth changing, given that `sentToday` is what actually holds the ceiling. Whether the Otto email may tell a shop "Bookings drop straight into your calendar" when
 both `/voice` endpoints are read-only and syncing with an operator's own booking software is deferred on
 purpose, which is this run's first Needs Harshil. Whether the Otto subject should be shortened or the question
@@ -6865,9 +6942,7 @@ Acadia Bike on a child seat, with the day rentals behind "More options" (see the
 Harshil). The 123 rows that stay unreachable because they would read exactly as a tier already shown, among them
 two "Spa package, 2 hours 30 minutes" rows at $258 and $360 that the shop plainly sells as two things and named
 as one. A sync run against a real database, which is what carries `mergeTiers` and closes those four "from"
-prices. Whether a length that is not a whole number of days
-should read "3 days 20 hours" rather than "3.8 days", on the two shipped rows that are not (92 hours and 54
-hours). Whether `plainWords` should be idempotent: run twice it expands its own
+prices. Whether `plainWords` should be idempotent: run twice it expands its own
 expansion on 114 shipped blurbs ("Four-wheeler (Four-wheeler (ATV))"), nothing in the product applies it
 twice today, and it is a trap for whoever next caches a cleaned string (see the eighty-fourth run's Needs
 Harshil). Whether the phone and rail cards should spell a state out the way every full surface now does, on the 2,943
@@ -6890,8 +6965,9 @@ Whether a placeholder pin used inside one state can be told from a genuine share
 rule deliberately does not try to do. Whether a metro whose name straddles a border, Lake Tahoe and
 Niagara being the two, should be allowed to keep that name beside the other side's state code, which the
 borrowed-town rule deliberately does not try to decide. How many listings carry a town borrowed from the
-metro they sit inside, where the state agrees and nothing can tell the borrow from a read address. Whether Puerto
-Rico should be a region the backend knows: `REGION_NAME` spells PR out and `REGION_TZ` has no row for it, so a
-San Juan shop would be given `America/Halifax` by longitude, an hour out for half the year, and 0 listings ship
-there today (see the eighty-ninth run's Needs Harshil). Whether the dashboard's own two splashes should be told
-apart in the stylesheet rather than by an element opting out inline.
+metro they sit inside, where the state agrees and nothing can tell the borrow from a read address. Whether the dashboard's own two splashes should be told
+apart in the stylesheet rather than by an element opting out inline. Whether the founder chip on a partner's card should
+open the product's own page now that it opens nothing: the listing has the partner CTA, a card has no other way
+in (see the ninetieth run's Needs Harshil). Whether `esc` on the `/sessions` page should escape quotes as well
+as `&<>`, which is latent: its two hand-built attributes carry only a server-minted id and a fixed step kind
+today, and nothing a guest types can reach one.
