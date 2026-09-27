@@ -110,6 +110,23 @@ function list(items: string[], max = 4): string {
 }
 
 const lower1 = (s: string) => (/^[A-Z][a-z]/.test(s) ? s[0].toLowerCase() + s.slice(1) : s);
+/**
+ * The same, but only for a word that is lowercase in every other sentence it appears in. A meeting point is
+ * usually the name of a place, and `lower1` broke 2,557 of them: "Meet at Lake Trail Taproom" read "Meet at
+ * lake Trail Taproom", "Owl's Creek Boat Launch" read "owl's Creek Boat Launch". A determiner is the case
+ * that reads wrong capitalized mid-sentence, so that is the only one this touches.
+ */
+const DET_OPENER = /^(?:the|a|an|our|my|your|their|his|her|its)\s/;
+const lowerDeterminer = (s: string) => (DET_OPENER.test(s.toLowerCase()) ? s[0].toLowerCase() + s.slice(1) : s);
+
+/**
+ * "the" in front of an offer's name, unless the shop's own name for it opens with a determiner already. 2,179
+ * rows on 798 shipped listings do, so Otto answered "From $95 for the The Nature Conservancy Community Golf
+ * Days", "From $85 for the Our Classes (Standard)" and "The Our Classes (Standard) at $85". A possessive is
+ * left alone, because "the Artist's Studio Tour" is how that name reads in a sentence.
+ */
+const DETERMINED = /^(?:the|a|an|our|my|your|their|his|her|its|this|that|these|those)\s/i;
+const theLabel = (label: string) => (DETERMINED.test(label) ? label : "the " + label);
 
 /* ---------- the operator's offers, flattened and grouped ---------- */
 
@@ -872,8 +889,8 @@ function priceAnswer(ctx: CompanyContext): { text: string; state: ChatState } {
   const sorted = [...offers].sort((a, b) => (a.price as number) - (b.price as number));
   const low = sorted[0];
   const high = sorted[sorted.length - 1];
-  const tail = high.price !== low.price ? " Up to " + priceOf(high) + " for the " + offerLabel(high) + "." : "";
-  const head = "From " + priceOf(low) + " for the " + offerLabel(low) + ".";
+  const tail = high.price !== low.price ? " Up to " + priceOf(high) + " for " + theLabel(offerLabel(high)) + "." : "";
+  const head = "From " + priceOf(low) + " for " + theLabel(offerLabel(low)) + ".";
   return { text: head + ((head + tail).length <= 125 ? tail : ""), state: { topic: "price", family: low.family, offer: low.name } };
 }
 
@@ -976,7 +993,9 @@ function hoursAsWritten(item: Unclaimed): string | null {
   if (!lines.length) return null;
   const seasonal = lines.filter((l) => /\b(spring|summer|fall|autumn|winter|season)\b/i.test(l));
   if (seasonal.length >= 2) return "Hours change by season. " + seasonal.slice(0, 2).join("; ") + ".";
-  return "Their hours say: " + lower1(lines[0]) + ".";
+  // Not lowercased: an hour line opens on a day name or on "Open", and 241 shipped listings read "Their hours
+  // say: mon-Sun 12:00 AM" or "sunday, August 16" because of it. After a colon the shop's own capital is right.
+  return "Their hours say: " + lines[0] + ".";
 }
 
 function openNowAnswer(ctx: CompanyContext): { text: string; state: ChatState } {
@@ -1296,7 +1315,7 @@ function meetAnswer(ctx: CompanyContext, q: string): { text: string; state: Chat
   if (/check.?in/i.test(q) && arrival) return { text: sentence(clip(arrival, 150)), state: { topic: "meet" } };
   if (ctx.item.meetingPoint) {
     const mp = clip(ctx.item.meetingPoint, 120).replace(/^at\s+/i, "");
-    return { text: /^(check|meet|arrive|go to|report|head)/i.test(mp) ? sentence(upper1(mp)) : "Meet at " + lower1(mp) + ".", state: { topic: "meet" } };
+    return { text: /^(check|meet|arrive|go to|report|head)/i.test(mp) ? sentence(upper1(mp)) : "Meet at " + lowerDeterminer(mp) + ".", state: { topic: "meet" } };
   }
   const addr = ctx.contact ? addressLine(ctx.contact) : null;
   if (addr) return { text: "They're at " + addr + ".", state: { topic: "meet" } };
@@ -1522,7 +1541,7 @@ function answerOne(ctx: CompanyContext, topic: Topic, q: string, prev: ChatState
       const priced = offersOf(ctx).filter((o) => hasPrice(o.price)).sort((a, b) => (a.price as number) - (b.price as number));
       if (!priced.length) return priceAnswer(ctx);
       const o = priced[0];
-      return { text: "The " + offerLabel(o) + " at " + priceOf(o) + ".", state: { topic: "cheapest", family: o.family, offer: o.name } };
+      return { text: upper1(theLabel(offerLabel(o))) + " at " + priceOf(o) + ".", state: { topic: "cheapest", family: o.family, offer: o.name } };
     }
     case "list": return listAnswer(ctx, q);
     case "duration": return durationAnswer(ctx, q, prev);
@@ -1624,7 +1643,7 @@ export function companyAnswer(ctx: CompanyContext, question: string, prev: ChatS
     const subject = offersOf(ctx).find((o) => o.name === first.state.offer);
     if (gapA && gapB) text = "They haven't published " + gapA[1] + " or " + gapB[1] + ". " + nextStep(ctx);
     else if (["price", "priceOf", "cheapest"].includes(topics[0]) && topics[1] === "duration" && subject?.minutes && hasPrice(subject.price)) {
-      text = (topics[0] === "price" ? "From " : "") + priceOf(subject) + (topics[0] === "price" ? " for the " + subject.name : " for " + subject.name) + ", and it runs " + fmtDur(subject.minutes) + ".";
+      text = (topics[0] === "price" ? "From " : "") + priceOf(subject) + (topics[0] === "price" ? " for " + theLabel(subject.name) : " for " + subject.name) + ", and it runs " + fmtDur(subject.minutes) + ".";
     }
     else if (b && b !== a) text = a + " " + (first.state.family && b.startsWith(first.state.family + " ") ? "It " + b.slice(first.state.family.length + 1) : b);
   }

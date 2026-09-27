@@ -1,0 +1,52 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+import { readFileSync } from "node:fs";
+
+import { companyAnswer } from "../companyAgent";
+import type { Unclaimed } from "../../data/types";
+
+/**
+ * How Otto words an answer around a shop's own words.
+ *
+ * Two faults, both from treating the shop's string as if Otto had written it. An article was put in front of
+ * every offer name, and 2,179 rows on 798 shipped listings already open with one: "From $95 for the The Nature
+ * Conservancy Community Golf Days", "The Our Classes (Standard) at $85". And the first letter of a meeting
+ * point and of an hour line was lowercased so it would sit mid-sentence, which broke 2,557 place names and 241
+ * hour lines: "Meet at owl's Creek Boat Launch", "Their hours say: mon-Sun 12:00 AM".
+ *
+ * Every listing below is a real shipped record.
+ */
+
+const dir = new URL("../../../public/o/", import.meta.url);
+const listing = (id: string) => JSON.parse(readFileSync(new URL(id + ".json", dir), "utf8")) as Unclaimed;
+const ask = (id: string, q: string) => {
+  const item = listing(id);
+  return companyAnswer({ item, contact: item.contact ?? null, live: null }, q).text;
+};
+
+test("an offer whose own name opens with a determiner does not get a second one", () => {
+  assert.equal(ask("o-adrenalinestudionova-com", "how much is it"), "From $85 for Our Classes (Standard).");
+  assert.equal(ask("o-adrenalinestudionova-com", "what is the cheapest option"), "Our Classes (Standard) at $85.");
+  assert.equal(ask("o-agawamhunt-org", "how much is it"), "From $95 for The Nature Conservancy Community Golf Days (Tee times after 9:00 a.m.).");
+});
+
+test("an offer whose name needs an article still gets one, in both answers", () => {
+  const price = ask("o-1620anglers-com", "how much is it");
+  assert.match(price, /for the Inshore Fishing Charter/, price);
+  const cheap = ask("o-1620anglers-com", "what is the cheapest option");
+  assert.match(cheap, /^The Inshore Fishing Charter/, cheap);
+});
+
+test("a meeting point that is the name of a place keeps the shop's own capital", () => {
+  assert.match(ask("o-cbpedalclub-com", "where do we meet"), /^Meet at Owl’s Creek Boat Launch,/);
+  assert.equal(ask("o-aerigohelicoptertours-com", "where do we meet"), "Meet at Phoenix Deer Valley Airport.");
+});
+
+test("a meeting point that opens on a determiner still reads as one sentence", () => {
+  assert.equal(ask("o-alapark-com", "where do we meet"), "Meet at the Marina on Terrace Drive.");
+  assert.match(ask("o-actionsportrentals-com", "where do we meet"), /^Meet at the rental location/);
+});
+
+test("an hour line keeps the capital on its day name", () => {
+  assert.equal(ask("o-aerigohelicoptertours-com", "what time do you open"), "Their hours say: Mon-Sun 12:00 AM - 11:59 PM.");
+});
