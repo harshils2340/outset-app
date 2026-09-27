@@ -1,5 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { REGION_NAME } from "../../../../src/data/regions.ts";
 import { instantOf, regionOfArea, todayIn, zoneForArea } from "../zone.ts";
 
 /** These run under whatever TZ the machine has; the point is that none of the answers depend on it. */
@@ -99,4 +100,23 @@ test("today is the shop's today, not the server's", () => {
   assert.equal(todayIn("America/Toronto", at), "2026-10-06");
   // And in UTC itself it really is the 7th.
   assert.equal(todayIn("UTC", at), "2026-10-07");
+});
+
+/* ---------- the two tables the app names a region from and reads its clock on ---------- */
+
+/**
+ * `REGION_NAME` on the guest side spells a region out; this table says what time it is there. They are two
+ * lists of the same codes and nothing held them together, so Puerto Rico was on one and not the other:
+ * `regionOfArea("San Juan, PR")` answered nothing, `zoneForArea` fell through to longitude and gave the shop
+ * America/Halifax, which is an hour out from March to November because Puerto Rico takes no daylight saving.
+ * 0 listings ship there today. This guard is what keeps the next region somebody adds on a clock.
+ */
+test("every region the guest app can name has a clock on this side too", () => {
+  const missing = Object.keys(REGION_NAME).filter((code) => !zoneForArea(code));
+  assert.deepEqual(missing, []);
+});
+
+test("a San Juan shop is read on Atlantic time, not Halifax", () => {
+  assert.equal(regionOfArea("San Juan, PR"), "PR");
+  assert.equal(zoneForArea("San Juan, PR", 18.4655, -66.1057), "America/Puerto_Rico");
 });
