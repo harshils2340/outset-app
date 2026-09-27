@@ -29,12 +29,23 @@
  * A bar's happy hour: "Happy Hour Wednesday-Friday 12-6 PM" came after the same site's real "Wed 12:00 PM -
  * 10:00 PM", and the later line wins, so the brewery shut four hours early three days a week. One shop's only
  * hours line was "Happy Hour is Sunday 2:00-5:00PM, Mon-Fri 3:00-6:00PM", which read as opening at 2 AM.
+ *
+ * An entry from a shop's event calendar: "Open Studio November 21 @ 11:00 am - 2:00 pm", "Pinned Butterflies
+ * September 10 @ 5:30 PM - 7:00 PM", "OPEN PRIVATE TESTING September 18 @ 4:00 pm - 10:00 pm". One date and
+ * one time, which is one afternoon, and The Events Calendar writes the "@" between them. 29 listings publish
+ * one and for every one of the 29 it is the whole Hours block, so the line was printed to a guest as the shop's
+ * opening hours and, naming no weekday, became all seven days of its week: a railroad museum open 9 to 5 every
+ * day and a dragway open 4 to 10 every day, on the strength of a single event. Nothing is lost by refusing it,
+ * because no shop in the catalog publishes one beside hours of its own.
  */
 const NOT_TRADING_HOURS = /\b(?:quiet|happy)\s*hours?\b/i;
 
-/** Whether a published line is about when the shop is open, rather than about quiet hours or happy hour. */
+/** The Events Calendar's own line: a single date, then "@", then the time of one event. */
+const DATED_EVENT = /\b(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t|tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\.?\s+\d{1,2}(?:st|nd|rd|th)?(?:,?\s*\d{4})?\s*@/i;
+
+/** Whether a published line is about when the shop is open, rather than one event, quiet hours or happy hour. */
 export function isTradingHoursLine(line: string): boolean {
-  return !NOT_TRADING_HOURS.test(line);
+  return !NOT_TRADING_HOURS.test(line) && !DATED_EVENT.test(line);
 }
 
 const DAY_CODE: Record<string, string> = { Mo: "Mon", Tu: "Tue", We: "Wed", Th: "Thu", Fr: "Fri", Sa: "Sat", Su: "Sun", PH: "Public holidays" };

@@ -161,6 +161,21 @@ test("a campground's quiet hours are not its opening hours", () => {
   assert.equal(show(parseWeek(["Quiet Hours are from 10:00 PM to 8:00 AM"])), "(no hours)");
   assert.equal(show(parseWeek(["? Yes, quiet hours are from 11:00pm - 8:00am"])), "(no hours)");
   assert.equal(show(parseWeek(["Quiet hours are observed daily from 10:30 PM to 7:00 AM"])), "(no hours)");
+});
+
+test("one date and one time is one event, not a week", () => {
+  // 29 listings publish an entry from their own event calendar and nothing else, so the line was printed as
+  // the shop's Hours block and, naming no weekday, became all seven days of its week.
+  assert.equal(show(parseWeek(["Open Studio November 21 @ 11:00 am - 2:00 pm"])), "(no hours)");
+  assert.equal(show(parseWeek(["Pinned Butterflies September 10 @ 5:30 PM - 7:00 PM"])), "(no hours)");
+  assert.equal(show(parseWeek(["OPEN PRIVATE TESTING September 18 @ 4:00 pm - 10:00 pm"])), "(no hours)");
+  assert.equal(show(parseWeek(["September 17 @ 4:00 pm - 6:00 pm"])), "(no hours)");
+  assert.equal(show(parseWeek(["Open October 3 @ 9:00 am - 2:00 pm"])), "(no hours)");
+  // An "@" between the days and the time is how three shops write a perfectly ordinary week, so it stays.
+  assert.equal(show(parseWeek(["Mon - Sun @ 8AM - 5PM"])), everyDay("08:00-17:00"));
+  assert.equal(show(parseWeek(["(@Taco Bay) Monday 11am - 4pm"])), "Sun -, Mon 11:00-16:00, Tue -, Wed -, Thu -, Fri -, Sat -");
+  // A season in front of a week is a rule about every one of those days, not one of them.
+  assert.equal(show(parseWeek(["May 1 - November 1: 11am - 6pm"])), everyDay("11:00-18:00"));
   // The compact week already in `catalog.json` came out of that same line, so it is not believed either.
   const shipped = {
     id: "o-alpinelodgeandrv-com",

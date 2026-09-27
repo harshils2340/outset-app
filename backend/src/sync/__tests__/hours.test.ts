@@ -95,6 +95,14 @@ test("quiet hours and happy hour are not opening hours", () => {
     "Sun -, Mon -, Tue -, Wed 12:00-22:00, Thu -, Fri -, Sat -",
   );
   assert.equal(show(encodeWeek(["Happy Hour is Sunday 2:00-5:00PM, Mon-Fri 3:00-6:00PM"])), "(no hours)");
+  // A third subject: one entry from the shop's own event calendar, one date and one time. The guest side drops
+  // the same lines, or a card and its listing page disagree.
+  assert.equal(show(encodeWeek(["Open Studio November 21 @ 11:00 am - 2:00 pm"])), "(no hours)");
+  assert.equal(show(encodeWeek(["Pinned Butterflies September 10 @ 5:30 PM - 7:00 PM"])), "(no hours)");
+  assert.equal(show(encodeWeek(["September 17 @ 4:00 pm - 6:00 pm"])), "(no hours)");
+  // An "@" between the days and the time is how three shops write an ordinary week, so it stays.
+  assert.equal(show(encodeWeek(["Mon - Sun @ 8AM - 5PM"])), everyDay("08:00-17:00"));
+  assert.equal(show(encodeWeek(["May 1 - November 1: 11am - 6pm"])), everyDay("11:00-18:00"));
 });
 
 test("a day that never closes is not a day a shop stated its hours", () => {

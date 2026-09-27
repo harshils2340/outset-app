@@ -48,14 +48,20 @@ export const TIME_RE = /(\d{1,2})(?::(\d{2}))?\s*(am|pm|a\.m\.|p\.m\.)?\s*(?:-|â
  * shipped catalog and both read backwards: a campground's quiet hours ("Quiet hours are from 11:00pm -
  * 8:00am", the only hours line 37 of them publish, so each said "Open now, closes 8 AM" at two in the
  * morning), and a bar's happy hour ("Happy Hour Wednesday-Friday 12-6 PM", written after the same site's real
- * "Wed 12:00 PM - 10:00 PM", and the later line wins). The twin of `isTradingHoursLine` in
+ * "Wed 12:00 PM - 10:00 PM", and the later line wins). A third is an entry from the shop's own event calendar,
+ * one date and one time with The Events Calendar's "@" between them ("Open Studio November 21 @ 11:00 am -
+ * 2:00 pm"): 29 listings publish one, for all 29 it is the whole Hours block, and naming no weekday it became
+ * all seven days of the week. The twin of `isTradingHoursLine` in
  * `src/lib/openNow.ts`; the two have to drop the same lines or a card and its listing page disagree.
  */
 export const NOT_TRADING_HOURS = /\b(?:quiet|happy)\s*hours?\b/i;
 
-/** Whether a published line is about when the shop is open, rather than about quiet hours or happy hour. */
+/** The Events Calendar's own line: a single date, then "@", then the time of one event. */
+export const DATED_EVENT = /\b(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t|tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\.?\s+\d{1,2}(?:st|nd|rd|th)?(?:,?\s*\d{4})?\s*@/i;
+
+/** Whether a published line is about when the shop is open, rather than one event, quiet hours or happy hour. */
 export function isTradingHoursLine(line: string): boolean {
-  return !NOT_TRADING_HOURS.test(line);
+  return !NOT_TRADING_HOURS.test(line) && !DATED_EVENT.test(line);
 }
 
 function mins(h: number, m: number, ap: string | undefined, afternoonHint: boolean): number {
