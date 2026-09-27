@@ -133,22 +133,37 @@ export async function destinations(): Promise<ViatorDestination[]> {
  * One Viator destination per Outset metro: the nearest CITY-type destination whose centre is within `maxKm`
  * of the metro's centre, else a name match. Metros with neither are skipped and named in the log, never
  * guessed at, since a wrong destination would fill a metro with another city's tours.
+ *
+ * The name match has to be the right city of that name, and it did not check. Viator lists a Hamilton on
+ * three continents; no CITY destination sits within 40 km of Hamilton, Ontario, so the branch took the first
+ * row called Hamilton, which is Hamilton, New Zealand, 13,852 km away. Every one of the 17 partner listings
+ * that metro shipped was a Hobbiton, Waitomo Glowworm Caves or Rotorua tour, sold under the area line
+ * "Hamilton, ON". So a name match is now held to `nameKm` of the metro it is claimed for, which leaves the
+ * branch doing the job it was written for (a destination centred further out than the first pass allows) and
+ * not the one it was doing. A destination with no centre cannot be checked, so it is refused rather than
+ * guessed at, which is the rule the paragraph above already states.
  */
-export function metroDestinations(dests: ViatorDestination[], maxKm = 40): Map<string, ViatorDestination> {
+export function metroDestinations(dests: ViatorDestination[], maxKm = 40, nameKm = 200): Map<string, ViatorDestination> {
   const out = new Map<string, ViatorDestination>();
   const cities = dests.filter((d) => (d.type || "").toUpperCase() === "CITY" || !d.type);
+  const kmTo = (m: { lat: number; lon: number }, d: ViatorDestination): number | null => {
+    const lat = d.center?.latitude;
+    const lon = d.center?.longitude;
+    return lat == null || lon == null ? null : haversineKm(m.lat, m.lon, lat, lon);
+  };
   for (const m of METROS) {
     let best: { d: ViatorDestination; km: number } | null = null;
     for (const d of cities) {
-      const lat = d.center?.latitude;
-      const lon = d.center?.longitude;
-      if (lat == null || lon == null) continue;
-      const km = haversineKm(m.lat, m.lon, lat, lon);
-      if (km <= maxKm && (!best || km < best.km)) best = { d, km };
+      const km = kmTo(m, d);
+      if (km != null && km <= maxKm && (!best || km < best.km)) best = { d, km };
     }
     if (!best) {
-      const byName = cities.find((d) => (d.name || "").toLowerCase() === m.name.toLowerCase().replace(/ bay$/, ""));
-      if (byName) best = { d: byName, km: 0 };
+      const wanted = m.name.toLowerCase().replace(/ bay$/, "");
+      for (const d of cities) {
+        if ((d.name || "").toLowerCase() !== wanted) continue;
+        const km = kmTo(m, d);
+        if (km != null && km <= nameKm && (!best || km < best.km)) best = { d, km };
+      }
     }
     if (best) out.set(m.id, best.d);
   }
