@@ -375,6 +375,11 @@ export function placeName(area: string): string {
   // A town that already names its own state does not have it added twice, which is the rule the area line is
   // built under in the first place (backend/src/sync/contacts.ts).
   if (new RegExp("(^|[\\s,])" + code + "$", "i").test(town)) return town;
+  // DC is the one row of the table whose full name carries its own code, and 118 listings ship the ordinary
+  // spelling "Washington, DC", so expanding the code read "Washington, Washington, DC" on the heading, the pay
+  // sheet and the confirm screen. A town the table's own name already starts with is the place that name means,
+  // so the line stands as the shop's own page states it.
+  if (REGION_NAME[code].toLowerCase().startsWith(town.toLowerCase() + ",")) return a;
   return town + ", " + REGION_NAME[code];
 }
 
