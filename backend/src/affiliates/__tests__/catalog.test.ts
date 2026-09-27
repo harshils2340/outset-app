@@ -77,7 +77,7 @@ test("a product that runs for days is counted in days, not in hours", () => {
   assert.equal(durationText({ productCode: "X", duration: { fixedDurationInMinutes: 2880 } }), "2 days");
   assert.equal(durationText({ productCode: "X", duration: { fixedDurationInMinutes: 12960 } }), "9 days");
   assert.equal(durationText({ productCode: "X", duration: { fixedDurationInMinutes: 44640 } }), "31 days");
-  assert.equal(durationText({ productCode: "X", duration: { fixedDurationInMinutes: 5520 } }), "3.8 days");
+  assert.equal(durationText({ productCode: "X", duration: { fixedDurationInMinutes: 5520 } }), "3 days 20 hours", "between whole days, the hours left over rather than a tenth of a day");
   assert.equal(durationText({ productCode: "X", duration: { variableDurationFromMinutes: 1440, variableDurationToMinutes: 44640 } }), "1 day to 31 days");
   assert.equal(durationText({ productCode: "X", duration: { fixedDurationInMinutes: 870 } }), "14.5 hours", "under a day is untouched");
 });
