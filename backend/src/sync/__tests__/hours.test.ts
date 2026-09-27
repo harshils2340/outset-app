@@ -108,6 +108,18 @@ test("a day that never closes is not a day a shop stated its hours", () => {
   // A stated closing time in the small hours still counts.
   assert.equal(show(encodeWeek(["Daily 6pm-2am"])), everyDay("18:00-26:00"));
   assert.equal(show(encodeWeek(["Daily 0:00-12:00"])), everyDay("00:00-12:00"));
+  // The same placeholder written from somewhere other than midnight: two ends naming one clock face. This is
+  // the guest side's twin, so it has to answer the same way on each of the 6 shipped listings that carry one.
+  assert.equal(show(encodeWeek(["Mon-Sun 1:00 AM - 1:00 AM"])), "(no hours)");
+  assert.equal(show(encodeWeek(["Sat 12:00 PM - 12:00 PM"])), "(no hours)");
+  assert.equal(show(encodeWeek(["Wed 8:00 AM - 8:00 AM"])), "(no hours)");
+  assert.equal(show(encodeWeek(["Sun 11:00 AM - 11:00 AM"])), "(no hours)");
+  assert.equal(
+    show(encodeWeek(["Sat 12:00 PM - 12:00 PM", "Sun 12:00 PM - 10:00 PM"])),
+    "Sun 12:00-22:00, Mon -, Tue -, Wed -, Thu -, Fri -, Sat -",
+  );
+  // A long day whose two ends really are different is still a long day.
+  assert.equal(show(encodeWeek(["Daily 12:01 AM - 11:00 PM"])), everyDay("00:01-23:00"));
 });
 
 /**

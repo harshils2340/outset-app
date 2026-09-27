@@ -125,6 +125,17 @@ test("a span covering the whole day is a site builder's placeholder, not hours",
   assert.deepEqual(displayHours(["Daily 12:00 AM - 8:00 AM"]), ["Daily 12:00 AM - 8:00 AM"]);
   assert.deepEqual(displayHours(["Mon 11:00 AM - 12:00 AM"]), ["Mon 11:00 AM - 12:00 AM"]);
   assert.deepEqual(displayHours(["Sun 12:00 PM - 11:59 PM"]), ["Sun 12:00 PM - 11:59 PM"]);
+  // The same placeholder written from somewhere other than midnight: two ends naming one clock face. 5 lines
+  // across 5 shipped listings, and the parser refuses each of them too, so the day keeps its honest gap.
+  assert.deepEqual(displayHours(["Mon-Sun 1:00 AM - 1:00 AM"]), []);
+  assert.deepEqual(displayHours(["Sat 12:00 PM - 12:00 PM"]), []);
+  assert.deepEqual(displayHours(["Wed 8:00 AM - 8:00 AM"]), []);
+  assert.deepEqual(displayHours(["Sun 11:00 AM - 11:00 AM"]), []);
+  // Only its own day: SaltWater Brewery publishes six real ones beside it.
+  assert.deepEqual(displayHours(["Sat 12:00 PM - 12:00 PM", "Sun 12:00 PM - 10:00 PM"]), ["Sun 12:00 PM - 10:00 PM"]);
+  // Two ends an hour apart are not one clock face, whatever they share.
+  assert.deepEqual(displayHours(["Sun 11:00 AM - 11:00 PM"]), ["Sun 11:00 AM - 11:00 PM"]);
+  assert.deepEqual(displayHours(["Sun 11:00 AM - 11:30 AM"]), ["Sun 11:00 AM - 11:30 AM"]);
 });
 
 /**

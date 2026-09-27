@@ -201,6 +201,20 @@ test("a day that never closes is not a day a shop stated its hours", () => {
   // A day that runs to the small hours is a stated closing time and still counts.
   assert.equal(show(parseWeek(["Daily 6pm-2am"])), everyDay("18:00-26:00"));
   assert.equal(show(parseWeek(["Daily 0:00-12:00"])), everyDay("00:00-12:00"));
+  // The same placeholder written from somewhere other than midnight: a range whose two ends name the same
+  // clock face. 6 shipped listings carry one on 12 days, and each was read as open around the clock, so the
+  // shop stood in the open-now rail at every hour of that day.
+  assert.equal(show(parseWeek(["Mon-Sun 1:00 AM - 1:00 AM"])), "(no hours)", "an airboat ride in Fort Lauderdale");
+  assert.equal(show(parseWeek(["Sat 12:00 PM - 12:00 PM"])), "(no hours)", "SaltWater Brewery");
+  assert.equal(show(parseWeek(["Wed 8:00 AM - 8:00 AM"])), "(no hours)", "a Naperville yoga studio");
+  assert.equal(show(parseWeek(["Sun 11:00 AM - 11:00 AM"])), "(no hours)", "XLanes in Fresno");
+  // And it takes only its own day, the way the midnight placeholder already did.
+  assert.equal(
+    show(parseWeek(["Sat 12:00 PM - 12:00 PM", "Sun 12:00 PM - 10:00 PM"])),
+    "Sun 12:00-22:00, Mon -, Tue -, Wed -, Thu -, Fri -, Sat -",
+  );
+  // A long day whose two ends really are different is still a long day.
+  assert.equal(show(parseWeek(["Daily 12:01 AM - 11:00 PM"])), everyDay("00:01-23:00"));
 });
 
 test("a whole-day week already in the catalog is not believed either", () => {

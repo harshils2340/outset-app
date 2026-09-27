@@ -126,9 +126,16 @@ function sharedMarker(open: number, close: number, openH: string, openAP: string
  * catalog carry one, 132 of them on all seven days: helicopter tours, jet ski rentals and fishing charters
  * standing in "Open right now near you" at four in the morning under "Open, closes 11:59 PM", a closing time
  * none of them ever stated. A late closer still counts: "6pm-2am" opens at a stated hour.
+ *
+ * A range whose two ends name the same clock face is the same placeholder written from somewhere other than
+ * midnight, and the rule read only the ones that started there. An airboat ride published "Mon-Sun 1:00 AM -
+ * 1:00 AM", a brewery "Sat 12:00 PM - 12:00 PM", a yoga studio "Wed 8:00 AM - 8:00 AM": 6 shipped listings
+ * and 12 day lines, each read as open around the clock, so the shop stood in the open-now rail at every hour
+ * of that day and its picker offered every fixed start time. Nobody trades noon to noon, so the span is
+ * measured rather than its opening end, and the day keeps its honest gap.
  */
 function coversWholeDay(open: number, close: number): boolean {
-  return open === 0 && close >= 24 * 60 - 1;
+  return close - open >= 24 * 60 - 1;
 }
 
 /**

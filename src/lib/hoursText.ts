@@ -200,6 +200,15 @@ export function tidyHours(text: string): string {
  */
 const WHOLE_DAY = /(?:^|[^\d:])(?:12:00\s*AM|0?0:00)\s*(?:-|–|—|to)\s*(?:12:00\s*AM|11:59\s*PM|24:00|23:59|0?0:00)(?![\d:])/i;
 
+/**
+ * The same placeholder written from somewhere other than midnight: a range whose two ends name the same clock
+ * face. An airboat ride published "Mon-Sun 1:00 AM - 1:00 AM", a brewery "Sat 12:00 PM - 12:00 PM", a bowling
+ * alley "Sun 11:00 AM - 11:00 AM", a yoga studio "Wed 8:00 AM - 8:00 AM". `coversWholeDay` in openNow.ts
+ * refuses to read one as hours, so this block keeps the same answer and the day keeps its honest gap: 5 lines
+ * across 5 shipped listings.
+ */
+const SAME_ENDS = /(?:^|[^\d:])(\d{1,2}:\d{2}\s*(?:AM|PM))\s*(?:-|–|—|to)\s*\1(?![\d:])/i;
+
 /** The published hour lines as a guest should read them. One line in can be two out when it names two days. */
 export function displayHours(lines: string[]): string[] {
   const out: string[] = [];
@@ -212,7 +221,7 @@ export function displayHours(lines: string[]): string[] {
     const plain = raw.replace(GLUED_DAY, "$1\n$2$3").split(/\n|\s*\|\|\s*/);
     for (const part of osm || plain) {
       const line = tidyHours(part);
-      if (line && !WHOLE_DAY.test(line) && !out.includes(line)) out.push(line);
+      if (line && !WHOLE_DAY.test(line) && !SAME_ENDS.test(line) && !out.includes(line)) out.push(line);
     }
   }
   return out;

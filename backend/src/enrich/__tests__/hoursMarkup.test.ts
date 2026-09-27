@@ -27,6 +27,13 @@ test("a span covering the whole day is a site builder's default, not opening hou
     [],
   );
   assert.deepEqual(harvestHours(page('<p>Hours: open 12:00 AM - 11:59 PM daily</p>')), []);
+  // The same placeholder written from somewhere other than midnight: two ends naming one clock face.
+  assert.deepEqual(harvestHours(ld('{"@type":"LocalBusiness","openingHours":"Mo-Su 13:00-13:00"}')), []);
+  assert.deepEqual(
+    harvestHours(ld('{"@type":"LocalBusiness","openingHoursSpecification":[{"dayOfWeek":["Saturday"],"opens":"12:00","closes":"12:00"}]}')),
+    [],
+  );
+  assert.deepEqual(harvestHours(page('<p>Hours: Mon-Sun 1:00 AM - 1:00 AM</p>')), []);
 });
 
 test("a shop that did state its hours still publishes them", () => {

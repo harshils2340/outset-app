@@ -66,9 +66,12 @@ function toMins(h: number, m: number, ap: string | undefined): number {
  * builder writes into the markup when the owner never set any, and 166 operators in the shipped catalog
  * carry one: helicopter tours, jet ski rentals and fishing charters standing in "Open right now near you" at
  * four in the morning, each labelled "Open, closes 11:59 PM", a closing time none of them ever stated.
+ *
+ * A range whose two ends name the same clock face is the same placeholder written from somewhere other than
+ * midnight ("12:00 PM - 12:00 PM", "1:00 AM - 1:00 AM"), so the span is measured rather than its opening end.
  */
 function coversWholeDay(open: number, close: number): boolean {
-  return open === 0 && close >= 24 * 60 - 1;
+  return close - open >= 24 * 60 - 1;
 }
 
 /** Parses a "9am-5pm" style range (via TIME_RE) into minutes, inferring am/pm when one side omits it. */
