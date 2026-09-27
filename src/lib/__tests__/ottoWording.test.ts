@@ -50,3 +50,20 @@ test("a meeting point that opens on a determiner still reads as one sentence", (
 test("an hour line keeps the capital on its day name", () => {
   assert.equal(ask("o-aerigohelicoptertours-com", "what time do you open"), "Their hours say: Mon-Sun 12:00 AM - 11:59 PM.");
 });
+
+/**
+ * The shop's town, taken out of a service's name so two towns' variants group as one thing, used to leave the
+ * word that introduced it and the region that followed it behind: "Our Charter Boat in Portsmouth, NH" read
+ * "Our Charter Boat in , NH", "RV Park Serving Ashland, Ohio" read "RV Park Serving , Ohio", and a name that
+ * lost several parts read "Jet ski Rental - , , , and". 182 shipped listings answered with one of these.
+ */
+test("a service name that lost the town it named does not keep the word that introduced it", () => {
+  assert.equal(ask("o-northerntideyc-com", "what services do you have"), "11 options: River Cruise, Whale-Watching Cruise, Our Charter Boat and 8 more.");
+  assert.equal(ask("o-ashlandrvpark-com", "what services do you have"), "Just one: RV Park.");
+  assert.equal(ask("o-aerishelicoptertours-com", "what services do you have"), "Four things: Helicopter Tours, Introductory Flight, City Tour and Extended Private Flight.");
+  assert.match(ask("o-aaajetski-com", "what services do you have"), /^Two things: Jet ski Rental and Two Hour/);
+});
+
+test("a shop that put an exclamation mark in a service name is not read out with a full stop after it", () => {
+  assert.equal(ask("o-cruzinmonkey-com", "what services do you have"), "Just one: Jet Skis!");
+});

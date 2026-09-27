@@ -177,8 +177,22 @@ function familyOf(name: string, ctx: CompanyContext): string {
   s = s.replace(/\b(weekends?|weekdays?|weeknights?)\b/gi, " ");
   s = s.replace(/\bper (hour|person|day|night|lane|group|game|round)\b/gi, " ");
   const cities = [ctx.contact?.city, ...(ctx.item.locations || []).map((l) => venueLabel({ city: l.city }))].filter(Boolean) as string[];
-  for (const c of cities) s = s.replace(new RegExp("\\b" + c.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "\\b", "gi"), " ");
-  s = s.replace(/\(\s*\)/g, " ").replace(/\s+/g, " ").replace(/(\s*[–—,:\/-])+\s*$/, "").trim();
+  for (const c of cities) {
+    const city = c.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    // A town taken out of the middle of a name takes the word that introduced it, and the region that followed
+    // it, with it. Removing the town alone left "Our Charter Boat in Portsmouth, NH" reading "Our Charter Boat
+    // in , NH", "Rentals in Acworth, Georgia" reading "Rentals in , Georgia" and "Helicopter Tours in Boston"
+    // reading "Helicopter Tours in", on 105 shipped listings.
+    s = s.replace(new RegExp("\\s*\\b(?:in|at|near|serving|around|of)\\s+" + city + "\\b(?:\\s*,\\s*[A-Za-z][A-Za-z.]{1,14})?", "gi"), " ");
+    s = s.replace(new RegExp("\\b" + city + "\\b", "gi"), " ");
+  }
+  // A separator with nothing left on either side of it, and a conjunction doubled by a removal in between.
+  s = s.replace(/\(\s*\)/g, " ").replace(/\s+/g, " ");
+  s = s.replace(/(\s*[,;:]\s*){2,}/g, ", ").replace(/\s+([,;:!?])/g, "$1").replace(/\b(and|or)\s+\1\b/gi, "$1");
+  s = s.replace(/^[\s,;:\u2013\u2014\/-]+/, "").trim();
+  // A separator or a connector left at the end by one of the removals above. "In" and "On" are not in the list,
+  // because "Drop In" and "Walk On" are whole names; "and", "at" and "of" never end one.
+  for (let i = 0; i < 3; i += 1) s = s.replace(/(?:\s*[\u2013\u2014,:;\/-]+|\s+\b(?:and|or|with|plus|at|of|near|from|around|serving|to|by|for)\b)\s*$/i, "").trim();
   return s.length > 2 ? s : plainWords(name);
 }
 
@@ -958,7 +972,9 @@ function listAnswer(ctx: CompanyContext, q: string): { text: string; state: Chat
   const wantsAll = /\b(list|all|everything|show me)\b/i.test(q);
   const n = fams.length;
   let shown = wantsAll ? 6 : n > 4 ? 3 : 4;
-  const build = () => (n === 1 ? "Just one: " + fams[0].name + "." : upper1(countWord(n)) + (n <= shown ? " things: " : " options: ") + list(fams.map((f) => f.name), shown) + ".");
+  // sentence(), not a full stop: a shop that named a service "Jet Skis!" would otherwise be read out as
+  // "Just one: Jet Skis!.".
+  const build = () => sentence(n === 1 ? "Just one: " + fams[0].name : upper1(countWord(n)) + (n <= shown ? " things: " : " options: ") + list(fams.map((f) => f.name), shown));
   while (build().length > (wantsAll ? 170 : 115) && shown > 2) shown -= 1;
   const head = build();
   const priced = offers.filter((o) => hasPrice(o.price)).sort((a, b) => (a.price as number) - (b.price as number));
