@@ -97,7 +97,7 @@ test("the confirm screen names the business it is about to hand over", () => {
   assert.ok(/This is your business\?/.test(block), "the confirm screen no longer asks");
   // `picked` waits on a catalog version bump; the record the claim is about is already in hand.
   assert.ok(
-    /claimHead\(pendingClaim\.u\)/.test(block),
+    /claimHead\(pendingClaim\.u[,)]/.test(block),
     "the confirm screen draws its card from `picked`, so it can ask an owner to hand over a business it does not name",
   );
 });

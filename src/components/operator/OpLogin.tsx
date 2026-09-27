@@ -497,8 +497,15 @@ export function OpLogin({ claimId, claimToken, compact, onEnter, onBack }: { cla
   const noWay = !!rule && !rule.hasEmail && !rule.domains.length;
   const canRequest = !!name.trim() && EMAIL.test(email.trim()) && !sending && !noWay;
 
-  const claimHead = (u: Unclaimed) => (
-    <div className="odclaimhead">
+  /**
+   * `.odsplash > :first-child` pulses, because on the loading splash that child is the brand mark and the pulse
+   * is what says the page is still working. The confirm screen below puts this card there instead, so the
+   * business an owner is being asked to hand over throbbed like a skeleton on the one screen that is waiting
+   * for them rather than for the network. `still` turns that off where the card leads a splash; the proper home
+   * for it is one selector in `src/styles/operator.css`, which an overnight run may not touch.
+   */
+  const claimHead = (u: Unclaimed, still = false) => (
+    <div className="odclaimhead" style={still ? { animation: "none" } : undefined}>
       <span className="odthumb big"><Photo src={u.cover} kind={u.art} id={"c" + u.id} alt="" /></span>
       <span className="meta">
         <small>Claiming</small>
@@ -529,7 +536,7 @@ export function OpLogin({ claimId, claimToken, compact, onEnter, onBack }: { cla
       <div className={"odsplash" + (compact ? " compact" : "")}>
         {/* The record the claim is about, not `picked`: that one waits on a catalog version bump, and a screen
             asking an owner to hand over a business has to name the business every time it is drawn. */}
-        {claimHead(pendingClaim.u)}
+        {claimHead(pendingClaim.u, true)}
         <b>This is your business?</b>
         <small>Opening your dashboard claims this listing and turns it over to you.</small>
         {/* The click can fail: a claim the API never recorded, or settings it never sent back. Both are worth
