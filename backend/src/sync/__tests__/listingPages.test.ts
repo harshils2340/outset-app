@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { bookablePages, priceOf, writeLandingPages, type Item } from "../pages.ts";
 import { clip, writeListingPages } from "../listingPages.ts";
+import { pageTitle as appPageTitle } from "../../../../src/lib/site.ts";
 
 /**
  * A listing that earns a page: a photo plus something a guest acts on, which is what the generator requires. A
@@ -105,7 +106,7 @@ test("canonical, title, blurb, menu with prices, hours and requirements come onl
   try {
     const html = r.read("o-a.html");
     assert.match(html, /<link rel="canonical" href="https:\/\/onoutset\.com\/l\/o-a\.html">/);
-    assert.match(html, /<title>Pasta Night in Toronto, ON · Outset<\/title>/);
+    assert.match(html, /<title>Pasta Night in Toronto, Ontario · Outset<\/title>/);
     assert.match(html, /Hands-on Italian cooking in a home kitchen\./);
     assert.match(html, /<span>Pasta class<small>3 hours<\/small><\/span><span>\$95<\/span>/);
     assert.match(html, /Tue-Sat 10am-6pm/);
@@ -290,7 +291,7 @@ test("a listing page carries a social card built from the listing's own name and
   ]);
   try {
     const html = r.read("o-a.html");
-    assert.match(html, /<meta property="og:title" content="o-a in Toronto, ON · Outset">/);
+    assert.match(html, /<meta property="og:title" content="o-a in Toronto, Ontario · Outset">/);
     assert.match(html, /<meta property="og:description" content="Hand-rolled pasta in a real kitchen\.">/);
     assert.match(html, /<meta property="og:url" content="[^"]*\/l\/o-a\.html">/);
     assert.match(html, /<meta property="og:image" content="https:\/\/wsrv\.nl\/\?url=x%2Fa\.jpg&amp;w=1200&amp;h=630/);
@@ -695,6 +696,62 @@ test("a price with cents is grouped the way every screen in the app groups it", 
     assert.ok(a.includes("$1,024.85"));
     assert.ok(a.includes("$2,500"), "a whole dollar price lost its grouping or grew cents");
     assert.ok(!a.includes("$10094"), "the ungrouped spelling is still on the page");
+  } finally {
+    r.cleanup();
+  }
+});
+
+/**
+ * The place a guest reads on a /l/ page, against the place the app reads for the same shop.
+ *
+ * The 27 September fix spelled a coded state out on the app's listing page, the review-and-pay sheet and the
+ * confirm screen. The static page kept the code, so 15,552 of the 15,556 shipped pages named their shop's place
+ * differently than the page a guest opens next ("Chicago, IL" against "Chicago, Illinois"), and the 2,943
+ * listings whose town was never read headed their page "MD". The code belongs in the JSON-LD's addressRegion,
+ * which schema.org asks for in that form, and nowhere a guest reads a sentence.
+ */
+test("the area line spells a state out, and the JSON-LD keeps the code", () => {
+  const items: Item[] = [
+    item("o-town", { cover: "https://x/a.jpg", area: "Ocean City, MD", metroId: "baltimore" } as Partial<Item>),
+    item("o-bare", { cover: "https://x/b.jpg", area: "MD", metroId: "baltimore" } as Partial<Item>),
+    item("o-dc", { cover: "https://x/c.jpg", area: "Washington DC, DC", metroId: "washington" } as Partial<Item>),
+    item("o-noarea", { cover: "https://x/d.jpg", area: "" } as Partial<Item>),
+  ];
+  const r = run(items);
+  try {
+    assert.ok(r.read("o-town.html").includes('<p class="area">Ocean City, Maryland</p>'), "the area line still prints the code");
+    assert.ok(r.read("o-bare.html").includes('<p class="area">Maryland</p>'), "a listing with no town still heads its page with a code");
+    // A town that already names its own state does not get it twice.
+    assert.ok(r.read("o-dc.html").includes('<p class="area">Washington DC</p>'));
+    assert.ok(!r.read("o-noarea.html").includes('class="area"'), "a listing with no area line invented one");
+    assert.ok(r.read("o-town.html").includes('"addressRegion":"MD"'), "the JSON-LD stopped stating the region in code form");
+  } finally {
+    r.cleanup();
+  }
+});
+
+/**
+ * One shop, one name: the /l/ page's <title> is what the app puts in the tab for the same listing, so a
+ * bookmark, a shared link and a search result all read the same. Checked against `pageTitle` itself rather
+ * than against a copy of its format.
+ */
+test("the page title is the title the app gives the same listing", () => {
+  const shapes: Partial<Item>[] = [
+    { area: "Ocean City, MD" },
+    { area: "MD" },
+    { area: "Washington DC, DC" },
+    { area: "" },
+    { area: "Toronto, ON" },
+  ];
+  const items: Item[] = shapes.map((s, n) => item(`o-t${n}`, { cover: "https://x/a.jpg", title: "Angler Watersports", ...s } as Partial<Item>));
+  const r = run(items);
+  try {
+    for (const [n, s] of shapes.entries()) {
+      const html = r.read(`o-t${n}.html`);
+      const m = /<title>([^<]*)<\/title>/.exec(html);
+      assert.ok(m, `o-t${n} has no title`);
+      assert.equal(m![1], appPageTitle({ title: "Angler Watersports", area: s.area }), `the two surfaces disagree for "${s.area}"`);
+    }
   } finally {
     r.cleanup();
   }
