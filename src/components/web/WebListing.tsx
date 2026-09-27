@@ -17,6 +17,7 @@ import { embedAutoplay, isGif, listingMedia, photoCandidates, probePhotos, type 
 import { arrivalWords, bringLine, cleanDesc, durationLabel, groupCap as readGroupCap, minAge, splitIncluded, splitPolicies, tidyLine } from "../../lib/listingDerive";
 import { sayLength } from "../../lib/duration";
 import { freeCancelBadge } from "../../lib/cancellation";
+import { reportDeadCover, useDeadCovers } from "../../lib/deadCovers";
 import { pickSimilar } from "../../lib/similar";
 import { bookableStart, clockIn, hourLines, itemOpenState, itemWeek, zoneFor } from "../../lib/openNow";
 import { displayHours } from "../../lib/hoursText";
@@ -388,7 +389,10 @@ function Card({ u, onOpen }: { u: Unclaimed; onOpen: (id: string) => void }) {
   return (
     <button type="button" className="alcard" onClick={() => onOpen(u.id)}>
       <div className="alcardart">
-        <Photo src={u.cover} video={u.video} kind={u.art} id={"s" + u.id} alt={u.title} />
+        {/* Every other grid of covers teaches the shared store when one will not load; this one drew the
+            illustration and told nobody, so the same shop kept leading the rail on a photo that is not there.
+            Only a shop that claims a cover can lose one: a shop with none was never promising a photograph. */}
+        <Photo src={u.cover} video={u.video} kind={u.art} id={"s" + u.id} alt={u.title} onBroken={u.cover ? () => reportDeadCover(u.id) : undefined} />
       </div>
       <div className="alcardbody">
         <span className="alcardtop">
@@ -1119,8 +1123,14 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
   }, [chipsFor]);
 
   // Recomputed when the catalog grows: a shared link opens the listing from its own file before the catalog
-  // arrives, and a rail built then held whatever few listings were loaded, from anywhere in the country.
-  const { similar, similarNear } = useMemo(() => pickSimilar(item, getCatalog()), [item.id, state.catalogVersion]);
+  // arrives, and a rail built then held whatever few listings were loaded, from anywhere in the country. Also
+  // when another cover turns out not to load, since a card whose photo 404s has no business leading the rail;
+  // the store only ever grows, so its size is a snapshot that changes.
+  const deadCovers = useDeadCovers();
+  const { similar, similarNear } = useMemo(
+    () => pickSimilar(item, getCatalog(), 10, deadCovers),
+    [item.id, state.catalogVersion, deadCovers.size],
+  );
 
   /* ---------- derived, never invented ---------- */
   const requirements = item.requirements?.length ? item.requirements : facts.who.filter((l) => l.posted).map((l) => l.text);
