@@ -170,7 +170,7 @@ export function WebConfirm({ booking, onDone, onOpen }: { booking: Booking; onDo
                 </div>
                 <span>
                   <b>{item.title}</b>
-                  <small>{item.area}</small>
+                  <small>{placeName(item.area)}</small>
                   {score ? <small className="alconfirmrate"><Markup html={STAR} /> <b>{score.rating.toFixed(1)}</b> ({fmtReviews(score.reviews)})</small> : null}
                 </span>
               </div>

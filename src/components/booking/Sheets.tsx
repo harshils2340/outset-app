@@ -428,7 +428,10 @@ function RequestBody({
   const facts = listingFacts(item);
   const here = useGuestPoint();
   const dest = mapsQuery(item, contact);
-  const place = tidyAddress(placeLabel(item, contact));
+  // `placeLabel` falls back to the area line when the shop published no street, and that line is a place a guest
+  // reads, so the state is spelled out there. A real address keeps the code its own page prints.
+  const placeRaw = placeLabel(item, contact);
+  const place = placeRaw === item.area ? placeName(item.area) : tidyAddress(placeRaw);
   // No pin for a partner's product: the coordinate on the record is the centre of the destination its API
   // filed it under, one point for every product in that city, so "2 miles away" would be made up.
   const pin = !item.affiliate && item.lat != null && item.lon != null ? { lat: item.lat, lng: item.lon } : null;
@@ -913,7 +916,7 @@ function RequestBody({
               <span className="airavatar">{item.title.replace(/^the\s+/i, "").charAt(0).toUpperCase()}</span>
               <span>
                 <b>Hosted by {item.title}</b>
-                <small>{[kind, item.area].join(" · ")}</small>
+                <small>{[kind, placeName(item.area)].join(" · ")}</small>
               </span>
             </section>
           )}

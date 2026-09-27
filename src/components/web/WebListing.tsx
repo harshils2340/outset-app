@@ -1990,7 +1990,7 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
               <span className="alwherepin"><Markup html={I.pin} /></span>
               <span>
                 <small>{item.meetingPoint ? "Meeting point" : "Address"}</small>
-                <b>{item.meetingPoint ? tidyLine(item.meetingPoint) : address || item.area}</b>
+                <b>{item.meetingPoint ? tidyLine(item.meetingPoint) : address || placeName(item.area)}</b>
                 {item.meetingPoint && address && item.meetingPoint !== address ? <span className="alwhereaddr">{address}</span> : null}
                 <u>Open in Maps</u>
               </span>

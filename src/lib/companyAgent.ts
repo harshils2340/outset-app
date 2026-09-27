@@ -1,7 +1,7 @@
 import type { OperatorContact, Unclaimed } from "../data/types";
 import type { LiveAvailability } from "./api";
 import { addressLine, bookingPaused, plainWords } from "./catalog";
-import { cleanDesc } from "./listingDerive";
+import { cleanDesc, placeName } from "./listingDerive";
 import { runsInMonth } from "./deals";
 import { callablePhone } from "./phone";
 import { sayLength, withoutNoticeWindows } from "./duration";
@@ -1344,7 +1344,7 @@ function meetAnswer(ctx: CompanyContext, q: string): { text: string; state: Chat
   }
   const addr = ctx.contact ? addressLine(ctx.contact) : null;
   if (addr) return { text: "They're at " + addr + ".", state: { topic: "meet" } };
-  return { text: "They're in " + ctx.item.area + ", but no street address is published. " + nextStep(ctx), state: { topic: "meet" } };
+  return { text: "They're in " + placeName(ctx.item.area) + ", but no street address is published. " + nextStep(ctx), state: { topic: "meet" } };
 }
 
 /** The consolidated deal in guest words: its title and one sentence when the sync wrote them, else the raw text. */
@@ -1703,7 +1703,7 @@ export function companyFacts(ctx: CompanyContext): Fact[] {
     const text = factText(lines);
     if (text) out.push({ id, title, text });
   };
-  add("about", "About " + item.title, [item.title + " is in " + item.area + ".", item.blurb, ...(item.highlights || []), ...(item.specs || [])]);
+  add("about", "About " + item.title, [item.title + " is in " + placeName(item.area) + ".", item.blurb, ...(item.highlights || []), ...(item.specs || [])]);
   const offers = offersOf(ctx);
   add("prices", "Prices and options", offers.map((o) => offerLabel(o) + ": " + (hasPrice(o.price) ? priceOf(o) : "price not published") + (o.minutes ? ", " + fmtDur(o.minutes) : "") + "."));
   const hours = hourLines(item);
