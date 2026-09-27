@@ -5888,6 +5888,74 @@ side and no Postgres cluster.
   desktop site still has no way to say anything in passing, the confirm screen's failure line has still not
   been seen at 400px, and `plainWords` is still not idempotent.
 
+## 27 September 2026, eighty-ninth run (09:14 to 10:20 UTC)
+
+**Chosen, and why.** The only commit since the last entry is that entry, and it reports the rehearsal green, so
+it was not run at the start; it ran at the end, because this run changed `src/lib` and `src/components`. Every
+area on tonight's brief is on the Verified list, so the hunt went to the three items on the open list that say
+in as many words that nobody has opened a browser on them: the confirm screen's failure line at 400px, open
+since the seventy-second run; what a card and a page look like for a kind with no scene and no photo; and the
+"Things to know" headings driven rather than read. Two came back clean and the third had a bug sitting beside
+it.
+
+**Found and fixed.**
+
+- **The business a claim link names throbbed like a page still loading** (`b36cf0b6`). `.odsplash >
+  :first-child` pulses forever, which is right for "Opening your dashboard…": that splash leads with the brand
+  mark and the breathing is what says the page has not stopped. The claim-confirm screen came later and leads
+  with the card carrying the business's photo, name and town, so the same selector caught it. On the one screen
+  that asks an owner to hand their business over, with nothing loading and nothing to wait for but their own
+  click, that card pulsed at 1.4s forever. Measured in a real Chromium at 400px, 360px and 1280px:
+  `odsplashpulse 1.4s infinite` at all three, `none` after. The card opts out inline, because the selector is
+  one line in `src/styles/operator.css`, which an overnight run may not touch; the test retires itself if that
+  selector is ever narrowed to the loading splash, and guards the guest side's three `.paysplash` screens,
+  which all still lead with the mark.
+- **A waiver rule printed in two Things to know columns at once** (`cc478abd`). "Who can go" is filled from a
+  shop's `requirements` and "Safety and waiver" from the waiver lines among its `policies`. Those are two
+  fields, so the rule `splitPolicies` has kept since it was written, that a line is never printed in two
+  columns at once, never reached them. Shaka Wasaga states exactly one requirement, "Waivers must be signed 24
+  hours prior to boarding", and it is also one of its two policy lines, so the desktop page headed a column
+  with it and gave the next column nothing else, and the phone sheet did the same across two rows. The waiver
+  column owns a waiver rule, so `notAlreadyShown` keeps it there and drops it from the other. The requirements
+  list itself is left whole, because the age rule and the highlight guard are read off it.
+
+**Swept and clean.** The confirm screen's failure line at 400px and 360px, which the seventy-second run left
+open: the longest sentence that screen can produce, 210 characters, wraps to four lines inside the splash's own
+padding, nothing past the edge at either width, and one line at 1280px. Every `art` kind in the catalog, 64 of
+them, against `sceneInner`: all 64 draw a scene, so the 9,138 listings with no cover have one and "no scene and
+no photo" is an empty set. Every one of the 6,492 shipped affiliate links: all absolute https to a public host,
+and the partner CTA carries `rel="sponsored noopener noreferrer"` with the commission line beside it on the
+page and in the phone sheet alike. The "Who can go" and "Safety and waiver" columns over all 52,815 shipped
+detail files: 355 listings draw both, exactly 1 repeated a line, and the fix changes that one and no other.
+Four screens driven in a real Chromium at 400px for sideways scroll, anything past the edge and a control with
+no name: a shop's listing page, a partner's listing page, the claim screen a bad link lands on, and the
+claim-confirm splash; 0 findings on all four, and the same four at 1280px. Every direct `localStorage` read and
+write in the app, all 40 of them, for a quota or private-mode throw that would reach a guest: every one is
+already inside a `try`.
+
+**Verification.** App `npm test` 959 pass, 0 fail, up from 949. Backend `npm test` 863 pass, 0 fail, 2 skipped,
+unchanged. `tsc -b` clean on the app, `tsc --noEmit -p .` clean at the root and still compiling nothing, the
+backend type check clean but for TS5097. The rehearsal 57 of 57 against a local TLS Postgres 16 on 5433
+and the Chromium on disk, with no Stripe, mail or GitHub key. Two shipped source guards had to move with the
+code they pin, and moved with it: `claimLink.test.ts` on the confirm card and `partnerSheet.test.ts` on the row
+gate. A fresh checkout again had no `node_modules` on either side and no Postgres cluster.
+
+**Needs Harshil.**
+
+- **The pulse belongs in the stylesheet, not on the element.** `.odsplash > :first-child` says "whatever leads
+  a splash is a loading indicator", and that is only true of one of the two splashes. One selector
+  (`.odsplash.loading > :first-child`, or a class on the mark) would say it properly and let the inline opt-out
+  and most of `splashPulse.test.ts` go. `src/styles` is outside what an overnight run may change.
+- **Puerto Rico is known to one region reader and not the other.** `REGION_NAME` in `src/data/regions.ts` spells
+  PR out; `REGION_TZ` in `backend/src/lib/zone.ts` has no row for it, so `regionOfArea` there answers nothing
+  and `zoneForArea` falls through to longitude, which puts San Juan in `America/Halifax`: an hour out for half
+  the year, because Puerto Rico keeps Atlantic time all year and Halifax does not. 0 shipped listings are in PR
+  today, so this is latent, and it is the only code the two readers disagree on.
+- Still open from the seventy-eighth run: local `main` sits on a stale `c3a9bfd0`, diverged from `origin/main`
+  by 50 commits either side, so this run committed on a detached HEAD and pushed with an explicit refspec. The
+  desktop site still has no way to say anything in passing, `plainWords` is still not idempotent, and the 1,210
+  dropped address lines still wait on a sync.
+
 ## Coverage
 
 The catalog is 48,198 listings as of the 23 September sync, 1,873 of them Viator partner rows. Counts below
@@ -5998,6 +6066,18 @@ the listing page, the phone sheet, the pay sheet, the confirm screen, the static
 Otto's answers, against the one reader they now share, with `placeName` run over all 52,816 shipped area lines
 for a repeated place. Every contact record in the catalog through `addressOf`, for a line that is not an address
 anyone can go to.
+
+The two splashes an owner meets on the way into the dashboard, driven in a real Chromium at 400px, 360px and
+1280px: which element each one leads with, what `.odsplash > :first-child` does to it, and the longest failure
+line the claim-confirm screen can print, held against the splash's own padding at every width. The guest side's
+three `.paysplash` screens, read for the same rule. The "Who can go" and "Safety and waiver" columns against
+each other over all 52,815 shipped detail files, on the desktop page and the phone sheet alike, for a sentence
+printed twice under two headings. Every `art` kind in the catalog, all 64, against `sceneInner`, which settles
+what a listing with no cover draws. Every one of the 6,492 shipped affiliate links as a URL, and the partner
+CTA's `rel`, its target and its commission line on both guest surfaces. A shop's listing page, a partner's
+listing page and the claim screen a bad link lands on, all at 400px and 1280px, for sideways scroll, anything
+past the edge and a control with no name. Every direct `localStorage` read and write in the app, for a quota or
+private-mode throw that would reach a guest.
 
 Deals and promos on a listing: all 47 deals the 36 shipped listings publish, each title against its own day
 list and each code against the sentence it is printed on; whether an offer states the months or the season it
@@ -6653,8 +6733,7 @@ policies, so the "Things to know" headings are checked in a browser and not only
 `explain` should be read at load time like `menuRow`, so a glossary fix reaches the shipped detail files
 without waiting for a sync. Whether the 51 kinds of waves two and three should have a scene of their own, on
 the 18,056 listings with no cover that draw the generic one instead. Whether `inferCategory` should read a
-bare "charter" as fishing, and whether its last resort should still be jet ski. What a card, a rail and a
-search result look like for a kind with no scene and no photo, driven in a browser rather than counted. Whether the 12 operators whose published address is at free mail and stored wrong need a way
+bare "charter" as fishing, and whether its last resort should still be jet ski. Whether the 12 operators whose published address is at free mail and stored wrong need a way
 in before the next sync rewrites `claim-index.json`. Whether a claimed shop's own email and website should ever
 appear on the guest page, which they deliberately do not. Whether an unsubscribe token should outlive a
 `CLAIM_SECRET` rotation, and whether `GET /mail/unsubscribed` should stay public (see this run's Needs
@@ -6718,9 +6797,7 @@ suite needs, or the rehearsal check for them, since without them eight test file
 that run's Needs Harshil). Whether `public/unsubscribe.html` should keep POSTing the API on load: it is the
 unsubscribe link every outreach email carries and the last page load in our mail that changes something by
 itself, and it sits outside the paths an overnight run may change (see the fifty-fourth run's Needs Harshil).
-Whether the confirm screen's new failure line
-wraps properly at 400px: it reuses `.oderr` inside an `.odsplash` that already wraps a sentence of its own, and
-it was driven in a browser at 1440px only (see the seventy-second run). Whether the "All requests" link should sit inside
+Whether the "All requests" link should sit inside
 the dashboard Home's tab strip at all: it is a fourth child of a `role="tablist"` that is not a tab, and
 taking it out of that element needs `src/styles`, which an overnight run may not touch (see the seventy-first
 run's Needs Harshil). The TikTok creator embed on the guest listing page, which 0 shipped listings carry and which the
@@ -6813,4 +6890,8 @@ Whether a placeholder pin used inside one state can be told from a genuine share
 rule deliberately does not try to do. Whether a metro whose name straddles a border, Lake Tahoe and
 Niagara being the two, should be allowed to keep that name beside the other side's state code, which the
 borrowed-town rule deliberately does not try to decide. How many listings carry a town borrowed from the
-metro they sit inside, where the state agrees and nothing can tell the borrow from a read address.
+metro they sit inside, where the state agrees and nothing can tell the borrow from a read address. Whether Puerto
+Rico should be a region the backend knows: `REGION_NAME` spells PR out and `REGION_TZ` has no row for it, so a
+San Juan shop would be given `America/Halifax` by longitude, an hour out for half the year, and 0 listings ship
+there today (see the eighty-ninth run's Needs Harshil). Whether the dashboard's own two splashes should be told
+apart in the stylesheet rather than by an element opting out inline.
