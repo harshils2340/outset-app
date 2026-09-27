@@ -14,7 +14,7 @@ import { addressLine, bookingPaused, contactFor, fmtPhone, fromPrice, getCatalog
 import { DAYS, fmtDate, fmtReviews, fmtTime, money, priceWith, reviewsLine } from "../../lib/format";
 import { srcSet, thumb } from "../../lib/images";
 import { embedAutoplay, isGif, listingMedia, photoCandidates, probePhotos, type Media } from "../../lib/media";
-import { arrivalWords, bringLine, cleanDesc, durationLabel, groupCap as readGroupCap, minAge, splitIncluded, splitPolicies, tidyLine } from "../../lib/listingDerive";
+import { arrivalWords, bringLine, cleanDesc, durationLabel, groupCap as readGroupCap, minAge, placeName, splitIncluded, splitPolicies, tidyLine } from "../../lib/listingDerive";
 import { sayLength } from "../../lib/duration";
 import { freeCancelBadge } from "../../lib/cancellation";
 import { reportDeadCover, useDeadCovers } from "../../lib/deadCovers";
@@ -74,16 +74,6 @@ export const TYPE_NAME: Record<string, string> = {
   discgolf: "Disc golf", billiards: "Billiards hall", motorsport: "Motorsport experience", sauna: "Sauna",
 };
 
-const REGION: Record<string, string> = {
-  AL: "Alabama", AK: "Alaska", AZ: "Arizona", AR: "Arkansas", CA: "California", CO: "Colorado", CT: "Connecticut", DE: "Delaware", DC: "Washington, DC",
-  FL: "Florida", GA: "Georgia", HI: "Hawaii", ID: "Idaho", IL: "Illinois", IN: "Indiana", IA: "Iowa", KS: "Kansas", KY: "Kentucky", LA: "Louisiana",
-  ME: "Maine", MD: "Maryland", MA: "Massachusetts", MI: "Michigan", MN: "Minnesota", MS: "Mississippi", MO: "Missouri", MT: "Montana", NE: "Nebraska",
-  NV: "Nevada", NH: "New Hampshire", NJ: "New Jersey", NM: "New Mexico", NY: "New York", NC: "North Carolina", ND: "North Dakota", OH: "Ohio",
-  OK: "Oklahoma", OR: "Oregon", PA: "Pennsylvania", RI: "Rhode Island", SC: "South Carolina", SD: "South Dakota", TN: "Tennessee", TX: "Texas",
-  UT: "Utah", VT: "Vermont", VA: "Virginia", WA: "Washington", WV: "West Virginia", WI: "Wisconsin", WY: "Wyoming", PR: "Puerto Rico",
-  AB: "Alberta", BC: "British Columbia", MB: "Manitoba", NB: "New Brunswick", NL: "Newfoundland and Labrador", NS: "Nova Scotia", NT: "Northwest Territories",
-  NU: "Nunavut", ON: "Ontario", PE: "Prince Edward Island", QC: "Quebec", SK: "Saskatchewan", YT: "Yukon",
-};
 
 type OptRow = { idx: number; label: string; sub?: string; price: number | null; per?: string; kind: string };
 type OptGroup = { name: string; rows: OptRow[] };
@@ -154,12 +144,6 @@ function bookingGroups(item: Unclaimed): OptGroup[] {
 const optKinds = (groups: OptGroup[]) => ["Per person", "Kids", "Private"].filter((k) => groups.some((g) => g.rows.some((r) => r.kind === k)));
 
 /** "Clearwater Beach, FL" becomes "Clearwater Beach, Florida". */
-function placeName(area: string): string {
-  const m = area.match(/^(.*),\s*([A-Z]{2})$/);
-  if (!m || !REGION[m[2]]) return area;
-  return m[1] + ", " + REGION[m[2]];
-}
-
 /* ---------- display tidying for scraped text. Formatting only: nothing here adds a fact. ---------- */
 
 /** "Spray Watersports'" and "Hubbard's Marina's": a name that ends in s takes the apostrophe alone. */

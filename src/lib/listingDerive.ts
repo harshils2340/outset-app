@@ -1,4 +1,5 @@
 import type { Unclaimed } from "../data/types";
+import { REGION_NAME } from "../data/regions";
 import { plainWords } from "./catalog";
 import { barePlusAge } from "./ages";
 import { durationFrom } from "./duration";
@@ -349,4 +350,30 @@ export function arrivalWords(checkin: string): string {
   // What is left of o-fishnorthmyrtlebeach-com's note is "Capt.", the front of a name the crawl cut. One word
   // is not an arrival note, and a guest is better shown nothing than shown that.
   return kept.split(/\s+/).filter((w) => /[a-z]{2}/i.test(w)).length >= 2 ? kept : "";
+}
+
+/**
+ * The area line as a page heading reads it: the state spelled out rather than coded.
+ *
+ * "Clearwater Beach, FL" becomes "Clearwater Beach, Florida". A listing whose town the crawl never read
+ * publishes its state code on its own, and the page used to print that code raw, so the listing heading read
+ * "Kayak rental in MD" and the Where card said "MD". The full name is already on hand and costs nothing,
+ * and it is the same table the coded form is expanded from. Washington DC is "Washington, DC" either way,
+ * because that is how the table names it.
+ *
+ * Anything the table does not know is returned as the shop's own page states it.
+ */
+export function placeName(area: string): string {
+  const a = String(area || "").trim();
+  const bare = a.toUpperCase();
+  if (bare.length === 2 && REGION_NAME[bare]) return REGION_NAME[bare];
+  const m = a.match(/^(.*),\s*([A-Za-z]{2})$/);
+  const code = m ? m[2].toUpperCase() : "";
+  if (!m || !REGION_NAME[code]) return a;
+  const town = m[1].trim();
+  // 160 listings ship as "Washington DC, DC", so spelling the code out read "Washington DC, Washington, DC".
+  // A town that already names its own state does not have it added twice, which is the rule the area line is
+  // built under in the first place (backend/src/sync/contacts.ts).
+  if (new RegExp("(^|[\\s,])" + code + "$", "i").test(town)) return town;
+  return town + ", " + REGION_NAME[code];
 }
