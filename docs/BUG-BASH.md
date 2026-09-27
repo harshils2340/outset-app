@@ -5679,6 +5679,76 @@ were built first, which is the fifty-second run's Needs Harshil still standing.
   no way to say anything in passing, and the confirm screen's failure line has still not been seen at 400px.
   `plainWords` is still not idempotent, and the three spellings of a shop's state are still three.
 
+## 27 September 2026, eighty-sixth run (06:10 to 06:50 UTC)
+
+**Chosen, and why.** No commit has landed since the last log entry, which reports the rehearsal green, so the
+rehearsal was not run at the start. It was run at the end, because this run touched `backend/src` and
+`src/lib`. Every area on tonight's brief is on the Verified list, so the hunt went to Coverage's open list, to
+the one line there that names a defect a guest could see rather than a question: the "more like this" rail is
+ordered by distance in its own doc and is not in its sort. Measuring that over the shipped catalog turned up
+two larger things the measurement itself was not looking for, both of them pins.
+
+**Found and fixed.** Three defects, three commits.
+
+- **Hamilton, Ontario was sold 17 tours of Hamilton, New Zealand** (`70c18861`). `metroDestinations` falls
+  back to a name match when no Viator CITY destination sits within 40 km of a metro centre, and that branch
+  read the name and nothing else. Viator lists a Hamilton on three continents. Every one of the 17 partner
+  listings that metro ships is a Hobbiton, Waitomo Glowworm Caves or Rotorua tour, pinned 13,852 km away and
+  printed under the area line "Hamilton, ON", which is 100% of its partner inventory. A name match is now held
+  to 200 km of the metro claimed for it, and a destination with no centre is refused rather than guessed at,
+  which is the rule that function's own comment already states. `affiliateCatalogItems` is the floor under it,
+  so the rows already stored wrong stop publishing on the next sync without a fresh pull: every one of the
+  6,475 rows in the right place sits within 44 km of its metro centre and the 17 sat at 13,852 km, so nothing
+  legitimate is near the line. Tiqets and Klook already match on name and country; Viator was the odd one out.
+- **The rail was never nearest first** (`d23652c2`). Its first line has always promised it and the sort read a
+  photo and then a review count. Over the shipped catalog the lead card of a rail sat a median 62 km from the
+  listing it was offered under, and 22,334 of the 52,275 rails carried a shop more than 100 km nearer further
+  down: a Lexington guest was sent to Louisville ahead of La Grange. Distance now sorts, under the photo rule
+  and over the review count, which takes that median to 4 km and draws exactly the same 13,053
+  illustration-only cards. A shop with no pin, and 1,741 have none, is Infinity rather than zero. The same
+  commit closes the other open line on that rail: it was the one grid of covers that neither read nor fed
+  `deadCovers`, so a shop whose photo 404s led it on the strength of a URL that is not there, drew the scene
+  illustration the photo rule exists to keep out, and taught the home page nothing.
+- **33 listings across 19 states share one pin in the Pacific** (`5967be43`). 46.423669, -129.942709, open
+  ocean 500 km west of Vancouver Island: Boston Charter Boat in Boston, Italiana Tours in Dallas, Playin Hooky
+  Water Taxi at the Lake of the Ozarks, Na Pali Coast Hanalei Tours on Kauai. Most are on one site builder
+  whose theme ships a geo block nobody filled in, and the crawl read it as an address because that is what the
+  markup calls it. A guest in Boston who allows their location is told the Boston charter boat is four thousand
+  kilometres away, so a real shop falls out of near me, out of the distance sort, out of the rail and out of
+  the concierge while its own page prints the town it is in. The sync now clears a pin held to the last decimal
+  by listings in two or more regions, which is the one thing never true of a real address. 274 shipped pins are
+  shared, 7,033 rows in all, and the pass clears these 33 and nothing else.
+
+**Swept and clean.** Every pin in the shipped catalog, 51,075 of them, against the median pin of the region
+its area line names and against the metro it is filed under: 1,447 rows more than 500 km out, 174 more than
+1,000, and every one over 3,000 accounted for by the two defects above. All 52,275 "more like this" rails
+rebuilt before and after, for order, for lead distance and for the count of cards with no photograph.
+
+**Verification.** Backend `npm test` 854 pass, 0 fail, 2 skipped, up from 847. App `npm test` 939 pass, 0
+fail, up from 933. `tsc -b` clean on the app, `tsc --noEmit -p .` clean at the root and still compiling
+nothing, the backend type check clean but for TS5097. The rehearsal 57 of 57 against a local TLS Postgres 16
+on 5433 and the Chromium on disk, with no Stripe, mail or GitHub key. A fresh checkout again had no
+`node_modules` on either side and no Postgres cluster, which is the fifty-second run's Needs Harshil still
+standing.
+
+**Needs Harshil.**
+
+- **The 17 Hamilton rows are still in the affiliate table.** The guard stops them publishing, but they only
+  leave the site when a sync runs, and only leave the database when a Viator pull rewrites that metro. Hamilton,
+  Ontario will then have no partner listings at all until Viator has a destination within 200 km of it, which
+  is the honest answer and worth knowing before you look.
+- **Two more pins are wrong on their own and no rule can reach them.** Festiva Sailing Vacations, area
+  "Asheville, NC", is pinned in the US Virgin Islands; Florida Try Scuba Diving, area "West Palm Beach, FL", is
+  pinned in Honolulu. Both are single rows with a plausible story (a company that sails somewhere else), so
+  they need a look rather than a guard.
+- **A cleared pin does not give a shop its metro back.** `metro_id` was decided from the same placeholder at
+  discovery, so those 33 keep the metro they were given, and most of them have none. Deriving a metro from the
+  town the area line already names would fix that, and is a bigger change than an overnight run should land.
+- Still open from the seventy-eighth run: local `main` sits on a stale `c3a9bfd0`, 50 commits either side of
+  `origin/main`, so this run committed on a detached HEAD and pushed with an explicit refspec. The desktop site
+  still has no way to say anything in passing, the confirm screen's failure line has still not been seen at
+  400px, `plainWords` is still not idempotent, and the three spellings of a shop's state are still three.
+
 ## Coverage
 
 The catalog is 48,198 listings as of the 23 September sync, 1,873 of them Viator partner rows. Counts below
@@ -6317,6 +6387,15 @@ inside a shop's sentence, on both guest surfaces and on the static `/l/` page; a
 photo grid, star line and prices with cents each held against the app's own rule for the same shop, over every
 listing that ships one.
 
+Where every listing in the catalog actually is, run over all 51,075 shipped pins rather than read: each
+against the median pin of the region its area line names and against the centre of the metro it is filed
+under, the pins several unrelated businesses share to the last decimal, and what a wrong one then costs on
+the cards, the distance sort, near me, the "more like this" rail and the concierge. How a partner feed
+decides which metro a product belongs to, over all 6,492 shipped affiliate rows and all four matchers. The
+"more like this" rail's own sort, rebuilt over all 52,275 rails the catalog draws: the order, how far away
+the lead card is, how many cards draw an illustration instead of a photograph, and whether a cover already
+known not to load still counts as one.
+
 **Not yet checked.** Anything in the grounded fallback that needs a real Cohere key: no key exists here, so every answer checked tonight was a payload shaped by hand, and what the live model actually writes, what its citation offsets index into when it answers in more than one content part, and whether `citation_options` FAST cites densely enough for `keepCited` to keep a good answer are all unread. `npm run otto:eval` for the same reason. Whether a price the model reformats should be dropped: a shop publishing "$85" and a model writing "$85.00" loses the sentence (see this run's Needs Harshil). Whether the grounded answer should reach the static `/l/` page and the phone sheet, which do not call it. A real Otto send or a real hand-send: the draft run, the queue, the dry run and the handoff export are all driven now, but nothing has left a mailbox from here, and `outreach-daily.sh` is launchd on the Mac and cannot be. Whether `state.ranDays` and `state.sentDays` growing without bound in `outreach-otto-ramp.json`, and being written only after a send loop that can run four hours, is worth changing, given that `sentToday` is what actually holds the ceiling. Whether the Otto email may tell a shop "Bookings drop straight into your calendar" when
 both `/voice` endpoints are read-only and syncing with an operator's own booking software is deferred on
 purpose, which is this run's first Needs Harshil. Whether the Otto subject should be shortened or the question
@@ -6558,11 +6637,7 @@ Acadia Bike on a child seat, with the day rentals behind "More options" (see the
 Harshil). The 123 rows that stay unreachable because they would read exactly as a tier already shown, among them
 two "Spa package, 2 hours 30 minutes" rows at $258 and $360 that the shop plainly sells as two things and named
 as one. A sync run against a real database, which is what carries `mergeTiers` and closes those four "from"
-prices. Whether the "More like this" rail should be
-ordered by distance, which its own doc claims and its sort does not do: with the pool fix sending 1,260 shops
-to a whole state, a Lexington guest can be offered Louisville before La Grange, and `lat`/`lon` are on the
-record. Whether a listing whose cover is known dead should be allowed to lead that rail, which it can, because
-the sort reads the field and not the `deadCovers` store. Whether a length that is not a whole number of days
+prices. Whether a length that is not a whole number of days
 should read "3 days 20 hours" rather than "3.8 days", on the two shipped rows that are not (92 hours and 54
 hours). How many catalog areas name a town in the wrong state, which the rail fix surfaced as "Philadelphia,
 DE" and nothing has counted. Whether `plainWords` should be idempotent: run twice it expands its own
@@ -6578,4 +6653,11 @@ import in the backend against the files on disk, which is now a test. How the ch
 shop's own string, over every listing in the catalog: the article on an offer name, the case of a meeting point,
 an hour line and a list item, the full stop after text that already ended, the town taken out of a service name,
 and what a question about the listing as a whole is answered with. Otto's `clip` against the page's `cleanDesc`,
-over every blurb, service description, policy, arrival note, FAQ answer and hour line in the catalog.
+over every blurb, service description, policy, arrival note, FAQ answer and hour line in the catalog. Whether a
+listing's metro should be read from the town its area line already names rather than only from its pin, which
+is what leaves the 33 shops whose placeholder pin is now cleared with no metro at all. The two pins that are
+wrong on their own rather than by rule: Festiva Sailing Vacations pinned in the US Virgin Islands and Florida
+Try Scuba Diving pinned in Honolulu, both with a plausible story behind them. What Hamilton, Ontario should
+show once its 17 New Zealand partner rows stop publishing and Viator has no destination inside 200 km of it.
+Whether a placeholder pin used inside one state can be told from a genuine shared address at all, which the
+rule deliberately does not try to do.
