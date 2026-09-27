@@ -11,7 +11,7 @@ import type { Unclaimed } from "../../data/types";
 import { measurableFrom } from "../explore/feed";
 import { streetOf } from "../../lib/address";
 import { addressLine, bookingPaused, contactFor, fmtPhone, fromPrice, getCatalog, guestCapFor, listingFacts, mapsHref, maxGuestsFor, partnerBookLine, perPerson, publicRating, telHref, topRated as isTopRated, venueMapsQuery } from "../../lib/catalog";
-import { DAYS, fmtDate, fmtReviews, fmtTime, money, priceWith, reviewsLine } from "../../lib/format";
+import { clockOfMinutes, DAYS, fmtDate, fmtReviews, fmtTime, money, priceWith, reviewsLine } from "../../lib/format";
 import { srcSet, thumb } from "../../lib/images";
 import { embedAutoplay, isGif, listingMedia, photoCandidates, probePhotos, type Media } from "../../lib/media";
 import { arrivalWords, bringLine, cleanDesc, durationLabel, groupCap as readGroupCap, minAge, notAlreadyShown, placeName, splitIncluded, splitPolicies, tidyLine } from "../../lib/listingDerive";
@@ -1002,7 +1002,6 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
   // ask it, and parsing an operator's hour lines three times a render buys nothing.
   const week = useMemo(() => itemWeek(item), [item]);
   const visitWeek = visit ? week : null;
-  const clock = (m: number) => fmtTime(String(Math.floor(m / 60)).padStart(2, "0") + ":" + String(m % 60).padStart(2, "0"));
   // The shop paused bookings or hid the listing in its dashboard. The page still opens by its own link, so a
   // guest who has it bookmarked learns why, but nothing here can be booked and the API refuses too. Both flags
   // only ever come from an owner's saved profile, so they count before the next sync stamps the record `claimed`.
@@ -1739,7 +1738,7 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
                   <div className="alboxcell static">
                     <small>Hours</small>
                     {visitWeek?.some((d) => d && d.close > d.open) ? (
-                      <ul className="alhours">{visitWeek.map((d, i) => <li key={i}><span>{DAYS[i]}</span><span>{d && d.close > d.open ? clock(d.open) + " to " + clock(d.close) : "Closed"}</span></li>)}</ul>
+                      <ul className="alhours">{visitWeek.map((d, i) => <li key={i}><span>{DAYS[i]}</span><span>{d && d.close > d.open ? clockOfMinutes(d.open) + " to " + clockOfMinutes(d.close) : "Closed"}</span></li>)}</ul>
                     ) : hours.length ? (
                       <ul className="alhours">{hours.slice(0, 7).map((h) => <li key={h}><span>{h}</span></li>)}</ul>
                     ) : (

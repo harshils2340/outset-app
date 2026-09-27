@@ -8,11 +8,31 @@ export function money(n: number): string {
   return "$" + n.toLocaleString("en-US", { minimumFractionDigits: whole ? 0 : 2, maximumFractionDigits: 2 });
 }
 
+/**
+ * "2:00 PM" from a 24 hour clock string. An hour past 24 is the small hours of the next day, which is how a
+ * week that runs past midnight is carried: `parseWeek` adds a day to the closing time, so a bar open until 4 AM
+ * closes at minute 1680, and midnight itself is 1440.
+ *
+ * Without the wrap, "24:00" read as noon and "26:00" as 2 PM, so the Hours block on the listing page of a
+ * brewery, bar, bowling alley or arcade that trades into the night printed the wrong half of the day: 169 Bar
+ * in New York said "2:00 PM to 4:00 PM", an RV park "10:00 PM to 7:00 PM", and an arcade open until midnight
+ * "2:00 PM to 12:00 PM". 213 shipped listings printed 874 such lines. `fmt` in openNow.ts has always wrapped;
+ * this is its twin and did not.
+ */
 export function fmtTime(t: string): string {
   const [h, m] = t.split(":").map(Number);
-  const ap = h >= 12 ? "PM" : "AM";
-  const hh = h % 12 === 0 ? 12 : h % 12;
+  const hour = ((h % 24) + 24) % 24;
+  const ap = hour >= 12 ? "PM" : "AM";
+  const hh = hour % 12 === 0 ? 12 : hour % 12;
   return hh + ":" + String(m).padStart(2, "0") + " " + ap;
+}
+
+/**
+ * The same clock from minutes since midnight, which is how a parsed week carries a day: the "Plan your visit"
+ * Hours block on a listing page is drawn from one.
+ */
+export function clockOfMinutes(m: number): string {
+  return fmtTime(String(Math.floor(m / 60)) + ":" + String(m % 60).padStart(2, "0"));
 }
 
 /**
