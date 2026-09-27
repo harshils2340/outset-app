@@ -67,3 +67,21 @@ test("a service name that lost the town it named does not keep the word that int
 test("a shop that put an exclamation mark in a service name is not read out with a full stop after it", () => {
   assert.equal(ask("o-cruzinmonkey-com", "what services do you have"), "Just one: Jet Skis!");
 });
+
+/**
+ * A quoted line that Otto had to cut ends on an ellipsis, and a line the shop ended on its own mark ends on
+ * that mark. Neither wants a full stop after it: 192 listings read "Included: lots of fun!!!." and "Meet at
+ * ... studio entry on Levels….", and an hour line too long to quote read "... to 30 minutes after sunset….".
+ * The first letter of a list item is lowered only when the phrase carries no other capital, because a phrase
+ * that does is a name: "Included: Special Treat" read "Included: special Treat".
+ */
+test("a line that ends on its own mark is not given a full stop as well", () => {
+  assert.equal(ask("a-viator-5594933p1", "whats included"), "Included: lots of fun!!!");
+  assert.match(ask("o-423yoga-com", "where do we meet"), /Levels…$/);
+  assert.match(ask("o-austinrifleclub-org", "what time do you open"), /after sunset…$/);
+});
+
+test("a list item that is a name keeps its capital", () => {
+  assert.equal(ask("a-viator-353600p1", "whats included"), "Included: Special Treat!");
+  assert.equal(ask("a-viator-5593453p2", "whats included"), "Included: Tour Guide!");
+});

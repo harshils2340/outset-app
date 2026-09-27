@@ -95,7 +95,9 @@ function factList(items: string[], lead: string): string {
   const clean = items.map((i) => clip(i, 90)).filter(Boolean);
   if (!clean.length) return "";
   const wordy = clean.some((i) => i.split(" ").length > 5);
-  if (!wordy) return lead + list(clean.map(lower1), 3) + ".";
+  // sentence(), not a full stop: 192 listings publish an item that ends on its own mark, and "Included: lots
+  // of fun!!!." is not a sentence.
+  if (!wordy) return sentence(lead + list(clean.map(lowerIfPlain), 3));
   const two = clean.slice(0, 2).map((i) => sentence(upper1(i)));
   const take = two.join(" ").length > 115 ? 1 : two.length;
   const rest = clean.length - take;
@@ -118,6 +120,13 @@ const lower1 = (s: string) => (/^[A-Z][a-z]/.test(s) ? s[0].toLowerCase() + s.sl
  */
 const DET_OPENER = /^(?:the|a|an|our|my|your|their|his|her|its)\s/;
 const lowerDeterminer = (s: string) => (DET_OPENER.test(s.toLowerCase()) ? s[0].toLowerCase() + s.slice(1) : s);
+/**
+ * `lower1` for an item in a list, which is only safe on a phrase the shop wrote in plain sentence case. A
+ * phrase carrying another capital is a name, and lowering its first letter broke it: "Included: Special Treat"
+ * read "Included: special Treat", "Tour Guide" read "tour Guide" and "Quality Storytelling Entertainment" read
+ * "quality Storytelling Entertainment".
+ */
+const lowerIfPlain = (s: string) => (/[A-Z]/.test(s.slice(1)) ? s : lower1(s));
 
 /**
  * "the" in front of an offer's name, unless the shop's own name for it opens with a determiner already. 2,179
@@ -1008,10 +1017,10 @@ function hoursAsWritten(item: Unclaimed): string | null {
   const lines = hourLines(item).map((l) => clip(l, 70)).filter(Boolean);
   if (!lines.length) return null;
   const seasonal = lines.filter((l) => /\b(spring|summer|fall|autumn|winter|season)\b/i.test(l));
-  if (seasonal.length >= 2) return "Hours change by season. " + seasonal.slice(0, 2).join("; ") + ".";
+  if (seasonal.length >= 2) return sentence("Hours change by season. " + seasonal.slice(0, 2).join("; "));
   // Not lowercased: an hour line opens on a day name or on "Open", and 241 shipped listings read "Their hours
   // say: mon-Sun 12:00 AM" or "sunday, August 16" because of it. After a colon the shop's own capital is right.
-  return "Their hours say: " + lines[0] + ".";
+  return sentence("Their hours say: " + lines[0]);
 }
 
 function openNowAnswer(ctx: CompanyContext): { text: string; state: ChatState } {
@@ -1331,7 +1340,7 @@ function meetAnswer(ctx: CompanyContext, q: string): { text: string; state: Chat
   if (/check.?in/i.test(q) && arrival) return { text: sentence(clip(arrival, 150)), state: { topic: "meet" } };
   if (ctx.item.meetingPoint) {
     const mp = clip(ctx.item.meetingPoint, 120).replace(/^at\s+/i, "");
-    return { text: /^(check|meet|arrive|go to|report|head)/i.test(mp) ? sentence(upper1(mp)) : "Meet at " + lowerDeterminer(mp) + ".", state: { topic: "meet" } };
+    return { text: /^(check|meet|arrive|go to|report|head)/i.test(mp) ? sentence(upper1(mp)) : sentence("Meet at " + lowerDeterminer(mp)), state: { topic: "meet" } };
   }
   const addr = ctx.contact ? addressLine(ctx.contact) : null;
   if (addr) return { text: "They're at " + addr + ".", state: { topic: "meet" } };
