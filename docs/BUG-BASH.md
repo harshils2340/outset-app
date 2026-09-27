@@ -6023,6 +6023,79 @@ again had no `node_modules` on either side and no Postgres cluster.
   way to say anything in passing, `plainWords` is still not idempotent, and the 1,210 dropped address lines
   still wait on a sync.
 
+## 27 September 2026, ninety-first run (11:40 to 12:20 UTC)
+
+**Chosen, and why.** The only commit since the last entry is that entry, and it reports the rehearsal green, so
+the rehearsal was skipped at the start and run at the end, twice, because this run changed `src/lib`,
+`src/components` and `backend/src`. Every area on tonight's brief is on the Verified list. The hunt went to the
+one seam the hours sweeps had never crossed: the hours a shop publishes have been read, parsed, diffed and
+compared between their two parsers over the whole catalog, but the clock a guest actually reads them off was
+never held against them. That turned out to be three faults in a row, all of them a guest-facing line.
+
+**Found and fixed.**
+
+- **A bar open until 4 AM told a guest it closes at 4 PM** (`b2ae29ad`). `parseWeek` carries a day that runs
+  into the small hours by adding a day to the closing time, so 169 Bar in New York publishes "Mon-Sun 2:00 PM -
+  4:00 AM" and its Saturday closes at minute 1680. `fmt` in `openNow.ts` takes that modulo a day; `fmtTime` in
+  `format.ts`, which is its twin, read the clock string straight, so "24:00" was noon and "26:00" was 2 PM. The
+  "Plan your visit" Hours block on the listing page is drawn from those minutes, so 169 Bar read "2:00 PM to
+  4:00 PM", an Alaska RV park's overnight desk "10:00 PM to 7:00 PM", a Fresno bowling alley "10:00 AM to 1:00
+  PM" and an arcade open until midnight "2:00 PM to 12:00 PM". 213 shipped listings printed 874 such lines.
+  `fmtTime` now wraps, and the minutes-to-clock step the panel had inline is `clockOfMinutes` beside it, so the
+  panel and its test read one function.
+- **A range whose two ends name one clock face was read as a shop open round the clock** (`271ab2ab`).
+  `coversWholeDay` has refused a site builder's "12:00 AM - 12:00 AM" since the 166 listings carrying one were
+  found standing in "Open right now near you" at four in the morning, but it read only the placeholders that
+  start at midnight. The same thing written from anywhere else got through, because the parser adds a day to a
+  close that is not later than its open: an airboat ride published "Mon-Sun 1:00 AM - 1:00 AM", SaltWater
+  Brewery "Sat 12:00 PM - 12:00 PM", a Naperville yoga studio "Wed 8:00 AM - 8:00 AM", XLanes in Fresno "Sun
+  11:00 AM - 11:00 AM". 6 listings and 12 day lines open around the clock, in the open-or-closed line, the rail,
+  the start times an unclaimed picker offers and Otto. Nobody trades noon to noon, so all three parsers now
+  measure the span rather than its opening end, and the Hours block drops the same line so both halves of the
+  page keep one answer. 77 of the 82 lines of that shape were already refused as midnight to midnight.
+- **One date and one time was read as a week** (`73f003bd`). 29 listings publish an entry from their own event
+  calendar and nothing else, The Events Calendar's "@" between the date and the time: "Open Studio November 21 @
+  11:00 am - 2:00 pm", "Pinned Butterflies September 10 @ 5:30 PM - 7:00 PM", "OPEN PRIVATE TESTING September 18
+  @ 4:00 pm - 10:00 pm". The Hours block printed each as the shop's opening hours, and the line names no
+  weekday, so `parseWeek` gave it all seven days: a railroad museum open 9 to 5 every day, a dragway 4 to 10
+  every day, on the strength of one afternoon. `isTradingHoursLine` refuses the shape now, in the guest copy and
+  in the sync's twin. Nothing is lost, because not one of the 29 publishes such a line beside hours of its own,
+  and both the seasons written in front of a week and the three shops that write an ordinary week with an "@" in
+  it are untouched.
+
+**Swept and clean.** Every parsed week of all 52,815 shipped detail files, before and after, diffed line by
+line: exactly 6 listings lost a day to the whole-day rule and exactly 29 lost a fabricated week to the event
+rule, each to `null`, and no other listing in the catalog moved. Every closing time the visit panel draws, over
+all 16,213 listings whose page is an Hours block rather than a booking box: 237 day lines closing at midnight
+and 637 past it, now every one of them in the right half of the day, and a catalog-wide guard on it. Every hour
+line in the catalog carrying an "@", all 34: the 29 events refused, the 5 that are a shop's real week kept. The
+82 lines naming one clock face twice, against the 77 the old rule already refused. `fmtTime` against every
+ordinary clock face it is asked for elsewhere, which is the booking box, the trip list, the operator's calendar,
+bookings drawer, Home and Assistant, and the concierge's departure rows, none of which can carry an hour past
+24 because their times come from the dashboard selects or from `startTimesOn`, which clamps at midnight.
+
+**Verification.** App `npm test` 972 pass, 0 fail, up from 968. Backend `npm test` 865 pass, 0 fail, 2 skipped,
+unchanged in count because the new cases joined three existing tests. `tsc -b` clean on the app, `tsc --noEmit
+-p .` clean at the root and still compiling nothing, the backend type check clean but for TS5097. The rehearsal
+57 of 57, twice, against a local TLS Postgres 16 on 5433 and the Chromium on disk, with no Stripe, mail or
+GitHub key. A fresh checkout again had no `node_modules` on either side and no Postgres cluster.
+
+**Needs Harshil.**
+
+- **249 listings still print a dated line in their Hours block, and for 184 of them it is the whole block.**
+  The "@" shape was the one that could be told apart with certainty. The rest run from a real season ("May 1 -
+  November 1: 11am - 6pm", "WINTER HOURS NOV 17-MAR 1: 8am-5pm", which are hours and should stay) through to a
+  single day that is plainly one event ("Sunday, August 16, 2026 - 1:00 pm - 3:00 pm", "open Saturday, July 4th
+  from 11:00 AM-4:00 PM", "are: Thursday, September 10 - 10:00 am to 12:00 pm"). Telling one date from a range
+  of them is a rule worth writing; which side "Open starting at 8 am Friday May 1, 2026" falls on is a judgement.
+- **Diggerland USA's line was the one thing the event rule cost.** "Open 10:00 - 6:00 August 30 @ 2:00 pm -
+  10:00 pm" carried a plausible 10 to 6 in front of the event, and it now has an honest gap instead. One
+  listing, and the gap is the safer default, but it is the one case where the rule dropped something real.
+- Still open from the seventy-eighth run: local `main` sits on a stale `c3a9bfd0` with 21 commits `origin/main`
+  no longer carries, so this run again committed on a detached HEAD and pushed with an explicit refspec. The
+  desktop site still has no way to say anything in passing, `plainWords` is still not idempotent, and the 1,210
+  dropped address lines still wait on a sync.
+
 ## Coverage
 
 The catalog is 48,198 listings as of the 23 September sync, 1,873 of them Viator partner rows. Counts below
@@ -6702,6 +6775,13 @@ for what a guest's own typed sentence reaches when that page prints it. Every sh
 `sayLength`, for a length printed as a fraction of a day and for a day's worth of minutes. `REGION_NAME`
 against both `REGION_TZ` tables, so every region the app can name is on a clock on both sides.
 
+The clock a guest reads a shop's hours off, which every hours sweep before this one had left alone: `fmtTime`
+against `openNow.ts`'s `fmt`, its twin, over every closing time the "Plan your visit" Hours block draws on all
+16,213 listings whose page is a block rather than a booking box, including the 237 day lines that close at
+midnight and the 637 that close past it; every hour line in the catalog carrying an "@", all 34; every range
+naming one clock face at both ends, all 82; and every parsed week of all 52,815 shipped detail files diffed
+before and after, so the exact set of listings a rule moved is known rather than estimated.
+
 **Not yet checked.** Anything in the grounded fallback that needs a real Cohere key: no key exists here, so every answer checked tonight was a payload shaped by hand, and what the live model actually writes, what its citation offsets index into when it answers in more than one content part, and whether `citation_options` FAST cites densely enough for `keepCited` to keep a good answer are all unread. `npm run otto:eval` for the same reason. Whether a price the model reformats should be dropped: a shop publishing "$85" and a model writing "$85.00" loses the sentence (see this run's Needs Harshil). Whether the grounded answer should reach the static `/l/` page and the phone sheet, which do not call it. A real Otto send or a real hand-send: the draft run, the queue, the dry run and the handoff export are all driven now, but nothing has left a mailbox from here, and `outreach-daily.sh` is launchd on the Mac and cannot be. Whether `state.ranDays` and `state.sentDays` growing without bound in `outreach-otto-ramp.json`, and being written only after a send loop that can run four hours, is worth changing, given that `sentToday` is what actually holds the ceiling. Whether the Otto email may tell a shop "Bookings drop straight into your calendar" when
 both `/voice` endpoints are read-only and syncing with an operator's own booking software is deferred on
 purpose, which is this run's first Needs Harshil. Whether the Otto subject should be shortened or the question
@@ -6968,6 +7048,14 @@ borrowed-town rule deliberately does not try to decide. How many listings carry 
 metro they sit inside, where the state agrees and nothing can tell the borrow from a read address. Whether the dashboard's own two splashes should be told
 apart in the stylesheet rather than by an element opting out inline. Whether the founder chip on a partner's card should
 open the product's own page now that it opens nothing: the listing has the partner CTA, a card has no other way
-in (see the ninetieth run's Needs Harshil). Whether `esc` on the `/sessions` page should escape quotes as well
+in (see the ninetieth run's Needs Harshil).  Which of the 249 listings still printing a dated line in
+their Hours block state a season, which state one event, and whether one date can be told from a range of them
+by rule at all: 184 of the 249 publish nothing else, so the line is the whole block and the week is built from
+it (see the ninety-first run's Needs Harshil). Whether a line that carries a plausible week in front of an event
+entry should keep the week, which Diggerland USA's "Open 10:00 - 6:00 August 30 @ 2:00 pm - 10:00 pm" is the one
+case of. Whether a span of 22 or 23 hours, which 20 more shipped day lines carry, is a shop's real day or the
+same placeholder rounded off. Whether the visit panel's Hours block should say "next day" beside a small-hours
+close the way the dashboard's own closing-time select does, rather than leaving a guest to read "2:00 PM to
+4:00 AM" as the wrap it is. Whether `esc` on the `/sessions` page should escape quotes as well
 as `&<>`, which is latent: its two hand-built attributes carry only a server-minted id and a fixed step kind
 today, and nothing a guest types can reach one.
