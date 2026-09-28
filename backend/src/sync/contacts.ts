@@ -7,7 +7,7 @@ import { writeLandingPages } from "./pages.ts";
 import { writeListingPages } from "./listingPages.ts";
 import { encodeWeek, isTradingHoursLine } from "./hours.ts";
 import { claimKeyHash } from "../lib/claim.ts";
-import { clip } from "../lib/clip.ts";
+import { clip, endAtWord, lastSentenceEnd } from "../lib/clip.ts";
 import { dropPlaceholderPins } from "./placeholderPins.ts";
 import { dropBorrowedTowns } from "./borrowedTowns.ts";
 import { crawledPhotoStats, crawledPhotosFor } from "./photoSidecar.ts";
@@ -1593,12 +1593,22 @@ function trimWords(t: string, max: number): string {
   return t.slice(0, max).replace(/\s+\S*$/, "").trim();
 }
 
-/** Cut at the last sentence end inside the limit, so a blurb never stops mid-thought. */
+/**
+ * Cut at the last sentence end inside the limit, so a blurb never stops mid-thought. Through the same reader
+ * `clip` uses, because a shortened word ends in a full stop too: cutting at the last one shipped 73 blurbs
+ * ending "The Art of Alfred A." and "a snow capped Mt.", which is the line the card, the listing page and the
+ * chat all lead with.
+ */
 function endAtSentence(t: string, max: number): string {
   if (t.length <= max) return t;
   const cut = t.slice(0, max);
-  const i = Math.max(cut.lastIndexOf(". "), cut.lastIndexOf("! "), cut.lastIndexOf("? "));
-  return (i > max * 0.4 ? cut.slice(0, i + 1) : trimWords(cut, max)).trim();
+  const i = lastSentenceEnd(cut, Math.floor(max * 0.4) + 1);
+  if (i >= 0) return cut.slice(0, i + 1).trim();
+  // Nothing here reads worse than it did: a text with no sentence end at all is what the checks further down
+  // cleanBlurb throw away, so where every stop inside the window is a shortened word, the old cut stands and
+  // the shop keeps its blurb.
+  const any = Math.max(cut.lastIndexOf(". "), cut.lastIndexOf("! "), cut.lastIndexOf("? "));
+  return (any > max * 0.4 ? cut.slice(0, any + 1) : endAtWord(trimWords(cut, max))).trim();
 }
 
 /** A line the crawl took from a heading, a nav bar or a banner: no sentence end, short, and mostly capitals. */
