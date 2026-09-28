@@ -426,3 +426,49 @@ test("a shop's own hour lines are read again rather than taken from the week alr
   } as unknown as Unclaimed;
   assert.equal(show(itemWeek(staleRange)), "Sun -, Mon 09:00-17:00, Tue 09:00-17:00, Wed 09:00-17:00, Thu 09:00-17:00, Fri -, Sat -");
 });
+
+/**
+ * Two rules on one line with nothing between them but a space. 558 lines on 485 shipped listings write their
+ * week that way, and every day on them took the first span the line stated: a museum open until three on a
+ * Saturday stood open until four, and a gym that states its weekend hours had no weekend at all.
+ */
+test("a second rule a shop wrote after a space is a second rule", () => {
+  // o-batashoemuseum-ca, which opened at ten on a Sunday it opens at noon.
+  assert.equal(show(parseWeek(["Mon-Sat 10am - 5pm Sunday 12pm - 5pm"])),
+    "Sun 12:00-17:00, Mon 10:00-17:00, Tue 10:00-17:00, Wed 10:00-17:00, Thu 10:00-17:00, Fri 10:00-17:00, Sat 10:00-17:00");
+  // o-armyaviationmuseum-org, an hour past its Saturday closing time.
+  assert.equal(show(parseWeek(["Tuesday - Friday 10 am - 4 pm Saturday 10 am - 3 pm"])),
+    "Sun -, Mon -, Tue 10:00-16:00, Wed 10:00-16:00, Thu 10:00-16:00, Fri 10:00-16:00, Sat 10:00-15:00");
+  // o-gardenstaterocks-com, whose weekend the one-rule reading dropped: Sat & Sun named no hours of their own.
+  assert.equal(show(parseWeek(["Mon - Fri 4:00pm - 10:00pm Sat & Sun 12:00pm - 7:00pm"])),
+    "Sun 12:00-19:00, Mon 16:00-22:00, Tue 16:00-22:00, Wed 16:00-22:00, Thu 16:00-22:00, Fri 16:00-22:00, Sat 12:00-19:00");
+  // o-hotyoganow-com writes all seven on one line, each with its own clock.
+  assert.equal(show(parseWeek(["Renton: Monday: 9:30 AM-8 PM, Tuesday: 6 AM-8:30 PM, Wednesday: 9:30 AM-8 PM, Thursday: 6 AM-8:30 PM, Friday: 9:30 AM-6 PM, Saturday: 10 AM-12:30 PM, Sunday 8 AM-6 PM"])),
+    "Sun 08:00-18:00, Mon 09:30-20:00, Tue 06:00-20:30, Wed 09:30-20:00, Thu 06:00-20:30, Fri 09:30-18:00, Sat 10:00-12:30");
+  // A separator the shop chose itself is still a separator: o-5-wits-com writes a hyphen, o-amant-org "and".
+  assert.equal(show(parseWeek(["Mon - Thur - 12:00 PM - 7:00 PM Fri - 12:00 PM - 8:00 PM"])),
+    "Sun -, Mon 12:00-19:00, Tue 12:00-19:00, Wed 12:00-19:00, Thu 12:00-19:00, Fri 12:00-20:00, Sat -");
+  assert.equal(show(parseWeek(["open Mon-Wed, 9am-2pm and Thurs-Sun, 9am-4pm"])),
+    "Sun 09:00-16:00, Mon 09:00-14:00, Tue 09:00-14:00, Wed 09:00-14:00, Thu 09:00-16:00, Fri 09:00-16:00, Sat 09:00-16:00");
+});
+
+/**
+ * The shapes the cut refuses, each one a line a shop really published. A space is the shop's own punctuation,
+ * so a cut there is only made where the line cannot mean anything else.
+ */
+test("a space is only a seam where the line cannot mean anything else", () => {
+  // o-actiontoyrental-com: the span comes before the days it belongs to, so cutting at Monday would hand the
+  // weekend an 11 to 7 the shop never stated.
+  assert.equal(show(parseWeek(["open from11am - 7pm Monday-Friday and 9am-8pm"])),
+    "Sun -, Mon 11:00-19:00, Tue 11:00-19:00, Wed 11:00-19:00, Thu 11:00-19:00, Fri 11:00-19:00, Sat -");
+  // A day off owns the day written behind it, on both sides of the word, and the closed-day reader keeps it.
+  assert.equal(show(parseWeek(["Open daily 10AM-7:30PM, closed Wednesdays"])),
+    "Sun 10:00-19:30, Mon 10:00-19:30, Tue 10:00-19:30, Wed closed, Thu 10:00-19:30, Fri 10:00-19:30, Sat 10:00-19:30");
+  assert.equal(show(parseWeek(["Mon - Fri: Closed Saturday: 10am - 5pm"])),
+    "Sun -, Mon closed, Tue closed, Wed closed, Thu closed, Fri closed, Sat 10:00-17:00");
+  assert.equal(show(parseWeek(["Monday - Friday (Closed Wednesday) 9 am - 4 pm"])),
+    "Sun -, Mon 09:00-16:00, Tue 09:00-16:00, Wed closed, Thu 09:00-16:00, Fri 09:00-16:00, Sat -");
+  // A day with no clock of its own is not a rule: one span for two days is what the shop wrote.
+  assert.equal(show(parseWeek(["Friday 6:00 pm - 10:00 pm Saturday"])),
+    "Sun -, Mon -, Tue -, Wed -, Thu -, Fri 18:00-22:00, Sat 18:00-22:00");
+});

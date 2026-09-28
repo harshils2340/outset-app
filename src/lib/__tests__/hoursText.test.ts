@@ -178,3 +178,15 @@ test("the whole shipped catalog reads clean under Hours", () => {
   assert.deepEqual(bad.slice(0, 5), [], bad.length + " listings print something under Hours that no shop wrote");
   assert.deepEqual(drift.slice(0, 3), [], drift.length + " printed lines state a different day from the week parser");
 });
+
+/**
+ * The block a guest reads is the shop's own words, and a shop that wrote two rules with a space between them
+ * wrote one line. The week behind that line is cut into its rules (see openNow.test.ts); the printed line is
+ * not, because there is no crawl seam in it to tidy away. Only the crawl's own glued seams become two lines.
+ */
+test("a shop's own spacing is left in the line a guest reads", () => {
+  assert.deepEqual(displayHours(["Mon-Sat 10am - 5pm Sunday 12pm - 5pm"]), ["Mon-Sat 10am - 5pm Sunday 12pm - 5pm"]);
+  assert.deepEqual(displayHours(["MondayClosedTuesday2:00PM to 7:00PM"]), ["Monday Closed", "Tuesday 2:00PM to 7:00PM"]);
+  // The same line, read for the week rather than for print, is the two rules it holds.
+  assert.equal(parseWeek(["Mon-Sat 10am - 5pm Sunday 12pm - 5pm"])?.[0]?.open, 720);
+});

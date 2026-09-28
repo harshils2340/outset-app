@@ -218,6 +218,63 @@ export function gluedRules(line: string): string[] {
   return out.map((p) => p.trim()).filter(Boolean);
 }
 
+/**
+ * A shop can write two days' hours on one line with nothing between them but a space, and the reader gave
+ * every day the first span it found: "Mon-Sat 10am - 5pm Sunday 12pm - 5pm" opened the museum at ten on a
+ * Sunday it opens at noon, "Tuesday - Friday 10 am - 4 pm Saturday 10 am - 3 pm" kept a museum open an hour
+ * past its Saturday closing time, and "Mon - Fri 4:00pm - 10:00pm Sat & Sun 12:00pm - 7:00pm" left a climbing
+ * gym's weekend unstated altogether. 558 lines on 485 listings state two or more rules that way, and the week
+ * a guest reads changes on 154 of them: every one of those was a day standing open at an hour the shop never
+ * claimed, or a day it states hours for reading as no day at all.
+ *
+ * The crawl's own seams are cut above because no shop writes them on purpose. A space is a shop's own
+ * punctuation, so a cut there has to be sure, and only one shape is: a day name behind a clause that has
+ * already said which days it is about and what happens on them, where the day name carries a span of its own.
+ * Nothing else is cut, which is what leaves the shapes that cannot be told apart alone.
+ *
+ * Three of them, each a line this rule deliberately does not touch. A span that comes before the days it
+ * belongs to keeps them, because "open from 11am - 7pm Monday-Friday and 9am-8pm" names no day in front of its
+ * first clock, and cutting at Monday would hand the weekend an 11 to 7 the shop never stated. A day off owns
+ * the day behind it, so "Open daily 10AM-7:30PM, closed Wednesdays" and "Mon - Fri: Closed Saturday: 10am -
+ * 5pm" are left for the closed-day reader in openNow.ts, which already reads both correctly. And a day name
+ * with no clock of its own is not a rule: "Friday 6:00 pm - 10:00 pm Saturday" states one span for two days,
+ * which is what the shop wrote.
+ */
+/** The days a rule opens on, as a range or a list: one subject, however the shop separates it. */
+const RULE_DAYS = ANY_DAY + "(?:\\s*(?:-|\u2013|\u2014|to|thru|through|&|and|,|/)\\s*" + ANY_DAY + ")*";
+/** A span, both ends written out. Stricter than A_RANGE above, which only has to find a range to refuse a line. */
+const A_SPAN = "\\d{1,2}(?::\\d{2})?\\s*(?:[ap]\\.?m\\.?)?\\s*(?:-|\u2013|\u2014|to|until|till)\\s*\\d{1,2}(?::\\d{2})?\\s*(?:[ap]\\.?m\\.?)?";
+const A_SPAN_RE = new RegExp(A_SPAN, "i");
+const A_DAY_RE = new RegExp("\\b" + ANY_DAY + "\\b", "i");
+const EVERY_DAY_RE = new RegExp("\\b" + ANY_DAY + "\\b", "gi");
+/** The next rule, whole: its own days, then whatever the shop puts in front of the clock, then its own span. */
+const NEXT_RULE = new RegExp("^" + RULE_DAYS + "[\\s:;.,&=/\\-\u2013\u2014]*(?:from\\s+|open\\s+|at\\s+)?" + A_SPAN, "i");
+/** A day off owns the days written behind it, so the word is never the end of the clause in front of a cut. */
+const SAID_CLOSED = /\bclosed[\s:;.,&=/\-\u2013\u2014]*$/i;
+
+/** One rule per day group, where a shop wrote several with only a space between them. */
+function spacedRules(rule: string): string[] {
+  for (const m of rule.matchAll(EVERY_DAY_RE)) {
+    const at = m.index;
+    if (!at) continue;
+    const said = rule.slice(0, at);
+    const rest = rule.slice(at);
+    const span = said.search(A_SPAN_RE);
+    const day = said.search(A_DAY_RE);
+    // The days have to own the span in front of the cut, and the day behind it its own span, or the line is
+    // one rule written in an order this cannot read.
+    if (span < 0 || day < 0 || day > span) continue;
+    if (SAID_CLOSED.test(said) || !NEXT_RULE.test(rest)) continue;
+    return [said.trim(), ...spacedRules(rest)].filter(Boolean);
+  }
+  return [rule];
+}
+
+/** Every rule a published line holds: the crawl's glued seams opened, then the shop's own spaced-out rules. */
+export function hourRules(line: string): string[] {
+  return gluedRules(line).flatMap(spacedRules);
+}
+
 /** Zero-width joiners, spaces and marks, a byte order mark, and the control characters a bad decode leaves. */
 const INVISIBLE = new RegExp("[" + String.fromCharCode(0) + "-" + String.fromCharCode(31) + "​-‏  ﻿]", "g");
 

@@ -257,3 +257,24 @@ test("a day name the crawl glued to a heading or to the clock is still a day", (
   assert.equal(show(encodeWeek(["Salmon fishing daily 6am-6pm"])), everyDay("06:00-18:00"));
   assert.equal(show(encodeWeek(["Open Saturdays 9am-1pm"])), "Sun -, Mon -, Tue -, Wed -, Thu -, Fri -, Sat 09:00-13:00");
 });
+
+/**
+ * Two rules a shop separated with a space, on the card's own week. 558 lines on 485 listings write one, and
+ * the compact week the card reads has to be cut where the listing page cuts it or the card and the page it
+ * opens disagree about the hour a shop opens.
+ */
+test("a second rule a shop wrote after a space is a second rule here too", () => {
+  assert.equal(show(encodeWeek(["Mon-Sat 10am - 5pm Sunday 12pm - 5pm"])),
+    "Sun 12:00-17:00, Mon 10:00-17:00, Tue 10:00-17:00, Wed 10:00-17:00, Thu 10:00-17:00, Fri 10:00-17:00, Sat 10:00-17:00");
+  assert.equal(show(encodeWeek(["Tuesday - Friday 10 am - 4 pm Saturday 10 am - 3 pm"])),
+    "Sun -, Mon -, Tue 10:00-16:00, Wed 10:00-16:00, Thu 10:00-16:00, Fri 10:00-16:00, Sat 10:00-15:00");
+  assert.equal(show(encodeWeek(["Mon - Fri 4:00pm - 10:00pm Sat & Sun 12:00pm - 7:00pm"])),
+    "Sun 12:00-19:00, Mon 16:00-22:00, Tue 16:00-22:00, Wed 16:00-22:00, Thu 16:00-22:00, Fri 16:00-22:00, Sat 12:00-19:00");
+  // And the shapes the cut refuses, which are the same three the guest side refuses.
+  assert.equal(show(encodeWeek(["open from11am - 7pm Monday-Friday and 9am-8pm"])),
+    "Sun -, Mon 11:00-19:00, Tue 11:00-19:00, Wed 11:00-19:00, Thu 11:00-19:00, Fri 11:00-19:00, Sat -");
+  assert.equal(show(encodeWeek(["Mon - Fri: Closed Saturday: 10am - 5pm"])),
+    "Sun -, Mon closed, Tue closed, Wed closed, Thu closed, Fri closed, Sat 10:00-17:00");
+  assert.equal(show(encodeWeek(["Friday 6:00 pm - 10:00 pm Saturday"])),
+    "Sun -, Mon -, Tue -, Wed -, Thu -, Fri 18:00-22:00, Sat 18:00-22:00");
+});

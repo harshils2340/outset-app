@@ -2,7 +2,7 @@ import type { Unclaimed } from "../data/types";
 import { contactFor } from "./catalog";
 // The rule for whether a published line is opening hours at all lives with the rest of the hour-line reading,
 // in a module with no imports of its own, so the backend's static pages can read it too.
-import { gluedRules, isTradingHoursLine } from "./hoursText";
+import { hourRules, isTradingHoursLine } from "./hoursText";
 
 export { isTradingHoursLine };
 
@@ -266,11 +266,12 @@ export function osmToLines(raw: string): string[] {
 
 export function parseWeek(input: string[]): Week | null {
   // Whether a published line is opening hours at all is read off the whole line, and what it states off each
-  // rule the crawl glued into it: "MondayClosedTuesday2:00PM to 7:00PM" is a day off and a day's hours, not
-  // one line that is somehow both.
+  // rule it turns out to hold: "MondayClosedTuesday2:00PM to 7:00PM" is a day off and a day's hours, not one
+  // line that is somehow both, and "Mon-Sat 10am - 5pm Sunday 12pm - 5pm" is six days and a Sunday that opens
+  // two hours later, not one span for all seven.
   const lines = input
     .flatMap((l) => { const o = osmToLines(l); return o.length ? o : [l]; })
-    .flatMap((l) => (isTradingHoursLine(l) ? gluedRules(l) : []));
+    .flatMap((l) => (isTradingHoursLine(l) ? hourRules(l) : []));
   const week: Week = [null, null, null, null, null, null, null];
   let any = false;
   for (const raw of lines) {

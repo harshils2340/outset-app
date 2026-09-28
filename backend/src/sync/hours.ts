@@ -379,6 +379,45 @@ export function gluedRules(line: string): string[] {
   return out.map((p) => p.trim()).filter(Boolean);
 }
 
+/**
+ * A shop can write two days' hours on one line with nothing between them but a space, and the reader gave
+ * every day the first span it found: "Mon-Sat 10am - 5pm Sunday 12pm - 5pm" opened the museum at ten on a
+ * Sunday it opens at noon. The whole story, and the three shapes this deliberately leaves alone, are in the
+ * twin of this rule in src/lib/hoursText.ts.
+ */
+/** The days a rule opens on, as a range or a list: one subject, however the shop separates it. */
+const RULE_DAYS = ANY_DAY + "(?:\\s*(?:-|\u2013|\u2014|to|thru|through|&|and|,|/)\\s*" + ANY_DAY + ")*";
+/** A span, both ends written out. */
+const A_SPAN = "\\d{1,2}(?::\\d{2})?\\s*(?:[ap]\\.?m\\.?)?\\s*(?:-|\u2013|\u2014|to|until|till)\\s*\\d{1,2}(?::\\d{2})?\\s*(?:[ap]\\.?m\\.?)?";
+const A_SPAN_RE = new RegExp(A_SPAN, "i");
+const A_DAY_RE = new RegExp("\\b" + ANY_DAY + "\\b", "i");
+const EVERY_DAY_RE = new RegExp("\\b" + ANY_DAY + "\\b", "gi");
+/** The next rule, whole: its own days, then whatever the shop puts in front of the clock, then its own span. */
+const NEXT_RULE = new RegExp("^" + RULE_DAYS + "[\\s:;.,&=/\\-\u2013\u2014]*(?:from\\s+|open\\s+|at\\s+)?" + A_SPAN, "i");
+/** A day off owns the days written behind it, so the word is never the end of the clause in front of a cut. */
+const SAID_CLOSED = /\bclosed[\s:;.,&=/\-\u2013\u2014]*$/i;
+
+/** One rule per day group, where a shop wrote several with only a space between them. */
+function spacedRules(rule: string): string[] {
+  for (const m of rule.matchAll(EVERY_DAY_RE)) {
+    const at = m.index;
+    if (!at) continue;
+    const said = rule.slice(0, at);
+    const rest = rule.slice(at);
+    const span = said.search(A_SPAN_RE);
+    const day = said.search(A_DAY_RE);
+    if (span < 0 || day < 0 || day > span) continue;
+    if (SAID_CLOSED.test(said) || !NEXT_RULE.test(rest)) continue;
+    return [said.trim(), ...spacedRules(rest)].filter(Boolean);
+  }
+  return [rule];
+}
+
+/** Every rule a published line holds: the crawl's glued seams opened, then the shop's own spaced-out rules. */
+export function hourRules(line: string): string[] {
+  return gluedRules(line).flatMap(spacedRules);
+}
+
 export type WeekEnc = ([number, number] | null)[];
 
 /** OpenStreetMap opening_hours ("Tu-Fr 16:00-21:00; Sa 10:00-22:00; Su off; PH 10:00-21:00") to plain lines the day parser reads. */
@@ -407,11 +446,12 @@ export function osmToLines(raw: string): string[] {
 
 export function encodeWeek(input: string[]): WeekEnc | null {
   // Whether a published line is opening hours at all is read off the whole line, and what it states off each
-  // rule the crawl glued into it: "MondayClosedTuesday2:00PM to 7:00PM" is a day off and a day's hours, not
-  // one line that is somehow both.
+  // rule it turns out to hold: "MondayClosedTuesday2:00PM to 7:00PM" is a day off and a day's hours, not one
+  // line that is somehow both, and "Mon-Sat 10am - 5pm Sunday 12pm - 5pm" is six days and a Sunday that opens
+  // two hours later, not one span for all seven.
   const lines = input
     .flatMap((l) => { const o = osmToLines(l); return o.length ? o : [l]; })
-    .flatMap((l) => (isTradingHoursLine(l) ? gluedRules(l) : []));
+    .flatMap((l) => (isTradingHoursLine(l) ? hourRules(l) : []));
   const week: WeekEnc = [null, null, null, null, null, null, null];
   let any = false;
   for (const raw of lines) {
