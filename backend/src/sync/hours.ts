@@ -124,17 +124,30 @@ function closedDays(line: string): number[] {
 export const TIME_RE = /(\d{1,2})(?::(\d{2}))?\s*(am|pm|a\.m\.|p\.m\.)?\s*(?:-|–|—|to|until|till)\s*(\d{1,2})(?::(\d{2}))?\s*(am|pm|a\.m\.|p\.m\.)?/i;
 
 /**
- * A line can carry days and a time range and still not be when the door is open. Two subjects turn up in the
- * shipped catalog and both read backwards: a campground's quiet hours ("Quiet hours are from 11:00pm -
+ * A line can carry days and a time range and still not be when the door is open. Four subjects turn up in the
+ * shipped catalog and every one reads backwards: a campground's quiet hours ("Quiet hours are from 11:00pm -
  * 8:00am", the only hours line 37 of them publish, so each said "Open now, closes 8 AM" at two in the
  * morning), and a bar's happy hour ("Happy Hour Wednesday-Friday 12-6 PM", written after the same site's real
  * "Wed 12:00 PM - 10:00 PM", and the later line wins). A third is an entry from the shop's own event calendar,
  * one date and one time with The Events Calendar's "@" between them ("Open Studio November 21 @ 11:00 am -
  * 2:00 pm"): 29 listings publish one, for all 29 it is the whole Hours block, and naming no weekday it became
- * all seven days of the week. The twin of `isTradingHoursLine` in
- * `src/lib/openNow.ts`; the two have to drop the same lines or a card and its listing page disagree.
+ * all seven days of the week. The fourth is the last thing the shop sells ("Last rental 2:30 - 3:30 pm",
+ * "Last appointment 3 to 5 pm depending on season"), which is refused only when a range hangs off it, so the
+ * 14 lines that state one time rather than a range stay beside the real hours they belong to.
+ *
+ * Four campgrounds and hot springs word the noise rule without the word "hours" ("Quiet time is observed from
+ * 10:00 PM - 7:00 AM", "Quiet to be maintained from 11:00PM to 8:00AM") and for all four it is the whole
+ * block. "Times" is left out of the "time" spelling because Quiet Times Golf Course is a real business, and
+ * the last-sold nouns are listed one at a time because 16 businesses are named Last something. The twin of
+ * `isTradingHoursLine` in `src/lib/openNow.ts`; the two have to drop the same lines or a card and its listing
+ * page disagree.
  */
-export const NOT_TRADING_HOURS = /\b(?:quiet|happy)\s*hours?\b/i;
+export const NOT_TRADING_HOURS = /\b(?:quiet|happy)\s*hours?\b|\bquiet\s+time\b|\bquiet\s+(?:is\s+)?(?:to\s+be\s+)?(?:maintained|observed|enforced)\b/i;
+
+/** The last thing sold, as the subject the line opens on. */
+export const LAST_SOLD = /^[^\p{L}\p{N}]*last\s+(?:admission|appointment|boat|booking|call|cart|class|departure|entrance|entry|jump|launch|rental|ride|seating|session|slot|tee|ticket|tour|trip|wash)s?\b/iu;
+/** A time range, however a shop writes one. The words are whole words, so "entry into the park" is not one. */
+export const A_RANGE = /\d(?::\d{2})?\s*(?:[ap]\.?m\.?)?\s*(?:[-\u2013\u2014]|\b(?:to|until|till)\b)\s*\d/i;
 
 /** The Events Calendar's own line: a single date, then "@", then the time of one event. */
 export const DATED_EVENT = /\b(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t|tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\.?\s+\d{1,2}(?:st|nd|rd|th)?(?:,?\s*\d{4})?\s*@/i;
@@ -191,9 +204,11 @@ function namesOneDay(line: string): boolean {
   return !RUN_OF_DAYS.test(line.slice(at + dates[0][0].length));
 }
 
-/** Whether a published line is about when the shop is open, rather than one day, quiet hours or happy hour. */
+/** Whether a published line is about when the shop is open, rather than one day, a noise rule or a last sale. */
 export function isTradingHoursLine(line: string): boolean {
-  return !NOT_TRADING_HOURS.test(line) && !DATED_EVENT.test(line) && !namesOneDay(line);
+  if (NOT_TRADING_HOURS.test(line) || DATED_EVENT.test(line)) return false;
+  if (LAST_SOLD.test(line) && A_RANGE.test(line)) return false;
+  return !namesOneDay(line);
 }
 
 function mins(h: number, m: number, ap: string | undefined, afternoonHint: boolean): number {

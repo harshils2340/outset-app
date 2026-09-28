@@ -18,13 +18,18 @@
  */
 
 /**
- * A line can carry days and a time range and still not be when the door is open. Two subjects turn up in the
- * shipped catalog and both read backwards.
+ * A line can carry days and a time range and still not be when the door is open. Four subjects turn up in the
+ * shipped catalog and every one of them reads backwards.
  *
  * A campground's quiet hours: "Quiet hours are from 11:00pm - 8:00am" is the only hours line 37 of them
  * publish, so every one of those said "Closed, opens 11 PM" at lunchtime and "Open now, closes 8 AM" at two
  * in the morning, and Otto answered "their hours say: quiet hours are from 11:00pm - 8:00am" when a guest
- * asked whether they were open. The hours a campground states are the hours nobody may make a noise.
+ * asked whether they were open. The hours a campground states are the hours nobody may make a noise. Four
+ * more word it without the word "hours": an RV park by Daytona says "Quiet time is observed from 10:00 PM -
+ * 7:00 AM", two hot springs "Quiet time is from 10:00 PM to 8:00 AM", and a lake park "Quiet to be maintained
+ * from 11:00PM to 8:00AM". Every one of those four is the shop's whole Hours block, so all four told a guest
+ * they were shut all day and open all night. "Times" is left out of the "time" spelling on purpose: Quiet
+ * Times Golf Course is a real business and its name is not a noise rule.
  *
  * A bar's happy hour: "Happy Hour Wednesday-Friday 12-6 PM" came after the same site's real "Wed 12:00 PM -
  * 10:00 PM", and the later line wins, so the brewery shut four hours early three days a week. One shop's only
@@ -37,8 +42,24 @@
  * opening hours and, naming no weekday, became all seven days of its week: a railroad museum open 9 to 5 every
  * day and a dragway open 4 to 10 every day, on the strength of a single event. Nothing is lost by refusing it,
  * because no shop in the catalog publishes one beside hours of its own.
+ *
+ * The last thing a shop sells, which is not when its door shuts. "Last rental 2:30 - 3:30 pm" is the only
+ * hours line a county park publishes beyond one open house, so a guest read a whole parks department as open
+ * for one hour a day, seven days a week. A skydive centre publishes two lines, "First appointment at 8 am" and
+ * "Last appointment 3 to 5 pm depending on season", and only the second carries a range, so the centre opened
+ * at 3 PM. Refused only when a range hangs off the subject: the 14 other lines in the catalog that open this
+ * way state one time rather than a range ("Last ticket sold at 3 p.m.", "Last entry into the park for Day Pass
+ * Holders is 4:30 pm"), they never built a week, and they stay printed beside the real hours they belong to.
+ * The nouns are listed one at a time rather than taken as whatever follows "last", because 16 businesses in
+ * the catalog are named Last something, from Last Cast Charters to Last Wave Brewing Company, and a shop's own
+ * name in front of its hours is still its hours.
  */
-const NOT_TRADING_HOURS = /\b(?:quiet|happy)\s*hours?\b/i;
+const NOT_TRADING_HOURS = /\b(?:quiet|happy)\s*hours?\b|\bquiet\s+time\b|\bquiet\s+(?:is\s+)?(?:to\s+be\s+)?(?:maintained|observed|enforced)\b/i;
+
+/** The last thing sold, as the subject the line opens on. */
+const LAST_SOLD = /^[^\p{L}\p{N}]*last\s+(?:admission|appointment|boat|booking|call|cart|class|departure|entrance|entry|jump|launch|rental|ride|seating|session|slot|tee|ticket|tour|trip|wash)s?\b/iu;
+/** A time range, however a shop writes one. The words are whole words, so "entry into the park" is not one. */
+const A_RANGE = /\d(?::\d{2})?\s*(?:[ap]\.?m\.?)?\s*(?:[-\u2013\u2014]|\b(?:to|until|till)\b)\s*\d/i;
 
 /** The Events Calendar's own line: a single date, then "@", then the time of one event. */
 const DATED_EVENT = /\b(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t|tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\.?\s+\d{1,2}(?:st|nd|rd|th)?(?:,?\s*\d{4})?\s*@/i;
@@ -95,9 +116,11 @@ function namesOneDay(line: string): boolean {
   return !RUN_OF_DAYS.test(line.slice(at + dates[0][0].length));
 }
 
-/** Whether a published line is about when the shop is open, rather than one day, quiet hours or happy hour. */
+/** Whether a published line is about when the shop is open, rather than one day, a noise rule or a last sale. */
 export function isTradingHoursLine(line: string): boolean {
-  return !NOT_TRADING_HOURS.test(line) && !DATED_EVENT.test(line) && !namesOneDay(line);
+  if (NOT_TRADING_HOURS.test(line) || DATED_EVENT.test(line)) return false;
+  if (LAST_SOLD.test(line) && A_RANGE.test(line)) return false;
+  return !namesOneDay(line);
 }
 
 const DAY_CODE: Record<string, string> = { Mo: "Mon", Tu: "Tue", We: "Wed", Th: "Thu", Fr: "Fri", Sa: "Sat", Su: "Sun", PH: "Public holidays" };

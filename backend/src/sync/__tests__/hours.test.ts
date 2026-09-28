@@ -129,6 +129,38 @@ test("quiet hours and happy hour are not opening hours", () => {
   assert.equal(show(encodeWeek(["May 1 - November 1: 11am - 6pm"])), everyDay("11:00-18:00"));
 });
 
+test("a noise rule worded without the word hours is still a noise rule", () => {
+  // Four shops state when nobody may make a noise and state nothing else, so each said "Closed, opens 10 PM"
+  // at lunchtime: o-daytonaspeedwayrv-com, o-roystonehotsprings-com, o-redbearresort-com, o-rosepointpark-com.
+  assert.equal(show(encodeWeek(["Quiet time is observed from 10:00 PM - 7:00 AM"])), "(no hours)");
+  assert.equal(show(encodeWeek(["Quiet time is from 10:00 PM to 8:00 AM"])), "(no hours)");
+  assert.equal(show(encodeWeek(["designated as quiet time?Yes, 11pm to 8 am"])), "(no hours)");
+  assert.equal(show(encodeWeek(["Quiet to be maintained from 11:00PM to 8:00AM"])), "(no hours)");
+  // Quiet Times Golf Course is a real business, and a shop's own name in front of its hours is still its hours.
+  assert.equal(show(encodeWeek(["Quiet Times Golf Course: Mon-Sun 7am-7pm"])), everyDay("07:00-19:00"));
+  assert.equal(show(encodeWeek(["Inner Quiet Yoga, Monday to Friday 8:30 - 9:30am"])), "Sun -, Mon 08:30-09:30, Tue 08:30-09:30, Wed 08:30-09:30, Thu 08:30-09:30, Fri 08:30-09:30, Sat -");
+});
+
+test("the last thing a shop sells is not when its door shuts", () => {
+  // o-jcprd-com's whole Hours block, which read as a county park open for one hour a day, seven days a week.
+  assert.equal(show(encodeWeek(["Last rental 2:30 - 3:30 pm"])), "(no hours)");
+  // o-cloudchasers-skydiving-com, whose other line states no range, so the centre opened at 3 PM.
+  assert.equal(show(encodeWeek(["First appointment at 8 am", "Last appointment 3 to 5 pm depending on season"])), "(no hours)");
+  // One time rather than a range never built a week, so those 14 lines stay beside the hours they belong to.
+  assert.equal(
+    show(encodeWeek(["open 7 days a week from 9am-4pm", "Last ticket sold at 3 p.m."])),
+    everyDay("09:00-16:00"),
+  );
+  assert.equal(
+    show(encodeWeek(["Mon-Sun 10:00am-5:00pm", "Last entry into the park for Day Pass Holders is 4:30 pm"])),
+    everyDay("10:00-17:00"),
+  );
+  // A last admission in brackets behind the real hours is the shop's own line and keeps its week.
+  assert.equal(show(encodeWeek(["Open Daily 10 a.m.-8 p.m. (last admission 7 p.m.)"])), everyDay("10:00-20:00"));
+  // 16 businesses are named Last something, and none of them is selling a last rental.
+  assert.equal(show(encodeWeek(["Last Wave Brewing Company, Mon-Sun 12 to 9 pm"])), everyDay("12:00-21:00"));
+});
+
 test("one closed date is one day, and a run of days is the shop's week", () => {
   // Most of the 245 listings whose hour line names a date write no "@" at all. One closed date is one
   // afternoon: an open house, an open mic, a Fourth of July, a Christmas Day. The guest side drops the same

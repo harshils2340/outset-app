@@ -123,6 +123,29 @@ test("a happy hour is not a trading hour on the dashboard either", () => {
   assert.equal(week(["Happy Hour Wednesday-Friday 12-6 PM"]), open("09:00", "17:00"));
 });
 
+test("a noise rule worded without the word hours is not a trading hour either", () => {
+  // Four shops state when nobody may make a noise and state nothing else, so each read as shut all day and
+  // open all night: o-daytonaspeedwayrv-com, o-roystonehotsprings-com, o-redbearresort-com, o-rosepointpark-com.
+  assert.equal(week(["Quiet time is observed from 10:00 PM - 7:00 AM"]), open("09:00", "17:00"));
+  assert.equal(week(["Quiet time is from 10:00 PM to 8:00 AM"]), open("09:00", "17:00"));
+  assert.equal(week(["designated as quiet time?Yes, 11pm to 8 am"]), open("09:00", "17:00"));
+  assert.equal(week(["Quiet to be maintained from 11:00PM to 8:00AM"]), open("09:00", "17:00"));
+  // Quiet Times Golf Course is a real business, and a shop's own name in front of its hours is still its hours.
+  assert.equal(week(["Quiet Times Golf Course: Mon-Sun 7am-7pm"]), open("07:00", "19:00"));
+});
+
+test("the last thing a shop sells is not when its door shuts", () => {
+  // o-jcprd-com's whole Hours block, which read as a county park open for one hour a day, seven days a week.
+  assert.equal(week(["Last rental 2:30 - 3:30 pm"]), open("09:00", "17:00"));
+  // o-cloudchasers-skydiving-com, whose other line states no range, so the centre opened at 3 PM.
+  assert.equal(week(["First appointment at 8 am", "Last appointment 3 to 5 pm depending on season"]), open("09:00", "17:00"));
+  // One time rather than a range never built a week, so those 14 lines stay beside the hours they belong to.
+  assert.equal(week(["open 7 days a week from 9am-4pm", "Last ticket sold at 3 p.m."]), open("09:00", "16:00"));
+  assert.equal(week(["Open Daily 10 a.m.-8 p.m. (last admission 7 p.m.)"]), open("10:00", "20:00"));
+  // 16 businesses are named Last something, and none of them is selling a last rental.
+  assert.equal(week(["Last Wave Brewing Company, Mon-Sun 12 to 9 pm"]), open("12:00", "21:00"));
+});
+
 test("a phone number glued to an hours line is not the hour it opens", () => {
   assert.equal(week(["(512) 436-3505Office Hours: 9am-6pm"]), open("09:00", "18:00"));
 });
