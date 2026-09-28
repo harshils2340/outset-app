@@ -6244,6 +6244,77 @@ side and no Postgres cluster.
   commits `origin/main` no longer carries, so this run again committed on a detached HEAD and pushed with an
   explicit refspec.
 
+## 28 September 2026, ninety-fourth run (07:28 to 08:45 UTC)
+
+**Chosen, and why.** Type checks and both unit suites first: root `tsc --noEmit -p .` clean, backend clean but
+for TS5097, backend 868 pass. The last entry at the time reported the rehearsal green and only a log commit sat
+after it, so the rehearsal was skipped at the start and run once at the end, because this run changed `src/lib`
+and `backend/src`. Every area on tonight's brief is on the Verified list, so the hunt went to the subject rule
+in `isTradingHoursLine`: a line can carry days and a time range and still not be when the door is open, and
+three subjects were listed there. Sweeping every one of the 32,475 hour lines in the catalog for a fourth found
+two more, and both are the whole Hours block on every listing that publishes one.
+
+**Found and fixed.**
+
+- **Quiet time and a last rental stop being the hours a shop's door is open** (`52e91507`). Four shops word
+  the noise rule without the word "hours", so the rule that already refuses "Quiet hours are from 11:00pm -
+  8:00am" never saw them: "Quiet time is observed from 10:00 PM - 7:00 AM" (an RV park by Daytona), "Quiet
+  time is from 10:00 PM to 8:00 AM" (a hot springs), "designated as quiet time?Yes, 11pm to 8 am" and "Quiet
+  to be maintained from 11:00PM to 8:00AM". Each of the four publishes that line and nothing else, so all four
+  told a guest they were shut all day and open all night, and each stood in "Open right now near you" at two
+  in the morning. Two more state the last thing they sell and no range of their own: "Last rental 2:30 - 3:30
+  pm" is a county parks department's whole block, read as a park open for one hour a day, seven days a week,
+  and a skydive centre whose only other line is "First appointment at 8 am" opened at 3 PM on the strength of
+  "Last appointment 3 to 5 pm depending on season". Refused only when a range hangs off the subject, so the 14
+  other lines that open this way ("Last ticket sold at 3 p.m.", "Last entry into the park for Day Pass Holders
+  is 4:30 pm") state one time, never built a week, and stay printed beside the real hours they belong to.
+
+**Swept and clean.** Every one of the 32,475 hour lines in the catalog read for a fourth subject, both ways
+round. Every parsed week of all 14,509 listings that publish one diffed before and after: exactly 6 move, every
+one from a fabricated week to an honest gap, and no other listing changes. Both hour parsers agree on all
+32,025 shipped lines and on all 14,509 weeks. The false positives were counted before the words were chosen
+rather than after: 4 businesses are named something Quiet, among them Quiet Times Golf Course, which is why the
+"time" spelling is singular; 67 are named something Happy, one of them Salty Dog Happy Hour Cruise; and 16 are
+named Last something, from Last Cast Charters to Last Wave Brewing Company, which is why the last-sold nouns
+are listed one at a time rather than taken as whatever follows the word. None of the 87 publishes an hour line
+today, so all three collisions are latent.
+
+**Thrown away, and why it matters.** Most of this run went on a second fix that was already being written in
+another session. A sweep of the 26 listings whose closed day the crawl glued into a range ("Monday - Friday:
+ClosedSaturday: 10AM - 5PM", a paintball park open only on Saturday that told a guest the exact opposite) grew
+into a rule, tests and a measured 86 listing diff, and while it was being verified the ninety-third run pushed
+`edeff027` and `d2232fef`, which solve the same two bugs more generally, over 106 and 250 listings. That work
+was dropped rather than rebased: two rules doing one job on the same lines is worse than either. Only the
+subject fix above was rebased on to their tree, re-measured against it, and pushed. This is the third and
+fourth hour-line bug found in the same code in twelve hours by two runs that could not see each other.
+
+**Verification.** App `npm test` 980 pass, 0 fail, up from 978. Backend `npm test` 872 pass, 0 fail, 2 skipped.
+`tsc -b` clean on the app, `tsc --noEmit -p .` clean at the root and still compiling nothing, the backend type
+check clean but for TS5097. The rehearsal 57 of 57 against a local TLS Postgres 16 on 5433 and the Chromium on
+disk, with no Stripe, mail or GitHub key. A fresh checkout again had no `node_modules` on either side, no
+Postgres cluster, and `initdb` refuses to run as root here, so the cluster has to be started as `postgres`.
+
+**Needs Harshil.**
+
+- **Two overnight runs are working the same file at the same time and neither can see the other.** The
+  ninety-third and this one both started from the same Needs Harshil line, both went to `openNow.ts` and
+  `hours.ts`, and both wrote a closed-day rule. An hour went on work that was thrown away, and the only reason
+  it was not pushed on top of theirs is that the push was rejected and their diff read first. If the schedule
+  is meant to overlap, a run needs to fetch and re-read `origin/main` before choosing its area, not only
+  before pushing. If it is not meant to overlap, the schedule wants looking at.
+- **`o-peecnature-org` still stands open on the day it is shut.** "Mon 10:00 am - 4:00 pm Tues CLOSED Wed
+  10:00 am - 6:00 pm" states a day off between two days of hours, and the closed day is read from the side of
+  the word rather than from the clause it belongs to. That is the one shape the ninety-third run's punctuation
+  rule does not reach, and it wants the line cut into three rules rather than read as one.
+- **`o-bostonskydive-com` and `o-pcdhfc-com` keep a week that is wrong either way.** "During
+  SeasonWeekdays (Closed Tuesday)10am - 4pm" has its "Weekdays" glued to the word in front of it, so the line
+  names no day at all and offers only the Tuesday it is shut. Reading the aside would have handed it a
+  Saturday and a Sunday it never claimed, which is why it was left alone, and the same is true of an office
+  whose line is "Office hours 8:00am-4pm (closed Tues / Wed)".
+- Still open from the seventy-eighth run: local `main` is clean again and this run committed on it, so that
+  item looks resolved. The desktop site still has no way to say anything in passing, `plainWords` is still not
+  idempotent, and the 1,210 dropped address lines still wait on a sync.
+
 ## Coverage
 
 The catalog is 48,198 listings as of the 23 September sync, 1,873 of them Viator partner rows. Counts below
@@ -6410,7 +6481,9 @@ by a second day hung off the first, by a range word in front of the date or by a
 run; a day number that is really a clock or a year; and OpenStreetMap's own exception clause. Every spelling a
 day of the week is written in, on both hour parsers: the list of days a line states against the words those
 same three-letter prefixes open which are not days at all, and a range whose closing day has the next thing on
-the page glued straight on to it.
+the page glued straight on to it. Every subject an hour line can carry that is not the door, over all
+32,475 hour lines in the catalog: a noise rule worded without the word "hours" and the last thing a shop
+sells, each against the businesses whose own names collide with those words.
 
 Which clock a shop's hours are read on, run over the whole shipped catalog rather than read: `zoneFor` and its
 API twin `zoneForArea` against all 59,091 operators, every split-state nudge in both directions, and that the
@@ -7238,4 +7311,4 @@ Harshil). Whether a line that writes more than one rule with a space rather than
 glued one now is: 447 lines on 405 listings state two or more days' hours and every day on them takes the first
 span, which is the same rule as the seam with a wider blast radius (see this run's Needs Harshil). Whether a
 season written per line should reach the week at all, on the four listings whose off-season day off now wins over
-their in-season week (see this run's Needs Harshil).
+their in-season week (see this run's Needs Harshil). Whether a day off stated between two days of hours on one line can be read at all, which is the one closed-day shape left: `o-peecnature-org` writes "Mon 10:00 am - 4:00 pm Tues CLOSED Wed 10:00 am - 6:00 pm" and still stands open on the Tuesday it is shut, and it wants the line cut into three rules rather than read as one. The two listings whose week is wrong either way because a "Weekdays" or an "Office hours" is glued to the word in front of it, so the line names no day and reading its closed-day aside would hand it days it never claimed (see this run's Needs Harshil). Whether two overnight runs working the same file at the same time is meant to happen, since the ninety-third and ninety-fourth both wrote a closed-day rule for the same lines and one of the two was thrown away (see this run's Needs Harshil).
