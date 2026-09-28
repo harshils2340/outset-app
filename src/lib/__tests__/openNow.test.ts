@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import type { Unclaimed } from "../../data/types";
-import { itemOpenState, itemWeek, openStateAt, parseWeek, type Week } from "../openNow";
+import { isTradingHoursLine, itemOpenState, itemWeek, openStateAt, parseWeek, type Week } from "../openNow";
 
 /**
  * "Open now" on a card, on the listing page, in the booking sheet and in Otto's answers, read off whatever
@@ -176,6 +176,39 @@ test("one date and one time is one event, not a week", () => {
   assert.equal(show(parseWeek(["(@Taco Bay) Monday 11am - 4pm"])), "Sun -, Mon 11:00-16:00, Tue -, Wed -, Thu -, Fri -, Sat -");
   // A season in front of a week is a rule about every one of those days, not one of them.
   assert.equal(show(parseWeek(["May 1 - November 1: 11am - 6pm"])), everyDay("11:00-18:00"));
+});
+
+test("one closed date is one day, however the shop wrote it", () => {
+  // 245 listings publish an hour line naming a calendar date and for 181 it is the whole block, so a gallery's
+  // open studio, a brewery's open mic and a museum's one Saturday each became all seven days of a week.
+  assert.equal(show(parseWeek(["Open House September 30, 2026 4:00pm - 6:00pm"])), "(no hours)");
+  assert.equal(show(parseWeek(["Sunday, August 16, 2026 - 1:00 pm - 3:00 pm"])), "(no hours)");
+  assert.equal(show(parseWeek(["Open Mic Night Sep 11 7 pm - 9 pm"])), "(no hours)");
+  assert.equal(show(parseWeek(["Thursday, May 8: 11AM - 8PM"])), "(no hours)");
+  assert.equal(show(parseWeek(["June 19: Public Swim Only 1:00pm - 6:45pm"])), "(no hours)");
+  assert.equal(show(parseWeek(["& Events Wed, March 26 - 10am-2pm"])), "(no hours)");
+  // o-twistedbrewpub-com's last line was its Fourth of July, and the later line wins, so a brewpub open until
+  // 10 on a Saturday shut at 7 every day of the week.
+  assert.equal(
+    show(parseWeek(["Fri, Sat 11:00 AM - 10:00 PM", "Sun, Mon, Tue, Wed, Thu 11:00 AM - 9:00 PM", "July 4th Hours: 11 AM - 7:00 PM"])),
+    "Sun 11:00-21:00, Mon 11:00-21:00, Tue 11:00-21:00, Wed 11:00-21:00, Thu 11:00-21:00, Fri 11:00-22:00, Sat 11:00-22:00",
+  );
+  // A run of days is the shop's real week, whether the run is named by two months, by a second day of the
+  // month, or by a word that opens or closes it.
+  assert.equal(show(parseWeek(["May through August 9: 5:30am-5:30pm"])), everyDay("05:30-17:30"));
+  assert.equal(show(parseWeek(["Sep 28 - Oct 18: 12pm - 6pm"])), everyDay("12:00-18:00"));
+  // A range word left hanging in front of the date means the date closes a run that opened before it.
+  assert.equal(isTradingHoursLine("Summer Hours Memorial Day to Oct. 1 Open Daily Noon-5"), true);
+  // OpenStreetMap writes a shop's Christmas Day as an exception clause on a week it has already stated.
+  assert.equal(
+    show(parseWeek(["Fr-Sa 12:00-18:00; Dec 25 off"])),
+    "Sun -, Mon -, Tue -, Wed -, Thu -, Fri 12:00-18:00, Sat 12:00-18:00",
+  )
+  assert.equal(show(parseWeek(["10am-6pm Daily starting Monday, Sept 7th"])), everyDay("10:00-18:00"));
+  assert.equal(show(parseWeek(["Open daily until October 31st from 11:00AM-5:00PM"])), everyDay("11:00-17:00"));
+  // A day number is not a clock and a year is not a second date.
+  assert.equal(show(parseWeek(["October 11:00AM - 4:00PM"])), everyDay("11:00-16:00"));
+  assert.equal(show(parseWeek(["Open House November 7, 2026 - 10:00 AM - 5:00 PM"])), "(no hours)");
   // The compact week already in `catalog.json` came out of that same line, so it is not believed either.
   const shipped = {
     id: "o-alpinelodgeandrv-com",

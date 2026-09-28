@@ -105,6 +105,32 @@ test("quiet hours and happy hour are not opening hours", () => {
   assert.equal(show(encodeWeek(["May 1 - November 1: 11am - 6pm"])), everyDay("11:00-18:00"));
 });
 
+test("one closed date is one day, and a run of days is the shop's week", () => {
+  // Most of the 245 listings whose hour line names a date write no "@" at all. One closed date is one
+  // afternoon: an open house, an open mic, a Fourth of July, a Christmas Day. The guest side drops the same
+  // lines, or a card and its listing page disagree.
+  assert.equal(show(encodeWeek(["Open House September 30, 2026 4:00pm - 6:00pm"])), "(no hours)");
+  assert.equal(show(encodeWeek(["Sunday, August 16, 2026 - 1:00 pm - 3:00 pm"])), "(no hours)");
+  assert.equal(show(encodeWeek(["Open Mic Night Sep 11 7 pm - 9 pm"])), "(no hours)");
+  assert.equal(show(encodeWeek(["Thursday, May 8: 11AM - 8PM"])), "(no hours)");
+  assert.equal(show(encodeWeek(["June 19: Public Swim Only 1:00pm - 6:45pm"])), "(no hours)");
+  assert.equal(
+    show(encodeWeek(["Fri, Sat 11:00 AM - 10:00 PM", "Sun, Mon, Tue, Wed, Thu 11:00 AM - 9:00 PM", "July 4th Hours: 11 AM - 7:00 PM"])),
+    "Sun 11:00-21:00, Mon 11:00-21:00, Tue 11:00-21:00, Wed 11:00-21:00, Thu 11:00-21:00, Fri 11:00-22:00, Sat 11:00-22:00",
+  );
+  // A run of days is a season, named by a second month, by a second day of the month, or by a run word.
+  assert.equal(show(encodeWeek(["May through August 9: 5:30am-5:30pm"])), everyDay("05:30-17:30"));
+  assert.equal(show(encodeWeek(["Sep 28 - Oct 18: 12pm - 6pm"])), everyDay("12:00-18:00"));
+  assert.equal(show(encodeWeek(["10am-6pm Daily starting Monday, Sept 7th"])), everyDay("10:00-18:00"));
+  assert.equal(show(encodeWeek(["Open daily until October 31st from 11:00AM-5:00PM"])), everyDay("11:00-17:00"));
+  // A day number is not a clock, and the syntax's own exception clause is not one afternoon.
+  assert.equal(show(encodeWeek(["October 11:00AM - 4:00PM"])), everyDay("11:00-16:00"));
+  assert.equal(
+    show(encodeWeek(["Fr-Sa 12:00-18:00; Dec 25 off"])),
+    "Sun -, Mon -, Tue -, Wed -, Thu -, Fri 12:00-18:00, Sat 12:00-18:00",
+  );
+});
+
 test("a day that never closes is not a day a shop stated its hours", () => {
   assert.equal(show(encodeWeek(["Mon-Sun 12:00 AM - 11:59 PM"])), "(no hours)");
   assert.equal(show(encodeWeek(["Mon 12:00 AM - 12:00 AM"])), "(no hours)");

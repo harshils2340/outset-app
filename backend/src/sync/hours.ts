@@ -59,9 +59,61 @@ export const NOT_TRADING_HOURS = /\b(?:quiet|happy)\s*hours?\b/i;
 /** The Events Calendar's own line: a single date, then "@", then the time of one event. */
 export const DATED_EVENT = /\b(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t|tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\.?\s+\d{1,2}(?:st|nd|rd|th)?(?:,?\s*\d{4})?\s*@/i;
 
-/** Whether a published line is about when the shop is open, rather than one event, quiet hours or happy hour. */
+/**
+ * The same thing without the "@", which is how most shops write it. 245 listings publish an hour line naming
+ * a calendar date, and for 181 of them it is the whole Hours block, so whatever that line says became all
+ * seven days of the shop's week. Two shapes hide in those 245 and they mean opposite things.
+ *
+ * A season is a run of days, and its line is the shop's real week: "May 1 - November 1: 11am - 6pm", "April 1
+ * - September 30 Mon-Sun: 11am - 8pm", "WINTER HOURS NOV 17-MAR 1: 8am-5pm", "10am till sunset starting June
+ * 18th 2026". Those stay, and so does a run of dates written any other way: a second month ("May through
+ * August 9"), a second day hung off the first ("Sept. 7-11", "Sept 11th & 12th"), or a word that opens or
+ * closes the run rather than closing the date ("until", "through", "starting", "Memorial Day to Oct. 1").
+ *
+ * One closed date is one afternoon: "Open House September 30, 2026 4:00pm - 6:00pm", "Sunday, August 16, 2026
+ * - 1:00 pm - 3:00 pm", "Open Mic Night Sep 11 7 pm - 9 pm", "Thursday, May 8: 11AM - 8PM", "July 4th Hours:
+ * 11 AM - 7:00 PM", "December 25th: closed". A gallery's open studio, a brewery's open mic, a golf club's
+ * Christmas Day and a museum's one Saturday, every one of them printed to a guest as the hours of the shop and
+ * spread over a week it never stated. 103 lines on 92 listings, 86 of which publish nothing else and now keep
+ * an honest gap, which is what the "@" rule already settled for the same shape written The Events Calendar's
+ * way.
+ *
+ * OpenStreetMap's own syntax names a date too, as an exception clause on a week it has already stated ("Fr-Sa
+ * 12:00-18:00; Dec 25 off"). That is a machine-written week with a shop's Christmas Day on the end of it, not
+ * one afternoon, so a line carrying the syntax's two-letter day codes is left to the reader that understands
+ * them.
+ *
+ * A day number may not be a clock ("October 11:00AM - 4:00PM" is a month and an opening time, not the 11th)
+ * and may not be a year ("August 16, 2026" is one date, not two).
+ */
+const MONTH_NAME = "(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sept?(?:ember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)";
+const DAY_NUM = "\\d{1,2}(?:st|nd|rd|th)?(?!\\d)(?!:\\d)";
+const DATED_DAY = new RegExp("\\b" + MONTH_NAME + "\\b\\.?\\s*" + DAY_NUM, "gi");
+const MONTH_ANYWHERE = new RegExp("\\b" + MONTH_NAME + "\\b", "gi");
+/** A second day of the month hung off the first by a range or a list, which makes the two of them a run. */
+const RUN_OF_DAYS = new RegExp("^\\s*(?:-|\u2013|\u2014|to|thru|through|&|and|,)\\s*" + DAY_NUM + "(?!\\s*[ap]\\.?m)", "i");
+/** A range word left hanging in front of the date, so the date closes a run that opened before it. */
+const RUN_ENDS_HERE = /\b(?:to|thru|through|until|till|after|and)\s*$|&\s*$/i;
+/** The two-letter day codes that mark a line out as OpenStreetMap's syntax rather than a shop's sentence. */
+const OSM_DAY_CODE = /\b(?:Mo|Tu|We|Th|Fr|Sa|Su|PH)\b/;
+/** A word that makes the date one end of a run of days rather than the whole of it. */
+const RUN_WORD = /\b(?:start(?:s|ing)?|begin(?:s|ning)?|until|till|thru|through|after|onward|resumes?|effective|season|reopens?)\b/i;
+
+/** Whether a line names one calendar date and nothing wider, which is one day rather than a week. */
+function namesOneDay(line: string): boolean {
+  if (OSM_DAY_CODE.test(line)) return false;
+  const dates = [...line.matchAll(DATED_DAY)];
+  if (dates.length !== 1) return false;
+  if ((line.match(MONTH_ANYWHERE) || []).length !== 1) return false;
+  if (RUN_WORD.test(line)) return false;
+  const at = dates[0].index;
+  if (RUN_ENDS_HERE.test(line.slice(0, at))) return false;
+  return !RUN_OF_DAYS.test(line.slice(at + dates[0][0].length));
+}
+
+/** Whether a published line is about when the shop is open, rather than one day, quiet hours or happy hour. */
 export function isTradingHoursLine(line: string): boolean {
-  return !NOT_TRADING_HOURS.test(line) && !DATED_EVENT.test(line);
+  return !NOT_TRADING_HOURS.test(line) && !DATED_EVENT.test(line) && !namesOneDay(line);
 }
 
 function mins(h: number, m: number, ap: string | undefined, afternoonHint: boolean): number {

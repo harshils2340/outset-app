@@ -67,7 +67,7 @@ test("a day the crawl ran onto the end of a time gets its own line", () => {
   assert.deepEqual(displayHours(["Sun - Thur: 11am - 11pmFri - Sat: 11am - 1am"]), ["Sun - Thur: 11am - 11pm", "Fri - Sat: 11am - 1am"]);
   assert.deepEqual(displayHours(["Wednesday 2:00pm- 7:00pmThursday 11:00am- 6:00pm"]), ["Wednesday 2:00pm- 7:00pm", "Thursday 11:00am- 6:00pm"]);
   // A date before a day name is not a time before a day name.
-  assert.deepEqual(displayHours(["May 5 Sunday 10am-4pm"]), ["May 5 Sunday 10am-4pm"]);
+  assert.deepEqual(displayHours(["May 5 - June 2 Sunday 10am-4pm"]), ["May 5 - June 2 Sunday 10am-4pm"]);
 });
 
 test("the punctuation the crawl swept up in front of the hours is not part of them", () => {
