@@ -6400,6 +6400,79 @@ cluster has to be started as `postgres`.
   idempotent, the 1,210 dropped address lines and the 766 cut blurbs wait on a sync, and `o-peecnature-org`
   still stands open on the day it is shut.
 
+## 28 September 2026, ninety-sixth run (09:16 to 10:05 UTC)
+
+**Chosen, and why.** `git fetch` first, because two earlier runs collided inside twelve hours: `origin/main` was
+at the ninety-fifth run's log commit and nothing was in flight, and the hunt stayed away from the hour parsers,
+which the last four runs all wrote to. A fresh checkout again had no `node_modules` on either side. Type checks
+first: root `tsc --noEmit -p .` and `tsc -b` clean, backend clean but for TS5097, backend 872 pass. The last
+entry reported the rehearsal green and only a log commit sat after it, so the rehearsal was skipped at the start
+and run once at the end, because this run changed `backend/src`.
+
+Every area on tonight's brief is on the Verified list, so the hunt took Coverage's own next line: the
+ninety-fifth run fixed the abbreviation Otto refuses to cut at and left the sync's own cutters unswept, and the
+same seam was open on the blurb, the policy line, the meeting point and the arrival note. Swept all of them over
+the shipped catalog, which found two bugs a guest reads and left the prose itself clean.
+
+**Found and fixed.**
+
+- **A blurb stops being cut at "Mt." or "George W."** (`707938e5`). `clip` and the sync's `endAtSentence` both
+  cut at the last full stop inside the budget, and a shortened word ends in one too. 73 shipped blurbs read
+  "The Art of Alfred A.", "a snow capped Mt." and "hosted names like Joe Pesci, Michael B.", which is the line
+  a card, a listing page and the chat lead with; 109 of the `/l/` pages' og:descriptions read the same way,
+  which is what a shared listing link previews as; nine extra notes and seven check-in notes stop on an address
+  half read. Both cuts read one rule now, and the word-boundary fallback drops a shortened word rather than
+  printing "views of Mt.…". The list is tighter than Otto's on purpose, because refusing a stop here costs a
+  real sentence end rather than nothing: a unit, "etc.", a day, a month, a decade and a clock stay sentence
+  ends, and capitals tell "Ft." (Fort) from "ft." (feet). 112 of the 12,040 cut descriptions change, none still
+  ends on a shortened word, 42 of the 4,121 texts over 600 characters are cut at a better place, and no shop
+  loses its blurb.
+- **A review card stops printing the reviewer's name twice** (`743a5cf7`). `normalizeReview` took a signature
+  off the end of a review, but only one written as " - Jane D.". A shop's page closes the quote and puts the
+  byline behind it, so 53 shipped reviews on 20 listings carried the name into the words: "Thank you captain
+  Len!"Jim B.", "a great experience."casey2x2", "a bachelorette party of 11 girls.” Lindsey S." and a curly
+  quote with a long dash behind it, each with the same name printed under the card as the author. A closing quote is the
+  shop's own markup around what the guest wrote, so a name behind one is a byline with or without the dash, and
+  the same name again after a finished sentence is one with neither. That last rule reads only a name following
+  a sentence end, a quote or a dash, so "Thanks again, Brian!" keeps the captain it thanks. All 4,789 shipped
+  quotes read back through the reader: 53 lose a byline, none loses a word and none is dropped.
+- **`/sessions` escapes a quote as well as an angle bracket** (`a055f4a4`). The founder's watch window builds
+  two attributes by hand, the turn id and the step kind, and its `esc` covered only `&<>`. Both values are
+  server-minted, so this is the guard the open Coverage item asked for rather than a fix; the test also holds
+  every hand-built attribute on the page to running through `esc`.
+
+**Swept and clean.** Every prose string in the shipped catalog, 221,020 of them across the blurb, the policy,
+the requirement, the bring line, the inclusion, the highlight, the spec, the meeting point, the arrival note,
+the season, the cancellation and both halves of every FAQ entry, against the two marks that broke the title and
+the row name: 197 carry a space in front of their own punctuation and 181 an unbalanced bracket, which is 0.17%
+and mostly the shop's own hand. Neither is worth the row-name rule as it stands, for two reasons named under
+Needs Harshil. Every shipped review text for a byline the two new rules do not reach: none. Every shipped FAQ
+answer and cancellation line for an abbreviation cut: none.
+
+**Verification.** Backend `npm test` 882 pass, 0 fail, 2 skipped, up from 872. App `npm test` 993 pass, 0 fail.
+`tsc -b` clean on the app, `tsc --noEmit -p .` clean at the root and still compiling nothing, the backend type
+check clean but for TS5097. The rehearsal 57 of 57 against a local TLS Postgres 16 on 5433 and the Chromium on
+disk, with no Stripe, mail or GitHub key. `initdb` still refuses to run as root, so the cluster is created and
+started as `postgres`.
+
+**Needs Harshil.**
+
+- **The prose punctuation sweep found a rule that cannot simply be reused.** 197 prose lines carry a space in
+  front of a comma, colon or question mark, and a good share of them are French typography on a Québécois
+  partner's product ("that mysterious springtime activity ?", "Hotel pickup : Meet up at your accommodation"),
+  where the space is correct in the language the shop wrote. `tidyRowName` closes that space unconditionally,
+  which is right for a row name and wrong here.
+- **An unbalanced bracket is not always unbalanced at the end.** 181 prose lines carry one, and the unmatched
+  bracket is often not the last: "Gratuities :) (not included)" has two closers, one of them an emoticon and
+  one of them correct, so stripping the trailing bracket the way a row name does would eat the shop's own. It
+  wants a matching pass rather than an end trim, for 181 lines.
+- **Whether refusing "in the U.S." costs more than it saves.** 17 of the 112 changed descriptions end on a
+  dotted abbreviation that can finish a sentence, so they now carry an ellipsis instead. "U.S. Capitol" and
+  "U.S. Coast Guard" are the reason the rule refuses it at all.
+- Still open from earlier runs: the desktop site has no way to say anything in passing, `plainWords` is not
+  idempotent, the 1,210 dropped address lines and the 766 cut blurbs wait on a sync, `o-peecnature-org` still
+  stands open on the day it is shut, and 547 listings ship a compact week a fresh read disagrees with.
+
 ## Coverage
 
 The catalog is 48,198 listings as of the 23 September sync, 1,873 of them Viator partner rows. Counts below
@@ -7117,6 +7190,16 @@ bracket nothing closed and a separator with nothing behind it, over all 52,816 s
 shipped row names. The town on an address line, over all 46,787 contact records and extra locations in the
 catalog.
 
+Every cut a shop's own prose is made at, on both sides and at every budget: `clip`'s six call sites and the
+sync's own `endAtSentence`, over all 26,701 shipped blurbs, 12,040 cut descriptions, 4,121 texts over 600
+characters and every extra note, arrival note, cancellation line and FAQ answer in the catalog, against the
+shortened words that end in a full stop and the brackets a crawl left open. The words on a review card, over all
+4,789 shipped quotes: the byline a shop printed behind its own closing quote, and the same name again after a
+finished sentence, each against the reviews that name a person inside their own words. Every prose string in the
+catalog, all 221,020 of them, against the two punctuation marks that broke the title and the row name. The
+escaping on the founder's own `/sessions` window, and that every attribute it builds by hand runs through it.
+
+
 **Not yet checked.** Anything in the grounded fallback that needs a real Cohere key: no key exists here, so every answer checked tonight was a payload shaped by hand, and what the live model actually writes, what its citation offsets index into when it answers in more than one content part, and whether `citation_options` FAST cites densely enough for `keepCited` to keep a good answer are all unread. `npm run otto:eval` for the same reason. Whether a price the model reformats should be dropped: a shop publishing "$85" and a model writing "$85.00" loses the sentence (see this run's Needs Harshil). Whether the grounded answer should reach the static `/l/` page and the phone sheet, which do not call it. A real Otto send or a real hand-send: the draft run, the queue, the dry run and the handoff export are all driven now, but nothing has left a mailbox from here, and `outreach-daily.sh` is launchd on the Mac and cannot be. Whether `state.ranDays` and `state.sentDays` growing without bound in `outreach-otto-ramp.json`, and being written only after a send loop that can run four hours, is worth changing, given that `sentToday` is what actually holds the ceiling. Whether the Otto email may tell a shop "Bookings drop straight into your calendar" when
 both `/voice` endpoints are read-only and syncing with an operator's own booking software is deferred on
 purpose, which is this run's first Needs Harshil. Whether the Otto subject should be shortened or the question
@@ -7387,9 +7470,7 @@ entry should keep the week, which Diggerland USA's "Open 10:00 - 6:00 August 30 
 case of. Whether a span of 22 or 23 hours, which 20 more shipped day lines carry, is a shop's real day or the
 same placeholder rounded off. Whether the visit panel's Hours block should say "next day" beside a small-hours
 close the way the dashboard's own closing-time select does, rather than leaving a guest to read "2:00 PM to
-4:00 AM" as the wrap it is. Whether `esc` on the `/sessions` page should escape quotes as well
-as `&<>`, which is latent: its two hand-built attributes carry only a server-minted id and a fixed step kind
-today, and nothing a guest types can reach one. Whether a glued word should be split on "Closed" before the days in
+4:00 AM" as the wrap it is. Whether a glued word should be split on "Closed" before the days in
 it are read: five shops write "MondayClosedTuesday - Saturday3:00 pm - 9:00 pm", the range swallows the closed
 day, and each is now one wrong day instead of seven (see the ninety-second run's Needs Harshil). How long a run
 of dates has to be before it is the shop's week rather than a festival, which is what leaves "Open for visitors
@@ -7408,8 +7489,4 @@ and deliberately opens none behind it, because "A,B" inside a name can be the sh
 run's Needs Harshil). Whether a variant label and an option's detail line should be tidied the way a row name
 is, or dropped when they are plainly not a label at all: `bookableMenu` runs `tidyRowName` over service,
 option and add-on names and over nothing beside them, and the service picker and the chat both print those, so
-two rows on one listing still read "Fridays are also Pizza Days ! Please send" (see that run's Needs Harshil).
-Whether an abbreviation Otto now refuses to cut at should be refused by the sync's own blurb cutter as well,
-which stops at its own `. ` and has never been swept for one. Every other string the crawl hands a guest
-whole, against the punctuation it arrived with: the title, the row name and the town were the three this run
-swept, and the same seam runs through the blurb, the policy line, the meeting point and the arrival note.
+two rows on one listing still read "Fridays are also Pizza Days ! Please send" (see that run's Needs Harshil). Whether the space a shop leaves in front of its own comma or colon should be closed in prose the way it now is in a row name, on the 197 lines that carry one: a good share are French typography on a Quebecois partner's product, where the space is correct in the language the shop wrote (see the ninety-sixth run's Needs Harshil). Whether an unbalanced bracket in prose can be closed by an end trim at all, on the 181 lines that carry one: the unmatched bracket is often not the last, because an emoticon closes nothing, so it wants a matching pass rather than the row name's rule. Whether refusing to cut at a dotted abbreviation that can finish a sentence costs more than it saves, on the 17 descriptions that now carry an ellipsis where they read "in the U.S.".
