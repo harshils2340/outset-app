@@ -175,6 +175,7 @@ type FhAvailability = {
   is_sold_out?: boolean;
   is_bookable?: boolean;
   is_unlisted?: boolean;
+  is_bookable_only_by_phone?: boolean;
   book_url?: string | null;
   availability_headline?: string | null;
   item?: FhItem;
@@ -235,7 +236,14 @@ async function fareharbor(shortname: string, dates: string[]): Promise<Availabil
   const seen = new Set<string>();
 
   const add = (at: string, a: FhAvailability, item: FhItem): void => {
-    if (!a.start_at || a.is_unlisted || a.is_sold_out || a.is_bookable === false) return;
+    /**
+     * `is_bookable_only_by_phone` is a no here too, and was the one of FareHarbor's four no-flags this reader
+     * did not read. The concierge reader and the corpus's own second reading both exclude it, and a chip a
+     * guest picks that FareHarbor will not sell them online is the `not_available` bug with a different
+     * vendor's word on it. 25 of the 3,933 recorded departures carry it and every one is sold out or
+     * unbookable as well, so nothing in the corpus moves: this closes the drift, it does not fix a sighting.
+     */
+    if (!a.start_at || a.is_unlisted || a.is_sold_out || a.is_bookable === false || a.is_bookable_only_by_phone === true) return;
     const identity = at + "|" + (a.book_url || `${a.start_at}|${item.pk}`);
     if (seen.has(identity)) return;
     seen.add(identity);

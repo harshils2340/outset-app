@@ -70,6 +70,8 @@ test("two FareHarbor boats leaving at nine are two departures on one start time"
                       { start_at: "2026-09-20T09:00:00-04:00", item: { pk: 1 }, approximate_available_capacity: 2, book_url: "/b/1/" },
                       { start_at: "2026-09-20T09:00:00-04:00", item: { pk: 2 }, approximate_available_capacity: 40, book_url: "/b/2/" },
                       { start_at: "2026-09-20T13:00:00-04:00", item: { pk: 1 }, book_url: "/b/3/" },
+                      // FareHarbor will not sell this one online, which is a no here as it is in the concierge.
+                      { start_at: "2026-09-20T17:00:00-04:00", item: { pk: 2 }, approximate_available_capacity: 12, is_bookable_only_by_phone: true, book_url: "/b/4/" },
                     ],
                   },
                 ],
@@ -92,6 +94,8 @@ test("two FareHarbor boats leaving at nine are two departures on one start time"
   assert.deepEqual(slots.map((s) => s.seatsLeft), [2, 40, undefined]);
   // Neither of the nine o'clock departures is a placeholder: both are real times.
   assert.ok(slots.every((s) => !s.timeUnknown));
+  // And the five o'clock is nobody's time, because a guest cannot book it on the page the chip opens.
+  assert.ok(!slots.some((s) => s.startsAt === "2026-09-20T17:00"));
 });
 
 test("a Peek date whose times the budget never reached is marked, not given a midnight", async () => {
