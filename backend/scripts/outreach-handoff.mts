@@ -11,6 +11,7 @@ import { composeOutreach } from "../src/outreach/drafts.ts";
 import { listingQueue, operatorOf, type ListingRow } from "../src/outreach/send.ts";
 import { ottoQueue } from "../src/outreach/sendOtto.ts";
 import { outreachBlockers } from "../src/outreach/guards.ts";
+import { recordTouch } from "../src/outreach/touches.ts";
 import { mailPostal } from "../src/lib/unsub.ts";
 
 /**
@@ -121,6 +122,12 @@ if (dry) {
 const mark = db.prepare("UPDATE outreach_drafts SET status = 'handoff', subject = ?, body = ?, created_at = ? WHERE id = ?");
 db.exec("BEGIN IMMEDIATE");
 for (const r of out) mark.run(r.subject, r.body_text, nowIso(), r.draftId);
+// The shared record too (touches.ts), so a sender anywhere else (the cloud run) never mails these businesses.
+const opOf = db.prepare("SELECT operator_id FROM outreach_drafts WHERE id = ?");
+for (const r of out) {
+  const row = opOf.get(r.draftId) as { operator_id: string } | undefined;
+  if (row) await recordTouch({ operatorId: row.operator_id, email: r.email, status: "handoff" }).catch((e) => console.error("shared record: " + (e as Error).message));
+}
 db.exec("COMMIT");
 console.log(`${out.length} rows marked handoff: the daily ramps will not mail them`);
 
@@ -134,7 +141,7 @@ if (to) {
     "How to send them:",
     "- One email per row: the subject column as the subject, body_html as the message (body_text if the mail app cannot take HTML).",
     "- Every body ends with the footer (Terms, Privacy, Unsubscribe, postal address). Leave it exactly as it is; it is what makes the mail legal to send.",
-    "- The copy is written in Harshil's voice, so set the reply-to (or the from name) to Harshil so replies reach him.",
+    "- The copy is written in Harshil's voice: send as Harshil and set the reply-to to hello@onoutset.com, where every other reply lands.",
     "- Weekdays only, a few dozen a day from one mailbox, never the same address twice.",
     "- These rows are now excluded from Outset's own daily sends, so nobody hears from us twice.",
     "",

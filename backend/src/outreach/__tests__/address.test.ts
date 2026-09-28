@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { outreachAddress } from "../address.ts";
+import { looksPersonal, outreachAddress, ownerFirstName } from "../address.ts";
 
 /**
  * Which address a claim email may go to. The claim index, the dashboard prefill and the sync were taught to
@@ -50,4 +50,54 @@ test("punctuation the crawl kept on the end is dropped, not treated as a differe
 
 test("an operator with no domain gets no claim email, because there is no page to claim", () => {
   assert.equal(outreachAddress({ email: "someone@gmail.com", domain: "" }), null);
+});
+
+/**
+ * 25 September 2026, Harshil: write to the owner or the manager, not booking@, whenever the site names one.
+ * The owners crawl's mailboxes (facts owner_email) are ranked against the front desk; with none, the old
+ * rule holds exactly.
+ */
+test("the owner's own mailbox beats the front desk when the site names one", () => {
+  const op = { email: "hello@capitolboatclub.com", domain: "capitolboatclub.com" };
+  assert.equal(outreachAddress(op), "hello@capitolboatclub.com");
+  assert.equal(outreachAddress(op, ["ron@capitolboatclub.com"]), "ron@capitolboatclub.com");
+  assert.equal(outreachAddress(op, ["Ron.Baker@CapitolBoatClub.com"]), "ron.baker@capitolboatclub.com");
+  assert.equal(outreachAddress(op, ["mikereyes@gmail.com"]), "mikereyes@gmail.com", "a personal gmail is a person's phone, not a desk");
+  assert.equal(outreachAddress(op, ["celebrationcruisesjsh@gmail.com"]), "hello@capitolboatclub.com", "a gmail named for the business is a desk like any other, and ties keep the front desk");
+  assert.equal(outreachAddress(op, ["ron@capitolboatclub.com", "mike.reyes@gmail.com"]), "ron@capitolboatclub.com", "their own domain beats a gmail");
+  assert.equal(outreachAddress({ email: "islandtimeparasail@gmail.com", domain: "islandtimeparasail.com" }, ["mike.reyes@gmail.com"]), "mike.reyes@gmail.com", "a person's gmail beats the shop's gmail");
+});
+
+test("a crawl candidate that is junk or a stranger's never displaces the front desk", () => {
+  const op = { email: "hello@capitolboatclub.com", domain: "capitolboatclub.com" };
+  assert.equal(outreachAddress(op, ["619-1406capitolboatclub@gmail.com"]), "hello@capitolboatclub.com", "a phone number glued to an address");
+  assert.equal(outreachAddress(op, ["director@yatespast.org", "info@legoland.com"]), "hello@capitolboatclub.com", "somebody else's inbox");
+  assert.equal(outreachAddress(op, ["waivers@capitolboatclub.com"]), "hello@capitolboatclub.com", "one desk does not beat another");
+  assert.equal(outreachAddress(op, ["paddlinginfo@capitolboatclub.com"]), "hello@capitolboatclub.com", "a desk word anywhere in the mailbox is a desk");
+  assert.equal(outreachAddress(op, ["emailhello@capitolboatclub.com", "emailron@capitolboatclub.com", "ron@capitolboatclub.com"]), "ron@capitolboatclub.com", "a label the markup glued onto an address is dropped, not mailed");
+  assert.equal(outreachAddress({ email: "info@shop.com", domain: "shop.com" }, ["emailinfo@shop.com"]), "info@shop.com");
+  assert.equal(outreachAddress({ email: null, domain: "capitolboatclub.com" }, ["ron@capitolboatclub.com"]), "ron@capitolboatclub.com", "no front desk at all, the owner still counts");
+});
+
+test("a mailbox is a person only when it reads like one", () => {
+  assert.equal(looksPersonal("ron@capitolboatclub.com", "capitolboatclub.com"), true);
+  assert.equal(looksPersonal("patrick.ferro@montgomeryparks.org", "montgomeryparks.org"), true);
+  assert.equal(looksPersonal("info@capitolboatclub.com", "capitolboatclub.com"), false);
+  assert.equal(looksPersonal("paddlinginfo@sevenriverspaddling.com", "sevenriverspaddling.com"), false);
+  assert.equal(looksPersonal("islandtimeparasail@gmail.com", "islandtimeparasail.com"), false);
+  assert.equal(looksPersonal("captainsteve@gmail.com", "captainsteve.com"), false);
+  assert.equal(looksPersonal("camdenharborcruises@gmail.com", "camdenharborcruises.com"), false);
+});
+
+test("the greeting name comes only from a mailbox that is that person's, by the site's own word", () => {
+  assert.equal(ownerFirstName("ron@capitolboatclub.com", ["Ron Baker (owner)"]), "Ron");
+  assert.equal(ownerFirstName("jeff.rogers@shop.com", ["Ann Lee (co-owner)", "Jeff Rogers (owner)"]), "Jeff");
+  assert.equal(ownerFirstName("info@shop.com", ["Jeff Rogers (owner)"]), null, "a desk has no first name");
+  assert.equal(ownerFirstName("jeffscharters@gmail.com", ["Jeff Rogers (owner)"]), null, "the business's mailbox, even with his name in it");
+  assert.equal(ownerFirstName("ann@shop.com", ["Jeff Rogers (owner)"]), null, "somebody else's name is never used");
+  assert.equal(ownerFirstName("ron@shop.com", ["the L. Caroline Underwood (owner)"]), null);
+  assert.equal(ownerFirstName("ronald@shop.com", ["Ron Baker (owner)"]), null, "a prefix is not a match");
+  assert.equal(ownerFirstName("capt.rayn@icloud.com", ["Capt Rayn (owner)"]), "Rayn", "a title is not a first name");
+  assert.equal(ownerFirstName("rayn@shop.com", ["Captain Rayn Cole (owner)"]), "Rayn");
+  assert.equal(ownerFirstName("capt@shop.com", ["Capt (owner)"]), null, "a bare title greets nobody");
 });

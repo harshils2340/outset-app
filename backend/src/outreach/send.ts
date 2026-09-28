@@ -155,7 +155,7 @@ export function listingQueue(limit: number, opts: { metro?: string; country?: st
          AND ${noRecentSendSql("listing")}
          -- 'handoff' (scripts/outreach-handoff.mts): exported for someone else to mail by hand, any kind, so
          -- neither campaign mails that address from here and the two pitches never land in the same week.
-         AND NOT EXISTS (SELECT 1 FROM outreach_drafts h WHERE h.to_email = d.to_email AND h.status = 'handoff')
+         AND NOT EXISTS (SELECT 1 FROM outreach_drafts h WHERE (h.to_email = d.to_email OR h.operator_id = d.operator_id) AND h.status IN ('handoff', 'replied'))
          -- Museums, theme parks, waterparks, aquariums and zoos are large, professionally-run institutions,
          -- not the small local operators this pitch is written for; category_id still missed real ones filed
          -- under an ordinary-looking category (the Gateway Arch under "cruise", the Museum of Flight under

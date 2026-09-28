@@ -38,8 +38,8 @@ test("an address nobody has mailed is free, and the window is a week", () => {
 test("the clause the send queries carry drops exactly the rows the rule drops", () => {
   const db = new DatabaseSync(":memory:");
   db.exec(`CREATE TABLE outreach_drafts (
-    id TEXT PRIMARY KEY, to_email TEXT, status TEXT NOT NULL, created_at TEXT NOT NULL, kind TEXT NOT NULL)`);
-  const ins = db.prepare("INSERT INTO outreach_drafts (id, to_email, status, created_at, kind) VALUES (?, ?, ?, ?, ?)");
+    id TEXT PRIMARY KEY, operator_id TEXT NOT NULL, to_email TEXT, status TEXT NOT NULL, created_at TEXT NOT NULL, kind TEXT NOT NULL)`);
+  const ins = db.prepare("INSERT INTO outreach_drafts (id, operator_id, to_email, status, created_at, kind) VALUES (?, ?, ?, ?, ?, ?)");
   // Five owners, each with a draft of both kinds waiting, and a different history behind them.
   const history: [string, string, string, string][] = [
     // email, kind already sent, when, status
@@ -51,8 +51,8 @@ test("the clause the send queries carry drops exactly the rows the rule drops", 
   ];
   let n = 0;
   for (const [email, kind, at, status] of history) {
-    if (status === "sent") ins.run("s" + n++, email, "sent", at, kind);
-    for (const k of ["listing", "otto"]) ins.run("d" + n++, email, "draft", "2026-09-25T09:00:00.000Z", k);
+    if (status === "sent") ins.run("s" + n++, "op-" + email, email, "sent", at, kind);
+    for (const k of ["listing", "otto"]) ins.run("d" + n++, "op-" + email, email, "draft", "2026-09-25T09:00:00.000Z", k);
   }
   const now = new Date("2026-09-25T12:00:00Z");
   for (const own of ["listing", "otto"] as const) {
@@ -78,6 +78,25 @@ test("the clause the send queries carry drops exactly the rows the rule drops", 
       .all(cooloffStart(now)) as { to_email: string }[]
   ).map((r) => r.to_email);
   assert.deepEqual(listingOffered.sort(), ["fresh@shop.com", "otto-10d@shop.com"]);
+});
+
+/**
+ * The address on a draft can change between runs (the front desk was mailed, then the owners crawl found the
+ * owner's own mailbox, owner.ts). The business is what must not be mailed twice, so a send to any address of
+ * the same operator counts.
+ */
+test("a business already mailed at one address is not mailed again at another", () => {
+  const db = new DatabaseSync(":memory:");
+  db.exec(`CREATE TABLE outreach_drafts (
+    id TEXT PRIMARY KEY, operator_id TEXT NOT NULL, to_email TEXT, status TEXT NOT NULL, created_at TEXT NOT NULL, kind TEXT NOT NULL)`);
+  const ins = db.prepare("INSERT INTO outreach_drafts (id, operator_id, to_email, status, created_at, kind) VALUES (?, ?, ?, ?, ?, ?)");
+  ins.run("s1", "op-1", "info@shop.com", "sent", "2026-09-24T12:00:00.000Z", "otto");
+  ins.run("d1", "op-1", "ron@shop.com", "draft", "2026-09-25T09:00:00.000Z", "otto");
+  ins.run("d2", "op-2", "ron@shop.com", "draft", "2026-09-25T09:00:00.000Z", "otto");
+  const rows = db
+    .prepare(`SELECT d.id FROM outreach_drafts d WHERE d.status = 'draft' AND ${noRecentSendSql("otto")} ORDER BY d.id`)
+    .all(cooloffStart(new Date("2026-09-25T12:00:00Z"))) as { id: string }[];
+  assert.deepEqual(rows.map((r) => r.id), ["d2"], "op-1 was mailed at info@ yesterday; ron@ is the same business");
 });
 
 /**

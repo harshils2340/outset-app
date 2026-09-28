@@ -44,10 +44,14 @@ export function maySend(
  * The clause both send queries carry, over a drafts row aliased `d`. One bound parameter, the cool-off start,
  * and it must be bound in the order the clause appears in the statement. Any kind counts against the window,
  * not just the two that exist today, so a third pitch is spaced from both without touching this again.
+ *
+ * A send matches by address or by operator. Since 25 September 2026 a draft goes to the owner's own mailbox
+ * when the owners crawl has found one (owner.ts), so the address on a business's draft can change after its
+ * front desk was mailed; the business, not the string, is what must not hear from us twice.
  */
 export function noRecentSendSql(ownKind: "listing" | "otto"): string {
   return (
-    `NOT EXISTS (SELECT 1 FROM outreach_drafts s WHERE s.to_email = d.to_email AND s.status = 'sent'` +
+    `NOT EXISTS (SELECT 1 FROM outreach_drafts s WHERE (s.to_email = d.to_email OR s.operator_id = d.operator_id) AND s.status = 'sent'` +
     ` AND (s.kind = '${ownKind}' OR s.created_at >= ?))`
   );
 }

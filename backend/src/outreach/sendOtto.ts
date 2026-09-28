@@ -1,6 +1,5 @@
 import { db, nowIso } from "../db/client.ts";
-import { sendMail } from "../lib/mail.ts";
-import { instantOf, todayIn } from "../lib/zone.ts";
+import { sendMail, smtpIdentities } from "../lib/mail.ts";
 import { draftOttoCopy, type OttoOp } from "./ottoDrafts.ts";
 import { catalogId } from "./drafts.ts";
 import { recordSend } from "../lib/outreachLog.ts";
@@ -8,6 +7,10 @@ import { emailHash, loadSuppression, mailPostal, unsubPageUrl } from "../lib/uns
 import { outreachBlockers, skipMark, UNREADABLE_ADDRESS, type SkipReason } from "./guards.ts";
 import { isDeliverable } from "./deliverable.ts";
 import { cooloffStart, noRecentSendSql } from "./spacing.ts";
+import { recordTouch, touched } from "./touches.ts";
+import { MAILBOX_ERROR, NETWORK_ERROR, dayStartIso, pickIdentity } from "./mailboxes.ts";
+
+export { MAILBOX_ERROR, NETWORK_ERROR, dayStartIso, pickIdentity } from "./mailboxes.ts";
 
 /**
  * Sends the drafted Otto (AI phone line) pitch. Mirrors send.ts's sendOutreach exactly, scoped to
@@ -17,12 +20,22 @@ import { cooloffStart, noRecentSendSql } from "./spacing.ts";
  * campaigns, before adding their own volume: the failure mode that matters is not "one campaign looks spammy
  * to a recipient", it is the one shared sending account getting rate-limited or suspended by Gmail.
  */
+// Which mailbox a row went from, so each mailbox's daily count and warm-up are its own. Ensured here rather
+// than only in migrate(), which the ramp scripts never call.
+try {
+  db.exec("ALTER TABLE outreach_drafts ADD COLUMN sent_via TEXT");
+} catch {
+  /* already there */
+}
+
 export async function sendOttoOutreach(opts: {
   limit: number;
   dry: boolean;
   to?: string;
-}): Promise<{ sent: number; skipped: number; failed: number }> {
-  const out = { sent: 0, skipped: 0, failed: 0 };
+  /** Sends allowed today per sending mailbox (address -> count), from otto-ramp.mts. Unset: the first mailbox alone, up to `limit`. */
+  quota?: Record<string, number>;
+}): Promise<{ sent: number; skipped: number; failed: number; retired: { mailbox: string; error: string }[] }> {
+  const out = { sent: 0, skipped: 0, failed: 0, retired: [] as { mailbox: string; error: string }[] };
   const suppression = await loadSuppression();
   const blocked = suppression.hashes;
   const blockers = outreachBlockers({
@@ -64,9 +77,20 @@ export async function sendOttoOutreach(opts: {
   }
   if (!opts.dry && blockers.length) return out;
   const rows = ottoQueue(opts.limit);
+  // What every other sender has already done (touches.ts): a business the cloud run mailed this morning, or a
+  // friend was handed, is not in this disk's table, so it is asked for here and marked as handed off locally.
+  const elsewhere = await touched().catch((e) => {
+    console.error("shared outreach record unavailable, relying on this disk alone: " + (e as Error).message);
+    return { operators: new Set<string>(), emails: new Set<string>() };
+  });
   const seen = new Set<string>();
   for (const r of rows) {
     const to = r.to_email.trim().toLowerCase();
+    if (elsewhere.operators.has(r.opid) || elsewhere.emails.has(to)) {
+      if (!opts.dry) db.prepare("UPDATE outreach_drafts SET status = 'handoff' WHERE id = ?").run(r.id);
+      out.skipped++;
+      continue;
+    }
     // Same rule as the listing send, from the same place: a dry run leaves the queue as it found it.
     const mark = (reason: SkipReason) => {
       const status = skipMark(reason, opts.dry);
@@ -91,47 +115,65 @@ export async function sendOttoOutreach(opts: {
       out.sent++;
       continue;
     }
-    const res = await sendMail({ to, subject: copy.subject, text: copy.body, html: copy.html, replyTo: process.env.MAIL_REPLY_TO || undefined, commercial: true });
+    let via: string | undefined;
+    if (opts.quota) {
+      via = pickIdentity(opts.quota) ?? undefined;
+      if (!via) {
+        console.log("every mailbox has used its allowance for today");
+        break;
+      }
+    }
+    let res = await sendMail({ to, subject: copy.subject, text: copy.body, html: copy.html, replyTo: process.env.MAIL_REPLY_TO || undefined, commercial: true, via });
+    for (let tries = 1; !res.sent && NETWORK_ERROR.test(res.error || "") && tries <= 3; tries++) {
+      console.error((via || "mailbox") + ": network error, waiting 60 seconds and trying again (" + tries + " of 3): " + res.error);
+      await new Promise((x) => setTimeout(x, 60_000));
+      res = await sendMail({ to, subject: copy.subject, text: copy.body, html: copy.html, replyTo: process.env.MAIL_REPLY_TO || undefined, commercial: true, via });
+    }
     if (res.sent) {
       const at = nowIso();
-      db.prepare("UPDATE outreach_drafts SET status = 'sent', subject = ?, body = ?, created_at = ? WHERE id = ?").run(copy.subject, copy.body, at, r.id);
+      db.prepare("UPDATE outreach_drafts SET status = 'sent', subject = ?, body = ?, created_at = ?, sent_via = ? WHERE id = ?").run(copy.subject, copy.body, at, res.via ?? via ?? smtpIdentities()[0]?.user ?? null, r.id);
       await recordSend({ email: to, listing: catalogId(r.domain), at });
+      await recordTouch({ operatorId: r.opid, email: to, status: "sent", mailbox: res.via ?? via ?? smtpIdentities()[0]?.user ?? null, at }).catch((e) => console.error("shared record: " + (e as Error).message));
       out.sent++;
+      if (opts.quota && via) opts.quota[via] -= 1;
+    } else if (opts.quota && via && MAILBOX_ERROR.test(res.error || "")) {
+      // The mailbox failed, not the address: retire it for this run and leave the draft for the next mailbox.
+      console.error(via + " retired for this run: " + res.error);
+      opts.quota[via] = 0;
+      out.retired.push({ mailbox: via, error: res.error || "" });
+      continue;
     } else {
       db.prepare("UPDATE outreach_drafts SET status = 'failed' WHERE id = ?").run(r.id);
+      await recordTouch({ operatorId: r.opid, email: to, status: "failed" }).catch(() => undefined);
       out.failed++;
       console.error(to + ": " + res.error);
       if (/no mail key/.test(res.error || "")) break;
     }
-    // Same pacing as the listing send: 90 to 300 seconds, randomized, one real mailbox sending like a person.
-    await new Promise((x) => setTimeout(x, 90_000 + Math.random() * 210_000));
+    // Same pacing as the listing send: 90 to 300 seconds between one mailbox's sends, randomized, so each
+    // mailbox sends like a person. With several mailboxes taking turns the gap is shared between them, so each
+    // still waits its full turn while the batch as a whole finishes in the day (150 mails at a full gap each
+    // would run eight hours; three mailboxes interleaved, under three).
+    const active = opts.quota ? Object.values(opts.quota).filter((n) => n > 0).length || 1 : 1;
+    await new Promise((x) => setTimeout(x, (90_000 + Math.random() * 210_000) / active));
   }
   return out;
 }
 
-/**
- * The instant the campaign's day began, as the UTC ISO string `created_at` is stored in. The day is the
- * campaign's own (PIPELINE_TZ, Toronto by default), not UTC: counted by UTC the day rolled over at 8 PM
- * Toronto time, so an evening run saw a fresh ceiling and could add a whole second batch to a day that had
- * already had one.
- *
- * Read through `zone.ts`, which the shop clocks already use, rather than by subtracting the offset this
- * instant happens to have: on the two days a year the offset changes, midnight is not that many hours back.
- * Measured against every day of 2026, the offset arithmetic put the boundary an hour out on 8 March and on
- * 1 November, and the November hour is the one that costs something: sends made in Toronto's first hour fell
- * outside the count, so `sentToday` read low and the ramp could add that many over the ceiling.
- */
-export function dayStartIso(tz = process.env.PIPELINE_TZ || "America/Toronto", now = new Date()): string {
-  return new Date(instantOf(todayIn(tz, now), "00:00", tz)).toISOString();
-}
 
 /** How many commercial emails (either campaign) this Gmail identity has already sent today, on the campaign's
  * own clock. Both ramp scripts read this before adding their own volume, so the combined total from one
  * mailbox stays under the safe ceiling even though the two campaigns run independently. */
-export function sentToday(): number {
+export function sentToday(via?: string, firstMailbox?: string): number {
+  if (!via) {
+    const row = db
+      .prepare("SELECT COUNT(*) AS n FROM outreach_drafts WHERE status = 'sent' AND created_at >= ?")
+      .get(dayStartIso()) as { n: number };
+    return row.n;
+  }
+  // Rows sent before the mailbox was recorded carry no sent_via; they all went from the first mailbox.
   const row = db
-    .prepare("SELECT COUNT(*) AS n FROM outreach_drafts WHERE status = 'sent' AND created_at >= ?")
-    .get(dayStartIso()) as { n: number };
+    .prepare("SELECT COUNT(*) AS n FROM outreach_drafts WHERE status = 'sent' AND created_at >= ? AND (sent_via = ? OR (sent_via IS NULL AND ?))")
+    .get(dayStartIso(), via, via === firstMailbox ? 1 : 0) as { n: number };
   return row.n;
 }
 
@@ -149,7 +191,7 @@ export function ottoQueue(limit: number): (OttoOp & { id: string; opid: string; 
          AND ${noRecentSendSql("otto")}
          -- 'handoff' (scripts/outreach-handoff.mts): exported for someone else to mail by hand, any kind, so
          -- neither campaign mails that address from here and the two pitches never land in the same week.
-         AND NOT EXISTS (SELECT 1 FROM outreach_drafts h WHERE h.to_email = d.to_email AND h.status = 'handoff')
+         AND NOT EXISTS (SELECT 1 FROM outreach_drafts h WHERE (h.to_email = d.to_email OR h.operator_id = d.operator_id) AND h.status IN ('handoff', 'replied'))
        ORDER BY o.completeness DESC NULLS LAST LIMIT ?`;
   // The cool-off start is the first bound parameter, in the order the clauses appear in the statement.
   return db.prepare(sql).all(cooloffStart(), limit) as (OttoOp & { id: string; opid: string; to_email: string; website: string | null })[];

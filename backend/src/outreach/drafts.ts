@@ -6,7 +6,7 @@ import { VENDORS } from "../enrich/vendors.ts";
 import { db, nowIso } from "../db/client.ts";
 import { mailPostal, unsubPageUrl } from "../lib/unsub.ts";
 import { tidyHours } from "../sync/contacts.ts";
-import { outreachAddress } from "./address.ts";
+import { bestAddress, greeting } from "./owner.ts";
 
 /**
  * Harshil's own booking page, given by him on 25 September 2026 with the overlay parameter included: cal.com
@@ -140,6 +140,8 @@ function readPublishedCount(): string {
 export function draftCopy(op: Op, sc: ReturnType<typeof scale>, f: PageFacts, email?: string): { subject: string; body: string; html: string } {
   void sc;
   const to = (email || "").trim().toLowerCase();
+  // "Hi Ron," only when the mailbox is Ron's by the site's own word (owner.ts); "Hi," otherwise.
+  const hi = to ? greeting(op, to) : "Hi,";
   const SITE = "https://onoutset.com/";
   const TERMS = SITE + "terms.html";
   const PRIVACY = SITE + "privacy.html";
@@ -168,7 +170,7 @@ export function draftCopy(op: Op, sc: ReturnType<typeof scale>, f: PageFacts, em
   const chatLink = "I'd love to chat";
   const removeLine = "Already have a page on Outset you didn't ask for, or just don't want to be found here at all? This takes it down instantly:";
   const lines = [
-    "Hi,", "", who, browse, "",
+    hi, "", who, browse, "",
     offer, vendor ? vendor : null, "",
     trySample, demoUrl, "",
     scaleLine, cta, "",
@@ -177,7 +179,7 @@ export function draftCopy(op: Op, sc: ReturnType<typeof scale>, f: PageFacts, em
     "Best,", "Harshil",
   ].filter((l) => l !== null) as string[];
   const paras = [
-    "<p>Hi,</p>",
+    "<p>" + esc(hi) + "</p>",
     "<p>" + esc(who) + "<br>" + link(SITE, "Take a look") + "</p>",
     "<p>" + esc(offer) + (vendor ? " " + esc(vendor) : "") + "</p>",
     "<p>" + esc(trySample) + "<br>" + link(demoUrl, "See a sample listing") + "</p>",
@@ -273,7 +275,7 @@ export function composeOutreach(op: Op, email: string): { subject: string; body:
 
 export function generateOutreachDrafts(): number {
   // Only operators we could actually email. Keeps the write transaction to seconds while crawls share the database.
-  const ops = (db.prepare("SELECT * FROM operators WHERE origin NOT IN ('demo', 'test') AND claim_status = 'unclaimed' AND email LIKE '%@%'").all() as Op[]).filter((op) => outreachAddress(op));
+  const ops = (db.prepare("SELECT * FROM operators WHERE origin NOT IN ('demo', 'test') AND claim_status = 'unclaimed' AND email LIKE '%@%'").all() as Op[]).filter((op) => bestAddress(op));
   const sc = scale();
   let n = 0;
   db.exec("PRAGMA busy_timeout = 120000");
@@ -284,7 +286,7 @@ export function generateOutreachDrafts(): number {
   // One transaction: the write lock is held for seconds, not minutes, while crawls share the database.
   db.exec("BEGIN IMMEDIATE");
   for (const op of ops) {
-    const to = outreachAddress(op);
+    const to = bestAddress(op);
     if (!to) continue;
     const { subject, body } = draftCopy(op, sc, pageFacts(op.id), to);
     ins.run(randomUUID(), op.id, to, subject, body, nowIso());

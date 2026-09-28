@@ -31,6 +31,7 @@ export function migrate(): void {
     (db.prepare("PRAGMA table_info(outreach_drafts)").all() as { name: string }[]).map((c) => c.name),
   );
   if (!draftCols.has("kind")) db.exec("ALTER TABLE outreach_drafts ADD COLUMN kind TEXT NOT NULL DEFAULT 'listing'");
+  if (!draftCols.has("sent_via")) db.exec("ALTER TABLE outreach_drafts ADD COLUMN sent_via TEXT");
 }
 
 export function nowIso(): string {

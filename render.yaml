@@ -237,6 +237,64 @@ services:
 
   # The free API service sleeps after fifteen idle minutes and takes half a minute to wake, which a guest tapping
   # Book would feel. A health ping every twelve minutes keeps it up. Same call the old keep-warm workflow made.
+  # The Otto outreach send, from the cloud, every day at 9:30 Toronto time (13:30 UTC in summer, 8:30 in winter
+  # once the clocks change; the hour matters less than the day). Nothing on a disk: candidates, history and the
+  # warm-up state live in Postgres (backend/src/outreach/touches.ts), published from the laptop by
+  # scripts/outreach-pool-sync.mts. Until 28 September 2026 this ran from the laptop's launchd and a laptop
+  # that woke without Wi-Fi was a day with no mail. Every mailbox it sends from needs its app password here
+  # (MAIL_SMTP_USER / _PASS, then _2 and up, see backend/.env.example); the guards in guards.ts refuse to send
+  # until CLAIM_SECRET, MAIL_FROM, MAIL_POSTAL and the suppression list are all real here.
+  - type: cron
+    name: outset-otto
+    runtime: node
+    rootDir: backend
+    schedule: "30 13 * * *"
+    buildCommand: npm ci --include=dev
+    startCommand: npx tsx scripts/otto-cloud.mts
+    envVars:
+      - key: NODE_VERSION
+        value: 22
+      - key: NPM_CONFIG_PRODUCTION
+        value: "false"
+      - key: PIPELINE_TZ
+        value: America/Toronto
+      - key: OUTREACH_PER_MAILBOX
+        value: "35"
+      - key: MAIL_FROM
+        value: Harshil <hello@onoutset.com>
+      - key: MAIL_REPLY_TO
+        value: hello@onoutset.com
+      - key: SITE_URL
+        value: https://onoutset.com/
+      - key: API_URL
+        value: https://outset-api.onrender.com
+      - key: DATABASE_URL
+        sync: false
+      - key: CLAIM_SECRET
+        sync: false
+      - key: MAIL_POSTAL
+        sync: false
+      - key: MAIL_SMTP_USER
+        sync: false
+      - key: MAIL_SMTP_PASS
+        sync: false
+      - key: MAIL_SMTP_USER_2
+        sync: false
+      - key: MAIL_SMTP_PASS_2
+        sync: false
+      - key: MAIL_SMTP_USER_3
+        sync: false
+      - key: MAIL_SMTP_PASS_3
+        sync: false
+      - key: MAIL_SMTP_USER_5
+        sync: false
+      - key: MAIL_SMTP_PASS_5
+        sync: false
+      - key: GITHUB_TOKEN
+        sync: false
+      - key: GITHUB_REPO
+        value: harshils2340/outset-app
+
   - type: cron
     name: outset-keep-warm
     runtime: node

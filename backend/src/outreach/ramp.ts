@@ -31,11 +31,15 @@ export function rungFor(s: RampState, ramp: number[]): { day: number; limit: num
   return { day, limit: ramp[Math.min(day, ramp.length) - 1] };
 }
 
-/** The state to save after a run. `sent` is how many emails actually went out, which may be none. */
-export function recordRun(s: RampState, today: string, sent: number): RampState {
+/**
+ * The state to save after a run. `sent` is how many emails actually went out, which may be none. Anything
+ * else the state carries (the Otto ramp keeps one of these per sending mailbox under `mailboxes`) is kept.
+ */
+export function recordRun<S extends RampState>(s: S, today: string, sent: number): S {
   const sentDays = sendingDays(s).slice();
   if (sent > 0 && !sentDays.includes(today)) sentDays.push(today);
   return {
+    ...s,
     firstDay: s.firstDay || today,
     ranDays: s.ranDays.includes(today) ? s.ranDays : [...s.ranDays, today],
     sentDays,

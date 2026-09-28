@@ -60,10 +60,11 @@ function vendorLine(id: string | null): string {
  * is not part of what he approved or edited; it stays because backend/src/outreach/AGENTS.md requires it on
  * every send regardless of what the persuasive copy says.
  */
-export function draftOttoCopy(op: OttoOp, email?: string): { subject: string; body: string; html: string } {
+export function draftOttoCopy(op: OttoOp, email?: string, opts?: { greet?: string | null }): { subject: string; body: string; html: string } {
   const to = (email || "").trim().toLowerCase();
-  // "Hi Ron," only when the mailbox is Ron's by the site's own word (owner.ts); "Hi," otherwise.
-  const hi = to ? greeting(op, to) : "Hi,";
+  // "Hi Ron," only when the mailbox is Ron's by the site's own word (owner.ts); "Hi," otherwise. A caller with
+  // no catalog at hand (the cloud sender, from the published pool) passes the name it was given, or null.
+  const hi = opts && "greet" in opts ? (opts.greet ? "Hi " + opts.greet + "," : "Hi,") : to ? greeting(op, to) : "Hi,";
   const SITE = "https://onoutset.com/";
   const OTTO = SITE + "otto";
   const CAL = CALL_LINK;

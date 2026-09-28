@@ -121,19 +121,35 @@ export async function ownersForOperator(op: { id: string; domain: string; websit
   return found.slice(0, 8);
 }
 
-export function pendingOwners(limit: number): { id: string; domain: string; website: string }[] {
+/**
+ * `ottoFirst` puts the Otto outreach pool (unclaimed water operators with a phone and an email) ahead, in the
+ * order the Otto ramp will mail them, so the owners looked up next are the ones about to be written to
+ * (Harshil, 25 September 2026: write to the owner, not booking@, whenever the site names one).
+ */
+export function pendingOwners(limit: number, ottoFirst = false): { id: string; domain: string; website: string }[] {
+  const OTTO_POOL = "(o.family = 'water' AND o.claim_status = 'unclaimed' AND o.email LIKE '%@%' AND o.phone IS NOT NULL AND o.phone != '')";
+  const order = ottoFirst
+    ? `ORDER BY ${OTTO_POOL} DESC, o.completeness DESC NULLS LAST, review_count DESC NULLS LAST`
+    : "ORDER BY review_count DESC NULLS LAST";
+  // The structure crawl is the usual proof a site answers, but two thirds of the Otto pool (9,262 of 13,880 on
+  // 26 September 2026) have never had it, which left this crawl with nothing from the pool to do. For the
+  // pool the site's own contact pages are the point, so the proof is waived and this crawl finds out itself;
+  // a site that does not answer is marked like any other failure and not asked again.
+  const reachable = ottoFirst
+    ? `AND (EXISTS (SELECT 1 FROM sources s WHERE s.operator_id = o.id AND s.extractor = 'site-structure' AND s.http_status = 200) OR ${OTTO_POOL})`
+    : "AND EXISTS (SELECT 1 FROM sources s WHERE s.operator_id = o.id AND s.extractor = 'site-structure' AND s.http_status = 200)";
   return db
     .prepare(
       `SELECT id, domain, website FROM operators o WHERE origin != 'demo' AND website IS NOT NULL
          AND NOT EXISTS (SELECT 1 FROM sources s WHERE s.operator_id = o.id AND s.extractor = 'owners')
-         AND EXISTS (SELECT 1 FROM sources s WHERE s.operator_id = o.id AND s.extractor = 'site-structure' AND s.http_status = 200)
-       ORDER BY review_count DESC NULLS LAST LIMIT ?`,
+         ${reachable}
+       ${order} LIMIT ?`,
     )
     .all(limit) as { id: string; domain: string; website: string }[];
 }
 
-export async function ownersPending(limit: number, concurrency = 12): Promise<{ sites: number; withOwner: number; names: number; emails: number; phones: number }> {
-  const queue = pendingOwners(limit);
+export async function ownersPending(limit: number, concurrency = 12, ottoFirst = false): Promise<{ sites: number; withOwner: number; names: number; emails: number; phones: number }> {
+  const queue = pendingOwners(limit, ottoFirst);
   const out = { sites: 0, withOwner: 0, names: 0, emails: 0, phones: 0 };
   const ins = db.prepare("INSERT INTO facts (id, operator_id, fact_key, fact_value, source_url, confidence) VALUES (?, ?, ?, ?, ?, 'site')");
   const mark = db.prepare("INSERT INTO sources (id, operator_id, url, fetched_at, http_status, extractor, robots_allowed, note) VALUES (?, ?, ?, ?, 200, 'owners', 1, ?)");

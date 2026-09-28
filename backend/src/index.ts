@@ -422,7 +422,8 @@ if (cmd === "owners") {
   const limit = Number(process.argv[3] || 5000);
   const concurrency = Number(process.argv[4] || 12);
   guardLaptopJob({ name: "owners", limit, concurrency });
-  const r = await ownersPending(limit, concurrency);
+  // --otto-first: the Otto outreach queue ahead of everything, in send order (see pendingOwners).
+  const r = await ownersPending(limit, concurrency, process.argv.includes("--otto-first"));
   console.log("Owners: " + JSON.stringify(r));
   process.exit(0);
 }

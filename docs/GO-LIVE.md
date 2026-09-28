@@ -86,6 +86,30 @@ On `/operators`, an owner searches their business, enters their name, work email
 - Returning operator → "Email me a sign-in code" → 6-digit code → dashboard; wrong code rejected; session survives reload (tested).
 - Security: HMAC-signed sessions, timing-safe token checks, rate limits per IP and route, CORS limited to the site origin, input validation on every route, no secrets in the repo.
 
+## 4b. Otto outreach from the cloud (Render cron `outset-otto`)
+
+Since 28 September 2026 the daily Otto send runs as the Render cron `outset-otto` (`render.yaml`), not from
+the laptop. It keeps nothing on a disk: the candidates (`outreach_pool`), every touch on a business
+(`outreach_sends`: sent, failed, handoff, replied, bounce) and the warm-up state (`outreach_ramp`) live in
+the API's Postgres (`backend/src/outreach/touches.ts`). The laptop publishes the pool and its own history
+with `npx tsx scripts/outreach-pool-sync.mts`, which `backend/scripts/outreach-daily.sh` runs every morning
+in place of the send once `OUTREACH_CLOUD=1` is in `backend/.env`.
+
+1. **Approve the cron.** Render → Blueprints → `outset-app` → Sync, approve `outset-otto`. It is a cron, no
+   disk, billed only for its minutes (about a dollar a month at the current volume).
+2. **Paste the env vars** it lists as `sync: false`: `DATABASE_URL` (the API's), `CLAIM_SECRET`,
+   `MAIL_POSTAL`, `GITHUB_TOKEN`, and every sending mailbox as `MAIL_SMTP_USER` / `MAIL_SMTP_PASS`,
+   `_2`, `_3`, `_5` (the Gmail app passwords from `backend/.env`). A mailbox without a password is not a
+   sender; a mailbox added later starts at the bottom of the warm-up ramp on the day it first appears.
+3. **Switch the laptop to publish-only**: `OUTREACH_CLOUD=1` in `backend/.env`. From then on the laptop's
+   9:30 job publishes the pool and sweeps bounces; the cloud sends. Two senders never overlap: every send,
+   wherever it happens, lands in `outreach_sends` and every sender reads it first.
+4. **Check it**: the cron's log shows the per-mailbox plan, each send, bounces suppressed and the day's
+   total. From the laptop, `npx tsx scripts/otto-cloud.mts --dry` prints the same plan against the same
+   tables without sending.
+
+The listing-claim campaign stays paused (Harshil, 25 September 2026: Otto only).
+
 ## 5. Pipeline in the cloud (Render background worker)
 
 The crawls, cover screen, batch collection and the nightly catalog sync run on Render, not on the Mac. `render.yaml` defines a second service, `outset-pipeline` (type worker, starter plan, 5 GB disk at `/var/data`). The build installs Node deps and Chromium (`playwright` devDependency, `npx playwright install chromium`); the worker then clones the repo onto its disk (`/var/data/repo`), pulls before every job, and runs each job from that clone so the code is always current and the catalog outputs are committed from a real checkout.

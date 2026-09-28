@@ -32,6 +32,19 @@ log="data/logs/outreach-$(date +%Y-%m-%d).log"
   # whole daily ceiling. To resume both, put the two lines back and lower RAMP in otto-ramp.mts to a share.
   # echo "== $(date) listing ramp"
   # npx tsx scripts/outreach-ramp.mts
+  # Yesterday's bounces out of the queue before today's batch: a dead address is suppressed everywhere and never
+  # counted as reached (scripts/bounces.mts reads each sending mailbox's delivery failures over IMAP).
+  echo "== $(date) bounces"
+  npx tsx scripts/bounces.mts --days=3
+  # With OUTREACH_CLOUD=1 in .env the cloud run (render.yaml outset-otto, scripts/otto-cloud.mts) does the
+  # sending, and this laptop only publishes the pool and its history to Postgres so the cloud has today's
+  # candidates and never repeats a send from here. Without it, the ramp below sends from this laptop.
+  if grep -q '^OUTREACH_CLOUD=1' .env 2>/dev/null; then
+    echo "== $(date) pool sync (cloud sends)"
+    npx tsx scripts/outreach-pool-sync.mts
+    echo "== $(date) done"
+    exit 0
+  fi
   echo "== $(date) otto ramp"
   npx tsx scripts/otto-ramp.mts
   echo "== $(date) done"

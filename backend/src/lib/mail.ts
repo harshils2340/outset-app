@@ -1,4 +1,5 @@
 import nodemailer from "nodemailer";
+import { setDefaultResultOrder } from "node:dns";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { maskEmail } from "./claimIndex.ts";
@@ -9,10 +10,41 @@ import { maskEmail } from "./claimIndex.ts";
  * so it looks like a person writing, not a brand blast. Gmail still picks the tab.
  * Unsubscribe stays in the body. Bulk List-Unsubscribe headers are what Gmail files as Promotions.
  */
+// Gmail's SMTP host resolves to IPv6 first, and on a network with no IPv6 route the connect fails outright
+// ("connect EHOSTUNREACH 2607:f8b0:...:587", 26 September 2026) instead of falling back. Prefer IPv4.
+setDefaultResultOrder("ipv4first");
+
 const RESEND_FROM = process.env.MAIL_FROM || "Harshil <hello@onoutset.com>";
 const SMTP_USER = (process.env.MAIL_SMTP_USER || "").trim();
 const SMTP_PASS = (process.env.MAIL_SMTP_PASS || "").trim();
 const SMTP_FROM = process.env.MAIL_SMTP_FROM || (SMTP_USER ? "Harshil <" + SMTP_USER + ">" : "");
+
+export type SmtpIdentity = { user: string; pass: string; from: string; host: string; port: number };
+
+/**
+ * Every mailbox cold mail may go from. MAIL_SMTP_USER / MAIL_SMTP_PASS is the first; MAIL_SMTP_USER_2 /
+ * MAIL_SMTP_PASS_2 up to _9 add more (Harshil's other accounts, 26 September 2026), each sending as
+ * "Harshil <that address>". Gmail on 587 unless MAIL_SMTP_HOST_n / MAIL_SMTP_PORT_n say otherwise, so a
+ * mailbox on another provider (a university's mailservices host, say) sits beside the Gmail ones. One
+ * personal mailbox is good for about 50 cold mails a day, so the way past 50 is more mailboxes, each warmed
+ * and capped on its own (otto-ramp.mts), never one mailbox pushed harder.
+ */
+export function smtpIdentities(env: Record<string, string | undefined> = process.env): SmtpIdentity[] {
+  const out: SmtpIdentity[] = [];
+  const u1 = (env.MAIL_SMTP_USER || "").trim();
+  const p1 = (env.MAIL_SMTP_PASS || "").trim();
+  if (u1 && p1) {
+    out.push({ user: u1, pass: p1, from: env.MAIL_SMTP_FROM || "Harshil <" + u1 + ">", host: (env.MAIL_SMTP_HOST || "smtp.gmail.com").trim(), port: Number(env.MAIL_SMTP_PORT || 587) });
+  }
+  for (let i = 2; i <= 9; i++) {
+    const u = (env["MAIL_SMTP_USER_" + i] || "").trim();
+    const p = (env["MAIL_SMTP_PASS_" + i] || "").trim();
+    if (u && p && !out.some((o) => o.user === u)) {
+      out.push({ user: u, pass: p, from: "Harshil <" + u + ">", host: (env["MAIL_SMTP_HOST_" + i] || "smtp.gmail.com").trim(), port: Number(env["MAIL_SMTP_PORT_" + i] || 587) });
+    }
+  }
+  return out;
+}
 
 /**
  * A raw newline in a header value is how header injection works: an extra Bcc or Cc line, a spoofed From, a
@@ -37,7 +69,9 @@ export async function sendMail(msg: {
   commercial?: boolean;
   /** Files to attach (a CSV export to the founder, for instance). Never used on guest or operator mail. */
   attachments?: MailAttachment[];
-}): Promise<{ sent: boolean; id?: string; error?: string }> {
+  /** Which sending mailbox (its address) a commercial mail goes from; the first configured one when unset. */
+  via?: string;
+}): Promise<{ sent: boolean; id?: string; error?: string; via?: string }> {
   const to = sanitizeHeaderText(msg.to);
   if (!BARE_EMAIL.test(to)) return { sent: false, error: "bad address" };
   // A malformed reply-to (an injection attempt, a guest's typo) is worth losing, not worth losing the whole
@@ -45,7 +79,12 @@ export async function sendMail(msg: {
   const replyToRaw = msg.replyTo ? sanitizeHeaderText(msg.replyTo) : undefined;
   const replyTo = replyToRaw && BARE_EMAIL.test(replyToRaw) ? replyToRaw : undefined;
   const clean = { ...msg, subject: sanitizeHeaderText(msg.subject).slice(0, 300), replyTo };
-  if (msg.commercial && SMTP_USER && SMTP_PASS) return sendSmtp(to, clean);
+  if (msg.commercial) {
+    const ids = smtpIdentities();
+    const id = msg.via ? ids.find((i) => i.user === msg.via) : ids[0];
+    if (msg.via && !id) return { sent: false, error: "no such sending mailbox: " + msg.via };
+    if (id) return sendSmtp(to, clean, id);
+  }
   return sendResend(to, clean);
 }
 
@@ -54,16 +93,44 @@ export type MailAttachment = { filename: string; content: Buffer | string; conte
 async function sendSmtp(
   to: string,
   msg: { subject: string; text: string; html?: string; replyTo?: string; attachments?: MailAttachment[] },
-): Promise<{ sent: boolean; id?: string; error?: string }> {
+  id: SmtpIdentity = smtpIdentities()[0],
+): Promise<{ sent: boolean; id?: string; error?: string; via?: string }> {
+  if (!id) return { sent: false, error: "no sending mailbox configured" };
+  // The mailbox's own port first, and on a network that cannot reach it (a timeout or no route, not a refusal
+  // from the server) once more on 465, which some networks and VPNs leave open when they block 587.
+  const port = id.port;
   try {
+    return await smtpOnce(to, msg, id, port, port === 465);
+  } catch (e) {
+    const err = (e as Error).message;
+    if (port === 587 && /ETIMEDOUT|EHOSTUNREACH|ENETUNREACH|ECONNREFUSED|ECONNRESET/.test(err)) {
+      try {
+        return await smtpOnce(to, msg, id, 465, true);
+      } catch (e2) {
+        return { sent: false, error: err + "; on 465: " + (e2 as Error).message, via: id.user };
+      }
+    }
+    return { sent: false, error: err, via: id.user };
+  }
+}
+
+async function smtpOnce(
+  to: string,
+  msg: { subject: string; text: string; html?: string; replyTo?: string; attachments?: MailAttachment[] },
+  id: SmtpIdentity,
+  port: number,
+  secure: boolean,
+): Promise<{ sent: boolean; id?: string; error?: string; via?: string }> {
+  {
     const transport = nodemailer.createTransport({
-      host: process.env.MAIL_SMTP_HOST || "smtp.gmail.com",
-      port: Number(process.env.MAIL_SMTP_PORT || 587),
-      secure: false,
-      auth: { user: SMTP_USER, pass: SMTP_PASS },
+      host: id.host,
+      port,
+      secure,
+      connectionTimeout: 20_000,
+      auth: { user: id.user, pass: id.pass },
     });
     const info = await transport.sendMail({
-      from: SMTP_FROM || SMTP_USER,
+      from: id.from || id.user,
       to,
       subject: msg.subject,
       text: msg.text,
@@ -71,9 +138,7 @@ async function sendSmtp(
       ...(msg.attachments?.length ? { attachments: msg.attachments } : {}),
       replyTo: msg.replyTo || process.env.MAIL_REPLY_TO || "hello@onoutset.com",
     });
-    return { sent: true, id: String(info.messageId || "smtp") };
-  } catch (e) {
-    return { sent: false, error: (e as Error).message };
+    return { sent: true, id: String(info.messageId || "smtp"), via: id.user };
   }
 }
 
