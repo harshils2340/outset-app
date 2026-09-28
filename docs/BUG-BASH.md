@@ -6175,6 +6175,75 @@ side and no Postgres cluster.
   desktop site still has no way to say anything in passing, `plainWords` is still not idempotent, and the 1,210
   dropped address lines still wait on a sync.
 
+## 28 September 2026, ninety-third run (06:34 to 07:50 UTC)
+
+**Chosen, and why.** Nothing but last night's log commit since that entry, and it reports the rehearsal green, so
+the rehearsal was skipped at the start and run once at the end, because this run changed `src/lib` and
+`backend/src`. Every area on tonight's brief is on the Verified list. The hunt started from the one defect the
+last run left on Needs Harshil, a day off glued inside one word, and counting that shape over the catalog turned
+up a bigger one beside it: a shop can state a day off in perfectly ordinary English on a line that also states
+hours, and the word counted for nothing.
+
+**Found and fixed.**
+
+- **A day a shop says it is shut stood open** (`edeff027`). 111 lines on 106 listings write a day off and a
+  clock on one line, and `closed` was read as a fact about the line rather than about a day, so it was ignored
+  the moment a span turned up: a brewery's "Mon Closed Tue 12pm-7pm Wed 12pm-7pm" opened on Monday, a paintball
+  field's "Mon - Fri: Closed Saturday: 10am - 5pm" opened every weekday, an axe range, 30 museums and a kayak
+  shop's "Open daily 10AM-7:30PM, closed Wednesdays" the same, so each stood in "Open right now near you" and
+  offered start times on the day nobody is there. Which days the word is about is what the shop's own
+  punctuation says: the days in front of it where the line marks one (":", "-", "is", "and Holidays") or names
+  none behind it, the days behind it where a bracketed aside or an opening word puts them there, and the shorter
+  side where both name days and between them they name the week. A clock right behind the word is an hour the
+  shop shuts for, not a day, so Page Lake Powell keeps its mornings. 83 weeks change, every one read by hand.
+- **A day the crawl glued to a heading or a clock was no day at all** (`d2232fef`). 250 listings publish an hour
+  line with a day name glued to the word in front of it or the clock behind it, and only a range's closing day
+  was ever read through it. For 63 the line named no day, which a week reads as every day of it: a tank museum's
+  "Public Visiting Hours Friday10AM - 4:30PM" and a dance studio's "Monday6:00PM-9:00PM Tuesday6:00PM-9:00PM"
+  were open all week, a physio's "DayHoursMonday - Saturday9 am - 8 pm" lost the range it states, and twelve
+  shops hid a day off inside one word ("MondayClosedTuesdayClosedWednesday11:00 am - 4:00 pm"). Every seam
+  opened is a shape no shop writes on purpose, so a salmon charter keeps its letters, and the line is then cut
+  into the rules it was holding, which is what gives each glued day its own hours. 149 weeks change and the
+  guest's Hours block reads as 133 shops wrote it rather than as the crawl left it.
+- **The page was reading a week baked before the fix** (`3bc8f841`). `itemWeek` took the compact week in
+  `catalog.json` ahead of the shop's own lines, and 547 of the 14,220 listings that ship both no longer agree
+  with a fresh read, so every fix to the day reader was invisible on the listing page, in the booking sheet's
+  picker and in Otto's answers until a sync ran, while the API's own slot route read the lines and refused the
+  times the picker had offered. Where the lines are in hand they are read; a browse record with none keeps the
+  compact week.
+
+**Swept and clean.** Every parsed week of all 52,815 shipped detail files diffed before and after, twice, and
+every one of the 232 changed listings read by hand against its own lines. Both hour parsers held against each
+other on all 14,509 listings that publish an hour line, agreeing on every one, before and after. The guest's own
+Hours block diffed over the same catalog: 133 blocks change, 3 of them by joining a line the crawl had split,
+none by losing one. All 309 dated lines and the day-prefix words that are not days re-checked against the new
+seams.
+
+**Verification.** App `npm test` 978 pass, 0 fail, up from 975. Backend `npm test` 870 pass, 0 fail, 2 skipped,
+up from 868. `tsc -b` clean on the app, `tsc --noEmit -p .` clean at the root and still compiling nothing, the
+backend type check clean but for TS5097. The rehearsal 57 of 57 against a local TLS Postgres 16 on 5433 and the
+Chromium on disk, with no Stripe, mail or GitHub key. A fresh checkout again had no `node_modules` on either
+side and no Postgres cluster.
+
+**Needs Harshil.**
+
+- **547 cards still carry the old week.** A card, a rail and the price filter read the compact week in
+  `catalog.json`, which an overnight run may not write, so those listings' pages are right tonight and their
+  cards are not. One sync closes all of it, including the 1,210 address lines and the 766 cut blurbs still
+  waiting from earlier runs.
+- **A line that states two days' hours still gives both the first one.** 447 lines on 405 listings write more
+  than one rule with a space rather than a seam ("Mon-Wed 12pm-6pm, Thu-Fri 11:30am-6pm, Sat 11am-4:30pm"), and
+  every day on them takes the first span. Splitting on a day that follows a finished clause would finish it, and
+  it is the same rule as tonight's seam with a wider blast radius, so it wants its own night and its own diff.
+- **An off-season day off wins over an in-season week.** Four listings publish a season per line ("In Season:
+  Daily 9am-6pm", "Off Season: Mon-Fri 10am-4pm, Sat 10am-2pm, Sun Closed") and the last line wins, so two
+  marinas and a vineyard now read Sunday closed in July. Reading the season would need the week to know what
+  month it is.
+- Still open from the ninety-second run: a multi-day event is still a week, `o-jcprd-com` still publishes "Last
+  rental 2:30 - 3:30 pm" as its only hours line, and local `main` still sits on a stale `c3a9bfd0` with 50
+  commits `origin/main` no longer carries, so this run again committed on a detached HEAD and pushed with an
+  explicit refspec.
+
 ## Coverage
 
 The catalog is 48,198 listings as of the 23 September sync, 1,873 of them Viator partner rows. Counts below
@@ -6869,6 +6938,17 @@ midnight and the 637 that close past it; every hour line in the catalog carrying
 naming one clock face at both ends, all 82; and every parsed week of all 52,815 shipped detail files diffed
 before and after, so the exact set of listings a rule moved is known rather than estimated.
 
+Whether a day a shop says it is shut is shut, over all 111 lines on 106 listings that state a day off and a
+clock together: which side of the word names its subject, the punctuation that settles it, a bracketed aside, a
+line that opens on the word, both sides naming days between them covering the week, and a clock behind the word
+that is an hour the shop shuts for rather than a day. The crawl's own seams in an hour line, over all 250
+listings whose line glues a day name to the word in front of it or the clock behind it: a full day name inside
+another word, a shouted short spelling, a "Closed" with no space around it, a day carrying a digit, several
+rules written into one word, and the words that merely end in a short spelling (salmon, unsatisfied) which keep
+their letters. Which week the page, the picker and Otto actually read, over all 14,220 listings that ship both a
+compact week and their own hour lines: the 547 whose baked week no longer agrees with a fresh read of the same
+lines, and the browse record that has no lines to read.
+
 **Not yet checked.** Anything in the grounded fallback that needs a real Cohere key: no key exists here, so every answer checked tonight was a payload shaped by hand, and what the live model actually writes, what its citation offsets index into when it answers in more than one content part, and whether `citation_options` FAST cites densely enough for `keepCited` to keep a good answer are all unread. `npm run otto:eval` for the same reason. Whether a price the model reformats should be dropped: a shop publishing "$85" and a model writing "$85.00" loses the sentence (see this run's Needs Harshil). Whether the grounded answer should reach the static `/l/` page and the phone sheet, which do not call it. A real Otto send or a real hand-send: the draft run, the queue, the dry run and the handoff export are all driven now, but nothing has left a mailbox from here, and `outreach-daily.sh` is launchd on the Mac and cannot be. Whether `state.ranDays` and `state.sentDays` growing without bound in `outreach-otto-ramp.json`, and being written only after a send loop that can run four hours, is worth changing, given that `sentToday` is what actually holds the ceiling. Whether the Otto email may tell a shop "Bookings drop straight into your calendar" when
 both `/voice` endpoints are read-only and syncing with an operator's own booking software is deferred on
 purpose, which is this run's first Needs Harshil. Whether the Otto subject should be shortened or the question
@@ -7151,4 +7231,11 @@ day, and each is now one wrong day instead of seven (see the ninety-second run's
 of dates has to be before it is the shop's week rather than a festival, which is what leaves "Open for visitors
 August 7, 8, and 9", "Sept 11th & 12th" and "Sept. 7-11" spread over seven days. Whether "Last rental 2:30 -
 3:30 pm", which is o-jcprd-com's only hours line and reads as a park open for one hour a day, is the
-quiet-hours shape with a third subject, and how many more of them there are.
+quiet-hours shape with a third subject, and how many more of them there are. Whether the compact week in `catalog.json` should be trusted by anything now that a fresh read of the
+same lines disagrees on 547 listings: the cards, the rails and the price filter still read it, so tonight's
+weeks are right on a page and stale on the card that opens it, and only a sync closes that (see this run's Needs
+Harshil). Whether a line that writes more than one rule with a space rather than a seam should be cut the way a
+glued one now is: 447 lines on 405 listings state two or more days' hours and every day on them takes the first
+span, which is the same rule as the seam with a wider blast radius (see this run's Needs Harshil). Whether a
+season written per line should reach the week at all, on the four listings whose off-season day off now wins over
+their in-season week (see this run's Needs Harshil).
