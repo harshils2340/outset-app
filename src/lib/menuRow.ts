@@ -105,6 +105,7 @@ const ROW_PHONE = /\s*(?:\+?1[\s.-])?(?:\(\d{3}\)\s*|\d{3}[\s.-])\d{3}[\s.-]\d{4
  */
 const OPEN_TAIL = /\s*[([{]\s*[A-Za-z]{0,12}\s*$/;
 const unclosed = (s: string) => (s.match(/[([{]/g) || []).length > (s.match(/[)\]}]/g) || []).length;
+const unopened = (s: string) => (s.match(/\)/g) || []).length > (s.match(/\(/g) || []).length;
 const closeOpenBracket = (s: string) => (unclosed(s) ? s.replace(OPEN_TAIL, "").trim() : s);
 
 /** A row name as a guest should read it, with a half-cut sentence's trailing word taken off. */
@@ -120,7 +121,16 @@ export function tidyRowName(raw: string): string {
     .replace(/([~|·])(?:\s*\1)+/g, "$1")
     .replace(/\s+/g, " ")
     .replace(/([([])\s+|\s+([)\]])/g, "$1$2")
+    // The space the crawl left in front of the row's own punctuation: 23 rows on 11 listings carry one, so an
+    // escape room offers "Batman : The Dark Knight Challenge" and a gallery "Table Bleue , 1961-63".
+    .replace(/\s+([,;:!?])/g, "$1")
     .trim();
+  // A bracket closed without ever being opened, at one end of the name or the other. 12 rows on 5 listings
+  // carry one, among them a railroad museum's whole row name "). Ticket" and a campground's "Non-Hookup Sites
+  // B & C)". Only the ends, because in the middle of a name it is a list marker the shop wrote: "Step 3)
+  // Schedule Your First Lesson".
+  if (unopened(cut)) cut = cut.replace(/^\s*\)/, "").replace(/\)\s*$/, "").trim();
+  cut = cut.replace(/^[\s.,;:]+(?=[A-Za-z])/, "").trim();
   cut = cut.replace(DANGLING_WORD, "").trim();
   return cut.length >= 2 ? cut : name;
 }

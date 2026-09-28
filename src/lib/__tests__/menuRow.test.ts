@@ -376,3 +376,23 @@ test("the rows this takes off the shipped catalog are the ones it was written fo
   assert.ok(listings < 1500, "the filter is reaching too many listings, got " + listings);
   assert.ok(priced <= dropped, "more priced rows dropped than rows, got " + priced + " of " + dropped);
 });
+
+/**
+ * The same punctuation the crawl leaves in a business name it leaves in a row name. 23 rows on 11 listings
+ * carry a space in front of their own comma or colon, so an escape room offers "Batman : The Dark Knight
+ * Challenge" and a gallery "Table Bleue , 1961-63". 12 rows on 5 listings carry a bracket that was never
+ * opened, among them a railroad museum's whole row name "). Ticket".
+ */
+test("a row name keeps neither the crawl's spaced punctuation nor a bracket nothing opened", () => {
+  assert.equal(tidyRowName("Batman : The Dark Knight Challenge"), "Batman: The Dark Knight Challenge"); // o-escapology-com
+  assert.equal(tidyRowName("Table Bleue , 1961-63"), "Table Bleue, 1961-63"); // o-debuckgallery-com
+  assert.equal(tidyRowName("Pizza, Pizookie , and Pepsi Deal"), "Pizza, Pizookie, and Pepsi Deal"); // o-bjsrestaurants-com
+  assert.equal(tidyRowName("). Ticket"), "Ticket"); // o-coloradorailroadmuseum-org
+  assert.equal(tidyRowName("Non-Hookup Sites B & C)"), "Non-Hookup Sites B & C"); // o-christmaspines-com
+  assert.equal(tidyRowName("Parasail @ Portofino Guest Only)"), "Parasail @ Portofino Guest Only"); // o-radicalrides-com
+  // A bracket in the middle of a name is the shop's own list marker, and a balanced pair is its own.
+  assert.equal(tidyRowName("Step 3) Schedule Your First Lesson"), "Step 3) Schedule Your First Lesson"); // o-santabarbaradojo-com
+  assert.equal(tidyRowName("Package B) Flex Pass"), "Package B) Flex Pass"); // o-theatrebaddeck-com
+  assert.equal(tidyRowName("Four (4) 50-minute Private Pilates Lessons"), "Four (4) 50-minute Private Pilates Lessons");
+  assert.equal(tidyRowName("(> 6 Hours)"), "(> 6 Hours)");
+});

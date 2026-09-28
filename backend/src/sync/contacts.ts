@@ -32,6 +32,7 @@ import { dialPhone } from "../../../src/lib/phone.ts";
 import { contactEmail } from "../../../src/lib/email.ts";
 import { kidRuleText, kidVerdict } from "../../../src/lib/kidRule.ts";
 import { postalOf, streetOf } from "../../../src/lib/address.ts";
+import { shopTitle } from "../../../src/lib/shopName.ts";
 import { REGION_NAME } from "../../../src/data/regions.ts";
 
 type Overlay = { published: boolean; patch: Record<string, unknown> };
@@ -1578,6 +1579,9 @@ export function cleanTitle(raw: string, ctx: TitleContext = {}): string {
   // "Midwest Powered Paragliding In", "Paint, Sip Wine, have fun at our": a page title cut mid-sentence.
   t = t.replace(/(?:\s+(?:of|for|with|and|or|to|our|your|at our|by|at|in)\b)+\s*$/i, "").trim();
   t = t.replace(/[\s\-–—|:,]+$/g, "");
+  // The punctuation the crawl left inside the name, and the bracket it never closed. Same rule the app reads
+  // the 54 already shipped through (`src/lib/shopName.ts`), so a sync writes what a guest is already seeing.
+  t = shopTitle(t);
   // Never a stub or a bare domain: fall back to the legal name, then to the raw title.
   if (t.length < 3 || /^(?:https?:\/\/|www\.)|^[a-z0-9-]+\.[a-z]{2,}$/i.test(t)) return legal.length >= 3 ? legal : raw.trim();
   return t;
