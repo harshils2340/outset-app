@@ -318,6 +318,46 @@ type AvailTime = {
   };
 };
 
+/**
+ * Whether Peek will sell this timeslot, and how many seats it says are left.
+ *
+ * Peek states this in `availability-mode`, and it has more ways of saying no than of saying yes, so the
+ * modes that mean yes are listed and everything else is a no. A mode is required: the field is on every one
+ * of the 195 timeslot rows in `data/avail-eval/cases/peek`, across seven real shops, so a row without one is
+ * a payload shape we do not understand and offering it is the error that matters.
+ *
+ * Both of the yes words about a minimum are yes, which is the one the list used to be missing:
+ *
+ *   - `min_required_bookable` is a trip with a party minimum that is bookable now. Dolphins Down Under's
+ *     5:30pm sunset cruise carries it with 95 spots and a minimum of 12, and the concierge dropped it.
+ *   - `min_required_not_bookable` is the same trip with the minimum unmet, which Peek's own widget greys out
+ *     only because its ticket box starts at one. The minimum rides along on every rate, so a party big
+ *     enough is offered it and a solo guest is kept away from it.
+ *
+ * The three noes seen in the corpus are `sold_out`, `not_available` and nothing at all. Cruisin' Tikis
+ * Nashville publishes three `not_available` mornings with `spots: 6` beside them, so a reader that asks only
+ * about the spot count puts all three on sale.
+ *
+ * A freesale slot has no capacity limit, so whatever `spots` says is not a seat count: it comes back 0
+ * because there is nothing to count. Such a slot is open and carries no seat count, because both zero and
+ * "only 2 left" are false statements about an activity that cannot run out. No row in the corpus is one.
+ */
+const PEEK_OPEN_MODES = new Set(["available", "min_required_bookable", "min_required_not_bookable"]);
+
+export function peekSlotOffer(a: {
+  spots?: number | null;
+  "availability-mode"?: string;
+  "is-freesale"?: boolean;
+}): { open: boolean; seatsLeft: number | null } {
+  const shut = { open: false, seatsLeft: null };
+  const mode = a["availability-mode"];
+  if (typeof mode !== "string" || !PEEK_OPEN_MODES.has(mode)) return shut;
+  const freesale = a["is-freesale"] === true;
+  const seatsLeft = !freesale && typeof a.spots === "number" ? a.spots : null;
+  if (seatsLeft != null && seatsLeft <= 0) return shut;
+  return { open: true, seatsLeft };
+}
+
 export async function peekLive(
   bookingUrl: string,
   opts: { from?: Date; days?: number; maxItems?: number; tz?: string | null } = {},
@@ -415,18 +455,10 @@ export async function peekLive(
         const best = new Map<string, { departure: Departure; duration: string | null; variants: Set<string> }>();
         for (const slot of doc?.data || []) {
           const a = slot.attributes || {};
-          /**
-           * A whitelist, not a blacklist, because Peek has more ways of saying no than of saying yes and a
-           * new one appearing must not turn into a departure we offer. `min_required_not_bookable` is a yes:
-           * it means the trip has a minimum party (Cruisin' Tikis will not sail for one person) and the
-           * widget greys it out only because its ticket box starts at one. The minimum rides along on every
-           * rate below, so a party of two is offered it and a solo guest can be kept away from it.
-           */
-          const mode = str(a["availability-mode"]);
-          if (mode !== "available" && mode !== "min_required_not_bookable") continue;
-          // `spots` is null on a freesale slot (no capacity limit), which is available, not sold out.
-          const spots = typeof a.spots === "number" ? a.spots : null;
-          if (spots != null && spots <= 0 && !a["is-freesale"]) continue;
+          // Whether Peek will sell this one at all, and the seat count that goes with that. See `peekSlotOffer`.
+          const offer = peekSlotOffer(a);
+          if (!offer.open) continue;
+          const spots = offer.seatsLeft;
 
           const time = slotTime(str(slot.id), str(a.time));
           if (!time) continue;

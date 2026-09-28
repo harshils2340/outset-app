@@ -5,6 +5,7 @@ import { openFarePrice } from "../lib/fares.ts";
 import { readFeed } from "../concierge/readFeed.ts";
 import { readerFor, type ReaderVendor } from "../concierge/readable.ts";
 import type { LiveRead } from "../concierge/live.ts";
+import { peekSlotOffer } from "../concierge/peek.ts";
 
 /**
  * Real open dates and times, read live from the operator's own booking system.
@@ -174,6 +175,7 @@ type FhAvailability = {
   is_sold_out?: boolean;
   is_bookable?: boolean;
   is_unlisted?: boolean;
+  is_bookable_only_by_phone?: boolean;
   book_url?: string | null;
   availability_headline?: string | null;
   item?: FhItem;
@@ -234,7 +236,14 @@ async function fareharbor(shortname: string, dates: string[]): Promise<Availabil
   const seen = new Set<string>();
 
   const add = (at: string, a: FhAvailability, item: FhItem): void => {
-    if (!a.start_at || a.is_unlisted || a.is_sold_out || a.is_bookable === false) return;
+    /**
+     * `is_bookable_only_by_phone` is a no here too, and was the one of FareHarbor's four no-flags this reader
+     * did not read. The concierge reader and the corpus's own second reading both exclude it, and a chip a
+     * guest picks that FareHarbor will not sell them online is the `not_available` bug with a different
+     * vendor's word on it. 25 of the 3,933 recorded departures carry it and every one is sold out or
+     * unbookable as well, so nothing in the corpus moves: this closes the drift, it does not fix a sighting.
+     */
+    if (!a.start_at || a.is_unlisted || a.is_sold_out || a.is_bookable === false || a.is_bookable_only_by_phone === true) return;
     const identity = at + "|" + (a.book_url || `${a.start_at}|${item.pk}`);
     if (seen.has(identity)) return;
     seen.add(identity);
@@ -325,7 +334,13 @@ type PeekDates = { data?: { id: string; attributes?: { date?: string; "availabil
 type PeekTimes = {
   data?: {
     id: string;
-    attributes?: { time?: string; spots?: number; prices?: { pricing?: { price?: { amount?: string }; list_price?: { amount?: string } }[] }[] };
+    attributes?: {
+      time?: string;
+      spots?: number;
+      "availability-mode"?: string;
+      "is-freesale"?: boolean;
+      prices?: { pricing?: { price?: { amount?: string }; list_price?: { amount?: string } }[] }[];
+    };
   }[];
 };
 
@@ -438,8 +453,16 @@ async function peek(refKey: string, code: string, dates: string[]): Promise<Avai
       if (m[3] && m[3].toUpperCase() === "PM") h24 += 12;
       if (!m[3]) h24 = Number(m[1]);
       const time = `${pad(h24)}:${m[2]}`;
-      const spots = typeof row.attributes?.spots === "number" ? row.attributes.spots : undefined;
-      if (spots === 0) continue;
+      /**
+       * Whether Peek will sell this one at all. `spots === 0` was the whole test here, and Peek says no in
+       * `availability-mode` rather than in the spot count: Cruisin' Tikis Nashville publishes three
+       * `not_available` mornings with `spots: 6` on them, so all three were times on the listing page a
+       * guest could pick and the shop would not sell. One rule for both Peek readers, so they cannot drift
+       * apart again: see `peekSlotOffer`.
+       */
+      const offer = peekSlotOffer(row.attributes || {});
+      if (!offer.open) continue;
+      const spots = offer.seatsLeft ?? undefined;
       const priceCents = peekLowest(row.attributes?.prices, ticketNames);
       /**
        * One row per start, not one per way of buying it.

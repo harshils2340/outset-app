@@ -80,7 +80,10 @@ export const SESSIONS_PAGE = `<!doctype html>
 <script>
 const list=document.getElementById('list'), main=document.getElementById('main');
 let picked=null, last='';
-const esc = s => String(s==null?'':s).replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+// Quotes as well as &<>, because two of the strings below land inside an attribute (data-turn, and the kind on
+// a class list). Both carry a server-minted value today, so this is the guard rather than a fix for anything a
+// guest can type.
+const esc = s => String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const ago = t => { const s=Math.round((Date.now()-t)/1000);
   return s<60? s+'s ago' : s<3600? Math.round(s/60)+'m ago' : Math.round(s/3600)+'h ago'; };
 

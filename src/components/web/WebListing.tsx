@@ -11,12 +11,13 @@ import type { Unclaimed } from "../../data/types";
 import { measurableFrom } from "../explore/feed";
 import { streetOf } from "../../lib/address";
 import { addressLine, bookingPaused, contactFor, fmtPhone, fromPrice, getCatalog, guestCapFor, listingFacts, mapsHref, maxGuestsFor, partnerBookLine, perPerson, publicRating, telHref, topRated as isTopRated, venueMapsQuery } from "../../lib/catalog";
-import { DAYS, fmtDate, fmtReviews, fmtTime, money, priceWith, reviewsLine } from "../../lib/format";
+import { clockOfMinutes, DAYS, fmtDate, fmtReviews, fmtTime, money, priceWith, reviewsLine } from "../../lib/format";
 import { srcSet, thumb } from "../../lib/images";
 import { embedAutoplay, isGif, listingMedia, photoCandidates, probePhotos, type Media } from "../../lib/media";
-import { arrivalWords, bringLine, cleanDesc, durationLabel, groupCap as readGroupCap, minAge, splitIncluded, splitPolicies, tidyLine } from "../../lib/listingDerive";
+import { arrivalWords, bringLine, cleanDesc, durationLabel, groupCap as readGroupCap, minAge, notAlreadyShown, placeName, splitIncluded, splitPolicies, tidyLine } from "../../lib/listingDerive";
 import { sayLength } from "../../lib/duration";
 import { freeCancelBadge } from "../../lib/cancellation";
+import { reportDeadCover, useDeadCovers } from "../../lib/deadCovers";
 import { pickSimilar } from "../../lib/similar";
 import { bookableStart, clockIn, hourLines, itemOpenState, itemWeek, zoneFor } from "../../lib/openNow";
 import { displayHours } from "../../lib/hoursText";
@@ -73,16 +74,6 @@ export const TYPE_NAME: Record<string, string> = {
   discgolf: "Disc golf", billiards: "Billiards hall", motorsport: "Motorsport experience", sauna: "Sauna",
 };
 
-const REGION: Record<string, string> = {
-  AL: "Alabama", AK: "Alaska", AZ: "Arizona", AR: "Arkansas", CA: "California", CO: "Colorado", CT: "Connecticut", DE: "Delaware", DC: "Washington, DC",
-  FL: "Florida", GA: "Georgia", HI: "Hawaii", ID: "Idaho", IL: "Illinois", IN: "Indiana", IA: "Iowa", KS: "Kansas", KY: "Kentucky", LA: "Louisiana",
-  ME: "Maine", MD: "Maryland", MA: "Massachusetts", MI: "Michigan", MN: "Minnesota", MS: "Mississippi", MO: "Missouri", MT: "Montana", NE: "Nebraska",
-  NV: "Nevada", NH: "New Hampshire", NJ: "New Jersey", NM: "New Mexico", NY: "New York", NC: "North Carolina", ND: "North Dakota", OH: "Ohio",
-  OK: "Oklahoma", OR: "Oregon", PA: "Pennsylvania", RI: "Rhode Island", SC: "South Carolina", SD: "South Dakota", TN: "Tennessee", TX: "Texas",
-  UT: "Utah", VT: "Vermont", VA: "Virginia", WA: "Washington", WV: "West Virginia", WI: "Wisconsin", WY: "Wyoming", PR: "Puerto Rico",
-  AB: "Alberta", BC: "British Columbia", MB: "Manitoba", NB: "New Brunswick", NL: "Newfoundland and Labrador", NS: "Nova Scotia", NT: "Northwest Territories",
-  NU: "Nunavut", ON: "Ontario", PE: "Prince Edward Island", QC: "Quebec", SK: "Saskatchewan", YT: "Yukon",
-};
 
 type OptRow = { idx: number; label: string; sub?: string; price: number | null; per?: string; kind: string };
 type OptGroup = { name: string; rows: OptRow[] };
@@ -153,12 +144,6 @@ function bookingGroups(item: Unclaimed): OptGroup[] {
 const optKinds = (groups: OptGroup[]) => ["Per person", "Kids", "Private"].filter((k) => groups.some((g) => g.rows.some((r) => r.kind === k)));
 
 /** "Clearwater Beach, FL" becomes "Clearwater Beach, Florida". */
-function placeName(area: string): string {
-  const m = area.match(/^(.*),\s*([A-Z]{2})$/);
-  if (!m || !REGION[m[2]]) return area;
-  return m[1] + ", " + REGION[m[2]];
-}
-
 /* ---------- display tidying for scraped text. Formatting only: nothing here adds a fact. ---------- */
 
 /** "Spray Watersports'" and "Hubbard's Marina's": a name that ends in s takes the apostrophe alone. */
@@ -211,7 +196,7 @@ export function useAdmin(): boolean {
  * The operator's website, for Harshil comparing a listing with the real site. Renders nothing unless admin is on, so a
  * guest never sees it. A click opens the site in a new tab and never reaches the card or listing underneath.
  */
-export function AdminSiteLink({ item, variant = "text", className = "" }: { item: Pick<Unclaimed, "src" | "contact">; variant?: "text" | "icon"; className?: string }) {
+export function AdminSiteLink({ item, variant = "text", className = "" }: { item: Pick<Unclaimed, "src" | "contact" | "affiliate">; variant?: "text" | "icon"; className?: string }) {
   const admin = useAdmin();
   const href = admin ? adminWebsite(item) : null;
   if (!href) return null;
@@ -388,7 +373,10 @@ function Card({ u, onOpen }: { u: Unclaimed; onOpen: (id: string) => void }) {
   return (
     <button type="button" className="alcard" onClick={() => onOpen(u.id)}>
       <div className="alcardart">
-        <Photo src={u.cover} video={u.video} kind={u.art} id={"s" + u.id} alt={u.title} />
+        {/* Every other grid of covers teaches the shared store when one will not load; this one drew the
+            illustration and told nobody, so the same shop kept leading the rail on a photo that is not there.
+            Only a shop that claims a cover can lose one: a shop with none was never promising a photograph. */}
+        <Photo src={u.cover} video={u.video} kind={u.art} id={"s" + u.id} alt={u.title} onBroken={u.cover ? () => reportDeadCover(u.id) : undefined} />
       </div>
       <div className="alcardbody">
         <span className="alcardtop">
@@ -1014,7 +1002,6 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
   // ask it, and parsing an operator's hour lines three times a render buys nothing.
   const week = useMemo(() => itemWeek(item), [item]);
   const visitWeek = visit ? week : null;
-  const clock = (m: number) => fmtTime(String(Math.floor(m / 60)).padStart(2, "0") + ":" + String(m % 60).padStart(2, "0"));
   // The shop paused bookings or hid the listing in its dashboard. The page still opens by its own link, so a
   // guest who has it bookmarked learns why, but nothing here can be booked and the API refuses too. Both flags
   // only ever come from an owner's saved profile, so they count before the next sync stamps the record `claimed`.
@@ -1119,8 +1106,14 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
   }, [chipsFor]);
 
   // Recomputed when the catalog grows: a shared link opens the listing from its own file before the catalog
-  // arrives, and a rail built then held whatever few listings were loaded, from anywhere in the country.
-  const { similar, similarNear } = useMemo(() => pickSimilar(item, getCatalog()), [item.id, state.catalogVersion]);
+  // arrives, and a rail built then held whatever few listings were loaded, from anywhere in the country. Also
+  // when another cover turns out not to load, since a card whose photo 404s has no business leading the rail;
+  // the store only ever grows, so its size is a snapshot that changes.
+  const deadCovers = useDeadCovers();
+  const { similar, similarNear } = useMemo(
+    () => pickSimilar(item, getCatalog(), 10, deadCovers),
+    [item.id, state.catalogVersion, deadCovers.size],
+  );
 
   /* ---------- derived, never invented ---------- */
   const requirements = item.requirements?.length ? item.requirements : facts.who.filter((l) => l.posted).map((l) => l.text);
@@ -1195,7 +1188,9 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
   const highlightRows = rows.slice(0, 3);
 
   // Things to know, Airbnb's three columns. A column with nothing stated stays out.
-  const rules = [...requirements, ...(item.bring || []).map(bringLine), ...(item.groupInfo || [])];
+  // The waiver column below is filled from the same shop's policy lines, and a shop that states one sentence
+  // both as a requirement and as a policy had it printed in both: see notAlreadyShown.
+  const rules = [...notAlreadyShown(requirements, waiverLines), ...(item.bring || []).map(bringLine), ...(item.groupInfo || [])];
   const safety = [...(age ? ["Minimum age " + age] : []), ...waiverLines];
   if (item.waiverUrl && !safety.some((l) => /waiver/i.test(l))) safety.push("Waiver to sign before you arrive");
   // The short free-cancellation line and the full policy are often the same sentence, one with a period and one
@@ -1408,7 +1403,7 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
         <div className="altitlerow" ref={media.length ? undefined : heroRef}>
           <div className="altitlewrap">
             <h1 className="altitle">{item.title}</h1>
-            <AdminSiteLink item={{ src: item.src, contact: contact || item.contact }} />
+            <AdminSiteLink item={{ src: item.src, affiliate: item.affiliate, contact: contact || item.contact }} />
         </div>
           <div className="alactions">
             <button type="button" className="altextbtn" onClick={() => void share()}>
@@ -1743,7 +1738,7 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
                   <div className="alboxcell static">
                     <small>Hours</small>
                     {visitWeek?.some((d) => d && d.close > d.open) ? (
-                      <ul className="alhours">{visitWeek.map((d, i) => <li key={i}><span>{DAYS[i]}</span><span>{d && d.close > d.open ? clock(d.open) + " to " + clock(d.close) : "Closed"}</span></li>)}</ul>
+                      <ul className="alhours">{visitWeek.map((d, i) => <li key={i}><span>{DAYS[i]}</span><span>{d && d.close > d.open ? clockOfMinutes(d.open) + " to " + clockOfMinutes(d.close) : "Closed"}</span></li>)}</ul>
                     ) : hours.length ? (
                       <ul className="alhours">{hours.slice(0, 7).map((h) => <li key={h}><span>{h}</span></li>)}</ul>
                     ) : (
@@ -1996,7 +1991,7 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
               <span className="alwherepin"><Markup html={I.pin} /></span>
               <span>
                 <small>{item.meetingPoint ? "Meeting point" : "Address"}</small>
-                <b>{item.meetingPoint ? tidyLine(item.meetingPoint) : address || item.area}</b>
+                <b>{item.meetingPoint ? tidyLine(item.meetingPoint) : address || placeName(item.area)}</b>
                 {item.meetingPoint && address && item.meetingPoint !== address ? <span className="alwhereaddr">{address}</span> : null}
                 <u>Open in Maps</u>
               </span>

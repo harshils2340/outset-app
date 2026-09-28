@@ -1,3 +1,5 @@
+import { placeName } from "./listingDerive";
+
 /** Public guest origin. Listing, claim and remove links all use this. */
 export const SITE = "https://onoutset.com";
 
@@ -40,10 +42,16 @@ export function removeUrl(id: string): string {
  */
 export const DEFAULT_TITLE = "Book things to do near you · Outset";
 
-/** The tab title for an open listing, or the site's own when no listing is open. */
+/**
+ * The tab title for an open listing, or the site's own when no listing is open.
+ *
+ * The place is spelled out, the way the listing page under this title, the review-and-pay sheet and the confirm
+ * screen all spell it: 2,943 listings publish a state or province code with no town in front of it, so a tab, a
+ * bookmark and a shared link all read "Ace Kayaks in MD · Outset" for them.
+ */
 export function pageTitle(item: { title?: string; area?: string } | null): string {
   const name = (item?.title || "").trim();
   if (!name) return DEFAULT_TITLE;
-  const area = (item?.area || "").trim();
+  const area = placeName((item?.area || "").trim());
   return name + (area ? " in " + area : "") + " · Outset";
 }

@@ -21,6 +21,10 @@ const REGION_TZ: Record<string, string> = {
   CA: "America/Los_Angeles", NV: "America/Los_Angeles", OR: "America/Los_Angeles", WA: "America/Los_Angeles", AK: "America/Anchorage", HI: "Pacific/Honolulu",
   // Canada
   ON: "America/Toronto", QC: "America/Toronto", NS: "America/Halifax", NB: "America/Moncton", PE: "America/Halifax", NL: "America/St_Johns", MB: "America/Winnipeg", SK: "America/Regina", AB: "America/Edmonton", BC: "America/Vancouver", YT: "America/Whitehorse", NT: "America/Yellowknife", NU: "America/Iqaluit",
+  // Puerto Rico keeps Atlantic time all year and takes no daylight saving. `REGION_NAME` already spells it
+  // out, so without a row here a San Juan area line names a region the clocks do not know and falls through
+  // to longitude, which lands on America/Halifax: right in winter, an hour out from March to November.
+  PR: "America/Puerto_Rico",
 };
 
 /**

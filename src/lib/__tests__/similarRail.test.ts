@@ -115,3 +115,62 @@ test("a shop with no neighbour in its metro or its state still reaches the whole
   assert.deepEqual(similar.map((u) => u.id), [faraway.id]);
   assert.equal(similarNear, false);
 });
+
+/**
+ * "Nearest first" is the first line of the module's own doc, and the sort read a photo and then a review
+ * count. With the pool widened to a whole state, Countdown Games in Lexington, Kentucky, was offered
+ * Louisville before La Grange: over the shipped catalog the lead card of a rail sat a median 62 km from the
+ * listing it was offered under, and 42.7% of rails carried a shop more than 100 km nearer further down.
+ */
+test("the rail is ordered nearest first, under the photo rule", () => {
+  const me = op({ lat: 38.04, lon: -84.5 }); // Lexington, KY
+  const near = op({ metroId: "", area: "La Grange, KY", lat: 38.4, lon: -85.38, cover: "p.jpg", reviews: 40 });
+  const far = op({ metroId: "", area: "Louisville, KY", lat: 38.25, lon: -85.76, cover: "p.jpg", reviews: 500 });
+  const { similar } = pickSimilar(me, [me, near, far]);
+  assert.deepEqual(similar.map((u) => u.id), [near.id, far.id], "the hour up the road, not the better known city");
+});
+
+test("a photograph still leads a nearer shop that has none", () => {
+  const me = op({ lat: 38.04, lon: -84.5 });
+  const nextDoor = op({ area: "Lexington, KY", lat: 38.05, lon: -84.51 });
+  const acrossTown = op({ area: "Lexington, KY", lat: 38.2, lon: -84.7, cover: "p.jpg" });
+  const { similar } = pickSimilar(me, [me, nextDoor, acrossTown]);
+  assert.equal(similar[0].id, acrossTown.id, "a rail of scene illustrations reads as a broken page");
+});
+
+test("a shop nobody can place sorts behind the ones we can, not at zero kilometres", () => {
+  const me = op({ lat: 38.04, lon: -84.5 });
+  const placed = op({ area: "Louisville, KY", lat: 38.25, lon: -85.76, cover: "p.jpg", reviews: 1 });
+  const nowhere = op({ area: "Somewhere, KY", cover: "p.jpg", reviews: 900 });
+  const { similar } = pickSimilar(me, [me, placed, nowhere]);
+  assert.deepEqual(similar.map((u) => u.id), [placed.id, nowhere.id]);
+});
+
+test("two shops with no pin between them fall back to the review count", () => {
+  const me = op();
+  const quiet = op({ area: "Golden, CO", cover: "p.jpg", reviews: 3 });
+  const busy = op({ area: "Golden, CO", cover: "p.jpg", reviews: 300 });
+  const { similar } = pickSimilar(me, [me, quiet, busy]);
+  assert.deepEqual(similar.map((u) => u.id), [busy.id, quiet.id]);
+});
+
+/**
+ * A cover is a URL on the operator's own web server and about one in twelve no longer answers. Every other
+ * grid drops such a listing (`lib/deadCovers`); this rail read the field and put the shop at the head of the
+ * rail, where it drew the scene illustration the photo rule exists to keep out.
+ */
+test("a cover already known not to load is not a photo", () => {
+  const me = op({ lat: 38.04, lon: -84.5 });
+  const broken = op({ area: "Lexington, KY", lat: 38.05, lon: -84.51, cover: "gone.jpg" });
+  const real = op({ area: "Louisville, KY", lat: 38.25, lon: -85.76, cover: "p.jpg" });
+  assert.equal(pickSimilar(me, [me, broken, real]).similar[0].id, broken.id, "nearest, on the strength of its cover");
+  const { similar } = pickSimilar(me, [me, broken, real], 10, new Set([broken.id]));
+  assert.deepEqual(similar.map((u) => u.id), [real.id, broken.id], "ranked with the shops that have no cover at all");
+});
+
+test("a dead cover costs the shop its place, never its place in the rail", () => {
+  const me = op();
+  const only = op({ area: "Golden, CO", cover: "gone.jpg" });
+  const { similar } = pickSimilar(me, [me, only], 10, new Set([only.id]));
+  assert.deepEqual(similar.map((u) => u.id), [only.id], "its own page still opens, and it is still more like this");
+});

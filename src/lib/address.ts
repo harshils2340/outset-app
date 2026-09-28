@@ -61,8 +61,42 @@ export function postalOf(postal: string | null | undefined): string {
   return m ? m[1] : "";
 }
 
-/** The street, town, state and postcode as one line, or null when the operator published none of them. */
+/**
+ * The street, town, state and postcode as one line, or null when the operator published nothing a guest could
+ * go to.
+ *
+ * A state or province on its own is not an address, and it is the same thing the area line beside it already
+ * says. 1,200 shipped listings publish a region and nothing else, and 9 a region and a postcode, so the Where
+ * card on both listing surfaces read "Address: OH", the confirmation's "Getting there" row read "OH", and Otto
+ * answered "where are you" with "They're at OH.". The americaspackardmuseum-org row, whose street is the bare
+ * house number "420", is the case this module's own doc already called an address nobody can walk to.
+ *
+ * With no line to print, every surface falls back to what it falls back to for the 6,492 listings that publish
+ * no contact at all: the area line, with its state spelled out.
+ */
+/**
+ * The town and its state or province, as one line.
+ *
+ * `streetOf` closes the punctuation the crawl leaves behind, and the town field beside it never was: a golf
+ * course north of Peterborough stores its city as "Cavan-Monaghan," and read "1702 Cedar Valley Rd,
+ * Cavan-Monaghan,, ON, K9J 6Y3" on the Where card, in the Maps query, in the booking confirmation and in
+ * Otto's answer to "where are you". A brewery stores "Seminole " and a campground "West  Guilford". Three
+ * shipped records, each of them wrong on five surfaces at once.
+ */
+const tidyPlace = (s: string | null | undefined) =>
+  String(s || "")
+    .replace(/\s+/g, " ")
+    .replace(/\s+([,;])/g, "$1")
+    .replace(/(?:[,;]\s*){2,}/g, ", ")
+    .replace(/^[\s,;]+|[\s,;]+$/g, "");
+
+export function townOf(c: { city?: string | null; region?: string | null }): string {
+  return [tidyPlace(c.city), tidyPlace(c.region)].filter(Boolean).join(", ");
+}
+
 export function addressOf(c: { street?: string | null; city?: string | null; region?: string | null; postal?: string | null }): string | null {
-  const parts = [streetOf(c), [c.city, c.region].filter(Boolean).join(", "), postalOf(c.postal)].filter(Boolean);
+  const street = streetOf(c);
+  if (!street && !String(c.city || "").trim()) return null;
+  const parts = [street, townOf(c), postalOf(c.postal)].filter(Boolean);
   return parts.length ? parts.join(", ") : null;
 }

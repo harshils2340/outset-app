@@ -5605,6 +5605,1021 @@ which is the fifty-second run's Needs Harshil still standing.
   has still not been seen at 400px.
 
 
+## 27 September 2026, eighty-fifth run (05:15 to 06:05 UTC)
+
+**Chosen, and why.** The last log entry says the rehearsal was green, but three commits have landed on
+`origin/main` since it, two of them in `backend/src` and `backend/scripts`, so it was run: once at the start,
+on the fixed build, and once at the end. The hunt did not start from tonight's brief, because every area on it
+is already on the Verified list. It started from the last commit on main, the security sweep, which reported
+that HEAD would not compile. That was true, and fixing it took the first commit. The rest of the night went to
+the one item the eighty-fourth run left as its own next step, Otto's `clip` against the page's `cleanDesc`,
+and then to a sweep of 300 real listings through 30 ordinary guest questions, reading the answers for the kind
+of wording that reads as a machine talking.
+
+**Found and fixed.** Five defects, five commits.
+
+- **HEAD had not compiled since yesterday afternoon** (`2d320798`). `6c72c9e8` pointed
+  `backend/src/outreach/ottoDrafts.ts` at `./owner.ts` for `bestAddress` and `greeting`, and that file was
+  never committed: the backend type check failed with TS2307 and five outreach tests failed with it. The call
+  sites go back to `outreachAddress` in `./address.ts`, the reader that ships, and the greeting back to a plain
+  "Hi,". The test added with it walks every `.ts` and `.mts` file under `backend/src` and `backend/scripts` and
+  holds each relative import to a file on disk, in 53ms with no database. `npm test` cannot catch this class on
+  its own, because a test only loads the modules it imports.
+- **Otto quoted a shop in the crawl's words, not the page's** (`061956a6`). The listing page reads a shop's
+  copy through `cleanDesc`; `clip` read it through `plainWords` alone, so one sentence was printed two ways on
+  one screen: the hero said "the history of the neighborhood, walk among" and the chat said "the history of the
+  neighborhood , walk among", and a Houston boat ride's rate card read "Adult : $40" in the chat and "Adult:
+  $40" above it. 226 texts on 188 listings, over blurbs, service copy, policies, arrival notes, the FAQ and the
+  hour lines. The trailing space the same gap left never reached a guest: `sentence()` strips it.
+- **"They don't list a this tour"** (`cac75495`). On a walking tour's own page. The describe branch for a thing
+  the shop does not sell caught a question about the shop itself, so "the tour", "this trip", "this place",
+  "your business", "the company" and "this activity" all landed there, and `askedThing` printed the determiner
+  its own capture had swallowed. A word naming the whole listing now falls through to the shop's own blurb; a
+  named offer is still matched first, and a charter a tour company does not sell is still refused.
+- **183 listings put two articles on a price, 2,557 lowercased the name of a place** (`08683255`). "From $95
+  for the The Nature Conservancy Community Golf Days", "The Our Classes (Standard) at $85": an article went in
+  front of every offer name and 2,179 rows on 798 listings already open with one. "Meet at owl's Creek Boat
+  Launch", "Meet at lake Trail Taproom", "Their hours say: mon-Sun 12:00 AM": the first letter of a meeting
+  point and of an hour line was lowered to sit mid-sentence, and both are almost always names. Only a
+  determiner is lowered now, so "Meet at the Marina on Terrace Drive" still reads as one sentence.
+- **182 listings offered "Our Charter Boat in , NH"** (`fabf5e43`, `ed7dfd60`). `familyOf` takes the shop's
+  town out of a service name so two towns' variants group as one thing, and took the town and nothing else:
+  "Rentals in , Georgia", "RV Park Serving , Ohio", "Helicopter Tours in", "Legends of", "Pickleball at", and
+  where several removals met, "Jet ski Rental - , , , and". The town now goes with the word that introduced it
+  and the region that followed it. The same commit pair stops a full stop being printed after text that already
+  ended: 192 listings read "Included: lots of fun!!!.", "studio entry on Levels…." and "30 minutes after
+  sunset….". And a list item that is a name keeps its capital: "Included: Special Treat", not "special Treat".
+
+**Swept and clean.** Every relative import in the backend, 661 of them, against the files on disk: one was
+missing and one apparent second was generated code inside a string. Every blurb, service description, policy,
+arrival note, FAQ answer and hour line in the catalog through the old `clip` and the new one, 226 differences
+read. Every offer name in the catalog, 137,887 rows, for a determiner or a possessive opener. Every listing's
+price, cheapest-option, meeting-point, hours and services answers, all 52,815, before and after each fix, with
+the 182 that changed read one by one. 300 listings through 30 ordinary guest questions, twice.
+
+**Verification.** App `npm test` 933 pass, 0 fail. Backend `npm test` 847 pass, 0 fail, 2 skipped, up from
+845 failing 5 at HEAD. `tsc -b` clean on the app, `tsc --noEmit -p .` clean at the root and still compiling
+nothing, the backend type check clean but for TS5097. The rehearsal ran twice, 57 of 57 both times, against a
+local TLS-enabled Postgres 16 on 5433 and the Chromium on disk, with no Stripe, mail or GitHub key. A fresh
+checkout again had no `node_modules` on either side and no Postgres cluster, so both installs and the cluster
+were built first, which is the fifty-second run's Needs Harshil still standing.
+
+**Needs Harshil.**
+
+- **Your `owner.ts` is only on your Mac.** `6c72c9e8` is the working half of a change whose other half never
+  left your machine, and it broke main for about sixteen hours. If you still want "Hi Ron," in the Otto pitch,
+  commit `backend/src/outreach/owner.ts`; I did not write one, because the first name of an owner is a fact the
+  shop's own site states and nothing reaching `draftOttoCopy` carries it, and a guessed first name is the one
+  mistake an owner reading a cold email cannot miss. `bestAddress` also reads like it is meant to prefer an
+  owner's personal inbox over `info@`, which is a product call, not a rename.
+- **Nothing runs `tsc` before a push.** The security sweep caught this break, a day late, by running the type
+  check by hand. Tonight's import test closes the one shape that broke, not the class: a real pre-push check,
+  or the type check in CI, is what stops the next one.
+- Still open from the seventy-eighth run: local `main` sits on a stale `c3a9bfd0`. The desktop site still has
+  no way to say anything in passing, and the confirm screen's failure line has still not been seen at 400px.
+  `plainWords` is still not idempotent, and the three spellings of a shop's state are still three.
+
+## 27 September 2026, eighty-sixth run (06:10 to 06:50 UTC)
+
+**Chosen, and why.** No commit has landed since the last log entry, which reports the rehearsal green, so the
+rehearsal was not run at the start. It was run at the end, because this run touched `backend/src` and
+`src/lib`. Every area on tonight's brief is on the Verified list, so the hunt went to Coverage's open list, to
+the one line there that names a defect a guest could see rather than a question: the "more like this" rail is
+ordered by distance in its own doc and is not in its sort. Measuring that over the shipped catalog turned up
+two larger things the measurement itself was not looking for, both of them pins.
+
+**Found and fixed.** Three defects, three commits.
+
+- **Hamilton, Ontario was sold 17 tours of Hamilton, New Zealand** (`70c18861`). `metroDestinations` falls
+  back to a name match when no Viator CITY destination sits within 40 km of a metro centre, and that branch
+  read the name and nothing else. Viator lists a Hamilton on three continents. Every one of the 17 partner
+  listings that metro ships is a Hobbiton, Waitomo Glowworm Caves or Rotorua tour, pinned 13,852 km away and
+  printed under the area line "Hamilton, ON", which is 100% of its partner inventory. A name match is now held
+  to 200 km of the metro claimed for it, and a destination with no centre is refused rather than guessed at,
+  which is the rule that function's own comment already states. `affiliateCatalogItems` is the floor under it,
+  so the rows already stored wrong stop publishing on the next sync without a fresh pull: every one of the
+  6,475 rows in the right place sits within 44 km of its metro centre and the 17 sat at 13,852 km, so nothing
+  legitimate is near the line. Tiqets and Klook already match on name and country; Viator was the odd one out.
+- **The rail was never nearest first** (`d23652c2`). Its first line has always promised it and the sort read a
+  photo and then a review count. Over the shipped catalog the lead card of a rail sat a median 62 km from the
+  listing it was offered under, and 22,334 of the 52,275 rails carried a shop more than 100 km nearer further
+  down: a Lexington guest was sent to Louisville ahead of La Grange. Distance now sorts, under the photo rule
+  and over the review count, which takes that median to 4 km and draws exactly the same 13,053
+  illustration-only cards. A shop with no pin, and 1,741 have none, is Infinity rather than zero. The same
+  commit closes the other open line on that rail: it was the one grid of covers that neither read nor fed
+  `deadCovers`, so a shop whose photo 404s led it on the strength of a URL that is not there, drew the scene
+  illustration the photo rule exists to keep out, and taught the home page nothing.
+- **33 listings across 19 states share one pin in the Pacific** (`5967be43`). 46.423669, -129.942709, open
+  ocean 500 km west of Vancouver Island: Boston Charter Boat in Boston, Italiana Tours in Dallas, Playin Hooky
+  Water Taxi at the Lake of the Ozarks, Na Pali Coast Hanalei Tours on Kauai. Most are on one site builder
+  whose theme ships a geo block nobody filled in, and the crawl read it as an address because that is what the
+  markup calls it. A guest in Boston who allows their location is told the Boston charter boat is four thousand
+  kilometres away, so a real shop falls out of near me, out of the distance sort, out of the rail and out of
+  the concierge while its own page prints the town it is in. The sync now clears a pin held to the last decimal
+  by listings in two or more regions, which is the one thing never true of a real address. 274 shipped pins are
+  shared, 7,033 rows in all, and the pass clears these 33 and nothing else.
+
+**Swept and clean.** Every pin in the shipped catalog, 51,075 of them, against the median pin of the region
+its area line names and against the metro it is filed under: 1,447 rows more than 500 km out, 174 more than
+1,000, and every one over 3,000 accounted for by the two defects above. All 52,275 "more like this" rails
+rebuilt before and after, for order, for lead distance and for the count of cards with no photograph.
+
+**Verification.** Backend `npm test` 854 pass, 0 fail, 2 skipped, up from 847. App `npm test` 939 pass, 0
+fail, up from 933. `tsc -b` clean on the app, `tsc --noEmit -p .` clean at the root and still compiling
+nothing, the backend type check clean but for TS5097. The rehearsal 57 of 57 against a local TLS Postgres 16
+on 5433 and the Chromium on disk, with no Stripe, mail or GitHub key. A fresh checkout again had no
+`node_modules` on either side and no Postgres cluster, which is the fifty-second run's Needs Harshil still
+standing.
+
+**Needs Harshil.**
+
+- **The 17 Hamilton rows are still in the affiliate table.** The guard stops them publishing, but they only
+  leave the site when a sync runs, and only leave the database when a Viator pull rewrites that metro. Hamilton,
+  Ontario will then have no partner listings at all until Viator has a destination within 200 km of it, which
+  is the honest answer and worth knowing before you look.
+- **Two more pins are wrong on their own and no rule can reach them.** Festiva Sailing Vacations, area
+  "Asheville, NC", is pinned in the US Virgin Islands; Florida Try Scuba Diving, area "West Palm Beach, FL", is
+  pinned in Honolulu. Both are single rows with a plausible story (a company that sails somewhere else), so
+  they need a look rather than a guard.
+- **A cleared pin does not give a shop its metro back.** `metro_id` was decided from the same placeholder at
+  discovery, so those 33 keep the metro they were given, and most of them have none. Deriving a metro from the
+  town the area line already names would fix that, and is a bigger change than an overnight run should land.
+- Still open from the seventy-eighth run: local `main` sits on a stale `c3a9bfd0`, 50 commits either side of
+  `origin/main`, so this run committed on a detached HEAD and pushed with an explicit refspec. The desktop site
+  still has no way to say anything in passing, the confirm screen's failure line has still not been seen at
+  400px, `plainWords` is still not idempotent, and the three spellings of a shop's state are still three.
+
+## 27 September 2026, eighty-seventh run (07:15 to 08:35 UTC)
+
+**Chosen, and why.** No commit had landed since the last entry, which reports the rehearsal green, so it was
+not run at the start; it was run at the end, because this run touched `backend/src`, `src/lib` and
+`src/components`. Every area on tonight's brief is on the Verified list, so the hunt went to the one line on
+the open list that names a defect nobody had counted: the rail fix surfaced "Philadelphia, DE", and how many
+area lines name a town in the wrong state was unknown.
+
+**Found and fixed.**
+
+- **1,260 listings print a town in a state it is not in** (`d447d9a2`). Discovery fills a listing's town from
+  OpenStreetMap's `addr:city`, and where there is none it borrows the name of the nearest metro within 160 km.
+  The state beside it comes from somewhere else entirely, `addr:state` or the state whose Overpass query
+  returned the row, and the two were never checked against each other. So a shop in Bethesda ships as
+  "Washington DC, MD", one in Sussex County as "New York, NJ", a paintball field in Ontario as "Detroit, ON".
+  255 rows around the capital, 158 around New York, 134 around Boston, 53 spellings in all. The town is the
+  invented half and the state is a fact, so the town goes: those rows now publish the state code on its own,
+  which is the shape 1,683 listings whose town was never read already ship in and which `regionOfArea`, the
+  clock, the currency and the state pages have always read. A real town that shares a metro's name keeps it,
+  because the pin has to sit inside the 160 km the borrow could have happened in: Portland, Maine is 4,000 km
+  from the Portland metro, and it, Charleston, West Virginia, Waterloo, Iowa, Vancouver, Washington and 195
+  more are left alone. A claimed listing is never touched. No listing's region changes, no area line is
+  emptied, none of the 1,260 sits on a domain another listing shares, and 737 keep a metroId, so search still
+  reaches them by place. `osm.ts` stops writing the pair at all.
+- **"Kayak rental in MD"** (`4bac47bc`). The desktop listing page spells a coded state out in the section
+  heading, the Where card and the pin line, but only for an area shaped "Town, XX". The listings that publish
+  a bare code, 1,683 before this run and 2,943 after it, got the code raw. They now read "Maryland". 160
+  listings ship as "Washington DC, DC", which spelled out as "Washington DC, Washington, DC"; a town that
+  already names its own state is not given it twice. `placeName` moved to `lib/listingDerive` so a test can
+  load it without the page's stylesheet, and it reads `REGION_NAME` rather than the byte-identical copy
+  `WebListing.tsx` carried, which takes the three spellings of a shop's state down to two.
+- **"Meet at MD."** (`b414957c`). The review-and-pay sheet closes on that sentence, which is the last line a
+  guest reads before paying, and for those 2,943 listings it named a whole state. A state is not a meeting
+  point and the shop's own address is on the listing above, so the sentence is left out rather than filled
+  with the widest place we hold. The same sheet's subtitle and the confirmation screen's "Getting there" row,
+  which falls back to the area when the shop published no street, now spell the state out too.
+
+**Swept and clean.** Every area line in the shipped catalog, 51,065 of them that carry a region code, against
+the metro table and each listing's own pin. The 198 rows that share a metro's name from far away, read one by
+one. `placeName` and `meetPlace` over all 52,816 shipped area lines, before and after: 0 emptied, 0 left
+naming a state the area line did not already name.
+
+**Verification.** Backend `npm test` 860 pass, 0 fail, 2 skipped, up from 854. App `npm test` 944 pass, 0
+fail, up from 939. `tsc -b` clean on the app, `tsc --noEmit -p .` clean at the root and still compiling
+nothing, the backend type check clean but for TS5097. The rehearsal 57 of 57 against a local TLS Postgres 16
+on 5433 and the Chromium on disk, with no Stripe, mail or GitHub key. A fresh checkout again had no
+`node_modules` on either side and no Postgres cluster.
+
+**Needs Harshil.**
+
+- **None of this reaches the site until a sync runs.** The 1,260 area lines are fixed in the pass that writes
+  the catalog, not in the database, so they keep shipping wrong until `npm run backend:sync` runs. The same
+  sync carries `mergeTiers` and the four open "from" prices from the eighty-second run.
+- **104 of the 1,260 lose a phrase that was arguably true.** Lake Tahoe straddles California and Nevada and
+  Niagara straddles Ontario and New York, so "Lake Tahoe, NV" and "Niagara, NY" read as real places even
+  though we invented them. They become "NV" and "NY" like the rest, because a rule that kept them would be
+  guesswork. The sample bears the general case out: "Niagara, NY" was on a golf course in Amherst.
+- **The phone cards and the static `/l/` page still print the bare code.** Only the desktop listing page, the
+  pay sheet and the confirm screen spell a state out, and the group they leave coded is now 2,943 rather than
+  1,683. Whether a card that tight should say "Maryland" is a design call.
+- Still open from the seventy-eighth run: local `main` sits on a stale `c3a9bfd0`, 50 commits either side of
+  `origin/main`, so this run committed on a detached HEAD and pushed with an explicit refspec. The desktop
+  site still has no way to say anything in passing, the confirm screen's failure line has still not been seen
+  at 400px, and `plainWords` is still not idempotent.
+
+## 27 September 2026, eighty-eighth run (08:15 to 09:05 UTC)
+
+**Chosen, and why.** The only commit since the last entry is that entry, which reports the rehearsal green, so
+it was not run at the start; it was run at the end, because this run touched `src/lib`,
+`src/components` and `backend/src`. It ran twice: the first run was red on one test, the half-written one that
+had just caught "They're at OH.", and the second was green. Every area on tonight's brief is on the Verified list, so the hunt went to
+the one line on the open list that names unfinished work rather than a question: the static `/l/` page's last
+three fields, the title, the area line and the crumb labels, held against the app. That led straight into the
+fallout of last night's own fix, which is where the run stayed.
+
+**Found and fixed.**
+
+- **"Washington, Washington, DC"** (`8beef886`). DC is the one row of the table that spells a state code out
+  whose full name carries its own code, and 118 listings ship the ordinary spelling "Washington, DC". So
+  expanding the code appended the name to a town that was already it, on the listing heading, the Where
+  subtitle, the pin line, the pay sheet's subtitle and its "Meet at" sentence, and the confirm screen's
+  "Getting there" row. The 160 that ship "Washington DC, DC" were guarded, because that town ends on the code
+  itself; this one does not. A town the table's own name already starts with now leaves the line alone.
+  Nothing else in the table carries a comma or a code, so "Washington, WA" still reads "Washington,
+  Washington".
+- **The static page and the browser tab kept the code** (`7282070a`). 15,552 of the 15,556 shipped `/l/` pages
+  named their shop's place differently than the app page a guest opens next, "Chicago, IL" against "Chicago,
+  Illinois", and the ones whose town was never read headed their page "MD". The tab title, which is also the
+  bookmark, the history entry and the headline of a shared link, came off the same raw field on both surfaces.
+  Both read the area line through `placeName` now, and the two titles stay byte-identical, which the backend
+  test checks by building a page and comparing its `<title>` to `pageTitle` itself rather than to a copy of its
+  format.
+- **"Fishing charters near Branson" opened every charter in North America** (`16936a1e`). The "more like this"
+  link named the listing's own town whatever page it pointed at, and on 6,711 of the 15,556 pages that page was
+  the all-metros one. A link says what the page it opens says now, through the same `pageTitle` that writes that
+  page's heading; a metro page keeps the town, and a listing whose area names no town gets the metro's name
+  rather than "near MD".
+- **"They're at OH."** (`f72b62de`). 1,200 shipped listings publish a state or province and nothing else, and 9
+  a state and a postcode, and `addressOf` made a line out of it. So the Where card on both listing surfaces read
+  "Address: OH", the confirmation's "Getting there" row read "OH" over "Get directions", and Otto answered
+  "where are you?" with "They're at OH." An address needs a street or a town now; with neither the line is left
+  out and every surface falls back to what it already falls back to for the 6,492 listings with no contact at
+  all, the area line with its state spelled out. The 45,113 real addresses are untouched.
+- **The four places left that named a state by its code** (`8a7af483`). Three of them sit on a screen last
+  night's fix had already changed, so one screen named the same shop two ways: the desktop Where card's own
+  line under a subtitle saying "Maryland", the phone sheet's twin of that row and its "Hosted by" line, and the
+  confirmation's summary card two sections under its own "Getting there" row. The fourth is Otto, which
+  answered "They're in MD, but no street address is published" and filed "AerOhio Skydiving is in OH." as the
+  fact its grounded answers are built from, so the model was handed the code to quote as well.
+
+**Swept and clean.** The `/l/` page's title against the app's `pageTitle` over all 15,556 shipped pages that
+earn one, before and after: 0 disagree. The area line and the "more like this" label on 1,556 pages built by
+the real generator: 0 area lines wrong, 0 labels promising a town the page does not have, 0 naming a bare code.
+`placeName` over all 52,816 shipped area lines for a repeated place: 118 before, 0 after. Every contact record
+in the catalog through `addressOf`: exactly the 1,210 lines dropped, all of them a state with no street and no
+town, 45,113 kept. The `/l/` crumb trail, read and left as it is.
+
+**Verification.** App `npm test` 949 pass, 0 fail, up from 944. Backend `npm test` 863 pass, 0 fail, 2 skipped,
+unchanged. `tsc -b` clean on the app, `tsc --noEmit -p .` clean at the root and still compiling nothing, the
+backend type check clean but for TS5097. The rehearsal 57 of 57 against a local TLS Postgres 16 on 5433 and the
+Chromium on disk, with no Stripe, mail or GitHub key. A fresh checkout again had no `node_modules` on either
+side and no Postgres cluster.
+
+**Needs Harshil.**
+
+- **None of the 1,210 dropped address lines, or last night's 1,260 area lines, reach the site until a sync
+  runs.** The rules are fixed in the app, which reads the shipped detail file, so those pages are right as soon
+  as this deploys; the area lines themselves are written by `npm run backend:sync`, which still has not run.
+- **A row labelled "Address" now carries an area line on 7,702 listings.** It always did on the 6,492 with no
+  contact; the 1,210 join them rather than printing a state code. "Address: Ohio" is honest about the place and
+  not about the heading, and renaming that label needs a design call.
+- **The 9 listings whose only stated place is a state and a postcode lose the postcode.** "NC, 28801" was not
+  an address a guest could go to, but the postcode did say roughly where. It is still on the contact record and
+  in the JSON-LD.
+- Still open from the seventy-eighth run: local `main` sits on a stale `c3a9bfd0`, diverged from `origin/main`
+  by 50 commits either side, so this run committed on a detached HEAD and pushed with an explicit refspec. The
+  desktop site still has no way to say anything in passing, the confirm screen's failure line has still not
+  been seen at 400px, and `plainWords` is still not idempotent.
+
+## 27 September 2026, eighty-ninth run (09:14 to 10:20 UTC)
+
+**Chosen, and why.** The only commit since the last entry is that entry, and it reports the rehearsal green, so
+it was not run at the start; it ran at the end, because this run changed `src/lib` and `src/components`. Every
+area on tonight's brief is on the Verified list, so the hunt went to the three items on the open list that say
+in as many words that nobody has opened a browser on them: the confirm screen's failure line at 400px, open
+since the seventy-second run; what a card and a page look like for a kind with no scene and no photo; and the
+"Things to know" headings driven rather than read. Two came back clean and the third had a bug sitting beside
+it.
+
+**Found and fixed.**
+
+- **The business a claim link names throbbed like a page still loading** (`b36cf0b6`). `.odsplash >
+  :first-child` pulses forever, which is right for "Opening your dashboard…": that splash leads with the brand
+  mark and the breathing is what says the page has not stopped. The claim-confirm screen came later and leads
+  with the card carrying the business's photo, name and town, so the same selector caught it. On the one screen
+  that asks an owner to hand their business over, with nothing loading and nothing to wait for but their own
+  click, that card pulsed at 1.4s forever. Measured in a real Chromium at 400px, 360px and 1280px:
+  `odsplashpulse 1.4s infinite` at all three, `none` after. The card opts out inline, because the selector is
+  one line in `src/styles/operator.css`, which an overnight run may not touch; the test retires itself if that
+  selector is ever narrowed to the loading splash, and guards the guest side's three `.paysplash` screens,
+  which all still lead with the mark.
+- **A waiver rule printed in two Things to know columns at once** (`cc478abd`). "Who can go" is filled from a
+  shop's `requirements` and "Safety and waiver" from the waiver lines among its `policies`. Those are two
+  fields, so the rule `splitPolicies` has kept since it was written, that a line is never printed in two
+  columns at once, never reached them. Shaka Wasaga states exactly one requirement, "Waivers must be signed 24
+  hours prior to boarding", and it is also one of its two policy lines, so the desktop page headed a column
+  with it and gave the next column nothing else, and the phone sheet did the same across two rows. The waiver
+  column owns a waiver rule, so `notAlreadyShown` keeps it there and drops it from the other. The requirements
+  list itself is left whole, because the age rule and the highlight guard are read off it.
+
+**Swept and clean.** The confirm screen's failure line at 400px and 360px, which the seventy-second run left
+open: the longest sentence that screen can produce, 210 characters, wraps to four lines inside the splash's own
+padding, nothing past the edge at either width, and one line at 1280px. Every `art` kind in the catalog, 64 of
+them, against `sceneInner`: all 64 draw a scene, so the 9,138 listings with no cover have one and "no scene and
+no photo" is an empty set. Every one of the 6,492 shipped affiliate links: all absolute https to a public host,
+and the partner CTA carries `rel="sponsored noopener noreferrer"` with the commission line beside it on the
+page and in the phone sheet alike. The "Who can go" and "Safety and waiver" columns over all 52,815 shipped
+detail files: 355 listings draw both, exactly 1 repeated a line, and the fix changes that one and no other.
+Four screens driven in a real Chromium at 400px for sideways scroll, anything past the edge and a control with
+no name: a shop's listing page, a partner's listing page, the claim screen a bad link lands on, and the
+claim-confirm splash; 0 findings on all four, and the same four at 1280px. Every direct `localStorage` read and
+write in the app, all 40 of them, for a quota or private-mode throw that would reach a guest: every one is
+already inside a `try`.
+
+**Verification.** App `npm test` 959 pass, 0 fail, up from 949. Backend `npm test` 863 pass, 0 fail, 2 skipped,
+unchanged. `tsc -b` clean on the app, `tsc --noEmit -p .` clean at the root and still compiling nothing, the
+backend type check clean but for TS5097. The rehearsal 57 of 57 against a local TLS Postgres 16 on 5433
+and the Chromium on disk, with no Stripe, mail or GitHub key. Two shipped source guards had to move with the
+code they pin, and moved with it: `claimLink.test.ts` on the confirm card and `partnerSheet.test.ts` on the row
+gate. A fresh checkout again had no `node_modules` on either side and no Postgres cluster.
+
+**Needs Harshil.**
+
+- **The pulse belongs in the stylesheet, not on the element.** `.odsplash > :first-child` says "whatever leads
+  a splash is a loading indicator", and that is only true of one of the two splashes. One selector
+  (`.odsplash.loading > :first-child`, or a class on the mark) would say it properly and let the inline opt-out
+  and most of `splashPulse.test.ts` go. `src/styles` is outside what an overnight run may change.
+- **Puerto Rico is known to one region reader and not the other.** `REGION_NAME` in `src/data/regions.ts` spells
+  PR out; `REGION_TZ` in `backend/src/lib/zone.ts` has no row for it, so `regionOfArea` there answers nothing
+  and `zoneForArea` falls through to longitude, which puts San Juan in `America/Halifax`: an hour out for half
+  the year, because Puerto Rico keeps Atlantic time all year and Halifax does not. 0 shipped listings are in PR
+  today, so this is latent, and it is the only code the two readers disagree on.
+- Still open from the seventy-eighth run: local `main` sits on a stale `c3a9bfd0`, diverged from `origin/main`
+  by 50 commits either side, so this run committed on a detached HEAD and pushed with an explicit refspec. The
+  desktop site still has no way to say anything in passing, `plainWords` is still not idempotent, and the 1,210
+  dropped address lines still wait on a sync.
+
+## 27 September 2026, ninetieth run (10:20 to 11:00 UTC)
+
+**Chosen, and why.** The only commit since the last entry is that entry, which reports the rehearsal green, so
+the rehearsal was skipped at the start and run at the end, because this run changed `src/lib`,
+`src/components` and `backend/src/lib`. Every area on tonight's brief is on the Verified list. The hunt went
+to the one guest surface the browser-controls sweep named and then did not open: the founder view behind
+`#admin`, which is the fifth hash our own addresses carry and the only one of the five nobody has driven. Two
+things on the open list were swept beside it, both about a number a guest reads.
+
+**Found and fixed.**
+
+- **A length between whole days read as a decimal** (`750f6f59`). `sayLength` says a span of a day or more in
+  days, and a span that was not a whole number of them kept one decimal, so three shipped partner products
+  told a guest a trip runs "3.8 days" and "2.3 days", and one said "1 hour to 3.8 days". A tenth of a day is
+  nearly two and a half hours, and nobody books 3.8 of anything. They now say the hours that are left:
+  "3 days 20 hours", "2 days 6 hours". A remainder that rounds up to a full day carries into the day count, so
+  there is no "3 days 24 hours". The same commit closes a hole beside it: the minute branch returned before
+  the day rule could see it, so a length arriving as a day or more of minutes said "48 hours" where the same
+  product written in hours said "2 days". No shipped row is that long today, because the partner reader
+  divides by 60 first, but it is one rule now either way. All five surfaces read this one function.
+- **Puerto Rico was a place the app could name and neither clock knew** (`6ef4404e`). `REGION_NAME` spells out
+  65 codes; the two `REGION_TZ` tables, the guest app's and the API's, carried 64. So a San Juan area line
+  named a region the clocks did not have, `zoneFor` fell through to longitude and handed the shop
+  `America/Halifax`, which keeps daylight saving where Puerto Rico does not: right in January, an hour out
+  from March to November, on "Open now", the "Open right now near you" rail, which start times are still far
+  enough out to book, and Otto. 0 listings ship there today, so this is the next one kept honest rather than a
+  live fault. Both tables now carry `PR: "America/Puerto_Rico"`, and both suites carry the guard that every
+  region the app can name is on a clock. `CA_REGIONS` is untouched, so a PR listing is still priced in USD.
+- **The founder view offered a marketplace front door as an operator's website** (`381f25b2`). `#admin` draws
+  a dashed "Website" chip on the feed card, the home card, the listing page and the phone booking sheet, and
+  its whole promise is the operator's own site, for holding a listing against the real thing. A partner's
+  product has no such site: its `src` is the marketplace, so all 6,492 shipped Viator rows offered
+  `https://viator.com/`, the front door, on four surfaces. `adminWebsite` now answers nothing for an affiliate
+  row; the product's own page is already on the listing as the partner CTA.
+
+**Swept and clean.** The `#admin` toggle driven in a real Chromium at 1280px, 400px and 360px, a fresh browser
+profile per case: a guest with no flag sees no chip anywhere; the token turns the view on from the home and
+from a listing link alike, and is stripped from the address bar in both, leaving `#o=<id>` intact and the
+listing open; a reload keeps it on rather than flipping it back; a second `#admin` turns it off. Every chip
+drawn at those widths is an `https` link with a name, `target="_blank"` and `rel="noopener noreferrer"`, none
+sits past the viewport edge on a phone, no page scrolls sideways and no page threw. `adminWebsite` over all
+52,816 catalog rows and all 52,815 detail files: 48,764 links, 4,052 map pins correctly refused, no host that
+is an address, a punycode name or anything but a domain, and the card and the page agree on every one. Every
+shipped `dur` value through `sayLength`, 426 distinct: nothing now prints a fraction of a day, and every
+operator-written length is still left exactly as the shop wrote it. `/sessions`, the watch window over the
+agent's shoulder and the one hand-built HTML page in the backend nobody had read: every guest-typed string it
+prints goes through its escaper into element content, and the two attributes it builds by hand carry only
+server-minted ids and a fixed step kind, so there is nothing a guest can type that reaches an attribute.
+
+**Verification.** App `npm test` 968 pass, 0 fail, up from 959. Backend `npm test` 865 pass, 0 fail, 2 skipped,
+up from 863. `tsc -b` clean on the app, `tsc --noEmit -p .` clean at the root and still compiling nothing, the
+backend type check clean but for TS5097. The rehearsal 57 of 57 against a local TLS Postgres 16 on 5433 and
+the Chromium on disk, with no Stripe, mail or GitHub key. One shipped source guard pinned the old decimal and
+moved with the rule it pins: `backend/src/affiliates/__tests__/catalog.test.ts` (`d7242fab`). A fresh checkout
+again had no `node_modules` on either side and no Postgres cluster.
+
+**Needs Harshil.**
+
+- **The founder chip on a partner card now draws nothing, and the product page is a click away on the
+  listing.** Drawing the partner's own product URL there instead would put the useful link back on the card,
+  where there is otherwise no way to reach it. That is a product call about a founder-only surface, so it is
+  left as the honest blank.
+- Still open from the seventy-eighth run: local `main` sits on a stale `c3a9bfd0`, diverged from `origin/main`,
+  so this run committed on a detached HEAD and pushed with an explicit refspec. The desktop site still has no
+  way to say anything in passing, `plainWords` is still not idempotent, and the 1,210 dropped address lines
+  still wait on a sync.
+
+## 27 September 2026, ninety-first run (11:40 to 12:20 UTC)
+
+**Chosen, and why.** The only commit since the last entry is that entry, and it reports the rehearsal green, so
+the rehearsal was skipped at the start and run at the end, twice, because this run changed `src/lib`,
+`src/components` and `backend/src`. Every area on tonight's brief is on the Verified list. The hunt went to the
+one seam the hours sweeps had never crossed: the hours a shop publishes have been read, parsed, diffed and
+compared between their two parsers over the whole catalog, but the clock a guest actually reads them off was
+never held against them. That turned out to be three faults in a row, all of them a guest-facing line.
+
+**Found and fixed.**
+
+- **A bar open until 4 AM told a guest it closes at 4 PM** (`b2ae29ad`). `parseWeek` carries a day that runs
+  into the small hours by adding a day to the closing time, so 169 Bar in New York publishes "Mon-Sun 2:00 PM -
+  4:00 AM" and its Saturday closes at minute 1680. `fmt` in `openNow.ts` takes that modulo a day; `fmtTime` in
+  `format.ts`, which is its twin, read the clock string straight, so "24:00" was noon and "26:00" was 2 PM. The
+  "Plan your visit" Hours block on the listing page is drawn from those minutes, so 169 Bar read "2:00 PM to
+  4:00 PM", an Alaska RV park's overnight desk "10:00 PM to 7:00 PM", a Fresno bowling alley "10:00 AM to 1:00
+  PM" and an arcade open until midnight "2:00 PM to 12:00 PM". 213 shipped listings printed 874 such lines.
+  `fmtTime` now wraps, and the minutes-to-clock step the panel had inline is `clockOfMinutes` beside it, so the
+  panel and its test read one function.
+- **A range whose two ends name one clock face was read as a shop open round the clock** (`271ab2ab`).
+  `coversWholeDay` has refused a site builder's "12:00 AM - 12:00 AM" since the 166 listings carrying one were
+  found standing in "Open right now near you" at four in the morning, but it read only the placeholders that
+  start at midnight. The same thing written from anywhere else got through, because the parser adds a day to a
+  close that is not later than its open: an airboat ride published "Mon-Sun 1:00 AM - 1:00 AM", SaltWater
+  Brewery "Sat 12:00 PM - 12:00 PM", a Naperville yoga studio "Wed 8:00 AM - 8:00 AM", XLanes in Fresno "Sun
+  11:00 AM - 11:00 AM". 6 listings and 12 day lines open around the clock, in the open-or-closed line, the rail,
+  the start times an unclaimed picker offers and Otto. Nobody trades noon to noon, so all three parsers now
+  measure the span rather than its opening end, and the Hours block drops the same line so both halves of the
+  page keep one answer. 77 of the 82 lines of that shape were already refused as midnight to midnight.
+- **One date and one time was read as a week** (`73f003bd`). 29 listings publish an entry from their own event
+  calendar and nothing else, The Events Calendar's "@" between the date and the time: "Open Studio November 21 @
+  11:00 am - 2:00 pm", "Pinned Butterflies September 10 @ 5:30 PM - 7:00 PM", "OPEN PRIVATE TESTING September 18
+  @ 4:00 pm - 10:00 pm". The Hours block printed each as the shop's opening hours, and the line names no
+  weekday, so `parseWeek` gave it all seven days: a railroad museum open 9 to 5 every day, a dragway 4 to 10
+  every day, on the strength of one afternoon. `isTradingHoursLine` refuses the shape now, in the guest copy and
+  in the sync's twin. Nothing is lost, because not one of the 29 publishes such a line beside hours of its own,
+  and both the seasons written in front of a week and the three shops that write an ordinary week with an "@" in
+  it are untouched.
+
+**Swept and clean.** Every parsed week of all 52,815 shipped detail files, before and after, diffed line by
+line: exactly 6 listings lost a day to the whole-day rule and exactly 29 lost a fabricated week to the event
+rule, each to `null`, and no other listing in the catalog moved. Every closing time the visit panel draws, over
+all 16,213 listings whose page is an Hours block rather than a booking box: 237 day lines closing at midnight
+and 637 past it, now every one of them in the right half of the day, and a catalog-wide guard on it. Every hour
+line in the catalog carrying an "@", all 34: the 29 events refused, the 5 that are a shop's real week kept. The
+82 lines naming one clock face twice, against the 77 the old rule already refused. `fmtTime` against every
+ordinary clock face it is asked for elsewhere, which is the booking box, the trip list, the operator's calendar,
+bookings drawer, Home and Assistant, and the concierge's departure rows, none of which can carry an hour past
+24 because their times come from the dashboard selects or from `startTimesOn`, which clamps at midnight.
+
+**Verification.** App `npm test` 972 pass, 0 fail, up from 968. Backend `npm test` 865 pass, 0 fail, 2 skipped,
+unchanged in count because the new cases joined three existing tests. `tsc -b` clean on the app, `tsc --noEmit
+-p .` clean at the root and still compiling nothing, the backend type check clean but for TS5097. The rehearsal
+57 of 57, twice, against a local TLS Postgres 16 on 5433 and the Chromium on disk, with no Stripe, mail or
+GitHub key. A fresh checkout again had no `node_modules` on either side and no Postgres cluster.
+
+**Needs Harshil.**
+
+- **249 listings still print a dated line in their Hours block, and for 184 of them it is the whole block.**
+  The "@" shape was the one that could be told apart with certainty. The rest run from a real season ("May 1 -
+  November 1: 11am - 6pm", "WINTER HOURS NOV 17-MAR 1: 8am-5pm", which are hours and should stay) through to a
+  single day that is plainly one event ("Sunday, August 16, 2026 - 1:00 pm - 3:00 pm", "open Saturday, July 4th
+  from 11:00 AM-4:00 PM", "are: Thursday, September 10 - 10:00 am to 12:00 pm"). Telling one date from a range
+  of them is a rule worth writing; which side "Open starting at 8 am Friday May 1, 2026" falls on is a judgement.
+- **Diggerland USA's line was the one thing the event rule cost.** "Open 10:00 - 6:00 August 30 @ 2:00 pm -
+  10:00 pm" carried a plausible 10 to 6 in front of the event, and it now has an honest gap instead. One
+  listing, and the gap is the safer default, but it is the one case where the rule dropped something real.
+- Still open from the seventy-eighth run: local `main` sits on a stale `c3a9bfd0` with 21 commits `origin/main`
+  no longer carries, so this run again committed on a detached HEAD and pushed with an explicit refspec. The
+  desktop site still has no way to say anything in passing, `plainWords` is still not idempotent, and the 1,210
+  dropped address lines still wait on a sync.
+
+## 28 September 2026, ninety-second run (05:18 to 07:05 UTC)
+
+**Chosen, and why.** The only commit since the last entry is a security sweep that changed no code, and that
+entry reports the rehearsal green, so the rehearsal was skipped at the start and run once at the end, because
+this run changed `src/lib` and `backend/src`. Every area on tonight's brief is on the Verified list. The hunt
+went to the one item the last run left on Needs Harshil as a defect rather than a question: the 249 listings
+still printing a dated line in their Hours block, 184 of which publish nothing else. Telling one date from a
+range of them turned out to be a rule worth writing, and writing it turned up two more faults in the same day
+reader, both of them older and wider than the one I went looking for.
+
+**Found and fixed.**
+
+- **One closed date was printed as a whole week** (`e30f6ca1`). 245 listings publish an hour line naming a
+  calendar date and for 181 it is the whole block, so whatever that one line said became all seven days. Last
+  night's rule caught the shape The Events Calendar writes with an "@"; most shops write no "@" at all. Two
+  shapes hide in those 245 and mean opposite things: a season is a run of days and its line is the shop's real
+  week ("May 1 - November 1: 11am - 6pm"), while one closed date is one afternoon ("Open House September 30,
+  2026 4:00pm - 6:00pm", "Open Mic Night Sep 11 7 pm - 9 pm", "Thursday, May 8: 11AM - 8PM", "July 4th Hours:
+  11 AM - 7:00 PM", "December 25th: closed"). `isTradingHoursLine` now refuses a line naming exactly one date
+  and nothing wider, in the guest copy and in the sync's twin. A run keeps its line however it is written: a
+  second month, a second day hung off the first, a range word in front of the date, or a word that opens or
+  closes the run. A day number that is really a clock ("October 11:00AM - 4:00PM") or a year is not a date, and
+  OpenStreetMap's own exception clause ("Fr-Sa 12:00-18:00; Dec 25 off") is left to the reader that understands
+  it. 103 lines on 95 listings go; 85 of those publish nothing else and now keep an honest gap. 11 keep a week
+  and every one now reads it off a real line: Twisted Brew Pub's Fourth of July had pulled its Friday and
+  Saturday close from 10 PM back to 7 PM on all seven days, City of Thornton's Sunday came from an open space
+  cleanup, Brightideas Brewing was open 6 to 8 every evening on the strength of one open mic, and Koena Spa
+  printed four holiday lines as its hours.
+- **A shop that writes Thursday "Thur" had no Thursday** (`0b446c5e`). The list of days a line states reads
+  only the endings a real day name takes, because every three-letter prefix is also the front of a word that is
+  not a day: a course open "Mo-Su 07:00-sunset" states no Sunday, a farm open "first Sunday of the month" no
+  Monday, a barn hired out for a wedding no Wednesday. "Thur" and "Thurs" were not among the endings, so a
+  brewpub's "Sun, Mon, Tue, Wed, Thur 11:00 AM - 9:00 PM" told a guest it was shut on Thursday, a skydive
+  centre's "Mon, Wed, Thur, Fri - 9 AM to 5 PM" the same, and a winery whose only line was "THURS: 4PM-10PM"
+  named no day at all, which a week reads as every day of it. 25 lines on 25 listings. The spellings are one
+  constant now, shared by the range and the list.
+- **A range whose last day had the clock glued to it was no range at all** (`eb757f80`). The crawl glues the
+  next thing on the page straight on to the closing day, and the reader asked for a word boundary there:
+  "Monday-Thursday9:00 AM - 5:00 PM", "Monday - Sunday10am-10pm", "Tuesday - Saturdayfrom 9:00 am - 4:00 pm",
+  "Monday - SaturdayOpen - 8:00 am to 5:00 pm". 186 shipped listings state a range written that way and not one
+  was read, so the line named its opening day alone or no day whatever. A Utah aerospace museum open Tuesday to
+  Saturday opened on Tuesday and was shut the rest of the week; an arts centre open Monday to Sunday opened on
+  Monday. The fix is one character. It also stops a range reading through a shop's own closed day, because the
+  match now ends on the day rather than running past it: Lacombe Legion was seven days open and is now six, and
+  the Borscht Belt Museum has the Monday off it asks for.
+
+**Swept and clean.** Every one of the 309 dated hour lines in the catalog read by hand against the rule, both
+ways round. Every parsed week of all 52,815 shipped detail files diffed before and after, three times, once per
+commit: 289 listings moved in all, 195 gaining days they state, 10 losing days they say they are shut, 81
+losing a fabricated week to an honest gap, 3 moving a day's hours off a line that was not theirs, and no other
+listing in the catalog changed. Both hour parsers held against each other on all 14,509 listings that publish
+an hour line, agreeing on every one. The words those day prefixes open which are not days (sunset, sunrise,
+sundown, month, wedding) counted over the whole catalog and now a test of their own: 115 lines on 90 listings
+carry one and not one of them adds a day.
+
+**Verification.** App `npm test` 975 pass, 0 fail, up from 972. Backend `npm test` 868 pass, 0 fail, 2 skipped,
+up from 867. `tsc -b` clean on the app, `tsc --noEmit -p .` clean at the root and still compiling nothing, the
+backend type check clean but for TS5097. The rehearsal 57 of 57 against a local TLS Postgres 16 on 5433 and the
+Chromium on disk, with no Stripe, mail or GitHub key. A fresh checkout again had no `node_modules` on either
+side and no Postgres cluster.
+
+**Needs Harshil.**
+
+- **Five shops write their closed day glued to a range and one of them is still wrong.** "MondayClosedTuesday -
+  Saturday3:00 pm - 9:00 pm" and "TueClosedWed - Sun10:00 am - 4:00 pm" are one word to a reader, so the range
+  swallows the closed day: each of the five is now one wrong day instead of seven, which is a big improvement
+  and not the right answer. Splitting a glued word on "Closed" before the days are read would finish it, and it
+  is the sort of rule that wants counting over the catalog first.
+- **A multi-day event is still a week.** The rule deliberately keeps a line naming more than one date, so
+  "Open for visitors August 7, 8, and 9 from 10:00am to 5:00pm", "Sept 11th & 12th 12:00 PM - 8:00 PM" and
+  "Sept. 7-11: 12-7:30" still spread a festival over seven days. Telling a two-day festival from a two-week
+  season is a judgement about how long a run has to be before it is the shop's week.
+- **`o-jcprd-com` publishes "Last rental 2:30 - 3:30 pm" as its only hours line**, so a park reads as open for
+  one hour a day. That is the quiet-hours shape again with a different subject, and there may be more of them.
+- Still open from the seventy-eighth run: local `main` sits on a stale `c3a9bfd0` with 50 commits `origin/main`
+  no longer carries, so this run again committed on a detached HEAD and pushed with an explicit refspec. The
+  desktop site still has no way to say anything in passing, `plainWords` is still not idempotent, and the 1,210
+  dropped address lines still wait on a sync.
+
+## 28 September 2026, ninety-third run (06:34 to 07:50 UTC)
+
+**Chosen, and why.** Nothing but last night's log commit since that entry, and it reports the rehearsal green, so
+the rehearsal was skipped at the start and run once at the end, because this run changed `src/lib` and
+`backend/src`. Every area on tonight's brief is on the Verified list. The hunt started from the one defect the
+last run left on Needs Harshil, a day off glued inside one word, and counting that shape over the catalog turned
+up a bigger one beside it: a shop can state a day off in perfectly ordinary English on a line that also states
+hours, and the word counted for nothing.
+
+**Found and fixed.**
+
+- **A day a shop says it is shut stood open** (`edeff027`). 111 lines on 106 listings write a day off and a
+  clock on one line, and `closed` was read as a fact about the line rather than about a day, so it was ignored
+  the moment a span turned up: a brewery's "Mon Closed Tue 12pm-7pm Wed 12pm-7pm" opened on Monday, a paintball
+  field's "Mon - Fri: Closed Saturday: 10am - 5pm" opened every weekday, an axe range, 30 museums and a kayak
+  shop's "Open daily 10AM-7:30PM, closed Wednesdays" the same, so each stood in "Open right now near you" and
+  offered start times on the day nobody is there. Which days the word is about is what the shop's own
+  punctuation says: the days in front of it where the line marks one (":", "-", "is", "and Holidays") or names
+  none behind it, the days behind it where a bracketed aside or an opening word puts them there, and the shorter
+  side where both name days and between them they name the week. A clock right behind the word is an hour the
+  shop shuts for, not a day, so Page Lake Powell keeps its mornings. 83 weeks change, every one read by hand.
+- **A day the crawl glued to a heading or a clock was no day at all** (`d2232fef`). 250 listings publish an hour
+  line with a day name glued to the word in front of it or the clock behind it, and only a range's closing day
+  was ever read through it. For 63 the line named no day, which a week reads as every day of it: a tank museum's
+  "Public Visiting Hours Friday10AM - 4:30PM" and a dance studio's "Monday6:00PM-9:00PM Tuesday6:00PM-9:00PM"
+  were open all week, a physio's "DayHoursMonday - Saturday9 am - 8 pm" lost the range it states, and twelve
+  shops hid a day off inside one word ("MondayClosedTuesdayClosedWednesday11:00 am - 4:00 pm"). Every seam
+  opened is a shape no shop writes on purpose, so a salmon charter keeps its letters, and the line is then cut
+  into the rules it was holding, which is what gives each glued day its own hours. 149 weeks change and the
+  guest's Hours block reads as 133 shops wrote it rather than as the crawl left it.
+- **The page was reading a week baked before the fix** (`3bc8f841`). `itemWeek` took the compact week in
+  `catalog.json` ahead of the shop's own lines, and 547 of the 14,220 listings that ship both no longer agree
+  with a fresh read, so every fix to the day reader was invisible on the listing page, in the booking sheet's
+  picker and in Otto's answers until a sync ran, while the API's own slot route read the lines and refused the
+  times the picker had offered. Where the lines are in hand they are read; a browse record with none keeps the
+  compact week.
+
+**Swept and clean.** Every parsed week of all 52,815 shipped detail files diffed before and after, twice, and
+every one of the 232 changed listings read by hand against its own lines. Both hour parsers held against each
+other on all 14,509 listings that publish an hour line, agreeing on every one, before and after. The guest's own
+Hours block diffed over the same catalog: 133 blocks change, 3 of them by joining a line the crawl had split,
+none by losing one. All 309 dated lines and the day-prefix words that are not days re-checked against the new
+seams.
+
+**Verification.** App `npm test` 978 pass, 0 fail, up from 975. Backend `npm test` 870 pass, 0 fail, 2 skipped,
+up from 868. `tsc -b` clean on the app, `tsc --noEmit -p .` clean at the root and still compiling nothing, the
+backend type check clean but for TS5097. The rehearsal 57 of 57 against a local TLS Postgres 16 on 5433 and the
+Chromium on disk, with no Stripe, mail or GitHub key. A fresh checkout again had no `node_modules` on either
+side and no Postgres cluster.
+
+**Needs Harshil.**
+
+- **547 cards still carry the old week.** A card, a rail and the price filter read the compact week in
+  `catalog.json`, which an overnight run may not write, so those listings' pages are right tonight and their
+  cards are not. One sync closes all of it, including the 1,210 address lines and the 766 cut blurbs still
+  waiting from earlier runs.
+- **A line that states two days' hours still gives both the first one.** 447 lines on 405 listings write more
+  than one rule with a space rather than a seam ("Mon-Wed 12pm-6pm, Thu-Fri 11:30am-6pm, Sat 11am-4:30pm"), and
+  every day on them takes the first span. Splitting on a day that follows a finished clause would finish it, and
+  it is the same rule as tonight's seam with a wider blast radius, so it wants its own night and its own diff.
+- **An off-season day off wins over an in-season week.** Four listings publish a season per line ("In Season:
+  Daily 9am-6pm", "Off Season: Mon-Fri 10am-4pm, Sat 10am-2pm, Sun Closed") and the last line wins, so two
+  marinas and a vineyard now read Sunday closed in July. Reading the season would need the week to know what
+  month it is.
+- Still open from the ninety-second run: a multi-day event is still a week, `o-jcprd-com` still publishes "Last
+  rental 2:30 - 3:30 pm" as its only hours line, and local `main` still sits on a stale `c3a9bfd0` with 50
+  commits `origin/main` no longer carries, so this run again committed on a detached HEAD and pushed with an
+  explicit refspec.
+
+## 28 September 2026, ninety-fourth run (07:28 to 08:45 UTC)
+
+**Chosen, and why.** Type checks and both unit suites first: root `tsc --noEmit -p .` clean, backend clean but
+for TS5097, backend 868 pass. The last entry at the time reported the rehearsal green and only a log commit sat
+after it, so the rehearsal was skipped at the start and run once at the end, because this run changed `src/lib`
+and `backend/src`. Every area on tonight's brief is on the Verified list, so the hunt went to the subject rule
+in `isTradingHoursLine`: a line can carry days and a time range and still not be when the door is open, and
+three subjects were listed there. Sweeping every one of the 32,475 hour lines in the catalog for a fourth found
+two more, and both are the whole Hours block on every listing that publishes one.
+
+**Found and fixed.**
+
+- **Quiet time and a last rental stop being the hours a shop's door is open** (`52e91507`). Four shops word
+  the noise rule without the word "hours", so the rule that already refuses "Quiet hours are from 11:00pm -
+  8:00am" never saw them: "Quiet time is observed from 10:00 PM - 7:00 AM" (an RV park by Daytona), "Quiet
+  time is from 10:00 PM to 8:00 AM" (a hot springs), "designated as quiet time?Yes, 11pm to 8 am" and "Quiet
+  to be maintained from 11:00PM to 8:00AM". Each of the four publishes that line and nothing else, so all four
+  told a guest they were shut all day and open all night, and each stood in "Open right now near you" at two
+  in the morning. Two more state the last thing they sell and no range of their own: "Last rental 2:30 - 3:30
+  pm" is a county parks department's whole block, read as a park open for one hour a day, seven days a week,
+  and a skydive centre whose only other line is "First appointment at 8 am" opened at 3 PM on the strength of
+  "Last appointment 3 to 5 pm depending on season". Refused only when a range hangs off the subject, so the 14
+  other lines that open this way ("Last ticket sold at 3 p.m.", "Last entry into the park for Day Pass Holders
+  is 4:30 pm") state one time, never built a week, and stay printed beside the real hours they belong to.
+
+**Swept and clean.** Every one of the 32,475 hour lines in the catalog read for a fourth subject, both ways
+round. Every parsed week of all 14,509 listings that publish one diffed before and after: exactly 6 move, every
+one from a fabricated week to an honest gap, and no other listing changes. Both hour parsers agree on all
+32,025 shipped lines and on all 14,509 weeks. The false positives were counted before the words were chosen
+rather than after: 4 businesses are named something Quiet, among them Quiet Times Golf Course, which is why the
+"time" spelling is singular; 67 are named something Happy, one of them Salty Dog Happy Hour Cruise; and 16 are
+named Last something, from Last Cast Charters to Last Wave Brewing Company, which is why the last-sold nouns
+are listed one at a time rather than taken as whatever follows the word. None of the 87 publishes an hour line
+today, so all three collisions are latent.
+
+**Thrown away, and why it matters.** Most of this run went on a second fix that was already being written in
+another session. A sweep of the 26 listings whose closed day the crawl glued into a range ("Monday - Friday:
+ClosedSaturday: 10AM - 5PM", a paintball park open only on Saturday that told a guest the exact opposite) grew
+into a rule, tests and a measured 86 listing diff, and while it was being verified the ninety-third run pushed
+`edeff027` and `d2232fef`, which solve the same two bugs more generally, over 106 and 250 listings. That work
+was dropped rather than rebased: two rules doing one job on the same lines is worse than either. Only the
+subject fix above was rebased on to their tree, re-measured against it, and pushed. This is the third and
+fourth hour-line bug found in the same code in twelve hours by two runs that could not see each other.
+
+**Verification.** App `npm test` 980 pass, 0 fail, up from 978. Backend `npm test` 872 pass, 0 fail, 2 skipped.
+`tsc -b` clean on the app, `tsc --noEmit -p .` clean at the root and still compiling nothing, the backend type
+check clean but for TS5097. The rehearsal 57 of 57 against a local TLS Postgres 16 on 5433 and the Chromium on
+disk, with no Stripe, mail or GitHub key. A fresh checkout again had no `node_modules` on either side, no
+Postgres cluster, and `initdb` refuses to run as root here, so the cluster has to be started as `postgres`.
+
+**Needs Harshil.**
+
+- **Two overnight runs are working the same file at the same time and neither can see the other.** The
+  ninety-third and this one both started from the same Needs Harshil line, both went to `openNow.ts` and
+  `hours.ts`, and both wrote a closed-day rule. An hour went on work that was thrown away, and the only reason
+  it was not pushed on top of theirs is that the push was rejected and their diff read first. If the schedule
+  is meant to overlap, a run needs to fetch and re-read `origin/main` before choosing its area, not only
+  before pushing. If it is not meant to overlap, the schedule wants looking at.
+- **`o-peecnature-org` still stands open on the day it is shut.** "Mon 10:00 am - 4:00 pm Tues CLOSED Wed
+  10:00 am - 6:00 pm" states a day off between two days of hours, and the closed day is read from the side of
+  the word rather than from the clause it belongs to. That is the one shape the ninety-third run's punctuation
+  rule does not reach, and it wants the line cut into three rules rather than read as one.
+- **`o-bostonskydive-com` and `o-pcdhfc-com` keep a week that is wrong either way.** "During
+  SeasonWeekdays (Closed Tuesday)10am - 4pm" has its "Weekdays" glued to the word in front of it, so the line
+  names no day at all and offers only the Tuesday it is shut. Reading the aside would have handed it a
+  Saturday and a Sunday it never claimed, which is why it was left alone, and the same is true of an office
+  whose line is "Office hours 8:00am-4pm (closed Tues / Wed)".
+- Still open from the seventy-eighth run: local `main` is clean again and this run committed on it, so that
+  item looks resolved. The desktop site still has no way to say anything in passing, `plainWords` is still not
+  idempotent, and the 1,210 dropped address lines still wait on a sync.
+
+## 28 September 2026, ninety-fifth run (08:16 to 10:05 UTC)
+
+**Chosen, and why.** `git fetch` first, before picking anything, because the ninety-fourth run's Needs Harshil
+says two runs collided on `hours.ts` inside twelve hours. `origin/main` was at its log commit and nothing was
+in flight, and the hunt deliberately went nowhere near the hour parsers for the same reason. A fresh checkout
+again had no `node_modules` on either side. Type checks first: root `tsc --noEmit -p .` and `tsc -b` clean,
+backend clean but for TS5097, backend 872 pass. The last entry reported the rehearsal green and only a log
+commit sat after it, so the rehearsal was skipped at the start and run at the end, twice, because this run
+changed `src/lib` and `backend/src`.
+
+Every area on tonight's brief is on the Verified list, so the hunt went to Coverage's open line on how the chat
+words an answer around a shop's own string, and swept it that way: 22 questions each over a random 9,000
+listings, and the one clipping rule behind most of those answers over every text of all 46,323 non-partner
+detail files, with the answers read for text that is malformed rather than merely wrong. That found two bugs in
+the chat and led to two more in strings the whole product prints.
+
+**Found and fixed.**
+
+- **Otto stopped quoting a shop mid-abbreviation** (`d4f6c9df`). `clip` cut a shop's prose at the first full
+  stop followed by a space and a capital, which is exactly how an initial or a shortened word reads. A balloon
+  company was quoted "designed to showcase Mt.", an airboat ride "Slide across the legendary St." and a sauna
+  "red light therapy in St."; the full stop the chat adds made each of those a finished sentence. The other
+  half of the same rule is a text that opens on an initial: its first stop landed inside the first twenty
+  characters, the `stop > 20` floor threw it away, nothing looked for the next one, and the quote ran on
+  through every later sentence, so "The A.R. Mitchell will exhibit ..." carried a second paragraph about the
+  artist. 1,545 clipped texts on 1,078 shipped listings read one way or the other, counted over every blurb,
+  policy, rule, inclusion, FAQ answer, service description, hours line and meeting point in the catalog. Not
+  cutting costs nothing, because the length clamp still ends the line, so the abbreviation list is generous and
+  a stop inside an open bracket is left alone for the same reason.
+- **A town the crawl left a comma on stopped printing twice** (`aafeb571`). `streetOf` has always closed the
+  punctuation the crawl leaves behind and the town field beside it never did. A golf course north of
+  Peterborough stores its city as "Cavan-Monaghan," and read "1702 Cedar Valley Rd, Cavan-Monaghan,, ON, K9J
+  6Y3" on the Where card, in the Maps query, in the booking confirmation's "Getting there" row, on the static
+  page and in Otto's answer to "where are you". A brewery stores "Seminole " and a campground "West  Guilford".
+  Three shipped records, each wrong on five surfaces at once. `townOf` gives the pair the same tidy and the two
+  places in `catalog.ts` that built it by hand read it now.
+- **A marina stopped offering a "Bennington Pontoon Rental Rental"** (`8e193bc3`). Taking the length out of a
+  service name can leave a word standing beside itself: that marina's two rows are "Bennington Pontoon Rental
+  Half Day Rental" and "... Full day Rental", so its whole answer to "what do you offer" was "Just one:
+  Bennington Pontoon Rental Rental.", and a Santa Cruz kayak shop's "Santa Cruz Harbor 1-Hour Harbor Rental"
+  read "Santa Cruz Harbor Harbor Rental". A pair the shop wrote itself is left alone, so "Putt Putt Golf" and
+  "Cha Cha" keep both words.
+- **A shop's name stopped carrying the crawl's punctuation** (`fff38bb5`). The business name is the most
+  printed string in the product, and 54 shipped names carry a mark that is not theirs. 42 have a space in front
+  of a comma or a colon, so Otto said "Pick a service and time on this page and Tac Ops : A Tactical Laser Tag
+  Experience confirms it" and a Viator row reads "Quebec City : Bike Excursion to Montmorency Falls". Two end
+  on a bracket the crawl never closed, "2 Hour Guided Segway Tour (" and "Trans-Allegheny Lunatic Asylum (West
+  Virginia Hospital for the", one on a bracket it never opened, and four on a separator with nothing behind it,
+  among them "Pilates &". "Arts+" and "& Fitness" keep their sign, because a shop can be named for one, and a
+  space in front of a final mark is what tells a page's question mark from a name's. The app reads `shopTitle`
+  at load so the 54 are right tonight, and the sync's own `cleanTitle` ends with the same call. The same marks
+  reach a menu row: 23 rows on 11 listings carry a space in front of their own punctuation and 12 on 5 a
+  bracket nothing opened, including a railroad museum's whole row name "). Ticket", which `tidyRowName` now
+  takes at the ends of a name but not in the middle, where it is the shop's own list marker.
+
+**Swept and clean.** 198,000 answers over a random 9,000 listings, and every clipped text of all 46,323
+non-partner detail files, read for malformed text both before and after each fix; what is left in the sample is
+the shop's own prose, which is theirs. Otto's "Prices start at" against the page's own "From" price, over the
+6,168 listings that quote one both ways: 1 disagrees, and which one was not chased. Every
+contact record and every extra location in the catalog, 46,787 of them, for an address line with stray
+punctuation: the three above and no others. Every one of the 260,099 shipped row names for the two marks above.
+All 52,816 titles. `plainWords` expanding SUP inside "Akona SUP Paddleboard Pump" is the one doubled word left
+in the catalog, and it belongs to the non-idempotence already logged.
+
+**Verification.** App `npm test` 993 pass, 0 fail, up from 983. Backend `npm test` 872 pass, 0 fail, 2 skipped.
+`tsc -b` clean on the app, `tsc --noEmit -p .` clean at the root and still compiling nothing, the backend type
+check clean but for TS5097. The rehearsal 57 of 57 twice, against a local TLS Postgres 16 on 5433 and the
+Chromium on disk, with no Stripe, mail or GitHub key. `initdb` still refuses to run as root here, so the
+cluster has to be started as `postgres`.
+
+**Needs Harshil.**
+
+- **A comma with no space after it is still a comma with no space after it.** The name tidy closes the space in
+  front of a comma and deliberately does not open one behind it, because "A,B" inside a name can be the shop's
+  own. So six partner rows still read "Banff Town,Johnston Canyon Tour" and "Moraine Lake,Lake Louise". Adding
+  a space is a one-line change and a judgement about somebody else's copy.
+- **A variant label and an option's detail line are never tidied.** `bookableMenu` runs `tidyRowName` over
+  service names, option names and add-on names, and not over the strings beside them, which the service picker
+  and Otto both print. Two rows on one listing still read "Fridays are also Pizza Days ! Please send", which is
+  a sentence the crawl cut in half sitting in a label. Whether a label should be tidied like a name, or dropped
+  when it is plainly not one, is the question.
+- Still open from earlier runs: the desktop site has no way to say anything in passing, `plainWords` is not
+  idempotent, the 1,210 dropped address lines and the 766 cut blurbs wait on a sync, and `o-peecnature-org`
+  still stands open on the day it is shut.
+
+## 28 September 2026, ninety-sixth run (09:16 to 10:05 UTC)
+
+**Chosen, and why.** `git fetch` first, because two earlier runs collided inside twelve hours: `origin/main` was
+at the ninety-fifth run's log commit and nothing was in flight, and the hunt stayed away from the hour parsers,
+which the last four runs all wrote to. A fresh checkout again had no `node_modules` on either side. Type checks
+first: root `tsc --noEmit -p .` and `tsc -b` clean, backend clean but for TS5097, backend 872 pass. The last
+entry reported the rehearsal green and only a log commit sat after it, so the rehearsal was skipped at the start
+and run once at the end, because this run changed `backend/src`.
+
+Every area on tonight's brief is on the Verified list, so the hunt took Coverage's own next line: the
+ninety-fifth run fixed the abbreviation Otto refuses to cut at and left the sync's own cutters unswept, and the
+same seam was open on the blurb, the policy line, the meeting point and the arrival note. Swept all of them over
+the shipped catalog, which found two bugs a guest reads and left the prose itself clean.
+
+**Found and fixed.**
+
+- **A blurb stops being cut at "Mt." or "George W."** (`707938e5`). `clip` and the sync's `endAtSentence` both
+  cut at the last full stop inside the budget, and a shortened word ends in one too. 73 shipped blurbs read
+  "The Art of Alfred A.", "a snow capped Mt." and "hosted names like Joe Pesci, Michael B.", which is the line
+  a card, a listing page and the chat lead with; 109 of the `/l/` pages' og:descriptions read the same way,
+  which is what a shared listing link previews as; nine extra notes and seven check-in notes stop on an address
+  half read. Both cuts read one rule now, and the word-boundary fallback drops a shortened word rather than
+  printing "views of Mt.…". The list is tighter than Otto's on purpose, because refusing a stop here costs a
+  real sentence end rather than nothing: a unit, "etc.", a day, a month, a decade and a clock stay sentence
+  ends, and capitals tell "Ft." (Fort) from "ft." (feet). 112 of the 12,040 cut descriptions change, none still
+  ends on a shortened word, 42 of the 4,121 texts over 600 characters are cut at a better place, and no shop
+  loses its blurb.
+- **A review card stops printing the reviewer's name twice** (`743a5cf7`). `normalizeReview` took a signature
+  off the end of a review, but only one written as " - Jane D.". A shop's page closes the quote and puts the
+  byline behind it, so 53 shipped reviews on 20 listings carried the name into the words: "Thank you captain
+  Len!"Jim B.", "a great experience."casey2x2", "a bachelorette party of 11 girls.” Lindsey S." and a curly
+  quote with a long dash behind it, each with the same name printed under the card as the author. A closing quote is the
+  shop's own markup around what the guest wrote, so a name behind one is a byline with or without the dash, and
+  the same name again after a finished sentence is one with neither. That last rule reads only a name following
+  a sentence end, a quote or a dash, so "Thanks again, Brian!" keeps the captain it thanks. All 4,789 shipped
+  quotes read back through the reader: 53 lose a byline, none loses a word and none is dropped.
+- **`/sessions` escapes a quote as well as an angle bracket** (`a055f4a4`). The founder's watch window builds
+  two attributes by hand, the turn id and the step kind, and its `esc` covered only `&<>`. Both values are
+  server-minted, so this is the guard the open Coverage item asked for rather than a fix; the test also holds
+  every hand-built attribute on the page to running through `esc`.
+
+**Swept and clean.** Every prose string in the shipped catalog, 221,020 of them across the blurb, the policy,
+the requirement, the bring line, the inclusion, the highlight, the spec, the meeting point, the arrival note,
+the season, the cancellation and both halves of every FAQ entry, against the two marks that broke the title and
+the row name: 197 carry a space in front of their own punctuation and 181 an unbalanced bracket, which is 0.17%
+and mostly the shop's own hand. Neither is worth the row-name rule as it stands, for two reasons named under
+Needs Harshil. Every shipped review text for a byline the two new rules do not reach: none. Every shipped FAQ
+answer and cancellation line for an abbreviation cut: none.
+
+**Verification.** Backend `npm test` 882 pass, 0 fail, 2 skipped, up from 872. App `npm test` 993 pass, 0 fail.
+`tsc -b` clean on the app, `tsc --noEmit -p .` clean at the root and still compiling nothing, the backend type
+check clean but for TS5097. The rehearsal 57 of 57 against a local TLS Postgres 16 on 5433 and the Chromium on
+disk, with no Stripe, mail or GitHub key. `initdb` still refuses to run as root, so the cluster is created and
+started as `postgres`.
+
+**Needs Harshil.**
+
+- **The prose punctuation sweep found a rule that cannot simply be reused.** 197 prose lines carry a space in
+  front of a comma, colon or question mark, and a good share of them are French typography on a Québécois
+  partner's product ("that mysterious springtime activity ?", "Hotel pickup : Meet up at your accommodation"),
+  where the space is correct in the language the shop wrote. `tidyRowName` closes that space unconditionally,
+  which is right for a row name and wrong here.
+- **An unbalanced bracket is not always unbalanced at the end.** 181 prose lines carry one, and the unmatched
+  bracket is often not the last: "Gratuities :) (not included)" has two closers, one of them an emoticon and
+  one of them correct, so stripping the trailing bracket the way a row name does would eat the shop's own. It
+  wants a matching pass rather than an end trim, for 181 lines.
+- **Whether refusing "in the U.S." costs more than it saves.** 17 of the 112 changed descriptions end on a
+  dotted abbreviation that can finish a sentence, so they now carry an ellipsis instead. "U.S. Capitol" and
+  "U.S. Coast Guard" are the reason the rule refuses it at all.
+- Still open from earlier runs: the desktop site has no way to say anything in passing, `plainWords` is not
+  idempotent, the 1,210 dropped address lines and the 766 cut blurbs wait on a sync, `o-peecnature-org` still
+  stands open on the day it is shut, and 547 listings ship a compact week a fresh read disagrees with.
+
+## 28 September 2026, ninety-seventh run (10:15 to 11:35 UTC)
+
+**Chosen, and why.** `git fetch` first: `origin/main` was at the ninety-sixth run's log commit with nothing in
+flight. A fresh checkout again had no `node_modules` on either side. Type checks first: root `tsc --noEmit -p .`
+and `tsc -b` clean, backend clean but for TS5097, backend 882 pass. The last entry reported the rehearsal green
+and only a log commit sat after it, so the rehearsal was skipped at the start and run once at the end, because
+this run changed `backend/src`.
+
+Every area on tonight's brief is on the Verified list, so the hunt went where Coverage does not reach at all:
+the vendor readers that decide whether a time exists. `AGENTS.md` lists party size against capacity under
+concierge "Not done", and reading towards it found something worse next door. Three vendors are read twice in
+this codebase, once by the concierge and once by `enrich/availability.ts` for the guest listing page, and
+`data/avail-eval` holds 39 real recordings to check both against. The two readings of Peek disagree about which
+times exist, in both directions.
+
+**Found and fixed.**
+
+- **A Peek time the shop said it would not sell stops being a time a guest can pick** (`82fdab6e`). Peek says
+  no in `availability-mode`, and the listing page's reader asked only about the `spots` count beside it.
+  Cruisin' Tikis Nashville publishes 10:00, 10:30 and 11:00 as `not_available` with `spots: 6` printed on each,
+  so all three reached the guest listing page, the booking sheet, Otto's chips and the phone agent as bookable
+  times with six seats left. The corpus's own independent second reading had the identical blind spot, which is
+  why neither caught it: it checked the spot count too, so both readings called those three bookable and
+  agreed with each other about it. It reads the mode now, written out separately, because a second reading is
+  worth nothing once it is the same code.
+- **A sunset cruise with 95 seats stops being dropped for having a party minimum** (`e345a45e`). The concierge's
+  Peek reader whitelists the modes that mean yes, which is right, and the list was missing one:
+  `min_required_bookable`, a trip with a party minimum that is bookable now. Dolphins Down Under's 5:30pm
+  cruise carries it with 95 spots and a minimum of 12, and it is the shop's only departure of the day. The
+  list admitted `min_required_not_bookable`, the same trip with the minimum unmet, and refused this one. The
+  rule now lives in `peekSlotOffer`, one place both Peek readers read, so they cannot drift again. A freesale
+  slot also stops carrying a seat count: it has no capacity limit, so its `spots` of 0 is not a count of
+  anything, and `liveTimes.ts` and `/voice` both drop a departure at or below zero while `WebConcierge` and
+  `WebListing` print "2 left" from a positive one. Both are false statements about an activity that cannot run
+  out. No row in the corpus is freesale, so this half is a guard.
+- **The listing page reads the fourth of FareHarbor's four no-flags** (`5a1f4d0a`).
+  `is_bookable_only_by_phone` was the one it did not look at, while the concierge reader and the second reading
+  both exclude it. 25 of the 3,933 recorded FareHarbor departures carry it and every one is sold out or
+  unbookable besides, so nothing in the corpus moves. It closes the drift, which is what the Peek bug was.
+
+**Swept and clean.** All 195 Peek timeslot rows in the corpus, from the seven of thirteen recorded Peek shops
+whose times call the budget reached, against every mode they state: `available` 178, `min_required_not_bookable`
+12, `not_available` 3, `min_required_bookable` 1, `sold_out` 1, and a mode on every single row, which is what
+makes a whitelist safe on this call. All 3,933 recorded FareHarbor departures against the four flags it says no
+with. All 6,951 recorded Xola availability values, which are a bare seat count and carry no other signal to
+miss, so that reader has no drift to close. Whether the concierge lies to a guest about a slot too small for
+their party: it does not, because `WebConcierge` prints the seat count beside the time, which is why that one
+is a refinement and stays under Needs Harshil.
+
+**Verification.** Backend `npm test` 884 pass, 0 fail, 2 skipped, up from 882. App `npm test` 993 pass, 0 fail.
+`tsc -b` clean on the app, `tsc --noEmit -p .` clean at the root and still compiling nothing, the backend type
+check clean but for TS5097. The rehearsal 57 of 57 against a local TLS Postgres 16 on 5433 and the Chromium on
+disk, with no Stripe, mail or GitHub key. `initdb` still refuses to run as root, so the cluster is created and
+started as `postgres`. Note for the next run: `e2e-local.mts` is under `backend/scripts`, not the repo root, and
+the command in the brief has to be run from `backend/`.
+
+**Needs Harshil.**
+
+- **One file under `backend/data` was edited, which the brief says not to.** Fixing the Peek reader changes what
+  one recorded case replays as, and `data/avail-eval/cases/peek/cruisintikisnashville-com/case.json` carries
+  that expected answer, so the baseline test fails until it is updated. `npm run avail:capture` would re-crawl
+  and `npm run avail:rebaseline` rewrites the gzip too, so the new answer was spliced into that one field by
+  hand: a 21 line deletion, exactly the three times Peek said it would not sell, 28 slots to 25 across the
+  corpus. Nothing else in `backend/data` was touched. Revert that one file if you would rather keep the old
+  baseline and the fix.
+- **Peek's mode vocabulary is only as good as the last recording.** A whitelist is the right shape and it has
+  now cost a real departure once, because `min_required_bookable` was a yes nobody had seen. The five words
+  above are every one in the corpus. A sixth appearing goes quiet rather than wrong, and the only way to know
+  is a fresh capture.
+- **Party size against capacity, sharpened.** Still open, and now split in two. `seatsLeft` is unambiguous: a
+  slot with two spaces cannot take six, and every reader but Acuity, Square and the agent supplies it, so
+  filtering on it is safe. A rate's `minParty` and `maxParty` are not: Rezdy's `maxQuantity` is a cap per price
+  option, so four adults and two children is a party of six on a sheet whose every rate maxes at four, and
+  filtering there would drop real slots. The guest does see the seat count today, so this is a refinement to
+  the answer's shape rather than a false statement, which is why an unattended run left it alone.
+- Still open from earlier runs: the desktop site has no way to say anything in passing, `plainWords` is not
+  idempotent, the 1,210 dropped address lines and the 766 cut blurbs wait on a sync, `o-peecnature-org` still
+  stands open on the day it is shut, and 547 listings ship a compact week a fresh read disagrees with.
+
+## 28 September 2026, ninety-eighth run (11:29 to 12:30 UTC)
+
+**Chosen, and why.** `git fetch` first: `origin/main` was at the ninety-seventh run's log commit with nothing
+in flight, and a fresh checkout again had no `node_modules` on either side. The last entry reported the
+rehearsal green and only its own log commit sat after it, so the rehearsal was skipped at the start and run
+once at the end, because this run changed `src/lib` and `backend/src`. Type checks first: root `tsc --noEmit
+-p .` and `tsc -b` clean, backend clean but for TS5097, backend 884 pass.
+
+Every area on tonight's brief is on the Verified list, so the hunt went to the two open defects Coverage still
+carries rather than to fresh ground: a line that writes more than one rule with a space rather than a crawl
+seam, and a day off written between two days of hours. Both are a guest reading an hour a shop never claimed,
+and both were left as questions by earlier runs because a space is the shop's own punctuation and a cut there
+has to be sure. They are cut now, measured over all 14,509 shipped listings that publish an hours line, with
+every changed week read against the line that changed it.
+
+**Found and fixed.**
+
+- **The second rule a shop wrote after a space stops taking the first rule's hours** (`6d3e38ed`). 558 lines on
+  485 listings state two or more rules with nothing between them but a space, and every day on them took the
+  first span the line held. The Bata Shoe Museum opened at ten on a Sunday it opens at noon, the Army Aviation
+  Museum stood open an hour past its Saturday closing time, and Garden State Rocks had no weekend at all
+  because its "Sat & Sun 12:00pm - 7:00pm" named no hours a reader could see. 154 weeks change and every one of
+  them was wrong before. The cut is made only where the line cannot mean anything else: a day name behind a
+  clause that has already said which days it covers and what happens on them, carrying a rule of its own. Three
+  shapes are deliberately left alone, each a line a real shop published: a span written in front of its days
+  ("open from11am - 7pm Monday-Friday and 9am-8pm"), a day off with no day of its own in front of it
+  ("Open daily 10AM-7:30PM, closed Wednesdays"), and a day name with neither a clock nor a day off behind it
+  ("Friday 6:00 pm - 10:00 pm Saturday"). The line a guest reads is untouched: `displayHours` still prints the
+  shop's own words whole, because there is no crawl seam in them to tidy away.
+- **A day off a shop wrote between two days of hours stops swallowing the second day's clock** (`ba183dd8`).
+  `o-peecnature-org`'s only hours line is "Mon 10:00 am - 4:00 pm Tues CLOSED Wed 10:00 am - 6:00 pm" and its
+  Wednesday closed at four, two hours early; Rev Brewing's Georgetown taproom opened at eleven on a Tuesday it
+  opens at four, inside a list of six rules. It was the last closed-day shape a line could hold and have nobody
+  read. A day off that already names its day is a finished rule, so the day behind it starts the next one;
+  where the word names no day it still owns the day behind it, which is how `closedDays` reads the same word.
+  Two listings change and both now read the way their own line does.
+
+**Swept and clean.** All 14,509 listings that publish an hours line, through both readers: the 154 weeks the
+spaced cut changes and the 2 the closed-day cut changes were each read against the shop's own line, and no day
+on any of them lost hours it had. `parseWeek` in `src/lib/openNow.ts` and `encodeWeek` in
+`backend/src/sync/hours.ts` now answer identically on all 14,509, which is the drift the twin has cost before.
+Whether `displayHours` moved on any of the 485: it does not, checked over the whole set.
+
+**Verification.** App `npm test` 997 pass, 0 fail, up from 993. Backend `npm test` 888 tests, 886 pass, 0 fail,
+2 skipped, up from 884. `tsc -b` clean on the app, `tsc --noEmit -p .` clean at the root and still compiling
+nothing, the backend type check clean but for TS5097. The rehearsal 57 of 57 against a local TLS Postgres 16 on
+5433 and the Chromium on disk, with no Stripe, mail or GitHub key. Nothing under `backend/data`, `public/` or
+`src/data` was touched. Notes for the next run: the cluster has to be created and started as `postgres`,
+`initdb` still refuses to run as root, `scripts/e2e-local.mts` is under `backend/`, and `git push -u origin
+main` was rejected as non-fast-forward against a remote two commits behind while `git push origin
+HEAD:refs/heads/main` went through on the first try.
+
+**Needs Harshil.**
+
+- **The cards are now further behind the pages than they were, and only a sync closes it.** 694 of the 14,220
+  listings that ship both a compact week and their own lines disagree with a fresh read, up from the 547 the
+  ninety-first run measured, because 147 of tonight's corrected weeks are corrected on the page and stale in
+  `catalog.json`. The page, the booking sheet and Otto read the lines; the cards, the rails and the price
+  filter read the compact week. Both readers are right and in step, so `npm run backend:sync` is the whole fix,
+  and it is the same sync the 1,210 dropped address lines and the 766 cut blurbs are waiting on.
+- **A day whose rule sits in an order the cut cannot read keeps the wrong hours.** The three refused shapes
+  above are refused on purpose, but the first of them is a real miss rather than a tie: "Hours: 10am-5pm
+  Monday-Friday, 11am-4pm Saturday" states its days behind its clock, and a rule written that way stays one
+  rule. A postfix reading is a separate rule from tonight's and wants its own measurement.
+- Still open from earlier runs: the desktop site has no way to say anything in passing, `plainWords` is not
+  idempotent, and the two listings whose week is wrong either way because a "Weekdays" or an "Office hours" is
+  glued to the word in front of it.
+
 ## Coverage
 
 The catalog is 48,198 listings as of the 23 September sync, 1,873 of them Viator partner rows. Counts below
@@ -5631,7 +6646,10 @@ publish one and on all four surfaces that print it, the static `/l/` page includ
 OpenStreetMap rule those lines carry, the site builder's whole-day placeholder that the open-or-closed line
 already refuses, a season or a date written in front of a rule, two spans in one rule, the syntax's own
 keywords and separators, and the shop's own words kept where they are theirs, every line diffed before and
-after over the whole catalog. The booking box price lines, including a service with no price. Phone width at
+after over the whole catalog. Every rule one of those lines holds rather than the first one it states, over all
+14,509 that publish one: several rules separated by nothing but a space, a day off written between two days of
+hours, and the three orders a cut deliberately refuses, with the app's reader and the sync's twin answering
+identically on all 14,509. The booking box price lines, including a service with no price. Phone width at
 400px on the guest listing, the booking flow, every dashboard page, and the Trips, Inbox, chat and Profile
 tabs. Accessibility on the booking flow and on the assistant chat: focus order, input labels, disabled buttons.
 Colour contrast on the accent. What Otto actually has in hand when it answers: that all three surfaces which
@@ -5706,6 +6724,28 @@ for a Windows-1252 decoding fault, through the funnel that carries it to a guest
 That every surface drawing the badge, the filter included, and a claimed shop's own typed policy all go
 through one rule.
 
+Every area line in the shipped catalog against the metro table and the listing's own pin: which of
+them name a town borrowed from a metro across a state line, which name a real town that merely shares a
+metro's name, and how each of the three surfaces that spell a state out reads one that names no town at all. The
+static `/l/` page's title against the app's own `pageTitle`, over all 15,556 pages that earn one, and its area
+line and "more like this" label over 1,556 pages built by the real generator. Every place line a guest reads, on
+the listing page, the phone sheet, the pay sheet, the confirm screen, the static page, the tab title and in
+Otto's answers, against the one reader they now share, with `placeName` run over all 52,816 shipped area lines
+for a repeated place. Every contact record in the catalog through `addressOf`, for a line that is not an address
+anyone can go to.
+
+The two splashes an owner meets on the way into the dashboard, driven in a real Chromium at 400px, 360px and
+1280px: which element each one leads with, what `.odsplash > :first-child` does to it, and the longest failure
+line the claim-confirm screen can print, held against the splash's own padding at every width. The guest side's
+three `.paysplash` screens, read for the same rule. The "Who can go" and "Safety and waiver" columns against
+each other over all 52,815 shipped detail files, on the desktop page and the phone sheet alike, for a sentence
+printed twice under two headings. Every `art` kind in the catalog, all 64, against `sceneInner`, which settles
+what a listing with no cover draws. Every one of the 6,492 shipped affiliate links as a URL, and the partner
+CTA's `rel`, its target and its commission line on both guest surfaces. A shop's listing page, a partner's
+listing page and the claim screen a bad link lands on, all at 400px and 1280px, for sideways scroll, anything
+past the edge and a control with no name. Every direct `localStorage` read and write in the app, for a quota or
+private-mode throw that would reach a guest.
+
 Deals and promos on a listing: all 47 deals the 36 shipped listings publish, each title against its own day
 list and each code against the sentence it is printed on; whether an offer states the months or the season it
 runs in, over every shipped deal and through both the sync that publishes one and the three app surfaces that
@@ -5742,6 +6782,16 @@ Otto's grounded fallback, over the code that landed on 26 September: the sentenc
 check between the model and the guest, the route's four body caps measured against `companyFacts` on all
 52,815 shipped detail files, its answer cache, and the gate that keeps a refused question away from the
 model. The outreach campaign's day boundary, over every day of 2026 at five times each.
+
+Whether a dated hour line is a season or one afternoon, over all 309 dated lines in the catalog and every
+parsed week of all 52,815 shipped detail files: one closed date against a run of days named by a second month,
+by a second day hung off the first, by a range word in front of the date or by a word that opens or closes the
+run; a day number that is really a clock or a year; and OpenStreetMap's own exception clause. Every spelling a
+day of the week is written in, on both hour parsers: the list of days a line states against the words those
+same three-letter prefixes open which are not days at all, and a range whose closing day has the next thing on
+the page glued straight on to it. Every subject an hour line can carry that is not the door, over all
+32,475 hour lines in the catalog: a noise rule worded without the word "hours" and the last thing a shop
+sells, each against the businesses whose own names collide with those words.
 
 Which clock a shop's hours are read on, run over the whole shipped catalog rather than read: `zoneFor` and its
 API twin `zoneForArea` against all 59,091 operators, every split-state nudge in both directions, and that the
@@ -6243,6 +7293,71 @@ inside a shop's sentence, on both guest surfaces and on the static `/l/` page; a
 photo grid, star line and prices with cents each held against the app's own rule for the same shop, over every
 listing that ships one.
 
+Where every listing in the catalog actually is, run over all 51,075 shipped pins rather than read: each
+against the median pin of the region its area line names and against the centre of the metro it is filed
+under, the pins several unrelated businesses share to the last decimal, and what a wrong one then costs on
+the cards, the distance sort, near me, the "more like this" rail and the concierge. How a partner feed
+decides which metro a product belongs to, over all 6,492 shipped affiliate rows and all four matchers. The
+"more like this" rail's own sort, rebuilt over all 52,275 rails the catalog draws: the order, how far away
+the lead card is, how many cards draw an illustration instead of a photograph, and whether a cover already
+known not to load still counts as one.
+
+The founder view behind `#admin`, which is the fifth hash our own addresses carry and the one the
+browser-controls sweep left unopened: the toggle driven in a real Chromium at three widths from a fresh
+profile, on the home and on a listing link, for what it turns on, what it strips from the address bar, what a
+reload and a second token do, and that a guest with no flag meets nothing; every chip it draws as a link, for
+its name, its scheme, its target, its rel and the viewport edge; and `adminWebsite` over all 52,816 catalog
+rows and all 52,815 detail files, card against page. `/sessions`, the watch window over the agent's shoulder,
+for what a guest's own typed sentence reaches when that page prints it. Every shipped `dur` value through
+`sayLength`, for a length printed as a fraction of a day and for a day's worth of minutes. `REGION_NAME`
+against both `REGION_TZ` tables, so every region the app can name is on a clock on both sides.
+
+The clock a guest reads a shop's hours off, which every hours sweep before this one had left alone: `fmtTime`
+against `openNow.ts`'s `fmt`, its twin, over every closing time the "Plan your visit" Hours block draws on all
+16,213 listings whose page is a block rather than a booking box, including the 237 day lines that close at
+midnight and the 637 that close past it; every hour line in the catalog carrying an "@", all 34; every range
+naming one clock face at both ends, all 82; and every parsed week of all 52,815 shipped detail files diffed
+before and after, so the exact set of listings a rule moved is known rather than estimated.
+
+Whether a day a shop says it is shut is shut, over all 111 lines on 106 listings that state a day off and a
+clock together: which side of the word names its subject, the punctuation that settles it, a bracketed aside, a
+line that opens on the word, both sides naming days between them covering the week, and a clock behind the word
+that is an hour the shop shuts for rather than a day. The crawl's own seams in an hour line, over all 250
+listings whose line glues a day name to the word in front of it or the clock behind it: a full day name inside
+another word, a shouted short spelling, a "Closed" with no space around it, a day carrying a digit, several
+rules written into one word, and the words that merely end in a short spelling (salmon, unsatisfied) which keep
+their letters. Which week the page, the picker and Otto actually read, over all 14,220 listings that ship both a
+compact week and their own hour lines: the 547 whose baked week no longer agrees with a fresh read of the same
+lines, and the browse record that has no lines to read. How the chat words an answer around a shop's own
+string, over 198,000 answers on a random 9,000 listings and every clipped text of all 46,323 non-partner
+detail files: the article on an offer name, the case of a meeting point, a list item, the town taken out of a
+service name, a word a removal said twice, the full stop after text that already ended, and a sentence cut at
+an abbreviation or an initial. Otto's `clip` against the page's `cleanDesc`, over every blurb, service
+description, policy, arrival note, FAQ answer, hours line and meeting point in the catalog. Otto's "Prices
+start at" against the page's own "From" price, over the 6,168 listings that quote one both ways. The name a
+guest reads for the crawl's own punctuation rather than for the crawl's words: a space in front of a mark, a
+bracket nothing closed and a separator with nothing behind it, over all 52,816 shipped titles and all 260,099
+shipped row names. The town on an address line, over all 46,787 contact records and extra locations in the
+catalog.
+
+Every cut a shop's own prose is made at, on both sides and at every budget: `clip`'s six call sites and the
+sync's own `endAtSentence`, over all 26,701 shipped blurbs, 12,040 cut descriptions, 4,121 texts over 600
+characters and every extra note, arrival note, cancellation line and FAQ answer in the catalog, against the
+shortened words that end in a full stop and the brackets a crawl left open. The words on a review card, over all
+4,789 shipped quotes: the byline a shop printed behind its own closing quote, and the same name again after a
+finished sentence, each against the reviews that name a person inside their own words. Every prose string in the
+catalog, all 221,020 of them, against the two punctuation marks that broke the title and the row name. The
+escaping on the founder's own `/sessions` window, and that every attribute it builds by hand runs through it.
+
+
+Which times a vendor reader says exist at all, over the 39 real recordings in `data/avail-eval`, on both of
+the readers that ask each vendor: the word Peek itself uses to say yes or no (all 195 timeslot rows, all five
+modes, on the seven shops whose times call was reached), the four flags FareHarbor says no with (all 3,933
+recorded departures), and Xola's bare seat count (all 6,951 values). The drift between the concierge's reading
+of a vendor and the guest listing page's reading of the same vendor, in both directions: a time the shop will
+not sell reaching a guest, and a real departure dropped for carrying a party minimum. A slot with no capacity
+limit, against every surface that reads a seat count as a seat count.
+
 **Not yet checked.** Anything in the grounded fallback that needs a real Cohere key: no key exists here, so every answer checked tonight was a payload shaped by hand, and what the live model actually writes, what its citation offsets index into when it answers in more than one content part, and whether `citation_options` FAST cites densely enough for `keepCited` to keep a good answer are all unread. `npm run otto:eval` for the same reason. Whether a price the model reformats should be dropped: a shop publishing "$85" and a model writing "$85.00" loses the sentence (see this run's Needs Harshil). Whether the grounded answer should reach the static `/l/` page and the phone sheet, which do not call it. A real Otto send or a real hand-send: the draft run, the queue, the dry run and the handoff export are all driven now, but nothing has left a mailbox from here, and `outreach-daily.sh` is launchd on the Mac and cannot be. Whether `state.ranDays` and `state.sentDays` growing without bound in `outreach-otto-ramp.json`, and being written only after a send loop that can run four hours, is worth changing, given that `sentToday` is what actually holds the ceiling. Whether the Otto email may tell a shop "Bookings drop straight into your calendar" when
 both `/voice` endpoints are read-only and syncing with an operator's own booking software is deferred on
 purpose, which is this run's first Needs Harshil. Whether the Otto subject should be shortened or the question
@@ -6351,8 +7466,7 @@ policies, so the "Things to know" headings are checked in a browser and not only
 `explain` should be read at load time like `menuRow`, so a glossary fix reaches the shipped detail files
 without waiting for a sync. Whether the 51 kinds of waves two and three should have a scene of their own, on
 the 18,056 listings with no cover that draw the generic one instead. Whether `inferCategory` should read a
-bare "charter" as fishing, and whether its last resort should still be jet ski. What a card, a rail and a
-search result look like for a kind with no scene and no photo, driven in a browser rather than counted. Whether the 12 operators whose published address is at free mail and stored wrong need a way
+bare "charter" as fishing, and whether its last resort should still be jet ski. Whether the 12 operators whose published address is at free mail and stored wrong need a way
 in before the next sync rewrites `claim-index.json`. Whether a claimed shop's own email and website should ever
 appear on the guest page, which they deliberately do not. Whether an unsubscribe token should outlive a
 `CLAIM_SECRET` rotation, and whether `GET /mail/unsubscribed` should stay public (see this run's Needs
@@ -6416,9 +7530,7 @@ suite needs, or the rehearsal check for them, since without them eight test file
 that run's Needs Harshil). Whether `public/unsubscribe.html` should keep POSTing the API on load: it is the
 unsubscribe link every outreach email carries and the last page load in our mail that changes something by
 itself, and it sits outside the paths an overnight run may change (see the fifty-fourth run's Needs Harshil).
-Whether the confirm screen's new failure line
-wraps properly at 400px: it reuses `.oderr` inside an `.odsplash` that already wraps a sentence of its own, and
-it was driven in a browser at 1440px only (see the seventy-second run). Whether the "All requests" link should sit inside
+Whether the "All requests" link should sit inside
 the dashboard Home's tab strip at all: it is a fourth child of a `role="tablist"` that is not a tab, and
 taking it out of that element needs `src/styles`, which an overnight run may not touch (see the seventy-first
 run's Needs Harshil). The TikTok creator embed on the guest listing page, which 0 shipped listings carry and which the
@@ -6468,9 +7580,11 @@ swept, and the same seam runs through every rule read before a detail file lands
 `tsconfig.json` should carry the app's files, so that `tsc --noEmit -p .` stops answering clean for a project
 it compiles nothing of (see this run's Needs Harshil). Which of a chain's locations the "40 locations" heading
 should count when the grid draws 24, on the one listing that has more. Which of the several places a meeting
-point names the Maps link should open, on the shops that name more than one. Whether a listing whose only
-stated place is a two-letter state code should print that code under the heading "Address" at all, which all
-1,210 of them do. Whether the desktop site should be able to say anything in passing at all:
+point names the Maps link should open, on the shops that name more than one. Whether a row labelled
+"Address" should carry an area line at all: the 1,210 listings whose only stated place was a state code no
+longer print one, so they join the 6,492 with no contact in falling back to the area, and 7,702 listings now
+head "Ohio" with the word Address. Whether the 9 whose only stated place is a state and a postcode should print
+the postcode somewhere, having lost it from that line. Whether the desktop site should be able to say anything in passing at all:
 `<Toast />` is rendered only inside a non-request sheet and `.toast` is positioned for the phone frame, so the
 line a dead listing link now shows reaches the phone and not the desktop (see the eightieth run's Needs
 Harshil). Whether the operator dashboard's own browser tab should be titled for the shop rather than for
@@ -6484,20 +7598,60 @@ Acadia Bike on a child seat, with the day rentals behind "More options" (see the
 Harshil). The 123 rows that stay unreachable because they would read exactly as a tier already shown, among them
 two "Spa package, 2 hours 30 minutes" rows at $258 and $360 that the shop plainly sells as two things and named
 as one. A sync run against a real database, which is what carries `mergeTiers` and closes those four "from"
-prices. Whether the "More like this" rail should be
-ordered by distance, which its own doc claims and its sort does not do: with the pool fix sending 1,260 shops
-to a whole state, a Lexington guest can be offered Louisville before La Grange, and `lat`/`lon` are on the
-record. Whether a listing whose cover is known dead should be allowed to lead that rail, which it can, because
-the sort reads the field and not the `deadCovers` store. Whether a length that is not a whole number of days
-should read "3 days 20 hours" rather than "3.8 days", on the two shipped rows that are not (92 hours and 54
-hours). How many catalog areas name a town in the wrong state, which the rail fix surfaced as "Philadelphia,
-DE" and nothing has counted. Whether `plainWords` should be idempotent: run twice it expands its own
+prices. Whether `plainWords` should be idempotent: run twice it expands its own
 expansion on 114 shipped blurbs ("Four-wheeler (Four-wheeler (ATV))"), nothing in the product applies it
 twice today, and it is a trap for whoever next caches a cleaned string (see the eighty-fourth run's Needs
-Harshil). Which of the three ways a guest is told a shop's state is the right one: the desktop listing page
-spells it out, the phone sheet, the cards and the static page print the code, and `WebListing.tsx` carries its
-own byte-identical copy of the `REGION_NAME` table. Whether Otto's own `clip` should read the two cleanups
-`cleanDesc` makes that it does not, so the hero and the chat under it stop printing one sentence two ways. The
-static `/l/` page's remaining fields, now that the blurb, the FAQ, the photos, the star line, the prices, the
-menu, the hours, the length, the cancellation, what is included and the requirements have each been held
-against the app: what is left is the title, the area line and the crumb labels.
+Harshil). Whether the phone and rail cards should spell a state out the way every full surface now does, on the 2,943
+listings whose area line names no town at all: they are the one guest surface left on the code, deliberately,
+because a card has no room for "Maryland" (see the eighty-seventh run's Needs Harshil). Whether the operator's
+own dashboard lists should spell one out, which they also do not. Whether the `/l/` page's crumb trail should step through the city page it links to further down: it stops at the
+national activity page on all 15,556 pages and 8,569 of them have a metro page of their own, which is read and
+left as it is rather than decided. Whether that trail should carry a `BreadcrumbList`, which no static page does. Every relative
+import in the backend against the files on disk, which is now a test. Whether a
+listing's metro should be read from the town its area line already names rather than only from its pin, which
+is what leaves the 33 shops whose placeholder pin is now cleared with no metro at all. The two pins that are
+wrong on their own rather than by rule: Festiva Sailing Vacations pinned in the US Virgin Islands and Florida
+Try Scuba Diving pinned in Honolulu, both with a plausible story behind them. What Hamilton, Ontario should
+show once its 17 New Zealand partner rows stop publishing and Viator has no destination inside 200 km of it.
+Whether a placeholder pin used inside one state can be told from a genuine shared address at all, which the
+rule deliberately does not try to do. Whether a metro whose name straddles a border, Lake Tahoe and
+Niagara being the two, should be allowed to keep that name beside the other side's state code, which the
+borrowed-town rule deliberately does not try to decide. How many listings carry a town borrowed from the
+metro they sit inside, where the state agrees and nothing can tell the borrow from a read address. Whether the dashboard's own two splashes should be told
+apart in the stylesheet rather than by an element opting out inline. Whether the founder chip on a partner's card should
+open the product's own page now that it opens nothing: the listing has the partner CTA, a card has no other way
+in (see the ninetieth run's Needs Harshil).  Which of the 249 listings still printing a dated line in
+their Hours block state a season, which state one event, and whether one date can be told from a range of them
+by rule at all: 184 of the 249 publish nothing else, so the line is the whole block and the week is built from
+it (see the ninety-first run's Needs Harshil). Whether a line that carries a plausible week in front of an event
+entry should keep the week, which Diggerland USA's "Open 10:00 - 6:00 August 30 @ 2:00 pm - 10:00 pm" is the one
+case of. Whether a span of 22 or 23 hours, which 20 more shipped day lines carry, is a shop's real day or the
+same placeholder rounded off. Whether the visit panel's Hours block should say "next day" beside a small-hours
+close the way the dashboard's own closing-time select does, rather than leaving a guest to read "2:00 PM to
+4:00 AM" as the wrap it is. Whether a glued word should be split on "Closed" before the days in
+it are read: five shops write "MondayClosedTuesday - Saturday3:00 pm - 9:00 pm", the range swallows the closed
+day, and each is now one wrong day instead of seven (see the ninety-second run's Needs Harshil). How long a run
+of dates has to be before it is the shop's week rather than a festival, which is what leaves "Open for visitors
+August 7, 8, and 9", "Sept 11th & 12th" and "Sept. 7-11" spread over seven days. Whether "Last rental 2:30 -
+3:30 pm", which is o-jcprd-com's only hours line and reads as a park open for one hour a day, is the
+quiet-hours shape with a third subject, and how many more of them there are. Whether the compact week in `catalog.json` should be trusted by anything now that a fresh read of the
+same lines disagrees on 547 listings: the cards, the rails and the price filter still read it, so tonight's
+weeks are right on a page and stale on the card that opens it, and only a sync closes that (see this run's Needs
+Harshil). Whether a rule that states its days behind its clock should be read at all:
+"Hours: 10am-5pm Monday-Friday, 11am-4pm Saturday" is the one order the spaced cut refuses that is a miss
+rather than a tie (see the ninety-eighth run's Needs Harshil). Whether a
+season written per line should reach the week at all, on the four listings whose off-season day off now wins over
+their in-season week (see this run's Needs Harshil). The two listings whose week is wrong either way because a "Weekdays" or an "Office hours" is glued to the word in front of it, so the line names no day and reading its closed-day aside would hand it days it never claimed (see this run's Needs Harshil). Whether two overnight runs working the same file at the same time is meant to happen, since the ninety-third and ninety-fourth both wrote a closed-day rule for the same lines and one of the two was thrown away (see this run's Needs Harshil). Whether a comma with no space after it should be given one, on the six
+partner rows that read "Banff Town,Johnston Canyon Tour": the name tidy closes the space in front of a comma
+and deliberately opens none behind it, because "A,B" inside a name can be the shop's own (see the ninety-fifth
+run's Needs Harshil). Whether a variant label and an option's detail line should be tidied the way a row name
+is, or dropped when they are plainly not a label at all: `bookableMenu` runs `tidyRowName` over service,
+option and add-on names and over nothing beside them, and the service picker and the chat both print those, so
+two rows on one listing still read "Fridays are also Pizza Days ! Please send" (see that run's Needs Harshil). Whether the space a shop leaves in front of its own comma or colon should be closed in prose the way it now is in a row name, on the 197 lines that carry one: a good share are French typography on a Quebecois partner's product, where the space is correct in the language the shop wrote (see the ninety-sixth run's Needs Harshil). Whether an unbalanced bracket in prose can be closed by an end trim at all, on the 181 lines that carry one: the unmatched bracket is often not the last, because an emoticon closes nothing, so it wants a matching pass rather than the row name's rule. Whether refusing to cut at a dotted abbreviation that can finish a sentence costs more than it saves, on the 17 descriptions that now carry an ellipsis where they read "in the U.S.". Whether a departure too small for the party should be
+filtered out of a concierge answer rather than shown with its seat count, which is now two questions and not
+one: `seatsLeft` is unambiguous and a rate's `maxParty` is not (see the ninety-seventh run's Needs Harshil).
+Whether Peek has a sixth word for an availability mode, which only a fresh capture can say, and whether a
+freesale slot exists in production at all: none of the 195 recorded rows is one. The readers with no second
+reading in the corpus at all, which is every vendor but FareHarbor, Peek and Xola: Resova, Checkfront, Rezdy,
+Acuity, Square, TripWorks, ForeUp, aReservation and FishingReservations have unit tests and no recorded shop,
+so the drift closed tonight on three vendors is unmeasured on nine.

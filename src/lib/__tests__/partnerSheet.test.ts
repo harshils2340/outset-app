@@ -38,7 +38,9 @@ test("Things to know stays out when a partner's product states none of it", () =
   );
   assert.match(SHEETS, /\{!partnerLabel \|\| knowsAnything \? \(\s*<Section title="Things to know">/);
   // And the two rows that would otherwise send a guest to ring a product name.
-  assert.match(SHEETS, /\{!partnerLabel \|\| requirements\.length \? \(/);
+  // `whoCanGo` is the requirements the waiver row is not already printing: see knowColumns.test.ts. A
+  // partner's product with none of its own still draws no row, which is what this line is here for.
+  assert.match(SHEETS, /\{\(!partnerLabel && !requirements\.length\) \|\| whoCanGo\.length \? \(/);
   assert.match(SHEETS, /\{!partnerLabel \|\| waiverLines\.length \|\| item\.waiverUrl \? \(/);
 });
 

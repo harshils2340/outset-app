@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { kindFor, notIncludedLine, toAffiliateItem, type AffiliateRow } from "../catalog.ts";
+import { MAX_METRO_KM, kindFor, notIncludedLine, pinFitsMetro, toAffiliateItem, type AffiliateRow } from "../catalog.ts";
 import { bestImages, bookingUrl, detailFields, durationText, isWhoCanGo, metroDestinations, type ViatorProduct } from "../viator.ts";
 
 const row: AffiliateRow = {
@@ -77,7 +77,7 @@ test("a product that runs for days is counted in days, not in hours", () => {
   assert.equal(durationText({ productCode: "X", duration: { fixedDurationInMinutes: 2880 } }), "2 days");
   assert.equal(durationText({ productCode: "X", duration: { fixedDurationInMinutes: 12960 } }), "9 days");
   assert.equal(durationText({ productCode: "X", duration: { fixedDurationInMinutes: 44640 } }), "31 days");
-  assert.equal(durationText({ productCode: "X", duration: { fixedDurationInMinutes: 5520 } }), "3.8 days");
+  assert.equal(durationText({ productCode: "X", duration: { fixedDurationInMinutes: 5520 } }), "3 days 20 hours", "between whole days, the hours left over rather than a tenth of a day");
   assert.equal(durationText({ productCode: "X", duration: { variableDurationFromMinutes: 1440, variableDurationToMinutes: 44640 } }), "1 day to 31 days");
   assert.equal(durationText({ productCode: "X", duration: { fixedDurationInMinutes: 870 } }), "14.5 hours", "under a day is untouched");
 });
@@ -97,6 +97,35 @@ test("each metro gets the nearest city destination, and a metro with none is ski
   ]);
   assert.equal(map.get("tampa")?.destinationId, 1, "the closest city, not the state that shares its centre");
   assert.equal(map.get("miami"), undefined, "no destination within 40 km of Miami in this list");
+});
+
+/**
+ * Viator lists a Hamilton in Ontario, in New Zealand and in Bermuda, and no CITY destination sits within
+ * 40 km of Hamilton, Ontario's centre. The name fallback took the first row called Hamilton and filed all 17
+ * of that metro's partner listings under it: Hobbiton, Waitomo Glowworm Caves and Rotorua tours, sold to a
+ * guest as "Hamilton, ON", 13,852 km from the city named on the card.
+ */
+test("a name match has to be the right city of that name", () => {
+  const nz = { destinationId: 10, name: "Hamilton", type: "CITY", center: { latitude: -37.787133, longitude: 175.28019 } };
+  const on = { destinationId: 11, name: "Hamilton", type: "CITY", center: { latitude: 43.4, longitude: -79.9 } };
+  assert.equal(metroDestinations([nz]).get("hamilton"), undefined, "New Zealand is not Ontario");
+  assert.equal(metroDestinations([nz, on]).get("hamilton")?.destinationId, 11, "the one on the right continent");
+  assert.equal(
+    metroDestinations([{ destinationId: 12, name: "Hamilton", type: "CITY" }]).get("hamilton"),
+    undefined,
+    "a destination with no centre cannot be checked, so it is refused rather than guessed at",
+  );
+});
+
+test("a partner row pinned outside the metro it is filed under is not published", () => {
+  const row = { metro_id: "hamilton", lat: 43.28, lon: -79.85 };
+  assert.equal(pinFitsMetro(row), true, "a product in the city it says it is in");
+  assert.equal(pinFitsMetro({ metro_id: "hamilton", lat: -37.787133, lon: 175.28019 }), false, "Hamilton, New Zealand");
+  assert.equal(pinFitsMetro({ metro_id: "hamilton", lat: null, lon: null }), true, "no pin is not a wrong pin");
+  assert.equal(pinFitsMetro({ metro_id: null, lat: -37.78, lon: 175.28 }), true, "no metro to disagree with");
+  assert.equal(pinFitsMetro({ metro_id: "not-a-metro", lat: -37.78, lon: 175.28 }), true);
+  // Every shipped row that is in the right place is inside 44 km of its metro centre, so the floor is wide.
+  assert.ok(MAX_METRO_KM >= 100, "wide enough that a day-trip destination centre is never dropped");
 });
 
 /* ---------- what the detail pass makes of a product's own sections ---------- */

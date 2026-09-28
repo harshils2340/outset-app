@@ -329,8 +329,18 @@ export function crossRead(vendor: CaseVendor, exchanges: Exchange[], from: strin
       } catch {
         continue;
       }
-      for (const row of ((j as { data?: { attributes?: { time?: string; spots?: number } }[] })?.data || [])) {
+      for (const row of ((j as { data?: { attributes?: { time?: string; spots?: number; "availability-mode"?: string } }[] })?.data || [])) {
         const t = row.attributes?.time || "";
+        /**
+         * Peek says whether it will sell a slot in `availability-mode`, the way FareHarbor says it in
+         * `is_bookable` and `is_sold_out` above, and this reading used to ask only about the spot count. That
+         * is the blind spot the reader itself had: Cruisin' Tikis Nashville's three `not_available` mornings
+         * carry `spots: 6`, so both readings called them bookable and agreed with each other about it.
+         * Written out here rather than shared with the reader, because a second reading of the same bytes is
+         * worth nothing once it is the same code.
+         */
+        const mode = row.attributes?.["availability-mode"];
+        if (mode !== "available" && mode !== "min_required_bookable" && mode !== "min_required_not_bookable") continue;
         if (typeof row.attributes?.spots === "number" && row.attributes.spots <= 0) continue;
         const m = /^(\d{1,2}):(\d{2})\s*(AM|PM)?$/i.exec(t.trim());
         if (!m) continue;

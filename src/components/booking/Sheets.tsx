@@ -36,7 +36,7 @@ import { AGENT_MODE_LIVE } from "../../lib/concierge";
 import { useApp } from "../../state/AppProvider";
 import { SIZES, srcSet, thumb } from "../../lib/images";
 import { embedAutoplay, listingMedia, photoCandidates, probePhotos, type Media } from "../../lib/media";
-import { cleanDesc, durationLabel, groupCap, minAge, splitPolicies } from "../../lib/listingDerive";
+import { cleanDesc, durationLabel, groupCap, meetPlace, minAge, notAlreadyShown, placeName, splitPolicies } from "../../lib/listingDerive";
 import { freeCancelBadge } from "../../lib/cancellation";
 import { DAY_SHORT, clock12, companySuggestions, currentDeals, dayLabel, todaysDeals } from "../../lib/companyAgent";
 import { bookableStart, clockIn, hourLines, itemWeek, zoneFor } from "../../lib/openNow";
@@ -428,7 +428,10 @@ function RequestBody({
   const facts = listingFacts(item);
   const here = useGuestPoint();
   const dest = mapsQuery(item, contact);
-  const place = tidyAddress(placeLabel(item, contact));
+  // `placeLabel` falls back to the area line when the shop published no street, and that line is a place a guest
+  // reads, so the state is spelled out there. A real address keeps the code its own page prints.
+  const placeRaw = placeLabel(item, contact);
+  const place = placeRaw === item.area ? placeName(item.area) : tidyAddress(placeRaw);
   // No pin for a partner's product: the coordinate on the record is the centre of the destination its API
   // filed it under, one point for every product in that city, so "2 miles away" would be made up.
   const pin = !item.affiliate && item.lat != null && item.lon != null ? { lat: item.lat, lng: item.lon } : null;
@@ -519,6 +522,10 @@ function RequestBody({
   const reqKeys = new Set(requirements.map((r) => r.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim()));
   const highlights = (item.highlights?.length ? item.highlights : facts.about.slice(0, 6)).filter((h) => !reqKeys.has(h.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim()));
   const waiverLines = (item.policies?.filter((l) => /\bwaivers?\b|\bliabilit|\brelease form|\bsign(ed|ing)? (a |the |our |your )?(waiver|release|form)|\bcheck-?in\b/i.test(l)) || facts.waiver.filter((l) => l.posted).map((l) => l.text)).filter((l) => l.length <= 160);
+  // What "Who can go" prints, which is not every requirement: a sentence the waiver row below is already
+  // printing is that row's, and a shop that publishes one line as both had it read twice on one screen. The
+  // requirements list itself is left whole, because the age rule and the highlight guard are read off it.
+  const whoCanGo = notAlreadyShown(requirements, waiverLines);
   const policies = splitPolicies(item.policies || []);
   const otherPolicies = policies.other;
   // A cancellation term stated as a policy line rather than in `cancellation` is still their cancellation term.
@@ -572,7 +579,7 @@ function RequestBody({
   const fromUnit = item.options.find((o) => o.price === from);
   const fromPer = fromUnit && perPerson(fromUnit) ? " / person" : "";
   const suggestions = useMemo(() => companySuggestions({ item, contact }).slice(0, 4), [item.id]);
-  const subtitle = [kind + " in " + item.area, metro && !item.area.includes(metro.name) && !item.area.includes(",") ? metro.name : null].filter(Boolean).join(", ");
+  const subtitle = [kind + " in " + placeName(item.area), metro && !item.area.includes(metro.name) && !item.area.includes(",") ? metro.name : null].filter(Boolean).join(", ");
 
   const share = async () => {
     const url = listingUrl(item.id);
@@ -753,8 +760,8 @@ function RequestBody({
                   ? "Secure card payment. " + (ottoNow ? "Otto holds the card on your Profile, within " + money(wallet!.maxDollars) + ". " : "") + "Your card is held and only charged once " + item.title + (instant ? " has you booked." : " confirms.")
                   : instant
                     ? "Confirmed straight away."
-                    : "This is a request. " + item.title + (guest.email.trim() ? " confirms by email, and nothing" : " confirms it, and nothing") + " is charged until they do."}{" "}
-                Meet at {item.area}.
+                    : "This is a request. " + item.title + (guest.email.trim() ? " confirms by email, and nothing" : " confirms it, and nothing") + " is charged until they do."}
+                {meetPlace(item.area) ? " Meet at " + meetPlace(item.area) + "." : ""}
               </p>
             </section>
           </div>
@@ -854,7 +861,7 @@ function RequestBody({
 
           <div className="airtitle">
             <h1>{item.title}</h1>
-            <AdminSiteLink item={{ src: item.src, contact: contact || item.contact }} className="airadminsite" />
+            <AdminSiteLink item={{ src: item.src, affiliate: item.affiliate, contact: contact || item.contact }} className="airadminsite" />
             <p>{subtitle}</p>
             {duration || age ? <p className="soft">{[duration, age ? "Ages " + age + "+" : null].filter(Boolean).join(" · ")}</p> : null}
           </div>
@@ -913,7 +920,7 @@ function RequestBody({
               <span className="airavatar">{item.title.replace(/^the\s+/i, "").charAt(0).toUpperCase()}</span>
               <span>
                 <b>Hosted by {item.title}</b>
-                <small>{[kind, item.area].join(" · ")}</small>
+                <small>{[kind, placeName(item.area)].join(" · ")}</small>
               </span>
             </section>
           )}
@@ -1296,9 +1303,9 @@ function RequestBody({
           {!partnerLabel || knowsAnything ? (
           <Section title="Things to know">
             <div className="airknows">
-              {!partnerLabel || requirements.length ? (
-              <KnowRow icon={ICONS.user} title="Who can go" summary={requirements[0] ? tidyLine(requirements[0]) : "Contact the business to check"}>
-                {requirements.length ? <Bullets items={requirements} /> : <FactList lines={facts.who.filter((l) => l.posted)} />}
+              {(!partnerLabel && !requirements.length) || whoCanGo.length ? (
+              <KnowRow icon={ICONS.user} title="Who can go" summary={whoCanGo[0] ? tidyLine(whoCanGo[0]) : "Contact the business to check"}>
+                {whoCanGo.length ? <Bullets items={whoCanGo} /> : <FactList lines={facts.who.filter((l) => l.posted)} />}
               </KnowRow>
               ) : null}
               {item.bring?.length ? (

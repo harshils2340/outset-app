@@ -1,5 +1,5 @@
 import { db } from "../db/client.ts";
-import { METROS } from "../taxonomy/catalog.ts";
+import { METROS, haversineKm } from "../taxonomy/catalog.ts";
 import { MAX_AGE_HOURS, detailFields, type DetailFields, type ViatorDetailSections } from "./viator.ts";
 
 /**
@@ -159,6 +159,29 @@ export function toAffiliateItem(r: AffiliateRow): Record<string, unknown> {
   };
 }
 
+/**
+ * How far a partner product's own pin may sit from the metro it is filed under before the row is not
+ * published at all.
+ *
+ * A product carries its destination's centre as its pin, and the area line a guest reads is that
+ * destination's name with the metro's region glued on the end, so a product filed under the wrong metro is
+ * sold to a guest as being somewhere it has never been. 17 of the 6,492 shipped partner rows were: Hobbiton,
+ * Waitomo Glowworm Caves and Rotorua tours out of Hamilton, New Zealand, published as "Hamilton, ON", which
+ * was every partner listing that metro had. `metroDestinations` no longer makes that match, and this is the
+ * floor under it, so a row already stored wrong stops being published without waiting for a fresh pull.
+ *
+ * The threshold is wide on purpose. Every one of the 6,475 rows that is in the right place sits within 44 km
+ * of its metro centre and the 17 that were not sat at 13,852 km; there is nothing in between to get wrong.
+ */
+export const MAX_METRO_KM = 200;
+
+/** Whether a partner row's own pin agrees with the metro it is filed under. A row with no pin is taken on trust. */
+export function pinFitsMetro(r: Pick<AffiliateRow, "metro_id" | "lat" | "lon">, maxKm = MAX_METRO_KM): boolean {
+  const metro = METROS.find((m) => m.id === r.metro_id);
+  if (!metro || r.lat == null || r.lon == null) return true;
+  return haversineKm(metro.lat, metro.lon, r.lat, r.lon) <= maxKm;
+}
+
 /** Every affiliate row fresh enough to publish, best rated first. Stale rows stay in the table and off the site. */
 export function affiliateCatalogItems(): Record<string, unknown>[] {
   const since = new Date(Date.now() - MAX_AGE_HOURS * 3600 * 1000).toISOString();
@@ -170,5 +193,8 @@ export function affiliateCatalogItems(): Record<string, unknown>[] {
          ORDER BY review_count DESC NULLS LAST, rating DESC NULLS LAST`,
     )
     .all(since) as AffiliateRow[];
-  return rows.map(toAffiliateItem);
+  const here = rows.filter((r) => pinFitsMetro(r));
+  const wrong = rows.length - here.length;
+  if (wrong) console.log(`  ${wrong} affiliate rows are pinned outside the metro they are filed under and are not published.`);
+  return here.map(toAffiliateItem);
 }

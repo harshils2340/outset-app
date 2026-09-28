@@ -2,7 +2,7 @@ import type { Unclaimed } from "../data/types";
 import { contactFor } from "./catalog";
 // The rule for whether a published line is opening hours at all lives with the rest of the hour-line reading,
 // in a module with no imports of its own, so the backend's static pages can read it too.
-import { isTradingHoursLine } from "./hoursText";
+import { hourRules, isTradingHoursLine } from "./hoursText";
 
 export { isTradingHoursLine };
 
@@ -32,10 +32,29 @@ const DAY_RE: [RegExp, number[]][] = [
   [/\bsat(?:urday)?s?\b/i, [6]],
 ];
 const DAY_IDX: Record<string, number> = { sun: 0, mon: 1, tue: 2, wed: 3, thu: 4, fri: 5, sat: 6 };
+/**
+ * How a day of the week may be spelled, prefix and ending. Only the endings a real day name takes, because
+ * every one of those prefixes is also the front of a word that is not a day at all: a golf course open "Mo-Su
+ * 07:00-sunset" states no Sunday, a farm open "first Sunday of the month" no Monday, and a barn hired out for
+ * a wedding no Wednesday. "Thur" and "Thurs" were missing, so a brewpub's "Sun, Mon, Tue, Wed, Thur 11:00 AM
+ * - 9:00 PM" told a guest it was shut on Thursday, a skydive centre's "Mon, Wed, Thur, Fri - 9 AM to 5 PM"
+ * the same, and a winery that wrote "THURS: 4PM-10PM" and nothing else named no day at all, which a week
+ * reads as every day of it: 25 lines on 25 listings, every one of them a shop stating hours nobody read. A
+ * range already read any spelling ("Thurs-Sun, 9am-4pm"); a list did not.
+ */
+const DAY_WORD = "(sun|mon|tue|wed|thu|fri|sat)(?:day|sday|nesday|rsday|urday|rs?)?s?";
+const DAY_LIST = new RegExp("\\b" + DAY_WORD + "\\b", "g");
 /** "Tue-Fri", "Mon, Wed & Fri", "Thu to Sun": any day range or list, expanded to day numbers. Null when the line names no day. */
 function genericDays(line: string): number[] | null {
   const l = line.toLowerCase();
-  const range = l.match(/\b(sun|mon|tue|wed|thu|fri|sat)[a-z]*\.?\s*(?:-|–|—|to|through|thru)\s*(sun|mon|tue|wed|thu|fri|sat)[a-z]*\b/);
+  // The day that closes a range is not asked to end on a word boundary, because the crawl glues the next thing
+  // on the page straight on to it with no space for one to sit in: "Monday-Thursday9:00 AM - 5:00 PM", "Monday
+  // - Sunday10am-10pm", "Tuesday - Saturdayfrom 9:00 am - 4:00 pm", "Monday - SaturdayOpen - 8:00 am to 5:00
+  // pm", "Tuesday-SundayCLOSED MONDAYS10 am - 5 pm". None of those ranges was read at all, so the line named
+  // its opening day alone or no day whatever, and a line naming no day is a week a guest reads as every day of
+  // it. 186 listings state a range written that way, among them a museum open Tuesday to Saturday that said it
+  // opened on Tuesday and nothing else, and an arts centre open all week that said Monday.
+  const range = l.match(/\b(sun|mon|tue|wed|thu|fri|sat)[a-z]*\.?\s*(?:-|–|—|to|through|thru)\s*(sun|mon|tue|wed|thu|fri|sat)[a-z]*/);
   const days = new Set<number>();
   if (range) {
     const a = DAY_IDX[range[1]];
@@ -46,8 +65,69 @@ function genericDays(line: string): number[] | null {
     }
   }
   const head = range ? l.slice(0, range.index) + l.slice((range.index || 0) + range[0].length) : l;
-  for (const m of head.matchAll(/\b(sun|mon|tue|wed|thu|fri|sat)(?:day|sday|nesday|rsday|urday)?s?\b/g)) days.add(DAY_IDX[m[1]]);
+  for (const m of head.matchAll(DAY_LIST)) days.add(DAY_IDX[m[1]]);
   return days.size ? [...days].sort() : null;
+}
+
+/**
+ * The days a shop says it is shut, on a line that states hours as well.
+ *
+ * 111 lines on 106 listings write both on one line, and every one of them had the closed day standing open:
+ * a brewery's "Mon Closed Tue 12pm-7pm Wed 12pm-7pm" opened on Monday at noon, a paintball field's "Mon -
+ * Fri: Closed Saturday: 10am - 5pm" opened every weekday, an axe range's "MON: Closed TUES-THU: 4:30pm -
+ * 9:00pm" the same, and a kayak shop's "Open daily 10AM-7:30PM, closed Wednesdays" ran seven days. The word
+ * was read as a fact about the line rather than about a day, so it counted for nothing the moment the line
+ * also carried a clock, and the shop stood in "Open right now near you" on the one day nobody is there.
+ *
+ * Which days the word is about is what the shop's own punctuation says. The days in front of it are the
+ * subject where the line marks one ("Mon - Fri: Closed", "Mon - Closed", "Monday and Holidays Closed", "Sun
+ * closed"), and so they are wherever the line names no day behind it. The days behind it are the subject when
+ * nothing names one in front, which is how a bracketed aside is written ("Open Tuesday - Sunday (closed
+ * Mondays)", "Monday - Friday (Closed Wednesday) 9 am - 4 pm") and how a line that opens on the word is
+ * ("Closed Monday & Tuesday Wednesday: 4:00 pm - 8:00 pm"). When both sides name days and the two of them
+ * cover the whole week, the closed day is the smaller side: "Tuesday-SundayCLOSED MONDAYS10 am - 5 pm" is six
+ * days open and one shut, not the other way round.
+ *
+ * A closed day that carries a clock of its own is a shop shutting part of a day rather than all of it ("closed
+ * Sundays after 3 PM for maintenance"), and the day keeps the hours it stated.
+ */
+const DAY_ANY = "(?:sun|mon|tue|wed|thu|fri|sat)(?:day|sday|nesday|rsday|urday|rs?)?s?";
+/** A list or a range of days is one subject. A bare space is not a separator: "Monday & Tuesday Wednesday" is two. */
+const DAY_SEP = "\\s*(?:-|\u2013|\u2014|to|thru|through|&|and|,|/)\\s*";
+const DAY_GROUP = DAY_ANY + "(?:" + DAY_SEP + DAY_ANY + ")*";
+/** What a shop writes between the days and the word: punctuation, a zero-width space the crawl swept up, "is" or "are". */
+const CLOSED_GAP = "[\\s:;.,&=/\\-\u2013\u2014\u200b-\u200f]*";
+/** A day group that ends where the word begins, which makes those days what the word is about. */
+const CLOSED_BEFORE = new RegExp(
+  "\\b(" + DAY_GROUP + ")" + CLOSED_GAP + "(?:(?:and\\s+|&\\s*)?holidays?\\b" + CLOSED_GAP + ")?(?:(?:is|are)\\b" + CLOSED_GAP + ")?$",
+  "i",
+);
+/** A day group that starts where the word ends, unless it carries a clock of its own. */
+const CLOSED_AFTER = new RegExp(
+  "^" + CLOSED_GAP + "(?:on\\s+)?(" + DAY_GROUP + ")\\b(?!\\s*(?:after|from|until|till|before|at|past|@)\\b)",
+  "i",
+);
+/**
+ * A clock right behind the word is the hours a shop shuts for rather than the days: Page Lake Powell's
+ * "Saturday & Sunday closed 8:30 a.m. to 9:30 a.m. for North & South Coyote Butte Orientation" is an hour out
+ * of two mornings, and both days keep the hours they state elsewhere.
+ */
+const CLOSED_SPAN = /^[\s:;.,&=/\-\u2013\u2014]*(?:from\s+|between\s+)?\d{1,2}(?::\d{2})?\s*(?:[ap]\.?m|:)/i;
+const CLOSED_WORD = /\bclosed\b/gi;
+
+function closedDays(line: string): number[] {
+  const shut = new Set<number>();
+  for (const m of line.matchAll(CLOSED_WORD)) {
+    const tail = line.slice(m.index + m[0].length);
+    if (CLOSED_SPAN.test(tail)) continue;
+    const before = genericDays(CLOSED_BEFORE.exec(line.slice(0, m.index))?.[1] || "");
+    const after = genericDays(CLOSED_AFTER.exec(tail)?.[1] || "");
+    const both = before && after ? new Set([...before, ...after]) : null;
+    // Both sides named days and between them they name the week, so the shorter side is the day off.
+    const side = both && both.size === 7 ? (before!.length <= after!.length ? before : after) : before || after;
+    for (const d of side || []) shut.add(d);
+  }
+  return [...shut];
 }
 
 const TIME_RE = /(\d{1,2})(?::(\d{2}))?\s*(am|pm|a\.m\.|p\.m\.)?\s*(?:-|–|—|to|until|till)\s*(\d{1,2})(?::(\d{2}))?\s*(am|pm|a\.m\.|p\.m\.)?/i;
@@ -126,9 +206,16 @@ function sharedMarker(open: number, close: number, openH: string, openAP: string
  * catalog carry one, 132 of them on all seven days: helicopter tours, jet ski rentals and fishing charters
  * standing in "Open right now near you" at four in the morning under "Open, closes 11:59 PM", a closing time
  * none of them ever stated. A late closer still counts: "6pm-2am" opens at a stated hour.
+ *
+ * A range whose two ends name the same clock face is the same placeholder written from somewhere other than
+ * midnight, and the rule read only the ones that started there. An airboat ride published "Mon-Sun 1:00 AM -
+ * 1:00 AM", a brewery "Sat 12:00 PM - 12:00 PM", a yoga studio "Wed 8:00 AM - 8:00 AM": 6 shipped listings
+ * and 12 day lines, each read as open around the clock, so the shop stood in the open-now rail at every hour
+ * of that day and its picker offered every fixed start time. Nobody trades noon to noon, so the span is
+ * measured rather than its opening end, and the day keeps its honest gap.
  */
 function coversWholeDay(open: number, close: number): boolean {
-  return open === 0 && close >= 24 * 60 - 1;
+  return close - open >= 24 * 60 - 1;
 }
 
 /**
@@ -178,16 +265,22 @@ export function osmToLines(raw: string): string[] {
 }
 
 export function parseWeek(input: string[]): Week | null {
-  const lines = input.flatMap((l) => { const o = osmToLines(l); return o.length ? o : [l]; });
+  // Whether a published line is opening hours at all is read off the whole line, and what it states off each
+  // rule it turns out to hold: "MondayClosedTuesday2:00PM to 7:00PM" is a day off and a day's hours, not one
+  // line that is somehow both, and "Mon-Sat 10am - 5pm Sunday 12pm - 5pm" is six days and a Sunday that opens
+  // two hours later, not one span for all seven.
+  const lines = input
+    .flatMap((l) => { const o = osmToLines(l); return o.length ? o : [l]; })
+    .flatMap((l) => (isTradingHoursLine(l) ? hourRules(l) : []));
   const week: Week = [null, null, null, null, null, null, null];
   let any = false;
   for (const raw of lines) {
-    if (!isTradingHoursLine(raw)) continue;
     // The phone number goes before anything is read off the line, not just before the time: glued on with no
     // space it also hides the day, so "3132Tuesday - Friday" left a theatre open on Friday alone.
     const line = raw.replace(/\s+/g, " ").replace(PHONE_RE, " ").trim();
     if (!line) continue;
     const closed = /\bclosed\b/i.test(line);
+    const shut = closedDays(line);
     const span = firstSpan(line);
     let days: number[] | null = null;
     for (const [re, d] of DAY_RE) {
@@ -198,16 +291,30 @@ export function parseWeek(input: string[]): Week | null {
     }
     // Specific phrases first (weekdays, daily); otherwise any explicit day range or list on the line.
     if (!days || days.length === 1) days = genericDays(line) || days;
+    // A stated day off can be the one day a phrase does not name, on either side: "Open daily 10AM-7:30PM,
+    // closed Wednesdays" names six open days through "daily", and "Mon - Fri: Closed Saturday: 10am - 5pm"
+    // names its open Saturday nowhere else, so the phrase and the days written out are read together.
+    else if (shut.length) {
+      const named = genericDays(line);
+      if (named) days = [...new Set([...days, ...named])].sort((a, b) => a - b);
+    }
     if (!days && span) days = [0, 1, 2, 3, 4, 5, 6];
     if (!days) continue;
     for (const d of days) {
-      if (closed && !span) {
+      if (shut.includes(d)) continue;
+      // The word is about the days it names, so the rest of the line is not shut with them: a spa's "Monday -
+      // Saturday, closed Sunday" states no hours and had closed the six days it is open.
+      if (closed && !span && !shut.length) {
         week[d] = { open: 0, close: 0 };
         any = true;
       } else if (span) {
         week[d] = { open: span.open, close: span.close };
         any = true;
       }
+    }
+    for (const d of shut) {
+      week[d] = { open: 0, close: 0 };
+      any = true;
     }
   }
   return any ? week : null;
@@ -274,6 +381,10 @@ const REGION_TZ: Record<string, string> = {
   CA: "America/Los_Angeles", NV: "America/Los_Angeles", OR: "America/Los_Angeles", WA: "America/Los_Angeles", AK: "America/Anchorage", HI: "Pacific/Honolulu",
   // Canada
   ON: "America/Toronto", QC: "America/Toronto", NS: "America/Halifax", NB: "America/Moncton", PE: "America/Halifax", NL: "America/St_Johns", MB: "America/Winnipeg", SK: "America/Regina", AB: "America/Edmonton", BC: "America/Vancouver", YT: "America/Whitehorse", NT: "America/Yellowknife", NU: "America/Iqaluit",
+  // Puerto Rico keeps Atlantic time all year and takes no daylight saving. `REGION_NAME` already spells it
+  // out, so without a row here a San Juan area line names a region the clocks do not know and falls through
+  // to longitude, which lands on America/Halifax: right in winter, an hour out from March to November.
+  PR: "America/Puerto_Rico",
 };
 
 /**
@@ -394,9 +505,16 @@ export function itemWeek(item: Unclaimed): Week | null {
   // the fix until the next sync writes the file again. The 37 campgrounds whose only line is their quiet
   // hours ship one, and it is their opening hours turned inside out.
   if (item.hoursText?.length && !hourLines(item).length) return null;
+  const lines = hourLines(item).length ? hourLines(item) : contactFor(item)?.hours || [];
+  // Where the lines themselves are in hand, they are read again rather than taken second hand, for the same
+  // reason: the compact week is whatever the reader made of them on the day the file was written, and 547 of
+  // the 14,220 listings that ship both no longer agree with a fresh read of their own hours. A brewpub's
+  // Monday to Thursday was a Monday, an airboat ride's midnight to midnight placeholder was a week open around
+  // the clock, and every day off, glued day and one-off event put right since the sync was still being shown.
+  // A card with no lines to read keeps the compact week, so those listings stay as they are until a sync runs.
+  if (lines.length) return parseWeek(lines);
   const compact = item.hrs?.length ? item.hrs.map(compactDay) : null;
-  if (compact && compact.some((d) => d)) return compact;
-  return parseWeek(hourLines(item).length ? hourLines(item) : contactFor(item)?.hours || []);
+  return compact && compact.some((d) => d) ? compact : null;
 }
 
 export function itemOpenState(item: Unclaimed, now = new Date()): OpenState | null {

@@ -266,6 +266,12 @@ export type RawReview = {
 };
 
 /** Apply every rule to one review. Null when it is not a review a guest should read. */
+/**
+ * A name at the end of a review's own words: up to four capitalised words, an ampersand or a slash between
+ * them ("Mark & Sarah", "Cade /"), or a handle with a digit in it ("casey2x2").
+ */
+const SIGNATURE = "(?:\\p{Lu}[\\p{L}\\d.'\u2019-]*(?:\\s+(?:&|/|\\p{Lu}[\\p{L}\\d.'\u2019-]*)){0,3}|[\\p{L}\\d._-]*\\d[\\p{L}\\d._-]*)";
+
 export function normalizeReview(raw: RawReview, now = new Date()): Review | null {
   if (!raw || typeof raw.text !== "string") return null;
   const { author: cleanName, source: authorSource } = cleanAuthor(raw.author);
@@ -277,11 +283,23 @@ export function normalizeReview(raw: RawReview, now = new Date()): Review | null
     if (!author) author = cleanAuthor(lead[1]).author;
     text = text.slice(lead[0].length).replace(/["”]\s*$/, "").trim();
   }
-  // A signature at the end of the words ("… we'll be back! - Jane D.") is the author, not the review.
-  const sig = text.match(/\s+[-–—~]\s*([A-Z][\w.'’-]*(?:\s+[A-Z][\w.'’-]*){0,3})\s*$/);
+  // A signature at the end of the words ("… we'll be back! - Jane D.") is the author, not the review. A closing
+  // quote is the shop's own markup around what the guest wrote, so a name behind one is a byline too, dash or
+  // no dash: 53 shipped reviews read "… a great experience."casey2x2", "… girls.” Lindsey S." and "… we fished.
+  // Excellent. Larry L.", which is a card printing the reviewer's name twice, once inside their own words.
+  const sig = text.match(new RegExp("(?:\\s+|[\"”»])\\s*[-–—~]\\s*(" + SIGNATURE + ")\\s*$", "u")) || text.match(new RegExp("[\"”»]\\s*(" + SIGNATURE + ")\\s*$", "u"));
   if (sig) {
     if (!author) author = cleanAuthor(sig[1]).author;
     text = text.slice(0, sig.index).trim();
+  }
+  // The same name again at the end, with no dash and no quote to mark it: "… Definitely recommend! Sara R.".
+  // Only where the words before it finish a sentence, so "thanks again, Brian!" keeps the captain it thanks.
+  for (const name of [author, typeof raw.author === "string" ? raw.author.trim() : ""]) {
+    if (!name || name.length < 2) continue;
+    const m = text.match(new RegExp("^(.*(?:[.!?][\"”’»]?|[\"”»]))\\s*" + name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "[.\\s/]*$", "iu"));
+    if (!m) continue;
+    text = m[1].trim();
+    break;
   }
   // The name glued onto the front by a widget ("Seth Luna Good prices…").
   if (author && text.toLowerCase().startsWith(author.toLowerCase() + " ")) text = text.slice(author.length).trim();

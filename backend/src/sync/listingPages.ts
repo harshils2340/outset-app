@@ -4,14 +4,14 @@ import { fileURLToPath } from "node:url";
 import { freeCancelBadge } from "../../../src/lib/cancellation.ts";
 import { sayLength } from "../../../src/lib/duration.ts";
 import { displayHours } from "../../../src/lib/hoursText.ts";
-import { cleanDesc, splitIncluded, tidyLine } from "../../../src/lib/listingDerive.ts";
+import { cleanDesc, placeName, splitIncluded, tidyLine } from "../../../src/lib/listingDerive.ts";
 import { listingFacts, publicRating } from "../../../src/lib/catalog.ts";
 import { money, reviewsLine } from "../../../src/lib/format.ts";
 import { photoCandidates } from "../../../src/lib/samePhoto.ts";
 import type { Unclaimed } from "../../../src/data/types.ts";
 import { METROS } from "../taxonomy/catalog.ts";
 import { REGION_NAME, countryOfArea, regionOfArea } from "../../../src/data/regions.ts";
-import { KINDS, bookablePages, cardPhoto, fileFor, hasListingPage, pageFooter, placeName, priceOf, publicSite, socialCard, type Item, type Kind } from "./pages.ts";
+import { KINDS, bookablePages, cardPhoto, fileFor, hasListingPage, pageFooter, pageTitle, placeName as metroPlaceName, priceOf, publicSite, socialCard, type Item, type Kind, type Place } from "./pages.ts";
 
 /**
  * One static page per listing, /l/<id>.html: the business's own name, area, blurb, menu, hours, policies, FAQ
@@ -199,7 +199,7 @@ const CSS =
   `.links{display:flex;flex-wrap:wrap;gap:8px;margin:16px 0}.links a{border:1px solid #ddd;border-radius:999px;padding:7px 12px;font-size:13px;text-decoration:none;color:#222}` +
   `footer{border-top:1px solid #ebebeb;padding:20px 0 40px;color:#717171;font-size:13px;margin-top:24px}footer p{margin:0 0 6px}footer .legal a{color:inherit}`;
 
-function page(item: Item, opts: { landingHref: string | null; kindPageHref: string | null }): string {
+function page(item: Item, opts: { landingHref: string | null; landingLabel: string | null; kindPageHref: string | null }): string {
   const site = publicSite();
   const canonical = `${site}l/${item.id}.html`;
   const hashUrl = `${site}#o=${esc(item.id)}`;
@@ -209,6 +209,11 @@ function page(item: Item, opts: { landingHref: string | null; kindPageHref: stri
   // front of a comma or a full stop, and the button label swept up with the last sentence.
   const blurb = typeof item.blurb === "string" && item.blurb ? cleanDesc(item.blurb).replace(/\s+(Book|Learn more|Read more|Reserve)\.?$/i, "") : "";
   const area = String(item.area || "");
+  // The place a guest reads, spelled the way the app's own listing page, the review-and-pay sheet and the
+  // confirm screen spell it: "Ocean City, Maryland", and "Maryland" alone for a listing whose town was never
+  // read. The state code stays where a code belongs: the JSON-LD's `addressRegion`, which schema.org asks for
+  // in that form, and the cards, which have no room for a state spelled out.
+  const place = placeName(area);
   const photos = photosOf(item);
   const menu = menuRows(item);
   const contact = (item as { contact?: Contact }).contact;
@@ -258,8 +263,9 @@ function page(item: Item, opts: { landingHref: string | null; kindPageHref: stri
   // score, and the JSON-LD on this very page already refused to publish one.
   const score = publicRating(unclaimedShape(item));
   const kind = KINDS.find((k) => k.art === item.art);
-  const title = `${item.title}${area ? " in " + area : ""} · Outset`;
-  const description = clip(blurb || `${item.title}, ${area || "a real local business"} on Outset.`, 300);
+  // The app names the same page the same way, off the same two fields: see pageTitle in src/lib/site.ts.
+  const title = `${item.title}${place ? " in " + place : ""} · Outset`;
+  const description = clip(blurb || `${item.title}, ${place || "a real local business"} on Outset.`, 300);
   const ld = jsonLd(item, canonical, photos, menu);
   // The partner licence (Viator's reads "you must not index any Viator unique content") means this page exists
   // for the app and for a shared link, never for a search engine: noindex here, and writeListingPages keeps it
@@ -287,7 +293,7 @@ function page(item: Item, opts: { landingHref: string | null; kindPageHref: stri
   const ratingHtml = score ? `<p class="rating">★ ${score.rating.toFixed(1)} (${esc(reviewsLine(score.reviews))})</p>` : "";
   const links = [
     `<a href="${hashUrl}">Open on Outset</a>`,
-    opts.landingHref ? `<a href="${opts.landingHref}">${esc(kind ? kind.search : "More like this")}${area ? " near " + esc(area.split(",")[0]) : ""}</a>` : "",
+    opts.landingHref ? `<a href="${opts.landingHref}">${esc(opts.landingLabel || (kind ? kind.search : "More like this"))}</a>` : "",
     `<a href="${site}p/index.html">Browse every activity by city</a>`,
   ]
     .filter(Boolean)
@@ -304,7 +310,7 @@ ${socialCard({ title, description, url: canonical, photo: photos[0] })}
 <main class="wrap">
 <nav class="crumbs"><a href="${site}">Outset</a><span>›</span><a href="${site}p/index.html">By activity and city</a>${kind && opts.kindPageHref ? `<span>›</span><a href="${opts.kindPageHref}">${esc(kind.search)}</a>` : ""}</nav>
 <h1>${esc(item.title)}</h1>
-${area ? `<p class="area">${esc(area)}</p>` : ""}
+${place ? `<p class="area">${esc(place)}</p>` : ""}
 ${ratingHtml}
 ${blurb ? `<p class="blurb">${esc(blurb)}</p>` : ""}
 ${factsHtml}
@@ -327,6 +333,24 @@ ${faqHtml}
 </main>
 ${pageFooter()}
 </body></html>`;
+}
+
+/**
+ * What the "more like this" link is allowed to call the page it opens.
+ *
+ * It used to read `<kind> near <the listing's own town>` whatever page it pointed at, and on 6,711 of the
+ * 15,556 shipped pages that page was the all-metros one: "Fishing charters near Branson" opened "Fishing
+ * charters in the US and Canada", and "Boat rentals near Page" opened every boat rental on the continent. A
+ * link says what the page it opens says, so a national page is named the way its own h1 names it, and a metro
+ * page keeps the town, falling back to the metro's own name for a listing whose area line names no town.
+ */
+function landingLabelFor(item: Item, metro: Place | null, landingHref: string | null): string | null {
+  const kind = KINDS.find((k) => k.art === item.art);
+  if (!landingHref || !kind) return null;
+  if (!metro) return pageTitle(kind, null);
+  const head = String(item.area || "").split(",")[0].trim();
+  const town = /^[A-Za-z]{2}$/.test(head) && REGION_NAME[head.toUpperCase()] ? "" : head;
+  return `${kind.search} near ${town || metroPlaceName(metro)}`;
 }
 
 export type ListingPagesResult = { pages: number; totalBytes: number; avgBytes: number; urls: string[] };
@@ -353,12 +377,15 @@ export function writeListingPages(rawItems: Item[], landingPages: { existingPage
     const kindUnconfirmed = !!(item as { kindUnconfirmed?: boolean }).kindUnconfirmed;
     let landingHref: string | null = null;
     let kindPageHref: string | null = null;
+    let metro: Place | null = null;
     if (!kindUnconfirmed && item.art) {
       if (landingPages.existingPages.has(String(item.art))) kindPageHref = `${publicSite()}p/${fileFor(String(item.art), null)}`;
       const metroKey = item.metroId ? `${item.art}|${item.metroId}` : null;
-      landingHref = metroKey && landingPages.existingPages.has(metroKey) ? `${publicSite()}p/${fileFor(String(item.art), item.metroId as string)}` : kindPageHref;
+      const hasMetroPage = !!metroKey && landingPages.existingPages.has(metroKey);
+      landingHref = hasMetroPage ? `${publicSite()}p/${fileFor(String(item.art), item.metroId as string)}` : kindPageHref;
+      if (hasMetroPage) metro = METROS.find((m) => m.id === item.metroId) || null;
     }
-    const html = page(item, { landingHref, kindPageHref });
+    const html = page(item, { landingHref, landingLabel: landingLabelFor(item, metro, landingHref), kindPageHref });
     const file = `${item.id}.html`;
     writeFileSync(join(dir, file), html);
     // A partner page is noindex (see page()), so it is not offered to search engines here either.

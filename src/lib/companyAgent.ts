@@ -1,6 +1,7 @@
 import type { OperatorContact, Unclaimed } from "../data/types";
 import type { LiveAvailability } from "./api";
 import { addressLine, bookingPaused, plainWords } from "./catalog";
+import { cleanDesc, placeName } from "./listingDerive";
 import { runsInMonth } from "./deals";
 import { callablePhone } from "./phone";
 import { sayLength, withoutNoticeWindows } from "./duration";
@@ -65,17 +66,53 @@ const countWord = (n: number) => (n < NUM_WORD.length ? NUM_WORD[n] : String(n))
 const DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 export const DAY_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
-/** Operator prose, cut to one readable sentence of at most `max` characters. */
+/**
+ * A full stop that ends a sentence rather than an abbreviation.
+ *
+ * An initial or a shortened word is followed by a space and a capital exactly as a sentence end is, so the
+ * first full stop in a text is often not one. Cutting at it told a guest "views of the Canadian and U.S",
+ * "a visit to the world's most active volcano, Mt", "our airboat captains are U.S" and "Flights within
+ * destination (e.g". The other half of the same bug is a shop whose copy opens on an initial: the stop landed
+ * inside the first twenty characters, the `stop > 20` floor threw it away, and the text then ran on through
+ * every later sentence, so "The A.R. Mitchell will exhibit ..." carried a second paragraph about the artist.
+ * 1,545 clipped texts on 1,078 shipped listings read one way or the other.
+ *
+ * Not cutting costs nothing: the `max` clamp below still ends the line. So the list is generous, and a stop
+ * inside an open bracket is left alone for the same reason.
+ */
+const ABBREVIATION =
+  /(?:(?:^|[^\p{L}'\u2019])\p{L}|\b(?:st|ste|mt|mts|ft|dr|mr|mrs|ms|jr|sr|capt|cpt|lt|sgt|col|gen|rev|prof|hon|hwy|rte|ave|av|blvd|rd|ln|apt|dept|div|approx|vs|etc|inc|corp|ltd|llc|co|hrs?|mins?|secs?|lbs?|oz|pkwy|univ|no|nos|jan|feb|mar|apr|jun|jul|aug|sept?|oct|nov|dec|mon|tues?|wed|thur?s?|fri|sat|sun))\.$/iu;
+
+function sentenceEnd(text: string): number {
+  const marks = /[.;]\s+[A-Z0-9]/g;
+  for (let m = marks.exec(text); m; m = marks.exec(text)) {
+    const head = text.slice(0, m.index + 1);
+    if (m[0][0] === "." && ABBREVIATION.test(head)) continue;
+    if ((head.match(/\(/g) || []).length > (head.match(/\)/g) || []).length) continue;
+    return m.index;
+  }
+  return -1;
+}
+
+/**
+ * Operator prose, cut to one readable sentence of at most `max` characters.
+ *
+ * It reads the shop's copy through `cleanDesc`, the rule the listing page above the chat reads it through, so
+ * the two stop printing one sentence two ways. `clip` used to run only `plainWords`, and kept the space the
+ * crawl left in front of a comma and the trailing space a cut at a spaced full stop leaves: "the safest way
+ * to visit Oahu." read "the safest way to visit Oahu. " in the chat, and "the history of the neighborhood,
+ * walk among" read "the history of the neighborhood , walk among". 226 texts on 188 shipped listings.
+ */
 function clip(raw: string, max = 150): string {
-  const text = plainWords(String(raw || "")).replace(/\s+/g, " ").trim();
+  const text = cleanDesc(String(raw || ""));
   if (!text) return "";
-  const stop = text.search(/[.;]\s+[A-Z0-9]/);
-  let out = stop > 20 ? text.slice(0, stop) : text;
+  const stop = sentenceEnd(text);
+  let out = (stop > 20 ? text.slice(0, stop) : text).trim();
   if (out.length > max) {
     const cut = out.lastIndexOf(" ", max);
     out = out.slice(0, cut > 40 ? cut : max).replace(/[,;:]$/, "") + "…";
   }
-  return out.replace(/\s*[.;,:]+$/, "");
+  return out.replace(/\s*[.;,:]+$/, "").trim();
 }
 
 const sentence = (s: string) => (s ? s.replace(/\s*$/, "") + (/[.!?…]$/.test(s.trim()) ? "" : ".") : "");
@@ -86,7 +123,9 @@ function factList(items: string[], lead: string): string {
   const clean = items.map((i) => clip(i, 90)).filter(Boolean);
   if (!clean.length) return "";
   const wordy = clean.some((i) => i.split(" ").length > 5);
-  if (!wordy) return lead + list(clean.map(lower1), 3) + ".";
+  // sentence(), not a full stop: 192 listings publish an item that ends on its own mark, and "Included: lots
+  // of fun!!!." is not a sentence.
+  if (!wordy) return sentence(lead + list(clean.map(lowerIfPlain), 3));
   const two = clean.slice(0, 2).map((i) => sentence(upper1(i)));
   const take = two.join(" ").length > 115 ? 1 : two.length;
   const rest = clean.length - take;
@@ -101,6 +140,30 @@ function list(items: string[], max = 4): string {
 }
 
 const lower1 = (s: string) => (/^[A-Z][a-z]/.test(s) ? s[0].toLowerCase() + s.slice(1) : s);
+/**
+ * The same, but only for a word that is lowercase in every other sentence it appears in. A meeting point is
+ * usually the name of a place, and `lower1` broke 2,557 of them: "Meet at Lake Trail Taproom" read "Meet at
+ * lake Trail Taproom", "Owl's Creek Boat Launch" read "owl's Creek Boat Launch". A determiner is the case
+ * that reads wrong capitalized mid-sentence, so that is the only one this touches.
+ */
+const DET_OPENER = /^(?:the|a|an|our|my|your|their|his|her|its)\s/;
+const lowerDeterminer = (s: string) => (DET_OPENER.test(s.toLowerCase()) ? s[0].toLowerCase() + s.slice(1) : s);
+/**
+ * `lower1` for an item in a list, which is only safe on a phrase the shop wrote in plain sentence case. A
+ * phrase carrying another capital is a name, and lowering its first letter broke it: "Included: Special Treat"
+ * read "Included: special Treat", "Tour Guide" read "tour Guide" and "Quality Storytelling Entertainment" read
+ * "quality Storytelling Entertainment".
+ */
+const lowerIfPlain = (s: string) => (/[A-Z]/.test(s.slice(1)) ? s : lower1(s));
+
+/**
+ * "the" in front of an offer's name, unless the shop's own name for it opens with a determiner already. 2,179
+ * rows on 798 shipped listings do, so Otto answered "From $95 for the The Nature Conservancy Community Golf
+ * Days", "From $85 for the Our Classes (Standard)" and "The Our Classes (Standard) at $85". A possessive is
+ * left alone, because "the Artist's Studio Tour" is how that name reads in a sentence.
+ */
+const DETERMINED = /^(?:the|a|an|our|my|your|their|his|her|its|this|that|these|those)\s/i;
+const theLabel = (label: string) => (DETERMINED.test(label) ? label : "the " + label);
 
 /* ---------- the operator's offers, flattened and grouped ---------- */
 
@@ -151,8 +214,29 @@ function familyOf(name: string, ctx: CompanyContext): string {
   s = s.replace(/\b(weekends?|weekdays?|weeknights?)\b/gi, " ");
   s = s.replace(/\bper (hour|person|day|night|lane|group|game|round)\b/gi, " ");
   const cities = [ctx.contact?.city, ...(ctx.item.locations || []).map((l) => venueLabel({ city: l.city }))].filter(Boolean) as string[];
-  for (const c of cities) s = s.replace(new RegExp("\\b" + c.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "\\b", "gi"), " ");
-  s = s.replace(/\(\s*\)/g, " ").replace(/\s+/g, " ").replace(/(\s*[–—,:\/-])+\s*$/, "").trim();
+  for (const c of cities) {
+    const city = c.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    // A town taken out of the middle of a name takes the word that introduced it, and the region that followed
+    // it, with it. Removing the town alone left "Our Charter Boat in Portsmouth, NH" reading "Our Charter Boat
+    // in , NH", "Rentals in Acworth, Georgia" reading "Rentals in , Georgia" and "Helicopter Tours in Boston"
+    // reading "Helicopter Tours in", on 105 shipped listings.
+    s = s.replace(new RegExp("\\s*\\b(?:in|at|near|serving|around|of)\\s+" + city + "\\b(?:\\s*,\\s*[A-Za-z][A-Za-z.]{1,14})?", "gi"), " ");
+    s = s.replace(new RegExp("\\b" + city + "\\b", "gi"), " ");
+  }
+  // A separator with nothing left on either side of it, and a conjunction doubled by a removal in between.
+  s = s.replace(/\(\s*\)/g, " ").replace(/\s+/g, " ");
+  s = s.replace(/(\s*[,;:]\s*){2,}/g, ", ").replace(/\s+([,;:!?])/g, "$1").replace(/\b(and|or)\s+\1\b/gi, "$1");
+  // A word left standing beside itself by one of the removals above. "Bennington Pontoon Rental Half Day
+  // Rental" loses its length and reads "Bennington Pontoon Rental Rental", which is the whole of that marina's
+  // answer to "what do you offer"; "Santa Cruz Harbor 1-Hour Harbor Rental" reads "Santa Cruz Harbor Harbor
+  // Rental". A pair the shop itself wrote is left alone, so "Putt Putt Golf" and "Cha Cha" keep both words.
+  s = s.replace(/\b(\w+)(?:\s+\1\b)+/gi, (whole, word: string) =>
+    new RegExp("\\b" + word + "\\s+" + word + "\\b", "i").test(name) ? whole : word,
+  );
+  s = s.replace(/^[\s,;:\u2013\u2014\/-]+/, "").trim();
+  // A separator or a connector left at the end by one of the removals above. "In" and "On" are not in the list,
+  // because "Drop In" and "Walk On" are whole names; "and", "at" and "of" never end one.
+  for (let i = 0; i < 3; i += 1) s = s.replace(/(?:\s*[\u2013\u2014,:;\/-]+|\s+\b(?:and|or|with|plus|at|of|near|from|around|serving|to|by|for)\b)\s*$/i, "").trim();
   return s.length > 2 ? s : plainWords(name);
 }
 
@@ -273,7 +357,9 @@ function familyOfOffer(offers: Offer[], hit: Offer): { name: string; offers: Off
 function askedThing(q: string): string | null {
   const m = q.toLowerCase().split(/\band\b|,/)[0].trim().match(/\b(?:for|is|are|of)\s+(?:the|a|an|your|one)?\s*([a-z][a-z' -]{2,40}?)\s*\??$/);
   if (!m) return null;
-  const thing = m[1].trim();
+  // A determiner the capture swallowed is not part of the thing's name: "info for this tour" asks about a
+  // tour, and "They don't list a this tour" is a sentence no shop's assistant should ever say.
+  const thing = m[1].trim().replace(/^(?:this|that|these|those|the|a|an|your|our|their)\s+/, "");
   if (!words(thing).length || /^(it|that|this|them|us|me|one|two|people|person|kids?|adults?|group|everyone|a group|each|entry|admission)$/.test(thing)) return null;
   return thing;
 }
@@ -861,8 +947,8 @@ function priceAnswer(ctx: CompanyContext): { text: string; state: ChatState } {
   const sorted = [...offers].sort((a, b) => (a.price as number) - (b.price as number));
   const low = sorted[0];
   const high = sorted[sorted.length - 1];
-  const tail = high.price !== low.price ? " Up to " + priceOf(high) + " for the " + offerLabel(high) + "." : "";
-  const head = "From " + priceOf(low) + " for the " + offerLabel(low) + ".";
+  const tail = high.price !== low.price ? " Up to " + priceOf(high) + " for " + theLabel(offerLabel(high)) + "." : "";
+  const head = "From " + priceOf(low) + " for " + theLabel(offerLabel(low)) + ".";
   return { text: head + ((head + tail).length <= 125 ? tail : ""), state: { topic: "price", family: low.family, offer: low.name } };
 }
 
@@ -930,7 +1016,9 @@ function listAnswer(ctx: CompanyContext, q: string): { text: string; state: Chat
   const wantsAll = /\b(list|all|everything|show me)\b/i.test(q);
   const n = fams.length;
   let shown = wantsAll ? 6 : n > 4 ? 3 : 4;
-  const build = () => (n === 1 ? "Just one: " + fams[0].name + "." : upper1(countWord(n)) + (n <= shown ? " things: " : " options: ") + list(fams.map((f) => f.name), shown) + ".");
+  // sentence(), not a full stop: a shop that named a service "Jet Skis!" would otherwise be read out as
+  // "Just one: Jet Skis!.".
+  const build = () => sentence(n === 1 ? "Just one: " + fams[0].name : upper1(countWord(n)) + (n <= shown ? " things: " : " options: ") + list(fams.map((f) => f.name), shown));
   while (build().length > (wantsAll ? 170 : 115) && shown > 2) shown -= 1;
   const head = build();
   const priced = offers.filter((o) => hasPrice(o.price)).sort((a, b) => (a.price as number) - (b.price as number));
@@ -964,8 +1052,10 @@ function hoursAsWritten(item: Unclaimed): string | null {
   const lines = hourLines(item).map((l) => clip(l, 70)).filter(Boolean);
   if (!lines.length) return null;
   const seasonal = lines.filter((l) => /\b(spring|summer|fall|autumn|winter|season)\b/i.test(l));
-  if (seasonal.length >= 2) return "Hours change by season. " + seasonal.slice(0, 2).join("; ") + ".";
-  return "Their hours say: " + lower1(lines[0]) + ".";
+  if (seasonal.length >= 2) return sentence("Hours change by season. " + seasonal.slice(0, 2).join("; "));
+  // Not lowercased: an hour line opens on a day name or on "Open", and 241 shipped listings read "Their hours
+  // say: mon-Sun 12:00 AM" or "sunday, August 16" because of it. After a colon the shop's own capital is right.
+  return sentence("Their hours say: " + lines[0]);
 }
 
 function openNowAnswer(ctx: CompanyContext): { text: string; state: ChatState } {
@@ -1285,11 +1375,11 @@ function meetAnswer(ctx: CompanyContext, q: string): { text: string; state: Chat
   if (/check.?in/i.test(q) && arrival) return { text: sentence(clip(arrival, 150)), state: { topic: "meet" } };
   if (ctx.item.meetingPoint) {
     const mp = clip(ctx.item.meetingPoint, 120).replace(/^at\s+/i, "");
-    return { text: /^(check|meet|arrive|go to|report|head)/i.test(mp) ? sentence(upper1(mp)) : "Meet at " + lower1(mp) + ".", state: { topic: "meet" } };
+    return { text: /^(check|meet|arrive|go to|report|head)/i.test(mp) ? sentence(upper1(mp)) : sentence("Meet at " + lowerDeterminer(mp)), state: { topic: "meet" } };
   }
   const addr = ctx.contact ? addressLine(ctx.contact) : null;
   if (addr) return { text: "They're at " + addr + ".", state: { topic: "meet" } };
-  return { text: "They're in " + ctx.item.area + ", but no street address is published. " + nextStep(ctx), state: { topic: "meet" } };
+  return { text: "They're in " + placeName(ctx.item.area) + ", but no street address is published. " + nextStep(ctx), state: { topic: "meet" } };
 }
 
 /** The consolidated deal in guest words: its title and one sentence when the sync wrote them, else the raw text. */
@@ -1329,6 +1419,14 @@ function contactAnswer(ctx: CompanyContext): { text: string; state: ChatState } 
   return { text: "They haven't published a phone number. A booking request on this page reaches them directly.", state: { topic: "contact" } };
 }
 
+/**
+ * Words that name the listing itself rather than a row on its menu. A guest on a walking tour's page asking
+ * "tell me about this tour" is asking about the shop, and was told "They don't list a this tour. Want to see
+ * what they do offer?", because the question reached the branch for a thing the shop does not sell. A named
+ * offer is matched before this, so a shop that really does sell a row called "tour" still answers with it.
+ */
+const WHOLE_THING = /^(tours?|trips?|experiences?|activit(y|ies)|adventures?|excursions?|outings?|business|compan(y|ies)|shop|place|spot|venue|outfit|operation|thing)$/i;
+
 function describeAnswer(ctx: CompanyContext, q: string): { text: string; state: ChatState } {
   const hit = matchOffer(offersOf(ctx), q);
   if (hit) {
@@ -1338,7 +1436,7 @@ function describeAnswer(ctx: CompanyContext, q: string): { text: string; state: 
     return { text: offerLabel(hit) + "." + (price || dur), state: { topic: "describe", family: hit.family, offer: hit.name } };
   }
   const thing = askedThing(q.replace(/tell me about|what about|how about/i, "info for").replace(/^and\s+/i, ""));
-  if (thing) {
+  if (thing && !WHOLE_THING.test(thing)) {
     const name = /\sone$/.test(thing) ? thing.replace(/\s+one$/, "") + " option" : thing;
     return { text: "They don't list " + (/^[aeiou]/.test(name) ? "an " : "a ") + name + ". Want to see what they do offer?", state: { topic: "describe" } };
   }
@@ -1503,7 +1601,7 @@ function answerOne(ctx: CompanyContext, topic: Topic, q: string, prev: ChatState
       const priced = offersOf(ctx).filter((o) => hasPrice(o.price)).sort((a, b) => (a.price as number) - (b.price as number));
       if (!priced.length) return priceAnswer(ctx);
       const o = priced[0];
-      return { text: "The " + offerLabel(o) + " at " + priceOf(o) + ".", state: { topic: "cheapest", family: o.family, offer: o.name } };
+      return { text: upper1(theLabel(offerLabel(o))) + " at " + priceOf(o) + ".", state: { topic: "cheapest", family: o.family, offer: o.name } };
     }
     case "list": return listAnswer(ctx, q);
     case "duration": return durationAnswer(ctx, q, prev);
@@ -1605,7 +1703,7 @@ export function companyAnswer(ctx: CompanyContext, question: string, prev: ChatS
     const subject = offersOf(ctx).find((o) => o.name === first.state.offer);
     if (gapA && gapB) text = "They haven't published " + gapA[1] + " or " + gapB[1] + ". " + nextStep(ctx);
     else if (["price", "priceOf", "cheapest"].includes(topics[0]) && topics[1] === "duration" && subject?.minutes && hasPrice(subject.price)) {
-      text = (topics[0] === "price" ? "From " : "") + priceOf(subject) + (topics[0] === "price" ? " for the " + subject.name : " for " + subject.name) + ", and it runs " + fmtDur(subject.minutes) + ".";
+      text = (topics[0] === "price" ? "From " : "") + priceOf(subject) + (topics[0] === "price" ? " for " + theLabel(subject.name) : " for " + subject.name) + ", and it runs " + fmtDur(subject.minutes) + ".";
     }
     else if (b && b !== a) text = a + " " + (first.state.family && b.startsWith(first.state.family + " ") ? "It " + b.slice(first.state.family.length + 1) : b);
   }
@@ -1640,7 +1738,7 @@ export function companyFacts(ctx: CompanyContext): Fact[] {
     const text = factText(lines);
     if (text) out.push({ id, title, text });
   };
-  add("about", "About " + item.title, [item.title + " is in " + item.area + ".", item.blurb, ...(item.highlights || []), ...(item.specs || [])]);
+  add("about", "About " + item.title, [item.title + " is in " + placeName(item.area) + ".", item.blurb, ...(item.highlights || []), ...(item.specs || [])]);
   const offers = offersOf(ctx);
   add("prices", "Prices and options", offers.map((o) => offerLabel(o) + ": " + (hasPrice(o.price) ? priceOf(o) : "price not published") + (o.minutes ? ", " + fmtDur(o.minutes) : "") + "."));
   const hours = hourLines(item);

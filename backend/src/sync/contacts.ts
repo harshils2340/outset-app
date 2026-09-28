@@ -7,7 +7,9 @@ import { writeLandingPages } from "./pages.ts";
 import { writeListingPages } from "./listingPages.ts";
 import { encodeWeek, isTradingHoursLine } from "./hours.ts";
 import { claimKeyHash } from "../lib/claim.ts";
-import { clip } from "../lib/clip.ts";
+import { clip, endAtWord, lastSentenceEnd } from "../lib/clip.ts";
+import { dropPlaceholderPins } from "./placeholderPins.ts";
+import { dropBorrowedTowns } from "./borrowedTowns.ts";
 import { crawledPhotoStats, crawledPhotosFor } from "./photoSidecar.ts";
 import { crawledStructureFor, crawledStructureStats, crawledHoursFor } from "./structureSidecar.ts";
 import { cleanImageUrl } from "../enrich/srcset.ts";
@@ -30,6 +32,7 @@ import { dialPhone } from "../../../src/lib/phone.ts";
 import { contactEmail } from "../../../src/lib/email.ts";
 import { kidRuleText, kidVerdict } from "../../../src/lib/kidRule.ts";
 import { postalOf, streetOf } from "../../../src/lib/address.ts";
+import { shopTitle } from "../../../src/lib/shopName.ts";
 import { REGION_NAME } from "../../../src/data/regions.ts";
 
 type Overlay = { published: boolean; patch: Record<string, unknown> };
@@ -1576,6 +1579,9 @@ export function cleanTitle(raw: string, ctx: TitleContext = {}): string {
   // "Midwest Powered Paragliding In", "Paint, Sip Wine, have fun at our": a page title cut mid-sentence.
   t = t.replace(/(?:\s+(?:of|for|with|and|or|to|our|your|at our|by|at|in)\b)+\s*$/i, "").trim();
   t = t.replace(/[\s\-–—|:,]+$/g, "");
+  // The punctuation the crawl left inside the name, and the bracket it never closed. Same rule the app reads
+  // the 54 already shipped through (`src/lib/shopName.ts`), so a sync writes what a guest is already seeing.
+  t = shopTitle(t);
   // Never a stub or a bare domain: fall back to the legal name, then to the raw title.
   if (t.length < 3 || /^(?:https?:\/\/|www\.)|^[a-z0-9-]+\.[a-z]{2,}$/i.test(t)) return legal.length >= 3 ? legal : raw.trim();
   return t;
@@ -1587,12 +1593,22 @@ function trimWords(t: string, max: number): string {
   return t.slice(0, max).replace(/\s+\S*$/, "").trim();
 }
 
-/** Cut at the last sentence end inside the limit, so a blurb never stops mid-thought. */
+/**
+ * Cut at the last sentence end inside the limit, so a blurb never stops mid-thought. Through the same reader
+ * `clip` uses, because a shortened word ends in a full stop too: cutting at the last one shipped 73 blurbs
+ * ending "The Art of Alfred A." and "a snow capped Mt.", which is the line the card, the listing page and the
+ * chat all lead with.
+ */
 function endAtSentence(t: string, max: number): string {
   if (t.length <= max) return t;
   const cut = t.slice(0, max);
-  const i = Math.max(cut.lastIndexOf(". "), cut.lastIndexOf("! "), cut.lastIndexOf("? "));
-  return (i > max * 0.4 ? cut.slice(0, i + 1) : trimWords(cut, max)).trim();
+  const i = lastSentenceEnd(cut, Math.floor(max * 0.4) + 1);
+  if (i >= 0) return cut.slice(0, i + 1).trim();
+  // Nothing here reads worse than it did: a text with no sentence end at all is what the checks further down
+  // cleanBlurb throw away, so where every stop inside the window is a shortened word, the old cut stands and
+  // the shop keeps its blurb.
+  const any = Math.max(cut.lastIndexOf(". "), cut.lastIndexOf("! "), cut.lastIndexOf("? "));
+  return (any > max * 0.4 ? cut.slice(0, any + 1) : endAtWord(trimWords(cut, max))).trim();
 }
 
 /** A line the crawl took from a heading, a nav bar or a banner: no sentence end, short, and mostly capitals. */
@@ -2220,6 +2236,8 @@ export function buildCatalogItems(where?: (r: CatalogRow) => boolean): Record<st
   const pinDupes = full.filter((i) => String(i.id).startsWith("o-osm-") && !i.claimed && siteKeys.has(titleKey(String(i.title)) + "|" + (i.metroId || i.area)));
   for (const d of pinDupes) full.splice(full.indexOf(d), 1);
   console.log("Left out " + dead.size + " map-only rows with nothing a guest can use and " + pinDupes.length + " map pins that duplicate a site row.");
+  dropPlaceholderPins(full as Record<string, unknown>[]);
+  dropBorrowedTowns(full as Record<string, unknown>[]);
   return dropDuplicateOperators(full as Record<string, unknown>[]);
 }
 

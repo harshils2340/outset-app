@@ -67,7 +67,7 @@ test("a day the crawl ran onto the end of a time gets its own line", () => {
   assert.deepEqual(displayHours(["Sun - Thur: 11am - 11pmFri - Sat: 11am - 1am"]), ["Sun - Thur: 11am - 11pm", "Fri - Sat: 11am - 1am"]);
   assert.deepEqual(displayHours(["Wednesday 2:00pm- 7:00pmThursday 11:00am- 6:00pm"]), ["Wednesday 2:00pm- 7:00pm", "Thursday 11:00am- 6:00pm"]);
   // A date before a day name is not a time before a day name.
-  assert.deepEqual(displayHours(["May 5 Sunday 10am-4pm"]), ["May 5 Sunday 10am-4pm"]);
+  assert.deepEqual(displayHours(["May 5 - June 2 Sunday 10am-4pm"]), ["May 5 - June 2 Sunday 10am-4pm"]);
 });
 
 test("the punctuation the crawl swept up in front of the hours is not part of them", () => {
@@ -125,6 +125,17 @@ test("a span covering the whole day is a site builder's placeholder, not hours",
   assert.deepEqual(displayHours(["Daily 12:00 AM - 8:00 AM"]), ["Daily 12:00 AM - 8:00 AM"]);
   assert.deepEqual(displayHours(["Mon 11:00 AM - 12:00 AM"]), ["Mon 11:00 AM - 12:00 AM"]);
   assert.deepEqual(displayHours(["Sun 12:00 PM - 11:59 PM"]), ["Sun 12:00 PM - 11:59 PM"]);
+  // The same placeholder written from somewhere other than midnight: two ends naming one clock face. 5 lines
+  // across 5 shipped listings, and the parser refuses each of them too, so the day keeps its honest gap.
+  assert.deepEqual(displayHours(["Mon-Sun 1:00 AM - 1:00 AM"]), []);
+  assert.deepEqual(displayHours(["Sat 12:00 PM - 12:00 PM"]), []);
+  assert.deepEqual(displayHours(["Wed 8:00 AM - 8:00 AM"]), []);
+  assert.deepEqual(displayHours(["Sun 11:00 AM - 11:00 AM"]), []);
+  // Only its own day: SaltWater Brewery publishes six real ones beside it.
+  assert.deepEqual(displayHours(["Sat 12:00 PM - 12:00 PM", "Sun 12:00 PM - 10:00 PM"]), ["Sun 12:00 PM - 10:00 PM"]);
+  // Two ends an hour apart are not one clock face, whatever they share.
+  assert.deepEqual(displayHours(["Sun 11:00 AM - 11:00 PM"]), ["Sun 11:00 AM - 11:00 PM"]);
+  assert.deepEqual(displayHours(["Sun 11:00 AM - 11:30 AM"]), ["Sun 11:00 AM - 11:30 AM"]);
 });
 
 /**
@@ -166,4 +177,16 @@ test("the whole shipped catalog reads clean under Hours", () => {
   }
   assert.deepEqual(bad.slice(0, 5), [], bad.length + " listings print something under Hours that no shop wrote");
   assert.deepEqual(drift.slice(0, 3), [], drift.length + " printed lines state a different day from the week parser");
+});
+
+/**
+ * The block a guest reads is the shop's own words, and a shop that wrote two rules with a space between them
+ * wrote one line. The week behind that line is cut into its rules (see openNow.test.ts); the printed line is
+ * not, because there is no crawl seam in it to tidy away. Only the crawl's own glued seams become two lines.
+ */
+test("a shop's own spacing is left in the line a guest reads", () => {
+  assert.deepEqual(displayHours(["Mon-Sat 10am - 5pm Sunday 12pm - 5pm"]), ["Mon-Sat 10am - 5pm Sunday 12pm - 5pm"]);
+  assert.deepEqual(displayHours(["MondayClosedTuesday2:00PM to 7:00PM"]), ["Monday Closed", "Tuesday 2:00PM to 7:00PM"]);
+  // The same line, read for the week rather than for print, is the two rules it holds.
+  assert.equal(parseWeek(["Mon-Sat 10am - 5pm Sunday 12pm - 5pm"])?.[0]?.open, 720);
 });

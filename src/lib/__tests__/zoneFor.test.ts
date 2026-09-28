@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import type { Unclaimed } from "../../data/types";
+import { REGION_NAME } from "../../data/regions";
 import { openStateAt, regionOf, zoneFor, type Week } from "../openNow";
 
 /**
@@ -115,4 +116,29 @@ test("the bare code puts these operators back on their own clock", () => {
   // A bare code still loses to a real area line, and an area with neither still falls back to the longitude.
   assert.equal(zoneFor(at("Honolulu, HI", 21.3069, -157.8583)), "Pacific/Honolulu");
   assert.equal(zoneFor(at("Somewhere", 34, -118)), "America/Los_Angeles");
+});
+
+/* ---------- every region the app can name has a clock ---------- */
+
+/**
+ * `REGION_NAME` is what a page prints where a listing is, and `REGION_TZ` is what its hours are read on. They
+ * are two tables of the same 65 codes and nothing held them together, so Puerto Rico was spelled out on one
+ * side and unknown on the other: a San Juan area line named a region the clock did not have, `zoneFor` fell
+ * through to longitude and handed the shop America/Halifax, which keeps daylight saving where Puerto Rico
+ * does not. Right in January, an hour out from March to November, on "Open now", the rail, the start times
+ * and Otto alike. 0 listings ship there today, so this guard is what keeps the next one honest.
+ */
+test("every state, province and territory the app can name is on a clock", () => {
+  const missing = Object.keys(REGION_NAME).filter((code) => !zoneFor({ area: code } as unknown as Unclaimed));
+  assert.deepEqual(missing, []);
+});
+
+test("a San Juan shop keeps Atlantic time all year, which is not Halifax", () => {
+  assert.equal(regionOf("San Juan, PR"), "PR");
+  assert.equal(zoneFor(at("San Juan, PR", 18.4655, -66.1057)), "America/Puerto_Rico");
+  // The summer instant Halifax and San Juan disagree on: 9 AM in San Juan is 10 AM in Halifax.
+  const july = new Date("2026-07-15T13:00:00Z");
+  const said = (zone: string) => july.toLocaleTimeString("en-US", { timeZone: zone, hour: "numeric", hour12: false });
+  assert.equal(Number(said("America/Puerto_Rico")), 9);
+  assert.equal(Number(said("America/Halifax")), 10);
 });

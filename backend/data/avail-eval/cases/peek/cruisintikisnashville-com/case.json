@@ -16,27 +16,6 @@
         "date": "2026-09-20",
         "slots": [
           {
-            "startsAt": "2026-09-20T10:00",
-            "label": "10:00 AM · Public Downtown Tiki Cruise",
-            "priceCents": 7500,
-            "seatsLeft": 6,
-            "bookUrl": "https://book.peek.com/s/7b2c8381-7354-4ee8-9865-c32abe99dad0/17bER"
-          },
-          {
-            "startsAt": "2026-09-20T10:30",
-            "label": "10:30 AM · Public Downtown Tiki Cruise",
-            "priceCents": 7500,
-            "seatsLeft": 6,
-            "bookUrl": "https://book.peek.com/s/7b2c8381-7354-4ee8-9865-c32abe99dad0/17bER"
-          },
-          {
-            "startsAt": "2026-09-20T11:00",
-            "label": "11:00 AM · Public Downtown Tiki Cruise",
-            "priceCents": 7500,
-            "seatsLeft": 6,
-            "bookUrl": "https://book.peek.com/s/7b2c8381-7354-4ee8-9865-c32abe99dad0/17bER"
-          },
-          {
             "startsAt": "2026-09-20T11:30",
             "label": "11:30 AM · Public Downtown Tiki Cruise",
             "priceCents": 7500,

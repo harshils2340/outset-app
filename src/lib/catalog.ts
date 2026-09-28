@@ -6,7 +6,8 @@ import type { GeoPoint } from "./geo";
 import { statesAPlusAge, statesAWordedAge } from "./ages";
 import { groupCap } from "./groupSize";
 import { bookableMenu } from "./menuRow";
-import { addressOf, streetOf } from "./address";
+import { addressOf, streetOf, townOf } from "./address";
+import { shopTitle } from "./shopName";
 import { ownWords } from "./ownWords";
 import { dialPhone, displayPhone } from "./phone";
 import { isPublicHttpUrl } from "./urlSafety";
@@ -115,10 +116,12 @@ export function domainOf(src: string): string {
 function asPublished(raw: Unclaimed): Unclaimed {
   const item = bookableMenu(raw);
   const blurb = ownWords(item.blurb);
+  const title = shopTitle(item.title);
   const descs = (item.services || []).map((s) => ownWords(s.desc));
-  if (blurb === (item.blurb || "") && descs.every((d, i) => d === ((item.services || [])[i].desc || ""))) return item;
+  if (title === item.title && blurb === (item.blurb || "") && descs.every((d, i) => d === ((item.services || [])[i].desc || ""))) return item;
   return {
     ...item,
+    ...(title === item.title ? {} : { title }),
     ...(blurb === (item.blurb || "") ? {} : { blurb }),
     ...(item.services ? { services: item.services.map((s, i) => ({ ...s, desc: descs[i] || null })) } : {}),
   };
@@ -488,7 +491,7 @@ export function mapsQuery(item: Unclaimed, c: OperatorContact | null): string {
     const line = addressLine(c);
     if (line) return line;
   }
-  const city = c ? [c.city, c.region].filter(Boolean).join(", ") : "";
+  const city = c ? townOf(c) : "";
   if (city) return item.title + ", " + city;
   return item.title + ", " + item.area;
 }
@@ -506,7 +509,7 @@ export function placeLabel(item: Unclaimed, c: OperatorContact | null): string {
   if (c) {
     const line = addressLine(c);
     if (line) return line;
-    const city = [c.city, c.region].filter(Boolean).join(", ");
+    const city = townOf(c);
     if (city) return city;
   }
   return item.area;

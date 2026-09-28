@@ -62,8 +62,10 @@ function vendorLine(id: string | null): string {
  */
 export function draftOttoCopy(op: OttoOp, email?: string, opts?: { greet?: string | null }): { subject: string; body: string; html: string } {
   const to = (email || "").trim().toLowerCase();
-  // "Hi Ron," only when the mailbox is Ron's by the site's own word (owner.ts); "Hi," otherwise. A caller with
-  // no catalog at hand (the cloud sender, from the published pool) passes the name it was given, or null.
+  // "Hi Ron," only when the shop's own site names Ron as the owner and the mailbox is his by that same word
+  // (owner.ts, from the owners crawl's facts): never a guessed first name, which is the one mistake an owner
+  // cannot miss. A caller with no catalog at hand (the cloud sender, from the published pool) passes the name
+  // that was found for it, or null for "Hi,".
   const hi = opts && "greet" in opts ? (opts.greet ? "Hi " + opts.greet + "," : "Hi,") : to ? greeting(op, to) : "Hi,";
   const SITE = "https://onoutset.com/";
   const OTTO = SITE + "otto";

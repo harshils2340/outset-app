@@ -47,6 +47,7 @@ const INDEX = {
     "o-xola-button-test": "https://xola.com/button/6a7b8c9d0e1f2a3b4c5d6e7f",
     "o-xola-nobutton-test": "https://xola.com/button/1112223334445556667778a9",
     "o-peek-unasked-test": "https://book.peek.com/s/3641f444-46fc-54ad-c772-7d8e4d06e0fb/MS3Kn",
+    "o-peek-modes-test": "https://book.peek.com/s/4752a555-57ad-65be-d883-8e5f9e17f0f9/NT4Lo",
     "o-fh-onemonth-test": "https://fareharbor.com/embeds/book/onemonth/?full-items=yes",
   },
 };
@@ -69,6 +70,8 @@ test("two FareHarbor boats leaving at nine are two departures on one start time"
                       { start_at: "2026-09-20T09:00:00-04:00", item: { pk: 1 }, approximate_available_capacity: 2, book_url: "/b/1/" },
                       { start_at: "2026-09-20T09:00:00-04:00", item: { pk: 2 }, approximate_available_capacity: 40, book_url: "/b/2/" },
                       { start_at: "2026-09-20T13:00:00-04:00", item: { pk: 1 }, book_url: "/b/3/" },
+                      // FareHarbor will not sell this one online, which is a no here as it is in the concierge.
+                      { start_at: "2026-09-20T17:00:00-04:00", item: { pk: 2 }, approximate_available_capacity: 12, is_bookable_only_by_phone: true, book_url: "/b/4/" },
                     ],
                   },
                 ],
@@ -91,6 +94,8 @@ test("two FareHarbor boats leaving at nine are two departures on one start time"
   assert.deepEqual(slots.map((s) => s.seatsLeft), [2, 40, undefined]);
   // Neither of the nine o'clock departures is a placeholder: both are real times.
   assert.ok(slots.every((s) => !s.timeUnknown));
+  // And the five o'clock is nobody's time, because a guest cannot book it on the page the chip opens.
+  assert.ok(!slots.some((s) => s.startsAt === "2026-09-20T17:00"));
 });
 
 test("a Peek date whose times the budget never reached is marked, not given a midnight", async () => {
@@ -100,7 +105,7 @@ test("a Peek date whose times the budget never reached is marked, not given a mi
     (url) => {
       if (url.includes("live-index.json")) return INDEX;
       if (url.includes("/programs/")) return { data: { id: "p1" }, included: [{ type: "activity", id: "a1", attributes: { name: "Sunset Cruise" } }] };
-      if (url.includes("availability-times")) return { data: [{ id: "t1", attributes: { time: "5:30 PM", spots: 6, prices: [{ pricing: [{ price: { amount: "89.00" } }] }] } }] };
+      if (url.includes("availability-times")) return { data: [{ id: "t1", attributes: { time: "5:30 PM", spots: 6, "availability-mode": "available", prices: [{ pricing: [{ price: { amount: "89.00" } }] }] } }] };
       if (url.includes("availability-dates")) return { data: dates.map((d) => ({ id: d, attributes: { date: d, "availability-status": "available" } })) };
       return undefined;
     },
@@ -236,4 +241,55 @@ test("a fortnight that straddles two months is partial when only one of them ans
   assert.equal(r.vendor, "fareharbor");
   assert.equal(r.partial, true);
   assert.match(r.note || "", /1 of 2 months read/);
+});
+
+/**
+ * Peek says whether it will sell a timeslot in `availability-mode`, and this reader used to ask only about the
+ * spot count beside it.
+ *
+ * Every row here is a shape from the seven real shops in `data/avail-eval/cases/peek`. Cruisin' Tikis
+ * Nashville publishes three `not_available` mornings with `spots: 6` printed on them, so all three were times
+ * on the guest's listing page that the shop would not sell; Dolphins Down Under's only departure of the day is
+ * `min_required_bookable` with 95 spots, which the concierge's whitelist refused. Both readers now read the
+ * one rule, `peekSlotOffer`, so they cannot drift apart again.
+ */
+test("a Peek time the shop will not sell is not on the listing page, and a party minimum is not a no", async () => {
+  const id = "o-peek-modes-test";
+  const dates = ["2026-09-20"];
+  const rows = [
+    { time: "10:00 AM", spots: 6, "availability-mode": "not_available" },
+    { time: "11:00 AM", spots: 0, "availability-mode": "sold_out" },
+    { time: "12:00 PM", spots: 8, "availability-mode": "unheard_of" },
+    { time: "1:00 PM", spots: 8 },
+    { time: "2:00 PM", spots: 95, "availability-mode": "min_required_bookable", "minimum-tickets-required": 12 },
+    { time: "3:00 PM", spots: 6, "availability-mode": "min_required_not_bookable", "minimum-tickets-required": 2 },
+    { time: "4:00 PM", spots: 4, "availability-mode": "available" },
+    // No capacity limit at all, so the 0 is not a seat count and must not reach a guest as one.
+    { time: "5:00 PM", spots: 0, "availability-mode": "available", "is-freesale": true },
+  ];
+  const r = await withVendor(
+    (url) => {
+      if (url.includes("live-index.json")) return INDEX;
+      if (url.includes("/programs/")) return { data: { id: "p1" }, included: [{ type: "activity", id: "a1", attributes: { name: "Tiki Cruise" } }] };
+      if (url.includes("availability-times")) return { data: rows.map((a, i) => ({ id: `t${i}`, attributes: { ...a, prices: [{ pricing: [{ price: { amount: "75.00" } }] }] } })) };
+      if (url.includes("availability-dates")) return { data: dates.map((d) => ({ id: d, attributes: { date: d, "availability-status": "available" } })) };
+      return undefined;
+    },
+    () => getAvailability(id, dates[0], dates.length),
+  );
+
+  assert.equal(r.live, true);
+  const slots = r.days[0].slots;
+  assert.deepEqual(
+    slots.map((s) => `${s.startsAt} seats=${s.seatsLeft}`),
+    [
+      "2026-09-20T14:00 seats=95",
+      "2026-09-20T15:00 seats=6",
+      "2026-09-20T16:00 seats=4",
+      "2026-09-20T17:00 seats=undefined",
+    ],
+  );
+  // A freesale slot is offered and carries no seat count, so nothing downstream reads it as sold out and no
+  // guest is told "only 2 left" about a trip that cannot run out.
+  assert.ok(slots.every((s) => !s.timeUnknown));
 });

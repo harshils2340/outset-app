@@ -5,6 +5,7 @@ import type { Booking } from "../../data/types";
 import { addressLine, contactFor, experienceById, fmtPhone, mapsHref, perPerson, publicRating, telHref } from "../../lib/catalog";
 import { addonPrice, priceUnclaimed, serviceFeeLabel } from "../../lib/pricing";
 import { splitAddons } from "../../lib/storage";
+import { placeName } from "../../lib/listingDerive";
 import { arrivalNote, tidyAddress, tidyLength, tidyName } from "./WebListing";
 import { fmtReviews, fmtTime, money } from "../../lib/format";
 import { Photo } from "../art/Photo";
@@ -145,7 +146,7 @@ export function WebConfirm({ booking, onDone, onOpen }: { booking: Booking; onDo
               <h2>Getting there</h2>
               <a className="alwhererow" href={contact ? mapsHref(contact, item.title + " " + item.area) : "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(item.title + " " + item.area)} target="_blank" rel="noreferrer">
                 <Markup html={PIN} />
-                <span><b>{address || item.area}</b><small>Get directions</small></span>
+                <span><b>{address || placeName(item.area)}</b><small>Get directions</small></span>
               </a>
               {callHref && contact?.phone ? (
                 <a className="alwhererow alconfirmgap" href={callHref}>
@@ -169,7 +170,7 @@ export function WebConfirm({ booking, onDone, onOpen }: { booking: Booking; onDo
                 </div>
                 <span>
                   <b>{item.title}</b>
-                  <small>{item.area}</small>
+                  <small>{placeName(item.area)}</small>
                   {score ? <small className="alconfirmrate"><Markup html={STAR} /> <b>{score.rating.toFixed(1)}</b> ({fmtReviews(score.reviews)})</small> : null}
                 </span>
               </div>

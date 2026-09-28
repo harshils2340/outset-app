@@ -45,7 +45,8 @@ test("a line whose only readable time came out of a date says nothing", () => {
 test("a dot, a second and a missing separator are all still times", () => {
   assert.equal(show(encodeWeek(["Monday–Sunday 6.30 am – 7 pm"])), everyDay("06:30-19:00"));
   assert.equal(show(encodeWeek(["? We are open 7 days a week from 9:30:00 AM to 9:30 PM"])), everyDay("09:30-21:30"));
-  assert.equal(show(encodeWeek(["Scroll HoursMONDAY 1130am-9PM"])), everyDay("11:30-21:00"));
+  // The heading glued to the front of the day is a seam now, so the line is the one day it names.
+  assert.equal(show(encodeWeek(["Scroll HoursMONDAY 1130am-9PM"])), "Sun -, Mon 11:30-21:00, Tue -, Wed -, Thu -, Fri -, Sat -");
 });
 
 test("a marker written once at the end of a range covers both ends of it", () => {
@@ -84,6 +85,29 @@ test("no line can encode an hour the clock does not have", () => {
   }
 });
 
+test("Thursday is a day however the shop abbreviates it", () => {
+  // The twin of the guest side's day reader. 25 shops state a Thursday that "Thur" and "Thurs" kept out of it.
+  assert.equal(
+    show(encodeWeek(["Sun, Mon, Tue, Wed, Thur 11:00 AM - 9:00 PM"])),
+    "Sun 11:00-21:00, Mon 11:00-21:00, Tue 11:00-21:00, Wed 11:00-21:00, Thu 11:00-21:00, Fri -, Sat -",
+  );
+  assert.equal(show(encodeWeek(["Weds & Thurs: 12 PM - 6 PM"])), "Sun -, Mon -, Tue -, Wed 12:00-18:00, Thu 12:00-18:00, Fri -, Sat -");
+  assert.equal(show(encodeWeek(["THURS: 4PM-10PM"])), "Sun -, Mon -, Tue -, Wed -, Thu 16:00-22:00, Fri -, Sat -");
+  // The words those prefixes open which are not days state no day, so none of them may add one.
+  assert.equal(show(encodeWeek(["Sat 10am-4pm, last entry at sunset"])), "Sun -, Mon -, Tue -, Wed -, Thu -, Fri -, Sat 10:00-16:00");
+  assert.equal(show(encodeWeek(["first Sunday of the month 10am-4pm"])), "Sun 10:00-16:00, Mon -, Tue -, Wed -, Thu -, Fri -, Sat -");
+  assert.equal(show(encodeWeek(["Available for your wedding 9am-5pm"])), everyDay("09:00-17:00"));
+});
+
+test("a range of days is still a range with the clock glued on to its last day", () => {
+  // The twin of the guest side's day reader, over the 186 listings whose range the crawl glued the clock to.
+  assert.equal(show(encodeWeek(["Monday-Thursday9:00 AM - 5:00 PM"])), "Sun -, Mon 09:00-17:00, Tue 09:00-17:00, Wed 09:00-17:00, Thu 09:00-17:00, Fri -, Sat -");
+  assert.equal(show(encodeWeek(["Monday - Sunday10am-10pm"])), everyDay("10:00-22:00"));
+  assert.equal(show(encodeWeek(["OPEN Tuesday - Saturdayfrom 9:00 am - 4:00 pm"])), "Sun -, Mon -, Tue 09:00-16:00, Wed 09:00-16:00, Thu 09:00-16:00, Fri 09:00-16:00, Sat 09:00-16:00");
+  assert.equal(show(encodeWeek(["Tuesday-SundayCLOSED MONDAYS10 am - 5 pm"])), "Sun 10:00-17:00, Mon closed, Tue 10:00-17:00, Wed 10:00-17:00, Thu 10:00-17:00, Fri 10:00-17:00, Sat 10:00-17:00");
+  assert.equal(show(encodeWeek(["Mon - Fri 9am-5pm"])), "Sun -, Mon 09:00-17:00, Tue 09:00-17:00, Wed 09:00-17:00, Thu 09:00-17:00, Fri 09:00-17:00, Sat -");
+});
+
 test("quiet hours and happy hour are not opening hours", () => {
   // o-alpinelodgeandrv-com and 36 more campgrounds publish their quiet hours and nothing else, so the week
   // shipped in `catalog.json` was their opening hours turned inside out: [1320, 1920] on all seven days.
@@ -95,6 +119,72 @@ test("quiet hours and happy hour are not opening hours", () => {
     "Sun -, Mon -, Tue -, Wed 12:00-22:00, Thu -, Fri -, Sat -",
   );
   assert.equal(show(encodeWeek(["Happy Hour is Sunday 2:00-5:00PM, Mon-Fri 3:00-6:00PM"])), "(no hours)");
+  // A third subject: one entry from the shop's own event calendar, one date and one time. The guest side drops
+  // the same lines, or a card and its listing page disagree.
+  assert.equal(show(encodeWeek(["Open Studio November 21 @ 11:00 am - 2:00 pm"])), "(no hours)");
+  assert.equal(show(encodeWeek(["Pinned Butterflies September 10 @ 5:30 PM - 7:00 PM"])), "(no hours)");
+  assert.equal(show(encodeWeek(["September 17 @ 4:00 pm - 6:00 pm"])), "(no hours)");
+  // An "@" between the days and the time is how three shops write an ordinary week, so it stays.
+  assert.equal(show(encodeWeek(["Mon - Sun @ 8AM - 5PM"])), everyDay("08:00-17:00"));
+  assert.equal(show(encodeWeek(["May 1 - November 1: 11am - 6pm"])), everyDay("11:00-18:00"));
+});
+
+test("a noise rule worded without the word hours is still a noise rule", () => {
+  // Four shops state when nobody may make a noise and state nothing else, so each said "Closed, opens 10 PM"
+  // at lunchtime: o-daytonaspeedwayrv-com, o-roystonehotsprings-com, o-redbearresort-com, o-rosepointpark-com.
+  assert.equal(show(encodeWeek(["Quiet time is observed from 10:00 PM - 7:00 AM"])), "(no hours)");
+  assert.equal(show(encodeWeek(["Quiet time is from 10:00 PM to 8:00 AM"])), "(no hours)");
+  assert.equal(show(encodeWeek(["designated as quiet time?Yes, 11pm to 8 am"])), "(no hours)");
+  assert.equal(show(encodeWeek(["Quiet to be maintained from 11:00PM to 8:00AM"])), "(no hours)");
+  // Quiet Times Golf Course is a real business, and a shop's own name in front of its hours is still its hours.
+  assert.equal(show(encodeWeek(["Quiet Times Golf Course: Mon-Sun 7am-7pm"])), everyDay("07:00-19:00"));
+  assert.equal(show(encodeWeek(["Inner Quiet Yoga, Monday to Friday 8:30 - 9:30am"])), "Sun -, Mon 08:30-09:30, Tue 08:30-09:30, Wed 08:30-09:30, Thu 08:30-09:30, Fri 08:30-09:30, Sat -");
+});
+
+test("the last thing a shop sells is not when its door shuts", () => {
+  // o-jcprd-com's whole Hours block, which read as a county park open for one hour a day, seven days a week.
+  assert.equal(show(encodeWeek(["Last rental 2:30 - 3:30 pm"])), "(no hours)");
+  // o-cloudchasers-skydiving-com, whose other line states no range, so the centre opened at 3 PM.
+  assert.equal(show(encodeWeek(["First appointment at 8 am", "Last appointment 3 to 5 pm depending on season"])), "(no hours)");
+  // One time rather than a range never built a week, so those 14 lines stay beside the hours they belong to.
+  assert.equal(
+    show(encodeWeek(["open 7 days a week from 9am-4pm", "Last ticket sold at 3 p.m."])),
+    everyDay("09:00-16:00"),
+  );
+  assert.equal(
+    show(encodeWeek(["Mon-Sun 10:00am-5:00pm", "Last entry into the park for Day Pass Holders is 4:30 pm"])),
+    everyDay("10:00-17:00"),
+  );
+  // A last admission in brackets behind the real hours is the shop's own line and keeps its week.
+  assert.equal(show(encodeWeek(["Open Daily 10 a.m.-8 p.m. (last admission 7 p.m.)"])), everyDay("10:00-20:00"));
+  // 16 businesses are named Last something, and none of them is selling a last rental.
+  assert.equal(show(encodeWeek(["Last Wave Brewing Company, Mon-Sun 12 to 9 pm"])), everyDay("12:00-21:00"));
+});
+
+test("one closed date is one day, and a run of days is the shop's week", () => {
+  // Most of the 245 listings whose hour line names a date write no "@" at all. One closed date is one
+  // afternoon: an open house, an open mic, a Fourth of July, a Christmas Day. The guest side drops the same
+  // lines, or a card and its listing page disagree.
+  assert.equal(show(encodeWeek(["Open House September 30, 2026 4:00pm - 6:00pm"])), "(no hours)");
+  assert.equal(show(encodeWeek(["Sunday, August 16, 2026 - 1:00 pm - 3:00 pm"])), "(no hours)");
+  assert.equal(show(encodeWeek(["Open Mic Night Sep 11 7 pm - 9 pm"])), "(no hours)");
+  assert.equal(show(encodeWeek(["Thursday, May 8: 11AM - 8PM"])), "(no hours)");
+  assert.equal(show(encodeWeek(["June 19: Public Swim Only 1:00pm - 6:45pm"])), "(no hours)");
+  assert.equal(
+    show(encodeWeek(["Fri, Sat 11:00 AM - 10:00 PM", "Sun, Mon, Tue, Wed, Thu 11:00 AM - 9:00 PM", "July 4th Hours: 11 AM - 7:00 PM"])),
+    "Sun 11:00-21:00, Mon 11:00-21:00, Tue 11:00-21:00, Wed 11:00-21:00, Thu 11:00-21:00, Fri 11:00-22:00, Sat 11:00-22:00",
+  );
+  // A run of days is a season, named by a second month, by a second day of the month, or by a run word.
+  assert.equal(show(encodeWeek(["May through August 9: 5:30am-5:30pm"])), everyDay("05:30-17:30"));
+  assert.equal(show(encodeWeek(["Sep 28 - Oct 18: 12pm - 6pm"])), everyDay("12:00-18:00"));
+  assert.equal(show(encodeWeek(["10am-6pm Daily starting Monday, Sept 7th"])), everyDay("10:00-18:00"));
+  assert.equal(show(encodeWeek(["Open daily until October 31st from 11:00AM-5:00PM"])), everyDay("11:00-17:00"));
+  // A day number is not a clock, and the syntax's own exception clause is not one afternoon.
+  assert.equal(show(encodeWeek(["October 11:00AM - 4:00PM"])), everyDay("11:00-16:00"));
+  assert.equal(
+    show(encodeWeek(["Fr-Sa 12:00-18:00; Dec 25 off"])),
+    "Sun -, Mon -, Tue -, Wed -, Thu -, Fri 12:00-18:00, Sat 12:00-18:00",
+  );
 });
 
 test("a day that never closes is not a day a shop stated its hours", () => {
@@ -108,6 +198,18 @@ test("a day that never closes is not a day a shop stated its hours", () => {
   // A stated closing time in the small hours still counts.
   assert.equal(show(encodeWeek(["Daily 6pm-2am"])), everyDay("18:00-26:00"));
   assert.equal(show(encodeWeek(["Daily 0:00-12:00"])), everyDay("00:00-12:00"));
+  // The same placeholder written from somewhere other than midnight: two ends naming one clock face. This is
+  // the guest side's twin, so it has to answer the same way on each of the 6 shipped listings that carry one.
+  assert.equal(show(encodeWeek(["Mon-Sun 1:00 AM - 1:00 AM"])), "(no hours)");
+  assert.equal(show(encodeWeek(["Sat 12:00 PM - 12:00 PM"])), "(no hours)");
+  assert.equal(show(encodeWeek(["Wed 8:00 AM - 8:00 AM"])), "(no hours)");
+  assert.equal(show(encodeWeek(["Sun 11:00 AM - 11:00 AM"])), "(no hours)");
+  assert.equal(
+    show(encodeWeek(["Sat 12:00 PM - 12:00 PM", "Sun 12:00 PM - 10:00 PM"])),
+    "Sun 12:00-22:00, Mon -, Tue -, Wed -, Thu -, Fri -, Sat -",
+  );
+  // A long day whose two ends really are different is still a long day.
+  assert.equal(show(encodeWeek(["Daily 12:01 AM - 11:00 PM"])), everyDay("00:01-23:00"));
 });
 
 /**
@@ -124,4 +226,63 @@ test("a comma after a rule's hours starts the next rule, and a comma before them
     show(encodeWeek(["Fr,Sa 12:00-19:00, Su 12:00-16:00; \"by appointment\""])),
     "Sun 12:00-16:00, Mon -, Tue -, Wed -, Thu -, Fri 12:00-19:00, Sat 12:00-19:00",
   );
+});
+
+/**
+ * A day off stated on a line that also states hours. The twin of the guest-side rule: 111 lines on 106
+ * listings write both on one line, and the card, the picker and the listing page all had the day off open.
+ */
+test("a day a shop says it is shut is shut, on a line that states hours as well", () => {
+  assert.equal(show(encodeWeek(["Mon Closed Tue 12pm-7pm Wed 12pm-7pm"])), "Sun -, Mon closed, Tue 12:00-19:00, Wed 12:00-19:00, Thu -, Fri -, Sat -");
+  assert.equal(show(encodeWeek(["MON: Closed TUES-THU: 4:30pm - 9:00pm"])), "Sun -, Mon closed, Tue 16:30-21:00, Wed 16:30-21:00, Thu 16:30-21:00, Fri -, Sat -");
+  assert.equal(show(encodeWeek(["Mon - Fri: Closed ​​Saturday: 10am - 5pm"])), "Sun -, Mon closed, Tue closed, Wed closed, Thu closed, Fri closed, Sat 10:00-17:00");
+  assert.equal(show(encodeWeek(["Closed Monday & Tuesday Wednesday: 4:00 pm - 8:00 pm"])), "Sun -, Mon closed, Tue closed, Wed 16:00-20:00, Thu -, Fri -, Sat -");
+  assert.equal(show(encodeWeek(["Open daily 10AM-7:30PM, closed Wednesdays"])), "Sun 10:00-19:30, Mon 10:00-19:30, Tue 10:00-19:30, Wed closed, Thu 10:00-19:30, Fri 10:00-19:30, Sat 10:00-19:30");
+  assert.equal(show(encodeWeek(["Tuesday - Sunday CLOSED MONDAYS 10 am - 5 pm"])), "Sun 10:00-17:00, Mon closed, Tue 10:00-17:00, Wed 10:00-17:00, Thu 10:00-17:00, Fri 10:00-17:00, Sat 10:00-17:00");
+  assert.equal(show(encodeWeek(["Driving range open daily 6:30AM - 7:00PM (closed Sundays after 3 PM for maintenance)"])), everyDay("06:30-19:00"));
+  assert.equal(show(encodeWeek(["Monday: 9:00 am-6:00 pm Tuesday: 9:00 am-6:00 pm", "Monday - Saturday, closed Sunday"])), "Sun closed, Mon 09:00-18:00, Tue 09:00-18:00, Wed -, Thu -, Fri -, Sat -");
+  assert.equal(show(encodeWeek(["Sunday: Closed"])), "Sun closed, Mon -, Tue -, Wed -, Thu -, Fri -, Sat -");
+});
+
+/**
+ * The same seams on the card's own week: 250 listings publish an hour line with a day name glued to a heading
+ * or to the clock, and the twin has to open them where the guest side does or the two disagree.
+ */
+test("a day name the crawl glued to a heading or to the clock is still a day", () => {
+  assert.equal(show(encodeWeek(["Public Visiting Hours Friday10AM - 4:30PM"])), "Sun -, Mon -, Tue -, Wed -, Thu -, Fri 10:00-16:30, Sat -");
+  assert.equal(show(encodeWeek(["of OperationsMon - Fri8:00 am - 7:00 pm"])), "Sun -, Mon 08:00-19:00, Tue 08:00-19:00, Wed 08:00-19:00, Thu 08:00-19:00, Fri 08:00-19:00, Sat -");
+  assert.equal(show(encodeWeek(["Monday11:30 AM - 10:00 PMTuesday9:00 AM - 5:00 PM"])), "Sun -, Mon 11:30-22:00, Tue 09:00-17:00, Wed -, Thu -, Fri -, Sat -");
+  assert.equal(show(encodeWeek(["MondayClosedTuesdayClosedWednesday11:00 am - 4:00 pm"])), "Sun -, Mon closed, Tue closed, Wed 11:00-16:00, Thu -, Fri -, Sat -");
+  assert.equal(show(encodeWeek(["MON - ClosedTUES-SAT - 11AM - 5pmsun - 12:30PM - 5PM"])), "Sun 12:30-17:00, Mon closed, Tue 11:00-17:00, Wed 11:00-17:00, Thu 11:00-17:00, Fri 11:00-17:00, Sat 11:00-17:00");
+  assert.equal(show(encodeWeek(["Salmon fishing daily 6am-6pm"])), everyDay("06:00-18:00"));
+  assert.equal(show(encodeWeek(["Open Saturdays 9am-1pm"])), "Sun -, Mon -, Tue -, Wed -, Thu -, Fri -, Sat 09:00-13:00");
+});
+
+/**
+ * Two rules a shop separated with a space, on the card's own week. 558 lines on 485 listings write one, and
+ * the compact week the card reads has to be cut where the listing page cuts it or the card and the page it
+ * opens disagree about the hour a shop opens.
+ */
+test("a second rule a shop wrote after a space is a second rule here too", () => {
+  assert.equal(show(encodeWeek(["Mon-Sat 10am - 5pm Sunday 12pm - 5pm"])),
+    "Sun 12:00-17:00, Mon 10:00-17:00, Tue 10:00-17:00, Wed 10:00-17:00, Thu 10:00-17:00, Fri 10:00-17:00, Sat 10:00-17:00");
+  assert.equal(show(encodeWeek(["Tuesday - Friday 10 am - 4 pm Saturday 10 am - 3 pm"])),
+    "Sun -, Mon -, Tue 10:00-16:00, Wed 10:00-16:00, Thu 10:00-16:00, Fri 10:00-16:00, Sat 10:00-15:00");
+  assert.equal(show(encodeWeek(["Mon - Fri 4:00pm - 10:00pm Sat & Sun 12:00pm - 7:00pm"])),
+    "Sun 12:00-19:00, Mon 16:00-22:00, Tue 16:00-22:00, Wed 16:00-22:00, Thu 16:00-22:00, Fri 16:00-22:00, Sat 12:00-19:00");
+  // And the shapes the cut refuses, which are the same three the guest side refuses.
+  assert.equal(show(encodeWeek(["open from11am - 7pm Monday-Friday and 9am-8pm"])),
+    "Sun -, Mon 11:00-19:00, Tue 11:00-19:00, Wed 11:00-19:00, Thu 11:00-19:00, Fri 11:00-19:00, Sat -");
+  assert.equal(show(encodeWeek(["Mon - Fri: Closed Saturday: 10am - 5pm"])),
+    "Sun -, Mon closed, Tue closed, Wed closed, Thu closed, Fri closed, Sat 10:00-17:00");
+  assert.equal(show(encodeWeek(["Friday 6:00 pm - 10:00 pm Saturday"])),
+    "Sun -, Mon -, Tue -, Wed -, Thu -, Fri 18:00-22:00, Sat 18:00-22:00");
+});
+
+/** The same day off between two days of hours, on the card's own week. */
+test("a day off that names its own day finishes its rule here too", () => {
+  assert.equal(show(encodeWeek(["Mon 10:00 am - 4:00 pm Tues CLOSED Wed 10:00 am - 6:00 pm"])),
+    "Sun -, Mon 10:00-16:00, Tue closed, Wed 10:00-18:00, Thu -, Fri -, Sat -");
+  assert.equal(show(encodeWeek(["Open daily 10AM-7:30PM, closed Wednesdays"])),
+    "Sun 10:00-19:30, Mon 10:00-19:30, Tue 10:00-19:30, Wed closed, Thu 10:00-19:30, Fri 10:00-19:30, Sat 10:00-19:30");
 });

@@ -188,3 +188,50 @@ test("today's own slots still answer a one-day window", async () => {
   const read = await peekLive(URL_, { from: new Date(), days: 1 });
   assert.deepEqual(read?.departures.map((d) => `${d.date} ${d.time}`), [`${TODAY} ${LATE}`]);
 });
+
+/**
+ * Which of Peek's own words for a timeslot mean it will sell one.
+ *
+ * Every mode below is taken from the seven real shops recorded in `data/avail-eval/cases/peek`, where all 195
+ * timeslot rows carry an `availability-mode`. The one that was wrong was `min_required_bookable`: Dolphins
+ * Down Under's 5:30pm sunset cruise carries it with 95 spots and a minimum of 12, plainly on sale, and the
+ * whitelist admitted `min_required_not_bookable` beside it and not this one, so the shop's only departure of
+ * the day was invisible here and on the guest listing page's own reader.
+ */
+test("Peek's own word decides whether a slot is offered, and both minimum modes are a yes", async () => {
+  const day = (slots: { time: string; spots?: number | null; mode?: string; freesale?: boolean; minTickets?: number | null }[]) => ({
+    activities: [
+      {
+        id: "act-1",
+        name: "Sunset Dolphin Cruise",
+        tickets: [{ id: "t-adult", name: "Adult", price: 26 }],
+        days: { [TOMORROW]: slots.map((s) => ({ ...s, prices: [{ option: "t-adult", amount: "26.00" }] })) },
+      },
+    ],
+  });
+  const read = async (slots: Parameters<typeof day>[0]) => {
+    stubPeek(day(slots));
+    const r = await peekLive(URL_, { from: new Date(), days: 14 });
+    return (r?.departures ?? []).map((d) => `${d.time} seats=${d.seatsLeft}`);
+  };
+
+  // Dolphins Down Under, the departure that was being dropped.
+  assert.deepEqual(await read([{ time: "17:30", spots: 95, mode: "min_required_bookable", minTickets: 12 }]), ["17:30 seats=95"]);
+  // The minimum unmet is still a yes: Peek greys the tile because its ticket box starts at one.
+  assert.deepEqual(await read([{ time: "11:30", spots: 6, mode: "min_required_not_bookable", minTickets: 2 }]), ["11:30 seats=6"]);
+  assert.deepEqual(await read([{ time: "09:00", spots: 8, mode: "available" }]), ["09:00 seats=8"]);
+
+  // Cruisin' Tikis Nashville's three `not_available` mornings, each with six spots printed beside it.
+  assert.deepEqual(await read([{ time: "10:00", spots: 6, mode: "not_available" }]), []);
+  assert.deepEqual(await read([{ time: "09:00", spots: 0, mode: "sold_out" }]), []);
+  // A row with no mode at all is a payload shape we do not understand, not an invitation.
+  assert.deepEqual(await read([{ time: "09:00", spots: 8, mode: "" }]), []);
+
+  /**
+   * A freesale slot has no capacity limit, so its `spots` is not a seat count. Keeping the slot was always
+   * right; passing the 0 on as `seatsLeft` said sold out to everything downstream that reads one, and a
+   * figure above zero would have said "only 2 left" about an activity that cannot run out.
+   */
+  assert.deepEqual(await read([{ time: "09:00", spots: 0, mode: "available", freesale: true }]), ["09:00 seats=null"]);
+  assert.deepEqual(await read([{ time: "10:00", spots: 2, mode: "available", freesale: true }]), ["10:00 seats=null"]);
+});

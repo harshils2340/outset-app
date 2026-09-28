@@ -4,6 +4,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { db, nowIso } from "../db/client.ts";
 import { CATEGORIES, METROS, categoryById, nearestMetro } from "../taxonomy/catalog.ts";
+import { regionCode } from "./directories.ts";
 
 /**
  * Operator discovery from OpenStreetMap (ODbL). Every business here was mapped by a person with a name and a
@@ -382,14 +383,22 @@ export function loadArea(area: (typeof AREAS)[number], elements: OsmElement[], w
     const lon = el.lon ?? el.center?.lon ?? null;
     const metro = lat != null && lon != null ? nearestMetro(lat, lon, 160) : null;
     const street = [t["addr:housenumber"], t["addr:street"]].filter(Boolean).join(" ") || null;
-    const city = t["addr:city"] || metro?.name || null;
+    // `addr:state` is usually a code but is spelled out often enough to matter, and the metro table holds
+    // codes, so the two are compared in the one shape the rest of the catalog reads a state in.
+    const region = regionCode(t["addr:state"]) || area.region;
+    // The nearest metro stands in for a town OpenStreetMap never tagged, but only when it is in the same state
+    // as the region stored beside it. It reaches 160 km, which crosses plenty of borders, and pairing the two
+    // without checking shipped "Washington DC, MD", "New York, NJ" and "Detroit, ON". No town is an honest gap;
+    // a town in the wrong state is a claim about where the business is. See sync/borrowedTowns.ts, which takes
+    // the same pairs back out of the rows already stored this way.
+    const city = t["addr:city"] || (metro && metro.region === region ? metro.name : null);
     const phone = t.phone || t["contact:phone"] || null;
     const email = t.email || t["contact:email"] || null;
     const hours = t.opening_hours || null;
     const was = exists.get(domain);
     insert.run(
       randomUUID(), domain, name, website, phone, email, street, t["addr:postcode"] || null, hours,
-      metro?.id || null, city, t["addr:state"] || area.region, area.country, cat.family, cat.id, cat.iconKey,
+      metro?.id || null, city, region, area.country, cat.family, cat.id, cat.iconKey,
       lat, lon, osmRef, now, now,
     );
     if (was) stats.updated += 1;
