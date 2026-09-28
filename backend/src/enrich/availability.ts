@@ -5,6 +5,7 @@ import { openFarePrice } from "../lib/fares.ts";
 import { readFeed } from "../concierge/readFeed.ts";
 import { readerFor, type ReaderVendor } from "../concierge/readable.ts";
 import type { LiveRead } from "../concierge/live.ts";
+import { peekSlotOffer } from "../concierge/peek.ts";
 
 /**
  * Real open dates and times, read live from the operator's own booking system.
@@ -325,7 +326,13 @@ type PeekDates = { data?: { id: string; attributes?: { date?: string; "availabil
 type PeekTimes = {
   data?: {
     id: string;
-    attributes?: { time?: string; spots?: number; prices?: { pricing?: { price?: { amount?: string }; list_price?: { amount?: string } }[] }[] };
+    attributes?: {
+      time?: string;
+      spots?: number;
+      "availability-mode"?: string;
+      "is-freesale"?: boolean;
+      prices?: { pricing?: { price?: { amount?: string }; list_price?: { amount?: string } }[] }[];
+    };
   }[];
 };
 
@@ -438,8 +445,16 @@ async function peek(refKey: string, code: string, dates: string[]): Promise<Avai
       if (m[3] && m[3].toUpperCase() === "PM") h24 += 12;
       if (!m[3]) h24 = Number(m[1]);
       const time = `${pad(h24)}:${m[2]}`;
-      const spots = typeof row.attributes?.spots === "number" ? row.attributes.spots : undefined;
-      if (spots === 0) continue;
+      /**
+       * Whether Peek will sell this one at all. `spots === 0` was the whole test here, and Peek says no in
+       * `availability-mode` rather than in the spot count: Cruisin' Tikis Nashville publishes three
+       * `not_available` mornings with `spots: 6` on them, so all three were times on the listing page a
+       * guest could pick and the shop would not sell. One rule for both Peek readers, so they cannot drift
+       * apart again: see `peekSlotOffer`.
+       */
+      const offer = peekSlotOffer(row.attributes || {});
+      if (!offer.open) continue;
+      const spots = offer.seatsLeft ?? undefined;
       const priceCents = peekLowest(row.attributes?.prices, ticketNames);
       /**
        * One row per start, not one per way of buying it.
