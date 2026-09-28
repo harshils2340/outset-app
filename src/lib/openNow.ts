@@ -32,6 +32,18 @@ const DAY_RE: [RegExp, number[]][] = [
   [/\bsat(?:urday)?s?\b/i, [6]],
 ];
 const DAY_IDX: Record<string, number> = { sun: 0, mon: 1, tue: 2, wed: 3, thu: 4, fri: 5, sat: 6 };
+/**
+ * How a day of the week may be spelled, prefix and ending. Only the endings a real day name takes, because
+ * every one of those prefixes is also the front of a word that is not a day at all: a golf course open "Mo-Su
+ * 07:00-sunset" states no Sunday, a farm open "first Sunday of the month" no Monday, and a barn hired out for
+ * a wedding no Wednesday. "Thur" and "Thurs" were missing, so a brewpub's "Sun, Mon, Tue, Wed, Thur 11:00 AM
+ * - 9:00 PM" told a guest it was shut on Thursday, a skydive centre's "Mon, Wed, Thur, Fri - 9 AM to 5 PM"
+ * the same, and a winery that wrote "THURS: 4PM-10PM" and nothing else named no day at all, which a week
+ * reads as every day of it: 25 lines on 25 listings, every one of them a shop stating hours nobody read. A
+ * range already read any spelling ("Thurs-Sun, 9am-4pm"); a list did not.
+ */
+const DAY_WORD = "(sun|mon|tue|wed|thu|fri|sat)(?:day|sday|nesday|rsday|urday|rs?)?s?";
+const DAY_LIST = new RegExp("\\b" + DAY_WORD + "\\b", "g");
 /** "Tue-Fri", "Mon, Wed & Fri", "Thu to Sun": any day range or list, expanded to day numbers. Null when the line names no day. */
 function genericDays(line: string): number[] | null {
   const l = line.toLowerCase();
@@ -46,7 +58,7 @@ function genericDays(line: string): number[] | null {
     }
   }
   const head = range ? l.slice(0, range.index) + l.slice((range.index || 0) + range[0].length) : l;
-  for (const m of head.matchAll(/\b(sun|mon|tue|wed|thu|fri|sat)(?:day|sday|nesday|rsday|urday)?s?\b/g)) days.add(DAY_IDX[m[1]]);
+  for (const m of head.matchAll(DAY_LIST)) days.add(DAY_IDX[m[1]]);
   return days.size ? [...days].sort() : null;
 }
 

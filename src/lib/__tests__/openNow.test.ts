@@ -155,6 +155,22 @@ test("a shop no longer tells a guest at three in the morning that it is open", (
   assert.equal(openStateAt(late, { day: 3, minutes: 90 })?.line, "Closes soon · 2 AM");
 });
 
+test("Thursday is a day however the shop abbreviates it", () => {
+  // Every prefix of a day name is also the front of a word that is not a day, so the list of days a line
+  // states reads only the endings a real day name takes. "Thur" and "Thurs" were not among them, so 25 shops
+  // stated a Thursday nothing read.
+  assert.equal(show(parseWeek(["Sun, Mon, Tue, Wed, Thur 11:00 AM - 9:00 PM"])), "Sun 11:00-21:00, Mon 11:00-21:00, Tue 11:00-21:00, Wed 11:00-21:00, Thu 11:00-21:00, Fri -, Sat -");
+  assert.equal(show(parseWeek(["Mon, Wed, Thur, Fri - 9 AM to 5 PM"])), "Sun -, Mon 09:00-17:00, Tue -, Wed 09:00-17:00, Thu 09:00-17:00, Fri 09:00-17:00, Sat -");
+  assert.equal(show(parseWeek(["Weds & Thurs: 12 PM - 6 PM"])), "Sun -, Mon -, Tue -, Wed 12:00-18:00, Thu 12:00-18:00, Fri -, Sat -");
+  // A shop whose only line named a day nothing read named no day at all, which a week reads as every day.
+  assert.equal(show(parseWeek(["THURS: 4PM-10PM"])), "Sun -, Mon -, Tue -, Wed -, Thu 16:00-22:00, Fri -, Sat -");
+  // And the words those prefixes open which are not days: a course's sunset, a farm's month, a barn's wedding.
+  // None of the three states a day, so none of them may add one.
+  assert.equal(show(parseWeek(["Sat 10am-4pm, last entry at sunset"])), "Sun -, Mon -, Tue -, Wed -, Thu -, Fri -, Sat 10:00-16:00");
+  assert.equal(show(parseWeek(["first Sunday of the month 10am-4pm"])), "Sun 10:00-16:00, Mon -, Tue -, Wed -, Thu -, Fri -, Sat -");
+  assert.equal(show(parseWeek(["Available for your wedding 9am-5pm"])), everyDay("09:00-17:00"));
+});
+
 test("a campground's quiet hours are not its opening hours", () => {
   // o-alpinelodgeandrv-com and 36 more publish one hours line and it is the hours nobody may make a noise.
   // Read as opening hours it is the week turned inside out: shut all afternoon, open all night.

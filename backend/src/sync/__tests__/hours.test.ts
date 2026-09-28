@@ -84,6 +84,20 @@ test("no line can encode an hour the clock does not have", () => {
   }
 });
 
+test("Thursday is a day however the shop abbreviates it", () => {
+  // The twin of the guest side's day reader. 25 shops state a Thursday that "Thur" and "Thurs" kept out of it.
+  assert.equal(
+    show(encodeWeek(["Sun, Mon, Tue, Wed, Thur 11:00 AM - 9:00 PM"])),
+    "Sun 11:00-21:00, Mon 11:00-21:00, Tue 11:00-21:00, Wed 11:00-21:00, Thu 11:00-21:00, Fri -, Sat -",
+  );
+  assert.equal(show(encodeWeek(["Weds & Thurs: 12 PM - 6 PM"])), "Sun -, Mon -, Tue -, Wed 12:00-18:00, Thu 12:00-18:00, Fri -, Sat -");
+  assert.equal(show(encodeWeek(["THURS: 4PM-10PM"])), "Sun -, Mon -, Tue -, Wed -, Thu 16:00-22:00, Fri -, Sat -");
+  // The words those prefixes open which are not days state no day, so none of them may add one.
+  assert.equal(show(encodeWeek(["Sat 10am-4pm, last entry at sunset"])), "Sun -, Mon -, Tue -, Wed -, Thu -, Fri -, Sat 10:00-16:00");
+  assert.equal(show(encodeWeek(["first Sunday of the month 10am-4pm"])), "Sun 10:00-16:00, Mon -, Tue -, Wed -, Thu -, Fri -, Sat -");
+  assert.equal(show(encodeWeek(["Available for your wedding 9am-5pm"])), everyDay("09:00-17:00"));
+});
+
 test("quiet hours and happy hour are not opening hours", () => {
   // o-alpinelodgeandrv-com and 36 more campgrounds publish their quiet hours and nothing else, so the week
   // shipped in `catalog.json` was their opening hours turned inside out: [1320, 1920] on all seven days.
