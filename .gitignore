@@ -36,3 +36,4 @@ public/robots.txt
 backend/data/geo/
 # Outreach handoff CSVs (scripts/outreach-handoff.mts): operator contact lists, never committed.
 backend/data/exports/
+backend/data/call-sheet.csv
