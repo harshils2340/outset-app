@@ -74,9 +74,29 @@ export function postalOf(postal: string | null | undefined): string {
  * With no line to print, every surface falls back to what it falls back to for the 6,492 listings that publish
  * no contact at all: the area line, with its state spelled out.
  */
+/**
+ * The town and its state or province, as one line.
+ *
+ * `streetOf` closes the punctuation the crawl leaves behind, and the town field beside it never was: a golf
+ * course north of Peterborough stores its city as "Cavan-Monaghan," and read "1702 Cedar Valley Rd,
+ * Cavan-Monaghan,, ON, K9J 6Y3" on the Where card, in the Maps query, in the booking confirmation and in
+ * Otto's answer to "where are you". A brewery stores "Seminole " and a campground "West  Guilford". Three
+ * shipped records, each of them wrong on five surfaces at once.
+ */
+const tidyPlace = (s: string | null | undefined) =>
+  String(s || "")
+    .replace(/\s+/g, " ")
+    .replace(/\s+([,;])/g, "$1")
+    .replace(/(?:[,;]\s*){2,}/g, ", ")
+    .replace(/^[\s,;]+|[\s,;]+$/g, "");
+
+export function townOf(c: { city?: string | null; region?: string | null }): string {
+  return [tidyPlace(c.city), tidyPlace(c.region)].filter(Boolean).join(", ");
+}
+
 export function addressOf(c: { street?: string | null; city?: string | null; region?: string | null; postal?: string | null }): string | null {
   const street = streetOf(c);
   if (!street && !String(c.city || "").trim()) return null;
-  const parts = [street, [c.city, c.region].filter(Boolean).join(", "), postalOf(c.postal)].filter(Boolean);
+  const parts = [street, townOf(c), postalOf(c.postal)].filter(Boolean);
   return parts.length ? parts.join(", ") : null;
 }

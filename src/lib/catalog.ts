@@ -6,7 +6,7 @@ import type { GeoPoint } from "./geo";
 import { statesAPlusAge, statesAWordedAge } from "./ages";
 import { groupCap } from "./groupSize";
 import { bookableMenu } from "./menuRow";
-import { addressOf, streetOf } from "./address";
+import { addressOf, streetOf, townOf } from "./address";
 import { ownWords } from "./ownWords";
 import { dialPhone, displayPhone } from "./phone";
 import { isPublicHttpUrl } from "./urlSafety";
@@ -488,7 +488,7 @@ export function mapsQuery(item: Unclaimed, c: OperatorContact | null): string {
     const line = addressLine(c);
     if (line) return line;
   }
-  const city = c ? [c.city, c.region].filter(Boolean).join(", ") : "";
+  const city = c ? townOf(c) : "";
   if (city) return item.title + ", " + city;
   return item.title + ", " + item.area;
 }
@@ -506,7 +506,7 @@ export function placeLabel(item: Unclaimed, c: OperatorContact | null): string {
   if (c) {
     const line = addressLine(c);
     if (line) return line;
-    const city = [c.city, c.region].filter(Boolean).join(", ");
+    const city = townOf(c);
     if (city) return city;
   }
   return item.area;

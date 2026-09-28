@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { addressOf, postalOf, streetOf } from "../address";
+import { addressOf, postalOf, streetOf, townOf } from "../address";
 
 /**
  * The line under "Where you'll be", which is also what the Maps link searches for. Every contact below is a
@@ -76,4 +76,29 @@ test("a state on its own, with or without a postcode, is not an address", () => 
   assert.equal(addressOf({ city: "Asheville", region: "NC", postal: "28801" }), "Asheville, NC, 28801");
   assert.equal(addressOf({ street: "12 Pier Rd", region: "NC" }), "12 Pier Rd, NC");
   assert.equal(addressOf({}), null);
+});
+
+/**
+ * The town field gets the same tidy the street field has always had. Three shipped contacts carry the crawl's
+ * punctuation in their city, and each of them is wrong on five surfaces at once: the Where card, the Maps
+ * query, the booking confirmation's "Getting there" row, the static `/l/` page and Otto's answer to "where
+ * are you".
+ */
+test("a town keeps the crawl's stray comma and double space out of the address line", () => {
+  assert.equal(
+    addressOf({ street: "1702 Cedar Valley Rd", city: "Cavan-Monaghan,", region: "ON", postal: "K9J 6Y3" }),
+    "1702 Cedar Valley Rd, Cavan-Monaghan, ON, K9J 6Y3",
+  ); // o-baxtercreekgolf-com
+  assert.equal(
+    addressOf({ street: "10930 Endeavour Way", city: "Seminole ", region: "FL", postal: "33777" }),
+    "10930 Endeavour Way, Seminole, FL, 33777",
+  ); // o-rappbrewing-com
+  assert.equal(
+    addressOf({ street: "1143 Nila Road", city: "West  Guilford", region: "ON", postal: "K0M 2S0" }),
+    "1143 Nila Road, West Guilford, ON, K0M 2S0",
+  ); // o-sleepyhollowcamping-com
+  assert.equal(townOf({ city: "Cavan-Monaghan,", region: "ON" }), "Cavan-Monaghan, ON");
+  assert.equal(townOf({ city: "Clayton", region: "NY" }), "Clayton, NY");
+  assert.equal(townOf({ city: null, region: "NY" }), "NY");
+  assert.equal(townOf({}), "");
 });
