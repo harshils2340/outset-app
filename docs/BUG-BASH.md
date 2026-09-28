@@ -6552,6 +6552,74 @@ the command in the brief has to be run from `backend/`.
   idempotent, the 1,210 dropped address lines and the 766 cut blurbs wait on a sync, `o-peecnature-org` still
   stands open on the day it is shut, and 547 listings ship a compact week a fresh read disagrees with.
 
+## 28 September 2026, ninety-eighth run (11:29 to 12:30 UTC)
+
+**Chosen, and why.** `git fetch` first: `origin/main` was at the ninety-seventh run's log commit with nothing
+in flight, and a fresh checkout again had no `node_modules` on either side. The last entry reported the
+rehearsal green and only its own log commit sat after it, so the rehearsal was skipped at the start and run
+once at the end, because this run changed `src/lib` and `backend/src`. Type checks first: root `tsc --noEmit
+-p .` and `tsc -b` clean, backend clean but for TS5097, backend 884 pass.
+
+Every area on tonight's brief is on the Verified list, so the hunt went to the two open defects Coverage still
+carries rather than to fresh ground: a line that writes more than one rule with a space rather than a crawl
+seam, and a day off written between two days of hours. Both are a guest reading an hour a shop never claimed,
+and both were left as questions by earlier runs because a space is the shop's own punctuation and a cut there
+has to be sure. They are cut now, measured over all 14,509 shipped listings that publish an hours line, with
+every changed week read against the line that changed it.
+
+**Found and fixed.**
+
+- **The second rule a shop wrote after a space stops taking the first rule's hours** (`6d3e38ed`). 558 lines on
+  485 listings state two or more rules with nothing between them but a space, and every day on them took the
+  first span the line held. The Bata Shoe Museum opened at ten on a Sunday it opens at noon, the Army Aviation
+  Museum stood open an hour past its Saturday closing time, and Garden State Rocks had no weekend at all
+  because its "Sat & Sun 12:00pm - 7:00pm" named no hours a reader could see. 154 weeks change and every one of
+  them was wrong before. The cut is made only where the line cannot mean anything else: a day name behind a
+  clause that has already said which days it covers and what happens on them, carrying a rule of its own. Three
+  shapes are deliberately left alone, each a line a real shop published: a span written in front of its days
+  ("open from11am - 7pm Monday-Friday and 9am-8pm"), a day off with no day of its own in front of it
+  ("Open daily 10AM-7:30PM, closed Wednesdays"), and a day name with neither a clock nor a day off behind it
+  ("Friday 6:00 pm - 10:00 pm Saturday"). The line a guest reads is untouched: `displayHours` still prints the
+  shop's own words whole, because there is no crawl seam in them to tidy away.
+- **A day off a shop wrote between two days of hours stops swallowing the second day's clock** (`ba183dd8`).
+  `o-peecnature-org`'s only hours line is "Mon 10:00 am - 4:00 pm Tues CLOSED Wed 10:00 am - 6:00 pm" and its
+  Wednesday closed at four, two hours early; Rev Brewing's Georgetown taproom opened at eleven on a Tuesday it
+  opens at four, inside a list of six rules. It was the last closed-day shape a line could hold and have nobody
+  read. A day off that already names its day is a finished rule, so the day behind it starts the next one;
+  where the word names no day it still owns the day behind it, which is how `closedDays` reads the same word.
+  Two listings change and both now read the way their own line does.
+
+**Swept and clean.** All 14,509 listings that publish an hours line, through both readers: the 154 weeks the
+spaced cut changes and the 2 the closed-day cut changes were each read against the shop's own line, and no day
+on any of them lost hours it had. `parseWeek` in `src/lib/openNow.ts` and `encodeWeek` in
+`backend/src/sync/hours.ts` now answer identically on all 14,509, which is the drift the twin has cost before.
+Whether `displayHours` moved on any of the 485: it does not, checked over the whole set.
+
+**Verification.** App `npm test` 997 pass, 0 fail, up from 993. Backend `npm test` 888 tests, 886 pass, 0 fail,
+2 skipped, up from 884. `tsc -b` clean on the app, `tsc --noEmit -p .` clean at the root and still compiling
+nothing, the backend type check clean but for TS5097. The rehearsal 57 of 57 against a local TLS Postgres 16 on
+5433 and the Chromium on disk, with no Stripe, mail or GitHub key. Nothing under `backend/data`, `public/` or
+`src/data` was touched. Notes for the next run: the cluster has to be created and started as `postgres`,
+`initdb` still refuses to run as root, `scripts/e2e-local.mts` is under `backend/`, and `git push -u origin
+main` was rejected as non-fast-forward against a remote two commits behind while `git push origin
+HEAD:refs/heads/main` went through on the first try.
+
+**Needs Harshil.**
+
+- **The cards are now further behind the pages than they were, and only a sync closes it.** 694 of the 14,220
+  listings that ship both a compact week and their own lines disagree with a fresh read, up from the 547 the
+  ninety-first run measured, because 147 of tonight's corrected weeks are corrected on the page and stale in
+  `catalog.json`. The page, the booking sheet and Otto read the lines; the cards, the rails and the price
+  filter read the compact week. Both readers are right and in step, so `npm run backend:sync` is the whole fix,
+  and it is the same sync the 1,210 dropped address lines and the 766 cut blurbs are waiting on.
+- **A day whose rule sits in an order the cut cannot read keeps the wrong hours.** The three refused shapes
+  above are refused on purpose, but the first of them is a real miss rather than a tie: "Hours: 10am-5pm
+  Monday-Friday, 11am-4pm Saturday" states its days behind its clock, and a rule written that way stays one
+  rule. A postfix reading is a separate rule from tonight's and wants its own measurement.
+- Still open from earlier runs: the desktop site has no way to say anything in passing, `plainWords` is not
+  idempotent, and the two listings whose week is wrong either way because a "Weekdays" or an "Office hours" is
+  glued to the word in front of it.
+
 ## Coverage
 
 The catalog is 48,198 listings as of the 23 September sync, 1,873 of them Viator partner rows. Counts below
@@ -6578,7 +6646,10 @@ publish one and on all four surfaces that print it, the static `/l/` page includ
 OpenStreetMap rule those lines carry, the site builder's whole-day placeholder that the open-or-closed line
 already refuses, a season or a date written in front of a rule, two spans in one rule, the syntax's own
 keywords and separators, and the shop's own words kept where they are theirs, every line diffed before and
-after over the whole catalog. The booking box price lines, including a service with no price. Phone width at
+after over the whole catalog. Every rule one of those lines holds rather than the first one it states, over all
+14,509 that publish one: several rules separated by nothing but a space, a day off written between two days of
+hours, and the three orders a cut deliberately refuses, with the app's reader and the sync's twin answering
+identically on all 14,509. The booking box price lines, including a service with no price. Phone width at
 400px on the guest listing, the booking flow, every dashboard page, and the Trips, Inbox, chat and Profile
 tabs. Accessibility on the booking flow and on the assistant chat: focus order, input labels, disabled buttons.
 Colour contrast on the accent. What Otto actually has in hand when it answers: that all three surfaces which
@@ -7566,11 +7637,11 @@ August 7, 8, and 9", "Sept 11th & 12th" and "Sept. 7-11" spread over seven days.
 quiet-hours shape with a third subject, and how many more of them there are. Whether the compact week in `catalog.json` should be trusted by anything now that a fresh read of the
 same lines disagrees on 547 listings: the cards, the rails and the price filter still read it, so tonight's
 weeks are right on a page and stale on the card that opens it, and only a sync closes that (see this run's Needs
-Harshil). Whether a line that writes more than one rule with a space rather than a seam should be cut the way a
-glued one now is: 447 lines on 405 listings state two or more days' hours and every day on them takes the first
-span, which is the same rule as the seam with a wider blast radius (see this run's Needs Harshil). Whether a
+Harshil). Whether a rule that states its days behind its clock should be read at all:
+"Hours: 10am-5pm Monday-Friday, 11am-4pm Saturday" is the one order the spaced cut refuses that is a miss
+rather than a tie (see the ninety-eighth run's Needs Harshil). Whether a
 season written per line should reach the week at all, on the four listings whose off-season day off now wins over
-their in-season week (see this run's Needs Harshil). Whether a day off stated between two days of hours on one line can be read at all, which is the one closed-day shape left: `o-peecnature-org` writes "Mon 10:00 am - 4:00 pm Tues CLOSED Wed 10:00 am - 6:00 pm" and still stands open on the Tuesday it is shut, and it wants the line cut into three rules rather than read as one. The two listings whose week is wrong either way because a "Weekdays" or an "Office hours" is glued to the word in front of it, so the line names no day and reading its closed-day aside would hand it days it never claimed (see this run's Needs Harshil). Whether two overnight runs working the same file at the same time is meant to happen, since the ninety-third and ninety-fourth both wrote a closed-day rule for the same lines and one of the two was thrown away (see this run's Needs Harshil). Whether a comma with no space after it should be given one, on the six
+their in-season week (see this run's Needs Harshil). The two listings whose week is wrong either way because a "Weekdays" or an "Office hours" is glued to the word in front of it, so the line names no day and reading its closed-day aside would hand it days it never claimed (see this run's Needs Harshil). Whether two overnight runs working the same file at the same time is meant to happen, since the ninety-third and ninety-fourth both wrote a closed-day rule for the same lines and one of the two was thrown away (see this run's Needs Harshil). Whether a comma with no space after it should be given one, on the six
 partner rows that read "Banff Town,Johnston Canyon Tour": the name tidy closes the space in front of a comma
 and deliberately opens none behind it, because "A,B" inside a name can be the shop's own (see the ninety-fifth
 run's Needs Harshil). Whether a variant label and an option's detail line should be tidied the way a row name
