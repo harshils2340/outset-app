@@ -64,6 +64,19 @@ test("a service name that lost the town it named does not keep the word that int
   assert.match(ask("o-aaajetski-com", "what services do you have"), /^Two things: Jet ski Rental and Two Hour/);
 });
 
+/**
+ * The same removals can leave a word standing beside itself. A marina's two rows are "Bennington Pontoon
+ * Rental Half Day Rental" and "... Full day Rental"; with the length taken out, its whole answer to "what do
+ * you offer" read "Just one: Bennington Pontoon Rental Rental." A kayak shop's "Santa Cruz Harbor 1-Hour
+ * Harbor Rental" read "Santa Cruz Harbor Harbor Rental". A pair the shop wrote itself is left alone.
+ */
+test("a service name does not say a word twice because a removal put the two together", () => {
+  assert.equal(ask("o-lakeblueridgemarina-com", "what services do you have"), "Just one: Bennington Pontoon Rental.");
+  assert.doesNotMatch(ask("o-kayakconnection-com", "what services do you have"), /Harbor Harbor/);
+  // "Putt Putt Golf" is how this brewery names the thing, so both words stay.
+  assert.match(ask("o-spindletapbrewery-com", "tell me about this place"), /Putt Putt/);
+});
+
 test("a shop that put an exclamation mark in a service name is not read out with a full stop after it", () => {
   assert.equal(ask("o-cruzinmonkey-com", "what services do you have"), "Just one: Jet Skis!");
 });

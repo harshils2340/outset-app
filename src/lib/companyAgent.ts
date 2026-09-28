@@ -226,6 +226,13 @@ function familyOf(name: string, ctx: CompanyContext): string {
   // A separator with nothing left on either side of it, and a conjunction doubled by a removal in between.
   s = s.replace(/\(\s*\)/g, " ").replace(/\s+/g, " ");
   s = s.replace(/(\s*[,;:]\s*){2,}/g, ", ").replace(/\s+([,;:!?])/g, "$1").replace(/\b(and|or)\s+\1\b/gi, "$1");
+  // A word left standing beside itself by one of the removals above. "Bennington Pontoon Rental Half Day
+  // Rental" loses its length and reads "Bennington Pontoon Rental Rental", which is the whole of that marina's
+  // answer to "what do you offer"; "Santa Cruz Harbor 1-Hour Harbor Rental" reads "Santa Cruz Harbor Harbor
+  // Rental". A pair the shop itself wrote is left alone, so "Putt Putt Golf" and "Cha Cha" keep both words.
+  s = s.replace(/\b(\w+)(?:\s+\1\b)+/gi, (whole, word: string) =>
+    new RegExp("\\b" + word + "\\s+" + word + "\\b", "i").test(name) ? whole : word,
+  );
   s = s.replace(/^[\s,;:\u2013\u2014\/-]+/, "").trim();
   // A separator or a connector left at the end by one of the removals above. "In" and "On" are not in the list,
   // because "Drop In" and "Walk On" are whole names; "and", "at" and "of" never end one.
