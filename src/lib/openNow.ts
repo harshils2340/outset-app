@@ -69,6 +69,67 @@ function genericDays(line: string): number[] | null {
   return days.size ? [...days].sort() : null;
 }
 
+/**
+ * The days a shop says it is shut, on a line that states hours as well.
+ *
+ * 111 lines on 106 listings write both on one line, and every one of them had the closed day standing open:
+ * a brewery's "Mon Closed Tue 12pm-7pm Wed 12pm-7pm" opened on Monday at noon, a paintball field's "Mon -
+ * Fri: Closed Saturday: 10am - 5pm" opened every weekday, an axe range's "MON: Closed TUES-THU: 4:30pm -
+ * 9:00pm" the same, and a kayak shop's "Open daily 10AM-7:30PM, closed Wednesdays" ran seven days. The word
+ * was read as a fact about the line rather than about a day, so it counted for nothing the moment the line
+ * also carried a clock, and the shop stood in "Open right now near you" on the one day nobody is there.
+ *
+ * Which days the word is about is what the shop's own punctuation says. The days in front of it are the
+ * subject where the line marks one ("Mon - Fri: Closed", "Mon - Closed", "Monday and Holidays Closed", "Sun
+ * closed"), and so they are wherever the line names no day behind it. The days behind it are the subject when
+ * nothing names one in front, which is how a bracketed aside is written ("Open Tuesday - Sunday (closed
+ * Mondays)", "Monday - Friday (Closed Wednesday) 9 am - 4 pm") and how a line that opens on the word is
+ * ("Closed Monday & Tuesday Wednesday: 4:00 pm - 8:00 pm"). When both sides name days and the two of them
+ * cover the whole week, the closed day is the smaller side: "Tuesday-SundayCLOSED MONDAYS10 am - 5 pm" is six
+ * days open and one shut, not the other way round.
+ *
+ * A closed day that carries a clock of its own is a shop shutting part of a day rather than all of it ("closed
+ * Sundays after 3 PM for maintenance"), and the day keeps the hours it stated.
+ */
+const DAY_ANY = "(?:sun|mon|tue|wed|thu|fri|sat)(?:day|sday|nesday|rsday|urday|rs?)?s?";
+/** A list or a range of days is one subject. A bare space is not a separator: "Monday & Tuesday Wednesday" is two. */
+const DAY_SEP = "\\s*(?:-|\u2013|\u2014|to|thru|through|&|and|,|/)\\s*";
+const DAY_GROUP = DAY_ANY + "(?:" + DAY_SEP + DAY_ANY + ")*";
+/** What a shop writes between the days and the word: punctuation, a zero-width space the crawl swept up, "is" or "are". */
+const CLOSED_GAP = "[\\s:;.,&=/\\-\u2013\u2014\u200b-\u200f]*";
+/** A day group that ends where the word begins, which makes those days what the word is about. */
+const CLOSED_BEFORE = new RegExp(
+  "\\b(" + DAY_GROUP + ")" + CLOSED_GAP + "(?:(?:and\\s+|&\\s*)?holidays?\\b" + CLOSED_GAP + ")?(?:(?:is|are)\\b" + CLOSED_GAP + ")?$",
+  "i",
+);
+/** A day group that starts where the word ends, unless it carries a clock of its own. */
+const CLOSED_AFTER = new RegExp(
+  "^" + CLOSED_GAP + "(?:on\\s+)?(" + DAY_GROUP + ")\\b(?!\\s*(?:after|from|until|till|before|at|past|@)\\b)",
+  "i",
+);
+/**
+ * A clock right behind the word is the hours a shop shuts for rather than the days: Page Lake Powell's
+ * "Saturday & Sunday closed 8:30 a.m. to 9:30 a.m. for North & South Coyote Butte Orientation" is an hour out
+ * of two mornings, and both days keep the hours they state elsewhere.
+ */
+const CLOSED_SPAN = /^[\s:;.,&=/\-\u2013\u2014]*(?:from\s+|between\s+)?\d{1,2}(?::\d{2})?\s*(?:[ap]\.?m|:)/i;
+const CLOSED_WORD = /\bclosed\b/gi;
+
+function closedDays(line: string): number[] {
+  const shut = new Set<number>();
+  for (const m of line.matchAll(CLOSED_WORD)) {
+    const tail = line.slice(m.index + m[0].length);
+    if (CLOSED_SPAN.test(tail)) continue;
+    const before = genericDays(CLOSED_BEFORE.exec(line.slice(0, m.index))?.[1] || "");
+    const after = genericDays(CLOSED_AFTER.exec(tail)?.[1] || "");
+    const both = before && after ? new Set([...before, ...after]) : null;
+    // Both sides named days and between them they name the week, so the shorter side is the day off.
+    const side = both && both.size === 7 ? (before!.length <= after!.length ? before : after) : before || after;
+    for (const d of side || []) shut.add(d);
+  }
+  return [...shut];
+}
+
 const TIME_RE = /(\d{1,2})(?::(\d{2}))?\s*(am|pm|a\.m\.|p\.m\.)?\s*(?:-|–|—|to|until|till)\s*(\d{1,2})(?::(\d{2}))?\s*(am|pm|a\.m\.|p\.m\.)?/i;
 
 /** The hour lines an item publishes that are actually opening hours. */
@@ -214,6 +275,7 @@ export function parseWeek(input: string[]): Week | null {
     const line = raw.replace(/\s+/g, " ").replace(PHONE_RE, " ").trim();
     if (!line) continue;
     const closed = /\bclosed\b/i.test(line);
+    const shut = closedDays(line);
     const span = firstSpan(line);
     let days: number[] | null = null;
     for (const [re, d] of DAY_RE) {
@@ -224,16 +286,30 @@ export function parseWeek(input: string[]): Week | null {
     }
     // Specific phrases first (weekdays, daily); otherwise any explicit day range or list on the line.
     if (!days || days.length === 1) days = genericDays(line) || days;
+    // A stated day off can be the one day a phrase does not name, on either side: "Open daily 10AM-7:30PM,
+    // closed Wednesdays" names six open days through "daily", and "Mon - Fri: Closed Saturday: 10am - 5pm"
+    // names its open Saturday nowhere else, so the phrase and the days written out are read together.
+    else if (shut.length) {
+      const named = genericDays(line);
+      if (named) days = [...new Set([...days, ...named])].sort((a, b) => a - b);
+    }
     if (!days && span) days = [0, 1, 2, 3, 4, 5, 6];
     if (!days) continue;
     for (const d of days) {
-      if (closed && !span) {
+      if (shut.includes(d)) continue;
+      // The word is about the days it names, so the rest of the line is not shut with them: a spa's "Monday -
+      // Saturday, closed Sunday" states no hours and had closed the six days it is open.
+      if (closed && !span && !shut.length) {
         week[d] = { open: 0, close: 0 };
         any = true;
       } else if (span) {
         week[d] = { open: span.open, close: span.close };
         any = true;
       }
+    }
+    for (const d of shut) {
+      week[d] = { open: 0, close: 0 };
+      any = true;
     }
   }
   return any ? week : null;

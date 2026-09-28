@@ -194,3 +194,19 @@ test("a comma after a rule's hours starts the next rule, and a comma before them
     "Sun 12:00-16:00, Mon -, Tue -, Wed -, Thu -, Fri 12:00-19:00, Sat 12:00-19:00",
   );
 });
+
+/**
+ * A day off stated on a line that also states hours. The twin of the guest-side rule: 111 lines on 106
+ * listings write both on one line, and the card, the picker and the listing page all had the day off open.
+ */
+test("a day a shop says it is shut is shut, on a line that states hours as well", () => {
+  assert.equal(show(encodeWeek(["Mon Closed Tue 12pm-7pm Wed 12pm-7pm"])), "Sun -, Mon closed, Tue 12:00-19:00, Wed 12:00-19:00, Thu -, Fri -, Sat -");
+  assert.equal(show(encodeWeek(["MON: Closed TUES-THU: 4:30pm - 9:00pm"])), "Sun -, Mon closed, Tue 16:30-21:00, Wed 16:30-21:00, Thu 16:30-21:00, Fri -, Sat -");
+  assert.equal(show(encodeWeek(["Mon - Fri: Closed ​​Saturday: 10am - 5pm"])), "Sun -, Mon closed, Tue closed, Wed closed, Thu closed, Fri closed, Sat 10:00-17:00");
+  assert.equal(show(encodeWeek(["Closed Monday & Tuesday Wednesday: 4:00 pm - 8:00 pm"])), "Sun -, Mon closed, Tue closed, Wed 16:00-20:00, Thu -, Fri -, Sat -");
+  assert.equal(show(encodeWeek(["Open daily 10AM-7:30PM, closed Wednesdays"])), "Sun 10:00-19:30, Mon 10:00-19:30, Tue 10:00-19:30, Wed closed, Thu 10:00-19:30, Fri 10:00-19:30, Sat 10:00-19:30");
+  assert.equal(show(encodeWeek(["Tuesday - Sunday CLOSED MONDAYS 10 am - 5 pm"])), "Sun 10:00-17:00, Mon closed, Tue 10:00-17:00, Wed 10:00-17:00, Thu 10:00-17:00, Fri 10:00-17:00, Sat 10:00-17:00");
+  assert.equal(show(encodeWeek(["Driving range open daily 6:30AM - 7:00PM (closed Sundays after 3 PM for maintenance)"])), everyDay("06:30-19:00"));
+  assert.equal(show(encodeWeek(["Monday: 9:00 am-6:00 pm Tuesday: 9:00 am-6:00 pm", "Monday - Saturday, closed Sunday"])), "Sun closed, Mon 09:00-18:00, Tue 09:00-18:00, Wed -, Thu -, Fri -, Sat -");
+  assert.equal(show(encodeWeek(["Sunday: Closed"])), "Sun closed, Mon -, Tue -, Wed -, Thu -, Fri -, Sat -");
+});

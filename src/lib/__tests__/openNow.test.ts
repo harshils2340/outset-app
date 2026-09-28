@@ -331,3 +331,36 @@ test("a comma after a rule's hours starts the next rule, and a comma before them
   assert.deepEqual(gallery?.[6], { open: 12 * 60, close: 19 * 60 });
   assert.deepEqual(gallery?.[0], { open: 12 * 60, close: 16 * 60 });
 });
+
+/**
+ * 111 lines on 106 listings state a day off and hours on the same line, and every one of them had the day off
+ * standing open, because the word was read as a fact about the line rather than about a day and counted for
+ * nothing the moment a clock turned up beside it.
+ */
+test("a day a shop says it is shut is shut, on a line that states hours as well", () => {
+  // o-birdsviewbrewingcompany-com opened on Monday at noon, and the museums write the same shape.
+  assert.equal(show(parseWeek(["Mon Closed Tue 12pm-7pm Wed 12pm-7pm"])), "Sun -, Mon closed, Tue 12:00-19:00, Wed 12:00-19:00, Thu -, Fri -, Sat -");
+  assert.equal(show(parseWeek(["Monday Closed Tuesday Closed Wednesday 10AM-5PM"])), "Sun -, Mon closed, Tue closed, Wed 10:00-17:00, Thu -, Fri -, Sat -");
+  // The days in front of the word are its subject where the line marks one, however it marks it.
+  assert.equal(show(parseWeek(["MON: Closed TUES-THU: 4:30pm - 9:00pm"])), "Sun -, Mon closed, Tue 16:30-21:00, Wed 16:30-21:00, Thu 16:30-21:00, Fri -, Sat -");
+  assert.equal(show(parseWeek(["Mon - Closed Tuesday-Friday 3pm - 9pm"])), "Sun -, Mon closed, Tue 15:00-21:00, Wed 15:00-21:00, Thu 15:00-21:00, Fri 15:00-21:00, Sat -");
+  assert.equal(show(parseWeek(["Monday and Holidays Closed Tuesday 10am - 5pm"])), "Sun -, Mon closed, Tue 10:00-17:00, Wed -, Thu -, Fri -, Sat -");
+  assert.equal(show(parseWeek(["Monday - Saturday 8:00 AM - 5:00 PM, Sunday Closed"])), "Sun closed, Mon 08:00-17:00, Tue 08:00-17:00, Wed 08:00-17:00, Thu 08:00-17:00, Fri 08:00-17:00, Sat 08:00-17:00");
+  // o-nickelcitypaintball-com: the open day is named nowhere else on the line, so both sides are read together.
+  assert.equal(show(parseWeek(["Mon - Fri: Closed ​​Saturday: 10am - 5pm"])), "Sun -, Mon closed, Tue closed, Wed closed, Thu closed, Fri closed, Sat 10:00-17:00");
+  // The days behind the word are its subject when nothing in front of it names one.
+  assert.equal(show(parseWeek(["Closed Monday & Tuesday Wednesday: 4:00 pm - 8:00 pm"])), "Sun -, Mon closed, Tue closed, Wed 16:00-20:00, Thu -, Fri -, Sat -");
+  assert.equal(show(parseWeek(["Monday - Friday (Closed Wednesday) 9 am - 4 pm"])), "Sun -, Mon 09:00-16:00, Tue 09:00-16:00, Wed closed, Thu 09:00-16:00, Fri 09:00-16:00, Sat -");
+  // o-aventuresh2o-ca: a phrase names the six open days and the word names the seventh.
+  assert.equal(show(parseWeek(["Open daily 10AM-7:30PM, closed Wednesdays"])), "Sun 10:00-19:30, Mon 10:00-19:30, Tue 10:00-19:30, Wed closed, Thu 10:00-19:30, Fri 10:00-19:30, Sat 10:00-19:30");
+  // Both sides name days and between them they name the week, so the shorter side is the day off.
+  assert.equal(show(parseWeek(["Tuesday - Sunday CLOSED MONDAYS 10 am - 5 pm"])), "Sun 10:00-17:00, Mon closed, Tue 10:00-17:00, Wed 10:00-17:00, Thu 10:00-17:00, Fri 10:00-17:00, Sat 10:00-17:00");
+  // A clock behind the word is an hour a shop shuts for, not a day: o-pagelakepowellhub-com and o-beachwoodgolf-com.
+  assert.equal(show(parseWeek(["Saturday & Sunday closed 8:30 a.m. to 9:30 a.m. for Coyote Butte Orientation"])), "Sun 08:30-09:30, Mon -, Tue -, Wed -, Thu -, Fri -, Sat 08:30-09:30");
+  assert.equal(show(parseWeek(["Driving range open daily 6:30AM - 7:00PM (closed Sundays after 3 PM for maintenance)"])), everyDay("06:30-19:00"));
+  // The word is about the days it names, so o-baymassageandskincare-com stops closing the six days it is open.
+  assert.equal(show(parseWeek(["Monday: 9:00 am-6:00 pm Tuesday: 9:00 am-6:00 pm", "Monday - Saturday, closed Sunday"])), "Sun closed, Mon 09:00-18:00, Tue 09:00-18:00, Wed -, Thu -, Fri -, Sat -");
+  // A line that says it is closed and names no day at all is unchanged: every day it does name is shut.
+  assert.equal(show(parseWeek(["Sunday: Closed"])), "Sun closed, Mon -, Tue -, Wed -, Thu -, Fri -, Sat -");
+  assert.equal(show(parseWeek(["Mon-Fri 9am-5pm", "Closed for the season"])), "Sun -, Mon 09:00-17:00, Tue 09:00-17:00, Wed 09:00-17:00, Thu 09:00-17:00, Fri 09:00-17:00, Sat -");
+});
