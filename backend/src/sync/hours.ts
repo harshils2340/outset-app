@@ -385,6 +385,8 @@ export function gluedRules(line: string): string[] {
  * Sunday it opens at noon. The whole story, and the three shapes this deliberately leaves alone, are in the
  * twin of this rule in src/lib/hoursText.ts.
  */
+/** What a shop leaves between the parts of a rule: punctuation, or a zero-width space the crawl swept up. */
+const GAP = "[\\s:;.,&=/\\-\u2013\u2014]*";
 /** The days a rule opens on, as a range or a list: one subject, however the shop separates it. */
 const RULE_DAYS = ANY_DAY + "(?:\\s*(?:-|\u2013|\u2014|to|thru|through|&|and|,|/)\\s*" + ANY_DAY + ")*";
 /** A span, both ends written out. */
@@ -393,9 +395,15 @@ const A_SPAN_RE = new RegExp(A_SPAN, "i");
 const A_DAY_RE = new RegExp("\\b" + ANY_DAY + "\\b", "i");
 const EVERY_DAY_RE = new RegExp("\\b" + ANY_DAY + "\\b", "gi");
 /** The next rule, whole: its own days, then whatever the shop puts in front of the clock, then its own span. */
-const NEXT_RULE = new RegExp("^" + RULE_DAYS + "[\\s:;.,&=/\\-\u2013\u2014]*(?:from\\s+|open\\s+|at\\s+)?" + A_SPAN, "i");
-/** A day off owns the days written behind it, so the word is never the end of the clause in front of a cut. */
+const NEXT_RULE = new RegExp("^" + RULE_DAYS + GAP + "(?:from\\s+|open\\s+|at\\s+)?" + A_SPAN, "i");
+/**
+ * A day off with no day in front of it owns the day written behind it; one that already names its own day is
+ * finished, and the rule behind it is the next one. See the twin for which lines those are.
+ */
 const SAID_CLOSED = /\bclosed[\s:;.,&=/\-\u2013\u2014]*$/i;
+const CLOSED_HAS_DAY = new RegExp("\\b" + RULE_DAYS + GAP + "(?:(?:and\\s+|&\\s*)?holidays?" + GAP + ")?(?:(?:is|are)" + GAP + ")?closed" + GAP + "$", "i");
+/** The next rule can be a day off of its own, which makes such a line three rules rather than two. */
+const NEXT_CLOSED = new RegExp("^" + RULE_DAYS + GAP + "(?:(?:is|are)" + GAP + ")?closed\\b", "i");
 
 /** One rule per day group, where a shop wrote several with only a space between them. */
 function spacedRules(rule: string): string[] {
@@ -407,7 +415,8 @@ function spacedRules(rule: string): string[] {
     const span = said.search(A_SPAN_RE);
     const day = said.search(A_DAY_RE);
     if (span < 0 || day < 0 || day > span) continue;
-    if (SAID_CLOSED.test(said) || !NEXT_RULE.test(rest)) continue;
+    if (SAID_CLOSED.test(said) && !CLOSED_HAS_DAY.test(said)) continue;
+    if (!NEXT_RULE.test(rest) && !NEXT_CLOSED.test(rest)) continue;
     return [said.trim(), ...spacedRules(rest)].filter(Boolean);
   }
   return [rule];

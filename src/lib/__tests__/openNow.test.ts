@@ -472,3 +472,17 @@ test("a space is only a seam where the line cannot mean anything else", () => {
   assert.equal(show(parseWeek(["Friday 6:00 pm - 10:00 pm Saturday"])),
     "Sun -, Mon -, Tue -, Wed -, Thu -, Fri 18:00-22:00, Sat 18:00-22:00");
 });
+
+/**
+ * A day off written between two days of hours, which was the last closed-day shape a line could hold and have
+ * nobody read: `o-peecnature-org`'s only hours line, and Rev Brewing's Georgetown taproom inside a list of six.
+ */
+test("a day off that names its own day finishes its rule, and the day behind it starts the next", () => {
+  assert.equal(show(parseWeek(["Mon 10:00 am - 4:00 pm Tues CLOSED Wed 10:00 am - 6:00 pm"])),
+    "Sun -, Mon 10:00-16:00, Tue closed, Wed 10:00-18:00, Thu -, Fri -, Sat -");
+  assert.equal(show(parseWeek(["Georgetown: Sun 11AM-8PM, Mon Closed, Tue 4PM-8PM, Wed-Thu 12PM-9PM, Fri-Sat 12PM-10PM"])),
+    "Sun 11:00-20:00, Mon closed, Tue 16:00-20:00, Wed 12:00-21:00, Thu 12:00-21:00, Fri 12:00-22:00, Sat 12:00-22:00");
+  // A day off with no day in front of it still owns the day behind it, whichever side of the line it sits on.
+  assert.equal(show(parseWeek(["Open daily 10AM-7:30PM, closed Wednesdays"])),
+    "Sun 10:00-19:30, Mon 10:00-19:30, Tue 10:00-19:30, Wed closed, Thu 10:00-19:30, Fri 10:00-19:30, Sat 10:00-19:30");
+});

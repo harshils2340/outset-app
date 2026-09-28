@@ -237,9 +237,11 @@ export function gluedRules(line: string): string[] {
  * first clock, and cutting at Monday would hand the weekend an 11 to 7 the shop never stated. A day off owns
  * the day behind it, so "Open daily 10AM-7:30PM, closed Wednesdays" and "Mon - Fri: Closed Saturday: 10am -
  * 5pm" are left for the closed-day reader in openNow.ts, which already reads both correctly. And a day name
- * with no clock of its own is not a rule: "Friday 6:00 pm - 10:00 pm Saturday" states one span for two days,
- * which is what the shop wrote.
+ * that states neither a clock nor a day off of its own is not a rule: "Friday 6:00 pm - 10:00 pm Saturday"
+ * states one span for two days, which is what the shop wrote.
  */
+/** What a shop leaves between the parts of a rule: punctuation, or a zero-width space the crawl swept up. */
+const GAP = "[\\s:;.,&=/\\-\u2013\u2014]*";
 /** The days a rule opens on, as a range or a list: one subject, however the shop separates it. */
 const RULE_DAYS = ANY_DAY + "(?:\\s*(?:-|\u2013|\u2014|to|thru|through|&|and|,|/)\\s*" + ANY_DAY + ")*";
 /** A span, both ends written out. Stricter than A_RANGE above, which only has to find a range to refuse a line. */
@@ -248,9 +250,20 @@ const A_SPAN_RE = new RegExp(A_SPAN, "i");
 const A_DAY_RE = new RegExp("\\b" + ANY_DAY + "\\b", "i");
 const EVERY_DAY_RE = new RegExp("\\b" + ANY_DAY + "\\b", "gi");
 /** The next rule, whole: its own days, then whatever the shop puts in front of the clock, then its own span. */
-const NEXT_RULE = new RegExp("^" + RULE_DAYS + "[\\s:;.,&=/\\-\u2013\u2014]*(?:from\\s+|open\\s+|at\\s+)?" + A_SPAN, "i");
-/** A day off owns the days written behind it, so the word is never the end of the clause in front of a cut. */
+const NEXT_RULE = new RegExp("^" + RULE_DAYS + GAP + "(?:from\\s+|open\\s+|at\\s+)?" + A_SPAN, "i");
+/**
+ * A day off with no day in front of it owns the day written behind it, so the clause in front of a cut may not
+ * end on one: "Open daily 10AM-7:30PM, closed Wednesdays" is six open days and a Wednesday off, whatever the
+ * cut would make of it. A day off that already names its own day is finished, and the rule behind it is the
+ * next one: `o-peecnature-org` writes "Mon 10:00 am - 4:00 pm Tues CLOSED Wed 10:00 am - 6:00 pm" and had its
+ * Wednesday closing at four, two hours before it does, and Rev's Georgetown taproom opened at eleven on a
+ * Tuesday it opens at four. Which day the word is about is read the same way `closedDays` in openNow.ts reads
+ * it: the days in front of it where the line names any, the days behind it where it does not.
+ */
 const SAID_CLOSED = /\bclosed[\s:;.,&=/\-\u2013\u2014]*$/i;
+const CLOSED_HAS_DAY = new RegExp("\\b" + RULE_DAYS + GAP + "(?:(?:and\\s+|&\\s*)?holidays?" + GAP + ")?(?:(?:is|are)" + GAP + ")?closed" + GAP + "$", "i");
+/** The next rule can be a day off of its own, which is what makes that line above three rules rather than two. */
+const NEXT_CLOSED = new RegExp("^" + RULE_DAYS + GAP + "(?:(?:is|are)" + GAP + ")?closed\\b", "i");
 
 /** One rule per day group, where a shop wrote several with only a space between them. */
 function spacedRules(rule: string): string[] {
@@ -261,10 +274,11 @@ function spacedRules(rule: string): string[] {
     const rest = rule.slice(at);
     const span = said.search(A_SPAN_RE);
     const day = said.search(A_DAY_RE);
-    // The days have to own the span in front of the cut, and the day behind it its own span, or the line is
-    // one rule written in an order this cannot read.
+    // The days have to own the span in front of the cut, and the day behind it a rule of its own, or the line
+    // is one rule written in an order this cannot read.
     if (span < 0 || day < 0 || day > span) continue;
-    if (SAID_CLOSED.test(said) || !NEXT_RULE.test(rest)) continue;
+    if (SAID_CLOSED.test(said) && !CLOSED_HAS_DAY.test(said)) continue;
+    if (!NEXT_RULE.test(rest) && !NEXT_CLOSED.test(rest)) continue;
     return [said.trim(), ...spacedRules(rest)].filter(Boolean);
   }
   return [rule];

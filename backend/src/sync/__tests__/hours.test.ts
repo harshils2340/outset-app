@@ -278,3 +278,11 @@ test("a second rule a shop wrote after a space is a second rule here too", () =>
   assert.equal(show(encodeWeek(["Friday 6:00 pm - 10:00 pm Saturday"])),
     "Sun -, Mon -, Tue -, Wed -, Thu -, Fri 18:00-22:00, Sat 18:00-22:00");
 });
+
+/** The same day off between two days of hours, on the card's own week. */
+test("a day off that names its own day finishes its rule here too", () => {
+  assert.equal(show(encodeWeek(["Mon 10:00 am - 4:00 pm Tues CLOSED Wed 10:00 am - 6:00 pm"])),
+    "Sun -, Mon 10:00-16:00, Tue closed, Wed 10:00-18:00, Thu -, Fri -, Sat -");
+  assert.equal(show(encodeWeek(["Open daily 10AM-7:30PM, closed Wednesdays"])),
+    "Sun 10:00-19:30, Mon 10:00-19:30, Tue 10:00-19:30, Wed closed, Thu 10:00-19:30, Fri 10:00-19:30, Sat 10:00-19:30");
+});
