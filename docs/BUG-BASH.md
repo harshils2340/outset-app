@@ -6315,6 +6315,91 @@ Postgres cluster, and `initdb` refuses to run as root here, so the cluster has t
   item looks resolved. The desktop site still has no way to say anything in passing, `plainWords` is still not
   idempotent, and the 1,210 dropped address lines still wait on a sync.
 
+## 28 September 2026, ninety-fifth run (08:16 to 10:05 UTC)
+
+**Chosen, and why.** `git fetch` first, before picking anything, because the ninety-fourth run's Needs Harshil
+says two runs collided on `hours.ts` inside twelve hours. `origin/main` was at its log commit and nothing was
+in flight, and the hunt deliberately went nowhere near the hour parsers for the same reason. A fresh checkout
+again had no `node_modules` on either side. Type checks first: root `tsc --noEmit -p .` and `tsc -b` clean,
+backend clean but for TS5097, backend 872 pass. The last entry reported the rehearsal green and only a log
+commit sat after it, so the rehearsal was skipped at the start and run at the end, twice, because this run
+changed `src/lib` and `backend/src`.
+
+Every area on tonight's brief is on the Verified list, so the hunt went to Coverage's open line on how the chat
+words an answer around a shop's own string, and swept it that way: 22 questions each over a random 9,000
+listings, and the one clipping rule behind most of those answers over every text of all 46,323 non-partner
+detail files, with the answers read for text that is malformed rather than merely wrong. That found two bugs in
+the chat and led to two more in strings the whole product prints.
+
+**Found and fixed.**
+
+- **Otto stopped quoting a shop mid-abbreviation** (`d4f6c9df`). `clip` cut a shop's prose at the first full
+  stop followed by a space and a capital, which is exactly how an initial or a shortened word reads. A balloon
+  company was quoted "designed to showcase Mt.", an airboat ride "Slide across the legendary St." and a sauna
+  "red light therapy in St."; the full stop the chat adds made each of those a finished sentence. The other
+  half of the same rule is a text that opens on an initial: its first stop landed inside the first twenty
+  characters, the `stop > 20` floor threw it away, nothing looked for the next one, and the quote ran on
+  through every later sentence, so "The A.R. Mitchell will exhibit ..." carried a second paragraph about the
+  artist. 1,545 clipped texts on 1,078 shipped listings read one way or the other, counted over every blurb,
+  policy, rule, inclusion, FAQ answer, service description, hours line and meeting point in the catalog. Not
+  cutting costs nothing, because the length clamp still ends the line, so the abbreviation list is generous and
+  a stop inside an open bracket is left alone for the same reason.
+- **A town the crawl left a comma on stopped printing twice** (`aafeb571`). `streetOf` has always closed the
+  punctuation the crawl leaves behind and the town field beside it never did. A golf course north of
+  Peterborough stores its city as "Cavan-Monaghan," and read "1702 Cedar Valley Rd, Cavan-Monaghan,, ON, K9J
+  6Y3" on the Where card, in the Maps query, in the booking confirmation's "Getting there" row, on the static
+  page and in Otto's answer to "where are you". A brewery stores "Seminole " and a campground "West  Guilford".
+  Three shipped records, each wrong on five surfaces at once. `townOf` gives the pair the same tidy and the two
+  places in `catalog.ts` that built it by hand read it now.
+- **A marina stopped offering a "Bennington Pontoon Rental Rental"** (`8e193bc3`). Taking the length out of a
+  service name can leave a word standing beside itself: that marina's two rows are "Bennington Pontoon Rental
+  Half Day Rental" and "... Full day Rental", so its whole answer to "what do you offer" was "Just one:
+  Bennington Pontoon Rental Rental.", and a Santa Cruz kayak shop's "Santa Cruz Harbor 1-Hour Harbor Rental"
+  read "Santa Cruz Harbor Harbor Rental". A pair the shop wrote itself is left alone, so "Putt Putt Golf" and
+  "Cha Cha" keep both words.
+- **A shop's name stopped carrying the crawl's punctuation** (`fff38bb5`). The business name is the most
+  printed string in the product, and 54 shipped names carry a mark that is not theirs. 42 have a space in front
+  of a comma or a colon, so Otto said "Pick a service and time on this page and Tac Ops : A Tactical Laser Tag
+  Experience confirms it" and a Viator row reads "Quebec City : Bike Excursion to Montmorency Falls". Two end
+  on a bracket the crawl never closed, "2 Hour Guided Segway Tour (" and "Trans-Allegheny Lunatic Asylum (West
+  Virginia Hospital for the", one on a bracket it never opened, and four on a separator with nothing behind it,
+  among them "Pilates &". "Arts+" and "& Fitness" keep their sign, because a shop can be named for one, and a
+  space in front of a final mark is what tells a page's question mark from a name's. The app reads `shopTitle`
+  at load so the 54 are right tonight, and the sync's own `cleanTitle` ends with the same call. The same marks
+  reach a menu row: 23 rows on 11 listings carry a space in front of their own punctuation and 12 on 5 a
+  bracket nothing opened, including a railroad museum's whole row name "). Ticket", which `tidyRowName` now
+  takes at the ends of a name but not in the middle, where it is the shop's own list marker.
+
+**Swept and clean.** 198,000 answers over a random 9,000 listings, and every clipped text of all 46,323
+non-partner detail files, read for malformed text both before and after each fix; what is left in the sample is
+the shop's own prose, which is theirs. Otto's "Prices start at" against the page's own "From" price, over the
+6,168 listings that quote one both ways: 1 disagrees, and which one was not chased. Every
+contact record and every extra location in the catalog, 46,787 of them, for an address line with stray
+punctuation: the three above and no others. Every one of the 260,099 shipped row names for the two marks above.
+All 52,816 titles. `plainWords` expanding SUP inside "Akona SUP Paddleboard Pump" is the one doubled word left
+in the catalog, and it belongs to the non-idempotence already logged.
+
+**Verification.** App `npm test` 993 pass, 0 fail, up from 983. Backend `npm test` 872 pass, 0 fail, 2 skipped.
+`tsc -b` clean on the app, `tsc --noEmit -p .` clean at the root and still compiling nothing, the backend type
+check clean but for TS5097. The rehearsal 57 of 57 twice, against a local TLS Postgres 16 on 5433 and the
+Chromium on disk, with no Stripe, mail or GitHub key. `initdb` still refuses to run as root here, so the
+cluster has to be started as `postgres`.
+
+**Needs Harshil.**
+
+- **A comma with no space after it is still a comma with no space after it.** The name tidy closes the space in
+  front of a comma and deliberately does not open one behind it, because "A,B" inside a name can be the shop's
+  own. So six partner rows still read "Banff Town,Johnston Canyon Tour" and "Moraine Lake,Lake Louise". Adding
+  a space is a one-line change and a judgement about somebody else's copy.
+- **A variant label and an option's detail line are never tidied.** `bookableMenu` runs `tidyRowName` over
+  service names, option names and add-on names, and not over the strings beside them, which the service picker
+  and Otto both print. Two rows on one listing still read "Fridays are also Pizza Days ! Please send", which is
+  a sentence the crawl cut in half sitting in a label. Whether a label should be tidied like a name, or dropped
+  when it is plainly not one, is the question.
+- Still open from earlier runs: the desktop site has no way to say anything in passing, `plainWords` is not
+  idempotent, the 1,210 dropped address lines and the 766 cut blurbs wait on a sync, and `o-peecnature-org`
+  still stands open on the day it is shut.
+
 ## Coverage
 
 The catalog is 48,198 listings as of the 23 September sync, 1,873 of them Viator partner rows. Counts below
@@ -7020,7 +7105,17 @@ another word, a shouted short spelling, a "Closed" with no space around it, a da
 rules written into one word, and the words that merely end in a short spelling (salmon, unsatisfied) which keep
 their letters. Which week the page, the picker and Otto actually read, over all 14,220 listings that ship both a
 compact week and their own hour lines: the 547 whose baked week no longer agrees with a fresh read of the same
-lines, and the browse record that has no lines to read.
+lines, and the browse record that has no lines to read. How the chat words an answer around a shop's own
+string, over 198,000 answers on a random 9,000 listings and every clipped text of all 46,323 non-partner
+detail files: the article on an offer name, the case of a meeting point, a list item, the town taken out of a
+service name, a word a removal said twice, the full stop after text that already ended, and a sentence cut at
+an abbreviation or an initial. Otto's `clip` against the page's `cleanDesc`, over every blurb, service
+description, policy, arrival note, FAQ answer, hours line and meeting point in the catalog. Otto's "Prices
+start at" against the page's own "From" price, over the 6,168 listings that quote one both ways. The name a
+guest reads for the crawl's own punctuation rather than for the crawl's words: a space in front of a mark, a
+bracket nothing closed and a separator with nothing behind it, over all 52,816 shipped titles and all 260,099
+shipped row names. The town on an address line, over all 46,787 contact records and extra locations in the
+catalog.
 
 **Not yet checked.** Anything in the grounded fallback that needs a real Cohere key: no key exists here, so every answer checked tonight was a payload shaped by hand, and what the live model actually writes, what its citation offsets index into when it answers in more than one content part, and whether `citation_options` FAST cites densely enough for `keepCited` to keep a good answer are all unread. `npm run otto:eval` for the same reason. Whether a price the model reformats should be dropped: a shop publishing "$85" and a model writing "$85.00" loses the sentence (see this run's Needs Harshil). Whether the grounded answer should reach the static `/l/` page and the phone sheet, which do not call it. A real Otto send or a real hand-send: the draft run, the queue, the dry run and the handoff export are all driven now, but nothing has left a mailbox from here, and `outreach-daily.sh` is launchd on the Mac and cannot be. Whether `state.ranDays` and `state.sentDays` growing without bound in `outreach-otto-ramp.json`, and being written only after a send loop that can run four hours, is worth changing, given that `sentToday` is what actually holds the ceiling. Whether the Otto email may tell a shop "Bookings drop straight into your calendar" when
 both `/voice` endpoints are read-only and syncing with an operator's own booking software is deferred on
@@ -7271,11 +7366,7 @@ because a card has no room for "Maryland" (see the eighty-seventh run's Needs Ha
 own dashboard lists should spell one out, which they also do not. Whether the `/l/` page's crumb trail should step through the city page it links to further down: it stops at the
 national activity page on all 15,556 pages and 8,569 of them have a metro page of their own, which is read and
 left as it is rather than decided. Whether that trail should carry a `BreadcrumbList`, which no static page does. Every relative
-import in the backend against the files on disk, which is now a test. How the chat words an answer around a
-shop's own string, over every listing in the catalog: the article on an offer name, the case of a meeting point,
-an hour line and a list item, the full stop after text that already ended, the town taken out of a service name,
-and what a question about the listing as a whole is answered with. Otto's `clip` against the page's `cleanDesc`,
-over every blurb, service description, policy, arrival note, FAQ answer and hour line in the catalog. Whether a
+import in the backend against the files on disk, which is now a test. Whether a
 listing's metro should be read from the town its area line already names rather than only from its pin, which
 is what leaves the 33 shops whose placeholder pin is now cleared with no metro at all. The two pins that are
 wrong on their own rather than by rule: Festiva Sailing Vacations pinned in the US Virgin Islands and Florida
@@ -7311,4 +7402,14 @@ Harshil). Whether a line that writes more than one rule with a space rather than
 glued one now is: 447 lines on 405 listings state two or more days' hours and every day on them takes the first
 span, which is the same rule as the seam with a wider blast radius (see this run's Needs Harshil). Whether a
 season written per line should reach the week at all, on the four listings whose off-season day off now wins over
-their in-season week (see this run's Needs Harshil). Whether a day off stated between two days of hours on one line can be read at all, which is the one closed-day shape left: `o-peecnature-org` writes "Mon 10:00 am - 4:00 pm Tues CLOSED Wed 10:00 am - 6:00 pm" and still stands open on the Tuesday it is shut, and it wants the line cut into three rules rather than read as one. The two listings whose week is wrong either way because a "Weekdays" or an "Office hours" is glued to the word in front of it, so the line names no day and reading its closed-day aside would hand it days it never claimed (see this run's Needs Harshil). Whether two overnight runs working the same file at the same time is meant to happen, since the ninety-third and ninety-fourth both wrote a closed-day rule for the same lines and one of the two was thrown away (see this run's Needs Harshil).
+their in-season week (see this run's Needs Harshil). Whether a day off stated between two days of hours on one line can be read at all, which is the one closed-day shape left: `o-peecnature-org` writes "Mon 10:00 am - 4:00 pm Tues CLOSED Wed 10:00 am - 6:00 pm" and still stands open on the Tuesday it is shut, and it wants the line cut into three rules rather than read as one. The two listings whose week is wrong either way because a "Weekdays" or an "Office hours" is glued to the word in front of it, so the line names no day and reading its closed-day aside would hand it days it never claimed (see this run's Needs Harshil). Whether two overnight runs working the same file at the same time is meant to happen, since the ninety-third and ninety-fourth both wrote a closed-day rule for the same lines and one of the two was thrown away (see this run's Needs Harshil). Whether a comma with no space after it should be given one, on the six
+partner rows that read "Banff Town,Johnston Canyon Tour": the name tidy closes the space in front of a comma
+and deliberately opens none behind it, because "A,B" inside a name can be the shop's own (see the ninety-fifth
+run's Needs Harshil). Whether a variant label and an option's detail line should be tidied the way a row name
+is, or dropped when they are plainly not a label at all: `bookableMenu` runs `tidyRowName` over service,
+option and add-on names and over nothing beside them, and the service picker and the chat both print those, so
+two rows on one listing still read "Fridays are also Pizza Days ! Please send" (see that run's Needs Harshil).
+Whether an abbreviation Otto now refuses to cut at should be refused by the sync's own blurb cutter as well,
+which stops at its own `. ` and has never been swept for one. Every other string the crawl hands a guest
+whole, against the punctuation it arrived with: the title, the row name and the town were the three this run
+swept, and the same seam runs through the blurb, the policy line, the meeting point and the arrival note.
