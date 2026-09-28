@@ -504,9 +504,16 @@ export function itemWeek(item: Unclaimed): Week | null {
   // the fix until the next sync writes the file again. The 37 campgrounds whose only line is their quiet
   // hours ship one, and it is their opening hours turned inside out.
   if (item.hoursText?.length && !hourLines(item).length) return null;
+  const lines = hourLines(item).length ? hourLines(item) : contactFor(item)?.hours || [];
+  // Where the lines themselves are in hand, they are read again rather than taken second hand, for the same
+  // reason: the compact week is whatever the reader made of them on the day the file was written, and 547 of
+  // the 14,220 listings that ship both no longer agree with a fresh read of their own hours. A brewpub's
+  // Monday to Thursday was a Monday, an airboat ride's midnight to midnight placeholder was a week open around
+  // the clock, and every day off, glued day and one-off event put right since the sync was still being shown.
+  // A card with no lines to read keeps the compact week, so those listings stay as they are until a sync runs.
+  if (lines.length) return parseWeek(lines);
   const compact = item.hrs?.length ? item.hrs.map(compactDay) : null;
-  if (compact && compact.some((d) => d)) return compact;
-  return parseWeek(hourLines(item).length ? hourLines(item) : contactFor(item)?.hours || []);
+  return compact && compact.some((d) => d) ? compact : null;
 }
 
 export function itemOpenState(item: Unclaimed, now = new Date()): OpenState | null {

@@ -99,11 +99,15 @@ test("a week already baked into the catalog that no clock could show is not beli
   assert.equal(show(itemWeek(shipped)), everyDay("09:00-18:00"));
   // Noon in Austin, which is Central: open, and not "opens 12 PM" while it is already 12 PM.
   assert.equal(itemOpenState(shipped, new Date("2026-09-16T17:00:00Z"))?.line, "Open · closes 6 PM");
-  // A shop whose compact week is fine is still read straight off it, with no fallback.
+  // A compact week that reads perfectly well is still not what the shop's own line says, and the line wins:
+  // 547 of the 14,220 listings that ship both no longer agree, every one of them a fix waiting on a sync.
   const fine = { ...shipped, hrs: [0, 1, 2, 3, 4, 5, 6].map(() => [600, 1200] as [number, number]) } as unknown as Unclaimed;
-  assert.equal(show(itemWeek(fine)), everyDay("10:00-20:00"));
+  assert.equal(show(itemWeek(fine)), everyDay("09:00-18:00"));
+  // A browse record carries the compact week and no lines to read, so that is what it is read from.
+  const card = { ...fine, hoursText: undefined } as unknown as Unclaimed;
+  assert.equal(show(itemWeek(card)), everyDay("10:00-20:00"));
   // A stated day off survives: [0, 0] is "closed", not "unreadable".
-  const off = { ...fine, hrs: [[0, 0], [600, 1200], [600, 1200], [600, 1200], [600, 1200], [600, 1200], [600, 1200]] } as unknown as Unclaimed;
+  const off = { ...card, hrs: [[0, 0], [600, 1200], [600, 1200], [600, 1200], [600, 1200], [600, 1200], [600, 1200]] } as unknown as Unclaimed;
   assert.equal(show(itemWeek(off)), "Sun closed, " + [1, 2, 3, 4, 5, 6].map((i) => D[i] + " 10:00-20:00").join(", "));
 });
 
@@ -397,4 +401,28 @@ test("a day name the crawl glued to a heading or to the clock is still a day", (
   // A line with nothing glued into it is one rule, however many days it names.
   assert.equal(show(parseWeek(["Mon - Fri 9am-5pm"])), "Sun -, Mon 09:00-17:00, Tue 09:00-17:00, Wed 09:00-17:00, Thu 09:00-17:00, Fri 09:00-17:00, Sat -");
   assert.equal(show(parseWeek(["Sun, Mon, Tue, Wed, Thur 11:00 AM - 9:00 PM"])), "Sun 11:00-21:00, Mon 11:00-21:00, Tue 11:00-21:00, Wed 11:00-21:00, Thu 11:00-21:00, Fri -, Sat -");
+});
+
+/**
+ * The compact week in `catalog.json` is whatever the reader made of a shop's lines on the day the sync wrote
+ * the file, and 547 of the 14,220 listings that ship both a compact week and their own lines no longer agree
+ * with a fresh read: a day off the shop states, a range the crawl glued, a one-off event and a placeholder
+ * clock face were all still being shown on the page, the booking sheet's picker and in Otto's answers, while
+ * the server's own slot route read the lines and refused the times the picker had offered.
+ */
+test("a shop's own hour lines are read again rather than taken from the week already baked into the catalog", () => {
+  const staleClosedDay = {
+    id: "o-birdsviewbrewingcompany-com",
+    area: "Seattle, WA",
+    src: "birdsviewbrewingcompany.com",
+    hrs: [null, [720, 1140], [720, 1140], [720, 1140], null, null, null],
+    hoursText: ["Mon Closed Tue 12pm-7pm Wed 12pm-7pm"],
+  } as unknown as Unclaimed;
+  assert.equal(show(itemWeek(staleClosedDay)), "Sun -, Mon closed, Tue 12:00-19:00, Wed 12:00-19:00, Thu -, Fri -, Sat -");
+  const staleRange = {
+    ...staleClosedDay,
+    hrs: [null, [540, 1020], null, null, null, null, null],
+    hoursText: ["Monday-Thursday9:00 AM - 5:00 PM"],
+  } as unknown as Unclaimed;
+  assert.equal(show(itemWeek(staleRange)), "Sun -, Mon 09:00-17:00, Tue 09:00-17:00, Wed 09:00-17:00, Thu 09:00-17:00, Fri -, Sat -");
 });
