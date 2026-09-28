@@ -6096,6 +6096,85 @@ GitHub key. A fresh checkout again had no `node_modules` on either side and no P
   desktop site still has no way to say anything in passing, `plainWords` is still not idempotent, and the 1,210
   dropped address lines still wait on a sync.
 
+## 28 September 2026, ninety-second run (05:18 to 07:05 UTC)
+
+**Chosen, and why.** The only commit since the last entry is a security sweep that changed no code, and that
+entry reports the rehearsal green, so the rehearsal was skipped at the start and run once at the end, because
+this run changed `src/lib` and `backend/src`. Every area on tonight's brief is on the Verified list. The hunt
+went to the one item the last run left on Needs Harshil as a defect rather than a question: the 249 listings
+still printing a dated line in their Hours block, 184 of which publish nothing else. Telling one date from a
+range of them turned out to be a rule worth writing, and writing it turned up two more faults in the same day
+reader, both of them older and wider than the one I went looking for.
+
+**Found and fixed.**
+
+- **One closed date was printed as a whole week** (`e30f6ca1`). 245 listings publish an hour line naming a
+  calendar date and for 181 it is the whole block, so whatever that one line said became all seven days. Last
+  night's rule caught the shape The Events Calendar writes with an "@"; most shops write no "@" at all. Two
+  shapes hide in those 245 and mean opposite things: a season is a run of days and its line is the shop's real
+  week ("May 1 - November 1: 11am - 6pm"), while one closed date is one afternoon ("Open House September 30,
+  2026 4:00pm - 6:00pm", "Open Mic Night Sep 11 7 pm - 9 pm", "Thursday, May 8: 11AM - 8PM", "July 4th Hours:
+  11 AM - 7:00 PM", "December 25th: closed"). `isTradingHoursLine` now refuses a line naming exactly one date
+  and nothing wider, in the guest copy and in the sync's twin. A run keeps its line however it is written: a
+  second month, a second day hung off the first, a range word in front of the date, or a word that opens or
+  closes the run. A day number that is really a clock ("October 11:00AM - 4:00PM") or a year is not a date, and
+  OpenStreetMap's own exception clause ("Fr-Sa 12:00-18:00; Dec 25 off") is left to the reader that understands
+  it. 103 lines on 95 listings go; 85 of those publish nothing else and now keep an honest gap. 11 keep a week
+  and every one now reads it off a real line: Twisted Brew Pub's Fourth of July had pulled its Friday and
+  Saturday close from 10 PM back to 7 PM on all seven days, City of Thornton's Sunday came from an open space
+  cleanup, Brightideas Brewing was open 6 to 8 every evening on the strength of one open mic, and Koena Spa
+  printed four holiday lines as its hours.
+- **A shop that writes Thursday "Thur" had no Thursday** (`0b446c5e`). The list of days a line states reads
+  only the endings a real day name takes, because every three-letter prefix is also the front of a word that is
+  not a day: a course open "Mo-Su 07:00-sunset" states no Sunday, a farm open "first Sunday of the month" no
+  Monday, a barn hired out for a wedding no Wednesday. "Thur" and "Thurs" were not among the endings, so a
+  brewpub's "Sun, Mon, Tue, Wed, Thur 11:00 AM - 9:00 PM" told a guest it was shut on Thursday, a skydive
+  centre's "Mon, Wed, Thur, Fri - 9 AM to 5 PM" the same, and a winery whose only line was "THURS: 4PM-10PM"
+  named no day at all, which a week reads as every day of it. 25 lines on 25 listings. The spellings are one
+  constant now, shared by the range and the list.
+- **A range whose last day had the clock glued to it was no range at all** (`eb757f80`). The crawl glues the
+  next thing on the page straight on to the closing day, and the reader asked for a word boundary there:
+  "Monday-Thursday9:00 AM - 5:00 PM", "Monday - Sunday10am-10pm", "Tuesday - Saturdayfrom 9:00 am - 4:00 pm",
+  "Monday - SaturdayOpen - 8:00 am to 5:00 pm". 186 shipped listings state a range written that way and not one
+  was read, so the line named its opening day alone or no day whatever. A Utah aerospace museum open Tuesday to
+  Saturday opened on Tuesday and was shut the rest of the week; an arts centre open Monday to Sunday opened on
+  Monday. The fix is one character. It also stops a range reading through a shop's own closed day, because the
+  match now ends on the day rather than running past it: Lacombe Legion was seven days open and is now six, and
+  the Borscht Belt Museum has the Monday off it asks for.
+
+**Swept and clean.** Every one of the 309 dated hour lines in the catalog read by hand against the rule, both
+ways round. Every parsed week of all 52,815 shipped detail files diffed before and after, three times, once per
+commit: 289 listings moved in all, 195 gaining days they state, 10 losing days they say they are shut, 81
+losing a fabricated week to an honest gap, 3 moving a day's hours off a line that was not theirs, and no other
+listing in the catalog changed. Both hour parsers held against each other on all 14,509 listings that publish
+an hour line, agreeing on every one. The words those day prefixes open which are not days (sunset, sunrise,
+sundown, month, wedding) counted over the whole catalog and now a test of their own: 115 lines on 90 listings
+carry one and not one of them adds a day.
+
+**Verification.** App `npm test` 975 pass, 0 fail, up from 972. Backend `npm test` 868 pass, 0 fail, 2 skipped,
+up from 867. `tsc -b` clean on the app, `tsc --noEmit -p .` clean at the root and still compiling nothing, the
+backend type check clean but for TS5097. The rehearsal 57 of 57 against a local TLS Postgres 16 on 5433 and the
+Chromium on disk, with no Stripe, mail or GitHub key. A fresh checkout again had no `node_modules` on either
+side and no Postgres cluster.
+
+**Needs Harshil.**
+
+- **Five shops write their closed day glued to a range and one of them is still wrong.** "MondayClosedTuesday -
+  Saturday3:00 pm - 9:00 pm" and "TueClosedWed - Sun10:00 am - 4:00 pm" are one word to a reader, so the range
+  swallows the closed day: each of the five is now one wrong day instead of seven, which is a big improvement
+  and not the right answer. Splitting a glued word on "Closed" before the days are read would finish it, and it
+  is the sort of rule that wants counting over the catalog first.
+- **A multi-day event is still a week.** The rule deliberately keeps a line naming more than one date, so
+  "Open for visitors August 7, 8, and 9 from 10:00am to 5:00pm", "Sept 11th & 12th 12:00 PM - 8:00 PM" and
+  "Sept. 7-11: 12-7:30" still spread a festival over seven days. Telling a two-day festival from a two-week
+  season is a judgement about how long a run has to be before it is the shop's week.
+- **`o-jcprd-com` publishes "Last rental 2:30 - 3:30 pm" as its only hours line**, so a park reads as open for
+  one hour a day. That is the quiet-hours shape again with a different subject, and there may be more of them.
+- Still open from the seventy-eighth run: local `main` sits on a stale `c3a9bfd0` with 50 commits `origin/main`
+  no longer carries, so this run again committed on a detached HEAD and pushed with an explicit refspec. The
+  desktop site still has no way to say anything in passing, `plainWords` is still not idempotent, and the 1,210
+  dropped address lines still wait on a sync.
+
 ## Coverage
 
 The catalog is 48,198 listings as of the 23 September sync, 1,873 of them Viator partner rows. Counts below
@@ -6255,6 +6334,14 @@ Otto's grounded fallback, over the code that landed on 26 September: the sentenc
 check between the model and the guest, the route's four body caps measured against `companyFacts` on all
 52,815 shipped detail files, its answer cache, and the gate that keeps a refused question away from the
 model. The outreach campaign's day boundary, over every day of 2026 at five times each.
+
+Whether a dated hour line is a season or one afternoon, over all 309 dated lines in the catalog and every
+parsed week of all 52,815 shipped detail files: one closed date against a run of days named by a second month,
+by a second day hung off the first, by a range word in front of the date or by a word that opens or closes the
+run; a day number that is really a clock or a year; and OpenStreetMap's own exception clause. Every spelling a
+day of the week is written in, on both hour parsers: the list of days a line states against the words those
+same three-letter prefixes open which are not days at all, and a range whose closing day has the next thing on
+the page glued straight on to it.
 
 Which clock a shop's hours are read on, run over the whole shipped catalog rather than read: `zoneFor` and its
 API twin `zoneForArea` against all 59,091 operators, every split-state nudge in both directions, and that the
@@ -7058,4 +7145,10 @@ same placeholder rounded off. Whether the visit panel's Hours block should say "
 close the way the dashboard's own closing-time select does, rather than leaving a guest to read "2:00 PM to
 4:00 AM" as the wrap it is. Whether `esc` on the `/sessions` page should escape quotes as well
 as `&<>`, which is latent: its two hand-built attributes carry only a server-minted id and a fixed step kind
-today, and nothing a guest types can reach one.
+today, and nothing a guest types can reach one. Whether a glued word should be split on "Closed" before the days in
+it are read: five shops write "MondayClosedTuesday - Saturday3:00 pm - 9:00 pm", the range swallows the closed
+day, and each is now one wrong day instead of seven (see the ninety-second run's Needs Harshil). How long a run
+of dates has to be before it is the shop's week rather than a festival, which is what leaves "Open for visitors
+August 7, 8, and 9", "Sept 11th & 12th" and "Sept. 7-11" spread over seven days. Whether "Last rental 2:30 -
+3:30 pm", which is o-jcprd-com's only hours line and reads as a park open for one hour a day, is the
+quiet-hours shape with a third subject, and how many more of them there are.
