@@ -70,9 +70,10 @@ test("the three ways a shop writes a time that is still a time", () => {
   assert.equal(show(parseWeek(["Open 7 days, 7.30am to 6pm"])), everyDay("07:30-18:00"));
   // Seconds on the clock (o-detroitcharterco-com).
   assert.equal(show(parseWeek(["? We are open 7 days a week from 9:30:00 AM to 9:30 PM"])), everyDay("09:30-21:30"));
-  // No separator at all (o-burnindaylightbrewing-com, o-aircity360-com).
-  assert.equal(show(parseWeek(["Scroll HoursMONDAY 1130am-9PM"])), everyDay("11:30-21:00"));
-  assert.equal(show(parseWeek(["of OperationMonday: 330pm-8pm"])), everyDay("15:30-20:00"));
+  // No separator at all (o-burnindaylightbrewing-com, o-aircity360-com). The heading glued to the front of the
+  // day is a seam now, so both of these are the one day they name rather than every day of the week.
+  assert.equal(show(parseWeek(["Scroll HoursMONDAY 1130am-9PM"])), "Sun -, Mon 11:30-21:00, Tue -, Wed -, Thu -, Fri -, Sat -");
+  assert.equal(show(parseWeek(["of OperationMonday: 330pm-8pm"])), "Sun -, Mon 15:30-20:00, Tue -, Wed -, Thu -, Fri -, Sat -");
 });
 
 test("a space before the marker means the digits in front are a date, not a clock", () => {
@@ -179,7 +180,7 @@ test("a range of days is still a range with the clock glued on to its last day",
   assert.equal(show(parseWeek(["OPEN Tuesday - Saturdayfrom 9:00 am - 4:00 pm"])), "Sun -, Mon -, Tue 09:00-16:00, Wed 09:00-16:00, Thu 09:00-16:00, Fri 09:00-16:00, Sat 09:00-16:00");
   assert.equal(show(parseWeek(["THUR - FRI12:00pm - 7:00pm"])), "Sun -, Mon -, Tue -, Wed -, Thu 12:00-19:00, Fri 12:00-19:00, Sat -");
   // A shop's own closed day is glued on the same way, and a range read across it is the one day it is shut.
-  assert.equal(show(parseWeek(["Tuesday-SundayCLOSED MONDAYS10 am - 5 pm"])), "Sun 10:00-17:00, Mon -, Tue 10:00-17:00, Wed 10:00-17:00, Thu 10:00-17:00, Fri 10:00-17:00, Sat 10:00-17:00");
+  assert.equal(show(parseWeek(["Tuesday-SundayCLOSED MONDAYS10 am - 5 pm"])), "Sun 10:00-17:00, Mon closed, Tue 10:00-17:00, Wed 10:00-17:00, Thu 10:00-17:00, Fri 10:00-17:00, Sat 10:00-17:00");
   // A range written with room to breathe is unchanged.
   assert.equal(show(parseWeek(["Mon - Fri 9am-5pm"])), "Sun -, Mon 09:00-17:00, Tue 09:00-17:00, Wed 09:00-17:00, Thu 09:00-17:00, Fri 09:00-17:00, Sat -");
   assert.equal(show(parseWeek(["Mon.-Sat. 10am-9pm"])), "Sun -, Mon 10:00-21:00, Tue 10:00-21:00, Wed 10:00-21:00, Thu 10:00-21:00, Fri 10:00-21:00, Sat 10:00-21:00");
@@ -363,4 +364,37 @@ test("a day a shop says it is shut is shut, on a line that states hours as well"
   // A line that says it is closed and names no day at all is unchanged: every day it does name is shut.
   assert.equal(show(parseWeek(["Sunday: Closed"])), "Sun closed, Mon -, Tue -, Wed -, Thu -, Fri -, Sat -");
   assert.equal(show(parseWeek(["Mon-Fri 9am-5pm", "Closed for the season"])), "Sun -, Mon 09:00-17:00, Tue 09:00-17:00, Wed 09:00-17:00, Thu 09:00-17:00, Fri 09:00-17:00, Sat -");
+});
+
+/**
+ * The crawl glues the next thing on a page straight on to the last word of the thing before it. 250 listings
+ * publish an hour line with a day name glued to a heading in front of it or to the clock behind it, and for 63
+ * of them the line named no day a reader could see, which a week reads as every day of it.
+ */
+test("a day name the crawl glued to a heading or to the clock is still a day", () => {
+  // o-tankland-com, o-beatrice-ne-gov, o-bannerranchjulian-com: one day each, read as all seven.
+  assert.equal(show(parseWeek(["Public Visiting Hours Friday10AM - 4:30PM"])), "Sun -, Mon -, Tue -, Wed -, Thu -, Fri 10:00-16:30, Sat -");
+  assert.equal(show(parseWeek(["Monday10:00 am - 6:00 pm"])), "Sun -, Mon 10:00-18:00, Tue -, Wed -, Thu -, Fri -, Sat -");
+  assert.equal(show(parseWeek(["of Operation Thursday12:00PM - 6:00PM"])), "Sun -, Mon -, Tue -, Wed -, Thu 12:00-18:00, Fri -, Sat -");
+  // o-alphaonephysio-ca, o-islandvibezwatersports-com, o-pgrfm-bc-ca: a range whose opening day is glued too.
+  assert.equal(show(parseWeek(["DayHoursMonday - Saturday9 am - 8 pm"])), "Sun -, Mon 09:00-20:00, Tue 09:00-20:00, Wed 09:00-20:00, Thu 09:00-20:00, Fri 09:00-20:00, Sat 09:00-20:00");
+  assert.equal(show(parseWeek(["of OperationsMon - Fri8:00 am - 7:00 pm"])), "Sun -, Mon 08:00-19:00, Tue 08:00-19:00, Wed 08:00-19:00, Thu 08:00-19:00, Fri 08:00-19:00, Sat -");
+  assert.equal(show(parseWeek(["Open year-roundwednesday - sunday11AM - 4PM"])), "Sun 11:00-16:00, Mon -, Tue -, Wed 11:00-16:00, Thu 11:00-16:00, Fri 11:00-16:00, Sat 11:00-16:00");
+  // Two days glued to each other keep their own hours, because the seam is where the next rule starts.
+  assert.equal(show(parseWeek(["Monday11:30 AM - 10:00 PMTuesday9:00 AM - 5:00 PM"])), "Sun -, Mon 11:30-22:00, Tue 09:00-17:00, Wed -, Thu -, Fri -, Sat -");
+  assert.equal(show(parseWeek(["Mon - Fri: 3PM-9PMSaturday: 9AM-3PM"])), "Sun -, Mon 15:00-21:00, Tue 15:00-21:00, Wed 15:00-21:00, Thu 15:00-21:00, Fri 15:00-21:00, Sat 09:00-15:00");
+  // o-arcadiaescaperoom-ca and 11 more glue their day off on the same way, which hid the day and the word.
+  assert.equal(show(parseWeek(["MondayClosedTuesday2:00PM to 7:00PM"])), "Sun -, Mon closed, Tue 14:00-19:00, Wed -, Thu -, Fri -, Sat -");
+  assert.equal(show(parseWeek(["MondayClosedTuesdayClosedWednesday11:00 am - 4:00 pm"])), "Sun -, Mon closed, Tue closed, Wed 11:00-16:00, Thu -, Fri -, Sat -");
+  assert.equal(show(parseWeek(["THURSDAYCLOSEDFRIDAY to SUNDAY11:00 AM - 7:00 PM"])), "Sun 11:00-19:00, Mon -, Tue -, Wed -, Thu closed, Fri 11:00-19:00, Sat 11:00-19:00");
+  // o-kayavineyards-com writes three rules into one word, so no seam may eat the letter in front of it.
+  assert.equal(show(parseWeek(["MON - ClosedTUES-SAT - 11AM - 5pmsun - 12:30PM - 5PM"])), "Sun 12:30-17:00, Mon closed, Tue 11:00-17:00, Wed 11:00-17:00, Thu 11:00-17:00, Fri 11:00-17:00, Sat 11:00-17:00");
+  // A word that merely ends in a short spelling keeps its letters: only the crawl's own capital is a seam.
+  assert.equal(show(parseWeek(["Salmon fishing daily 6am-6pm"])), everyDay("06:00-18:00"));
+  assert.equal(show(parseWeek(["SALMON CHARTERS DAILY 6AM-6PM"])), everyDay("06:00-18:00"));
+  assert.equal(show(parseWeek(["Tuesdays and Thursdays 10am-4pm"])), "Sun -, Mon -, Tue 10:00-16:00, Wed -, Thu 10:00-16:00, Fri -, Sat -");
+  assert.equal(show(parseWeek(["Open Saturdays 9am-1pm"])), "Sun -, Mon -, Tue -, Wed -, Thu -, Fri -, Sat 09:00-13:00");
+  // A line with nothing glued into it is one rule, however many days it names.
+  assert.equal(show(parseWeek(["Mon - Fri 9am-5pm"])), "Sun -, Mon 09:00-17:00, Tue 09:00-17:00, Wed 09:00-17:00, Thu 09:00-17:00, Fri 09:00-17:00, Sat -");
+  assert.equal(show(parseWeek(["Sun, Mon, Tue, Wed, Thur 11:00 AM - 9:00 PM"])), "Sun 11:00-21:00, Mon 11:00-21:00, Tue 11:00-21:00, Wed 11:00-21:00, Thu 11:00-21:00, Fri -, Sat -");
 });

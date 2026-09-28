@@ -125,8 +125,76 @@ const OSM_SPAN_MORE = new RegExp("^\\s*,\\s*(" + OSM_CLOCK + ")\\s*-\\s*(" + OSM
  */
 const MONTH = "(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)";
 const OSM_WHEN = new RegExp("^(" + MONTH + "(?:\\s+\\d{1,2})?(?:\\s*-\\s*" + MONTH + "(?:\\s+\\d{1,2})?)?)\\s*:?\\s+(?=\\S)", "i");
+/**
+ * The crawl glues the next thing on a page straight on to the last word of the thing before it, and an hours
+ * line is where that costs a guest a day. A range whose closing day carries the clock is read anyway, because
+ * the reader stopped asking for a word boundary there, but nothing else on the line is: 250 listings publish
+ * an hour line with a day name glued to a heading in front of it or to the clock behind it, and for 63 of them
+ * the line named no day a reader could see, which a week reads as every day of it. A park's "Public Visiting
+ * Hours Friday10AM - 4:30PM" opened seven days, a dance studio's "Monday6:00PM-9:00PM Tuesday6:00PM-9:00PM"
+ * the same, and a bowling alley's "of Operation Thursday12:00PM - 6:00PM" the same again. Twelve more write
+ * their day off that way, which hid both the day and the word: "MondayClosedTuesday2:00PM to 7:00PM",
+ * "THURSDAYCLOSEDFRIDAY to SUNDAY11:00 AM - 7:00 PM", "MondayClosedTuesdayClosedWednesday11:00 am - 4:00 pm".
+ *
+ * Every break here is a shape no shop writes on purpose, so each is the crawl's own seam:
+ * a full day name is never the end or the start of another word, a day name never carries a digit, a short day
+ * spelling in capitals never sits inside a lowercase word, and "Closed" in capitals never ends one. A word
+ * ending in "mon" or "sat" keeps its letters, because the short spellings are only broken out of a word when
+ * the crawl's own capital is there to prove the seam.
+ *
+ * Then the line is cut into the rules it turned out to be holding: a day name behind a clause that has already
+ * said what happens on its days starts the next day's rule, which is what makes "Monday Closed" and "Tuesday
+ * 2:00PM to 7:00PM" two rules rather than one line that says a shop is both.
+ */
+const FULL_DAY = "(?:sun|mon|tue|wed|thu|fri|sat)(?:day|sday|nesday|rsday|urday)s?";
+const ANY_DAY = "(?:sun|mon|tue|wed|thu|fri|sat)(?:day|sday|nesday|rsday|urday|rs?)?s?";
+/** The spellings a shop shortens a day to, as the crawl's own capital leaves them. */
+const SHORT_DAY = "(?:Sun|Mon|Tues|Tue|Wednes|Wed|Thurs|Thur|Thu|Fri|Satur|Sat)";
+const SHORT_CAPS = "(?:SUN|MON|TUES|TUE|WEDNES|WED|THURS|THUR|THU|FRI|SATUR|SAT)";
+const SEAM = "\u0000";
+/**
+ * Every seam is looked for where it sits rather than by eating the letter in front of it, because a shop can
+ * write four days with no space anywhere in them: "Mon - TueWed - ThuFriSatSun" is six seams in one word, and
+ * a rule that consumed the letter before each day found every other one.
+ */
+const GLUED_FULL_BEFORE = new RegExp("(?<=[A-Za-z\\d])(?=" + FULL_DAY + ")", "gi");
+const GLUED_FULL_AFTER = new RegExp("(?<=" + FULL_DAY + ")(?=[A-Za-z])", "gi");
+const GLUED_SHORT = new RegExp("(?<=[a-z\\d])(?=" + SHORT_DAY + "(?![a-z]))", "g");
+/** A day shouted in capitals has to end the word it is stuck to, or "SATISFYING" would name a Saturday. */
+const GLUED_SHORT_CAPS = new RegExp("(?<=[a-z\\d])(?=" + SHORT_CAPS + "(?![A-Za-z]))", "g");
 /** A day name the crawl ran onto the end of the time before it, with no space in between. */
-const GLUED_DAY = /(\d(?:\s?[ap]\.?m\.?)?)(Mon|Tues|Tue|Wednes|Wed|Thurs|Thur|Thu|Fri|Satur|Sat|Sun)(day)?\b/g;
+const GLUED_TIME = new RegExp("(?<=\\d\\s?[ap]\\.?m\\.?|\\d)(?=" + SHORT_DAY + "|" + SHORT_CAPS + ")", "gi");
+const GLUED_CLOCK = new RegExp("\\b(" + ANY_DAY + ")(?=\\d)", "gi");
+const GLUED_CLOSED = /(?<=[A-Za-z])(?=Closed|CLOSED)/g;
+/** A day name whose plural a seam would otherwise leave behind: "Tuesdays" and "MONDAYS10" are one word each. */
+const LOST_PLURAL = new RegExp(SEAM + "(s)(?![a-z])", "gi");
+/** Whether a clause has already said what happens on its days, which is what makes the next day a new rule. */
+const RULE_SAID = /\d\s*(?::\d{2})?\s*(?:[ap]\.?m\.?)?\s*(?:-|\u2013|\u2014|to|until|till)\s*\d|\bclosed\b/i;
+const OPENS_ON_DAY = new RegExp("^\\s*(?:" + ANY_DAY + ")\\b", "i");
+
+/** The rules a published line is holding, once the crawl's seams are opened. One line in, one or more out. */
+export function gluedRules(line: string): string[] {
+  const seams = line
+    .replace(GLUED_FULL_BEFORE, SEAM)
+    .replace(GLUED_FULL_AFTER, SEAM)
+    // The plural goes back on the day it belongs to before the clock is looked for behind it.
+    .replace(LOST_PLURAL, "$1")
+    .replace(GLUED_SHORT, SEAM)
+    .replace(GLUED_SHORT_CAPS, SEAM)
+    .replace(GLUED_TIME, SEAM)
+    .replace(GLUED_CLOCK, "$1" + SEAM)
+    .replace(GLUED_CLOSED, SEAM)
+    .split(SEAM);
+  const out: string[] = [];
+  for (const part of seams) {
+    const last = out.length ? out[out.length - 1] : null;
+    if (last === null) out.push(part);
+    else if (OPENS_ON_DAY.test(part) && RULE_SAID.test(last)) out.push(part);
+    else out[out.length - 1] = last + " " + part;
+  }
+  return out.map((p) => p.trim()).filter(Boolean);
+}
+
 /** Zero-width joiners, spaces and marks, a byte order mark, and the control characters a bad decode leaves. */
 const INVISIBLE = new RegExp("[" + String.fromCharCode(0) + "-" + String.fromCharCode(31) + "​-‏  ﻿]", "g");
 
@@ -281,7 +349,7 @@ export function displayHours(lines: string[]): string[] {
     // "||" is the syntax's own separator and never a shop's own punctuation, so it starts a new line. A
     // semicolon is left alone: plenty of shops separate a real sentence with one, and a line that names its
     // days once ("Monday to Sunday 9am-7pm; holidays vary") means something different once it is cut in two.
-    const plain = raw.replace(GLUED_DAY, "$1\n$2$3").split(/\n|\s*\|\|\s*/);
+    const plain = gluedRules(raw).flatMap((r) => r.split(/\s*\|\|\s*/));
     for (const part of osm || plain) {
       const line = tidyHours(part);
       if (line && !WHOLE_DAY.test(line) && !SAME_ENDS.test(line) && !out.includes(line)) out.push(line);
