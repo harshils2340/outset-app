@@ -67,6 +67,34 @@ const DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Frid
 export const DAY_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 /**
+ * A full stop that ends a sentence rather than an abbreviation.
+ *
+ * An initial or a shortened word is followed by a space and a capital exactly as a sentence end is, so the
+ * first full stop in a text is often not one. Cutting at it told a guest "views of the Canadian and U.S",
+ * "a visit to the world's most active volcano, Mt", "our airboat captains are U.S" and "Flights within
+ * destination (e.g". The other half of the same bug is a shop whose copy opens on an initial: the stop landed
+ * inside the first twenty characters, the `stop > 20` floor threw it away, and the text then ran on through
+ * every later sentence, so "The A.R. Mitchell will exhibit ..." carried a second paragraph about the artist.
+ * 1,545 clipped texts on 1,078 shipped listings read one way or the other.
+ *
+ * Not cutting costs nothing: the `max` clamp below still ends the line. So the list is generous, and a stop
+ * inside an open bracket is left alone for the same reason.
+ */
+const ABBREVIATION =
+  /(?:(?:^|[^\p{L}'\u2019])\p{L}|\b(?:st|ste|mt|mts|ft|dr|mr|mrs|ms|jr|sr|capt|cpt|lt|sgt|col|gen|rev|prof|hon|hwy|rte|ave|av|blvd|rd|ln|apt|dept|div|approx|vs|etc|inc|corp|ltd|llc|co|hrs?|mins?|secs?|lbs?|oz|pkwy|univ|no|nos|jan|feb|mar|apr|jun|jul|aug|sept?|oct|nov|dec|mon|tues?|wed|thur?s?|fri|sat|sun))\.$/iu;
+
+function sentenceEnd(text: string): number {
+  const marks = /[.;]\s+[A-Z0-9]/g;
+  for (let m = marks.exec(text); m; m = marks.exec(text)) {
+    const head = text.slice(0, m.index + 1);
+    if (m[0][0] === "." && ABBREVIATION.test(head)) continue;
+    if ((head.match(/\(/g) || []).length > (head.match(/\)/g) || []).length) continue;
+    return m.index;
+  }
+  return -1;
+}
+
+/**
  * Operator prose, cut to one readable sentence of at most `max` characters.
  *
  * It reads the shop's copy through `cleanDesc`, the rule the listing page above the chat reads it through, so
@@ -78,7 +106,7 @@ export const DAY_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 function clip(raw: string, max = 150): string {
   const text = cleanDesc(String(raw || ""));
   if (!text) return "";
-  const stop = text.search(/[.;]\s+[A-Z0-9]/);
+  const stop = sentenceEnd(text);
   let out = (stop > 20 ? text.slice(0, stop) : text).trim();
   if (out.length > max) {
     const cut = out.lastIndexOf(" ", max);
