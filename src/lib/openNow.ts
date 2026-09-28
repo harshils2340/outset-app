@@ -47,7 +47,14 @@ const DAY_LIST = new RegExp("\\b" + DAY_WORD + "\\b", "g");
 /** "Tue-Fri", "Mon, Wed & Fri", "Thu to Sun": any day range or list, expanded to day numbers. Null when the line names no day. */
 function genericDays(line: string): number[] | null {
   const l = line.toLowerCase();
-  const range = l.match(/\b(sun|mon|tue|wed|thu|fri|sat)[a-z]*\.?\s*(?:-|–|—|to|through|thru)\s*(sun|mon|tue|wed|thu|fri|sat)[a-z]*\b/);
+  // The day that closes a range is not asked to end on a word boundary, because the crawl glues the next thing
+  // on the page straight on to it with no space for one to sit in: "Monday-Thursday9:00 AM - 5:00 PM", "Monday
+  // - Sunday10am-10pm", "Tuesday - Saturdayfrom 9:00 am - 4:00 pm", "Monday - SaturdayOpen - 8:00 am to 5:00
+  // pm", "Tuesday-SundayCLOSED MONDAYS10 am - 5 pm". None of those ranges was read at all, so the line named
+  // its opening day alone or no day whatever, and a line naming no day is a week a guest reads as every day of
+  // it. 186 listings state a range written that way, among them a museum open Tuesday to Saturday that said it
+  // opened on Tuesday and nothing else, and an arts centre open all week that said Monday.
+  const range = l.match(/\b(sun|mon|tue|wed|thu|fri|sat)[a-z]*\.?\s*(?:-|–|—|to|through|thru)\s*(sun|mon|tue|wed|thu|fri|sat)[a-z]*/);
   const days = new Set<number>();
   if (range) {
     const a = DAY_IDX[range[1]];

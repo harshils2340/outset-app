@@ -171,6 +171,20 @@ test("Thursday is a day however the shop abbreviates it", () => {
   assert.equal(show(parseWeek(["Available for your wedding 9am-5pm"])), everyDay("09:00-17:00"));
 });
 
+test("a range of days is still a range with the clock glued on to its last day", () => {
+  // The crawl glues the next thing on the page straight on to the closing day, with no space for a word
+  // boundary to sit in. 186 listings state a range written that way, and not one of the ranges was read.
+  assert.equal(show(parseWeek(["Monday-Thursday9:00 AM - 5:00 PM"])), "Sun -, Mon 09:00-17:00, Tue 09:00-17:00, Wed 09:00-17:00, Thu 09:00-17:00, Fri -, Sat -");
+  assert.equal(show(parseWeek(["Monday - Sunday10am-10pm"])), everyDay("10:00-22:00"));
+  assert.equal(show(parseWeek(["OPEN Tuesday - Saturdayfrom 9:00 am - 4:00 pm"])), "Sun -, Mon -, Tue 09:00-16:00, Wed 09:00-16:00, Thu 09:00-16:00, Fri 09:00-16:00, Sat 09:00-16:00");
+  assert.equal(show(parseWeek(["THUR - FRI12:00pm - 7:00pm"])), "Sun -, Mon -, Tue -, Wed -, Thu 12:00-19:00, Fri 12:00-19:00, Sat -");
+  // A shop's own closed day is glued on the same way, and a range read across it is the one day it is shut.
+  assert.equal(show(parseWeek(["Tuesday-SundayCLOSED MONDAYS10 am - 5 pm"])), "Sun 10:00-17:00, Mon -, Tue 10:00-17:00, Wed 10:00-17:00, Thu 10:00-17:00, Fri 10:00-17:00, Sat 10:00-17:00");
+  // A range written with room to breathe is unchanged.
+  assert.equal(show(parseWeek(["Mon - Fri 9am-5pm"])), "Sun -, Mon 09:00-17:00, Tue 09:00-17:00, Wed 09:00-17:00, Thu 09:00-17:00, Fri 09:00-17:00, Sat -");
+  assert.equal(show(parseWeek(["Mon.-Sat. 10am-9pm"])), "Sun -, Mon 10:00-21:00, Tue 10:00-21:00, Wed 10:00-21:00, Thu 10:00-21:00, Fri 10:00-21:00, Sat 10:00-21:00");
+});
+
 test("a campground's quiet hours are not its opening hours", () => {
   // o-alpinelodgeandrv-com and 36 more publish one hours line and it is the hours nobody may make a noise.
   // Read as opening hours it is the week turned inside out: shut all afternoon, open all night.

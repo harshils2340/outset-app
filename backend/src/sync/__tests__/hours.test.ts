@@ -98,6 +98,15 @@ test("Thursday is a day however the shop abbreviates it", () => {
   assert.equal(show(encodeWeek(["Available for your wedding 9am-5pm"])), everyDay("09:00-17:00"));
 });
 
+test("a range of days is still a range with the clock glued on to its last day", () => {
+  // The twin of the guest side's day reader, over the 186 listings whose range the crawl glued the clock to.
+  assert.equal(show(encodeWeek(["Monday-Thursday9:00 AM - 5:00 PM"])), "Sun -, Mon 09:00-17:00, Tue 09:00-17:00, Wed 09:00-17:00, Thu 09:00-17:00, Fri -, Sat -");
+  assert.equal(show(encodeWeek(["Monday - Sunday10am-10pm"])), everyDay("10:00-22:00"));
+  assert.equal(show(encodeWeek(["OPEN Tuesday - Saturdayfrom 9:00 am - 4:00 pm"])), "Sun -, Mon -, Tue 09:00-16:00, Wed 09:00-16:00, Thu 09:00-16:00, Fri 09:00-16:00, Sat 09:00-16:00");
+  assert.equal(show(encodeWeek(["Tuesday-SundayCLOSED MONDAYS10 am - 5 pm"])), "Sun 10:00-17:00, Mon -, Tue 10:00-17:00, Wed 10:00-17:00, Thu 10:00-17:00, Fri 10:00-17:00, Sat 10:00-17:00");
+  assert.equal(show(encodeWeek(["Mon - Fri 9am-5pm"])), "Sun -, Mon 09:00-17:00, Tue 09:00-17:00, Wed 09:00-17:00, Thu 09:00-17:00, Fri 09:00-17:00, Sat -");
+});
+
 test("quiet hours and happy hour are not opening hours", () => {
   // o-alpinelodgeandrv-com and 36 more campgrounds publish their quiet hours and nothing else, so the week
   // shipped in `catalog.json` was their opening hours turned inside out: [1320, 1920] on all seven days.
