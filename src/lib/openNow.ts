@@ -117,7 +117,10 @@ const CLOSED_AFTER = new RegExp(
  * "Saturday & Sunday closed 8:30 a.m. to 9:30 a.m. for North & South Coyote Butte Orientation" is an hour out
  * of two mornings, and both days keep the hours they state elsewhere.
  */
-const CLOSED_SPAN = /^[\s:;.,&=/\-\u2013\u2014]*(?:from\s+|between\s+)?\d{1,2}(?::\d{2})?\s*(?:[ap]\.?m|:)/i;
+const SHUT_CLOCK_GAP = "[\\s:;.,&=/\\-\u2013\u2014]*(?:from\\s+|between\\s+)?";
+const CLOSED_SPAN = new RegExp("^" + SHUT_CLOCK_GAP + "\\d{1,2}(?::\\d{2})?\\s*(?:[ap]\\.?m|:)", "i");
+/** The same shape read from the other side: the words that run from the word up to where a range starts. */
+const CLOSED_LEAD = new RegExp("\\bclosed\\b" + SHUT_CLOCK_GAP + "$", "i");
 const CLOSED_WORD = /\bclosed\b/gi;
 
 function closedDays(line: string): number[] {
@@ -226,12 +229,15 @@ function coversWholeDay(open: number, close: number): boolean {
 }
 
 /**
- * The first range on the line that could be opening hours, in minutes since midnight. A candidate no clock
- * could show, or one that spans less than half an hour or more than a day, is stepped over rather than taken,
- * so "Open House November 7, 2026 - 10:00 AM - 5:00 PM" gives up the 10 to 5 behind the date instead of
- * opening at 26 o'clock.
+ * The first range on the line that could be opening hours, in minutes since midnight, and where on the line it
+ * sits. A candidate no clock could show, or one that spans less than half an hour or more than a day, is
+ * stepped over rather than taken, so "Open House November 7, 2026 - 10:00 AM - 5:00 PM" gives up the 10 to 5
+ * behind the date instead of opening at 26 o'clock.
+ *
+ * Where it sits matters because a range can be the hour a shop shuts rather than the hour it opens, and only
+ * the words in front of it say which.
  */
-function firstSpan(line: string): DaySpan | null {
+function firstSpanAt(line: string): { span: DaySpan; at: number } | null {
   for (const t of normalizeClock(line).matchAll(TIME_SCAN)) {
     if (!onTheClock(t[1], t[2], t[3]) || !onTheClock(t[4], t[5], t[6])) continue;
     let open = mins(Number(t[1]), Number(t[2] || 0), t[3], false);
@@ -240,7 +246,7 @@ function firstSpan(line: string): DaySpan | null {
     open = sharedMarker(open, close, t[1], t[3], t[4]);
     if (close <= open) close += 24 * 60;
     if (close - open < 30 || close - open > 24 * 60 || coversWholeDay(open, close)) continue;
-    return { open, close };
+    return { span: { open, close }, at: t.index };
   }
   return null;
 }
@@ -279,9 +285,17 @@ function readRule(raw: string): RuleRead | null {
   // space it also hides the day, so "3132Tuesday - Friday" left a theatre open on Friday alone.
   const line = raw.replace(/\s+/g, " ").replace(PHONE_RE, " ").trim();
   if (!line) return null;
-  const closed = /\bclosed\b/i.test(line);
+  // An hour a shop shuts for is not an hour it opens. Page Lake Powell publishes its real week and then
+  // "Saturday & Sunday closed 8:30 a.m. to 9:30 a.m. for North & South Coyote Butte Orientation", and that
+  // line, being the last one written, gave Saturday and Sunday the hour of the orientation as their whole
+  // opening hours: a guest read "8:30 AM - 9:30 AM" on a shop open until two. The days are already kept out of
+  // the day-off list by CLOSED_SPAN; when the closure's own clock is also the first range the line carries,
+  // the rule states no hours at all, and its "closed" is about that hour rather than about a day.
+  const hit = firstSpanAt(line);
+  const shutsForAnHour = !!hit && CLOSED_LEAD.test(normalizeClock(line).slice(0, hit.at));
+  const closed = !shutsForAnHour && /\bclosed\b/i.test(line);
   const shut = closedDays(line);
-  const span = firstSpan(line);
+  const span = shutsForAnHour ? null : hit?.span ?? null;
   let days: number[] | null = null;
   for (const [re, d] of DAY_RE) {
     if (re.test(line)) {

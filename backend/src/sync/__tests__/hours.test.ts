@@ -242,6 +242,14 @@ test("a day a shop says it is shut is shut, on a line that states hours as well"
   assert.equal(show(encodeWeek(["Driving range open daily 6:30AM - 7:00PM (closed Sundays after 3 PM for maintenance)"])), everyDay("06:30-19:00"));
   assert.equal(show(encodeWeek(["Monday: 9:00 am-6:00 pm Tuesday: 9:00 am-6:00 pm", "Monday - Saturday, closed Sunday"])), "Sun closed, Mon 09:00-18:00, Tue 09:00-18:00, Wed -, Thu -, Fri -, Sat -");
   assert.equal(show(encodeWeek(["Sunday: Closed"])), "Sun closed, Mon -, Tue -, Wed -, Thu -, Fri -, Sat -");
+  // An hour behind the word is an hour the shop shuts for, and not an hour it opens either: o-pagelakepowellhub-com
+  // publishes its real week and this line last, and the card read Saturday as the hour of the orientation.
+  assert.equal(show(encodeWeek(["Saturday & Sunday closed 8:30 a.m. to 9:30 a.m. for Coyote Butte Orientation"])), "(no hours)");
+  assert.equal(
+    show(encodeWeek(["Monday-Friday 8 a.m. to 3:30 p.m.", "Saturday 8 a.m. to 2 p.m.", "Sunday 8 a.m. to 12 Noon", "Saturday & Sunday closed 8:30 a.m. to 9:30 a.m. for Coyote Butte Orientation"])),
+    "Sun 08:00-12:00, Mon 08:00-15:30, Tue 08:00-15:30, Wed 08:00-15:30, Thu 08:00-15:30, Fri 08:00-15:30, Sat 08:00-14:00",
+  );
+  assert.equal(show(encodeWeek(["8:30 am - 4:30 pm, closed from 12:00 pm - 1:00 pm"])), everyDay("08:30-16:30"));
 });
 
 /**
