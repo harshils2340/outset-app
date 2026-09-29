@@ -12,11 +12,18 @@ import { outreachAddress, ownerFirstName } from "./address.ts";
  */
 
 // Prepared on first use, not at import: a test that imports the send path against a fresh in-memory database
-// has no facts table yet, and preparing here would kill the whole file before its first test ran.
+// has no facts table yet, and preparing here would kill the whole file before its first test ran. Deferring
+// the prepare only moves that throw into the first call, so the table is looked for as well: a database that
+// has never been migrated has no owner facts to give, which is the front desk, not an error. The miss is not
+// remembered, so a job that migrates after its first draft still reads the facts the crawl left.
 let factsStmt: ReturnType<typeof db.prepare> | null = null;
 
 export function ownerFacts(operatorId: string): { emails: string[]; names: string[] } {
-  factsStmt ??= db.prepare("SELECT fact_key, fact_value FROM facts WHERE operator_id = ? AND fact_key IN ('owner_email', 'owner_name')");
+  if (!factsStmt) {
+    const has = db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'facts'").get();
+    if (!has) return { emails: [], names: [] };
+    factsStmt = db.prepare("SELECT fact_key, fact_value FROM facts WHERE operator_id = ? AND fact_key IN ('owner_email', 'owner_name')");
+  }
   const rows = factsStmt.all(operatorId) as { fact_key: string; fact_value: string }[];
   const emails: string[] = [];
   const names: string[] = [];
