@@ -108,16 +108,7 @@ const unclosed = (s: string) => (s.match(/[([{]/g) || []).length > (s.match(/[)\
 const unopened = (s: string) => (s.match(/\)/g) || []).length > (s.match(/\(/g) || []).length;
 const closeOpenBracket = (s: string) => (unclosed(s) ? s.replace(OPEN_TAIL, "").trim() : s);
 
-/**
- * A row name as a guest should read it, with a half-cut sentence's trailing word taken off.
- *
- * The sub-line under the name is read by the same rule. It comes off the same price list and carries the same
- * cruft, and `bookableMenu` used to tidy the name and print whatever sat beside it: a batting cage offered
- * "30 minutes ……", a salt cave "Seniors: 1 session ……", a sunset cruise "516-662-2327 Pricing Monday-Thursday",
- * a charter "Inshore Fishing Trip, $100 Deposit || Includes 4 Guests" and a ball field "Fields (Night Practice
- * or General Use))". 34 sub-lines on 9 shipped listings, 17 of them the row's own detail and 17 the tier label
- * the sync copied it into, each printed under a name the same function had already cleaned.
- */
+/** A row name as a guest should read it, with a half-cut sentence's trailing word taken off. */
 export function tidyRowName(raw: string): string {
   const name = raw.replace(INVISIBLE, "").trim();
   let cut = closeOpenBracket(name)
@@ -212,30 +203,13 @@ export function bookableMenu<T extends { options?: Row[]; services?: Grouped[]; 
   for (let i = 0; i < options.length; i++) if (bookableRow(options[i].name, options[i].price)) keep.push(i);
   const keptAddons = addons.filter((a) => bookableAddon(a.name));
   const renamed = (rows: { name: string }[]) => rows.some((r) => tidyRowName(r.name) !== r.name);
-  const tidy = (text: string | undefined) => (text ? tidyRowName(text) : text);
-  // The sub-line the picker prints under the name, which reads the same rule as the name itself.
-  const resubbed = (rows: { detail?: string }[]) => rows.some((r) => r.detail && tidy(r.detail) !== r.detail);
-  const relabelled = (groups: Grouped[]) => groups.some((s) => s.variants.some((v) => v.label && tidy(v.label) !== v.label));
   // Most of the catalog is already clean, and this runs over every record the app loads, so leave those alone.
-  if (
-    keep.length === options.length &&
-    keptAddons.length === addons.length &&
-    !renamed(options) &&
-    !renamed(services) &&
-    !renamed(addons) &&
-    !resubbed(options) &&
-    !relabelled(services)
-  )
-    return wholeServices(item);
+  if (keep.length === options.length && keptAddons.length === addons.length && !renamed(options) && !renamed(services) && !renamed(addons)) return wholeServices(item);
 
   const moved = new Map(keep.map((from, to) => [from, to]));
-  const nextOptions = keep.map((i) => ({ ...options[i], name: tidyRowName(options[i].name), ...(options[i].detail ? { detail: tidy(options[i].detail)! } : {}) }));
+  const nextOptions = keep.map((i) => ({ ...options[i], name: tidyRowName(options[i].name) }));
   const nextServices = services
-    .map((s) => ({
-      ...s,
-      name: tidyRowName(s.name),
-      variants: s.variants.filter((v) => moved.has(v.optionIdx)).map((v) => ({ ...v, optionIdx: moved.get(v.optionIdx)!, ...(v.label ? { label: tidy(v.label)! } : {}) })),
-    }))
+    .map((s) => ({ ...s, name: tidyRowName(s.name), variants: s.variants.filter((v) => moved.has(v.optionIdx)).map((v) => ({ ...v, optionIdx: moved.get(v.optionIdx)! })) }))
     // A service whose every tier named an archive goes with them; the picker builds its rows from the tiers.
     .filter((s) => s.variants.length > 0 && bookableRow(s.name, s.variants.find((v) => v.price != null && v.price > 0)?.price ?? null));
 

@@ -396,3 +396,60 @@ test("a row name keeps neither the crawl's spaced punctuation nor a bracket noth
   assert.equal(tidyRowName("Four (4) 50-minute Private Pilates Lessons"), "Four (4) 50-minute Private Pilates Lessons");
   assert.equal(tidyRowName("(> 6 Hours)"), "(> 6 Hours)");
 });
+
+/**
+ * The sub-line the booking picker prints under a row's name comes off the same price list as the name and
+ * carries the same cruft, and `bookableMenu` used to clean the name and print whatever sat beside it. 34
+ * sub-lines on 9 shipped listings read as junk under a name the same function had already tidied: 17 the row's
+ * own detail and 17 the tier label the sync copied it into.
+ */
+test("a row's sub-line is read by the same rule as its name", () => {
+  const menu = (detail: string) => {
+    const out = bookableMenu({ options: [{ name: "Batting cage", price: 30, detail }], services: [{ name: "Batting cage", variants: [{ label: detail, price: 30, optionIdx: 0 }] }] }) as {
+      options: { detail?: string }[];
+      services: { variants: { label?: string }[] }[];
+    };
+    return [out.options[0].detail, out.services[0].variants[0].label];
+  };
+  // A price list's dot leaders are the space between the label and the price, not part of either.
+  assert.deepEqual(menu("30 minutes ……"), ["30 minutes", "30 minutes"]); // o-360elitearenaofarlington-com
+  assert.deepEqual(menu("Seniors: 1 session ……"), ["Seniors: 1 session", "Seniors: 1 session"]); // o-saltcavesb-com
+  assert.deepEqual(menu("Monday - Thursday (Ages 65+) ……"), ["Monday - Thursday (Ages 65+)", "Monday - Thursday (Ages 65+)"]); // o-jellystonems-com
+  // A phone number is no more a tier than it is a service name.
+  assert.deepEqual(menu("516-662-2327 Pricing Monday-Thursday"), ["Pricing Monday-Thursday", "Pricing Monday-Thursday"]); // o-peconicbaysunsetcruises-com
+  // A bracket the crawl left open, a doubled separator, a nav arrow, a space in front of the shop's own mark.
+  assert.deepEqual(menu("Mina Totino ["), ["Mina Totino", "Mina Totino"]); // o-belkin-ubc-ca
+  assert.deepEqual(menu("Inshore Fishing Trip, $100 Deposit || Includes 4 Guests"), ["Inshore Fishing Trip, $100 Deposit | Includes 4 Guests", "Inshore Fishing Trip, $100 Deposit | Includes 4 Guests"]); // o-captainblake-com
+  assert.deepEqual(menu("> adults"), ["adults", "adults"]); // o-hendryracing-com
+  assert.deepEqual(menu("Fridays are also Pizza Days ! Please send"), ["Fridays are also Pizza Days! Please send", "Fridays are also Pizza Days! Please send"]); // o-downtownsailing-org
+  // A sub-line the shop wrote cleanly is left exactly as it is, brackets and all.
+  assert.deepEqual(menu("Four (4) 50-minute Private Pilates Lessons"), ["Four (4) 50-minute Private Pilates Lessons", "Four (4) 50-minute Private Pilates Lessons"]);
+  assert.deepEqual(menu("(> 6 Hours)"), ["(> 6 Hours)", "(> 6 Hours)"]);
+});
+
+/**
+ * Tidying the sub-line must not move a row. `wholeServices` reads a row's sub-line to decide which rows no tier
+ * points at and which would read exactly as a tier already shown, so a cleaner sub-line could in principle merge
+ * or unmerge a service. Run over the whole shipped catalog against the same menu with its sub-lines tidied up
+ * front: the two answer identically, so the only thing that changes is what a guest reads.
+ */
+test("the shipped menus keep their shape once the sub-lines are tidied", () => {
+  let tidied = 0;
+  let listings = 0;
+  for (const j of details()) {
+    const item = j as Detail & { options?: { name: string; price: number | null; detail?: string }[]; services?: { name: string; variants: { label: string; price: number | null; optionIdx: number }[] }[] };
+    const pre = {
+      ...item,
+      ...(item.options ? { options: item.options.map((o) => ({ ...o, ...(o.detail ? { detail: tidyRowName(o.detail) } : {}) })) } : {}),
+      ...(item.services ? { services: item.services.map((s) => ({ ...s, variants: s.variants.map((v) => ({ ...v, ...(v.label ? { label: tidyRowName(v.label) } : {}) })) })) } : {}),
+    };
+    assert.deepEqual(bookableMenu(item), bookableMenu(pre), item.id);
+    const moved = (item.options || []).filter((o) => o.detail && tidyRowName(o.detail) !== o.detail).length + (item.services || []).reduce((n, s) => n + s.variants.filter((v) => v.label && tidyRowName(v.label) !== v.label).length, 0);
+    if (moved) {
+      listings++;
+      tidied += moved;
+    }
+  }
+  assert.ok(tidied > 0, "no sub-line was tidied at all, which means the rule stopped running");
+  assert.ok(listings <= 40, "the sub-line rule is reaching far more listings than the 9 it was written for, got " + listings);
+});
