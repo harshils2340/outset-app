@@ -7057,6 +7057,70 @@ touched.
   that each name their days a guest should read; the unlabelled happy hour; the desktop site has no way to say
   anything in passing; `plainWords` is not idempotent; a rule behind an opening bracket is still not cut.
 
+## 29 September 2026, hundred and fifth run (11:24 to 11:58 UTC)
+
+**Chosen, and why.** `git fetch` first: nothing has landed since the hundred and fourth run's entry, and that
+entry records the rehearsal green at 57 of 57 after its own commits, so by the rule the rehearsal was skipped at
+the start and run again at the end, because both changes touch `src/lib` and `backend/src`. Both `node_modules`
+were missing on this checkout and were installed. Baseline: root and backend type checks clean, app 1,019 pass,
+backend 928 tests with 926 pass and 2 skipped. Every area on the brief is on the Verified list, so the hunt took
+the top item on Not yet checked: which of two hour lines about two different things a guest should read, over the
+5,529 listings that publish more than one line.
+
+**Found and fixed.**
+
+- **An hour a shop shuts for stops being the hours it opens** (`f99d7bbd`). A range sitting right behind the word
+  "closed" is the hour a shop shuts, and the day reader already knew it: a clock there keeps the days it names out
+  of the day-off list. The span reader did not, so the same clock became the day's whole opening hours. Page Lake
+  Powell publishes its real week and then "Saturday & Sunday closed 8:30 a.m. to 9:30 a.m. for North & South
+  Coyote Butte Orientation", and that line, being last, gave Saturday and Sunday the hour of the orientation: a
+  guest read 8:30 AM to 9:30 AM on a shop open until two. `firstSpanAt` now says where the range it took sits, and
+  a rule whose first range is the closure's own clock states no hours at all.
+- **A line that names only the days it shuts still states the rest of the week** (`c5b5b609`). "open six days a
+  week (closed Tuesdays) 10:00am-5:00pm" is the whole Hours block of the San Jose Museum of Quilts. The one day it
+  names is the day it is shut, so that day was shut and the six days it is open said nothing at all: no Hours
+  block, no open-now line, no start times. Four more write the shape, among them a gallery ("CLOSED Mondays &
+  Tuesdays - 10am - 4pm") and a flying club ("Office hours 8:00am-4pm (closed Tues / Wed)"). Such a rule is
+  talking about the rest of the week, so its span joins the pass that fills the days nothing else names.
+
+Eight listings read differently for the two together, and both hour parsers answer identically on all 14,509 that
+publish hours, checked row by row.
+
+**Swept and clean, or measured and left.** The top item itself, measured rather than argued: over the whole
+shipped catalog 439 listings publish two lines that each name their own days and disagree about one, 5,452 day
+pairs in all. The obvious rule, that the narrower line wins whatever order the page wrote them in, was built and
+diffed over all 14,509: 87 listings change and it is worse, not better. It is right on 300 Suns Brewing's
+"Tuesday-Tuesday 11am-9pm" and on Brunswick Bierworks' glued Tuesday, and wrong on Avery Brewing (a two-hour
+"Tuesday - Friday, 2-5 PM" beat the real 11:30 to 9), on Avling (brunch beat dinner), on Black's Camp (the
+restaurant beat the park) and on Byrncliff (a tee-time band beat the course). Specificity is not the axis; the
+subject of the line is, and the subjects here are meal services, sub-venues and seasons rather than a rule a
+reader can spell. Left open, and now measured. Three listings lost a whole week to the first commit rather than
+gaining one: each publishes one glued line whose "CLOSED" sits on a clock ("ThuFri-SatSunCLOSED 12pm-10pm"), and
+each read as open on the day the shop said it was shut, so the honest gap is the better of the two wrongs.
+
+**Verification.** App `npm test` 1,019 pass, 0 fail. Backend `npm test` 928 tests, 926 pass, 0 fail, 2 skipped.
+`tsc --noEmit -p .` clean at the root, backend clean but for TS5097. The rehearsal was run after the changes:
+green at 57 of 57, against a local Postgres 16 cluster built here on port 5433 with SSL on and the Playwright
+Chromium already on disk. Nothing under `backend/data`, `public/` or `src/data` was touched.
+
+**Needs Harshil.**
+
+- **A shop shut for a morning still reads as shut for the day.** Four listings write "Closed Monday until noon",
+  "Closed Monday until 4:30 p.m.", "Range closed Monday mornings until 12:00 PM" or "Closed Tuesday after Labor
+  Day". The days behind the word are already kept out of the day-off list when a clock follows them, but these
+  name the day first and the limit after, so the whole day is shut and a guest is told a golf club is closed on a
+  day it opens at noon. Reading the limit as an opening time is a guess; refusing the line loses the day off.
+- **The backend suite went red once and green on every run since.** One full run failed the four Otto outreach
+  copy tests in `ottoDrafts.test.ts` together, which is a file with no database, no clock and no fixture; the file
+  alone passes five times out of five and the whole suite has passed four times since. It looks like a module
+  load under memory pressure rather than a real failure, and it is worth knowing about before anyone treats a red
+  backend run as proof of a defect.
+- Still open from earlier runs: the static pages are 2,241 listings behind the app until a sync runs; seven row
+  names are an operator's own words rather than an offer; five shops' word index holds "amp"; which of two lines
+  that each name their days a guest should read, which is now measured and still a judgement; the unlabelled happy
+  hour; the desktop site has no way to say anything in passing; `plainWords` is not idempotent; a rule behind an
+  opening bracket is still not cut; the operator's dashboard names a booking as the crawl found it.
+
 ## Coverage
 
 The catalog is 48,198 listings as of the 23 September sync, 1,873 of them Viator partner rows. Counts below
@@ -7841,11 +7905,21 @@ booking stored before that split still reading as the experience alone. Every la
 and URL those emails render, for an escape. The day a shop writes as a bare two-letter code, over every
 trading-hours line in the shipped catalog, and what a group of two is protecting the reader from.
 
-**Not yet checked.** Which of two hour lines about two different things a guest should read, on the 360
-listings where two lines that each name their own days disagree about one and the last one written wins (the 71
-whose second line named no day at all are closed, see the hundred and first run). Whether a two or three hour
+Which of two hour lines a guest should read when both name their own days, over all 5,529 listings that publish
+more than one and the 439 that hold a disagreement: the rule that the narrower line wins, built and diffed over
+all 14,509 published weeks and refused on the evidence. The hour a shop states behind the word "closed", over
+every trading-hours line in the catalog: the clock that is the hour it shuts rather than the hour it opens, and
+the range a line states before that closure, which is still the shop's own. The rule whose only named days are
+the days it shuts, on the five listings that write one. Both hour parsers diffed row by row over all 14,509
+listings that publish hours.
+
+**Not yet checked.** Which of two hour lines about two different things a guest should read, on the 439
+listings where two lines that each name their own days disagree about one and the last one written wins: the
+hundred and fifth run measured the obvious rule, that the narrower line wins, and refused it, so what is left is
+the subject of the line rather than its breadth, and the subjects are meal services, sub-venues and seasons. Whether a two or three hour
 evening span with days in front of it and no label is a happy hour, which is 2 of those 71 and a guess rather
-than a rule.
+than a rule. Whether a day a shop shuts for a morning should be shut for the day, which the four listings writing
+"Closed Monday until noon" now are (see the hundred and fifth run's Needs Harshil).
 Whether a bracket should be allowed to open the next rule on a line, which is what leaves
 `o-pequeacreekcampground-com`'s "Mon/Wed-Sat (Noon-6pm) Sun (11am-4pm" one rule (see the hundred and second
 run's Needs Harshil). Whether a charter's stated trip window should count as its opening hours, on the four
