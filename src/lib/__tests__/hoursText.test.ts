@@ -231,3 +231,43 @@ test("the words a guest reads in the Hours block keep the shop's own codes", () 
   assert.deepEqual(displayHours(["M - F 10am - 6pm Saturday 10am - 3pm"]), ["M - F 10am - 6pm Saturday 10am - 3pm"]);
   assert.deepEqual(displayHours(["M-F 9am-5pm"]), ["M-F 9am-5pm"]);
 });
+
+/**
+ * The clock face a shop wrote as a word. "Noon" and "midnight" are how a tap room states the hour it opens
+ * at the weekend and how a bowling alley states the hour it shuts, and the digit pattern could read neither,
+ * so the day named no span at all and kept an honest gap. 68 shipped listings publish one. Main Street Beer
+ * writes every one of its seven days that way and had no week whatever; Fast Track Karting's "10AM -
+ * 12midnight" was worse than silent, because the stray 12 closed the track at noon.
+ */
+
+test("noon and midnight are read as the hours a shop means by them", () => {
+  assert.equal(codedWeek("Fri-Sat: Noon - 10:00 pm"), "S- M- T- W- T- F720-1320 S720-1320");
+  assert.equal(codedWeek("Sat: Noon to 11PM"), "S- M- T- W- T- F- S720-1380");
+  assert.equal(codedWeek("10am-Midnight Every Day"), "S600-1440 M600-1440 T600-1440 W600-1440 T600-1440 F600-1440 S600-1440");
+  // The "12" in front of the word goes with it, or the hour left behind is the one a guest reads.
+  assert.equal(codedWeek("Go Karting: 10AM - 12midnight 7 days / week"), "S600-1440 M600-1440 T600-1440 W600-1440 T600-1440 F600-1440 S600-1440");
+  assert.equal(codedWeek("Sunday 8 a.m. to 12 Noon"), "S480-720 M- T- W- T- F- S-");
+  assert.equal(codedWeek("Fri - Sat: 12:00 - 12:00 midnight"), "S- M- T- W- T- F720-1440 S720-1440");
+  // Noon to the small hours is a span that runs past midnight, not one that ends before it starts.
+  assert.equal(codedWeek("Open daily from noon to 3 a.m., 7 days a week, 365 days a year"), "S720-1620 M720-1620 T720-1620 W720-1620 T720-1620 F720-1620 S720-1620");
+});
+
+test("a word that only looks like a clock face is left where it stands", () => {
+  // "afternoon" ends in the word and names no hour, and every one of these lines is a real shipped one.
+  assert.equal(codedWeek("Sunday 7 am-6pm (no alcohol until noon)"), "S420-1080 M- T- W- T- F- S-");
+  assert.equal(codedWeek("Afternoon 1-5 pm"), "S780-1020 M780-1020 T780-1020 W780-1020 T780-1020 F780-1020 S780-1020");
+  assert.equal(codedWeek("Mon-Fri 4pm-10pm, live music in the afternoon"), "S- M960-1320 T960-1320 W960-1320 T960-1320 F960-1320 S-");
+  // A business can be called Noon something, so the word is only a clock where it is written as one.
+  assert.equal(codedWeek("Noon Whistle Brewing Mon-Fri 4pm-10pm"), "S- M960-1320 T960-1320 W960-1320 T960-1320 F960-1320 S-");
+});
+
+test("a word clock lets a line be cut into the rules it holds", () => {
+  // o-nsuartmuseum-org. With the first span unreadable the line was one rule, so Tuesday to Saturday took
+  // the museum's Sunday opening hour.
+  assert.equal(codedWeek("Sunday: Noon - 5pm Tuesday-Saturday: 11am - 5pm"), "S720-1020 M- T660-1020 W660-1020 T660-1020 F660-1020 S660-1020");
+});
+
+test("the Hours block still prints the word the shop wrote", () => {
+  assert.deepEqual(displayHours(["Fri-Sat: Noon - 10:00 pm"]), ["Fri-Sat: Noon - 10:00 pm"]);
+  assert.deepEqual(displayHours(["10am-Midnight Every Day"]), ["10am-Midnight Every Day"]);
+});

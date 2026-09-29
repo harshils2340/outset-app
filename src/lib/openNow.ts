@@ -2,7 +2,7 @@ import type { Unclaimed } from "../data/types";
 import { contactFor } from "./catalog";
 // The rule for whether a published line is opening hours at all lives with the rest of the hour-line reading,
 // in a module with no imports of its own, so the backend's static pages can read it too.
-import { codeDays, hourRules, isTradingHoursLine } from "./hoursText";
+import { clockFaceWords, codeDays, hourRules, isTradingHoursLine } from "./hoursText";
 
 export { isTradingHoursLine };
 
@@ -180,7 +180,9 @@ function onTheClock(h: string | undefined, m: string | undefined, ap: string | u
  * for the colon ("6.30 am", "7.30am to 6pm"), and no separator at all ("Sun930am-11pm", "330pm-8pm").
  */
 function normalizeClock(line: string): string {
-  return line
+  // The clock faces a shop wrote as words, written out here too and not only where a line is cut into rules,
+  // because a span is read off the whole line as well.
+  return clockFaceWords(line)
     .replace(/(\d{1,2}:[0-5]\d):[0-5]\d/g, "$1")
     .replace(/\b(\d{1,2})\.([0-5]\d)(?=\s*(?:[ap]\.?m\.?\b|[-–—]|\s+to\b))/gi, "$1:$2")
     // No space before the marker is what says the digits are one token: "1130am" is half past eleven, while

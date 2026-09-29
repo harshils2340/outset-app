@@ -399,9 +399,40 @@ function postfixRules(rule: string): string[] | null {
   return out;
 }
 
+/**
+ * A range word on either side of the clock face a shop wrote as a word.
+ */
+const RANGE_WORD = "(?:[-\u2013\u2014]|'?(?:to|till|til|until|through)\\b)";
+/**
+ * The two clock faces a shop writes as a word rather than as digits. "Fri-Sat: Noon - 10:00 pm" and "Sat:
+ * Noon to 11PM" name a time no digit pattern can read, so the day named no span at all and kept an honest
+ * gap: 68 shipped listings publish one, most of them the tap rooms and cider houses that open at noon at the
+ * weekend and the bowling alleys and karting tracks that shut at midnight, and Main Street Beer, which writes
+ * every one of its seven days that way, had no week whatever. Any "12" in front is swallowed with the word so
+ * "12 Noon" and "12:00 midnight" leave no stray hour behind, which is what made Fast Track Karting's "10AM -
+ * 12midnight" a day ending at noon. The word only counts as a clock where it carries that "12" or sits
+ * against a range word, because a business can be called one: Noon Whistle Brewing is in the catalog.
+ *
+ * It is written out before a line is cut into rules as well as before a span is read off one, because the
+ * cut needs to see the span too: "Sunday: Noon - 5pm Tuesday-Saturday: 11am - 5pm" is two rules, and with
+ * the first span unreadable it was one, so a museum open at eleven from Tuesday gave every day its Sunday.
+ */
+const CLOCK_WORD = new RegExp(
+  "\\b12(?::00)?\\s*(noon|midnight)\\b" +
+    "|(?<=" + RANGE_WORD + "\\s*)(noon|midnight)\\b" +
+    "|\\b(noon|midnight)(?=\\s*(?:" + RANGE_WORD + "|&|and\\b))",
+  "gi",
+);
+
+/** A published line with the clock faces its shop wrote as words written out as times. */
+export function clockFaceWords(line: string): string {
+  return line.replace(CLOCK_WORD, (_m, a, b, c) => ((a || b || c).toLowerCase() === "noon" ? "12:00 pm" : "12:00 am"));
+}
+
 /** Every rule a published line holds: the crawl's glued seams opened, then the shop's own spaced-out rules. */
 export function hourRules(line: string): string[] {
-  return gluedRules(line).flatMap((rule) => postfixRules(rule) || spacedRules(rule));
+  const said = clockFaceWords(line);
+  return gluedRules(said).flatMap((rule) => postfixRules(rule) || spacedRules(rule));
 }
 
 /** Zero-width joiners, spaces and marks, a byte order mark, and the control characters a bad decode leaves. */

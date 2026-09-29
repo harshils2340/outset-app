@@ -375,3 +375,25 @@ test("a code that means two days names neither, and a lone letter names none", (
   assert.equal(show(encodeWeek(["Boats can be checked out as early as 9:00 AM and must be returned by 6:00 PM (off season 9am-5pm)"])), everyDay("09:00-17:00"));
   assert.equal(show(encodeWeek(["Peak Season 9AM - 9PM, Mid Season 10AM - 7PM"])), everyDay("09:00-21:00"));
 });
+
+/**
+ * The clock face a shop wrote as a word, which the compact week has to read the same way the listing page
+ * does or the card says a tap room is shut on the afternoon its own page says it is open. The guest-side
+ * test carries the whole story.
+ */
+
+test("noon and midnight are read as the hours a shop means by them", () => {
+  assert.equal(show(encodeWeek(["Fri-Sat: Noon - 10:00 pm"])), "Sun -, Mon -, Tue -, Wed -, Thu -, Fri 12:00-22:00, Sat 12:00-22:00");
+  assert.equal(show(encodeWeek(["10am-Midnight Every Day"])), everyDay("10:00-24:00"));
+  // The "12" in front of the word goes with it: o-fasttrackkarting-ca closed its track at noon.
+  assert.equal(show(encodeWeek(["Go Karting: 10AM - 12midnight 7 days / week"])), everyDay("10:00-24:00"));
+  assert.equal(show(encodeWeek(["Sunday 8 a.m. to 12 Noon"])), "Sun 08:00-12:00, Mon -, Tue -, Wed -, Thu -, Fri -, Sat -");
+  // A business can be called Noon something, so the word is only a clock where it is written as one.
+  assert.equal(show(encodeWeek(["Noon Whistle Brewing Mon-Fri 4pm-10pm"])), "Sun -, Mon 16:00-22:00, Tue 16:00-22:00, Wed 16:00-22:00, Thu 16:00-22:00, Fri 16:00-22:00, Sat -");
+  assert.equal(show(encodeWeek(["Afternoon 1-5 pm"])), everyDay("13:00-17:00"));
+  // o-nsuartmuseum-org: the cut needs the first span as much as the reader does.
+  assert.equal(
+    show(encodeWeek(["Sunday: Noon - 5pm Tuesday-Saturday: 11am - 5pm"])),
+    "Sun 12:00-17:00, Mon -, Tue 11:00-17:00, Wed 11:00-17:00, Thu 11:00-17:00, Fri 11:00-17:00, Sat 11:00-17:00",
+  );
+});
