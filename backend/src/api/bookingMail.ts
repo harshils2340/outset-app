@@ -70,13 +70,18 @@ export async function bookingContext(rec: StoredBooking, profile: StoredProfile 
 }
 
 /** What the guest pays and what the operator gets, in dollars. */
-export function moneyOf(rec: StoredBooking): { total: number; subtotal: number; fee: number; net: number } | null {
+export function moneyOf(rec: StoredBooking): { total: number; subtotal: number; fee: number; net: number; base: number; extras: number } | null {
   if (rec.total == null || !(rec.total > 0)) return null;
   const subtotal = rec.pricing?.subtotal ?? rec.payment?.subtotal ?? subtotalFromTotal(rec.total);
   const fee = Math.max(0, Math.round((rec.total - subtotal) * 100) / 100);
+  // What the experience itself cost and what the extras added, where the booking recorded the two. A booking
+  // taken before the split was stored has only the subtotal, so it reads as the experience alone and the price
+  // table is the three lines it always was.
+  const extras = Math.max(0, Math.round((rec.pricing?.extras ?? 0) * 100) / 100);
+  const base = Math.round((rec.pricing?.base ?? subtotal - extras) * 100) / 100;
   // The same cents the Stripe transfer is made in, so the email cannot promise a cent the transfer does not send.
   const net = operatorShare(Math.round(subtotal * 100)).operatorNet / 100;
-  return { total: rec.total, subtotal, fee, net };
+  return { total: rec.total, subtotal, fee, net, base, extras };
 }
 
 /**
@@ -98,11 +103,15 @@ function bookingRows(rec: StoredBooking, ctx: BookingContext, opts: { guest?: bo
   return rows;
 }
 
-/** The guest's price table: the operator's price, the service fee, the total. */
-function guestLines(rec: StoredBooking, ctx: BookingContext): EmailLine[] | undefined {
+/** The guest's price table: the operator's price, the extras, the service fee, the total. Exported for the test
+ * that holds it against the breakdown the guest read on the page. */
+export function guestLines(rec: StoredBooking, ctx: BookingContext): EmailLine[] | undefined {
   const m = moneyOf(rec);
   if (!m) return undefined;
-  const lines: EmailLine[] = [{ label: what(rec, ctx.title), amount: fmtMoney(m.subtotal, ctx.currency) }];
+  // The experience and the extras on their own lines, the way the page the guest paid on listed them. Naming the
+  // whole subtotal after the experience said a $200 cruise cost $250 whenever an add-on was ticked.
+  const lines: EmailLine[] = [{ label: what(rec, ctx.title), amount: fmtMoney(m.extras > 0 ? m.base : m.subtotal, ctx.currency) }];
+  if (m.extras > 0) lines.push({ label: rec.addons.length === 1 ? "Add-on" : "Add-ons", amount: fmtMoney(m.extras, ctx.currency) });
   if (m.fee > 0) lines.push({ label: "Service fee", amount: fmtMoney(m.fee, ctx.currency) });
   lines.push({ label: "Total", amount: fmtMoney(m.total, ctx.currency), total: true });
   return lines;

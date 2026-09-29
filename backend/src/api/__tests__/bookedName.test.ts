@@ -22,7 +22,7 @@ import { bookableMenu } from "../../../../src/lib/menuRow.ts";
 
 const dir = new URL("../../../../public/o/", import.meta.url);
 const read = (rel: string) => readFileSync(new URL(rel, import.meta.url), "utf8");
-type Row = { name: string; detail?: string; price?: number | null };
+type Row = { name: string; detail?: string; price: number | null };
 type Detail = { id: string; title?: string; options?: Row[]; addons?: Row[] };
 const details = (): Detail[] => readdirSync(dir).map((f) => JSON.parse(readFileSync(new URL(f, dir), "utf8")) as Detail);
 

@@ -145,7 +145,7 @@ export function perPerson(o: PricedOption): boolean {
  * card used to be charged exactly that, so anyone could book a $213 tour for $1 by editing the request. Returns
  * null when the option has no published price, which means no card payment.
  */
-export function priceBooking(options: PricedOption[], addons: PricedOption[], service: string, variant: string, qty: number, addonNames: string[], hintTotal?: number | null): { subtotal: number; fee: number; total: number } | null {
+export function priceBooking(options: PricedOption[], addons: PricedOption[], service: string, variant: string, qty: number, addonNames: string[], hintTotal?: number | null): { subtotal: number; fee: number; total: number; base: number; extras: number } | null {
   // Labels are cleaned at every sync ("2hr  Tour" becomes "2 hour tour"), and a guest's page can be older than the
   // sync, so compare on letters and digits, then on the expanded form, before giving up on a match.
   const key = (s: string | undefined) => (s || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
@@ -198,5 +198,10 @@ export function priceBooking(options: PricedOption[], addons: PricedOption[], se
   const base = perPerson(o) ? o.price * qty : o.price;
   const subtotal = Math.round((base + add) * 100) / 100;
   const fee = serviceFee(subtotal);
-  return { subtotal, fee, total: subtotal + fee };
+  // The two halves of that subtotal are kept apart as well as added up. The booking emails print a price table
+  // and labelled the whole subtotal with the experience's own name, so a $200 sunset cruise booked with a $30
+  // dry bag and a $20 photo package read "Sunset Cruise $250.00" against an Add-ons row naming both and pricing
+  // neither, while the page the guest paid on had listed the three separately. 1,824 shipped listings sell a
+  // priced add-on.
+  return { subtotal, fee, total: subtotal + fee, base: Math.round(base * 100) / 100, extras: Math.round(add * 100) / 100 };
 }

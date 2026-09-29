@@ -33,7 +33,7 @@ export type StoredBooking = {
   decidedAt?: string;
   note?: string;
   /** The operator's price and the guest's service fee behind `total`, worked out from the listing at booking time. */
-  pricing?: { subtotal: number; fee: number };
+  pricing?: { subtotal: number; fee: number; base?: number; extras?: number };
   /** Stripe: authorized at booking, captured on accept, released on decline. `session` is "wallet" when Otto held a saved card. */
   payment?: { session: string; intent: string | null; state: "authorized" | "captured" | "released" | "unpaid"; currency?: string; charge?: string | null; split?: Split; subtotal?: number; agent?: boolean };
   /**
@@ -307,7 +307,7 @@ bookings.post("/bookings", rateLimit(20, 60 * 60 * 1000), async (c) => {
   if (listingKnown) {
     if (!priced && rec.total != null) console.warn(`[bookings] ${code}: the listing does not price "${rec.service}"; stored with no price instead of the browser's ${rec.total}`);
     rec.total = priced ? priced.total : null;
-    if (priced) rec.pricing = { subtotal: priced.subtotal, fee: priced.fee };
+    if (priced) rec.pricing = { subtotal: priced.subtotal, fee: priced.fee, base: priced.base, extras: priced.extras };
   }
   // `pay` used to come off the request body, so anyone could post "pay": false and get a confirmed booking with
   // no card: a free trip, the operator emailed "they pay you on the day", and the time consumed. Nothing in the
