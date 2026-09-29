@@ -25,9 +25,16 @@ export function sendingDays(s: RampState): string[] {
   return s.sentDays ?? s.ranDays;
 }
 
-/** Which rung this run is on, and how many that rung allows, before any ceiling is applied. */
-export function rungFor(s: RampState, ramp: number[]): { day: number; limit: number } {
-  const day = sendingDays(s).length + 1;
+/**
+ * Which rung this run is on, and how many that rung allows, before any ceiling is applied.
+ *
+ * `today` is the campaign day this run is part of, and a day the campaign has already sent on is the rung it
+ * is already on rather than the next one up. Without it a second run on one day (a `--resume` after a network
+ * outage, a cron that fired twice) read its own morning's mail as a rung climbed and handed the afternoon the
+ * rung above: a mailbox on the first rung of ten sent ten, resumed, and was offered twenty-five more.
+ */
+export function rungFor(s: RampState, ramp: number[], today?: string): { day: number; limit: number } {
+  const day = sendingDays(s).filter((d) => d !== today).length + 1;
   return { day, limit: ramp[Math.min(day, ramp.length) - 1] };
 }
 

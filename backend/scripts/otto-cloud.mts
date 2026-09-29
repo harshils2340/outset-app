@@ -82,9 +82,11 @@ async function planToday(): Promise<{ limit: number; quota: Record<string, numbe
       id.user === firstUser
         ? { firstDay: state.firstDay, ranDays: [...state.ranDays], sentDays: state.sentDays ? [...state.sentDays] : undefined }
         : { firstDay: today, ranDays: [], sentDays: [] });
-    const { day, limit: rung } = rungFor(mb, RAMP.map((r) => Math.min(r, PER_MAILBOX)));
+    const { day, limit: rung } = rungFor(mb, RAMP.map((r) => Math.min(r, PER_MAILBOX)), today);
     const already = sentBy(id.user, counts);
-    quota[id.user] = Math.max(0, Math.min(rung, PER_MAILBOX - already));
+    // What today's allowance still has room for, not the whole allowance again: this is asked fresh every
+    // round and again on a --resume, and each of those has to see what already went out this morning.
+    quota[id.user] = Math.max(0, Math.min(rung, PER_MAILBOX) - already);
     lines.push(`${id.user}: day ${day}, rung ${rung}, ${already} sent today, up to ${quota[id.user]}`);
   }
   const limit = Object.values(quota).reduce((a, b) => a + b, 0);

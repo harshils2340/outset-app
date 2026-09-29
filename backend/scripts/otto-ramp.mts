@@ -87,9 +87,11 @@ for (const id of ids) before[id.user] = sentToday(id.user, ids[0].user);
 /** Today's allowance, per mailbox, from what each has already sent today: fresh each round, so a second round after a network outage only sends what is still owed. */
 function planToday(): { limit: number; quota?: Record<string, number> } {
   if (ids.length <= 1) {
-    const { day, limit: rampLimit } = rungFor(state, RAMP);
+    const { day, limit: rampLimit } = rungFor(state, RAMP, today);
     const already = sentToday();
-    const limit = Math.max(0, Math.min(rampLimit, PER_MAILBOX, COMBINED_CEILING - already));
+    // What today's allowance still has room for, not the whole allowance again: a second round after a
+    // network outage, and a --resume, both ask for this fresh and both have to see this morning's mail.
+    const limit = Math.max(0, Math.min(rampLimit, PER_MAILBOX, COMBINED_CEILING) - already);
     console.log(`otto-ramp: day ${day} of the ramp (first run ${state.firstDay || today}), ramp says ${rampLimit}, ${already} already sent today across both campaigns, sending up to ${limit}`);
     return { limit };
   }
@@ -102,9 +104,9 @@ function planToday(): { limit: number; quota?: Record<string, number> } {
       id.user === ids[0].user
         ? { firstDay: state.firstDay, ranDays: [...state.ranDays], sentDays: state.sentDays ? [...state.sentDays] : undefined }
         : { firstDay: today, ranDays: [], sentDays: [] });
-    const { day: d, limit: rung } = rungFor(mb, RAMP.map((r) => Math.min(r, PER_MAILBOX)));
+    const { day: d, limit: rung } = rungFor(mb, RAMP.map((r) => Math.min(r, PER_MAILBOX)), today);
     const already = sentToday(id.user, ids[0].user);
-    quota[id.user] = Math.max(0, Math.min(rung, PER_MAILBOX - already));
+    quota[id.user] = Math.max(0, Math.min(rung, PER_MAILBOX) - already);
     lines.push(`${id.user}: day ${d}, rung ${rung}, ${already} sent today, up to ${quota[id.user]}`);
   }
   const limit = Object.values(quota).reduce((a, b) => a + b, 0);

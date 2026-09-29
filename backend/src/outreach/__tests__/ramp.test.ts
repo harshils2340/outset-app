@@ -62,11 +62,44 @@ test("a state file written before sends were counted keeps its place on the ramp
   assert.deepEqual(recordRun(old, "2026-09-26", 35).sentDays, ["2026-09-24", "2026-09-25", "2026-09-26"]);
 });
 
+/**
+ * A second run on one day. Both Otto senders can make one: `--resume` after a launch that died with the
+ * network, and the round loop that follows a mailbox retiring mid-batch. Both read the rung fresh, and the
+ * morning's own mail was in the state file by then, so the afternoon was offered the rung above the one the
+ * day is on: ten sent on the first rung, resumed, and twenty-five more offered. Today is not a rung climbed
+ * until it is over.
+ */
+test("a day already sent on stays on its own rung", () => {
+  const s = recordRun(fresh(), "2026-09-21", 10);
+  assert.deepEqual(rungFor(s, RAMP, "2026-09-21"), { day: 1, limit: 10 }, "the same day is still the first rung");
+  assert.deepEqual(rungFor(s, RAMP, "2026-09-22"), { day: 2, limit: 25 }, "the next day climbs it");
+  // A day that sent nothing was never on the list, so naming it changes nothing.
+  assert.deepEqual(rungFor(recordRun(s, "2026-09-22", 0), RAMP, "2026-09-22"), { day: 2, limit: 25 });
+});
+
+/**
+ * What a round or a resume may still send is what the day's allowance has room for, never the allowance
+ * again. Both senders compute it the same way, so a mailbox that has used its rung is offered nothing more
+ * until the day turns over.
+ */
+test("today's allowance counts what already went out today", () => {
+  const room = (rung: number, perMailbox: number, already: number) => Math.max(0, Math.min(rung, perMailbox) - already);
+  assert.equal(room(10, 50, 0), 10);
+  assert.equal(room(10, 50, 10), 0, "a mailbox that has sent its rung gets nothing more today");
+  assert.equal(room(25, 50, 10), 15);
+  assert.equal(room(50, 30, 30), 0, "the per-mailbox ceiling counts the same way");
+  const dir = join(dirname(fileURLToPath(import.meta.url)), "../../../scripts");
+  for (const f of ["otto-ramp.mts", "otto-cloud.mts"]) {
+    const src = readFileSync(join(dir, f), "utf8");
+    assert.match(src, /Math\.min\(rung, PER_MAILBOX\) - already/, f + " must take the allowance minus what is already sent");
+  }
+});
+
 test("both ramp scripts count the rung the same way", () => {
   const dir = join(dirname(fileURLToPath(import.meta.url)), "../../../scripts");
   for (const f of ["otto-ramp.mts", "outreach-ramp.mts"]) {
     const src = readFileSync(join(dir, f), "utf8");
-    assert.match(src, /rungFor\(state, RAMP\)/, f);
+    assert.match(src, /rungFor\(state, RAMP(, today)?\)/, f);
     assert.match(src, /saveState\(recordRun\(state, today,/, f);
     assert.ok(!/state\.ranDays\.push/.test(src), f + " must not count a launch as a rung");
   }
