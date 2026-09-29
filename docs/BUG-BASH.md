@@ -6830,6 +6830,86 @@ type check clean but for TS5097. The rehearsal was not run, by the rule above. N
   idempotent; the two listings whose week is wrong either way because a "Weekdays" or an "Office hours" is glued
   to the word in front of it; and `o-dvc-edu`'s day list separated by nothing at all.
 
+## 29 September 2026, hundred and second run (08:15 to 09:05 UTC)
+
+**Chosen, and why.** `git fetch` first: nothing has landed since the hundred and first run's entry. That entry
+does not record the rehearsal green, it records it skipped, and the six commits since the ninety-ninth run's
+green pass touched `src/lib` and `backend/src`, so by both halves of the rule the rehearsal was run rather than
+skipped: green at 57 of 57 on `main` before anything was changed, and again after. Root and `backend/`
+`node_modules` were both missing on this checkout and were installed first. Then the type checks (root `tsc
+--noEmit -p .` and `tsc -b` clean, backend clean but for TS5097) and both suites. Every area on the brief is on
+the Verified list, so the hunt went to what a shop's own hours line states that neither reader can read at all:
+a clock written as a word, and a clock printed beside a price. Both turned out to be real and both are wider
+than the two listings the list credited them with.
+
+**Found and fixed.**
+
+- **The hour a shop wrote as the word noon or midnight stops being an hour nobody read** (`21027790`). 68
+  shipped listings state a trading hour as a word, and the digit pattern could read neither end of it, so those
+  days named no span at all: Main Street Beer writes all seven of its days as "Noon - 10pm" and had no week
+  whatever, Santa Monica Brew Works the same, and the tap rooms, cider houses, bowling alleys and karting
+  tracks that open at noon at the weekend or shut at midnight lost the days they trade hardest. Fast Track
+  Karting was worse than silent: its "10AM - 12midnight" left the stray 12 behind and closed the track at noon.
+  The word is written out as a clock before a line is cut into rules as well as before a span is read off one,
+  because the cut needs the span too: NSU Art Museum's "Sunday: Noon - 5pm Tuesday-Saturday: 11am - 5pm" was
+  one rule with the first span unreadable, so Tuesday to Saturday took the museum's Sunday opening hour. Any
+  "12" in front goes with the word, and the word only counts as a clock where it carries that 12 or sits
+  against a range word, because a business can be called one and Noon Whistle Brewing is in the catalog. 43
+  listings change: 86 day cells gain the shop's own hours and none loses any.
+- **A shop's rate card stops being read as the hours it keeps** (`8db1c687`). 22 listings publish an hours line
+  whose subject is money, and the clock beside the price became the week. Heritage Bluffs, a golf course, was
+  open 11:00 AM to 2:50 PM every day, which is its midday green fee band; Butterbrook was open from two until
+  ten to four, Delbrook's whole weekend ran one to four and Dunedin's every day did. Adventure Watersports
+  opened at ten and shut at four on "$555All Day Special - Dana Hotel M-F 10am-4pm", Cabinet's week was its
+  evening hire rate, and Risen Tide Fishing, whose only line is "$749 1-4 Adults Book Now 7:30am to 12:30pm",
+  stood open from one until four, because "1-4" reads as a range of hours. Not one of the 20 whose week came
+  off such a line was right, so each keeps an honest gap now, and the line stops being printed in the Hours
+  block, where a dollar figure never belonged. The two shops that publish a real hours line beside the priced
+  one keep it.
+
+**Swept and clean.** Every hour line in the shipped catalog carrying "noon", "midnight" or "midday", all 114 on
+77 listings, read against the week each listing then shows, and the whole parsed week of all 46,323 listings
+that publish hours diffed before and after, so the exact 43 that moved are known rather than estimated and each
+was read against the shop's own lines by hand. The words that only look like a clock face are clean: "afternoon"
+ends in one and names no hour, "no alcohol until noon" and "last tee time at Noon" state no span, and a
+business named Noon something keeps its name. Every line in the catalog whose hours block carries a dollar
+figure, all 22 that a reader was still taking hours from, each held against what the shop actually sells.
+`parseWeek` in `src/lib/openNow.ts` and `encodeWeek` in `backend/src/sync/hours.ts` still answer identically on
+all 46,323, and `displayHours` still prints the shop's own words for every line it keeps.
+
+**Verification.** App `npm test` 1,009 pass, 0 fail, up from 1,003. Backend `npm test` 911 tests, 909 pass, 0
+fail, 2 skipped, up from 907. `tsc -b` clean on the app, `tsc --noEmit -p .` clean at the root, the backend type
+check clean but for TS5097. The rehearsal ran twice, green at 57 of 57 both times, against a local Postgres 16
+cluster on port 5433 with SSL switched on (the harness's pool refuses a server without it) and the Playwright
+Chromium already on disk. Nothing under `backend/data`, `public/` or `src/data` was touched.
+
+**Needs Harshil.**
+
+- **The cards are now 861 weeks behind the pages, not 815.** The compact week in `catalog.json` is what a card,
+  a rail and the price filter read before a detail file lands, and it was written by an older parser. Measured
+  tonight it disagrees with a fresh read on 861 of the 14,220 listings that ship both, up from 815 at the last
+  count. Every listing this run put right is right on its page and stale on the card that opens it, and only
+  `npm run backend:sync` closes it. Same standing item, a number that only grows each time an hours rule is
+  fixed.
+- **A charter's trip window is not obviously a door.** Four of the 20 listings above are fishing and boat
+  charters whose only hours line quoted a price against a trip ("$2,600 - Morning: 6am to 2pm", "Price: $750
+  Triton Fishing Charter 5:00 am to 5:00 pm"). They now show no hours rather than the trip's window, which is
+  the honest answer by the product rule but is less useful than what they said before. If a charter's stated
+  trip window should count as its hours, that is a supply judgement rather than a rule.
+- **A shop that prints its admission beside its hours would now be refused with it.** No shipped line does
+  today, which is why the rule is a flat one, but "Open Mon-Fri 9am-5pm, $10 entry" would lose its week. Worth
+  knowing before a crawl starts keeping admission prices on the hours line.
+- **A rule behind an opening bracket is still not cut.** `o-pequeacreekcampground-com` writes "Mon/Wed-Sat
+  (Noon-6pm) Sun (11am-4pm" and the cut cannot see past the bracket, so its Sunday now takes the weekday span
+  rather than the other way round: five days better, one worse. Letting a bracket open the next rule is a
+  one-character change to the gap the cut allows and it touches every line in the catalog, so it wants a sweep
+  of its own rather than a patch tonight.
+- Still open from earlier runs: which of two lines that each name their days a guest should read, which is
+  Warren Golf Course's golf shop against its driving range tonight; the unlabelled happy hour; the desktop site
+  has no way to say anything in passing; `plainWords` is not idempotent; the two listings whose week is wrong
+  either way because a "Weekdays" or an "Office hours" is glued to the word in front of it; and `o-dvc-edu`'s
+  day list separated by nothing at all.
+
 ## Coverage
 
 The catalog is 48,198 listings as of the 23 September sync, 1,873 of them Viator partner rows. Counts below
@@ -7586,12 +7666,23 @@ order the crawl listed the lines in decide the week, against the day off, the da
 spans on the same page, with both readers answering identically on all 14,509 and every changed week read
 against the shop's own lines. The closing times a shop writes as a word rather than a clock, all 81 of them.
 
+Which times a shop's own hours line states that no digit could read, over every line in the shipped
+catalog: the clock face written as the word noon or midnight, on all 114 lines that carry one, against the
+words that only look like one ("afternoon", a business named Noon something) and against the cut that turns a
+line into the rules it holds; and the line whose subject is money rather than a door, on all 22 whose hours a
+reader was still taking off a rate card, each held against what the shop actually sells. Every parsed week of
+all 46,323 listings that publish hours diffed before and after both, with the two readers answering
+identically on every one.
+
 **Not yet checked.** Which of two hour lines about two different things a guest should read, on the 360
 listings where two lines that each name their own days disagree about one and the last one written wins (the 71
 whose second line named no day at all are closed, see the hundred and first run). Whether a two or three hour
 evening span with days in front of it and no label is a happy hour, which is 2 of those 71 and a guess rather
-than a rule. Whether a close written as "12midnight" or "12:00 midnight" should read as the end of the day
-rather than as noon, on the 2 listings that write one. A live Otto send from the cloud cron against real mailboxes: the ramp arithmetic is now tested but
+than a rule.
+Whether a bracket should be allowed to open the next rule on a line, which is what leaves
+`o-pequeacreekcampground-com`'s "Mon/Wed-Sat (Noon-6pm) Sun (11am-4pm" one rule (see the hundred and second
+run's Needs Harshil). Whether a charter's stated trip window should count as its opening hours, on the four
+whose only hours line quoted one against a price (see that run's Needs Harshil). A live Otto send from the cloud cron against real mailboxes: the ramp arithmetic is now tested but
 nothing has left a mailbox from here, and whether a suppression list read once at the start of a four hour
 batch should be re-read before each send. Anything in the grounded fallback that needs a real Cohere key: no key exists here, so every answer checked tonight was a payload shaped by hand, and what the live model actually writes, what its citation offsets index into when it answers in more than one content part, and whether `citation_options` FAST cites densely enough for `keepCited` to keep a good answer are all unread. `npm run otto:eval` for the same reason. Whether a price the model reformats should be dropped: a shop publishing "$85" and a model writing "$85.00" loses the sentence (see this run's Needs Harshil). Whether the grounded answer should reach the static `/l/` page and the phone sheet, which do not call it. A real Otto send or a real hand-send: the draft run, the queue, the dry run and the handoff export are all driven now, but nothing has left a mailbox from here, and `outreach-daily.sh` is launchd on the Mac and cannot be. Whether `state.ranDays` and `state.sentDays` growing without bound in `outreach-otto-ramp.json`, and being written only after a send loop that can run four hours, is worth changing, given that `sentToday` is what actually holds the ceiling. Whether the Otto email may tell a shop "Bookings drop straight into your calendar" when
 both `/voice` endpoints are read-only and syncing with an operator's own booking software is deferred on
