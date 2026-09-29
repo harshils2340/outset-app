@@ -6983,6 +6983,80 @@ on disk. Nothing under `backend/data`, `public/` or `src/data` was touched.
   happy hour; the desktop site has no way to say anything in passing; `plainWords` is not idempotent; a rule
   behind an opening bracket is still not cut.
 
+## 29 September 2026, hundred and fourth run (10:12 to 10:50 UTC)
+
+**Chosen, and why.** `git fetch` first: nothing has landed since the hundred and third run's entry, and that
+entry records the rehearsal green at 57 of 57 after its own commits, so by the rule the rehearsal was skipped at
+the start and the hour went to hunting. Both `node_modules` were missing on this checkout and were installed.
+Baseline: root and backend type checks clean (backend but for TS5097), app 1,019 pass, backend 913 tests with
+911 pass and 2 skipped. Every area on the brief is on the Verified list, so the hunt took the one thing the last
+run's word pass had stopped short of: not the booking box, which now reads one rule, but every surface that
+reads a booking back **after** it is made, and what those surfaces say the booking cost.
+
+**Found and fixed.**
+
+- **A booking is named in the emails and the confirmation the way the page named it** (`b9b8833c`). A booking
+  stores the menu row's own name, because that string is what the row is matched on when the booking is priced
+  again, and the word pass that spells a shorthand out, capitalises a lowercase opener and finishes a half-done
+  title runs at print time. So the three booking emails, the phone confirmation's fallback and the desktop
+  confirmation's fallback and Add-ons row all printed the crawl's spelling beside a booking box printing the
+  tidied one. 3,982 option names, 660 sub-lines and 543 add-ons across 2,524 shipped listings read differently
+  for it: a guest who booked "Kayak & Stand-up Paddleboard Classes" was confirmed for "Kayak & SUP Classes", an
+  operator was told somebody wanted "surf boat", and the desktop confirmation named an add-on raw in one list and
+  tidied in the price breakdown four rows below it. `bookedName` in `src/lib/listingDerive.ts` is the one rule
+  they now read, and it hands a name back untouched when the booking names the business rather than a row,
+  because a business name is printed as the business wrote it everywhere else.
+- **The guest's receipt prices the extras it names instead of adding them to the trip** (`c5d3ea54`).
+  `priceBooking` added the experience's price to the extras the guest ticked and handed back the sum alone, so
+  the price table in every booking email carried the whole subtotal under the experience's own name: a $200
+  sunset cruise booked with a $30 dry bag and a $20 photo package read "Sunset Cruise $250.00", above an Add-ons
+  row that named both extras and priced neither. The page the guest paid on had listed the three separately all
+  along, so the guest's own receipt was the one surface saying the cruise cost $250. 1,824 shipped listings sell
+  a priced add-on. The two halves of the subtotal are recorded on the booking now and the table prints both; a
+  booking taken before the split holds only the subtotal, reads as the experience alone, and keeps its three
+  line table.
+
+**Swept and clean, or measured and left.** The day a shop writes as a bare two-letter code, which was an open
+item: over the whole shipped catalog only 3 trading-hours lines carry a code at a clock and read as a whole
+week, and only one of them is wrong (o-flyinglionbrewing-com's "Mo12pm-12am Tu12pm-12am We12pm-12am
+Th12pm-12am"). Circle Line genuinely does open all seven days and o-dvc-edu's line is single letters, which no
+rule can read without guessing its "T". And the reason a lone code may not simply be read as a day is now
+measured rather than assumed: of the 21 lines in the catalog that carry one with no word day anywhere, 19 are the
+English word "We" ("We are open every day from 9am - 7pm", "We're here 8:45am to 7:00pm"). The two-or-more rule
+in `codeDays` is right, and this item is retired at one listing rather than left open. Every escape in
+`renderEmail`, read through: every label, value, amount, heading and URL in the three booking emails goes through
+`esc`. The operator dashboard's four raw `b.service` reads, held against the Services editor beside them: the
+dashboard is self-consistent raw, and tidying only its Bookings page would make the editor and the feed disagree
+about the operator's own row, so they are deliberately left (below).
+
+**Verification.** Backend `npm test` 928 tests, 926 pass, 0 fail, 2 skipped, up from 913. App `npm test` 1,019
+pass, 0 fail, unchanged, since both new files are in the backend suite. `tsc --noEmit -p .` clean at the root,
+backend clean but for TS5097. The rehearsal was run after the changes, since they touch `src/lib`,
+`src/components` and `backend/src`: green at 57 of 57, with the one failure of its first run being a type error in this run's own new test, caught by the rehearsal's stricter `tsc --noEmit -p .` and fixed before the commit, against a local Postgres 16 cluster on port 5433 with SSL
+on and the Playwright Chromium already on disk. Nothing under `backend/data`, `public/` or `src/data` was
+touched.
+
+**Needs Harshil.**
+
+- **The operator's dashboard still names a booking as the crawl found it.** `OpBookings`, `OpCalendar` and
+  `OpMore` print `b.service` raw in four places, so the operator reads "surf boat" where the guest read "Surf
+  boat". It was left alone on purpose: a claimed shop's Services editor shows the same crawled string, because
+  that field is editable and must be the shop's own words, so tidying the feed alone would have the dashboard
+  disagreeing with itself about one row. Deciding this needs a view on whether the operator's list should read
+  as the guest's does or as their own editor does.
+- **The email prices the extras as one line, not one line each.** `priceBooking` chooses a sum over the
+  combinations the listing's own prices allow, so which price each individual extra took is not recoverable
+  without carrying the chosen combination out with it. One "Add-ons" line is honest and matches the row naming
+  them above; the page lists each. Worth doing when something else touches that function.
+- **A booking whose listing has left the catalog still shows a raw name.** `TripsView` falls back to
+  `b.service` when neither the live nor the catalog record is found. There is no business title to compare
+  against in that branch, so `bookedName`'s guard cannot run and tidying it could turn a shop called "SUP Shack"
+  into "Stand-up paddleboard Shack" on the guest's own trip card. Left as it is.
+- Still open from earlier runs: the static pages are 2,241 listings behind the app until a sync runs; seven row
+  names are an operator's own words rather than an offer; five shops' word index holds "amp"; which of two lines
+  that each name their days a guest should read; the unlabelled happy hour; the desktop site has no way to say
+  anything in passing; `plainWords` is not idempotent; a rule behind an opening bracket is still not cut.
+
 ## Coverage
 
 The catalog is 48,198 listings as of the 23 September sync, 1,873 of them Viator partner rows. Counts below
@@ -7758,6 +7832,15 @@ detail file, walked field by field, for an HTML tag, an entity, a template place
 run of capitals. Every `rating` and `reviews` pair in the catalog for a figure out of range, a rating with no
 count or a count with no rating.
 
+What a booking is called and what it says it cost once it is made, on every surface that reads one back:
+the row name, its sub-line and the add-on names in all three booking emails, in the phone confirmation and in
+the desktop confirmation, held against the strings the booking box that took it printed, over every bookable
+row of all 52,815 shipped detail files; and the guest's price table against the breakdown the page they paid
+on showed them, with the experience's own price and the extras' told apart on the booking record and a
+booking stored before that split still reading as the experience alone. Every label, value, amount, heading
+and URL those emails render, for an escape. The day a shop writes as a bare two-letter code, over every
+trading-hours line in the shipped catalog, and what a group of two is protecting the reader from.
+
 **Not yet checked.** Which of two hour lines about two different things a guest should read, on the 360
 listings where two lines that each name their own days disagree about one and the last one written wins (the 71
 whose second line named no day at all are closed, see the hundred and first run). Whether a two or three hour
@@ -8062,4 +8145,4 @@ Whether Peek has a sixth word for an availability mode, which only a fresh captu
 freesale slot exists in production at all: none of the 195 recorded rows is one. The readers with no second
 reading in the corpus at all, which is every vendor but FareHarbor, Peek and Xola: Resova, Checkfront, Rezdy,
 Acuity, Square, TripWorks, ForeUp, aReservation and FishingReservations have unit tests and no recorded shop,
-so the drift closed tonight on three vendors is unmeasured on nine. A space-separated list of day codes with no separator between them ("M T W Th 9:00 am - 5:00 pm F 9:00 am - 3:00 pm"), and a code glued straight onto its own clock ("Fr12:00pm-4:00pm"), which the glued reader refuses because it only knows the three-letter spellings: 2 listings each, and both a week of all seven days today (see the ninety-ninth run's Needs Harshil). Whether a semicolon between two rules should be read as a separator, which 2 of the 6 shipped lines that carry one would want and the other 4 would break. Whether the backend suite going red should stop a push, which is how 29 outreach copy tests sat dark for a day (see that run's Needs Harshil).
+so the drift closed tonight on three vendors is unmeasured on nine. Whether a shop's own list of single-letter day codes separated by nothing but a space ("M T W Th 9:00 am - 5:00 pm F 9:00 am - 3:00 pm") should be read at all, which is o-dvc-edu alone and wants its ambiguous "T" guessed: the two-letter half of that item was measured and retired by the hundred and fourth run at one listing. Whether a semicolon between two rules should be read as a separator, which 2 of the 6 shipped lines that carry one would want and the other 4 would break. Whether the backend suite going red should stop a push, which is how 29 outreach copy tests sat dark for a day (see that run's Needs Harshil). Whether the operator's own dashboard should name a booking as the guest read it or as their own Services editor holds it: `OpBookings`, `OpCalendar` and `OpMore` print the stored row name raw in four places, the editor beside them must show the shop's own words because that field is editable, and tidying the feed alone would have the dashboard disagreeing with itself about one row (see the hundred and fourth run's Needs Harshil). Whether a booking email should price each extra on its own line rather than as one "Add-ons" line, which needs `priceBooking` to carry out the combination it chose. Whether a trip card should tidy the stored row name when the listing has left the catalog, where there is no business title to tell a row from a shop.
