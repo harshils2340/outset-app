@@ -397,3 +397,10 @@ test("noon and midnight are read as the hours a shop means by them", () => {
     "Sun 12:00-17:00, Mon -, Tue 11:00-17:00, Wed 11:00-17:00, Thu 11:00-17:00, Fri 11:00-17:00, Sat 11:00-17:00",
   );
 });
+
+test("a rate card is not the hours a shop keeps", () => {
+  // The twin of the guest-side rule: 20 listings shipped a week read off a price list.
+  assert.equal(show(encodeWeek(["Open-10:50AM) $91 $115 $64 $84 Midday (11AM-2:50PM"])), "(no hours)");
+  assert.equal(show(encodeWeek(["$749 1-4 Adults Book Now 7:30am to 12:30pm"])), "(no hours)");
+  assert.equal(show(encodeWeek([") OR $700 per day (11am to 6pm", "Monday through Sunday 11AM - 7PM"])), everyDay("11:00-19:00"));
+});

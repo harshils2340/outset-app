@@ -209,9 +209,25 @@ function namesOneDay(line: string): boolean {
   return !RUN_OF_DAYS.test(line.slice(at + dates[0][0].length));
 }
 
+/**
+ * A price list is not a door. 22 shipped listings publish a line whose subject is money, and the reader took
+ * the clock beside it for the shop's opening hours: Heritage Bluffs, a golf course, was open 11:00 AM to
+ * 2:50 PM every day, which is its midday green fee band ("Open-10:50AM) $91 $115 $64 $84 Midday
+ * (11AM-2:50PM"); Butterbrook was open from two until ten to four; Delbrook's whole weekend ran one to four.
+ * Adventure Watersports opened at ten and shut at four on the strength of "$555All Day Special - Dana Hotel
+ * M-F 10am-4pm", and Risen Tide Fishing, whose only line is "$749 1-4 Adults Book Now 7:30am to 12:30pm",
+ * stood open from one until four because "1-4" reads as a range of hours. None of the 22 was right, so each
+ * of them now keeps an honest gap rather than a rate card's hours, and the line stops being printed in the
+ * Hours block a guest reads, where a dollar figure never belonged either.
+ *
+ * A shop that prints its admission beside its hours on one line would be refused with them. None does today,
+ * and a price is the louder subject of the two, so the gap is the safer answer. The app's twin says the same.
+ */
+const PRICED = /\$\s?\d/;
+
 /** Whether a published line is about when the shop is open, rather than one day, a noise rule or a last sale. */
 export function isTradingHoursLine(line: string): boolean {
-  if (NOT_TRADING_HOURS.test(line) || DATED_EVENT.test(line)) return false;
+  if (NOT_TRADING_HOURS.test(line) || DATED_EVENT.test(line) || PRICED.test(line)) return false;
   if (LAST_SOLD.test(line) && A_RANGE.test(line)) return false;
   return !namesOneDay(line);
 }

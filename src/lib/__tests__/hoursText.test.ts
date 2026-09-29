@@ -271,3 +271,29 @@ test("the Hours block still prints the word the shop wrote", () => {
   assert.deepEqual(displayHours(["Fri-Sat: Noon - 10:00 pm"]), ["Fri-Sat: Noon - 10:00 pm"]);
   assert.deepEqual(displayHours(["10am-Midnight Every Day"]), ["10am-Midnight Every Day"]);
 });
+
+/**
+ * A price list is not a door. 22 shipped listings publish a line whose subject is money and the clock beside
+ * it became the shop's week, which on a golf course is a green fee band and on a charter is one trip.
+ */
+
+test("a rate card is not the hours a shop keeps", () => {
+  // A line the reader refuses builds no week at all, which is the honest gap.
+  // o-heritagebluffs-com, a golf course open every day from eleven until ten to three.
+  assert.equal(codedWeek("Open-10:50AM) $91 $115 $64 $84 Midday (11AM-2:50PM"), "");
+  // o-risentidefishing-com, whose "1-4 Adults" is read as one o'clock to four.
+  assert.equal(codedWeek("$749 1-4 Adults Book Now 7:30am to 12:30pm"), "");
+  // o-adventurewatersports-com, a rental package, and o-delbrookgolfclub-com, a weekend rate.
+  assert.equal(codedWeek("$555All Day Special - Dana Hotel M-F 10am-4pm"), "");
+  assert.equal(codedWeek("Open to 1 pm) $24 $36 $40 $55 Weekends (1 pm - 4 pm"), "");
+  // The shop's own hours on another line are untouched: o-shawniganjetski-wixsite-com publishes both.
+  assert.equal(
+    (parseWeek([") OR $700 per day (11am to 6pm", "Monday through Sunday 11AM - 7PM"]) || []).map((d, i) => "SMTWTFS"[i] + (d ? d.open + "-" + d.close : "-")).join(" "),
+    "S660-1140 M660-1140 T660-1140 W660-1140 T660-1140 F660-1140 S660-1140",
+  );
+});
+
+test("a priced line is not printed in the Hours block either", () => {
+  assert.deepEqual(displayHours(["Open-10:50AM) $91 $115 $64 $84 Midday (11AM-2:50PM"]), []);
+  assert.deepEqual(displayHours([") $750 11 AM - 3 PM 3:15 pm - 7:15 pm", "Mon-Fri 9am-5pm"]), ["Mon-Fri 9am-5pm"]);
+});
