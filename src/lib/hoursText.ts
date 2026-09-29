@@ -345,9 +345,50 @@ function spacedRules(rule: string): string[] {
   return [rule];
 }
 
+/**
+ * A shop that writes the clock in front of the days it belongs to, over and over: "Ferndale: 12pm - 9pm
+ * Mon-Tue, 12pm - 10pm Wed-Thu, 12pm - 8pm Fri-Sun". Every rule on such a line is the same shape back to
+ * front, and the reader above cannot cut it, because a cut there needs the days to come first. So the whole
+ * week was one rule and every day of it took the first span: District Brew Co's three taprooms opened their
+ * Saturday four hours early and shut it two hours late, Third Window Brewing closed at nine on the five
+ * nights it closes at ten or eleven, and Terravita's Saturday ran to five instead of half past four.
+ *
+ * A cut here is only safe where the whole line is that one shape and nothing else: from the first clock to
+ * the end, a span, then the days it belongs to, again and again, with nothing left over. A span with no days
+ * behind it is what makes a line ambiguous rather than back to front, because it is usually a rule the crawl
+ * cut the front off: Coldstream Clear's "Antigonish: 12pm-7pm, Thursday-Saturday 10am-10pm, Monday-Wednesday
+ * 10am-8pm" is a lost Sunday in front of two ordinary rules, and reading it back to front would hand Thursday
+ * to Saturday the missing day's clock. 36 of the 40 lines written in this order are that, or carry a word
+ * between the parts, and every one of them is left exactly as it was.
+ */
+/** The days behind a span, and whatever the shop puts between the two of them. */
+const POSTFIX_PAIR = new RegExp("^" + A_SPAN + GAP + "(?:on\\s+)?" + RULE_DAYS + "\\b", "i");
+/** Between one rule and the next: the shop's own punctuation, a bracketed aside ("(Seasonal)"), or "and". */
+const POSTFIX_SEP = /^[\s,;./&-]*(?:\([^)]*\)[\s,;./&-]*)?(?:and\s+)?/i;
+
+/** One rule per span, where a shop wrote each one's days behind its clock. Null when the line is not that shape. */
+function postfixRules(rule: string): string[] | null {
+  const at = rule.search(A_SPAN_RE);
+  // A day in front of the first clock is a line the reader above already understands.
+  if (at < 0 || A_DAY_RE.test(rule.slice(0, at))) return null;
+  const out: string[] = [];
+  let rest = rule.slice(at);
+  while (rest.trim()) {
+    const pair = POSTFIX_PAIR.exec(rest);
+    if (!pair) return null;
+    out.push(pair[0].trim());
+    rest = rest.slice(pair[0].length).replace(POSTFIX_SEP, "");
+  }
+  if (out.length < 2) return null;
+  // Whatever the shop wrote in front of the first clock, a venue name most often, stays with the first rule.
+  const head = rule.slice(0, at).trim();
+  if (head) out[0] = head + " " + out[0];
+  return out;
+}
+
 /** Every rule a published line holds: the crawl's glued seams opened, then the shop's own spaced-out rules. */
 export function hourRules(line: string): string[] {
-  return gluedRules(line).flatMap(spacedRules);
+  return gluedRules(line).flatMap((rule) => postfixRules(rule) || spacedRules(rule));
 }
 
 /** Zero-width joiners, spaces and marks, a byte order mark, and the control characters a bad decode leaves. */

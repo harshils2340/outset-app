@@ -453,6 +453,29 @@ test("a second rule a shop wrote after a space is a second rule", () => {
 });
 
 /**
+ * A shop that writes each rule back to front, the clock first and the days it belongs to behind it. 40 shipped
+ * lines are written in that order and the cut above cannot make any of them, because it needs the days to come
+ * first, so the whole week was one rule and every day of it took the first span the line stated.
+ */
+test("a rule a shop wrote clock first is still a rule", () => {
+  // o-districtbrewco-com's Lynden taproom, which opened at four on a weekend it opens at noon and shut at
+  // eight on a Friday and a Saturday it shuts at ten.
+  assert.equal(show(parseWeek(["Lynden: 4pm \u2013 8pm Mon-Tue, 4pm \u2013 9pm Wed-Thu, 4pm - 10pm Fri, 12pm \u2013 10pm Sat, 12pm \u2013 8pm Sun"])),
+    "Sun 12:00-20:00, Mon 16:00-20:00, Tue 16:00-20:00, Wed 16:00-21:00, Thu 16:00-21:00, Fri 16:00-22:00, Sat 12:00-22:00");
+  // o-terravita-com, whose aside between a rule and the next one is the shop's own and not a day.
+  assert.equal(show(parseWeek(["TCC Admin Hours: 9:00am - 5:00pm Mon, 9:00am - 3:00pm Tue-Wed (Seasonal), 8:30am - 5:00pm Thu-Fri, 8:30am - 4:30pm Sat"])),
+    "Sun -, Mon 09:00-17:00, Tue 09:00-15:00, Wed 09:00-15:00, Thu 08:30-17:00, Fri 08:30-17:00, Sat 08:30-16:30");
+  // A span with no days behind it is a rule the crawl cut the front off rather than a line written back to
+  // front, so o-coldstreamclear-com is left exactly as it was, muddle and all: reading it back to front would
+  // hand Thursday to Saturday the lost Sunday's clock, which is worse than the days it already misreads.
+  assert.equal(show(parseWeek(["Antigonish: 12pm\u20137pm, Thursday\u2013Saturday 10am\u201310pm, Monday-Wednesday 10am-8pm"])),
+    "Sun -, Mon 12:00-19:00, Tue -, Wed 12:00-19:00, Thu 12:00-19:00, Fri 12:00-19:00, Sat 12:00-19:00");
+  // And a line whose days come first is still the other reader's: o-gardenstaterocks-com keeps its weekend.
+  assert.equal(show(parseWeek(["Mon - Fri 4:00pm - 10:00pm Sat & Sun 12:00pm - 7:00pm"])),
+    "Sun 12:00-19:00, Mon 16:00-22:00, Tue 16:00-22:00, Wed 16:00-22:00, Thu 16:00-22:00, Fri 16:00-22:00, Sat 12:00-19:00");
+});
+
+/**
  * The shapes the cut refuses, each one a line a shop really published. A space is the shop's own punctuation,
  * so a cut there is only made where the line cannot mean anything else.
  */

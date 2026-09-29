@@ -279,6 +279,22 @@ test("a second rule a shop wrote after a space is a second rule here too", () =>
     "Sun -, Mon -, Tue -, Wed -, Thu -, Fri 18:00-22:00, Sat 18:00-22:00");
 });
 
+/**
+ * A rule a shop wrote clock first, on the card's own week. 40 shipped lines put the days behind the span they
+ * belong to, and the card has to cut them where the listing page cuts them or the two disagree about the hour
+ * a shop opens.
+ */
+test("a rule a shop wrote clock first is still a rule here too", () => {
+  assert.equal(show(encodeWeek(["Lynden: 4pm \u2013 8pm Mon-Tue, 4pm \u2013 9pm Wed-Thu, 4pm - 10pm Fri, 12pm \u2013 10pm Sat, 12pm \u2013 8pm Sun"])),
+    "Sun 12:00-20:00, Mon 16:00-20:00, Tue 16:00-20:00, Wed 16:00-21:00, Thu 16:00-21:00, Fri 16:00-22:00, Sat 12:00-22:00");
+  assert.equal(show(encodeWeek(["TCC Admin Hours: 9:00am - 5:00pm Mon, 9:00am - 3:00pm Tue-Wed (Seasonal), 8:30am - 5:00pm Thu-Fri, 8:30am - 4:30pm Sat"])),
+    "Sun -, Mon 09:00-17:00, Tue 09:00-15:00, Wed 09:00-15:00, Thu 08:30-17:00, Fri 08:30-17:00, Sat 08:30-16:30");
+  // The ambiguous shape stays refused on this side as well: a span with no days behind it is a rule the crawl
+  // cut the front off, and the line keeps the reading it had.
+  assert.equal(show(encodeWeek(["Antigonish: 12pm\u20137pm, Thursday\u2013Saturday 10am\u201310pm, Monday-Wednesday 10am-8pm"])),
+    "Sun -, Mon 12:00-19:00, Tue -, Wed 12:00-19:00, Thu 12:00-19:00, Fri 12:00-19:00, Sat 12:00-19:00");
+});
+
 /** The same day off between two days of hours, on the card's own week. */
 test("a day off that names its own day finishes its rule here too", () => {
   assert.equal(show(encodeWeek(["Mon 10:00 am - 4:00 pm Tues CLOSED Wed 10:00 am - 6:00 pm"])),

@@ -488,9 +488,40 @@ function spacedRules(rule: string): string[] {
   return [rule];
 }
 
+/**
+ * A shop that writes the clock in front of the days it belongs to, over and over ("Ferndale: 12pm - 9pm
+ * Mon-Tue, 12pm - 10pm Wed-Thu, 12pm - 8pm Fri-Sun"), which the reader above cannot cut because a cut there
+ * needs the days to come first. Which lines those are, and the ambiguous shape this deliberately leaves
+ * alone, are in the twin of this rule in src/lib/hoursText.ts.
+ */
+/** The days behind a span, and whatever the shop puts between the two of them. */
+const POSTFIX_PAIR = new RegExp("^" + A_SPAN + GAP + "(?:on\\s+)?" + RULE_DAYS + "\\b", "i");
+/** Between one rule and the next: the shop's own punctuation, a bracketed aside ("(Seasonal)"), or "and". */
+const POSTFIX_SEP = /^[\s,;./&-]*(?:\([^)]*\)[\s,;./&-]*)?(?:and\s+)?/i;
+
+/** One rule per span, where a shop wrote each one's days behind its clock. Null when the line is not that shape. */
+function postfixRules(rule: string): string[] | null {
+  const at = rule.search(A_SPAN_RE);
+  // A day in front of the first clock is a line the reader above already understands.
+  if (at < 0 || A_DAY_RE.test(rule.slice(0, at))) return null;
+  const out: string[] = [];
+  let rest = rule.slice(at);
+  while (rest.trim()) {
+    const pair = POSTFIX_PAIR.exec(rest);
+    if (!pair) return null;
+    out.push(pair[0].trim());
+    rest = rest.slice(pair[0].length).replace(POSTFIX_SEP, "");
+  }
+  if (out.length < 2) return null;
+  // Whatever the shop wrote in front of the first clock, a venue name most often, stays with the first rule.
+  const head = rule.slice(0, at).trim();
+  if (head) out[0] = head + " " + out[0];
+  return out;
+}
+
 /** Every rule a published line holds: the crawl's glued seams opened, then the shop's own spaced-out rules. */
 export function hourRules(line: string): string[] {
-  return gluedRules(line).flatMap(spacedRules);
+  return gluedRules(line).flatMap((rule) => postfixRules(rule) || spacedRules(rule));
 }
 
 export type WeekEnc = ([number, number] | null)[];
