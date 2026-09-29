@@ -322,6 +322,17 @@ test("a week written in one and two letter codes is the week the shop wrote", ()
   assert.equal(show(encodeWeek(["M, Tu, We, Sa: 6:00 AM - 8:00 PM"])), "Sun -, Mon 06:00-20:00, Tue 06:00-20:00, Wed 06:00-20:00, Thu -, Fri -, Sat 06:00-20:00");
 });
 
+test("a day is read where it sits here too, whatever the shop wrote around it", () => {
+  assert.equal(
+    show(encodeWeek(["Mo, Tu, Wed, Th, & Fr12:00pm-4:00pm"])),
+    "Sun -, Mon 12:00-16:00, Tue 12:00-16:00, Wed 12:00-16:00, Thu 12:00-16:00, Fri 12:00-16:00, Sat -",
+  );
+  assert.equal(
+    show(encodeWeek(["Mo - Fr, Sa 9am-5pm"])),
+    "Sun -, Mon 09:00-17:00, Tue 09:00-17:00, Wed 09:00-17:00, Thu 09:00-17:00, Fri 09:00-17:00, Sat 09:00-17:00",
+  );
+});
+
 test("a Saturday written out in full beside the codes is its own rule", () => {
   assert.equal(
     show(encodeWeek(["M - F 10am - 6pm Saturday 10am - 3pm"])),

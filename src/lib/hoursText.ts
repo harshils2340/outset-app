@@ -183,11 +183,22 @@ const ANY_DAY = "(?:sun|mon|tue|wed|thu|fri|sat)(?:day|sday|nesday|rsday|urday|r
 const CODE_DAY = "(?:mo|tu|we|th|fr|sa|su|m|w|f)";
 /** A day token in any spelling, word or code. */
 const GROUP_DAY = "(?:" + ANY_DAY + "|" + CODE_DAY + ")";
-const DAY_JOIN = "\\s*(?:-|\u2013|\u2014|to|thru|through|&|and|,|/)\\s*";
+/**
+ * What a shop writes between two days, which can be more than one mark: New Jersey Repertory separates the
+ * last of its five with a comma and an ampersand together ("Mo, Tu, Wed, Th, & Fr"), and one separator was
+ * all a group could hold, so the group ended at Thursday.
+ */
+const DAY_JOIN = "\\s*(?:(?:-|\u2013|\u2014|to|thru|through|&|and|,|/)\\s*)+";
 /** Two or more days in any spelling, joined as a range or a list: one subject, however the shop separates it. */
 const DAY_SUBJECT = GROUP_DAY + "(?:" + DAY_JOIN + GROUP_DAY + ")+";
-const CODE_GROUP = new RegExp("\\b" + DAY_SUBJECT + "\\b", "gi");
-const DAY_PART = /(-|\u2013|\u2014|to|thru|through|&|and|,|\/)/i;
+/**
+ * A group ends where the letters do rather than where the word does, because the crawl glues the clock
+ * straight on to the last day of it: New Jersey Repertory's "Mo, Tu, Wed, Th, & Fr12:00pm-4:00pm" ended its
+ * group at Thursday, so a theatre open Monday to Friday said nothing at all about its Friday.
+ */
+const CODE_GROUP = new RegExp("\\b" + DAY_SUBJECT + "(?![a-z])", "gi");
+/** One day of a group, wherever it sits in it. */
+const DAY_PART = new RegExp("\\b" + GROUP_DAY + "\\.?(?![a-z])", "gi");
 const RANGE_JOIN = /^(?:-|\u2013|\u2014|to|thru|through)$/i;
 const CODE_IDX: Record<string, number> = { su: 0, mo: 1, tu: 2, we: 3, th: 4, fr: 5, sa: 6, m: 1, w: 3, f: 5 };
 const DAY_TOKEN = new RegExp("^(?:(sun|mon|tue|wed|thu|fri|sat)(?:day|sday|nesday|rsday|urday|rs?)?s?|(mo|tu|we|th|fr|sa|su|m|w|f))\\.?$", "i");
@@ -206,16 +217,18 @@ function dayOfToken(token: string): number | undefined {
 export function codeDays(line: string): number[] | null {
   const days = new Set<number>();
   for (const m of line.matchAll(CODE_GROUP)) {
-    const parts = m[0].split(DAY_PART).map((p) => p.trim()).filter(Boolean);
-    const tokens = parts.filter((_, i) => i % 2 === 0);
+    // The days are read where they sit and what the shop wrote between two of them is whatever is left in
+    // between, because a separator is not always one mark: counting the parts of a split assumes it is.
+    const tokens = [...m[0].matchAll(DAY_PART)];
     // A group of words alone is the word reader's, not this one's.
-    if (!tokens.some((t) => t.replace(/\.$/, "").length <= 2)) continue;
-    const idx = tokens.map(dayOfToken);
+    if (!tokens.some((t) => t[0].replace(/\.$/, "").length <= 2)) continue;
+    const idx = tokens.map((t) => dayOfToken(t[0]));
     if (idx.some((d) => d === undefined)) continue;
     let prev = -1;
     for (let i = 0; i < idx.length; i += 1) {
       const d = idx[i] as number;
-      if (prev >= 0 && RANGE_JOIN.test(parts[i * 2 - 1] || "")) {
+      const join = i ? m[0].slice(tokens[i - 1].index + tokens[i - 1][0].length, tokens[i].index).trim() : "";
+      if (prev >= 0 && RANGE_JOIN.test(join)) {
         for (let x = prev; ; x = (x + 1) % 7) {
           days.add(x);
           if (x === d) break;

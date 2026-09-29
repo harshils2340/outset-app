@@ -209,6 +209,15 @@ test("a week written in one and two letter codes is read the way the shop wrote 
   assert.equal(codedWeek("M - F 10am - 6pm Saturday 10am - 3pm"), "S- M600-1080 T600-1080 W600-1080 T600-1080 F600-1080 S600-900");
 });
 
+test("a day is read where it sits, whatever the shop wrote around it", () => {
+  // o-njrep-org, a theatre open Monday to Friday that said nothing at all about its Friday: the crawl glued
+  // the clock straight on to the last day of the group, and the shop separates that day with two marks.
+  assert.equal(codedWeek("Mo, Tu, Wed, Th, & Fr12:00pm-4:00pm"), "S- M720-960 T720-960 W720-960 T720-960 F720-960 S-");
+  assert.equal(codedWeek("Mo, Tu, Wed, Th, & Fr 12:00pm-4:00pm"), "S- M720-960 T720-960 W720-960 T720-960 F720-960 S-");
+  // A range is still a range once the days either side of it are found by where they sit.
+  assert.equal(codedWeek("Mo - Fr, Sa 9am-5pm"), "S- M540-1020 T540-1020 W540-1020 T540-1020 F540-1020 S540-1020");
+});
+
 test("a code that means two days, and a lone letter, name no day at all", () => {
   // "T" is Tuesday or Thursday, "S" is Saturday or Sunday: a guess either way, so the line keeps the week it
   // had. And a single letter by itself is as likely to be a month or a street direction as a day.
