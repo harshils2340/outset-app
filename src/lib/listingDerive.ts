@@ -267,6 +267,24 @@ export function tidyLength(text: string): string {
   return lengthWords(tidyLine(text));
 }
 
+/**
+ * What a booking is called on the screens and in the emails that read one back.
+ *
+ * A booking stores the menu row's own name, because that string is what the price is matched on when the row is
+ * priced again. `bookableMenu` has already taken the crawl's cruft out of it, but the word pass every printed row
+ * goes through is a display rule and runs at print time, so each surface that read a booking back was printing the
+ * crawl's spelling beside a booking box printing the tidied one: the confirmation said "Kayak & SUP Classes",
+ * "425 HP Luxury Tritoon", "surf boat" and "schedule a tour" where the page the guest booked on said "Kayak &
+ * Stand-up Paddleboard Classes", "425 Horsepower Luxury Tritoon", "Surf boat" and "Schedule a tour".
+ *
+ * With no row picked a booking stores the business's own name instead, and a business name is printed as the
+ * business wrote it on every other surface, so a name that is the title is handed back untouched.
+ */
+export function bookedName(service: string | undefined, title: string | undefined): string {
+  const s = (service || "").trim();
+  return s && s !== (title || "").trim() ? tidyName(s) : s;
+}
+
 export function lengthWords(text: string): string {
   return text.replace(/^(\d+(?:\.\d+)?)\s*(hour|hr|minute|min|day|night|week)s?\.?$/i, (_m, n: string, u: string) => {
     const unit = ({ hr: "hour", min: "minute" } as Record<string, string>)[u.toLowerCase()] || u.toLowerCase();

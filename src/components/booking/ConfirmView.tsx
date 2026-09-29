@@ -7,6 +7,7 @@ import { useApp } from "../../state/AppProvider";
 import { Markup } from "../Markup";
 import { Fragment } from "react";
 import { tidyLength, tidyName } from "../web/WebListing";
+import { bookedName } from "../../lib/listingDerive";
 
 export function ConfirmView() {
   const { state, openChat, openRequest, goto } = useApp();
@@ -27,7 +28,7 @@ export function ConfirmView() {
      desktop confirmation has named them all along. */
   const split = splitAddons(b.addons);
   const o = !l && split.optionIdx != null ? u!.options[split.optionIdx] : null;
-  const serviceName = o ? (o.detail ? tidyName(o.name) + " · " + tidyLength(o.detail) : tidyName(o.name)) : (b.service || null);
+  const serviceName = o ? (o.detail ? tidyName(o.name) + " · " + tidyLength(o.detail) : tidyName(o.name)) : (bookedName(b.service, title) || null);
   const extras = l
     ? (b.addons || []).map((id) => (l.addons || []).find((x) => x.id === id)?.name).filter((n): n is string => !!n)
     : split.extras;
@@ -77,7 +78,7 @@ export function ConfirmView() {
                 {extras.map((n, i) => (
                   <Fragment key={n}>
                     {i ? <br /> : null}
-                    {n}
+                    {tidyName(n)}
                   </Fragment>
                 ))}
               </b>

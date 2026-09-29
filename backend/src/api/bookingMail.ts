@@ -4,6 +4,7 @@ import { readJson } from "../lib/store.ts";
 import { maskEmail } from "../lib/claimIndex.ts";
 import { dialPhone } from "../../../src/lib/phone.ts";
 import { streetOf } from "../../../src/lib/address.ts";
+import { bookedName, tidyLength, tidyName } from "../../../src/lib/listingDerive.ts";
 import { OPERATOR_FEE_RATE, currencyForArea, operatorShare, subtotalFromTotal } from "../payments/money.ts";
 import type { StoredBooking } from "./bookings.ts";
 import type { StoredProfile } from "./profiles.ts";
@@ -78,7 +79,11 @@ export function moneyOf(rec: StoredBooking): { total: number; subtotal: number; 
   return { total: rec.total, subtotal, fee, net };
 }
 
-const what = (rec: StoredBooking, title: string) => `${rec.service || title}${rec.variant ? " (" + rec.variant + ")" : ""}`;
+/**
+ * What was booked, named the way the page the guest booked on named it. The stored strings are the menu row's
+ * own, which is what the price is matched on; only the sentence a person reads goes through the word pass.
+ */
+const what = (rec: StoredBooking, title: string) => `${bookedName(rec.service, title) || title}${rec.variant ? " (" + tidyLength(rec.variant) + ")" : ""}`;
 
 function bookingRows(rec: StoredBooking, ctx: BookingContext, opts: { guest?: boolean; where?: boolean } = {}): EmailRow[] {
   const rows: EmailRow[] = [
@@ -86,7 +91,7 @@ function bookingRows(rec: StoredBooking, ctx: BookingContext, opts: { guest?: bo
     { label: "When", value: fmtWhen(rec.date, rec.slot) },
     { label: "Guests", value: guests(rec.qty) },
   ];
-  if (rec.addons.length) rows.push({ label: "Add-ons", value: rec.addons.join(", ") });
+  if (rec.addons.length) rows.push({ label: "Add-ons", value: rec.addons.map((a) => tidyName(a)).join(", ") });
   if (opts.guest) rows.push({ label: "Guest", value: [rec.guest.name, rec.guest.phone, rec.guest.email].filter(Boolean).join(" · ") });
   if (opts.where !== false && ctx.where) rows.push({ label: "Where", value: ctx.where });
   rows.push({ label: "Code", value: rec.code });

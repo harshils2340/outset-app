@@ -7,6 +7,7 @@ import { addonPrice, priceUnclaimed, serviceFeeLabel } from "../../lib/pricing";
 import { splitAddons } from "../../lib/storage";
 import { placeName } from "../../lib/listingDerive";
 import { arrivalNote, tidyAddress, tidyLength, tidyName } from "./WebListing";
+import { bookedName } from "../../lib/listingDerive";
 import { fmtReviews, fmtTime, money } from "../../lib/format";
 import { Photo } from "../art/Photo";
 import { Mark } from "../layout/Mark";
@@ -104,12 +105,14 @@ export function WebConfirm({ booking, onDone, onOpen }: { booking: Booking; onDo
                 </div>
               ) : booking.service ? (
                 <div className="alconfirmrow">
-                  <span><b>Booking</b><small>{booking.service}</small></span>
+                  <span><b>Booking</b><small>{bookedName(booking.service, item.title)}</small></span>
                 </div>
               ) : null}
               {extras.length ? (
                 <div className="alconfirmrow">
-                  <span><b>Add-ons</b><small>{extras.join(", ")}</small></span>
+                  {/* The same word pass the price breakdown below runs over these names: the row and its price
+                      read one way in the two lists on one screen. */}
+                  <span><b>Add-ons</b><small>{extras.map((n) => tidyName(n)).join(", ")}</small></span>
                 </div>
               ) : null}
               <div className="alconfirmrow">
