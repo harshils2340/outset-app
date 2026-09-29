@@ -6620,6 +6620,79 @@ HEAD:refs/heads/main` went through on the first try.
   idempotent, and the two listings whose week is wrong either way because a "Weekdays" or an "Office hours" is
   glued to the word in front of it.
 
+## 29 September 2026, ninety-ninth run (04:20 to 05:50 UTC)
+
+**Chosen, and why.** `git fetch` first: `origin/main` had moved three commits past the ninety-eighth run's log
+entry, and one of them (`ff8f49af`, the Otto outreach work) touched `backend/src`, so the rehearsal was run once
+at the end rather than skipped. A fresh checkout again had no `node_modules` on either side. Type checks first:
+root `tsc --noEmit -p .` and `tsc -b` clean, backend clean but for TS5097. Then `npm test` in `backend/`, which
+is where this run started, because it was red: 899 tests, 29 failing.
+
+Every area on tonight's brief is on the Verified list, so after the red suite the hunt went to the one open
+defect Coverage still carries that a guest can read: a day a shop wrote as a code rather than a word. It was
+measured over all 14,386 shipped listings that publish an hours line, with every changed week read against the
+line that changed it.
+
+**Found and fixed.**
+
+- **The outreach draft stops dying on a database that has no facts table yet** (`1d4fd468`). Every draft reads
+  its greeting, the greeting reads the owner facts the owners crawl left, and that read threw "no such table:
+  facts" on any database which never ran `migrate`. The whole outreach copy suite went dark with it: 29 tests
+  across `draftCopy`, `ottoCopy` and `ottoDrafts`, which are the tests that check what the mail we send an
+  unasked business actually says. `owner.ts` already meant to survive this (its comment says so) but deferring
+  the prepare only moved the throw into the first call. A missing table means no owner facts, which is the front
+  desk rather than an error, and the miss is not remembered, so a job that migrates after its first draft still
+  reads what the crawl found.
+- **A week a shop wrote as "M-F" stops being every day of it** (`5fba5c98`). Both hour readers wanted three
+  letters before they would call a word a day, so all 72 listings that write their week in one and two letter
+  codes were misread. 34 weekday-only shops named no day at all, which a week reads as every day of it: a
+  ballet school, a county park, a civic centre and a martial arts gym all told a guest they were open on a
+  Sunday their own site says they are shut. The 9 that wrote a Saturday out in full beside the codes ("M - F
+  10am - 6pm Saturday 10am - 3pm") stood closed all week with their weekday clock on the Saturday. A code is
+  read only inside a group of two or more days, and only where it can mean one day: "T" is Tuesday or Thursday
+  and "S" is Saturday or Sunday, so "M-T" and "S-S" state no days rather than a guessed half. That is what keeps
+  the "M" of May, the "W" of a street address and the "F" of a temperature out of a week, each of which a real
+  shipped line carries. 48 weeks change and every one of them was wrong before.
+
+**Swept and clean.** All 14,386 listings that publish a readable hours line, through both readers: `parseWeek`
+in `src/lib/openNow.ts` and `encodeWeek` in `backend/src/sync/hours.ts` answer identically on every one, which
+is the drift the twin has cost before. The 48 changed weeks were each read against the shop's own line and no
+day lost hours it had stated. The words a guest reads are untouched: `displayHours` runs the glued reader and
+not the spaced one, so the shop's own "M-F 9am-5pm" is still printed whole, which is now a test. The semicolon
+as a rule separator was measured and left alone: only 6 shipped rules hold one between two spans and 4 of them
+are two spans of one day (a lunch break, two trip times, a summer variant), so a split there would break more
+than the 2 it would fix.
+
+**Verification.** App `npm test` 1,000 pass, 0 fail, up from 997. Backend `npm test` 904 tests, 902 pass, 0
+fail, 2 skipped, up from 899 with 29 red. `tsc -b` clean on the app, `tsc --noEmit -p .` clean at the root and
+still compiling nothing, the backend type check clean but for TS5097. The rehearsal 57 of 57 against a local TLS
+Postgres 16 on 5433 and the Chromium on disk, with no Stripe, mail or GitHub key. Nothing under `backend/data`,
+`public/` or `src/data` was touched. Notes for the next run: the cluster has to be created and started as
+`postgres`, `initdb` still refuses to run as root, and the backend file already has a `DAY_GROUP` of its own,
+so a new constant shared with `hoursText.ts` needs a name neither file holds.
+
+**Needs Harshil.**
+
+- **A test suite can go dark without anything failing.** The 29 outreach copy tests were red from the moment
+  `ff8f49af` landed, and nothing said so: that commit's own new tests pass, the type checks pass, and the
+  rehearsal does not run the outreach suite. They are the only check on the sentences we mail a business that
+  never asked to hear from us. Worth a rule that the backend suite has to be green before a push, not only
+  after one.
+- **The cards are still behind the pages, and only a sync closes it.** Tonight adds 48 listings to the count
+  the ninety-first and ninety-eighth runs measured, because the corrected weeks are corrected on the page and
+  stale in `catalog.json`. `npm run backend:sync` is the whole fix, and it is the same sync the 1,210 dropped
+  address lines, the 766 cut blurbs and the four stale "from" prices are waiting on.
+- **Three coded shapes are refused on purpose and one of them is a miss.** A code that means two days ("M-T",
+  "S-S") and a lone letter ("F: 8:00AM - 11:30AM") name no day, which is right for the letter and a tie for
+  the pair. But a space-separated list of codes with no separator at all is a real miss: `o-dvc-edu` writes
+  "M T W Th 9:00 am - 5:00 pm F 9:00 am - 3:00 pm" and keeps a week of all seven days. So does
+  `o-njrep-org`'s Friday, where "Fr" is glued straight onto "12:00pm" and the glued reader only knows the
+  three-letter spellings.
+- Still open from earlier runs: a rule that states its days behind its clock ("Hours: 10am-5pm Monday-Friday,
+  11am-4pm Saturday") stays one rule; the desktop site has no way to say anything in passing; `plainWords` is
+  not idempotent; and the two listings whose week is wrong either way because a "Weekdays" or an "Office hours"
+  is glued to the word in front of it.
+
 ## Coverage
 
 The catalog is 48,198 listings as of the 23 September sync, 1,873 of them Viator partner rows. Counts below
@@ -6646,7 +6719,10 @@ publish one and on all four surfaces that print it, the static `/l/` page includ
 OpenStreetMap rule those lines carry, the site builder's whole-day placeholder that the open-or-closed line
 already refuses, a season or a date written in front of a rule, two spans in one rule, the syntax's own
 keywords and separators, and the shop's own words kept where they are theirs, every line diffed before and
-after over the whole catalog. Every rule one of those lines holds rather than the first one it states, over all
+after over the whole catalog. Every day a line names rather than the days a word reader can spell, over all
+14,386 that publish one: a week written in one and two letter codes, on both readers and on the words a
+guest reads, with the codes that mean two days and the lone letters that mean none left unread. Every rule
+one of those lines holds rather than the first one it states, over all
 14,509 that publish one: several rules separated by nothing but a space, a day off written between two days of
 hours, and the three orders a cut deliberately refuses, with the app's reader and the sync's twin answering
 identically on all 14,509. The booking box price lines, including a service with no price. Phone width at
@@ -6917,7 +6993,8 @@ Outreach, the mail we send to a business that never asked for it, read end to en
 suppression list behind every send, which of its two readers actually holds it and what a send does when it
 cannot be read; the unsubscribe token, the static page it lands on, the API route it posts to, and that
 route's CORS and rate limit; the Resend bounce and complaint webhook into the same list; which address a
-draft may be sent to, against the reader the claim index and the sync already share; and every sentence of
+draft may be sent to, against the reader the claim index and the sync already share; that a draft can be built at all against a database the crawl has never filled;
+and every sentence of
 the claim email against what the operator's page actually holds, on a shop with everything on it, with a
 menu and no prices, with one thing and with nothing at all.
 
@@ -7654,4 +7731,4 @@ Whether Peek has a sixth word for an availability mode, which only a fresh captu
 freesale slot exists in production at all: none of the 195 recorded rows is one. The readers with no second
 reading in the corpus at all, which is every vendor but FareHarbor, Peek and Xola: Resova, Checkfront, Rezdy,
 Acuity, Square, TripWorks, ForeUp, aReservation and FishingReservations have unit tests and no recorded shop,
-so the drift closed tonight on three vendors is unmeasured on nine.
+so the drift closed tonight on three vendors is unmeasured on nine. A space-separated list of day codes with no separator between them ("M T W Th 9:00 am - 5:00 pm F 9:00 am - 3:00 pm"), and a code glued straight onto its own clock ("Fr12:00pm-4:00pm"), which the glued reader refuses because it only knows the three-letter spellings: 2 listings each, and both a week of all seven days today (see the ninety-ninth run's Needs Harshil). Whether a semicolon between two rules should be read as a separator, which 2 of the 6 shipped lines that carry one would want and the other 4 would break. Whether the backend suite going red should stop a push, which is how 29 outreach copy tests sat dark for a day (see that run's Needs Harshil).
