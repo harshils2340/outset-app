@@ -295,6 +295,21 @@ test("a rule a shop wrote clock first is still a rule here too", () => {
     "Sun -, Mon 12:00-19:00, Tue -, Wed 12:00-19:00, Thu 12:00-19:00, Fri 12:00-19:00, Sat 12:00-19:00");
 });
 
+/**
+ * A span with no day in front of it, on the card's own week. It is a fallback rather than a statement about any
+ * particular day, and the card has to read it the way the listing page does or the two disagree about the hour
+ * a shop opens.
+ */
+test("a span that names no day fills only the days nothing else names here too", () => {
+  assert.equal(show(encodeWeek(["open 1pm - 6pm", "Mon-Fri 10:00 AM - 5:00 PM", "Sat-Sun 1:00 PM - 4:00 PM"])),
+    "Sun 13:00-16:00, Mon 10:00-17:00, Tue 10:00-17:00, Wed 10:00-17:00, Thu 10:00-17:00, Fri 10:00-17:00, Sat 13:00-16:00");
+  assert.equal(show(encodeWeek(["Saturday-Sunday, 11 AM-5 PM", "10:00AM - 7:00PM (Last boat leaves at 6:00PM)"])),
+    "Sun 11:00-17:00, Mon 10:00-19:00, Tue 10:00-19:00, Wed 10:00-19:00, Thu 10:00-19:00, Fri 10:00-19:00, Sat 11:00-17:00");
+  // Among themselves the dayless spans are unchanged: the last one a page states still wins.
+  assert.equal(show(encodeWeek(["12:00 AM - 01:00 AM", "04:00 PM - 01:00 AM"])),
+    "Sun 16:00-25:00, Mon 16:00-25:00, Tue 16:00-25:00, Wed 16:00-25:00, Thu 16:00-25:00, Fri 16:00-25:00, Sat 16:00-25:00");
+});
+
 /** The same day off between two days of hours, on the card's own week. */
 test("a day off that names its own day finishes its rule here too", () => {
   assert.equal(show(encodeWeek(["Mon 10:00 am - 4:00 pm Tues CLOSED Wed 10:00 am - 6:00 pm"])),

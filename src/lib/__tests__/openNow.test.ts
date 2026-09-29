@@ -476,6 +476,30 @@ test("a rule a shop wrote clock first is still a rule", () => {
 });
 
 /**
+ * A span with no day in front of it. 71 shipped listings publish one beside a line that does name its days, and
+ * the dayless span claimed all seven, so whichever of the two the crawl happened to list second won the week.
+ * It is a fallback, not a statement about a Tuesday: it fills the days nothing else names and leaves the rest.
+ */
+test("a span that names no day fills only the days nothing else names", () => {
+  // o-alaska-org's Cuddy Family Midtown Park, whose own table lost every day to the summary line above it.
+  assert.equal(show(parseWeek(["open 1pm - 6pm", "Mon-Fri 10:00 AM - 5:00 PM", "Sat-Sun 1:00 PM - 4:00 PM"])),
+    "Sun 13:00-16:00, Mon 10:00-17:00, Tue 10:00-17:00, Wed 10:00-17:00, Thu 10:00-17:00, Fri 10:00-17:00, Sat 13:00-16:00");
+  // o-2muddy-com, open 11 to 5 at the weekend and shut the rest of the week, told a guest every day ran 10 to 7.
+  assert.equal(show(parseWeek(["Saturday-Sunday, 11 AM-5 PM", "10:00AM - 7:00PM (Last boat leaves at 6:00PM)"])),
+    "Sun 11:00-17:00, Mon 10:00-19:00, Tue 10:00-19:00, Wed 10:00-19:00, Thu 10:00-19:00, Fri 10:00-19:00, Sat 11:00-17:00");
+  // o-clostergolfcenter-com: a stated day off survives a dayless span too, which it did not before.
+  assert.equal(show(parseWeek(["Go-karts: Tue-Sun 12:00 PM to 7:00 PM, closed Mon", "Driving range: 6:30 AM to 10:00 PM (hours may vary in winter)"])),
+    "Sun 12:00-19:00, Mon closed, Tue 12:00-19:00, Wed 12:00-19:00, Thu 12:00-19:00, Fri 12:00-19:00, Sat 12:00-19:00");
+  // Among themselves the dayless spans are unchanged: the last one a page states is still the one that wins,
+  // which is o-abeerb-com keeping its four in the afternoon rather than its midnight.
+  assert.equal(show(parseWeek(["12:00 AM - 01:00 AM", "04:00 PM - 01:00 AM"])),
+    "Sun 16:00-25:00, Mon 16:00-25:00, Tue 16:00-25:00, Wed 16:00-25:00, Thu 16:00-25:00, Fri 16:00-25:00, Sat 16:00-25:00");
+  // A dayless span on its own still covers the week, which is the only thing it can mean.
+  assert.equal(show(parseWeek(["10:00 am - 6:00 pm"])),
+    "Sun 10:00-18:00, Mon 10:00-18:00, Tue 10:00-18:00, Wed 10:00-18:00, Thu 10:00-18:00, Fri 10:00-18:00, Sat 10:00-18:00");
+});
+
+/**
  * The shapes the cut refuses, each one a line a shop really published. A space is the shop's own punctuation,
  * so a cut there is only made where the line cannot mean anything else.
  */

@@ -269,6 +269,36 @@ export function osmToLines(raw: string): string[] {
   return out;
 }
 
+/** What one rule states: the days it names, the days it shuts, its span, and whether it says the word. */
+type RuleRead = { days: number[] | null; shut: number[]; span: { open: number; close: number } | null; closed: boolean };
+
+function readRule(raw: string): RuleRead | null {
+  // The phone number goes before anything is read off the line, not just before the time: glued on with no
+  // space it also hides the day, so "3132Tuesday - Friday" left a theatre open on Friday alone.
+  const line = raw.replace(/\s+/g, " ").replace(PHONE_RE, " ").trim();
+  if (!line) return null;
+  const closed = /\bclosed\b/i.test(line);
+  const shut = closedDays(line);
+  const span = firstSpan(line);
+  let days: number[] | null = null;
+  for (const [re, d] of DAY_RE) {
+    if (re.test(line)) {
+      days = d;
+      break;
+    }
+  }
+  // Specific phrases first (weekdays, daily); otherwise any explicit day range or list on the line.
+  if (!days || days.length === 1) days = genericDays(line) || days;
+  // A stated day off can be the one day a phrase does not name, on either side: "Open daily 10AM-7:30PM,
+  // closed Wednesdays" names six open days through "daily", and "Mon - Fri: Closed Saturday: 10am - 5pm"
+  // names its open Saturday nowhere else, so the phrase and the days written out are read together.
+  else if (shut.length) {
+    const named = genericDays(line);
+    if (named) days = [...new Set([...days, ...named])].sort((a, b) => a - b);
+  }
+  return { days, shut, span, closed };
+}
+
 export function parseWeek(input: string[]): Week | null {
   // Whether a published line is opening hours at all is read off the whole line, and what it states off each
   // rule it turns out to hold: "MondayClosedTuesday2:00PM to 7:00PM" is a day off and a day's hours, not one
@@ -279,49 +309,34 @@ export function parseWeek(input: string[]): Week | null {
     .flatMap((l) => (isTradingHoursLine(l) ? hourRules(l) : []));
   const week: Week = [null, null, null, null, null, null, null];
   let any = false;
-  for (const raw of lines) {
-    // The phone number goes before anything is read off the line, not just before the time: glued on with no
-    // space it also hides the day, so "3132Tuesday - Friday" left a theatre open on Friday alone.
-    const line = raw.replace(/\s+/g, " ").replace(PHONE_RE, " ").trim();
-    if (!line) continue;
-    const closed = /\bclosed\b/i.test(line);
-    const shut = closedDays(line);
-    const span = firstSpan(line);
-    let days: number[] | null = null;
-    for (const [re, d] of DAY_RE) {
-      if (re.test(line)) {
-        days = d;
-        break;
-      }
-    }
-    // Specific phrases first (weekdays, daily); otherwise any explicit day range or list on the line.
-    if (!days || days.length === 1) days = genericDays(line) || days;
-    // A stated day off can be the one day a phrase does not name, on either side: "Open daily 10AM-7:30PM,
-    // closed Wednesdays" names six open days through "daily", and "Mon - Fri: Closed Saturday: 10am - 5pm"
-    // names its open Saturday nowhere else, so the phrase and the days written out are read together.
-    else if (shut.length) {
-      const named = genericDays(line);
-      if (named) days = [...new Set([...days, ...named])].sort((a, b) => a - b);
-    }
-    if (!days && span) days = [0, 1, 2, 3, 4, 5, 6];
-    if (!days) continue;
+  const read = lines.map(readRule).filter((r): r is RuleRead => !!r);
+  // Which days a rule that named its own days has spoken for. A dayless rule may not overwrite one of those,
+  // but it may still overwrite another dayless rule, so the last one a page states is still the one that wins.
+  const spoken = [false, false, false, false, false, false, false];
+  const apply = (r: RuleRead, days: number[], dayless: boolean) => {
+    const set = (d: number, open: number, close: number) => {
+      if (dayless ? spoken[d] : false) return;
+      week[d] = { open, close };
+      if (!dayless) spoken[d] = true;
+      any = true;
+    };
     for (const d of days) {
-      if (shut.includes(d)) continue;
+      if (r.shut.includes(d)) continue;
       // The word is about the days it names, so the rest of the line is not shut with them: a spa's "Monday -
       // Saturday, closed Sunday" states no hours and had closed the six days it is open.
-      if (closed && !span && !shut.length) {
-        week[d] = { open: 0, close: 0 };
-        any = true;
-      } else if (span) {
-        week[d] = { open: span.open, close: span.close };
-        any = true;
-      }
+      if (r.closed && !r.span && !r.shut.length) set(d, 0, 0);
+      else if (r.span) set(d, r.span.open, r.span.close);
     }
-    for (const d of shut) {
-      week[d] = { open: 0, close: 0 };
-      any = true;
-    }
-  }
+    for (const d of r.shut) set(d, 0, 0);
+  };
+  for (const r of read) if (r.days) apply(r, r.days, false);
+  // A span with no day in front of it is a fallback rather than a statement about any particular day, so it
+  // fills the days nothing else names and leaves the rest alone. It used to claim all seven and, being read in
+  // page order, overwrote whatever a real day line had said: Cuddy Family Midtown Park's own "Mon-Fri 10:00 AM
+  // - 5:00 PM, Sat-Sun 1:00 PM - 4:00 PM" table lost every day of the week to a summary line reading "open 1pm
+  // - 6pm", and Big Muddy Adventures, open 11 AM to 5 PM at the weekend and shut the rest of the week, told a
+  // guest every day ran 10 to 7.
+  for (const r of read) if (!r.days && r.span) apply(r, [0, 1, 2, 3, 4, 5, 6], true);
   return any ? week : null;
 }
 
