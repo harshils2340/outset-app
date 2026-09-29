@@ -179,7 +179,7 @@ export function WebConfirm({ booking, onDone, onOpen }: { booking: Booking; onDo
                 {lines && picked ? (
                   <div className="allines alconfirmlines">
                     <div className="alline"><span className="wrap">{perPerson(picked) && picked.price != null ? money(picked.price) + " × " + booking.qty + (booking.qty === 1 ? " guest" : " guests") : tidyName(picked.name)}</span><span>{money(lines.base)}</span></div>
-                    {addonRows.map((a) => <div className="alline" key={a.name}><span className="wrap">{a.name}</span><span>{money(addonPrice(a))}</span></div>)}
+                    {addonRows.map((a) => <div className="alline" key={a.name}><span className="wrap">{tidyName(a.name)}</span><span>{money(addonPrice(a))}</span></div>)}
                     {lines.fee ? <div className="alline"><span className="wrap">{serviceFeeLabel(lines)}</span><span>{money(lines.fee)}</span></div> : null}
                   </div>
                 ) : picked ? (

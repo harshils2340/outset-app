@@ -1628,6 +1628,17 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
               </section>
             ) : null}
 
+            {/*
+              An add-on reads the same rule as every other row in this box. `bookableMenu` tidies the
+              punctuation the crawl leaves in an add-on name, but the word pass each surface runs over an
+              option and a service name was never run over an add-on, so the two lists sat one above the other
+              with one cleaned and one raw: 195 add-ons on 136 shipped listings led with a bullet's hyphen
+              ("- Two Passenger Private Flight"), opened lowercase ("each additional person"), shouted ("FUN
+              GUIDED SURF FISHING TRIPS (4 hours)"), carried a list number ("2. Home Delivery"), a space in
+              front of their own colon ("Group lesson : 45min") or a word the glossary spells out for a guest
+              ("SUP Lessons 75 minutes"). The stored name is the guest's own choice of add-on and stays as it
+              is; only what the page prints goes through `tidyName`.
+            */}
             {item.addons && item.addons.length ? (
               <section className="alsec">
                 <h2>Add-ons</h2>
@@ -1635,7 +1646,7 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
                   {item.addons.map((a, i) => (
                     <button key={a.name} type="button" className="alvariant check" aria-pressed={addonIdx.includes(i)} onClick={() => setAddonIdx((c) => (c.includes(i) ? c.filter((x) => x !== i) : [...c, i]))}>
                       <span className="alcheck" aria-hidden="true"><Markup html={ICONS.check} /></span>
-                      <span>{a.name}</span>
+                      <span>{tidyName(a.name)}</span>
                       <b>{addonPrice(a) ? "+" + money(addonPrice(a)) : "Free"}</b>
                     </button>
                   ))}
@@ -1903,13 +1914,13 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
                       <u>{perPerson(picked) && picked.price != null ? money(picked.price) + " × " + qty + (qty === 1 ? " guest" : " guests") : tidyName(picked.name)}</u>
                       <span>{money(p.base)}</span>
                     </div>
-                    {extras.map((a) => <div className="alline" key={a.name}><u>{a.name}</u><span>{money(addonPrice(a))}</span></div>)}
+                    {extras.map((a) => <div className="alline" key={a.name}><u>{tidyName(a.name)}</u><span>{money(addonPrice(a))}</span></div>)}
                     {p.fee ? <div className="alline"><u>{serviceFeeLabel(p)}</u><span>{money(p.fee)}</span></div> : null}
                     <div className="alline total"><span>Total</span><span>{p.total ? money(p.total) : "Pay on site"}</span></div>
                 </div>
                 ) : (
                   <div className="allines">
-                    {extras.map((a) => <div className="alline" key={a.name}><u>{a.name}</u><span>{money(addonPrice(a))}</span></div>)}
+                    {extras.map((a) => <div className="alline" key={a.name}><u>{tidyName(a.name)}</u><span>{money(addonPrice(a))}</span></div>)}
                     <div className="alline total"><span>Total</span><span>{p.total ? money(p.total) : "Pay on site"}</span></div>
                   </div>
                 )}

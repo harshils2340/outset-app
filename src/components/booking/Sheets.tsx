@@ -715,7 +715,7 @@ function RequestBody({
                 )}
                 {extras.map((a) => (
                   <div className="airline" key={a.name}>
-                    <span>{a.name}</span>
+                    <span>{tidyName(a.name)}</span>
                     <span>{money(addonPrice(a))}</span>
                   </div>
                 ))}
@@ -1082,8 +1082,8 @@ function RequestBody({
                       <Markup html={ICONS.check} />
                     </span>
                     <span className="txt">
-                      <b>{a.name}</b>
-                      {a.detail ? <small>{a.detail}</small> : null}
+                      <b>{tidyName(a.name)}</b>
+                      {a.detail ? <small>{tidyLength(a.detail)}</small> : null}
                     </span>
                     <span className="addonprice">{addonPrice(a) ? "+" + money(addonPrice(a)) : "Free"}</span>
                   </button>
