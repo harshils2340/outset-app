@@ -697,6 +697,12 @@ export function encodeWeek(input: string[]): WeekEnc | null {
   // A span with no day in front of it is a fallback rather than a statement about any particular day, so it
   // fills the days nothing else names and leaves the rest alone. The twin of this rule, and the shops it puts
   // right, are in src/lib/openNow.ts.
-  for (const r of read) if (!r.days && r.span) apply(r, [0, 1, 2, 3, 4, 5, 6], true);
+  // A rule whose only named days are the days it shuts is telling a guest about the rest of the week, so its
+  // span is read as one: "open six days a week (closed Tuesdays) 10:00am-5:00pm" named Tuesday and nothing
+  // else, so the museum's Tuesday was shut and the six days it is open said nothing at all. The span joins the
+  // fallback pass rather than the statements, so a line that does name one of those days still wins it, and
+  // `apply` already steps over the days the rule shuts. The twin of this rule is in src/lib/openNow.ts.
+  const onlyShut = (r: RuleRead) => !!r.days && r.days.length > 0 && r.days.every((d) => r.shut.includes(d));
+  for (const r of read) if (r.span && (!r.days || onlyShut(r))) apply(r, [0, 1, 2, 3, 4, 5, 6], true);
   return any ? week : null;
 }

@@ -250,6 +250,13 @@ test("a day a shop says it is shut is shut, on a line that states hours as well"
     "Sun 08:00-12:00, Mon 08:00-15:30, Tue 08:00-15:30, Wed 08:00-15:30, Thu 08:00-15:30, Fri 08:00-15:30, Sat 08:00-14:00",
   );
   assert.equal(show(encodeWeek(["8:30 am - 4:30 pm, closed from 12:00 pm - 1:00 pm"])), everyDay("08:30-16:30"));
+  // A rule whose only named days are the days it shuts states the hours of the rest of the week: o-msje-org.
+  assert.equal(show(encodeWeek(["open six days a week (closed Tuesdays) 10:00am-5:00pm"])), "Sun 10:00-17:00, Mon 10:00-17:00, Tue closed, Wed 10:00-17:00, Thu 10:00-17:00, Fri 10:00-17:00, Sat 10:00-17:00");
+  assert.equal(show(encodeWeek(["Office hours 8:00am-4pm (closed Tues / Wed)"])), "Sun 08:00-16:00, Mon 08:00-16:00, Tue closed, Wed closed, Thu 08:00-16:00, Fri 08:00-16:00, Sat 08:00-16:00");
+  assert.equal(
+    show(encodeWeek(["open six days a week (closed Tuesdays) 10:00am-5:00pm", "Sat 9am - 1pm"])),
+    "Sun 10:00-17:00, Mon 10:00-17:00, Tue closed, Wed 10:00-17:00, Thu 10:00-17:00, Fri 10:00-17:00, Sat 09:00-13:00",
+  );
 });
 
 /**

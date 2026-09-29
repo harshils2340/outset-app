@@ -374,6 +374,16 @@ test("a day a shop says it is shut is shut, on a line that states hours as well"
   assert.equal(show(parseWeek(["Driving range open daily 6:30AM - 7:00PM (closed Sundays after 3 PM for maintenance)"])), everyDay("06:30-19:00"));
   // The word is about the days it names, so o-baymassageandskincare-com stops closing the six days it is open.
   assert.equal(show(parseWeek(["Monday: 9:00 am-6:00 pm Tuesday: 9:00 am-6:00 pm", "Monday - Saturday, closed Sunday"])), "Sun closed, Mon 09:00-18:00, Tue 09:00-18:00, Wed -, Thu -, Fri -, Sat -");
+  // A rule whose only named days are the days it shuts states the hours of the rest of the week, not of
+  // nothing: o-msje-org's Tuesday was shut and the six days the museum is open said nothing at all.
+  assert.equal(show(parseWeek(["open six days a week (closed Tuesdays) 10:00am-5:00pm"])), "Sun 10:00-17:00, Mon 10:00-17:00, Tue closed, Wed 10:00-17:00, Thu 10:00-17:00, Fri 10:00-17:00, Sat 10:00-17:00");
+  assert.equal(show(parseWeek(["CLOSED Mondays & Tuesdays - 10am - 4pm"])), "Sun 10:00-16:00, Mon closed, Tue closed, Wed 10:00-16:00, Thu 10:00-16:00, Fri 10:00-16:00, Sat 10:00-16:00");
+  assert.equal(show(parseWeek(["Office hours 8:00am-4pm (closed Tues / Wed)"])), "Sun 08:00-16:00, Mon 08:00-16:00, Tue closed, Wed closed, Thu 08:00-16:00, Fri 08:00-16:00, Sat 08:00-16:00");
+  // A line that does name one of those days still wins it: the fallback fills only what nothing else states.
+  assert.equal(
+    show(parseWeek(["open six days a week (closed Tuesdays) 10:00am-5:00pm", "Sat 9am - 1pm"])),
+    "Sun 10:00-17:00, Mon 10:00-17:00, Tue closed, Wed 10:00-17:00, Thu 10:00-17:00, Fri 10:00-17:00, Sat 09:00-13:00",
+  );
   // A line that says it is closed and names no day at all is unchanged: every day it does name is shut.
   assert.equal(show(parseWeek(["Sunday: Closed"])), "Sun closed, Mon -, Tue -, Wed -, Thu -, Fri -, Sat -");
   assert.equal(show(parseWeek(["Mon-Fri 9am-5pm", "Closed for the season"])), "Sun -, Mon 09:00-17:00, Tue 09:00-17:00, Wed 09:00-17:00, Thu 09:00-17:00, Fri 09:00-17:00, Sat -");

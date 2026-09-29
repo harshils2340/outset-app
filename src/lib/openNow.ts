@@ -352,7 +352,13 @@ export function parseWeek(input: string[]): Week | null {
   // - 5:00 PM, Sat-Sun 1:00 PM - 4:00 PM" table lost every day of the week to a summary line reading "open 1pm
   // - 6pm", and Big Muddy Adventures, open 11 AM to 5 PM at the weekend and shut the rest of the week, told a
   // guest every day ran 10 to 7.
-  for (const r of read) if (!r.days && r.span) apply(r, [0, 1, 2, 3, 4, 5, 6], true);
+  // A rule whose only named days are the days it shuts is telling a guest about the rest of the week, so its
+  // span is read as one: "open six days a week (closed Tuesdays) 10:00am-5:00pm" named Tuesday and nothing
+  // else, so the museum's Tuesday was shut and the six days it is open said nothing at all. The span joins the
+  // fallback pass rather than the statements, so a line that does name one of those days still wins it, and
+  // `apply` already steps over the days the rule shuts.
+  const onlyShut = (r: RuleRead) => !!r.days && r.days.length > 0 && r.days.every((d) => r.shut.includes(d));
+  for (const r of read) if (r.span && (!r.days || onlyShut(r))) apply(r, [0, 1, 2, 3, 4, 5, 6], true);
   return any ? week : null;
 }
 
