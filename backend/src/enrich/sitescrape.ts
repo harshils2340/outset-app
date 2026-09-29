@@ -791,7 +791,10 @@ function harvest(html: string, url: string, out: Map<string, Found>, links: Set<
     }
     if (m && cur.price == null) {
       cur.price = toNum(m[1]);
-      cur.unit = m[2] ? "/" + m[2].toLowerCase().replace(/s$/, "") : null;
+      // PRICE_NEAR captures the unit singular already, with its own plural "s" outside the group, so there is
+      // nothing here to singularise: stripping a trailing "s" only ever damaged a unit that ends in one, and
+      // "$30 per class" became "/clas" on 11 shipped rows.
+      cur.unit = m[2] ? "/" + m[2].toLowerCase() : null;
       cur.url = url;
     }
     if (!cur.detail && near && !/\$/.test(near.slice(0, 5)) && !/reserve now|book now/i.test(near.slice(0, 20))) cur.detail = near.slice(0, 120).replace(/\s+\S*$/, "");

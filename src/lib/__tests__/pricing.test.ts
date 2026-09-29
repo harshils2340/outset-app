@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { addonPrice, priceUnclaimed, serviceFee } from "../pricing";
+import { priceWith } from "../format";
 
 /**
  * The money the booking box shows a guest, which has to be the money the server charges them
@@ -49,4 +50,27 @@ test("addonPrice is the one rule both the lines and the total are read through",
   assert.equal(addonPrice({ price: 0 }), 0);
   assert.equal(addonPrice({ price: null }), 0);
   assert.equal(addonPrice({ price: -20 }), 0);
+});
+
+/**
+ * The unit a price is sold in, as a guest reads it. The crawl used to singularise a unit by stripping a trailing
+ * "s", so "$30 per class" was stored "/clas" and the booking box quoted "$30 / clas". 11 rows on 10 listings
+ * still carry that spelling; `backend/src/enrich/sitescrape.ts` no longer writes a new one, because PRICE_NEAR
+ * captures the unit singular already.
+ */
+test("a unit the crawl over-stripped is still read as the word the shop wrote", () => {
+  assert.equal(priceWith(30, "/clas"), "$30 / class"); // o-aikidoburnaby-com
+  assert.equal(priceWith(15, "/clas"), "$15 / class"); // o-ashkenaz-com
+  assert.equal(priceWith(40, "/clas"), "$40 / class"); // o-pacificreign-com
+});
+
+test("every unit the shipped catalog publishes reads as a word, not as a fragment", () => {
+  // Every distinct `per` in public/o, and the word each one prints. Nothing may read as a cut-off word.
+  const units = ["/group", "/trip", "/hr", "/boat", "/person", "/night", "/jet ski", "/hour", "/day", "/room", "/half day", "/child", "/each", "/kayak", "/session", "/vehicle", "/adult", "/clas", "/jetski", "/30 min", "/ski", "/round", "/half-day", "/ride", "/half hour", "/kid", "/vessel", "/table"];
+  for (const per of units) {
+    const line = priceWith(50, per);
+    assert.ok(line.startsWith("$50"), per);
+    const word = line === "$50" ? "" : line.slice("$50 / ".length);
+    assert.ok(!/\b(?:clas|pas|bu|glas|les|proces)$/.test(word), per + " prints " + JSON.stringify(word));
+  }
 });

@@ -75,11 +75,17 @@ export function reviewsLine(n: number, adjective = ""): string {
   return fmtReviews(n) + " " + (adjective ? adjective + " " : "") + "review" + (n === 1 ? "" : "s");
 }
 
-/** "$80" plus its unit as "$80 / person". Units come in as "/person", "/hr", "each". */
+/**
+ * "$80" plus its unit as "$80 / person". Units come in as "/person", "/hr", "each".
+ *
+ * "clas" is not a typo here: the crawl used to singularise a unit by stripping a trailing "s", which turned
+ * "$30 per class" into "/clas", and 11 shipped rows on 10 listings still carry it. The crawl no longer does it
+ * (`backend/src/enrich/sitescrape.ts`), so the spelling goes when those listings are next crawled and synced.
+ */
 export function priceWith(amount: number, per?: string | null): string {
   const unit = (per || "").replace(/^\//, "").trim();
   if (!unit || unit === "each") return money(amount);
-  const nice: Record<string, string> = { hr: "hour", hour: "hour", person: "person", boat: "boat", ski: "ski", day: "day", trip: "trip", group: "group", vehicle: "vehicle", room: "room" };
+  const nice: Record<string, string> = { hr: "hour", hour: "hour", person: "person", boat: "boat", ski: "ski", day: "day", trip: "trip", group: "group", vehicle: "vehicle", room: "room", clas: "class" };
   return money(amount) + " / " + (nice[unit] || unit);
 }
 
