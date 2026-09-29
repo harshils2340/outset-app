@@ -57,6 +57,11 @@ function genericDays(line: string): number[] | null {
   }
   const head = range ? l.slice(0, range.index) + l.slice((range.index || 0) + range[0].length) : l;
   for (const m of head.matchAll(DAY_LIST)) days.add(DAY_IDX[m[1]]);
+  // A shop that wrote its days as codes is read where the words name none, and where every day they do name is
+  // inside the coded group, which is how "Sa-Sun" keeps the Saturday the word reader cannot see. Anything else
+  // is a line the word reader has already understood, and it may not grow a day out of a stray letter.
+  const coded = codeDays(line);
+  if (coded && (!days.size || [...days].every((d) => coded.includes(d)))) for (const d of coded) days.add(d);
   return days.size ? [...days].sort() : null;
 }
 
@@ -331,7 +336,63 @@ export function firstSpan(line: string): [number, number] | null {
  * 2:00PM to 7:00PM" two rules rather than one line that says a shop is both.
  */
 const FULL_DAY = "(?:sun|mon|tue|wed|thu|fri|sat)(?:day|sday|nesday|rsday|urday)s?";
-const ANY_DAY = "(?:sun|mon|tue|wed|thu|fri|sat)(?:day|sday|nesday|rsday|urday|rs?)?s?";
+const ANY_DAY = "(?:sun|mon|tue|wed|thu|fri|sat)(?:day|sday|nesday|rsday|urday|rs?)?s?";/**
+ * A day written as a code rather than a word, the way a shop's own sign writes it: "M-F", "Mo-Fr", "M - Th",
+ * "M, Tu, We, Sa", "Sa-Sun". Only the codes that can mean one day. "T" is Tuesday or Thursday and "S" is
+ * Saturday or Sunday, so "M-T" and "S-S" name no day here rather than a guessed one. And a code counts only
+ * inside a group of two or more days, which is what keeps the "W" of a street address and the "F" of a
+ * temperature out of a week: 72 listings write their days this way and every one of them was misread. A
+ * weekday-only shop ("M-F 9am-5pm") named no day at all, which a week reads as every day of it, and a shop
+ * that wrote its Saturday out in full beside them ("M - F 10am - 6pm Saturday 10am - 3pm") stood closed all
+ * week with its weekday clock on the Saturday.
+ */
+const CODE_DAY = "(?:mo|tu|we|th|fr|sa|su|m|w|f)";
+/** A day token in any spelling, word or code. */
+const GROUP_DAY = "(?:" + ANY_DAY + "|" + CODE_DAY + ")";
+const DAY_JOIN = "\\s*(?:-|\u2013|\u2014|to|thru|through|&|and|,|/)\\s*";
+/** Two or more days in any spelling, joined as a range or a list: one subject, however the shop separates it. */
+const DAY_SUBJECT = GROUP_DAY + "(?:" + DAY_JOIN + GROUP_DAY + ")+";
+const CODE_GROUP = new RegExp("\\b" + DAY_SUBJECT + "\\b", "gi");
+const DAY_PART = /(-|\u2013|\u2014|to|thru|through|&|and|,|\/)/i;
+const RANGE_JOIN = /^(?:-|\u2013|\u2014|to|thru|through)$/i;
+const CODE_IDX: Record<string, number> = { su: 0, mo: 1, tu: 2, we: 3, th: 4, fr: 5, sa: 6, m: 1, w: 3, f: 5 };
+const DAY_TOKEN = new RegExp("^(?:(sun|mon|tue|wed|thu|fri|sat)(?:day|sday|nesday|rsday|urday|rs?)?s?|(mo|tu|we|th|fr|sa|su|m|w|f))\\.?$", "i");
+
+/** The day a token names, in any spelling. Undefined when the word is not a day, or is a code that means two. */
+function dayOfToken(token: string): number | undefined {
+  const m = DAY_TOKEN.exec(token.trim());
+  return m ? CODE_IDX[(m[1] || m[2]).toLowerCase().slice(0, 2)] : undefined;
+}
+
+/**
+ * The days a group holding at least one code names, a range where its days are joined by a dash or a "to" and
+ * a list otherwise. Null when the line writes no such group. A group where any one token does not resolve
+ * names nothing at all, so "M-T" hands back no Monday: half a range is not a shop's week.
+ */
+function codeDays(line: string): number[] | null {
+  const days = new Set<number>();
+  for (const m of line.matchAll(CODE_GROUP)) {
+    const parts = m[0].split(DAY_PART).map((p) => p.trim()).filter(Boolean);
+    const tokens = parts.filter((_, i) => i % 2 === 0);
+    // A group of words alone is the word reader's, not this one's.
+    if (!tokens.some((t) => t.replace(/\.$/, "").length <= 2)) continue;
+    const idx = tokens.map(dayOfToken);
+    if (idx.some((d) => d === undefined)) continue;
+    let prev = -1;
+    for (let i = 0; i < idx.length; i += 1) {
+      const d = idx[i] as number;
+      if (prev >= 0 && RANGE_JOIN.test(parts[i * 2 - 1] || "")) {
+        for (let x = prev; ; x = (x + 1) % 7) {
+          days.add(x);
+          if (x === d) break;
+        }
+      } else days.add(d);
+      prev = d;
+    }
+  }
+  return days.size ? [...days].sort((a, b) => a - b) : null;
+}
+
 /** The spellings a shop shortens a day to, as the crawl's own capital leaves them. */
 const SHORT_DAY = "(?:Sun|Mon|Tues|Tue|Wednes|Wed|Thurs|Thur|Thu|Fri|Satur|Sat)";
 const SHORT_CAPS = "(?:SUN|MON|TUES|TUE|WEDNES|WED|THURS|THUR|THU|FRI|SATUR|SAT)";
@@ -388,12 +449,17 @@ export function gluedRules(line: string): string[] {
 /** What a shop leaves between the parts of a rule: punctuation, or a zero-width space the crawl swept up. */
 const GAP = "[\\s:;.,&=/\\-\u2013\u2014]*";
 /** The days a rule opens on, as a range or a list: one subject, however the shop separates it. */
-const RULE_DAYS = ANY_DAY + "(?:\\s*(?:-|\u2013|\u2014|to|thru|through|&|and|,|/)\\s*" + ANY_DAY + ")*";
+/** The days a rule may open on: two or more in any spelling, or one written as a word. A lone code is not
+ * one of them, because a single letter by itself is as likely to be a street direction as a day. */
+const RULE_DAYS = "(?:" + DAY_SUBJECT + "|" + ANY_DAY + ")";
 /** A span, both ends written out. */
 const A_SPAN = "\\d{1,2}(?::\\d{2})?\\s*(?:[ap]\\.?m\\.?)?\\s*(?:-|\u2013|\u2014|to|until|till)\\s*\\d{1,2}(?::\\d{2})?\\s*(?:[ap]\\.?m\\.?)?";
 const A_SPAN_RE = new RegExp(A_SPAN, "i");
-const A_DAY_RE = new RegExp("\\b" + ANY_DAY + "\\b", "i");
-const EVERY_DAY_RE = new RegExp("\\b" + ANY_DAY + "\\b", "gi");
+/** Whether a clause has already named a day, which the days behind a cut have to sit behind. A lone code
+ * counts here: "M 4:30PM - 9PM tu - su 11:30AM - 9PM" is a Monday and then the rest of the week, and the
+ * rule behind the cut names its own days whatever this one turns out to hold. */
+const A_DAY_RE = new RegExp("\\b" + GROUP_DAY + "\\b", "i");
+const EVERY_DAY_RE = new RegExp("\\b" + GROUP_DAY + "\\b", "gi");
 /** The next rule, whole: its own days, then whatever the shop puts in front of the clock, then its own span. */
 const NEXT_RULE = new RegExp("^" + RULE_DAYS + GAP + "(?:from\\s+|open\\s+|at\\s+)?" + A_SPAN, "i");
 /**

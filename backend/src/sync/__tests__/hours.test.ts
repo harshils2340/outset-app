@@ -286,3 +286,50 @@ test("a day off that names its own day finishes its rule here too", () => {
   assert.equal(show(encodeWeek(["Open daily 10AM-7:30PM, closed Wednesdays"])),
     "Sun 10:00-19:30, Mon 10:00-19:30, Tue 10:00-19:30, Wed closed, Thu 10:00-19:30, Fri 10:00-19:30, Sat 10:00-19:30");
 });
+
+/**
+ * The days a shop wrote as a code rather than a word. 72 shipped listings write their week that way and every
+ * one of them was misread, because both readers wanted three letters before they would call a word a day. A
+ * weekday-only shop named no day at all, which a week reads as every day of it, so 34 of them told a guest
+ * they were open on a Sunday they are shut; the 9 that wrote a Saturday out in full beside the codes stood
+ * closed all week with their weekday clock on the Saturday. Every line below is one a real shop published.
+ */
+
+test("a week written in one and two letter codes is the week the shop wrote", () => {
+  assert.equal(show(encodeWeek(["M-F 9am-5pm"])), "Sun -, Mon 09:00-17:00, Tue 09:00-17:00, Wed 09:00-17:00, Thu 09:00-17:00, Fri 09:00-17:00, Sat -");
+  assert.equal(show(encodeWeek(["open M-F from 9 am-5 pm"])), "Sun -, Mon 09:00-17:00, Tue 09:00-17:00, Wed 09:00-17:00, Thu 09:00-17:00, Fri 09:00-17:00, Sat -");
+  assert.equal(show(encodeWeek(["Mo-Fr: 5am - 7pm"])), "Sun -, Mon 05:00-19:00, Tue 05:00-19:00, Wed 05:00-19:00, Thu 05:00-19:00, Fri 05:00-19:00, Sat -");
+  // A range that closes on a code and opens on a word, and one that does the reverse.
+  assert.equal(show(encodeWeek(["Sa-Sun: 7 AM - 10 PM"])), "Sun 07:00-22:00, Mon -, Tue -, Wed -, Thu -, Fri -, Sat 07:00-22:00");
+  assert.equal(show(encodeWeek(["M - Th: 10am - 9pm"])), "Sun -, Mon 10:00-21:00, Tue 10:00-21:00, Wed 10:00-21:00, Thu 10:00-21:00, Fri -, Sat -");
+  // A list rather than a range, where the shop names the days it does open.
+  assert.equal(show(encodeWeek(["M, Tu, We, Sa: 6:00 AM - 8:00 PM"])), "Sun -, Mon 06:00-20:00, Tue 06:00-20:00, Wed 06:00-20:00, Thu -, Fri -, Sat 06:00-20:00");
+});
+
+test("a Saturday written out in full beside the codes is its own rule", () => {
+  assert.equal(
+    show(encodeWeek(["M - F 10am - 6pm Saturday 10am - 3pm"])),
+    "Sun -, Mon 10:00-18:00, Tue 10:00-18:00, Wed 10:00-18:00, Thu 10:00-18:00, Fri 10:00-18:00, Sat 10:00-15:00",
+  );
+  assert.equal(
+    show(encodeWeek(["M-F: 6:30am to 6pm Sat: 6:30am to 6:30pm"])),
+    "Sun -, Mon 06:30-18:00, Tue 06:30-18:00, Wed 06:30-18:00, Thu 06:30-18:00, Fri 06:30-18:00, Sat 06:30-18:30",
+  );
+  // A day of its own in front, the rest of the week behind it, both in codes.
+  assert.equal(
+    show(encodeWeek(["M 4:30PM - 9PM tu - su 11:30AM - 9PM"])),
+    "Sun 11:30-21:00, Mon 16:30-21:00, Tue 11:30-21:00, Wed 11:30-21:00, Thu 11:30-21:00, Fri 11:30-21:00, Sat 11:30-21:00",
+  );
+});
+
+test("a code that means two days names neither, and a lone letter names none", () => {
+  // "T" is Tuesday or Thursday and "S" is Saturday or Sunday, so a group holding one states no days and the
+  // line falls back to the week it always did rather than to a guessed half of itself.
+  assert.equal(show(encodeWeek(["M-T: 8:00AM - 5:30PM"])), everyDay("08:00-17:30"));
+  assert.equal(show(encodeWeek(["S-S 9am-3pm"])), everyDay("09:00-15:00"));
+  // A single letter on its own is as likely to be a street direction, a month or a temperature as a day.
+  assert.equal(show(encodeWeek(["Call for Reservations 6am - 9pm, May 1st through October 1st"])), everyDay("06:00-21:00"));
+  assert.equal(show(encodeWeek(["Open Bowling 3:00pm - 11:00pm, 11AM - Midnight"])), everyDay("15:00-23:00"));
+  assert.equal(show(encodeWeek(["Boats can be checked out as early as 9:00 AM and must be returned by 6:00 PM (off season 9am-5pm)"])), everyDay("09:00-17:00"));
+  assert.equal(show(encodeWeek(["Peak Season 9AM - 9PM, Mid Season 10AM - 7PM"])), everyDay("09:00-21:00"));
+});

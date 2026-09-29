@@ -190,3 +190,35 @@ test("a shop's own spacing is left in the line a guest reads", () => {
   // The same line, read for the week rather than for print, is the two rules it holds.
   assert.equal(parseWeek(["Mon-Sat 10am - 5pm Sunday 12pm - 5pm"])?.[0]?.open, 720);
 });
+
+/**
+ * The days a shop wrote as a code rather than a word, on the guest side of the twin. Every line below is one a
+ * real shop published, and every one of them was misread: "M-F 9am-5pm" named no day at all, which the week
+ * reads as every day of it, so 34 listings stood open on a Sunday their own site says they are shut. The
+ * backend's `encodeWeek` carries the same cases, because a card and the page it opens have to agree.
+ */
+
+const codedWeek = (line: string) =>
+  (parseWeek([line]) || []).map((d, i) => "SMTWTFS"[i] + (d ? d.open + "-" + d.close : "-")).join(" ");
+
+test("a week written in one and two letter codes is read the way the shop wrote it", () => {
+  assert.equal(codedWeek("M-F 9am-5pm"), "S- M540-1020 T540-1020 W540-1020 T540-1020 F540-1020 S-");
+  assert.equal(codedWeek("Mo-Fr: 5am - 7pm"), "S- M300-1140 T300-1140 W300-1140 T300-1140 F300-1140 S-");
+  assert.equal(codedWeek("Sa-Sun: 7 AM - 10 PM"), "S420-1320 M- T- W- T- F- S420-1320");
+  assert.equal(codedWeek("M, Tu, We, Sa: 6:00 AM - 8:00 PM"), "S- M360-1200 T360-1200 W360-1200 T- F- S360-1200");
+  assert.equal(codedWeek("M - F 10am - 6pm Saturday 10am - 3pm"), "S- M600-1080 T600-1080 W600-1080 T600-1080 F600-1080 S600-900");
+});
+
+test("a code that means two days, and a lone letter, name no day at all", () => {
+  // "T" is Tuesday or Thursday, "S" is Saturday or Sunday: a guess either way, so the line keeps the week it
+  // had. And a single letter by itself is as likely to be a month or a street direction as a day.
+  assert.equal(codedWeek("M-T: 8:00AM - 5:30PM"), "S480-1050 M480-1050 T480-1050 W480-1050 T480-1050 F480-1050 S480-1050");
+  assert.equal(codedWeek("S-S 9am-3pm"), "S540-900 M540-900 T540-900 W540-900 T540-900 F540-900 S540-900");
+  assert.equal(codedWeek("Peak Season 9AM - 9PM, Mid Season 10AM - 7PM"), "S540-1260 M540-1260 T540-1260 W540-1260 T540-1260 F540-1260 S540-1260");
+});
+
+test("the words a guest reads in the Hours block keep the shop's own codes", () => {
+  // The cut above is a reader, not a rewrite: nothing on the page changes.
+  assert.deepEqual(displayHours(["M - F 10am - 6pm Saturday 10am - 3pm"]), ["M - F 10am - 6pm Saturday 10am - 3pm"]);
+  assert.deepEqual(displayHours(["M-F 9am-5pm"]), ["M-F 9am-5pm"]);
+});

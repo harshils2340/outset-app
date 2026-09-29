@@ -2,7 +2,7 @@ import type { Unclaimed } from "../data/types";
 import { contactFor } from "./catalog";
 // The rule for whether a published line is opening hours at all lives with the rest of the hour-line reading,
 // in a module with no imports of its own, so the backend's static pages can read it too.
-import { hourRules, isTradingHoursLine } from "./hoursText";
+import { codeDays, hourRules, isTradingHoursLine } from "./hoursText";
 
 export { isTradingHoursLine };
 
@@ -66,6 +66,11 @@ function genericDays(line: string): number[] | null {
   }
   const head = range ? l.slice(0, range.index) + l.slice((range.index || 0) + range[0].length) : l;
   for (const m of head.matchAll(DAY_LIST)) days.add(DAY_IDX[m[1]]);
+  // A shop that wrote its days as codes is read where the words name none, and where every day they do name is
+  // inside the coded group, which is how "Sa-Sun" keeps the Saturday the word reader cannot see. Anything else
+  // is a line the word reader has already understood, and it may not grow a day out of a stray letter.
+  const coded = codeDays(line);
+  if (coded && (!days.size || [...days].every((d) => coded.includes(d)))) for (const d of coded) days.add(d);
   return days.size ? [...days].sort() : null;
 }
 
