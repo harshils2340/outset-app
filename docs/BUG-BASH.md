@@ -6693,6 +6693,76 @@ so a new constant shared with `hoursText.ts` needs a name neither file holds.
   not idempotent; and the two listings whose week is wrong either way because a "Weekdays" or an "Office hours"
   is glued to the word in front of it.
 
+## 29 September 2026, hundredth run (06:25 to 07:40 UTC)
+
+**Chosen, and why.** `git fetch` first: nothing has landed since the ninety-ninth run's log entry, and that
+entry records the rehearsal green at 57 of 57, so the rehearsal was skipped and the time spent hunting. Type
+checks first (root `tsc --noEmit -p .` and `tsc -b` clean, backend clean but for TS5097), then `npm test` in
+`backend/`, green at 904. Every area on the brief is on the Verified list, so the hunt went to the two open
+defects Coverage still carried, and then to the newest code in the repo, the Otto cloud sender, which mails
+real businesses unattended and has been read once.
+
+**Found and fixed.**
+
+- **A shop that wrote its clock in front of its days stops giving every day the first one** (`dabfad18`). 40
+  shipped hour lines put each rule's days behind its span, and the spaced-rule cut cannot make any of them,
+  because a cut there needs the days first. So the line was one rule and every day it named took the first
+  span. District Brew Co's Lynden taproom opened at four on a weekend it opens at noon and shut at eight on
+  the two nights it shuts at ten; Terravita's Saturday ran to five instead of half past four. A cut is made
+  only where the whole line is that one shape and nothing else, so the 36 with a word between the parts or a
+  span with no days behind it are left exactly as they were: Coldstream Clear's line is a lost Sunday in front
+  of two ordinary rules, and reading it back to front would hand Thursday to Saturday the missing day's clock.
+- **A Friday the crawl glued to its own clock stops falling out of the shop's week** (`11c93753`). New Jersey
+  Repertory publishes "Mo, Tu, Wed, Th, & Fr12:00pm-4:00pm", and a theatre open Monday to Friday said nothing
+  at all about its Friday. Two things had to be true: a code group could hold one separator between two days
+  and this shop writes its last with a comma and an ampersand together, and a group had to end on a word
+  boundary, which a day with the clock glued on cannot. The days in a group are now read where they sit and
+  the join is whatever is left between two of them, which is what still tells a range from a list.
+- **A second send in one day stops handing a cold mailbox the whole day's allowance again** (`42a30342`).
+  Both Otto senders ask for today's allowance fresh on every round, and a round happens whenever a mailbox
+  retires mid-batch with a network error; `--resume` asks again on a day that already ran and is documented as
+  sending "only what is still owed". Neither subtracted this morning's mail: the allowance was capped at the
+  rung rather than reduced by what had gone out, so every round handed back the whole rung. Worse, the rung
+  itself was read off a state file that by then held today as a day the campaign had sent on, so a resume
+  climbed a rung mid-day: ten sent on the first rung, resumed, twenty-five offered. That ramp is the only
+  thing keeping a cold Gmail account off a blocklist in its first fortnight.
+
+**Swept and clean.** All 14,509 listings that publish an hours line, through both readers, before and after
+each hours change: `parseWeek` in `src/lib/openNow.ts` and `encodeWeek` in `backend/src/sync/hours.ts` answer
+identically on every one, and exactly 3 weeks change, each read against the shop's own line. The rest of the
+28 September outreach commit read through besides the ramp: the shared Postgres record and its dedup, the
+bounce sweep over IMAP, which address a pitch may go to and whose first name it may open with, the mailbox
+rotation and its 465 fallback. Nothing else there is wrong that could be shown to be wrong from here.
+
+**Verification.** App `npm test` 1,002 pass, 0 fail. Backend `npm test` 908 tests, 906 pass, 0 fail, 2
+skipped, up from 904. `tsc -b` clean on the app, `tsc --noEmit -p .` clean at the root, the backend type check
+clean but for TS5097. The rehearsal was not run, by the rule above. Nothing under `backend/data`, `public/` or
+`src/data` was touched. Notes for the next run: the checkout here was made on 24 September and its local
+`main` sits on a commit `origin/main` no longer carries, so `git fetch` reports a forced update and a checkout
+of `main` would move the branch backwards; work was done on a branch cut from `origin/main` and pushed to
+`refs/heads/main`.
+
+**Needs Harshil.**
+
+- **Two hour lines about two different things, and the last one wins.** 431 of the 5,530 listings that publish
+  more than one hours line have a day two of those lines disagree about, and the reader takes whichever came
+  last in the file. Academy Lanes states "Sun.: 9:00 am - 10:00 pm" and then "Glow Bowl Hours Sun.: 11:00 am -
+  5:00 pm", so a bowling alley open at nine tells a guest it opens at eleven and shuts at five. Third Window
+  Brewery is in Santa Barbara, states its Santa Barbara week first and its Carpinteria taproom second, and
+  every day of the week a guest reads is Carpinteria's. 112 of the 431 lead two or more of their lines with a
+  name, which is the signal, but nothing in the line says which of the two names is the door: on one listing
+  the named line is the shop itself and the unnamed ones are its continuation. It wants a rule about
+  precedence rather than one about refusal, and a decision about which venue a chain listing's hours are for.
+- **A day code that means two days, and a list separated by nothing.** Still refused on purpose, and one of
+  them is still a real miss: `o-dvc-edu` writes "M T W Th 9:00 am - 5:00 pm F 9:00 am - 3:00 pm", a list with
+  no separator at all, and reading it needs the "T" resolved from its neighbours' order as much as it needs
+  the space read as a join. One listing, and a rule with a guess in it.
+- Still open from earlier runs: a rule that states its days behind its clock in a shape the new cut refuses
+  ("Hours: 10am-5pm Monday-Friday, 11am-4pm Saturday"); the desktop site has no way to say anything in
+  passing; `plainWords` is not idempotent; the two listings whose week is wrong either way because a
+  "Weekdays" or an "Office hours" is glued to the word in front of it; and the cards are still behind the
+  pages on every week corrected since the last sync, which only `npm run backend:sync` closes.
+
 ## Coverage
 
 The catalog is 48,198 listings as of the 23 September sync, 1,873 of them Viator partner rows. Counts below
@@ -6721,7 +6791,11 @@ already refuses, a season or a date written in front of a rule, two spans in one
 keywords and separators, and the shop's own words kept where they are theirs, every line diffed before and
 after over the whole catalog. Every day a line names rather than the days a word reader can spell, over all
 14,386 that publish one: a week written in one and two letter codes, on both readers and on the words a
-guest reads, with the codes that mean two days and the lone letters that mean none left unread. Every rule
+guest reads, with the codes that mean two days and the lone letters that mean none left unread. Every rule a line holds whichever order the shop wrote it in, over all 14,509 that publish one: a rule whose
+days sit behind its clock, repeated down a line, against the lines in that order whose first span names no
+days at all and stays one rule. Every day of a coded group rather than the days a single separator could
+reach: a last day joined by a comma and an ampersand together, and a day the crawl glued straight on to its
+own clock. Every rule
 one of those lines holds rather than the first one it states, over all
 14,509 that publish one: several rules separated by nothing but a space, a day off written between two days of
 hours, and the three orders a cut deliberately refuses, with the app's reader and the sync's twin answering
@@ -7354,6 +7428,10 @@ The outreach path driven rather than read, on the code that mails a business tha
 draft run against every exclusion it claims, both send queues and which id each row carries, the dry run's
 writes, the handoff export and the marks it leaves, both ramps' rung arithmetic and their weekend exit, the
 outreach list script, and `GET /outreach/drafts` against the admin gate above it.
+The cloud sender that landed on 28 September, read end to end: the shared Postgres record behind the dedup
+every machine reads, the bounce sweep over IMAP and what it suppresses, which address a pitch may go to and
+whose first name it may open with, the mailbox rotation and its 465 fallback, and the warm-up allowance every
+round and every resume asks for, which handed back the whole rung each time and climbed one mid-day.
 
 Which shops a listing's "More like this" rail draws from, over all 52,816 catalog rows: the pool each of them
 lands in, the 1,260 whose town is in no metro and so skipped their own state for the country, the 476 that
@@ -7435,7 +7513,11 @@ of a vendor and the guest listing page's reading of the same vendor, in both dir
 not sell reaching a guest, and a real departure dropped for carrying a party minimum. A slot with no capacity
 limit, against every surface that reads a seat count as a seat count.
 
-**Not yet checked.** Anything in the grounded fallback that needs a real Cohere key: no key exists here, so every answer checked tonight was a payload shaped by hand, and what the live model actually writes, what its citation offsets index into when it answers in more than one content part, and whether `citation_options` FAST cites densely enough for `keepCited` to keep a good answer are all unread. `npm run otto:eval` for the same reason. Whether a price the model reformats should be dropped: a shop publishing "$85" and a model writing "$85.00" loses the sentence (see this run's Needs Harshil). Whether the grounded answer should reach the static `/l/` page and the phone sheet, which do not call it. A real Otto send or a real hand-send: the draft run, the queue, the dry run and the handoff export are all driven now, but nothing has left a mailbox from here, and `outreach-daily.sh` is launchd on the Mac and cannot be. Whether `state.ranDays` and `state.sentDays` growing without bound in `outreach-otto-ramp.json`, and being written only after a send loop that can run four hours, is worth changing, given that `sentToday` is what actually holds the ceiling. Whether the Otto email may tell a shop "Bookings drop straight into your calendar" when
+**Not yet checked.** Which of two hour lines about two different things a guest should read, on the 431
+listings where two of them disagree about a day and the last one written wins (see the hundredth run's Needs
+Harshil). A live Otto send from the cloud cron against real mailboxes: the ramp arithmetic is now tested but
+nothing has left a mailbox from here, and whether a suppression list read once at the start of a four hour
+batch should be re-read before each send. Anything in the grounded fallback that needs a real Cohere key: no key exists here, so every answer checked tonight was a payload shaped by hand, and what the live model actually writes, what its citation offsets index into when it answers in more than one content part, and whether `citation_options` FAST cites densely enough for `keepCited` to keep a good answer are all unread. `npm run otto:eval` for the same reason. Whether a price the model reformats should be dropped: a shop publishing "$85" and a model writing "$85.00" loses the sentence (see this run's Needs Harshil). Whether the grounded answer should reach the static `/l/` page and the phone sheet, which do not call it. A real Otto send or a real hand-send: the draft run, the queue, the dry run and the handoff export are all driven now, but nothing has left a mailbox from here, and `outreach-daily.sh` is launchd on the Mac and cannot be. Whether `state.ranDays` and `state.sentDays` growing without bound in `outreach-otto-ramp.json`, and being written only after a send loop that can run four hours, is worth changing, given that `sentToday` is what actually holds the ceiling. Whether the Otto email may tell a shop "Bookings drop straight into your calendar" when
 both `/voice` endpoints are read-only and syncing with an operator's own booking software is deferred on
 purpose, which is this run's first Needs Harshil. Whether the Otto subject should be shortened or the question
 fronted, since 201 of 4,728 run past 78 characters and a phone cuts the hook off almost all of them. Whether a
