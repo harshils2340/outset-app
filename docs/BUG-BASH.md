@@ -6763,6 +6763,73 @@ of `main` would move the branch backwards; work was done on a branch cut from `o
   "Weekdays" or an "Office hours" is glued to the word in front of it; and the cards are still behind the
   pages on every week corrected since the last sync, which only `npm run backend:sync` closes.
 
+## 29 September 2026, hundred and first run (07:20 to 08:05 UTC)
+
+**Chosen, and why.** `git fetch` first: nothing has landed since the hundredth run's entry, and that entry
+records both suites green, so the rehearsal was skipped and the time spent hunting. Root `node_modules` and
+`backend/node_modules` were both missing on this checkout and were installed before anything was read, which is
+the note the fifty-second run left. Type checks first (root `tsc --noEmit -p .` and `tsc -b` clean, backend
+clean but for TS5097), then both suites. Every area on the brief is on the Verified list, so the hunt went to
+the top item on the Not yet checked list, which is the only guest-visible defect on it rather than a question:
+the 431 listings where two of a shop's own hour lines disagree about a day and whichever the crawl listed
+second wins.
+
+**Found and fixed.**
+
+- **A span a shop wrote with no day in front of it stops taking the whole week from the days that named one**
+  (`32d0a1d3`). 71 shipped listings publish a span with no day attached beside a line that does state its days,
+  and the dayless span claimed all seven, so the order the crawl happened to list them in decided the week.
+  Cuddy Family Midtown Park's own table, "Mon-Fri 10:00 AM - 5:00 PM, Sat-Sun 1:00 PM - 4:00 PM", lost every
+  day of it to a summary line reading "open 1pm - 6pm". Big Muddy Adventures, open 11 to 5 at the weekend and
+  shut the rest of the week, told a guest every day ran 10 to 7. Gnarly Water Sports sells 7am to 7pm and read
+  as a shop open from six in the evening until midnight, which is its night kayaking. Riverside Massage Therapy
+  was open for the half hour its reception takes lunch, Catalina Island's visitor centre kept New Year's Eve
+  hours all year, and Nebraska Boating Company was open from seven to eight in the morning. A dayless span is a
+  fallback rather than a statement about a Tuesday, so it now fills the days nothing else names and leaves the
+  rest alone. Among themselves the dayless spans are untouched, so the last one a page states still wins and a
+  shop whose only lines are dayless reads exactly as before; a stated day off survives one too, which is how
+  Tappan Golf Center gets its closed Monday back.
+
+**Swept and clean.** All 14,509 listings that publish an hours line, read line by line rather than as a block,
+for two lines that disagree about a day: 5,536 publish more than one line and 431 hold a disagreement. 71 of
+those are the case above and now read the shop's own day line. The other 360 are two lines that each name their
+days, and they want a precedence decision rather than a rule (below). Both readers were moved together and
+`parseWeek` in `src/lib/openNow.ts` and `encodeWeek` in `backend/src/sync/hours.ts` still answer identically on
+all 14,509. Every one of the 71 changed weeks was read against the shop's own lines by hand: 66 are the day
+line winning where it used to lose, and the 5 that are no better were wrong both ways (two are an unlabelled
+happy hour, "MON -THU 5-7PM" and "Mon-Fri 3pm-6pm", which nothing on the line marks as one; one is Lakeview
+Marina's "9:00 AM to 1:00 PM or 2:00 PM to 6:00 PM", where the reader can hold one span; and one is Fast Track,
+whose "10AM - 12midnight" reads as noon). Also checked and clean: all four surfaces that read a published week
+go through the two readers this moved, the claim prefill and the slot route included, so none of them is left
+behind. The closing times a shop writes as a word rather than a clock, all 81 lines on 63 listings ("8:00 AM to
+Dusk", "9pm to close", "2PM-late"): every one of them yields no span and so an honest gap, not a wrong hour.
+
+**Verification.** App `npm test` 1,003 pass, 0 fail, up from 1,002. Backend `npm test` 909 tests, 907 pass, 0
+fail, 2 skipped, up from 906. `tsc -b` clean on the app, `tsc --noEmit -p .` clean at the root, the backend
+type check clean but for TS5097. The rehearsal was not run, by the rule above. Nothing under `backend/data`,
+`public/` or `src/data` was touched.
+
+**Needs Harshil.**
+
+- **The cards are now 815 weeks behind the pages, not 744.** The compact week in `catalog.json` is what a card,
+  a rail and the price filter read before a detail file lands, and it was written by an older parser. Measured
+  before this change it disagreed with a fresh read on 744 of the 14,220 listings that ship both; after, on 815.
+  Every one of the 71 is right on the page and stale on the card that opens it, and only `npm run backend:sync`
+  closes that. It is the same standing item, with a number that only grows each time an hours rule is put right.
+- **Which of two lines that each name their days a guest should read**, which is the remaining 360 and the
+  hundredth run's own first item, unchanged: Academy Lanes states "Sun.: 9:00 am - 10:00 pm" and then "Glow Bowl
+  Hours Sun.: 11:00 am - 5:00 pm", and Abandoned Building Brewery's Monday still reads its food trailer rather
+  than its tap room. A named subject in front of the days is the signal and it does not say which of the two is
+  the door.
+- **An unlabelled happy hour.** Two of the 71 got no better because a two or three hour evening window with
+  days in front of it is the classic shape and nothing on the line says so. Reading a short evening span as one
+  is a guess, not a rule, and it would take real trading hours with it.
+- Now closed, and can come off the list: a rule that states its days behind its clock in the shape
+  "Hours: 10am-5pm Monday-Friday, 11am-4pm Saturday", which the hundredth run's own cut already reads correctly.
+- Still open from earlier runs: the desktop site has no way to say anything in passing; `plainWords` is not
+  idempotent; the two listings whose week is wrong either way because a "Weekdays" or an "Office hours" is glued
+  to the word in front of it; and `o-dvc-edu`'s day list separated by nothing at all.
+
 ## Coverage
 
 The catalog is 48,198 listings as of the 23 September sync, 1,873 of them Viator partner rows. Counts below
@@ -7513,9 +7580,18 @@ of a vendor and the guest listing page's reading of the same vendor, in both dir
 not sell reaching a guest, and a real departure dropped for carrying a party minimum. A slot with no capacity
 limit, against every surface that reads a seat count as a seat count.
 
-**Not yet checked.** Which of two hour lines about two different things a guest should read, on the 431
-listings where two of them disagree about a day and the last one written wins (see the hundredth run's Needs
-Harshil). A live Otto send from the cloud cron against real mailboxes: the ramp arithmetic is now tested but
+Which of a shop's own hour lines a day is read from, over all 5,536 listings that publish more than one and all
+431 that hold a disagreement: a span written with no day in front of it, which claimed all seven and so let the
+order the crawl listed the lines in decide the week, against the day off, the day line and the other dayless
+spans on the same page, with both readers answering identically on all 14,509 and every changed week read
+against the shop's own lines. The closing times a shop writes as a word rather than a clock, all 81 of them.
+
+**Not yet checked.** Which of two hour lines about two different things a guest should read, on the 360
+listings where two lines that each name their own days disagree about one and the last one written wins (the 71
+whose second line named no day at all are closed, see the hundred and first run). Whether a two or three hour
+evening span with days in front of it and no label is a happy hour, which is 2 of those 71 and a guess rather
+than a rule. Whether a close written as "12midnight" or "12:00 midnight" should read as the end of the day
+rather than as noon, on the 2 listings that write one. A live Otto send from the cloud cron against real mailboxes: the ramp arithmetic is now tested but
 nothing has left a mailbox from here, and whether a suppression list read once at the start of a four hour
 batch should be re-read before each send. Anything in the grounded fallback that needs a real Cohere key: no key exists here, so every answer checked tonight was a payload shaped by hand, and what the live model actually writes, what its citation offsets index into when it answers in more than one content part, and whether `citation_options` FAST cites densely enough for `keepCited` to keep a good answer are all unread. `npm run otto:eval` for the same reason. Whether a price the model reformats should be dropped: a shop publishing "$85" and a model writing "$85.00" loses the sentence (see this run's Needs Harshil). Whether the grounded answer should reach the static `/l/` page and the phone sheet, which do not call it. A real Otto send or a real hand-send: the draft run, the queue, the dry run and the handoff export are all driven now, but nothing has left a mailbox from here, and `outreach-daily.sh` is launchd on the Mac and cannot be. Whether `state.ranDays` and `state.sentDays` growing without bound in `outreach-otto-ramp.json`, and being written only after a send loop that can run four hours, is worth changing, given that `sentToday` is what actually holds the ceiling. Whether the Otto email may tell a shop "Bookings drop straight into your calendar" when
 both `/voice` endpoints are read-only and syncing with an operator's own booking software is deferred on
@@ -7796,9 +7872,7 @@ August 7, 8, and 9", "Sept 11th & 12th" and "Sept. 7-11" spread over seven days.
 quiet-hours shape with a third subject, and how many more of them there are. Whether the compact week in `catalog.json` should be trusted by anything now that a fresh read of the
 same lines disagrees on 547 listings: the cards, the rails and the price filter still read it, so tonight's
 weeks are right on a page and stale on the card that opens it, and only a sync closes that (see this run's Needs
-Harshil). Whether a rule that states its days behind its clock should be read at all:
-"Hours: 10am-5pm Monday-Friday, 11am-4pm Saturday" is the one order the spaced cut refuses that is a miss
-rather than a tie (see the ninety-eighth run's Needs Harshil). Whether a
+Harshil).  Whether a
 season written per line should reach the week at all, on the four listings whose off-season day off now wins over
 their in-season week (see this run's Needs Harshil). The two listings whose week is wrong either way because a "Weekdays" or an "Office hours" is glued to the word in front of it, so the line names no day and reading its closed-day aside would hand it days it never claimed (see this run's Needs Harshil). Whether two overnight runs working the same file at the same time is meant to happen, since the ninety-third and ninety-fourth both wrote a closed-day rule for the same lines and one of the two was thrown away (see this run's Needs Harshil). Whether a comma with no space after it should be given one, on the six
 partner rows that read "Banff Town,Johnston Canyon Tour": the name tidy closes the space in front of a comma
