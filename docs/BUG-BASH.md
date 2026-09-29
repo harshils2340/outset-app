@@ -6910,6 +6910,79 @@ Chromium already on disk. Nothing under `backend/data`, `public/` or `src/data` 
   either way because a "Weekdays" or an "Office hours" is glued to the word in front of it; and `o-dvc-edu`'s
   day list separated by nothing at all.
 
+## 29 September 2026, hundred and third run (09:16 to 10:00 UTC)
+
+**Chosen, and why.** `git fetch` first: nothing has landed since the hundred and second run's entry, and that
+entry records the rehearsal green at 57 of 57 after its own commits, so by the rule the rehearsal was skipped
+at the start and the hour went to hunting instead. Both `node_modules` were missing on this checkout and were
+installed. Baseline: root and backend type checks clean (backend but for TS5097), app 1,009 pass, backend 909
+pass with 2 skipped. Every area on the brief is on the Verified list, so the hunt went to the one thing in the
+booking box nobody had swept as a whole: not what a row says, but which of a row's four printed strings get
+the word pass every other one gets. Three of the four did not, and the static page got none of them.
+
+**Found and fixed.**
+
+- **A row's sub-line is read by the same rule as its name** (`295b467f`). `bookableMenu` tidied a row's name
+  and printed whatever sat beside it, though both come off the same price list: a batting cage offered
+  "30 minutes ……", a salt cave "Seniors: 1 session ……", a sunset cruise "516-662-2327 Pricing Monday-Thursday",
+  a charter "Inshore Fishing Trip, $100 Deposit || Includes 4 Guests", a gallery "Mina Totino [" and a ball
+  field "Fields (Night Practice or General Use))". 34 sub-lines on 9 listings, 17 of them the row's own detail
+  and 17 the tier label the sync copied it into. Held against the whole shipped catalog: no listing's menu
+  changes shape, because `bookableMenu` answers identically on a menu whose sub-lines were tidied up front.
+- **An add-on reads the same rule as every other row in the booking box** (`afae3399`). The word pass each
+  surface runs over an option and a service name was never run over an add-on, so the Add-ons list sat directly
+  under "What you can book" with one list cleaned and one raw, and the price breakdown under it named the
+  option tidied and the add-on as the crawl found it: 195 add-ons on 136 listings led with a bullet's hyphen
+  ("- Two Passenger Private Flight"), opened lowercase ("each additional person"), shouted ("FUN GUIDED SURF
+  FISHING TRIPS (4 hours)"), carried a list number ("2. Home Delivery"), a space in front of their own colon
+  ("Group lesson : 45min") or a shorthand the glossary spells out ("SUP Lessons 75 minutes"). All six places
+  that print one, on both device sizes, both price breakdowns and the confirmation, now go through `tidyName`.
+  The stored name is the guest's own choice of add-on and is untouched.
+- **A price "per class" stops being quoted per clas** (`8750a261`). The site scrape singularised a price unit
+  by stripping a trailing "s", but `PRICE_NEAR` captures the unit singular already with its plural outside the
+  group, so the strip only ever damaged a unit that ends in one. 11 rows on 10 listings read "$30 / clas", among
+  them an aikido dojo's drop-in, a Zumba class and a CrossFit box, several of them the shop's only priced row.
+  The scrape no longer strips, and `priceWith` reads the spelling already shipped as the word the shop wrote.
+- **The static page names a menu row the way the app names it** (`54e172d5`). The sync escaped whatever the
+  crawl stored and printed that, so the page a search engine sends a guest to read one way and the app it opens
+  read another on 7,139 row names and 895 sub-lines across 2,241 listings: "surf boat" and "schedule a tour"
+  opened lowercase, "425 HP Luxury Tritoon" and "Kayak & SUP Classes" kept a shorthand, "Whale Tail dish" was
+  half a title. `tidyName`, `tidyLength` and `lengthWords` move out of `WebListing.tsx`, which imports CSS and
+  cannot be read by the sync, into `src/lib/listingDerive.ts` beside `tidyLine`, and are re-exported so every
+  call site is unchanged. The `/l/` page and the browse card's service list now read them.
+
+**Swept and clean.** Every string in all 52,815 shipped detail files, walked field by field, for an HTML tag,
+an HTML entity, a template placeholder, a doubled word and a run of capitals: the tags and entities left are
+the 60 partner cancellation policies, 6 service descriptions and 24 review authors that `stripTags` already
+takes out, 5 row names whose `&amp;` every app surface already decodes through `plainWords`, and 21 photo URLs.
+Every `rating` and `reviews` pair in the catalog for a figure out of range, a rating with no count or a count
+with no rating: none. Every distinct price unit the catalog publishes, all 28, through `priceWith`.
+
+**Verification.** App `npm test` 1,019 pass, 0 fail, up from 1,009. Backend `npm test` 913 tests, 911 pass, 0
+fail, 2 skipped, up from 911. `tsc -b` and `tsc --noEmit -p .` clean at the root, backend clean but for TS5097.
+The rehearsal was run after the changes, since they touch `src/lib`, `src/components` and `backend/src`: green
+at 57 of 57, against a local Postgres 16 cluster on port 5433 with SSL on and the Playwright Chromium already
+on disk. Nothing under `backend/data`, `public/` or `src/data` was touched.
+
+**Needs Harshil.**
+
+- **The static pages are 2,241 listings behind the app until a sync runs.** The rule is in the code now, but
+  `/l/` and the browse pages are generated, so the 7,139 names and 895 sub-lines stay as they are until
+  `npm run backend:sync` runs on Render. Same shape as the standing compact-week item.
+- **Seven row names are still an operator's own words rather than an offer.** Tidying a sub-line makes
+  o-downtownsailing-org's "Fridays are also Pizza Days! Please send" read cleanly, and it is still not
+  something a guest can book. Dropping a label that is plainly prose is a separate rule from cleaning one.
+- **The booking email prints an add-on as the crawl found it.** `backend/src/api/bookingMail.ts` joins the
+  stored names, which is right for a record and wrong for a sentence a guest reads, so the confirmation mail
+  can say "- Prime Rib" where the page now says "Prime Rib". It wants the display rule, or the booking to store
+  the tidied name.
+- **Five shops publish a row name with an HTML entity in it, and their word index holds "amp".** Every app
+  surface decodes it through `plainWords`, so no guest reads "&amp;", but `search.ts` indexes the raw tag as a
+  word and those listings carry the same tag twice, once decoded and once not.
+- Still open from earlier runs: which of two lines that each name their days a guest should read; the unlabelled
+  happy hour; the desktop site has no way to say anything in passing; `plainWords` is not idempotent; a rule
+  behind an opening bracket is still not cut.
+
 ## Coverage
 
 The catalog is 48,198 listings as of the 23 September sync, 1,873 of them Viator partner rows. Counts below
@@ -7674,6 +7747,17 @@ reader was still taking off a rate card, each held against what the shop actuall
 all 46,323 listings that publish hours diffed before and after both, with the two readers answering
 identically on every one.
 
+Which of a menu row's four printed strings get the word pass, on every row of all 52,815 shipped detail files
+and on every surface that draws one: the sub-line under a row's name, which now reads `tidyRowName` the way the
+name does, with the whole catalog's menus held to their shape before and after; the add-on name and its
+sub-line, which now read `tidyName` and `tidyLength` on the desktop page, the phone sheet, both price
+breakdowns and the confirmation; and the row name and sub-line on the static `/l/` page and the browse cards,
+which read the same two rules now that they live in `src/lib/listingDerive.ts` rather than behind a stylesheet.
+Every distinct price unit the catalog publishes, all 28, through `priceWith`. Every string in every shipped
+detail file, walked field by field, for an HTML tag, an entity, a template placeholder, a doubled word and a
+run of capitals. Every `rating` and `reviews` pair in the catalog for a figure out of range, a rating with no
+count or a count with no rating.
+
 **Not yet checked.** Which of two hour lines about two different things a guest should read, on the 360
 listings where two lines that each name their own days disagree about one and the last one written wins (the 71
 whose second line named no day at all are closed, see the hundred and first run). Whether a two or three hour
@@ -7968,10 +8052,10 @@ season written per line should reach the week at all, on the four listings whose
 their in-season week (see this run's Needs Harshil). The two listings whose week is wrong either way because a "Weekdays" or an "Office hours" is glued to the word in front of it, so the line names no day and reading its closed-day aside would hand it days it never claimed (see this run's Needs Harshil). Whether two overnight runs working the same file at the same time is meant to happen, since the ninety-third and ninety-fourth both wrote a closed-day rule for the same lines and one of the two was thrown away (see this run's Needs Harshil). Whether a comma with no space after it should be given one, on the six
 partner rows that read "Banff Town,Johnston Canyon Tour": the name tidy closes the space in front of a comma
 and deliberately opens none behind it, because "A,B" inside a name can be the shop's own (see the ninety-fifth
-run's Needs Harshil). Whether a variant label and an option's detail line should be tidied the way a row name
-is, or dropped when they are plainly not a label at all: `bookableMenu` runs `tidyRowName` over service,
-option and add-on names and over nothing beside them, and the service picker and the chat both print those, so
-two rows on one listing still read "Fridays are also Pizza Days ! Please send" (see that run's Needs Harshil). Whether the space a shop leaves in front of its own comma or colon should be closed in prose the way it now is in a row name, on the 197 lines that carry one: a good share are French typography on a Quebecois partner's product, where the space is correct in the language the shop wrote (see the ninety-sixth run's Needs Harshil). Whether an unbalanced bracket in prose can be closed by an end trim at all, on the 181 lines that carry one: the unmatched bracket is often not the last, because an emoticon closes nothing, so it wants a matching pass rather than the row name's rule. Whether refusing to cut at a dotted abbreviation that can finish a sentence costs more than it saves, on the 17 descriptions that now carry an ellipsis where they read "in the U.S.". Whether a departure too small for the party should be
+run's Needs Harshil). Whether a variant label or an option's detail line should be dropped outright when it is
+plainly not a label at all, now that both are tidied the way a row name is (see the hundred and third run):
+o-downtownsailing-org's "Fridays are also Pizza Days! Please send" reads cleanly and is still not an option.
+Whether the space a shop leaves in front of its own comma or colon should be closed in prose the way it now is in a row name, on the 197 lines that carry one: a good share are French typography on a Quebecois partner's product, where the space is correct in the language the shop wrote (see the ninety-sixth run's Needs Harshil). Whether an unbalanced bracket in prose can be closed by an end trim at all, on the 181 lines that carry one: the unmatched bracket is often not the last, because an emoticon closes nothing, so it wants a matching pass rather than the row name's rule. Whether refusing to cut at a dotted abbreviation that can finish a sentence costs more than it saves, on the 17 descriptions that now carry an ellipsis where they read "in the U.S.". Whether a departure too small for the party should be
 filtered out of a concierge answer rather than shown with its seat count, which is now two questions and not
 one: `seatsLeft` is unambiguous and a rate's `maxParty` is not (see the ninety-seventh run's Needs Harshil).
 Whether Peek has a sixth word for an availability mode, which only a fresh capture can say, and whether a
