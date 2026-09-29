@@ -244,6 +244,36 @@ export function tidyLine(text: string): string {
   return t ? t.charAt(0).toUpperCase() + t.slice(1) : t;
 }
 
+const TITLE_SMALL = new Set(["a", "an", "and", "at", "by", "for", "in", "of", "on", "or", "the", "to", "with", "per", "vs"]);
+/**
+ * "Island Jet ski Tour" is a title with one word left lowercase: finish the title case the operator started.
+ *
+ * This and `tidyLength` below are the rule for a menu row's name and the sub-line under it, so they live here
+ * rather than in `WebListing.tsx`, which imports CSS and cannot be read by the sync that builds the static
+ * pages. The desktop page, the phone sheet, the confirmation and the static `/l/` page all print a row through
+ * these two, which is what stops one shop's row reading two ways in two places.
+ */
+export function tidyName(text: string): string {
+  const t = tidyLine(text).replace(/\b(\d+(?:\.\d+)?)[\s-]?(Hr|hr|HR)s?\b/g, (_m, n: string, h: string) => n + " " + (h === "hr" ? "hour" : "Hour"));
+  const words = t.split(" ");
+  const big = words.filter((w, i) => /^[A-Za-z]/.test(w) && (i === 0 || !TITLE_SMALL.has(w.toLowerCase())));
+  const capped = big.filter((w) => /^[A-Z]/.test(w)).length;
+  if (big.length < 3 || capped / big.length < 0.6 || capped === big.length) return t;
+  return words.map((w, i) => (i > 0 && TITLE_SMALL.has(w.toLowerCase()) ? w : w.replace(/^([a-z])/, (c) => c.toUpperCase()))).join(" ");
+}
+
+/** A variant label that is only a length: "1.5 hour" reads "1.5 hours", "1 hours" reads "1 hour". */
+export function tidyLength(text: string): string {
+  return lengthWords(tidyLine(text));
+}
+
+export function lengthWords(text: string): string {
+  return text.replace(/^(\d+(?:\.\d+)?)\s*(hour|hr|minute|min|day|night|week)s?\.?$/i, (_m, n: string, u: string) => {
+    const unit = ({ hr: "hour", min: "minute" } as Record<string, string>)[u.toLowerCase()] || u.toLowerCase();
+    return n + " " + unit + (Number(n) === 1 ? "" : "s");
+  });
+}
+
 /**
  * What's included, split the way a guest reads it. A short "Fuel (not included)" is struck through as Airbnb does
  * with a missing amenity; a whole sentence ("Gratuity is not included in the ticket price") keeps its own words,

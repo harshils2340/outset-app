@@ -106,6 +106,6 @@ test("an exclusion the sync publishes is struck through, not read as something i
   }
   assert.deepEqual(splitIncluded(["Local guide"]).yes, ["Local guide"], "and an inclusion stays an inclusion");
   // Both surfaces read the one rule, which now lives where a test can load it.
-  assert.match(WEB, /export \{ splitIncluded, tidyLine \};/);
+  assert.match(WEB, /export \{ splitIncluded, tidyLength, tidyLine, tidyName \};/);
   assert.match(SHEETS, /splitIncluded/);
 });

@@ -543,3 +543,23 @@ test("the hours count is the listings that show an hour line, not the ones that 
     r.cleanup();
   }
 });
+
+/**
+ * The service names a browse card lists read the same rule as the page the card opens. The card printed whatever
+ * the crawl stored, so a card could name a shop's service "surf boat" and the `/l/` page it opens name the same
+ * service "Surf boat".
+ */
+test("a browse card names a service the way the page it opens names it", () => {
+  const items: Item[] = [
+    item("cooking", "toronto", 91, { area: "Toronto, ON", cover: "https://x/91.jpg", services: [{ name: "pasta making class", desc: null, variants: [{ label: "2 hours", price: 95 }] }] } as Partial<Item>),
+    ...fixture,
+  ];
+  const r = run(items);
+  try {
+    const page = readFileSync(join(r.dir, "p", "cooking-in-toronto.html"), "utf8");
+    assert.match(page, /<li><span>Pasta making class<\/span>/);
+    assert.ok(!page.includes("<li><span>pasta making class</span>"));
+  } finally {
+    r.cleanup();
+  }
+});

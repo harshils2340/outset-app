@@ -787,3 +787,33 @@ test("the more-like-this link names the page it actually opens", () => {
     r.cleanup();
   }
 });
+
+/**
+ * A row on the static page names a service the way the app names it.
+ *
+ * The app's listing page, the phone booking sheet and the confirmation print a menu row through `tidyName` and
+ * its sub-line through `tidyLength`. This generator escaped whatever the crawl stored and printed that, so the
+ * page a search engine sends a guest to read one way and the app it opens read another: 7,139 row names and 895
+ * sub-lines on 2,241 shipped listings, among them "surf boat" and "schedule a tour" opening lowercase, "425 HP
+ * Luxury Tritoon" and "Kayak & SUP Classes" keeping a shorthand the glossary spells out, and "Whale Tail dish"
+ * left half a title.
+ */
+test("the static listing page names a menu row the way the app names it", () => {
+  const items: Item[] = [
+    item("o-lowercase", { cover: "https://x/a.jpg", options: [{ name: "surf boat", detail: "", price: 120 }] } as Partial<Item>),
+    item("o-shorthand", { cover: "https://x/b.jpg", options: [{ name: "Kayak & SUP Classes", detail: "", price: 65 }] } as Partial<Item>),
+    item("o-halftitle", { cover: "https://x/c.jpg", options: [{ name: "Whale Tail dish", detail: "", price: 30 }] } as Partial<Item>),
+    item("o-sub", { cover: "https://x/d.jpg", options: [{ name: "Jet ski rental", detail: "1 hours", price: 90 }] } as Partial<Item>),
+  ];
+  const r = run(items);
+  try {
+    assert.match(r.read("o-lowercase.html"), />Surf boat</);
+    assert.ok(!r.read("o-lowercase.html").includes(">surf boat<"));
+    assert.match(r.read("o-shorthand.html"), />Kayak &amp; Stand-up Paddleboard Classes</);
+    assert.match(r.read("o-halftitle.html"), />Whale Tail Dish</);
+    // The sub-line is the same rule the picker prints under the name: "1 hours" is one hour.
+    assert.match(r.read("o-sub.html"), /<small>1 hour<\/small>/);
+  } finally {
+    r.cleanup();
+  }
+});

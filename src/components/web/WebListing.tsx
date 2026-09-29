@@ -14,7 +14,7 @@ import { addressLine, bookingPaused, contactFor, fmtPhone, fromPrice, getCatalog
 import { clockOfMinutes, DAYS, fmtDate, fmtReviews, fmtTime, money, priceWith, reviewsLine } from "../../lib/format";
 import { srcSet, thumb } from "../../lib/images";
 import { embedAutoplay, isGif, listingMedia, photoCandidates, probePhotos, type Media } from "../../lib/media";
-import { arrivalWords, bringLine, cleanDesc, durationLabel, groupCap as readGroupCap, minAge, notAlreadyShown, placeName, splitIncluded, splitPolicies, tidyLine } from "../../lib/listingDerive";
+import { arrivalWords, bringLine, cleanDesc, durationLabel, groupCap as readGroupCap, lengthWords, minAge, notAlreadyShown, placeName, splitIncluded, splitPolicies, tidyLength, tidyLine, tidyName } from "../../lib/listingDerive";
 import { sayLength } from "../../lib/duration";
 import { freeCancelBadge } from "../../lib/cancellation";
 import { reportDeadCover, useDeadCovers } from "../../lib/deadCovers";
@@ -151,9 +151,10 @@ export function possessive(name: string): string {
   return /s$/i.test(name.trim()) ? name.trim() + "’" : name.trim() + "’s";
 }
 
-// `tidyLine` and `splitIncluded` are text rules the phone sheet reads too, so they live in `lib/listingDerive`
+// `tidyLine`, `tidyName`, `tidyLength` and `splitIncluded` are text rules the phone sheet and the sync that
+// builds the static pages read too, so they live in `lib/listingDerive`
 // where a test can load them without the stylesheet this file imports. Re-exported here for the call sites.
-export { splitIncluded, tidyLine };
+export { splitIncluded, tidyLength, tidyLine, tidyName };
 
 /**
  * What the operator says about arriving, or "" when they say nothing. A greeting or a sign-off is not arrival
@@ -165,16 +166,6 @@ export function arrivalNote(item: { checkin?: string }): string {
   return words ? tidyLine(words) : "";
 }
 
-const TITLE_SMALL = new Set(["a", "an", "and", "at", "by", "for", "in", "of", "on", "or", "the", "to", "with", "per", "vs"]);
-/** "Island Jet ski Tour" is a title with one word left lowercase: finish the title case the operator started. */
-export function tidyName(text: string): string {
-  const t = tidyLine(text).replace(/\b(\d+(?:\.\d+)?)[\s-]?(Hr|hr|HR)s?\b/g, (_m, n: string, h: string) => n + " " + (h === "hr" ? "hour" : "Hour"));
-  const words = t.split(" ");
-  const big = words.filter((w, i) => /^[A-Za-z]/.test(w) && (i === 0 || !TITLE_SMALL.has(w.toLowerCase())));
-  const capped = big.filter((w) => /^[A-Z]/.test(w)).length;
-  if (big.length < 3 || capped / big.length < 0.6 || capped === big.length) return t;
-  return words.map((w, i) => (i > 0 && TITLE_SMALL.has(w.toLowerCase()) ? w : w.replace(/^([a-z])/, (c) => c.toUpperCase()))).join(" ");
-}
 
 /**
  * A service the crawl named after an FAQ heading ("How Do I Book A Cruise?", "Will I See Dolphins?"). With prices it
@@ -275,16 +266,6 @@ export function dealShown(p: { text: string; days: number[]; start?: string; end
   return { title, detail, code: p.code || null, when, date: p.date || null, days: p.date ? [] : p.days };
 }
 
-/** A variant label that is only a length: "1.5 hour" reads "1.5 hours", "1 hours" reads "1 hour". */
-export function tidyLength(text: string): string {
-  return lengthWords(tidyLine(text));
-}
-function lengthWords(text: string): string {
-  return text.replace(/^(\d+(?:\.\d+)?)\s*(hour|hr|minute|min|day|night|week)s?\.?$/i, (_m, n: string, u: string) => {
-    const unit = ({ hr: "hour", min: "minute" } as Record<string, string>)[u.toLowerCase()] || u.toLowerCase();
-    return n + " " + unit + (Number(n) === 1 ? "" : "s");
-  });
-}
 
 /**
  * "60 min" reads "1 hour" and "90 min" "1.5 hours", so cards side by side state lengths the same way, and a

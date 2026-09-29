@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 import { freeCancelBadge } from "../../../src/lib/cancellation.ts";
 import { sayLength } from "../../../src/lib/duration.ts";
 import { displayHours } from "../../../src/lib/hoursText.ts";
-import { cleanDesc, placeName, splitIncluded, tidyLine } from "../../../src/lib/listingDerive.ts";
+import { cleanDesc, placeName, splitIncluded, tidyLength, tidyLine, tidyName } from "../../../src/lib/listingDerive.ts";
 import { listingFacts, publicRating } from "../../../src/lib/catalog.ts";
 import { money, reviewsLine } from "../../../src/lib/format.ts";
 import { photoCandidates } from "../../../src/lib/samePhoto.ts";
@@ -116,21 +116,31 @@ function photosOf(item: Item): string[] {
   return photoCandidates({ cover, photos: gallery }).slice(0, MAX_PHOTOS);
 }
 
-/** One menu row per bookable line: services with variants first (the richer read), falling back to plain options. */
+/**
+ * One menu row per bookable line: services with variants first (the richer read), falling back to plain options.
+ *
+ * The name and the sub-line read `tidyName` and `tidyLength`, which is what the app's own listing page, the phone
+ * booking sheet and the confirmation print a row through. This page used to escape whatever the crawl stored and
+ * print that, so 7,139 row names and 895 sub-lines on 2,241 listings read one way here and another in the app:
+ * "surf boat" and "schedule a tour" opened lowercase, "425 HP Luxury Tritoon" and "Kayak & SUP Classes" kept a
+ * shorthand the glossary spells out for a guest, and "Whale Tail dish" was half a title. The static page is the
+ * one a search engine sends a guest to, so it is the first thing they read about the shop.
+ */
 function menuRows(item: Item): { name: string; detail: string; price: number | null }[] {
+  const row = (name: string, detail: string, price: number | null) => ({ name: tidyName(name), detail: detail ? tidyLength(detail) : "", price });
   const services = (item as { services?: { name: string; variants: { label: string; price: number | null }[] }[] }).services || [];
   if (services.length) {
     const rows: { name: string; detail: string; price: number | null }[] = [];
     for (const s of services) {
       for (const v of s.variants) {
-        rows.push({ name: s.name, detail: v.label && v.label !== "Standard" ? v.label : "", price: v.price });
+        rows.push(row(s.name, v.label && v.label !== "Standard" ? v.label : "", v.price));
         if (rows.length >= MAX_MENU_ROWS) return rows;
       }
     }
     return rows;
   }
   const options = (item as { options?: { name: string; detail?: string; price: number | null }[] }).options || [];
-  return options.slice(0, MAX_MENU_ROWS).map((o) => ({ name: o.name, detail: o.detail || "", price: o.price }));
+  return options.slice(0, MAX_MENU_ROWS).map((o) => row(o.name, o.detail || "", o.price));
 }
 
 function jsonLd(item: Item, canonical: string, photos: string[], menu: { name: string; detail: string; price: number | null }[]): Record<string, unknown> {

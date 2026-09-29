@@ -6,6 +6,7 @@ import { GUIDES } from "../../../src/data/guides.ts";
 import { REGION_NAME, regionOfArea } from "../../../src/data/regions.ts";
 import { displayHours } from "../../../src/lib/hoursText.ts";
 import { money } from "../../../src/lib/format.ts";
+import { tidyName } from "../../../src/lib/listingDerive.ts";
 import { bookableMenu } from "../../../src/lib/menuRow.ts";
 
 /**
@@ -511,7 +512,9 @@ function page(kind: Kind, metro: Place | null, items: Item[], nearby: Neighbour[
         .slice(0, 3)
         .map((s) => {
           const v = s.variants.find((x) => x.price != null);
-          return `<li><span>${esc(s.name)}</span><span>${v && v.price != null ? esc(money(v.price)) : ""}</span></li>`;
+          // The same row rule the app and the `/l/` page read, so a card here names a service the way the page
+          // it opens names it.
+          return `<li><span>${esc(tidyName(s.name))}</span><span>${v && v.price != null ? esc(money(v.price)) : ""}</span></li>`;
         })
         .join("");
       const photo = i.cover ? cardImage(i.cover) : null;
