@@ -54,6 +54,23 @@ test("an hour the clock refuses does not take the hour behind it away", () => {
   assert.equal(show(encodeWeek(["open from 6:00pm - 6:25pm"])), "(no hours)");
 });
 
+test("a day a shop shuts the front of is not a day it shuts", () => {
+  // The twin of the guest-side rule, on the three listings that write a closure with a clock on it.
+  assert.equal(
+    show(encodeWeek(["Course open 6:00 AM \u2013 11:00 PM daily", "Range closed Monday mornings until 12:00 PM for maintenance except holidays"])),
+    everyDay("06:00-23:00"),
+  );
+  assert.equal(
+    show(encodeWeek(["Monday/Wednesday- 8:30am - 5:00pm", "Closed Monday until 4:30 p.m."])),
+    "Sun -, Mon -, Tue -, Wed 08:30-17:00, Thu -, Fri -, Sat -",
+  );
+  assert.equal(show(encodeWeek(["Open dawn to dusk, mid-April through late fall, weather permitting", "Closed Monday until noon for maintenance except Monday holidays"])), "(no hours)");
+  assert.equal(
+    show(encodeWeek(["Driving range open daily 6:30AM \u2013 7:00PM (closed Sundays after 3 PM for maintenance, reopens Mondays at 10:30 AM)"])),
+    everyDay("06:30-19:00"),
+  );
+});
+
 test("a bracket in front of a rule's clock still opens the rule", () => {
   // The twin of the guest-side cut, on the two campgrounds whose brackets the crawl left open.
   assert.equal(

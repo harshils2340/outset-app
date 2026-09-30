@@ -112,6 +112,9 @@ const CLOSED_AFTER = new RegExp(
   "^" + CLOSED_GAP + "(?:on\\s+)?(" + DAY_GROUP + ")\\b(?!\\s*(?:after|from|until|till|before|at|past|@)\\b)",
   "i",
 );
+/** The same group with no limit lookahead, for the reader that wants the day a limited closure names. */
+const CLOSED_AFTER_ANY = new RegExp("^" + CLOSED_GAP + "(?:on\\s+)?(" + DAY_GROUP + ")\\b", "i");
+
 /**
  * A clock right behind the word is the hours a shop shuts for rather than the days: Page Lake Powell's
  * "Saturday & Sunday closed 8:30 a.m. to 9:30 a.m. for North & South Coyote Butte Orientation" is an hour out
@@ -119,15 +122,59 @@ const CLOSED_AFTER = new RegExp(
  */
 const SHUT_CLOCK_GAP = "[\\s:;.,&=/\\-\u2013\u2014]*(?:from\\s+|between\\s+)?";
 const CLOSED_SPAN = new RegExp("^" + SHUT_CLOCK_GAP + "\\d{1,2}(?::\\d{2})?\\s*(?:[ap]\\.?m|:)", "i");
+/**
+ * A closure a shop puts a clock on is part of a day rather than the whole of it: "Closed Monday until noon for
+ * maintenance", "Range closed Monday mornings until 12:00 PM", "Closed Monday until 4:30 p.m.". Three
+ * listings write one and every one of them had the whole day shut. What the closure is about decides what the
+ * day then says. A closure with a subject of its own is not about the door, so Alhambra Golf Course, whose
+ * driving range shuts for Monday morning, keeps the course's own "6:00 AM - 11:00 PM daily" on a Monday it
+ * told a guest it was closed all day. A closure that is the door's own leaves the day with an honest gap
+ * rather than hours, because the limit is not a closing time anybody can read and the shop has said the
+ * morning is shut: Gleann Loch Farms publishes "Monday/Wednesday- 8:30am - 5:00pm" and "Closed Monday until
+ * 4:30 p.m." on the same page, and a guest may be told neither that the gate is open at half past eight nor
+ * that it is shut all day. "Closed Tuesday after Labor Day" names a date rather than a clock and is still a
+ * day off. Only a closure that shuts the front of a day is read here: Beachwood Golf's range, "closed Sundays
+ * after 3 PM for maintenance", opens when its line says it opens and shuts early, which the day-off reader
+ * already keeps its hours for. And the limit has to sit beside the day it limits: a sentence may not be
+ * crossed to reach one.
+ */
+const A_CLOCK = "(?:\\d{1,2}(?::\\d{2})?\\s*(?:[ap]\\.?m\\.?)?|noon|midnight)";
+const CLOSED_LIMIT = new RegExp(
+  "^" + CLOSED_GAP + "(?:on\\s+)?(?:" + DAY_GROUP + ")?(?:\\s+[a-z]+){0,2}\\s*\\b(?:until|till|before)\\b\\s*" + A_CLOCK + "\\b(?!\\d)",
+  "i",
+);
+/** The last word in front of the closure, which is its subject where it names one. A clock is not a word. */
+const CLOSED_SUBJECT = new RegExp("(?:^|[^a-z0-9])([a-z]+)[\\s:;.,&/()\\-\u2013\u2014]*$", "i");
+const NOT_A_SUBJECT = new RegExp("^(?:" + DAY_ANY + "|is|are|and|or|but|also|open|hours?|holidays?|the|on|every|daily|weekdays?|weekends?)$", "i");
+/** Whether the word is the door shutting rather than one thing the shop runs beside it. */
+function closureIsTheDoor(head: string): boolean {
+  const m = CLOSED_SUBJECT.exec(head);
+  return !m || NOT_A_SUBJECT.test(m[1]);
+}
 /** The same shape read from the other side: the words that run from the word up to where a range starts. */
 const CLOSED_LEAD = new RegExp("\\bclosed\\b" + SHUT_CLOCK_GAP + "$", "i");
 const CLOSED_WORD = /\bclosed\b/gi;
+
+/** The days a closure with a clock on it covers part of, where that closure is the door's own. */
+function partlyShutDays(line: string): number[] {
+  const partly = new Set<number>();
+  for (const m of line.matchAll(CLOSED_WORD)) {
+    const tail = line.slice(m.index + m[0].length);
+    if (!CLOSED_LIMIT.test(tail)) continue;
+    if (!closureIsTheDoor(line.slice(0, m.index))) continue;
+    const before = genericDays(CLOSED_BEFORE.exec(line.slice(0, m.index))?.[1] || "");
+    const after = genericDays(CLOSED_AFTER_ANY.exec(tail)?.[1] || "");
+    for (const d of before || after || []) partly.add(d);
+  }
+  return [...partly];
+}
 
 function closedDays(line: string): number[] {
   const shut = new Set<number>();
   for (const m of line.matchAll(CLOSED_WORD)) {
     const tail = line.slice(m.index + m[0].length);
     if (CLOSED_SPAN.test(tail)) continue;
+    if (CLOSED_LIMIT.test(tail)) continue;
     const before = genericDays(CLOSED_BEFORE.exec(line.slice(0, m.index))?.[1] || "");
     const after = genericDays(CLOSED_AFTER.exec(tail)?.[1] || "");
     const both = before && after ? new Set([...before, ...after]) : null;
@@ -289,7 +336,7 @@ export function osmToLines(raw: string): string[] {
 }
 
 /** What one rule states: the days it names, the days it shuts, its span, and whether it says the word. */
-type RuleRead = { days: number[] | null; shut: number[]; span: { open: number; close: number } | null; closed: boolean };
+type RuleRead = { days: number[] | null; shut: number[]; span: { open: number; close: number } | null; closed: boolean; partly: number[] };
 
 function readRule(raw: string): RuleRead | null {
   // The phone number goes before anything is read off the line, not just before the time: glued on with no
@@ -304,8 +351,16 @@ function readRule(raw: string): RuleRead | null {
   // the rule states no hours at all, and its "closed" is about that hour rather than about a day.
   const hit = firstSpanAt(line);
   const shutsForAnHour = !!hit && CLOSED_LEAD.test(normalizeClock(line).slice(0, hit.at));
-  const closed = !shutsForAnHour && /\bclosed\b/i.test(line);
+  // A closure the shop put a clock on shuts part of a day, so the word itself shuts nothing: a line whose
+  // every closure carries a limit states no day off, and where the closure is the door's own the day it names
+  // is cleared below instead.
+  const words = [...line.matchAll(CLOSED_WORD)];
+  const limited = words.length > 0 && words.every((m) => CLOSED_LIMIT.test(line.slice(m.index + m[0].length)));
+  const closed = !shutsForAnHour && !limited && /\bclosed\b/i.test(line);
   const shut = closedDays(line);
+  // A closure the shop put a clock on is not a day off, and where it is the door's own the day it names says
+  // nothing rather than saying hours: the shop has told a guest part of that day is shut.
+  const partly = partlyShutDays(line).filter((d) => !shut.includes(d));
   const span = shutsForAnHour ? null : hit?.span ?? null;
   let days: number[] | null = null;
   for (const [re, d] of DAY_RE) {
@@ -323,7 +378,7 @@ function readRule(raw: string): RuleRead | null {
     const named = genericDays(line);
     if (named) days = [...new Set([...days, ...named])].sort((a, b) => a - b);
   }
-  return { days, shut, span, closed };
+  return { days, shut, span, closed, partly };
 }
 
 export function parseWeek(input: string[]): Week | null {
@@ -335,7 +390,6 @@ export function parseWeek(input: string[]): Week | null {
     .flatMap((l) => { const o = osmToLines(l); return o.length ? o : [l]; })
     .flatMap((l) => (isTradingHoursLine(l) ? hourRules(l) : []));
   const week: Week = [null, null, null, null, null, null, null];
-  let any = false;
   const read = lines.map(readRule).filter((r): r is RuleRead => !!r);
   // Which days a rule that named its own days has spoken for. A dayless rule may not overwrite one of those,
   // but it may still overwrite another dayless rule, so the last one a page states is still the one that wins.
@@ -345,7 +399,6 @@ export function parseWeek(input: string[]): Week | null {
       if (dayless ? spoken[d] : false) return;
       week[d] = { open, close };
       if (!dayless) spoken[d] = true;
-      any = true;
     };
     for (const d of days) {
       if (r.shut.includes(d)) continue;
@@ -370,7 +423,11 @@ export function parseWeek(input: string[]): Week | null {
   // `apply` already steps over the days the rule shuts.
   const onlyShut = (r: RuleRead) => !!r.days && r.days.length > 0 && r.days.every((d) => r.shut.includes(d));
   for (const r of read) if (r.span && (!r.days || onlyShut(r))) apply(r, [0, 1, 2, 3, 4, 5, 6], true);
-  return any ? week : null;
+  // A day the door itself is shut for part of is left with its honest gap, whatever any other line said about
+  // it: neither the hours nor a day off is true of it, and a picker offering its morning sends a guest to a
+  // locked gate. Read last, so the order the page states its lines in does not decide.
+  for (const r of read) for (const d of r.partly) week[d] = null;
+  return week.some(Boolean) ? week : null;
 }
 
 /**

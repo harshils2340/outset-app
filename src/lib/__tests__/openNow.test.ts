@@ -505,6 +505,33 @@ test("a second rule a shop wrote after a space is a second rule", () => {
     "Sun 09:00-16:00, Mon 09:00-14:00, Tue 09:00-14:00, Wed 09:00-14:00, Thu 09:00-16:00, Fri 09:00-16:00, Sat 09:00-16:00");
 });
 
+test("a day a shop shuts the front of is not a day it shuts", () => {
+  // Three listings write a closure with a clock on it, and every one had the whole day shut.
+  // o-alhambragolf-com: the driving range shuts for Monday morning, so a golf course open from six in the
+  // morning until eleven at night told a guest it was closed all Monday. A closure with a subject of its own
+  // is not about the door, so the course keeps its own week.
+  assert.equal(
+    show(parseWeek(["Course open 6:00 AM \u2013 11:00 PM daily", "Range closed Monday mornings until 12:00 PM for maintenance except holidays"])),
+    everyDay("06:00-23:00"),
+  );
+  // o-gleannlochfarmsca-org states both on the same page. Neither is true of Monday, so Monday says nothing:
+  // a picker offering half past eight sends a guest to a locked gate, and "closed" is not true either.
+  assert.equal(
+    show(parseWeek(["Monday/Wednesday- 8:30am - 5:00pm", "Closed Monday until 4:30 p.m."])),
+    "Sun -, Mon -, Tue -, Wed 08:30-17:00, Thu -, Fri -, Sat -",
+  );
+  // o-nehoidengolf-com publishes nothing else a clock can read, so the honest gap is the whole week.
+  assert.equal(show(parseWeek(["Open dawn to dusk, mid-April through late fall, weather permitting", "Closed Monday until noon for maintenance except Monday holidays"])), "(no hours)");
+  // A closure that shuts the end of a day opens when its line says it opens, which the day-off reader already
+  // keeps the hours for: o-beachwoodgolf-com's range.
+  assert.equal(
+    show(parseWeek(["Driving range open daily 6:30AM \u2013 7:00PM (closed Sundays after 3 PM for maintenance, reopens Mondays at 10:30 AM)"])),
+    everyDay("06:30-19:00"),
+  );
+  // A date behind the word is not a clock, so a seasonal day off is still a day off.
+  assert.equal(show(parseWeek(["Mon-Sun 8am-6pm", "Closed Tuesday after Labor Day"])), "Sun 08:00-18:00, Mon 08:00-18:00, Tue closed, Wed 08:00-18:00, Thu 08:00-18:00, Fri 08:00-18:00, Sat 08:00-18:00");
+});
+
 test("a bracket in front of a rule's clock still opens the rule", () => {
   // Two campgrounds write each rule's hours inside brackets and the crawl drops the closing one:
   // o-pequeacreekcampground-com's "Mon/Wed-Sat (Noon-6pm) Sun (11am-4pm" and o-campottercreek-com's
