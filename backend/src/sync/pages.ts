@@ -230,6 +230,14 @@ const list = (xs: string[]) => (xs.length <= 1 ? xs.join("") : xs.slice(0, -1).j
 const lower = (s: string) => s.charAt(0).toLowerCase() + s.slice(1);
 
 /**
+ * The town half of an area line: everything in front of the state or province code, with the separator that
+ * carried that code taken off with it. One listing ships "Cavan-Monaghan,, ON", and a plain strip left the town
+ * as "Cavan-Monaghan,", so the Toronto golf page read "including places in Toronto, Mississauga, Etobicoke and
+ * Cavan-Monaghan,." and a city page would have been filed under the same spelling.
+ */
+export const townOfArea = (area: unknown) => String(area || "").replace(/,\s*[A-Z]{2}$/, "").replace(/[,;\s]+$/, "").trim();
+
+/**
  * One of them, for a page that found exactly one: "cooking classes" is "1 cooking class", not "1 cooking
  * classes" and not the "1 cooking classe" that stripping a trailing s produced. Only the last noun changes,
  * and a noun pair becomes a choice, so "museums and galleries" is "museum or gallery".
@@ -418,7 +426,7 @@ export function buildFaq(kind: Kind, metro: Place | null, items: Item[]): Faq[] 
 
   const areaCount = new Map<string, number>();
   for (const i of items) {
-    const town = String(i.area || "").replace(/,\s*[A-Z]{2}$/, "").trim();
+    const town = townOfArea(i.area);
     // An operator whose town was never scraped has only its state as an area ("FL"), which is not a town and
     // must not be listed as one: "including places in FL, Tampa and Clearwater".
     if (town && !regionOfArea(town)) areaCount.set(town, (areaCount.get(town) || 0) + 1);
@@ -678,7 +686,7 @@ export function writeLandingPages(rawItems: Item[], opts: { publicDir?: string }
   const byKindCity = new Map<string, Map<string, Item[]>>();
   const cityMetaById = new Map<string, CityMeta>();
   for (const i of listable) {
-    const town = String(i.area || "").replace(/,\s*[A-Z]{2}$/, "").trim();
+    const town = townOfArea(i.area);
     const region = regionOfArea(i.area);
     if (!town || !region || regionOfArea(town)) continue; // no town, or the "town" is itself a bare region code
     let cityId = `${slugifyTown(town)}-${region.toLowerCase()}`;

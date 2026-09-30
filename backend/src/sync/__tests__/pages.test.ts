@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { KINDS, MIN_METRO_LISTINGS, buildFaq, pageTitle, publicSite, singular, writeLandingPages, type Item } from "../pages.ts";
+import { KINDS, MIN_METRO_LISTINGS, buildFaq, pageTitle, publicSite, singular, townOfArea, writeLandingPages, type Item } from "../pages.ts";
 import { METROS } from "../../taxonomy/catalog.ts";
 import { ART_ALIASES } from "../../../../src/data/synonyms.ts";
 import { GUIDES } from "../../../../src/data/guides.ts";
@@ -625,4 +625,23 @@ test("the duration answer counts the shops that stated a length, not the lengths
   ];
   const one = buildFaq(kind, metro("tampa"), lone).find((f) => /How long/.test(f.q))!.a;
   assert.equal(one, "The listed duration is 2 hours, as stated on the operator's own site.");
+});
+
+/**
+ * The same doubled comma, on the page that lists a metro's towns. `o-baxtercreekgolf-com` ships
+ * "Cavan-Monaghan,, ON", so `golf-in-toronto.html` read "including places in Toronto, Mississauga, Etobicoke
+ * and Cavan-Monaghan,." and a city page for the town would have carried the comma in its label too.
+ */
+test("a doubled comma in an area line does not reach a page's list of towns", () => {
+  assert.equal(townOfArea("Cavan-Monaghan,, ON"), "Cavan-Monaghan");
+  assert.equal(townOfArea("Tampa, FL"), "Tampa");
+  assert.equal(townOfArea("St. Petersburg, FL"), "St. Petersburg");
+  assert.equal(townOfArea("FL"), "FL");
+  const items: Item[] = [
+    item("cooking", "toronto", 1, { area: "Toronto, ON" }),
+    item("cooking", "toronto", 2, { area: "Toronto, ON" }),
+    item("cooking", "toronto", 3, { area: "Cavan-Monaghan,, ON" }),
+  ];
+  const [first] = buildFaq(KINDS.find((k) => k.art === "cooking")!, metro("toronto"), items);
+  assert.match(first.a, /including places in Toronto and Cavan-Monaghan\./);
 });

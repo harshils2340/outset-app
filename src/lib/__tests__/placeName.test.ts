@@ -47,3 +47,17 @@ test("the pay sheet names a meeting place only when the area line holds a town",
   // Not a state code, so it is a place the shop's own page named.
   assert.equal(meetPlace("Mt, NJ"), "Mt, New Jersey");
 });
+
+/**
+ * The separator that carried the code goes with it. `o-baxtercreekgolf-com` ships "Cavan-Monaghan,, ON", so the
+ * town half read "Cavan-Monaghan," and every surface that spells the state out printed "Cavan-Monaghan,,
+ * Ontario": the listing heading, the browser tab, the pay sheet, the confirm screen, the static page and Otto.
+ */
+test("a doubled comma in an area line does not reach the place a guest reads", () => {
+  assert.equal(placeName("Cavan-Monaghan,, ON"), "Cavan-Monaghan, Ontario");
+  assert.equal(meetPlace("Cavan-Monaghan,, ON"), "Cavan-Monaghan, Ontario");
+  assert.equal(placeName("Tampa , FL"), "Tampa, Florida");
+  // Nothing else moves: a hyphen, a full stop and an ampersand inside a town are the town's own.
+  assert.equal(placeName("St. Petersburg, FL"), "St. Petersburg, Florida");
+  assert.equal(placeName("Cavan-Monaghan, ON"), "Cavan-Monaghan, Ontario");
+});

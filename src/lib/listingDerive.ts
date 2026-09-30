@@ -440,7 +440,10 @@ export function placeName(area: string): string {
   const m = a.match(/^(.*),\s*([A-Za-z]{2})$/);
   const code = m ? m[2].toUpperCase() : "";
   if (!m || !REGION_NAME[code]) return a;
-  const town = m[1].trim();
+  // The separator the area line was built with, trimmed off the town: one listing ships "Cavan-Monaghan,, ON",
+  // and the town half of that is "Cavan-Monaghan," , so every surface that spells the state out read
+  // "Cavan-Monaghan,, Ontario", the listing heading, the pay sheet, the confirm screen and the tab title alike.
+  const town = m[1].trim().replace(/[,;\s]+$/, "");
   // 160 listings ship as "Washington DC, DC", so spelling the code out read "Washington DC, Washington, DC".
   // A town that already names its own state does not have it added twice, which is the rule the area line is
   // built under in the first place (backend/src/sync/contacts.ts).
