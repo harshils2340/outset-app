@@ -7467,6 +7467,85 @@ against Postgres and then try the three internal routes with the session it hand
   the desktop site has no way to say anything in passing; `plainWords` is not idempotent; the operator's
   dashboard names a booking as the crawl found it.
 
+## 30 September 2026, hundred and tenth run (09:12 to 09:58 UTC)
+
+**Chosen, and why.** `git fetch` first: nothing has landed since the hundred and ninth run's own log entry, and
+that entry records the rehearsal run twice and green at 57 of 57. No commit since it touches `backend/src`,
+`src/` or the scripts, so by both halves of the rule the rehearsal was **skipped** and that hour went on
+hunting instead. Both `node_modules` were missing on this checkout and were installed first. Baseline before
+anything changed: root `tsc --noEmit -p .` and `tsc -b` clean, backend clean but for TS5097, app 1,040 pass,
+backend 944 tests with 942 pass and 2 skipped.
+
+Every area on the brief is on the Verified list, so the first item on the Not yet checked list was taken: the
+internal metrics page drawn in a real browser. Its gate, its arithmetic and its charts were read and tested an
+hour earlier and the page itself had never been opened here, which for a page whose door was rewritten in that
+same hour is the one place a fresh fault could be hiding. It was, and it was in the door.
+
+**Found and fixed.**
+
+- **The metrics page stops answering a good sign-in code with "Not found"** (`49554bf1`). The headline, and the
+  very next thing Harshil was told to do. The page reads on mount and then only when something it watches
+  changes, and it watched "this browser holds a session with an address on it" plus the range. Neither moves
+  when a browser that already holds a session signs in: the operator dashboard saves a session carrying
+  whatever address was typed into the claim form, so the page already counted itself signed in, had already
+  been refused, and kept that refusal on screen. Typing a perfectly good emailed code drew "Not found", with
+  nothing to press and a manual reload the only way in. That is every browser the operator dashboard has been
+  used in, and since last night's `emailVerified` gate it is also every browser holding an admin session minted
+  before it, which is exactly the one the hundred and ninth run's Needs Harshil asks him to sign in from. The
+  token is what actually changes, so the read is now keyed on the token (`adminSessionKey`), and the refusal
+  read with the old session is dropped rather than shown while the fresh read runs. Proved both ways in a real
+  Chromium against a stub that refuses every session but the one its own `/auth/verify` minted: with the old
+  wiring, sign-in box, right code, "Not found"; with the new, the numbers.
+
+**Swept and clean, or measured and left.** The metrics page driven in a real Chromium at 1280px and 400px over
+all five of its fixtures (populated, empty, nospend, error, notfound) and over a live sign-in against the stub:
+50 checks on sideways scroll, anything past the edge, a control with no name and a console line, all clean, with
+the intentional `.adtablewrap` scrollers (the Claims and Bookings tables, 555px and 538px of columns inside
+338px) excluded by reading each element's own scroll parent rather than counted as overflow. The three range
+buttons and Refresh driven. The "Other currencies" row drawn for the first time, since no fixture carries
+`money.others` and nothing had ever rendered the block the currency fix added an hour before: it draws, wraps
+and reads correctly at 400px.
+
+Every React hook dependency list in the app, which no earlier run had swept and which nothing in the repo
+checks, since there is no eslint configuration here at all: `react-hooks/exhaustive-deps` and
+`rules-of-hooks` run over all of `src` from a scratch install, 75 findings read one by one. One was tonight's
+bug. The other 61 warnings are deliberate proxies with the reason written beside them (`state.catalogVersion`
+standing in for the module-level catalog in 11 memos, `item.options.length` for the menu a hydrating detail
+file brings, `codes` for the trip list derived from it, and the booking sheet's `live`/`openMap` pair for the
+times a vendor answer changes), and the 13 errors are both a condition that is a build-time constant and so
+never changes hook order: `ADMIN_ROUTE` in `App.tsx` and `OTTO_LIVE` in `WalletCard.tsx`. Latent either way if
+one of those two is ever made dynamic.
+
+**Verification.** App `npm test` 1,045 pass, 0 fail, up from 1,040 (five new over one file, four on
+`adminSessionKey` against a memory `localStorage` and one pinning the arrangement in `AdminView` itself, which
+is the part that actually regressed and which goes red with either half of the fix taken out). Backend `npm
+test` 944 tests, 942 pass, 0 fail, 2 skipped, unchanged: nothing under `backend/` was touched. `tsc -b` and
+`tsc --noEmit -p .` clean at the root, backend clean but for TS5097. `npx vite build` clean, which is the
+bundle the fix ships in. The rehearsal was skipped by the rule above and does not reach `/admin` in any case:
+it enters through the test bypass and never opens the page. Nothing under `backend/data`, `public/` or
+`src/data` was touched.
+
+**Needs Harshil.**
+
+- **Sign in to /admin again, and it will now work.** The hundred and ninth run's note stands, but until this
+  fix the sign-in it asks for landed on "Not found" in your own browser. One emailed code, and the numbers.
+- **`?mock=notfound` can no longer draw the Not found screen.** The fixture returns a refusal, and the screen
+  rule quite correctly answers a refusal before any sign-in with the sign-in box, so that one dev state is now
+  unreachable from a fixture. The screen itself is three lines and was read; whether the fixture should count
+  as a sign-in to get at it is yours.
+- **A figure in a currency the block is not in still carries a dollar sign.** "3 bookings in CAD, $1,412.50
+  gross" is correct as a sentence, and "$" is CAD's symbol too, so nothing is wrong today with a catalog that
+  is US and Canada only. It is worth knowing that `money()` has one hard-coded symbol and one locale, on the
+  one page that now deliberately holds two currencies apart.
+- **There is no linter in this repo.** `react-hooks/exhaustive-deps` found tonight's bug in seconds from a
+  scratch install and has never run here. Adding it needs `package.json`, which is outside the paths an
+  overnight run may change.
+- Still open from earlier runs: the static pages are 2,241 listings behind the app until a sync runs; the cards
+  are 861 weeks behind the pages until one runs; a chain that publishes a week per branch has no reader for it;
+  the desktop site has no way to say anything in passing; `plainWords` is not idempotent; the operator's
+  dashboard names a booking as the crawl found it; "emailed" on the funnel counts addresses and not messages.
+
+
 ## Coverage
 
 The catalog is 48,198 listings as of the 23 September sync, 1,873 of them Viator partner rows. Counts below
@@ -8287,6 +8366,16 @@ Every module-level global regex in both projects against the `.test()` and `.exe
 `lastIndex` carried from one string to the next. Every `.sort()` with no comparator, for a numeric array sorted
 as strings.
 
+The metrics page drawn in a real browser at last, at 1280px and 400px, over all five of its fixtures and over
+a live sign-in against a stub that refuses every session but the one its own `/auth/verify` minted: the three
+screens it can draw, sideways scroll, anything past the edge, a control with no name and a console line, with
+its two deliberate table scrollers told apart from overflow by reading each element's own scroll parent; the
+range buttons and Refresh; and the "Other currencies" row, drawn for the first time. Every React hook
+dependency list in the app, which nothing in the repo checks because there is no eslint configuration here at
+all: `exhaustive-deps` and `rules-of-hooks` over all of `src`, all 75 findings read, the deliberate proxies
+(`state.catalogVersion`, `item.options.length`, `codes`, the booking sheet's `live` and `openMap`) and the two
+build-time constants separated from the one that was a defect.
+
 The internal metrics page, which no earlier run had opened at all: who may read it, over every route in the API
 that mints a session and every reader that treats the address on one as an identity, with the claim form's own
 unchecked address driven against all three internal routes end to end; the money arithmetic, per currency rather
@@ -8296,8 +8385,13 @@ null rather than zero; `buildCosts` and its zero denominators; and the three scr
 including the one a browser that has claimed a shop lands on. Every chart in `charts.tsx` for a divide by zero or
 an empty domain.
 
-**Not yet checked.** The metrics page drawn in a real browser, at 1280px or at 400px: its gate, its arithmetic
-and its charts are read and tested and the page itself has never been opened here. Whether "emailed" on its
+**Not yet checked.** Whether the fixtures behind `?mock=` should be able to reach the Not found screen at all,
+which they no longer can now that a refusal before any sign-in is answered with the sign-in box (see this run's
+Needs Harshil). Whether a figure in a currency the money block is not in should carry `money()`'s one
+hard-coded dollar sign, on the one page that now deliberately holds two currencies apart (see this run's Needs
+Harshil). Whether this repo should have a linter at all: `react-hooks/exhaustive-deps` found this run's bug in
+seconds from a scratch install, has never run here, and adding it needs `package.json` (see this run's Needs
+Harshil). Whether "emailed" on its
 funnel means businesses or messages, now that two campaigns mail the same address and `outreach_log`'s
 `(email_hash, kind)` key counts only the first send, so the second is on no total and no day series (see this
 run's Needs Harshil). Whether `costs.total` should add Render's month-to-date compute to a lifetime of discovery
