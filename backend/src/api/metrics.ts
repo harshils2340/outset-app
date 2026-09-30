@@ -68,7 +68,7 @@ export function fillDays<T extends { day: string }>(days: string[], rows: T[], z
 
 /** One row per (status, payment state, payout state) over all bookings ever. Counting is already done. */
 export type BookingGroup = { status: string; pay: string; payout: string; n: number; total: number; fee: number; payoutAmount: number; currency: string };
-export type BookingDay = { day: string; booked: number; gross: number; fee: number };
+export type BookingDay = { day: string; currency: string; booked: number; gross: number; fee: number };
 export type ClaimDay = { day: string; claimed: number };
 export type RecentBooking = { code: string; listing: string; status: string; date: string | null; created: string; total: number | null; guest: string };
 export type RecentClaim = { id: string; email: string | null; claimedAt: string | null; published: boolean };
@@ -158,15 +158,16 @@ export const pgDeps: MetricsDeps = {
   },
 
   async bookingDays(sinceIso) {
-    const rows = await query<{ day: string; n: string; gross: string; fee: string }>(
+    const rows = await query<{ day: string; currency: string; n: string; gross: string; fee: string }>(
       `select to_char(created at time zone 'UTC', 'YYYY-MM-DD') as day,
+              coalesce(lower(doc->'payment'->>'currency'), 'usd') as currency,
               count(*)::text as n,
               coalesce(sum((doc->>'total')::numeric) filter (where doc->'payment'->>'state' = 'captured'), 0)::text as gross,
               coalesce(sum((doc->'pricing'->>'fee')::numeric) filter (where doc->'payment'->>'state' = 'captured'), 0)::text as fee
-         from bookings where created >= $1 group by 1`,
+         from bookings where created >= $1 group by 1, 2`,
       [sinceIso],
     );
-    return rows.map((r) => ({ day: r.day, booked: num(r.n), gross: money(num(r.gross)), fee: money(num(r.fee)) }));
+    return rows.map((r) => ({ day: r.day, currency: r.currency, booked: num(r.n), gross: money(num(r.gross)), fee: money(num(r.fee)) }));
   },
 
   async recentBookings(limit) {
@@ -398,8 +399,9 @@ export async function collectMetrics(deps: MetricsDeps, days: number, now = new 
 
   const bookings = summarizeBookings(groups);
   // One filled series behind both charts: the bookings chart plots the count and the money chart the dollars,
-  // and a day missing from one but not the other would be two charts telling different stories.
-  const dayRows = fillDays(range, bookDays, (day) => ({ day, booked: 0, gross: 0, fee: 0 }));
+  // and a day missing from one but not the other would be two charts telling different stories. The money on it
+  // is the currency the money block is in, so a chart and the tiles above it cannot disagree.
+  const dayRows = bookingSeries(range, bookDays, bookings.money.currency);
   const claimedInRange = claimD.reduce((a, d) => a + d.claimed, 0);
 
   return {
@@ -466,32 +468,37 @@ const STATUSES = ["new", "accepted", "completed", "declined", "cancelled", "nosh
 export function summarizeBookings(groups: BookingGroup[]) {
   const byStatus: Record<string, number> = Object.fromEntries(STATUSES.map((s) => [s, 0]));
   let total = 0;
-  let gross = 0;
-  let fee = 0;
-  let authorized = 0;
-  let refunded = 0;
-  const payouts = { scheduled: 0, paid: 0, reversed: 0 };
-  const currencies = new Map<string, number>();
+  const per = new Map<string, { bookings: number; gross: number; fee: number; authorized: number; refunded: number; payouts: { scheduled: number; paid: number; reversed: number } }>();
+  const bucket = (currency: string) => {
+    const had = per.get(currency);
+    if (had) return had;
+    const made = { bookings: 0, gross: 0, fee: 0, authorized: 0, refunded: 0, payouts: { scheduled: 0, paid: 0, reversed: 0 } };
+    per.set(currency, made);
+    return made;
+  };
 
   for (const g of groups) {
     total += g.n;
     byStatus[g.status] = (byStatus[g.status] || 0) + g.n;
-    currencies.set(g.currency, (currencies.get(g.currency) || 0) + g.n);
+    const b = bucket(g.currency);
+    b.bookings += g.n;
     if (g.pay === "captured") {
-      gross += g.total;
-      fee += g.fee;
+      b.gross += g.total;
+      b.fee += g.fee;
     }
-    if (g.pay === "authorized") authorized += g.total;
-    if (g.pay === "released" && (g.payout === "reversed" || g.payout === "cancelled")) refunded += g.total;
-    if (g.payout === "scheduled" || g.payout === "paid" || g.payout === "reversed") payouts[g.payout] += g.payoutAmount;
+    if (g.pay === "authorized") b.authorized += g.total;
+    if (g.pay === "released" && (g.payout === "reversed" || g.payout === "cancelled")) b.refunded += g.total;
+    if (g.payout === "scheduled" || g.payout === "paid" || g.payout === "reversed") b.payouts[g.payout] += g.payoutAmount;
   }
 
-  const currency = [...currencies.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] || "usd";
+  const ranked = [...per.entries()].sort((a, b) => b[1].bookings - a[1].bookings || (a[0] < b[0] ? -1 : 1));
+  const currency = ranked[0]?.[0] || "usd";
+  const main = per.get(currency) || bucket(currency);
   // The net is taken from the two figures that are published, not from the unrounded sums behind them: rounding
   // each of three numbers on its own lets fee and net add up to a cent more than the gross they came out of,
   // and a page that shows all three would be showing arithmetic that does not work.
-  const grossOut = money(gross);
-  const feeOut = money(fee);
+  const grossOut = money(main.gross);
+  const feeOut = money(main.fee);
   return {
     total,
     byStatus,
@@ -501,11 +508,36 @@ export function summarizeBookings(groups: BookingGroup[]) {
       fee: feeOut,
       operatorNet: money(grossOut - feeOut),
       captured: grossOut,
-      authorized: money(authorized),
-      refunded: money(refunded),
-      payouts: { scheduled: money(payouts.scheduled), paid: money(payouts.paid), reversed: money(payouts.reversed) },
+      authorized: money(main.authorized),
+      refunded: money(main.refunded),
+      payouts: { scheduled: money(main.payouts.scheduled), paid: money(main.payouts.paid), reversed: money(main.payouts.reversed) },
+      /**
+       * Every currency this block is not about, so nothing is silently left out of it. A listing is priced in
+       * its own country's dollars (`currencyForArea`), and 1,030 Canadian shops ship, so as soon as one of them
+       * takes a booking there are two kinds of dollar in the table.
+       */
+      others: ranked.slice(1).map(([cur, v]) => ({ currency: cur, bookings: v.bookings, gross: money(v.gross) })),
     },
   };
+}
+
+/**
+ * One row per day of the window: bookings counted whatever they were charged in, money only in `currency`.
+ *
+ * Counts and money cannot be filtered the same way. "How many bookings on Tuesday" is a count and every booking
+ * is one; "what was taken on Tuesday" is money, and a Canadian booking's dollars are not American ones.
+ */
+export function bookingSeries(days: string[], rows: BookingDay[], currency: string): { day: string; booked: number; gross: number; fee: number }[] {
+  const by = new Map(days.map((d) => [d, { day: d, booked: 0, gross: 0, fee: 0 }]));
+  for (const r of rows) {
+    const cur = by.get(r.day);
+    if (!cur) continue;
+    cur.booked += r.booked;
+    if (r.currency !== currency) continue;
+    cur.gross = money(cur.gross + r.gross);
+    cur.fee = money(cur.fee + r.fee);
+  }
+  return days.map((d) => by.get(d)!);
 }
 
 /* ---------- the route ---------- */

@@ -172,6 +172,8 @@ export function buildMetrics(days: number, opts: { empty?: boolean; noSpend?: bo
       refunded: opts.empty ? 0 : 318,
       payouts: opts.empty ? { scheduled: 0, paid: 0, reversed: 0 } : { scheduled: 3140.25, paid: Math.round((gross - fee - 3140.25) * 100) / 100, reversed: 142 },
       byDay: moneyByDay,
+      // A Canadian shop's bookings, so the row that keeps them out of the figures above can be looked at.
+      others: opts.empty ? [] : [{ currency: "cad", bookings: 4, gross: 1860.5 }],
     },
     catalog: {
       total,

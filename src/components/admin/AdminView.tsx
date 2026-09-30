@@ -114,6 +114,8 @@ function Dashboard({ m }: { m: AdminMetrics }) {
   const bookDays: Point[] = m.bookings.byDay.map((d) => ({ day: d.day, values: [d.booked] }));
   const bookValues = m.bookings.byDay.map((d) => d.booked);
   const moneyDays: Point[] = m.money.byDay.map((d) => ({ day: d.day, values: [Math.max(0, d.gross - d.fee), d.fee] }));
+  // Currencies other than the one the money block is in. An older API does not send the field at all.
+  const others = m.money.others || [];
   const moneyValues = m.money.byDay.map((d) => d.gross);
   const statuses = Object.entries(m.bookings.byStatus || {}).map(([label, value]) => ({ label, value }));
 
@@ -250,6 +252,15 @@ function Dashboard({ m }: { m: AdminMetrics }) {
           <div><dt>Payouts scheduled</dt><dd><Money v={m.money.payouts.scheduled} /></dd></div>
           <div><dt>Payouts paid</dt><dd><Money v={m.money.payouts.paid} /></dd></div>
           <div><dt>Payouts reversed</dt><dd><Money v={m.money.payouts.reversed} /></dd></div>
+          {others.length ? (
+            <div>
+              <dt>Other currencies</dt>
+              <dd>
+                {others.map((o) => `${o.bookings.toLocaleString("en-US")} booking${o.bookings === 1 ? "" : "s"} in ${o.currency.toUpperCase()}, ${money(Math.round(o.gross * 100) / 100)} gross`).join("; ")}{" "}
+                <em>counted above as bookings, kept out of every figure and chart here</em>
+              </dd>
+            </div>
+          ) : null}
         </dl>
       </Section>
 

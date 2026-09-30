@@ -46,6 +46,13 @@ export type AdminMetrics = {
     refunded: Maybe;
     payouts: { scheduled: Maybe; paid: Maybe; reversed: Maybe };
     byDay: MoneyDay[];
+    /**
+     * Every currency the block above is not about. A listing is priced in its own country's dollars, so a
+     * Canadian shop's booking is CAD and cannot be added to an American one: the figures are the labelled
+     * currency's own and these are named beside them, rather than folded in or quietly dropped. Optional
+     * because the site and the API deploy separately and an older API does not send it.
+     */
+    others?: { currency: string; bookings: number; gross: number }[];
   };
   /**
    * What Outset spends, which is a different kind of number from `money` and must never be added to it: one is

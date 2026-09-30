@@ -12,7 +12,7 @@ process.env.CLAIM_SECRET ||= "metrics-test-secret";
 const STORE = mkdtempSync(join(tmpdir(), "outset-metrics-"));
 process.env.STORE_DIR = STORE;
 
-const { buildCosts, clampDays, clearCatalogCache, collectMetrics, dayRange, fillDays, makeMetrics, pgDeps, shortName, summarizeBookings } = await import("../metrics.ts");
+const { bookingSeries, buildCosts, clampDays, clearCatalogCache, collectMetrics, dayRange, fillDays, makeMetrics, pgDeps, shortName, summarizeBookings } = await import("../metrics.ts");
 const { parseSnapshot } = await import("../../lib/spendLog.ts");
 const { signSession } = await import("../auth.ts");
 type MetricsDeps = import("../metrics.ts").MetricsDeps;
@@ -105,6 +105,46 @@ test("the busiest currency is the one reported", () => {
   const s = summarizeBookings([group({ currency: "usd", n: 2 }), group({ currency: "cad", n: 5 })]);
   assert.equal(s.money.currency, "cad");
   assert.equal(summarizeBookings([]).money.currency, "usd");
+  assert.deepEqual(summarizeBookings([]).money.others, []);
+});
+
+/**
+ * A listing is priced in its own country's dollars, and 1,030 Canadian shops ship, so the table holds two kinds
+ * of dollar as soon as one of them sells anything. The label was the busiest currency and every figure under it
+ * was the sum of all of them, so one Canadian booking put CAD into a block headed USD on the page that exists to
+ * say what Outset has earned. The figures are now the labelled currency's own, and the rest are named beside
+ * them rather than folded in or dropped.
+ */
+test("dollars charged in one country are not added to another country's", () => {
+  const s = summarizeBookings([
+    group({ currency: "usd", n: 3, total: 100, fee: 10, payoutAmount: 90 }),
+    group({ currency: "cad", n: 1, total: 400, fee: 40, payoutAmount: 360 }),
+    group({ currency: "cad", n: 1, pay: "authorized", total: 50 }),
+  ]);
+  assert.equal(s.money.currency, "usd");
+  assert.equal(s.money.gross, 100);
+  assert.equal(s.money.fee, 10);
+  assert.equal(s.money.operatorNet, 90);
+  assert.equal(s.money.payouts.scheduled, 90);
+  // The hold is on a Canadian card, so it is not part of the American block either.
+  assert.equal(s.money.authorized, 0);
+  // Counts are counts: a booking is one whatever it was charged in.
+  assert.equal(s.total, 5);
+  assert.deepEqual(s.money.others, [{ currency: "cad", bookings: 2, gross: 400 }]);
+});
+
+test("a day series counts every booking and prices only the one currency", () => {
+  const days = ["2026-09-17", "2026-09-18"];
+  const rows = [
+    { day: "2026-09-18", currency: "usd", booked: 2, gross: 200, fee: 20 },
+    { day: "2026-09-18", currency: "cad", booked: 1, gross: 400, fee: 40 },
+    // A day outside the window is not folded into one inside it.
+    { day: "2026-09-10", currency: "usd", booked: 9, gross: 900, fee: 90 },
+  ];
+  assert.deepEqual(bookingSeries(days, rows, "usd"), [
+    { day: "2026-09-17", booked: 0, gross: 0, fee: 0 },
+    { day: "2026-09-18", booked: 3, gross: 200, fee: 20 },
+  ]);
 });
 
 /* ---------- the window ---------- */
@@ -141,7 +181,7 @@ test("every series is filled, in range, and ascending", async () => {
     deps({
       outreachDays: async () => [{ day: "2026-09-17", sent: 2, bounced: 1 }],
       claimDays: async () => [{ day: "2026-09-18", claimed: 3 }],
-      bookingDays: async () => [{ day: "2026-09-16", booked: 2, gross: 300, fee: 30 }],
+      bookingDays: async () => [{ day: "2026-09-16", currency: "usd", booked: 2, gross: 300, fee: 30 }],
     }),
     3,
     NOW,
@@ -166,7 +206,7 @@ test("a booking window asked for in days does not change the lifetime totals", a
   const m = await collectMetrics(
     deps({
       bookingGroups: async () => [group({ n: 5, total: 500, fee: 50 })],
-      bookingDays: async () => [{ day: "2026-09-18", booked: 1, gross: 100, fee: 10 }],
+      bookingDays: async () => [{ day: "2026-09-18", currency: "usd", booked: 1, gross: 100, fee: 10 }],
     }),
     2,
     NOW,
