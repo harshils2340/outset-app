@@ -42,6 +42,17 @@ test("a line whose only readable time came out of a date says nothing", () => {
   assert.equal(show(encodeWeek(["open to the public Sunday 4/14/2411am-1pm"])), "(no hours)");
 });
 
+test("an hour the clock refuses does not take the hour behind it away", () => {
+  // The twin of the guest-side rule. The scan read on from the end of a refused candidate, so whatever that
+  // candidate covered went with it: o-maplemuseumcentre-org's one line, "2026 - 10am to 4pm", offers
+  // "26 - 10am" first, and the ten o'clock behind it was never reached, so the card said nothing at all.
+  assert.equal(show(encodeWeek(["2026 - 10am to 4pm"])), everyDay("10:00-16:00"));
+  assert.equal(show(encodeWeek(["Open Hours May 10- May 31 - 9:00am - 5:00pm"])), everyDay("09:00-17:00"));
+  // A range the clock can show and the whole-day or length rule then refuses is read past, not picked apart.
+  assert.equal(show(encodeWeek(["Mon-Sun 12:00 AM - 11:59 PM"])), "(no hours)");
+  assert.equal(show(encodeWeek(["Mon-Sun 1:00 AM - 1:00 AM"])), "(no hours)");
+  assert.equal(show(encodeWeek(["open from 6:00pm - 6:25pm"])), "(no hours)");
+});
 
 test("a date written in digits is one day too", () => {
   // The twin of the guest-side rule, on the four shipped lines that write the date in digits: one open house,

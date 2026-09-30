@@ -60,11 +60,25 @@ test("a line whose only readable time is a date says nothing rather than guessin
   // o-hagginmuseum-org put a one-off open house on all seven days at 26 o'clock. A shop that has not stated
   // its weekly hours has not stated them: silence is the honest answer, not a time taken off a calendar.
   assert.equal(show(parseWeek(["Open House November 7, 2026 - 10:00 AM - 5:00 PM"])), "(no hours)");
-  assert.equal(show(parseWeek(["2026 - 10am to 4pm"])), "(no hours)");
   // o-martinezhistory-org: "2411am" is the fourteenth of April and eleven o'clock, and 24am is not a time.
   assert.equal(show(parseWeek(["open to the public Sunday 4/14/2411am-1pm"])), "(no hours)");
 });
 
+test("an hour the clock refuses does not take the hour behind it away", () => {
+  // The scan used to read on from the end of a refused candidate, so whatever the candidate covered went with
+  // it. o-maplemuseumcentre-org publishes one line, "2026 - 10am to 4pm": "26 - 10am" is offered first, 26 is
+  // not an hour, and reading past it took the ten o'clock too, so a museum stating its own hours stated none.
+  assert.equal(show(parseWeek(["2026 - 10am to 4pm"])), everyDay("10:00-16:00"));
+  // o-oceaniccamping-com's season line, which names two months and so is a run of days rather than one.
+  assert.equal(show(parseWeek(["Open Hours May 10- May 31 - 9:00am - 5:00pm"])), everyDay("09:00-17:00"));
+  // A range the clock can show and the whole-day rule then refuses is still read past, not picked apart: the
+  // site builder's placeholder must not become "2:00 AM - 11:59 PM".
+  assert.equal(show(parseWeek(["Mon-Sun 12:00 AM - 11:59 PM"])), "(no hours)");
+  assert.equal(show(parseWeek(["Mon-Sun 12:00 AM - 12:00 AM"])), "(no hours)");
+  assert.equal(show(parseWeek(["Mon-Sun 1:00 AM - 1:00 AM"])), "(no hours)");
+  // Nor may a span the length rule refuses be salvaged out of its own digits.
+  assert.equal(show(parseWeek(["open from 6:00pm - 6:25pm"])), "(no hours)");
+});
 
 test("a date written in digits is one day too", () => {
   // Four shipped lines write the date in digits, where the month-name rule could not see it. Three of the four

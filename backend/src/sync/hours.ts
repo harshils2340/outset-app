@@ -338,14 +338,26 @@ function coversWholeDay(open: number, close: number): boolean {
  * The first range on the line that could be opening hours, in minutes since midnight, and where on the line it
  * sits. A candidate no clock could show, or one that spans less than half an hour or more than a day, is
  * stepped over rather than taken, so "Open House November 7, 2026 - 10:00 AM - 5:00 PM" gives up the 10 to 5
- * behind the date instead of opening at 26 o'clock.
+ * behind the date instead of opening at 26 o'clock. The twin of the guest side's reader, including where the
+ * scan resumes after a refused candidate.
  *
  * Where it sits matters because a range can be the hour a shop shuts rather than the hour it opens, and only
  * the words in front of it say which.
  */
 export function firstSpanAt(line: string): { span: [number, number]; at: number } | null {
-  for (const t of normalizeClock(line).matchAll(TIME_SCAN)) {
-    if (!onTheClock(t[1], t[2], t[3]) || !onTheClock(t[4], t[5], t[6])) continue;
+  const text = normalizeClock(line);
+  const scan = new RegExp(TIME_SCAN.source, "gi");
+  for (let t = scan.exec(text); t; t = scan.exec(text)) {
+    // A candidate no clock could show is usually a date or a phone number sitting on top of a real range, and
+    // reading on from the end of it took the range with it: "2026 - 10am to 4pm" offers "26 - 10am" first, and
+    // the ten o'clock behind it was never reached, so a museum stating its own hours stated none. Scanning
+    // resumes just past the hour that failed rather than past the whole candidate. A range the clock can show
+    // and the length rule then refuses is read on from as before: its digits are a real span, and half of one
+    // is not opening hours either.
+    if (!onTheClock(t[1], t[2], t[3]) || !onTheClock(t[4], t[5], t[6])) {
+      scan.lastIndex = t.index + t[1].length;
+      continue;
+    }
     let open = mins(Number(t[1]), Number(t[2] || 0), t[3], false);
     let close = mins(Number(t[4]), Number(t[5] || 0), t[6], true);
     if (!t[6] && !t[3] && close <= open) close += 12 * 60;
