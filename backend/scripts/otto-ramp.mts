@@ -141,5 +141,11 @@ if (dry) {
 
 // The day is recorded either way, so a second launch today does nothing; the rung only moves on mail sent,
 // for the campaign as a whole and, in place, for each mailbox on its own count.
-if (quota) for (const id of ids) mailboxes[id.user] = recordRun(mailboxes[id.user], today, sentToday(id.user, ids[0].user) - before[id.user]);
+//
+// The per-mailbox ramps exist only when there is more than one mailbox, which is the same condition
+// `planToday` builds a quota under and the only case in which it has filled `mailboxes` in. This used to read
+// `if (quota)`, naming the round loop's own binding from outside the loop: every real run threw
+// `ReferenceError: quota is not defined` here, after the mail had gone out and before any state was saved, so
+// no day was ever recorded and the ramp never left its first rung.
+if (ids.length > 1) for (const id of ids) mailboxes[id.user] = recordRun(mailboxes[id.user], today, sentToday(id.user, ids[0].user) - before[id.user]);
 saveState(recordRun(state, today, sent));
