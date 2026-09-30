@@ -7546,6 +7546,111 @@ it enters through the test bypass and never opens the page. Nothing under `backe
   dashboard names a booking as the crawl found it; "emailed" on the funnel counts addresses and not messages.
 
 
+## 30 September 2026, hundred and eleventh run (10:12 to 10:50 UTC)
+
+**Chosen, and why.** `git fetch` first: nothing has landed since the hundred and tenth run's own log entry, and
+no commit since it touches `backend/src`, `src/` or the scripts, so by the rule the full rehearsal was
+**skipped at the start** and that hour went on hunting. It was **run at the end** instead, because one of
+tonight's fixes is in `placeName`, which the guest listing page and the review-and-pay sheet the rehearsal
+drives both read. Both `node_modules` were missing on this checkout and were installed first. Baseline before
+anything changed: root `tsc --noEmit -p .` and `tsc -b` clean, backend clean but for TS5097, backend 944 tests
+with 942 pass and 2 skipped.
+
+Every area on the brief is on the Verified list, so the hunt took the one guest surface no run has ever opened
+at all: the static pages. 20,728 `/l/` listing pages and 3,076 `/p/` landing pages ship, they are Outset's
+front door from Google, and every earlier run read them as strings. `scripts/listing-pages-dry.mts` builds the
+whole set into a temp directory with no database, no network and no browser, so the output could be swept
+entire and then drawn in the Chromium on disk.
+
+**Found and fixed.**
+
+- **A landing page stops telling a search engine a shop has "1 reviews"** (`2c74b513`). The FAQ on a landing
+  page is also that page's `FAQPage` JSON-LD, so a search engine can quote an answer word for word. Six of
+  those sentences glued a number to a plural whatever the number was: "1 reviews" on 17 pages, "1 of the 4
+  operators publish" on 633, "1 of the 4 show hours" on 637, "1 of them have photos" on 16, and "as stated on
+  the operator's own sites" on 525, where a dozen shops had each stated a length and the page gave one operator
+  a dozen websites. A seventh said "3 of the 3 show hours copied from the operator's website. The rest do not
+  publish them on Outset yet" on 126 pages, where there is no rest at all. The lede above them read "12 with
+  prices from the operator's own site" on 1,545. The reviews count now goes through `reviewsLine`, which is the
+  rule every other surface reads and which the `/l/` page already read (0 offenders there); the rest agree with
+  the number they name, and the "rest" clause is printed only when there is one.
+- **A doubled comma in an area line stops reaching the place a guest reads** (`078730cd`). `o-baxtercreekgolf-com`
+  ships its area as "Cavan-Monaghan,, ON". Both readers that split a town off a state code kept the separator
+  that carried the code, so the town was "Cavan-Monaghan,". `placeName` is the one place reader every full
+  surface shares, which put "Cavan-Monaghan,, Ontario" on that shop's listing heading, its browser tab, the
+  review-and-pay sheet, the confirm screen, its static page and in Otto's answers; the landing pages' own copy
+  of the split put "including places in Toronto, Mississauga, Etobicoke and Cavan-Monaghan,." on
+  `golf-in-toronto.html`. One listing in 52,815, which is why the rule and not the row is what changed, and the
+  landing page's two copies of the split are now one exported `townOfArea`.
+- **Every Toronto activity stops shipping two landing pages with the same heading** (`2c07d5e2`). The headline.
+  A town that is a metro's own main town is meant to get no city page: the metro page already is its page and a
+  second one is a near-duplicate, which is written into the module's own header. The guard asked that of one
+  metro only, the one carried by the first listing that named the town, which is whichever row the grouping
+  happened to see first. 801 listings give their area as "Toronto, ON" and 69 of them are filed under Hamilton,
+  Waterloo, Niagara or no metro at all, so in 36 of the activities the first row seen was not a Toronto one,
+  Toronto was compared against Hamilton, and the page was written. That shipped "Arcades in Toronto, Ontario"
+  as both `arcade-in-toronto.html` and `arcade-in-toronto-on.html`, same title, same h1, near-identical grid,
+  both in `sitemap-pages.xml`, and the same for 35 more activities: the one thing a search engine is asked to
+  choose between and the one thing this generator is careful about everywhere else. The guard now asks whether
+  the town is any metro's own main town. The region stays part of the match, so Hamilton, Ohio keeps its page
+  beside the Hamilton, Ontario metro.
+
+**Swept and clean, or measured and left.** All 23,804 generated pages read as documents: every
+`application/ld+json` block parses, every `<a>` has text, every `<img>` has a non-empty alt, every page has a
+title, no heading is empty. All 189,898 internal links resolve to a page the same run wrote, which is a rule
+the module states and no run had checked (the only three misses are `about.html`, `terms.html` and
+`privacy.html`, which live in the real `public/` and which a dry run does not copy). All 6,492 partner pages
+carry `noindex` and none is in a listings sitemap, which is what the Viator licence asks; no page of our own
+carries `noindex` and none is missing from the sitemap; no two pages share a canonical URL.
+
+151 pages drawn in the Chromium on disk at 400px and 1280px, chosen for the extremes (the 25 largest and 15
+smallest listing pages, the 25 largest landing pages, the all-metro pages, the index, the pages carrying the
+longest heading, area line, menu name and detail line, plus an 80 page random sample): 302 renders, no sideways
+scroll, nothing past either edge, no two blocks overlapping, no control without a name, no console line. The
+longest unbreakable token in every element class over all 20,728 listing pages, which is what a 352px column
+would have to break: the worst is a 129 character Viator URL in a "Not included" line, and Chromium wraps a URL
+at its solidus, so none of the 18 bare URLs in those lists and 31 in the blurbs overflows. The pages' own CSS
+sets no `overflow-wrap`, `word-break` or flex `min-width`, so that is luck rather than rule, and a single long
+word with no punctuation in it would still push a menu row out.
+
+The 53 pairs of pages that share a title: 52 are two partner products with the same name in the same
+destination, or a partner product beside the operator's own listing, all `noindex`, and two are two catalog rows
+for the same business (`o-balancestudiocohasset-com` and `o-balancestudioma-wixsite-com`, `o-plazaliveorlando-com`
+and `o-plazaliveorlando-org`), which is supply and not code. The 53rd was tonight's bug.
+
+**Verification.** Backend `npm test` 949 tests, 947 pass, 0 fail, 2 skipped, up from 944 (five new cases on
+`pages.ts`, each red with its own fix taken out). App `npm test` 1,046 pass, 0 fail, up from 1,045 (one on
+`placeName`).
+`tsc --noEmit -p .`, `tsc -b` and the backend's own `tsc` all clean but for TS5097. The whole page set
+regenerated after each fix and diffed against the run before it: all eight wording counts now zero, exactly the
+36 duplicate pages gone and nothing else, the 39 Toronto metro pages intact, 14,236 listing pages unchanged,
+and 189,620 internal links still resolving. The rehearsal ran green at 57 of 57 against a local
+Postgres with TLS and the Chromium on disk, on the tree carrying the first two fixes; the third touches only the
+landing page generator, which the rehearsal never opens, and its own cases are in the backend suite the
+rehearsal runs. Nothing under `backend/data`, `public/` or `src/data`
+was touched.
+
+**Needs Harshil.**
+
+- **Nothing here reaches a guest until a sync runs.** All three fixes are in the generator; the pages committed
+  under `public/` still carry the old wording, the duplicate Toronto pages and the comma. This is the same wall
+  the last several runs hit, and the list of what a sync now owes is getting long.
+- **69 Toronto-address listings are filed under a neighbouring metro.** That is what defeated the guard, and it
+  is still true: 50 under Hamilton, 16 under Waterloo, 2 under Niagara, 1 with no metro at all, all with
+  "Toronto, ON" on the page. They are on their own metro's page and on the all-metros page, so nothing is
+  unreachable, but a guest browsing Hamilton meets a shop in downtown Toronto. Reading a metro from the town an
+  area line names is already on the open list; this is what it costs.
+- **The static pages' CSS has no wrapping rule.** No `overflow-wrap`, no `word-break`, no `min-width:0` on the
+  two flex rows. Nothing overflows today only because the long tokens that exist are URLs, which Chromium
+  breaks at a slash. `src/styles` is out of an overnight run's reach and this CSS is not, so say whether it
+  should get the same `overflow-wrap: anywhere` the app's own long lines get.
+- **Two catalog rows are the same business.** Balance Studio in Cohasset and Boston, and The Plaza Live in
+  Orlando on both `.com` and `.org`. Each ships two listing pages with the same title. Supply, not code.
+- Still open from earlier runs: the cards are weeks behind the pages until a sync runs; a chain that publishes a
+  week per branch has no reader for it; the desktop site has no way to say anything in passing; `plainWords` is
+  not idempotent; the operator's dashboard names a booking as the crawl found it; there is no linter in this
+  repo, and `react-hooks/exhaustive-deps` found last hour's bug in seconds.
+
 ## Coverage
 
 The catalog is 48,198 listings as of the 23 September sync, 1,873 of them Viator partner rows. Counts below
@@ -8385,7 +8490,28 @@ null rather than zero; `buildCosts` and its zero denominators; and the three scr
 including the one a browser that has claimed a shop lands on. Every chart in `charts.tsx` for a divide by zero or
 an empty domain.
 
-**Not yet checked.** Whether the fixtures behind `?mock=` should be able to reach the Not found screen at all,
+The static pages drawn in a real browser at last, and their whole output swept rather than sampled: all 23,804
+pages a sync writes read as documents (every `application/ld+json` block parsed, every link with text, every
+image with a non-empty alt, every page with a title, no empty heading), all 189,898 internal links resolved
+against the pages the same run wrote, the partner pages' `noindex` and their absence from every listings
+sitemap, our own pages' presence in it, and no two pages sharing a canonical URL. 151 pages drawn in Chromium at
+400px and 1280px, chosen for the extremes and backed by a random sample: 302 renders for sideways scroll,
+anything past either edge, two blocks overlapping, a control with no name and a console line. The longest
+unbreakable token in every element class over all 20,728 listing pages, against the 352px column a 400px phone
+gives them. Every wording on a landing page that counts something, over all 3,076 of them and through the
+`FAQPage` JSON-LD a search engine quotes verbatim: the number against the noun, the verb beside it, and the
+clause that names a rest. Whether two landing pages can be written for the same activity in the same place, over
+the whole page set, by heading and by the town a file name states.
+
+**Not yet checked.** Whether the static pages' own CSS should carry a wrapping rule at all: it sets no
+`overflow-wrap`, no `word-break` and no `min-width` on either of its two flex rows, and nothing overflows today
+only because every long token in the catalog is a URL, which a browser breaks at a slash (see this run's Needs
+Harshil). Whether a metro page should draw the shops whose own area line names its main town but whose pin filed
+them under a neighbour, which is 69 listings in Toronto alone (see this run's Needs Harshil). Which of two
+catalog rows for the same business should keep its page, on the two pairs this run found. Whether a landing
+page's price range should hold two currencies apart the way the metrics page now does, on the 63 all-metro pages
+that span the US and Canada. What a `/l/` page's own sections say against the app's listing for the same shop,
+section by section, which this run read as markup and not as content. Whether the fixtures behind `?mock=` should be able to reach the Not found screen at all,
 which they no longer can now that a refusal before any sign-in is answered with the sign-in box (see this run's
 Needs Harshil). Whether a figure in a currency the money block is not in should carry `money()`'s one
 hard-coded dollar sign, on the one page that now deliberately holds two currencies apart (see this run's Needs
