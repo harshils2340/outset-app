@@ -54,6 +54,19 @@ test("an hour the clock refuses does not take the hour behind it away", () => {
   assert.equal(show(encodeWeek(["open from 6:00pm - 6:25pm"])), "(no hours)");
 });
 
+test("a bracket in front of a rule's clock still opens the rule", () => {
+  // The twin of the guest-side cut, on the two campgrounds whose brackets the crawl left open.
+  assert.equal(
+    show(encodeWeek(["Mon/Wed-Sat (Noon-6pm) Sun (11am-4pm"])),
+    "Sun 11:00-16:00, Mon 12:00-18:00, Tue -, Wed 12:00-18:00, Thu 12:00-18:00, Fri 12:00-18:00, Sat 12:00-18:00",
+  );
+  assert.equal(
+    show(encodeWeek(["Mon-Sat (Noon-7pm) Sun (11am-4pm"])),
+    "Sun 11:00-16:00, Mon 12:00-19:00, Tue 12:00-19:00, Wed 12:00-19:00, Thu 12:00-19:00, Fri 12:00-19:00, Sat 12:00-19:00",
+  );
+  assert.equal(show(encodeWeek(["Mon-Fri 9am-5pm (Sat by appointment)"])), "Sun -, Mon 09:00-17:00, Tue 09:00-17:00, Wed 09:00-17:00, Thu 09:00-17:00, Fri 09:00-17:00, Sat -");
+});
+
 test("a date written in digits is one day too", () => {
   // The twin of the guest-side rule, on the four shipped lines that write the date in digits: one open house,
   // one guided tour, one open play and one Monday, each of which had become the shop's whole week.

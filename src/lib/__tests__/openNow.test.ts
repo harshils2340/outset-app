@@ -505,6 +505,23 @@ test("a second rule a shop wrote after a space is a second rule", () => {
     "Sun 09:00-16:00, Mon 09:00-14:00, Tue 09:00-14:00, Wed 09:00-14:00, Thu 09:00-16:00, Fri 09:00-16:00, Sat 09:00-16:00");
 });
 
+test("a bracket in front of a rule's clock still opens the rule", () => {
+  // Two campgrounds write each rule's hours inside brackets and the crawl drops the closing one:
+  // o-pequeacreekcampground-com's "Mon/Wed-Sat (Noon-6pm) Sun (11am-4pm" and o-campottercreek-com's
+  // "Mon-Sat (Noon-7pm) Sun (11am-4pm". The cut looked for the clock straight behind the days, found a
+  // bracket, and left each line as one rule, so a guest read Sunday on the weekday's hours.
+  assert.equal(
+    show(parseWeek(["Mon/Wed-Sat (Noon-6pm) Sun (11am-4pm"])),
+    "Sun 11:00-16:00, Mon 12:00-18:00, Tue -, Wed 12:00-18:00, Thu 12:00-18:00, Fri 12:00-18:00, Sat 12:00-18:00",
+  );
+  assert.equal(
+    show(parseWeek(["Mon-Sat (Noon-7pm) Sun (11am-4pm"])),
+    "Sun 11:00-16:00, Mon 12:00-19:00, Tue 12:00-19:00, Wed 12:00-19:00, Thu 12:00-19:00, Fri 12:00-19:00, Sat 12:00-19:00",
+  );
+  // A bracketed aside is not a rule's clock, so a line that only looks like two is still one.
+  assert.equal(show(parseWeek(["Mon-Fri 9am-5pm (Sat by appointment)"])), "Sun -, Mon 09:00-17:00, Tue 09:00-17:00, Wed 09:00-17:00, Thu 09:00-17:00, Fri 09:00-17:00, Sat -");
+});
+
 /**
  * A shop that writes each rule back to front, the clock first and the days it belongs to behind it. 40 shipped
  * lines are written in that order and the cut above cannot make any of them, because it needs the days to come

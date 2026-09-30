@@ -359,7 +359,7 @@ const A_SPAN_RE = new RegExp(A_SPAN, "i");
 const A_DAY_RE = new RegExp("\\b" + GROUP_DAY + "\\b", "i");
 const EVERY_DAY_RE = new RegExp("\\b" + GROUP_DAY + "\\b", "gi");
 /** The next rule, whole: its own days, then whatever the shop puts in front of the clock, then its own span. */
-const NEXT_RULE = new RegExp("^" + RULE_DAYS + GAP + "(?:from\\s+|open\\s+|at\\s+)?" + A_SPAN, "i");
+const NEXT_RULE = new RegExp("^" + RULE_DAYS + GAP + "\\(?" + GAP + "(?:from\\s+|open\\s+|at\\s+)?" + A_SPAN, "i");
 /**
  * A day off with no day in front of it owns the day written behind it, so the clause in front of a cut may not
  * end on one: "Open daily 10AM-7:30PM, closed Wednesdays" is six open days and a Wednesday off, whatever the
