@@ -469,6 +469,15 @@ function printSchedule(): void {
 
 async function main(): Promise<void> {
   const argv = process.argv.slice(2);
+  // An argument nobody recognises is refused rather than ignored. Every flag here but `--dry` falls through to
+  // "run forever", which queues every crawl on the box: a plausible guess at the read-only flag (`--list`,
+  // `--help`, `--jobs`) started the whole overnight pipeline instead of printing the schedule. The only other
+  // door shut is `isLaptop()`, which says nothing about a Linux machine that is not this worker.
+  const unknown = argv.filter((a) => a !== "--dry" && !a.startsWith("--once="));
+  if (unknown.length) {
+    console.error(`unknown argument ${unknown.join(" ")}. Use --dry to print the schedule, --once=<job> to run one job, or no argument at all to run the scheduler.`);
+    process.exit(2);
+  }
   if (argv.includes("--dry")) {
     printSchedule();
     return;
