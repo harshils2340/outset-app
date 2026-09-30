@@ -7121,6 +7121,101 @@ Chromium already on disk. Nothing under `backend/data`, `public/` or `src/data` 
   hour; the desktop site has no way to say anything in passing; `plainWords` is not idempotent; a rule behind an
   opening bracket is still not cut; the operator's dashboard names a booking as the crawl found it.
 
+## 30 September 2026, hundred and sixth run (05:16 to 06:02 UTC)
+
+**Chosen, and why.** `git fetch` first: the only commit since the hundred and fifth run's entry is a security
+sweep that touched `docs/` alone, and that entry records the rehearsal green at 57 of 57, so by the rule the
+rehearsal was skipped at the start and run once at the end, because all four of tonight's commits touch
+`src/lib` and `backend/src`. Both `node_modules` were missing on this checkout and were installed. Baseline:
+root and backend type checks clean (backend TS5097 only), `tsc -b` clean, app 1,019 pass, backend 928 tests
+with 926 pass and 2 skipped. Every area on the brief is on the Verified list, so the hunt took the top item on
+Not yet checked, measured it, and then went where that measurement pointed.
+
+The top item was refused on the evidence, as the run before refused its own rule for it. Over the whole shipped
+catalog 255 listings publish two day-naming rules that disagree about a day, 1,117 day pairs in all. Labelling
+every rule involved by the words it opens on gives 259 distinct labels over 896 rules, and 577 of those rules
+carry no label at all: in two disagreements out of three there is nothing on either line to tell them apart.
+The labelled tail is sub-venues ("Kascadia Public House", "Glow Bowl Hours", "Vegan Pizza Land Food Trailer"),
+meals, seasons and, on five listings, the towns of a chain's other branches. There is no rule there to spell,
+which is what the hundred and fifth run concluded from the other direction, so it is now measured twice and
+left. What the sweep did turn up is that a shop's own vagueness is not a rule either: 12 lines say their hours
+vary, and 10 of the 12 state real hours beside the caveat, so refusing them would lose more than it saves.
+
+**Found and fixed.** Four defects in the span reader and the day-off reader, every one found by counting the
+catalog rather than reading it: 421 of the 14,509 listings that publish hours end with no week at all, and 313
+of those publish a line that does carry a time range. Sorting that residue by shape is what the four came out of.
+
+- **An hour the clock refuses stops taking the hour behind it away** (`1df47d54`). The span reader walked its
+  candidates with `matchAll`, so a candidate no clock could show was not merely refused: everything it covered
+  was consumed with it. The Maple Museum and Learning Centre publishes one line, "2026 - 10am to 4pm". The scan
+  offers "26 - 10am" first, 26 is not an hour, and reading on from the end of that candidate took the ten
+  o'clock with it, so a museum stating its own hours stated none. Oceanic Camping's season line read the same
+  way. The scan now resumes just past the hour that failed. A candidate the clock can show and the whole-day or
+  length rule then refuses is read past as before, which is what keeps the site builder's "12:00 AM - 11:59 PM"
+  placeholder from becoming "2:00 AM - 11:59 PM" on 166 listings: the first attempt at this fix did exactly
+  that, and the catalog diff caught it.
+- **A date a shop wrote in digits stops being the hours it keeps every week** (`62cfdfd3`). The one-day rule
+  reads month names and could not see a date in digits. Four shipped lines carry one and for three of them it
+  is the whole Hours block: a curling club's "Open House Fri, 2026-09-25 7:00 pm -10:00 pm" was every Friday
+  evening it keeps, a city's "Open Tour 09/13/2026 1:00 PM - 4:00 PM" and a party centre's "Open Play- 8/22/26
+  11am-4pm" every afternoon of their weeks, a hall's "MONDAY 9/7/26 1pm-5pm" its Mondays. A year is what tells
+  a date from a season, so only the three-part spellings are read and "Early Season (5/30 - 6/12)" keeps its
+  hours.
+- **A bracket in front of a rule's clock stops swallowing the rule** (`a5f669cd`). Two campgrounds write each
+  rule's hours inside brackets and the crawl drops the closing one. The cut looked for the clock straight
+  behind a rule's days, found a bracket, and left "Mon/Wed-Sat (Noon-6pm) Sun (11am-4pm" as one rule, so Sunday
+  took the weekday span on one listing and stated nothing on the other. This was the hundred and second run's
+  open question.
+- **A day a shop shuts the front of stops being a day it shuts** (`c7ecf970`). The hundred and fifth run's
+  first Needs Harshil, now closed on a rule rather than a guess. Three listings write a closure with a clock on
+  it and every one had the whole day shut: Alhambra Golf Course, open 6 AM to 11 PM daily, told a guest it was
+  closed all Monday because its driving range shuts for the morning. What the closure is about decides what the
+  day says. A closure naming a subject of its own is not about the door, so the course keeps its week. A
+  closure that is the door's own leaves the day an honest gap rather than hours, because the limit is not a
+  closing time anybody can read and the shop has said the front of the day is shut: Gleann Loch Farms publishes
+  "Monday/Wednesday- 8:30am - 5:00pm" and "Closed Monday until 4:30 p.m." on one page, and a picker offering
+  half past eight would send a guest to a locked gate. Only a closure that shuts the front of a day is read
+  this way, so Beachwood Golf's "closed Sundays after 3 PM" keeps the hours an earlier run deliberately gave
+  it, and "Closed Tuesday after Labor Day" names a date rather than a clock and is still a day off.
+
+Fifteen listings read differently for the four together, each one diffed against its own published lines before
+and after, and both hour parsers answer identically on all 14,509 listings that publish hours, checked row by
+row after every commit.
+
+**Swept and clean, or measured and left.** The 313 listings whose stated range built no week, sorted by shape:
+the price lines, the site-builder placeholders, the dated events and the last-sale lines are all correct
+refusals and stay refused. Seven listings were left over and three of those are the glued "CLOSED" sitting on a
+clock ("ThuFri-SatSunCLOSED 12pm-10pm") that the run before measured and left as the better of two wrongs. No
+listing in the catalog now reads as shut on all seven days. A 25 minute span is still refused as opening hours,
+deliberately: `o-clearholistictherapies-com`'s only line is "open from 6:00pm - 6:25pm".
+
+**Verification.** App `npm test` 1,023 pass, 0 fail (four tests added, two rewritten). Backend `npm test` 932
+tests, 930 pass, 0 fail, 2 skipped (three tests added). `tsc -b` clean, `tsc --noEmit -p .` clean at the root,
+backend clean but for TS5097. The rehearsal was run after the changes, against a local Postgres 16 cluster
+built here on port 5433 with SSL on and the Playwright Chromium already on disk: green at 57 of 57. Nothing
+under `backend/data`, `public/` or `src/data` was touched.
+
+**Needs Harshil.**
+
+- **Two tests a previous run wrote pinned a bug rather than a decision, and were rewritten.** The scan fix made
+  `parseWeek(["2026 - 10am to 4pm"])` answer 10 to 4 where a test asserted "(no hours)", under the heading "a
+  line whose only readable time is a date". In that line the readable time is not a date: "10am to 4pm" is a
+  time and 2026 is a year. The other was the curling club's ISO-dated open house, which the new date rule
+  refuses outright rather than reading as a Friday, so the test's own intent, that a date may not become the
+  opening time, is still met. Both are called out here because rewriting an earlier run's assertion is a bigger
+  step than adding one.
+- **A chain that publishes a week per branch has no reader for it.** Five listings write each branch's hours on
+  one page ("Truro: Mon-Tue 11am-7pm ... Antigonish: Mon-Tue 11am-10pm ... New Glasgow: Mon 12pm-8pm"), and the
+  week is built by mashing all of them together, so the guest reads whichever branch the crawl listed last. The
+  listing's own `locations` array names none of those towns, so nothing in the record can tell a branch line
+  from a rule. Five listings, and it wants a supply decision before a rule.
+- Still open from earlier runs: the static pages are 2,241 listings behind the app until a sync runs; seven row
+  names are an operator's own words rather than an offer; five shops' word index holds "amp"; which of two
+  lines that each name their days a guest should read, now measured twice and still a judgement; the unlabelled
+  happy hour; the desktop site has no way to say anything in passing; `plainWords` is not idempotent; the
+  operator's dashboard names a booking as the crawl found it; the backend suite went red once and green on
+  every run since.
+
 ## Coverage
 
 The catalog is 48,198 listings as of the 23 September sync, 1,873 of them Viator partner rows. Counts below
@@ -7913,17 +8008,28 @@ the range a line states before that closure, which is still the shop's own. The 
 the days it shuts, on the five listings that write one. Both hour parsers diffed row by row over all 14,509
 listings that publish hours.
 
-**Not yet checked.** Which of two hour lines about two different things a guest should read, on the 439
-listings where two lines that each name their own days disagree about one and the last one written wins: the
-hundred and fifth run measured the obvious rule, that the narrower line wins, and refused it, so what is left is
-the subject of the line rather than its breadth, and the subjects are meal services, sub-venues and seasons. Whether a two or three hour
+Every listing whose published hours built no week at all, over all 14,509 that publish one: the 313 that state
+a time range and were still silent, sorted by shape against the refusals that are meant (a rate card, a site
+builder's whole-day placeholder, one dated event, the last thing a shop sells) and the four defects underneath
+them. Where the span scan resumes after a candidate the clock refuses, so a date or a phone number can no
+longer take the range behind it away, held against the 166 placeholder listings a looser rule would have opened
+around the clock. A date written in digits rather than in a month's name, on every hour line in the catalog. A
+bracket standing between a rule's days and its clock. A closure a shop put a clock on, over every trading-hours
+line: which of them names a subject of its own and which is the door, and which shuts the front of a day rather
+than the end of it. Which of two lines that each name their own days a guest should read, measured a second way
+and refused again: all 255 listings that hold a disagreement, every rule involved labelled by the words it opens
+on, 577 of the 896 carrying no label at all. A shop's own caveat that its hours vary, on all 12 lines that
+carry one.
+
+**Not yet checked.** Which of two hour lines about two different things a guest should read, on the listings
+where two lines that each name their own days disagree about one and the last one written wins: measured twice
+now and refused twice, once on breadth and once on the words a line opens on, so what is left is a subject the
+record itself would have to carry. Which week a chain that publishes one per branch should show, on the five
+listings that write each branch's hours on one page, whose own `locations` array names none of those towns (see
+the hundred and sixth run's Needs Harshil). Whether a two or three hour
 evening span with days in front of it and no label is a happy hour, which is 2 of those 71 and a guess rather
-than a rule. Whether a day a shop shuts for a morning should be shut for the day, which the four listings writing
-"Closed Monday until noon" now are (see the hundred and fifth run's Needs Harshil).
-Whether a bracket should be allowed to open the next rule on a line, which is what leaves
-`o-pequeacreekcampground-com`'s "Mon/Wed-Sat (Noon-6pm) Sun (11am-4pm" one rule (see the hundred and second
-run's Needs Harshil). Whether a charter's stated trip window should count as its opening hours, on the four
-whose only hours line quoted one against a price (see that run's Needs Harshil). A live Otto send from the cloud cron against real mailboxes: the ramp arithmetic is now tested but
+than a rule. Whether a charter's stated trip window should count as its opening hours, on the four
+whose only hours line quoted one against a price (see the hundred and second run's Needs Harshil). A live Otto send from the cloud cron against real mailboxes: the ramp arithmetic is now tested but
 nothing has left a mailbox from here, and whether a suppression list read once at the start of a four hour
 batch should be re-read before each send. Anything in the grounded fallback that needs a real Cohere key: no key exists here, so every answer checked tonight was a payload shaped by hand, and what the live model actually writes, what its citation offsets index into when it answers in more than one content part, and whether `citation_options` FAST cites densely enough for `keepCited` to keep a good answer are all unread. `npm run otto:eval` for the same reason. Whether a price the model reformats should be dropped: a shop publishing "$85" and a model writing "$85.00" loses the sentence (see this run's Needs Harshil). Whether the grounded answer should reach the static `/l/` page and the phone sheet, which do not call it. A real Otto send or a real hand-send: the draft run, the queue, the dry run and the handoff export are all driven now, but nothing has left a mailbox from here, and `outreach-daily.sh` is launchd on the Mac and cannot be. Whether `state.ranDays` and `state.sentDays` growing without bound in `outreach-otto-ramp.json`, and being written only after a send loop that can run four hours, is worth changing, given that `sentToday` is what actually holds the ceiling. Whether the Otto email may tell a shop "Bookings drop straight into your calendar" when
 both `/voice` endpoints are read-only and syncing with an operator's own booking software is deferred on
