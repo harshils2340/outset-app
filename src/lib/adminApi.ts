@@ -105,6 +105,22 @@ export function adminSessionEmail(): string | null {
 }
 
 /**
+ * The credential the next read would be sent with, or "" for none. The page keys its read on this, so that a
+ * sign-in always sends the page back to the API.
+ *
+ * Signing in does not have to change anything else the page is watching. A browser that had claimed a shop
+ * already held a session with an address on it, so the page already counted itself signed in and had already
+ * been refused; typing the emailed code stored a new token under the same address, nothing in the old
+ * dependency list moved, the refusal from before the sign-in stayed on screen and the page drew "Not found" at
+ * the one person it is for. That is every browser Harshil has used the operator dashboard in, and after the
+ * session's `emailVerified` gate landed on 30 September it is every browser that held an admin session too.
+ * The token is what actually changed, so the token is what the read is keyed on.
+ */
+export function adminSessionKey(): string {
+  return loadApiSession()?.token || "";
+}
+
+/**
  * The site and the API deploy separately, so this page can be newer than the service it is reading. An API that
  * predates the costs block is not an error and must not blank the whole page: the block is filled in as all
  * nulls with a note that says which side is behind, which is the same honesty rule every other figure follows.

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import "../../styles/admin.css";
 import { money } from "../../lib/format";
-import { adminScreen, adminSessionEmail, fetchAdminMetrics, mockName, RANGES, type AdminMetrics, type Maybe, type MetricsResult } from "../../lib/adminApi";
+import { adminScreen, adminSessionEmail, adminSessionKey, fetchAdminMetrics, mockName, RANGES, type AdminMetrics, type Maybe, type MetricsResult } from "../../lib/adminApi";
 import { AdminSignIn } from "./AdminSignIn";
 import { ChartEmpty, Funnel, Meter, RowBars, ShareBar, Sparkline, TimeChart, type Point } from "./charts";
 
@@ -368,6 +368,8 @@ export function AdminView() {
   const [res, setRes] = useState<MetricsResult | null>(null);
   const mock = mockName();
   const signedIn = !!email || !!mock;
+  /** The token the next read would carry. A sign-in changes it even when nothing else here moves. */
+  const sessionKey = adminSessionKey();
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -382,15 +384,19 @@ export function AdminView() {
     return () => document.body.classList.remove("adbody");
   }, []);
 
+  // Keyed on the session as well as on the range, so signing in on a browser that already held one reads again
+  // rather than leaving the refusal it was given before the sign-in on screen. See `adminSessionKey`.
   useEffect(() => {
     if (!signedIn) { setLoading(false); return; }
     void load();
-  }, [signedIn, load]);
+  }, [signedIn, sessionKey, load]);
 
   const generated = useMemo(() => (res && res.ok ? when(res.data.generatedAt) : null), [res]);
 
   const screen = adminScreen({ signedIn, tried, res });
-  if (screen === "signin") return <AdminSignIn onDone={(e) => { setTried(true); setEmail(e); }} />;
+  // The refusal on screen was the answer about the session this browser arrived with, and there is a new one
+  // now, so it is dropped rather than shown for as long as the fresh read takes.
+  if (screen === "signin") return <AdminSignIn onDone={(e) => { setTried(true); setEmail(e); setRes(null); setLoading(true); }} />;
   if (screen === "notfound") return <NotFound />;
 
   return (
