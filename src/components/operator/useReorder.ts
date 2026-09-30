@@ -1,6 +1,31 @@
 import { useCallback, useRef, useState } from "react";
 
 /**
+ * The smallest shape of a DOM node the row walk below needs, so the walk itself can be read by a test with
+ * no browser in it. A real `Element` satisfies it.
+ */
+export type RowNode = { readonly dataset?: { readonly rid?: string }; readonly parentElement: RowNode | null; closest(selector: string): RowNode | null };
+
+/**
+ * The row of one list a point sits inside, or null when the point is somewhere else entirely.
+ *
+ * Walked upwards rather than read once, because a service card holds its own price option rows and each of
+ * those carries a `data-rid` of its own: the nearest row to a point inside an open card belongs to the inner
+ * list, and the card underneath it is the row the outer list knows.
+ */
+export function rowUnder(from: RowNode | null, mine: (rid: string) => boolean): string | null {
+  let el: RowNode | null = from;
+  while (el) {
+    const row: RowNode | null = el.closest("[data-rid]");
+    if (!row) return null;
+    const rid = row.dataset?.rid;
+    if (rid && mine(rid)) return rid;
+    el = row.parentElement;
+  }
+  return null;
+}
+
+/**
  * Drag and keyboard reordering for a list.
  *
  * Ported from the 21st.dev Reorder List. The keyboard model is kept exactly: Space or Enter grabs a row,
@@ -171,6 +196,26 @@ export function useReorder<T>({
 
   const disarm = useCallback(() => setArmed(null), []);
 
+  /**
+   * Whether the operator let go over a row of this list.
+   *
+   * A `drop` event is not something the browser can be relied on to send. The list reorders as the drag
+   * passes over each row, so the row being dragged slides under the cursor, and a target the pointer never
+   * moved onto again is not one Chrome will drop on: every mouse drag finished with no drop at all and
+   * `onDragEnd` put the list back, so a service dragged into place snapped straight back to where it was.
+   * Where the operator let go is what settles it: a row of this list is a drop, anywhere else is giving up.
+   */
+  const endedOnThisList = useCallback(
+    (x: number, y: number): boolean => {
+      // A drag abandoned outside the window reports no useful point, and 0,0 is the page corner rather than
+      // a row the operator aimed at.
+      if (!Number.isFinite(x) || !Number.isFinite(y) || (x <= 0 && y <= 0)) return false;
+      const at = rowUnder(document.elementFromPoint(x, y), (rid) => live.current.some((item) => getId(item) === rid));
+      return at !== null;
+    },
+    [getId],
+  );
+
   /** Everything the handle needs: keyboard grab, touch drag, and arming the mouse drag on its row. */
   const gripProps = useCallback(
     (id: string) => ({
@@ -198,22 +243,29 @@ export function useReorder<T>({
         e.dataTransfer.setData("text/plain", id);
       },
       onDragOver: (e: React.DragEvent<HTMLElement>) => {
-        if (!dragging || dragging === id) return;
+        if (!dragging) return;
+        // Every row of this list accepts the drop, the dragged row included. A drag reorders as it passes, so
+        // the row being dragged ends up under the cursor, and that is where a mouse drag almost always
+        // finishes: refusing it there made the browser cancel the drop and `onDragEnd` put the list back.
         e.preventDefault();
         e.dataTransfer.dropEffect = "move";
+        if (dragging === id) {
+          setOver(null);
+          return;
+        }
         setOver(id);
         const from = indexOf(dragging);
         const to = indexOf(id);
         if (from < 0 || to < 0 || from === to) return;
         emit.current(moveTo(from, to));
       },
-      onDragEnd: () => {
+      onDragEnd: (e: React.DragEvent<HTMLElement>) => {
         const was = snapshot.current;
         snapshot.current = null;
         setDragging(null);
         setOver(null);
         setArmed(null);
-        if (!landed.current) {
+        if (!landed.current && !endedOnThisList(e.clientX, e.clientY)) {
           if (was) emit.current([...was]);
           setSpoken("Reorder cancelled, the original order is back.");
           return;
@@ -227,7 +279,7 @@ export function useReorder<T>({
         setOver(null);
       },
     }),
-    [armed, dragging, getLabel, indexOf, moveTo],
+    [armed, dragging, endedOnThisList, getLabel, indexOf, moveTo],
   );
 
   return { grabbed, dragging, over, spoken, grab, drop, cancel, step, onKeyDown, gripProps, dragProps };
