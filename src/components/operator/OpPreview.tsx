@@ -159,25 +159,48 @@ export function OpPreview({ id, title, width, onWidth, onClose, onEdit, revealRe
     savePreviewPrefs({ device: d });
   };
 
-  // Drag the left edge to resize. A shield covers the frame while dragging so it does not swallow the pointer.
+  /**
+   * Drag the left edge to resize. A shield covers the frame while dragging so it does not swallow the pointer.
+   *
+   * Three things end the drag, not one. A release the page never hears leaves the panel following the pointer
+   * with no button held and the shield sitting over the preview, so the operator cannot click into their own
+   * listing again until they reload: letting go anywhere outside the browser window did exactly that, and so
+   * did a pointer the browser took back. The edge captures the pointer, which is what makes a release outside
+   * the window arrive at all, a cancelled pointer ends the drag like a release, and a move carrying no button
+   * is a release that went missing.
+   */
   const startDrag = (e: React.PointerEvent) => {
     e.preventDefault();
     const startX = e.clientX;
     const startW = width;
+    const pointer = e.pointerId;
+    try {
+      e.currentTarget.setPointerCapture(pointer);
+    } catch {
+      /* an old browser without capture still has the two guards below and the arrow keys */
+    }
     setDragging(true);
     let last = startW;
     const move = (ev: PointerEvent) => {
+      if (ev.pointerId !== pointer) return;
+      if (ev.buttons === 0) {
+        up(ev);
+        return;
+      }
       last = Math.round(Math.min(maxWidth(), Math.max(PREVIEW_MIN_W, startW + (startX - ev.clientX))));
       onWidth(last);
     };
-    const up = () => {
+    const up = (ev: PointerEvent) => {
+      if (ev.pointerId !== pointer) return;
       setDragging(false);
       savePreviewPrefs({ width: last });
       window.removeEventListener("pointermove", move);
       window.removeEventListener("pointerup", up);
+      window.removeEventListener("pointercancel", up);
     };
     window.addEventListener("pointermove", move);
     window.addEventListener("pointerup", up);
+    window.addEventListener("pointercancel", up);
   };
   // The window got narrower: keep the editor's minimum by giving the panel back what it no longer has room for.
   useEffect(() => {
