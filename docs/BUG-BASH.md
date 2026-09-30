@@ -7301,6 +7301,88 @@ try; the Postgres cluster has to be created and started as `postgres` because `i
   to say anything in passing; `plainWords` is not idempotent; the operator's dashboard names a booking as the
   crawl found it.
 
+## 30 September 2026, hundred and eighth run (07:17 to 08:05 UTC)
+
+**Chosen, and why.** `git fetch` first: nothing but the log entry itself has landed since the hundred and
+seventh run, and that entry records the rehearsal green at 57 of 57, so the rehearsal was skipped. Nothing
+committed tonight is in anything it loads: `e2e-local.mts` names no outreach file, no ramp and no
+`deliverable`. Both `node_modules` were missing again and were installed. Baseline: root and backend type
+checks clean (backend TS5097 only), `tsc -b` clean, app 1,035 pass, backend 932 tests with 930 pass and 2
+skipped.
+
+Every area on the brief is on the Verified list, so the hunt took the lens that the seventy-ninth run opened
+and nobody has swept with since: which code the product actually runs that nothing type-checks. `backend/tsconfig.json`
+includes `src` and nothing else, so `npx tsc --noEmit -p .` compiles none of `backend/scripts`, and every
+command Harshil runs by name lives there. It found a script that has been crashing on every real send for two
+days.
+
+**Found and fixed.** Four, all of them in the mail path that reaches a real business.
+
+- **The Otto ramp threw on its last line, after the mail had gone out** (`0c5a2a5c`). The headline, and live
+  since 28 September. `scripts/otto-ramp.mts` closed with `if (quota)`, naming the round loop's own binding
+  from module scope outside that loop, so every non-dry run ended in `ReferenceError: quota is not defined`
+  after the batch had been sent and before `saveState` was reached. So the launchd job has failed every day, no
+  sending day was ever recorded, and the warm-up ramp has sat on its first rung of ten instead of climbing to
+  fifty. Confirmed by the compiler, not inferred. The per-mailbox ramps exist exactly when there is more than
+  one mailbox, which is also the only case `planToday` fills `mailboxes` in, so that is what the line asks now.
+- **A name a backend script uses is checked against what declares it** (`2bf85196`). The reason the above
+  survived two days of real sends. A program over `backend/scripts` asserting on unbound names alone (TS2304,
+  TS2552), in the same suite as everything else, 8 seconds, no database. Verified by putting the bug back: the
+  test names the file and the line.
+- **A resolver that gave up stops retiring the business it was asked about** (`c7a5a36b`). `deliverable.ts`
+  read `ESERVFAIL` as "this domain does not exist" beside NXDOMAIN and the empty answer. SERVFAIL is neither:
+  it is the resolver saying it could not complete the question, which the module's own header calls out as no
+  evidence at all. It costs more than a skipped send, because `otto-cloud.mts` writes a `failed` touch for
+  every address this refuses and `poolCandidates` bars a failed address for good, so one resolver hiccup could
+  retire every business in the batch permanently. `guards.ts`'s `skipMark` carries the same warning about the
+  laptop's queue, from a run that fixed it there and not here.
+- **The daily outreach job stops skipping itself on a worker that can send** (`4dd036e2`). `pipeline.mts` gated
+  the outreach step on `RESEND_API_KEY` alone, and `sendMail` has preferred Gmail SMTP for commercial mail
+  since 26 September. `needsKey` takes several keys now, any one of them enough. Its note also described a 20,
+  40, 70, 100 ramp that `outreach-ramp.mts` has never had; it states the real 15, 20, 25, 30 and the ceiling of
+  50 across both campaigns.
+- **An argument the pipeline does not know stops starting every job on the box** (`d600a2a3`). Found the hard
+  way, below. `pipeline.mts` read `--dry` and `--once=` and let anything else fall through to "run forever".
+  An unrecognised argument exits 2 now and names the two that exist, driven in a test both ways.
+
+**Swept and clean, or measured and left.** The same no-type-check lens over the root `scripts/` (build-pages,
+otto-eval, search-eval): clean but for `import.meta.env`, which is Vite's. Every module-level global regex in
+both projects against the `.test()` and `.exec()` calls that read it, for a carried `lastIndex`: all six
+`.exec()` loops reset it first and every `.test()` call is on a regex with no `g`, so nothing there. Every
+`.sort()` with no comparator, for a numeric array sorted as strings: all of them sort `HH:MM`, `YYYY-MM-DD` or
+a single digit. `ramp.ts`'s "a day that sent nothing is not a rung", which the list still calls open and which
+`recordRun` has in fact enforced since the hundred and first run. `plainWords` run twice, which doubles
+`Four-wheeler (ATV)`: still latent, no shipped detail file carries an expansion, so the sync does not
+pre-expand and nothing in the product applies it twice.
+
+**Verification.** Backend `npm test` 937 tests, 935 pass, 0 fail, 2 skipped, up from 932 (five tests over two
+new files). App `npm test` 1,035 pass, unchanged. `tsc -b` clean, `tsc --noEmit -p .` clean at the root and in
+backend but for TS5097. The rehearsal was skipped for the reason at the top. Nothing under `backend/data`,
+`public/` or `src/data` was touched.
+
+**Needs Harshil.**
+
+- **I started the overnight pipeline on this box by accident, and it is why the last commit exists.** Guessing
+  `--list` for the read-only flag, I ran `npx tsx scripts/pipeline.mts --list`, and the unknown flag fell
+  through to the scheduler. It created `/var/data`, cloned main into `/var/data/repo`, skipped `collect` for
+  want of `OPENAI_API_KEY`, ran `reviews` against the empty database it had just made ("0 sites, 0 reviews"),
+  and had been in `discover` for under three minutes when I killed it. Nothing was crawled: the clone's
+  `git status` is empty, so `discover` read the committed OSM extracts and wrote no new file, and no paid job
+  is ever queued. No commit was made in the clone and nothing was pushed. The container's `/var/data` is still
+  there because deleting it was refused here; it holds an empty scratch database and a clean checkout of main,
+  and it goes when the container does. The guard in `d600a2a3` is so the next guess prints a line instead.
+  Worth knowing that `isLaptop()` is the only other door in front of that, and it only recognises a Mac.
+- **The ramp has been on rung one since 28 September, so two days of Otto volume were 10 a day, not 25 and
+  35.** `outreach-otto-ramp.json` on the Mac should show `sentDays` with nothing in it after that date. The
+  fix lets it climb from wherever that file actually is; nothing here can read it.
+- **A `failed` touch is permanent, and some failures are not.** `poolCandidates` bars an address any status at
+  all was recorded against, and `otto-cloud.mts` records `failed` for an SMTP error that is neither a mailbox
+  error nor a network one, a greylist among them. Tonight's fix stops the DNS gate feeding that, but the wider
+  question of whether a transient send failure should burn a business for good is yours.
+- Still open from earlier runs: the static pages are 2,241 listings behind the app until a sync runs; a chain
+  that publishes a week per branch has no reader for it; the desktop site has no way to say anything in
+  passing; `plainWords` is not idempotent; the operator's dashboard names a booking as the crawl found it.
+
 ## Coverage
 
 The catalog is 48,198 listings as of the 23 September sync, 1,873 of them Viator partner rows. Counts below
@@ -8112,6 +8194,15 @@ and refused again: all 255 listings that hold a disagreement, every rule involve
 on, 577 of the 896 carrying no label at all. A shop's own caveat that its hours vary, on all 12 lines that
 carry one.
 
+Which code the product runs that nothing type-checks, and what was hiding there: every file under
+`backend/scripts`, which `backend/tsconfig.json` does not include, against the names it uses, now a test of its
+own; and the root's own `scripts/`, read the same way. The mail path in front of a cold send, read through: the
+DNS gate's own error codes and which of them answer for a domain, the warm-up ramp's state and the day it
+records, the pipeline's per-job key gate, and what the pipeline does with an argument it does not recognise.
+Every module-level global regex in both projects against the `.test()` and `.exec()` calls that read it, for a
+`lastIndex` carried from one string to the next. Every `.sort()` with no comparator, for a numeric array sorted
+as strings.
+
 **Not yet checked.** Which of two hour lines about two different things a guest should read, on the listings
 where two lines that each name their own days disagree about one and the last one written wins: measured twice
 now and refused twice, once on breadth and once on the words a line opens on, so what is left is a subject the
@@ -8128,12 +8219,7 @@ purpose, which is this run's first Needs Harshil. Whether the Otto subject shoul
 fronted, since 201 of 4,728 run past 78 characters and a phone cuts the hook off almost all of them. Whether a
 name ending in a plural s should take the correct "Gulf Jet Skis'", which is 2,261 of the targets. Whether
 `outreach-ramp.mts` should regenerate the draft queue the way `otto-ramp.mts` does, since today the daily
-listing job only ever mails what was queued the last time somebody ran `npm run outreach`. Whether a ramp
-should record a day as run when the combined ceiling left it no headroom, which advances a rung on a day
-nothing went out. Whether `ESERVFAIL` should read as "this domain does not exist", which is fail-closed and the
-opposite of what `deliverable.ts` says it does with a resolver that cannot answer. Whether `pipeline.mts`'s
-outreach step should still describe a 20/40/70/100 ramp and declare it needs `RESEND_API_KEY` when outreach
-sends over Gmail SMTP. Whether a Free cancellation badge should ever promise a shorter
+listing job only ever mails what was queued the last time somebody ran `npm run outreach`. Whether a Free cancellation badge should ever promise a shorter
 notice than a line in the same shop's own policy denies: 13 of the 7,104 shipped badges do, four of them a shop
 contradicting itself where a previous run deliberately chose the promise, and the rest a per-service window
 flattened into one badge (see the sixty-sixth run's Needs Harshil). Whether a "do not include" whose subject is
@@ -8415,4 +8501,16 @@ Whether Peek has a sixth word for an availability mode, which only a fresh captu
 freesale slot exists in production at all: none of the 195 recorded rows is one. The readers with no second
 reading in the corpus at all, which is every vendor but FareHarbor, Peek and Xola: Resova, Checkfront, Rezdy,
 Acuity, Square, TripWorks, ForeUp, aReservation and FishingReservations have unit tests and no recorded shop,
-so the drift closed tonight on three vendors is unmeasured on nine. Whether a shop's own list of single-letter day codes separated by nothing but a space ("M T W Th 9:00 am - 5:00 pm F 9:00 am - 3:00 pm") should be read at all, which is o-dvc-edu alone and wants its ambiguous "T" guessed: the two-letter half of that item was measured and retired by the hundred and fourth run at one listing. Whether a semicolon between two rules should be read as a separator, which 2 of the 6 shipped lines that carry one would want and the other 4 would break. Whether the backend suite going red should stop a push, which is how 29 outreach copy tests sat dark for a day (see that run's Needs Harshil). Whether the operator's own dashboard should name a booking as the guest read it or as their own Services editor holds it: `OpBookings`, `OpCalendar` and `OpMore` print the stored row name raw in four places, the editor beside them must show the shop's own words because that field is editable, and tidying the feed alone would have the dashboard disagreeing with itself about one row (see the hundred and fourth run's Needs Harshil). Whether a booking email should price each extra on its own line rather than as one "Add-ons" line, which needs `priceBooking` to carry out the combination it chose. Whether a trip card should tidy the stored row name when the listing has left the catalog, where there is no business title to tell a row from a shop.
+so the drift closed tonight on three vendors is unmeasured on nine. Whether a shop's own list of single-letter day codes separated by nothing but a space ("M T W Th 9:00 am - 5:00 pm F 9:00 am - 3:00 pm") should be read at all, which is o-dvc-edu alone and wants its ambiguous "T" guessed: the two-letter half of that item was measured and retired by the hundred and fourth run at one listing. Whether a semicolon between two rules should be read as a separator, which 2 of the 6 shipped lines that carry one would want and the other 4 would break. Whether the backend suite going red should stop a push, which is how 29 outreach copy tests sat dark for a day (see that run's Needs Harshil). Whether the operator's own dashboard should name a booking as the guest read it or as their own Services editor holds it: `OpBookings`, `OpCalendar` and `OpMore` print the stored row name raw in four places, the editor beside them must show the shop's own words because that field is editable, and tidying the feed alone would have the dashboard disagreeing with itself about one row (see the hundred and fourth run's Needs Harshil). Whether a booking email should price each extra on its own line rather than as one "Add-ons" line, which needs `priceBooking` to carry out the combination it chose. Whether a trip card should tidy the stored row name when the listing has left the catalog, where there is no business title to tell a row from a shop. Whether `backend/scripts` should be in the backend
+tsconfig outright rather than checked for unbound names alone: eight other complaints stand in the way, five of
+them nullability in `card-e2e.mts` (harmless under tsx), one a `let` in `store-e2e.mts` annotated too narrowly
+on its second assignment, one a `sharp` this machine has not installed, and two that are the app's own
+`src/lib/api.ts` reaching for `import.meta.env` from a backend script. Whether the app's `src/**/__tests__`,
+which `tsconfig.app.json` excludes so `tsc -b` passes, should be type-checked somewhere. Whether a `failed`
+touch should bar a business for ever: `poolCandidates` refuses an address any status was recorded against, and
+`otto-cloud.mts` writes `failed` for an SMTP error that is neither a mailbox error nor a network one, a
+greylist among them. Whether the cross-campaign cool-off in `spacing.ts` should reach the shared Postgres
+record as well as the laptop's drafts: `poolCandidates` and `touched` both filter by `kind`, so a business the
+listing pitch mailed is not spaced from the Otto one there, which is latent only because nothing writes a
+`listing` touch yet. Whether `isLaptop()` is the right guard in front of the pipeline at all, given that it
+recognises a Mac and says nothing about any other machine that is not the Render worker.
