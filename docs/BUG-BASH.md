@@ -7216,6 +7216,85 @@ under `backend/data`, `public/` or `src/data` was touched.
   operator's dashboard names a booking as the crawl found it; the backend suite went red once and green on
   every run since.
 
+## 30 September 2026, hundred and seventh run (06:23 to 07:15 UTC)
+
+**Chosen, and why.** `git fetch` first: nothing has landed since the hundred and sixth run's entry, and that
+entry records the rehearsal green at 57 of 57, so by the rule the rehearsal was skipped at the start and run
+once at the end, because all three of tonight's commits touch `src/components`. Both `node_modules` were
+missing on this checkout and were installed. Baseline: root and backend type checks clean (backend TS5097
+only), `tsc -b` clean, app 1,023 pass, backend 932 tests with 930 pass and 2 skipped.
+
+Every area on the brief is on the Verified list, so the hunt took the one line on Not yet checked that names a
+path a person uses rather than a key nothing here has: "the mouse drag path of reordering: the keyboard and
+touch paths are driven in a browser, the HTML5 drag events are not". It was driven, it was broken, and driving
+it turned up a second fault beside it and a third of the same family in the panel next door. All three are
+operator-facing and all three were found by driving rather than reading.
+
+**Found and fixed.** Three defects, each one a drag that does not end where the operator let go.
+
+- **A service dragged into place with the mouse stops snapping back to where it was** (`71e97eb3`). The
+  headline. `useReorder`'s `onDragEnd` put the list back unless a `drop` event had landed, and no drop ever
+  landed on any mouse drag at all. The list reorders as the drag passes each row, so the row being dragged
+  slides under the cursor, and the dragged row was the one target `onDragOver` refused to accept: Chrome will
+  not drop on a target that never accepted, so every drag ended with nothing but `dragend`, which the hook read
+  as giving up. Driven in a headless Chromium at 900px over the hook itself: drag Alpha down onto Charlie, the
+  list shows b,c,a,d while the button is held, and on release it is a,b,c,d again with the live region saying
+  "Reorder cancelled, the original order is back." Every service, add-on and price option reorder in the
+  dashboard did that. The dragged row accepts the drop now and where the operator let go settles it, which
+  keeps the promise that letting go over the page header puts the list back: the row under the point is walked
+  upwards, because an open service card holds its own price option rows and each of those carries a `data-rid`
+  of the inner list.
+- **A row dragged with a finger stops staying picked up after the finger lifts** (`78e3f7c8`). Found while
+  re-driving the touch path to check the first fix had not moved it. The three pointer listeners sat on the
+  drag handle, and the handle stops hearing the finger the moment the list first reorders: moving a row is
+  `insertBefore` on a node already in the document, which the DOM counts as a removal, and a removal releases
+  pointer capture. So the drag never ended. Driven in Chromium with touch on: after the finger lifted,
+  `dragging` was still the dragged row's id and `over` still another row's, so the row kept its lifted styling
+  and another row its drop marker until a reload, the row stayed `draggable`, a screen reader was told nothing,
+  and the listeners were still on the handle for the next drag to run over twice. They go on the window now,
+  each answering only its own `pointerId`.
+- **The preview edge stops following the mouse after the operator has let go** (`7eb9a977`). The same family,
+  one file over. `OpPreview`'s resize handle listened for a release on the window with no pointer capture and
+  nothing at all for a cancelled pointer. Driven with the same wiring: press the edge, drag left, then let go
+  where the page cannot hear it and move back over the page with no button held. The panel went on resizing,
+  and `dragging` stayed true, which is what keeps the shield over the preview frame, so the operator could not
+  click into their own listing again until they reloaded the dashboard. Three things end it now: the edge
+  captures the pointer, so a release outside the window arrives at all; a cancelled pointer ends the drag like
+  a release; and a move carrying no button is read as a release that went missing.
+
+**Swept and clean, or measured and left.** All six reorder paths driven again after each commit: a mouse drag
+down, a mouse drag up, a mouse drag released over a nested row that belongs to the inner list, a mouse drag
+abandoned above the list, the keyboard grab with two arrow presses and a drop, the keyboard grab with Escape,
+and the touch drag. Only the three above changed. Every other pointer listener in the app was read for the same
+fault: `OperatorView`'s five delegated listeners are all taken off again in their effect's teardown, and the
+guest side has one `onPointerDown` in the whole of it, which only stops a click.
+
+**Verification.** App `npm test` 1,035 pass, 0 fail, up from 1,023 (twelve tests added over two new files).
+Backend `npm test` 932 tests, 930 pass, 0 fail, 2 skipped, unchanged. `tsc -b` clean, `tsc --noEmit -p .` clean
+at the root, backend clean but for TS5097. The rehearsal was run after the changes, against a local Postgres 16
+cluster built here on port 5433 with SSL on and the Playwright Chromium already on disk: green at 57 of 57,
+with no Stripe, mail or GitHub key. `initdb` still refuses to run as root, so the cluster is created and
+started as `postgres`. Nothing under `backend/data`, `public/` or `src/data` was touched.
+
+**Needs Harshil.**
+
+- **The mouse drag now stops one row short of where the operator aimed, and that is on purpose.** Once the
+  dragged row is under the cursor no further row is hovered, so a drag has to keep moving to keep going. With a
+  real hand on a mouse that is what happens anyway, and the alternative is reordering off the cursor's
+  direction rather than off the row it is over, which is a bigger rewrite than tonight's. Worth a look on a
+  real trackpad before it is called settled.
+- **Nothing in the repo drives a browser except the rehearsal, so all three of tonight's fixes are pinned by
+  tests that read their own source.** That is the house pattern (`keyboardPickers.test.ts` does the same) and
+  the row walk itself is a real unit test, but a mouse drag is behaviour and a source read is not. There is no
+  jsdom on either side. Either the rehearsal grows a step that opens the Services page and drags a row, which
+  is the honest home for it, or the app suite gains a DOM.
+- Still open from earlier runs: the static pages are 2,241 listings behind the app until a sync runs; a chain
+  that publishes a week per branch has no reader for it; seven row names are an operator's own words rather
+  than an offer; five shops' word index holds "amp"; which of two lines that each name their days a guest
+  should read, now measured twice and still a judgement; the unlabelled happy hour; the desktop site has no way
+  to say anything in passing; `plainWords` is not idempotent; the operator's dashboard names a booking as the
+  crawl found it.
+
 ## Coverage
 
 The catalog is 48,198 listings as of the 23 September sync, 1,873 of them Viator partner rows. Counts below
@@ -7808,6 +7887,12 @@ age word or a bare "N+", against the column that decides who can go and the floo
 Every `includes` line in the catalog that says "bring your own", split by whether it marks itself as not
 included.
 
+Every drag in the dashboard driven in a real Chromium rather than read, on the three lists `useReorder`
+carries and on the preview's own resize edge: the HTML5 mouse drag end to end, down the list and up it, a drag
+released over a nested row belonging to the inner list, a drag abandoned above the list, the touch drag and
+what it leaves behind once the finger lifts, and a resize whose release the page never hears. Every other
+pointer listener in the app against the teardown that takes it off again.
+
 Every ARIA widget in `src/components` against the keyboard its own role promises: every `role="tablist"`,
 `role="tab"`, `role="listbox"` and `role="option"` in the app, and the desktop home's What and Where
 comboboxes beside them. The guest booking box's service picker and the dashboard Home's tab strip driven in a
@@ -8106,8 +8191,7 @@ closed card form leaves holding the guest's own time for thirty minutes (see thi
 operator chat for a hand-built listing (`src/data/listings.ts` is empty, so `agent.ts` and the `ChatView`
 operator path still have no live case). Whether the 59,060 listings with no FAQ should have one, as a
 supply question, since it is Otto's best source and the dashboard's starting point. Photo upload against a real GitHub token, and the gap between the URL
-it returns and the deploy that makes the file exist. The mouse drag path of reordering: the keyboard and touch
-paths are driven in a browser, the HTML5 drag events are not. A rehearsal check that reads a claimed listing's
+it returns and the deploy that makes the file exist. A rehearsal check that reads a claimed listing's
 rendered page and not only the API's JSON. A CI job that runs `npm test` on either side. Whether a claimed shop
 with an empty menu should pause its own listing. Whether the Where box should index the towns our own catalog already names. Whether Arizona's
 Navajo Nation should keep daylight saving. The 4,736 listings whose area carries no town, as a supply gap. The "More options"
