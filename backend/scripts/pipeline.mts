@@ -60,7 +60,8 @@ type Job = {
   /** Arguments after `tsx`, run with cwd = <clone>/backend. Empty for built-in jobs. */
   args: string[];
   needsRepo: boolean;
-  needsKey?: string;
+  /** Skip the job unless one of these is set. Several mean any one of them is enough, not all of them. */
+  needsKey?: string | string[];
   /** Would call a paid API: skipped once the paid cap is reached. */
   spends?: boolean;
   note: string;
@@ -109,11 +110,16 @@ const JOBS: Job[] = [
   /**
    * Claim outreach. The draft queue and the suppression check both live on this worker (outreach_drafts in
    * this disk's SQLite, the bounce/complaint list in Postgres), so this is the only place that can send it.
-   * `needsKey` skips the job outright with no RESEND_API_KEY; sendOutreach's own guards (CLAIM_SECRET,
+   * `needsKey` skips the job outright with no way to send at all; sendOutreach's own guards (CLAIM_SECRET,
    * MAIL_FROM, MAIL_POSTAL, the suppression list) still run on top and refuse to send until every one is
    * real, so adding this job is inert until all of them are set here, not just on outset-api.
+   *
+   * Either key is enough, because `sendMail` sends commercial mail over Gmail SMTP wherever
+   * MAIL_SMTP_USER / MAIL_SMTP_PASS are set and only falls back to Resend where they are not. Naming Resend
+   * alone meant a worker set up the way outreach has actually sent since 26 September 2026 skipped this job
+   * every morning and said only "RESEND_API_KEY not set".
    */
-  { name: "outreach", at: "09:00", timeoutMs: 20 * MIN, args: ["scripts/outreach-ramp.mts"], needsRepo: true, needsKey: "RESEND_API_KEY", note: "claim outreach, weekdays only, the warm-up ramp from docs/outreach-email.md (20, 40, 70, then holds at 100/day, Gmail's practical ceiling for a personal account mailing strangers)" },
+  { name: "outreach", at: "09:00", timeoutMs: 20 * MIN, args: ["scripts/outreach-ramp.mts"], needsRepo: true, needsKey: ["MAIL_SMTP_USER", "RESEND_API_KEY"], note: "claim outreach, the warm-up ramp in scripts/outreach-ramp.mts (15, 20, 25, then holds at 30 a day, and never past 50 from one mailbox counting both campaigns)" },
 ];
 
 type JobState = { lastStart?: string; lastEnd?: string; lastResult?: string; lastExitCode?: number | null; lastSeconds?: number; lastDay?: string; lastLine?: string };
@@ -369,8 +375,9 @@ async function runJob(job: Job): Promise<number | null> {
   let result = "ok";
   let lastLine = "";
   try {
-    if (job.needsKey && !process.env[job.needsKey]) {
-      result = `skipped: ${job.needsKey} not set`;
+    const keys = job.needsKey ? (Array.isArray(job.needsKey) ? job.needsKey : [job.needsKey]) : [];
+    if (keys.length && !keys.some((k) => process.env[k])) {
+      result = `skipped: ${keys.join(" or ")} not set`;
     } else if (job.spends && status.paid.total >= PAID_CAP_USD) {
       result = `skipped: paid cap reached ($${status.paid.total.toFixed(2)} of $${PAID_CAP_USD})`;
     } else if (job.name === "status") {
@@ -456,7 +463,7 @@ function printSchedule(): void {
   for (const j of JOBS) {
     const when = j.at ? `daily ${j.at}` : j.every ? `every ${j.every / MIN} min` : "on demand";
     const cmd = j.args.length ? "tsx " + j.args.join(" ") : "(built in)";
-    console.log(`  ${j.name.padEnd(10)} ${when.padEnd(14)} timeout ${String(Math.round(j.timeoutMs / MIN)).padStart(3)} min  ${cmd.padEnd(48)} ${j.note}${j.needsKey ? ` [needs ${j.needsKey}]` : ""}${j.spends ? " [paid, capped]" : ""}`);
+    console.log(`  ${j.name.padEnd(10)} ${when.padEnd(14)} timeout ${String(Math.round(j.timeoutMs / MIN)).padStart(3)} min  ${cmd.padEnd(48)} ${j.note}${j.needsKey ? ` [needs ${[j.needsKey].flat().join(" or ")}]` : ""}${j.spends ? " [paid, capped]" : ""}`);
   }
 }
 
