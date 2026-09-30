@@ -91,7 +91,7 @@ test("the Toronto cooking page: title, h1, real count, cards with price and phot
     assert.match(html, /<title>Cooking classes in Toronto, Ontario · Outset<\/title>/);
     assert.match(html, /<h1>Cooking classes in Toronto, Ontario<\/h1>/);
     // Three shops, so three sites: the lede used to name one operator's own site for all of them.
-    assert.match(html, /3 cooking classes around Toronto, 3 with prices from the operators' own sites \(from \$60\)/);
+    assert.match(html, /3 cooking classes around Toronto, 3 with prices from the operators' own sites \(from CA\$60\)/);
     assert.match(html, /<link rel="canonical" href="https:\/\/onoutset\.com\/p\/cooking-in-toronto\.html">/);
     assert.match(html, /<img src="https:\/\/wsrv\.nl\/\?url=x%2F1\.jpg&amp;w=560/);
     assert.match(html, /From <b>\$60<\/b>/);
@@ -100,7 +100,8 @@ test("the Toronto cooking page: title, h1, real count, cards with price and phot
     assert.match(html, /href="https:\/\/onoutset\.com\/l\/o-cooking-toronto-1\.html"/);
     // FAQ built from the listings' own facts.
     assert.match(html, /Outset lists 3 cooking classes around Toronto, including places in Toronto and Mississauga\. 2 of them have photos\./);
-    assert.match(html, /3 of the 3 operators publish prices on their own site\. Starting prices run from \$60 to \$140\./);
+    // Every one of the three is in Ontario, so the page names the dollar they charge in.
+    assert.match(html, /3 of the 3 operators publish prices on their own site\. Starting prices run from CA\$60 to CA\$140\./);
     assert.match(html, /Listed durations include 2 hours and 3 hours/);
     assert.match(html, /cooking 1 \(4\.8 stars, 120 reviews\) and cooking 2 \(40 reviews\)/);
     assert.match(html, /1 of the 3 shows hours copied from the operator's website/);
@@ -226,7 +227,7 @@ test("a listing with nothing on it is left off a page, out of its counts, and ca
     assert.deepEqual(r.files, ["cooking-in-anywhere.html", "cooking-in-toronto.html", "index.html"]);
     const html = r.read("cooking-in-toronto.html");
     // Three shops, so three sites: the lede used to name one operator's own site for all of them.
-    assert.match(html, /3 cooking classes around Toronto, 3 with prices from the operators' own sites \(from \$60\)/);
+    assert.match(html, /3 cooking classes around Toronto, 3 with prices from the operators' own sites \(from CA\$60\)/);
     assert.match(html, /Outset lists 3 cooking classes around Toronto\./);
     assert.match(html, /"numberOfItems":3/);
     assert.doesNotMatch(html, /o-cooking-toronto-4/);
@@ -688,5 +689,85 @@ test("a town that shares a metro's name in another region keeps its own page", (
     assert.ok(r.files.includes("cooking-in-hamilton-oh.html"), "Hamilton, Ohio keeps its own page");
   } finally {
     r.cleanup();
+  }
+});
+
+/* ---------- two dollars on one page ---------- */
+
+/**
+ * A page can hold both dollars. The 63 "everywhere" pages are across the US and Canada by definition and 56
+ * of them carry priced shops on both sides; six metros (Detroit, Niagara, Vancouver, Victoria, Montreal,
+ * Ottawa) straddle the border, and 30 of their activity pages do the same. Folded into one minimum and
+ * maximum, those pages told a search engine word for word, inside the `FAQPage` JSON-LD it quotes, that
+ * arcades run "from $4.99 to $197.10" with the ceiling in Canadian dollars, that fishing runs "from $5 to
+ * $15,204" the same way, and that kayaking starts at "$2.45" when no American shop goes below $3.
+ *
+ * It is the rule the metrics page already keeps: a figure in one currency is not ranged against a figure in
+ * another. 85 shipped landing pages state the two dollars apart now, and 338 name a Canadian one somewhere.
+ */
+const priced = (art: string, area: string, metroId: string | null, n: number, price: number): Item =>
+  item(art, metroId, n, { area, options: [{ name: "Session", price }] });
+
+test("a page holding both dollars states each one, and names which is which", () => {
+  const kind = KINDS.find((k) => k.art === "arcade")!;
+  const both = [
+    priced("arcade", "Buffalo, NY", "niagara", 1, 4.99),
+    priced("arcade", "Buffalo, NY", "niagara", 2, 179),
+    priced("arcade", "St. Catharines, ON", "niagara", 3, 10.89),
+    priced("arcade", "Niagara Falls, ON", "niagara", 4, 197.1),
+  ];
+  const a = buildFaq(kind, metro("niagara"), both).find((f) => /How much/.test(f.q))!.a;
+  assert.match(a, /Starting prices are \$4\.99 to \$179 in the United States and CA\$10\.89 to CA\$197\.10 in Canada\./);
+  // The old sentence is the bug: one range with a Canadian ceiling on an American floor.
+  assert.ok(!a.includes("$4.99 to $197.10"), a);
+});
+
+test("one price on one side of the border is not written as a range", () => {
+  const kind = KINDS.find((k) => k.art === "arcade")!;
+  const a = buildFaq(kind, metro("niagara"), [
+    priced("arcade", "Buffalo, NY", "niagara", 1, 65),
+    priced("arcade", "Buffalo, NY", "niagara", 2, 70),
+    priced("arcade", "Windsor, ON", "niagara", 3, 150),
+  ]).find((f) => /How much/.test(f.q))!.a;
+  assert.match(a, /Starting prices are \$65 to \$70 in the United States and CA\$150 in Canada\./);
+});
+
+test("a page with one country's shops is worded exactly as it always was", () => {
+  const kind = KINDS.find((k) => k.art === "arcade")!;
+  const us = buildFaq(kind, metro("tampa"), [
+    priced("arcade", "Tampa, FL", "tampa", 1, 12),
+    priced("arcade", "Clearwater, FL", "tampa", 2, 40),
+  ]).find((f) => /How much/.test(f.q))!.a;
+  assert.match(us, /Starting prices run from \$12 to \$40\./);
+  const one = buildFaq(kind, metro("tampa"), [priced("arcade", "Tampa, FL", "tampa", 1, 12)]).find((f) => /How much/.test(f.q))!.a;
+  assert.match(one, /Their starting price is \$12\./);
+});
+
+test("a Canadian page names the Canadian dollar rather than leaving a bare sign", () => {
+  const kind = KINDS.find((k) => k.art === "arcade")!;
+  const many = buildFaq(kind, metro("toronto"), [
+    priced("arcade", "Toronto, ON", "toronto", 1, 20),
+    priced("arcade", "Toronto, ON", "toronto", 2, 95),
+  ]).find((f) => /How much/.test(f.q))!.a;
+  assert.match(many, /Starting prices run from CA\$20 to CA\$95\./);
+  const one = buildFaq(kind, metro("toronto"), [priced("arcade", "Toronto, ON", "toronto", 1, 20)]).find((f) => /How much/.test(f.q))!.a;
+  assert.match(one, /Their starting price is CA\$20\./);
+});
+
+test("the lede and the meta description name the dollar their cheapest shop charges", () => {
+  const dir = mkdtempSync(join(tmpdir(), "pages-currency-"));
+  try {
+    const items: Item[] = [];
+    // Enough listings to earn a metro page, with the cheapest of them Canadian.
+    for (let n = 0; n < MIN_METRO_LISTINGS + 2; n++) {
+      items.push(priced("arcade", n === 0 ? "St. Catharines, ON" : "Buffalo, NY", "niagara", n, n === 0 ? 5 : 40 + n));
+    }
+    writeLandingPages(items, { publicDir: dir });
+    const file = readdirSync(join(dir, "p")).find((f) => f.startsWith("arcade-in-niagara"))!;
+    const html = readFileSync(join(dir, "p", file), "utf8");
+    assert.ok(html.includes("from CA$5"), "the lede and the description name the Canadian dollar");
+    assert.ok(!/from \$5[^0-9]/.test(html), "no bare dollar sign is left on the Canadian floor");
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
   }
 });

@@ -3,9 +3,9 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { METROS } from "../taxonomy/catalog.ts";
 import { GUIDES } from "../../../src/data/guides.ts";
-import { REGION_NAME, regionOfArea } from "../../../src/data/regions.ts";
+import { REGION_NAME, countryOfArea, regionOfArea } from "../../../src/data/regions.ts";
 import { displayHours } from "../../../src/lib/hoursText.ts";
-import { money, reviewsLine } from "../../../src/lib/format.ts";
+import { money, moneyIn, reviewsLine } from "../../../src/lib/format.ts";
 import { tidyName } from "../../../src/lib/listingDerive.ts";
 import { bookableMenu } from "../../../src/lib/menuRow.ts";
 
@@ -273,6 +273,48 @@ export function priceOf(i: Item): number | null {
 }
 
 /**
+ * The published prices on a page, split by the dollar each one is in.
+ *
+ * A page can hold both. The 63 everywhere pages are "across the US and Canada" by definition and 56 of them
+ * carry priced shops on both sides; six metros (Detroit, Niagara, Vancouver, Victoria, Montreal, Ottawa)
+ * straddle the border too, and 30 of their activity pages do the same. Folded into one minimum and maximum
+ * those pages told a search engine, word for word in the `FAQPage` JSON-LD it quotes, that fishing trips run
+ * "from $5 to $15,204" with the ceiling in Canadian dollars and the floor in American ones, and that kayaking
+ * starts at "$2.45" when no American shop goes below $3.
+ *
+ * It is the same rule the metrics page already keeps: a figure in one currency cannot be added to, or ranged
+ * against, a figure in another. The dollars stay apart and each is named.
+ */
+export function pricesByCountry(items: Item[]): { us: number[]; ca: number[] } {
+  const us: number[] = [];
+  const ca: number[] = [];
+  for (const i of items) {
+    const p = priceOf(i);
+    if (p == null) continue;
+    (countryOfArea(String(i.area || "")) === "CA" ? ca : us).push(p);
+  }
+  return { us, ca };
+}
+
+/** The cheapest price on a page, carrying the dollar it is in, so a lone "from" figure can name it. */
+export function lowestPrice(items: Item[]): string | null {
+  const { us, ca } = pricesByCountry(items);
+  if (!us.length && !ca.length) return null;
+  const loUs = us.length ? Math.min(...us) : null;
+  const loCa = ca.length ? Math.min(...ca) : null;
+  if (loCa == null) return moneyIn(loUs!, "US");
+  if (loUs == null) return moneyIn(loCa, "CA");
+  return loUs <= loCa ? moneyIn(loUs, "US") : moneyIn(loCa, "CA");
+}
+
+/** "$3 to $4,399", or one figure when the page has only the one price in that dollar. */
+function spread(prices: number[], country: "US" | "CA"): string {
+  const lo = Math.min(...prices);
+  const hi = Math.max(...prices);
+  return lo === hi ? moneyIn(lo, country) : `${moneyIn(lo, country)} to ${moneyIn(hi, country)}`;
+}
+
+/**
  * Every listing, with the rows a guest cannot book taken off it, which is what these pages are built from.
  *
  * `bookableMenu` is the one rule for a menu row: an archive ("Past Exhibitions"), an unpriced FAQ heading and a
@@ -441,15 +483,21 @@ export function buildFaq(kind: Kind, metro: Place | null, items: Item[]): Faq[] 
       `. ${withPhotos ? (withPhotos === 1 ? "1 of them has a photo." : `${num(withPhotos)} of them have photos.`) : "Photos are added as each operator's site is read."}`,
   });
 
-  const priced = items.map(priceOf).filter((p): p is number => p != null);
+  const { us, ca } = pricesByCountry(items);
+  const priced = [...us, ...ca];
   if (priced.length) {
-    const min = Math.min(...priced);
-    const max = Math.max(...priced);
+    // A page holding both dollars states each one. A page holding one is worded exactly as it always was.
+    const range =
+      us.length && ca.length
+        ? `Starting prices are ${spread(us, "US")} in the United States and ${spread(ca, "CA")} in Canada.`
+        : priced.length === 1 || Math.min(...priced) === Math.max(...priced)
+          ? `Their starting price is ${moneyIn(Math.min(...priced), ca.length ? "CA" : "US")}.`
+          : `Starting prices run from ${spread(ca.length ? ca : us, ca.length ? "CA" : "US")}.`;
     faq.push({
       q: `How much do ${plural} cost in ${city}?`,
       a:
         `${num(priced.length)} of the ${num(n)} operators ${priced.length === 1 ? "publishes" : "publish"} prices on their own site. ` +
-        (min === max ? `Their starting price is ${money(min)}.` : `Starting prices run from ${money(min)} to ${money(max)}.`) +
+        range +
         ` The full menu is on each listing.`,
     });
   }
@@ -513,7 +561,8 @@ function page(kind: Kind, metro: Place | null, items: Item[], nearby: Neighbour[
   const canonical = `${publicSite()}p/${fileFor(kind.art, metro ? metro.id : null)}`;
   const guide = GUIDES[kind.art as keyof typeof GUIDES];
   const priced = items.map(priceOf).filter((p): p is number => p != null);
-  const minPrice = priced.length ? Math.min(...priced) : null;
+  // The cheapest price on the page, spelled in the dollar the shop that publishes it charges.
+  const minPrice = lowestPrice(items);
   const withPhotos = items.filter((i) => i.cover).length;
   const faq = buildFaq(kind, metro, items);
   /**
@@ -572,14 +621,14 @@ function page(kind: Kind, metro: Place | null, items: Item[], nearby: Neighbour[
   const many = items.length === 1 ? singular(kind.plural) : kind.plural;
   const description =
     `${num(items.length)} ${many} ${metro ? "around " + placeName(metro) : "across the US and Canada"} on Outset` +
-    (minPrice != null ? `, from ${money(minPrice)}` : "") +
+    (minPrice ? `, from ${minPrice}` : "") +
     `. ${withPhotos ? "Photos, menus and prices" : "Menus and prices"} from each operator's own website. Pick a listing and request a time.`;
   const lede =
     `${num(items.length)} ${esc(many)} ${metro ? "around " + esc(metro.name) : "across the US and Canada"}` +
     // One shop or many: 1,545 pages read "12 with prices from the operator's own site", which is one operator
     // with a dozen websites rather than a dozen shops each with one.
     (priced.length
-      ? `, ${num(priced.length)} with prices from ${priced.length === 1 ? "the operator's own site" : "the operators' own sites"}${minPrice != null ? " (from " + esc(money(minPrice)) + ")" : ""}`
+      ? `, ${num(priced.length)} with prices from ${priced.length === 1 ? "the operator's own site" : "the operators' own sites"}${minPrice ? " (from " + esc(minPrice) + ")" : ""}`
       : "") +
     `. Open a listing to see its menu, then request a time. No phone tag.`;
   /**
