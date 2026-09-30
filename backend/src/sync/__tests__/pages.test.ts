@@ -90,7 +90,8 @@ test("the Toronto cooking page: title, h1, real count, cards with price and phot
     const html = r.read("cooking-in-toronto.html");
     assert.match(html, /<title>Cooking classes in Toronto, Ontario · Outset<\/title>/);
     assert.match(html, /<h1>Cooking classes in Toronto, Ontario<\/h1>/);
-    assert.match(html, /3 cooking classes around Toronto, 3 with prices/);
+    // Three shops, so three sites: the lede used to name one operator's own site for all of them.
+    assert.match(html, /3 cooking classes around Toronto, 3 with prices from the operators' own sites \(from \$60\)/);
     assert.match(html, /<link rel="canonical" href="https:\/\/onoutset\.com\/p\/cooking-in-toronto\.html">/);
     assert.match(html, /<img src="https:\/\/wsrv\.nl\/\?url=x%2F1\.jpg&amp;w=560/);
     assert.match(html, /From <b>\$60<\/b>/);
@@ -102,7 +103,7 @@ test("the Toronto cooking page: title, h1, real count, cards with price and phot
     assert.match(html, /3 of the 3 operators publish prices on their own site\. Starting prices run from \$60 to \$140\./);
     assert.match(html, /Listed durations include 2 hours and 3 hours/);
     assert.match(html, /cooking 1 \(4\.8 stars, 120 reviews\) and cooking 2 \(40 reviews\)/);
-    assert.match(html, /1 of the 3 show hours copied from the operator's website/);
+    assert.match(html, /1 of the 3 shows hours copied from the operator's website/);
     assert.match(html, /"@type":"FAQPage"/);
     assert.doesNotMatch(html, /instant booking/i);
     // Links: the nearest metro with the same kind, and the other kinds with a page in this metro (none here).
@@ -224,7 +225,8 @@ test("a listing with nothing on it is left off a page, out of its counts, and ca
   try {
     assert.deepEqual(r.files, ["cooking-in-anywhere.html", "cooking-in-toronto.html", "index.html"]);
     const html = r.read("cooking-in-toronto.html");
-    assert.match(html, /3 cooking classes around Toronto, 3 with prices/);
+    // Three shops, so three sites: the lede used to name one operator's own site for all of them.
+    assert.match(html, /3 cooking classes around Toronto, 3 with prices from the operators' own sites \(from \$60\)/);
     assert.match(html, /Outset lists 3 cooking classes around Toronto\./);
     assert.match(html, /"numberOfItems":3/);
     assert.doesNotMatch(html, /o-cooking-toronto-4/);
@@ -562,4 +564,65 @@ test("a browse card names a service the way the page it opens names it", () => {
   } finally {
     r.cleanup();
   }
+});
+
+/**
+ * A landing page's FAQ is also its FAQPage JSON-LD, so a search engine can quote the answer word for word.
+ * Written out with the number glued to a plural whatever the number was, five of these answers read wrong on
+ * pages that ship: "1 reviews" on 17 of them, "1 of the 4 operators publish" on 633, "1 of the 4 show hours"
+ * on 637, "1 of them have photos" on 16, and "3 of the 3 show hours ... The rest do not publish them" on 126,
+ * where there is no rest at all. Every other surface counts the word with the number (`reviewsLine`).
+ */
+test("the FAQ counts the word with the number, and names no rest when there is none", () => {
+  const kind = KINDS.find((k) => k.art === "cooking")!;
+  const one: Item[] = [
+    item("cooking", "tampa", 1, { area: "Tampa, FL", cover: "https://x/1.jpg", options: [{ name: "Pasta night", price: 95 }], rating: 5, reviews: 1, hrs: [[600, 1200]] }),
+    item("cooking", "tampa", 2, { area: "Tampa, FL" }),
+    item("cooking", "tampa", 3, { area: "Tampa, FL" }),
+    item("cooking", "tampa", 4, { area: "Tampa, FL" }),
+  ];
+  const answers = buildFaq(kind, metro("tampa"), one).map((f) => f.a).join("\n");
+  assert.match(answers, /5\.0 stars, 1 review\)/);
+  assert.doesNotMatch(answers, /1 reviews/);
+  assert.match(answers, /1 of the 4 operators publishes prices/);
+  assert.match(answers, /1 of the 4 shows hours copied/);
+  assert.match(answers, /1 of them has a photo\./);
+  // One listing shows hours and three do not, so the rest are real and are still named.
+  assert.match(answers, /The rest do not publish them on Outset yet\./);
+
+  const all: Item[] = [
+    item("cooking", "tampa", 1, { area: "Tampa, FL", cover: "https://x/1.jpg", options: [{ name: "A", price: 95 }], reviews: 12, hrs: [[600, 1200]] }),
+    item("cooking", "tampa", 2, { area: "Tampa, FL", cover: "https://x/2.jpg", options: [{ name: "B", price: 60 }], reviews: 12, hrs: [[600, 1200]] }),
+    item("cooking", "tampa", 3, { area: "Tampa, FL", cover: "https://x/3.jpg", options: [{ name: "C", price: 70 }], reviews: 12, hrs: [[600, 1200]] }),
+  ];
+  const every = buildFaq(kind, metro("tampa"), all).map((f) => f.a).join("\n");
+  assert.match(every, /3 of the 3 show hours copied from the operator's website\./);
+  assert.doesNotMatch(every, /The rest do not publish them/);
+  assert.match(every, /3 of them have photos\./);
+  assert.match(every, /3 of the 3 operators publish prices/);
+  assert.match(every, /12 reviews\)/);
+});
+
+/**
+ * The duration answer names the shops that stated a length, not the lengths. Keyed on the lengths, 525 pages
+ * where every shop said the same thing read "as stated on the operator's own sites": one operator, several
+ * websites, on a page that draws a dozen shops.
+ */
+test("the duration answer counts the shops that stated a length, not the lengths", () => {
+  const kind = KINDS.find((k) => k.art === "cooking")!;
+  const same: Item[] = [
+    item("cooking", "tampa", 1, { area: "Tampa, FL", dur: "2 hours" }),
+    item("cooking", "tampa", 2, { area: "Tampa, FL", dur: "2 hours" }),
+    item("cooking", "tampa", 3, { area: "Tampa, FL", dur: "2 hours" }),
+  ];
+  const a = buildFaq(kind, metro("tampa"), same).find((f) => /How long/.test(f.q))!.a;
+  assert.equal(a, "The listed duration is 2 hours, as stated on the operators' own sites.");
+
+  const lone: Item[] = [
+    item("cooking", "tampa", 1, { area: "Tampa, FL", dur: "2 hours" }),
+    item("cooking", "tampa", 2, { area: "Tampa, FL" }),
+    item("cooking", "tampa", 3, { area: "Tampa, FL" }),
+  ];
+  const one = buildFaq(kind, metro("tampa"), lone).find((f) => /How long/.test(f.q))!.a;
+  assert.equal(one, "The listed duration is 2 hours, as stated on the operator's own site.");
 });

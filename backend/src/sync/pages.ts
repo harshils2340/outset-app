@@ -5,7 +5,7 @@ import { METROS } from "../taxonomy/catalog.ts";
 import { GUIDES } from "../../../src/data/guides.ts";
 import { REGION_NAME, regionOfArea } from "../../../src/data/regions.ts";
 import { displayHours } from "../../../src/lib/hoursText.ts";
-import { money } from "../../../src/lib/format.ts";
+import { money, reviewsLine } from "../../../src/lib/format.ts";
 import { tidyName } from "../../../src/lib/listingDerive.ts";
 import { bookableMenu } from "../../../src/lib/menuRow.ts";
 
@@ -430,7 +430,7 @@ export function buildFaq(kind: Kind, metro: Place | null, items: Item[]): Faq[] 
     a:
       `Outset lists ${num(n)} ${n === 1 ? singular(plural) : plural} ${metro ? "around " + metro.name : "across the US and Canada"}` +
       (metro && towns.length > 1 ? `, including places in ${list(towns)}` : "") +
-      `. ${withPhotos ? `${num(withPhotos)} of them have photos.` : "Photos are added as each operator's site is read."}`,
+      `. ${withPhotos ? (withPhotos === 1 ? "1 of them has a photo." : `${num(withPhotos)} of them have photos.`) : "Photos are added as each operator's site is read."}`,
   });
 
   const priced = items.map(priceOf).filter((p): p is number => p != null);
@@ -440,7 +440,7 @@ export function buildFaq(kind: Kind, metro: Place | null, items: Item[]): Faq[] 
     faq.push({
       q: `How much do ${plural} cost in ${city}?`,
       a:
-        `${num(priced.length)} of the ${num(n)} operators publish prices on their own site. ` +
+        `${num(priced.length)} of the ${num(n)} operators ${priced.length === 1 ? "publishes" : "publish"} prices on their own site. ` +
         (min === max ? `Their starting price is ${money(min)}.` : `Starting prices run from ${money(min)} to ${money(max)}.`) +
         ` The full menu is on each listing.`,
     });
@@ -449,10 +449,14 @@ export function buildFaq(kind: Kind, metro: Place | null, items: Item[]): Faq[] 
   const durCount = new Map<string, number>();
   for (const i of items) if (i.dur) durCount.set(String(i.dur), (durCount.get(String(i.dur)) || 0) + 1);
   const durs = [...durCount.entries()].sort((a, b) => b[1] - a[1]).map(([d]) => d).slice(0, 3);
+  // How many shops stated a length, not how many different lengths they stated. Keyed on the lengths, 525 pages
+  // where every shop says the same thing read "The listed duration is 2 hours, as stated on the operator's own
+  // sites": one operator with several websites, on a page that draws a dozen shops.
+  const durStated = [...durCount.values()].reduce((a, b) => a + b, 0);
   if (durs.length) {
     faq.push({
       q: `How long do ${plural} in ${city} take?`,
-      a: `${durCount.size === 1 ? "The listed duration is" : "Listed durations include"} ${list(durs)}, as stated on ${durs.length === 1 ? "the operator's" : "the operators'"} own sites.`,
+      a: `${durCount.size === 1 ? "The listed duration is" : "Listed durations include"} ${list(durs)}, as stated on ${durStated === 1 ? "the operator's own site" : "the operators' own sites"}.`,
     });
   }
 
@@ -461,7 +465,9 @@ export function buildFaq(kind: Kind, metro: Place | null, items: Item[]): Faq[] 
     faq.push({
       q: `Which ${plural} in ${city} have the most reviews?`,
       a:
-        list(reviewed.map((i) => `${i.title} (${i.rating ? Number(i.rating).toFixed(1) + " stars, " : ""}${Number(i.reviews).toLocaleString("en-US")} reviews)`)) +
+        // Through the same count-and-word rule every other surface reads, the `/l/` page included. Written out
+        // here, 17 of these pages told a search engine a shop had "1 reviews".
+        list(reviewed.map((i) => `${i.title} (${i.rating ? Number(i.rating).toFixed(1) + " stars, " : ""}${reviewsLine(Number(i.reviews))})`)) +
         ". Review counts are from public listings.",
     });
   }
@@ -470,7 +476,10 @@ export function buildFaq(kind: Kind, metro: Place | null, items: Item[]): Faq[] 
   if (hours) {
     faq.push({
       q: `Do the listings show opening hours?`,
-      a: `${num(hours)} of the ${num(n)} show hours copied from the operator's website. The rest do not publish them on Outset yet.`,
+      a:
+        `${num(hours)} of the ${num(n)} ${hours === 1 ? "shows" : "show"} hours copied from the operator's website.` +
+        // There is no rest when every listing on the page shows hours, and 126 of these pages said there was.
+        (hours < n ? " The rest do not publish them on Outset yet." : ""),
     });
   }
 
@@ -559,7 +568,11 @@ function page(kind: Kind, metro: Place | null, items: Item[], nearby: Neighbour[
     `. ${withPhotos ? "Photos, menus and prices" : "Menus and prices"} from each operator's own website. Pick a listing and request a time.`;
   const lede =
     `${num(items.length)} ${esc(many)} ${metro ? "around " + esc(metro.name) : "across the US and Canada"}` +
-    (priced.length ? `, ${num(priced.length)} with prices from the operator's own site${minPrice != null ? " (from " + esc(money(minPrice)) + ")" : ""}` : "") +
+    // One shop or many: 1,545 pages read "12 with prices from the operator's own site", which is one operator
+    // with a dozen websites rather than a dozen shops each with one.
+    (priced.length
+      ? `, ${num(priced.length)} with prices from ${priced.length === 1 ? "the operator's own site" : "the operators' own sites"}${minPrice != null ? " (from " + esc(money(minPrice)) + ")" : ""}`
+      : "") +
     `. Open a listing to see its menu, then request a time. No phone tag.`;
   /**
    * What happens when the grid runs out before the count does. The lede says 6,902 museums, the grid draws 24,
