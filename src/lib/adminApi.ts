@@ -124,6 +124,24 @@ export function withCosts(data: AdminMetrics): AdminMetrics {
   };
 }
 
+/**
+ * Which of the page's three screens to draw. Pure, so the rule can be held to on its own.
+ *
+ * `signedIn` is only ever "this browser has a session with an address on it", which is not the same as an
+ * address the route accepts: claiming a shop saves a session whose address is whatever was typed into the claim
+ * form, so a browser that has been through the operator dashboard looks signed in here and is refused. That 404
+ * used to draw a bare "Not found" with nothing to press, which shut the one person this page is for out of it
+ * from their own browser. Before any sign-in, a 404 offers the sign-in box, which is exactly what a visitor with
+ * no session already sees, so it tells nobody anything they could not already learn. After one, the 404 is the
+ * real answer and says so.
+ */
+export function adminScreen(opts: { signedIn: boolean; tried: boolean; res: MetricsResult | null }): "signin" | "notfound" | "page" {
+  if (!opts.signedIn) return "signin";
+  const refused = !!opts.res && !opts.res.ok && opts.res.notFound;
+  if (!refused) return "page";
+  return opts.tried ? "notfound" : "signin";
+}
+
 export async function fetchAdminMetrics(days: number, signal?: AbortSignal): Promise<MetricsResult> {
   // `DEV &&` first so a production build folds the branch away and never emits the fixture as a chunk.
   const mock = DEV ? mockName() : null;

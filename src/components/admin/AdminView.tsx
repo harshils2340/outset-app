@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import "../../styles/admin.css";
 import { money } from "../../lib/format";
-import { adminSessionEmail, fetchAdminMetrics, mockName, RANGES, type AdminMetrics, type Maybe, type MetricsResult } from "../../lib/adminApi";
+import { adminScreen, adminSessionEmail, fetchAdminMetrics, mockName, RANGES, type AdminMetrics, type Maybe, type MetricsResult } from "../../lib/adminApi";
 import { AdminSignIn } from "./AdminSignIn";
 import { ChartEmpty, Funnel, Meter, RowBars, ShareBar, Sparkline, TimeChart, type Point } from "./charts";
 
@@ -351,8 +351,10 @@ function NotFound() {
 export function AdminView() {
   const [days, setDays] = useState<number>(90);
   const [email, setEmail] = useState<string | null>(() => adminSessionEmail());
-  const [res, setRes] = useState<MetricsResult | null>(null);
   const [loading, setLoading] = useState(true);
+  /** Whether a sign-in happened in this visit, which is not the same as holding a session. See `adminScreen`. */
+  const [tried, setTried] = useState(false);
+  const [res, setRes] = useState<MetricsResult | null>(null);
   const mock = mockName();
   const signedIn = !!email || !!mock;
 
@@ -376,8 +378,9 @@ export function AdminView() {
 
   const generated = useMemo(() => (res && res.ok ? when(res.data.generatedAt) : null), [res]);
 
-  if (!signedIn) return <AdminSignIn onDone={(e) => setEmail(e)} />;
-  if (res && !res.ok && res.notFound) return <NotFound />;
+  const screen = adminScreen({ signedIn, tried, res });
+  if (screen === "signin") return <AdminSignIn onDone={(e) => { setTried(true); setEmail(e); }} />;
+  if (screen === "notfound") return <NotFound />;
 
   return (
     <div className="adpage">
