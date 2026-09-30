@@ -140,23 +140,26 @@ export function useReorder<T>({
 
   /**
    * A finger on the handle. Phones do not fire HTML5 drag events, so a touch drag runs on pointer events:
-   * the handle captures the pointer, and whatever row sits under the finger is where the row goes.
+   * whatever row sits under the finger is where the row goes.
+   *
+   * The three listeners sit on the window rather than on the handle, because the handle stops hearing the
+   * finger the moment the list first reorders. Moving a row is `insertBefore` on a node already in the
+   * document, which the DOM counts as a removal, and a removal releases the pointer capture the handle was
+   * holding. So the drag's own end never arrived: the finger lifted and the row stayed lifted, another row
+   * kept its drop marker, nothing was announced to a screen reader, and the three listeners were still on
+   * the handle for the next drag to run twice over.
    */
   const onPointerDown = useCallback(
     (id: string) => (e: React.PointerEvent<HTMLElement>) => {
       setArmed(id);
       if (e.pointerType === "mouse") return;
       e.preventDefault();
-      const grip = e.currentTarget;
-      try {
-        grip.setPointerCapture(e.pointerId);
-      } catch {
-        /* an old browser without capture still gets the keyboard path */
-      }
+      const pointer = e.pointerId;
       snapshot.current = live.current;
       setDragging(id);
       let moved = false;
       const onMove = (ev: PointerEvent) => {
+        if (ev.pointerId !== pointer) return;
         const under = document.elementFromPoint(ev.clientX, ev.clientY)?.closest<HTMLElement>("[data-rid]");
         const target = under?.dataset.rid;
         if (!target || target === id) return;
@@ -167,29 +170,34 @@ export function useReorder<T>({
         setOver(target);
         emit.current(moveTo(from, to));
       };
-      const onUp = () => {
-        grip.removeEventListener("pointermove", onMove);
-        grip.removeEventListener("pointerup", onUp);
-        grip.removeEventListener("pointercancel", onCancel);
+      const stop = () => {
+        window.removeEventListener("pointermove", onMove);
+        window.removeEventListener("pointerup", onUp);
+        window.removeEventListener("pointercancel", onCancel);
         snapshot.current = null;
         setDragging(null);
         setOver(null);
         setArmed(null);
+      };
+      const onUp = (ev: PointerEvent) => {
+        if (ev.pointerId !== pointer) return;
+        stop();
         if (!moved) return;
         const at = indexOf(id);
         if (at >= 0) setSpoken(getLabel(live.current[at]) + " dropped at position " + (at + 1) + ".");
       };
-      const onCancel = () => {
+      const onCancel = (ev: PointerEvent) => {
+        if (ev.pointerId !== pointer) return;
         const was = snapshot.current;
-        onUp();
+        stop();
         if (was && moved) {
           emit.current([...was]);
           setSpoken("Reorder cancelled, the original order is back.");
         }
       };
-      grip.addEventListener("pointermove", onMove);
-      grip.addEventListener("pointerup", onUp);
-      grip.addEventListener("pointercancel", onCancel);
+      window.addEventListener("pointermove", onMove);
+      window.addEventListener("pointerup", onUp);
+      window.addEventListener("pointercancel", onCancel);
     },
     [getLabel, indexOf, moveTo],
   );
