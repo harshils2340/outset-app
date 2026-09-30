@@ -7274,7 +7274,13 @@ Backend `npm test` 932 tests, 930 pass, 0 fail, 2 skipped, unchanged. `tsc -b` c
 at the root, backend clean but for TS5097. The rehearsal was run after the changes, against a local Postgres 16
 cluster built here on port 5433 with SSL on and the Playwright Chromium already on disk: green at 57 of 57,
 with no Stripe, mail or GitHub key. `initdb` still refuses to run as root, so the cluster is created and
-started as `postgres`. Nothing under `backend/data`, `public/` or `src/data` was touched.
+started as `postgres`. Nothing under `backend/data`, `public/` or `src/data` was touched. Notes for the next
+run, all of them the same as the eighty-eighth run recorded: the checkout arrives on a detached HEAD with the
+local `main` branch left on an older unrelated line of commits, so `git push -u origin main` is rejected as
+non-fast-forward however clean the rebase, and `git push origin HEAD:refs/heads/main` goes through on the first
+try; the Postgres cluster has to be created and started as `postgres` because `initdb` refuses to run as root;
+`scripts/e2e-local.mts` is under `backend/`; and a TLS certificate has to be made by hand and pointed at with
+`NODE_EXTRA_CA_CERTS`, because the harness's pool refuses a server without SSL.
 
 **Needs Harshil.**
 
