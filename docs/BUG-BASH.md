@@ -7651,6 +7651,75 @@ was touched.
   not idempotent; the operator's dashboard names a booking as the crawl found it; there is no linter in this
   repo, and `react-hooks/exhaustive-deps` found last hour's bug in seconds.
 
+## 30 September 2026, hundred and twelfth run (11:20 to 13:20 UTC)
+
+**Chosen, and why.** `git fetch` first: nothing has landed since the hundred and eleventh run's log entry, so by
+the rule the full rehearsal was **skipped at the start**. It was **run at the end**, because both of tonight's
+fixes are in code it drives. Both `node_modules` were missing again and were installed first. Baseline: root
+`tsc --noEmit -p .` and `tsc -b` clean, backend clean but for TS5097, backend 949 tests with 947 pass and 2
+skipped, app 1,046 pass.
+
+Every area on the brief is on the Verified list, so the hunt took the one thing on the guest's money path that
+no run has ever read: which dollar a price is in. Distance has been localised per country since the fortieth
+run or so, `fmtDistance` takes a country and the cards, the page and the sheet all pass it one. Money never did.
+
+**Found and fixed.**
+
+- **The screen that takes a Canadian booking says which dollar it is taking** (`f99eaeda`). `currencyForArea` in
+  `backend/src/payments/money.ts` reads the listing's area line and sends every booking at a Canadian address to
+  Stripe as CAD, and the booking email that follows already writes it that way: `fmtMoney` prints "CA$135.00".
+  Every screen in between wrote a bare "$". So a guest at a Canadian shop chose from "Total $135", met "CA$135"
+  in Stripe's own embedded card form a second later, and read "CA$135.00" again in the email: three spellings of
+  one charge, and the only one they chose from was the one that did not say which dollar. 7,464 shipped listings
+  are Canadian and 3,045 of them publish a price. `moneyIn` names the dollar when it is not the American one and
+  leaves an American figure byte for byte as it was. It goes on the four blocks that state what a guest will be
+  charged, the phone review-and-pay sheet, the desktop booking box and both confirmations, and nowhere else: a
+  card's "from" price is an indication rather than a charge and is left alone until somebody decides that
+  question for the whole catalog.
+- **A landing page stops ranging a Canadian price against an American one** (`e79fce44`). The FAQ on a landing
+  page is that page's `FAQPage` JSON-LD, which a search engine quotes word for word. Its price answer took one
+  minimum and one maximum over every priced shop on the page, and a page can hold both dollars: the 63
+  everywhere pages are "across the US and Canada" by definition and 56 of them carry priced shops on both sides,
+  and six metros straddle the border, with 30 of their activity pages doing the same. So arcades ran "from $4.99
+  to $197.10" with the ceiling in Canadian dollars, fishing "from $5 to $15,204" the same way, and kayaking
+  started at "$2.45" when no American shop goes below $3. The lede and the meta description carried the same
+  folded minimum. It is the rule the metrics page already keeps, written down by the hundred and tenth run: a
+  figure in one currency is not added to, or ranged against, a figure in another.
+
+**Swept and clean, or measured and left.** `countryOfArea`, which the guest's screen now reads, and
+`currencyForArea`, which the server charges by, agree on every one of the 5,000-odd distinct area lines the
+catalog ships, which is now a test: if they ever disagreed a guest would be told one dollar and charged the
+other. The whole landing page set rebuilt from the shipped catalog and diffed page by page against the run
+before it: 338 of 3,039 pages change, 85 of them to the two-dollar sentence, 652 single-price pages keep their
+wording exactly, and nothing but the price lines moved. Six metros hold both dollars in one list: Niagara (347
+US, 305 CA), Victoria (186, 303), Detroit (494, 55), Vancouver (44, 1,170), Montreal (22, 393) and Ottawa (7,
+373). Every module-level regex in both projects that is used with `.test()` or `.exec()`, for the `lastIndex`
+that makes a global regex answer differently every other call: none of the stateful ones carries `g`, and the
+two that do reset it themselves.
+
+**Verification.** Backend `npm test` 954 tests, 952 pass, 0 fail, 2 skipped, up from 949 (five new cases on
+`pages.ts`). App `npm test` 1,050 pass, 0 fail, up from 1,046 (four new). `tsc --noEmit -p .`, `tsc -b` and the
+backend's own `tsc` all clean but for TS5097. The rehearsal ran green at 57 of 57 on the tree carrying both
+fixes, against a local Postgres with TLS and the Chromium on disk. Two existing assertions moved with the code
+and are named in the commits. Nothing under `backend/data`, `public/` or `src/data` was written.
+
+**Needs Harshil.**
+
+- **A price sort and a price filter still compare two dollars.** On those six metros the feed's "Price: low to
+  high", the "under $X" the search box reads out of a sentence, and the price range filter all put a CAD figure
+  and a USD one in one order. Nothing in the product holds an exchange rate, so the choice is yours: convert,
+  partition the list, or say nothing and accept it. Niagara is the case that bites, at 347 American shops
+  against 305 Canadian ones in one feed.
+- **The cards still say "$".** A Canadian shop's "from" price on a feed card, a rail, the compare table, the
+  `/l/` page's own menu and Otto's answers are all bare. That is deliberate tonight: a card has little room and
+  it is a product call across 7,464 listings, not a defect on the money path. Say whether they should carry CA$
+  too, and I will do them in one pass.
+- **Nothing on the landing pages reaches a guest until a sync runs.** Same wall as the last several runs. The
+  app-side fix ships with the next build and needs nothing.
+- Still open from earlier runs: the cards are weeks behind the pages until a sync runs; the static pages' CSS
+  has no wrapping rule; `plainWords` is not idempotent; 69 Toronto-address listings are filed under a
+  neighbouring metro; there is no linter in this repo.
+
 ## Coverage
 
 The catalog is 48,198 listings as of the 23 September sync, 1,873 of them Viator partner rows. Counts below
@@ -8503,6 +8572,13 @@ gives them. Every wording on a landing page that counts something, over all 3,07
 clause that names a rest. Whether two landing pages can be written for the same activity in the same place, over
 the whole page set, by heading and by the town a file name states.
 
+Which dollar a guest is quoted, on the money path: `countryOfArea`, which the screen reads, against
+`currencyForArea`, which the server charges Stripe by, over every distinct area line the catalog ships; the four
+blocks that state a charge (the phone review-and-pay sheet, the desktop booking box and both confirmations)
+against the labelled formatter, now a test of its own; and the price aggregates on all 3,039 landing pages,
+rebuilt from the shipped catalog and diffed page by page. Every module-level regex in both projects used with
+`.test()` or `.exec()`, for a `lastIndex` carried between calls.
+
 **Not yet checked.** Whether the static pages' own CSS should carry a wrapping rule at all: it sets no
 `overflow-wrap`, no `word-break` and no `min-width` on either of its two flex rows, and nothing overflows today
 only because every long token in the catalog is a URL, which a browser breaks at a slash (see this run's Needs
@@ -8833,4 +8909,13 @@ greylist among them. Whether the cross-campaign cool-off in `spacing.ts` should 
 record as well as the laptop's drafts: `poolCandidates` and `touched` both filter by `kind`, so a business the
 listing pitch mailed is not spaced from the Otto one there, which is latent only because nothing writes a
 `listing` touch yet. Whether `isLaptop()` is the right guard in front of the pipeline at all, given that it
-recognises a Mac and says nothing about any other machine that is not the Render worker.
+recognises a Mac and says nothing about any other machine that is not the Render worker. Whether a price sort, a
+"under $X" read out of a search sentence and a price range filter should compare a Canadian figure against an
+American one, which they do on the six metros that hold both (Niagara 347 US against 305 CA, Victoria, Detroit,
+Vancouver, Montreal and Ottawa), given that nothing in the product holds an exchange rate (see the hundred and
+twelfth run's Needs Harshil). Whether a card's "from" price, a rail, the compare table, the `/l/` page's own menu
+and Otto's answers should name the Canadian dollar the way the four charge blocks now do, on all 7,464 Canadian
+listings and the 3,045 of them that publish a price (see that run's Needs Harshil). Whether the app's own
+`src/**/__tests__`, which nothing type-checks, hide anything: checked once tonight against a scratch config, and
+what falls out is fixture shapes rather than defects, with one test building a listing in a category the app has
+no such family for.
