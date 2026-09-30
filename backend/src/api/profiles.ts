@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { ID, bodyText, idsWith, jsonBody, linkEmailToListing, mayEdit, rateLimit, signSession, verifySession } from "./auth.ts";
+import { ID, bodyText, idsWith, jsonBody, keepProof, linkEmailToListing, mayEdit, rateLimit, signSession, verifySession } from "./auth.ts";
 import { maskEmail } from "../lib/claimIndex.ts";
 import { deleteProfile, getProfile, listProfileEdits, unlinkListing, updateProfile } from "../lib/repo.ts";
 
@@ -68,7 +68,10 @@ profiles.post("/claims/:id", rateLimit(30, 60 * 60 * 1000), async (c) => {
   if (takenOver) console.warn(`[claim] ${id} first claimed by ${maskEmail(priorEmail)} on ${rec.claimedAt}, now also claimed by ${maskEmail(rec.owner.email)}`);
   if (rec.owner.email) await linkEmailToListing(rec.owner.email, id);
   const prior = verifySession(c.req.header("x-session"));
-  const session = signSession({ ids: idsWith(prior, id), email: rec.owner.email || prior?.email || "", exp: Date.now() + 30 * 86400000 });
+  // The address here is whatever the claimer typed into the claim form, and a claim link is a bearer token, so
+  // nothing has proven it is theirs: the session carries it as a note and not as an identity. See keepProof.
+  const email = rec.owner.email || prior?.email || "";
+  const session = signSession({ ids: idsWith(prior, id), email, ...keepProof(prior, email), exp: Date.now() + 30 * 86400000 });
   return c.json({ ...rec, session, ...(takenOver ? { alreadyClaimed: maskEmail(priorEmail), claimedAt: rec.claimedAt } : {}) });
 });
 

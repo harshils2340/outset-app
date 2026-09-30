@@ -30,7 +30,7 @@ delete process.env.OUTSET_TEST_CLAIM_EMAILS;
 const { app } = await import("../src/api/routes.ts");
 const { migratePg, query, closePg } = await import("../src/db/pg.ts");
 const { claimToken, claimTokenV2 } = await import("../src/lib/claim.ts");
-const { emailHash } = await import("../src/api/auth.ts");
+const { emailHash, signSession } = await import("../src/api/auth.ts");
 await migratePg();
 await query("delete from bookings where listing like 'o-e2e-%'");
 await query("delete from profiles where id like 'o-e2e-%'");
@@ -104,6 +104,47 @@ console.log("\n4b. A claim link for a second shop keeps the operator signed in t
   check("a session for one shop alone still cannot edit another", r.status === 403, r);
   await query("delete from profiles where id = $1", [SECOND]);
   await query("delete from profile_emails where listing = $1", [SECOND]);
+}
+
+console.log("\n4c. The address typed into a claim form is not an identity");
+{
+  // A claim link is a bearer token and nothing checks the address the claimer types beside it, so the claim
+  // route puts that address on the session as a note about who the dashboard is talking to. Two internal
+  // routes read a session's address as an identity, and before this the note was enough: anyone holding a
+  // link for any one listing could type an address from ADMIN_EMAILS into the claim form and be handed a
+  // session that opened /admin/metrics and /admin/spend, which is every guest's name, their booking and its
+  // money, every claim address, and what Outset has spent.
+  const THIRD = "o-e2e-store-shop-three";
+  const FOUNDER = "founder@e2e-store.example";
+  const had = { emails: process.env.ADMIN_EMAILS, key: process.env.ADMIN_KEY };
+  process.env.ADMIN_EMAILS = FOUNDER;
+  delete process.env.ADMIN_KEY;
+  try {
+    await query("delete from profiles where id = $1", [THIRD]);
+    await query("delete from profile_emails where listing = $1", [THIRD]);
+    r = await json(`/claims/${THIRD}/exchange`, { method: "POST", body: JSON.stringify({ token: claimTokenV2(THIRD) }) });
+    const link = String(r.body?.session);
+    r = await json(`/claims/${THIRD}`, { method: "POST", headers: { "x-session": link }, body: JSON.stringify({ owner: { name: "Not The Founder", email: FOUNDER, phone: "8135550199" } }) });
+    check("the claim goes through, as it must: the link is valid", r.status === 200 && typeof r.body?.session === "string", r);
+    const typed = String(r.body?.session);
+    r = await json("/admin/metrics", { headers: { "x-session": typed } });
+    check("that session does not open the internal metrics page", r.status === 404, r);
+    r = await json("/admin/spend", { method: "POST", headers: { "x-session": typed }, body: JSON.stringify({ discovery: 1, extraction: 2 }) });
+    check("and cannot post a spend snapshot either", r.status === 404, r);
+    r = await json("/concierge/sessions", { headers: { "x-session": typed } });
+    check("nor read what other guests have been asking the agent", r.status === 404, r);
+    // The other direction, so these three cannot pass by the page simply being shut: an address proven by a
+    // mailed code is what /auth/verify signs, and that session still gets in.
+    const proven = signSession({ ids: [], email: FOUNDER, emailVerified: true, exp: Date.now() + 60_000 });
+    r = await json("/admin/metrics", { headers: { "x-session": proven } });
+    check("a signed-in admin still reads the page", r.status === 200, { status: r.status });
+  } finally {
+    if (had.emails === undefined) delete process.env.ADMIN_EMAILS;
+    else process.env.ADMIN_EMAILS = had.emails;
+    if (had.key !== undefined) process.env.ADMIN_KEY = had.key;
+    await query("delete from profiles where id = $1", [THIRD]);
+    await query("delete from profile_emails where listing = $1", [THIRD]);
+  }
 }
 
 console.log("\n5. A guest books (no card step)");

@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { ID, bodyText, clientIp, emailLimit, idsWith, jsonBody, rateLimit, signSession, verifySession, type Session } from "./auth.ts";
+import { ID, bodyText, clientIp, emailLimit, idsWith, jsonBody, keepProof, rateLimit, signSession, verifySession, type Session } from "./auth.ts";
 import { claimTokenV2, verifyClaimToken } from "../lib/claim.ts";
 import { claimRule, emailMayClaim, maskEmail } from "../lib/claimIndex.ts";
 import { sendMail } from "../lib/mail.ts";
@@ -110,7 +110,7 @@ claims.post("/claims/:id/exchange", rateLimit(30, 60 * 60 * 1000), async (c) => 
   // they opened a second claim link: the dashboard still listed those shops, and every save answered 403.
   // The prior session is verified here, so nothing is added that the caller did not already hold.
   const prior = verifySession(c.req.header("x-session"));
-  const session: Session = { ids: idsWith(prior, id), email: prior?.email || "", exp: Date.now() + 30 * 86400000 };
+  const session: Session = { ids: idsWith(prior, id), email: prior?.email || "", ...keepProof(prior, prior?.email || ""), exp: Date.now() + 30 * 86400000 };
   return c.json({ ok: true, kind: check.kind, session: signSession(session), exp: session.exp });
 });
 

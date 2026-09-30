@@ -514,10 +514,19 @@ export function summarizeBookings(groups: BookingGroup[]) {
  * Two doors, one answer. A session whose email is named in ADMIN_EMAILS is how the page gets in (the browser
  * signs in with an emailed code, so no secret is ever typed into a page or put in a URL); x-admin-key is how a
  * terminal gets in. Everything else is told the route is not there.
+ *
+ * The session's address has to have been proven by a mailed code, which is what `emailVerified` records. Before
+ * that check this read any address the session carried, and POST /claims/:id puts the address the claimer typed
+ * into the claim form on the session it hands back: so anyone holding a claim link for any one listing, their
+ * own or a forwarded one, could type an address from ADMIN_EMAILS into the claim form and be handed a session
+ * that opened this route, /admin/spend and the concierge's watch pages. That is every guest's name, their
+ * booking and its money, every claim address, what Outset has spent, and the last forty sentences other guests
+ * typed into the agent with the town each of them was sitting in.
  */
 export function isAdminRequest(c: Context): boolean {
   if (hasAdminKey(c)) return true;
-  return isAdminEmail(verifySession(c.req.header("x-session"))?.email);
+  const s = verifySession(c.req.header("x-session"));
+  return !!s?.emailVerified && isAdminEmail(s.email);
 }
 
 /**

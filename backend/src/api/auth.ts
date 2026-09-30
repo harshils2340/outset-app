@@ -16,7 +16,17 @@ import { isAdminEmail } from "../lib/admin.ts";
 export const ID = /^[a-z0-9-]{3,80}$/;
 const SESSION_DAYS = 30;
 
-export type Session = { ids: string[]; email: string; exp: number };
+/**
+ * `emailVerified` means this address was proven by a code we mailed to it, and nothing else may set it.
+ *
+ * Every other door mints a session from an address nobody checked: the claim route stores whatever the owner
+ * typed into the claim form and hands it back inside the session, and a claim link is a bearer token, so the
+ * address on a session is otherwise only a note about who the dashboard thinks it is talking to. Two internal
+ * routes read the address as an identity (`isAdminRequest` in api/metrics.ts), which is why the difference has
+ * to be carried on the session rather than assumed. The field is inside the HMAC-signed payload, so a caller
+ * cannot add it to a session of their own.
+ */
+export type Session = { ids: string[]; email: string; exp: number; emailVerified?: true };
 
 const b64 = (s: string | Buffer) => Buffer.from(s).toString("base64url");
 const sign = (payload: string) => createHmac("sha256", claimSecret()).update(payload).digest("base64url");
@@ -61,6 +71,16 @@ export function idsWith(prior: Session | null, id: string): string[] {
  */
 export function idsMerged(prior: Session | null, ids: string[]): string[] {
   return Array.from(new Set([...(prior?.ids || []), ...ids]));
+}
+
+/**
+ * The proof a freshly minted session may keep from the one the caller arrived with: only while it is still the
+ * same address. A route that widens a session (a second claim link, a listing exchanged for a session) does not
+ * re-prove the address, but it must not throw away a proof already held either, or signing a shop in would
+ * quietly sign an admin out of the internal page. A route that changes the address keeps nothing.
+ */
+export function keepProof(prior: Session | null, email: string): { emailVerified?: true } {
+  return prior?.emailVerified && !!email && prior.email === email ? { emailVerified: true } : {};
 }
 
 /**
@@ -230,7 +250,8 @@ auth.post("/auth/verify", rateLimit(30, 60 * 60 * 1000), async (c) => {
   if (want.length !== rec.hash.length || !timingSafeEqual(Buffer.from(want), Buffer.from(rec.hash))) return c.json({ error: "that code does not match" }, 400);
   codes.delete(email);
   const ids = idsMerged(verifySession(c.req.header("x-session")), await idsForEmail(email));
-  const session: Session = { ids, email, exp: Date.now() + SESSION_DAYS * 86400000 };
+  // The one place an address is proven: the code was mailed to it and came back. See the Session type.
+  const session: Session = { ids, email, emailVerified: true, exp: Date.now() + SESSION_DAYS * 86400000 };
   return c.json({ session: signSession(session), ids, exp: session.exp });
 });
 

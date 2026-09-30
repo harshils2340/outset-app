@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 
 // Set before auth.ts is loaded, so claimSecret() never writes backend/data/claim-secret.txt from a test run.
 process.env.CLAIM_SECRET = "session-test-secret";
-const { idsMerged, idsWith, signSession, verifySession } = await import("../auth.ts");
+const { idsMerged, idsWith, keepProof, signSession, verifySession } = await import("../auth.ts");
 
 /**
  * A session is one token for every listing it may edit, and every route that hands one out has to keep what
@@ -69,4 +69,33 @@ test("editing the listings in a session invalidates it", () => {
   const sig = token.split(".")[1];
   const forged = Buffer.from(JSON.stringify({ ids: ["o-one", "o-someone-elses"], email: "", exp: Date.now() + 60000 })).toString("base64url");
   assert.equal(verifySession(forged + "." + sig), null);
+});
+
+/**
+ * `emailVerified` is the one thing on a session that says the address was proven, by a code we mailed to it.
+ * The claim route puts the address the claimer typed into the claim form on the session it hands back, so a
+ * route that minted a session had to be told what to keep: the proof travels with a widening of the same
+ * address and never with a change of address, or anyone with a claim link could name themselves an admin.
+ */
+
+test("a widened session keeps a proof it already held", () => {
+  const prior = verifySession(signSession({ ids: ["o-one"], email: "ann@example.com", emailVerified: true, exp: Date.now() + 60000 }));
+  assert.deepEqual(keepProof(prior, "ann@example.com"), { emailVerified: true });
+});
+
+test("a session that names a different address keeps nothing", () => {
+  const prior = verifySession(signSession({ ids: ["o-one"], email: "ann@example.com", emailVerified: true, exp: Date.now() + 60000 }));
+  assert.deepEqual(keepProof(prior, "someone@else.com"), {});
+  assert.deepEqual(keepProof(prior, ""), {});
+});
+
+test("a session that never proved its address cannot pass a proof on", () => {
+  const prior = verifySession(signSession({ ids: ["o-one"], email: "ann@example.com", exp: Date.now() + 60000 }));
+  assert.deepEqual(keepProof(prior, "ann@example.com"), {});
+  assert.deepEqual(keepProof(null, "ann@example.com"), {});
+});
+
+test("an expired session passes no proof on either", () => {
+  const stale = verifySession(signSession({ ids: ["o-one"], email: "ann@example.com", emailVerified: true, exp: Date.now() - 1 }));
+  assert.deepEqual(keepProof(stale, "ann@example.com"), {});
 });

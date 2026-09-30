@@ -394,8 +394,17 @@ test("a snapshot with a number that is not a number is refused", () => {
 
 const app = makeMetrics(deps());
 
+/** A signed-in admin: the address was proven by a mailed code, which is what /auth/verify records. */
 function session(email: string, exp = Date.now() + 60_000): string {
-  return signSession({ ids: [], email, exp });
+  return signSession({ ids: [], email, emailVerified: true, exp });
+}
+
+/**
+ * The session POST /claims/:id hands back: scoped to one listing, carrying the address the claimer typed into
+ * the claim form, which nothing has checked. Same shape, no proof.
+ */
+function claimSession(email: string, id = "o-someones-shop-com"): string {
+  return signSession({ ids: [id], email, exp: Date.now() + 60_000 });
 }
 
 test("no session and no key is 404, never 403", async () => {
@@ -431,6 +440,26 @@ test("an empty ADMIN_EMAILS closes the session door", async () => {
   process.env.ADMIN_EMAILS = "";
   const res = await app.request("/admin/metrics", { headers: { "x-session": session("harshils2340@gmail.com") } });
   assert.equal(res.status, 404);
+});
+
+/**
+ * The whole reason the session carries `emailVerified`. A claim link is a bearer token and the claim form's
+ * address is never checked, so before this anyone holding a link for any one listing could type an address from
+ * ADMIN_EMAILS into it and be handed a session that opened this route: every guest's name and booking, every
+ * claim address, and what Outset has spent.
+ */
+test("a session carrying an allowlisted address that nothing proved is 404", async () => {
+  process.env.ADMIN_EMAILS = "harshils2340@gmail.com";
+  delete process.env.ADMIN_KEY;
+  for (const token of [claimSession("harshils2340@gmail.com"), signSession({ ids: [], email: "harshils2340@gmail.com", exp: Date.now() + 60_000 })]) {
+    assert.equal((await app.request("/admin/metrics", { headers: { "x-session": token } })).status, 404);
+    const spend = await app.request("/admin/spend", {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-session": token },
+      body: JSON.stringify({ discovery: 1, extraction: 2 }),
+    });
+    assert.equal(spend.status, 404);
+  }
 });
 
 test("an expired session is 404", async () => {
