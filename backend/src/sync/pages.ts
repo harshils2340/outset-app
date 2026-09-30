@@ -681,6 +681,18 @@ export function writeLandingPages(rawItems: Item[], opts: { publicDir?: string }
   const METRO_MAIN_TOWN: Record<string, string> = { tampa: "Tampa", dc: "Washington" };
   const isMetroMainCity = (town: string, region: string, metro: Metro) =>
     region === metro.region && (normCmp(town) === normCmp(metro.name) || normCmp(town) === normCmp(METRO_MAIN_TOWN[metro.id] || "\0"));
+  /**
+   * Is this town some metro's own main town, whichever metro the listings that name it happen to be filed under?
+   *
+   * The question used to be asked of one metro only: the one carried by the first listing that named the town,
+   * which is the row `cityMetaById` happened to see first. 801 listings give their area as "Toronto, ON" and 69
+   * of them are filed under Hamilton, Waterloo, Niagara or no metro at all, so in 36 of the activities the first
+   * one seen was not a Toronto row, the guard compared Toronto against Hamilton and wrote a second page. Every
+   * Toronto activity shipped twice, "Arcades in Toronto, Ontario" as both `arcade-in-toronto.html` and
+   * `arcade-in-toronto-on.html`, same h1, same title, near-identical grid, both in the sitemap. The region is
+   * still part of the match, so Hamilton, Ohio keeps its own page beside the Hamilton, Ontario metro.
+   */
+  const isSomeMetrosMainCity = (town: string, region: string) => METROS.some((m) => isMetroMainCity(town, region, m));
 
   type CityMeta = { town: string; region: string; metroId: string | null };
   const byKindCity = new Map<string, Map<string, Item[]>>();
@@ -726,7 +738,7 @@ export function writeLandingPages(rawItems: Item[], opts: { publicDir?: string }
       if (local.length < MIN_METRO_LISTINGS) continue;
       const meta = cityMetaById.get(cityId)!;
       const metro = meta.metroId ? metroById.get(meta.metroId) : undefined;
-      if (metro && isMetroMainCity(meta.town, meta.region, metro)) continue; // this town IS the metro's own page
+      if (isSomeMetrosMainCity(meta.town, meta.region)) continue; // this town IS a metro's own page
       const place: Place = { id: cityId, name: meta.town, region: meta.region, lat: metro?.lat ?? 0, lon: metro?.lon ?? 0 };
       const sorted = local.slice().sort(rank);
       cities.push({ cityId, place, items: sorted, metroId: meta.metroId });

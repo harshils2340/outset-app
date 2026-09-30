@@ -645,3 +645,48 @@ test("a doubled comma in an area line does not reach a page's list of towns", ()
   const [first] = buildFaq(KINDS.find((k) => k.art === "cooking")!, metro("toronto"), items);
   assert.match(first.a, /including places in Toronto and Cavan-Monaghan\./);
 });
+
+/**
+ * A metro's own main town never gets a second page of its own. The guard used to ask that of one metro only, the
+ * one carried by the first listing that named the town: 801 listings give their area as "Toronto, ON" and 69 of
+ * them are filed under Hamilton, Waterloo, Niagara or no metro at all, so in 36 of the activities the first row
+ * seen was not a Toronto one, Toronto was compared against Hamilton, and every Toronto activity shipped twice.
+ * "Arcades in Toronto, Ontario" was both arcade-in-toronto.html and arcade-in-toronto-on.html: same h1, same
+ * title, near-identical grid, both in the sitemap.
+ */
+test("a metro's own main town gets no second page, whichever metro its listings are filed under", () => {
+  const items: Item[] = [
+    // First in the list and filed under the neighbouring metro, which is what used to defeat the guard.
+    item("cooking", "hamilton", 1, { area: "Toronto, ON" }),
+    item("cooking", "toronto", 2, { area: "Toronto, ON" }),
+    item("cooking", "toronto", 3, { area: "Toronto, ON" }),
+    item("cooking", "toronto", 4, { area: "Toronto, ON" }),
+  ];
+  const r = run(items);
+  try {
+    assert.ok(r.files.includes("cooking-in-toronto.html"), "the metro page is still written");
+    assert.ok(!r.files.includes("cooking-in-toronto-on.html"), "no second page for the metro's own town");
+    const h1s = r.files.map((f) => (/<h1>([^<]*)<\/h1>/.exec(r.read(f)) || [])[1] || "");
+    assert.equal(new Set(h1s).size, h1s.length, "no two landing pages share an h1");
+  } finally {
+    r.cleanup();
+  }
+});
+
+/**
+ * The region is still part of the match, so a real town that merely shares a metro's name across a state line
+ * keeps its own page: Hamilton, Ohio is not the Hamilton, Ontario metro.
+ */
+test("a town that shares a metro's name in another region keeps its own page", () => {
+  const items: Item[] = [
+    item("cooking", null, 1, { area: "Hamilton, OH" }),
+    item("cooking", null, 2, { area: "Hamilton, OH" }),
+    item("cooking", null, 3, { area: "Hamilton, OH" }),
+  ];
+  const r = run(items);
+  try {
+    assert.ok(r.files.includes("cooking-in-hamilton-oh.html"), "Hamilton, Ohio keeps its own page");
+  } finally {
+    r.cleanup();
+  }
+});
