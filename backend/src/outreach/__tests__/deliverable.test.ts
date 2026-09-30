@@ -1,6 +1,6 @@
 import { strict as assert } from "node:assert";
 import test from "node:test";
-import { decide } from "../deliverable.ts";
+import { decide, readDnsError } from "../deliverable.ts";
 import { dayStartIso } from "../sendOtto.ts";
 
 test("a domain with a mail exchanger, or at least an address, can be sent to", () => {
@@ -18,6 +18,23 @@ test("a resolver that could not answer is not evidence against the address", () 
   assert.equal(decide({ mx: null, a: null }), true);
   assert.equal(decide({ mx: false, a: null }), true);
   assert.equal(decide({ mx: null, a: false }), true);
+});
+
+test("only the two codes that answer for the domain are read as an answer", () => {
+  // NXDOMAIN, and the name existing with no record of that type: both are the domain's own answer.
+  assert.equal(readDnsError("ENOTFOUND"), false);
+  assert.equal(readDnsError("ENODATA"), false);
+});
+
+test("a resolver that gave up is not read as a domain that does not exist", () => {
+  // SERVFAIL is the resolver saying it could not complete the question, not an answer about the name. It was
+  // read as "no such domain" until 30 September 2026, and the cloud sender writes a 'failed' touch for every
+  // address this refuses, which takes it out of the pool for good: one resolver hiccup retired the batch.
+  assert.equal(readDnsError("ESERVFAIL"), null);
+  assert.equal(readDnsError("EAI_AGAIN"), null);
+  assert.equal(readDnsError("ETIMEOUT"), null);
+  assert.equal(readDnsError("ECONNREFUSED"), null);
+  assert.equal(readDnsError(undefined), null);
 });
 
 

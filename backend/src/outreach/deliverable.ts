@@ -24,15 +24,31 @@ export function decide(l: Lookup): boolean {
   return true;
 }
 
-const NO_SUCH = new Set(["ENOTFOUND", "ENODATA", "ESERVFAIL"]);
+/**
+ * What a failed lookup says about the domain: `false` for an answer that the name has nothing there, `null`
+ * for no answer at all.
+ *
+ * Only two codes are the domain's own. `ENOTFOUND` is NXDOMAIN, the authoritative server saying the name does
+ * not exist. `ENODATA` is NOERROR with an empty answer, the name existing with no record of that type.
+ *
+ * `ESERVFAIL` is neither, and used to be read as one. It is SERVFAIL, which is the resolver saying it could
+ * not complete the question: an upstream it cannot reach, a DNSSEC signature it cannot validate, its own
+ * overload. That is exactly the "a resolver that cannot answer is not evidence" case above, and reading it as
+ * "this domain does not exist" is fail-closed in the one direction that costs something. The cloud sender
+ * (scripts/otto-cloud.mts) writes a `failed` touch for every address this refuses, and a failed touch takes
+ * that address out of the pool for good, so one resolver hiccup could retire every business it happened to
+ * ask about. guards.ts's `skipMark` carries the same warning about the laptop's queue.
+ */
+export function readDnsError(code: string | undefined): false | null {
+  return code === "ENOTFOUND" || code === "ENODATA" ? false : null;
+}
 
 async function has(fn: () => Promise<unknown[]>): Promise<boolean | null> {
   try {
     const r = await fn();
     return r.length > 0;
   } catch (e) {
-    const code = (e as { code?: string }).code || "";
-    return NO_SUCH.has(code) ? false : null;
+    return readDnsError((e as { code?: string }).code);
   }
 }
 
