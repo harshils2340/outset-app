@@ -7383,6 +7383,90 @@ backend but for TS5097. The rehearsal was skipped for the reason at the top. Not
   that publishes a week per branch has no reader for it; the desktop site has no way to say anything in
   passing; `plainWords` is not idempotent; the operator's dashboard names a booking as the crawl found it.
 
+## 30 September 2026, hundred and ninth run (08:10 to 09:00 UTC)
+
+**Chosen, and why.** `git fetch` first: nothing but the hundred and eighth run's log entry has landed since it.
+That entry records the rehearsal **skipped**, not green, and five commits since the last green pass touch
+`backend/src` and `backend/scripts`, so by both halves of the rule the rehearsal was run rather than skipped:
+green at 57 of 57 on `main` before anything was changed, and again after. Both `node_modules` were missing on
+this checkout and were installed first. Baseline: root `tsc --noEmit -p .` and `tsc -b` clean, backend clean but
+for TS5097, app 1,035 pass, backend 937 tests with 935 pass and 2 skipped.
+
+Every area on the brief is on the Verified list, so the hunt looked for the surface with the least of the last
+108 runs on it: `src/lib/adminApi.ts` is named nowhere in this file, and neither is `src/components/admin` or
+`backend/src/api/metrics.ts`. That is the internal metrics page, the one surface that holds every guest's name,
+every booking's money, every claim address and what Outset has spent. It had never been read here. The first
+thing to read was the door.
+
+**Found and fixed.**
+
+- **An address typed into a claim form stops opening the internal metrics page** (`4def809a`). The headline, and
+  a hole anybody with a claim link could walk through. The gate read whatever address a session carried, and
+  `POST /claims/:id` puts the address the claimer typed into the claim form on the session it hands back. A claim
+  link is a bearer token and nothing checks that address (the route's own comment says a forwarded email reaches
+  a stranger), so anyone holding a link for any one listing could type `harshils2340@gmail.com` into the claim
+  form and be handed a signed session that opened `GET /admin/metrics`, `POST /admin/spend` and the concierge's
+  two watch pages: every guest's name, their booking and its money, every claim address, the spend, and the last
+  forty sentences other guests typed into the agent with the town each was sitting in. A session now records
+  whether its address was proven by a mailed code, which `/auth/verify` is the only route that can say, and the
+  gate asks for that proof. A route that widens a session keeps a proof already held while the address stays the
+  same, so signing a second shop in does not sign an admin out. Proved both ways: with the old gate put back,
+  the three routes answer 200 to a claim-form session in the rehearsal's own store checks.
+- **The metrics page stops answering its own reader with a door that has no handle** (`221966d2`). Found by
+  asking what the fix above does to Harshil's browser. `/admin` called a browser signed in whenever a session was
+  in storage with an address on it, and claiming a shop saves one, so a browser that has been through the operator
+  dashboard looked signed in, the route refused it, and the page drew a bare "Not found" with nothing to press
+  and no way back to the sign-in box. That browser is the one test shops get claimed in, and after the gate fix
+  it is also the state every existing admin session is in. A refusal before any sign-in now offers the sign-in
+  box, which is exactly what a visitor with no session already sees, so it tells nobody anything new; after a
+  sign-in the 404 is the real answer and still reads "Not found".
+- **Canadian dollars stop being added to American ones** (`5b00eea5`). The money block labelled itself with the
+  busiest currency and then summed every currency into each figure, and the per-day chart under it mixed them
+  the same way. A listing is priced in its own country's dollars and 1,030 Canadian shops ship, so one Canadian
+  booking puts CAD inside a block headed USD, on the page whose whole job is to say what Outset has earned. Every
+  figure is now the labelled currency's own, the chart with it, and the rest are named under "Other currencies"
+  with their own gross rather than folded in or dropped. Counts stay counts: a booking is one whatever it was
+  charged in. The one test there was checked the label and never the figures under it.
+- **The metrics doc carries both rules** (`a3433d94`), and loses the three em dashes it was carrying.
+
+**Swept and clean, or measured and left.** Every place in the API that mints a session, against where the
+address on one is read as an identity: four mint (`/auth/verify`, `/claims/:id/exchange`,
+`/claims/:id/test-enter`, `POST /claims/:id`) and two read (`isAdminRequest`, and `/auth/session` echoing it back
+to the device that holds it), so the gate was the whole exposure. The rest of `metrics.ts` read line by line:
+the captured-only gross, the refund rule against what `refundBooking` actually writes, the UTC day range and
+every filled series, the catalog stream and its null-not-zero notes, the suppression unwrap, `shortName`, and
+`buildCosts` with its zero denominators. Every chart in `charts.tsx` for a divide by zero or an empty domain:
+`niceMax`, the sparkline span and the funnel base all floor at 1 and `TimeChart` refuses fewer than two points
+and an all-zero total. The full type check over `backend/scripts` again for anything beyond the unbound names
+the hundred and eighth run made a test of: the same eight complaints it listed, nothing new.
+
+**Verification.** Backend `npm test` 944 tests, 942 pass, 0 fail, 2 skipped, up from 937 (seven new tests over
+three files). App `npm test` 1,040 pass, 0 fail, up from 1,035 (five new). `tsc -b` clean, `tsc --noEmit -p .`
+clean at the root and in backend but for TS5097. The rehearsal ran twice, green at 57 of 57 both times, against
+a local Postgres 16 cluster built here on port 5433 with SSL on and the Playwright Chromium already on disk, with
+no Stripe, mail or GitHub key. `store-e2e.mts` carries five new checks (4c) that drive the real claim route
+against Postgres and then try the three internal routes with the session it hands back. Nothing under
+`backend/data`, `public/` or `src/data` was touched.
+
+**Needs Harshil.**
+
+- **Sign in to /admin again.** Any session your browser is holding was minted before tonight and carries no
+  proof, so the page will show the sign-in box rather than the numbers. One emailed code fixes it for thirty
+  days. Nothing else about the page changed.
+- **A second campaign to the same business is invisible on the page.** `outreach_log` is keyed
+  `(email_hash, kind)` with `on conflict do nothing`, so `outreach.sent` counts addresses and not messages,
+  which is what the funnel's "emailed" wants. With two campaigns now mailing the same business (the listing
+  pitch and Otto), the second send is never counted and never appears on a day series. Deciding whether
+  "emailed" means businesses or messages is yours; it is a migration either way.
+- **`costs.total` would mix a month with a lifetime.** `compute` is Render's month-to-date and discovery and
+  extraction are lifetime, so `total` adds them and `perClaim` divides that by lifetime claims. Latent only
+  because Render publishes no cost endpoint and `compute` is permanently null; the moment it is not, that figure
+  needs a window.
+- Still open from earlier runs: the static pages are 2,241 listings behind the app until a sync runs; the cards
+  are 861 weeks behind the pages until one runs; a chain that publishes a week per branch has no reader for it;
+  the desktop site has no way to say anything in passing; `plainWords` is not idempotent; the operator's
+  dashboard names a booking as the crawl found it.
+
 ## Coverage
 
 The catalog is 48,198 listings as of the 23 September sync, 1,873 of them Viator partner rows. Counts below
@@ -8203,7 +8287,23 @@ Every module-level global regex in both projects against the `.test()` and `.exe
 `lastIndex` carried from one string to the next. Every `.sort()` with no comparator, for a numeric array sorted
 as strings.
 
-**Not yet checked.** Which of two hour lines about two different things a guest should read, on the listings
+The internal metrics page, which no earlier run had opened at all: who may read it, over every route in the API
+that mints a session and every reader that treats the address on one as an identity, with the claim form's own
+unchecked address driven against all three internal routes end to end; the money arithmetic, per currency rather
+than summed across them, against what the booking routes actually write for a capture, a release, a refund and a
+reversed payout; the day series behind both of its charts; the catalog stream and every figure that has to be
+null rather than zero; `buildCosts` and its zero denominators; and the three screens the page itself can draw,
+including the one a browser that has claimed a shop lands on. Every chart in `charts.tsx` for a divide by zero or
+an empty domain.
+
+**Not yet checked.** The metrics page drawn in a real browser, at 1280px or at 400px: its gate, its arithmetic
+and its charts are read and tested and the page itself has never been opened here. Whether "emailed" on its
+funnel means businesses or messages, now that two campaigns mail the same address and `outreach_log`'s
+`(email_hash, kind)` key counts only the first send, so the second is on no total and no day series (see this
+run's Needs Harshil). Whether `costs.total` should add Render's month-to-date compute to a lifetime of discovery
+and extraction, and `perClaim` divide that by lifetime claims, which it would the moment Render published a cost
+endpoint (see this run's Needs Harshil). Whether `catalog.unclaimed` should subtract profile rows for ids the
+published catalog does not hold, which it counts today. Which of two hour lines about two different things a guest should read, on the listings
 where two lines that each name their own days disagree about one and the last one written wins: measured twice
 now and refused twice, once on breadth and once on the words a line opens on, so what is left is a subject the
 record itself would have to carry. Which week a chain that publishes one per branch should show, on the five
