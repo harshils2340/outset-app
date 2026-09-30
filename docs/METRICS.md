@@ -9,10 +9,19 @@ sees it, and nothing it reports is exposed on any guest or operator route.
 `GET /admin/metrics` answers two kinds of caller, and **404** to everyone else. Not 403: a 403 would confirm the
 route exists to whoever is guessing at it.
 
-1. **A session whose email is in `ADMIN_EMAILS`.** The browser signs in the way an operator does, with a code
-   emailed to the address (`POST /auth/request-code`, then `POST /auth/verify`, which returns a session token the
-   page sends as `x-session`). No secret is ever typed into a page or put in a URL. An admin address normally has
-   claimed no listing, so `/auth/request-code` sends a code to an address on the list even when it owns nothing.
+1. **A session whose email is in `ADMIN_EMAILS`, and whose address was proven by that code.** The browser signs
+   in the way an operator does, with a code emailed to the address (`POST /auth/request-code`, then
+   `POST /auth/verify`, which returns a session token the page sends as `x-session`). No secret is ever typed
+   into a page or put in a URL. An admin address normally has claimed no listing, so `/auth/request-code` sends a
+   code to an address on the list even when it owns nothing.
+
+   `/auth/verify` is the only route that proves an address, and the session it signs records that
+   (`emailVerified` on the `Session` in `backend/src/api/auth.ts`). Every other door mints a session from an
+   address nobody checked: `POST /claims/:id` stores whatever the claimer typed into the claim form and hands it
+   back on the session, and a claim link is a bearer token. Without the proof, anyone holding a link for any one
+   listing could type an address from `ADMIN_EMAILS` into the claim form and read this page. A session widened by
+   a second claim link keeps a proof it already held while the address stays the same, so signing a shop in does
+   not sign an admin out; signing in again always fixes it.
 2. **`x-admin-key`**, the same key the rest of the internal tooling uses, for curl.
 
 `ADMIN_EMAILS` is comma separated, trimmed and lowercased. **Unset means nobody**: with no value the session door
@@ -46,6 +55,11 @@ ascending, including the days nothing happened on, so a chart can plot it straig
   rounded to cents, never cents-as-integer.
 - **money.refunded** is money that was taken and given back. A hold released before capture was never taken, so
   it is not a refund; the two are told apart by the payout, which only exists once a card has been captured.
+- **money.currency** is the currency most bookings were taken in, and every figure under it is that currency's
+  own. A listing is priced in its own country's dollars (`currencyForArea`), so CAD is never added to USD:
+  `money.others` names each other currency with its own booking count and gross, and `money.byDay` carries the
+  labelled currency alone so the chart and the tiles cannot disagree. Counts (`bookings.total`, `byStatus`,
+  `byDay.booked`) count every booking whatever it was charged in.
 - **money.\*** totals are lifetime; **money.byDay** covers the window. Same for `bookings.total` (lifetime)
   versus `bookings.inRange`.
 - **claims.claimed** is the number of rows in `profiles`, one per claimed listing. `catalog.unclaimed` is the
@@ -107,7 +121,7 @@ disk, which the deployed API cannot read. So the worker posts them.
 `POST /admin/spend` takes `{discovery, extraction, total, capUsd, at, byDay:[{day, discovery, extraction}]}` and
 replaces the single row in the Postgres table `spend_snapshot` (`backend/src/lib/spendLog.ts`). It is behind the
 **same gate** as `GET /admin/metrics`: the admin key or an `ADMIN_EMAILS` session, and 404 for everyone else. The
-posted `total` is not believed — it is recomputed from the two parts, so the three figures can never disagree —
+posted `total` is not believed: it is recomputed from the two parts, so the three figures can never disagree,
 and a body with a NaN, a negative, or more than 400 days is 400 and changes nothing.
 
 ```
@@ -118,8 +132,8 @@ curl -s -X POST -H "x-admin-key: $ADMIN_KEY" -H 'content-type: application/json'
 
 The nightly pipeline does it at **06:00**, after the 05:00 sync, as the `spend` job
 (`backend/scripts/report-spend.mts`, run from the repo clone like every other job). It reads `paidSpendUsd()` and
-`paidSpendByDayUsd()` from `backend/src/discover/aisearch.ts` — never a ledger on its own, which would miss the
-Google Maps requests entirely — and it **cannot fail the pipeline**: no key, no `API_URL`, no network or a
+`paidSpendByDayUsd()` from `backend/src/discover/aisearch.ts`, never a ledger on its own, which would miss the
+Google Maps requests entirely, and it **cannot fail the pipeline**: no key, no `API_URL`, no network or a
 non-200 is one line on stdout and exit 0. Run it by hand with
 `npx tsx scripts/pipeline.mts --once=spend`.
 
