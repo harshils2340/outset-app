@@ -42,6 +42,24 @@ test("a line whose only readable time came out of a date says nothing", () => {
   assert.equal(show(encodeWeek(["open to the public Sunday 4/14/2411am-1pm"])), "(no hours)");
 });
 
+
+test("a date written in digits is one day too", () => {
+  // The twin of the guest-side rule, on the four shipped lines that write the date in digits: one open house,
+  // one guided tour, one open play and one Monday, each of which had become the shop's whole week.
+  assert.equal(show(encodeWeek(["MONDAY 9/7/26 1pm-5pm"])), "(no hours)");
+  assert.equal(show(encodeWeek(["Open Tour 09/13/2026 1:00 PM - 4:00 PM"])), "(no hours)");
+  assert.equal(show(encodeWeek(["Open House Fri, 2026-09-25 7:00 pm -10:00 pm"])), "(no hours)");
+  assert.equal(show(encodeWeek(["Open House Sat, 10-17-2026 8:30 am -11:30 am"])), "(no hours)");
+  assert.equal(show(encodeWeek(["8/15/22Monday10:00am - 7:00pm"])), "(no hours)");
+  assert.equal(
+    show(encodeWeek(["Open Play- 8/22/26 11am-4pm", "Friday 11:00am - 7:00PM", "Saturday 11:00AM - 7:00PM"])),
+    "Sun -, Mon -, Tue -, Wed -, Thu -, Fri 11:00-19:00, Sat 11:00-19:00",
+  );
+  // A year is what tells a date from a season, and a run word still opens a run of days rather than one.
+  assert.equal(show(encodeWeek(["Early Season (5/30 - 6/12) 10:00 a.m. to 5:00 p.m."])), everyDay("10:00-17:00"));
+  assert.equal(show(encodeWeek(["Open daily starting 9/1/26 10am-5pm"])), everyDay("10:00-17:00"));
+});
+
 test("a dot, a second and a missing separator are all still times", () => {
   assert.equal(show(encodeWeek(["Monday–Sunday 6.30 am – 7 pm"])), everyDay("06:30-19:00"));
   assert.equal(show(encodeWeek(["? We are open 7 days a week from 9:30:00 AM to 9:30 PM"])), everyDay("09:30-21:30"));

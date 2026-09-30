@@ -104,9 +104,28 @@ const OSM_DAY_CODE = /\b(?:Mo|Tu|We|Th|Fr|Sa|Su|PH)\b/;
 /** A word that makes the date one end of a run of days rather than the whole of it. */
 const RUN_WORD = /\b(?:start(?:s|ing)?|begin(?:s|ning)?|until|till|thru|through|after|onward|resumes?|effective|season|reopens?)\b/i;
 
+/**
+ * The same date written in digits, which the month-name rule cannot see. Four shipped lines carry one, and for
+ * three of them it is the shop's whole Hours block: a curling club's "Open House Fri, 2026-09-25 7:00 pm
+ * -10:00 pm" became every Friday evening it keeps, a city's "Open Tour 09/13/2026 1:00 PM - 4:00 PM" and a
+ * party centre's "Open Play- 8/22/26 11am-4pm" became every afternoon of their weeks, and a hall's "MONDAY
+ * 9/7/26 1pm-5pm" became its Mondays. One open house, one tour, one open play and one Monday, each printed to
+ * a guest as the hours of the business. A year is what tells a date from a season or a fraction, so only the
+ * three-part spellings are read: "Early Season (5/30 - 6/12)" names two days of two months and keeps its hours.
+ */
+const NUMERIC_DATE = /\b\d{1,2}[/.\-]\d{1,2}[/.\-]\d{2}(?:\d{2})?(?!\d)|\b\d{4}-\d{1,2}-\d{1,2}(?!\d)/g;
+/** Whether a line names one date in digits and nothing wider, read by the same guards the written dates read. */
+function namesOneNumericDate(line: string): boolean {
+  const dates = [...line.matchAll(NUMERIC_DATE)];
+  if (dates.length !== 1) return false;
+  if (RUN_WORD.test(line)) return false;
+  return !RUN_ENDS_HERE.test(line.slice(0, dates[0].index));
+}
+
 /** Whether a line names one calendar date and nothing wider, which is one day rather than a week. */
 function namesOneDay(line: string): boolean {
   if (OSM_DAY_CODE.test(line)) return false;
+  if (namesOneNumericDate(line)) return true;
   const dates = [...line.matchAll(DATED_DAY)];
   if (dates.length !== 1) return false;
   if ((line.match(MONTH_ANYWHERE) || []).length !== 1) return false;

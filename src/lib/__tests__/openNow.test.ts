@@ -51,8 +51,9 @@ test("a date in front of the hours does not become the opening time", () => {
   assert.equal(show(parseWeek(["Dec 23 - 26: CLOSED Dec 26 - 31: 9am - 1pm"])), everyDay("09:00-13:00"));
   // o-barneysdrumheller-com read "13-28" and opened at 1 PM until 4 AM.
   assert.equal(show(parseWeek(["June 13-28th Weekends 9AM-5PM"])), "Sun 09:00-17:00, Mon -, Tue -, Wed -, Thu -, Fri -, Sat 09:00-17:00");
-  // o-glenmorecurling-com read "26-09" out of an ISO date and opened at 2 AM.
-  assert.equal(show(parseWeek(["Open House Fri, 2026-09-25 7:00 pm -10:00 pm"])), "Sun -, Mon -, Tue -, Wed -, Thu -, Fri 19:00-22:00, Sat -");
+  // o-glenmorecurling-com read "26-09" out of an ISO date and opened at 2 AM. The date is the whole of what
+  // the line is about, one open house, so the club states no week at all rather than an evening.
+  assert.equal(show(parseWeek(["Open House Fri, 2026-09-25 7:00 pm -10:00 pm"])), "(no hours)");
 });
 
 test("a line whose only readable time is a date says nothing rather than guessing", () => {
@@ -62,6 +63,25 @@ test("a line whose only readable time is a date says nothing rather than guessin
   assert.equal(show(parseWeek(["2026 - 10am to 4pm"])), "(no hours)");
   // o-martinezhistory-org: "2411am" is the fourteenth of April and eleven o'clock, and 24am is not a time.
   assert.equal(show(parseWeek(["open to the public Sunday 4/14/2411am-1pm"])), "(no hours)");
+});
+
+
+test("a date written in digits is one day too", () => {
+  // Four shipped lines write the date in digits, where the month-name rule could not see it. Three of the four
+  // are the shop's whole Hours block, so one open house, one guided tour and one open play became a week.
+  assert.equal(show(parseWeek(["MONDAY 9/7/26 1pm-5pm"])), "(no hours)");
+  assert.equal(show(parseWeek(["Open Tour 09/13/2026 1:00 PM - 4:00 PM"])), "(no hours)");
+  assert.equal(show(parseWeek(["Open House Sat, 10-17-2026 8:30 am -11:30 am"])), "(no hours)");
+  assert.equal(show(parseWeek(["8/15/22Monday10:00am - 7:00pm"])), "(no hours)");
+  // o-unitedpa-fun states its open play date first and its real Friday and Saturday after it.
+  assert.equal(
+    show(parseWeek(["Open Play- 8/22/26 11am-4pm", "Friday 11:00am - 7:00PM", "Saturday 11:00AM - 7:00PM"])),
+    "Sun -, Mon -, Tue -, Wed -, Thu -, Fri 11:00-19:00, Sat 11:00-19:00",
+  );
+  // A year is what tells a date from a season, and a run word still opens a run of days rather than one.
+  assert.equal(show(parseWeek(["Early Season (5/30 - 6/12) 10:00 a.m. to 5:00 p.m."])), everyDay("10:00-17:00"));
+  assert.equal(show(parseWeek(["Open daily starting 9/1/26 10am-5pm"])), everyDay("10:00-17:00"));
+  assert.equal(show(parseWeek(["Mon-Fri 9am-5pm, 1/2 day Saturday 9am-1pm"])), "Sun -, Mon 09:00-17:00, Tue 09:00-17:00, Wed 09:00-17:00, Thu 09:00-17:00, Fri 09:00-17:00, Sat 09:00-13:00");
 });
 
 test("the three ways a shop writes a time that is still a time", () => {
