@@ -1,7 +1,8 @@
 import { LISTINGS } from "../../data/listings";
 import { ICONS } from "../../data/icons";
 import { experienceById } from "../../lib/catalog";
-import { fmtDate, fmtTime, money } from "../../lib/format";
+import { fmtDate, fmtTime, moneyIn } from "../../lib/format";
+import { countryOfArea } from "../../data/regions";
 import { splitAddons } from "../../lib/storage";
 import { useApp } from "../../state/AppProvider";
 import { Markup } from "../Markup";
@@ -22,6 +23,8 @@ export function ConfirmView() {
   const op = l ? l.op : u!.title;
   // Only a shop that claimed its listing and switched Instant Book on can promise a confirmed slot.
   const instant = !!(u?.claimed && u?.instant);
+  // The dollars the booking was taken in, from the same area line the server charged it by.
+  const cur = u ? countryOfArea(u.area) : "US";
   /* A catalog booking stores the service it picked as an index into the menu and every extra by name. This
      screen read the whole list as indexes, so the extras came out as nothing: a guest who added a $30 dry bag
      paid for it in the total and saw no dry bag anywhere on the screen that confirmed their booking. The
@@ -90,7 +93,7 @@ export function ConfirmView() {
           </div>
           <div className="trow">
             <span>{b.paid ? "Paid" : instant ? "Total" : "Total, once confirmed"}</span>
-            <b className="mono">{b.total ? money(b.total) : "On site"}</b>
+            <b className="mono">{b.total ? moneyIn(b.total, cur) : "On site"}</b>
           </div>
         </div>
       </div>

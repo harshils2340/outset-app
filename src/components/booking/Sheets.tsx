@@ -28,7 +28,8 @@ import {
   topRated,
   type FactLine,
 } from "../../lib/catalog";
-import { fmtDate, fmtReviews, fmtTime, money, priceWith, reviewsLine, unitLine } from "../../lib/format";
+import { fmtDate, fmtReviews, fmtTime, money, moneyIn, priceWith, reviewsLine, unitLine } from "../../lib/format";
+import { countryOfArea } from "../../data/regions";
 import { formatDistance, milesBetween, type GeoPoint } from "../../lib/geo";
 import { addonPrice, hasPrice, priceFor, priceUnclaimed, serviceFeeLabel } from "../../lib/pricing";
 import { ottoActive, useWallet } from "../../lib/wallet";
@@ -633,7 +634,10 @@ function RequestBody({
 
   if (pay && ready && time) {
     // The same three labels the desktop listing uses, so the two surfaces cannot promise different things.
-    const cta = !guestOk ? "Add your name and number" : cardNow ? (ottoNow ? "Book with Otto " : "Book and pay ") + money(p.total!) : instant ? (p.total ? "Confirm and pay " + money(p.total) : "Confirm booking") : "Request to book";
+    // The dollars this shop charges in. The server picks the same one from the same area line, and the
+    // booking email names it, so the screen that takes the money says it too.
+    const cur = countryOfArea(item.area);
+    const cta = !guestOk ? "Add your name and number" : cardNow ? (ottoNow ? "Book with Otto " : "Book and pay ") + moneyIn(p.total!, cur) : instant ? (p.total ? "Confirm and pay " + moneyIn(p.total, cur) : "Confirm booking") : "Request to book";
     return (
       <>
         <div className="reqpad airpay" key="pay">
@@ -704,8 +708,8 @@ function RequestBody({
                   // switched on; the phone showed "Sunset sail · 2 hours  $116" over a tier row reading "$29",
                   // and on a phone the frame goes away and this screen is the whole app.
                   <div className="airline">
-                    <span>{picked && perPerson(picked) && hasPrice(picked.price) ? money(picked.price) + " × " + qty + (qty === 1 ? " guest" : " guests") : picked ? optionLabel(picked) : "Experience"}</span>
-                    <span>{money(p.base)}</span>
+                    <span>{picked && perPerson(picked) && hasPrice(picked.price) ? moneyIn(picked.price, cur) + " × " + qty + (qty === 1 ? " guest" : " guests") : picked ? optionLabel(picked) : "Experience"}</span>
+                    <span>{moneyIn(p.base, cur)}</span>
                   </div>
                 ) : (
                   <div className="airline">
@@ -716,18 +720,18 @@ function RequestBody({
                 {extras.map((a) => (
                   <div className="airline" key={a.name}>
                     <span>{tidyName(a.name)}</span>
-                    <span>{money(addonPrice(a))}</span>
+                    <span>{moneyIn(addonPrice(a), cur)}</span>
                   </div>
                 ))}
                 {p.fee ? (
                   <div className="airline">
                     <span className="u">{serviceFeeLabel(p)}</span>
-                    <span>{money(p.fee)}</span>
+                    <span>{moneyIn(p.fee, cur)}</span>
                   </div>
                 ) : null}
                 <div className="airline total">
                   <b>Total</b>
-                  <b>{p.total ? money(p.total) : "Pay on site"}</b>
+                  <b>{p.total ? moneyIn(p.total, cur) : "Pay on site"}</b>
                 </div>
               </div>
             </section>

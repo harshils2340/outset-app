@@ -11,7 +11,7 @@ import type { Unclaimed } from "../../data/types";
 import { measurableFrom } from "../explore/feed";
 import { streetOf } from "../../lib/address";
 import { addressLine, bookingPaused, contactFor, fmtPhone, fromPrice, getCatalog, guestCapFor, listingFacts, mapsHref, maxGuestsFor, partnerBookLine, perPerson, publicRating, telHref, topRated as isTopRated, venueMapsQuery } from "../../lib/catalog";
-import { clockOfMinutes, DAYS, fmtDate, fmtReviews, fmtTime, money, priceWith, reviewsLine } from "../../lib/format";
+import { clockOfMinutes, DAYS, fmtDate, fmtReviews, fmtTime, money, moneyIn, priceWith, reviewsLine } from "../../lib/format";
 import { srcSet, thumb } from "../../lib/images";
 import { embedAutoplay, isGif, listingMedia, photoCandidates, probePhotos, type Media } from "../../lib/media";
 import { arrivalWords, bringLine, cleanDesc, durationLabel, groupCap as readGroupCap, lengthWords, minAge, notAlreadyShown, placeName, splitIncluded, splitPolicies, tidyLength, tidyLine, tidyName } from "../../lib/listingDerive";
@@ -1003,6 +1003,9 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
   // Say what pressing it does: a card payment, Otto holding the saved card, or a request the operator confirms.
   const ottoNow = ottoActive(wallet, p.total);
   const ctaLabel = payments && p.total ? (ottoNow ? "Book with Otto" : "Book and pay") : instant ? "Book" : "Request to book";
+  // The dollars this shop charges in. The server reads the same area line to pick the currency it sends to
+  // Stripe, and the booking email names it, so the box that takes the money names it too.
+  const cur = countryOfArea(item.area);
   const day = dates[state.dateIdx];
 
   /* Live departures from the operator's own booking system, when they run one we can read. The card paints
@@ -1880,7 +1883,7 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
                 {!(guest.email || "").trim() ? <p className="alfine">Leave it empty and we have no way to tell you when {item.title} answers.</p> : null}
 
                 <button type="button" ref={reserveRef} className="alprimary" onClick={pressReserve} aria-disabled={!ready || sending} aria-busy={sending}>
-                  {sending ? "Sending…" : ready ? ctaLabel + (p.total ? " · " + money(p.total) : "") : time == null ? "Pick a time" : "Add your name and number"}
+                  {sending ? "Sending…" : ready ? ctaLabel + (p.total ? " · " + moneyIn(p.total, cur) : "") : time == null ? "Pick a time" : "Add your name and number"}
                       </button>
                 {bookError ? <p className="alfine center albookerror" role="alert">{bookError}</p> : null}
                 {payments && p.total ? (
@@ -1892,17 +1895,17 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
                 {p.base && picked ? (
                   <div className="allines">
                     <div className="alline">
-                      <u>{perPerson(picked) && picked.price != null ? money(picked.price) + " × " + qty + (qty === 1 ? " guest" : " guests") : tidyName(picked.name)}</u>
-                      <span>{money(p.base)}</span>
+                      <u>{perPerson(picked) && picked.price != null ? moneyIn(picked.price, cur) + " × " + qty + (qty === 1 ? " guest" : " guests") : tidyName(picked.name)}</u>
+                      <span>{moneyIn(p.base, cur)}</span>
                     </div>
-                    {extras.map((a) => <div className="alline" key={a.name}><u>{tidyName(a.name)}</u><span>{money(addonPrice(a))}</span></div>)}
-                    {p.fee ? <div className="alline"><u>{serviceFeeLabel(p)}</u><span>{money(p.fee)}</span></div> : null}
-                    <div className="alline total"><span>Total</span><span>{p.total ? money(p.total) : "Pay on site"}</span></div>
+                    {extras.map((a) => <div className="alline" key={a.name}><u>{tidyName(a.name)}</u><span>{moneyIn(addonPrice(a), cur)}</span></div>)}
+                    {p.fee ? <div className="alline"><u>{serviceFeeLabel(p)}</u><span>{moneyIn(p.fee, cur)}</span></div> : null}
+                    <div className="alline total"><span>Total</span><span>{p.total ? moneyIn(p.total, cur) : "Pay on site"}</span></div>
                 </div>
                 ) : (
                   <div className="allines">
-                    {extras.map((a) => <div className="alline" key={a.name}><u>{tidyName(a.name)}</u><span>{money(addonPrice(a))}</span></div>)}
-                    <div className="alline total"><span>Total</span><span>{p.total ? money(p.total) : "Pay on site"}</span></div>
+                    {extras.map((a) => <div className="alline" key={a.name}><u>{tidyName(a.name)}</u><span>{moneyIn(addonPrice(a), cur)}</span></div>)}
+                    <div className="alline total"><span>Total</span><span>{p.total ? moneyIn(p.total, cur) : "Pay on site"}</span></div>
                   </div>
                 )}
                 <p className="alfine">

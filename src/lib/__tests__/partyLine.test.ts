@@ -20,7 +20,7 @@ const WEB_LISTING = read("../../components/web/WebListing.tsx");
 const WEB_CONFIRM = read("../../components/web/WebConfirm.tsx");
 
 /** The one line each surface writes for the experience itself. */
-const partyLine = /perPerson\(picked\) &&[^?]*\? money\(picked\.price\) \+ " × " \+ (?:qty|booking\.qty) \+ \((?:qty|booking\.qty) === 1 \? " guest" : " guests"\)/;
+const partyLine = /perPerson\(picked\) &&[^?]*\? moneyIn\(picked\.price, cur\) \+ " × " \+ (?:qty|booking\.qty) \+ \((?:qty|booking\.qty) === 1 \? " guest" : " guests"\)/;
 
 test("every surface that shows Price details names the party the price was multiplied by", () => {
   for (const [name, src] of [
@@ -36,8 +36,8 @@ test("the phone's line sits on the same condition as the sum beside it", () => {
   // The label and the amount have to agree: "$29 × 4 guests" beside anything but 29 * 4 is worse than silence.
   const line = SHEETS.slice(SHEETS.indexOf('<h2>Price details</h2>'));
   const block = line.slice(0, line.indexOf("</div>"));
-  assert.match(block, /money\(picked\.price\) \+ " × " \+ qty/, "the label multiplies");
-  assert.match(block, /<span>\{money\(p\.base\)\}<\/span>/, "the amount beside it is the same product");
+  assert.match(block, /moneyIn\(picked\.price, cur\) \+ " × " \+ qty/, "the label multiplies");
+  assert.match(block, /<span>\{moneyIn\(p\.base, cur\)\}<\/span>/, "the amount beside it is the same product");
 });
 
 test("a flat price keeps its own name on the line, on every surface", () => {

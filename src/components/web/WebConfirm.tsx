@@ -8,7 +8,8 @@ import { splitAddons } from "../../lib/storage";
 import { placeName } from "../../lib/listingDerive";
 import { arrivalNote, tidyAddress, tidyLength, tidyName } from "./WebListing";
 import { bookedName } from "../../lib/listingDerive";
-import { fmtReviews, fmtTime, money } from "../../lib/format";
+import { fmtReviews, fmtTime, moneyIn } from "../../lib/format";
+import { countryOfArea } from "../../data/regions";
 import { Photo } from "../art/Photo";
 import { Mark } from "../layout/Mark";
 import { Markup } from "../Markup";
@@ -29,6 +30,8 @@ export function WebConfirm({ booking, onDone, onOpen }: { booking: Booking; onDo
   const item = experienceById(booking.listing);
   if (!item) return null;
   const contact = contactFor(item);
+  // The dollars the booking was taken in: the server read the same area line to charge it.
+  const cur = countryOfArea(item.area);
   // Null when the shop published something that is not a number a guest can ring, and then no call is offered.
   const callHref = contact?.phone ? telHref(contact.phone) : null;
   const addressRaw = contact ? addressLine(contact) : null;
@@ -181,16 +184,16 @@ export function WebConfirm({ booking, onDone, onOpen }: { booking: Booking; onDo
                 <h3>Price details</h3>
                 {lines && picked ? (
                   <div className="allines alconfirmlines">
-                    <div className="alline"><span className="wrap">{perPerson(picked) && picked.price != null ? money(picked.price) + " × " + booking.qty + (booking.qty === 1 ? " guest" : " guests") : tidyName(picked.name)}</span><span>{money(lines.base)}</span></div>
-                    {addonRows.map((a) => <div className="alline" key={a.name}><span className="wrap">{tidyName(a.name)}</span><span>{money(addonPrice(a))}</span></div>)}
-                    {lines.fee ? <div className="alline"><span className="wrap">{serviceFeeLabel(lines)}</span><span>{money(lines.fee)}</span></div> : null}
+                    <div className="alline"><span className="wrap">{perPerson(picked) && picked.price != null ? moneyIn(picked.price, cur) + " × " + booking.qty + (booking.qty === 1 ? " guest" : " guests") : tidyName(picked.name)}</span><span>{moneyIn(lines.base, cur)}</span></div>
+                    {addonRows.map((a) => <div className="alline" key={a.name}><span className="wrap">{tidyName(a.name)}</span><span>{moneyIn(addonPrice(a), cur)}</span></div>)}
+                    {lines.fee ? <div className="alline"><span className="wrap">{serviceFeeLabel(lines)}</span><span>{moneyIn(lines.fee, cur)}</span></div> : null}
                   </div>
                 ) : picked ? (
                   <div className="alline"><span className="wrap">{tidyName(picked.name)}</span><span>{booking.qty} {booking.qty === 1 ? "guest" : "guests"}</span></div>
                 ) : null}
                 <div className="alline total">
                   <span>{booking.paid ? (instant ? "Paid by card" : "Held on your card") : "Total"}</span>
-                  <span>{booking.total ? money(booking.total) : "Pay on site"}</span>
+                  <span>{booking.total ? moneyIn(booking.total, cur) : "Pay on site"}</span>
                 </div>
                 <p className="alfine">{booking.paid ? (instant ? "Charged to your card." : "Charged only when " + item.title + " confirms.") : instant ? "Pay as agreed with the business." : "You won't be charged until " + item.title + " confirms."}</p>
               </div>

@@ -9,6 +9,24 @@ export function money(n: number): string {
 }
 
 /**
+ * The same figure with the dollar named when it is not the American one: "CA$135", "$135".
+ *
+ * A listing is priced, charged and paid out in its own country's dollars: `currencyForArea` in
+ * `backend/src/payments/money.ts` sends every booking at a Canadian address to Stripe as CAD, and the
+ * booking email already writes it that way ("Your card was charged CA$135.00"). Only the screens in
+ * between wrote a bare "$", so a guest read "Total $135", met "CA$135" in Stripe's own card form and read
+ * "CA$135.00" again in the email that followed. 5,153 shipped listings are Canadian, and six metros
+ * (Detroit, Niagara, Vancouver, Victoria, Montreal, Ottawa) hold shops on both sides of the border, so the
+ * two dollars sit in one list.
+ *
+ * Only the money a guest is told they will be charged carries the label. A card's "from" price is an
+ * indication and stays as it is until somebody decides that question for the whole catalog.
+ */
+export function moneyIn(n: number, country: "US" | "CA"): string {
+  return (country === "CA" ? "CA" : "") + money(n);
+}
+
+/**
  * "2:00 PM" from a 24 hour clock string. An hour past 24 is the small hours of the next day, which is how a
  * week that runs past midnight is carried: `parseWeek` adds a day to the closing time, so a bar open until 4 AM
  * closes at minute 1680, and midnight itself is 1440.
