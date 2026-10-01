@@ -99,9 +99,15 @@ test("a trip card names the state it is in", () => {
   assert.match(TRIPS, /u \? placeName\(u\.area\) :/, "the Trips tab prints a raw area");
 });
 
-/** The compare table's Where row, which sits in the same column as "Who can go" and is not a feed card. */
+/**
+ * The compare table's Where row, which sits in the same column as "Who can go" and is not a feed card.
+ *
+ * The place it spells out is the card's own, `metroVenuePlace` included: a chain picked off a city's page
+ * stands for the venue that put it there, so the row cannot read the primary area line while the card above it
+ * reads the venue.
+ */
 test("the compare table's Where row names the state", () => {
-  assert.match(HOME, /row\("Where", \(u\) => awayLine\(u, near && !near\.region \? near : null\) \|\| placeName\(u\.area\)\)/, "the compare table prints a raw area");
+  assert.match(HOME, /row\("Where", \(u\) => awayLine\(u, near && !near\.region \? near : null\) \|\| placeName\(metroVenuePlace\(u, state\.metroId\) \|\| u\.area\)\)/, "the compare table prints a raw area");
 });
 
 /**

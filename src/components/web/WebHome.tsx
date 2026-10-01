@@ -564,7 +564,7 @@ function Grid({ items, onOpen, near, resetKey }: { items: Unclaimed[]; onOpen: (
 /* ------------------------------------------------------------------------------------------------------------ */
 
 function CompareTable({ items, near, onOpen, onClose, onRemove }: { items: Unclaimed[]; near?: Place | null; onOpen: (id: string) => void; onClose: () => void; onRemove: (id: string) => void }) {
-  const { touchCatalog } = useApp();
+  const { state, touchCatalog } = useApp();
   useEffect(() => {
     Promise.all(items.map((u) => loadListing(u.id))).then((r) => r.some(Boolean) && touchCatalog());
   }, [items.map((u) => u.id).join(",")]);
@@ -604,8 +604,9 @@ function CompareTable({ items, near, onOpen, onClose, onRemove }: { items: Uncla
               {row("From", (u) => { const f = fromPrice(u); return f != null ? <b>{money(f)}</b> : <span className="ah-muted">{partnerBookLine(u) || "Request to book"}</span>; })}
               {row("Rating", (u) => { const sc = publicRating(u); return sc ? <span className="ah-cmp-rate"><Markup html={SVG.star} /> {sc.rating.toFixed(1)} <em className="ah-muted">({fmtReviews(sc.reviews)})</em></span> : <span className="ah-muted">No public rating</span>; })}
               {/* A labelled row beside "Who can go" and not a feed card, so it spells a state out the way the
-                  listing page's own Where card does. This read the raw area line and said "OH". */}
-              {row("Where", (u) => awayLine(u, near && !near.region ? near : null) || placeName(u.area))}
+                  listing page's own Where card does. This read the raw area line and said "OH". A chain the
+                  guest picked off a city's page names the venue that put it there, as its card now does. */}
+              {row("Where", (u) => awayLine(u, near && !near.region ? near : null) || placeName(metroVenuePlace(u, state.metroId) || u.area))}
               {/* A partner's product has no menu of ours to compare: the row says where it books instead of
                   sending a guest to ring a business that never took the booking. */}
               {row("What you'd book", (u) => { const o = firstPriced(u) || u.options[0]; return o ? o.name + (o.detail ? " · " + o.detail : "") : <span className="ah-muted">{partnerBookLine(u) || "Contact the business"}</span>; })}

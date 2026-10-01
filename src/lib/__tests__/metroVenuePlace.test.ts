@@ -99,9 +99,14 @@ test("every chain row the shipped catalog puts on a city's page through another 
   assert.equal(others, 0, "no card outside that set may have its place line rewritten");
 });
 
-test("both cards read the rule", () => {
+test("both cards and the compare table read the rule", () => {
   for (const f of ["../../components/explore/UnclaimedCard.tsx", "../../components/web/WebHome.tsx"]) {
     const src = readFileSync(new URL(f, import.meta.url), "utf8");
     assert.match(src, /metroVenuePlace\(/, f + " no longer names the venue a chain is on this page for");
   }
+  // The compare table is the same screen's own Where row, so it cannot disagree with the card above it.
+  const home = readFileSync(new URL("../../components/web/WebHome.tsx", import.meta.url), "utf8");
+  const at = home.indexOf('row("Where"');
+  assert.ok(at > 0, "the compare table's Where row was renamed; re-read this test");
+  assert.match(home.slice(at, at + 200), /metroVenuePlace\(/, "the compare table's Where row is expected to read the same rule");
 });
