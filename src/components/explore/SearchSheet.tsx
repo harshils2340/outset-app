@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { ART_LABEL } from "../../data/art";
 import { ALL_METRO_ID, METROS, metroById, metroLabel, metroShort } from "../../data/metros";
-import type { ArtKind } from "../../data/types";
+import type { ArtKind, CategoryId } from "../../data/types";
 import { getCatalog } from "../../lib/catalog";
 import { dateKey } from "../../lib/dates";
 import { currentLocation, searchPlaces, type Place } from "../../lib/places";
@@ -10,8 +10,8 @@ import { useApp } from "../../state/AppProvider";
 import { Art } from "../art/Art";
 import { Photo } from "../art/Photo";
 import { IcClose, IcGlobe, IcMinus, IcNavigate, IcPin, IcPlus, IcSearch } from "./AirIcons";
-import { applyFilters, atMetro, browseList, feedFor, whatLabel } from "./feed";
-import { getPrefs, setPrefs } from "./prefs";
+import { applyFilters, browseList, feedFor, whatLabel } from "./feed";
+import { getPrefs, setPrefs, type FeedFilters } from "./prefs";
 
 const QTY_MAX = 8;
 
@@ -26,9 +26,23 @@ type Step = "where" | "what" | "when" | "who";
 
 const kindQuery = (art: ArtKind) => ART_ALIASES[art]?.[0] || art;
 
-function countInMetro(metroId: string): number {
-  if (metroId === ALL_METRO_ID) return getCatalog().length;
-  return getCatalog().filter((u) => atMetro(u, metroId)).length;
+/**
+ * How many places a Where row opens on.
+ *
+ * The sheet's own rule, stated at the top of this file, is that every count on a suggestion is the length of
+ * the feed that suggestion opens. Every other count here keeps it: the What rows and the family row below
+ * both run the feed. This one counted the metro instead, so it claimed every listing filed there whatever
+ * the feed would then show. Browse asks for a real cover, which is 10% to 26% of a city's rows, and it also
+ * honours the category chip and the filters the guest left on. So "Dallas · 763 places" opened on 564,
+ * "New York · 2,216" on 1,713, and "Anywhere · 52,816 places across the US and Canada" on 43,678: every one
+ * of the 50 metros and the Anywhere row overstated the page it opened, and a guest who had a chip or a filter
+ * on was promised the whole city.
+ *
+ * The desktop's own Where menu has counted photographed places since it was written. This is the phone
+ * catching up, through the one function both the typed city list and the seeded list read.
+ */
+function countInMetro(metroId: string, cat: CategoryId, filters: FeedFilters): number {
+  return feedFor(getCatalog(), "", cat, metroId, null, filters).length;
 }
 
 export function SearchSheet() {
@@ -67,7 +81,7 @@ export function SearchSheet() {
     if (step === "what") window.setTimeout(() => whatRef.current?.focus(), 0);
   }, [step]);
 
-  const seeded = useMemo(() => METROS.map((m) => ({ m, n: countInMetro(m.id) })).filter((x) => x.n > 0).sort((a, b) => b.n - a.n), [state.catalogVersion]);
+  const seeded = useMemo(() => METROS.map((m) => ({ m, n: countInMetro(m.id, state.cat, prefs.filters) })).filter((x) => x.n > 0).sort((a, b) => b.n - a.n), [state.catalogVersion, state.cat, prefs.filters]);
 
   // The place the sheet is about to search: the one picked here, else the feed's current one.
   const whatTyped = what.trim();
@@ -89,8 +103,8 @@ export function SearchSheet() {
     const named = metroInQuery(needle)?.metro;
     const list = searchMetros(needle, 4);
     if (named && !list.includes(named)) list.unshift(named);
-    return list.map((m) => ({ m, n: countInMetro(m.id) })).filter((x) => x.n > 0).slice(0, 4);
-  }, [needle, state.catalogVersion]);
+    return list.map((m) => ({ m, n: countInMetro(m.id, state.cat, prefs.filters) })).filter((x) => x.n > 0).slice(0, 4);
+  }, [needle, state.catalogVersion, state.cat, prefs.filters]);
 
   // An activity typed into Where ("kayak", "axe throwing"): the phone sheet opens on Where, so guests type what
   // they want to do there. It is not a place, even when the map has a town by that name, so it moves to What.
@@ -363,7 +377,7 @@ export function SearchSheet() {
                 <>
                   {item("nearby", <IcNavigate size={20} />, locating ? "Finding you…" : "Nearby", "Find what's around you", useHere, { disabled: locating })}
                   {locateNote ? <p className="airsgroup">{locateNote}</p> : null}
-                  {item("anywhere", <IcGlobe size={20} />, "Anywhere", countInMetro(ALL_METRO_ID).toLocaleString() + " places across the US and Canada", () => pickPlace({ kind: "metro", id: ALL_METRO_ID }))}
+                  {item("anywhere", <IcGlobe size={20} />, "Anywhere", countInMetro(ALL_METRO_ID, state.cat, prefs.filters).toLocaleString() + " places across the US and Canada", () => pickPlace({ kind: "metro", id: ALL_METRO_ID }))}
                   <p className="airsgroup">Suggested destinations</p>
                   {seeded.map(({ m, n: k }) => item(m.id, <IcPin size={20} />, m.name + ", " + m.region, k.toLocaleString() + " places", () => pickPlace({ kind: "metro", id: m.id }), { pressed: !where && state.metroId === m.id }))}
                 </>
