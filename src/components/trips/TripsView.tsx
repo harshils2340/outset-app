@@ -4,6 +4,7 @@ import { ICONS } from "../../data/icons";
 import { bookingStatus, hasApi } from "../../lib/api";
 import { startOfToday, dateKey } from "../../lib/dates";
 import { experienceById, stillArriving } from "../../lib/catalog";
+import { placeName } from "../../lib/listingDerive";
 import { fmtDate, fmtTime } from "../../lib/format";
 import { loadProfile } from "../../lib/operator";
 import { useApp } from "../../state/AppProvider";
@@ -110,7 +111,10 @@ export function TripsView() {
             // carries the card instead, and there is nowhere to send a press.
             const title = l ? l.title : u ? u.title : b.service || "Your booking";
             const art = l ? l.art : u ? u.art : "generic";
-            const sub = l ? l.op + " · " + l.launch : u ? u.area : "Details are in your confirmation email";
+            // The one line this card names a place on, so it reads the way the ticket behind it and the listing
+            // page do. A code belongs on a feed or rail card, which has no room to spell a state out; a trip
+            // card has the width of the screen and said "OH".
+            const sub = l ? l.op + " · " + l.launch : u ? placeName(u.area) : "Details are in your confirmation email";
             const st = STATUS[status[b.code]] || null;
             const open = l ? () => openListing(l.id) : u ? () => openRequest(u.id) : null;
             const inner = (

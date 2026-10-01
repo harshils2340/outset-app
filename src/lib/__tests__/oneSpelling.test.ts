@@ -32,6 +32,7 @@ const SHEETS = read("../../components/booking/Sheets.tsx");
 const WEB = read("../../components/web/WebListing.tsx");
 const CONFIRM = read("../../components/web/WebConfirm.tsx");
 const PHONE_CONFIRM = read("../../components/booking/ConfirmView.tsx");
+const TRIPS = read("../../components/trips/TripsView.tsx");
 
 test("the Where row a guest reads names the state, on both listing surfaces", () => {
   assert.match(
@@ -90,6 +91,11 @@ test("the phone confirmation's meeting place, on two shipped listings", () => {
   const houston = load("o-105fever-com");
   assert.equal(houston.area, "Houston, TX");
   assert.equal(where(houston), "2493 South Braeswood Boulevard, Houston, TX, 77030", "the shop's own street was dropped for its area line");
+});
+
+/** The Trips tab's own card, which has the width of the screen and is not a feed card. */
+test("a trip card names the state it is in", () => {
+  assert.match(TRIPS, /u \? placeName\(u\.area\) :/, "the Trips tab prints a raw area");
 });
 
 /**
