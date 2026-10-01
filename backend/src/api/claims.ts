@@ -26,7 +26,7 @@ claims.get("/claims/:id/rule", rateLimit(120, 60 * 60 * 1000), async (c) => {
   const id = String(c.req.param("id") ?? "");
   if (!ID.test(id)) return c.json({ error: "bad id" }, 400);
   const r = await claimRule(id);
-  return c.json({ known: r.known, hasEmail: r.hasEmail, hint: r.hint, domains: r.domains });
+  return c.json({ known: r.known, hasEmail: r.hasEmail, hint: r.hint, domains: r.domains, partner: r.partner });
 });
 
 /** The owner asks for their claim link. It goes only to the address on their site or one at their domain. */
@@ -40,6 +40,15 @@ claims.post("/claims/:id/request", rateLimit(10, 60 * 60 * 1000), async (c) => {
   if (!EMAIL.test(email)) return c.json({ error: "enter a valid email" }, 400);
 
   const { ok, rule } = await emailMayClaim(id, email);
+
+  // A partner's product is shown under licence and booked on the partner's site: there is no business here to
+  // hand a dashboard to, and the licensed photos, prices and copy are not ours to let anyone edit. Said the
+  // same way POST /bookings says it, and before the test bypass, which exists to walk the operator side of a
+  // real business and never to open one of these.
+  if (rule.partner) {
+    console.log(`[claim] ${id}: partner product (${rule.partner}) for ${maskEmail(email)} from ${clientIp(c)}`);
+    return c.json({ error: "This experience is booked on " + rule.partner + ", not on Outset" }, 409);
+  }
 
   /* ---------- TEST BYPASS, testing only, off unless OUTSET_TEST_CLAIM_EMAILS names this address ----------
    * Kept as its own branch on purpose. The real check above runs first, unchanged, and its result is not

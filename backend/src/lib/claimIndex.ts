@@ -92,22 +92,35 @@ export type ClaimRule = {
   hint: string | null;
   /** Domains the operator owns. Any address there may claim. */
   domains: string[];
+  /** The partner a product is sold on (Viator and the like). Set means nobody claims this here. */
+  partner: string | null;
 };
 
-/** What it takes to claim listing `id`. Falls back to the public detail file when the index has no row. */
+/**
+ * What it takes to claim listing `id`. Falls back to the public detail file when the index has no row.
+ *
+ * The index is written from the operators table, which never holds a partner's product, so an affiliate row
+ * always arrives here by the fallback and the detail file is the thing that knows. That matters: every one of
+ * the 6,492 shipped partner rows carries `src: "viator.com"`, and the domain rule below reads that as a domain
+ * the business owns, so any address at viator.com could have a working claim link mailed to it for any one of
+ * them and trade it for an operator session. `backend/AGENTS.md`: "An affiliate row is never an operator: no
+ * claim link, no outreach, no Instant Book, no request, no Otto." POST /bookings and the voice routes already
+ * say so; this is the first item on that list and it was the one still open.
+ */
 export async function claimRule(id: string): Promise<ClaimRule> {
   const e = loadIndex()[id];
-  if (e) return { known: true, hasEmail: !!e.k, hint: e.h || null, domains: e.d };
-  const item = await readJson<{ src?: string }>(`o/${id}.json`).catch(() => null);
+  if (e) return { known: true, hasEmail: !!e.k, hint: e.h || null, domains: e.d, partner: null };
+  const item = await readJson<{ src?: string; affiliate?: { label?: string } }>(`o/${id}.json`).catch(() => null);
+  if (item?.affiliate) return { known: true, hasEmail: false, hint: null, domains: [], partner: item.affiliate.label || "the partner's site" };
   const d = item?.src ? ownDomain(hostOf(item.src)) : null;
-  return { known: !!item, hasEmail: false, hint: null, domains: d ? [d] : [] };
+  return { known: !!item, hasEmail: false, hint: null, domains: d ? [d] : [], partner: null };
 }
 
 /** True when `email` is the address on the operator's site or lives at a domain the operator owns. */
 export async function emailMayClaim(id: string, email: string): Promise<{ ok: boolean; rule: ClaimRule }> {
   const rule = await claimRule(id);
   const em = email.trim().toLowerCase();
-  if (!EMAIL.test(em)) return { ok: false, rule };
+  if (rule.partner || !EMAIL.test(em)) return { ok: false, rule };
   const e = loadIndex()[id];
   if (e?.k && emailKey(em) === e.k) return { ok: true, rule };
   const host = em.split("@")[1] || "";
