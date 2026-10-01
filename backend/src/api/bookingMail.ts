@@ -4,7 +4,7 @@ import { readJson } from "../lib/store.ts";
 import { maskEmail } from "../lib/claimIndex.ts";
 import { dialPhone } from "../../../src/lib/phone.ts";
 import { streetOf } from "../../../src/lib/address.ts";
-import { bookedName, tidyLength, tidyName } from "../../../src/lib/listingDerive.ts";
+import { bookedName, placeName, tidyLength, tidyName } from "../../../src/lib/listingDerive.ts";
 import { OPERATOR_FEE_RATE, currencyForArea, operatorShare, subtotalFromTotal } from "../payments/money.ts";
 import type { StoredBooking } from "./bookings.ts";
 import type { StoredProfile } from "./profiles.ts";
@@ -65,7 +65,11 @@ export async function bookingContext(rec: StoredBooking, profile: StoredProfile 
   // The same street the listing page prints: a town or a bare house number in that field is not an address,
   // and "Where: Sarasota, Sarasota" is what the guest's own confirmation said.
   const street = detail?.contact ? streetOf(detail.contact) : "";
-  const where = clean(patch.address, 160) || [street, detail?.contact?.city].filter(Boolean).join(", ") || clean(detail?.area, 80);
+  // The area line is the last resort, and on 1,683 shipped listings it is a bare state or province code with no
+  // town in front of it, so this row read "Where: OH". Spelled out, the way the listing page's Where card, the
+  // pay sheet's Where row and Otto all read the same field. A row labelled "Meet at" drops a whole state rather
+  // than printing it; this one is a locator on a receipt whose only other pointer is a link, so it keeps it.
+  const where = clean(patch.address, 160) || [street, detail?.contact?.city].filter(Boolean).join(", ") || clean(placeName(clean(detail?.area, 80)), 80);
   return { title, currency, where, shopPhone: phoneLine(patch.phone) || phoneLine(detail?.contact?.phone), ownerEmail: profile?.owner.email || "", listingUrl: `${SITE}#o=${rec.listing}`, arrival: arrivalLine(patch, detail) };
 }
 
