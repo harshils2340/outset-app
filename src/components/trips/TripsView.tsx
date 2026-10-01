@@ -7,6 +7,7 @@ import { experienceById, stillArriving } from "../../lib/catalog";
 import { placeName } from "../../lib/listingDerive";
 import { fmtDate, fmtTime } from "../../lib/format";
 import { loadProfile } from "../../lib/operator";
+import { askStatus, rememberStatus } from "../../lib/tripStatus";
 import { useApp } from "../../state/AppProvider";
 import { Art } from "../art/Art";
 import { Markup } from "../Markup";
@@ -27,9 +28,10 @@ const STATUS: Record<string, { label: string; tone: string }> = {
 };
 
 /**
- * Answers already read, so flipping between tabs does not ask the API the same question again. A booking it
- * has no answer for (one of the hand-built listings, or the API being down) is remembered as an empty answer,
- * because the route a guest may call is rate limited and asking again every time the tab opens spends it.
+ * Answers already read, so flipping between tabs does not ask the API the same question again. A booking the
+ * API has no row for (one of the hand-built listings) is remembered as an empty answer, because the route a
+ * guest may call is rate limited and asking again every time the tab opens spends it. A call the API never
+ * answered is remembered as nothing at all, so it is asked again: see `lib/tripStatus.ts`.
  */
 const answered: Record<string, string> = {};
 
@@ -72,13 +74,14 @@ export function TripsView() {
     let alive = true;
     void (async () => {
       for (const b of up) {
-        if (pass === 0 && b.code in answered) continue;
         // A booking the operator already settled does not change again; only open ones are re-asked.
-        if (pass > 0 && ["declined", "cancelled", "completed"].includes(answered[b.code] || "")) continue;
-        const s = await bookingStatus(b.listing, b.code);
-        answered[b.code] = s || "";
+        if (!askStatus(answered[b.code], pass)) continue;
+        const read = await bookingStatus(b.listing, b.code);
+        const keep = rememberStatus(answered[b.code], read);
+        if (keep === undefined) delete answered[b.code];
+        else answered[b.code] = keep;
         if (!alive) return;
-        if (s) setStatus((cur) => ({ ...cur, [b.code]: s }));
+        if (read.status) setStatus((cur) => ({ ...cur, [b.code]: read.status! }));
       }
     })();
     return () => {

@@ -111,9 +111,13 @@ test("a departure the calendar names is what Otto answers with, and the chip is 
 test("the calendar is remembered per listing once it arrives, and never guessed at", async () => {
   assert.equal(availabilityNow("o-never-asked-com"), null, "nothing is claimed before anything is asked");
   const answer = await fetchAvailability("o-asked-com", "2026-10-01", 10);
-  assert.deepEqual(availabilityNow("o-asked-com"), answer, "what arrived is what Otto reads");
   assert.equal(availabilityNow("o-another-com"), null, "one shop's calendar is not another's");
-  // With no API this is the no-feed answer, and `liveSlots` treats it exactly as it treats null.
-  assert.equal(answer.live, false);
+  // There is no API under node, so this call reached nothing: status 0, the shape of a dead connection. A
+  // call nobody answered is not an answer and is not remembered, so the snapshot stays empty rather than
+  // pinning "this shop has nothing on" for five minutes (see `lib/__tests__/unanswered.test.ts`). This test
+  // used to assert the opposite, which is how that bug lived here: its own last line is why it was invisible,
+  // because `liveSlots` treats the no-feed answer exactly as it treats nothing at all.
+  assert.equal(availabilityNow("o-asked-com"), null, "a calendar nobody answered for is not what Otto reads");
+  assert.equal(answer.live, false, "the caller still gets something to draw");
   assert.equal(companyAnswer(ctx(answer), "can I book?").text, companyAnswer(ctx(null), "can I book?").text);
 });

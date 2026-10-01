@@ -545,9 +545,11 @@ export async function confirmPaid(listing: string, code: string): Promise<{ stat
  * The guest's own device knows only that it sent the booking. Without this the Trips tab listed a request the
  * operator had declined as an upcoming trip, with a code and a time, on a day the shop was not expecting them.
  */
-export async function bookingStatus(listing: string, code: string): Promise<string | null> {
+export async function bookingStatus(listing: string, code: string): Promise<{ status: string | null; unanswered: boolean }> {
   const r = await call<{ status: string }>(`/bookings/paid/${encodeURIComponent(listing)}/${encodeURIComponent(code)}`, { timeout: 12000 });
-  return r.ok && r.data?.status ? r.data.status : null;
+  // "No such booking" and "nobody answered" used to be the same `null`, and the tab cached both. See
+  // `lib/tripStatus.ts`: only a judged answer is worth remembering about a trip the guest has already paid for.
+  return { status: r.ok && r.data?.status ? r.data.status : null, unanswered: apiDidNotAnswer(r.status) };
 }
 
 export async function fetchBookings(listing: string): Promise<RemoteBooking[] | null> {
@@ -597,17 +599,30 @@ export async function fetchAvailability(id: string, from?: string, days = 14): P
   const key = `${id}|${from || ""}|${days}`;
   const hit = availCache.get(key);
   if (hit && Date.now() - hit.at < AVAIL_TTL_MS) return hit.value;
+  // Whether the API ever judged the question, read out of the call below. The promise itself cannot say: `call`
+  // turns a dead connection, a timeout, a 429 and a 500 into a resolved answer, so the lookup never rejects.
+  let unanswered = false;
   const value = (async () => {
     const r = await call<LiveAvailability>(`/availability/${encodeURIComponent(id)}?${q}`, { timeout: 15000 });
+    unanswered = apiDidNotAnswer(r.status);
     return r.ok && r.data?.live ? { ...r.data, days: r.data.days || [] } : { vendor: r.data?.vendor ?? null, live: false, days: [] };
   })();
   availCache.set(key, { at: Date.now(), value });
-  // A failed lookup must not be pinned for five minutes; only a real answer is worth keeping.
-  void value.catch(() => availCache.delete(key));
-  void value.then((a) => {
-    availNow.set(id, { at: Date.now(), value: a });
-    if (availNow.size > 40) for (const [k, v] of availNow) if (Date.now() - v.at > AVAIL_TTL_MS) availNow.delete(k);
-  }, () => {});
+  // A call nobody answered is not an answer. The `.catch` that used to stand here could never fire, so a
+  // listing opened while the API was asleep, timing out or rate limiting pinned an empty calendar on it for
+  // five minutes: the booking box, the phone sheet and Otto all read the shop as having nothing on, and a
+  // reload could not clear it. An answer of "no live calendar" is still an answer and is still kept.
+  void value.then(
+    (a) => {
+      if (unanswered) {
+        availCache.delete(key);
+        return;
+      }
+      availNow.set(id, { at: Date.now(), value: a });
+      if (availNow.size > 40) for (const [k, v] of availNow) if (Date.now() - v.at > AVAIL_TTL_MS) availNow.delete(k);
+    },
+    () => availCache.delete(key),
+  );
   if (availCache.size > 40) for (const [k, v] of availCache) if (Date.now() - v.at > AVAIL_TTL_MS) availCache.delete(k);
   return value;
 }
