@@ -7797,6 +7797,83 @@ was written.
   CSS has no wrapping rule; `plainWords` is not idempotent; 69 Toronto-address listings are filed under a
   neighbouring metro; there is no linter in this repo.
 
+## 1 October 2026, hundred and fourteenth run (06:22 to 08:05 UTC)
+
+**Chosen, and why.** `git fetch` first: the only commit since the hundred and thirteenth run's log entry is
+that entry itself, so by the rule the full rehearsal was **skipped at the start** and **run at the end**,
+because the fix is in code it drives. Both `node_modules` were missing again and were installed first.
+Baseline: `tsc --noEmit -p .`, `tsc -b` and the backend's own `tsc` clean but for TS5097, backend 959 tests
+with 957 pass and 2 skipped, app 1,055 pass.
+
+Every area on the brief is on the Verified list, and what is left on Not yet checked is mostly a question for
+Harshil rather than a defect. So the hunt took a lens no run has used: **what can throw.** Not what reads
+wrong, what faults. A sentence read wrong is a bad sentence; a throw in a render path is a blank screen, and
+this app has no error boundary anywhere, so there is nothing between a throw and a white page. Every pure
+reader in `src/lib` was called with the shapes a crawl really brings back, and the primitives that can fault
+on text (`String.fromCodePoint`, `decodeURIComponent`, `new RegExp`, `Intl` with a zone out of data) were
+read at every call site in both projects.
+
+**Found and fixed.** One bug class, six sites, one commit.
+
+- **A shop's broken markup stops being able to blank a guest's listing page** (`783ce558`). Every numeric HTML
+  entity in both projects went straight to `String.fromCodePoint`, which throws a RangeError for anything
+  above U+10FFFF. The two decoders that had a guard at all checked `Number.isFinite`, which "&#999999999;"
+  passes. One malformed entity on a shop's page, which a broken template or a double-encoded byte is enough
+  to write, took down whatever was reading it. `src/lib/catalog.ts` is the one that matters: `decodeEntities`
+  is the first thing `plainWords` runs, and `plainWords` is what the listing page, the phone sheet's "What to
+  bring" and every Otto answer put the shop's own words through, in the guest's browser, with no boundary to
+  catch it. The other five: the sync's contact pass (`sync/contacts.ts`); the FishingReservations reader,
+  which reads seats as entities ("&#52;") and had no guard at all, mid answer; Bookeo and Rezdy, the same;
+  and `discover/chains.ts` with `vendors/square.ts`, which used `String.fromCharCode`, so they do not throw
+  and instead wrap modulo 65536, turning an emoji in a branch name into a private-use glyph.
+  `charFromCodePoint` is the one rule now, shared by the five backend sites and mirrored in the app, which
+  cannot import across projects: a code point past the last character, a lone surrogate (which does not
+  throw, it returns a string that is not well-formed) and zero are all refused, and a refused entity is left
+  exactly as the page wrote it, so the sentence around it still reads. No shipped listing carries one: the
+  only numeric entities in `catalog.json`, `catalog-lite.json` and all 52,815 files of `public/o` are
+  "&#038;" and "&#39;", so this is the crawl that has not happened yet rather than a listing wrong now.
+
+**Swept and clean, or measured and left.** Every other primitive that can fault on text, at every call site
+in both projects. All four `decodeURIComponent` calls in the app (`#ask`, a crawled phone field, a crawled
+email) already catch the URIError a stray percent throws. Every `new RegExp` built by interpolation: the one
+that takes a town escapes it, the one in Otto's included-answer interpolates only a literal from its own
+fixed alternation, and the one in `listingDerive` only a two-letter code its own table holds. Every `Intl`
+call with a zone that comes out of data, which is the seven concierge readers, `concierge/shopday.ts` and the
+app's `openNow.ts`: all nine catch the RangeError a zone name they do not recognise throws. `lib/zone.ts`'s
+own `parts()` is the one that does not, and is unreachable, because every zone reaching it comes from
+`zoneForArea`'s own table. Catastrophic backtracking over every nested quantifier in both projects: the
+anchored `^[...]+|[...]+$` trims that look alarming are linear, the one nested star in the app's shout reader
+needs a space per iteration, and the only polynomial shape (five lazy `[^>]*?` in a row) is a Florida chain
+crawl on Render, not a guest path. Divide by zero in the app: six candidates, every one guarded or on a
+fresh non-empty array. Every array-index `key` in the app, for a row's input state following a deletion, and
+every `useState` seeded from a prop, for a stale field after the prop changes: the booking sheet is keyed by
+the listing id, so it remounts, and the rest are search state the sheet is meant to remember. Super-linear
+text readers, over every exported reader in `src/lib` at five shapes a crawl brings back: nothing is
+quadratic. `describeQuery` is the heaviest at about 0.12 ms per character and is linear, so a guest's search
+box is a few milliseconds and only a pasted page would be felt.
+
+**Verification.** App `npm test` 1,059 pass, 0 fail, up from 1,055 (four new in a new `badEntity.test.ts`).
+Backend `npm test` 966 tests, 964 pass, 0 fail, 2 skipped, up from 959 (seven new: six in a new
+`lib/__tests__/codePoint.test.ts`, which drives the sync's decoder and the chain reader end to end, and one
+on the FishingReservations fixture with a malformed entity substituted for a seat count). `tsc --noEmit -p
+.`, `tsc -b` and the backend's own `tsc` all clean but for TS5097. The rehearsal ran green at **57 of 57** on the tree carrying the fix, against a local Postgres 16 cluster with TLS on port 5433 and the Chromium on disk. Nothing under
+`backend/data`, `public/` or `src/data` was written.
+
+**Needs Harshil.**
+
+- **There is no error boundary in this app.** That is what made tonight's fault worth a night: not the
+  entity, which no listing ships, but that the app has nothing between any throw in render and a white page.
+  Every reader on the listing page runs on prose a crawler brought back from somebody else's website, and
+  there are 48,198 of them. One `componentDidCatch` around the listing screen, the sheet and the chat, with
+  the shop's own fallback behind it, turns the next one of these from a blank screen into a listing missing a
+  sentence. It is new UI rather than a fix, and it is the single highest-value thing left on my list: say
+  whether to add it and I will.
+- Still open from earlier runs: the phone confirmation offers no way to reach the shop; the concierge's crawl
+  queue ignores the town people asked about; a price sort and a price filter compare two dollars on six
+  metros; the cards still say "$" for a Canadian shop; the cards are weeks behind the pages until a sync
+  runs; `plainWords` is not idempotent; 69 Toronto-address listings are filed under a neighbouring metro;
+  there is no linter in this repo.
+
 ## Coverage
 
 The catalog is 48,198 listings as of the 23 September sync, 1,873 of them Viator partner rows. Counts below
@@ -8666,6 +8743,15 @@ UTC and one behind it, for date arithmetic that reads the host's offset. Every `
 array it is handed. The Resend signature and suppression webhook, read end to end. Every interpolation in the
 concierge sessions page's own markup.
 
+Every primitive in both projects that can fault on a shop's text rather than read it wrong, at every call
+site: all six numeric HTML entity decoders against the code point they hand `String.fromCodePoint`; every
+`decodeURIComponent` in the app; every `new RegExp` built by interpolation; every `Intl` call given a zone
+that comes out of data, which is the seven concierge readers, the concierge's own `shopday` and the app's
+`openNow`; catastrophic backtracking over every nested quantifier in both projects; and divide by zero in the
+app. Every exported reader in `src/lib` timed at five shapes a crawl brings back, for one that is
+super-linear. Every array-index `key` in the app, for a row's input state following a deletion, and every
+`useState` seeded from a prop, for a stale field after the prop changes.
+
 **Not yet checked.** Whether the static pages' own CSS should carry a wrapping rule at all: it sets no
 `overflow-wrap`, no `word-break` and no `min-width` on either of its two flex rows, and nothing overflows today
 only because every long token in the catalog is a URL, which a browser breaks at a slash (see this run's Needs
@@ -9005,4 +9091,11 @@ and Otto's answers should name the Canadian dollar the way the four charge block
 listings and the 3,045 of them that publish a price (see that run's Needs Harshil). Whether the app's own
 `src/**/__tests__`, which nothing type-checks, hide anything: checked once tonight against a scratch config, and
 what falls out is fixture shapes rather than defects, with one test building a listing in a category the app has
-no such family for. Whether the phone confirmation should carry the shop's number and arrival note the way its desktop twin does, which is a missing row rather than a defect and is new UI (see this run's Needs Harshil). Whether the concierge's crawl queue should be scoped to the town people asked about, which its own comment says it is and its SQL is not, against the same comment's argument that a Waterloo question should reach Kitchener (see this run's Needs Harshil). What else the two confirmation screens disagree about, now that the place line is one reader on both: the arrival note, the price breakdown and the rating are all on the desktop and none on the phone.
+no such family for. Whether the phone confirmation should carry the shop's number and arrival note the way its desktop twin does, which is a missing row rather than a defect and is new UI (see this run's Needs Harshil). Whether the concierge's crawl queue should be scoped to the town people asked about, which its own comment says it is and its SQL is not, against the same comment's argument that a Waterloo question should reach Kitchener (see this run's Needs Harshil). What else the two confirmation screens disagree about, now that the place line is one reader on both: the arrival note, the price breakdown and the rating are all on the desktop and none on the phone. Whether this app should have an error boundary at all, which is
+the hundred and fourteenth run's Needs Harshil and the one item here that would change what a guest sees the
+next time any reader faults: there is none, so a throw anywhere in render is a white page rather than a listing missing a
+sentence, over prose crawled from 48,198 other people's websites. Whether `lib/zone.ts`'s own `parts()`
+should catch the RangeError its nine neighbours catch, which is unreachable today because every zone
+reaching it comes from `zoneForArea`'s own table. Whether an entity naming no character should be dropped
+rather than left as the page wrote it, which is what the fix does and what every decoder here already does
+with a named entity it does not know: a guest would read "&#999999999;" where the shop meant nothing at all.
