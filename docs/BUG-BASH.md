@@ -8054,6 +8054,93 @@ under `backend/data`, `public/` or `src/data` was written.
   tonight was run with it cleared).
 
 
+## 1 October 2026, hundred and seventeenth run (09:16 to 10:20 UTC)
+
+**Chosen, and why.** `git fetch` first: nothing has landed since the hundred and sixteenth run's log entry,
+and that entry says the rehearsal ran green on the tree it committed, so by the rule the full rehearsal was
+**skipped at the start** and **run at the end**, twice, because all three fixes are in code it drives. Both
+`node_modules` were missing again and were installed first. Baseline: `tsc --noEmit -p .`, `tsc -b` and the
+backend's own `tsc` clean but for TS5097, backend 975 tests with 973 pass and 2 skipped, app 1,070 pass, all
+matching the last entry.
+
+Every area on the brief is on the Verified list, so the hunt took the one surface pair no run has held against
+each other: **what the phone's browse promises and what the desktop's own home already does about the same
+row.** Three rules the desktop keeps that the phone did not, and all three are what a guest reads before they
+have opened anything.
+
+**Found and fixed.** Three commits.
+
+- **A city row in the search sheet counts the places it will actually show** (`d722ab73`). `SearchSheet.tsx`
+  states its own rule at the top: every count on a suggestion is the length of the feed that suggestion opens.
+  The What rows keep it and so does the family row, each by running `feedFor`. The Where rows counted the
+  metro instead, every listing filed there whatever the feed would then draw. Browse asks for a real cover,
+  and it honours the category chip and the filters the guest left on, so each row overstated its own page:
+  "Dallas · 763 places" opened on 564, "New York · 2,216" on 1,713, "Anywhere · 52,816 places across the US
+  and Canada" on 43,678. All 50 metros in the grid were out, by 10% to 26%, and a guest with a chip or a filter
+  on was promised the whole city. `countInMetro` runs the feed now, and takes the chip and the filters so the
+  three rows that read it cannot drift again. The desktop's own Where menu has counted photographed places
+  since it was written; this is the phone catching up.
+- **A card in a city names the venue of the chain that put it on that page** (`4de2753e`). `atMetro` puts a
+  chain on a city's page through whichever of its venues is near that city, and the card then printed the area
+  line, which names whichever venue the catalog leads with. Tampa Bay's page carried "Wheel Fun Rentals ·
+  Minneapolis, MN" and "Trolley Pub Charlotte · Charlotte, NC"; Orlando's escape rooms opened on "The Escape
+  Game · San Francisco, CA" and Boston's on "Escapology · Armature Works, Tampa, FL". 59 cards over the 50
+  metros, on 29 listings, each naming a city a thousand miles from the one the guest asked for. With a GPS
+  point `awayLine` has always named the venue it measured to, so `metroVenuePlace` is that same reading for a
+  city picked by name, where no honest distance exists to print beside it: the venue's own town, else the city
+  being browsed for the 8 venues the crawl only found a street for, and null for every other card, which is
+  what the measurement confirms over the shipped catalog (59 renamed, 0 others touched).
+- **The compare table's Where row names the same venue the card it came from does** (`98b4e397`). The same
+  screen's own shortlist read the primary area while the card above it read the venue, so three listings picked
+  off Orlando's page compared "San Francisco, California" against two Orlando shops.
+
+**Swept and clean, or measured and left.** The partner rule on the phone's browse: 50 partner cards reach the
+first six of 469 category pages, and the 3 pages whose first six are all partner rows have nothing else in
+that category at all, so search's `AFFILIATE_BEHIND` has nothing to do there. `countInMetro` can now return 0
+for a city whose rows all lack a cover under the live chip, which drops that row from the list rather than
+showing a 0, the way `searchSuggest` already refuses a row whose page would be empty. The place-row counts in
+`searchSuggest` itself (the city, elsewhere and region rows) were checked against the pages they open and are
+already feed-length, because those open a search and a search is deliberately not cover-filtered. The seven
+`src/lib` modules with no test of their own, read for a reachable fault: `agent.ts` and `inventory.ts` both
+work on `Listing`, and `src/data/listings.ts` ships empty by product rule, so neither is reachable from any
+screen today. Email HTML escaping on every operator-typed and guest-typed string, through `emailTemplate.ts`'s
+own `esc` (clean, every interpolation is wrapped).
+
+**Verification.** App `npm test` 1,079 pass, 0 fail, up from 1,070 (nine new: four in
+`lib/__tests__/wherePlaceCount.test.ts`, which proves the old rule overstated every one of the 51 rows against
+the shipped catalog and pins the sheet to the feed; five in `lib/__tests__/metroVenuePlace.test.ts`, which
+drives the new reader through a chain with a town, one with only a street, a primary pin that is nearer, a
+venue past the browse radius and Anywhere, then runs all 50 metros of the shipped catalog through it). Both new
+files were run against the tree with the fixes reverted and fail. One existing test was updated rather than
+added to: `oneSpelling.test.ts` pins the compare row's source line, and the first rehearsal caught it, which is
+the only reason this entry does not say 1 failed. Backend `npm test` 975 tests, 973 pass, 2 skipped,
+unchanged. `tsc --noEmit -p .`, `tsc -b` and the backend's own `tsc` all clean but for TS5097. The rehearsal
+ran **57 of 57** on the tree carrying all three fixes, against a local Postgres 16 cluster with TLS on port
+5433 and the Chromium on disk. Nothing under `backend/data`, `public/` or `src/data` was written.
+
+**Needs Harshil.**
+
+- **The phone's browse is not ranked at all**, and that is a product call, not a defect. `browseList` returns
+  the catalog's own order (interleaved on All, nearest-first with a pin); the desktop's `rankForRail` scores
+  cover, price, reviews and nearness, and demotes a listing whose own words never confirm its kind. So 32
+  guessed-kind cards reach the first six of 455 category pages on the phone and 4 pages lead with one:
+  Halifax's Air page opens on "United Travels", a travel agency filed under heli. Say the word and the next run
+  gives the phone the desktop's ranking, or just the kind-confirmed rule, which is the half that is plainly a
+  bug.
+- **The listing page a chain's card opens still heads the primary town.** The card now says Orlando and the
+  page it opens says San Francisco. Carrying the browsed city into the page is new UI and a real decision
+  (which of several venues the page is then about), so it was left alone.
+- Still open from earlier runs, unchanged: **there is no error boundary in this app**, so a throw anywhere in
+  render is a white page over prose crawled from 48,198 other people's websites. Three runs have now asked.
+- Also still open: the phone confirmation offers no way to reach the shop; a guest cannot cancel a booking at
+  all, on every listing that advertises Free cancellation with a window; the concierge's crawl queue ignores
+  the town people asked about; a price sort and a price filter compare two dollars on six metros; the cards
+  still say "$" for a Canadian shop; the cards are weeks behind the pages until a sync runs; `plainWords` is
+  not idempotent; 69 Toronto-address listings are filed under a neighbouring metro; there is no linter in this
+  repo; and this container still injects a `GITHUB_TOKEN`, which the brief says must be empty (everything
+  tonight was run with it cleared).
+
+
 ## Coverage
 
 The catalog is 48,198 listings as of the 23 September sync, 1,873 of them Viator partner rows. Counts below
@@ -8950,7 +9037,13 @@ answers. Every count a guest surface prints in front of a plural noun, for "1 re
 on the static pages. Every `toISOString().slice(0, 10)` in the app, for a UTC day read as a local one. `POST
 /bookings` against a repeat submission, a duplicate code, a Stripe webhook arriving twice, and that webhook
 racing the guest's own return from Stripe. What releasing a listing from Settings does to the bookings already
-on it, and to the money scheduled against them.
+on it, and to the money scheduled against them. What the phone's search sheet promises a place
+holds against the feed that place opens, over all 50 metros and the Anywhere row, with a category chip and a
+filter each held against it. The place, elsewhere, city and region rows of `searchSuggest`, against the search
+pages they open. Which of a chain's towns a card names when the guest picked a city rather than a point, over
+every row the shipped catalog puts on a metro's page through another venue, on the phone card, the desktop
+card and the compare table's Where row. Which partner rows reach the first six of a phone category page, over
+all 469 of them. Email HTML escaping on every operator-typed and guest-typed string that reaches a template.
 
 **Not yet checked.** Whether the static pages' own CSS should carry a wrapping rule at all: it sets no
 `overflow-wrap`, no `word-break` and no `min-width` on either of its two flex rows, and nothing overflows today
@@ -9315,4 +9408,11 @@ product the way `POST /bookings` and the two `/voice` routes do: it is handed it
 no listing file, so the gate costs a disk read on every uncached question to close a door no surface of ours
 opens, and `assistantOn` is the product's own gate (see the hundred and sixteenth run). Whether both
 confirmation screens should name the option a booking picked out of the live menu by index, which is the fault
-the dashboard was fixed for and which only a trip card that opened a confirmation would ever expose.
+the dashboard was fixed for and which only a trip card that opened a confirmation would ever expose. Whether the phone's browse should be ranked at all, which is
+the hundred and seventeenth run's Needs Harshil: `browseList` returns the catalog's own order, the desktop's
+`rankForRail` scores cover, price, reviews and nearness and demotes a listing whose own words never confirm its
+kind, and 32 guessed-kind cards reach the first six of 455 phone category pages with 4 of them leading on one.
+Whether the listing page a chain's card opens should head the town the guest was browsing rather than the
+primary one, now that the card does: carrying the browsed city into the page is new UI and a choice about which
+venue the page is then about. Whether a venue the crawl only found a street for should be named by that street
+rather than by the city being browsed, which is 8 of the 59 rows.
