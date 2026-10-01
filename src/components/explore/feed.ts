@@ -1,12 +1,12 @@
 import { inCat } from "../../data/categories";
-import { ALL_METRO_ID, metroCoords } from "../../data/metros";
+import { ALL_METRO_ID, metroById, metroCoords } from "../../data/metros";
 import { countryOfArea, regionOfArea } from "../../data/regions";
 import type { CategoryId, Unclaimed } from "../../data/types";
 import { fromPrice } from "../../lib/catalog";
 import { dealToday } from "../../lib/companyAgent";
 import { fmtDistance } from "../../lib/geo";
 import { WHAT_INTENTS, describeQuery, searchSuggest } from "../../lib/search";
-import { nearestLocation, type Place } from "../../lib/places";
+import { kmBetween, nearestLocation, type Place } from "../../lib/places";
 import { passesFilters, type FeedFilters } from "./prefs";
 
 /** An hour of driving. Wide enough that a small town still has something, tight enough to feel local. */
@@ -87,6 +87,39 @@ export function awayLine(u: Unclaimed, near: Place | null): string | null {
   // downtown Tampa read. Only a number takes "away".
   const dist = fmtDistance(n.km, countryOfArea(u.area));
   return (town ? town + " · " : "") + (/\d/.test(dist) ? dist + " away" : dist);
+}
+
+/**
+ * The place a card should name when the guest picked a city rather than a point.
+ *
+ * `atMetro` puts a chain on a city's page through whichever of its venues is near that city, so a listing's
+ * own area line can name a different place entirely: Tampa Bay's page carried "Wheel Fun Rentals ·
+ * Minneapolis, MN", Orlando's escape rooms opened on "The Escape Game · San Francisco, CA", and Boston's on
+ * "Escapology · Armature Works, Tampa, FL". 59 cards across the 50 metros read that way, on 29 listings.
+ *
+ * With a GPS point `awayLine` already names the venue the distance was measured to, so this is the same
+ * reading for a city picked by name, where no honest distance exists to print beside it. The venue's own town
+ * when it has one, else the city the guest is browsing, which is the one thing we do know about that pin.
+ * Null for every other listing, which keeps the area line it has always had.
+ */
+export function metroVenuePlace(u: Unclaimed, metroId: string): string | null {
+  if (!metroId || metroId === ALL_METRO_ID || u.metroId === metroId) return null;
+  const m = metroById(metroId);
+  const c = metroCoords(metroId);
+  if (!m || !c) return null;
+  const here = { lat: c.lat, lon: c.lng };
+  // The primary pin wins a tie, the way `nearestLocation` reads it: then the area line is already the right town.
+  const own = u.lat != null && u.lon != null ? kmBetween(here, { lat: u.lat, lon: u.lon }) : Infinity;
+  let best: { km: number; city?: string; region?: string } | null = null;
+  for (const l of u.locations || []) {
+    const km = kmBetween(here, l);
+    if (!best || km < best.km) best = { km, city: l.city, region: l.region };
+  }
+  if (!best || best.km >= own || best.km > NEAR_RADIUS_KM) return null;
+  // "Nearby" is not a town: the sync used to write it for a venue whose own town was never found.
+  const city = (best.city || "").trim();
+  if (city && city !== "Nearby") return city + (best.region ? ", " + best.region : "");
+  return m.name + ", " + m.region;
 }
 
 /** Nearest first, but only for a picked point: a distance from the middle of a whole state is not an order. */

@@ -25,7 +25,7 @@ import { AdminSiteLink, tidyDuration } from "./WebListing";
 import { liteDealTitle } from "../../lib/deals";
 import { WebConcierge } from "./WebConcierge";
 import { freeCancelBadge } from "../../lib/cancellation";
-import { withinDrive, kmToPlace, awayLine, atMetro, NEAR_RADIUS_KM, DRIVE_RADIUS_KM } from "../explore/feed";
+import { withinDrive, kmToPlace, awayLine, atMetro, metroVenuePlace, NEAR_RADIUS_KM, DRIVE_RADIUS_KM } from "../explore/feed";
 import { mergeMapsHits, useMapsNearby } from "../../lib/mapsNearby";
 import { getPrefs, setPrefs } from "../explore/prefs";
 import { reportDeadCover, useDeadCovers, withPhotos } from "../../lib/deadCovers";
@@ -286,6 +286,8 @@ function cardBadge(u: Unclaimed, open: boolean): string | null {
 }
 
 function Card({ u, onOpen, near, rail }: { u: Unclaimed; onOpen: (id: string) => void; near?: Place | null; rail?: boolean }) {
+  // The city the guest is browsing, which decides which of a chain's venues this card is standing in for.
+  const { state } = useApp();
   const score = publicRating(u);
   const metro = metroById(u.metroId);
   const from = fromPrice(u);
@@ -365,6 +367,10 @@ function Card({ u, onOpen, near, rail }: { u: Unclaimed; onOpen: (id: string) =>
     const extra = u.locations?.length ? " · " + (u.locations.length + 1) + " locations" : "";
     const away = awayLine(u, near && !near.region ? near : null);
     if (away) return away + extra;
+    // Same reading for a city picked by name: a chain on this page through another venue names that venue's
+    // town, not whichever one its area line leads with.
+    const venue = metroVenuePlace(u, state.metroId);
+    if (venue) return venue + extra;
     return u.area + (metro && !u.area.includes(metro.name) ? " · " + metro.name : "") + extra;
   })();
   /**

@@ -9,7 +9,7 @@ import { useApp } from "../../state/AppProvider";
 import { Photo } from "../art/Photo";
 import { IcHeartOnPhoto, IcStar } from "./AirIcons";
 import { toggleSaved, usePrefs } from "./prefs";
-import { awayLine } from "./feed";
+import { awayLine, metroVenuePlace } from "./feed";
 import { AdminSiteLink, tidyDuration } from "../web/WebListing";
 import { liteDealTitle } from "../../lib/deals";
 import { freeCancelBadge } from "../../lib/cancellation";
@@ -46,7 +46,9 @@ export function UnclaimedCard({ item }: { item: Unclaimed; compact?: boolean }) 
   const strip = useRef<HTMLDivElement>(null);
   const isSaved = saved.includes(item.id);
 
-  const place = cardPlace(item.area, metro?.name);
+  // A chain is on this city's page through one of its other venues, so the card names that venue's town
+  // rather than the one the area line leads with: Tampa Bay used to carry "Wheel Fun Rentals, Minneapolis, MN".
+  const place = metroVenuePlace(item, state.metroId) || cardPlace(item.area, metro?.name);
   const away = awayLine(item, state.near);
   const detail = [kind, item.dur ? tidyDuration(item.dur) : null, freeCancelBadge(item) ? "Free cancellation" : null].filter(Boolean).join(" · ");
   // Only the option that sets the price can say what the price is per. A lite record carries no options at all,
