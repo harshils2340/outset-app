@@ -24,6 +24,7 @@ import { readFileSync } from "node:fs";
 import { companyAnswer, companyFacts } from "../companyAgent";
 import { meetPlace, placeName } from "../listingDerive";
 import { addressLine, contactFor } from "../catalog";
+import { defaultProfile, toCatalog } from "../operator";
 import type { Unclaimed } from "../../data/types";
 
 const read = (rel: string) => readFileSync(new URL(rel, import.meta.url), "utf8");
@@ -89,6 +90,29 @@ test("the phone confirmation's meeting place, on two shipped listings", () => {
   const houston = load("o-105fever-com");
   assert.equal(houston.area, "Houston, TX");
   assert.equal(where(houston), "2493 South Braeswood Boulevard, Houston, TX, 77030", "the shop's own street was dropped for its area line");
+});
+
+/**
+ * The field an owner meets on the day they claim.
+ *
+ * The dashboard's is labelled "Meeting point or address" and was prefilled with the listing's area line when
+ * the crawl had found no address, so an owner claiming AerOhio Skydiving was told their meeting point was "OH",
+ * and thousands more were told it was the town their own page already heads. The two fields beside it refuse to
+ * prefill a phone nobody can ring or an inbox nobody reads; this one now refuses the same way, and an empty
+ * field is a gap the owner can see.
+ */
+test("a claim does not prefill a state code as the shop's meeting point", () => {
+  const owner = { name: "O", email: "o@test.com", phone: "" };
+  const load = (id: string) => JSON.parse(readFileSync(new URL(`../../../public/o/${id}.json`, import.meta.url), "utf8")) as Unclaimed;
+
+  const ohio = load("o-aerohio-com");
+  assert.equal(defaultProfile(ohio, owner).address, "", "a whole state was handed to an owner as their meeting point");
+  // Untouched, so the published patch still leaves the crawled contact record alone.
+  assert.equal(toCatalog(defaultProfile(ohio, owner), ohio).contact?.street ?? null, null);
+
+  // A shop whose own site published a street keeps it: that is a door, and it is theirs.
+  const houston = load("o-105fever-com");
+  assert.equal(defaultProfile(houston, owner).address, "2493 South Braeswood Boulevard, Houston, TX, 77030");
 });
 
 /** Otto answers "where are you" and files the same place as the fact its grounded answers are built from. */

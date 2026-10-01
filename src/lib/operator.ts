@@ -626,7 +626,12 @@ export function defaultProfile(u: Unclaimed, owner: { name: string; email: strin
     // asterisks, none of which is worth handing an owner as theirs.
     email: contactEmail(c?.email) || "",
     website: c?.website || (u.src && !u.src.startsWith("osm-") ? siteUrl(u.src) : ""),
-    address: (c && addressLine(c)) || u.area,
+    // Only a line that places somebody, for the reason the two fields above give: the field is labelled
+    // "Meeting point or address" and the area line is neither. On 1,683 shipped listings that line is a bare
+    // state or province code, so an owner claiming AerOhio Skydiving opened their dashboard to be told their
+    // meeting point was "OH", and on thousands more it was the town their own page already heads. An empty
+    // field is the honest state and the one the owner can see needs them.
+    address: (c && addressLine(c)) || "",
     cover: u.cover || "",
     photos: (u.photos || []).slice(),
     // The published cancellation line has its own field below; the same sentence is not also an "other policy",
@@ -988,8 +993,8 @@ function contactPatch(p: OperatorProfile, base: Unclaimed): OperatorContact | un
   if (!crawled && !phone && !address) return undefined;
   const blank: OperatorContact = { domain: "", website: null, phone: null, email: null, street: null, city: null, region: null, postal: null, hours: [], bookingVendor: null, fetchedAt: null };
   const c = crawled || blank;
-  // Untouched since the claim: the profile carries the crawled line, or the area when the site had none.
-  const sameAddress = address === ((crawled && addressLine(crawled)) || base.area || "");
+  // Untouched since the claim: the profile carries the crawled line, or nothing when the site published none.
+  const sameAddress = address === ((crawled && addressLine(crawled)) || "");
   return {
     ...c,
     phone,
