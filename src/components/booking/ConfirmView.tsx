@@ -1,14 +1,14 @@
 import { LISTINGS } from "../../data/listings";
 import { ICONS } from "../../data/icons";
-import { experienceById } from "../../lib/catalog";
+import { addressLine, contactFor, experienceById } from "../../lib/catalog";
 import { fmtDate, fmtTime, moneyIn } from "../../lib/format";
 import { countryOfArea } from "../../data/regions";
 import { splitAddons } from "../../lib/storage";
 import { useApp } from "../../state/AppProvider";
 import { Markup } from "../Markup";
 import { Fragment } from "react";
-import { tidyLength, tidyName } from "../web/WebListing";
-import { bookedName } from "../../lib/listingDerive";
+import { tidyAddress, tidyLength, tidyName } from "../web/WebListing";
+import { bookedName, meetPlace } from "../../lib/listingDerive";
 
 export function ConfirmView() {
   const { state, openChat, openRequest, goto } = useApp();
@@ -19,7 +19,22 @@ export function ConfirmView() {
   if (!l && !u) return null;
   const d = new Date(b.date + "T00:00:00");
   const title = l ? l.title : u!.title;
-  const where = l ? l.launch : u!.area;
+  /**
+   * Where to go, on the one screen a guest keeps.
+   *
+   * This row read the raw area line, so the ticket for AerOhio Skydiving said "Meet at OH" while the desktop
+   * confirmation for the same booking said "Ohio" with directions beside it, and 1,683 shipped listings
+   * publish a state or province code with no town in front of it. The area line is not a meeting point even
+   * when it does name a town: the shop's own street is on file for roughly nine listings in ten, the desktop
+   * confirmation has printed it all along, and "Meet at Houston, TX" is not something a guest can drive to.
+   *
+   * So: the door the shop published, else the place spelled out, and `meetPlace` rather than `placeName`
+   * because a row labelled "Meet at" may not be filled with a whole state. When neither exists there is
+   * nothing honest to print and the row is left out, which is the rule the pay sheet's own sentence keeps.
+   */
+  const contact = u ? contactFor(u) : null;
+  const addressRaw = contact ? addressLine(contact) : null;
+  const where = l ? l.launch : addressRaw ? tidyAddress(addressRaw) : meetPlace(u!.area);
   const op = l ? l.op : u!.title;
   // Only a shop that claimed its listing and switched Instant Book on can promise a confirmed slot.
   const instant = !!(u?.claimed && u?.instant);
@@ -87,10 +102,12 @@ export function ConfirmView() {
               </b>
             </div>
           ) : null}
-          <div className="trow">
-            <span>Meet at</span>
-            <b>{where}</b>
-          </div>
+          {where ? (
+            <div className="trow">
+              <span>Meet at</span>
+              <b>{where}</b>
+            </div>
+          ) : null}
           <div className="trow">
             <span>{b.paid ? "Paid" : instant ? "Total" : "Total, once confirmed"}</span>
             <b className="mono">{b.total ? moneyIn(b.total, cur) : "On site"}</b>

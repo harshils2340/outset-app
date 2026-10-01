@@ -22,13 +22,15 @@ import test from "node:test";
 import { readFileSync } from "node:fs";
 
 import { companyAnswer, companyFacts } from "../companyAgent";
-import { placeName } from "../listingDerive";
+import { meetPlace, placeName } from "../listingDerive";
+import { addressLine, contactFor } from "../catalog";
 import type { Unclaimed } from "../../data/types";
 
 const read = (rel: string) => readFileSync(new URL(rel, import.meta.url), "utf8");
 const SHEETS = read("../../components/booking/Sheets.tsx");
 const WEB = read("../../components/web/WebListing.tsx");
 const CONFIRM = read("../../components/web/WebConfirm.tsx");
+const PHONE_CONFIRM = read("../../components/booking/ConfirmView.tsx");
 
 test("the Where row a guest reads names the state, on both listing surfaces", () => {
   assert.match(
@@ -44,6 +46,49 @@ test("the Where row a guest reads names the state, on both listing surfaces", ()
 test("the phone sheet's host line and the confirm screen's summary name the state", () => {
   assert.match(SHEETS, /\{\[kind, placeName\(item\.area\)\]\.join\(" · "\)\}/, "the host line prints a raw area");
   assert.match(CONFIRM, /<small>\{placeName\(item\.area\)\}<\/small>/, "the confirm summary prints a raw area");
+});
+
+/**
+ * The ticket on the phone, which is the one screen a guest keeps.
+ *
+ * `WebConfirm` is the desktop confirmation and was fixed on 27 September. Its twin on the phone was not: the
+ * row labelled "Meet at" printed `u.area` raw, so the same booking read "Meet at OH" on a phone and "Ohio",
+ * with directions beside it, on a laptop. The area line is not a meeting point even when it names a town, so
+ * this reads the street the shop published first, the way the desktop confirmation and the pay sheet both do.
+ */
+test("the phone confirmation names the door, not the area line", () => {
+  assert.match(
+    PHONE_CONFIRM,
+    /const where = l \? l\.launch : addressRaw \? tidyAddress\(addressRaw\) : meetPlace\(u!\.area\)/,
+    "the phone confirmation prints a raw area under 'Meet at'",
+  );
+  // A state is not a meeting point, so the row goes rather than being filled with the widest place we hold.
+  assert.match(PHONE_CONFIRM, /\{where \? \(/, "the phone confirmation draws a 'Meet at' row it has nothing for");
+});
+
+/**
+ * The two shapes that row has to answer for, on real shipped listings.
+ *
+ * AerOhio publishes a state code and no street, so there is nothing honest to print. 105 Fever publishes a
+ * street, which is what a guest can actually drive to; roughly nine operator listings in ten do.
+ */
+test("the phone confirmation's meeting place, on two shipped listings", () => {
+  const load = (id: string) => JSON.parse(readFileSync(new URL(`../../../public/o/${id}.json`, import.meta.url), "utf8")) as Unclaimed;
+  // The same chain the screen reads. `tidyAddress` only normalises spacing in the string it is handed, and it
+  // lives in a component that pulls a stylesheet in, so the expression itself is pinned by the test above.
+  const where = (u: Unclaimed) => {
+    const contact = contactFor(u);
+    return (contact && addressLine(contact)) || meetPlace(u.area);
+  };
+
+  const ohio = load("o-aerohio-com");
+  assert.equal(ohio.area, "OH", "the sample listing no longer ships a bare code");
+  assert.equal(ohio.contact?.street ?? null, null, "the sample listing now publishes a street");
+  assert.equal(where(ohio), "", "a whole state was printed as a meeting point");
+
+  const houston = load("o-105fever-com");
+  assert.equal(houston.area, "Houston, TX");
+  assert.equal(where(houston), "2493 South Braeswood Boulevard, Houston, TX, 77030", "the shop's own street was dropped for its area line");
 });
 
 /** Otto answers "where are you" and files the same place as the fact its grounded answers are built from. */
