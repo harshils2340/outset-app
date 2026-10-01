@@ -8141,6 +8141,93 @@ ran **57 of 57** on the tree carrying all three fixes, against a local Postgres 
   tonight was run with it cleared).
 
 
+## 1 October 2026, hundred and eighteenth run (10:30 to 11:20 UTC)
+
+**Chosen, and why.** `git fetch` first: nothing has landed since the hundred and seventeenth run's log entry,
+and that entry says the rehearsal ran 57 of 57 on the tree it committed, so by the rule the full rehearsal was
+**skipped at the start** and **run once at the end**, because both fixes are in code it drives. Both
+`node_modules` were missing again and were installed first. Baseline matched that entry exactly: `tsc --noEmit
+-p .` and `tsc -b` clean, the backend's own `tsc` clean but for TS5097, backend 975 tests with 973 pass and 2
+skipped, app 1,079 pass.
+
+Every area on the brief is on the Verified list. Two things were taken: the one line on Not yet checked that
+names a defect a guest meets rather than a question for Harshil (the Trips tab's focus listener and the hourly
+budget it spends), and then **the widths and the keyboard of the desktop guest site**, which no run has
+driven: every width Coverage names is 1440, 1280, 400 or 360, and 1024 is both the narrowest width the desktop
+site is reachable at and the one an iPad or a small laptop lands on.
+
+**Found and fixed.** Two commits.
+
+- **A trip with no booking at the API stops being asked after on every window focus** (`88358bf1`).
+  `lib/tripStatus.ts` opens by stating its own rule: an answer of "there is no such booking" is a real answer,
+  kept because the route a guest may call is rate limited and asking again every time the tab opens spends it.
+  `askStatus` then broke it. The first pass honoured the cached empty answer; every pass after it, which is
+  the tab coming back into focus, re-asked everything not in `SETTLED`, and an empty answer is not in
+  `SETTLED`. Nothing ever creates that row later: `POST /bookings` writes it before the device is told the
+  code, and a trip the device deliberately keeps because the API refused the booking (a concierge-only host
+  answers 404 for `/bookings`, and `AppProvider` stores it anyway so Ask can finish) never gets one at all.
+  What it spends: `/bookings/paid/:listing/:code` is capped at 60 calls an hour for the whole address, and
+  `confirmPaid` reads that same route when the guest comes back from Stripe, which is the one call here that
+  must not be refused, because at 429 the confirmation screen tells a guest whose card was charged that their
+  payment is not finished. An empty answer is settled now, and an open booking carries a fifteen second floor,
+  so a flurry of window activations costs one read of a booking rather than one each.
+- **The booking box's date picker puts the keyboard inside the dialog it says it is** (`bae6fe04`). Driven in
+  a real Chromium: the listing's date and start time picker has always been `role="dialog"` and has never
+  behaved like one. The booking box's own primary reads "Pick a time", pressing it opens the picker, and focus
+  stayed on the button. The picker sits earlier in the document than that button, so tabbing forward from it
+  never reached the picker at all: ten tabs ran through "Show more", the address, the phone number, Ask
+  Outset, "Manage this listing", the FAQ and the similar rail, with the calendar the guest had just opened
+  three stops behind them. The page scrolled under it too. `#safe`, the demo of the two booking paths, is the
+  same shape: a fixed scrim over the whole site claiming `role="dialog"` and nothing behind the claim. Both
+  get `useModal`, this repository's one answer to that, which every other dialog on both screens already uses.
+  Why no test caught it: `modalChrome.test.ts` counted the dialogs **claiming** `aria-modal`, so a dialog
+  saying only `role="dialog"` was never looked at, and these two said only that. The count is taken off the
+  role now, which is where the promise is.
+
+**Swept and clean, or measured and left.** Sideways scroll and controls with no name on the desktop guest
+site at 1024, 1100 and 1280 px, over the home, the Filters dialog and three listings with full menus, hours,
+reviews, FAQs and quotes: `scrollWidth` equals the viewport everywhere, no unnamed control, no page error.
+Escape closes the Filters dialog. Every module-level regex carrying `/g` in both projects, against the
+`.test()` and `.exec()` calls that read it, for the `lastIndex` that survives an early `return` or a counter
+exit: all 33 either reset `lastIndex` at entry or are not global at the call site, including the two backend
+`exec` loops that break on a cap. Every `new Date(...)` on a date key in `src`, for the UTC day the concierge
+notes warn about: all of them take the local `+ "T00:00:00"` form. `serviceFee` against what the booking box
+prints: the fee is whole dollars by construction, so the lines a guest reads add up to the total they are
+charged. `loadRemoteCatalog` with the 24 MB full catalog failing: `catalogComplete` is still dispatched, from
+the `.then` and from the `.catch` beneath it. The keyboard path through the fixed picker, end to end: Enter on
+the primary lands on the selected date, Tab stays inside and wraps, Enter on 9:00 AM picks it, the picker
+closes, focus comes back to the primary, which by then reads "Add your name and number".
+
+**Verification.** App `npm test` 1,083 pass, 0 fail, up from 1,079 (four new: two in `unanswered.test.ts`,
+which pins the empty answer as settled and the floor on an open booking, and two in `modalChrome.test.ts` for
+the two dialogs, plus the role count that replaces the `aria-modal` count). Every new test was run against the
+tree with its fix reverted and fails there: 2 of 7 and 3 of 19. Backend `npm test` 975 tests, 973 pass, 2
+skipped, unchanged, and nothing under `backend/src` was touched. `tsc --noEmit -p .`, `tsc -b` and the
+backend's own `tsc` all clean but for TS5097. The rehearsal ran **57 of 57** on the tree carrying both fixes,
+against a local Postgres 16 cluster with TLS on port 5433 and the Chromium on disk. Nothing under
+`backend/data`, `public/` or `src/data` was written, and `STRIPE_SECRET_KEY`, `RESEND_API_KEY` and
+`GITHUB_TOKEN` were empty throughout.
+
+**Needs Harshil.**
+
+- **The booking box opens on a row the page's own headline contradicts.** Surf City Jet Ski & Watersports
+  heads "Jet ski rental in Surf City, North Carolina", and both the card's "from $32" and the picker's default
+  Option are "Paddle Board Rentals", because the cheapest row wins. This is the eighty-second run's folded
+  service question and the seventy-fourth's "from" price question meeting on one screen, and it is the first
+  thing a guest reads on that listing. Say the word and the next run makes the default the cheapest row of the
+  kind the listing is filed under, falling back to the cheapest of any kind.
+- Still open from earlier runs, unchanged: **there is no error boundary in this app**, so a throw anywhere in
+  render is a white page over prose crawled from 48,198 other people's websites. Four runs have now asked.
+- Also still open: the phone's browse is not ranked at all while the desktop's is; the listing page a chain's
+  card opens still heads the primary town; the phone confirmation offers no way to reach the shop; a guest
+  cannot cancel a booking at all, on every listing that advertises Free cancellation with a window; the
+  concierge's crawl queue ignores the town people asked about; a price sort and a price filter compare two
+  dollars on six metros; the cards still say "$" for a Canadian shop; the cards are weeks behind the pages
+  until a sync runs; `plainWords` is not idempotent; 69 Toronto-address listings are filed under a
+  neighbouring metro; there is no linter in this repo; and this container still injects a `GITHUB_TOKEN`,
+  which the brief says must be empty (everything tonight was run with it cleared).
+
+
 ## Coverage
 
 The catalog is 48,198 listings as of the 23 September sync, 1,873 of them Viator partner rows. Counts below
@@ -9045,7 +9132,24 @@ every row the shipped catalog puts on a metro's page through another venue, on t
 card and the compare table's Where row. Which partner rows reach the first six of a phone category page, over
 all 469 of them. Email HTML escaping on every operator-typed and guest-typed string that reaches a template.
 
-**Not yet checked.** Whether the static pages' own CSS should carry a wrapping rule at all: it sets no
+Every dialog on the guest site held against the one hook that makes a dialog one, by its role rather than by
+the attribute beside it: the listing's date and start time picker and the `#safe` demo were the two saying
+`role="dialog"` and doing none of it, and the keyboard path through the fixed picker was driven end to end.
+The desktop guest site at 1024, 1100 and 1280 px, which are the widths between the phone and the wide site
+nothing had looked at: the home, the Filters dialog and three full listings, for sideways scroll, anything past
+the edge, a control with no name and a page error. What the Trips tab spends of the one hourly budget the
+guest's own return from Stripe reads from, and which of its cached answers can still change. Every
+module-level global regex in both projects against the `lastIndex` that outlives an early exit. Every date key
+parsed in `src`, for the UTC day that is a day early west of Greenwich.
+
+**Not yet checked.** Which row the booking box should open on, and
+which row a card's "from" price should name, when the cheapest row of a shop's menu is not the kind the
+listing's own headline claims: Surf City Jet Ski & Watersports heads "Jet ski rental" and opens on "Paddle
+Board Rentals" at $32, which is this run's Needs Harshil and the two older questions about a folded service
+and a "from" price meeting on one screen. Whether `#safe` should carry an Escape key as well as a Close
+button, now that it holds focus. Whether the booking box's primary should keep `aria-disabled` while it is
+the way forward: it is not really disabled, pressing it opens the picker, and its label says what is missing,
+so assistive tech is told a control is unavailable at the moment it is the only thing to press. Whether the static pages' own CSS should carry a wrapping rule at all: it sets no
 `overflow-wrap`, no `word-break` and no `min-width` on either of its two flex rows, and nothing overflows today
 only because every long token in the catalog is a URL, which a browser breaks at a slash (see this run's Needs
 Harshil). Whether a metro page should draw the shops whose own area line names its main town but whose pin filed
@@ -9393,9 +9497,7 @@ reaching it comes from `zoneForArea`'s own table. Whether an entity naming no ch
 rather than left as the page wrote it, which is what the fix does and what every decoder here already does
 with a named entity it does not know: a guest would read "&#999999999;" where the shop meant nothing at all. Whether
 `fetchAvailability` should keep an answer of "no live calendar" for the same five minutes it keeps one with
-departures in it, since only the empty one can go stale into a lie. Whether the Trips tab should debounce its
-focus listener: every window focus re-asks every unsettled booking on a route limited to 60 an hour, which the
-guest's own return from Stripe spends from the same budget. Whether the now unreachable `.catch` around
+departures in it, since only the empty one can go stale into a lie. Whether the now unreachable `.catch` around
 `factsOf` in `openSlots` should go, given that the function it guards no longer throws. Whether a guest should
 be able to cancel a booking at all, which no screen and no route offers on any listing that advertises a Free
 cancellation window: the operator can cancel, the API refunds, and the guest holding the promise has only the
