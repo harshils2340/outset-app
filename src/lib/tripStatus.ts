@@ -17,6 +17,18 @@
 /** A booking the operator has settled does not change again. */
 const SETTLED = ["declined", "cancelled", "completed"];
 
+/**
+ * The shortest gap between two reads of the same booking.
+ *
+ * The tab re-asks on every window focus, and `/bookings/paid/:listing/:code` is capped at 60 calls an hour
+ * for the whole address. The guest's own return from Stripe reads that same route, through `confirmPaid`, and
+ * it is the one call here that must not come back refused: at 429 the confirmation screen tells a guest whose
+ * card was charged that their payment is not finished. So a flurry of window activations, which is what
+ * clicking between this tab and the shop's own site looks like, now costs one read of a booking rather than
+ * one each. Fifteen seconds, because an ordinary switch away and back should still show an operator's answer.
+ */
+export const RE_ASK_MS = 15000;
+
 /** What the cache should hold after one read. `undefined` leaves the booking unasked, so it is asked again. */
 export function rememberStatus(cached: string | undefined, read: { status: string | null; unanswered: boolean }): string | undefined {
   if (read.unanswered) return cached;
@@ -25,9 +37,18 @@ export function rememberStatus(cached: string | undefined, read: { status: strin
 
 /**
  * Whether to spend a call on this booking. The first pass trusts anything already cached; a later pass, which
- * is the tab coming back into focus, re-asks everything the operator has not settled.
+ * is the tab coming back into focus, re-asks what the operator has not settled and nobody has just asked
+ * after. `sinceMs` is how long ago this booking was last read, so a booking never read is always re-asked.
+ *
+ * An answer of "there is no such booking" is settled too, which is the rule stated at the top of this file
+ * and the one the focus pass used to break. Nothing ever creates that row later: `POST /bookings` writes it
+ * before the device is told the code, and a trip the device kept because the API refused the booking (a
+ * concierge-only host answers 404 for `/bookings`) never gets one at all. So those trips were asked after
+ * again on every single window focus, for an answer that cannot change, out of the same hourly allowance the
+ * guest's return from Stripe reads.
  */
-export function askStatus(cached: string | undefined, pass: number): boolean {
+export function askStatus(cached: string | undefined, pass: number, sinceMs = Infinity): boolean {
   if (pass === 0) return cached === undefined;
-  return !SETTLED.includes(cached || "");
+  if (cached === "" || SETTLED.includes(cached || "")) return false;
+  return sinceMs >= RE_ASK_MS;
 }

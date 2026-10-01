@@ -27,7 +27,7 @@ class MemoryStorage {
 }
 (globalThis as unknown as { localStorage: MemoryStorage }).localStorage = new MemoryStorage();
 
-const { askStatus, rememberStatus } = await import("../tripStatus");
+const { RE_ASK_MS, askStatus, rememberStatus } = await import("../tripStatus");
 const { apiDidNotAnswer, availabilityNow, fetchAvailability } = await import("../api");
 
 /* ---------- which statuses say nobody answered ---------- */
@@ -61,11 +61,36 @@ test("a first read nobody answered leaves the booking unasked, so the tab asks a
   assert.equal(askStatus(keep, 0), true);
 });
 
-test("the API saying it has no such booking is an answer and is remembered", () => {
+/**
+ * The half of that rule the focus pass used to break.
+ *
+ * "There is no such booking" is a judged answer, and nothing creates that row later: `POST /bookings` writes
+ * it before the device is told the code, and a trip the device kept because the API refused the booking (a
+ * concierge-only host answers 404 for `/bookings`) never gets one. This file's own opening comment says so,
+ * and `askStatus` re-asked it anyway on every single window focus, out of the same 60-an-hour allowance the
+ * guest's own return from Stripe reads through `confirmPaid`.
+ */
+test("the API saying it has no such booking is an answer and is never asked after again", () => {
   const keep = rememberStatus(undefined, { status: null, unanswered: false });
   assert.equal(keep, "");
-  assert.equal(askStatus(keep, 0), false, "a hand-built listing's trip is not asked after on every mount");
-  assert.equal(askStatus(keep, 1), true, "a focus still re-asks it: nothing has settled it");
+  assert.equal(askStatus(keep, 0), false, "a trip with no API row is not asked after on every mount");
+  assert.equal(askStatus(keep, 1), false, "nor on a focus: the answer cannot change");
+  assert.equal(askStatus(keep, 9, Infinity), false, "nor ever");
+});
+
+/**
+ * A flurry of window activations is one read of a booking, not one each. Clicking between this tab and the
+ * shop's own site is exactly that shape, and four open requests at four activations is sixteen of sixty.
+ */
+test("an open booking is not re-read twice inside the floor", () => {
+  for (const s of ["new", "accepted", "pending"]) {
+    assert.equal(askStatus(s, 1, Infinity), true, s + ": never read before");
+    assert.equal(askStatus(s, 1, RE_ASK_MS), true, s + ": read a floor ago");
+    assert.equal(askStatus(s, 1, RE_ASK_MS - 1), false, s + ": read just now");
+    assert.equal(askStatus(s, 1, 0), false, s + ": read this instant");
+  }
+  // The floor never holds back the first pass, which spends nothing it has not been asked for.
+  assert.equal(askStatus(undefined, 0, 0), true, "a booking nothing has ever read is still read");
 });
 
 test("a status the API gave is remembered, and a settled one is never asked again", () => {

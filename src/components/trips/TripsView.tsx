@@ -35,6 +35,13 @@ const STATUS: Record<string, { label: string; tone: string }> = {
  */
 const answered: Record<string, string> = {};
 
+/**
+ * When each booking was last read, so a burst of window activations costs one read of a booking rather than
+ * one each. The route is capped at 60 calls an hour for the whole address and the guest's own return from
+ * Stripe reads it too: see `RE_ASK_MS` in `lib/tripStatus.ts`.
+ */
+const askedAt: Record<string, number> = {};
+
 export function TripsView() {
   const { state, openListing, openRequest } = useApp();
   const today = startOfToday();
@@ -75,7 +82,8 @@ export function TripsView() {
     void (async () => {
       for (const b of up) {
         // A booking the operator already settled does not change again; only open ones are re-asked.
-        if (!askStatus(answered[b.code], pass)) continue;
+        if (!askStatus(answered[b.code], pass, Date.now() - (askedAt[b.code] ?? -Infinity))) continue;
+        askedAt[b.code] = Date.now();
         const read = await bookingStatus(b.listing, b.code);
         const keep = rememberStatus(answered[b.code], read);
         if (keep === undefined) delete answered[b.code];
