@@ -101,6 +101,29 @@ export const addonPrice = (a: { price: number | null }): number => (a.price != n
  */
 export const hasPrice = (p: number | null | undefined): p is number => p != null && p > 0;
 
+/**
+ * The menu rows behind the extras a booking wrote down.
+ *
+ * A booking stores its extras by name, and two rows of one menu can carry the same name: "Gas Premium" at $5
+ * and at $6 on o-marinas-com, a private lesson at $120 and $100 on o-buffalocreekgc-com, 7 shipped listings in
+ * all. Filtering the menu by those names handed back every row carrying one, so ticking a single $6 extra
+ * produced two lines totalling $11 and a confirmation whose price details did not add up to what the guest was
+ * charged, which the screen then dropped altogether rather than print wrong.
+ *
+ * Takes a row per name picked instead, and a different row each time a name is picked twice. That is the same
+ * reading priceBooking makes in backend/src/payments/money.ts, which charges the first row carrying a name
+ * unless the guest's own total says they meant another: one tick is the first row, and ticking both is both.
+ */
+export function pickedAddons(menu: UnclaimedOption[] | undefined, picked: string[]): UnclaimedOption[] {
+  const pool = [...(menu || [])];
+  const out: UnclaimedOption[] = [];
+  for (const name of picked) {
+    const at = pool.findIndex((a) => a.name === name);
+    if (at >= 0) out.push(pool.splice(at, 1)[0]);
+  }
+  return out;
+}
+
 export function priceUnclaimed(o: UnclaimedOption | null, qty: number, addons: UnclaimedOption[] = []): PriceBreakdown {
   const add = addons.reduce((n, a) => n + addonPrice(a), 0);
   if (!o || o.price == null || !(o.price > 0)) return { base: 0, add, sub: 0, fee: 0, rate: 0, capped: false, total: 0 };

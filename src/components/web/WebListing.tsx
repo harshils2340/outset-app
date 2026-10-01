@@ -1628,7 +1628,7 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
                 <h2>Add-ons</h2>
                 <div className="alvariants list">
                   {item.addons.map((a, i) => (
-                    <button key={a.name} type="button" className="alvariant check" aria-pressed={addonIdx.includes(i)} onClick={() => setAddonIdx((c) => (c.includes(i) ? c.filter((x) => x !== i) : [...c, i]))}>
+                    <button key={a.name + i} type="button" className="alvariant check" aria-pressed={addonIdx.includes(i)} onClick={() => setAddonIdx((c) => (c.includes(i) ? c.filter((x) => x !== i) : [...c, i]))}>
                       <span className="alcheck" aria-hidden="true"><Markup html={ICONS.check} /></span>
                       <span>{tidyName(a.name)}</span>
                       <b>{addonPrice(a) ? "+" + money(addonPrice(a)) : "Free"}</b>

@@ -3,7 +3,7 @@ import "../../styles/air-listing.css";
 import { ICONS } from "../../data/icons";
 import type { Booking } from "../../data/types";
 import { addressLine, contactFor, experienceById, fmtPhone, mapsHref, perPerson, publicRating, telHref } from "../../lib/catalog";
-import { addonPrice, priceUnclaimed, serviceFeeLabel } from "../../lib/pricing";
+import { addonPrice, pickedAddons, priceUnclaimed, serviceFeeLabel } from "../../lib/pricing";
 import { splitAddons } from "../../lib/storage";
 import { placeName } from "../../lib/listingDerive";
 import { arrivalNote, tidyAddress, tidyLength, tidyName } from "./WebListing";
@@ -47,7 +47,7 @@ export function WebConfirm({ booking, onDone, onOpen }: { booking: Booking; onDo
   const instant = !!(item.claimed && item.instant);
   const first = booking.guest?.name ? booking.guest.name.split(" ")[0] : "";
   // The price lines are the same breakdown the listing showed; they appear only when they add up to the stored total.
-  const addonRows = (item.addons || []).filter((a) => extras.includes(a.name));
+  const addonRows = pickedAddons(item.addons, extras);
   const arrival = arrivalNote(item);
   const steps = [
     instant
@@ -185,7 +185,7 @@ export function WebConfirm({ booking, onDone, onOpen }: { booking: Booking; onDo
                 {lines && picked ? (
                   <div className="allines alconfirmlines">
                     <div className="alline"><span className="wrap">{perPerson(picked) && picked.price != null ? moneyIn(picked.price, cur) + " × " + booking.qty + (booking.qty === 1 ? " guest" : " guests") : tidyName(picked.name)}</span><span>{moneyIn(lines.base, cur)}</span></div>
-                    {addonRows.map((a) => <div className="alline" key={a.name}><span className="wrap">{tidyName(a.name)}</span><span>{moneyIn(addonPrice(a), cur)}</span></div>)}
+                    {addonRows.map((a, i) => <div className="alline" key={a.name + i}><span className="wrap">{tidyName(a.name)}</span><span>{moneyIn(addonPrice(a), cur)}</span></div>)}
                     {lines.fee ? <div className="alline"><span className="wrap">{serviceFeeLabel(lines)}</span><span>{moneyIn(lines.fee, cur)}</span></div> : null}
                   </div>
                 ) : picked ? (
