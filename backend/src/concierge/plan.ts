@@ -192,7 +192,15 @@ export function readIntent(text: string, prior?: Intent | null, device?: { lat: 
    * cost under two thousand dollars, which excludes nothing. A total is divided by the party to get the cap
    * that can actually be compared with a ticket price, and both are kept so the answer can say which it used.
    */
-  const money = "\\$?\\s?([\\d,]{1,7})";
+  /**
+   * A figure starts with a digit. Written `[\d,]{1,7}` it also matched a lone comma, which `amount` then read
+   * as `Number("")`, which is zero: "escape room in waterloo, budget doesn't matter" came back with a cap of
+   * $0 a head, so the one sentence that says money is no object threw every option away. The comma in front of
+   * the word was the whole figure. The same read swallowed any real figure behind it ("axe throwing in
+   * toronto, total $300 for the group" quoted a $0 cap and not the $300), and a thousands separator inside a
+   * figure still belongs to it, so "2,000" reads as before.
+   */
+  const money = "\\$?\\s?(\\d[\\d,]{0,6})";
   const perHeadSaid = t.match(new RegExp("(?:under|below|less than|max(?:imum)?|up to|budget of|around)\\s*" + money + "\\s*(?:a|per|each|pp|\\/)\\s*(?:head|person|pax|ticket|each)?"))
     || t.match(new RegExp(money + "\\s*(?:a|per)\\s*(?:head|person|pax)"));
   /** A total is said either way round: "budget of $2,000", and just as often "we have a $2,000 budget". */
@@ -201,8 +209,10 @@ export function readIntent(text: string, prior?: Intent | null, device?: { lat: 
     t.match(new RegExp("(?:budget(?:\\s+of)?|under|below|less than|max(?:imum)?|up to|spend|within)\\s*(?:a\\s+)?" + money));
   const amount = (mm: RegExpMatchArray | null) => (mm ? Number(mm[1].replace(/,/g, "")) : null);
 
-  // "Doesn't matter" is an answer to the budget question, and has to stop it being asked again.
-  const noBudget = /\b(any price|no limit|doesn'?t matter|does not matter|whatever|no budget)\b/.test(t);
+  // "Doesn't matter" is an answer to the budget question, and has to stop it being asked again. "Any budget"
+  // waives it the same way "any price" does, and sat outside this list, so it was the one waiver still read as
+  // a request for the cheap end.
+  const noBudget = /\b(any price|any budget|no limit|doesn'?t matter|does not matter|whatever|no budget)\b/.test(t);
   let maxPerPerson = amount(perHeadSaid);
   let maxTotal: number | null = null;
   if (maxPerPerson == null) {
@@ -302,9 +312,21 @@ export function readIntent(text: string, prior?: Intent | null, device?: { lat: 
    */
   const instead = /\b(instead|actually|rather|scratch that|forget|no wait|change of plan)\b/.test(t);
 
+  /**
+   * Naming a budget is not asking for something cheaper than the last answer.
+   *
+   * The word `budget` on its own turned on the "anything cheaper" refinement, which drops the cap to 70% of
+   * itself, so a guest who had just stated their budget was filtered under it: "budget of 500" read a cap of
+   * $250 a head and then squeezed it to $175. And "budget doesn't matter" and "any budget is fine", which this
+   * reader already hears as an answer that closes the budget question (`noBudget` above), were read as a
+   * request for the cheap end instead: the one sentence saying money is no object narrowed hardest. The
+   * `$` guard already held the half of these that carry a dollar sign; the figure itself and the words that
+   * waive it hold the rest.
+   */
+  const saidBudget = noBudget || /\$/.test(t) || maxPerPerson != null || maxTotal != null;
   const refine: Intent["refine"] =
     /\b(?:something else|anything else|what else|who else|where else|any ?where else|other (?:options?|places?|ones?)|any other|more options?|show me more|others?|different|next)\b/.test(t) ? "other"
-      : /\b(cheaper|less|lower|too (?:expensive|pricey|much)|budget)\b/.test(t) && !/\$/.test(t) ? "cheaper"
+      : /\b(cheaper|less|lower|too (?:expensive|pricey|much)|budget)\b/.test(t) && !saidBudget ? "cheaper"
         : /\b(re-?check|check again|refresh|try again|anything now|updated?)\b/.test(t) ? "recheck"
           : /\b(earlier|sooner)\b/.test(t) ? "earlier"
             : /\b(later|after)\b/.test(t) ? "later"

@@ -324,3 +324,39 @@ test("the article in front of a count is not the count", () => {
   assert.equal(readIntent("escape room in kitchener for a couple of us").party, 2);
   assert.equal(readIntent("escape room in kitchener, 2 adults and 3 kids").party, 5);
 });
+
+test("a comma is not a figure, and a stated budget is not a request for something cheaper", () => {
+  /**
+   * The money pattern read `[\d,]{1,7}`, which a lone comma satisfies, and `Number("")` is zero: the comma in
+   * front of the word was the whole figure. "budget doesn't matter" came back with a cap of $0 a head, so the
+   * one sentence that says money is no object threw every option away, and a real figure behind the comma was
+   * swallowed with it.
+   */
+  const waived = readIntent("escape room in kitchener, budget doesn't matter");
+  assert.equal(waived.maxPerPerson, null, "no cap at all, not a cap of nothing");
+  assert.equal(waived.maxTotal, null);
+  assert.ok(waived.asked?.includes("budget"), "and the budget question is closed rather than asked again");
+
+  const group = readIntent("axe throwing in toronto, total $300 for the group");
+  assert.equal(group.maxTotal, 300, "the figure behind the comma is the figure");
+  assert.equal(group.maxPerPerson, 150);
+
+  // A thousands separator inside a figure still belongs to it.
+  const offsite = readIntent("$2,000 for 20 people axe throwing in toronto");
+  assert.equal(offsite.maxTotal, 2000);
+  assert.equal(offsite.maxPerPerson, 100);
+
+  /**
+   * The word "budget" turned on the refinement that drops the cap to 70% of itself, so a guest who had just
+   * named their budget was filtered under it, and the two phrasings that waive a budget narrowed hardest of all.
+   */
+  assert.equal(readIntent("escape room in kitchener budget of 500").refine, null);
+  assert.equal(readIntent("escape room in kitchener budget of 500").maxPerPerson, 250);
+  assert.equal(readIntent("escape room in kitchener, budget doesn't matter").refine, null);
+  assert.equal(readIntent("escape room in kitchener, any budget").refine, null);
+  assert.ok(readIntent("escape room in kitchener, any budget").asked?.includes("budget"));
+
+  // Asking for the cheap end of an answer already given still reads as one.
+  assert.equal(readIntent("anything cheaper").refine, "cheaper");
+  assert.equal(readIntent("too expensive").refine, "cheaper");
+});
