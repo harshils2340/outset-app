@@ -16,6 +16,7 @@ const LISTING = readFileSync(new URL("../../components/web/WebListing.tsx", impo
 const HOME = readFileSync(new URL("../../components/web/WebHome.tsx", import.meta.url), "utf8");
 const DRAWER = readFileSync(new URL("../../components/operator/OpBookings.tsx", import.meta.url), "utf8");
 const CONCIERGE = readFileSync(new URL("../../components/web/WebConcierge.tsx", import.meta.url), "utf8");
+const SAFEBOOK = readFileSync(new URL("../../components/web/SafeBookDemo.tsx", import.meta.url), "utf8");
 
 test("Tab off the last stop comes back to the first", () => {
   assert.equal(tabWrap(4, 3, false), 0);
@@ -114,11 +115,53 @@ test("every dialog claiming aria-modal on the site uses the hook", () => {
     ["WebHome", HOME],
     ["OpBookings", DRAWER],
     ["WebConcierge", CONCIERGE],
+    ["SafeBookDemo", SAFEBOOK],
   ] as const) {
     const claims = src.match(/aria-modal="true"/g)?.length ?? 0;
     if (!claims) continue;
     assert.match(src, /useModal\(/, name + " claims aria-modal, so it owes the page behind it the hook");
   }
+});
+
+/**
+ * What the test above could not see, which is how two dialogs went years without the hook.
+ *
+ * It counted the dialogs that CLAIM `aria-modal`, so a dialog that said `role="dialog"` and claimed nothing
+ * else was never looked at. Two did. The listing's own date and start time picker is the one that matters: the
+ * booking box's primary reads "Pick a time", its handler opens that picker, and focus stayed on the button.
+ * The picker sits earlier in the document than the button, so tabbing forward from it never reached the
+ * picker at all - it walked the rest of the listing, through "Show more", the address, the phone number, Ask
+ * Outset, the FAQ and the similar rail. The other is `#safe`, a fixed scrim over the whole site.
+ *
+ * The role is the promise, not the attribute beside it, so the count is taken off the role now.
+ */
+test("every role=dialog on the site is one of those dialogs, not just the ones that said aria-modal", () => {
+  // Comments first: every one of these files explains its own dialogs, and a comment naming a role is not one.
+  const code = (src: string) => src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+  for (const [name, src] of [
+    ["WebListing", LISTING],
+    ["WebHome", HOME],
+    ["OpBookings", DRAWER],
+    ["SafeBookDemo", SAFEBOOK],
+  ] as const) {
+    for (const m of code(src).matchAll(/role="dialog"([^>]*)>/g)) {
+      assert.match(m[1], /aria-modal="true"/, name + ': a role="dialog" with no aria-modal: ' + m[0].slice(0, 90));
+    }
+  }
+  // The concierge overlay writes both as expressions, because it is a region when embedded: see above.
+  assert.doesNotMatch(code(CONCIERGE), /role="dialog"/);
+});
+
+test("the listing's date and start time picker is a modal and says so", () => {
+  assert.match(LISTING, /className="alpop" ref=\{pickerBox\} role="dialog" aria-modal="true"/);
+  assert.match(LISTING, /useModal\(pickerBox, pickerOpen\)/);
+  // Four dialogs on this page now: Show more, the photo lightbox, the picker, and nothing by hand.
+  assert.equal(LISTING.match(/useModal\(/g)?.length, 3);
+});
+
+test("the #safe demo is a scrim over the whole site, so it holds the page behind it", () => {
+  assert.match(SAFEBOOK, /className="sb" ref=\{box\} role="dialog" aria-modal="true"/);
+  assert.match(SAFEBOOK, /useModal\(box\);/);
 });
 
 test("the two dialogs that autofocused their close button leave it to the hook", () => {

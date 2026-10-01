@@ -1313,6 +1313,19 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
 
   // Close the date popover on an outside click.
   const popRef = useRef<HTMLDivElement | null>(null);
+  /**
+   * The picker itself, which has always said `role="dialog"` and never behaved like one.
+   *
+   * Every other dialog on this page goes through `useModal`; this one was missed because the test that
+   * catches a hand-rolled dialog counted the ones claiming `aria-modal`, and this one never claimed it. What
+   * a keyboard guest got: the booking box's own primary reads "Pick a time" and its handler opens this, and
+   * focus stayed on the button. The picker is earlier in the document than that button, so tabbing forward
+   * from it never reached the picker at all - it walked the rest of the listing instead, through "Show more",
+   * the address, the phone number, Ask Outset, the FAQ and the similar rail - and only Shift+Tab, three stops
+   * back, led anywhere near the calendar the guest had just opened.
+   */
+  const pickerBox = useRef<HTMLDivElement | null>(null);
+  useModal(pickerBox, pickerOpen);
   useEffect(() => {
     if (!pickerOpen) return;
     const onDown = (e: MouseEvent) => {
@@ -1837,7 +1850,7 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
                     </div>
                   </div>
                   {pickerOpen ? (
-                    <div className="alpop" role="dialog" aria-label="Date and start time">
+                    <div className="alpop" ref={pickerBox} role="dialog" aria-modal="true" aria-label="Date and start time">
                       <div className="alpophead">
                         <span>
                           <b>{time ? fmtDate(day) + " · " + fmtTime(time) : "Pick a date and start time"}</b>

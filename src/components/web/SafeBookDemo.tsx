@@ -1,4 +1,6 @@
+import { useRef } from "react";
 import { Mark } from "../layout/Mark";
+import { useModal } from "../layout/useModal";
 import { WalletCard } from "../account/WalletCard";
 import "../../styles/safebook.css";
 
@@ -20,8 +22,14 @@ const AGENT = [
 ];
 
 export function SafeBookDemo({ onClose, onOpenAccount }: { onClose: () => void; onOpenAccount?: () => void }) {
+  // A fixed scrim over the whole site that said `role="dialog"` and did none of what that promises: focus
+  // stayed on whatever was behind it, Tab walked the home underneath the scrim, and a wheel rolled it. This
+  // is the screen the two booking paths get shown on, so it is the one most likely to be driven by somebody
+  // else's hands.
+  const box = useRef<HTMLDivElement | null>(null);
+  useModal(box);
   return (
-    <div className="sb" role="dialog" aria-labelledby="sb-title">
+    <div className="sb" ref={box} role="dialog" aria-modal="true" aria-labelledby="sb-title">
       <div className="sb-card">
         <header className="sb-top">
           <Mark size={28} />
