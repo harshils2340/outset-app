@@ -8305,8 +8305,11 @@ and `images.ts`, the three `src/lib` modules the log had never named: nothing wr
 `reserveForward.test.ts`). Every new test was run against the tree with its fix reverted and fails there: 2 of
 13 in the backend, 1 of 4 in the app. `tsc --noEmit -p .`, `tsc -b` and the backend's own `tsc` all clean but
 for TS5097. The rehearsal ran **57 of 57** on the tree carrying all three fixes, against a local Postgres 16
-cluster with TLS on port 5433 and the Chromium on disk. Nothing under `backend/data`, `public/` or `src/data`
-was written, and `STRIPE_SECRET_KEY`, `RESEND_API_KEY` and `GITHUB_TOKEN` were empty throughout.
+cluster with TLS on port 5433 and the Chromium on disk. Nothing tracked under `backend/data`, `public/` or
+`src/data` was written; the two untracked files under `backend/data` that carry today's date, `outset.db` and
+`claim-secret.txt`, are both written by importing the backend at all, as they are on every run here, and the
+SQLite file holds nothing but the empty schema `migrate()` creates. `STRIPE_SECRET_KEY`, `RESEND_API_KEY` and
+`GITHUB_TOKEN` were empty throughout.
 
 **Needs Harshil.**
 
