@@ -55,6 +55,24 @@ test("the landing and its schedule page are read out of every shape of link the 
   assert.equal(fishingReservationsRef("https://example.com/book"), null);
 });
 
+/**
+ * The seats on this page arrive as numeric entities, and the reader handed every one of them straight to
+ * `String.fromCodePoint`, which throws above U+10FFFF. One malformed entity anywhere on a landing's schedule
+ * page, which a broken template is enough to write, and a live read in the middle of a guest's concierge
+ * answer threw rather than returning what it could read.
+ */
+test("a malformed numeric entity on the page does not take the whole read down", () => {
+  const broken = FIXTURE.replace("&#52;", "&#999999999;");
+  assert.notEqual(broken, FIXTURE);
+  const trips = parseTrips(broken);
+  assert.equal(trips.length, 5);
+  // The entity it could not read is left as the page wrote it, so the seat count is unknown rather than wrong.
+  assert.equal(trips[0].spots, null);
+  // Every other row on the page still reads.
+  assert.equal(trips[1].spots, 17);
+  assert.equal(trips[0].price, 150.08);
+});
+
 test("every trip on the page is read with its seats decoded and its sold-out rows named", () => {
   const trips = parseTrips(FIXTURE);
   assert.equal(trips.length, 5);

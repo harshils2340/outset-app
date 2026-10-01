@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import * as cheerio from "cheerio";
 import { getJson, getPage, sleep } from "./polite.ts";
+import { charFromCodePoint } from "../lib/codePoint.ts";
 
 /**
  * Chain and franchise location pages, Florida only.
@@ -96,8 +97,8 @@ export function decode(s: string): string {
   return s
     .replace(/&(#?[a-z0-9]+);/gi, (m, k: string) => {
       if (ENTITIES[k.toLowerCase()] != null) return ENTITIES[k.toLowerCase()];
-      if (/^#\d+$/.test(k)) return String.fromCharCode(Number(k.slice(1)));
-      if (/^#x[0-9a-f]+$/i.test(k)) return String.fromCharCode(parseInt(k.slice(2), 16));
+      if (/^#\d+$/.test(k)) return charFromCodePoint(Number(k.slice(1))) ?? m;
+      if (/^#x[0-9a-f]+$/i.test(k)) return charFromCodePoint(parseInt(k.slice(2), 16)) ?? m;
       return m;
     })
     .replace(/\s+/g, " ")

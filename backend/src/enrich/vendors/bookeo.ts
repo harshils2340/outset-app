@@ -1,5 +1,6 @@
 import { mineSentences, plain } from "../widgets.ts";
 import type { Company, Offering, WidgetResult } from "../widgets.ts";
+import { charFromCodePoint } from "../../lib/codePoint.ts";
 
 /**
  * Bookeo as a free, exact source, read the way a guest's browser reads it.
@@ -174,7 +175,7 @@ const pause = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const unesc = (s: string) => s.replace(/\\(.)/g, "$1");
 const ENT: Record<string, string> = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", nbsp: " " };
 /** The few entities Bookeo writes into titles and copy ("Quizzler&#39;s"). */
-const entities = (s: string) => s.replace(/&(#x([0-9a-f]+)|#(\d+)|[a-z]+);/gi, (m, _a, hex, dec) => hex ? String.fromCodePoint(parseInt(hex, 16)) : dec ? String.fromCodePoint(Number(dec)) : ENT[m.slice(1, -1).toLowerCase()] ?? m);
+const entities = (s: string) => s.replace(/&(#x([0-9a-f]+)|#(\d+)|[a-z]+);/gi, (m, _a, hex: string | undefined, dec: string | undefined) => (hex ? charFromCodePoint(parseInt(hex, 16)) : dec ? charFromCodePoint(Number(dec)) : ENT[m.slice(1, -1).toLowerCase()]) ?? m);
 const text = (html: string | null | undefined) => entities(plain((html || "").replace(/<br\s*\/?>/gi, " ").replace(/<\/p>/gi, ". "))).replace(/^[\s.]+|[\s.]+$/g, "").replace(/(\.\s*){2,}/g, ". ").trim();
 const first = (html: string, re: RegExp) => { const m = html.match(re); return m ? m[1] : null; };
 

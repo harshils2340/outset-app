@@ -1,6 +1,7 @@
 import { mineSentences, plain } from "../widgets.ts";
 import type { Company, Offering, WidgetResult } from "../widgets.ts";
 import { safeFetch } from "../../lib/safeFetch.ts";
+import { charFromCodePoint } from "../../lib/codePoint.ts";
 
 /**
  * Square Appointments and Square Online, read from what the public booking pages already ship, no key and no browser.
@@ -171,7 +172,7 @@ type WidgetState = {
 };
 
 function decodeEntities(s: string): string {
-  return s.replace(/&quot;/g, '"').replace(/&#39;|&apos;/g, "'").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&#(\d+);/g, (_, n) => String.fromCharCode(Number(n))).replace(/&amp;/g, "&");
+  return s.replace(/&quot;/g, '"').replace(/&#39;|&apos;/g, "'").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&#(\d+);/g, (m, n: string) => charFromCodePoint(Number(n)) ?? m).replace(/&amp;/g, "&");
 }
 
 export function parseWidgetState(html: string): WidgetState | null {

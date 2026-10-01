@@ -1,5 +1,6 @@
 import { UNNAMED_RATE, type Departure, type LiveRead } from "../live.ts";
 import { lastDayOf, zonedNow, zonedYmd } from "../shopday.ts";
+import { charFromCodePoint } from "../../lib/codePoint.ts";
 
 /**
  * Live availability from FishingReservations, the way a guest's browser gets it.
@@ -66,8 +67,8 @@ export function fishingReservationsRef(url: string): FishingReservationsRef | nu
 /** `&#52;` and friends, plus the few named entities a price or a boat name can carry. */
 function decodeEntities(s: string): string {
   return s
-    .replace(/&#(\d+);/g, (_, n) => String.fromCodePoint(Number(n)))
-    .replace(/&#x([0-9a-f]+);/gi, (_, h) => String.fromCodePoint(parseInt(h, 16)))
+    .replace(/&#(\d+);/g, (m, n: string) => charFromCodePoint(Number(n)) ?? m)
+    .replace(/&#x([0-9a-f]+);/gi, (m, h: string) => charFromCodePoint(parseInt(h, 16)) ?? m)
     .replace(/&amp;/g, "&")
     .replace(/&nbsp;/g, " ")
     .replace(/&quot;/g, '"')

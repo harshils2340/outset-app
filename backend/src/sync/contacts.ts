@@ -2,6 +2,7 @@ import { mkdirSync, readFileSync, readdirSync, unlinkSync, writeFileSync } from 
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { CITIES } from "../discover/cities.ts";
+import { charFromCodePoint } from "../lib/codePoint.ts";
 import { db } from "../db/client.ts";
 import { writeLandingPages } from "./pages.ts";
 import { writeListingPages } from "./listingPages.ts";
@@ -1925,7 +1926,7 @@ export function decodeEntities(raw: string): string {
     t.replace(/&(#x[0-9a-f]+|#\d+|[a-z]+);/gi, (m, code: string) => {
       if (code[0] === "#") {
         const n = code[1].toLowerCase() === "x" ? parseInt(code.slice(2), 16) : parseInt(code.slice(1), 10);
-        return Number.isFinite(n) && n > 0 ? String.fromCodePoint(n) : m;
+        return charFromCodePoint(n) ?? m;
       }
       return NAMED[code.toLowerCase()] ?? m;
     });

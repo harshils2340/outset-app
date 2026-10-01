@@ -755,13 +755,38 @@ function fixLostBytes(text: string): string {
 }
 
 const ENT: Record<string, string> = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", nbsp: " ", rsquo: "\u2019", lsquo: "\u2018", ldquo: "\u201c", rdquo: "\u201d", ndash: "\u2013", mdash: "\u2014", hellip: "\u2026" };
+
+/**
+ * The character a numeric entity names, or null when it names none, in which case the caller leaves the
+ * entity exactly as the shop's page wrote it.
+ *
+ * `String.fromCodePoint` throws a RangeError above U+10FFFF, and this ran on crawled prose in the guest's
+ * own browser. A shop whose site carries a malformed numeric entity, which a broken template or a
+ * double-encoded byte is enough to write ("&#999999999;", "&#x110000;"), threw inside `plainWords`, which
+ * every listing page, the phone sheet's "What to bring" and every Otto answer run their text through.
+ * There is no error boundary in this app, so the throw would not have shown as a bad sentence: it would
+ * have unmounted the tree and left the guest a blank screen on that shop.
+ *
+ * The surrogate range is refused too. It does not throw, it returns a lone surrogate, which is a string
+ * that is not well-formed and reads back later as a replacement character. Zero is refused, as it was
+ * before: a page writing "&#0;" means nothing by it.
+ *
+ * Mirrors charFromCodePoint in backend/src/lib/codePoint.ts, which guards the sync's own decoder and the
+ * four vendor readers.
+ */
+function charOfCode(code: number): string | null {
+  if (!Number.isInteger(code) || code <= 0 || code > 0x10ffff) return null;
+  if (code >= 0xd800 && code <= 0xdfff) return null;
+  return String.fromCodePoint(code);
+}
+
 /** Older detail files still carry "&amp;" and "&#039;" from site markup. */
 export function decodeEntities(text: string): string {
   const once = (t: string) =>
     t.replace(/&(#x[0-9a-f]+|#\d+|[a-z]+);/gi, (m, code: string) => {
       if (code[0] === "#") {
         const n = code[1].toLowerCase() === "x" ? parseInt(code.slice(2), 16) : parseInt(code.slice(1), 10);
-        return Number.isFinite(n) && n > 0 ? String.fromCodePoint(n) : m;
+        return charOfCode(n) ?? m;
       }
       return ENT[code.toLowerCase()] ?? m;
     });
