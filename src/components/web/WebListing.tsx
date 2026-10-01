@@ -1895,7 +1895,16 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
                     guest who skips it hears nothing: not the confirmation, not a decline, not a cancellation. */}
                 {!(guest.email || "").trim() ? <p className="alfine">Leave it empty and we have no way to tell you when {item.title} answers.</p> : null}
 
-                <button type="button" ref={reserveRef} className="alprimary" onClick={pressReserve} aria-disabled={!ready || sending} aria-busy={sending}>
+                {/* Not disabled while it is the way forward. `pressReserve` always does something from here:
+                    with no time yet it opens the date and start time picker, and with the name or the mobile
+                    missing it moves focus to the field that is missing, which is exactly what the label below
+                    says it will do. The one state `!ready` can otherwise be is a paused listing, and that
+                    draws a different panel entirely, so this button never sees it. Marked `aria-disabled` it
+                    told a screen reader not to press the only control that gets a guest to the next step,
+                    while the stylesheet beside it (`.alprimary[aria-disabled="true"]` keeps the accent and
+                    full opacity) deliberately kept it looking live for everybody else. `sending` is the one
+                    moment the press really is a no-op, and `aria-busy` says why. */}
+                <button type="button" ref={reserveRef} className="alprimary" onClick={pressReserve} aria-disabled={sending} aria-busy={sending}>
                   {sending ? "Sending…" : ready ? ctaLabel + (p.total ? " · " + moneyIn(p.total, cur) : "") : time == null ? "Pick a time" : "Add your name and number"}
                       </button>
                 {bookError ? <p className="alfine center albookerror" role="alert">{bookError}</p> : null}
