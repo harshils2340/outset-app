@@ -7874,6 +7874,101 @@ on the FishingReservations fixture with a malformed entity substituted for a sea
   runs; `plainWords` is not idempotent; 69 Toronto-address listings are filed under a neighbouring metro;
   there is no linter in this repo.
 
+## 1 October 2026, hundred and fifteenth run (07:19 to 07:50 UTC)
+
+**Chosen, and why.** `git fetch` first: nothing has landed since the hundred and fourteenth run's log entry, and
+that entry says the rehearsal ran green on the tree it committed, so by the rule the full rehearsal was
+**skipped at the start** and **run at the end**, because both fixes are in code it drives. Both `node_modules`
+were missing again and were installed first. Baseline: `tsc --noEmit -p .`, `tsc -b` and the backend's own
+`tsc` clean but for TS5097, backend 966 tests with 964 pass and 2 skipped, app 1,059 pass, all matching the
+last entry.
+
+Every area on the brief is on the Verified list, so the hunt took a lens no run has used: **what a surface
+remembers when nobody answered.** The hundred and fourteenth run asked what can throw; this one asks what gets
+written down. Every cache in both projects is fed by `call` or `readJson`, and both of those turn a dead
+connection, a timeout, a 429 and a 500 into an ordinary value, so a caller that does not look at the status
+cannot tell "the API said no" from "the API said nothing". The rule is already written down in five places
+here, in almost the same words each time ("a real answer is remembered for the session; a failure is not", "a
+fallback is not an answer, and caching it would stop the next visit from asking again", "only an answer is
+cached"). Three surfaces broke it.
+
+**Found and fixed.** One rule, three sites, two commits.
+
+- **A call the API never answered stops being remembered as its answer** (`7d948f24`). Two surfaces, both
+  guest-facing. `fetchAvailability` guarded itself with `void value.catch(() => availCache.delete(key))`, which
+  could never fire, because the lookup it guards never rejects: `call` resolves on every failure and the async
+  wrapper turns that into `{ live: false, days: [] }`. So a listing opened while the API was asleep, timing out
+  or rate limiting pinned "no live calendar" on that shop for five minutes, in the booking box, the phone sheet
+  and Otto's answers alike, and a reload could not clear it, on a shop with real departures. The TTL comment two
+  lines above says an empty calendar "now means the shop has nothing on", which is exactly what the guest read.
+  Second: `bookingStatus` answered a plain `null` whether the API had no such booking or had never been
+  reached, and the Trips tab cached it with `answered[b.code] = s || ""`. One read that timed out replaced a
+  paid trip's `accepted` with an empty answer, so the next visit to the tab drew the trip with no word on it at
+  all, and the empty answer stopped that code from ever being asked again. The tab's two decisions are now a
+  pair of pure readers in `src/lib/tripStatus.ts`. One existing test had pinned the calendar half as correct
+  behaviour and is updated with why: its own last assertion, that Otto treats the no-feed answer exactly as it
+  treats nothing at all, is why the bug was invisible from there.
+- **A slot picker stops running on the server's clock because one file read failed** (`d369beb4`). The sharpest
+  of the three. `factsOf` in `backend/src/api/openSlots.ts` remembers a listing's own time zone and published
+  week for an hour and read the file with `readJson(...).catch(() => null)`. `readJson` already tells the two
+  apart: null for a file that is not there, a throw for a read it could not make, which is a malformed or
+  half-written file, or GitHub answering 403, 500 or nothing at all on a host that reads over the API. Both
+  halves feed the engine that offers a guest start times, and the engine's own comments say what losing them
+  costs: with no zone it runs on the server's clock, so a 1 PM Pacific departure is offered at 1 PM UTC and the
+  shop's real afternoon is refused as being in the past; with no week an unclaimed listing stops offering only
+  the times its own site is open for, so a guest can take a 7 AM at a brewery that opens at four and the
+  operator is emailed a booking for an hour they are shut. The same read in `POST /bookings`, forty lines away,
+  is careful about exactly this and says so ("a store hiccup must not turn a real listing into a missing one").
+  This one now is too, in an exported `factsAfterRead`, and the last answer it holds, however old, beats
+  falling back to nothing: a zone does not move, and a stale week beats no week.
+
+**Swept and clean, or measured and left.** Every other place either project writes down what the network said.
+Correct, and each stating the rule itself: `apiConfig` (a failure is not remembered for the session),
+`guessPlace` (the time zone fallback is not stored), `voice.ts`'s listing read (a 404 is cached, a 502 is not),
+`otto.ts`'s grounded answer (the write is inside the `try`), `deliverable.ts` (only NXDOMAIN and NODATA are the
+domain's own answer; SERVFAIL is not), `places.ts` (nothing cached unless the parse succeeded),
+`catalogLoad.ts` (`inflight` cleared in a `finally`) and `scrape/fetch.ts` (written only for a 2xx or 3xx with
+real markup that does not look blocked). `renderCost.ts` caches a failure on purpose, with a shorter TTL and
+the reason stated, on an internal page. Four other sweeps, each clean: every route the backend registers
+against every path the app calls, for a shadowed route or a method mismatch, which is 67 routes on 16 routers
+all mounted at `/` and no collision, parameterised or literal; every count a guest surface interpolates in
+front of a plural noun, for "1 reviews", which is 26 sites and every one of them either guarded by its own
+threshold or a false positive; every `toISOString().slice(0, 10)` in the app, for a UTC day read as a local
+one, which is one site and it is the mock metrics; `POST /bookings` end to end for a repeat submission, a
+duplicate code, a Stripe webhook arriving twice and the webhook racing the guest's own return from Stripe,
+which `updateBooking`'s `select ... for update` and `insertBookingChecked`'s duplicate answer both already
+hold. Releasing a listing from Settings leaves its bookings alone on purpose and deletes nothing a guest
+holds; `deleteBookingsForListing` is called from no production path.
+
+**Verification.** App `npm test` 1,065 pass, 0 fail, up from 1,059 (six new in a new `unanswered.test.ts`,
+which drives the live calendar through the real cache and the Trips tab's two readers, and one existing
+assertion in `ottoLiveWired.test.ts` turned the right way round). Backend `npm test` 970 tests, 968 pass, 0
+fail, 2 skipped, up from 966 (four new in a new `api/__tests__/slotFacts.test.ts`, which drives `zoneOf`
+against a truncated file in a throwaway `STORE_DIR` and proves the next request reads it again). `tsc --noEmit
+-p .`, `tsc -b` and the backend's own `tsc` all clean but for TS5097. The rehearsal ran green at **57 of 57** on the tree carrying both fixes, against a local Postgres 16 cluster with TLS on port 5433 and the Chromium on disk. Nothing under
+`backend/data`, `public/` or `src/data` was written.
+
+**Needs Harshil.**
+
+- **This container injects a `GITHUB_TOKEN`.** The brief says `STRIPE_SECRET_KEY`, `RESEND_API_KEY` and
+  `GITHUB_TOKEN` must be empty everywhere, and the first two are. `GITHUB_TOKEN` is set in the environment by
+  the proxy, so an unqualified `npm test` in `backend/` runs with a live token, and `readJson` takes the GitHub
+  API path for every file `public/` does not hold rather than answering null. It cost this run one wrong test
+  assumption and nothing else, because the suite's store reads are pointed at throwaway folders, but it means
+  the nightly suite is not running in the environment the brief describes. Everything tonight was re-run with
+  it cleared and is green either way.
+- Still open from earlier runs, and still the highest-value thing on my list: **there is no error boundary in
+  this app**, so a throw anywhere in render is a white page over prose crawled from 48,198 other people's
+  websites. The hundred and fourteenth run asked for a ruling and I have not given myself one: it is new UI
+  rather than a fix. Say yes and the next run adds it.
+- Also still open: the phone confirmation offers no way to reach the shop; a guest cannot cancel a booking at
+  all, on every listing that advertises Free cancellation with a window, which is new UI and a route and so
+  is a question rather than a fix; the concierge's crawl queue ignores
+  the town people asked about; a price sort and a price filter compare two dollars on six metros; the cards
+  still say "$" for a Canadian shop; the cards are weeks behind the pages until a sync runs; `plainWords` is
+  not idempotent; 69 Toronto-address listings are filed under a neighbouring metro; there is no linter in this
+  repo.
+
 ## Coverage
 
 The catalog is 48,198 listings as of the 23 September sync, 1,873 of them Viator partner rows. Counts below
@@ -8752,6 +8847,17 @@ app. Every exported reader in `src/lib` timed at five shapes a crawl brings back
 super-linear. Every array-index `key` in the app, for a row's input state following a deletion, and every
 `useState` seeded from a prop, for a stale field after the prop changes.
 
+What a surface writes down when nobody answered, over every cache and remembered answer in both projects: the
+eight that keep the rule and the three that broke it, with a shop's live calendar, a paid trip's status and a
+listing's own time zone and published week all re-asked now rather than remembered as empty. Every route the
+backend registers against every path the app calls, for a shadowed route or a method mismatch: 67 routes on 16
+routers all mounted at `/`, no collision, parameterised or literal, and no path the app asks for that nothing
+answers. Every count a guest surface prints in front of a plural noun, for "1 reviews" in the app rather than
+on the static pages. Every `toISOString().slice(0, 10)` in the app, for a UTC day read as a local one. `POST
+/bookings` against a repeat submission, a duplicate code, a Stripe webhook arriving twice, and that webhook
+racing the guest's own return from Stripe. What releasing a listing from Settings does to the bookings already
+on it, and to the money scheduled against them.
+
 **Not yet checked.** Whether the static pages' own CSS should carry a wrapping rule at all: it sets no
 `overflow-wrap`, no `word-break` and no `min-width` on either of its two flex rows, and nothing overflows today
 only because every long token in the catalog is a URL, which a browser breaks at a slash (see this run's Needs
@@ -9098,4 +9204,16 @@ sentence, over prose crawled from 48,198 other people's websites. Whether `lib/z
 should catch the RangeError its nine neighbours catch, which is unreachable today because every zone
 reaching it comes from `zoneForArea`'s own table. Whether an entity naming no character should be dropped
 rather than left as the page wrote it, which is what the fix does and what every decoder here already does
-with a named entity it does not know: a guest would read "&#999999999;" where the shop meant nothing at all.
+with a named entity it does not know: a guest would read "&#999999999;" where the shop meant nothing at all. Whether
+`fetchAvailability` should keep an answer of "no live calendar" for the same five minutes it keeps one with
+departures in it, since only the empty one can go stale into a lie. Whether the Trips tab should debounce its
+focus listener: every window focus re-asks every unsettled booking on a route limited to 60 an hour, which the
+guest's own return from Stripe spends from the same budget. Whether the now unreachable `.catch` around
+`factsOf` in `openSlots` should go, given that the function it guards no longer throws. Whether a guest should
+be able to cancel a booking at all, which no screen and no route offers on any listing that advertises a Free
+cancellation window: the operator can cancel, the API refunds, and the guest holding the promise has only the
+shop's phone number (see the hundred and fifteenth run's Needs Harshil). Whether money scheduled to a shop
+that then releases its listing should be paid, written off or held: the payout run skips it for ever as "no
+bank account connected", which is right about the bank and silent about the money. Whether this container
+should inject a `GITHUB_TOKEN` at all, given that the brief says it must be empty and that `readJson` takes
+the GitHub API path for every file `public/` does not hold while one is set (see that run's Needs Harshil).
