@@ -39,7 +39,43 @@ test("a street the shop published still wins over the area line", async () => {
   );
 });
 
-test("an address the operator typed into their dashboard wins over both", async () => {
-  const profile = { patch: { address: "Gate 3, 2000 Airport Rd" }, owner: { email: "" } } as never;
-  assert.equal((await bookingContext(rec, profile, { area: "OH" })).where, "Gate 3, 2000 Airport Rd");
+/**
+ * What the operator published beats what the crawl read.
+ *
+ * These lines read `patch.address` and `patch.phone`, and `toCatalog` has never put either key on the patch:
+ * the dashboard's "Meeting point or address" field and its phone field are published inside `patch.contact`.
+ * So an operator who corrected a wrong crawled address, moved, or typed the gate their guests should meet at
+ * had their listing page updated and every booking email still naming the street the crawl found.
+ */
+test("the address and phone the operator published reach the email", async () => {
+  const crawled = { street: "1 Old Rd", city: "Houston", region: "TX", phone: "+18327070680" };
+  const detail = { area: "Houston, TX", contact: crawled };
+  const published = (patch: Record<string, unknown>) => ({ patch, owner: { email: "" } }) as never;
+
+  // Untouched since the claim: the patch carries the crawled record back, so nothing moves.
+  const same = await bookingContext(rec, published({ contact: crawled }), detail);
+  assert.equal(same.where, "1 Old Rd, Houston");
+  assert.equal(same.shopPhone, "+18327070680");
+
+  // Edited: `contactPatch` publishes the operator's own line with no town beside it.
+  const own = await bookingContext(rec, published({ contact: { street: "Gate 3, 2000 Airport Rd", city: null, region: null, phone: "+18135550123" } }), detail);
+  assert.equal(own.where, "Gate 3, 2000 Airport Rd", "the crawled street beat the operator's own");
+  assert.equal(own.shopPhone, "+18135550123", "the alert rang the crawled number");
+
+  // A meeting point that is not a street at all is still theirs to state.
+  const gate = await bookingContext(rec, published({ contact: { street: "The kiosk by the boat ramp", city: null } }), detail);
+  assert.equal(gate.where, "The kiosk by the boat ramp");
+
+  // Cleared: there is no street to print, so the row falls back to the place, as it does for an unclaimed shop.
+  const cleared = await bookingContext(rec, published({ contact: { street: null, city: null } }), detail);
+  assert.equal(cleared.where, "Houston, Texas");
+});
+
+/**
+ * A town and a state typed into that field is not a meeting point, and `streetOf` is the rule the listing page
+ * reads the same published line by, so both now answer alike.
+ */
+test("a town typed where a street goes is read the way the listing page reads it", async () => {
+  const profile = { patch: { contact: { street: "Agawam, MA", city: null } }, owner: { email: "" } } as never;
+  assert.equal((await bookingContext(rec, profile, { area: "Agawam, MA" })).where, "Agawam, Massachusetts");
 });

@@ -59,18 +59,29 @@ export async function bookingContext(rec: StoredBooking, profile: StoredProfile 
   // The booking route has already read this file to price the booking. Reading it again cost a second GitHub
   // round trip on the one request a guest is actually waiting on.
   const detail = known !== undefined ? known : await readJson<Detail>(`o/${rec.listing}.json`).catch(() => null);
-  const patch = (profile?.patch || {}) as { title?: string; address?: string; phone?: string; checkin?: string };
+  const patch = (profile?.patch || {}) as { title?: string; checkin?: string; contact?: Detail["contact"] };
   const title = clean(patch.title, 120) || clean(detail?.title, 120) || rec.listing;
   const currency = rec.payment?.currency || currencyForArea(detail?.area, process.env.STRIPE_CURRENCY || "usd");
+  /**
+   * The contact record to believe: what the operator published, else what the crawl read off their site.
+   *
+   * These two lines read `patch.address` and `patch.phone`, and the published patch has never carried either
+   * key. The dashboard's "Meeting point or address" field and its phone field are published inside the patch's
+   * own `contact` (`contactPatch` in src/lib/operator.ts), which is where the listing page reads them from. So
+   * an operator who corrected a wrong crawled address, moved, or typed the gate their guests should meet at
+   * had their own listing page updated and every booking email still naming the street the crawl found, and
+   * the "CALL THE SHOP" alert still ringing the crawled number.
+   */
+  const shop = patch.contact ?? detail?.contact ?? null;
   // The same street the listing page prints: a town or a bare house number in that field is not an address,
   // and "Where: Sarasota, Sarasota" is what the guest's own confirmation said.
-  const street = detail?.contact ? streetOf(detail.contact) : "";
+  const street = shop ? streetOf(shop) : "";
   // The area line is the last resort, and on 1,683 shipped listings it is a bare state or province code with no
   // town in front of it, so this row read "Where: OH". Spelled out, the way the listing page's Where card, the
   // pay sheet's Where row and Otto all read the same field. A row labelled "Meet at" drops a whole state rather
   // than printing it; this one is a locator on a receipt whose only other pointer is a link, so it keeps it.
-  const where = clean(patch.address, 160) || [street, detail?.contact?.city].filter(Boolean).join(", ") || clean(placeName(clean(detail?.area, 80)), 80);
-  return { title, currency, where, shopPhone: phoneLine(patch.phone) || phoneLine(detail?.contact?.phone), ownerEmail: profile?.owner.email || "", listingUrl: `${SITE}#o=${rec.listing}`, arrival: arrivalLine(patch, detail) };
+  const where = clean([street, shop?.city].filter(Boolean).join(", "), 160) || clean(placeName(clean(detail?.area, 80)), 80);
+  return { title, currency, where, shopPhone: phoneLine(shop?.phone) || phoneLine(detail?.contact?.phone), ownerEmail: profile?.owner.email || "", listingUrl: `${SITE}#o=${rec.listing}`, arrival: arrivalLine(patch, detail) };
 }
 
 /** What the guest pays and what the operator gets, in dollars. */
