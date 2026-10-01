@@ -16,7 +16,7 @@
   <meta name="theme-color" content="#495940">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=Newsreader:wght@600&display=swap">
   <style>
     /* Outset theme tokens, from src/styles/app.css */
     :root {
@@ -237,7 +237,19 @@
     footer a:hover { color: var(--ink); }
     footer .copy { margin-top: 1.8rem; font-size: .82rem; }
     address { font-style: normal; }
-  </style>
+      .band { background: var(--accent); color: var(--on-accent); margin-top: 4.5rem; }
+    .band .badge { width: 58px; height: 58px; border-radius: 16px; background: var(--on-accent); color: var(--accent); display: flex; align-items: center; justify-content: center; box-shadow: 0 8px 22px rgba(0,0,0,.18); }
+    .band .badge .ic { width: 30px; height: 30px; }
+    .band .wrap { display: flex; align-items: center; justify-content: space-between; gap: 2rem; flex-wrap: wrap; padding-top: 3.2rem; padding-bottom: 3.2rem; }
+    .band .num { font-family: "Newsreader", Georgia, serif; font-size: clamp(3.6rem, 9vw, 6rem); line-height: .95; font-weight: 600; letter-spacing: -.02em; }
+    .band .say { max-width: 30rem; font-size: 1.15rem; line-height: 1.45; margin: .4rem 0 0; }
+    .band .src { display: block; font-size: .82rem; opacity: .75; margin-top: .6rem; }
+    .band .src a { text-decoration: underline; }
+    .band .join { display: flex; flex-direction: column; align-items: flex-start; gap: .7rem; }
+    .band .join p { margin: 0; font-weight: 600; font-size: 1.05rem; }
+    .band .btn { background: var(--on-accent); color: var(--accent); }
+    .band .btn:hover { background: var(--accent-tint); }
+</style>
 </head>
 <body>
   <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -336,6 +348,21 @@
       <div class="track" id="track1"></div>
     </div>
   </div>
+
+  <section class="band" aria-label="Why it matters">
+    <div class="wrap">
+      <div>
+        <div class="num">3 in 4</div>
+        <p class="say">guests say they'd book somewhere else if they couldn't get through to ask a question or make a booking.</p>
+        <span class="src">From <a href="https://www.prnewswire.com/news-releases/roller-doubles-down-on-ai-with-new-agent-to-help-operators-grow-302783193.html" target="_blank" rel="noopener">ROLLER's 2026 survey</a> of 1,500 attraction guests.</span>
+      </div>
+      <div class="join">
+        <span class="badge" aria-hidden="true"><svg class="ic"><use href="#i-otto"/></svg></span>
+        <p>Be one of our founding businesses.<br>We set it up with you, free.</p>
+        <a class="btn" href="https://cal.com/harshil-shah-7tkvs7/outset" target="_blank" rel="noopener">Become a founding business</a>
+      </div>
+    </div>
+  </section>
 
   <section id="what">
     <div class="wrap">
