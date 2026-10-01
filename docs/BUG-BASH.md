@@ -7969,12 +7969,106 @@ against a truncated file in a throwaway `STORE_DIR` and proves the next request 
   not idempotent; 69 Toronto-address listings are filed under a neighbouring metro; there is no linter in this
   repo.
 
+## 1 October 2026, hundred and sixteenth run (08:05 to 08:40 UTC)
+
+**Chosen, and why.** `git fetch` first: nothing has landed since the hundred and fifteenth run's log entry,
+and that entry says the rehearsal ran green on the tree it committed, so by the rule the full rehearsal was
+**skipped at the start** and **run at the end**, because both fixes are in code it drives. Both `node_modules`
+were missing again and were installed first. Baseline: `tsc --noEmit -p .`, `tsc -b` and the backend's own
+`tsc` clean but for TS5097, backend 970 tests with 968 pass and 2 skipped, app 1,065 pass, all matching the
+last entry.
+
+Every area on the brief is on the Verified list, so the hunt took a lens no run has used: **a hard product
+rule, read as a checklist against every door that could break it.** `backend/AGENTS.md` states one in a single
+sentence, and it is the only rule in either file written as a list of five things: "An affiliate row is never
+an operator: no claim link, no outreach, no Instant Book, no request, no Otto." Four of the five are enforced
+and say so where they do it. One was not.
+
+**Found and fixed.** Two commits.
+
+- **A partner's product stops being a business anyone can claim** (`9db10764`). The first item on that list
+  was the open one. `claim-index.json` is written from the operators table, which never holds a partner's
+  product, so every affiliate id reached `claimRule` by the fallback that reads the public detail file, and all
+  6,492 shipped partner rows carry `src: "viator.com"`. That fallback reads `src` as a domain the business
+  owns, so `emailMayClaim` answered yes to any address at viator.com, for any one of the 6,492: a signed claim
+  link mailed there, traded at `/claims/:id/exchange` for an operator session, and a dashboard over photos,
+  prices and copy licensed from the partner and not ours to let anyone edit. `claimRule` names the partner
+  instead, `emailMayClaim` refuses on it before any address is read, and the route answers 409 with the
+  sentence `POST /bookings` already uses for the same rule, ahead of the test bypass, which exists to walk a
+  real business and never one of these. `GET /claims/:id/rule` carries the partner too, so the screen can say
+  which one before an owner types.
+- **A confirmation stops counting one extra twice because a menu names it twice** (`8eb0a628`). A booking
+  stores the option it picked as an index and every extra by name, so the confirmation has to find the menu
+  rows again from those names. It filtered the menu by them, which hands back every row carrying one. Seven
+  shipped menus name an extra twice: "Gas Premium" at $5 and at $6 on o-marinas-com, the same hour of lessons
+  at $120 and $100 on o-buffalocreekgc-com. Ticking one $6 grade produced two lines totalling $11, and the
+  price details are printed only when they add up to the total the booking stored, so what the guest saw was
+  no breakdown at all on the one screen whose job is to say what they are paying for. `pickedAddons` takes a
+  row per name picked, and a different row each time a name is picked twice, which is the reading
+  `priceBooking` makes on the server. The picker above it had the matching fault: two buttons under one React
+  key, where the phone sheet and the "What you can book" list three lines up both key on the row's position.
+
+**Swept and clean, or measured and left.** The other four items of that rule, each against every door: `POST
+/bookings` refuses a partner's product by name and quotes the rule; both `/voice` routes refuse one and quote
+it; `assistantOn` refuses Otto on the one field every record keeps, including the lite one the cards read
+first; `searchByName` keeps partner rows off the claim picker; `admin.ts`'s website link, the sync's static
+`/l/` generator and its sitemap all skip them; outreach cannot reach one at all, because partner rows live in
+`affiliate_products` and every outreach read is against `operators`. `POST /claims/:id` and `PUT /profiles/:id`
+sit behind `mayEdit`, so the claim link above was the only door. Left on purpose: `POST /otto/ask` has no
+affiliate gate, because it is handed its facts by the caller and reads no listing file, so gating it costs a
+disk read on every uncached question to close a door no surface of ours opens; the product's own gate is
+`assistantOn`. Four other sweeps, each clean: all 6,492 shipped affiliate links for a missing label, a
+malformed URL, a host that is not the partner's and a missing `pid` or `mcid`, which is the commission (0 of
+each); every duplicate a crawled menu can carry, over all 52,815 detail files, against the React key and the
+money path that read it (addon names 7, option names 2,835 and already handled by the tier rule, highlights,
+included lines, photos, FAQ questions and service names 0); every e-mail validator in both projects against
+each other, which is the same regex in twelve places and `mail.ts`'s own stricter one, deliberately, for
+header injection; the `instantOf` / `todayIn` pair in `backend/src/lib/zone.ts` and every day-walking sum in
+both projects against a daylight saving boundary, which is a double correction in one and `Math.round` or a
+UTC base in all the others. Checked and found to be no issue: both confirmation screens read the option they
+name out of the live menu by index rather than from the name the booking wrote down, which is the fault the
+dashboard was fixed for, but a trip card opens the listing and never the confirmation, so the screen is only
+ever reached in the seconds after booking.
+
+**Verification.** Backend `npm test` 975 tests, 973 pass, 0 fail, 2 skipped, up from 970 (five new in
+`api/__tests__/affiliateClaim.test.ts`, which drives the route and the rule against a throwaway `STORE_DIR`
+holding a Viator row, a Tiqets row and an ordinary operator, and proves the ordinary one still claims from its
+own domain). App `npm test` 1,070 pass, 0 fail, up from 1,065 (five new in `lib/__tests__/addonTwice.test.ts`,
+which pins the reading on the real o-marinas-com pair and then runs every shipped menu that names an extra
+twice through it). Both new files were run against the tree with the fix reverted and every assertion fails.
+`tsc --noEmit -p .`, `tsc -b` and the backend's own `tsc` all clean but for TS5097. The rehearsal ran green at **57 of 57** on the tree carrying both fixes, against a local Postgres 16 cluster with TLS on port 5433 and the Chromium on disk. Nothing
+under `backend/data`, `public/` or `src/data` was written.
+
+**Needs Harshil.**
+
+- **Nothing new tonight is a question.** Both fixes are fixes.
+- Still open from earlier runs, unchanged and still the highest-value thing on my list: **there is no error
+  boundary in this app**, so a throw anywhere in render is a white page over prose crawled from 48,198 other
+  people's websites. Two runs have now asked for a ruling. Say yes and the next run adds it.
+- Also still open: the phone confirmation offers no way to reach the shop; a guest cannot cancel a booking at
+  all, on every listing that advertises Free cancellation with a window; the concierge's crawl queue ignores
+  the town people asked about; a price sort and a price filter compare two dollars on six metros; the cards
+  still say "$" for a Canadian shop; the cards are weeks behind the pages until a sync runs; `plainWords` is
+  not idempotent; 69 Toronto-address listings are filed under a neighbouring metro; there is no linter in this
+  repo; and this container still injects a `GITHUB_TOKEN`, which the brief says must be empty (everything
+  tonight was run with it cleared).
+
+
 ## Coverage
 
 The catalog is 48,198 listings as of the 23 September sync, 1,873 of them Viator partner rows. Counts below
 that name 59,125 were taken before that sync and were whole at the time.
 
-**Verified so far.** Which rows of a shop's menu the booking box can actually offer, over every option row and
+**Verified so far.** The hard rule that a partner's product is never an operator, read as the checklist it is
+written as and pressed against every door: the claim link (which was open and is now shut), outreach, Instant
+Book, a request and Otto, on the two guest surfaces, the claim picker, the admin link, the static `/l/`
+generator, its sitemap, `POST /bookings`, both `/voice` routes and every route that mints or widens a session.
+All 6,492 shipped affiliate links for a missing label, a malformed URL, a host that is not the partner's and a
+missing `pid` or `mcid`. Every duplicate a crawled menu can carry, over all 52,815 shipped detail files,
+against both the React key and the money path that read it: add-on names, option names, highlights, included
+lines, photos, FAQ questions and service names. Every email validator in both projects against each other.
+`instantOf` and `todayIn` and every day-walking sum in both projects against a daylight saving boundary.
+Which rows of a shop's menu the booking box can actually offer, over every option row and
 every service tier of all 52,815 shipped detail files: a service name or a tier label that collides with
 another, a tier stating a length its own row contradicts, and the rows no tier points at, with the 1,442 a
 shop sells put back on the service that names them, on the guest page, the phone sheet and the dashboard's
@@ -9216,4 +9310,9 @@ shop's phone number (see the hundred and fifteenth run's Needs Harshil). Whether
 that then releases its listing should be paid, written off or held: the payout run skips it for ever as "no
 bank account connected", which is right about the bank and silent about the money. Whether this container
 should inject a `GITHUB_TOKEN` at all, given that the brief says it must be empty and that `readJson` takes
-the GitHub API path for every file `public/` does not hold while one is set (see that run's Needs Harshil).
+the GitHub API path for every file `public/` does not hold while one is set (see that run's Needs Harshil). Whether `POST /otto/ask` should refuse a partner's
+product the way `POST /bookings` and the two `/voice` routes do: it is handed its facts by the caller and reads
+no listing file, so the gate costs a disk read on every uncached question to close a door no surface of ours
+opens, and `assistantOn` is the product's own gate (see the hundred and sixteenth run). Whether both
+confirmation screens should name the option a booking picked out of the live menu by index, which is the fault
+the dashboard was fixed for and which only a trip card that opened a confirmation would ever expose.
