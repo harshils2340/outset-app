@@ -233,7 +233,7 @@ export function openDaysFor(profile: DashboardProfile | null, list: StoredBookin
 
 const ZONE_TTL = 60 * 60 * 1000;
 export type DetailFile = { area?: string; lat?: number; lon?: number; hrs?: ([number, number] | null)[]; hoursText?: string[]; contact?: { hours?: string[] } | null };
-type ListingFacts = { zone: string | null; week: PublishedWeek };
+export type ListingFacts = { zone: string | null; week: PublishedWeek };
 const facts = new Map<string, { at: number; facts: ListingFacts }>();
 
 /**
@@ -266,6 +266,26 @@ function statedDay(d: [number, number] | null): StatedDay {
 }
 
 /**
+ * What an hour of remembering should hold after one read of the listing's file.
+ *
+ * `readJson` already tells the two apart: it answers null for a file that is not there, and throws for a read
+ * it could not make (a malformed file, or GitHub answering 403, 500 or nothing at all). Collapsing them with a
+ * `.catch(() => null)` pinned "no zone, no published week" on a real shop for a full hour. Both halves are read
+ * by the slot engine: with no zone it runs on the server's own clock, so a 1 PM Pacific departure is offered at
+ * 1 PM UTC and the shop's real afternoon is refused as being in the past; with no week an unclaimed listing
+ * stops offering only the times its own site is open for, so a guest can take a 7 AM at a brewery that opens at
+ * four and the operator is emailed a booking for an hour they are shut. The same read in POST /bookings is
+ * careful about exactly this ("a store hiccup must not turn a real listing into a missing one"); this was not.
+ *
+ * So a failed read is not remembered, and the last answer, however old, beats falling back to nothing.
+ */
+export function factsAfterRead(prev: ListingFacts | undefined, read: { detail: DetailFile | null; failed: boolean }): { facts: ListingFacts; remember: boolean } {
+  if (read.failed) return { facts: prev || { zone: null, week: null }, remember: false };
+  const d = read.detail;
+  return { facts: { zone: zoneForArea(d?.area, d?.lat, d?.lon), week: weekIn(d) }, remember: true };
+}
+
+/**
  * The listing's own timezone and published week. Read from the generated detail file, which the nightly sync
  * writes, so they are remembered for an hour rather than fetched on every slot request. A listing we cannot
  * place answers a null zone and the schedule falls back to the server's, unchanged.
@@ -273,8 +293,16 @@ function statedDay(d: [number, number] | null): StatedDay {
 async function factsOf(listing: string): Promise<ListingFacts> {
   const hit = facts.get(listing);
   if (hit && Date.now() - hit.at < ZONE_TTL) return hit.facts;
-  const detail = await readJson<DetailFile>(`o/${listing}.json`).catch(() => null);
-  const found: ListingFacts = { zone: zoneForArea(detail?.area, detail?.lat, detail?.lon), week: weekIn(detail) };
+  let detail: DetailFile | null = null;
+  let failed = false;
+  try {
+    detail = await readJson<DetailFile>(`o/${listing}.json`);
+  } catch (e) {
+    failed = true;
+    console.error(`[slots] could not read the listing file for ${listing}: ${(e as Error).message}`);
+  }
+  const { facts: found, remember } = factsAfterRead(hit?.facts, { detail, failed });
+  if (!remember) return found;
   if (facts.size > 5000) facts.clear();
   facts.set(listing, { at: Date.now(), facts: found });
   return found;
