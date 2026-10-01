@@ -8227,6 +8227,110 @@ against a local Postgres 16 cluster with TLS on port 5433 and the Chromium on di
   neighbouring metro; there is no linter in this repo; and this container still injects a `GITHUB_TOKEN`,
   which the brief says must be empty (everything tonight was run with it cleared).
 
+## 1 October 2026, hundred and nineteenth run (11:20 to 12:40 UTC)
+
+**Chosen, and why.** `git fetch` first: nothing has landed since the hundred and eighteenth run's log entry,
+and that entry says the rehearsal ran 57 of 57 on the tree it committed, so by the rule the full rehearsal was
+**skipped at the start** and **run once at the end**, because all three fixes are in code it drives. Both
+`node_modules` were missing again and were installed first. Baseline matched that entry exactly: `tsc --noEmit
+-p .` and `tsc -b` clean, the backend's own `tsc` clean but for TS5097, backend 975 tests with 973 pass and 2
+skipped, app 1,083 pass.
+
+Every area on the brief is on the Verified list, and the Not yet checked list is now mostly questions for
+Harshil rather than ground. So the first hour went on a hunt rather than a sweep: unguarded `JSON.parse` and
+`localStorage` in the app (all guarded), every `disabled` and `aria-disabled` on both sides against whether the
+press really does nothing, every query parameter the backend reads for a NaN or an unclamped number, the
+listbox the booking box's service picker claims to be. One of those found something. Then **the concierge's
+sentence reader**, which is the newest guest-facing code here and was last read whole at the thirty-sixth run:
+50 real sentences through `readIntent`, with the traps its own `AGENTS.md` lists as easy to reintroduce as the
+first pass. None of those had come back; two other things fell out, both on the money and the party a guest
+types.
+
+**Found and fixed.** Three commits.
+
+- **The booking box's primary stops telling a screen reader not to press it** (`8704c060`). The reserve card's
+  primary carried `aria-disabled` for every state short of ready, and pressing it is the way forward in all of
+  them: `pressReserve` opens the date and start time picker when no time is picked, and moves focus to the
+  name or the mobile when one is missing, which is exactly what the button's own label says it will do ("Pick
+  a time", "Add your name and number"). The only other way `ready` can be false is a paused listing, and that
+  draws a different panel instead of this button, so the attribute was a lie in every state it was set in.
+  What gave it away is the stylesheet: `.alprimary[aria-disabled="true"]` sets the accent back and opacity to
+  1, a rule that does nothing except insist the button must not be dimmed. So a sighted guest saw a live
+  button and a screen reader was told the one control that gets them to the next step was unavailable. It is
+  unavailable while a send is in flight now, which is the one press `book()` really ignores, and `aria-busy`
+  already says why.
+- **A couple asking the concierge for an escape room stops being a party of one** (`05306cd7`). `NUM_WORDS`
+  carries `a: 1`, and `a` sat in the same alternation as the real number words, so in the commonest way a party
+  arrives, `for <how many>`, it matched first and the word carrying the count was never reached. "For a couple"
+  was a party of one. So were "for a party of six" and "for a group of 10", because the `for` branch matches
+  before the `party of` and `group of` branches and short-circuits them. And so was every "for a" that counts
+  nobody at all: "jet ski rental for a day", "escape room for a birthday", "boat rental for a few hours". Each
+  also set `partyStated`, which is the flag that tells the agent not to ask how many and tells the answer to
+  state the number as a fact rather than own it as a guess, so nothing downstream could recover. A party of one
+  is a wrong quote on an escape room that sells two seats minimum, and a jet ski day priced for one head. The
+  article still counts as one where a head word follows it ("for a guest"), which is the only place it is a
+  count. A length is not a headcount either, so "for 4 hours" now counts nobody too.
+- **A guest telling the concierge their budget does not matter stops capping it at zero** (`06fbdb76`). Two
+  reads of the same sentence, both about money. The figure pattern was `[\d,]{1,7}`, which a lone comma
+  satisfies, and `amount` reads it as `Number("")`, which is zero: in "escape room in kitchener, budget doesn't
+  matter" the comma in front of the word was the whole figure, so the one sentence that says money is no object
+  came back with a cap of $0 a head and threw every option away. The same read swallows a real figure behind
+  the comma, so "axe throwing in toronto, total $300 for the group" quoted the $0 and not the $300. A figure
+  starts with a digit now, and a thousands separator inside one still belongs to it. Then the word "budget"
+  alone turned on the `cheaper` refinement, which drops the cap to 70% of itself: "budget of 500" read $250 a
+  head and then squeezed it to $175, and "budget doesn't matter" and "any budget" narrowed hardest of all,
+  although `noBudget` two hundred lines above had already heard them as the waiver they are. A sentence that
+  states a figure, or waives one, is not a request for the cheap end. "Any budget" joins the waivers beside
+  "any price", where it belonged.
+
+**Swept and clean, or measured and left.** Every `JSON.parse` in the app outside the tests, for a stale or
+hand-edited value reaching a screen: all 21 are inside a `try` or behind `storage.ts`'s own shape check. Every
+`parseInt` in both projects for a missing radix: one call, with 36. Every `req.query` read in the backend for
+an unclamped or NaN number: all guarded or clamped, except `POST /scrape`'s `limit`, which is behind the admin
+key and ends at `Math.min(50, Math.max(1, NaN))`, left as ops tooling. The admin gate itself, read again: an
+explicit variable rather than the Host header, and a timing-safe compare. Every `disabled` and `aria-disabled`
+in the app against whether the press is really inert: the two calendar day buttons and the operator's Call and
+Email chips are honest, and the phone `DetailView`'s dock button says "Pick a time" while being genuinely
+disabled, which is the same shape as the one fixed above and is unreachable today because `LISTINGS` is empty
+by the hard rule and nothing else opens that screen. The service picker's listbox semantics: a real
+`role="listbox"` with `role="option"` rows, `aria-selected`, roving `tabIndex` and focus moved into the list.
+`defaultOption` against `needService`, for a booking box that can never become ready: it returns null only for
+an empty menu, so that state is unreachable. The concierge's own trap list, the four the brief names among
+them: a range still reads its start ("Monday between 5-7pm" is 17:00), a group budget is still divided by the
+party, a province is still not a town, `inferCategory` still needs a word boundary. `seasonFact`, `groupCap`
+and `images.ts`, the three `src/lib` modules the log had never named: nothing wrong in any of them.
+
+**Verification.** Backend `npm test` 977 tests, 975 pass, 2 skipped, up from 975 with 973 (two new in
+`concierge/__tests__/plan.test.ts`). App `npm test` 1,087 pass, 0 fail, up from 1,083 (four new in
+`reserveForward.test.ts`). Every new test was run against the tree with its fix reverted and fails there: 2 of
+13 in the backend, 1 of 4 in the app. `tsc --noEmit -p .`, `tsc -b` and the backend's own `tsc` all clean but
+for TS5097. The rehearsal ran **57 of 57** on the tree carrying all three fixes, against a local Postgres 16
+cluster with TLS on port 5433 and the Chromium on disk. Nothing under `backend/data`, `public/` or `src/data`
+was written, and `STRIPE_SECRET_KEY`, `RESEND_API_KEY` and `GITHUB_TOKEN` were empty throughout.
+
+**Needs Harshil.**
+
+- **The concierge's place reader cannot be judged from this container.** `backend/data/outset.db` is 200 KB and
+  dated the minute this run started, which is `migrate()` creating an empty schema, so every town that lives in
+  the catalog rather than in `taxonomy/catalog.ts` reads as nowhere: "escape room in kitchener tonight" and
+  "fishing charter in tampa" both come back with `city: null` and `point: null`, which would be the blocking
+  "where are you?" question in production. Waterloo answers because `METROS` holds it. Nothing was concluded
+  from that, and nothing can be until a run here has a real catalog, so **every concierge sweep so far has been
+  a sweep of the sentence reader and never of the shortlist it feeds**. A dump of the SQLite catalog that an
+  overnight run could fetch would close the largest blind spot on this list.
+- Still open from earlier runs, unchanged: **there is no error boundary in this app**, so a throw anywhere in
+  render is a white page over prose crawled from 48,198 other people's websites. Five runs have now asked.
+- Also still open: the booking box opens on a row the page's own headline contradicts (Surf City's "Jet ski
+  rental" opening on "Paddle Board Rentals"); the phone's browse is not ranked at all while the desktop's is;
+  the listing page a chain's card opens still heads the primary town; the phone confirmation offers no way to
+  reach the shop; a guest cannot cancel a booking at all, on every listing that advertises Free cancellation
+  with a window; the concierge's crawl queue ignores the town people asked about; a price sort and a price
+  filter compare two dollars on six metros; the cards still say "$" for a Canadian shop; the cards are weeks
+  behind the pages until a sync runs; `plainWords` is not idempotent; 69 Toronto-address listings are filed
+  under a neighbouring metro; there is no linter in this repo; and this container still injects a
+  `GITHUB_TOKEN`, which the brief says must be empty (everything tonight was run with it cleared).
+
+
 
 ## Coverage
 
@@ -9142,7 +9246,21 @@ guest's own return from Stripe reads from, and which of its cached answers can s
 module-level global regex in both projects against the `lastIndex` that outlives an early exit. Every date key
 parsed in `src`, for the UTC day that is a day early west of Greenwich.
 
-**Not yet checked.** Which row the booking box should open on, and
+Every control in the app that says it is unavailable, against whether pressing it really does nothing: the
+reserve card's primary said so in every state short of ready and was the way forward in all of them, and the
+two calendar day buttons, the operator's Call and Email chips and the phone dock button were read beside it.
+The concierge's sentence reader, 50 real sentences through `readIntent`, held against every trap its own
+`AGENTS.md` lists: the party (the bare article that was swallowing the count), the budget (a comma read as a
+figure of zero, and a stated or waived budget read as a request for the cheap end), the clock, the range, the
+genre, the cover and the five refinement verbs. Every `JSON.parse` in the app, every `parseInt` in both
+projects, and every `req.query` the backend reads, for an unguarded parse or an unclamped number.
+`defaultOption` against `needService`, for a booking box that cannot become ready. The service picker's listbox
+semantics. `seasonFact`, `groupCap` and `images.ts`.
+
+**Not yet checked.** The concierge's shortlist, as opposed to its sentence reader: `backend/data/outset.db`
+in this container is an empty schema `migrate()` writes at startup, so every town that lives in the catalog
+reads as nowhere and `candidates`, `genresNear` and `placeAmbiguity` have never been run here against real
+rows (see this run's Needs Harshil). Which row the booking box should open on, and
 which row a card's "from" price should name, when the cheapest row of a shop's menu is not the kind the
 listing's own headline claims: Surf City Jet Ski & Watersports heads "Jet ski rental" and opens on "Paddle
 Board Rentals" at $32, which is this run's Needs Harshil and the two older questions about a folded service
