@@ -295,3 +295,32 @@ test("date night is a genre, not a question: the shortlist is date kinds and the
   // "update" is not a date.
   assert.notEqual(readIntent("any update on escape rooms tonight").genre, "date");
 });
+
+test("the article in front of a count is not the count", () => {
+  /**
+   * "for <how many>" is the commonest way a party arrives, and the bare article sat in the same alternation as
+   * the real numbers, so it won the match and the word carrying the count was never read. Every one of these
+   * was a party of one, and each also marked the party as stated, so the agent never asked and the answer
+   * printed the one back as a fact.
+   */
+  assert.equal(readIntent("escape room in kitchener for a couple").party, 2);
+  assert.equal(readIntent("escape room in kitchener for a party of six").party, 6);
+  assert.equal(readIntent("escape room in kitchener for a group of 10").party, 10);
+
+  // "for a" in front of anything that is not a headcount counts nobody, so the party stays ours to ask about.
+  for (const s of ["jet ski rental in tampa for a day", "escape room in kitchener for a birthday", "boat rental for a few hours"]) {
+    const i = readIntent(s);
+    assert.equal(i.party, 2, s);
+    assert.equal(i.partyStated, false, s + " counts no heads, so nothing was stated");
+  }
+
+  // A length is not a headcount either way round.
+  assert.equal(readIntent("boat rental in tampa for 4 hours").partyStated, false);
+
+  // What the article always meant, and still does: one head, where a head word says so.
+  assert.equal(readIntent("escape room in kitchener for a guest").party, 1);
+  assert.equal(readIntent("escape room in kitchener for one").party, 1);
+  assert.equal(readIntent("escape room in kitchener for 4").party, 4);
+  assert.equal(readIntent("escape room in kitchener for a couple of us").party, 2);
+  assert.equal(readIntent("escape room in kitchener, 2 adults and 3 kids").party, 5);
+});

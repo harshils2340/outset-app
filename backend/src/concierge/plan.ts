@@ -154,8 +154,24 @@ export function readIntent(text: string, prior?: Intent | null, device?: { lat: 
   const HEADWORD = "adults?|kids?|children|child|teens?|people|ppl|persons?|guests?|players?|pax|folks|guys|friends|of us";
   const heads = [...t.matchAll(new RegExp("\\b" + N + "\\s+(" + HEADWORD + ")\\b", "g"))]
     .reduce((sum, mm) => sum + num(mm[1]), 0);
+  /**
+   * Every number word except the bare article, for the one phrase where the article is not a count.
+   *
+   * "for <how many>" is the commonest way a party arrives, and `a` sat in the same alternation as the real
+   * numbers, so it matched first and the words carrying the count were never reached: "for a couple" was a
+   * party of one, "for a party of six" and "for a group of 10" were parties of one, and so was every "for a"
+   * that is not a headcount at all ("for a day", "for a birthday", "for a few hours"). Each of them also set
+   * `partyStated`, so the agent never asked how many, the answer stated the one as a fact rather than owning
+   * it as a guess, and a room with a minimum of two was quoted for a single head.
+   *
+   * `a` still counts as one wherever a head word follows it, which is the only place it is a count: the
+   * branch below reads "for a guest" the way it always has.
+   */
+  const COUNTED = "(\\d{1,3}|" + Object.keys(NUM_WORDS).filter((w) => w !== "a").join("|") + ")";
+  /** A length is not a headcount: "for 4 hours" and "for a 3 day charter" count no people. */
+  const NOT_HEADS = "(?!\\s*(?:hours?|hrs?|h\\b|mins?|minutes?|days?|nights?|weeks?|months?))";
   const m =
-    t.match(new RegExp("\\bfor\\s+" + N + "\\b")) ||
+    t.match(new RegExp("\\bfor\\s+(?:a\\s+)?" + COUNTED + "\\b" + NOT_HEADS)) ||
     t.match(new RegExp("\\b" + N + "\\s+(?:" + HEADWORD + ")\\b")) ||
     t.match(new RegExp("\\bparty of\\s+" + N + "\\b")) ||
     t.match(new RegExp("\\bgroup of\\s+" + N + "\\b")) ||
