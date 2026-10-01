@@ -73,8 +73,6 @@ export function draftOttoCopy(op: OttoOp, email?: string, opts?: { greet?: strin
   const hi = opts && "greet" in opts ? (opts.greet ? "Hi " + opts.greet + "," : "Hi,") : to ? greeting(op, to) : "Hi,";
   const SITE = "https://onoutset.com/";
   const OTTO = SITE + "otto";
-  const TERMS = SITE + "terms.html";
-  const PRIVACY = SITE + "privacy.html";
   const subject = "Who answers " + possessive(op.name) + " phone after you close?";
   const who = "I'm Harshil. I built Otto, an AI front desk for local activity businesses like " + op.name +
     ". It answers calls when your team is busy or closed, handles customer questions, books guests, and sends you a summary afterward.";
@@ -111,6 +109,26 @@ export function draftOttoCopy(op: OttoOp, email?: string, opts?: { greet?: strin
     "<p>Best,<br>Harshil</p>",
     '<p style="font-size:13px;color:#666">' + esc(removeLine) + " " + link(remove, "take it down") + ".</p>",
   ];
+  const footer = brandFooter(to);
+  lines.push(...footer.lines);
+  paras.push(footer.html);
+  return {
+    subject,
+    body: lines.join("\n"),
+    html: '<div style="font-family:system-ui,sans-serif;font-size:15px;line-height:1.55;color:#222">' + paras.join("") + "</div>",
+    variant,
+  };
+}
+
+/**
+ * The Outset footer every outreach email carries: logo, tagline, terms, privacy, and for an addressed mail an
+ * unsubscribe link and the postal address CAN-SPAM and CASL require. Shared so hand-written follow-ups and the
+ * automated pitch can never drift apart.
+ */
+export function brandFooter(to: string): { lines: string[]; html: string } {
+  const SITE = "https://onoutset.com/";
+  const TERMS = SITE + "terms.html";
+  const PRIVACY = SITE + "privacy.html";
   const TAGLINE = "Instant booking for local activities.";
   const footerLines: string[] = ["", "Outset. " + TAGLINE];
   const footerParas: string[] = [
@@ -132,14 +150,7 @@ export function draftOttoCopy(op: OttoOp, email?: string, opts?: { greet?: strin
     footerParas.push(link(TERMS, "Terms") + " &nbsp;·&nbsp; " + link(PRIVACY, "Privacy"));
   }
   footerParas[footerParas.length - 1] += "</p>";
-  lines.push(...footerLines);
-  paras.push(footerParas.join(""));
-  return {
-    subject,
-    body: lines.join("\n"),
-    html: '<div style="font-family:system-ui,sans-serif;font-size:15px;line-height:1.55;color:#222">' + paras.join("") + "</div>",
-    variant,
-  };
+  return { lines: footerLines, html: footerParas.join("") };
 }
 
 /**
