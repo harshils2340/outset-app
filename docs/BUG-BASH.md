@@ -7720,6 +7720,83 @@ and are named in the commits. Nothing under `backend/data`, `public/` or `src/da
   has no wrapping rule; `plainWords` is not idempotent; 69 Toronto-address listings are filed under a
   neighbouring metro; there is no linter in this repo.
 
+## 1 October 2026, hundred and thirteenth run (05:20 to 06:00 UTC)
+
+**Chosen, and why.** `git fetch` first: the only commit since the hundred and twelfth run's log entry is a
+security sweep that wrote one doc, so by the rule the full rehearsal was **skipped at the start** and **run at
+the end**, because all six of tonight's fixes are in code it drives. Both `node_modules` were missing again and
+were installed first. Baseline: `tsc --noEmit -p .`, `tsc -b` and the backend's own `tsc` clean but for TS5097,
+backend 954 tests with 952 pass and 2 skipped, app 1,046 pass.
+
+Every area on the brief is on the Verified list. Two hunts, one cheap and one that paid. The cheap one: both
+suites run under a zone ahead of UTC and one behind it, because the app's date arithmetic runs in the guest's
+browser and a test that only passes in UTC is a bug for everybody else. Then the lens that worked: **twin
+surfaces that state the same fact.** The 27 September fix that spelled a coded state out named the surfaces it
+covered, and the one it missed is the phone.
+
+**Found and fixed.** All six are one field, the place a guest is told to go to, read six ways.
+
+- **The ticket on a guest's phone names the shop's door rather than its state** (`ec79be9ac`). `ConfirmView`'s
+  row labelled "Meet at" read `u.area` raw. 1,683 of 46,324 shipped operator listings publish a state or
+  province code with no town, so a guest who booked AerOhio Skydiving on a phone kept a ticket reading "Meet at
+  OH" while the desktop confirmation for the same booking said "Ohio" with directions and Otto said "They're in
+  Ohio". The area line is not a meeting point even when it names a town: roughly nine listings in ten publish a
+  street, which the desktop confirmation has printed all along, so "Meet at Houston, TX" stood in for a door.
+  Now the shop's own address, then the place spelled out, and `meetPlace` rather than `placeName` because that
+  label may not be filled with a whole state: with neither, the row goes, which is the pay sheet's own rule.
+- **A guest's confirmation email spells out the state it tells them to go to** (`a9f2bb23a`). Same field, third
+  surface: the email's "Where" row fell through to the raw area line and said "Where: OH". Spelled out rather
+  than dropped, because this row is the only place a receipt names.
+- **A booking email names the address and phone the operator published** (`70ee36d74`). `bookingContext` read
+  `patch.address` and `patch.phone`, and `toCatalog` has never put either key on the published patch: the
+  dashboard publishes both inside `patch.contact`. Both preferences were dead, so an operator who corrected a
+  wrong crawled address, moved, or typed the gate guests should meet at had their listing page update and every
+  booking email keep naming the crawled street, and the founder's "CALL THE SHOP" alert kept ringing the
+  crawled number.
+- **A claim stops telling an owner their meeting point is a state code** (`bdcaab587`). `defaultProfile`
+  prefilled "Meeting point or address" with the area line, so an owner claiming AerOhio opened their dashboard
+  to be told their meeting point was "OH". Its two neighbours already refuse to prefill a phone nobody can ring
+  or an inbox nobody reads.
+- **A trip card in the Trips tab names the state the trip is in** (`e690a4d04`) and **the compare table's Where
+  row names the state it is comparing** (`ea4615c08`). Both are labelled, full-width lines, not the feed or rail
+  card the code exemption is written for. `WebHome` held a local `placeName` of its own, now `pickedPlace`.
+
+**Swept and clean, or measured and left.** Both suites under `TZ=Pacific/Auckland` (UTC+13) and
+`TZ=Pacific/Honolulu` (UTC-10) as well as UTC: 1,050 app and 954 backend tests pass identically in all three, so
+nothing in either project's date arithmetic reads the host's offset. Every remaining raw `.area` print in the
+app read against the exemption the code states (a feed or rail card, the operator's own dashboard lists,
+structured data): the four that are left are all inside it. `backend/src/api/webhooks.ts`, the Resend signature
+and suppression route, read line by line: the replay window, the rotating-secret header, the constant-time
+compare and the permanent-only bounce rule are all sound. `sessionsPage.ts`, which builds HTML with
+`innerHTML`: every interpolation of anything a guest typed goes through its own `esc`. Every `.sort()` in the
+app against the array it is handed, for a comparator mutating a shared catalog list: all 29 are on a fresh array.
+
+**Verification.** App `npm test` 1,055 pass, 0 fail, up from 1,046 (nine new cases on `oneSpelling.test.ts`).
+Backend `npm test` 959 tests, 957 pass, 0 fail, 2 skipped, up from 954 (five new, in a new
+`api/__tests__/bookingWhere.test.ts`). `tsc --noEmit -p .`, `tsc -b` and the backend's own `tsc` all clean but
+for TS5097. The rehearsal ran green at **57 of 57** on the tree carrying all six fixes, against a local Postgres
+16 cluster with TLS on port 5433 and the Chromium on disk. Nothing under `backend/data`, `public/` or `src/data`
+was written.
+
+**Needs Harshil.**
+
+- **The phone confirmation still offers no way to reach the shop.** The desktop twin carries the address as a
+  Maps link and the number as "Running late? Call the shop", and prints the shop's own arrival note. The phone
+  ticket has neither, on the surface where running late actually happens, and 80% of listings publish a number.
+  A guest can get there through "View listing", so this is a missing row rather than a defect, and it is new UI
+  rather than a fix: say whether to add it and I will.
+- **The concierge's crawl queue ignores the town people asked about.** `demandedTargets` in
+  `backend/src/concierge/demand.ts` filters only by category and region, and its own comment says it matches
+  "`instr` on a lowered city". So "escape room in Waterloo" pulls the top-reviewed escape rooms in all of
+  Ontario and labels each one "asked for escape-room near waterloo"; when the sentence resolved to a town but no
+  region, nothing scopes the query at all. The fix depends on what you want: the comment beside it argues a
+  Waterloo question should still reach Kitchener and Cambridge, which a city filter would cut off. That module
+  has no tests of its own and nothing else in the concierge is untested.
+- Still open from earlier runs: a price sort and a price filter compare two dollars on six metros; the cards
+  still say "$" for a Canadian shop; the cards are weeks behind the pages until a sync runs; the static pages'
+  CSS has no wrapping rule; `plainWords` is not idempotent; 69 Toronto-address listings are filed under a
+  neighbouring metro; there is no linter in this repo.
+
 ## Coverage
 
 The catalog is 48,198 listings as of the 23 September sync, 1,873 of them Viator partner rows. Counts below
@@ -8579,6 +8656,16 @@ against the labelled formatter, now a test of its own; and the price aggregates 
 rebuilt from the shipped catalog and diffed page by page. Every module-level regex in both projects used with
 `.test()` or `.exec()`, for a `lastIndex` carried between calls.
 
+Every surface that tells a guest, or an owner, where a shop is, held against the one reader the 27 September fix
+named: the phone confirmation's "Meet at" row, the guest's confirmation email, the Trips tab's own card, the
+compare table's Where row and the field a claim prefills as a meeting point, each against the feed and rail
+cards, the dashboard lists and the structured data that keep a code on purpose. Which contact record a booking
+email believes: what the operator published against what the crawl read, over the address, the meeting point and
+the phone, with the published patch's own keys walked rather than assumed. Both test suites under a zone ahead of
+UTC and one behind it, for date arithmetic that reads the host's offset. Every `.sort()` in the app against the
+array it is handed. The Resend signature and suppression webhook, read end to end. Every interpolation in the
+concierge sessions page's own markup.
+
 **Not yet checked.** Whether the static pages' own CSS should carry a wrapping rule at all: it sets no
 `overflow-wrap`, no `word-break` and no `min-width` on either of its two flex rows, and nothing overflows today
 only because every long token in the catalog is a URL, which a browser breaks at a slash (see this run's Needs
@@ -8918,4 +9005,4 @@ and Otto's answers should name the Canadian dollar the way the four charge block
 listings and the 3,045 of them that publish a price (see that run's Needs Harshil). Whether the app's own
 `src/**/__tests__`, which nothing type-checks, hide anything: checked once tonight against a scratch config, and
 what falls out is fixture shapes rather than defects, with one test building a listing in a category the app has
-no such family for.
+no such family for. Whether the phone confirmation should carry the shop's number and arrival note the way its desktop twin does, which is a missing row rather than a defect and is new UI (see this run's Needs Harshil). Whether the concierge's crawl queue should be scoped to the town people asked about, which its own comment says it is and its SQL is not, against the same comment's argument that a Waterloo question should reach Kitchener (see this run's Needs Harshil). What else the two confirmation screens disagree about, now that the place line is one reader on both: the arrival note, the price breakdown and the rating are all on the desktop and none on the phone.
