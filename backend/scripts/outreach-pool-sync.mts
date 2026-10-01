@@ -31,25 +31,28 @@ const force = process.argv.includes("--ramp");
 const started = new Date().toISOString();
 await ensureTouchTables();
 
-type Op = { id: string; domain: string; name: string; website: string | null; email: string | null; phone: string | null; city: string | null; region: string | null; calendar_vendor: string | null; completeness: number | null };
+type Op = { id: string; domain: string; name: string; website: string | null; email: string | null; phone: string | null; city: string | null; region: string | null; calendar_vendor: string | null; completeness: number | null; family: string | null };
+// Open to every family, not just 'water', as of 30 September 2026 at Harshil's direction: he wants a real
+// reply-rate comparison across verticals, not an assumption that water is the best one. `family` is carried
+// into outreach_pool below so that comparison is a group-by, not a guess.
 const ops = db
   .prepare(
-    `SELECT id, domain, name, website, email, phone, city, region, calendar_vendor, completeness FROM operators
+    `SELECT id, domain, name, website, email, phone, city, region, calendar_vendor, completeness, family FROM operators
       WHERE origin NOT IN ('demo', 'test') AND claim_status = 'unclaimed' AND email LIKE '%@%'
-        AND family = 'water' AND phone IS NOT NULL AND phone != ''
+        AND phone IS NOT NULL AND phone != ''
         AND lower(name) NOT LIKE '%park%' AND lower(name) NOT LIKE '%county%' AND lower(name) NOT LIKE '%city of%'
         AND lower(name) NOT LIKE '%recreation%' AND lower(name) NOT LIKE '%district%' AND lower(name) NOT LIKE '%municipal%'
         AND domain NOT LIKE '%.gov' AND domain NOT LIKE '%.org' AND domain NOT LIKE '%.edu'`,
   )
   .all() as Op[];
 
-type Row = [string, string, string, string, string | null, string, string | null, string | null, string | null, string | null, number | null, string | null];
+type Row = [string, string, string, string, string | null, string, string | null, string | null, string | null, string | null, number | null, string | null, string | null];
 const rows: Row[] = [];
 for (const op of ops) {
   const to = bestAddress(op);
   if (!to) continue;
   const greet = ownerFirstName(to, ownerFacts(op.id).names);
-  rows.push([op.id, catalogId(op.domain), op.domain, op.name, op.website, to, op.phone, op.city, op.region, op.calendar_vendor, op.completeness, greet]);
+  rows.push([op.id, catalogId(op.domain), op.domain, op.name, op.website, to, op.phone, op.city, op.region, op.calendar_vendor, op.completeness, greet, op.family]);
 }
 
 await withTx(async (c) => {
@@ -57,16 +60,16 @@ await withTx(async (c) => {
     const chunk = rows.slice(i, i + 500);
     const values: unknown[] = [];
     const tuples = chunk.map((r, k) => {
-      const base = k * 12;
+      const base = k * 13;
       values.push(...r);
-      return "(" + Array.from({ length: 12 }, (_, j) => "$" + (base + j + 1)).join(", ") + ", now())";
+      return "(" + Array.from({ length: 13 }, (_, j) => "$" + (base + j + 1)).join(", ") + ", now())";
     });
     await c.query(
-      `insert into outreach_pool (operator_id, catalog_id, domain, name, website, email, phone, city, region, calendar_vendor, completeness, greet, synced_at)
+      `insert into outreach_pool (operator_id, catalog_id, domain, name, website, email, phone, city, region, calendar_vendor, completeness, greet, family, synced_at)
        values ${tuples.join(", ")}
        on conflict (operator_id) do update set catalog_id = excluded.catalog_id, domain = excluded.domain, name = excluded.name, website = excluded.website,
          email = excluded.email, phone = excluded.phone, city = excluded.city, region = excluded.region, calendar_vendor = excluded.calendar_vendor,
-         completeness = excluded.completeness, greet = excluded.greet, synced_at = now()`,
+         completeness = excluded.completeness, greet = excluded.greet, family = excluded.family, synced_at = now()`,
       values,
     );
   }

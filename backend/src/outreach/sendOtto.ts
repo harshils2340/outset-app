@@ -55,7 +55,7 @@ export async function sendOttoOutreach(opts: {
       .prepare(
         `SELECT * FROM operators
          WHERE origin NOT IN ('demo', 'test') AND claim_status = 'unclaimed' AND email LIKE '%@%'
-           AND family = 'water' AND phone IS NOT NULL AND phone != ''
+           AND phone IS NOT NULL AND phone != ''
            AND lower(name) NOT LIKE '%park%' AND lower(name) NOT LIKE '%county%' AND lower(name) NOT LIKE '%city of%'
            AND lower(name) NOT LIKE '%recreation%' AND lower(name) NOT LIKE '%district%' AND lower(name) NOT LIKE '%municipal%'
            AND domain NOT LIKE '%.gov' AND domain NOT LIKE '%.org' AND domain NOT LIKE '%.edu'
@@ -133,7 +133,7 @@ export async function sendOttoOutreach(opts: {
       const at = nowIso();
       db.prepare("UPDATE outreach_drafts SET status = 'sent', subject = ?, body = ?, created_at = ?, sent_via = ? WHERE id = ?").run(copy.subject, copy.body, at, res.via ?? via ?? smtpIdentities()[0]?.user ?? null, r.id);
       await recordSend({ email: to, listing: catalogId(r.domain), at });
-      await recordTouch({ operatorId: r.opid, email: to, status: "sent", mailbox: res.via ?? via ?? smtpIdentities()[0]?.user ?? null, at }).catch((e) => console.error("shared record: " + (e as Error).message));
+      await recordTouch({ operatorId: r.opid, email: to, status: "sent", mailbox: res.via ?? via ?? smtpIdentities()[0]?.user ?? null, variant: copy.variant, at }).catch((e) => console.error("shared record: " + (e as Error).message));
       out.sent++;
       if (opts.quota && via) opts.quota[via] -= 1;
     } else if (opts.quota && via && MAILBOX_ERROR.test(res.error || "")) {

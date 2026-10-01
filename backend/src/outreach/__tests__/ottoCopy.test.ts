@@ -74,7 +74,7 @@ test("no em dash anywhere, including the footer", () => {
 
 test("the vendor line is generic when no booking system is on file", () => {
   const none = draftOttoCopy(op, TO);
-  assert.ok(none.body.includes("whatever you already use to take bookings"), none.body);
+  assert.ok(none.body.includes("\nOtto can work with your existing booking flow"), none.body);
   const known = draftOttoCopy({ ...op, calendar_vendor: "fareharbor" }, TO);
   assert.ok(known.body.includes("FareHarbor"), known.body);
 });

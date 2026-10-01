@@ -115,7 +115,7 @@ async function sendBatch(limit: number, quota: Record<string, number>): Promise<
     const op = { id: r.operator_id, domain: r.domain, name: r.name, email: r.email, phone: r.phone, city: r.city, region: r.region, calendar_vendor: r.calendar_vendor };
     const copy = draftOttoCopy(op, to, { greet: r.greet });
     if (dry) {
-      console.log("would send to " + to + (r.greet ? " (Hi " + r.greet + ")" : "") + ": " + copy.subject);
+      console.log("would send to " + to + (r.greet ? " (Hi " + r.greet + ")" : "") + " [variant " + copy.variant + "]: " + copy.subject);
       out.sent++;
       continue;
     }
@@ -133,7 +133,7 @@ async function sendBatch(limit: number, quota: Record<string, number>): Promise<
     }
     if (res.sent) {
       const at = new Date().toISOString();
-      await recordTouch({ operatorId: r.operator_id, email: to, status: "sent", mailbox: res.via ?? via, at });
+      await recordTouch({ operatorId: r.operator_id, email: to, status: "sent", mailbox: res.via ?? via, variant: copy.variant, at });
       await recordSend({ email: to, listing: r.catalog_id, at });
       out.sent++;
       quota[via] -= 1;

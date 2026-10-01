@@ -23,12 +23,15 @@ export type SmtpIdentity = { user: string; pass: string; from: string; host: str
 
 /**
  * Every mailbox cold mail may go from. MAIL_SMTP_USER / MAIL_SMTP_PASS is the first; MAIL_SMTP_USER_2 /
- * MAIL_SMTP_PASS_2 up to _9 add more (Harshil's other accounts, 26 September 2026), each sending as
+ * MAIL_SMTP_PASS_2 up to _MAILBOX_LIMIT add more (Harshil's other accounts, 26 September 2026), each sending as
  * "Harshil <that address>". Gmail on 587 unless MAIL_SMTP_HOST_n / MAIL_SMTP_PORT_n say otherwise, so a
  * mailbox on another provider (a university's mailservices host, say) sits beside the Gmail ones. One
  * personal mailbox is good for about 50 cold mails a day, so the way past 50 is more mailboxes, each warmed
- * and capped on its own (otto-ramp.mts), never one mailbox pushed harder.
+ * and capped on its own (otto-ramp.mts), never one mailbox pushed harder. Raised from 9 to 20 on 29 September
+ * 2026 when Harshil planned to add a 10th: pick a ceiling with headroom rather than raising it again on the
+ * next mailbox added.
  */
+const MAILBOX_LIMIT = 20;
 export function smtpIdentities(env: Record<string, string | undefined> = process.env): SmtpIdentity[] {
   const out: SmtpIdentity[] = [];
   const u1 = (env.MAIL_SMTP_USER || "").trim();
@@ -36,7 +39,7 @@ export function smtpIdentities(env: Record<string, string | undefined> = process
   if (u1 && p1) {
     out.push({ user: u1, pass: p1, from: env.MAIL_SMTP_FROM || "Harshil <" + u1 + ">", host: (env.MAIL_SMTP_HOST || "smtp.gmail.com").trim(), port: Number(env.MAIL_SMTP_PORT || 587) });
   }
-  for (let i = 2; i <= 9; i++) {
+  for (let i = 2; i <= MAILBOX_LIMIT; i++) {
     const u = (env["MAIL_SMTP_USER_" + i] || "").trim();
     const p = (env["MAIL_SMTP_PASS_" + i] || "").trim();
     if (u && p && !out.some((o) => o.user === u)) {

@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { CALL_LINK, catalogId, vendorLabel } from "./drafts.ts";
+import { catalogId, vendorLabel } from "./drafts.ts";
 import { mailPostal, unsubPageUrl } from "../lib/unsub.ts";
 import { bestAddress, greeting } from "./owner.ts";
 import { db, nowIso } from "../db/client.ts";
@@ -47,21 +47,25 @@ function link(href: string, label: string): string {
  * more limited thing: sets up alongside whatever they already run.
  */
 function vendorLine(id: string | null): string {
+  const tail = "Otto can work with your existing booking flow so reservations go into the same system you already use.";
   const name = vendorLabel(id);
-  if (!name) return "Otto plugs right into whatever you already use to take bookings. Bookings drop straight into your calendar as if you took the call yourself.";
-  return "Since you use " + name + ", Otto plugs right into it. Bookings drop straight into your calendar as if you took the call yourself.";
+  return name ? "Since you use " + name + ", " + tail : tail.charAt(0).toUpperCase() + tail.slice(1);
 }
 
 /**
- * Approved by Harshil verbatim on 24 September 2026, personalized by business name (the opening line and the
- * subject) and by booking vendor (vendorLine, generic when none is on file). On 25 September 2026 he asked for
- * one more line: his Cal.com link as a hyperlink, for the owner who would rather see it set up for their own
- * business than reply, "love to chat". The footer (the take-it-down line, unsubscribe, terms, postal address)
- * is not part of what he approved or edited; it stays because backend/src/outreach/AGENTS.md requires it on
- * every send regardless of what the persuasive copy says.
+ * Which copy a send carried, stored on outreach_sends.variant (touches.ts) so replies can be read against the
+ * version that earned them. Bump it whenever the body changes.
  */
-export function draftOttoCopy(op: OttoOp, email?: string, opts?: { greet?: string | null }): { subject: string; body: string; html: string } {
+export const COPY_VERSION = "2026-10-01";
+
+/**
+ * Body written by Harshil on 1 October 2026, templated by business name and booking vendor. The footer (the
+ * take-it-down line, unsubscribe, terms, postal address) is not part of his copy; it stays because
+ * backend/src/outreach/AGENTS.md requires it on every send.
+ */
+export function draftOttoCopy(op: OttoOp, email?: string, opts?: { greet?: string | null }): { subject: string; body: string; html: string; variant: string } {
   const to = (email || "").trim().toLowerCase();
+  const variant = COPY_VERSION;
   // "Hi Ron," only when the shop's own site names Ron as the owner and the mailbox is his by that same word
   // (owner.ts, from the owners crawl's facts): never a guessed first name, which is the one mistake an owner
   // cannot miss. A caller with no catalog at hand (the cloud sender, from the published pool) passes the name
@@ -69,25 +73,18 @@ export function draftOttoCopy(op: OttoOp, email?: string, opts?: { greet?: strin
   const hi = opts && "greet" in opts ? (opts.greet ? "Hi " + opts.greet + "," : "Hi,") : to ? greeting(op, to) : "Hi,";
   const SITE = "https://onoutset.com/";
   const OTTO = SITE + "otto";
-  const CAL = CALL_LINK;
   const TERMS = SITE + "terms.html";
   const PRIVACY = SITE + "privacy.html";
   const subject = "Who answers " + possessive(op.name) + " phone after you close?";
-  // "AI phone assistant" read too passive to Harshil (24 September 2026): he wants it sound like it gets
-  // things done, not like it just takes a message. "AI front desk" is also the exact term otto.html's own
-  // hero already uses, so the email and the page it links to now say the same thing.
-  const who = "I'm Harshil. I built Otto, the AI front desk for local activity operators like " + op.name + ": it answers calls when you're busy or closed, books the guest in, and emails you a summary.";
-  const hear = "Before anything else, give this 42-second recording a listen to hear how it handles a real caller:";
-  const staff = "Most operators use it so staff can stay focused on guests in person, while catching calls after hours that used to go to voicemail.";
+  const who = "I'm Harshil. I built Otto, an AI front desk for local activity businesses like " + op.name +
+    ". It answers calls when your team is busy or closed, handles customer questions, books guests, and sends you a summary afterward.";
+  const hear = "Here's a 42-second sample so you can hear what a call sounds like:";
+  const staff = "The idea is simple: your staff can keep focusing on guests in person, and Otto handles the calls that would otherwise go unanswered or to voicemail.";
   const vendor = vendorLine(op.calendar_vendor);
-  const guarantee = "I can set it up with you in a day, free until it proves its value on your real line.";
-  // One close, three doors (25 September 2026): listen, book a call, or say why not. "I'd love to chat" is
-  // the hyperlink in the html; the text part, which no mail app shows when html is present, carries the URL
-  // on its own line because plain text has no other way to hold a link.
-  const listen = "Give the demo a quick listen.";
-  const chatLead = "If this could be helpful, or you'd like to see how it would be set up for your business, ";
-  const chatLink = "I'd love to chat";
-  const fallback = "And if it's not a fit, even a one-line reply on why helps a lot.";
+  const setup = "I can set up a version specifically for " + op.name + " in a day using your pricing, policies, and booking flow. I'll set it up for free so you can call it yourself and see if it's actually useful before paying for anything.";
+  // "yes" is bold in the html only; plain text has no bold.
+  const ask = "If you're interested, just reply yes and I'll put one together for you.";
+  const askHtml = "If you're interested, just reply <b>yes</b> and I'll put one together for you.";
   // Every operator this pitch goes to already has an unclaimed page in the Outset catalog, and this email
   // names Outset without naming that page, so the way off it has to be in here: the outreach folder's own
   // rule is a one-click remove line on every send, and the listing pitch has carried one since it started.
@@ -99,8 +96,7 @@ export function draftOttoCopy(op: OttoOp, email?: string, opts?: { greet?: strin
     hi, "", who, "",
     hear, "", OTTO, "",
     staff, "", vendor, "",
-    guarantee, "",
-    listen + " " + chatLead + chatLink + ":", CAL, fallback, "",
+    setup, "", ask, "",
     "Best,", "", "Harshil",
     "", removeLine, remove,
   ].filter((l) => l !== null) as string[];
@@ -110,8 +106,8 @@ export function draftOttoCopy(op: OttoOp, email?: string, opts?: { greet?: strin
     "<p>" + esc(hear) + "<br>" + link(OTTO, "Hear the 42-second recording") + "</p>",
     "<p>" + esc(staff) + "</p>",
     "<p>" + esc(vendor) + "</p>",
-    "<p>" + esc(guarantee) + "</p>",
-    "<p>" + esc(listen + " " + chatLead) + link(CAL, chatLink) + ". " + esc(fallback) + "</p>",
+    "<p>" + esc(setup) + "</p>",
+    "<p>" + askHtml + "</p>",
     "<p>Best,<br>Harshil</p>",
     '<p style="font-size:13px;color:#666">' + esc(removeLine) + " " + link(remove, "take it down") + ".</p>",
   ];
@@ -142,15 +138,20 @@ export function draftOttoCopy(op: OttoOp, email?: string, opts?: { greet?: strin
     subject,
     body: lines.join("\n"),
     html: '<div style="font-family:system-ui,sans-serif;font-size:15px;line-height:1.55;color:#222">' + paras.join("") + "</div>",
+    variant,
   };
 }
 
 /**
  * Otto is a phone answering pitch, so eligibility is "does this business actually take calls," not the
- * listing pitch's photo/price completeness bar. `family = 'water'` matches what public/otto.html itself
- * pitches (marinas, boat and jet ski rentals, charters, watersports). Government-run parks and rec
- * departments (county marinas, municipal boat launches) slip into that family and are not who this is for:
- * excluded by name pattern the same way the listing pitch excludes museums and theme parks by category.
+ * listing pitch's photo/price completeness bar. Open to every family, not just `water`, as of 30 September
+ * 2026 at Harshil's direction: the pitch is "answer calls and book the guest," which holds for any
+ * booking-based business, not only marinas and watersports, and he wants a real per-family reply-rate
+ * comparison rather than a single vertical assumed to be the best one. `family` isn't stored on
+ * `outreach_drafts`, so that comparison is a join back to `operators.family` by `operator_id`, not a new
+ * column. Government-run parks and rec departments (county marinas, municipal boat launches, public pools)
+ * slip into several families and are not who this is for: excluded by name pattern the same way the listing
+ * pitch excludes museums and theme parks by category.
  */
 export function generateOttoDrafts(): number {
   const ops = (
@@ -158,7 +159,7 @@ export function generateOttoDrafts(): number {
       .prepare(
         `SELECT * FROM operators
          WHERE origin NOT IN ('demo', 'test') AND claim_status = 'unclaimed' AND email LIKE '%@%'
-           AND family = 'water' AND phone IS NOT NULL AND phone != ''
+           AND phone IS NOT NULL AND phone != ''
            AND lower(name) NOT LIKE '%park%' AND lower(name) NOT LIKE '%county%' AND lower(name) NOT LIKE '%city of%'
            AND lower(name) NOT LIKE '%recreation%' AND lower(name) NOT LIKE '%district%' AND lower(name) NOT LIKE '%municipal%'
            AND domain NOT LIKE '%.gov' AND domain NOT LIKE '%.org' AND domain NOT LIKE '%.edu'`,

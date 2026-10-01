@@ -8,7 +8,8 @@ import type { RampState } from "./ramp.ts";
  * Until 28 September 2026 the Otto campaign lived in the laptop's SQLite (the queue, what was sent, what was
  * handed to a friend) and ran from the laptop's launchd, which meant a laptop asleep or a Wi-Fi that came up
  * late after wake was a day with no mail. Harshil: "have it so it sends via cloud, regardless it runs". A
- * cloud sender has no disk of its own, and the catalog it needs (14,000 water operators, their best address,
+ * cloud sender has no disk of its own, and the catalog it needs (every eligible operator, any family since 30
+ * September 2026, their best address,
  * the owner's first name) is 1.2 GB of SQLite on the laptop. So three small tables carry exactly what the
  * sender needs and nothing else:
  *
@@ -39,6 +40,10 @@ export type PoolRow = {
   calendar_vendor: string | null;
   completeness: number | null;
   greet: string | null;
+  /** The operator's category family (water, wellness, outdoor, ...), added 30 September 2026 once Otto opened
+   * to every family instead of just water, so reply rate can be compared by vertical: `outreach_sends` joined
+   * back to this column by `operator_id` is that comparison, no new table needed. */
+  family: string | null;
 };
 
 const DDL = [
@@ -55,8 +60,10 @@ const DDL = [
     calendar_vendor text,
     completeness real,
     greet text,
+    family text,
     synced_at timestamptz not null default now()
   )`,
+  "alter table outreach_pool add column if not exists family text",
   "create index if not exists outreach_pool_order on outreach_pool (completeness desc nulls last)",
   `create table if not exists outreach_sends (
     operator_id text not null,
@@ -64,9 +71,13 @@ const DDL = [
     kind text not null default 'otto',
     status text not null,
     mailbox text,
+    variant text,
     at timestamptz not null default now(),
     primary key (operator_id, email, kind, status)
   )`,
+  // variant: which copy version the operator got (COPY_VERSION in ottoDrafts.ts), so reply rate by version
+  // is a group-by on this column. Dedup stays keyed on kind alone, so no business is mailed twice.
+  "alter table outreach_sends add column if not exists variant text",
   "create index if not exists outreach_sends_email on outreach_sends (email)",
   "create index if not exists outreach_sends_at on outreach_sends (at)",
   `create table if not exists outreach_ramp (
@@ -88,14 +99,14 @@ export function ensureTouchTables(): Promise<void> {
 }
 
 /** A touch on a business. Idempotent: the same status for the same address is one row however often it is recorded. */
-export async function recordTouch(t: { operatorId: string; email: string; status: TouchStatus; mailbox?: string | null; at?: string | null; kind?: string }): Promise<void> {
+export async function recordTouch(t: { operatorId: string; email: string; status: TouchStatus; mailbox?: string | null; at?: string | null; kind?: string; variant?: string | null }): Promise<void> {
   if (!pgConfigured()) return;
   const email = t.email.trim().toLowerCase();
   if (!email.includes("@")) return;
   await ensureTouchTables();
   await query(
-    "insert into outreach_sends (operator_id, email, kind, status, mailbox, at) values ($1, $2, $3, $4, $5, coalesce($6::timestamptz, now())) on conflict do nothing",
-    [t.operatorId, email, t.kind || "otto", t.status, t.mailbox || null, t.at || null],
+    "insert into outreach_sends (operator_id, email, kind, status, mailbox, variant, at) values ($1, $2, $3, $4, $5, $6, coalesce($7::timestamptz, now())) on conflict do nothing",
+    [t.operatorId, email, t.kind || "otto", t.status, t.mailbox || null, t.variant || null, t.at || null],
   );
 }
 
