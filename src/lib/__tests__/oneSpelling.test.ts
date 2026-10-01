@@ -33,6 +33,7 @@ const WEB = read("../../components/web/WebListing.tsx");
 const CONFIRM = read("../../components/web/WebConfirm.tsx");
 const PHONE_CONFIRM = read("../../components/booking/ConfirmView.tsx");
 const TRIPS = read("../../components/trips/TripsView.tsx");
+const HOME = read("../../components/web/WebHome.tsx");
 
 test("the Where row a guest reads names the state, on both listing surfaces", () => {
   assert.match(
@@ -96,6 +97,11 @@ test("the phone confirmation's meeting place, on two shipped listings", () => {
 /** The Trips tab's own card, which has the width of the screen and is not a feed card. */
 test("a trip card names the state it is in", () => {
   assert.match(TRIPS, /u \? placeName\(u\.area\) :/, "the Trips tab prints a raw area");
+});
+
+/** The compare table's Where row, which sits in the same column as "Who can go" and is not a feed card. */
+test("the compare table's Where row names the state", () => {
+  assert.match(HOME, /row\("Where", \(u\) => awayLine\(u, near && !near\.region \? near : null\) \|\| placeName\(u\.area\)\)/, "the compare table prints a raw area");
 });
 
 /**

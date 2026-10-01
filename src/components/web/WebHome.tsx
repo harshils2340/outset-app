@@ -11,6 +11,7 @@ import { fmtDate, fmtReviews, money, titleCase } from "../../lib/format";
 import { ART_ALIASES, WHAT_INTENTS, describeQuery, metroInQuery, parseIntent, searchMetros, searchRegions, searchSuggest, stripPlaceWords, warmSearch, type SearchScope } from "../../lib/search";
 import { loadListing } from "../../lib/catalogLoad";
 import { dealToday } from "../../lib/companyAgent";
+import { placeName } from "../../lib/listingDerive";
 import { itemOpenState } from "../../lib/openNow";
 import { currentLocation, kmBetween, nearestLocation, searchPlaces, type Place } from "../../lib/places";
 import { useApp } from "../../state/AppProvider";
@@ -596,7 +597,9 @@ function CompareTable({ items, near, onOpen, onClose, onRemove }: { items: Uncla
             <tbody>
               {row("From", (u) => { const f = fromPrice(u); return f != null ? <b>{money(f)}</b> : <span className="ah-muted">{partnerBookLine(u) || "Request to book"}</span>; })}
               {row("Rating", (u) => { const sc = publicRating(u); return sc ? <span className="ah-cmp-rate"><Markup html={SVG.star} /> {sc.rating.toFixed(1)} <em className="ah-muted">({fmtReviews(sc.reviews)})</em></span> : <span className="ah-muted">No public rating</span>; })}
-              {row("Where", (u) => awayLine(u, near && !near.region ? near : null) || u.area)}
+              {/* A labelled row beside "Who can go" and not a feed card, so it spells a state out the way the
+                  listing page's own Where card does. This read the raw area line and said "OH". */}
+              {row("Where", (u) => awayLine(u, near && !near.region ? near : null) || placeName(u.area))}
               {/* A partner's product has no menu of ours to compare: the row says where it books instead of
                   sending a guest to ring a business that never took the booking. */}
               {row("What you'd book", (u) => { const o = firstPriced(u) || u.options[0]; return o ? o.name + (o.detail ? " · " + o.detail : "") : <span className="ah-muted">{partnerBookLine(u) || "Contact the business"}</span>; })}
@@ -1282,7 +1285,7 @@ export function WebHome({ onOperators, onAsk, asking = false, askSeed = "", onCl
 
   const nearName = (p: Place) => (p.label === "Near me" ? "you" : p.label);
   const finding = locating || state.locating;
-  const placeName = near ? near.label + (near.sub ? ", " + near.sub.split(",")[0] : "") : metro ? metro.name + ", " + metro.region : "";
+  const pickedPlace = near ? near.label + (near.sub ? ", " + near.sub.split(",")[0] : "") : metro ? metro.name + ", " + metro.region : "";
   const whereShort = finding ? "Finding you…" : typedMetro ? typedMetro.metro.name : near ? near.label : metro ? metro.name : "Anywhere";
   const inWhere = typedMetro ? " in " + typedMetro.metro.name : near ? " near " + nearName(near) : metro ? " in " + metro.name : "";
   /** Where a count applies, for the What menu: "in Miami", "near you", or everywhere. */
@@ -1939,7 +1942,7 @@ export function WebHome({ onOperators, onAsk, asking = false, askSeed = "", onCl
                       value={whereText}
                       autoComplete="off"
                       spellCheck={false}
-                      placeholder={placeName || "Search destinations"}
+                      placeholder={pickedPlace || "Search destinations"}
                       aria-label="Where"
                       role="combobox"
                       aria-expanded={whereShown.length > 0}
@@ -1948,7 +1951,7 @@ export function WebHome({ onOperators, onAsk, asking = false, askSeed = "", onCl
                       onChange={(e) => { setWhereText(e.target.value); setHit(-1); }}
                       onKeyDown={onWhereKey}
                     />
-                    {whereText || placeName ? (
+                    {whereText || pickedPlace ? (
                       <button type="button" className="ah-clear" aria-label="Clear where" onClick={clearWhere}><Markup html={SVG.close} /></button>
                     ) : null}
                   </label>
@@ -1981,7 +1984,7 @@ export function WebHome({ onOperators, onAsk, asking = false, askSeed = "", onCl
               ) : (
                 <button type="button" className="ah-rcard folded" onClick={() => setRefine("where")}>
                   <span>Where</span>
-                  <b>{placeName || "Anywhere"}</b>
+                  <b>{pickedPlace || "Anywhere"}</b>
                 </button>
               )}
               {refine === "when" ? (
