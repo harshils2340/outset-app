@@ -521,17 +521,24 @@ export function missingFrom(guest: { name: string; phone: string }): string {
 }
 
 /**
- * An API refusal the agent can say out loud, or a line of its own instead.
+ * An API refusal a guest can be shown, or a line of our own instead.
  *
  * The booking routes answer in two registers. "That time was just booked" and "This listing is hidden right
  * now" are sentences written for the person reading them; "bad email", "duplicate code" and "no such listing"
  * are codes written for whoever is reading the log. Both were printed in the thread exactly as they arrived
  * and over the agent's name, so a guest who mistyped their address was answered "Outset: bad email." A sentence
  * starts with a capital and has a space in it; anything else is ours to say properly.
+ *
+ * This was written for the agent and left there, so the two surfaces that take every real booking kept
+ * printing the codes: the desktop reserve box showed `r.error + "."` as its own alert, and the phone sheet
+ * toasted the same string, which is how "bad email." and "duplicate code." reached a guest under a Reserve
+ * button. `AppProvider.confirmUnclaimed` reads this now, so one rule answers for all three.
+ *
+ * A sentence that arrives without a full stop gets one, because every caller prints it as a line of its own.
  */
 export function guestWords(error: string | undefined | null): string {
   const said = (error || "").trim();
-  if (said && /^[A-Z]/.test(said) && /\s/.test(said)) return said;
+  if (said && /^[A-Z]/.test(said) && /\s/.test(said)) return /[.!?]$/.test(said) ? said : said + ".";
   return "That time could not be booked. Check the details and try again.";
 }
 

@@ -26,6 +26,7 @@ import { DAY_SHORT, assistantOn, clock12, currentDeals, dayLabel, todaysDeals } 
 import { fmtDistance } from "../../lib/geo";
 import { kmBetween, nearestLocation, venueLabel } from "../../lib/places";
 import { addonPrice, hasPrice, priceUnclaimed, serviceFeeLabel } from "../../lib/pricing";
+import { BAD_EMAIL_CTA, BAD_EMAIL_LINE, guestEmailOk } from "../../lib/guestEmail";
 import { ottoActive, useWallet } from "../../lib/wallet";
 import { AGENT_MODE_LIVE } from "../../lib/concierge";
 import { shownReviews, type ShownReview } from "../../lib/reviews";
@@ -865,7 +866,11 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
       return { name: "", phone: "" };
     }
   });
-  const guestOk = guest.name.trim().length >= 2 && guest.phone.replace(/\D/g, "").length >= 10;
+  // The email is optional and was therefore never read: a typo in it loses the whole booking at the API, which
+  // answers "bad email", and the address is saved to this device either way. See `lib/guestEmail.ts`.
+  const guestNamed = guest.name.trim().length >= 2 && guest.phone.replace(/\D/g, "").length >= 10;
+  const emailOk = guestEmailOk(guest.email);
+  const guestOk = guestNamed && emailOk;
   const [payments, setPayments] = useState(false);
   useEffect(() => { let alive = true; void apiConfig().then((c) => { if (alive) setPayments(c.payments); }); return () => { alive = false; }; }, []);
   const { wallet } = useWallet();
@@ -1244,13 +1249,15 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
 
   const nameRef = useRef<HTMLInputElement | null>(null);
   const phoneRef = useRef<HTMLInputElement | null>(null);
+  const emailRef = useRef<HTMLInputElement | null>(null);
   const reserveRef = useRef<HTMLButtonElement | null>(null);
   const colsRef = useRef<HTMLDivElement | null>(null);
   const heroRef = useRef<HTMLDivElement | null>(null);
   const pressReserve = () => {
     if (ready) return book();
     if (time == null) return setPickerOpen(true);
-    (guest.name.trim().length < 2 ? nameRef : phoneRef).current?.focus();
+    // Whichever field the label is asking for: the name, the mobile, or the address that will not parse.
+    (!emailOk ? emailRef : guest.name.trim().length < 2 ? nameRef : phoneRef).current?.focus();
   };
 
   const share = async () => {
@@ -1894,12 +1901,14 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
                   </div>
                   <label className="alboxcell full">
                     <small>Email</small>
-                    <input value={guest.email || ""} placeholder="Where your confirmation goes" inputMode="email" autoComplete="email" onChange={(e) => setGuest({ ...guest, email: e.target.value })} />
+                    <input ref={emailRef} value={guest.email || ""} placeholder="Where your confirmation goes" inputMode="email" autoComplete="email" aria-invalid={emailOk ? undefined : true} onChange={(e) => setGuest({ ...guest, email: e.target.value })} />
                   </label>
                 </div>
                 {/* Only the name and the mobile are required, and email is the one channel that is built, so a
-                    guest who skips it hears nothing: not the confirmation, not a decline, not a cancellation. */}
-                {!(guest.email || "").trim() ? <p className="alfine">Leave it empty and we have no way to tell you when {item.title} answers.</p> : null}
+                    guest who skips it hears nothing: not the confirmation, not a decline, not a cancellation.
+                    An address that will not parse is said here rather than left to the API, which refuses the
+                    whole booking for it: see `lib/guestEmail.ts`. */}
+                {!emailOk ? <p className="alfine albookerror" role="alert">{BAD_EMAIL_LINE}</p> : !(guest.email || "").trim() ? <p className="alfine">Leave it empty and we have no way to tell you when {item.title} answers.</p> : null}
 
                 {/* Not disabled while it is the way forward. `pressReserve` always does something from here:
                     with no time yet it opens the date and start time picker, and with the name or the mobile
@@ -1911,7 +1920,7 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
                     full opacity) deliberately kept it looking live for everybody else. `sending` is the one
                     moment the press really is a no-op, and `aria-busy` says why. */}
                 <button type="button" ref={reserveRef} className="alprimary" onClick={pressReserve} aria-disabled={sending} aria-busy={sending}>
-                  {sending ? "Sending…" : ready ? ctaLabel + (p.total ? " · " + moneyIn(p.total, cur) : "") : time == null ? "Pick a time" : "Add your name and number"}
+                  {sending ? "Sending…" : ready ? ctaLabel + (p.total ? " · " + moneyIn(p.total, cur) : "") : time == null ? "Pick a time" : !emailOk ? BAD_EMAIL_CTA : "Add your name and number"}
                       </button>
                 {bookError ? <p className="alfine center albookerror" role="alert">{bookError}</p> : null}
                 {payments && p.total ? (

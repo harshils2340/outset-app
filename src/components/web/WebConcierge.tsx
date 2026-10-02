@@ -32,6 +32,7 @@ import {
 import { fmtTime } from "../../lib/format";
 import { dateKey } from "../../lib/dates";
 import { loadGuest } from "../../lib/storage";
+import { BAD_EMAIL_ASK, guestEmailOk } from "../../lib/guestEmail";
 import { fewSeats } from "../../lib/liveTimes";
 import {
   copyText,
@@ -487,11 +488,12 @@ export function WebConcierge({ seed, framed, embed, onClose }: { seed?: string; 
     const g = { ...guestForm, ...loadGuest() };
     const name = (g.name || guestForm.name).trim();
     const held = { name: g.name || guestForm.name, phone: g.phone || guestForm.phone, email: g.email || guestForm.email };
-    if (missingFrom(held)) {
+    if (missingFrom(held) || !guestEmailOk(held.email)) {
       setGuestForm(held);
       setNeedMore("");
       setPending({ option: o, departure: d, party });
-      add({ kind: "them", text: "Name and mobile, then I will book that time." });
+      // A bad address saved on this device is the one gap the guest cannot see coming, so it is named.
+      add({ kind: "them", text: missingFrom(held) ? "Name and mobile, then I will book that time." : BAD_EMAIL_ASK });
       return;
     }
     const guest = { name, phone: g.phone || guestForm.phone, email: (g.email || guestForm.email || "").trim() };
@@ -594,6 +596,12 @@ export function WebConcierge({ seed, framed, embed, onClose }: { seed?: string; 
                 const missing = missingFrom(guestForm);
                 if (missing) {
                   setNeedMore(missing);
+                  return;
+                }
+                // The address is optional, so the form never read it and `POST /bookings` refused the whole
+                // booking for a typo in it: see `lib/guestEmail.ts`.
+                if (!guestEmailOk(guestForm.email)) {
+                  setNeedMore(BAD_EMAIL_ASK);
                   return;
                 }
                 setNeedMore("");

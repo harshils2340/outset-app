@@ -281,6 +281,9 @@
 .airsec{padding:32px 0;border-top:1px solid var(--line);}
 .airsec>h2{margin:0 0 20px;font-family:var(--f-display);font-size:22px;font-weight:600;line-height:26px;letter-spacing:-.01em;color:var(--ink);}
 .airsecsub{margin:-12px 0 20px;font-size:14px;line-height:20px;color:var(--air-grey);}
+/* The one line under the guest fields that is a refusal rather than a note: the warm red every other
+   "this will not work" on the guest side uses, so it does not read as more grey small print. */
+.airsecsub.airbad{color:var(--few);font-weight:600;}
 .airsec .policy{margin:0;gap:14px;}
 .airsec .policy li{font-size:16px;line-height:22px;color:var(--ink);gap:14px;}
 .airsec .policy svg{width:16px;height:16px;margin-top:3px;color:var(--ink);}

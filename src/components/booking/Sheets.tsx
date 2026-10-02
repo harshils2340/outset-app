@@ -32,6 +32,7 @@ import { fmtDate, fmtReviews, fmtTime, money, moneyIn, priceWith, reviewsLine, u
 import { countryOfArea } from "../../data/regions";
 import { formatDistance, milesBetween, type GeoPoint } from "../../lib/geo";
 import { addonPrice, hasPrice, priceFor, priceUnclaimed, serviceFeeLabel } from "../../lib/pricing";
+import { BAD_EMAIL_CTA, BAD_EMAIL_LINE, guestEmailOk } from "../../lib/guestEmail";
 import { ottoActive, useWallet } from "../../lib/wallet";
 import { AGENT_MODE_LIVE } from "../../lib/concierge";
 import { useApp } from "../../state/AppProvider";
@@ -366,7 +367,10 @@ function RequestBody({
       return { name: "", phone: "", email: "" };
     }
   });
-  const guestOk = guest.name.trim().length >= 2 && guest.phone.replace(/\D/g, "").length >= 10;
+  // The email is optional and was therefore never read: a typo in it loses the whole booking at the API,
+  // which answers "bad email", and the address is saved to this device either way. See `lib/guestEmail.ts`.
+  const emailOk = guestEmailOk(guest.email);
+  const guestOk = guest.name.trim().length >= 2 && guest.phone.replace(/\D/g, "").length >= 10 && emailOk;
   const [callOpen, setCallOpen] = useState(false);
   const [addonIdx, setAddonIdx] = useState<number[]>([]);
   const [openSvc, setOpenSvc] = useState<string | null>(null);
@@ -637,7 +641,7 @@ function RequestBody({
     // The dollars this shop charges in. The server picks the same one from the same area line, and the
     // booking email names it, so the screen that takes the money says it too.
     const cur = countryOfArea(item.area);
-    const cta = !guestOk ? "Add your name and number" : cardNow ? (ottoNow ? "Book with Otto " : "Book and pay ") + moneyIn(p.total!, cur) : instant ? (p.total ? "Confirm and pay " + moneyIn(p.total, cur) : "Confirm booking") : "Request to book";
+    const cta = !emailOk ? BAD_EMAIL_CTA : !guestOk ? "Add your name and number" : cardNow ? (ottoNow ? "Book with Otto " : "Book and pay ") + moneyIn(p.total!, cur) : instant ? (p.total ? "Confirm and pay " + moneyIn(p.total, cur) : "Confirm booking") : "Request to book";
     return (
       <>
         <div className="reqpad airpay" key="pay">
@@ -750,12 +754,14 @@ function RequestBody({
                 </label>
                 <label>
                   <small>Email</small>
-                  <input value={guest.email} placeholder="Where your confirmation goes" inputMode="email" autoComplete="email" onChange={(e) => setGuest({ ...guest, email: e.target.value })} />
+                  <input value={guest.email} placeholder="Where your confirmation goes" inputMode="email" autoComplete="email" aria-invalid={emailOk ? undefined : true} onChange={(e) => setGuest({ ...guest, email: e.target.value })} />
                 </label>
               </div>
               {/* Only the name and the mobile are required, and email is the one channel that is built, so a
                   guest who skips it hears nothing: not the confirmation, not a decline, not a cancellation. */}
-              {!guest.email.trim() ? <p className="airsecsub">Leave it empty and we have no way to tell you when {item.title} answers. Your code stays under Trips on this device.</p> : null}
+              {/* An address that will not parse is said here rather than left to the API, which refuses the
+                  whole booking for it, in two words, over a toast: see `lib/guestEmail.ts`. */}
+              {!emailOk ? <p className="airsecsub airbad" role="alert">{BAD_EMAIL_LINE}</p> : !guest.email.trim() ? <p className="airsecsub">Leave it empty and we have no way to tell you when {item.title} answers. Your code stays under Trips on this device.</p> : null}
             </section>
 
             <section className="airsec">

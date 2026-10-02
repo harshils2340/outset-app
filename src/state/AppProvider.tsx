@@ -31,7 +31,7 @@ import { priceFor, priceUnclaimed } from "../lib/pricing";
 import { applyStoredProfiles } from "../lib/operator";
 import { loadBookings, loadChats, saveBookings, saveChats } from "../lib/storage";
 import { isHttpsUrlOnHost } from "../lib/urlSafety";
-import { AGENT_MODE_LIVE } from "../lib/concierge";
+import { AGENT_MODE_LIVE, guestWords } from "../lib/concierge";
 
 export const DATES = makeDates(BOOKING_WINDOW_DAYS);
 
@@ -1078,7 +1078,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
             dispatch({ type: "confirmUnclaimed", ...input, date, code });
             return { ok: true };
           }
-          const error = r.taken ? (r.error || "That time was just booked") + ". Pick another time." : r.error ? r.error + "." : "Could not send the request. Check your connection and try again.";
+          // Not the API's own words: "bad email", "duplicate code" and "no such listing" are written for
+          // whoever reads the log, and both booking surfaces printed them verbatim under the Reserve button.
+          // `guestWords` is the rule the agent's thread has had all along. A refusal with no words at all is
+          // the call itself failing, which is a connection and not a detail.
+          const error = r.taken
+            ? (r.error || "That time was just booked") + ". Pick another time."
+            : r.error
+              ? guestWords(r.error)
+              : "Could not send the request. Check your connection and try again.";
           dispatch({ type: "toast", text: error });
           return { ok: false, error, taken: r.taken };
         }

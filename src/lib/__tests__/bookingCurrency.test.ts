@@ -73,7 +73,7 @@ test("the app and the server read the same dollar out of the same area line", ()
 test("every screen that states the charge uses the labelled formatter", () => {
   const blocks: [string, string, string][] = [
     // file, first line of the block, last line of the block
-    ["../../components/booking/Sheets.tsx", "    const cta = !guestOk", '<h2>Who\'s booking</h2>'],
+    ["../../components/booking/Sheets.tsx", "    const cta = !emailOk", '<h2>Who\'s booking</h2>'],
     ["../../components/web/WebListing.tsx", '{sending ? "Sending…"', '<p className="alfine">\n                  {instant ?'],
     ["../../components/web/WebConfirm.tsx", '<h3>Price details</h3>', '<p className="alfine">{booking.paid'],
     ["../../components/booking/ConfirmView.tsx", '<span>{b.paid ? "Paid"', "</div>\n        </div>"],
