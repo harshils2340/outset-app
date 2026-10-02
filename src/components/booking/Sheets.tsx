@@ -508,9 +508,22 @@ function RequestBody({
     return base.filter(later).map((t) => ({ key: t, time: t, label: fmtTime(t) }));
   };
   const chips = chipsFor(day);
+  /**
+   * Drop a picked time the day on screen no longer offers. Keyed on the times themselves, the way the desktop
+   * page's twin of this is, rather than on the three things that usually change them.
+   *
+   * `[dateIdx, live, openMap]` misses every other way the list moves under a fixed selection. Today's chips
+   * shrink as the hour cutoff passes them, so a guest who picked 3 PM at half one and came back at half two
+   * kept a time the picker had stopped offering; and now that the booking window rebuilds itself on the local
+   * day roll, the same index is a different date after midnight. Either way nothing looked picked in the list
+   * and Reserve stayed live on the time underneath.
+   *
+   * The dep is the times joined rather than the array, because `chipsFor` builds a fresh one every render.
+   */
+  const chipTimes = chips.map((c) => c.time).join(",");
   useEffect(() => {
-    if (time && !chips.some((c) => c.time === time)) setTime(null);
-  }, [dateIdx, live, openMap]);
+    if (time && !chipTimes.split(",").includes(time)) setTime(null);
+  }, [chipTimes, time]);
   // Land the guest on a day that has start times rather than an empty one, as the desktop page does: opened in
   // the evening, the sheet said "No more start times today" under today's date and left the guest to find tomorrow.
   // Runs when the times change (live departures or open slots arriving), never on a day the guest picked themselves.
