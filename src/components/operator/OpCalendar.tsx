@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { dateKey, startOfToday } from "../../lib/dates";
-import { fmtTime, money } from "../../lib/format";
+import { dayPickLabel, fmtTime, money } from "../../lib/format";
 import { DAY_SHORT, payoutSum, slotsForDay } from "../../lib/operator";
 import { Markup } from "../Markup";
 import { OD_ICONS, useOp } from "./opContext";
@@ -147,7 +147,7 @@ function CalRow({ slot, days, byCell, toggleBlock, open }: { slot: string; days:
          * only way to tell Tuesday at 11 from Saturday at 3 was to count Tab presses across a row that skips
          * every closed and booked cell.
          */
-        const where = fmtTime(slot) + " on " + d.toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" });
+        const where = fmtTime(slot) + " on " + dayPickLabel(d);
         const inHours = slotsForDay(p, d).includes(slot);
         const dayOff = p.blockedDates.includes(k);
         const blocked = p.blockedSlots.includes(key);
@@ -160,14 +160,24 @@ function CalRow({ slot, days, byCell, toggleBlock, open }: { slot: string; days:
         if (shut && !items.length) return <div key={key} data-k={key} className="odcalcell closed" />;
         return (
           <div key={key} data-k={key} className={"odcalcell" + (shut ? " closed" : "") + (blocked ? " blocked" : "") + (past ? " past" : "")}>
+            {/* A week grid is the one place the same guest, the same service and the same empty cell repeat
+                down and across, so every button here says which day and time it belongs to. Read out, the
+                week used to be thirteen buttons all called "Block slot" and three all called
+                "Priya N. 1 · Guided tour". */}
             {items.map((b) => (
-              <button type="button" key={b.id} className={"odevent " + b.status} onClick={() => open(b.id)}>
+              <button type="button" key={b.id} className={"odevent " + b.status} onClick={() => open(b.id)} aria-label={b.guest + ", " + b.qty + (b.qty === 1 ? " guest" : " guests") + ", " + b.service + ", " + where}>
                 <b>{b.guest}</b>
                 <small>{b.qty} · {b.service}</small>
               </button>
             ))}
             {!items.length && !shut && !past ? (
-              <button type="button" className="odcalfill" onClick={() => toggleBlock(key)} aria-label={(blocked ? "Reopen " : "Block ") + where}>
+              <button
+                type="button"
+                className="odcalfill"
+                onClick={() => toggleBlock(key)}
+                aria-label={(blocked ? "Reopen " : "Block ") + where}
+                title={(blocked ? "Reopen " : "Block ") + where}
+              >
                 {blocked ? "Time off" : ""}
               </button>
             ) : null}

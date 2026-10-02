@@ -33,7 +33,9 @@ test("a calendar cell's block button names the time and the day it would close",
   const l = label(CAL, "odcalfill");
   assert.notEqual(l, "", "the block button has an aria-label");
   assert.match(l, /where/, "the label carries the cell, not just the verb");
-  assert.match(CAL, /const where = fmtTime\(slot\) \+ " on " \+ d\.toLocaleDateString\(/);
+  // The day itself comes from `dayPickLabel`, the one reader all four booking calendars share, rather than
+  // from a fourth hand-written `toLocaleDateString`.
+  assert.match(CAL, /const where = fmtTime\(slot\) \+ " on " \+ dayPickLabel\(d\);/);
   // Both states still say which way the click goes.
   assert.match(l, /Reopen/);
   assert.match(l, /Block/);
@@ -43,7 +45,7 @@ test("the day the label names is the cell's own day, not the week's anchor", () 
   // `d` is the column being drawn; `anchor` is where the week starts and would name Sunday for all seven.
   const m = /const where = ([^;]*);/.exec(CAL);
   assert.ok(m, "the cell label is built in one place");
-  assert.match(m![1], /\bd\./);
+  assert.match(m![1], /\(d\)/);
   assert.doesNotMatch(m![1], /anchor/);
 });
 
