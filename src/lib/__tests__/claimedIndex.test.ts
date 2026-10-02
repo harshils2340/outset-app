@@ -104,6 +104,33 @@ test("the listing-link listener is its own effect, with its own cleanup", () => 
   assert.ok(at > SRC.indexOf("booted.current = true"), "hashchange must not be registered inside the boot chain");
   const body = SRC.slice(at, at + 400);
   assert.match(body, /removeEventListener\("hashchange", onHash\)/, "the listener has to be removed on cleanup");
-  // The id still comes off the event's own new URL: see listingLink.test.ts for why.
-  assert.match(SRC.slice(at - 500, at), /listingInHash\(e\.newURL/);
+});
+
+/**
+ * The same link, pasted into a tab that already has Outset open.
+ *
+ * A fresh tab has always fetched the listing's own 3 kB detail file before it asks for the catalog, so a
+ * shared link paints the listing rather than the home. The mid-session handler asked `experienceById` and
+ * gave up, and for the first seconds of a visit that is almost all of Outset: the lite shard carries 2,256
+ * of the 52,816 shipped records and the full catalog behind it is 24 MB.
+ */
+
+test("a link to a listing the catalog does not hold yet is fetched, not dropped", () => {
+  const at = SRC.indexOf("const onHash = (e: HashChangeEvent) => {");
+  assert.ok(at > 0, "AppProvider no longer defines onHash; this guard needs rewriting");
+  const body = SRC.slice(at, SRC.indexOf('window.addEventListener("hashchange"', at));
+  assert.doesNotMatch(body, /if \(!id \|\| !experienceById\(id\)\) return;/, "an unknown listing is being dropped again");
+  const miss = body.indexOf("loadListing(id).then((ok)");
+  assert.ok(miss > 0, "the unknown-listing branch no longer asks for the listing's own file");
+  // Which ask is live is kept in a ref: the back-button handler can have stripped the bar by the time this lands.
+  assert.match(body.slice(miss), /hashWant\.current !== id/, "a second link pasted over the first no longer wins");
+});
+
+test("a link to a listing that is genuinely gone gets the same sentence the boot path gives it", () => {
+  const at = SRC.indexOf("const onHash = (e: HashChangeEvent) => {");
+  const body = SRC.slice(at, SRC.indexOf('window.addEventListener("hashchange"', at));
+  assert.match(body, /type: "toast", text: "That listing is no longer on Outset\."/, "a dead link mid-session says nothing again");
+  // The boot path's own wording, so the two cannot drift apart.
+  const boot = SRC.slice(0, at);
+  assert.ok(boot.includes('"That listing is no longer on Outset."'), "the boot path's wording changed; keep the two in step");
 });

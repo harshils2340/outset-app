@@ -836,14 +836,46 @@ export function AppProvider({ children }: { children: ReactNode }) {
    * The id comes off the event's own new URL rather than off `window.location`, because `hashchange` runs
    * after every other handler for the same navigation and one of those (the address-bar effect below) can
    * have rewritten the bar by then.
+   *
+   * A listing the catalog does not hold yet is fetched rather than dropped, which is what a link opened cold
+   * has always done. This asked `experienceById` and gave up, and for the first seconds of a visit that is
+   * almost every listing there is: the lite shard carries 2,256 of the 52,816 shipped records and the full
+   * catalog behind it is 24 MB, so for the length of that fetch a pasted link to 96% of Outset did nothing
+   * at all and said nothing, while the same link in a fresh tab opened at once off a 3 kB detail file. Worse
+   * with a listing already open: the back-button handler above sees the same navigation first, cannot tell a
+   * link to an unknown listing from back (`hashOpensAnotherListing` only knows listings the catalog holds),
+   * closes the sheet, and closing the sheet strips the hash, so the guest landed on the home page with an
+   * empty address bar.
+   *
+   * Which ask is the live one is kept here rather than read back off the bar, because by the time a fetch
+   * lands that close may have rewritten it. A link to a listing that is genuinely gone gets the same sentence
+   * the boot path gives it.
    */
+  const hashWant = useRef<string | null>(null);
   useEffect(() => {
-    const onHash = (e: HashChangeEvent) => {
-      const id = listingInHash(e.newURL || window.location.hash);
-      if (!id || !experienceById(id)) return;
+    const open = (id: string) => {
       if (stateRef.current.sheet === "request" && stateRef.current.reqTargetId === id && stateRef.current.screen !== "confirm") return;
       dispatch({ type: "openRequest", id });
-      loadListing(id).then((changed) => changed && dispatch({ type: "catalogLoaded", added: 1 }));
+    };
+    const onHash = (e: HashChangeEvent) => {
+      const id = listingInHash(e.newURL || window.location.hash);
+      if (!id) return;
+      hashWant.current = id;
+      if (experienceById(id)) {
+        open(id);
+        loadListing(id).then((changed) => changed && dispatch({ type: "catalogLoaded", added: 1 }));
+        return;
+      }
+      loadListing(id).then((ok) => {
+        // A second link pasted over this one wins: this fetch is no longer what the guest is waiting for.
+        if (hashWant.current !== id) return;
+        if (!ok) {
+          dispatch({ type: "toast", text: "That listing is no longer on Outset." });
+          return;
+        }
+        dispatch({ type: "catalogLoaded", added: 1 });
+        open(id);
+      });
     };
     window.addEventListener("hashchange", onHash);
     return () => window.removeEventListener("hashchange", onHash);

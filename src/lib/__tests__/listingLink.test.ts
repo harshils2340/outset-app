@@ -66,8 +66,11 @@ test("the back-button handler asks before it closes an open sheet", () => {
 });
 
 test("hashchange reads the URL the event carries, not the one in the bar", () => {
-  const at = SRC.indexOf('window.addEventListener("hashchange"');
-  assert.ok(at > 0, "AppProvider no longer listens for hashchange");
-  const body = SRC.slice(at, at + 900);
+  // Anchored on the handler rather than on the registration below it: the body moved above the
+  // `addEventListener` line when the listener became an effect of its own.
+  const at = SRC.indexOf("const onHash = (e: HashChangeEvent) => {");
+  assert.ok(at > 0, "AppProvider no longer defines onHash; this guard needs rewriting");
+  assert.ok(SRC.indexOf('window.addEventListener("hashchange"') > at, "onHash must be what is registered");
+  const body = SRC.slice(at, SRC.indexOf('window.addEventListener("hashchange"', at));
   assert.match(body, /listingInHash\(e\.newURL/, "the listing id must come off the event's own new URL");
 });
