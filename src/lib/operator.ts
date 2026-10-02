@@ -138,6 +138,23 @@ export function upcomingBookingsFor(bookings: OpBooking[], serviceName: string):
   return bookings.filter((b) => b.service.trim().toLowerCase() === name && b.date >= today && (b.status === "new" || b.status === "accepted"));
 }
 
+/**
+ * Guests who still hold a booking at this shop, whatever service it is on.
+ *
+ * Releasing the listing hands the business back, drops the owner's profile on the server and on this device
+ * and logs them out, and the Settings copy says only that it removes their edits. These are the people on the
+ * other side of that button: their bookings are not cancelled, they are not told, and the owner has no
+ * dashboard left to reach them from. Sample rows are left out, because a demo's fixtures are not guests and
+ * naming them would be a count of people who do not exist.
+ *
+ * Same list and same statuses as `upcomingBookingsFor`, which puts the confirm in front of the trash on a
+ * service: `allBookings`, not `p.bookings`, because a real claimed shop's bookings all arrive from elsewhere.
+ */
+export function heldBookings(bookings: OpBooking[]): OpBooking[] {
+  const today = dateKey(startOfToday());
+  return bookings.filter((b) => b.source !== "sample" && b.date >= today && (b.status === "new" || b.status === "accepted"));
+}
+
 /** Two services with the same name are one section on the guest page and one word on every booking. */
 export function duplicateServiceName(p: OperatorProfile, s: OpService): boolean {
   const name = s.name.trim().toLowerCase();

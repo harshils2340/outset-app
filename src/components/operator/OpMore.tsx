@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { connectPayouts, hasApi, payoutStatus, releaseRemoteProfile, setPayoutSchedule, type PayoutInterval, type PayoutState, type PayoutStatus } from "../../lib/api";
 import { dateKey, startOfToday } from "../../lib/dates";
 import { money } from "../../lib/format";
-import { OWNER_EMAIL_MAX, OWNER_NAME_MAX, OWNER_PHONE_MAX, bookingPayout, bookingTotal, deleteProfile, isoToDate, payoutSum, relDay, validOwnerEmail, validOwnerPhone } from "../../lib/operator";
+import { OWNER_EMAIL_MAX, OWNER_NAME_MAX, OWNER_PHONE_MAX, bookingPayout, bookingTotal, deleteProfile, heldBookings, isoToDate, payoutSum, relDay, validOwnerEmail, validOwnerPhone } from "../../lib/operator";
 import { OPERATOR_FEE_RATE } from "../../lib/pricing";
 import { isHttpsUrlOnHost } from "../../lib/urlSafety";
 import { Markup } from "../Markup";
@@ -211,7 +211,7 @@ export function OpPayouts() {
 
 /** Settings: owner, notifications, a phone-only page list, and the log out and unclaim actions. */
 export function OpSettings() {
-  const { p, set, compact, go, logout, toast } = useOp();
+  const { p, set, bookings, compact, go, logout, toast } = useOp();
   const [confirm, setConfirm] = useState(false);
   const [releasing, setReleasing] = useState(false);
   /**
@@ -235,6 +235,17 @@ export function OpSettings() {
   };
   const badEmail = !!p.ownerEmail.trim() && !validOwnerEmail(p.ownerEmail);
   const badPhone = !!p.ownerPhone.trim() && !validOwnerPhone(p.ownerPhone);
+  /**
+   * The guests on the other side of the Release button. Deleting one service already says who is booked on it
+   * (`upcomingBookingsFor`), and releasing the whole listing is the larger version of the same thing: the
+   * profile goes, the owner is logged out, and nothing cancels those bookings or tells the people holding
+   * them. The copy promised only that it "removes your edits".
+   */
+  const held = heldBookings(bookings);
+  const one = held.length === 1;
+  const heldLine = held.length
+    ? ` ${held.length} guest${one ? " is" : "s are"} still booked with you: releasing does not cancel ${one ? "that booking" : "those bookings"} and does not tell them, so settle ${one ? "it" : "them"} under Bookings first.`
+    : "";
   const alertEmail = validOwnerEmail(p.ownerEmail) ? p.ownerEmail.trim() : "";
   return (
     <div className="odpage">
@@ -316,7 +327,7 @@ export function OpSettings() {
           <button type="button" className="odghost" onClick={logout}><Markup html={OD_ICONS.logout} /> Log out</button>
         </div>
         <div className="odrow">
-          <span className="meta"><b>Release this listing</b><small>Removes your edits everywhere and puts the listing back the way we built it. You can claim it again from your email.</small></span>
+          <span className="meta"><b>Release this listing</b><small>Removes your edits everywhere and puts the listing back the way we built it. You can claim it again from your email.{heldLine}</small></span>
           {confirm ? (
             <div className="odbtns">
               <button type="button" className="odghost" disabled={releasing} onClick={() => setConfirm(false)}>Keep</button>
