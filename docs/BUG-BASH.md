@@ -8720,7 +8720,9 @@ tree with its fix reverted: 3 of 7 fail in the first batch, with the four pure-r
 test the new module itself, and 1 of 4 in the second under a partial revert. One existing test needed its anchor
 moved, `bookingCurrency.test.ts`, which pins a block of `Sheets.tsx` by its first line and that line changed.
 `tsc --noEmit -p .`, `tsc -b` and the backend's own `tsc` all clean but for TS5097. The rehearsal ran **57 of
-57** on the tree carrying all three commits. It also ran once before that at 56 of 57, where the one failure was
+57** twice: once on the tree carrying all three commits, and again after the rebase onto the hundred and
+twenty-second run's five, since those touch `WebListing.tsx` and the dashboard it drives. On the merged tree
+the app suite is 1,142 pass and the backend 981 tests with 979 pass and 2 skipped. It also ran once before that at 56 of 57, where the one failure was
 a scratch test file of mine sitting in `backend/src/api/__tests__` when the run reached the unit tests: deleted,
 and the clean re-run is the 57. Nothing tracked under `backend/data`, `public/` or `src/data` was written.
 `STRIPE_SECRET_KEY`, `RESEND_API_KEY` and `GITHUB_TOKEN` were empty throughout.
