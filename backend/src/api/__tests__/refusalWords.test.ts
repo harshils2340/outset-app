@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { readFileSync } from "node:fs";
-import { tryAgainIn } from "../auth.ts";
+import { Hono } from "hono";
+import { rateLimit, tryAgainIn } from "../auth.ts";
 
 const src = (f: string) => readFileSync(new URL("../" + f, import.meta.url), "utf8");
 
@@ -59,4 +60,22 @@ test("the wait is the real one, rounded the way a person would say it", () => {
   assert.equal(tryAgainIn(0), "Try again in a minute.");
   assert.equal(tryAgainIn(-5000), "Try again in a minute.", "a clock that went backwards is not a negative wait");
   assert.equal(tryAgainIn(2 * 60 * 60 * 1000), "Try again in 2 hours.");
+});
+
+test("the ceiling driven rather than read: the body a guest's booking box would print", async () => {
+  // Two calls an hour, from one address, so the third is the refusal every public route here answers with.
+  const app = new Hono().post("/bookings", rateLimit(2, 60 * 60 * 1000), (c) => c.json({ ok: true }));
+  const hit = () => app.request("/bookings", { method: "POST", headers: { "cf-connecting-ip": "203.0.113.41" } });
+  assert.equal((await hit()).status, 200);
+  assert.equal((await hit()).status, 200);
+  const r = await hit();
+  assert.equal(r.status, 429);
+  const said = String(((await r.json()) as { error?: string }).error);
+  assert.equal(said, "Too many tries from this connection. Try again in an hour.");
+  // The two things the app's own `guestWords` asks of a line before it will print it as the refusal.
+  assert.match(said, /^[A-Z]/);
+  assert.match(said, /\s/);
+  // And a different caller is not counted against them.
+  const other = await app.request("/bookings", { method: "POST", headers: { "cf-connecting-ip": "203.0.113.42" } });
+  assert.equal(other.status, 200);
 });
