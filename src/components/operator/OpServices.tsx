@@ -398,7 +398,19 @@ function VariantRow({ v, onChange, onRemove, canRemove, jumpHere, rowProps, grip
       >
         {perGuest ? "× guests" : "flat"}
       </button>
-      <button type="button" className="odiconbtn" disabled={!canRemove} onClick={onRemove} aria-label="Remove option"><Markup html={OD_ICONS.trash} /></button>
+      {/* Named by the row it empties, and when it cannot it says why: a service's last price option is the
+          one thing the trash refuses, and it refused with no word at all, as a dimmed icon in a column of
+          identical dimmed icons. A phone shows no tooltip, so the reason is in the name a reader gets too. */}
+      <button
+        type="button"
+        className="odiconbtn"
+        disabled={!canRemove}
+        onClick={onRemove}
+        aria-label={"Remove " + (v.label || "this option") + (canRemove ? "" : " (a service keeps at least one price option)")}
+        title={canRemove ? undefined : "A service keeps at least one price option. Rename this one instead."}
+      >
+        <Markup html={OD_ICONS.trash} />
+      </button>
     </div>
   );
 }

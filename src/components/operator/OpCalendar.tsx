@@ -141,6 +141,13 @@ function CalRow({ slot, days, byCell, toggleBlock, open }: { slot: string; days:
       {days.map((d) => {
         const k = dateKey(d);
         const key = k + "|" + slot;
+        /**
+         * Which cell this is, for the one control in it that has no words of its own. The week view draws up
+         * to seven of these per row and a screen reader met a grid of buttons all called "Block slot", so the
+         * only way to tell Tuesday at 11 from Saturday at 3 was to count Tab presses across a row that skips
+         * every closed and booked cell.
+         */
+        const where = fmtTime(slot) + " on " + d.toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" });
         const inHours = slotsForDay(p, d).includes(slot);
         const dayOff = p.blockedDates.includes(k);
         const blocked = p.blockedSlots.includes(key);
@@ -160,7 +167,7 @@ function CalRow({ slot, days, byCell, toggleBlock, open }: { slot: string; days:
               </button>
             ))}
             {!items.length && !shut && !past ? (
-              <button type="button" className="odcalfill" onClick={() => toggleBlock(key)} aria-label={blocked ? "Reopen slot" : "Block slot"}>
+              <button type="button" className="odcalfill" onClick={() => toggleBlock(key)} aria-label={(blocked ? "Reopen " : "Block ") + where}>
                 {blocked ? "Time off" : ""}
               </button>
             ) : null}
