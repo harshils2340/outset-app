@@ -85,7 +85,11 @@ test("the three surfaces that ask Otto a question fill in the calendar it answer
    * whose promise is that the two agree. One exported number now, read by everything that asks.
    */
   assert.match(op, /BOOKING_WINDOW_DAYS/, "the operator's test chat asks for the guest's window");
-  assert.match(app, /makeDates\(BOOKING_WINDOW_DAYS\)/, "and the guest's window is that same number");
+  // The guest's window moved into `lib/dates.ts` as `bookingDates()` so a tab left open overnight stops
+  // offering yesterday; it is still built on the one exported number, which is what this pins.
+  assert.match(app, /bookingDates\(\)/, "and the guest's window comes from the one reader");
+  const dates = readFileSync(join(here, "../dates.ts"), "utf8");
+  assert.match(dates, /windowDays = makeDates\(BOOKING_WINDOW_DAYS\)/, "which is that same number");
   for (const src of [app, op]) assert.ok(!/fetchAvailability\(\s*u\.id\s*\)/.test(src), "nobody falls back to the wider default");
 });
 

@@ -49,3 +49,36 @@ export function dateFromKey(key: string): Date | null {
   // Rejects the days a month does not have: JavaScript rolls 31 February forward to 3 March without complaint.
   return out.getMonth() === mo - 1 && out.getDate() === d ? out : null;
 }
+
+/**
+ * The booking window every guest surface picks a day out of, rebuilt when the local day rolls over.
+ *
+ * It used to be one `const` computed when the module loaded, which is correct for exactly as long as the tab
+ * stays on the day it opened on. A tab left open overnight kept yesterday's window: measured in a real
+ * Chromium on a listing page with the clock moved on, a tab opened at 23:50 on Friday 2 October still offered
+ * Saturday 3, Sunday 4 and Monday 5 as bookable days at 00:50 on Tuesday 6, and struck 12 to 15 October
+ * through as "not available" though they sit inside the shop's real ten days. Picking one of the past days
+ * sends `POST /bookings` a date it refuses outright ("date out of range"), so the guest reads an error on the
+ * last press of the flow; with no API behind it the past date is simply stored.
+ *
+ * Cached between rolls rather than rebuilt per call, because the array is a `useMemo` and `useEffect`
+ * dependency on both booking surfaces and a fresh array every render would refetch the shop's calendar on
+ * every keystroke. One date key is all the check costs.
+ */
+let windowDays: Date[] | null = null;
+let windowFrom = "";
+
+export function bookingDates(): Date[] {
+  const today = dateKey(startOfToday());
+  if (!windowDays || today !== windowFrom) {
+    windowDays = makeDates(BOOKING_WINDOW_DAYS);
+    windowFrom = today;
+  }
+  return windowDays;
+}
+
+/** Milliseconds until the next local midnight, so a surface can redraw itself on the roll. */
+export function msToNextDay(now: Date = new Date()): number {
+  const next = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+  return Math.max(1000, next.getTime() - now.getTime());
+}

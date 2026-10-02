@@ -10,7 +10,7 @@ const MONTHS = ["January", "February", "March", "April", "May", "June", "July", 
 /**
  * Month calendar beside the day's start times, the 21st.dev appointment picker shape.
  *
- * The app offers a fixed booking window (see DATES in AppProvider), so days outside it render greyed
+ * The app offers a fixed booking window (see bookingDates in lib/dates), so days outside it render greyed
  * rather than hidden: an owner-facing month still shows where the bookable days fall in the week without
  * pretending a date further out can be picked. Times are the operator's published start times. This does
  * not claim a day is full or has seats left, because the catalog does not carry live inventory.

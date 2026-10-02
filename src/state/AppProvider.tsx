@@ -16,7 +16,7 @@ import type {
   Unclaimed,
 } from "../data/types";
 import { agentReply } from "../lib/agent";
-import { BOOKING_WINDOW_DAYS, dateKey, makeDates } from "../lib/dates";
+import { bookingDates, dateKey, msToNextDay } from "../lib/dates";
 import { fmtDate, money, nowStamp } from "../lib/format";
 import { daySlotsOpen, openSeats } from "../lib/inventory";
 import { contactFor, experienceById, fromPrice, initials } from "../lib/catalog";
@@ -32,8 +32,6 @@ import { applyStoredProfiles } from "../lib/operator";
 import { loadBookings, loadChats, saveBookings, saveChats } from "../lib/storage";
 import { isHttpsUrlOnHost } from "../lib/urlSafety";
 import { AGENT_MODE_LIVE, guestWords } from "../lib/concierge";
-
-export const DATES = makeDates(BOOKING_WINDOW_DAYS);
 
 export type AppState = {
   hydrated: boolean;
@@ -249,7 +247,7 @@ function reducer(state: AppState, action: Action): AppState {
       const next = state.slot === action.slot ? null : action.slot;
       let qty = state.qty;
       if (next && listing) {
-        const n = openSeats(listing, dateKey(DATES[state.dateIdx]), next, state.bookings);
+        const n = openSeats(listing, dateKey(bookingDates()[state.dateIdx]), next, state.bookings);
         qty = Math.min(state.qty, Math.max(1, n));
       }
       return { ...state, slot: next, qty };
@@ -258,7 +256,7 @@ function reducer(state: AppState, action: Action): AppState {
       const listing = listingById(state.listingId);
       if (!listing) return state;
       const seats = state.slot
-        ? openSeats(listing, dateKey(DATES[state.dateIdx]), state.slot, state.bookings)
+        ? openSeats(listing, dateKey(bookingDates()[state.dateIdx]), state.slot, state.bookings)
         : listing.qtyMax;
       const qty = Math.max(1, Math.min(Math.max(1, seats), state.qty + action.delta));
       return { ...state, qty };
@@ -283,7 +281,7 @@ function reducer(state: AppState, action: Action): AppState {
       const p = priceFor(listing, state.qty, state.addons);
       const booking: Booking = {
         listing: listing.id,
-        date: dateKey(DATES[state.dateIdx]),
+        date: dateKey(bookingDates()[state.dateIdx]),
         slot: state.slot,
         qty: state.qty,
         addons: state.addons.slice(),
@@ -310,7 +308,7 @@ function reducer(state: AppState, action: Action): AppState {
       const total = action.total != null && Number.isFinite(action.total) ? action.total : p.total;
       const booking: Booking = {
         listing: u.id,
-        date: action.date && /^\d{4}-\d{2}-\d{2}$/.test(action.date) ? action.date : dateKey(DATES[action.dateIdx]),
+        date: action.date && /^\d{4}-\d{2}-\d{2}$/.test(action.date) ? action.date : dateKey(bookingDates()[action.dateIdx]),
         slot: action.slot,
         qty: action.qty,
         addons: [...(picked ? [String(action.optionIdx)] : []), ...extras.map((a) => a.name)],
@@ -403,12 +401,12 @@ function reducer(state: AppState, action: Action): AppState {
       }
       const listing = listingById(state.threadId);
       if (!listing) return state;
-      const dk = dateKey(DATES[state.dateIdx]);
+      const dk = dateKey(bookingDates()[state.dateIdx]);
       const slots = SLOT_TIMES.map((time) => ({
         time,
         open: openSeats(listing, dk, time, state.bookings),
       }));
-      const nextDays = DATES.slice(0, 4).map((d) => ({
+      const nextDays = bookingDates().slice(0, 4).map((d) => ({
         label: fmtDate(d),
         openSlots: daySlotsOpen(listing, dateKey(d), state.bookings),
       }));
@@ -416,7 +414,7 @@ function reducer(state: AppState, action: Action): AppState {
       const prev = (state.chats[listing.id] || []).slice();
       prev.push({ who: "me", t: action.text, at });
       const reply = agentReply(listing, action.text, {
-        dateLabel: fmtDate(DATES[state.dateIdx]),
+        dateLabel: fmtDate(bookingDates()[state.dateIdx]),
         slots,
         nextDays,
       });
@@ -707,6 +705,28 @@ export function AppProvider({ children }: { children: ReactNode }) {
     };
     window.addEventListener("pageshow", onShow);
     return () => window.removeEventListener("pageshow", onShow);
+  }, []);
+
+  /**
+   * Redraw on the local day roll, so a tab left open overnight does not keep yesterday's booking window on
+   * screen. `bookingDates()` already rebuilds itself, but nothing re-renders on its own at midnight, and the
+   * two calendars memo their open days on the array they were handed, so without this nudge a guest coming
+   * back to the tab reads days that have been and gone until something else happens to re-render.
+   *
+   * Re-armed each roll rather than left on an interval, and a background tab's throttled timer firing a
+   * minute late is a minute of a stale strip, not a wrong booking: every date reader goes through
+   * `bookingDates()` now.
+   */
+  useEffect(() => {
+    let timer = 0;
+    const arm = () => {
+      timer = window.setTimeout(() => {
+        dispatch({ type: "catalogTouched" });
+        arm();
+      }, msToNextDay());
+    };
+    arm();
+    return () => window.clearTimeout(timer);
   }, []);
 
   // A claimed operator's edits arrive one fetch behind the listing they belong to, so the page is already
@@ -1057,7 +1077,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (state.screen !== "chat") return;
     const u = experienceById(state.threadId);
     if (!u) return;
-    void fetchAvailability(u.id, dateKey(DATES[0]), DATES.length).catch(() => {});
+    void fetchAvailability(u.id, dateKey(bookingDates()[0]), bookingDates().length).catch(() => {});
   }, [state.screen, state.threadId]);
 
   const listing = listingById(state.listingId);
@@ -1067,7 +1087,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const api = useMemo<Api>(
     () => ({
       state,
-      dates: DATES,
+      dates: bookingDates(),
       listing,
       thread,
       reqTarget,
@@ -1115,7 +1135,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         }
         const u = experienceById(input.listing || stateRef.current.reqTargetId);
         if (!u || !input.slot) return { ok: false, error: "Pick a time first." };
-        const date = input.date && /^\d{4}-\d{2}-\d{2}$/.test(input.date) ? input.date : dateKey(DATES[input.dateIdx]);
+        const date = input.date && /^\d{4}-\d{2}-\d{2}$/.test(input.date) ? input.date : dateKey(bookingDates()[input.dateIdx]);
         if (!hasApi()) {
           // No API on this host: the booking lives on this device only, the way the demo always worked.
           dispatch({ type: "confirmUnclaimed", ...input, date });

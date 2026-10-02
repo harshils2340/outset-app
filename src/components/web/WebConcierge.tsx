@@ -47,7 +47,8 @@ import {
   whenLabel,
   type Conversation,
 } from "../../lib/conciergeHistory";
-import { DATES, useApp } from "../../state/AppProvider";
+import { useApp } from "../../state/AppProvider";
+import { bookingDates } from "../../lib/dates";
 import { Mark } from "../layout/Mark";
 import { useModal } from "../layout/useModal";
 import { Markup } from "../Markup";
@@ -458,7 +459,7 @@ export function WebConcierge({ seed, framed, embed, onClose }: { seed?: string; 
       add({ kind: "them", text: "I can't hold that time: " + o.name + " isn't set up to take bookings on Outset yet. What they publish is on their page." });
       return;
     }
-    const dateIdx = Math.max(0, DATES.findIndex((day) => dateKey(day) === d.date));
+    const dateIdx = Math.max(0, bookingDates().findIndex((day) => dateKey(day) === d.date));
     setBooking(true);
     const r = await confirmUnclaimed({
       listing: id,
