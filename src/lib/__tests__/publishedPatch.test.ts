@@ -68,11 +68,18 @@ test("the hours an operator sets reach a guest who is not the operator", () => {
   assert.equal(show({ ...base, ...patch }), show(guest));
 });
 
-test("an operator who states no hours keeps the week crawled off their site", () => {
+/**
+ * A week with every day closed used to fall back to the crawled one, read as "the operator has stated no
+ * hours". It is a statement, not an absence: the dashboard's "Apply to all" asks for a second click and
+ * answers "Closed every day", for a boat in for a refit or a dive shop out of the water for the winter. And
+ * whatever put it there, `scheduledSlots` reads the same seven closed days and answers every date with no
+ * times at all, so the page was printing hours over a picker its own API had already emptied.
+ */
+test("a week closed every day is the operator's statement and reaches the guest as one", () => {
   const p = edited();
   p.hours = p.hours.map((h) => ({ ...h, closed: true }));
   const guest = asGuestSeesIt(toCatalog(p, base));
-  assert.equal(show(guest), [0, 1, 2, 3, 4, 5, 6].map((i) => D[i] + " 540-1020").join(", "));
+  assert.equal(show(guest), [0, 1, 2, 3, 4, 5, 6].map((i) => D[i] + " closed").join(", "));
 });
 
 test("the duration on the card is the operator's menu, not the one crawled before they claimed", () => {

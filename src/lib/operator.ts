@@ -968,7 +968,12 @@ export function toCatalog(p: OperatorProfile, base: Unclaimed): Partial<Unclaime
     includes: p.includes ?? base.includes,
     checkin: p.checkin !== undefined ? p.checkin.trim() : base.checkin,
     faq: p.faq ? p.faq.filter((f) => f.q.trim() && f.a.trim()) : base.faq,
-    hoursText: p.hours.some((h) => !h.closed) ? p.hours.map(hoursLine) : base.hoursText,
+    // Always the operator's own week, every day of it. This asked whether any day was open first, so the one
+    // week an owner cannot publish was the one they most need to: "Apply to all" on a closed day is a guarded,
+    // two-click gesture that answers "Closed every day", for a dive shop out of the water for the winter or a
+    // boat in for a refit, and the API's calendar stops selling from that moment. The guest page went on
+    // printing the hours the crawl read off their website months ago, over a picker with nothing in it.
+    hoursText: p.hours.map(hoursLine),
     // itemWeek() reads the compact `hrs` week before the hour lines, so a browse record that carries one would
     // keep showing the crawled hours after the operator changed them. The operator's hours win.
     //
@@ -977,7 +982,7 @@ export function toCatalog(p: OperatorProfile, base: Unclaimed): Partial<Unclaime
     // back on the other side and was read first. The operator's own browser showed their hours and nobody
     // else's did. A shop that published Monday to Saturday, 7 AM to 11 AM, and shut on Sunday, was advertised
     // to every guest as open nine to five every day of the week, Sunday included.
-    hrs: p.hours.some((h) => !h.closed) ? [] : base.hrs,
+    hrs: [],
     // Same story for the duration on the card, the listing hero, the booking sheet and Otto's answer, all of
     // which read `dur` before deriving one from the menu. `dur` is the duration crawled off the shop's site
     // before it was claimed, so an operator whose every service now says 90 min was still advertised as "4
