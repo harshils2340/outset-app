@@ -8769,6 +8769,121 @@ and the clean re-run is the 57. Nothing tracked under `backend/data`, `public/` 
   container still injects a `GITHUB_TOKEN`, which the brief says must be empty (everything tonight was run with
   it cleared).
 
+## 2 October 2026, hundred and twenty-fourth run (10:05 to 11:35 UTC)
+
+**Chosen, and why.** No commit had landed since the hundred and twenty-third run's entry, which recorded the
+rehearsal green on the merged tree, so by the brief's own rule the **rehearsal was skipped at the start** and
+run once at the end, on the tree carrying tonight's work, because all four commits are in `AppProvider`'s boot
+and history layer and two `src/lib` storage readers. Baseline matched that entry exactly: root `tsc --noEmit
+-p .` and `tsc -b` clean, backend `tsc` clean but for TS5097, backend 981 tests with 979 pass and 2 skipped,
+app 1,142 pass. (A fresh container again ships no `node_modules` on either side; still open.)
+
+Target: **`src/state/AppProvider.tsx` whole, its reducer and every effect in it**, for the three faults
+Coverage names beside it: a screen the guest cannot get out of, a deep link that lands nowhere, and the
+`hashchange` listener registered inside the catalog fetch's own `.then()`, which an earlier run measured and
+left. Every area the brief lists is marked verified, and this file is the one that decides whether any of them
+is reachable at all. A caveat for whoever reads this next: Coverage already claimed this file as read whole,
+and it held three real faults, two of them reachable by a guest. A line in Verified that names what a read was
+looking for is not the same as a read that found it, and all three were in the effects rather than the
+reducer.
+
+**Found and fixed.** Four commits, all pushed.
+
+- **One corrupt line in storage stops taking the address bar down with it** (`cf3dfa39`). `claimedIds` read
+  `outset.operator.index.v1` straight out of `JSON.parse` and trusted the shape, alone among every storage
+  reader in the app. An object, a number or a boolean there makes `for (const id of claimedIds())` throw, which
+  was measured rather than argued: three of four corrupt shapes throw, and a bare string quietly iterates its
+  own characters and looks for a business called "o". The caller that does that loop is `applyStoredProfiles`,
+  which runs on every boot inside the catalog promise. The throw landed in that chain's `.catch()`, which
+  exists for exactly this and says the catalog is in and nothing else, so two things were lost for the whole
+  session. `booted.current` stayed false, and that is the flag all three effects owning the address bar and the
+  history stack return early on: opening a listing never wrote `#o=` to the bar, so share, refresh and bookmark
+  landed on the home page, and no sheet got its own history entry, so one back gesture on a phone left the site
+  from an open listing, which the comment beside it calls reading as the app locking up. And the `hashchange`
+  listener was registered at the end of that same chain, so a shared listing link did nothing. The index now
+  checks its own shape the way `storage.ts` does, `saveProfile` and `deleteProfile` read it through
+  `claimedIds` so a corrupt one cannot throw out of a dashboard save or a Settings release either, `booted`
+  moves to the chain's `.finally()`, and the listener to its own effect with its own cleanup, which also stops
+  React's development double-run leaving a second copy behind.
+- **A shared listing link pasted into an open tab stops doing nothing** (`d89fece5`). The other half of that
+  listener. It asked `experienceById` and gave up on a miss, and for the first seconds of a visit that is
+  almost all of Outset: the lite shard carries 2,256 of the 52,816 shipped records and the full catalog behind
+  it is 24 MB, so while that fetch runs a pasted link to the other 96% did nothing and said nothing, where the
+  same link in a fresh tab opens at once off a 3 kB detail file, which is a fix an earlier run made
+  deliberately. Worse with a listing already open: the back-button handler sees the same navigation first and
+  cannot tell a link to an unknown listing from back, because `hashOpensAnotherListing` only knows listings the
+  catalog holds, so it closed the sheet, and closing the sheet strips the hash. The guest landed on the home
+  with an empty address bar, which is the precise failure that handler was written to prevent, still live for
+  96% of the catalog. It now asks for the listing's own file on a miss and opens it when that lands; a listing
+  genuinely gone gets the sentence the boot path already gives it; which ask is live is kept in a ref rather
+  than read back off the bar, because that close may have rewritten it by then.
+- **Back gets a guest out of the checkout splash when Stripe never loads** (`a31ee69a`). The screen a guest
+  cannot get out of. "Book and pay" sets `checkingOut` and calls `window.location.assign` on the Checkout URL
+  the API answered with; that assign is asynchronous and can never land (a connection dropping between the
+  API's answer and Stripe's page, a network blocking checkout.stripe.com). What is left is `CheckoutSplash`,
+  fixed over the whole app with no control on it at all, over a booking the API already holds, and the only way
+  out was to think of reloading. Back was no help: the splash sits on top of the sheet the guest booked from, so
+  `popstate` closed that sheet and left `checkingOut` set, which is what draws the splash. The `pageshow`
+  handler next door was no help either, because it fires for a page restored from the back/forward cache, which
+  is back **from** Stripe rather than a navigation that never happened. Back now cancels the checkout, which is
+  that handler's sibling and also what a guest means by back out of the embedded form.
+- **The concierge history checks the field it then sorts the list on** (`c47036f5`). The last run's Needs
+  Harshil, same class as the first commit. `isConversation` validated `id`, `startedAt` and `turns` and then
+  `loadConversations` sorted on `lastAt`, which nothing checked: a row without a usable one makes the
+  comparator return NaN, which does not misplace that row but takes the ordering of the whole list with it, and
+  newest first is the only thing the history screen promises. Latent, which is when a reader that trusts a
+  shape is cheapest to fix.
+
+**Swept and clean, or measured and left.** Every `localStorage` reader in `src/lib`, `src/state` and
+`src/components`, against whether it checks the shape it then uses: `storage.ts` (bookings, chats, the guest
+form), `api.ts` (the session and the wallet id), `here.ts` (the saved place, the saved metro and the stored
+guess, both timestamps checked finite) and `OpPreview.tsx`'s preview prefs are all properly guarded, and
+`operator.ts`'s claimed index and `conciergeHistory.ts`'s `lastAt` were the only two holes in the app. The
+whole reducer read case by case for a state no action can leave: `back`, `closeSheet`, `checkoutDone`,
+`closeAsk` and `openRequest` all have a way out, and `checkingOut` was the one that did not.
+
+**Verification.** App `npm test` 1,159 pass, 0 fail, up from 1,142 (seventeen new across
+`claimedIndex.test.ts`, `checkoutStuck.test.ts` and `conciergeHistoryShape.test.ts`). Backend unchanged at 981
+tests, 979 pass, 2 skipped. Every new test was run against the tree with its fix reverted: 7 of 7 fail in the
+first batch, 2 of 2 in the second, 1 of 4 in the third (the other three pin the splash and the `pageshow`
+sibling, which is the point of them), and 2 of 4 in the fourth. Two existing assertions needed their anchor
+moved, in `listingLink.test.ts`, which indexed the `hashchange` handler off the `addEventListener` line below
+it and now anchors on `onHash`. `tsc --noEmit -p .`, `tsc -b` and the backend's own `tsc` all clean but for
+TS5097. The **rehearsal ran 57 of 57** at the end, on a local Postgres 16 cluster on port 5433 with SSL
+switched on (the harness refuses a server without it) and the on-disk Playwright Chromium, with
+`CONSOLE: none` from the browser run. Nothing tracked under `backend/data`, `public/` or `src/data` was
+written. `STRIPE_SECRET_KEY`, `RESEND_API_KEY` and `GITHUB_TOKEN` were empty throughout.
+
+**Needs Harshil.**
+
+- **The rehearsal needs a Postgres that speaks SSL, and nothing says so.** `docs/E2E-LOCAL.md` says "Nothing,
+  for the normal run. Node and the repo are enough", and then the run dies at step 5 with "The server does not
+  support SSL connections" against a plain local cluster. The brief's own recorded command carries
+  `NODE_EXTRA_CA_CERTS=/var/tmp/pgtest/server.crt`, which is the previous run having worked this out and the
+  only record of it. Worth either a paragraph in that doc or an `sslmode` the harness relaxes for localhost.
+- **The checkout splash still has no control of its own.** Back is now a way out, and a guest who does not
+  think of pressing back is still looking at "Sending you to secure checkout" with nothing on it. The honest
+  fix is a line of text and a Cancel button on `CheckoutSplash`, which lives in `src/App.tsx`, outside the
+  paths an overnight run may change. Your call.
+- **`hashOpensAnotherListing` only knows listings the catalog holds, and that is now load-bearing twice.** The
+  back-button handler closes the sheet on a link to an unknown listing, and tonight's fix re-opens it from the
+  listing's own file a moment later, so the guest sees a flash of the home page in between. Loosening `known`
+  would stop the flash and would also stop back closing a sheet when the hash names pure garbage, which is what
+  that callback was written for. Left as the flash, deliberately.
+- Still open from earlier runs, unchanged: **there is no error boundary in this app**, so a throw anywhere in
+  render is a white page over prose crawled from 48,198 other people's websites. Nine runs have now asked, and
+  tonight is the second night in a row that a single bad line in `localStorage` turned out to break a whole
+  layer of the app quietly, which is the same argument.
+- Also still open: a fresh container ships no `node_modules`, so eight app test files are red until `npm
+  install` runs on both sides; the booking box asks for ten digits of phone and the API for seven; the guest's
+  three form fields carry no `maxLength` while the operator's do; the 18 listings whose crawl published only
+  closed days now claim with all seven shut; a dump of the SQLite catalog, without which no run here can judge
+  the concierge's shortlist; the phone's browse is not ranked at all while the desktop's is; the phone
+  confirmation offers no way to reach the shop; a guest cannot cancel a booking at all; a price sort and a
+  price filter compare two dollars on six metros; the cards say "$" for a Canadian shop; there is no linter in
+  this repo; and this container still injects a `GITHUB_TOKEN`, which the brief says must be empty (everything
+  tonight was run with it cleared).
+
 ## Coverage
 
 The catalog is 48,198 listings as of the 23 September sync, 1,873 of them Viator partner rows. Counts below
@@ -9738,6 +9853,15 @@ and every refusal the route can answer with, rendered the way the box renders it
 than a line written for the log. Every one of the 78 `disabled=` controls in `src/components`, against whether a
 person can tell why it is unavailable: the `full` list placeholders, the upload note, the dead-photo tile, and
 the end-of-list arrows whose reason is their position.
+
+`src/state/AppProvider.tsx` read whole, its reducer case by case and every effect in it: a screen no action can
+leave (the checkout splash was the one, and back is now a way out of it), a deep link that lands nowhere (a
+listing link pasted into an open tab asked the catalog and gave up, where 96% of the catalog is not in yet), and
+the boot chain's own failure path, which used to take the address bar, the history stack and every listing link
+down with it for the session. Every `localStorage` reader in `src/lib`, `src/state` and `src/components` against
+whether it checks the shape it then uses: bookings, chats, the guest form, the API session, the wallet id, the
+saved place, the saved metro, the stored guess and the preview prefs are all guarded; the claimed-business index
+and the concierge history's sort key were the two that were not.
 
 **Not yet checked.** Whether the 18 listings whose crawl published only closed days should claim with
 all seven days shut at all, now that a closed week is published rather than swallowed (see this run's Needs
