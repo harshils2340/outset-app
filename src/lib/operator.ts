@@ -122,11 +122,20 @@ export function durationLabel(min: number): string {
   return h + " h " + m + " min";
 }
 
-/** Bookings still to happen for a service, by the name a booking carries. Deleting the service orphans them. */
-export function upcomingBookingsFor(p: OperatorProfile, serviceName: string): OpBooking[] {
+/**
+ * Bookings still to happen for a service, by the name a booking carries. Deleting the service orphans them,
+ * so this is what puts a confirm in front of the trash button.
+ *
+ * It reads the list the dashboard itself draws (`allBookings`), not a profile: `p.bookings` holds the sample
+ * rows and whatever this browser stored, and on a real claimed shop that is nothing at all. Every booking a
+ * guest actually made reaches the dashboard from somewhere else, the API's rows through `remote` and this
+ * browser's own guest app through `guest`, so reading the profile meant the one service with paying guests on
+ * it was the one that deleted without a word, while a demo's sample bookings raised the alarm.
+ */
+export function upcomingBookingsFor(bookings: OpBooking[], serviceName: string): OpBooking[] {
   const today = dateKey(startOfToday());
   const name = serviceName.trim().toLowerCase();
-  return p.bookings.filter((b) => b.service.trim().toLowerCase() === name && b.date >= today && (b.status === "new" || b.status === "accepted"));
+  return bookings.filter((b) => b.service.trim().toLowerCase() === name && b.date >= today && (b.status === "new" || b.status === "accepted"));
 }
 
 /** Two services with the same name are one section on the guest page and one word on every booking. */

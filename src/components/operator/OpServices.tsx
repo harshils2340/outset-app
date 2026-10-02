@@ -107,7 +107,7 @@ function PerUnitSuggestions() {
 }
 
 export function OpServices() {
-  const { p, u, set, preview, toast, compact, jumpTo } = useOp();
+  const { p, u, set, preview, toast, compact, jumpTo, bookings } = useOp();
   // The option a "set a price" jump should land on: the first one with no price, else the first option.
   const target = p.services.find((s) => s.variants.some((v) => v.price == null)) || p.services[0] || null;
   const targetVariant = target ? target.variants.find((v) => v.price == null) || target.variants[0] : null;
@@ -130,7 +130,7 @@ export function OpServices() {
   const undoTimer = useRef(0);
   useEffect(() => () => window.clearTimeout(undoTimer.current), []);
   const removeService = (s: OpService) => {
-    const upcoming = upcomingBookingsFor(p, s.name);
+    const upcoming = upcomingBookingsFor(bookings, s.name);
     if (upcoming.length && !window.confirm(`"${s.name || "This service"}" has ${upcoming.length} upcoming ${upcoming.length === 1 ? "booking" : "bookings"}. Those bookings stay, but guests can no longer book it. Delete it anyway?`)) return;
     const at = p.services.findIndex((x) => x.id === s.id);
     set((cur) => ({ ...cur, services: cur.services.filter((x) => x.id !== s.id) }));
