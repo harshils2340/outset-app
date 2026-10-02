@@ -33,6 +33,7 @@ import { countryOfArea } from "../../data/regions";
 import { formatDistance, milesBetween, type GeoPoint } from "../../lib/geo";
 import { addonPrice, hasPrice, priceFor, priceUnclaimed, serviceFeeLabel } from "../../lib/pricing";
 import { BAD_EMAIL_CTA, BAD_EMAIL_LINE, guestEmailOk } from "../../lib/guestEmail";
+import { GUEST_EMAIL_MAX, GUEST_NAME_MAX, GUEST_PHONE_MAX } from "../../lib/guestForm";
 import { ottoActive, useWallet } from "../../lib/wallet";
 import { AGENT_MODE_LIVE } from "../../lib/concierge";
 import { useApp } from "../../state/AppProvider";
@@ -746,15 +747,15 @@ function RequestBody({
               <div className="airfields">
                 <label>
                   <small>Name</small>
-                  <input value={guest.name} placeholder="Your name" autoComplete="name" onChange={(e) => setGuest({ ...guest, name: e.target.value })} />
+                  <input value={guest.name} maxLength={GUEST_NAME_MAX} placeholder="Your name" autoComplete="name" onChange={(e) => setGuest({ ...guest, name: e.target.value })} />
                 </label>
                 <label>
                   <small>Mobile number</small>
-                  <input value={guest.phone} placeholder="(555) 555-0123" inputMode="tel" autoComplete="tel" onChange={(e) => setGuest({ ...guest, phone: e.target.value })} />
+                  <input value={guest.phone} maxLength={GUEST_PHONE_MAX} placeholder="(555) 555-0123" inputMode="tel" autoComplete="tel" onChange={(e) => setGuest({ ...guest, phone: e.target.value })} />
                 </label>
                 <label>
                   <small>Email</small>
-                  <input value={guest.email} placeholder="Where your confirmation goes" inputMode="email" autoComplete="email" aria-invalid={emailOk ? undefined : true} onChange={(e) => setGuest({ ...guest, email: e.target.value })} />
+                  <input value={guest.email} maxLength={GUEST_EMAIL_MAX} placeholder="Where your confirmation goes" inputMode="email" autoComplete="email" aria-invalid={emailOk ? undefined : true} onChange={(e) => setGuest({ ...guest, email: e.target.value })} />
                 </label>
               </div>
               {/* Only the name and the mobile are required, and email is the one channel that is built, so a

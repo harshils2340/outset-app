@@ -27,6 +27,7 @@ import { fmtDistance } from "../../lib/geo";
 import { kmBetween, nearestLocation, venueLabel } from "../../lib/places";
 import { addonPrice, hasPrice, priceUnclaimed, serviceFeeLabel } from "../../lib/pricing";
 import { BAD_EMAIL_CTA, BAD_EMAIL_LINE, guestEmailOk } from "../../lib/guestEmail";
+import { GUEST_EMAIL_MAX, GUEST_NAME_MAX, GUEST_PHONE_MAX } from "../../lib/guestForm";
 import { ottoActive, useWallet } from "../../lib/wallet";
 import { AGENT_MODE_LIVE } from "../../lib/concierge";
 import { shownReviews, type ShownReview } from "../../lib/reviews";
@@ -1892,16 +1893,16 @@ export function WebListing({ item, onClose, onOpen }: { item: Unclaimed; onClose
                   <div className="alboxrow">
                     <label className="alboxcell">
                       <small>Name</small>
-                      <input ref={nameRef} value={guest.name} placeholder="Your name" autoComplete="name" onChange={(e) => setGuest({ ...guest, name: e.target.value })} />
+                      <input ref={nameRef} value={guest.name} maxLength={GUEST_NAME_MAX} placeholder="Your name" autoComplete="name" onChange={(e) => setGuest({ ...guest, name: e.target.value })} />
                     </label>
                     <label className="alboxcell">
                       <small>Mobile</small>
-                      <input ref={phoneRef} value={guest.phone} placeholder="Mobile number" inputMode="tel" autoComplete="tel" onChange={(e) => setGuest({ ...guest, phone: e.target.value })} />
+                      <input ref={phoneRef} value={guest.phone} maxLength={GUEST_PHONE_MAX} placeholder="Mobile number" inputMode="tel" autoComplete="tel" onChange={(e) => setGuest({ ...guest, phone: e.target.value })} />
                     </label>
                   </div>
                   <label className="alboxcell full">
                     <small>Email</small>
-                    <input ref={emailRef} value={guest.email || ""} placeholder="Where your confirmation goes" inputMode="email" autoComplete="email" aria-invalid={emailOk ? undefined : true} onChange={(e) => setGuest({ ...guest, email: e.target.value })} />
+                    <input ref={emailRef} value={guest.email || ""} maxLength={GUEST_EMAIL_MAX} placeholder="Where your confirmation goes" inputMode="email" autoComplete="email" aria-invalid={emailOk ? undefined : true} onChange={(e) => setGuest({ ...guest, email: e.target.value })} />
                   </label>
                 </div>
                 {/* Only the name and the mobile are required, and email is the one channel that is built, so a

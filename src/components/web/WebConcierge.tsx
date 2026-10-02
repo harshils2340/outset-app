@@ -33,6 +33,7 @@ import { fmtTime } from "../../lib/format";
 import { dateKey } from "../../lib/dates";
 import { loadGuest } from "../../lib/storage";
 import { BAD_EMAIL_ASK, guestEmailOk } from "../../lib/guestEmail";
+import { GUEST_EMAIL_MAX, GUEST_NAME_MAX, GUEST_PHONE_MAX } from "../../lib/guestForm";
 import { fewSeats } from "../../lib/liveTimes";
 import {
   copyText,
@@ -612,12 +613,12 @@ export function WebConcierge({ seed, framed, embed, onClose }: { seed?: string; 
             >
               <p className="cg-note">{pending.option.name}, {whenLine(pending.departure)}</p>
               <label htmlFor={guestId + "-name"} className="cg-sr">Your name</label>
-              <input id={guestId + "-name"} value={guestForm.name} onChange={(e) => { setNeedMore(""); setGuestForm({ ...guestForm, name: e.target.value }); }} placeholder="Your name" autoComplete="name" required />
+              <input id={guestId + "-name"} value={guestForm.name} onChange={(e) => { setNeedMore(""); setGuestForm({ ...guestForm, name: e.target.value }); }} placeholder="Your name" autoComplete="name" maxLength={GUEST_NAME_MAX} required />
               <label htmlFor={guestId + "-phone"} className="cg-sr">Mobile number</label>
               {/* `inputMode` so a phone offers its keypad, the same as every other guest field in the app. */}
-              <input id={guestId + "-phone"} value={guestForm.phone} onChange={(e) => { setNeedMore(""); setGuestForm({ ...guestForm, phone: e.target.value }); }} placeholder="Mobile" inputMode="tel" autoComplete="tel" required />
+              <input id={guestId + "-phone"} value={guestForm.phone} onChange={(e) => { setNeedMore(""); setGuestForm({ ...guestForm, phone: e.target.value }); }} placeholder="Mobile" inputMode="tel" autoComplete="tel" maxLength={GUEST_PHONE_MAX} required />
               <label htmlFor={guestId + "-email"} className="cg-sr">Email, if you want a confirmation</label>
-              <input id={guestId + "-email"} value={guestForm.email} onChange={(e) => setGuestForm({ ...guestForm, email: e.target.value })} placeholder="Email" inputMode="email" autoComplete="email" />
+              <input id={guestId + "-email"} value={guestForm.email} onChange={(e) => setGuestForm({ ...guestForm, email: e.target.value })} placeholder="Email" inputMode="email" autoComplete="email" maxLength={GUEST_EMAIL_MAX} />
               {needMore ? <p className="cg-note" role="alert">{needMore}</p> : null}
               <button type="submit" disabled={booking}>{booking ? "Booking…" : "Book"}</button>
             </form>
