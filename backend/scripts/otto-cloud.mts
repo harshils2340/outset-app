@@ -3,12 +3,15 @@ import { sendMail, smtpIdentities } from "../src/lib/mail.ts";
 import { emailHash, loadSuppression, mailPostal, unsubPageUrl } from "../src/lib/unsub.ts";
 import { outreachBlockers, UNREADABLE_ADDRESS } from "../src/outreach/guards.ts";
 import { isDeliverable } from "../src/outreach/deliverable.ts";
-import { draftOttoCopy } from "../src/outreach/ottoDrafts.ts";
+import { COPY_VERSION, draftOttoCopy } from "../src/outreach/ottoDrafts.ts";
 import { recordSend } from "../src/lib/outreachLog.ts";
 import { recordRun, rungFor, type RampState } from "../src/outreach/ramp.ts";
 import { MAILBOX_ERROR, NETWORK_ERROR, dayStartIso, pickIdentity } from "../src/outreach/mailboxes.ts";
-import { collectBounces, suppressBounce } from "../src/outreach/bounceSweep.ts";
-import { loadRamp, poolCandidates, recordTouch, saveRamp, sentTodayByMailbox } from "../src/outreach/touches.ts";
+import { collectBounces, collectReplies, markReplied, suppressBounce } from "../src/outreach/bounceSweep.ts";
+import { placementTest, placementVerdict } from "../src/outreach/placement.ts";
+import {
+  RESEND_KIND, loadRamp, mailedIndex, poolCandidates, recordTouch, repliedOperators, resendCandidates, saveRamp, sentTodayByMailbox, type PoolRow,
+} from "../src/outreach/touches.ts";
 import { todayIn } from "../src/lib/zone.ts";
 
 /**
@@ -30,7 +33,14 @@ const resume = process.argv.includes("--resume");
 const TZ = process.env.PIPELINE_TZ || "America/Toronto";
 const RAMP = [10, 25, 35, 50];
 const PER_MAILBOX = Math.min(50, Math.max(1, Number(process.env.OUTREACH_PER_MAILBOX || 50)));
-type OttoState = RampState & { mailboxes?: Record<string, RampState> };
+type OttoState = RampState & {
+  mailboxes?: Record<string, RampState>;
+  /** The last inbox-placement check: when, against which copy, what Gmail did with it. */
+  placement?: { day: string; version: string; summary: string; hold: boolean };
+};
+/** Placement is re-checked every other day (Harshil, 2 October 2026), and always after the copy changes. */
+const PLACEMENT_EVERY_DAYS = 2;
+const notifyTo = (process.env.OUTREACH_ALERT_TO || "harshils2340@gmail.com").trim();
 
 const suppression = await loadSuppression();
 const blocked = suppression.hashes;
@@ -61,12 +71,70 @@ if (!dry) {
   }
 }
 
+/** A note to Harshil, sent from a second sending mailbox to his own (the cron has no other mail transport). */
+async function notify(subject: string, text: string): Promise<void> {
+  const via = (ids.find((i) => i.user.toLowerCase() !== notifyTo.toLowerCase()) || ids[0]).user;
+  const res = await sendMail({ to: notifyTo, subject, text, commercial: true, via });
+  if (!res.sent) console.error("otto-cloud: could not notify " + notifyTo + ": " + res.error);
+}
+
+// Replies before anything is sent. The copy promises 'Reply "no" and I won't email again', so a human reply
+// from any business we mailed stops every further send to it, and Harshil gets each new one in his own inbox
+// (two of the three sending inboxes are never read by a person).
+if (!dry) {
+  try {
+    const known = await repliedOperators();
+    const replies = await collectReplies(14, await mailedIndex());
+    const fresh: string[] = [];
+    for (const r of replies) {
+      if (r.auto) { console.log(`auto-reply (not counted): ${r.from}: ${r.subject.slice(0, 80)}`); continue; }
+      const isNew = r.operatorIds.some((id) => !known.has(id));
+      await markReplied(r);
+      for (const id of r.operatorIds) known.add(id);
+      if (isNew) fresh.push(`${r.from} (to ${r.mailbox}, ${r.at.slice(0, 10)})\nSubject: ${r.subject}\n${r.snippet}\n`);
+    }
+    console.log(`otto-cloud: ${replies.filter((r) => !r.auto).length} human repl(ies) in 14 days, ${fresh.length} new`);
+    if (fresh.length) await notify(`Otto: ${fresh.length} new repl${fresh.length === 1 ? "y" : "ies"} to the pitch`,
+      "These businesses replied. Each one is now off every future send. Open the inbox named to answer.\n\n" + fresh.join("\n"));
+  } catch (e) {
+    console.error("otto-cloud: reply sweep failed, sending anyway (bounces and suppression still apply): " + (e as Error).message);
+  }
+}
+
 const today = todayIn(TZ);
 const dayStart = dayStartIso(TZ);
 const state: OttoState = (await loadRamp<OttoState>("otto")) || { firstDay: today, ranDays: [] };
 if (state.ranDays.includes(today) && !dry && !resume) {
   console.log(`otto-cloud: already ran today (${today})`);
   process.exit(0);
+}
+
+const asCopy = (r: PoolRow) => draftOttoCopy(
+  { id: r.operator_id, domain: r.domain, name: r.name, email: r.email, phone: r.phone, city: r.city, region: r.region, calendar_vendor: r.calendar_vendor },
+  r.email, { greet: r.greet });
+
+// Inbox placement: is today's copy still landing in Gmail's Primary tab? Checked every other day and
+// whenever the copy changes; a clear Promotions/Spam verdict holds the whole batch and tells Harshil, since
+// sending 100 emails into Promotions is how 596 sends earned one reply (src/outreach/placement.ts).
+const last = state.placement;
+const daysSince = last ? Math.round((Date.parse(today) - Date.parse(last.day)) / 86_400_000) : Infinity;
+if (!dry && (!last || last.version !== COPY_VERSION || daysSince >= PLACEMENT_EVERY_DAYS)) {
+  const sample = (await poolCandidates(ids.length)).map(asCopy).map((c) => ({ subject: c.subject, text: c.body, html: c.html }));
+  const results = await placementTest(sample, { replyTo: process.env.MAIL_REPLY_TO || undefined });
+  const verdict = placementVerdict(results);
+  for (const r of results) console.log(`placement: ${r.from} -> ${r.to}: ${r.placement}`);
+  console.log(`otto-cloud: placement check for copy ${COPY_VERSION}: ${verdict.summary}${verdict.hold ? " - HOLDING TODAY'S BATCH" : ""}`);
+  state.placement = { day: today, version: COPY_VERSION, summary: verdict.summary, hold: verdict.hold };
+  if (verdict.hold) {
+    await saveRamp("otto", state);
+    await notify("Otto outreach held: Gmail is filing the pitch under Promotions/Spam",
+      `Today's batch was not sent. The placement check sent copy ${COPY_VERSION} between the sending inboxes and Gmail filed it as: ${verdict.summary}.\n\n` +
+      results.map((r) => `${r.from} -> ${r.to}: ${r.placement}`).join("\n") +
+      "\n\nShorten the copy in backend/src/outreach/ottoDrafts.ts (fewer links, less sales language) and redeploy outset-otto. The next run re-checks before sending.");
+    process.exit(0);
+  }
+} else if (last) {
+  console.log(`otto-cloud: placement last checked ${last.day} (copy ${last.version}): ${last.summary}`);
 }
 const mailboxes = (state.mailboxes ||= {});
 const before = await sentTodayByMailbox(dayStart);
@@ -94,11 +162,23 @@ async function planToday(): Promise<{ limit: number; quota: Record<string, numbe
   return { limit, quota };
 }
 
-async function sendBatch(limit: number, quota: Record<string, number>): Promise<{ sent: number; skipped: number; failed: number; retired: { mailbox: string; error: string }[] }> {
-  const out = { sent: 0, skipped: 0, failed: 0, retired: [] as { mailbox: string; error: string }[] };
-  const rows = await poolCandidates(limit * 2);
+async function sendBatch(limit: number, quota: Record<string, number>): Promise<{ sent: number; resent: number; skipped: number; failed: number; retired: { mailbox: string; error: string }[] }> {
+  const out = { sent: 0, skipped: 0, failed: 0, resent: 0, retired: [] as { mailbox: string; error: string }[] };
+  // Half of today's allowance goes to the resend (most recently mailed first) while it lasts, the rest to
+  // businesses never mailed; alternating so a cut-short day still does some of each. Same daily cap.
+  const resends = (await resendCandidates(Math.ceil(limit / 2) * 2, COPY_VERSION)).map((r) => ({ ...r, kind: RESEND_KIND }));
+  const fresh = (await poolCandidates(limit * 2)).map((r) => ({ ...r, kind: "otto" }));
+  const resendBudget = Math.min(Math.ceil(limit / 2), resends.length);
+  const rows: (PoolRow & { kind: string })[] = [];
+  for (let i = 0; i < Math.max(resends.length, fresh.length); i++) {
+    if (i < resends.length && rows.filter((x) => x.kind === RESEND_KIND).length < resendBudget * 2) rows.push(resends[i]);
+    if (i < fresh.length) rows.push(fresh[i]);
+  }
+  console.log(`otto-cloud: ${resends.length} resend candidate(s) (newest first), ${fresh.length} new; up to ${resendBudget} resends today`);
   const seen = new Set<string>();
+  let resentToday = 0;
   for (const r of rows) {
+    if (r.kind === RESEND_KIND && resentToday >= resendBudget) continue;
     if (out.sent >= limit) break;
     const to = r.email.trim().toLowerCase();
     if (seen.has(to) || UNREADABLE_ADDRESS.test(to) || blocked.has(emailHash(to))) {
@@ -115,8 +195,9 @@ async function sendBatch(limit: number, quota: Record<string, number>): Promise<
     const op = { id: r.operator_id, domain: r.domain, name: r.name, email: r.email, phone: r.phone, city: r.city, region: r.region, calendar_vendor: r.calendar_vendor };
     const copy = draftOttoCopy(op, to, { greet: r.greet });
     if (dry) {
-      console.log("would send to " + to + (r.greet ? " (Hi " + r.greet + ")" : "") + " [variant " + copy.variant + "]: " + copy.subject);
+      console.log("would " + (r.kind === RESEND_KIND ? "RESEND to " : "send to ") + to + (r.greet ? " (Hi " + r.greet + ")" : "") + " [variant " + copy.variant + "]: " + copy.subject);
       out.sent++;
+      if (r.kind === RESEND_KIND) { out.resent++; resentToday++; }
       continue;
     }
     const via = pickIdentity(quota);
@@ -133,9 +214,10 @@ async function sendBatch(limit: number, quota: Record<string, number>): Promise<
     }
     if (res.sent) {
       const at = new Date().toISOString();
-      await recordTouch({ operatorId: r.operator_id, email: to, status: "sent", mailbox: res.via ?? via, variant: copy.variant, at });
+      await recordTouch({ operatorId: r.operator_id, email: to, status: "sent", mailbox: res.via ?? via, variant: copy.variant, at, kind: r.kind });
       await recordSend({ email: to, listing: r.catalog_id, at });
       out.sent++;
+      if (r.kind === RESEND_KIND) { out.resent++; resentToday++; }
       quota[via] -= 1;
     } else if (MAILBOX_ERROR.test(res.error || "")) {
       console.error(via + " retired for this run: " + res.error);
@@ -143,7 +225,7 @@ async function sendBatch(limit: number, quota: Record<string, number>): Promise<
       out.retired.push({ mailbox: via, error: res.error || "" });
       continue;
     } else {
-      await recordTouch({ operatorId: r.operator_id, email: to, status: "failed" }).catch(() => undefined);
+      await recordTouch({ operatorId: r.operator_id, email: to, status: "failed", kind: r.kind }).catch(() => undefined);
       out.failed++;
       console.error(to + ": " + res.error);
     }
@@ -163,7 +245,7 @@ for (let round = 1; round <= 4; round++) {
   }
   const result = await sendBatch(limit, quota);
   sent += result.sent;
-  console.log(`otto-cloud: round ${round}: ${JSON.stringify({ sent: result.sent, skipped: result.skipped, failed: result.failed, retired: result.retired.map((r) => r.mailbox) })}`);
+  console.log(`otto-cloud: round ${round}: ${JSON.stringify({ sent: result.sent, resent: result.resent, skipped: result.skipped, failed: result.failed, retired: result.retired.map((r) => r.mailbox) })}`);
   if (dry || result.sent >= limit || !result.retired.some((r) => NETWORK_ERROR.test(r.error))) break;
   console.log("otto-cloud: network trouble, waiting 10 minutes before the next round");
   await new Promise((x) => setTimeout(x, 10 * 60_000));

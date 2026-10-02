@@ -68,6 +68,60 @@ export async function collectBounces(days: number): Promise<Bounce[]> {
 }
 
 /**
+ * Replies to the Otto pitch, read from every sending mailbox (and from the inbox hello@onoutset.com forwards
+ * into, which keeps the original sender). The 2 October copy promises 'Reply "no" and I won't email again',
+ * so any human reply from an address or company domain we mailed stops every further send to that business,
+ * whatever it says: the resend and any later touch both skip a 'replied' business. Out-of-office and other
+ * automatic answers do not count, since nobody chose to stop anything; they are returned flagged so the log
+ * still shows them. Free-mail domains match on the full address only, never the domain.
+ */
+export type Reply = { from: string; mailbox: string; subject: string; at: string; operatorIds: string[]; auto: boolean; snippet: string };
+
+const AUTO_SUBJECT = /^(automatic reply|auto(matic)?[- ]?(reply|response)|out of (the )?office|away|we regret to inform|thank you for (your )?(email|contacting|reaching)|undeliverable|delivery status)/i;
+
+export async function collectReplies(days: number, index: { byEmail: Map<string, Set<string>>; byDomain: Map<string, Set<string>> }): Promise<Reply[]> {
+  const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+  const ids = smtpIdentities();
+  const own = new Set(ids.map((i) => i.user.toLowerCase()));
+  const out: Reply[] = [];
+  for (const id of ids) {
+    const host = id.host === "smtp.gmail.com" ? "imap.gmail.com" : id.host.replace(/^smtp\./, "imap.");
+    const client = new ImapFlow({ host, port: 993, secure: true, auth: { user: id.user, pass: id.pass }, logger: false });
+    try {
+      await client.connect();
+      const lock = await client.getMailboxLock("INBOX");
+      try {
+        const uids = (await client.search({ since }, { uid: true })) || [];
+        for await (const msg of client.fetch(uids, { uid: true, envelope: true, headers: ["auto-submitted", "x-autoreply", "x-autorespond", "precedence"], bodyParts: ["1"] }, { uid: true })) {
+          const from = (msg.envelope?.from?.[0]?.address || "").toLowerCase();
+          if (!from || own.has(from) || /mailer-daemon|postmaster/.test(from)) continue;
+          const domain = from.split("@")[1] || "";
+          const ops = index.byEmail.get(from) || index.byDomain.get(domain);
+          if (!ops) continue;
+          const headers = (msg.headers?.toString("utf8") || "").toLowerCase();
+          const subject = msg.envelope?.subject || "";
+          const auto = /auto-submitted:\s*auto-(replied|generated)|x-autoreply|x-autorespond|precedence:\s*(auto_reply|bulk|junk)/.test(headers) || AUTO_SUBJECT.test(subject);
+          const snippet = (msg.bodyParts?.get("1")?.toString("utf8") || "").replace(/=\r?\n/g, "").replace(/\s+/g, " ").slice(0, 200);
+          out.push({ from, mailbox: id.user, subject, at: msg.envelope?.date ? new Date(msg.envelope.date).toISOString() : nowIso(), operatorIds: [...ops], auto, snippet });
+        }
+      } finally {
+        lock.release();
+      }
+    } catch (e) {
+      console.error(`${id.user}: could not read replies: ${(e as Error).message.slice(0, 120)}`);
+    } finally {
+      await client.logout().catch(() => undefined);
+    }
+  }
+  return out;
+}
+
+/** Mark a human reply on every business it belongs to, so nothing more is ever sent to them. */
+export async function markReplied(r: Reply): Promise<void> {
+  for (const op of r.operatorIds) await recordTouch({ operatorId: op, email: r.from, status: "replied", mailbox: r.mailbox, at: r.at }).catch(() => undefined);
+}
+
+/**
  * Suppress a dead address everywhere. `operatorIds` are the businesses it belongs to when the caller knows
  * them from its own disk; otherwise the published pool is asked, and an address nobody has on record is
  * still suppressed under its own name.

@@ -56,7 +56,7 @@ test("a name that is already possessive does not grow a second apostrophe", () =
   // doubled apostrophe is the typo, and that is one shop.
   assert.equal(possessive("Gulf Jet Skis"), "Gulf Jet Skis's");
   const c = draftOttoCopy({ ...op, name: "Capt Andy's" }, TO);
-  assert.equal(c.subject, "Who answers Capt Andy's phone after you close?");
+  assert.equal(c.subject, "Missed calls at Capt Andy's");
 });
 
 test("a business name with markup in it cannot reach the html as markup", () => {
@@ -74,16 +74,18 @@ test("no em dash anywhere, including the footer", () => {
 
 test("the vendor line is generic when no booking system is on file", () => {
   const none = draftOttoCopy(op, TO);
-  assert.ok(none.body.includes("\nOtto can work with your existing booking flow"), none.body);
+  assert.ok(none.body.includes("takes the booking down for you"), none.body);
+  assert.ok(!none.body.includes("actually open"), none.body);
   const known = draftOttoCopy({ ...op, calendar_vendor: "fareharbor" }, TO);
   assert.ok(known.body.includes("FareHarbor"), known.body);
 });
 
-test("a draft with no address still carries the terms and privacy lines", () => {
+test("a draft with no address still carries a way to unsubscribe and the take-down", () => {
   // AGENTS.md: a draft with no to_email is kept so a human can find a contact, so it still has to read right.
+  // Terms and Privacy links left the pitch on 2 October 2026: the newsletter-style footer helped Gmail file it
+  // under Promotions (ottoDrafts.ts), and neither is legally required in a cold email.
   const c = draftOttoCopy(op);
-  assert.ok(c.body.includes("terms.html"), c.body);
-  assert.ok(c.body.includes("privacy.html"), c.body);
+  assert.ok(c.body.includes("unsubscribe.html"), c.body);
   assert.ok(!c.body.includes("/unsubscribe.html?t="), "no address means no address to sign an unsubscribe for");
   assert.ok(c.body.includes("#remove="), "the take-it-down link needs no address, so it is there either way");
 });

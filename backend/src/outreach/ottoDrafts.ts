@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { catalogId, vendorLabel } from "./drafts.ts";
+import { LIVE_CALENDAR, catalogId, vendorLabel } from "./drafts.ts";
 import { mailPostal, unsubPageUrl } from "../lib/unsub.ts";
 import { bestAddress, greeting } from "./owner.ts";
 import { db, nowIso } from "../db/client.ts";
@@ -41,27 +41,38 @@ function link(href: string, label: string): string {
 }
 
 /**
- * The line that answers "we already use X for bookings" before it's asked. Otto is a phone answering
- * service, not a booking-system replacement, so this never claims to read or write their calendar the way
- * the listing pitch's vendorLine does for FareHarbor/Peek/Xola live-read integrations; it says the honest,
- * more limited thing: sets up alongside whatever they already run.
+ * What Otto can honestly say it does with this operator's calendar. FareHarbor, Peek and Xola are read live
+ * (src/enrich/availability.ts), so Otto can tell a caller what is actually open and hand them the link to that
+ * slot. Anywhere else it must not claim to see the calendar: it answers from what the operator has published
+ * and takes the booking details down for them.
  */
-function vendorLine(id: string | null): string {
-  const tail = "Otto can work with your existing booking flow so reservations go into the same system you already use.";
+function whatOttoDoes(id: string | null): string {
   const name = vendorLabel(id);
-  return name ? "Since you use " + name + ", " + tail : tail.charAt(0).toUpperCase() + tail.slice(1);
+  // Harshil, 2 October 2026: say it answers only from the business's own info, booking system and terms, so
+  // an owner knows it never makes things up. "Booking system" is said only where Otto really reads one.
+  if (id && LIVE_CALENDAR.has(id) && name)
+    return "It picks up those calls and answers only from your own company info, " + name + " booking system and terms, so it never makes anything up. It tells the caller what's actually open and sends them the link to book that exact slot.";
+  return "It picks up those calls and answers only from your own company info, prices and terms, so it never makes anything up, then takes the booking down for you.";
 }
 
 /**
  * Which copy a send carried, stored on outreach_sends.variant (touches.ts) so replies can be read against the
  * version that earned them. Bump it whenever the body changes.
  */
-export const COPY_VERSION = "2026-10-01";
+export const COPY_VERSION = "2026-10-02";
 
 /**
- * Body written by Harshil on 1 October 2026, templated by business name and booking vendor. The footer (the
- * take-it-down line, unsubscribe, terms, postal address) is not part of his copy; it stays because
- * backend/src/outreach/AGENTS.md requires it on every send.
+ * The 2 October 2026 pitch. 596 sends of the 1 October copy earned one human reply, and a placement test
+ * between the three sending inboxes showed why: Gmail filed it under Promotions every time, with or without
+ * the logo, the footer, the links or the HTML. The long, salesy wording was the trigger. A short note that
+ * opens on a question landed in Primary in every inbox, still did with one recording link, the postal address
+ * and the opt-out, and this is that note with Harshil's asks folded in (24/7 customer service, the recording).
+ * scripts/otto-cloud.mts re-runs the same placement test before every daily batch and holds the batch if
+ * Gmail starts filing it as Promotions, so a later edit here cannot silently undo this.
+ *
+ * Keep it short and personal. Every paragraph added, every extra link and every marketing phrase is a step
+ * back toward the Promotions tab. The required lines (postal address, unsubscribe, the one-click take-down of
+ * the operator's Outset page from backend/src/outreach/AGENTS.md) stay as one plain small block at the end.
  */
 export function draftOttoCopy(op: OttoOp, email?: string, opts?: { greet?: string | null }): { subject: string; body: string; html: string; variant: string } {
   const to = (email || "").trim().toLowerCase();
@@ -73,51 +84,39 @@ export function draftOttoCopy(op: OttoOp, email?: string, opts?: { greet?: strin
   const hi = opts && "greet" in opts ? (opts.greet ? "Hi " + opts.greet + "," : "Hi,") : to ? greeting(op, to) : "Hi,";
   const SITE = "https://onoutset.com/";
   const OTTO = SITE + "otto";
-  const subject = "Who answers " + possessive(op.name) + " phone after you close?";
-  const who = "I'm Harshil. I built Otto, an AI front desk for local activity businesses like " + op.name +
-    ". It answers calls when your team is busy or closed, handles customer questions, books guests, and sends you a summary afterward.";
-  const hear = "Here's a 42-second sample so you can hear what a call sounds like:";
-  const staff = "The idea is simple: your staff can keep focusing on guests in person, and Otto handles the calls that would otherwise go unanswered or to voicemail.";
-  const vendor = vendorLine(op.calendar_vendor);
-  const setup = "I can set up a version specifically for " + op.name + " in a day using your pricing, policies, and booking flow. I'll set it up for free so you can call it yourself and see if it's actually useful before paying for anything.";
-  // "yes" is bold in the html only; plain text has no bold.
-  const ask = "If you're interested, just reply yes and I'll put one together for you.";
-  const askHtml = "If you're interested, just reply <b>yes</b> and I'll put one together for you.";
-  // Every operator this pitch goes to already has an unclaimed page in the Outset catalog, and this email
-  // names Outset without naming that page, so the way off it has to be in here: the outreach folder's own
-  // rule is a one-click remove line on every send, and the listing pitch has carried one since it started.
-  // Without it an owner who reads "I built Otto ... for operators like yours" and goes looking has no way out
-  // that does not start with a reply.
+  const subject = "Missed calls at " + op.name;
+  const question = "When everyone at " + op.name + " is busy with guests or you've closed for the day, where do the calls go?";
+  const pain = "For most operators it's voicemail, and the caller hangs up and books with the next place that picks up.";
+  const what = "I built Otto, a 24/7 customer service line for your phone. " + whatOttoDoes(op.calendar_vendor) + " You get a summary of every call.";
+  const hearText = "Here's a 40-second recording of it on a real call: " + OTTO;
+  const hearHtml = "Here's a 40-second recording of it on a real call: " + link(OTTO, "give it a listen") + ".";
+  const offer = "I'll set it up on your line for free, and you only keep it if it books you a guest. Worth a quick reply?";
+  // Every operator this goes to already has an unclaimed page in the Outset catalog, so the way off it is in
+  // here, as the outreach folder requires: a one-click take-down beside the unsubscribe.
   const remove = SITE + "#remove=" + catalogId(op.domain);
-  const removeLine = "Already have a page on Outset you didn't ask for, or just don't want to be found here at all? This takes it down instantly:";
+  const stop = to ? unsubPageUrl(to) : SITE + "unsubscribe.html";
+  const postal = mailPostal();
   const lines = [
-    hi, "", who, "",
-    hear, "", OTTO, "",
-    staff, "", vendor, "",
-    setup, "", ask, "",
-    "Best,", "", "Harshil",
-    "", removeLine, remove,
-  ].filter((l) => l !== null) as string[];
-  const paras = [
-    "<p>" + esc(hi) + "</p>",
-    "<p>" + esc(who) + "</p>",
-    "<p>" + esc(hear) + "<br>" + link(OTTO, "Hear the 42-second recording") + "</p>",
-    "<p>" + esc(staff) + "</p>",
-    "<p>" + esc(vendor) + "</p>",
-    "<p>" + esc(setup) + "</p>",
-    "<p>" + askHtml + "</p>",
-    "<p>Best,<br>Harshil</p>",
-    '<p style="font-size:13px;color:#666">' + esc(removeLine) + " " + link(remove, "take it down") + ".</p>",
+    hi, "", question, "", pain, "", what, "", hearText, "", offer, "",
+    "Harshil",
+    ...(postal ? ["Outset, " + postal.replace(/^Outset,\s*/i, "")] : []),
+    'Not a fit? Reply "no" and I won\'t email again, or unsubscribe: ' + stop,
+    "Don't want your free Outset page? Take it down: " + remove,
   ];
-  const footer = brandFooter(to);
-  lines.push(...footer.lines);
-  paras.push(footer.html);
-  return {
-    subject,
-    body: lines.join("\n"),
-    html: '<div style="font-family:system-ui,sans-serif;font-size:15px;line-height:1.55;color:#222">' + paras.join("") + "</div>",
-    variant,
-  };
+  const small = '<p style="color:#777">';
+  const html = '<div dir="ltr">' + [
+    "<p>" + esc(hi) + "</p>",
+    "<p>" + esc(question) + "</p>",
+    "<p>" + esc(pain) + "</p>",
+    "<p>" + esc(what) + "</p>",
+    "<p>" + hearHtml + "</p>",
+    "<p>" + esc(offer) + "</p>",
+    small + "Harshil" +
+      (postal ? "<br>" + esc("Outset, " + postal.replace(/^Outset,\s*/i, "")) : "") +
+      "<br>Not a fit? Reply \"no\" and I won't email again, or " + link(stop, "unsubscribe") + "." +
+      "<br>Don't want your free Outset page? " + link(remove, "Take it down") + ".</p>",
+  ].join("") + "</div>";
+  return { subject, body: lines.join("\n"), html, variant };
 }
 
 /**

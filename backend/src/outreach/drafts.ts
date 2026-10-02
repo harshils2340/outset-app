@@ -36,7 +36,7 @@ export function catalogId(domain: string): string {
 }
 
 /** Vendors whose live calendar Outset reads (src/enrich/availability.ts): guests only see times the operator has open. */
-const LIVE_CALENDAR = new Set(["fareharbor", "peek", "xola"]);
+export const LIVE_CALENDAR = new Set(["fareharbor", "peek", "xola"]);
 /** Vendors whose menu Outset reads straight from the widget (src/enrich/widgets.ts): the prices on the page are theirs. */
 const MENU_READ = new Set(["fareharbor", "peek", "xola", "acuity", "square", "checkfront", "burblesoft", "resova", "vallypro", "bookeo", "rezdy"]);
 

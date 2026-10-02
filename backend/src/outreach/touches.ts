@@ -128,10 +128,14 @@ export async function touched(kind = "otto"): Promise<{ operators: Set<string>; 
   return { operators, emails };
 }
 
-/** Sent today, per mailbox, from the shared record; `dayStart` is the campaign day's first instant as ISO. */
-export async function sentTodayByMailbox(dayStart: string, kind = "otto"): Promise<Record<string, number>> {
+/**
+ * Sent today, per mailbox, from the shared record; `dayStart` is the campaign day's first instant as ISO.
+ * Counts first touches and resends together: both come out of the same mailbox's daily allowance, so a
+ * resend day must never let a mailbox go over its cap.
+ */
+export async function sentTodayByMailbox(dayStart: string, kinds: string[] = ["otto", RESEND_KIND]): Promise<Record<string, number>> {
   await ensureTouchTables();
-  const rows = await query<{ mailbox: string | null; n: number }>("select mailbox, count(*)::int as n from outreach_sends where kind = $1 and status = 'sent' and at >= $2::timestamptz group by mailbox", [kind, dayStart]);
+  const rows = await query<{ mailbox: string | null; n: number }>("select mailbox, count(*)::int as n from outreach_sends where kind = any($1::text[]) and status = 'sent' and at >= $2::timestamptz group by mailbox", [kinds, dayStart]);
   const out: Record<string, number> = {};
   for (const r of rows) out[r.mailbox || ""] = r.n;
   return out;
@@ -159,6 +163,61 @@ export async function poolCandidates(limit: number, kind = "otto"): Promise<Pool
       limit $1`,
     [limit, kind],
   );
+}
+
+/**
+ * The 2 October 2026 resend. The ~580 businesses that got the 1 October copy got it in Gmail's Promotions
+ * tab (ottoDrafts.ts has the test), so each gets the new note once, under its own kind so it never counts as
+ * a first touch and is never sent twice. Most recently mailed first, at Harshil's word, and only once the
+ * first email is at least two days old.
+ */
+export const RESEND_KIND = "otto_resend";
+
+/**
+ * Who should get the resend, newest first. Skips any business that replied, bounced, was handed to a friend
+ * to send, or already got a resend; skips an address that ever bounced, failed or replied (the pool may hold
+ * a better address than the one first mailed, which is then the one used); and skips anyone whose first email
+ * was already this copy.
+ */
+export async function resendCandidates(limit: number, currentVariant: string): Promise<(PoolRow & { last_at: string })[]> {
+  await ensureTouchTables();
+  return query<PoolRow & { last_at: string }>(
+    `with first as (
+       select operator_id, max(at) as last_at, coalesce(bool_or(variant = $2), false) as had_current
+         from outreach_sends where kind = 'otto' and status = 'sent' group by operator_id
+     )
+     select p.*, first.last_at from first join outreach_pool p on p.operator_id = first.operator_id
+      where not first.had_current
+        and first.last_at < now() - interval '2 days'
+        and not exists (select 1 from outreach_sends s where s.operator_id = first.operator_id
+                          and (s.kind = '${RESEND_KIND}' or s.status in ('replied', 'bounce', 'handoff')))
+        and not exists (select 1 from outreach_sends s where s.email = p.email and s.status in ('bounce', 'failed', 'replied'))
+      order by first.last_at desc, p.operator_id
+      limit $1`,
+    [limit, currentVariant],
+  );
+}
+
+/** Operators already marked replied, so a reply sweep can tell a new reply from one it already reported. */
+export async function repliedOperators(): Promise<Set<string>> {
+  await ensureTouchTables();
+  const rows = await query<{ operator_id: string }>("select distinct operator_id from outreach_sends where status = 'replied'");
+  return new Set(rows.map((r) => r.operator_id));
+}
+
+/** Every address and domain mailed so far, mapped back to its businesses, for matching replies. */
+export async function mailedIndex(): Promise<{ byEmail: Map<string, Set<string>>; byDomain: Map<string, Set<string>> }> {
+  await ensureTouchTables();
+  const rows = await query<{ operator_id: string; email: string }>(
+    "select distinct operator_id, lower(email) as email from outreach_sends where kind in ('otto', $1) and status = 'sent'", [RESEND_KIND]);
+  const byEmail = new Map<string, Set<string>>(), byDomain = new Map<string, Set<string>>();
+  const FREE = /^(gmail|googlemail|yahoo|hotmail|outlook|live|icloud|me|aol|msn|comcast|proton|protonmail|shaw|rogers|sympatico|bell)\./;
+  for (const r of rows) {
+    (byEmail.get(r.email) || byEmail.set(r.email, new Set()).get(r.email)!).add(r.operator_id);
+    const d = r.email.split("@")[1] || "";
+    if (d && !FREE.test(d)) (byDomain.get(d) || byDomain.set(d, new Set()).get(d)!).add(r.operator_id);
+  }
+  return { byEmail, byDomain };
 }
 
 /** Suppression-list key for an address, the same one unsub.ts and outreachLog.ts use. */
