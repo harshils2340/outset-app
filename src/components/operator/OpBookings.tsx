@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { dateKey, startOfToday } from "../../lib/dates";
 import { fmtTime, money } from "../../lib/format";
 import { bookingPayout, fmtTotal, guestHearsBack, isoToDate, relDay, type OpBooking, type OpStatus } from "../../lib/operator";
+import { dialPhone } from "../../lib/phone";
 import { Markup } from "../Markup";
 import { useModal } from "../layout/useModal";
 import { OD_ICONS, useOp } from "./opContext";
@@ -167,6 +168,15 @@ export function BookingDrawer({ b, onClose }: { b: OpBooking; onClose: () => voi
   const refunded = b.source === "remote" && b.payment === "released";
   // Whether a decision here reaches the guest at all: see guestHearsBack.
   const heard = guestHearsBack(b);
+  /**
+   * The guest's own mobile, read by the one reader in `lib/phone.ts`, which is what the shop's number on the
+   * guest side already goes through (`lib/operator.ts` builds the listing's from `callablePhone`). This chip
+   * used to dial the stored field verbatim, and `POST /bookings` stored it with every character but a digit,
+   * a plus, a bracket, a space and a hyphen taken out: an extension lost its "ext." and left its digits glued
+   * to the number, so "(813) 555-0100 ext. 301" dialled thirteen digits and a second number typed into the
+   * same box dialled seventeen. The operator rang a stranger, or nobody, and the guest heard nothing.
+   */
+  const dial = dialPhone(b.phone);
   const moneyBack = b.payment === "captured" || b.payment === "authorized";
   return (
     <div className="oddrawerwrap" onClick={onClose}>
@@ -190,11 +200,14 @@ export function BookingDrawer({ b, onClose }: { b: OpBooking; onClose: () => voi
         {b.note ? <blockquote className="odnote">“{b.note}”</blockquote> : null}
 
         <div className="odcontactrow">
-          <a className="odchip" href={b.phone ? "tel:" + b.phone : undefined} aria-disabled={!b.phone}><Markup html={OD_ICONS.phone} /> Call</a>
+          <a className="odchip" href={dial ? "tel:" + dial : undefined} aria-disabled={!dial}><Markup html={OD_ICONS.phone} /> Call</a>
           <a className="odchip" href={b.email ? "mailto:" + b.email : undefined} aria-disabled={!b.email}><Markup html={OD_ICONS.mail} /> Email</a>
           <button type="button" className="odchip" onClick={copyCode}><Markup html={OD_ICONS.ticket} /> Copy code</button>
         </div>
-        {/* The number and address themselves: on a desktop a tel: link goes nowhere, and the owner reads them off the screen. */}
+        {/* The number and address themselves, as the guest typed them: on a desktop a tel: link goes nowhere,
+            and the owner reads them off the screen. Printed rather than run through `displayPhone`, so a guest
+            who left two numbers or a note beside one keeps all of it here and in the operator's email, which
+            prints the same stored string. The reader's job is the link above, where one number is all there is. */}
         {b.phone || b.email ? <p className="odmuted odguestcontact">{[b.phone, b.email].filter(Boolean).join(" · ")}</p> : null}
         {!b.phone && !b.email ? <p className="odfine">{b.source === "sample" ? "A sample row has no guest to contact. Real bookings carry the guest's mobile and email." : "This booking came without contact details."}</p> : null}
 

@@ -11,6 +11,7 @@ import { mailDecision, mailNewBooking } from "./bookingMail.ts";
 import { slotOpen, weekOf, zoneOf } from "./openSlots.ts";
 import { fmtWhen } from "../lib/emailTemplate.ts";
 import { bookableMenu } from "../../../src/lib/menuRow.ts";
+import { GUEST_EMAIL_MAX, GUEST_NAME_MAX, GUEST_PHONE_MAX } from "../../../src/lib/guestForm.ts";
 
 /**
  * Bookings, one row each in Postgres. A guest's request is written here, the operator gets an email, and the
@@ -124,6 +125,27 @@ const clean = (s: unknown, max: number) =>
     .trim()
     .slice(0, max);
 
+/**
+ * The three things a guest types about themselves, as this route stores them. The caps are
+ * `src/lib/guestForm.ts`'s, so the fields a guest types into carry the same numbers as the route that reads
+ * them; `maxLength` there is what makes the cut visible instead of silent.
+ *
+ * The mobile is kept as the guest typed it, the way `POST /claims/:id/request` keeps an owner's, and
+ * `src/lib/phone.ts` is the only thing that turns it into a number to dial. It used to be cut at 24
+ * characters and then have every character but a digit, a plus, a bracket, a space and a hyphen taken out,
+ * which is the rule that file exists to replace: "ext." and "x" went and left the extension's digits glued to
+ * the number, so a guest who wrote "(813) 555-0100 ext. 301" handed the operator thirteen digits and one who
+ * wrote two numbers handed them seventeen. The Call button in the dashboard dialled exactly that. 24 is also
+ * shorter than "+1 (813) 555-0100 ext. 301", so the cut landed inside the number for good measure.
+ *
+ * Nothing is loosened by keeping the characters: the >= 7 digit gate in the route is what refuses a field
+ * that is not a number, every surface that prints this one escapes it, and the name beside it has always been
+ * the guest's own text.
+ */
+export function readGuest(g: Partial<StoredBooking["guest"]> | undefined): StoredBooking["guest"] {
+  return { name: clean(g?.name, GUEST_NAME_MAX), phone: clean(g?.phone, GUEST_PHONE_MAX), email: clean(g?.email, GUEST_EMAIL_MAX).toLowerCase() };
+}
+
 const notifyNew = mailNewBooking;
 
 export const bookings = new Hono();
@@ -208,7 +230,7 @@ bookings.post("/bookings", rateLimit(20, 60 * 60 * 1000), async (c) => {
   const slot = clean(b.slot, 5);
   const qty = Number(b.qty);
   const code = clean(b.code, 16).toUpperCase();
-  const guest = { name: clean(b.guest?.name, 80), phone: clean(b.guest?.phone, 24).replace(/[^\d+() -]/g, ""), email: clean(b.guest?.email, 200).toLowerCase() };
+  const guest = readGuest(b.guest);
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !realDate(date)) return c.json({ error: "bad date" }, 400);
   if (Date.parse(date) < Date.now() - 86400000 || Date.parse(date) > Date.now() + 366 * 86400000) return c.json({ error: "date out of range" }, 400);
   // 24:00, 12:99 and 99:99 all passed a plain \d\d:\d\d and came back as 409 "that time is not open", which
