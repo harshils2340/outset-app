@@ -35,6 +35,7 @@ import { loadGuest } from "../../lib/storage";
 import { BAD_EMAIL_ASK, guestEmailOk } from "../../lib/guestEmail";
 import { GUEST_EMAIL_MAX, GUEST_NAME_MAX, GUEST_PHONE_MAX } from "../../lib/guestForm";
 import { fewSeats } from "../../lib/liveTimes";
+import { callablePhone, dialPhone } from "../../lib/phone";
 import {
   copyText,
   forgetConversation,
@@ -1054,7 +1055,17 @@ function Priced({ option, onOpen }: { option: ConciergeOption; onOpen: (o: Conci
   const s = headlineService(option);
   const line = s ? serviceLine(s) : null;
   const rated = stars(option);
-  const phone = option.route === "phone" ? option.phone : null;
+  /**
+   * The number this shop takes bookings on, read by the one reader in `lib/phone.ts` rather than by stripping
+   * everything but digits and a plus. That strip is the rule the listing page was fixed out of: it dials an
+   * extension onto the end of the number ("+1-360-393-4106x102" becomes thirteen digits), turns a
+   * percent-encoded `tel:` link's "%20" into the digits 2 and 0, and glues two numbers published in one field
+   * into one that rings nobody. The number comes off the operator row the crawl wrote, which is the same
+   * field, so the same 258 shapes reach here. A number that cannot be rung offers no call at all, the way a
+   * listing page offers none, and the card says the shop's own site instead.
+   */
+  const dial = option.route === "phone" ? dialPhone(option.phone) : null;
+  const phone = dial ? callablePhone(option.phone) : null;
   return (
     <article className="cg-card cg-quietcard">
       <div className="cg-card-top">
@@ -1062,15 +1073,15 @@ function Priced({ option, onOpen }: { option: ConciergeOption; onOpen: (o: Conci
           <b>{option.name}</b>
           <small>{[option.city, rated].filter(Boolean).join(" · ") || option.category}</small>
         </button>
-        <span className="cg-tag">{phone ? "By phone" : "From their site"}</span>
+        <span className="cg-tag">{dial ? "By phone" : "From their site"}</span>
       </div>
       <div className="cg-quietrow">
         <span className="cg-price">
           {line || "Price on request"}
           {s?.name ? <em>{s.name}</em> : null}
         </span>
-        {phone ? (
-          <a className="cg-ghost cg-call" href={"tel:" + phone.replace(/[^\d+]/g, "")}>
+        {dial && phone ? (
+          <a className="cg-ghost cg-call" href={"tel:" + dial}>
             Call {phone}
           </a>
         ) : (
