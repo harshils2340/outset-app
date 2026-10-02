@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { ICONS } from "../../data/icons";
 import { dateKey, startOfToday } from "../../lib/dates";
-import { fmtTime } from "../../lib/format";
+import { dayPickLabel, fmtTime } from "../../lib/format";
 import { Markup } from "../Markup";
 
 const WEEK = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
@@ -109,7 +109,7 @@ export function SlotCalendar({
                 className={"slotcalday" + (k === selectedKey ? " on" : "") + (k === todayKey ? " today" : "") + (full ? " full" : "")}
                 disabled={!open || full}
                 aria-pressed={k === selectedKey}
-                aria-label={open && meta?.open !== undefined ? d.getDate() + ", " + (full ? "nothing open" : meta.open + " open") : undefined}
+                aria-label={dayPickLabel(d, !open ? "not available" : full ? "nothing open" : meta?.open !== undefined ? meta.open + " open" : "")}
                 onClick={() => open && !full && onPickDate(idx)}
               >
                 {d.getDate()}

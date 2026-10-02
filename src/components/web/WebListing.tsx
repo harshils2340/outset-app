@@ -11,7 +11,7 @@ import type { Unclaimed } from "../../data/types";
 import { measurableFrom } from "../explore/feed";
 import { streetOf } from "../../lib/address";
 import { addressLine, bookingPaused, contactFor, fmtPhone, fromPrice, getCatalog, guestCapFor, listingFacts, mapsHref, maxGuestsFor, partnerBookLine, perPerson, publicRating, telHref, topRated as isTopRated, venueMapsQuery } from "../../lib/catalog";
-import { clockOfMinutes, DAYS, fmtDate, fmtReviews, fmtTime, money, moneyIn, priceWith, reviewsLine } from "../../lib/format";
+import { clockOfMinutes, DAYS, dayPickLabel, fmtDate, fmtReviews, fmtTime, money, moneyIn, priceWith, reviewsLine } from "../../lib/format";
 import { srcSet, thumb } from "../../lib/images";
 import { embedAutoplay, isGif, listingMedia, photoCandidates, probePhotos, type Media } from "../../lib/media";
 import { arrivalWords, bringLine, cleanDesc, durationLabel, groupCap as readGroupCap, lengthWords, minAge, notAlreadyShown, placeName, splitIncluded, splitPolicies, tidyLength, tidyLine, tidyName } from "../../lib/listingDerive";
@@ -569,7 +569,7 @@ function MonthPair({ dates, dateIdx, onPickDate, chipsFor }: { dates: Date[]; da
                     className={"alday" + (on ? " on" : "") + (ok ? " ok" : "") + (k === todayKey ? " today" : "")}
                     aria-pressed={on}
                     aria-disabled={!ok}
-                    aria-label={d.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" }) + (ok ? "" : ", not available")}
+                    aria-label={dayPickLabel(d, ok ? "" : "not available")}
                     onClick={() => { if (ok && idx !== undefined) onPickDate(idx); }}
                   >
                     {d.getDate()}
@@ -736,7 +736,7 @@ function DayTimePicker({ dates, dateIdx, onPickDate, chipsFor, time, onPickTime,
                         tabIndex={k === tabKey ? 0 : -1}
                         aria-disabled={!open}
                         aria-pressed={on}
-                        aria-label={d.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" }) + (open ? "" : ", not available")}
+                        aria-label={dayPickLabel(d, open ? "" : "not available")}
                         onFocus={() => setFocusKey(k)}
                         onClick={() => { if (open && idx !== undefined) onPickDate(idx); }}
                       >

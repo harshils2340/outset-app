@@ -63,6 +63,24 @@ export function fmtDate(d: Date, now: Date = new Date()): string {
   return DAYS[d.getDay()] + ", " + d.toLocaleDateString("en-US", { month: "short", day: "numeric", year });
 }
 
+/**
+ * How one date in a booking calendar reads out: "Thursday, October 1", with what the day is on the end
+ * ("Thursday, October 1, not available", "Saturday, October 4, 3 open").
+ *
+ * The desktop listing's two month grids wrote this by hand and the phone's shared `SlotCalendar` did not, so
+ * the same calendar named its days two ways: a guest on a desktop heard "Thursday, October 1, not available"
+ * and a guest on a phone heard "1", with nothing to say the greyed day could not be picked and no month
+ * anywhere in the grid. Every date in the booking window is an identically named button that way, which is
+ * the one control in the flow a guest cannot do without.
+ *
+ * The weekday and the month are spelled out rather than abbreviated because this is read, not printed: the
+ * number itself is already on screen.
+ */
+export function dayPickLabel(d: Date, note = ""): string {
+  const name = d.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
+  return note ? name + ", " + note : name;
+}
+
 export function nowStamp(): string {
   return new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
 }
