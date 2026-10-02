@@ -8335,6 +8335,98 @@ SQLite file holds nothing but the empty schema `migrate()` creates. `STRIPE_SECR
 
 
 
+## 2 October 2026, hundred and twentieth run (05:15 to 05:45 UTC)
+
+**Chosen, and why.** Seven commits have landed since the hundred and nineteenth run's entry, and four of them
+touch `backend/src` (the Otto outreach copy, `lib/mail.ts`, `touches.ts`, the pool sync), so by the rule the
+**full rehearsal ran**, once at the start to re-establish the baseline and once at the end. Both were 57 of 57.
+Baseline otherwise matched that entry: root `tsc --noEmit` and `tsc -b` clean, backend `tsc` clean but for
+TS5097, backend 977 tests with 975 pass and 2 skipped, app 1,087 pass. Both `node_modules` were missing again
+and a Postgres 16 cluster with TLS on 5433 was built from scratch (as root here, so `initdb` and `pg_ctl` run
+under the `postgres` user; the script in the brief needs that). The rehearsal lives in `backend/scripts`, not
+`scripts`.
+
+Every area on the brief is on the Verified list, so rather than re-walk it I read the new outreach diff whole
+(nothing wrong: the `family` column carries its own `alter table`, the variant is recorded on first touch,
+the mailbox ceiling is honest) and then picked a target by a different measure: **which `src/lib` module has
+never once been named in 9,600 lines of this log**. Eleven have not, and one of them is `src/lib/operator.ts`,
+the single `OperatorProfile` that is the whole operator dashboard. That plus the dashboard pages it feeds is
+exactly the brief's fourth area. Three bugs came out of it, all three in code a real operator touches.
+
+**Found and fixed.** Three commits.
+
+- **Deleting a service with real guests booked on it stops doing so in silence** (`8b56ca05`). The confirm in
+  front of the trash button on Services counted `upcomingBookingsFor(p, ...)`, which reads `p.bookings`. On a
+  claimed shop that array holds the sample rows and nothing else: every booking a guest actually made reaches
+  the dashboard from elsewhere, the API's rows through `remote` and this browser's guest app through `guest`,
+  and neither is ever written back into the profile. So it was inverted in both directions. The service a
+  paying guest holds a slot on next week deleted on one click with no word about them, and a demo profile's
+  samples raised a confirm about guests who do not exist. It now takes the `allBookings` list the Bookings
+  page, the Calendar and both day-off warnings already read.
+- **A shop that has closed its whole week stops being advertised with the hours it had before** (`85d3c937`).
+  Both `hoursText` and the compact `hrs` week in `toCatalog` asked `p.hours.some((h) => !h.closed)` before
+  they would publish the operator's own week, read as "they have stated no hours". It is a statement, not an
+  absence: "Apply to all" on a closed day is a guarded two-click gesture that answers "Closed every day", for
+  a dive shop out of the water for the winter or a boat in for a refit. The guest page went on printing the
+  nine to five the crawl read off their website months ago, with an Open now badge over it, while
+  `scheduledSlots` read those same seven closed days and refused every date with "That time is not open for
+  booking". The page was contradicting its own calendar. The closed lines round-trip correctly:
+  `hoursLine` writes "Sun: Closed", `parseWeek` reads it back as `{open:0,close:0}` and `closedOnDay` agrees,
+  which is the shape the six-closed-days-and-one-open case already shipped. This reverses an existing test
+  (`publishedPatch.test.ts`); see Needs Harshil.
+- **Otto's test chat stops answering one question with the answer to another** (`c2bad748`). The Assistant
+  page found the bubble a late grounded answer belonged to by matching its text, `x.pending && x.t === a.text`,
+  inside a `.map`. The rules' gap line is one canned sentence, so two questions that both fall through to the
+  model left two bubbles reading the same words and the first answer back filled both, while the second,
+  finding nothing pending, was dropped. Reproduced against the old code verbatim: "Do you rent wetsuits?" is
+  answered "Street parking is free after 6pm." and the wetsuit answer never arrives, on the page whose whole
+  promise is "same answers guests get". A bubble is named by its own id now and settles once, which is what
+  the guest side has always done (`chatSettled` settles by index).
+
+**Swept and clean, or measured and left.** Every module-level regex in both projects that carries a `g` or `y`
+flag and is then used with `.test()` or `.exec()`, where `lastIndex` survives between calls: six real ones,
+and all six reset it first, including `sanitizeSvg`'s two and the `scanned < 40` loop in `hoursMarkup` that
+exits early. Every `.sort()` in `src/lib`, `src/state` and `src/components` for one mutating an array it does
+not own: all on fresh copies. `src/lib/dates.ts`, `hashRoute.ts`, `shopName.ts`, `dialog.ts` and
+`markdown.ts`, five more modules the log had never named: nothing wrong in any of them (`shopTitle` handles
+both unbalanced brackets, `tabWrap` is a correct ring, `dateFromKey` rejects 31 February). The twelve
+`JumpField`s against the twelve `data-jump` landing targets: all present. The new outreach copy rendered in
+full, text and HTML, against `backend/src/outreach/AGENTS.md`: the remove line, unsubscribe, terms and privacy
+are all there, no em dash, no exclamation mark. One thing left measured: `slotsForDay` can return the same
+start time twice, when a day opens inside the previous day's after-midnight tail (Saturday 01:00 to 23:00
+behind Friday 20:00 to 03:00). Every caller feeds it into a `Set`, so nothing shows it, and the hours it needs
+are not hours a shop keeps.
+
+**Verification.** App `npm test` 1,102 pass, 0 fail, up from 1,087 (fifteen new across
+`deleteService.test.ts`, `closedWeek.test.ts` and `chatBubbles.test.ts`). Backend `npm test` 977 tests, 975
+pass, 2 skipped, unchanged. Every new test was run against the tree with its fix reverted and fails there: 5
+of 5, 3 of 4 (the fourth is the control that must keep passing), and the bubble bug was reproduced
+standalone against the old expression. `tsc --noEmit -p .`, `tsc -b` and the backend's own `tsc` all clean but
+for TS5097. The rehearsal ran **57 of 57** twice, on the baseline tree and on the tree carrying all three
+fixes. Nothing tracked under `backend/data`, `public/` or `src/data` was written; the two untracked files
+there, `outset.db` and `claim-secret.txt`, are written by importing the backend at all, as on every run here.
+`STRIPE_SECRET_KEY`, `RESEND_API_KEY` and `GITHUB_TOKEN` were empty throughout.
+
+**Needs Harshil.**
+
+- **The closed-week fix reverses a decision an earlier run wrote down**, and the test that held it
+  ("an operator who states no hours keeps the week crawled off their site") has been rewritten rather than
+  deleted. The cost is the 18 listings on the Not yet checked list whose crawl published only closed days:
+  `weekToHours` turns a day the site never named into a closed one, so those claim with all seven shut, and
+  they will now advertise "Closed" every day instead of their one thin crawled line. I think that is right,
+  because the API already sells them nothing either way and the page should say what the calendar does, but it
+  is your call whether those 18 want a different starting week instead (an unnamed day left open, say, which
+  would contradict the rule written above `weekToHours`).
+- Still open from earlier runs, unchanged: **there is no error boundary in this app**, so a throw anywhere in
+  render is a white page over prose crawled from 48,198 other people's websites. Six runs have now asked.
+- Also still open: a dump of the SQLite catalog, without which no run here can judge the concierge's
+  shortlist; the booking box opens on a row the page's own headline contradicts; the phone's browse is not
+  ranked at all while the desktop's is; the listing page a chain's card opens heads the primary town; the
+  phone confirmation offers no way to reach the shop; a guest cannot cancel a booking at all; a price sort and
+  a price filter compare two dollars on six metros; the cards say "$" for a Canadian shop; 69 Toronto-address
+  listings are filed under a neighbouring metro; there is no linter in this repo; and this container still
+  injects a `GITHUB_TOKEN`, which the brief says must be empty (everything tonight was run with it cleared).
+
 ## Coverage
 
 The catalog is 48,198 listings as of the 23 September sync, 1,873 of them Viator partner rows. Counts below
@@ -9260,7 +9352,28 @@ projects, and every `req.query` the backend reads, for an unguarded parse or an 
 `defaultOption` against `needService`, for a booking box that cannot become ready. The service picker's listbox
 semantics. `seasonFact`, `groupCap` and `images.ts`.
 
-**Not yet checked.** The concierge's shortlist, as opposed to its sentence reader: `backend/data/outset.db`
+`src/lib/operator.ts` whole, the single `OperatorProfile` behind every dashboard page, together with the
+Calendar, Availability, Services, Assistant and Settings screens it feeds: the confirm in front of a service
+delete against the bookings the dashboard actually draws, the week an operator publishes when every day of it
+is closed, which bubble a late grounded answer settles in the test chat, the closing-time select against a
+wrap, an inverted day and an open at 23:30, the day-off and slot-block guards against a past date, `cleanPrice`
+and `cleanCount` against a minus, a paste, a dot and an empty box, `minutesIn`, `durationLabel`,
+`hoursAreDefault`, `validOwnerEmail` and `validOwnerPhone`, and the twelve `JumpField`s against their twelve
+`data-jump` landing targets. Every module-level regex in both projects carrying a `g` or `y` flag that is then
+used with `.test()` or `.exec()`, for a `lastIndex` surviving between calls. Every `.sort()` in `src/lib`,
+`src/state` and `src/components`, for one mutating an array it does not own. `src/lib/dates.ts`,
+`hashRoute.ts`, `shopName.ts`, `dialog.ts` and `markdown.ts` read whole. The 1 October Otto outreach copy
+rendered in full, text and HTML, against the outreach folder's own rules, and the `family` column the pool
+sync added.
+
+**Not yet checked.** Whether the 18 listings whose crawl published only closed days should claim with
+all seven days shut at all, now that a closed week is published rather than swallowed (see this run's Needs
+Harshil). Whether releasing a listing should warn about the guests holding confirmed bookings on it, which the
+Settings copy does not mention. Whether the Calendar's empty-slot buttons should say which day and time they
+block: a screen reader meets a grid of identically labelled "Block slot" buttons. Whether the trash on a
+service's last price option, which is disabled with no title, should say why. The six `src/lib` modules still
+never named here: `season.ts`, `site.ts`, `stripeJs.ts`, `wallet.ts`, `deadCovers.ts`, `groupSize.ts`, and
+`src/state/AppProvider.tsx` beyond the chat settling read tonight. The concierge's shortlist, as opposed to its sentence reader: `backend/data/outset.db`
 in this container is an empty schema `migrate()` writes at startup, so every town that lives in the catalog
 reads as nowhere and `candidates`, `genresNear` and `placeAmbiguity` have never been run here against real
 rows (see this run's Needs Harshil). Which row the booking box should open on, and
@@ -9388,8 +9501,8 @@ written reviews under it: 6,513 rated listings show one on their card, their con
 table and none on the page those open, and 1,699 of those clear the Top rated bar with no laurel to show for
 it. The two listings that put the review's headline in the author slot, so a card is signed "Excellent trip".
 Whether the phone sheet should call one badge "Guest favourite" on the photo and "Top rated" in the row under
-it. The dashboard Home tabs as a screen reader meets them: they are `role="tab"` with no panel to control and
-no arrow keys, and putting that right needs `src/styles`. Whether the Next 7
+it. Whether the two `role="tablist"` strips on the guest home (the category row and the Browse/Agent pair)
+should control a panel the way the dashboard Home's tabs now do. Whether the Next 7
 days tab should list the week's unanswered requests as well as its confirmed bookings. Whether `groupCap`
 should count players, persons, participants and anglers and read number words: 351 listings would print a
 group size they currently do not and 32 would change theirs, 9 of them downwards (see this run's Needs
